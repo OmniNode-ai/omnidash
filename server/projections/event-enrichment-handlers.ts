@@ -79,7 +79,7 @@ function extractBashCommand(
  * Precedence (first match wins):
  * 1. `toolName` in payload → tool_event
  * 2. `type` or `topic` contains error/failed/failure → error_event
- * 3. `type` or `topic` contains routing/route, OR `selectedAgent` in payload → routing_event
+ * 3. `type` contains routing/route, OR `topic` contains routing, OR `selectedAgent` in payload → routing_event
  * 4. `type` or `topic` contains intent, OR `intent_category`/`intentCategory` in payload → intent_event
  * 5. `type` or `topic` contains heartbeat → node_heartbeat
  * 6. `type` or `topic` contains registration/lifecycle/node-registry → node_lifecycle
@@ -114,7 +114,6 @@ export function deriveEventCategory(
     lType.includes('routing') ||
     lTopic.includes('routing') ||
     lType.includes('route') ||
-    lTopic.includes('route') ||
     findField(payload, ['selectedAgent', 'selected_agent']) !== undefined
   ) {
     return 'routing_event';
@@ -376,13 +375,26 @@ const ErrorEventHandler: EnrichmentHandler = {
   enrich(payload, type, _topic): EventEnrichment {
     const actionType = str(findField(payload, ['actionType', 'action_type'])) ?? type;
     const rawError = findField(payload, ['error', 'message', 'errorMessage', 'error_message']);
+
+    // Step 1: find any direct string value for the error message.
+    // If rawError is an object (e.g. `error: { code: 500 }`), str() returns undefined
+    // and we fall back to the remaining top-level string fields that findField skipped.
+    const directStr =
+      str(rawError) ??
+      (typeof rawError === 'object' && rawError !== null
+        ? str(findField(payload, ['message', 'errorMessage', 'error_message']))
+        : undefined);
+
+    // Step 2: if no direct string was found, try extracting from a structured error object.
     const errorMsg =
-      typeof rawError === 'object' && rawError !== null
-        ? str(
-            (rawError as Record<string, unknown>).message ??
-              (rawError as Record<string, unknown>).error
-          )
-        : str(rawError);
+      directStr !== undefined
+        ? directStr
+        : typeof rawError === 'object' && rawError !== null
+          ? str(
+              (rawError as Record<string, unknown>).message ??
+                (rawError as Record<string, unknown>).error
+            )
+          : undefined;
     const errorMessage = errorMsg || 'Unknown error';
 
     const summary = truncate(`${actionType}: ${errorMessage}`);

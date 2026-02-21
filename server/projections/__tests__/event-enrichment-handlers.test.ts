@@ -66,8 +66,17 @@ describe('deriveEventCategory', () => {
       expect(deriveEventCategory({}, 'routing-decision', 'some-topic')).toBe('routing_event');
     });
 
-    it('returns "routing_event" when topic contains "route"', () => {
-      expect(deriveEventCategory({}, 'decision', 'agent-route-events')).toBe('routing_event');
+    it('returns "routing_event" when topic contains "routing"', () => {
+      expect(deriveEventCategory({}, 'decision', 'agent-routing-events')).toBe('routing_event');
+    });
+
+    it('does NOT return "routing_event" for router-performance-metrics (contains "router" but not "routing")', () => {
+      // "router-performance-metrics" contains the substring "route" (via "router") but NOT "routing".
+      // After the fix, lTopic.includes('route') was removed from the classifier; only
+      // lTopic.includes('routing') is checked. Without a selectedAgent field or routing keyword
+      // in the type, this topic must NOT produce routing_event.
+      const result = deriveEventCategory({}, 'performance-snapshot', 'router-performance-metrics');
+      expect(result).not.toBe('routing_event');
     });
   });
 
@@ -566,6 +575,22 @@ describe('ErrorEventHandler enrichment output', () => {
     expect(result.handler).toBe('ErrorEventHandler');
     expect(result.error).toBe('Unknown error');
     expect(result.summary).toContain('Unknown error');
+  });
+
+  it('prefers top-level string "message" over object-valued "error" when both are present', () => {
+    // Payload: { error: { code: 500 }, message: 'Connection timeout' }
+    // findField(['error', 'message', ...]) returns the object { code: 500 } first (error key wins).
+    // str({ code: 500 }) is undefined, so the fixed code falls back to the remaining top-level
+    // string fields and finds 'Connection timeout' in the "message" key.
+    const result = pipeline.run(
+      { error: { code: 500 }, message: 'Connection timeout' },
+      'task-failed',
+      'agent-actions'
+    );
+    expect(result.category).toBe('error_event');
+    expect(result.handler).toBe('ErrorEventHandler');
+    expect(result.error).toBe('Connection timeout');
+    expect(result.summary).toContain('Connection timeout');
   });
 
   it('falls back to Unknown error when error object has no .message or .error sub-key', () => {
