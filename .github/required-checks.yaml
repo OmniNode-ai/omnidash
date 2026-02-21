@@ -56,3 +56,5 @@ excluded_checks:
       is a known, accepted risk — it is a deliberate tracked decision rather
       than an oversight. See OMN-2485 ("Add .github/CODEOWNERS to enforce
       review on contracts/** schema changes") for resolution status.
+      Interim mitigation: PRs touching `contracts/**` should receive manual
+      review from a team member until OMN-2485 is resolved.

@@ -45,6 +45,14 @@ jobs:
           # Update by running:
           #   gh api repos/OmniNode-ai/onex_change_control/commits/main --jq '.sha'
           # SHA verified against OmniNode-ai/onex_change_control main HEAD on 2026-02-21.
+          #
+          # MAINTENANCE: This pin must be kept current with upstream releases.
+          # If onex_change_control introduces breaking API changes (new required CLI
+          # flags, changed exit codes, updated schema expectations), this workflow
+          # will silently break or produce incorrect results until the pin is updated.
+          # To find the latest SHA: gh api repos/OmniNode-ai/onex_change_control/commits/main --jq '.sha'
+          # Suggested cadence: check monthly, or whenever upstream validator changes
+          # are announced (e.g., release notes, changelog, or team communication).
           ref: a7b46c202c9f9b06678e34889cab345e568ab123
           path: onex_change_control
 
