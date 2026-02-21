@@ -5,7 +5,7 @@
 # branch protection settings (Settings -> Branches -> main).
 #
 # Added: OMN-2187
-# Last verified: 2026-02-21 (OMN-2455 — gate job added, branch protection applied)
+# Last verified: 2026-02-21 (OMN-2459 — omni-standards-compliance.yml added)
 
 required_checks:
   # -- test.yml (primary CI pipeline) ----------------------------------------
@@ -15,6 +15,19 @@ required_checks:
     rationale: >
       Aggregator for the Node version matrix (20.x/22.x/24.x).
       Version additions or removals do not require branch protection updates.
+
+  # -- omni-standards-compliance.yml (M5 standards gate) ---------------------
+  # Cross-reference: this name MUST exactly match the job-level `name:` field
+  # inside `jobs.omni-standards-gate` in omni-standards-compliance.yml.
+  # If that job name is renamed, update this entry and branch protection settings.
+  - name: "Omni Standards Gate"
+    workflow: omni-standards-compliance.yml
+    job_id: omni-standards-gate
+    rationale: >
+      Aggregator for omnidash structural and ecosystem standards checks (OMN-2459 / M5).
+      Validates monorepo directory structure, CLAUDE.md, required npm scripts, TanStack
+      Query enforcement, forbidden packages, and TypeScript strict mode config.
+      Added as branch protection required check after OMN-2459 merges.
 
 # -- Explicitly excluded -----------------------------------------------------
 excluded_checks:
