@@ -13,6 +13,8 @@ on:
       - '.github/workflows/onex-schema-compat.yml'
   workflow_dispatch:
 
+permissions: {}
+
 jobs:
   schema-compat:
     name: ONEX Schema Compatibility Check
