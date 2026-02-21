@@ -96,11 +96,23 @@ jobs:
         with:
           path: onex_change_control/.venv
           key: venv-${{ runner.os }}-${{ steps.setup-python.outputs.python-version }}-${{ hashFiles('onex_change_control/poetry.lock') }}
+          # restore-keys is a partial-match fallback: if the exact poetry.lock hash
+          # misses (e.g., first run after a lockfile change), a prior venv for the
+          # same OS/Python version is restored. That venv may be stale relative to
+          # the new lockfile. Accepted trade-off: the stale venv is detected and
+          # corrected at install time — Poetry resolves deps fresh on a cache miss,
+          # so the installed environment is always correct after `poetry install`.
+          # The risk of using an incorrect environment without detection is low.
           restore-keys: |
             venv-${{ runner.os }}-${{ steps.setup-python.outputs.python-version }}-
 
       - name: Install onex-change-control
         working-directory: onex_change_control
+        # --no-root skips installing the onex_change_control package itself in
+        # editable mode — only its declared dependencies are needed to make the
+        # `validate-yaml` console_scripts entrypoint available in the venv.
+        # The downstream "Verify validate-yaml entrypoint resolves" step confirms
+        # that the entrypoint resolves correctly after the install completes.
         run: poetry install --no-interaction --only main --no-root
 
       - name: Verify validate-yaml entrypoint resolves
