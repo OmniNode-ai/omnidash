@@ -81,9 +81,11 @@ function extractBashCommand(
  *
  * Precedence (first match wins):
  * 1. `toolName` in payload → tool_event
- * 2. Topic/type substrings → routing, intent, heartbeat, lifecycle, error
+ * 2. Both `type` AND `topic` substrings are checked equally for: error/failed/failure
+ *    → error_event; routing/route → routing_event; intent → intent_event;
+ *    heartbeat → node_heartbeat; registration/lifecycle/node-registry → node_lifecycle
  * 3. `selectedAgent` in payload → routing_event
- * 4. Intent-pattern fields → intent_event
+ * 4. Intent-pattern fields (`intent_category` / `intentCategory`) → intent_event
  * 5. Default → unknown
  */
 export function deriveEventCategory(
@@ -114,7 +116,7 @@ export function deriveEventCategory(
     lTopic.includes('routing') ||
     lType.includes('route') ||
     lTopic.includes('route') ||
-    findField(payload, ['selectedAgent', 'selected_agent'])
+    findField(payload, ['selectedAgent', 'selected_agent']) !== undefined
   ) {
     return 'routing_event';
   }
@@ -123,7 +125,7 @@ export function deriveEventCategory(
   if (
     lType.includes('intent') ||
     lTopic.includes('intent') ||
-    findField(payload, ['intent_category', 'intentCategory'])
+    findField(payload, ['intent_category', 'intentCategory']) !== undefined
   ) {
     return 'intent_event';
   }
@@ -441,7 +443,7 @@ export class EventEnrichmentPipeline {
         handler: 'FallbackHandler',
         category: 'unknown',
         summary: 'Event processing error',
-        normalizedType: type,
+        normalizedType: String(type ?? ''),
         artifacts: [],
       };
     }
