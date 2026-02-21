@@ -234,7 +234,12 @@ class EffectivenessSource {
       const response = await fetch(`${this.baseUrl}/trend?days=${days ?? 14}`);
       if (!response.ok) throw new Error(`HTTP ${response.status}`);
       const data: EffectivenessTrendPoint[] = await response.json();
-      if (mockOnEmpty && (!Array.isArray(data) || data.length === 0)) {
+      if (!Array.isArray(data)) {
+        console.warn('[EffectivenessSource] /trend response is not an array, returning empty');
+        this.markReal('trend');
+        return [];
+      }
+      if (mockOnEmpty && data.length === 0) {
         this.markMock('trend');
         return getMockEffectivenessTrend();
       }

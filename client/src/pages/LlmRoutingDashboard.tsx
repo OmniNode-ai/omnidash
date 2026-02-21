@@ -490,6 +490,8 @@ export default function LlmRoutingDashboard() {
   };
 
   // llmRoutingSource.isUsingMockData reads a mutable Set on the singleton.
+  // Mock state is only set on network/HTTP errors — empty responses no longer
+  // trigger mock fallback (mock-on-empty was removed in OMN-2330).
   const [isUsingMockData, setIsUsingMockData] = useState(false);
 
   const allSettled =
@@ -499,7 +501,8 @@ export default function LlmRoutingDashboard() {
   // - When timeWindow changes and queries are not yet settled: clear mock state
   //   so the banner is hidden immediately during in-flight requests.
   // - When all queries are settled: read the mock state to decide whether to
-  //   show the banner.
+  //   show the banner. The banner only appears when a network/HTTP error caused
+  //   a mock fallback; it will not appear for empty-but-successful responses.
   useEffect(() => {
     if (allSettled) {
       setIsUsingMockData(llmRoutingSource.isUsingMockData);

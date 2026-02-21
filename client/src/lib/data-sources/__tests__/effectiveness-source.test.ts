@@ -393,17 +393,19 @@ describe('EffectivenessSource', () => {
     });
 
     it('returns empty array when response is not an array (no mockOnEmpty)', async () => {
-      // OMN-2330: non-array API response should surface as error or empty, not mock
+      // OMN-2330: non-array API response must not be propagated to callers.
+      // A component calling .map() on a raw object would crash at runtime, so
+      // the source validates the shape and returns an empty array for non-array
+      // responses regardless of mockOnEmpty. The source owns this normalisation;
+      // callers always receive a safe array.
       setupFetchMock(
         new Map([['/api/effectiveness/trend', createMockResponse({ notArray: true })]])
       );
 
       const result = await effectivenessSource.trend();
 
-      // Not an array — mockOnEmpty=false means we return the raw (non-array) value from API.
-      // The caller is responsible for handling this; the source does not silently inject mock data.
-      // The result will be the non-array object cast through the type, not mocked trend data.
-      expect(Array.isArray(result) ? result.length : 0).toBe(0);
+      expect(Array.isArray(result)).toBe(true);
+      expect(result).toHaveLength(0);
     });
   });
 
