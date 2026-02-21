@@ -53,7 +53,7 @@ function str(v: unknown): string | undefined {
 }
 
 function num(v: unknown): number | undefined {
-  return typeof v === 'number' ? v : undefined;
+  return typeof v === 'number' && !isNaN(v) ? v : undefined;
 }
 
 function truncate(s: string, max = 60): string {
@@ -141,7 +141,7 @@ export function deriveEventCategory(
     lType.includes('lifecycle') ||
     lTopic.includes('registration') ||
     lTopic.includes('lifecycle') ||
-    lType.includes('node-') ||
+    (lType.startsWith('node-') && (lType.includes('registry') || lType.includes('lifecycle'))) ||
     lTopic.includes('node-registry')
   ) {
     return 'node_lifecycle';
@@ -443,6 +443,7 @@ export class EventEnrichmentPipeline {
         handler: 'FallbackHandler',
         category: 'unknown',
         summary: 'Event processing error',
+        // defensive: guard against untyped runtime callers
         normalizedType: String(type ?? ''),
         artifacts: [],
       };
@@ -467,4 +468,12 @@ export function getEnrichmentPipeline(): EventEnrichmentPipeline {
     _enrichmentPipeline = new EventEnrichmentPipeline();
   }
   return _enrichmentPipeline;
+}
+
+/**
+ * Resets the singleton to undefined, allowing a fresh instance to be created
+ * on the next call to getEnrichmentPipeline(). For use in tests only.
+ */
+export function resetEnrichmentPipelineForTesting(): void {
+  _enrichmentPipeline = undefined;
 }
