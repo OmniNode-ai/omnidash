@@ -212,7 +212,7 @@ describe('deriveEventCategory', () => {
 describe('getEnrichmentPipeline', () => {
   beforeAll(() => {
     // Verify the reset function actually clears the singleton.
-    // If NODE_ENV is 'production', resetEnrichmentPipelineForTesting() is a no-op and
+    // If NODE_ENV is 'production' or unset, resetEnrichmentPipelineForTesting() is a no-op and
     // these tests will produce false positives (singleton never resets between cases).
     resetEnrichmentPipelineForTesting();
     const pipeline = getEnrichmentPipeline();
@@ -220,11 +220,10 @@ describe('getEnrichmentPipeline', () => {
     // After a second reset the module-level variable should be undefined.
     // Re-calling getEnrichmentPipeline() must produce a NEW (distinct) instance.
     const afterReset = getEnrichmentPipeline();
+    // If reset is a no-op (production env), the tests cannot validate singleton behavior
     if (afterReset === pipeline) {
-      console.warn(
-        '[getEnrichmentPipeline tests] resetEnrichmentPipelineForTesting() appears to be a no-op. ' +
-          'Are these tests running with NODE_ENV="production"? ' +
-          'Singleton identity tests may yield false positives in this environment.'
+      throw new Error(
+        'resetEnrichmentPipelineForTesting is a no-op in this environment — check NODE_ENV'
       );
     }
   });
@@ -716,6 +715,74 @@ describe('NodeLifecycleHandler enrichment output', () => {
     expect(result.category).toBe('node_lifecycle');
     expect(result.handler).toBe('NodeLifecycleHandler');
     expect(result.summary.length).toBeGreaterThan(0);
+  });
+
+  it('eventLabel is "Node Shutdown" when type contains "shutdown"', () => {
+    const result = pipeline.run(
+      { nodeId: 'compute-node-7' },
+      'node-shutdown',
+      'node-registry.events'
+    );
+    expect(result.category).toBe('node_lifecycle');
+    expect(result.handler).toBe('NodeLifecycleHandler');
+    expect(result.summary).toContain('Node Shutdown');
+    expect(result.summary).toContain('compute-node-7');
+  });
+
+  it('eventLabel is "Node Shutdown" when type contains "offline"', () => {
+    const result = pipeline.run({ nodeId: 'worker-4' }, 'node-offline', 'node-registry.events');
+    expect(result.category).toBe('node_lifecycle');
+    expect(result.handler).toBe('NodeLifecycleHandler');
+    expect(result.summary).toContain('Node Shutdown');
+    expect(result.summary).toContain('worker-4');
+  });
+
+  it('eventLabel is "Node Startup" when type contains "startup"', () => {
+    const result = pipeline.run(
+      { nodeId: 'compute-node-3' },
+      'node-startup',
+      'node-registry.events'
+    );
+    expect(result.category).toBe('node_lifecycle');
+    expect(result.handler).toBe('NodeLifecycleHandler');
+    expect(result.summary).toContain('Node Startup');
+    expect(result.summary).toContain('compute-node-3');
+  });
+
+  it('eventLabel is "Node Startup" when type contains "started"', () => {
+    const result = pipeline.run(
+      { nodeId: 'inference-node-1' },
+      'node-started',
+      'node-registry.events'
+    );
+    expect(result.category).toBe('node_lifecycle');
+    expect(result.handler).toBe('NodeLifecycleHandler');
+    expect(result.summary).toContain('Node Startup');
+    expect(result.summary).toContain('inference-node-1');
+  });
+
+  it('eventLabel is "Node Registration" when type contains "registr"', () => {
+    const result = pipeline.run(
+      { nodeId: 'api-node-2' },
+      'node-registration',
+      'node-registry.events'
+    );
+    expect(result.category).toBe('node_lifecycle');
+    expect(result.handler).toBe('NodeLifecycleHandler');
+    expect(result.summary).toContain('Node Registration');
+    expect(result.summary).toContain('api-node-2');
+  });
+
+  it('eventLabel is "Node Lifecycle" (default) when type matches no known keyword', () => {
+    const result = pipeline.run(
+      { nodeId: 'orchestrator-1' },
+      'node-updated',
+      'node-registry.events'
+    );
+    expect(result.category).toBe('node_lifecycle');
+    expect(result.handler).toBe('NodeLifecycleHandler');
+    expect(result.summary).toContain('Node Lifecycle');
+    expect(result.summary).toContain('orchestrator-1');
   });
 });
 

@@ -110,23 +110,21 @@ export function deriveEventCategory(
   }
 
   // Routing event
+  const routingAgent = str(findField(payload, ['selectedAgent', 'selected_agent']));
   if (
     lType.includes('routing') ||
     lTopic.includes('routing') ||
     // type-only: 'routing' in type names like 'routing-decision', 'rerouting'.
     // 'route' was intentionally removed — it is a prefix of 'router' and would
     // false-positive on type strings like 'router-metrics' or 'router-error-log'.
-    findField(payload, ['selectedAgent', 'selected_agent']) !== undefined
+    routingAgent !== undefined
   ) {
     return 'routing_event';
   }
 
   // Intent event
-  if (
-    lType.includes('intent') ||
-    lTopic.includes('intent') ||
-    findField(payload, ['intent_category', 'intentCategory']) !== undefined
-  ) {
+  const intentCat = str(findField(payload, ['intent_category', 'intentCategory', 'intent']));
+  if (lType.includes('intent') || lTopic.includes('intent') || intentCat !== undefined) {
     return 'intent_event';
   }
 
@@ -375,6 +373,8 @@ const ErrorEventHandler: EnrichmentHandler = {
   category: 'error_event',
   enrich(payload, type, _topic): EventEnrichment {
     const actionType = str(findField(payload, ['actionType', 'action_type'])) ?? type;
+    // Primary extraction: uses wrapper descent so structured errors in
+    // { data: { error: '...' } } shapes are found (findField descends into WRAPPER_KEYS).
     const rawError = findField(payload, ['error', 'message', 'errorMessage', 'error_message']);
 
     // Step 1: find any direct string value for the error message.
@@ -382,7 +382,7 @@ const ErrorEventHandler: EnrichmentHandler = {
     // If rawError is an empty string, str() returns '' which is falsy.
     // In both falsy cases we fall back to a top-level sibling scan so that a payload like
     // { error: '', message: 'Connection refused' } can surface the sibling message.
-    // Fallback is top-level scan only — avoid wrapper descent pulling unrelated fields.
+    // Step 1 sibling fallback: top-level scan ONLY to avoid pulling unrelated nested message fields.
     const directStr = str(rawError);
     const fallbackStr =
       !directStr && typeof payload === 'object' && payload !== null
@@ -509,6 +509,6 @@ export function getEnrichmentPipeline(): EventEnrichmentPipeline {
 
 /** @internal — for testing only. Do not call from production code. */
 export function resetEnrichmentPipelineForTesting(): void {
-  if (process.env.NODE_ENV === 'production') return;
+  if (process.env.NODE_ENV === 'production' || !process.env.NODE_ENV) return;
   _enrichmentPipeline = undefined;
 }
