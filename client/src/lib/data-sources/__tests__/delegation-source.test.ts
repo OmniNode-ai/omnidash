@@ -77,7 +77,7 @@ describe('DelegationSource', () => {
     it('returns true when summary() falls back to mock on network error', async () => {
       setupFetchMock(new Map([['/api/delegation/summary', new Error('Connection refused')]]));
 
-      await delegationSource.summary('7d');
+      await delegationSource.summary('7d', { fallbackToMock: true });
 
       expect(delegationSource.isUsingMockData).toBe(true);
     });
@@ -101,7 +101,7 @@ describe('DelegationSource', () => {
         ])
       );
 
-      await delegationSource.byTaskType('7d');
+      await delegationSource.byTaskType('7d', { fallbackToMock: true });
 
       expect(delegationSource.isUsingMockData).toBe(true);
     });
@@ -109,7 +109,7 @@ describe('DelegationSource', () => {
     it('returns true when qualityGates() falls back to mock on network error', async () => {
       setupFetchMock(new Map([['/api/delegation/quality-gates', new Error('Network timeout')]]));
 
-      await delegationSource.qualityGates('7d');
+      await delegationSource.qualityGates('7d', { fallbackToMock: true });
 
       expect(delegationSource.isUsingMockData).toBe(true);
     });
@@ -129,7 +129,7 @@ describe('DelegationSource', () => {
       await delegationSource.summary('7d');
       await delegationSource.byTaskType('7d');
       await delegationSource.qualityGates('7d');
-      await delegationSource.trend('7d');
+      await delegationSource.trend('7d', { fallbackToMock: true });
 
       // trend is not a primary signal, so the flag stays false.
       expect(delegationSource.isUsingMockData).toBe(false);
@@ -144,7 +144,7 @@ describe('DelegationSource', () => {
     it('clears mock endpoint tracking so isUsingMockData resets to false', async () => {
       // Force mock state via a network failure.
       setupFetchMock(new Map([['/api/delegation/summary', new Error('Network error')]]));
-      await delegationSource.summary('7d');
+      await delegationSource.summary('7d', { fallbackToMock: true });
       expect(delegationSource.isUsingMockData).toBe(true);
 
       delegationSource.clearMockState();
@@ -178,7 +178,7 @@ describe('DelegationSource', () => {
         ])
       );
 
-      const result = await delegationSource.summary('7d');
+      const result = await delegationSource.summary('7d', { fallbackToMock: true });
 
       // Mock summary always has non-zero delegations.
       expect(result.total_delegations).toBeGreaterThan(0);
@@ -261,7 +261,7 @@ describe('DelegationSource', () => {
     it('falls back to mock on network error', async () => {
       setupFetchMock(new Map([['/api/delegation/by-task-type', new Error('Connection refused')]]));
 
-      const result = await delegationSource.byTaskType('7d');
+      const result = await delegationSource.byTaskType('7d', { fallbackToMock: true });
 
       expect(Array.isArray(result)).toBe(true);
       expect(result.length).toBeGreaterThan(0);
@@ -312,7 +312,7 @@ describe('DelegationSource', () => {
     it('falls back to mock on network error', async () => {
       setupFetchMock(new Map([['/api/delegation/cost-savings', new Error('Network error')]]));
 
-      const result = await delegationSource.costSavings('7d');
+      const result = await delegationSource.costSavings('7d', { fallbackToMock: true });
 
       expect(Array.isArray(result)).toBe(true);
     });
@@ -360,7 +360,7 @@ describe('DelegationSource', () => {
         ])
       );
 
-      const result = await delegationSource.qualityGates('7d');
+      const result = await delegationSource.qualityGates('7d', { fallbackToMock: true });
 
       expect(Array.isArray(result)).toBe(true);
       expect(result.length).toBeGreaterThan(0);
@@ -407,7 +407,7 @@ describe('DelegationSource', () => {
     it('falls back to mock on network error', async () => {
       setupFetchMock(new Map([['/api/delegation/shadow-divergence', new Error('Network error')]]));
 
-      const result = await delegationSource.shadowDivergence('7d');
+      const result = await delegationSource.shadowDivergence('7d', { fallbackToMock: true });
 
       expect(Array.isArray(result)).toBe(true);
       // shadow-divergence is not a primary signal.
@@ -449,7 +449,7 @@ describe('DelegationSource', () => {
     it('falls back to mock on network error', async () => {
       setupFetchMock(new Map([['/api/delegation/trend', new Error('Network error')]]));
 
-      const result = await delegationSource.trend('7d');
+      const result = await delegationSource.trend('7d', { fallbackToMock: true });
 
       expect(Array.isArray(result)).toBe(true);
     });

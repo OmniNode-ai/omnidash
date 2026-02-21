@@ -153,7 +153,7 @@ describe('EffectivenessSource', () => {
         ])
       );
 
-      const result = await effectivenessSource.summary();
+      const result = await effectivenessSource.summary({ fallbackToMock: true });
 
       expect(result.total_sessions).toBeGreaterThan(0);
       expect(console.warn).toHaveBeenCalledWith(
@@ -235,7 +235,7 @@ describe('EffectivenessSource', () => {
     it('falls back to mock on network error', async () => {
       setupFetchMock(new Map([['/api/effectiveness/latency', new Error('Network failure')]]));
 
-      const result = await effectivenessSource.latencyDetails();
+      const result = await effectivenessSource.latencyDetails({ fallbackToMock: true });
 
       expect(result.breakdowns.length).toBeGreaterThan(0);
       expect(console.warn).toHaveBeenCalledWith(
@@ -294,7 +294,7 @@ describe('EffectivenessSource', () => {
     it('falls back to mock on network error', async () => {
       setupFetchMock(new Map([['/api/effectiveness/ab', new Error('Connection refused')]]));
 
-      const result = await effectivenessSource.abComparison();
+      const result = await effectivenessSource.abComparison({ fallbackToMock: true });
 
       expect(result.cohorts.length).toBeGreaterThan(0);
       expect(console.warn).toHaveBeenCalledWith(expect.stringContaining('API unavailable for A/B'));
@@ -454,7 +454,7 @@ describe('EffectivenessSource', () => {
       );
 
       await effectivenessSource.summary();
-      await effectivenessSource.latencyDetails();
+      await effectivenessSource.latencyDetails({ fallbackToMock: true });
 
       expect(effectivenessSource.isUsingMockData).toBe(true);
     });
@@ -475,7 +475,7 @@ describe('EffectivenessSource', () => {
     it('clears mock flag when endpoint recovers', async () => {
       // First call: API fails
       setupFetchMock(new Map([['/api/effectiveness/latency', new Error('Network error')]]));
-      await effectivenessSource.latencyDetails();
+      await effectivenessSource.latencyDetails({ fallbackToMock: true });
       expect(effectivenessSource.isUsingMockData).toBe(true);
 
       // Second call: API recovers with real data

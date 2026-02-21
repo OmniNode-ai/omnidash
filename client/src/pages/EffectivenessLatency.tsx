@@ -36,7 +36,7 @@ import { Link } from 'wouter';
 import type { LatencyBreakdown, LatencyTrendPoint } from '@shared/effectiveness-types';
 import type { Payload } from 'recharts/types/component/DefaultLegendContent';
 import type { CategoricalChartState } from 'recharts/types/chart/types';
-import { Clock, ChevronLeft, RefreshCw, Zap, Database } from 'lucide-react';
+import { Clock, ChevronLeft, RefreshCw, Zap, Database, AlertTriangle } from 'lucide-react';
 import {
   BarChart,
   Bar,
