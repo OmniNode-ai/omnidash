@@ -177,6 +177,8 @@ describe('deriveEventCategory', () => {
 // getEnrichmentPipeline — singleton
 // ============================================================================
 
+// NOTE: resetEnrichmentPipelineForTesting() is a no-op when NODE_ENV === 'production'.
+// These tests must run with NODE_ENV !== 'production' (e.g. 'test') to function correctly.
 describe('getEnrichmentPipeline', () => {
   beforeEach(() => resetEnrichmentPipelineForTesting());
 

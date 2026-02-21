@@ -181,7 +181,7 @@ const ToolExecutedHandler: EnrichmentHandler = {
         inputs?.['file_path'] ?? findField(payload, ['file_path', 'filePath', 'path'])
       );
       if (filePath) {
-        const short = filePath.split('/').pop() ?? filePath;
+        const short = filePath.split('/').pop() || filePath;
         artifacts.push({ kind: 'file_read', value: filePath, display: short });
       }
     } else if (lTool === 'write') {
@@ -189,7 +189,7 @@ const ToolExecutedHandler: EnrichmentHandler = {
         inputs?.['file_path'] ?? findField(payload, ['file_path', 'filePath', 'path'])
       );
       if (filePath) {
-        const short = filePath.split('/').pop() ?? filePath;
+        const short = filePath.split('/').pop() || filePath;
         artifacts.push({ kind: 'file_write', value: filePath, display: short });
       }
     } else if (lTool === 'edit' || lTool === 'multiedit') {
@@ -197,7 +197,7 @@ const ToolExecutedHandler: EnrichmentHandler = {
         inputs?.['file_path'] ?? findField(payload, ['file_path', 'filePath', 'path'])
       );
       if (filePath) {
-        const short = filePath.split('/').pop() ?? filePath;
+        const short = filePath.split('/').pop() || filePath;
         artifacts.push({ kind: 'file_edit', value: filePath, display: short });
       }
     } else if (lTool === 'glob') {
@@ -219,7 +219,7 @@ const ToolExecutedHandler: EnrichmentHandler = {
     // Summary: "ToolName target" e.g. "Read index.ts", "Bash ls -la"
     let summaryTarget: string;
     if (filePath) {
-      summaryTarget = filePath.split('/').pop() ?? filePath;
+      summaryTarget = filePath.split('/').pop() || filePath;
     } else if (bashCommand) {
       summaryTarget = truncate(bashCommand, 40);
     } else {

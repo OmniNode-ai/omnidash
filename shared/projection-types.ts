@@ -145,8 +145,8 @@ export interface EventArtifact {
  * meaningful for a specific category value (e.g. `toolName`/`filePath`/
  * `bashCommand` are tool_event fields; `selectedAgent`/`confidence` are
  * routing_event fields; etc.).
- * TODO: refactor to discriminated union per category so that TypeScript can
- * narrow the available fields per category without runtime guards.
+ * TODO: Refactor to discriminated union per category (deferred — create a follow-up ticket).
+ * Tracked as tech debt: flat-bag design means callers must add runtime guards per category.
  */
 export interface EventEnrichment {
   enrichmentVersion: 'v1';
