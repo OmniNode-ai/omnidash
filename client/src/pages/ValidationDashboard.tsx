@@ -370,6 +370,7 @@ export default function ValidationDashboard() {
           <AlertTriangle className="h-4 w-4" />
           <AlertTitle>Failed to load validation data</AlertTitle>
           <AlertDescription>
+            Validation summary could not be retrieved.
             <Button variant="outline" size="sm" className="mt-2" onClick={handleRefresh}>
               <RefreshCw className="w-4 h-4 mr-1" /> Retry
             </Button>

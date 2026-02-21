@@ -19,6 +19,7 @@ import { useDemoMode } from '@/contexts/DemoModeContext';
 import { DemoBanner } from '@/components/DemoBanner';
 import { MetricCard } from '@/components/MetricCard';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -49,6 +50,7 @@ import {
   ScrollText,
   Building2,
   AlertCircle,
+  AlertTriangle,
   Wrench,
   TrendingUp,
   RefreshCw,
@@ -267,6 +269,7 @@ export default function LearnedInsights() {
   const {
     data: summary,
     isLoading: summaryLoading,
+    isError: summaryError,
     refetch: refetchSummary,
     isFetching: summaryFetching,
   } = useQuery<InsightsSummary>({
@@ -275,7 +278,11 @@ export default function LearnedInsights() {
     refetchInterval: 30_000,
   });
 
-  const { data: trend, isLoading: trendLoading } = useQuery<InsightsTrendPoint[]>({
+  const {
+    data: trend,
+    isLoading: trendLoading,
+    isError: trendError,
+  } = useQuery<InsightsTrendPoint[]>({
     queryKey: queryKeys.insights.trend(),
     queryFn: () => insightsSource.trend({ demoMode: isDemoMode }),
     refetchInterval: 30_000,
@@ -342,6 +349,17 @@ export default function LearnedInsights() {
     <div className="space-y-6">
       {/* Demo mode banner */}
       <DemoBanner />
+
+      {/* Error Banner */}
+      {summaryError && (
+        <Alert variant="destructive">
+          <AlertTriangle className="h-4 w-4" />
+          <AlertTitle>Failed to load insights data</AlertTitle>
+          <AlertDescription>
+            Insights summary could not be retrieved. Trend data may also be affected.
+          </AlertDescription>
+        </Alert>
+      )}
 
       {/* Header */}
       <div className="flex items-center justify-between">

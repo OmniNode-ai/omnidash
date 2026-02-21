@@ -313,7 +313,9 @@ export class ReadModelConsumer {
           }
         }
         if (subscribedTopics.length === 0) {
-          throw new Error('No topics could be subscribed — all topics failed metadata check');
+          throw new Error(
+            `No topics could be subscribed — all topics failed metadata check: ${skippedTopics.join(', ')}`
+          );
         }
         if (skippedTopics.length > 0) {
           console.warn(

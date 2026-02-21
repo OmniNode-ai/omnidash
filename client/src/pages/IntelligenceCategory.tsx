@@ -17,6 +17,7 @@ import { queryKeys } from '@/lib/query-keys';
 import { MetricCard } from '@/components/MetricCard';
 import { HeroMetric } from '@/components/HeroMetric';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Skeleton } from '@/components/ui/skeleton';
 import { IntentDistribution } from '@/components/intent';
 import { TopPatternsTable } from '@/components/pattern';
@@ -30,6 +31,7 @@ import {
   TrendingUp,
   Database,
   Activity,
+  AlertTriangle,
 } from 'lucide-react';
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip } from 'recharts';
 import { POLLING_INTERVAL_MEDIUM, getPollingInterval } from '@/lib/constants/query-config';
@@ -124,14 +126,22 @@ export default function IntelligenceCategory() {
   // ---------------------------------------------------------------------------
   // Pattern Learning Data
   // ---------------------------------------------------------------------------
-  const { data: patternSummary, isLoading: patternSummaryLoading } = useQuery({
+  const {
+    data: patternSummary,
+    isLoading: patternSummaryLoading,
+    isError: patternSummaryError,
+  } = useQuery({
     queryKey: queryKeys.patlearn.summary('24h'),
     queryFn: () => patlearnSource.summary('24h'),
     refetchInterval: getPollingInterval(POLLING_INTERVAL_MEDIUM),
     staleTime: 30_000,
   });
 
-  const { data: patterns, isLoading: patternsLoading } = useQuery({
+  const {
+    data: patterns,
+    isLoading: patternsLoading,
+    isError: patternsError,
+  } = useQuery({
     queryKey: queryKeys.patlearn.list('top-50'),
     queryFn: () =>
       patlearnSource.list({
@@ -183,6 +193,18 @@ export default function IntelligenceCategory() {
           </span>
         </div>
       </div>
+
+      {/* Error Banner */}
+      {patternSummaryError && (
+        <Alert variant="destructive">
+          <AlertTriangle className="h-4 w-4" />
+          <AlertTitle>Failed to load intelligence data</AlertTitle>
+          <AlertDescription>
+            Pattern summary could not be retrieved. Pattern list and utilization metrics may also be
+            affected.
+          </AlertDescription>
+        </Alert>
+      )}
 
       {/* Hero Metric: Pattern Utilization */}
       <HeroMetric
@@ -262,7 +284,7 @@ export default function IntelligenceCategory() {
       <TopPatternsTable
         patterns={patterns ?? []}
         isLoading={patternsLoading}
-        isError={false}
+        isError={patternsError}
         limit={5}
       />
 
