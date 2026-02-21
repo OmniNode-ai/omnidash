@@ -49,6 +49,10 @@ function num(v: unknown): number | undefined {
   return typeof v === 'number' && !isNaN(v) ? v : undefined;
 }
 
+/**
+ * Truncates `s` to at most `max` characters (including the `'...'` suffix).
+ * If `s` is already within `max`, it is returned unchanged.
+ */
 function truncate(s: string, max = 60): string {
   return s.length <= max ? s : s.slice(0, max - 3) + '...';
 }
@@ -98,7 +102,9 @@ export function deriveEventCategory(
     lType.includes('error') ||
     lTopic.includes('error') ||
     lType.includes('failed') ||
-    lType.includes('failure')
+    lType.includes('failure') ||
+    lTopic.includes('failed') ||
+    lTopic.includes('failure')
   ) {
     return 'error_event';
   }
@@ -476,10 +482,7 @@ export function getEnrichmentPipeline(): EventEnrichmentPipeline {
   return _enrichmentPipeline;
 }
 
-/**
- * Resets the singleton to undefined, allowing a fresh instance to be created
- * on the next call to getEnrichmentPipeline(). For use in tests only.
- */
+/** @internal — for testing only. Do not call from production code. */
 export function resetEnrichmentPipelineForTesting(): void {
   _enrichmentPipeline = undefined;
 }

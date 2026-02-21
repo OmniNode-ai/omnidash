@@ -91,6 +91,12 @@ describe('deriveEventCategory', () => {
     it('returns "error_event" when type contains "failure"', () => {
       expect(deriveEventCategory({}, 'routing-failure', 'some-topic')).toBe('error_event');
     });
+
+    it('returns "error_event" when topic contains "failure"', () => {
+      expect(deriveEventCategory({}, 'agent.completed', 'onex.evt.agent.failure.v1')).toBe(
+        'error_event'
+      );
+    });
   });
 
   // ------------------------------------------------------------------------
@@ -384,11 +390,9 @@ describe('ToolExecutedHandler enrichment', () => {
       'agent-action',
       'agent-actions'
     );
-    // truncate(s, 40) uses a hardcoded slice of 57 chars + '...' = 60 max output length.
-    // The max parameter only controls the threshold check, not the slice offset.
-    // So display length is at most 60, and it is shorter than the 69-char original.
+    // truncate(s, 40) caps output at 40 characters (37 chars of content + '...')
     expect(result.artifacts[0].display).not.toBe(longCommand);
-    expect((result.artifacts[0].display ?? '').length).toBeLessThanOrEqual(60);
+    expect((result.artifacts[0].display ?? '').length).toBeLessThanOrEqual(40);
   });
 
   it('unrecognized tool: still returns a valid enrichment with a toolName', () => {
