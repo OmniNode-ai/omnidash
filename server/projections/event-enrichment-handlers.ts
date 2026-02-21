@@ -10,20 +10,13 @@
  */
 
 import type {
+  EnrichmentHandler,
   EventCategory,
   EventEnrichment,
   EventArtifact,
 } from '../../shared/projection-types.js';
 
-// ============================================================================
-// Handler interface
-// ============================================================================
-
-export interface EnrichmentHandler {
-  name: string;
-  category: EventCategory;
-  enrich(payload: Record<string, unknown>, type: string, topic: string): EventEnrichment;
-}
+export type { EnrichmentHandler };
 
 // ============================================================================
 // Module-private utilities
@@ -250,6 +243,13 @@ const RoutingDecisionHandler: EnrichmentHandler = {
       ) ?? 'unknown';
     const confidence = num(findField(payload, ['confidence', 'score', 'probability']));
 
+    // Confidence normalization heuristic:
+    //   - Values in [0, 1]:  fractional form  — multiply by 100 (0.95 → 95%)
+    //   - Values >  1:       already-percent  — round directly (95 → 95%)
+    // Edge case: values in (1, 2) exclusive (e.g. 1.5) are treated as
+    // already-in-percent form and rounded to 2%, not multiplied (1.5 → 2%).
+    // Producers SHOULD use either strictly fractional (0–1) or integer percent
+    // (2–100) to avoid ambiguity in this range.
     const confPct =
       confidence !== undefined
         ? Math.min(
@@ -282,6 +282,10 @@ const IntentHandler: EnrichmentHandler = {
       'unknown';
     const confidence = num(findField(payload, ['confidence', 'score', 'probability']));
 
+    // Confidence normalization heuristic — same rules as RoutingDecisionHandler:
+    //   - Values in [0, 1]:  fractional (0.95 → 95%)
+    //   - Values >  1:       already-percent (95 → 95%)
+    // Values in (1, 2) exclusive are treated as already-in-percent and rounded.
     const confPct =
       confidence !== undefined
         ? Math.min(

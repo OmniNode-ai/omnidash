@@ -8,10 +8,11 @@
  * - Confidence clamping: fractional (0–1) and percentage (> 1) values
  */
 
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, beforeEach } from 'vitest';
 import {
   deriveEventCategory,
   getEnrichmentPipeline,
+  resetEnrichmentPipelineForTesting,
   EventEnrichmentPipeline,
 } from '../event-enrichment-handlers';
 
@@ -171,6 +172,8 @@ describe('deriveEventCategory', () => {
 // ============================================================================
 
 describe('getEnrichmentPipeline', () => {
+  beforeEach(() => resetEnrichmentPipelineForTesting());
+
   it('returns an EventEnrichmentPipeline instance', () => {
     const pipeline = getEnrichmentPipeline();
     expect(pipeline).toBeInstanceOf(EventEnrichmentPipeline);
@@ -180,6 +183,13 @@ describe('getEnrichmentPipeline', () => {
     const first = getEnrichmentPipeline();
     const second = getEnrichmentPipeline();
     expect(first).toBe(second);
+  });
+
+  it('resetEnrichmentPipelineForTesting resets the singleton — new call returns a different instance', () => {
+    const before = getEnrichmentPipeline();
+    resetEnrichmentPipelineForTesting();
+    const after = getEnrichmentPipeline();
+    expect(before).not.toBe(after);
   });
 });
 

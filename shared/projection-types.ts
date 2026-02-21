@@ -145,8 +145,8 @@ export interface EventArtifact {
  * meaningful for a specific category value (e.g. `toolName`/`filePath`/
  * `bashCommand` are tool_event fields; `selectedAgent`/`confidence` are
  * routing_event fields; etc.).
- * TODO(OMN-2418): refactor to discriminated union per category so that
- * TypeScript can narrow the available fields per category without runtime guards.
+ * TODO: refactor to discriminated union per category so that TypeScript can
+ * narrow the available fields per category without runtime guards.
  */
 export interface EventEnrichment {
   enrichmentVersion: 'v1';
@@ -174,6 +174,21 @@ export interface EventEnrichment {
   intentType?: string;
   actionName?: string;
   error?: string;
+}
+
+// ============================================================================
+// Enrichment handler interface (OMN-2418)
+// ============================================================================
+
+/**
+ * Contract that every enrichment handler must satisfy.
+ * Handlers derive ONLY display metadata — no domain logic, no side effects.
+ * Consumed by EventEnrichmentPipeline in server/projections/event-enrichment-handlers.ts.
+ */
+export interface EnrichmentHandler {
+  name: string;
+  category: EventCategory;
+  enrich(payload: Record<string, unknown>, type: string, topic: string): EventEnrichment;
 }
 
 // ============================================================================
