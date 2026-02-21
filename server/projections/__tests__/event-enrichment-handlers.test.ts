@@ -307,6 +307,19 @@ describe('confidence clamping in RoutingDecisionHandler', () => {
     expect(result.summary).toContain('100%');
   });
 
+  it('renders 1.5 (ambiguous boundary in (1,2)) as "2%" — treated as already-percentage and rounded', () => {
+    // Values in the exclusive range (1, 2) are treated as already-in-percent form
+    // by the heuristic (confidence > 1 → Math.round(confidence)). This means 1.5
+    // becomes Math.round(1.5) = 2, not 150. This test documents the known ambiguous
+    // behavior so that future refactors do not silently change it.
+    const result = pipeline.run(
+      { selectedAgent: 'my-agent', confidence: 1.5 },
+      'routing-decision',
+      'routing-topic'
+    );
+    expect(result.summary).toContain('2%');
+  });
+
   it('omits the percentage part when confidence is NaN (num() guard)', () => {
     // NaN should be filtered out by the num() guard fix applied in OMN-2418
     const result = pipeline.run(

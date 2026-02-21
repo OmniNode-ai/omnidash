@@ -173,6 +173,7 @@ export interface EventEnrichment {
   confidence?: number;
   intentType?: string;
   actionName?: string;
+  /** Pre-formatted error message string for display. Not the same shape as ProjectionEvent.error. */
   error?: string;
 }
 

@@ -27,14 +27,14 @@ const WRAPPER_KEYS = ['data', 'payload', 'body', 'event', 'message'] as const;
 /** Check top-level fields, then one wrapper level deep. */
 function findField(payload: Record<string, unknown>, keys: readonly string[]): unknown {
   for (const key of keys) {
-    if (payload[key] !== undefined) return payload[key];
+    if (payload[key] != null) return payload[key];
   }
   for (const wk of WRAPPER_KEYS) {
     const wrapper = payload[wk];
     if (wrapper && typeof wrapper === 'object' && !Array.isArray(wrapper)) {
       const inner = wrapper as Record<string, unknown>;
       for (const key of keys) {
-        if (inner[key] !== undefined) return inner[key];
+        if (inner[key] != null) return inner[key];
       }
     }
   }
