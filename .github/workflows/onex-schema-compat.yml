@@ -30,6 +30,8 @@ jobs:
     steps:
       - name: Checkout repo
         uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4
+        with:
+          persist-credentials: false
 
       - name: Checkout onex_change_control
         # No token needed — OmniNode-ai/onex_change_control is a public repo.
@@ -37,6 +39,7 @@ jobs:
         # OmniNode-ai/omnibase_core without a token.
         uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4
         with:
+          persist-credentials: false
           repository: OmniNode-ai/onex_change_control
           # Pinned to onex_change_control main as of 2026-02-21.
           # Update by running:
