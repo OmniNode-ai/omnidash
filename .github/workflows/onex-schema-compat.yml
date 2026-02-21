@@ -101,7 +101,11 @@ jobs:
 
       - name: Install onex-change-control
         working-directory: onex_change_control
-        run: poetry install --no-interaction --only main
+        run: poetry install --no-interaction --only main --no-root
+
+      - name: Verify validate-yaml entrypoint resolves
+        working-directory: onex_change_control
+        run: poetry run validate-yaml --help
 
       - name: Validate ONEX contract files
         run: |
