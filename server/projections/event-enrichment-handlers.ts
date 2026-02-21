@@ -113,7 +113,7 @@ export function deriveEventCategory(
   if (
     lType.includes('routing') ||
     lTopic.includes('routing') ||
-    lType.includes('route') ||
+    lType.includes('route') || // type-only: 'route' in type names like 'route-decision', 'reroute'
     findField(payload, ['selectedAgent', 'selected_agent']) !== undefined
   ) {
     return 'routing_event';
@@ -379,10 +379,17 @@ const ErrorEventHandler: EnrichmentHandler = {
     // Step 1: find any direct string value for the error message.
     // If rawError is an object (e.g. `error: { code: 500 }`), str() returns undefined
     // and we fall back to the remaining top-level string fields that findField skipped.
+    // Step 1 fallback: top-level scan only — avoid wrapper descent pulling unrelated fields
     const directStr =
       str(rawError) ??
-      (typeof rawError === 'object' && rawError !== null
-        ? str(findField(payload, ['message', 'errorMessage', 'error_message']))
+      (typeof rawError === 'object' &&
+      rawError !== null &&
+      typeof payload === 'object' &&
+      payload !== null
+        ? (['message', 'errorMessage', 'error_message'] as string[]).reduce<string | undefined>(
+            (acc, key) => acc ?? str((payload as Record<string, unknown>)[key]),
+            undefined
+          )
         : undefined);
 
     // Step 2: if no direct string was found, try extracting from a structured error object.

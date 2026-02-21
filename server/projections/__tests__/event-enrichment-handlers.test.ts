@@ -8,7 +8,7 @@
  * - Confidence clamping: fractional (0–1) and percentage (> 1) values
  */
 
-import { describe, it, expect, beforeEach } from 'vitest';
+import { describe, it, expect, beforeEach, beforeAll } from 'vitest';
 import {
   deriveEventCategory,
   getEnrichmentPipeline,
@@ -77,6 +77,14 @@ describe('deriveEventCategory', () => {
       // in the type, this topic must NOT produce routing_event.
       const result = deriveEventCategory({}, 'performance-snapshot', 'router-performance-metrics');
       expect(result).not.toBe('routing_event');
+    });
+
+    it('returns "routing_event" when type is "route-decision" and topic has no routing keyword (lType.includes("route") branch)', () => {
+      // Exercises the lType.includes('route') branch exclusively — topic is 'agent-actions'
+      // which contains neither 'routing' nor 'route', and payload has no selectedAgent.
+      // The classifier must match via the type-only 'route' substring check.
+      const result = deriveEventCategory({}, 'route-decision', 'agent-actions');
+      expect(result).toBe('routing_event');
     });
   });
 
@@ -202,6 +210,25 @@ describe('deriveEventCategory', () => {
 // NOTE: resetEnrichmentPipelineForTesting() is a no-op when NODE_ENV === 'production'.
 // These tests must run with NODE_ENV !== 'production' (e.g. 'test') to function correctly.
 describe('getEnrichmentPipeline', () => {
+  beforeAll(() => {
+    // Verify the reset function actually clears the singleton.
+    // If NODE_ENV is 'production', resetEnrichmentPipelineForTesting() is a no-op and
+    // these tests will produce false positives (singleton never resets between cases).
+    resetEnrichmentPipelineForTesting();
+    const pipeline = getEnrichmentPipeline();
+    resetEnrichmentPipelineForTesting();
+    // After a second reset the module-level variable should be undefined.
+    // Re-calling getEnrichmentPipeline() must produce a NEW (distinct) instance.
+    const afterReset = getEnrichmentPipeline();
+    if (afterReset === pipeline) {
+      console.warn(
+        '[getEnrichmentPipeline tests] resetEnrichmentPipelineForTesting() appears to be a no-op. ' +
+          'Are these tests running with NODE_ENV="production"? ' +
+          'Singleton identity tests may yield false positives in this environment.'
+      );
+    }
+  });
+
   beforeEach(() => resetEnrichmentPipelineForTesting());
 
   it('returns an EventEnrichmentPipeline instance', () => {
@@ -608,6 +635,38 @@ describe('ErrorEventHandler enrichment output', () => {
     );
     expect(result.error).toBe('Unknown error');
     expect(result.summary).toContain('Unknown error');
+  });
+
+  it('does NOT extract unrelated nested message when error is an object (Fix 1: top-level scan only)', () => {
+    // Before Fix 1, the Step 1 fallback called findField() which descends into WRAPPER_KEYS.
+    // This caused { error: { code: 500 }, data: { message: 'unrelated context' } } to
+    // incorrectly surface 'unrelated context' as the error message (found via data wrapper).
+    // After Fix 1 the fallback is a plain top-level key scan — no wrapper descent.
+    // 'message' is absent at the top level, so the fallback returns undefined.
+    // Step 2 then looks inside the error object, which has no .message or .error string,
+    // so the result falls through to 'Unknown error'.
+    const result = pipeline.run(
+      { error: { code: 500 }, data: { message: 'unrelated context' } },
+      'task-failed',
+      'agent-actions'
+    );
+    expect(result.category).toBe('error_event');
+    expect(result.handler).toBe('ErrorEventHandler');
+    // 'unrelated context' must NOT be extracted — it lives inside a wrapper, not at the top level
+    expect(result.error).not.toBe('unrelated context');
+    expect(result.summary).not.toContain('unrelated context');
+    // The correct outcome is 'Unknown error' because the error object has no usable string sub-key
+    expect(result.error).toBe('Unknown error');
+  });
+
+  it('extracts a top-level string error field directly (simplest possible case)', () => {
+    // Verifies that a plain { error: 'Direct error string' } payload at the top level
+    // is extracted without any wrapper descent or structured-object logic.
+    const result = pipeline.run({ error: 'Direct error string' }, 'task-failed', 'agent-actions');
+    expect(result.category).toBe('error_event');
+    expect(result.handler).toBe('ErrorEventHandler');
+    expect(result.error).toBe('Direct error string');
+    expect(result.summary).toContain('Direct error string');
   });
 });
 
