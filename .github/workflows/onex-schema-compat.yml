@@ -46,7 +46,7 @@ jobs:
           python-version: '3.12'
 
       - name: Install Poetry
-        uses: snok/install-poetry@v1
+        uses: snok/install-poetry@76e04a911780d5b312d89783f7b1cd627778900a  # v1
         with:
           version: 1.8.0
           virtualenvs-create: true
@@ -66,7 +66,7 @@ jobs:
         run: |
           # Find YAML/YML files in contracts/ (ticket contracts, day_close records).
           # Root contract.yaml is an ONEX Service Contract (different schema) — excluded.
-          YAML_FILES=$(find contracts/ -name "*.yaml" -o -name "*.yml" 2>/dev/null | sort || true)
+          YAML_FILES=$(find contracts/ \( -name "*.yaml" -o -name "*.yml" \) 2>/dev/null | sort || true)
 
           if [ -z "$YAML_FILES" ]; then
             echo "No ONEX contract YAML files found in contracts/ — gate passes (nothing to validate)"
@@ -79,6 +79,8 @@ jobs:
 
           # Run the validator from the onex_change_control virtualenv.
           # validate-yaml exits 0 on all-valid, 1 on any invalid file.
+          # Use -print0 / xargs -0 so filenames with spaces are passed safely.
           cd onex_change_control
-          # shellcheck disable=SC2046
-          poetry run validate-yaml $(find "$GITHUB_WORKSPACE/contracts" -name "*.yaml" -o -name "*.yml" 2>/dev/null | sort)
+          find "$GITHUB_WORKSPACE/contracts" \( -name "*.yaml" -o -name "*.yml" \) -print0 2>/dev/null \
+            | sort -z \
+            | xargs -r -0 poetry run validate-yaml
