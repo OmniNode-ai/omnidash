@@ -499,6 +499,23 @@ describe('ErrorEventHandler enrichment output', () => {
     expect(result.handler).toBe('ErrorEventHandler');
     expect(result.summary).toContain('Something went wrong');
   });
+
+  it('extracts ".error" from a structured object when ".message" is absent — { message: { error: "x" } } shape', () => {
+    // When payload is { message: { error: 'Something went wrong' } }, findField() resolves
+    // rawError to { error: 'Something went wrong' } (the message object).
+    // Because rawError lacks a .message key, the old code fell back to str(rawError) which
+    // returns undefined (not a string), producing 'Unknown error'.
+    // The fix checks .error as a fallback when .message is absent.
+    const result = pipeline.run(
+      { message: { error: 'Something went wrong' } },
+      'task-failed',
+      'agent-actions'
+    );
+    expect(result.category).toBe('error_event');
+    expect(result.handler).toBe('ErrorEventHandler');
+    expect(result.error).toBe('Something went wrong');
+    expect(result.summary).toContain('Something went wrong');
+  });
 });
 
 // ============================================================================

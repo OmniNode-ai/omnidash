@@ -190,6 +190,8 @@ export interface EventEnrichment {
  */
 export interface EnrichmentHandler {
   name: string;
+  /** Category this handler services. Must match the Map key used to register it in EventEnrichmentPipeline.
+   *  Not enforced at runtime — this field is documentation-only. */
   category: EventCategory;
   enrich(payload: Record<string, unknown>, type: string, topic: string): EventEnrichment;
 }

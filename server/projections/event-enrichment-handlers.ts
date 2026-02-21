@@ -379,8 +379,11 @@ const ErrorEventHandler: EnrichmentHandler = {
     const actionType = str(findField(payload, ['actionType', 'action_type'])) ?? type;
     const rawError = findField(payload, ['error', 'message', 'errorMessage', 'error_message']);
     const errorMsg =
-      typeof rawError === 'object' && rawError !== null && 'message' in rawError
-        ? str((rawError as Record<string, unknown>).message)
+      typeof rawError === 'object' && rawError !== null
+        ? str(
+            (rawError as Record<string, unknown>).message ??
+              (rawError as Record<string, unknown>).error
+          )
         : str(rawError);
     const errorMessage = errorMsg ?? 'Unknown error';
 
