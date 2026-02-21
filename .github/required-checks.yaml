@@ -5,7 +5,7 @@
 # branch protection settings (Settings -> Branches -> main).
 #
 # Added: OMN-2187
-# Last verified: 2026-02-14 (PR #64 — gate job added, branch protection applied)
+# Last verified: 2026-02-21 (OMN-2455 — gate job added, branch protection applied)
 
 required_checks:
   # -- test.yml (primary CI pipeline) ----------------------------------------
@@ -37,3 +37,24 @@ excluded_checks:
       or check-handshake.yml changes). Requiring it would deadlock all other PRs
       because GitHub marks skipped path-filtered checks as "Expected — Waiting
       for status to be reported".
+
+  # Cross-reference: this name MUST exactly match the job-level `name:` field
+  # inside the `jobs.schema-compat` block in .github/workflows/onex-schema-compat.yml
+  # (currently: `name: ONEX Schema Compatibility Check`), NOT the top-level
+  # workflow `name:` field (which reads `name: ONEX Schema Compatibility`).
+  # If that job name is renamed, update this entry and branch protection settings.
+  - name: "ONEX Schema Compatibility Check"
+    reason: >
+      Path-filtered workflow (only runs when contracts/** or the workflow itself
+      changes). Requiring it would deadlock all other PRs that don't touch
+      contract files.
+    design_note: >
+      Accepted trade-off: PRs that modify contracts/** but are not caught by
+      branch protection can still bypass this gate if the check is excluded.
+      NOTE: CODEOWNERS enforcement is not yet in place for this repo — no
+      .github/CODEOWNERS file exists. Until OMN-2485 is resolved, this gap
+      is a known, accepted risk — it is a deliberate tracked decision rather
+      than an oversight. See OMN-2485 ("Add .github/CODEOWNERS to enforce
+      review on contracts/** schema changes") for resolution status.
+      Interim mitigation: PRs touching `contracts/**` should receive manual
+      review from a team member until OMN-2485 is resolved.
