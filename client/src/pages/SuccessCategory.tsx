@@ -391,6 +391,10 @@ export default function SuccessCategory() {
           <CardContent>
             {abLoading ? (
               <Skeleton className="h-[240px] w-full rounded-lg" />
+            ) : abError ? (
+              <p className="text-sm text-destructive py-8 text-center">
+                Failed to load A/B comparison data.
+              </p>
             ) : (
               <CohortComparisonChart data={abData} />
             )}
@@ -407,6 +411,10 @@ export default function SuccessCategory() {
           <CardContent>
             {trendLoading ? (
               <Skeleton className="h-[240px] w-full rounded-lg" />
+            ) : trendError ? (
+              <p className="text-sm text-destructive py-8 text-center">
+                Failed to load effectiveness trend data.
+              </p>
             ) : (
               <EffectivenessTrendChart data={trend} />
             )}

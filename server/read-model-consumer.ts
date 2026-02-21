@@ -344,22 +344,22 @@ export class ReadModelConsumer {
           `[ReadModelConsumer] Connection attempt ${attempts}/${MAX_RETRY_ATTEMPTS} failed:`,
           err instanceof Error ? err.message : err
         );
-        if (attempts < MAX_RETRY_ATTEMPTS) {
-          // Disconnect the existing consumer before recreating it on the next
-          // iteration. If connect() succeeded but subscribe() or run() failed,
-          // the consumer handle is live and must be closed to avoid leaking the
-          // Kafka connection. Guard with try/catch: if the consumer was never
-          // connected (e.g. connect() itself threw), disconnect() may throw too
-          // and we should not let that mask the original error.
-          if (this.consumer) {
-            try {
-              await this.consumer.disconnect();
-            } catch {
-              // Ignore — consumer may not have been connected yet.
-            }
-            this.consumer = null;
-            this.kafka = null;
+        // Disconnect the existing consumer on every failed iteration — regardless
+        // of whether retries remain. If connect() succeeded but subscribe() or
+        // run() failed, the consumer handle is live and must be closed to avoid
+        // leaking the Kafka connection. Guard with try/catch: if the consumer
+        // was never connected (e.g. connect() itself threw), disconnect() may
+        // throw too and we should not let that mask the original error.
+        if (this.consumer) {
+          try {
+            await this.consumer.disconnect();
+          } catch {
+            // Ignore — consumer may not have been connected yet.
           }
+          this.consumer = null;
+          this.kafka = null;
+        }
+        if (attempts < MAX_RETRY_ATTEMPTS) {
           await new Promise((resolve) => setTimeout(resolve, delay));
           // Re-check stopped after the backoff sleep — stop() may have been called
           // during the up-to-30s wait. Abort immediately rather than proceeding to

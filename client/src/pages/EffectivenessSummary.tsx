@@ -257,8 +257,13 @@ export default function EffectivenessSummary() {
         </div>
       </div>
 
+      {/* Auto-Throttle Error */}
+      {throttleError && (
+        <p className="text-sm text-destructive">Failed to load auto-throttle status.</p>
+      )}
+
       {/* Auto-Throttle Warning Banner (R2) */}
-      {!throttleLoading && throttle?.active && (
+      {!throttleLoading && !throttleError && throttle?.active && (
         <Card className="border-red-500/40 bg-red-500/[0.06]">
           <CardContent className="py-3 px-4">
             <div className="flex items-start gap-3">
@@ -386,6 +391,12 @@ export default function EffectivenessSummary() {
           <TrendDrillDown data={trendDrillDown} onClose={() => setTrendDrillDown(null)} />
           {trendLoading ? (
             <Skeleton className="h-[280px] w-full rounded-lg" />
+          ) : trendError ? (
+            <Alert variant="destructive" className="mx-0">
+              <AlertTriangle className="h-4 w-4" />
+              <AlertTitle>Failed to load trend data</AlertTitle>
+              <AlertDescription>Effectiveness trend could not be retrieved.</AlertDescription>
+            </Alert>
           ) : trend && trend.length > 0 ? (
             <ResponsiveContainer width="100%" height={280}>
               <ComposedChart
