@@ -20,6 +20,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { TrendDrillDown } from '@/components/TrendDrillDown';
 import type { TrendDrillDownData } from '@/components/TrendDrillDown';
 import { queryKeys } from '@/lib/query-keys';
@@ -110,6 +111,7 @@ export default function EffectivenessSummary() {
   const {
     data: summary,
     isLoading: summaryLoading,
+    isError: summaryError,
     refetch: refetchSummary,
   } = useQuery<SummaryType>({
     queryKey: queryKeys.effectiveness.summary(),
@@ -120,6 +122,7 @@ export default function EffectivenessSummary() {
   const {
     data: throttle,
     isLoading: throttleLoading,
+    isError: throttleError,
     refetch: refetchThrottle,
   } = useQuery<ThrottleStatus>({
     queryKey: queryKeys.effectiveness.throttle(),
@@ -127,7 +130,11 @@ export default function EffectivenessSummary() {
     refetchInterval: 15_000,
   });
 
-  const { data: trend, isLoading: trendLoading } = useQuery<EffectivenessTrendPoint[]>({
+  const {
+    data: trend,
+    isLoading: trendLoading,
+    isError: trendError,
+  } = useQuery<EffectivenessTrendPoint[]>({
     queryKey: [...queryKeys.effectiveness.trend(), trendDays],
     queryFn: () => effectivenessSource.trend(trendDays, { demoMode: isDemoMode }),
     refetchInterval: 15_000,
@@ -198,6 +205,17 @@ export default function EffectivenessSummary() {
     <div className="space-y-6">
       {/* Demo mode banner */}
       <DemoBanner />
+
+      {/* Error Banner */}
+      {summaryError && (
+        <Alert variant="destructive">
+          <AlertTriangle className="h-4 w-4" />
+          <AlertTitle>Failed to load effectiveness data</AlertTitle>
+          <AlertDescription>
+            Effectiveness summary could not be retrieved. Other sections may also be affected.
+          </AlertDescription>
+        </Alert>
+      )}
 
       {/* Header */}
       <div className="flex items-center justify-between">

@@ -17,6 +17,7 @@ import { DemoBanner } from '@/components/DemoBanner';
 import { MetricCard } from '@/components/MetricCard';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { DetailSheet } from '@/components/DetailSheet';
 import { TrendDrillDown } from '@/components/TrendDrillDown';
 import type { TrendDrillDownData } from '@/components/TrendDrillDown';
@@ -104,6 +105,7 @@ export default function EffectivenessLatency() {
   const {
     data: latencyResult,
     isLoading,
+    isError,
     refetch,
   } = useQuery({
     queryKey: queryKeys.effectiveness.latency(),
@@ -207,6 +209,17 @@ export default function EffectivenessLatency() {
     <div className="space-y-6">
       {/* Demo mode banner */}
       <DemoBanner />
+
+      {/* Error Banner */}
+      {isError && (
+        <Alert variant="destructive">
+          <AlertTriangle className="h-4 w-4" />
+          <AlertTitle>Failed to load latency data</AlertTitle>
+          <AlertDescription>
+            Latency details could not be retrieved. Please try refreshing.
+          </AlertDescription>
+        </Alert>
+      )}
 
       {/* Header */}
       <div className="flex items-center justify-between">

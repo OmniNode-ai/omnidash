@@ -440,7 +440,13 @@ export default function LearnedInsights() {
           </p>
         </CardHeader>
         <CardContent>
-          {trendLoading ? (
+          {trendError ? (
+            <Alert variant="destructive" className="mx-0">
+              <AlertTriangle className="h-4 w-4" />
+              <AlertTitle>Failed to load trend data</AlertTitle>
+              <AlertDescription>Insight discovery trend could not be retrieved.</AlertDescription>
+            </Alert>
+          ) : trendLoading ? (
             <Skeleton className="h-[200px] w-full rounded-lg" />
           ) : trend && trend.length > 0 ? (
             <ResponsiveContainer width="100%" height={200}>

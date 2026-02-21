@@ -121,7 +121,11 @@ export default function SpeedCategory() {
 
   const extractionSummary = extractionResult?.data;
 
-  const { data: latencyResult, isLoading: latencyLoading } = useQuery({
+  const {
+    data: latencyResult,
+    isLoading: latencyLoading,
+    isError: latencyError,
+  } = useQuery({
     queryKey: queryKeys.effectiveness.latency(),
     queryFn: async () => {
       const data = await effectivenessSource.latencyDetails();
@@ -327,7 +331,13 @@ export default function SpeedCategory() {
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <LatencyPercentilesChart data={latencyResult?.data} />
+            {latencyError ? (
+              <p className="text-sm text-destructive py-8 text-center">
+                Failed to load latency data.
+              </p>
+            ) : (
+              <LatencyPercentilesChart data={latencyResult?.data} />
+            )}
           </CardContent>
         </Card>
         <PipelineHealthPanel onMockStateChange={onPipelineHealthMock} />
