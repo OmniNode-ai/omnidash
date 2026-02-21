@@ -108,12 +108,12 @@ jobs:
 
       - name: Install onex-change-control
         working-directory: onex_change_control
-        # --no-root skips installing the onex_change_control package itself in
-        # editable mode — only its declared dependencies are needed to make the
-        # `validate-yaml` console_scripts entrypoint available in the venv.
+        # Install the package and its main dependencies so that the
+        # `validate-yaml` console_scripts entrypoint defined in
+        # pyproject.toml [tool.poetry.scripts] is registered in the venv.
         # The downstream "Verify validate-yaml entrypoint resolves" step confirms
         # that the entrypoint resolves correctly after the install completes.
-        run: poetry install --no-interaction --only main --no-root
+        run: poetry install --no-interaction --only main
 
       - name: Verify validate-yaml entrypoint resolves
         working-directory: onex_change_control
@@ -150,7 +150,7 @@ jobs:
           YAML_LIST_FILE=$(mktemp)
           trap 'rm -f "$YAML_LIST_FILE"' EXIT
           if [ -d "$GITHUB_WORKSPACE/contracts" ]; then
-            find "$GITHUB_WORKSPACE/contracts" \( -name "*.yaml" -o -name "*.yml" \) -not -path "$GITHUB_WORKSPACE/contracts/contract.yaml" -print0 \
+            find "$GITHUB_WORKSPACE/contracts" \( -name "*.yaml" -o -name "*.yml" \) -not -path "${GITHUB_WORKSPACE}/contracts/contract.yaml" -print0 \
               | sort -z \
               > "$YAML_LIST_FILE"
           fi
