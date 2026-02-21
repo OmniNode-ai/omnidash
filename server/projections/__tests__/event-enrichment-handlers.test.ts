@@ -567,6 +567,23 @@ describe('ErrorEventHandler enrichment output', () => {
     expect(result.error).toBe('Unknown error');
     expect(result.summary).toContain('Unknown error');
   });
+
+  it('falls back to Unknown error when error object has no .message or .error sub-key', () => {
+    // Known limitation: structured error objects without .message or .error lose context.
+    // { error: { stack: 'at line 1', code: 500 } } → findField resolves rawError to
+    // { stack: 'at line 1', code: 500 }. That object has neither a .message string nor
+    // an .error string (both sub-keys are absent), so str() on both returns undefined.
+    // errorMsg falls through to undefined, and || 'Unknown error' kicks in.
+    // Callers that need error details to survive enrichment should use a top-level string
+    // field (.error or .message) rather than a structured object with arbitrary sub-keys.
+    const result = pipeline.run(
+      { error: { stack: 'at line 1', code: 500 } },
+      'task-failed',
+      'tasks'
+    );
+    expect(result.error).toBe('Unknown error');
+    expect(result.summary).toContain('Unknown error');
+  });
 });
 
 // ============================================================================

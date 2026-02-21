@@ -440,6 +440,7 @@ export class EventEnrichmentPipeline {
       ['node_heartbeat', NodeHeartbeatHandler],
       ['node_lifecycle', NodeLifecycleHandler],
       ['error_event', ErrorEventHandler],
+      // Explicit registration so unknown category has a documented handler, not just a nullish fallback
       ['unknown', DefaultHandler],
     ]);
   }
@@ -448,6 +449,7 @@ export class EventEnrichmentPipeline {
   run(payload: Record<string, unknown>, type: string, topic: string): EventEnrichment {
     try {
       const category = deriveEventCategory(payload, type, topic);
+      // Defensive fallback: should never be reached if all EventCategory values have registered handlers
       const handler = this.handlers.get(category) ?? this.defaultHandler;
       return handler.enrich(payload, type, topic);
     } catch {
