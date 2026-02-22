@@ -1044,7 +1044,7 @@ export class EventConsumer extends EventEmitter {
     const brokers = process.env.KAFKA_BROKERS || process.env.KAFKA_BOOTSTRAP_SERVERS;
 
     if (!brokers) {
-      console.warn('⚠️  KAFKA_BROKERS not configured - real-time event streaming disabled');
+      console.error('❌ KAFKA_BROKERS not configured - Kafka is required infrastructure. Set KAFKA_BROKERS in .env to connect to the Redpanda/Kafka broker.');
       return false;
     }
 
@@ -1063,8 +1063,7 @@ export class EventConsumer extends EventEmitter {
     } catch (error) {
       console.error(`❌ Kafka broker unreachable: ${brokers}`);
       console.error(`   Error: ${error instanceof Error ? error.message : String(error)}`);
-      console.error('   Real-time event streaming will be disabled');
-      console.error('   Verify KAFKA_BROKERS configuration and network connectivity');
+      console.error('   Real-time event streaming is unavailable — check KAFKA_BROKERS and network connectivity.');
       return false;
     }
   }
@@ -4275,15 +4274,18 @@ let initializationError: Error | null = null;
  * Get EventConsumer singleton with lazy initialization
  *
  * This pattern prevents the application from crashing at module load time
- * if KAFKA_BROKERS environment variable is not configured.
+ * when KAFKA_BROKERS is absent. Note: a missing KAFKA_BROKERS is a
+ * misconfiguration error — Kafka is required infrastructure. A null return
+ * from this function means the application is not connected to Kafka and
+ * is in a degraded/error state.
  *
- * @returns EventConsumer instance or null if initialization failed
+ * @returns EventConsumer instance or null if initialization failed (error state)
  *
  * @example
  * ```typescript
  * const consumer = getEventConsumer();
  * if (!consumer) {
- *   return res.status(503).json({ error: 'Event consumer not available' });
+ *   return res.status(503).json({ error: 'Event consumer not available - check KAFKA_BROKERS configuration' });
  * }
  * const metrics = consumer.getAgentMetrics();
  * ```
@@ -4305,19 +4307,75 @@ export function getEventConsumer(): EventConsumer | null {
     return eventConsumerInstance;
   } catch (error) {
     initializationError = error instanceof Error ? error : new Error(String(error));
-    console.warn('⚠️  EventConsumer initialization failed:', initializationError.message);
-    console.warn('   Real-time event streaming will be disabled');
-    console.warn('   Set KAFKA_BROKERS in .env file to enable event streaming');
+    console.error('❌ EventConsumer initialization failed:', initializationError.message);
+    console.error('   Kafka is required infrastructure. Set KAFKA_BROKERS in .env to connect to the Redpanda/Kafka broker.');
+    console.error('   Real-time event streaming is unavailable — this is an error state, not normal operation.');
     return null;
   }
 }
 
 /**
- * Check if EventConsumer is available without attempting initialization
- * @returns true if EventConsumer is available, false otherwise
+ * Check if EventConsumer is available.
+ *
+ * Triggers lazy initialization if not yet done, then returns true if the
+ * singleton was successfully initialized and false if initialization failed
+ * (e.g. KAFKA_BROKERS not configured). Safe to call at any time — no prior
+ * call to `getEventConsumer()` is required.
+ *
+ * @remarks
+ * **Side effect**: Triggers lazy initialization of the singleton if not yet
+ * initialized. Calling this function is equivalent to calling
+ * `getEventConsumer()` plus a null check — both are safe to call at any
+ * point.
+ *
+ * **Behavioral change from pre-lazy-init code**: Previously, `isEventConsumerAvailable()`
+ * returned `true` optimistically before any initialization attempt (the old code checked a
+ * simple boolean flag that started as `true`). The current implementation triggers lazy
+ * initialization as a side effect on the first call. It returns `true` only after successful
+ * initialization completes, and `false` if initialization failed (e.g. KAFKA_BROKERS missing
+ * or the EventConsumer constructor threw). Callers that previously relied on the optimistic
+ * `true` return before initialization must be updated to treat `false` as "Kafka unavailable".
+ *
+ * @performance Avoid calling in per-request hot paths (e.g. health-check
+ * endpoints polled frequently, per-request middleware). On the **first call**,
+ * lazy initialization runs the `EventConsumer` constructor, which reads
+ * environment variables and allocates KafkaJS client and consumer objects —
+ * synchronous work, but non-trivial on the first invocation. No network I/O
+ * occurs during construction; broker connections are established only when
+ * `start()` is called. On **subsequent calls** (after initialization is
+ * cached), the cost is negligible — a null check on a module-level variable.
+ * Still, the semantic intent of this function is an initialization probe, not
+ * a cheap boolean predicate; callers on hot paths should cache the result
+ * after the first successful initialization and avoid calling this function
+ * on every request.
+ *
+ * @returns `true` if initialization succeeded; `false` if Kafka is not configured or
+ *   initialization failed. **Note**: triggers lazy initialization on first call.
  */
 export function isEventConsumerAvailable(): boolean {
-  return eventConsumerInstance !== null || initializationError === null;
+  // SIDE EFFECT: The first call to this function triggers lazy initialization of the
+  // EventConsumer singleton (via getEventConsumer()). Subsequent calls are cheap.
+  //
+  // RETURN VALUE AMBIGUITY: A return value of `false` has two distinct meanings:
+  //   (a) Initialization was just triggered for the first time and the constructor threw
+  //       (e.g. KAFKA_BROKERS is missing). This is a permanent failure — retrying will
+  //       always return false because initializationError is cached.
+  //   (b) This function has never been called before AND initialization is about to run —
+  //       but construction is synchronous, so this case collapses into (a): by the time
+  //       this function returns, initialization has either succeeded (returns true) or
+  //       failed (returns false, error cached). There is no "not yet initialized" window
+  //       where false means "try again later".
+  //
+  // In summary: false always means "Kafka is unavailable" — either because KAFKA_BROKERS
+  // is not configured or because the constructor threw. Callers do NOT need to poll; a
+  // single false return is definitive. To diagnose the root cause, call getEventConsumerError().
+  //
+  // SIDE EFFECT WARNING (startup): If early initialization at a predictable point is
+  // desired (e.g. to surface misconfiguration at server startup rather than on the first
+  // request), call this function (or getEventConsumer()) once explicitly in server/index.ts
+  // or routes.ts after route registration.
+  getEventConsumer();
+  return eventConsumerInstance !== null;
 }
 
 /**
@@ -4329,29 +4387,31 @@ export function getEventConsumerError(): Error | null {
 }
 
 /**
- * Backward compatibility: Proxy that delegates to lazy getter
- *
- * This allows existing code to continue using `eventConsumer` directly
- * without breaking. The Proxy intercepts all property access and delegates
- * to the lazily-initialized instance.
- *
- * @deprecated Use getEventConsumer() for better error handling
+ * Proxy that delegates all property access to the lazily-initialized EventConsumer.
+ * Returns stub implementations that log errors when Kafka is not configured.
  */
 export const eventConsumer = new Proxy({} as EventConsumer, {
   get(target, prop) {
     const instance = getEventConsumer();
     if (!instance) {
-      // Return dummy implementations that log warnings
+      // Return dummy implementations that log errors
       if (prop === 'validateConnection') {
         return async () => {
-          console.warn('⚠️  EventConsumer not available (Kafka not configured)');
+          console.error('❌ EventConsumer not available - KAFKA_BROKERS is not configured. Kafka is required infrastructure.');
           return false;
         };
       }
-      if (prop === 'start' || prop === 'stop') {
-        return async () => {
-          console.warn('⚠️  EventConsumer not available (Kafka not configured)');
+      if (prop === 'start') {
+        // Throw asynchronously to match the real async start() signature and ensure
+        // callers that await start() surface the error rather than silently getting undefined.
+        return async (..._args: unknown[]) => {
+          throw new Error('[EventConsumer] start called before initialization — Kafka is not configured or could not be reached');
         };
+      }
+      if (prop === 'stop') {
+        // Intentionally silent — stop() during shutdown when Kafka was never configured
+        // is a benign no-op and should not emit misleading error-level log entries.
+        return async (..._args: unknown[]) => {};
       }
       if (prop === 'getHealthStatus') {
         return () => ({
@@ -4435,7 +4495,37 @@ export const eventConsumer = new Proxy({} as EventConsumer, {
       }
       // For event emitter methods, return no-op functions
       if (prop === 'on' || prop === 'once' || prop === 'emit' || prop === 'removeListener') {
-        return () => eventConsumer; // Return proxy for chaining
+        return (...args: unknown[]) => {
+          if (prop === 'on' || prop === 'once') {
+            // Listener was NOT registered — Kafka is unavailable so no events will fire.
+            // Warn rather than error: listener registration before start is a normal init
+            // ordering pattern and does not indicate a bug in the caller.
+            console.warn(
+              `[EventConsumer] .${prop}() called on stub proxy (event: "${String(args[0])}") — ` +
+              'Kafka is not initialized; listener was NOT registered. ' +
+              'Set KAFKA_BROKERS in .env to enable real event delivery.'
+            );
+          } else if (prop === 'removeListener') {
+            // No-op: there is nothing to remove because on/once stubs never registered a
+            // real listener. Warn rather than error: teardown cleanup (e.g. React useEffect
+            // return) is a normal pattern, not a bug.
+            console.warn(
+              `[EventConsumer] .removeListener() called on stub proxy (event: "${String(args[0])}") — ` +
+              'no-op because Kafka is not initialized and no listener was ever registered.'
+            );
+          } else if (prop === 'emit') {
+            // No-op: no real EventEmitter exists to dispatch to. Log at error level —
+            // emitting to an unavailable bus is more serious; the event was silently dropped.
+            console.error(
+              `[EventConsumer] .emit() called on stub proxy (event: "${String(args[0])}") — ` +
+              'no-op because Kafka is not initialized; event was not dispatched.'
+            );
+            // EventEmitter.emit() returns boolean (true if listeners were called).
+            // Return false — no listeners exist because Kafka is not initialized.
+            return false;
+          }
+          return eventConsumer; // Return proxy for chaining (on/once/removeListener return `this`)
+        };
       }
       return undefined;
     }

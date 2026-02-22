@@ -78,16 +78,25 @@ Category Dashboards (default):
 
 Advanced Pages:
 - Event Stream: http://localhost:3000/events
+- Live Event Stream (investor demo): http://localhost:3000/live-events
 - Pipeline Metrics: http://localhost:3000/extraction
 - Injection Performance: http://localhost:3000/effectiveness
+- Injection Latency: http://localhost:3000/effectiveness/latency
+- Injection Utilization: http://localhost:3000/effectiveness/utilization
+- Injection A/B Comparison: http://localhost:3000/effectiveness/ab
+- Execution Graph: http://localhost:3000/graph
 - Cost Trends: http://localhost:3000/cost-trends
 - Intent Signals: http://localhost:3000/intents
 - Pattern Intelligence: http://localhost:3000/patterns
+- Pattern Enforcement: http://localhost:3000/enforcement
+- Context Enrichment: http://localhost:3000/enrichment
+- LLM Routing Effectiveness: http://localhost:3000/llm-routing
 - Node Registry: http://localhost:3000/registry
+- Registry Discovery: http://localhost:3000/discovery
 - Validation: http://localhost:3000/validation
+- Baselines & ROI: http://localhost:3000/baselines
 - Correlation Trace: http://localhost:3000/trace
 - Learned Insights: http://localhost:3000/insights
-- Pattern Enforcement: http://localhost:3000/enforcement
 - Widget Showcase: http://localhost:3000/showcase
 
 **Environment**: Always verify `.env` before assuming defaults (see `~/.claude/CLAUDE.md` for full configuration priority rules). Omnidash runs on `PORT=3000` (configured in package.json dev script).
@@ -113,18 +122,25 @@ Three-directory monorepo with TypeScript path aliases:
 | **Dashboards** | | `/category/intelligence` | IntelligenceCategory | Pattern utilization, intent classification, behavior tracking |
 | **Dashboards** | | `/category/health` | SystemHealthCategory | Validation counts, node registry, health checks |
 | **Advanced** | Monitoring | `/events` (+ `/`) | EventBusMonitor | Real-time Kafka event stream visualization |
+| **Advanced** | Monitoring | `/live-events` | LiveEventStream | Investor-demo real-time Kafka event stream with pause/resume (OMN-1405) |
 | **Advanced** | Monitoring | `/extraction` | ExtractionDashboard | Pattern extraction metrics and pipeline health |
 | **Advanced** | Monitoring | `/effectiveness` | EffectivenessSummary | Injection effectiveness metrics and A/B analysis |
+| **Advanced** | Monitoring | `/effectiveness/latency` | EffectivenessLatency | Latency breakdown, P50/P95/P99 comparison, cache hit rate (OMN-1891) |
+| **Advanced** | Monitoring | `/effectiveness/utilization` | EffectivenessUtilization | Utilization distribution histogram and per-method median scores (OMN-1891) |
+| **Advanced** | Monitoring | `/effectiveness/ab` | EffectivenessAB | Treatment vs control cohort A/B comparison for injection effectiveness (OMN-1891) |
+| **Advanced** | Monitoring | `/graph` | ExecutionGraph | Live ONEX node execution graph with real-time data flow (OMN-1406, OMN-2302) |
 | **Advanced** | Monitoring | `/cost-trends` | CostTrendDashboard | LLM cost trends, budget alerts, token usage |
 | **Advanced** | Intelligence | `/intents` | IntentDashboard | Real-time intent classification and analysis |
 | **Advanced** | Intelligence | `/patterns` | PatternLearning | Code pattern discovery and learning analytics |
-| **Advanced** | System | `/registry` | NodeRegistry | Contract-driven node and service discovery |
-| **Advanced** | System | `/validation` | ValidationDashboard | Cross-repo validation runs and violation trends |
-| **Advanced** | Tools | `/trace` | CorrelationTrace | Trace events by correlation ID |
-| **Advanced** | Tools | `/insights` | LearnedInsights | Patterns and conventions from OmniClaude sessions |
 | **Advanced** | Intelligence | `/enforcement` | PatternEnforcement | Enforcement hit rate, violations, and correction rate |
 | **Advanced** | Intelligence | `/enrichment` | ContextEnrichmentDashboard | Hit rate per channel, token savings, latency distribution (OMN-2280) |
 | **Advanced** | Intelligence | `/llm-routing` | LlmRoutingDashboard | LLM vs fuzzy routing agreement rate, latency, cost per decision (OMN-2279) |
+| **Advanced** | System | `/registry` | NodeRegistry | Contract-driven node and service discovery |
+| **Advanced** | System | `/discovery` | RegistryDiscovery | Live service instance discovery with filtering and node detail panel (OMN-1278) |
+| **Advanced** | System | `/validation` | ValidationDashboard | Cross-repo validation runs and violation trends |
+| **Advanced** | System | `/baselines` | BaselinesROI | Token/time delta, retry counts, and promotion recommendations for A/B patterns (OMN-2156) |
+| **Advanced** | Tools | `/trace` | CorrelationTrace | Trace events by correlation ID |
+| **Advanced** | Tools | `/insights` | LearnedInsights | Patterns and conventions from OmniClaude sessions |
 | **Advanced** | Preview | `/showcase` | WidgetShowcase | All 5 contract-driven widget types |
 
 **Component System**: Built on shadcn/ui (New York variant) with Radix UI primitives. All UI components live in `client/src/components/ui/` and follow shadcn conventions.
@@ -436,15 +452,7 @@ All tables use Drizzle ORM with Zod validation schemas auto-generated via `creat
 
 ### Complete Integration Guide
 
-See `INTELLIGENCE_INTEGRATION.md` for comprehensive details including:
-
-- Complete database schema documentation (30+ tables)
-- Kafka event schemas with TypeScript interfaces
-- Example SQL queries for each dashboard
-- Full API endpoint implementations
-- WebSocket/SSE code examples
-- Performance optimization strategies
-- Troubleshooting guide
+See `docs/architecture/OVERVIEW.md` for system architecture, `docs/architecture/READ_MODEL_PROJECTION_ARCHITECTURE.md` for projection details, and `docs/reference/API_ENDPOINT_CATALOG.md` for all endpoint documentation.
 
 ## Design System Reference
 

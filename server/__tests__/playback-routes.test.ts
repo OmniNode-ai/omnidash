@@ -36,6 +36,13 @@ interface MockPlaybackDataSource {
   emit: Mock;
 }
 
+// DEMO_MODE is captured as a module-level constant in playback-routes.ts.
+// Setting it here inside vi.hoisted() ensures it is set before the static
+// import of playbackRouter at line 98, enabling state-mutating routes in tests.
+vi.hoisted(() => {
+  process.env.DEMO_MODE = 'true';
+});
+
 // Use vi.hoisted to define mocks that will be available during module mocking
 const { mockPlaybackService, mockEventConsumer, mockPlaybackDataSource } = vi.hoisted(() => {
   const mockPlaybackService: MockPlaybackService = {
