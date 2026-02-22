@@ -504,6 +504,7 @@ export default function PatternEnforcement() {
           <AlertTriangle className="h-4 w-4" />
           <AlertTitle>Failed to load enforcement data</AlertTitle>
           <AlertDescription>
+            Unable to load enforcement data. Check that the API server is running.
             <Button variant="outline" size="sm" className="mt-2" onClick={handleRefresh}>
               <RefreshCw className="h-4 w-4 mr-1" /> Retry
             </Button>

@@ -394,7 +394,9 @@ export default function WhyThisHappened() {
               onDecisionClick={handleDecisionClick}
               data-testid="intent-vs-plan-view"
             />
-          ) : null}
+          ) : (
+            <p className="text-sm text-muted-foreground text-center">No intent data available.</p>
+          )}
         </TabsContent>
 
         {/* View 2: Decision Timeline */}

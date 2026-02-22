@@ -298,6 +298,13 @@ export class ReadModelConsumer {
           }
         }
 
+        // Guard: if every topic subscription failed, running consumer.run() on
+        // an empty subscription would silently appear healthy while projecting
+        // nothing. Throw so the outer retry loop handles it properly.
+        if (subscribedTopics.length === 0) {
+          throw new Error('No topics could be subscribed — all topic subscriptions failed');
+        }
+
         // Process messages
         await this.consumer.run({
           eachMessage: async (payload: EachMessagePayload) => {
@@ -313,6 +320,23 @@ export class ReadModelConsumer {
         );
         return;
       } catch (err) {
+        // Disconnect the current consumer before retrying so we do not orphan a
+        // live broker connection. connect() may have succeeded before subscribe()
+        // or run() threw, leaving a connected consumer handle we will never use
+        // again if we just abandon it and create new Kafka+consumer instances.
+        if (this.consumer) {
+          try {
+            await this.consumer.disconnect();
+          } catch (disconnectErr) {
+            console.warn(
+              '[ReadModelConsumer] Error disconnecting consumer during retry cleanup:',
+              disconnectErr instanceof Error ? disconnectErr.message : disconnectErr
+            );
+          }
+          this.consumer = null;
+          this.kafka = null;
+        }
+
         attempts++;
         const delay = Math.min(RETRY_BASE_DELAY_MS * Math.pow(2, attempts), RETRY_MAX_DELAY_MS);
         console.error(

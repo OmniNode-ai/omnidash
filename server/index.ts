@@ -214,7 +214,19 @@ app.use((req, res, next) => {
       if (stats.isRunning) {
         log('✅ Read-model consumer started - projecting events to omnidash_analytics');
       } else {
-        log('⚠️  Read-model consumer skipped (missing KAFKA_BROKERS or OMNIDASH_ANALYTICS_DB_URL)');
+        // Distinguish between "never attempted" (missing config) and "attempted
+        // but failed" (Kafka unreachable / all retries exhausted).
+        const kafkaBrokers = process.env.KAFKA_BROKERS || process.env.KAFKA_BOOTSTRAP_SERVERS;
+        const dbUrl = process.env.OMNIDASH_ANALYTICS_DB_URL;
+        if (!kafkaBrokers || !dbUrl) {
+          log(
+            '⚠️  Read-model consumer skipped (missing KAFKA_BROKERS or OMNIDASH_ANALYTICS_DB_URL)'
+          );
+        } else {
+          log(
+            '⚠️  Read-model consumer failed to connect after max retries (Kafka may be unreachable)'
+          );
+        }
         log('   Read-model tables will not receive new projections');
       }
     })
