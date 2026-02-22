@@ -763,8 +763,8 @@ export function setupWebSocket(httpServer: HTTPServer) {
 
     console.log('[WebSocket] EventBusDataSource listeners registered for real-time events');
   } else {
-    console.warn(
-      '[WebSocket] EventBusDataSource not available - event-bus topic will not receive real-time events'
+    console.error(
+      '[WebSocket] EventBusDataSource not available — Kafka is not configured. Real-time event-bus subscription will not function.'
     );
   }
 
@@ -846,7 +846,7 @@ export function setupWebSocket(httpServer: HTTPServer) {
     },
   ];
 
-  // PlaybackDataSource listener (works without Kafka for demo playback)
+  // PlaybackDataSource listener (demo/recording replay only — not a Kafka replacement)
   const playbackDataSource = getPlaybackDataSource();
 
   const playbackDataEventHandler = (event: EventBusEvent) => {
