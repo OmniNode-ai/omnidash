@@ -1,194 +1,485 @@
 /**
- * Node Registry Dashboard Page (OMN-2097)
+ * Platform Registry Page (OMN-2082)
  *
- * Real-time visualization of 2-way node registration events from omnibase_infra.
- * Displays node introspection, heartbeat, and registration state transitions.
+ * Tabbed registry showing Topics and Nodes from real Kafka events.
+ * Topics tab: derived from EventBusProjection topicBreakdown (filtered, classified)
+ * Nodes tab: powered by NodeRegistryProjection (no mock data fallback)
  *
- * Data flow: Kafka → EventConsumer → ProjectionService → REST snapshot → Dashboard
- *            ProjectionService → WebSocket invalidation → re-fetch snapshot
+ * Tab state is URL-driven via ?tab=topics or ?tab=nodes (default: topics).
  *
- * Uses the server-side NodeRegistryProjection for materialized state,
- * with useProjectionStream for Snapshot + Invalidation delivery.
- * Falls back to mock data when the projection has no nodes.
+ * Data flow: Kafka -> EventConsumer -> ProjectionService -> REST snapshot -> Dashboard
+ *            ProjectionService -> WebSocket invalidation -> re-fetch snapshot
  */
 
-import { useState, useMemo, useCallback } from 'react';
+import { useMemo, useState } from 'react';
+import { useSearch, useLocation } from 'wouter';
 import { DashboardRenderer } from '@/lib/widgets';
-import type { OnWidgetRowClick } from '@/lib/widgets/DashboardRenderer';
-import {
-  nodeRegistryDashboardConfig,
-  generateNodeRegistryMockData,
-  type RegisteredNode,
-  type RegistrationEvent,
-} from '@/lib/configs/node-registry-dashboard';
-import { useDemoProjectionStream } from '@/hooks/useDemoProjectionStream';
-import { useDemoMode } from '@/contexts/DemoModeContext';
+import { nodeRegistryDashboardConfig } from '@/lib/configs/node-registry-dashboard';
+import { useProjectionStream } from '@/hooks/useProjectionStream';
 import { DemoBanner } from '@/components/DemoBanner';
 import {
   transformNodeRegistryPayload,
   type NodeRegistryPayload,
 } from '@/lib/data-sources/node-registry-projection-source';
-import type { DashboardData } from '@/lib/dashboard-schema';
-import type { NodeState } from '@shared/projection-types';
+import {
+  transformTopicRegistryData,
+  type TopicRegistryEntry,
+  type TopicDomain,
+} from '@/lib/data-sources/topic-registry-source';
+import type { EventBusPayload } from '@shared/event-bus-payload';
 import { SUFFIX_NODE_INTROSPECTION } from '@shared/topics';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { NodeDetailPanel } from '@/components/registry/NodeDetailPanel';
-import { RegistrationStateBadge } from '@/components/registry/RegistrationStateBadge';
-import { RefreshCw, Wifi, WifiOff, Info } from 'lucide-react';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
-import type { WidgetPropsMap } from '@/lib/widgets';
-import { formatRelativeTime } from '@/lib/date-utils';
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
+import {
+  RefreshCw,
+  Wifi,
+  WifiOff,
+  Info,
+  ChevronDown,
+  ChevronRight,
+  Radio,
+  Layers,
+  Server,
+  Hash,
+} from 'lucide-react';
 
 // ============================================================================
-// Demo payload factory
+// Types
 // ============================================================================
 
-/**
- * Builds a NodeRegistryPayload from the existing mock data generator.
- * Used by useDemoProjectionStream when demo mode is active.
- */
-function getDemoNodeRegistryPayload(): NodeRegistryPayload {
-  const mockData = generateNodeRegistryMockData();
-  const registered = mockData.registeredNodes as RegisteredNode[];
+type TabId = 'topics' | 'nodes';
 
-  const byState: Record<string, number> = {};
-  for (const n of registered) {
-    byState[n.state] = (byState[n.state] ?? 0) + 1;
-  }
+// ============================================================================
+// Domain display config
+// ============================================================================
 
-  const nodes: NodeState[] = registered.map((n) => ({
-    nodeId: n.node_id,
-    nodeType: n.node_type,
-    state: n.state,
-    version: n.version,
-    uptimeSeconds: n.uptime_seconds,
-    lastSeen: n.last_seen,
-    memoryUsageMb: n.memory_usage_mb,
-    cpuUsagePercent: n.cpu_usage_percent,
-  }));
+const DOMAIN_CONFIG: Record<TopicDomain, { label: string; color: string; bgColor: string }> = {
+  platform: {
+    label: 'Platform',
+    color: 'text-blue-400',
+    bgColor: 'bg-blue-500/15 text-blue-400 border-blue-500/30',
+  },
+  omniclaude: {
+    label: 'OmniClaude',
+    color: 'text-purple-400',
+    bgColor: 'bg-purple-500/15 text-purple-400 border-purple-500/30',
+  },
+  agent: {
+    label: 'Agent',
+    color: 'text-amber-400',
+    bgColor: 'bg-amber-500/15 text-amber-400 border-amber-500/30',
+  },
+  other: {
+    label: 'Other',
+    color: 'text-gray-400',
+    bgColor: 'bg-gray-500/15 text-gray-400 border-gray-500/30',
+  },
+};
 
-  return {
-    nodes,
-    recentStateChanges: [],
-    stats: {
-      totalNodes: registered.length,
-      activeNodes: registered.filter((n) => n.state === 'active').length,
-      byState,
-    },
-  };
+const DOMAIN_ORDER: TopicDomain[] = ['platform', 'omniclaude', 'agent', 'other'];
+
+// ============================================================================
+// Sub-components
+// ============================================================================
+
+function DomainBadge({ domain }: { domain: TopicDomain }) {
+  const config = DOMAIN_CONFIG[domain];
+  return (
+    <span
+      className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium border ${config.bgColor}`}
+    >
+      {config.label}
+    </span>
+  );
 }
 
-export default function NodeRegistry() {
-  const { isDemoMode } = useDemoMode();
+function TopicDomainSection({
+  domain,
+  entries,
+  defaultOpen = true,
+}: {
+  domain: TopicDomain;
+  entries: TopicRegistryEntry[];
+  defaultOpen?: boolean;
+}) {
+  const [isOpen, setIsOpen] = useState(defaultOpen);
+  const config = DOMAIN_CONFIG[domain];
 
-  // Server-side projection stream: fetches snapshot, re-fetches on invalidation.
-  // In demo mode, useDemoProjectionStream returns a static canned snapshot and
-  // disables the live network connection.
-  const {
-    data: snapshot,
-    cursor,
-    isLoading,
-    error,
-    isConnected,
-    refresh,
-  } = useDemoProjectionStream<NodeRegistryPayload>(
-    'node-registry',
-    getDemoNodeRegistryPayload,
-    undefined,
-    {}
+  if (entries.length === 0) return null;
+
+  return (
+    <Collapsible open={isOpen} onOpenChange={setIsOpen}>
+      <CollapsibleTrigger asChild>
+        <button className="flex items-center gap-2 w-full py-2 px-3 rounded-md hover:bg-muted/50 transition-colors text-left">
+          {isOpen ? (
+            <ChevronDown className="h-4 w-4 text-muted-foreground" />
+          ) : (
+            <ChevronRight className="h-4 w-4 text-muted-foreground" />
+          )}
+          <span className={`font-medium ${config.color}`}>{config.label}</span>
+          <Badge variant="secondary" className="text-xs">
+            {entries.length}
+          </Badge>
+        </button>
+      </CollapsibleTrigger>
+      <CollapsibleContent>
+        <div className="border rounded-md overflow-hidden mt-1 mb-3">
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="border-b bg-muted/30">
+                <th className="text-left py-2 px-3 font-medium text-muted-foreground">
+                  Topic Name
+                </th>
+                <th className="text-right py-2 px-3 font-medium text-muted-foreground w-32">
+                  Event Count
+                </th>
+                <th className="text-center py-2 px-3 font-medium text-muted-foreground w-28">
+                  Domain
+                </th>
+              </tr>
+            </thead>
+            <tbody>
+              {entries.map((entry) => (
+                <tr
+                  key={entry.topic}
+                  className="border-b last:border-b-0 hover:bg-muted/20 transition-colors"
+                >
+                  <td className="py-2 px-3 font-mono text-sm">{entry.topic}</td>
+                  <td className="py-2 px-3 text-right tabular-nums">
+                    {entry.eventCount.toLocaleString()}
+                  </td>
+                  <td className="py-2 px-3 text-center">
+                    <DomainBadge domain={entry.domain} />
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </CollapsibleContent>
+    </Collapsible>
   );
+}
 
-  // Unwrap the projection envelope to get the domain payload
+// ============================================================================
+// Topics Tab
+// ============================================================================
+
+function TopicsTab({
+  snapshot,
+  isLoading,
+}: {
+  snapshot: { payload: EventBusPayload } | undefined;
+  isLoading: boolean;
+}) {
+  const registryData = useMemo(() => {
+    if (!snapshot?.payload) return null;
+    return transformTopicRegistryData(snapshot.payload);
+  }, [snapshot]);
+
+  // Group entries by domain
+  const groupedEntries = useMemo(() => {
+    if (!registryData) return {};
+    const groups: Partial<Record<TopicDomain, TopicRegistryEntry[]>> = {};
+    for (const entry of registryData.entries) {
+      if (!groups[entry.domain]) groups[entry.domain] = [];
+      groups[entry.domain]!.push(entry);
+    }
+    return groups;
+  }, [registryData]);
+
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center py-16">
+        <div className="text-center space-y-3">
+          <RefreshCw className="h-8 w-8 animate-spin text-muted-foreground mx-auto" />
+          <p className="text-muted-foreground">Loading topic data...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (!registryData || registryData.entries.length === 0) {
+    return (
+      <Card>
+        <CardContent className="flex flex-col items-center justify-center py-16">
+          <Radio className="h-10 w-10 text-muted-foreground mb-4" />
+          <h3 className="text-lg font-medium mb-2">No topics observed</h3>
+          <p className="text-muted-foreground text-sm text-center max-w-md">
+            Waiting for Kafka events. Topics will appear here as the EventBusProjection processes
+            incoming messages from subscribed Kafka topics.
+          </p>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  const { summary } = registryData;
+
+  return (
+    <div className="space-y-6">
+      {/* Summary metric cards */}
+      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm font-medium text-muted-foreground">
+              Total Topics
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold tabular-nums">{summary.totalTopics}</div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm font-medium text-muted-foreground">
+              Total Events
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold tabular-nums">
+              {summary.totalEvents.toLocaleString()}
+            </div>
+          </CardContent>
+        </Card>
+
+        {DOMAIN_ORDER.map((domain) => {
+          const config = DOMAIN_CONFIG[domain];
+          const count = summary.domainCounts[domain];
+          return (
+            <Card key={domain}>
+              <CardHeader className="pb-2">
+                <CardTitle className={`text-sm font-medium ${config.color}`}>
+                  {config.label}
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold tabular-nums">{count}</div>
+                <p className="text-xs text-muted-foreground mt-1">
+                  {count === 1 ? 'topic' : 'topics'}
+                </p>
+              </CardContent>
+            </Card>
+          );
+        })}
+      </div>
+
+      {/* Topic table grouped by domain */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Hash className="h-5 w-5" />
+            Topics by Domain
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          {DOMAIN_ORDER.map((domain) => (
+            <TopicDomainSection
+              key={domain}
+              domain={domain}
+              entries={groupedEntries[domain] ?? []}
+              defaultOpen={true}
+            />
+          ))}
+        </CardContent>
+      </Card>
+    </div>
+  );
+}
+
+// ============================================================================
+// Nodes Tab
+// ============================================================================
+
+function NodesTab({
+  snapshot,
+  isLoading,
+}: {
+  snapshot: { payload: NodeRegistryPayload } | undefined;
+  isLoading: boolean;
+}) {
+  const [protocolOpen, setProtocolOpen] = useState(false);
+
   const data = snapshot?.payload ?? null;
+  const hasNodes = data !== null && data.nodes.length > 0;
 
-  // ------ Node selection state ------
-  const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null);
-
-  // Transform real projection payload → DashboardData (only runs when data changes)
-  const projectionDashboardData: DashboardData | null = useMemo(() => {
+  const dashboardData = useMemo(() => {
     if (!data || data.nodes.length === 0) return null;
     return transformNodeRegistryPayload(data);
   }, [data]);
 
-  const hasProjectionData = projectionDashboardData !== null;
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center py-16">
+        <div className="text-center space-y-3">
+          <RefreshCw className="h-8 w-8 animate-spin text-muted-foreground mx-auto" />
+          <p className="text-muted-foreground">Loading node data...</p>
+        </div>
+      </div>
+    );
+  }
 
-  const emptyDashboardData: DashboardData = {
-    totalNodes: 0,
-    activeNodes: 0,
-    pendingNodes: 0,
-    failedNodes: 0,
-    nodeStatuses: [],
-    nodeTypeDistribution: [],
-    registeredNodes: [],
-    registrationEvents: [],
+  if (!hasNodes || !dashboardData) {
+    return (
+      <div className="space-y-6">
+        <Card>
+          <CardContent className="flex flex-col items-center justify-center py-16">
+            <Server className="h-10 w-10 text-muted-foreground mb-4" />
+            <h3 className="text-lg font-medium mb-2">No nodes registered</h3>
+            <p className="text-muted-foreground text-sm text-center max-w-md">
+              Waiting for registration events from Kafka. Nodes will appear here as they initiate
+              the 2-way registration protocol and emit introspection events.
+            </p>
+          </CardContent>
+        </Card>
+
+        {/* Registration Protocol Info (collapsible, only in empty state and nodes tab) */}
+        <Collapsible open={protocolOpen} onOpenChange={setProtocolOpen}>
+          <div className="border rounded-lg bg-muted/50">
+            <CollapsibleTrigger asChild>
+              <button className="flex items-center gap-3 w-full p-4 text-left hover:bg-muted/70 transition-colors rounded-lg">
+                {protocolOpen ? (
+                  <ChevronDown className="h-5 w-5 text-muted-foreground" />
+                ) : (
+                  <ChevronRight className="h-5 w-5 text-muted-foreground" />
+                )}
+                <Info className="h-5 w-5 text-muted-foreground" />
+                <span className="text-lg font-semibold">Node Registration Protocol</span>
+              </button>
+            </CollapsibleTrigger>
+            <CollapsibleContent>
+              <div className="px-4 pb-4">
+                <p className="text-sm text-muted-foreground mb-4 ml-12">
+                  2-way registration flow: Node initiates introspection -&gt; Registry
+                  accepts/rejects -&gt; Node acknowledges -&gt; Heartbeat monitoring begins.
+                </p>
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 text-sm ml-12">
+                  <div>
+                    <span className="font-medium">Node Types:</span>
+                    <div className="text-muted-foreground mt-1">
+                      EFFECT, COMPUTE, REDUCER, ORCHESTRATOR
+                    </div>
+                  </div>
+                  <div>
+                    <span className="font-medium">Registration States:</span>
+                    <div className="text-muted-foreground mt-1">
+                      pending -&gt; accepted -&gt; awaiting_ack -&gt; active
+                    </div>
+                  </div>
+                  <div>
+                    <span className="font-medium">Failure States:</span>
+                    <div className="text-muted-foreground mt-1">
+                      rejected, ack_timed_out, liveness_expired
+                    </div>
+                  </div>
+                  <div>
+                    <span className="font-medium">Kafka Topics:</span>
+                    <div className="text-muted-foreground mt-1">{SUFFIX_NODE_INTROSPECTION}</div>
+                  </div>
+                </div>
+              </div>
+            </CollapsibleContent>
+          </div>
+        </Collapsible>
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-6">
+      {/* Registration Protocol Info (collapsible, when nodes exist) */}
+      <Collapsible open={protocolOpen} onOpenChange={setProtocolOpen}>
+        <div className="border rounded-lg bg-muted/50">
+          <CollapsibleTrigger asChild>
+            <button className="flex items-center gap-3 w-full p-4 text-left hover:bg-muted/70 transition-colors rounded-lg">
+              {protocolOpen ? (
+                <ChevronDown className="h-5 w-5 text-muted-foreground" />
+              ) : (
+                <ChevronRight className="h-5 w-5 text-muted-foreground" />
+              )}
+              <Info className="h-5 w-5 text-muted-foreground" />
+              <span className="text-lg font-semibold">Node Registration Protocol</span>
+            </button>
+          </CollapsibleTrigger>
+          <CollapsibleContent>
+            <div className="px-4 pb-4">
+              <p className="text-sm text-muted-foreground mb-4 ml-12">
+                2-way registration flow: Node initiates introspection -&gt; Registry accepts/rejects
+                -&gt; Node acknowledges -&gt; Heartbeat monitoring begins.
+              </p>
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 text-sm ml-12">
+                <div>
+                  <span className="font-medium">Node Types:</span>
+                  <div className="text-muted-foreground mt-1">
+                    EFFECT, COMPUTE, REDUCER, ORCHESTRATOR
+                  </div>
+                </div>
+                <div>
+                  <span className="font-medium">Registration States:</span>
+                  <div className="text-muted-foreground mt-1">
+                    pending -&gt; accepted -&gt; awaiting_ack -&gt; active
+                  </div>
+                </div>
+                <div>
+                  <span className="font-medium">Failure States:</span>
+                  <div className="text-muted-foreground mt-1">
+                    rejected, ack_timed_out, liveness_expired
+                  </div>
+                </div>
+                <div>
+                  <span className="font-medium">Kafka Topics:</span>
+                  <div className="text-muted-foreground mt-1">{SUFFIX_NODE_INTROSPECTION}</div>
+                </div>
+              </div>
+            </div>
+          </CollapsibleContent>
+        </div>
+      </Collapsible>
+
+      {/* Dashboard grid */}
+      <DashboardRenderer
+        config={nodeRegistryDashboardConfig}
+        data={dashboardData}
+        isLoading={isLoading}
+      />
+    </div>
+  );
+}
+
+// ============================================================================
+// Main Component
+// ============================================================================
+
+export default function NodeRegistry() {
+  // URL-driven tab state
+  const searchString = useSearch();
+  const [, navigate] = useLocation();
+  const params = new URLSearchParams(searchString);
+  const activeTab: TabId = (params.get('tab') as TabId) || 'topics';
+
+  const setTab = (tab: TabId) => {
+    navigate(`/registry?tab=${tab}`, { replace: true });
   };
 
-  const dashboardData: DashboardData = projectionDashboardData ?? emptyDashboardData;
+  // Topics projection (only active when Topics tab is shown)
+  const topicsStream = useProjectionStream<EventBusPayload>('event-bus', undefined, {
+    enabled: activeTab === 'topics',
+  });
 
-  // ------ Resolve selected node (kept fresh as snapshot updates) ------
+  // Nodes projection (only active when Nodes tab is shown)
+  const nodesStream = useProjectionStream<NodeRegistryPayload>('node-registry', undefined, {
+    enabled: activeTab === 'nodes',
+  });
 
-  const nodeStates: NodeState[] = useMemo(() => {
-    if (data && data.nodes.length > 0) return data.nodes;
-    return [];
-  }, [data]);
-
-  // Resolve to the latest version of the selected node whenever the snapshot changes
-  const selectedNodeState: NodeState | null = useMemo(() => {
-    if (!selectedNodeId) return null;
-    return nodeStates.find((n) => n.nodeId === selectedNodeId) ?? null;
-  }, [selectedNodeId, nodeStates]);
-
-  // Handle table row click — map snake_case row data to nodeId for lookup
-  const handleWidgetRowClick: OnWidgetRowClick = useCallback((widgetId, row) => {
-    if (widgetId !== 'table-node-details') return;
-    const nodeId = (row.node_id ?? row.nodeId) as string | undefined;
-    if (!nodeId) return;
-    // Toggle: clicking the same row deselects it
-    setSelectedNodeId((prev) => (prev === nodeId ? null : nodeId));
-  }, []);
+  // Active stream for header status display
+  const activeStream = activeTab === 'topics' ? topicsStream : nodesStream;
+  const { cursor, isLoading, error, isConnected, refresh } = activeStream;
 
   const connectionStatus = isLoading ? 'connecting' : isConnected ? 'connected' : 'disconnected';
-
-  // Contextual empty-state messages for the Registration Events feed.
-  // When connected with real data but no state-change events, show the snapshot
-  // time so users understand the system is working — just quiet.
-  const eventFeedEmptyProps = useMemo(() => {
-    if (isLoading) {
-      return { emptyTitle: 'Loading event stream...' };
-    }
-    if (!isConnected) {
-      return {
-        emptyTitle: 'Disconnected',
-        emptyDescription: 'Waiting for connection to projection service',
-      };
-    }
-    // Connected — derive a human-readable snapshot timestamp
-    const snapshotMs = snapshot?.snapshotTimeMs;
-    if (snapshotMs) {
-      const formatted = formatRelativeTime(new Date(snapshotMs), { compact: true });
-      return {
-        emptyTitle: `No registration events since ${formatted}`,
-        emptyDescription: 'State changes will appear here in real time',
-      };
-    }
-    return {
-      emptyTitle: 'No registration events received',
-      emptyDescription: 'State changes will appear here in real time',
-    };
-  }, [isLoading, isConnected, snapshot?.snapshotTimeMs]);
-
-  const registryWidgetProps: WidgetPropsMap = useMemo(
-    () => ({
-      'event-feed-registrations': eventFeedEmptyProps,
-      'table-node-details': {
-        customCellRenderers: {
-          state: (value: unknown) => <RegistrationStateBadge state={String(value ?? '')} />,
-        },
-      },
-    }),
-    [eventFeedEmptyProps]
-  );
 
   return (
     <div className="space-y-6">
@@ -197,25 +488,20 @@ export default function NodeRegistry() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-semibold">{nodeRegistryDashboardConfig.name}</h1>
-          <p className="text-muted-foreground">{nodeRegistryDashboardConfig.description}</p>
+          <h1 className="text-2xl font-semibold">Platform Registry</h1>
+          <p className="text-muted-foreground">Registered nodes, topics, and platform resources</p>
         </div>
 
         <div className="flex items-center gap-4">
           {/* Cursor position */}
-          {hasProjectionData && (
+          {cursor > 0 && (
             <div className="text-sm text-muted-foreground">
               Cursor: <span className="font-mono">{cursor}</span>
             </div>
           )}
 
           {/* Data source badge */}
-          <Badge
-            variant={isDemoMode ? 'outline' : hasProjectionData ? 'default' : 'secondary'}
-            className={isDemoMode ? 'border-amber-500/50 text-amber-400' : undefined}
-          >
-            {isDemoMode ? 'Demo Data' : hasProjectionData ? 'Live Data' : 'Mock Data'}
-          </Badge>
+          <Badge variant="default">Live Data</Badge>
 
           {/* Connection status */}
           <Tooltip>
@@ -252,58 +538,40 @@ export default function NodeRegistry() {
         </div>
       </div>
 
-      {/* Registration Protocol Info (at top for context) */}
-      <div className="p-4 border rounded-lg bg-muted/50">
-        <div className="flex items-start gap-3">
-          <Info className="h-5 w-5 text-muted-foreground mt-0.5" />
-          <div>
-            <h2 className="text-lg font-semibold mb-2">Node Registration Protocol</h2>
-            <p className="text-sm text-muted-foreground mb-4">
-              2-way registration flow: Node initiates introspection → Registry accepts/rejects →
-              Node acknowledges → Heartbeat monitoring begins.
-            </p>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 text-sm">
-              <div>
-                <span className="font-medium">Node Types:</span>
-                <div className="text-muted-foreground mt-1">
-                  EFFECT, COMPUTE, REDUCER, ORCHESTRATOR, SERVICE
-                </div>
-              </div>
-              <div>
-                <span className="font-medium">Registration States:</span>
-                <div className="text-muted-foreground mt-1">
-                  pending_registration → accepted → awaiting_ack → ack_received → active
-                </div>
-              </div>
-              <div>
-                <span className="font-medium">Failure States:</span>
-                <div className="text-muted-foreground mt-1">
-                  rejected, ack_timed_out, liveness_expired
-                </div>
-              </div>
-              <div>
-                <span className="font-medium">Kafka Topics:</span>
-                <div className="text-muted-foreground mt-1">{SUFFIX_NODE_INTROSPECTION}</div>
-              </div>
-            </div>
-          </div>
+      {/* Tab Navigation */}
+      <div className="border-b">
+        <div className="flex gap-0">
+          <button
+            onClick={() => setTab('topics')}
+            className={`flex items-center gap-2 px-4 py-2.5 text-sm font-medium border-b-2 transition-colors ${
+              activeTab === 'topics'
+                ? 'border-primary text-foreground'
+                : 'border-transparent text-muted-foreground hover:text-foreground hover:border-muted-foreground/30'
+            }`}
+          >
+            <Radio className="h-4 w-4" />
+            Topics
+          </button>
+          <button
+            onClick={() => setTab('nodes')}
+            className={`flex items-center gap-2 px-4 py-2.5 text-sm font-medium border-b-2 transition-colors ${
+              activeTab === 'nodes'
+                ? 'border-primary text-foreground'
+                : 'border-transparent text-muted-foreground hover:text-foreground hover:border-muted-foreground/30'
+            }`}
+          >
+            <Layers className="h-4 w-4" />
+            Nodes
+          </button>
         </div>
       </div>
 
-      {/* Dashboard grid with NodeDetailPanel injected into the slot
-          previously occupied by status-grid-nodes (row 1-3, col 0-6). */}
-      <DashboardRenderer
-        config={nodeRegistryDashboardConfig}
-        data={dashboardData}
-        isLoading={isLoading}
-        onWidgetRowClick={handleWidgetRowClick}
-        widgetProps={registryWidgetProps}
-      >
-        {/* NodeDetailPanel: replaces status-grid-nodes in grid row 1-3, col 0-6 */}
-        <div style={{ gridColumn: '1 / span 7', gridRow: '2 / span 3' }}>
-          <NodeDetailPanel node={selectedNodeState} className="h-full" />
-        </div>
-      </DashboardRenderer>
+      {/* Tab Content */}
+      {activeTab === 'topics' ? (
+        <TopicsTab snapshot={topicsStream.data} isLoading={topicsStream.isLoading} />
+      ) : (
+        <NodesTab snapshot={nodesStream.data} isLoading={nodesStream.isLoading} />
+      )}
     </div>
   );
 }
