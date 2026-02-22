@@ -57,7 +57,7 @@ function num(v: unknown): number | undefined {
 }
 
 function truncate(s: string, max = 60): string {
-  return s.length <= max ? s : s.slice(0, 57) + '...';
+  return s.length <= max ? s : s.slice(0, max - 3) + '...';
 }
 
 function extractBashCommand(
