@@ -167,7 +167,7 @@ function Layer2Detail({ rationale }: { rationale: string | null }) {
 
   return (
     <div
-      className="bg-amber-500/8 border-t border-amber-500/20 px-4 py-3 space-y-2"
+      className="bg-amber-500/10 border-t border-amber-500/20 px-4 py-3 space-y-2"
       data-testid="layer2-detail"
     >
       <div className="flex items-center gap-2">

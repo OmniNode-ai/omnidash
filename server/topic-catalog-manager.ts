@@ -81,7 +81,7 @@ export const CATALOG_TIMEOUT_MS =
  */
 const _catalogRequeryIntervalEnv = parseInt(process.env.CATALOG_REQUERY_INTERVAL_MS ?? '', 10);
 const _catalogRequeryIntervalDefault =
-  process.env.VITEST === 'true' || process.env.NODE_ENV === 'test' ? 500 : 300_000;
+  process.env.VITEST === 'true' || process.env.NODE_ENV === 'test' ? 0 : 300_000;
 export const CATALOG_REQUERY_INTERVAL_MS =
   Number.isNaN(_catalogRequeryIntervalEnv) || _catalogRequeryIntervalEnv <= 0
     ? _catalogRequeryIntervalDefault

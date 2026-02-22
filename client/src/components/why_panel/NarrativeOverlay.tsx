@@ -64,11 +64,7 @@ function MismatchBanner({ mismatches }: { mismatches: RationaleMismatch[] }) {
       <AlertDescription className="mt-1">
         <ul className="space-y-1">
           {mismatches.map((m, i) => (
-            <li
-              key={i}
-              className="text-xs"
-              data-testid={`mismatch-item-${i}`}
-            >
+            <li key={i} className="text-xs" data-testid={`mismatch-item-${i}`}>
               <span className="font-medium">
                 Agent narrative references &ldquo;{m.conflicting_reference}&rdquo;
               </span>
@@ -85,11 +81,7 @@ function MismatchBanner({ mismatches }: { mismatches: RationaleMismatch[] }) {
 /**
  * Layer1ProvenancePanel — authoritative structured data card.
  */
-function Layer1ProvenancePanel({
-  summary,
-}: {
-  summary: NarrativeOverlayData['layer1_summary'];
-}) {
+function Layer1ProvenancePanel({ summary }: { summary: NarrativeOverlayData['layer1_summary'] }) {
   return (
     <div
       className="rounded-md border border-border bg-card p-4 space-y-3"
@@ -97,38 +89,27 @@ function Layer1ProvenancePanel({
     >
       <div className="flex items-center gap-2">
         <ShieldCheck className="h-4 w-4 text-green-500" />
-        <span className="text-sm font-semibold">
-          Causal Provenance (Layer 1 — Authoritative)
-        </span>
+        <span className="text-sm font-semibold">Causal Provenance (Layer 1 — Authoritative)</span>
       </div>
 
       <div className="space-y-2 divide-y divide-border">
         <div className="flex items-center justify-between py-1.5">
           <span className="text-xs text-muted-foreground">Selected</span>
-          <span
-            className="text-sm font-mono font-medium"
-            data-testid="layer1-selected-candidate"
-          >
+          <span className="text-sm font-mono font-medium" data-testid="layer1-selected-candidate">
             {summary.selected_candidate}
           </span>
         </div>
 
         <div className="flex items-center justify-between py-1.5">
           <span className="text-xs text-muted-foreground">Constraints applied</span>
-          <span
-            className="text-sm font-mono"
-            data-testid="layer1-constraints-count"
-          >
+          <span className="text-sm font-mono" data-testid="layer1-constraints-count">
             {summary.constraints_count}
           </span>
         </div>
 
         <div className="flex items-center justify-between py-1.5">
           <span className="text-xs text-muted-foreground">Candidates evaluated</span>
-          <span
-            className="text-sm font-mono"
-            data-testid="layer1-candidates-count"
-          >
+          <span className="text-sm font-mono" data-testid="layer1-candidates-count">
             {summary.candidates_count}
           </span>
         </div>
@@ -148,10 +129,7 @@ function Layer1ProvenancePanel({
         {summary.top_constraint && (
           <div className="flex items-center justify-between py-1.5">
             <span className="text-xs text-muted-foreground">Top constraint</span>
-            <span
-              className="text-xs font-mono text-foreground"
-              data-testid="layer1-top-constraint"
-            >
+            <span className="text-xs font-mono text-foreground" data-testid="layer1-top-constraint">
               {summary.top_constraint}
             </span>
           </div>
@@ -168,9 +146,7 @@ function Layer1ProvenancePanel({
 function Layer2NarrativePanel({ rationale }: { rationale: string | null }) {
   return (
     <div
-      className={cn(
-        'rounded-md border border-amber-500/40 bg-amber-500/8 p-4 space-y-3'
-      )}
+      className={cn('rounded-md border border-amber-500/40 bg-amber-500/10 p-4 space-y-3')}
       data-testid="layer2-narrative-panel"
     >
       <div className="flex items-center gap-2">
@@ -188,10 +164,7 @@ function Layer2NarrativePanel({ rationale }: { rationale: string | null }) {
           &ldquo;{rationale}&rdquo;
         </p>
       ) : (
-        <p
-          className="text-sm italic text-muted-foreground"
-          data-testid="layer2-rationale-text"
-        >
+        <p className="text-sm italic text-muted-foreground" data-testid="layer2-rationale-text">
           No agent narrative was recorded for this decision.
         </p>
       )}
@@ -203,8 +176,7 @@ function Layer2NarrativePanel({ rationale }: { rationale: string | null }) {
       >
         <Info className="h-3.5 w-3.5 text-amber-500/70 shrink-0 mt-0.5" />
         <p className="text-xs text-amber-700/70 dark:text-amber-400/70">
-          This is a model-generated narrative. The structured provenance above is
-          authoritative.
+          This is a model-generated narrative. The structured provenance above is authoritative.
         </p>
       </div>
     </div>
@@ -246,8 +218,8 @@ export function NarrativeOverlay({ data, className }: NarrativeOverlayProps) {
           </div>
         </div>
         <p className="text-xs text-muted-foreground mt-1">
-          Layer 1 is authoritative structured provenance. Layer 2 is a model-generated
-          narrative — assistive only. Never confuse the two.
+          Layer 1 is authoritative structured provenance. Layer 2 is a model-generated narrative —
+          assistive only. Never confuse the two.
         </p>
       </CardHeader>
 
@@ -259,10 +231,7 @@ export function NarrativeOverlay({ data, className }: NarrativeOverlayProps) {
         {hasMismatches && <MismatchBanner mismatches={data.mismatches} />}
 
         {/* Layer 2 toggle button */}
-        <div
-          className="flex items-center gap-3"
-          data-testid="layer2-toggle-area"
-        >
+        <div className="flex items-center gap-3" data-testid="layer2-toggle-area">
           <Button
             variant={layer2Visible ? 'secondary' : 'outline'}
             size="sm"
@@ -284,9 +253,7 @@ export function NarrativeOverlay({ data, className }: NarrativeOverlayProps) {
             )}
             <MessageSquare className="h-3.5 w-3.5 mr-1.5" />
             {layer2Visible ? 'Hide Agent Narrative' : 'Show Agent Narrative'}
-            {!hasRationale && (
-              <span className="ml-1.5 text-muted-foreground">(none recorded)</span>
-            )}
+            {!hasRationale && <span className="ml-1.5 text-muted-foreground">(none recorded)</span>}
           </Button>
 
           {hasMismatches && !layer2Visible && (
@@ -300,9 +267,7 @@ export function NarrativeOverlay({ data, className }: NarrativeOverlayProps) {
         </div>
 
         {/* Layer 2 — revealed on toggle */}
-        {layer2Visible && (
-          <Layer2NarrativePanel rationale={data.agent_rationale} />
-        )}
+        {layer2Visible && <Layer2NarrativePanel rationale={data.agent_rationale} />}
       </CardContent>
     </Card>
   );

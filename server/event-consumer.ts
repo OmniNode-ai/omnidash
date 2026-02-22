@@ -1998,11 +1998,14 @@ export class EventConsumer extends EventEmitter {
       decision_type: 'route_select',
       selected_candidate: decision.selectedAgent,
       candidates_considered: Array.isArray(event.alternatives)
-        ? (event.alternatives as Array<{ id?: string; name?: string }>).map((alt) => ({
-            id: String(alt?.id ?? alt?.name ?? ''),
-            eliminated: false,
-            selected: false,
-          }))
+        ? (event.alternatives as Array<{ id?: string; name?: string }>).map((alt) => {
+            const altId = String(alt?.id ?? alt?.name ?? '');
+            return {
+              id: altId,
+              eliminated: false,
+              selected: altId === decision.selectedAgent,
+            };
+          })
         : [],
       constraints_applied: [],
       tie_breaker: null,

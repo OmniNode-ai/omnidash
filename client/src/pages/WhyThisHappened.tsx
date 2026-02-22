@@ -23,7 +23,6 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { RefreshCw, Info, Eye } from 'lucide-react';
 import { MockDataBadge } from '@/components/MockDataBadge';
-import { useDemoMode } from '@/contexts/DemoModeContext';
 import {
   IntentVsPlan,
   DecisionTimeline,
@@ -288,7 +287,6 @@ function buildNarrativeOverlayData(record: DecisionRecord): NarrativeOverlayData
 type ActiveView = 'intent' | 'timeline' | 'comparison' | 'narrative';
 
 export default function WhyThisHappened() {
-  const { isDemoMode } = useDemoMode();
   const [activeView, setActiveView] = useState<ActiveView>('intent');
   const [selectedDecisionId, setSelectedDecisionId] = useState<string>(
     MOCK_DECISION_RECORDS[0].decision_id
@@ -351,7 +349,7 @@ export default function WhyThisHappened() {
       </div>
 
       {/* Trust invariant notice — shown unconditionally until OMN-2467 API is active */}
-      <Alert className="border-blue-500/30 bg-blue-500/8">
+      <Alert className="border-blue-500/30 bg-blue-500/10">
         <Info className="h-4 w-4 text-blue-500" />
         <AlertDescription className="text-xs text-muted-foreground">
           Showing mock DecisionRecord data. Connect to OMN-2467 API for live provenance.
