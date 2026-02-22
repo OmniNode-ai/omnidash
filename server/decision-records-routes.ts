@@ -282,10 +282,7 @@ export default router;
 
 /**
  * Public mutation API for the event consumer to push incoming DecisionRecords.
- * Called by event-consumer.ts when it receives a decision record event from Kafka.
- *
- * TODO(OMN-2467-followup): Wire this to the actual Kafka consumer once the
- * omniintelligence DecisionRecord events are flowing.
+ * Called by event-consumer.ts when it receives a routing decision event from Kafka.
  */
 export { addDecisionRecord };
 

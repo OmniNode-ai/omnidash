@@ -9,9 +9,8 @@
  * - Multi-metric trend chart (hit rate, correction rate, false positive rate)
  */
 
-import { useState, useCallback, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { useWebSocket } from '@/hooks/useWebSocket';
 import { useDemoMode } from '@/contexts/DemoModeContext';
 import { enforcementSource } from '@/lib/data-sources/enforcement-source';
 import { DemoBanner } from '@/components/DemoBanner';
@@ -365,21 +364,6 @@ export default function PatternEnforcement() {
   const [timeWindow, setTimeWindow] = useState<EnforcementTimeWindow>('7d');
   const queryClient = useQueryClient();
   const { isDemoMode } = useDemoMode();
-
-  // Invalidate all enforcement queries on WebSocket ENFORCEMENT_INVALIDATE event
-  useWebSocket({
-    onMessage: useCallback(
-      (msg: { type: string; timestamp: string }) => {
-        if (msg.type === 'ENFORCEMENT_INVALIDATE') {
-          // TODO: Server does not yet emit ENFORCEMENT_INVALIDATE — wired client-side
-          // for when server-side broadcast is implemented (future ticket).
-          queryClient.invalidateQueries({ queryKey: queryKeys.enforcement.all });
-        }
-      },
-      [queryClient]
-    ),
-    debug: false,
-  });
 
   // ── Queries ──────────────────────────────────────────────────────────────
 
