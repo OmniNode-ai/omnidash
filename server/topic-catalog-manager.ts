@@ -75,7 +75,8 @@ export const CATALOG_TIMEOUT_MS =
 
 /**
  * How often (ms) the manager will re-query the catalog service to recover from
- * any missed events. Defaults to 5 minutes in production, 500 ms in tests.
+ * any missed events. Defaults to 5 minutes in production, 0 ms in tests
+ * (disabled; tests use vi.useFakeTimers() and advance manually).
  *
  * Can be overridden via the `CATALOG_REQUERY_INTERVAL_MS` environment variable.
  */
@@ -150,9 +151,6 @@ export class TopicCatalogManager extends EventEmitter {
 
   /** The last catalog_version seen in a catalog-changed event, or null if none yet. */
   private lastSeenVersion: number | null = null;
-
-  /** Timestamp (ms) of the last query published. */
-  private lastQueryTimestamp: number = 0;
 
   /** Handle for the periodic requery interval. */
   private requeryIntervalHandle: ReturnType<typeof setInterval> | null = null;
@@ -328,7 +326,6 @@ export class TopicCatalogManager extends EventEmitter {
         topic: SUFFIX_PLATFORM_TOPIC_CATALOG_QUERY,
         messages: [{ value: JSON.stringify(payload) }],
       });
-      this.lastQueryTimestamp = Date.now();
       console.log(
         `[TopicCatalogManager] Published topic-catalog-query (correlation_id=${correlationId})`
       );
