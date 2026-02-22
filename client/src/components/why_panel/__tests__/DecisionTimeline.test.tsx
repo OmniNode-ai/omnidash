@@ -12,13 +12,13 @@ import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import React from 'react';
 import { DecisionTimeline } from '../DecisionTimeline';
-import type { DecisionTimelineRow } from '@shared/decision-record-types';
+import type { DecisionRecord, DecisionTimelineRow } from '@shared/decision-record-types';
 
 // ============================================================================
 // Fixtures
 // ============================================================================
 
-const MOCK_RECORD_1 = {
+const MOCK_RECORD_1: DecisionRecord = {
   decision_id: 'dr-001',
   session_id: 'sess-001',
   decided_at: '2026-02-21T10:42:01.000Z',
@@ -49,11 +49,10 @@ const MOCK_RECORD_1 = {
     },
   ],
   tie_breaker: null,
-  agent_rationale:
-    'I chose claude-opus-4-6 because it balances capability and cost effectively.',
+  agent_rationale: 'I chose claude-opus-4-6 because it balances capability and cost effectively.',
 };
 
-const MOCK_RECORD_2 = {
+const MOCK_RECORD_2: DecisionRecord = {
   decision_id: 'dr-002',
   session_id: 'sess-001',
   decided_at: '2026-02-21T10:42:03.000Z', // later than dr-001
@@ -118,14 +117,14 @@ describe('DecisionTimeline — R1: timeline rows and sorting', () => {
   it('shows correct selected candidates', () => {
     render(<DecisionTimeline rows={MOCK_ROWS} />);
     expect(screen.getByTestId('timeline-selected-dr-001')).toHaveTextContent('claude-opus-4-6');
-    expect(screen.getByTestId('timeline-selected-dr-002')).toHaveTextContent(
-      'agent-api-architect'
-    );
+    expect(screen.getByTestId('timeline-selected-dr-002')).toHaveTextContent('agent-api-architect');
   });
 
   it('shows candidate count for each row', () => {
     render(<DecisionTimeline rows={MOCK_ROWS} />);
-    expect(screen.getByTestId('timeline-candidates-count-dr-001')).toHaveTextContent('2 candidates');
+    expect(screen.getByTestId('timeline-candidates-count-dr-001')).toHaveTextContent(
+      '2 candidates'
+    );
     expect(screen.getByTestId('timeline-candidates-count-dr-002')).toHaveTextContent('1 candidate');
   });
 

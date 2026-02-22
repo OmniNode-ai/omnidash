@@ -15,12 +15,7 @@ import React, { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import {
-  ChevronDown,
-  ChevronRight,
-  Clock,
-  MessageSquare,
-} from 'lucide-react';
+import { ChevronDown, ChevronRight, Clock, MessageSquare } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import type {
   DecisionRecord,
@@ -33,14 +28,10 @@ import type {
 // ============================================================================
 
 const DECISION_TYPE_COLORS: Record<DecisionType, string> = {
-  model_select:
-    'bg-purple-500/15 text-purple-600 dark:text-purple-400 border-purple-500/30',
-  tool_select:
-    'bg-blue-500/15 text-blue-600 dark:text-blue-400 border-blue-500/30',
-  route_select:
-    'bg-green-500/15 text-green-600 dark:text-green-400 border-green-500/30',
-  default_apply:
-    'bg-orange-500/15 text-orange-600 dark:text-orange-400 border-orange-500/30',
+  model_select: 'bg-purple-500/15 text-purple-600 dark:text-purple-400 border-purple-500/30',
+  tool_select: 'bg-blue-500/15 text-blue-600 dark:text-blue-400 border-blue-500/30',
+  route_select: 'bg-green-500/15 text-green-600 dark:text-green-400 border-green-500/30',
+  default_apply: 'bg-orange-500/15 text-orange-600 dark:text-orange-400 border-orange-500/30',
 };
 
 const DECISION_TYPE_LABELS: Record<DecisionType, string> = {
@@ -78,8 +69,8 @@ function fmtTime(iso: string): string {
   }
 }
 
-function fmtScore(score: number): string {
-  return score.toFixed(2);
+function fmtScore(score: number | null): string {
+  return score == null ? '—' : score.toFixed(2);
 }
 
 // ============================================================================
@@ -97,10 +88,7 @@ function Layer1Detail({ record }: { record: DecisionRecord }) {
     : [];
 
   return (
-    <div
-      className="bg-muted/30 border-t border-border p-4 space-y-3"
-      data-testid="layer1-detail"
-    >
+    <div className="bg-muted/30 border-t border-border p-4 space-y-3" data-testid="layer1-detail">
       {/* Constraints */}
       {record.constraints_applied.length > 0 && (
         <div>
@@ -153,9 +141,7 @@ function Layer1Detail({ record }: { record: DecisionRecord }) {
           Tie-breaker
         </p>
         <p className="text-xs text-foreground">
-          {record.tie_breaker ?? (
-            <span className="text-muted-foreground">None (clear winner)</span>
-          )}
+          {record.tie_breaker ?? <span className="text-muted-foreground">None (clear winner)</span>}
         </p>
       </div>
     </div>
@@ -238,11 +224,7 @@ function TimelineRow({
       >
         {/* Expand icon */}
         <span className="text-muted-foreground shrink-0">
-          {expanded ? (
-            <ChevronDown className="h-4 w-4" />
-          ) : (
-            <ChevronRight className="h-4 w-4" />
-          )}
+          {expanded ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
         </span>
 
         {/* Timestamp */}
@@ -256,10 +238,7 @@ function TimelineRow({
         {/* Decision type badge */}
         <Badge
           variant="outline"
-          className={cn(
-            'text-xs font-mono shrink-0',
-            DECISION_TYPE_COLORS[row.decision_type]
-          )}
+          className={cn('text-xs font-mono shrink-0', DECISION_TYPE_COLORS[row.decision_type])}
           data-testid={`timeline-type-${row.decision_id}`}
         >
           {DECISION_TYPE_LABELS[row.decision_type]}
@@ -304,9 +283,7 @@ function TimelineRow({
             >
               <MessageSquare className="h-3.5 w-3.5 mr-1.5" />
               {layer2Visible ? 'Hide agent narrative' : 'Show agent narrative'}
-              {!hasNarrative && (
-                <span className="ml-1 text-muted-foreground">(none recorded)</span>
-              )}
+              {!hasNarrative && <span className="ml-1 text-muted-foreground">(none recorded)</span>}
             </Button>
 
             {onViewCandidates && (
@@ -358,8 +335,8 @@ export function DecisionTimeline({ rows, onViewCandidates, className }: Decision
           </Badge>
         </div>
         <p className="text-xs text-muted-foreground mt-1">
-          Chronological sequence of system decisions. Expand a row to see Layer 1 provenance.
-          Layer 2 (agent narrative) requires explicit action.
+          Chronological sequence of system decisions. Expand a row to see Layer 1 provenance. Layer
+          2 (agent narrative) requires explicit action.
         </p>
       </CardHeader>
 

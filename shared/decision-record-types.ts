@@ -27,10 +27,10 @@ export interface CandidateEntry {
   eliminated: boolean;
   /** Constraint that eliminated this candidate, if any */
   elimination_reason?: string;
-  /** Per-metric score breakdown (0–1 per metric; absent if eliminated early) */
-  scoring_breakdown?: Record<string, number>;
-  /** Aggregate score (weighted sum of scoring_breakdown; absent if eliminated) */
-  total_score?: number;
+  /** Per-metric score breakdown (0–1 per metric; null/absent if eliminated early) */
+  scoring_breakdown?: Record<string, number> | null;
+  /** Aggregate score (weighted sum of scoring_breakdown; null/absent if eliminated) */
+  total_score?: number | null;
   /** Whether this candidate was the final selection */
   selected: boolean;
 }

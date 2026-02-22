@@ -31,6 +31,7 @@ import {
   NarrativeOverlay,
 } from '@/components/why_panel';
 import type {
+  DecisionRecord,
   IntentVsPlanData,
   DecisionTimelineRow,
   CandidateComparisonData,
@@ -85,7 +86,7 @@ const MOCK_INTENT_VS_PLAN: IntentVsPlanData = {
   ],
 };
 
-const MOCK_DECISION_RECORDS = [
+const MOCK_DECISION_RECORDS: DecisionRecord[] = [
   {
     decision_id: 'dr-001',
     session_id: MOCK_SESSION_ID,
@@ -215,7 +216,7 @@ const MOCK_TIMELINE_ROWS: DecisionTimelineRow[] = MOCK_DECISION_RECORDS.map((r) 
   full_record: r,
 }));
 
-function buildCandidateComparisonData(record: (typeof MOCK_DECISION_RECORDS)[0]): CandidateComparisonData {
+function buildCandidateComparisonData(record: DecisionRecord): CandidateComparisonData {
   const metricSet = new Set<string>();
   for (const c of record.candidates_considered) {
     if (c.scoring_breakdown) {
@@ -244,7 +245,7 @@ function buildCandidateComparisonData(record: (typeof MOCK_DECISION_RECORDS)[0])
   };
 }
 
-function buildNarrativeOverlayData(record: (typeof MOCK_DECISION_RECORDS)[0]): NarrativeOverlayData {
+function buildNarrativeOverlayData(record: DecisionRecord): NarrativeOverlayData {
   const selectedCandidate = record.candidates_considered.find((c) => c.selected);
   const layer1Keywords = [
     ...record.constraints_applied.map((c) => c.description.toLowerCase()),
@@ -287,7 +288,7 @@ function buildNarrativeOverlayData(record: (typeof MOCK_DECISION_RECORDS)[0]): N
 type ActiveView = 'intent' | 'timeline' | 'comparison' | 'narrative';
 
 export default function WhyThisHappened() {
-  const { demoMode } = useDemoMode();
+  const { isDemoMode } = useDemoMode();
   const [activeView, setActiveView] = useState<ActiveView>('intent');
   const [selectedDecisionId, setSelectedDecisionId] = useState<string>(
     MOCK_DECISION_RECORDS[0].decision_id
@@ -300,7 +301,11 @@ export default function WhyThisHappened() {
   }, []);
 
   // In a real implementation this would hit the OMN-2467 API endpoint
-  const { data: intentData, isLoading: intentLoading, refetch } = useQuery({
+  const {
+    data: intentData,
+    isLoading: intentLoading,
+    refetch,
+  } = useQuery({
     queryKey: ['why-this-happened', 'intent', MOCK_SESSION_ID],
     queryFn: async () => {
       // TODO: Replace with real API call once OMN-2467 ships:
@@ -346,7 +351,7 @@ export default function WhyThisHappened() {
       </div>
 
       {/* Trust invariant notice */}
-      {demoMode && (
+      {isDemoMode && (
         <Alert className="border-blue-500/30 bg-blue-500/8">
           <Info className="h-4 w-4 text-blue-500" />
           <AlertDescription className="text-xs text-muted-foreground">
@@ -421,10 +426,7 @@ export default function WhyThisHappened() {
               </Button>
             ))}
           </div>
-          <CandidateComparison
-            data={comparisonData}
-            data-testid="candidate-comparison-view"
-          />
+          <CandidateComparison data={comparisonData} data-testid="candidate-comparison-view" />
         </TabsContent>
 
         {/* View 4: Agent Narrative Overlay */}
@@ -445,10 +447,7 @@ export default function WhyThisHappened() {
               </Button>
             ))}
           </div>
-          <NarrativeOverlay
-            data={narrativeData}
-            data-testid="narrative-overlay-view"
-          />
+          <NarrativeOverlay data={narrativeData} data-testid="narrative-overlay-view" />
         </TabsContent>
       </Tabs>
     </div>
