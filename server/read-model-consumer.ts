@@ -52,6 +52,7 @@ import { ENRICHMENT_OUTCOMES } from '@shared/enrichment-types';
 import type { ContextEnrichmentEvent } from '@shared/enrichment-types';
 import {
   SUFFIX_OMNICLAUDE_CONTEXT_ENRICHMENT,
+  SUFFIX_OMNICLAUDE_LLM_COST_REPORTED,
   SUFFIX_OMNICLAUDE_LLM_ROUTING_DECISION,
 } from '@shared/topics';
 import type { LlmRoutingDecisionEvent } from '@shared/llm-routing-types';
@@ -173,7 +174,7 @@ const READ_MODEL_TOPICS = [
   'agent-actions',
   'agent-transformation-events',
   'onex.evt.omniclaude.pattern-enforcement.v1',
-  'onex.evt.omniclaude.llm-cost-reported.v1',
+  SUFFIX_OMNICLAUDE_LLM_COST_REPORTED,
   'onex.evt.omnibase-infra.baselines-computed.v1',
   SUFFIX_OMNICLAUDE_CONTEXT_ENRICHMENT,
   SUFFIX_OMNICLAUDE_LLM_ROUTING_DECISION,
@@ -200,6 +201,7 @@ export class ReadModelConsumer {
   private kafka: Kafka | null = null;
   private consumer: Consumer | null = null;
   private running = false;
+  private stopped = false;
   private stats: ReadModelConsumerStats = {
     isRunning: false,
     eventsProjected: 0,
@@ -211,12 +213,21 @@ export class ReadModelConsumer {
   /**
    * Start the read-model consumer.
    * Connects to Kafka and begins consuming events for projection.
+   *
+   * Fire-and-forget by design: the caller in server/index.ts must NOT await
+   * this method. The retry loop (up to MAX_RETRY_ATTEMPTS with exponential
+   * backoff to RETRY_MAX_DELAY_MS per attempt) is intentionally long to survive
+   * transient Kafka outages without crashing the server. Awaiting it would
+   * block server.listen() for minutes during a Kafka outage.
    */
   async start(): Promise<void> {
     if (this.running) {
       console.log('[ReadModelConsumer] Already running');
       return;
     }
+
+    // Reset stopped flag so start() can be called again after stop().
+    this.stopped = false;
 
     const brokers = (process.env.KAFKA_BROKERS || process.env.KAFKA_BOOTSTRAP_SERVERS || '')
       .split(',')
@@ -235,6 +246,13 @@ export class ReadModelConsumer {
 
     let attempts = 0;
     while (attempts < MAX_RETRY_ATTEMPTS) {
+      // Guard: if stop() was called while we were sleeping between retries,
+      // do not attempt to reconnect -- the consumer group has been torn down.
+      if (this.stopped) {
+        console.log('[ReadModelConsumer] Stopped during retry backoff -- aborting start');
+        return;
+      }
+
       try {
         this.kafka = new Kafka({
           clientId: CLIENT_ID,
@@ -257,13 +275,27 @@ export class ReadModelConsumer {
         await this.consumer.connect();
         console.log('[ReadModelConsumer] Connected to Kafka');
 
-        // Subscribe to all read-model topics.
+        // Subscribe to all read-model topics with per-topic error isolation.
         // fromBeginning: false is intentional -- we only project events produced
         // after this consumer first joins the group. Historical / pre-existing
         // events must be backfilled separately (e.g., by re-reading from the
         // source database or by temporarily resetting consumer group offsets).
+        //
+        // Each subscription is wrapped in its own try/catch so that a single
+        // missing or not-yet-created topic does not abort the entire consumer
+        // startup. The failed topic is logged and skipped; the consumer continues
+        // with the remaining topics.
+        const subscribedTopics: string[] = [];
         for (const topic of READ_MODEL_TOPICS) {
-          await this.consumer.subscribe({ topic, fromBeginning: false });
+          try {
+            await this.consumer.subscribe({ topic, fromBeginning: false });
+            subscribedTopics.push(topic);
+          } catch (topicErr) {
+            console.warn(
+              `[ReadModelConsumer] Skipping unavailable topic "${topic}":`,
+              topicErr instanceof Error ? topicErr.message : topicErr
+            );
+          }
         }
 
         // Process messages
@@ -276,7 +308,7 @@ export class ReadModelConsumer {
         this.running = true;
         this.stats.isRunning = true;
         console.log(
-          `[ReadModelConsumer] Running. Topics: ${READ_MODEL_TOPICS.join(', ')}. ` +
+          `[ReadModelConsumer] Running. Topics: ${subscribedTopics.join(', ')}. ` +
             `Group: ${CONSUMER_GROUP_ID}`
         );
         return;
@@ -289,6 +321,9 @@ export class ReadModelConsumer {
         );
         if (attempts < MAX_RETRY_ATTEMPTS) {
           await new Promise((resolve) => setTimeout(resolve, delay));
+          // Re-check stopped flag after sleeping -- stop() may have been called
+          // while we were waiting. The while-loop guard at the top of the iteration
+          // will handle the abort on the next pass.
         }
       }
     }
@@ -298,13 +333,26 @@ export class ReadModelConsumer {
 
   /**
    * Stop the consumer gracefully.
+   *
+   * Sets the `stopped` flag immediately so that start()'s retry loop aborts
+   * after its current backoff sleep, preventing a reconnect attempt after
+   * stop() has cleared the consumer state.
+   *
+   * Guard: requires BOTH running AND consumer to be truthy before attempting
+   * disconnect. Using `&&` (not `||`) ensures we still call disconnect() when
+   * running=false but consumer is non-null, which can happen when stop() is
+   * called while start() is sleeping between retry attempts (torn state).
    */
   async stop(): Promise<void> {
-    if (!this.running || !this.consumer) return;
+    this.stopped = true;
+
+    if (!this.running && !this.consumer) return;
 
     try {
-      await this.consumer.disconnect();
-      console.log('[ReadModelConsumer] Disconnected');
+      if (this.consumer) {
+        await this.consumer.disconnect();
+        console.log('[ReadModelConsumer] Disconnected');
+      }
     } catch (err) {
       console.error('[ReadModelConsumer] Error during disconnect:', err);
     } finally {
@@ -353,7 +401,7 @@ export class ReadModelConsumer {
         case 'onex.evt.omniclaude.pattern-enforcement.v1':
           projected = await this.projectEnforcementEvent(parsed, fallbackId);
           break;
-        case 'onex.evt.omniclaude.llm-cost-reported.v1':
+        case SUFFIX_OMNICLAUDE_LLM_COST_REPORTED:
           projected = await this.projectLlmCostEvent(parsed);
           break;
         case 'onex.evt.omnibase-infra.baselines-computed.v1':

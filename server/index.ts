@@ -203,20 +203,26 @@ app.use((req, res, next) => {
   // Start read-model consumer (OMN-2061)
   // Projects Kafka events into omnidash_analytics for durable persistence.
   // Runs as a separate consumer group from EventConsumer.
-  try {
-    await readModelConsumer.start();
-    const stats = readModelConsumer.getStats();
-    if (stats.isRunning) {
-      log('✅ Read-model consumer started - projecting events to omnidash_analytics');
-    } else {
-      log('⚠️  Read-model consumer skipped (missing KAFKA_BROKERS or OMNIDASH_ANALYTICS_DB_URL)');
-      log('   Read-model tables will not receive new projections');
-    }
-  } catch (error) {
-    console.error('❌ Failed to start read-model consumer:', error);
-    console.error('   Read-model tables will not receive new projections');
-    console.error('   Application will continue with limited functionality');
-  }
+  // Fire-and-forget: do NOT await — start() has its own retry loop with
+  // exponential backoff up to 30s per attempt (10 attempts max). Awaiting it
+  // would block server.listen() for over 5 minutes during a Kafka outage,
+  // making the process appear unresponsive to health checks.
+  readModelConsumer
+    .start()
+    .then(() => {
+      const stats = readModelConsumer.getStats();
+      if (stats.isRunning) {
+        log('✅ Read-model consumer started - projecting events to omnidash_analytics');
+      } else {
+        log('⚠️  Read-model consumer skipped (missing KAFKA_BROKERS or OMNIDASH_ANALYTICS_DB_URL)');
+        log('   Read-model tables will not receive new projections');
+      }
+    })
+    .catch((error) => {
+      console.error('❌ Failed to start read-model consumer:', error);
+      console.error('   Read-model tables will not receive new projections');
+      console.error('   Application will continue with limited functionality');
+    });
 
   // Wire projection event sources (after EventConsumer and EventBusDataSource are started)
   // This covers EventBusProjection wiring; NodeRegistry bridge listeners are above.

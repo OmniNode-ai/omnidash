@@ -270,12 +270,12 @@ export class TopicCatalogManager extends EventEmitter {
       }
     }, CATALOG_TIMEOUT_MS);
 
-    // Start the periodic requery interval so missed events are recovered.
-    this.requeryIntervalHandle = setInterval(() => {
-      if (!this.stopped) {
-        this.triggerRequery('periodic');
-      }
-    }, CATALOG_REQUERY_INTERVAL_MS);
+    // NOTE: The periodic requery interval is NOT started here. It is armed
+    // inside handleCatalogResponse() only after the initial catalog bootstrap
+    // has succeeded. Starting the interval here (before the catalog is received)
+    // would set a new outstandingCorrelationId on the first periodic fire, which
+    // would cause the initial catalog response to be silently discarded in
+    // handleCatalogResponse() due to a correlationId mismatch.
   }
 
   /**
@@ -449,6 +449,22 @@ export class TopicCatalogManager extends EventEmitter {
       `[TopicCatalogManager] Catalog response received: ${topics.length} topics` +
         (response.warnings.length > 0 ? `, ${response.warnings.length} warning(s)` : '')
     );
+
+    // Arm the periodic requery interval now that the initial catalog bootstrap
+    // has succeeded. Arming here (rather than in bootstrap()) prevents a race
+    // where the periodic timer fires before the initial response arrives, sets a
+    // new outstandingCorrelationId, and causes this very response to be silently
+    // discarded due to a correlationId mismatch.
+    //
+    // Guard: only arm once. If handleCatalogResponse fires again for a requery
+    // (triggerRequery generates a new corrId) the interval is already running.
+    if (this.requeryIntervalHandle === null && !this.stopped) {
+      this.requeryIntervalHandle = setInterval(() => {
+        if (!this.stopped) {
+          this.triggerRequery('periodic');
+        }
+      }, CATALOG_REQUERY_INTERVAL_MS);
+    }
 
     const event: CatalogReceivedEvent = {
       topics,

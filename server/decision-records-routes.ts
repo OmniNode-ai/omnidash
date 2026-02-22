@@ -37,7 +37,14 @@ import type {
 // ============================================================================
 
 /** Maximum number of DecisionRecords to retain in memory. */
-const MAX_STORED_DECISIONS = parseInt(process.env.MAX_STORED_DECISIONS ?? '5000', 10);
+const _parsedMaxDecisions = parseInt(process.env.MAX_STORED_DECISIONS ?? '5000', 10);
+if (!Number.isFinite(_parsedMaxDecisions) || _parsedMaxDecisions <= 0) {
+  console.warn(
+    `[decision-records] Invalid MAX_STORED_DECISIONS value "${process.env.MAX_STORED_DECISIONS}" -- falling back to 5000`
+  );
+}
+const MAX_STORED_DECISIONS =
+  Number.isFinite(_parsedMaxDecisions) && _parsedMaxDecisions > 0 ? _parsedMaxDecisions : 5000;
 
 /** Circular buffer for in-memory DecisionRecord storage. */
 const decisionBuffer: (DecisionRecord | undefined)[] = new Array<DecisionRecord | undefined>(
@@ -213,7 +220,8 @@ router.get('/intent-vs-plan', (req: Request, res: Response) => {
         field_name: record.decision_type,
         intent_value: null, // User intent not yet stored in V1 — always null until OMN-2467 adds it
         resolved_value: record.selected_candidate,
-        origin: record.decision_type === 'default_apply' ? ('default' as const) : ('inferred' as const),
+        origin:
+          record.decision_type === 'default_apply' ? ('default' as const) : ('inferred' as const),
         decision_id: record.decision_id,
       }));
 
