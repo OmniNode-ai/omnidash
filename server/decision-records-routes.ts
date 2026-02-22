@@ -37,7 +37,8 @@ import type {
 // ============================================================================
 
 /** Maximum number of DecisionRecords to retain in memory. */
-const MAX_STORED_DECISIONS = parseInt(process.env.MAX_STORED_DECISIONS ?? '5000', 10);
+const parsedMax = Number.parseInt(process.env.MAX_STORED_DECISIONS ?? '5000', 10);
+const MAX_STORED_DECISIONS = Number.isInteger(parsedMax) && parsedMax > 0 ? parsedMax : 5000;
 
 /** Circular buffer for in-memory DecisionRecord storage. */
 const decisionBuffer: (DecisionRecord | undefined)[] = new Array<DecisionRecord | undefined>(

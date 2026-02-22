@@ -3,6 +3,9 @@
   "version": "1.0.0",
   "type": "module",
   "license": "MIT",
+  "engines": {
+    "node": ">=20.11.0"
+  },
   "scripts": {
     "kill-port": "bash scripts/kill-server.sh",
     "dev": "npm run kill-port && PORT=3000 NODE_ENV=development tsx server/index.ts",
