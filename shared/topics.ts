@@ -312,6 +312,28 @@ export const SUFFIX_OMNICLAUDE_DELEGATION_SHADOW_COMPARISON =
   'onex.evt.omniclaude.delegation-shadow-comparison.v1';
 
 // ============================================================================
+// OmniClaude Wave 2 Topics (OMN-2596 — 5 new omniclaude tables)
+// NOTE: Intentionally excluded from buildSubscriptionTopics() / subscription groups —
+// consumed only by the read-model-consumer via READ_MODEL_TOPICS.
+// ============================================================================
+
+/** Gate decision events emitted when the CI gate evaluates a PR (gate_decisions table). */
+export const SUFFIX_OMNICLAUDE_GATE_DECISION = 'onex.evt.omniclaude.gate-decision.v1';
+
+/** Epic pipeline state-change events covering both epic_run_lease and epic_run_events tables. */
+export const SUFFIX_OMNICLAUDE_EPIC_RUN_UPDATED = 'onex.evt.omniclaude.epic-run-updated.v1';
+
+/** PR watch state-change events (pr_watch_state table). */
+export const SUFFIX_OMNICLAUDE_PR_WATCH_UPDATED = 'onex.evt.omniclaude.pr-watch-updated.v1';
+
+/** Budget cap hit events (pipeline_budget_state table). */
+export const SUFFIX_OMNICLAUDE_BUDGET_CAP_HIT = 'onex.evt.omniclaude.budget-cap-hit.v1';
+
+/** Circuit breaker tripped events (debug_escalation_counts table). */
+export const SUFFIX_OMNICLAUDE_CIRCUIT_BREAKER_TRIPPED =
+  'onex.evt.omniclaude.circuit-breaker-tripped.v1';
+
+// ============================================================================
 // OmniIntelligence Topics
 // ============================================================================
 
