@@ -119,6 +119,7 @@ import {
 import { emitEffectivenessUpdate } from './effectiveness-events';
 import { effectivenessMetricsProjection } from './projection-bootstrap';
 import { MonotonicMergeTracker, extractEventTimeMs, parseOffsetAsSeq } from './monotonic-merge';
+import { addDecisionRecord } from './decision-records-routes';
 
 const isTestEnv = process.env.VITEST === 'true' || process.env.NODE_ENV === 'test';
 const DEBUG_CANONICAL_EVENTS = process.env.DEBUG_CANONICAL_EVENTS === 'true' || isTestEnv;
@@ -1988,6 +1989,28 @@ export class EventConsumer extends EventEmitter {
     if (this.routingDecisions.length > this.maxDecisions) {
       this.routingDecisions = this.routingDecisions.slice(0, this.maxDecisions);
     }
+
+    // Feed the Why This Happened panel's in-memory buffer (OMN-2469)
+    addDecisionRecord({
+      decision_id: decision.id,
+      session_id: decision.correlationId,
+      decided_at: decision.createdAt.toISOString(),
+      decision_type: 'route_select',
+      selected_candidate: decision.selectedAgent,
+      candidates_considered: Array.isArray(event.alternatives)
+        ? (event.alternatives as Array<{ id?: string; name?: string }>).map((alt) => {
+            const altId = String(alt?.id ?? alt?.name ?? '');
+            return {
+              id: altId,
+              eliminated: false,
+              selected: altId === decision.selectedAgent,
+            };
+          })
+        : [],
+      constraints_applied: [],
+      tie_breaker: null,
+      agent_rationale: decision.reasoning ?? null,
+    });
 
     // Emit routing update
     this.emit('routingUpdate', decision);

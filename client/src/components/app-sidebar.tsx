@@ -180,6 +180,12 @@ const advancedSubGroups: AdvancedSubGroup[] = [
         icon: GitFork,
         description: 'LLM vs fuzzy routing agreement rate, latency, cost per decision',
       },
+      {
+        title: 'Why This Happened',
+        url: '/why',
+        icon: Lightbulb,
+        description: 'Decision provenance — intent vs plan, timeline, candidate comparison',
+      },
     ],
   },
   {

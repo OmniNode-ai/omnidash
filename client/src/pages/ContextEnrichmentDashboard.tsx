@@ -9,9 +9,8 @@
  * - Context inflation alert table (enrichment increasing token count)
  */
 
-import { useState, useCallback, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { useWebSocket } from '@/hooks/useWebSocket';
 import { useDemoMode } from '@/contexts/DemoModeContext';
 import { enrichmentSource } from '@/lib/data-sources/enrichment-source';
 import { DemoBanner } from '@/components/DemoBanner';
@@ -413,22 +412,6 @@ export default function ContextEnrichmentDashboard() {
   useEffect(() => {
     enrichmentSource.clearMockState();
   }, [timeWindow]);
-
-  // Invalidate all enrichment queries on WebSocket ENRICHMENT_INVALIDATE event
-  useWebSocket({
-    onMessage: useCallback(
-      (msg: { type: string; timestamp: string }) => {
-        if (msg.type === 'ENRICHMENT_INVALIDATE') {
-          // TODO(OMN-2280): Server does not yet emit ENRICHMENT_INVALIDATE — wired
-          // client-side so the handler is ready when server-side broadcast lands.
-          // This is intentional future work, not dead code.
-          queryClient.invalidateQueries({ queryKey: queryKeys.enrichment.all });
-        }
-      },
-      [queryClient]
-    ),
-    debug: false,
-  });
 
   // ── Queries ──────────────────────────────────────────────────────────────
 
