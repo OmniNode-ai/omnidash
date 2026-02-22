@@ -14,7 +14,7 @@ import type {
   EventCategory,
   EventEnrichment,
   EventArtifact,
-} from '../../shared/projection-types.js';
+} from '@shared/projection-types.js';
 
 export type { EnrichmentHandler };
 
