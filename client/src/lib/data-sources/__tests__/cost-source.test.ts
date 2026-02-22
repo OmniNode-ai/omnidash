@@ -194,7 +194,7 @@ describe('CostSource', () => {
         ])
       );
 
-      const result = await costSource.summary();
+      const result = await costSource.summary('7d', { fallbackToMock: true });
 
       expect(result.total_tokens).toBeGreaterThan(0);
       expect(console.warn).toHaveBeenCalledWith(
@@ -248,7 +248,7 @@ describe('CostSource', () => {
     it('falls back to mock on network error', async () => {
       setupFetchMock(new Map([['/api/costs/trend', new Error('Connection refused')]]));
 
-      const result = await costSource.trend();
+      const result = await costSource.trend('7d', { fallbackToMock: true });
 
       expect(result.length).toBeGreaterThan(0);
       expect(console.warn).toHaveBeenCalledWith(
@@ -292,7 +292,7 @@ describe('CostSource', () => {
     it('falls back to mock on network error', async () => {
       setupFetchMock(new Map([['/api/costs/by-model', new Error('Network error')]]));
 
-      const result = await costSource.byModel();
+      const result = await costSource.byModel({ fallbackToMock: true });
 
       expect(result.length).toBeGreaterThan(0);
       expect(console.warn).toHaveBeenCalledWith(
@@ -327,7 +327,7 @@ describe('CostSource', () => {
     it('falls back to mock on network error', async () => {
       setupFetchMock(new Map([['/api/costs/by-repo', new Error('Connection refused')]]));
 
-      const result = await costSource.byRepo();
+      const result = await costSource.byRepo({ fallbackToMock: true });
 
       expect(result.length).toBeGreaterThan(0);
       expect(console.warn).toHaveBeenCalledWith(
@@ -362,7 +362,7 @@ describe('CostSource', () => {
     it('falls back to mock on network error', async () => {
       setupFetchMock(new Map([['/api/costs/by-pattern', new Error('Network error')]]));
 
-      const result = await costSource.byPattern();
+      const result = await costSource.byPattern({ fallbackToMock: true });
 
       expect(result.length).toBeGreaterThan(0);
       expect(console.warn).toHaveBeenCalledWith(
@@ -406,7 +406,7 @@ describe('CostSource', () => {
     it('falls back to mock on network error', async () => {
       setupFetchMock(new Map([['/api/costs/token-usage', new Error('Connection refused')]]));
 
-      const result = await costSource.tokenUsage();
+      const result = await costSource.tokenUsage('7d', { fallbackToMock: true });
 
       expect(result.length).toBeGreaterThan(0);
       expect(console.warn).toHaveBeenCalledWith(
@@ -451,7 +451,7 @@ describe('CostSource', () => {
     it('falls back to mock on network error', async () => {
       setupFetchMock(new Map([['/api/costs/alerts', new Error('Network error')]]));
 
-      const result = await costSource.alerts();
+      const result = await costSource.alerts({ fallbackToMock: true });
 
       expect(result.length).toBeGreaterThan(0);
       expect(console.warn).toHaveBeenCalledWith(
@@ -501,7 +501,7 @@ describe('CostSource', () => {
       );
 
       await costSource.summary();
-      await costSource.trend();
+      await costSource.trend('7d', { fallbackToMock: true });
 
       expect(costSource.isUsingMockData).toBe(true);
     });
@@ -509,7 +509,7 @@ describe('CostSource', () => {
     it('clears mock flag when endpoint recovers', async () => {
       // First call: API fails
       setupFetchMock(new Map([['/api/costs/trend', new Error('Network error')]]));
-      await costSource.trend();
+      await costSource.trend('7d', { fallbackToMock: true });
       expect(costSource.isUsingMockData).toBe(true);
 
       // Second call: API recovers

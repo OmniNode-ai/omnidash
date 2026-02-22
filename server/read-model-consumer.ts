@@ -36,6 +36,8 @@ import {
   baselinesComparisons,
   baselinesTrend,
   baselinesBreakdown,
+  delegationEvents,
+  delegationShadowComparisons,
 } from '@shared/intelligence-schema';
 import type {
   InsertAgentRoutingDecision,
@@ -46,19 +48,27 @@ import type {
   InsertBaselinesComparison,
   InsertBaselinesTrend,
   InsertBaselinesBreakdown,
+  InsertDelegationEvent,
+  InsertDelegationShadowComparison,
 } from '@shared/intelligence-schema';
 import type { PatternEnforcementEvent } from '@shared/enforcement-types';
 import { ENRICHMENT_OUTCOMES } from '@shared/enrichment-types';
 import type { ContextEnrichmentEvent } from '@shared/enrichment-types';
 import {
   SUFFIX_OMNICLAUDE_CONTEXT_ENRICHMENT,
-  SUFFIX_OMNICLAUDE_LLM_COST_REPORTED,
   SUFFIX_OMNICLAUDE_LLM_ROUTING_DECISION,
+  SUFFIX_OMNICLAUDE_TASK_DELEGATED,
+  SUFFIX_OMNICLAUDE_DELEGATION_SHADOW_COMPARISON,
+  TOPIC_OMNIINTELLIGENCE_LLM_CALL_COMPLETED,
 } from '@shared/topics';
 import type { LlmRoutingDecisionEvent } from '@shared/llm-routing-types';
-import { baselinesProjection } from './projection-bootstrap';
+import type { TaskDelegatedEvent, DelegationShadowComparisonEvent } from '@shared/delegation-types';
+import { baselinesProjection, llmRoutingProjection } from './projection-bootstrap';
 import { emitBaselinesUpdate } from './baselines-events';
 import { emitLlmRoutingInvalidate } from './llm-routing-events';
+import { emitDelegationInvalidate } from './delegation-events';
+import { emitEnrichmentInvalidate } from './enrichment-events';
+import { emitEnforcementInvalidate } from './enforcement-events';
 
 /**
  * Derive a deterministic UUID-shaped string from Kafka message coordinates.
@@ -174,10 +184,17 @@ const READ_MODEL_TOPICS = [
   'agent-actions',
   'agent-transformation-events',
   'onex.evt.omniclaude.pattern-enforcement.v1',
-  SUFFIX_OMNICLAUDE_LLM_COST_REPORTED,
+  // OMN-2371 (GAP-5): Canonical producer is NodeLlmInferenceEffect in omnibase_infra.
+  // The old topic 'onex.evt.omniclaude.llm-cost-reported.v1' had zero producers.
+  // Now subscribing to the canonical per-call topic; projectLlmCostEvent() handles
+  // ContractLlmCallMetrics payload and projects each call into llm_cost_aggregates.
+  TOPIC_OMNIINTELLIGENCE_LLM_CALL_COMPLETED,
   'onex.evt.omnibase-infra.baselines-computed.v1',
   SUFFIX_OMNICLAUDE_CONTEXT_ENRICHMENT,
   SUFFIX_OMNICLAUDE_LLM_ROUTING_DECISION,
+  // OMN-2284: Delegation metrics — task-delegated and shadow-comparison events.
+  SUFFIX_OMNICLAUDE_TASK_DELEGATED,
+  SUFFIX_OMNICLAUDE_DELEGATION_SHADOW_COMPARISON,
 ] as const;
 
 type ReadModelTopic = (typeof READ_MODEL_TOPICS)[number];
@@ -221,6 +238,17 @@ export class ReadModelConsumer {
    * block server.listen() for minutes during a Kafka outage.
    */
   async start(): Promise<void> {
+    // Reset the stopped flag so a consumer that was previously stopped can be
+    // restarted cleanly. Placed before the `this.running` guard so that a
+    // concurrent stop()+start() sequence — where stop() sets stopped=true and
+    // then start() runs — cannot slip past the guard and override stopped=true
+    // with false after the guard has been checked. After the assignment we
+    // immediately re-check stopped: if stop() raced in and set it back to true
+    // between the assignment and this re-check we abort rather than proceeding
+    // to connect.
+    this.stopped = false;
+    if (this.stopped) return;
+
     if (this.running) {
       console.log('[ReadModelConsumer] Already running');
       return;
@@ -246,12 +274,11 @@ export class ReadModelConsumer {
 
     let attempts = 0;
     while (attempts < MAX_RETRY_ATTEMPTS) {
-      // Guard: if stop() was called while we were sleeping between retries,
-      // do not attempt to reconnect -- the consumer group has been torn down.
-      if (this.stopped) {
-        console.log('[ReadModelConsumer] Stopped during retry backoff -- aborting start');
-        return;
-      }
+      // If stop() was called while we were sleeping between retries, abort the
+      // retry loop immediately. Without this guard the loop would recreate a
+      // Kafka client + consumer after stop() already nulled them, leaving a
+      // live connection that is never disconnected.
+      if (this.stopped) return;
 
       try {
         this.kafka = new Kafka({
@@ -275,34 +302,34 @@ export class ReadModelConsumer {
         await this.consumer.connect();
         console.log('[ReadModelConsumer] Connected to Kafka');
 
-        // Subscribe to all read-model topics with per-topic error isolation.
-        // fromBeginning: false is intentional -- we only project events produced
-        // after this consumer first joins the group. Historical / pre-existing
-        // events must be backfilled separately (e.g., by re-reading from the
-        // source database or by temporarily resetting consumer group offsets).
-        //
-        // Each subscription is wrapped in its own try/catch so that a single
-        // missing or not-yet-created topic does not abort the entire consumer
-        // startup. The failed topic is logged and skipped; the consumer continues
-        // with the remaining topics.
+        // Subscribe to all read-model topics individually so that a single
+        // missing/uncreated topic (which returns invalid partition metadata from
+        // Redpanda) does not crash the entire consumer. fromBeginning: false is
+        // intentional -- we only project events produced after this consumer
+        // first joins the group.
         const subscribedTopics: string[] = [];
+        const skippedTopics: string[] = [];
         for (const topic of READ_MODEL_TOPICS) {
           try {
             await this.consumer.subscribe({ topic, fromBeginning: false });
             subscribedTopics.push(topic);
-          } catch (topicErr) {
+          } catch (subscribeErr) {
+            skippedTopics.push(topic);
             console.warn(
-              `[ReadModelConsumer] Skipping unavailable topic "${topic}":`,
-              topicErr instanceof Error ? topicErr.message : topicErr
+              `[ReadModelConsumer] Skipping topic "${topic}" (not available on broker):`,
+              subscribeErr instanceof Error ? subscribeErr.message : subscribeErr
             );
           }
         }
-
-        // Guard: if every topic subscription failed, running consumer.run() on
-        // an empty subscription would silently appear healthy while projecting
-        // nothing. Throw so the outer retry loop handles it properly.
         if (subscribedTopics.length === 0) {
-          throw new Error('No topics could be subscribed — all topic subscriptions failed');
+          throw new Error(
+            `No topics could be subscribed — all topics failed metadata check: ${skippedTopics.join(', ')}`
+          );
+        }
+        if (skippedTopics.length > 0) {
+          console.warn(
+            `[ReadModelConsumer] Skipped ${skippedTopics.length} topic(s): ${skippedTopics.join(', ')}`
+          );
         }
 
         // Process messages
@@ -315,7 +342,7 @@ export class ReadModelConsumer {
         this.running = true;
         this.stats.isRunning = true;
         console.log(
-          `[ReadModelConsumer] Running. Topics: ${subscribedTopics.join(', ')}. ` +
+          `[ReadModelConsumer] Running. Topics (${subscribedTopics.length}): ${subscribedTopics.join(', ')}. ` +
             `Group: ${CONSUMER_GROUP_ID}`
         );
         return;
@@ -345,9 +372,10 @@ export class ReadModelConsumer {
         );
         if (attempts < MAX_RETRY_ATTEMPTS) {
           await new Promise((resolve) => setTimeout(resolve, delay));
-          // Re-check stopped flag after sleeping -- stop() may have been called
-          // while we were waiting. The while-loop guard at the top of the iteration
-          // will handle the abort on the next pass.
+          // Re-check stopped after the backoff sleep — stop() may have been called
+          // during the up-to-30s wait. Abort immediately rather than proceeding to
+          // the next iteration which would recreate a connection after stop() cleared state.
+          if (this.stopped) return;
         }
       }
     }
@@ -358,16 +386,17 @@ export class ReadModelConsumer {
   /**
    * Stop the consumer gracefully.
    *
-   * Sets the `stopped` flag immediately so that start()'s retry loop aborts
-   * after its current backoff sleep, preventing a reconnect attempt after
-   * stop() has cleared the consumer state.
-   *
-   * Guard: requires BOTH running AND consumer to be truthy before attempting
-   * disconnect. Using `&&` (not `||`) ensures we still call disconnect() when
-   * running=false but consumer is non-null, which can happen when stop() is
-   * called while start() is sleeping between retry attempts (torn state).
+   * Guard uses `&&` (not `||`): skip only when BOTH running=false AND
+   * consumer=null. If consumer.connect() succeeded but consumer.run() threw
+   * before this.running was set to true, running=false but consumer is
+   * non-null — a torn state. Using `||` would make stop() a no-op in that
+   * scenario, leaking the Kafka connection. `&&` ensures we always disconnect
+   * a live consumer handle regardless of the running flag.
    */
   async stop(): Promise<void> {
+    // Set stopped before any await so that if start() is concurrently sleeping
+    // between retry attempts it will observe this flag on its next iteration
+    // and abort rather than creating a new connection after we disconnect.
     this.stopped = true;
 
     if (!this.running && !this.consumer) return;
@@ -375,8 +404,8 @@ export class ReadModelConsumer {
     try {
       if (this.consumer) {
         await this.consumer.disconnect();
-        console.log('[ReadModelConsumer] Disconnected');
       }
+      console.log('[ReadModelConsumer] Disconnected');
     } catch (err) {
       console.error('[ReadModelConsumer] Error during disconnect:', err);
     } finally {
@@ -425,7 +454,7 @@ export class ReadModelConsumer {
         case 'onex.evt.omniclaude.pattern-enforcement.v1':
           projected = await this.projectEnforcementEvent(parsed, fallbackId);
           break;
-        case SUFFIX_OMNICLAUDE_LLM_COST_REPORTED:
+        case TOPIC_OMNIINTELLIGENCE_LLM_CALL_COMPLETED:
           projected = await this.projectLlmCostEvent(parsed);
           break;
         case 'onex.evt.omnibase-infra.baselines-computed.v1':
@@ -436,6 +465,12 @@ export class ReadModelConsumer {
           break;
         case SUFFIX_OMNICLAUDE_LLM_ROUTING_DECISION:
           projected = await this.projectLlmRoutingDecisionEvent(parsed, fallbackId);
+          break;
+        case SUFFIX_OMNICLAUDE_TASK_DELEGATED:
+          projected = await this.projectTaskDelegatedEvent(parsed, fallbackId);
+          break;
+        case SUFFIX_OMNICLAUDE_DELEGATION_SHADOW_COMPARISON:
+          projected = await this.projectDelegationShadowComparisonEvent(parsed, fallbackId);
           break;
         default:
           console.warn(
@@ -690,8 +725,9 @@ export class ReadModelConsumer {
       return true; // Treat as "handled" so we advance the watermark
     }
 
+    let insertedRowCount = 0;
     try {
-      await db.execute(sql`
+      const result = await db.execute(sql`
         INSERT INTO pattern_enforcement_events (
           correlation_id,
           session_id,
@@ -719,6 +755,17 @@ export class ReadModelConsumer {
         )
         ON CONFLICT (correlation_id) DO NOTHING
       `);
+      // Track inserted row count to suppress WebSocket invalidation on duplicate events.
+      // ON CONFLICT DO NOTHING produces rowCount=0 for duplicates; no invalidation needed.
+      const rawRowCount = (result as unknown as Record<string, unknown>).rowCount;
+      if (typeof rawRowCount === 'number') {
+        insertedRowCount = rawRowCount;
+      } else {
+        console.warn(
+          `[ReadModelConsumer] enforcement INSERT: rowCount not found in result shape — WebSocket invalidation suppressed. Actual type: ${typeof rawRowCount}`
+        );
+        insertedRowCount = 0;
+      }
     } catch (err) {
       // If the table doesn't exist yet, warn and return true to advance the
       // watermark so the consumer is not stuck retrying indefinitely.
@@ -743,6 +790,17 @@ export class ReadModelConsumer {
         return true;
       }
       throw err;
+    }
+
+    // Notify WebSocket clients subscribed to the 'enforcement' topic only when
+    // a new row was genuinely inserted (rowCount > 0). Duplicate events produce
+    // rowCount=0 via ON CONFLICT DO NOTHING and should not trigger invalidation.
+    if (insertedRowCount > 0) {
+      try {
+        emitEnforcementInvalidate(correlationId);
+      } catch (e) {
+        console.warn('[ReadModelConsumer] emitEnforcementInvalidate() failed post-commit:', e);
+      }
     }
 
     return true;
@@ -798,8 +856,9 @@ export class ReadModelConsumer {
       return true;
     }
 
+    let insertedRowCount = 0;
     try {
-      await db.execute(sql`
+      const result = await db.execute(sql`
         INSERT INTO context_enrichment_events (
           correlation_id,
           session_id,
@@ -835,6 +894,36 @@ export class ReadModelConsumer {
         )
         ON CONFLICT (correlation_id) DO NOTHING
       `);
+      // db.execute() with raw SQL returns the underlying pg/Neon QueryResult,
+      // which carries `rowCount`: the number of rows actually written by the
+      // INSERT.  When the ON CONFLICT … DO NOTHING clause suppresses a
+      // duplicate the command completes without error but rowCount is 0.
+      //
+      // The pg socket driver initialises rowCount to null and populates it
+      // from the CommandComplete message; the Neon HTTP driver always returns
+      // a numeric rowCount.  Both paths therefore produce number | null.
+      //
+      // We avoid a blind `as { rowCount?: number | null }` cast, which would
+      // silently evaluate to 0 if the result object has an unexpected shape
+      // (e.g. a future Drizzle version wraps the raw result differently).
+      // Instead we use a typeof guard so that any shape mismatch is visible
+      // as a NaN/undefined at runtime rather than a silent zero.
+      const rawRowCount = (result as unknown as Record<string, unknown>).rowCount;
+      if (typeof rawRowCount === 'number') {
+        insertedRowCount = rawRowCount;
+      } else {
+        // console.error (not warn) is intentional: a shape change here means
+        // WebSocket invalidation is silently suppressed for all enrichment
+        // inserts until the code is updated. This must be visible and alarming
+        // in production logs so on-call engineers notice it immediately.
+        console.error(
+          `[ReadModelConsumer] enrichment INSERT: rowCount not found in result shape — WebSocket invalidation suppressed. Shape may have changed. Actual type of rawRowCount: ${typeof rawRowCount}`
+        );
+        // TODO: Add a structured metric/counter here so shape changes are
+        // detectable in production monitoring without requiring log scraping.
+        // Track as a follow-up ticket after OMN-2373 merges.
+        insertedRowCount = 0;
+      }
     } catch (err) {
       // If the table doesn't exist yet (migration not run), degrade gracefully
       // and advance the watermark so the consumer is not stuck retrying.
@@ -851,6 +940,31 @@ export class ReadModelConsumer {
         return true;
       }
       throw err;
+    }
+
+    // Notify WebSocket clients subscribed to the 'enrichment' topic only when
+    // a new row was genuinely inserted (rowCount > 0).  When the ON CONFLICT
+    // clause suppresses a duplicate the insert is a no-op and rowCount is 0;
+    // emitting in that case would cause spurious WebSocket invalidation
+    // broadcasts on every duplicate event. (OMN-2373)
+    //
+    // NOTE (at-least-once edge case): the emit fires after the DB commit but
+    // before the watermark is advanced by the caller.  If the process crashes
+    // in this narrow window, Kafka redelivers the message, ON CONFLICT DO
+    // NOTHING fires (rowCount=0), and no second invalidation is emitted.
+    // Clients that connected during the window may miss one real-time update;
+    // they will receive the correct data on their next poll. This is an
+    // inherent at-least-once delivery trade-off: moving the emit to after
+    // watermark advancement would close the window but add complexity.  The
+    // chosen ordering (emit before watermark) prioritises real-time freshness
+    // for the common case over theoretical crash-recovery purity.
+    if (insertedRowCount > 0) {
+      // Wrapped defensively: a failure here must not block watermark advancement.
+      try {
+        emitEnrichmentInvalidate(correlationId);
+      } catch (e) {
+        console.warn('[ReadModelConsumer] emitEnrichmentInvalidate() failed post-commit:', e);
+      }
     }
 
     return true;
@@ -960,6 +1074,19 @@ export class ReadModelConsumer {
       throw err;
     }
 
+    // Invalidate the LLM routing projection cache so the next API request
+    // returns fresh data from the newly projected decision.
+    // Wrapped defensively: a failure here must not block watermark advancement —
+    // the DB write has already committed successfully.
+    try {
+      llmRoutingProjection.invalidateCache();
+    } catch (e) {
+      console.warn(
+        '[read-model-consumer] llmRoutingProjection.invalidateCache() failed post-commit:',
+        e
+      );
+    }
+
     // Notify WebSocket clients subscribed to the 'llm-routing' topic.
     // Called here (after the try/catch) so clients are only notified when
     // the DB write has committed successfully.
@@ -969,17 +1096,201 @@ export class ReadModelConsumer {
   }
 
   /**
-   * Project a LLM cost reported event into the `llm_cost_aggregates` table.
+   * Project a task-delegated event into the `delegation_events` table (OMN-2284).
    *
-   * The event is published by the omniclaude session-ended flow (OMN-2300 / OMN-2238)
-   * once per session and carries pre-aggregated token usage and cost data.
-   * Each event is inserted as a single row with granularity='hour' so the cost
-   * trend queries can bucket them into hourly or daily series via date_trunc().
+   * Deduplication key: (correlation_id) — each delegation has a unique correlation ID.
+   * Falls back to a deterministic hash when absent.
    *
-   * Deduplication: there is no natural unique key on llm_cost_aggregates
-   * (multiple events for the same model+session are valid). Deduplication is
-   * therefore skipped here — INSERT without ON CONFLICT. Idempotent replay is
-   * achieved at the Kafka level via consumer group offset tracking.
+   * GOLDEN METRIC: quality_gate_pass_rate > 80%.
+   */
+  private async projectTaskDelegatedEvent(
+    data: Record<string, unknown>,
+    fallbackId: string
+  ): Promise<boolean> {
+    const db = tryGetIntelligenceDb();
+    if (!db) return false;
+
+    const evt = data as Partial<TaskDelegatedEvent>;
+
+    const correlationId =
+      (evt.correlation_id as string) || (data.correlationId as string) || fallbackId;
+
+    const taskType = (evt.task_type as string) || (data.taskType as string);
+    const delegatedTo = (evt.delegated_to as string) || (data.delegatedTo as string);
+    if (!taskType || !delegatedTo) {
+      console.warn(
+        '[ReadModelConsumer] task-delegated event missing required fields ' +
+          `(correlation_id=${correlationId}) -- skipping malformed event`
+      );
+      return true;
+    }
+
+    const row: InsertDelegationEvent = {
+      correlationId,
+      sessionId: (evt.session_id as string) || (data.sessionId as string) || null,
+      timestamp: safeParseDate(evt.timestamp),
+      taskType,
+      delegatedTo,
+      delegatedBy: (evt.delegated_by as string) || (data.delegatedBy as string) || null,
+      qualityGatePassed: Boolean(evt.quality_gate_passed ?? data.qualityGatePassed ?? false),
+      qualityGatesChecked:
+        evt.quality_gates_checked ??
+        (data.qualityGatesChecked as string[] | null | undefined) ??
+        null,
+      qualityGatesFailed:
+        evt.quality_gates_failed ??
+        (data.qualityGatesFailed as string[] | null | undefined) ??
+        null,
+      costUsd: (() => {
+        const v = evt.cost_usd ?? data.costUsd;
+        return v != null && !Number.isNaN(Number(v)) ? String(Number(v)) : null;
+      })(),
+      costSavingsUsd: (() => {
+        const v = evt.cost_savings_usd ?? data.costSavingsUsd;
+        return v != null && !Number.isNaN(Number(v)) ? String(Number(v)) : null;
+      })(),
+      delegationLatencyMs: (() => {
+        const v = evt.delegation_latency_ms ?? data.delegationLatencyMs;
+        return v != null && !Number.isNaN(Number(v)) ? Math.round(Number(v)) : null;
+      })(),
+      repo: (evt.repo as string) || (data.repo as string) || null,
+      isShadow: Boolean(evt.is_shadow ?? data.isShadow ?? false),
+    };
+
+    try {
+      await db
+        .insert(delegationEvents)
+        .values(row)
+        .onConflictDoNothing({ target: delegationEvents.correlationId });
+    } catch (err) {
+      const pgCode = (err as { code?: string }).code;
+      const msg = err instanceof Error ? err.message : String(err);
+      if (
+        pgCode === '42P01' ||
+        (msg.includes('delegation_events') && msg.includes('does not exist'))
+      ) {
+        console.warn(
+          '[ReadModelConsumer] delegation_events table not yet created -- ' +
+            'run migrations to enable delegation projection'
+        );
+        return true;
+      }
+      throw err;
+    }
+
+    emitDelegationInvalidate(correlationId);
+    return true;
+  }
+
+  /**
+   * Project a delegation-shadow-comparison event into the
+   * `delegation_shadow_comparisons` table (OMN-2284).
+   *
+   * Deduplication key: (correlation_id) — each comparison has a unique correlation ID.
+   */
+  private async projectDelegationShadowComparisonEvent(
+    data: Record<string, unknown>,
+    fallbackId: string
+  ): Promise<boolean> {
+    const db = tryGetIntelligenceDb();
+    if (!db) return false;
+
+    const evt = data as Partial<DelegationShadowComparisonEvent>;
+
+    const correlationId =
+      (evt.correlation_id as string) || (data.correlationId as string) || fallbackId;
+
+    const taskType = (evt.task_type as string) || (data.taskType as string);
+    const primaryAgent = (evt.primary_agent as string) || (data.primaryAgent as string);
+    const shadowAgent = (evt.shadow_agent as string) || (data.shadowAgent as string);
+    if (!taskType || !primaryAgent || !shadowAgent) {
+      console.warn(
+        '[ReadModelConsumer] delegation-shadow-comparison event missing required fields ' +
+          `(correlation_id=${correlationId}) -- skipping malformed event`
+      );
+      return true;
+    }
+
+    const row: InsertDelegationShadowComparison = {
+      correlationId,
+      sessionId: (evt.session_id as string) || (data.sessionId as string) || null,
+      timestamp: safeParseDate(evt.timestamp),
+      taskType,
+      primaryAgent,
+      shadowAgent,
+      divergenceDetected: Boolean(evt.divergence_detected ?? data.divergenceDetected ?? false),
+      divergenceScore: (() => {
+        const v = evt.divergence_score ?? data.divergenceScore;
+        return v != null && !Number.isNaN(Number(v)) ? String(Number(v)) : null;
+      })(),
+      primaryLatencyMs: (() => {
+        const v = evt.primary_latency_ms ?? data.primaryLatencyMs;
+        return v != null && !Number.isNaN(Number(v)) ? Math.round(Number(v)) : null;
+      })(),
+      shadowLatencyMs: (() => {
+        const v = evt.shadow_latency_ms ?? data.shadowLatencyMs;
+        return v != null && !Number.isNaN(Number(v)) ? Math.round(Number(v)) : null;
+      })(),
+      primaryCostUsd: (() => {
+        const v = evt.primary_cost_usd ?? data.primaryCostUsd;
+        return v != null && !Number.isNaN(Number(v)) ? String(Number(v)) : null;
+      })(),
+      shadowCostUsd: (() => {
+        const v = evt.shadow_cost_usd ?? data.shadowCostUsd;
+        return v != null && !Number.isNaN(Number(v)) ? String(Number(v)) : null;
+      })(),
+      divergenceReason:
+        (evt.divergence_reason as string) || (data.divergenceReason as string) || null,
+    };
+
+    try {
+      await db
+        .insert(delegationShadowComparisons)
+        .values(row)
+        .onConflictDoNothing({ target: delegationShadowComparisons.correlationId });
+    } catch (err) {
+      const pgCode = (err as { code?: string }).code;
+      const msg = err instanceof Error ? err.message : String(err);
+      if (
+        pgCode === '42P01' ||
+        (msg.includes('delegation_shadow_comparisons') && msg.includes('does not exist'))
+      ) {
+        console.warn(
+          '[ReadModelConsumer] delegation_shadow_comparisons table not yet created -- ' +
+            'run migrations to enable delegation shadow projection'
+        );
+        return true;
+      }
+      throw err;
+    }
+
+    emitDelegationInvalidate(correlationId);
+    return true;
+  }
+
+  /**
+   * Project a LLM call completed event into the `llm_cost_aggregates` table.
+   *
+   * OMN-2371 (GAP-5): Previously consumed 'onex.evt.omniclaude.llm-cost-reported.v1'
+   * which had zero producers. Now consuming the canonical topic
+   * 'onex.evt.omniintelligence.llm-call-completed.v1' emitted by NodeLlmInferenceEffect
+   * in omnibase_infra per each LLM API call.
+   *
+   * Payload schema: ContractLlmCallMetrics (omnibase_spi/contracts/measurement)
+   *   - model_id: string — LLM model identifier
+   *   - prompt_tokens / completion_tokens / total_tokens: number
+   *   - estimated_cost_usd: number | null — the only cost field in this contract
+   *   - usage_normalized: { source: 'API'|'ESTIMATED'|'MISSING', ... } | null
+   *   - usage_is_estimated: boolean — top-level estimation flag
+   *   - timestamp_iso: ISO-8601 string — call timestamp
+   *   - reporting_source: string — provenance label (e.g. 'pipeline-agent', repo name)
+   *
+   * Each event maps to a single llm_cost_aggregates row with granularity='hour'.
+   * The cost trend queries bucket rows via date_trunc() on bucket_time.
+   *
+   * Deduplication: no natural unique key exists on llm_cost_aggregates
+   * (multiple calls for the same model+session are valid). INSERT without ON CONFLICT;
+   * idempotency is achieved via Kafka consumer group offset tracking.
    *
    * Returns true when written, false when the DB is unavailable.
    */
@@ -987,22 +1298,39 @@ export class ReadModelConsumer {
     const db = tryGetIntelligenceDb();
     if (!db) return false;
 
-    // Resolve bucket_time: use the event timestamp if present, fall back to now.
+    // Resolve bucket_time from ContractLlmCallMetrics.timestamp_iso or fallbacks.
+    // ContractLlmCallMetrics uses 'timestamp_iso' as the primary timestamp field.
     const bucketTime = safeParseDate(
-      data.bucket_time ?? data.bucketTime ?? data.timestamp ?? data.created_at
+      data.timestamp_iso ?? data.bucket_time ?? data.bucketTime ?? data.timestamp ?? data.created_at
     );
 
-    // usage_source must be one of 'API' | 'ESTIMATED' | 'MISSING'.
-    // Default to 'API' when absent — the event payload from omniclaude
-    // carries API-reported usage by default.
-    const usageSourceRaw = (data.usage_source as string) || (data.usageSource as string) || 'API';
-    const usageSource = ['API', 'ESTIMATED', 'MISSING'].includes(usageSourceRaw)
-      ? usageSourceRaw
+    // usage_source: prefer the nested usage_normalized.source (ContractLlmCallMetrics schema),
+    // then fall back to top-level usage_source / usageSource (legacy schema compat).
+    // Must be one of 'API' | 'ESTIMATED' | 'MISSING'.
+    const usageNormalized = data.usage_normalized as Record<string, unknown> | null | undefined;
+    const usageSourceRaw =
+      (usageNormalized?.source as string) ||
+      (data.usage_source as string) ||
+      (data.usageSource as string) ||
+      (data.usage_is_estimated ? 'ESTIMATED' : 'API');
+    const usageSourceUpper = usageSourceRaw.toUpperCase();
+    const validUsageSources = ['API', 'ESTIMATED', 'MISSING'] as const;
+    const usageSource = validUsageSources.includes(
+      usageSourceUpper as (typeof validUsageSources)[number]
+    )
+      ? (usageSourceUpper as 'API' | 'ESTIMATED' | 'MISSING')
       : 'API';
+    if (
+      !validUsageSources.includes(usageSourceUpper as (typeof validUsageSources)[number]) &&
+      usageSourceRaw
+    ) {
+      console.warn(
+        `[ReadModelConsumer] LLM cost event has unrecognised usage_source "${usageSourceRaw}" — defaulting to "API"`
+      );
+    }
 
-    // granularity must be one of 'hour' | 'day'.
-    // Default to 'hour' for unrecognized values. Follow the exact same pattern
-    // as the usageSource allowlist validation above.
+    // granularity: always 'hour' for per-call events from ContractLlmCallMetrics.
+    // Pre-aggregated events may carry an explicit 'day' granularity — respect it.
     const granularityRaw = (data.granularity as string) || 'hour';
     const granularity = ['hour', 'day'].includes(granularityRaw) ? granularityRaw : 'hour';
 
@@ -1032,27 +1360,60 @@ export class ReadModelConsumer {
       totalTokens = rawTotalTokens;
     }
 
-    // Coerce cost fields to a finite number, defaulting to 0 for any
-    // non-numeric value (including false, '', NaN, Infinity). String(false)
-    // would be 'false' which fails PostgreSQL's numeric column constraint, so
-    // we must guard against that before passing to Drizzle's decimal type.
-    const rawTotalCost = data.total_cost_usd ?? data.totalCostUsd;
+    // Cost field mapping for ContractLlmCallMetrics:
+    // The contract only has estimated_cost_usd (no separate reported_cost_usd).
+    // When a payload has no explicit total_cost_usd / totalCostUsd, fall back to
+    // rawEstimatedCost so the cost-trend dashboard has a meaningful total value.
+    // Legacy pre-aggregated events may carry explicit total_cost_usd / reported_cost_usd.
+    //
+    // Coerce to finite number, defaulting to 0 for any non-numeric value (including
+    // false, '', NaN, Infinity). String(false) → 'false' fails PostgreSQL numeric columns.
+    const rawEstimatedCost = data.estimated_cost_usd ?? data.estimatedCostUsd;
+    const nEstimatedCost = Number(rawEstimatedCost);
+    const estimatedCostUsd = String(Number.isFinite(nEstimatedCost) ? nEstimatedCost : 0);
+
+    const rawTotalCost = data.total_cost_usd ?? data.totalCostUsd ?? rawEstimatedCost;
     const nTotalCost = Number(rawTotalCost);
     const totalCostUsd = String(Number.isFinite(nTotalCost) ? nTotalCost : 0);
 
     const rawReportedCost = data.reported_cost_usd ?? data.reportedCostUsd;
     const nReportedCost = Number(rawReportedCost);
+    // reported_cost_usd: use explicit field if present, else fall back to 0.
+    // ContractLlmCallMetrics does not carry reported_cost_usd separately.
     const reportedCostUsd = String(Number.isFinite(nReportedCost) ? nReportedCost : 0);
 
-    const rawEstimatedCost = data.estimated_cost_usd ?? data.estimatedCostUsd;
-    const nEstimatedCost = Number(rawEstimatedCost);
-    const estimatedCostUsd = String(Number.isFinite(nEstimatedCost) ? nEstimatedCost : 0);
+    // model_name: ContractLlmCallMetrics uses 'model_id'; also accept 'model_name' for
+    // legacy compatibility.
+    const modelName =
+      (data.model_id as string) ||
+      (data.model_name as string) ||
+      (data.modelName as string) ||
+      'unknown';
+
+    // repo_name: ContractLlmCallMetrics uses 'reporting_source' as the provenance label.
+    // Expected value space: short, slug-style identifiers such as 'omniclaude',
+    // 'omniclaude-node', or 'pipeline-agent' — the canonical name of the service or
+    // repository that emitted the event.  These identifiers contain no whitespace and
+    // are well under 64 characters, so we use those two properties as a heuristic to
+    // distinguish a valid repo name from a free-form description that a producer may
+    // occasionally put in reporting_source.  Limitation: a descriptive string that
+    // happens to be short and space-free (e.g. "adhoc") would also pass — but that is
+    // an acceptable false-positive because the field still provides a useful grouping
+    // key in the cost-aggregate table.  Explicit repo_name / repoName fields from
+    // legacy payloads always take precedence and bypass this heuristic entirely.
+    const reportingSource = (data.reporting_source as string) || (data.reportingSource as string);
+    const explicitRepo = (data.repo_name as string) || (data.repoName as string);
+    const repoName =
+      explicitRepo ||
+      (reportingSource && reportingSource.length < 64 && !/\s/.test(reportingSource)
+        ? reportingSource
+        : undefined);
 
     const row: InsertLlmCostAggregate = {
       bucketTime,
       granularity,
-      modelName: (data.model_name as string) || (data.modelName as string) || 'unknown',
-      repoName: (data.repo_name as string) || (data.repoName as string) || undefined,
+      modelName,
+      repoName,
       patternId: (data.pattern_id as string) || (data.patternId as string) || undefined,
       patternName: (data.pattern_name as string) || (data.patternName as string) || undefined,
       sessionId: (data.session_id as string) || (data.sessionId as string) || undefined,
@@ -1068,11 +1429,11 @@ export class ReadModelConsumer {
 
     // Validate that model_name is not 'unknown' when the event carries one.
     // Check the DERIVED row value rather than the raw event fields — the raw
-    // field check (data.model_name == null) misses the case where the event
-    // sends model_name: '' which is coerced to 'unknown' by the || fallback.
+    // field check (data.model_id == null) misses the case where the event
+    // sends model_id: '' which is coerced to 'unknown' by the || fallback.
     if (row.modelName === 'unknown') {
       console.warn(
-        '[ReadModelConsumer] LLM cost event missing model_name — inserting as "unknown"'
+        '[ReadModelConsumer] LLM cost event missing model_id/model_name — inserting as "unknown"'
       );
     }
 

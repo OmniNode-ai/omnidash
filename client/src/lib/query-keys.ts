@@ -648,6 +648,40 @@ export const queryKeys = {
     /** Multi-metric trend over time */
     trend: (window: string) => [...queryKeys.llmRouting.all, 'trend', window] as const,
   },
+  // ============================================================================
+  // Delegation Metrics (OMN-2284)
+  // ============================================================================
+
+  /**
+   * Delegation metrics query keys for the delegation metrics dashboard.
+   *
+   * On DELEGATION_INVALIDATE WebSocket event, invalidate `queryKeys.delegation.all`
+   * to trigger a full refetch of all delegation panels.
+   */
+  delegation: {
+    /** Base key for all delegation queries */
+    all: ['delegation'] as const,
+
+    /** Summary metrics (hero cards) for a time window */
+    summary: (window: string) => [...queryKeys.delegation.all, 'summary', window] as const,
+
+    /** Delegation breakdown by task type */
+    byTaskType: (window: string) => [...queryKeys.delegation.all, 'by-task-type', window] as const,
+
+    /** Cost savings trend */
+    costSavings: (window: string) => [...queryKeys.delegation.all, 'cost-savings', window] as const,
+
+    /** Quality gate pass rate trend */
+    qualityGates: (window: string) =>
+      [...queryKeys.delegation.all, 'quality-gates', window] as const,
+
+    /** Shadow divergence table */
+    shadowDivergence: (window: string) =>
+      [...queryKeys.delegation.all, 'shadow-divergence', window] as const,
+
+    /** Multi-metric trend over time */
+    trend: (window: string) => [...queryKeys.delegation.all, 'trend', window] as const,
+  },
 } as const;
 
 /**

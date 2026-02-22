@@ -35,6 +35,7 @@ import {
 } from '@/components/ui/table';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { Skeleton } from '@/components/ui/skeleton';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { MetricCard } from '@/components/MetricCard';
 import {
   RefreshCw,
@@ -275,6 +276,7 @@ export default function ValidationDashboard() {
   const {
     data: summary,
     isLoading: summaryLoading,
+    isError: summaryError,
     refetch: refetchSummary,
   } = useQuery<ValidationSummary>({
     queryKey: queryKeys.validation.summary(),
@@ -285,6 +287,7 @@ export default function ValidationDashboard() {
   const {
     data: runsData,
     isLoading: runsLoading,
+    isError: runsError,
     refetch: refetchRuns,
   } = useQuery<RunsListResponse>({
     queryKey: queryKeys.validation.list(statusFilter),
@@ -312,6 +315,7 @@ export default function ValidationDashboard() {
   const {
     data: lifecycle,
     isLoading: lifecycleLoading,
+    isError: lifecycleError,
     refetch: refetchLifecycle,
   } = useQuery<LifecycleSummary>({
     queryKey: queryKeys.validation.lifecycle(),
@@ -359,6 +363,20 @@ export default function ValidationDashboard() {
           </Button>
         </div>
       </div>
+
+      {/* Error Banner */}
+      {summaryError && (
+        <Alert variant="destructive">
+          <AlertTriangle className="h-4 w-4" />
+          <AlertTitle>Failed to load validation data</AlertTitle>
+          <AlertDescription>
+            Validation summary could not be retrieved.
+            <Button variant="outline" size="sm" className="mt-2" onClick={handleRefresh}>
+              <RefreshCw className="w-4 h-4 mr-1" /> Retry
+            </Button>
+          </AlertDescription>
+        </Alert>
+      )}
 
       {/* Tabbed Layout (OMN-2152) */}
       <Tabs value={activeTab} onValueChange={setActiveTab}>
@@ -570,7 +588,11 @@ export default function ValidationDashboard() {
               </div>
             </CardHeader>
             <CardContent>
-              {runsLoading ? (
+              {runsError ? (
+                <p className="text-sm text-destructive py-8 text-center">
+                  Failed to load validation runs.
+                </p>
+              ) : runsLoading ? (
                 <div className="space-y-2">
                   {Array.from({ length: 5 }).map((_, i) => (
                     <Skeleton key={i} className="h-12 w-full" />
@@ -762,7 +784,11 @@ export default function ValidationDashboard() {
               </CardDescription>
             </CardHeader>
             <CardContent>
-              {lifecycleLoading ? (
+              {lifecycleError ? (
+                <p className="text-sm text-destructive py-8 text-center">
+                  Failed to load lifecycle data.
+                </p>
+              ) : lifecycleLoading ? (
                 <div className="space-y-4">
                   <Skeleton className="h-24 w-full" />
                 </div>

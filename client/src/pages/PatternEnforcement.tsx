@@ -374,8 +374,7 @@ export default function PatternEnforcement() {
     refetch: refetchSummary,
   } = useQuery({
     queryKey: queryKeys.enforcement.summary(timeWindow),
-    queryFn: () =>
-      enforcementSource.summary(timeWindow, { mockOnEmpty: true, demoMode: isDemoMode }),
+    queryFn: () => enforcementSource.summary(timeWindow, { demoMode: isDemoMode }),
     refetchInterval: getPollingInterval(POLLING_INTERVAL_MEDIUM),
     staleTime: 30_000,
   });
@@ -387,8 +386,7 @@ export default function PatternEnforcement() {
     refetch: refetchLang,
   } = useQuery({
     queryKey: queryKeys.enforcement.byLanguage(timeWindow),
-    queryFn: () =>
-      enforcementSource.byLanguage(timeWindow, { mockOnEmpty: true, demoMode: isDemoMode }),
+    queryFn: () => enforcementSource.byLanguage(timeWindow, { demoMode: isDemoMode }),
     refetchInterval: getPollingInterval(POLLING_INTERVAL_SLOW),
     staleTime: 60_000,
   });
@@ -400,8 +398,7 @@ export default function PatternEnforcement() {
     refetch: refetchDomain,
   } = useQuery({
     queryKey: queryKeys.enforcement.byDomain(timeWindow),
-    queryFn: () =>
-      enforcementSource.byDomain(timeWindow, { mockOnEmpty: true, demoMode: isDemoMode }),
+    queryFn: () => enforcementSource.byDomain(timeWindow, { demoMode: isDemoMode }),
     refetchInterval: getPollingInterval(POLLING_INTERVAL_SLOW),
     staleTime: 60_000,
   });
@@ -413,8 +410,7 @@ export default function PatternEnforcement() {
     refetch: refetchViolated,
   } = useQuery({
     queryKey: queryKeys.enforcement.violatedPatterns(timeWindow),
-    queryFn: () =>
-      enforcementSource.violatedPatterns(timeWindow, { mockOnEmpty: true, demoMode: isDemoMode }),
+    queryFn: () => enforcementSource.violatedPatterns(timeWindow, { demoMode: isDemoMode }),
     refetchInterval: getPollingInterval(POLLING_INTERVAL_MEDIUM),
     staleTime: 30_000,
   });
@@ -426,7 +422,7 @@ export default function PatternEnforcement() {
     refetch: refetchTrend,
   } = useQuery({
     queryKey: queryKeys.enforcement.trend(timeWindow),
-    queryFn: () => enforcementSource.trend(timeWindow, { mockOnEmpty: true, demoMode: isDemoMode }),
+    queryFn: () => enforcementSource.trend(timeWindow, { demoMode: isDemoMode }),
     refetchInterval: getPollingInterval(POLLING_INTERVAL_SLOW),
     staleTime: 60_000,
   });
@@ -505,7 +501,7 @@ export default function PatternEnforcement() {
           <AlertTitle>Failed to load enforcement data</AlertTitle>
           <AlertDescription>
             Unable to load enforcement data. Check that the API server is running.
-            <Button variant="outline" size="sm" className="mt-2" onClick={handleRefresh}>
+            <Button variant="outline" size="sm" className="mt-2 ml-2" onClick={handleRefresh}>
               <RefreshCw className="h-4 w-4 mr-1" /> Retry
             </Button>
           </AlertDescription>

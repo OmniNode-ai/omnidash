@@ -17,6 +17,9 @@ import { CostMetricsProjection } from './projections/cost-metrics-projection';
 import { BaselinesProjection } from './projections/baselines-projection';
 import { ValidationProjection } from './projections/validation-projection';
 import { PatternsProjection } from './projections/patterns-projection';
+import { EnrichmentProjection } from './projections/enrichment-projection';
+import { EnforcementProjection } from './projections/enforcement-projection';
+import { LlmRoutingProjection } from './projections/llm-routing-projection';
 import { eventConsumer } from './event-consumer';
 import { eventBusDataSource } from './event-bus-data-source';
 import { extractActionFromTopic, extractProducerFromTopicOrDefault } from '@shared/topics';
@@ -74,6 +77,12 @@ export const baselinesProjection = new BaselinesProjection();
 export const validationProjection = new ValidationProjection();
 /** Patterns dashboard projection. Queries pattern discovery tables. */
 export const patternsProjection = new PatternsProjection();
+/** Context enrichment projection (OMN-2373). Queries context_enrichment_events table. */
+export const enrichmentProjection = new EnrichmentProjection();
+/** Pattern enforcement projection (OMN-2374). Queries pattern_enforcement_events table. */
+export const enforcementProjection = new EnforcementProjection();
+/** LLM routing effectiveness projection (OMN-2372). Queries llm_routing_decisions table. */
+export const llmRoutingProjection = new LlmRoutingProjection();
 
 if (!projectionService.getView(extractionMetricsProjection.viewId)) {
   projectionService.registerView(extractionMetricsProjection);
@@ -92,6 +101,15 @@ if (!projectionService.getView(validationProjection.viewId)) {
 }
 if (!projectionService.getView(patternsProjection.viewId)) {
   projectionService.registerView(patternsProjection);
+}
+if (!projectionService.getView(enrichmentProjection.viewId)) {
+  projectionService.registerView(enrichmentProjection);
+}
+if (!projectionService.getView(enforcementProjection.viewId)) {
+  projectionService.registerView(enforcementProjection);
+}
+if (!projectionService.getView(llmRoutingProjection.viewId)) {
+  projectionService.registerView(llmRoutingProjection);
 }
 
 // ============================================================================

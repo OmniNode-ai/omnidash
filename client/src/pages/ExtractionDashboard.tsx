@@ -27,6 +27,7 @@ import {
 } from '@/components/ui/select';
 import { Activity, Clock, Zap, AlertTriangle } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { formatRelativeTime } from '@/lib/date-utils';
 import { MetricCard } from '@/components/MetricCard';
 import { PipelineHealthPanel } from '@/components/extraction/PipelineHealthPanel';
@@ -87,7 +88,11 @@ export default function ExtractionDashboard() {
   const { isDemoMode } = useDemoMode();
 
   // Summary stats for metric cards
-  const { data: summaryResult, isLoading: summaryLoading } = useQuery({
+  const {
+    data: summaryResult,
+    isLoading: summaryLoading,
+    isError: summaryError,
+  } = useQuery({
     queryKey: [...queryKeys.extraction.summary(), isDemoMode],
     queryFn: () => extractionSource.summary({ demoMode: isDemoMode }),
     refetchInterval: 30_000,
@@ -145,6 +150,17 @@ export default function ExtractionDashboard() {
   return (
     <div className="space-y-6">
       <DemoBanner />
+
+      {/* Error Banner */}
+      {summaryError && (
+        <Alert variant="destructive">
+          <AlertTriangle className="h-4 w-4" />
+          <AlertTitle>Failed to load extraction data</AlertTitle>
+          <AlertDescription>
+            Extraction summary could not be retrieved. Pipeline metrics may also be affected.
+          </AlertDescription>
+        </Alert>
+      )}
 
       {/* Page Header */}
       <div className="flex items-center justify-between">

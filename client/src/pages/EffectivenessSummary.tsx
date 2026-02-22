@@ -20,6 +20,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { TrendDrillDown } from '@/components/TrendDrillDown';
 import type { TrendDrillDownData } from '@/components/TrendDrillDown';
 import { queryKeys } from '@/lib/query-keys';
@@ -110,6 +111,7 @@ export default function EffectivenessSummary() {
   const {
     data: summary,
     isLoading: summaryLoading,
+    isError: summaryError,
     refetch: refetchSummary,
   } = useQuery<SummaryType>({
     queryKey: queryKeys.effectiveness.summary(),
@@ -120,6 +122,7 @@ export default function EffectivenessSummary() {
   const {
     data: throttle,
     isLoading: throttleLoading,
+    isError: throttleError,
     refetch: refetchThrottle,
   } = useQuery<ThrottleStatus>({
     queryKey: queryKeys.effectiveness.throttle(),
@@ -127,7 +130,11 @@ export default function EffectivenessSummary() {
     refetchInterval: 15_000,
   });
 
-  const { data: trend, isLoading: trendLoading } = useQuery<EffectivenessTrendPoint[]>({
+  const {
+    data: trend,
+    isLoading: trendLoading,
+    isError: trendError,
+  } = useQuery<EffectivenessTrendPoint[]>({
     queryKey: [...queryKeys.effectiveness.trend(), trendDays],
     queryFn: () => effectivenessSource.trend(trendDays, { demoMode: isDemoMode }),
     refetchInterval: 15_000,
@@ -199,6 +206,17 @@ export default function EffectivenessSummary() {
       {/* Demo mode banner */}
       <DemoBanner />
 
+      {/* Error Banner */}
+      {summaryError && (
+        <Alert variant="destructive">
+          <AlertTriangle className="h-4 w-4" />
+          <AlertTitle>Failed to load effectiveness data</AlertTitle>
+          <AlertDescription>
+            Effectiveness summary could not be retrieved. Other sections may also be affected.
+          </AlertDescription>
+        </Alert>
+      )}
+
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
@@ -239,8 +257,19 @@ export default function EffectivenessSummary() {
         </div>
       </div>
 
+      {/* Auto-Throttle Error */}
+      {throttleError && (
+        <Alert variant="destructive">
+          <AlertTriangle className="h-4 w-4" />
+          <AlertTitle>Failed to load auto-throttle status</AlertTitle>
+          <AlertDescription>
+            Auto-throttle status could not be retrieved. Throttle state may be unavailable.
+          </AlertDescription>
+        </Alert>
+      )}
+
       {/* Auto-Throttle Warning Banner (R2) */}
-      {!throttleLoading && throttle?.active && (
+      {!throttleLoading && !throttleError && throttle?.active && (
         <Card className="border-red-500/40 bg-red-500/[0.06]">
           <CardContent className="py-3 px-4">
             <div className="flex items-start gap-3">
@@ -368,6 +397,12 @@ export default function EffectivenessSummary() {
           <TrendDrillDown data={trendDrillDown} onClose={() => setTrendDrillDown(null)} />
           {trendLoading ? (
             <Skeleton className="h-[280px] w-full rounded-lg" />
+          ) : trendError ? (
+            <Alert variant="destructive" className="mx-0">
+              <AlertTriangle className="h-4 w-4" />
+              <AlertTitle>Failed to load trend data</AlertTitle>
+              <AlertDescription>Effectiveness trend could not be retrieved.</AlertDescription>
+            </Alert>
           ) : trend && trend.length > 0 ? (
             <ResponsiveContainer width="100%" height={280}>
               <ComposedChart

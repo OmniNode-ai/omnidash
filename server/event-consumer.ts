@@ -4051,14 +4051,6 @@ export class EventConsumer extends EventEmitter {
             this.handleCatalogChanged(event.topicsAdded, event.topicsRemoved);
           });
 
-          // Log catalog re-query events (OMN-2316).
-          manager.on('catalogRequery', (event) => {
-            console.log(
-              `[EventConsumer] Topic catalog re-query triggered (reason=${event.reason}, ` +
-                `lastSeenVersion=${event.lastSeenVersion})`
-            );
-          });
-
           resolve(event.topics);
         });
 

@@ -30,6 +30,7 @@ import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { cn } from '@/lib/utils';
 import type {
   CostSummary,
@@ -726,45 +727,73 @@ export default function CostTrendDashboard() {
   // Data Fetching
   // ---------------------------------------------------------------------------
 
-  const fetchOpts = { mockOnEmpty: true, includeEstimated, demoMode: isDemoMode };
+  const fetchOpts = { includeEstimated, demoMode: isDemoMode };
 
-  const { data: summary, isLoading: summaryLoading } = useQuery<CostSummary>({
+  const {
+    data: summary,
+    isLoading: summaryLoading,
+    isError: summaryError,
+  } = useQuery<CostSummary>({
     queryKey: [...queryKeys.costs.summary(timeWindow), includeEstimated],
     queryFn: () => costSource.summary(timeWindow, fetchOpts),
     refetchInterval: 15_000,
   });
 
-  const { data: trend, isLoading: trendLoading } = useQuery<CostTrendPoint[]>({
+  const {
+    data: trend,
+    isLoading: trendLoading,
+    isError: trendError,
+  } = useQuery<CostTrendPoint[]>({
     queryKey: [...queryKeys.costs.trend(timeWindow), includeEstimated],
     queryFn: () => costSource.trend(timeWindow, fetchOpts),
     refetchInterval: 15_000,
   });
 
-  const { data: byModel, isLoading: modelLoading } = useQuery<CostByModel[]>({
+  const {
+    data: byModel,
+    isLoading: modelLoading,
+    isError: modelError,
+  } = useQuery<CostByModel[]>({
     queryKey: [...queryKeys.costs.byModel(), includeEstimated],
     queryFn: () => costSource.byModel(fetchOpts),
     refetchInterval: 30_000,
   });
 
-  const { data: byRepo, isLoading: repoLoading } = useQuery<CostByRepo[]>({
+  const {
+    data: byRepo,
+    isLoading: repoLoading,
+    isError: repoError,
+  } = useQuery<CostByRepo[]>({
     queryKey: [...queryKeys.costs.byRepo(), includeEstimated],
     queryFn: () => costSource.byRepo(fetchOpts),
     refetchInterval: 30_000,
   });
 
-  const { data: byPattern, isLoading: patternLoading } = useQuery<CostByPattern[]>({
+  const {
+    data: byPattern,
+    isLoading: patternLoading,
+    isError: patternError,
+  } = useQuery<CostByPattern[]>({
     queryKey: [...queryKeys.costs.byPattern(), includeEstimated],
     queryFn: () => costSource.byPattern(fetchOpts),
     refetchInterval: 30_000,
   });
 
-  const { data: tokenUsage, isLoading: tokenLoading } = useQuery<TokenUsagePoint[]>({
+  const {
+    data: tokenUsage,
+    isLoading: tokenLoading,
+    isError: tokenError,
+  } = useQuery<TokenUsagePoint[]>({
     queryKey: [...queryKeys.costs.tokenUsage(timeWindow), includeEstimated],
     queryFn: () => costSource.tokenUsage(timeWindow, fetchOpts),
     refetchInterval: 15_000,
   });
 
-  const { data: alerts, isLoading: alertsLoading } = useQuery<BudgetAlert[]>({
+  const {
+    data: alerts,
+    isLoading: alertsLoading,
+    isError: alertsError,
+  } = useQuery<BudgetAlert[]>({
     queryKey: queryKeys.costs.alerts(),
     queryFn: () => costSource.alerts(fetchOpts),
     refetchInterval: 30_000,
@@ -858,6 +887,17 @@ export default function CostTrendDashboard() {
         </div>
       </div>
 
+      {/* Error Banner */}
+      {summaryError && (
+        <Alert variant="destructive">
+          <AlertTriangle className="h-4 w-4" />
+          <AlertTitle>Failed to load cost data</AlertTitle>
+          <AlertDescription>
+            Cost summary could not be retrieved. Other charts may also be affected.
+          </AlertDescription>
+        </Alert>
+      )}
+
       {/* Hero Metric: Total Cost */}
       <HeroMetric
         label={`Total Spend (${timeWindow})`}
@@ -931,7 +971,11 @@ export default function CostTrendDashboard() {
             </CardTitle>
           </CardHeader>
           <CardContent>
-            {trendLoading ? (
+            {trendError ? (
+              <p className="text-sm text-destructive py-8 text-center">
+                Failed to load trend data.
+              </p>
+            ) : trendLoading ? (
               <Skeleton className="h-[280px] w-full rounded-lg" />
             ) : (
               <CostTrendChart data={trend} includeEstimated={includeEstimated} />
@@ -947,7 +991,11 @@ export default function CostTrendDashboard() {
             </CardTitle>
           </CardHeader>
           <CardContent>
-            {tokenLoading ? (
+            {tokenError ? (
+              <p className="text-sm text-destructive py-8 text-center">
+                Failed to load token usage data.
+              </p>
+            ) : tokenLoading ? (
               <Skeleton className="h-[280px] w-full rounded-lg" />
             ) : (
               <TokenUsageChart data={tokenUsage} />
@@ -966,7 +1014,11 @@ export default function CostTrendDashboard() {
             </CardTitle>
           </CardHeader>
           <CardContent>
-            {modelLoading ? (
+            {modelError ? (
+              <p className="text-sm text-destructive py-8 text-center">
+                Failed to load model data.
+              </p>
+            ) : modelLoading ? (
               <Skeleton className="h-[280px] w-full rounded-lg" />
             ) : (
               <CostByModelChart data={byModel} />
@@ -982,7 +1034,9 @@ export default function CostTrendDashboard() {
             </CardTitle>
           </CardHeader>
           <CardContent>
-            {repoLoading ? (
+            {repoError ? (
+              <p className="text-sm text-destructive py-8 text-center">Failed to load repo data.</p>
+            ) : repoLoading ? (
               <Skeleton className="h-[280px] w-full rounded-lg" />
             ) : (
               <CostByRepoChart data={byRepo} />
@@ -1002,7 +1056,9 @@ export default function CostTrendDashboard() {
             </Badge>
           )}
         </h3>
-        {alertsLoading ? (
+        {alertsError ? (
+          <p className="text-sm text-destructive py-4 text-center">Failed to load budget alerts.</p>
+        ) : alertsLoading ? (
           <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
             {Array.from({ length: 3 }).map((_, i) => (
               <Skeleton key={i} className="h-[120px] w-full rounded-lg" />
@@ -1027,7 +1083,11 @@ export default function CostTrendDashboard() {
           </div>
         </CardHeader>
         <CardContent>
-          {patternLoading ? (
+          {patternError ? (
+            <p className="text-sm text-destructive py-8 text-center">
+              Failed to load pattern data.
+            </p>
+          ) : patternLoading ? (
             <Skeleton className="h-[300px] w-full rounded-lg" />
           ) : (
             <CostByPatternTable data={byPattern} />

@@ -1,0 +1,177 @@
+name: ONEX Schema Compatibility
+
+on:
+  push:
+    branches: [main, develop]
+    paths:
+      - 'contracts/**'
+      - '.github/workflows/onex-schema-compat.yml'
+  pull_request:
+    branches: [main, develop]
+    paths:
+      - 'contracts/**'
+      - '.github/workflows/onex-schema-compat.yml'
+  workflow_dispatch:
+
+permissions: {}
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event_name }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  schema-compat:
+    name: ONEX Schema Compatibility Check
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4
+        with:
+          persist-credentials: false
+
+      - name: Checkout onex_change_control
+        # No token needed — OmniNode-ai/onex_change_control is a public repo.
+        # Consistent with check-handshake.yml which uses the same pattern for
+        # OmniNode-ai/omnibase_core without a token.
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4
+        with:
+          persist-credentials: false
+          repository: OmniNode-ai/onex_change_control
+          # Pinned to onex_change_control main as of 2026-02-21.
+          # Update by running:
+          #   gh api repos/OmniNode-ai/onex_change_control/commits/main --jq '.sha'
+          # SHA verified against OmniNode-ai/onex_change_control main HEAD on 2026-02-21.
+          #
+          # MAINTENANCE: This pin must be kept current with upstream releases.
+          # If onex_change_control introduces breaking API changes (new required CLI
+          # flags, changed exit codes, updated schema expectations), this workflow
+          # will silently break or produce incorrect results until the pin is updated.
+          # To find the latest SHA: gh api repos/OmniNode-ai/onex_change_control/commits/main --jq '.sha'
+          # Suggested cadence: check monthly, or whenever upstream validator changes
+          # are announced (e.g., release notes, changelog, or team communication).
+          ref: a7b46c202c9f9b06678e34889cab345e568ab123
+          path: onex_change_control
+
+      - name: Verify onex_change_control checkout
+        run: |
+          set -eo pipefail
+          # Checks that the source file exists in the expected location.
+          # Note: file existence alone does not confirm the console_scripts entrypoint
+          # is resolvable. After `poetry install` (below), the `validate-yaml` entry
+          # point defined in pyproject.toml [tool.poetry.scripts] can be confirmed via:
+          #   poetry run validate-yaml --help
+          # If that command fails, the package installed incorrectly even if the .py
+          # file is present (e.g., missing __init__.py, bad pyproject.toml, editable
+          # install not applied). Add that check here if flaky entrypoint issues arise.
+          if [ ! -f onex_change_control/src/onex_change_control/scripts/validate_yaml.py ]; then
+            echo "::error::Failed to checkout onex_change_control or validate_yaml.py not found."
+            exit 1
+          fi
+
+      - name: Set up Python 3.12
+        id: setup-python
+        uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5
+        with:
+          python-version: '3.12'
+
+      - name: Install Poetry
+        # SHA pinned to snok/install-poetry v1. Verify the pin has not drifted from
+        # the v1 tag by running:
+        #   gh api repos/snok/install-poetry/git/ref/tags/v1 --jq '.object.sha'
+        # If the tag is annotated, resolve the underlying commit SHA with:
+        #   gh api repos/snok/install-poetry/git/tags/<tag-object-sha> --jq '.object.sha'
+        # The comment "# v1" is informational only — the SHA is the enforced pin.
+        uses: snok/install-poetry@76e04a911780d5b312d89783f7b1cd627778900a  # v1
+        with:
+          version: 1.8.0
+          virtualenvs-create: true
+          virtualenvs-in-project: true
+
+      - name: Cache Poetry dependencies
+        uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4
+        with:
+          path: onex_change_control/.venv
+          key: venv-${{ runner.os }}-${{ steps.setup-python.outputs.python-version }}-${{ hashFiles('onex_change_control/poetry.lock') }}
+          # restore-keys is a partial-match fallback: if the exact poetry.lock hash
+          # misses (e.g., first run after a lockfile change), a prior venv for the
+          # same OS/Python version is restored. That venv may be stale relative to
+          # the new lockfile. Accepted trade-off: the stale venv is detected and
+          # corrected at install time — Poetry resolves deps fresh on a cache miss,
+          # so the installed environment is always correct after `poetry install`.
+          # The risk of using an incorrect environment without detection is low.
+          restore-keys: |
+            venv-${{ runner.os }}-${{ steps.setup-python.outputs.python-version }}-
+
+      - name: Install onex-change-control
+        working-directory: onex_change_control
+        # Install the package and its main dependencies so that the
+        # `validate-yaml` console_scripts entrypoint defined in
+        # pyproject.toml [tool.poetry.scripts] is registered in the venv.
+        # The downstream "Verify validate-yaml entrypoint resolves" step confirms
+        # that the entrypoint resolves correctly after the install completes.
+        run: poetry install --no-interaction --only main
+
+      - name: Verify validate-yaml entrypoint resolves
+        working-directory: onex_change_control
+        run: poetry run validate-yaml --help
+
+      - name: Validate ONEX contract files
+        run: |
+          set -eo pipefail
+          # Find YAML/YML files in contracts/ (ticket contracts, day_close records).
+          # Root contract.yaml is an ONEX Service Contract (different schema) — excluded.
+          #
+          # DELIBERATE CHOICE: -path vs -name for the exclusion
+          #   -not -name "contract.yaml"  would exclude ANY file named contract.yaml in
+          #     ANY subdirectory of contracts/, which is too broad. A future file at
+          #     contracts/subdir/contract.yaml would be wrongly skipped.
+          #   -not -path "$GITHUB_WORKSPACE/contracts/contract.yaml"  limits exclusion to
+          #     exactly the root-level file, so contracts/subdir/contract.yaml files ARE
+          #     still validated.
+          # The -path form is therefore intentionally more precise. If the root exclusion
+          # location ever changes (e.g., the file moves or is renamed), update the -path
+          # argument in the find invocation below to match.
+          #
+          # The file list is captured once into a NUL-delimited temp file so the
+          # early-exit guard and the validator xargs both operate on exactly the
+          # same set. This eliminates the structural drift risk that existed when
+          # two independent find commands had to be kept in sync manually.
+          # If you add further exclusions or additional glob patterns, change only
+          # the single find invocation below.
+          #
+          # The contracts/ directory is checked for existence before running find so
+          # that permission errors on subdirectories are not silently suppressed.
+          # "No such file or directory" (i.e., contracts/ missing entirely) is the
+          # only case that should be treated as an empty result rather than an error.
+          YAML_LIST_FILE=$(mktemp)
+          trap 'rm -f "$YAML_LIST_FILE"' EXIT
+          if [ -d "$GITHUB_WORKSPACE/contracts" ]; then
+            find "$GITHUB_WORKSPACE/contracts" \( -name "*.yaml" -o -name "*.yml" \) -not -path "${GITHUB_WORKSPACE}/contracts/contract.yaml" -print0 \
+              | sort -z \
+              > "$YAML_LIST_FILE"
+          fi
+
+          if [ ! -s "$YAML_LIST_FILE" ]; then
+            echo "No ONEX contract YAML files found in contracts/ — gate passes (nothing to validate)"
+            exit 0
+          fi
+
+          echo "Found ONEX contract files to validate:"
+          # Display the NUL-delimited list in human-readable form.
+          tr '\0' '\n' < "$YAML_LIST_FILE"
+          echo ""
+
+          # Run the validator from the onex_change_control virtualenv.
+          # validate-yaml exits 0 on all-valid, 1 on any invalid file.
+          # Use xargs -0 so filenames with spaces are passed safely.
+          #
+          # NOTE: validate-yaml must accept absolute paths. YAML_LIST_FILE contains
+          # absolute paths (produced by find with $GITHUB_WORKSPACE prefix above).
+          # If validate-yaml is changed to require relative paths, the find invocation
+          # above must be updated accordingly.
+          cd "$GITHUB_WORKSPACE/onex_change_control"
+          xargs -r -0 poetry run validate-yaml < "$YAML_LIST_FILE"

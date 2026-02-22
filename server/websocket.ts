@@ -27,6 +27,9 @@ import { insightsEventEmitter } from './insights-events';
 import { baselinesEventEmitter } from './baselines-events';
 import { llmRoutingEventEmitter } from './llm-routing-events';
 import { effectivenessEventEmitter } from './effectiveness-events';
+import { enrichmentEventEmitter } from './enrichment-events';
+import { enforcementEventEmitter } from './enforcement-events';
+import { delegationEventEmitter } from './delegation-events';
 import { projectionService } from './projection-bootstrap';
 import { getEventBusDataSource, type EventBusEvent } from './event-bus-data-source';
 import { getPlaybackDataSource } from './playback-data-source';
@@ -271,9 +274,15 @@ const VALID_TOPICS = [
   'effectiveness',
   // Baselines ROI invalidation events (OMN-2331)
   'baselines',
+  // Delegation metrics invalidation events (OMN-2284)
+  'delegation',
+  // Context enrichment invalidation events (OMN-2280 / OMN-2373)
+  'enrichment',
+  // Pattern enforcement invalidation events (OMN-2374)
+  'enforcement',
 ] as const;
 
-type ValidTopic = (typeof VALID_TOPICS)[number];
+type _ValidTopic = (typeof VALID_TOPICS)[number];
 
 /**
  * Validates a topic string. Accepts static VALID_TOPICS entries or any
@@ -535,6 +544,46 @@ export function setupWebSocket(httpServer: HTTPServer) {
     broadcast('EFFECTIVENESS_UPDATE', { timestamp: Date.now() }, 'effectiveness');
   };
   effectivenessEventEmitter.on('effectiveness-update', effectivenessUpdateHandler);
+
+  // Context enrichment invalidation listener (OMN-2373)
+  // Tells clients to re-fetch enrichment data when a new enrichment event is projected.
+  // Uses enrichmentEventEmitter so ReadModelConsumer can trigger it after projecting.
+  // Invalidation-only broadcast: clients re-query the /api/enrichment/* endpoints on receipt.
+  const enrichmentInvalidateHandler = (data: { correlationId: string }) => {
+    broadcast(
+      'ENRICHMENT_INVALIDATE',
+      { correlationId: data.correlationId, timestamp: Date.now() },
+      'enrichment'
+    );
+  };
+  enrichmentEventEmitter.on('enrichment-invalidate', enrichmentInvalidateHandler);
+
+  // Pattern enforcement invalidation listener (OMN-2374)
+  // Tells clients to re-fetch enforcement data when a new enforcement event is projected.
+  // Uses enforcementEventEmitter so ReadModelConsumer can trigger it after projecting.
+  // Invalidation-only broadcast: clients re-query the /api/enforcement/* endpoints on receipt.
+  const enforcementInvalidateHandler = (data: { correlationId: string }) => {
+    broadcast(
+      'ENFORCEMENT_INVALIDATE',
+      { correlationId: data.correlationId, timestamp: Date.now() },
+      'enforcement'
+    );
+  };
+  enforcementEventEmitter.on('enforcement-invalidate', enforcementInvalidateHandler);
+
+  // Delegation invalidation listener (OMN-2284)
+  // Tells clients to re-fetch delegation data when a new delegation event is projected.
+  // Uses delegationEventEmitter so ReadModelConsumer can trigger it after projecting
+  // onex.evt.omniclaude.task-delegated.v1 or delegation-shadow-comparison.v1.
+  // Invalidation-only broadcast: clients re-query the /api/delegation/* endpoints on receipt.
+  const delegationInvalidateHandler = (data: { correlationId: string }) => {
+    broadcast(
+      'DELEGATION_INVALIDATE',
+      { correlationId: data.correlationId, timestamp: Date.now() },
+      'delegation'
+    );
+  };
+  delegationEventEmitter.on('delegation-invalidate', delegationInvalidateHandler);
 
   // Node Registry event listeners
   registerEventListener('nodeIntrospectionUpdate', (event: NodeIntrospectionEvent) => {
@@ -1123,6 +1172,15 @@ export function setupWebSocket(httpServer: HTTPServer) {
 
     // Remove effectiveness event listener (OMN-2328)
     effectivenessEventEmitter.removeListener('effectiveness-update', effectivenessUpdateHandler);
+
+    // Remove enrichment event listener (OMN-2373)
+    enrichmentEventEmitter.removeListener('enrichment-invalidate', enrichmentInvalidateHandler);
+
+    // Remove enforcement event listener (OMN-2374)
+    enforcementEventEmitter.removeListener('enforcement-invalidate', enforcementInvalidateHandler);
+
+    // Remove delegation event listener (OMN-2284)
+    delegationEventEmitter.removeListener('delegation-invalidate', delegationInvalidateHandler);
 
     // Remove event bus data source listeners
     console.log(`Removing ${eventBusListeners.length} event bus data source listeners...`);
