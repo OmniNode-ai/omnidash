@@ -63,6 +63,21 @@ const FORBIDDEN_IMPORT_PATTERNS: Array<{ name: string; regex: RegExp }> = [
   { name: 'tryGetIntelligenceDb', regex: /import\s.*tryGetIntelligenceDb/ },
 ];
 
+/**
+ * New omniclaude tables that must NOT be accessed directly from route files.
+ * These tables are populated via Kafka → read-model-consumer projections.
+ * Routes must access them only through ProjectionService views.
+ * (OMN-2596: Wave 2 — 5 new tables)
+ */
+const PROTECTED_TABLE_NAMES = [
+  'gate_decisions',
+  'epic_run_lease',
+  'epic_run_events',
+  'pr_watch_state',
+  'pipeline_budget_state',
+  'debug_escalation_counts',
+];
+
 describe('OMN-2325: No direct DB access in route files', () => {
   it('route files do not import getIntelligenceDb or tryGetIntelligenceDb', () => {
     const routeFiles = fs
@@ -96,5 +111,74 @@ describe('OMN-2325: No direct DB access in route files', () => {
   it('exempt files list only contains files that actually exist', () => {
     const missing = [...EXEMPT_FILES].filter((f) => !fs.existsSync(path.join(SERVER_DIR, f)));
     expect(missing).toEqual([]);
+  });
+
+  /**
+   * OMN-2596: Verify that the 5 new Wave 2 tables are NOT directly referenced
+   * in route files. These tables must only be accessed through Kafka projections
+   * and ProjectionService views, enforcing the omnidash DB boundary.
+   */
+  it('OMN-2596: new Wave 2 tables are not directly referenced in route files', () => {
+    const routeFiles = fs
+      .readdirSync(SERVER_DIR)
+      .filter((f) => f.endsWith('-routes.ts') && !EXEMPT_FILES.has(f));
+
+    const violations: string[] = [];
+
+    for (const file of routeFiles) {
+      const filePath = path.join(SERVER_DIR, file);
+      const content = fs.readFileSync(filePath, 'utf-8');
+
+      for (const tableName of PROTECTED_TABLE_NAMES) {
+        // Check for raw SQL-style or Drizzle ORM references to the table names
+        // in import statements or table identifier usage.
+        // We look for identifier-like usage (word boundary) to avoid false positives
+        // from comments that merely mention the table name as a reference.
+        const tableRegex = new RegExp(`\\b${tableName}\\b`);
+        // Only flag if there's also a DB import — bare mentions in comments are fine
+        const hasDbImport = FORBIDDEN_IMPORT_PATTERNS.some(({ regex }) => regex.test(content));
+        if (hasDbImport && tableRegex.test(content)) {
+          violations.push(
+            `${file} references table "${tableName}" with direct DB import — use a projection view instead`
+          );
+        }
+      }
+    }
+
+    if (violations.length > 0) {
+      throw new Error(
+        `Route files must not directly reference Wave 2 tables with DB imports.\n` +
+          `These tables are populated via Kafka → read-model-consumer projections.\n` +
+          `Use projectionService.getView('domain').getSnapshot() instead.\n` +
+          `Violations:\n  ${violations.join('\n  ')}`
+      );
+    }
+  });
+
+  /**
+   * OMN-2596: Verify evt topic constants for all 5 new Wave 2 topics are declared
+   * in the shared/topics.ts module.
+   */
+  it('OMN-2596: Wave 2 evt topics are declared in shared/topics.ts', () => {
+    const topicsFile = path.resolve(import.meta.dirname, '../../shared/topics.ts');
+    expect(fs.existsSync(topicsFile), `shared/topics.ts not found at ${topicsFile}`).toBe(true);
+    const content = fs.readFileSync(topicsFile, 'utf-8');
+
+    const requiredTopics = [
+      'onex.evt.omniclaude.gate-decision.v1',
+      'onex.evt.omniclaude.epic-run-updated.v1',
+      'onex.evt.omniclaude.pr-watch-updated.v1',
+      'onex.evt.omniclaude.budget-cap-hit.v1',
+      'onex.evt.omniclaude.circuit-breaker-tripped.v1',
+    ];
+
+    const missing = requiredTopics.filter((topic) => !content.includes(topic));
+    if (missing.length > 0) {
+      throw new Error(
+        `shared/topics.ts is missing Wave 2 evt topic declarations:\n` +
+          `  ${missing.join('\n  ')}\n` +
+          `Add these as exported constants following the existing topic naming convention.`
+      );
+    }
   });
 });
