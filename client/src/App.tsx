@@ -46,6 +46,12 @@ import CostTrendDashboard from '@/pages/CostTrendDashboard';
 import PatternEnforcement from '@/pages/PatternEnforcement';
 import ContextEnrichmentDashboard from '@/pages/ContextEnrichmentDashboard';
 import LlmRoutingDashboard from '@/pages/LlmRoutingDashboard';
+// Wave 2 omniclaude state event dashboards (OMN-2602)
+import GateDecisionDashboard from '@/pages/GateDecisionDashboard';
+import EpicPipelineDashboard from '@/pages/EpicPipelineDashboard';
+import PRWatchDashboard from '@/pages/PRWatchDashboard';
+import PipelineBudgetDashboard from '@/pages/PipelineBudgetDashboard';
+import DebugEscalationDashboard from '@/pages/DebugEscalationDashboard';
 
 // Phase 2: Category landing pages (OMN-2181)
 import SpeedCategory from '@/pages/SpeedCategory';
@@ -128,6 +134,13 @@ function Router() {
 
       {/* LLM Routing Effectiveness dashboard (OMN-2279) */}
       <Route path="/llm-routing" component={LlmRoutingDashboard} />
+
+      {/* Wave 2 omniclaude state event dashboards (OMN-2602) */}
+      <Route path="/gate-decisions" component={GateDecisionDashboard} />
+      <Route path="/epic-pipeline" component={EpicPipelineDashboard} />
+      <Route path="/pr-watch" component={PRWatchDashboard} />
+      <Route path="/pipeline-budget" component={PipelineBudgetDashboard} />
+      <Route path="/debug-escalation" component={DebugEscalationDashboard} />
 
       {/* Preview routes */}
       <Route path="/preview/analytics" component={EnhancedAnalytics} />

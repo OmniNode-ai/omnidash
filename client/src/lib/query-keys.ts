@@ -648,6 +648,39 @@ export const queryKeys = {
     /** Multi-metric trend over time */
     trend: (window: string) => [...queryKeys.llmRouting.all, 'trend', window] as const,
   },
+  // ============================================================================
+  // Wave 2 omniclaude state event dashboards (OMN-2602)
+  // ============================================================================
+
+  /** Gate decisions query keys (onex.evt.omniclaude.gate-decision.v1) */
+  gateDecisions: {
+    all: ['gate-decisions'] as const,
+    snapshot: () => [...['gate-decisions' as const], 'snapshot'] as const,
+  },
+
+  /** Epic run query keys (onex.evt.omniclaude.epic-run-updated.v1) */
+  epicRun: {
+    all: ['epic-run'] as const,
+    snapshot: () => [...['epic-run' as const], 'snapshot'] as const,
+  },
+
+  /** PR watch query keys (onex.evt.omniclaude.pr-watch-updated.v1) */
+  prWatch: {
+    all: ['pr-watch'] as const,
+    snapshot: () => [...['pr-watch' as const], 'snapshot'] as const,
+  },
+
+  /** Pipeline budget query keys (onex.evt.omniclaude.budget-cap-hit.v1) */
+  pipelineBudget: {
+    all: ['pipeline-budget'] as const,
+    snapshot: () => [...['pipeline-budget' as const], 'snapshot'] as const,
+  },
+
+  /** Debug escalation query keys (onex.evt.omniclaude.circuit-breaker-tripped.v1) */
+  debugEscalation: {
+    all: ['debug-escalation'] as const,
+    snapshot: () => [...['debug-escalation' as const], 'snapshot'] as const,
+  },
 } as const;
 
 /**

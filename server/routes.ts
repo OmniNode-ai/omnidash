@@ -24,6 +24,12 @@ import enrichmentRoutes from './enrichment-routes';
 import topicCatalogRoutes from './topic-catalog-routes';
 import healthDataSourcesRoutes from './health-data-sources-routes';
 import llmRoutingRoutes from './llm-routing-routes';
+// Wave 2 routes (OMN-2602)
+import gateDecisionsRoutes from './gate-decisions-routes';
+import epicRunRoutes from './epic-run-routes';
+import prWatchRoutes from './pr-watch-routes';
+import pipelineBudgetRoutes from './pipeline-budget-routes';
+import debugEscalationRoutes from './debug-escalation-routes';
 
 export async function registerRoutes(app: Express): Promise<Server> {
   // put application routes here
@@ -97,6 +103,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // Mount LLM routing effectiveness routes (OMN-2279)
   app.use('/api/llm-routing', llmRoutingRoutes);
+
+  // Mount Wave 2 omniclaude state event routes (OMN-2602)
+  app.use('/api/gate-decisions', gateDecisionsRoutes);
+  app.use('/api/epic-run', epicRunRoutes);
+  app.use('/api/pr-watch', prWatchRoutes);
+  app.use('/api/pipeline-budget', pipelineBudgetRoutes);
+  app.use('/api/debug-escalation', debugEscalationRoutes);
 
   // Conditionally mount golden path test routes (OMN-2079)
   // Only enabled when ENABLE_TEST_ROUTES=true AND (NODE_ENV=test OR OMNIDASH_TEST_MODE=true)

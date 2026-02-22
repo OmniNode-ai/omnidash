@@ -17,6 +17,12 @@ import { CostMetricsProjection } from './projections/cost-metrics-projection';
 import { BaselinesProjection } from './projections/baselines-projection';
 import { ValidationProjection } from './projections/validation-projection';
 import { PatternsProjection } from './projections/patterns-projection';
+// Wave 2 projections (OMN-2602)
+import { GateDecisionsProjection } from './projections/gate-decisions-projection';
+import { EpicRunProjection } from './projections/epic-run-projection';
+import { PrWatchProjection } from './projections/pr-watch-projection';
+import { PipelineBudgetProjection } from './projections/pipeline-budget-projection';
+import { DebugEscalationProjection } from './projections/debug-escalation-projection';
 import { eventConsumer } from './event-consumer';
 import { eventBusDataSource } from './event-bus-data-source';
 import { extractActionFromTopic, extractProducerFromTopicOrDefault } from '@shared/topics';
@@ -74,6 +80,17 @@ export const baselinesProjection = new BaselinesProjection();
 export const validationProjection = new ValidationProjection();
 /** Patterns dashboard projection. Queries pattern discovery tables. */
 export const patternsProjection = new PatternsProjection();
+// Wave 2 projections (OMN-2602)
+/** Gate decisions projection. Queries gate_decisions table. */
+export const gateDecisionsProjection = new GateDecisionsProjection();
+/** Epic run projection. Queries epic_run_events + epic_run_lease tables. */
+export const epicRunProjection = new EpicRunProjection();
+/** PR watch projection. Queries pr_watch_state table. */
+export const prWatchProjection = new PrWatchProjection();
+/** Pipeline budget projection. Queries pipeline_budget_state table. */
+export const pipelineBudgetProjection = new PipelineBudgetProjection();
+/** Debug escalation projection. Queries debug_escalation_counts table. */
+export const debugEscalationProjection = new DebugEscalationProjection();
 
 if (!projectionService.getView(extractionMetricsProjection.viewId)) {
   projectionService.registerView(extractionMetricsProjection);
@@ -92,6 +109,22 @@ if (!projectionService.getView(validationProjection.viewId)) {
 }
 if (!projectionService.getView(patternsProjection.viewId)) {
   projectionService.registerView(patternsProjection);
+}
+// Wave 2 registrations (OMN-2602)
+if (!projectionService.getView(gateDecisionsProjection.viewId)) {
+  projectionService.registerView(gateDecisionsProjection);
+}
+if (!projectionService.getView(epicRunProjection.viewId)) {
+  projectionService.registerView(epicRunProjection);
+}
+if (!projectionService.getView(prWatchProjection.viewId)) {
+  projectionService.registerView(prWatchProjection);
+}
+if (!projectionService.getView(pipelineBudgetProjection.viewId)) {
+  projectionService.registerView(pipelineBudgetProjection);
+}
+if (!projectionService.getView(debugEscalationProjection.viewId)) {
+  projectionService.registerView(debugEscalationProjection);
 }
 
 // ============================================================================
