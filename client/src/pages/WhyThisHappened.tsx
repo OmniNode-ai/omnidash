@@ -350,15 +350,13 @@ export default function WhyThisHappened() {
         </div>
       </div>
 
-      {/* Trust invariant notice */}
-      {isDemoMode && (
-        <Alert className="border-blue-500/30 bg-blue-500/8">
-          <Info className="h-4 w-4 text-blue-500" />
-          <AlertDescription className="text-xs text-muted-foreground">
-            Showing mock DecisionRecord data. Connect to OMN-2467 API for live provenance.
-          </AlertDescription>
-        </Alert>
-      )}
+      {/* Trust invariant notice — shown unconditionally until OMN-2467 API is active */}
+      <Alert className="border-blue-500/30 bg-blue-500/8">
+        <Info className="h-4 w-4 text-blue-500" />
+        <AlertDescription className="text-xs text-muted-foreground">
+          Showing mock DecisionRecord data. Connect to OMN-2467 API for live provenance.
+        </AlertDescription>
+      </Alert>
 
       {/* Four-view tab panel */}
       <Tabs
