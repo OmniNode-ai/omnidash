@@ -230,6 +230,12 @@ export class ReadModelConsumer {
   /**
    * Start the read-model consumer.
    * Connects to Kafka and begins consuming events for projection.
+   *
+   * Fire-and-forget by design: the caller in server/index.ts must NOT await
+   * this method. The retry loop (up to MAX_RETRY_ATTEMPTS with exponential
+   * backoff to RETRY_MAX_DELAY_MS per attempt) is intentionally long to survive
+   * transient Kafka outages without crashing the server. Awaiting it would
+   * block server.listen() for minutes during a Kafka outage.
    */
   async start(): Promise<void> {
     // Reset the stopped flag so a consumer that was previously stopped can be
@@ -247,6 +253,9 @@ export class ReadModelConsumer {
       console.log('[ReadModelConsumer] Already running');
       return;
     }
+
+    // Reset stopped flag so start() can be called again after stop().
+    this.stopped = false;
 
     const brokers = (process.env.KAFKA_BROKERS || process.env.KAFKA_BOOTSTRAP_SERVERS || '')
       .split(',')
@@ -338,28 +347,29 @@ export class ReadModelConsumer {
         );
         return;
       } catch (err) {
+        // Disconnect the current consumer before retrying so we do not orphan a
+        // live broker connection. connect() may have succeeded before subscribe()
+        // or run() threw, leaving a connected consumer handle we will never use
+        // again if we just abandon it and create new Kafka+consumer instances.
+        if (this.consumer) {
+          try {
+            await this.consumer.disconnect();
+          } catch (disconnectErr) {
+            console.warn(
+              '[ReadModelConsumer] Error disconnecting consumer during retry cleanup:',
+              disconnectErr instanceof Error ? disconnectErr.message : disconnectErr
+            );
+          }
+          this.consumer = null;
+          this.kafka = null;
+        }
+
         attempts++;
         const delay = Math.min(RETRY_BASE_DELAY_MS * Math.pow(2, attempts), RETRY_MAX_DELAY_MS);
         console.error(
           `[ReadModelConsumer] Connection attempt ${attempts}/${MAX_RETRY_ATTEMPTS} failed:`,
           err instanceof Error ? err.message : err
         );
-        // Disconnect the existing consumer on every failed iteration — regardless
-        // of whether retries remain. If connect() succeeded but subscribe() or
-        // run() failed, the consumer handle is live and must be closed to avoid
-        // leaking the Kafka connection. Guard with try/catch: if the consumer
-        // was never connected (e.g. connect() itself threw), disconnect() may
-        // throw too and we should not let that mask the original error.
-        if (this.consumer) {
-          try {
-            await this.consumer.disconnect();
-          } catch {
-            // Ignore — consumer may not have been connected yet.
-          }
-          // Null both so the next loop iteration creates fresh instances
-          this.consumer = null;
-          this.kafka = null;
-        }
         if (attempts < MAX_RETRY_ATTEMPTS) {
           await new Promise((resolve) => setTimeout(resolve, delay));
           // Re-check stopped after the backoff sleep — stop() may have been called
