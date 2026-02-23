@@ -47,8 +47,6 @@ vi.mock('../storage', () => ({
 // Imports (after mocks are set up)
 // ---------------------------------------------------------------------------
 
-import { ProjectionService, type RawEventInput } from '../projection-service';
-import { EventBusProjection } from '../projections/event-bus-projection';
 import {
   wireProjectionSources,
   projectionService,

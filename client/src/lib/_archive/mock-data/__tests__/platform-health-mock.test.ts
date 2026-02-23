@@ -58,6 +58,7 @@ describe('PlatformHealthMockData', () => {
   // ARCHIVED: Mock data is deprecated in favor of real API endpoints.
   // This test is skipped as the mock data generators are being phased out.
   // See INTELLIGENCE_INTEGRATION.md for the migration to real data sources.
+  // eslint-disable-next-line vitest/no-disabled-tests
   it.skip('generates full platform mock snapshot with registry and time series', () => {
     vi.spyOn(MockDataGenerator, 'randomFloat').mockImplementation(() => 50);
     vi.spyOn(MockDataGenerator, 'randomInt').mockImplementation(() => 5);

@@ -22,7 +22,7 @@ const mockSubscribe = vi.fn();
 const mockUnsubscribe = vi.fn();
 const mockReconnect = vi.fn();
 const mockClose = vi.fn();
-let mockIsConnected = true;
+let mockIsConnected: boolean; // initialized in beforeEach
 let mockOnMessage:
   | ((message: { type: string; data?: unknown; timestamp: string }) => void)
   | undefined;
@@ -52,8 +52,8 @@ vi.mock('@/hooks/useWebSocket', () => ({
   ),
 }));
 
-// UUID counter for deterministic test IDs
-let uuidCounter = 0;
+// UUID counter for deterministic test IDs (initialized in beforeEach)
+let uuidCounter: number;
 
 describe('useIntentStream', () => {
   beforeEach(() => {

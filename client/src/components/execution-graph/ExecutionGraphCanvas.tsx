@@ -26,7 +26,7 @@ import {
 } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
 
-import { executionNodeTypes, statusStyles } from './ExecutionGraphNodes';
+import { executionNodeTypes, statusStyles as _statusStyles } from './ExecutionGraphNodes';
 import type {
   ExecutionGraph,
   ExecutionNodeState,
@@ -40,7 +40,7 @@ import type {
 // ─────────────────────────────────────────────────────────────────────────────
 
 const NODE_WIDTH = 192; // w-48 = 12rem = 192px
-const NODE_HEIGHT = 100; // Approximate height of node
+const _NODE_HEIGHT = 100; // Approximate height of node
 const HORIZONTAL_SPACING = 100; // Gap between nodes horizontally
 const VERTICAL_SPACING = 50; // Small vertical offset for visual interest
 

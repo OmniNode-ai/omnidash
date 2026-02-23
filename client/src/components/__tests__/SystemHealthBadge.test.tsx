@@ -400,31 +400,26 @@ describe('SystemHealthBadge component', () => {
   });
 
   describe('all statuses render correctly', () => {
-    const statuses: HealthLevel[] = ['healthy', 'warning', 'critical', 'unknown'];
-    const expectedLabels: Record<HealthLevel, string> = {
-      healthy: 'HEALTHY',
-      warning: 'WARNING',
-      critical: 'CRITICAL',
-      unknown: 'UNKNOWN',
-    };
+    it.each([
+      ['healthy', 'HEALTHY'],
+      ['warning', 'WARNING'],
+      ['critical', 'CRITICAL'],
+      ['unknown', 'UNKNOWN'],
+    ] as [HealthLevel, string][])('should render %s status correctly', (status, expectedLabel) => {
+      const { container, unmount } = render(<SystemHealthBadge status={status} />);
 
-    statuses.forEach((status) => {
-      it(`should render ${status} status correctly`, () => {
-        const { container, unmount } = render(<SystemHealthBadge status={status} />);
+      // Check label
+      expect(screen.getByText(expectedLabel)).toBeInTheDocument();
 
-        // Check label
-        expect(screen.getByText(expectedLabels[status])).toBeInTheDocument();
+      // Check icon exists
+      const svg = container.querySelector('svg');
+      expect(svg).toBeInTheDocument();
 
-        // Check icon exists
-        const svg = container.querySelector('svg');
-        expect(svg).toBeInTheDocument();
+      // Check badge container exists
+      const badge = container.firstChild as HTMLElement;
+      expect(badge).toHaveClass('inline-flex');
 
-        // Check badge container exists
-        const badge = container.firstChild as HTMLElement;
-        expect(badge).toHaveClass('inline-flex');
-
-        unmount();
-      });
+      unmount();
     });
   });
 });

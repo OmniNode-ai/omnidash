@@ -11,7 +11,7 @@
  */
 
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { renderHook, act, waitFor } from '@testing-library/react';
+import { renderHook, act, waitFor as _waitFor } from '@testing-library/react';
 import type { QueryClient } from '@tanstack/react-query';
 
 // Mock dependencies before importing the hook

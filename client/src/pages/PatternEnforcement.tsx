@@ -10,7 +10,7 @@
  */
 
 import { useState, useEffect } from 'react';
-import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { useQuery } from '@tanstack/react-query';
 import { useDemoMode } from '@/contexts/DemoModeContext';
 import { enforcementSource } from '@/lib/data-sources/enforcement-source';
 import { DemoBanner } from '@/components/DemoBanner';
@@ -362,7 +362,6 @@ function ViolatedPatternsTable({
 
 export default function PatternEnforcement() {
   const [timeWindow, setTimeWindow] = useState<EnforcementTimeWindow>('7d');
-  const queryClient = useQueryClient();
   const { isDemoMode } = useDemoMode();
 
   // ── Queries ──────────────────────────────────────────────────────────────

@@ -104,7 +104,7 @@ function getStatusSeverity(status: string): StatusSeverity {
  * @param severity - The semantic severity level
  * @returns Tailwind class for the background color (e.g., 'bg-status-healthy')
  */
-function getStatusDotClass(severity: StatusSeverity): string {
+function _getStatusDotClass(severity: StatusSeverity): string {
   switch (severity) {
     case 'healthy':
       return 'bg-status-healthy';
@@ -127,7 +127,7 @@ function getStatusDotClass(severity: StatusSeverity): string {
  * @param severity - The semantic severity level
  * @returns Tailwind classes for background and text color
  */
-function getStatusBadgeClasses(severity: StatusSeverity): string {
+function _getStatusBadgeClasses(severity: StatusSeverity): string {
   switch (severity) {
     case 'healthy':
       return 'bg-status-healthy/10 text-status-healthy';

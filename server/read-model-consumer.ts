@@ -1911,7 +1911,10 @@ export class ReadModelConsumer {
     } catch (err) {
       const pgCode = (err as { code?: string }).code;
       const msg = err instanceof Error ? err.message : String(err);
-      if (pgCode === '42P01' || (msg.includes('gate_decisions') && msg.includes('does not exist'))) {
+      if (
+        pgCode === '42P01' ||
+        (msg.includes('gate_decisions') && msg.includes('does not exist'))
+      ) {
         console.warn(
           '[ReadModelConsumer] gate_decisions table not yet created -- ' +
             'run migrations to enable gate decision projection'
@@ -1944,8 +1947,7 @@ export class ReadModelConsumer {
 
     const correlationId =
       (data.correlation_id as string) || (data.correlationId as string) || fallbackId;
-    const epicRunId =
-      (data.epic_run_id as string) || (data.epicRunId as string) || correlationId;
+    const epicRunId = (data.epic_run_id as string) || (data.epicRunId as string) || correlationId;
 
     try {
       // Insert into epic_run_events for the event log
@@ -2092,8 +2094,7 @@ export class ReadModelConsumer {
 
     const correlationId =
       (data.correlation_id as string) || (data.correlationId as string) || fallbackId;
-    const pipelineId =
-      (data.pipeline_id as string) || (data.pipelineId as string) || correlationId;
+    const pipelineId = (data.pipeline_id as string) || (data.pipelineId as string) || correlationId;
 
     try {
       await db.execute(sql`

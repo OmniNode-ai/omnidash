@@ -1044,7 +1044,9 @@ export class EventConsumer extends EventEmitter {
     const brokers = process.env.KAFKA_BROKERS || process.env.KAFKA_BOOTSTRAP_SERVERS;
 
     if (!brokers) {
-      console.error('❌ KAFKA_BROKERS not configured - Kafka is required infrastructure. Set KAFKA_BROKERS in .env to connect to the Redpanda/Kafka broker.');
+      console.error(
+        '❌ KAFKA_BROKERS not configured - Kafka is required infrastructure. Set KAFKA_BROKERS in .env to connect to the Redpanda/Kafka broker.'
+      );
       return false;
     }
 
@@ -1063,7 +1065,9 @@ export class EventConsumer extends EventEmitter {
     } catch (error) {
       console.error(`❌ Kafka broker unreachable: ${brokers}`);
       console.error(`   Error: ${error instanceof Error ? error.message : String(error)}`);
-      console.error('   Real-time event streaming is unavailable — check KAFKA_BROKERS and network connectivity.');
+      console.error(
+        '   Real-time event streaming is unavailable — check KAFKA_BROKERS and network connectivity.'
+      );
       return false;
     }
   }
@@ -4308,8 +4312,12 @@ export function getEventConsumer(): EventConsumer | null {
   } catch (error) {
     initializationError = error instanceof Error ? error : new Error(String(error));
     console.error('❌ EventConsumer initialization failed:', initializationError.message);
-    console.error('   Kafka is required infrastructure. Set KAFKA_BROKERS in .env to connect to the Redpanda/Kafka broker.');
-    console.error('   Real-time event streaming is unavailable — this is an error state, not normal operation.');
+    console.error(
+      '   Kafka is required infrastructure. Set KAFKA_BROKERS in .env to connect to the Redpanda/Kafka broker.'
+    );
+    console.error(
+      '   Real-time event streaming is unavailable — this is an error state, not normal operation.'
+    );
     return null;
   }
 }
@@ -4397,7 +4405,9 @@ export const eventConsumer = new Proxy({} as EventConsumer, {
       // Return dummy implementations that log errors
       if (prop === 'validateConnection') {
         return async () => {
-          console.error('❌ EventConsumer not available - KAFKA_BROKERS is not configured. Kafka is required infrastructure.');
+          console.error(
+            '❌ EventConsumer not available - KAFKA_BROKERS is not configured. Kafka is required infrastructure.'
+          );
           return false;
         };
       }
@@ -4405,7 +4415,9 @@ export const eventConsumer = new Proxy({} as EventConsumer, {
         // Throw asynchronously to match the real async start() signature and ensure
         // callers that await start() surface the error rather than silently getting undefined.
         return async (..._args: unknown[]) => {
-          throw new Error('[EventConsumer] start called before initialization — Kafka is not configured or could not be reached');
+          throw new Error(
+            '[EventConsumer] start called before initialization — Kafka is not configured or could not be reached'
+          );
         };
       }
       if (prop === 'stop') {
@@ -4502,8 +4514,8 @@ export const eventConsumer = new Proxy({} as EventConsumer, {
             // ordering pattern and does not indicate a bug in the caller.
             console.warn(
               `[EventConsumer] .${prop}() called on stub proxy (event: "${String(args[0])}") — ` +
-              'Kafka is not initialized; listener was NOT registered. ' +
-              'Set KAFKA_BROKERS in .env to enable real event delivery.'
+                'Kafka is not initialized; listener was NOT registered. ' +
+                'Set KAFKA_BROKERS in .env to enable real event delivery.'
             );
           } else if (prop === 'removeListener') {
             // No-op: there is nothing to remove because on/once stubs never registered a
@@ -4511,14 +4523,14 @@ export const eventConsumer = new Proxy({} as EventConsumer, {
             // return) is a normal pattern, not a bug.
             console.warn(
               `[EventConsumer] .removeListener() called on stub proxy (event: "${String(args[0])}") — ` +
-              'no-op because Kafka is not initialized and no listener was ever registered.'
+                'no-op because Kafka is not initialized and no listener was ever registered.'
             );
           } else if (prop === 'emit') {
             // No-op: no real EventEmitter exists to dispatch to. Log at error level —
             // emitting to an unavailable bus is more serious; the event was silently dropped.
             console.error(
               `[EventConsumer] .emit() called on stub proxy (event: "${String(args[0])}") — ` +
-              'no-op because Kafka is not initialized; event was not dispatched.'
+                'no-op because Kafka is not initialized; event was not dispatched.'
             );
             // EventEmitter.emit() returns boolean (true if listeners were called).
             // Return false — no listeners exist because Kafka is not initialized.

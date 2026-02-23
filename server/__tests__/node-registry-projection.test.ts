@@ -20,7 +20,7 @@ import type { ProjectionEvent } from '@shared/projection-types';
 // Test Helpers
 // ============================================================================
 
-let seqCounter = 0;
+let seqCounter: number; // initialized in beforeEach
 
 function makeEvent(overrides: Partial<ProjectionEvent> & { type: string }): ProjectionEvent {
   const seq = ++seqCounter;

@@ -252,9 +252,10 @@ export class IntelligenceEventAdapter {
     // typeof Infinity === 'number', so without the isFinite guard, NaN/Infinity/-Infinity would
     // be accepted and stringify to 'NaN'/'Infinity'/'-Infinity', causing potential ID collisions.
     const rawCorrelationId =
-      (typeof rawCid === 'string' || (typeof rawCid === 'number' && Number.isFinite(rawCid)))
+      typeof rawCid === 'string' || (typeof rawCid === 'number' && Number.isFinite(rawCid))
         ? rawCid
-        : (typeof rawCidCamel === 'string' || (typeof rawCidCamel === 'number' && Number.isFinite(rawCidCamel)))
+        : typeof rawCidCamel === 'string' ||
+            (typeof rawCidCamel === 'number' && Number.isFinite(rawCidCamel))
           ? rawCidCamel
           : randomUUID();
     // rawCorrelationId is always string | number at this point: the typeof guards above ensure
@@ -298,12 +299,19 @@ export class IntelligenceEventAdapter {
     if (process.env.NODE_ENV !== 'production') {
       const preConstructedKeys = [
         // snake_case canonical names
-        'source_path', 'content', 'language', 'operation_type',
+        'source_path',
+        'content',
+        'language',
+        'operation_type',
         'options', // dev notice: the adapter builds this key automatically from its config; callers may override it intentionally and the override will take effect — this warning is informational only, not a safety guard
-        'project_id', 'user_id',
+        'project_id',
+        'user_id',
         // camelCase aliases accepted by the envelope build — warn on these too so
         // callers are not silently overwriting defaults regardless of which casing they use
-        'sourcePath', 'operationType', 'projectId', 'userId',
+        'sourcePath',
+        'operationType',
+        'projectId',
+        'userId',
       ] as const;
       for (const key of preConstructedKeys) {
         if (key in safePayloadRest) {
@@ -382,7 +390,8 @@ export class IntelligenceEventAdapter {
         source_path: safePayloadRest.sourcePath || safePayloadRest.source_path || '',
         content: safePayloadRest.content != null ? safePayloadRest.content : null,
         language: safePayloadRest.language || 'python',
-        operation_type: safePayloadRest.operation_type || safePayloadRest.operationType || 'PATTERN_EXTRACTION',
+        operation_type:
+          safePayloadRest.operation_type || safePayloadRest.operationType || 'PATTERN_EXTRACTION',
         options: safePayloadRest.options || {},
         project_id: safePayloadRest.projectId || safePayloadRest.project_id || 'omnidash',
         user_id: safePayloadRest.userId || safePayloadRest.user_id || 'system',
@@ -394,7 +403,11 @@ export class IntelligenceEventAdapter {
     const promise = new Promise<any>((resolve, reject) => {
       const timeout = setTimeout(() => {
         this.pending.delete(correlationKey);
-        reject(new Error(`Intelligence request timed out after ${timeoutMs}ms (correlationId=${correlationId}, requestType=${requestType})`));
+        reject(
+          new Error(
+            `Intelligence request timed out after ${timeoutMs}ms (correlationId=${correlationId}, requestType=${requestType})`
+          )
+        );
       }, timeoutMs);
       this.pending.set(correlationKey, { resolve, reject, timeout });
     });
@@ -438,7 +451,7 @@ export class IntelligenceEventAdapter {
         // is no unhandled rejection surface.
         console.warn(
           `[IntelligenceEventAdapter] send error after timeout for correlationId "${correlationKey}" — ` +
-          'the caller already received a timeout rejection; this send error is logged for diagnostics only.',
+            'the caller already received a timeout rejection; this send error is logged for diagnostics only.',
           sendError
         );
       }
@@ -524,8 +537,12 @@ export function getIntelligenceEvents(): IntelligenceEventAdapter | null {
       '❌ IntelligenceEventAdapter initialization failed:',
       intelligenceInitError.message
     );
-    console.error('   Kafka is required infrastructure. Set KAFKA_BROKERS in .env to connect to the Redpanda/Kafka broker.');
-    console.error('   Intelligence event operations are unavailable — this is an error state, not normal operation.');
+    console.error(
+      '   Kafka is required infrastructure. Set KAFKA_BROKERS in .env to connect to the Redpanda/Kafka broker.'
+    );
+    console.error(
+      '   Intelligence event operations are unavailable — this is an error state, not normal operation.'
+    );
     return null;
   }
 }
@@ -613,7 +630,9 @@ export const intelligenceEvents = new Proxy({} as IntelligenceEventAdapter, {
       }
       if (prop === 'request' || prop === 'requestPatternDiscovery') {
         return async () => {
-          throw new Error('IntelligenceEventAdapter not available - KAFKA_BROKERS is not configured. Kafka is required infrastructure.');
+          throw new Error(
+            'IntelligenceEventAdapter not available - KAFKA_BROKERS is not configured. Kafka is required infrastructure.'
+          );
         };
       }
       if (prop === 'started') {
@@ -630,8 +649,8 @@ export const intelligenceEvents = new Proxy({} as IntelligenceEventAdapter, {
           // The listener was NOT registered — Kafka is unavailable so no events will fire.
           console.warn(
             `[IntelligenceEventAdapter] .${prop}() called on stub proxy (event: "${String(args[0])}") — ` +
-            'Kafka is not initialized; listener was NOT registered. ' +
-            'Set KAFKA_BROKERS in .env to enable real event delivery.'
+              'Kafka is not initialized; listener was NOT registered. ' +
+              'Set KAFKA_BROKERS in .env to enable real event delivery.'
           );
           return intelligenceEvents; // Return proxy for chaining
         };
@@ -643,7 +662,7 @@ export const intelligenceEvents = new Proxy({} as IntelligenceEventAdapter, {
           // normal pattern — log at warn to avoid polluting teardown logs with spurious errors.
           console.warn(
             `[IntelligenceEventAdapter] .removeListener() called on stub proxy (event: "${String(args[0])}") — ` +
-            'no-op because Kafka is not initialized and no listener was ever registered.'
+              'no-op because Kafka is not initialized and no listener was ever registered.'
           );
           return intelligenceEvents; // Return proxy for chaining
         };
@@ -652,7 +671,7 @@ export const intelligenceEvents = new Proxy({} as IntelligenceEventAdapter, {
         return (...args: unknown[]) => {
           console.error(
             `[IntelligenceEventAdapter] .emit() called on stub proxy (event: "${String(args[0])}") — ` +
-            'no-op because Kafka is not initialized; event was not dispatched.'
+              'no-op because Kafka is not initialized; event was not dispatched.'
           );
           // EventEmitter.emit() returns boolean (true if listeners were called).
           // Return false — no listeners exist because Kafka is not initialized.

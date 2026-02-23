@@ -16,17 +16,7 @@
  */
 
 import { useState, useCallback, useEffect } from 'react';
-import {
-  Play,
-  Pause,
-  Trash2,
-  Maximize2,
-  ChevronDown,
-  Radio,
-  RefreshCw,
-  Wifi,
-  WifiOff,
-} from 'lucide-react';
+import { Play, Pause, Trash2, ChevronDown, Radio, RefreshCw, Wifi, WifiOff } from 'lucide-react';
 
 import { Button } from '@/components/ui/button';
 import {

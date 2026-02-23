@@ -19,7 +19,6 @@
  */
 
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { EventEmitter } from 'events';
 import { TopicCatalogManager, CATALOG_TIMEOUT_MS } from '../topic-catalog-manager';
 import {
   SUFFIX_PLATFORM_TOPIC_CATALOG_RESPONSE,

@@ -63,7 +63,7 @@ export default function EventBusExplorer() {
     staleTime: 30000,
   });
 
-  const events = eventsData?.events || [];
+  const events = useMemo(() => eventsData?.events ?? [], [eventsData]);
   const chainEvents = chainData || [];
 
   // Get unique event types for filter dropdown

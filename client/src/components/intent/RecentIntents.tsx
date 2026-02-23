@@ -360,14 +360,16 @@ export function RecentIntents({
 
   // Cleanup timeouts on unmount
   useEffect(() => {
+    // Capture ref values at effect setup time for cleanup stability
+    const currentAnimationTimeouts = animationTimeoutsRef.current;
     return () => {
       // Clear query invalidation timeout
       if (invalidateTimeoutRef.current) {
         clearTimeout(invalidateTimeoutRef.current);
       }
       // Clear all animation cleanup timeouts
-      animationTimeoutsRef.current.forEach((timeoutId) => clearTimeout(timeoutId));
-      animationTimeoutsRef.current.clear();
+      currentAnimationTimeouts.forEach((timeoutId) => clearTimeout(timeoutId));
+      currentAnimationTimeouts.clear();
     };
   }, []);
 

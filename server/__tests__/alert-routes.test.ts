@@ -2,7 +2,6 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import request from 'supertest';
 import express, { type Express } from 'express';
 import { alertRouter } from '../alert-routes';
-import { getIntelligenceDb } from '../storage';
 import { getAllAlertMetrics } from '../alert-helpers';
 
 // Clear the health check cache before each test

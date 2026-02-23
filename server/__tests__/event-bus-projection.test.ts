@@ -73,7 +73,7 @@ describe('EventBusProjection', () => {
     });
 
     it('should accept all events', () => {
-      const event = service.ingest(makeRawEvent());
+      service.ingest(makeRawEvent());
       const applied = projection.bufferSize;
       expect(applied).toBe(1);
     });

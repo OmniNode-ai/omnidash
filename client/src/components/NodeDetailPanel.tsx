@@ -22,7 +22,7 @@ import { cn } from '@/lib/utils';
 import { formatRelativeTime } from '@/lib/date-utils';
 import {
   normalizeHealthStatus,
-  consulToSemantic,
+  consulToSemantic as _consulToSemantic,
   type SemanticHealthLevel,
 } from '@/lib/health-utils';
 import {
@@ -46,7 +46,7 @@ import type {
   LiveInstanceInfo,
   NodeType,
   NodeState,
-  HealthStatus,
+  HealthStatus as _HealthStatus,
 } from '@/lib/configs/registry-discovery-dashboard';
 
 // Node type icons and colors

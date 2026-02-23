@@ -39,7 +39,7 @@ async function gotoWhyPanel(page: import('@playwright/test').Page) {
 /**
  * Click a tab by its test ID and wait for the content to become visible.
  */
-async function clickTab(
+async function _clickTab(
   page: import('@playwright/test').Page,
   tabTestId: string,
   contentTestId: string
@@ -100,7 +100,9 @@ test.describe('Why This Happened panel — all four views', () => {
       await expect(page.locator('[data-testid="inferred-count-badge"]')).toBeVisible();
     });
 
-    test('inferred value badge is clickable and triggers navigation to Comparison tab', async ({ page }) => {
+    test('inferred value badge is clickable and triggers navigation to Comparison tab', async ({
+      page,
+    }) => {
       // Click the Model inferred badge (links to dr-001)
       const modelBadge = page.locator('[data-testid="origin-badge-model"]');
       await expect(modelBadge).toBeVisible();
@@ -199,7 +201,9 @@ test.describe('Why This Happened panel — all four views', () => {
       await expect(selectedBadges.first()).toBeVisible();
     });
 
-    test('ELIMINATED badge is shown for eliminated candidates (model_select view)', async ({ page }) => {
+    test('ELIMINATED badge is shown for eliminated candidates (model_select view)', async ({
+      page,
+    }) => {
       // Default view is dr-001 (model_select) which has haiku-4-5 eliminated
       const eliminatedBadges = page.getByText('ELIMINATED');
       await expect(eliminatedBadges.first()).toBeVisible();
@@ -245,9 +249,7 @@ test.describe('Why This Happened panel — all four views', () => {
     });
 
     test('Layer 1 is labeled as authoritative', async ({ page }) => {
-      await expect(
-        page.getByText(/Causal Provenance.*Layer 1.*Authoritative/)
-      ).toBeVisible();
+      await expect(page.getByText(/Causal Provenance.*Layer 1.*Authoritative/)).toBeVisible();
     });
 
     test('Layer 2 toggle button is visible', async ({ page }) => {
@@ -274,7 +276,9 @@ test.describe('Why This Happened panel — all four views', () => {
       );
     });
 
-    test('mismatch banner appears for decisions with mismatch (model_select + cost mention)', async ({ page }) => {
+    test('mismatch banner appears for decisions with mismatch (model_select + cost mention)', async ({
+      page,
+    }) => {
       // The default decision (dr-001 model_select) mentions "cost" in its
       // agent_rationale but has no cost constraint in Layer 1 — mismatch detected
       await expect(page.locator('[data-testid="mismatch-banner"]')).toBeVisible();

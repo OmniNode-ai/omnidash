@@ -10,7 +10,7 @@
  */
 
 import { useState, useEffect } from 'react';
-import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { useQuery } from '@tanstack/react-query';
 import { useDemoMode } from '@/contexts/DemoModeContext';
 import { enrichmentSource } from '@/lib/data-sources/enrichment-source';
 import { DemoBanner } from '@/components/DemoBanner';
@@ -403,7 +403,6 @@ function InflationAlertTable({
 
 export default function ContextEnrichmentDashboard() {
   const [timeWindow, setTimeWindow] = useState<EnrichmentTimeWindow>('7d');
-  const queryClient = useQueryClient();
   const { isDemoMode } = useDemoMode();
 
   // Clear stale mock-endpoint state whenever the time window changes so that

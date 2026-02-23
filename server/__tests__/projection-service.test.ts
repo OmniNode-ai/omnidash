@@ -74,7 +74,7 @@ class TestView implements ProjectionView<ProjectionEvent[]> {
 }
 
 /** Create a minimal raw event for testing */
-let rawEventCounter = 0;
+let rawEventCounter: number; // initialized in beforeEach
 function rawEvent(overrides: Partial<RawEventInput> = {}): RawEventInput {
   return {
     id: `test-${++rawEventCounter}`,
