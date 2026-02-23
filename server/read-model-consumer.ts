@@ -60,6 +60,11 @@ import {
   SUFFIX_OMNICLAUDE_TASK_DELEGATED,
   SUFFIX_OMNICLAUDE_DELEGATION_SHADOW_COMPARISON,
   TOPIC_OMNIINTELLIGENCE_LLM_CALL_COMPLETED,
+  SUFFIX_OMNICLAUDE_GATE_DECISION,
+  SUFFIX_OMNICLAUDE_EPIC_RUN_UPDATED,
+  SUFFIX_OMNICLAUDE_PR_WATCH_UPDATED,
+  SUFFIX_OMNICLAUDE_BUDGET_CAP_HIT,
+  SUFFIX_OMNICLAUDE_CIRCUIT_BREAKER_TRIPPED,
 } from '@shared/topics';
 import type { LlmRoutingDecisionEvent } from '@shared/llm-routing-types';
 import type { TaskDelegatedEvent, DelegationShadowComparisonEvent } from '@shared/delegation-types';
@@ -69,6 +74,13 @@ import { emitLlmRoutingInvalidate } from './llm-routing-events';
 import { emitDelegationInvalidate } from './delegation-events';
 import { emitEnrichmentInvalidate } from './enrichment-events';
 import { emitEnforcementInvalidate } from './enforcement-events';
+import {
+  emitGateDecisionInvalidate,
+  emitEpicRunInvalidate,
+  emitPrWatchInvalidate,
+  emitPipelineBudgetInvalidate,
+  emitCircuitBreakerInvalidate,
+} from './omniclaude-state-events';
 
 /**
  * Derive a deterministic UUID-shaped string from Kafka message coordinates.
@@ -195,6 +207,12 @@ const READ_MODEL_TOPICS = [
   // OMN-2284: Delegation metrics — task-delegated and shadow-comparison events.
   SUFFIX_OMNICLAUDE_TASK_DELEGATED,
   SUFFIX_OMNICLAUDE_DELEGATION_SHADOW_COMPARISON,
+  // Wave 2 topics (OMN-2596)
+  SUFFIX_OMNICLAUDE_GATE_DECISION,
+  SUFFIX_OMNICLAUDE_EPIC_RUN_UPDATED,
+  SUFFIX_OMNICLAUDE_PR_WATCH_UPDATED,
+  SUFFIX_OMNICLAUDE_BUDGET_CAP_HIT,
+  SUFFIX_OMNICLAUDE_CIRCUIT_BREAKER_TRIPPED,
 ] as const;
 
 type ReadModelTopic = (typeof READ_MODEL_TOPICS)[number];
@@ -471,6 +489,22 @@ export class ReadModelConsumer {
           break;
         case SUFFIX_OMNICLAUDE_DELEGATION_SHADOW_COMPARISON:
           projected = await this.projectDelegationShadowComparisonEvent(parsed, fallbackId);
+          break;
+        // Wave 2 topics (OMN-2596)
+        case SUFFIX_OMNICLAUDE_GATE_DECISION:
+          projected = await this.projectGateDecisionEvent(parsed, fallbackId);
+          break;
+        case SUFFIX_OMNICLAUDE_EPIC_RUN_UPDATED:
+          projected = await this.projectEpicRunUpdatedEvent(parsed, fallbackId);
+          break;
+        case SUFFIX_OMNICLAUDE_PR_WATCH_UPDATED:
+          projected = await this.projectPrWatchUpdatedEvent(parsed, fallbackId);
+          break;
+        case SUFFIX_OMNICLAUDE_BUDGET_CAP_HIT:
+          projected = await this.projectBudgetCapHitEvent(parsed, fallbackId);
+          break;
+        case SUFFIX_OMNICLAUDE_CIRCUIT_BREAKER_TRIPPED:
+          projected = await this.projectCircuitBreakerTrippedEvent(parsed, fallbackId);
           break;
         default:
           console.warn(
@@ -1827,6 +1861,346 @@ export class ReadModelConsumer {
       throw err;
     }
 
+    return true;
+  }
+
+  /**
+   * Project a gate decision event into the `gate_decisions` table (OMN-2596).
+   *
+   * Emitted by the omniclaude CI gate when it evaluates a PR against quality
+   * and test thresholds. Each evaluation is a row; deduplication uses the
+   * (correlation_id) unique key.
+   *
+   * Returns true when written, false when the DB is unavailable.
+   */
+  private async projectGateDecisionEvent(
+    data: Record<string, unknown>,
+    fallbackId: string
+  ): Promise<boolean> {
+    const db = tryGetIntelligenceDb();
+    if (!db) return false;
+
+    const correlationId =
+      (data.correlation_id as string) || (data.correlationId as string) || fallbackId;
+
+    try {
+      await db.execute(sql`
+        INSERT INTO gate_decisions (
+          correlation_id,
+          session_id,
+          pr_number,
+          repo,
+          gate_name,
+          outcome,
+          blocking,
+          details,
+          created_at
+        ) VALUES (
+          ${correlationId},
+          ${(data.session_id as string) ?? null},
+          ${data.pr_number != null ? Number(data.pr_number) : null},
+          ${(data.repo as string) ?? null},
+          ${(data.gate_name as string) ?? 'unknown'},
+          ${(data.outcome as string) ?? 'unknown'},
+          ${Boolean(data.blocking ?? false)},
+          ${data.details != null ? JSON.stringify(data.details) : null},
+          ${safeParseDate(data.timestamp ?? data.created_at)}
+        )
+        ON CONFLICT (correlation_id) DO NOTHING
+      `);
+    } catch (err) {
+      const pgCode = (err as { code?: string }).code;
+      const msg = err instanceof Error ? err.message : String(err);
+      if (
+        pgCode === '42P01' ||
+        (msg.includes('gate_decisions') && msg.includes('does not exist'))
+      ) {
+        console.warn(
+          '[ReadModelConsumer] gate_decisions table not yet created -- ' +
+            'run migrations to enable gate decision projection'
+        );
+        return true;
+      }
+      throw err;
+    }
+
+    emitGateDecisionInvalidate(correlationId);
+    return true;
+  }
+
+  /**
+   * Project an epic run updated event into the `epic_run_lease` and
+   * `epic_run_events` tables (OMN-2596).
+   *
+   * The epic-run-updated event covers both lease state changes (who holds the
+   * lease, expiry time) and run-level events (ticket assigned, PR opened, etc.).
+   * Each event is inserted idempotently using (correlation_id).
+   *
+   * Returns true when written, false when the DB is unavailable.
+   */
+  private async projectEpicRunUpdatedEvent(
+    data: Record<string, unknown>,
+    fallbackId: string
+  ): Promise<boolean> {
+    const db = tryGetIntelligenceDb();
+    if (!db) return false;
+
+    const correlationId =
+      (data.correlation_id as string) || (data.correlationId as string) || fallbackId;
+    const epicRunId = (data.epic_run_id as string) || (data.epicRunId as string) || correlationId;
+
+    try {
+      // Insert into epic_run_events for the event log
+      await db.execute(sql`
+        INSERT INTO epic_run_events (
+          correlation_id,
+          epic_run_id,
+          event_type,
+          ticket_id,
+          repo,
+          payload,
+          created_at
+        ) VALUES (
+          ${correlationId},
+          ${epicRunId},
+          ${(data.event_type as string) ?? (data.eventType as string) ?? 'unknown'},
+          ${(data.ticket_id as string) ?? (data.ticketId as string) ?? null},
+          ${(data.repo as string) ?? null},
+          ${data.payload != null ? JSON.stringify(data.payload) : null},
+          ${safeParseDate(data.timestamp ?? data.created_at)}
+        )
+        ON CONFLICT (correlation_id) DO NOTHING
+      `);
+
+      // Upsert the lease state if lease fields are present
+      if (data.lease_holder != null || data.leaseHolder != null) {
+        const leaseHolder =
+          (data.lease_holder as string) || (data.leaseHolder as string) || 'unknown';
+        const leaseExpiresAt = data.lease_expires_at ?? data.leaseExpiresAt;
+        await db.execute(sql`
+          INSERT INTO epic_run_lease (
+            epic_run_id,
+            lease_holder,
+            lease_expires_at,
+            updated_at
+          ) VALUES (
+            ${epicRunId},
+            ${leaseHolder},
+            ${leaseExpiresAt != null ? safeParseDate(leaseExpiresAt) : null},
+            ${safeParseDate(data.timestamp ?? data.created_at)}
+          )
+          ON CONFLICT (epic_run_id) DO UPDATE SET
+            lease_holder = EXCLUDED.lease_holder,
+            lease_expires_at = EXCLUDED.lease_expires_at,
+            updated_at = EXCLUDED.updated_at
+        `);
+      }
+    } catch (err) {
+      const pgCode = (err as { code?: string }).code;
+      const msg = err instanceof Error ? err.message : String(err);
+      if (
+        pgCode === '42P01' ||
+        ((msg.includes('epic_run_events') || msg.includes('epic_run_lease')) &&
+          msg.includes('does not exist'))
+      ) {
+        console.warn(
+          '[ReadModelConsumer] epic_run_events/epic_run_lease tables not yet created -- ' +
+            'run migrations to enable epic run projection'
+        );
+        return true;
+      }
+      throw err;
+    }
+
+    emitEpicRunInvalidate(epicRunId);
+    return true;
+  }
+
+  /**
+   * Project a PR watch state-change event into the `pr_watch_state` table (OMN-2596).
+   *
+   * Emitted when omnidash's PR watcher detects a state change (e.g. checks
+   * passed, review requested, merged). Uses (correlation_id) for dedup.
+   *
+   * Returns true when written, false when the DB is unavailable.
+   */
+  private async projectPrWatchUpdatedEvent(
+    data: Record<string, unknown>,
+    fallbackId: string
+  ): Promise<boolean> {
+    const db = tryGetIntelligenceDb();
+    if (!db) return false;
+
+    const correlationId =
+      (data.correlation_id as string) || (data.correlationId as string) || fallbackId;
+
+    try {
+      await db.execute(sql`
+        INSERT INTO pr_watch_state (
+          correlation_id,
+          pr_number,
+          repo,
+          state,
+          checks_status,
+          review_status,
+          metadata,
+          created_at
+        ) VALUES (
+          ${correlationId},
+          ${data.pr_number != null ? Number(data.pr_number) : null},
+          ${(data.repo as string) ?? null},
+          ${(data.state as string) ?? 'unknown'},
+          ${(data.checks_status as string) ?? (data.checksStatus as string) ?? null},
+          ${(data.review_status as string) ?? (data.reviewStatus as string) ?? null},
+          ${data.metadata != null ? JSON.stringify(data.metadata) : null},
+          ${safeParseDate(data.timestamp ?? data.created_at)}
+        )
+        ON CONFLICT (correlation_id) DO NOTHING
+      `);
+    } catch (err) {
+      const pgCode = (err as { code?: string }).code;
+      const msg = err instanceof Error ? err.message : String(err);
+      if (
+        pgCode === '42P01' ||
+        (msg.includes('pr_watch_state') && msg.includes('does not exist'))
+      ) {
+        console.warn(
+          '[ReadModelConsumer] pr_watch_state table not yet created -- ' +
+            'run migrations to enable PR watch projection'
+        );
+        return true;
+      }
+      throw err;
+    }
+
+    emitPrWatchInvalidate(correlationId);
+    return true;
+  }
+
+  /**
+   * Project a budget cap hit event into the `pipeline_budget_state` table (OMN-2596).
+   *
+   * Emitted when a pipeline exceeds its configured token or cost budget cap.
+   * Upserts the current budget state for the pipeline keyed by (pipeline_id).
+   *
+   * Returns true when written, false when the DB is unavailable.
+   */
+  private async projectBudgetCapHitEvent(
+    data: Record<string, unknown>,
+    fallbackId: string
+  ): Promise<boolean> {
+    const db = tryGetIntelligenceDb();
+    if (!db) return false;
+
+    const correlationId =
+      (data.correlation_id as string) || (data.correlationId as string) || fallbackId;
+    const pipelineId = (data.pipeline_id as string) || (data.pipelineId as string) || correlationId;
+
+    try {
+      await db.execute(sql`
+        INSERT INTO pipeline_budget_state (
+          correlation_id,
+          pipeline_id,
+          budget_type,
+          cap_value,
+          current_value,
+          cap_hit,
+          repo,
+          created_at
+        ) VALUES (
+          ${correlationId},
+          ${pipelineId},
+          ${(data.budget_type as string) ?? (data.budgetType as string) ?? 'tokens'},
+          ${data.cap_value != null ? Number(data.cap_value) : null},
+          ${data.current_value != null ? Number(data.current_value) : null},
+          ${Boolean(data.cap_hit ?? data.capHit ?? true)},
+          ${(data.repo as string) ?? null},
+          ${safeParseDate(data.timestamp ?? data.created_at)}
+        )
+        ON CONFLICT (correlation_id) DO NOTHING
+      `);
+    } catch (err) {
+      const pgCode = (err as { code?: string }).code;
+      const msg = err instanceof Error ? err.message : String(err);
+      if (
+        pgCode === '42P01' ||
+        (msg.includes('pipeline_budget_state') && msg.includes('does not exist'))
+      ) {
+        console.warn(
+          '[ReadModelConsumer] pipeline_budget_state table not yet created -- ' +
+            'run migrations to enable pipeline budget projection'
+        );
+        return true;
+      }
+      throw err;
+    }
+
+    emitPipelineBudgetInvalidate(correlationId);
+    return true;
+  }
+
+  /**
+   * Project a circuit breaker tripped event into the `debug_escalation_counts` table
+   * (OMN-2596).
+   *
+   * Emitted when the debug escalation circuit breaker trips (too many escalations
+   * in a rolling window). Upserts the count row for the given agent/session.
+   * Uses (correlation_id) for dedup.
+   *
+   * Returns true when written, false when the DB is unavailable.
+   */
+  private async projectCircuitBreakerTrippedEvent(
+    data: Record<string, unknown>,
+    fallbackId: string
+  ): Promise<boolean> {
+    const db = tryGetIntelligenceDb();
+    if (!db) return false;
+
+    const correlationId =
+      (data.correlation_id as string) || (data.correlationId as string) || fallbackId;
+
+    try {
+      await db.execute(sql`
+        INSERT INTO debug_escalation_counts (
+          correlation_id,
+          session_id,
+          agent_name,
+          escalation_count,
+          window_start,
+          window_end,
+          tripped,
+          repo,
+          created_at
+        ) VALUES (
+          ${correlationId},
+          ${(data.session_id as string) ?? null},
+          ${(data.agent_name as string) ?? (data.agentName as string) ?? 'unknown'},
+          ${data.escalation_count != null ? Number(data.escalation_count) : 1},
+          ${data.window_start != null ? safeParseDate(data.window_start) : null},
+          ${data.window_end != null ? safeParseDate(data.window_end) : null},
+          ${Boolean(data.tripped ?? true)},
+          ${(data.repo as string) ?? null},
+          ${safeParseDate(data.timestamp ?? data.created_at)}
+        )
+        ON CONFLICT (correlation_id) DO NOTHING
+      `);
+    } catch (err) {
+      const pgCode = (err as { code?: string }).code;
+      const msg = err instanceof Error ? err.message : String(err);
+      if (
+        pgCode === '42P01' ||
+        (msg.includes('debug_escalation_counts') && msg.includes('does not exist'))
+      ) {
+        console.warn(
+          '[ReadModelConsumer] debug_escalation_counts table not yet created -- ' +
+            'run migrations to enable circuit breaker projection'
+        );
+        return true;
+      }
+      throw err;
+    }
+
+    emitCircuitBreakerInvalidate(correlationId);
     return true;
   }
 
