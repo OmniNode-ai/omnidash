@@ -30,6 +30,7 @@ import { effectivenessEventEmitter } from './effectiveness-events';
 import { enrichmentEventEmitter } from './enrichment-events';
 import { enforcementEventEmitter } from './enforcement-events';
 import { delegationEventEmitter } from './delegation-events';
+import { statusEventEmitter } from './status-events';
 import { projectionService } from './projection-bootstrap';
 import { getEventBusDataSource, type EventBusEvent } from './event-bus-data-source';
 import { getPlaybackDataSource } from './playback-data-source';
@@ -584,6 +585,13 @@ export function setupWebSocket(httpServer: HTTPServer) {
     );
   };
   delegationEventEmitter.on('delegation-invalidate', delegationInvalidateHandler);
+
+  // Status dashboard invalidation listener (OMN-2658)
+  // Tells clients to re-fetch /api/status/* when a new PR, hook, or Linear snapshot event arrives.
+  const statusInvalidateHandler = (data: { source: string; timestamp: number }) => {
+    broadcast('STATUS_INVALIDATE', { source: data.source, timestamp: data.timestamp }, 'status');
+  };
+  statusEventEmitter.on('status-invalidate', statusInvalidateHandler);
 
   // Node Registry event listeners
   registerEventListener('nodeIntrospectionUpdate', (event: NodeIntrospectionEvent) => {

@@ -86,6 +86,9 @@ import {
   SUFFIX_PATTERN_DISCOVERED,
   SUFFIX_INTELLIGENCE_SESSION_OUTCOME_CMD,
   SUFFIX_AGENT_STATUS,
+  SUFFIX_GITHUB_PR_STATUS,
+  SUFFIX_GIT_HOOK,
+  SUFFIX_LINEAR_SNAPSHOT,
 } from '@shared/topics';
 import {
   EventEnvelopeSchema,
@@ -120,6 +123,9 @@ import { emitEffectivenessUpdate } from './effectiveness-events';
 import { effectivenessMetricsProjection } from './projection-bootstrap';
 import { MonotonicMergeTracker, extractEventTimeMs, parseOffsetAsSeq } from './monotonic-merge';
 import { addDecisionRecord } from './decision-records-routes';
+import { isGitHubPRStatusEvent, isGitHookEvent, isLinearSnapshotEvent } from '@shared/status-types';
+import { statusProjection } from './projections/status-projection';
+import { emitStatusInvalidate } from './status-events';
 
 const isTestEnv = process.env.VITEST === 'true' || process.env.NODE_ENV === 'test';
 const DEBUG_CANONICAL_EVENTS = process.env.DEBUG_CANONICAL_EVENTS === 'true' || isTestEnv;
@@ -212,6 +218,10 @@ const TOPIC = {
   SESSION_STARTED: SUFFIX_OMNICLAUDE_SESSION_STARTED,
   SESSION_ENDED: SUFFIX_OMNICLAUDE_SESSION_ENDED,
   TOOL_EXECUTED: SUFFIX_OMNICLAUDE_TOOL_EXECUTED,
+  // Status dashboard topics (OMN-2658)
+  GITHUB_PR_STATUS: SUFFIX_GITHUB_PR_STATUS,
+  GIT_HOOK: SUFFIX_GIT_HOOK,
+  LINEAR_SNAPSHOT: SUFFIX_LINEAR_SNAPSHOT,
 } as const;
 
 // Structured logging for intent handlers
@@ -1652,6 +1662,47 @@ export class EventConsumer extends EventEmitter {
               case SUFFIX_OMNICLAUDE_TRANSFORMATION_COMPLETED:
                 if (isDebug) {
                   intentLogger.debug(`Processing omniclaude extended event from topic: ${topic}`);
+                }
+                break;
+
+              // Status dashboard topics (OMN-2658)
+              case TOPIC.GITHUB_PR_STATUS:
+                if (isGitHubPRStatusEvent(event)) {
+                  statusProjection.upsertPR(event);
+                  emitStatusInvalidate('pr');
+                  if (isDebug) {
+                    intentLogger.debug(
+                      `[status] PR upserted: ${event.repo}#${event.pr_number} (${event.ci_status})`
+                    );
+                  }
+                } else {
+                  console.warn('[status] Dropped malformed github.pr-status event');
+                }
+                break;
+              case TOPIC.GIT_HOOK:
+                if (isGitHookEvent(event)) {
+                  statusProjection.appendHook(event);
+                  emitStatusInvalidate('hook');
+                  if (isDebug) {
+                    intentLogger.debug(
+                      `[status] Hook event appended: ${event.hook} on ${event.repo}:${event.branch} (success=${event.success})`
+                    );
+                  }
+                } else {
+                  console.warn('[status] Dropped malformed git.hook event');
+                }
+                break;
+              case TOPIC.LINEAR_SNAPSHOT:
+                if (isLinearSnapshotEvent(event)) {
+                  statusProjection.replaceWorkstreams(event);
+                  emitStatusInvalidate('linear');
+                  if (isDebug) {
+                    intentLogger.debug(
+                      `[status] Linear snapshot replaced: ${event.workstreams.length} workstreams`
+                    );
+                  }
+                } else {
+                  console.warn('[status] Dropped malformed linear.snapshot event');
                 }
                 break;
 

@@ -682,6 +682,35 @@ export const queryKeys = {
     /** Multi-metric trend over time */
     trend: (window: string) => [...queryKeys.delegation.all, 'trend', window] as const,
   },
+  // ============================================================================
+  // Status Dashboard (OMN-2658)
+  // ============================================================================
+
+  /**
+   * Status dashboard query keys for the /status page.
+   *
+   * On STATUS_INVALIDATE WebSocket event, invalidate `queryKeys.status.all`
+   * to trigger a full refetch of all status panels.
+   */
+  status: {
+    /** Base key for all status queries */
+    all: ['status'] as const,
+
+    /** All PRs grouped by triage state */
+    prs: () => [...queryKeys.status.all, 'prs'] as const,
+
+    /** PRs for a specific repo */
+    prsByRepo: (repo: string) => [...queryKeys.status.all, 'prs', repo] as const,
+
+    /** Recent hook events */
+    hooks: (limit?: number) => [...queryKeys.status.all, 'hooks', limit ?? 50] as const,
+
+    /** Summary (triage counts + CI failure repos) */
+    summary: () => [...queryKeys.status.all, 'summary'] as const,
+
+    /** Linear workstreams snapshot */
+    workstreams: () => [...queryKeys.status.all, 'workstreams'] as const,
+  },
 } as const;
 
 /**
