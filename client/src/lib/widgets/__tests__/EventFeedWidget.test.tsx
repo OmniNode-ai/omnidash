@@ -15,10 +15,7 @@ import type {
   DashboardData,
 } from '@/lib/dashboard-schema';
 
-// Mock scrollIntoView since it's not implemented in jsdom
-beforeEach(() => {
-  Element.prototype.scrollIntoView = vi.fn();
-});
+// Note: scrollIntoView mock is set inside the describe block below
 
 // Helper to create a widget definition
 function createWidget(overrides: Partial<WidgetDefinition> = {}): WidgetDefinition {
@@ -88,6 +85,11 @@ const manyEvents = Array.from({ length: 100 }, (_, i) => ({
 }));
 
 describe('EventFeedWidget', () => {
+  beforeEach(() => {
+    // Mock scrollIntoView since it's not implemented in jsdom
+    Element.prototype.scrollIntoView = vi.fn();
+  });
+
   it('should render list of events', () => {
     const widget = createWidget();
     const config = createConfig();

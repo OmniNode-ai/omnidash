@@ -1,6 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { checkAllServices } from '../service-health';
-import { getIntelligenceDb } from '../storage';
 import { eventConsumer } from '../event-consumer';
 import { Kafka } from 'kafkajs';
 

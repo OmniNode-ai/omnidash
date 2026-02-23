@@ -470,7 +470,7 @@ export function filterNodes(
   params: RegistryNodeQueryParams
 ): { nodes: RegistryNodeView[]; total: number } {
   let filtered = [...nodes];
-  const total = filtered.length;
+  const _totalBeforeFilter = filtered.length; // pre-filter count, reserved for future use
 
   // Filter by state
   if (params.state) {

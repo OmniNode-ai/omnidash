@@ -48,15 +48,15 @@ vi.mock('../storage', () => ({
   getIntelligenceDb: () => null,
 }));
 
-// Lazy import to avoid esbuild invariant issues at module load time
-let extractActionFromTopic: typeof import('../websocket').extractActionFromTopic;
-
-beforeAll(async () => {
-  const mod = await import('../websocket');
-  extractActionFromTopic = mod.extractActionFromTopic;
-});
-
 describe('extractActionFromTopic', () => {
+  // Lazy import to avoid esbuild invariant issues at module load time
+  let extractActionFromTopic: typeof import('../websocket').extractActionFromTopic;
+
+  beforeAll(async () => {
+    const mod = await import('../websocket');
+    extractActionFromTopic = mod.extractActionFromTopic;
+  });
+
   // Standard 6-segment ONEX topics: {env}.onex.{kind}.{producer}.{action}.v{N}
   it('extracts action from standard 6-segment topic', () => {
     const parts = 'dev.onex.evt.platform.node-heartbeat.v1'.split('.');

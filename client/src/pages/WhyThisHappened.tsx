@@ -18,7 +18,6 @@ import { useState, useCallback } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { RefreshCw, Info, Eye } from 'lucide-react';

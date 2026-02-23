@@ -192,7 +192,7 @@ export function useExecutionGraph(): UseExecutionGraphReturn {
     staleTime: 30_000,
   });
 
-  const historicalExecutions = historicalData?.executions ?? [];
+  const historicalExecutions = useMemo(() => historicalData?.executions ?? [], [historicalData]);
 
   // ─── Build historical graph on selection ─────────────────────────────────
 

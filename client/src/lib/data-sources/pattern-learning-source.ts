@@ -15,7 +15,6 @@ import {
   type PatlearnArtifact,
   type PatlearnSummary,
   type LifecycleState,
-  type SimilarityEvidence,
   type SimilarPatternEntry,
 } from '../schemas/api-response-schemas';
 import { getMockPatterns, getMockSummary } from '../mock-data/patlearn-mock';

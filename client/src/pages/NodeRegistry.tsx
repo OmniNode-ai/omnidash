@@ -19,7 +19,7 @@ import {
   nodeRegistryDashboardConfig,
   generateNodeRegistryMockData,
   type RegisteredNode,
-  type RegistrationEvent,
+  type RegistrationEvent as _RegistrationEvent,
 } from '@/lib/configs/node-registry-dashboard';
 import { useDemoProjectionStream } from '@/hooks/useDemoProjectionStream';
 import { useDemoMode } from '@/contexts/DemoModeContext';
