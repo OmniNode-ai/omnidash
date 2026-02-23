@@ -395,6 +395,21 @@ export const SUFFIX_MEMORY_INTENT_QUERY_RESPONSE = 'onex.evt.omnimemory.intent-q
 export const SUFFIX_MEMORY_INTENT_QUERY_REQUESTED = 'onex.cmd.omnimemory.intent-query-requested.v1';
 
 // ============================================================================
+// GitHub / Git / Linear Status Topics (OMN-2658 — produced by OMN-2656 Kafka producers)
+// NOTE: Intentionally excluded from buildSubscriptionTopics() / subscription groups —
+// consumed only by the StatusProjection in-memory handler via event-consumer.ts.
+// ============================================================================
+
+/** GitHub PR status events emitted by the CI/CD Kafka producer (OMN-2656). */
+export const SUFFIX_GITHUB_PR_STATUS = 'onex.evt.github.pr-status.v1';
+
+/** Git hook events emitted on pre-commit / post-receive triggers (OMN-2656). */
+export const SUFFIX_GIT_HOOK = 'onex.evt.git.hook.v1';
+
+/** Linear snapshot events emitted on epic/ticket progress changes (OMN-2656). */
+export const SUFFIX_LINEAR_SNAPSHOT = 'onex.evt.linear.snapshot.v1';
+
+// ============================================================================
 // Validation Topics (canonical format per topic_resolver.py)
 // ============================================================================
 
@@ -586,5 +601,9 @@ export function buildSubscriptionTopics(): string[] {
     ...INTELLIGENCE_PATTERN_LIFECYCLE_SUFFIXES,
     ...INTENT_SUFFIXES,
     ...VALIDATION_SUFFIXES,
+    // Status dashboard topics (OMN-2658)
+    SUFFIX_GITHUB_PR_STATUS,
+    SUFFIX_GIT_HOOK,
+    SUFFIX_LINEAR_SNAPSHOT,
   ];
 }
