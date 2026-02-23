@@ -25,6 +25,7 @@ import topicCatalogRoutes from './topic-catalog-routes';
 import healthDataSourcesRoutes from './health-data-sources-routes';
 import llmRoutingRoutes from './llm-routing-routes';
 import decisionRecordsRoutes from './decision-records-routes';
+import delegationRoutes from './delegation-routes';
 
 export async function registerRoutes(app: Express): Promise<Server> {
   // put application routes here
@@ -101,6 +102,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // Mount decision records routes for Why This Happened panel (OMN-2469)
   app.use('/api/decisions', decisionRecordsRoutes);
+
+  // Mount delegation metrics routes for delegation dashboard (OMN-2650)
+  app.use('/api/delegation', delegationRoutes);
 
   // Conditionally mount golden path test routes (OMN-2079)
   // Only enabled when ENABLE_TEST_ROUTES=true AND (NODE_ENV=test OR OMNIDASH_TEST_MODE=true)
