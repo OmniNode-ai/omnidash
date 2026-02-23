@@ -2,7 +2,6 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import request from 'supertest';
 import express, { type Express } from 'express';
 import { intelligenceRouter } from '../intelligence-routes';
-import { getIntelligenceDb } from '../storage';
 import { intelligenceEvents } from '../intelligence-event-adapter';
 import { eventConsumer } from '../event-consumer';
 import { checkAllServices } from '../service-health';

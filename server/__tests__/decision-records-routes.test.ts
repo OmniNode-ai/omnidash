@@ -14,7 +14,11 @@ import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import request from 'supertest';
 import express, { type Express } from 'express';
 import decisionRecordsRouter, { _testHelpers } from '../decision-records-routes';
-import type { DecisionRecord, DecisionTimelineResponse, IntentVsPlanResponse } from '@shared/decision-record-types';
+import type {
+  DecisionRecord,
+  DecisionTimelineResponse,
+  IntentVsPlanResponse,
+} from '@shared/decision-record-types';
 
 // ============================================================================
 // Test helpers
@@ -66,22 +70,18 @@ function buildApp(): Express {
 }
 
 // ============================================================================
-// Buffer lifecycle
-// ============================================================================
-
-beforeEach(() => {
-  _testHelpers.resetBuffer();
-});
-
-afterEach(() => {
-  _testHelpers.resetBuffer();
-});
-
-// ============================================================================
 // GET /api/decisions/timeline
 // ============================================================================
 
 describe('GET /api/decisions/timeline', () => {
+  beforeEach(() => {
+    _testHelpers.resetBuffer();
+  });
+
+  afterEach(() => {
+    _testHelpers.resetBuffer();
+  });
+
   it('returns 400 when session_id is missing', async () => {
     const app = buildApp();
     const res = await request(app).get('/api/decisions/timeline');
@@ -141,7 +141,9 @@ describe('GET /api/decisions/timeline', () => {
     expect(resA.body.total).toBe(2);
     expect(resA.body.rows.map((r: { decision_id: string }) => r.decision_id)).toContain('dr-a1');
     expect(resA.body.rows.map((r: { decision_id: string }) => r.decision_id)).toContain('dr-a2');
-    expect(resA.body.rows.map((r: { decision_id: string }) => r.decision_id)).not.toContain('dr-b1');
+    expect(resA.body.rows.map((r: { decision_id: string }) => r.decision_id)).not.toContain(
+      'dr-b1'
+    );
 
     const resB = await request(app).get('/api/decisions/timeline?session_id=session-B');
     expect(resB.status).toBe(200);
@@ -212,6 +214,14 @@ describe('GET /api/decisions/timeline', () => {
 // ============================================================================
 
 describe('GET /api/decisions/intent-vs-plan', () => {
+  beforeEach(() => {
+    _testHelpers.resetBuffer();
+  });
+
+  afterEach(() => {
+    _testHelpers.resetBuffer();
+  });
+
   it('returns 400 when session_id is missing', async () => {
     const app = buildApp();
     const res = await request(app).get('/api/decisions/intent-vs-plan');
@@ -313,6 +323,14 @@ describe('GET /api/decisions/intent-vs-plan', () => {
 // ============================================================================
 
 describe('GET /api/decisions/:decision_id', () => {
+  beforeEach(() => {
+    _testHelpers.resetBuffer();
+  });
+
+  afterEach(() => {
+    _testHelpers.resetBuffer();
+  });
+
   it('returns 404 when decision_id is not found', async () => {
     const app = buildApp();
     const res = await request(app).get('/api/decisions/dr-not-here');
@@ -361,6 +379,14 @@ describe('GET /api/decisions/:decision_id', () => {
 // ============================================================================
 
 describe('_testHelpers (circular buffer)', () => {
+  beforeEach(() => {
+    _testHelpers.resetBuffer();
+  });
+
+  afterEach(() => {
+    _testHelpers.resetBuffer();
+  });
+
   it('resetBuffer clears all records', () => {
     _testHelpers.addToStore(makeRecord({ decision_id: 'dr-x1' }));
     _testHelpers.addToStore(makeRecord({ decision_id: 'dr-x2' }));
@@ -446,10 +472,7 @@ describe('OMN-2325 compliance', () => {
     const fs = await import('node:fs');
     const path = await import('node:path');
 
-    const routePath = path.resolve(
-      import.meta.dirname,
-      '../decision-records-routes.ts'
-    );
+    const routePath = path.resolve(import.meta.dirname, '../decision-records-routes.ts');
     const content = fs.readFileSync(routePath, 'utf-8');
 
     expect(content).not.toMatch(/import\s.*getIntelligenceDb/);

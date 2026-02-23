@@ -102,28 +102,23 @@ describe('LifecycleStateBadge', () => {
   });
 
   describe('all states render correctly', () => {
-    const states = ['candidate', 'provisional', 'validated', 'deprecated'] as const;
-    const expectedLabels: Record<(typeof states)[number], string> = {
-      candidate: 'Candidate',
-      provisional: 'Provisional',
-      validated: 'Validated',
-      deprecated: 'Deprecated',
-    };
+    it.each([
+      ['candidate', 'Candidate'],
+      ['provisional', 'Provisional'],
+      ['validated', 'Validated'],
+      ['deprecated', 'Deprecated'],
+    ] as const)('should render %s state correctly', (state, expectedLabel) => {
+      const { container, unmount } = render(<LifecycleStateBadge state={state} />);
 
-    states.forEach((state) => {
-      it(`should render ${state} state correctly`, () => {
-        const { container, unmount } = render(<LifecycleStateBadge state={state} />);
+      // Check label
+      expect(screen.getByText(expectedLabel)).toBeInTheDocument();
 
-        // Check label
-        expect(screen.getByText(expectedLabels[state])).toBeInTheDocument();
+      // Check badge container exists and is a Badge component
+      const badge = container.firstChild as HTMLElement;
+      expect(badge).toBeInTheDocument();
+      expect(badge.tagName.toLowerCase()).toBe('div');
 
-        // Check badge container exists and is a Badge component
-        const badge = container.firstChild as HTMLElement;
-        expect(badge).toBeInTheDocument();
-        expect(badge.tagName.toLowerCase()).toBe('div');
-
-        unmount();
-      });
+      unmount();
     });
   });
 

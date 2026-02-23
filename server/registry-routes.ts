@@ -237,7 +237,7 @@ router.get('/discovery', (req: Request, res: Response) => {
 
     const snapshot = projection.getSnapshot();
     const allNodes = snapshot.payload.nodes;
-    const stats = snapshot.payload.stats;
+    const _stats = snapshot.payload.stats; // reserved for future stats endpoint
 
     // Apply filters
     const params: FilterParams = {

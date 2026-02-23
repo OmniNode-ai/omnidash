@@ -64,10 +64,10 @@ interface CandidateRow {
   totalRuns: number;
 }
 
-let runStore: RunRow[] = [];
-let violationStore: ViolationRow[] = [];
-let candidateStore: CandidateRow[] = [];
-let nextViolationId = 1;
+let runStore: RunRow[];
+let violationStore: ViolationRow[];
+let candidateStore: CandidateRow[];
+let nextViolationId: number;
 
 // ============================================================================
 // Chainable Drizzle mock
@@ -78,7 +78,7 @@ let nextViolationId = 1;
  * Each method returns the chain, and the chain is also a thenable
  * so `await db.select().from(table).where(cond)` resolves to a result.
  */
-function buildChain(resolver: () => any): any {
+function _buildChain(resolver: () => any): any {
   const chain: any = {};
 
   // Make the chain thenable so await works
@@ -119,7 +119,7 @@ function createMockDb() {
       //
       // Tracking the "from" table to know which store to query.
       let targetTable: 'runs' | 'violations' | 'candidates' | null = null;
-      let selectFields: any = _fields;
+      const _selectFields: any = _fields; // captured for future use
 
       const chain: any = {};
 

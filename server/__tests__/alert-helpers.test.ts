@@ -1,6 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { getAllAlertMetrics, clearAlertMetricsCache } from '../alert-helpers';
-import { getIntelligenceDb } from '../storage';
 
 // Mock dependencies
 const mockDb = {

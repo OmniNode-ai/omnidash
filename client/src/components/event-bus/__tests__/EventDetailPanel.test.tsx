@@ -12,7 +12,7 @@
  */
 
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { render, screen, waitFor, within } from '@testing-library/react';
+import { render, screen, waitFor, within as _within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { EventDetailPanel, EventDetailPanelProps } from '../EventDetailPanel';
 
@@ -26,12 +26,13 @@ vi.mock('@/hooks/use-toast', () => ({
   }),
 }));
 
-// Mock clipboard API
+// Mock clipboard API — must be set at module level because clipboard is read-only in jsdom
 const mockWriteText = vi.fn();
-Object.assign(navigator, {
-  clipboard: {
-    writeText: mockWriteText,
-  },
+// eslint-disable-next-line vitest/require-hook
+Object.defineProperty(navigator, 'clipboard', {
+  value: { writeText: mockWriteText },
+  writable: true,
+  configurable: true,
 });
 
 describe('EventDetailPanel', () => {
@@ -467,7 +468,6 @@ describe('EventDetailPanel', () => {
     });
 
     it('should call clipboard API when copy is triggered', async () => {
-      const user = userEvent.setup();
       const event = createMockEvent({
         payload: JSON.stringify({ toastTest: 'data' }),
       });

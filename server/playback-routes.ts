@@ -307,7 +307,12 @@ router.post('/start', async (req: Request, res: Response) => {
     // SECURITY: Never trust user input for path construction.
 
     // Reject absolute paths and explicit path traversal attempts
-    if (typeof file !== 'string' || file.includes('..') || file.includes('\x00') || path.isAbsolute(file)) {
+    if (
+      typeof file !== 'string' ||
+      file.includes('..') ||
+      file.includes('\x00') ||
+      path.isAbsolute(file)
+    ) {
       return res.status(403).json({
         success: false,
         error: 'Access denied: invalid file path',

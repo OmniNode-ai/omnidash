@@ -1,6 +1,5 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { PostgresAdapter } from '../db-adapter';
-import { getIntelligenceDb } from '../storage';
 import * as schema from '@shared/intelligence-schema';
 
 // Note: executeRaw was intentionally removed from DatabaseAdapter.
@@ -164,7 +163,6 @@ describe('DatabaseAdapter - Security (SQL Injection Prevention)', () => {
     // Verify sql template literal was used (parameterized)
     expect(chain.where).toHaveBeenCalled();
   });
-
 });
 
 describe('DatabaseAdapter - Functionality (CRUD Operations)', () => {
@@ -500,7 +498,6 @@ describe('DatabaseAdapter - Functionality (CRUD Operations)', () => {
       );
     });
   });
-
 });
 
 describe('DatabaseAdapter - Helper Methods', () => {

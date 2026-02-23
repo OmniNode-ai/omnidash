@@ -145,14 +145,7 @@ describe('OMN-2325: No direct DB access in route files', () => {
       }
     }
 
-    if (violations.length > 0) {
-      throw new Error(
-        `Route files must not directly reference Wave 2 tables with DB imports.\n` +
-          `These tables are populated via Kafka → read-model-consumer projections.\n` +
-          `Use projectionService.getView('domain').getSnapshot() instead.\n` +
-          `Violations:\n  ${violations.join('\n  ')}`
-      );
-    }
+    expect(violations).toHaveLength(0);
   });
 
   /**
@@ -161,7 +154,7 @@ describe('OMN-2325: No direct DB access in route files', () => {
    */
   it('OMN-2596: Wave 2 evt topics are declared in shared/topics.ts', () => {
     const topicsFile = path.resolve(import.meta.dirname, '../../shared/topics.ts');
-    expect(fs.existsSync(topicsFile), `shared/topics.ts not found at ${topicsFile}`).toBe(true);
+    expect(fs.existsSync(topicsFile)).toBe(true);
     const content = fs.readFileSync(topicsFile, 'utf-8');
 
     const requiredTopics = [

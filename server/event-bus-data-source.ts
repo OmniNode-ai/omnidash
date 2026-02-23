@@ -721,8 +721,12 @@ export function getEventBusDataSource(): EventBusDataSource | null {
   } catch (error) {
     eventBusInitError = error instanceof Error ? error : new Error(String(error));
     console.error('❌ EventBusDataSource initialization failed:', eventBusInitError.message);
-    console.error('   Kafka is required infrastructure. Set KAFKA_BROKERS in .env to connect to the Redpanda/Kafka broker.');
-    console.error('   Event storage and querying are unavailable — this is an error state, not normal operation.');
+    console.error(
+      '   Kafka is required infrastructure. Set KAFKA_BROKERS in .env to connect to the Redpanda/Kafka broker.'
+    );
+    console.error(
+      '   Event storage and querying are unavailable — this is an error state, not normal operation.'
+    );
     return null;
   }
 }
@@ -807,7 +811,9 @@ export const eventBusDataSource = new Proxy({} as EventBusDataSource, {
       // Return dummy implementations
       if (prop === 'validateConnection') {
         return async () => {
-          console.error('❌ EventBusDataSource not available - cannot validate connection. Set KAFKA_BROKERS in .env.');
+          console.error(
+            '❌ EventBusDataSource not available - cannot validate connection. Set KAFKA_BROKERS in .env.'
+          );
           return false;
         };
       }
@@ -839,24 +845,32 @@ export const eventBusDataSource = new Proxy({} as EventBusDataSource, {
       }
       if (prop === 'initializeSchema') {
         return async () => {
-          console.error('❌ EventBusDataSource: schema initialization skipped — Kafka is not available. Set KAFKA_BROKERS in .env to restore event storage.');
+          console.error(
+            '❌ EventBusDataSource: schema initialization skipped — Kafka is not available. Set KAFKA_BROKERS in .env to restore event storage.'
+          );
         };
       }
       if (prop === 'queryEvents') {
         return async (..._args: unknown[]) => {
-          console.warn('[EventBusDataSource] queryEvents called but Kafka is not available — returning empty result. Configure KAFKA_BROKERS and KAFKA_CLIENT_ID.');
+          console.warn(
+            '[EventBusDataSource] queryEvents called but Kafka is not available — returning empty result. Configure KAFKA_BROKERS and KAFKA_CLIENT_ID.'
+          );
           return [];
         };
       }
       if (prop === 'queryEventChains') {
         return async (..._args: unknown[]) => {
-          console.warn('[EventBusDataSource] queryEventChains called but Kafka is not available — returning empty result. Configure KAFKA_BROKERS and KAFKA_CLIENT_ID.');
+          console.warn(
+            '[EventBusDataSource] queryEventChains called but Kafka is not available — returning empty result. Configure KAFKA_BROKERS and KAFKA_CLIENT_ID.'
+          );
           return [];
         };
       }
       if (prop === 'getStatistics') {
         return async (..._args: unknown[]) => {
-          console.warn('[EventBusDataSource] getStatistics called but Kafka is not available — returning zero-value shape. Configure KAFKA_BROKERS and KAFKA_CLIENT_ID.');
+          console.warn(
+            '[EventBusDataSource] getStatistics called but Kafka is not available — returning zero-value shape. Configure KAFKA_BROKERS and KAFKA_CLIENT_ID.'
+          );
           return {
             total_events: 0,
             events_by_type: {},
@@ -869,7 +883,9 @@ export const eventBusDataSource = new Proxy({} as EventBusDataSource, {
       }
       if (prop === 'getEventChainStats') {
         return async () => {
-          console.warn('[EventBusDataSource] getEventChainStats called but Kafka is not available — returning zero-value shape. Configure KAFKA_BROKERS and KAFKA_CLIENT_ID.');
+          console.warn(
+            '[EventBusDataSource] getEventChainStats called but Kafka is not available — returning zero-value shape. Configure KAFKA_BROKERS and KAFKA_CLIENT_ID.'
+          );
           return {
             totalChains: 0,
             completedChains: 0,
@@ -913,8 +929,8 @@ export const eventBusDataSource = new Proxy({} as EventBusDataSource, {
             // The listener was NOT registered — Kafka is unavailable so no events will fire.
             console.warn(
               `[EventBusDataSource] .${prop}() called on stub proxy (event: "${String(args[0])}") — ` +
-              'Kafka is not initialized; listener was NOT registered. ' +
-              'Set KAFKA_BROKERS in .env to enable real event delivery.'
+                'Kafka is not initialized; listener was NOT registered. ' +
+                'Set KAFKA_BROKERS in .env to enable real event delivery.'
             );
           } else if (prop === 'removeListener') {
             // No-op: there is nothing to remove because on/once stubs never registered a
@@ -923,7 +939,7 @@ export const eventBusDataSource = new Proxy({} as EventBusDataSource, {
             // avoid polluting startup/teardown logs with spurious errors.
             console.warn(
               `[EventBusDataSource] .removeListener() called on stub proxy (event: "${String(args[0])}") — ` +
-              'no-op because Kafka is not initialized and no listener was ever registered.'
+                'no-op because Kafka is not initialized and no listener was ever registered.'
             );
           } else if (prop === 'emit') {
             // No-op: no real EventEmitter exists to dispatch to. Log at error level —
@@ -931,7 +947,7 @@ export const eventBusDataSource = new Proxy({} as EventBusDataSource, {
             // should have checked bus availability before attempting to publish an event.
             console.error(
               `[EventBusDataSource] .emit() called on stub proxy (event: "${String(args[0])}") — ` +
-              'no-op because Kafka is not initialized; event was not dispatched.'
+                'no-op because Kafka is not initialized; event was not dispatched.'
             );
             // EventEmitter.emit() returns boolean (true if listeners were called).
             // Return false — no listeners exist because Kafka is not initialized.
