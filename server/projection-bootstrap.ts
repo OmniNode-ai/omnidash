@@ -20,6 +20,7 @@ import { PatternsProjection } from './projections/patterns-projection';
 import { EnrichmentProjection } from './projections/enrichment-projection';
 import { EnforcementProjection } from './projections/enforcement-projection';
 import { LlmRoutingProjection } from './projections/llm-routing-projection';
+import { DelegationProjection } from './projections/delegation-projection';
 import { eventConsumer } from './event-consumer';
 import { eventBusDataSource } from './event-bus-data-source';
 import { extractActionFromTopic, extractProducerFromTopicOrDefault } from '@shared/topics';
@@ -83,6 +84,12 @@ export const enrichmentProjection = new EnrichmentProjection();
 export const enforcementProjection = new EnforcementProjection();
 /** LLM routing effectiveness projection (OMN-2372). Queries llm_routing_decisions table. */
 export const llmRoutingProjection = new LlmRoutingProjection();
+/**
+ * Delegation dashboard projection (OMN-2650). Queries delegation_events and
+ * delegation_shadow_comparisons tables. Standalone — NOT registered with
+ * ProjectionService (no fanout, no WS invalidation, no ingest pipeline).
+ */
+export const delegationProjection = new DelegationProjection();
 
 if (!projectionService.getView(extractionMetricsProjection.viewId)) {
   projectionService.registerView(extractionMetricsProjection);
