@@ -112,16 +112,29 @@ export const DEFAULT_BG_CLASS = 'bg-primary';
 
 /**
  * Confidence threshold for high confidence classification.
- * Values >= 0.9 (90%) are considered high confidence.
+ * Values >= 0.9 (90%) are considered high confidence (green band).
  */
 export const CONFIDENCE_THRESHOLD_HIGH = 0.9;
 
 /**
- * Confidence threshold for medium confidence classification.
- * Values >= 0.7 (70%) but < 0.9 are considered medium confidence.
- * Values < 0.7 are considered low confidence.
+ * Confidence threshold for medium-high confidence classification.
+ * Values >= 0.7 (70%) but < 0.9 are considered medium-high confidence (blue band).
  */
 export const CONFIDENCE_THRESHOLD_MEDIUM = 0.7;
+
+/**
+ * Confidence threshold for medium-low confidence classification.
+ * Values >= 0.5 (50%) but < 0.7 are considered medium-low confidence (amber band).
+ * Values < 0.5 are considered low confidence (red band).
+ *
+ * This 4-band system aligns IntentDashboard legend with SessionTimeline display.
+ * Band summary:
+ *   Green  — high confidence       (>= 90%)
+ *   Blue   — medium-high confidence(>= 70%, < 90%)
+ *   Amber  — medium-low confidence (>= 50%, < 70%)
+ *   Red    — low confidence        (<  50%)
+ */
+export const CONFIDENCE_THRESHOLD_LOW = 0.5;
 
 // ============================================================================
 // Utility Functions
@@ -206,55 +219,67 @@ export function getIntentBadgeClasses(category: string): string {
 
 /**
  * Gets Tailwind CSS classes based on confidence level.
- * Returns color classes indicating confidence tier:
- * - >= 0.9 (90%): green (high confidence)
- * - >= 0.7 (70%): yellow (medium confidence)
- * - < 0.7: red (low confidence)
+ * Returns color classes indicating confidence tier using the 4-band system:
+ * - >= 0.9 (90%): green  (high confidence)
+ * - >= 0.7 (70%): blue   (medium-high confidence)
+ * - >= 0.5 (50%): amber  (medium-low confidence)
+ * - <  0.5:       red    (low confidence)
  *
- * Thresholds match RecentIntents indicator bar and IntentDashboard legend.
+ * Thresholds use CONFIDENCE_THRESHOLD_HIGH / MEDIUM / LOW constants and
+ * match the IntentDashboard legend and SessionTimeline 4-band display.
  *
  * @param confidence - Confidence value between 0 and 1
  * @returns Tailwind classes string for the confidence badge
  *
  * @example
  * getConfidenceColor(0.95) // 'bg-green-500/10 text-green-600 border-green-500/20'
- * getConfidenceColor(0.8) // 'bg-yellow-500/10 text-yellow-600 border-yellow-500/20'
- * getConfidenceColor(0.5) // 'bg-red-500/10 text-red-600 border-red-500/20'
+ * getConfidenceColor(0.8)  // 'bg-blue-500/10 text-blue-600 border-blue-500/20'
+ * getConfidenceColor(0.6)  // 'bg-amber-500/10 text-amber-600 border-amber-500/20'
+ * getConfidenceColor(0.3)  // 'bg-red-500/10 text-red-600 border-red-500/20'
  */
 export function getConfidenceColor(confidence: number): string {
   if (confidence >= CONFIDENCE_THRESHOLD_HIGH) {
     return 'bg-green-500/10 text-green-600 border-green-500/20';
   }
   if (confidence >= CONFIDENCE_THRESHOLD_MEDIUM) {
-    return 'bg-yellow-500/10 text-yellow-600 border-yellow-500/20';
+    return 'bg-blue-500/10 text-blue-600 border-blue-500/20';
+  }
+  if (confidence >= CONFIDENCE_THRESHOLD_LOW) {
+    return 'bg-amber-500/10 text-amber-600 border-amber-500/20';
   }
   return 'bg-red-500/10 text-red-600 border-red-500/20';
 }
 
 /**
  * Gets Tailwind CSS classes for a confidence badge with dark mode support.
- * Uses the same 3-tier system as getConfidenceColor but with explicit dark mode classes.
+ * Uses the 4-band system aligned with IntentDashboard legend and SessionTimeline display.
  *
- * - >= 0.9 (90%): green (high confidence)
- * - >= 0.7 (70%): yellow (medium confidence)
- * - < 0.7: red (low confidence)
+ * - >= 0.9 (90%): green  (high confidence)
+ * - >= 0.7 (70%): blue   (medium-high confidence)
+ * - >= 0.5 (50%): amber  (medium-low confidence)
+ * - <  0.5:       red    (low confidence)
  *
- * Thresholds use CONFIDENCE_THRESHOLD_HIGH and CONFIDENCE_THRESHOLD_MEDIUM constants.
+ * Thresholds use CONFIDENCE_THRESHOLD_HIGH, CONFIDENCE_THRESHOLD_MEDIUM,
+ * and CONFIDENCE_THRESHOLD_LOW constants.
  *
  * @param confidence - Confidence value between 0 and 1
  * @returns Tailwind classes string for confidence badge with dark mode support
  *
  * @example
  * getConfidenceBadgeClasses(0.95) // 'bg-green-500/20 text-green-700 dark:text-green-400'
- * getConfidenceBadgeClasses(0.8) // 'bg-yellow-500/20 text-yellow-700 dark:text-yellow-400'
- * getConfidenceBadgeClasses(0.5) // 'bg-red-500/20 text-red-700 dark:text-red-400'
+ * getConfidenceBadgeClasses(0.8)  // 'bg-blue-500/20 text-blue-700 dark:text-blue-400'
+ * getConfidenceBadgeClasses(0.6)  // 'bg-amber-500/20 text-amber-700 dark:text-amber-400'
+ * getConfidenceBadgeClasses(0.3)  // 'bg-red-500/20 text-red-700 dark:text-red-400'
  */
 export function getConfidenceBadgeClasses(confidence: number): string {
   if (confidence >= CONFIDENCE_THRESHOLD_HIGH) {
     return 'bg-green-500/20 text-green-700 dark:text-green-400';
   }
   if (confidence >= CONFIDENCE_THRESHOLD_MEDIUM) {
-    return 'bg-yellow-500/20 text-yellow-700 dark:text-yellow-400';
+    return 'bg-blue-500/20 text-blue-700 dark:text-blue-400';
+  }
+  if (confidence >= CONFIDENCE_THRESHOLD_LOW) {
+    return 'bg-amber-500/20 text-amber-700 dark:text-amber-400';
   }
   return 'bg-red-500/20 text-red-700 dark:text-red-400';
 }

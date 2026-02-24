@@ -50,7 +50,11 @@ import {
 import { TooltipProvider } from '@/components/ui/tooltip';
 import { DashboardPageHeader } from '@/components/DashboardPageHeader';
 import { cn } from '@/lib/utils';
-import { CONFIDENCE_THRESHOLD_HIGH, CONFIDENCE_THRESHOLD_MEDIUM } from '@/lib/intent-colors';
+import {
+  CONFIDENCE_THRESHOLD_HIGH,
+  CONFIDENCE_THRESHOLD_MEDIUM,
+  CONFIDENCE_THRESHOLD_LOW,
+} from '@/lib/intent-colors';
 import {
   Brain,
   Activity,
@@ -587,22 +591,29 @@ export default function IntentDashboard() {
           />
         </IntentErrorBoundary>
 
-        {/* Legend - thresholds from shared constants (intent-colors.ts) */}
+        {/* Legend - 4-band thresholds from shared constants (intent-colors.ts) [OMN-1560] */}
         <div className="flex flex-wrap gap-4 text-xs text-muted-foreground pt-2 border-t">
           <div className="flex items-center gap-1.5">
             <div className="w-3 h-3 rounded-full bg-green-500" />
             <span>High confidence (&ge;{Math.round(CONFIDENCE_THRESHOLD_HIGH * 100)}%)</span>
           </div>
           <div className="flex items-center gap-1.5">
-            <div className="w-3 h-3 rounded-full bg-yellow-500" />
+            <div className="w-3 h-3 rounded-full bg-blue-500" />
             <span>
-              Medium confidence ({Math.round(CONFIDENCE_THRESHOLD_MEDIUM * 100)}-
+              Medium-high confidence ({Math.round(CONFIDENCE_THRESHOLD_MEDIUM * 100)}&ndash;
               {Math.round(CONFIDENCE_THRESHOLD_HIGH * 100)}%)
             </span>
           </div>
           <div className="flex items-center gap-1.5">
+            <div className="w-3 h-3 rounded-full bg-amber-500" />
+            <span>
+              Medium-low confidence ({Math.round(CONFIDENCE_THRESHOLD_LOW * 100)}&ndash;
+              {Math.round(CONFIDENCE_THRESHOLD_MEDIUM * 100)}%)
+            </span>
+          </div>
+          <div className="flex items-center gap-1.5">
             <div className="w-3 h-3 rounded-full bg-red-500" />
-            <span>Low confidence (&lt;{Math.round(CONFIDENCE_THRESHOLD_MEDIUM * 100)}%)</span>
+            <span>Low confidence (&lt;{Math.round(CONFIDENCE_THRESHOLD_LOW * 100)}%)</span>
           </div>
         </div>
 
