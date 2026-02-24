@@ -5,6 +5,7 @@
  * deduplication, and state management for intent classification events.
  *
  * @see OMN-1458 - Real-time Intent Dashboard Panel
+ * @see OMN-1562 - Path alias verified: uses @/hooks/useIntentStream (not relative import)
  */
 
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
