@@ -24,6 +24,9 @@ import enrichmentRoutes from './enrichment-routes';
 import topicCatalogRoutes from './topic-catalog-routes';
 import healthDataSourcesRoutes from './health-data-sources-routes';
 import llmRoutingRoutes from './llm-routing-routes';
+import decisionRecordsRoutes from './decision-records-routes';
+import delegationRoutes from './delegation-routes';
+import statusRoutes, { linearSnapshotRouter } from './status-routes';
 // Wave 2 routes (OMN-2602)
 import gateDecisionsRoutes from './gate-decisions-routes';
 import epicRunRoutes from './epic-run-routes';
@@ -103,6 +106,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // Mount LLM routing effectiveness routes (OMN-2279)
   app.use('/api/llm-routing', llmRoutingRoutes);
+
+  // Mount decision records routes for Why This Happened panel (OMN-2469)
+  app.use('/api/decisions', decisionRecordsRoutes);
+
+  // Mount delegation metrics routes for delegation dashboard (OMN-2650)
+  app.use('/api/delegation', delegationRoutes);
+
+  // Mount status dashboard routes (OMN-2658)
+  app.use('/api/status', statusRoutes);
+  // Debug/manual ingress for Linear snapshots (OMN-2658)
+  app.use('/api/linear', linearSnapshotRouter);
 
   // Mount Wave 2 omniclaude state event routes (OMN-2602)
   app.use('/api/gate-decisions', gateDecisionsRoutes);

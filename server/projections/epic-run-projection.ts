@@ -14,38 +14,23 @@
 import { sql } from 'drizzle-orm';
 import { DbBackedProjectionView } from './db-backed-projection-view';
 import { tryGetIntelligenceDb } from '../storage';
+import {
+  epicRunEventRowSchema,
+  epicRunLeaseRowSchema,
+  epicRunSummarySchema,
+  epicRunPayloadSchema,
+  type EpicRunEventRow,
+  type EpicRunLeaseRow,
+  type EpicRunSummary,
+  type EpicRunPayload,
+} from '@shared/omniclaude-state-schema';
 
 // ============================================================================
-// Payload types
+// Payload types — derived from Drizzle schema + Zod (OMN-2602)
+// Re-export so client code can import from this projection file directly.
 // ============================================================================
 
-export interface EpicRunEventRow {
-  correlation_id: string;
-  epic_run_id: string;
-  event_type: string;
-  ticket_id: string | null;
-  repo: string | null;
-  created_at: string;
-}
-
-export interface EpicRunLeaseRow {
-  epic_run_id: string;
-  lease_holder: string;
-  lease_expires_at: string | null;
-  updated_at: string;
-}
-
-export interface EpicRunSummary {
-  active_runs: number;
-  total_events: number;
-  recent_event_types: string[];
-}
-
-export interface EpicRunPayload {
-  events: EpicRunEventRow[];
-  leases: EpicRunLeaseRow[];
-  summary: EpicRunSummary;
-}
+export type { EpicRunEventRow, EpicRunLeaseRow, EpicRunSummary, EpicRunPayload };
 
 // ============================================================================
 // Projection
@@ -100,21 +85,18 @@ export class EpicRunProjection extends DbBackedProjectionView<EpicRunPayload> {
         `),
       ]);
 
-      const s = ((summaryRows.rows ?? []) as unknown[])[0] as {
-        total_events: number;
-        active_runs: number;
-        recent_types: string | null;
-      } | undefined;
+      const rawSummary = ((summaryRows.rows ?? []) as unknown[])[0];
+      const events = (eventRows.rows ?? []).map((row) => epicRunEventRowSchema.parse(row));
+      const leases = (leaseRows.rows ?? []).map((row) => epicRunLeaseRowSchema.parse(row));
+      const recentTypes = (rawSummary as { recent_types?: unknown })?.recent_types;
+      const summary = epicRunSummarySchema.parse({
+        active_runs: Number((rawSummary as { active_runs?: unknown })?.active_runs ?? 0),
+        total_events: Number((rawSummary as { total_events?: unknown })?.total_events ?? 0),
+        recent_event_types:
+          typeof recentTypes === 'string' && recentTypes ? recentTypes.split(',') : [],
+      });
 
-      return {
-        events: (eventRows.rows ?? []) as unknown[] as EpicRunEventRow[],
-        leases: (leaseRows.rows ?? []) as unknown[] as EpicRunLeaseRow[],
-        summary: {
-          active_runs: Number(s?.active_runs ?? 0),
-          total_events: Number(s?.total_events ?? 0),
-          recent_event_types: s?.recent_types ? s.recent_types.split(',') : [],
-        },
-      };
+      return epicRunPayloadSchema.parse({ events, leases, summary });
     } catch (err) {
       const pgCode = (err as { code?: string }).code;
       const msg = err instanceof Error ? err.message : String(err);

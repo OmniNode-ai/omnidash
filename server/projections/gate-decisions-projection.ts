@@ -14,33 +14,21 @@
 import { sql } from 'drizzle-orm';
 import { DbBackedProjectionView } from './db-backed-projection-view';
 import { tryGetIntelligenceDb } from '../storage';
+import {
+  gateDecisionRowSchema,
+  gateDecisionSummarySchema,
+  gateDecisionsPayloadSchema,
+  type GateDecisionRow,
+  type GateDecisionSummary,
+  type GateDecisionsPayload,
+} from '@shared/omniclaude-state-schema';
 
 // ============================================================================
-// Payload types
+// Payload types — derived from Drizzle schema + Zod (OMN-2602)
+// Re-export so client code can import from this projection file directly.
 // ============================================================================
 
-export interface GateDecisionRow {
-  correlation_id: string;
-  pr_number: number | null;
-  repo: string | null;
-  gate_name: string;
-  outcome: string;
-  blocking: boolean;
-  created_at: string;
-}
-
-export interface GateDecisionSummary {
-  total: number;
-  passed: number;
-  failed: number;
-  blocked: number;
-  pass_rate: number;
-}
-
-export interface GateDecisionsPayload {
-  recent: GateDecisionRow[];
-  summary: GateDecisionSummary;
-}
+export type { GateDecisionRow, GateDecisionSummary, GateDecisionsPayload };
 
 // ============================================================================
 // Projection
@@ -85,27 +73,22 @@ export class GateDecisionsProjection extends DbBackedProjectionView<GateDecision
         `),
       ]);
 
-      const s = ((summaryRows.rows ?? []) as unknown[])[0] as {
-        total: number;
-        passed: number;
-        failed: number;
-        blocked: number;
-      } | undefined;
-      const total = Number(s?.total ?? 0);
-      const passed = Number(s?.passed ?? 0);
-      const failed = Number(s?.failed ?? 0);
-      const blocked = Number(s?.blocked ?? 0);
+      const rawSummary = ((summaryRows.rows ?? []) as unknown[])[0];
+      const total = Number((rawSummary as { total?: unknown })?.total ?? 0);
+      const passed = Number((rawSummary as { passed?: unknown })?.passed ?? 0);
+      const failed = Number((rawSummary as { failed?: unknown })?.failed ?? 0);
+      const blocked = Number((rawSummary as { blocked?: unknown })?.blocked ?? 0);
 
-      return {
-        recent: (recentRows.rows ?? []) as unknown[] as GateDecisionRow[],
-        summary: {
-          total,
-          passed,
-          failed,
-          blocked,
-          pass_rate: total > 0 ? passed / total : 0,
-        },
-      };
+      const recent = (recentRows.rows ?? []).map((row) => gateDecisionRowSchema.parse(row));
+      const summary = gateDecisionSummarySchema.parse({
+        total,
+        passed,
+        failed,
+        blocked,
+        pass_rate: total > 0 ? passed / total : 0,
+      });
+
+      return gateDecisionsPayloadSchema.parse({ recent, summary });
     } catch (err) {
       // Graceful degrade: table may not exist yet
       const pgCode = (err as { code?: string }).code;

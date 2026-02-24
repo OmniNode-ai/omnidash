@@ -14,33 +14,21 @@
 import { sql } from 'drizzle-orm';
 import { DbBackedProjectionView } from './db-backed-projection-view';
 import { tryGetIntelligenceDb } from '../storage';
+import {
+  pipelineBudgetRowSchema,
+  pipelineBudgetSummarySchema,
+  pipelineBudgetPayloadSchema,
+  type PipelineBudgetRow,
+  type PipelineBudgetSummary,
+  type PipelineBudgetPayload,
+} from '@shared/omniclaude-state-schema';
 
 // ============================================================================
-// Payload types
+// Payload types — derived from Drizzle schema + Zod (OMN-2602)
+// Re-export so client code can import from this projection file directly.
 // ============================================================================
 
-export interface PipelineBudgetRow {
-  correlation_id: string;
-  pipeline_id: string;
-  budget_type: string;
-  cap_value: number | null;
-  current_value: number | null;
-  cap_hit: boolean;
-  repo: string | null;
-  created_at: string;
-}
-
-export interface PipelineBudgetSummary {
-  total_cap_hits: number;
-  affected_pipelines: number;
-  token_cap_hits: number;
-  cost_cap_hits: number;
-}
-
-export interface PipelineBudgetPayload {
-  recent: PipelineBudgetRow[];
-  summary: PipelineBudgetSummary;
-}
+export type { PipelineBudgetRow, PipelineBudgetSummary, PipelineBudgetPayload };
 
 // ============================================================================
 // Projection
@@ -93,22 +81,18 @@ export class PipelineBudgetProjection extends DbBackedProjectionView<PipelineBud
         `),
       ]);
 
-      const s = ((summaryRows.rows ?? []) as unknown[])[0] as {
-        total_cap_hits: number;
-        affected_pipelines: number;
-        token_cap_hits: number;
-        cost_cap_hits: number;
-      } | undefined;
+      const rawSummary = ((summaryRows.rows ?? []) as unknown[])[0];
+      const recent = (recentRows.rows ?? []).map((row) => pipelineBudgetRowSchema.parse(row));
+      const summary = pipelineBudgetSummarySchema.parse({
+        total_cap_hits: Number((rawSummary as { total_cap_hits?: unknown })?.total_cap_hits ?? 0),
+        affected_pipelines: Number(
+          (rawSummary as { affected_pipelines?: unknown })?.affected_pipelines ?? 0
+        ),
+        token_cap_hits: Number((rawSummary as { token_cap_hits?: unknown })?.token_cap_hits ?? 0),
+        cost_cap_hits: Number((rawSummary as { cost_cap_hits?: unknown })?.cost_cap_hits ?? 0),
+      });
 
-      return {
-        recent: (recentRows.rows ?? []) as unknown[] as PipelineBudgetRow[],
-        summary: {
-          total_cap_hits: Number(s?.total_cap_hits ?? 0),
-          affected_pipelines: Number(s?.affected_pipelines ?? 0),
-          token_cap_hits: Number(s?.token_cap_hits ?? 0),
-          cost_cap_hits: Number(s?.cost_cap_hits ?? 0),
-        },
-      };
+      return pipelineBudgetPayloadSchema.parse({ recent, summary });
     } catch (err) {
       const pgCode = (err as { code?: string }).code;
       const msg = err instanceof Error ? err.message : String(err);

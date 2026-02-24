@@ -27,6 +27,10 @@ import { insightsEventEmitter } from './insights-events';
 import { baselinesEventEmitter } from './baselines-events';
 import { llmRoutingEventEmitter } from './llm-routing-events';
 import { effectivenessEventEmitter } from './effectiveness-events';
+import { enrichmentEventEmitter } from './enrichment-events';
+import { enforcementEventEmitter } from './enforcement-events';
+import { delegationEventEmitter } from './delegation-events';
+import { statusEventEmitter } from './status-events';
 // Wave 2 emitters (OMN-2602)
 import {
   gateDecisionEventEmitter,
@@ -279,6 +283,14 @@ const VALID_TOPICS = [
   'effectiveness',
   // Baselines ROI invalidation events (OMN-2331)
   'baselines',
+  // Delegation metrics invalidation events (OMN-2284)
+  'delegation',
+  // Context enrichment invalidation events (OMN-2280 / OMN-2373)
+  'enrichment',
+  // Pattern enforcement invalidation events (OMN-2374)
+  'enforcement',
+  // Status dashboard invalidation events (OMN-2658)
+  'status',
   // Wave 2 omniclaude state event topics (OMN-2602)
   'gate-decisions',
   'epic-run',
@@ -549,6 +561,53 @@ export function setupWebSocket(httpServer: HTTPServer) {
     broadcast('EFFECTIVENESS_UPDATE', { timestamp: Date.now() }, 'effectiveness');
   };
   effectivenessEventEmitter.on('effectiveness-update', effectivenessUpdateHandler);
+
+  // Context enrichment invalidation listener (OMN-2373)
+  // Tells clients to re-fetch enrichment data when a new enrichment event is projected.
+  // Uses enrichmentEventEmitter so ReadModelConsumer can trigger it after projecting.
+  // Invalidation-only broadcast: clients re-query the /api/enrichment/* endpoints on receipt.
+  const enrichmentInvalidateHandler = (data: { correlationId: string }) => {
+    broadcast(
+      'ENRICHMENT_INVALIDATE',
+      { correlationId: data.correlationId, timestamp: Date.now() },
+      'enrichment'
+    );
+  };
+  enrichmentEventEmitter.on('enrichment-invalidate', enrichmentInvalidateHandler);
+
+  // Pattern enforcement invalidation listener (OMN-2374)
+  // Tells clients to re-fetch enforcement data when a new enforcement event is projected.
+  // Uses enforcementEventEmitter so ReadModelConsumer can trigger it after projecting.
+  // Invalidation-only broadcast: clients re-query the /api/enforcement/* endpoints on receipt.
+  const enforcementInvalidateHandler = (data: { correlationId: string }) => {
+    broadcast(
+      'ENFORCEMENT_INVALIDATE',
+      { correlationId: data.correlationId, timestamp: Date.now() },
+      'enforcement'
+    );
+  };
+  enforcementEventEmitter.on('enforcement-invalidate', enforcementInvalidateHandler);
+
+  // Delegation invalidation listener (OMN-2284)
+  // Tells clients to re-fetch delegation data when a new delegation event is projected.
+  // Uses delegationEventEmitter so ReadModelConsumer can trigger it after projecting
+  // onex.evt.omniclaude.task-delegated.v1 or delegation-shadow-comparison.v1.
+  // Invalidation-only broadcast: clients re-query the /api/delegation/* endpoints on receipt.
+  const delegationInvalidateHandler = (data: { correlationId: string }) => {
+    broadcast(
+      'DELEGATION_INVALIDATE',
+      { correlationId: data.correlationId, timestamp: Date.now() },
+      'delegation'
+    );
+  };
+  delegationEventEmitter.on('delegation-invalidate', delegationInvalidateHandler);
+
+  // Status dashboard invalidation listener (OMN-2658)
+  // Tells clients to re-fetch /api/status/* when a new PR, hook, or Linear snapshot event arrives.
+  const statusInvalidateHandler = (data: { source: string; timestamp: number }) => {
+    broadcast('STATUS_INVALIDATE', { source: data.source, timestamp: data.timestamp }, 'status');
+  };
+  statusEventEmitter.on('status-invalidate', statusInvalidateHandler);
 
   // Wave 2 state event invalidation listeners (OMN-2602)
   // Tells clients to re-fetch Wave 2 dashboard data when events are projected.
@@ -1165,6 +1224,18 @@ export function setupWebSocket(httpServer: HTTPServer) {
 
     // Remove effectiveness event listener (OMN-2328)
     effectivenessEventEmitter.removeListener('effectiveness-update', effectivenessUpdateHandler);
+
+    // Remove enrichment event listener (OMN-2373)
+    enrichmentEventEmitter.removeListener('enrichment-invalidate', enrichmentInvalidateHandler);
+
+    // Remove enforcement event listener (OMN-2374)
+    enforcementEventEmitter.removeListener('enforcement-invalidate', enforcementInvalidateHandler);
+
+    // Remove delegation event listener (OMN-2284)
+    delegationEventEmitter.removeListener('delegation-invalidate', delegationInvalidateHandler);
+
+    // Remove status event listener (OMN-2658)
+    statusEventEmitter.removeListener('status-invalidate', statusInvalidateHandler);
 
     // Remove Wave 2 state event listeners (OMN-2602)
     gateDecisionEventEmitter.removeListener('gate-decision-invalidate', gateDecisionInvalidateHandler);

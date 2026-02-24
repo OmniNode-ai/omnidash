@@ -14,32 +14,21 @@
 import { sql } from 'drizzle-orm';
 import { DbBackedProjectionView } from './db-backed-projection-view';
 import { tryGetIntelligenceDb } from '../storage';
+import {
+  debugEscalationRowSchema,
+  debugEscalationSummarySchema,
+  debugEscalationPayloadSchema,
+  type DebugEscalationRow,
+  type DebugEscalationSummary,
+  type DebugEscalationPayload,
+} from '@shared/omniclaude-state-schema';
 
 // ============================================================================
-// Payload types
+// Payload types — derived from Drizzle schema + Zod (OMN-2602)
+// Re-export so client code can import from this projection file directly.
 // ============================================================================
 
-export interface DebugEscalationRow {
-  correlation_id: string;
-  session_id: string | null;
-  agent_name: string;
-  escalation_count: number;
-  tripped: boolean;
-  repo: string | null;
-  created_at: string;
-}
-
-export interface DebugEscalationSummary {
-  total_trips: number;
-  affected_agents: number;
-  affected_sessions: number;
-  top_agent: string | null;
-}
-
-export interface DebugEscalationPayload {
-  recent: DebugEscalationRow[];
-  summary: DebugEscalationSummary;
-}
+export type { DebugEscalationRow, DebugEscalationSummary, DebugEscalationPayload };
 
 // ============================================================================
 // Projection
@@ -91,22 +80,20 @@ export class DebugEscalationProjection extends DbBackedProjectionView<DebugEscal
         `),
       ]);
 
-      const s = ((summaryRows.rows ?? []) as unknown[])[0] as {
-        total_trips: number;
-        affected_agents: number;
-        affected_sessions: number;
-        top_agent: string | null;
-      } | undefined;
+      const rawSummary = ((summaryRows.rows ?? []) as unknown[])[0];
+      const recent = (recentRows.rows ?? []).map((row) =>
+        debugEscalationRowSchema.parse(row)
+      );
+      const summary = debugEscalationSummarySchema.parse({
+        total_trips: Number((rawSummary as { total_trips?: unknown })?.total_trips ?? 0),
+        affected_agents: Number((rawSummary as { affected_agents?: unknown })?.affected_agents ?? 0),
+        affected_sessions: Number(
+          (rawSummary as { affected_sessions?: unknown })?.affected_sessions ?? 0
+        ),
+        top_agent: (rawSummary as { top_agent?: unknown })?.top_agent ?? null,
+      });
 
-      return {
-        recent: (recentRows.rows ?? []) as unknown[] as DebugEscalationRow[],
-        summary: {
-          total_trips: Number(s?.total_trips ?? 0),
-          affected_agents: Number(s?.affected_agents ?? 0),
-          affected_sessions: Number(s?.affected_sessions ?? 0),
-          top_agent: s?.top_agent ?? null,
-        },
-      };
+      return debugEscalationPayloadSchema.parse({ recent, summary });
     } catch (err) {
       const pgCode = (err as { code?: string }).code;
       const msg = err instanceof Error ? err.message : String(err);

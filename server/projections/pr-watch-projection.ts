@@ -14,33 +14,21 @@
 import { sql } from 'drizzle-orm';
 import { DbBackedProjectionView } from './db-backed-projection-view';
 import { tryGetIntelligenceDb } from '../storage';
+import {
+  prWatchRowSchema,
+  prWatchSummarySchema,
+  prWatchPayloadSchema,
+  type PrWatchRow,
+  type PrWatchSummary,
+  type PrWatchPayload,
+} from '@shared/omniclaude-state-schema';
 
 // ============================================================================
-// Payload types
+// Payload types — derived from Drizzle schema + Zod (OMN-2602)
+// Re-export so client code can import from this projection file directly.
 // ============================================================================
 
-export interface PrWatchRow {
-  correlation_id: string;
-  pr_number: number | null;
-  repo: string | null;
-  state: string;
-  checks_status: string | null;
-  review_status: string | null;
-  created_at: string;
-}
-
-export interface PrWatchSummary {
-  total: number;
-  open: number;
-  merged: number;
-  closed: number;
-  checks_passing: number;
-}
-
-export interface PrWatchPayload {
-  recent: PrWatchRow[];
-  summary: PrWatchSummary;
-}
+export type { PrWatchRow, PrWatchSummary, PrWatchPayload };
 
 // ============================================================================
 // Projection
@@ -86,24 +74,17 @@ export class PrWatchProjection extends DbBackedProjectionView<PrWatchPayload> {
         `),
       ]);
 
-      const s = ((summaryRows.rows ?? []) as unknown[])[0] as {
-        total: number;
-        open: number;
-        merged: number;
-        closed: number;
-        checks_passing: number;
-      } | undefined;
+      const rawSummary = ((summaryRows.rows ?? []) as unknown[])[0];
+      const recent = (recentRows.rows ?? []).map((row) => prWatchRowSchema.parse(row));
+      const summary = prWatchSummarySchema.parse({
+        total: Number((rawSummary as { total?: unknown })?.total ?? 0),
+        open: Number((rawSummary as { open?: unknown })?.open ?? 0),
+        merged: Number((rawSummary as { merged?: unknown })?.merged ?? 0),
+        closed: Number((rawSummary as { closed?: unknown })?.closed ?? 0),
+        checks_passing: Number((rawSummary as { checks_passing?: unknown })?.checks_passing ?? 0),
+      });
 
-      return {
-        recent: (recentRows.rows ?? []) as unknown[] as PrWatchRow[],
-        summary: {
-          total: Number(s?.total ?? 0),
-          open: Number(s?.open ?? 0),
-          merged: Number(s?.merged ?? 0),
-          closed: Number(s?.closed ?? 0),
-          checks_passing: Number(s?.checks_passing ?? 0),
-        },
-      };
+      return prWatchPayloadSchema.parse({ recent, summary });
     } catch (err) {
       const pgCode = (err as { code?: string }).code;
       const msg = err instanceof Error ? err.message : String(err);

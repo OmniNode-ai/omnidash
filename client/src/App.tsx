@@ -46,6 +46,8 @@ import CostTrendDashboard from '@/pages/CostTrendDashboard';
 import PatternEnforcement from '@/pages/PatternEnforcement';
 import ContextEnrichmentDashboard from '@/pages/ContextEnrichmentDashboard';
 import LlmRoutingDashboard from '@/pages/LlmRoutingDashboard';
+import WhyThisHappened from '@/pages/WhyThisHappened';
+import StatusDashboard from '@/pages/StatusDashboard';
 // Wave 2 omniclaude state event dashboards (OMN-2602)
 import GateDecisionDashboard from '@/pages/GateDecisionDashboard';
 import EpicPipelineDashboard from '@/pages/EpicPipelineDashboard';
@@ -134,6 +136,12 @@ function Router() {
 
       {/* LLM Routing Effectiveness dashboard (OMN-2279) */}
       <Route path="/llm-routing" component={LlmRoutingDashboard} />
+
+      {/* Why This Happened — decision provenance panel (OMN-2350 epic) */}
+      <Route path="/why" component={WhyThisHappened} />
+
+      {/* Status dashboard — PR triage, workstreams, hook feed (OMN-2658) */}
+      <Route path="/status" component={StatusDashboard} />
 
       {/* Wave 2 omniclaude state event dashboards (OMN-2602) */}
       <Route path="/gate-decisions" component={GateDecisionDashboard} />

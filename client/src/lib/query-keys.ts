@@ -649,37 +649,100 @@ export const queryKeys = {
     trend: (window: string) => [...queryKeys.llmRouting.all, 'trend', window] as const,
   },
   // ============================================================================
+  // Delegation Metrics (OMN-2284)
+  // ============================================================================
+
+  /**
+   * Delegation metrics query keys for the delegation metrics dashboard.
+   *
+   * On DELEGATION_INVALIDATE WebSocket event, invalidate `queryKeys.delegation.all`
+   * to trigger a full refetch of all delegation panels.
+   */
+  delegation: {
+    /** Base key for all delegation queries */
+    all: ['delegation'] as const,
+
+    /** Summary metrics (hero cards) for a time window */
+    summary: (window: string) => [...queryKeys.delegation.all, 'summary', window] as const,
+
+    /** Delegation breakdown by task type */
+    byTaskType: (window: string) => [...queryKeys.delegation.all, 'by-task-type', window] as const,
+
+    /** Cost savings trend */
+    costSavings: (window: string) => [...queryKeys.delegation.all, 'cost-savings', window] as const,
+
+    /** Quality gate pass rate trend */
+    qualityGates: (window: string) =>
+      [...queryKeys.delegation.all, 'quality-gates', window] as const,
+
+    /** Shadow divergence table */
+    shadowDivergence: (window: string) =>
+      [...queryKeys.delegation.all, 'shadow-divergence', window] as const,
+
+    /** Multi-metric trend over time */
+    trend: (window: string) => [...queryKeys.delegation.all, 'trend', window] as const,
+  },
+  // ============================================================================
+  // Status Dashboard (OMN-2658)
+  // ============================================================================
+
+  /**
+   * Status dashboard query keys for the /status page.
+   *
+   * On STATUS_INVALIDATE WebSocket event, invalidate `queryKeys.status.all`
+   * to trigger a full refetch of all status panels.
+   */
+  status: {
+    /** Base key for all status queries */
+    all: ['status'] as const,
+
+    /** All PRs grouped by triage state */
+    prs: () => [...queryKeys.status.all, 'prs'] as const,
+
+    /** PRs for a specific repo */
+    prsByRepo: (repo: string) => [...queryKeys.status.all, 'prs', repo] as const,
+
+    /** Recent hook events */
+    hooks: (limit?: number) => [...queryKeys.status.all, 'hooks', limit ?? 50] as const,
+
+    /** Summary (triage counts + CI failure repos) */
+    summary: () => [...queryKeys.status.all, 'summary'] as const,
+
+    /** Linear workstreams snapshot */
+    workstreams: () => [...queryKeys.status.all, 'workstreams'] as const,
+  },
+  // ============================================================================
   // Wave 2 omniclaude state event dashboards (OMN-2602)
   // ============================================================================
 
   /** Gate decisions query keys (onex.evt.omniclaude.gate-decision.v1) */
   gateDecisions: {
     all: ['gate-decisions'] as const,
-    snapshot: () => [...['gate-decisions' as const], 'snapshot'] as const,
+    snapshot: () => [...queryKeys.gateDecisions.all, 'snapshot'] as const,
   },
 
   /** Epic run query keys (onex.evt.omniclaude.epic-run-updated.v1) */
   epicRun: {
     all: ['epic-run'] as const,
-    snapshot: () => [...['epic-run' as const], 'snapshot'] as const,
+    snapshot: () => [...queryKeys.epicRun.all, 'snapshot'] as const,
   },
 
   /** PR watch query keys (onex.evt.omniclaude.pr-watch-updated.v1) */
   prWatch: {
     all: ['pr-watch'] as const,
-    snapshot: () => [...['pr-watch' as const], 'snapshot'] as const,
+    snapshot: () => [...queryKeys.prWatch.all, 'snapshot'] as const,
   },
 
   /** Pipeline budget query keys (onex.evt.omniclaude.budget-cap-hit.v1) */
   pipelineBudget: {
     all: ['pipeline-budget'] as const,
-    snapshot: () => [...['pipeline-budget' as const], 'snapshot'] as const,
+    snapshot: () => [...queryKeys.pipelineBudget.all, 'snapshot'] as const,
   },
 
   /** Debug escalation query keys (onex.evt.omniclaude.circuit-breaker-tripped.v1) */
   debugEscalation: {
     all: ['debug-escalation'] as const,
-    snapshot: () => [...['debug-escalation' as const], 'snapshot'] as const,
+    snapshot: () => [...queryKeys.debugEscalation.all, 'snapshot'] as const,
   },
 } as const;
 
