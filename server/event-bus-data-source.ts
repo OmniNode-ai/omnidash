@@ -713,14 +713,18 @@ export class EventBusDataSource extends EventEmitter {
    * treating the disconnect as a failure requiring retry.
    */
   async stop(): Promise<void> {
-    if (!this.isRunning) {
+    // Always signal stop first, even if currently sleeping between retries.
+    // This ensures the reconnect loop exits on its next iteration regardless
+    // of whether isRunning reflects the sleep window between reconnect attempts.
+    this.stopped = true;
+
+    if (!this.isRunning && !this.loopActive) {
       return;
     }
 
     // Signal the reconnect loop to stop before we disconnect.
     // This prevents a race where disconnect() triggers an error that
     // causes sleepBeforeRetry() + another doStart() attempt.
-    this.stopped = true;
 
     try {
       if (this.consumer) {
