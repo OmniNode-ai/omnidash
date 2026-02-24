@@ -1,5 +1,5 @@
 /**
- * OmniClaude State Event Emitters (OMN-2596)
+ * OmniClaude State Event Emitters (OMN-2596 / OMN-2602)
  *
  * Emits invalidation events when new state-change events are projected from
  * the 5 Wave 2 omniclaude Kafka topics, allowing the WebSocket server to push

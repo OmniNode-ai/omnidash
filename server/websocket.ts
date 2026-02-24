@@ -31,6 +31,14 @@ import { enrichmentEventEmitter } from './enrichment-events';
 import { enforcementEventEmitter } from './enforcement-events';
 import { delegationEventEmitter } from './delegation-events';
 import { statusEventEmitter } from './status-events';
+// Wave 2 emitters (OMN-2602)
+import {
+  gateDecisionEventEmitter,
+  epicRunEventEmitter,
+  prWatchEventEmitter,
+  pipelineBudgetEventEmitter,
+  circuitBreakerEventEmitter,
+} from './omniclaude-state-events';
 import { projectionService } from './projection-bootstrap';
 import { getEventBusDataSource, type EventBusEvent } from './event-bus-data-source';
 import { getPlaybackDataSource } from './playback-data-source';
@@ -281,6 +289,14 @@ const VALID_TOPICS = [
   'enrichment',
   // Pattern enforcement invalidation events (OMN-2374)
   'enforcement',
+  // Status dashboard invalidation events (OMN-2658)
+  'status',
+  // Wave 2 omniclaude state event topics (OMN-2602)
+  'gate-decisions',
+  'epic-run',
+  'pr-watch',
+  'pipeline-budget',
+  'debug-escalation',
 ] as const;
 
 type _ValidTopic = (typeof VALID_TOPICS)[number];
@@ -592,6 +608,34 @@ export function setupWebSocket(httpServer: HTTPServer) {
     broadcast('STATUS_INVALIDATE', { source: data.source, timestamp: data.timestamp }, 'status');
   };
   statusEventEmitter.on('status-invalidate', statusInvalidateHandler);
+
+  // Wave 2 state event invalidation listeners (OMN-2602)
+  // Tells clients to re-fetch Wave 2 dashboard data when events are projected.
+
+  const gateDecisionInvalidateHandler = (data: { correlationId: string }) => {
+    broadcast('GATE_DECISION_INVALIDATE', { correlationId: data.correlationId, timestamp: Date.now() }, 'gate-decisions');
+  };
+  gateDecisionEventEmitter.on('gate-decision-invalidate', gateDecisionInvalidateHandler);
+
+  const epicRunInvalidateHandler = (data: { epicRunId: string }) => {
+    broadcast('EPIC_RUN_INVALIDATE', { epicRunId: data.epicRunId, timestamp: Date.now() }, 'epic-run');
+  };
+  epicRunEventEmitter.on('epic-run-invalidate', epicRunInvalidateHandler);
+
+  const prWatchInvalidateHandler = (data: { correlationId: string }) => {
+    broadcast('PR_WATCH_INVALIDATE', { correlationId: data.correlationId, timestamp: Date.now() }, 'pr-watch');
+  };
+  prWatchEventEmitter.on('pr-watch-invalidate', prWatchInvalidateHandler);
+
+  const pipelineBudgetInvalidateHandler = (data: { correlationId: string }) => {
+    broadcast('PIPELINE_BUDGET_INVALIDATE', { correlationId: data.correlationId, timestamp: Date.now() }, 'pipeline-budget');
+  };
+  pipelineBudgetEventEmitter.on('pipeline-budget-invalidate', pipelineBudgetInvalidateHandler);
+
+  const debugEscalationInvalidateHandler = (data: { correlationId: string }) => {
+    broadcast('DEBUG_ESCALATION_INVALIDATE', { correlationId: data.correlationId, timestamp: Date.now() }, 'debug-escalation');
+  };
+  circuitBreakerEventEmitter.on('circuit-breaker-invalidate', debugEscalationInvalidateHandler);
 
   // Node Registry event listeners
   registerEventListener('nodeIntrospectionUpdate', (event: NodeIntrospectionEvent) => {
@@ -1189,6 +1233,16 @@ export function setupWebSocket(httpServer: HTTPServer) {
 
     // Remove delegation event listener (OMN-2284)
     delegationEventEmitter.removeListener('delegation-invalidate', delegationInvalidateHandler);
+
+    // Remove status event listener (OMN-2658)
+    statusEventEmitter.removeListener('status-invalidate', statusInvalidateHandler);
+
+    // Remove Wave 2 state event listeners (OMN-2602)
+    gateDecisionEventEmitter.removeListener('gate-decision-invalidate', gateDecisionInvalidateHandler);
+    epicRunEventEmitter.removeListener('epic-run-invalidate', epicRunInvalidateHandler);
+    prWatchEventEmitter.removeListener('pr-watch-invalidate', prWatchInvalidateHandler);
+    pipelineBudgetEventEmitter.removeListener('pipeline-budget-invalidate', pipelineBudgetInvalidateHandler);
+    circuitBreakerEventEmitter.removeListener('circuit-breaker-invalidate', debugEscalationInvalidateHandler);
 
     // Remove event bus data source listeners
     console.log(`Removing ${eventBusListeners.length} event bus data source listeners...`);
