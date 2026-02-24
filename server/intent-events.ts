@@ -358,14 +358,20 @@ export class IntentEventEmitter extends EventEmitter {
         // We'd need additional context to emit a proper session update
         if (response.intents && response.intents.length > 0) {
           const firstIntent = response.intents[0];
-          // NOTE: Assumes intents are sorted newest-first (descending by created_at).
-          // first_intent_at = oldest = last in array, last_intent_at = newest = first in array
+          // Compute min/max created_at across all intents rather than relying on
+          // sort order of the array (CodeRabbit review fix — OMN-1556).
+          let minCreatedAt = firstIntent.created_at;
+          let maxCreatedAt = firstIntent.created_at;
+          for (const intent of response.intents) {
+            if (intent.created_at < minCreatedAt) minCreatedAt = intent.created_at;
+            if (intent.created_at > maxCreatedAt) maxCreatedAt = intent.created_at;
+          }
           const sessionSummary: SessionIntentSummary = {
             session_ref: firstIntent.session_ref,
             intent_count: response.total_count,
             categories: Array.from(new Set(response.intents.map((i) => i.intent_category))),
-            first_intent_at: response.intents[response.intents.length - 1].created_at,
-            last_intent_at: firstIntent.created_at,
+            first_intent_at: minCreatedAt,
+            last_intent_at: maxCreatedAt,
           };
           this.emitSessionUpdate(sessionSummary, response.intents);
         }
