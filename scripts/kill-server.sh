@@ -1,4 +1,6 @@
 #!/usr/bin/env bash
+# SPDX-FileCopyrightText: 2025 OmniNode.ai Inc.
+# SPDX-License-Identifier: MIT
 # Kill ALL omnidash server instances before starting a new one.
 #
 # Three-phase approach so no zombie escapes:
