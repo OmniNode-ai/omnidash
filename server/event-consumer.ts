@@ -1755,8 +1755,9 @@ export class EventConsumer extends EventEmitter {
                 // rejects and the outer while-loop catch block handles reconnection cleanly.
                 // Calling connectWithRetry() here while consumer.run() is still active is
                 // unsafe — it creates undefined state for offset commits and heartbeats.
-                // NOTE: Do NOT emit 'error' here — the outer catch at the consumer.run()
-                // level will emit it exactly once when the rethrown error surfaces there.
+                // NOTE: Do NOT emit 'error' here for connection errors — the outer catch at
+                // the consumer.run() level will emit it exactly once when the rethrown error
+                // surfaces there.
                 if (
                   error instanceof Error &&
                   (error.message.includes('connection') ||
@@ -1764,6 +1765,11 @@ export class EventConsumer extends EventEmitter {
                     error.message.includes('network'))
                 ) {
                   throw error;
+                } else {
+                  // Non-connection errors (malformed messages, business logic exceptions, etc.)
+                  // are swallowed here so processing continues, but callers listening to the
+                  // 'error' event must still be notified.
+                  this.emit('error', error);
                 }
               }
             },
