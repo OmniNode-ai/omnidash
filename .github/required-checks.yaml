@@ -1,3 +1,5 @@
+# SPDX-FileCopyrightText: 2025 OmniNode.ai Inc.
+# SPDX-License-Identifier: MIT
 # Required Status Checks for `main` Branch Protection
 #
 # This manifest documents the canonical list of required checks.

@@ -1,4 +1,6 @@
 #!/bin/bash
+# SPDX-FileCopyrightText: 2025 OmniNode.ai Inc.
+# SPDX-License-Identifier: MIT
 # clean-screenshots.sh
 #
 # Removes Playwright MCP screenshot artifacts from the repository root.
