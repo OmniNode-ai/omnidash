@@ -6,8 +6,11 @@
  *
  * Design:
  * - Direct access: Fast, synchronous queries for dashboard APIs
- * - Event bus: Async, decoupled operations for write-heavy workloads
- * - Graceful fallback: Event bus failures fall back to direct DB
+ * - All write-heavy or event-driven workloads are handled by the dedicated
+ *   event-bus modules (event-bus-data-source.ts, event-consumer.ts,
+ *   intelligence-event-adapter.ts), which emit diagnostics when their
+ *   singletons are first accessed. This adapter performs direct database
+ *   queries only and has no event-bus routing logic.
  *
  * Usage:
  *   const adapter = new PostgresAdapter();
@@ -48,17 +51,32 @@ export interface DeleteOptions {
 /**
  * PostgreSQL CRUD Adapter
  *
- * Provides direct database access with Drizzle ORM and optional event bus integration.
+ * Provides direct database access with Drizzle ORM. The constructor does not
+ * log anything (it runs at module load time, before the server finishes
+ * initializing). The event-bus modules (event-bus-data-source.ts,
+ * event-consumer.ts, intelligence-event-adapter.ts) emit the appropriate
+ * diagnostics when their singletons are first accessed. Missing KAFKA_BROKERS
+ * is a misconfiguration error state, not normal operation. This adapter
+ * continues serving direct database queries regardless.
+ *
+ * Note: `executeRaw()` was intentionally removed from this adapter because it
+ * used `sql.raw()` with no parameter binding, creating a SQL injection risk.
+ * All queries now go through Drizzle ORM's parameterized query builders
+ * (`eq`, `inArray`, `gte`, `lte`, `sql\`...\``, etc.). See the inline comment
+ * near the private helper methods section and the test file
+ * `server/__tests__/db-adapter.test.ts` for full rationale and coverage.
  */
 export class PostgresAdapter {
   private get db() {
     return getIntelligenceDb();
   }
-  private eventBusEnabled: boolean;
 
   constructor() {
-    // Enable event bus if Kafka is configured
-    this.eventBusEnabled = !!(process.env.KAFKA_BROKERS || process.env.KAFKA_BOOTSTRAP_SERVERS);
+    // No logging here — dbAdapter is instantiated at module load time, so any
+    // console output would fire before the server has finished initializing.
+    // The event-bus modules (event-bus-data-source.ts, event-consumer.ts,
+    // intelligence-event-adapter.ts) emit the appropriate error when their
+    // singletons are first accessed.
   }
 
   /**
@@ -312,7 +330,12 @@ export class PostgresAdapter {
       throw new Error(`Table ${tableName} not found in schema`);
     }
 
-    let query = this.db.select({ count: sql<number>`count(*)` }).from(table);
+    // PostgreSQL returns count(*) as a bigint. The Neon serverless HTTP driver surfaces
+    // bigint columns as text strings rather than JS numbers (to avoid precision loss from
+    // Number's 53-bit integer limit). sql<string> tells Drizzle to type the result column
+    // as `string` rather than incorrectly inferring `number`; ensureNumeric() then converts
+    // the string to a JS number at runtime.
+    let query = this.db.select({ count: sql<string>`count(*)` }).from(table);
 
     if (where) {
       const conditions = this.buildWhereConditions(table, where);
@@ -326,19 +349,15 @@ export class PostgresAdapter {
     return ensureNumeric('count', count, 0, { context: `count-query-${tableName}` });
   }
 
-  /**
-   * Execute raw SQL query
-   *
-   * @param sqlQuery - SQL query string
-   * @param params - Query parameters
-   * @returns Query results
-   */
-  async executeRaw<T = any>(sqlQuery: string, _params?: any[]): Promise<T[]> {
-    const result = await this.db.execute(sql.raw(sqlQuery));
-    return Array.isArray(result) ? (result as T[]) : [];
-  }
-
   // Helper methods
+
+  // NOTE: executeRaw() was intentionally removed from this adapter.
+  // It used sql.raw() with no parameter binding, which created a SQL injection risk —
+  // any caller could pass arbitrary SQL strings and they would be executed verbatim.
+  // Rather than attempt to sanitize raw SQL at the adapter layer (which is fragile),
+  // the method was removed entirely. All queries now go through Drizzle ORM's
+  // parameterized query builders (eq, inArray, gte, lte, sql`...`, etc.).
+  // See server/__tests__/db-adapter.test.ts for the full rationale and test coverage.
 
   private getTable(tableName: string): any {
     // Map table names to schema exports

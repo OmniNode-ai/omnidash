@@ -8,13 +8,13 @@
 
 ## Overview
 
-The EventBusMockGenerator creates realistic event chains that follow the event catalog patterns, allowing you to test and develop the dashboard without requiring a real Kafka instance.
+The EventBusMockGenerator creates realistic event chains that follow the event catalog patterns. It is intended **only for local unit tests and isolated component testing** — not as a substitute for a running Kafka/Redpanda broker. In all real deployments and integration environments, Kafka must be running and `KAFKA_BROKERS` must be set.
 
 ## Features
 
 - ✅ **Event Chains**: Generates realistic event sequences (requested → started → completed/failed)
 - ✅ **All Domains**: Covers intelligence, agent, code, metadata, database, consul, vault events
-- ✅ **Automatic**: Starts automatically in development mode when Kafka is unavailable
+- ✅ **Automatic**: Starts automatically in isolated test environments when `ENABLE_MOCK_EVENTS=true` is set (never as a replacement for Kafka in real development)
 - ✅ **Realistic Timing**: Simulates realistic delays between events in a chain
 - ✅ **Direct Injection**: Injects events directly into EventBusDataSource (bypasses Kafka)
 
@@ -84,19 +84,20 @@ omninode.vault.secret.read.completed.v1
 
 ## Usage
 
-### Automatic (Development Mode)
+### Automatic (Isolated Test Environments Only)
 
 The mock generator starts automatically when:
 
 - Running in development mode (`NODE_ENV=development`)
-- Kafka is not available or validation fails
-- `ENABLE_MOCK_EVENTS` is not set to `'false'`
+- `ENABLE_MOCK_EVENTS` is set to `'true'` explicitly
+
+> **Warning**: The mock generator is **not a substitute for Kafka**. Kafka/Redpanda is required infrastructure. If the mock generator is starting in your environment because Kafka is unreachable, that is an error state — fix the `KAFKA_BROKERS` configuration, do not rely on mock events.
 
 **Configuration**:
 
 - Generates 20 initial event chains on startup
 - Continues generating events every 5 seconds
-- Can be disabled with `ENABLE_MOCK_EVENTS=false`
+- Must be explicitly enabled with `ENABLE_MOCK_EVENTS=true`
 
 ### Manual Control
 
@@ -161,13 +162,13 @@ This means:
 
 ## Testing
 
-To test the mock generator:
+To test the mock generator in isolation:
 
-1. **Start server without Kafka**:
+1. **Start server with mock events enabled** (do not use this in place of Kafka):
 
    ```bash
-   # Don't set KAFKA_BROKERS, or set to invalid address
-   npm run dev
+   # Only for isolated component tests — Kafka must still run in real environments
+   ENABLE_MOCK_EVENTS=true npm run dev
    ```
 
 2. **Verify mock generator started**:
@@ -200,16 +201,17 @@ You can customize the mock generator by modifying:
 
 ## Environment Variables
 
-- `ENABLE_MOCK_EVENTS`: Set to `'false'` to disable mock generator (default: enabled in dev)
+- `ENABLE_MOCK_EVENTS`: Set to `'true'` to enable mock generator for isolated tests (default: disabled)
 - `NODE_ENV`: Must be `'development'` for automatic startup
+- `KAFKA_BROKERS` (required): Must be set for all real environments. Missing `KAFKA_BROKERS` is an error, not a trigger for mock mode.
 
 ## Benefits
 
-1. **No Kafka Required**: Develop and test without Kafka infrastructure
+1. **Isolated Unit Testing**: Test component logic and data source behavior without a live Kafka stream (Kafka is still required for integration and end-to-end environments)
 2. **Realistic Data**: Event chains follow real-world patterns
 3. **Complete Coverage**: Generates events for all major domains
 4. **Easy Testing**: Test data sources and dashboards with realistic data
-5. **CI/CD Friendly**: Works in CI environments without Kafka setup
+5. **CI Unit Tests**: Enables unit-test-level assertions without Kafka infrastructure (integration tests must use real Kafka)
 
 ## Next Steps
 

@@ -378,22 +378,6 @@ export const mockDataStore = new MockDataStore();
 // Legacy Functions (for backward compatibility)
 // ============================================================================
 
-/**
- * Generate mock nodes with consistent IDs (uses cached store)
- * @deprecated Use mockDataStore.getNodes() instead
- */
-export function generateMockNodes(): RegistryNodeView[] {
-  return mockDataStore.getNodes();
-}
-
-/**
- * Generate mock instances for nodes (uses cached store)
- * @deprecated Use mockDataStore.getInstances() instead
- */
-export function generateMockInstances(_nodes: RegistryNodeView[]): RegistryInstanceView[] {
-  return mockDataStore.getInstances();
-}
-
 // ============================================================================
 // Summary Computation
 // ============================================================================
@@ -452,17 +436,6 @@ function computeSummary(
 }
 
 /**
- * Generate summary statistics from nodes and instances
- * @deprecated Use mockDataStore.getSummary() or computeSummary() directly
- */
-export function generateMockSummary(
-  nodes: RegistryNodeView[],
-  instances: RegistryInstanceView[]
-): RegistrySummary {
-  return computeSummary(nodes, instances);
-}
-
-/**
  * Filter nodes based on query parameters
  */
 export function filterNodes(
@@ -470,7 +443,7 @@ export function filterNodes(
   params: RegistryNodeQueryParams
 ): { nodes: RegistryNodeView[]; total: number } {
   let filtered = [...nodes];
-  const total = filtered.length;
+  const _totalBeforeFilter = filtered.length; // pre-filter count, reserved for future use
 
   // Filter by state
   if (params.state) {
@@ -603,12 +576,4 @@ export function getWidgetMappings(): RegistryWidgetMapping[] {
       default_config: { groupBy: 'namespace', showHistory: true },
     },
   ];
-}
-
-/**
- * Reset cached data (useful for testing)
- * @deprecated Use mockDataStore.refresh() instead
- */
-export function resetMockData(): void {
-  mockDataStore.refresh();
 }

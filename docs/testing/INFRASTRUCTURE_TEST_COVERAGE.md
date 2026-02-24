@@ -255,7 +255,7 @@ All critical infrastructure components have comprehensive test coverage with **1
 - ✅ `connect()` exists for API consistency (no-op)
 - ✅ Event bus enabled when KAFKA_BROKERS is set
 - ✅ Event bus enabled when KAFKA_BOOTSTRAP_SERVERS is set
-- ✅ Event bus disabled when no Kafka config
+- ✅ Event bus reports error state when KAFKA_BROKERS is missing (Kafka is required; missing config is a misconfiguration, not an expected mode)
 
 #### Key Scenarios Tested
 

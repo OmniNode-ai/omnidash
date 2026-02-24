@@ -22,7 +22,7 @@ import {
   EventPlaybackService,
   getPlaybackService,
   RecordedEvent,
-  PlaybackOptions,
+  type PlaybackOptions as _PlaybackOptions,
 } from '../event-playback';
 
 describe('EventPlaybackService', () => {
@@ -288,7 +288,7 @@ describe('EventPlaybackService', () => {
       const startSpy = vi.fn();
       service.on('playbackStart', startSpy);
 
-      const playbackPromise = service.startPlayback('/path/to/recording.jsonl');
+      void service.startPlayback('/path/to/recording.jsonl');
       await vi.advanceTimersByTimeAsync(0);
 
       expect(startSpy).toHaveBeenCalledWith({

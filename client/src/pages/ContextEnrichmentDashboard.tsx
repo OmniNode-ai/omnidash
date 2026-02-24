@@ -9,9 +9,8 @@
  * - Context inflation alert table (enrichment increasing token count)
  */
 
-import { useState, useCallback, useEffect } from 'react';
-import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { useWebSocket } from '@/hooks/useWebSocket';
+import { useState, useEffect } from 'react';
+import { useQuery } from '@tanstack/react-query';
 import { useDemoMode } from '@/contexts/DemoModeContext';
 import { enrichmentSource } from '@/lib/data-sources/enrichment-source';
 import { DemoBanner } from '@/components/DemoBanner';
@@ -404,7 +403,6 @@ function InflationAlertTable({
 
 export default function ContextEnrichmentDashboard() {
   const [timeWindow, setTimeWindow] = useState<EnrichmentTimeWindow>('7d');
-  const queryClient = useQueryClient();
   const { isDemoMode } = useDemoMode();
 
   // Clear stale mock-endpoint state whenever the time window changes so that
@@ -413,22 +411,6 @@ export default function ContextEnrichmentDashboard() {
   useEffect(() => {
     enrichmentSource.clearMockState();
   }, [timeWindow]);
-
-  // Invalidate all enrichment queries on WebSocket ENRICHMENT_INVALIDATE event
-  useWebSocket({
-    onMessage: useCallback(
-      (msg: { type: string; timestamp: string }) => {
-        if (msg.type === 'ENRICHMENT_INVALIDATE') {
-          // TODO(OMN-2280): Server does not yet emit ENRICHMENT_INVALIDATE — wired
-          // client-side so the handler is ready when server-side broadcast lands.
-          // This is intentional future work, not dead code.
-          queryClient.invalidateQueries({ queryKey: queryKeys.enrichment.all });
-        }
-      },
-      [queryClient]
-    ),
-    debug: false,
-  });
 
   // ── Queries ──────────────────────────────────────────────────────────────
 
@@ -439,8 +421,7 @@ export default function ContextEnrichmentDashboard() {
     refetch: refetchSummary,
   } = useQuery({
     queryKey: queryKeys.enrichment.summary(timeWindow),
-    queryFn: () =>
-      enrichmentSource.summary(timeWindow, { mockOnEmpty: true, demoMode: isDemoMode }),
+    queryFn: () => enrichmentSource.summary(timeWindow, { demoMode: isDemoMode }),
     refetchInterval: getPollingInterval(POLLING_INTERVAL_MEDIUM),
     staleTime: 30_000,
   });
@@ -452,8 +433,7 @@ export default function ContextEnrichmentDashboard() {
     refetch: refetchChannel,
   } = useQuery({
     queryKey: queryKeys.enrichment.byChannel(timeWindow),
-    queryFn: () =>
-      enrichmentSource.byChannel(timeWindow, { mockOnEmpty: true, demoMode: isDemoMode }),
+    queryFn: () => enrichmentSource.byChannel(timeWindow, { demoMode: isDemoMode }),
     refetchInterval: getPollingInterval(POLLING_INTERVAL_SLOW),
     staleTime: 60_000,
   });
@@ -477,8 +457,7 @@ export default function ContextEnrichmentDashboard() {
     refetch: refetchToken,
   } = useQuery({
     queryKey: queryKeys.enrichment.tokenSavings(timeWindow),
-    queryFn: () =>
-      enrichmentSource.tokenSavings(timeWindow, { mockOnEmpty: true, demoMode: isDemoMode }),
+    queryFn: () => enrichmentSource.tokenSavings(timeWindow, { demoMode: isDemoMode }),
     refetchInterval: getPollingInterval(POLLING_INTERVAL_SLOW),
     staleTime: 60_000,
   });
@@ -530,15 +509,15 @@ export default function ContextEnrichmentDashboard() {
     !tokenLoading &&
     !simLoading &&
     !alertsLoading;
+  // Current behavior (post OMN-2330): the singleton mock-state is only mutated on
+  // network/HTTP errors — empty-table responses no longer set mock state. As a result
+  // the banner below will only appear when a hard fetch error occurred, not when the
+  // API returns an empty-but-successful payload.
+  //
   // TODO(OMN-2280): Replace singleton mock-state with query data shape inspection.
   // Acceptance criteria: derive from summaryQuery.data — if summary.total_enrichments === 0
   // after a successful fetch, treat as live-but-empty (not mock). Use useState updated
   // in summaryQuery's onSettled callback to make the banner reactive.
-  //
-  // Current approach: allSettled transitions false→true on every refetch cycle (TanStack
-  // Query sets isFetching:true for all refetches including background ones), so this
-  // effect re-fires after every fetch cycle and reads fresh singleton state each time.
-  // The else-reset was intentionally removed to prevent flickering on polling refetches.
   const [isUsingMockData, setIsUsingMockData] = useState(false);
 
   useEffect(() => {
@@ -610,7 +589,8 @@ export default function ContextEnrichmentDashboard() {
           <AlertTriangle className="h-4 w-4" />
           <AlertTitle>Failed to load enrichment data</AlertTitle>
           <AlertDescription>
-            <Button variant="outline" size="sm" className="mt-2" onClick={handleRefresh}>
+            Unable to load enrichment data. Check that the API server is running.
+            <Button variant="outline" size="sm" className="mt-2 ml-2" onClick={handleRefresh}>
               <RefreshCw className="h-4 w-4 mr-1" /> Retry
             </Button>
           </AlertDescription>

@@ -1,0 +1,295 @@
+# SPDX-FileCopyrightText: 2026 OmniNode.ai Inc.
+# SPDX-License-Identifier: MIT
+---
+name: Omni* Ecosystem Standards Compliance
+
+# Validates omnidash-specific structural and ecosystem standards.
+# Part of OMN-2459 (M5 standards compliance gate), per-repo slice of OMN-2381.
+#
+# Jobs:
+#   structure-validation       - verify required root files exist (CLAUDE.md, package.json, etc.) and key directories
+#   ecosystem-validation       - verify npm scripts and TanStack Query dependency
+#   legacy-compatibility-check - check for forbidden packages and Python toolchain files
+#   typescript-compliance      - verify TypeScript strict mode and path alias config
+#
+# Note: Architectural guards (no omninode_bridge references, no upstream DB port 5436)
+# are already enforced by the arch-guard job in test.yml and are not duplicated here.
+
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+    branches: [main, develop]
+  workflow_dispatch:
+
+env:
+  REPO_NAME: 'omnidash'
+
+jobs:
+  structure-validation:
+    name: Repository Structure Validation
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Validate omnidash monorepo directory structure
+        run: |
+          MISSING=0
+
+          for dir in \
+            client \
+            client/src \
+            client/src/components \
+            client/src/components/ui \
+            client/src/lib \
+            server \
+            shared; do
+            if [ ! -d "$dir" ]; then
+              echo "ERROR: Required directory missing: $dir"
+              MISSING=1
+            else
+              echo "OK: $dir"
+            fi
+          done
+
+          if [ $MISSING -ne 0 ]; then
+            echo "Structure validation failed — required directories are missing."
+            exit 1
+          fi
+
+          echo "All required omnidash directories present."
+
+      - name: Validate required root files
+        run: |
+          MISSING=0
+
+          for file in \
+            package.json \
+            tsconfig.json \
+            vite.config.ts \
+            CLAUDE.md; do
+            if [ ! -f "$file" ]; then
+              echo "ERROR: Required file missing: $file"
+              MISSING=1
+            else
+              echo "OK: $file"
+            fi
+          done
+
+          if [ $MISSING -ne 0 ]; then
+            echo "Root file validation failed — required files are missing."
+            exit 1
+          fi
+
+          echo "All required root files present."
+
+  ecosystem-validation:
+    name: Ecosystem Integration Validation
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Validate required npm scripts are present
+        run: |
+          ERRORS=0
+
+          for script in dev build check test; do
+            if jq -e ".scripts[\"$script\"]" package.json > /dev/null 2>&1; then
+              echo "OK: npm script '$script' present"
+            else
+              echo "ERROR: Missing required npm script: '$script'"
+              ERRORS=1
+            fi
+          done
+
+          if [ $ERRORS -ne 0 ]; then
+            echo "package.json script validation failed."
+            exit 1
+          fi
+
+          echo "All required npm scripts present."
+
+      - name: Validate TanStack Query is the server-state library
+        run: |
+          python3 -c "
+          import json, sys
+          with open('package.json') as f:
+              p = json.load(f)
+          deps = {**p.get('dependencies', {}), **p.get('devDependencies', {})}
+          if '@tanstack/react-query' not in deps:
+              print('ERROR: @tanstack/react-query not found in dependencies.')
+              print('omnidash must use TanStack Query for server state (not Redux or Zustand).')
+              sys.exit(1)
+          print('OK: @tanstack/react-query present')
+          "
+
+  legacy-compatibility-check:
+    name: Legacy Compatibility Check
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Check for forbidden state management packages
+        run: |
+          python3 -c "
+          import json, sys
+          with open('package.json') as f:
+              p = json.load(f)
+          deps = {**p.get('dependencies', {}), **p.get('devDependencies', {})}
+          forbidden = ['redux', 'zustand', '@reduxjs/toolkit', 'react-redux']
+          errors = []
+          for pkg in forbidden:
+              if pkg in deps:
+                  errors.append(f'{pkg} is forbidden — use TanStack Query for server state')
+          if errors:
+              for e in errors:
+                  print(f'ERROR: {e}')
+              sys.exit(1)
+          print('OK: No forbidden state management packages detected.')
+          "
+
+      - name: Check for forbidden CSS-in-JS packages
+        run: |
+          python3 -c "
+          import json, sys
+          with open('package.json') as f:
+              p = json.load(f)
+          deps = {**p.get('dependencies', {}), **p.get('devDependencies', {})}
+          forbidden = ['styled-components', '@emotion/react', '@emotion/styled']
+          errors = []
+          for pkg in forbidden:
+              if pkg in deps:
+                  errors.append(f'{pkg} is forbidden — use Tailwind CSS, not CSS-in-JS')
+          if errors:
+              for e in errors:
+                  print(f'ERROR: {e}')
+              sys.exit(1)
+          print('OK: No CSS-in-JS packages detected.')
+          "
+
+      - name: Check for Python package manager files (wrong toolchain)
+        run: |
+          ERRORS=0
+
+          if [ -f "poetry.lock" ]; then
+            echo "ERROR: poetry.lock found — omnidash is a Node.js project, not Python"
+            ERRORS=1
+          fi
+
+          if [ -f "Pipfile.lock" ]; then
+            echo "ERROR: Pipfile.lock found — omnidash is a Node.js project, not Python"
+            ERRORS=1
+          fi
+
+          if [ -f "uv.lock" ]; then
+            echo "ERROR: uv.lock found — omnidash is a Node.js project, not Python"
+            ERRORS=1
+          fi
+
+          if [ -f "requirements.txt" ]; then
+            echo "ERROR: requirements.txt found — omnidash is a Node.js project, not Python"
+            ERRORS=1
+          fi
+
+          if [ $ERRORS -ne 0 ]; then
+            echo "Toolchain check failed."
+            exit 1
+          fi
+
+          echo "OK: No Python package manager files found."
+
+  typescript-compliance:
+    name: TypeScript Configuration Compliance
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Validate tsconfig.json strict mode
+        run: |
+          python3 -c "
+          import json, sys
+          with open('tsconfig.json') as f:
+              data = json.load(f)
+          options = data.get('compilerOptions', {})
+          errors = []
+          if not options.get('strict', False):
+              errors.append('strict: true is required in tsconfig.json compilerOptions')
+          if errors:
+              for e in errors:
+                  print(f'ERROR: {e}')
+              sys.exit(1)
+          print('OK: TypeScript strict mode enabled')
+          "
+
+      - name: Validate required path aliases
+        run: |
+          python3 -c "
+          import json, sys
+          with open('tsconfig.json') as f:
+              data = json.load(f)
+          paths = data.get('compilerOptions', {}).get('paths', {})
+          required = ['@/*', '@shared/*']
+          errors = []
+          for alias in required:
+              if alias not in paths:
+                  errors.append(f'Missing required path alias: {alias}')
+          if errors:
+              for e in errors:
+                  print(f'ERROR: {e}')
+              sys.exit(1)
+          print(f'OK: Required path aliases present: {required}')
+          "
+
+  # ============================================================================
+  # GATE AGGREGATOR
+  # Gate name is API-stable per CI/CD Standards (Invariant 1).
+  # Do NOT rename without following the Branch Protection Migration Safety
+  # procedure in docs/standards/CI_CD_STANDARDS.md and updating required-checks.yaml.
+  # ============================================================================
+
+  omni-standards-gate:
+    name: Omni Standards Gate
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    needs:
+      - structure-validation
+      - ecosystem-validation
+      - legacy-compatibility-check
+      - typescript-compliance
+    if: always()
+    steps:
+      - name: Check standards results
+        run: |
+          echo "=== Omni Standards Gate ==="
+          FAILED=false
+
+          for check in \
+            "structure-validation=${{ needs.structure-validation.result }}" \
+            "ecosystem-validation=${{ needs.ecosystem-validation.result }}" \
+            "legacy-compatibility-check=${{ needs.legacy-compatibility-check.result }}" \
+            "typescript-compliance=${{ needs.typescript-compliance.result }}"; do
+            NAME="${check%%=*}"
+            RESULT="${check##*=}"
+            if [ "$RESULT" != "success" ]; then
+              echo "::error::$NAME failed (result: $RESULT)"
+              FAILED=true
+            else
+              echo "$NAME: $RESULT"
+            fi
+          done
+
+          if [ "$FAILED" = "true" ]; then
+            echo ""
+            echo "Omni Standards Gate FAILED"
+            exit 1
+          fi
+          echo ""
+          echo "Omni Standards Gate PASSED"

@@ -5,7 +5,7 @@
  * - Consumer handles routing decision events
  * - Consumer handles agent action events
  * - Consumer handles transformation events
- * - Consumer handles LLM cost events (OMN-2300 / OMN-2329)
+ * - Consumer handles LLM cost events (OMN-2300 / OMN-2329 / OMN-2371)
  * - Consumer gracefully degrades when DB is unavailable
  * - Consumer getStats returns correct statistics
  * - Consumer handles malformed messages
@@ -134,7 +134,7 @@ describe('ReadModelConsumer', () => {
   });
 
   // ============================================================================
-  // LLM Cost Event Projection (OMN-2300 / OMN-2329)
+  // LLM Cost Event Projection (OMN-2300 / OMN-2329 / OMN-2371)
   // ============================================================================
 
   describe('projectLlmCostEvent via handleMessage', () => {
@@ -154,8 +154,11 @@ describe('ReadModelConsumer', () => {
       (tryGetIntelligenceDb as ReturnType<typeof vi.fn>).mockReturnValue(null);
 
       const handleMessage = getHandleMessage(consumer);
-      const payload = makeKafkaPayload('onex.evt.omniclaude.llm-cost-reported.v1', {
-        model_name: 'claude-sonnet-4-6',
+      // Canonical ContractLlmCallMetrics schema (model_id, not legacy model_name) — the
+      // no-DB fast-exit fires before any field parsing, so either schema would produce the
+      // same outcome; using canonical fields keeps this fixture in sync with the producer.
+      const payload = makeKafkaPayload('onex.evt.omniintelligence.llm-call-completed.v1', {
+        model_id: 'claude-sonnet-4-6',
         prompt_tokens: 1000,
         completion_tokens: 500,
         total_tokens: 1500,
@@ -173,7 +176,7 @@ describe('ReadModelConsumer', () => {
       expect(stats.eventsProjected).toBe(0);
     });
 
-    it('projects LLM cost event when DB is available', async () => {
+    it('projects LLM cost event when DB is available (legacy schema)', async () => {
       const { tryGetIntelligenceDb } = await import('../storage');
 
       // Mock a minimal Drizzle-like insert chain
@@ -195,7 +198,8 @@ describe('ReadModelConsumer', () => {
       const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
 
       const handleMessage = getHandleMessage(consumer);
-      const payload = makeKafkaPayload('onex.evt.omniclaude.llm-cost-reported.v1', {
+      // Legacy schema: uses model_name, total_cost_usd, reported_cost_usd, usage_source
+      const payload = makeKafkaPayload('onex.evt.omniintelligence.llm-call-completed.v1', {
         model_name: 'claude-sonnet-4-6',
         repo_name: 'omnidash2',
         session_id: 'sess-abc-123',
@@ -224,14 +228,112 @@ describe('ReadModelConsumer', () => {
 
       warnSpy.mockRestore();
 
+      // Verify legacy-field fallback: totalCostUsd and reportedCostUsd must be
+      // derived from the payload's total_cost_usd and reported_cost_usd fields.
+      // A regression in this fallback path (e.g. both fields silently returning 0)
+      // would be caught here.
+      const insertValues = (
+        insertMock.mock.results[0]?.value as { values: ReturnType<typeof vi.fn> }
+      )?.values;
+      const insertArg = insertValues?.mock.calls[0]?.[0];
+      expect(insertArg).toBeDefined();
+      expect(insertArg.totalCostUsd).toBe('0.012');
+      expect(insertArg.reportedCostUsd).toBe('0.012');
+
       // Stats should reflect a successfully projected event
       const stats = consumer.getStats();
       expect(stats.eventsProjected).toBe(1);
       expect(stats.errorsCount).toBe(0);
       expect(stats.lastProjectedAt).not.toBeNull();
-      expect(stats.topicStats['onex.evt.omniclaude.llm-cost-reported.v1']).toBeDefined();
-      expect(stats.topicStats['onex.evt.omniclaude.llm-cost-reported.v1'].projected).toBe(1);
-      expect(stats.topicStats['onex.evt.omniclaude.llm-cost-reported.v1'].errors).toBe(0);
+      expect(stats.topicStats['onex.evt.omniintelligence.llm-call-completed.v1']).toBeDefined();
+      expect(stats.topicStats['onex.evt.omniintelligence.llm-call-completed.v1'].projected).toBe(1);
+      expect(stats.topicStats['onex.evt.omniintelligence.llm-call-completed.v1'].errors).toBe(0);
+    });
+
+    it('projects ContractLlmCallMetrics canonical payload (OMN-2371)', async () => {
+      // OMN-2371 (GAP-5): Verify that the canonical producer payload schema
+      // (ContractLlmCallMetrics from omnibase_spi) is correctly projected.
+      // Key differences from legacy schema:
+      //   - model_id (not model_name)
+      //   - usage_normalized.source (nested, not top-level usage_source)
+      //   - estimated_cost_usd only (no total_cost_usd / reported_cost_usd)
+      //   - timestamp_iso (not timestamp or created_at)
+      //   - reporting_source (not repo_name)
+      const { tryGetIntelligenceDb } = await import('../storage');
+
+      // Mock a minimal Drizzle-like insert chain (same pattern as legacy-schema test above)
+      const insertMock = vi.fn().mockReturnValue({
+        values: vi.fn().mockResolvedValue(undefined),
+      });
+      const executeMock = vi.fn().mockResolvedValue(undefined);
+
+      (tryGetIntelligenceDb as ReturnType<typeof vi.fn>).mockReturnValue({
+        insert: insertMock,
+        execute: executeMock,
+      });
+
+      const handleMessage = getHandleMessage(consumer);
+      const payload = makeKafkaPayload('onex.evt.omniintelligence.llm-call-completed.v1', {
+        // ContractLlmCallMetrics canonical fields
+        schema_version: '1.0',
+        model_id: 'claude-sonnet-4-6',
+        prompt_tokens: 3000,
+        completion_tokens: 1200,
+        total_tokens: 4200,
+        estimated_cost_usd: 0.018,
+        latency_ms: 1450.5,
+        usage_normalized: {
+          schema_version: '1.0',
+          prompt_tokens: 3000,
+          completion_tokens: 1200,
+          total_tokens: 4200,
+          source: 'API',
+          usage_is_estimated: false,
+        },
+        usage_is_estimated: false,
+        timestamp_iso: '2026-02-19T10:00:00Z',
+        reporting_source: 'omniclaude',
+        contract_version: '1.0',
+      });
+
+      await handleMessage(payload);
+
+      expect(insertMock).toHaveBeenCalled();
+      expect(executeMock).toHaveBeenCalled();
+
+      // Verify the row was built with the canonical field mappings.
+      // Extract insertValues from the mock chain at assertion time, matching
+      // the same structural pattern used by the legacy-schema test above.
+      const insertValues = (
+        insertMock.mock.results[0]?.value as { values: ReturnType<typeof vi.fn> }
+      )?.values;
+      const insertArg = insertValues?.mock.calls[0]?.[0];
+      expect(insertArg).toBeDefined();
+      // model_id → modelName
+      expect(insertArg.modelName).toBe('claude-sonnet-4-6');
+      // usage_normalized.source → usageSource (uppercased)
+      expect(insertArg.usageSource).toBe('API');
+      // estimated_cost_usd → totalCostUsd (fallback) and estimatedCostUsd
+      expect(insertArg.estimatedCostUsd).toBe('0.018');
+      expect(insertArg.totalCostUsd).toBe('0.018');
+      // ContractLlmCallMetrics has no reported_cost_usd field, so it must fall
+      // back to '0'. Asserting this prevents a regression where reportedCostUsd
+      // accidentally picks up estimatedCostUsd instead of defaulting to zero.
+      expect(insertArg.reportedCostUsd).toBe('0');
+      // timestamp_iso → bucketTime
+      expect(insertArg.bucketTime).toBeInstanceOf(Date);
+      // granularity defaults to 'hour' for per-call events
+      expect(insertArg.granularity).toBe('hour');
+      // token counts match
+      expect(insertArg.promptTokens).toBe(3000);
+      expect(insertArg.completionTokens).toBe(1200);
+      expect(insertArg.totalTokens).toBe(4200);
+      // reporting_source 'omniclaude' passes heuristic (length < 64, no whitespace) → repoName
+      expect(insertArg.repoName).toBe('omniclaude');
+
+      const stats = consumer.getStats();
+      expect(stats.eventsProjected).toBe(1);
+      expect(stats.errorsCount).toBe(0);
     });
 
     it('derives total_tokens from prompt+completion when total_tokens=0', async () => {
@@ -247,7 +349,7 @@ describe('ReadModelConsumer', () => {
       });
 
       const handleMessage = getHandleMessage(consumer);
-      const payload = makeKafkaPayload('onex.evt.omniclaude.llm-cost-reported.v1', {
+      const payload = makeKafkaPayload('onex.evt.omniintelligence.llm-call-completed.v1', {
         model_name: 'gpt-4',
         prompt_tokens: 1500,
         completion_tokens: 600,
@@ -274,7 +376,7 @@ describe('ReadModelConsumer', () => {
       expect(stats.eventsProjected).toBe(1);
     });
 
-    it('defaults model_name to "unknown" with warning when field is absent', async () => {
+    it('defaults model_name to "unknown" with warning when model_id and model_name are absent', async () => {
       const { tryGetIntelligenceDb } = await import('../storage');
 
       const insertValues = vi.fn().mockResolvedValue(undefined);
@@ -289,8 +391,8 @@ describe('ReadModelConsumer', () => {
       const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
 
       const handleMessage = getHandleMessage(consumer);
-      const payload = makeKafkaPayload('onex.evt.omniclaude.llm-cost-reported.v1', {
-        // model_name intentionally absent
+      const payload = makeKafkaPayload('onex.evt.omniintelligence.llm-call-completed.v1', {
+        // model_id and model_name intentionally absent
         prompt_tokens: 100,
         completion_tokens: 50,
         total_tokens: 150,
@@ -302,8 +404,8 @@ describe('ReadModelConsumer', () => {
 
       await handleMessage(payload);
 
-      // Warning should be logged for missing model_name
-      expect(warnSpy).toHaveBeenCalledWith(expect.stringContaining('missing model_name'));
+      // Warning should be logged for missing model_id/model_name
+      expect(warnSpy).toHaveBeenCalledWith(expect.stringContaining('missing model_id/model_name'));
       // Row should still be inserted with 'unknown'
       const insertArg = insertValues.mock.calls[0]?.[0];
       expect(insertArg?.modelName).toBe('unknown');
@@ -331,8 +433,8 @@ describe('ReadModelConsumer', () => {
       });
 
       const handleMessage = getHandleMessage(consumer);
-      const payload = makeKafkaPayload('onex.evt.omniclaude.llm-cost-reported.v1', {
-        model_name: 'gpt-4o',
+      const payload = makeKafkaPayload('onex.evt.omniintelligence.llm-call-completed.v1', {
+        model_id: 'gpt-4o',
         usage_source: 'INVALID_VALUE',
         prompt_tokens: 100,
         completion_tokens: 50,
@@ -355,6 +457,86 @@ describe('ReadModelConsumer', () => {
       expect(stats.eventsProjected).toBe(1);
     });
 
+    it('defaults usage_source via usage_is_estimated fallback when usage_normalized.source is empty', async () => {
+      // Covers the path in read-model-consumer.ts ~line 1128 where:
+      //   (usageNormalized?.source as string) is an empty string (falsy → skipped)
+      //   top-level usage_source / usageSource are absent
+      //   → final fallback: usage_is_estimated ? 'ESTIMATED' : 'API'
+      // This is a ContractLlmCallMetrics-style payload where the nested source
+      // field is present but empty, so none of the string OR-chain guards match.
+      const { tryGetIntelligenceDb } = await import('../storage');
+
+      const insertValues = vi.fn().mockResolvedValue(undefined);
+      const insertMock = vi.fn().mockReturnValue({ values: insertValues });
+      const executeMock = vi.fn().mockResolvedValue(undefined);
+
+      (tryGetIntelligenceDb as ReturnType<typeof vi.fn>).mockReturnValue({
+        insert: insertMock,
+        execute: executeMock,
+      });
+
+      const handleMessage = getHandleMessage(consumer);
+
+      // Case A: usage_normalized.source is empty string + usage_is_estimated=false → 'API'
+      const payloadA = makeKafkaPayload('onex.evt.omniintelligence.llm-call-completed.v1', {
+        model_id: 'claude-sonnet-4-6',
+        prompt_tokens: 500,
+        completion_tokens: 200,
+        total_tokens: 700,
+        estimated_cost_usd: 0.003,
+        usage_normalized: {
+          schema_version: '1.0',
+          prompt_tokens: 500,
+          completion_tokens: 200,
+          total_tokens: 700,
+          source: '', // empty string → falsy, triggers fallback
+          usage_is_estimated: false,
+        },
+        usage_is_estimated: false,
+        // No top-level usage_source field
+      });
+
+      await handleMessage(payloadA);
+
+      const insertArgA = insertValues.mock.calls[0]?.[0];
+      expect(insertArgA).toBeDefined();
+      expect(insertArgA.usageSource).toBe('API');
+
+      // Reset for Case B
+      insertValues.mockClear();
+      insertMock.mockClear();
+
+      // Case B: usage_normalized.source is empty string + usage_is_estimated=true → 'ESTIMATED'
+      const payloadB = makeKafkaPayload('onex.evt.omniintelligence.llm-call-completed.v1', {
+        model_id: 'claude-sonnet-4-6',
+        prompt_tokens: 500,
+        completion_tokens: 200,
+        total_tokens: 700,
+        estimated_cost_usd: 0.003,
+        usage_normalized: {
+          schema_version: '1.0',
+          prompt_tokens: 500,
+          completion_tokens: 200,
+          total_tokens: 700,
+          source: '', // empty string → falsy, triggers fallback
+          usage_is_estimated: true,
+        },
+        usage_is_estimated: true,
+        // No top-level usage_source field
+      });
+
+      await handleMessage(payloadB);
+
+      const insertArgB = insertValues.mock.calls[0]?.[0];
+      expect(insertArgB).toBeDefined();
+      expect(insertArgB.usageSource).toBe('ESTIMATED');
+
+      // Stats reflect 2 successfully projected events across the 2 sub-cases
+      const stats = consumer.getStats();
+      expect(stats.eventsProjected).toBe(2);
+      expect(stats.errorsCount).toBe(0);
+    });
+
     it('coerces non-finite cost values to 0', async () => {
       const { tryGetIntelligenceDb } = await import('../storage');
 
@@ -368,8 +550,8 @@ describe('ReadModelConsumer', () => {
       });
 
       const handleMessage = getHandleMessage(consumer);
-      const payload = makeKafkaPayload('onex.evt.omniclaude.llm-cost-reported.v1', {
-        model_name: 'claude-opus-4',
+      const payload = makeKafkaPayload('onex.evt.omniintelligence.llm-call-completed.v1', {
+        model_id: 'claude-opus-4',
         total_cost_usd: false, // non-numeric
         reported_cost_usd: null, // null
         estimated_cost_usd: 'NaN', // string NaN
@@ -416,8 +598,8 @@ describe('ReadModelConsumer', () => {
       const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
 
       const handleMessage = getHandleMessage(consumer);
-      const payload = makeKafkaPayload('onex.evt.omniclaude.llm-cost-reported.v1', {
-        model_name: 'gpt-4',
+      const payload = makeKafkaPayload('onex.evt.omniintelligence.llm-call-completed.v1', {
+        model_id: 'gpt-4',
         prompt_tokens: 100,
         completion_tokens: 50,
         total_tokens: 150,
@@ -444,6 +626,69 @@ describe('ReadModelConsumer', () => {
       expect(stats.errorsCount).toBe(0);
 
       warnSpy.mockRestore();
+    });
+
+    it('omits repoName when reporting_source is too long or contains whitespace', async () => {
+      // Covers the rejection branch of the reporting_source heuristic in
+      // read-model-consumer.ts ~line 1213:
+      //   reportingSource.length < 64 && !/\s/.test(reportingSource)
+      // A value that fails either guard must NOT become repoName in the projected row.
+      const { tryGetIntelligenceDb } = await import('../storage');
+
+      const insertValues = vi.fn().mockResolvedValue(undefined);
+      const insertMock = vi.fn().mockReturnValue({ values: insertValues });
+      const executeMock = vi.fn().mockResolvedValue(undefined);
+
+      (tryGetIntelligenceDb as ReturnType<typeof vi.fn>).mockReturnValue({
+        insert: insertMock,
+        execute: executeMock,
+      });
+
+      const handleMessage = getHandleMessage(consumer);
+
+      // Case A: reporting_source is ≥ 64 characters → should be rejected
+      const longSource = 'a'.repeat(64); // exactly 64 chars, fails length < 64
+      const payloadA = makeKafkaPayload('onex.evt.omniintelligence.llm-call-completed.v1', {
+        model_id: 'claude-sonnet-4-6',
+        prompt_tokens: 100,
+        completion_tokens: 50,
+        total_tokens: 150,
+        estimated_cost_usd: 0.001,
+        reporting_source: longSource,
+      });
+
+      await handleMessage(payloadA);
+
+      const insertArgA = insertValues.mock.calls[0]?.[0];
+      expect(insertArgA).toBeDefined();
+      // Long reporting_source must not be promoted to repoName
+      expect(insertArgA.repoName).toBeUndefined();
+
+      // Reset mocks for Case B
+      insertValues.mockClear();
+      insertMock.mockClear();
+
+      // Case B: reporting_source contains whitespace → should be rejected
+      const payloadB = makeKafkaPayload('onex.evt.omniintelligence.llm-call-completed.v1', {
+        model_id: 'claude-sonnet-4-6',
+        prompt_tokens: 100,
+        completion_tokens: 50,
+        total_tokens: 150,
+        estimated_cost_usd: 0.001,
+        reporting_source: 'free form description with spaces',
+      });
+
+      await handleMessage(payloadB);
+
+      const insertArgB = insertValues.mock.calls[0]?.[0];
+      expect(insertArgB).toBeDefined();
+      // reporting_source with whitespace must not be promoted to repoName
+      expect(insertArgB.repoName).toBeUndefined();
+
+      // Stats reflect 2 successfully projected events across the 2 sub-cases
+      const stats = consumer.getStats();
+      expect(stats.eventsProjected).toBe(2);
+      expect(stats.errorsCount).toBe(0);
     });
   });
 

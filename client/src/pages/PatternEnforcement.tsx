@@ -9,9 +9,8 @@
  * - Multi-metric trend chart (hit rate, correction rate, false positive rate)
  */
 
-import { useState, useCallback, useEffect } from 'react';
-import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { useWebSocket } from '@/hooks/useWebSocket';
+import { useState, useEffect } from 'react';
+import { useQuery } from '@tanstack/react-query';
 import { useDemoMode } from '@/contexts/DemoModeContext';
 import { enforcementSource } from '@/lib/data-sources/enforcement-source';
 import { DemoBanner } from '@/components/DemoBanner';
@@ -363,23 +362,7 @@ function ViolatedPatternsTable({
 
 export default function PatternEnforcement() {
   const [timeWindow, setTimeWindow] = useState<EnforcementTimeWindow>('7d');
-  const queryClient = useQueryClient();
   const { isDemoMode } = useDemoMode();
-
-  // Invalidate all enforcement queries on WebSocket ENFORCEMENT_INVALIDATE event
-  useWebSocket({
-    onMessage: useCallback(
-      (msg: { type: string; timestamp: string }) => {
-        if (msg.type === 'ENFORCEMENT_INVALIDATE') {
-          // TODO: Server does not yet emit ENFORCEMENT_INVALIDATE — wired client-side
-          // for when server-side broadcast is implemented (future ticket).
-          queryClient.invalidateQueries({ queryKey: queryKeys.enforcement.all });
-        }
-      },
-      [queryClient]
-    ),
-    debug: false,
-  });
 
   // ── Queries ──────────────────────────────────────────────────────────────
 
@@ -390,8 +373,7 @@ export default function PatternEnforcement() {
     refetch: refetchSummary,
   } = useQuery({
     queryKey: queryKeys.enforcement.summary(timeWindow),
-    queryFn: () =>
-      enforcementSource.summary(timeWindow, { mockOnEmpty: true, demoMode: isDemoMode }),
+    queryFn: () => enforcementSource.summary(timeWindow, { demoMode: isDemoMode }),
     refetchInterval: getPollingInterval(POLLING_INTERVAL_MEDIUM),
     staleTime: 30_000,
   });
@@ -403,8 +385,7 @@ export default function PatternEnforcement() {
     refetch: refetchLang,
   } = useQuery({
     queryKey: queryKeys.enforcement.byLanguage(timeWindow),
-    queryFn: () =>
-      enforcementSource.byLanguage(timeWindow, { mockOnEmpty: true, demoMode: isDemoMode }),
+    queryFn: () => enforcementSource.byLanguage(timeWindow, { demoMode: isDemoMode }),
     refetchInterval: getPollingInterval(POLLING_INTERVAL_SLOW),
     staleTime: 60_000,
   });
@@ -416,8 +397,7 @@ export default function PatternEnforcement() {
     refetch: refetchDomain,
   } = useQuery({
     queryKey: queryKeys.enforcement.byDomain(timeWindow),
-    queryFn: () =>
-      enforcementSource.byDomain(timeWindow, { mockOnEmpty: true, demoMode: isDemoMode }),
+    queryFn: () => enforcementSource.byDomain(timeWindow, { demoMode: isDemoMode }),
     refetchInterval: getPollingInterval(POLLING_INTERVAL_SLOW),
     staleTime: 60_000,
   });
@@ -429,8 +409,7 @@ export default function PatternEnforcement() {
     refetch: refetchViolated,
   } = useQuery({
     queryKey: queryKeys.enforcement.violatedPatterns(timeWindow),
-    queryFn: () =>
-      enforcementSource.violatedPatterns(timeWindow, { mockOnEmpty: true, demoMode: isDemoMode }),
+    queryFn: () => enforcementSource.violatedPatterns(timeWindow, { demoMode: isDemoMode }),
     refetchInterval: getPollingInterval(POLLING_INTERVAL_MEDIUM),
     staleTime: 30_000,
   });
@@ -442,7 +421,7 @@ export default function PatternEnforcement() {
     refetch: refetchTrend,
   } = useQuery({
     queryKey: queryKeys.enforcement.trend(timeWindow),
-    queryFn: () => enforcementSource.trend(timeWindow, { mockOnEmpty: true, demoMode: isDemoMode }),
+    queryFn: () => enforcementSource.trend(timeWindow, { demoMode: isDemoMode }),
     refetchInterval: getPollingInterval(POLLING_INTERVAL_SLOW),
     staleTime: 60_000,
   });
@@ -520,7 +499,8 @@ export default function PatternEnforcement() {
           <AlertTriangle className="h-4 w-4" />
           <AlertTitle>Failed to load enforcement data</AlertTitle>
           <AlertDescription>
-            <Button variant="outline" size="sm" className="mt-2" onClick={handleRefresh}>
+            Unable to load enforcement data. Check that the API server is running.
+            <Button variant="outline" size="sm" className="mt-2 ml-2" onClick={handleRefresh}>
               <RefreshCw className="h-4 w-4 mr-1" /> Retry
             </Button>
           </AlertDescription>

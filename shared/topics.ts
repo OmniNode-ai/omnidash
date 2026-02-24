@@ -259,22 +259,36 @@ export const SUFFIX_OMNICLAUDE_TRANSFORMATION_COMPLETED =
   'onex.evt.omniclaude.transformation.completed.v1';
 
 /**
- * LLM cost reported by the omniclaude session-ended flow (OMN-2300 / OMN-2238).
+ * LLM cost reported — DEPRECATED (OMN-2371).
  *
- * Wired to two consumers — both are intentional:
- * 1. Event bus (server/event-consumer.ts) — included via OMNICLAUDE_EXTENDED_SUFFIXES
- *    in buildSubscriptionTopics() so real-time cost events are forwarded to WebSocket
- *    clients (e.g. the live event stream on the cost-trends dashboard). The event-consumer
- *    passes this topic through generically without special handling — it is included
- *    solely so the raw event appears in the live WebSocket feed.
- * 2. Read-model consumer (server/read-model-consumer.ts) — the projectLlmCostEvent()
- *    handler upserts each event into the llm_cost_aggregates table for durable
- *    cost trend queries.
+ * This topic had zero producers and is no longer consumed by the read-model-consumer.
+ * The canonical producer is NodeLlmInferenceEffect which emits per-call metrics to
+ * TOPIC_OMNIINTELLIGENCE_LLM_CALL_COMPLETED (onex.evt.omniintelligence.llm-call-completed.v1).
+ * Kept as a constant so any remaining references compile; remove after full cleanup.
  *
- * The dual-consumer routing is intentional: real-time clients see events immediately
- * via WebSocket while the read-model materializes them for persistent aggregation.
+ * @deprecated Use TOPIC_OMNIINTELLIGENCE_LLM_CALL_COMPLETED instead (OMN-2371).
  */
 export const SUFFIX_OMNICLAUDE_LLM_COST_REPORTED = 'onex.evt.omniclaude.llm-cost-reported.v1';
+
+/**
+ * Canonical LLM call completed topic emitted by NodeLlmInferenceEffect (omnibase_infra).
+ *
+ * Payload schema: ContractLlmCallMetrics (omnibase_spi) with fields:
+ *   - model_id: string — model identifier (maps to model_name in llm_cost_aggregates)
+ *   - prompt_tokens: number
+ *   - completion_tokens: number
+ *   - total_tokens: number
+ *   - estimated_cost_usd: number | null
+ *   - usage_normalized.source: 'API' | 'ESTIMATED' | 'MISSING'
+ *   - timestamp_iso: ISO-8601 string
+ *   - reporting_source: string — provenance label (maps to repo_name when it looks like a repo)
+ *
+ * This is the canonical producer for LLM cost data (OMN-2371 / GAP-5).
+ * The read-model-consumer projects these per-call events into llm_cost_aggregates
+ * so the cost trend dashboard has live data.
+ */
+export const TOPIC_OMNIINTELLIGENCE_LLM_CALL_COMPLETED =
+  'onex.evt.omniintelligence.llm-call-completed.v1';
 
 /** Context enrichment events emitted per enrichment operation (OMN-2280).
  * NOTE: Intentionally excluded from buildSubscriptionTopics() / subscription groups —
@@ -285,6 +299,39 @@ export const SUFFIX_OMNICLAUDE_CONTEXT_ENRICHMENT = 'onex.evt.omniclaude.context
  * NOTE: Intentionally excluded from buildSubscriptionTopics() / subscription groups —
  * consumed only by the read-model-consumer via READ_MODEL_TOPICS. */
 export const SUFFIX_OMNICLAUDE_LLM_ROUTING_DECISION = 'onex.evt.omniclaude.llm-routing-decision.v1';
+
+/** Delegation task events emitted by the omniclaude delegation hook (OMN-2284).
+ * NOTE: Intentionally excluded from buildSubscriptionTopics() / subscription groups —
+ * consumed only by the read-model-consumer via READ_MODEL_TOPICS. */
+export const SUFFIX_OMNICLAUDE_TASK_DELEGATED = 'onex.evt.omniclaude.task-delegated.v1';
+
+/** Shadow comparison events for delegated tasks (OMN-2284).
+ * NOTE: Intentionally excluded from buildSubscriptionTopics() / subscription groups —
+ * consumed only by the read-model-consumer via READ_MODEL_TOPICS. */
+export const SUFFIX_OMNICLAUDE_DELEGATION_SHADOW_COMPARISON =
+  'onex.evt.omniclaude.delegation-shadow-comparison.v1';
+
+// ============================================================================
+// OmniClaude Wave 2 Topics (OMN-2596 — 5 new omniclaude tables)
+// NOTE: Intentionally excluded from buildSubscriptionTopics() / subscription groups —
+// consumed only by the read-model-consumer via READ_MODEL_TOPICS.
+// ============================================================================
+
+/** Gate decision events emitted when the CI gate evaluates a PR (gate_decisions table). */
+export const SUFFIX_OMNICLAUDE_GATE_DECISION = 'onex.evt.omniclaude.gate-decision.v1';
+
+/** Epic pipeline state-change events covering both epic_run_lease and epic_run_events tables. */
+export const SUFFIX_OMNICLAUDE_EPIC_RUN_UPDATED = 'onex.evt.omniclaude.epic-run-updated.v1';
+
+/** PR watch state-change events (pr_watch_state table). */
+export const SUFFIX_OMNICLAUDE_PR_WATCH_UPDATED = 'onex.evt.omniclaude.pr-watch-updated.v1';
+
+/** Budget cap hit events (pipeline_budget_state table). */
+export const SUFFIX_OMNICLAUDE_BUDGET_CAP_HIT = 'onex.evt.omniclaude.budget-cap-hit.v1';
+
+/** Circuit breaker tripped events (debug_escalation_counts table). */
+export const SUFFIX_OMNICLAUDE_CIRCUIT_BREAKER_TRIPPED =
+  'onex.evt.omniclaude.circuit-breaker-tripped.v1';
 
 // ============================================================================
 // OmniIntelligence Topics
@@ -346,6 +393,21 @@ export const SUFFIX_AGENT_STATUS = 'onex.evt.agent.status.v1';
 export const SUFFIX_MEMORY_INTENT_STORED = 'onex.evt.omnimemory.intent-stored.v1';
 export const SUFFIX_MEMORY_INTENT_QUERY_RESPONSE = 'onex.evt.omnimemory.intent-query-response.v1';
 export const SUFFIX_MEMORY_INTENT_QUERY_REQUESTED = 'onex.cmd.omnimemory.intent-query-requested.v1';
+
+// ============================================================================
+// GitHub / Git / Linear Status Topics (OMN-2658 — produced by OMN-2656 Kafka producers)
+// NOTE: Intentionally excluded from buildSubscriptionTopics() / subscription groups —
+// consumed only by the StatusProjection in-memory handler via event-consumer.ts.
+// ============================================================================
+
+/** GitHub PR status events emitted by the CI/CD Kafka producer (OMN-2656). */
+export const SUFFIX_GITHUB_PR_STATUS = 'onex.evt.github.pr-status.v1';
+
+/** Git hook events emitted on pre-commit / post-receive triggers (OMN-2656). */
+export const SUFFIX_GIT_HOOK = 'onex.evt.git.hook.v1';
+
+/** Linear snapshot events emitted on epic/ticket progress changes (OMN-2656). */
+export const SUFFIX_LINEAR_SNAPSHOT = 'onex.evt.linear.snapshot.v1';
 
 // ============================================================================
 // Validation Topics (canonical format per topic_resolver.py)
@@ -454,7 +516,7 @@ export const OMNICLAUDE_INJECTION_SUFFIXES = [
   SUFFIX_OMNICLAUDE_LATENCY_BREAKDOWN,
 ] as const;
 
-/** Extended OmniClaude topic suffixes (routing, sessions, manifests, notifications, cost) */
+/** Extended OmniClaude topic suffixes used by `buildSubscriptionTopics()` for WebSocket subscription building. */
 export const OMNICLAUDE_EXTENDED_SUFFIXES = [
   SUFFIX_OMNICLAUDE_ROUTING_DECISION,
   SUFFIX_OMNICLAUDE_SESSION_OUTCOME,
@@ -463,7 +525,6 @@ export const OMNICLAUDE_EXTENDED_SUFFIXES = [
   SUFFIX_OMNICLAUDE_NOTIFICATION_BLOCKED,
   SUFFIX_OMNICLAUDE_NOTIFICATION_COMPLETED,
   SUFFIX_OMNICLAUDE_TRANSFORMATION_COMPLETED,
-  SUFFIX_OMNICLAUDE_LLM_COST_REPORTED,
 ] as const;
 
 /** OmniIntelligence pipeline topic suffixes */
@@ -477,6 +538,14 @@ export const INTELLIGENCE_PIPELINE_SUFFIXES = [
   SUFFIX_INTELLIGENCE_DOCUMENT_INGESTION_COMPLETED,
   SUFFIX_INTELLIGENCE_PATTERN_LEARNING_COMPLETED,
   SUFFIX_INTELLIGENCE_QUALITY_ASSESSMENT_COMPLETED,
+  // OMN-2371 (GAP-5): canonical LLM call topic emitted by NodeLlmInferenceEffect in omnibase_infra.
+  // Dual-consumed: included here so buildSubscriptionTopics() forwards events to WebSocket clients
+  // (real-time cost-trend feed), and also in READ_MODEL_TOPICS for durable projection via
+  // projectLlmCostEvent(). Both consumers are intentional — same pattern used by the old
+  // SUFFIX_OMNICLAUDE_LLM_COST_REPORTED (which was in OMNICLAUDE_EXTENDED_SUFFIXES + READ_MODEL_TOPICS).
+  // Placed in INTELLIGENCE_PIPELINE_SUFFIXES because the topic prefix is 'onex.evt.omniintelligence.*';
+  // the producing service (NodeLlmInferenceEffect) lives in omnibase_infra.
+  TOPIC_OMNIINTELLIGENCE_LLM_CALL_COMPLETED,
 ] as const;
 
 /** Intelligence pattern lifecycle topic suffixes */
@@ -532,5 +601,9 @@ export function buildSubscriptionTopics(): string[] {
     ...INTELLIGENCE_PATTERN_LIFECYCLE_SUFFIXES,
     ...INTENT_SUFFIXES,
     ...VALIDATION_SUFFIXES,
+    // Status dashboard topics (OMN-2658)
+    SUFFIX_GITHUB_PR_STATUS,
+    SUFFIX_GIT_HOOK,
+    SUFFIX_LINEAR_SNAPSHOT,
   ];
 }

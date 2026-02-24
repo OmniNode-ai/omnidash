@@ -21,7 +21,7 @@ import type { ProjectionEvent } from '../projection-service';
 // Test Helpers
 // ============================================================================
 
-let seqCounter = 0;
+let seqCounter: number; // initialized in beforeEach
 
 function intentEvent(overrides: Partial<ProjectionEvent> = {}): ProjectionEvent {
   seqCounter++;

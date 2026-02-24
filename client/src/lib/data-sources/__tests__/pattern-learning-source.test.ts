@@ -339,7 +339,7 @@ describe('PatternLearningSource', () => {
       );
     });
 
-    it('falls back to mock data on HTTP error by default', async () => {
+    it('falls back to mock data on HTTP error when fallbackToMock is true', async () => {
       setupFetchMock(
         new Map([
           [
@@ -349,7 +349,7 @@ describe('PatternLearningSource', () => {
         ])
       );
 
-      const result = await patlearnSource.summary();
+      const result = await patlearnSource.summary('24h', { fallbackToMock: true });
 
       // Should return mock summary data instead of throwing
       expect(result).toBeDefined();
@@ -690,7 +690,7 @@ describe('PatternLearningSource', () => {
       });
     });
 
-    it('falls back to mock data by default on error', async () => {
+    it('falls back to mock data when fallbackToMock is true on error', async () => {
       setupFetchMock(
         new Map([
           [
@@ -700,8 +700,8 @@ describe('PatternLearningSource', () => {
         ])
       );
 
-      // Default behavior: graceful degradation returns mock data
-      const result = await patlearnSource.list();
+      // Opt-in to graceful degradation: returns mock data
+      const result = await patlearnSource.list({}, { fallbackToMock: true });
 
       expect(result).toBeInstanceOf(Array);
       expect(result.length).toBeGreaterThan(0);

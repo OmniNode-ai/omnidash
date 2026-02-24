@@ -490,7 +490,7 @@ router.get('/runs', async (req, res) => {
     // Strip full violations from list view for performance; return violation_count instead
     const summary = rows.map((row: ValidationRunRow) => {
       const run = toValidationRun(row);
-      const { violations, ...rest } = run;
+      const { violations: _violations, ...rest } = run;
       return { ...rest, violation_count: run.total_violations };
     });
 
