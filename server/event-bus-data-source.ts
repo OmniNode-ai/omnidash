@@ -363,7 +363,6 @@ export class EventBusDataSource extends EventEmitter {
       this.isRunning = false;
       this.isConnected = false;
       await this.consumer?.disconnect().catch(() => {});
-      this.consumer = null;
       throw err;
     }
   }
