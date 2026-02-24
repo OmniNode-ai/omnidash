@@ -109,6 +109,7 @@ export class EventBusDataSource extends EventEmitter {
   private isRunning = false;
   private isConnected = false;
   private stopped = false;
+  private loopActive = false;
   private reconnectAttempts = 0;
   private readonly MAX_RECONNECT_DELAY_MS = 30_000;
   private readonly BASE_RECONNECT_DELAY_MS = 2_000;
@@ -264,7 +265,7 @@ export class EventBusDataSource extends EventEmitter {
    */
   async start(): Promise<void> {
     this.stopped = false;
-    if (this.isRunning) {
+    if (this.isRunning || this.loopActive) {
       console.warn('[EventBusDataSource] Already running');
       return;
     }
@@ -277,21 +278,26 @@ export class EventBusDataSource extends EventEmitter {
    * Reconnect loop: retries doStart() with exponential backoff until stopped.
    */
   private async startWithReconnect(): Promise<void> {
-    while (!this.stopped) {
-      try {
-        await this.doStart();
-        // doStart() returns only when consumer.run() exits cleanly.
-        // Unless we were intentionally stopped, treat this as a reason to reconnect.
-        if (!this.stopped) {
-          console.warn('[EventBusDataSource] consumer.run() exited, reconnecting...');
+    this.loopActive = true;
+    try {
+      while (!this.stopped) {
+        try {
+          await this.doStart();
+          // doStart() returns only when consumer.run() exits cleanly.
+          // Unless we were intentionally stopped, treat this as a reason to reconnect.
+          if (!this.stopped) {
+            console.warn('[EventBusDataSource] consumer.run() exited, reconnecting...');
+            await this.sleepBeforeRetry();
+          }
+        } catch (err) {
+          if (this.stopped) break;
+          console.error('[EventBusDataSource] Kafka connection failed, will retry:', err);
+          this.emit('error', err);
           await this.sleepBeforeRetry();
         }
-      } catch (err) {
-        if (this.stopped) break;
-        console.error('[EventBusDataSource] Kafka connection failed, will retry:', err);
-        this.emit('error', err);
-        await this.sleepBeforeRetry();
       }
+    } finally {
+      this.loopActive = false;
     }
   }
 

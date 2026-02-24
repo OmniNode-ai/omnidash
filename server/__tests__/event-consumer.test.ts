@@ -717,16 +717,20 @@ describe('EventConsumer', () => {
       await consumer.start();
     });
 
-    it('should attempt reconnection on connection error during message processing', async () => {
+    it('should rethrow connection errors to outer retry loop and not attempt inline reconnection', async () => {
       vi.clearAllMocks(); // Clear after start to track reconnection attempts
 
       const errorSpy = vi.fn();
       consumer.on('error', errorSpy);
 
       // Create message that will throw a connection error during toString.
-      // The outer eachMessage try/catch detects "connection" in the message,
-      // emits the error, and re-throws so consumer.run() can propagate it to
-      // the outer while-loop catch (which handles actual reconnection).
+      // The eachMessage catch block detects "connection" in the message and
+      // re-throws so consumer.run() can propagate it to the outer while-loop
+      // catch, which handles actual reconnection.
+      // NOTE: emit('error') was removed from the eachMessage catch block —
+      // error emission was intended to be done by the outer catch (runErr),
+      // but in test env that outer catch breaks immediately (isTestEnv guard)
+      // without emitting. So in tests, no error event is emitted at all.
       const connectionError = new Error('Network connection error');
       const testMessage = {
         topic: LEGACY_AGENT_ACTIONS,
@@ -742,8 +746,9 @@ describe('EventConsumer', () => {
       // The re-throw means the handler promise rejects
       await expect(eachMessageHandler(testMessage)).rejects.toThrow('Network connection error');
 
-      // The error event IS emitted before the re-throw
-      expect(errorSpy).toHaveBeenCalledWith(connectionError);
+      // No error event is emitted: the eachMessage catch no longer calls emit('error'),
+      // and the outer catch (runErr) breaks immediately in test env without emitting.
+      expect(errorSpy).not.toHaveBeenCalled();
 
       // connectWithRetry is NOT called inline from eachMessage — reconnection is
       // delegated to the outer while-loop catch block (isTestEnv causes it to break)
@@ -779,16 +784,18 @@ describe('EventConsumer', () => {
       vi.useRealTimers();
     });
 
-    it('should emit error if reconnection fails', async () => {
+    it('should rethrow broker connection errors without inline reconnection and without double-emitting error', async () => {
       vi.clearAllMocks(); // Clear after start
 
       const errorSpy = vi.fn();
       consumer.on('error', errorSpy);
 
       // Create message with a broker-related connection error.
-      // The outer eachMessage catch emits the error and re-throws it.
-      // Reconnection (connectWithRetry) is not attempted inline — it is handled
-      // by the outer while-loop catch, which in test env immediately breaks.
+      // The eachMessage catch block detects "broker" in the message and re-throws.
+      // emit('error') was removed from the eachMessage catch to prevent double-emission:
+      // the outer catch (runErr) was intended to emit it once, but in test env that outer
+      // catch breaks immediately (isTestEnv guard) without emitting. So in tests, no error
+      // event is emitted — the only observable behavior is the handler promise rejecting.
       const brokerError = new Error('Kafka connection lost - broker unreachable');
       const testMessage = {
         topic: LEGACY_AGENT_ACTIONS,
@@ -804,9 +811,9 @@ describe('EventConsumer', () => {
       // The re-throw propagates out of eachMessage
       await expect(eachMessageHandler(testMessage)).rejects.toThrow('broker unreachable');
 
-      // The error IS emitted exactly once from the eachMessage catch block
-      expect(errorSpy).toHaveBeenCalledTimes(1);
-      expect(errorSpy.mock.calls[0][0].message).toContain('broker unreachable');
+      // No error event is emitted: emit('error') was removed from the eachMessage catch
+      // block to prevent double-emission, and the outer catch breaks in test env.
+      expect(errorSpy).not.toHaveBeenCalled();
 
       // connectWithRetry is NOT called inline — reconnection is deferred to
       // the outer while-loop which breaks in test env
