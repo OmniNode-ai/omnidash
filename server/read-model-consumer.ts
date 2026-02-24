@@ -405,6 +405,8 @@ export class ReadModelConsumer {
         if (this.stopped) return;
         continue;
       } catch (err) {
+        this.running = false;
+        this.stats.isRunning = false;
         // Disconnect the current consumer before retrying so we do not orphan a
         // live broker connection. connect() may have succeeded before subscribe()
         // or run() threw, leaving a connected consumer handle we will never use

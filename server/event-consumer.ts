@@ -1751,21 +1751,17 @@ export class EventConsumer extends EventEmitter {
                 console.error('Error processing Kafka message:', error);
                 this.emit('error', error); // Emit error event
 
-                // If error suggests connection issue, attempt reconnection
+                // If error suggests a connection/broker issue, rethrow so consumer.run()
+                // rejects and the outer while-loop catch block handles reconnection cleanly.
+                // Calling connectWithRetry() here while consumer.run() is still active is
+                // unsafe — it creates undefined state for offset commits and heartbeats.
                 if (
                   error instanceof Error &&
                   (error.message.includes('connection') ||
                     error.message.includes('broker') ||
                     error.message.includes('network'))
                 ) {
-                  console.warn('⚠️ Connection error detected, attempting reconnection...');
-                  try {
-                    await this.connectWithRetry();
-                    intentLogger.info('Reconnection successful, resuming event processing');
-                  } catch (reconnectError) {
-                    console.error('❌ Reconnection failed:', reconnectError);
-                    this.emit('error', reconnectError);
-                  }
+                  throw error;
                 }
               }
             },
@@ -4108,8 +4104,8 @@ export class EventConsumer extends EventEmitter {
         }
       }
 
-      await this.consumer.disconnect();
       this.isRunning = false;
+      await this.consumer.disconnect();
 
       // Stop the catalog manager (its own consumer/producer pair).
       if (this.catalogManager) {
