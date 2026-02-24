@@ -317,6 +317,14 @@ export class ReadModelConsumer {
           heartbeatInterval: 10000,
         });
 
+        this.consumer.on(this.consumer.events.DISCONNECT, () => {
+          if (!this.stopped) {
+            console.warn(
+              '[ReadModelConsumer] Kafka broker disconnected — will reconnect on next loop iteration'
+            );
+          }
+        });
+
         await this.consumer.connect();
         console.log('[ReadModelConsumer] Connected to Kafka');
 
@@ -351,19 +359,51 @@ export class ReadModelConsumer {
         }
 
         // Process messages
-        await this.consumer.run({
-          eachMessage: async (payload: EachMessagePayload) => {
-            await this.handleMessage(payload);
-          },
-        });
-
         this.running = true;
         this.stats.isRunning = true;
         console.log(
           `[ReadModelConsumer] Running. Topics (${subscribedTopics.length}): ${subscribedTopics.join(', ')}. ` +
             `Group: ${CONSUMER_GROUP_ID}`
         );
-        return;
+
+        await this.consumer.run({
+          eachMessage: async (payload: EachMessagePayload) => {
+            await this.handleMessage(payload);
+          },
+        });
+
+        // consumer.run() returned — this only happens when the broker connection
+        // drops or the consumer is forcibly stopped by KafkaJS internally. If
+        // stop() was called we honour the graceful-shutdown path; otherwise we
+        // fall through to the retry logic below so the consumer reconnects
+        // automatically without a process restart.
+        if (this.stopped) return;
+
+        this.running = false;
+        this.stats.isRunning = false;
+        console.warn(
+          '[ReadModelConsumer] consumer.run() exited unexpectedly — broker disconnected, retrying...'
+        );
+
+        // Disconnect the stale consumer before the next loop iteration creates a
+        // fresh Kafka client, same as the error-path cleanup below.
+        try {
+          await this.consumer.disconnect();
+        } catch (disconnectErr) {
+          console.warn(
+            '[ReadModelConsumer] Error disconnecting consumer after unexpected exit:',
+            disconnectErr instanceof Error ? disconnectErr.message : disconnectErr
+          );
+        }
+        this.consumer = null;
+        this.kafka = null;
+
+        // Reset the attempt counter so a reconnect after a stable run gets the
+        // full retry budget rather than whatever count was left from startup.
+        attempts = 0;
+        await new Promise((resolve) => setTimeout(resolve, RETRY_BASE_DELAY_MS));
+        if (this.stopped) return;
+        continue;
       } catch (err) {
         // Disconnect the current consumer before retrying so we do not orphan a
         // live broker connection. connect() may have succeeded before subscribe()
