@@ -263,6 +263,7 @@ export class EventBusDataSource extends EventEmitter {
    * retries until stop() is called.
    */
   async start(): Promise<void> {
+    this.stopped = false;
     if (this.isRunning) {
       console.warn('[EventBusDataSource] Already running');
       return;
@@ -302,52 +303,68 @@ export class EventBusDataSource extends EventEmitter {
       throw new Error('Consumer not initialized');
     }
 
-    await this.consumer.connect();
-    // Successful connection — reset backoff counter
-    this.reconnectAttempts = 0;
-    this.isConnected = true;
-    this.isRunning = true;
-    this.emit('connected');
+    try {
+      await this.consumer.connect();
+      // Successful connection — reset backoff counter
+      this.reconnectAttempts = 0;
+      this.isConnected = true;
+      this.isRunning = true;
+      this.emit('connected');
 
-    // Get all topics and filter by event patterns
-    const admin = this.kafka.admin();
-    await admin.connect();
-    const topics = await admin.listTopics();
-    await admin.disconnect();
-
-    // Filter out Kafka internal topics and filter topics that match event patterns
-    const internalTopics = ['__consumer_offsets', '__transaction_state', '__schema'];
-    const eventTopics = topics.filter((topic) => {
-      // Skip Kafka internal topics
-      if (internalTopics.some((internal) => topic.startsWith(internal))) {
-        return false;
+      // Get all topics and filter by event patterns
+      const admin = this.kafka.admin();
+      let adminConnected = false;
+      let topics: string[];
+      try {
+        await admin.connect();
+        adminConnected = true;
+        topics = await admin.listTopics();
+      } finally {
+        if (adminConnected) {
+          await admin.disconnect();
+        }
       }
-      // Extract event_type from topic (format: {tenant}.omninode.{domain}.v1)
-      // Or use topic name directly if it matches pattern
-      return this.EVENT_PATTERNS.some((pattern) => pattern.test(topic));
-    });
 
-    if (eventTopics.length === 0) {
-      console.warn(
-        '[EventBusDataSource] No matching event topics found, subscribing to all non-internal topics'
-      );
-      // Subscribe to all non-internal topics as fallback
-      const nonInternalTopics = topics.filter(
-        (topic) => !internalTopics.some((internal) => topic.startsWith(internal))
-      );
-      await this.consumer.subscribe({ topics: nonInternalTopics, fromBeginning: false });
-    } else {
-      console.log(`[EventBusDataSource] Subscribing to ${eventTopics.length} event topics`);
-      await this.consumer.subscribe({ topics: eventTopics, fromBeginning: false });
+      // Filter out Kafka internal topics and filter topics that match event patterns
+      const internalTopics = ['__consumer_offsets', '__transaction_state', '__schema'];
+      const eventTopics = topics.filter((topic) => {
+        // Skip Kafka internal topics
+        if (internalTopics.some((internal) => topic.startsWith(internal))) {
+          return false;
+        }
+        // Extract event_type from topic (format: {tenant}.omninode.{domain}.v1)
+        // Or use topic name directly if it matches pattern
+        return this.EVENT_PATTERNS.some((pattern) => pattern.test(topic));
+      });
+
+      if (eventTopics.length === 0) {
+        console.warn(
+          '[EventBusDataSource] No matching event topics found, subscribing to all non-internal topics'
+        );
+        // Subscribe to all non-internal topics as fallback
+        const nonInternalTopics = topics.filter(
+          (topic) => !internalTopics.some((internal) => topic.startsWith(internal))
+        );
+        await this.consumer.subscribe({ topics: nonInternalTopics, fromBeginning: false });
+      } else {
+        console.log(`[EventBusDataSource] Subscribing to ${eventTopics.length} event topics`);
+        await this.consumer.subscribe({ topics: eventTopics, fromBeginning: false });
+      }
+
+      // Start consuming messages — awaits until the consumer is stopped or crashes
+      console.log('[EventBusDataSource] Started consuming events');
+      await this.consumer.run({
+        eachMessage: async (payload: EachMessagePayload) => {
+          await this.handleMessage(payload);
+        },
+      });
+    } catch (err) {
+      // Reset state flags so the outer retry loop sees a clean slate
+      this.isRunning = false;
+      this.isConnected = false;
+      await this.consumer?.disconnect().catch(() => {});
+      throw err;
     }
-
-    // Start consuming messages — awaits until the consumer is stopped or crashes
-    console.log('[EventBusDataSource] Started consuming events');
-    await this.consumer.run({
-      eachMessage: async (payload: EachMessagePayload) => {
-        await this.handleMessage(payload);
-      },
-    });
   }
 
   /**
