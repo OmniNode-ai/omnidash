@@ -1750,12 +1750,13 @@ export class EventConsumer extends EventEmitter {
                 }
               } catch (error) {
                 console.error('Error processing Kafka message:', error);
-                this.emit('error', error); // Emit error event
 
                 // If error suggests a connection/broker issue, rethrow so consumer.run()
                 // rejects and the outer while-loop catch block handles reconnection cleanly.
                 // Calling connectWithRetry() here while consumer.run() is still active is
                 // unsafe — it creates undefined state for offset commits and heartbeats.
+                // NOTE: Do NOT emit 'error' here — the outer catch at the consumer.run()
+                // level will emit it exactly once when the rethrown error surfaces there.
                 if (
                   error instanceof Error &&
                   (error.message.includes('connection') ||
