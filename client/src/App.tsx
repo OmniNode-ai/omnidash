@@ -54,6 +54,7 @@ import EpicPipelineDashboard from '@/pages/EpicPipelineDashboard';
 import PRWatchDashboard from '@/pages/PRWatchDashboard';
 import PipelineBudgetDashboard from '@/pages/PipelineBudgetDashboard';
 import DebugEscalationDashboard from '@/pages/DebugEscalationDashboard';
+import ObjectiveEvaluation from '@/pages/ObjectiveEvaluation';
 
 // Phase 2: Category landing pages (OMN-2181)
 import SpeedCategory from '@/pages/SpeedCategory';
@@ -149,6 +150,9 @@ function Router() {
       <Route path="/pr-watch" component={PRWatchDashboard} />
       <Route path="/pipeline-budget" component={PipelineBudgetDashboard} />
       <Route path="/debug-escalation" component={DebugEscalationDashboard} />
+
+      {/* Objective Evaluation — score vectors, gate failures, policy state, anti-gaming (OMN-2583) */}
+      <Route path="/objective" component={ObjectiveEvaluation} />
 
       {/* Preview routes */}
       <Route path="/preview/analytics" component={EnhancedAnalytics} />
