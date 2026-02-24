@@ -264,11 +264,11 @@ export class EventBusDataSource extends EventEmitter {
    * retries until stop() is called.
    */
   async start(): Promise<void> {
-    this.stopped = false;
     if (this.isRunning || this.loopActive) {
       console.warn('[EventBusDataSource] Already running');
       return;
     }
+    this.stopped = false;
 
     await this.initializeSchema();
     await this.startWithReconnect();
@@ -365,10 +365,11 @@ export class EventBusDataSource extends EventEmitter {
         },
       });
     } catch (err) {
-      // Reset state flags so the outer retry loop sees a clean slate
+      // Attempt socket cleanup before declaring state clean, so a disconnect()
+      // throw (or stall) cannot leave a live broker connection behind orphaned flags.
+      await this.consumer?.disconnect().catch(() => {});
       this.isRunning = false;
       this.isConnected = false;
-      await this.consumer?.disconnect().catch(() => {});
       throw err;
     }
   }
