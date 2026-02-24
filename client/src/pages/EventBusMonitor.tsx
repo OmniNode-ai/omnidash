@@ -27,6 +27,7 @@ import {
 } from '@/lib/configs/event-bus-dashboard';
 import { useDemoProjectionStream } from '@/hooks/useDemoProjectionStream';
 import type { ProjectionEvent } from '@/hooks/useProjectionStream.types';
+import type { EventEnrichment } from '@shared/projection-types';
 import {
   fetchEventBusSnapshot,
   type EventBusPayload,
@@ -141,10 +142,35 @@ function mapSeverityToPriority(
   }
 }
 
+/**
+ * Build a ParsedDetails object from server-computed EventEnrichment.
+ * Used as the fast path in toDisplayEvent() when enrichment is present.
+ */
+function buildParsedDetailsFromEnrichment(e: EventEnrichment): ParsedDetails {
+  return {
+    toolName: e.toolName,
+    filePath: e.filePath,
+    toolInput: e.bashCommand ? { command: e.bashCommand } : undefined,
+    nodeId: e.nodeId,
+    healthStatus: e.healthStatus,
+    selectedAgent: e.selectedAgent,
+    confidence: e.confidence,
+    actionName: e.actionName ?? e.intentType,
+    error: e.error,
+  };
+}
+
 function toDisplayEvent(event: ProjectionEvent): DisplayEvent {
+  const enrichment = event.enrichment;
   const payloadStr = JSON.stringify(event.payload);
-  const parsedDetails = extractParsedDetails(payloadStr, event.type);
-  const normalizedType = computeNormalizedType(event.type, parsedDetails, event.topic);
+  // Fast path: use server-computed enrichment when available.
+  // Fallback: client-side extraction for DB-preloaded events without enrichment.
+  const parsedDetails = enrichment
+    ? buildParsedDetailsFromEnrichment(enrichment)
+    : extractParsedDetails(payloadStr, event.type);
+  const summary = enrichment?.summary ?? generateSummary(event.type, parsedDetails, event);
+  const normalizedType =
+    enrichment?.normalizedType ?? computeNormalizedType(event.type, parsedDetails, event.topic);
 
   // Use a single fallback time so timestamp and timestampRaw are always consistent
   const effectiveTimeMs = event.eventTimeMs > 0 ? event.eventTimeMs : Date.now();
@@ -169,7 +195,7 @@ function toDisplayEvent(event: ProjectionEvent): DisplayEvent {
     source: resolvedSource,
     correlationId: event.payload?.correlationId as string | undefined,
     payload: payloadStr,
-    summary: generateSummary(event.type, parsedDetails, event),
+    summary,
     normalizedType,
     parsedDetails,
   };
@@ -178,6 +204,8 @@ function toDisplayEvent(event: ProjectionEvent): DisplayEvent {
 // computeNormalizedType is imported from @/lib/configs/event-bus-dashboard
 // (extracted for testability — see OMN-2196).
 
+// generateSummary is the fallback path for DB-preloaded events without enrichment.
+// Remove once all historical events carry server-computed enrichment.
 function generateSummary(
   eventType: string,
   details: ParsedDetails | null,
@@ -192,7 +220,7 @@ function generateSummary(
   }
 
   if (details.toolName) {
-    const filePath = findFilePath(event.payload);
+    const filePath = details.filePath;
     if (filePath) {
       return `${details.toolName} ${filePath.split('/').pop() || filePath}`;
     }
@@ -222,20 +250,6 @@ function generateSummary(
   }
 
   return eventType.length > 60 ? eventType.slice(0, 57) + '...' : eventType;
-}
-
-function findFilePath(payload: Record<string, unknown>): string | undefined {
-  if (typeof payload.file_path === 'string') return payload.file_path;
-  if (typeof payload.filePath === 'string') return payload.filePath;
-  for (const key of ['content', 'details', 'data']) {
-    const nested = payload[key];
-    if (nested && typeof nested === 'object') {
-      const n = nested as Record<string, unknown>;
-      if (typeof n.file_path === 'string') return n.file_path;
-      if (typeof n.filePath === 'string') return n.filePath;
-    }
-  }
-  return undefined;
 }
 
 // ============================================================================
