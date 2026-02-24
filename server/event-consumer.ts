@@ -1785,6 +1785,9 @@ export class EventConsumer extends EventEmitter {
             break;
           }
         } catch (runErr) {
+          // NOTE: In test env, the reconnect loop is short-circuited here.
+          // The this.emit('error', runErr) below is production-only; tests instead
+          // assert that eachMessage rethrows (handler rejects) and no inline reconnect occurs.
           if (!this.isRunning || isTestEnv) break;
           console.error('[EventConsumer] consumer.run() threw, reconnecting in 5s...', runErr);
           this.emit('error', runErr);
