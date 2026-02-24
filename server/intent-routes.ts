@@ -28,6 +28,53 @@ export const RATE_LIMIT_MAX_REQUESTS =
   isNaN(_rawRateLimitMaxRequests) || _rawRateLimitMaxRequests <= 0 ? 100 : _rawRateLimitMaxRequests;
 
 // ============================================================================
+// Time Range Constants (OMN-1561)
+//
+// The intent API endpoints have intentionally different time-range behaviours:
+//
+//   GET /recent       — time-range is NOT a query parameter. The endpoint
+//                       always returns the newest N items from the in-memory
+//                       circular buffer regardless of age. The response
+//                       includes `time_range_hours: 24` as a documentation
+//                       hint only (indicates the typical freshness window for
+//                       a live dashboard). Callers should not use this field
+//                       for filtering decisions.
+//
+//   GET /distribution — time-range IS a query parameter. The endpoint filters
+//                       the circular buffer by `created_at` and is designed
+//                       for trend / historical analysis over configurable
+//                       windows. The soft-recommended maximum is documented
+//                       by DISTRIBUTION_MAX_TIME_RANGE_HOURS below; values
+//                       beyond this are accepted but may return sparse results
+//                       since the in-memory buffer only retains MAX_STORED_INTENTS
+//                       entries and older data will have been evicted.
+//
+// This asymmetry is intentional:
+//   - /recent  → real-time stream (show latest activity, no age filter)
+//   - /distribution → trend analysis (configurable historical window)
+//
+// If strict alignment is ever required, both endpoints should cap their
+// time_range_hours using DISTRIBUTION_MAX_TIME_RANGE_HOURS.
+// ============================================================================
+
+/**
+ * Soft-recommended maximum hours for the time_range_hours query parameter on
+ * GET /api/intents/distribution. Values beyond this are accepted but will
+ * typically return sparse data because the circular buffer only retains
+ * MAX_STORED_INTENTS entries; older intents will have been evicted.
+ *
+ * Default: 168 hours (7 days)
+ */
+const _rawDistributionMaxTimeRangeHours = parseInt(
+  process.env.DISTRIBUTION_MAX_TIME_RANGE_HOURS ?? '',
+  10
+);
+export const DISTRIBUTION_MAX_TIME_RANGE_HOURS =
+  isNaN(_rawDistributionMaxTimeRangeHours) || _rawDistributionMaxTimeRangeHours <= 0
+    ? 168
+    : _rawDistributionMaxTimeRangeHours;
+
+// ============================================================================
 // Circular Buffer
 // ============================================================================
 
@@ -271,6 +318,17 @@ router.post('/', (req: Request, res: Response) => {
 /**
  * GET /api/intents/recent?limit=N
  * Returns the most recent intents, newest first (default 50, max 500).
+ *
+ * **Time range behaviour**: This endpoint does NOT filter by age. It always
+ * returns the newest N items from the in-memory circular buffer regardless of
+ * how old they are. The `time_range_hours` field in the response is a
+ * documentation hint (24 hours = typical live-dashboard freshness window)
+ * and should not be used for client-side filtering decisions.
+ *
+ * To filter by age, use GET /api/intents/distribution?time_range_hours=N
+ * which applies a time-range filter on the buffer.
+ *
+ * @param limit - Max items to return (default 50, hard-capped at 500)
  */
 router.get('/recent', (_req: Request, res: Response) => {
   const start = Date.now();
@@ -286,6 +344,8 @@ router.get('/recent', (_req: Request, res: Response) => {
       ok: true,
       intents,
       total_count: all.length,
+      // time_range_hours is a documentation hint only — /recent does not filter by age.
+      // It reflects the typical live-dashboard freshness window (24 h).
       time_range_hours: 24,
       execution_time_ms: Date.now() - start,
     });
@@ -297,6 +357,21 @@ router.get('/recent', (_req: Request, res: Response) => {
 /**
  * GET /api/intents/distribution?time_range_hours=N
  * Returns intent category counts for the given time range (default 24 hours).
+ *
+ * **Time range behaviour**: This endpoint DOES filter the in-memory circular
+ * buffer by `created_at >= now - time_range_hours`. It is designed for
+ * trend analysis and supports a configurable historical window.
+ *
+ * The soft-recommended maximum is DISTRIBUTION_MAX_TIME_RANGE_HOURS (default 168h / 7 days).
+ * Values beyond this are accepted but may return sparse results because the
+ * circular buffer only retains MAX_STORED_INTENTS entries — intents older than
+ * the buffer's capacity will have been evicted.
+ *
+ * Unlike GET /api/intents/recent, which shows the latest N items regardless of age,
+ * this endpoint applies a strict cutoff so callers can query historical windows.
+ *
+ * @param time_range_hours - Hours to look back (default 24, must be > 0 and finite;
+ *   soft max: DISTRIBUTION_MAX_TIME_RANGE_HOURS = 168)
  */
 router.get('/distribution', (_req: Request, res: Response) => {
   const start = Date.now();
@@ -370,6 +445,7 @@ export const _testHelpers = {
   MAX_STORED_INTENTS,
   RATE_LIMIT_WINDOW_MS,
   RATE_LIMIT_MAX_REQUESTS,
+  DISTRIBUTION_MAX_TIME_RANGE_HOURS,
 
   // Buffer operations
   addToStore,
