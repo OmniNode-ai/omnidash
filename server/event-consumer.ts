@@ -4082,6 +4082,8 @@ export class EventConsumer extends EventEmitter {
     // Guard against concurrent stop() calls: if a stop is already in progress,
     // return early rather than relying on isRunning (which is cleared mid-stop,
     // leaving a window where isRunning=false but disconnect() hasn't run yet).
+    // isRunning is set inside the consumer loop body; a connect()-but-not-yet-run window
+    // where isRunning=false is accepted — callers must not rely on stop() for cleanup in that gap.
     if (!this.consumer || !this.isRunning || this.isStopping) {
       return;
     }
