@@ -33,6 +33,7 @@ import epicRunRoutes from './epic-run-routes';
 import prWatchRoutes from './pr-watch-routes';
 import pipelineBudgetRoutes from './pipeline-budget-routes';
 import debugEscalationRoutes from './debug-escalation-routes';
+import objectiveRoutes from './objective-routes';
 
 export async function registerRoutes(app: Express): Promise<Server> {
   // put application routes here
@@ -115,6 +116,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // Mount status dashboard routes (OMN-2658)
   app.use('/api/status', statusRoutes);
+
+  // Mount objective evaluation routes (OMN-2583)
+  app.use('/api/objective', objectiveRoutes);
   // Debug/manual ingress for Linear snapshots (OMN-2658)
   app.use('/api/linear', linearSnapshotRouter);
 
