@@ -365,9 +365,12 @@ export class EventBusDataSource extends EventEmitter {
         },
       });
     } catch (err) {
-      // Attempt socket cleanup before declaring state clean, so a disconnect()
-      // throw (or stall) cannot leave a live broker connection behind orphaned flags.
-      await this.consumer?.disconnect().catch(() => {});
+      // Only disconnect if a successful connect() was previously recorded;
+      // calling disconnect() on a never-connected consumer drives its internal
+      // state machine unnecessarily and may produce unexpected errors.
+      if (this.isConnected) {
+        await this.consumer?.disconnect().catch(() => {});
+      }
       this.isRunning = false;
       this.isConnected = false;
       throw err;
@@ -721,10 +724,6 @@ export class EventBusDataSource extends EventEmitter {
     if (!this.isRunning && !this.loopActive) {
       return;
     }
-
-    // Signal the reconnect loop to stop before we disconnect.
-    // This prevents a race where disconnect() triggers an error that
-    // causes sleepBeforeRetry() + another doStart() attempt.
 
     try {
       if (this.consumer) {

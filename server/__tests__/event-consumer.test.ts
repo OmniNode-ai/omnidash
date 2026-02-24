@@ -704,6 +704,17 @@ describe('EventConsumer', () => {
     });
   });
 
+  // NOTE: isTestEnv coverage gap — production vs test-env divergence
+  //
+  // In production, the outer `catch (runErr)` block calls `this.emit('error', runErr)`
+  // after the `consumer.run()` loop exits due to a connection-level error.
+  //
+  // In the test environment, `isTestEnv` causes that outer catch to `break` out of
+  // the while-loop immediately, BEFORE the `emit('error', runErr)` line is reached.
+  //
+  // As a result, the tests below assert `not.toHaveBeenCalled()` on `errorSpy`
+  // rather than a positive assertion.  The production error-emission path from
+  // the outer catch is intentionally not covered by these unit tests.
   describe('reconnection on message processing errors', () => {
     let eachMessageHandler: any;
 
