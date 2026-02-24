@@ -137,8 +137,18 @@ export interface UseIntentStreamReturn {
 
   /**
    * Disconnect from WebSocket and stop receiving intent events.
-   * This closes the underlying WebSocket connection and prevents reconnection.
-   * To reconnect, call connect().
+   *
+   * This function performs a full teardown:
+   * 1. Unsubscribes from intent-specific topics (INTENT_UPDATE, INTENT_DISTRIBUTION)
+   * 2. **Closes** the underlying WebSocket connection via closeWebSocket()
+   * 3. Prevents automatic reconnection
+   * 4. Resets the subscription flag
+   *
+   * Note: The name `disconnect` accurately reflects the full teardown behavior.
+   * Unlike a simple topic unsubscribe, this closes the shared WebSocket transport.
+   * To reconnect after calling disconnect(), call connect().
+   *
+   * @see OMN-1563 - naming evaluated; disconnect is retained as it closes the WS connection
    */
   disconnect: () => void;
 
@@ -602,11 +612,18 @@ export function useIntentStream(options: UseIntentStreamOptions = {}): UseIntent
   /**
    * Disconnect from the WebSocket and stop receiving intent events.
    *
-   * This function:
-   * 1. Unsubscribes from intent-specific topics (if still connected)
-   * 2. Closes the underlying WebSocket connection
+   * This function performs a full teardown:
+   * 1. Unsubscribes from intent-specific topics (INTENT_UPDATE, INTENT_DISTRIBUTION),
+   *    if the WebSocket is still connected when called
+   * 2. Closes the underlying WebSocket connection via closeWebSocket()
    * 3. Prevents automatic reconnection
-   * 4. Resets subscription state
+   * 4. Resets the subscription flag
+   *
+   * The name `disconnect` is intentional: this is not merely a topic unsubscribe —
+   * it closes the shared WebSocket transport used by the hook. If you only want
+   * to stop receiving intent events while keeping the connection alive for other
+   * subscribers, use useWebSocket directly and call unsubscribe() on the intent
+   * channels instead.
    *
    * To reconnect after calling disconnect(), call connect().
    */
