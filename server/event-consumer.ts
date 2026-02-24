@@ -806,6 +806,7 @@ export class EventConsumer extends EventEmitter {
   private kafka: Kafka;
   private consumer: Consumer | null = null;
   private isRunning = false;
+  private isStopping = false;
 
   // Data retention configuration (configurable via environment variables)
   // INTENT_RETENTION_HOURS: Number of hours to retain intent data (default: 24)
@@ -4074,9 +4075,14 @@ export class EventConsumer extends EventEmitter {
    * ```
    */
   async stop() {
-    if (!this.consumer || !this.isRunning) {
+    // Guard against concurrent stop() calls: if a stop is already in progress,
+    // return early rather than relying on isRunning (which is cleared mid-stop,
+    // leaving a window where isRunning=false but disconnect() hasn't run yet).
+    if (!this.consumer || !this.isRunning || this.isStopping) {
       return;
     }
+
+    this.isStopping = true;
 
     try {
       // Clear pruning timer
@@ -4121,6 +4127,8 @@ export class EventConsumer extends EventEmitter {
       console.error('Error stopping Kafka consumer:', error);
       this.isRunning = false;
       this.emit('error', error); // Emit error event
+    } finally {
+      this.isStopping = false;
     }
   }
 
