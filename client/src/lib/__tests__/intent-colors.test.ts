@@ -8,6 +8,7 @@ import {
   getIntentColor,
   getIntentBadgeClasses,
   getConfidenceColor,
+  getConfidenceBadgeClasses,
   getIntentBgClass,
   getConfidenceOpacity,
   getIntentColorWithConfidence,
@@ -173,6 +174,8 @@ describe('intent-colors', () => {
   });
 
   describe('getConfidenceColor', () => {
+    // 4-band system: green (>=90%), blue (>=70%), amber (>=50%), red (<50%)
+
     it('should return green classes for high confidence (>= 0.9)', () => {
       const expected = 'bg-green-500/10 text-green-600 border-green-500/20';
       expect(getConfidenceColor(0.9)).toBe(expected);
@@ -180,8 +183,8 @@ describe('intent-colors', () => {
       expect(getConfidenceColor(1.0)).toBe(expected);
     });
 
-    it('should return yellow classes for medium confidence (>= 0.7, < 0.9)', () => {
-      const expected = 'bg-yellow-500/10 text-yellow-600 border-yellow-500/20';
+    it('should return blue classes for medium-high confidence (>= 0.7, < 0.9)', () => {
+      const expected = 'bg-blue-500/10 text-blue-600 border-blue-500/20';
       expect(getConfidenceColor(0.7)).toBe(expected);
       expect(getConfidenceColor(0.75)).toBe(expected);
       expect(getConfidenceColor(0.8)).toBe(expected);
@@ -189,20 +192,27 @@ describe('intent-colors', () => {
       expect(getConfidenceColor(0.89)).toBe(expected);
     });
 
-    it('should return red classes for low confidence (< 0.7)', () => {
+    it('should return amber classes for medium-low confidence (>= 0.5, < 0.7)', () => {
+      const expected = 'bg-amber-500/10 text-amber-600 border-amber-500/20';
+      expect(getConfidenceColor(0.5)).toBe(expected);
+      expect(getConfidenceColor(0.55)).toBe(expected);
+      expect(getConfidenceColor(0.6)).toBe(expected);
+      expect(getConfidenceColor(0.65)).toBe(expected);
+      expect(getConfidenceColor(0.69)).toBe(expected);
+    });
+
+    it('should return red classes for low confidence (< 0.5)', () => {
       const expected = 'bg-red-500/10 text-red-600 border-red-500/20';
       expect(getConfidenceColor(0.0)).toBe(expected);
       expect(getConfidenceColor(0.1)).toBe(expected);
       expect(getConfidenceColor(0.3)).toBe(expected);
-      expect(getConfidenceColor(0.5)).toBe(expected);
-      expect(getConfidenceColor(0.6)).toBe(expected);
-      expect(getConfidenceColor(0.69)).toBe(expected);
+      expect(getConfidenceColor(0.49)).toBe(expected);
     });
 
     it('should handle edge cases at exact boundaries', () => {
-      // Exactly at boundaries (0.9 for high, 0.7 for medium)
       expect(getConfidenceColor(0.9)).toBe('bg-green-500/10 text-green-600 border-green-500/20');
-      expect(getConfidenceColor(0.7)).toBe('bg-yellow-500/10 text-yellow-600 border-yellow-500/20');
+      expect(getConfidenceColor(0.7)).toBe('bg-blue-500/10 text-blue-600 border-blue-500/20');
+      expect(getConfidenceColor(0.5)).toBe('bg-amber-500/10 text-amber-600 border-amber-500/20');
     });
 
     it('should handle values outside 0-1 range', () => {
@@ -213,6 +223,37 @@ describe('intent-colors', () => {
       // Negative values should be treated as low confidence
       expect(getConfidenceColor(-0.1)).toBe('bg-red-500/10 text-red-600 border-red-500/20');
       expect(getConfidenceColor(-1.0)).toBe('bg-red-500/10 text-red-600 border-red-500/20');
+    });
+  });
+
+  describe('getConfidenceBadgeClasses', () => {
+    // 4-band system: green (>=90%), blue (>=70%), amber (>=50%), red (<50%)
+
+    it('should return green classes for high confidence (>= 0.9)', () => {
+      const expected = 'bg-green-500/20 text-green-700 dark:text-green-400';
+      expect(getConfidenceBadgeClasses(0.9)).toBe(expected);
+      expect(getConfidenceBadgeClasses(0.95)).toBe(expected);
+      expect(getConfidenceBadgeClasses(1.0)).toBe(expected);
+    });
+
+    it('should return blue classes for medium-high confidence (>= 0.7, < 0.9)', () => {
+      const expected = 'bg-blue-500/20 text-blue-700 dark:text-blue-400';
+      expect(getConfidenceBadgeClasses(0.7)).toBe(expected);
+      expect(getConfidenceBadgeClasses(0.8)).toBe(expected);
+      expect(getConfidenceBadgeClasses(0.89)).toBe(expected);
+    });
+
+    it('should return amber classes for medium-low confidence (>= 0.5, < 0.7)', () => {
+      const expected = 'bg-amber-500/20 text-amber-700 dark:text-amber-400';
+      expect(getConfidenceBadgeClasses(0.5)).toBe(expected);
+      expect(getConfidenceBadgeClasses(0.6)).toBe(expected);
+      expect(getConfidenceBadgeClasses(0.69)).toBe(expected);
+    });
+
+    it('should return red classes for low confidence (< 0.5)', () => {
+      const expected = 'bg-red-500/20 text-red-700 dark:text-red-400';
+      expect(getConfidenceBadgeClasses(0.0)).toBe(expected);
+      expect(getConfidenceBadgeClasses(0.49)).toBe(expected);
     });
   });
 
