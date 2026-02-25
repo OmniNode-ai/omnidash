@@ -149,6 +149,9 @@ vi.mock('@/pages/preview/ArchitectureNetworks', () => ({
 vi.mock('@/pages/preview/DeveloperTools', () => ({
   default: () => <div data-testid="page-preview-developer-tools">page-preview-developer-tools</div>,
 }));
+vi.mock('@/pages/RegistryDiscovery', () => ({
+  default: () => <div data-testid="page-registry-discovery">page-registry-discovery</div>,
+}));
 
 vi.mock('@/hooks/useWebSocket', () => ({
   useWebSocket: vi.fn(),
