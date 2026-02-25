@@ -51,6 +51,13 @@ const EXEMPT_FILES = new Set([
 
   // Golden path CRUD requires direct DB writes (not yet event-sourced).
   'golden-path-routes.ts',
+
+  // Objective evaluation reads from objective_evaluations, policy_state, and
+  // objective_anti_gaming_alerts tables (populated by OMN-2545 ScoringReducer
+  // and OMN-2557 PolicyState backends, not yet merged). Once those backends
+  // land and projections are created, migrate to ProjectionService views.
+  // TODO(OMN-2583-followup): Migrate to projection views after OMN-2545/OMN-2557 merge.
+  'objective-routes.ts',
 ]);
 
 /**

@@ -19,6 +19,7 @@ import {
   ShieldAlert,
   Cpu,
   GitFork,
+  Target,
 } from 'lucide-react';
 import { Link, useLocation } from 'wouter';
 import {
@@ -185,6 +186,12 @@ const advancedSubGroups: AdvancedSubGroup[] = [
         url: '/why',
         icon: Lightbulb,
         description: 'Decision provenance — intent vs plan, timeline, candidate comparison',
+      },
+      {
+        title: 'Objective Evaluation',
+        url: '/objective',
+        icon: Target,
+        description: 'Score vectors, gate failures, policy state history, anti-gaming alerts',
       },
     ],
   },
