@@ -704,6 +704,17 @@ describe('EventConsumer', () => {
     });
   });
 
+  // NOTE: isTestEnv coverage gap — production vs test-env divergence
+  //
+  // In production, the outer `catch (runErr)` block calls `this.emit('error', runErr)`
+  // after the `consumer.run()` loop exits due to a connection-level error.
+  //
+  // In the test environment, `isTestEnv` causes that outer catch to `break` out of
+  // the while-loop immediately, BEFORE the `emit('error', runErr)` line is reached.
+  //
+  // As a result, the tests below assert `not.toHaveBeenCalled()` on `errorSpy`
+  // rather than a positive assertion.  The production error-emission path from
+  // the outer catch is intentionally not covered by these unit tests.
   describe('reconnection on message processing errors', () => {
     let eachMessageHandler: any;
 
@@ -717,35 +728,43 @@ describe('EventConsumer', () => {
       await consumer.start();
     });
 
-    it('should attempt reconnection on connection error during message processing', async () => {
-      vi.useFakeTimers();
+    it('should rethrow connection errors to outer retry loop and not attempt inline reconnection', async () => {
       vi.clearAllMocks(); // Clear after start to track reconnection attempts
-      mockConsumerConnect.mockResolvedValueOnce(undefined); // Successful reconnection
 
       const errorSpy = vi.fn();
       consumer.on('error', errorSpy);
 
-      // Create message that will throw connection error during toString
+      // Create message that will throw a connection error during toString.
+      // The eachMessage catch block detects "connection" in the message and
+      // re-throws so consumer.run() can propagate it to the outer while-loop
+      // catch, which handles actual reconnection.
+      // NOTE: emit('error') was removed from the eachMessage catch block —
+      // error emission was intended to be done by the outer catch (runErr),
+      // but in test env that outer catch breaks immediately (isTestEnv guard)
+      // without emitting. So in tests, no error event is emitted at all.
+      const connectionError = new Error('Network connection error');
       const testMessage = {
         topic: LEGACY_AGENT_ACTIONS,
         message: {
           value: {
             toString: () => {
-              throw new Error('Network connection error');
+              throw connectionError;
             },
           },
         },
       };
 
-      const handlerPromise = eachMessageHandler(testMessage);
-      await vi.advanceTimersByTimeAsync(1000);
-      await handlerPromise;
+      // The re-throw means the handler promise rejects
+      await expect(eachMessageHandler(testMessage)).rejects.toThrow('Network connection error');
 
-      // Should have attempted reconnection
-      expect(mockConsumerConnect).toHaveBeenCalled();
-      expect(errorSpy).toHaveBeenCalled();
-      vi.useRealTimers();
-    }, 2000); // Reduced timeout because timers are faked
+      // No error event is emitted: the eachMessage catch no longer calls emit('error'),
+      // and the outer catch (runErr) breaks immediately in test env without emitting.
+      expect(errorSpy).not.toHaveBeenCalled();
+
+      // connectWithRetry is NOT called inline from eachMessage — reconnection is
+      // delegated to the outer while-loop catch block (isTestEnv causes it to break)
+      expect(mockConsumerConnect).not.toHaveBeenCalled();
+    }, 2000);
 
     it('should not attempt reconnection on non-connection errors', async () => {
       vi.useFakeTimers();
@@ -776,36 +795,41 @@ describe('EventConsumer', () => {
       vi.useRealTimers();
     });
 
-    it('should emit error if reconnection fails', async () => {
-      vi.useFakeTimers();
+    it('should rethrow broker connection errors without inline reconnection and without double-emitting error', async () => {
       vi.clearAllMocks(); // Clear after start
-
-      mockConsumerConnect.mockRejectedValue(new Error('Connection failed'));
 
       const errorSpy = vi.fn();
       consumer.on('error', errorSpy);
 
-      // Create message that will throw connection error
+      // Create message with a broker-related connection error.
+      // The eachMessage catch block detects "broker" in the message and re-throws.
+      // emit('error') was removed from the eachMessage catch to prevent double-emission:
+      // the outer catch (runErr) was intended to emit it once, but in test env that outer
+      // catch breaks immediately (isTestEnv guard) without emitting. So in tests, no error
+      // event is emitted — the only observable behavior is the handler promise rejecting.
+      const brokerError = new Error('Kafka connection lost - broker unreachable');
       const testMessage = {
         topic: LEGACY_AGENT_ACTIONS,
         message: {
           value: {
             toString: () => {
-              throw new Error('Kafka connection lost - broker unreachable');
+              throw brokerError;
             },
           },
         },
       };
 
-      const handlerPromise = eachMessageHandler(testMessage);
-      await vi.advanceTimersByTimeAsync(1000);
-      await handlerPromise;
+      // The re-throw propagates out of eachMessage
+      await expect(eachMessageHandler(testMessage)).rejects.toThrow('broker unreachable');
 
-      // Should have emitted both original error and reconnection error
-      expect(errorSpy.mock.calls.length).toBeGreaterThanOrEqual(2);
-      expect(errorSpy.mock.calls[0][0].message).toContain('broker unreachable');
-      vi.useRealTimers();
-    }, 2000); // Reduced timeout for fake timers
+      // No error event is emitted: emit('error') was removed from the eachMessage catch
+      // block to prevent double-emission, and the outer catch breaks in test env.
+      expect(errorSpy).not.toHaveBeenCalled();
+
+      // connectWithRetry is NOT called inline — reconnection is deferred to
+      // the outer while-loop which breaks in test env
+      expect(mockConsumerConnect).not.toHaveBeenCalled();
+    }, 2000);
   });
 
   describe('data pruning', () => {
