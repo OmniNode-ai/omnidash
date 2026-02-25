@@ -9,6 +9,7 @@
  * - Consumer gracefully degrades when DB is unavailable
  * - Consumer getStats returns correct statistics
  * - Consumer handles malformed messages
+ * - [OMN-2760] Every topic in OMNICLAUDE_AGENT_TOPICS is in READ_MODEL_TOPICS
  */
 
 import { describe, it, expect, vi, beforeEach } from 'vitest';
@@ -1035,6 +1036,45 @@ describe('ReadModelConsumer', () => {
       expect(compRow).toBeDefined();
       expect(compRow?.recommendation).toBe('shadow');
       expect(compRow?.confidence).toBe('low');
+    });
+  });
+});
+
+// ============================================================================
+// OMN-2760: Regression — OMNICLAUDE_AGENT_TOPICS coverage in READ_MODEL_TOPICS
+//
+// Ensures that every topic in the canonical OMNICLAUDE_AGENT_TOPICS array is
+// subscribed to by the read-model-consumer. If a new topic is added to
+// OMNICLAUDE_AGENT_TOPICS in shared/topics.ts without a corresponding entry in
+// READ_MODEL_TOPICS, this test will catch it at CI time.
+// ============================================================================
+
+describe('OMN-2760: OMNICLAUDE_AGENT_TOPICS → READ_MODEL_TOPICS coverage', () => {
+  it('every topic in OMNICLAUDE_AGENT_TOPICS is present in READ_MODEL_TOPICS', async () => {
+    const { OMNICLAUDE_AGENT_TOPICS } = await import('@shared/topics');
+    const { READ_MODEL_TOPICS } = await import('../read-model-consumer');
+
+    for (const topic of OMNICLAUDE_AGENT_TOPICS) {
+      expect(READ_MODEL_TOPICS).toContain(topic);
+    }
+  });
+
+  it('READ_MODEL_TOPICS contains no legacy flat agent topic strings', () => {
+    // This is a compile-time invariant enforced by the import of OMNICLAUDE_AGENT_TOPICS,
+    // but we also assert it at runtime to catch any accidental re-introduction.
+    const FORBIDDEN = [
+      'agent-actions',
+      'agent-routing-decisions',
+      'agent-transformation-events',
+      'router-performance-metrics',
+    ];
+
+    // We import synchronously from the module cache after the vi.mock() calls above.
+    // Use a dynamic import to resolve the actual READ_MODEL_TOPICS value.
+    return import('../read-model-consumer').then(({ READ_MODEL_TOPICS }) => {
+      for (const forbidden of FORBIDDEN) {
+        expect(READ_MODEL_TOPICS).not.toContain(forbidden);
+      }
     });
   });
 });

@@ -65,6 +65,11 @@ import {
   SUFFIX_OMNICLAUDE_PR_WATCH_UPDATED,
   SUFFIX_OMNICLAUDE_BUDGET_CAP_HIT,
   SUFFIX_OMNICLAUDE_CIRCUIT_BREAKER_TRIPPED,
+  TOPIC_OMNICLAUDE_AGENT_ACTIONS,
+  TOPIC_OMNICLAUDE_ROUTING_DECISIONS,
+  TOPIC_OMNICLAUDE_AGENT_TRANSFORMATION,
+  TOPIC_OMNICLAUDE_PERFORMANCE_METRICS,
+  OMNICLAUDE_AGENT_TOPICS,
 } from '@shared/topics';
 import type { LlmRoutingDecisionEvent } from '@shared/llm-routing-types';
 import type { TaskDelegatedEvent, DelegationShadowComparisonEvent } from '@shared/delegation-types';
@@ -190,11 +195,15 @@ const RETRY_BASE_DELAY_MS = isTestEnv ? 20 : 2000;
 const RETRY_MAX_DELAY_MS = isTestEnv ? 200 : 30000;
 const MAX_RETRY_ATTEMPTS = isTestEnv ? 2 : 10;
 
-// Topics this consumer subscribes to
-const READ_MODEL_TOPICS = [
-  'agent-routing-decisions',
-  'agent-actions',
-  'agent-transformation-events',
+// Topics this consumer subscribes to.
+// OMNICLAUDE_AGENT_TOPICS is the canonical source of truth for the agent-action,
+// routing-decision, agent-transformation, and performance-metrics subscriptions.
+// omniclaude now produces to these onex.evt.omniclaude.* topics; the legacy flat
+// names (agent-actions, agent-routing-decisions, etc.) are no longer produced.
+// Exported for regression testing (OMN-2760): every topic in OMNICLAUDE_AGENT_TOPICS
+// must have a corresponding case in the handleMessage switch statement.
+export const READ_MODEL_TOPICS = [
+  ...OMNICLAUDE_AGENT_TOPICS,
   'onex.evt.omniclaude.pattern-enforcement.v1',
   // OMN-2371 (GAP-5): Canonical producer is NodeLlmInferenceEffect in omnibase_infra.
   // The old topic 'onex.evt.omniclaude.llm-cost-reported.v1' had zero producers.
@@ -505,14 +514,18 @@ export class ReadModelConsumer {
 
       let projected: boolean;
       switch (topicKey) {
-        case 'agent-routing-decisions':
+        case TOPIC_OMNICLAUDE_ROUTING_DECISIONS:
           projected = await this.projectRoutingDecision(parsed, fallbackId);
           break;
-        case 'agent-actions':
+        case TOPIC_OMNICLAUDE_AGENT_ACTIONS:
           projected = await this.projectAgentAction(parsed, fallbackId);
           break;
-        case 'agent-transformation-events':
+        case TOPIC_OMNICLAUDE_AGENT_TRANSFORMATION:
           projected = await this.projectTransformationEvent(parsed);
+          break;
+        case TOPIC_OMNICLAUDE_PERFORMANCE_METRICS:
+          // Performance metrics: in-memory only (EventConsumer), no durable projection needed.
+          projected = true;
           break;
         case 'onex.evt.omniclaude.pattern-enforcement.v1':
           projected = await this.projectEnforcementEvent(parsed, fallbackId);
