@@ -10,9 +10,9 @@
  * - GET /contracts/schema/:type - Get schema for a contract type
  * - GET /contracts/:id - Get a specific contract by ID
  * - POST /contracts - Create a new draft contract
- * - PUT /contracts/:id - Update a draft contract
- * - POST /contracts/:id/validate - Validate a contract
- * - POST /contracts/:id/publish - Publish a validated contract
+ * - PUT /contracts/:id - Update a draft or validated contract
+ * - POST /contracts/:id/validate - Validate a contract (AJV + gate checks)
+ * - POST /contracts/:id/publish - Publish a validated contract (atomic SQL gate)
  * - POST /contracts/:id/deprecate - Deprecate a published contract
  * - POST /contracts/:id/archive - Archive a deprecated contract
  * - GET /contracts/:id/audit - Get audit history for a contract
@@ -40,6 +40,7 @@ import crypto from 'crypto';
 import { diffLines, type Change } from 'diff';
 import archiver from 'archiver';
 import yaml from 'js-yaml';
+import Ajv from 'ajv';
 
 const router = Router();
 
@@ -60,6 +61,44 @@ interface ContractSchemaDefinition {
   uiSchema: Record<string, unknown>;
 }
 
+type GateViolation = {
+  code: string;
+  message: string;
+  path?: string;
+  severity?: 'error' | 'warning';
+};
+
+type CanonicalContractPayload = {
+  name: string;
+  displayName: string;
+  type: string;
+  version: string;
+  description: string | null;
+  schema: Record<string, unknown>;
+  metadata: Record<string, unknown>;
+};
+
+type LifecycleStatus = 'draft' | 'validated' | 'published' | 'deprecated' | 'archived';
+
+// ============================================================================
+// Lifecycle State Machine
+// ============================================================================
+
+const VALID_TRANSITIONS: Record<LifecycleStatus, LifecycleStatus[]> = {
+  draft: ['validated'],
+  validated: ['draft', 'published'],
+  published: [],
+  deprecated: ['archived'],
+  archived: [],
+};
+
+function assertTransitionAllowed(from: LifecycleStatus, to: LifecycleStatus): void {
+  const allowed = VALID_TRANSITIONS[from] ?? [];
+  if (!allowed.includes(to)) {
+    throw new Error(`Invalid lifecycle transition: ${from} → ${to}`);
+  }
+}
+
 // ============================================================================
 // Helper Functions
 // ============================================================================
@@ -77,18 +116,67 @@ function getDb() {
 }
 
 /**
- * Generate content hash for audit purposes
+ * Normalize determinism_class values from various UI/alias forms to canonical form
  */
-function generateContentHash(contract: Partial<Contract>): string {
-  const content = JSON.stringify({
-    name: contract.name,
-    displayName: contract.displayName,
-    type: contract.type,
-    version: contract.version,
-    description: contract.description,
-    schema: contract.schema,
-  });
-  return crypto.createHash('sha256').update(content).digest('hex').substring(0, 16);
+function normalizeDeterminism(uiValue: string): string {
+  const map: Record<string, string> = {
+    'deterministic': 'deterministic',
+    'nondeterministic': 'nondeterministic',
+    'effect-driven': 'effect-driven',
+    // lowercase variants
+    'effect_driven': 'effect-driven',
+    'non_deterministic': 'nondeterministic',
+    'non-deterministic': 'nondeterministic',
+  };
+  return map[uiValue?.toLowerCase()] ?? uiValue;
+}
+
+/**
+ * Convert contract to canonical payload for hashing
+ */
+function toCanonicalPayload(record: Contract): CanonicalContractPayload {
+  return {
+    name: record.name,
+    displayName: record.displayName,
+    type: record.type,
+    version: record.version,
+    description: record.description ?? null,
+    schema: (record.schema as Record<string, unknown>) ?? {},
+    metadata: (record.metadata as Record<string, unknown>) ?? {},
+  };
+}
+
+/**
+ * Recursively sort object keys for canonical serialization
+ */
+function sortKeysDeep(obj: unknown): unknown {
+  if (Array.isArray(obj)) return obj.map(sortKeysDeep);
+  if (obj !== null && typeof obj === 'object') {
+    return Object.fromEntries(
+      Object.keys(obj as Record<string, unknown>)
+        .sort()
+        .map((k) => [k, sortKeysDeep((obj as Record<string, unknown>)[k])])
+    );
+  }
+  return obj;
+}
+
+/**
+ * Produce canonical YAML string for a contract payload (stable across field ordering)
+ */
+function canonicalizeContract(payload: CanonicalContractPayload): string {
+  return yaml.dump(sortKeysDeep(payload) as object, {
+    sortKeys: true,
+    lineWidth: -1,
+    noRefs: true,
+  }) + '\n';
+}
+
+/**
+ * Generate full SHA-256 content hash from canonical payload
+ */
+function contentHash(payload: CanonicalContractPayload): string {
+  return crypto.createHash('sha256').update(canonicalizeContract(payload)).digest('hex');
 }
 
 /**
@@ -168,34 +256,101 @@ function loadStaticContracts(): Contract[] {
 }
 
 /**
- * Load schema for a contract type
+ * Load schema for a contract type — loads the type-specific schema file
  */
 function loadSchema(type: ContractType): ContractSchemaDefinition | null {
   try {
     const schemasDir = path.resolve(__dirname, '../client/src/components/contract-builder/schemas');
-
-    // Currently only effect schema exists; others use it as placeholder
-    const jsonSchemaPath = path.join(schemasDir, 'effect-schema.json');
-    const uiSchemaPath = path.join(schemasDir, 'effect-uischema.json');
-
-    if (!fs.existsSync(jsonSchemaPath)) {
-      return null;
-    }
-
+    const jsonSchemaPath = path.join(schemasDir, `${type}-schema.json`);
+    const uiSchemaPath = path.join(schemasDir, `${type}-uischema.json`);
+    if (!fs.existsSync(jsonSchemaPath)) return null;
     const jsonSchema = JSON.parse(fs.readFileSync(jsonSchemaPath, 'utf8'));
     const uiSchema = fs.existsSync(uiSchemaPath)
       ? JSON.parse(fs.readFileSync(uiSchemaPath, 'utf8'))
       : {};
-
-    return {
-      type,
-      jsonSchema,
-      uiSchema,
-    };
+    return { type, jsonSchema, uiSchema };
   } catch (error) {
     console.error(`Error loading schema for ${type}:`, error);
     return null;
   }
+}
+
+/**
+ * Run AJV-based server-side validation against the contract schema data
+ * Returns a sorted list of GateViolation entries (empty = passes all gates)
+ */
+function runServerValidation(
+  schemaData: Record<string, unknown>,
+  contractType: ContractType
+): GateViolation[] {
+  const violations: GateViolation[] = [];
+
+  // 1. Load schema for this type
+  const contractSchema = loadSchema(contractType);
+  if (!contractSchema) {
+    violations.push({
+      code: 'schema_not_found',
+      message: `No schema found for node type: ${contractType}`,
+      severity: 'error',
+    });
+    return violations;
+  }
+
+  // 2. AJV validation
+  const ajv = new Ajv({ allErrors: true, strict: false });
+  const validate = ajv.compile(contractSchema.jsonSchema);
+  const valid = validate(schemaData);
+  if (!valid && validate.errors) {
+    for (const err of validate.errors) {
+      violations.push({
+        code: 'schema_validation',
+        message: err.message || 'Schema validation failed',
+        path: err.instancePath || undefined,
+        severity: 'error',
+      });
+    }
+  }
+
+  // 3. Determinism checks
+  const determinismClass = schemaData.determinism_class as string | undefined;
+  if (!determinismClass) {
+    violations.push({
+      code: 'missing_determinism_class',
+      message: 'determinism_class is required',
+      path: '/determinism_class',
+      severity: 'error',
+    });
+  } else {
+    const canonical = normalizeDeterminism(determinismClass);
+    const validValues = ['deterministic', 'nondeterministic', 'effect-driven'];
+    if (!validValues.includes(canonical)) {
+      violations.push({
+        code: 'invalid_determinism_class',
+        message: `determinism_class must be one of: ${validValues.join(', ')}`,
+        path: '/determinism_class',
+        severity: 'error',
+      });
+    }
+    // 4. effect_surface required for effect-driven
+    if (canonical === 'effect-driven') {
+      const effectSurface = schemaData.effect_surface as string[] | undefined;
+      if (!effectSurface || effectSurface.length === 0) {
+        violations.push({
+          code: 'missing_effect_surface',
+          message: 'effect_surface must be non-empty when determinism_class is effect-driven',
+          path: '/effect_surface',
+          severity: 'error',
+        });
+      }
+    }
+  }
+
+  // Sort stably: by path + code + message
+  return violations.sort((a, b) => {
+    const keyA = `${a.path ?? ''}|${a.code}|${a.message}`;
+    const keyB = `${b.path ?? ''}|${b.code}|${b.message}`;
+    return keyA.localeCompare(keyB);
+  });
 }
 
 /**
@@ -286,7 +441,7 @@ function generateProvenance(
   return {
     contractId: contract.contractId,
     currentVersion: contract.version,
-    contentHash: generateContentHash(contract),
+    contentHash: contentHash(toCanonicalPayload(contract)),
     createdAt: contract.createdAt?.toISOString() || new Date().toISOString(),
     createdBy: contract.createdBy || 'unknown',
     publishedAt: publishEntry?.createdAt?.toISOString() || null,
@@ -396,6 +551,9 @@ router.get('/schema/:type', (req, res) => {
 /**
  * GET / - List all contracts with optional filters
  * Query params: type, status, search
+ *
+ * Static fallback is only used when DB is completely unavailable.
+ * When DB is available but returns no results, returns empty array.
  */
 router.get('/', async (req, res) => {
   try {
@@ -427,13 +585,7 @@ router.get('/', async (req, res) => {
     }
     const result = await query.orderBy(desc(contracts.updatedAt));
 
-    // If no contracts in DB, seed from static file
-    if (result.length === 0) {
-      console.log('No contracts in database, returning static contracts');
-      const staticContracts = loadStaticContracts();
-      return res.json(staticContracts);
-    }
-
+    // DB is available; return whatever it has (may be empty)
     res.json(result);
   } catch (error) {
     console.error('Error fetching contracts:', error);
@@ -445,6 +597,9 @@ router.get('/', async (req, res) => {
 
 /**
  * GET /:id - Get a specific contract by ID
+ *
+ * Static fallback is only used when DB is completely unavailable.
+ * When DB is available but contract not found, returns 404.
  */
 router.get('/:id', async (req, res) => {
   try {
@@ -464,13 +619,7 @@ router.get('/:id', async (req, res) => {
     const result = await db.select().from(contracts).where(eq(contracts.id, id));
 
     if (result.length === 0) {
-      // Try static contracts as fallback
-      const staticContracts = loadStaticContracts();
-      const contract = staticContracts.find((c) => c.id === id);
-      if (!contract) {
-        return res.status(404).json({ error: 'Contract not found' });
-      }
-      return res.json(contract);
+      return res.status(404).json({ error: 'Contract not found' });
     }
 
     res.json(result[0]);
@@ -559,19 +708,15 @@ router.post('/', async (req, res) => {
     const result = await db.insert(contracts).values(newContract).returning();
     const created = result[0];
 
-    // Log audit entry with snapshot
-    await logAuditEntry(
-      db,
-      {
-        contractId: created.id,
-        action: 'created',
-        fromStatus: null,
-        toStatus: 'draft',
-        toVersion: created.version,
-        contentHash: generateContentHash(created),
-      },
-      created
-    );
+    const hash = contentHash(toCanonicalPayload(created));
+    await logAuditEntry(db, {
+      contractId: created.id,
+      action: 'created',
+      fromStatus: null,
+      toStatus: 'draft',
+      toVersion: created.version,
+      contentHash: hash,
+    }, created);
 
     res.status(201).json(created);
   } catch (error) {
@@ -581,63 +726,74 @@ router.post('/', async (req, res) => {
 });
 
 /**
- * PUT /:id - Update a draft contract
- * Only drafts can be updated; other statuses are immutable
+ * PUT /:id - Update a draft or validated contract
+ * - Validated contracts are demoted to draft on any edit
+ * - Published, deprecated, and archived contracts are immutable
+ * - Normalizes determinism_class in schema if present
  */
 router.put('/:id', async (req, res) => {
   try {
     const db = getDb();
-    if (!db) {
-      return res.status(503).json({ error: 'Database unavailable' });
-    }
+    if (!db) return res.status(503).json({ error: 'Database unavailable' });
 
     const { id } = req.params;
     const updates = req.body;
 
-    // Find the contract
     const existing = await db.select().from(contracts).where(eq(contracts.id, id));
-
-    if (existing.length === 0) {
-      return res.status(404).json({ error: 'Contract not found' });
-    }
+    if (existing.length === 0) return res.status(404).json({ error: 'Contract not found' });
 
     const contract = existing[0];
 
-    // Only drafts can be updated
-    if (contract.status !== 'draft') {
-      return res.status(400).json({
-        error: `Cannot update contract with status '${contract.status}'. Only drafts can be updated.`,
+    if (contract.status === 'published' || contract.status === 'deprecated' || contract.status === 'archived') {
+      return res.status(409).json({
+        error: `Cannot update contract with status '${contract.status}'. Only drafts and validated contracts can be updated.`,
       });
     }
 
-    // Prevent changing immutable fields
+    const wasDemoted = contract.status === 'validated';
     const { id: _id, contractId: _contractId, createdAt: _createdAt, ...allowedUpdates } = updates;
+
+    // Normalize determinism in schema if present
+    if (allowedUpdates.schema && typeof allowedUpdates.schema === 'object') {
+      const schemaObj = allowedUpdates.schema as Record<string, unknown>;
+      if (schemaObj.determinism_class) {
+        schemaObj.determinism_class = normalizeDeterminism(schemaObj.determinism_class as string);
+      }
+    }
+
+    // Always demote validated → draft on any edit
+    const newStatus = wasDemoted ? 'draft' : contract.status;
 
     const result = await db
       .update(contracts)
-      .set({
-        ...allowedUpdates,
-        updatedAt: new Date(),
-      })
+      .set({ ...allowedUpdates, status: newStatus, updatedAt: new Date() })
       .where(eq(contracts.id, id))
       .returning();
 
     const updated = result[0];
+    const hash = contentHash(toCanonicalPayload(updated));
 
-    // Log audit entry with snapshot
-    await logAuditEntry(
-      db,
-      {
+    if (wasDemoted) {
+      await logAuditEntry(db, {
+        contractId: id,
+        action: 'demoted',
+        fromStatus: 'validated',
+        toStatus: 'draft',
+        fromVersion: contract.version,
+        toVersion: updated.version,
+        contentHash: hash,
+      }, updated);
+    } else {
+      await logAuditEntry(db, {
         contractId: id,
         action: 'updated',
         fromStatus: contract.status,
         toStatus: updated.status,
         fromVersion: contract.version,
         toVersion: updated.version,
-        contentHash: generateContentHash(updated),
-      },
-      updated
-    );
+        contentHash: hash,
+      }, updated);
+    }
 
     res.json(updated);
   } catch (error) {
@@ -651,88 +807,58 @@ router.put('/:id', async (req, res) => {
 // ============================================================================
 
 /**
- * POST /:id/validate - Validate a contract
- * Returns validation result with errors/warnings
+ * POST /:id/validate - Validate a contract using AJV + gate checks
+ * Returns 200 + { lifecycle_state, contract } on success
+ * Returns 422 + { error, gates } on validation failure
  */
 router.post('/:id/validate', async (req, res) => {
   try {
     const db = getDb();
-    if (!db) {
-      return res.status(503).json({ error: 'Database unavailable' });
-    }
+    if (!db) return res.status(503).json({ error: 'Database unavailable' });
 
     const { id } = req.params;
-
     const existing = await db.select().from(contracts).where(eq(contracts.id, id));
 
-    if (existing.length === 0) {
-      return res.status(404).json({ error: 'Contract not found' });
-    }
+    if (existing.length === 0) return res.status(404).json({ error: 'not_found' });
 
     const contract = existing[0];
 
-    // Basic validation rules
-    const errors: string[] = [];
-    const warnings: string[] = [];
-
-    // Name validation
-    if (!contract.name || contract.name.length < 3) {
-      errors.push('Contract name must be at least 3 characters');
+    if (contract.status === 'published') {
+      return res.status(409).json({ error: 'already_published' });
     }
 
-    if (!/^[a-z][a-z0-9-]*$/.test(contract.name)) {
-      errors.push(
-        'Contract name must be lowercase, start with a letter, and contain only letters, numbers, and hyphens'
-      );
+    const schemaData = (contract.schema as Record<string, unknown>) ?? {};
+    const violations = runServerValidation(schemaData, contract.type as ContractType);
+
+    if (violations.length > 0) {
+      await logAuditEntry(db, {
+        contractId: id,
+        action: 'validate_failed',
+        fromStatus: contract.status,
+        toStatus: contract.status,
+        toVersion: contract.version,
+        contentHash: contentHash(toCanonicalPayload(contract)),
+      });
+      return res.status(422).json({ error: 'validation_failed', gates: violations });
     }
 
-    // Description validation
-    if (!contract.description || contract.description.length < 10) {
-      warnings.push('Description should be at least 10 characters');
-    }
+    const result = await db
+      .update(contracts)
+      .set({ status: 'validated', updatedAt: new Date() })
+      .where(eq(contracts.id, id))
+      .returning();
 
-    // Version validation
-    if (!/^\d+\.\d+\.\d+$/.test(contract.version)) {
-      errors.push('Version must be in semver format (e.g., 1.0.0)');
-    }
+    const validated = result[0];
+    await logAuditEntry(db, {
+      contractId: id,
+      action: 'validated',
+      fromStatus: contract.status,
+      toStatus: 'validated',
+      toVersion: contract.version,
+      contentHash: contentHash(toCanonicalPayload(validated)),
+    }, validated);
 
-    const isValid = errors.length === 0;
-
-    // Update status if valid and currently draft
-    let updatedContract = contract;
-    if (isValid && contract.status === 'draft') {
-      const result = await db
-        .update(contracts)
-        .set({
-          status: 'validated',
-          updatedAt: new Date(),
-        })
-        .where(eq(contracts.id, id))
-        .returning();
-
-      updatedContract = result[0];
-
-      // Log audit entry with snapshot
-      await logAuditEntry(
-        db,
-        {
-          contractId: id,
-          action: 'validated',
-          fromStatus: 'draft',
-          toStatus: 'validated',
-          toVersion: contract.version,
-          contentHash: generateContentHash(updatedContract),
-        },
-        updatedContract
-      );
-    }
-
-    res.json({
-      isValid,
-      errors,
-      warnings,
-      contract: updatedContract,
-    });
+    return res.status(200).json({ lifecycle_state: 'validated', contract: validated });
   } catch (error) {
     console.error('Error validating contract:', error);
     res.status(500).json({ error: 'Failed to validate contract' });
@@ -741,61 +867,71 @@ router.post('/:id/validate', async (req, res) => {
 
 /**
  * POST /:id/publish - Publish a validated contract
- * Only validated contracts can be published
+ * Uses atomic SQL gate: only publishes if status is still 'validated'
+ * Runs server-side validation as defense-in-depth before the atomic update
  */
 router.post('/:id/publish', async (req, res) => {
   try {
     const db = getDb();
-    if (!db) {
-      return res.status(503).json({ error: 'Database unavailable' });
-    }
+    if (!db) return res.status(503).json({ error: 'Database unavailable' });
 
     const { id } = req.params;
     const { evidence } = req.body;
 
+    // Pre-flight: check contract exists and run gate validation
     const existing = await db.select().from(contracts).where(eq(contracts.id, id));
-
-    if (existing.length === 0) {
-      return res.status(404).json({ error: 'Contract not found' });
-    }
+    if (existing.length === 0) return res.status(404).json({ error: 'not_found' });
 
     const contract = existing[0];
 
+    // Check lifecycle state FIRST before running validation
     if (contract.status !== 'validated') {
-      return res.status(400).json({
-        error: `Cannot publish contract with status '${contract.status}'. Contract must be validated first.`,
+      return res.status(409).json({
+        error: 'not_validated_or_concurrent_publish',
+        message: `Contract must be in validated state to publish. Current state: '${contract.status}'.`,
       });
     }
 
+    // Run validation as defense-in-depth (don't trust that state hasn't drifted)
+    const schemaData = (contract.schema as Record<string, unknown>) ?? {};
+    const violations = runServerValidation(schemaData, contract.type as ContractType);
+
+    if (violations.length > 0) {
+      return res.status(422).json({ error: 'validation_failed', gates: violations });
+    }
+
+    const hash = contentHash(toCanonicalPayload(contract));
+
+    // Atomic SQL gate: only publishes if status is still 'validated' (handles concurrent races)
     const result = await db
       .update(contracts)
-      .set({
-        status: 'published',
-        updatedAt: new Date(),
-      })
-      .where(eq(contracts.id, id))
+      .set({ status: 'published', updatedAt: new Date() })
+      .where(and(eq(contracts.id, id), eq(contracts.status, 'validated')))
       .returning();
+
+    if (result.length === 0) {
+      return res.status(409).json({
+        error: 'not_validated_or_concurrent_publish',
+        message: 'Contract was concurrently modified or already published.',
+      });
+    }
 
     const published = result[0];
 
-    // Log audit entry with evidence and snapshot
-    await logAuditEntry(
-      db,
-      {
-        contractId: id,
-        action: 'published',
-        fromStatus: 'validated',
-        toStatus: 'published',
-        toVersion: contract.version,
-        contentHash: generateContentHash(published),
-        evidence: evidence || [],
-      },
-      published
-    );
+    await logAuditEntry(db, {
+      contractId: id,
+      action: 'published',
+      fromStatus: 'validated',
+      toStatus: 'published',
+      toVersion: contract.version,
+      contentHash: hash,
+      evidence: evidence || [],
+    }, published);
 
     res.json({
       success: true,
       contract: published,
+      content_hash: hash,
       message: `Contract ${contract.name} v${contract.version} published successfully`,
     });
   } catch (error) {
@@ -852,7 +988,7 @@ router.post('/:id/deprecate', async (req, res) => {
         toStatus: 'deprecated',
         toVersion: contract.version,
         reason: reason || null,
-        contentHash: generateContentHash(deprecated),
+        contentHash: contentHash(toCanonicalPayload(deprecated)),
       },
       deprecated
     );
@@ -915,7 +1051,7 @@ router.post('/:id/archive', async (req, res) => {
         toStatus: 'archived',
         toVersion: contract.version,
         reason: reason || null,
-        contentHash: generateContentHash(archived),
+        contentHash: contentHash(toCanonicalPayload(archived)),
       },
       archived
     );
@@ -1309,6 +1445,7 @@ router.get('/:id/export', async (req, res) => {
     );
 
     // 6. Add a README
+    const exportHash = contentHash(toCanonicalPayload(contract));
     const readme = `# Contract Bundle: ${contract.displayName}
 
 ## Contract ID: ${contract.contractId}
@@ -1331,7 +1468,7 @@ router.get('/:id/export', async (req, res) => {
 
 ## Verification
 
-Content hash: ${generateContentHash(contract)}
+Content hash: ${exportHash}
 
 To verify the contract integrity, recompute the hash using:
 1. Extract contract.yaml

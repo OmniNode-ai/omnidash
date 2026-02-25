@@ -2,7 +2,7 @@
  * Contract Registry Data Source
  *
  * Provides contract definitions for the contract builder.
- * Supports both mock mode (using static data) and HTTP mode (fetching from API).
+ * Fetches data from the real API — no mock fallbacks.
  *
  * API Endpoints:
  * - GET    /api/contracts           - List all contracts
@@ -15,7 +15,6 @@
  * - POST   /api/contracts/:id/archive   - Archive deprecated contract
  */
 
-import { USE_MOCK_DATA, ContractRegistryMockData } from '../mock-data';
 import type {
   Contract,
   ContractType,
@@ -53,11 +52,38 @@ interface LifecycleResult {
 }
 
 /**
+ * Bump a semantic version string
+ * @param version Current version (e.g., "1.2.3")
+ * @param type Which part to bump: 'major', 'minor', or 'patch'
+ * @returns New version string (e.g., "1.2.4" for patch bump)
+ */
+function bumpVersion(version: string, type: 'major' | 'minor' | 'patch' = 'patch'): string {
+  const parts = version.split('.').map(Number);
+  const [major = 0, minor = 0, patch = 0] = parts;
+
+  switch (type) {
+    case 'major':
+      return `${major + 1}.0.0`;
+    case 'minor':
+      return `${major}.${minor + 1}.0`;
+    case 'patch':
+    default:
+      return `${major}.${minor}.${patch + 1}`;
+  }
+}
+
+/**
+ * Generate a unique ID for a new contract version
+ */
+function generateVersionId(contractId: string, version: string): string {
+  return `${contractId}-v${version}`.replace(/\./g, '-');
+}
+
+/**
  * Contract Registry Source
  *
- * Abstracts the data source for contracts.
- * When USE_MOCK_DATA is true, returns static mock data.
- * When false, attempts to fetch from the API with fallback to mock.
+ * Fetches contract data from the real API.
+ * On API failure, errors propagate to the caller — no silent mock fallback.
  *
  * Note: Caching is handled by TanStack Query at the component level,
  * following the same pattern as other data sources in this codebase.
@@ -67,90 +93,38 @@ class ContractRegistrySource {
    * Fetch all contracts
    */
   async fetchContracts(): Promise<ContractRegistryResponse<Contract[]>> {
-    // Return mock data if flag is enabled
-    if (USE_MOCK_DATA) {
-      return {
-        data: ContractRegistryMockData.getContracts(),
-        isMock: true,
-      };
+    const response = await fetch('/api/contracts');
+    if (!response.ok) {
+      throw new Error(`Failed to fetch contracts: ${response.status} ${response.statusText}`);
     }
-
-    // Try fetching from API
-    try {
-      const response = await fetch('/api/contracts');
-      if (response.ok) {
-        const data = await response.json();
-        return { data: Array.isArray(data) ? data : [], isMock: false };
-      }
-    } catch (err) {
-      console.warn('Failed to fetch contracts from API, falling back to mock data', err);
-    }
-
-    // Fallback to mock data if API fails
-    return {
-      data: ContractRegistryMockData.getContracts(),
-      isMock: true,
-    };
+    const data = await response.json();
+    return { data: Array.isArray(data) ? data : [], isMock: false };
   }
 
   /**
    * Fetch a specific contract by ID
    */
   async fetchContract(id: string): Promise<ContractRegistryResponse<Contract | undefined>> {
-    // Return mock data if flag is enabled
-    if (USE_MOCK_DATA) {
-      return {
-        data: ContractRegistryMockData.getContract(id),
-        isMock: true,
-      };
+    const response = await fetch(`/api/contracts/${id}`);
+    if (!response.ok) {
+      throw new Error(`Failed to fetch contract ${id}: ${response.status} ${response.statusText}`);
     }
-
-    // Try fetching from API
-    try {
-      const response = await fetch(`/api/contracts/${id}`);
-      if (response.ok) {
-        const data = await response.json();
-        return { data, isMock: false };
-      }
-    } catch (err) {
-      console.warn(`Failed to fetch contract ${id} from API, falling back to mock data`, err);
-    }
-
-    // Fallback to mock data if API fails
-    return {
-      data: ContractRegistryMockData.getContract(id),
-      isMock: true,
-    };
+    const data = await response.json();
+    return { data, isMock: false };
   }
 
   /**
    * Fetch contracts filtered by type
    */
   async fetchContractsByType(type: ContractType): Promise<ContractRegistryResponse<Contract[]>> {
-    // Return mock data if flag is enabled
-    if (USE_MOCK_DATA) {
-      return {
-        data: ContractRegistryMockData.getContractsByType(type),
-        isMock: true,
-      };
+    const response = await fetch(`/api/contracts?type=${type}`);
+    if (!response.ok) {
+      throw new Error(
+        `Failed to fetch contracts by type: ${response.status} ${response.statusText}`
+      );
     }
-
-    // Try fetching from API
-    try {
-      const response = await fetch(`/api/contracts?type=${type}`);
-      if (response.ok) {
-        const data = await response.json();
-        return { data: Array.isArray(data) ? data : [], isMock: false };
-      }
-    } catch (err) {
-      console.warn(`Failed to fetch contracts by type from API, falling back to mock data`, err);
-    }
-
-    // Fallback to mock data if API fails
-    return {
-      data: ContractRegistryMockData.getContractsByType(type),
-      isMock: true,
-    };
+    const data = await response.json();
+    return { data: Array.isArray(data) ? data : [], isMock: false };
   }
 
   /**
@@ -159,57 +133,44 @@ class ContractRegistrySource {
   async fetchContractsByStatus(
     status: ContractStatus
   ): Promise<ContractRegistryResponse<Contract[]>> {
-    // Return mock data if flag is enabled
-    if (USE_MOCK_DATA) {
-      return {
-        data: ContractRegistryMockData.getContractsByStatus(status),
-        isMock: true,
-      };
+    const response = await fetch(`/api/contracts?status=${status}`);
+    if (!response.ok) {
+      throw new Error(
+        `Failed to fetch contracts by status: ${response.status} ${response.statusText}`
+      );
     }
-
-    // Try fetching from API
-    try {
-      const response = await fetch(`/api/contracts?status=${status}`);
-      if (response.ok) {
-        const data = await response.json();
-        return { data: Array.isArray(data) ? data : [], isMock: false };
-      }
-    } catch (err) {
-      console.warn(`Failed to fetch contracts by status from API, falling back to mock data`, err);
-    }
-
-    // Fallback to mock data if API fails
-    return {
-      data: ContractRegistryMockData.getContractsByStatus(status),
-      isMock: true,
-    };
+    const data = await response.json();
+    return { data: Array.isArray(data) ? data : [], isMock: false };
   }
 
   /**
-   * Get all contracts synchronously (uses mock data)
-   * Useful for initial render before async fetch completes
+   * Get all contracts synchronously.
+   * Without a synchronous data store, returns an empty array.
+   * Use fetchContracts() for actual data.
    */
   getContractsSync(): Contract[] {
-    return ContractRegistryMockData.getContracts();
+    return [];
   }
 
   /**
-   * Get a specific contract synchronously
+   * Get a specific contract synchronously.
+   * Without a synchronous data store, always returns undefined.
+   * Use fetchContract(id) for actual data.
    */
-  getContractSync(id: string): Contract | undefined {
-    return ContractRegistryMockData.getContract(id);
+  getContractSync(_id: string): Contract | undefined {
+    return undefined;
   }
 
   /**
-   * Check if we're using mock data
+   * Check if we're using mock data — always false in production.
    */
   isUsingMockData(): boolean {
-    return USE_MOCK_DATA;
+    return false;
   }
 
   /**
-   * Create a new draft version based on an existing contract
-   * Used when editing a non-draft (published, validated, etc.) contract
+   * Create a new draft version based on an existing contract (async, via API).
+   * Used when editing a non-draft (published, validated, etc.) contract.
    *
    * @param sourceContract The contract to base the new draft on
    * @param versionBump How to bump the version: 'major', 'minor', or 'patch'
@@ -219,74 +180,63 @@ class ContractRegistrySource {
     sourceContract: Contract,
     versionBump: 'major' | 'minor' | 'patch' = 'patch'
   ): Promise<ContractRegistryResponse<Contract>> {
-    if (USE_MOCK_DATA) {
-      return {
-        data: ContractRegistryMockData.createDraftVersion(sourceContract, versionBump),
-        isMock: true,
-      };
+    const response = await fetch('/api/contracts', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        fromContractId: sourceContract.id,
+        versionBump,
+      }),
+    });
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      throw new Error(errorData.error || `Failed to create draft: ${response.status}`);
     }
-
-    try {
-      const response = await fetch('/api/contracts', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          fromContractId: sourceContract.id,
-          versionBump,
-        }),
-      });
-      if (response.ok) {
-        const data = await response.json();
-        return { data, isMock: false };
-      }
-    } catch (err) {
-      console.warn('Failed to create draft via API, falling back to mock', err);
-    }
-
-    return {
-      data: ContractRegistryMockData.createDraftVersion(sourceContract, versionBump),
-      isMock: true,
-    };
+    const data = await response.json();
+    return { data, isMock: false };
   }
 
   /**
-   * Synchronous version for backwards compatibility
+   * Create a draft version synchronously from a source contract.
+   * Computes the new version locally — does not persist to the API.
+   * Call createDraftVersionAsync() to persist via the API.
+   *
+   * @param sourceContract The contract to base the new draft on
+   * @param versionBump How to bump the version: 'major', 'minor', or 'patch'
+   * @returns The locally computed draft contract (not yet persisted)
    */
   createDraftVersion(
     sourceContract: Contract,
     versionBump: 'major' | 'minor' | 'patch' = 'patch'
   ): Contract {
-    return ContractRegistryMockData.createDraftVersion(sourceContract, versionBump);
+    const newVersion = bumpVersion(sourceContract.version, versionBump);
+    const now = new Date().toISOString();
+    return {
+      ...sourceContract,
+      id: generateVersionId(sourceContract.contractId, newVersion),
+      version: newVersion,
+      status: 'draft' as ContractStatus,
+      createdAt: now,
+      updatedAt: now,
+      createdBy: undefined,
+    };
   }
 
   /**
    * Create a brand new contract draft
    */
   async createContract(contract: Partial<Contract>): Promise<ContractRegistryResponse<Contract>> {
-    if (USE_MOCK_DATA) {
-      const newContract = ContractRegistryMockData.createDraftVersion(
-        contract as Contract,
-        'patch'
-      );
-      return { data: newContract, isMock: true };
-    }
-
-    try {
-      const response = await fetch('/api/contracts', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(contract),
-      });
-      if (response.ok) {
-        const data = await response.json();
-        return { data, isMock: false };
-      }
-      const errorData = await response.json();
+    const response = await fetch('/api/contracts', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(contract),
+    });
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
       throw new Error(errorData.error || 'Failed to create contract');
-    } catch (err) {
-      console.error('Failed to create contract:', err);
-      throw err;
     }
+    const data = await response.json();
+    return { data, isMock: false };
   }
 
   /**
@@ -296,157 +246,91 @@ class ContractRegistrySource {
     id: string,
     updates: Partial<Contract>
   ): Promise<ContractRegistryResponse<Contract>> {
-    if (USE_MOCK_DATA) {
-      const existing = ContractRegistryMockData.getContract(id);
-      if (!existing) throw new Error('Contract not found');
-      const updated = { ...existing, ...updates, updatedAt: new Date().toISOString() };
-      return { data: updated, isMock: true };
-    }
-
-    try {
-      const response = await fetch(`/api/contracts/${id}`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(updates),
-      });
-      if (response.ok) {
-        const data = await response.json();
-        return { data, isMock: false };
-      }
-      const errorData = await response.json();
+    const response = await fetch(`/api/contracts/${id}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(updates),
+    });
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
       throw new Error(errorData.error || 'Failed to update contract');
-    } catch (err) {
-      console.error('Failed to update contract:', err);
-      throw err;
     }
+    const data = await response.json();
+    return { data, isMock: false };
   }
 
   /**
    * Validate a contract
    */
   async validateContract(id: string): Promise<ValidationResult> {
-    if (USE_MOCK_DATA) {
-      const contract = ContractRegistryMockData.getContract(id);
-      if (!contract) throw new Error('Contract not found');
-      return {
-        isValid: true,
-        errors: [],
-        warnings: [],
-        contract: { ...contract, status: 'validated' as ContractStatus },
-      };
+    const response = await fetch(`/api/contracts/${id}/validate`, {
+      method: 'POST',
+    });
+    const data = await response.json();
+    if (!response.ok) {
+      throw new Error(data.error || 'Validation failed');
     }
-
-    try {
-      const response = await fetch(`/api/contracts/${id}/validate`, {
-        method: 'POST',
-      });
-      const data = await response.json();
-      if (!response.ok) {
-        throw new Error(data.error || 'Validation failed');
-      }
-      return data;
-    } catch (err) {
-      console.error('Failed to validate contract:', err);
-      throw err;
-    }
+    return data;
   }
 
   /**
    * Publish a validated contract
    */
   async publishContract(id: string): Promise<LifecycleResult> {
-    if (USE_MOCK_DATA) {
-      const contract = ContractRegistryMockData.getContract(id);
-      if (!contract) throw new Error('Contract not found');
-      return {
-        success: true,
-        contract: { ...contract, status: 'published' as ContractStatus },
-      };
+    const response = await fetch(`/api/contracts/${id}/publish`, {
+      method: 'POST',
+    });
+    const data = await response.json();
+    if (!response.ok) {
+      throw new Error(data.error || 'Publish failed');
     }
-
-    try {
-      const response = await fetch(`/api/contracts/${id}/publish`, {
-        method: 'POST',
-      });
-      const data = await response.json();
-      if (!response.ok) {
-        throw new Error(data.error || 'Publish failed');
-      }
-      return data;
-    } catch (err) {
-      console.error('Failed to publish contract:', err);
-      throw err;
-    }
+    return data;
   }
 
   /**
    * Deprecate a published contract
    */
   async deprecateContract(id: string): Promise<LifecycleResult> {
-    if (USE_MOCK_DATA) {
-      const contract = ContractRegistryMockData.getContract(id);
-      if (!contract) throw new Error('Contract not found');
-      return {
-        success: true,
-        contract: { ...contract, status: 'deprecated' as ContractStatus },
-      };
+    const response = await fetch(`/api/contracts/${id}/deprecate`, {
+      method: 'POST',
+    });
+    const data = await response.json();
+    if (!response.ok) {
+      throw new Error(data.error || 'Deprecate failed');
     }
-
-    try {
-      const response = await fetch(`/api/contracts/${id}/deprecate`, {
-        method: 'POST',
-      });
-      const data = await response.json();
-      if (!response.ok) {
-        throw new Error(data.error || 'Deprecate failed');
-      }
-      return data;
-    } catch (err) {
-      console.error('Failed to deprecate contract:', err);
-      throw err;
-    }
+    return data;
   }
 
   /**
    * Archive a deprecated contract
    */
   async archiveContract(id: string): Promise<LifecycleResult> {
-    if (USE_MOCK_DATA) {
-      const contract = ContractRegistryMockData.getContract(id);
-      if (!contract) throw new Error('Contract not found');
-      return {
-        success: true,
-        contract: { ...contract, status: 'archived' as ContractStatus },
-      };
+    const response = await fetch(`/api/contracts/${id}/archive`, {
+      method: 'POST',
+    });
+    const data = await response.json();
+    if (!response.ok) {
+      throw new Error(data.error || 'Archive failed');
     }
-
-    try {
-      const response = await fetch(`/api/contracts/${id}/archive`, {
-        method: 'POST',
-      });
-      const data = await response.json();
-      if (!response.ok) {
-        throw new Error(data.error || 'Archive failed');
-      }
-      return data;
-    } catch (err) {
-      console.error('Failed to archive contract:', err);
-      throw err;
-    }
+    return data;
   }
 
   /**
-   * Check if a draft version already exists for a contract
+   * Check if a draft version already exists for a contract.
+   * Without a synchronous data store, always returns false.
+   * Use fetchContractsByStatus('draft') for actual data.
    */
-  hasDraftVersion(contractId: string): boolean {
-    return ContractRegistryMockData.hasDraftVersion(contractId);
+  hasDraftVersion(_contractId: string): boolean {
+    return false;
   }
 
   /**
-   * Get the existing draft for a contract, if any
+   * Get the existing draft for a contract, if any.
+   * Without a synchronous data store, always returns undefined.
+   * Use fetchContractsByStatus('draft') for actual data.
    */
-  getDraftVersion(contractId: string): Contract | undefined {
-    return ContractRegistryMockData.getDraftVersion(contractId);
+  getDraftVersion(_contractId: string): Contract | undefined {
+    return undefined;
   }
 }
 

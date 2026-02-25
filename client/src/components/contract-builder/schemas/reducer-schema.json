@@ -1,0 +1,155 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "type": "object",
+  "required": ["node_identity", "contract_schema_version", "determinism_class"],
+  "properties": {
+    "contract_schema_version": {
+      "type": "string",
+      "title": "Schema Version",
+      "description": "Version of the contract schema used to author this contract",
+      "default": "1.0.0",
+      "pattern": "^\\d+\\.\\d+\\.\\d+$"
+    },
+    "determinism_class": {
+      "type": "string",
+      "title": "Determinism Class",
+      "description": "How this reducer handles determinism",
+      "enum": ["deterministic", "nondeterministic"],
+      "default": "deterministic"
+    },
+    "node_identity": {
+      "type": "object",
+      "title": "Node Identity",
+      "required": ["name", "display_name", "version", "description"],
+      "properties": {
+        "name": {
+          "type": "string",
+          "title": "Name",
+          "description": "Unique contract identifier (snake_case)",
+          "pattern": "^[a-z][a-z0-9_]*$",
+          "minLength": 3,
+          "maxLength": 64
+        },
+        "display_name": {
+          "type": "string",
+          "title": "Display Name",
+          "description": "Human-readable name",
+          "minLength": 3,
+          "maxLength": 128
+        },
+        "version": {
+          "type": "string",
+          "title": "Version",
+          "description": "Semantic version (e.g., 1.0.0)",
+          "pattern": "^\\d+\\.\\d+\\.\\d+$",
+          "default": "1.0.0"
+        },
+        "description": {
+          "type": "string",
+          "title": "Description",
+          "description": "What this reducer manages",
+          "minLength": 10,
+          "maxLength": 500
+        }
+      }
+    },
+    "state_schema": {
+      "type": "object",
+      "title": "State Schema",
+      "description": "Define the state this reducer manages",
+      "properties": {
+        "fields": {
+          "type": "array",
+          "title": "State Fields",
+          "items": {
+            "type": "object",
+            "required": ["name", "type"],
+            "properties": {
+              "name": {
+                "type": "string",
+                "title": "Field Name",
+                "pattern": "^[a-z][a-z0-9_]*$"
+              },
+              "type": {
+                "type": "string",
+                "title": "Type",
+                "enum": ["string", "integer", "number", "boolean", "array", "object"]
+              },
+              "description": {
+                "type": "string",
+                "title": "Description"
+              }
+            }
+          }
+        }
+      }
+    },
+    "projections": {
+      "type": "array",
+      "title": "Projections",
+      "description": "Define the projections this reducer emits",
+      "default": [],
+      "items": {
+        "type": "object",
+        "required": ["name", "description"],
+        "properties": {
+          "name": {
+            "type": "string",
+            "title": "Projection Name",
+            "pattern": "^[a-z][a-z0-9_]*$"
+          },
+          "description": {
+            "type": "string",
+            "title": "Description"
+          },
+          "event_triggers": {
+            "type": "array",
+            "title": "Event Triggers",
+            "description": "Events that trigger this projection",
+            "items": {
+              "type": "string"
+            }
+          }
+        }
+      }
+    },
+    "persistence": {
+      "type": "object",
+      "title": "Persistence",
+      "properties": {
+        "backend": {
+          "type": "string",
+          "title": "Storage Backend",
+          "enum": ["postgres", "valkey", "in_memory"],
+          "default": "postgres"
+        },
+        "ttl_seconds": {
+          "type": "integer",
+          "title": "TTL (seconds)",
+          "description": "Time-to-live for state entries (0 = no expiry)",
+          "minimum": 0,
+          "default": 0
+        }
+      }
+    },
+    "metadata": {
+      "type": "object",
+      "title": "Metadata",
+      "properties": {
+        "author": {
+          "type": "string",
+          "title": "Author"
+        },
+        "tags": {
+          "type": "array",
+          "title": "Tags",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          },
+          "uniqueItems": true
+        }
+      }
+    }
+  }
+}

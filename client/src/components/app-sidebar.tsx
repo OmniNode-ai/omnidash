@@ -59,8 +59,9 @@ const dashboards = [
   },
   {
     title: 'Contract Builder',
-    url: '/preview/contracts-v2',
+    url: '/contracts',
     icon: FileText,
+    description: 'Author, validate, and publish ONEX contracts',
   },
 ];
 

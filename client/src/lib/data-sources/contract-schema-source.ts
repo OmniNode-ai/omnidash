@@ -2,19 +2,15 @@
  * Contract Schema Data Source
  *
  * Provides contract schemas for the contract builder.
- * Supports both mock mode (using static JSON) and HTTP mode (fetching from API).
+ * Fetches data from the real API — no mock fallbacks.
  *
- * API Endpoints (future):
+ * API Endpoints:
  * - GET /api/contracts/types - List available contract types
  * - GET /api/contracts/schema/:type - Get schema for a contract type
  */
 
 import type { RJSFSchema, UiSchema } from '@rjsf/utils';
-import { USE_MOCK_DATA, ContractSchemaMockData } from '../mock-data';
 import type { ContractType } from '@/components/contract-builder/models/types';
-
-// Re-export the schema definition type
-export type { ContractSchemaDefinition } from '../mock-data/contract-schema-mock';
 
 /**
  * Schema response with both JSON Schema and UI Schema
@@ -33,11 +29,16 @@ interface SchemaSourceResponse<T> {
 }
 
 /**
+ * The 4 supported contract types.
+ * This list is stable and does not require an API round-trip.
+ */
+const CONTRACT_TYPES: ContractType[] = ['effect', 'orchestrator', 'reducer', 'compute'];
+
+/**
  * Contract Schema Source
  *
- * Abstracts the data source for contract schemas.
- * When USE_MOCK_DATA is true, returns static JSON data.
- * When false, attempts to fetch from the API with fallback to mock.
+ * Fetches contract schema data from the real API.
+ * On API failure, errors propagate to the caller — no silent mock fallback.
  *
  * Note: Caching is handled by TanStack Query at the component level,
  * following the same pattern as other data sources in this codebase.
@@ -47,30 +48,14 @@ class ContractSchemaSource {
    * Fetch available contract types
    */
   async fetchContractTypes(): Promise<SchemaSourceResponse<ContractType[]>> {
-    // Return mock data if flag is enabled
-    if (USE_MOCK_DATA) {
-      return {
-        data: ContractSchemaMockData.getContractTypes(),
-        isMock: true,
-      };
+    const response = await fetch('/api/contracts/types');
+    if (!response.ok) {
+      throw new Error(
+        `Failed to fetch contract types: ${response.status} ${response.statusText}`
+      );
     }
-
-    // Try fetching from API
-    try {
-      const response = await fetch('/api/contracts/types');
-      if (response.ok) {
-        const data = await response.json();
-        return { data: Array.isArray(data) ? data : [], isMock: false };
-      }
-    } catch (err) {
-      console.warn('Failed to fetch contract types from API, falling back to mock data', err);
-    }
-
-    // Fallback to mock data if API fails
-    return {
-      data: ContractSchemaMockData.getContractTypes(),
-      isMock: true,
-    };
+    const data = await response.json();
+    return { data: Array.isArray(data) ? data : [], isMock: false };
   }
 
   /**
@@ -79,61 +64,39 @@ class ContractSchemaSource {
   async fetchSchema(
     type: ContractType
   ): Promise<SchemaSourceResponse<ContractSchemas | undefined>> {
-    // Return mock data if flag is enabled
-    if (USE_MOCK_DATA) {
-      const schema = ContractSchemaMockData.getSchema(type);
-      return {
-        data: schema ? { jsonSchema: schema.jsonSchema, uiSchema: schema.uiSchema } : undefined,
-        isMock: true,
-      };
+    const response = await fetch(`/api/contracts/schema/${type}`);
+    if (!response.ok) {
+      throw new Error(
+        `Failed to fetch schema for ${type}: ${response.status} ${response.statusText}`
+      );
     }
-
-    // Try fetching from API
-    try {
-      const response = await fetch(`/api/contracts/schema/${type}`);
-      if (response.ok) {
-        const data = await response.json();
-        // API expected to return { jsonSchema, uiSchema }
-        return { data, isMock: false };
-      }
-    } catch (err) {
-      console.warn(`Failed to fetch schema for ${type} from API, falling back to mock data`, err);
-    }
-
-    // Fallback to mock data if API fails
-    const schema = ContractSchemaMockData.getSchema(type);
-    return {
-      data: schema ? { jsonSchema: schema.jsonSchema, uiSchema: schema.uiSchema } : undefined,
-      isMock: true,
-    };
+    // API expected to return { jsonSchema, uiSchema }
+    const data = await response.json();
+    return { data, isMock: false };
   }
 
   /**
-   * Get contract types synchronously (uses mock data)
-   * Useful for initial render before async fetch completes
+   * Get contract types synchronously.
+   * Returns the hardcoded list of the 4 supported types.
    */
   getContractTypesSync(): ContractType[] {
-    return ContractSchemaMockData.getContractTypes();
+    return CONTRACT_TYPES;
   }
 
   /**
-   * Get schema synchronously (uses mock data)
-   * Useful for initial render before async fetch completes
+   * Get schema synchronously.
+   * Without a synchronous data store, always returns undefined.
+   * Use fetchSchema(type) for actual schema data.
    */
-  getSchemaSync(type: ContractType): ContractSchemas | undefined {
-    const schema = ContractSchemaMockData.getSchema(type);
-    if (!schema) return undefined;
-    return {
-      jsonSchema: schema.jsonSchema,
-      uiSchema: schema.uiSchema,
-    };
+  getSchemaSync(_type: ContractType): ContractSchemas | undefined {
+    return undefined;
   }
 
   /**
-   * Check if we're using mock data
+   * Check if we're using mock data — always false in production.
    */
   isUsingMockData(): boolean {
-    return USE_MOCK_DATA;
+    return false;
   }
 }
 

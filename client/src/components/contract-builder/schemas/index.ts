@@ -1,28 +1,37 @@
 /**
  * Contract Schemas
  *
- * Provides access to contract schemas via the schema source abstraction.
- * Schemas can come from mock data (development) or the registry API (production).
+ * Provides access to contract schemas.
+ * Schemas are fetched from the API endpoint /api/contracts/schema/:type
  */
 
-import { contractSchemaSource, type ContractSchemas } from '@/lib/data-sources';
+import type { ContractSchemas } from '@/lib/data-sources';
 import type { ContractType } from '../models/types';
 
 // Re-export types for convenience
 export type { ContractSchemas };
 
 /**
- * Get schemas for a given contract type (synchronous)
+ * Get schemas for a given contract type (async)
  *
- * Uses mock data for initial render. For fresh API data, use
- * contractSchemaSource.fetchSchema() directly.
+ * Fetches schema from the API endpoint.
  */
-export function getContractSchemas(type: ContractType): ContractSchemas {
-  const schemas = contractSchemaSource.getSchemaSync(type);
-
-  if (!schemas) {
-    throw new Error(`Unknown contract type: ${type}`);
+export async function fetchContractSchemas(type: ContractType): Promise<ContractSchemas> {
+  const response = await fetch(`/api/contracts/schema/${type}`);
+  if (!response.ok) {
+    throw new Error(`Failed to fetch schema for ${type}: ${response.statusText}`);
   }
+  const data = await response.json();
+  return data as ContractSchemas;
+}
 
-  return schemas;
+/**
+ * Get schemas for a given contract type (synchronous, for backwards compatibility)
+ * Returns null if schema not available synchronously.
+ * Prefer fetchContractSchemas() for new code.
+ */
+export function getContractSchemas(_type: ContractType): ContractSchemas | null {
+  // Synchronous schema loading is no longer supported.
+  // Use fetchContractSchemas() instead.
+  return null;
 }
