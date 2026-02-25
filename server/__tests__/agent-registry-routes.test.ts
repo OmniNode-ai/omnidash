@@ -29,6 +29,14 @@ vi.mock('../polymorphic-agent-integration', () => ({
   PolymorphicAgentIntegration: polymorphicMocks,
 }));
 
+const projectionMocks = {
+  ensureFresh: vi.fn(),
+};
+
+vi.mock('../projection-bootstrap', () => ({
+  agentRoutingProjection: projectionMocks,
+}));
+
 describe('agent-registry routes', () => {
   let app: express.Express;
   let currentRegistry: any;
@@ -141,6 +149,40 @@ describe('agent-registry routes', () => {
     polymorphicMocks.getRoutingStatistics.mockReturnValue({ accuracy: 95 });
     polymorphicMocks.getAgentPerformanceComparison.mockReturnValue({
       comparison: 'data',
+    });
+
+    projectionMocks.ensureFresh.mockResolvedValue({
+      summary: {
+        totalDecisions: 100,
+        avgConfidence: 0.9,
+        avgRoutingTime: 45,
+        successRate: 92,
+        successCount: 92,
+      },
+      recentDecisions: [
+        {
+          id: '1',
+          query: 'test query',
+          agent: 'agent-alpha',
+          confidence: 90,
+          time: '45ms',
+          timestamp: '2024-01-01T00:00:00Z',
+        },
+      ],
+      strategyBreakdown: [
+        { name: 'enhanced_fuzzy_matching', count: 65, usage: 65, accuracy: 96.2 },
+      ],
+      agentBreakdown: [
+        {
+          agent: 'agent-alpha',
+          count: 50,
+          avgConfidence: 90,
+          avgTime: '45ms',
+          totalDecisions: 50,
+          successCount: 46,
+          successRate: 92,
+        },
+      ],
     });
 
     const router = (await import('../agent-registry-routes')).default;
@@ -346,10 +388,14 @@ describe('agent-registry routes', () => {
   it('returns routing statistics and performance comparison', async () => {
     let response = await request(app).get('/registry/routing/stats');
     expect(response.status).toBe(200);
-    expect(response.body).toEqual({ accuracy: 95 });
+    expect(response.body).toHaveProperty('totalDecisions', 100);
+    expect(response.body).toHaveProperty('avgConfidence', 0.9);
+    expect(response.body).toHaveProperty('source', 'database');
 
     response = await request(app).get('/registry/routing/performance');
     expect(response.status).toBe(200);
-    expect(response.body).toEqual({ comparison: 'data' });
+    expect(Array.isArray(response.body)).toBe(true);
+    expect(response.body[0]).toHaveProperty('agentId', 'agent-alpha');
+    expect(response.body[0]).toHaveProperty('source', 'database');
   });
 });
