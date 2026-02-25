@@ -284,6 +284,9 @@ export function ContractEditor({
 
   // Merge form data with skeleton, keeping form values where they exist
   const mergeWithSkeleton = useCallback((skeleton: unknown, data: unknown): unknown => {
+    // Guard: if skeleton is null/undefined, return data as-is (avoids Object.keys(null) error)
+    if (skeleton === null || skeleton === undefined) return data;
+
     // If data has a real value, use it
     if (data !== undefined && data !== null) {
       if (

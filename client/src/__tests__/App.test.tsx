@@ -105,9 +105,6 @@ vi.mock('@/pages/preview/AdvancedSettings', () => ({
 vi.mock('@/pages/preview/FeatureShowcase', () => ({
   default: () => <div data-testid="page-preview-showcase">page-preview-showcase</div>,
 }));
-vi.mock('@/pages/preview/ContractBuilder', () => ({
-  default: () => <div data-testid="page-preview-contracts">page-preview-contracts</div>,
-}));
 vi.mock('@/pages/preview/TechDebtAnalysis', () => ({
   default: () => <div data-testid="page-preview-tech-debt">page-preview-tech-debt</div>,
 }));
