@@ -425,6 +425,46 @@ class ContractRegistrySource {
   getDraftVersion(_contractId: string): Contract | undefined {
     return undefined;
   }
+
+  /**
+   * Fetch available base profiles per node type from the bridge service.
+   * Returns a map of ContractType -> profile list.
+   */
+  async fetchProfiles(): Promise<
+    Record<string, Array<{ id: string; label: string; version: string }>>
+  > {
+    const response = await fetch('/api/contracts/profiles');
+    if (!response.ok) {
+      throw new Error(`Failed to fetch profiles: ${response.status} ${response.statusText}`);
+    }
+    return response.json();
+  }
+
+  /**
+   * Resolve a base profile + overlay patch into a full merged contract.
+   *
+   * @param baseProfile  Profile identifier (e.g. "effect_idempotent")
+   * @param baseVersion  Profile version (e.g. "1.0.0")
+   * @param overlay      ModelContractPatch YAML object
+   */
+  async resolveContract(
+    baseProfile: string,
+    baseVersion: string,
+    overlay: Record<string, unknown>
+  ): Promise<Record<string, unknown>> {
+    const response = await fetch('/api/contracts/resolve', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ base_profile: baseProfile, base_version: baseVersion, overlay }),
+    });
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      throw new Error(errorData.error || `Failed to resolve contract: ${response.status}`);
+    }
+    const data = await response.json();
+    // Bridge may return { resolved: {...} } or the object directly
+    return (data.resolved ?? data) as Record<string, unknown>;
+  }
 }
 
 // Export singleton instance

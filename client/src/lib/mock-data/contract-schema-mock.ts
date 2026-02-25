@@ -5,7 +5,6 @@
  * In production, these would be fetched from /api/contracts/schema/:type
  */
 
-import type { RJSFSchema, UiSchema } from '@rjsf/utils';
 import type { ContractType } from '@/components/contract-builder/models/types';
 
 // Import the static JSON schema files
@@ -13,12 +12,15 @@ import effectJsonSchema from '@/components/contract-builder/schemas/effect-schem
 import effectUiSchema from '@/components/contract-builder/schemas/effect-uischema.json';
 
 /**
- * Schema definition for a contract type
+ * Schema definition for a contract type.
+ *
+ * Previously typed with RJSFSchema/UiSchema. Now uses plain Record types since
+ * RJSF has been removed (OMN-2755).
  */
 export interface ContractSchemaDefinition {
   type: ContractType;
-  jsonSchema: RJSFSchema;
-  uiSchema: UiSchema;
+  jsonSchema: Record<string, unknown>;
+  uiSchema: Record<string, unknown>;
 }
 
 /**
