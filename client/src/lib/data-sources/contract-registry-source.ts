@@ -33,6 +33,16 @@ interface ContractRegistryResponse<T> {
 }
 
 /**
+ * A single gate violation returned by the server policy gate.
+ */
+export interface GateViolation {
+  code: string;
+  message: string;
+  path?: string;
+  severity?: 'error' | 'warning';
+}
+
+/**
  * Validation result from the API
  */
 interface ValidationResult {
@@ -48,6 +58,19 @@ interface ValidationResult {
 interface LifecycleResult {
   success: boolean;
   contract: Contract;
+  error?: string;
+}
+
+/**
+ * Gate check result from the review or publish endpoints.
+ * On success: lifecycle_state is set and contract reflects the new status.
+ * On gate failure: gates contains the structured violations.
+ */
+export interface GateCheckResult {
+  success: boolean;
+  lifecycle_state?: string;
+  contract?: Contract;
+  gates?: GateViolation[];
   error?: string;
 }
 
@@ -271,6 +294,76 @@ class ContractRegistrySource {
       throw new Error(data.error || 'Validation failed');
     }
     return data;
+  }
+
+  /**
+   * Submit a draft contract for review (DRAFT → REVIEW gate).
+   *
+   * Returns a GateCheckResult:
+   *   - success: true + lifecycle_state: 'review' + contract on pass
+   *   - success: false + gates: GateViolation[] on failure
+   */
+  async reviewContract(id: string): Promise<GateCheckResult> {
+    const response = await fetch(`/api/contracts/${id}/review`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+    });
+    const data = await response.json();
+
+    if (response.ok) {
+      return {
+        success: true,
+        lifecycle_state: data.lifecycle_state as string,
+        contract: data.contract as Contract,
+      };
+    }
+    if (response.status === 422) {
+      return {
+        success: false,
+        gates: Array.isArray(data.gates) ? (data.gates as GateViolation[]) : [],
+        error: data.error as string | undefined,
+      };
+    }
+    return {
+      success: false,
+      error:
+        (data.message as string) ?? (data.error as string) ?? `Review failed: ${response.status}`,
+    };
+  }
+
+  /**
+   * Publish a validated contract (REVIEW → PUBLISHED gate).
+   *
+   * Returns a GateCheckResult:
+   *   - success: true + contract on successful publish
+   *   - success: false + gates: GateViolation[] if publish gate fails
+   */
+  async publishContractWithGates(id: string, evidence?: unknown[]): Promise<GateCheckResult> {
+    const response = await fetch(`/api/contracts/${id}/publish`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ evidence: evidence ?? [] }),
+    });
+    const data = await response.json();
+
+    if (response.ok) {
+      return {
+        success: true,
+        contract: data.contract as Contract,
+      };
+    }
+    if (response.status === 422) {
+      return {
+        success: false,
+        gates: Array.isArray(data.gates) ? (data.gates as GateViolation[]) : [],
+        error: data.error as string | undefined,
+      };
+    }
+    return {
+      success: false,
+      error:
+        (data.message as string) ?? (data.error as string) ?? `Publish failed: ${response.status}`,
+    };
   }
 
   /**

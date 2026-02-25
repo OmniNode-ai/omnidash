@@ -78,14 +78,15 @@ type CanonicalContractPayload = {
   metadata: Record<string, unknown>;
 };
 
-type LifecycleStatus = 'draft' | 'validated' | 'published' | 'deprecated' | 'archived';
+type LifecycleStatus = 'draft' | 'review' | 'validated' | 'published' | 'deprecated' | 'archived';
 
 // ============================================================================
 // Lifecycle State Machine
 // ============================================================================
 
 const VALID_TRANSITIONS: Record<LifecycleStatus, LifecycleStatus[]> = {
-  draft: ['validated'],
+  draft: ['review', 'validated'],
+  review: ['draft', 'validated'],
   validated: ['draft', 'published'],
   published: [],
   deprecated: ['archived'],
@@ -120,12 +121,12 @@ function getDb() {
  */
 function normalizeDeterminism(uiValue: string): string {
   const map: Record<string, string> = {
-    'deterministic': 'deterministic',
-    'nondeterministic': 'nondeterministic',
+    deterministic: 'deterministic',
+    nondeterministic: 'nondeterministic',
     'effect-driven': 'effect-driven',
     // lowercase variants
-    'effect_driven': 'effect-driven',
-    'non_deterministic': 'nondeterministic',
+    effect_driven: 'effect-driven',
+    non_deterministic: 'nondeterministic',
     'non-deterministic': 'nondeterministic',
   };
   return map[uiValue?.toLowerCase()] ?? uiValue;
@@ -165,11 +166,13 @@ function sortKeysDeep(obj: unknown): unknown {
  * Produce canonical YAML string for a contract payload (stable across field ordering)
  */
 function canonicalizeContract(payload: CanonicalContractPayload): string {
-  return yaml.dump(sortKeysDeep(payload) as object, {
-    sortKeys: true,
-    lineWidth: -1,
-    noRefs: true,
-  }) + '\n';
+  return (
+    yaml.dump(sortKeysDeep(payload) as object, {
+      sortKeys: true,
+      lineWidth: -1,
+      noRefs: true,
+    }) + '\n'
+  );
 }
 
 /**
@@ -346,6 +349,227 @@ function runServerValidation(
   }
 
   // Sort stably: by path + code + message
+  return violations.sort((a, b) => {
+    const keyA = `${a.path ?? ''}|${a.code}|${a.message}`;
+    const keyB = `${b.path ?? ''}|${b.code}|${b.message}`;
+    return keyA.localeCompare(keyB);
+  });
+}
+
+/**
+ * Run DRAFT → REVIEW completeness gate checks.
+ *
+ * These are lighter than the full publish gates: required fields filled,
+ * determinism declared, effect surface declared when needed.
+ * Returns a sorted list of GateViolation entries (empty = passes all gates).
+ */
+function runReviewGates(
+  schemaData: Record<string, unknown>,
+  contractType: ContractType,
+  contractMeta: { name: string; displayName: string; description: string | null; version: string }
+): GateViolation[] {
+  const violations: GateViolation[] = [];
+
+  // 1. Required top-level metadata
+  if (!contractMeta.name || contractMeta.name.trim() === '') {
+    violations.push({
+      code: 'missing_name',
+      message: 'Contract name is required',
+      path: '/name',
+      severity: 'error',
+    });
+  }
+  if (!contractMeta.displayName || contractMeta.displayName.trim() === '') {
+    violations.push({
+      code: 'missing_display_name',
+      message: 'Contract display name is required',
+      path: '/displayName',
+      severity: 'error',
+    });
+  }
+  if (!contractMeta.description || contractMeta.description.trim() === '') {
+    violations.push({
+      code: 'missing_description',
+      message: 'Description is required before sending to review',
+      path: '/description',
+      severity: 'error',
+    });
+  }
+
+  // 2. Version format
+  if (!/^\d+\.\d+\.\d+$/.test(contractMeta.version)) {
+    violations.push({
+      code: 'invalid_version',
+      message: 'Version must follow semantic versioning format (e.g., 1.0.0)',
+      path: '/version',
+      severity: 'error',
+    });
+  }
+
+  // 3. Determinism class must be declared
+  const determinismClass = schemaData.determinism_class as string | undefined;
+  if (!determinismClass || determinismClass.trim() === '') {
+    violations.push({
+      code: 'missing_determinism_class',
+      message: 'determinism_class must be declared before review',
+      path: '/schema/determinism_class',
+      severity: 'error',
+    });
+  } else {
+    const canonical = normalizeDeterminism(determinismClass);
+    const validValues = ['deterministic', 'nondeterministic', 'effect-driven'];
+    if (!validValues.includes(canonical)) {
+      violations.push({
+        code: 'invalid_determinism_class',
+        message: `determinism_class must be one of: ${validValues.join(', ')}`,
+        path: '/schema/determinism_class',
+        severity: 'error',
+      });
+    }
+
+    // 4. Effect surface required for effect-driven nodes
+    if (canonical === 'effect-driven') {
+      const effectSurface = schemaData.effect_surface as string[] | undefined;
+      if (!effectSurface || effectSurface.length === 0) {
+        violations.push({
+          code: 'missing_effect_surface',
+          message:
+            'effect_surface must declare at least one surface when determinism_class is effect-driven',
+          path: '/schema/effect_surface',
+          severity: 'error',
+        });
+      }
+    }
+  }
+
+  // 5. Node identity block required (at minimum the nested name/version)
+  const nodeIdentity = schemaData.node_identity as Record<string, unknown> | undefined;
+  if (!nodeIdentity || typeof nodeIdentity !== 'object') {
+    violations.push({
+      code: 'missing_node_identity',
+      message: 'node_identity block is required (must include name and version)',
+      path: '/schema/node_identity',
+      severity: 'error',
+    });
+  } else {
+    if (!nodeIdentity.name) {
+      violations.push({
+        code: 'missing_node_identity_name',
+        message: 'node_identity.name is required',
+        path: '/schema/node_identity/name',
+        severity: 'error',
+      });
+    }
+    if (!nodeIdentity.version) {
+      violations.push({
+        code: 'missing_node_identity_version',
+        message: 'node_identity.version is required',
+        path: '/schema/node_identity/version',
+        severity: 'error',
+      });
+    }
+  }
+
+  // Type-specific: effect nodes must declare at least one io_operation
+  if (contractType === 'effect') {
+    const ioOps = schemaData.io_operations as unknown[] | undefined;
+    if (!ioOps || ioOps.length === 0) {
+      violations.push({
+        code: 'missing_io_operations',
+        message: 'Effect nodes must declare at least one io_operation before review',
+        path: '/schema/io_operations',
+        severity: 'error',
+      });
+    }
+  }
+
+  return violations.sort((a, b) => {
+    const keyA = `${a.path ?? ''}|${a.code}|${a.message}`;
+    const keyB = `${b.path ?? ''}|${b.code}|${b.message}`;
+    return keyA.localeCompare(keyB);
+  });
+}
+
+/**
+ * Run REVIEW → PUBLISHED full policy gate checks.
+ *
+ * These are stricter than the review gates and run in addition to the
+ * AJV-based schema validation already performed by runServerValidation().
+ * Returns a sorted list of GateViolation entries (empty = passes all gates).
+ */
+function runPublishPolicyGates(
+  schemaData: Record<string, unknown>,
+  _contractType: ContractType
+): GateViolation[] {
+  const violations: GateViolation[] = [];
+
+  // 1. Policy envelope: if present, validator references must not be empty strings
+  const policyEnvelope = schemaData.policy_envelope as Record<string, unknown> | undefined;
+  if (policyEnvelope !== undefined && policyEnvelope !== null) {
+    const validators = policyEnvelope.validators as unknown[] | undefined;
+    if (validators !== undefined) {
+      if (!Array.isArray(validators)) {
+        violations.push({
+          code: 'invalid_policy_envelope_validators',
+          message: 'policy_envelope.validators must be an array',
+          path: '/schema/policy_envelope/validators',
+          severity: 'error',
+        });
+      } else {
+        for (let i = 0; i < validators.length; i++) {
+          const v = validators[i];
+          if (typeof v === 'string' && v.trim() === '') {
+            violations.push({
+              code: 'empty_policy_envelope_validator',
+              message: `policy_envelope.validators[${i}] must not be an empty string`,
+              path: `/schema/policy_envelope/validators/${i}`,
+              severity: 'error',
+            });
+          } else if (typeof v === 'object' && v !== null) {
+            const vObj = v as Record<string, unknown>;
+            if (!vObj.name || (typeof vObj.name === 'string' && vObj.name.trim() === '')) {
+              violations.push({
+                code: 'empty_policy_envelope_validator_name',
+                message: `policy_envelope.validators[${i}].name must not be empty`,
+                path: `/schema/policy_envelope/validators/${i}/name`,
+                severity: 'error',
+              });
+            }
+          }
+        }
+      }
+    }
+  }
+
+  // 2. contract_schema_version must be present and non-empty
+  const csvRaw = schemaData.contract_schema_version as string | undefined;
+  if (!csvRaw || String(csvRaw).trim() === '') {
+    violations.push({
+      code: 'missing_contract_schema_version',
+      message: 'contract_schema_version is required for publishing',
+      path: '/schema/contract_schema_version',
+      severity: 'error',
+    });
+  }
+
+  // 3. Metadata tags must be valid strings if present
+  const metadataRaw = schemaData.metadata as Record<string, unknown> | undefined;
+  if (metadataRaw !== undefined && metadataRaw !== null && typeof metadataRaw === 'object') {
+    const tags = metadataRaw.tags as unknown[] | undefined;
+    if (tags !== undefined && Array.isArray(tags)) {
+      for (let i = 0; i < tags.length; i++) {
+        if (typeof tags[i] === 'string' && (tags[i] as string).trim() === '') {
+          violations.push({
+            code: 'empty_metadata_tag',
+            message: `metadata.tags[${i}] must not be an empty string`,
+            path: `/schema/metadata/tags/${i}`,
+            severity: 'error',
+          });
+        }
+      }
+    }
+  }
+
   return violations.sort((a, b) => {
     const keyA = `${a.path ?? ''}|${a.code}|${a.message}`;
     const keyB = `${b.path ?? ''}|${b.code}|${b.message}`;
@@ -709,14 +933,18 @@ router.post('/', async (req, res) => {
     const created = result[0];
 
     const hash = contentHash(toCanonicalPayload(created));
-    await logAuditEntry(db, {
-      contractId: created.id,
-      action: 'created',
-      fromStatus: null,
-      toStatus: 'draft',
-      toVersion: created.version,
-      contentHash: hash,
-    }, created);
+    await logAuditEntry(
+      db,
+      {
+        contractId: created.id,
+        action: 'created',
+        fromStatus: null,
+        toStatus: 'draft',
+        toVersion: created.version,
+        contentHash: hash,
+      },
+      created
+    );
 
     res.status(201).json(created);
   } catch (error) {
@@ -744,13 +972,18 @@ router.put('/:id', async (req, res) => {
 
     const contract = existing[0];
 
-    if (contract.status === 'published' || contract.status === 'deprecated' || contract.status === 'archived') {
+    if (
+      contract.status === 'published' ||
+      contract.status === 'deprecated' ||
+      contract.status === 'archived'
+    ) {
       return res.status(409).json({
-        error: `Cannot update contract with status '${contract.status}'. Only drafts and validated contracts can be updated.`,
+        error: `Cannot update contract with status '${contract.status}'. Only drafts, review, and validated contracts can be updated.`,
       });
     }
 
-    const wasDemoted = contract.status === 'validated';
+    // Editing a contract in review or validated state demotes it back to draft
+    const wasDemoted = contract.status === 'validated' || contract.status === 'review';
     const { id: _id, contractId: _contractId, createdAt: _createdAt, ...allowedUpdates } = updates;
 
     // Normalize determinism in schema if present
@@ -774,25 +1007,33 @@ router.put('/:id', async (req, res) => {
     const hash = contentHash(toCanonicalPayload(updated));
 
     if (wasDemoted) {
-      await logAuditEntry(db, {
-        contractId: id,
-        action: 'demoted',
-        fromStatus: 'validated',
-        toStatus: 'draft',
-        fromVersion: contract.version,
-        toVersion: updated.version,
-        contentHash: hash,
-      }, updated);
+      await logAuditEntry(
+        db,
+        {
+          contractId: id,
+          action: 'demoted',
+          fromStatus: contract.status, // may be 'validated' or 'review'
+          toStatus: 'draft',
+          fromVersion: contract.version,
+          toVersion: updated.version,
+          contentHash: hash,
+        },
+        updated
+      );
     } else {
-      await logAuditEntry(db, {
-        contractId: id,
-        action: 'updated',
-        fromStatus: contract.status,
-        toStatus: updated.status,
-        fromVersion: contract.version,
-        toVersion: updated.version,
-        contentHash: hash,
-      }, updated);
+      await logAuditEntry(
+        db,
+        {
+          contractId: id,
+          action: 'updated',
+          fromStatus: contract.status,
+          toStatus: updated.status,
+          fromVersion: contract.version,
+          toVersion: updated.version,
+          contentHash: hash,
+        },
+        updated
+      );
     }
 
     res.json(updated);
@@ -805,6 +1046,94 @@ router.put('/:id', async (req, res) => {
 // ============================================================================
 // Routes: Validation & Publishing
 // ============================================================================
+
+/**
+ * POST /:id/review - Submit a draft contract for review (DRAFT → REVIEW gate)
+ *
+ * Enforces completeness gates before the DRAFT→REVIEW transition:
+ *   - required metadata fields filled (name, displayName, description, version)
+ *   - determinism_class declared and valid
+ *   - effect_surface declared for effect-driven nodes
+ *   - node_identity block present with name + version
+ *   - effect nodes have at least one io_operation
+ *
+ * Returns 200 + { lifecycle_state: 'review', contract } on success
+ * Returns 422 + { error: 'review_gate_failed', gates: GateViolation[] } on failure
+ * Returns 409 if contract is not in draft state
+ */
+router.post('/:id/review', async (req, res) => {
+  try {
+    const db = getDb();
+    if (!db) return res.status(503).json({ error: 'Database unavailable' });
+
+    const { id } = req.params;
+    const existing = await db.select().from(contracts).where(eq(contracts.id, id));
+
+    if (existing.length === 0) return res.status(404).json({ error: 'not_found' });
+
+    const contract = existing[0];
+
+    if (contract.status !== 'draft') {
+      return res.status(409).json({
+        error: 'not_draft',
+        message: `Contract must be in draft state to submit for review. Current state: '${contract.status}'.`,
+      });
+    }
+
+    const schemaData = (contract.schema as Record<string, unknown>) ?? {};
+    const violations = runReviewGates(schemaData, contract.type as ContractType, {
+      name: contract.name,
+      displayName: contract.displayName,
+      description: contract.description ?? null,
+      version: contract.version,
+    });
+
+    if (violations.length > 0) {
+      await logAuditEntry(db, {
+        contractId: id,
+        action: 'review_gate_failed',
+        fromStatus: contract.status,
+        toStatus: contract.status,
+        toVersion: contract.version,
+        contentHash: contentHash(toCanonicalPayload(contract)),
+      });
+      return res.status(422).json({ error: 'review_gate_failed', gates: violations });
+    }
+
+    // Transition to 'review' — stored as the contract status
+    const result = await db
+      .update(contracts)
+      .set({ status: 'review', updatedAt: new Date() })
+      .where(and(eq(contracts.id, id), eq(contracts.status, 'draft')))
+      .returning();
+
+    if (result.length === 0) {
+      return res.status(409).json({
+        error: 'concurrent_modification',
+        message: 'Contract was concurrently modified. Please refresh and try again.',
+      });
+    }
+
+    const reviewed = result[0];
+    await logAuditEntry(
+      db,
+      {
+        contractId: id,
+        action: 'review_submitted',
+        fromStatus: 'draft',
+        toStatus: 'review',
+        toVersion: contract.version,
+        contentHash: contentHash(toCanonicalPayload(reviewed)),
+      },
+      reviewed
+    );
+
+    return res.status(200).json({ lifecycle_state: 'review', contract: reviewed });
+  } catch (error) {
+    console.error('Error submitting contract for review:', error);
+    res.status(500).json({ error: 'Failed to submit contract for review' });
+  }
+});
 
 /**
  * POST /:id/validate - Validate a contract using AJV + gate checks
@@ -849,14 +1178,18 @@ router.post('/:id/validate', async (req, res) => {
       .returning();
 
     const validated = result[0];
-    await logAuditEntry(db, {
-      contractId: id,
-      action: 'validated',
-      fromStatus: contract.status,
-      toStatus: 'validated',
-      toVersion: contract.version,
-      contentHash: contentHash(toCanonicalPayload(validated)),
-    }, validated);
+    await logAuditEntry(
+      db,
+      {
+        contractId: id,
+        action: 'validated',
+        fromStatus: contract.status,
+        toStatus: 'validated',
+        toVersion: contract.version,
+        contentHash: contentHash(toCanonicalPayload(validated)),
+      },
+      validated
+    );
 
     return res.status(200).json({ lifecycle_state: 'validated', contract: validated });
   } catch (error) {
@@ -866,9 +1199,19 @@ router.post('/:id/validate', async (req, res) => {
 });
 
 /**
- * POST /:id/publish - Publish a validated contract
+ * POST /:id/publish - Publish a validated contract (REVIEW → PUBLISHED gate)
+ *
+ * Enforces full policy gates before the REVIEW→PUBLISHED transition:
+ *   1. Schema must pass AJV validation (runServerValidation — defense-in-depth)
+ *   2. Policy envelope references must be valid (runPublishPolicyGates)
+ *   3. contract_schema_version must be present
+ *   4. Metadata tags must not contain empty strings
+ *
+ * Returns 200 + { success, contract, content_hash } on success
+ * Returns 422 + { error: 'publish_gate_failed', gates: GateViolation[] } on gate failure
+ * Returns 409 if contract is not in validated state
+ *
  * Uses atomic SQL gate: only publishes if status is still 'validated'
- * Runs server-side validation as defense-in-depth before the atomic update
  */
 router.post('/:id/publish', async (req, res) => {
   try {
@@ -892,12 +1235,26 @@ router.post('/:id/publish', async (req, res) => {
       });
     }
 
-    // Run validation as defense-in-depth (don't trust that state hasn't drifted)
     const schemaData = (contract.schema as Record<string, unknown>) ?? {};
-    const violations = runServerValidation(schemaData, contract.type as ContractType);
+
+    // Layer 1: AJV schema validation + determinism gates (defense-in-depth)
+    const schemaViolations = runServerValidation(schemaData, contract.type as ContractType);
+
+    // Layer 2: Policy-specific publish gate checks
+    const policyViolations = runPublishPolicyGates(schemaData, contract.type as ContractType);
+
+    const violations = [...schemaViolations, ...policyViolations];
 
     if (violations.length > 0) {
-      return res.status(422).json({ error: 'validation_failed', gates: violations });
+      await logAuditEntry(db, {
+        contractId: id,
+        action: 'publish_gate_failed',
+        fromStatus: contract.status,
+        toStatus: contract.status,
+        toVersion: contract.version,
+        contentHash: contentHash(toCanonicalPayload(contract)),
+      });
+      return res.status(422).json({ error: 'publish_gate_failed', gates: violations });
     }
 
     const hash = contentHash(toCanonicalPayload(contract));
@@ -918,15 +1275,19 @@ router.post('/:id/publish', async (req, res) => {
 
     const published = result[0];
 
-    await logAuditEntry(db, {
-      contractId: id,
-      action: 'published',
-      fromStatus: 'validated',
-      toStatus: 'published',
-      toVersion: contract.version,
-      contentHash: hash,
-      evidence: evidence || [],
-    }, published);
+    await logAuditEntry(
+      db,
+      {
+        contractId: id,
+        action: 'published',
+        fromStatus: 'validated',
+        toStatus: 'published',
+        toVersion: contract.version,
+        contentHash: hash,
+        evidence: evidence || [],
+      },
+      published
+    );
 
     res.json({
       success: true,
