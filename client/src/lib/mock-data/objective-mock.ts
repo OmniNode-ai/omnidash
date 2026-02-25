@@ -96,15 +96,20 @@ const MOCK_SCORE_AGGREGATES: ScoreVectorAggregate[] = MOCK_AGENTS.map((agent) =>
   };
 });
 
-export function getMockScoreVectorSummary(
-  _window: ObjectiveTimeWindow
-): ScoreVectorSummaryResponse {
+export function getMockScoreVectorSummary(window: ObjectiveTimeWindow): ScoreVectorSummaryResponse {
+  const windowDays = window === '24h' ? 1 : window === '7d' ? 7 : 30;
+  const cutoff = new Date();
+  cutoff.setDate(cutoff.getDate() - windowDays);
+  const filteredPoints = MOCK_SCORE_POINTS.filter((p) => new Date(p.evaluated_at) >= cutoff);
+  const agentSet = new Set(filteredPoints.map((p) => p.agent_name));
+  const filteredAgents = MOCK_AGENTS.filter((a) => agentSet.has(a));
+  const filteredAggregates = MOCK_SCORE_AGGREGATES.filter((a) => agentSet.has(a.context_label));
   return {
-    points: MOCK_SCORE_POINTS,
-    aggregates: MOCK_SCORE_AGGREGATES,
-    sessions: MOCK_SESSIONS,
-    agents: MOCK_AGENTS,
-    task_classes: MOCK_TASK_CLASSES,
+    points: filteredPoints,
+    aggregates: filteredAggregates,
+    sessions: [...new Set(filteredPoints.map((p) => p.session_id))],
+    agents: filteredAgents,
+    task_classes: [...new Set(filteredPoints.map((p) => p.task_class))],
   };
 }
 
@@ -183,9 +188,11 @@ export function getMockGateFailureTimeline(
     events: MOCK_GATE_EVENTS,
     totals_by_gate_type: totals,
     total_failures: MOCK_GATE_EVENTS.length,
-    escalating_sessions: MOCK_GATE_EVENTS.filter((e) => e.increased_vs_prev_window).map(
-      (e) => e.session_id
-    ),
+    escalating_sessions: [
+      ...new Set(
+        MOCK_GATE_EVENTS.filter((e) => e.increased_vs_prev_window).map((e) => e.session_id)
+      ),
+    ],
   };
 }
 

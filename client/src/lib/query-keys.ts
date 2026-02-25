@@ -761,16 +761,17 @@ export const queryKeys = {
     all: ['objective'] as const,
 
     /** Per-layer score vector data (radar chart) */
-    scoreVector: (window: string) => ['objective', 'score-vector', window] as const,
+    scoreVector: (window: string) => [...queryKeys.objective.all, 'score-vector', window] as const,
 
     /** Gate failure timeline bins and events */
-    gateFailures: (window: string) => ['objective', 'gate-failures', window] as const,
+    gateFailures: (window: string) =>
+      [...queryKeys.objective.all, 'gate-failures', window] as const,
 
     /** Policy state history points */
-    policyState: (window: string) => ['objective', 'policy-state', window] as const,
+    policyState: (window: string) => [...queryKeys.objective.all, 'policy-state', window] as const,
 
     /** Anti-gaming alert feed */
-    antiGaming: (window: string) => ['objective', 'anti-gaming', window] as const,
+    antiGaming: (window: string) => [...queryKeys.objective.all, 'anti-gaming', window] as const,
   },
 } as const;
 

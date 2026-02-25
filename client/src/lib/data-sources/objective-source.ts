@@ -56,19 +56,20 @@ class ObjectiveSource {
 
   async scoreVector(
     window: ObjectiveTimeWindow,
-    options: ObjectiveFetchOptions = { fallbackToMock: true, mockOnEmpty: true }
+    options: ObjectiveFetchOptions = {}
   ): Promise<ScoreVectorSummaryResponse> {
+    const { fallbackToMock = true, mockOnEmpty = true } = options;
     try {
       const res = await fetch(`${this.baseUrl}/score-vector?window=${window}`);
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const data = (await res.json()) as ScoreVectorSummaryResponse;
-      if (options.mockOnEmpty && data.points.length === 0) {
+      if (mockOnEmpty && data.points.length === 0) {
         this._mockEndpoints.add('score-vector');
         return getMockScoreVectorSummary(window);
       }
       return data;
     } catch {
-      if (options.fallbackToMock) {
+      if (fallbackToMock) {
         this._mockEndpoints.add('score-vector');
         return getMockScoreVectorSummary(window);
       }
@@ -82,19 +83,20 @@ class ObjectiveSource {
 
   async gateFailureTimeline(
     window: ObjectiveTimeWindow,
-    options: ObjectiveFetchOptions = { fallbackToMock: true, mockOnEmpty: true }
+    options: ObjectiveFetchOptions = {}
   ): Promise<GateFailureTimelineResponse> {
+    const { fallbackToMock = true, mockOnEmpty = true } = options;
     try {
       const res = await fetch(`${this.baseUrl}/gate-failures?window=${window}`);
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const data = (await res.json()) as GateFailureTimelineResponse;
-      if (options.mockOnEmpty && data.total_failures === 0) {
+      if (mockOnEmpty && data.total_failures === 0) {
         this._mockEndpoints.add('gate-failures');
         return getMockGateFailureTimeline(window);
       }
       return data;
     } catch {
-      if (options.fallbackToMock) {
+      if (fallbackToMock) {
         this._mockEndpoints.add('gate-failures');
         return getMockGateFailureTimeline(window);
       }
@@ -108,19 +110,20 @@ class ObjectiveSource {
 
   async policyStateHistory(
     window: ObjectiveTimeWindow,
-    options: ObjectiveFetchOptions = { fallbackToMock: true, mockOnEmpty: true }
+    options: ObjectiveFetchOptions = {}
   ): Promise<PolicyStateHistoryResponse> {
+    const { fallbackToMock = true, mockOnEmpty = true } = options;
     try {
       const res = await fetch(`${this.baseUrl}/policy-state?window=${window}`);
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const data = (await res.json()) as PolicyStateHistoryResponse;
-      if (options.mockOnEmpty && data.points.length === 0) {
+      if (mockOnEmpty && data.points.length === 0) {
         this._mockEndpoints.add('policy-state');
         return getMockPolicyStateHistory(window);
       }
       return data;
     } catch {
-      if (options.fallbackToMock) {
+      if (fallbackToMock) {
         this._mockEndpoints.add('policy-state');
         return getMockPolicyStateHistory(window);
       }
@@ -134,19 +137,20 @@ class ObjectiveSource {
 
   async antiGamingAlerts(
     window: ObjectiveTimeWindow,
-    options: ObjectiveFetchOptions = { fallbackToMock: true, mockOnEmpty: false }
+    options: ObjectiveFetchOptions = {}
   ): Promise<AntiGamingAlertFeedResponse> {
+    const { fallbackToMock = true, mockOnEmpty = false } = options;
     try {
       const res = await fetch(`${this.baseUrl}/anti-gaming-alerts?window=${window}`);
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const data = (await res.json()) as AntiGamingAlertFeedResponse;
-      if (options.mockOnEmpty && data.alerts.length === 0) {
+      if (mockOnEmpty && data.alerts.length === 0) {
         this._mockEndpoints.add('anti-gaming-alerts');
         return getMockAntiGamingAlerts(window);
       }
       return data;
     } catch {
-      if (options.fallbackToMock) {
+      if (fallbackToMock) {
         this._mockEndpoints.add('anti-gaming-alerts');
         return getMockAntiGamingAlerts(window);
       }
