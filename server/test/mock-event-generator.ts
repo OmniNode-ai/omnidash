@@ -1,4 +1,5 @@
 import { Kafka, Producer } from 'kafkajs';
+import { LEGACY_AGENT_ROUTING_DECISIONS, LEGACY_AGENT_ACTIONS } from '@shared/topics';
 
 /**
  * Mock Event Generator for Kafka Topics
@@ -170,7 +171,7 @@ class MockEventGenerator {
       throw new Error(
         'KAFKA_BROKERS or KAFKA_BOOTSTRAP_SERVERS environment variable is required. ' +
           'Set it in .env file or export it before running mock generator. ' +
-          'Example: KAFKA_BROKERS=192.168.86.200:29092'
+          'Example: KAFKA_BROKERS=host:port'
       );
     }
     this.kafka = new Kafka({
@@ -275,7 +276,7 @@ class MockEventGenerator {
     };
 
     await this.producer!.send({
-      topic: 'agent-routing-decisions',
+      topic: LEGACY_AGENT_ROUTING_DECISIONS,
       messages: [{ value: JSON.stringify(event) }],
     });
   }
@@ -302,7 +303,7 @@ class MockEventGenerator {
     };
 
     await this.producer!.send({
-      topic: 'agent-actions',
+      topic: LEGACY_AGENT_ACTIONS,
       messages: [{ value: JSON.stringify(event) }],
     });
   }

@@ -6,6 +6,34 @@ import agentRegistryRoutes from './agent-registry-routes';
 import contractRegistryRoutes from './contract-registry-routes';
 import { chatRouter } from './chat-routes';
 import eventBusRoutes from './event-bus-routes';
+import registryRoutes from './registry-routes';
+import playbackRoutes from './playback-routes';
+import patternsRoutes from './patterns-routes';
+import validationRoutes from './validation-routes';
+import extractionRoutes from './extraction-routes';
+import effectivenessRoutes from './effectiveness-routes';
+import { createProjectionRoutes } from './projection-routes';
+import { projectionService } from './projection-bootstrap';
+import insightsRoutes from './insights-routes';
+import baselinesRoutes from './baselines-routes';
+import costRoutes from './cost-routes';
+import intentRoutes from './intent-routes';
+import { createGoldenPathRoutes } from './golden-path-routes';
+import enforcementRoutes from './enforcement-routes';
+import executionRoutes from './execution-routes';
+import enrichmentRoutes from './enrichment-routes';
+import topicCatalogRoutes from './topic-catalog-routes';
+import healthDataSourcesRoutes from './health-data-sources-routes';
+import llmRoutingRoutes from './llm-routing-routes';
+import decisionRecordsRoutes from './decision-records-routes';
+import delegationRoutes from './delegation-routes';
+import statusRoutes, { linearSnapshotRouter } from './status-routes';
+// Wave 2 routes (OMN-2602)
+import gateDecisionsRoutes from './gate-decisions-routes';
+import epicRunRoutes from './epic-run-routes';
+import prWatchRoutes from './pr-watch-routes';
+import pipelineBudgetRoutes from './pipeline-budget-routes';
+import debugEscalationRoutes from './debug-escalation-routes';
 
 export async function registerRoutes(app: Express): Promise<Server> {
   // put application routes here
@@ -29,8 +57,84 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Mount event bus routes for event querying and statistics
   app.use('/api/event-bus', eventBusRoutes);
 
-  // Mount contract registry routes for contract management
+  // Mount registry routes for ONEX node registry discovery (contract-driven dashboards)
+  app.use('/api/registry', registryRoutes);
+
+  // Mount demo playback routes for recorded event replay
+  app.use('/api/demo', playbackRoutes);
+
+  // Mount patterns routes for learned patterns API (OMN-1797)
+  app.use('/api/patterns', patternsRoutes);
+
+  // Mount validation routes for cross-repo validation dashboard (OMN-1907)
+  app.use('/api/validation', validationRoutes);
+
+  // Mount extraction routes for pattern extraction pipeline dashboard (OMN-1804)
+  app.use('/api/extraction', extractionRoutes);
+
+  // Mount effectiveness routes for injection effectiveness dashboard (OMN-1891)
+  app.use('/api/effectiveness', effectivenessRoutes);
+
+  // Mount projection routes for server-side materialized views (OMN-2095 / OMN-2096 / OMN-2097)
+  app.use('/api/projections', createProjectionRoutes(projectionService));
+
+  // Mount insights routes for learned insights dashboard (OMN-1407)
+  app.use('/api/insights', insightsRoutes);
+
+  // Mount baselines routes for cost + outcome comparison dashboard (OMN-2156)
+  app.use('/api/baselines', baselinesRoutes);
+
+  // Mount cost trend routes for LLM cost and token usage dashboard (OMN-2242)
+  app.use('/api/costs', costRoutes);
+
+  // Mount intent routes for real-time intent classification dashboard
+  app.use('/api/intents', intentRoutes);
+
+  // Mount pattern enforcement routes for enforcement metrics dashboard (OMN-2275)
+  app.use('/api/enforcement', enforcementRoutes);
+
+  // Mount execution graph routes for live ONEX node graph page (OMN-2302)
+  app.use('/api/executions', executionRoutes);
+
+  // Mount context enrichment routes for enrichment metrics dashboard (OMN-2280)
+  app.use('/api/enrichment', enrichmentRoutes);
+
+  // Mount topic catalog routes for catalog status and warnings (OMN-2315)
+  app.use('/api/catalog', topicCatalogRoutes);
+
+  // Mount data-source health audit endpoint (OMN-2307)
+  app.use('/api/health', healthDataSourcesRoutes);
+
+  // Mount LLM routing effectiveness routes (OMN-2279)
+  app.use('/api/llm-routing', llmRoutingRoutes);
+
+  // Mount decision records routes for Why This Happened panel (OMN-2469)
+  app.use('/api/decisions', decisionRecordsRoutes);
+
+  // Mount delegation metrics routes for delegation dashboard (OMN-2650)
+  app.use('/api/delegation', delegationRoutes);
+
+  // Mount status dashboard routes (OMN-2658)
+  app.use('/api/status', statusRoutes);
+  // Debug/manual ingress for Linear snapshots (OMN-2658)
+  app.use('/api/linear', linearSnapshotRouter);
+
+  // Mount Wave 2 omniclaude state event routes (OMN-2602)
+  app.use('/api/gate-decisions', gateDecisionsRoutes);
+  app.use('/api/epic-run', epicRunRoutes);
+  app.use('/api/pr-watch', prWatchRoutes);
+  app.use('/api/pipeline-budget', pipelineBudgetRoutes);
+  app.use('/api/debug-escalation', debugEscalationRoutes);
+
+  // Mount contract registry routes for contract management (OMN-2358)
   app.use('/api/contracts', contractRegistryRoutes);
+
+  // Conditionally mount golden path test routes (OMN-2079)
+  // Only enabled when ENABLE_TEST_ROUTES=true AND (NODE_ENV=test OR OMNIDASH_TEST_MODE=true)
+  const goldenPathRoutes = createGoldenPathRoutes();
+  if (goldenPathRoutes) {
+    app.use('/api/test/golden-path', goldenPathRoutes);
+  }
 
   const httpServer = createServer(app);
 

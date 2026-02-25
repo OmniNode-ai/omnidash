@@ -1,0 +1,506 @@
+/**
+ * Tests for GET /api/health/data-sources (OMN-2307)
+ *
+ * These tests verify that the endpoint:
+ * 1. Returns the correct shape (dataSources, summary, checkedAt)
+ * 2. Reads projection snapshots correctly
+ * 3. Handles missing projections gracefully (status: 'mock')
+ * 4. Summarises counts correctly
+ */
+
+import { describe, it, expect, vi, beforeEach } from 'vitest';
+import express from 'express';
+import request from 'supertest';
+import healthDataSourcesRoutes, { clearHealthCache } from '../health-data-sources-routes';
+import { projectionService } from '../projection-bootstrap';
+
+// ============================================================================
+// Mock projection-bootstrap so we can control getView() return values
+// ============================================================================
+
+vi.mock('../projection-bootstrap', () => ({
+  projectionService: {
+    getView: vi.fn(),
+  },
+}));
+
+// ============================================================================
+// Mock storage (tryGetIntelligenceDb) for DB-based probes
+// ============================================================================
+
+vi.mock('../storage', () => ({
+  tryGetIntelligenceDb: vi.fn(),
+}));
+
+// ============================================================================
+// Mock insight-queries (queryInsightsSummary) for the insights probe
+// ============================================================================
+
+vi.mock('../insight-queries', () => ({
+  queryInsightsSummary: vi.fn(),
+}));
+
+// ============================================================================
+// Mock event-bus-data-source (getEventBusDataSource) for the execution probe
+// ============================================================================
+
+vi.mock('../event-bus-data-source', () => ({
+  getEventBusDataSource: vi.fn(),
+}));
+
+// ============================================================================
+// Import mocks after vi.mock declarations
+// ============================================================================
+
+import { tryGetIntelligenceDb } from '../storage';
+import { queryInsightsSummary } from '../insight-queries';
+import { getEventBusDataSource } from '../event-bus-data-source';
+
+// ============================================================================
+// Helpers
+// ============================================================================
+
+function makeApp() {
+  const app = express();
+  app.use(express.json());
+  app.use('/api/health', healthDataSourcesRoutes);
+  return app;
+}
+
+/** Build a minimal mock ProjectionView snapshot. */
+function makeSnapshot(payload: unknown, snapshotTimeMs = Date.now()) {
+  return {
+    viewId: 'test',
+    cursor: 0,
+    snapshotTimeMs,
+    payload,
+  };
+}
+
+/** Return a mock view with getSnapshot() resolving to the given payload. */
+function makeView(payload: unknown) {
+  return {
+    getSnapshot: vi.fn().mockReturnValue(makeSnapshot(payload)),
+  };
+}
+
+/**
+ * Build a mock Drizzle db object that returns `rows` from any `.select()` chain.
+ * The chain is: db.select(...).from(...) => Promise<rows>
+ */
+function makeMockDb(rows: unknown[]) {
+  const chain = {
+    from: vi.fn().mockResolvedValue(rows),
+  };
+  return {
+    select: vi.fn().mockReturnValue(chain),
+  };
+}
+
+// ============================================================================
+// Default mock setup helpers
+// ============================================================================
+
+/** Set up all DB-backed probes to return empty/no-data (mock status). */
+function setupEmptyDb() {
+  vi.mocked(tryGetIntelligenceDb).mockReturnValue(makeMockDb([{ count: 0 }]) as any);
+  vi.mocked(queryInsightsSummary).mockResolvedValue({
+    insights: [],
+    total: 0,
+    new_this_week: 0,
+    avg_confidence: 0,
+    total_sessions_analyzed: 0,
+    by_type: { pattern: 0, convention: 0, architecture: 0, error: 0, tool: 0 },
+  });
+  vi.mocked(getEventBusDataSource).mockReturnValue(null);
+}
+
+// ============================================================================
+// Tests
+// ============================================================================
+
+describe('GET /api/health/data-sources', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    clearHealthCache();
+  });
+
+  it('returns 200 with correct top-level shape', async () => {
+    vi.mocked(projectionService.getView).mockReturnValue(null);
+    setupEmptyDb();
+
+    const app = makeApp();
+    const res = await request(app).get('/api/health/data-sources');
+
+    expect(res.status).toBe(200);
+    expect(res.body).toHaveProperty('dataSources');
+    expect(res.body).toHaveProperty('summary');
+    expect(res.body).toHaveProperty('checkedAt');
+    expect(typeof res.body.checkedAt).toBe('string');
+  });
+
+  it('reports status: mock when no projections are registered', async () => {
+    vi.mocked(projectionService.getView).mockReturnValue(null);
+    setupEmptyDb();
+
+    const app = makeApp();
+    const res = await request(app).get('/api/health/data-sources');
+
+    expect(res.status).toBe(200);
+    // All projection-based sources should be mock
+    const { dataSources } = res.body;
+    expect(dataSources.eventBus.status).toBe('mock');
+    expect(dataSources.effectiveness.status).toBe('mock');
+    expect(dataSources.extraction.status).toBe('mock');
+    expect(dataSources.baselines.status).toBe('mock');
+    expect(dataSources.costTrends.status).toBe('mock');
+    expect(dataSources.intents.status).toBe('mock');
+    expect(dataSources.nodeRegistry.status).toBe('mock');
+  });
+
+  it('reports status: live for event-bus when projection has events', async () => {
+    const eventBusView = makeView({ totalEventsIngested: 42, events: [] });
+    const mockView = { getSnapshot: vi.fn().mockReturnValue(null) };
+
+    vi.mocked(projectionService.getView).mockImplementation((viewId: string) => {
+      if (viewId === 'event-bus') return eventBusView as any;
+      return mockView as any;
+    });
+    setupEmptyDb();
+
+    const app = makeApp();
+    const res = await request(app).get('/api/health/data-sources');
+
+    expect(res.status).toBe(200);
+    expect(res.body.dataSources.eventBus.status).toBe('live');
+    // correlationTrace is a shallow copy of eventBus — it must also be live
+    expect(res.body.dataSources.correlationTrace.status).toBe('live');
+  });
+
+  it('reports status: live for effectiveness when total_sessions > 0', async () => {
+    const effectivenessView = makeView({
+      summary: { total_sessions: 100 },
+    });
+    const noView = { getSnapshot: vi.fn().mockReturnValue(null) };
+
+    vi.mocked(projectionService.getView).mockImplementation((viewId: string) => {
+      if (viewId === 'effectiveness-metrics') return effectivenessView as any;
+      return noView as any;
+    });
+    setupEmptyDb();
+
+    const app = makeApp();
+    const res = await request(app).get('/api/health/data-sources');
+
+    expect(res.status).toBe(200);
+    expect(res.body.dataSources.effectiveness.status).toBe('live');
+  });
+
+  it('reports status: live for extraction when last_event_at is set', async () => {
+    const extractionView = makeView({
+      summary: { total_injections: 5, last_event_at: '2026-02-16T00:01:23Z' },
+    });
+    const noView = { getSnapshot: vi.fn().mockReturnValue(null) };
+
+    vi.mocked(projectionService.getView).mockImplementation((viewId: string) => {
+      if (viewId === 'extraction-metrics') return extractionView as any;
+      return noView as any;
+    });
+    setupEmptyDb();
+
+    const app = makeApp();
+    const res = await request(app).get('/api/health/data-sources');
+
+    expect(res.status).toBe(200);
+    expect(res.body.dataSources.extraction.status).toBe('live');
+    expect(res.body.dataSources.extraction.lastEvent).toBe('2026-02-16T00:01:23Z');
+  });
+
+  it('reports status: live for validation when projection has totalRuns > 0', async () => {
+    const validationView = makeView({ totalRuns: 12 });
+    const patternsView = makeView({ totalPatterns: 5 });
+
+    vi.mocked(projectionService.getView).mockImplementation((viewId: string) => {
+      if (viewId === 'validation') return validationView as any;
+      if (viewId === 'patterns') return patternsView as any;
+      return null;
+    });
+    vi.mocked(queryInsightsSummary).mockResolvedValue({
+      insights: [],
+      total: 0,
+      new_this_week: 0,
+      avg_confidence: 0,
+      total_sessions_analyzed: 0,
+      by_type: { pattern: 0, convention: 0, architecture: 0, error: 0, tool: 0 },
+    });
+    vi.mocked(getEventBusDataSource).mockReturnValue(null);
+
+    const app = makeApp();
+    const res = await request(app).get('/api/health/data-sources');
+
+    expect(res.status).toBe(200);
+    expect(res.body.dataSources.validation.status).toBe('live');
+    expect(res.body.dataSources.patterns.status).toBe('live');
+  });
+
+  it('reports status: error for insights when queryInsightsSummary throws', async () => {
+    vi.mocked(projectionService.getView).mockReturnValue(null);
+    vi.mocked(tryGetIntelligenceDb).mockReturnValue(makeMockDb([{ count: 0 }]) as any);
+    vi.mocked(queryInsightsSummary).mockRejectedValue(new Error('DB connection failed'));
+    vi.mocked(getEventBusDataSource).mockReturnValue(null);
+
+    const app = makeApp();
+    const res = await request(app).get('/api/health/data-sources');
+
+    expect(res.status).toBe(200);
+    expect(res.body.dataSources.insights.status).toBe('error');
+    expect(res.body.dataSources.insights.reason).toBe('probe_threw');
+  });
+
+  it('reports status: error for validation when projection getSnapshot() throws', async () => {
+    const throwingView = {
+      getSnapshot: vi.fn().mockImplementation(() => {
+        throw new Error('getSnapshot failed');
+      }),
+    };
+    const patternsView = makeView({ totalPatterns: 0 });
+
+    vi.mocked(projectionService.getView).mockImplementation((viewId: string) => {
+      if (viewId === 'validation') return throwingView as any;
+      if (viewId === 'patterns') return patternsView as any;
+      return null;
+    });
+    vi.mocked(queryInsightsSummary).mockResolvedValue({
+      insights: [],
+      total: 0,
+      new_this_week: 0,
+      avg_confidence: 0,
+      total_sessions_analyzed: 0,
+      by_type: { pattern: 0, convention: 0, architecture: 0, error: 0, tool: 0 },
+    });
+    vi.mocked(getEventBusDataSource).mockReturnValue(null);
+
+    const app = makeApp();
+    const res = await request(app).get('/api/health/data-sources');
+
+    expect(res.status).toBe(200);
+    expect(res.body.dataSources.validation.status).toBe('error');
+    expect(res.body.dataSources.validation.reason).toBe('probe_threw');
+  });
+
+  it('reports status: error for patterns when projection getSnapshot() throws', async () => {
+    const validationView = makeView({ totalRuns: 0 });
+    const throwingView = {
+      getSnapshot: vi.fn().mockImplementation(() => {
+        throw new Error('getSnapshot failed');
+      }),
+    };
+
+    vi.mocked(projectionService.getView).mockImplementation((viewId: string) => {
+      if (viewId === 'validation') return validationView as any;
+      if (viewId === 'patterns') return throwingView as any;
+      return null;
+    });
+    vi.mocked(queryInsightsSummary).mockResolvedValue({
+      insights: [],
+      total: 0,
+      new_this_week: 0,
+      avg_confidence: 0,
+      total_sessions_analyzed: 0,
+      by_type: { pattern: 0, convention: 0, architecture: 0, error: 0, tool: 0 },
+    });
+    vi.mocked(getEventBusDataSource).mockReturnValue(null);
+
+    const app = makeApp();
+    const res = await request(app).get('/api/health/data-sources');
+
+    expect(res.status).toBe(200);
+    expect(res.body.dataSources.patterns.status).toBe('error');
+    expect(res.body.dataSources.patterns.reason).toBe('probe_threw');
+  });
+
+  it('reports status: mock for patterns when projection has totalPatterns === 0', async () => {
+    const patternsView = makeView({ totalPatterns: 0 });
+
+    vi.mocked(projectionService.getView).mockImplementation((viewId: string) => {
+      if (viewId === 'patterns') return patternsView as any;
+      return null;
+    });
+    vi.mocked(queryInsightsSummary).mockResolvedValue({
+      insights: [],
+      total: 0,
+      new_this_week: 0,
+      avg_confidence: 0,
+      total_sessions_analyzed: 0,
+      by_type: { pattern: 0, convention: 0, architecture: 0, error: 0, tool: 0 },
+    });
+    vi.mocked(getEventBusDataSource).mockReturnValue(null);
+
+    const app = makeApp();
+    const res = await request(app).get('/api/health/data-sources');
+
+    expect(res.status).toBe(200);
+    expect(res.body.dataSources.patterns.status).toBe('mock');
+    expect(res.body.dataSources.patterns.reason).toBe('empty_tables');
+  });
+
+  it('computes summary counts correctly', async () => {
+    // Set up: 3 live (event-bus, validation, correlationTrace), rest mock.
+    // validation live (totalRuns: 5), patterns mock (totalPatterns: 0).
+    const eventBusView = makeView({ totalEventsIngested: 5 });
+    const validationView = makeView({ totalRuns: 5 });
+    const patternsView = makeView({ totalPatterns: 0 });
+    const noView = { getSnapshot: vi.fn().mockReturnValue(null) };
+
+    vi.mocked(projectionService.getView).mockImplementation((viewId: string) => {
+      if (viewId === 'event-bus') return eventBusView as any;
+      if (viewId === 'validation') return validationView as any;
+      if (viewId === 'patterns') return patternsView as any;
+      return noView as any;
+    });
+
+    vi.mocked(queryInsightsSummary).mockResolvedValue({
+      insights: [],
+      total: 0,
+      new_this_week: 0,
+      avg_confidence: 0,
+      total_sessions_analyzed: 0,
+      by_type: { pattern: 0, convention: 0, architecture: 0, error: 0, tool: 0 },
+    });
+    vi.mocked(getEventBusDataSource).mockReturnValue(null);
+
+    const app = makeApp();
+    const res = await request(app).get('/api/health/data-sources');
+
+    expect(res.status).toBe(200);
+    const { summary } = res.body;
+    // 3 live sources (event-bus, validation, correlationTrace)
+    expect(summary.live).toBe(3);
+    expect(summary.live + summary.mock + summary.error).toBe(13); // 13 total sources
+  });
+
+  it('includes all 13 expected data sources', async () => {
+    vi.mocked(projectionService.getView).mockReturnValue(null);
+    setupEmptyDb();
+
+    const app = makeApp();
+    const res = await request(app).get('/api/health/data-sources');
+
+    expect(res.status).toBe(200);
+    const keys = Object.keys(res.body.dataSources);
+    const expectedKeys = [
+      'eventBus',
+      'effectiveness',
+      'extraction',
+      'baselines',
+      'costTrends',
+      'intents',
+      'nodeRegistry',
+      'correlationTrace',
+      'validation',
+      'insights',
+      'patterns',
+      'executionGraph',
+      'enforcement',
+    ];
+    for (const key of expectedKeys) {
+      expect(keys).toContain(key);
+    }
+    expect(keys.length).toBe(13);
+  });
+
+  it('returns status: mock with reason for empty baselines projection', async () => {
+    const baselinesView = makeView({
+      summary: { total_comparisons: 0 },
+    });
+    const noView = { getSnapshot: vi.fn().mockReturnValue(null) };
+
+    vi.mocked(projectionService.getView).mockImplementation((viewId: string) => {
+      if (viewId === 'baselines') return baselinesView as any;
+      return noView as any;
+    });
+    setupEmptyDb();
+
+    const app = makeApp();
+    const res = await request(app).get('/api/health/data-sources');
+
+    expect(res.status).toBe(200);
+    expect(res.body.dataSources.baselines.status).toBe('mock');
+    expect(res.body.dataSources.baselines.reason).toBe('empty_tables');
+  });
+
+  it('reports status: error for executionGraph when probe throws', async () => {
+    vi.mocked(projectionService.getView).mockReturnValue(null);
+    vi.mocked(tryGetIntelligenceDb).mockReturnValue(makeMockDb([{ count: 0 }]) as any);
+    vi.mocked(queryInsightsSummary).mockResolvedValue({
+      insights: [],
+      total: 0,
+      new_this_week: 0,
+      avg_confidence: 0,
+      total_sessions_analyzed: 0,
+      by_type: { pattern: 0, convention: 0, architecture: 0, error: 0, tool: 0 },
+    });
+    // Return a non-null data source whose queryEvents() rejects — exercises the
+    // catch branch in probeExecutionGraph that returns { status: 'error', reason: 'probe_threw' }.
+    vi.mocked(getEventBusDataSource).mockReturnValue({
+      queryEvents: vi.fn().mockRejectedValue(new Error('queryEvents failed')),
+    } as any);
+
+    const app = makeApp();
+    const res = await request(app).get('/api/health/data-sources');
+
+    expect(res.status).toBe(200);
+    expect(res.body.dataSources.executionGraph.status).toBe('error');
+    expect(res.body.dataSources.executionGraph.reason).toBe('probe_threw');
+  });
+
+  // ==========================================================================
+  // Caching behaviour
+  // ==========================================================================
+
+  describe('caching behaviour', () => {
+    it('serves the second request from cache without re-probing', async () => {
+      vi.mocked(projectionService.getView).mockReturnValue(null);
+      setupEmptyDb();
+
+      const app = makeApp();
+
+      // First request — primes the cache.
+      const res1 = await request(app).get('/api/health/data-sources');
+      // Second request — should be served from the 30 s TTL cache.
+      const res2 = await request(app).get('/api/health/data-sources');
+
+      expect(res1.status).toBe(200);
+      expect(res2.status).toBe(200);
+      // Both responses must carry identical payload (same checkedAt timestamp).
+      expect(res2.body).toEqual(res1.body);
+      // getEventBusDataSource is called once per probe run (inside probeExecutionGraph).
+      // If the cache worked, it must have been called exactly once across both requests.
+      expect(vi.mocked(getEventBusDataSource)).toHaveBeenCalledTimes(1);
+    });
+
+    it('concurrent requests share the pending probe and probe only once', async () => {
+      vi.mocked(projectionService.getView).mockReturnValue(null);
+      setupEmptyDb();
+
+      const app = makeApp();
+
+      // Fire two requests concurrently. Because neither has a warm cache and
+      // both reach the pending-probe guard before either resolves, only one
+      // probe run should start; the second request attaches to the same promise.
+      const [res1, res2] = await Promise.all([
+        request(app).get('/api/health/data-sources'),
+        request(app).get('/api/health/data-sources'),
+      ]);
+
+      expect(res1.status).toBe(200);
+      expect(res2.status).toBe(200);
+      // Both responses must be well-formed.
+      expect(res1.body).toHaveProperty('dataSources');
+      expect(res2.body).toHaveProperty('dataSources');
+      // Only one probe run must have started: getEventBusDataSource is called
+      // once per probe run inside probeExecutionGraph.
+      expect(vi.mocked(getEventBusDataSource)).toHaveBeenCalledTimes(1);
+    });
+  });
+});

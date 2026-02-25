@@ -10,6 +10,7 @@
  */
 
 import { Kafka } from 'kafkajs';
+import { LEGACY_AGENT_TOPICS } from '@shared/topics';
 
 const brokers = process.env.KAFKA_BROKERS || process.env.KAFKA_BOOTSTRAP_SERVERS;
 if (!brokers) {
@@ -17,7 +18,7 @@ if (!brokers) {
     '❌ Error: KAFKA_BROKERS or KAFKA_BOOTSTRAP_SERVERS environment variable is required.'
   );
   console.error('   Set it in .env file or export it before running this script.');
-  console.error('   Example: KAFKA_BROKERS=192.168.86.200:29092');
+  console.error('   Example: KAFKA_BROKERS=host:port');
   process.exit(1);
 }
 
@@ -26,12 +27,7 @@ const kafka = new Kafka({
   clientId: 'omnidash-topic-checker',
 });
 
-const TOPICS_TO_CHECK = [
-  'agent-routing-decisions',
-  'agent-transformation-events',
-  'router-performance-metrics',
-  'agent-actions',
-];
+const TOPICS_TO_CHECK = [...LEGACY_AGENT_TOPICS];
 
 const CONSUMER_GROUP = 'omnidash-consumers-v2';
 

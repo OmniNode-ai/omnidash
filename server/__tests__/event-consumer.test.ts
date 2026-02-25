@@ -1,11 +1,27 @@
+/**
+ * EventConsumer unit tests -- verifies core Kafka consumer functionality
+ * including connection lifecycle, message handling, metric aggregation,
+ * retry/reconnection logic, and data pruning.
+ *
+ * Mock strategy:
+ *   vi.hoisted() blocks define mock fns and seed process.env before any
+ *   module-level code executes.  vi.mock() replaces kafkajs and storage
+ *   so no real broker or database connection is attempted.
+ *
+ * Environment variables:
+ *   KAFKA_BROKERS / KAFKA_BOOTSTRAP_SERVERS are set to a clearly-fake
+ *   test broker ('test-broker:29092') inside vi.hoisted() so the module
+ *   can load without error.  beforeEach() resets them to the same fake
+ *   value to keep every test isolated.
+ */
 import { describe, it, expect, beforeEach, vi, afterEach } from 'vitest';
 import { EventEmitter } from 'events';
 
 // Use vi.hoisted to set environment variables and create mocks before module loading
 // Create mock functions using vi.hoisted() so they're available during module loading
 vi.hoisted(() => {
-  process.env.KAFKA_BROKERS = 'localhost:9092';
-  process.env.KAFKA_BOOTSTRAP_SERVERS = 'localhost:9092';
+  process.env.KAFKA_BROKERS = 'test-broker:29092';
+  process.env.KAFKA_BOOTSTRAP_SERVERS = 'test-broker:29092';
 });
 
 // Create mock functions for Kafka operations
@@ -36,6 +52,11 @@ vi.mock('kafkajs', () => ({
       subscribe: mockConsumerSubscribe,
       run: mockConsumerRun,
     }),
+    producer: vi.fn().mockReturnValue({
+      connect: vi.fn().mockResolvedValue(undefined),
+      disconnect: vi.fn().mockResolvedValue(undefined),
+      send: vi.fn().mockResolvedValue(undefined),
+    }),
     admin: vi.fn().mockReturnValue({
       connect: mockAdminConnect,
       disconnect: mockAdminDisconnect,
@@ -53,8 +74,39 @@ vi.mock('../storage', () => ({
   getIntelligenceDb: vi.fn(() => mockDb),
 }));
 
+// Mock TopicCatalogManager so it immediately falls back (catalogTimeout)
+// without calling kafka.consumer() and polluting the shared consumer mock
+vi.mock('../topic-catalog-manager', async () => {
+  const { EventEmitter } = await import('events');
+  return {
+    TopicCatalogManager: vi.fn().mockImplementation(() => {
+      const emitter = new EventEmitter();
+      return {
+        bootstrap: vi.fn().mockImplementation(() => {
+          // Emit catalogTimeout after current microtask so once() listeners
+          // are registered first, matching the real production code path
+          Promise.resolve().then(() => emitter.emit('catalogTimeout'));
+          return Promise.resolve();
+        }),
+        stop: vi.fn().mockResolvedValue(undefined),
+        once: emitter.once.bind(emitter),
+        on: emitter.on.bind(emitter),
+        instanceUuid: null,
+      };
+    }),
+    CATALOG_TIMEOUT_MS: 200,
+  };
+});
+
 // Import after mocks are set up - this will use our mocks
 import { EventConsumer } from '../event-consumer';
+import {
+  buildSubscriptionTopics,
+  LEGACY_AGENT_ROUTING_DECISIONS,
+  LEGACY_AGENT_ACTIONS,
+  LEGACY_AGENT_TRANSFORMATION_EVENTS,
+  LEGACY_ROUTER_PERFORMANCE_METRICS,
+} from '@shared/topics';
 
 describe('EventConsumer', () => {
   let consumer: InstanceType<typeof EventConsumer>;
@@ -64,8 +116,9 @@ describe('EventConsumer', () => {
     vi.clearAllMocks();
     vi.useRealTimers(); // Ensure real timers for most tests
 
-    // Reset environment variables
-    process.env.KAFKA_BOOTSTRAP_SERVERS = '192.168.86.200:9092';
+    // Reset environment variables to clearly-fake test broker
+    process.env.KAFKA_BROKERS = 'test-broker:29092';
+    process.env.KAFKA_BOOTSTRAP_SERVERS = 'test-broker:29092';
     process.env.ENABLE_EVENT_PRELOAD = 'false';
 
     // Create new consumer instance for each test
@@ -97,7 +150,7 @@ describe('EventConsumer', () => {
   });
 
   describe('validateConnection', () => {
-    it('should throw error when KAFKA_BROKERS is not configured', async () => {
+    it('should require KAFKA_BROKERS to be configured before validating', async () => {
       delete process.env.KAFKA_BOOTSTRAP_SERVERS;
       delete process.env.KAFKA_BROKERS;
 
@@ -146,15 +199,11 @@ describe('EventConsumer', () => {
       await consumer.start();
 
       expect(mockConsumerConnect).toHaveBeenCalled();
-      expect(mockConsumerSubscribe).toHaveBeenCalledWith({
-        topics: [
-          'agent-routing-decisions',
-          'agent-transformation-events',
-          'router-performance-metrics',
-          'agent-actions',
-        ],
-        fromBeginning: true,
-      });
+      // Verify subscription topics match the shared builder output
+      const call = mockConsumerSubscribe.mock.calls[0][0];
+      expect(call.fromBeginning).toBe(false);
+      const expectedTopics = buildSubscriptionTopics();
+      expect(call.topics).toEqual(expectedTopics);
       expect(mockConsumerRun).toHaveBeenCalled();
     });
 
@@ -282,7 +331,7 @@ describe('EventConsumer', () => {
       };
 
       await eachMessageHandler({
-        topic: 'agent-routing-decisions',
+        topic: LEGACY_AGENT_ROUTING_DECISIONS,
         message: {
           value: Buffer.from(JSON.stringify(event)),
         },
@@ -320,7 +369,7 @@ describe('EventConsumer', () => {
       };
 
       await eachMessageHandler({
-        topic: 'agent-routing-decisions',
+        topic: LEGACY_AGENT_ROUTING_DECISIONS,
         message: {
           value: Buffer.from(JSON.stringify(event)),
         },
@@ -352,7 +401,7 @@ describe('EventConsumer', () => {
 
       for (const event of events) {
         await eachMessageHandler({
-          topic: 'agent-routing-decisions',
+          topic: LEGACY_AGENT_ROUTING_DECISIONS,
           message: {
             value: Buffer.from(JSON.stringify(event)),
           },
@@ -396,7 +445,7 @@ describe('EventConsumer', () => {
       };
 
       await eachMessageHandler({
-        topic: 'agent-actions',
+        topic: LEGACY_AGENT_ACTIONS,
         message: {
           value: Buffer.from(JSON.stringify(event)),
         },
@@ -422,7 +471,7 @@ describe('EventConsumer', () => {
 
       for (const event of events) {
         await eachMessageHandler({
-          topic: 'agent-actions',
+          topic: LEGACY_AGENT_ACTIONS,
           message: {
             value: Buffer.from(JSON.stringify(event)),
           },
@@ -449,30 +498,41 @@ describe('EventConsumer', () => {
       await consumer.start();
     });
 
-    it('should emit error event for malformed JSON', async () => {
+    it('should skip malformed JSON with console.warn instead of emitting error', async () => {
       const errorSpy = vi.fn();
       consumer.on('error', errorSpy);
 
+      const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+
       await eachMessageHandler({
-        topic: 'agent-actions',
+        topic: LEGACY_AGENT_ACTIONS,
         message: {
           value: Buffer.from('{ invalid json'),
         },
       });
 
-      expect(errorSpy).toHaveBeenCalled();
-      expect(errorSpy.mock.calls[0][0]).toBeInstanceOf(Error);
+      // Malformed JSON is now caught by inner try/catch and logged via console.warn,
+      // not emitted as an error event (defensive pattern matching read-model-consumer)
+      expect(errorSpy).not.toHaveBeenCalled();
+      expect(warnSpy).toHaveBeenCalledWith(
+        expect.stringContaining('[EventConsumer] Skipping malformed JSON message'),
+        expect.any(Object)
+      );
+
+      warnSpy.mockRestore();
     });
 
-    it('should continue processing after error', async () => {
+    it('should continue processing after malformed JSON is skipped', async () => {
       const errorSpy = vi.fn();
       const actionUpdateSpy = vi.fn();
       consumer.on('error', errorSpy);
       consumer.on('actionUpdate', actionUpdateSpy);
 
-      // Send malformed event
+      const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+
+      // Send malformed event (now skipped via inner try/catch, no error emitted)
       await eachMessageHandler({
-        topic: 'agent-actions',
+        topic: LEGACY_AGENT_ACTIONS,
         message: {
           value: Buffer.from('invalid'),
         },
@@ -480,14 +540,18 @@ describe('EventConsumer', () => {
 
       // Send valid event
       await eachMessageHandler({
-        topic: 'agent-actions',
+        topic: LEGACY_AGENT_ACTIONS,
         message: {
           value: Buffer.from(JSON.stringify({ agent_name: 'test', action_type: 'success' })),
         },
       });
 
-      expect(errorSpy).toHaveBeenCalledTimes(1);
+      // Malformed JSON is silently skipped (no error event), but valid events still process
+      expect(errorSpy).not.toHaveBeenCalled();
+      expect(warnSpy).toHaveBeenCalledTimes(1);
       expect(actionUpdateSpy).toHaveBeenCalledTimes(1);
+
+      warnSpy.mockRestore();
     });
   });
 
@@ -640,6 +704,17 @@ describe('EventConsumer', () => {
     });
   });
 
+  // NOTE: isTestEnv coverage gap — production vs test-env divergence
+  //
+  // In production, the outer `catch (runErr)` block calls `this.emit('error', runErr)`
+  // after the `consumer.run()` loop exits due to a connection-level error.
+  //
+  // In the test environment, `isTestEnv` causes that outer catch to `break` out of
+  // the while-loop immediately, BEFORE the `emit('error', runErr)` line is reached.
+  //
+  // As a result, the tests below assert `not.toHaveBeenCalled()` on `errorSpy`
+  // rather than a positive assertion.  The production error-emission path from
+  // the outer catch is intentionally not covered by these unit tests.
   describe('reconnection on message processing errors', () => {
     let eachMessageHandler: any;
 
@@ -653,35 +728,43 @@ describe('EventConsumer', () => {
       await consumer.start();
     });
 
-    it('should attempt reconnection on connection error during message processing', async () => {
-      vi.useFakeTimers();
+    it('should rethrow connection errors to outer retry loop and not attempt inline reconnection', async () => {
       vi.clearAllMocks(); // Clear after start to track reconnection attempts
-      mockConsumerConnect.mockResolvedValueOnce(undefined); // Successful reconnection
 
       const errorSpy = vi.fn();
       consumer.on('error', errorSpy);
 
-      // Create message that will throw connection error during toString
+      // Create message that will throw a connection error during toString.
+      // The eachMessage catch block detects "connection" in the message and
+      // re-throws so consumer.run() can propagate it to the outer while-loop
+      // catch, which handles actual reconnection.
+      // NOTE: emit('error') was removed from the eachMessage catch block —
+      // error emission was intended to be done by the outer catch (runErr),
+      // but in test env that outer catch breaks immediately (isTestEnv guard)
+      // without emitting. So in tests, no error event is emitted at all.
+      const connectionError = new Error('Network connection error');
       const testMessage = {
-        topic: 'agent-actions',
+        topic: LEGACY_AGENT_ACTIONS,
         message: {
           value: {
             toString: () => {
-              throw new Error('Network connection error');
+              throw connectionError;
             },
           },
         },
       };
 
-      const handlerPromise = eachMessageHandler(testMessage);
-      await vi.advanceTimersByTimeAsync(1000);
-      await handlerPromise;
+      // The re-throw means the handler promise rejects
+      await expect(eachMessageHandler(testMessage)).rejects.toThrow('Network connection error');
 
-      // Should have attempted reconnection
-      expect(mockConsumerConnect).toHaveBeenCalled();
-      expect(errorSpy).toHaveBeenCalled();
-      vi.useRealTimers();
-    }, 2000); // Reduced timeout because timers are faked
+      // No error event is emitted: the eachMessage catch no longer calls emit('error'),
+      // and the outer catch (runErr) breaks immediately in test env without emitting.
+      expect(errorSpy).not.toHaveBeenCalled();
+
+      // connectWithRetry is NOT called inline from eachMessage — reconnection is
+      // delegated to the outer while-loop catch block (isTestEnv causes it to break)
+      expect(mockConsumerConnect).not.toHaveBeenCalled();
+    }, 2000);
 
     it('should not attempt reconnection on non-connection errors', async () => {
       vi.useFakeTimers();
@@ -690,9 +773,12 @@ describe('EventConsumer', () => {
       const errorSpy = vi.fn();
       consumer.on('error', errorSpy);
 
-      // Send malformed JSON (non-connection error)
+      const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+
+      // Send malformed JSON (non-connection error) - now handled by inner
+      // try/catch with console.warn + return, no error event emitted
       const handlerPromise = eachMessageHandler({
-        topic: 'agent-actions',
+        topic: LEGACY_AGENT_ACTIONS,
         message: {
           value: Buffer.from('{ invalid json'),
         },
@@ -700,42 +786,50 @@ describe('EventConsumer', () => {
       await vi.advanceTimersByTimeAsync(1000);
       await handlerPromise;
 
-      // Should emit error but not attempt reconnection
-      expect(errorSpy).toHaveBeenCalled();
+      // Should NOT emit error (malformed JSON is silently skipped) and not attempt reconnection
+      expect(errorSpy).not.toHaveBeenCalled();
       expect(mockConsumerConnect).not.toHaveBeenCalled();
+      expect(warnSpy).toHaveBeenCalled();
+
+      warnSpy.mockRestore();
       vi.useRealTimers();
     });
 
-    it('should emit error if reconnection fails', async () => {
-      vi.useFakeTimers();
+    it('should rethrow broker connection errors without inline reconnection and without double-emitting error', async () => {
       vi.clearAllMocks(); // Clear after start
-
-      mockConsumerConnect.mockRejectedValue(new Error('Connection failed'));
 
       const errorSpy = vi.fn();
       consumer.on('error', errorSpy);
 
-      // Create message that will throw connection error
+      // Create message with a broker-related connection error.
+      // The eachMessage catch block detects "broker" in the message and re-throws.
+      // emit('error') was removed from the eachMessage catch to prevent double-emission:
+      // the outer catch (runErr) was intended to emit it once, but in test env that outer
+      // catch breaks immediately (isTestEnv guard) without emitting. So in tests, no error
+      // event is emitted — the only observable behavior is the handler promise rejecting.
+      const brokerError = new Error('Kafka connection lost - broker unreachable');
       const testMessage = {
-        topic: 'agent-actions',
+        topic: LEGACY_AGENT_ACTIONS,
         message: {
           value: {
             toString: () => {
-              throw new Error('Kafka connection lost - broker unreachable');
+              throw brokerError;
             },
           },
         },
       };
 
-      const handlerPromise = eachMessageHandler(testMessage);
-      await vi.advanceTimersByTimeAsync(1000);
-      await handlerPromise;
+      // The re-throw propagates out of eachMessage
+      await expect(eachMessageHandler(testMessage)).rejects.toThrow('broker unreachable');
 
-      // Should have emitted both original error and reconnection error
-      expect(errorSpy.mock.calls.length).toBeGreaterThanOrEqual(2);
-      expect(errorSpy.mock.calls[0][0].message).toContain('broker unreachable');
-      vi.useRealTimers();
-    }, 2000); // Reduced timeout for fake timers
+      // No error event is emitted: emit('error') was removed from the eachMessage catch
+      // block to prevent double-emission, and the outer catch breaks in test env.
+      expect(errorSpy).not.toHaveBeenCalled();
+
+      // connectWithRetry is NOT called inline — reconnection is deferred to
+      // the outer while-loop which breaks in test env
+      expect(mockConsumerConnect).not.toHaveBeenCalled();
+    }, 2000);
   });
 
   describe('data pruning', () => {
@@ -752,6 +846,16 @@ describe('EventConsumer', () => {
     });
 
     it('should prune old actions after 24 hours', async () => {
+      // Add old action FIRST (25 hours ago) - chronological order matters
+      // for monotonic merge (newer events always win)
+      const oldAction = {
+        id: 'action-old',
+        agent_name: 'agent-test',
+        action_type: 'tool_call',
+        action_name: 'write_file',
+        timestamp: new Date(Date.now() - 25 * 60 * 60 * 1000).toISOString(),
+      };
+
       // Add recent action (current time)
       const recentAction = {
         id: 'action-recent',
@@ -761,23 +865,14 @@ describe('EventConsumer', () => {
         timestamp: new Date().toISOString(),
       };
 
-      // Add old action (25 hours ago)
-      const oldAction = {
-        id: 'action-old',
-        agent_name: 'agent-test',
-        action_type: 'tool_call',
-        action_name: 'write_file',
-        timestamp: new Date(Date.now() - 25 * 60 * 60 * 1000).toISOString(),
-      };
-
       await eachMessageHandler({
-        topic: 'agent-actions',
-        message: { value: Buffer.from(JSON.stringify(recentAction)) },
+        topic: LEGACY_AGENT_ACTIONS,
+        message: { value: Buffer.from(JSON.stringify(oldAction)) },
       });
 
       await eachMessageHandler({
-        topic: 'agent-actions',
-        message: { value: Buffer.from(JSON.stringify(oldAction)) },
+        topic: LEGACY_AGENT_ACTIONS,
+        message: { value: Buffer.from(JSON.stringify(recentAction)) },
       });
 
       // Verify both actions are present
@@ -794,6 +889,15 @@ describe('EventConsumer', () => {
     });
 
     it('should prune old routing decisions after 24 hours', async () => {
+      // Add old decision FIRST (25 hours ago) - chronological order matters
+      // for monotonic merge (newer events always win)
+      const oldDecision = {
+        id: 'decision-old',
+        selected_agent: 'agent-api',
+        confidence_score: 0.85,
+        timestamp: new Date(Date.now() - 25 * 60 * 60 * 1000).toISOString(),
+      };
+
       // Add recent decision
       const recentDecision = {
         id: 'decision-recent',
@@ -802,22 +906,14 @@ describe('EventConsumer', () => {
         timestamp: new Date().toISOString(),
       };
 
-      // Add old decision (25 hours ago)
-      const oldDecision = {
-        id: 'decision-old',
-        selected_agent: 'agent-api',
-        confidence_score: 0.85,
-        timestamp: new Date(Date.now() - 25 * 60 * 60 * 1000).toISOString(),
-      };
-
       await eachMessageHandler({
-        topic: 'agent-routing-decisions',
-        message: { value: Buffer.from(JSON.stringify(recentDecision)) },
+        topic: LEGACY_AGENT_ROUTING_DECISIONS,
+        message: { value: Buffer.from(JSON.stringify(oldDecision)) },
       });
 
       await eachMessageHandler({
-        topic: 'agent-routing-decisions',
-        message: { value: Buffer.from(JSON.stringify(oldDecision)) },
+        topic: LEGACY_AGENT_ROUTING_DECISIONS,
+        message: { value: Buffer.from(JSON.stringify(recentDecision)) },
       });
 
       // Verify both decisions are present
@@ -834,6 +930,16 @@ describe('EventConsumer', () => {
     });
 
     it('should prune old transformations after 24 hours', async () => {
+      // Add old transformation FIRST (25 hours ago) - chronological order matters
+      // for monotonic merge (newer events always win)
+      const oldTransformation = {
+        id: 'trans-old',
+        source_agent: 'agent-c',
+        target_agent: 'agent-d',
+        success: true,
+        timestamp: new Date(Date.now() - 25 * 60 * 60 * 1000).toISOString(),
+      };
+
       // Add recent transformation
       const recentTransformation = {
         id: 'trans-recent',
@@ -843,23 +949,14 @@ describe('EventConsumer', () => {
         timestamp: new Date().toISOString(),
       };
 
-      // Add old transformation (25 hours ago)
-      const oldTransformation = {
-        id: 'trans-old',
-        source_agent: 'agent-c',
-        target_agent: 'agent-d',
-        success: true,
-        timestamp: new Date(Date.now() - 25 * 60 * 60 * 1000).toISOString(),
-      };
-
       await eachMessageHandler({
-        topic: 'agent-transformation-events',
-        message: { value: Buffer.from(JSON.stringify(recentTransformation)) },
+        topic: LEGACY_AGENT_TRANSFORMATION_EVENTS,
+        message: { value: Buffer.from(JSON.stringify(oldTransformation)) },
       });
 
       await eachMessageHandler({
-        topic: 'agent-transformation-events',
-        message: { value: Buffer.from(JSON.stringify(oldTransformation)) },
+        topic: LEGACY_AGENT_TRANSFORMATION_EVENTS,
+        message: { value: Buffer.from(JSON.stringify(recentTransformation)) },
       });
 
       // Verify both transformations are present
@@ -876,6 +973,16 @@ describe('EventConsumer', () => {
     });
 
     it('should prune old performance metrics after 24 hours', async () => {
+      // Add old metric FIRST (25 hours ago) - chronological order matters
+      // for monotonic merge (newer events always win)
+      const oldMetric = {
+        id: 'metric-old',
+        query_text: 'old query',
+        routing_duration_ms: 150,
+        cache_hit: false,
+        timestamp: new Date(Date.now() - 25 * 60 * 60 * 1000).toISOString(),
+      };
+
       // Add recent metric
       const recentMetric = {
         id: 'metric-recent',
@@ -885,23 +992,14 @@ describe('EventConsumer', () => {
         timestamp: new Date().toISOString(),
       };
 
-      // Add old metric (25 hours ago)
-      const oldMetric = {
-        id: 'metric-old',
-        query_text: 'old query',
-        routing_duration_ms: 150,
-        cache_hit: false,
-        timestamp: new Date(Date.now() - 25 * 60 * 60 * 1000).toISOString(),
-      };
-
       await eachMessageHandler({
-        topic: 'router-performance-metrics',
-        message: { value: Buffer.from(JSON.stringify(recentMetric)) },
+        topic: LEGACY_ROUTER_PERFORMANCE_METRICS,
+        message: { value: Buffer.from(JSON.stringify(oldMetric)) },
       });
 
       await eachMessageHandler({
-        topic: 'router-performance-metrics',
-        message: { value: Buffer.from(JSON.stringify(oldMetric)) },
+        topic: LEGACY_ROUTER_PERFORMANCE_METRICS,
+        message: { value: Buffer.from(JSON.stringify(recentMetric)) },
       });
 
       // Verify both metrics are present
@@ -942,7 +1040,7 @@ describe('EventConsumer', () => {
 
       for (const event of events) {
         await eachMessageHandler({
-          topic: 'agent-actions',
+          topic: LEGACY_AGENT_ACTIONS,
           message: { value: Buffer.from(JSON.stringify(event)) },
         });
       }
@@ -982,6 +1080,72 @@ describe('EventConsumer', () => {
       expect(pruningLogs.length).toBe(0);
 
       consoleSpy.mockRestore();
+    });
+  });
+
+  describe('normalizeActionFields', () => {
+    // Access the private static method for direct testing
+    const normalize = (EventConsumer as any).normalizeActionFields.bind(EventConsumer);
+
+    it('should extract actionType from canonical actionName when rawActionType is env prefix', () => {
+      const result = normalize('dev', 'valid-agent', 'onex.cmd.omniintelligence.tool-content.v1');
+      expect(result.actionType).toBe('tool-content');
+      expect(result.agentName).toBe('valid-agent');
+    });
+
+    it('should extract agentName from canonical actionName when rawAgentName is "unknown"', () => {
+      const result = normalize('tool_call', 'unknown', 'onex.cmd.omniintelligence.tool-content.v1');
+      expect(result.agentName).toBe('omniintelligence');
+      expect(result.actionType).toBe('tool_call');
+    });
+
+    it('should normalize both fields when both are junk', () => {
+      const result = normalize('dev', 'unknown', 'onex.evt.archon.session-started.v1');
+      expect(result.actionType).toBe('session-started');
+      expect(result.agentName).toBe('archon');
+    });
+
+    it('should treat all env prefixes as junk actionType', () => {
+      for (const prefix of ['dev', 'staging', 'prod', 'production', 'test', 'local']) {
+        const result = normalize(prefix, 'valid-agent', 'onex.cmd.producer.action-name.v1');
+        expect(result.actionType).toBe('action-name');
+      }
+    });
+
+    it('should treat empty string as junk actionType', () => {
+      const result = normalize('', 'valid-agent', 'onex.cmd.producer.my-action.v1');
+      expect(result.actionType).toBe('my-action');
+      expect(result.agentName).toBe('valid-agent');
+    });
+
+    it('should preserve valid actionType', () => {
+      const result = normalize('tool_call', 'valid-agent', 'onex.cmd.producer.action.v1');
+      expect(result.actionType).toBe('tool_call');
+      expect(result.agentName).toBe('valid-agent');
+    });
+
+    it('should preserve valid agentName even when actionType is junk', () => {
+      const result = normalize('dev', 'my-agent', 'onex.cmd.producer.action.v1');
+      expect(result.actionType).toBe('action');
+      expect(result.agentName).toBe('my-agent');
+    });
+
+    it('should not parse non-canonical actionName', () => {
+      const result = normalize('dev', 'unknown', 'some-legacy-action');
+      expect(result.actionType).toBe('dev');
+      expect(result.agentName).toBe('unknown');
+    });
+
+    it('should handle short canonical actionName gracefully', () => {
+      const result = normalize('dev', 'unknown', 'onex.cmd');
+      expect(result.actionType).toBe('dev');
+      expect(result.agentName).toBe('unknown');
+    });
+
+    it('should return original values when both are valid', () => {
+      const result = normalize('tool_call', 'agent-1', 'whatever');
+      expect(result.actionType).toBe('tool_call');
+      expect(result.agentName).toBe('agent-1');
     });
   });
 });

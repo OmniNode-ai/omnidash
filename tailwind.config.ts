@@ -58,6 +58,8 @@ export default {
           '3': 'hsl(var(--chart-3) / <alpha-value>)',
           '4': 'hsl(var(--chart-4) / <alpha-value>)',
           '5': 'hsl(var(--chart-5) / <alpha-value>)',
+          '6': 'hsl(var(--chart-6) / <alpha-value>)',
+          '7': 'hsl(var(--chart-7) / <alpha-value>)',
         },
         sidebar: {
           ring: 'hsl(var(--sidebar-ring) / <alpha-value>)',

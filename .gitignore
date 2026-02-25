@@ -3,6 +3,7 @@ dist
 .DS_Store
 server/public
 vite.config.ts.*
+.server.pid
 *.tar.gz
 tmp/
 
@@ -20,6 +21,7 @@ playwright-report/
 playwright/.cache/
 test-results/
 *.spec.ts-snapshots/
+snapshots/
 
 # Environment files with secrets
 .env
@@ -27,7 +29,8 @@ test-results/
 .env.*.local
 
 # Claude settings with credentials
-.claude/
+.claude/*
+!.claude/architecture-handshake.md
 .local/
 
 # Playwright screenshots and captures
@@ -36,6 +39,10 @@ test-results/
 .playwright-mcp/**/*.jpeg
 page-*.png
 *-screenshot.png
+
+# Root-level screenshots (Playwright MCP browser tool drops these)
+/*.png
+/*.jpeg
 
 # Backup files
 *.bak

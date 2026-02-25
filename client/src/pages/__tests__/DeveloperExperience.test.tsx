@@ -118,7 +118,7 @@ describe('DeveloperExperience page', () => {
       );
     });
 
-    const { default: DeveloperExperience } = await import('../DeveloperExperience');
+    const { default: DeveloperExperience } = await import('@/_archive/pages/DeveloperExperience');
 
     const result = renderWithClient(<DeveloperExperience />);
 
@@ -153,7 +153,7 @@ describe('DeveloperExperience page', () => {
       );
     });
 
-    const { default: DeveloperExperience } = await import('../DeveloperExperience');
+    const { default: DeveloperExperience } = await import('@/_archive/pages/DeveloperExperience');
 
     const result = renderWithClient(<DeveloperExperience />);
 

@@ -22,6 +22,8 @@ export default defineConfig({
       '**/.{idea,git,cache,output,temp}/**',
       '**/{karma,rollup,webpack,vite,vitest,jest,ava,babel,nyc,cypress,tsup,build,eslint,prettier}.config.*',
       '**/client/src/tests/snapshots/**', // Exclude Playwright snapshot tests
+      '**/tests/e2e/**', // Exclude Playwright E2E tests (run with playwright test, not vitest)
+      '**/server/__tests__/integration/**', // Integration tests require a local DB — not run in CI
     ],
     // Limit parallelism to prevent CPU overload
     pool: 'threads',

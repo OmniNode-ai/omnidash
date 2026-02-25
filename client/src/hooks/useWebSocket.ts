@@ -26,6 +26,11 @@ interface UseWebSocketReturn {
   subscribe: (topics: string[]) => void;
   unsubscribe: (topics: string[]) => void;
   reconnect: () => void;
+  /**
+   * Close the WebSocket connection and stop reconnection attempts.
+   * Use this when you want to fully disconnect from the server.
+   */
+  close: () => void;
 }
 
 /**
@@ -80,6 +85,31 @@ export function useWebSocket({
   const stableConnectionRef = useRef(false);
   const connectionTimestampRef = useRef<number>(0);
 
+  // Use refs for callbacks to avoid reconnection on every render
+  // This prevents the "WebSocket is closed before connection is established" error
+  // when callbacks are defined inline in the component
+  const onMessageRef = useRef(onMessage);
+  const onErrorRef = useRef(onError);
+  const onOpenRef = useRef(onOpen);
+  const onCloseRef = useRef(onClose);
+
+  // Update refs when callbacks change (without triggering reconnection)
+  useEffect(() => {
+    onMessageRef.current = onMessage;
+  }, [onMessage]);
+
+  useEffect(() => {
+    onErrorRef.current = onError;
+  }, [onError]);
+
+  useEffect(() => {
+    onOpenRef.current = onOpen;
+  }, [onOpen]);
+
+  useEffect(() => {
+    onCloseRef.current = onClose;
+  }, [onClose]);
+
   // Default to current host with /ws path
   const wsUrl =
     url || `${window.location.protocol === 'https:' ? 'wss:' : 'ws:'}//${window.location.host}/ws`;
@@ -130,6 +160,40 @@ export function useWebSocket({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  /**
+   * Close the WebSocket connection and prevent automatic reconnection.
+   * To reconnect after calling close(), use reconnect().
+   */
+  const close = useCallback(() => {
+    log('Closing WebSocket connection');
+
+    // Clear any pending reconnection attempts
+    if (reconnectTimeoutRef.current) {
+      clearTimeout(reconnectTimeoutRef.current);
+      reconnectTimeoutRef.current = undefined;
+    }
+
+    // Clear any pending disconnect timeout
+    if (disconnectTimeoutRef.current) {
+      clearTimeout(disconnectTimeoutRef.current);
+      disconnectTimeoutRef.current = undefined;
+    }
+
+    // Set reconnect count to max to prevent auto-reconnection
+    reconnectCountRef.current = reconnectAttempts;
+
+    // Close the WebSocket if open
+    if (wsRef.current) {
+      wsRef.current.close();
+      wsRef.current = null;
+    }
+
+    // Update state immediately
+    setIsConnected(false);
+    setConnectionStatus('disconnected');
+    stableConnectionRef.current = false;
+  }, [log, reconnectAttempts]);
+
   const connect = useCallback(() => {
     if (!mountedRef.current) return;
 
@@ -171,7 +235,7 @@ export function useWebSocket({
         setError(null);
         reconnectCountRef.current = 0;
 
-        onOpen?.();
+        onOpenRef.current?.();
 
         // Clean up stabilization timeout
         return () => clearTimeout(stabilizationDelay);
@@ -184,7 +248,7 @@ export function useWebSocket({
           const message: WebSocketMessage = JSON.parse(event.data);
           log('Received message:', message.type);
 
-          onMessage?.(message);
+          onMessageRef.current?.(message);
         } catch (err) {
           console.error('[WebSocket] Failed to parse message:', err);
           setError('Failed to parse message');
@@ -198,7 +262,7 @@ export function useWebSocket({
         setConnectionStatus('error');
         setError('Connection error');
 
-        onError?.(event);
+        onErrorRef.current?.(event);
       };
 
       ws.onclose = () => {
@@ -234,7 +298,7 @@ export function useWebSocket({
           setConnectionStatus('disconnected');
         }
 
-        onClose?.();
+        onCloseRef.current?.();
 
         // Attempt reconnection with exponential backoff
         if (reconnectCountRef.current < reconnectAttempts) {
@@ -263,7 +327,7 @@ export function useWebSocket({
       setError(err instanceof Error ? err.message : 'Unknown error');
       setConnectionStatus('error');
     }
-  }, [wsUrl, onMessage, onError, onOpen, onClose, reconnectInterval, reconnectAttempts, log]);
+  }, [wsUrl, reconnectInterval, reconnectAttempts, log]);
 
   // Connect on mount
   useEffect(() => {
@@ -296,5 +360,6 @@ export function useWebSocket({
     subscribe,
     unsubscribe,
     reconnect,
+    close,
   };
 }

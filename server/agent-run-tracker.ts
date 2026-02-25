@@ -391,7 +391,7 @@ export class AgentRunTracker {
   }
 }
 
-// Initialize with mock data if no data exists
-if (agentRuns.length === 0) {
+// Only initialize mock data if DEMO_MODE is explicitly enabled
+if (agentRuns.length === 0 && process.env.DEMO_MODE === 'true') {
   AgentRunTracker.generateMockData();
 }

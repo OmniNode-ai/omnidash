@@ -9,8 +9,8 @@
 
 OmniClaude has **34+ PostgreSQL tables** and **8 Kafka topics** tracking comprehensive agent execution data. All data is production-ready and available for integration.
 
-**Database**: `postgresql://postgres:<password>@192.168.86.200:5436/omninode_bridge`
-**Kafka**: `192.168.86.200:9092`
+**Database**: `postgresql://postgres:<password>@192.168.86.200:5436/omnidash_analytics`
+**Kafka**: `192.168.86.200:29092`
 
 ---
 
@@ -36,10 +36,10 @@ OmniClaude has **34+ PostgreSQL tables** and **8 Kafka topics** tracking compreh
 
 ```bash
 # These should already be set from shared infrastructure
-DATABASE_URL="postgresql://postgres:<password>@192.168.86.200:5436/omninode_bridge"
+DATABASE_URL="postgresql://postgres:<password>@192.168.86.200:5436/omnidash_analytics"
 POSTGRES_HOST=192.168.86.200
 POSTGRES_PORT=5436
-POSTGRES_DATABASE=omninode_bridge
+POSTGRES_DATABASE=omnidash_analytics
 ```
 
 **Test connection**:
@@ -416,7 +416,7 @@ grep POSTGRES_PASSWORD /Volumes/PRO-G40/Code/omniclaude/.env
 
 ```bash
 # Solution: Verify database name is correct
-psql -h 192.168.86.200 -p 5436 -U postgres -d omninode_bridge -c "\dt"
+psql -h 192.168.86.200 -p 5436 -U postgres -d omnidash_analytics -c "\dt"
 # Should list agent_routing_decisions, agent_actions, etc.
 ```
 
@@ -444,7 +444,7 @@ SELECT COUNT(*) FROM agent_routing_decisions WHERE created_at > NOW() - INTERVAL
 
 ```bash
 # Check when omniclaude last wrote data
-psql -h 192.168.86.200 -p 5436 -U postgres -d omninode_bridge -c "
+psql -h 192.168.86.200 -p 5436 -U postgres -d omnidash_analytics -c "
 SELECT
     'routing_decisions' as table_name,
     MAX(created_at) as latest,
@@ -496,7 +496,7 @@ After basic integration works:
 
 If you encounter issues:
 
-1. Check database connection: `psql -h 192.168.86.200 -p 5436 -U postgres -d omninode_bridge`
+1. Check database connection: `psql -h 192.168.86.200 -p 5436 -U postgres -d omnidash_analytics`
 2. Verify data exists: `SELECT COUNT(*) FROM agent_routing_decisions;`
 3. Check API endpoints: `curl http://localhost:3000/api/intelligence/routing/metrics`
 4. Review server logs for errors

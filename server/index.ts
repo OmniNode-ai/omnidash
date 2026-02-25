@@ -2,6 +2,9 @@
 import { config } from 'dotenv';
 config();
 
+import { writeFileSync, unlinkSync } from 'fs';
+const SERVER_PID_FILE = '.server.pid';
+
 // Suppress KafkaJS partitioner warning
 if (!process.env.KAFKAJS_NO_PARTITIONER_WARNING) {
   process.env.KAFKAJS_NO_PARTITIONER_WARNING = '1';
@@ -14,6 +17,12 @@ import { setupWebSocket } from './websocket';
 import { eventConsumer } from './event-consumer';
 import { eventBusDataSource } from './event-bus-data-source';
 import { eventBusMockGenerator } from './event-bus-mock-generator';
+import { startMockRegistryEvents, stopMockRegistryEvents } from './registry-events';
+import { runtimeIdentity } from './runtime-identity';
+import { initProjectionListeners, teardownProjectionListeners } from './projection-instance';
+import { wireProjectionSources, projectionService } from './projection-bootstrap';
+import { NodeRegistryProjection } from './projections/node-registry-projection';
+import { readModelConsumer } from './read-model-consumer';
 
 const app = express();
 
@@ -76,7 +85,85 @@ app.use((req, res, next) => {
 });
 
 (async () => {
+  // Log runtime identity on startup (identity loaded from shared module)
+  if (runtimeIdentity.supervised) {
+    log(`Running under ONEX runtime: node_id=${runtimeIdentity.nodeId}`);
+  } else {
+    log(`Running in standalone mode (no runtime supervision)`);
+  }
+
+  // --------------------------------------------------------------------------
+  // Node Registry Projection (OMN-2097)
+  // Register into the shared ProjectionService singleton BEFORE routes are
+  // registered so that projection REST endpoints are available immediately.
+  // --------------------------------------------------------------------------
+  const nodeRegistryView = new NodeRegistryProjection();
+  if (!projectionService.getView(nodeRegistryView.viewId)) {
+    projectionService.registerView(nodeRegistryView);
+  }
+
   const server = await registerRoutes(app);
+
+  // --------------------------------------------------------------------------
+  // Bridge EventConsumer node events → ProjectionService (OMN-2097)
+  // MUST be registered BEFORE eventConsumer.start() to avoid missing events.
+  // --------------------------------------------------------------------------
+
+  /** Safely parse createdAt into epoch-ms, returning undefined if invalid to let ProjectionService use its own extraction. */
+  function extractBridgeTimestamp(event: Record<string, unknown>): number | undefined {
+    const raw = event.createdAt;
+    if (raw == null) return undefined;
+    // Handle numeric timestamps (epoch-ms) directly; coerce everything else via Date parsing
+    const ts = typeof raw === 'number' ? raw : new Date(String(raw)).getTime();
+    return Number.isFinite(ts) ? ts : undefined;
+  }
+
+  const projectionBridgeListeners = {
+    nodeIntrospectionUpdate: (event: Record<string, unknown>) => {
+      projectionService.ingest({
+        type: 'node-introspection',
+        source: 'event-consumer',
+        eventTimeMs: extractBridgeTimestamp(event),
+        payload: event,
+      });
+    },
+    nodeHeartbeatUpdate: (event: Record<string, unknown>) => {
+      projectionService.ingest({
+        type: 'node-heartbeat',
+        source: 'event-consumer',
+        eventTimeMs: extractBridgeTimestamp(event),
+        payload: event,
+      });
+    },
+    nodeStateChangeUpdate: (event: Record<string, unknown>) => {
+      projectionService.ingest({
+        type: 'node-state-change',
+        source: 'event-consumer',
+        eventTimeMs: extractBridgeTimestamp(event),
+        payload: event,
+      });
+    },
+    // Canonical event handlers (handleCanonicalNode*) only emit 'nodeRegistryUpdate',
+    // not the granular events above. Bridge the full registry snapshot as a seed event
+    // so the projection stays in sync with canonical-path updates. The seed handler
+    // uses sentinel-0 timestamps, so nodes already updated by a granular event with
+    // a real timestamp will not be overwritten (merge tracker rejects stale updates).
+    nodeRegistryUpdate: (registeredNodes: Record<string, unknown>[]) => {
+      projectionService.ingest({
+        type: 'node-registry-seed',
+        source: 'event-consumer-canonical',
+        payload: { nodes: registeredNodes },
+      });
+    },
+  };
+  eventConsumer.on('nodeIntrospectionUpdate', projectionBridgeListeners.nodeIntrospectionUpdate);
+  eventConsumer.on('nodeHeartbeatUpdate', projectionBridgeListeners.nodeHeartbeatUpdate);
+  eventConsumer.on('nodeStateChangeUpdate', projectionBridgeListeners.nodeStateChangeUpdate);
+  eventConsumer.on('nodeRegistryUpdate', projectionBridgeListeners.nodeRegistryUpdate);
+
+  // Wire intent-event → ProjectionService BEFORE consumer.start() so Phase A
+  // historical events are captured by the projection (not dropped silently).
+  initProjectionListeners();
 
   // Validate and start Kafka event consumer
   try {
@@ -106,56 +193,130 @@ app.use((req, res, next) => {
     } else {
       log('⚠️  Event Bus Data Source validation failed - continuing without event storage');
       log('   Event querying will be limited to database queries');
-
-      // In development mode, start mock generator if Kafka is not available
-      // Skip in test environment to prevent hanging tests
-      if (
-        app.get('env') === 'development' &&
-        process.env.NODE_ENV !== 'test' &&
-        !process.env.VITEST &&
-        process.env.ENABLE_MOCK_EVENTS !== 'false'
-      ) {
-        log('🔧 Starting mock event generator (development mode)');
-        await eventBusDataSource.initializeSchema(); // Ensure schema exists
-        await eventBusMockGenerator.start({
-          continuous: true,
-          interval_ms: 5000,
-          initialChains: 20,
-        });
-        log('✅ Mock event generator started - simulating event chains');
-      }
     }
   } catch (error) {
     console.error('❌ Failed to start Event Bus Data Source:', error);
     console.error('   Event querying endpoints will not be available');
     console.error('   Application will continue with limited functionality');
+  }
 
-    // Try mock generator as fallback in development
-    // Skip in test environment to prevent hanging tests
-    if (
-      app.get('env') === 'development' &&
-      process.env.NODE_ENV !== 'test' &&
-      !process.env.VITEST &&
-      process.env.ENABLE_MOCK_EVENTS !== 'false'
-    ) {
-      try {
-        log('🔧 Attempting to start mock event generator as fallback');
-        await eventBusDataSource.initializeSchema();
-        await eventBusMockGenerator.start({
-          continuous: true,
-          interval_ms: 5000,
-          initialChains: 20,
-        });
-        log('✅ Mock event generator started as fallback');
-      } catch (mockError) {
-        console.error('❌ Failed to start mock event generator:', mockError);
+  // Start read-model consumer (OMN-2061)
+  // Projects Kafka events into omnidash_analytics for durable persistence.
+  // Runs as a separate consumer group from EventConsumer.
+  //
+  // Fire-and-forget intentionally: do NOT await this call.
+  // With MAX_RETRY_ATTEMPTS=10 and exponential backoff up to 30 s, a Kafka
+  // outage would delay server.listen() by over 5 minutes, causing the process
+  // to appear unresponsive to health checks and load balancers. The read-model
+  // consumer is non-critical for HTTP serving — the server must be up first.
+  readModelConsumer
+    .start()
+    .then(() => {
+      const stats = readModelConsumer.getStats();
+      if (stats.isRunning) {
+        log('✅ Read-model consumer started - projecting events to omnidash_analytics');
+      } else {
+        const hasEnvVars =
+          !!(process.env.KAFKA_BROKERS || process.env.KAFKA_BOOTSTRAP_SERVERS) &&
+          !!process.env.OMNIDASH_ANALYTICS_DB_URL;
+        if (hasEnvVars) {
+          log(
+            '⚠️  Read-model consumer failed to connect after max retries (Kafka connectivity issue)'
+          );
+          log('   Check that KAFKA_BROKERS is reachable and the broker is healthy');
+        } else {
+          log(
+            '⚠️  Read-model consumer skipped (missing KAFKA_BROKERS or OMNIDASH_ANALYTICS_DB_URL)'
+          );
+        }
+        log('   Read-model tables will not receive new projections');
       }
-    }
+    })
+    .catch((error) => {
+      const hasEnvVars =
+        !!(process.env.KAFKA_BROKERS || process.env.KAFKA_BOOTSTRAP_SERVERS) &&
+        !!process.env.OMNIDASH_ANALYTICS_DB_URL;
+      if (hasEnvVars) {
+        console.error(
+          '❌ Read-model consumer failed after retries (Kafka connectivity issue):',
+          error
+        );
+        console.error('   Check that KAFKA_BROKERS is reachable and the broker is healthy');
+      } else {
+        console.error(
+          '❌ Failed to start read-model consumer (missing KAFKA_BROKERS or OMNIDASH_ANALYTICS_DB_URL):',
+          error
+        );
+      }
+      console.error('   Read-model tables will not receive new projections');
+      console.error('   Application will continue with limited functionality');
+    });
+
+  // Wire projection event sources (after EventConsumer and EventBusDataSource are started)
+  // This covers EventBusProjection wiring; NodeRegistry bridge listeners are above.
+  let cleanupProjectionSources: (() => void) | undefined;
+  try {
+    cleanupProjectionSources = wireProjectionSources();
+  } catch (error) {
+    console.error('❌ Failed to wire projection sources:', error);
+    console.error('   Projections will remain empty until next restart');
+    console.error('   Application will continue with limited functionality');
+  }
+
+  // Seed projection with any nodes already tracked by EventConsumer from prior runs.
+  // Seed has no eventTimeMs — represents in-memory EventConsumer state, not a
+  // timestamped Kafka event. ProjectionService assigns sentinel (epoch 0), so
+  // MonotonicMergeTracker accepts any future event with a real timestamp.
+  //
+  // NOTE: On a fresh start this will almost always return an empty array because
+  // eventConsumer.start() triggers async Kafka consumer group rebalancing — the
+  // consumer hasn't received messages yet. The seed path only provides value when
+  // EventConsumer has cached nodes from a prior module load (e.g., hot-reload).
+  // New nodes will arrive via the event bridge listeners registered above.
+  const existingNodes = eventConsumer.getRegisteredNodes();
+  if (existingNodes.length > 0) {
+    projectionService.ingest({
+      type: 'node-registry-seed',
+      source: 'event-consumer',
+      payload: { nodes: existingNodes },
+    });
+    log(`Seeded node-registry projection with ${existingNodes.length} existing nodes`);
   }
 
   // Setup WebSocket for real-time events
   if (process.env.ENABLE_REAL_TIME_EVENTS === 'true') {
     setupWebSocket(server);
+  }
+
+  // Demo mode: start ALL mock data generators (fake heartbeats, events, registry)
+  // ONLY runs when DEMO_MODE=true is explicitly set — no fake data by default
+  const isDemoMode =
+    process.env.DEMO_MODE === 'true' && process.env.NODE_ENV !== 'test' && !process.env.VITEST;
+
+  if (isDemoMode) {
+    log('🎭 DEMO MODE enabled — starting mock data generators');
+
+    // Mock event bus generator (fake Kafka event chains)
+    try {
+      await eventBusDataSource.initializeSchema();
+      await eventBusMockGenerator.start({
+        continuous: true,
+        interval_ms: 5000,
+        initialChains: 20,
+      });
+      log('✅ Mock event generator started');
+    } catch (mockError) {
+      console.error('❌ Failed to start mock event generator:', mockError);
+    }
+
+    // Mock registry events (fake heartbeats, state changes)
+    if (process.env.ENABLE_REAL_TIME_EVENTS === 'true') {
+      const parsedInterval = parseInt(process.env.MOCK_REGISTRY_EVENT_INTERVAL || '5000', 10);
+      const mockInterval =
+        !Number.isFinite(parsedInterval) || parsedInterval < 1000 ? 5000 : parsedInterval;
+      startMockRegistryEvents(mockInterval);
+      log(`✅ Mock registry events started (interval: ${mockInterval}ms)`);
+    }
   }
 
   app.use((err: any, _req: Request, res: Response, _next: NextFunction) => {
@@ -182,14 +343,50 @@ app.use((req, res, next) => {
   const port = parseInt(process.env.PORT || '3000', 10);
   server.listen(port, '0.0.0.0', () => {
     log(`serving on port ${port}`);
+    // Write PID file only after the server is successfully listening so that
+    // a startup failure never leaves a stale PID for kill-server.sh to chase.
+    try {
+      writeFileSync(SERVER_PID_FILE, String(process.pid), 'utf-8');
+    } catch {
+      // Non-fatal: PID file is a best-effort cleanup aid
+    }
   });
 
   // Graceful shutdown
+  const cleanupProjectionBridge = () => {
+    eventConsumer.removeListener(
+      'nodeIntrospectionUpdate',
+      projectionBridgeListeners.nodeIntrospectionUpdate
+    );
+    eventConsumer.removeListener(
+      'nodeHeartbeatUpdate',
+      projectionBridgeListeners.nodeHeartbeatUpdate
+    );
+    eventConsumer.removeListener(
+      'nodeStateChangeUpdate',
+      projectionBridgeListeners.nodeStateChangeUpdate
+    );
+    eventConsumer.removeListener(
+      'nodeRegistryUpdate',
+      projectionBridgeListeners.nodeRegistryUpdate
+    );
+  };
+
   process.on('SIGTERM', async () => {
     log('SIGTERM received, shutting down gracefully');
+    try {
+      unlinkSync(SERVER_PID_FILE);
+    } catch {
+      /* already gone */
+    }
+    teardownProjectionListeners();
+    cleanupProjectionBridge();
+    cleanupProjectionSources?.();
+    await readModelConsumer.stop();
     await eventConsumer.stop();
     await eventBusDataSource.stop();
     eventBusMockGenerator.stop();
+    stopMockRegistryEvents();
     server.close(() => {
       log('Server closed');
       process.exit(0);
@@ -198,9 +395,19 @@ app.use((req, res, next) => {
 
   process.on('SIGINT', async () => {
     log('SIGINT received, shutting down gracefully');
+    try {
+      unlinkSync(SERVER_PID_FILE);
+    } catch {
+      /* already gone */
+    }
+    teardownProjectionListeners();
+    cleanupProjectionBridge();
+    cleanupProjectionSources?.();
+    await readModelConsumer.stop();
     await eventConsumer.stop();
     await eventBusDataSource.stop();
     eventBusMockGenerator.stop();
+    stopMockRegistryEvents();
     server.close(() => {
       log('Server closed');
       process.exit(0);

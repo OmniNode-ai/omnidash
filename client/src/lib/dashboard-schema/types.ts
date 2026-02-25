@@ -1,0 +1,571 @@
+/**
+ * Dashboard Schema Types
+ *
+ * Contract-driven types aligned with omnibase_core models.
+ * All types have runtime validation via Zod in validators.ts.
+ */
+
+// Enums matching omnibase_core (validated at runtime via Zod)
+export enum WidgetType {
+  CHART = 'chart',
+  TABLE = 'table',
+  METRIC_CARD = 'metric_card',
+  STATUS_GRID = 'status_grid',
+  EVENT_FEED = 'event_feed',
+}
+
+export enum DashboardTheme {
+  LIGHT = 'light',
+  DARK = 'dark',
+  SYSTEM = 'system',
+}
+
+export enum DashboardStatus {
+  INITIALIZING = 'initializing',
+  CONNECTED = 'connected',
+  DISCONNECTED = 'disconnected',
+  ERROR = 'error',
+}
+
+// Widget Config Types (discriminated by config_kind)
+// NOTE: No raw color values - use theme tokens
+
+export interface WidgetConfigChart {
+  config_kind: 'chart';
+  chart_type: 'line' | 'bar' | 'area' | 'pie' | 'donut' | 'scatter';
+  /** Key into DashboardData for the chart data array */
+  data_key?: string;
+  series: ChartSeriesConfig[];
+  x_axis?: ChartAxisConfig;
+  y_axis?: ChartAxisConfig;
+  show_legend?: boolean;
+  stacked?: boolean;
+  /**
+   * Optional alternate chart type for user toggle.
+   * When set, the chart widget shows a toggle button to switch between
+   * the primary chart_type and this alternate.
+   * Common pattern: chart_type='donut', alternate_chart_type='bar'
+   */
+  alternate_chart_type?: 'line' | 'bar' | 'area' | 'pie' | 'donut' | 'scatter';
+  /**
+   * Maximum number of items to display before aggregating the rest into "Other".
+   * Useful for pie/donut charts with many categories.
+   * @default 7
+   */
+  max_items?: number;
+}
+
+export interface WidgetConfigTable {
+  config_kind: 'table';
+  columns: TableColumnConfig[];
+  rows_key: string; // Key into DashboardData for row array
+  page_size?: number;
+  show_pagination?: boolean;
+  default_sort_key?: string;
+  default_sort_direction?: 'asc' | 'desc';
+  striped?: boolean;
+  hover_highlight?: boolean;
+  /**
+   * When true, indicates the table rows are clickable.
+   * The actual click handler is passed via props to the TableWidget.
+   * This flag enables hover highlight by default and adds visual affordances.
+   */
+  clickable?: boolean;
+}
+
+/**
+ * Configuration for a metric card widget that displays a single KPI value.
+ *
+ * Metric cards are the primary widget for displaying key performance indicators
+ * on dashboards. They support numeric formatting, threshold-based status coloring,
+ * and optional trend indicators for showing changes over time.
+ *
+ * Part of the discriminated union `WidgetConfig`, identified by `config_kind: 'metric_card'`.
+ *
+ * @example Basic metric card
+ * ```typescript
+ * const activeAgents: WidgetConfigMetricCard = {
+ *   config_kind: 'metric_card',
+ *   metric_key: 'agents.active_count',
+ *   label: 'Active Agents',
+ * };
+ * // With data: { 'agents.active_count': 52 }
+ * // Renders: "Active Agents: 52"
+ * ```
+ *
+ * @example Metric card with percentage format and thresholds
+ * ```typescript
+ * const cpuUsage: WidgetConfigMetricCard = {
+ *   config_kind: 'metric_card',
+ *   metric_key: 'system.cpu_percent',
+ *   label: 'CPU Usage',
+ *   value_format: 'percent',
+ *   precision: 1,
+ *   thresholds: [
+ *     { value: 90, severity: 'critical' },
+ *     { value: 70, severity: 'warning' },
+ *   ],
+ * };
+ * // With data: { 'system.cpu_percent': 75.5 }
+ * // Renders: "CPU Usage: 75.5%" with warning status (orange)
+ * ```
+ *
+ * @example Metric card with trend indicator
+ * ```typescript
+ * const requestCount: WidgetConfigMetricCard = {
+ *   config_kind: 'metric_card',
+ *   metric_key: 'api.request_count',
+ *   label: 'Requests/min',
+ *   value_format: 'number',
+ *   show_trend: true,
+ *   trend_key: 'api.request_change_percent',
+ * };
+ * // With data: { 'api.request_count': 1234, 'api.request_change_percent': 12.5 }
+ * // Renders: "Requests/min: 1,234" with "+12.5%" trend indicator
+ * ```
+ *
+ * @see WidgetConfig - The discriminated union this type belongs to
+ * @see MetricThreshold - Threshold configuration for status coloring
+ * @see MetricCardWidget - The React component that renders this config
+ */
+export interface WidgetConfigMetricCard {
+  /**
+   * Discriminator for the widget config union. Must be `'metric_card'`.
+   * Used by TypeScript to narrow the `WidgetConfig` union type.
+   */
+  config_kind: 'metric_card';
+
+  /**
+   * Key path to look up the metric value in DashboardData.
+   * Supports dot-notation for nested objects (e.g., `'agents.active_count'`).
+   */
+  metric_key: string;
+
+  /** Display label shown above or beside the metric value. */
+  label: string;
+
+  /**
+   * Optional unit suffix displayed after the value (e.g., `'ms'`, `'GB'`).
+   * For common units like percent or currency, prefer using `value_format` instead.
+   */
+  unit?: string;
+
+  /**
+   * Format type for the metric value.
+   * - `'number'`: Locale-formatted with thousand separators (default)
+   * - `'currency'`: USD format with $ symbol
+   * - `'percent'`: Value followed by % symbol
+   * - `'duration'`: Value followed by 'ms' suffix
+   */
+  value_format?: 'number' | 'currency' | 'percent' | 'duration';
+
+  /**
+   * Number of decimal places to display.
+   * @default 2
+   */
+  precision?: number;
+
+  /**
+   * Whether to display a trend indicator showing change direction.
+   * Requires `trend_key` to be set.
+   */
+  show_trend?: boolean;
+
+  /**
+   * Key path in DashboardData for the trend/change value.
+   * The value should be a number representing the percentage change.
+   * Positive values show green up arrow, negative show red down arrow.
+   */
+  trend_key?: string;
+
+  /**
+   * Array of thresholds for status-based coloring.
+   * Thresholds are evaluated in descending order; the first one where
+   * `value >= threshold.value` determines the status.
+   * If no threshold is exceeded, status is 'healthy' (green).
+   */
+  thresholds?: MetricThreshold[];
+
+  /**
+   * Optional icon identifier to display with the metric.
+   * Uses the icon system defined in the component library.
+   */
+  icon?: string;
+
+  /**
+   * Explicit semantic status that overrides threshold-based calculation.
+   * Use this for metrics where the status is determined by the metric's
+   * semantic meaning rather than its value (e.g., "Active" should always
+   * be green, "Pending" should always be amber).
+   *
+   * - `'healthy'`: Green - success/active state
+   * - `'warning'`: Amber - pending/watch state
+   * - `'error'`: Red - failure/critical state
+   * - `'neutral'`: No status coloring - informational only
+   *
+   * When set, `thresholds` are ignored.
+   */
+  semantic_status?: 'healthy' | 'warning' | 'error' | 'neutral';
+}
+
+export interface WidgetConfigStatusGrid {
+  config_kind: 'status_grid';
+  items_key: string; // Key into DashboardData
+  id_field: string;
+  label_field: string;
+  status_field: string;
+  columns?: number;
+  show_labels?: boolean;
+  compact?: boolean;
+  /** Whether to show the summary footer with status counts. Default: true */
+  show_summary?: boolean;
+}
+
+export interface WidgetConfigEventFeed {
+  config_kind: 'event_feed';
+  events_key: string; // Key into DashboardData
+  max_items?: number;
+  show_timestamp?: boolean;
+  show_source?: boolean;
+  show_severity?: boolean;
+  group_by_type?: boolean;
+  auto_scroll?: boolean;
+}
+
+export type WidgetConfig =
+  | WidgetConfigChart
+  | WidgetConfigTable
+  | WidgetConfigMetricCard
+  | WidgetConfigStatusGrid
+  | WidgetConfigEventFeed;
+
+// Supporting Types
+export interface ChartSeriesConfig {
+  name: string;
+  data_key: string;
+  series_type?: 'line' | 'bar' | 'area' | 'scatter';
+}
+
+export interface ChartAxisConfig {
+  label?: string;
+  min_value?: number;
+  max_value?: number;
+  show_grid?: boolean;
+}
+
+export interface TableColumnConfig {
+  key: string;
+  header: string;
+  width?: number;
+  sortable?: boolean;
+  align?: 'left' | 'center' | 'right';
+  format?: string;
+  /** Optional alternate data key used for sorting instead of `key`. */
+  sort_key?: string;
+}
+
+export interface MetricThreshold {
+  value: number;
+  severity: 'warning' | 'error' | 'critical'; // Semantic, not raw color
+  label?: string;
+}
+
+/**
+ * Widget Definition
+ *
+ * Aligned with omnibase_core/models/dashboard/ModelWidgetDefinition.
+ * Fields match the Pydantic model for cross-system compatibility.
+ *
+ * @see omnibase_core/models/dashboard/model_widget_definition.py
+ */
+export interface WidgetDefinition {
+  /** Unique identifier for the widget (UUID in omnibase_core) */
+  widget_id: string;
+  /** Display title for the widget */
+  title: string;
+  /** Widget configuration - discriminated union by config_kind */
+  config: WidgetConfig;
+  /** Grid row position (0-indexed) */
+  row: number;
+  /** Grid column position (0-indexed) */
+  col: number;
+  /** Widget width in grid columns (1-12, validated by Zod) */
+  width: number;
+  /** Widget height in grid rows (min 1) */
+  height: number;
+  /** Optional description for the widget */
+  description?: string;
+  /**
+   * Optional data source override for this widget.
+   * If not specified, uses the dashboard-level data_source.
+   * Aligned with omnibase_core ModelWidgetDefinition.data_source
+   */
+  data_source?: string;
+  /**
+   * Optional extra configuration key-value pairs.
+   * Allows widget-specific customization without schema changes.
+   * Aligned with omnibase_core ModelWidgetDefinition.extra_config
+   */
+  extra_config?: Record<string, string>;
+}
+
+// Layout Configuration
+export interface DashboardLayoutConfig {
+  columns: number;
+  row_height: number;
+  gap: number;
+  responsive?: boolean;
+}
+
+// Top-Level Dashboard Configuration
+export interface DashboardConfig {
+  dashboard_id: string;
+  name: string;
+  description?: string;
+  layout: DashboardLayoutConfig;
+  widgets: WidgetDefinition[];
+  data_source: string; // Single data source for entire dashboard
+  refresh_interval_seconds?: number;
+  theme?: DashboardTheme;
+  initial_status?: DashboardStatus;
+
+  /**
+   * Optional runtime configuration for dashboard-specific settings.
+   * Contains type-specific configs like event_monitoring for Event Bus dashboards.
+   */
+  runtime_config?: DashboardRuntimeConfig;
+
+  /**
+   * Topic metadata for event bus dashboards.
+   * Maps topic names (string keys) to their display configuration.
+   * Used to provide human-readable labels and categorization for Kafka topics.
+   *
+   * @example
+   * ```typescript
+   * topic_metadata: {
+   *   'agent-actions': {
+   *     label: 'Agent Actions',
+   *     description: 'Tool calls, decisions, errors',
+   *     category: 'actions',
+   *   },
+   * }
+   * ```
+   */
+  topic_metadata?: Record<string, TopicMetadata>;
+
+  /**
+   * List of Kafka topics monitored by this dashboard.
+   * Used for event bus and similar real-time monitoring dashboards.
+   * Topics should have corresponding entries in topic_metadata.
+   *
+   * @example
+   * ```typescript
+   * monitored_topics: [
+   *   'agent-routing-decisions',
+   *   'agent-actions',
+   *   'node.heartbeat',
+   * ]
+   * ```
+   */
+  monitored_topics?: string[];
+}
+
+// ============================================================================
+// Runtime Configuration Types
+// ============================================================================
+
+/**
+ * Event Monitoring Configuration
+ *
+ * Runtime settings for the Event Bus Monitor dashboard component.
+ * Controls memory usage, display limits, and calculation windows.
+ *
+ * @example Basic configuration
+ * ```typescript
+ * const config: EventMonitoringConfig = {
+ *   max_events: 100,
+ *   max_events_options: [50, 100, 200, 500],
+ *   throughput_cleanup_interval: 100,
+ *   time_series_window_ms: 300000, // 5 minutes
+ *   throughput_window_ms: 60000,   // 1 minute
+ *   max_breakdown_items: 50,
+ * };
+ * ```
+ */
+export interface EventMonitoringConfig {
+  /**
+   * Maximum events to retain in memory for display.
+   * Higher values show more history but use more memory.
+   * @default 50
+   */
+  max_events: number;
+
+  /**
+   * Available options for the max events dropdown selector.
+   * Users can switch between these values at runtime.
+   * @default [50, 100, 200, 500, 1000]
+   */
+  max_events_options: number[];
+
+  /**
+   * Number of events between throughput calculation cleanups.
+   * Lower values provide smoother throughput metrics but more CPU usage.
+   * @default 100
+   */
+  throughput_cleanup_interval: number;
+
+  /**
+   * Time series display window in milliseconds.
+   * Determines how far back the time series chart shows data.
+   * @default 300000 (5 minutes)
+   */
+  time_series_window_ms: number;
+
+  /**
+   * Throughput calculation window in milliseconds.
+   * Used to compute events/second over this rolling window.
+   * @default 60000 (1 minute)
+   */
+  throughput_window_ms: number;
+
+  /**
+   * Maximum number of topics/event types to track before pruning.
+   * Prevents unbounded memory growth with many unique event types.
+   * @default 50
+   */
+  max_breakdown_items: number;
+
+  /**
+   * Interval in milliseconds for periodic timestamp cleanup.
+   * Runs on a setInterval to clean stale timestamps even when no events arrive,
+   * ensuring eventsPerSecond drops to 0 when event flow stops.
+   * @default 10000 (10 seconds)
+   */
+  periodic_cleanup_interval_ms: number;
+
+  // ── Burst Detection Config (OMN-2158) ─────────────────────────────
+
+  /**
+   * Unified monitoring window for all windowed metrics (ms).
+   * Single source of truth for baseline computation.
+   * @default 300000 (5 minutes)
+   */
+  monitoring_window_ms: number;
+
+  /**
+   * Staleness threshold — independent from monitoring_window_ms.
+   * Events older than this are considered stale.
+   * @default 600000 (10 minutes)
+   */
+  staleness_threshold_ms: number;
+
+  /**
+   * Short window for burst/spike detection (ms).
+   * @default 30000 (30 seconds)
+   */
+  burst_window_ms: number;
+
+  /**
+   * Short-window rate must be >= this multiplier of baseline rate
+   * to trigger a throughput burst.
+   * @default 3
+   */
+  burst_throughput_multiplier: number;
+
+  /**
+   * Minimum absolute events/sec in the short window to trigger a throughput burst.
+   * Prevents false positives when baseline is very low.
+   * @default 5
+   */
+  burst_throughput_min_rate: number;
+
+  /**
+   * Short-window error rate must be >= this multiplier of baseline error rate
+   * to trigger an error spike.
+   * @default 2
+   */
+  burst_error_multiplier: number;
+
+  /**
+   * Absolute error rate threshold (fraction 0.0–1.0).
+   * If short-window error rate >= this, it's an error spike regardless of multiplier.
+   * @default 0.05 (5%)
+   */
+  burst_error_absolute_threshold: number;
+
+  /**
+   * Minimum events in the short window to compute error rate.
+   * Prevents false positives from small sample sizes.
+   * @default 10
+   */
+  burst_error_min_events: number;
+
+  /**
+   * Cooldown period after a burst is detected (ms).
+   * Prevents banner flapping between burst and normal states.
+   * @default 15000 (15 seconds)
+   */
+  burst_cooldown_ms: number;
+}
+
+/**
+ * Dashboard Runtime Configuration
+ *
+ * Container for dashboard-specific runtime settings that can be
+ * configured per-dashboard. Each dashboard type can have its own
+ * optional configuration section.
+ *
+ * @example Dashboard with event monitoring config
+ * ```typescript
+ * const dashboardConfig: DashboardConfig = {
+ *   dashboard_id: 'event-bus-monitor',
+ *   name: 'Event Bus Monitor',
+ *   // ... other fields
+ *   runtime_config: {
+ *     event_monitoring: {
+ *       max_events: 200,
+ *       max_events_options: [100, 200, 500],
+ *       throughput_cleanup_interval: 50,
+ *       time_series_window_ms: 600000,
+ *       throughput_window_ms: 30000,
+ *       max_breakdown_items: 100,
+ *     },
+ *   },
+ * };
+ * ```
+ */
+export interface DashboardRuntimeConfig {
+  /** Event monitoring specific settings for Event Bus dashboards */
+  event_monitoring?: EventMonitoringConfig;
+}
+
+// ============================================================================
+// Topic Metadata Types (for Event Bus dashboards)
+// ============================================================================
+
+/**
+ * Topic Metadata Configuration
+ *
+ * Describes a Kafka/event bus topic with display information and categorization.
+ * Used by Event Bus dashboards to provide human-readable labels and groupings.
+ *
+ * @example
+ * ```typescript
+ * const topicMeta: TopicMetadata = {
+ *   label: 'Agent Actions',
+ *   description: 'Tool calls, decisions, errors, and successes',
+ *   category: 'actions',
+ * };
+ * ```
+ */
+export interface TopicMetadata {
+  /** Human-readable display label for the topic */
+  label: string;
+  /** Description explaining what events this topic carries */
+  description: string;
+  /** Category for grouping topics (e.g., 'routing', 'lifecycle', 'health', 'actions') */
+  category: string;
+}
+
+// Dashboard Data (fetched once, widgets select from this)
+export type DashboardData = Record<string, unknown>;

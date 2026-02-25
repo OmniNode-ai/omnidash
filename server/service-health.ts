@@ -3,11 +3,10 @@
  * Tests all external service connections and provides diagnostic information
  */
 
-import { getIntelligenceDb } from './storage';
+import { tryGetIntelligenceDb, isDatabaseConfigured, getDatabaseError } from './storage';
 import { sql } from 'drizzle-orm';
 import { eventConsumer } from './event-consumer';
 import { Kafka } from 'kafkajs';
-import { getOmniarchonUrl } from './utils/service-urls';
 
 export interface ServiceHealthCheck {
   service: string;
@@ -26,10 +25,7 @@ export async function checkAllServices(): Promise<ServiceHealthCheck[]> {
   // 2. Kafka/Redpanda Check
   checks.push(await checkKafka());
 
-  // 3. Omniarchon Intelligence Service Check
-  checks.push(await checkOmniarchon());
-
-  // 4. Event Consumer Check
+  // 3. Event Consumer Check
   checks.push(await checkEventConsumer());
 
   return checks;
@@ -37,8 +33,34 @@ export async function checkAllServices(): Promise<ServiceHealthCheck[]> {
 
 async function checkPostgreSQL(): Promise<ServiceHealthCheck> {
   const startTime = Date.now();
+
+  // Check if database is configured first (graceful degradation)
+  if (!isDatabaseConfigured()) {
+    return {
+      service: 'PostgreSQL',
+      status: 'down',
+      latencyMs: 0,
+      error: getDatabaseError() || 'Database not configured',
+      details: {
+        configured: false,
+        message:
+          'Dashboard running in demo-only mode. Set POSTGRES_* environment variables to enable database.',
+      },
+    };
+  }
+
   try {
-    const result = await getIntelligenceDb().execute(
+    const db = tryGetIntelligenceDb();
+    if (!db) {
+      return {
+        service: 'PostgreSQL',
+        status: 'down',
+        latencyMs: 0,
+        error: 'Database connection not available',
+      };
+    }
+
+    const result = await db.execute(
       sql`SELECT 1 as check, NOW() as current_time, version() as pg_version`
     );
     const latency = Date.now() - startTime;
@@ -52,6 +74,7 @@ async function checkPostgreSQL(): Promise<ServiceHealthCheck> {
       status: latency < 1000 ? 'up' : 'warning',
       latencyMs: latency,
       details: {
+        configured: true,
         version: firstRow.pg_version?.substring(0, 50) || 'unknown',
         currentTime: firstRow.current_time,
       },
@@ -62,6 +85,10 @@ async function checkPostgreSQL(): Promise<ServiceHealthCheck> {
       status: 'down',
       latencyMs: Date.now() - startTime,
       error: error instanceof Error ? error.message : 'Unknown error',
+      details: {
+        configured: true,
+        message: 'Database configured but connection failed. Check network/credentials.',
+      },
     };
   }
 }
@@ -78,7 +105,7 @@ async function checkKafka(): Promise<ServiceHealthCheck> {
       latencyMs: Date.now() - startTime,
       error: 'KAFKA_BROKERS or KAFKA_BOOTSTRAP_SERVERS environment variable not configured',
       details: {
-        message: 'Set KAFKA_BROKERS in .env file (e.g., KAFKA_BROKERS=192.168.86.200:29092)',
+        message: 'Set KAFKA_BROKERS in .env file (e.g., KAFKA_BROKERS=host:port)',
       },
     };
   }
@@ -135,61 +162,6 @@ async function checkKafka(): Promise<ServiceHealthCheck> {
       error: error instanceof Error ? error.message : 'Unknown error',
       details: {
         brokers: brokers,
-      },
-    };
-  }
-}
-
-async function checkOmniarchon(): Promise<ServiceHealthCheck> {
-  const startTime = Date.now();
-  const omniarchonUrl = getOmniarchonUrl();
-
-  try {
-    const response = await fetch(`${omniarchonUrl}/health`, {
-      method: 'GET',
-      signal: AbortSignal.timeout(3000), // 3 second timeout
-    });
-
-    const latency = Date.now() - startTime;
-
-    if (response.ok) {
-      let healthData: any = {};
-      try {
-        healthData = await response.json();
-      } catch {
-        // If JSON parse fails, just check status
-      }
-
-      return {
-        service: 'Omniarchon',
-        status: 'up',
-        latencyMs: latency,
-        details: {
-          url: omniarchonUrl,
-          statusCode: response.status,
-          health: healthData,
-        },
-      };
-    } else {
-      return {
-        service: 'Omniarchon',
-        status: 'down',
-        latencyMs: latency,
-        error: `HTTP ${response.status}: ${response.statusText}`,
-        details: {
-          url: omniarchonUrl,
-        },
-      };
-    }
-  } catch (error) {
-    const latency = Date.now() - startTime;
-    return {
-      service: 'Omniarchon',
-      status: 'down',
-      latencyMs: latency,
-      error: error instanceof Error ? error.message : 'Unknown error',
-      details: {
-        url: omniarchonUrl,
       },
     };
   }

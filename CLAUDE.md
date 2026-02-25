@@ -2,23 +2,22 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
-> **📚 Shared Infrastructure**: For common OmniNode infrastructure (PostgreSQL, Kafka/Redpanda, remote server topology, Docker networking, environment variables), see **`~/.claude/CLAUDE.md`**. This file contains Omnidash-specific frontend architecture and development only.
+> **Shared Standards**: See **`~/.claude/CLAUDE.md`** for:
+> - Shared development standards (Git, testing, architecture)
+> - Environment configuration priority rules
+> - Infrastructure topology (PostgreSQL, Kafka/Redpanda, remote server, Docker networking)
+> - Environment variables and LLM architecture
+>
+> This file contains **omnidash-specific** frontend architecture and development only.
 
-## ⚠️ CRITICAL: Configuration Management
+## Omnidash-Specific Configuration
 
-**ALWAYS check `.env` file for actual configuration values before making assumptions!**
+Key values specific to this repository (all sourced from `.env`):
 
-Key configuration values (see `.env` for full details):
-
-- **Port**: 3000 (set in package.json: `PORT=3000 npm run dev`)
-- **Database**: All connection details in `.env` file (never hardcode passwords!)
-- **Kafka Brokers**: `192.168.86.200:9092` (see `~/.claude/CLAUDE.md` for connection patterns)
-
-**Before running any commands that require configuration:**
-
-1. Read `.env` file to get actual values
-2. Use those exact values (don't guess or use old defaults)
-3. Server runs on port **3000**, not 5000!
+- **Port**: 3000 (set in package.json: `PORT=3000 npm run dev`) -- NOT 5000
+- **Kafka Brokers**: `192.168.86.200:29092`
+- **Read-Model DB**: `omnidash_analytics` (omnidash's own database, not `omninode_bridge`)
+- **Database credentials**: Always sourced from `.env` — never hardcode passwords
 
 ## Common Commands
 
@@ -43,6 +42,7 @@ npm run test:coverage     # Generate test coverage report
 
 ```bash
 npm run db:push     # Push Drizzle schema changes to PostgreSQL
+npm run db:migrate  # Run SQL migrations from migrations/ (recommended for omnidash_analytics read-model)
 ```
 
 **Testing APIs**:
@@ -70,23 +70,36 @@ node scripts/seed-events.ts      # Direct script execution
 
 **Dashboard URLs** (always port 3000):
 
-- Agent Operations: http://localhost:3000/
-- Pattern Learning: http://localhost:3000/patterns
-- Intelligence Operations: http://localhost:3000/intelligence
-- Event Flow: http://localhost:3000/events
-- Code Intelligence: http://localhost:3000/code
-- Knowledge Graph: http://localhost:3000/knowledge
-- Platform Health: http://localhost:3000/health
-- Developer Experience: http://localhost:3000/developer
-- Chat: http://localhost:3000/chat
+Category Dashboards (default):
+- Speed: http://localhost:3000/category/speed
+- Success: http://localhost:3000/category/success
+- Intelligence: http://localhost:3000/category/intelligence
+- System Health: http://localhost:3000/category/health
 
-**Environment**:
+Advanced Pages:
+- Event Stream: http://localhost:3000/events
+- Live Event Stream (investor demo): http://localhost:3000/live-events
+- Pipeline Metrics: http://localhost:3000/extraction
+- Injection Performance: http://localhost:3000/effectiveness
+- Injection Latency: http://localhost:3000/effectiveness/latency
+- Injection Utilization: http://localhost:3000/effectiveness/utilization
+- Injection A/B Comparison: http://localhost:3000/effectiveness/ab
+- Execution Graph: http://localhost:3000/graph
+- Cost Trends: http://localhost:3000/cost-trends
+- Intent Signals: http://localhost:3000/intents
+- Pattern Intelligence: http://localhost:3000/patterns
+- Pattern Enforcement: http://localhost:3000/enforcement
+- Context Enrichment: http://localhost:3000/enrichment
+- LLM Routing Effectiveness: http://localhost:3000/llm-routing
+- Node Registry: http://localhost:3000/registry
+- Registry Discovery: http://localhost:3000/discovery
+- Validation: http://localhost:3000/validation
+- Baselines & ROI: http://localhost:3000/baselines
+- Correlation Trace: http://localhost:3000/trace
+- Learned Insights: http://localhost:3000/insights
+- Widget Showcase: http://localhost:3000/showcase
 
-- **ALWAYS CHECK `.env` FILE FIRST** for actual configuration values
-- Runs on `PORT=3000` (configured in package.json dev script, NOT 5000!)
-- Database: All connection details in `.env` file (host, port, credentials)
-- Kafka: `192.168.86.200:9092`
-- All configuration values in `.env` file - never assume defaults
+**Environment**: Always verify `.env` before assuming defaults (see `~/.claude/CLAUDE.md` for full configuration priority rules). Omnidash runs on `PORT=3000` (configured in package.json dev script).
 
 ## Project Architecture
 
@@ -100,19 +113,35 @@ Three-directory monorepo with TypeScript path aliases:
 
 ### Frontend Architecture
 
-**Router Pattern**: Wouter-based SPA with 9 dashboard routes representing different platform capabilities:
+**Router Pattern**: Wouter-based SPA with dashboard routes. Default nav shows 4 category dashboards; granular drill-down pages live in a collapsible **Advanced** section (OMN-2182).
 
-| Route           | Component              | Purpose                         |
-| --------------- | ---------------------- | ------------------------------- |
-| `/`             | AgentOperations        | 52 AI agents monitoring         |
-| `/patterns`     | PatternLearning        | 25,000+ code patterns           |
-| `/intelligence` | IntelligenceOperations | 168+ AI operations              |
-| `/code`         | CodeIntelligence       | Semantic search, quality gates  |
-| `/events`       | EventFlow              | Kafka/Redpanda event processing |
-| `/knowledge`    | KnowledgeGraph         | Code relationship visualization |
-| `/health`       | PlatformHealth         | System health monitoring        |
-| `/developer`    | DeveloperExperience    | Workflow metrics                |
-| `/chat`         | Chat                   | AI query assistant              |
+| Section | Group | Route | Component | Purpose |
+| ------- | ----- | ----- | --------- | ------- |
+| **Dashboards** | | `/category/speed` | SpeedCategory | Cache hit rate, latency percentiles, pipeline health |
+| **Dashboards** | | `/category/success` | SuccessCategory | A/B comparison, injection hit rates, effectiveness trends |
+| **Dashboards** | | `/category/intelligence` | IntelligenceCategory | Pattern utilization, intent classification, behavior tracking |
+| **Dashboards** | | `/category/health` | SystemHealthCategory | Validation counts, node registry, health checks |
+| **Advanced** | Monitoring | `/events` (+ `/`) | EventBusMonitor | Real-time Kafka event stream visualization |
+| **Advanced** | Monitoring | `/live-events` | LiveEventStream | Investor-demo real-time Kafka event stream with pause/resume (OMN-1405) |
+| **Advanced** | Monitoring | `/extraction` | ExtractionDashboard | Pattern extraction metrics and pipeline health |
+| **Advanced** | Monitoring | `/effectiveness` | EffectivenessSummary | Injection effectiveness metrics and A/B analysis |
+| **Advanced** | Monitoring | `/effectiveness/latency` | EffectivenessLatency | Latency breakdown, P50/P95/P99 comparison, cache hit rate (OMN-1891) |
+| **Advanced** | Monitoring | `/effectiveness/utilization` | EffectivenessUtilization | Utilization distribution histogram and per-method median scores (OMN-1891) |
+| **Advanced** | Monitoring | `/effectiveness/ab` | EffectivenessAB | Treatment vs control cohort A/B comparison for injection effectiveness (OMN-1891) |
+| **Advanced** | Monitoring | `/graph` | ExecutionGraph | Live ONEX node execution graph with real-time data flow (OMN-1406, OMN-2302) |
+| **Advanced** | Monitoring | `/cost-trends` | CostTrendDashboard | LLM cost trends, budget alerts, token usage |
+| **Advanced** | Intelligence | `/intents` | IntentDashboard | Real-time intent classification and analysis |
+| **Advanced** | Intelligence | `/patterns` | PatternLearning | Code pattern discovery and learning analytics |
+| **Advanced** | Intelligence | `/enforcement` | PatternEnforcement | Enforcement hit rate, violations, and correction rate |
+| **Advanced** | Intelligence | `/enrichment` | ContextEnrichmentDashboard | Hit rate per channel, token savings, latency distribution (OMN-2280) |
+| **Advanced** | Intelligence | `/llm-routing` | LlmRoutingDashboard | LLM vs fuzzy routing agreement rate, latency, cost per decision (OMN-2279) |
+| **Advanced** | System | `/registry` | NodeRegistry | Contract-driven node and service discovery |
+| **Advanced** | System | `/discovery` | RegistryDiscovery | Live service instance discovery with filtering and node detail panel (OMN-1278) |
+| **Advanced** | System | `/validation` | ValidationDashboard | Cross-repo validation runs and violation trends |
+| **Advanced** | System | `/baselines` | BaselinesROI | Token/time delta, retry counts, and promotion recommendations for A/B patterns (OMN-2156) |
+| **Advanced** | Tools | `/trace` | CorrelationTrace | Trace events by correlation ID |
+| **Advanced** | Tools | `/insights` | LearnedInsights | Patterns and conventions from OmniClaude sessions |
+| **Advanced** | Preview | `/showcase` | WidgetShowcase | All 5 contract-driven widget types |
 
 **Component System**: Built on shadcn/ui (New York variant) with Radix UI primitives. All UI components live in `client/src/components/ui/` and follow shadcn conventions.
 
@@ -172,7 +201,7 @@ Three-directory monorepo with TypeScript path aliases:
   - `shared/schema.ts` - User authentication tables
   - `shared/intelligence-schema.ts` - 30+ intelligence tracking tables
 - **Type Safety**: Zod schemas auto-generated from Drizzle via `drizzle-zod`
-- **Connection**: Two databases - app DB and intelligence DB (`omninode_bridge`)
+- **Connection**: Two databases - app DB and read-model DB (`omnidash_analytics`, populated by Kafka consumer projections from upstream services)
 
 **Request Logging**: Custom middleware logs API requests (`/api` paths only) with duration and truncated JSON responses (80 char limit). WebSocket connections logged separately.
 
@@ -202,7 +231,7 @@ export type User = typeof users.$inferSelect;           // Drizzle inference
 export const insertUserSchema = createInsertSchema(users); // Zod schema
 ```
 
-**Component Reuse Philosophy**: MetricCard, ChartContainer, and StatusBadge are designed as reusable primitives across all 8 operational dashboards. When adding new metrics or visualizations, extend these components rather than creating new patterns.
+**Component Reuse Philosophy**: MetricCard, ChartContainer, and StatusBadge are designed as reusable primitives across all dashboard pages. When adding new metrics or visualizations, extend these components rather than creating new patterns.
 
 **Responsive Grid System**: Dashboards use Tailwind's responsive grid utilities with breakpoints:
 
@@ -224,7 +253,7 @@ export const insertUserSchema = createInsertSchema(users); // Zod schema
 **Event Consumer** (`server/event-consumer.ts`):
 
 - Kafka consumer using `kafkajs` library
-- Connects to `192.168.86.200:9092` (configured via `KAFKA_BOOTSTRAP_SERVERS`)
+- Connects to `192.168.86.200:29092` (configured via `KAFKA_BROKERS`)
 - Consumes from multiple topics: `agent-routing-decisions`, `agent-transformation-events`, `router-performance-metrics`, `agent-actions`
 - In-memory event aggregation and caching
 - Provides aggregated metrics via `getAggregatedMetrics()` method
@@ -274,14 +303,6 @@ ws.onmessage = (event) => {
   - Tests for each dashboard's data fetching logic
 - Testing tools: @testing-library/react, @testing-library/user-event, vitest
 
-**Running Tests**:
-
-```bash
-npm run test              # Run all tests
-npm run test:ui           # Interactive test UI
-npm run test:coverage     # Generate coverage report
-```
-
 **Replit-Specific Plugins**: Development build includes Replit-specific Vite plugins (`@replit/vite-plugin-*`) only when `REPL_ID` environment variable is present. These are skipped in non-Replit environments.
 
 ## Intelligence Infrastructure Integration
@@ -304,19 +325,23 @@ npm run test:coverage     # Generate coverage report
 
 ### Available Data Sources
 
-**PostgreSQL Database** (`192.168.86.200:5436`):
+**Omnidash Read-Model Database** (`omnidash_analytics`):
 
-- **Database**: `omninode_bridge`
-- **30+ tables** tracking agent execution, routing, patterns, and performance
-- **Key tables**:
-  - `agent_routing_decisions` - Agent selection with confidence scoring (~1K/day)
-  - `agent_manifest_injections` - Complete manifest snapshots (~1K/day)
-  - `agent_actions` - Tool calls, decisions, errors (~50K/day)
-  - `workflow_steps` - Workflow execution steps (~10K/day)
-  - `llm_calls` - LLM API calls with costs (~5K/day)
-  - `error_events` / `success_events` - Error and success tracking
+- **Database**: `omnidash_analytics` (omnidash's own read-model database)
+- Populated by `server/read-model-consumer.ts` which projects Kafka events into local tables
+- **Key projected tables**:
+  - `agent_routing_decisions` - Agent selection with confidence scoring
+  - `agent_actions` - Tool calls, decisions, errors
+  - `agent_transformation_events` - Polymorphic agent transformations
+  - `projection_watermarks` - Consumer progress tracking
 
-**Kafka Event Bus** (`192.168.86.200:9092`):
+**Upstream Source Database** (`omninode_bridge` on `192.168.86.200:5436`):
+
+- Omnidash does NOT query this database directly
+- Events originating from this database are published to Kafka topics and consumed by the read-model consumer above
+- Contains 30+ tables tracking agent execution, routing, patterns, and performance
+
+**Kafka Event Bus** (`192.168.86.200:29092`):
 
 - **Real-time event streaming** with <100ms latency
 - **Topics**: `agent-routing-decisions`, `agent-transformation-events`, `router-performance-metrics`, `agent-actions`
@@ -328,15 +353,12 @@ npm run test:coverage     # Generate coverage report
 Add to `.env` for intelligence integration (see `.env.example` for template):
 
 ```bash
-# PostgreSQL Intelligence Database
+# Omnidash Read-Model Database (omnidash's own database)
 # See .env file for actual credentials - NEVER commit passwords to git!
-DATABASE_URL="postgresql://postgres:<password>@192.168.86.200:5436/omninode_bridge"
-POSTGRES_HOST=192.168.86.200
-POSTGRES_PORT=5436
-POSTGRES_DATABASE=omninode_bridge
+OMNIDASH_ANALYTICS_DB_URL="postgresql://postgres:<password>@192.168.86.200:5436/omnidash_analytics"
 
-# Kafka Event Streaming
-KAFKA_BROKERS=192.168.86.200:9092
+# Kafka Event Streaming (source of events projected into omnidash_analytics)
+KAFKA_BROKERS=192.168.86.200:29092
 KAFKA_CLIENT_ID=omnidash-dashboard
 KAFKA_CONSUMER_GROUP=omnidash-consumers-v2
 
@@ -349,7 +371,8 @@ ENABLE_REAL_TIME_EVENTS=true
 **Pattern 1: Database-Backed API Endpoints** (✅ Implemented)
 
 - Express API endpoints in `server/intelligence-routes.ts`, `server/savings-routes.ts`, `server/agent-registry-routes.ts`
-- Uses Drizzle ORM with PostgreSQL at `192.168.86.200:5436`
+- Uses Drizzle ORM with the local `omnidash_analytics` read-model database
+- Data is projected from Kafka events by `server/read-model-consumer.ts`
 - Backend aggregation and caching for performance
 - Integrate with TanStack Query in dashboard components
 
@@ -416,25 +439,20 @@ All tables use Drizzle ORM with Zod validation schemas auto-generated via `creat
 
 ### Dashboard-Specific Data Mappings
 
-**AgentOperations** → `agent_routing_decisions`, `agent_actions`, topic: `agent-actions`
-**PatternLearning** → `agent_manifest_injections`, pattern data
-**IntelligenceOperations** → `agent_manifest_injections`, `llm_calls`
-**EventFlow** → Kafka consumer lag metrics, direct topic monitoring
-**CodeIntelligence** → semantic search, `workflow_steps`
-**PlatformHealth** → `error_events`, database connection pool stats
-**DeveloperExperience** → `agent_routing_decisions`, `workflow_steps`
+**EventBusMonitor** (`/events`) → Kafka consumer lag metrics, direct topic monitoring, topic: `agent-actions`
+**ExtractionDashboard** (`/extraction`) → `agent_manifest_injections`, pattern data, pipeline health metrics
+**EffectivenessSummary** (`/effectiveness`) → `agent_manifest_injections`, `llm_calls`, A/B analysis
+**IntentDashboard** (`/intents`) → intent classification data, real-time signal analysis
+**PatternLearning** (`/patterns`) → `agent_manifest_injections`, pattern data, learning analytics
+**NodeRegistry** (`/registry`) → `agent_routing_decisions`, `agent_actions`, service discovery
+**ValidationDashboard** (`/validation`) → `error_events`, validation runs, violation trends
+**CorrelationTrace** (`/trace`) → `workflow_steps`, correlation data, event tracing
+**LearnedInsights** (`/insights`) → `agent_routing_decisions`, `workflow_steps`, session patterns
+**WidgetShowcase** (`/showcase`) → preview/demo data (contract-driven widget types)
 
 ### Complete Integration Guide
 
-See `INTELLIGENCE_INTEGRATION.md` for comprehensive details including:
-
-- Complete database schema documentation (30+ tables)
-- Kafka event schemas with TypeScript interfaces
-- Example SQL queries for each dashboard
-- Full API endpoint implementations
-- WebSocket/SSE code examples
-- Performance optimization strategies
-- Troubleshooting guide
+See `docs/architecture/OVERVIEW.md` for system architecture, `docs/architecture/READ_MODEL_PROJECTION_ARCHITECTURE.md` for projection details, and `docs/reference/API_ENDPOINT_CATALOG.md` for all endpoint documentation.
 
 ## Design System Reference
 
@@ -451,19 +469,8 @@ See `design_guidelines.md` for comprehensive Carbon Design System implementation
 
 **Application Schema**: `shared/schema.ts` contains basic user authentication tables.
 
-**Intelligence Schema**: `shared/intelligence-schema.ts` (✅ already implemented) contains 30+ tables for agent observability:
+**Intelligence Schema**: `shared/intelligence-schema.ts` contains 30+ tables for agent observability (see "Database Schema for Intelligence" above for the full table listing).
 
-- Agent routing and decision tracking
-- Workflow execution and performance metrics
-- Pattern learning and manifest generation
-- LLM API calls with cost tracking
-- Error and success event logging
-- Debug intelligence capture
+Both schemas use Drizzle ORM with Zod validation (`createInsertSchema()` from `drizzle-zod`) and PostgreSQL via `@neondatabase/serverless`.
 
-Both schemas use:
-
-- Drizzle ORM for type-safe database access
-- `createInsertSchema()` from `drizzle-zod` for runtime validation
-- PostgreSQL with connection pooling via `@neondatabase/serverless`
-
-The intelligence database (`omninode_bridge`) is on a separate PostgreSQL instance at `192.168.86.200:5436`.
+**Architectural invariant**: Omnidash never queries the upstream `omninode_bridge` database directly. All intelligence data flows through Kafka into omnidash's own `omnidash_analytics` read-model database (see "Available Data Sources" above).

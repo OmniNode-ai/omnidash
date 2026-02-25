@@ -112,6 +112,7 @@ function logFallback(
       break;
     case 'debug':
     default:
+      // eslint-disable-next-line no-console
       console.debug(message, { fieldName, context, usedLabel, fallbackIndex });
       break;
   }
@@ -230,6 +231,7 @@ export function ensureEnvVar(varName: string, fallback: string, level: LogLevel 
       break;
     case 'debug':
     default:
+      // eslint-disable-next-line no-console
       console.debug(message);
       break;
   }

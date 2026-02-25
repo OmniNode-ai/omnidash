@@ -117,7 +117,6 @@ import EnhancedAnalytics from '../preview/EnhancedAnalytics';
 import TechDebtAnalysis from '../preview/TechDebtAnalysis';
 import FeatureShowcase from '../preview/FeatureShowcase';
 import AdvancedSettings from '../preview/AdvancedSettings';
-import ContractBuilder from '../preview/ContractBuilder';
 import PatternLineage from '../preview/PatternLineage';
 import NodeNetworkComposer from '../preview/NodeNetworkComposer';
 import SystemHealth from '../preview/SystemHealth';
@@ -129,7 +128,6 @@ const PREVIEW_COMPONENTS = [
   { name: 'TechDebtAnalysis', Component: TechDebtAnalysis },
   { name: 'FeatureShowcase', Component: FeatureShowcase },
   { name: 'AdvancedSettings', Component: AdvancedSettings },
-  { name: 'ContractBuilder', Component: ContractBuilder },
   { name: 'PatternLineage', Component: PatternLineage },
   { name: 'NodeNetworkComposer', Component: NodeNetworkComposer },
   { name: 'SystemHealth', Component: SystemHealth },

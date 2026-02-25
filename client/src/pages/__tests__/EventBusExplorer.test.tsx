@@ -6,7 +6,7 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { render, screen, waitFor } from '@testing-library/react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import type { ReactNode } from 'react';
-import EventBusExplorer from '../EventBusExplorer';
+import EventBusExplorer from '@/_archive/pages/EventBusExplorer';
 import { eventBusSource } from '@/lib/data-sources';
 
 // Mock the data source
@@ -91,7 +91,7 @@ describe('EventBusExplorer', () => {
         timestamp: new Date().toISOString(),
         tenant_id: 'default-tenant',
         namespace: 'development',
-        source: 'omniarchon',
+        source: 'omniintelligence',
         correlation_id: 'corr-123',
         schema_ref: 'registry://omninode/intelligence/query_requested/v1',
         payload: {},

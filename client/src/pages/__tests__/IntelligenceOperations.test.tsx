@@ -10,16 +10,14 @@ vi.mock('@/hooks/useWebSocket', () => ({
   })),
 }));
 
-vi.mock('@/lib/data-sources', async () => {
-  const actual = await vi.importActual<typeof import('@/lib/data-sources')>('@/lib/data-sources');
-  return {
-    ...actual,
-    agentOperationsSource: {
-      ...actual.agentOperationsSource,
-      fetchAll: vi.fn(),
-    },
-  };
-});
+// Create a mock fetchAll function that can be configured per test
+const mockFetchAll = vi.fn();
+
+vi.mock('@/lib/data-sources', () => ({
+  agentOperationsSource: {
+    fetchAll: mockFetchAll,
+  },
+}));
 
 function renderWithClient(ui: React.ReactNode) {
   const queryClient = new QueryClient({
@@ -52,6 +50,7 @@ describe('IntelligenceOperations page', () => {
     vi.clearAllMocks();
     vi.useRealTimers();
     localStorageMock.getItem.mockReturnValue('24h');
+    mockFetchAll.mockReset();
   });
 
   afterEach(async () => {
@@ -128,7 +127,7 @@ describe('IntelligenceOperations page', () => {
               latencyTrend: [],
               serviceHealth: {
                 postgresql: { status: 'up', latencyMs: 30 },
-                omniarchon: { status: 'up', latencyMs: 45 },
+                omniintelligence: { status: 'up', latencyMs: 45 },
                 qdrant: { status: 'up', latencyMs: 50 },
               },
             }),
@@ -227,24 +226,29 @@ describe('IntelligenceOperations page', () => {
       isMock: false,
     };
 
-    const { agentOperationsSource } = await import('@/lib/data-sources');
-    vi.mocked(agentOperationsSource.fetchAll).mockResolvedValue(operationsData as any);
+    // Configure mock before rendering
+    mockFetchAll.mockResolvedValue(operationsData);
 
-    const { default: IntelligenceOperations } = await import('../IntelligenceOperations');
+    const { default: IntelligenceOperations } =
+      await import('@/_archive/pages/IntelligenceOperations');
 
     const result = renderWithClient(<IntelligenceOperations />);
     queryClient = result.queryClient;
 
+    // Wait for the data to load (no longer showing loading state)
     await waitFor(() => {
       expect(screen.getByText('Intelligence Operations')).toBeInTheDocument();
+      // Verify loading is complete by checking for actual data
+      expect(screen.queryByText('Loading AI operations data...')).not.toBeInTheDocument();
     });
 
     expect(screen.getByText('Active Operations')).toBeInTheDocument();
     expect(screen.getByText('6')).toBeInTheDocument();
-    expect(screen.getByText('Operations per Minute')).toBeInTheDocument();
+    expect(screen.getByText('Operations/Min')).toBeInTheDocument();
     expect(screen.getByText('3.4')).toBeInTheDocument();
     expect(screen.getByText('Quality Improvement Impact')).toBeInTheDocument();
     expect(screen.getByText('Manifest Injection')).toBeInTheDocument();
+    // Live events are populated from /api/intelligence/actions/recent endpoint
     expect(await screen.findByText(/Read File executed by Routing Agent/i)).toBeInTheDocument();
     expect(fetchSpy).toHaveBeenCalled();
 
@@ -254,8 +258,8 @@ describe('IntelligenceOperations page', () => {
   it('shows empty state when no operations are available', async () => {
     mockFetchResponses({ hasRecentActions: false, transformationTotal: 0 });
 
-    const { agentOperationsSource } = await import('@/lib/data-sources');
-    vi.mocked(agentOperationsSource.fetchAll).mockResolvedValue({
+    // Configure mock to return empty data
+    mockFetchAll.mockResolvedValue({
       summary: {
         totalAgents: 0,
         activeAgents: 0,
@@ -274,15 +278,18 @@ describe('IntelligenceOperations page', () => {
       totalOpsPerMinute: 0,
       avgQualityImprovement: 0,
       isMock: false,
-    } as any);
+    });
 
-    const { default: IntelligenceOperations } = await import('../IntelligenceOperations');
+    const { default: IntelligenceOperations } =
+      await import('@/_archive/pages/IntelligenceOperations');
 
     const result = renderWithClient(<IntelligenceOperations />);
     queryClient = result.queryClient;
 
+    // Wait for loading to complete
     await waitFor(() => {
       expect(screen.getByText('Intelligence Operations')).toBeInTheDocument();
+      expect(screen.queryByText('Loading AI operations data...')).not.toBeInTheDocument();
     });
 
     expect(

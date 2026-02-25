@@ -149,7 +149,7 @@ export class EventBusMockGenerator {
   private async generateIntelligenceQueryChain(): Promise<void> {
     const correlationId = randomUUID();
     const query = this.queries[Math.floor(Math.random() * this.queries.length)];
-    const source = 'omniarchon';
+    const source = 'omniintelligence';
 
     // Requested event
     const requestedEventId = randomUUID();
@@ -340,7 +340,7 @@ export class EventBusMockGenerator {
   private async generateCodeGenerationChain(): Promise<void> {
     const correlationId = randomUUID();
     const contractId = randomUUID();
-    const source = 'omninode_bridge';
+    const source = 'omnibase_infra';
 
     const requestedEventId = randomUUID();
     await this.emitEvent({
@@ -392,7 +392,7 @@ export class EventBusMockGenerator {
   private async generateMetadataStampingChain(): Promise<void> {
     const correlationId = randomUUID();
     const artifactHash = randomUUID();
-    const source = 'omninode_bridge';
+    const source = 'omnibase_infra';
 
     const requestedEventId = randomUUID();
     await this.emitEvent({

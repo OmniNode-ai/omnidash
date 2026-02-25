@@ -1,646 +1,760 @@
-import { describe, it, expect, beforeEach, vi } from 'vitest';
-import type { Pattern } from '../pattern-learning-source';
+import { describe, it, expect, beforeEach, vi, afterEach } from 'vitest';
 import {
   createMockResponse,
   setupFetchMock,
   resetFetchMock,
 } from '../../../tests/utils/mock-fetch';
+import {
+  patlearnSource,
+  PatlearnFetchError,
+  type PatlearnArtifact,
+  type PatlearnSummary,
+  type PatlearnDetailResponse,
+} from '../pattern-learning-source';
 
-// Mock the USE_MOCK_DATA flag to false so we can test real API paths
-vi.mock('../../mock-data', () => ({
-  USE_MOCK_DATA: false,
-  PatternLearningMockData: {
-    generateSummary: vi.fn(() => ({
-      totalPatterns: 1000,
-      newPatternsToday: 50,
-      avgQualityScore: 0.8,
-      activeLearningCount: 10,
-    })),
-    generateTrends: vi.fn((count: number) =>
-      Array(count).fill({
-        period: new Date().toISOString(),
-        manifestsGenerated: 10,
-        avgPatternsPerManifest: 5,
-        avgQueryTimeMs: 100,
-      })
-    ),
-    generateQualityTrends: vi.fn((count: number) =>
-      Array(count).fill({
-        period: new Date().toISOString(),
-        avgQuality: 0.8,
-        manifestCount: 10,
-      })
-    ),
-    generatePatternList: vi.fn((limit: number) =>
-      Array(limit).fill({
-        id: 'pattern-1',
-        name: 'Pattern',
-        description: 'Description',
-        quality: 0.8,
-        usage: 10,
-        trend: 'stable' as const,
-        trendPercentage: 0,
-        category: 'Category',
-        language: 'TypeScript',
-      })
-    ),
-    generateLanguageBreakdown: vi.fn(() => [
-      { language: 'TypeScript', count: 100, percentage: 50 },
-      { language: 'JavaScript', count: 100, percentage: 50 },
-    ]),
-    generateDiscoveredPatterns: vi.fn((limit: number) =>
-      Array(limit).fill({
-        name: 'Pattern',
-        file_path: '/path/to/pattern.ts',
-        createdAt: new Date().toISOString(),
-      })
-    ),
+// ===========================
+// Test Fixtures
+// ===========================
+
+const createValidArtifact = (overrides: Partial<PatlearnArtifact> = {}): PatlearnArtifact => ({
+  id: 'artifact-001',
+  patternId: 'pattern-001',
+  patternName: 'Error Handling Pattern',
+  patternType: 'error-handling',
+  language: 'typescript',
+  lifecycleState: 'validated',
+  stateChangedAt: '2026-01-15T10:00:00Z',
+  compositeScore: 0.85,
+  scoringEvidence: {
+    labelAgreement: {
+      score: 0.9,
+      matchedLabels: ['error', 'try-catch', 'async'],
+      totalLabels: 4,
+      disagreements: ['optional-chaining'],
+    },
+    clusterCohesion: {
+      score: 0.82,
+      clusterId: 'cluster-001',
+      memberCount: 15,
+      avgPairwiseSimilarity: 0.78,
+      medoidId: 'pattern-003',
+    },
+    frequencyFactor: {
+      score: 0.88,
+      observedCount: 42,
+      minRequired: 10,
+      windowDays: 30,
+    },
   },
-}));
+  signature: {
+    hash: 'sha256:abc123def456',
+    version: '1.0.0',
+    algorithm: 'sha256',
+    inputs: ['ast', 'tokens', 'labels'],
+    normalizations: ['whitespace', 'comments'],
+  },
+  metrics: {
+    processingTimeMs: 125,
+    inputCount: 50,
+    clusterCount: 5,
+    dedupMergeCount: 3,
+    scoreHistory: [
+      { score: 0.75, timestamp: '2026-01-01T00:00:00Z' },
+      { score: 0.85, timestamp: '2026-01-15T00:00:00Z' },
+    ],
+  },
+  createdAt: '2026-01-01T00:00:00Z',
+  updatedAt: '2026-01-15T10:00:00Z',
+  ...overrides,
+});
 
-import { patternLearningSource } from '../pattern-learning-source';
+const createValidSummary = (overrides: Partial<PatlearnSummary> = {}): PatlearnSummary => ({
+  totalPatterns: 150,
+  byState: {
+    candidate: 45,
+    provisional: 30,
+    validated: 60,
+    deprecated: 15,
+  },
+  avgScores: {
+    labelAgreement: 0.82,
+    clusterCohesion: 0.75,
+    frequencyFactor: 0.88,
+    composite: 0.81,
+  },
+  window: '24h',
+  promotionsInWindow: 5,
+  deprecationsInWindow: 2,
+  ...overrides,
+});
+
+// ===========================
+// PatlearnFetchError Tests
+// ===========================
+
+describe('PatlearnFetchError', () => {
+  it('creates error with status code', () => {
+    const error = new PatlearnFetchError('patterns', 404);
+
+    expect(error).toBeInstanceOf(Error);
+    expect(error).toBeInstanceOf(PatlearnFetchError);
+    expect(error.name).toBe('PatlearnFetchError');
+    expect(error.method).toBe('patterns');
+    expect(error.statusCode).toBe(404);
+    expect(error.message).toBe('Failed to fetch PATLEARN patterns: HTTP 404');
+  });
+
+  it('creates error without status code (network error)', () => {
+    const cause = new Error('Connection refused');
+    const error = new PatlearnFetchError('summary', undefined, cause);
+
+    expect(error.name).toBe('PatlearnFetchError');
+    expect(error.method).toBe('summary');
+    expect(error.statusCode).toBeUndefined();
+    expect(error.cause).toBe(cause);
+    expect(error.message).toBe('Failed to fetch PATLEARN summary: Connection refused');
+  });
+
+  it('creates error with non-Error cause', () => {
+    const error = new PatlearnFetchError('detail', undefined, 'some string error');
+
+    expect(error.message).toBe('Failed to fetch PATLEARN detail: Network error');
+  });
+
+  it('preserves method and status in error instance', () => {
+    const error = new PatlearnFetchError('candidates', 500);
+
+    expect(error.method).toBe('candidates');
+    expect(error.statusCode).toBe(500);
+  });
+});
+
+// ===========================
+// PatternLearningSource Tests
+// ===========================
 
 describe('PatternLearningSource', () => {
   beforeEach(() => {
     resetFetchMock();
     vi.clearAllMocks();
+    // Suppress console.warn for validation warnings in tests
+    vi.spyOn(console, 'warn').mockImplementation(() => {});
   });
 
-  describe('fetchSummary', () => {
-    it('should fetch pattern summary from API with snake_case transformation', async () => {
-      const mockApiResponse = {
-        total_patterns: 25432,
-        new_patterns_today: 142,
-        avg_quality_score: 0.87,
-        active_learning_count: 12,
-      };
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
 
+  // ===========================
+  // list() method tests
+  // ===========================
+
+  describe('list()', () => {
+    it('calls correct URL without params', async () => {
+      const mockArtifacts = [createValidArtifact()];
       setupFetchMock(
-        new Map([['/api/intelligence/patterns/summary', createMockResponse(mockApiResponse)]])
+        new Map([['/api/intelligence/patterns/patlearn', createMockResponse(mockArtifacts)]])
       );
 
-      const result = await patternLearningSource.fetchSummary('24h');
+      const result = await patlearnSource.list();
 
-      expect(result.totalPatterns).toBe(25432);
-      expect(result.newPatternsToday).toBe(142);
-      expect(result.avgQualityScore).toBe(0.87);
-      expect(result.activeLearningCount).toBe(12);
+      expect(result).toHaveLength(1);
+      expect(result[0].id).toBe('artifact-001');
+      expect(global.fetch).toHaveBeenCalledWith('/api/intelligence/patterns/patlearn');
     });
 
-    it('should handle already camelCased API response', async () => {
-      const mockApiResponse = {
-        totalPatterns: 25432,
-        newPatternsToday: 142,
-        avgQualityScore: 0.87,
-        activeLearningCount: 12,
-      };
-
+    it('handles single state param', async () => {
+      const mockArtifacts = [createValidArtifact({ lifecycleState: 'validated' })];
       setupFetchMock(
-        new Map([['/api/intelligence/patterns/summary', createMockResponse(mockApiResponse)]])
+        new Map([['/api/intelligence/patterns/patlearn', createMockResponse(mockArtifacts)]])
       );
 
-      const result = await patternLearningSource.fetchSummary('24h');
+      await patlearnSource.list({ state: 'validated' });
 
-      expect(result.totalPatterns).toBe(25432);
-      expect(result.newPatternsToday).toBe(142);
-      expect(result.avgQualityScore).toBe(0.87);
-      expect(result.activeLearningCount).toBe(12);
+      expect(global.fetch).toHaveBeenCalledWith(
+        '/api/intelligence/patterns/patlearn?state=validated'
+      );
     });
 
-    it('should handle missing fields with defaults', async () => {
-      const mockApiResponse = {};
-
+    it('handles array of states param', async () => {
+      const mockArtifacts = [createValidArtifact()];
       setupFetchMock(
-        new Map([['/api/intelligence/patterns/summary', createMockResponse(mockApiResponse)]])
+        new Map([['/api/intelligence/patterns/patlearn', createMockResponse(mockArtifacts)]])
       );
 
-      const result = await patternLearningSource.fetchSummary('24h');
+      await patlearnSource.list({ state: ['candidate', 'provisional'] });
 
-      expect(result.totalPatterns).toBe(0);
-      expect(result.newPatternsToday).toBe(0);
-      expect(result.avgQualityScore).toBe(0);
-      expect(result.activeLearningCount).toBe(0);
+      expect(global.fetch).toHaveBeenCalledWith(
+        '/api/intelligence/patterns/patlearn?state=candidate%2Cprovisional'
+      );
     });
 
-    it('should return mock data when API fails', async () => {
+    it('handles all query params', async () => {
+      const mockArtifacts = [createValidArtifact()];
       setupFetchMock(
-        new Map([['/api/intelligence/patterns/summary', createMockResponse(null, { status: 500 })]])
+        new Map([['/api/intelligence/patterns/patlearn', createMockResponse(mockArtifacts)]])
       );
 
-      const result = await patternLearningSource.fetchSummary('24h');
+      await patlearnSource.list({
+        state: 'validated',
+        limit: 20,
+        offset: 10,
+        sort: 'score',
+        order: 'desc',
+      });
 
-      // Mock data should return realistic values
-      expect(result.totalPatterns).toBeGreaterThanOrEqual(0);
-      expect(result.newPatternsToday).toBeGreaterThanOrEqual(0);
-      expect(result.avgQualityScore).toBeGreaterThanOrEqual(0);
-      expect(result.activeLearningCount).toBeGreaterThanOrEqual(0);
+      expect(global.fetch).toHaveBeenCalledWith(expect.stringContaining('state=validated'));
+      expect(global.fetch).toHaveBeenCalledWith(expect.stringContaining('limit=20'));
+      expect(global.fetch).toHaveBeenCalledWith(expect.stringContaining('offset=10'));
+      expect(global.fetch).toHaveBeenCalledWith(expect.stringContaining('sort=score'));
+      expect(global.fetch).toHaveBeenCalledWith(expect.stringContaining('order=desc'));
     });
 
-    it('should include timeWindow parameter in API request', async () => {
-      const mockResponse = {
-        total_patterns: 100,
-        new_patterns_today: 10,
-        avg_quality_score: 0.8,
-        active_learning_count: 5,
-      };
-
+    it('throws PatlearnFetchError on HTTP error when fallback disabled', async () => {
       setupFetchMock(
         new Map([
-          ['/api/intelligence/patterns/summary?timeWindow=7d', createMockResponse(mockResponse)],
+          [
+            '/api/intelligence/patterns/patlearn',
+            createMockResponse(null, { status: 500, statusText: 'Internal Server Error' }),
+          ],
         ])
       );
 
-      await patternLearningSource.fetchSummary('7d');
-
-      expect(global.fetch).toHaveBeenCalledWith(expect.stringContaining('timeWindow=7d'));
+      await expect(patlearnSource.list({}, { fallbackToMock: false })).rejects.toThrow(
+        PatlearnFetchError
+      );
+      await expect(patlearnSource.list({}, { fallbackToMock: false })).rejects.toThrow(
+        'Failed to fetch PATLEARN patterns: HTTP 500'
+      );
     });
 
-    it('should handle network errors gracefully', async () => {
-      setupFetchMock(new Map([['/api/intelligence/patterns/summary', new Error('Network error')]]));
+    it('throws PatlearnFetchError on network error when fallback disabled', async () => {
+      setupFetchMock(
+        new Map([['/api/intelligence/patterns/patlearn', new Error('Network failure')]])
+      );
 
-      const result = await patternLearningSource.fetchSummary('24h');
+      await expect(patlearnSource.list({}, { fallbackToMock: false })).rejects.toThrow(
+        PatlearnFetchError
+      );
+      await expect(patlearnSource.list({}, { fallbackToMock: false })).rejects.toThrow(
+        'Network failure'
+      );
+    });
 
-      // Should fall back to mock data
+    it('returns empty array for non-array response (tests safeParseArray)', async () => {
+      setupFetchMock(
+        new Map([['/api/intelligence/patterns/patlearn', createMockResponse({ notAnArray: true })]])
+      );
+
+      const result = await patlearnSource.list();
+
+      expect(result).toEqual([]);
+      expect(console.warn).toHaveBeenCalledWith(
+        expect.stringContaining('[patlearn-list] Expected array')
+      );
+    });
+
+    it('filters out invalid items from array (tests safeParseArray)', async () => {
+      const validArtifact = createValidArtifact();
+      const invalidArtifact = { id: 'incomplete' }; // Missing required fields
+      setupFetchMock(
+        new Map([
+          [
+            '/api/intelligence/patterns/patlearn',
+            createMockResponse([validArtifact, invalidArtifact, validArtifact]),
+          ],
+        ])
+      );
+
+      const result = await patlearnSource.list();
+
+      expect(result).toHaveLength(2);
+      expect(console.warn).toHaveBeenCalledWith(
+        expect.stringContaining('[patlearn-list] Item 1 failed validation')
+      );
+    });
+  });
+
+  // ===========================
+  // summary() method tests
+  // ===========================
+
+  describe('summary()', () => {
+    it('calls correct URL with default window param', async () => {
+      const mockSummary = createValidSummary();
+      setupFetchMock(
+        new Map([['/api/intelligence/patterns/patlearn/summary', createMockResponse(mockSummary)]])
+      );
+
+      const result = await patlearnSource.summary();
+
+      expect(result).not.toBeNull();
+      expect(result?.totalPatterns).toBe(150);
+      expect(global.fetch).toHaveBeenCalledWith(
+        '/api/intelligence/patterns/patlearn/summary?window=24h'
+      );
+    });
+
+    it('calls correct URL with custom window param', async () => {
+      const mockSummary = createValidSummary({ window: '7d' });
+      setupFetchMock(
+        new Map([['/api/intelligence/patterns/patlearn/summary', createMockResponse(mockSummary)]])
+      );
+
+      await patlearnSource.summary('7d');
+
+      expect(global.fetch).toHaveBeenCalledWith(
+        '/api/intelligence/patterns/patlearn/summary?window=7d'
+      );
+    });
+
+    it('returns parsed summary with all fields', async () => {
+      const mockSummary = createValidSummary();
+      setupFetchMock(
+        new Map([['/api/intelligence/patterns/patlearn/summary', createMockResponse(mockSummary)]])
+      );
+
+      const result = await patlearnSource.summary();
+
+      expect(result).toEqual(mockSummary);
+      expect(result?.byState.validated).toBe(60);
+      expect(result?.avgScores.composite).toBe(0.81);
+    });
+
+    it('throws PatlearnFetchError on HTTP error when fallback disabled', async () => {
+      setupFetchMock(
+        new Map([
+          [
+            '/api/intelligence/patterns/patlearn/summary',
+            createMockResponse(null, { status: 403, statusText: 'Forbidden' }),
+          ],
+        ])
+      );
+
+      await expect(patlearnSource.summary('24h', { fallbackToMock: false })).rejects.toThrow(
+        PatlearnFetchError
+      );
+      await expect(patlearnSource.summary('24h', { fallbackToMock: false })).rejects.toThrow(
+        'HTTP 403'
+      );
+    });
+
+    it('falls back to mock data on HTTP error when fallbackToMock is true', async () => {
+      setupFetchMock(
+        new Map([
+          [
+            '/api/intelligence/patterns/patlearn/summary',
+            createMockResponse(null, { status: 500, statusText: 'Internal Server Error' }),
+          ],
+        ])
+      );
+
+      const result = await patlearnSource.summary('24h', { fallbackToMock: true });
+
+      // Should return mock summary data instead of throwing
       expect(result).toBeDefined();
-      expect(result.totalPatterns).toBeGreaterThanOrEqual(0);
+      expect(result?.totalPatterns).toBeGreaterThan(0);
+      expect(result?.byState).toBeDefined();
+    });
+
+    it('returns null for invalid data (tests safeParseOne)', async () => {
+      setupFetchMock(
+        new Map([
+          ['/api/intelligence/patterns/patlearn/summary', createMockResponse({ invalid: 'data' })],
+        ])
+      );
+
+      const result = await patlearnSource.summary();
+
+      expect(result).toBeNull();
+      expect(console.warn).toHaveBeenCalledWith(
+        expect.stringContaining('[patlearn-summary] Validation failed')
+      );
     });
   });
 
-  describe('fetchTrends', () => {
-    it('should fetch pattern trends from API with snake_case transformation', async () => {
-      const mockApiResponse = [
-        {
-          period: '2024-01-01T12:00:00Z',
-          manifests_generated: 45,
-          avg_patterns_per_manifest: 8.5,
-          avg_query_time_ms: 125,
-        },
-        {
-          period: '2024-01-01T13:00:00Z',
-          manifests_generated: 52,
-          avg_patterns_per_manifest: 9.2,
-          avg_query_time_ms: 115,
-        },
-      ];
+  // ===========================
+  // detail() method tests
+  // ===========================
 
+  describe('detail()', () => {
+    it('returns null for 404 response', async () => {
       setupFetchMock(
-        new Map([['/api/intelligence/patterns/trends', createMockResponse(mockApiResponse)]])
+        new Map([
+          [
+            '/api/intelligence/patterns/patlearn/not-found-id',
+            createMockResponse(null, { status: 404, statusText: 'Not Found' }),
+          ],
+        ])
       );
 
-      const result = await patternLearningSource.fetchTrends('24h');
+      const result = await patlearnSource.detail('not-found-id');
 
-      expect(result.length).toBe(2);
-      expect(result[0].period).toBe('2024-01-01T12:00:00Z');
-      expect(result[0].manifestsGenerated).toBe(45);
-      expect(result[0].avgPatternsPerManifest).toBe(8.5);
-      expect(result[0].avgQueryTimeMs).toBe(125);
+      expect(result).toBeNull();
     });
 
-    it('should handle camelCase API response', async () => {
-      const mockApiResponse = [
-        {
-          period: '2024-01-01T12:00:00Z',
-          manifestsGenerated: 45,
-          avgPatternsPerManifest: 8.5,
-          avgQueryTimeMs: 125,
+    it('throws PatlearnFetchError for non-404 HTTP errors', async () => {
+      setupFetchMock(
+        new Map([
+          [
+            '/api/intelligence/patterns/patlearn/error-id',
+            createMockResponse(null, { status: 500, statusText: 'Internal Server Error' }),
+          ],
+        ])
+      );
+
+      await expect(patlearnSource.detail('error-id')).rejects.toThrow(PatlearnFetchError);
+      await expect(patlearnSource.detail('error-id')).rejects.toThrow('HTTP 500');
+    });
+
+    it('returns artifact and similarPatterns for valid response', async () => {
+      const artifact = createValidArtifact({ id: 'detail-001' });
+      const mockResponse: PatlearnDetailResponse = {
+        artifact,
+        similarPatterns: [
+          {
+            patternId: 'similar-001',
+            evidence: {
+              keyword: { score: 0.8, intersection: ['error', 'catch'], unionCount: 5 },
+              pattern: { score: 0.75, matchedIndicators: ['try-catch'], totalIndicators: 3 },
+              structural: { score: 0.7, astDepthDelta: 1, nodeCountDelta: 5, complexityDelta: 0.2 },
+              label: { score: 0.85, matchedLabels: ['error'], totalLabels: 2 },
+              context: { score: 0.6, sharedTokens: ['async'], jaccard: 0.5 },
+              composite: 0.74,
+              weights: { keyword: 0.3, pattern: 0.25, structural: 0.2, label: 0.15, context: 0.1 },
+            },
+          },
+        ],
+      };
+      setupFetchMock(
+        new Map([
+          ['/api/intelligence/patterns/patlearn/detail-001', createMockResponse(mockResponse)],
+        ])
+      );
+
+      const result = await patlearnSource.detail('detail-001');
+
+      expect(result).not.toBeNull();
+      expect(result?.artifact.id).toBe('detail-001');
+      expect(result?.similarPatterns).toHaveLength(1);
+      expect(result?.similarPatterns[0].patternId).toBe('similar-001');
+    });
+
+    it('returns empty similarPatterns array when not provided', async () => {
+      const artifact = createValidArtifact();
+      setupFetchMock(
+        new Map([['/api/intelligence/patterns/patlearn/', createMockResponse({ artifact })]])
+      );
+
+      const result = await patlearnSource.detail('artifact-001');
+
+      expect(result).not.toBeNull();
+      expect(result?.similarPatterns).toEqual([]);
+    });
+
+    it('filters out malformed similarPatterns entries', async () => {
+      const artifact = createValidArtifact({ id: 'filter-test' });
+      const validSimilarPattern = {
+        patternId: 'valid-001',
+        evidence: {
+          keyword: { score: 0.8, intersection: ['error'], unionCount: 3 },
+          pattern: { score: 0.7, matchedIndicators: ['try-catch'], totalIndicators: 2 },
+          structural: { score: 0.6, astDepthDelta: 1, nodeCountDelta: 2, complexityDelta: 0.1 },
+          label: { score: 0.9, matchedLabels: ['error'], totalLabels: 1 },
+          context: { score: 0.5, sharedTokens: ['async'], jaccard: 0.4 },
+          composite: 0.7,
+          weights: { keyword: 0.3, pattern: 0.25, structural: 0.2, label: 0.15, context: 0.1 },
         },
-      ];
-
+      };
+      const malformedSimilarPattern = {
+        patternId: 'malformed-001',
+        evidence: { invalid: 'structure' }, // Missing required fields
+      };
+      const nullEntry = null;
+      const mockResponse = {
+        artifact,
+        similarPatterns: [
+          validSimilarPattern,
+          malformedSimilarPattern,
+          nullEntry,
+          validSimilarPattern,
+        ],
+      };
       setupFetchMock(
-        new Map([['/api/intelligence/patterns/trends', createMockResponse(mockApiResponse)]])
+        new Map([
+          ['/api/intelligence/patterns/patlearn/filter-test', createMockResponse(mockResponse)],
+        ])
       );
 
-      const result = await patternLearningSource.fetchTrends('24h');
+      const result = await patlearnSource.detail('filter-test');
 
-      expect(result[0].manifestsGenerated).toBe(45);
-      expect(result[0].avgPatternsPerManifest).toBe(8.5);
-      expect(result[0].avgQueryTimeMs).toBe(125);
+      expect(result).not.toBeNull();
+      // Only valid entries should pass through (2 valid ones)
+      expect(result?.similarPatterns).toHaveLength(2);
+      expect(result?.similarPatterns[0].patternId).toBe('valid-001');
+      expect(result?.similarPatterns[1].patternId).toBe('valid-001');
+      // Verify validation warnings were logged
+      expect(console.warn).toHaveBeenCalledWith(
+        expect.stringContaining('[patlearn-detail-similar]')
+      );
     });
 
-    it('should handle missing fields with defaults and current timestamp', async () => {
-      const mockApiResponse = [
-        {
-          period: null,
-        },
-      ];
-
+    it('throws PatlearnFetchError for invalid artifact data', async () => {
       setupFetchMock(
-        new Map([['/api/intelligence/patterns/trends', createMockResponse(mockApiResponse)]])
+        new Map([
+          [
+            '/api/intelligence/patterns/patlearn/invalid',
+            createMockResponse({ artifact: { invalid: 'data' }, similarPatterns: [] }),
+          ],
+        ])
       );
 
-      const result = await patternLearningSource.fetchTrends('24h');
-
-      expect(result.length).toBe(1);
-      // Should use current date as fallback
-      const parsedDate = new Date(result[0].period);
-      expect(parsedDate.toString()).not.toBe('Invalid Date');
-      expect(result[0].manifestsGenerated).toBe(0);
-      expect(result[0].avgPatternsPerManifest).toBe(0);
-      expect(result[0].avgQueryTimeMs).toBe(0);
+      await expect(patlearnSource.detail('invalid')).rejects.toThrow(PatlearnFetchError);
+      await expect(patlearnSource.detail('invalid')).rejects.toThrow('Invalid artifact data');
     });
 
-    it('should return mock data when API returns empty array', async () => {
-      setupFetchMock(new Map([['/api/intelligence/patterns/trends', createMockResponse([])]]));
-
-      const result = await patternLearningSource.fetchTrends('24h');
-
-      // Should fall back to mock data
-      expect(result.length).toBeGreaterThan(0);
-    });
-
-    it('should return mock data when API fails', async () => {
+    it('throws PatlearnFetchError on network error', async () => {
       setupFetchMock(
-        new Map([['/api/intelligence/patterns/trends', createMockResponse(null, { status: 500 })]])
+        new Map([['/api/intelligence/patterns/patlearn/network-error', new Error('Timeout')]])
       );
 
-      const result = await patternLearningSource.fetchTrends('24h');
-
-      expect(result.length).toBeGreaterThan(0);
-      expect(result[0]).toHaveProperty('period');
-      expect(result[0]).toHaveProperty('manifestsGenerated');
-      expect(result[0]).toHaveProperty('avgPatternsPerManifest');
-      expect(result[0]).toHaveProperty('avgQueryTimeMs');
+      await expect(patlearnSource.detail('network-error')).rejects.toThrow(PatlearnFetchError);
     });
   });
 
-  describe('fetchQualityTrends', () => {
-    it('should fetch quality trends from API with snake_case transformation', async () => {
-      const mockApiResponse = [
-        {
-          period: '2024-01-01T12:00:00Z',
-          avg_quality: 0.85,
-          manifest_count: 42,
-        },
-        {
-          period: '2024-01-01T13:00:00Z',
-          avg_quality: 0.89,
-          manifest_count: 38,
-        },
+  // ===========================
+  // Convenience Methods Tests
+  // ===========================
+
+  describe('candidates()', () => {
+    it('calls list with candidate and provisional states', async () => {
+      const mockArtifacts = [
+        createValidArtifact({ lifecycleState: 'candidate' }),
+        createValidArtifact({ lifecycleState: 'provisional' }),
       ];
-
       setupFetchMock(
-        new Map([
-          ['/api/intelligence/patterns/quality-trends', createMockResponse(mockApiResponse)],
-        ])
+        new Map([['/api/intelligence/patterns/patlearn', createMockResponse(mockArtifacts)]])
       );
 
-      const result = await patternLearningSource.fetchQualityTrends('24h');
+      const result = await patlearnSource.candidates();
 
-      expect(result.length).toBe(2);
-      expect(result[0].period).toBe('2024-01-01T12:00:00Z');
-      expect(result[0].avgQuality).toBe(0.85);
-      expect(result[0].manifestCount).toBe(42);
+      expect(result).toHaveLength(2);
+      expect(global.fetch).toHaveBeenCalledWith(
+        expect.stringContaining('state=candidate%2Cprovisional')
+      );
+      expect(global.fetch).toHaveBeenCalledWith(expect.stringContaining('sort=score'));
+      expect(global.fetch).toHaveBeenCalledWith(expect.stringContaining('order=desc'));
     });
 
-    it('should handle camelCase API response', async () => {
-      const mockApiResponse = [
-        {
-          period: '2024-01-01T12:00:00Z',
-          avgQuality: 0.85,
-          manifestCount: 42,
-        },
-      ];
+    it('uses custom limit parameter', async () => {
+      setupFetchMock(new Map([['/api/intelligence/patterns/patlearn', createMockResponse([])]]));
 
-      setupFetchMock(
-        new Map([
-          ['/api/intelligence/patterns/quality-trends', createMockResponse(mockApiResponse)],
-        ])
-      );
+      await patlearnSource.candidates(25);
 
-      const result = await patternLearningSource.fetchQualityTrends('24h');
-
-      expect(result[0].avgQuality).toBe(0.85);
-      expect(result[0].manifestCount).toBe(42);
+      expect(global.fetch).toHaveBeenCalledWith(expect.stringContaining('limit=25'));
     });
 
-    it('should return mock data when API returns empty array', async () => {
-      setupFetchMock(
-        new Map([['/api/intelligence/patterns/quality-trends', createMockResponse([])]])
-      );
+    it('uses default limit of 50', async () => {
+      setupFetchMock(new Map([['/api/intelligence/patterns/patlearn', createMockResponse([])]]));
 
-      const result = await patternLearningSource.fetchQualityTrends('24h');
+      await patlearnSource.candidates();
 
-      expect(result.length).toBeGreaterThan(0);
-    });
-
-    it('should return mock data when API fails', async () => {
-      setupFetchMock(
-        new Map([
-          ['/api/intelligence/patterns/quality-trends', createMockResponse(null, { status: 500 })],
-        ])
-      );
-
-      const result = await patternLearningSource.fetchQualityTrends('24h');
-
-      expect(result.length).toBeGreaterThan(0);
-      expect(result[0]).toHaveProperty('period');
-      expect(result[0]).toHaveProperty('avgQuality');
-      expect(result[0]).toHaveProperty('manifestCount');
+      expect(global.fetch).toHaveBeenCalledWith(expect.stringContaining('limit=50'));
     });
   });
 
-  describe('fetchPatternList', () => {
-    it('should fetch pattern list from API', async () => {
-      const mockPatterns: Pattern[] = [
-        {
-          id: 'pattern-1',
-          name: 'Component Pattern',
-          description: 'Reusable React component',
-          quality: 0.92,
-          usage: 156,
-          trend: 'up',
-          trendPercentage: 12.5,
-          category: 'React',
-          language: 'TypeScript',
-        },
-        {
-          id: 'pattern-2',
-          name: 'API Handler',
-          description: 'Express route handler',
-          quality: 0.88,
-          usage: 89,
-          trend: 'stable',
-          trendPercentage: 0,
-          category: 'Backend',
-          language: 'JavaScript',
-        },
-      ];
-
+  describe('validated()', () => {
+    it('calls list with validated state', async () => {
+      const mockArtifacts = [createValidArtifact({ lifecycleState: 'validated' })];
       setupFetchMock(
-        new Map([['/api/intelligence/patterns/list', createMockResponse(mockPatterns)]])
+        new Map([['/api/intelligence/patterns/patlearn', createMockResponse(mockArtifacts)]])
       );
 
-      const result = await patternLearningSource.fetchPatternList(50, '24h');
+      const result = await patlearnSource.validated();
 
-      expect(result.length).toBe(2);
-      expect(result[0].id).toBe('pattern-1');
-      expect(result[0].name).toBe('Component Pattern');
-      expect(result[1].trend).toBe('stable');
+      expect(result).toHaveLength(1);
+      expect(global.fetch).toHaveBeenCalledWith(expect.stringContaining('state=validated'));
+      expect(global.fetch).toHaveBeenCalledWith(expect.stringContaining('sort=score'));
+      expect(global.fetch).toHaveBeenCalledWith(expect.stringContaining('order=desc'));
     });
 
-    it('should handle limit parameter', async () => {
+    it('uses custom limit parameter', async () => {
+      setupFetchMock(new Map([['/api/intelligence/patterns/patlearn', createMockResponse([])]]));
+
+      await patlearnSource.validated(100);
+
+      expect(global.fetch).toHaveBeenCalledWith(expect.stringContaining('limit=100'));
+    });
+  });
+
+  describe('deprecated()', () => {
+    it('calls list with deprecated state and updated sort', async () => {
+      const mockArtifacts = [createValidArtifact({ lifecycleState: 'deprecated' })];
       setupFetchMock(
-        new Map([
-          ['/api/intelligence/patterns/list?limit=10&timeWindow=24h', createMockResponse([])],
-        ])
+        new Map([['/api/intelligence/patterns/patlearn', createMockResponse(mockArtifacts)]])
       );
 
-      await patternLearningSource.fetchPatternList(10, '24h');
+      const result = await patlearnSource.deprecated();
+
+      expect(result).toHaveLength(1);
+      expect(global.fetch).toHaveBeenCalledWith(expect.stringContaining('state=deprecated'));
+      expect(global.fetch).toHaveBeenCalledWith(expect.stringContaining('sort=updated'));
+      expect(global.fetch).toHaveBeenCalledWith(expect.stringContaining('order=desc'));
+    });
+
+    it('uses custom limit parameter', async () => {
+      setupFetchMock(new Map([['/api/intelligence/patterns/patlearn', createMockResponse([])]]));
+
+      await patlearnSource.deprecated(10);
 
       expect(global.fetch).toHaveBeenCalledWith(expect.stringContaining('limit=10'));
     });
-
-    it('should return mock data when API returns empty array', async () => {
-      setupFetchMock(new Map([['/api/intelligence/patterns/list', createMockResponse([])]]));
-
-      const result = await patternLearningSource.fetchPatternList(50, '24h');
-
-      expect(result.length).toBeGreaterThan(0);
-    });
-
-    it('should return mock data when API fails', async () => {
-      setupFetchMock(
-        new Map([['/api/intelligence/patterns/list', createMockResponse(null, { status: 500 })]])
-      );
-
-      const result = await patternLearningSource.fetchPatternList(25, '24h');
-
-      expect(result.length).toBeGreaterThan(0);
-      expect(result.length).toBeLessThanOrEqual(25);
-      expect(result[0]).toHaveProperty('id');
-      expect(result[0]).toHaveProperty('name');
-    });
   });
 
-  describe('fetchLanguageBreakdown', () => {
-    it('should fetch language breakdown from API with percentage calculation', async () => {
-      const mockApiResponse = [
-        { language: 'TypeScript', pattern_count: 150 },
-        { language: 'JavaScript', pattern_count: 100 },
-        { language: 'Python', pattern_count: 50 },
+  describe('topPatterns()', () => {
+    it('calls list with score sort and no state filter', async () => {
+      const mockArtifacts = [
+        createValidArtifact({ compositeScore: 0.95 }),
+        createValidArtifact({ compositeScore: 0.9 }),
       ];
-
       setupFetchMock(
-        new Map([['/api/intelligence/patterns/by-language', createMockResponse(mockApiResponse)]])
+        new Map([['/api/intelligence/patterns/patlearn', createMockResponse(mockArtifacts)]])
       );
 
-      const result = await patternLearningSource.fetchLanguageBreakdown('24h');
+      const result = await patlearnSource.topPatterns();
 
-      expect(result.length).toBe(3);
-
-      // TypeScript: 150 / 300 = 50%
-      expect(result[0].language).toBe('TypeScript');
-      expect(result[0].count).toBe(150);
-      expect(result[0].percentage).toBe(50);
-
-      // JavaScript: 100 / 300 = 33.3%
-      expect(result[1].language).toBe('JavaScript');
-      expect(result[1].count).toBe(100);
-      expect(result[1].percentage).toBe(33.3);
-
-      // Python: 50 / 300 = 16.7%
-      expect(result[2].language).toBe('Python');
-      expect(result[2].count).toBe(50);
-      expect(result[2].percentage).toBe(16.7);
+      expect(result).toHaveLength(2);
+      expect(global.fetch).toHaveBeenCalledWith(expect.stringContaining('sort=score'));
+      expect(global.fetch).toHaveBeenCalledWith(expect.stringContaining('order=desc'));
+      // Should NOT contain state filter
+      expect(global.fetch).not.toHaveBeenCalledWith(expect.stringContaining('state='));
     });
 
-    it('should handle camelCase count field', async () => {
-      const mockApiResponse = [
-        { language: 'TypeScript', count: 150 },
-        { language: 'JavaScript', count: 50 },
-      ];
+    it('uses default limit of 20', async () => {
+      setupFetchMock(new Map([['/api/intelligence/patterns/patlearn', createMockResponse([])]]));
 
-      setupFetchMock(
-        new Map([['/api/intelligence/patterns/by-language', createMockResponse(mockApiResponse)]])
-      );
+      await patlearnSource.topPatterns();
 
-      const result = await patternLearningSource.fetchLanguageBreakdown('24h');
-
-      expect(result.length).toBe(2);
-      expect(result[0].count).toBe(150);
-      expect(result[0].percentage).toBe(75); // 150/200 = 75%
+      expect(global.fetch).toHaveBeenCalledWith(expect.stringContaining('limit=20'));
     });
 
-    it('should handle missing language field with unknown', async () => {
-      const mockApiResponse = [{ pattern_count: 100 }];
+    it('uses custom limit parameter', async () => {
+      setupFetchMock(new Map([['/api/intelligence/patterns/patlearn', createMockResponse([])]]));
 
-      setupFetchMock(
-        new Map([['/api/intelligence/patterns/by-language', createMockResponse(mockApiResponse)]])
-      );
-
-      const result = await patternLearningSource.fetchLanguageBreakdown('24h');
-
-      expect(result[0].language).toBe('unknown');
-      expect(result[0].count).toBe(100);
-      expect(result[0].percentage).toBe(100);
-    });
-
-    it('should handle zero total with zero percentages', async () => {
-      const mockApiResponse = [{ language: 'TypeScript', pattern_count: 0 }];
-
-      setupFetchMock(
-        new Map([['/api/intelligence/patterns/by-language', createMockResponse(mockApiResponse)]])
-      );
-
-      const result = await patternLearningSource.fetchLanguageBreakdown('24h');
-
-      expect(result[0].percentage).toBe(0);
-    });
-
-    it('should return mock data when API returns empty array', async () => {
-      setupFetchMock(new Map([['/api/intelligence/patterns/by-language', createMockResponse([])]]));
-
-      const result = await patternLearningSource.fetchLanguageBreakdown('24h');
-
-      expect(result.length).toBeGreaterThan(0);
-    });
-
-    it('should return mock data when API fails', async () => {
-      setupFetchMock(
-        new Map([
-          ['/api/intelligence/patterns/by-language', createMockResponse(null, { status: 500 })],
-        ])
-      );
-
-      const result = await patternLearningSource.fetchLanguageBreakdown('24h');
-
-      expect(result.length).toBeGreaterThan(0);
-      expect(result[0]).toHaveProperty('language');
-      expect(result[0]).toHaveProperty('count');
-      expect(result[0]).toHaveProperty('percentage');
-    });
-  });
-
-  describe('fetchDiscovery', () => {
-    it('should fetch discovered patterns from API with isMock flag false', async () => {
-      const mockApiResponse = [
-        {
-          name: 'Authentication Pattern',
-          file_path: '/src/auth/pattern.ts',
-          createdAt: '2024-01-01T12:00:00Z',
-        },
-        {
-          name: 'Data Fetching Pattern',
-          file_path: '/src/api/pattern.ts',
-          createdAt: '2024-01-01T13:00:00Z',
-        },
-      ];
-
-      setupFetchMock(
-        new Map([['/api/intelligence/patterns/discovery', createMockResponse(mockApiResponse)]])
-      );
-
-      const result = await patternLearningSource.fetchDiscovery(8);
-
-      expect(result.isMock).toBe(false);
-      expect(result.data.length).toBe(2);
-      expect(result.data[0].name).toBe('Authentication Pattern');
-      expect(result.data[0].file_path).toBe('/src/auth/pattern.ts');
-      expect(result.data[0].createdAt).toBe('2024-01-01T12:00:00Z');
-      expect(result.data[0].metadata?.createdAt).toBe('2024-01-01T12:00:00Z');
-    });
-
-    it('should handle limit parameter', async () => {
-      setupFetchMock(
-        new Map([['/api/intelligence/patterns/discovery?limit=5', createMockResponse([])]])
-      );
-
-      await patternLearningSource.fetchDiscovery(5);
+      await patlearnSource.topPatterns(5);
 
       expect(global.fetch).toHaveBeenCalledWith(expect.stringContaining('limit=5'));
     });
+  });
 
-    it('should return mock data with isMock flag true when API fails', async () => {
+  // ===========================
+  // Integration-style Tests
+  // ===========================
+
+  describe('error propagation', () => {
+    it('preserves PatlearnFetchError when fallback disabled', async () => {
       setupFetchMock(
         new Map([
-          ['/api/intelligence/patterns/discovery', createMockResponse(null, { status: 500 })],
+          [
+            '/api/intelligence/patterns/patlearn',
+            createMockResponse(null, { status: 401, statusText: 'Unauthorized' }),
+          ],
         ])
       );
 
-      const result = await patternLearningSource.fetchDiscovery(8);
-
-      expect(result.isMock).toBe(true);
-      expect(result.data.length).toBeGreaterThan(0);
-      expect(result.data[0]).toHaveProperty('name');
-      expect(result.data[0]).toHaveProperty('file_path');
-      expect(result.data[0]).toHaveProperty('createdAt');
+      // Test that error type is preserved when fallback is disabled
+      try {
+        await patlearnSource.list({}, { fallbackToMock: false });
+        expect.fail('Should have thrown');
+      } catch (error) {
+        expect(error).toBeInstanceOf(PatlearnFetchError);
+        expect((error as PatlearnFetchError).statusCode).toBe(401);
+        expect((error as PatlearnFetchError).method).toBe('patterns');
+      }
     });
 
-    it('should return mock data when API throws error', async () => {
+    it('handles re-throwing original PatlearnFetchError when fallback disabled', async () => {
       setupFetchMock(
-        new Map([['/api/intelligence/patterns/discovery', new Error('Network error')]])
+        new Map([
+          [
+            '/api/intelligence/patterns/patlearn',
+            createMockResponse(null, { status: 429, statusText: 'Too Many Requests' }),
+          ],
+        ])
       );
 
-      const result = await patternLearningSource.fetchDiscovery(8);
-
-      expect(result.isMock).toBe(true);
-      expect(result.data.length).toBeGreaterThan(0);
+      await expect(patlearnSource.list({}, { fallbackToMock: false })).rejects.toMatchObject({
+        name: 'PatlearnFetchError',
+        statusCode: 429,
+        method: 'patterns',
+      });
     });
 
-    it('should properly transform API response to include metadata', async () => {
-      const mockApiResponse = [
-        {
-          name: 'Test Pattern',
-          file_path: '/test.ts',
-          createdAt: '2024-01-01T10:00:00Z',
-        },
-      ];
-
+    it('falls back to mock data when fallbackToMock is true on error', async () => {
       setupFetchMock(
-        new Map([['/api/intelligence/patterns/discovery', createMockResponse(mockApiResponse)]])
+        new Map([
+          [
+            '/api/intelligence/patterns/patlearn',
+            createMockResponse(null, { status: 500, statusText: 'Internal Server Error' }),
+          ],
+        ])
       );
 
-      const result = await patternLearningSource.fetchDiscovery(1);
+      // Opt-in to graceful degradation: returns mock data
+      const result = await patlearnSource.list({}, { fallbackToMock: true });
 
-      expect(result.data[0].metadata).toBeDefined();
-      expect(result.data[0].metadata?.createdAt).toBe('2024-01-01T10:00:00Z');
-      expect(result.data[0].createdAt).toBe('2024-01-01T10:00:00Z');
+      expect(result).toBeInstanceOf(Array);
+      expect(result.length).toBeGreaterThan(0);
+      // Mock data has __demo flag in metadata
+      expect(result[0].metadata?.__demo).toBe(true);
     });
   });
 
-  describe('Edge Cases', () => {
-    it('should handle malformed JSON gracefully in fetchTrends', async () => {
-      const malformedResponse = new Response('not json', {
-        status: 200,
-        headers: { 'Content-Type': 'application/json' },
-      });
-
-      setupFetchMock(new Map([['/api/intelligence/patterns/trends', malformedResponse]]));
-
-      const result = await patternLearningSource.fetchTrends('24h');
-
-      // Should fall back to mock data on parse error
-      expect(result.length).toBeGreaterThan(0);
-    });
-
-    it('should use default parameters when not provided', async () => {
-      const mockResponse = {
-        total_patterns: 100,
-        new_patterns_today: 10,
-        avg_quality_score: 0.8,
-        active_learning_count: 5,
-      };
-
+  describe('data validation edge cases', () => {
+    it('handles null response in array', async () => {
+      const validArtifact = createValidArtifact();
       setupFetchMock(
         new Map([
-          ['/api/intelligence/patterns/summary?timeWindow=24h', createMockResponse(mockResponse)],
+          ['/api/intelligence/patterns/patlearn', createMockResponse([null, validArtifact, null])],
         ])
       );
 
-      await patternLearningSource.fetchSummary(); // No parameter, should default to '24h'
+      const result = await patlearnSource.list();
 
-      expect(global.fetch).toHaveBeenCalledWith(expect.stringContaining('timeWindow=24h'));
+      // null items should be filtered out by safeParseArray
+      expect(result).toHaveLength(1);
     });
 
-    it('should handle 404 responses gracefully', async () => {
+    it('handles undefined fields in artifact', async () => {
+      const artifact = createValidArtifact();
+      // Remove optional fields
+      delete artifact.stateChangedAt;
+      delete artifact.updatedAt;
+      delete artifact.language;
+      artifact.scoringEvidence.labelAgreement.disagreements = undefined;
+
       setupFetchMock(
-        new Map([['/api/intelligence/patterns/list', createMockResponse(null, { status: 404 })]])
+        new Map([['/api/intelligence/patterns/patlearn', createMockResponse([artifact])]])
       );
 
-      const result = await patternLearningSource.fetchPatternList(10, '24h');
+      const result = await patlearnSource.list();
 
-      // Should fall back to mock data
-      expect(result.length).toBeGreaterThan(0);
+      expect(result).toHaveLength(1);
+      expect(result[0].stateChangedAt).toBeUndefined();
+    });
+
+    it('handles empty metrics scoreHistory', async () => {
+      const artifact = createValidArtifact();
+      artifact.metrics.scoreHistory = [];
+
+      setupFetchMock(
+        new Map([['/api/intelligence/patterns/patlearn', createMockResponse([artifact])]])
+      );
+
+      const result = await patlearnSource.list();
+
+      expect(result).toHaveLength(1);
+      expect(result[0].metrics.scoreHistory).toEqual([]);
     });
   });
 });

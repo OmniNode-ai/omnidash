@@ -1,7 +1,12 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { PostgresAdapter } from '../db-adapter';
-import { getIntelligenceDb } from '../storage';
 import * as schema from '@shared/intelligence-schema';
+
+// Note: executeRaw was intentionally removed from DatabaseAdapter.
+// It used sql.raw() with no parameter binding, which created a SQL injection
+// risk — any caller could pass arbitrary SQL strings. Rather than attempt to
+// sanitize raw SQL at the adapter layer, the method was removed entirely.
+// All queries now go through Drizzle ORM's parameterized query builders.
 
 /**
  * Comprehensive test suite for DatabaseAdapter (server/db-adapter.ts)
@@ -157,16 +162,6 @@ describe('DatabaseAdapter - Security (SQL Injection Prevention)', () => {
 
     // Verify sql template literal was used (parameterized)
     expect(chain.where).toHaveBeenCalled();
-  });
-
-  it('executeRaw uses sql.raw but caller must ensure safety', async () => {
-    // executeRaw is a low-level API - caller is responsible for parameterization
-    vi.mocked(mockDb).execute.mockResolvedValue([{ count: 42 }]);
-
-    const result = await adapter.executeRaw('SELECT COUNT(*) FROM agent_actions');
-
-    expect(vi.mocked(mockDb).execute).toHaveBeenCalled();
-    expect(result).toEqual([{ count: 42 }]);
   });
 });
 
@@ -503,30 +498,6 @@ describe('DatabaseAdapter - Functionality (CRUD Operations)', () => {
       );
     });
   });
-
-  describe('executeRaw()', () => {
-    it('executes raw SQL query', async () => {
-      const mockResult = [
-        { id: '1', count: 10 },
-        { id: '2', count: 20 },
-      ];
-
-      vi.mocked(mockDb).execute.mockResolvedValue(mockResult);
-
-      const result = await adapter.executeRaw('SELECT id, COUNT(*) FROM agent_actions GROUP BY id');
-
-      expect(vi.mocked(mockDb).execute).toHaveBeenCalled();
-      expect(result).toEqual(mockResult);
-    });
-
-    it('handles empty result', async () => {
-      vi.mocked(mockDb).execute.mockResolvedValue([]);
-
-      const result = await adapter.executeRaw('SELECT * FROM agent_actions WHERE 1=0');
-
-      expect(result).toEqual([]);
-    });
-  });
 });
 
 describe('DatabaseAdapter - Helper Methods', () => {
@@ -786,24 +757,23 @@ describe('DatabaseAdapter - Connection Management', () => {
     await expect(adapter.connect()).resolves.toBeUndefined();
   });
 
-  it('event bus is enabled when KAFKA_BROKERS is set', () => {
-    process.env.KAFKA_BROKERS = '192.168.86.200:29092';
-    const adapterWithKafka = new PostgresAdapter();
-    expect((adapterWithKafka as any).eventBusEnabled).toBe(true);
-  });
-
-  it('event bus is enabled when KAFKA_BOOTSTRAP_SERVERS is set', () => {
-    delete process.env.KAFKA_BROKERS;
-    process.env.KAFKA_BOOTSTRAP_SERVERS = '192.168.86.200:29092';
-    const adapterWithKafka = new PostgresAdapter();
-    expect((adapterWithKafka as any).eventBusEnabled).toBe(true);
-  });
-
-  it('event bus is disabled when no Kafka config', () => {
+  // The eventBusEnabled private field was removed from PostgresAdapter in the
+  // refactor that separated Kafka concerns into dedicated event-bus modules
+  // (event-bus-data-source.ts, event-consumer.ts, intelligence-event-adapter.ts).
+  // PostgresAdapter is now a pure database CRUD adapter with no Kafka awareness.
+  // The constructor is a documented no-op: it does not read KAFKA_BROKERS, does
+  // not set any connection-state flag, and does not emit any diagnostics.
+  // Kafka availability tests belong with the event-bus module tests, not here.
+  it('constructor succeeds without Kafka environment variables', () => {
     delete process.env.KAFKA_BROKERS;
     delete process.env.KAFKA_BOOTSTRAP_SERVERS;
-    const adapterWithoutKafka = new PostgresAdapter();
-    expect((adapterWithoutKafka as any).eventBusEnabled).toBe(false);
+    expect(() => new PostgresAdapter()).not.toThrow();
+  });
+
+  it('constructor succeeds with Kafka environment variables set', () => {
+    process.env.KAFKA_BROKERS = '192.168.86.200:29092';
+    expect(() => new PostgresAdapter()).not.toThrow();
+    delete process.env.KAFKA_BROKERS;
   });
 });
 
@@ -904,26 +874,6 @@ describe('DatabaseAdapter - Additional Methods', () => {
       );
 
       adapterAny.getColumn = originalGetColumn;
-    });
-  });
-
-  describe('executeRaw', () => {
-    it('should execute raw SQL query', async () => {
-      const mockResult = [{ id: '1', name: 'test' }];
-      vi.mocked(mockDb.execute).mockResolvedValue(mockResult as any);
-
-      const result = await adapter.executeRaw('SELECT * FROM agent_actions LIMIT 1');
-
-      expect(result).toEqual(mockResult);
-      expect(mockDb.execute).toHaveBeenCalled();
-    });
-
-    it('should return empty array when result is not an array', async () => {
-      vi.mocked(mockDb.execute).mockResolvedValue(null as any);
-
-      const result = await adapter.executeRaw('SELECT * FROM agent_actions');
-
-      expect(result).toEqual([]);
     });
   });
 
