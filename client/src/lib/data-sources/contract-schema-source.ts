@@ -9,15 +9,17 @@
  * - GET /api/contracts/schema/:type - Get schema for a contract type
  */
 
-import type { RJSFSchema, UiSchema } from '@rjsf/utils';
 import type { ContractType } from '@/components/contract-builder/models/types';
 
 /**
- * Schema response with both JSON Schema and UI Schema
+ * Schema response with both JSON Schema and UI Schema.
+ *
+ * Previously typed with RJSFSchema/UiSchema from @rjsf/utils.
+ * Now uses plain Record types since RJSF has been removed (OMN-2755).
  */
 export interface ContractSchemas {
-  jsonSchema: RJSFSchema;
-  uiSchema: UiSchema;
+  jsonSchema: Record<string, unknown>;
+  uiSchema: Record<string, unknown>;
 }
 
 /**
