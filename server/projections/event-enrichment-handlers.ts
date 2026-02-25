@@ -518,6 +518,13 @@ export function getEnrichmentPipeline(): EventEnrichmentPipeline {
   return _enrichmentPipeline;
 }
 
+/**
+ * Named singleton export consumed by projection-bootstrap.ts (OMN-2419).
+ * Use this for direct imports; prefer getEnrichmentPipeline() in test code
+ * to allow resetEnrichmentPipelineForTesting() to take effect.
+ */
+export const enrichmentPipeline = getEnrichmentPipeline();
+
 /** @internal — for testing only. Do not call from production code. */
 export function resetEnrichmentPipelineForTesting(): void {
   if (process.env.NODE_ENV === 'production') return;
