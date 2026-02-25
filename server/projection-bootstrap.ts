@@ -30,6 +30,7 @@ import { DebugEscalationProjection } from './projections/debug-escalation-projec
 import { eventConsumer } from './event-consumer';
 import { eventBusDataSource } from './event-bus-data-source';
 import { extractActionFromTopic, extractProducerFromTopicOrDefault } from '@shared/topics';
+import { enrichmentPipeline } from './projections/event-enrichment-handlers';
 
 // ============================================================================
 // Singleton instances
@@ -344,6 +345,7 @@ export function wireProjectionSources(): ProjectionSourceCleanup {
           severity: mapSeverity(payload),
           payload,
           eventTimeMs: extractTimestamp(event),
+          enrichment: enrichmentPipeline.run(payload, type, topic),
         };
 
         projectionService.ingest(raw);
@@ -408,10 +410,13 @@ export function wireProjectionSources(): ProjectionSourceCleanup {
           const corrId = corrIdRaw != null ? String(corrIdRaw) : '';
           if (corrId && corrDedupSet.has(corrId)) return;
 
+          const derivedTopic = (data.topic as string) || eventName;
+          const derivedType = (data.actionType as string) || (data.type as string) || eventName;
+
           const raw: RawEventInput = {
             id,
-            topic: (data.topic as string) || eventName,
-            type: (data.actionType as string) || (data.type as string) || eventName,
+            topic: derivedTopic,
+            type: derivedType,
             source:
               (data.agentName as string) ||
               (data.sourceAgent as string) ||
@@ -426,6 +431,7 @@ export function wireProjectionSources(): ProjectionSourceCleanup {
             // break the Event Type column display.
             payload: data,
             eventTimeMs: extractTimestamp(data),
+            enrichment: enrichmentPipeline.run(data, derivedType, derivedTopic),
           };
 
           projectionService.ingest(raw);
