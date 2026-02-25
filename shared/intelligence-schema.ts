@@ -464,15 +464,39 @@ export const contractAuditLog = pgTable('contract_audit_log', {
   createdAt: timestamp('created_at').defaultNow(),
 });
 
+/**
+ * Contract Test Cases Table
+ * Stores test scenarios attached to a contract version.
+ * Each row is a single test case with inputs, expected outputs, and result history.
+ */
+export const contractTestCases = pgTable('contract_test_cases', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  contractId: uuid('contract_id').notNull(), // FK to contracts.id (version-specific)
+  name: text('name').notNull(), // Human-readable test case name
+  description: text('description'),
+  inputs: jsonb('inputs').default({}), // Input payload for the test
+  expectedOutputs: jsonb('expected_outputs').default({}), // Expected result
+  assertions: jsonb('assertions').default([]), // Assertion rules (e.g. JSONPath checks)
+  lastResult: text('last_result'), // 'passed' | 'failed' | 'skipped' | null
+  lastRunAt: timestamp('last_run_at'),
+  lastRunBy: text('last_run_by'),
+  createdBy: text('created_by'),
+  createdAt: timestamp('created_at').defaultNow(),
+  updatedAt: timestamp('updated_at').defaultNow(),
+});
+
 // Export Zod schemas for validation
 export const insertContractSchema = createInsertSchema(contracts);
 export const insertContractAuditLogSchema = createInsertSchema(contractAuditLog);
+export const insertContractTestCaseSchema = createInsertSchema(contractTestCases);
 
 // Export TypeScript types
 export type Contract = typeof contracts.$inferSelect;
 export type InsertContract = typeof contracts.$inferInsert;
 export type ContractAuditLog = typeof contractAuditLog.$inferSelect;
 export type InsertContractAuditLog = typeof contractAuditLog.$inferInsert;
+export type ContractTestCase = typeof contractTestCases.$inferSelect;
+export type InsertContractTestCase = typeof contractTestCases.$inferInsert;
 
 /**
  * API Response Interfaces for Pattern Lineage

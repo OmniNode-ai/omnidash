@@ -7,11 +7,22 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { ResizablePanelGroup, ResizablePanel, ResizableHandle } from '@/components/ui/resizable';
 import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
 import { oneDark, oneLight } from 'react-syntax-highlighter/dist/esm/styles/prism';
 import { useTheme } from '@/components/ThemeProvider';
-import { ArrowLeft, Pencil, Copy, History, ChevronDown, Upload, Download } from 'lucide-react';
+import {
+  ArrowLeft,
+  Pencil,
+  Copy,
+  History,
+  ChevronDown,
+  Upload,
+  Download,
+  Clock,
+  FlaskConical,
+} from 'lucide-react';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -20,6 +31,8 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { ContractStatusBadge } from './ContractStatusBadge';
 import { ContractTypeBadge } from './ContractTypeBadge';
+import { ContractAuditTimeline } from './ContractAuditTimeline';
+import { ContractTestCasesPanel } from './ContractTestCasesPanel';
 import type { Contract } from './models/types';
 
 interface ContractViewerProps {
@@ -75,9 +88,9 @@ function Section({ title, children }: { title: string; children: React.ReactNode
  *
  * Read-only view of a contract with formatted display.
  * Features:
- * - Resizable split view: Formatted data on left, JSON on right
- * - Action buttons for Edit, Duplicate, History
- * - Clean metadata display with sections
+ * - Tabbed view: Overview/JSON, Audit Timeline, Test Cases
+ * - Resizable split view in Overview tab (details + JSON)
+ * - Action buttons for Edit, Duplicate, History, Export
  */
 export function ContractViewer({
   contract,
@@ -101,8 +114,8 @@ export function ContractViewer({
       onVersionChange(selectedVersion);
     }
   };
+
   // Build the full contract data for JSON preview
-  // In future, this would include the actual contract schema/config
   const contractData = useMemo(
     () => ({
       id: contract.id,
@@ -116,18 +129,25 @@ export function ContractViewer({
       createdAt: contract.createdAt,
       updatedAt: contract.updatedAt,
       createdBy: contract.createdBy,
-      // Placeholder for actual contract configuration
-      // This would be populated from the API in the future
       configuration: {
         node_identity: {
           name: contract.name,
           version: contract.version,
         },
-        // Additional schema fields would go here
       },
     }),
     [contract]
   );
+
+  // Handle provenance export — triggers ZIP bundle download
+  const handleExport = () => {
+    const link = document.createElement('a');
+    link.href = `/api/contracts/${contract.id}/export`;
+    link.download = `contract_${contract.contractId}_v${contract.version.replace(/\./g, '-')}.zip`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
 
   return (
     <div className="flex flex-col h-full">
@@ -143,29 +163,19 @@ export function ContractViewer({
         </div>
 
         <div className="flex items-center gap-2">
-          {/* Export button - triggers ZIP download */}
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => {
-              // Trigger download via anchor link
-              const link = document.createElement('a');
-              link.href = `/api/contracts/${contract.id}/export`;
-              link.download = `contract_${contract.contractId}_v${contract.version.replace(/\./g, '-')}.zip`;
-              document.body.appendChild(link);
-              link.click();
-              document.body.removeChild(link);
-            }}
-          >
+          {/* Export button — downloads ZIP bundle with provenance metadata */}
+          <Button variant="outline" size="sm" onClick={handleExport}>
             <Download className="w-4 h-4 mr-2" />
             Export
           </Button>
+
           {onViewHistory && (
             <Button variant="outline" size="sm" onClick={() => onViewHistory(contract)}>
               <History className="w-4 h-4 mr-2" />
               History
             </Button>
           )}
+
           {/* Edit split button with dropdown for secondary actions */}
           {onEdit && (
             <div className="flex">
@@ -191,7 +201,8 @@ export function ContractViewer({
               </DropdownMenu>
             </div>
           )}
-          {/* Publish button - enabled only for draft contracts */}
+
+          {/* Publish button — enabled only for draft contracts */}
           {onPublish && (
             <Button
               size="sm"
@@ -205,111 +216,152 @@ export function ContractViewer({
         </div>
       </div>
 
-      {/* Content - Resizable split view */}
-      <div className="flex-1 overflow-hidden">
-        <ResizablePanelGroup direction="horizontal" className="h-full">
-          {/* Details Panel */}
-          <ResizablePanel defaultSize={60} minSize={30}>
-            <div className="h-full overflow-auto p-6">
-              <div className="max-w-2xl">
-                {/* Overview Section */}
-                <Section title="Overview">
-                  <MetadataRow label="Name">
-                    <span className="font-mono">{contract.name}</span>
-                  </MetadataRow>
-                  {contract.displayName && contract.displayName !== contract.name && (
-                    <MetadataRow label="Display Name">{contract.displayName}</MetadataRow>
-                  )}
-                  <MetadataRow label="Description">
-                    {contract.description || (
-                      <span className="text-muted-foreground italic">No description</span>
-                    )}
-                  </MetadataRow>
-                  <MetadataRow label="Type">
-                    <ContractTypeBadge type={contract.type} />
-                  </MetadataRow>
-                  <MetadataRow label="Status">
-                    <ContractStatusBadge status={contract.status} />
-                  </MetadataRow>
-                  <MetadataRow label="Version">
-                    {hasMultipleVersions ? (
-                      <Select value={contract.id} onValueChange={handleVersionChange}>
-                        <SelectTrigger className="w-[180px] h-8 font-mono text-sm">
-                          <SelectValue>{contract.version}</SelectValue>
-                        </SelectTrigger>
-                        <SelectContent>
-                          {allVersions.map((v) => (
-                            <SelectItem key={v.id} value={v.id} className="font-mono">
-                              <span className="flex items-center gap-2">
-                                {v.version}
-                                {v.id === contract.id && (
-                                  <span className="text-xs text-muted-foreground">(current)</span>
-                                )}
-                                {v.status !== 'published' && (
-                                  <span className="text-xs text-muted-foreground">
-                                    ({v.status})
+      {/* Tabbed content */}
+      <Tabs defaultValue="overview" className="flex flex-col flex-1 overflow-hidden">
+        <TabsList className="mx-4 mt-2 w-fit">
+          <TabsTrigger value="overview">Overview</TabsTrigger>
+          <TabsTrigger value="audit" className="flex items-center gap-1.5">
+            <Clock className="w-3.5 h-3.5" />
+            Audit Log
+          </TabsTrigger>
+          <TabsTrigger value="tests" className="flex items-center gap-1.5">
+            <FlaskConical className="w-3.5 h-3.5" />
+            Test Cases
+          </TabsTrigger>
+        </TabsList>
+
+        {/* Overview tab — resizable split: details + JSON */}
+        <TabsContent value="overview" className="flex-1 overflow-hidden mt-0 pt-2">
+          <div className="h-full overflow-hidden">
+            <ResizablePanelGroup direction="horizontal" className="h-full">
+              {/* Details Panel */}
+              <ResizablePanel defaultSize={60} minSize={30}>
+                <div className="h-full overflow-auto p-6">
+                  <div className="max-w-2xl">
+                    {/* Overview Section */}
+                    <Section title="Overview">
+                      <MetadataRow label="Name">
+                        <span className="font-mono">{contract.name}</span>
+                      </MetadataRow>
+                      {contract.displayName && contract.displayName !== contract.name && (
+                        <MetadataRow label="Display Name">{contract.displayName}</MetadataRow>
+                      )}
+                      <MetadataRow label="Description">
+                        {contract.description || (
+                          <span className="text-muted-foreground italic">No description</span>
+                        )}
+                      </MetadataRow>
+                      <MetadataRow label="Type">
+                        <ContractTypeBadge type={contract.type} />
+                      </MetadataRow>
+                      <MetadataRow label="Status">
+                        <ContractStatusBadge status={contract.status} />
+                      </MetadataRow>
+                      <MetadataRow label="Version">
+                        {hasMultipleVersions ? (
+                          <Select value={contract.id} onValueChange={handleVersionChange}>
+                            <SelectTrigger className="w-[180px] h-8 font-mono text-sm">
+                              <SelectValue>{contract.version}</SelectValue>
+                            </SelectTrigger>
+                            <SelectContent>
+                              {allVersions.map((v) => (
+                                <SelectItem key={v.id} value={v.id} className="font-mono">
+                                  <span className="flex items-center gap-2">
+                                    {v.version}
+                                    {v.id === contract.id && (
+                                      <span className="text-xs text-muted-foreground">
+                                        (current)
+                                      </span>
+                                    )}
+                                    {v.status !== 'published' && (
+                                      <span className="text-xs text-muted-foreground">
+                                        ({v.status})
+                                      </span>
+                                    )}
                                   </span>
-                                )}
-                              </span>
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    ) : (
-                      <span className="font-mono">{contract.version}</span>
-                    )}
-                  </MetadataRow>
-                </Section>
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        ) : (
+                          <span className="font-mono">{contract.version}</span>
+                        )}
+                      </MetadataRow>
+                    </Section>
 
-                {/* Metadata Section */}
-                <Section title="Metadata">
-                  <MetadataRow label="Created">{formatDate(contract.createdAt)}</MetadataRow>
-                  <MetadataRow label="Last Updated">{formatDate(contract.updatedAt)}</MetadataRow>
-                  <MetadataRow label="Created By">
-                    <span className="font-mono text-xs">{contract.createdBy}</span>
-                  </MetadataRow>
-                  <MetadataRow label="Contract ID">
-                    <span className="font-mono text-xs text-muted-foreground">
-                      {contract.contractId}
-                    </span>
-                  </MetadataRow>
-                  <MetadataRow label="Version ID">
-                    <span className="font-mono text-xs text-muted-foreground">{contract.id}</span>
-                  </MetadataRow>
-                </Section>
+                    {/* Metadata Section */}
+                    <Section title="Metadata">
+                      <MetadataRow label="Created">{formatDate(contract.createdAt)}</MetadataRow>
+                      <MetadataRow label="Last Updated">
+                        {formatDate(contract.updatedAt)}
+                      </MetadataRow>
+                      <MetadataRow label="Created By">
+                        <span className="font-mono text-xs">{contract.createdBy}</span>
+                      </MetadataRow>
+                      <MetadataRow label="Contract ID">
+                        <span className="font-mono text-xs text-muted-foreground">
+                          {contract.contractId}
+                        </span>
+                      </MetadataRow>
+                      <MetadataRow label="Version ID">
+                        <span className="font-mono text-xs text-muted-foreground">
+                          {contract.id}
+                        </span>
+                      </MetadataRow>
+                    </Section>
 
-                {/* Configuration Section - Placeholder for future */}
-                <Section title="Configuration">
-                  <p className="text-sm text-muted-foreground italic">
-                    Contract schema configuration will be displayed here once loaded from the API.
-                  </p>
-                </Section>
-              </div>
-            </div>
-          </ResizablePanel>
+                    {/* Configuration Section */}
+                    <Section title="Configuration">
+                      <p className="text-sm text-muted-foreground italic">
+                        Contract schema configuration will be displayed here once loaded from the
+                        API.
+                      </p>
+                    </Section>
+                  </div>
+                </div>
+              </ResizablePanel>
 
-          <ResizableHandle withHandle />
+              <ResizableHandle withHandle />
 
-          {/* JSON Preview Panel */}
-          <ResizablePanel defaultSize={40} minSize={20}>
-            <div className="h-full overflow-auto p-2 bg-muted/30">
-              <SyntaxHighlighter
-                language="json"
-                style={theme === 'dark' ? oneDark : oneLight}
-                customStyle={{
-                  margin: 0,
-                  padding: '1rem',
-                  borderRadius: '0.5rem',
-                  fontSize: '0.75rem',
-                  height: '100%',
-                }}
-              >
-                {JSON.stringify(contractData, null, 2)}
-              </SyntaxHighlighter>
-            </div>
-          </ResizablePanel>
-        </ResizablePanelGroup>
-      </div>
+              {/* JSON Preview Panel */}
+              <ResizablePanel defaultSize={40} minSize={20}>
+                <div className="h-full overflow-auto p-2 bg-muted/30">
+                  <SyntaxHighlighter
+                    language="json"
+                    style={theme === 'dark' ? oneDark : oneLight}
+                    customStyle={{
+                      margin: 0,
+                      padding: '1rem',
+                      borderRadius: '0.5rem',
+                      fontSize: '0.75rem',
+                      height: '100%',
+                    }}
+                  >
+                    {JSON.stringify(contractData, null, 2)}
+                  </SyntaxHighlighter>
+                </div>
+              </ResizablePanel>
+            </ResizablePanelGroup>
+          </div>
+        </TabsContent>
+
+        {/* Audit Log tab — scrollable chronological timeline */}
+        <TabsContent value="audit" className="flex-1 overflow-hidden mt-0 pt-2">
+          <div className="h-full overflow-hidden border rounded-lg mx-4 mb-4">
+            <ContractAuditTimeline contractId={contract.id} />
+          </div>
+        </TabsContent>
+
+        {/* Test Cases tab — list of attached test scenarios */}
+        <TabsContent value="tests" className="flex-1 overflow-hidden mt-0 pt-2">
+          <div className="h-full overflow-hidden border rounded-lg mx-4 mb-4 flex flex-col">
+            <ContractTestCasesPanel
+              contractId={contract.id}
+              editable={contract.status === 'draft'}
+            />
+          </div>
+        </TabsContent>
+      </Tabs>
     </div>
   );
 }
