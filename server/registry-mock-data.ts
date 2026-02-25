@@ -53,12 +53,12 @@ const MOCK_NODE_DEFINITIONS: MockNodeDefinition[] = [
     namespace: 'data',
   },
   {
-    name: 'node_consul_registry_effect',
-    service_name: 'onex-consul-adapter',
-    display_name: 'Consul Service Registry',
+    name: 'node_valkey_cache_effect',
+    service_name: 'onex-valkey-adapter',
+    display_name: 'Valkey Cache',
     node_type: 'EFFECT',
     version: '1.0.0',
-    capabilities: ['service_discovery', 'health_check', 'kv_store'],
+    capabilities: ['cache_read', 'cache_write', 'key_expiry'],
     namespace: 'infrastructure',
   },
   {

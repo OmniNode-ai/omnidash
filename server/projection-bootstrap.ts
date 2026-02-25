@@ -21,6 +21,7 @@ import { EnrichmentProjection } from './projections/enrichment-projection';
 import { EnforcementProjection } from './projections/enforcement-projection';
 import { LlmRoutingProjection } from './projections/llm-routing-projection';
 import { DelegationProjection } from './projections/delegation-projection';
+import { AgentRoutingProjection } from './projections/agent-routing-projection';
 // Wave 2 projections (OMN-2602)
 import { GateDecisionsProjection } from './projections/gate-decisions-projection';
 import { EpicRunProjection } from './projections/epic-run-projection';
@@ -97,6 +98,8 @@ export const llmRoutingProjection = new LlmRoutingProjection();
  * ProjectionService (no fanout, no WS invalidation, no ingest pipeline).
  */
 export const delegationProjection = new DelegationProjection();
+/** Agent routing projection (OMN-2750). Queries agent_routing_decisions table. */
+export const agentRoutingProjection = new AgentRoutingProjection();
 // Wave 2 projections (OMN-2602)
 /** Gate decisions projection. Queries gate_decisions table. */
 export const gateDecisionsProjection = new GateDecisionsProjection();
@@ -135,6 +138,9 @@ if (!projectionService.getView(enforcementProjection.viewId)) {
 }
 if (!projectionService.getView(llmRoutingProjection.viewId)) {
   projectionService.registerView(llmRoutingProjection);
+}
+if (!projectionService.getView(agentRoutingProjection.viewId)) {
+  projectionService.registerView(agentRoutingProjection);
 }
 // Wave 2 registrations (OMN-2602)
 if (!projectionService.getView(gateDecisionsProjection.viewId)) {
