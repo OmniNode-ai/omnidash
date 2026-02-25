@@ -806,6 +806,7 @@ export class EventConsumer extends EventEmitter {
   private kafka: Kafka;
   private consumer: Consumer | null = null;
   private isRunning = false;
+  private isStopping = false;
 
   // Data retention configuration (configurable via environment variables)
   // INTENT_RETENTION_HOURS: Number of hours to retain intent data (default: 24)
@@ -1749,23 +1750,26 @@ export class EventConsumer extends EventEmitter {
                 }
               } catch (error) {
                 console.error('Error processing Kafka message:', error);
-                this.emit('error', error); // Emit error event
 
-                // If error suggests connection issue, attempt reconnection
+                // If error suggests a connection/broker issue, rethrow so consumer.run()
+                // rejects and the outer while-loop catch block handles reconnection cleanly.
+                // Calling connectWithRetry() here while consumer.run() is still active is
+                // unsafe — it creates undefined state for offset commits and heartbeats.
+                // NOTE: Do NOT emit 'error' here for connection errors — the outer catch at
+                // the consumer.run() level will emit it exactly once when the rethrown error
+                // surfaces there.
                 if (
                   error instanceof Error &&
                   (error.message.includes('connection') ||
                     error.message.includes('broker') ||
                     error.message.includes('network'))
                 ) {
-                  console.warn('⚠️ Connection error detected, attempting reconnection...');
-                  try {
-                    await this.connectWithRetry();
-                    intentLogger.info('Reconnection successful, resuming event processing');
-                  } catch (reconnectError) {
-                    console.error('❌ Reconnection failed:', reconnectError);
-                    this.emit('error', reconnectError);
-                  }
+                  throw error;
+                } else {
+                  // Non-connection errors (malformed messages, business logic exceptions, etc.)
+                  // are swallowed here so processing continues, but callers listening to the
+                  // 'error' event must still be notified.
+                  this.emit('error', error);
                 }
               }
             },
@@ -1787,6 +1791,9 @@ export class EventConsumer extends EventEmitter {
             break;
           }
         } catch (runErr) {
+          // NOTE: In test env, the reconnect loop is short-circuited here.
+          // The this.emit('error', runErr) below is production-only; tests instead
+          // assert that eachMessage rethrows (handler rejects) and no inline reconnect occurs.
           if (!this.isRunning || isTestEnv) break;
           console.error('[EventConsumer] consumer.run() threw, reconnecting in 5s...', runErr);
           this.emit('error', runErr);
@@ -4078,9 +4085,16 @@ export class EventConsumer extends EventEmitter {
    * ```
    */
   async stop() {
-    if (!this.consumer || !this.isRunning) {
+    // Guard against concurrent stop() calls: if a stop is already in progress,
+    // return early rather than relying on isRunning (which is cleared mid-stop,
+    // leaving a window where isRunning=false but disconnect() hasn't run yet).
+    // isRunning is set inside the consumer loop body; a connect()-but-not-yet-run window
+    // where isRunning=false is accepted — callers must not rely on stop() for cleanup in that gap.
+    if (!this.consumer || !this.isRunning || this.isStopping) {
       return;
     }
+
+    this.isStopping = true;
 
     try {
       // Clear pruning timer
@@ -4108,8 +4122,8 @@ export class EventConsumer extends EventEmitter {
         }
       }
 
-      await this.consumer.disconnect();
       this.isRunning = false;
+      await this.consumer.disconnect();
 
       // Stop the catalog manager (its own consumer/producer pair).
       if (this.catalogManager) {
@@ -4125,6 +4139,8 @@ export class EventConsumer extends EventEmitter {
       console.error('Error stopping Kafka consumer:', error);
       this.isRunning = false;
       this.emit('error', error); // Emit error event
+    } finally {
+      this.isStopping = false;
     }
   }
 

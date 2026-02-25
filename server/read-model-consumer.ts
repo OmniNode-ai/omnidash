@@ -405,10 +405,13 @@ export class ReadModelConsumer {
         if (this.stopped) return;
         continue;
       } catch (err) {
-        // Disconnect the current consumer before retrying so we do not orphan a
-        // live broker connection. connect() may have succeeded before subscribe()
-        // or run() threw, leaving a connected consumer handle we will never use
-        // again if we just abandon it and create new Kafka+consumer instances.
+        // Disconnect the current consumer before resetting flags so we do not
+        // orphan a live broker connection. connect() may have succeeded before
+        // subscribe() or run() threw, leaving a connected consumer handle we
+        // will never use again if we just abandon it and create new
+        // Kafka+consumer instances. Flags are reset only after disconnect so a
+        // caller observing running=false cannot call start() while the old
+        // consumer disconnect is still in flight.
         if (this.consumer) {
           try {
             await this.consumer.disconnect();
@@ -421,6 +424,8 @@ export class ReadModelConsumer {
           this.consumer = null;
           this.kafka = null;
         }
+        this.running = false;
+        this.stats.isRunning = false;
 
         attempts++;
         const delay = Math.min(RETRY_BASE_DELAY_MS * Math.pow(2, attempts), RETRY_MAX_DELAY_MS);
