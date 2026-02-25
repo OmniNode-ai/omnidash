@@ -4,7 +4,7 @@ import { intelligenceEvents } from './intelligence-event-adapter';
 import { eventConsumer } from './event-consumer';
 import { readModelConsumer } from './read-model-consumer';
 import { getIntelligenceDb } from './storage';
-import { getRuntimeIdentityForApi } from './runtime-identity';
+import { getRuntimeIdentityForApi, runtimeIdentity } from './runtime-identity';
 import {
   agentManifestInjections,
   patternLineageNodes,
@@ -576,13 +576,23 @@ intelligenceRouter.get('/routing/decisions', async (req, res) => {
  *   status: "healthy" | "unhealthy",
  *   eventsProcessed: 52,
  *   recentActionsCount: 100,
- *   timestamp: "2025-10-27T12:00:00Z"
+ *   timestamp: "2025-10-27T12:00:00Z",
+ *   runtime: {
+ *     supervised: false,
+ *     mode: "standalone"
+ *   }
  * }
  */
 intelligenceRouter.get('/health', async (req, res) => {
   try {
     const health = eventConsumer.getHealthStatus();
-    res.json(health);
+    res.json({
+      ...health,
+      runtime: {
+        supervised: runtimeIdentity.supervised,
+        mode: runtimeIdentity.runtimeMode,
+      },
+    });
   } catch (error) {
     console.error('Health check failed:', error);
     res.status(503).json({

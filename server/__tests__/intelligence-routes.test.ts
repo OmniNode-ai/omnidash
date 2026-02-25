@@ -296,6 +296,23 @@ describe('Intelligence Routes', () => {
       expect(response.body.status).toBe('healthy');
     });
 
+    it('should include runtime identity fields in health response', async () => {
+      vi.mocked(eventConsumer.getHealthStatus).mockReturnValue({
+        status: 'healthy',
+        agents: 5,
+        recentActions: 10,
+        routingDecisions: 8,
+      } as any);
+
+      const response = await request(app).get('/api/intelligence/health').expect(200);
+
+      expect(response.body).toHaveProperty('runtime');
+      expect(response.body.runtime).toHaveProperty('supervised');
+      expect(response.body.runtime).toHaveProperty('mode');
+      expect(typeof response.body.runtime.supervised).toBe('boolean');
+      expect(typeof response.body.runtime.mode).toBe('string');
+    });
+
     it('should handle errors gracefully', async () => {
       vi.mocked(eventConsumer.getHealthStatus).mockImplementation(() => {
         throw new Error('Health check failed');
