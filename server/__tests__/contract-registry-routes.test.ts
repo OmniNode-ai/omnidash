@@ -15,6 +15,7 @@ const createMockDb = () => {
     returning: vi.fn(),
     update: vi.fn(),
     set: vi.fn(),
+    delete: vi.fn(),
   };
 
   // Set up method chaining
@@ -26,6 +27,7 @@ const createMockDb = () => {
   mockDb.values.mockReturnValue(mockDb);
   mockDb.update.mockReturnValue(mockDb);
   mockDb.set.mockReturnValue(mockDb);
+  mockDb.delete.mockReturnValue(mockDb);
 
   return mockDb;
 };
@@ -1515,6 +1517,207 @@ describe('Contract Registry Routes', () => {
     it('should correctly bump major version', () => {
       expect(bumpVersion('1.0.0', 'major')).toBe('2.0.0');
       expect(bumpVersion('1.2.3', 'major')).toBe('2.0.0');
+    });
+  });
+
+  // ==========================================================================
+  // Test Case Routes
+  // ==========================================================================
+
+  describe('GET /:id/test-cases', () => {
+    it('should return test cases for a contract', async () => {
+      const mockTestCases = [
+        {
+          id: 'tc-1',
+          contractId: 'contract-1',
+          name: 'Happy path',
+          description: 'Validates happy path',
+          inputs: { userId: 'abc' },
+          expectedOutputs: { success: true },
+          assertions: [],
+          lastResult: 'passed',
+          lastRunAt: new Date('2024-01-01'),
+          lastRunBy: 'ci',
+          createdBy: 'test-user',
+          createdAt: new Date('2024-01-01'),
+          updatedAt: new Date('2024-01-01'),
+        },
+      ];
+
+      mockDb.orderBy.mockResolvedValue(mockTestCases);
+
+      const response = await request(app)
+        .get('/api/intelligence/contracts/contract-1/test-cases')
+        .expect(200);
+
+      expect(response.body).toHaveLength(1);
+      expect(response.body[0].name).toBe('Happy path');
+      expect(response.body[0].lastResult).toBe('passed');
+    });
+
+    it('should return 503 when database is unavailable', async () => {
+      mockDb = null;
+
+      const response = await request(app)
+        .get('/api/intelligence/contracts/contract-1/test-cases')
+        .expect(503);
+
+      expect(response.body.error).toBe('Database unavailable');
+
+      // Restore for other tests
+      mockDb = createMockDb();
+    });
+  });
+
+  describe('POST /:id/test-cases', () => {
+    it('should create a test case when contract exists', async () => {
+      const mockContract = {
+        id: 'contract-1',
+        contractId: 'user-auth-orchestrator',
+        name: 'user-auth-orchestrator',
+        displayName: 'User Authentication Orchestrator',
+        type: 'orchestrator',
+        status: 'draft',
+        version: '0.1.0',
+        description: null,
+        schema: {},
+        metadata: {},
+        createdBy: 'test-user',
+        updatedBy: 'test-user',
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      };
+
+      const newTestCase = {
+        id: 'tc-new',
+        contractId: 'contract-1',
+        name: 'Error case',
+        description: 'Tests error handling',
+        inputs: {},
+        expectedOutputs: {},
+        assertions: [],
+        lastResult: null,
+        lastRunAt: null,
+        lastRunBy: null,
+        createdBy: 'test-user',
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      };
+
+      // First call returns the contract (existence check), second returns the inserted row
+      mockDb.where.mockResolvedValueOnce([mockContract]);
+      mockDb.returning.mockResolvedValueOnce([newTestCase]);
+
+      const response = await request(app)
+        .post('/api/intelligence/contracts/contract-1/test-cases')
+        .send({ name: 'Error case', description: 'Tests error handling', createdBy: 'test-user' })
+        .expect(201);
+
+      expect(response.body.name).toBe('Error case');
+      expect(response.body.contractId).toBe('contract-1');
+    });
+
+    it('should return 400 when name is missing', async () => {
+      const mockContract = {
+        id: 'contract-1',
+        contractId: 'user-auth-orchestrator',
+        name: 'user-auth-orchestrator',
+        displayName: 'User Auth',
+        type: 'orchestrator',
+        status: 'draft',
+        version: '0.1.0',
+        description: null,
+        schema: {},
+        metadata: {},
+        createdBy: 'test-user',
+        updatedBy: 'test-user',
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      };
+
+      mockDb.where.mockResolvedValueOnce([mockContract]);
+
+      const response = await request(app)
+        .post('/api/intelligence/contracts/contract-1/test-cases')
+        .send({ description: 'Missing name' })
+        .expect(400);
+
+      expect(response.body.error).toContain('required');
+    });
+
+    it('should return 404 when contract does not exist', async () => {
+      mockDb.where.mockResolvedValueOnce([]);
+
+      const response = await request(app)
+        .post('/api/intelligence/contracts/nonexistent/test-cases')
+        .send({ name: 'Some test' })
+        .expect(404);
+
+      expect(response.body.error).toContain('not found');
+    });
+
+    it('should return 503 when database is unavailable', async () => {
+      mockDb = null;
+
+      const response = await request(app)
+        .post('/api/intelligence/contracts/contract-1/test-cases')
+        .send({ name: 'Some test' })
+        .expect(503);
+
+      expect(response.body.error).toBe('Database unavailable');
+
+      mockDb = createMockDb();
+    });
+  });
+
+  describe('DELETE /:id/test-cases/:testCaseId', () => {
+    it('should delete a test case that belongs to the contract', async () => {
+      const deletedTestCase = {
+        id: 'tc-1',
+        contractId: 'contract-1',
+        name: 'Happy path',
+        description: null,
+        inputs: {},
+        expectedOutputs: {},
+        assertions: [],
+        lastResult: null,
+        lastRunAt: null,
+        lastRunBy: null,
+        createdBy: 'test-user',
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      };
+
+      mockDb.returning.mockResolvedValueOnce([deletedTestCase]);
+
+      const response = await request(app)
+        .delete('/api/intelligence/contracts/contract-1/test-cases/tc-1')
+        .expect(200);
+
+      expect(response.body.success).toBe(true);
+      expect(response.body.deleted.id).toBe('tc-1');
+    });
+
+    it('should return 404 when test case does not exist or belongs to different contract', async () => {
+      mockDb.returning.mockResolvedValueOnce([]);
+
+      const response = await request(app)
+        .delete('/api/intelligence/contracts/contract-1/test-cases/nonexistent')
+        .expect(404);
+
+      expect(response.body.error).toContain('not found');
+    });
+
+    it('should return 503 when database is unavailable', async () => {
+      mockDb = null;
+
+      const response = await request(app)
+        .delete('/api/intelligence/contracts/contract-1/test-cases/tc-1')
+        .expect(503);
+
+      expect(response.body.error).toBe('Database unavailable');
+
+      mockDb = createMockDb();
     });
   });
 });
