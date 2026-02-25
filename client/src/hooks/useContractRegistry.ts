@@ -7,6 +7,8 @@
  *  - Creating a new draft contract
  *  - Updating a draft contract
  *  - Lifecycle transitions: validate → publish → deprecate → archive
+ *  - Version history browsing (all versions of a contract)
+ *  - Breaking change analysis between two contract versions
  *  - Query-key helpers for granular cache invalidation
  */
 
@@ -22,8 +24,8 @@ import type {
 // API helpers
 // ---------------------------------------------------------------------------
 
-async function fetchJson<T>(url: string): Promise<T> {
-  const res = await fetch(url);
+async function fetchJson<T>(url: string, options?: RequestInit): Promise<T> {
+  const res = await fetch(url, options);
   if (!res.ok) {
     const text = await res.text().catch(() => res.statusText);
     throw new Error(`${res.status}: ${text}`);
@@ -68,6 +70,7 @@ export const contractKeys = {
     [...contractKeys.lists(), filters ?? {}] as const,
   detail: (id: string) => [...contractKeys.all, 'detail', id] as const,
   versions: (contractId: string) => [...contractKeys.all, 'versions', contractId] as const,
+  diff: (fromId: string, toId: string) => [...contractKeys.all, 'diff', fromId, toId] as const,
   types: () => [...contractKeys.all, 'types'] as const,
 };
 
@@ -102,6 +105,28 @@ export interface LifecycleResult {
   success: boolean;
   contract: Contract;
   error?: string;
+}
+
+export interface BreakingChange {
+  category:
+    | 'field_removed'
+    | 'field_type_changed'
+    | 'required_field_added'
+    | 'enum_value_removed'
+    | 'determinism_class_changed'
+    | 'node_type_changed';
+  path: string;
+  message: string;
+  oldValue?: unknown;
+  newValue?: unknown;
+}
+
+export interface BreakingChangeAnalysis {
+  hasBreakingChanges: boolean;
+  breakingChanges: BreakingChange[];
+  recommendedBump: 'major' | 'minor' | 'patch';
+  fromVersion: string;
+  toVersionSuggested: string;
 }
 
 // ---------------------------------------------------------------------------
@@ -149,6 +174,54 @@ export function useContract(id: string | undefined) {
     queryFn: () => fetchJson<Contract>(`/api/contracts/${id}`),
     enabled: !!id,
     staleTime: 10_000,
+  });
+}
+
+// ---------------------------------------------------------------------------
+// Query: all versions of a contract (version history browser)
+// ---------------------------------------------------------------------------
+
+/**
+ * Fetch all versions of a specific contract (by stable contractId).
+ * Returned list is ordered newest-first by the API.
+ *
+ * @param contractId - The stable logical ID shared across versions
+ */
+export function useContractVersions(contractId: string | null | undefined) {
+  return useQuery<Contract[]>({
+    queryKey: contractKeys.versions(contractId ?? ''),
+    queryFn: () => fetchJson<Contract[]>(`/api/contracts/by-contract-id/${contractId}`),
+    enabled: !!contractId,
+    staleTime: 30_000,
+  });
+}
+
+// ---------------------------------------------------------------------------
+// Query: breaking change analysis between two versions
+// ---------------------------------------------------------------------------
+
+/**
+ * Analyse breaking changes between two contract versions.
+ *
+ * @param fromId - The older version's ID (UUID)
+ * @param toId   - The newer (draft) version's ID (UUID)
+ *
+ * Blocked (enabled=false) when either ID is missing.
+ */
+export function useBreakingChangeAnalysis(
+  fromId: string | null | undefined,
+  toId: string | null | undefined
+) {
+  return useQuery<BreakingChangeAnalysis>({
+    queryKey: contractKeys.diff(fromId ?? '', toId ?? ''),
+    queryFn: () =>
+      fetchJson<BreakingChangeAnalysis>('/api/contracts/diff-versions', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ fromId, toId }),
+      }),
+    enabled: !!fromId && !!toId,
+    staleTime: 60_000, // Analysis result is deterministic — cache longer
   });
 }
 

@@ -832,7 +832,7 @@ interface FieldDescriptor {
 /**
  * Result of breaking change analysis between two contract schemas.
  */
-interface BreakingChangeAnalysis {
+interface BreakingChangeAnalysisResult {
   hasBreakingChanges: boolean;
   breakingChanges: BreakingChangeEntry[];
   nonBreakingChanges: NonBreakingChangeEntry[];
@@ -855,7 +855,34 @@ interface NonBreakingChangeEntry {
 }
 
 /**
- * Flatten a JSON Schema `properties` block into a path→descriptor map.
+ * Categories of breaking changes detected between two contract versions (OMN-2559)
+ */
+type BreakingChangeCategory =
+  | 'field_removed'
+  | 'field_type_changed'
+  | 'required_field_added'
+  | 'enum_value_removed'
+  | 'determinism_class_changed'
+  | 'node_type_changed';
+
+interface BreakingChange {
+  category: BreakingChangeCategory;
+  path: string;
+  message: string;
+  oldValue?: unknown;
+  newValue?: unknown;
+}
+
+interface BreakingChangeAnalysis {
+  hasBreakingChanges: boolean;
+  breakingChanges: BreakingChange[];
+  recommendedBump: 'major' | 'minor' | 'patch';
+  fromVersion: string;
+  toVersionSuggested: string;
+}
+
+/**
+ * Flatten a JSON Schema `properties` block into a path->descriptor map.
  * Handles nested objects recursively and tracks required fields.
  */
 function flattenSchemaFields(
@@ -913,10 +940,10 @@ function typeToString(t: string | string[] | undefined): string {
  * Detect breaking and non-breaking changes between two contract JSON Schemas.
  *
  * Breaking changes (per OMN-2534 spec):
- * - Removed required fields — consumers relying on this field will break
- * - Changed field type — incompatible type change
- * - Capability removals — items removed from effect_surface
- * - New required field — existing producers can no longer satisfy the schema
+ * - Removed required fields -- consumers relying on this field will break
+ * - Changed field type -- incompatible type change
+ * - Capability removals -- items removed from effect_surface
+ * - New required field -- existing producers can no longer satisfy the schema
  *
  * Non-breaking changes:
  * - Added optional fields
@@ -926,7 +953,7 @@ function typeToString(t: string | string[] | undefined): string {
 function detectBreakingChanges(
   fromSchema: Record<string, unknown>,
   toSchema: Record<string, unknown>
-): BreakingChangeAnalysis {
+): BreakingChangeAnalysisResult {
   const fromFields = flattenSchemaFields(fromSchema);
   const toFields = flattenSchemaFields(toSchema);
 
@@ -957,7 +984,7 @@ function detectBreakingChanges(
         });
       }
     } else {
-      // Field exists in both — check type changes
+      // Field exists in both -- check type changes
       const fromType = typeToString(fromDesc.type as string | string[] | undefined);
       const toType = typeToString(toDesc.type as string | string[] | undefined);
 
@@ -971,7 +998,7 @@ function detectBreakingChanges(
         });
       }
 
-      // Required removed (widening — non-breaking)
+      // Required removed (widening -- non-breaking)
       if (fromDesc.required && !toDesc.required) {
         nonBreakingChanges.push({
           type: 'required_removed',
@@ -986,7 +1013,7 @@ function detectBreakingChanges(
   for (const [path, toDesc] of Array.from(toFields)) {
     if (!fromFields.has(path)) {
       if (toDesc.required) {
-        // New required field — existing producers cannot satisfy this
+        // New required field -- existing producers cannot satisfy this
         breakingChanges.push({
           type: 'required_added',
           path,
@@ -1025,6 +1052,151 @@ function detectBreakingChanges(
     nonBreakingChanges,
   };
 }
+
+/**
+ * Produce a full BreakingChangeAnalysis between two contracts (OMN-2559).
+ * Returns category-tagged breaking changes with recommended version bump.
+ */
+function analyzeBreakingChanges(
+  olderContract: Contract,
+  newerContract: Contract
+): BreakingChangeAnalysis {
+  const oldSchema = (olderContract.schema as Record<string, unknown>) ?? {};
+  const newSchema = (newerContract.schema as Record<string, unknown>) ?? {};
+
+  const changes: BreakingChange[] = [];
+
+  // Node type change is always breaking
+  if (olderContract.type !== newerContract.type) {
+    changes.push({
+      category: 'node_type_changed',
+      path: '/type',
+      message: `Node type changed from '${olderContract.type}' to '${newerContract.type}'`,
+      oldValue: olderContract.type,
+      newValue: newerContract.type,
+    });
+  }
+
+  // determinism_class change is breaking
+  const oldDeterminism = oldSchema.determinism_class as string | undefined;
+  const newDeterminism = newSchema.determinism_class as string | undefined;
+  if (oldDeterminism && newDeterminism && oldDeterminism !== newDeterminism) {
+    changes.push({
+      category: 'determinism_class_changed',
+      path: '/determinism_class',
+      message: `determinism_class changed from '${oldDeterminism}' to '${newDeterminism}'`,
+      oldValue: oldDeterminism,
+      newValue: newDeterminism,
+    });
+  }
+
+  // Use the detailed schema analysis from detectBreakingChanges
+  const detailedAnalysis = detectBreakingChanges(oldSchema, newSchema);
+
+  // Map the detailed entries to BreakingChange format
+  for (const entry of detailedAnalysis.breakingChanges) {
+    const categoryMap: Record<string, BreakingChangeCategory> = {
+      removed_required_field: 'field_removed',
+      type_changed: 'field_type_changed',
+      required_added: 'required_field_added',
+      capability_removed: 'field_removed',
+    };
+    changes.push({
+      category: categoryMap[entry.type] ?? 'field_removed',
+      path: entry.path,
+      message: entry.description,
+      oldValue: entry.fromValue,
+      newValue: entry.toValue,
+    });
+  }
+
+  // Check for enum value removals (not covered by flattenSchemaFields)
+  const oldProps = (oldSchema.properties as Record<string, unknown>) ?? {};
+  const newProps = (newSchema.properties as Record<string, unknown>) ?? {};
+  for (const fieldName of Object.keys(oldProps)) {
+    if (fieldName in newProps) {
+      const oldField = oldProps[fieldName] as Record<string, unknown>;
+      const newField = newProps[fieldName] as Record<string, unknown>;
+      const oldEnum = Array.isArray(oldField.enum) ? (oldField.enum as unknown[]) : null;
+      const newEnum = Array.isArray(newField.enum) ? (newField.enum as unknown[]) : null;
+      if (oldEnum && newEnum) {
+        const removedValues = oldEnum.filter((v) => !newEnum.includes(v));
+        for (const removed of removedValues) {
+          changes.push({
+            category: 'enum_value_removed',
+            path: `/properties/${fieldName}/enum`,
+            message: `Enum value '${removed}' was removed from field '${fieldName}'`,
+            oldValue: removed,
+            newValue: undefined,
+          });
+        }
+      }
+    }
+  }
+
+  const hasBreakingChanges = changes.length > 0;
+
+  // Determine recommended version bump
+  let recommendedBump: 'major' | 'minor' | 'patch' = 'patch';
+  if (hasBreakingChanges) {
+    recommendedBump = 'major';
+  } else {
+    const hasAdditions = Object.keys(newProps).some((k) => !(k in oldProps));
+    if (hasAdditions) {
+      recommendedBump = 'minor';
+    }
+  }
+
+  const toVersionSuggested = bumpVersion(olderContract.version, recommendedBump);
+
+  return {
+    hasBreakingChanges,
+    breakingChanges: changes,
+    recommendedBump,
+    fromVersion: olderContract.version,
+    toVersionSuggested,
+  };
+}
+
+/**
+ * GET /by-contract-id/:contractId - Get all versions of a contract (by logical contractId)
+ *
+ * Returns all version rows sharing the same contractId, sorted newest first.
+ * Used by the version history browser and version dropdown.
+ */
+router.get('/by-contract-id/:contractId', async (req, res) => {
+  try {
+    const db = getDb();
+    const { contractId } = req.params;
+
+    if (!db) {
+      const staticContracts = loadStaticContracts();
+      const versions = staticContracts
+        .filter((c) => c.contractId === contractId)
+        .sort((a, b) => {
+          const partsA = a.version.split('.').map(Number);
+          const partsB = b.version.split('.').map(Number);
+          for (let i = 0; i < Math.max(partsA.length, partsB.length); i++) {
+            const diff = (partsB[i] ?? 0) - (partsA[i] ?? 0);
+            if (diff !== 0) return diff;
+          }
+          return 0;
+        });
+      return res.json(versions);
+    }
+
+    const result = await db
+      .select()
+      .from(contracts)
+      .where(eq(contracts.contractId, contractId))
+      .orderBy(desc(contracts.updatedAt));
+
+    res.json(result);
+  } catch (error) {
+    console.error('Error fetching contract versions:', error);
+    res.status(500).json({ error: 'Failed to fetch contract versions' });
+  }
+});
 
 /**
  * GET /diff-versions - Diff two contract version UUIDs with breaking change detection
@@ -1104,6 +1276,61 @@ router.get('/diff-versions', async (req, res) => {
   } catch (error) {
     console.error('Error computing version diff:', error);
     res.status(500).json({ error: 'Failed to compute version diff' });
+  }
+});
+
+/**
+ * POST /diff-versions - Analyse breaking changes between two contract versions (OMN-2559)
+ *
+ * Body: { fromId: string, toId: string }
+ *
+ * Returns a BreakingChangeAnalysis object:
+ * - hasBreakingChanges: boolean
+ * - breakingChanges: BreakingChange[]  (category, path, message, oldValue?, newValue?)
+ * - recommendedBump: 'major' | 'minor' | 'patch'
+ * - fromVersion, toVersionSuggested
+ *
+ * Used by the version bump UI to warn when MAJOR bump is required and to block
+ * MINOR/PATCH when breaking changes are detected.
+ */
+router.post('/diff-versions', async (req, res) => {
+  try {
+    const db = getDb();
+    if (!db) return res.status(503).json({ error: 'Database unavailable' });
+
+    const { fromId, toId } = req.body;
+
+    if (!fromId || !toId) {
+      return res.status(400).json({ error: 'Missing required fields: fromId, toId' });
+    }
+
+    const [fromResult, toResult] = await Promise.all([
+      db
+        .select()
+        .from(contracts)
+        .where(eq(contracts.id, fromId as string)),
+      db
+        .select()
+        .from(contracts)
+        .where(eq(contracts.id, toId as string)),
+    ]);
+
+    if (fromResult.length === 0) {
+      return res.status(404).json({ error: `Contract not found: fromId=${fromId}` });
+    }
+    if (toResult.length === 0) {
+      return res.status(404).json({ error: `Contract not found: toId=${toId}` });
+    }
+
+    const fromContract = fromResult[0];
+    const toContract = toResult[0];
+
+    const analysis = analyzeBreakingChanges(fromContract, toContract);
+
+    res.json(analysis);
+  } catch (error) {
+    console.error('Error diffing contract versions:', error);
+    res.status(500).json({ error: 'Failed to diff contract versions' });
   }
 });
 
