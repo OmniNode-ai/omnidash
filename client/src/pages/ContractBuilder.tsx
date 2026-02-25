@@ -1,20 +1,25 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useCallback } from 'react';
 import { Card } from '@/components/ui/card';
-import { FileText } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { Skeleton } from '@/components/ui/skeleton';
+import { FileText, AlertCircle, RefreshCw } from 'lucide-react';
 import {
   ContractEmptyState,
   ContractList,
-  ContractTypeSelector,
   ContractEditor,
   ContractViewer,
   ContractPublish,
   ContractHistory,
   ContractDiff,
+  ContractCreateWizard,
+  ContractLifecycleActions,
   type ContractType,
 } from '@/components/contract-builder';
+import { useContracts, useValidateContract } from '@/hooks/useContractRegistry';
 import { contractRegistrySource, type Contract } from '@/lib/data-sources';
+import { useToast } from '@/hooks/use-toast';
 
-type ViewState = 'list' | 'select-type' | 'editor' | 'viewer' | 'publish' | 'history' | 'diff';
+type ViewState = 'list' | 'editor' | 'viewer' | 'publish' | 'history' | 'diff';
 
 /**
  * Compare semantic versions (e.g., "1.2.0" vs "1.10.0")
@@ -26,8 +31,8 @@ function compareVersions(a: string, b: string): number {
   const maxLength = Math.max(partsA.length, partsB.length);
 
   for (let i = 0; i < maxLength; i++) {
-    const numA = partsA[i] || 0;
-    const numB = partsB[i] || 0;
+    const numA = partsA[i] ?? 0;
+    const numB = partsB[i] ?? 0;
     if (numA !== numB) {
       return numA - numB;
     }
@@ -52,36 +57,48 @@ function getLatestVersions(contracts: Contract[]): Contract[] {
 }
 
 /**
- * Get all versions of a specific contract
+ * Get all versions of a specific contract, newest first
  */
 function getContractVersions(contracts: Contract[], contractId: string): Contract[] {
   return contracts
     .filter((c) => c.contractId === contractId)
-    .sort((a, b) => compareVersions(b.version, a.version)); // Newest first
+    .sort((a, b) => compareVersions(b.version, a.version));
 }
 
 /**
  * Contract Builder Page
  *
  * Main entry point for contract management.
- * Routes between list view, empty state, type selector, and editor.
+ * Uses TanStack Query to load contracts from the API.
+ * Includes:
+ *  - Library browser (searchable, filterable, sortable)
+ *  - Guided creation wizard
+ *  - Lifecycle state transitions (DRAFT → PUBLISHED → DEPRECATED)
  */
 export default function ContractBuilder() {
+  const { toast } = useToast();
+
+  // View state
   const [view, setView] = useState<ViewState>('list');
   const [selectedType, setSelectedType] = useState<ContractType | null>(null);
   const [selectedContract, setSelectedContract] = useState<Contract | null>(null);
+  const [showCreateWizard, setShowCreateWizard] = useState(false);
+
   // For diff view: track the two versions being compared
   const [diffVersions, setDiffVersions] = useState<{ older: Contract; newer: Contract } | null>(
     null
   );
 
-  // Get ALL contracts from the registry source (supports mock/API modes)
-  const allContracts = contractRegistrySource.getContractsSync();
+  // TanStack Query — load all contracts from the API
+  const { data: allContracts = [], isLoading, isError, error, refetch } = useContracts();
+
+  // Policy-gate validation mutation (used inside editor and publish flow)
+  const { mutateAsync: validateContract } = useValidateContract();
 
   // For the list view, show only the latest version of each contract
   const latestContracts = useMemo(() => getLatestVersions(allContracts), [allContracts]);
 
-  // Get all versions of the currently selected contract (for version switching)
+  // All versions of the currently selected contract (for version switching)
   const selectedContractVersions = useMemo(
     () => (selectedContract ? getContractVersions(allContracts, selectedContract.contractId) : []),
     [allContracts, selectedContract]
@@ -89,41 +106,43 @@ export default function ContractBuilder() {
 
   const hasContracts = latestContracts.length > 0;
 
-  const handleCreateFirst = () => {
-    setView('select-type');
-  };
+  // ---------------------------------------------------------------------------
+  // Navigation helpers
+  // ---------------------------------------------------------------------------
 
-  const handleCreateNew = () => {
-    setView('select-type');
-  };
-
-  const handleBackToList = () => {
+  const handleBackToList = useCallback(() => {
     setView('list');
     setSelectedType(null);
     setSelectedContract(null);
-  };
+  }, []);
 
-  const handleTypeSelected = (type: ContractType) => {
-    setSelectedContract(null); // Clear any previously selected contract - we're creating new
-    setSelectedType(type);
-    setView('editor');
-  };
-
-  // Handler for editing a contract
-  const handleEditContract = (contract: Contract) => {
-    // Check if the contract is a draft - only drafts can be edited in place
-    if (contract.status === 'draft') {
-      // Edit draft - navigate to editor with contract data
+  // Called after wizard creates a new draft — open it in the editor immediately
+  const handleDraftCreated = useCallback(
+    (contract: Contract) => {
       setSelectedContract(contract);
       setSelectedType(contract.type);
       setView('editor');
-    } else {
-      // Immutable contract (validated, published, deprecated, archived)
-      // Check if a draft already exists for this contract
-      const existingDraft = contractRegistrySource.getDraftVersion(contract.contractId);
+      toast({
+        title: 'Draft created',
+        description: `${contract.displayName || contract.name} v${contract.version} is ready to edit.`,
+      });
+    },
+    [toast]
+  );
 
+  // Edit handler: only drafts are directly editable; others get a new draft version
+  const handleEditContract = useCallback(
+    async (contract: Contract) => {
+      if (contract.status === 'draft') {
+        setSelectedContract(contract);
+        setSelectedType(contract.type);
+        setView('editor');
+        return;
+      }
+
+      // Immutable contract — look for existing draft first
+      const existingDraft = contractRegistrySource.getDraftVersion(contract.contractId);
       if (existingDraft) {
-        // A draft already exists - offer to edit it instead
         const editExisting = window.confirm(
           `A draft version (v${existingDraft.version}) already exists for this contract.\n\n` +
             `Would you like to edit the existing draft?`
@@ -133,99 +152,169 @@ export default function ContractBuilder() {
           setSelectedType(existingDraft.type);
           setView('editor');
         }
-      } else {
-        // Create a new draft version
-        const newDraft = contractRegistrySource.createDraftVersion(contract, 'patch');
+        return;
+      }
+
+      // Create a new draft version via API
+      try {
+        const { data: newDraft } = await contractRegistrySource.createDraftVersionAsync(
+          contract,
+          'patch'
+        );
         setSelectedContract(newDraft);
         setSelectedType(newDraft.type);
         setView('editor');
+        toast({
+          title: 'New draft created',
+          description: `Editing draft v${newDraft.version} based on v${contract.version}.`,
+        });
+      } catch (err) {
+        toast({
+          title: 'Failed to create draft',
+          description: err instanceof Error ? err.message : 'An unexpected error occurred.',
+          variant: 'destructive',
+        });
       }
-    }
-  };
+    },
+    [toast]
+  );
 
-  // Handler for duplicating a contract
-  const handleDuplicateContract = (contract: Contract) => {
-    console.log('Duplicate contract:', contract);
-    // TODO: Create a copy with new ID and "Copy of" prefix
-  };
-
-  // Handler for viewing a contract (read-only)
-  const handleSelectContract = (contract: Contract) => {
+  const handleSelectContract = useCallback((contract: Contract) => {
     setSelectedContract(contract);
     setView('viewer');
-  };
+  }, []);
 
-  // Handler for publishing a contract (opens publish workflow)
-  const handlePublishContract = (contract: Contract) => {
+  const handlePublishContract = useCallback((contract: Contract) => {
     setSelectedContract(contract);
     setView('publish');
-  };
+  }, []);
 
-  // Handler for when publish completes
-  const handlePublishComplete = (contract: Contract) => {
-    console.log('Contract published:', contract);
-    // TODO: Update contract status in API, refresh list
-    // For now, just go back to list
-    handleBackToList();
-  };
+  const handlePublishComplete = useCallback(
+    (contract: Contract) => {
+      toast({
+        title: 'Contract published',
+        description: `${contract.displayName || contract.name} v${contract.version} is now live.`,
+      });
+      handleBackToList();
+    },
+    [handleBackToList, toast]
+  );
 
-  // Handler for viewing contract history
-  const handleViewHistory = (contract: Contract) => {
+  const handleViewHistory = useCallback((contract: Contract) => {
     setSelectedContract(contract);
     setView('history');
-  };
+  }, []);
 
-  // Handler for comparing two versions
-  const handleCompareVersions = (older: Contract, newer: Contract) => {
+  const handleCompareVersions = useCallback((older: Contract, newer: Contract) => {
     setDiffVersions({ older, newer });
     setView('diff');
-  };
+  }, []);
+
+  // Called by ContractLifecycleActions after deprecation/archiving
+  const handleLifecycleTransition = useCallback((updatedContract: Contract) => {
+    // Update local state so viewer shows the new status immediately
+    setSelectedContract(updatedContract);
+  }, []);
+
+  // Validate a draft before publishing (wires up the API gate check)
+  const handleValidateContract = useCallback(
+    async (contractId: string) => {
+      return validateContract(contractId);
+    },
+    [validateContract]
+  );
+
+  // ---------------------------------------------------------------------------
+  // Loading / error states
+  // ---------------------------------------------------------------------------
+
+  if (isLoading) {
+    return (
+      <div className="h-full flex flex-col gap-4">
+        <PageHeader />
+        <Card className="flex flex-col gap-4 p-6">
+          <div className="flex justify-end">
+            <Skeleton className="h-9 w-32" />
+          </div>
+          {[...Array(5)].map((_, i) => (
+            <Skeleton key={i} className="h-12 w-full" />
+          ))}
+        </Card>
+      </div>
+    );
+  }
+
+  if (isError) {
+    return (
+      <div className="h-full flex flex-col gap-4">
+        <PageHeader />
+        <Card className="flex flex-col items-center justify-center gap-4 p-12 text-center">
+          <AlertCircle className="w-10 h-10 text-destructive" />
+          <div>
+            <p className="font-semibold text-destructive">Failed to load contracts</p>
+            <p className="text-sm text-muted-foreground mt-1">
+              {error instanceof Error ? error.message : 'An unexpected error occurred.'}
+            </p>
+          </div>
+          <Button variant="outline" onClick={() => void refetch()} className="gap-2">
+            <RefreshCw className="w-4 h-4" />
+            Retry
+          </Button>
+        </Card>
+      </div>
+    );
+  }
+
+  // ---------------------------------------------------------------------------
+  // Render
+  // ---------------------------------------------------------------------------
 
   return (
     <div className="h-full flex flex-col gap-4">
-      {/* Header */}
-      <div className="flex items-center justify-between flex-shrink-0">
-        <div className="flex items-center gap-3">
-          <div className="p-2 rounded-lg bg-primary/10">
-            <FileText className="w-6 h-6 text-primary" />
-          </div>
-          <div>
-            <h1 className="text-2xl font-bold">Contracts</h1>
-            <p className="text-muted-foreground text-sm">
-              Schema-driven contract authoring and governance
-            </p>
-          </div>
-        </div>
-      </div>
+      <PageHeader />
 
-      {/* Main content */}
+      {/* Guided creation wizard dialog */}
+      <ContractCreateWizard
+        open={showCreateWizard}
+        onOpenChange={setShowCreateWizard}
+        onCreated={handleDraftCreated}
+      />
+
+      {/* Main content area */}
       <Card className="contract-builder-content flex flex-col">
         {view === 'list' ? (
           hasContracts ? (
             <ContractList
               contracts={latestContracts}
-              onCreateNew={handleCreateNew}
+              onCreateNew={() => setShowCreateWizard(true)}
               onSelectContract={handleSelectContract}
-              onEditContract={handleEditContract}
-              onDuplicateContract={handleDuplicateContract}
+              onEditContract={(c) => void handleEditContract(c)}
               onPublishContract={handlePublishContract}
+              onViewHistory={handleViewHistory}
             />
           ) : (
-            <ContractEmptyState onCreateFirst={handleCreateFirst} />
+            <ContractEmptyState onCreateFirst={() => setShowCreateWizard(true)} />
           )
-        ) : view === 'select-type' ? (
-          <ContractTypeSelector onSelect={handleTypeSelected} onBack={handleBackToList} />
         ) : view === 'viewer' && selectedContract ? (
-          <ContractViewer
-            contract={selectedContract}
-            allVersions={selectedContractVersions}
-            onBack={handleBackToList}
-            onEdit={handleEditContract}
-            onDuplicate={handleDuplicateContract}
-            onViewHistory={handleViewHistory}
-            onPublish={handlePublishContract}
-            onVersionChange={setSelectedContract}
-          />
+          <div className="flex flex-col h-full">
+            <ContractViewer
+              contract={selectedContract}
+              allVersions={selectedContractVersions}
+              onBack={handleBackToList}
+              onEdit={(c) => void handleEditContract(c)}
+              onViewHistory={handleViewHistory}
+              onPublish={handlePublishContract}
+              onVersionChange={setSelectedContract}
+            />
+            {/* Lifecycle action buttons (deprecate / archive) rendered below viewer header */}
+            <div className="flex items-center gap-2 px-4 pb-3 border-t pt-3">
+              <ContractLifecycleActions
+                contract={selectedContract}
+                onTransition={handleLifecycleTransition}
+                className="flex items-center gap-2"
+              />
+            </div>
+          </div>
         ) : view === 'editor' && selectedType ? (
           <ContractEditor
             contractType={selectedType}
@@ -233,8 +322,6 @@ export default function ContractBuilder() {
             initialData={
               selectedContract
                 ? {
-                    // TODO: Map contract data to form schema structure
-                    // For now, we'll use a minimal mapping
                     node_identity: {
                       name: selectedContract.name,
                       version: selectedContract.version,
@@ -249,7 +336,7 @@ export default function ContractBuilder() {
             onBack={handleBackToList}
             onSave={(data) => {
               console.log('Contract saved:', data);
-              // TODO: Save to API, then navigate to list
+              // TODO: persist via updateContract mutation, then navigate to list
               handleBackToList();
             }}
           />
@@ -257,24 +344,20 @@ export default function ContractBuilder() {
           <ContractPublish
             contract={selectedContract}
             onBack={handleBackToList}
-            onEdit={handleEditContract}
+            onEdit={(c) => void handleEditContract(c)}
             onPublish={handlePublishComplete}
           />
         ) : view === 'history' && selectedContract ? (
           <ContractHistory
             contract={selectedContract}
             allVersions={selectedContractVersions}
-            onBack={() => {
-              // Go back to viewer for the selected contract
-              setView('viewer');
-            }}
+            onBack={() => setView('viewer')}
             onViewVersion={(version) => {
               setSelectedContract(version);
               setView('viewer');
             }}
             onCompareVersions={handleCompareVersions}
-            onCreateDraftFromVersion={(version) => {
-              // Create a new draft based on the selected version
+            onCreateDraftFromVersion={async (version) => {
               const existingDraft = contractRegistrySource.getDraftVersion(version.contractId);
               if (existingDraft) {
                 const editExisting = window.confirm(
@@ -287,10 +370,22 @@ export default function ContractBuilder() {
                   setView('editor');
                 }
               } else {
-                const newDraft = contractRegistrySource.createDraftVersion(version, 'patch');
-                setSelectedContract(newDraft);
-                setSelectedType(newDraft.type);
-                setView('editor');
+                try {
+                  const { data: newDraft } = await contractRegistrySource.createDraftVersionAsync(
+                    version,
+                    'patch'
+                  );
+                  setSelectedContract(newDraft);
+                  setSelectedType(newDraft.type);
+                  setView('editor');
+                } catch (err) {
+                  toast({
+                    title: 'Failed to create draft',
+                    description:
+                      err instanceof Error ? err.message : 'An unexpected error occurred.',
+                    variant: 'destructive',
+                  });
+                }
               }
             }}
           />
@@ -298,10 +393,7 @@ export default function ContractBuilder() {
           <ContractDiff
             olderVersion={diffVersions.older}
             newerVersion={diffVersions.newer}
-            onBack={() => {
-              // Go back to history view
-              setView('history');
-            }}
+            onBack={() => setView('history')}
             onViewOlder={() => {
               setSelectedContract(diffVersions.older);
               setView('viewer');
@@ -313,6 +405,28 @@ export default function ContractBuilder() {
           />
         ) : null}
       </Card>
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Sub-components
+// ---------------------------------------------------------------------------
+
+function PageHeader() {
+  return (
+    <div className="flex items-center justify-between flex-shrink-0">
+      <div className="flex items-center gap-3">
+        <div className="p-2 rounded-lg bg-primary/10">
+          <FileText className="w-6 h-6 text-primary" />
+        </div>
+        <div>
+          <h1 className="text-2xl font-bold">Contracts</h1>
+          <p className="text-muted-foreground text-sm">
+            Schema-driven contract authoring and governance
+          </p>
+        </div>
+      </div>
     </div>
   );
 }
