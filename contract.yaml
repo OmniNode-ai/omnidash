@@ -34,10 +34,10 @@ actions:
 
 # What this service consumes (for documentation, not self-subscription)
 consumed_topics:
-  - "agent-routing-decisions"
-  - "agent-transformation-events"
-  - "router-performance-metrics"
-  - "agent-actions"
+  - "onex.evt.omniclaude.agent-actions.v1"
+  - "onex.evt.omniclaude.routing-decision.v1"
+  - "onex.evt.omniclaude.agent-transformation.v1"
+  - "onex.evt.omniclaude.performance-metrics.v1"
 
 dependencies:
   - name: "postgresql"

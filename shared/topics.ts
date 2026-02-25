@@ -422,8 +422,39 @@ export const SUFFIX_VALIDATION_CANDIDATE_UPSERTED =
   'onex.evt.validation.lifecycle-candidate-upserted.v1';
 
 // ============================================================================
+// OmniClaude Agent Topics (canonical onex.evt.omniclaude.* namespace)
+//
+// These replace the legacy flat topic names (agent-actions, etc.).
+// omniclaude now produces under the onex.evt.omniclaude.* namespace.
+// The read-model-consumer subscribes to these canonical names.
+// ============================================================================
+
+/** Tool calls, decisions, errors, and successes from agent execution. */
+export const TOPIC_OMNICLAUDE_AGENT_ACTIONS = 'onex.evt.omniclaude.agent-actions.v1';
+/** Routing decision events emitted by the agent router. */
+export const TOPIC_OMNICLAUDE_ROUTING_DECISIONS = 'onex.evt.omniclaude.routing-decision.v1';
+/** Polymorphic agent transformation lifecycle events. */
+export const TOPIC_OMNICLAUDE_AGENT_TRANSFORMATION = 'onex.evt.omniclaude.agent-transformation.v1';
+/** Routing performance metrics and cache statistics. */
+export const TOPIC_OMNICLAUDE_PERFORMANCE_METRICS = 'onex.evt.omniclaude.performance-metrics.v1';
+
+/**
+ * Canonical omniclaude agent topics consumed by the read-model-consumer.
+ * Use this array as the single source of truth for agent-related subscriptions.
+ * The regression test verifies every topic in this array has a handler in the switch.
+ */
+export const OMNICLAUDE_AGENT_TOPICS = [
+  TOPIC_OMNICLAUDE_AGENT_ACTIONS,
+  TOPIC_OMNICLAUDE_ROUTING_DECISIONS,
+  TOPIC_OMNICLAUDE_AGENT_TRANSFORMATION,
+  TOPIC_OMNICLAUDE_PERFORMANCE_METRICS,
+] as const;
+
+// ============================================================================
 // Legacy Agent Topics (flat names, no ONEX convention)
 // These do NOT get an env prefix — used as-is.
+// Kept for backward compatibility with the event-consumer.ts in-memory
+// aggregation path and existing DB rows that were stored with these topic names.
 // ============================================================================
 
 /** Routing decision events emitted by the agent router. */
