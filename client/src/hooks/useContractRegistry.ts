@@ -1,0 +1,240 @@
+/**
+ * useContractRegistry — TanStack Query hooks for the Contract Registry API
+ *
+ * Covers:
+ *  - Listing contracts (with optional type/status filters)
+ *  - Fetching a single contract by ID
+ *  - Creating a new draft contract
+ *  - Updating a draft contract
+ *  - Lifecycle transitions: validate → publish → deprecate → archive
+ *  - Query-key helpers for granular cache invalidation
+ */
+
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import type { UseQueryOptions } from '@tanstack/react-query';
+import type {
+  Contract,
+  ContractType,
+  ContractStatus,
+} from '@/components/contract-builder/models/types';
+
+// ---------------------------------------------------------------------------
+// API helpers
+// ---------------------------------------------------------------------------
+
+async function fetchJson<T>(url: string): Promise<T> {
+  const res = await fetch(url);
+  if (!res.ok) {
+    const text = await res.text().catch(() => res.statusText);
+    throw new Error(`${res.status}: ${text}`);
+  }
+  return res.json() as Promise<T>;
+}
+
+async function postJson<T>(url: string, body?: unknown): Promise<T> {
+  const res = await fetch(url, {
+    method: 'POST',
+    headers: body !== undefined ? { 'Content-Type': 'application/json' } : {},
+    body: body !== undefined ? JSON.stringify(body) : undefined,
+  });
+  if (!res.ok) {
+    const data = (await res.json().catch(() => ({}))) as { error?: string };
+    throw new Error(data.error ?? `${res.status}: ${res.statusText}`);
+  }
+  return res.json() as Promise<T>;
+}
+
+async function putJson<T>(url: string, body: unknown): Promise<T> {
+  const res = await fetch(url, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body),
+  });
+  if (!res.ok) {
+    const data = (await res.json().catch(() => ({}))) as { error?: string };
+    throw new Error(data.error ?? `${res.status}: ${res.statusText}`);
+  }
+  return res.json() as Promise<T>;
+}
+
+// ---------------------------------------------------------------------------
+// Query key factory
+// ---------------------------------------------------------------------------
+
+export const contractKeys = {
+  all: ['contracts'] as const,
+  lists: () => [...contractKeys.all, 'list'] as const,
+  list: (filters?: { type?: ContractType; status?: ContractStatus }) =>
+    [...contractKeys.lists(), filters ?? {}] as const,
+  detail: (id: string) => [...contractKeys.all, 'detail', id] as const,
+  versions: (contractId: string) => [...contractKeys.all, 'versions', contractId] as const,
+  types: () => [...contractKeys.all, 'types'] as const,
+};
+
+// ---------------------------------------------------------------------------
+// Shared API types
+// ---------------------------------------------------------------------------
+
+export interface CreateContractPayload {
+  name: string;
+  displayName: string;
+  type: ContractType;
+  version: string;
+  description?: string;
+}
+
+export interface UpdateContractPayload {
+  name?: string;
+  displayName?: string;
+  description?: string;
+  /** Raw RJSF form data (contract schema content) */
+  formData?: Record<string, unknown>;
+}
+
+export interface ValidationResult {
+  isValid: boolean;
+  errors: Array<{ field: string; message: string }>;
+  warnings: Array<{ field: string; message: string }>;
+  contract: Contract;
+}
+
+export interface LifecycleResult {
+  success: boolean;
+  contract: Contract;
+  error?: string;
+}
+
+// ---------------------------------------------------------------------------
+// Query: list all contracts (optional filters)
+// ---------------------------------------------------------------------------
+
+export function useContracts(
+  filters?: { type?: ContractType; status?: ContractStatus },
+  options?: Partial<UseQueryOptions<Contract[]>>
+) {
+  const params = new URLSearchParams();
+  if (filters?.type) params.set('type', filters.type);
+  if (filters?.status) params.set('status', filters.status);
+  const qs = params.toString();
+  const url = `/api/contracts${qs ? `?${qs}` : ''}`;
+
+  return useQuery<Contract[]>({
+    queryKey: contractKeys.list(filters),
+    queryFn: () => fetchJson<Contract[]>(url),
+    staleTime: 10_000,
+    ...options,
+  });
+}
+
+// ---------------------------------------------------------------------------
+// Query: list available contract types
+// ---------------------------------------------------------------------------
+
+export function useContractTypes() {
+  return useQuery<ContractType[]>({
+    queryKey: contractKeys.types(),
+    queryFn: () => fetchJson<ContractType[]>('/api/contracts/types'),
+    // Types are stable — cache for 5 minutes
+    staleTime: 5 * 60 * 1000,
+  });
+}
+
+// ---------------------------------------------------------------------------
+// Query: single contract by ID
+// ---------------------------------------------------------------------------
+
+export function useContract(id: string | undefined) {
+  return useQuery<Contract>({
+    queryKey: contractKeys.detail(id ?? ''),
+    queryFn: () => fetchJson<Contract>(`/api/contracts/${id}`),
+    enabled: !!id,
+    staleTime: 10_000,
+  });
+}
+
+// ---------------------------------------------------------------------------
+// Mutation: create a new draft contract
+// ---------------------------------------------------------------------------
+
+export function useCreateContract() {
+  const qc = useQueryClient();
+  return useMutation<Contract, Error, CreateContractPayload>({
+    mutationFn: (payload) => postJson<Contract>('/api/contracts', payload),
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: contractKeys.lists() });
+    },
+  });
+}
+
+// ---------------------------------------------------------------------------
+// Mutation: update a draft contract
+// ---------------------------------------------------------------------------
+
+export function useUpdateContract() {
+  const qc = useQueryClient();
+  return useMutation<Contract, Error, { id: string } & UpdateContractPayload>({
+    mutationFn: ({ id, ...updates }) => putJson<Contract>(`/api/contracts/${id}`, updates),
+    onSuccess: (updated) => {
+      qc.setQueryData(contractKeys.detail(updated.id), updated);
+      void qc.invalidateQueries({ queryKey: contractKeys.lists() });
+    },
+  });
+}
+
+// ---------------------------------------------------------------------------
+// Mutation: validate a contract (DRAFT → policy-gate check)
+// ---------------------------------------------------------------------------
+
+export function useValidateContract() {
+  const qc = useQueryClient();
+  return useMutation<ValidationResult, Error, string>({
+    mutationFn: (id) => postJson<ValidationResult>(`/api/contracts/${id}/validate`),
+    onSuccess: (_result, id) => {
+      // Refresh both list and detail so status badge updates
+      void qc.invalidateQueries({ queryKey: contractKeys.lists() });
+      void qc.invalidateQueries({ queryKey: contractKeys.detail(id) });
+    },
+  });
+}
+
+// ---------------------------------------------------------------------------
+// Mutation: publish a validated contract
+// ---------------------------------------------------------------------------
+
+export function usePublishContract() {
+  const qc = useQueryClient();
+  return useMutation<LifecycleResult, Error, string>({
+    mutationFn: (id) => postJson<LifecycleResult>(`/api/contracts/${id}/publish`),
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: contractKeys.lists() });
+    },
+  });
+}
+
+// ---------------------------------------------------------------------------
+// Mutation: deprecate a published contract
+// ---------------------------------------------------------------------------
+
+export function useDeprecateContract() {
+  const qc = useQueryClient();
+  return useMutation<LifecycleResult, Error, string>({
+    mutationFn: (id) => postJson<LifecycleResult>(`/api/contracts/${id}/deprecate`),
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: contractKeys.lists() });
+    },
+  });
+}
+
+// ---------------------------------------------------------------------------
+// Mutation: archive a deprecated contract
+// ---------------------------------------------------------------------------
+
+export function useArchiveContract() {
+  const qc = useQueryClient();
+  return useMutation<LifecycleResult, Error, string>({
+    mutationFn: (id) => postJson<LifecycleResult>(`/api/contracts/${id}/archive`),
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: contractKeys.lists() });
+    },
+  });
+}

@@ -15,6 +15,8 @@ export { ContractHistory } from './ContractHistory';
 export { ContractDiff } from './ContractDiff';
 export { ContractStatusBadge } from './ContractStatusBadge';
 export { ContractTypeBadge } from './ContractTypeBadge';
+export { ContractCreateWizard } from './ContractCreateWizard';
+export { ContractLifecycleActions } from './ContractLifecycleActions';
 
 // Types
 export type { Contract, ContractType, ContractStatus } from './models/types';
