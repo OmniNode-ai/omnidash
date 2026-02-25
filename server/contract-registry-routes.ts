@@ -41,6 +41,7 @@ import { diffLines, type Change } from 'diff';
 import archiver from 'archiver';
 import yaml from 'js-yaml';
 import Ajv from 'ajv';
+import { contractEventEmitter } from './contract-event-emitter';
 
 const router = Router();
 
@@ -769,6 +770,342 @@ router.get('/schema/:type', (req, res) => {
 });
 
 // ============================================================================
+// Routes: Version-Based Lookup and Diff
+// (registered before /:id to prevent shadowing)
+// ============================================================================
+
+/**
+ * GET /versions/:contractId/:version - Read a specific contract version by logical ID + semver
+ *
+ * Implements `read_contract_version` from the OMN-2534 spec.
+ * Looks up a contract by its stable contractId (e.g. 'user-auth-orchestrator') and
+ * a specific semantic version string (e.g. '1.2.0').
+ *
+ * Returns 404 if no matching version exists.
+ *
+ * IMPORTANT: Must be registered before GET /:id to avoid route shadowing.
+ */
+router.get('/versions/:contractId/:version', async (req, res) => {
+  try {
+    const db = getDb();
+    if (!db) {
+      return res.status(503).json({ error: 'Database unavailable' });
+    }
+
+    const { contractId, version } = req.params;
+
+    const result = await db
+      .select()
+      .from(contracts)
+      .where(and(eq(contracts.contractId, contractId), eq(contracts.version, version)));
+
+    if (result.length === 0) {
+      return res.status(404).json({
+        error: 'Contract version not found',
+        contractId,
+        version,
+      });
+    }
+
+    res.json(result[0]);
+  } catch (error) {
+    console.error('Error fetching contract version:', error);
+    res.status(500).json({ error: 'Failed to fetch contract version' });
+  }
+});
+
+// ============================================================================
+// Breaking Change Detection (shared by diff-versions)
+// ============================================================================
+
+/**
+ * Schema field descriptor extracted from a JSON Schema definition.
+ */
+interface FieldDescriptor {
+  path: string;
+  type: string | string[];
+  required: boolean;
+}
+
+/**
+ * Result of breaking change analysis between two contract schemas.
+ */
+interface BreakingChangeAnalysis {
+  hasBreakingChanges: boolean;
+  breakingChanges: BreakingChangeEntry[];
+  nonBreakingChanges: NonBreakingChangeEntry[];
+}
+
+interface BreakingChangeEntry {
+  type: 'removed_required_field' | 'type_changed' | 'capability_removed' | 'required_added';
+  path: string;
+  description: string;
+  fromValue?: unknown;
+  toValue?: unknown;
+}
+
+interface NonBreakingChangeEntry {
+  type: 'field_added' | 'required_removed' | 'description_changed' | 'default_changed' | 'other';
+  path: string;
+  description: string;
+  fromValue?: unknown;
+  toValue?: unknown;
+}
+
+/**
+ * Flatten a JSON Schema `properties` block into a path→descriptor map.
+ * Handles nested objects recursively and tracks required fields.
+ */
+function flattenSchemaFields(
+  schema: Record<string, unknown>,
+  prefix = '',
+  requiredFields: Set<string> = new Set()
+): Map<string, FieldDescriptor> {
+  const fields = new Map<string, FieldDescriptor>();
+
+  const properties = schema.properties as Record<string, unknown> | undefined;
+  const required = (schema.required as string[] | undefined) ?? [];
+
+  for (const req of required) {
+    requiredFields.add(prefix ? `${prefix}.${req}` : req);
+  }
+
+  if (!properties) return fields;
+
+  for (const [key, value] of Object.entries(properties)) {
+    const fieldPath = prefix ? `${prefix}.${key}` : key;
+    const fieldDef = value as Record<string, unknown>;
+    const fieldType = fieldDef.type as string | string[] | undefined;
+
+    fields.set(fieldPath, {
+      path: fieldPath,
+      type: fieldType ?? 'any',
+      required: requiredFields.has(fieldPath),
+    });
+
+    // Recurse into nested objects
+    if (fieldDef.properties) {
+      const nested = flattenSchemaFields(
+        fieldDef as Record<string, unknown>,
+        fieldPath,
+        requiredFields
+      );
+      for (const [nestedPath, nestedDesc] of Array.from(nested)) {
+        fields.set(nestedPath, nestedDesc);
+      }
+    }
+  }
+
+  return fields;
+}
+
+/**
+ * Normalize a JSON Schema type value to a stable comparison string.
+ */
+function typeToString(t: string | string[] | undefined): string {
+  if (!t) return 'any';
+  return Array.isArray(t) ? [...t].sort().join('|') : t;
+}
+
+/**
+ * Detect breaking and non-breaking changes between two contract JSON Schemas.
+ *
+ * Breaking changes (per OMN-2534 spec):
+ * - Removed required fields — consumers relying on this field will break
+ * - Changed field type — incompatible type change
+ * - Capability removals — items removed from effect_surface
+ * - New required field — existing producers can no longer satisfy the schema
+ *
+ * Non-breaking changes:
+ * - Added optional fields
+ * - Required constraint removed (widening)
+ * - Description / default changes
+ */
+function detectBreakingChanges(
+  fromSchema: Record<string, unknown>,
+  toSchema: Record<string, unknown>
+): BreakingChangeAnalysis {
+  const fromFields = flattenSchemaFields(fromSchema);
+  const toFields = flattenSchemaFields(toSchema);
+
+  const breakingChanges: BreakingChangeEntry[] = [];
+  const nonBreakingChanges: NonBreakingChangeEntry[] = [];
+
+  // Check fields that existed in `from`
+  for (const [path, fromDesc] of Array.from(fromFields)) {
+    const toDesc = toFields.get(path);
+
+    if (!toDesc) {
+      // Field was removed
+      if (fromDesc.required) {
+        breakingChanges.push({
+          type: 'removed_required_field',
+          path,
+          description: `Required field '${path}' was removed`,
+          fromValue: fromDesc.type,
+          toValue: undefined,
+        });
+      } else {
+        nonBreakingChanges.push({
+          type: 'other',
+          path,
+          description: `Optional field '${path}' was removed`,
+          fromValue: fromDesc.type,
+          toValue: undefined,
+        });
+      }
+    } else {
+      // Field exists in both — check type changes
+      const fromType = typeToString(fromDesc.type as string | string[] | undefined);
+      const toType = typeToString(toDesc.type as string | string[] | undefined);
+
+      if (fromType !== toType && fromType !== 'any' && toType !== 'any') {
+        breakingChanges.push({
+          type: 'type_changed',
+          path,
+          description: `Field '${path}' type changed from '${fromType}' to '${toType}'`,
+          fromValue: fromType,
+          toValue: toType,
+        });
+      }
+
+      // Required removed (widening — non-breaking)
+      if (fromDesc.required && !toDesc.required) {
+        nonBreakingChanges.push({
+          type: 'required_removed',
+          path,
+          description: `Field '${path}' is no longer required (widening)`,
+        });
+      }
+    }
+  }
+
+  // Check fields added in `to`
+  for (const [path, toDesc] of Array.from(toFields)) {
+    if (!fromFields.has(path)) {
+      if (toDesc.required) {
+        // New required field — existing producers cannot satisfy this
+        breakingChanges.push({
+          type: 'required_added',
+          path,
+          description: `New required field '${path}' was added`,
+          toValue: toDesc.type,
+        });
+      } else {
+        nonBreakingChanges.push({
+          type: 'field_added',
+          path,
+          description: `New optional field '${path}' was added`,
+          toValue: toDesc.type,
+        });
+      }
+    }
+  }
+
+  // Check capability removals (effect_surface array)
+  const fromCapabilities = (fromSchema.effect_surface as string[] | undefined) ?? [];
+  const toCapabilities = (toSchema.effect_surface as string[] | undefined) ?? [];
+  const removedCapabilities = fromCapabilities.filter((c) => !toCapabilities.includes(c));
+
+  for (const cap of removedCapabilities) {
+    breakingChanges.push({
+      type: 'capability_removed',
+      path: 'effect_surface',
+      description: `Capability '${cap}' was removed from effect_surface`,
+      fromValue: cap,
+      toValue: undefined,
+    });
+  }
+
+  return {
+    hasBreakingChanges: breakingChanges.length > 0,
+    breakingChanges,
+    nonBreakingChanges,
+  };
+}
+
+/**
+ * GET /diff-versions - Diff two contract version UUIDs with breaking change detection
+ *
+ * Implements `diff_versions` from the OMN-2534 spec.
+ * Takes two contract version UUIDs (database primary keys) and returns:
+ * - A line-by-line diff of the canonical contract JSON
+ * - Structured breaking change analysis (removed required fields, type changes, capability removals)
+ *
+ * Query params:
+ * - from: UUID of the "older" contract version
+ * - to:   UUID of the "newer" contract version
+ *
+ * IMPORTANT: Must be registered before GET /:id to avoid route shadowing.
+ */
+router.get('/diff-versions', async (req, res) => {
+  try {
+    const db = getDb();
+    if (!db) {
+      return res.status(503).json({ error: 'Database unavailable' });
+    }
+
+    const { from, to } = req.query;
+
+    if (!from || !to || typeof from !== 'string' || typeof to !== 'string') {
+      return res.status(400).json({
+        error: 'Missing required query parameters: from and to (contract version UUIDs)',
+      });
+    }
+
+    // Fetch both contract versions in parallel
+    const [fromResults, toResults] = await Promise.all([
+      db.select().from(contracts).where(eq(contracts.id, from)),
+      db.select().from(contracts).where(eq(contracts.id, to)),
+    ]);
+
+    if (fromResults.length === 0) {
+      return res.status(404).json({ error: 'Source contract version not found', id: from });
+    }
+    if (toResults.length === 0) {
+      return res.status(404).json({ error: 'Target contract version not found', id: to });
+    }
+
+    const fromContract = fromResults[0];
+    const toContract = toResults[0];
+
+    // Build display-friendly contract objects (excludes DB internals)
+    const fromObj = contractToSnapshot(fromContract);
+    const toObj = contractToSnapshot(toContract);
+
+    // Line-by-line diff (same Myers algorithm as ContractDiff.tsx)
+    const diff = computeDiff(fromObj, toObj);
+
+    // Detect breaking changes between the two contract schemas
+    const fromSchema = (fromContract.schema as Record<string, unknown>) ?? {};
+    const toSchema = (toContract.schema as Record<string, unknown>) ?? {};
+    const breakingChangeAnalysis = detectBreakingChanges(fromSchema, toSchema);
+
+    res.json({
+      from: {
+        id: fromContract.id,
+        contractId: fromContract.contractId,
+        version: fromContract.version,
+        status: fromContract.status,
+        updatedAt: fromContract.updatedAt,
+      },
+      to: {
+        id: toContract.id,
+        contractId: toContract.contractId,
+        version: toContract.version,
+        status: toContract.status,
+        updatedAt: toContract.updatedAt,
+      },
+      diff,
+      breakingChanges: breakingChangeAnalysis,
+    });
+  } catch (error) {
+    console.error('Error computing version diff:', error);
+    res.status(500).json({ error: 'Failed to compute version diff' });
+  }
+});
+
+// ============================================================================
 // Routes: Contract CRUD
 // ============================================================================
 
@@ -1289,6 +1626,15 @@ router.post('/:id/publish', async (req, res) => {
       published
     );
 
+    // Emit contract_published event (non-blocking, fire-and-forget)
+    void contractEventEmitter.emit('contract_published', {
+      contractId: published.id,
+      contractLogicalId: published.contractId,
+      version: published.version,
+      actor: req.body?.actor || 'system',
+      contentHash: hash,
+    });
+
     res.json({
       success: true,
       contract: published,
@@ -1354,6 +1700,14 @@ router.post('/:id/deprecate', async (req, res) => {
       deprecated
     );
 
+    // Emit contract_deprecated event (non-blocking, fire-and-forget)
+    void contractEventEmitter.emit('contract_deprecated', {
+      contractId: deprecated.id,
+      contractLogicalId: deprecated.contractId,
+      version: deprecated.version,
+      actor: req.body?.actor || reason || 'system',
+    });
+
     res.json({
       success: true,
       contract: deprecated,
@@ -1416,6 +1770,14 @@ router.post('/:id/archive', async (req, res) => {
       },
       archived
     );
+
+    // Emit contract_archived event (non-blocking, fire-and-forget)
+    void contractEventEmitter.emit('contract_archived', {
+      contractId: archived.id,
+      contractLogicalId: archived.contractId,
+      version: archived.version,
+      actor: req.body?.actor || reason || 'system',
+    });
 
     res.json({
       success: true,
