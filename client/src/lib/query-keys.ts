@@ -744,6 +744,34 @@ export const queryKeys = {
     all: ['debug-escalation'] as const,
     snapshot: () => [...queryKeys.debugEscalation.all, 'snapshot'] as const,
   },
+
+  // ============================================================================
+  // Objective Evaluation (OMN-2583)
+  // ============================================================================
+
+  /**
+   * Objective evaluation query keys for score vectors, gate failures,
+   * policy state, and anti-gaming alerts.
+   *
+   * Depends on OMN-2545 (ScoringReducer) and OMN-2557 (PolicyState) backends.
+   * Falls back to mock data when those backends are unavailable.
+   */
+  objective: {
+    /** Base key for all objective evaluation queries */
+    all: ['objective'] as const,
+
+    /** Per-layer score vector data (radar chart) */
+    scoreVector: (window: string) => ['objective', 'score-vector', window] as const,
+
+    /** Gate failure timeline bins and events */
+    gateFailures: (window: string) => ['objective', 'gate-failures', window] as const,
+
+    /** Policy state history points */
+    policyState: (window: string) => ['objective', 'policy-state', window] as const,
+
+    /** Anti-gaming alert feed */
+    antiGaming: (window: string) => ['objective', 'anti-gaming', window] as const,
+  },
 } as const;
 
 /**
