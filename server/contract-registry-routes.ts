@@ -29,12 +29,14 @@ import fs from 'fs';
 import { fileURLToPath } from 'url';
 import { eq, and, ilike, desc } from 'drizzle-orm';
 import { getIntelligenceDb } from './storage';
-import { contracts, contractAuditLog } from '@shared/intelligence-schema';
+import { contracts, contractAuditLog, contractTestCases } from '@shared/intelligence-schema';
 import type {
   Contract,
   InsertContract,
   InsertContractAuditLog,
   ContractAuditLog,
+  ContractTestCase,
+  InsertContractTestCase,
 } from '@shared/intelligence-schema';
 import crypto from 'crypto';
 import { diffLines, type Change } from 'diff';
@@ -2015,6 +2017,7 @@ router.get('/:id/export', async (req, res) => {
 
     let contract: Contract | undefined;
     let auditResult: ContractAuditLog[] = [];
+    let testCasesResult: ContractTestCase[] = [];
 
     // Try database first, with error handling for connection failures
     try {
@@ -2023,12 +2026,19 @@ router.get('/:id/export', async (req, res) => {
         const contractResult = await db.select().from(contracts).where(eq(contracts.id, id));
         if (contractResult.length > 0) {
           contract = contractResult[0];
-          // Fetch audit log
-          auditResult = await db
-            .select()
-            .from(contractAuditLog)
-            .where(eq(contractAuditLog.contractId, id))
-            .orderBy(desc(contractAuditLog.createdAt));
+          // Fetch audit log and test cases in parallel
+          [auditResult, testCasesResult] = await Promise.all([
+            db
+              .select()
+              .from(contractAuditLog)
+              .where(eq(contractAuditLog.contractId, id))
+              .orderBy(desc(contractAuditLog.createdAt)),
+            db
+              .select()
+              .from(contractTestCases)
+              .where(eq(contractTestCases.contractId, id))
+              .orderBy(desc(contractTestCases.createdAt)),
+          ]);
         }
       }
     } catch (_dbError) {
@@ -2072,7 +2082,45 @@ router.get('/:id/export', async (req, res) => {
             snapshot: entry.snapshot || null,
           }))
         : auditEntriesToExportFormat(auditResult),
-      tests: generateTestPlaceholders(),
+      tests:
+        testCasesResult.length > 0
+          ? {
+              testCases: {
+                version: '1.0.0',
+                cases: testCasesResult.map((tc) => ({
+                  id: tc.id,
+                  name: tc.name,
+                  description: tc.description,
+                  inputs: tc.inputs,
+                  expectedOutputs: tc.expectedOutputs,
+                  assertions: tc.assertions,
+                  lastResult: tc.lastResult,
+                  lastRunAt: tc.lastRunAt?.toISOString() ?? null,
+                  lastRunBy: tc.lastRunBy,
+                  createdBy: tc.createdBy,
+                  createdAt: tc.createdAt?.toISOString() ?? null,
+                })),
+              },
+              testResults: {
+                version: '1.0.0',
+                results: testCasesResult
+                  .filter((tc) => tc.lastResult !== null)
+                  .map((tc) => ({
+                    testCaseId: tc.id,
+                    name: tc.name,
+                    result: tc.lastResult,
+                    runAt: tc.lastRunAt?.toISOString() ?? null,
+                    runBy: tc.lastRunBy,
+                  })),
+                summary: {
+                  total: testCasesResult.length,
+                  passed: testCasesResult.filter((tc) => tc.lastResult === 'passed').length,
+                  failed: testCasesResult.filter((tc) => tc.lastResult === 'failed').length,
+                  skipped: testCasesResult.filter((tc) => tc.lastResult === 'skipped').length,
+                },
+              },
+            }
+          : generateTestPlaceholders(),
     };
 
     // If JSON format requested, return the bundle as JSON
@@ -2209,6 +2257,116 @@ To verify the contract integrity, recompute the hash using:
     if (!res.headersSent) {
       res.status(500).json({ error: 'Failed to export contract' });
     }
+  }
+});
+
+// ============================================================================
+// Routes: Test Cases
+// ============================================================================
+
+/**
+ * GET /:id/test-cases — List all test cases attached to a contract version
+ */
+router.get('/:id/test-cases', async (req, res) => {
+  try {
+    const db = getDb();
+    if (!db) {
+      return res.status(503).json({ error: 'Database unavailable' });
+    }
+
+    const { id } = req.params;
+
+    const result: ContractTestCase[] = await db
+      .select()
+      .from(contractTestCases)
+      .where(eq(contractTestCases.contractId, id))
+      .orderBy(desc(contractTestCases.createdAt));
+
+    res.json(result);
+  } catch (error) {
+    console.error('Error fetching test cases:', error);
+    res.status(500).json({ error: 'Failed to fetch test cases' });
+  }
+});
+
+/**
+ * POST /:id/test-cases — Attach a new test case to a contract version
+ *
+ * Body: { name, description?, inputs?, expectedOutputs?, assertions? }
+ */
+router.post('/:id/test-cases', async (req, res) => {
+  try {
+    const db = getDb();
+    if (!db) {
+      return res.status(503).json({ error: 'Database unavailable' });
+    }
+
+    const { id } = req.params;
+
+    // Verify the contract exists
+    const contractResult = await db.select().from(contracts).where(eq(contracts.id, id));
+
+    if (contractResult.length === 0) {
+      return res.status(404).json({ error: 'Contract not found' });
+    }
+
+    const { name, description, inputs, expectedOutputs, assertions, createdBy } = req.body as {
+      name: string;
+      description?: string;
+      inputs?: Record<string, unknown>;
+      expectedOutputs?: Record<string, unknown>;
+      assertions?: unknown[];
+      createdBy?: string;
+    };
+
+    if (!name || typeof name !== 'string' || name.trim() === '') {
+      return res.status(400).json({ error: 'Test case name is required' });
+    }
+
+    const payload: InsertContractTestCase = {
+      contractId: id,
+      name: name.trim(),
+      description: description ?? null,
+      inputs: inputs ?? {},
+      expectedOutputs: expectedOutputs ?? {},
+      assertions: assertions ?? [],
+      createdBy: createdBy ?? null,
+    };
+
+    const inserted = await db.insert(contractTestCases).values(payload).returning();
+
+    res.status(201).json(inserted[0]);
+  } catch (error) {
+    console.error('Error creating test case:', error);
+    res.status(500).json({ error: 'Failed to create test case' });
+  }
+});
+
+/**
+ * DELETE /:id/test-cases/:testCaseId — Remove a test case from a contract version
+ */
+router.delete('/:id/test-cases/:testCaseId', async (req, res) => {
+  try {
+    const db = getDb();
+    if (!db) {
+      return res.status(503).json({ error: 'Database unavailable' });
+    }
+
+    const { id, testCaseId } = req.params;
+
+    const deleted = await db
+      .delete(contractTestCases)
+      .where(and(eq(contractTestCases.id, testCaseId), eq(contractTestCases.contractId, id)))
+      .returning();
+
+    if (deleted.length === 0) {
+      return res.status(404).json({ error: 'Test case not found' });
+    }
+
+    res.json({ success: true, deleted: deleted[0] });
+  } catch (error) {
+    console.error('Error deleting test case:', error);
+    res.status(500).json({ error: 'Failed to delete test case' });
   }
 });
 
