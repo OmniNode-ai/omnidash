@@ -88,6 +88,7 @@ import type {
   PolicyLifecycleState,
 } from '@shared/objective-types';
 import { format, parseISO } from 'date-fns';
+import { queryKeys } from '@/lib/query-keys';
 
 // ============================================================================
 // Constants
@@ -143,18 +144,6 @@ const ALERT_TYPE_ICONS: Record<string, React.ReactNode> = {
 };
 
 // ============================================================================
-// Query Keys
-// ============================================================================
-
-const objectiveKeys = {
-  all: ['objective'] as const,
-  scoreVector: (w: ObjectiveTimeWindow) => ['objective', 'score-vector', w] as const,
-  gateFailures: (w: ObjectiveTimeWindow) => ['objective', 'gate-failures', w] as const,
-  policyState: (w: ObjectiveTimeWindow) => ['objective', 'policy-state', w] as const,
-  antiGaming: (w: ObjectiveTimeWindow) => ['objective', 'anti-gaming', w] as const,
-};
-
-// ============================================================================
 // Sub-components
 // ============================================================================
 
@@ -179,7 +168,7 @@ function ScoreVectorPanel({ window }: { window: ObjectiveTimeWindow }) {
   const [selectedAgent, setSelectedAgent] = useState<string>('all');
 
   const { data, isLoading, error } = useQuery({
-    queryKey: objectiveKeys.scoreVector(window),
+    queryKey: queryKeys.objective.scoreVector(window),
     queryFn: () => objectiveSource.scoreVector(window),
     staleTime: 30_000,
     refetchInterval: 60_000,
@@ -284,7 +273,7 @@ function GateFailureTimelinePanel({ window }: { window: ObjectiveTimeWindow }) {
   const [drilldownEvent, setDrilldownEvent] = useState<GateFailureEvent | null>(null);
 
   const { data, isLoading, error } = useQuery({
-    queryKey: objectiveKeys.gateFailures(window),
+    queryKey: queryKeys.objective.gateFailures(window),
     queryFn: () => objectiveSource.gateFailureTimeline(window),
     staleTime: 30_000,
     refetchInterval: 60_000,
@@ -509,7 +498,7 @@ function PolicyStateHistoryPanel({ window }: { window: ObjectiveTimeWindow }) {
   const [drilldownPoint, setDrilldownPoint] = useState<PolicyStatePoint | null>(null);
 
   const { data, isLoading, error } = useQuery({
-    queryKey: objectiveKeys.policyState(window),
+    queryKey: queryKeys.objective.policyState(window),
     queryFn: () => objectiveSource.policyStateHistory(window),
     staleTime: 30_000,
     refetchInterval: 60_000,
@@ -746,7 +735,7 @@ function AntiGamingAlertFeed({ window }: { window: ObjectiveTimeWindow }) {
   const queryClient = useQueryClient();
 
   const { data, isLoading, error } = useQuery({
-    queryKey: objectiveKeys.antiGaming(window),
+    queryKey: queryKeys.objective.antiGaming(window),
     queryFn: () => objectiveSource.antiGamingAlerts(window),
     staleTime: 15_000,
     refetchInterval: 30_000,
@@ -755,7 +744,7 @@ function AntiGamingAlertFeed({ window }: { window: ObjectiveTimeWindow }) {
   const acknowledgeMutation = useMutation({
     mutationFn: (alertId: string) => objectiveSource.acknowledgeAlert(alertId),
     onSuccess: () => {
-      void queryClient.invalidateQueries({ queryKey: objectiveKeys.antiGaming(window) });
+      void queryClient.invalidateQueries({ queryKey: queryKeys.objective.antiGaming(window) });
     },
   });
 
@@ -907,7 +896,7 @@ export default function ObjectiveEvaluation() {
 
   const handleRefreshAll = useCallback(() => {
     objectiveSource.clearMockState();
-    void queryClient.invalidateQueries({ queryKey: objectiveKeys.all });
+    void queryClient.invalidateQueries({ queryKey: queryKeys.objective.all });
   }, [queryClient]);
 
   return (
