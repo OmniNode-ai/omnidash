@@ -7,16 +7,37 @@
  * Environment variables consumed:
  * - ONEX_NODE_ID: Unique identifier assigned by the runtime supervisor
  * - ONEX_CONTRACT_FINGERPRINT: Hash of the node's contract.yaml
- * - ONEX_RUNTIME_MODE: Operating mode (standalone, supervised, etc.)
+ * - ONEX_RUNTIME_MODE: Operating mode — one of the RuntimeMode union values
  * - ONEX_ENV: Environment name (dev, staging, prod)
  * - ONEX_SUPERVISOR_PID: Process ID of the supervising runtime
  * - ONEX_INJECTED_AT: ISO timestamp when identity was injected
  */
 
+/** Valid operating modes for the ONEX runtime. */
+export type RuntimeMode = 'standalone' | 'managed' | 'orchestrated' | 'development';
+
+const VALID_RUNTIME_MODES: readonly RuntimeMode[] = [
+  'standalone',
+  'managed',
+  'orchestrated',
+  'development',
+];
+
+/**
+ * Parses ONEX_RUNTIME_MODE from the environment.
+ * Falls back to 'standalone' if the value is absent or not a recognised RuntimeMode.
+ */
+function parseRuntimeMode(value: string | undefined): RuntimeMode {
+  if (value && (VALID_RUNTIME_MODES as readonly string[]).includes(value)) {
+    return value as RuntimeMode;
+  }
+  return 'standalone';
+}
+
 export interface RuntimeIdentity {
   nodeId: string | null;
   contractFingerprint: string | null;
-  runtimeMode: string;
+  runtimeMode: RuntimeMode;
   env: string;
   supervised: boolean;
   supervisorPid: string | null;
@@ -30,7 +51,7 @@ export interface RuntimeIdentity {
 export const runtimeIdentity: RuntimeIdentity = {
   nodeId: process.env.ONEX_NODE_ID || null,
   contractFingerprint: process.env.ONEX_CONTRACT_FINGERPRINT || null,
-  runtimeMode: process.env.ONEX_RUNTIME_MODE || 'standalone',
+  runtimeMode: parseRuntimeMode(process.env.ONEX_RUNTIME_MODE),
   env: process.env.ONEX_ENV || 'dev',
   supervised: !!process.env.ONEX_NODE_ID,
   supervisorPid: process.env.ONEX_SUPERVISOR_PID || null,
