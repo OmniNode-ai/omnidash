@@ -4,7 +4,7 @@ import {
   agentActions,
   agentManifestInjections,
   agentRoutingDecisions,
-} from '../shared/intelligence-schema';
+} from '@shared/intelligence-schema';
 
 /**
  * Alert Metrics Cache

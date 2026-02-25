@@ -9,8 +9,10 @@
  * Run with: npm run seed-events or tsx scripts/seed-events.ts
  */
 
+import 'dotenv/config';
 import { Kafka, Partitioners } from 'kafkajs';
 import { randomUUID } from 'crypto';
+import { LEGACY_AGENT_ROUTING_DECISIONS, LEGACY_AGENT_ACTIONS } from '@shared/topics';
 
 const brokers = process.env.KAFKA_BROKERS || process.env.KAFKA_BOOTSTRAP_SERVERS;
 if (!brokers) {
@@ -18,7 +20,7 @@ if (!brokers) {
     '❌ Error: KAFKA_BROKERS or KAFKA_BOOTSTRAP_SERVERS environment variable is required.'
   );
   console.error('   Set it in .env file or export it before running this script.');
-  console.error('   Example: KAFKA_BROKERS=192.168.86.200:29092');
+  console.error('   Example: KAFKA_BROKERS=host:port');
   process.exit(1);
 }
 
@@ -107,7 +109,7 @@ async function seedEvents(count: number = 10) {
       // Routing decision event
       const routingEvent = generateRoutingDecision(correlationId);
       messages.push({
-        topic: 'agent-routing-decisions',
+        topic: LEGACY_AGENT_ROUTING_DECISIONS,
         key: routingEvent.selected_agent,
         value: JSON.stringify(routingEvent),
       });
@@ -117,7 +119,7 @@ async function seedEvents(count: number = 10) {
       for (let j = 0; j < actionCount; j++) {
         const actionEvent = generateAgentAction(correlationId);
         messages.push({
-          topic: 'agent-actions',
+          topic: LEGACY_AGENT_ACTIONS,
           key: actionEvent.agent_name,
           value: JSON.stringify(actionEvent),
         });

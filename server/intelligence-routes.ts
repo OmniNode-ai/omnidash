@@ -1,7 +1,10 @@
 import { Router } from 'express';
+import type { Request, Response } from 'express';
 import { intelligenceEvents } from './intelligence-event-adapter';
 import { eventConsumer } from './event-consumer';
+import { readModelConsumer } from './read-model-consumer';
 import { getIntelligenceDb } from './storage';
+import { getRuntimeIdentityForApi } from './runtime-identity';
 import {
   agentManifestInjections,
   patternLineageNodes,
@@ -14,10 +17,11 @@ import {
   documentMetadata,
   nodeServiceRegistry,
   taskCompletionMetrics,
-} from '../shared/intelligence-schema';
-import { sql, desc, gte, eq, or, and, inArray } from 'drizzle-orm';
+  patternLearningArtifacts,
+  type PatternLearningArtifact,
+} from '@shared/intelligence-schema';
+import { sql, desc, asc, gte, eq, or, and, inArray } from 'drizzle-orm';
 import { checkAllServices } from './service-health';
-import { getOmniarchonUrl } from './utils/service-urls';
 
 export const intelligenceRouter = Router();
 
@@ -56,8 +60,8 @@ intelligenceRouter.get('/events/test/patterns', async (req, res) => {
   try {
     const sourcePath = (req.query.path as string) || 'node_*_effect.py';
     const language = (req.query.lang as string) || 'python';
-    const timeout = Number((req.query as any).timeout ?? 15000);
-    if ((intelligenceEvents as any).started !== true) {
+    const timeout = Number(req.query.timeout ?? 15000);
+    if (intelligenceEvents.started !== true) {
       await intelligenceEvents.start();
     }
     const result = await intelligenceEvents.requestPatternDiscovery(
@@ -97,7 +101,7 @@ intelligenceRouter.get('/analysis/patterns', async (req, res) => {
       ? Math.max(1000, Math.min(60000, parseInt(timeoutParam, 10) || 0))
       : 6000;
 
-    if ((intelligenceEvents as any).started !== true) {
+    if (intelligenceEvents.started !== true) {
       await intelligenceEvents.start();
     }
 
@@ -167,7 +171,6 @@ interface ManifestInjectionHealth {
   }>;
   serviceHealth: {
     postgresql: { status: 'up' | 'down'; latencyMs?: number };
-    omniarchon: { status: 'up' | 'down'; latencyMs?: number };
     qdrant: { status: 'up' | 'down'; latencyMs?: number };
   };
 }
@@ -588,6 +591,42 @@ intelligenceRouter.get('/health', async (req, res) => {
       timestamp: new Date().toISOString(),
     });
   }
+});
+
+/**
+ * GET /api/intelligence/read-model/status
+ * Returns read-model consumer health and projection statistics
+ */
+intelligenceRouter.get('/read-model/status', async (req, res) => {
+  try {
+    const stats = readModelConsumer.getStats();
+    res.json({
+      status: stats.isRunning ? 'running' : 'stopped',
+      eventsProjected: stats.eventsProjected,
+      errorsCount: stats.errorsCount,
+      lastProjectedAt: stats.lastProjectedAt,
+      topicStats: stats.topicStats,
+      database: 'omnidash_analytics',
+    });
+  } catch (error) {
+    console.error('Error fetching read-model status:', error);
+    res.status(500).json({
+      error: 'Failed to fetch read-model status',
+      message: error instanceof Error ? error.message : 'Unknown error',
+    });
+  }
+});
+
+// ============================================================================
+// Runtime Identity Endpoint
+// ============================================================================
+
+/**
+ * GET /api/intelligence/runtime/identity
+ * Reports injected identity from runtime supervisor (read-only)
+ */
+intelligenceRouter.get('/runtime/identity', (req, res) => {
+  res.json(getRuntimeIdentityForApi());
 });
 
 // ============================================================================
@@ -1049,67 +1088,9 @@ intelligenceRouter.get('/patterns/list', async (req, res) => {
  */
 intelligenceRouter.get('/patterns/quality-trends', async (req, res) => {
   try {
-    const timeWindow = (req.query.timeWindow as string) || '7d';
-
-    // Parse time window to hours for Omniarchon API
-    const hoursMap: Record<string, number> = {
-      '24h': 24,
-      '7d': 168,
-      '30d': 720,
-    };
-    const hours = hoursMap[timeWindow] || 168;
-
-    // Try to fetch from Omniarchon intelligence service first
-    const omniarchonUrl = getOmniarchonUrl();
-    const projectId = 'default'; // Use default project for now
-
-    try {
-      const omniarchonResponse = await fetch(
-        `${omniarchonUrl}/api/quality-trends/project/${projectId}/trend?hours=${hours}`,
-        {
-          method: 'GET',
-          headers: { 'Content-Type': 'application/json' },
-          signal: AbortSignal.timeout(5000), // 5 second timeout
-        }
-      );
-
-      if (omniarchonResponse.ok) {
-        const omniarchonData = await omniarchonResponse.json();
-
-        // Check if Omniarchon has actual data (not just insufficient_data response)
-        if (
-          omniarchonData.success &&
-          omniarchonData.snapshots_count > 0 &&
-          omniarchonData.snapshots
-        ) {
-          console.log(
-            `✓ Using real data from Omniarchon (${omniarchonData.snapshots_count} snapshots)`
-          );
-
-          // Transform Omniarchon response to match frontend expectations
-          const formattedTrends = omniarchonData.snapshots.map((snapshot: any) => ({
-            period: snapshot.timestamp,
-            avgQuality: snapshot.overall_quality || 0.85,
-            manifestCount: snapshot.file_count || 0,
-          }));
-
-          return res.json(formattedTrends);
-        } else {
-          console.log('⚠ Omniarchon has no data yet - returning empty array');
-          return res.json([]);
-        }
-      } else {
-        console.log(`⚠ Omniarchon returned ${omniarchonResponse.status} - returning empty array`);
-        return res.json([]);
-      }
-    } catch (omniarchonError) {
-      // Return empty array instead of falling back to mock data
-      console.warn(
-        '⚠ Failed to fetch from Omniarchon - returning empty array:',
-        omniarchonError instanceof Error ? omniarchonError.message : 'Unknown error'
-      );
-      return res.json([]);
-    }
+    // Quality trends endpoint - returns empty array as the source service no longer exists
+    // TODO: Implement database-backed quality trends if needed
+    return res.json([]);
   } catch (error) {
     console.error('Error fetching quality trends:', error);
     res.status(500).json({
@@ -1538,6 +1519,109 @@ intelligenceRouter.get('/transformations/summary', async (req, res) => {
 });
 
 // ============================================================================
+// Correlation Trace Discovery Endpoint
+// ============================================================================
+
+/**
+ * GET /api/intelligence/traces/recent
+ * Returns recent correlation traces for the trace discovery feature.
+ *
+ * Query parameters:
+ * - limit: Number of traces to return (default 20, max 100)
+ *
+ * Response format:
+ * [
+ *   {
+ *     correlationId: "uuid",
+ *     selectedAgent: "agent-name",
+ *     confidenceScore: 0.95,
+ *     userRequest: "truncated to 120 chars...",
+ *     routingTimeMs: 42,
+ *     createdAt: "2026-02-16T..." | null,
+ *     eventCount: 3
+ *   }
+ * ]
+ */
+intelligenceRouter.get('/traces/recent', async (req, res) => {
+  try {
+    const rawLimit = parseInt(req.query.limit as string, 10);
+    const limit = Number.isFinite(rawLimit) ? Math.min(Math.max(rawLimit, 1), 100) : 20;
+
+    // Fetch recent routing decisions
+    const decisions = await getIntelligenceDb()
+      .select({
+        correlationId: agentRoutingDecisions.correlationId,
+        selectedAgent: agentRoutingDecisions.selectedAgent,
+        confidenceScore: agentRoutingDecisions.confidenceScore,
+        userRequest: agentRoutingDecisions.userRequest,
+        routingTimeMs: agentRoutingDecisions.routingTimeMs,
+        createdAt: agentRoutingDecisions.createdAt,
+      })
+      .from(agentRoutingDecisions)
+      .orderBy(desc(agentRoutingDecisions.createdAt))
+      .limit(limit);
+
+    if (decisions.length === 0) {
+      res.json([]);
+      return;
+    }
+
+    // Collect all correlation IDs to count related events in bulk
+    const correlationIds = decisions.map((d) => d.correlationId);
+
+    // Count events from agent_actions and agent_manifest_injections per correlation ID
+    const [actionCounts, manifestCounts] = await Promise.all([
+      getIntelligenceDb()
+        .select({
+          correlationId: agentActions.correlationId,
+          count: sql<number>`count(*)::int`.as('count'),
+        })
+        .from(agentActions)
+        .where(inArray(agentActions.correlationId, correlationIds))
+        .groupBy(agentActions.correlationId),
+
+      getIntelligenceDb()
+        .select({
+          correlationId: agentManifestInjections.correlationId,
+          count: sql<number>`count(*)::int`.as('count'),
+        })
+        .from(agentManifestInjections)
+        .where(inArray(agentManifestInjections.correlationId, correlationIds))
+        .groupBy(agentManifestInjections.correlationId),
+    ]);
+
+    // Build lookup maps for event counts
+    const actionCountMap = new Map(actionCounts.map((r) => [r.correlationId, r.count]));
+    const manifestCountMap = new Map(manifestCounts.map((r) => [r.correlationId, r.count]));
+
+    const traces = decisions.map((d) => ({
+      correlationId: d.correlationId,
+      selectedAgent: d.selectedAgent,
+      confidenceScore: parseFloat(d.confidenceScore?.toString() || '0'),
+      userRequest: d.userRequest
+        ? d.userRequest.length > 120
+          ? d.userRequest.slice(0, 120) + '...'
+          : d.userRequest
+        : null,
+      routingTimeMs: d.routingTimeMs,
+      createdAt: d.createdAt?.toISOString() || null,
+      eventCount:
+        1 + // the routing decision itself
+        (actionCountMap.get(d.correlationId) || 0) +
+        (manifestCountMap.get(d.correlationId) || 0),
+    }));
+
+    res.json(traces);
+  } catch (error) {
+    console.error('Error fetching recent traces:', error);
+    res.status(500).json({
+      error: 'Failed to fetch recent traces',
+      message: error instanceof Error ? error.message : 'Unknown error',
+    });
+  }
+});
+
+// ============================================================================
 // Correlation Trace Endpoint (Debugging Tool)
 // ============================================================================
 
@@ -1617,28 +1701,50 @@ intelligenceRouter.get('/trace/:correlationId', async (req, res) => {
         .where(eq(agentManifestInjections.correlationId, correlationId)),
     ]);
 
-    // Get routing decisions if any manifests have routing_decision_id
+    // Get routing decisions via two paths:
+    // 1. Direct lookup by correlation_id (catches decisions with no manifest)
+    // 2. FK lookup via manifest.routing_decision_id (catches decisions linked to manifests)
     const routingDecisionIds = manifests
       .filter((m) => m.routingDecisionId)
       .map((m) => m.routingDecisionId as string);
 
-    const routingDecisions =
+    const routingSelect = {
+      id: agentRoutingDecisions.id,
+      selectedAgent: agentRoutingDecisions.selectedAgent,
+      confidenceScore: agentRoutingDecisions.confidenceScore,
+      routingStrategy: agentRoutingDecisions.routingStrategy,
+      userRequest: agentRoutingDecisions.userRequest,
+      reasoning: agentRoutingDecisions.reasoning,
+      alternatives: agentRoutingDecisions.alternatives,
+      routingTimeMs: agentRoutingDecisions.routingTimeMs,
+      createdAt: agentRoutingDecisions.createdAt,
+    };
+
+    const [directDecisions, fkDecisions] = await Promise.all([
+      // Path 1: Direct correlation_id match
+      getIntelligenceDb()
+        .select(routingSelect)
+        .from(agentRoutingDecisions)
+        .where(eq(agentRoutingDecisions.correlationId, correlationId)),
+
+      // Path 2: FK from manifests (may overlap with path 1)
       routingDecisionIds.length > 0
-        ? await getIntelligenceDb()
-            .select({
-              id: agentRoutingDecisions.id,
-              selectedAgent: agentRoutingDecisions.selectedAgent,
-              confidenceScore: agentRoutingDecisions.confidenceScore,
-              routingStrategy: agentRoutingDecisions.routingStrategy,
-              userRequest: agentRoutingDecisions.userRequest,
-              reasoning: agentRoutingDecisions.reasoning,
-              alternatives: agentRoutingDecisions.alternatives,
-              routingTimeMs: agentRoutingDecisions.routingTimeMs,
-              createdAt: agentRoutingDecisions.createdAt,
-            })
+        ? getIntelligenceDb()
+            .select(routingSelect)
             .from(agentRoutingDecisions)
             .where(inArray(agentRoutingDecisions.id, routingDecisionIds))
-        : [];
+        : Promise.resolve([]),
+    ]);
+
+    // Deduplicate by id — direct query results take precedence
+    const seenIds = new Set<string>();
+    const routingDecisions: typeof directDecisions = [];
+    for (const d of [...directDecisions, ...fkDecisions]) {
+      if (!seenIds.has(d.id)) {
+        seenIds.add(d.id);
+        routingDecisions.push(d);
+      }
+    }
 
     // Transform routing decisions into events
     const routingEvents = routingDecisions.map((d) => ({
@@ -1737,7 +1843,6 @@ intelligenceRouter.get('/trace/:correlationId', async (req, res) => {
  *   ],
  *   serviceHealth: {
  *     postgresql: { status: "up", latencyMs: 5 },
- *     omniarchon: { status: "up", latencyMs: 120 },
  *     qdrant: { status: "down" }
  *   }
  * }
@@ -1851,7 +1956,6 @@ intelligenceRouter.get('/health/manifest-injection', async (req, res) => {
     // Service health checks
     const serviceHealth: ManifestInjectionHealth['serviceHealth'] = {
       postgresql: { status: 'up', latencyMs: 0 },
-      omniarchon: { status: 'down' },
       qdrant: { status: 'down' },
     };
 
@@ -1866,30 +1970,6 @@ intelligenceRouter.get('/health/manifest-injection', async (req, res) => {
     } catch (pgError) {
       serviceHealth.postgresql = { status: 'down' };
       console.error('PostgreSQL health check failed:', pgError);
-    }
-
-    // Omniarchon health check
-    const omniarchonUrl = getOmniarchonUrl();
-    const omniarchonStartTime = Date.now();
-    try {
-      const omniarchonResponse = await fetch(`${omniarchonUrl}/health`, {
-        method: 'GET',
-        signal: AbortSignal.timeout(2000), // 2 second timeout
-      });
-      if (omniarchonResponse.ok) {
-        serviceHealth.omniarchon = {
-          status: 'up',
-          latencyMs: Date.now() - omniarchonStartTime,
-        };
-      } else {
-        serviceHealth.omniarchon = { status: 'down' };
-      }
-    } catch (omniarchonError) {
-      serviceHealth.omniarchon = { status: 'down' };
-      console.warn(
-        'Omniarchon health check failed:',
-        omniarchonError instanceof Error ? omniarchonError.message : 'Unknown error'
-      );
     }
 
     // Qdrant health check
@@ -1987,7 +2067,7 @@ intelligenceRouter.get('/metrics/operations-per-minute', async (req, res) => {
 
 /**
  * GET /api/intelligence/metrics/quality-impact?timeWindow=24h|7d|30d
- * Returns quality impact time-series from Omniarchon service or database fallback
+ * Returns quality impact time-series from database
  *
  * Query parameters:
  * - timeWindow: "24h" (hourly), "7d" (daily), "30d" (daily) (default: "24h")
@@ -2005,62 +2085,12 @@ intelligenceRouter.get('/metrics/quality-impact', async (req, res) => {
   try {
     const timeWindow = (req.query.timeWindow as string) || '24h';
 
-    // Parse time window to hours for Omniarchon API
-    const hoursMap: Record<string, number> = {
-      '24h': 24,
-      '7d': 168,
-      '30d': 720,
-    };
-    const hours = hoursMap[timeWindow] || 24;
-
-    // Determine time interval and truncation for database fallback
+    // Determine time interval and truncation for database query
     const interval = getIntervalFromTimeWindow(timeWindow);
 
     const truncation = timeWindow === '24h' ? 'hour' : 'day';
 
-    // Try to fetch from Omniarchon intelligence service first
-    const omniarchonUrl = getOmniarchonUrl();
-
-    try {
-      const omniarchonResponse = await fetch(`${omniarchonUrl}/api/quality-impact?hours=${hours}`, {
-        method: 'GET',
-        headers: { 'Content-Type': 'application/json' },
-        signal: AbortSignal.timeout(5000), // 5 second timeout
-      });
-
-      if (omniarchonResponse.ok) {
-        const omniarchonData = await omniarchonResponse.json();
-
-        // Check if Omniarchon has actual data
-        if (omniarchonData.success && omniarchonData.impacts && omniarchonData.impacts.length > 0) {
-          console.log(
-            `✓ Using real quality impact data from Omniarchon (${omniarchonData.impacts.length} data points)`
-          );
-
-          // Transform Omniarchon response to match frontend expectations
-          const formattedImpacts = omniarchonData.impacts.map((impact: any) => ({
-            period: impact.timestamp,
-            avgQualityImprovement: impact.quality_delta || 0,
-            manifestsImproved: impact.manifests_count || 0,
-          }));
-
-          return res.json(formattedImpacts);
-        } else {
-          console.log('⚠ Omniarchon has no quality impact data yet - falling back to database');
-        }
-      } else {
-        console.log(
-          `⚠ Omniarchon returned ${omniarchonResponse.status} - falling back to database`
-        );
-      }
-    } catch (omniarchonError) {
-      console.warn(
-        '⚠ Failed to fetch from Omniarchon - falling back to database:',
-        omniarchonError instanceof Error ? omniarchonError.message : 'Unknown error'
-      );
-    }
-
-    // Fallback: Calculate quality impact from database
+    // Calculate quality impact from database
     // Strategy: Compare quality scores before and after manifest injections
     const qualityImpactData = await getIntelligenceDb()
       .select({
@@ -2899,7 +2929,7 @@ intelligenceRouter.get('/code/compliance', async (req, res) => {
  *   {
  *     id: "uuid",
  *     serviceName: "PostgreSQL",
- *     serviceUrl: "postgresql://192.168.86.200:5436",
+ *     serviceUrl: "postgresql://<host>:<port>",
  *     serviceType: "database",
  *     healthStatus: "healthy",
  *     lastHealthCheck: "2025-10-29T12:00:00Z"
@@ -3532,6 +3562,262 @@ intelligenceRouter.get('/services/:serviceName/details', async (req, res) => {
     console.error('Error fetching service details:', error);
     res.status(500).json({
       error: 'Failed to fetch service details',
+      message: error instanceof Error ? error.message : 'Unknown error',
+    });
+  }
+});
+
+// ===========================
+// PATLEARN Endpoints (OMN-1699)
+// ===========================
+
+/** Valid lifecycle states for PATLEARN artifacts */
+const VALID_PATLEARN_STATES = ['candidate', 'provisional', 'validated', 'deprecated'] as const;
+
+/**
+ * Transform database row to API response format
+ * Drizzle ORM returns camelCase properties as defined in the schema
+ */
+function transformPatlearnArtifact(row: PatternLearningArtifact) {
+  // Explicit NaN check to avoid silently masking invalid data
+  const parsedScore = parseFloat(row.compositeScore);
+  if (Number.isNaN(parsedScore)) {
+    console.warn(`[PATLEARN] Invalid compositeScore for pattern ${row.id}, using fallback 0`);
+  }
+  const compositeScore = Number.isNaN(parsedScore) ? 0 : parsedScore;
+
+  // Type guard: ensure metadata is always an object (not string/number/null)
+  const metadata =
+    row.metadata && typeof row.metadata === 'object' && !Array.isArray(row.metadata)
+      ? row.metadata
+      : {};
+
+  return {
+    id: row.id,
+    patternId: row.patternId,
+    patternName: row.patternName,
+    patternType: row.patternType,
+    language: row.language,
+    lifecycleState: row.lifecycleState,
+    stateChangedAt: row.stateChangedAt,
+    compositeScore,
+    scoringEvidence: row.scoringEvidence,
+    signature: row.signature,
+    metrics: row.metrics || {},
+    metadata,
+    createdAt: row.createdAt,
+    updatedAt: row.updatedAt,
+  };
+}
+
+/**
+ * GET /api/intelligence/patterns/patlearn
+ * List artifacts with filtering
+ *
+ * Query params:
+ *   state: candidate|provisional|validated|deprecated (optional, comma-separated)
+ *   limit: number (default 50, max 250)
+ *   offset: number (default 0)
+ *   sort: score|created|updated (default score)
+ *   order: asc|desc (default desc)
+ */
+intelligenceRouter.get('/patterns/patlearn', async (req, res) => {
+  try {
+    const { state, limit = '50', offset = '0', sort = 'score', order = 'desc' } = req.query;
+
+    const limitNum = Math.min(parseInt(limit as string) || 50, 250);
+    const offsetNum = Math.min(Math.max(parseInt(offset as string) || 0, 0), 10000);
+
+    const db = getIntelligenceDb();
+
+    // Build where condition based on state filter
+    let whereCondition: ReturnType<typeof inArray> | undefined;
+    if (state) {
+      const parsedStates = (state as string).split(',').map((s) => s.trim());
+      const validStates = parsedStates.filter((s): s is (typeof VALID_PATLEARN_STATES)[number] =>
+        VALID_PATLEARN_STATES.includes(s as (typeof VALID_PATLEARN_STATES)[number])
+      );
+      if (validStates.length > 0) {
+        whereCondition = inArray(patternLearningArtifacts.lifecycleState, validStates);
+      }
+    }
+
+    // Determine sort column
+    const sortColumn =
+      sort === 'created'
+        ? patternLearningArtifacts.createdAt
+        : sort === 'updated'
+          ? patternLearningArtifacts.updatedAt
+          : patternLearningArtifacts.compositeScore;
+
+    // Build and execute query - conditionally apply where clause
+    const artifacts = whereCondition
+      ? await db
+          .select()
+          .from(patternLearningArtifacts)
+          .where(whereCondition)
+          .orderBy(order === 'asc' ? asc(sortColumn) : desc(sortColumn))
+          .limit(limitNum)
+          .offset(offsetNum)
+      : await db
+          .select()
+          .from(patternLearningArtifacts)
+          .orderBy(order === 'asc' ? asc(sortColumn) : desc(sortColumn))
+          .limit(limitNum)
+          .offset(offsetNum);
+
+    // Transform to camelCase for frontend
+    res.json(artifacts.map(transformPatlearnArtifact));
+  } catch (error) {
+    console.error('Error fetching PATLEARN artifacts:', error);
+    res.status(500).json({
+      error: 'Failed to fetch PATLEARN artifacts',
+      message: error instanceof Error ? error.message : 'Unknown error',
+    });
+  }
+});
+
+/**
+ * GET /api/intelligence/patterns/patlearn/summary
+ * Aggregate metrics
+ *
+ * Query params:
+ *   window: 24h|7d|30d (default 24h)
+ */
+intelligenceRouter.get('/patterns/patlearn/summary', async (req, res) => {
+  try {
+    const { window = '24h' } = req.query;
+
+    const db = getIntelligenceDb();
+
+    // Calculate time window
+    const windowMs =
+      window === '30d'
+        ? 30 * 24 * 60 * 60 * 1000
+        : window === '7d'
+          ? 7 * 24 * 60 * 60 * 1000
+          : 24 * 60 * 60 * 1000;
+    const since = new Date(Date.now() - windowMs);
+
+    // Get counts by state
+    const stateCounts = await db
+      .select({
+        lifecycleState: patternLearningArtifacts.lifecycleState,
+        count: sql<number>`count(*)::int`,
+      })
+      .from(patternLearningArtifacts)
+      .groupBy(patternLearningArtifacts.lifecycleState);
+
+    // Get average scores (including JSONB extraction for component scores)
+    const avgScores = await db
+      .select({
+        avgComposite: sql<number>`avg(${patternLearningArtifacts.compositeScore})::float`,
+        avgLabelAgreement: sql<number>`avg((${patternLearningArtifacts.scoringEvidence}->'labelAgreement'->>'score')::float)`,
+        avgClusterCohesion: sql<number>`avg((${patternLearningArtifacts.scoringEvidence}->'clusterCohesion'->>'score')::float)`,
+        avgFrequencyFactor: sql<number>`avg((${patternLearningArtifacts.scoringEvidence}->'frequencyFactor'->>'score')::float)`,
+      })
+      .from(patternLearningArtifacts);
+
+    // Get recent promotions (state changed to 'validated' in window)
+    const promotions = await db
+      .select({ count: sql<number>`count(*)::int` })
+      .from(patternLearningArtifacts)
+      .where(
+        and(
+          eq(patternLearningArtifacts.lifecycleState, 'validated'),
+          gte(patternLearningArtifacts.stateChangedAt, since)
+        )
+      );
+
+    // Get recent deprecations
+    const deprecations = await db
+      .select({ count: sql<number>`count(*)::int` })
+      .from(patternLearningArtifacts)
+      .where(
+        and(
+          eq(patternLearningArtifacts.lifecycleState, 'deprecated'),
+          gte(patternLearningArtifacts.stateChangedAt, since)
+        )
+      );
+
+    // Build response
+    const byState: Record<string, number> = {
+      candidate: 0,
+      provisional: 0,
+      validated: 0,
+      deprecated: 0,
+    };
+    stateCounts.forEach((row) => {
+      if (row.lifecycleState in byState) {
+        byState[row.lifecycleState] = row.count;
+      }
+    });
+
+    const totalPatterns = Object.values(byState).reduce((a, b) => a + b, 0);
+
+    res.json({
+      totalPatterns,
+      byState,
+      avgScores: {
+        labelAgreement: avgScores[0]?.avgLabelAgreement ?? 0,
+        clusterCohesion: avgScores[0]?.avgClusterCohesion ?? 0,
+        frequencyFactor: avgScores[0]?.avgFrequencyFactor ?? 0,
+        composite: avgScores[0]?.avgComposite ?? 0,
+      },
+      window,
+      promotionsInWindow: promotions[0]?.count || 0,
+      deprecationsInWindow: deprecations[0]?.count || 0,
+    });
+  } catch (error) {
+    console.error('Error fetching PATLEARN summary:', error);
+    res.status(500).json({
+      error: 'Failed to fetch PATLEARN summary',
+      message: error instanceof Error ? error.message : 'Unknown error',
+    });
+  }
+});
+
+/**
+ * GET /api/intelligence/patterns/patlearn/:id
+ * Full artifact detail for debugger
+ */
+intelligenceRouter.get('/patterns/patlearn/:id', async (req: Request, res: Response) => {
+  try {
+    const { id } = req.params;
+
+    // Validate UUID format to prevent injection and improve error messages
+    const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+    if (!uuidRegex.test(id)) {
+      return res.status(400).json({
+        error: 'Invalid pattern ID format',
+        message: 'ID must be a valid UUID',
+      });
+    }
+
+    const db = getIntelligenceDb();
+
+    const [artifact] = await db
+      .select()
+      .from(patternLearningArtifacts)
+      .where(eq(patternLearningArtifacts.id, id))
+      .limit(1);
+
+    if (!artifact) {
+      return res.status(404).json({
+        error: 'Pattern artifact not found',
+        message: `No pattern artifact exists with ID: ${id}`,
+      });
+    }
+
+    // TODO: Add similar patterns query when similarity data is available
+    res.json({
+      artifact: transformPatlearnArtifact(artifact),
+      similarPatterns: [],
+    });
+  } catch (error) {
+    console.error('Error fetching PATLEARN artifact detail:', error);
+    res.status(500).json({
+      error: 'Failed to fetch PATLEARN artifact detail',
       message: error instanceof Error ? error.message : 'Unknown error',
     });
   }

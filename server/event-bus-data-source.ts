@@ -108,41 +108,27 @@ export class EventBusDataSource extends EventEmitter {
   private consumer: Consumer | null = null;
   private isRunning = false;
   private isConnected = false;
+  private stopped = false;
+  private loopActive = false;
+  private reconnectAttempts = 0;
+  private readonly MAX_RECONNECT_DELAY_MS = 30_000;
+  private readonly BASE_RECONNECT_DELAY_MS = 2_000;
 
   // Event type patterns from event catalog
   private readonly EVENT_PATTERNS = [
-    // Intelligence domain
-    /^[^.]+\.omninode\.intelligence\..*\.v\d+$/,
-    // Agent domain
-    /^[^.]+\.omninode\.agent\..*\.v\d+$/,
-    // Metadata domain
-    /^[^.]+\.omninode\.metadata\..*\.v\d+$/,
-    // Code generation domain
-    /^[^.]+\.omninode\.code\..*\.v\d+$/,
-    // Registry domain
-    /^[^.]+\.omninode\.node\..*\.v\d+$/,
-    /^[^.]+\.onex\..*\.v\d+$/,
-    // Database domain
-    /^[^.]+\.omninode\.database\..*\.v\d+$/,
-    // Consul domain
-    /^[^.]+\.omninode\.consul\..*\.v\d+$/,
-    // Vault domain
-    /^[^.]+\.omninode\.vault\..*\.v\d+$/,
-    // Bridge domain
-    /^[^.]+\.omninode\.bridge\..*\.v\d+$/,
-    // Service health domain
-    /^[^.]+\.omninode\.service\..*\.v\d+$/,
-    /^[^.]+\.omninode\.kafka\..*\.v\d+$/,
-    // Logging domain
-    /^[^.]+\.omninode\.logging\..*\.v\d+$/,
-    // Token economy (planned)
-    /^[^.]+\.omninode\.token\..*\.v\d+$/,
-    // Pattern distribution (planned)
-    /^[^.]+\.omninode\.pattern\..*\.v\d+$/,
-    // P2P distribution (planned)
-    /^[^.]+\.omninode\.p2p\..*\.v\d+$/,
-    // MetaContext (planned)
-    /^[^.]+\.omninode\.metacontext\..*\.v\d+$/,
+    // ONEX canonical topics — prefix is optional (matches both dev.onex.* and onex.*)
+    /^(?:[^.]+\.)?onex\..*\.v\d+$/,
+    // omninode domain topics (prefixed: {env}.omninode.{domain}.*.v{N})
+    /^[^.]+\.omninode\.(?:intelligence|agent|metadata|code|node|database|consul|vault|bridge|service|kafka|logging|token|pattern|p2p|metacontext)\..*\.v\d+$/,
+    // omniclaude / omniintelligence / omnimemory (prefixed: {env}.omniclaude.*.v{N})
+    /^[^.]+\.omni(?:claude|intelligence|memory)\..*\.v\d+$/,
+    // archon-intelligence (prefixed: {env}.archon-intelligence.*.v{N})
+    /^[^.]+\.archon-intelligence\..*\.v\d+$/,
+    // omninode-bridge (prefixed: {env}.omninode-bridge.*.v{N})
+    /^[^.]+\.omninode-bridge\..*\.v\d+$/,
+    // Legacy flat agent topics (no dots, no prefix)
+    /^agent-(?:routing-decisions|actions|transformation-events|manifest-injections)$/,
+    /^router-performance-metrics$/,
   ];
 
   constructor() {
@@ -153,7 +139,7 @@ export class EventBusDataSource extends EventEmitter {
       throw new Error(
         'KAFKA_BROKERS or KAFKA_BOOTSTRAP_SERVERS environment variable is required. ' +
           'Set it in .env file or export it before starting the server. ' +
-          'Example: KAFKA_BROKERS=192.168.86.200:29092'
+          'Example: KAFKA_BROKERS=host:port'
       );
     }
 
@@ -162,8 +148,16 @@ export class EventBusDataSource extends EventEmitter {
       clientId: 'omnidash-event-bus-data-source',
     });
 
+    // Consumer group bumped to v2 for canonical topic subscription changes (OMN-1933).
+    // New group starts with no committed offsets — expects offset reset on first deploy.
     this.consumer = this.kafka.consumer({
-      groupId: 'omnidash-event-bus-datasource-v1',
+      groupId: 'omnidash-event-bus-datasource-v2',
+    });
+
+    this.consumer.on(this.consumer.events.DISCONNECT, () => {
+      if (!this.stopped) {
+        console.warn('[EventBusDataSource] Kafka broker disconnected');
+      }
     });
   }
 
@@ -174,7 +168,7 @@ export class EventBusDataSource extends EventEmitter {
     const brokers = process.env.KAFKA_BROKERS || process.env.KAFKA_BOOTSTRAP_SERVERS;
 
     if (!brokers) {
-      console.warn('[EventBusDataSource] KAFKA_BROKERS not configured');
+      console.error('[EventBusDataSource] KAFKA_BROKERS not configured');
       return false;
     }
 
@@ -263,30 +257,79 @@ export class EventBusDataSource extends EventEmitter {
   }
 
   /**
-   * Start consuming events from Kafka
+   * Start consuming events from Kafka with automatic reconnect on failure.
+   *
+   * Calls doStart() in a retry loop. If the broker is unreachable at startup,
+   * or if consumer.run() exits unexpectedly mid-run, the loop backs off and
+   * retries until stop() is called.
    */
   async start(): Promise<void> {
-    if (this.isRunning) {
+    if (this.isRunning || this.loopActive) {
       console.warn('[EventBusDataSource] Already running');
       return;
     }
+    this.stopped = false;
+
+    await this.initializeSchema();
+    await this.startWithReconnect();
+  }
+
+  /**
+   * Reconnect loop: retries doStart() with exponential backoff until stopped.
+   */
+  private async startWithReconnect(): Promise<void> {
+    this.loopActive = true;
+    try {
+      while (!this.stopped) {
+        try {
+          await this.doStart();
+          // doStart() returns only when consumer.run() exits cleanly.
+          // Unless we were intentionally stopped, treat this as a reason to reconnect.
+          if (!this.stopped) {
+            console.warn('[EventBusDataSource] consumer.run() exited, reconnecting...');
+            await this.sleepBeforeRetry();
+          }
+        } catch (err) {
+          if (this.stopped) break;
+          console.error('[EventBusDataSource] Kafka connection failed, will retry:', err);
+          this.emit('error', err);
+          await this.sleepBeforeRetry();
+        }
+      }
+    } finally {
+      this.loopActive = false;
+    }
+  }
+
+  /**
+   * Core connect/subscribe/run sequence (single attempt, no retry).
+   */
+  private async doStart(): Promise<void> {
+    if (!this.consumer) {
+      throw new Error('Consumer not initialized');
+    }
 
     try {
-      await this.initializeSchema();
-
-      if (!this.consumer) {
-        throw new Error('Consumer not initialized');
-      }
-
       await this.consumer.connect();
+      // Successful connection — reset backoff counter
+      this.reconnectAttempts = 0;
       this.isConnected = true;
+      this.isRunning = true;
       this.emit('connected');
 
       // Get all topics and filter by event patterns
       const admin = this.kafka.admin();
-      await admin.connect();
-      const topics = await admin.listTopics();
-      await admin.disconnect();
+      let adminConnected = false;
+      let topics: string[];
+      try {
+        await admin.connect();
+        adminConnected = true;
+        topics = await admin.listTopics();
+      } finally {
+        if (adminConnected) {
+          await admin.disconnect();
+        }
+      }
 
       // Filter out Kafka internal topics and filter topics that match event patterns
       const internalTopics = ['__consumer_offsets', '__transaction_state', '__schema'];
@@ -314,20 +357,38 @@ export class EventBusDataSource extends EventEmitter {
         await this.consumer.subscribe({ topics: eventTopics, fromBeginning: false });
       }
 
-      // Start consuming messages
+      // Start consuming messages — awaits until the consumer is stopped or crashes
+      console.log('[EventBusDataSource] Started consuming events');
       await this.consumer.run({
         eachMessage: async (payload: EachMessagePayload) => {
           await this.handleMessage(payload);
         },
       });
-
-      this.isRunning = true;
-      console.log('[EventBusDataSource] Started consuming events');
-    } catch (error) {
-      console.error('[EventBusDataSource] Error starting consumer:', error);
-      this.emit('error', error);
-      throw error;
+    } catch (err) {
+      // Only disconnect if a successful connect() was previously recorded;
+      // calling disconnect() on a never-connected consumer drives its internal
+      // state machine unnecessarily and may produce unexpected errors.
+      if (this.isConnected) {
+        await this.consumer?.disconnect().catch(() => {});
+      }
+      this.isRunning = false;
+      this.isConnected = false;
+      throw err;
     }
+  }
+
+  /**
+   * Exponential backoff sleep between reconnect attempts.
+   * Delay doubles per attempt, capped at MAX_RECONNECT_DELAY_MS.
+   */
+  private async sleepBeforeRetry(): Promise<void> {
+    const delay = Math.min(
+      this.BASE_RECONNECT_DELAY_MS * Math.pow(2, this.reconnectAttempts),
+      this.MAX_RECONNECT_DELAY_MS
+    );
+    this.reconnectAttempts++;
+    console.log(`[EventBusDataSource] Retrying in ${delay}ms (attempt ${this.reconnectAttempts})`);
+    await new Promise((r) => setTimeout(r, delay));
   }
 
   /**
@@ -648,10 +709,19 @@ export class EventBusDataSource extends EventEmitter {
   }
 
   /**
-   * Stop consuming events
+   * Stop consuming events.
+   *
+   * Sets stopped = true BEFORE disconnecting so the reconnect loop in
+   * startWithReconnect() exits cleanly on the next iteration rather than
+   * treating the disconnect as a failure requiring retry.
    */
   async stop(): Promise<void> {
-    if (!this.isRunning) {
+    // Always signal stop first, even if currently sleeping between retries.
+    // This ensures the reconnect loop exits on its next iteration regardless
+    // of whether isRunning reflects the sleep window between reconnect attempts.
+    this.stopped = true;
+
+    if (!this.isRunning && !this.loopActive) {
       return;
     }
 
@@ -703,9 +773,21 @@ let eventBusInitError: Error | null = null;
  * Get EventBusDataSource singleton with lazy initialization
  *
  * This pattern prevents the application from crashing at module load time
- * if KAFKA_BROKERS environment variable is not configured.
+ * when KAFKA_BROKERS is absent. Note: a missing KAFKA_BROKERS is a
+ * misconfiguration error — Kafka is required infrastructure. A null return
+ * from this function means the application is not connected to Kafka and
+ * is in a degraded/error state.
  *
- * @returns EventBusDataSource instance or null if initialization failed
+ * @performance Avoid calling in per-request hot paths. On the **first call**,
+ * lazy initialization runs the `EventBusDataSource` constructor, which reads
+ * environment variables and allocates KafkaJS client objects — synchronous
+ * work, but non-trivial on the first invocation. No network I/O occurs during
+ * construction; broker connections are established only when `start()` is
+ * called. On **subsequent calls** (after initialization is cached), the cost
+ * is negligible — a null check on a module-level variable. Prefer calling
+ * once at startup and caching the result rather than calling on every request.
+ *
+ * @returns EventBusDataSource instance or null if initialization failed (error state)
  */
 export function getEventBusDataSource(): EventBusDataSource | null {
   // Return cached instance if already initialized
@@ -719,23 +801,83 @@ export function getEventBusDataSource(): EventBusDataSource | null {
   }
 
   // Attempt lazy initialization
+  // Safe: JS is single-threaded, and new Kafka() is synchronous — no concurrent construction possible
   try {
     eventBusDataSourceInstance = new EventBusDataSource();
     return eventBusDataSourceInstance;
   } catch (error) {
     eventBusInitError = error instanceof Error ? error : new Error(String(error));
-    console.warn('⚠️  EventBusDataSource initialization failed:', eventBusInitError.message);
-    console.warn('   Event storage and querying will be disabled');
-    console.warn('   Set KAFKA_BROKERS in .env file to enable event bus integration');
+    console.error('❌ EventBusDataSource initialization failed:', eventBusInitError.message);
+    console.error(
+      '   Kafka is required infrastructure. Set KAFKA_BROKERS in .env to connect to the Redpanda/Kafka broker.'
+    );
+    console.error(
+      '   Event storage and querying are unavailable — this is an error state, not normal operation.'
+    );
     return null;
   }
 }
 
 /**
- * Check if EventBusDataSource is available
+ * Check if EventBusDataSource is available.
+ *
+ * Triggers lazy initialization if not yet done, then returns true if the
+ * singleton was successfully initialized and false if initialization failed
+ * (e.g. KAFKA_BROKERS not configured). Safe to call at any time — no prior
+ * call to `getEventBusDataSource()` is required.
+ *
+ * @remarks
+ * **Side effect**: Triggers lazy initialization of the singleton if not yet
+ * initialized. Calling this function is equivalent to calling
+ * `getEventBusDataSource()` plus a null check — both are safe to call at any
+ * point.
+ *
+ * **Behavioral change from pre-lazy-init code**: Previously, `isEventBusDataSourceAvailable()`
+ * returned `true` optimistically before any initialization attempt. The current implementation
+ * triggers lazy initialization as a side effect on the first call. It returns `true` only after
+ * successful initialization completes, and `false` if initialization failed (e.g. KAFKA_BROKERS
+ * missing or the EventBusDataSource constructor threw). Callers that previously relied on the
+ * optimistic `true` return before initialization must treat `false` as "Kafka unavailable".
+ *
+ * @performance Avoid calling in per-request hot paths (e.g. health-check
+ * endpoints polled frequently, per-request middleware). On the **first call**,
+ * lazy initialization runs the `EventBusDataSource` constructor, which reads
+ * environment variables and allocates KafkaJS client objects — synchronous
+ * work, but non-trivial on the first invocation. No network I/O occurs during
+ * construction; broker connections are established only when `start()` is
+ * called. On **subsequent calls** (after initialization is cached), the cost
+ * is negligible — a null check on a module-level variable. Still, the
+ * semantic intent of this function is an initialization probe, not a cheap
+ * boolean predicate; callers on hot paths should cache the result after the
+ * first successful initialization and avoid calling this function on every
+ * request.
+ *
+ * @example
+ * ```typescript
+ * // Recommended: check once at startup
+ * if (!isEventBusDataSourceAvailable()) {
+ *   console.error('EventBusDataSource unavailable — check KAFKA_BROKERS');
+ * }
+ *
+ * // In request handlers, use the getter directly:
+ * const ds = getEventBusDataSource();
+ * if (!ds) return res.status(503).json({ error: 'Event bus unavailable' });
+ * ```
+ *
+ * @returns `true` if initialization succeeded; `false` if Kafka is not configured or
+ *   initialization failed. **Note**: triggers lazy initialization on first call.
  */
 export function isEventBusDataSourceAvailable(): boolean {
-  return eventBusDataSourceInstance !== null || eventBusInitError === null;
+  // SIDE EFFECT WARNING: Despite the predicate-style name, this function triggers Kafka
+  // client allocation on the first call (via getEventBusDataSource()). Subsequent calls
+  // are cheap (null-check only). If early, predictable initialization is required — e.g.
+  // to surface a KAFKA_BROKERS misconfiguration at a known point rather than on the first
+  // incoming request — call this function (or getEventBusDataSource()) once explicitly
+  // during server startup (e.g. in server/index.ts or routes.ts after route registration).
+
+  // Trigger lazy initialization if not yet done
+  getEventBusDataSource();
+  return eventBusDataSourceInstance !== null;
 }
 
 /**
@@ -746,46 +888,160 @@ export function getEventBusDataSourceError(): Error | null {
 }
 
 /**
- * Backward compatibility: Proxy that delegates to lazy getter
- *
- * @deprecated Use getEventBusDataSource() for better error handling
+ * Proxy that delegates all property access to the lazily-initialized EventBusDataSource.
+ * Returns stub implementations that log errors when Kafka is not configured.
  */
 export const eventBusDataSource = new Proxy({} as EventBusDataSource, {
   get(target, prop) {
     const instance = getEventBusDataSource();
     if (!instance) {
       // Return dummy implementations
-      if (
-        prop === 'start' ||
-        prop === 'stop' ||
-        prop === 'validateConnection' ||
-        prop === 'initializeSchema'
-      ) {
+      if (prop === 'validateConnection') {
         return async () => {
-          console.warn('⚠️  EventBusDataSource not available (Kafka not configured)');
+          console.error(
+            '❌ EventBusDataSource not available - cannot validate connection. Set KAFKA_BROKERS in .env.'
+          );
+          return false;
         };
       }
-      if (prop === 'queryEvents' || prop === 'queryEventChainsOLD' || prop === 'queryEventChains') {
-        return async () => [];
+      if (prop === 'start') {
+        /**
+         * Proxy stub for start() when Kafka is not initialized.
+         *
+         * Throws asynchronously (consistent with the eventConsumer proxy's start stub)
+         * so callers awaiting start() receive a rejected promise rather than a silent
+         * undefined return. Kafka is required infrastructure — a missing KAFKA_BROKERS
+         * env var is a misconfiguration error, not a graceful-degradation scenario.
+         *
+         * @throws {Error} Always rejects — Kafka was not configured or failed to
+         *   initialize. Set KAFKA_BROKERS in .env and restart the server.
+         */
+        return async (..._args: unknown[]): Promise<never> => {
+          throw new Error(
+            '[EventBusDataSource] start() called but Kafka is not available — ' +
+              'KAFKA_BROKERS is not configured. Set KAFKA_BROKERS in .env to restore event streaming.'
+          );
+        };
+      }
+      if (prop === 'stop') {
+        // No-op during shutdown: there is nothing to tear down because Kafka never started.
+        return async () => {
+          // Intentionally silent — stop() during shutdown when Kafka was never available
+          // is a benign no-op and should not pollute logs.
+        };
+      }
+      if (prop === 'initializeSchema') {
+        return async () => {
+          console.error(
+            '❌ EventBusDataSource: schema initialization skipped — Kafka is not available. Set KAFKA_BROKERS in .env to restore event storage.'
+          );
+        };
+      }
+      if (prop === 'queryEvents') {
+        return async (..._args: unknown[]) => {
+          console.warn(
+            '[EventBusDataSource] queryEvents called but Kafka is not available — returning empty result. Configure KAFKA_BROKERS and KAFKA_CLIENT_ID.'
+          );
+          return [];
+        };
+      }
+      if (prop === 'queryEventChains') {
+        return async (..._args: unknown[]) => {
+          console.warn(
+            '[EventBusDataSource] queryEventChains called but Kafka is not available — returning empty result. Configure KAFKA_BROKERS and KAFKA_CLIENT_ID.'
+          );
+          return [];
+        };
+      }
+      if (prop === 'getStatistics') {
+        return async (..._args: unknown[]) => {
+          console.warn(
+            '[EventBusDataSource] getStatistics called but Kafka is not available — returning zero-value shape. Configure KAFKA_BROKERS and KAFKA_CLIENT_ID.'
+          );
+          return {
+            total_events: 0,
+            events_by_type: {},
+            events_by_tenant: {},
+            events_per_minute: 0,
+            oldest_event: null,
+            newest_event: null,
+          };
+        };
       }
       if (prop === 'getEventChainStats') {
-        return async () => ({
-          totalChains: 0,
-          completedChains: 0,
-          activeChains: 0,
-          failedChains: 0,
-          avgChainDuration: 0,
-          avgEventsPerChain: 0,
-        });
+        return async () => {
+          console.warn(
+            '[EventBusDataSource] getEventChainStats called but Kafka is not available — returning zero-value shape. Configure KAFKA_BROKERS and KAFKA_CLIENT_ID.'
+          );
+          return {
+            totalChains: 0,
+            completedChains: 0,
+            activeChains: 0,
+            failedChains: 0,
+            avgChainDuration: 0,
+            avgEventsPerChain: 0,
+          };
+        };
       }
       if (prop === 'injectEvent') {
-        return async () => {
-          console.warn('⚠️  EventBusDataSource not available - cannot inject event');
+        /**
+         * Proxy stub returned when Kafka is not initialized.
+         *
+         * The real `injectEvent` is async (returns Promise<void>), so this stub
+         * mirrors that contract by returning an async function that always rejects.
+         * Callers that correctly await the real method will naturally catch this
+         * rejection through normal async error handling; no special treatment is
+         * required at the call site beyond the standard `await` or `.catch()`.
+         *
+         * @throws {Error} Always rejects — Kafka was not configured or failed to
+         *   initialize. To restore event storage, set KAFKA_BROKERS in .env and
+         *   restart the server.
+         */
+        const uninitializedInjectEvent = async (..._args: unknown[]): Promise<never> => {
+          throw new Error(
+            '[EventBusDataSource] injectEvent called but Kafka is not available — ' +
+              'event cannot be delivered. Set KAFKA_BROKERS in .env to restore event storage.'
+          );
         };
+        return uninitializedInjectEvent;
       }
       // For EventEmitter methods
       if (prop === 'on' || prop === 'once' || prop === 'emit' || prop === 'removeListener') {
-        return () => eventBusDataSource; // Return proxy for chaining
+        return (...args: unknown[]) => {
+          if (prop === 'on' || prop === 'once') {
+            // Registering a listener before start() is called is a normal and expected
+            // pattern — components wire up listeners during construction/mount, then the
+            // bus is started separately. Log at warn (not error) to avoid flooding startup
+            // logs with false-alarm error messages during ordinary initialisation order.
+            // The listener was NOT registered — Kafka is unavailable so no events will fire.
+            console.warn(
+              `[EventBusDataSource] .${prop}() called on stub proxy (event: "${String(args[0])}") — ` +
+                'Kafka is not initialized; listener was NOT registered. ' +
+                'Set KAFKA_BROKERS in .env to enable real event delivery.'
+            );
+          } else if (prop === 'removeListener') {
+            // No-op: there is nothing to remove because on/once stubs never registered a
+            // real listener. Removing a listener that was never registered is a normal
+            // cleanup pattern (e.g. React useEffect teardown), so log at warn level to
+            // avoid polluting startup/teardown logs with spurious errors.
+            console.warn(
+              `[EventBusDataSource] .removeListener() called on stub proxy (event: "${String(args[0])}") — ` +
+                'no-op because Kafka is not initialized and no listener was ever registered.'
+            );
+          } else if (prop === 'emit') {
+            // No-op: no real EventEmitter exists to dispatch to. Log at error level —
+            // actively emitting to an unavailable bus indicates a logic error: the caller
+            // should have checked bus availability before attempting to publish an event.
+            console.error(
+              `[EventBusDataSource] .emit() called on stub proxy (event: "${String(args[0])}") — ` +
+                'no-op because Kafka is not initialized; event was not dispatched.'
+            );
+            // EventEmitter.emit() returns boolean (true if listeners were called).
+            // Return false — no listeners exist because Kafka is not initialized.
+            return false;
+          }
+          return eventBusDataSource; // Return proxy for chaining (on/once/removeListener return `this`)
+        };
       }
       return undefined;
     }

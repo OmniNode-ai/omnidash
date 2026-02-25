@@ -1,4 +1,9 @@
 import React, { useMemo, useState, useRef, useCallback } from 'react';
+import {
+  LEGACY_AGENT_ACTIONS,
+  LEGACY_AGENT_ROUTING_DECISIONS,
+  LEGACY_ROUTER_PERFORMANCE_METRICS,
+} from '@shared/topics';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -114,19 +119,19 @@ export default function NodeNetworkComposer() {
           id: 'e1',
           source: 'compute-ingest',
           target: 'reducer-aggregate',
-          channel: 'agent-actions',
+          channel: LEGACY_AGENT_ACTIONS, // legacy flat topic name
         },
         {
           id: 'e2',
           source: 'reducer-aggregate',
           target: 'effect-notify',
-          channel: 'router-performance-metrics',
+          channel: LEGACY_ROUTER_PERFORMANCE_METRICS, // legacy flat topic name
         },
         {
           id: 'e3',
           source: 'orchestrator-root',
           target: 'compute-ingest',
-          channel: 'agent-routing-decisions',
+          channel: LEGACY_AGENT_ROUTING_DECISIONS, // legacy flat topic name
         },
       ];
       setNodes(mockNodes);

@@ -1,0 +1,273 @@
+/**
+ * DbBackedProjectionView — Base class for DB-query-backed projections (OMN-2325)
+ *
+ * Unlike event-driven projections (EventBusProjection, IntentProjectionView),
+ * these views materialize state from PostgreSQL queries rather than from
+ * real-time Kafka events. They implement the ProjectionView interface so
+ * routes can use the same `projectionService.getView('x').getSnapshot()`
+ * pattern, decoupling route handlers from storage schema.
+ *
+ * Features:
+ * - TTL-based snapshot caching (default 5s) to avoid hammering the DB
+ * - Graceful degradation when DB is unavailable (returns empty payloads)
+ * - applyEvent() is a no-op (state comes from DB, not event stream)
+ * - getEventsSince() returns empty (no incremental event tracking)
+ *
+ * Subclasses MUST implement:
+ * - querySnapshot(): Execute SQL queries and return the domain payload
+ * - emptyPayload(): Return the zero-value payload for graceful degradation
+ */
+
+import type { ProjectionView } from '../projection-service';
+import type {
+  ProjectionResponse,
+  ProjectionEvent,
+  ProjectionEventsResponse,
+} from '@shared/projection-types';
+import { tryGetIntelligenceDb } from '../storage';
+
+/** Default cache TTL: 5 seconds. Keeps DB load reasonable for polling clients. */
+export const DEFAULT_CACHE_TTL_MS = 5_000;
+
+/**
+ * Abstract base class for projection views backed by PostgreSQL queries.
+ *
+ * @template TPayload - The snapshot payload type returned by getSnapshot()
+ */
+export abstract class DbBackedProjectionView<TPayload> implements ProjectionView<TPayload> {
+  abstract readonly viewId: string;
+
+  private cachedSnapshot: ProjectionResponse<TPayload> | null = null;
+  private cacheExpiresAt = 0;
+  private readonly cacheTtlMs: number;
+  private snapshotSeq = 0;
+  /** Guard: coalesces concurrent refreshAsync() calls into a single DB query. */
+  private refreshInFlight: Promise<void> | null = null;
+  /**
+   * Guard: coalesces concurrent forceRefresh() calls into a single DB query
+   * per unique limit value. Keyed by String(limit ?? 'all') so that calls
+   * with different limits run independently while calls with the same limit
+   * are coalesced onto the same in-flight promise.
+   */
+  private forceRefreshInFlight = new Map<string, Promise<TPayload>>();
+  /**
+   * Incremented on every reset(). Captured at the start of each refreshAsync()
+   * and checked in the .then() callback so that a stale in-flight query
+   * self-discards if reset() was called while it was executing.
+   */
+  private resetGeneration = 0;
+
+  constructor(cacheTtlMs?: number) {
+    this.cacheTtlMs = cacheTtlMs ?? DEFAULT_CACHE_TTL_MS;
+  }
+
+  // --------------------------------------------------------------------------
+  // ProjectionView interface
+  // --------------------------------------------------------------------------
+
+  /**
+   * Returns a cached or freshly-queried snapshot.
+   *
+   * If the cache is stale (older than cacheTtlMs), re-queries the database.
+   * If the DB is unavailable, returns the empty payload.
+   *
+   * The `options.limit` parameter is forwarded to `querySnapshot()` for
+   * subclasses that support result limiting.
+   */
+  getSnapshot(options?: { limit?: number }): ProjectionResponse<TPayload> {
+    const now = Date.now();
+
+    // Return cached snapshot if still fresh
+    if (this.cachedSnapshot && now < this.cacheExpiresAt) {
+      return {
+        ...this.cachedSnapshot,
+        snapshotTimeMs: now,
+      };
+    }
+
+    // Trigger async refresh but return stale/empty synchronously.
+    // ProjectionView.getSnapshot() is synchronous by interface contract,
+    // so we cannot await the DB query. Instead we:
+    //   1. Return the last cached snapshot (stale but available), OR
+    //   2. Return the empty payload if no cache exists yet
+    //   3. Schedule an async refresh that will update the cache
+    this.refreshAsync(options?.limit);
+
+    if (this.cachedSnapshot) {
+      return {
+        ...this.cachedSnapshot,
+        snapshotTimeMs: now,
+      };
+    }
+
+    return {
+      viewId: this.viewId,
+      cursor: this.snapshotSeq,
+      snapshotTimeMs: now,
+      payload: this.emptyPayload(),
+    };
+  }
+
+  /**
+   * DB-backed projections don't track individual events.
+   * Returns an empty events response.
+   */
+  getEventsSince(cursor: number): ProjectionEventsResponse {
+    return {
+      viewId: this.viewId,
+      cursor,
+      snapshotTimeMs: Date.now(),
+      events: [],
+    };
+  }
+
+  /**
+   * DB-backed projections don't ingest events from the stream.
+   * Always returns false (no state change).
+   */
+  applyEvent(_event: ProjectionEvent): boolean {
+    return false;
+  }
+
+  /** Reset cached state. */
+  reset(): void {
+    this.cachedSnapshot = null;
+    this.cacheExpiresAt = 0;
+    this.snapshotSeq = 0;
+    this.refreshInFlight = null;
+    this.forceRefreshInFlight.clear();
+    // Bump the generation so any in-flight query self-discards its result rather
+    // than overwriting the fresh cache that the next getSnapshot() will populate.
+    this.resetGeneration++;
+  }
+
+  // --------------------------------------------------------------------------
+  // Subclass contract
+  // --------------------------------------------------------------------------
+
+  /**
+   * Execute SQL queries and return the domain-specific payload.
+   * Called by refreshAsync() when the cache is stale.
+   *
+   * @param db - Drizzle DB instance (guaranteed non-null)
+   * @param limit - Optional result limit from getSnapshot() options
+   * @returns The payload to cache and serve
+   */
+  protected abstract querySnapshot(
+    db: NonNullable<ReturnType<typeof tryGetIntelligenceDb>>,
+    limit?: number
+  ): Promise<TPayload>;
+
+  /**
+   * Return the zero-value payload for graceful degradation.
+   * Used when DB is unavailable or before the first refresh completes.
+   */
+  protected abstract emptyPayload(): TPayload;
+
+  // --------------------------------------------------------------------------
+  // Internal
+  // --------------------------------------------------------------------------
+
+  /**
+   * Trigger an async DB query to refresh the cached snapshot.
+   * Errors are caught and logged; the cache remains stale but valid.
+   *
+   * Uses an in-flight guard so that concurrent callers share the same
+   * pending query rather than hammering the DB with duplicate requests.
+   */
+  private refreshAsync(limit?: number): void {
+    // If a refresh is already in flight, let it finish — don't fire another.
+    if (this.refreshInFlight) return;
+
+    const db = tryGetIntelligenceDb();
+    if (!db) return;
+
+    // Capture the current generation so the .then() can detect if reset() was
+    // called while this query was in flight and discard a now-stale result.
+    const generation = this.resetGeneration;
+
+    // Fire-and-forget: update cache when query completes
+    this.refreshInFlight = this.querySnapshot(db, limit)
+      .then((payload) => {
+        // Discard if reset() was called while this query was executing.
+        if (this.resetGeneration !== generation) return;
+        this.snapshotSeq++;
+        const now = Date.now();
+        this.cachedSnapshot = {
+          viewId: this.viewId,
+          cursor: this.snapshotSeq,
+          snapshotTimeMs: now,
+          payload,
+        };
+        this.cacheExpiresAt = now + this.cacheTtlMs;
+      })
+      .catch((err) => {
+        console.error(`[projection:${this.viewId}] DB query failed:`, err);
+      })
+      .finally(() => {
+        this.refreshInFlight = null;
+      });
+  }
+
+  /**
+   * Return cached payload if TTL is still valid, otherwise refresh from DB.
+   * Unlike getSnapshot() (synchronous, may return stale/empty), this awaits
+   * the DB query when the cache is stale. Unlike forceRefresh() (always
+   * queries), this respects the TTL cache to avoid DB hammering.
+   */
+  async ensureFresh(limit?: number): Promise<TPayload> {
+    if (this.cachedSnapshot && Date.now() < this.cacheExpiresAt) {
+      return this.cachedSnapshot.payload;
+    }
+    return this.forceRefresh(limit);
+  }
+
+  /**
+   * Force an immediate (awaited) cache update (for testing or initialization).
+   * Returns the payload directly. Concurrent calls are coalesced — if a
+   * forceRefresh() is already in flight, all callers wait for the same query.
+   */
+  async forceRefresh(limit?: number): Promise<TPayload> {
+    // Derive a stable key so that calls with the same limit are coalesced onto
+    // the same in-flight promise, while calls with different limits run
+    // independently (fixing the bug where forceRefresh(14) would piggyback on
+    // an in-flight forceRefresh(undefined) and receive wrong results).
+    const key = String(limit ?? 'all');
+
+    // Coalesce: if a refresh for this exact limit is already in flight, return
+    // the same promise. Capture the reference before returning so a concurrent
+    // .finally() that removes the key from the Map doesn't race with this read.
+    const inflight = this.forceRefreshInFlight.get(key);
+    if (inflight !== undefined) return inflight;
+
+    const generation = this.resetGeneration;
+    const promise = (async () => {
+      const db = tryGetIntelligenceDb();
+      if (!db) return this.emptyPayload();
+
+      // Capture generation before the await so a concurrent reset() call is
+      // detected and the stale result is discarded rather than overwriting the
+      // freshly-reset state.
+      const payload = await this.querySnapshot(db, limit);
+      if (this.resetGeneration !== generation) {
+        // reset() was called during the query — discard and return empty.
+        return this.emptyPayload();
+      }
+      this.snapshotSeq++;
+      const now = Date.now();
+      this.cachedSnapshot = {
+        viewId: this.viewId,
+        cursor: this.snapshotSeq,
+        snapshotTimeMs: now,
+        payload,
+      };
+      this.cacheExpiresAt = now + this.cacheTtlMs;
+      return payload;
+    })().finally(() => {
+      this.forceRefreshInFlight.delete(key);
+    });
+
+    this.forceRefreshInFlight.set(key, promise);
+    return promise;
+  }
+}

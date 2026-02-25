@@ -286,14 +286,14 @@ Related Documentation:
   • /client/src/pages/PatternLearning.tsx - Dashboard frontend
 
 Database:
-  • PostgreSQL: 192.168.86.200:5436/omninode_bridge
+  • PostgreSQL: 192.168.86.200:5436/omnidash_analytics
   • Tables: pattern_lineage_nodes, pattern_lineage_edges, agent_manifest_injections
   • Missing: quality_score and usage_count columns
 
 Services:
   • Backend: http://localhost:3000
   • Archon Intelligence: http://localhost:8053
-  • Database: postgresql://192.168.86.200:5436/omninode_bridge
+  • Database: postgresql://192.168.86.200:5436/omnidash_analytics
 
 ================================================================================
 VALIDATION SIGN-OFF

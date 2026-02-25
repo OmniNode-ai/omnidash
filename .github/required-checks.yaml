@@ -1,0 +1,75 @@
+# SPDX-FileCopyrightText: 2025 OmniNode.ai Inc.
+# SPDX-License-Identifier: MIT
+# Required Status Checks for `main` Branch Protection
+#
+# This manifest documents the canonical list of required checks.
+# If you rename a CI job, you MUST update both this file and the
+# branch protection settings (Settings -> Branches -> main).
+#
+# Added: OMN-2187
+# Last verified: 2026-02-22 (PR #64 — gate job added, branch protection applied)
+
+required_checks:
+  # -- test.yml (primary CI pipeline) ----------------------------------------
+  - name: "CI Tests Gate"
+    workflow: test.yml
+    job_id: tests-gate
+    rationale: >
+      Aggregator for the Node version matrix (20.x/22.x/24.x).
+      Version additions or removals do not require branch protection updates.
+
+  # -- omni-standards-compliance.yml (M5 standards gate) ---------------------
+  # Cross-reference: this name MUST exactly match the job-level `name:` field
+  # inside `jobs.omni-standards-gate` in omni-standards-compliance.yml.
+  # If that job name is renamed, update this entry and branch protection settings.
+  - name: "Omni Standards Gate"
+    workflow: omni-standards-compliance.yml
+    job_id: omni-standards-gate
+    rationale: >
+      Aggregator for omnidash structural and ecosystem standards checks (OMN-2459 / M5).
+      Validates monorepo directory structure, CLAUDE.md, required npm scripts, TanStack
+      Query enforcement, forbidden packages, and TypeScript strict mode config.
+      Added as branch protection required check after OMN-2459 merges.
+
+# -- Explicitly excluded -----------------------------------------------------
+excluded_checks:
+  - name: "Run Tests (20.x)"
+    reason: >
+      Individual matrix entry — superseded by the CI Tests Gate aggregator.
+      Requiring individual entries would break branch protection on version changes.
+
+  - name: "Run Tests (22.x)"
+    reason: >
+      Individual matrix entry — superseded by the CI Tests Gate aggregator.
+
+  - name: "Run Tests (24.x)"
+    reason: >
+      Individual matrix entry — superseded by the CI Tests Gate aggregator.
+
+  - name: "Check architecture handshake"
+    reason: >
+      Path-filtered workflow (only runs when .claude/architecture-handshake.md
+      or check-handshake.yml changes). Requiring it would deadlock all other PRs
+      because GitHub marks skipped path-filtered checks as "Expected — Waiting
+      for status to be reported".
+
+  # Cross-reference: this name MUST exactly match the job-level `name:` field
+  # inside the `jobs.schema-compat` block in .github/workflows/onex-schema-compat.yml
+  # (currently: `name: ONEX Schema Compatibility Check`), NOT the top-level
+  # workflow `name:` field (which reads `name: ONEX Schema Compatibility`).
+  # If that job name is renamed, update this entry and branch protection settings.
+  - name: "ONEX Schema Compatibility Check"
+    reason: >
+      Path-filtered workflow (only runs when contracts/** or the workflow itself
+      changes). Requiring it would deadlock all other PRs that don't touch
+      contract files.
+    design_note: >
+      Accepted trade-off: PRs that modify contracts/** but are not caught by
+      branch protection can still bypass this gate if the check is excluded.
+      NOTE: CODEOWNERS enforcement is not yet in place for this repo — no
+      .github/CODEOWNERS file exists. Until OMN-2485 is resolved, this gap
+      is a known, accepted risk — it is a deliberate tracked decision rather
+      than an oversight. See OMN-2485 ("Add .github/CODEOWNERS to enforce
+      review on contracts/** schema changes") for resolution status.
+      Interim mitigation: PRs touching `contracts/**` should receive manual
+      review from a team member until OMN-2485 is resolved.

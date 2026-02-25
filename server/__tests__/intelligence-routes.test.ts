@@ -2,7 +2,6 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import request from 'supertest';
 import express, { type Express } from 'express';
 import { intelligenceRouter } from '../intelligence-routes';
-import { getIntelligenceDb } from '../storage';
 import { intelligenceEvents } from '../intelligence-event-adapter';
 import { eventConsumer } from '../event-consumer';
 import { checkAllServices } from '../service-health';
@@ -594,39 +593,9 @@ describe('Intelligence Routes', () => {
   });
 
   describe('GET /api/intelligence/patterns/quality-trends', () => {
-    it('should return quality trends from Omniarchon', async () => {
-      const mockResponse = {
-        ok: true,
-        json: vi.fn().mockResolvedValue({
-          success: true,
-          snapshots_count: 5,
-          snapshots: [
-            { timestamp: '2025-01-01T00:00:00Z', overall_quality: 0.85, file_count: 10 },
-            { timestamp: '2025-01-02T00:00:00Z', overall_quality: 0.87, file_count: 12 },
-          ],
-        }),
-      };
-      (global.fetch as any) = vi.fn().mockResolvedValue(mockResponse);
-
+    it('should return empty array (service no longer exists)', async () => {
       const response = await request(app)
         .get('/api/intelligence/patterns/quality-trends?timeWindow=7d')
-        .expect(200);
-
-      expect(Array.isArray(response.body)).toBe(true);
-    });
-
-    it('should return empty array when Omniarchon has no data', async () => {
-      const mockResponse = {
-        ok: true,
-        json: vi.fn().mockResolvedValue({
-          success: false,
-          snapshots_count: 0,
-        }),
-      };
-      (global.fetch as any) = vi.fn().mockResolvedValue(mockResponse);
-
-      const response = await request(app)
-        .get('/api/intelligence/patterns/quality-trends')
         .expect(200);
 
       expect(Array.isArray(response.body)).toBe(true);
@@ -1521,6 +1490,91 @@ describe('Intelligence Routes', () => {
     });
   });
 
+  describe('GET /api/intelligence/traces/recent', () => {
+    it('should return empty array when no traces exist', async () => {
+      resetSelectMock();
+
+      // Mock the decisions query returning empty
+      vi.mocked(mockDb.select).mockReturnValueOnce({
+        from: vi.fn().mockReturnValue({
+          orderBy: vi.fn().mockReturnValue({
+            limit: vi.fn().mockResolvedValue([]),
+          }),
+        }),
+      } as any);
+
+      const response = await request(app).get('/api/intelligence/traces/recent').expect(200);
+
+      expect(response.body).toEqual([]);
+    });
+
+    it('should return valid response structure with traces', async () => {
+      resetSelectMock();
+
+      const now = new Date();
+
+      // Mock the decisions query
+      vi.mocked(mockDb.select).mockReturnValueOnce({
+        from: vi.fn().mockReturnValue({
+          orderBy: vi.fn().mockReturnValue({
+            limit: vi.fn().mockResolvedValue([
+              {
+                correlationId: '123e4567-e89b-12d3-a456-426614174000',
+                selectedAgent: 'polymorphic-agent',
+                confidenceScore: '0.92',
+                userRequest: 'Fix the login bug',
+                routingTimeMs: 35,
+                createdAt: now,
+              },
+            ]),
+          }),
+        }),
+      } as any);
+
+      // Mock action counts query (Promise.all first element)
+      vi.mocked(mockDb.select).mockReturnValueOnce({
+        from: vi.fn().mockReturnValue({
+          where: vi.fn().mockReturnValue({
+            groupBy: vi
+              .fn()
+              .mockResolvedValue([
+                { correlationId: '123e4567-e89b-12d3-a456-426614174000', count: 2 },
+              ]),
+          }),
+        }),
+      } as any);
+
+      // Mock manifest counts query (Promise.all second element)
+      vi.mocked(mockDb.select).mockReturnValueOnce({
+        from: vi.fn().mockReturnValue({
+          where: vi.fn().mockReturnValue({
+            groupBy: vi
+              .fn()
+              .mockResolvedValue([
+                { correlationId: '123e4567-e89b-12d3-a456-426614174000', count: 1 },
+              ]),
+          }),
+        }),
+      } as any);
+
+      const response = await request(app)
+        .get('/api/intelligence/traces/recent?limit=10')
+        .expect(200);
+
+      expect(Array.isArray(response.body)).toBe(true);
+      expect(response.body).toHaveLength(1);
+
+      const trace = response.body[0];
+      expect(trace).toHaveProperty('correlationId', '123e4567-e89b-12d3-a456-426614174000');
+      expect(trace).toHaveProperty('selectedAgent', 'polymorphic-agent');
+      expect(trace).toHaveProperty('confidenceScore', 0.92);
+      expect(trace).toHaveProperty('userRequest', 'Fix the login bug');
+      expect(trace).toHaveProperty('routingTimeMs', 35);
+      expect(trace).toHaveProperty('createdAt', now.toISOString());
+      expect(trace).toHaveProperty('eventCount', 4); // 1 routing + 2 actions + 1 manifest
+    });
+  });
+
   describe('GET /api/intelligence/trace/:correlationId', () => {
     it('should return trace data for valid correlation ID', async () => {
       const correlationId = '123e4567-e89b-12d3-a456-426614174000';
@@ -1561,7 +1615,26 @@ describe('Intelligence Routes', () => {
         }),
       } as any);
 
-      // Mock routing decisions query
+      // Mock routing decisions query — direct lookup by correlation_id
+      vi.mocked(mockDb.select).mockReturnValueOnce({
+        from: vi.fn().mockReturnValue({
+          where: vi.fn().mockResolvedValue([
+            {
+              id: 'routing-1',
+              selectedAgent: 'test-agent',
+              confidenceScore: '0.9',
+              routingStrategy: 'fuzzy_matching',
+              userRequest: 'test request',
+              reasoning: 'test reasoning',
+              alternatives: [],
+              routingTimeMs: 50,
+              createdAt: new Date(),
+            },
+          ]),
+        }),
+      } as any);
+
+      // Mock routing decisions query — FK lookup via manifest.routingDecisionId
       vi.mocked(mockDb.select).mockReturnValueOnce({
         from: vi.fn().mockReturnValue({
           where: vi.fn().mockResolvedValue([

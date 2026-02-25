@@ -137,6 +137,170 @@ export const languageBreakdownApiSchema = z.object({
 });
 
 // ===========================
+// PATLEARN Lifecycle Model
+// ===========================
+
+export const lifecycleStateSchema = z.enum([
+  'candidate', // Initial discovery, below threshold
+  'provisional', // Above threshold, pending validation
+  'validated', // Confirmed as learned pattern
+  'deprecated', // Superseded or invalidated
+]);
+
+// ===========================
+// PATLEARN Scoring with Evidence
+// ===========================
+
+export const scoringEvidenceSchema = z.object({
+  labelAgreement: z.object({
+    score: z.number().min(0).max(1),
+    matchedLabels: z.array(z.string()),
+    totalLabels: z.number(),
+    disagreements: z.array(z.string()).optional(),
+  }),
+  clusterCohesion: z.object({
+    score: z.number().min(0).max(1),
+    clusterId: z.string(),
+    memberCount: z.number(),
+    avgPairwiseSimilarity: z.number(),
+    medoidId: z.string().optional(),
+  }),
+  frequencyFactor: z.object({
+    score: z.number().min(0).max(1),
+    observedCount: z.number(),
+    minRequired: z.number(),
+    windowDays: z.number(),
+  }),
+});
+
+// ===========================
+// PATLEARN Similarity with Evidence
+// ===========================
+
+export const similarityEvidenceSchema = z.object({
+  keyword: z.object({
+    score: z.number().min(0).max(1),
+    intersection: z.array(z.string()),
+    unionCount: z.number(),
+  }),
+  pattern: z.object({
+    score: z.number().min(0).max(1),
+    matchedIndicators: z.array(z.string()),
+    totalIndicators: z.number(),
+  }),
+  structural: z.object({
+    score: z.number().min(0).max(1),
+    astDepthDelta: z.number(),
+    nodeCountDelta: z.number(),
+    complexityDelta: z.number(),
+  }),
+  label: z.object({
+    score: z.number().min(0).max(1),
+    matchedLabels: z.array(z.string()),
+    totalLabels: z.number(),
+  }),
+  context: z.object({
+    score: z.number().min(0).max(1),
+    sharedTokens: z.array(z.string()),
+    jaccard: z.number(),
+  }),
+  composite: z.number().min(0).max(1),
+  weights: z.object({
+    keyword: z.number().default(0.3),
+    pattern: z.number().default(0.25),
+    structural: z.number().default(0.2),
+    label: z.number().default(0.15),
+    context: z.number().default(0.1),
+  }),
+});
+
+// ===========================
+// PATLEARN Similar Pattern Entry
+// ===========================
+
+export const similarPatternEntrySchema = z.object({
+  patternId: z.string(),
+  evidence: similarityEvidenceSchema,
+});
+
+// ===========================
+// PATLEARN Pattern Signature
+// ===========================
+
+export const patternSignatureSchema = z.object({
+  hash: z.string(),
+  version: z.string(),
+  algorithm: z.string().default('sha256'),
+  inputs: z.array(z.string()),
+  normalizations: z.array(z.string()).optional(),
+});
+
+// ===========================
+// PATLEARN Full Artifact
+// ===========================
+
+export const patlearnArtifactSchema = z.object({
+  id: z.string(),
+  patternId: z.string(),
+  patternName: z.string(),
+  patternType: z.string(),
+  language: z.string().nullable().optional(),
+  lifecycleState: lifecycleStateSchema,
+  stateChangedAt: z.string().optional(),
+  compositeScore: z.number().min(0).max(1),
+  scoringEvidence: scoringEvidenceSchema,
+  signature: patternSignatureSchema,
+  metrics: z.object({
+    processingTimeMs: z.number(),
+    inputCount: z.number(),
+    clusterCount: z.number(),
+    dedupMergeCount: z.number(),
+    scoreHistory: z
+      .array(
+        z.object({
+          score: z.number(),
+          timestamp: z.string(),
+        })
+      )
+      .optional(),
+  }),
+  // Optional metadata for pattern descriptions and code examples (demo patterns)
+  metadata: z
+    .object({
+      description: z.string().optional(),
+      codeExample: z.string().optional(),
+      __demo: z.boolean().optional(),
+      __demoCreatedAt: z.string().optional(),
+    })
+    .optional(),
+  createdAt: z.string(),
+  updatedAt: z.string().optional(),
+});
+
+// ===========================
+// PATLEARN Summary (Aggregates)
+// ===========================
+
+export const patlearnSummarySchema = z.object({
+  totalPatterns: z.number().min(0),
+  byState: z.object({
+    candidate: z.number().min(0),
+    provisional: z.number().min(0),
+    validated: z.number().min(0),
+    deprecated: z.number().min(0),
+  }),
+  avgScores: z.object({
+    labelAgreement: z.number().min(0).max(1),
+    clusterCohesion: z.number().min(0).max(1),
+    frequencyFactor: z.number().min(0).max(1),
+    composite: z.number().min(0).max(1),
+  }),
+  window: z.string(),
+  promotionsInWindow: z.number().min(0),
+  deprecationsInWindow: z.number().min(0),
+});
+
+// ===========================
 // Intelligence Analytics Schemas
 // ===========================
 
@@ -368,6 +532,14 @@ export type QualityTrend = z.infer<typeof qualityTrendSchema>;
 export type Pattern = z.infer<typeof patternSchema>;
 export type LanguageBreakdown = z.infer<typeof languageBreakdownSchema>;
 export type LanguageBreakdownApi = z.infer<typeof languageBreakdownApiSchema>;
+
+export type LifecycleState = z.infer<typeof lifecycleStateSchema>;
+export type ScoringEvidence = z.infer<typeof scoringEvidenceSchema>;
+export type SimilarityEvidence = z.infer<typeof similarityEvidenceSchema>;
+export type SimilarPatternEntry = z.infer<typeof similarPatternEntrySchema>;
+export type PatternSignature = z.infer<typeof patternSignatureSchema>;
+export type PatlearnArtifact = z.infer<typeof patlearnArtifactSchema>;
+export type PatlearnSummary = z.infer<typeof patlearnSummarySchema>;
 
 export type IntelligenceMetrics = z.infer<typeof intelligenceMetricsSchema>;
 export type RecentActivity = z.infer<typeof recentActivitySchema>;

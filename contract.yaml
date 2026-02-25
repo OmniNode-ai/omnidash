@@ -1,0 +1,54 @@
+# SPDX-License-Identifier: MIT
+# ONEX Service Contract - Omnidash Dashboard
+
+name: "OmnidashDashboard"
+contract_version:
+  major: 1
+  minor: 0
+  patch: 0
+node_version:
+  major: 1
+  minor: 0
+  patch: 0
+
+node_type: "SERVICE"
+
+description: >
+  Web-based observability dashboard for the ONEX platform.
+
+input_model: "ModelDashboardRequest"
+output_model: "ModelDashboardResponse"
+
+algorithm:
+  algorithm_type: "service"
+  factors: {}
+
+input_state: {}
+output_state: {}
+
+actions:
+  - name: "render_dashboard"
+    description: "Serve dashboard web application"
+  - name: "query_intelligence"
+    description: "Handle REST API queries"
+
+# What this service consumes (for documentation, not self-subscription)
+consumed_topics:
+  - "agent-routing-decisions"
+  - "agent-transformation-events"
+  - "router-performance-metrics"
+  - "agent-actions"
+
+dependencies:
+  - name: "postgresql"
+    version: ">=14.0.0"
+    required: true
+  - name: "kafka"
+    version: ">=3.0.0"
+    required: false
+
+author: "OmniNode Team"
+tags:
+  - service
+  - dashboard
+  - observability

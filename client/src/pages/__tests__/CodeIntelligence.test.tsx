@@ -2,7 +2,7 @@ import { render, screen, waitFor } from '@testing-library/react';
 import type { ReactNode } from 'react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { describe, it, beforeEach, afterEach, expect, vi } from 'vitest';
-import CodeIntelligence from '../CodeIntelligence';
+import CodeIntelligence from '@/_archive/pages/CodeIntelligence';
 import { codeIntelligenceSource } from '@/lib/data-sources';
 
 type LocalStorageMock = {
@@ -109,12 +109,13 @@ describe('CodeIntelligence page', () => {
     const result = renderWithClient(<CodeIntelligence />);
     queryClient = result.queryClient;
 
+    // Wait for data to load by checking for a value that only appears after loading
     await waitFor(() => {
-      expect(screen.getByText('Code Intelligence Metrics')).toBeInTheDocument();
+      expect(screen.getAllByText('2,000').length).toBeGreaterThan(0);
     });
 
+    expect(screen.getByText('Code Intelligence Metrics')).toBeInTheDocument();
     expect(screen.getByText('Files Analyzed')).toBeInTheDocument();
-    expect(screen.getAllByText('2,000').length).toBeGreaterThan(0);
     expect(screen.getByText('ONEX Compliance Coverage')).toBeInTheDocument();
     expect(screen.getByText('Compliance Rate')).toBeInTheDocument();
     expect(screen.getByText('Node Type Breakdown')).toBeInTheDocument();
@@ -164,11 +165,12 @@ describe('CodeIntelligence page', () => {
     const result = renderWithClient(<CodeIntelligence />);
     queryClient = result.queryClient;
 
+    // Wait for data to load by checking for a value that only appears after loading
     await waitFor(() => {
-      expect(screen.getByText('ONEX Compliance Coverage')).toBeInTheDocument();
+      expect(screen.getByText('0 files tracked')).toBeInTheDocument();
     });
 
-    expect(screen.getByText('0 files tracked')).toBeInTheDocument();
+    expect(screen.getByText('ONEX Compliance Coverage')).toBeInTheDocument();
     expect(screen.getAllByText('0').length).toBeGreaterThan(0);
 
     result.unmount();
