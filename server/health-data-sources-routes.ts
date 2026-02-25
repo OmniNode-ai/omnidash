@@ -47,6 +47,14 @@ import type {
 } from './projections/patterns-projection';
 import { queryInsightsSummary } from './insight-queries';
 import { getEventBusDataSource } from './event-bus-data-source';
+import {
+  TOPIC_OMNICLAUDE_AGENT_ACTIONS,
+  TOPIC_OMNICLAUDE_ROUTING_DECISIONS,
+  TOPIC_OMNICLAUDE_AGENT_TRANSFORMATION,
+  LEGACY_AGENT_ACTIONS,
+  LEGACY_AGENT_ROUTING_DECISIONS,
+  LEGACY_AGENT_TRANSFORMATION_EVENTS,
+} from '../shared/topics';
 
 // ============================================================================
 // Types
@@ -337,10 +345,18 @@ async function probeExecutionGraph(): Promise<DataSourceInfo> {
       return { status: 'mock', reason: 'no_projection_registered' };
     }
     const rawEvents = await dataSource.queryEvents({
+      // Match both canonical onex.evt.omniclaude.* topics (new producers) and
+      // legacy flat topic names (existing DB rows stored before OMN-2760).
       event_types: [
-        'agent-actions',
-        'agent-routing-decisions',
-        'agent-transformation-events',
+        // Canonical omniclaude agent topics (OMN-2760)
+        TOPIC_OMNICLAUDE_AGENT_ACTIONS,
+        TOPIC_OMNICLAUDE_ROUTING_DECISIONS,
+        TOPIC_OMNICLAUDE_AGENT_TRANSFORMATION,
+        // Legacy flat topic names (pre-OMN-2760 DB rows)
+        LEGACY_AGENT_ACTIONS,
+        LEGACY_AGENT_ROUTING_DECISIONS,
+        LEGACY_AGENT_TRANSFORMATION_EVENTS,
+        // Payload event_type field values (producer-set, not topic-derived)
         'AGENT_ACTION',
         'ROUTING_DECISION',
         'AGENT_TRANSFORMATION',
