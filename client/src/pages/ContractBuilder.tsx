@@ -15,7 +15,7 @@ import {
   ContractLifecycleActions,
   type ContractType,
 } from '@/components/contract-builder';
-import { useContracts, useValidateContract } from '@/hooks/useContractRegistry';
+import { useContracts, useContractVersions, useValidateContract } from '@/hooks/useContractRegistry';
 import { contractRegistrySource, type Contract } from '@/lib/data-sources';
 import { useToast } from '@/hooks/use-toast';
 
@@ -74,6 +74,7 @@ function getContractVersions(contracts: Contract[], contractId: string): Contrac
  *  - Library browser (searchable, filterable, sortable)
  *  - Guided creation wizard
  *  - Lifecycle state transitions (DRAFT → PUBLISHED → DEPRECATED)
+ *  - Version history browser and diff view
  */
 export default function ContractBuilder() {
   const { toast } = useToast();
@@ -95,14 +96,21 @@ export default function ContractBuilder() {
   // Policy-gate validation mutation (used inside editor and publish flow)
   const { mutateAsync: validateContract } = useValidateContract();
 
+  // Load all versions of the selected contract via API (for history/diff view)
+  const { data: selectedContractVersionsData } = useContractVersions(
+    selectedContract?.contractId ?? null
+  );
+
   // For the list view, show only the latest version of each contract
   const latestContracts = useMemo(() => getLatestVersions(allContracts), [allContracts]);
 
-  // All versions of the currently selected contract (for version switching)
-  const selectedContractVersions = useMemo(
-    () => (selectedContract ? getContractVersions(allContracts, selectedContract.contractId) : []),
-    [allContracts, selectedContract]
-  );
+  // Versions of the currently selected contract — prefer API result, fall back to local filter
+  const selectedContractVersions = useMemo(() => {
+    if (selectedContractVersionsData && selectedContractVersionsData.length > 0) {
+      return selectedContractVersionsData;
+    }
+    return selectedContract ? getContractVersions(allContracts, selectedContract.contractId) : [];
+  }, [selectedContractVersionsData, selectedContract, allContracts]);
 
   const hasContracts = latestContracts.length > 0;
 
