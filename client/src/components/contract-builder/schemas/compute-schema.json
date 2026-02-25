@@ -1,0 +1,151 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "type": "object",
+  "required": ["node_identity", "contract_schema_version", "determinism_class"],
+  "properties": {
+    "contract_schema_version": {
+      "type": "string",
+      "title": "Schema Version",
+      "description": "Version of the contract schema used to author this contract",
+      "default": "1.0.0",
+      "pattern": "^\\d+\\.\\d+\\.\\d+$"
+    },
+    "determinism_class": {
+      "type": "string",
+      "title": "Determinism Class",
+      "description": "Compute nodes are always deterministic",
+      "enum": ["deterministic"],
+      "default": "deterministic"
+    },
+    "node_identity": {
+      "type": "object",
+      "title": "Node Identity",
+      "required": ["name", "display_name", "version", "description"],
+      "properties": {
+        "name": {
+          "type": "string",
+          "title": "Name",
+          "description": "Unique contract identifier (snake_case)",
+          "pattern": "^[a-z][a-z0-9_]*$",
+          "minLength": 3,
+          "maxLength": 64
+        },
+        "display_name": {
+          "type": "string",
+          "title": "Display Name",
+          "description": "Human-readable name",
+          "minLength": 3,
+          "maxLength": 128
+        },
+        "version": {
+          "type": "string",
+          "title": "Version",
+          "description": "Semantic version (e.g., 1.0.0)",
+          "pattern": "^\\d+\\.\\d+\\.\\d+$",
+          "default": "1.0.0"
+        },
+        "description": {
+          "type": "string",
+          "title": "Description",
+          "description": "What this compute node does",
+          "minLength": 10,
+          "maxLength": 500
+        }
+      }
+    },
+    "input_schema": {
+      "type": "object",
+      "title": "Input Schema",
+      "description": "Define the input fields this compute node accepts",
+      "properties": {
+        "fields": {
+          "type": "array",
+          "title": "Input Fields",
+          "items": {
+            "type": "object",
+            "required": ["name", "type"],
+            "properties": {
+              "name": {
+                "type": "string",
+                "title": "Field Name",
+                "pattern": "^[a-z][a-z0-9_]*$"
+              },
+              "type": {
+                "type": "string",
+                "title": "Type",
+                "enum": ["string", "integer", "number", "boolean", "array", "object"]
+              },
+              "required": {
+                "type": "boolean",
+                "title": "Required",
+                "default": false
+              },
+              "description": {
+                "type": "string",
+                "title": "Description"
+              }
+            }
+          }
+        }
+      }
+    },
+    "output_schema": {
+      "type": "object",
+      "title": "Output Schema",
+      "description": "Define the output this compute node returns",
+      "properties": {
+        "result_type": {
+          "type": "string",
+          "title": "Result Type",
+          "enum": ["string", "integer", "number", "boolean", "array", "object"],
+          "description": "Type of the result field returned"
+        },
+        "result_description": {
+          "type": "string",
+          "title": "Result Description",
+          "description": "What the result contains"
+        }
+      }
+    },
+    "performance": {
+      "type": "object",
+      "title": "Performance",
+      "properties": {
+        "target_ms": {
+          "type": "integer",
+          "title": "Target Duration (ms)",
+          "description": "Expected execution time in milliseconds",
+          "minimum": 1,
+          "maximum": 60000,
+          "default": 100
+        },
+        "max_retries": {
+          "type": "integer",
+          "title": "Max Retries",
+          "minimum": 0,
+          "maximum": 10,
+          "default": 0
+        }
+      }
+    },
+    "metadata": {
+      "type": "object",
+      "title": "Metadata",
+      "properties": {
+        "author": {
+          "type": "string",
+          "title": "Author"
+        },
+        "tags": {
+          "type": "array",
+          "title": "Tags",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          },
+          "uniqueItems": true
+        }
+      }
+    }
+  }
+}

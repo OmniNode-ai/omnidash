@@ -1,0 +1,37 @@
+{
+  "ui:order": ["node_identity", "determinism_class", "input_schema", "output_schema", "performance", "metadata", "contract_schema_version"],
+  "node_identity": {
+    "ui:order": ["name", "display_name", "version", "description"],
+    "description": {
+      "ui:widget": "textarea",
+      "ui:options": {
+        "rows": 3
+      }
+    }
+  },
+  "contract_schema_version": {
+    "ui:readonly": true
+  },
+  "determinism_class": {
+    "ui:readonly": true,
+    "ui:widget": "select"
+  },
+  "input_schema": {
+    "fields": {
+      "ui:options": {
+        "addable": true,
+        "orderable": true,
+        "removable": true
+      }
+    }
+  },
+  "metadata": {
+    "tags": {
+      "ui:options": {
+        "addable": true,
+        "orderable": false,
+        "removable": true
+      }
+    }
+  }
+}

@@ -3,6 +3,7 @@ import { createServer, type Server } from 'http';
 import { intelligenceRouter } from './intelligence-routes';
 import savingsRoutes from './savings-routes';
 import agentRegistryRoutes from './agent-registry-routes';
+import contractRegistryRoutes from './contract-registry-routes';
 import { chatRouter } from './chat-routes';
 import eventBusRoutes from './event-bus-routes';
 import registryRoutes from './registry-routes';
@@ -124,6 +125,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.use('/api/pr-watch', prWatchRoutes);
   app.use('/api/pipeline-budget', pipelineBudgetRoutes);
   app.use('/api/debug-escalation', debugEscalationRoutes);
+
+  // Mount contract registry routes for contract management (OMN-2358)
+  app.use('/api/contracts', contractRegistryRoutes);
 
   // Conditionally mount golden path test routes (OMN-2079)
   // Only enabled when ENABLE_TEST_ROUTES=true AND (NODE_ENV=test OR OMNIDASH_TEST_MODE=true)

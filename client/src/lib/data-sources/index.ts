@@ -22,3 +22,12 @@ export {
   type RunSummary,
   type RunsListResponse,
 } from './validation-source';
+
+// Contract builder data sources (OMN-2358)
+export {
+  contractRegistrySource,
+  type Contract,
+  type ContractType,
+  type ContractStatus,
+} from './contract-registry-source';
+export { contractSchemaSource, type ContractSchemas } from './contract-schema-source';

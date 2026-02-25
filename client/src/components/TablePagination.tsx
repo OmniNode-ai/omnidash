@@ -110,7 +110,7 @@ export function TablePagination({
       {/* Left: Page Size Selector and Results Count */}
       <div className="flex items-center gap-4">
         <div className="flex items-center gap-2">
-          <span className="text-sm text-muted-foreground">Rows per page:</span>
+          <span className="text-sm text-muted-foreground whitespace-nowrap">Rows per page:</span>
           <Select value={pagination.pageSize.toString()} onValueChange={handlePageSizeChange}>
             <SelectTrigger className="w-20 h-9">
               <SelectValue />
@@ -125,7 +125,7 @@ export function TablePagination({
           </Select>
         </div>
 
-        <div className="text-sm text-muted-foreground">
+        <div className="text-sm text-muted-foreground whitespace-nowrap">
           {startItem}-{endItem} of {totalItems}
         </div>
       </div>

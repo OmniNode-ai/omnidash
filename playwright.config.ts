@@ -8,8 +8,8 @@ import { defineConfig, devices } from '@playwright/test';
  * across different screen sizes and devices.
  */
 export default defineConfig({
-  // Test directory for snapshot tests
-  testDir: './client/src/tests/snapshots',
+  // Test directory - includes both snapshot and E2E tests
+  testDir: './e2e',
 
   // Maximum time one test can run
   timeout: 30 * 1000,
@@ -66,6 +66,13 @@ export default defineConfig({
 
   // Configure projects for major browsers and viewports
   projects: [
+    {
+      name: 'firefox',
+      use: {
+        ...devices['Desktop Firefox'],
+        viewport: { width: 1920, height: 1080 },
+      },
+    },
     {
       name: 'chromium-desktop',
       use: {

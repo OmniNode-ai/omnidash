@@ -1,0 +1,41 @@
+{
+  "ui:order": ["node_identity", "determinism_class", "workflow_steps", "emitted_events", "timeout", "metadata", "contract_schema_version"],
+  "node_identity": {
+    "ui:order": ["name", "display_name", "version", "description"],
+    "description": {
+      "ui:widget": "textarea",
+      "ui:options": {
+        "rows": 3
+      }
+    }
+  },
+  "contract_schema_version": {
+    "ui:readonly": true
+  },
+  "determinism_class": {
+    "ui:widget": "select"
+  },
+  "workflow_steps": {
+    "ui:options": {
+      "addable": true,
+      "orderable": true,
+      "removable": true
+    }
+  },
+  "emitted_events": {
+    "ui:options": {
+      "addable": true,
+      "orderable": false,
+      "removable": true
+    }
+  },
+  "metadata": {
+    "tags": {
+      "ui:options": {
+        "addable": true,
+        "orderable": false,
+        "removable": true
+      }
+    }
+  }
+}
