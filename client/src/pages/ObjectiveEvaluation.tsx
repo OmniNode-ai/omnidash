@@ -384,7 +384,14 @@ function GateFailureTimelinePanel({ window }: { window: ObjectiveTimeWindow }) {
                           'cursor-pointer hover:bg-muted/50 transition-colors',
                           evt.increased_vs_prev_window && 'bg-orange-500/5'
                         )}
+                        tabIndex={0}
                         onClick={() => setDrilldownEvent(evt)}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter' || e.key === ' ') {
+                            e.preventDefault();
+                            setDrilldownEvent(evt);
+                          }
+                        }}
                       >
                         <TableCell className="text-xs py-1 font-mono">
                           {format(parseISO(evt.occurred_at), 'MM/dd HH:mm')}
@@ -512,19 +519,28 @@ function PolicyStateHistoryPanel({ window }: { window: ObjectiveTimeWindow }) {
   const policyIds = selectedPolicy === 'all' ? (data?.policy_ids ?? []) : [selectedPolicy];
   const policyColors = ['#3b82f6', '#10b981', '#8b5cf6', '#f97316'];
 
-  const chartData = filteredPoints
-    .map((p) => ({
-      ts:
+  // Merge points sharing the same display timestamp to avoid duplicate x-axis entries
+  // in LineChart. When multiple policy points share a timestamp bucket, their metric
+  // keys are distinct (policy_id-prefixed), so merging is safe via object spread.
+  const chartData = (() => {
+    const merged = new Map<string, Record<string, unknown>>();
+    for (const p of filteredPoints) {
+      const ts =
         window === '24h'
           ? format(parseISO(p.recorded_at), 'HH:mm')
-          : format(parseISO(p.recorded_at), 'MMM d'),
-      [`${p.policy_id}_reliability`]: Number((p.reliability_0_1 * 100).toFixed(1)),
-      [`${p.policy_id}_confidence`]: Number((p.confidence_0_1 * 100).toFixed(1)),
-      is_transition: p.is_transition,
-      is_auto_blacklist: p.is_auto_blacklist,
-      raw: p,
-    }))
-    .slice(-50); // cap for readability
+          : format(parseISO(p.recorded_at), 'MMM d');
+      const existing = merged.get(ts) ?? { ts };
+      merged.set(ts, {
+        ...existing,
+        [`${p.policy_id}_reliability`]: Number((p.reliability_0_1 * 100).toFixed(1)),
+        [`${p.policy_id}_confidence`]: Number((p.confidence_0_1 * 100).toFixed(1)),
+        is_transition: (existing.is_transition as boolean) || p.is_transition,
+        is_auto_blacklist: (existing.is_auto_blacklist as boolean) || p.is_auto_blacklist,
+        raw: p,
+      });
+    }
+    return Array.from(merged.values()).slice(-50); // cap for readability
+  })();
 
   return (
     <>
@@ -733,6 +749,7 @@ function PolicyStateHistoryPanel({ window }: { window: ObjectiveTimeWindow }) {
 
 function AntiGamingAlertFeed({ window }: { window: ObjectiveTimeWindow }) {
   const queryClient = useQueryClient();
+  const [acknowledgeError, setAcknowledgeError] = useState<string | null>(null);
 
   const { data, isLoading, error } = useQuery({
     queryKey: queryKeys.objective.antiGaming(window),
@@ -744,7 +761,11 @@ function AntiGamingAlertFeed({ window }: { window: ObjectiveTimeWindow }) {
   const acknowledgeMutation = useMutation({
     mutationFn: (alertId: string) => objectiveSource.acknowledgeAlert(alertId),
     onSuccess: () => {
+      setAcknowledgeError(null);
       void queryClient.invalidateQueries({ queryKey: queryKeys.objective.antiGaming(window) });
+    },
+    onError: (err: Error) => {
+      setAcknowledgeError(err.message || 'Failed to acknowledge alert');
     },
   });
 
@@ -772,6 +793,12 @@ function AntiGamingAlertFeed({ window }: { window: ObjectiveTimeWindow }) {
         </div>
       </CardHeader>
       <CardContent>
+        {acknowledgeError && (
+          <div className="mb-2 flex items-center gap-2 text-xs text-red-500">
+            <XCircle className="h-3 w-3" />
+            {acknowledgeError}
+          </div>
+        )}
         {isLoading ? (
           <div className="space-y-2">
             {[1, 2, 3].map((i) => (

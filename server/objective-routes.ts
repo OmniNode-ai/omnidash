@@ -168,9 +168,14 @@ router.get('/score-vector', async (req: Request, res: Response) => {
       task_classes,
     };
     res.json(response);
-  } catch {
+  } catch (err) {
     // DB table may not exist yet — return empty payload for graceful degradation
-    res.json(emptyScoreVectorResponse());
+    const message = err instanceof Error ? err.message : 'Unknown error';
+    if (message.includes('relation') || message.includes('does not exist')) {
+      res.json(emptyScoreVectorResponse());
+    } else {
+      res.status(500).json({ error: 'Failed to fetch score vector data' });
+    }
   }
 });
 
@@ -275,8 +280,13 @@ router.get('/gate-failures', async (req: Request, res: Response) => {
       ],
     };
     res.json(response);
-  } catch {
-    res.json(emptyGateFailureResponse());
+  } catch (err) {
+    const message = err instanceof Error ? err.message : 'Unknown error';
+    if (message.includes('relation') || message.includes('does not exist')) {
+      res.json(emptyGateFailureResponse());
+    } else {
+      res.status(500).json({ error: 'Failed to fetch gate failure timeline' });
+    }
   }
 });
 
@@ -374,8 +384,13 @@ router.get('/policy-state', async (req: Request, res: Response) => {
       })),
     };
     res.json(response);
-  } catch {
-    res.json(emptyPolicyStateResponse());
+  } catch (err) {
+    const message = err instanceof Error ? err.message : 'Unknown error';
+    if (message.includes('relation') || message.includes('does not exist')) {
+      res.json(emptyPolicyStateResponse());
+    } else {
+      res.status(500).json({ error: 'Failed to fetch policy state history' });
+    }
   }
 });
 
@@ -451,8 +466,13 @@ router.get('/anti-gaming-alerts', async (req: Request, res: Response) => {
       total_unacknowledged: alerts.filter((a) => !a.acknowledged).length,
     };
     res.json(response);
-  } catch {
-    res.json(emptyAlertFeedResponse());
+  } catch (err) {
+    const message = err instanceof Error ? err.message : 'Unknown error';
+    if (message.includes('relation') || message.includes('does not exist')) {
+      res.json(emptyAlertFeedResponse());
+    } else {
+      res.status(500).json({ error: 'Failed to fetch anti-gaming alerts' });
+    }
   }
 });
 

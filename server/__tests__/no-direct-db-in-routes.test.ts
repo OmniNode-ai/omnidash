@@ -56,6 +56,8 @@ const EXEMPT_FILES = new Set([
   // objective_anti_gaming_alerts tables (populated by OMN-2545 ScoringReducer
   // and OMN-2557 PolicyState backends, not yet merged). Once those backends
   // land and projections are created, migrate to ProjectionService views.
+  // Also includes one write: POST /anti-gaming-alerts/:alertId/acknowledge
+  // (UI-state-only acknowledgement — no Kafka event sourcing yet).
   // TODO(OMN-2583-followup): Migrate to projection views after OMN-2545/OMN-2557 merge.
   'objective-routes.ts',
 ]);
