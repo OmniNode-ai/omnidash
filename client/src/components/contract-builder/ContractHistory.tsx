@@ -11,7 +11,9 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { ArrowLeft, GitCompare, FilePlus, MoreHorizontal, Eye } from 'lucide-react';
 import { ContractStatusBadge } from './ContractStatusBadge';
+import { BreakingChangeBadge } from './BreakingChangeBadge';
 import type { Contract } from './models/types';
+import type { BreakingChangeAnalysis } from '@/hooks/useContractRegistry';
 
 interface ContractHistoryProps {
   /** The current contract being viewed */
@@ -25,6 +27,12 @@ interface ContractHistoryProps {
   onCompareVersions?: (older: Contract, newer: Contract) => void;
   /** Called when user wants to create a new draft based on a version */
   onCreateDraftFromVersion?: (contract: Contract) => void;
+  /**
+   * Optional breaking-change analysis keyed by the version's contract ID (UUID).
+   * When provided, versions with breaking changes display a warning badge.
+   * Map key is the contract's `id` (version-specific UUID).
+   */
+  breakingChangesByVersionId?: Map<string, BreakingChangeAnalysis>;
 }
 
 // Format date for display
@@ -68,6 +76,7 @@ export function ContractHistory({
   onViewVersion,
   onCompareVersions,
   onCreateDraftFromVersion,
+  breakingChangesByVersionId,
 }: ContractHistoryProps) {
   // Track selected versions for comparison (max 2)
   const [selectedVersions, setSelectedVersions] = useState<Set<string>>(new Set());
@@ -191,6 +200,7 @@ export function ContractHistory({
                 const isSelected = selectedVersions.has(version.id);
                 const isCurrent = version.id === contract.id;
                 const hasPrevious = index < sortedVersions.length - 1;
+                const breakingAnalysis = breakingChangesByVersionId?.get(version.id);
 
                 return (
                   <div key={version.id} className="relative flex items-start gap-4">
@@ -215,12 +225,15 @@ export function ContractHistory({
                           )}
 
                           <div className="space-y-1">
-                            {/* Version number and status */}
-                            <div className="flex items-center gap-2">
+                            {/* Version number, status, and breaking change badge */}
+                            <div className="flex items-center gap-2 flex-wrap">
                               <span className="font-mono font-semibold">v{version.version}</span>
                               <ContractStatusBadge status={version.status} />
                               {isCurrent && (
                                 <span className="text-xs text-muted-foreground">(viewing)</span>
+                              )}
+                              {breakingAnalysis && breakingAnalysis.hasBreakingChanges && (
+                                <BreakingChangeBadge analysis={breakingAnalysis} />
                               )}
                             </div>
 
