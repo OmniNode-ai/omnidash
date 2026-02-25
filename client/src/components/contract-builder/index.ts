@@ -22,4 +22,12 @@ export { ContractLifecycleActions } from './ContractLifecycleActions';
 export type { Contract, ContractType, ContractStatus } from './models/types';
 
 // Schemas
-export { getContractSchemas } from './schemas';
+export { getContractSchemas, fetchContractSchemas } from './schemas';
+
+// Hooks (OMN-2541)
+export { useContractSchema } from './useContractSchema';
+export { useYamlSync, serializeToYaml, parseYaml } from './useYamlSync';
+export { useRegistryAutosave } from './useRegistryAutosave';
+
+// Modals (OMN-2541)
+export { NormalizationPreviewModal } from './NormalizationPreviewModal';
