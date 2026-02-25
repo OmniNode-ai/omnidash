@@ -467,7 +467,7 @@ describe('Contract Registry Routes', () => {
         .send({ description: 'Updated' })
         .expect(409);
 
-      expect(response.body.error).toContain("Cannot update contract with status");
+      expect(response.body.error).toContain('Cannot update contract with status');
     });
   });
 
@@ -527,7 +527,7 @@ describe('Contract Registry Routes', () => {
         status: 'draft',
         version: '1.0.0',
         description: 'Sends emails',
-        schema: {},  // Missing required fields: contract_schema_version, determinism_class
+        schema: {}, // Missing required fields: contract_schema_version, determinism_class
         metadata: {},
         createdBy: 'test-user',
         updatedBy: 'test-user',
@@ -1124,6 +1124,380 @@ describe('Contract Registry Routes', () => {
         .substring(0, 16);
 
       expect(hash1).not.toBe(hash2);
+    });
+  });
+
+  // ============================================================================
+  // Policy Gate Enforcement Tests
+  // ============================================================================
+
+  describe('POST /:id/review — DRAFT→REVIEW completeness gate', () => {
+    const makeContract = (overrides: Partial<Contract> = {}): Contract => ({
+      id: 'contract-1',
+      contractId: 'email_sender',
+      name: 'email-sender',
+      displayName: 'Email Sender',
+      type: 'effect',
+      status: 'draft',
+      version: '1.0.0',
+      description: 'Sends email notifications to users',
+      schema: {
+        contract_schema_version: '1.0.0',
+        determinism_class: 'effect-driven',
+        effect_surface: ['network'],
+        node_identity: {
+          name: 'email_sender',
+          version: '1.0.0',
+          display_name: 'Email Sender',
+          description: 'desc',
+        },
+        io_operations: [{ operation_id: 'send', direction: 'output', protocol: 'smtp' }],
+      },
+      metadata: {},
+      createdBy: 'test-user',
+      updatedBy: 'test-user',
+      createdAt: new Date('2024-01-01'),
+      updatedAt: new Date('2024-01-01'),
+      ...overrides,
+    });
+
+    it('should transition a complete draft to review status', async () => {
+      const draftContract = makeContract();
+      const reviewedContract = { ...draftContract, status: 'review', updatedAt: new Date() };
+
+      mockDb.where.mockResolvedValueOnce([draftContract]);
+      mockDb.returning.mockResolvedValue([reviewedContract]);
+
+      const response = await request(app)
+        .post('/api/intelligence/contracts/contract-1/review')
+        .expect(200);
+
+      expect(response.body.lifecycle_state).toBe('review');
+      expect(response.body.contract.status).toBe('review');
+    });
+
+    it('should return 422 with review_gate_failed when description is missing', async () => {
+      const draftContract = makeContract({ description: '' });
+      mockDb.where.mockResolvedValue([draftContract]);
+
+      const response = await request(app)
+        .post('/api/intelligence/contracts/contract-1/review')
+        .expect(422);
+
+      expect(response.body.error).toBe('review_gate_failed');
+      expect(response.body.gates).toBeInstanceOf(Array);
+      const codes = (response.body.gates as Array<{ code: string }>).map((g) => g.code);
+      expect(codes).toContain('missing_description');
+    });
+
+    it('should return 422 when determinism_class is missing', async () => {
+      const schemaWithoutDeterminism = {
+        contract_schema_version: '1.0.0',
+        node_identity: { name: 'email_sender', version: '1.0.0' },
+        effect_surface: ['network'],
+        io_operations: [{ operation_id: 'send', direction: 'output', protocol: 'smtp' }],
+      };
+      const draftContract = makeContract({
+        schema: schemaWithoutDeterminism as Contract['schema'],
+      });
+      mockDb.where.mockResolvedValue([draftContract]);
+
+      const response = await request(app)
+        .post('/api/intelligence/contracts/contract-1/review')
+        .expect(422);
+
+      expect(response.body.error).toBe('review_gate_failed');
+      const codes = (response.body.gates as Array<{ code: string }>).map((g) => g.code);
+      expect(codes).toContain('missing_determinism_class');
+    });
+
+    it('should return 422 when effect_surface is empty on effect-driven node', async () => {
+      const schemaNoSurface = {
+        contract_schema_version: '1.0.0',
+        determinism_class: 'effect-driven',
+        effect_surface: [],
+        node_identity: { name: 'email_sender', version: '1.0.0' },
+        io_operations: [{ operation_id: 'send', direction: 'output', protocol: 'smtp' }],
+      };
+      const draftContract = makeContract({ schema: schemaNoSurface as Contract['schema'] });
+      mockDb.where.mockResolvedValue([draftContract]);
+
+      const response = await request(app)
+        .post('/api/intelligence/contracts/contract-1/review')
+        .expect(422);
+
+      const codes = (response.body.gates as Array<{ code: string }>).map((g) => g.code);
+      expect(codes).toContain('missing_effect_surface');
+    });
+
+    it('should return 422 when effect node has no io_operations', async () => {
+      const schemaNoOps = {
+        contract_schema_version: '1.0.0',
+        determinism_class: 'effect-driven',
+        effect_surface: ['network'],
+        node_identity: { name: 'email_sender', version: '1.0.0' },
+        io_operations: [],
+      };
+      const draftContract = makeContract({ schema: schemaNoOps as Contract['schema'] });
+      mockDb.where.mockResolvedValue([draftContract]);
+
+      const response = await request(app)
+        .post('/api/intelligence/contracts/contract-1/review')
+        .expect(422);
+
+      const codes = (response.body.gates as Array<{ code: string }>).map((g) => g.code);
+      expect(codes).toContain('missing_io_operations');
+    });
+
+    it('should return 422 when node_identity is missing', async () => {
+      const schemaNoIdentity = {
+        contract_schema_version: '1.0.0',
+        determinism_class: 'effect-driven',
+        effect_surface: ['network'],
+        io_operations: [{ operation_id: 'send', direction: 'output', protocol: 'smtp' }],
+      };
+      const draftContract = makeContract({ schema: schemaNoIdentity as Contract['schema'] });
+      mockDb.where.mockResolvedValue([draftContract]);
+
+      const response = await request(app)
+        .post('/api/intelligence/contracts/contract-1/review')
+        .expect(422);
+
+      const codes = (response.body.gates as Array<{ code: string }>).map((g) => g.code);
+      expect(codes).toContain('missing_node_identity');
+    });
+
+    it('should return 409 when contract is already in review state', async () => {
+      const reviewContract = makeContract({ status: 'review' });
+      mockDb.where.mockResolvedValue([reviewContract]);
+
+      const response = await request(app)
+        .post('/api/intelligence/contracts/contract-1/review')
+        .expect(409);
+
+      expect(response.body.error).toBe('not_draft');
+    });
+
+    it('should return 409 when contract is published', async () => {
+      const publishedContract = makeContract({ status: 'published' });
+      mockDb.where.mockResolvedValue([publishedContract]);
+
+      const response = await request(app)
+        .post('/api/intelligence/contracts/contract-1/review')
+        .expect(409);
+
+      expect(response.body.error).toBe('not_draft');
+    });
+
+    it('should return 404 for non-existent contract', async () => {
+      mockDb.where.mockResolvedValue([]);
+
+      const response = await request(app)
+        .post('/api/intelligence/contracts/non-existent/review')
+        .expect(404);
+
+      expect(response.body.error).toBe('not_found');
+    });
+
+    it('each gate violation should have code and message fields', async () => {
+      const draftContract = makeContract({ description: '', schema: {} as Contract['schema'] });
+      mockDb.where.mockResolvedValue([draftContract]);
+
+      const response = await request(app)
+        .post('/api/intelligence/contracts/contract-1/review')
+        .expect(422);
+
+      const gates = response.body.gates as Array<{ code: string; message: string }>;
+      expect(gates.length).toBeGreaterThan(0);
+      for (const gate of gates) {
+        expect(gate).toHaveProperty('code');
+        expect(gate).toHaveProperty('message');
+        expect(typeof gate.code).toBe('string');
+        expect(typeof gate.message).toBe('string');
+      }
+    });
+  });
+
+  describe('POST /:id/publish — REVIEW→PUBLISHED policy gate', () => {
+    // Base schema that passes all AJV + policy gate checks.
+    // io_operations is not required by the effect AJV schema.
+    const validPublishSchema = {
+      contract_schema_version: '1.0.0',
+      determinism_class: 'effect-driven',
+      effect_surface: ['network'],
+      node_identity: {
+        name: 'email_sender',
+        display_name: 'Email Sender',
+        version: '1.0.0',
+        description: 'Sends email notifications to users via SMTP',
+      },
+    };
+
+    const makeValidatedContract = (overrides: Partial<Contract> = {}): Contract => ({
+      id: 'contract-1',
+      contractId: 'email_sender',
+      name: 'email_sender',
+      displayName: 'Email Sender',
+      type: 'effect',
+      status: 'validated',
+      version: '1.0.0',
+      description: 'Sends email notifications to users',
+      schema: validPublishSchema,
+      metadata: {},
+      createdBy: 'test-user',
+      updatedBy: 'test-user',
+      createdAt: new Date('2024-01-01'),
+      updatedAt: new Date('2024-01-01'),
+      ...overrides,
+    });
+
+    it('should return 422 with publish_gate_failed when contract_schema_version is missing', async () => {
+      const schemaNoCSV = {
+        determinism_class: 'effect-driven',
+        effect_surface: ['network'],
+        node_identity: {
+          name: 'email_sender',
+          display_name: 'Email Sender',
+          version: '1.0.0',
+          description: 'Sends email notifications to users via SMTP',
+        },
+      };
+      const validatedContract = makeValidatedContract({
+        schema: schemaNoCSV as Contract['schema'],
+      });
+      mockDb.where.mockResolvedValue([validatedContract]);
+
+      const response = await request(app)
+        .post('/api/intelligence/contracts/contract-1/publish')
+        .expect(422);
+
+      expect(response.body.error).toBe('publish_gate_failed');
+      const codes = (response.body.gates as Array<{ code: string }>).map((g) => g.code);
+      expect(codes).toContain('missing_contract_schema_version');
+    });
+
+    it('should return 422 when policy_envelope has empty validator strings', async () => {
+      const schemaWithBadEnvelope = {
+        contract_schema_version: '1.0.0',
+        determinism_class: 'effect-driven',
+        effect_surface: ['network'],
+        node_identity: {
+          name: 'email_sender',
+          display_name: 'Email Sender',
+          version: '1.0.0',
+          description: 'Sends email notifications to users via SMTP',
+        },
+        policy_envelope: { validators: [''] },
+      };
+      const validatedContract = makeValidatedContract({
+        schema: schemaWithBadEnvelope as Contract['schema'],
+      });
+      mockDb.where.mockResolvedValue([validatedContract]);
+
+      const response = await request(app)
+        .post('/api/intelligence/contracts/contract-1/publish')
+        .expect(422);
+
+      expect(response.body.error).toBe('publish_gate_failed');
+      const codes = (response.body.gates as Array<{ code: string }>).map((g) => g.code);
+      expect(codes).toContain('empty_policy_envelope_validator');
+    });
+
+    it('should return 422 when policy_envelope validator object has empty name', async () => {
+      const schemaWithBadValidatorName = {
+        contract_schema_version: '1.0.0',
+        determinism_class: 'effect-driven',
+        effect_surface: ['network'],
+        node_identity: {
+          name: 'email_sender',
+          display_name: 'Email Sender',
+          version: '1.0.0',
+          description: 'Sends email notifications to users via SMTP',
+        },
+        policy_envelope: { validators: [{ name: '' }] },
+      };
+      const validatedContract = makeValidatedContract({
+        schema: schemaWithBadValidatorName as Contract['schema'],
+      });
+      mockDb.where.mockResolvedValue([validatedContract]);
+
+      const response = await request(app)
+        .post('/api/intelligence/contracts/contract-1/publish')
+        .expect(422);
+
+      expect(response.body.error).toBe('publish_gate_failed');
+      const codes = (response.body.gates as Array<{ code: string }>).map((g) => g.code);
+      expect(codes).toContain('empty_policy_envelope_validator_name');
+    });
+
+    it('should publish successfully when all policy gates pass', async () => {
+      const validatedContract = makeValidatedContract();
+      const publishedContract = {
+        ...validatedContract,
+        status: 'published',
+        updatedAt: new Date(),
+      };
+
+      mockDb.where.mockResolvedValueOnce([validatedContract]);
+      mockDb.returning.mockResolvedValue([publishedContract]);
+
+      const response = await request(app)
+        .post('/api/intelligence/contracts/contract-1/publish')
+        .send({ evidence: [] })
+        .expect(200);
+
+      expect(response.body.success).toBe(true);
+      expect(response.body.contract.status).toBe('published');
+    });
+
+    it('should return 409 when trying to publish a draft (not validated)', async () => {
+      const draftContract = makeValidatedContract({ status: 'draft' });
+      mockDb.where.mockResolvedValue([draftContract]);
+
+      const response = await request(app)
+        .post('/api/intelligence/contracts/contract-1/publish')
+        .expect(409);
+
+      expect(response.body.error).toBe('not_validated_or_concurrent_publish');
+    });
+  });
+
+  describe('PUT /:id — demotion from review state', () => {
+    it('should demote a review contract back to draft on edit', async () => {
+      const reviewContract: Contract = {
+        id: 'contract-1',
+        contractId: 'email-sender',
+        name: 'email-sender',
+        displayName: 'Email Sender',
+        type: 'effect',
+        status: 'review',
+        version: '1.0.0',
+        description: 'Sends emails',
+        schema: {},
+        metadata: {},
+        createdBy: 'test-user',
+        updatedBy: 'test-user',
+        createdAt: new Date('2024-01-01'),
+        updatedAt: new Date('2024-01-01'),
+      };
+
+      const demotedContract = {
+        ...reviewContract,
+        status: 'draft',
+        description: 'Updated',
+        updatedAt: new Date(),
+      };
+
+      mockDb.where.mockResolvedValueOnce([reviewContract]);
+      mockDb.returning.mockResolvedValue([demotedContract]);
+
+      const response = await request(app)
+        .put('/api/intelligence/contracts/contract-1')
+        .send({ description: 'Updated' })
+        .expect(200);
+
+      expect(response.body.status).toBe('draft');
+      expect(mockDb.update).toHaveBeenCalled();
     });
   });
 

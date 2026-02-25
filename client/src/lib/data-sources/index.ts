@@ -74,5 +74,7 @@ export {
   type Contract,
   type ContractType,
   type ContractStatus,
+  type GateViolation,
+  type GateCheckResult,
 } from './contract-registry-source';
 export { contractSchemaSource, type ContractSchemas } from './contract-schema-source';
