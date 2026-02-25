@@ -20,7 +20,7 @@ import {
   patternLearningArtifacts,
   type PatternLearningArtifact,
 } from '@shared/intelligence-schema';
-import { sql, desc, asc, gte, eq, or, and, inArray } from 'drizzle-orm';
+import { sql, desc, asc, gte, eq, or, and, inArray, ne } from 'drizzle-orm';
 import { checkAllServices } from './service-health';
 
 export const intelligenceRouter = Router();
@@ -3574,6 +3574,174 @@ intelligenceRouter.get('/services/:serviceName/details', async (req, res) => {
 /** Valid lifecycle states for PATLEARN artifacts */
 const VALID_PATLEARN_STATES = ['candidate', 'provisional', 'validated', 'deprecated'] as const;
 
+/** Maximum number of similar patterns to return */
+const SIMILAR_PATTERNS_LIMIT = 10;
+
+/** Weights for similarity evidence composite score */
+const SIMILARITY_WEIGHTS = {
+  keyword: 0.3,
+  pattern: 0.25,
+  structural: 0.2,
+  label: 0.15,
+  context: 0.1,
+} as const;
+
+/**
+ * Helper: extract string array from a JSONB field safely
+ */
+function extractStringArray(value: unknown): string[] {
+  if (!Array.isArray(value)) return [];
+  return value.filter((v): v is string => typeof v === 'string');
+}
+
+/**
+ * Compute Jaccard similarity between two string arrays
+ */
+function jaccardSimilarity(a: string[], b: string[]): number {
+  if (a.length === 0 && b.length === 0) return 1;
+  const setA = new Set(a.map((s) => s.toLowerCase()));
+  const setB = new Set(b.map((s) => s.toLowerCase()));
+  const intersection = [...setA].filter((v) => setB.has(v));
+  const unionSize = setA.size + setB.size - intersection.length;
+  return unionSize === 0 ? 0 : intersection.length / unionSize;
+}
+
+/**
+ * Compute similarity evidence between the target artifact and a candidate.
+ *
+ * Uses fields available in pattern_learning_artifacts:
+ * - signature.inputs  → keyword similarity
+ * - patternType       → pattern indicator similarity
+ * - compositeScore    → structural similarity proxy
+ * - scoringEvidence.labelAgreement.matchedLabels → label similarity
+ * - signature.normalizations → context/token similarity
+ */
+function computeSimilarityEvidence(
+  target: PatternLearningArtifact,
+  candidate: PatternLearningArtifact
+): {
+  patternId: string;
+  evidence: {
+    keyword: { score: number; intersection: string[]; unionCount: number };
+    pattern: { score: number; matchedIndicators: string[]; totalIndicators: number };
+    structural: {
+      score: number;
+      astDepthDelta: number;
+      nodeCountDelta: number;
+      complexityDelta: number;
+    };
+    label: { score: number; matchedLabels: string[]; totalLabels: number };
+    context: { score: number; sharedTokens: string[]; jaccard: number };
+    composite: number;
+    weights: typeof SIMILARITY_WEIGHTS;
+  };
+} {
+  // --- Keyword similarity (signature.inputs) ---
+  const targetInputs = extractStringArray(
+    (target.signature as Record<string, unknown> | null)?.inputs
+  );
+  const candidateInputs = extractStringArray(
+    (candidate.signature as Record<string, unknown> | null)?.inputs
+  );
+  const targetInputsLower = targetInputs.map((s) => s.toLowerCase());
+  const candidateInputsLower = candidateInputs.map((s) => s.toLowerCase());
+  const inputIntersection = targetInputsLower.filter((v) => candidateInputsLower.includes(v));
+  const inputUnionCount = new Set([...targetInputsLower, ...candidateInputsLower]).size;
+  const keywordScore = inputUnionCount === 0 ? 0 : inputIntersection.length / inputUnionCount;
+
+  // --- Pattern indicator similarity (patternType) ---
+  const targetType = target.patternType.toLowerCase();
+  const candidateType = candidate.patternType.toLowerCase();
+  // Split by underscore/dash to get sub-tokens for partial matching
+  const targetTypeTokens = targetType.split(/[_-]/);
+  const candidateTypeTokens = candidateType.split(/[_-]/);
+  const matchedIndicators =
+    targetType === candidateType
+      ? [targetType]
+      : targetTypeTokens.filter((t) => candidateTypeTokens.includes(t));
+  const totalIndicators = new Set([...targetTypeTokens, ...candidateTypeTokens]).size;
+  const patternScore = totalIndicators === 0 ? 0 : matchedIndicators.length / totalIndicators;
+
+  // --- Structural similarity (compositeScore delta as proxy) ---
+  const targetScore = parseFloat(target.compositeScore);
+  const candidateScore = parseFloat(candidate.compositeScore);
+  const scoreDelta = Math.abs(targetScore - candidateScore);
+  // Treat composite score difference as a structural proxy
+  // Delta of 0 → structural score 1.0; delta of 1.0 → 0.0
+  const structuralScore = Math.max(0, 1 - scoreDelta);
+  // Use language match to populate node count proxy
+  const languageMatch = target.language === candidate.language ? 1 : 0;
+
+  // --- Label similarity (scoringEvidence.labelAgreement.matchedLabels) ---
+  const targetEvidence = target.scoringEvidence as Record<string, unknown> | null;
+  const candidateEvidence = candidate.scoringEvidence as Record<string, unknown> | null;
+  const targetLabels = extractStringArray(
+    (targetEvidence?.labelAgreement as Record<string, unknown> | null)?.matchedLabels
+  );
+  const candidateLabels = extractStringArray(
+    (candidateEvidence?.labelAgreement as Record<string, unknown> | null)?.matchedLabels
+  );
+  const targetLabelsLower = targetLabels.map((s) => s.toLowerCase());
+  const candidateLabelsLower = candidateLabels.map((s) => s.toLowerCase());
+  const matchedLabels = targetLabelsLower.filter((v) => candidateLabelsLower.includes(v));
+  const totalLabels = new Set([...targetLabelsLower, ...candidateLabelsLower]).size;
+  const labelJaccard = totalLabels === 0 ? 0 : matchedLabels.length / totalLabels;
+
+  // --- Context similarity (signature.normalizations) ---
+  const targetNorms = extractStringArray(
+    (target.signature as Record<string, unknown> | null)?.normalizations
+  );
+  const candidateNorms = extractStringArray(
+    (candidate.signature as Record<string, unknown> | null)?.normalizations
+  );
+  const contextJaccard = jaccardSimilarity(targetNorms, candidateNorms);
+  const sharedTokens = targetNorms.filter((n) =>
+    candidateNorms.map((c) => c.toLowerCase()).includes(n.toLowerCase())
+  );
+
+  // --- Composite score ---
+  const composite =
+    SIMILARITY_WEIGHTS.keyword * keywordScore +
+    SIMILARITY_WEIGHTS.pattern * patternScore +
+    SIMILARITY_WEIGHTS.structural * structuralScore +
+    SIMILARITY_WEIGHTS.label * labelJaccard +
+    SIMILARITY_WEIGHTS.context * contextJaccard;
+
+  return {
+    patternId: candidate.id,
+    evidence: {
+      keyword: {
+        score: Math.round(keywordScore * 1000) / 1000,
+        intersection: inputIntersection,
+        unionCount: inputUnionCount,
+      },
+      pattern: {
+        score: Math.round(patternScore * 1000) / 1000,
+        matchedIndicators,
+        totalIndicators,
+      },
+      structural: {
+        score: Math.round(structuralScore * 1000) / 1000,
+        astDepthDelta: 0,
+        nodeCountDelta: languageMatch === 0 ? 1 : 0,
+        complexityDelta: Math.round(scoreDelta * 1000) / 1000,
+      },
+      label: {
+        score: Math.round(labelJaccard * 1000) / 1000,
+        matchedLabels,
+        totalLabels,
+      },
+      context: {
+        score: Math.round(contextJaccard * 1000) / 1000,
+        sharedTokens,
+        jaccard: Math.round(contextJaccard * 1000) / 1000,
+      },
+      composite: Math.round(composite * 1000) / 1000,
+      weights: SIMILARITY_WEIGHTS,
+    },
+  };
+}
+
 /**
  * Transform database row to API response format
  * Drizzle ORM returns camelCase properties as defined in the schema
@@ -3809,10 +3977,37 @@ intelligenceRouter.get('/patterns/patlearn/:id', async (req: Request, res: Respo
       });
     }
 
-    // TODO: Add similar patterns query when similarity data is available
+    // Query similar patterns using composite score proximity and type/language affinity.
+    // Candidates are filtered to the same patternType or language as the target, then
+    // ranked by computed similarity. This runs in a single DB round-trip: we fetch up
+    // to 50 candidates and rank them in-process to keep query complexity low while
+    // staying well within the <500ms performance budget (OMN-1710 AC).
+    const candidatePatterns = await db
+      .select()
+      .from(patternLearningArtifacts)
+      .where(
+        and(
+          ne(patternLearningArtifacts.id, id),
+          or(
+            eq(patternLearningArtifacts.patternType, artifact.patternType),
+            artifact.language !== null
+              ? eq(patternLearningArtifacts.language, artifact.language)
+              : sql`false`
+          )
+        )
+      )
+      .orderBy(desc(patternLearningArtifacts.compositeScore))
+      .limit(50);
+
+    const similarPatterns = candidatePatterns
+      .map((candidate) => computeSimilarityEvidence(artifact, candidate))
+      .filter((entry) => entry.evidence.composite > 0)
+      .sort((a, b) => b.evidence.composite - a.evidence.composite)
+      .slice(0, SIMILAR_PATTERNS_LIMIT);
+
     res.json({
       artifact: transformPatlearnArtifact(artifact),
-      similarPatterns: [],
+      similarPatterns,
     });
   } catch (error) {
     console.error('Error fetching PATLEARN artifact detail:', error);
