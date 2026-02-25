@@ -1,7 +1,4 @@
-export { ArrayFieldContext, useArrayFieldContext } from './ArrayFieldContext';
-export { ArrayFieldItemTemplate } from './ArrayFieldItemTemplate';
-export { ArrayFieldTemplate } from './ArrayFieldTemplate';
-export { ArrayItemModal } from './ArrayItemModal';
-export { ErrorListTemplate } from './ErrorListTemplate';
-export { FieldErrorTemplate } from './FieldErrorTemplate';
-export { ObjectFieldTemplate } from './ObjectFieldTemplate';
+/**
+ * REMOVED — OMN-2755 Phase 3: RJSF templates removed.
+ * All templates previously here were RJSF-specific and are no longer needed.
+ */
