@@ -66,7 +66,9 @@ import EnhancedAnalytics from '@/pages/preview/EnhancedAnalytics';
 import SystemHealth from '@/pages/preview/SystemHealth';
 import AdvancedSettings from '@/pages/preview/AdvancedSettings';
 import FeatureShowcase from '@/pages/preview/FeatureShowcase';
-import ContractBuilder from '@/pages/preview/ContractBuilder';
+import ContractBuilder from '@/pages/ContractBuilder';
+import ContractBuilderV1 from '@/pages/preview/ContractBuilder';
+import ContractBuilderV2 from '@/pages/preview/ContractBuilderV2';
 import TechDebtAnalysis from '@/pages/preview/TechDebtAnalysis';
 import PatternLineage from '@/pages/preview/PatternLineage';
 import NodeNetworkComposer from '@/pages/preview/NodeNetworkComposer';
@@ -150,12 +152,15 @@ function Router() {
       <Route path="/pipeline-budget" component={PipelineBudgetDashboard} />
       <Route path="/debug-escalation" component={DebugEscalationDashboard} />
 
+      <Route path="/contracts" component={ContractBuilder} />
+
       {/* Preview routes */}
       <Route path="/preview/analytics" component={EnhancedAnalytics} />
       <Route path="/preview/health" component={SystemHealth} />
       <Route path="/preview/settings" component={AdvancedSettings} />
       <Route path="/preview/showcase" component={FeatureShowcase} />
-      <Route path="/preview/contracts" component={ContractBuilder} />
+      <Route path="/preview/contracts" component={ContractBuilderV1} />
+      <Route path="/preview/contracts-v2" component={ContractBuilderV2} />
       <Route path="/preview/tech-debt" component={TechDebtAnalysis} />
       <Route path="/preview/pattern-lineage" component={PatternLineage} />
       <Route path="/preview/composer" component={NodeNetworkComposer} />

@@ -48,3 +48,8 @@ page-*.png
 *.bak
 *.backup
 *~
+e2e/screenshots/
+
+# Local development database
+docker-compose.yml
+scripts/init-db.sql

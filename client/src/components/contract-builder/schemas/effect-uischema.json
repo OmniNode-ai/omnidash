@@ -1,0 +1,43 @@
+{
+  "ui:order": ["node_identity", "io_operations", "transaction_management", "metadata"],
+
+  "node_identity": {
+    "ui:order": ["name", "display_name", "version", "description"],
+    "description": {
+      "ui:widget": "textarea",
+      "ui:options": {
+        "rows": 3
+      }
+    }
+  },
+
+  "metadata": {
+    "tags": {
+      "ui:options": {
+        "addable": true,
+        "orderable": false,
+        "removable": true
+      }
+    }
+  },
+
+  "io_operations": {
+    "ui:options": {
+      "addable": true,
+      "orderable": true,
+      "removable": true
+    },
+    "items": {
+      "ui:order": ["name", "description", "target_ms", "input_model", "output_model", "side_effects"],
+      "side_effects": {
+        "ui:widget": "checkboxes"
+      }
+    }
+  },
+
+  "transaction_management": {
+    "isolation_level": {
+      "ui:widget": "select"
+    }
+  }
+}

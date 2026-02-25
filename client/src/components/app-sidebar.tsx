@@ -19,6 +19,7 @@ import {
   ShieldAlert,
   Cpu,
   GitFork,
+  FileText,
 } from 'lucide-react';
 import { Link, useLocation } from 'wouter';
 import {
@@ -98,6 +99,12 @@ const categories: NavItem[] = [
     url: '/category/health',
     icon: ShieldCheck,
     description: 'Validation counts, node registry, health checks',
+  },
+  {
+    title: 'Contract Builder',
+    url: '/contracts',
+    icon: FileText,
+    description: 'Author, validate, and publish ONEX contracts',
   },
 ];
 
