@@ -4,6 +4,7 @@ import path from 'path';
 import yaml from 'js-yaml';
 import { AgentExecutionTracker } from './agent-execution-tracker';
 import { PolymorphicAgentIntegration } from './polymorphic-agent-integration';
+import { agentRoutingProjection } from './projection-bootstrap';
 
 const router = Router();
 
@@ -286,74 +287,38 @@ router.get('/summary', (req, res) => {
   }
 });
 
-// Get routing intelligence data
-router.get('/routing', (req, res) => {
+// Get routing intelligence data from DB via AgentRoutingProjection (OMN-2750)
+router.get('/routing', async (req, res) => {
   try {
-    // Mock routing data - in production, this would come from the database
-    const routingData = {
-      accuracy: 94.2,
-      avgRoutingTime: 45,
-      avgAlternatives: 3.2,
-      totalDecisions: 15420,
-      recentDecisions: [
-        {
-          id: '1',
-          query: 'optimize my API performance',
-          agent: 'agent-performance',
-          confidence: 92,
-          time: '45ms',
-          timestamp: '2024-01-20T10:30:00Z',
-        },
-        {
-          id: '2',
-          query: 'debug database connection issues',
-          agent: 'agent-debug-intelligence',
-          confidence: 89,
-          time: '38ms',
-          timestamp: '2024-01-20T10:25:00Z',
-        },
-        {
-          id: '3',
-          query: 'create a React component',
-          agent: 'agent-frontend-developer',
-          confidence: 95,
-          time: '42ms',
-          timestamp: '2024-01-20T10:20:00Z',
-        },
-        {
-          id: '4',
-          query: 'write unit tests',
-          agent: 'agent-testing',
-          confidence: 87,
-          time: '51ms',
-          timestamp: '2024-01-20T10:15:00Z',
-        },
-        {
-          id: '5',
-          query: 'design microservices architecture',
-          agent: 'agent-api-architect',
-          confidence: 91,
-          time: '39ms',
-          timestamp: '2024-01-20T10:10:00Z',
-        },
-      ],
-      routingStrategies: [
-        { name: 'enhanced_fuzzy_matching', usage: 65, accuracy: 96.2 },
-        { name: 'exact_trigger_match', usage: 25, accuracy: 99.1 },
-        { name: 'capability_alignment', usage: 8, accuracy: 89.3 },
-        { name: 'fallback_routing', usage: 2, accuracy: 78.5 },
-      ],
-      performanceByCategory: [
-        { category: 'development', avgConfidence: 92.1, avgTime: '48ms' },
-        { category: 'architecture', avgConfidence: 89.7, avgTime: '52ms' },
-        { category: 'quality', avgConfidence: 91.3, avgTime: '45ms' },
-        { category: 'infrastructure', avgConfidence: 88.9, avgTime: '55ms' },
-        { category: 'coordination', avgConfidence: 94.5, avgTime: '42ms' },
-        { category: 'documentation', avgConfidence: 87.2, avgTime: '38ms' },
-      ],
-    };
+    const payload = await agentRoutingProjection.ensureFresh();
 
-    res.json(routingData);
+    const { summary, recentDecisions, strategyBreakdown, agentBreakdown } = payload;
+
+    const routingStrategies = strategyBreakdown.map((s) => ({
+      name: s.name,
+      usage: s.usage,
+      accuracy: s.accuracy,
+    }));
+
+    const performanceByCategory = agentBreakdown.map((a) => ({
+      category: a.agent,
+      avgConfidence: a.avgConfidence,
+      avgTime: a.avgTime,
+    }));
+
+    const accuracy =
+      summary.totalDecisions > 0 ? Math.round(summary.avgConfidence * 100 * 10) / 10 : 0;
+
+    res.json({
+      accuracy,
+      avgRoutingTime: Math.round(summary.avgRoutingTime),
+      avgAlternatives: 0, // Not tracked in current schema
+      totalDecisions: summary.totalDecisions,
+      recentDecisions,
+      routingStrategies,
+      performanceByCategory,
+      source: summary.totalDecisions > 0 ? 'database' : 'empty',
+    });
   } catch (error) {
     console.error('Error fetching routing data:', error);
     res.status(500).json({ error: 'Failed to fetch routing data' });
@@ -522,21 +487,60 @@ router.post('/routing/execute', async (req, res) => {
   }
 });
 
-// Get routing statistics
-router.get('/routing/stats', (req, res) => {
+// Get routing statistics via AgentRoutingProjection (OMN-2750)
+router.get('/routing/stats', async (req, res) => {
   try {
-    const stats = PolymorphicAgentIntegration.getRoutingStatistics();
-    res.json(stats);
+    const payload = await agentRoutingProjection.ensureFresh();
+    const { summary, strategyBreakdown, agentBreakdown } = payload;
+
+    const strategyMap: Record<string, number> = {};
+    for (const s of strategyBreakdown) {
+      strategyMap[s.name] = s.count;
+    }
+    const agentMap: Record<string, number> = {};
+    for (const a of agentBreakdown) {
+      agentMap[a.agent] = a.count;
+    }
+
+    res.json({
+      totalDecisions: summary.totalDecisions,
+      avgConfidence: summary.avgConfidence,
+      avgRoutingTime: summary.avgRoutingTime,
+      successRate: summary.successRate,
+      strategyBreakdown: strategyMap,
+      agentBreakdown: agentMap,
+      source: summary.totalDecisions > 0 ? 'database' : 'in-memory',
+    });
   } catch (error) {
     console.error('Error fetching routing stats:', error);
     res.status(500).json({ error: 'Failed to fetch routing statistics' });
   }
 });
 
-// Get agent performance comparison
-router.get('/routing/performance', (req, res) => {
+// Get agent performance comparison via AgentRoutingProjection (OMN-2750)
+router.get('/routing/performance', async (req, res) => {
   try {
-    const performance = PolymorphicAgentIntegration.getAgentPerformanceComparison();
+    const payload = await agentRoutingProjection.ensureFresh();
+
+    if (payload.agentBreakdown.length === 0) {
+      // No DB data — fall back to in-memory tracker
+      const performance = PolymorphicAgentIntegration.getAgentPerformanceComparison();
+      return res.json(performance);
+    }
+
+    const performance = payload.agentBreakdown.map((row) => ({
+      agentId: row.agent,
+      agentName: row.agent.replace('agent-', '').replace(/-/g, ' '),
+      performance: AgentExecutionTracker.getAgentPerformanceMetrics(row.agent),
+      routingStats: {
+        avgConfidence: row.avgConfidence / 100, // Convert back to 0-1 scale
+        avgRoutingTime: parseFloat(row.avgTime),
+        totalDecisions: row.totalDecisions,
+        successRate: row.successRate,
+      },
+      source: 'database',
+    }));
+
     res.json(performance);
   } catch (error) {
     console.error('Error fetching agent performance:', error);
