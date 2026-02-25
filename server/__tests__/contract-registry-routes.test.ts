@@ -442,7 +442,7 @@ describe('Contract Registry Routes', () => {
       expect(response.body.error).toBe('Contract not found');
     });
 
-    it('should return 400 when trying to update non-draft contract', async () => {
+    it('should return 409 when trying to update a published contract', async () => {
       const publishedContract: Contract = {
         id: 'contract-1',
         contractId: 'email-sender',
@@ -465,9 +465,9 @@ describe('Contract Registry Routes', () => {
       const response = await request(app)
         .put('/api/intelligence/contracts/contract-1')
         .send({ description: 'Updated' })
-        .expect(400);
+        .expect(409);
 
-      expect(response.body.error).toContain('Only drafts can be updated');
+      expect(response.body.error).toContain("Cannot update contract with status");
     });
   });
 
@@ -475,14 +475,24 @@ describe('Contract Registry Routes', () => {
     it('should validate and update contract to validated status', async () => {
       const draftContract: Contract = {
         id: 'contract-1',
-        contractId: 'email-sender',
-        name: 'email-sender',
+        contractId: 'email_sender',
+        name: 'email_sender',
         displayName: 'Email Sender',
         type: 'effect',
         status: 'draft',
         version: '1.0.0',
-        description: 'Sends email notifications',
-        schema: {},
+        description: 'Sends email notifications to users',
+        schema: {
+          contract_schema_version: '1.0.0',
+          determinism_class: 'effect-driven',
+          effect_surface: ['network'],
+          node_identity: {
+            name: 'email_sender',
+            display_name: 'Email Sender',
+            version: '1.0.0',
+            description: 'Sends email notifications to users',
+          },
+        },
         metadata: {},
         createdBy: 'test-user',
         updatedBy: 'test-user',
@@ -503,22 +513,21 @@ describe('Contract Registry Routes', () => {
         .post('/api/intelligence/contracts/contract-1/validate')
         .expect(200);
 
-      expect(response.body.isValid).toBe(true);
+      expect(response.body.lifecycle_state).toBe('validated');
       expect(response.body.contract.status).toBe('validated');
-      expect(response.body.errors).toHaveLength(0);
     });
 
-    it('should return validation errors for invalid contract', async () => {
+    it('should return 422 with gate violations for invalid contract schema', async () => {
       const invalidContract: Contract = {
         id: 'contract-1',
-        contractId: 'ab',
-        name: 'ab',
-        displayName: 'AB',
+        contractId: 'email_sender',
+        name: 'email_sender',
+        displayName: 'Email Sender',
         type: 'effect',
         status: 'draft',
-        version: 'invalid',
-        description: 'short',
-        schema: {},
+        version: '1.0.0',
+        description: 'Sends emails',
+        schema: {},  // Missing required fields: contract_schema_version, determinism_class
         metadata: {},
         createdBy: 'test-user',
         updatedBy: 'test-user',
@@ -530,12 +539,14 @@ describe('Contract Registry Routes', () => {
 
       const response = await request(app)
         .post('/api/intelligence/contracts/contract-1/validate')
-        .expect(200);
+        .expect(422);
 
-      expect(response.body.isValid).toBe(false);
-      expect(response.body.errors.length).toBeGreaterThan(0);
-      expect(response.body.errors.some((e: string) => e.includes('name'))).toBe(true);
-      expect(response.body.errors.some((e: string) => e.includes('semver'))).toBe(true);
+      expect(response.body.error).toBe('validation_failed');
+      expect(response.body.gates).toBeDefined();
+      expect(response.body.gates.length).toBeGreaterThan(0);
+      // Each gate violation has code, message, optional path, optional severity
+      expect(response.body.gates[0]).toHaveProperty('code');
+      expect(response.body.gates[0]).toHaveProperty('message');
     });
 
     it('should return 404 for non-existent contract', async () => {
@@ -545,22 +556,34 @@ describe('Contract Registry Routes', () => {
         .post('/api/intelligence/contracts/non-existent/validate')
         .expect(404);
 
-      expect(response.body.error).toBe('Contract not found');
+      expect(response.body.error).toBe('not_found');
     });
   });
 
   describe('POST /:id/publish', () => {
-    it('should publish a validated contract', async () => {
+    it('should publish a validated contract with valid schema', async () => {
+      const validSchema = {
+        contract_schema_version: '1.0.0',
+        determinism_class: 'effect-driven',
+        effect_surface: ['network'],
+        node_identity: {
+          name: 'email_sender',
+          display_name: 'Email Sender',
+          version: '1.0.0',
+          description: 'Sends email notifications to users',
+        },
+      };
+
       const validatedContract: Contract = {
         id: 'contract-1',
-        contractId: 'email-sender',
-        name: 'email-sender',
+        contractId: 'email_sender',
+        name: 'email_sender',
         displayName: 'Email Sender',
         type: 'effect',
         status: 'validated',
         version: '1.0.0',
         description: 'Sends emails',
-        schema: {},
+        schema: validSchema,
         metadata: {},
         createdBy: 'test-user',
         updatedBy: 'test-user',
@@ -584,14 +607,15 @@ describe('Contract Registry Routes', () => {
 
       expect(response.body.success).toBe(true);
       expect(response.body.contract.status).toBe('published');
+      expect(response.body.content_hash).toBeDefined();
       expect(mockDb.update).toHaveBeenCalled();
     });
 
-    it('should return 400 when trying to publish non-validated contract', async () => {
+    it('should return 409 when trying to publish a non-validated (draft) contract', async () => {
       const draftContract: Contract = {
         id: 'contract-1',
-        contractId: 'email-sender',
-        name: 'email-sender',
+        contractId: 'email_sender',
+        name: 'email_sender',
         displayName: 'Email Sender',
         type: 'effect',
         status: 'draft',
@@ -609,9 +633,9 @@ describe('Contract Registry Routes', () => {
 
       const response = await request(app)
         .post('/api/intelligence/contracts/contract-1/publish')
-        .expect(400);
+        .expect(409);
 
-      expect(response.body.error).toContain('must be validated first');
+      expect(response.body.error).toBe('not_validated_or_concurrent_publish');
     });
 
     it('should return 404 for non-existent contract', async () => {
@@ -621,7 +645,7 @@ describe('Contract Registry Routes', () => {
         .post('/api/intelligence/contracts/non-existent/publish')
         .expect(404);
 
-      expect(response.body.error).toBe('Contract not found');
+      expect(response.body.error).toBe('not_found');
     });
   });
 

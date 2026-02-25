@@ -1,7 +1,33 @@
 {
+  "$schema": "http://json-schema.org/draft-07/schema#",
   "type": "object",
-  "required": ["node_identity"],
+  "required": ["node_identity", "contract_schema_version", "determinism_class"],
   "properties": {
+    "contract_schema_version": {
+      "type": "string",
+      "title": "Schema Version",
+      "description": "Version of the contract schema used to author this contract",
+      "default": "1.0.0",
+      "pattern": "^\\d+\\.\\d+\\.\\d+$"
+    },
+    "determinism_class": {
+      "type": "string",
+      "title": "Determinism Class",
+      "description": "How this effect handles determinism",
+      "enum": ["deterministic", "nondeterministic", "effect-driven"],
+      "default": "effect-driven"
+    },
+    "effect_surface": {
+      "type": "array",
+      "title": "Effect Surface",
+      "description": "External systems this effect interacts with (required when determinism_class is effect-driven)",
+      "items": {
+        "type": "string",
+        "enum": ["filesystem", "network", "database", "message_queue", "external_api", "process", "time"]
+      },
+      "uniqueItems": true,
+      "default": []
+    },
     "node_identity": {
       "type": "object",
       "title": "Node Identity",

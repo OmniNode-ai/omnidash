@@ -1,0 +1,155 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "type": "object",
+  "required": ["node_identity", "contract_schema_version", "determinism_class"],
+  "properties": {
+    "contract_schema_version": {
+      "type": "string",
+      "title": "Schema Version",
+      "description": "Version of the contract schema used to author this contract",
+      "default": "1.0.0",
+      "pattern": "^\\d+\\.\\d+\\.\\d+$"
+    },
+    "determinism_class": {
+      "type": "string",
+      "title": "Determinism Class",
+      "description": "How this orchestrator handles determinism",
+      "enum": ["deterministic", "nondeterministic"],
+      "default": "nondeterministic"
+    },
+    "node_identity": {
+      "type": "object",
+      "title": "Node Identity",
+      "required": ["name", "display_name", "version", "description"],
+      "properties": {
+        "name": {
+          "type": "string",
+          "title": "Name",
+          "description": "Unique contract identifier (snake_case)",
+          "pattern": "^[a-z][a-z0-9_]*$",
+          "minLength": 3,
+          "maxLength": 64
+        },
+        "display_name": {
+          "type": "string",
+          "title": "Display Name",
+          "description": "Human-readable name",
+          "minLength": 3,
+          "maxLength": 128
+        },
+        "version": {
+          "type": "string",
+          "title": "Version",
+          "description": "Semantic version (e.g., 1.0.0)",
+          "pattern": "^\\d+\\.\\d+\\.\\d+$",
+          "default": "1.0.0"
+        },
+        "description": {
+          "type": "string",
+          "title": "Description",
+          "description": "What workflow this orchestrator coordinates",
+          "minLength": 10,
+          "maxLength": 500
+        }
+      }
+    },
+    "workflow_steps": {
+      "type": "array",
+      "title": "Workflow Steps",
+      "description": "Ordered list of steps this orchestrator coordinates",
+      "default": [],
+      "items": {
+        "type": "object",
+        "required": ["name", "node_type", "description"],
+        "properties": {
+          "name": {
+            "type": "string",
+            "title": "Step Name",
+            "pattern": "^[a-z][a-z0-9_]*$"
+          },
+          "node_type": {
+            "type": "string",
+            "title": "Node Type",
+            "enum": ["effect", "compute", "reducer"],
+            "description": "Type of node invoked at this step"
+          },
+          "description": {
+            "type": "string",
+            "title": "Description"
+          },
+          "on_failure": {
+            "type": "string",
+            "title": "On Failure",
+            "enum": ["abort", "continue", "retry"],
+            "default": "abort"
+          }
+        }
+      }
+    },
+    "emitted_events": {
+      "type": "array",
+      "title": "Emitted Events",
+      "description": "Events this orchestrator may emit",
+      "default": [],
+      "items": {
+        "type": "object",
+        "required": ["name"],
+        "properties": {
+          "name": {
+            "type": "string",
+            "title": "Event Name",
+            "pattern": "^[a-z][a-z0-9_.]*$"
+          },
+          "description": {
+            "type": "string",
+            "title": "Description"
+          },
+          "trigger": {
+            "type": "string",
+            "title": "When Emitted",
+            "enum": ["on_success", "on_failure", "always"]
+          }
+        }
+      }
+    },
+    "timeout": {
+      "type": "object",
+      "title": "Timeout Configuration",
+      "properties": {
+        "total_ms": {
+          "type": "integer",
+          "title": "Total Timeout (ms)",
+          "minimum": 1000,
+          "maximum": 3600000,
+          "default": 30000
+        },
+        "step_ms": {
+          "type": "integer",
+          "title": "Per-Step Timeout (ms)",
+          "minimum": 100,
+          "maximum": 300000,
+          "default": 10000
+        }
+      }
+    },
+    "metadata": {
+      "type": "object",
+      "title": "Metadata",
+      "properties": {
+        "author": {
+          "type": "string",
+          "title": "Author"
+        },
+        "tags": {
+          "type": "array",
+          "title": "Tags",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          },
+          "uniqueItems": true
+        }
+      }
+    }
+  }
+}

@@ -19,7 +19,7 @@ import { ResizablePanelGroup, ResizablePanel, ResizableHandle } from '@/componen
 import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
 import { oneDark, oneLight } from 'react-syntax-highlighter/dist/esm/styles/prism';
 import { useTheme } from '@/components/ThemeProvider';
-import { ArrowLeft, Save, Copy, Check, Pencil } from 'lucide-react';
+import { ArrowLeft, Save, Copy, Check, Pencil, CheckCircle, XCircle, AlertCircle, Loader2 } from 'lucide-react';
 import { getContractSchemas } from './schemas';
 import type { Contract, ContractType } from './models/types';
 import {
@@ -103,6 +103,13 @@ export function ContractEditor({
   // State for copy button feedback
   const [copied, setCopied] = useState(false);
 
+  // State for contract validation
+  const [isValidating, setIsValidating] = useState(false);
+  const [validationResult, setValidationResult] = useState<{
+    success?: boolean;
+    violations?: Array<{ code: string; message: string; path?: string; severity?: string }>;
+  } | null>(null);
+
   // Determine if we're editing an existing contract or creating new
   const isEditing = !!contract;
 
@@ -149,7 +156,8 @@ export function ContractEditor({
   }, [onBack]);
 
   // Get schemas for this contract type
-  const { jsonSchema, uiSchema } = getContractSchemas(contractType);
+  const schemas = getContractSchemas(contractType);
+  const { jsonSchema, uiSchema } = schemas ?? { jsonSchema: {}, uiSchema: {} };
 
   // Custom templates for cleaner array rendering
   const templates: Partial<TemplatesType> = useMemo(
@@ -341,6 +349,32 @@ export function ContractEditor({
     setFormData(data);
   }, []);
 
+  // Handle contract validation
+  const handleValidate = useCallback(async () => {
+    if (!contract?.id) return;
+    setIsValidating(true);
+    setValidationResult(null);
+    try {
+      const response = await fetch(`/api/contracts/${contract.id}/validate`, {
+        method: 'POST',
+      });
+      if (response.ok) {
+        setValidationResult({ success: true });
+      } else if (response.status === 422) {
+        const data = await response.json();
+        setValidationResult({ success: false, violations: data.gates });
+      } else {
+        const data = await response.json();
+        throw new Error(data.error || 'Validation failed');
+      }
+    } catch (err) {
+      console.error('Validation error:', err);
+      setValidationResult({ success: false, violations: [{ code: 'error', message: String(err) }] });
+    } finally {
+      setIsValidating(false);
+    }
+  }, [contract?.id]);
+
   return (
     <div className="flex flex-col h-full">
       {/* Header */}
@@ -358,13 +392,30 @@ export function ContractEditor({
           </span>
         </div>
 
-        <Button size="sm" onClick={() => formRef.current?.submit()}>
-          <Save className="w-4 h-4 mr-2" />
-          Save
-          {hasUnsavedChanges && (
-            <span className="ml-2 w-2 h-2 bg-yellow-500 rounded-full" title="Unsaved changes" />
+        <div className="flex items-center gap-2">
+          {contract?.id && (
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={handleValidate}
+              disabled={isValidating}
+            >
+              {isValidating ? (
+                <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+              ) : (
+                <CheckCircle className="w-4 h-4 mr-2" />
+              )}
+              {isValidating ? 'Validating...' : 'Validate'}
+            </Button>
           )}
-        </Button>
+          <Button size="sm" onClick={() => formRef.current?.submit()}>
+            <Save className="w-4 h-4 mr-2" />
+            Save
+            {hasUnsavedChanges && (
+              <span className="ml-2 w-2 h-2 bg-yellow-500 rounded-full" title="Unsaved changes" />
+            )}
+          </Button>
+        </div>
       </div>
 
       {/* Draft recovery banner */}
@@ -381,6 +432,62 @@ export function ContractEditor({
               Restore Draft
             </Button>
           </div>
+        </div>
+      )}
+
+      {/* Validation result panel */}
+      {validationResult && (
+        <div
+          className={`flex items-start gap-3 px-4 py-3 border-b ${
+            validationResult.success
+              ? 'bg-green-50 dark:bg-green-900/20 border-green-200 dark:border-green-800'
+              : 'bg-red-50 dark:bg-red-900/20 border-red-200 dark:border-red-800'
+          }`}
+        >
+          {validationResult.success ? (
+            <>
+              <CheckCircle className="w-5 h-5 text-green-600 dark:text-green-400 flex-shrink-0 mt-0.5" />
+              <span className="text-sm text-green-800 dark:text-green-200 font-medium">
+                Contract validated successfully
+              </span>
+            </>
+          ) : (
+            <div className="flex-1">
+              <div className="flex items-center gap-2 mb-2">
+                <XCircle className="w-5 h-5 text-red-600 dark:text-red-400 flex-shrink-0" />
+                <span className="text-sm text-red-800 dark:text-red-200 font-medium">
+                  Validation failed — {validationResult.violations?.length ?? 0} violation(s)
+                </span>
+              </div>
+              {validationResult.violations && validationResult.violations.length > 0 && (
+                <ul className="space-y-1 pl-7">
+                  {validationResult.violations.map((v, i) => (
+                    <li key={i} className="text-sm text-red-700 dark:text-red-300 flex items-start gap-2">
+                      <AlertCircle className="w-3.5 h-3.5 flex-shrink-0 mt-0.5" />
+                      <span>
+                        <code className="font-mono text-xs bg-red-100 dark:bg-red-900/40 px-1 rounded">
+                          {v.code}
+                        </code>{' '}
+                        {v.message}
+                        {v.path && (
+                          <span className="ml-1 text-red-500 dark:text-red-400 text-xs">
+                            ({v.path})
+                          </span>
+                        )}
+                      </span>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
+          )}
+          <button
+            onClick={() => setValidationResult(null)}
+            className="ml-auto flex-shrink-0 text-muted-foreground hover:text-foreground transition-colors"
+            aria-label="Dismiss"
+          >
+            <XCircle className="w-4 h-4" />
+          </button>
         </div>
       )}
 

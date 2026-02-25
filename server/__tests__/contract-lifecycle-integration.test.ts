@@ -56,20 +56,28 @@ describe('Contract Lifecycle - Integration Tests', () => {
   describe('Complete Lifecycle: Draft → Validated → Published → Deprecated → Archived', () => {
     it('should successfully transition through all lifecycle stages', async () => {
       // Step 1: Create draft contract
+      // Schema must satisfy orchestrator-schema.json requirements (contract_schema_version + determinism_class)
+      const validOrchestratorSchema = {
+        contract_schema_version: '1.0.0',
+        determinism_class: 'nondeterministic',
+        node_identity: {
+          name: 'user_authentication_orchestrator',
+          display_name: 'User Authentication Orchestrator',
+          version: '0.1.0',
+          description: 'Handles user authentication flows across multiple providers',
+        },
+      };
+
       const draftContract: Contract = {
         id: 'contract-1',
-        contractId: 'user-authentication-orchestrator',
-        name: 'user-authentication-orchestrator',
+        contractId: 'user_authentication_orchestrator',
+        name: 'user_authentication_orchestrator',
         displayName: 'User Authentication Orchestrator',
         type: 'orchestrator',
         status: 'draft',
         version: '0.1.0',
         description: 'Handles user authentication flows across multiple providers',
-        schema: {
-          inputs: ['username', 'password', 'mfaToken'],
-          outputs: ['authToken', 'refreshToken', 'userId'],
-          providers: ['local', 'oauth', 'saml'],
-        },
+        schema: validOrchestratorSchema,
         metadata: {
           team: 'platform-security',
           contact: 'security@example.com',
@@ -109,9 +117,8 @@ describe('Contract Lifecycle - Integration Tests', () => {
         .post('/api/intelligence/contracts/contract-1/validate')
         .expect(200);
 
-      expect(validateResponse.body.isValid).toBe(true);
+      expect(validateResponse.body.lifecycle_state).toBe('validated');
       expect(validateResponse.body.contract.status).toBe('validated');
-      expect(validateResponse.body.errors).toHaveLength(0);
 
       // Step 3: Publish contract
       const publishedContract: Contract = {
@@ -181,17 +188,29 @@ describe('Contract Lifecycle - Integration Tests', () => {
 
   describe('Draft contract iteration workflow', () => {
     it('should allow multiple updates to draft contract before validation', async () => {
-      // Create initial draft
+      // Create initial draft with a valid effect schema
+      const validEffectSchema = {
+        contract_schema_version: '1.0.0',
+        determinism_class: 'effect-driven',
+        effect_surface: ['network'],
+        node_identity: {
+          name: 'email_notification_effect',
+          display_name: 'Email Notification Effect',
+          version: '0.1.0',
+          description: 'Sends transactional email notifications to users',
+        },
+      };
+
       const initialDraft: Contract = {
         id: 'contract-2',
-        contractId: 'email-notification-effect',
-        name: 'email-notification-effect',
+        contractId: 'email_notification_effect',
+        name: 'email_notification_effect',
         displayName: 'Email Notification Effect',
         type: 'effect',
         status: 'draft',
         version: '0.1.0',
         description: 'Sends email notifications',
-        schema: {},
+        schema: validEffectSchema,
         metadata: {},
         createdBy: 'alice',
         updatedBy: 'alice',
@@ -213,11 +232,11 @@ describe('Contract Lifecycle - Integration Tests', () => {
 
       expect(createResponse.body.status).toBe('draft');
 
-      // Update 1: Add schema
+      // Update 1: Add metadata
       const updatedDraft1: Contract = {
         ...initialDraft,
         description: 'Sends transactional email notifications',
-        schema: { provider: 'sendgrid' },
+        metadata: { provider: 'sendgrid' },
         updatedAt: new Date('2024-01-11T10:30:00Z'),
       };
 
@@ -228,7 +247,7 @@ describe('Contract Lifecycle - Integration Tests', () => {
         .put('/api/intelligence/contracts/contract-2')
         .send({
           description: 'Sends transactional email notifications',
-          schema: { provider: 'sendgrid' },
+          metadata: { provider: 'sendgrid' },
         })
         .expect(200);
 
@@ -265,26 +284,36 @@ describe('Contract Lifecycle - Integration Tests', () => {
         .post('/api/intelligence/contracts/contract-2/validate')
         .expect(200);
 
+      expect(validateResponse.body.lifecycle_state).toBe('validated');
       expect(validateResponse.body.contract.status).toBe('validated');
     });
   });
 
   describe('Version evolution workflow', () => {
     it('should create new version from published contract', async () => {
+      // Valid compute schema satisfying compute-schema.json requirements
+      const validComputeSchema = {
+        contract_schema_version: '1.0.0',
+        determinism_class: 'deterministic',
+        node_identity: {
+          name: 'data_processor',
+          display_name: 'Data Processor',
+          version: '1.0.0',
+          description: 'Processes incoming data streams efficiently',
+        },
+      };
+
       // Existing published contract
       const publishedV1: Contract = {
         id: 'contract-3',
-        contractId: 'data-processor',
-        name: 'data-processor',
+        contractId: 'data_processor',
+        name: 'data_processor',
         displayName: 'Data Processor',
         type: 'compute',
         status: 'published',
         version: '1.0.0',
         description: 'Processes incoming data streams',
-        schema: {
-          maxBatchSize: 1000,
-          timeout: 30000,
-        },
+        schema: validComputeSchema,
         metadata: { team: 'data-platform' },
         createdBy: 'bob',
         updatedBy: 'bob',
@@ -292,20 +321,22 @@ describe('Contract Lifecycle - Integration Tests', () => {
         updatedAt: new Date('2023-06-01T00:00:00Z'),
       };
 
+      const validComputeSchemaV1_1 = {
+        ...validComputeSchema,
+        node_identity: { ...validComputeSchema.node_identity, version: '1.1.0' },
+      };
+
       // Create v1.1.0 draft
       const draftV1_1: Contract = {
         id: 'contract-4',
-        contractId: 'data-processor',
-        name: 'data-processor',
+        contractId: 'data_processor',
+        name: 'data_processor',
         displayName: 'Data Processor',
         type: 'compute',
         status: 'draft',
         version: '1.1.0',
         description: 'Processes incoming data streams with improved performance',
-        schema: {
-          maxBatchSize: 1000,
-          timeout: 30000,
-        },
+        schema: validComputeSchemaV1_1,
         metadata: { team: 'data-platform' },
         createdBy: null,
         updatedBy: null,
@@ -330,7 +361,7 @@ describe('Contract Lifecycle - Integration Tests', () => {
 
       expect(createVersionResponse.body.version).toBe('1.1.0');
       expect(createVersionResponse.body.status).toBe('draft');
-      expect(createVersionResponse.body.contractId).toBe('data-processor');
+      expect(createVersionResponse.body.contractId).toBe('data_processor');
 
       // Validate and publish new version
       const validatedV1_1: Contract = {
@@ -510,12 +541,12 @@ describe('Contract Lifecycle - Integration Tests', () => {
   });
 
   describe('Error handling and validation', () => {
-    it('should prevent skipping lifecycle stages', async () => {
+    it('should prevent skipping lifecycle stages (draft → published without validation)', async () => {
       // Try to publish a draft contract (should fail - must be validated first)
       const draftContract: Contract = {
         id: 'contract-6',
-        contractId: 'invalid-transition',
-        name: 'invalid-transition',
+        contractId: 'invalid_transition',
+        name: 'invalid_transition',
         displayName: 'Invalid Transition',
         type: 'effect',
         status: 'draft',
@@ -531,11 +562,12 @@ describe('Contract Lifecycle - Integration Tests', () => {
 
       mockDb.where.mockResolvedValue([draftContract]);
 
+      // Publish requires validated status — draft is rejected with 409
       const publishResponse = await request(app)
         .post('/api/intelligence/contracts/contract-6/publish')
-        .expect(400);
+        .expect(409);
 
-      expect(publishResponse.body.error).toContain('must be validated first');
+      expect(publishResponse.body.error).toBe('not_validated_or_concurrent_publish');
     });
 
     it('should prevent archiving non-deprecated contracts', async () => {
@@ -565,11 +597,11 @@ describe('Contract Lifecycle - Integration Tests', () => {
       expect(archiveResponse.body.error).toContain('Only deprecated contracts can be archived');
     });
 
-    it('should prevent updates to non-draft contracts', async () => {
+    it('should prevent updates to published contracts (returns 409)', async () => {
       const publishedContract: Contract = {
         id: 'contract-8',
-        contractId: 'immutable-published',
-        name: 'immutable-published',
+        contractId: 'immutable_published',
+        name: 'immutable_published',
         displayName: 'Immutable Published',
         type: 'effect',
         status: 'published',
@@ -585,12 +617,13 @@ describe('Contract Lifecycle - Integration Tests', () => {
 
       mockDb.where.mockResolvedValue([publishedContract]);
 
+      // Published contracts cannot be edited — returns 409
       const updateResponse = await request(app)
         .put('/api/intelligence/contracts/contract-8')
         .send({ description: 'Attempted update' })
-        .expect(400);
+        .expect(409);
 
-      expect(updateResponse.body.error).toContain('Only drafts can be updated');
+      expect(updateResponse.body.error).toContain("Cannot update contract with status");
     });
   });
 
