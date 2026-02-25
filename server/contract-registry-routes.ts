@@ -2212,4 +2212,86 @@ To verify the contract integrity, recompute the hash using:
   }
 });
 
+// ============================================================================
+// Phase 3: Base profile + overlay resolve proxy endpoints
+// ============================================================================
+
+/**
+ * GET /profiles - List available base profiles per node type.
+ *
+ * Proxies to the contract resolver bridge service at http://omninode-contract-resolver:8091
+ * Falls back to a static profile list when the bridge is unreachable.
+ */
+router.get('/profiles', async (req, res) => {
+  const BRIDGE_URL =
+    process.env.CONTRACT_RESOLVER_URL ?? 'http://omninode-contract-resolver:8091';
+  try {
+    const upstream = await fetch(`${BRIDGE_URL}/api/nodes/profiles`, {
+      signal: AbortSignal.timeout(5000),
+    });
+    if (!upstream.ok) {
+      throw new Error(`Bridge returned ${upstream.status}`);
+    }
+    const data = await upstream.json();
+    return res.json(data);
+  } catch {
+    // Bridge unavailable — return static profile catalogue so the UI stays functional.
+    const staticProfiles = {
+      orchestrator: [
+        { id: 'orchestrator_safe', label: 'orchestrator_safe', version: '1.0.0' },
+      ],
+      effect: [
+        { id: 'effect_idempotent', label: 'effect_idempotent', version: '1.0.0' },
+        { id: 'effect_streaming', label: 'effect_streaming', version: '1.0.0' },
+      ],
+      reducer: [
+        { id: 'reducer_aggregate', label: 'reducer_aggregate', version: '1.0.0' },
+      ],
+      compute: [
+        { id: 'compute_pure', label: 'compute_pure', version: '1.0.0' },
+      ],
+    };
+    return res.json(staticProfiles);
+  }
+});
+
+/**
+ * POST /resolve - Resolve a base profile + overlay patch into a full contract.
+ *
+ * Body: { base_profile: string, base_version: string, overlay: Record<string, unknown> }
+ * Proxies to http://omninode-contract-resolver:8091/api/nodes/contract.resolve
+ *
+ * Falls back to a simple client-side merge when the bridge is unreachable.
+ */
+router.post('/resolve', async (req, res) => {
+  const BRIDGE_URL =
+    process.env.CONTRACT_RESOLVER_URL ?? 'http://omninode-contract-resolver:8091';
+  try {
+    const upstream = await fetch(`${BRIDGE_URL}/api/nodes/contract.resolve`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(req.body),
+      signal: AbortSignal.timeout(10000),
+    });
+    if (!upstream.ok) {
+      const text = await upstream.text().catch(() => 'Unknown error');
+      return res.status(upstream.status).json({ error: text });
+    }
+    const data = await upstream.json();
+    return res.json(data);
+  } catch {
+    // Bridge unreachable: perform a simple shallow merge so the Preview remains useful.
+    try {
+      const { overlay = {} } = req.body as { overlay?: Record<string, unknown> };
+      const resolved = {
+        _note: 'Bridge unavailable — shallow merge only',
+        ...overlay,
+      };
+      return res.json({ resolved });
+    } catch {
+      return res.status(503).json({ error: 'Contract resolver bridge is unavailable' });
+    }
+  }
+});
+
 export default router;
