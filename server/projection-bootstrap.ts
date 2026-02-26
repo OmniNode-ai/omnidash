@@ -489,11 +489,17 @@ function mapSeverity(data: Record<string, unknown>): 'info' | 'warning' | 'error
 }
 
 function extractTimestamp(data: Record<string, unknown>): number | undefined {
-  const ts = data.timestamp || data.createdAt || data.created_at || data.emitted_at;
+  // Check envelope_timestamp (ModelEventEnvelope producer) alongside legacy names
+  const ts = data.timestamp || data.createdAt || data.created_at || data.emitted_at || data.envelope_timestamp;
   if (typeof ts === 'number' && ts > 0) return ts;
   if (typeof ts === 'string' && ts.length > 0) {
     const parsed = new Date(ts).getTime();
     return isNaN(parsed) ? undefined : parsed;
+  }
+  // Handle Date objects (e.g., from pre-parsed envelope timestamps)
+  if (ts instanceof Date) {
+    const ms = ts.getTime();
+    return isNaN(ms) ? undefined : ms;
   }
   return undefined;
 }

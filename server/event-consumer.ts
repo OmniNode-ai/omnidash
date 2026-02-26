@@ -1342,12 +1342,14 @@ export class EventConsumer extends EventEmitter {
                     // Detect envelope format to route to exactly ONE handler path.
                     // Canonical envelopes carry entity_id + emitted_at + payload (per
                     // EventEnvelopeSchema); legacy events have flat fields like node_id
-                    // at the top level. We check entity_id (required UUID in the
-                    // envelope schema and absent from legacy events) instead of
-                    // event_type which is NOT part of EventEnvelopeSchema and may be
-                    // omitted by some producers.
+                    // at the top level. We check for the envelope identifier (either
+                    // entity_id or envelope_id from ModelEventEnvelope) and timestamp
+                    // (either emitted_at or envelope_timestamp) instead of event_type
+                    // which is NOT part of EventEnvelopeSchema and may be omitted.
                     const isIntrospectionEnvelope = Boolean(
-                      event.entity_id && event.emitted_at && event.payload
+                      (event.entity_id || event.envelope_id) &&
+                      (event.emitted_at || event.envelope_timestamp) &&
+                      event.payload
                     );
                     if (!isIntrospectionEnvelope) {
                       if (isDebug) {
@@ -1366,10 +1368,12 @@ export class EventConsumer extends EventEmitter {
                   }
                   case TOPIC.NODE_HEARTBEAT: {
                     // Detect envelope format to route to exactly ONE handler path.
-                    // Uses entity_id + emitted_at (required by EventEnvelopeSchema)
-                    // instead of event_type which is not part of the envelope schema.
+                    // Accept both entity_id/emitted_at (legacy consumer naming) and
+                    // envelope_id/envelope_timestamp (ModelEventEnvelope producer naming).
                     const isHeartbeatEnvelope = Boolean(
-                      event.entity_id && event.emitted_at && event.payload
+                      (event.entity_id || event.envelope_id) &&
+                      (event.emitted_at || event.envelope_timestamp) &&
+                      event.payload
                     );
                     if (!isHeartbeatEnvelope) {
                       if (isDebug) {
@@ -1387,11 +1391,13 @@ export class EventConsumer extends EventEmitter {
                     break;
                   }
                   case TOPIC.NODE_REGISTRATION: {
-                    // Detect envelope format: canonical envelopes have entity_id +
-                    // emitted_at + payload; legacy events have flat fields like node_id
-                    // at the top level.
+                    // Detect envelope format: canonical envelopes have entity_id (or
+                    // envelope_id) + emitted_at (or envelope_timestamp) + payload;
+                    // legacy events have flat fields like node_id at the top level.
                     const isRegistrationEnvelope = Boolean(
-                      event.entity_id && event.emitted_at && event.payload
+                      (event.entity_id || event.envelope_id) &&
+                      (event.emitted_at || event.envelope_timestamp) &&
+                      event.payload
                     );
                     if (!isRegistrationEnvelope) {
                       if (isDebug) {
