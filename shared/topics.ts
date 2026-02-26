@@ -204,10 +204,6 @@ export const SUFFIX_FSM_STATE_TRANSITIONS = 'onex.evt.platform.fsm-state-transit
 export const SUFFIX_RUNTIME_TICK = 'onex.intent.platform.runtime-tick.v1';
 export const SUFFIX_REGISTRATION_SNAPSHOTS = 'onex.snapshot.platform.registration-snapshots.v1';
 
-/** Platform node lifecycle events consumed by the dashboard */
-export const SUFFIX_NODE_BECAME_ACTIVE = 'onex.evt.platform.node-became-active.v1';
-export const SUFFIX_NODE_LIVENESS_EXPIRED = 'onex.evt.platform.node-liveness-expired.v1';
-
 /** Contract lifecycle events */
 export const SUFFIX_CONTRACT_REGISTERED = 'onex.evt.platform.contract-registered.v1';
 export const SUFFIX_CONTRACT_DEREGISTERED = 'onex.evt.platform.contract-deregistered.v1';
@@ -257,18 +253,6 @@ export const SUFFIX_OMNICLAUDE_NOTIFICATION_COMPLETED =
   'onex.evt.omniclaude.notification-completed.v1';
 export const SUFFIX_OMNICLAUDE_TRANSFORMATION_COMPLETED =
   'onex.evt.omniclaude.transformation.completed.v1';
-
-/**
- * LLM cost reported — DEPRECATED (OMN-2371).
- *
- * This topic had zero producers and is no longer consumed by the read-model-consumer.
- * The canonical producer is NodeLlmInferenceEffect which emits per-call metrics to
- * TOPIC_OMNIINTELLIGENCE_LLM_CALL_COMPLETED (onex.evt.omniintelligence.llm-call-completed.v1).
- * Kept as a constant so any remaining references compile; remove after full cleanup.
- *
- * @deprecated Use TOPIC_OMNIINTELLIGENCE_LLM_CALL_COMPLETED instead (OMN-2371).
- */
-export const SUFFIX_OMNICLAUDE_LLM_COST_REPORTED = 'onex.evt.omniclaude.llm-cost-reported.v1';
 
 /**
  * Canonical LLM call completed topic emitted by NodeLlmInferenceEffect (omnibase_infra).
@@ -515,8 +499,6 @@ export const PLATFORM_NODE_SUFFIXES = [
   SUFFIX_NODE_REGISTRATION,
   SUFFIX_REQUEST_INTROSPECTION,
   SUFFIX_REGISTRY_REQUEST_INTROSPECTION,
-  SUFFIX_NODE_BECAME_ACTIVE,
-  SUFFIX_NODE_LIVENESS_EXPIRED,
   SUFFIX_NODE_HEARTBEAT,
   SUFFIX_CONTRACT_REGISTERED,
   SUFFIX_CONTRACT_DEREGISTERED,
@@ -572,8 +554,7 @@ export const INTELLIGENCE_PIPELINE_SUFFIXES = [
   // OMN-2371 (GAP-5): canonical LLM call topic emitted by NodeLlmInferenceEffect in omnibase_infra.
   // Dual-consumed: included here so buildSubscriptionTopics() forwards events to WebSocket clients
   // (real-time cost-trend feed), and also in READ_MODEL_TOPICS for durable projection via
-  // projectLlmCostEvent(). Both consumers are intentional — same pattern used by the old
-  // SUFFIX_OMNICLAUDE_LLM_COST_REPORTED (which was in OMNICLAUDE_EXTENDED_SUFFIXES + READ_MODEL_TOPICS).
+  // projectLlmCostEvent(). Both consumers are intentional.
   // Placed in INTELLIGENCE_PIPELINE_SUFFIXES because the topic prefix is 'onex.evt.omniintelligence.*';
   // the producing service (NodeLlmInferenceEffect) lives in omnibase_infra.
   TOPIC_OMNIINTELLIGENCE_LLM_CALL_COMPLETED,
