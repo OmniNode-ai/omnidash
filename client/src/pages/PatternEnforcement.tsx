@@ -14,6 +14,7 @@ import { useQuery } from '@tanstack/react-query';
 import { useDemoMode } from '@/contexts/DemoModeContext';
 import { enforcementSource } from '@/lib/data-sources/enforcement-source';
 import { DemoBanner } from '@/components/DemoBanner';
+import { FeatureNotEnabledBanner } from '@/components/FeatureNotEnabledBanner';
 import { queryKeys } from '@/lib/query-keys';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -491,6 +492,15 @@ export default function PatternEnforcement() {
             received.
           </AlertDescription>
         </Alert>
+      )}
+
+      {/* Feature not enabled banner — shown when API returns zero data (not mock, not demo) */}
+      {allSettled && !isDemoMode && !isUsingMockData && !summaryError && (summary?.total_evaluations ?? 0) === 0 && (
+        <FeatureNotEnabledBanner
+          featureName="Pattern Enforcement"
+          eventTopic="onex.evt.omniclaude.pattern-enforcement.v1"
+          flagHint="ENABLE_PATTERN_ENFORCEMENT"
+        />
       )}
 
       {/* Error Banner */}
