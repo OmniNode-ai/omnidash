@@ -70,6 +70,7 @@ import {
   TOPIC_OMNICLAUDE_AGENT_TRANSFORMATION,
   TOPIC_OMNICLAUDE_PERFORMANCE_METRICS,
   OMNICLAUDE_AGENT_TOPICS,
+  SUFFIX_MEMORY_INTENT_STORED,
 } from '@shared/topics';
 import type { LlmRoutingDecisionEvent } from '@shared/llm-routing-types';
 import type { TaskDelegatedEvent, DelegationShadowComparisonEvent } from '@shared/delegation-types';
@@ -222,6 +223,8 @@ export const READ_MODEL_TOPICS = [
   SUFFIX_OMNICLAUDE_PR_WATCH_UPDATED,
   SUFFIX_OMNICLAUDE_BUDGET_CAP_HIT,
   SUFFIX_OMNICLAUDE_CIRCUIT_BREAKER_TRIPPED,
+  // OMN-2889: OmniMemory intent signals — durable projection into intent_signals table.
+  SUFFIX_MEMORY_INTENT_STORED,
 ] as const;
 
 type ReadModelTopic = (typeof READ_MODEL_TOPICS)[number];
@@ -584,6 +587,9 @@ export class ReadModelConsumer {
           break;
         case SUFFIX_OMNICLAUDE_CIRCUIT_BREAKER_TRIPPED:
           projected = await this.projectCircuitBreakerTrippedEvent(parsed, fallbackId);
+          break;
+        case SUFFIX_MEMORY_INTENT_STORED:
+          projected = await this.projectIntentStoredEvent(parsed, fallbackId);
           break;
         default:
           console.warn(
@@ -2280,6 +2286,62 @@ export class ReadModelConsumer {
     }
 
     emitCircuitBreakerInvalidate(correlationId);
+    return true;
+  }
+
+  /**
+   * Project an intent-stored event into the `intent_signals` table (OMN-2889).
+   *
+   * Emitted by the omnimemory service when a new intent is durably stored in the
+   * memory pipeline. Each event is a row; deduplication uses (correlation_id).
+   *
+   * Returns true when written, false when the DB is unavailable.
+   */
+  private async projectIntentStoredEvent(
+    data: Record<string, unknown>,
+    fallbackId: string
+  ): Promise<boolean> {
+    const db = tryGetIntelligenceDb();
+    if (!db) return false;
+
+    const correlationId =
+      (data.correlation_id as string) || (data.correlationId as string) || fallbackId;
+
+    try {
+      await db.execute(sql`
+        INSERT INTO intent_signals (
+          correlation_id,
+          event_id,
+          intent_type,
+          topic,
+          raw_payload,
+          created_at
+        ) VALUES (
+          ${correlationId},
+          ${(data.event_id as string) ?? (data.eventId as string) ?? correlationId},
+          ${(data.intent_type as string) ?? (data.intentType as string) ?? 'unknown'},
+          ${'onex.evt.omnimemory.intent-stored.v1'},
+          ${JSON.stringify(data)},
+          ${safeParseDate(data.timestamp ?? data.created_at)}
+        )
+        ON CONFLICT (correlation_id) DO NOTHING
+      `);
+    } catch (err) {
+      const pgCode = (err as { code?: string }).code;
+      const msg = err instanceof Error ? err.message : String(err);
+      if (
+        pgCode === '42P01' ||
+        (msg.includes('intent_signals') && msg.includes('does not exist'))
+      ) {
+        console.warn(
+          '[ReadModelConsumer] intent_signals table not yet created -- ' +
+            'run migrations to enable intent signal projection'
+        );
+        return true;
+      }
+      throw err;
+    }
+
     return true;
   }
 
