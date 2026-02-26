@@ -195,7 +195,8 @@ export class MonotonicMergeTracker {
 export function extractEventTimeMs(event: Record<string, unknown>): number {
   // Try common timestamp fields in priority order
   const candidates = [
-    event.emitted_at, // ONEX canonical envelope
+    event.emitted_at, // ONEX canonical envelope (consumer naming)
+    event.envelope_timestamp, // ONEX canonical envelope (ModelEventEnvelope producer naming)
     event.timestamp, // Most common field name
     event.created_at, // DB row convention
     event.createdAt, // camelCase variant
@@ -218,7 +219,7 @@ export function extractEventTimeMs(event: Record<string, unknown>): number {
   // Debug-level log: missing timestamps are common during tests and playback.
   console.debug(
     '[monotonic] Event has no valid timestamp field; assigning sentinel epoch 0 (oldest). ' +
-      'Fields checked: emitted_at, timestamp, created_at, createdAt'
+      'Fields checked: emitted_at, envelope_timestamp, timestamp, created_at, createdAt'
   );
   return MISSING_TIMESTAMP_SENTINEL_MS;
 }
