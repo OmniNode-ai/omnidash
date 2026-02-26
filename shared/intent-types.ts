@@ -17,7 +17,6 @@
 import { z } from 'zod';
 import { generateUUID } from './uuid';
 import {
-  resolveTopicName,
   SUFFIX_MEMORY_INTENT_QUERY_REQUESTED,
   SUFFIX_MEMORY_INTENT_QUERY_RESPONSE,
   SUFFIX_MEMORY_INTENT_STORED,
@@ -25,20 +24,22 @@ import {
 } from '@shared/topics';
 
 // ============================================================================
-// Topic Constants (resolved at runtime from canonical ONEX suffixes)
+// Topic Constants (canonical ONEX format — no env prefix)
 //
 // Format: onex.<kind>.<producer>.<event-name>.v<version>
-// Full:   {env}.{suffix} — env comes from TOPIC_ENV_PREFIX or ONEX_ENV
+// These are the canonical wire names per ONEX convention (OMN-2876).
+// No environment prefix is applied — env isolation is done via consumer
+// groups and ACLs, not topic name prefixes.
 // ============================================================================
 
 /** Kafka topic for intent query requests (command) */
-export const INTENT_QUERY_REQUESTED_TOPIC = resolveTopicName(SUFFIX_MEMORY_INTENT_QUERY_REQUESTED);
+export const INTENT_QUERY_REQUESTED_TOPIC = SUFFIX_MEMORY_INTENT_QUERY_REQUESTED;
 
 /** Kafka topic for intent query responses (event) */
-export const INTENT_QUERY_RESPONSE_TOPIC = resolveTopicName(SUFFIX_MEMORY_INTENT_QUERY_RESPONSE);
+export const INTENT_QUERY_RESPONSE_TOPIC = SUFFIX_MEMORY_INTENT_QUERY_RESPONSE;
 
 /** Kafka topic for intent stored events (event) */
-export const INTENT_STORED_TOPIC = resolveTopicName(SUFFIX_MEMORY_INTENT_STORED);
+export const INTENT_STORED_TOPIC = SUFFIX_MEMORY_INTENT_STORED;
 
 /**
  * Kafka topic for intent classified events (event)
@@ -47,7 +48,7 @@ export const INTENT_STORED_TOPIC = resolveTopicName(SUFFIX_MEMORY_INTENT_STORED)
  * - Topic name (this constant): Used for Kafka routing
  * - event_type field: Short identifier within the event payload (e.g., "IntentClassified")
  */
-export const INTENT_CLASSIFIED_TOPIC = resolveTopicName(SUFFIX_INTELLIGENCE_INTENT_CLASSIFIED);
+export const INTENT_CLASSIFIED_TOPIC = SUFFIX_INTELLIGENCE_INTENT_CLASSIFIED;
 
 // ============================================================================
 // WebSocket Channel Constants
