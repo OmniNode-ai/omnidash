@@ -255,7 +255,7 @@ describe('EventConsumer Intent Forwarding', () => {
     it('should forward intent stored events to IntentEventEmitter', async () => {
       // Create a properly formatted IntentStoredEvent (matching shared interface)
       const event = {
-        event_type: INTENT_STORED_TOPIC, // 'dev.onex.evt.omnimemory.intent-stored.v1'
+        event_type: INTENT_STORED_TOPIC, // 'onex.evt.omnimemory.intent-stored.v1'
         correlation_id: '550e8400-e29b-41d4-a716-446655440003',
         intent_id: 'stored-intent-uuid-123',
         session_ref: 'session-xyz-789',
@@ -486,7 +486,7 @@ describe('EventConsumer Intent Forwarding', () => {
       expect(intentEventSpy).toHaveBeenCalledTimes(1);
       expect(intentEventSpy).toHaveBeenCalledWith(
         expect.objectContaining({
-          topic: 'dev.onex.evt.omniintelligence.intent-classified.v1',
+          topic: 'onex.evt.omniintelligence.intent-classified.v1',
           payload: expect.objectContaining({
             intentType: 'debugging',
             confidence: 0.88,
@@ -517,7 +517,7 @@ describe('EventConsumer Intent Forwarding', () => {
       expect(intentEventSpy).toHaveBeenCalledTimes(1);
       expect(intentEventSpy).toHaveBeenCalledWith(
         expect.objectContaining({
-          topic: 'dev.onex.evt.omnimemory.intent-stored.v1',
+          topic: 'onex.evt.omnimemory.intent-stored.v1',
           payload: expect.objectContaining({
             intentId: 'stored-intent-id',
             intentType: 'analysis',
