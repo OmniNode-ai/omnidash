@@ -384,7 +384,7 @@ export const SUFFIX_INTELLIGENCE_PATTERN_STORED = 'onex.evt.omniintelligence.pat
 // ============================================================================
 
 export const SUFFIX_PATTERN_DISCOVERED = 'onex.evt.pattern.discovered.v1';
-export const SUFFIX_AGENT_STATUS = 'onex.evt.agent.status.v1';
+export const SUFFIX_AGENT_STATUS = 'onex.evt.omniclaude.agent-status.v1';
 
 // ============================================================================
 // OmniMemory Topics
