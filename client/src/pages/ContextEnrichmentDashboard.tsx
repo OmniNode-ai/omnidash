@@ -14,6 +14,7 @@ import { useQuery } from '@tanstack/react-query';
 import { useDemoMode } from '@/contexts/DemoModeContext';
 import { enrichmentSource } from '@/lib/data-sources/enrichment-source';
 import { DemoBanner } from '@/components/DemoBanner';
+import { FeatureNotEnabledBanner } from '@/components/FeatureNotEnabledBanner';
 import { queryKeys } from '@/lib/query-keys';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -568,6 +569,15 @@ export default function ContextEnrichmentDashboard() {
             received.
           </AlertDescription>
         </Alert>
+      )}
+
+      {/* Feature not enabled banner — shown when API returns zero data (not mock, not demo) */}
+      {allSettled && !isDemoMode && !isUsingMockData && !summaryError && (summary?.total_enrichments ?? 0) === 0 && (
+        <FeatureNotEnabledBanner
+          featureName="Context Enrichment"
+          eventTopic="onex.evt.omniclaude.context-enrichment.v1"
+          flagHint="ENABLE_CONTEXT_ENRICHMENT"
+        />
       )}
 
       {/* Context Inflation Alert Banner */}
