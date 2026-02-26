@@ -1,15 +1,42 @@
 import { z } from 'zod';
 
 // ONEX Event Envelope (wraps all Kafka events)
-export const EventEnvelopeSchema = z.object({
-  entity_id: z.string().uuid(),
+//
+// The producer (ModelEventEnvelope in omnibase_core) serializes envelopes with
+// `envelope_id` + `envelope_timestamp`, while omnidash historically expected
+// `entity_id` + `emitted_at`. We accept BOTH field names and normalize to the
+// canonical consumer-side names (entity_id, emitted_at) via .transform().
+const RawEventEnvelopeSchema = z.object({
+  // Accept either field name for the envelope identifier
+  entity_id: z.string().uuid().optional(),
+  envelope_id: z.string().uuid().optional(),
   correlation_id: z.string().uuid(),
   causation_id: z.string().uuid().optional(),
-  emitted_at: z.string().datetime(),
+  // Accept either field name for the timestamp
+  emitted_at: z.string().datetime().optional(),
+  envelope_timestamp: z.string().datetime().optional(),
   payload: z.unknown(),
-});
+}).refine(
+  (data) => Boolean(data.entity_id || data.envelope_id),
+  { message: 'Either entity_id or envelope_id is required' }
+).refine(
+  (data) => Boolean(data.emitted_at || data.envelope_timestamp),
+  { message: 'Either emitted_at or envelope_timestamp is required' }
+);
 
-export type EventEnvelope<T> = Omit<z.infer<typeof EventEnvelopeSchema>, 'payload'> & {
+export const EventEnvelopeSchema = RawEventEnvelopeSchema.transform((data) => ({
+  entity_id: (data.entity_id || data.envelope_id)!,
+  correlation_id: data.correlation_id,
+  causation_id: data.causation_id,
+  emitted_at: (data.emitted_at || data.envelope_timestamp)!,
+  payload: data.payload,
+}));
+
+export type EventEnvelope<T> = {
+  entity_id: string;
+  correlation_id: string;
+  causation_id?: string;
+  emitted_at: string;
   payload: T;
 };
 
