@@ -117,11 +117,11 @@ function Router() {
       {/* Learned Insights dashboard (OMN-1407) */}
       <Route path="/insights" component={LearnedInsights} />
 
-      {/* Effectiveness dashboard routes (OMN-1891) */}
-      <Route path="/effectiveness" component={EffectivenessSummary} />
+      {/* Effectiveness dashboard routes (OMN-1891) — sub-routes before parent [OMN-2848] */}
       <Route path="/effectiveness/latency" component={EffectivenessLatency} />
       <Route path="/effectiveness/utilization" component={EffectivenessUtilization} />
       <Route path="/effectiveness/ab" component={EffectivenessAB} />
+      <Route path="/effectiveness" component={EffectivenessSummary} />
 
       {/* Baselines & ROI dashboard (OMN-2156) */}
       <Route path="/baselines" component={BaselinesROI} />
