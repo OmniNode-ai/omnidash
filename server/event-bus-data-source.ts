@@ -110,6 +110,8 @@ export class EventBusDataSource extends EventEmitter {
   private isConnected = false;
   private stopped = false;
   private loopActive = false;
+  private consumerCrashed = false;
+  private crashError: unknown = null;
   private reconnectAttempts = 0;
   private readonly MAX_RECONNECT_DELAY_MS = 30_000;
   private readonly BASE_RECONNECT_DELAY_MS = 2_000;
@@ -259,9 +261,18 @@ export class EventBusDataSource extends EventEmitter {
   /**
    * Start consuming events from Kafka with automatic reconnect on failure.
    *
-   * Calls doStart() in a retry loop. If the broker is unreachable at startup,
-   * or if consumer.run() exits unexpectedly mid-run, the loop backs off and
-   * retries until stop() is called.
+   * Performs initial connection synchronously (so callers know whether the
+   * first connect succeeded), then hands off to a background reconnect loop.
+   *
+   * IMPORTANT: kafkajs 2.2.4 + Redpanda compatibility (OMN-2789)
+   * consumer.run() resolves its promise almost immediately (~100ms) after the
+   * consumer joins the group -- it does NOT block until the consumer stops.
+   * The previous implementation awaited startWithReconnect() which ran a
+   * while-loop that awaited doStart(), causing either:
+   *   (a) start() to never return (blocking server startup), or
+   *   (b) a tight reconnect loop when consumer.run() resolved immediately.
+   * The fix: fire-and-forget consumer.run(), use a background poll loop to
+   * detect real crashes, and return from start() promptly.
    */
   async start(): Promise<void> {
     if (this.isRunning || this.loopActive) {
@@ -271,29 +282,65 @@ export class EventBusDataSource extends EventEmitter {
     this.stopped = false;
 
     await this.initializeSchema();
-    await this.startWithReconnect();
+
+    // Attempt first connection synchronously so the caller knows if Kafka is reachable.
+    await this.doStart();
+
+    // Hand off to background reconnect loop -- do NOT await.
+    // The loop only activates if the consumer crashes after this point.
+    this.runBackgroundRecoveryLoop().catch((err) => {
+      console.error('[EventBusDataSource] Background recovery loop failed fatally:', err);
+    });
   }
 
   /**
-   * Reconnect loop: retries doStart() with exponential backoff until stopped.
+   * Background recovery loop: polls consumerCrashed flag and reconnects
+   * with exponential backoff when needed.
+   *
+   * Runs in the background (never awaited by start()) so it does not block
+   * server startup. Exits when stop() is called.
    */
-  private async startWithReconnect(): Promise<void> {
+  private async runBackgroundRecoveryLoop(): Promise<void> {
     this.loopActive = true;
     try {
+      // Poll until stopped. The inner poll waits for a crash signal.
       while (!this.stopped) {
+        // Wait for the consumer to crash (or for stop() to be called).
+        while (!this.stopped && !this.consumerCrashed) {
+          await new Promise((resolve) => setTimeout(resolve, 1_000));
+        }
+
+        if (this.stopped) break;
+
+        // Consumer crashed -- attempt reconnect.
+        console.warn(
+          '[EventBusDataSource] Consumer crashed, reconnecting...',
+          this.crashError
+        );
+        this.consumerCrashed = false;
+        this.crashError = null;
+
+        // Disconnect stale consumer before reconnecting.
+        if (this.isConnected) {
+          await this.consumer?.disconnect().catch(() => {});
+        }
+        this.isRunning = false;
+        this.isConnected = false;
+
+        await this.sleepBeforeRetry();
+
+        if (this.stopped) break;
+
         try {
           await this.doStart();
-          // doStart() returns only when consumer.run() exits cleanly.
-          // Unless we were intentionally stopped, treat this as a reason to reconnect.
-          if (!this.stopped) {
-            console.warn('[EventBusDataSource] consumer.run() exited, reconnecting...');
-            await this.sleepBeforeRetry();
-          }
         } catch (err) {
           if (this.stopped) break;
-          console.error('[EventBusDataSource] Kafka connection failed, will retry:', err);
+          console.error('[EventBusDataSource] Reconnect failed, will retry:', err);
           this.emit('error', err);
-          await this.sleepBeforeRetry();
+          // Loop around -- sleepBeforeRetry will be called again at the top
+          // after the inner poll detects consumerCrashed (set immediately below).
+          this.consumerCrashed = true;
+          this.crashError = err;
         }
       }
     } finally {
@@ -303,6 +350,16 @@ export class EventBusDataSource extends EventEmitter {
 
   /**
    * Core connect/subscribe/run sequence (single attempt, no retry).
+   *
+   * IMPORTANT: kafkajs 2.2.4 + Redpanda compatibility (OMN-2789)
+   * consumer.run() resolves its promise almost immediately (~100ms) after the
+   * consumer joins the group -- it does NOT block until the consumer stops.
+   * The internal fetch loop continues in the background.
+   *
+   * We fire-and-forget consumer.run() and rely on the background recovery
+   * loop (runBackgroundRecoveryLoop) to detect crashes via the
+   * consumerCrashed flag. This method returns promptly after the consumer
+   * starts its internal fetch loop.
    */
   private async doStart(): Promise<void> {
     if (!this.consumer) {
@@ -311,10 +368,12 @@ export class EventBusDataSource extends EventEmitter {
 
     try {
       await this.consumer.connect();
-      // Successful connection — reset backoff counter
+      // Successful connection -- reset backoff counter
       this.reconnectAttempts = 0;
       this.isConnected = true;
       this.isRunning = true;
+      this.consumerCrashed = false;
+      this.crashError = null;
       this.emit('connected');
 
       // Get all topics and filter by event patterns
@@ -357,12 +416,21 @@ export class EventBusDataSource extends EventEmitter {
         await this.consumer.subscribe({ topics: eventTopics, fromBeginning: false });
       }
 
-      // Start consuming messages — awaits until the consumer is stopped or crashes
+      // Fire-and-forget: consumer.run() resolves immediately with kafkajs 2.2.4 +
+      // Redpanda (OMN-2789). The .catch() handler signals the background recovery
+      // loop via consumerCrashed flag so it can reconnect on real failures.
       console.log('[EventBusDataSource] Started consuming events');
-      await this.consumer.run({
+      this.consumer.run({
         eachMessage: async (payload: EachMessagePayload) => {
           await this.handleMessage(payload);
         },
+      }).catch((runErr: unknown) => {
+        if (this.isRunning) {
+          console.error('[EventBusDataSource] consumer.run() threw:', runErr);
+          this.emit('error', runErr);
+          this.consumerCrashed = true;
+          this.crashError = runErr;
+        }
       });
     } catch (err) {
       // Only disconnect if a successful connect() was previously recorded;
@@ -711,9 +779,9 @@ export class EventBusDataSource extends EventEmitter {
   /**
    * Stop consuming events.
    *
-   * Sets stopped = true BEFORE disconnecting so the reconnect loop in
-   * startWithReconnect() exits cleanly on the next iteration rather than
-   * treating the disconnect as a failure requiring retry.
+   * Sets stopped = true BEFORE disconnecting so the background recovery
+   * loop in runBackgroundRecoveryLoop() exits cleanly on the next poll
+   * iteration rather than treating the disconnect as a crash requiring retry.
    */
   async stop(): Promise<void> {
     // Always signal stop first, even if currently sleeping between retries.
