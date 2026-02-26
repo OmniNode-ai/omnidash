@@ -331,9 +331,21 @@ interface ClientData {
 export function setupWebSocket(httpServer: HTTPServer) {
   console.log('Initializing WebSocket server...');
 
-  const wss = new WebSocketServer({
-    server: httpServer,
-    path: '/ws',
+  // Use noServer mode to avoid intercepting non-/ws upgrade requests (e.g.,
+  // Vite HMR in dev mode). When { server, path } is used, the ws library
+  // registers an 'upgrade' listener that calls abortHandshake(socket, 400)
+  // for paths that don't match — this destroys the socket before Vite's HMR
+  // handler can process it, causing 400 errors in development.
+  const wss = new WebSocketServer({ noServer: true });
+
+  httpServer.on('upgrade', (request, socket, head) => {
+    const { pathname } = new URL(request.url || '/', `http://${request.headers.host}`);
+    if (pathname === '/ws') {
+      wss.handleUpgrade(request, socket, head, (ws) => {
+        wss.emit('connection', ws, request);
+      });
+    }
+    // Non-/ws paths (e.g., Vite HMR): do nothing — let other listeners handle them
   });
 
   // Track connected clients with their preferences
