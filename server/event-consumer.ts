@@ -31,8 +31,6 @@ import {
   SUFFIX_NODE_INTROSPECTION,
   SUFFIX_NODE_REGISTRATION,
   SUFFIX_REQUEST_INTROSPECTION,
-  SUFFIX_NODE_BECAME_ACTIVE,
-  SUFFIX_NODE_LIVENESS_EXPIRED,
   SUFFIX_NODE_HEARTBEAT,
   SUFFIX_CONTRACT_REGISTERED,
   SUFFIX_CONTRACT_DEREGISTERED,
@@ -92,9 +90,7 @@ import {
 } from '@shared/topics';
 import {
   EventEnvelopeSchema,
-  NodeBecameActivePayloadSchema,
   NodeHeartbeatPayloadSchema,
-  NodeLivenessExpiredPayloadSchema,
   NodeIntrospectionPayloadSchema,
   OFFLINE_NODE_TTL_MS,
   CLEANUP_INTERVAL_MS,
@@ -195,8 +191,6 @@ const TOPIC = {
   NODE_INTROSPECTION: SUFFIX_NODE_INTROSPECTION,
   NODE_REGISTRATION: SUFFIX_NODE_REGISTRATION,
   REQUEST_INTROSPECTION: SUFFIX_REQUEST_INTROSPECTION,
-  NODE_BECAME_ACTIVE: SUFFIX_NODE_BECAME_ACTIVE,
-  NODE_LIVENESS_EXPIRED: SUFFIX_NODE_LIVENESS_EXPIRED,
   NODE_HEARTBEAT: SUFFIX_NODE_HEARTBEAT,
   CONTRACT_REGISTERED: SUFFIX_CONTRACT_REGISTERED,
   CONTRACT_DEREGISTERED: SUFFIX_CONTRACT_DEREGISTERED,
@@ -1247,602 +1241,592 @@ export class EventConsumer extends EventEmitter {
       // start() returns promptly and server.listen() is not blocked.
       // stop() sets this.isRunning=false to break the loop.
       (async () => {
-      while (this.isRunning) {
-        try {
-          let consumerCrashed = false;
-          let crashError: unknown = null;
-          this.consumer!.run({
-            eachMessage: async ({ topic: rawTopic, partition, message }) => {
-              try {
-                // Parse JSON with dedicated guard so malformed messages are
-                // logged and skipped instead of crashing the consumer.
-                // Follows the same defensive pattern used by parseEnvelope()
-                // and read-model-consumer.ts's parseMessage().
-
-                let event: any;
+        while (this.isRunning) {
+          try {
+            let consumerCrashed = false;
+            let crashError: unknown = null;
+            this.consumer!.run({
+              eachMessage: async ({ topic: rawTopic, partition, message }) => {
                 try {
-                  event = JSON.parse(message.value?.toString() || '{}');
-                } catch (parseError) {
-                  console.warn('[EventConsumer] Skipping malformed JSON message:', {
-                    topic: rawTopic,
-                    partition,
-                    offset: message.offset,
-                    error: parseError instanceof Error ? parseError.message : String(parseError),
-                    valuePreview: message.value?.toString().slice(0, 50),
-                  });
-                  return; // skip bad message, do not re-throw
-                }
+                  // Parse JSON with dedicated guard so malformed messages are
+                  // logged and skipped instead of crashing the consumer.
+                  // Follows the same defensive pattern used by parseEnvelope()
+                  // and read-model-consumer.ts's parseMessage().
 
-                // Strip legacy env prefix (e.g. "dev.onex.evt..." -> "onex.evt...")
-                // so topics match canonical names used by the switch cases below.
-                // Legacy flat topics like "agent-actions" have no dot-prefix and pass through.
-                const topic = extractSuffix(rawTopic);
+                  let event: any;
+                  try {
+                    event = JSON.parse(message.value?.toString() || '{}');
+                  } catch (parseError) {
+                    console.warn('[EventConsumer] Skipping malformed JSON message:', {
+                      topic: rawTopic,
+                      partition,
+                      offset: message.offset,
+                      error: parseError instanceof Error ? parseError.message : String(parseError),
+                      valuePreview: message.value?.toString().slice(0, 50),
+                    });
+                    return; // skip bad message, do not re-throw
+                  }
 
-                // Capture Kafka events into the live event bus buffer so new
-                // WebSocket clients receive recent events in INITIAL_STATE, not just
-                // the stale DB snapshot from server startup.
-                // Heartbeats are excluded: they are high-frequency infra noise that
-                // would fill the 2000-event buffer and evict real events before the
-                // client display filter can hide them.
-                if (topic !== TOPIC.NODE_HEARTBEAT) {
-                  this.captureLiveEventBusEvent(event, rawTopic, partition, message);
-                }
+                  // Strip legacy env prefix (e.g. "dev.onex.evt..." -> "onex.evt...")
+                  // so topics match canonical names used by the switch cases below.
+                  // Legacy flat topics like "agent-actions" have no dot-prefix and pass through.
+                  const topic = extractSuffix(rawTopic);
 
-                // Monotonic merge gate: reject events whose timestamp is older than
-                // the last applied event for this topic. This prevents DB-preloaded
-                // or Kafka-replayed events from overwriting fresher dashboard state.
-                // Note: we still capture into the live buffer above (it has its own
-                // dedup/sort), but we skip handler processing for stale events.
-                const incomingEventTime = extractEventTimeMs(event);
-                // Use Kafka offset as primary seq; fall back to a monotonic arrival
-                // counter when offset is missing (tests, playback injection).
-                const kafkaOffset = parseOffsetAsSeq(message.offset);
-                // Use Kafka offset when a real offset string is present (including valid '0');
-                // fall back to arrival counter only when offset is missing (tests, playback).
-                const hasKafkaOffset = message.offset != null && message.offset !== '';
-                const incomingSeq = hasKafkaOffset ? kafkaOffset : ++this.arrivalSeq;
-                // Key includes partition because Kafka offsets are per-partition,
-                // not global. Without partition, two events from different partitions
-                // with the same timestamp and offset would incorrectly collide.
-                if (
-                  !this.monotonicMerge.checkAndUpdate(`${topic}:${partition}`, {
-                    eventTime: incomingEventTime,
-                    seq: incomingSeq,
-                  })
-                ) {
-                  return; // stale event — already logged at debug level by the tracker
-                }
+                  // Capture Kafka events into the live event bus buffer so new
+                  // WebSocket clients receive recent events in INITIAL_STATE, not just
+                  // the stale DB snapshot from server startup.
+                  // Heartbeats are excluded: they are high-frequency infra noise that
+                  // would fill the 2000-event buffer and evict real events before the
+                  // client display filter can hide them.
+                  if (topic !== TOPIC.NODE_HEARTBEAT) {
+                    this.captureLiveEventBusEvent(event, rawTopic, partition, message);
+                  }
 
-                // Gate verbose per-event debug logging behind log level check.
-                // This avoids template string evaluation overhead on every Kafka
-                // message when debug logging is disabled (the common production case).
-                const isDebug = currentLogLevel <= LOG_LEVELS.debug;
-                if (isDebug) {
-                  intentLogger.debug(`Received event from topic: ${topic}`);
-                }
+                  // Monotonic merge gate: reject events whose timestamp is older than
+                  // the last applied event for this topic. This prevents DB-preloaded
+                  // or Kafka-replayed events from overwriting fresher dashboard state.
+                  // Note: we still capture into the live buffer above (it has its own
+                  // dedup/sort), but we skip handler processing for stale events.
+                  const incomingEventTime = extractEventTimeMs(event);
+                  // Use Kafka offset as primary seq; fall back to a monotonic arrival
+                  // counter when offset is missing (tests, playback injection).
+                  const kafkaOffset = parseOffsetAsSeq(message.offset);
+                  // Use Kafka offset when a real offset string is present (including valid '0');
+                  // fall back to arrival counter only when offset is missing (tests, playback).
+                  const hasKafkaOffset = message.offset != null && message.offset !== '';
+                  const incomingSeq = hasKafkaOffset ? kafkaOffset : ++this.arrivalSeq;
+                  // Key includes partition because Kafka offsets are per-partition,
+                  // not global. Without partition, two events from different partitions
+                  // with the same timestamp and offset would incorrectly collide.
+                  if (
+                    !this.monotonicMerge.checkAndUpdate(`${topic}:${partition}`, {
+                      eventTime: incomingEventTime,
+                      seq: incomingSeq,
+                    })
+                  ) {
+                    return; // stale event — already logged at debug level by the tracker
+                  }
 
-                switch (topic) {
-                  // Legacy agent topics
-                  case LEGACY_AGENT_ROUTING_DECISIONS:
-                    if (isDebug) {
-                      intentLogger.debug(
-                        `Processing routing decision for agent: ${event.selected_agent || event.selectedAgent}`
-                      );
-                    }
-                    this.handleRoutingDecision(event);
-                    break;
-                  case LEGACY_AGENT_ACTIONS:
-                    if (isDebug) {
-                      intentLogger.debug(
-                        `Processing action: ${event.action_type || event.actionType} from ${event.agent_name || event.agentName}`
-                      );
-                    }
-                    this.handleAgentAction(event);
-                    break;
-                  case LEGACY_AGENT_TRANSFORMATION_EVENTS:
-                    if (isDebug) {
-                      intentLogger.debug(
-                        `Processing transformation: ${event.source_agent || event.sourceAgent} → ${event.target_agent || event.targetAgent}`
-                      );
-                    }
-                    this.handleTransformationEvent(event);
-                    break;
-                  case LEGACY_ROUTER_PERFORMANCE_METRICS:
-                    if (isDebug) {
-                      intentLogger.debug(
-                        `Processing performance metric: ${event.routing_duration_ms || event.routingDurationMs}ms`
-                      );
-                    }
-                    this.handlePerformanceMetric(event);
-                    break;
+                  // Gate verbose per-event debug logging behind log level check.
+                  // This avoids template string evaluation overhead on every Kafka
+                  // message when debug logging is disabled (the common production case).
+                  const isDebug = currentLogLevel <= LOG_LEVELS.debug;
+                  if (isDebug) {
+                    intentLogger.debug(`Received event from topic: ${topic}`);
+                  }
 
-                  // Platform node topics (canonical ONEX)
-                  case TOPIC.NODE_INTROSPECTION:
-                  case TOPIC.REQUEST_INTROSPECTION: {
-                    // Detect envelope format to route to exactly ONE handler path.
-                    // Canonical envelopes carry entity_id + emitted_at + payload (per
-                    // EventEnvelopeSchema); legacy events have flat fields like node_id
-                    // at the top level. We check for the envelope identifier (either
-                    // entity_id or envelope_id from ModelEventEnvelope) and timestamp
-                    // (either emitted_at or envelope_timestamp) instead of event_type
-                    // which is NOT part of EventEnvelopeSchema and may be omitted.
-                    const isIntrospectionEnvelope = Boolean(
-                      (event.entity_id || event.envelope_id) &&
-                      (event.emitted_at || event.envelope_timestamp) &&
-                      event.payload
-                    );
-                    if (!isIntrospectionEnvelope) {
+                  switch (topic) {
+                    // Legacy agent topics
+                    case LEGACY_AGENT_ROUTING_DECISIONS:
                       if (isDebug) {
                         intentLogger.debug(
-                          `Processing node introspection: ${event.node_id || event.nodeId} (${event.reason || 'unknown'})`
+                          `Processing routing decision for agent: ${event.selected_agent || event.selectedAgent}`
                         );
                       }
-                      this.handleNodeIntrospection(event);
-                    } else {
-                      if (DEBUG_CANONICAL_EVENTS) {
-                        intentLogger.debug('Processing canonical node-introspection event');
+                      this.handleRoutingDecision(event);
+                      break;
+                    case LEGACY_AGENT_ACTIONS:
+                      if (isDebug) {
+                        intentLogger.debug(
+                          `Processing action: ${event.action_type || event.actionType} from ${event.agent_name || event.agentName}`
+                        );
+                      }
+                      this.handleAgentAction(event);
+                      break;
+                    case LEGACY_AGENT_TRANSFORMATION_EVENTS:
+                      if (isDebug) {
+                        intentLogger.debug(
+                          `Processing transformation: ${event.source_agent || event.sourceAgent} → ${event.target_agent || event.targetAgent}`
+                        );
+                      }
+                      this.handleTransformationEvent(event);
+                      break;
+                    case LEGACY_ROUTER_PERFORMANCE_METRICS:
+                      if (isDebug) {
+                        intentLogger.debug(
+                          `Processing performance metric: ${event.routing_duration_ms || event.routingDurationMs}ms`
+                        );
+                      }
+                      this.handlePerformanceMetric(event);
+                      break;
+
+                    // Platform node topics (canonical ONEX)
+                    case TOPIC.NODE_INTROSPECTION:
+                    case TOPIC.REQUEST_INTROSPECTION: {
+                      // Detect envelope format to route to exactly ONE handler path.
+                      // Canonical envelopes carry entity_id + emitted_at + payload (per
+                      // EventEnvelopeSchema); legacy events have flat fields like node_id
+                      // at the top level. We check for the envelope identifier (either
+                      // entity_id or envelope_id from ModelEventEnvelope) and timestamp
+                      // (either emitted_at or envelope_timestamp) instead of event_type
+                      // which is NOT part of EventEnvelopeSchema and may be omitted.
+                      const isIntrospectionEnvelope = Boolean(
+                        (event.entity_id || event.envelope_id) &&
+                        (event.emitted_at || event.envelope_timestamp) &&
+                        event.payload
+                      );
+                      if (!isIntrospectionEnvelope) {
+                        if (isDebug) {
+                          intentLogger.debug(
+                            `Processing node introspection: ${event.node_id || event.nodeId} (${event.reason || 'unknown'})`
+                          );
+                        }
+                        this.handleNodeIntrospection(event);
+                      } else {
+                        if (DEBUG_CANONICAL_EVENTS) {
+                          intentLogger.debug('Processing canonical node-introspection event');
+                        }
+                        this.handleCanonicalNodeIntrospection(message);
+                      }
+                      break;
+                    }
+                    case TOPIC.NODE_HEARTBEAT: {
+                      // Detect envelope format to route to exactly ONE handler path.
+                      // Accept both entity_id/emitted_at (legacy consumer naming) and
+                      // envelope_id/envelope_timestamp (ModelEventEnvelope producer naming).
+                      const isHeartbeatEnvelope = Boolean(
+                        (event.entity_id || event.envelope_id) &&
+                        (event.emitted_at || event.envelope_timestamp) &&
+                        event.payload
+                      );
+                      if (!isHeartbeatEnvelope) {
+                        if (isDebug) {
+                          intentLogger.debug(
+                            `Processing node heartbeat: ${event.node_id || event.nodeId}`
+                          );
+                        }
+                        this.handleNodeHeartbeat(event);
+                      } else {
+                        if (DEBUG_CANONICAL_EVENTS) {
+                          intentLogger.debug('Processing canonical node-heartbeat event');
+                        }
+                        this.handleCanonicalNodeHeartbeat(message);
+                      }
+                      break;
+                    }
+                    case TOPIC.NODE_REGISTRATION: {
+                      // Detect envelope format: canonical envelopes have entity_id (or
+                      // envelope_id) + emitted_at (or envelope_timestamp) + payload;
+                      // legacy events have flat fields like node_id at the top level.
+                      const isRegistrationEnvelope = Boolean(
+                        (event.entity_id || event.envelope_id) &&
+                        (event.emitted_at || event.envelope_timestamp) &&
+                        event.payload
+                      );
+                      if (!isRegistrationEnvelope) {
+                        if (isDebug) {
+                          intentLogger.debug(
+                            `Processing node state change: ${event.node_id || event.nodeId} -> ${event.new_state || event.newState || 'active'}`
+                          );
+                        }
+                        this.handleNodeStateChange(event);
+                      } else {
+                        if (DEBUG_CANONICAL_EVENTS) {
+                          intentLogger.debug('Processing canonical node-registration event');
+                        }
+                        this.handleCanonicalNodeIntrospection(message);
+                      }
+                      break;
+                    }
+                    case TOPIC.CONTRACT_REGISTERED:
+                    case TOPIC.CONTRACT_DEREGISTERED: {
+                      if (isDebug) {
+                        intentLogger.debug(
+                          `Processing contract lifecycle event from topic: ${topic}`
+                        );
                       }
                       this.handleCanonicalNodeIntrospection(message);
+                      break;
                     }
-                    break;
-                  }
-                  case TOPIC.NODE_HEARTBEAT: {
-                    // Detect envelope format to route to exactly ONE handler path.
-                    // Accept both entity_id/emitted_at (legacy consumer naming) and
-                    // envelope_id/envelope_timestamp (ModelEventEnvelope producer naming).
-                    const isHeartbeatEnvelope = Boolean(
-                      (event.entity_id || event.envelope_id) &&
-                      (event.emitted_at || event.envelope_timestamp) &&
-                      event.payload
-                    );
-                    if (!isHeartbeatEnvelope) {
+                    case TOPIC.NODE_REGISTRATION_INITIATED:
+                    case TOPIC.NODE_REGISTRATION_ACCEPTED:
+                    case TOPIC.NODE_REGISTRATION_REJECTED:
+                    case TOPIC.NODE_REGISTRATION_ACKED:
+                    case TOPIC.NODE_REGISTRATION_RESULT:
+                    case TOPIC.NODE_REGISTRATION_ACK_RECEIVED:
+                    case TOPIC.NODE_REGISTRATION_ACK_TIMED_OUT: {
                       if (isDebug) {
                         intentLogger.debug(
-                          `Processing node heartbeat: ${event.node_id || event.nodeId}`
+                          `Processing node registration lifecycle event from topic: ${topic}`
                         );
-                      }
-                      this.handleNodeHeartbeat(event);
-                    } else {
-                      if (DEBUG_CANONICAL_EVENTS) {
-                        intentLogger.debug('Processing canonical node-heartbeat event');
-                      }
-                      this.handleCanonicalNodeHeartbeat(message);
-                    }
-                    break;
-                  }
-                  case TOPIC.NODE_REGISTRATION: {
-                    // Detect envelope format: canonical envelopes have entity_id (or
-                    // envelope_id) + emitted_at (or envelope_timestamp) + payload;
-                    // legacy events have flat fields like node_id at the top level.
-                    const isRegistrationEnvelope = Boolean(
-                      (event.entity_id || event.envelope_id) &&
-                      (event.emitted_at || event.envelope_timestamp) &&
-                      event.payload
-                    );
-                    if (!isRegistrationEnvelope) {
-                      if (isDebug) {
-                        intentLogger.debug(
-                          `Processing node state change: ${event.node_id || event.nodeId} -> ${event.new_state || event.newState || 'active'}`
-                        );
-                      }
-                      this.handleNodeStateChange(event);
-                    } else {
-                      if (DEBUG_CANONICAL_EVENTS) {
-                        intentLogger.debug('Processing canonical node-registration event');
                       }
                       this.handleCanonicalNodeIntrospection(message);
+                      break;
                     }
-                    break;
-                  }
-                  case TOPIC.NODE_BECAME_ACTIVE:
-                    if (DEBUG_CANONICAL_EVENTS) {
-                      intentLogger.debug('Processing canonical node-became-active event');
-                    }
-                    this.handleCanonicalNodeBecameActive(message);
-                    break;
-                  case TOPIC.NODE_LIVENESS_EXPIRED:
-                    if (DEBUG_CANONICAL_EVENTS) {
-                      intentLogger.debug('Processing canonical node-liveness-expired event');
-                    }
-                    this.handleCanonicalNodeLivenessExpired(message);
-                    break;
-                  case TOPIC.CONTRACT_REGISTERED:
-                  case TOPIC.CONTRACT_DEREGISTERED: {
-                    if (isDebug) {
-                      intentLogger.debug(
-                        `Processing contract lifecycle event from topic: ${topic}`
-                      );
-                    }
-                    this.handleCanonicalNodeIntrospection(message);
-                    break;
-                  }
-                  case TOPIC.NODE_REGISTRATION_INITIATED:
-                  case TOPIC.NODE_REGISTRATION_ACCEPTED:
-                  case TOPIC.NODE_REGISTRATION_REJECTED:
-                  case TOPIC.NODE_REGISTRATION_ACKED:
-                  case TOPIC.NODE_REGISTRATION_RESULT:
-                  case TOPIC.NODE_REGISTRATION_ACK_RECEIVED:
-                  case TOPIC.NODE_REGISTRATION_ACK_TIMED_OUT: {
-                    if (isDebug) {
-                      intentLogger.debug(
-                        `Processing node registration lifecycle event from topic: ${topic}`
-                      );
-                    }
-                    this.handleCanonicalNodeIntrospection(message);
-                    break;
-                  }
-                  case TOPIC.REGISTRY_REQUEST_INTROSPECTION: {
-                    if (isDebug) {
-                      intentLogger.debug('Processing registry-request-introspection event');
-                    }
-                    this.handleCanonicalNodeIntrospection(message);
-                    break;
-                  }
-                  case TOPIC.FSM_STATE_TRANSITIONS: {
-                    if (isDebug) {
-                      intentLogger.debug('Processing FSM state transition event');
-                    }
-                    this.handleCanonicalNodeIntrospection(message);
-                    break;
-                  }
-                  case TOPIC.RUNTIME_TICK: {
-                    if (isDebug) {
-                      intentLogger.debug('Processing runtime tick event');
-                    }
-                    this.handleCanonicalNodeIntrospection(message);
-                    break;
-                  }
-                  case TOPIC.REGISTRATION_SNAPSHOTS: {
-                    if (isDebug) {
-                      intentLogger.debug('Processing registration snapshot');
-                    }
-                    this.handleCanonicalNodeIntrospection(message);
-                    break;
-                  }
-
-                  // Intent topics (canonical names, matched after legacy prefix stripping)
-                  case SUFFIX_INTELLIGENCE_INTENT_CLASSIFIED:
-                    if (isDebug) {
-                      intentLogger.debug(
-                        `Processing intent classified: ${event.intent_type || event.intentType} (confidence: ${event.confidence})`
-                      );
-                    }
-                    this.handleIntentClassified(event);
-                    break;
-                  case SUFFIX_MEMORY_INTENT_STORED:
-                    if (isDebug) {
-                      intentLogger.debug(
-                        `Processing intent stored: ${event.intent_id || event.intentId}`
-                      );
-                    }
-                    this.handleIntentStored(event);
-                    break;
-                  case SUFFIX_MEMORY_INTENT_QUERY_RESPONSE:
-                    if (isDebug) {
-                      intentLogger.debug(
-                        `Processing intent query response: ${event.query_id || event.queryId}`
-                      );
-                    }
-                    this.handleIntentQueryResponse(event);
-                    break;
-
-                  // OmniClaude hook events
-                  case TOPIC.CLAUDE_HOOK:
-                    if (isDebug) {
-                      intentLogger.debug(
-                        `Processing claude hook event: ${event.event_type || event.eventType} - ${(event.payload?.prompt || '').slice(0, 50)}...`
-                      );
-                    }
-                    this.handleClaudeHookEvent(event);
-                    break;
-                  // OmniClaude lifecycle events
-                  case TOPIC.PROMPT_SUBMITTED:
-                    if (isDebug) {
-                      intentLogger.debug(
-                        `Processing prompt-submitted: ${(event.payload?.prompt_preview || '').slice(0, 50)}...`
-                      );
-                    }
-                    this.handlePromptSubmittedEvent(event);
-                    break;
-                  case TOPIC.SESSION_STARTED:
-                  case TOPIC.SESSION_ENDED:
-                  case TOPIC.TOOL_EXECUTED:
-                    if (isDebug) {
-                      intentLogger.debug(
-                        `Processing omniclaude event: ${event.event_type || event.eventType}`
-                      );
-                    }
-                    this.handleOmniclaudeLifecycleEvent(event, topic);
-                    break;
-
-                  // Tool-content events from omniintelligence (tool execution records)
-                  case TOPIC.TOOL_CONTENT:
-                    if (isDebug) {
-                      intentLogger.debug(
-                        `Processing tool-content: ${(event as Record<string, string>).tool_name || 'unknown'}`
-                      );
-                    }
-                    this.handleAgentAction({
-                      action_type: 'tool',
-                      agent_name: 'omniclaude',
-                      action_name: (event as Record<string, string>).tool_name || 'unknown',
-                      correlation_id: (event as Record<string, string>).correlation_id,
-                      duration_ms: Number((event as Record<string, unknown>).duration_ms || 0),
-                      timestamp: (event as Record<string, string>).timestamp,
-                    } as RawAgentActionEvent);
-                    break;
-
-                  // Cross-repo validation topics (canonical names, matched after legacy prefix stripping)
-                  case SUFFIX_VALIDATION_RUN_STARTED:
-                    if (isValidationRunStarted(event)) {
+                    case TOPIC.REGISTRY_REQUEST_INTROSPECTION: {
                       if (isDebug) {
-                        intentLogger.debug(`Processing validation run started: ${event.run_id}`);
+                        intentLogger.debug('Processing registry-request-introspection event');
                       }
-                      await handleValidationRunStarted(event);
-                      this.emit('validation-event', { type: 'run-started', event });
-                    } else {
-                      console.warn(
-                        '[validation] Dropped malformed run-started event on topic',
-                        topic
-                      );
+                      this.handleCanonicalNodeIntrospection(message);
+                      break;
                     }
-                    break;
-                  case SUFFIX_VALIDATION_VIOLATIONS_BATCH:
-                    if (isValidationViolationsBatch(event)) {
+                    case TOPIC.FSM_STATE_TRANSITIONS: {
+                      if (isDebug) {
+                        intentLogger.debug('Processing FSM state transition event');
+                      }
+                      this.handleCanonicalNodeIntrospection(message);
+                      break;
+                    }
+                    case TOPIC.RUNTIME_TICK: {
+                      if (isDebug) {
+                        intentLogger.debug('Processing runtime tick event');
+                      }
+                      this.handleCanonicalNodeIntrospection(message);
+                      break;
+                    }
+                    case TOPIC.REGISTRATION_SNAPSHOTS: {
+                      if (isDebug) {
+                        intentLogger.debug('Processing registration snapshot');
+                      }
+                      this.handleCanonicalNodeIntrospection(message);
+                      break;
+                    }
+
+                    // Intent topics (canonical names, matched after legacy prefix stripping)
+                    case SUFFIX_INTELLIGENCE_INTENT_CLASSIFIED:
                       if (isDebug) {
                         intentLogger.debug(
-                          `Processing validation violations batch: ${event.run_id} (${event.violations.length} violations)`
+                          `Processing intent classified: ${event.intent_type || event.intentType} (confidence: ${event.confidence})`
                         );
                       }
-                      await handleValidationViolationsBatch(event);
-                      this.emit('validation-event', { type: 'violations-batch', event });
-                    } else {
-                      console.warn(
-                        '[validation] Dropped malformed violations-batch event on topic',
-                        topic
-                      );
-                    }
-                    break;
-                  case SUFFIX_VALIDATION_RUN_COMPLETED:
-                    if (isValidationRunCompleted(event)) {
+                      this.handleIntentClassified(event);
+                      break;
+                    case SUFFIX_MEMORY_INTENT_STORED:
                       if (isDebug) {
                         intentLogger.debug(
-                          `Processing validation run completed: ${event.run_id} (${event.status})`
+                          `Processing intent stored: ${event.intent_id || event.intentId}`
                         );
                       }
-                      await handleValidationRunCompleted(event);
-                      this.emit('validation-event', { type: 'run-completed', event });
-                    } else {
-                      console.warn(
-                        '[validation] Dropped malformed run-completed event on topic',
-                        topic
-                      );
-                    }
-                    break;
-                  case SUFFIX_VALIDATION_CANDIDATE_UPSERTED:
-                    if (isValidationCandidateUpserted(event)) {
+                      this.handleIntentStored(event);
+                      break;
+                    case SUFFIX_MEMORY_INTENT_QUERY_RESPONSE:
                       if (isDebug) {
                         intentLogger.debug(
-                          `Processing validation candidate upserted: ${(event as { candidate_id: string }).candidate_id}`
+                          `Processing intent query response: ${event.query_id || event.queryId}`
                         );
                       }
-                      await handleValidationCandidateUpserted(event);
-                      this.emit('validation-event', { type: 'candidate-upserted', event });
-                    } else {
-                      console.warn(
-                        '[validation] Dropped malformed candidate-upserted event on topic',
-                        topic
-                      );
-                    }
-                    break;
+                      this.handleIntentQueryResponse(event);
+                      break;
 
-                  // Extraction pipeline topics (OMN-1804)
-                  case SUFFIX_OMNICLAUDE_CONTEXT_UTILIZATION:
-                    if (isContextUtilizationEvent(event)) {
-                      await this.extractionAggregator.handleContextUtilization(event);
-                      if (this.extractionAggregator.shouldBroadcast()) {
-                        effectivenessMetricsProjection.reset();
-                        emitEffectivenessUpdate();
-                        this.emit('extraction-event', { type: 'context-utilization' });
-                      }
-                    } else {
-                      console.warn('[extraction] Dropped malformed context-utilization event');
-                    }
-                    break;
-                  case SUFFIX_OMNICLAUDE_AGENT_MATCH:
-                    if (isAgentMatchEvent(event)) {
-                      await this.extractionAggregator.handleAgentMatch(event);
-                      if (this.extractionAggregator.shouldBroadcast()) {
-                        effectivenessMetricsProjection.reset();
-                        emitEffectivenessUpdate();
-                        this.emit('extraction-event', { type: 'agent-match' });
-                      }
-                    } else {
-                      console.warn('[extraction] Dropped malformed agent-match event');
-                    }
-                    break;
-                  case SUFFIX_OMNICLAUDE_LATENCY_BREAKDOWN:
-                    if (isLatencyBreakdownEvent(event)) {
-                      await this.extractionAggregator.handleLatencyBreakdown(event);
-                      if (this.extractionAggregator.shouldBroadcast()) {
-                        effectivenessMetricsProjection.reset();
-                        emitEffectivenessUpdate();
-                        this.emit('extraction-event', { type: 'latency-breakdown' });
-                      }
-                    } else {
-                      console.warn('[extraction] Dropped malformed latency-breakdown event');
-                    }
-                    break;
-
-                  // TODO(OMN-2152): Wire event processing for these topics once read-model
-                  // projections are defined. Currently consuming to test connectivity;
-                  // offset advancement is intentional.
-
-                  // Intelligence pipeline commands + completions
-                  case SUFFIX_INTELLIGENCE_CODE_ANALYSIS_CMD:
-                  case SUFFIX_INTELLIGENCE_DOCUMENT_INGESTION_CMD:
-                  case SUFFIX_INTELLIGENCE_PATTERN_LEARNING_CMD:
-                  case SUFFIX_INTELLIGENCE_QUALITY_ASSESSMENT_CMD:
-                  case SUFFIX_INTELLIGENCE_CODE_ANALYSIS_COMPLETED:
-                  case SUFFIX_INTELLIGENCE_CODE_ANALYSIS_FAILED:
-                  case SUFFIX_INTELLIGENCE_DOCUMENT_INGESTION_COMPLETED:
-                  case SUFFIX_INTELLIGENCE_PATTERN_LEARNING_COMPLETED:
-                  case SUFFIX_INTELLIGENCE_QUALITY_ASSESSMENT_COMPLETED:
-                    if (isDebug) {
-                      intentLogger.debug(
-                        `Processing intelligence pipeline event from topic: ${topic}`
-                      );
-                    }
-                    break;
-
-                  // Pattern lifecycle
-                  case SUFFIX_INTELLIGENCE_PATTERN_LIFECYCLE_TRANSITION_CMD:
-                  case SUFFIX_INTELLIGENCE_PATTERN_LIFECYCLE_TRANSITIONED:
-                  case SUFFIX_INTELLIGENCE_PATTERN_PROMOTED:
-                  case SUFFIX_INTELLIGENCE_PATTERN_STORED:
-                  case SUFFIX_PATTERN_DISCOVERED:
-                    if (isDebug) {
-                      intentLogger.debug(`Processing pattern lifecycle event from topic: ${topic}`);
-                    }
-                    break;
-
-                  // Session/agent status
-                  case SUFFIX_INTELLIGENCE_SESSION_OUTCOME_CMD:
-                  case SUFFIX_AGENT_STATUS:
-                    if (isDebug) {
-                      intentLogger.debug(`Processing session/agent event from topic: ${topic}`);
-                    }
-                    break;
-
-                  // OmniClaude extended events (routing, sessions, manifests, notifications)
-                  case SUFFIX_OMNICLAUDE_ROUTING_DECISION:
-                  case SUFFIX_OMNICLAUDE_SESSION_OUTCOME:
-                  case SUFFIX_OMNICLAUDE_MANIFEST_INJECTED:
-                  case SUFFIX_OMNICLAUDE_PHASE_METRICS:
-                  case SUFFIX_OMNICLAUDE_NOTIFICATION_BLOCKED:
-                  case SUFFIX_OMNICLAUDE_NOTIFICATION_COMPLETED:
-                  case SUFFIX_OMNICLAUDE_TRANSFORMATION_COMPLETED:
-                    if (isDebug) {
-                      intentLogger.debug(
-                        `Processing omniclaude extended event from topic: ${topic}`
-                      );
-                    }
-                    break;
-
-                  // Status dashboard topics (OMN-2658)
-                  case TOPIC.GITHUB_PR_STATUS:
-                    if (isGitHubPRStatusEvent(event)) {
-                      statusProjection.upsertPR(event);
-                      emitStatusInvalidate('pr');
+                    // OmniClaude hook events
+                    case TOPIC.CLAUDE_HOOK:
                       if (isDebug) {
                         intentLogger.debug(
-                          `[status] PR upserted: ${event.repo}#${event.pr_number} (${event.ci_status})`
+                          `Processing claude hook event: ${event.event_type || event.eventType} - ${(event.payload?.prompt || '').slice(0, 50)}...`
                         );
                       }
-                    } else {
-                      console.warn('[status] Dropped malformed github.pr-status event');
-                    }
-                    break;
-                  case TOPIC.GIT_HOOK:
-                    if (isGitHookEvent(event)) {
-                      statusProjection.appendHook(event);
-                      emitStatusInvalidate('hook');
+                      this.handleClaudeHookEvent(event);
+                      break;
+                    // OmniClaude lifecycle events
+                    case TOPIC.PROMPT_SUBMITTED:
                       if (isDebug) {
                         intentLogger.debug(
-                          `[status] Hook event appended: ${event.hook} on ${event.repo}:${event.branch} (success=${event.success})`
+                          `Processing prompt-submitted: ${(event.payload?.prompt_preview || '').slice(0, 50)}...`
                         );
                       }
-                    } else {
-                      console.warn('[status] Dropped malformed git.hook event');
-                    }
-                    break;
-                  case TOPIC.LINEAR_SNAPSHOT:
-                    if (isLinearSnapshotEvent(event)) {
-                      statusProjection.replaceWorkstreams(event);
-                      emitStatusInvalidate('linear');
+                      this.handlePromptSubmittedEvent(event);
+                      break;
+                    case TOPIC.SESSION_STARTED:
+                    case TOPIC.SESSION_ENDED:
+                    case TOPIC.TOOL_EXECUTED:
                       if (isDebug) {
                         intentLogger.debug(
-                          `[status] Linear snapshot replaced: ${event.workstreams.length} workstreams`
+                          `Processing omniclaude event: ${event.event_type || event.eventType}`
                         );
                       }
-                    } else {
-                      console.warn('[status] Dropped malformed linear.snapshot event');
-                    }
-                    break;
+                      this.handleOmniclaudeLifecycleEvent(event, topic);
+                      break;
 
-                  default:
-                    intentLogger.debug(`Unhandled topic: ${topic}`);
-                    break;
+                    // Tool-content events from omniintelligence (tool execution records)
+                    case TOPIC.TOOL_CONTENT:
+                      if (isDebug) {
+                        intentLogger.debug(
+                          `Processing tool-content: ${(event as Record<string, string>).tool_name || 'unknown'}`
+                        );
+                      }
+                      this.handleAgentAction({
+                        action_type: 'tool',
+                        agent_name: 'omniclaude',
+                        action_name: (event as Record<string, string>).tool_name || 'unknown',
+                        correlation_id: (event as Record<string, string>).correlation_id,
+                        duration_ms: Number((event as Record<string, unknown>).duration_ms || 0),
+                        timestamp: (event as Record<string, string>).timestamp,
+                      } as RawAgentActionEvent);
+                      break;
+
+                    // Cross-repo validation topics (canonical names, matched after legacy prefix stripping)
+                    case SUFFIX_VALIDATION_RUN_STARTED:
+                      if (isValidationRunStarted(event)) {
+                        if (isDebug) {
+                          intentLogger.debug(`Processing validation run started: ${event.run_id}`);
+                        }
+                        await handleValidationRunStarted(event);
+                        this.emit('validation-event', { type: 'run-started', event });
+                      } else {
+                        console.warn(
+                          '[validation] Dropped malformed run-started event on topic',
+                          topic
+                        );
+                      }
+                      break;
+                    case SUFFIX_VALIDATION_VIOLATIONS_BATCH:
+                      if (isValidationViolationsBatch(event)) {
+                        if (isDebug) {
+                          intentLogger.debug(
+                            `Processing validation violations batch: ${event.run_id} (${event.violations.length} violations)`
+                          );
+                        }
+                        await handleValidationViolationsBatch(event);
+                        this.emit('validation-event', { type: 'violations-batch', event });
+                      } else {
+                        console.warn(
+                          '[validation] Dropped malformed violations-batch event on topic',
+                          topic
+                        );
+                      }
+                      break;
+                    case SUFFIX_VALIDATION_RUN_COMPLETED:
+                      if (isValidationRunCompleted(event)) {
+                        if (isDebug) {
+                          intentLogger.debug(
+                            `Processing validation run completed: ${event.run_id} (${event.status})`
+                          );
+                        }
+                        await handleValidationRunCompleted(event);
+                        this.emit('validation-event', { type: 'run-completed', event });
+                      } else {
+                        console.warn(
+                          '[validation] Dropped malformed run-completed event on topic',
+                          topic
+                        );
+                      }
+                      break;
+                    case SUFFIX_VALIDATION_CANDIDATE_UPSERTED:
+                      if (isValidationCandidateUpserted(event)) {
+                        if (isDebug) {
+                          intentLogger.debug(
+                            `Processing validation candidate upserted: ${(event as { candidate_id: string }).candidate_id}`
+                          );
+                        }
+                        await handleValidationCandidateUpserted(event);
+                        this.emit('validation-event', { type: 'candidate-upserted', event });
+                      } else {
+                        console.warn(
+                          '[validation] Dropped malformed candidate-upserted event on topic',
+                          topic
+                        );
+                      }
+                      break;
+
+                    // Extraction pipeline topics (OMN-1804)
+                    case SUFFIX_OMNICLAUDE_CONTEXT_UTILIZATION:
+                      if (isContextUtilizationEvent(event)) {
+                        await this.extractionAggregator.handleContextUtilization(event);
+                        if (this.extractionAggregator.shouldBroadcast()) {
+                          effectivenessMetricsProjection.reset();
+                          emitEffectivenessUpdate();
+                          this.emit('extraction-event', { type: 'context-utilization' });
+                        }
+                      } else {
+                        console.warn('[extraction] Dropped malformed context-utilization event');
+                      }
+                      break;
+                    case SUFFIX_OMNICLAUDE_AGENT_MATCH:
+                      if (isAgentMatchEvent(event)) {
+                        await this.extractionAggregator.handleAgentMatch(event);
+                        if (this.extractionAggregator.shouldBroadcast()) {
+                          effectivenessMetricsProjection.reset();
+                          emitEffectivenessUpdate();
+                          this.emit('extraction-event', { type: 'agent-match' });
+                        }
+                      } else {
+                        console.warn('[extraction] Dropped malformed agent-match event');
+                      }
+                      break;
+                    case SUFFIX_OMNICLAUDE_LATENCY_BREAKDOWN:
+                      if (isLatencyBreakdownEvent(event)) {
+                        await this.extractionAggregator.handleLatencyBreakdown(event);
+                        if (this.extractionAggregator.shouldBroadcast()) {
+                          effectivenessMetricsProjection.reset();
+                          emitEffectivenessUpdate();
+                          this.emit('extraction-event', { type: 'latency-breakdown' });
+                        }
+                      } else {
+                        console.warn('[extraction] Dropped malformed latency-breakdown event');
+                      }
+                      break;
+
+                    // TODO(OMN-2152): Wire event processing for these topics once read-model
+                    // projections are defined. Currently consuming to test connectivity;
+                    // offset advancement is intentional.
+
+                    // Intelligence pipeline commands + completions
+                    case SUFFIX_INTELLIGENCE_CODE_ANALYSIS_CMD:
+                    case SUFFIX_INTELLIGENCE_DOCUMENT_INGESTION_CMD:
+                    case SUFFIX_INTELLIGENCE_PATTERN_LEARNING_CMD:
+                    case SUFFIX_INTELLIGENCE_QUALITY_ASSESSMENT_CMD:
+                    case SUFFIX_INTELLIGENCE_CODE_ANALYSIS_COMPLETED:
+                    case SUFFIX_INTELLIGENCE_CODE_ANALYSIS_FAILED:
+                    case SUFFIX_INTELLIGENCE_DOCUMENT_INGESTION_COMPLETED:
+                    case SUFFIX_INTELLIGENCE_PATTERN_LEARNING_COMPLETED:
+                    case SUFFIX_INTELLIGENCE_QUALITY_ASSESSMENT_COMPLETED:
+                      if (isDebug) {
+                        intentLogger.debug(
+                          `Processing intelligence pipeline event from topic: ${topic}`
+                        );
+                      }
+                      break;
+
+                    // Pattern lifecycle
+                    case SUFFIX_INTELLIGENCE_PATTERN_LIFECYCLE_TRANSITION_CMD:
+                    case SUFFIX_INTELLIGENCE_PATTERN_LIFECYCLE_TRANSITIONED:
+                    case SUFFIX_INTELLIGENCE_PATTERN_PROMOTED:
+                    case SUFFIX_INTELLIGENCE_PATTERN_STORED:
+                    case SUFFIX_PATTERN_DISCOVERED:
+                      if (isDebug) {
+                        intentLogger.debug(
+                          `Processing pattern lifecycle event from topic: ${topic}`
+                        );
+                      }
+                      break;
+
+                    // Session/agent status
+                    case SUFFIX_INTELLIGENCE_SESSION_OUTCOME_CMD:
+                    case SUFFIX_AGENT_STATUS:
+                      if (isDebug) {
+                        intentLogger.debug(`Processing session/agent event from topic: ${topic}`);
+                      }
+                      break;
+
+                    // OmniClaude extended events (routing, sessions, manifests, notifications)
+                    case SUFFIX_OMNICLAUDE_ROUTING_DECISION:
+                    case SUFFIX_OMNICLAUDE_SESSION_OUTCOME:
+                    case SUFFIX_OMNICLAUDE_MANIFEST_INJECTED:
+                    case SUFFIX_OMNICLAUDE_PHASE_METRICS:
+                    case SUFFIX_OMNICLAUDE_NOTIFICATION_BLOCKED:
+                    case SUFFIX_OMNICLAUDE_NOTIFICATION_COMPLETED:
+                    case SUFFIX_OMNICLAUDE_TRANSFORMATION_COMPLETED:
+                      if (isDebug) {
+                        intentLogger.debug(
+                          `Processing omniclaude extended event from topic: ${topic}`
+                        );
+                      }
+                      break;
+
+                    // Status dashboard topics (OMN-2658)
+                    case TOPIC.GITHUB_PR_STATUS:
+                      if (isGitHubPRStatusEvent(event)) {
+                        statusProjection.upsertPR(event);
+                        emitStatusInvalidate('pr');
+                        if (isDebug) {
+                          intentLogger.debug(
+                            `[status] PR upserted: ${event.repo}#${event.pr_number} (${event.ci_status})`
+                          );
+                        }
+                      } else {
+                        console.warn('[status] Dropped malformed github.pr-status event');
+                      }
+                      break;
+                    case TOPIC.GIT_HOOK:
+                      if (isGitHookEvent(event)) {
+                        statusProjection.appendHook(event);
+                        emitStatusInvalidate('hook');
+                        if (isDebug) {
+                          intentLogger.debug(
+                            `[status] Hook event appended: ${event.hook} on ${event.repo}:${event.branch} (success=${event.success})`
+                          );
+                        }
+                      } else {
+                        console.warn('[status] Dropped malformed git.hook event');
+                      }
+                      break;
+                    case TOPIC.LINEAR_SNAPSHOT:
+                      if (isLinearSnapshotEvent(event)) {
+                        statusProjection.replaceWorkstreams(event);
+                        emitStatusInvalidate('linear');
+                        if (isDebug) {
+                          intentLogger.debug(
+                            `[status] Linear snapshot replaced: ${event.workstreams.length} workstreams`
+                          );
+                        }
+                      } else {
+                        console.warn('[status] Dropped malformed linear.snapshot event');
+                      }
+                      break;
+
+                    default:
+                      intentLogger.debug(`Unhandled topic: ${topic}`);
+                      break;
+                  }
+                } catch (error) {
+                  console.error('Error processing Kafka message:', error);
+
+                  // If error suggests a connection/broker issue, rethrow so consumer.run()
+                  // rejects and the outer while-loop catch block handles reconnection cleanly.
+                  // Calling connectWithRetry() here while consumer.run() is still active is
+                  // unsafe — it creates undefined state for offset commits and heartbeats.
+                  // NOTE: Do NOT emit 'error' here for connection errors — the outer catch at
+                  // the consumer.run() level will emit it exactly once when the rethrown error
+                  // surfaces there.
+                  if (
+                    error instanceof Error &&
+                    (error.message.includes('connection') ||
+                      error.message.includes('broker') ||
+                      error.message.includes('network'))
+                  ) {
+                    throw error;
+                  } else {
+                    // Non-connection errors (malformed messages, business logic exceptions, etc.)
+                    // are swallowed here so processing continues, but callers listening to the
+                    // 'error' event must still be notified.
+                    this.emit('error', error);
+                  }
                 }
-              } catch (error) {
-                console.error('Error processing Kafka message:', error);
-
-                // If error suggests a connection/broker issue, rethrow so consumer.run()
-                // rejects and the outer while-loop catch block handles reconnection cleanly.
-                // Calling connectWithRetry() here while consumer.run() is still active is
-                // unsafe — it creates undefined state for offset commits and heartbeats.
-                // NOTE: Do NOT emit 'error' here for connection errors — the outer catch at
-                // the consumer.run() level will emit it exactly once when the rethrown error
-                // surfaces there.
-                if (
-                  error instanceof Error &&
-                  (error.message.includes('connection') ||
-                    error.message.includes('broker') ||
-                    error.message.includes('network'))
-                ) {
-                  throw error;
-                } else {
-                  // Non-connection errors (malformed messages, business logic exceptions, etc.)
-                  // are swallowed here so processing continues, but callers listening to the
-                  // 'error' event must still be notified.
-                  this.emit('error', error);
-                }
+              },
+            }).catch((runErr: unknown) => {
+              if (this.isRunning && !isTestEnv) {
+                console.error('[EventConsumer] consumer.run() threw:', runErr);
+                this.emit('error', runErr);
+                consumerCrashed = true;
+                crashError = runErr;
               }
-            },
-          }).catch((runErr: unknown) => {
-            if (this.isRunning && !isTestEnv) {
-              console.error('[EventConsumer] consumer.run() threw:', runErr);
-              this.emit('error', runErr);
-              consumerCrashed = true;
-              crashError = runErr;
+            });
+
+            // In test env, mocks resolve consumer.run() immediately.
+            // Break the loop so the test doesn't spin forever.
+            if (isTestEnv) break;
+
+            // Block while the consumer is alive. The internal kafkajs fetch
+            // loop runs in the background; we just keep this loop iteration
+            // from advancing. stop() sets this.isRunning=false, and the
+            // .catch() above sets consumerCrashed=true on real failures.
+            while (this.isRunning && !consumerCrashed) {
+              await new Promise((resolve) => setTimeout(resolve, 1000));
             }
-          });
 
-          // In test env, mocks resolve consumer.run() immediately.
-          // Break the loop so the test doesn't spin forever.
-          if (isTestEnv) break;
-
-          // Block while the consumer is alive. The internal kafkajs fetch
-          // loop runs in the background; we just keep this loop iteration
-          // from advancing. stop() sets this.isRunning=false, and the
-          // .catch() above sets consumerCrashed=true on real failures.
-          while (this.isRunning && !consumerCrashed) {
-            await new Promise((resolve) => setTimeout(resolve, 1000));
-          }
-
-          // If a real crash happened, reconnect.
-          if (consumerCrashed && this.isRunning) {
-            intentLogger.warn('[EventConsumer] Consumer crashed, reconnecting in 5s...');
+            // If a real crash happened, reconnect.
+            if (consumerCrashed && this.isRunning) {
+              intentLogger.warn('[EventConsumer] Consumer crashed, reconnecting in 5s...');
+              await new Promise((resolve) => setTimeout(resolve, 5000));
+              try {
+                await this.consumer?.disconnect().catch(() => {});
+                await this.connectWithRetry();
+                await this.consumer!.subscribe({
+                  topics: subscriptionTopics,
+                  fromBeginning: false,
+                });
+              } catch (reconnectErr) {
+                console.error('[EventConsumer] Reconnect failed, will retry...', reconnectErr);
+                this.emit('error', reconnectErr);
+              }
+            }
+          } catch (outerErr) {
+            if (!this.isRunning || isTestEnv) break;
+            console.error('[EventConsumer] Unexpected error in consumer loop:', outerErr);
+            this.emit('error', outerErr);
             await new Promise((resolve) => setTimeout(resolve, 5000));
-            try {
-              await this.consumer?.disconnect().catch(() => {});
-              await this.connectWithRetry();
-              await this.consumer!.subscribe({
-                topics: subscriptionTopics,
-                fromBeginning: false,
-              });
-            } catch (reconnectErr) {
-              console.error('[EventConsumer] Reconnect failed, will retry...', reconnectErr);
-              this.emit('error', reconnectErr);
-            }
           }
-        } catch (outerErr) {
-          if (!this.isRunning || isTestEnv) break;
-          console.error('[EventConsumer] Unexpected error in consumer loop:', outerErr);
-          this.emit('error', outerErr);
-          await new Promise((resolve) => setTimeout(resolve, 5000));
-        }
-      } // end while (this.isRunning)
+        } // end while (this.isRunning)
       })().catch((err) => {
         console.error('[EventConsumer] Background consumer loop crashed:', err);
         this.emit('error', err);
@@ -3020,109 +3004,6 @@ export class EventConsumer extends EventEmitter {
     };
 
     this.registeredNodes.set(canonicalNode.node_id, node);
-  }
-
-  /**
-   * Handle canonical node-became-active events.
-   * Updates the canonical node registry and emits dashboard events.
-   */
-  private handleCanonicalNodeBecameActive(message: KafkaMessage): void {
-    const envelope = this.parseEnvelope(message, NodeBecameActivePayloadSchema);
-    if (!envelope) return;
-    if (this.isDuplicate(envelope.correlation_id)) {
-      if (DEBUG_CANONICAL_EVENTS) {
-        intentLogger.debug(
-          `Duplicate node-became-active event, skipping: ${envelope.correlation_id}`
-        );
-      }
-      return;
-    }
-
-    const { payload, emitted_at } = envelope;
-    const emittedAtMs = new Date(emitted_at).getTime();
-
-    const existing = this.canonicalNodes.get(payload.node_id);
-    if (existing && !this.shouldProcess(existing, emittedAtMs)) {
-      if (DEBUG_CANONICAL_EVENTS) {
-        intentLogger.debug(`Stale node-became-active event, skipping: ${payload.node_id}`);
-      }
-      return;
-    }
-
-    // Update canonical node state
-    this.canonicalNodes.set(payload.node_id, {
-      node_id: payload.node_id,
-      state: 'ACTIVE',
-      capabilities: payload.capabilities,
-      activated_at: emittedAtMs,
-      last_heartbeat_at: emittedAtMs,
-      last_event_at: emittedAtMs,
-    });
-
-    // Sync into legacy registeredNodes so getRegisteredNodes() reflects this update
-    this.syncCanonicalToRegistered(this.canonicalNodes.get(payload.node_id)!);
-
-    // Emit dashboard event for WebSocket broadcast
-    this.emit('nodeRegistryUpdate', this.getRegisteredNodes());
-
-    if (DEBUG_CANONICAL_EVENTS) {
-      intentLogger.debug(`Canonical node-became-active processed: ${payload.node_id}`);
-    }
-  }
-
-  /**
-   * Handle canonical node-liveness-expired events.
-   * Marks the node as OFFLINE in the canonical registry.
-   */
-  private handleCanonicalNodeLivenessExpired(message: KafkaMessage): void {
-    const envelope = this.parseEnvelope(message, NodeLivenessExpiredPayloadSchema);
-    if (!envelope) return;
-    if (this.isDuplicate(envelope.correlation_id)) {
-      if (DEBUG_CANONICAL_EVENTS) {
-        intentLogger.debug(
-          `Duplicate node-liveness-expired event, skipping: ${envelope.correlation_id}`
-        );
-      }
-      return;
-    }
-
-    const { payload, emitted_at } = envelope;
-    const emittedAtMs = new Date(emitted_at).getTime();
-
-    const node = this.canonicalNodes.get(payload.node_id);
-    if (!node) {
-      // Intentional early return: Unlike heartbeat/introspection events which can discover
-      // new nodes, liveness-expired only applies to nodes we're already tracking.
-      // If we receive this event for an unknown node, we skip it - there's nothing to mark offline.
-      if (DEBUG_CANONICAL_EVENTS) {
-        intentLogger.debug(`Node not found for liveness-expired: ${payload.node_id}`);
-      }
-      return;
-    }
-    if (!this.shouldProcess(node, emittedAtMs)) {
-      if (DEBUG_CANONICAL_EVENTS) {
-        intentLogger.debug(`Stale node-liveness-expired event, skipping: ${payload.node_id}`);
-      }
-      return;
-    }
-
-    // Update node state to OFFLINE (immutable update)
-    this.canonicalNodes.set(payload.node_id, {
-      ...node,
-      state: 'OFFLINE',
-      offline_at: emittedAtMs,
-      last_event_at: emittedAtMs,
-    });
-
-    // Sync into legacy registeredNodes so getRegisteredNodes() reflects this update
-    this.syncCanonicalToRegistered(this.canonicalNodes.get(payload.node_id)!);
-
-    // Emit dashboard event for WebSocket broadcast
-    this.emit('nodeRegistryUpdate', this.getRegisteredNodes());
-
-    if (DEBUG_CANONICAL_EVENTS) {
-      intentLogger.debug(`Canonical node-liveness-expired processed: ${payload.node_id}`);
-    }
   }
 
   /**
