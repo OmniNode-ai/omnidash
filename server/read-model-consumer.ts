@@ -375,40 +375,61 @@ export class ReadModelConsumer {
             `Group: ${CONSUMER_GROUP_ID}`
         );
 
-        await this.consumer.run({
+        // IMPORTANT: kafkajs 2.2.4 + Redpanda compatibility issue (OMN-2789)
+        //
+        // consumer.run() resolves its promise almost immediately (~100ms) after
+        // the consumer joins the group — it does NOT block until the consumer
+        // stops. The internal fetch loop continues running in the background.
+        //
+        // If you `await` this call and then treat resolution as "consumer
+        // crashed", you will disconnect the still-running fetch loop and enter
+        // an infinite connect/subscribe/disconnect cycle where no messages are
+        // ever consumed.
+        //
+        // Fix: fire-and-forget the run() promise and block on a stopped-flag
+        // poll loop instead. The CRASH event handles real failures.
+        this.consumer.run({
           eachMessage: async (payload: EachMessagePayload) => {
             await this.handleMessage(payload);
           },
+        }).catch((runErr) => {
+          if (!this.stopped) {
+            console.error(
+              '[ReadModelConsumer] consumer.run() threw — will reconnect:',
+              runErr instanceof Error ? runErr.message : runErr
+            );
+            // Signal the wait loop below to break so the outer retry loop
+            // can reconnect.
+            this.running = false;
+            this.stats.isRunning = false;
+          }
         });
 
-        // consumer.run() returned — this only happens when the broker connection
-        // drops or the consumer is forcibly stopped by KafkaJS internally. If
-        // stop() was called we honour the graceful-shutdown path; otherwise we
-        // fall through to the retry logic below so the consumer reconnects
-        // automatically without a process restart.
+        // Block here while the consumer is alive. The internal kafkajs fetch
+        // loop runs in the background; we just need to keep this iteration of
+        // the retry-while loop from advancing. stop() sets this.stopped=true,
+        // and the .catch() above sets this.running=false on real crashes.
+        while (this.running && !this.stopped) {
+          await new Promise((resolve) => setTimeout(resolve, 1000));
+        }
+
         if (this.stopped) return;
 
-        this.running = false;
-        this.stats.isRunning = false;
+        // If we reach here, running was set to false by the .catch() handler
+        // (a real crash). Clean up and let the outer while-loop retry.
         console.warn(
-          '[ReadModelConsumer] consumer.run() exited unexpectedly — broker disconnected, retrying...'
+          '[ReadModelConsumer] Consumer fetch loop exited — cleaning up for retry...'
         );
-
-        // Disconnect the stale consumer before the next loop iteration creates a
-        // fresh Kafka client, same as the error-path cleanup below.
         try {
           await this.consumer.disconnect();
         } catch (disconnectErr) {
           console.warn(
-            '[ReadModelConsumer] Error disconnecting consumer after unexpected exit:',
+            '[ReadModelConsumer] Error disconnecting consumer after crash:',
             disconnectErr instanceof Error ? disconnectErr.message : disconnectErr
           );
         }
         this.consumer = null;
         this.kafka = null;
-
-        // Reset the attempt counter so a reconnect after a stable run gets the
-        // full retry budget rather than whatever count was left from startup.
         attempts = 0;
         await new Promise((resolve) => setTimeout(resolve, RETRY_BASE_DELAY_MS));
         if (this.stopped) return;

@@ -1219,19 +1219,39 @@ export class EventConsumer extends EventEmitter {
 
       this.isRunning = true;
 
+      // Start periodic pruning to prevent unbounded memory growth
+      this.pruneTimer = setInterval(() => {
+        this.pruneOldData();
+      }, this.PRUNE_INTERVAL_MS);
+
+      // Start periodic cleanup of stale offline canonical nodes
+      this.canonicalNodeCleanupInterval = setInterval(
+        () => this.cleanupStaleCanonicalNodes(),
+        CLEANUP_INTERVAL_MS
+      );
+
+      intentLogger.info('Event consumer started with automatic data pruning');
+
       // Runtime disconnect recovery loop.
-      // consumer.run() is a long-lived promise that rejects when the broker
-      // drops the connection. Without this loop, a disconnect after startup
-      // would surface as an unhandled rejection in index.ts (which only logs
-      // a warning), leaving the consumer permanently dead and WebSocket clients
-      // frozen with no indication anything is wrong.
       //
-      // On each iteration we await consumer.run(). If it exits cleanly or
-      // throws, we reconnect via connectWithRetry() and loop again — unless
-      // stop() has been called (this.isRunning === false).
+      // IMPORTANT: kafkajs 2.2.4 + Redpanda compatibility (OMN-2789)
+      // consumer.run() resolves its promise almost immediately (~100ms)
+      // after the consumer joins the group — it does NOT block until the
+      // consumer stops. The internal fetch loop continues in the background.
+      //
+      // We fire-and-forget consumer.run() and block on a flag-poll loop
+      // instead. The .catch() handler sets consumerCrashed=true so the
+      // outer while-loop can detect real failures and reconnect.
+      //
+      // The entire loop is wrapped in a background async IIFE so that
+      // start() returns promptly and server.listen() is not blocked.
+      // stop() sets this.isRunning=false to break the loop.
+      (async () => {
       while (this.isRunning) {
         try {
-          await this.consumer!.run({
+          let consumerCrashed = false;
+          let crashError: unknown = null;
+          this.consumer!.run({
             eachMessage: async ({ topic: rawTopic, partition, message }) => {
               try {
                 // Parse JSON with dedicated guard so malformed messages are
@@ -1779,57 +1799,54 @@ export class EventConsumer extends EventEmitter {
                 }
               }
             },
+          }).catch((runErr: unknown) => {
+            if (this.isRunning && !isTestEnv) {
+              console.error('[EventConsumer] consumer.run() threw:', runErr);
+              this.emit('error', runErr);
+              consumerCrashed = true;
+              crashError = runErr;
+            }
           });
-          // consumer.run() returned without throwing — broker closed the session.
-          // Reconnect unless stop() was called. Skip in test env (mocks resolve immediately).
-          if (this.isRunning && !isTestEnv) {
-            intentLogger.warn('[EventConsumer] consumer.run() exited, reconnecting in 5s...');
+
+          // In test env, mocks resolve consumer.run() immediately.
+          // Break the loop so the test doesn't spin forever.
+          if (isTestEnv) break;
+
+          // Block while the consumer is alive. The internal kafkajs fetch
+          // loop runs in the background; we just keep this loop iteration
+          // from advancing. stop() sets this.isRunning=false, and the
+          // .catch() above sets consumerCrashed=true on real failures.
+          while (this.isRunning && !consumerCrashed) {
+            await new Promise((resolve) => setTimeout(resolve, 1000));
+          }
+
+          // If a real crash happened, reconnect.
+          if (consumerCrashed && this.isRunning) {
+            intentLogger.warn('[EventConsumer] Consumer crashed, reconnecting in 5s...');
             await new Promise((resolve) => setTimeout(resolve, 5000));
-            await this.consumer?.disconnect().catch(() => {});
-            await this.connectWithRetry();
-            await this.consumer!.subscribe({
-              topics: subscriptionTopics,
-              fromBeginning: false,
-            });
-          } else if (isTestEnv) {
-            // In test env, mocks resolve consumer.run() immediately.
-            // Break the loop so the test doesn't spin forever.
-            break;
+            try {
+              await this.consumer?.disconnect().catch(() => {});
+              await this.connectWithRetry();
+              await this.consumer!.subscribe({
+                topics: subscriptionTopics,
+                fromBeginning: false,
+              });
+            } catch (reconnectErr) {
+              console.error('[EventConsumer] Reconnect failed, will retry...', reconnectErr);
+              this.emit('error', reconnectErr);
+            }
           }
-        } catch (runErr) {
-          // NOTE: In test env, the reconnect loop is short-circuited here.
-          // The this.emit('error', runErr) below is production-only; tests instead
-          // assert that eachMessage rethrows (handler rejects) and no inline reconnect occurs.
+        } catch (outerErr) {
           if (!this.isRunning || isTestEnv) break;
-          console.error('[EventConsumer] consumer.run() threw, reconnecting in 5s...', runErr);
-          this.emit('error', runErr);
+          console.error('[EventConsumer] Unexpected error in consumer loop:', outerErr);
+          this.emit('error', outerErr);
           await new Promise((resolve) => setTimeout(resolve, 5000));
-          try {
-            await this.consumer?.disconnect().catch(() => {});
-            await this.connectWithRetry();
-            await this.consumer!.subscribe({
-              topics: subscriptionTopics,
-              fromBeginning: false,
-            });
-          } catch (reconnectErr) {
-            console.error('[EventConsumer] Reconnect failed, will retry...', reconnectErr);
-            this.emit('error', reconnectErr);
-          }
         }
       } // end while (this.isRunning)
-
-      // Start periodic pruning to prevent unbounded memory growth
-      this.pruneTimer = setInterval(() => {
-        this.pruneOldData();
-      }, this.PRUNE_INTERVAL_MS);
-
-      // Start periodic cleanup of stale offline canonical nodes
-      this.canonicalNodeCleanupInterval = setInterval(
-        () => this.cleanupStaleCanonicalNodes(),
-        CLEANUP_INTERVAL_MS
-      );
-
-      intentLogger.info('Event consumer started with automatic data pruning');
+      })().catch((err) => {
+        console.error('[EventConsumer] Background consumer loop crashed:', err);
+        this.emit('error', err);
+      });
     } catch (error) {
       console.error('Failed to start event consumer:', error);
       this.emit('error', error); // Emit error event
