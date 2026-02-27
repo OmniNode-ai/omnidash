@@ -72,7 +72,7 @@ export class AgentOperationsMockData {
         agentName,
         action: Gen.randomItem(actionTypes),
         status,
-        timestamp: Gen.pastTimestamp(60),
+        timestamp: Gen.pastTimestamp(59),
         duration: Gen.randomInt(100, 5000),
       });
     }
