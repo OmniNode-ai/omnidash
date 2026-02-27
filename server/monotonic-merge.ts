@@ -193,10 +193,13 @@ export class MonotonicMergeTracker {
  * or Date.now() with a warning). See extraction-aggregator.ts for an example.
  */
 export function extractEventTimeMs(event: Record<string, unknown>): number {
-  // Try common timestamp fields in priority order
+  // Try common timestamp fields in priority order.
+  // Canonical field names (from omnibase_core ModelEventEnvelope) are checked first.
+  // Legacy hook event field (emitted_at) is checked second for backward compatibility
+  // with events that pre-date the envelope_timestamp canonical name.
   const candidates = [
-    event.emitted_at, // ONEX canonical envelope (consumer naming)
-    event.envelope_timestamp, // ONEX canonical envelope (ModelEventEnvelope producer naming)
+    event.envelope_timestamp, // ONEX canonical envelope (ModelEventEnvelope from omnibase_core)
+    event.emitted_at, // legacy hook event field (pre-OMN-2932 convention)
     event.timestamp, // Most common field name
     event.created_at, // DB row convention
     event.createdAt, // camelCase variant
@@ -219,7 +222,7 @@ export function extractEventTimeMs(event: Record<string, unknown>): number {
   // Debug-level log: missing timestamps are common during tests and playback.
   console.debug(
     '[monotonic] Event has no valid timestamp field; assigning sentinel epoch 0 (oldest). ' +
-      'Fields checked: emitted_at, envelope_timestamp, timestamp, created_at, createdAt'
+      'Fields checked: envelope_timestamp, emitted_at, timestamp, created_at, createdAt'
   );
   return MISSING_TIMESTAMP_SENTINEL_MS;
 }

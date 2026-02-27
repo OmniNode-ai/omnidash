@@ -460,8 +460,8 @@ describe.skipIf(!shouldRun)('Layer 1: Kafka Data Source', () => {
 
     // ONEX events should have standard envelope fields
     const expectedFields = ['session_id', 'emitted_at', 'correlation_id', 'schema_version'];
-    // Also accept the EventEnvelope shape: entity_id, correlation_id, emitted_at
-    const envelopeFields = ['entity_id', 'correlation_id', 'emitted_at'];
+    // Also accept the canonical EventEnvelope shape: envelope_id, correlation_id, envelope_timestamp
+    const envelopeFields = ['envelope_id', 'correlation_id', 'envelope_timestamp'];
 
     const hasOnexFields = expectedFields.filter((f) => f in payload);
     const hasEnvelopeFields = envelopeFields.filter((f) => f in payload);
