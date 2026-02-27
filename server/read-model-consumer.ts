@@ -25,6 +25,7 @@
 
 import crypto from 'node:crypto';
 import { Kafka, Consumer, EachMessagePayload, KafkaMessage } from 'kafkajs';
+import { TopicCatalogManager } from './topic-catalog-manager';
 import { tryGetIntelligenceDb } from './storage';
 import { sql, eq } from 'drizzle-orm';
 import {
@@ -242,6 +243,8 @@ export interface ReadModelConsumerStats {
   errorsCount: number;
   lastProjectedAt: Date | null;
   topicStats: Record<string, { projected: number; errors: number }>;
+  catalogSource: 'catalog' | 'fallback';
+  unsupportedCatalogTopics: string[];
 }
 
 /**
@@ -256,12 +259,16 @@ export class ReadModelConsumer {
   private consumer: Consumer | null = null;
   private running = false;
   private stopped = false;
+  private catalogManager: TopicCatalogManager | null = null;
+  private catalogSource: 'catalog' | 'fallback' = 'fallback';
   private stats: ReadModelConsumerStats = {
     isRunning: false,
     eventsProjected: 0,
     errorsCount: 0,
     lastProjectedAt: null,
     topicStats: {},
+    catalogSource: 'fallback',
+    unsupportedCatalogTopics: [],
   };
 
   /**
@@ -347,14 +354,47 @@ export class ReadModelConsumer {
         await this.consumer.connect();
         console.log('[ReadModelConsumer] Connected to Kafka');
 
-        // Subscribe to all read-model topics individually so that a single
+        // -----------------------------------------------------------------------
+        // Catalog-driven topic subscription (OMN-2926)
+        //
+        // Query the platform topic-catalog service to get the dynamic topic
+        // list. Falls back to READ_MODEL_TOPICS if catalog does not respond.
+        // Uses a 10s timeout (longer than EventConsumer's 5s) to account for
+        // the read-model consumer starting after EventConsumer.
+        // -----------------------------------------------------------------------
+        const catalogTopics = await this.fetchCatalogTopics();
+        const supported = new Set(READ_MODEL_TOPICS as readonly string[]);
+        const subscribeTopics = catalogTopics.filter((t) => supported.has(t));
+        const unsupportedCatalogTopics = catalogTopics.filter((t) => !supported.has(t));
+
+        this.catalogSource = catalogTopics.length > 0 ? 'catalog' : 'fallback';
+        this.stats.catalogSource = this.catalogSource;
+
+        console.info(
+          `[ReadModelConsumer] source=${this.catalogSource} ` +
+            `subscribed=${subscribeTopics.length} ` +
+            `catalog_size=${catalogTopics.length} ` +
+            `unsupported=${unsupportedCatalogTopics.length}`
+        );
+
+        if (unsupportedCatalogTopics.length > 0) {
+          console.warn(
+            `[ReadModelConsumer] DRIFT: catalog has handlers not in consumer: ${unsupportedCatalogTopics.join(', ')}`
+          );
+          // Surface in health endpoint so drift is visible without log scraping.
+          this.stats.unsupportedCatalogTopics = unsupportedCatalogTopics;
+        }
+
+        const finalTopics = subscribeTopics.length > 0 ? subscribeTopics : [...READ_MODEL_TOPICS];
+
+        // Subscribe to all final topics individually so that a single
         // missing/uncreated topic (which returns invalid partition metadata from
         // Redpanda) does not crash the entire consumer. fromBeginning: false is
         // intentional -- we only project events produced after this consumer
         // first joins the group.
         const subscribedTopics: string[] = [];
         const skippedTopics: string[] = [];
-        for (const topic of READ_MODEL_TOPICS) {
+        for (const topic of finalTopics) {
           try {
             await this.consumer.subscribe({ topic, fromBeginning: false });
             subscribedTopics.push(topic);
@@ -504,6 +544,14 @@ export class ReadModelConsumer {
 
     if (!this.running && !this.consumer) return;
 
+    // Stop the catalog manager (its own consumer/producer pair).
+    if (this.catalogManager) {
+      await this.catalogManager.stop().catch((err) => {
+        console.warn('[ReadModelConsumer] Error stopping catalog manager:', err);
+      });
+      this.catalogManager = null;
+    }
+
     try {
       if (this.consumer) {
         await this.consumer.disconnect();
@@ -516,6 +564,69 @@ export class ReadModelConsumer {
       this.stats.isRunning = false;
       this.consumer = null;
       this.kafka = null;
+    }
+  }
+
+  /**
+   * Fetch topic list from the platform topic-catalog service (OMN-2926).
+   *
+   * Uses a 10s timeout (longer than EventConsumer's 5s) because the
+   * read-model consumer starts after EventConsumer and the catalog responder
+   * may still be processing the first request.
+   *
+   * Returns an empty array on timeout or error, causing the caller to fall
+   * back to READ_MODEL_TOPICS.
+   */
+  private async fetchCatalogTopics(): Promise<string[]> {
+    // Reset stale catalog state from any prior bootstrap attempt.
+    this.catalogSource = 'fallback';
+    this.stats.catalogSource = 'fallback';
+    this.stats.unsupportedCatalogTopics = [];
+
+    try {
+      const manager = new TopicCatalogManager();
+      this.catalogManager = manager;
+
+      const topics = await new Promise<string[]>((resolve) => {
+        manager.once('catalogReceived', (event) => {
+          this.catalogSource = 'catalog';
+          this.stats.catalogSource = 'catalog';
+          resolve(event.topics);
+        });
+
+        manager.once('catalogTimeout', () => {
+          console.info(
+            '[ReadModelConsumer] Topic catalog timed out — using READ_MODEL_TOPICS fallback'
+          );
+          manager.stop().catch((stopErr) => {
+            console.warn(
+              '[ReadModelConsumer] Error stopping catalog manager after timeout:',
+              stopErr
+            );
+          });
+          this.catalogManager = null;
+          resolve([]);
+        });
+
+        // Non-blocking: errors from bootstrap should not crash consumer startup.
+        manager.bootstrap().catch((err) => {
+          console.warn('[ReadModelConsumer] Topic catalog bootstrap error:', err);
+          manager.stop().catch((stopErr) => {
+            console.warn(
+              '[ReadModelConsumer] Error stopping catalog manager after bootstrap error:',
+              stopErr
+            );
+          });
+          this.catalogManager = null;
+          resolve([]);
+        });
+      });
+
+      return topics;
+    } catch (err) {
+      console.warn('[ReadModelConsumer] fetchCatalogTopics error — using fallback:', err);
+      this.catalogManager = null;
+      return [];
     }
   }
 
