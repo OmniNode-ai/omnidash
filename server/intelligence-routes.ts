@@ -617,6 +617,8 @@ intelligenceRouter.get('/read-model/status', async (req, res) => {
       lastProjectedAt: stats.lastProjectedAt,
       topicStats: stats.topicStats,
       database: 'omnidash_analytics',
+      catalog_source: stats.catalogSource,
+      unsupported_catalog_topics: stats.unsupportedCatalogTopics,
     });
   } catch (error) {
     console.error('Error fetching read-model status:', error);
