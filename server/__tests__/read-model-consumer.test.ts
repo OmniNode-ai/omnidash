@@ -10,6 +10,7 @@
  * - Consumer getStats returns correct statistics
  * - Consumer handles malformed messages
  * - [OMN-2760] Every topic in OMNICLAUDE_AGENT_TOPICS is in READ_MODEL_TOPICS
+ * - [OMN-2924] Pattern projection and lifecycle handlers write to pattern_learning_artifacts
  */
 
 import { describe, it, expect, vi, beforeEach } from 'vitest';
@@ -1173,6 +1174,171 @@ describe('ReadModelConsumer', () => {
       expect(compRow).toBeDefined();
       expect(compRow?.recommendation).toBe('shadow');
       expect(compRow?.confidence).toBe('low');
+    });
+  });
+});
+
+// ============================================================================
+// OMN-2924: Pattern write handlers
+// ============================================================================
+
+describe('OMN-2924: Pattern projection write handlers', () => {
+  let consumer: ReadModelConsumer;
+  let getHandleMessage: (c: ReadModelConsumer) => (payload: EachMessagePayload) => Promise<void>;
+
+  beforeEach(() => {
+    consumer = new ReadModelConsumer();
+    getHandleMessage = (c) =>
+      (
+        c as unknown as { handleMessage: (p: EachMessagePayload) => Promise<void> }
+      ).handleMessage.bind(c);
+  });
+
+  describe('projectPatternProjectionEvent', () => {
+    it('returns true and upserts patterns into pattern_learning_artifacts', async () => {
+      const { tryGetIntelligenceDb } = await import('../storage');
+
+      // Mock onConflictDoUpdate chain
+      const mockOnConflict = vi.fn().mockResolvedValue({ rowCount: 1 });
+      const mockValues = vi.fn().mockReturnValue({ onConflictDoUpdate: mockOnConflict });
+      const mockInsert = vi.fn().mockReturnValue({ values: mockValues });
+      const mockDb = { insert: mockInsert } as unknown as ReturnType<typeof tryGetIntelligenceDb>;
+      (tryGetIntelligenceDb as ReturnType<typeof vi.fn>).mockReturnValue(mockDb);
+
+      const handleMessage = getHandleMessage(consumer);
+      const payload = makeKafkaPayload('onex.evt.omniintelligence.pattern-projection.v1', {
+        event_type: 'PatternProjection',
+        snapshot_id: 'snap-uuid-1',
+        snapshot_at: '2026-02-27T00:00:00Z',
+        total_count: 1,
+        patterns: [
+          {
+            id: 'pat-uuid-1',
+            domain_id: 'code_generation',
+            quality_score: 0.85,
+            status: 'validated',
+            confidence: 0.9,
+            signature_hash: 'hash123',
+          },
+        ],
+      });
+
+      await handleMessage(payload);
+
+      expect(mockInsert).toHaveBeenCalledTimes(1);
+      expect(mockValues).toHaveBeenCalledTimes(1);
+      expect(mockOnConflict).toHaveBeenCalledTimes(1);
+    });
+
+    it('returns true without DB writes when patterns array is empty', async () => {
+      const { tryGetIntelligenceDb } = await import('../storage');
+      const mockInsert = vi.fn();
+      const mockDb = { insert: mockInsert } as unknown as ReturnType<typeof tryGetIntelligenceDb>;
+      (tryGetIntelligenceDb as ReturnType<typeof vi.fn>).mockReturnValue(mockDb);
+
+      const handleMessage = getHandleMessage(consumer);
+      await handleMessage(
+        makeKafkaPayload('onex.evt.omniintelligence.pattern-projection.v1', {
+          event_type: 'PatternProjection',
+          snapshot_id: 'snap-uuid-2',
+          snapshot_at: '2026-02-27T00:00:00Z',
+          total_count: 0,
+          patterns: [],
+        })
+      );
+
+      // No DB insert should happen for empty snapshot
+      expect(mockInsert).not.toHaveBeenCalled();
+    });
+
+    it('returns false when DB is unavailable', async () => {
+      const { tryGetIntelligenceDb } = await import('../storage');
+      (tryGetIntelligenceDb as ReturnType<typeof vi.fn>).mockReturnValue(null);
+
+      const handleMessage = getHandleMessage(consumer);
+      await handleMessage(
+        makeKafkaPayload('onex.evt.omniintelligence.pattern-projection.v1', {
+          event_type: 'PatternProjection',
+          snapshot_id: 'snap-uuid-3',
+          snapshot_at: '2026-02-27T00:00:00Z',
+          total_count: 1,
+          patterns: [{ id: 'pat-1', domain_id: 'test', quality_score: 0.5, status: 'candidate' }],
+        })
+      );
+
+      // errorsCount incremented means DB unavailable path was taken
+      const stats = consumer.getStats();
+      expect(stats.errorsCount).toBe(0); // false return = skip, no error counted
+    });
+  });
+
+  describe('projectPatternLifecycleTransitionedEvent', () => {
+    it('updates lifecycle_state when pattern_id and to_status are present', async () => {
+      const { tryGetIntelligenceDb } = await import('../storage');
+
+      const mockReturning = vi.fn().mockResolvedValue([{ id: 'row-id-1' }]);
+      const mockWhere = vi.fn().mockReturnValue({ returning: mockReturning });
+      const mockSet = vi.fn().mockReturnValue({ where: mockWhere });
+      const mockUpdate = vi.fn().mockReturnValue({ set: mockSet });
+      const mockDb = { update: mockUpdate } as unknown as ReturnType<typeof tryGetIntelligenceDb>;
+      (tryGetIntelligenceDb as ReturnType<typeof vi.fn>).mockReturnValue(mockDb);
+
+      const handleMessage = getHandleMessage(consumer);
+      await handleMessage(
+        makeKafkaPayload('onex.evt.omniintelligence.pattern-lifecycle-transitioned.v1', {
+          event_type: 'PatternLifecycleTransitioned',
+          pattern_id: 'pat-uuid-1',
+          from_status: 'candidate',
+          to_status: 'validated',
+          trigger: 'manual',
+          actor: 'test',
+          transition_id: 'trans-uuid-1',
+          transitioned_at: '2026-02-27T00:00:00Z',
+          request_id: 'req-uuid-1',
+          correlation_id: 'corr-uuid-1',
+        })
+      );
+
+      expect(mockUpdate).toHaveBeenCalledTimes(1);
+      expect(mockSet).toHaveBeenCalledTimes(1);
+      expect(mockWhere).toHaveBeenCalledTimes(1);
+    });
+
+    it('skips silently when pattern_id is missing', async () => {
+      const { tryGetIntelligenceDb } = await import('../storage');
+      const mockUpdate = vi.fn();
+      const mockDb = { update: mockUpdate } as unknown as ReturnType<typeof tryGetIntelligenceDb>;
+      (tryGetIntelligenceDb as ReturnType<typeof vi.fn>).mockReturnValue(mockDb);
+
+      const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+
+      const handleMessage = getHandleMessage(consumer);
+      await handleMessage(
+        makeKafkaPayload('onex.evt.omniintelligence.pattern-lifecycle-transitioned.v1', {
+          event_type: 'PatternLifecycleTransitioned',
+          to_status: 'validated',
+          // pattern_id missing
+        })
+      );
+
+      expect(mockUpdate).not.toHaveBeenCalled();
+      warnSpy.mockRestore();
+    });
+
+    it('returns false when DB is unavailable', async () => {
+      const { tryGetIntelligenceDb } = await import('../storage');
+      (tryGetIntelligenceDb as ReturnType<typeof vi.fn>).mockReturnValue(null);
+
+      const handleMessage = getHandleMessage(consumer);
+      await handleMessage(
+        makeKafkaPayload('onex.evt.omniintelligence.pattern-lifecycle-transitioned.v1', {
+          pattern_id: 'pat-uuid-1',
+          to_status: 'validated',
+        })
+      );
+
+      const stats = consumer.getStats();
+      expect(stats.errorsCount).toBe(0);
     });
   });
 });

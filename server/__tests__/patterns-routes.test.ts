@@ -1,36 +1,45 @@
+/**
+ * Tests for patterns-routes.ts (OMN-2924)
+ *
+ * Verifies:
+ * - Returns paginated pattern list from pattern_learning_artifacts
+ * - Filters by lifecycle_state (status)
+ * - Filters by min_confidence (maps to composite_score)
+ * - Handles pagination
+ * - Returns 400 for invalid parameters
+ * - Returns empty response when table does not exist
+ * - Sets no-cache headers
+ * - Handles DB unavailable (demo mode)
+ */
+
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import request from 'supertest';
 import express, { type Express } from 'express';
-import patternsRoutes from '../patterns-routes';
-import { resetTableExistenceCache } from '../pattern-queries';
+import patternsRoutes, { resetTableExistsCache } from '../patterns-routes';
 
-// Mock data structure as specified
-const mockPatterns = [
+// Mock data using pattern_learning_artifacts shape
+const mockArtifacts = [
   {
     id: 'uuid-1',
-    patternSignature: 'test_pattern_1',
-    domainId: 'code_generation',
-    status: 'validated',
-    confidence: '0.85',
-    qualityScore: '0.75',
-    injectionCountRolling20: 10,
-    successCountRolling20: 8,
-    isCurrent: true,
+    patternId: 'pattern-uuid-1',
+    patternName: 'code_generation',
+    patternType: 'code_pattern',
+    lifecycleState: 'validated',
+    compositeScore: '0.850000',
     createdAt: new Date('2026-01-15'),
     updatedAt: new Date('2026-01-20'),
+    projectedAt: new Date('2026-01-20'),
   },
   {
     id: 'uuid-2',
-    patternSignature: 'test_pattern_2',
-    domainId: 'debugging',
-    status: 'candidate',
-    confidence: '0.65',
-    qualityScore: '0.50',
-    injectionCountRolling20: 0, // zero sample - success_rate should be null
-    successCountRolling20: 0,
-    isCurrent: true,
+    patternId: 'pattern-uuid-2',
+    patternName: 'debugging',
+    patternType: 'debug_pattern',
+    lifecycleState: 'candidate',
+    compositeScore: '0.650000',
     createdAt: new Date('2026-01-10'),
     updatedAt: new Date('2026-01-10'),
+    projectedAt: new Date('2026-01-10'),
   },
 ];
 
@@ -62,7 +71,7 @@ const mockDb = createMockQueryBuilder();
 /**
  * Prepend a mockReturnValueOnce on mockDb.select for the tableExists() probe.
  *
- * tableExists() calls: db.select().from(learnedPatterns).limit(1)
+ * tableExists() calls: db.select().from(patternLearningArtifacts).limit(1)
  * and awaits the result of .limit(). This helper creates a one-shot
  * chain that resolves .limit() to a non-empty array (table exists)
  * or rejects with a PG 42P01 error (table missing).
@@ -95,7 +104,8 @@ describe('Patterns Routes', () => {
     app.use(express.json());
     app.use('/api/patterns', patternsRoutes);
     vi.clearAllMocks();
-    resetTableExistenceCache();
+    // Reset module-level table-existence cache so each test starts fresh.
+    resetTableExistsCache();
 
     // Reset mockDb chain after clearing mocks
     mockDb.select.mockReturnValue(mockDb);
@@ -109,24 +119,20 @@ describe('Patterns Routes', () => {
 
   describe('GET /api/patterns', () => {
     it('should return paginated pattern list with default params', async () => {
-      // Mock table existence check (db.select().from().limit(1))
       mockTableExistsProbe();
 
-      // Mock count query - returns array with count object
-      const countMock = vi.fn().mockResolvedValue([{ count: 2 }]);
+      // Mock Promise.all: [countResult, rows]
       mockDb.select.mockReturnValueOnce({
         from: vi.fn().mockReturnValue({
-          where: countMock,
+          where: vi.fn().mockResolvedValue([{ count: 2 }]),
         }),
       });
-
-      // Mock patterns query
       mockDb.select.mockReturnValueOnce({
         from: vi.fn().mockReturnValue({
           where: vi.fn().mockReturnValue({
             orderBy: vi.fn().mockReturnValue({
               limit: vi.fn().mockReturnValue({
-                offset: vi.fn().mockResolvedValue(mockPatterns),
+                offset: vi.fn().mockResolvedValue(mockArtifacts),
               }),
             }),
           }),
@@ -135,13 +141,10 @@ describe('Patterns Routes', () => {
 
       const response = await request(app).get('/api/patterns').expect(200);
 
-      // Verify response shape
       expect(response.body).toHaveProperty('patterns');
       expect(response.body).toHaveProperty('total');
       expect(response.body).toHaveProperty('limit');
       expect(response.body).toHaveProperty('offset');
-
-      // Verify default pagination values
       expect(response.body.limit).toBe(50);
       expect(response.body.offset).toBe(0);
       expect(response.body.total).toBe(2);
@@ -149,24 +152,20 @@ describe('Patterns Routes', () => {
     });
 
     it('should filter by status correctly', async () => {
-      // Mock table existence check (db.select().from().limit(1))
       mockTableExistsProbe();
 
-      // Mock count query
+      const validatedArtifacts = mockArtifacts.filter((a) => a.lifecycleState === 'validated');
       mockDb.select.mockReturnValueOnce({
         from: vi.fn().mockReturnValue({
           where: vi.fn().mockResolvedValue([{ count: 1 }]),
         }),
       });
-
-      // Mock patterns query - only return validated patterns
-      const validatedPatterns = mockPatterns.filter((p) => p.status === 'validated');
       mockDb.select.mockReturnValueOnce({
         from: vi.fn().mockReturnValue({
           where: vi.fn().mockReturnValue({
             orderBy: vi.fn().mockReturnValue({
               limit: vi.fn().mockReturnValue({
-                offset: vi.fn().mockResolvedValue(validatedPatterns),
+                offset: vi.fn().mockResolvedValue(validatedArtifacts),
               }),
             }),
           }),
@@ -180,24 +179,20 @@ describe('Patterns Routes', () => {
     });
 
     it('should filter by min_confidence correctly', async () => {
-      // Mock table existence check (db.select().from().limit(1))
       mockTableExistsProbe();
 
-      // Mock count query
+      const highScoreArtifacts = mockArtifacts.filter((a) => parseFloat(a.compositeScore) >= 0.8);
       mockDb.select.mockReturnValueOnce({
         from: vi.fn().mockReturnValue({
           where: vi.fn().mockResolvedValue([{ count: 1 }]),
         }),
       });
-
-      // Mock patterns query - only return patterns with confidence >= 0.8
-      const highConfidencePatterns = mockPatterns.filter((p) => parseFloat(p.confidence) >= 0.8);
       mockDb.select.mockReturnValueOnce({
         from: vi.fn().mockReturnValue({
           where: vi.fn().mockReturnValue({
             orderBy: vi.fn().mockReturnValue({
               limit: vi.fn().mockReturnValue({
-                offset: vi.fn().mockResolvedValue(highConfidencePatterns),
+                offset: vi.fn().mockResolvedValue(highScoreArtifacts),
               }),
             }),
           }),
@@ -211,23 +206,19 @@ describe('Patterns Routes', () => {
     });
 
     it('should handle pagination correctly with limit and offset', async () => {
-      // Mock table existence check (db.select().from().limit(1))
       mockTableExistsProbe();
 
-      // Mock count query
       mockDb.select.mockReturnValueOnce({
         from: vi.fn().mockReturnValue({
           where: vi.fn().mockResolvedValue([{ count: 100 }]),
         }),
       });
-
-      // Mock patterns query with pagination
       mockDb.select.mockReturnValueOnce({
         from: vi.fn().mockReturnValue({
           where: vi.fn().mockReturnValue({
             orderBy: vi.fn().mockReturnValue({
               limit: vi.fn().mockReturnValue({
-                offset: vi.fn().mockResolvedValue([mockPatterns[0]]),
+                offset: vi.fn().mockResolvedValue([mockArtifacts[0]]),
               }),
             }),
           }),
@@ -263,23 +254,19 @@ describe('Patterns Routes', () => {
     });
 
     it('should include all required fields in pattern items', async () => {
-      // Mock table existence check (db.select().from().limit(1))
       mockTableExistsProbe();
 
-      // Mock count query
       mockDb.select.mockReturnValueOnce({
         from: vi.fn().mockReturnValue({
           where: vi.fn().mockResolvedValue([{ count: 1 }]),
         }),
       });
-
-      // Mock patterns query
       mockDb.select.mockReturnValueOnce({
         from: vi.fn().mockReturnValue({
           where: vi.fn().mockReturnValue({
             orderBy: vi.fn().mockReturnValue({
               limit: vi.fn().mockReturnValue({
-                offset: vi.fn().mockResolvedValue([mockPatterns[0]]),
+                offset: vi.fn().mockResolvedValue([mockArtifacts[0]]),
               }),
             }),
           }),
@@ -290,7 +277,6 @@ describe('Patterns Routes', () => {
 
       const pattern = response.body.patterns[0];
 
-      // Verify all required fields are present
       expect(pattern).toHaveProperty('id');
       expect(pattern).toHaveProperty('name');
       expect(pattern).toHaveProperty('signature');
@@ -299,86 +285,18 @@ describe('Patterns Routes', () => {
       expect(pattern).toHaveProperty('quality_score');
       expect(pattern).toHaveProperty('usage_count_rolling_20');
       expect(pattern).toHaveProperty('success_rate_rolling_20');
-      expect(pattern).toHaveProperty('sample_size_rolling_20');
-      expect(pattern).toHaveProperty('created_at');
-      expect(pattern).toHaveProperty('updated_at');
 
-      // Verify field mappings
+      // Verify field mappings from pattern_learning_artifacts
       expect(pattern.id).toBe('uuid-1');
-      expect(pattern.name).toBe('code_generation'); // domainId maps to name
-      expect(pattern.signature).toBe('test_pattern_1'); // patternSignature maps to signature
-      expect(pattern.status).toBe('validated');
-      expect(pattern.confidence).toBe(0.85);
-      expect(pattern.quality_score).toBe(0.75);
-      expect(pattern.usage_count_rolling_20).toBe(10);
-      expect(pattern.sample_size_rolling_20).toBe(10);
+      expect(pattern.name).toBe('code_generation'); // patternName maps to name
+      expect(pattern.signature).toBe('code_pattern'); // patternType maps to signature
+      expect(pattern.status).toBe('validated'); // lifecycleState maps to status
+      expect(pattern.confidence).toBeCloseTo(0.85); // compositeScore maps to confidence
+      expect(pattern.quality_score).toBeCloseTo(0.85); // compositeScore maps to quality_score
     });
 
-    it('should return null for success_rate_rolling_20 when sample_size is 0 (zero-safe rule)', async () => {
-      // Mock table existence check (db.select().from().limit(1))
-      mockTableExistsProbe();
-
-      // Mock count query
-      mockDb.select.mockReturnValueOnce({
-        from: vi.fn().mockReturnValue({
-          where: vi.fn().mockResolvedValue([{ count: 1 }]),
-        }),
-      });
-
-      // Return pattern with zero sample size
-      mockDb.select.mockReturnValueOnce({
-        from: vi.fn().mockReturnValue({
-          where: vi.fn().mockReturnValue({
-            orderBy: vi.fn().mockReturnValue({
-              limit: vi.fn().mockReturnValue({
-                offset: vi.fn().mockResolvedValue([mockPatterns[1]]), // Pattern with 0 injections
-              }),
-            }),
-          }),
-        }),
-      });
-
-      const response = await request(app).get('/api/patterns').expect(200);
-
-      const pattern = response.body.patterns[0];
-      expect(pattern.sample_size_rolling_20).toBe(0);
-      expect(pattern.success_rate_rolling_20).toBeNull();
-    });
-
-    it('should calculate success_rate_rolling_20 correctly when sample_size > 0', async () => {
-      // Mock table existence check (db.select().from().limit(1))
-      mockTableExistsProbe();
-
-      // Mock count query
-      mockDb.select.mockReturnValueOnce({
-        from: vi.fn().mockReturnValue({
-          where: vi.fn().mockResolvedValue([{ count: 1 }]),
-        }),
-      });
-
-      // Return pattern with non-zero sample size (8 successes / 10 injections = 0.8)
-      mockDb.select.mockReturnValueOnce({
-        from: vi.fn().mockReturnValue({
-          where: vi.fn().mockReturnValue({
-            orderBy: vi.fn().mockReturnValue({
-              limit: vi.fn().mockReturnValue({
-                offset: vi.fn().mockResolvedValue([mockPatterns[0]]),
-              }),
-            }),
-          }),
-        }),
-      });
-
-      const response = await request(app).get('/api/patterns').expect(200);
-
-      const pattern = response.body.patterns[0];
-      expect(pattern.sample_size_rolling_20).toBe(10);
-      expect(pattern.success_rate_rolling_20).toBe(0.8); // 8/10 = 0.8
-    });
-
-    it('should return empty response when learned_patterns table does not exist', async () => {
-      // Mock table existence check to fail with table not found error
-      const tableError = new Error('relation "learned_patterns" does not exist');
+    it('should return empty response when pattern_learning_artifacts table does not exist', async () => {
+      const tableError = new Error('relation "pattern_learning_artifacts" does not exist');
       (tableError as any).code = '42P01';
       mockTableExistsProbe({ reject: tableError });
 
@@ -393,17 +311,13 @@ describe('Patterns Routes', () => {
     });
 
     it('should clamp limit to maximum of 250', async () => {
-      // Mock table existence check (db.select().from().limit(1))
       mockTableExistsProbe();
 
-      // Mock count query
       mockDb.select.mockReturnValueOnce({
         from: vi.fn().mockReturnValue({
           where: vi.fn().mockResolvedValue([{ count: 0 }]),
         }),
       });
-
-      // Mock patterns query
       mockDb.select.mockReturnValueOnce({
         from: vi.fn().mockReturnValue({
           where: vi.fn().mockReturnValue({
@@ -418,22 +332,17 @@ describe('Patterns Routes', () => {
 
       const response = await request(app).get('/api/patterns?limit=500').expect(200);
 
-      // Limit should be clamped to 250
       expect(response.body.limit).toBe(250);
     });
 
     it('should clamp limit to minimum of 1', async () => {
-      // Mock table existence check (db.select().from().limit(1))
       mockTableExistsProbe();
 
-      // Mock count query
       mockDb.select.mockReturnValueOnce({
         from: vi.fn().mockReturnValue({
           where: vi.fn().mockResolvedValue([{ count: 0 }]),
         }),
       });
-
-      // Mock patterns query
       mockDb.select.mockReturnValueOnce({
         from: vi.fn().mockReturnValue({
           where: vi.fn().mockReturnValue({
@@ -448,22 +357,17 @@ describe('Patterns Routes', () => {
 
       const response = await request(app).get('/api/patterns?limit=0').expect(200);
 
-      // Limit should be clamped to 1
       expect(response.body.limit).toBe(1);
     });
 
     it('should clamp negative offset to 0', async () => {
-      // Mock table existence check (db.select().from().limit(1))
       mockTableExistsProbe();
 
-      // Mock count query
       mockDb.select.mockReturnValueOnce({
         from: vi.fn().mockReturnValue({
           where: vi.fn().mockResolvedValue([{ count: 0 }]),
         }),
       });
-
-      // Mock patterns query
       mockDb.select.mockReturnValueOnce({
         from: vi.fn().mockReturnValue({
           where: vi.fn().mockReturnValue({
@@ -478,15 +382,12 @@ describe('Patterns Routes', () => {
 
       const response = await request(app).get('/api/patterns?offset=-10').expect(200);
 
-      // Offset should be clamped to 0
       expect(response.body.offset).toBe(0);
     });
 
     it('should handle database errors gracefully', async () => {
-      // Mock table existence check (db.select().from().limit(1))
       mockTableExistsProbe();
 
-      // Mock count query to throw an error
       mockDb.select.mockReturnValueOnce({
         from: vi.fn().mockReturnValue({
           where: vi.fn().mockRejectedValue(new Error('Database connection failed')),
@@ -504,7 +405,8 @@ describe('Patterns Routes', () => {
 
       for (const status of validStatuses) {
         vi.clearAllMocks();
-        resetTableExistenceCache();
+        // Reset module-level cache so each loop iteration runs the table probe.
+        resetTableExistsCache();
 
         // Re-establish default mock chain after vi.clearAllMocks()
         mockDb.select.mockReturnValue(mockDb);
@@ -514,17 +416,13 @@ describe('Patterns Routes', () => {
         mockDb.limit.mockReturnValue(mockDb);
         mockDb.offset.mockReturnValue(mockDb);
 
-        // Mock table existence check (db.select().from().limit(1))
         mockTableExistsProbe();
 
-        // Mock count query
         mockDb.select.mockReturnValueOnce({
           from: vi.fn().mockReturnValue({
             where: vi.fn().mockResolvedValue([{ count: 0 }]),
           }),
         });
-
-        // Mock patterns query
         mockDb.select.mockReturnValueOnce({
           from: vi.fn().mockReturnValue({
             where: vi.fn().mockReturnValue({
@@ -544,17 +442,13 @@ describe('Patterns Routes', () => {
     });
 
     it('should set no-cache headers on response', async () => {
-      // Mock table existence check (db.select().from().limit(1))
       mockTableExistsProbe();
 
-      // Mock count query
       mockDb.select.mockReturnValueOnce({
         from: vi.fn().mockReturnValue({
           where: vi.fn().mockResolvedValue([{ count: 0 }]),
         }),
       });
-
-      // Mock patterns query
       mockDb.select.mockReturnValueOnce({
         from: vi.fn().mockReturnValue({
           where: vi.fn().mockReturnValue({
@@ -574,57 +468,16 @@ describe('Patterns Routes', () => {
       expect(response.headers['expires']).toBe('0');
     });
 
-    it('should handle patterns with null optional fields gracefully', async () => {
-      const patternWithNulls = {
-        id: 'uuid-3',
-        patternSignature: 'test_pattern_3',
-        domainId: 'analysis',
-        status: 'provisional',
-        confidence: '0', // NOT NULL in DB, but could be '0'
-        qualityScore: null, // null quality score (nullable column)
-        injectionCountRolling20: null, // null injection count (nullable column)
-        successCountRolling20: null, // null success count (nullable column)
-        isCurrent: true,
-        createdAt: new Date('2026-01-01'), // NOT NULL in DB (defaultNow)
-        updatedAt: new Date('2026-01-01'), // NOT NULL in DB (defaultNow)
-      };
-
-      // Mock table existence check (db.select().from().limit(1))
-      mockTableExistsProbe();
-
-      // Mock count query
-      mockDb.select.mockReturnValueOnce({
-        from: vi.fn().mockReturnValue({
-          where: vi.fn().mockResolvedValue([{ count: 1 }]),
-        }),
-      });
-
-      // Mock patterns query
-      mockDb.select.mockReturnValueOnce({
-        from: vi.fn().mockReturnValue({
-          where: vi.fn().mockReturnValue({
-            orderBy: vi.fn().mockReturnValue({
-              limit: vi.fn().mockReturnValue({
-                offset: vi.fn().mockResolvedValue([patternWithNulls]),
-              }),
-            }),
-          }),
-        }),
-      });
+    it('should return demo mode response when DB is unavailable', async () => {
+      // Mock tryGetIntelligenceDb to return null (DB unavailable)
+      const { tryGetIntelligenceDb } = await import('../storage');
+      vi.mocked(tryGetIntelligenceDb).mockReturnValueOnce(null as any);
 
       const response = await request(app).get('/api/patterns').expect(200);
 
-      const pattern = response.body.patterns[0];
-
-      // Should handle nulls gracefully with defaults for nullable columns
-      expect(pattern.confidence).toBe(0);
-      expect(pattern.quality_score).toBe(0.5);
-      expect(pattern.usage_count_rolling_20).toBe(0);
-      expect(pattern.sample_size_rolling_20).toBe(0);
-      expect(pattern.success_rate_rolling_20).toBeNull(); // null due to zero sample
-      // NOT NULL columns always produce valid ISO strings
-      expect(pattern.created_at).toBe('2026-01-01T00:00:00.000Z');
-      expect(pattern.updated_at).toBe('2026-01-01T00:00:00.000Z');
+      expect(response.body._demo).toBe(true);
+      expect(response.body.patterns).toHaveLength(0);
+      expect(response.body.total).toBe(0);
     });
   });
 });

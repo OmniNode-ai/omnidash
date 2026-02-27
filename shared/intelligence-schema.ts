@@ -457,53 +457,10 @@ export interface LanguageBreakdown {
 }
 
 /**
- * Learned Patterns Table
- * Tracks patterns discovered through PATLEARN system with lifecycle management
- * and rolling metrics for injection success tracking
- */
-export const learnedPatterns = pgTable('learned_patterns', {
-  id: uuid('id').primaryKey().defaultRandom(),
-  patternSignature: text('pattern_signature').notNull(),
-  domainId: varchar('domain_id', { length: 50 }).notNull(),
-  domainVersion: varchar('domain_version', { length: 20 }).notNull(),
-  domainCandidates: jsonb('domain_candidates').notNull().default([]),
-  keywords: text('keywords').array(),
-  confidence: numeric('confidence', { precision: 10, scale: 6 }).notNull(),
-  status: varchar('status', { length: 20 }).notNull().default('candidate'),
-  promotedAt: timestamp('promoted_at', { withTimezone: true }),
-  deprecatedAt: timestamp('deprecated_at', { withTimezone: true }),
-  deprecationReason: text('deprecation_reason'),
-  sourceSessionIds: uuid('source_session_ids').array().notNull().default([]),
-  recurrenceCount: integer('recurrence_count').notNull().default(1),
-  firstSeenAt: timestamp('first_seen_at', { withTimezone: true }).notNull().defaultNow(),
-  lastSeenAt: timestamp('last_seen_at', { withTimezone: true }).notNull().defaultNow(),
-  distinctDaysSeen: integer('distinct_days_seen').notNull().default(1),
-  qualityScore: numeric('quality_score', { precision: 10, scale: 6 }).default('0.5'),
-  injectionCountRolling20: integer('injection_count_rolling_20').default(0),
-  successCountRolling20: integer('success_count_rolling_20').default(0),
-  failureCountRolling20: integer('failure_count_rolling_20').default(0),
-  failureStreak: integer('failure_streak').default(0),
-  version: integer('version').notNull().default(1),
-  isCurrent: boolean('is_current').notNull().default(true),
-  supersedes: uuid('supersedes'),
-  supersededBy: uuid('superseded_by'),
-  compiledSnippet: text('compiled_snippet'),
-  compiledTokenCount: integer('compiled_token_count'),
-  compiledAt: timestamp('compiled_at', { withTimezone: true }),
-  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
-  updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
-  signatureHash: text('signature_hash').notNull(),
-});
-
-// Export Zod schema for validation
-export const insertLearnedPatternSchema = createInsertSchema(learnedPatterns);
-
-// Export TypeScript types
-export type LearnedPattern = typeof learnedPatterns.$inferSelect;
-export type InsertLearnedPattern = typeof learnedPatterns.$inferInsert;
-
-/**
- * API Response Interfaces for Learned Patterns
+ * API Response Interfaces for Learned Patterns (OMN-2924)
+ *
+ * learnedPatterns table removed — canonical data source is now pattern_learning_artifacts.
+ * These interfaces are preserved for backwards compatibility with the /api/patterns endpoint.
  */
 
 /**

@@ -13,7 +13,6 @@ import extractionRoutes from './extraction-routes';
 import effectivenessRoutes from './effectiveness-routes';
 import { createProjectionRoutes } from './projection-routes';
 import { projectionService } from './projection-bootstrap';
-import insightsRoutes from './insights-routes';
 import baselinesRoutes from './baselines-routes';
 import costRoutes from './cost-routes';
 import intentRoutes from './intent-routes';
@@ -77,9 +76,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // Mount projection routes for server-side materialized views (OMN-2095 / OMN-2096 / OMN-2097)
   app.use('/api/projections', createProjectionRoutes(projectionService));
-
-  // Mount insights routes for learned insights dashboard (OMN-1407)
-  app.use('/api/insights', insightsRoutes);
 
   // Mount baselines routes for cost + outcome comparison dashboard (OMN-2156)
   app.use('/api/baselines', baselinesRoutes);

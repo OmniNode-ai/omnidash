@@ -363,6 +363,10 @@ export const SUFFIX_INTELLIGENCE_PATTERN_LIFECYCLE_TRANSITIONED =
 export const SUFFIX_INTELLIGENCE_PATTERN_PROMOTED = 'onex.evt.omniintelligence.pattern-promoted.v1';
 export const SUFFIX_INTELLIGENCE_PATTERN_STORED = 'onex.evt.omniintelligence.pattern-stored.v1';
 
+/** Intelligence pattern projection snapshot (OMN-2924) */
+export const SUFFIX_INTELLIGENCE_PATTERN_PROJECTION =
+  'onex.evt.omniintelligence.pattern-projection.v1';
+
 // ============================================================================
 // Miscellaneous Topics
 // ============================================================================

@@ -13,7 +13,7 @@ import pg from 'pg';
 import { sql } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/node-postgres';
 import {
-  learnedPatterns,
+  patternLearningArtifacts,
   injectionEffectiveness,
   latencyBreakdowns,
   patternHitRates,
@@ -23,7 +23,7 @@ import {
   baselinesSnapshots,
 } from '@shared/intelligence-schema';
 import type {
-  InsertLearnedPattern,
+  InsertPatternLearningArtifact,
   InsertInjectionEffectiveness,
   InsertLatencyBreakdown,
   InsertPatternHitRate,
@@ -94,21 +94,21 @@ export function getTestDb(): ReturnType<typeof drizzle> {
 // ---------------------------------------------------------------------------
 
 /**
- * Delete all rows from the learned_patterns table.
+ * Delete all rows from the pattern_learning_artifacts table.
  * Uses DELETE (not TRUNCATE) to avoid permission issues.
  */
 export async function truncatePatterns(): Promise<void> {
   const testDb = getTestDb();
-  await testDb.delete(learnedPatterns);
+  await testDb.delete(patternLearningArtifacts);
 }
 
 /**
- * Bulk insert patterns into the learned_patterns table.
+ * Bulk insert patterns into the pattern_learning_artifacts table.
  */
-export async function seedPatterns(items: InsertLearnedPattern[]): Promise<void> {
+export async function seedPatterns(items: InsertPatternLearningArtifact[]): Promise<void> {
   if (items.length === 0) return;
   const testDb = getTestDb();
-  await testDb.insert(learnedPatterns).values(items);
+  await testDb.insert(patternLearningArtifacts).values(items);
 }
 
 // ---------------------------------------------------------------------------
@@ -116,20 +116,20 @@ export async function seedPatterns(items: InsertLearnedPattern[]): Promise<void>
 // ---------------------------------------------------------------------------
 
 /**
- * Create a full InsertLearnedPattern with sensible defaults.
+ * Create a full InsertPatternLearningArtifact with sensible defaults (OMN-2924).
  * Any field can be overridden via the `overrides` parameter.
  */
-export function makePattern(overrides: Partial<InsertLearnedPattern> = {}): InsertLearnedPattern {
+export function makePattern(
+  overrides: Partial<InsertPatternLearningArtifact> = {}
+): InsertPatternLearningArtifact {
   return {
-    patternSignature: `test_pattern_${randomUUID().slice(0, 8)}`,
-    domainId: 'test_domain',
-    domainVersion: '1.0.0',
-    domainCandidates: [],
-    confidence: '0.500000',
-    status: 'candidate',
-    isCurrent: true,
-    signatureHash: randomUUID(),
-    qualityScore: '0.500000',
+    patternId: randomUUID(),
+    patternName: `test_pattern_${randomUUID().slice(0, 8)}`,
+    patternType: 'code_pattern',
+    lifecycleState: 'candidate',
+    compositeScore: '0.500000',
+    scoringEvidence: {},
+    signature: { hash: randomUUID() },
     ...overrides,
   };
 }

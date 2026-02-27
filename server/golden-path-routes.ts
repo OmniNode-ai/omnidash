@@ -16,7 +16,7 @@
 import { Router } from 'express';
 import { tryGetIntelligenceDb } from './storage';
 import { sql } from 'drizzle-orm';
-import { learnedPatterns, injectionEffectiveness } from '@shared/intelligence-schema';
+import { patternLearningArtifacts, injectionEffectiveness } from '@shared/intelligence-schema';
 
 /**
  * Create golden path test routes.
@@ -96,19 +96,21 @@ export function createGoldenPathRoutes(): Router | null {
       let patternHeuristic = false;
 
       if (sessionId) {
-        // Use source_session_ids array containment
+        // pattern_learning_artifacts does not store session arrays; fall back
+        // to heuristic count of all patterns created since a recent cutoff.
+        patternHeuristic = true;
         const result = await db
           .select({ count: sql<number>`count(*)::int` })
-          .from(learnedPatterns)
-          .where(sql`${learnedPatterns.sourceSessionIds} @> ARRAY[${sessionId}]::uuid[]`);
+          .from(patternLearningArtifacts)
+          .where(sql`${patternLearningArtifacts.createdAt} >= NOW() - INTERVAL '1 hour'`);
         patternCount = result[0]?.count ?? 0;
         patternFound = patternCount > 0;
       } else if (since) {
         patternHeuristic = true;
         const result = await db
           .select({ count: sql<number>`count(*)::int` })
-          .from(learnedPatterns)
-          .where(sql`${learnedPatterns.createdAt} >= ${since}::timestamptz`);
+          .from(patternLearningArtifacts)
+          .where(sql`${patternLearningArtifacts.createdAt} >= ${since}::timestamptz`);
         patternCount = result[0]?.count ?? 0;
         patternFound = patternCount > 0;
       }
