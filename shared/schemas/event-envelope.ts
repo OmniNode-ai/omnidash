@@ -2,41 +2,47 @@ import { z } from 'zod';
 
 // ONEX Event Envelope (wraps all Kafka events)
 //
-// The producer (ModelEventEnvelope in omnibase_core) serializes envelopes with
-// `envelope_id` + `envelope_timestamp`, while omnidash historically expected
-// `entity_id` + `emitted_at`. We accept BOTH field names and normalize to the
-// canonical consumer-side names (entity_id, emitted_at) via .transform().
-const RawEventEnvelopeSchema = z.object({
-  // Accept either field name for the envelope identifier
-  entity_id: z.string().uuid().optional(),
-  envelope_id: z.string().uuid().optional(),
-  correlation_id: z.string().uuid(),
-  causation_id: z.string().uuid().optional(),
-  // Accept either field name for the timestamp
-  emitted_at: z.string().datetime().optional(),
-  envelope_timestamp: z.string().datetime().optional(),
-  payload: z.unknown(),
-}).refine(
-  (data) => Boolean(data.entity_id || data.envelope_id),
-  { message: 'Either entity_id or envelope_id is required' }
-).refine(
-  (data) => Boolean(data.emitted_at || data.envelope_timestamp),
-  { message: 'Either emitted_at or envelope_timestamp is required' }
-);
+// Canonical field names (from omnibase_core ModelEventEnvelope):
+//   envelope_id         — unique envelope identifier (UUID)
+//   envelope_timestamp  — envelope creation timestamp (ISO-8601 UTC)
+//
+// The dual naming convention (entity_id / emitted_at vs envelope_id /
+// envelope_timestamp) has been resolved: `envelope_id` and
+// `envelope_timestamp` are the authoritative names.  This schema accepts
+// legacy `entity_id` / `emitted_at` during transition and normalises them
+// to the canonical names so all consumers see a single shape.
+const RawEventEnvelopeSchema = z
+  .object({
+    // Canonical: envelope_id (legacy alias: entity_id)
+    envelope_id: z.string().uuid().optional(),
+    entity_id: z.string().uuid().optional(),
+    correlation_id: z.string().uuid(),
+    causation_id: z.string().uuid().optional(),
+    // Canonical: envelope_timestamp (legacy alias: emitted_at)
+    envelope_timestamp: z.string().datetime().optional(),
+    emitted_at: z.string().datetime().optional(),
+    payload: z.unknown(),
+  })
+  .refine((data) => Boolean(data.envelope_id || data.entity_id), {
+    message: 'envelope_id is required (legacy alias entity_id also accepted)',
+  })
+  .refine((data) => Boolean(data.envelope_timestamp || data.emitted_at), {
+    message: 'envelope_timestamp is required (legacy alias emitted_at also accepted)',
+  });
 
 export const EventEnvelopeSchema = RawEventEnvelopeSchema.transform((data) => ({
-  entity_id: (data.entity_id || data.envelope_id)!,
+  envelope_id: (data.envelope_id || data.entity_id)!,
   correlation_id: data.correlation_id,
   causation_id: data.causation_id,
-  emitted_at: (data.emitted_at || data.envelope_timestamp)!,
+  envelope_timestamp: (data.envelope_timestamp || data.emitted_at)!,
   payload: data.payload,
 }));
 
 export type EventEnvelope<T> = {
-  entity_id: string;
+  envelope_id: string;
   correlation_id: string;
   causation_id?: string;
-  emitted_at: string;
+  envelope_timestamp: string;
   payload: T;
 };
 

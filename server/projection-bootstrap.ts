@@ -489,8 +489,14 @@ function mapSeverity(data: Record<string, unknown>): 'info' | 'warning' | 'error
 }
 
 function extractTimestamp(data: Record<string, unknown>): number | undefined {
-  // Check envelope_timestamp (ModelEventEnvelope producer) alongside legacy names
-  const ts = data.timestamp || data.createdAt || data.created_at || data.emitted_at || data.envelope_timestamp;
+  // Canonical field name (omnibase_core ModelEventEnvelope) is checked first.
+  // Legacy names are kept as fallbacks for older event shapes.
+  const ts =
+    data.envelope_timestamp ||
+    data.emitted_at ||
+    data.timestamp ||
+    data.createdAt ||
+    data.created_at;
   if (typeof ts === 'number' && ts > 0) return ts;
   if (typeof ts === 'string' && ts.length > 0) {
     const parsed = new Date(ts).getTime();
