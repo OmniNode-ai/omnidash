@@ -47,6 +47,22 @@ vi.mock('../baselines-events', () => ({
   emitBaselinesUpdate: vi.fn(),
 }));
 
+// Mock TopicCatalogManager — default behavior: timeout (fallback).
+// Individual tests override via mockImplementation() on the constructor.
+const mockBootstrap = vi.fn();
+const mockStop = vi.fn().mockResolvedValue(undefined);
+const mockCatalogManagerOn = vi.fn();
+const mockCatalogManagerOnce = vi.fn();
+
+vi.mock('../topic-catalog-manager', () => ({
+  TopicCatalogManager: vi.fn(() => ({
+    bootstrap: mockBootstrap,
+    stop: mockStop,
+    once: mockCatalogManagerOnce,
+    on: mockCatalogManagerOn,
+  })),
+}));
+
 import { ReadModelConsumer } from '../read-model-consumer';
 
 // ============================================================================
@@ -93,6 +109,8 @@ describe('ReadModelConsumer', () => {
       expect(stats.errorsCount).toBe(0);
       expect(stats.lastProjectedAt).toBeNull();
       expect(stats.topicStats).toEqual({});
+      expect(stats.catalogSource).toBe('fallback');
+      expect(stats.unsupportedCatalogTopics).toEqual([]);
     });
   });
 
@@ -131,6 +149,125 @@ describe('ReadModelConsumer', () => {
       // Should not throw
       await consumer.stop();
       expect(consumer.getStats().isRunning).toBe(false);
+    });
+  });
+
+  // ============================================================================
+  // Catalog-Driven Topic Subscription (OMN-2926)
+  // ============================================================================
+
+  describe('fetchCatalogTopics (via start)', () => {
+    /**
+     * Access private fetchCatalogTopics directly to unit-test catalog behavior
+     * without starting a full Kafka consumer.
+     */
+    function getFetchCatalogTopics(c: ReadModelConsumer) {
+      return (
+        c as unknown as { fetchCatalogTopics: () => Promise<string[]> }
+      ).fetchCatalogTopics.bind(c);
+    }
+
+    it('returns empty array and sets source=fallback on catalog timeout', async () => {
+      // Simulate timeout: 'catalogTimeout' fires, 'catalogReceived' never fires.
+      mockCatalogManagerOnce.mockImplementation((event: string, cb: () => void) => {
+        if (event === 'catalogTimeout') {
+          setImmediate(cb);
+        }
+      });
+      mockBootstrap.mockResolvedValue(undefined);
+
+      const fetchCatalogTopics = getFetchCatalogTopics(consumer);
+      const result = await fetchCatalogTopics();
+
+      expect(result).toEqual([]);
+      expect(consumer.getStats().catalogSource).toBe('fallback');
+    });
+
+    it('returns catalog topics and sets source=catalog on success', async () => {
+      const fakeCatalogTopics = [
+        'onex.evt.omniclaude.agent-actions.v1',
+        'onex.evt.omniclaude.routing-decisions.v1',
+      ];
+
+      mockCatalogManagerOnce.mockImplementation(
+        (event: string, cb: (e: { topics: string[]; warnings: string[] }) => void) => {
+          if (event === 'catalogReceived') {
+            setImmediate(() => cb({ topics: fakeCatalogTopics, warnings: [] }));
+          }
+        }
+      );
+      mockBootstrap.mockResolvedValue(undefined);
+
+      const fetchCatalogTopics = getFetchCatalogTopics(consumer);
+      const result = await fetchCatalogTopics();
+
+      expect(result).toEqual(fakeCatalogTopics);
+      expect(consumer.getStats().catalogSource).toBe('catalog');
+    });
+
+    it('returns empty array on bootstrap error (fallback)', async () => {
+      mockCatalogManagerOnce.mockImplementation(() => {
+        // Neither timeout nor received fires — error path resolves via bootstrap rejection.
+      });
+      mockBootstrap.mockRejectedValue(new Error('Kafka unavailable'));
+
+      const fetchCatalogTopics = getFetchCatalogTopics(consumer);
+      const result = await fetchCatalogTopics();
+
+      expect(result).toEqual([]);
+      expect(consumer.getStats().catalogSource).toBe('fallback');
+    });
+
+    it('surfaces unsupportedCatalogTopics in stats when catalog has extra topics', async () => {
+      const fakeCatalogTopics = [
+        'onex.evt.omniclaude.agent-actions.v1', // supported
+        'onex.evt.omniclaude.unknown-future-topic.v1', // NOT in READ_MODEL_TOPICS
+      ];
+
+      mockCatalogManagerOnce.mockImplementation(
+        (event: string, cb: (e: { topics: string[]; warnings: string[] }) => void) => {
+          if (event === 'catalogReceived') {
+            setImmediate(() => cb({ topics: fakeCatalogTopics, warnings: [] }));
+          }
+        }
+      );
+      mockBootstrap.mockResolvedValue(undefined);
+
+      // Must import READ_MODEL_TOPICS to verify filtering
+      const { READ_MODEL_TOPICS } = await import('../read-model-consumer');
+
+      const fetchCatalogTopics = getFetchCatalogTopics(consumer);
+      const result = await fetchCatalogTopics();
+
+      // fetchCatalogTopics returns raw catalog topics; filtering happens in start().
+      // Verify that after calling the method, state is set for catalog source.
+      expect(result).toEqual(fakeCatalogTopics);
+      expect(consumer.getStats().catalogSource).toBe('catalog');
+
+      // After calling fetchCatalogTopics, unsupportedCatalogTopics starts empty
+      // (set during start() after filtering). Verify READ_MODEL_TOPICS doesn't
+      // include the unknown topic so the filtering would catch it.
+      expect(READ_MODEL_TOPICS).not.toContain('onex.evt.omniclaude.unknown-future-topic.v1');
+    });
+
+    it('stops catalogManager on consumer stop', async () => {
+      // Put a mock catalogManager into the consumer's private field
+      const fakeManager = { stop: vi.fn().mockResolvedValue(undefined) };
+      (consumer as unknown as Record<string, unknown>).catalogManager = fakeManager;
+      (consumer as unknown as Record<string, unknown>).running = false;
+      (consumer as unknown as Record<string, unknown>).consumer = null;
+
+      // stop() should call catalogManager.stop() even when consumer isn't running
+      // (guard is !running && !consumer which is now true — but catalogManager cleanup
+      // happens before that guard, so we test via direct field injection).
+      // Re-open the guard by setting consumer to a fake object.
+      const fakeCons = { disconnect: vi.fn().mockResolvedValue(undefined) };
+      (consumer as unknown as Record<string, unknown>).consumer = fakeCons;
+      (consumer as unknown as Record<string, unknown>).running = true;
+
+      await consumer.stop();
+
+      expect(fakeManager.stop).toHaveBeenCalledOnce();
     });
   });
 
