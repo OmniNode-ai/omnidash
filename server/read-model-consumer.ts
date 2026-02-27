@@ -328,12 +328,12 @@ export class ReadModelConsumer {
         this.kafka = new Kafka({
           clientId: CLIENT_ID,
           brokers,
-          connectionTimeout: 5000,
-          requestTimeout: 10000,
+          connectionTimeout: 10000,
+          requestTimeout: 30000,
           retry: {
             initialRetryTime: RETRY_BASE_DELAY_MS,
             maxRetryTime: RETRY_MAX_DELAY_MS,
-            retries: 3,
+            retries: 10,
           },
         });
 
