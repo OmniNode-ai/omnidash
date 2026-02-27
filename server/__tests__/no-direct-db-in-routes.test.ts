@@ -58,6 +58,19 @@ const EXEMPT_FILES = new Set([
   // land and projections are created, migrate to ProjectionService views.
   // TODO(OMN-2583-followup): Migrate to projection views after OMN-2545/OMN-2557 merge.
   'objective-routes.ts',
+
+  // Health probe route — probeInsights() queries pattern_learning_artifacts to determine
+  // live vs. mock status. This is an operational probe, not a data-access read path.
+  // Extracting to a ProjectionService view would add unnecessary indirection for a
+  // single-row COUNT(*) health check. TODO(OMN-2924-followup): migrate to a dedicated
+  // health-probe abstraction that doesn't import the DB accessor directly.
+  'health-data-sources-routes.ts',
+
+  // Backwards-compatibility shim — proxies /api/patterns to pattern_learning_artifacts.
+  // The canonical endpoint is /api/intelligence/patterns/patlearn (intelligence-routes.ts,
+  // already exempt). This route will be removed once all clients migrate to the canonical
+  // endpoint. TODO(OMN-2924-followup): delete once client migration is complete.
+  'patterns-routes.ts',
 ]);
 
 /**

@@ -38,6 +38,7 @@ import {
   baselinesBreakdown,
   delegationEvents,
   delegationShadowComparisons,
+  patternLearningArtifacts,
 } from '@shared/intelligence-schema';
 import type {
   InsertAgentRoutingDecision,
@@ -50,6 +51,7 @@ import type {
   InsertBaselinesBreakdown,
   InsertDelegationEvent,
   InsertDelegationShadowComparison,
+  InsertPatternLearningArtifact,
 } from '@shared/intelligence-schema';
 import type { PatternEnforcementEvent } from '@shared/enforcement-types';
 import { ENRICHMENT_OUTCOMES } from '@shared/enrichment-types';
@@ -71,6 +73,8 @@ import {
   TOPIC_OMNICLAUDE_PERFORMANCE_METRICS,
   OMNICLAUDE_AGENT_TOPICS,
   SUFFIX_MEMORY_INTENT_STORED,
+  SUFFIX_INTELLIGENCE_PATTERN_PROJECTION,
+  SUFFIX_INTELLIGENCE_PATTERN_LIFECYCLE_TRANSITIONED,
 } from '@shared/topics';
 import type { LlmRoutingDecisionEvent } from '@shared/llm-routing-types';
 import type { TaskDelegatedEvent, DelegationShadowComparisonEvent } from '@shared/delegation-types';
@@ -225,6 +229,9 @@ export const READ_MODEL_TOPICS = [
   SUFFIX_OMNICLAUDE_CIRCUIT_BREAKER_TRIPPED,
   // OMN-2889: OmniMemory intent signals — durable projection into intent_signals table.
   SUFFIX_MEMORY_INTENT_STORED,
+  // OMN-2924: OmniIntelligence pattern topics — durable projection into pattern_learning_artifacts.
+  SUFFIX_INTELLIGENCE_PATTERN_PROJECTION,
+  SUFFIX_INTELLIGENCE_PATTERN_LIFECYCLE_TRANSITIONED,
 ] as const;
 
 type ReadModelTopic = (typeof READ_MODEL_TOPICS)[number];
@@ -391,22 +398,24 @@ export class ReadModelConsumer {
         //
         // Fix: fire-and-forget the run() promise and block on a stopped-flag
         // poll loop instead. The CRASH event handles real failures.
-        this.consumer.run({
-          eachMessage: async (payload: EachMessagePayload) => {
-            await this.handleMessage(payload);
-          },
-        }).catch((runErr) => {
-          if (!this.stopped) {
-            console.error(
-              '[ReadModelConsumer] consumer.run() threw — will reconnect:',
-              runErr instanceof Error ? runErr.message : runErr
-            );
-            // Signal the wait loop below to break so the outer retry loop
-            // can reconnect.
-            this.running = false;
-            this.stats.isRunning = false;
-          }
-        });
+        this.consumer
+          .run({
+            eachMessage: async (payload: EachMessagePayload) => {
+              await this.handleMessage(payload);
+            },
+          })
+          .catch((runErr) => {
+            if (!this.stopped) {
+              console.error(
+                '[ReadModelConsumer] consumer.run() threw — will reconnect:',
+                runErr instanceof Error ? runErr.message : runErr
+              );
+              // Signal the wait loop below to break so the outer retry loop
+              // can reconnect.
+              this.running = false;
+              this.stats.isRunning = false;
+            }
+          });
 
         // Block here while the consumer is alive. The internal kafkajs fetch
         // loop runs in the background; we just need to keep this iteration of
@@ -420,9 +429,7 @@ export class ReadModelConsumer {
 
         // If we reach here, running was set to false by the .catch() handler
         // (a real crash). Clean up and let the outer while-loop retry.
-        console.warn(
-          '[ReadModelConsumer] Consumer fetch loop exited — cleaning up for retry...'
-        );
+        console.warn('[ReadModelConsumer] Consumer fetch loop exited — cleaning up for retry...');
         try {
           await this.consumer.disconnect();
         } catch (disconnectErr) {
@@ -590,6 +597,13 @@ export class ReadModelConsumer {
           break;
         case SUFFIX_MEMORY_INTENT_STORED:
           projected = await this.projectIntentStoredEvent(parsed, fallbackId);
+          break;
+        // OMN-2924: Pattern write handlers
+        case SUFFIX_INTELLIGENCE_PATTERN_PROJECTION:
+          projected = await this.projectPatternProjectionEvent(parsed, fallbackId);
+          break;
+        case SUFFIX_INTELLIGENCE_PATTERN_LIFECYCLE_TRANSITIONED:
+          projected = await this.projectPatternLifecycleTransitionedEvent(parsed, fallbackId);
           break;
         default:
           console.warn(
@@ -2336,6 +2350,196 @@ export class ReadModelConsumer {
         console.warn(
           '[ReadModelConsumer] intent_signals table not yet created -- ' +
             'run migrations to enable intent signal projection'
+        );
+        return true;
+      }
+      throw err;
+    }
+
+    return true;
+  }
+
+  /**
+   * Project a pattern projection snapshot event into the `pattern_learning_artifacts`
+   * table (OMN-2924).
+   *
+   * The event carries a full materialized snapshot of all validated/provisional patterns
+   * produced by NodePatternProjectionEffect in omniintelligence. Each snapshot item
+   * is upserted on (pattern_id) so the table always reflects the latest snapshot state.
+   *
+   * Returns true when written (or snapshot is empty), false when the DB is unavailable.
+   */
+  private async projectPatternProjectionEvent(
+    data: Record<string, unknown>,
+    _fallbackId: string
+  ): Promise<boolean> {
+    const db = tryGetIntelligenceDb();
+    if (!db) return false;
+
+    // The projection event carries a `patterns` array where each item is a
+    // ModelPatternSummary (Python snake_case serialization).
+    const rawPatterns = data.patterns;
+    if (!Array.isArray(rawPatterns) || rawPatterns.length === 0) {
+      // Empty snapshot (no validated patterns yet) — advance watermark, no rows to write.
+      return true;
+    }
+
+    try {
+      for (const pattern of rawPatterns as Record<string, unknown>[]) {
+        // Map ModelPatternSummary fields to pattern_learning_artifacts columns.
+        // The Python model uses snake_case; we accept both snake_case and camelCase
+        // for resilience against future envelope format changes.
+        const patternId =
+          (pattern.id as string) || (pattern.pattern_id as string) || (pattern.patternId as string);
+        if (!patternId) {
+          console.warn('[ReadModelConsumer] Pattern projection item missing id — skipping item');
+          continue;
+        }
+
+        const patternName =
+          (pattern.domain_id as string) ||
+          (pattern.pattern_name as string) ||
+          (pattern.patternName as string) ||
+          'unknown';
+
+        const patternType =
+          (pattern.pattern_type as string) || (pattern.patternType as string) || 'unknown';
+
+        const lifecycleState =
+          (pattern.status as string) ||
+          (pattern.lifecycle_state as string) ||
+          (pattern.lifecycleState as string) ||
+          'candidate';
+
+        const compositeScore = String(
+          pattern.quality_score ?? pattern.composite_score ?? pattern.compositeScore ?? 0
+        );
+
+        // The projection snapshot carries summary fields only — fill JSONB columns with
+        // available data, defaulting to empty objects for fields not in ModelPatternSummary.
+        const scoringEvidence = pattern.scoring_evidence ?? pattern.scoringEvidence ?? {};
+        const signature = pattern.signature ?? { hash: pattern.signature_hash ?? '' };
+        const metrics = pattern.metrics ?? {};
+        const metadata = pattern.metadata ?? {};
+
+        const row: InsertPatternLearningArtifact = {
+          patternId,
+          patternName,
+          patternType,
+          lifecycleState,
+          compositeScore,
+          scoringEvidence,
+          signature,
+          metrics,
+          metadata,
+          updatedAt: safeParseDate(data.snapshot_at ?? data.snapshotAt),
+          projectedAt: new Date(),
+        };
+
+        await db
+          .insert(patternLearningArtifacts)
+          .values(row)
+          .onConflictDoUpdate({
+            target: patternLearningArtifacts.patternId,
+            set: {
+              patternName: row.patternName,
+              patternType: row.patternType,
+              lifecycleState: row.lifecycleState,
+              compositeScore: row.compositeScore,
+              scoringEvidence: row.scoringEvidence,
+              signature: row.signature,
+              metrics: row.metrics,
+              metadata: row.metadata,
+              updatedAt: row.updatedAt,
+              projectedAt: row.projectedAt,
+            },
+          });
+      }
+    } catch (err) {
+      const pgCode = (err as { code?: string }).code;
+      const msg = err instanceof Error ? err.message : String(err);
+      if (
+        pgCode === '42P01' ||
+        (msg.includes('pattern_learning_artifacts') && msg.includes('does not exist'))
+      ) {
+        console.warn(
+          '[ReadModelConsumer] pattern_learning_artifacts table not yet created -- ' +
+            'run migrations to enable pattern projection'
+        );
+        return true;
+      }
+      throw err;
+    }
+
+    return true;
+  }
+
+  /**
+   * Project a pattern lifecycle transitioned event into the `pattern_learning_artifacts`
+   * table (OMN-2924).
+   *
+   * Updates only `lifecycle_state` and `state_changed_at` for the affected pattern.
+   * If no row is found (projection snapshot not yet received), skips silently at
+   * DEBUG level to avoid log spam on cold start.
+   *
+   * Returns true when written or skipped (no row found), false when DB is unavailable.
+   */
+  private async projectPatternLifecycleTransitionedEvent(
+    data: Record<string, unknown>,
+    _fallbackId: string
+  ): Promise<boolean> {
+    const db = tryGetIntelligenceDb();
+    if (!db) return false;
+
+    const patternId = (data.pattern_id as string) || (data.patternId as string);
+    if (!patternId) {
+      console.warn(
+        '[ReadModelConsumer] Pattern lifecycle transitioned event missing pattern_id — skipping'
+      );
+      return true;
+    }
+
+    const toStatus = (data.to_status as string) || (data.toStatus as string);
+    if (!toStatus) {
+      console.warn(
+        `[ReadModelConsumer] Pattern lifecycle transitioned event for ${patternId} ` +
+          'missing to_status — skipping'
+      );
+      return true;
+    }
+
+    const transitionedAt = safeParseDate(
+      data.transitioned_at ?? data.transitionedAt ?? data.timestamp ?? data.created_at
+    );
+
+    try {
+      const result = await db
+        .update(patternLearningArtifacts)
+        .set({
+          lifecycleState: toStatus,
+          stateChangedAt: transitionedAt,
+          updatedAt: new Date(),
+        })
+        .where(eq(patternLearningArtifacts.patternId, patternId))
+        .returning({ id: patternLearningArtifacts.id });
+
+      if (result.length === 0) {
+        // Projection snapshot not yet received for this pattern — skip silently.
+        console.debug(
+          `[ReadModelConsumer] pattern-lifecycle-transitioned: no row found for pattern_id=${patternId} ` +
+            '— skipping (projection snapshot may not have arrived yet)'
+        );
+      }
+    } catch (err) {
+      const pgCode = (err as { code?: string }).code;
+      const msg = err instanceof Error ? err.message : String(err);
+      if (
+        pgCode === '42P01' ||
+        (msg.includes('pattern_learning_artifacts') && msg.includes('does not exist'))
+      ) {
+        console.warn(
+          '[ReadModelConsumer] pattern_learning_artifacts table not yet created -- ' +
+            'run migrations to enable pattern lifecycle projection'
         );
         return true;
       }

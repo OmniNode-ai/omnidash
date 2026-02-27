@@ -45,7 +45,9 @@ import type {
   PatternsProjection,
   PatternsProjectionPayload,
 } from './projections/patterns-projection';
-import { queryInsightsSummary } from './insight-queries';
+import { tryGetIntelligenceDb } from './storage';
+import { patternLearningArtifacts } from '@shared/intelligence-schema';
+import { count } from 'drizzle-orm';
 import { getEventBusDataSource } from './event-bus-data-source';
 import {
   TOPIC_OMNICLAUDE_AGENT_ACTIONS,
@@ -287,20 +289,21 @@ function probeValidation(): DataSourceInfo {
 }
 
 /**
- * Probe the insights data source by querying the database directly via the
- * shared query function. Live if at least one insight exists.
+ * Probe the insights data source by querying pattern_learning_artifacts (OMN-2924).
+ * Live if at least one pattern artifact exists.
+ *
+ * The legacy learned_patterns table has been removed; canonical data source is now
+ * pattern_learning_artifacts populated via the pattern-projection.v1 Kafka consumer.
  */
 async function probeInsights(): Promise<DataSourceInfo> {
   try {
-    const summary = await queryInsightsSummary();
-    // null is the explicit return value of queryInsightsSummary() when
-    // tryGetIntelligenceDb() returns null inside that function (see
-    // server/insight-queries.ts line ~233: `if (!db) return null`).
-    // It does NOT mean the DB is reachable but empty.
-    if (summary === null) {
+    const db = tryGetIntelligenceDb();
+    if (!db) {
       return { status: 'mock', reason: 'no_db_connection' };
     }
-    if (!Array.isArray(summary.insights) || summary.insights.length === 0) {
+    const result = await db.select({ total: count() }).from(patternLearningArtifacts);
+    const total = result[0]?.total ?? 0;
+    if (total === 0) {
       return { status: 'mock', reason: 'empty_tables' };
     }
     return { status: 'live' };
