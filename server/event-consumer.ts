@@ -1361,16 +1361,12 @@ export class EventConsumer extends EventEmitter {
                     case TOPIC.NODE_INTROSPECTION:
                     case TOPIC.REQUEST_INTROSPECTION: {
                       // Detect envelope format to route to exactly ONE handler path.
-                      // Canonical envelopes carry entity_id + emitted_at + payload (per
-                      // EventEnvelopeSchema); legacy events have flat fields like node_id
-                      // at the top level. We check for the envelope identifier (either
-                      // entity_id or envelope_id from ModelEventEnvelope) and timestamp
-                      // (either emitted_at or envelope_timestamp) instead of event_type
-                      // which is NOT part of EventEnvelopeSchema and may be omitted.
+                      // Canonical envelopes (ModelEventEnvelope from omnibase_core) carry
+                      // envelope_id + envelope_timestamp + payload.  Legacy events have
+                      // flat fields like node_id at the top level.  We do NOT check
+                      // event_type because it is not part of EventEnvelopeSchema.
                       const isIntrospectionEnvelope = Boolean(
-                        (event.entity_id || event.envelope_id) &&
-                        (event.emitted_at || event.envelope_timestamp) &&
-                        event.payload
+                        event.envelope_id && event.envelope_timestamp && event.payload
                       );
                       if (!isIntrospectionEnvelope) {
                         if (isDebug) {
@@ -1389,12 +1385,10 @@ export class EventConsumer extends EventEmitter {
                     }
                     case TOPIC.NODE_HEARTBEAT: {
                       // Detect envelope format to route to exactly ONE handler path.
-                      // Accept both entity_id/emitted_at (legacy consumer naming) and
-                      // envelope_id/envelope_timestamp (ModelEventEnvelope producer naming).
+                      // Canonical envelopes (ModelEventEnvelope from omnibase_core) carry
+                      // envelope_id + envelope_timestamp + payload.
                       const isHeartbeatEnvelope = Boolean(
-                        (event.entity_id || event.envelope_id) &&
-                        (event.emitted_at || event.envelope_timestamp) &&
-                        event.payload
+                        event.envelope_id && event.envelope_timestamp && event.payload
                       );
                       if (!isHeartbeatEnvelope) {
                         if (isDebug) {
@@ -1412,13 +1406,11 @@ export class EventConsumer extends EventEmitter {
                       break;
                     }
                     case TOPIC.NODE_REGISTRATION: {
-                      // Detect envelope format: canonical envelopes have entity_id (or
-                      // envelope_id) + emitted_at (or envelope_timestamp) + payload;
+                      // Detect envelope format: canonical envelopes (ModelEventEnvelope from
+                      // omnibase_core) carry envelope_id + envelope_timestamp + payload;
                       // legacy events have flat fields like node_id at the top level.
                       const isRegistrationEnvelope = Boolean(
-                        (event.entity_id || event.envelope_id) &&
-                        (event.emitted_at || event.envelope_timestamp) &&
-                        event.payload
+                        event.envelope_id && event.envelope_timestamp && event.payload
                       );
                       if (!isRegistrationEnvelope) {
                         if (isDebug) {
@@ -3024,8 +3016,8 @@ export class EventConsumer extends EventEmitter {
       return; // Silent skip for heartbeats (high frequency)
     }
 
-    const { payload, emitted_at } = envelope;
-    const emittedAtMs = new Date(emitted_at).getTime();
+    const { payload, envelope_timestamp } = envelope;
+    const emittedAtMs = new Date(envelope_timestamp).getTime();
 
     const node = this.canonicalNodes.get(payload.node_id);
     if (!node) {
@@ -3113,8 +3105,8 @@ export class EventConsumer extends EventEmitter {
       return;
     }
 
-    const { payload, emitted_at } = envelope;
-    const emittedAtMs = new Date(emitted_at).getTime();
+    const { payload, envelope_timestamp } = envelope;
+    const emittedAtMs = new Date(envelope_timestamp).getTime();
 
     const existing = this.canonicalNodes.get(payload.node_id);
     if (existing && !this.shouldProcess(existing, emittedAtMs)) {

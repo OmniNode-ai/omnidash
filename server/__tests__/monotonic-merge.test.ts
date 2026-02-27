@@ -155,11 +155,20 @@ describe('MonotonicMergeTracker', () => {
 });
 
 describe('extractEventTimeMs', () => {
-  it('should extract from emitted_at (numeric)', () => {
+  it('should extract from envelope_timestamp (canonical ModelEventEnvelope field)', () => {
+    expect(extractEventTimeMs({ envelope_timestamp: 1700000000000 })).toBe(1700000000000);
+  });
+
+  it('should extract from envelope_timestamp (ISO string)', () => {
+    const iso = '2024-01-15T10:30:00.000Z';
+    expect(extractEventTimeMs({ envelope_timestamp: iso })).toBe(new Date(iso).getTime());
+  });
+
+  it('should extract from emitted_at (legacy hook event field)', () => {
     expect(extractEventTimeMs({ emitted_at: 1700000000000 })).toBe(1700000000000);
   });
 
-  it('should extract from emitted_at (ISO string)', () => {
+  it('should extract from emitted_at (ISO string, legacy)', () => {
     const iso = '2024-01-15T10:30:00.000Z';
     expect(extractEventTimeMs({ emitted_at: iso })).toBe(new Date(iso).getTime());
   });
@@ -179,7 +188,16 @@ describe('extractEventTimeMs', () => {
     expect(extractEventTimeMs({ createdAt: iso })).toBe(new Date(iso).getTime());
   });
 
-  it('should prefer emitted_at over timestamp', () => {
+  it('should prefer envelope_timestamp over emitted_at and timestamp', () => {
+    const canonical = '2024-06-01T12:00:00.000Z';
+    const legacy = '2024-03-01T00:00:00.000Z';
+    const ts = '2024-01-01T00:00:00.000Z';
+    expect(
+      extractEventTimeMs({ envelope_timestamp: canonical, emitted_at: legacy, timestamp: ts })
+    ).toBe(new Date(canonical).getTime());
+  });
+
+  it('should prefer emitted_at over timestamp (legacy fallback ordering)', () => {
     const emitted = '2024-06-01T12:00:00.000Z';
     const ts = '2024-01-01T00:00:00.000Z';
     expect(extractEventTimeMs({ emitted_at: emitted, timestamp: ts })).toBe(
