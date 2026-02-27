@@ -13,6 +13,7 @@ on:
     paths:
       - 'contracts/**'
       - '.github/workflows/onex-schema-compat.yml'
+  merge_group:
   workflow_dispatch:
 
 permissions: {}
