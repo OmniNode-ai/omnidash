@@ -314,12 +314,12 @@ export class ReadModelConsumer {
         this.kafka = new Kafka({
           clientId: CLIENT_ID,
           brokers,
-          connectionTimeout: 5000,
-          requestTimeout: 10000,
+          connectionTimeout: 10000,
+          requestTimeout: 30000,
           retry: {
             initialRetryTime: RETRY_BASE_DELAY_MS,
             maxRetryTime: RETRY_MAX_DELAY_MS,
-            retries: 3,
+            retries: 10,
           },
         });
 
@@ -391,22 +391,24 @@ export class ReadModelConsumer {
         //
         // Fix: fire-and-forget the run() promise and block on a stopped-flag
         // poll loop instead. The CRASH event handles real failures.
-        this.consumer.run({
-          eachMessage: async (payload: EachMessagePayload) => {
-            await this.handleMessage(payload);
-          },
-        }).catch((runErr) => {
-          if (!this.stopped) {
-            console.error(
-              '[ReadModelConsumer] consumer.run() threw — will reconnect:',
-              runErr instanceof Error ? runErr.message : runErr
-            );
-            // Signal the wait loop below to break so the outer retry loop
-            // can reconnect.
-            this.running = false;
-            this.stats.isRunning = false;
-          }
-        });
+        this.consumer
+          .run({
+            eachMessage: async (payload: EachMessagePayload) => {
+              await this.handleMessage(payload);
+            },
+          })
+          .catch((runErr) => {
+            if (!this.stopped) {
+              console.error(
+                '[ReadModelConsumer] consumer.run() threw — will reconnect:',
+                runErr instanceof Error ? runErr.message : runErr
+              );
+              // Signal the wait loop below to break so the outer retry loop
+              // can reconnect.
+              this.running = false;
+              this.stats.isRunning = false;
+            }
+          });
 
         // Block here while the consumer is alive. The internal kafkajs fetch
         // loop runs in the background; we just need to keep this iteration of
@@ -420,9 +422,7 @@ export class ReadModelConsumer {
 
         // If we reach here, running was set to false by the .catch() handler
         // (a real crash). Clean up and let the outer while-loop retry.
-        console.warn(
-          '[ReadModelConsumer] Consumer fetch loop exited — cleaning up for retry...'
-        );
+        console.warn('[ReadModelConsumer] Consumer fetch loop exited — cleaning up for retry...');
         try {
           await this.consumer.disconnect();
         } catch (disconnectErr) {
