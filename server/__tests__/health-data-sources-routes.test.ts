@@ -33,14 +33,6 @@ vi.mock('../storage', () => ({
 }));
 
 // ============================================================================
-// Mock insight-queries (queryInsightsSummary) for the insights probe
-// ============================================================================
-
-vi.mock('../insight-queries', () => ({
-  queryInsightsSummary: vi.fn(),
-}));
-
-// ============================================================================
 // Mock event-bus-data-source (getEventBusDataSource) for the execution probe
 // ============================================================================
 
@@ -53,7 +45,6 @@ vi.mock('../event-bus-data-source', () => ({
 // ============================================================================
 
 import { tryGetIntelligenceDb } from '../storage';
-import { queryInsightsSummary } from '../insight-queries';
 import { getEventBusDataSource } from '../event-bus-data-source';
 
 // ============================================================================
@@ -103,15 +94,9 @@ function makeMockDb(rows: unknown[]) {
 
 /** Set up all DB-backed probes to return empty/no-data (mock status). */
 function setupEmptyDb() {
+  // probeInsights() queries pattern_learning_artifacts via tryGetIntelligenceDb.
+  // Returning count: 0 → status: mock (empty_tables).
   vi.mocked(tryGetIntelligenceDb).mockReturnValue(makeMockDb([{ count: 0 }]) as any);
-  vi.mocked(queryInsightsSummary).mockResolvedValue({
-    insights: [],
-    total: 0,
-    new_this_week: 0,
-    avg_confidence: 0,
-    total_sessions_analyzed: 0,
-    by_type: { pattern: 0, convention: 0, architecture: 0, error: 0, tool: 0 },
-  });
   vi.mocked(getEventBusDataSource).mockReturnValue(null);
 }
 
@@ -225,14 +210,7 @@ describe('GET /api/health/data-sources', () => {
       if (viewId === 'patterns') return patternsView as any;
       return null;
     });
-    vi.mocked(queryInsightsSummary).mockResolvedValue({
-      insights: [],
-      total: 0,
-      new_this_week: 0,
-      avg_confidence: 0,
-      total_sessions_analyzed: 0,
-      by_type: { pattern: 0, convention: 0, architecture: 0, error: 0, tool: 0 },
-    });
+    vi.mocked(tryGetIntelligenceDb).mockReturnValue(makeMockDb([{ count: 0 }]) as any);
     vi.mocked(getEventBusDataSource).mockReturnValue(null);
 
     const app = makeApp();
@@ -243,10 +221,15 @@ describe('GET /api/health/data-sources', () => {
     expect(res.body.dataSources.patterns.status).toBe('live');
   });
 
-  it('reports status: error for insights when queryInsightsSummary throws', async () => {
+  it('reports status: error for insights when DB probe throws', async () => {
+    // probeInsights() uses tryGetIntelligenceDb + db.select().from() — throw from the DB
+    // to exercise the catch branch that returns { status: 'error', reason: 'probe_threw' }.
     vi.mocked(projectionService.getView).mockReturnValue(null);
-    vi.mocked(tryGetIntelligenceDb).mockReturnValue(makeMockDb([{ count: 0 }]) as any);
-    vi.mocked(queryInsightsSummary).mockRejectedValue(new Error('DB connection failed'));
+    vi.mocked(tryGetIntelligenceDb).mockReturnValue({
+      select: vi.fn().mockReturnValue({
+        from: vi.fn().mockRejectedValue(new Error('DB connection failed')),
+      }),
+    } as any);
     vi.mocked(getEventBusDataSource).mockReturnValue(null);
 
     const app = makeApp();
@@ -270,14 +253,7 @@ describe('GET /api/health/data-sources', () => {
       if (viewId === 'patterns') return patternsView as any;
       return null;
     });
-    vi.mocked(queryInsightsSummary).mockResolvedValue({
-      insights: [],
-      total: 0,
-      new_this_week: 0,
-      avg_confidence: 0,
-      total_sessions_analyzed: 0,
-      by_type: { pattern: 0, convention: 0, architecture: 0, error: 0, tool: 0 },
-    });
+    vi.mocked(tryGetIntelligenceDb).mockReturnValue(makeMockDb([{ count: 0 }]) as any);
     vi.mocked(getEventBusDataSource).mockReturnValue(null);
 
     const app = makeApp();
@@ -301,14 +277,7 @@ describe('GET /api/health/data-sources', () => {
       if (viewId === 'patterns') return throwingView as any;
       return null;
     });
-    vi.mocked(queryInsightsSummary).mockResolvedValue({
-      insights: [],
-      total: 0,
-      new_this_week: 0,
-      avg_confidence: 0,
-      total_sessions_analyzed: 0,
-      by_type: { pattern: 0, convention: 0, architecture: 0, error: 0, tool: 0 },
-    });
+    vi.mocked(tryGetIntelligenceDb).mockReturnValue(makeMockDb([{ count: 0 }]) as any);
     vi.mocked(getEventBusDataSource).mockReturnValue(null);
 
     const app = makeApp();
@@ -326,14 +295,7 @@ describe('GET /api/health/data-sources', () => {
       if (viewId === 'patterns') return patternsView as any;
       return null;
     });
-    vi.mocked(queryInsightsSummary).mockResolvedValue({
-      insights: [],
-      total: 0,
-      new_this_week: 0,
-      avg_confidence: 0,
-      total_sessions_analyzed: 0,
-      by_type: { pattern: 0, convention: 0, architecture: 0, error: 0, tool: 0 },
-    });
+    vi.mocked(tryGetIntelligenceDb).mockReturnValue(makeMockDb([{ count: 0 }]) as any);
     vi.mocked(getEventBusDataSource).mockReturnValue(null);
 
     const app = makeApp();
@@ -359,14 +321,7 @@ describe('GET /api/health/data-sources', () => {
       return noView as any;
     });
 
-    vi.mocked(queryInsightsSummary).mockResolvedValue({
-      insights: [],
-      total: 0,
-      new_this_week: 0,
-      avg_confidence: 0,
-      total_sessions_analyzed: 0,
-      by_type: { pattern: 0, convention: 0, architecture: 0, error: 0, tool: 0 },
-    });
+    vi.mocked(tryGetIntelligenceDb).mockReturnValue(makeMockDb([{ count: 0 }]) as any);
     vi.mocked(getEventBusDataSource).mockReturnValue(null);
 
     const app = makeApp();
@@ -432,14 +387,6 @@ describe('GET /api/health/data-sources', () => {
   it('reports status: error for executionGraph when probe throws', async () => {
     vi.mocked(projectionService.getView).mockReturnValue(null);
     vi.mocked(tryGetIntelligenceDb).mockReturnValue(makeMockDb([{ count: 0 }]) as any);
-    vi.mocked(queryInsightsSummary).mockResolvedValue({
-      insights: [],
-      total: 0,
-      new_this_week: 0,
-      avg_confidence: 0,
-      total_sessions_analyzed: 0,
-      by_type: { pattern: 0, convention: 0, architecture: 0, error: 0, tool: 0 },
-    });
     // Return a non-null data source whose queryEvents() rejects — exercises the
     // catch branch in probeExecutionGraph that returns { status: 'error', reason: 'probe_threw' }.
     vi.mocked(getEventBusDataSource).mockReturnValue({
