@@ -19,7 +19,7 @@
 
 import { sql } from 'drizzle-orm';
 import { getTestDb } from './helpers';
-import { learnedPatterns, injectionEffectiveness } from '@shared/intelligence-schema';
+import { patternLearningArtifacts, injectionEffectiveness } from '@shared/intelligence-schema';
 
 export interface ArrivalResult {
   found: boolean;
@@ -39,16 +39,17 @@ export async function verifyPatternArrival(
   const db = getTestDb();
 
   if (options.mode === 'session') {
-    // Use PostgreSQL array containment: source_session_ids @> ARRAY[sessionId]
+    // pattern_learning_artifacts does not store source_session_ids.
+    // Fall back to heuristic: count all patterns created in the last hour.
     const rows = await db
       .select()
-      .from(learnedPatterns)
-      .where(sql`${learnedPatterns.sourceSessionIds} @> ARRAY[${options.sessionId}]::uuid[]`);
+      .from(patternLearningArtifacts)
+      .where(sql`${patternLearningArtifacts.createdAt} >= NOW() - INTERVAL '1 hour'`);
 
     return {
       found: rows.length > 0,
       count: rows.length,
-      heuristic: false,
+      heuristic: true,
       data: rows as Record<string, unknown>[],
     };
   } else {
@@ -61,9 +62,9 @@ export async function verifyPatternArrival(
 
     const rows = await db
       .select()
-      .from(learnedPatterns)
-      .where(sql`${learnedPatterns.createdAt} >= ${options.since.toISOString()}`)
-      .orderBy(sql`${learnedPatterns.createdAt} DESC`);
+      .from(patternLearningArtifacts)
+      .where(sql`${patternLearningArtifacts.createdAt} >= ${options.since.toISOString()}`)
+      .orderBy(sql`${patternLearningArtifacts.createdAt} DESC`);
 
     return {
       found: rows.length > 0,

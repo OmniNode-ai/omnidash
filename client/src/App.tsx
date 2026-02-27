@@ -1,4 +1,4 @@
-import { Switch, Route } from 'wouter';
+import { Switch, Route, Redirect } from 'wouter';
 import { queryClient } from './lib/queryClient';
 import { QueryClientProvider } from '@tanstack/react-query';
 import { Toaster } from '@/components/ui/toaster';
@@ -40,7 +40,6 @@ import EffectivenessSummary from '@/pages/EffectivenessSummary';
 import EffectivenessLatency from '@/pages/EffectivenessLatency';
 import EffectivenessUtilization from '@/pages/EffectivenessUtilization';
 import EffectivenessAB from '@/pages/EffectivenessAB';
-import LearnedInsights from '@/pages/LearnedInsights';
 import BaselinesROI from '@/pages/BaselinesROI';
 import CostTrendDashboard from '@/pages/CostTrendDashboard';
 import PatternEnforcement from '@/pages/PatternEnforcement';
@@ -114,8 +113,8 @@ function Router() {
       <Route path="/validation" component={ValidationDashboard} />
       <Route path="/extraction" component={ExtractionDashboard} />
 
-      {/* Learned Insights dashboard (OMN-1407) */}
-      <Route path="/insights" component={LearnedInsights} />
+      {/* OMN-2924: /insights redirected to /patterns — learnedPatterns table removed */}
+      <Route path="/insights">{() => <Redirect to="/patterns" />}</Route>
 
       {/* Effectiveness dashboard routes (OMN-1891) — sub-routes before parent [OMN-2848] */}
       <Route path="/effectiveness/latency" component={EffectivenessLatency} />
