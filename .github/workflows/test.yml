@@ -7,7 +7,7 @@ on:
     branches: [main, feature/**]
   pull_request:
     branches: [main]
-  merge_queue:
+  merge_group:
 
 jobs:
   # Architectural invariant: omnidash must never query upstream databases directly.
