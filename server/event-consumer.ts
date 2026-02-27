@@ -1244,7 +1244,7 @@ export class EventConsumer extends EventEmitter {
         while (this.isRunning) {
           try {
             let consumerCrashed = false;
-            let crashError: unknown = null;
+            let _crashError: unknown = null;
             this.consumer!.run({
               eachMessage: async ({ topic: rawTopic, partition, message }) => {
                 try {
@@ -1788,7 +1788,7 @@ export class EventConsumer extends EventEmitter {
                 console.error('[EventConsumer] consumer.run() threw:', runErr);
                 this.emit('error', runErr);
                 consumerCrashed = true;
-                crashError = runErr;
+                _crashError = runErr;
               }
             });
 
