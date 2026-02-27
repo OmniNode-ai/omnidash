@@ -96,7 +96,17 @@ export class IntelligenceEventAdapter {
       return brokerString.split(',');
     })()
   ) {
-    this.kafka = new Kafka({ brokers: this.brokers, clientId: 'omnidash-intelligence-adapter' });
+    this.kafka = new Kafka({
+      brokers: this.brokers,
+      clientId: 'omnidash-intelligence-adapter',
+      connectionTimeout: 10000,
+      requestTimeout: 30000,
+      retry: {
+        initialRetryTime: 1000,
+        maxRetryTime: 30000,
+        retries: 10,
+      },
+    });
   }
 
   async start(): Promise<void> {

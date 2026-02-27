@@ -148,6 +148,13 @@ export class EventBusDataSource extends EventEmitter {
     this.kafka = new Kafka({
       brokers: brokers.split(','),
       clientId: 'omnidash-event-bus-data-source',
+      connectionTimeout: 10000,
+      requestTimeout: 30000,
+      retry: {
+        initialRetryTime: 1000,
+        maxRetryTime: 30000,
+        retries: 10,
+      },
     });
 
     // Consumer group bumped to v2 for canonical topic subscription changes (OMN-1933).
@@ -313,10 +320,7 @@ export class EventBusDataSource extends EventEmitter {
         if (this.stopped) break;
 
         // Consumer crashed -- attempt reconnect.
-        console.warn(
-          '[EventBusDataSource] Consumer crashed, reconnecting...',
-          this.crashError
-        );
+        console.warn('[EventBusDataSource] Consumer crashed, reconnecting...', this.crashError);
         this.consumerCrashed = false;
         this.crashError = null;
 
@@ -420,18 +424,20 @@ export class EventBusDataSource extends EventEmitter {
       // Redpanda (OMN-2789). The .catch() handler signals the background recovery
       // loop via consumerCrashed flag so it can reconnect on real failures.
       console.log('[EventBusDataSource] Started consuming events');
-      this.consumer.run({
-        eachMessage: async (payload: EachMessagePayload) => {
-          await this.handleMessage(payload);
-        },
-      }).catch((runErr: unknown) => {
-        if (this.isRunning) {
-          console.error('[EventBusDataSource] consumer.run() threw:', runErr);
-          this.emit('error', runErr);
-          this.consumerCrashed = true;
-          this.crashError = runErr;
-        }
-      });
+      this.consumer
+        .run({
+          eachMessage: async (payload: EachMessagePayload) => {
+            await this.handleMessage(payload);
+          },
+        })
+        .catch((runErr: unknown) => {
+          if (this.isRunning) {
+            console.error('[EventBusDataSource] consumer.run() threw:', runErr);
+            this.emit('error', runErr);
+            this.consumerCrashed = true;
+            this.crashError = runErr;
+          }
+        });
     } catch (err) {
       // Only disconnect if a successful connect() was previously recorded;
       // calling disconnect() on a never-connected consumer drives its internal
