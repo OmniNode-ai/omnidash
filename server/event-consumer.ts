@@ -4284,6 +4284,24 @@ export class EventConsumer extends EventEmitter {
           this.handlePerformanceMetric(event as RawPerformanceMetricEvent);
           break;
 
+        case TOPIC.NODE_HEARTBEAT:
+          // DB-preloaded heartbeat events arrive as flat payloads (envelope already unwrapped
+          // by EventBusDataSource). Route to the legacy flat handler so the node appears in
+          // registeredNodes and the projection receives a node-registry-seed via Bridge 1.
+          this.handleNodeHeartbeat(event as RawNodeHeartbeatEvent);
+          break;
+
+        case TOPIC.NODE_INTROSPECTION:
+        case TOPIC.REQUEST_INTROSPECTION:
+          // Same as heartbeat: flat payload from DB preload — use flat handler path.
+          this.handleNodeIntrospection(event as RawNodeIntrospectionEvent);
+          break;
+
+        case TOPIC.NODE_REGISTRATION:
+          // Registration events carry node state changes. Treat as state-change for replay.
+          this.handleNodeStateChange(event as RawNodeStateChangeEvent);
+          break;
+
         default:
           intentLogger.debug(`Unknown playback topic: ${topic}, emitting as generic event`);
           this.emit('playbackEvent', { topic, event });

@@ -8,7 +8,7 @@ import { cn } from '@/lib/utils';
 type LifecycleState = 'candidate' | 'provisional' | 'validated' | 'deprecated';
 
 interface LifecycleStateBadgeProps {
-  state: LifecycleState;
+  state: LifecycleState | string;
   className?: string;
 }
 
@@ -38,12 +38,19 @@ const stateConfig: Record<
   },
 };
 
+const FALLBACK_CONFIG = {
+  variant: 'outline' as const,
+  className: 'border-gray-400 text-gray-500 dark:text-gray-400',
+};
+
 export function LifecycleStateBadge({ state, className }: LifecycleStateBadgeProps) {
-  const config = stateConfig[state];
+  const config = stateConfig[state as LifecycleState];
+  const { variant, className: stateClassName } = config ?? FALLBACK_CONFIG;
+  const label = config?.label ?? state.charAt(0).toUpperCase() + state.slice(1);
 
   return (
-    <Badge variant={config.variant} className={cn(config.className, className)}>
-      {config.label}
+    <Badge variant={variant} className={cn(stateClassName, className)}>
+      {label}
     </Badge>
   );
 }

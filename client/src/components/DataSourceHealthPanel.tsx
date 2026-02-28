@@ -67,6 +67,7 @@ const REASON_LABELS: Record<string, string> = {
   no_api_connection: 'No API connection',
   no_db_connection: 'No database connection',
   not_implemented: 'Not yet implemented',
+  upstream_service_offline: 'Upstream service not running',
 };
 
 function formatReason(reason: string | undefined): string {
@@ -86,6 +87,8 @@ function StatusIcon({ status }: { status: DataSourceStatus }) {
       return <AlertTriangle className="w-4 h-4 text-yellow-500" />;
     case 'error':
       return <XCircle className="w-4 h-4 text-red-500" />;
+    case 'offline':
+      return <WifiOff className="w-4 h-4 text-slate-400" />;
     default:
       return <Activity className="w-4 h-4 text-gray-400" />;
   }
@@ -108,6 +111,12 @@ function StatusBadge({ status }: { status: DataSourceStatus }) {
     case 'error':
       return (
         <Badge className="bg-red-500/20 text-red-400 border-red-500/30 text-[10px]">Error</Badge>
+      );
+    case 'offline':
+      return (
+        <Badge className="bg-slate-500/20 text-slate-400 border-slate-500/30 text-[10px]">
+          Offline
+        </Badge>
       );
     default:
       return (
@@ -154,7 +163,11 @@ function DataSourceRow({ sourceKey, info }: { sourceKey: string; info: DataSourc
 // Summary counts bar
 // ============================================================================
 
-function SummaryBar({ summary }: { summary: { live: number; mock: number; error: number } }) {
+function SummaryBar({
+  summary,
+}: {
+  summary: { live: number; mock: number; error: number; offline: number };
+}) {
   // total from summary object — should equal Object.keys(dataSources).length;
   // if they diverge, a probe is returning a status not included in the summary count.
   const total = Object.values(summary).reduce((sum, n) => sum + n, 0);
@@ -164,10 +177,18 @@ function SummaryBar({ summary }: { summary: { live: number; mock: number; error:
         <CheckCircle className="w-3.5 h-3.5" />
         {summary.live} live
       </span>
-      <span className="flex items-center gap-1.5 text-yellow-400">
-        <AlertTriangle className="w-3.5 h-3.5" />
-        {summary.mock} mock
-      </span>
+      {summary.mock > 0 && (
+        <span className="flex items-center gap-1.5 text-yellow-400">
+          <AlertTriangle className="w-3.5 h-3.5" />
+          {summary.mock} mock
+        </span>
+      )}
+      {summary.offline > 0 && (
+        <span className="flex items-center gap-1.5 text-slate-400">
+          <WifiOff className="w-3.5 h-3.5" />
+          {summary.offline} offline
+        </span>
+      )}
       {summary.error > 0 && (
         <span className="flex items-center gap-1.5 text-red-400">
           <XCircle className="w-3.5 h-3.5" />
