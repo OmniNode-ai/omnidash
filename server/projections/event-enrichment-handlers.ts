@@ -277,6 +277,9 @@ const ToolExecutedHandler: EnrichmentHandler = {
       }
     }
 
+    // Extract durationMs from payload (top-level or nested data wrapper)
+    const durationMs = num(findField(payload, ['duration_ms', 'durationMs']));
+
     // Summary: "ToolName target" e.g. "Read index.ts", "Bash ls -la"
     let summaryTarget: string;
     if (filePath) {
@@ -286,18 +289,26 @@ const ToolExecutedHandler: EnrichmentHandler = {
     } else {
       summaryTarget = str(findField(payload, ['target', 'name'])) ?? '';
     }
-    const summary = truncate(summaryTarget ? `${toolName} ${summaryTarget}` : toolName);
+    const baseSummary = truncate(summaryTarget ? `${toolName} ${summaryTarget}` : toolName);
+    // Append duration suffix if present, re-truncating to SUMMARY_MAX
+    const durationSuffix = durationMs != null ? ` (${durationMs}ms)` : '';
+    const summary = truncate(`${baseSummary}${durationSuffix}`, SUMMARY_MAX);
+
+    // normalizedType: use prettified tool name (e.g. 'Read', 'Bash') — more meaningful
+    // than the raw event type string (e.g. 'agent-action')
+    const normalizedType = prettifyType(toolName);
 
     return {
       enrichmentVersion: 'v1',
       handler: 'ToolExecutedHandler',
       category: 'tool_event',
       summary,
-      normalizedType: type,
+      normalizedType,
       artifacts,
       toolName,
       filePath,
       bashCommand,
+      durationMs,
     };
   },
 };
