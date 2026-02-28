@@ -1235,8 +1235,20 @@ export class ReadModelConsumer {
 
     const evt = data as Partial<LlmRoutingDecisionEvent>;
 
-    const correlationId =
+    // correlation_id column is uuid type (OMN-2960).  Validate the value from
+    // the event before inserting so Postgres never receives a malformed string.
+    // The fallbackId is always a valid UUID (derived deterministically from
+    // Kafka message coordinates — see deriveMessageId above).
+    const rawCorrelationId =
       (evt.correlation_id as string) || (data.correlationId as string) || fallbackId;
+    if (!UUID_RE.test(rawCorrelationId)) {
+      console.warn(
+        '[ReadModelConsumer] LLM routing decision event has non-UUID correlation_id ' +
+          `(${rawCorrelationId}) -- skipping malformed event`
+      );
+      return true;
+    }
+    const correlationId = rawCorrelationId;
 
     // llm_agent and fuzzy_agent are required fields.
     const llmAgent = (evt.llm_agent as string) || (data.llmAgent as string);
