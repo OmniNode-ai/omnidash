@@ -590,7 +590,37 @@ const SessionEventHandler: EnrichmentHandler = {
     };
   },
 };
-
+// ============================================================================
+// ToolContentHandler — PLANNED (OMN-3009)
+//
+// Pre-check gate result: onex.cmd.* topics are NOT currently subscribed in
+// EventBusProjection or ReadModelConsumer. READ_MODEL_TOPICS contains only
+// onex.evt.* and related event topics — no onex.cmd.* topics are ingested.
+//
+// Implementation gate: Add ToolContentHandler body when onex.cmd.* topics
+// are added to READ_MODEL_TOPICS. Until then, tool_content_event falls through
+// to DefaultHandler (registered below).
+//
+// Planned behavior (when gate is lifted):
+//
+//   For onex.cmd.*.bash-tool-content.* events:
+//     normalizedType: 'Bash'
+//     summary: first SUMMARY_MAX chars of payload.command with '$ ' prefix
+//
+//   For onex.cmd.*.read-tool-content.* events:
+//     normalizedType: 'Read'
+//     summary: basename of payload.filePath
+//
+//   For onex.cmd.*.edit-tool-content.* events:
+//     normalizedType: 'Edit'
+//     summary: basename of payload.filePath
+//
+//   For other tool-content events:
+//     normalizedType: prettified topic suffix
+//     summary: `Tool content: <type>`
+//
+// See: OMN-3009 ticket for full spec.
+// ============================================================================
 const DefaultHandler: EnrichmentHandler = {
   name: 'DefaultHandler',
   category: 'unknown',
@@ -636,8 +666,7 @@ export class EventEnrichmentPipeline {
       ['error_event', ErrorEventHandler],
       // New categories — session_event (OMN-3005) and prompt_event (OMN-3007) have dedicated handlers
       ['prompt_event', PromptSubmittedHandler],
-      ['session_event', SessionEventHandler],
-      ['tool_content_event', DefaultHandler],
+      ['session_event', SessionEventHandler],      ['tool_content_event', DefaultHandler],
       // Explicit registration so unknown category has a documented handler, not just a nullish fallback
       ['unknown', DefaultHandler],
     ]);
