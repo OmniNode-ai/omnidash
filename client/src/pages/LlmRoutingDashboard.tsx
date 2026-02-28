@@ -657,77 +657,94 @@ export default function LlmRoutingDashboard() {
               No trend data available.
             </p>
           ) : (
-            <ResponsiveContainer width="100%" height={260}>
-              <LineChart data={trend} margin={{ top: 4, right: 16, left: 0, bottom: 0 }}>
-                <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
-                <XAxis
-                  dataKey="date"
-                  tickFormatter={(v: string) => String(v).slice(5)}
-                  tick={{ fontSize: 11 }}
-                  stroke="hsl(var(--muted-foreground))"
-                />
-                <YAxis
-                  yAxisId="rate"
-                  tickFormatter={(v: number) => `${(v * 100).toFixed(0)}%`}
-                  domain={[0, 1]}
-                  tick={{ fontSize: 11 }}
-                  stroke="hsl(var(--muted-foreground))"
-                />
-                <YAxis
-                  yAxisId="cost"
-                  orientation="right"
-                  tickFormatter={(v: number) => `$${(v * 1_000_000).toFixed(0)}µ`}
-                  tick={{ fontSize: 11 }}
-                  stroke="hsl(var(--muted-foreground))"
-                />
-                <Tooltip
-                  formatter={(v: number, name: string) => {
-                    if (name === 'avg_cost_usd') return [fmtCost(v), 'Avg Cost'];
-                    return [
-                      fmtPct(v),
-                      name === 'agreement_rate' ? 'Agreement Rate' : 'Fallback Rate',
-                    ];
-                  }}
-                  labelFormatter={(l) => String(l).slice(0, 10)}
-                  contentStyle={{ fontSize: '12px' }}
-                />
-                <Legend
-                  formatter={(value) =>
-                    value === 'agreement_rate'
-                      ? 'Agreement Rate'
-                      : value === 'fallback_rate'
-                        ? 'Fallback Rate'
-                        : 'Avg Cost'
-                  }
-                />
-                <Line
-                  yAxisId="rate"
-                  type="monotone"
-                  dataKey="agreement_rate"
-                  stroke="#22c55e"
-                  strokeWidth={2.5}
-                  dot={false}
-                />
-                <Line
-                  yAxisId="rate"
-                  type="monotone"
-                  dataKey="fallback_rate"
-                  stroke="#f59e0b"
-                  strokeWidth={2}
-                  dot={false}
-                  strokeDasharray="4 3"
-                />
-                <Line
-                  yAxisId="cost"
-                  type="monotone"
-                  dataKey="avg_cost_usd"
-                  stroke="#ef4444"
-                  strokeWidth={1.5}
-                  dot={false}
-                  strokeDasharray="2 4"
-                />
-              </LineChart>
-            </ResponsiveContainer>
+            <>
+              {(trend?.length ?? 0) === 1 && (
+                <p className="text-xs text-muted-foreground mb-3">
+                  Only 1 day of data — trend lines need multiple days to render. Showing
+                  today&apos;s snapshot.
+                </p>
+              )}
+              <ResponsiveContainer width="100%" height={260}>
+                <LineChart data={trend} margin={{ top: 4, right: 16, left: 0, bottom: 0 }}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+                  <XAxis
+                    dataKey="date"
+                    tickFormatter={(v: string) => String(v).slice(5, 10)}
+                    tick={{ fontSize: 11 }}
+                    stroke="hsl(var(--muted-foreground))"
+                  />
+                  <YAxis
+                    yAxisId="rate"
+                    tickFormatter={(v: number) => `${(v * 100).toFixed(0)}%`}
+                    domain={[0, 1]}
+                    tick={{ fontSize: 11 }}
+                    stroke="hsl(var(--muted-foreground))"
+                  />
+                  <YAxis
+                    yAxisId="cost"
+                    orientation="right"
+                    tickFormatter={(v: number) => `$${(v * 1_000_000).toFixed(0)}µ`}
+                    tick={{ fontSize: 11 }}
+                    stroke="hsl(var(--muted-foreground))"
+                  />
+                  <Tooltip
+                    formatter={(v: number, name: string) => {
+                      if (name === 'avg_cost_usd') return [fmtCost(v), 'Avg Cost'];
+                      return [
+                        fmtPct(v),
+                        name === 'agreement_rate' ? 'Agreement Rate' : 'Fallback Rate',
+                      ];
+                    }}
+                    labelFormatter={(l) => String(l).slice(0, 10)}
+                    contentStyle={{
+                      fontSize: '12px',
+                      backgroundColor: 'hsl(var(--card))',
+                      border: '1px solid hsl(var(--border))',
+                      borderRadius: '6px',
+                      color: 'hsl(var(--card-foreground))',
+                    }}
+                  />
+                  <Legend
+                    formatter={(value) =>
+                      value === 'agreement_rate'
+                        ? 'Agreement Rate'
+                        : value === 'fallback_rate'
+                          ? 'Fallback Rate'
+                          : 'Avg Cost'
+                    }
+                  />
+                  <Line
+                    yAxisId="rate"
+                    type="monotone"
+                    dataKey="agreement_rate"
+                    stroke="#22c55e"
+                    strokeWidth={2.5}
+                    dot={(trend?.length ?? 0) <= 1 ? { r: 5, fill: '#22c55e' } : false}
+                    activeDot={{ r: 5 }}
+                  />
+                  <Line
+                    yAxisId="rate"
+                    type="monotone"
+                    dataKey="fallback_rate"
+                    stroke="#f59e0b"
+                    strokeWidth={2}
+                    dot={(trend?.length ?? 0) <= 1 ? { r: 5, fill: '#f59e0b' } : false}
+                    activeDot={{ r: 5 }}
+                    strokeDasharray="4 3"
+                  />
+                  <Line
+                    yAxisId="cost"
+                    type="monotone"
+                    dataKey="avg_cost_usd"
+                    stroke="#ef4444"
+                    strokeWidth={1.5}
+                    dot={(trend?.length ?? 0) <= 1 ? { r: 4, fill: '#ef4444' } : false}
+                    activeDot={{ r: 4 }}
+                    strokeDasharray="2 4"
+                  />
+                </LineChart>
+              </ResponsiveContainer>
+            </>
           )}
         </CardContent>
       </Card>
