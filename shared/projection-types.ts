@@ -115,6 +115,9 @@ export type EventCategory =
   | 'node_heartbeat'
   | 'node_lifecycle'
   | 'error_event'
+  | 'prompt_event'
+  | 'session_event'
+  | 'tool_content_event'
   | 'unknown';
 
 /**
@@ -177,6 +180,12 @@ export interface EventEnrichment {
   actionName?: string;
   /** Pre-formatted error message string for display. Not the same shape as ProjectionEvent.error. */
   error?: string;
+  /** Duration of the tool execution in milliseconds (tool_event only) */
+  durationMs?: number;
+  /** First 100 characters of prompt content (prompt_event only) */
+  promptPreview?: string;
+  /** Git branch active at the time of the event */
+  gitBranch?: string;
 }
 
 // ============================================================================
