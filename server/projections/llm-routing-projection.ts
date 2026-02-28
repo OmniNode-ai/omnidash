@@ -310,7 +310,7 @@ export class LlmRoutingProjection extends DbBackedProjectionView<LlmRoutingPaylo
         routing_prompt_version,
         COUNT(*)::int                                                             AS total,
         COUNT(*) FILTER (WHERE agreement = TRUE)::int                            AS agreed,
-        COUNT(*) FILTER (WHERE agreement = FALSE)::int                           AS disagreed,
+        COUNT(*) FILTER (WHERE agreement = FALSE AND used_fallback = FALSE)::int AS disagreed,
         COALESCE(AVG(llm_latency_ms), 0)::float                                  AS avg_llm_latency_ms,
         COALESCE(AVG(fuzzy_latency_ms), 0)::float                                AS avg_fuzzy_latency_ms,
         COALESCE(AVG(cost_usd) FILTER (WHERE cost_usd IS NOT NULL), 0)::float    AS avg_cost_usd
@@ -359,6 +359,7 @@ export class LlmRoutingProjection extends DbBackedProjectionView<LlmRoutingPaylo
       FROM llm_routing_decisions
       WHERE created_at >= ${cutoff}
         AND agreement = FALSE
+        AND used_fallback = FALSE
       GROUP BY llm_agent, fuzzy_agent
       ORDER BY count DESC
       LIMIT 20
