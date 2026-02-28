@@ -76,6 +76,7 @@ import {
   SUFFIX_MEMORY_INTENT_STORED,
   SUFFIX_INTELLIGENCE_PATTERN_PROJECTION,
   SUFFIX_INTELLIGENCE_PATTERN_LIFECYCLE_TRANSITIONED,
+  SUFFIX_INTELLIGENCE_PATTERN_LEARNING_CMD,
 } from '@shared/topics';
 import type { LlmRoutingDecisionEvent } from '@shared/llm-routing-types';
 import type { TaskDelegatedEvent, DelegationShadowComparisonEvent } from '@shared/delegation-types';
@@ -233,6 +234,10 @@ export const READ_MODEL_TOPICS = [
   // OMN-2924: OmniIntelligence pattern topics — durable projection into pattern_learning_artifacts.
   SUFFIX_INTELLIGENCE_PATTERN_PROJECTION,
   SUFFIX_INTELLIGENCE_PATTERN_LIFECYCLE_TRANSITIONED,
+  // OMN-2920: Pattern learning command topic — backfill pattern_learning_artifacts from
+  // PatternLearningRequested events so the Patterns and Learned Insights pages show live
+  // data even when omniintelligence does not yet emit pattern-projection.v1 completions.
+  SUFFIX_INTELLIGENCE_PATTERN_LEARNING_CMD,
 ] as const;
 
 type ReadModelTopic = (typeof READ_MODEL_TOPICS)[number];
@@ -720,6 +725,12 @@ export class ReadModelConsumer {
         case SUFFIX_INTELLIGENCE_PATTERN_LIFECYCLE_TRANSITIONED:
           projected = await this.projectPatternLifecycleTransitionedEvent(parsed, fallbackId);
           break;
+        // OMN-2920: Pattern learning command — backfill pattern_learning_artifacts
+        // from PatternLearningRequested events (omniintelligence has not yet emitted
+        // pattern-projection.v1 completions, so this ensures the table is non-empty).
+        case SUFFIX_INTELLIGENCE_PATTERN_LEARNING_CMD:
+          projected = await this.projectPatternLearningRequestedEvent(parsed, fallbackId);
+          break;
         default:
           console.warn(
             `[ReadModelConsumer] Received message on unknown topic "${topic}" -- skipping`
@@ -1130,10 +1141,10 @@ export class ReadModelConsumer {
           ${(evt.model_name as string) ?? 'unknown'},
           ${Boolean(evt.cache_hit ?? false)},
           ${outcome},
-          ${Number.isNaN(Number(evt.latency_ms)) ? 0 : Number(evt.latency_ms ?? 0)},
-          ${Number.isNaN(Number(evt.tokens_before)) ? 0 : Number(evt.tokens_before ?? 0)},
-          ${Number.isNaN(Number(evt.tokens_after)) ? 0 : Number(evt.tokens_after ?? 0)},
-          ${Number.isNaN(Number(evt.net_tokens_saved)) ? 0 : Number(evt.net_tokens_saved ?? 0)},
+          ${Number.isNaN(Number(evt.latency_ms)) ? 0 : Math.round(Number(evt.latency_ms ?? 0))},
+          ${Number.isNaN(Number(evt.tokens_before)) ? 0 : Math.round(Number(evt.tokens_before ?? 0))},
+          ${Number.isNaN(Number(evt.tokens_after)) ? 0 : Math.round(Number(evt.tokens_after ?? 0))},
+          ${Number.isNaN(Number(evt.net_tokens_saved)) ? 0 : Math.round(Number(evt.net_tokens_saved ?? 0))},
           ${evt.similarity_score != null && !Number.isNaN(Number(evt.similarity_score)) ? Number(evt.similarity_score) : null},
           ${evt.quality_score != null && !Number.isNaN(Number(evt.quality_score)) ? Number(evt.quality_score) : null},
           ${(evt.repo as string) ?? null},
@@ -1254,12 +1265,34 @@ export class ReadModelConsumer {
     }
     const correlationId = rawCorrelationId;
 
-    // llm_agent and fuzzy_agent are required fields.
-    const llmAgent = (evt.llm_agent as string) || (data.llmAgent as string);
-    const fuzzyAgent = (evt.fuzzy_agent as string) || (data.fuzzyAgent as string);
-    if (!llmAgent || !fuzzyAgent) {
+    // The omniclaude producer (ModelLlmRoutingDecisionPayload) uses:
+    //   selected_agent        → the LLM-chosen agent
+    //   fuzzy_top_candidate   → the fuzzy-chosen agent (nullable when fallback_used=true)
+    //   fallback_used         → whether the fuzzy fallback was used
+    //   model_used            → the LLM model identifier
+    //   emitted_at            → event timestamp
+    //
+    // The TypeScript LlmRoutingDecisionEvent interface was originally drafted with
+    // different field names (llm_agent, fuzzy_agent, used_fallback, model, timestamp).
+    // We probe both names so the projector handles both the real omniclaude events
+    // and any future events that conform to the interface spec. (OMN-2920 gap fix)
+    const llmAgent =
+      (data.selected_agent as string) ||
+      (data.llm_selected_candidate as string) ||
+      (evt.llm_agent as string) ||
+      (data.llmAgent as string);
+    // fuzzy_top_candidate is nullable when the LLM fell back to the fuzzy result
+    // and no fuzzy candidate was available. Treat as empty string rather than
+    // dropping the event — the row is still useful for fallback_rate metrics.
+    const fuzzyAgent =
+      (data.fuzzy_top_candidate as string | null) ??
+      (evt.fuzzy_agent as string) ??
+      (data.fuzzyAgent as string) ??
+      null;
+
+    if (!llmAgent) {
       console.warn(
-        '[ReadModelConsumer] LLM routing decision event missing required agent fields ' +
+        '[ReadModelConsumer] LLM routing decision event missing required llm_agent/selected_agent field ' +
           `(correlation_id=${correlationId}) -- skipping malformed event`
       );
       // Intentionally return true (advance the watermark) rather than throwing or
@@ -1277,7 +1310,33 @@ export class ReadModelConsumer {
     const routingPromptVersion =
       (evt.routing_prompt_version as string) || (data.routingPromptVersion as string) || 'unknown';
 
-    const agreement = evt.agreement != null ? Boolean(evt.agreement) : llmAgent === fuzzyAgent;
+    // used_fallback: omniclaude emits fallback_used; interface spec uses used_fallback.
+    const usedFallback = Boolean(
+      (data.fallback_used as boolean | undefined) ??
+      (evt.used_fallback as boolean | undefined) ??
+      false
+    );
+
+    // OMN-2920: fallbacks are routing failures, not decisions — skip projection so
+    // the llm_routing_decisions table only contains genuine LLM routing decisions.
+    // This prevents fallback noise from polluting agreement_rate metrics.
+    if (usedFallback) {
+      return true; // advance watermark; do not write a row
+    }
+
+    // model: omniclaude emits model_used; interface spec uses model.
+    const model = (data.model_used as string | null) ?? (evt.model as string | null) ?? null;
+
+    // timestamp: omniclaude emits emitted_at; interface spec uses timestamp.
+    const eventTimestamp =
+      (data.emitted_at as string | null) ?? (evt.timestamp as string | null) ?? null;
+
+    const agreement =
+      evt.agreement != null
+        ? Boolean(evt.agreement)
+        : fuzzyAgent != null
+          ? llmAgent === fuzzyAgent
+          : usedFallback; // when fuzzy candidate is absent, agreement is implied by fallback
 
     try {
       await db.execute(sql`
@@ -1301,18 +1360,18 @@ export class ReadModelConsumer {
           ${correlationId},
           ${(evt.session_id as string) ?? null},
           ${llmAgent},
-          ${fuzzyAgent},
+          ${fuzzyAgent ?? null},
           ${agreement},
           ${evt.llm_confidence != null && !Number.isNaN(Number(evt.llm_confidence)) ? Number(evt.llm_confidence) : null},
           ${evt.fuzzy_confidence != null && !Number.isNaN(Number(evt.fuzzy_confidence)) ? Number(evt.fuzzy_confidence) : null},
           ${Number.isNaN(Number(evt.llm_latency_ms)) ? 0 : Math.round(Number(evt.llm_latency_ms ?? 0))},
           ${Number.isNaN(Number(evt.fuzzy_latency_ms)) ? 0 : Math.round(Number(evt.fuzzy_latency_ms ?? 0))},
-          ${Boolean(evt.used_fallback ?? false)},
+          ${usedFallback},
           ${routingPromptVersion},
           ${(evt.intent as string) ?? null},
-          ${(evt.model as string) ?? null},
+          ${model},
           ${evt.cost_usd != null && !Number.isNaN(Number(evt.cost_usd)) ? Number(evt.cost_usd) : null},
-          ${safeParseDate(evt.timestamp)}
+          ${safeParseDate(eventTimestamp)}
         )
         ON CONFLICT (correlation_id) DO NOTHING
       `);
@@ -2477,6 +2536,103 @@ export class ReadModelConsumer {
         console.warn(
           '[ReadModelConsumer] intent_signals table not yet created -- ' +
             'run migrations to enable intent signal projection'
+        );
+        return true;
+      }
+      throw err;
+    }
+
+    return true;
+  }
+
+  /**
+   * Project a PatternLearningRequested command event into the `pattern_learning_artifacts`
+   * table (OMN-2920).
+   *
+   * omniintelligence does not yet emit pattern-projection.v1 completion events, so the
+   * pattern_learning_artifacts table stays empty and the Patterns / Learned Insights pages
+   * fall back to mock data. This handler writes one pending row per unique correlation_id
+   * so probePatterns() and probeInsights() can confirm that real pipeline activity exists.
+   *
+   * The row uses lifecycle_state='requested' and sentinel values for non-null schema fields
+   * that are not present in the command payload. When the upstream projection event
+   * eventually arrives, projectPatternProjectionEvent() upserts real data over the row
+   * (or alongside it — no conflict key on pattern_id, so the projection row is additive).
+   *
+   * Idempotency: implemented via raw SQL INSERT WHERE NOT EXISTS on pattern_id =
+   * correlation_id, avoiding the need for a unique index on pattern_id.
+   *
+   * Returns true when written or skipped (already exists), false when DB is unavailable.
+   */
+  private async projectPatternLearningRequestedEvent(
+    data: Record<string, unknown>,
+    fallbackId: string
+  ): Promise<boolean> {
+    const db = tryGetIntelligenceDb();
+    if (!db) return false;
+
+    // Use correlation_id as the pattern_id sentinel so duplicates can be detected.
+    const correlationId =
+      (data.correlation_id as string) || (data.correlationId as string) || fallbackId;
+    if (!UUID_RE.test(correlationId)) {
+      // correlation_id is not a valid UUID — skip to avoid a DB type error.
+      console.warn(
+        `[ReadModelConsumer] PatternLearningRequested: correlation_id "${correlationId}" is not a ` +
+          'valid UUID — skipping row'
+      );
+      return true;
+    }
+
+    const sessionId = (data.session_id as string) || (data.sessionId as string) || null;
+    const trigger = (data.trigger as string) || 'unknown';
+    const requestedAt = safeParseDate(data.timestamp ?? data.created_at);
+
+    try {
+      // INSERT ... WHERE NOT EXISTS is idempotent without a unique index on pattern_id.
+      // The subquery matches on pattern_id = correlationId so redelivered Kafka messages
+      // do not insert duplicate rows.
+      await db.execute(sql`
+        INSERT INTO pattern_learning_artifacts (
+          pattern_id,
+          pattern_name,
+          pattern_type,
+          lifecycle_state,
+          composite_score,
+          scoring_evidence,
+          signature,
+          metrics,
+          metadata,
+          created_at,
+          updated_at,
+          projected_at
+        )
+        SELECT
+          ${correlationId}::uuid,
+          ${'learning_requested'}::varchar(255),
+          ${'pipeline_request'}::varchar(100),
+          ${'requested'}::text,
+          ${0}::numeric(10,6),
+          ${{}}::jsonb,
+          ${{ session_id: sessionId, trigger }}::jsonb,
+          ${{}}::jsonb,
+          ${{ source: 'PatternLearningRequested', trigger, session_id: sessionId }}::jsonb,
+          ${requestedAt},
+          ${requestedAt},
+          ${new Date()}
+        WHERE NOT EXISTS (
+          SELECT 1 FROM pattern_learning_artifacts WHERE pattern_id = ${correlationId}::uuid
+        )
+      `);
+    } catch (err) {
+      const pgCode = (err as { code?: string }).code;
+      const msg = err instanceof Error ? err.message : String(err);
+      if (
+        pgCode === '42P01' ||
+        (msg.includes('pattern_learning_artifacts') && msg.includes('does not exist'))
+      ) {
+        console.warn(
+          '[ReadModelConsumer] pattern_learning_artifacts table not yet created -- ' +
+            'run migrations to enable pattern learning request projection'
         );
         return true;
       }

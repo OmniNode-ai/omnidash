@@ -331,7 +331,7 @@ describe('GET /api/health/data-sources', () => {
     const { summary } = res.body;
     // 3 live sources (event-bus, validation, correlationTrace)
     expect(summary.live).toBe(3);
-    expect(summary.live + summary.mock + summary.error).toBe(13); // 13 total sources
+    expect(summary.live + summary.mock + summary.error + (summary.offline ?? 0)).toBe(13); // 13 total sources
   });
 
   it('includes all 13 expected data sources', async () => {
@@ -364,7 +364,7 @@ describe('GET /api/health/data-sources', () => {
     expect(keys.length).toBe(13);
   });
 
-  it('returns status: mock with reason for empty baselines projection', async () => {
+  it('returns status: offline with reason for empty baselines projection', async () => {
     const baselinesView = makeView({
       summary: { total_comparisons: 0 },
     });
@@ -380,8 +380,8 @@ describe('GET /api/health/data-sources', () => {
     const res = await request(app).get('/api/health/data-sources');
 
     expect(res.status).toBe(200);
-    expect(res.body.dataSources.baselines.status).toBe('mock');
-    expect(res.body.dataSources.baselines.reason).toBe('empty_tables');
+    expect(res.body.dataSources.baselines.status).toBe('offline');
+    expect(res.body.dataSources.baselines.reason).toBe('upstream_service_offline');
   });
 
   it('reports status: error for executionGraph when probe throws', async () => {

@@ -16,20 +16,50 @@
 /**
  * Raw event payload from `onex.evt.omniclaude.llm-routing-decision.v1`.
  *
- * Emitted by the omniclaude routing hook whenever an LLM routing decision
- * is made alongside (or instead of) the fuzzy fallback routing decision.
+ * Emitted by the omniclaude routing hook (ModelLlmRoutingDecisionPayload)
+ * whenever an LLM routing decision is made alongside (or instead of) the
+ * fuzzy fallback routing decision.
+ *
+ * Field mapping note (OMN-2920): The omniclaude producer uses different field
+ * names than the original interface draft. Both sets of names are present here
+ * so this interface documents the actual wire format. The projector in
+ * read-model-consumer.ts probes both names for backward compatibility.
+ *
+ * Producer field → Interface field:
+ *   selected_agent        → selected_agent  (llm_agent is the old draft name)
+ *   fuzzy_top_candidate   → fuzzy_top_candidate  (fuzzy_agent is old draft name; nullable)
+ *   fallback_used         → fallback_used  (used_fallback is old draft name)
+ *   model_used            → model_used  (model is old draft name)
+ *   emitted_at            → emitted_at  (timestamp is old draft name)
  */
 export interface LlmRoutingDecisionEvent {
-  /** ISO-8601 timestamp */
-  timestamp: string;
+  /** ISO-8601 timestamp — legacy field name; producer emits as emitted_at */
+  timestamp?: string;
+  /** ISO-8601 timestamp as emitted by omniclaude (ModelLlmRoutingDecisionPayload) */
+  emitted_at?: string;
   /** Unique correlation ID for this routing decision */
   correlation_id: string;
   /** Session ID (if available) */
   session_id?: string;
-  /** Agent selected by LLM routing */
-  llm_agent: string;
-  /** Agent selected by fuzzy-string routing (may differ from llm_agent) */
-  fuzzy_agent: string;
+  /**
+   * Agent chosen by LLM routing — as emitted by omniclaude (selected_agent).
+   * Legacy interface draft used llm_agent.
+   */
+  selected_agent?: string;
+  /** Legacy field name for agent chosen by LLM routing */
+  llm_agent?: string;
+  /**
+   * Top candidate from fuzzy matching — nullable when fallback_used=true and
+   * no fuzzy candidate was available. Legacy interface draft used fuzzy_agent.
+   */
+  fuzzy_top_candidate?: string | null;
+  /** Legacy field name for agent selected by fuzzy-string routing */
+  fuzzy_agent?: string | null;
+  /**
+   * Raw agent name returned by the LLM before validation/fallback.
+   * Present in events where fallback_used=false.
+   */
+  llm_selected_candidate?: string | null;
   /** Whether LLM and fuzzy agreed on the same agent */
   agreement: boolean;
   /** Confidence score from LLM routing decision (0–1); nullable when not reported. */
@@ -39,20 +69,29 @@ export interface LlmRoutingDecisionEvent {
   /** Latency for LLM routing decision in milliseconds */
   llm_latency_ms: number;
   /** Latency for fuzzy routing decision in milliseconds */
-  fuzzy_latency_ms: number;
+  fuzzy_latency_ms?: number;
   /**
-   * Whether the fuzzy matcher was used as a fallback (true when LLM was
-   * unavailable or timed out).
+   * Whether the fuzzy matcher was used as a fallback — as emitted by omniclaude (fallback_used).
+   * Legacy interface draft used used_fallback.
    */
-  used_fallback: boolean;
+  fallback_used?: boolean;
+  /** Legacy field name for fallback indicator */
+  used_fallback?: boolean;
   /** Prompt version used for the LLM routing call */
   routing_prompt_version: string;
   /** The original intent string that triggered routing */
   intent?: string;
-  /** LLM model used for routing */
+  /**
+   * LLM model identifier — as emitted by omniclaude (model_used).
+   * Legacy interface draft used model.
+   */
+  model_used?: string;
+  /** Legacy field name for LLM model */
   model?: string;
   /** Estimated cost of the LLM routing call in USD */
   cost_usd?: number;
+  /** Schema version of the event */
+  schema_version?: string;
 }
 
 // ============================================================================
