@@ -22,6 +22,7 @@ import {
   Activity,
   RefreshCw,
   Info,
+  ChevronLeft,
 } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
@@ -630,13 +631,6 @@ export default function CorrelationTrace() {
         </Card>
       )}
 
-      {/* Back to Recent Traces link (when viewing a trace detail) */}
-      {isTraceSelected && (
-        <Button variant="ghost" size="sm" onClick={handleClearSelection} className="gap-1.5">
-          <Search className="w-3.5 h-3.5" />
-          Back to Recent Traces
-        </Button>
-      )}
 
       {/* Trace Detail: Loading State */}
       {traceLoading && isTraceSelected && (
@@ -668,9 +662,13 @@ export default function CorrelationTrace() {
       {/* Trace Detail: Summary Cards */}
       {traceData && traceData.events.length > 0 && (
         <>
-          <div className="flex items-center justify-between">
-            <div className="space-y-1">
-              <h2 className="text-xl font-semibold">Trace Results</h2>
+          <div className="flex items-center gap-3">
+            <Button variant="outline" size="sm" onClick={handleClearSelection} className="gap-1.5 shrink-0">
+              <ChevronLeft className="w-4 h-4" />
+              Back
+            </Button>
+            <div className="space-y-0.5">
+              <h2 className="text-xl font-semibold leading-none">Trace Results</h2>
               <p className="text-sm text-muted-foreground font-mono">
                 {traceData.correlationId}
                 {showingSample && (

@@ -187,6 +187,7 @@ export const nodeRegistryDashboardConfig: DashboardConfig = {
         rows_key: 'registeredNodes',
         columns: [
           { key: 'node_id', header: 'Node ID', sortable: true, width: 150 },
+          { key: 'node_description', header: 'Description', width: 220 },
           { key: 'node_type', header: 'Type', sortable: true, width: 100 },
           { key: 'state', header: 'State', format: 'badge', sortable: true, width: 120 },
           { key: 'version', header: 'Version', width: 80 },
