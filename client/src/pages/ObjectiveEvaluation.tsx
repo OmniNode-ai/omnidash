@@ -18,6 +18,7 @@
  */
 
 import { useState, useCallback } from 'react';
+import { useDemoMode } from '@/contexts/DemoModeContext';
 import { useQuery, useQueryClient, useMutation } from '@tanstack/react-query';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -164,12 +165,19 @@ function MockDataBanner() {
 // Panel 1: Score Vector (Radar Chart)
 // ============================================================================
 
-function ScoreVectorPanel({ window }: { window: ObjectiveTimeWindow }) {
+function ScoreVectorPanel({
+  window,
+  demoMode,
+}: {
+  window: ObjectiveTimeWindow;
+  demoMode: boolean;
+}) {
   const [selectedAgent, setSelectedAgent] = useState<string>('all');
 
   const { data, isLoading, error } = useQuery({
-    queryKey: queryKeys.objective.scoreVector(window),
-    queryFn: () => objectiveSource.scoreVector(window),
+    queryKey: [...queryKeys.objective.scoreVector(window), demoMode],
+    queryFn: () =>
+      objectiveSource.scoreVector(window, { fallbackToMock: demoMode, mockOnEmpty: demoMode }),
     staleTime: 30_000,
     refetchInterval: 60_000,
   });
@@ -269,12 +277,22 @@ function ScoreVectorPanel({ window }: { window: ObjectiveTimeWindow }) {
 // Panel 2: Gate Failure Timeline
 // ============================================================================
 
-function GateFailureTimelinePanel({ window }: { window: ObjectiveTimeWindow }) {
+function GateFailureTimelinePanel({
+  window,
+  demoMode,
+}: {
+  window: ObjectiveTimeWindow;
+  demoMode: boolean;
+}) {
   const [drilldownEvent, setDrilldownEvent] = useState<GateFailureEvent | null>(null);
 
   const { data, isLoading, error } = useQuery({
-    queryKey: queryKeys.objective.gateFailures(window),
-    queryFn: () => objectiveSource.gateFailureTimeline(window),
+    queryKey: [...queryKeys.objective.gateFailures(window), demoMode],
+    queryFn: () =>
+      objectiveSource.gateFailureTimeline(window, {
+        fallbackToMock: demoMode,
+        mockOnEmpty: demoMode,
+      }),
     staleTime: 30_000,
     refetchInterval: 60_000,
   });
@@ -493,13 +511,23 @@ function GateFailureTimelinePanel({ window }: { window: ObjectiveTimeWindow }) {
 // Panel 3: Policy State History
 // ============================================================================
 
-function PolicyStateHistoryPanel({ window }: { window: ObjectiveTimeWindow }) {
+function PolicyStateHistoryPanel({
+  window,
+  demoMode,
+}: {
+  window: ObjectiveTimeWindow;
+  demoMode: boolean;
+}) {
   const [selectedPolicy, setSelectedPolicy] = useState<string>('all');
   const [drilldownPoint, setDrilldownPoint] = useState<PolicyStatePoint | null>(null);
 
   const { data, isLoading, error } = useQuery({
-    queryKey: queryKeys.objective.policyState(window),
-    queryFn: () => objectiveSource.policyStateHistory(window),
+    queryKey: [...queryKeys.objective.policyState(window), demoMode],
+    queryFn: () =>
+      objectiveSource.policyStateHistory(window, {
+        fallbackToMock: demoMode,
+        mockOnEmpty: demoMode,
+      }),
     staleTime: 30_000,
     refetchInterval: 60_000,
   });
@@ -731,12 +759,19 @@ function PolicyStateHistoryPanel({ window }: { window: ObjectiveTimeWindow }) {
 // Panel 4: Anti-Gaming Alert Feed
 // ============================================================================
 
-function AntiGamingAlertFeed({ window }: { window: ObjectiveTimeWindow }) {
+function AntiGamingAlertFeed({
+  window,
+  demoMode,
+}: {
+  window: ObjectiveTimeWindow;
+  demoMode: boolean;
+}) {
   const queryClient = useQueryClient();
 
   const { data, isLoading, error } = useQuery({
-    queryKey: queryKeys.objective.antiGaming(window),
-    queryFn: () => objectiveSource.antiGamingAlerts(window),
+    queryKey: [...queryKeys.objective.antiGaming(window), demoMode],
+    queryFn: () =>
+      objectiveSource.antiGamingAlerts(window, { fallbackToMock: demoMode, mockOnEmpty: demoMode }),
     staleTime: 15_000,
     refetchInterval: 30_000,
   });
@@ -892,6 +927,7 @@ function AlertCard({
 
 export default function ObjectiveEvaluation() {
   const queryClient = useQueryClient();
+  const { isDemoMode } = useDemoMode();
   const [timeWindow, setTimeWindow] = useState<ObjectiveTimeWindow>('7d');
 
   const handleRefreshAll = useCallback(() => {
@@ -941,10 +977,10 @@ export default function ObjectiveEvaluation() {
 
       {/* Panel layout: 2-column grid on large screens */}
       <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
-        <ScoreVectorPanel window={timeWindow} />
-        <GateFailureTimelinePanel window={timeWindow} />
-        <PolicyStateHistoryPanel window={timeWindow} />
-        <AntiGamingAlertFeed window={timeWindow} />
+        <ScoreVectorPanel window={timeWindow} demoMode={isDemoMode} />
+        <GateFailureTimelinePanel window={timeWindow} demoMode={isDemoMode} />
+        <PolicyStateHistoryPanel window={timeWindow} demoMode={isDemoMode} />
+        <AntiGamingAlertFeed window={timeWindow} demoMode={isDemoMode} />
       </div>
     </div>
   );

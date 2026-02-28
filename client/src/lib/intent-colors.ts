@@ -142,9 +142,14 @@ export const CONFIDENCE_THRESHOLD_LOW = 0.5;
 
 /**
  * Normalizes a category string to lowercase with only alphanumeric and underscore.
+ * Hyphens are converted to underscores so that API values like "code-generation"
+ * match the canonical underscore-delimited keys (e.g. "code_generation").
  */
 function normalizeCategory(category: string): string {
-  return category.toLowerCase().replace(/[^a-z0-9_]/g, '');
+  return category
+    .toLowerCase()
+    .replace(/-/g, '_')
+    .replace(/[^a-z0-9_]/g, '');
 }
 
 /**
