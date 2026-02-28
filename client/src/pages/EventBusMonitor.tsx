@@ -157,6 +157,9 @@ function buildParsedDetailsFromEnrichment(e: EventEnrichment): ParsedDetails {
     confidence: e.confidence,
     actionName: e.actionName ?? e.intentType,
     error: e.error,
+    // OMN-3015: propagate enrichment quality fields
+    durationMs: e.durationMs,
+    promptPreview: e.promptPreview,
   };
 }
 
@@ -834,7 +837,9 @@ export default function EventBusMonitor() {
         topicRaw: rawTopic,
         eventType: String(row.eventType || ''),
         source: String(row.source || ''),
-        timestamp: String(row.timestamp || ''),
+        // OMN-3015: use timestampSort (ISO string) not timestamp (display string like "2 min ago")
+        // so the EventDetailPanel can parse/format the timestamp correctly.
+        timestamp: String(row.timestampSort || row.timestamp || ''),
         priority: String(row.priority || 'normal'),
         correlationId: row.correlationId ? String(row.correlationId) : undefined,
         payload: row.payload ? String(row.payload) : undefined,
