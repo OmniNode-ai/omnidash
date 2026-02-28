@@ -496,10 +496,7 @@ intelligenceRouter.get('/agents/routing-strategy', async (req, res) => {
       .groupBy(agentRoutingDecisions.routingStrategy)
       .orderBy(sql`COUNT(*) DESC`);
 
-    // Calculate total for percentage
     const total = strategyData.reduce((sum, s) => sum + s.count, 0);
-
-    // Format response with percentages
     const formattedData: RoutingStrategyBreakdown[] = strategyData.map((s) => ({
       strategy: s.strategy,
       count: s.count,
@@ -801,7 +798,6 @@ intelligenceRouter.get('/patterns/summary', async (req, res) => {
       throw tableError;
     }
 
-    // Get pattern summary statistics
     const [summaryResult] = await getIntelligenceDb()
       .select({
         total_patterns: sql<number>`COUNT(*)::int`,
@@ -993,8 +989,7 @@ intelligenceRouter.get('/patterns/list', async (req, res) => {
     const limit = Math.min(parseInt(req.query.limit as string) || 50, 200);
     const offset = parseInt(req.query.offset as string) || 0;
 
-    // Get code patterns from pattern_lineage_nodes with quality metrics
-    // Use raw SQL for LEFT JOIN to avoid Drizzle ORM issues with nullable fields
+    // Raw SQL here to support LEFT JOIN — Drizzle ORM has known issues with nullable field joins
     const patterns = await getIntelligenceDb().execute<{
       id: string;
       name: string;
@@ -1131,7 +1126,6 @@ intelligenceRouter.get('/patterns/quality-trends', async (req, res) => {
  */
 intelligenceRouter.get('/patterns/performance', async (req, res) => {
   try {
-    // Get performance metrics grouped by generation source
     const performance = await getIntelligenceDb()
       .select({
         generationSource: agentManifestInjections.generationSource,
@@ -1427,7 +1421,6 @@ intelligenceRouter.get('/transformations/summary', async (req, res) => {
     // Determine time interval
     const interval = getIntervalFromTimeWindow(timeWindow);
 
-    // Get summary statistics
     const [summaryResult] = await getIntelligenceDb()
       .select({
         totalTransformations: sql<number>`COUNT(*)::int`,
@@ -1443,7 +1436,6 @@ intelligenceRouter.get('/transformations/summary', async (req, res) => {
       .from(agentTransformationEvents)
       .where(sql`${agentTransformationEvents.createdAt} > NOW() - INTERVAL '${sql.raw(interval)}'`);
 
-    // Get most common transformation
     const mostCommonResult = await getIntelligenceDb()
       .select({
         source: agentTransformationEvents.sourceAgent,
@@ -1456,7 +1448,7 @@ intelligenceRouter.get('/transformations/summary', async (req, res) => {
       .orderBy(sql`COUNT(*) DESC`)
       .limit(1);
 
-    // Get transformation flows for Sankey diagram
+    // Flows feed directly into Sankey diagram — limit to top 50 for visual clarity
     const transformationFlows = await getIntelligenceDb()
       .select({
         source: agentTransformationEvents.sourceAgent,
@@ -1471,7 +1463,6 @@ intelligenceRouter.get('/transformations/summary', async (req, res) => {
       .orderBy(sql`COUNT(*) DESC`)
       .limit(50); // Limit to top 50 flows for visualization
 
-    // Build unique nodes from flows
     const nodeSet = new Set<string>();
     transformationFlows.forEach((flow) => {
       nodeSet.add(flow.source);
@@ -1487,7 +1478,6 @@ intelligenceRouter.get('/transformations/summary', async (req, res) => {
         .join(' '),
     }));
 
-    // Build links for Sankey diagram
     const links: TransformationLink[] = transformationFlows.map((flow) => ({
       source: flow.source,
       target: flow.target,
@@ -1559,7 +1549,6 @@ intelligenceRouter.get('/traces/recent', async (req, res) => {
     const rawLimit = parseInt(req.query.limit as string, 10);
     const limit = Number.isFinite(rawLimit) ? Math.min(Math.max(rawLimit, 1), 100) : 20;
 
-    // Fetch recent routing decisions
     const decisions = await getIntelligenceDb()
       .select({
         correlationId: agentRoutingDecisions.correlationId,
@@ -1602,7 +1591,6 @@ intelligenceRouter.get('/traces/recent', async (req, res) => {
         .groupBy(agentManifestInjections.correlationId),
     ]);
 
-    // Build lookup maps for event counts
     const actionCountMap = new Map(actionCounts.map((r) => [r.correlationId, r.count]));
     const manifestCountMap = new Map(manifestCounts.map((r) => [r.correlationId, r.count]));
 
@@ -1682,7 +1670,6 @@ intelligenceRouter.get('/trace/:correlationId', async (req, res) => {
 
     // Query all relevant tables for this correlation ID
     const [actions, manifests] = await Promise.all([
-      // Get agent actions
       getIntelligenceDb()
         .select({
           id: agentActions.id,
@@ -1696,7 +1683,6 @@ intelligenceRouter.get('/trace/:correlationId', async (req, res) => {
         .from(agentActions)
         .where(eq(agentActions.correlationId, correlationId)),
 
-      // Get manifest injections
       getIntelligenceDb()
         .select({
           id: agentManifestInjections.id,
@@ -1807,7 +1793,6 @@ intelligenceRouter.get('/trace/:correlationId', async (req, res) => {
     const allEvents = [...routingEvents, ...actionEvents, ...manifestEvents];
     allEvents.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
 
-    // Calculate summary statistics
     const summary = {
       totalEvents: allEvents.length,
       routingDecisions: routingEvents.length,
@@ -2102,8 +2087,7 @@ intelligenceRouter.get('/metrics/quality-impact', async (req, res) => {
 
     const truncation = timeWindow === '24h' ? 'hour' : 'day';
 
-    // Calculate quality impact from database
-    // Strategy: Compare quality scores before and after manifest injections
+    // Compare quality scores before and after manifest injections to measure impact
     const qualityImpactData = await getIntelligenceDb()
       .select({
         period: sql<string>`DATE_TRUNC('${sql.raw(truncation)}', ${agentManifestInjections.createdAt})::text`,
@@ -2183,7 +2167,7 @@ intelligenceRouter.get('/developer/workflows', async (req, res) => {
       .groupBy(agentActions.actionType)
       .orderBy(sql`COUNT(*) DESC`);
 
-    // Get previous period for trend calculation
+    // Previous 7-day period for WoW trend comparison
     const previousWorkflows = await getIntelligenceDb()
       .select({
         actionType: agentActions.actionType,
@@ -2198,10 +2182,8 @@ intelligenceRouter.get('/developer/workflows', async (req, res) => {
       )
       .groupBy(agentActions.actionType);
 
-    // Create lookup for previous period
     const previousLookup = new Map(previousWorkflows.map((w) => [w.actionType, w.completions]));
 
-    // Map action types to friendly names
     const actionTypeNames: Record<string, string> = {
       tool_call: 'Code Generation',
       decision: 'Decision Making',
@@ -2211,12 +2193,10 @@ intelligenceRouter.get('/developer/workflows', async (req, res) => {
       analysis: 'Code Analysis',
     };
 
-    // Format results with trends
     const formattedWorkflows = workflows.map((w) => {
       const currentCompletions = w.completions;
       const previousCompletions = previousLookup.get(w.actionType) || 0;
 
-      // Calculate improvement percentage
       let improvement = 0;
       if (previousCompletions > 0) {
         improvement = Math.round(
@@ -2226,7 +2206,6 @@ intelligenceRouter.get('/developer/workflows', async (req, res) => {
         improvement = 100; // New workflow type
       }
 
-      // Format average time
       const avgMs = parseFloat(w.avgDurationMs?.toString() || '0');
       const avgTime = avgMs >= 1000 ? `${(avgMs / 1000).toFixed(1)}s` : `${Math.round(avgMs)}ms`;
 
@@ -2780,7 +2759,6 @@ intelligenceRouter.get('/code/compliance', async (req, res) => {
       throw tableError;
     }
 
-    // Get summary statistics
     const [summaryResult] = await getIntelligenceDb()
       .select({
         totalFiles: sql<number>`COUNT(DISTINCT ${onexComplianceStamps.filePath})::int`,
