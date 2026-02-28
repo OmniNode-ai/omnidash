@@ -244,7 +244,7 @@ export function deriveEventCategory(
 const ToolExecutedHandler: EnrichmentHandler = {
   name: 'ToolExecutedHandler',
   category: 'tool_event',
-  enrich(payload, type, _topic): EventEnrichment {
+  enrich(payload, _type, _topic): EventEnrichment {
     const toolName = str(findField(payload, ['toolName', 'tool_name'])) || 'Tool';
     const toolInput = findField(payload, ['toolInput', 'tool_input', 'input']);
     const artifacts: EventArtifact[] = [];
@@ -666,7 +666,8 @@ export class EventEnrichmentPipeline {
       ['error_event', ErrorEventHandler],
       // New categories — session_event (OMN-3005) and prompt_event (OMN-3007) have dedicated handlers
       ['prompt_event', PromptSubmittedHandler],
-      ['session_event', SessionEventHandler],      ['tool_content_event', DefaultHandler],
+      ['session_event', SessionEventHandler],
+      ['tool_content_event', DefaultHandler],
       // Explicit registration so unknown category has a documented handler, not just a nullish fallback
       ['unknown', DefaultHandler],
     ]);
