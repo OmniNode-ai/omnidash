@@ -1036,3 +1036,50 @@ describe('PromptSubmittedHandler (OMN-3007)', () => {
     });
   });
 });
+
+// ============================================================================
+// DefaultHandler prettifyType (OMN-3011)
+// ============================================================================
+
+describe('DefaultHandler prettifyType (OMN-3011)', () => {
+  const pipeline = new EventEnrichmentPipeline();
+
+  it('prettifies full ONEX topic name to human-readable normalizedType', () => {
+    const result = pipeline.run({}, 'onex.evt.omniclaude.node-started.v1', 'agent-actions');
+    // 'onex.evt.omniclaude.node-started.v1' → extracts 'node-started' → 'Node Started'
+    // Note: node-started matches the node_lifecycle classifier, so this goes through
+    // the NodeLifecycleHandler, not DefaultHandler. Use a generic unknown type:
+    const unknownResult = pipeline.run({}, 'onex.evt.omniclaude.node-updated.v99', 'generic-topic');
+    expect(unknownResult.normalizedType).toBe('Node Updated');
+  });
+
+  it('prettifies hyphenated short type to title-case', () => {
+    const result = pipeline.run({}, 'gate-decision', 'unknown-topic');
+    expect(result.normalizedType).toBe('Gate Decision');
+  });
+
+  it('prettifies underscore-separated type to title-case', () => {
+    const result = pipeline.run({}, 'budget_cap_hit', 'unknown-topic');
+    expect(result.normalizedType).toBe('Budget Cap Hit');
+  });
+
+  it('prettifies full topic path extracting the meaningful segment', () => {
+    const result = pipeline.run({}, 'onex.evt.omnibase.deployment-complete.v1', 'unknown-topic');
+    expect(result.normalizedType).toBe('Deployment Complete');
+  });
+
+  it('DefaultHandler is used for truly unknown events with no matching category', () => {
+    const result = pipeline.run({}, 'completely-unknown-event-type', 'unregistered-topic');
+    expect(result.handler).toBe('DefaultHandler');
+    expect(result.category).toBe('unknown');
+    // normalizedType should be prettified (not the raw string)
+    expect(result.normalizedType).toBe('Completely Unknown Event Type');
+  });
+
+  it('DefaultHandler normalizedType is never the raw topic path', () => {
+    const result = pipeline.run({}, 'onex.evt.omnibase.custom-event.v2', 'unregistered-topic');
+    // Should not be the full raw path
+    expect(result.normalizedType).not.toContain('onex.evt');
+    expect(result.normalizedType).toBe('Custom Event');
+  });
+});
