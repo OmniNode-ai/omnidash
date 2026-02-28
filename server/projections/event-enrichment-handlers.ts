@@ -317,15 +317,33 @@ const ToolExecutedHandler: EnrichmentHandler = {
     const durationMs = num(findField(payload, ['duration_ms', 'durationMs']));
 
     // Summary: "ToolName target" e.g. "Read index.ts", "Bash ls -la"
+    // When the hook provides a pre-built summary (post-execution payloads lack toolInput),
+    // use it directly to avoid redundant "Bash Bash" / "Read Read" output.
     let summaryTarget: string;
+    let usePrebuiltSummary = false;
     if (filePath) {
       summaryTarget = filePath.split('/').pop() || filePath;
     } else if (bashCommand) {
       summaryTarget = truncate(bashCommand, 40);
     } else {
-      summaryTarget = str(findField(payload, ['target', 'name'])) ?? '';
+      // Consult hook-provided pre-built summary before falling back to generic fields.
+      // Priority: summary > message > description. Trim whitespace.
+      // Ignore if it just repeats the tool name (still redundant).
+      const prebuiltSummary = str(
+        findField(payload, ['summary', 'message', 'description'])
+      )?.trim();
+      if (prebuiltSummary && prebuiltSummary.toLowerCase() !== toolName.toLowerCase()) {
+        summaryTarget = prebuiltSummary;
+        usePrebuiltSummary = true;
+      } else {
+        summaryTarget = str(findField(payload, ['target', 'name'])) ?? '';
+      }
     }
-    const baseSummary = truncate(summaryTarget ? `${toolName} ${summaryTarget}` : toolName);
+    // When summaryTarget is from payload.summary it already describes the event fully.
+    // Prepend toolName only when we computed the target ourselves.
+    const baseSummary = usePrebuiltSummary
+      ? truncate(summaryTarget, SUMMARY_MAX)
+      : truncate(summaryTarget ? `${toolName} ${summaryTarget}` : toolName);
     // Append duration suffix if present, re-truncating to SUMMARY_MAX
     const durationSuffix = durationMs != null ? ` (${durationMs}ms)` : '';
     const summary = truncate(`${baseSummary}${durationSuffix}`, SUMMARY_MAX);
