@@ -193,6 +193,17 @@ export function deriveEventCategory(
     return 'node_heartbeat';
   }
 
+  // Prompt event — user-submitted prompt to the AI agent
+  // Checked before node_lifecycle to avoid any future false positives
+  if (
+    lType.includes('prompt-submitted') ||
+    lType.includes('user-prompt') ||
+    lTopic.includes('prompt-submitted') ||
+    lTopic.includes('user-prompt')
+  ) {
+    return 'prompt_event';
+  }
+
   // Node lifecycle
   if (
     lType.includes('registration') ||
@@ -496,6 +507,32 @@ const ErrorEventHandler: EnrichmentHandler = {
   },
 };
 
+const PromptSubmittedHandler: EnrichmentHandler = {
+  name: 'PromptSubmittedHandler',
+  category: 'prompt_event',
+  enrich(payload, _type, _topic): EventEnrichment {
+    // Extract prompt text from common field names
+    const prompt =
+      str(findField(payload, ['prompt', 'content', 'message', 'text', 'userMessage'])) ?? '';
+
+    // Capture first PROMPT_PREVIEW_MAX chars of the prompt content
+    const promptPreview = prompt.slice(0, PROMPT_PREVIEW_MAX) || undefined;
+
+    // Summary: first SUMMARY_MAX chars of prompt, or fallback
+    const summary = prompt ? truncate(prompt, SUMMARY_MAX) : 'Prompt submitted';
+
+    return {
+      enrichmentVersion: 'v1',
+      handler: 'PromptSubmittedHandler',
+      category: 'prompt_event',
+      summary,
+      normalizedType: 'Prompt Submitted',
+      artifacts: [],
+      promptPreview,
+    };
+  },
+};
+
 const DefaultHandler: EnrichmentHandler = {
   name: 'DefaultHandler',
   category: 'unknown',
@@ -536,9 +573,8 @@ export class EventEnrichmentPipeline {
       ['node_heartbeat', NodeHeartbeatHandler],
       ['node_lifecycle', NodeLifecycleHandler],
       ['error_event', ErrorEventHandler],
-      // New categories — handlers registered here; implementations are stubs
-      // until OMN-3005 (session_event), OMN-3007 (prompt_event), OMN-3009 (tool_content_event)
-      ['prompt_event', DefaultHandler],
+      // New categories — session_event stub replaced in OMN-3005; tool_content_event stub replaced in OMN-3009
+      ['prompt_event', PromptSubmittedHandler],
       ['session_event', DefaultHandler],
       ['tool_content_event', DefaultHandler],
       // Explicit registration so unknown category has a documented handler, not just a nullish fallback
