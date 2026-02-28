@@ -956,3 +956,99 @@ describe('ToolExecutedHandler improvements (OMN-3003 / OMN-3013)', () => {
 });
 
 // =====================================================================
+
+// SessionEventHandler (OMN-3005)
+// ============================================================================
+
+describe('SessionEventHandler (OMN-3005)', () => {
+  const pipeline = new EventEnrichmentPipeline();
+
+  // deriveEventCategory fixes
+  describe('deriveEventCategory: session_event classification', () => {
+    it('classifies session-started type as session_event (not node_lifecycle)', () => {
+      // Before fix: 'started' in type matched node_lifecycle 'started' keyword
+      const result = deriveEventCategory({}, 'session-started', 'onex.evt.omniclaude.session.v1');
+      expect(result).toBe('session_event');
+      expect(result).not.toBe('node_lifecycle');
+    });
+
+    it('classifies session-ended type as session_event', () => {
+      const result = deriveEventCategory({}, 'session-ended', 'onex.evt.omniclaude.session.v1');
+      expect(result).toBe('session_event');
+    });
+
+    it('classifies via topic containing session-started', () => {
+      const result = deriveEventCategory({}, 'event', 'onex.evt.omniclaude.session-started.v1');
+      expect(result).toBe('session_event');
+    });
+
+    it('classifies via topic containing session-ended', () => {
+      const result = deriveEventCategory({}, 'event', 'onex.evt.omniclaude.session-ended.v1');
+      expect(result).toBe('session_event');
+    });
+  });
+
+  // SessionEventHandler enrichment
+  describe('SessionEventHandler enrichment', () => {
+    it('returns session_event category and SessionEventHandler for session-started', () => {
+      const result = pipeline.run({}, 'session-started', 'onex.evt.omniclaude.session.v1');
+      expect(result.category).toBe('session_event');
+      expect(result.handler).toBe('SessionEventHandler');
+    });
+
+    it('sets normalizedType to "Session Started" for session-started', () => {
+      const result = pipeline.run({}, 'session-started', 'agent-actions');
+      expect(result.normalizedType).toBe('Session Started');
+    });
+
+    it('sets normalizedType to "Session Ended" for session-ended', () => {
+      const result = pipeline.run({}, 'session-ended', 'agent-actions');
+      expect(result.normalizedType).toBe('Session Ended');
+    });
+
+    it('extracts gitBranch from payload.gitBranch into session-started summary', () => {
+      const result = pipeline.run(
+        { gitBranch: 'jonah/feature-xyz' },
+        'session-started',
+        'agent-actions'
+      );
+      expect(result.gitBranch).toBe('jonah/feature-xyz');
+      expect(result.summary).toContain('branch: jonah/feature-xyz');
+    });
+
+    it('extracts gitBranch from payload.git_branch (snake_case)', () => {
+      const result = pipeline.run({ git_branch: 'main' }, 'session-started', 'agent-actions');
+      expect(result.gitBranch).toBe('main');
+    });
+
+    it('summary is "Session started" when no gitBranch is present', () => {
+      const result = pipeline.run({}, 'session-started', 'agent-actions');
+      expect(result.summary).toBe('Session started');
+    });
+
+    it('includes tool count in session-ended summary', () => {
+      const result = pipeline.run(
+        { toolCount: 12, durationMs: 4200 },
+        'session-ended',
+        'agent-actions'
+      );
+      expect(result.summary).toContain('12 tools');
+      expect(result.summary).toContain('4.2s');
+    });
+
+    it('session-ended with tool_count and duration_ms (snake_case)', () => {
+      const result = pipeline.run(
+        { tool_count: 5, duration_ms: 3000 },
+        'session-ended',
+        'agent-actions'
+      );
+      expect(result.summary).toContain('5 tools');
+      expect(result.summary).toContain('3.0s');
+    });
+
+    it('session-ended summary is "Session ended" when no tool count or duration', () => {
+      const result = pipeline.run({}, 'session-ended', 'agent-actions');
+      expect(result.summary).toBe('Session ended');
+    });
+  });
+});
