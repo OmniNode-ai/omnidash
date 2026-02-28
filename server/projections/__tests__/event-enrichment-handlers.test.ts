@@ -1052,3 +1052,33 @@ describe('SessionEventHandler (OMN-3005)', () => {
     });
   });
 });
+
+// ============================================================================
+// deriveEventCategory + ToolExecutedHandler — actionName routing (OMN-3070)
+// agent-actions events carry type='tool' + actionName; they must route to
+// ToolExecutedHandler, not DefaultHandler.
+// ============================================================================
+
+describe('actionName routing via type=tool (OMN-3070)', () => {
+  const pipeline = new EventEnrichmentPipeline();
+
+  it('positive: type=tool + actionName=Bash routes to tool_event and normalizedType=Bash', () => {
+    const category = deriveEventCategory({ actionName: 'Bash' }, 'tool', 'agent-actions');
+    expect(category).toBe('tool_event');
+
+    const result = pipeline.run({ actionName: 'Bash' }, 'tool', 'agent-actions');
+    expect(result.category).toBe('tool_event');
+    expect(result.normalizedType).toBe('Bash');
+    expect(result.handler).toBe('ToolExecutedHandler');
+  });
+
+  it('negative 1: type=action + actionName=Bash does NOT become tool_event (type guard)', () => {
+    const category = deriveEventCategory({ actionName: 'Bash' }, 'action', 'agent-actions');
+    expect(category).not.toBe('tool_event');
+  });
+
+  it('negative 2: type=tool + whitespace-only actionName does NOT become tool_event', () => {
+    const category = deriveEventCategory({ actionName: '   ' }, 'tool', 'agent-actions');
+    expect(category).not.toBe('tool_event');
+  });
+});
