@@ -357,6 +357,14 @@ function toRecentEvent(event: DisplayEvent) {
 const OTHER_THRESHOLD_SHARE = 0.03;
 const OTHER_THRESHOLD_COUNT = 2;
 
+// Topics excluded from the Event Bus Monitor at display time.
+// Exact-match against topicRaw prevents accidental substring collisions.
+// tool_call duplicates every tool execution event — it is always noise here because
+// the enriched onex.evt.omniclaude.tool-executed.v1 row already appears.
+// If tool_call volume becomes significant, move this filter server-side in
+// event-bus-data-source.ts to avoid ingestion and unnecessary enrichment work.
+const EXCLUDED_TOPICS = ['tool_call'] as const;
+
 function bucketSmallTypes(
   items: Array<{ name: string; eventType: string; eventCount: number }>
 ): Array<{ name: string; eventType: string; eventCount: number }> {
@@ -634,11 +642,16 @@ export default function EventBusMonitor() {
   const filteredData = useMemo((): DashboardData => {
     const { events: srcEvents } = sourceData;
 
+    // Always exclude topics that produce duplicate/noise rows (exact match only).
+    const nonExcluded = srcEvents.filter(
+      (event) => !EXCLUDED_TOPICS.some((t) => (event.topicRaw ?? '') === t)
+    );
+
     // Apply filters
     const filtered =
       !filters.topic && !filters.priority && !filters.search && !hideHeartbeats
-        ? srcEvents
-        : srcEvents.filter((event) => {
+        ? nonExcluded
+        : nonExcluded.filter((event) => {
             if (
               hideHeartbeats &&
               (event.topicRaw.includes('heartbeat') ||
