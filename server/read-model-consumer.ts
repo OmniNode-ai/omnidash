@@ -1238,12 +1238,34 @@ export class ReadModelConsumer {
     const correlationId =
       (evt.correlation_id as string) || (data.correlationId as string) || fallbackId;
 
-    // llm_agent and fuzzy_agent are required fields.
-    const llmAgent = (evt.llm_agent as string) || (data.llmAgent as string);
-    const fuzzyAgent = (evt.fuzzy_agent as string) || (data.fuzzyAgent as string);
-    if (!llmAgent || !fuzzyAgent) {
+    // The omniclaude producer (ModelLlmRoutingDecisionPayload) uses:
+    //   selected_agent        → the LLM-chosen agent
+    //   fuzzy_top_candidate   → the fuzzy-chosen agent (nullable when fallback_used=true)
+    //   fallback_used         → whether the fuzzy fallback was used
+    //   model_used            → the LLM model identifier
+    //   emitted_at            → event timestamp
+    //
+    // The TypeScript LlmRoutingDecisionEvent interface was originally drafted with
+    // different field names (llm_agent, fuzzy_agent, used_fallback, model, timestamp).
+    // We probe both names so the projector handles both the real omniclaude events
+    // and any future events that conform to the interface spec. (OMN-2920 gap fix)
+    const llmAgent =
+      (data.selected_agent as string) ||
+      (data.llm_selected_candidate as string) ||
+      (evt.llm_agent as string) ||
+      (data.llmAgent as string);
+    // fuzzy_top_candidate is nullable when the LLM fell back to the fuzzy result
+    // and no fuzzy candidate was available. Treat as empty string rather than
+    // dropping the event — the row is still useful for fallback_rate metrics.
+    const fuzzyAgent =
+      (data.fuzzy_top_candidate as string | null) ??
+      (evt.fuzzy_agent as string) ??
+      (data.fuzzyAgent as string) ??
+      null;
+
+    if (!llmAgent) {
       console.warn(
-        '[ReadModelConsumer] LLM routing decision event missing required agent fields ' +
+        '[ReadModelConsumer] LLM routing decision event missing required llm_agent/selected_agent field ' +
           `(correlation_id=${correlationId}) -- skipping malformed event`
       );
       // Intentionally return true (advance the watermark) rather than throwing or
@@ -1261,7 +1283,33 @@ export class ReadModelConsumer {
     const routingPromptVersion =
       (evt.routing_prompt_version as string) || (data.routingPromptVersion as string) || 'unknown';
 
-    const agreement = evt.agreement != null ? Boolean(evt.agreement) : llmAgent === fuzzyAgent;
+    // used_fallback: omniclaude emits fallback_used; interface spec uses used_fallback.
+    const usedFallback = Boolean(
+      (data.fallback_used as boolean | undefined) ??
+      (evt.used_fallback as boolean | undefined) ??
+      false
+    );
+
+    // OMN-2920: fallbacks are routing failures, not decisions — skip projection so
+    // the llm_routing_decisions table only contains genuine LLM routing decisions.
+    // This prevents fallback noise from polluting agreement_rate metrics.
+    if (usedFallback) {
+      return true; // advance watermark; do not write a row
+    }
+
+    // model: omniclaude emits model_used; interface spec uses model.
+    const model = (data.model_used as string | null) ?? (evt.model as string | null) ?? null;
+
+    // timestamp: omniclaude emits emitted_at; interface spec uses timestamp.
+    const eventTimestamp =
+      (data.emitted_at as string | null) ?? (evt.timestamp as string | null) ?? null;
+
+    const agreement =
+      evt.agreement != null
+        ? Boolean(evt.agreement)
+        : fuzzyAgent != null
+          ? llmAgent === fuzzyAgent
+          : usedFallback; // when fuzzy candidate is absent, agreement is implied by fallback
 
     try {
       await db.execute(sql`
@@ -1285,18 +1333,18 @@ export class ReadModelConsumer {
           ${correlationId},
           ${(evt.session_id as string) ?? null},
           ${llmAgent},
-          ${fuzzyAgent},
+          ${fuzzyAgent ?? null},
           ${agreement},
           ${evt.llm_confidence != null && !Number.isNaN(Number(evt.llm_confidence)) ? Number(evt.llm_confidence) : null},
           ${evt.fuzzy_confidence != null && !Number.isNaN(Number(evt.fuzzy_confidence)) ? Number(evt.fuzzy_confidence) : null},
           ${Number.isNaN(Number(evt.llm_latency_ms)) ? 0 : Math.round(Number(evt.llm_latency_ms ?? 0))},
           ${Number.isNaN(Number(evt.fuzzy_latency_ms)) ? 0 : Math.round(Number(evt.fuzzy_latency_ms ?? 0))},
-          ${Boolean(evt.used_fallback ?? false)},
+          ${usedFallback},
           ${routingPromptVersion},
           ${(evt.intent as string) ?? null},
-          ${(evt.model as string) ?? null},
+          ${model},
           ${evt.cost_usd != null && !Number.isNaN(Number(evt.cost_usd)) ? Number(evt.cost_usd) : null},
-          ${safeParseDate(evt.timestamp)}
+          ${safeParseDate(eventTimestamp)}
         )
         ON CONFLICT (correlation_id) DO NOTHING
       `);
