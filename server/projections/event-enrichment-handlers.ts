@@ -549,7 +549,10 @@ const DefaultHandler: EnrichmentHandler = {
       handler: 'DefaultHandler',
       category: 'unknown',
       summary,
-      normalizedType: type,
+      // Use prettifyType to convert raw topic/type strings to human-readable labels.
+      // e.g. 'onex.evt.omniclaude.node-started.v1' → 'Node Started'
+      //      'gate-decision' → 'Gate Decision'
+      normalizedType: prettifyType(type),
       artifacts: [],
       actionName,
     };
