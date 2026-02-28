@@ -368,6 +368,23 @@ export function EventDetailPanel({
                     </div>
                   )}
 
+                  {/* Prompt preview (from enrichment, for prompt_event) — OMN-3015 */}
+                  {!parsedDetails.prompt && parsedDetails.promptPreview && (
+                    <div>
+                      <h4 className="text-sm font-medium mb-2 flex items-center gap-2">
+                        Prompt Preview
+                      </h4>
+                      <div className="bg-background rounded-lg p-4 border">
+                        <p className="text-sm whitespace-pre-wrap break-words leading-relaxed text-muted-foreground">
+                          {parsedDetails.promptPreview}
+                          {parsedDetails.promptPreview.length >= 100 && (
+                            <span className="text-xs ml-1 opacity-60">(truncated)</span>
+                          )}
+                        </p>
+                      </div>
+                    </div>
+                  )}
+
                   {/* Tool Result/Output */}
                   {parsedDetails.toolResult ? (
                     <div>

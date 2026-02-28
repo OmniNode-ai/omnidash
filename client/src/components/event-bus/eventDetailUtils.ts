@@ -17,6 +17,8 @@ import { AlertCircle, AlertTriangle, Info, CheckCircle2 } from 'lucide-react';
 export interface ParsedDetails {
   prompt?: string;
   promptLength?: number;
+  /** First 100 chars of prompt content — from EventEnrichment.promptPreview (prompt_event only) */
+  promptPreview?: string;
   toolName?: string;
   toolResult?: string;
   toolInput?: unknown;
