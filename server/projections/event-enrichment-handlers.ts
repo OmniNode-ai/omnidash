@@ -19,6 +19,14 @@ import type {
 export type { EnrichmentHandler };
 
 // ============================================================================
+// Constants
+// ============================================================================
+
+export const SUMMARY_MAX = 60;
+export const PROMPT_PREVIEW_MAX = 100;
+export const TYPE_MAX = 40;
+
+// ============================================================================
 // Module-private utilities
 // ============================================================================
 
@@ -67,6 +75,52 @@ function extractBashCommand(
     if (cmd) return cmd;
   }
   return str(findField(payload, ['command', 'cmd', 'bash_command']));
+}
+
+/**
+ * Converts an event type string to a human-readable title-case label.
+ *
+ * Examples:
+ *   'onex.evt.omniclaude.tool-executed.v1' → 'Tool Executed'
+ *   'tool-executed'                         → 'Tool Executed'
+ *   'tool_executed'                         → 'Tool Executed'
+ *   'toolExecuted'                          → 'Tool Executed'
+ *
+ * Strategy:
+ *   1. If the string is a dotted topic path (contains '.'), extract the segment
+ *      just before the final version segment (e.g. 'vN') or the last non-version segment.
+ *   2. Replace hyphens and underscores with spaces, insert spaces before
+ *      camelCase uppercase letters, then title-case each word.
+ *   3. Truncate to TYPE_MAX characters.
+ */
+export function prettifyType(type: string): string {
+  if (!type) return '';
+
+  let segment = type;
+
+  // For dotted topic paths, extract the most meaningful segment
+  if (type.includes('.')) {
+    const parts = type.split('.');
+    // Find the last non-version segment (version segments match /^v\d+$/)
+    const nonVersionParts = parts.filter((p) => !/^v\d+$/.test(p));
+    // Use the last non-version part (most specific), or the last part if all are versioned
+    segment = nonVersionParts[nonVersionParts.length - 1] ?? parts[parts.length - 1] ?? type;
+  }
+
+  // Insert spaces before camelCase uppercase transitions: 'toolExecuted' → 'tool Executed'
+  segment = segment.replace(/([a-z])([A-Z])/g, '$1 $2');
+
+  // Replace hyphens and underscores with spaces
+  segment = segment.replace(/[-_]/g, ' ');
+
+  // Title-case each word
+  const titled = segment
+    .split(' ')
+    .filter((w) => w.length > 0)
+    .map((w) => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase())
+    .join(' ');
+
+  return titled.slice(0, TYPE_MAX);
 }
 
 // ============================================================================
@@ -471,9 +525,40 @@ export class EventEnrichmentPipeline {
       ['node_heartbeat', NodeHeartbeatHandler],
       ['node_lifecycle', NodeLifecycleHandler],
       ['error_event', ErrorEventHandler],
+      // New categories — handlers registered here; implementations are stubs
+      // until OMN-3005 (session_event), OMN-3007 (prompt_event), OMN-3009 (tool_content_event)
+      ['prompt_event', DefaultHandler],
+      ['session_event', DefaultHandler],
+      ['tool_content_event', DefaultHandler],
       // Explicit registration so unknown category has a documented handler, not just a nullish fallback
       ['unknown', DefaultHandler],
     ]);
+
+    // Dev-only: verify all EventCategory values have a registered handler.
+    // This assertion fires at construction time in non-production environments and
+    // will catch any future EventCategory additions that lack a handler registration.
+    if (process.env.NODE_ENV !== 'production') {
+      const allCategories: EventCategory[] = [
+        'tool_event',
+        'routing_event',
+        'intent_event',
+        'node_heartbeat',
+        'node_lifecycle',
+        'error_event',
+        'prompt_event',
+        'session_event',
+        'tool_content_event',
+        'unknown',
+      ];
+      for (const cat of allCategories) {
+        if (!this.handlers.has(cat)) {
+          throw new Error(
+            `[EventEnrichmentPipeline] No handler registered for category "${cat}". ` +
+              `Add an entry to the constructor Map.`
+          );
+        }
+      }
+    }
   }
 
   /** Classify and enrich an event. Never throws — returns fallback on error. */
