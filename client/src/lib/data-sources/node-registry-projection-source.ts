@@ -131,21 +131,26 @@ export function transformNodeRegistryPayload(payload: NodeRegistryPayload): Dash
   }));
 
   // Transform nodes to client-expected snake_case format with extended fields
-  const registeredNodes = nodes.map((n) => ({
-    node_id: n.nodeId,
-    node_type: n.nodeType,
-    state: n.state,
-    version: n.version,
-    uptime_seconds: n.uptimeSeconds,
-    last_seen: n.lastSeen,
-    memory_usage_mb: n.memoryUsageMb,
-    cpu_usage_percent: n.cpuUsagePercent,
-    endpoints: n.endpoints,
-    capabilities: flattenCapabilities(n.capabilities),
-    structured_capabilities: n.capabilities,
-    metadata: n.metadata,
-    reason: n.reason,
-  }));
+  const registeredNodes = nodes.map((n) => {
+    const capsList = flattenCapabilities(n.capabilities);
+    const description = n.metadata?.description ?? (capsList.length > 0 ? capsList.join(', ') : null);
+    return {
+      node_id: n.nodeId,
+      node_description: description,
+      node_type: n.nodeType,
+      state: n.state,
+      version: n.version,
+      uptime_seconds: n.uptimeSeconds,
+      last_seen: n.lastSeen,
+      memory_usage_mb: n.memoryUsageMb,
+      cpu_usage_percent: n.cpuUsagePercent,
+      endpoints: n.endpoints,
+      capabilities: capsList,
+      structured_capabilities: n.capabilities,
+      metadata: n.metadata,
+      reason: n.reason,
+    };
+  });
 
   // Transform recent state changes into RegistrationEvent format
   const registrationEvents = recentStateChanges.map((change) => {
