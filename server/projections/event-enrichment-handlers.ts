@@ -136,12 +136,14 @@ export function prettifyType(type: string): string {
  * 3. `type` or `topic` contains routing, OR `selectedAgent` in payload → routing_event
  * 4. `type` or `topic` contains intent, OR `intent_category`/`intentCategory` in payload → intent_event
  * 5. `type` or `topic` contains heartbeat → node_heartbeat
- * 6. `type` or `topic` contains registration/lifecycle/node-registry, OR
+ * 6. `type` or `topic` contains session-started/session-ended → session_event
+ *    (checked before node_lifecycle to prevent 'session-started' matching 'started' in lifecycle)
+ * 7. `type` or `topic` contains registration/lifecycle/node-registry, OR
  *    `type` contains shutdown/startup/node-registry → node_lifecycle
  *    (node_lifecycle matches both topic-based AND type-based patterns — the handler's
  *    label derivation handles shutdown/startup/started/offline type substrings, so the
  *    classifier must also reach node_lifecycle via those type-level keywords alone)
- * 7. Default → unknown
+ * 8. Default → unknown
  */
 export function deriveEventCategory(
   payload: Record<string, unknown>,
@@ -191,6 +193,18 @@ export function deriveEventCategory(
   // Node heartbeat
   if (lType.includes('heartbeat') || lTopic.includes('heartbeat')) {
     return 'node_heartbeat';
+  }
+
+  // Session event — checked BEFORE node_lifecycle to prevent 'session-started' matching
+  // the 'started' keyword in the node_lifecycle check (false positive).
+  // session-started and session-ended are agent/claude lifecycle events, not node registry events.
+  if (
+    lType.includes('session-started') ||
+    lType.includes('session-ended') ||
+    lTopic.includes('session-started') ||
+    lTopic.includes('session-ended')
+  ) {
+    return 'session_event';
   }
 
   // Prompt event — user-submitted prompt to the AI agent
@@ -533,6 +547,50 @@ const PromptSubmittedHandler: EnrichmentHandler = {
   },
 };
 
+const SessionEventHandler: EnrichmentHandler = {
+  name: 'SessionEventHandler',
+  category: 'session_event',
+  enrich(payload, type, _topic): EventEnrichment {
+    const lType = type.toLowerCase();
+    const isStarted = lType.includes('session-started') || lType.includes('session_started');
+
+    // Extract git branch for session-started events
+    const gitBranch = str(findField(payload, ['gitBranch', 'git_branch', 'branch']));
+
+    let normalizedType: string;
+    let summary: string;
+
+    if (isStarted) {
+      normalizedType = 'Session Started';
+      summary = gitBranch ? truncate(`Session started — branch: ${gitBranch}`) : 'Session started';
+    } else {
+      // session-ended: include tool count and total duration if available
+      normalizedType = 'Session Ended';
+      const toolCount = num(findField(payload, ['toolCount', 'tool_count', 'tools_used']));
+      const durationMs = num(findField(payload, ['durationMs', 'duration_ms', 'totalDurationMs']));
+
+      let summaryParts = 'Session ended';
+      const details: string[] = [];
+      if (toolCount != null) details.push(`${toolCount} tools`);
+      if (durationMs != null) details.push(`${(durationMs / 1000).toFixed(1)}s`);
+      if (details.length > 0) {
+        summaryParts = `Session ended — ${details.join(', ')}`;
+      }
+      summary = truncate(summaryParts);
+    }
+
+    return {
+      enrichmentVersion: 'v1',
+      handler: 'SessionEventHandler',
+      category: 'session_event',
+      summary,
+      normalizedType,
+      artifacts: [],
+      gitBranch,
+    };
+  },
+};
+
 const DefaultHandler: EnrichmentHandler = {
   name: 'DefaultHandler',
   category: 'unknown',
@@ -576,9 +634,9 @@ export class EventEnrichmentPipeline {
       ['node_heartbeat', NodeHeartbeatHandler],
       ['node_lifecycle', NodeLifecycleHandler],
       ['error_event', ErrorEventHandler],
-      // New categories — session_event stub replaced in OMN-3005; tool_content_event stub replaced in OMN-3009
+      // New categories — session_event (OMN-3005) and prompt_event (OMN-3007) have dedicated handlers
       ['prompt_event', PromptSubmittedHandler],
-      ['session_event', DefaultHandler],
+      ['session_event', SessionEventHandler],
       ['tool_content_event', DefaultHandler],
       // Explicit registration so unknown category has a documented handler, not just a nullish fallback
       ['unknown', DefaultHandler],
