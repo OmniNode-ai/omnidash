@@ -132,6 +132,7 @@ export function prettifyType(type: string): string {
  *
  * Precedence (first match wins):
  * 1. `toolName` in payload → tool_event
+ * 1b. `type === 'tool'` + non-empty `actionName` → tool_event (agent-actions events)
  * 2. `type` or `topic` contains error/failed/failure → error_event
  * 3. `type` or `topic` contains routing, OR `selectedAgent` in payload → routing_event
  * 4. `type` or `topic` contains intent, OR `intent_category`/`intentCategory` in payload → intent_event
@@ -156,6 +157,13 @@ export function deriveEventCategory(
   // Tool event: presence of a non-empty toolName field takes highest priority
   const toolName = str(findField(payload, ['toolName', 'tool_name']));
   if (toolName) return 'tool_event';
+
+  // agent-actions events: type === 'tool' + non-empty trimmed actionName → treat as tool_event.
+  // The type guard prevents non-tool "action" events from being misclassified via actionName.
+  const actionNameForClassification = str(
+    findField(payload, ['actionName', 'action_name'])
+  )?.trim();
+  if (lType === 'tool' && actionNameForClassification) return 'tool_event';
 
   // Error event
   if (
@@ -245,7 +253,10 @@ const ToolExecutedHandler: EnrichmentHandler = {
   name: 'ToolExecutedHandler',
   category: 'tool_event',
   enrich(payload, _type, _topic): EventEnrichment {
-    const toolName = str(findField(payload, ['toolName', 'tool_name'])) || 'Tool';
+    const toolName =
+      str(findField(payload, ['toolName', 'tool_name']))?.trim() ||
+      str(findField(payload, ['actionName', 'action_name']))?.trim() ||
+      'Tool';
     const toolInput = findField(payload, ['toolInput', 'tool_input', 'input']);
     const artifacts: EventArtifact[] = [];
     let filePath: string | undefined;
