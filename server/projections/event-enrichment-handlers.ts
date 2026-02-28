@@ -205,6 +205,7 @@ export function deriveEventCategory(
     lTopic.includes('session-ended')
   ) {
     return 'session_event';
+  }
 
   // Prompt event — user-submitted prompt to the AI agent
   // Checked before node_lifecycle to avoid any future false positives
@@ -214,7 +215,8 @@ export function deriveEventCategory(
     lTopic.includes('prompt-submitted') ||
     lTopic.includes('user-prompt')
   ) {
-    return 'prompt_event';  }
+    return 'prompt_event';
+  }
 
   // Node lifecycle
   if (
@@ -541,6 +543,10 @@ const PromptSubmittedHandler: EnrichmentHandler = {
       normalizedType: 'Prompt Submitted',
       artifacts: [],
       promptPreview,
+    };
+  },
+};
+
 const SessionEventHandler: EnrichmentHandler = {
   name: 'SessionEventHandler',
   category: 'session_event',
@@ -580,7 +586,8 @@ const SessionEventHandler: EnrichmentHandler = {
       summary,
       normalizedType,
       artifacts: [],
-      gitBranch,    };
+      gitBranch,
+    };
   },
 };
 
@@ -629,7 +636,8 @@ export class EventEnrichmentPipeline {
       ['error_event', ErrorEventHandler],
       // New categories — session_event (OMN-3005) and prompt_event (OMN-3007) have dedicated handlers
       ['prompt_event', PromptSubmittedHandler],
-      ['session_event', SessionEventHandler],      ['tool_content_event', DefaultHandler],
+      ['session_event', SessionEventHandler],
+      ['tool_content_event', DefaultHandler],
       // Explicit registration so unknown category has a documented handler, not just a nullish fallback
       ['unknown', DefaultHandler],
     ]);
