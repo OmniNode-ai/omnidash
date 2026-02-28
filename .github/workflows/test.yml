@@ -20,32 +20,9 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: No omninode_bridge references
-        run: |
-          # Scan all TypeScript/TSX/JSON source files.
-          # Excludes: node_modules, dist, the guard test file itself, package-lock.json.
-          VIOLATIONS=$(grep -rn "omninode_bridge" \
-            --include="*.ts" --include="*.tsx" --include="*.json" \
-            --exclude="no-omninode-bridge-refs.test.ts" \
-            --exclude="package-lock.json" \
-            --exclude-dir=node_modules \
-            --exclude-dir=dist \
-            --exclude-dir=.git \
-            --exclude-dir=coverage \
-            . || true)
-          if [ -n "$VIOLATIONS" ]; then
-            echo "::error::Architectural violation: omnidash must not reference omninode_bridge directly."
-            echo "All upstream data must flow through Kafka -> omnidash_analytics."
-            echo ""
-            echo "Violations found:"
-            echo "$VIOLATIONS"
-            exit 1
-          fi
-          echo "OK: No omninode_bridge references"
-
       - name: No direct upstream PostgreSQL port (5436)
         run: |
-          # Port 5436 is the external port for the upstream omninode_bridge PostgreSQL instance.
+          # Port 5436 is the external port for the upstream PostgreSQL instance.
           # omnidash should never open a connection to it directly.
           VIOLATIONS=$(grep -rn ":5436" \
             --include="*.ts" --include="*.tsx" \
