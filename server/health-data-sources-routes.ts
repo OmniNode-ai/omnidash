@@ -10,12 +10,12 @@
  * {
  *   dataSources: {
  *     [key: string]: {
- *       status: "live" | "mock" | "error";
+ *       status: "live" | "mock" | "error" | "offline";
  *       reason?: string;   // present when status != "live"
  *       lastEvent?: string; // ISO timestamp, present when status == "live"
  *     }
  *   },
- *   summary: { live: number; mock: number; error: number },
+ *   summary: { live: number; mock: number; error: number; offline: number },
  *   checkedAt: string; // ISO timestamp
  * }
  */
@@ -45,6 +45,7 @@ import type {
   PatternsProjection,
   PatternsProjectionPayload,
 } from './projections/patterns-projection';
+import type { LlmRoutingPayload } from './projections/llm-routing-projection';
 import { tryGetIntelligenceDb } from './storage';
 import { patternLearningArtifacts } from '@shared/intelligence-schema';
 import { count } from 'drizzle-orm';
@@ -217,14 +218,11 @@ function probeCost(): DataSourceInfo {
     }
     // llm_cost_aggregates is empty. Check the llm-routing projection as a
     // proxy: it contains real latency/cost_usd data from routing decisions.
-    const llmView =
-      projectionService.getView<import('./projections/llm-routing-projection').LlmRoutingPayload>(
-        'llm-routing'
-      );
+    const llmView = projectionService.getView<LlmRoutingPayload>('llm-routing');
     if (llmView) {
       const llmSnapshot = llmView.getSnapshot();
       if (llmSnapshot?.payload && llmSnapshot.payload.summary.total_decisions > 0) {
-        return { status: 'live', lastEvent: undefined };
+        return { status: 'live' };
       }
     }
     return { status: 'offline', reason: 'upstream_service_offline' };

@@ -2546,6 +2546,103 @@ export class ReadModelConsumer {
   }
 
   /**
+   * Project a PatternLearningRequested command event into the `pattern_learning_artifacts`
+   * table (OMN-2920).
+   *
+   * omniintelligence does not yet emit pattern-projection.v1 completion events, so the
+   * pattern_learning_artifacts table stays empty and the Patterns / Learned Insights pages
+   * fall back to mock data. This handler writes one pending row per unique correlation_id
+   * so probePatterns() and probeInsights() can confirm that real pipeline activity exists.
+   *
+   * The row uses lifecycle_state='requested' and sentinel values for non-null schema fields
+   * that are not present in the command payload. When the upstream projection event
+   * eventually arrives, projectPatternProjectionEvent() upserts real data over the row
+   * (or alongside it — no conflict key on pattern_id, so the projection row is additive).
+   *
+   * Idempotency: implemented via raw SQL INSERT WHERE NOT EXISTS on pattern_id =
+   * correlation_id, avoiding the need for a unique index on pattern_id.
+   *
+   * Returns true when written or skipped (already exists), false when DB is unavailable.
+   */
+  private async projectPatternLearningRequestedEvent(
+    data: Record<string, unknown>,
+    fallbackId: string
+  ): Promise<boolean> {
+    const db = tryGetIntelligenceDb();
+    if (!db) return false;
+
+    // Use correlation_id as the pattern_id sentinel so duplicates can be detected.
+    const correlationId =
+      (data.correlation_id as string) || (data.correlationId as string) || fallbackId;
+    if (!UUID_RE.test(correlationId)) {
+      // correlation_id is not a valid UUID — skip to avoid a DB type error.
+      console.warn(
+        `[ReadModelConsumer] PatternLearningRequested: correlation_id "${correlationId}" is not a ` +
+          'valid UUID — skipping row'
+      );
+      return true;
+    }
+
+    const sessionId = (data.session_id as string) || (data.sessionId as string) || null;
+    const trigger = (data.trigger as string) || 'unknown';
+    const requestedAt = safeParseDate(data.timestamp ?? data.created_at);
+
+    try {
+      // INSERT ... WHERE NOT EXISTS is idempotent without a unique index on pattern_id.
+      // The subquery matches on pattern_id = correlationId so redelivered Kafka messages
+      // do not insert duplicate rows.
+      await db.execute(sql`
+        INSERT INTO pattern_learning_artifacts (
+          pattern_id,
+          pattern_name,
+          pattern_type,
+          lifecycle_state,
+          composite_score,
+          scoring_evidence,
+          signature,
+          metrics,
+          metadata,
+          created_at,
+          updated_at,
+          projected_at
+        )
+        SELECT
+          ${correlationId}::uuid,
+          ${'learning_requested'}::varchar(255),
+          ${'pipeline_request'}::varchar(100),
+          ${'requested'}::text,
+          ${0}::numeric(10,6),
+          ${{}}::jsonb,
+          ${{ session_id: sessionId, trigger }}::jsonb,
+          ${{}}::jsonb,
+          ${{ source: 'PatternLearningRequested', trigger, session_id: sessionId }}::jsonb,
+          ${requestedAt},
+          ${requestedAt},
+          ${new Date()}
+        WHERE NOT EXISTS (
+          SELECT 1 FROM pattern_learning_artifacts WHERE pattern_id = ${correlationId}::uuid
+        )
+      `);
+    } catch (err) {
+      const pgCode = (err as { code?: string }).code;
+      const msg = err instanceof Error ? err.message : String(err);
+      if (
+        pgCode === '42P01' ||
+        (msg.includes('pattern_learning_artifacts') && msg.includes('does not exist'))
+      ) {
+        console.warn(
+          '[ReadModelConsumer] pattern_learning_artifacts table not yet created -- ' +
+            'run migrations to enable pattern learning request projection'
+        );
+        return true;
+      }
+      throw err;
+    }
+
+    return true;
+  }
+
+  /**
    * Project a pattern projection snapshot event into the `pattern_learning_artifacts`
    * table (OMN-2924).
    *
