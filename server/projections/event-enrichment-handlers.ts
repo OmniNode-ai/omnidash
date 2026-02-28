@@ -244,7 +244,7 @@ export function deriveEventCategory(
 const ToolExecutedHandler: EnrichmentHandler = {
   name: 'ToolExecutedHandler',
   category: 'tool_event',
-  enrich(payload, type, _topic): EventEnrichment {
+  enrich(payload, _type, _topic): EventEnrichment {
     const toolName = str(findField(payload, ['toolName', 'tool_name'])) || 'Tool';
     const toolInput = findField(payload, ['toolInput', 'tool_input', 'input']);
     const artifacts: EventArtifact[] = [];
