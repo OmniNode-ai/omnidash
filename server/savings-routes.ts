@@ -41,14 +41,10 @@ const SavingsMetricsSchema = z.object({
   dataAvailable: z.boolean().optional(), // Flag indicating if real data is available
 });
 
-// API Routes
-
-// Get savings metrics
 router.get('/metrics', (req, res) => {
   try {
     const { timeRange = '30d' } = req.query;
 
-    // Calculate date range
     const now = new Date();
     const startDate = new Date();
     const days = timeRange === '7d' ? 7 : timeRange === '90d' ? 90 : 30;
@@ -83,12 +79,10 @@ router.get('/metrics', (req, res) => {
   }
 });
 
-// Get agent comparisons
 router.get('/agents', (req, res) => {
   try {
     const { timeRange = '30d' } = req.query;
 
-    // Calculate date range
     const now = new Date();
     const startDate = new Date();
     const days = timeRange === '7d' ? 7 : timeRange === '90d' ? 90 : 30;
@@ -106,7 +100,6 @@ router.get('/agents', (req, res) => {
   }
 });
 
-// Get time series data
 router.get('/timeseries', (req, res) => {
   try {
     const { timeRange = '30d' } = req.query;
@@ -117,13 +110,11 @@ router.get('/timeseries', (req, res) => {
       date.setDate(date.getDate() - (days - 1 - i));
       const dateStr = date.toISOString().split('T')[0];
 
-      // Get start and end of this day
       const dayStart = new Date(date);
       dayStart.setHours(0, 0, 0, 0);
       const dayEnd = new Date(date);
       dayEnd.setHours(23, 59, 59, 999);
 
-      // Get runs for this day from AgentRunTracker
       const dayRuns = AgentRunTracker.getRunsInRange(dayStart, dayEnd);
 
       const intelligenceRuns = dayRuns.filter((run) => run.withIntelligence);
@@ -156,18 +147,16 @@ router.get('/timeseries', (req, res) => {
         };
       }
 
-      // Calculate actual intelligence metrics
       const intelligenceTokens = intelligenceRuns.reduce((sum, run) => sum + run.tokensUsed, 0);
       const intelligenceCompute = intelligenceRuns.reduce((sum, run) => sum + run.computeUnits, 0);
       const intelligenceCost = intelligenceRuns.reduce((sum, run) => sum + run.cost, 0);
 
-      // Calculate baseline metrics (actual baseline runs - we confirmed baselineRuns.length > 0 above)
+      // baselineRuns.length > 0 confirmed above — safe to divide without guard
       const baselineTokens = baselineRuns.reduce((sum, run) => sum + run.tokensUsed, 0);
       const baselineCompute = baselineRuns.reduce((sum, run) => sum + run.computeUnits, 0);
       const baselineCost = baselineRuns.reduce((sum, run) => sum + run.cost, 0);
 
-      // Calculate average baseline cost per run (for comparison)
-      // No fallback needed - we already checked baselineRuns.length > 0
+      // Average baseline cost is the reference for estimating what intelligence runs would cost without intelligence
       const avgBaselineCostPerRun = baselineCost / baselineRuns.length;
       const avgBaselineTokensPerRun = baselineTokens / baselineRuns.length;
       const avgBaselineComputePerRun = baselineCompute / baselineRuns.length;
@@ -220,18 +209,15 @@ router.get('/timeseries', (req, res) => {
   }
 });
 
-// Get provider savings
 router.get('/providers', (req, res) => {
   try {
     const { timeRange = '30d' } = req.query;
 
-    // Calculate date range
     const now = new Date();
     const startDate = new Date();
     const days = timeRange === '7d' ? 7 : timeRange === '90d' ? 90 : 30;
     startDate.setDate(now.getDate() - days);
 
-    // Get all runs in range
     const runs = AgentRunTracker.getRunsInRange(startDate, now);
 
     // Group by provider
@@ -284,7 +270,6 @@ router.get('/providers', (req, res) => {
       }
     });
 
-    // Calculate total for percentages
     const totalSavings = Object.values(providerData).reduce(
       (sum, p) => sum + (p.costWithout - p.costWith),
       0
@@ -317,7 +302,6 @@ router.get('/providers', (req, res) => {
   }
 });
 
-// Get cost breakdown
 router.get('/breakdown', (_req, res) => {
   try {
     // Mock breakdown data
@@ -359,7 +343,6 @@ router.get('/breakdown', (_req, res) => {
   }
 });
 
-// Record agent run (for data collection)
 router.post('/runs', (req, res) => {
   const result = AgentRunSchema.safeParse(req.body);
 
@@ -370,10 +353,9 @@ router.post('/runs', (req, res) => {
 
   const runData = result.data;
 
-  // Record the run in the tracker
   AgentRunTracker.recordRun(runData);
 
-  // In a real implementation, this would save to database
+  // In a real implementation, this would persist to a database
   console.log('Recording agent run:', runData);
 
   res.json({ success: true, id: Date.now().toString() });

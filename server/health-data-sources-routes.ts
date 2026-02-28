@@ -62,11 +62,11 @@ import {
 // Types
 // ============================================================================
 
-export type DataSourceStatus = 'live' | 'mock' | 'error';
+export type DataSourceStatus = 'live' | 'mock' | 'error' | 'offline';
 
 export interface DataSourceInfo {
   status: DataSourceStatus;
-  /** Present when status is 'mock' or 'error', describes why mock data is shown. */
+  /** Present when status is 'mock', 'error', or 'offline', describes why live data is unavailable. */
   reason?: string;
   /** Present when status is 'live', ISO 8601 timestamp of the most recent real event. */
   lastEvent?: string;
@@ -74,7 +74,7 @@ export interface DataSourceInfo {
 
 export interface DataSourcesHealthResponse {
   dataSources: Record<string, DataSourceInfo>;
-  summary: { live: number; mock: number; error: number };
+  summary: { live: number; mock: number; error: number; offline: number };
   checkedAt: string;
 }
 
@@ -164,6 +164,9 @@ function probeExtraction(): DataSourceInfo {
 /**
  * Probe the baselines projection.
  * Live if at least one comparison row exists (total_comparisons > 0).
+ * Returns 'offline' (not 'mock') when the projection exists but has no data,
+ * because the upstream producer (omnibase-infra baselines-computed event) has
+ * never emitted — the tables are structurally present but unpopulated.
  */
 function probeBaselines(): DataSourceInfo {
   try {
@@ -179,7 +182,7 @@ function probeBaselines(): DataSourceInfo {
     }
     const baselines = snapshot.payload;
     if (!baselines || baselines.summary.total_comparisons === 0) {
-      return { status: 'mock', reason: 'empty_tables' };
+      return { status: 'offline', reason: 'upstream_service_offline' };
     }
     return { status: 'live' };
   } catch {
@@ -189,7 +192,12 @@ function probeBaselines(): DataSourceInfo {
 
 /**
  * Probe the cost-metrics projection.
- * Live if session_count > 0 or total_tokens > 0.
+ * Live if session_count > 0 or total_tokens > 0 in llm_cost_aggregates.
+ * Falls back to checking llm_routing_decisions.cost_usd when llm_cost_aggregates
+ * is empty — the LLM routing table has real latency and cost data from routing
+ * decisions and can serve as a proxy cost signal until the dedicated cost
+ * producer (LLM usage events) is wired up.
+ * Returns 'offline' when neither table has any data.
  */
 function probeCost(): DataSourceInfo {
   try {
@@ -204,10 +212,22 @@ function probeCost(): DataSourceInfo {
       return { status: 'mock', reason: 'empty_projection' };
     }
     const summary = snapshot.payload?.summary;
-    if (!summary || (summary.session_count === 0 && summary.total_tokens === 0)) {
-      return { status: 'mock', reason: 'empty_tables' };
+    if (summary && (summary.session_count > 0 || summary.total_tokens > 0)) {
+      return { status: 'live' };
     }
-    return { status: 'live' };
+    // llm_cost_aggregates is empty. Check the llm-routing projection as a
+    // proxy: it contains real latency/cost_usd data from routing decisions.
+    const llmView =
+      projectionService.getView<import('./projections/llm-routing-projection').LlmRoutingPayload>(
+        'llm-routing'
+      );
+    if (llmView) {
+      const llmSnapshot = llmView.getSnapshot();
+      if (llmSnapshot?.payload && llmSnapshot.payload.summary.total_decisions > 0) {
+        return { status: 'live', lastEvent: undefined };
+      }
+    }
+    return { status: 'offline', reason: 'upstream_service_offline' };
   } catch {
     return { status: 'error', reason: 'probe_threw' };
   }
@@ -266,6 +286,9 @@ function probeNodeRegistry(): DataSourceInfo {
 /**
  * Probe the validation projection.
  * Live if at least one validation run exists (totalRuns > 0).
+ * Returns 'offline' (not 'mock') when the projection is registered but has no
+ * data, because the upstream producer (cross-repo validation runner) has never
+ * emitted events — the tables are structurally present but unpopulated.
  */
 function probeValidation(): DataSourceInfo {
   try {
@@ -280,7 +303,7 @@ function probeValidation(): DataSourceInfo {
       return { status: 'mock', reason: 'empty_projection' };
     }
     if (snapshot.payload.totalRuns === 0) {
-      return { status: 'mock', reason: 'empty_tables' };
+      return { status: 'offline', reason: 'upstream_service_offline' };
     }
     return { status: 'live' };
   } catch {
@@ -504,7 +527,12 @@ router.get('/data-sources', async (_req, res) => {
             acc[info.status] = (acc[info.status] ?? 0) + 1;
             return acc;
           },
-          { live: 0, mock: 0, error: 0 } as { live: number; mock: number; error: number }
+          { live: 0, mock: 0, error: 0, offline: 0 } as {
+            live: number;
+            mock: number;
+            error: number;
+            offline: number;
+          }
         );
 
         const body: DataSourcesHealthResponse = {

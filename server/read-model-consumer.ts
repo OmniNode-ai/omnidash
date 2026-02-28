@@ -76,6 +76,7 @@ import {
   SUFFIX_MEMORY_INTENT_STORED,
   SUFFIX_INTELLIGENCE_PATTERN_PROJECTION,
   SUFFIX_INTELLIGENCE_PATTERN_LIFECYCLE_TRANSITIONED,
+  SUFFIX_INTELLIGENCE_PATTERN_LEARNING_CMD,
 } from '@shared/topics';
 import type { LlmRoutingDecisionEvent } from '@shared/llm-routing-types';
 import type { TaskDelegatedEvent, DelegationShadowComparisonEvent } from '@shared/delegation-types';
@@ -233,6 +234,10 @@ export const READ_MODEL_TOPICS = [
   // OMN-2924: OmniIntelligence pattern topics — durable projection into pattern_learning_artifacts.
   SUFFIX_INTELLIGENCE_PATTERN_PROJECTION,
   SUFFIX_INTELLIGENCE_PATTERN_LIFECYCLE_TRANSITIONED,
+  // OMN-2920: Pattern learning command topic — backfill pattern_learning_artifacts from
+  // PatternLearningRequested events so the Patterns and Learned Insights pages show live
+  // data even when omniintelligence does not yet emit pattern-projection.v1 completions.
+  SUFFIX_INTELLIGENCE_PATTERN_LEARNING_CMD,
 ] as const;
 
 type ReadModelTopic = (typeof READ_MODEL_TOPICS)[number];
@@ -328,12 +333,12 @@ export class ReadModelConsumer {
         this.kafka = new Kafka({
           clientId: CLIENT_ID,
           brokers,
-          connectionTimeout: 5000,
-          requestTimeout: 10000,
+          connectionTimeout: 10000,
+          requestTimeout: 30000,
           retry: {
             initialRetryTime: RETRY_BASE_DELAY_MS,
             maxRetryTime: RETRY_MAX_DELAY_MS,
-            retries: 3,
+            retries: 10,
           },
         });
 
@@ -370,12 +375,16 @@ export class ReadModelConsumer {
         this.catalogSource = catalogTopics.length > 0 ? 'catalog' : 'fallback';
         this.stats.catalogSource = this.catalogSource;
 
-        console.info(
+        const startupLogMsg =
           `[ReadModelConsumer] source=${this.catalogSource} ` +
-            `subscribed=${subscribeTopics.length} ` +
-            `catalog_size=${catalogTopics.length} ` +
-            `unsupported=${unsupportedCatalogTopics.length}`
-        );
+          `subscribed=${subscribeTopics.length} ` +
+          `catalog_size=${catalogTopics.length} ` +
+          `unsupported=${unsupportedCatalogTopics.length}`;
+        if (this.catalogSource === 'fallback') {
+          console.warn(startupLogMsg);
+        } else {
+          console.info(startupLogMsg);
+        }
 
         if (unsupportedCatalogTopics.length > 0) {
           console.warn(
@@ -595,7 +604,7 @@ export class ReadModelConsumer {
         });
 
         manager.once('catalogTimeout', () => {
-          console.info(
+          console.warn(
             '[ReadModelConsumer] Topic catalog timed out — using READ_MODEL_TOPICS fallback'
           );
           manager.stop().catch((stopErr) => {
@@ -715,6 +724,12 @@ export class ReadModelConsumer {
           break;
         case SUFFIX_INTELLIGENCE_PATTERN_LIFECYCLE_TRANSITIONED:
           projected = await this.projectPatternLifecycleTransitionedEvent(parsed, fallbackId);
+          break;
+        // OMN-2920: Pattern learning command — backfill pattern_learning_artifacts
+        // from PatternLearningRequested events (omniintelligence has not yet emitted
+        // pattern-projection.v1 completions, so this ensures the table is non-empty).
+        case SUFFIX_INTELLIGENCE_PATTERN_LEARNING_CMD:
+          projected = await this.projectPatternLearningRequestedEvent(parsed, fallbackId);
           break;
         default:
           console.warn(
@@ -1235,8 +1250,20 @@ export class ReadModelConsumer {
 
     const evt = data as Partial<LlmRoutingDecisionEvent>;
 
-    const correlationId =
+    // correlation_id column is uuid type (OMN-2960).  Validate the value from
+    // the event before inserting so Postgres never receives a malformed string.
+    // The fallbackId is always a valid UUID (derived deterministically from
+    // Kafka message coordinates — see deriveMessageId above).
+    const rawCorrelationId =
       (evt.correlation_id as string) || (data.correlationId as string) || fallbackId;
+    if (!UUID_RE.test(rawCorrelationId)) {
+      console.warn(
+        '[ReadModelConsumer] LLM routing decision event has non-UUID correlation_id ' +
+          `(${rawCorrelationId}) -- skipping malformed event`
+      );
+      return true;
+    }
+    const correlationId = rawCorrelationId;
 
     // The omniclaude producer (ModelLlmRoutingDecisionPayload) uses:
     //   selected_agent        → the LLM-chosen agent

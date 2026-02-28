@@ -15,8 +15,8 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 Key values specific to this repository (all sourced from `.env`):
 
 - **Port**: 3000 (set in package.json: `PORT=3000 npm run dev`) -- NOT 5000
-- **Kafka Brokers**: `192.168.86.200:29092`
-- **Read-Model DB**: `omnidash_analytics` (omnidash's own database, not `omninode_bridge`)
+- **Kafka Brokers**: sourced from `.env` (`KAFKA_BROKERS`)
+- **Read-Model DB**: `omnidash_analytics` (omnidash's own read-model database)
 - **Database credentials**: Always sourced from `.env` — never hardcode passwords
 
 ## Common Commands
@@ -253,7 +253,7 @@ export const insertUserSchema = createInsertSchema(users); // Zod schema
 **Event Consumer** (`server/event-consumer.ts`):
 
 - Kafka consumer using `kafkajs` library
-- Connects to `192.168.86.200:29092` (configured via `KAFKA_BROKERS`)
+- Connects to the broker configured via `KAFKA_BROKERS` in `.env`
 - Consumes from multiple topics: `agent-routing-decisions`, `agent-transformation-events`, `router-performance-metrics`, `agent-actions`
 - In-memory event aggregation and caching
 - Provides aggregated metrics via `getAggregatedMetrics()` method
@@ -335,13 +335,7 @@ ws.onmessage = (event) => {
   - `agent_transformation_events` - Polymorphic agent transformations
   - `projection_watermarks` - Consumer progress tracking
 
-**Upstream Source Database** (`omninode_bridge` on `192.168.86.200:5436`):
-
-- Omnidash does NOT query this database directly
-- Events originating from this database are published to Kafka topics and consumed by the read-model consumer above
-- Contains 30+ tables tracking agent execution, routing, patterns, and performance
-
-**Kafka Event Bus** (`192.168.86.200:29092`):
+**Kafka Event Bus** (broker configured via `KAFKA_BROKERS` in `.env`):
 
 - **Real-time event streaming** with <100ms latency
 - **Topics**: `agent-routing-decisions`, `agent-transformation-events`, `router-performance-metrics`, `agent-actions`
@@ -355,10 +349,10 @@ Add to `.env` for intelligence integration (see `.env.example` for template):
 ```bash
 # Omnidash Read-Model Database (omnidash's own database)
 # See .env file for actual credentials - NEVER commit passwords to git!
-OMNIDASH_ANALYTICS_DB_URL="postgresql://postgres:<password>@192.168.86.200:5436/omnidash_analytics"
+OMNIDASH_ANALYTICS_DB_URL="postgresql://postgres:<password>@localhost:5436/omnidash_analytics"
 
 # Kafka Event Streaming (source of events projected into omnidash_analytics)
-KAFKA_BROKERS=192.168.86.200:29092
+KAFKA_BROKERS=localhost:29092
 KAFKA_CLIENT_ID=omnidash-dashboard
 KAFKA_CONSUMER_GROUP=omnidash-consumers-v2
 
@@ -473,4 +467,4 @@ See `design_guidelines.md` for comprehensive Carbon Design System implementation
 
 Both schemas use Drizzle ORM with Zod validation (`createInsertSchema()` from `drizzle-zod`) and PostgreSQL via `@neondatabase/serverless`.
 
-**Architectural invariant**: Omnidash never queries the upstream `omninode_bridge` database directly. All intelligence data flows through Kafka into omnidash's own `omnidash_analytics` read-model database (see "Available Data Sources" above).
+**Architectural invariant**: Omnidash never queries upstream databases directly. All intelligence data flows through Kafka into omnidash's own `omnidash_analytics` read-model database (see "Available Data Sources" above).

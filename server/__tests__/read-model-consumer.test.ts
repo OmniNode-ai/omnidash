@@ -35,11 +35,15 @@ vi.mock('kafkajs', () => ({
   })),
 }));
 
-// Mock projection-bootstrap so baselinesProjection.reset() is a no-op spy
-// that does not interact with the DB or bleed state across tests.
+// Mock projection-bootstrap so baselinesProjection.reset() and
+// llmRoutingProjection.invalidateCache() are no-op spies that do not interact
+// with the DB or bleed state across tests.
 vi.mock('../projection-bootstrap', () => ({
   baselinesProjection: {
     reset: vi.fn(),
+  },
+  llmRoutingProjection: {
+    invalidateCache: vi.fn(),
   },
 }));
 
@@ -1269,6 +1273,120 @@ describe('OMN-2924: Pattern projection write handlers', () => {
       // errorsCount incremented means DB unavailable path was taken
       const stats = consumer.getStats();
       expect(stats.errorsCount).toBe(0); // false return = skip, no error counted
+    });
+  });
+
+  // ============================================================================
+  // OMN-2960: projectLlmRoutingDecisionEvent — uuid correlation_id validation
+  //
+  // After the migration that changed correlation_id from TEXT to UUID, the
+  // consumer must reject events whose correlation_id is not a valid UUID rather
+  // than letting Postgres throw an "invalid input syntax for type uuid" error.
+  // ============================================================================
+
+  describe('projectLlmRoutingDecisionEvent [OMN-2960]', () => {
+    const TOPIC = 'onex.evt.omniclaude.llm-routing-decision.v1';
+    const VALID_UUID = '550e8400-e29b-41d4-a716-446655440000';
+
+    function getHandleMessage(c: ReadModelConsumer) {
+      return (
+        c as unknown as { handleMessage: (p: EachMessagePayload) => Promise<void> }
+      ).handleMessage.bind(c);
+    }
+
+    function makeDb() {
+      const mockExecute = vi.fn().mockResolvedValue(undefined);
+      const db = { execute: mockExecute } as unknown as ReturnType<
+        typeof import('../storage').tryGetIntelligenceDb
+      >;
+      return { db, mockExecute };
+    }
+
+    it('inserts when correlation_id is a valid UUID', async () => {
+      const { tryGetIntelligenceDb } = await import('../storage');
+      const { db, mockExecute } = makeDb();
+      (tryGetIntelligenceDb as ReturnType<typeof vi.fn>).mockReturnValue(db);
+
+      const handleMessage = getHandleMessage(consumer);
+      await handleMessage(
+        makeKafkaPayload(TOPIC, {
+          correlation_id: VALID_UUID,
+          llm_agent: 'agent-api',
+          fuzzy_agent: 'agent-api',
+          agreement: true,
+          routing_prompt_version: 'v1.0.0',
+        })
+      );
+
+      // execute is called twice: once for the LLM routing INSERT and once for
+      // the watermark upsert.  Verify the first call targets llm_routing_decisions.
+      expect(mockExecute).toHaveBeenCalledTimes(2);
+      const firstCallSql = JSON.stringify(mockExecute.mock.calls[0]);
+      expect(firstCallSql).toContain('llm_routing_decisions');
+    });
+
+    it('skips event with non-UUID correlation_id and logs warning', async () => {
+      const { tryGetIntelligenceDb } = await import('../storage');
+      const { db, mockExecute } = makeDb();
+      (tryGetIntelligenceDb as ReturnType<typeof vi.fn>).mockReturnValue(db);
+
+      const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+
+      const handleMessage = getHandleMessage(consumer);
+      await handleMessage(
+        makeKafkaPayload(TOPIC, {
+          correlation_id: 'not-a-uuid',
+          llm_agent: 'agent-api',
+          fuzzy_agent: 'agent-api',
+        })
+      );
+
+      // The projector skips early (returns true) — only the watermark upsert
+      // runs.  Verify no call targets llm_routing_decisions.
+      const callsSql = JSON.stringify(mockExecute.mock.calls);
+      expect(callsSql).not.toContain('llm_routing_decisions');
+      expect(warnSpy).toHaveBeenCalledWith(expect.stringContaining('non-UUID correlation_id'));
+      warnSpy.mockRestore();
+    });
+
+    it('skips event with plaintext (non-UUID) correlation_id', async () => {
+      // Equivalent coverage for a different invalid string shape.
+      const { tryGetIntelligenceDb } = await import('../storage');
+      const { db, mockExecute } = makeDb();
+      (tryGetIntelligenceDb as ReturnType<typeof vi.fn>).mockReturnValue(db);
+
+      const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+
+      const handleMessage = getHandleMessage(consumer);
+      await handleMessage(
+        makeKafkaPayload(TOPIC, {
+          correlation_id: 'plaintext-not-a-uuid',
+          llm_agent: 'agent-api',
+          fuzzy_agent: 'agent-api',
+        })
+      );
+
+      const callsSql = JSON.stringify(mockExecute.mock.calls);
+      expect(callsSql).not.toContain('llm_routing_decisions');
+      expect(warnSpy).toHaveBeenCalled();
+      warnSpy.mockRestore();
+    });
+
+    it('returns false when DB is unavailable', async () => {
+      const { tryGetIntelligenceDb } = await import('../storage');
+      (tryGetIntelligenceDb as ReturnType<typeof vi.fn>).mockReturnValue(null);
+
+      const handleMessage = getHandleMessage(consumer);
+      await handleMessage(
+        makeKafkaPayload(TOPIC, {
+          correlation_id: VALID_UUID,
+          llm_agent: 'agent-api',
+          fuzzy_agent: 'agent-api',
+        })
+      );
+
+      const stats = consumer.getStats();
+      expect(stats.errorsCount).toBe(0);
     });
   });
 
