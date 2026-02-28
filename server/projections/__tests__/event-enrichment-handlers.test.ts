@@ -1052,3 +1052,40 @@ describe('SessionEventHandler (OMN-3005)', () => {
     });
   });
 });
+
+// ============================================================================
+// ToolExecutedHandler — pre-built summary fallback (OMN-3068)
+// Post-execution hook payloads lack toolInput; the hook provides payload.summary.
+// These tests assert we use it rather than falling back to the redundant toolName.
+// ============================================================================
+
+describe('ToolExecutedHandler pre-built summary fallback (OMN-3068)', () => {
+  const pipeline = new EventEnrichmentPipeline();
+
+  it('uses payload.summary directly when toolInput is absent and summary differs from toolName', () => {
+    const result = pipeline.run(
+      { toolName: 'write', summary: 'Write on /path/to/file.ts' },
+      'agent-action',
+      'agent-actions'
+    );
+    expect(result.summary).toBe('Write on /path/to/file.ts');
+    // Must not equal normalizedType — no longer redundant
+    expect(result.summary).not.toBe(result.normalizedType);
+  });
+
+  it('falls back to toolName alone when toolInput is absent and no payload.summary exists', () => {
+    const result = pipeline.run({ toolName: 'read' }, 'agent-action', 'agent-actions');
+    // Graceful fallback: summary is just the tool name
+    expect(result.summary).toBe('read');
+  });
+
+  it('ignores payload.description when it equals toolName (case-insensitive bypass check)', () => {
+    const result = pipeline.run(
+      { toolName: 'bash', description: 'Bash' },
+      'agent-action',
+      'agent-actions'
+    );
+    // description === toolName (case-insensitive) → ignored, falls back to toolName alone
+    expect(result.summary).toBe('bash');
+  });
+});
