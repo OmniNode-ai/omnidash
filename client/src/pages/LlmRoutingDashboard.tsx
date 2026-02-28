@@ -348,7 +348,9 @@ function DisagreementsTable({
                     <span className="font-mono text-xs text-blue-400">{d.llm_agent}</span>
                   </TableCell>
                   <TableCell>
-                    <span className="font-mono text-xs text-purple-400">{d.fuzzy_agent}</span>
+                    <span className="font-mono text-xs text-purple-400">
+                      {d.fuzzy_agent || '—'}
+                    </span>
                   </TableCell>
                   <TableCell className="text-right font-mono text-sm">
                     {fmtCount(d.count)}
@@ -361,11 +363,15 @@ function DisagreementsTable({
                     </span>
                   </TableCell>
                   <TableCell className="text-right">
-                    <span
-                      className={cn('font-mono text-xs', confidenceColor(d.avg_fuzzy_confidence))}
-                    >
-                      {fmtPct(d.avg_fuzzy_confidence)}
-                    </span>
+                    {d.fuzzy_agent ? (
+                      <span
+                        className={cn('font-mono text-xs', confidenceColor(d.avg_fuzzy_confidence))}
+                      >
+                        {fmtPct(d.avg_fuzzy_confidence)}
+                      </span>
+                    ) : (
+                      <span className="font-mono text-xs text-gray-500">—</span>
+                    )}
                   </TableCell>
                   <TableCell>
                     <Badge variant="outline" className="text-[10px] px-1 py-0 font-mono">
@@ -515,8 +521,16 @@ export default function LlmRoutingDashboard() {
   }, [allSettled, timeWindow]);
 
   const disagreementRate = summary ? 1 - summary.agreement_rate : 0;
+  // Only fire the disagreement alert when fuzzy routing is actually running.
+  // If the fallback_rate is very high (≥0.9), fuzzy routing data is unavailable
+  // and the disagreement rate is not meaningful.
+  const showFuzzyUnavailableBanner =
+    !summaryLoading && summary != null && (summary.fallback_rate ?? 0) >= 0.9;
   const showDisagreementAlert =
-    !summaryLoading && summary != null && disagreementRate > DISAGREEMENT_ALERT_THRESHOLD;
+    !summaryLoading &&
+    summary != null &&
+    disagreementRate > DISAGREEMENT_ALERT_THRESHOLD &&
+    !showFuzzyUnavailableBanner;
 
   // ── Render ───────────────────────────────────────────────────────────────
 
@@ -549,6 +563,19 @@ export default function LlmRoutingDashboard() {
             dashboard will show live data once{' '}
             <code className="text-xs">onex.evt.omniclaude.llm-routing-decision.v1</code> events are
             received.
+          </AlertDescription>
+        </Alert>
+      )}
+
+      {/* Fuzzy Routing Unavailable Banner */}
+      {showFuzzyUnavailableBanner && (
+        <Alert variant="default" className="border-blue-500/50 bg-blue-500/10">
+          <AlertCircle className="h-4 w-4 text-blue-500" />
+          <AlertTitle className="text-blue-500">Fuzzy Routing Data Not Yet Available</AlertTitle>
+          <AlertDescription className="text-muted-foreground">
+            Fuzzy routing was not available for most decisions in this window — agreement rate
+            cannot be meaningfully computed. The dashboard will update once fuzzy routing candidates
+            are produced.
           </AlertDescription>
         </Alert>
       )}
@@ -593,7 +620,7 @@ export default function LlmRoutingDashboard() {
         <StatCard
           title="Fallback Rate"
           value={summaryLoading ? '—' : fmtPct(summary?.fallback_rate ?? 0)}
-          description="Decisions using fuzzy-only (LLM unavailable)"
+          description="Decisions where fuzzy routing was not available or did not produce a candidate."
           icon={Zap}
           valueClass={(summary?.fallback_rate ?? 0) < 0.1 ? 'text-green-500' : 'text-yellow-500'}
           isLoading={summaryLoading}
@@ -684,6 +711,7 @@ export default function LlmRoutingDashboard() {
                     yAxisId="cost"
                     orientation="right"
                     tickFormatter={(v: number) => `$${(v * 1_000_000).toFixed(0)}µ`}
+                    domain={[0, 0.0001]}
                     tick={{ fontSize: 11 }}
                     stroke="hsl(var(--muted-foreground))"
                   />
@@ -758,7 +786,7 @@ export default function LlmRoutingDashboard() {
               <Clock className="h-4 w-4" />
               Latency Distribution
             </CardTitle>
-            <CardDescription>p50 / p90 / p95 / p99 latency per routing method</CardDescription>
+            <CardDescription>p50 / p95 latency per routing method</CardDescription>
           </CardHeader>
           <CardContent>
             {latencyError ? (

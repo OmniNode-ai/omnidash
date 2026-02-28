@@ -10,13 +10,13 @@ import { useQuery } from '@tanstack/react-query';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Activity, AlertTriangle, CheckCircle, XCircle } from 'lucide-react';
+import { Activity, AlertTriangle, CheckCircle, WifiOff, XCircle } from 'lucide-react';
 
 // ============================================================================
 // Types (mirrors server/health-data-sources-routes.ts)
 // ============================================================================
 
-export type DataSourceStatus = 'live' | 'mock' | 'error';
+export type DataSourceStatus = 'live' | 'mock' | 'error' | 'offline';
 
 export interface DataSourceInfo {
   status: DataSourceStatus;
@@ -26,7 +26,7 @@ export interface DataSourceInfo {
 
 export interface DataSourcesHealthResponse {
   dataSources: Record<string, DataSourceInfo>;
-  summary: { live: number; mock: number; error: number };
+  summary: { live: number; mock: number; error: number; offline: number };
   checkedAt: string;
 }
 
