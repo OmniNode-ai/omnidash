@@ -336,7 +336,10 @@ const ToolExecutedHandler: EnrichmentHandler = {
         summaryTarget = prebuiltSummary;
         usePrebuiltSummary = true;
       } else {
-        summaryTarget = str(findField(payload, ['target', 'name'])) ?? '';
+        const rawTarget = str(findField(payload, ['target', 'name'])) ?? '';
+        // Omit the target when it resolves to the sentinel "unknown" — show just
+        // the tool name (with optional duration suffix) instead of "Bash unknown".
+        summaryTarget = rawTarget === 'unknown' ? '' : rawTarget;
       }
     }
     // When summaryTarget is from payload.summary it already describes the event fully.

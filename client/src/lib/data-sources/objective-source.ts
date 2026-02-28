@@ -56,7 +56,7 @@ class ObjectiveSource {
 
   async scoreVector(
     window: ObjectiveTimeWindow,
-    options: ObjectiveFetchOptions = { fallbackToMock: true, mockOnEmpty: true }
+    options: ObjectiveFetchOptions = { fallbackToMock: false, mockOnEmpty: false }
   ): Promise<ScoreVectorSummaryResponse> {
     try {
       const res = await fetch(`${this.baseUrl}/score-vector?window=${window}`);
@@ -82,7 +82,7 @@ class ObjectiveSource {
 
   async gateFailureTimeline(
     window: ObjectiveTimeWindow,
-    options: ObjectiveFetchOptions = { fallbackToMock: true, mockOnEmpty: true }
+    options: ObjectiveFetchOptions = { fallbackToMock: false, mockOnEmpty: false }
   ): Promise<GateFailureTimelineResponse> {
     try {
       const res = await fetch(`${this.baseUrl}/gate-failures?window=${window}`);
@@ -108,7 +108,7 @@ class ObjectiveSource {
 
   async policyStateHistory(
     window: ObjectiveTimeWindow,
-    options: ObjectiveFetchOptions = { fallbackToMock: true, mockOnEmpty: true }
+    options: ObjectiveFetchOptions = { fallbackToMock: false, mockOnEmpty: false }
   ): Promise<PolicyStateHistoryResponse> {
     try {
       const res = await fetch(`${this.baseUrl}/policy-state?window=${window}`);
@@ -134,7 +134,7 @@ class ObjectiveSource {
 
   async antiGamingAlerts(
     window: ObjectiveTimeWindow,
-    options: ObjectiveFetchOptions = { fallbackToMock: true, mockOnEmpty: false }
+    options: ObjectiveFetchOptions = { fallbackToMock: false, mockOnEmpty: false }
   ): Promise<AntiGamingAlertFeedResponse> {
     try {
       const res = await fetch(`${this.baseUrl}/anti-gaming-alerts?window=${window}`);

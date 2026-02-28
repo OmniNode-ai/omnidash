@@ -181,12 +181,8 @@ const advancedSubGroups: AdvancedSubGroup[] = [
         icon: GitFork,
         description: 'LLM vs fuzzy routing agreement rate, latency, cost per decision',
       },
-      {
-        title: 'Why This Happened',
-        url: '/why',
-        icon: Lightbulb,
-        description: 'Decision provenance — intent vs plan, timeline, candidate comparison',
-      },
+      // NOTE: 'Why This Happened' (/why) is hidden until OMN-2467 (DecisionRecord API) ships.
+      // The page exists but always shows mock data, so it is excluded from nav outside demo mode.
       {
         title: 'Objective Evaluation',
         url: '/objective',
