@@ -370,12 +370,16 @@ export class ReadModelConsumer {
         this.catalogSource = catalogTopics.length > 0 ? 'catalog' : 'fallback';
         this.stats.catalogSource = this.catalogSource;
 
-        console.info(
+        const startupLogMsg =
           `[ReadModelConsumer] source=${this.catalogSource} ` +
-            `subscribed=${subscribeTopics.length} ` +
-            `catalog_size=${catalogTopics.length} ` +
-            `unsupported=${unsupportedCatalogTopics.length}`
-        );
+          `subscribed=${subscribeTopics.length} ` +
+          `catalog_size=${catalogTopics.length} ` +
+          `unsupported=${unsupportedCatalogTopics.length}`;
+        if (this.catalogSource === 'fallback') {
+          console.warn(startupLogMsg);
+        } else {
+          console.info(startupLogMsg);
+        }
 
         if (unsupportedCatalogTopics.length > 0) {
           console.warn(
@@ -595,7 +599,7 @@ export class ReadModelConsumer {
         });
 
         manager.once('catalogTimeout', () => {
-          console.info(
+          console.warn(
             '[ReadModelConsumer] Topic catalog timed out — using READ_MODEL_TOPICS fallback'
           );
           manager.stop().catch((stopErr) => {
