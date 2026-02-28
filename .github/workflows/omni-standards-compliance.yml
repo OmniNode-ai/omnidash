@@ -12,7 +12,7 @@ name: Omni* Ecosystem Standards Compliance
 #   legacy-compatibility-check - check for forbidden packages and Python toolchain files
 #   typescript-compliance      - verify TypeScript strict mode and path alias config
 #
-# Note: Architectural guards (no omninode_bridge references, no upstream DB port 5436)
+# Note: Architectural guards (no upstream DB port 5436)
 # are already enforced by the arch-guard job in test.yml and are not duplicated here.
 
 on:
