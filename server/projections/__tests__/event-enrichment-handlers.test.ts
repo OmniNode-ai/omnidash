@@ -954,3 +954,85 @@ describe('ToolExecutedHandler improvements (OMN-3003 / OMN-3013)', () => {
     });
   });
 });
+
+// ============================================================================
+// PromptSubmittedHandler (OMN-3007)
+// ============================================================================
+
+describe('PromptSubmittedHandler (OMN-3007)', () => {
+  const pipeline = new EventEnrichmentPipeline();
+
+  describe('deriveEventCategory: prompt_event classification', () => {
+    it('classifies prompt-submitted type as prompt_event', () => {
+      const result = deriveEventCategory({}, 'prompt-submitted', 'agent-actions');
+      expect(result).toBe('prompt_event');
+    });
+
+    it('classifies user-prompt type as prompt_event', () => {
+      const result = deriveEventCategory({}, 'user-prompt', 'agent-actions');
+      expect(result).toBe('prompt_event');
+    });
+
+    it('classifies via topic containing prompt-submitted', () => {
+      const result = deriveEventCategory({}, 'event', 'onex.evt.omniclaude.prompt-submitted.v1');
+      expect(result).toBe('prompt_event');
+    });
+  });
+
+  describe('PromptSubmittedHandler enrichment', () => {
+    it('returns prompt_event category and PromptSubmittedHandler name', () => {
+      const result = pipeline.run({ prompt: 'Write a test' }, 'prompt-submitted', 'agent-actions');
+      expect(result.category).toBe('prompt_event');
+      expect(result.handler).toBe('PromptSubmittedHandler');
+    });
+
+    it('sets normalizedType to "Prompt Submitted"', () => {
+      const result = pipeline.run({}, 'prompt-submitted', 'agent-actions');
+      expect(result.normalizedType).toBe('Prompt Submitted');
+    });
+
+    it('stores promptPreview capped at 100 characters', () => {
+      const longPrompt = 'A'.repeat(200);
+      const result = pipeline.run({ prompt: longPrompt }, 'prompt-submitted', 'agent-actions');
+      expect(result.promptPreview).toBeDefined();
+      expect((result.promptPreview ?? '').length).toBeLessThanOrEqual(100);
+      expect((result.promptPreview ?? '').length).toBe(100);
+    });
+
+    it('emits summary capped at 60 characters', () => {
+      const longPrompt = 'B'.repeat(200);
+      const result = pipeline.run({ prompt: longPrompt }, 'prompt-submitted', 'agent-actions');
+      expect(result.summary.length).toBeLessThanOrEqual(60);
+    });
+
+    it('summary contains the beginning of the prompt', () => {
+      const result = pipeline.run(
+        { prompt: 'Fix the authentication bug in the login flow' },
+        'prompt-submitted',
+        'agent-actions'
+      );
+      expect(result.summary).toContain('Fix the authentication bug');
+    });
+
+    it('handles missing prompt payload gracefully with fallback summary', () => {
+      const result = pipeline.run({}, 'prompt-submitted', 'agent-actions');
+      expect(result.summary).toBe('Prompt submitted');
+      expect(result.promptPreview).toBeUndefined();
+    });
+
+    it('extracts prompt from content field when prompt field is absent', () => {
+      const result = pipeline.run(
+        { content: 'Implement the new feature' },
+        'prompt-submitted',
+        'agent-actions'
+      );
+      expect(result.summary).toContain('Implement the new feature');
+    });
+
+    it('promptPreview is undefined when prompt is empty string', () => {
+      // empty string → promptPreview should be undefined (not an empty string)
+      const result = pipeline.run({ prompt: '' }, 'prompt-submitted', 'agent-actions');
+      expect(result.promptPreview).toBeUndefined();
+    });
+  });
+});
