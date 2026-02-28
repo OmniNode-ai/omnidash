@@ -838,3 +838,119 @@ describe('confidence clamping in IntentHandler', () => {
     expect(result.summary).toContain('code_generation');
   });
 });
+
+// ============================================================================
+// ToolExecutedHandler improvements — TDD red phase (OMN-3003)
+// These tests define the expected behavior of OMN-3013.
+// They FAIL until OMN-3013 is implemented.
+// ============================================================================
+
+describe('ToolExecutedHandler improvements (OMN-3003 / OMN-3013)', () => {
+  const pipeline = new EventEnrichmentPipeline();
+
+  // normalizedType should be the prettified tool name, not the raw event type
+  describe('normalizedType is prettified tool name', () => {
+    it('sets normalizedType to prettified tool name "Read" when toolName is "read"', () => {
+      const result = pipeline.run(
+        { toolName: 'read', tool_input: { file_path: '/tmp/test.ts' } },
+        'agent-action',
+        'agent-actions'
+      );
+      // Currently normalizedType is set to the raw `type` ('agent-action'), not the tool name.
+      // After OMN-3013, it should be the prettified tool name ('Read').
+      expect(result.normalizedType).toBe('Read');
+    });
+
+    it('sets normalizedType to "Bash" when toolName is "bash"', () => {
+      const result = pipeline.run(
+        { toolName: 'bash', tool_input: { command: 'ls -la' } },
+        'onex.evt.omniclaude.tool-executed.v1',
+        'agent-actions'
+      );
+      expect(result.normalizedType).toBe('Bash');
+    });
+
+    it('sets normalizedType to "Write" when toolName is "write"', () => {
+      const result = pipeline.run(
+        { toolName: 'write', tool_input: { file_path: '/tmp/out.ts' } },
+        'agent-action',
+        'agent-actions'
+      );
+      expect(result.normalizedType).toBe('Write');
+    });
+  });
+
+  // durationMs extraction from payload
+  describe('durationMs extraction', () => {
+    it('extracts durationMs from payload.duration_ms', () => {
+      const result = pipeline.run(
+        { toolName: 'read', tool_input: { file_path: '/tmp/test.ts' }, duration_ms: 150 },
+        'agent-action',
+        'agent-actions'
+      );
+      // Currently durationMs is undefined — ToolExecutedHandler does not extract it.
+      // After OMN-3013, it should be 150.
+      expect(result.durationMs).toBe(150);
+    });
+
+    it('extracts durationMs from nested payload.data.duration_ms', () => {
+      const result = pipeline.run(
+        { toolName: 'bash', data: { duration_ms: 300 }, tool_input: { command: 'ls' } },
+        'agent-action',
+        'agent-actions'
+      );
+      expect(result.durationMs).toBe(300);
+    });
+
+    it('returns undefined durationMs when not present in payload', () => {
+      const result = pipeline.run(
+        { toolName: 'read', tool_input: { file_path: '/tmp/test.ts' } },
+        'agent-action',
+        'agent-actions'
+      );
+      // This should remain undefined — no change expected
+      expect(result.durationMs).toBeUndefined();
+    });
+
+    it('ignores NaN or non-numeric duration_ms values', () => {
+      const result = pipeline.run(
+        { toolName: 'bash', duration_ms: 'not-a-number', tool_input: { command: 'ls' } },
+        'agent-action',
+        'agent-actions'
+      );
+      expect(result.durationMs).toBeUndefined();
+    });
+  });
+
+  // Summary includes duration when durationMs is present
+  describe('summary includes formatted duration', () => {
+    it('includes formatted duration in summary when durationMs is present', () => {
+      const result = pipeline.run(
+        { toolName: 'bash', tool_input: { command: 'ls -la' }, duration_ms: 250 },
+        'agent-action',
+        'agent-actions'
+      );
+      // Currently summary is "bash ls -la" — no duration.
+      // After OMN-3013, it should include "250ms".
+      expect(result.summary).toContain('250ms');
+    });
+
+    it('does not include duration in summary when durationMs is absent', () => {
+      const result = pipeline.run(
+        { toolName: 'bash', tool_input: { command: 'ls -la' } },
+        'agent-action',
+        'agent-actions'
+      );
+      expect(result.summary).not.toContain('ms');
+    });
+
+    it('includes duration when reading a file', () => {
+      const result = pipeline.run(
+        { toolName: 'read', tool_input: { file_path: '/tmp/test.ts' }, duration_ms: 42 },
+        'agent-action',
+        'agent-actions'
+      );
+      expect(result.summary).toContain('42ms');
+    });
+  });
+});
