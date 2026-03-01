@@ -566,6 +566,7 @@ export default function EventBusMonitor() {
 
     for (const [observedTopic, count] of Object.entries(topicBreakdown)) {
       const normalized = normalizeToSuffix(observedTopic);
+      if (!normalized) continue; // skip empty/malformed topic keys
       allTopics.add(normalized);
       normalizedCounts.set(normalized, (normalizedCounts.get(normalized) ?? 0) + count);
     }
