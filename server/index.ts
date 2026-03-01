@@ -24,6 +24,7 @@ import { wireProjectionSources, projectionService } from './projection-bootstrap
 import { NodeRegistryProjection } from './projections/node-registry-projection';
 import { readModelConsumer } from './read-model-consumer';
 import { runStartupBackfillIfEmpty } from './startup-backfill';
+import { startCdqaGateWatcher } from './cdqa-gate-watcher';
 
 const app = express();
 
@@ -263,6 +264,9 @@ app.use((req, res, next) => {
     console.error('   Projections will remain empty until next restart');
     console.error('   Application will continue with limited functionality');
   }
+
+  // Start CDQA gate file watcher — polls ~/.claude/skill-results/*/cdqa-gate-log.json (OMN-3190)
+  startCdqaGateWatcher();
 
   // Backfill injection_effectiveness and latency_breakdowns from event_bus_events
   // if the tables are empty (OMN-2920). Fire-and-forget: non-fatal if it fails.
