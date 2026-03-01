@@ -745,6 +745,12 @@ export const queryKeys = {
     snapshot: () => [...queryKeys.debugEscalation.all, 'snapshot'] as const,
   },
 
+  /** CDQA gate query keys — file-poll from ~/.claude/skill-results (OMN-3190) */
+  cdqaGates: {
+    all: ['cdqa-gates'] as const,
+    summaries: () => [...queryKeys.cdqaGates.all, 'summaries'] as const,
+  },
+
   // ============================================================================
   // Objective Evaluation (OMN-2583)
   // ============================================================================
