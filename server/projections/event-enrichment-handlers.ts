@@ -316,12 +316,22 @@ const ToolExecutedHandler: EnrichmentHandler = {
     // Extract durationMs from payload (top-level or nested data wrapper)
     const durationMs = num(findField(payload, ['duration_ms', 'durationMs']));
 
+    // OMN-3297: action_description is the producer-owned canonical field.
+    // When present and non-empty, use it directly as the summary — no tool-name prefix,
+    // no target derivation. Backward compat: absent or empty → fall through to existing logic.
+    const actionDescription =
+      str(findField(payload, ['action_description', 'actionDescription']))?.trim() ?? '';
+
     // Summary: "ToolName target" e.g. "Read index.ts", "Bash ls -la"
     // When the hook provides a pre-built summary (post-execution payloads lack toolInput),
     // use it directly to avoid redundant "Bash Bash" / "Read Read" output.
     let summaryTarget: string;
     let usePrebuiltSummary = false;
-    if (filePath) {
+    if (actionDescription.length > 0) {
+      // Producer-owned canonical description takes highest priority (OMN-3297).
+      summaryTarget = actionDescription;
+      usePrebuiltSummary = true;
+    } else if (filePath) {
       summaryTarget = filePath.split('/').pop() || filePath;
     } else if (bashCommand) {
       summaryTarget = truncate(bashCommand, 40);
@@ -342,8 +352,8 @@ const ToolExecutedHandler: EnrichmentHandler = {
         summaryTarget = rawTarget === 'unknown' ? '' : rawTarget;
       }
     }
-    // When summaryTarget is from payload.summary it already describes the event fully.
-    // Prepend toolName only when we computed the target ourselves.
+    // When summaryTarget is from payload.summary/action_description it already describes the
+    // event fully. Prepend toolName only when we computed the target ourselves.
     const baseSummary = usePrebuiltSummary
       ? truncate(summaryTarget, SUMMARY_MAX)
       : truncate(summaryTarget ? `${toolName} ${summaryTarget}` : toolName);
@@ -366,6 +376,9 @@ const ToolExecutedHandler: EnrichmentHandler = {
       filePath,
       bashCommand,
       durationMs,
+      // OMN-3297: pass through non-empty actionDescription so clients can access
+      // the raw producer-owned field without re-parsing the payload.
+      actionDescription: actionDescription.length > 0 ? actionDescription : undefined,
     };
   },
 };
