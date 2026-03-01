@@ -56,6 +56,9 @@ import DebugEscalationDashboard from '@/pages/DebugEscalationDashboard';
 import ObjectiveEvaluation from '@/pages/ObjectiveEvaluation';
 // CDQA gate dashboard (OMN-3190)
 import CdqaGateDashboard from '@/pages/CdqaGateDashboard';
+// Integration command center dashboards (OMN-3192)
+import PipelineHealthDashboard from '@/pages/PipelineHealthDashboard';
+import EventBusHealthDashboard from '@/pages/EventBusHealthDashboard';
 
 // Phase 2: Category landing pages (OMN-2181)
 import SpeedCategory from '@/pages/SpeedCategory';
@@ -152,6 +155,9 @@ function Router() {
       <Route path="/pipeline-budget" component={PipelineBudgetDashboard} />
       <Route path="/debug-escalation" component={DebugEscalationDashboard} />
       <Route path="/cdqa-gates" component={CdqaGateDashboard} />
+      {/* Integration command center dashboards (OMN-3192) */}
+      <Route path="/pipeline-health" component={PipelineHealthDashboard} />
+      <Route path="/event-bus-health" component={EventBusHealthDashboard} />
 
       {/* Objective Evaluation — score vectors, gate failures, policy state, anti-gaming (OMN-2583) */}
       <Route path="/objective" component={ObjectiveEvaluation} />
