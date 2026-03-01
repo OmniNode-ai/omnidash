@@ -751,6 +751,21 @@ export const queryKeys = {
     summaries: () => [...queryKeys.cdqaGates.all, 'summaries'] as const,
   },
 
+  /** Pipeline health query keys — file-poll from ~/.claude/pipelines (OMN-3192) */
+  pipelineHealth: {
+    all: ['pipeline-health'] as const,
+    summaries: () => [...queryKeys.pipelineHealth.all, 'summaries'] as const,
+    detail: (ticketId: string) => [...queryKeys.pipelineHealth.all, 'detail', ticketId] as const,
+  },
+
+  /** Event bus health query keys — polled from Redpanda Admin API (OMN-3192) */
+  eventBusHealth: {
+    all: ['event-bus-health'] as const,
+    full: () => [...queryKeys.eventBusHealth.all, 'full'] as const,
+    topics: () => [...queryKeys.eventBusHealth.all, 'topics'] as const,
+    summary: () => [...queryKeys.eventBusHealth.all, 'summary'] as const,
+  },
+
   // ============================================================================
   // Objective Evaluation (OMN-2583)
   // ============================================================================

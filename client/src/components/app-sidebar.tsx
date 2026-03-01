@@ -21,6 +21,8 @@ import {
   GitFork,
   Target,
   ClipboardCheck,
+  GitPullRequest,
+  Server,
 } from 'lucide-react';
 import { Link, useLocation } from 'wouter';
 import {
@@ -212,6 +214,18 @@ const advancedSubGroups: AdvancedSubGroup[] = [
         url: '/validation',
         icon: ShieldCheck,
         description: 'Cross-repo validation runs and violation trends',
+      },
+      {
+        title: 'Pipeline Health',
+        url: '/pipeline-health',
+        icon: GitPullRequest,
+        description: 'Per-ticket pipeline state, stuck detection, CDQA gate results (OMN-3192)',
+      },
+      {
+        title: 'Event Bus Health',
+        url: '/event-bus-health',
+        icon: Server,
+        description: 'Consumer lag, DLQ traffic, missing topics per Redpanda topic (OMN-3192)',
       },
     ],
   },
