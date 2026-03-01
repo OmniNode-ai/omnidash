@@ -484,6 +484,21 @@ function CellValue({ value, format }: { value: unknown; format?: string }) {
       }
       return <span>{String(value)}</span>;
 
+    case 'duration': {
+      if (typeof value === 'number' && value >= 0) {
+        const totalSecs = Math.floor(value);
+        const d = Math.floor(totalSecs / 86400);
+        const h = Math.floor((totalSecs % 86400) / 3600);
+        const m = Math.floor((totalSecs % 3600) / 60);
+        const s = totalSecs % 60;
+        if (d > 0) return <span>{d}d {h}h {m}m</span>;
+        if (h > 0) return <span>{h}h {m}m</span>;
+        if (m > 0) return <span>{m}m {s}s</span>;
+        return <span>{s}s</span>;
+      }
+      return <span>{String(value)}</span>;
+    }
+
     case 'percent':
       if (typeof value === 'number') {
         return <span>{value.toFixed(1)}%</span>;
