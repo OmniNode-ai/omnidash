@@ -29,6 +29,8 @@ export const INTENT_COLORS: Record<string, string> = {
   deployment: '#f59e0b', // amber
   configuration: '#8b5cf6', // violet
   question: '#ec4899', // pink
+  devops: '#14b8a6', // teal
+  api_design: '#0ea5e9', // sky
   unknown: '#9ca3af', // gray
 };
 
@@ -72,6 +74,8 @@ export const INTENT_BADGE_CLASSES: Record<string, string> = {
   deployment: 'bg-amber-500/10 text-amber-600 border-amber-500/20',
   configuration: 'bg-violet-500/10 text-violet-600 border-violet-500/20',
   question: 'bg-pink-500/10 text-pink-600 border-pink-500/20',
+  devops: 'bg-teal-500/10 text-teal-600 border-teal-500/20',
+  api_design: 'bg-sky-500/10 text-sky-600 border-sky-500/20',
   unknown: 'bg-muted text-muted-foreground border-border',
 };
 
@@ -98,6 +102,8 @@ export const INTENT_BG_CLASSES: Record<string, string> = {
   deployment: 'bg-amber-500', // matches #f59e0b
   configuration: 'bg-violet-500', // matches #8b5cf6
   question: 'bg-pink-500', // matches #ec4899
+  devops: 'bg-teal-500', // matches #14b8a6
+  api_design: 'bg-sky-500', // matches #0ea5e9
   unknown: 'bg-gray-400',
 };
 
