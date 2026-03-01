@@ -186,6 +186,13 @@ export interface EventEnrichment {
   promptPreview?: string;
   /** Git branch active at the time of the event */
   gitBranch?: string;
+  /**
+   * Producer-owned canonical action description (OMN-3297).
+   * When present and non-empty, consumers use this as the primary summary source
+   * instead of deriving a summary from the event type. Format: "<ToolName>: <target>".
+   * Empty string means the producer did not provide a description (old events, pre-OMN-3297).
+   */
+  actionDescription?: string;
 }
 
 // ============================================================================

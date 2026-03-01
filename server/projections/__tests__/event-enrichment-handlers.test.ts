@@ -1119,3 +1119,121 @@ describe('ToolExecutedHandler pre-built summary fallback (OMN-3068)', () => {
     expect(result.summary).toBe('bash');
   });
 });
+
+// ============================================================================
+// ToolExecutedHandler — action_description priority (OMN-3297)
+// Producer-owned canonical field replaces the useless "tool-executed" summaries.
+// action_description takes highest priority; backward compat fallback for old events.
+// ============================================================================
+
+describe('ToolExecutedHandler action_description priority (OMN-3297)', () => {
+  const pipeline = new EventEnrichmentPipeline();
+
+  it('uses action_description as summary when present and non-empty (snake_case)', () => {
+    const result = pipeline.run(
+      { toolName: 'Read', action_description: 'Read: topics.py' },
+      'onex.evt.omniclaude.tool-executed.v1',
+      'agent-actions'
+    );
+    expect(result.summary).toBe('Read: topics.py');
+  });
+
+  it('uses actionDescription as summary when present in camelCase', () => {
+    const result = pipeline.run(
+      { toolName: 'Write', actionDescription: 'Write: output.ts' },
+      'agent-action',
+      'agent-actions'
+    );
+    expect(result.summary).toBe('Write: output.ts');
+  });
+
+  it('populates enrichment.actionDescription field when action_description is present', () => {
+    const result = pipeline.run(
+      { toolName: 'Bash', action_description: 'Bash: git status --porcelain' },
+      'agent-action',
+      'agent-actions'
+    );
+    expect(result.actionDescription).toBe('Bash: git status --porcelain');
+  });
+
+  it('actionDescription is undefined in enrichment when action_description is absent', () => {
+    const result = pipeline.run(
+      { toolName: 'read', tool_input: { file_path: '/tmp/foo.ts' } },
+      'agent-action',
+      'agent-actions'
+    );
+    expect(result.actionDescription).toBeUndefined();
+  });
+
+  it('actionDescription is undefined when action_description is empty string', () => {
+    const result = pipeline.run(
+      { toolName: 'read', action_description: '' },
+      'agent-action',
+      'agent-actions'
+    );
+    expect(result.actionDescription).toBeUndefined();
+  });
+
+  it('falls back to derived summary when action_description is absent (backward compat)', () => {
+    const result = pipeline.run(
+      { toolName: 'Read', tool_input: { file_path: '/some/path/topics.py' } },
+      'agent-action',
+      'agent-actions'
+    );
+    // Without action_description: falls back to "Read topics.py" (existing behavior)
+    expect(result.summary).toContain('topics.py');
+    expect(result.summary).not.toContain('Read: topics.py');
+    expect(result.actionDescription).toBeUndefined();
+  });
+
+  it('action_description takes priority over payload.summary', () => {
+    const result = pipeline.run(
+      {
+        toolName: 'Write',
+        action_description: 'Write: handler.ts',
+        summary: 'Write on /path/to/handler.ts',
+      },
+      'agent-action',
+      'agent-actions'
+    );
+    // action_description wins over payload.summary
+    expect(result.summary).toBe('Write: handler.ts');
+    expect(result.actionDescription).toBe('Write: handler.ts');
+  });
+
+  it('action_description takes priority over file_path derivation', () => {
+    const result = pipeline.run(
+      {
+        toolName: 'Edit',
+        action_description: 'Edit: my_file.py',
+        tool_input: { file_path: '/path/to/different_file.py' },
+      },
+      'agent-action',
+      'agent-actions'
+    );
+    // action_description wins even when file_path is present in tool_input
+    expect(result.summary).toBe('Edit: my_file.py');
+    expect(result.actionDescription).toBe('Edit: my_file.py');
+  });
+
+  it('whitespace-only action_description falls back to normal derivation', () => {
+    const result = pipeline.run(
+      { toolName: 'Read', action_description: '   ', tool_input: { file_path: '/a/b/c.ts' } },
+      'agent-action',
+      'agent-actions'
+    );
+    // Whitespace-only is trimmed to empty → falls through to normal logic
+    expect(result.actionDescription).toBeUndefined();
+    expect(result.summary).toContain('c.ts');
+  });
+
+  it('action_description nested inside a data wrapper is extracted', () => {
+    const result = pipeline.run(
+      { toolName: 'Grep', data: { action_description: 'Grep: onex\\.(cmd|evt)' } },
+      'agent-action',
+      'agent-actions'
+    );
+    expect(result.summary).toBe('Grep: onex\\.(cmd|evt)');
+    expect(result.actionDescription).toBe('Grep: onex\\.(cmd|evt)');
+  });
+});
