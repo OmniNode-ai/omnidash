@@ -453,7 +453,10 @@ export default function IntentDashboard() {
     return snapshot.recentIntents.map((e) => ({
       intent_id: e.id,
       session_ref: String(e.payload.session_ref ?? ''),
-      intent_category: String(e.payload.intent_category ?? ''),
+      intent_category: String(
+        e.payload.intent_category ?? e.payload.intentCategory ??
+        e.payload.intent_type ?? e.payload.intentType ?? ''
+      ),
       confidence: Number(e.payload.confidence ?? 0),
       keywords: [],
       created_at: e.payload.created_at
