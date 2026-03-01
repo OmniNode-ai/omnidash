@@ -33,6 +33,8 @@ import prWatchRoutes from './pr-watch-routes';
 import pipelineBudgetRoutes from './pipeline-budget-routes';
 import debugEscalationRoutes from './debug-escalation-routes';
 import objectiveRoutes from './objective-routes';
+// CDQA gate routes (OMN-3190)
+import cdqaGatesRoutes from './cdqa-gates-routes';
 
 export async function registerRoutes(app: Express): Promise<Server> {
   // put application routes here
@@ -124,6 +126,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.use('/api/pr-watch', prWatchRoutes);
   app.use('/api/pipeline-budget', pipelineBudgetRoutes);
   app.use('/api/debug-escalation', debugEscalationRoutes);
+
+  // CDQA gate dashboard routes (OMN-3190)
+  app.use('/api/cdqa-gates', cdqaGatesRoutes);
 
   // Conditionally mount golden path test routes (OMN-2079)
   // Only enabled when ENABLE_TEST_ROUTES=true AND (NODE_ENV=test OR OMNIDASH_TEST_MODE=true)

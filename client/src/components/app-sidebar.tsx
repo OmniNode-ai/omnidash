@@ -20,6 +20,7 @@ import {
   Cpu,
   GitFork,
   Target,
+  ClipboardCheck,
 } from 'lucide-react';
 import { Link, useLocation } from 'wouter';
 import {
@@ -188,6 +189,12 @@ const advancedSubGroups: AdvancedSubGroup[] = [
         url: '/objective',
         icon: Target,
         description: 'Score vectors, gate failures, policy state history, anti-gaming alerts',
+      },
+      {
+        title: 'CDQA Gates',
+        url: '/cdqa-gates',
+        icon: ClipboardCheck,
+        description: 'CDQA gate evaluation results per PR (OMN-3190)',
       },
     ],
   },
