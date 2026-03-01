@@ -54,6 +54,8 @@ import PRWatchDashboard from '@/pages/PRWatchDashboard';
 import PipelineBudgetDashboard from '@/pages/PipelineBudgetDashboard';
 import DebugEscalationDashboard from '@/pages/DebugEscalationDashboard';
 import ObjectiveEvaluation from '@/pages/ObjectiveEvaluation';
+// CDQA gate dashboard (OMN-3190)
+import CdqaGateDashboard from '@/pages/CdqaGateDashboard';
 
 // Phase 2: Category landing pages (OMN-2181)
 import SpeedCategory from '@/pages/SpeedCategory';
@@ -149,6 +151,7 @@ function Router() {
       <Route path="/pr-watch" component={PRWatchDashboard} />
       <Route path="/pipeline-budget" component={PipelineBudgetDashboard} />
       <Route path="/debug-escalation" component={DebugEscalationDashboard} />
+      <Route path="/cdqa-gates" component={CdqaGateDashboard} />
 
       {/* Objective Evaluation — score vectors, gate failures, policy state, anti-gaming (OMN-2583) */}
       <Route path="/objective" component={ObjectiveEvaluation} />
