@@ -20,6 +20,8 @@
  * }
  */
 
+import * as fs from 'fs';
+import * as os from 'os';
 import { Router } from 'express';
 import { projectionService, enforcementProjection } from './projection-bootstrap';
 import type {
@@ -78,6 +80,12 @@ export interface DataSourcesHealthResponse {
   summary: { live: number; mock: number; error: number; offline: number };
   checkedAt: string;
 }
+
+// ============================================================================
+// Constants
+// ============================================================================
+
+const ENV_SYNC_STALE_SECS = 3600; // 1 hour (2× the 5-min throttle window)
 
 // ============================================================================
 // Individual probe functions
@@ -418,6 +426,53 @@ async function probeEnforcement(): Promise<DataSourceInfo> {
   }
 }
 
+/**
+ * Probe the env→Infisical sync script (OMN-3216).
+ * Gated behind ENABLE_ENV_SYNC_PROBE=true.
+ *
+ * Status map:
+ *   mock    — INFISICAL_ADDR not set (opt-out) OR probe disabled via flag
+ *   offline — script not deployed, never run, or stale
+ *   live    — script exists and last-run timestamp is within 1 hour
+ *   error   — unexpected exception
+ */
+function probeEnvSync(): DataSourceInfo {
+  if (!process.env.ENABLE_ENV_SYNC_PROBE) {
+    return { status: 'mock', reason: 'probe_disabled' };
+  }
+  try {
+    const infisicalAddr = process.env.INFISICAL_ADDR ?? '';
+    if (!infisicalAddr.trim()) {
+      return { status: 'mock', reason: 'infisical_disabled' };
+    }
+    const infraDir = process.env.OMNIBASE_INFRA_DIR ?? '';
+    const candidates = infraDir
+      ? [`${infraDir}/scripts/sync-omnibase-env.py`]
+      : [
+          `${os.homedir()}/Code/omni_home/omnibase_infra/scripts/sync-omnibase-env.py`,
+          '/Volumes/PRO-G40/Code/omni_home/omnibase_infra/scripts/sync-omnibase-env.py',
+        ];
+    if (!candidates.some((p) => fs.existsSync(p))) {
+      return { status: 'offline', reason: 'sync_script_missing' };
+    }
+    const tsFile = `${os.homedir()}/.claude/sync-env-last-run`;
+    if (!fs.existsSync(tsFile)) {
+      return { status: 'offline', reason: 'sync_never_run' };
+    }
+    const lastRunSecs = parseFloat(fs.readFileSync(tsFile, 'utf-8').trim());
+    const nowSecs = Date.now() / 1000;
+    if (isNaN(lastRunSecs) || lastRunSecs < 0 || lastRunSecs > nowSecs + 60) {
+      return { status: 'offline', reason: 'sync_never_run' };
+    }
+    if (nowSecs - lastRunSecs > ENV_SYNC_STALE_SECS) {
+      return { status: 'offline', reason: 'sync_stale' };
+    }
+    return { status: 'live', lastEvent: new Date(lastRunSecs * 1000).toISOString() };
+  } catch {
+    return { status: 'error', reason: 'probe_threw' };
+  }
+}
+
 // ============================================================================
 // Router
 // ============================================================================
@@ -518,6 +573,7 @@ router.get('/data-sources', async (_req, res) => {
           patterns,
           executionGraph,
           enforcement,
+          envSync: probeEnvSync(),
         };
 
         const counts = Object.values(dataSources).reduce(
