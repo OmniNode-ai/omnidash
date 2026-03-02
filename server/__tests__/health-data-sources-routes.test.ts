@@ -331,10 +331,10 @@ describe('GET /api/health/data-sources', () => {
     const { summary } = res.body;
     // 3 live sources (event-bus, validation, correlationTrace)
     expect(summary.live).toBe(3);
-    expect(summary.live + summary.mock + summary.error + (summary.offline ?? 0)).toBe(13); // 13 total sources
+    expect(summary.live + summary.mock + summary.error + (summary.offline ?? 0)).toBe(14); // 14 total sources
   });
 
-  it('includes all 13 expected data sources', async () => {
+  it('includes all 14 expected data sources', async () => {
     vi.mocked(projectionService.getView).mockReturnValue(null);
     setupEmptyDb();
 
@@ -357,11 +357,12 @@ describe('GET /api/health/data-sources', () => {
       'patterns',
       'executionGraph',
       'enforcement',
+      'envSync',
     ];
     for (const key of expectedKeys) {
       expect(keys).toContain(key);
     }
-    expect(keys.length).toBe(13);
+    expect(keys.length).toBe(14);
   });
 
   it('returns status: offline with reason for empty baselines projection', async () => {
