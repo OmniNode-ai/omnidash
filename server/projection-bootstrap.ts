@@ -24,6 +24,8 @@ import { DelegationProjection } from './projections/delegation-projection';
 import { AgentRoutingProjection } from './projections/agent-routing-projection';
 // Wave 2 projections (OMN-2602)
 import { GateDecisionsProjection } from './projections/gate-decisions-projection';
+// Plan reviewer projection (OMN-3324)
+import { PlanReviewerProjection } from './projections/plan-reviewer-projection';
 import { EpicRunProjection } from './projections/epic-run-projection';
 import { PrWatchProjection } from './projections/pr-watch-projection';
 import { PipelineBudgetProjection } from './projections/pipeline-budget-projection';
@@ -111,6 +113,12 @@ export const prWatchProjection = new PrWatchProjection();
 export const pipelineBudgetProjection = new PipelineBudgetProjection();
 /** Debug escalation projection. Queries debug_escalation_counts table. */
 export const debugEscalationProjection = new DebugEscalationProjection();
+/**
+ * Plan reviewer projection (OMN-3324). Queries plan_review_runs table.
+ * Standalone — NOT registered with ProjectionService (no fanout, no WS
+ * invalidation, no ingest pipeline).
+ */
+export const planReviewerProjection = new PlanReviewerProjection();
 
 if (!projectionService.getView(extractionMetricsProjection.viewId)) {
   projectionService.registerView(extractionMetricsProjection);
