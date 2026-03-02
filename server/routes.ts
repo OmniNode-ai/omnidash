@@ -38,6 +38,8 @@ import cdqaGatesRoutes from './cdqa-gates-routes';
 // Integration command center routes (OMN-3192)
 import pipelineHealthRoutes from './pipeline-health-routes';
 import eventBusHealthRoutes from './event-bus-health-routes';
+// Plan reviewer routes (OMN-3324)
+import planReviewerRoutes from './plan-reviewer-routes';
 
 export async function registerRoutes(app: Express): Promise<Server> {
   // put application routes here
@@ -136,6 +138,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Integration command center routes (OMN-3192)
   app.use('/api/pipeline-health', pipelineHealthRoutes);
   app.use('/api/event-bus-health', eventBusHealthRoutes);
+
+  // Plan reviewer routes (OMN-3324)
+  app.use('/api/plan-reviewer', planReviewerRoutes);
 
   // Conditionally mount golden path test routes (OMN-2079)
   // Only enabled when ENABLE_TEST_ROUTES=true AND (NODE_ENV=test OR OMNIDASH_TEST_MODE=true)

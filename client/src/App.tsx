@@ -59,6 +59,8 @@ import CdqaGateDashboard from '@/pages/CdqaGateDashboard';
 // Integration command center dashboards (OMN-3192)
 import PipelineHealthDashboard from '@/pages/PipelineHealthDashboard';
 import EventBusHealthDashboard from '@/pages/EventBusHealthDashboard';
+// Plan reviewer dashboard (OMN-3324)
+import PlanReviewer from '@/pages/PlanReviewer';
 
 // Phase 2: Category landing pages (OMN-2181)
 import SpeedCategory from '@/pages/SpeedCategory';
@@ -161,6 +163,9 @@ function Router() {
 
       {/* Objective Evaluation — score vectors, gate failures, policy state, anti-gaming (OMN-2583) */}
       <Route path="/objective" component={ObjectiveEvaluation} />
+
+      {/* Plan Reviewer — strategy comparison + model accuracy leaderboard (OMN-3324) */}
+      <Route path="/plan-reviewer" component={PlanReviewer} />
 
       {/* Preview routes */}
       <Route path="/preview/analytics" component={EnhancedAnalytics} />

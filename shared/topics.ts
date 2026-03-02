@@ -367,6 +367,12 @@ export const SUFFIX_INTELLIGENCE_PATTERN_STORED = 'onex.evt.omniintelligence.pat
 export const SUFFIX_INTELLIGENCE_PATTERN_PROJECTION =
   'onex.evt.omniintelligence.pattern-projection.v1';
 
+/** Full topic string: plan review strategy run completed event.
+ * Emitted by node_plan_reviewer_multi_compute (omniintelligence).
+ * Consumed only by READ_MODEL_TOPICS in read-model-consumer.ts (OMN-3282). */
+export const TOPIC_INTELLIGENCE_PLAN_REVIEW_STRATEGY_RUN_COMPLETED =
+  'onex.evt.omniintelligence.plan-review-strategy-run-completed.v1';
+
 // ============================================================================
 // Miscellaneous Topics
 // ============================================================================
