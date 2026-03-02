@@ -8,6 +8,7 @@ import {
   serial,
   numeric,
   boolean,
+  doublePrecision,
   jsonb,
   timestamp,
   index,
@@ -1149,3 +1150,51 @@ export const insertDelegationShadowComparisonSchema = createInsertSchema(
 );
 export type DelegationShadowComparisonRow = typeof delegationShadowComparisons.$inferSelect;
 export type InsertDelegationShadowComparison = typeof delegationShadowComparisons.$inferInsert;
+
+/**
+ * Plan Review Runs Table (OMN-3324)
+ *
+ * Tracks plan-reviewer strategy run completions from omniintelligence.
+ * Populated by ReadModelConsumer projecting
+ * onex.evt.omniintelligence.plan-review-strategy-run-completed.v1.
+ */
+export const planReviewRuns = pgTable(
+  'plan_review_runs',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    eventId: text('event_id').notNull(),
+    runId: text('run_id').notNull(),
+    strategy: text('strategy').notNull(),
+    modelsUsed: text('models_used')
+      .array()
+      .notNull()
+      .default(sql`'{}'::text[]`),
+    planTextHash: text('plan_text_hash').notNull(),
+    findingsCount: integer('findings_count').notNull().default(0),
+    blocksCount: integer('blocks_count').notNull().default(0),
+    categoriesWithFindings: text('categories_with_findings')
+      .array()
+      .notNull()
+      .default(sql`'{}'::text[]`),
+    categoriesClean: text('categories_clean')
+      .array()
+      .notNull()
+      .default(sql`'{}'::text[]`),
+    avgConfidence: doublePrecision('avg_confidence'),
+    tokensUsed: integer('tokens_used'),
+    durationMs: integer('duration_ms'),
+    strategyRunStored: boolean('strategy_run_stored').notNull().default(false),
+    modelWeights: jsonb('model_weights'),
+    emittedAt: timestamp('emitted_at', { withTimezone: true }).notNull(),
+    projectedAt: timestamp('projected_at').defaultNow(),
+  },
+  (table) => [
+    uniqueIndex('uq_plan_review_runs_run_id').on(table.runId),
+    index('idx_plan_review_runs_strategy').on(table.strategy),
+    index('idx_plan_review_runs_emitted_at').on(table.emittedAt),
+  ]
+);
+
+export const insertPlanReviewRunSchema = createInsertSchema(planReviewRuns);
+export type PlanReviewRunRow = typeof planReviewRuns.$inferSelect;
+export type InsertPlanReviewRun = typeof planReviewRuns.$inferInsert;
