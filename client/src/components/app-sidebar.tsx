@@ -23,6 +23,7 @@ import {
   ClipboardCheck,
   GitPullRequest,
   Server,
+  FileSearch,
 } from 'lucide-react';
 import { Link, useLocation } from 'wouter';
 import {
@@ -197,6 +198,12 @@ const advancedSubGroups: AdvancedSubGroup[] = [
         url: '/cdqa-gates',
         icon: ClipboardCheck,
         description: 'CDQA gate evaluation results per PR (OMN-3190)',
+      },
+      {
+        title: 'Plan Reviewer',
+        url: '/plan-reviewer',
+        icon: FileSearch,
+        description: 'Plan-review strategy comparison and model accuracy leaderboard (OMN-3324)',
       },
     ],
   },

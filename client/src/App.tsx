@@ -1,3 +1,4 @@
+import { useState, useEffect } from 'react';
 import { Switch, Route, Redirect } from 'wouter';
 import { queryClient } from './lib/queryClient';
 import { QueryClientProvider } from '@tanstack/react-query';
@@ -59,6 +60,8 @@ import CdqaGateDashboard from '@/pages/CdqaGateDashboard';
 // Integration command center dashboards (OMN-3192)
 import PipelineHealthDashboard from '@/pages/PipelineHealthDashboard';
 import EventBusHealthDashboard from '@/pages/EventBusHealthDashboard';
+// Plan reviewer dashboard (OMN-3324)
+import PlanReviewer from '@/pages/PlanReviewer';
 
 // Phase 2: Category landing pages (OMN-2181)
 import SpeedCategory from '@/pages/SpeedCategory';
@@ -162,6 +165,9 @@ function Router() {
       {/* Objective Evaluation — score vectors, gate failures, policy state, anti-gaming (OMN-2583) */}
       <Route path="/objective" component={ObjectiveEvaluation} />
 
+      {/* Plan Reviewer — strategy comparison + model accuracy leaderboard (OMN-3324) */}
+      <Route path="/plan-reviewer" component={PlanReviewer} />
+
       {/* Preview routes */}
       <Route path="/preview/analytics" component={EnhancedAnalytics} />
       <Route path="/preview/health" component={SystemHealth} />
@@ -194,6 +200,20 @@ function App() {
   const { isConnected, connectionStatus } = useWebSocket({
     debug: false,
   });
+
+  // Bus identity badge — reflects server's env at startup (does not hot-reload)
+  const [runtimeEnv, setRuntimeEnv] = useState<{
+    busId: string;
+    kafkaBrokers: string;
+    namespace: string;
+  } | null>(null);
+
+  useEffect(() => {
+    fetch('/api/runtime-environment')
+      .then((r) => r.json())
+      .then(setRuntimeEnv)
+      .catch(() => null);
+  }, []);
 
   return (
     <QueryClientProvider client={queryClient}>
@@ -240,6 +260,14 @@ function App() {
                               : 'Disconnected'}
                         </span>
                       </div>
+                      {runtimeEnv && (
+                        <span
+                          className="text-xs font-mono px-2 py-1 rounded bg-muted text-muted-foreground border"
+                          title={`Broker: ${runtimeEnv.kafkaBrokers} | NS: ${runtimeEnv.namespace}`}
+                        >
+                          {runtimeEnv.busId === 'cloud' ? '☁' : '⚡'} {runtimeEnv.busId}
+                        </span>
+                      )}
                       <DemoControlPanel />
                       <ThemeToggle />
                     </div>
