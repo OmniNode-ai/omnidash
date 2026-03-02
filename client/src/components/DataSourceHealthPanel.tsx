@@ -48,6 +48,7 @@ const DATA_SOURCE_LABELS: Record<string, string> = {
   patterns: 'Pattern Learning',
   executionGraph: 'Execution Graph',
   enforcement: 'Pattern Enforcement',
+  envSync: 'Env → Infisical Sync',
 };
 
 // Human-readable reason descriptions
@@ -68,6 +69,12 @@ const REASON_LABELS: Record<string, string> = {
   no_db_connection: 'No database connection',
   not_implemented: 'Not yet implemented',
   upstream_service_offline: 'Upstream service not running',
+  upstream_never_emitted: 'Upstream producer has never emitted',
+  probe_disabled: 'Probe disabled (set ENABLE_ENV_SYNC_PROBE=true)',
+  infisical_disabled: 'Infisical opt-out (INFISICAL_ADDR not set)',
+  sync_script_missing: 'sync-omnibase-env.py not on this host (OMN-3216)',
+  sync_never_run: 'Sync script has never run',
+  sync_stale: 'Last sync >1 h ago — no recent session start',
 };
 
 function formatReason(reason: string | undefined): string {
