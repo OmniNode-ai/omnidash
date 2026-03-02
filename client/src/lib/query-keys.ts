@@ -767,6 +767,26 @@ export const queryKeys = {
   },
 
   // ============================================================================
+  // Plan Reviewer (OMN-3324)
+  // ============================================================================
+
+  /** Plan reviewer query keys for /plan-reviewer dashboard */
+  planReviewer: {
+    /** Base key for all plan reviewer queries */
+    all: ['plan-reviewer'] as const,
+
+    /** Recent runs list (optionally filtered by strategy) */
+    runs: (limit?: number, strategy?: string) =>
+      [...queryKeys.planReviewer.all, 'runs', limit ?? 50, strategy ?? 'all'] as const,
+
+    /** Per-strategy aggregates */
+    strategies: () => [...queryKeys.planReviewer.all, 'strategies'] as const,
+
+    /** Model accuracy leaderboard (latest snapshot) */
+    accuracy: () => [...queryKeys.planReviewer.all, 'accuracy'] as const,
+  },
+
+  // ============================================================================
   // Objective Evaluation (OMN-2583)
   // ============================================================================
 

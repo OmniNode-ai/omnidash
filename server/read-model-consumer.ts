@@ -40,6 +40,7 @@ import {
   delegationEvents,
   delegationShadowComparisons,
   patternLearningArtifacts,
+  planReviewRuns,
 } from '@shared/intelligence-schema';
 import type {
   InsertAgentRoutingDecision,
@@ -77,6 +78,7 @@ import {
   SUFFIX_INTELLIGENCE_PATTERN_PROJECTION,
   SUFFIX_INTELLIGENCE_PATTERN_LIFECYCLE_TRANSITIONED,
   SUFFIX_INTELLIGENCE_PATTERN_LEARNING_CMD,
+  TOPIC_INTELLIGENCE_PLAN_REVIEW_STRATEGY_RUN_COMPLETED,
 } from '@shared/topics';
 import type { LlmRoutingDecisionEvent } from '@shared/llm-routing-types';
 import type { TaskDelegatedEvent, DelegationShadowComparisonEvent } from '@shared/delegation-types';
@@ -238,6 +240,8 @@ export const READ_MODEL_TOPICS = [
   // PatternLearningRequested events so the Patterns and Learned Insights pages show live
   // data even when omniintelligence does not yet emit pattern-projection.v1 completions.
   SUFFIX_INTELLIGENCE_PATTERN_LEARNING_CMD,
+  // OMN-3324: Plan reviewer strategy run completions from omniintelligence.
+  TOPIC_INTELLIGENCE_PLAN_REVIEW_STRATEGY_RUN_COMPLETED,
 ] as const;
 
 type ReadModelTopic = (typeof READ_MODEL_TOPICS)[number];
@@ -730,6 +734,10 @@ export class ReadModelConsumer {
         // pattern-projection.v1 completions, so this ensures the table is non-empty).
         case SUFFIX_INTELLIGENCE_PATTERN_LEARNING_CMD:
           projected = await this.projectPatternLearningRequestedEvent(parsed, fallbackId);
+          break;
+        // OMN-3324: Plan reviewer strategy run completions
+        case TOPIC_INTELLIGENCE_PLAN_REVIEW_STRATEGY_RUN_COMPLETED:
+          projected = await this.projectPlanReviewStrategyRunEvent(parsed, fallbackId);
           break;
         default:
           console.warn(
@@ -2864,6 +2872,66 @@ export class ReadModelConsumer {
         '[ReadModelConsumer] Failed to update watermark:',
         err instanceof Error ? err.message : err
       );
+    }
+  }
+
+  /**
+   * Project a plan-review strategy run completed event into plan_review_runs table.
+   * Returns true if the row was successfully written, false if the DB was unavailable.
+   * OMN-3324
+   */
+  private async projectPlanReviewStrategyRunEvent(
+    parsed: unknown,
+    _fallbackId: string
+  ): Promise<boolean> {
+    const db = tryGetIntelligenceDb();
+    if (!db) return false;
+
+    try {
+      if (!parsed || typeof parsed !== 'object') return false;
+      const e = parsed as Record<string, unknown>;
+
+      const runId = typeof e.run_id === 'string' && e.run_id ? e.run_id : null;
+      const strategy = typeof e.strategy === 'string' && e.strategy ? e.strategy : null;
+      const planTextHash = typeof e.plan_text_hash === 'string' ? e.plan_text_hash : '';
+      if (!runId || !strategy) {
+        console.warn('[plan-reviewer] missing required fields run_id/strategy, skipping');
+        return false;
+      }
+
+      const rawEmitted = typeof e.emitted_at === 'string' ? new Date(e.emitted_at) : null;
+      const emittedAt = rawEmitted && !isNaN(rawEmitted.getTime()) ? rawEmitted : new Date();
+
+      await db
+        .insert(planReviewRuns)
+        .values({
+          eventId: typeof e.event_id === 'string' ? e.event_id : crypto.randomUUID(),
+          runId,
+          strategy,
+          modelsUsed: Array.isArray(e.models_used) ? e.models_used.map(String) : [],
+          planTextHash,
+          findingsCount: typeof e.findings_count === 'number' ? e.findings_count : 0,
+          blocksCount: typeof e.blocks_count === 'number' ? e.blocks_count : 0,
+          categoriesWithFindings: Array.isArray(e.categories_with_findings)
+            ? e.categories_with_findings.map(String)
+            : [],
+          categoriesClean: Array.isArray(e.categories_clean) ? e.categories_clean.map(String) : [],
+          avgConfidence: typeof e.avg_confidence === 'number' ? e.avg_confidence : null,
+          tokensUsed: typeof e.tokens_used === 'number' ? e.tokens_used : null,
+          durationMs: typeof e.duration_ms === 'number' ? e.duration_ms : null,
+          strategyRunStored: Boolean(e.strategy_run_stored),
+          modelWeights:
+            e.model_weights && typeof e.model_weights === 'object'
+              ? (e.model_weights as Record<string, unknown>)
+              : {},
+          emittedAt,
+        })
+        .onConflictDoNothing();
+
+      return true;
+    } catch (err) {
+      console.error('[plan-reviewer] projection error:', err);
+      return false;
     }
   }
 }
