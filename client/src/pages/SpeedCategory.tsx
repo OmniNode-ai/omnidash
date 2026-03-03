@@ -32,6 +32,7 @@ import {
   Database,
   Timer,
   AlertTriangle,
+  Info,
 } from 'lucide-react';
 import type { LatencyDetails } from '@shared/effectiveness-types';
 import {
@@ -263,6 +264,24 @@ export default function SpeedCategory() {
         </Alert>
       )}
 
+      {/* No latency data banner — shown when sessions exist but no timing/outcome rows */}
+      {!extractionLoading &&
+        !extractionError &&
+        extractionSummary != null &&
+        extractionSummary.total_injections > 0 &&
+        extractionSummary.avg_latency_ms == null &&
+        extractionSummary.success_rate == null && (
+          <Alert>
+            <Info className="h-4 w-4" />
+            <AlertTitle>Latency and pipeline data not yet available</AlertTitle>
+            <AlertDescription>
+              {extractionSummary.total_injections.toLocaleString()} sessions recorded, but no
+              latency-breakdown or session-outcome events have been received. Ensure the omniclaude
+              plugin is emitting <code>latency-breakdown</code> events.
+            </AlertDescription>
+          </Alert>
+        )}
+
       {/* Hero Metric: Cache Hit Rate */}
       <HeroMetric
         label="Cache Hit Rate"
@@ -276,7 +295,7 @@ export default function SpeedCategory() {
       <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4">
         <MetricCard
           label="Avg Latency"
-          value={avgLatency != null ? `${Math.round(avgLatency)}ms` : '--'}
+          value={avgLatency != null ? `${Math.round(avgLatency)}ms` : 'No data'}
           subtitle="End-to-end injection latency"
           icon={Clock}
           isLoading={extractionLoading}
@@ -294,7 +313,7 @@ export default function SpeedCategory() {
         />
         <MetricCard
           label="Pipeline Success"
-          value={successRate != null ? `${(successRate * 100).toFixed(1)}%` : '--'}
+          value={successRate != null ? `${(successRate * 100).toFixed(1)}%` : 'No data'}
           subtitle="Extraction pipeline success rate"
           icon={Gauge}
           status={

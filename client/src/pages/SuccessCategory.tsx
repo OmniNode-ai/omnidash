@@ -35,6 +35,7 @@ import {
   Activity,
   FlaskConical,
   AlertTriangle,
+  Info,
 } from 'lucide-react';
 import {
   ComposedChart,
@@ -284,6 +285,24 @@ export default function SuccessCategory() {
           </AlertDescription>
         </Alert>
       )}
+
+      {/* Zero-injection info — sessions are running but context injection never succeeded */}
+      {!summaryLoading &&
+        !summaryError &&
+        summary != null &&
+        summary.total_sessions > 0 &&
+        summary.injection_rate === 0 && (
+          <Alert>
+            <Info className="h-4 w-4" />
+            <AlertTitle>Context injection not yet active</AlertTitle>
+            <AlertDescription>
+              {summary.total_sessions.toLocaleString()} sessions recorded, but no context was
+              injected (Injection Rate: 0%). The omniclaude plugin may not be returning patterns
+              from the intelligence service. Utilization and accuracy metrics will populate once
+              injection succeeds.
+            </AlertDescription>
+          </Alert>
+        )}
 
       {/* Page Header */}
       <div className="flex items-center justify-between">
