@@ -238,6 +238,19 @@ export interface LlmRoutingByModel {
   completion_tokens_avg: number;
 }
 
+/**
+ * Fuzzy confidence distribution bucket (OMN-3447).
+ * Groups routing decisions by fuzzy_confidence range.
+ */
+export interface LlmRoutingFuzzyConfidenceBucket {
+  /** Bucket label (e.g. "no_data", "0–30%", "30–50%", "50–70%", "70–90%", "90–100%") */
+  bucket: string;
+  /** Numeric sort key for stable ordering (0–5) */
+  sort_key: number;
+  /** Number of routing decisions in this confidence bucket */
+  count: number;
+}
+
 // NOTE: Zod runtime validation schemas (LlmRoutingTimeWindowSchema, etc.) live
 // in server/llm-routing-schemas.ts to avoid bundling the 'zod' runtime into
 // client-side JavaScript. Import from there in server-only code.

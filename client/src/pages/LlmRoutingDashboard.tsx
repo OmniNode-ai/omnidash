@@ -8,20 +8,36 @@
  * - Cost per routing decision
  * - Longitudinal comparison by routing_prompt_version
  * - Top disagreement pairs table
+ * - Fuzzy confidence distribution chart (OMN-3447)
+ * - Model switcher dropdown (OMN-3447)
+ * - Prompt version bump button (OMN-3447)
  *
  * Events consumed from: onex.evt.omniclaude.llm-routing-decision.v1
  */
 
 import { useState, useCallback, useEffect } from 'react';
-import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { useQuery, useQueryClient, useMutation } from '@tanstack/react-query';
 import { useWebSocket } from '@/hooks/useWebSocket';
-import { llmRoutingSource } from '@/lib/data-sources/llm-routing-source';
+import {
+  llmRoutingSource,
+  fetchFuzzyConfidence,
+  fetchRoutingConfig,
+  putRoutingConfig,
+} from '@/lib/data-sources/llm-routing-source';
+import { buildApiUrl } from '@/lib/data-sources/api-base';
 import { queryKeys } from '@/lib/query-keys';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import {
   Table,
   TableBody,
@@ -41,6 +57,8 @@ import {
   AlertCircle,
   TrendingUp,
   Zap,
+  Cpu,
+  ArrowUpCircle,
 } from 'lucide-react';
 import {
   LineChart,
@@ -61,7 +79,11 @@ import {
   POLLING_INTERVAL_SLOW,
   getPollingInterval,
 } from '@/lib/constants/query-config';
-import type { LlmRoutingTimeWindow, LlmRoutingDisagreement } from '@shared/llm-routing-types';
+import type {
+  LlmRoutingTimeWindow,
+  LlmRoutingDisagreement,
+  LlmRoutingFuzzyConfidenceBucket,
+} from '@shared/llm-routing-types';
 
 // ============================================================================
 // Constants
@@ -84,6 +106,16 @@ const METHOD_COLORS: Record<string, string> = {
 };
 
 const VERSION_COLORS = ['#22c55e', '#3b82f6', '#f59e0b', '#ef4444', '#8b5cf6', '#06b6d4'];
+
+/** Colors for fuzzy confidence bucket bars (sort_key 0–5). */
+const CONFIDENCE_BUCKET_COLORS = [
+  '#6b7280', // no_data — gray
+  '#ef4444', // 0–30% — red
+  '#f97316', // 30–50% — orange
+  '#eab308', // 50–70% — yellow
+  '#22c55e', // 70–90% — green
+  '#14b8a6', // 90–100% — teal
+];
 
 // ============================================================================
 // Helpers
@@ -392,6 +424,186 @@ function DisagreementsTable({
 }
 
 // ============================================================================
+// New sub-components (OMN-3447)
+// ============================================================================
+
+/**
+ * Fuzzy confidence distribution chart.
+ * Shows how many routing decisions fall into each fuzzy_confidence range bucket.
+ */
+function FuzzyConfidenceChart({
+  buckets,
+  isLoading,
+  isError,
+}: {
+  buckets: LlmRoutingFuzzyConfidenceBucket[];
+  isLoading: boolean;
+  isError: boolean;
+}) {
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle className="flex items-center gap-2">
+          <BarChart3 className="h-4 w-4 text-purple-400" />
+          Fuzzy Confidence Distribution
+        </CardTitle>
+        <CardDescription>
+          How many routing decisions fall into each fuzzy confidence range
+        </CardDescription>
+      </CardHeader>
+      <CardContent>
+        {isError ? (
+          <p className="text-sm text-destructive py-4 text-center">
+            Failed to load confidence data.
+          </p>
+        ) : isLoading ? (
+          <Skeleton className="h-52 w-full" />
+        ) : buckets.length === 0 ? (
+          <p className="text-sm text-muted-foreground py-4 text-center">
+            No fuzzy confidence data in this window.
+          </p>
+        ) : (
+          <ResponsiveContainer width="100%" height={220}>
+            <BarChart data={buckets} margin={{ top: 0, right: 16, left: 8, bottom: 0 }}>
+              <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+              <XAxis
+                dataKey="bucket"
+                tick={{ fontSize: 11 }}
+                stroke="hsl(var(--muted-foreground))"
+              />
+              <YAxis tick={{ fontSize: 11 }} stroke="hsl(var(--muted-foreground))" />
+              <Tooltip
+                formatter={(v: number) => [v.toLocaleString(), 'Decisions']}
+                contentStyle={{ fontSize: '12px' }}
+              />
+              <Bar dataKey="count" radius={[4, 4, 0, 0]}>
+                {buckets.map((b) => (
+                  <Cell key={b.bucket} fill={CONFIDENCE_BUCKET_COLORS[b.sort_key] ?? '#6366f1'} />
+                ))}
+              </Bar>
+            </BarChart>
+          </ResponsiveContainer>
+        )}
+      </CardContent>
+    </Card>
+  );
+}
+
+/**
+ * Model switcher dropdown.
+ * Reads available models from /api/llm-routing/models (30d stable).
+ * Reads/writes active model via /api/routing-config/active_routing_model.
+ */
+function ModelSwitcher() {
+  const modelsUrl = buildApiUrl('/api/llm-routing/models');
+
+  const { data: models = [] } = useQuery<string[]>({
+    queryKey: ['llm-routing', 'models'],
+    queryFn: async () => {
+      const res = await fetch(modelsUrl);
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      return res.json() as Promise<string[]>;
+    },
+    staleTime: 60_000,
+  });
+
+  const { data: activeModel, refetch: refetchActiveModel } = useQuery<string | null>({
+    queryKey: ['routing-config', 'active_routing_model'],
+    queryFn: () => fetchRoutingConfig('active_routing_model'),
+    staleTime: 30_000,
+  });
+
+  const mutation = useMutation({
+    mutationFn: (model: string) => putRoutingConfig('active_routing_model', model),
+    onSuccess: () => void refetchActiveModel(),
+  });
+
+  const handleChange = (value: string) => {
+    mutation.mutate(value);
+  };
+
+  const allModels = models.length > 0 ? models : activeModel ? [activeModel] : [];
+
+  return (
+    <div className="flex items-center gap-2">
+      <Cpu className="h-4 w-4 text-muted-foreground shrink-0" />
+      <span className="text-xs text-muted-foreground whitespace-nowrap">Active Model</span>
+      <Select
+        value={activeModel ?? ''}
+        onValueChange={handleChange}
+        disabled={mutation.isPending || allModels.length === 0}
+      >
+        <SelectTrigger className="h-8 w-44 text-xs">
+          <SelectValue placeholder={allModels.length === 0 ? 'No models' : 'Select model'} />
+        </SelectTrigger>
+        <SelectContent>
+          {allModels.map((m) => (
+            <SelectItem key={m} value={m} className="text-xs font-mono">
+              {m}
+            </SelectItem>
+          ))}
+        </SelectContent>
+      </Select>
+      {mutation.isPending && <RefreshCw className="h-3 w-3 animate-spin text-muted-foreground" />}
+      {mutation.isError && <span className="text-xs text-destructive">Failed to switch model</span>}
+    </div>
+  );
+}
+
+/**
+ * Prompt version bump button.
+ * Reads routing_prompt_version from routing config, increments the semver patch,
+ * and writes back via PUT /api/routing-config/routing_prompt_version.
+ */
+function PromptBumpButton() {
+  const { data: currentVersion, refetch: refetchVersion } = useQuery<string | null>({
+    queryKey: ['routing-config', 'routing_prompt_version'],
+    queryFn: () => fetchRoutingConfig('routing_prompt_version'),
+    staleTime: 30_000,
+  });
+
+  const mutation = useMutation({
+    mutationFn: async () => {
+      const version = currentVersion ?? '1.0.0';
+      // Parse semver patch and increment.
+      const parts = version.replace(/^v/, '').split('.');
+      const major = parseInt(parts[0] ?? '1', 10);
+      const minor = parseInt(parts[1] ?? '0', 10);
+      const patch = parseInt(parts[2] ?? '0', 10);
+      const next = `${major}.${minor}.${patch + 1}`;
+      await putRoutingConfig('routing_prompt_version', next);
+      return next;
+    },
+    onSuccess: () => void refetchVersion(),
+  });
+
+  return (
+    <div className="flex items-center gap-2">
+      <Button
+        variant="outline"
+        size="sm"
+        onClick={() => mutation.mutate()}
+        disabled={mutation.isPending}
+        className="text-xs h-8"
+      >
+        <ArrowUpCircle className="h-3.5 w-3.5 mr-1.5" />
+        Bump Prompt
+        {currentVersion && (
+          <Badge variant="outline" className="ml-2 text-[10px] px-1 py-0 font-mono">
+            v{currentVersion}
+          </Badge>
+        )}
+      </Button>
+      {mutation.isPending && <RefreshCw className="h-3 w-3 animate-spin text-muted-foreground" />}
+      {mutation.isSuccess && (
+        <span className="text-xs text-green-500">Bumped to v{mutation.data}</span>
+      )}
+      {mutation.isError && <span className="text-xs text-destructive">Failed to bump</span>}
+    </div>
+  );
+}
+
+// ============================================================================
 // Main Dashboard
 // ============================================================================
 
@@ -485,6 +697,18 @@ export default function LlmRoutingDashboard() {
     staleTime: 60_000,
   });
 
+  const {
+    data: fuzzyConfidence = [],
+    isLoading: fuzzyConfidenceLoading,
+    isError: fuzzyConfidenceError,
+    refetch: refetchFuzzyConfidence,
+  } = useQuery<LlmRoutingFuzzyConfidenceBucket[]>({
+    queryKey: [...queryKeys.llmRouting.all, 'fuzzy-confidence', timeWindow],
+    queryFn: () => fetchFuzzyConfidence(timeWindow),
+    refetchInterval: getPollingInterval(POLLING_INTERVAL_SLOW),
+    staleTime: 60_000,
+  });
+
   // ── Helpers ──────────────────────────────────────────────────────────────
 
   const handleRefresh = () => {
@@ -493,6 +717,7 @@ export default function LlmRoutingDashboard() {
     void refetchVersion();
     void refetchDisagreements();
     void refetchTrend();
+    void refetchFuzzyConfidence();
   };
 
   // llmRoutingSource.isUsingMockData reads a mutable Set on the singleton.
@@ -544,7 +769,9 @@ export default function LlmRoutingDashboard() {
             Comparing LLM routing vs fuzzy routing agreement, latency, and cost
           </p>
         </div>
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-3 flex-wrap">
+          <ModelSwitcher />
+          <PromptBumpButton />
           <WindowSelector value={timeWindow} onChange={setTimeWindow} />
           <Button variant="outline" size="sm" onClick={handleRefresh}>
             <RefreshCw className="h-4 w-4 mr-2" />
@@ -585,11 +812,17 @@ export default function LlmRoutingDashboard() {
         <Alert variant="destructive" className="border-red-500/50 bg-red-500/10">
           <AlertTriangle className="h-4 w-4 text-red-500" />
           <AlertTitle className="text-red-500">High Disagreement Rate Detected</AlertTitle>
-          <AlertDescription>
-            LLM disagrees with fuzzy routing <strong>{fmtPct(disagreementRate)}</strong> of the time
-            (threshold: {fmtPct(DISAGREEMENT_ALERT_THRESHOLD)}). This may indicate a flawed routing
-            prompt or a mis-ranked fuzzy matcher. Review the top disagreement pairs below and
-            compare prompt versions.
+          <AlertDescription className="space-y-2">
+            <p>
+              LLM disagrees with fuzzy routing <strong>{fmtPct(disagreementRate)}</strong> of the
+              time (threshold: {fmtPct(DISAGREEMENT_ALERT_THRESHOLD)}). This may indicate a flawed
+              routing prompt or a mis-ranked fuzzy matcher.
+            </p>
+            <p className="text-xs text-muted-foreground">
+              Actions: Review the top disagreement pairs below — then use the{' '}
+              <strong>Active Model</strong> switcher above to change the routing model, or{' '}
+              <strong>Bump Prompt</strong> to increment the prompt version after making corrections.
+            </p>
           </AlertDescription>
         </Alert>
       )}
@@ -903,6 +1136,13 @@ export default function LlmRoutingDashboard() {
           </CardContent>
         </Card>
       </div>
+
+      {/* ── Fuzzy Confidence Distribution (OMN-3447) ─────────────────────── */}
+      <FuzzyConfidenceChart
+        buckets={fuzzyConfidence}
+        isLoading={fuzzyConfidenceLoading}
+        isError={fuzzyConfidenceError}
+      />
 
       {/* ── Top Disagreement Pairs ────────────────────────────────────────── */}
       <DisagreementsTable
