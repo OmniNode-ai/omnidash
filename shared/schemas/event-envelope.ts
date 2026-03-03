@@ -46,6 +46,76 @@ export type EventEnvelope<T> = {
   payload: T;
 };
 
+// ---------------------------------------------------------------------------
+// Compat helpers for raw (pre-parse) event envelopes (OMN-3250)
+//
+// DO NOT access envelope_id / envelope_timestamp / entity_id / emitted_at
+// fields directly on raw event objects — always use these helpers.
+//
+// They resolve the canonical name first; if only the legacy alias is present
+// they emit a structured-log warn so telemetry can confirm zero legacy usage
+// before OMN-3553 removes the aliases.
+// ---------------------------------------------------------------------------
+
+/**
+ * Raw envelope shape that may carry either the canonical names or the legacy
+ * aliases (or both). Do not use this type for post-parse envelopes.
+ */
+export interface RawEventEnvelope {
+  // Canonical (match Python omnibase_core ModelEventEnvelope)
+  envelope_id?: string;
+  envelope_timestamp?: string;
+  // Legacy — will be removed after OMN-3553 expiry condition (7-day zero usage)
+  entity_id?: string;
+  emitted_at?: string;
+}
+
+/**
+ * Return the envelope identifier from a raw event, preferring the canonical
+ * `envelope_id` field and falling back to the legacy `entity_id` alias.
+ *
+ * Emits a structured WARN log when the legacy alias is the only value
+ * present, enabling telemetry tracking for OMN-3553 expiry.
+ */
+export function getEnvelopeId(evt: RawEventEnvelope): string | undefined {
+  if (evt.envelope_id) return evt.envelope_id;
+  if (evt.entity_id) {
+    console.warn(
+      JSON.stringify({
+        level: 'warn',
+        event: 'legacy_envelope_field_used',
+        field: 'entity_id',
+        ticket: 'OMN-3553',
+      })
+    );
+    return evt.entity_id;
+  }
+  return undefined;
+}
+
+/**
+ * Return the envelope timestamp from a raw event, preferring the canonical
+ * `envelope_timestamp` field and falling back to the legacy `emitted_at` alias.
+ *
+ * Emits a structured WARN log when the legacy alias is the only value
+ * present, enabling telemetry tracking for OMN-3553 expiry.
+ */
+export function getEnvelopeTimestamp(evt: RawEventEnvelope): string | undefined {
+  if (evt.envelope_timestamp) return evt.envelope_timestamp;
+  if (evt.emitted_at) {
+    console.warn(
+      JSON.stringify({
+        level: 'warn',
+        event: 'legacy_envelope_field_used',
+        field: 'emitted_at',
+        ticket: 'OMN-3553',
+      })
+    );
+    return evt.emitted_at;
+  }
+  return undefined;
+}
+
 // Node capabilities - generic, not hardcoded flags
 export const NodeCapabilitiesSchema = z.record(z.string(), z.unknown());
 export type NodeCapabilities = z.infer<typeof NodeCapabilitiesSchema>;
