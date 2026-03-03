@@ -15,7 +15,7 @@
 import { useState, useCallback, useEffect } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useWebSocket } from '@/hooks/useWebSocket';
-import { llmRoutingSource } from '@/lib/data-sources/llm-routing-source';
+import { llmRoutingSource, fetchByModel } from '@/lib/data-sources/llm-routing-source';
 import { queryKeys } from '@/lib/query-keys';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -61,7 +61,11 @@ import {
   POLLING_INTERVAL_SLOW,
   getPollingInterval,
 } from '@/lib/constants/query-config';
-import type { LlmRoutingTimeWindow, LlmRoutingDisagreement } from '@shared/llm-routing-types';
+import type {
+  LlmRoutingTimeWindow,
+  LlmRoutingDisagreement,
+  LlmRoutingByModel,
+} from '@shared/llm-routing-types';
 
 // ============================================================================
 // Constants
@@ -391,6 +395,40 @@ function DisagreementsTable({
   );
 }
 
+/**
+ * Horizontal bar chart showing agreement rate per model (OMN-3443).
+ * Uses VERSION_COLORS[0] (green) as the fill to match the existing palette.
+ */
+export function ModelEffectivenessChart({ data }: { data: LlmRoutingByModel[] }) {
+  if (data.length === 0) {
+    return (
+      <div className="text-gray-400 text-sm py-8 text-center">No model data available yet</div>
+    );
+  }
+  const chartData = data.map((d) => ({
+    model: d.model.split('/').pop() ?? d.model,
+    agreement: Math.round(d.agreement_rate * 100),
+  }));
+  return (
+    <ResponsiveContainer width="100%" height={Math.max(200, chartData.length * 48)}>
+      <BarChart data={chartData} layout="vertical" margin={{ left: 100, right: 40 }}>
+        <XAxis type="number" domain={[0, 100]} tickFormatter={(v: number) => `${v}%`} />
+        <YAxis type="category" dataKey="model" width={100} tick={{ fontSize: 11 }} />
+        <Tooltip
+          formatter={(v: number) => [`${v}%`, 'Agreement Rate']}
+          contentStyle={{ fontSize: '12px' }}
+        />
+        <Bar
+          dataKey="agreement"
+          name="Agreement Rate"
+          fill={VERSION_COLORS[0]}
+          radius={[0, 4, 4, 0]}
+        />
+      </BarChart>
+    </ResponsiveContainer>
+  );
+}
+
 // ============================================================================
 // Main Dashboard
 // ============================================================================
@@ -485,6 +523,17 @@ export default function LlmRoutingDashboard() {
     staleTime: 60_000,
   });
 
+  const {
+    data: byModel = [],
+    isLoading: byModelLoading,
+    isError: byModelError,
+    refetch: refetchByModel,
+  } = useQuery({
+    queryKey: queryKeys.llmRouting.byModel(timeWindow),
+    queryFn: () => fetchByModel(timeWindow),
+    staleTime: POLLING_INTERVAL_SLOW,
+  });
+
   // ── Helpers ──────────────────────────────────────────────────────────────
 
   const handleRefresh = () => {
@@ -493,6 +542,7 @@ export default function LlmRoutingDashboard() {
     void refetchVersion();
     void refetchDisagreements();
     void refetchTrend();
+    void refetchByModel();
   };
 
   // llmRoutingSource.isUsingMockData reads a mutable Set on the singleton.
@@ -501,7 +551,12 @@ export default function LlmRoutingDashboard() {
   const [isUsingMockData, setIsUsingMockData] = useState(false);
 
   const allSettled =
-    !summaryLoading && !latencyLoading && !versionLoading && !disagreementsLoading && !trendLoading;
+    !summaryLoading &&
+    !latencyLoading &&
+    !versionLoading &&
+    !disagreementsLoading &&
+    !trendLoading &&
+    !byModelLoading;
 
   // Single effect keyed on [allSettled, timeWindow].
   // - When timeWindow changes and queries are not yet settled: clear mock state
@@ -910,6 +965,30 @@ export default function LlmRoutingDashboard() {
         isLoading={disagreementsLoading}
         isError={disagreementsError}
       />
+
+      {/* ── Per-Model Agreement Rate (OMN-3443) ──────────────────────────── */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <BarChart3 className="h-4 w-4" />
+            Agreement Rate by Model
+          </CardTitle>
+          <CardDescription>
+            Horizontal bar chart of LLM vs fuzzy agreement rate per model
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          {byModelError ? (
+            <p className="text-sm text-destructive py-4 text-center">
+              Failed to load per-model data.
+            </p>
+          ) : byModelLoading ? (
+            <Skeleton className="h-52 w-full" />
+          ) : (
+            <ModelEffectivenessChart data={byModel} />
+          )}
+        </CardContent>
+      </Card>
     </div>
   );
 }

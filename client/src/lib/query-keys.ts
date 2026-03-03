@@ -647,6 +647,9 @@ export const queryKeys = {
 
     /** Multi-metric trend over time */
     trend: (window: string) => [...queryKeys.llmRouting.all, 'trend', window] as const,
+
+    /** Per-model effectiveness breakdown (OMN-3443) */
+    byModel: (window: string) => [...queryKeys.llmRouting.all, 'by-model', window] as const,
   },
   // ============================================================================
   // Delegation Metrics (OMN-2284)
