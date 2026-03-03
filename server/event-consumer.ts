@@ -1,4 +1,4 @@
-import { Kafka, Consumer, KafkaMessage } from 'kafkajs';
+import { Kafka, Consumer, Producer, KafkaMessage } from 'kafkajs';
 import { EventEmitter } from 'events';
 import crypto from 'node:crypto';
 import { getIntelligenceDb } from './storage';
@@ -801,6 +801,7 @@ export interface RawIntentQueryResponseEvent {
 export class EventConsumer extends EventEmitter {
   private kafka: Kafka;
   private consumer: Consumer | null = null;
+  private producer: Producer | null = null;
   private isRunning = false;
   private isStopping = false;
 
@@ -981,6 +982,7 @@ export class EventConsumer extends EventEmitter {
     this.consumer = this.kafka.consumer({
       groupId: 'omnidash-consumers-v2', // Changed to force reading from beginning
     });
+    this.producer = this.kafka.producer();
 
     // Log broker disconnects so the reconnect loop's recovery is visible in logs.
     // The loop itself handles the actual reconnect — this listener is informational only.
@@ -1109,6 +1111,16 @@ export class EventConsumer extends EventEmitter {
       throw new Error('Consumer not initialized');
     }
 
+    // Connect the producer (used for startup re-introspection requests).
+    // Fail-open: if connect fails, log and continue — producer is non-critical.
+    if (this.producer) {
+      this.producer.connect().catch((err: unknown) => {
+        intentLogger.warn(
+          `[EventConsumer] Producer connect failed (non-critical): ${err instanceof Error ? err.message : String(err)}`
+        );
+      });
+    }
+
     for (let attempt = 0; attempt < maxRetries; attempt++) {
       try {
         await this.consumer.connect();
@@ -1189,6 +1201,42 @@ export class EventConsumer extends EventEmitter {
             e
           );
         }
+      }
+
+      // OMN-3334: Request re-introspection on startup when node registry is empty.
+      //
+      // omniclaude emits node-introspection events once at plugin start. If omnidash
+      // restarts after that window, the registry is empty until omniclaude restarts.
+      // Emitting a request-introspection command triggers running nodes to re-emit their
+      // introspection events, making the Node Registry self-healing on restart.
+      //
+      // Fire-and-forget: per CLAUDE.md Kafka rules, never block the calling thread.
+      // Fail-open: if the producer isn't ready yet, log and continue.
+      if (this.registeredNodes.size === 0 && this.canonicalNodes.size === 0) {
+        intentLogger.info(
+          '[EventConsumer] Node registry empty after preload — requesting re-introspection [OMN-3334]'
+        );
+        Promise.resolve().then(async () => {
+          try {
+            if (!this.producer) return;
+            await this.producer.send({
+              topic: TOPIC.REQUEST_INTROSPECTION,
+              messages: [
+                {
+                  value: JSON.stringify({
+                    reason: 'omnidash_startup',
+                    timestamp: new Date().toISOString(),
+                  }),
+                },
+              ],
+            });
+            intentLogger.info('[EventConsumer] Re-introspection request emitted successfully');
+          } catch (err) {
+            intentLogger.warn(
+              `[EventConsumer] Re-introspection request failed (non-critical): ${err instanceof Error ? err.message : String(err)}`
+            );
+          }
+        });
       }
 
       // -----------------------------------------------------------------------
@@ -4029,6 +4077,14 @@ export class EventConsumer extends EventEmitter {
 
       this.isRunning = false;
       await this.consumer.disconnect();
+
+      // Disconnect the startup re-introspection producer (OMN-3334).
+      if (this.producer) {
+        await this.producer.disconnect().catch((err) => {
+          console.warn('[EventConsumer] Error disconnecting producer:', err);
+        });
+        this.producer = null;
+      }
 
       // Stop the catalog manager (its own consumer/producer pair).
       if (this.catalogManager) {
