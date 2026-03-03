@@ -3087,6 +3087,19 @@ export class EventConsumer extends EventEmitter {
       // existing metrics; we must overlay the payload data explicitly).
       this.propagateHeartbeatMetrics(payload);
 
+      // Emit nodeHeartbeatUpdate with real timestamp so MonotonicMergeTracker
+      // accepts the update (sentinel-0 seed path would be rejected). (OMN-3541)
+      const newNodeHeartbeatEvent: NodeHeartbeatEvent = {
+        id: envelope.correlation_id ?? crypto.randomUUID(),
+        nodeId: payload.node_id,
+        uptimeSeconds: payload.uptime_seconds ?? 0,
+        activeOperationsCount: payload.active_operations_count ?? 0,
+        memoryUsageMb: payload.memory_usage_mb ?? 0,
+        cpuUsagePercent: payload.cpu_usage_percent ?? 0,
+        createdAt: new Date(emittedAtMs),
+      };
+      this.emit('nodeHeartbeatUpdate', newNodeHeartbeatEvent);
+
       // Emit dashboard event so newly discovered nodes appear immediately
       this.emit('nodeRegistryUpdate', this.getRegisteredNodes());
       return;
@@ -3110,6 +3123,23 @@ export class EventConsumer extends EventEmitter {
     // displays current values (syncCanonicalToRegistered only preserves
     // existing metrics; we must overlay the payload data explicitly).
     this.propagateHeartbeatMetrics(payload);
+
+    // Emit nodeHeartbeatUpdate with the real envelope timestamp so the
+    // NodeRegistryProjection's MonotonicMergeTracker accepts the update.
+    // Without this, nodeRegistryUpdate routes through node-registry-seed which
+    // uses MISSING_TIMESTAMP_SENTINEL_MS (epoch 0), causing the merge tracker
+    // to reject updates when the DB preload already recorded real timestamps.
+    // (OMN-3541)
+    const heartbeatEvent: NodeHeartbeatEvent = {
+      id: envelope.correlation_id ?? crypto.randomUUID(),
+      nodeId: payload.node_id,
+      uptimeSeconds: payload.uptime_seconds ?? 0,
+      activeOperationsCount: payload.active_operations_count ?? 0,
+      memoryUsageMb: payload.memory_usage_mb ?? 0,
+      cpuUsagePercent: payload.cpu_usage_percent ?? 0,
+      createdAt: new Date(emittedAtMs),
+    };
+    this.emit('nodeHeartbeatUpdate', heartbeatEvent);
 
     // Emit dashboard event for WebSocket broadcast
     this.emit('nodeRegistryUpdate', this.getRegisteredNodes());
