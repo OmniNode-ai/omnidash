@@ -14,12 +14,12 @@ import type {
   LlmRoutingDisagreement,
   LlmRoutingTrendPoint,
   LlmRoutingTimeWindow,
+  LlmRoutingFuzzyConfidenceBucket,
 } from '@shared/llm-routing-types';
 import {
   getMockLlmRoutingSummary,
   getMockLlmRoutingLatency,
   getMockLlmRoutingByVersion,
-  getMockLlmRoutingByModel,
   getMockLlmRoutingDisagreements,
   getMockLlmRoutingTrend,
 } from '@/lib/mock-data/llm-routing-mock';
@@ -162,38 +162,6 @@ class LlmRoutingSource {
     }
   }
 
-  /**
-   * Fetch per-model effectiveness metrics including token averages (OMN-3449).
-   * Calls GET /api/llm-routing/by-model?window=<window>.
-   */
-  async byModel(
-    window: LlmRoutingTimeWindow = '7d',
-    options: LlmRoutingFetchOptions = {}
-  ): Promise<LlmRoutingByModel[]> {
-    const { fallbackToMock = false, mockOnEmpty = false } = options;
-    try {
-      const response = await fetch(`${this.baseUrl}/by-model${this.buildWindowParam(window)}`);
-      if (!response.ok) throw new Error(`HTTP ${response.status}`);
-      const data: LlmRoutingByModel[] = await response.json();
-      if (!Array.isArray(data)) {
-        throw new Error('Malformed response: expected array');
-      }
-      if (mockOnEmpty && data.length === 0) {
-        this.markMock('by-model');
-        return getMockLlmRoutingByModel(window);
-      }
-      this.markReal('by-model');
-      return data;
-    } catch (err) {
-      console.warn('[LlmRoutingSource] fetch failed for by-model:', err);
-      if (fallbackToMock) {
-        this.markMock('by-model');
-        return getMockLlmRoutingByModel(window);
-      }
-      throw new Error('Failed to fetch LLM routing by model');
-    }
-  }
-
   /** Fetch top LLM vs fuzzy disagreement pairs. */
   async disagreements(
     window: LlmRoutingTimeWindow = '7d',
@@ -251,7 +219,99 @@ class LlmRoutingSource {
       throw new Error('Failed to fetch LLM routing trend');
     }
   }
+
+  /** Fetch per-model effectiveness breakdown (OMN-3443). */
+  async byModel(
+    window: LlmRoutingTimeWindow = '7d',
+    options: LlmRoutingFetchOptions = {}
+  ): Promise<LlmRoutingByModel[]> {
+    const { fallbackToMock = false } = options;
+    try {
+      const response = await fetch(`${this.baseUrl}/by-model${this.buildWindowParam(window)}`);
+      if (!response.ok) throw new Error(`HTTP ${response.status}`);
+      const data: LlmRoutingByModel[] = await response.json();
+      if (!Array.isArray(data)) {
+        throw new Error('Malformed response: expected array');
+      }
+      return data;
+    } catch (err) {
+      console.warn('[LlmRoutingSource] fetch failed for by-model:', err);
+      if (fallbackToMock) {
+        return [];
+      }
+      throw new Error('Failed to fetch LLM routing by model');
+    }
+  }
 }
 
 /** Singleton data source instance shared across components. */
 export const llmRoutingSource = new LlmRoutingSource();
+
+/**
+ * Fetch per-model effectiveness data for the given time window (OMN-3443).
+ *
+ * Standalone function that delegates to the singleton source.
+ * Validate inline — do NOT import from server/llm-routing-schemas.ts.
+ */
+export async function fetchByModel(window: LlmRoutingTimeWindow): Promise<LlmRoutingByModel[]> {
+  return llmRoutingSource.byModel(window);
+}
+
+/**
+ * Fetch the list of distinct model identifiers seen in the current window (OMN-3443).
+ *
+ * Derives the list from `by-model` data rather than a separate endpoint, so
+ * no additional API round-trip is needed.
+ */
+export async function fetchAvailableModels(window: LlmRoutingTimeWindow): Promise<string[]> {
+  const rows = await llmRoutingSource.byModel(window);
+  return rows.map((r) => r.model);
+}
+
+// ============================================================================
+// Standalone fetch helpers (OMN-3447)
+// Used by ModelSwitcher and PromptBump components outside the LlmRoutingSource
+// singleton pattern because they are lightweight single-fetch operations.
+// ============================================================================
+
+const _routingBase = buildApiUrl('/api/llm-routing');
+const _configBase = buildApiUrl('/api/routing-config');
+
+/**
+ * Fetch fuzzy confidence distribution for a given time window.
+ * Returns an array of buckets sorted by sort_key.
+ */
+export async function fetchFuzzyConfidence(
+  window: string
+): Promise<LlmRoutingFuzzyConfidenceBucket[]> {
+  const response = await fetch(
+    `${_routingBase}/fuzzy-confidence?window=${encodeURIComponent(window)}`
+  );
+  if (!response.ok) throw new Error(`[fetchFuzzyConfidence] HTTP ${response.status}`);
+  const data: LlmRoutingFuzzyConfidenceBucket[] = await response.json();
+  if (!Array.isArray(data)) throw new Error('[fetchFuzzyConfidence] Malformed response');
+  return data;
+}
+
+/**
+ * Fetch a single routing config value by key.
+ * Returns null when the key has no stored value.
+ */
+export async function fetchRoutingConfig(key: string): Promise<string | null> {
+  const response = await fetch(`${_configBase}/${encodeURIComponent(key)}`);
+  if (!response.ok) throw new Error(`[fetchRoutingConfig] HTTP ${response.status}`);
+  const data: { key: string; value: string | null } = await response.json();
+  return data.value ?? null;
+}
+
+/**
+ * Upsert a routing config value.
+ */
+export async function putRoutingConfig(key: string, value: string): Promise<void> {
+  const response = await fetch(`${_configBase}/${encodeURIComponent(key)}`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ value }),
+  });
+  if (!response.ok) throw new Error(`[putRoutingConfig] HTTP ${response.status}`);
+}
