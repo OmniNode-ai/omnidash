@@ -25,6 +25,7 @@ import type {
   LlmRoutingSummary,
   LlmRoutingLatencyPoint,
   LlmRoutingByVersion,
+  LlmRoutingByModel,
   LlmRoutingDisagreement,
   LlmRoutingTrendPoint,
   LlmRoutingTimeWindow,
@@ -40,6 +41,7 @@ export interface LlmRoutingPayload {
   summary: LlmRoutingSummary;
   latency: LlmRoutingLatencyPoint[];
   byVersion: LlmRoutingByVersion[];
+  byModel: LlmRoutingByModel[];
   disagreements: LlmRoutingDisagreement[];
   trend: LlmRoutingTrendPoint[];
   /**
@@ -123,6 +125,7 @@ export class LlmRoutingProjection extends DbBackedProjectionView<LlmRoutingPaylo
       },
       latency: [],
       byVersion: [],
+      byModel: [],
       disagreements: [],
       trend: [],
     };
@@ -156,15 +159,16 @@ export class LlmRoutingProjection extends DbBackedProjectionView<LlmRoutingPaylo
     // Default window for the pre-warmed snapshot: 7d
     const window: LlmRoutingTimeWindow = '7d';
 
-    const [summary, latency, byVersion, disagreements, trend] = await Promise.all([
+    const [summary, latency, byVersion, byModel, disagreements, trend] = await Promise.all([
       this.querySummary(db, window),
       this.queryLatency(db, window),
       this.queryByVersion(db, window),
+      this.queryByModel(db, window),
       this.queryDisagreements(db, window),
       this.queryTrend(db, window),
     ]);
 
-    return { summary, latency, byVersion, disagreements, trend };
+    return { summary, latency, byVersion, byModel, disagreements, trend };
   }
 
   // --------------------------------------------------------------------------
@@ -339,6 +343,45 @@ export class LlmRoutingProjection extends DbBackedProjectionView<LlmRoutingPaylo
     });
   }
 
+  async queryByModel(db: Db, window: LlmRoutingTimeWindow = '7d'): Promise<LlmRoutingByModel[]> {
+    const cutoff = windowCutoff(window);
+
+    const result = await db.execute(sql`
+      SELECT
+        COALESCE(model, 'unknown')                                                AS model,
+        COUNT(*)::int                                                             AS total,
+        SUM(CASE WHEN agreement THEN 1 ELSE 0 END)::int                          AS agreed,
+        SUM(CASE WHEN NOT agreement THEN 1 ELSE 0 END)::int                      AS disagreed,
+        ROUND(AVG(llm_latency_ms))::int                                          AS avg_llm_latency_ms,
+        COALESCE(AVG(cost_usd), 0)::float8                                       AS avg_cost_usd,
+        0::int                                                                   AS prompt_tokens_avg,
+        0::int                                                                   AS completion_tokens_avg
+      FROM llm_routing_decisions
+      WHERE created_at >= ${cutoff}
+      GROUP BY model
+      ORDER BY total DESC
+    `);
+
+    const rows = result.rows as Array<Record<string, unknown>>;
+    return rows.map((r) => {
+      const total = Number(r.total ?? 0);
+      const agreed = Number(r.agreed ?? 0);
+      const disagreed = Number(r.disagreed ?? 0);
+      const nonFallback = agreed + disagreed;
+      return {
+        model: String(r.model ?? 'unknown'),
+        total,
+        agreed,
+        disagreed,
+        agreement_rate: nonFallback > 0 ? agreed / nonFallback : 0,
+        avg_llm_latency_ms: Number(r.avg_llm_latency_ms ?? 0),
+        avg_cost_usd: parseFloat(String(r.avg_cost_usd ?? '0')),
+        prompt_tokens_avg: Number(r.prompt_tokens_avg ?? 0),
+        completion_tokens_avg: Number(r.completion_tokens_avg ?? 0),
+      };
+    });
+  }
+
   async queryDisagreements(
     db: Db,
     window: LlmRoutingTimeWindow = '7d'
@@ -468,14 +511,16 @@ export class LlmRoutingProjection extends DbBackedProjectionView<LlmRoutingPaylo
       this.querySummary(db, window),
       this.queryLatency(db, window),
       this.queryByVersion(db, window),
+      this.queryByModel(db, window),
       this.queryDisagreements(db, window),
       this.queryTrend(db, window),
     ])
-      .then(([summary, latency, byVersion, disagreements, trend]) => {
+      .then(([summary, latency, byVersion, byModel, disagreements, trend]) => {
         const payload: LlmRoutingPayload = {
           summary,
           latency,
           byVersion,
+          byModel,
           disagreements,
           trend,
           window,
