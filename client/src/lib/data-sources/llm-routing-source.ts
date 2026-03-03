@@ -13,6 +13,7 @@ import type {
   LlmRoutingDisagreement,
   LlmRoutingTrendPoint,
   LlmRoutingTimeWindow,
+  LlmRoutingFuzzyConfidenceBucket,
 } from '@shared/llm-routing-types';
 import {
   getMockLlmRoutingSummary,
@@ -221,3 +222,51 @@ class LlmRoutingSource {
 
 /** Singleton data source instance shared across components. */
 export const llmRoutingSource = new LlmRoutingSource();
+
+// ============================================================================
+// Standalone fetch helpers (OMN-3447)
+// Used by ModelSwitcher and PromptBump components outside the LlmRoutingSource
+// singleton pattern because they are lightweight single-fetch operations.
+// ============================================================================
+
+const _routingBase = buildApiUrl('/api/llm-routing');
+const _configBase = buildApiUrl('/api/routing-config');
+
+/**
+ * Fetch fuzzy confidence distribution for a given time window.
+ * Returns an array of buckets sorted by sort_key.
+ */
+export async function fetchFuzzyConfidence(
+  window: string
+): Promise<LlmRoutingFuzzyConfidenceBucket[]> {
+  const response = await fetch(
+    `${_routingBase}/fuzzy-confidence?window=${encodeURIComponent(window)}`
+  );
+  if (!response.ok) throw new Error(`[fetchFuzzyConfidence] HTTP ${response.status}`);
+  const data: LlmRoutingFuzzyConfidenceBucket[] = await response.json();
+  if (!Array.isArray(data)) throw new Error('[fetchFuzzyConfidence] Malformed response');
+  return data;
+}
+
+/**
+ * Fetch a single routing config value by key.
+ * Returns null when the key has no stored value.
+ */
+export async function fetchRoutingConfig(key: string): Promise<string | null> {
+  const response = await fetch(`${_configBase}/${encodeURIComponent(key)}`);
+  if (!response.ok) throw new Error(`[fetchRoutingConfig] HTTP ${response.status}`);
+  const data: { key: string; value: string | null } = await response.json();
+  return data.value ?? null;
+}
+
+/**
+ * Upsert a routing config value.
+ */
+export async function putRoutingConfig(key: string, value: string): Promise<void> {
+  const response = await fetch(`${_configBase}/${encodeURIComponent(key)}`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ value }),
+  });
+  if (!response.ok) throw new Error(`[putRoutingConfig] HTTP ${response.status}`);
+}
