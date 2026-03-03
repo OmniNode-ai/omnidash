@@ -19,6 +19,7 @@ import type {
   LlmRoutingSummary,
   LlmRoutingLatencyPoint,
   LlmRoutingByVersion,
+  LlmRoutingByModel,
   LlmRoutingDisagreement,
   LlmRoutingTrendPoint,
 } from '@shared/llm-routing-types';
@@ -154,6 +155,23 @@ router.get('/trend', async (req, res) => {
   } catch (error) {
     console.error('[llm-routing] Error fetching trend:', error);
     return res.status(500).json({ error: 'Failed to fetch LLM routing trend' });
+  }
+});
+
+// ============================================================================
+// GET /api/llm-routing/by-model?window=7d
+// ============================================================================
+
+router.get('/by-model', async (req, res) => {
+  try {
+    const timeWindow = validateWindow(req, res);
+    if (timeWindow === null) return;
+    const payload = await fetchPayload(timeWindow);
+    setDegradedHeader(res, timeWindow, payload);
+    return res.json(payload.byModel satisfies LlmRoutingByModel[]);
+  } catch (error) {
+    console.error('[llm-routing] Error fetching by-model:', error);
+    return res.status(500).json({ error: 'Failed to fetch LLM routing by model' });
   }
 });
 
