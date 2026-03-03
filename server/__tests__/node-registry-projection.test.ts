@@ -692,6 +692,141 @@ describe('NodeRegistryProjection', () => {
   });
 
   // --------------------------------------------------------------------------
+  // OMN-3541: canonical heartbeat after DB preload updates projection
+  // --------------------------------------------------------------------------
+
+  describe('canonical heartbeat after DB preload (OMN-3541)', () => {
+    it('should accept heartbeat with real timestamp after DB preload with real timestamp', () => {
+      // Simulate DB preload: a real-timestamped introspection event establishes
+      // node-1 in the merge tracker (mirrors rows loaded from omnidash_analytics).
+      const dbPreloadTimeMs = new Date('2026-03-03T02:27:20Z').getTime();
+      projection.applyEvent(
+        introspectionEvent('node-1', {
+          eventTimeMs: dbPreloadTimeMs,
+          ingestSeq: 1,
+          payload: {
+            nodeId: 'node-1',
+            nodeType: 'COMPUTE',
+            currentState: 'active',
+            nodeVersion: '1.0.0',
+          },
+        })
+      );
+
+      // Confirm the preload is in place
+      let snapshot = projection.getSnapshot();
+      expect(snapshot.payload.nodes).toHaveLength(1);
+      expect(snapshot.payload.nodes[0].nodeType).toBe('COMPUTE');
+
+      // A canonical heartbeat now arrives via the node-heartbeat path (the fix
+      // in handleCanonicalNodeHeartbeat emits nodeHeartbeatUpdate with the real
+      // envelope_timestamp instead of routing through the sentinel-0 seed path).
+      // The timestamp is newer than the DB preload, so the merge tracker should
+      // accept it and the node should be updated.
+      const canonicalHeartbeatTimeMs = dbPreloadTimeMs + 60_000; // 1 minute later
+      const applied = projection.applyEvent(
+        heartbeatEvent('node-1', {
+          eventTimeMs: canonicalHeartbeatTimeMs,
+          ingestSeq: 2,
+          payload: {
+            nodeId: 'node-1',
+            uptimeSeconds: 3600,
+            memoryUsageMb: 512,
+            cpuUsagePercent: 15,
+          },
+        })
+      );
+
+      expect(applied).toBe(true);
+      snapshot = projection.getSnapshot();
+      expect(snapshot.payload.nodes[0].uptimeSeconds).toBe(3600);
+      expect(snapshot.payload.nodes[0].memoryUsageMb).toBe(512);
+      expect(snapshot.payload.nodes[0].cpuUsagePercent).toBe(15);
+    });
+
+    it('should reject sentinel-0 seed after node was established with a real-timestamped event', () => {
+      // Simulate DB preload: a node-introspection event with a real timestamp
+      // establishes node-1 in the merge tracker with a real baseline.
+      // This mirrors production: the DB stores rows with real timestamps from
+      // prior runtime sessions. Those timestamps are loaded via introspection
+      // or heartbeat events with real eventTimeMs.
+      const dbPreloadTimeMs = new Date('2026-03-03T02:27:20Z').getTime();
+      projection.applyEvent(
+        introspectionEvent('node-1', {
+          eventTimeMs: dbPreloadTimeMs,
+          ingestSeq: 1,
+          payload: {
+            nodeId: 'node-1',
+            nodeType: 'COMPUTE',
+            currentState: 'active',
+            nodeVersion: '1.0.0',
+          },
+        })
+      );
+
+      // A registry seed arrives with sentinel epoch-0 (the pre-fix canonical
+      // heartbeat path: nodeRegistryUpdate → node-registry-seed → handleSeed →
+      // MISSING_TIMESTAMP_SENTINEL_MS). handleSeed always calls mergeTracker
+      // with MISSING_TIMESTAMP_SENTINEL_MS regardless of event.eventTimeMs.
+      // This should be rejected because 0 < dbPreloadTimeMs.
+      const applied = projection.applyEvent(
+        seedEvent(
+          [
+            {
+              nodeId: 'node-1',
+              nodeType: 'EFFECT',
+              state: 'pending_registration',
+              version: '2.0.0',
+            },
+          ],
+          { ingestSeq: 2 } // eventTimeMs irrelevant: handleSeed uses MISSING_TIMESTAMP_SENTINEL_MS internally
+        )
+      );
+
+      expect(applied).toBe(false);
+      // Node state should remain from the real-timestamped DB preload event
+      const snapshot = projection.getSnapshot();
+      expect(snapshot.payload.nodes[0].nodeType).toBe('COMPUTE');
+      expect(snapshot.payload.nodes[0].state).toBe('active');
+    });
+
+    it('should create new node from canonical heartbeat even when not in DB preload', () => {
+      // Simulate DB preload for a different (existing) node
+      const dbPreloadTimeMs = new Date('2026-03-03T02:27:20Z').getTime();
+      projection.applyEvent(
+        introspectionEvent('existing-node', {
+          eventTimeMs: dbPreloadTimeMs,
+          ingestSeq: 1,
+          payload: { nodeId: 'existing-node', nodeType: 'COMPUTE', currentState: 'active' },
+        })
+      );
+
+      // A canonical heartbeat for a brand-new node arrives (not in DB preload).
+      // The merge tracker has no baseline for this node, so it should be accepted.
+      const newNodeHeartbeatTimeMs = dbPreloadTimeMs + 120_000;
+      const applied = projection.applyEvent(
+        heartbeatEvent('new-effect-node', {
+          eventTimeMs: newNodeHeartbeatTimeMs,
+          ingestSeq: 2,
+          payload: {
+            nodeId: 'new-effect-node',
+            uptimeSeconds: 30,
+            memoryUsageMb: 128,
+            cpuUsagePercent: 5,
+          },
+        })
+      );
+
+      expect(applied).toBe(true);
+      const snapshot = projection.getSnapshot();
+      expect(snapshot.payload.nodes).toHaveLength(2);
+      const newNode = snapshot.payload.nodes.find((n) => n.nodeId === 'new-effect-node');
+      expect(newNode).toBeDefined();
+      expect(newNode!.uptimeSeconds).toBe(30);
+    });
+  });
+
+  // --------------------------------------------------------------------------
   // Reset
   // --------------------------------------------------------------------------
 
