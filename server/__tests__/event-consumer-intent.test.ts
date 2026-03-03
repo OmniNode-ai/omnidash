@@ -71,6 +71,11 @@ vi.mock('kafkajs', () => ({
       subscribe: mockConsumerSubscribe,
       run: mockConsumerRun,
     }),
+    producer: vi.fn().mockReturnValue({
+      connect: vi.fn().mockResolvedValue(undefined),
+      disconnect: vi.fn().mockResolvedValue(undefined),
+      send: vi.fn().mockResolvedValue(undefined),
+    }),
     admin: vi.fn().mockReturnValue({
       connect: mockAdminConnect,
       disconnect: mockAdminDisconnect,
