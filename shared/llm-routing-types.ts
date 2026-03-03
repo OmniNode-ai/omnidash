@@ -92,6 +92,15 @@ export interface LlmRoutingDecisionEvent {
   cost_usd?: number;
   /** Schema version of the event */
   schema_version?: string;
+  /**
+   * Token counts added by OMN-3448 (omniclaude ModelRoutingResult).
+   * Optional — absent in events emitted before Task 5.
+   */
+  prompt_tokens?: number;
+  completion_tokens?: number;
+  total_tokens?: number;
+  /** Whether the omninode routing plugin was active for this decision. */
+  omninode_enabled?: boolean;
 }
 
 // ============================================================================
@@ -134,6 +143,18 @@ export interface LlmRoutingSummary {
   };
   /** Rolling trend for agreement rate over the selected window */
   agreement_rate_trend: Array<{ date: string; value: number }>;
+  /**
+   * Average prompt tokens per routing decision in the window (OMN-3449).
+   * Computed with AVG(NULLIF(prompt_tokens, 0)) to exclude pre-Task-5 rows.
+   * Zero means no token data available yet.
+   */
+  avg_prompt_tokens: number;
+  /**
+   * Average completion tokens per routing decision in the window (OMN-3449).
+   * Computed with AVG(NULLIF(completion_tokens, 0)) to exclude pre-Task-5 rows.
+   * Zero means no token data available yet.
+   */
+  avg_completion_tokens: number;
 }
 
 /** Latency distribution data point per routing method. */
@@ -212,10 +233,10 @@ export interface LlmRoutingTrendPoint {
 export type LlmRoutingTimeWindow = '24h' | '7d' | '30d';
 
 /**
- * Per-model effectiveness metrics (OMN-3442).
+ * Per-model effectiveness metrics (OMN-3442, OMN-3449).
  * Groups routing decisions by the `model` column.
- * prompt_tokens_avg and completion_tokens_avg are always 0 until
- * Tasks 5/6 populate those DB columns.
+ * Token averages use AVG(NULLIF(col, 0)) so pre-Task-5 rows (col=0) are
+ * excluded from the average rather than dragging it down.
  */
 export interface LlmRoutingByModel {
   /** LLM model identifier (COALESCE(model, 'unknown')) */
@@ -232,9 +253,15 @@ export interface LlmRoutingByModel {
   avg_llm_latency_ms: number;
   /** Average cost per decision (USD) */
   avg_cost_usd: number;
-  /** Average prompt tokens — 0 until Task 5/6 populate DB columns */
+  /**
+   * Average prompt tokens for this model (OMN-3449).
+   * Zero when no token data has been stored yet (pre-Task-5 rows only).
+   */
   prompt_tokens_avg: number;
-  /** Average completion tokens — 0 until Task 5/6 populate DB columns */
+  /**
+   * Average completion tokens for this model (OMN-3449).
+   * Zero when no token data has been stored yet (pre-Task-5 rows only).
+   */
   completion_tokens_avg: number;
 }
 

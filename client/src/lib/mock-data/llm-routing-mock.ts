@@ -14,6 +14,7 @@ import type {
   LlmRoutingSummary,
   LlmRoutingLatencyPoint,
   LlmRoutingByVersion,
+  LlmRoutingByModel,
   LlmRoutingDisagreement,
   LlmRoutingTrendPoint,
   LlmRoutingTimeWindow,
@@ -87,7 +88,51 @@ export function getMockLlmRoutingSummary(window: LlmRoutingTimeWindow): LlmRouti
         : window === '7d'
           ? AGREEMENT_TREND_7D
           : AGREEMENT_TREND_30D,
+    avg_prompt_tokens: 512,
+    avg_completion_tokens: 128,
   };
+}
+
+// ============================================================================
+// By Model
+// ============================================================================
+
+export function getMockLlmRoutingByModel(_window: LlmRoutingTimeWindow): LlmRoutingByModel[] {
+  return [
+    {
+      model: 'claude-sonnet-4-6',
+      total: 1840,
+      agreed: 1190,
+      disagreed: 510,
+      agreement_rate: 1190 / (1190 + 510),
+      avg_llm_latency_ms: 145,
+      avg_cost_usd: 0.000085,
+      prompt_tokens_avg: 520,
+      completion_tokens_avg: 130,
+    },
+    {
+      model: 'claude-opus-4-6',
+      total: 620,
+      agreed: 430,
+      disagreed: 150,
+      agreement_rate: 430 / (430 + 150),
+      avg_llm_latency_ms: 290,
+      avg_cost_usd: 0.00042,
+      prompt_tokens_avg: 610,
+      completion_tokens_avg: 180,
+    },
+    {
+      model: 'unknown',
+      total: 280,
+      agreed: 160,
+      disagreed: 95,
+      agreement_rate: 160 / (160 + 95),
+      avg_llm_latency_ms: 0,
+      avg_cost_usd: 0,
+      prompt_tokens_avg: 0,
+      completion_tokens_avg: 0,
+    },
+  ];
 }
 
 // ============================================================================

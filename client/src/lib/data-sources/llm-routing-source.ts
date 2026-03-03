@@ -10,6 +10,7 @@ import type {
   LlmRoutingSummary,
   LlmRoutingLatencyPoint,
   LlmRoutingByVersion,
+  LlmRoutingByModel,
   LlmRoutingDisagreement,
   LlmRoutingTrendPoint,
   LlmRoutingTimeWindow,
@@ -18,6 +19,7 @@ import {
   getMockLlmRoutingSummary,
   getMockLlmRoutingLatency,
   getMockLlmRoutingByVersion,
+  getMockLlmRoutingByModel,
   getMockLlmRoutingDisagreements,
   getMockLlmRoutingTrend,
 } from '@/lib/mock-data/llm-routing-mock';
@@ -157,6 +159,38 @@ class LlmRoutingSource {
         return getMockLlmRoutingByVersion(window);
       }
       throw new Error('Failed to fetch LLM routing by version');
+    }
+  }
+
+  /**
+   * Fetch per-model effectiveness metrics including token averages (OMN-3449).
+   * Calls GET /api/llm-routing/by-model?window=<window>.
+   */
+  async byModel(
+    window: LlmRoutingTimeWindow = '7d',
+    options: LlmRoutingFetchOptions = {}
+  ): Promise<LlmRoutingByModel[]> {
+    const { fallbackToMock = false, mockOnEmpty = false } = options;
+    try {
+      const response = await fetch(`${this.baseUrl}/by-model${this.buildWindowParam(window)}`);
+      if (!response.ok) throw new Error(`HTTP ${response.status}`);
+      const data: LlmRoutingByModel[] = await response.json();
+      if (!Array.isArray(data)) {
+        throw new Error('Malformed response: expected array');
+      }
+      if (mockOnEmpty && data.length === 0) {
+        this.markMock('by-model');
+        return getMockLlmRoutingByModel(window);
+      }
+      this.markReal('by-model');
+      return data;
+    } catch (err) {
+      console.warn('[LlmRoutingSource] fetch failed for by-model:', err);
+      if (fallbackToMock) {
+        this.markMock('by-model');
+        return getMockLlmRoutingByModel(window);
+      }
+      throw new Error('Failed to fetch LLM routing by model');
     }
   }
 
