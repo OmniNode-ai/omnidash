@@ -34,6 +34,9 @@ export const LlmRoutingSummarySchema = z.object({
       value: z.number().min(0).max(1),
     })
   ),
+  /** Token averages added by OMN-3449 — optional so existing callers stay compatible. */
+  avg_prompt_tokens: z.number().int().min(0).optional().default(0),
+  avg_completion_tokens: z.number().int().min(0).optional().default(0),
 });
 
 /** Zod schema for LlmRoutingLatencyPoint. */
@@ -76,4 +79,22 @@ export const LlmRoutingTrendPointSchema = z.object({
   fallback_rate: z.number().min(0).max(1),
   avg_cost_usd: z.number().nonnegative(),
   total_decisions: z.number().int().nonnegative(),
+});
+
+/**
+ * Zod schema for LlmRoutingByModel (OMN-3449).
+ *
+ * Token fields are optional with default 0 so events emitted before Task 5
+ * (OMN-3448) — which lack token fields — still parse successfully.
+ */
+export const LlmRoutingByModelSchema = z.object({
+  model: z.string(),
+  total: z.number().int().nonnegative(),
+  agreed: z.number().int().nonnegative(),
+  disagreed: z.number().int().nonnegative(),
+  agreement_rate: z.number().min(0).max(1),
+  avg_llm_latency_ms: z.number().nonnegative(),
+  avg_cost_usd: z.number().nonnegative(),
+  prompt_tokens_avg: z.number().int().min(0).optional().default(0),
+  completion_tokens_avg: z.number().int().min(0).optional().default(0),
 });

@@ -1356,6 +1356,18 @@ export class ReadModelConsumer {
           ? llmAgent === fuzzyAgent
           : usedFallback; // when fuzzy candidate is absent, agreement is implied by fallback
 
+    // Token fields (OMN-3449) — present in events emitted after OMN-3448.
+    // Default to 0 for pre-Task-5 events that lack these fields.
+    const promptTokens = Number(evt.prompt_tokens ?? 0);
+    const completionTokens = Number(evt.completion_tokens ?? 0);
+    // Derive total_tokens from components when the event provides 0 but components are non-zero.
+    const rawTotalTokens = Number(evt.total_tokens ?? 0);
+    const totalTokens =
+      rawTotalTokens === 0 && (promptTokens > 0 || completionTokens > 0)
+        ? promptTokens + completionTokens
+        : rawTotalTokens;
+    const omninodeEnabled = evt.omninode_enabled !== false; // default true when absent
+
     try {
       await db.execute(sql`
         INSERT INTO llm_routing_decisions (
@@ -1373,6 +1385,10 @@ export class ReadModelConsumer {
           intent,
           model,
           cost_usd,
+          prompt_tokens,
+          completion_tokens,
+          total_tokens,
+          omninode_enabled,
           created_at
         ) VALUES (
           ${correlationId},
@@ -1389,6 +1405,10 @@ export class ReadModelConsumer {
           ${(evt.intent as string) ?? null},
           ${model},
           ${evt.cost_usd != null && !Number.isNaN(Number(evt.cost_usd)) ? Number(evt.cost_usd) : null},
+          ${promptTokens},
+          ${completionTokens},
+          ${totalTokens},
+          ${omninodeEnabled},
           ${safeParseDate(eventTimestamp)}
         )
         ON CONFLICT (correlation_id) DO NOTHING

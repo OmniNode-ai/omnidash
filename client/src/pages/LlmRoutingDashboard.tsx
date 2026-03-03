@@ -82,9 +82,9 @@ import {
 } from '@/lib/constants/query-config';
 import type {
   LlmRoutingTimeWindow,
+  LlmRoutingByModel,
   LlmRoutingDisagreement,
   LlmRoutingFuzzyConfidenceBucket,
-  LlmRoutingByModel,
 } from '@shared/llm-routing-types';
 
 // ============================================================================
@@ -640,6 +640,105 @@ function PromptBumpButton() {
 }
 
 // ============================================================================
+// By Model Table (OMN-3449)
+// ============================================================================
+
+/** Per-model routing effectiveness including token averages. */
+function ByModelTable({
+  byModel,
+  isLoading,
+  isError,
+}: {
+  byModel: LlmRoutingByModel[];
+  isLoading: boolean;
+  isError: boolean;
+}) {
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle className="flex items-center gap-2">
+          <BarChart3 className="h-4 w-4 text-blue-400" />
+          Routing by Model
+        </CardTitle>
+        <CardDescription>
+          Agreement rate, latency, cost, and token usage grouped by LLM model
+        </CardDescription>
+      </CardHeader>
+      <CardContent>
+        {isError ? (
+          <p className="text-sm text-destructive py-4 text-center">
+            Failed to load per-model data.
+          </p>
+        ) : isLoading ? (
+          <div className="space-y-2">
+            {[...Array(3)].map((_, i) => (
+              <Skeleton key={i} className="h-10 w-full" />
+            ))}
+          </div>
+        ) : byModel.length === 0 ? (
+          <p className="text-sm text-muted-foreground py-4 text-center">
+            No model data in this window.
+          </p>
+        ) : (
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Model</TableHead>
+                <TableHead className="text-right">Decisions</TableHead>
+                <TableHead className="text-right">Agreement</TableHead>
+                <TableHead className="text-right">Avg Latency</TableHead>
+                <TableHead className="text-right">Avg Cost</TableHead>
+                <TableHead className="text-right">Avg Prompt Tokens</TableHead>
+                <TableHead className="text-right">Avg Completion Tokens</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {byModel.map((row) => (
+                <TableRow key={row.model}>
+                  <TableCell>
+                    <span className="font-mono text-xs text-blue-400">{row.model}</span>
+                  </TableCell>
+                  <TableCell className="text-right tabular-nums">
+                    {row.total.toLocaleString()}
+                  </TableCell>
+                  <TableCell className="text-right tabular-nums">
+                    <span
+                      className={
+                        row.agreement_rate >= 0.6
+                          ? 'text-green-500'
+                          : row.agreement_rate >= 0.4
+                            ? 'text-yellow-500'
+                            : 'text-red-500'
+                      }
+                    >
+                      {fmtPct(row.agreement_rate)}
+                    </span>
+                  </TableCell>
+                  <TableCell className="text-right tabular-nums">
+                    {fmtMs(row.avg_llm_latency_ms)}
+                  </TableCell>
+                  <TableCell className="text-right tabular-nums">
+                    {fmtCost(row.avg_cost_usd)}
+                  </TableCell>
+                  <TableCell className="text-right tabular-nums">
+                    {row.prompt_tokens_avg > 0 ? row.prompt_tokens_avg.toLocaleString() : '—'}
+                  </TableCell>
+                  <TableCell className="text-right tabular-nums">
+                    {row.completion_tokens_avg > 0
+                      ? row.completion_tokens_avg.toLocaleString()
+                      : '—'}
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        )}
+      </CardContent>
+    </Card>
+  );
+}
+
+// ============================================================================
 // Main Dashboard
 // ============================================================================
 
@@ -741,7 +840,8 @@ export default function LlmRoutingDashboard() {
   } = useQuery({
     queryKey: queryKeys.llmRouting.byModel(timeWindow),
     queryFn: () => fetchByModel(timeWindow),
-    staleTime: POLLING_INTERVAL_SLOW,
+    refetchInterval: getPollingInterval(POLLING_INTERVAL_SLOW),
+    staleTime: 60_000,
   });
 
   const {
@@ -947,6 +1047,24 @@ export default function LlmRoutingDashboard() {
           description={`p95: ${fmtMs(summary?.fuzzy_p95_latency_ms ?? 0)}`}
           icon={Clock}
           valueClass="text-purple-400"
+          isLoading={summaryLoading}
+        />
+
+        {/* Avg Prompt Tokens (OMN-3449) */}
+        <StatCard
+          title="Avg Prompt Tokens"
+          value={summaryLoading ? '—' : fmtCount(summary?.avg_prompt_tokens ?? 0)}
+          description="Average prompt tokens per routing decision"
+          icon={BarChart3}
+          isLoading={summaryLoading}
+        />
+
+        {/* Avg Completion Tokens (OMN-3449) */}
+        <StatCard
+          title="Avg Completion Tokens"
+          value={summaryLoading ? '—' : fmtCount(summary?.avg_completion_tokens ?? 0)}
+          description="Average completion tokens per routing decision"
+          icon={BarChart3}
           isLoading={summaryLoading}
         />
       </div>
@@ -1196,6 +1314,9 @@ export default function LlmRoutingDashboard() {
         isLoading={fuzzyConfidenceLoading}
         isError={fuzzyConfidenceError}
       />
+
+      {/* ── Routing by Model with Token Averages (OMN-3449) ─────────────── */}
+      <ByModelTable byModel={byModel} isLoading={byModelLoading} isError={byModelError} />
 
       {/* ── Top Disagreement Pairs ────────────────────────────────────────── */}
       <DisagreementsTable

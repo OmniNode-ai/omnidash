@@ -127,6 +127,8 @@ export class LlmRoutingProjection extends DbBackedProjectionView<LlmRoutingPaylo
         fuzzy_p95_latency_ms: 0,
         counts: { total: 0, agreed: 0, disagreed: 0, fallback: 0 },
         agreement_rate_trend: [],
+        avg_prompt_tokens: 0,
+        avg_completion_tokens: 0,
       },
       latency: [],
       byVersion: [],
@@ -219,7 +221,9 @@ export class LlmRoutingProjection extends DbBackedProjectionView<LlmRoutingPaylo
         )::float                                                                 AS fuzzy_p50_ms,
         COALESCE(
           PERCENTILE_CONT(0.95) WITHIN GROUP (ORDER BY fuzzy_latency_ms), 0
-        )::float                                                                 AS fuzzy_p95_ms
+        )::float                                                                 AS fuzzy_p95_ms,
+        COALESCE(AVG(NULLIF(prompt_tokens, 0)), 0)::int                         AS avg_prompt_tokens,
+        COALESCE(AVG(NULLIF(completion_tokens, 0)), 0)::int                     AS avg_completion_tokens
       FROM llm_routing_decisions
       WHERE created_at >= ${cutoff}
     `);
@@ -268,6 +272,8 @@ export class LlmRoutingProjection extends DbBackedProjectionView<LlmRoutingPaylo
       fuzzy_p95_latency_ms: parseFloat(String(agg.fuzzy_p95_ms ?? '0')),
       counts: { total, agreed, disagreed, fallback },
       agreement_rate_trend: agreementRateTrend,
+      avg_prompt_tokens: Number(agg.avg_prompt_tokens ?? 0),
+      avg_completion_tokens: Number(agg.avg_completion_tokens ?? 0),
     };
   }
 
@@ -364,8 +370,8 @@ export class LlmRoutingProjection extends DbBackedProjectionView<LlmRoutingPaylo
         SUM(CASE WHEN NOT agreement THEN 1 ELSE 0 END)::int                      AS disagreed,
         ROUND(AVG(llm_latency_ms))::int                                          AS avg_llm_latency_ms,
         COALESCE(AVG(cost_usd), 0)::float8                                       AS avg_cost_usd,
-        0::int                                                                   AS prompt_tokens_avg,
-        0::int                                                                   AS completion_tokens_avg
+        COALESCE(AVG(NULLIF(prompt_tokens, 0)), 0)::int                          AS prompt_tokens_avg,
+        COALESCE(AVG(NULLIF(completion_tokens, 0)), 0)::int                      AS completion_tokens_avg
       FROM llm_routing_decisions
       WHERE created_at >= ${cutoff}
       GROUP BY model
