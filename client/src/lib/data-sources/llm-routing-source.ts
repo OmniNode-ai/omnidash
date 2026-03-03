@@ -10,6 +10,7 @@ import type {
   LlmRoutingSummary,
   LlmRoutingLatencyPoint,
   LlmRoutingByVersion,
+  LlmRoutingByModel,
   LlmRoutingDisagreement,
   LlmRoutingTrendPoint,
   LlmRoutingTimeWindow,
@@ -218,10 +219,54 @@ class LlmRoutingSource {
       throw new Error('Failed to fetch LLM routing trend');
     }
   }
+
+  /** Fetch per-model effectiveness breakdown (OMN-3443). */
+  async byModel(
+    window: LlmRoutingTimeWindow = '7d',
+    options: LlmRoutingFetchOptions = {}
+  ): Promise<LlmRoutingByModel[]> {
+    const { fallbackToMock = false } = options;
+    try {
+      const response = await fetch(`${this.baseUrl}/by-model${this.buildWindowParam(window)}`);
+      if (!response.ok) throw new Error(`HTTP ${response.status}`);
+      const data: LlmRoutingByModel[] = await response.json();
+      if (!Array.isArray(data)) {
+        throw new Error('Malformed response: expected array');
+      }
+      return data;
+    } catch (err) {
+      console.warn('[LlmRoutingSource] fetch failed for by-model:', err);
+      if (fallbackToMock) {
+        return [];
+      }
+      throw new Error('Failed to fetch LLM routing by model');
+    }
+  }
 }
 
 /** Singleton data source instance shared across components. */
 export const llmRoutingSource = new LlmRoutingSource();
+
+/**
+ * Fetch per-model effectiveness data for the given time window (OMN-3443).
+ *
+ * Standalone function that delegates to the singleton source.
+ * Validate inline — do NOT import from server/llm-routing-schemas.ts.
+ */
+export async function fetchByModel(window: LlmRoutingTimeWindow): Promise<LlmRoutingByModel[]> {
+  return llmRoutingSource.byModel(window);
+}
+
+/**
+ * Fetch the list of distinct model identifiers seen in the current window (OMN-3443).
+ *
+ * Derives the list from `by-model` data rather than a separate endpoint, so
+ * no additional API round-trip is needed.
+ */
+export async function fetchAvailableModels(window: LlmRoutingTimeWindow): Promise<string[]> {
+  const rows = await llmRoutingSource.byModel(window);
+  return rows.map((r) => r.model);
+}
 
 // ============================================================================
 // Standalone fetch helpers (OMN-3447)
