@@ -211,6 +211,33 @@ export interface LlmRoutingTrendPoint {
 /** Valid time windows for LLM routing dashboard queries. */
 export type LlmRoutingTimeWindow = '24h' | '7d' | '30d';
 
+/**
+ * Per-model effectiveness metrics (OMN-3442).
+ * Groups routing decisions by the `model` column.
+ * prompt_tokens_avg and completion_tokens_avg are always 0 until
+ * Tasks 5/6 populate those DB columns.
+ */
+export interface LlmRoutingByModel {
+  /** LLM model identifier (COALESCE(model, 'unknown')) */
+  model: string;
+  /** Total decisions for this model in the window */
+  total: number;
+  /** Number of decisions where LLM and fuzzy agreed */
+  agreed: number;
+  /** Number of decisions where they disagreed */
+  disagreed: number;
+  /** Agreement rate for this model (0–1) */
+  agreement_rate: number;
+  /** Average LLM routing latency (ms) */
+  avg_llm_latency_ms: number;
+  /** Average cost per decision (USD) */
+  avg_cost_usd: number;
+  /** Average prompt tokens — 0 until Task 5/6 populate DB columns */
+  prompt_tokens_avg: number;
+  /** Average completion tokens — 0 until Task 5/6 populate DB columns */
+  completion_tokens_avg: number;
+}
+
 // NOTE: Zod runtime validation schemas (LlmRoutingTimeWindowSchema, etc.) live
 // in server/llm-routing-schemas.ts to avoid bundling the 'zod' runtime into
 // client-side JavaScript. Import from there in server-only code.
