@@ -29,6 +29,7 @@ import type {
   LlmRoutingDisagreement,
   LlmRoutingTrendPoint,
   LlmRoutingTimeWindow,
+  LlmRoutingFuzzyConfidenceBucket,
 } from '@shared/llm-routing-types';
 import { DbBackedProjectionView, DEFAULT_CACHE_TTL_MS } from './db-backed-projection-view';
 import { tryGetIntelligenceDb } from '../storage';
@@ -44,6 +45,10 @@ export interface LlmRoutingPayload {
   byModel: LlmRoutingByModel[];
   disagreements: LlmRoutingDisagreement[];
   trend: LlmRoutingTrendPoint[];
+  /** Fuzzy confidence distribution buckets (OMN-3447) */
+  fuzzyConfidence: LlmRoutingFuzzyConfidenceBucket[];
+  /** Distinct model names from the last 30d (stable list for model switcher) (OMN-3447) */
+  models: string[];
   /**
    * Set to `true` when the DB was unavailable and ensureFreshForWindow()
    * fell back to the cached 7d snapshot. Callers should surface a warning.
@@ -128,6 +133,8 @@ export class LlmRoutingProjection extends DbBackedProjectionView<LlmRoutingPaylo
       byModel: [],
       disagreements: [],
       trend: [],
+      fuzzyConfidence: [],
+      models: [],
     };
   }
 
@@ -159,16 +166,19 @@ export class LlmRoutingProjection extends DbBackedProjectionView<LlmRoutingPaylo
     // Default window for the pre-warmed snapshot: 7d
     const window: LlmRoutingTimeWindow = '7d';
 
-    const [summary, latency, byVersion, byModel, disagreements, trend] = await Promise.all([
-      this.querySummary(db, window),
-      this.queryLatency(db, window),
-      this.queryByVersion(db, window),
-      this.queryByModel(db, window),
-      this.queryDisagreements(db, window),
-      this.queryTrend(db, window),
-    ]);
+    const [summary, latency, byVersion, byModel, disagreements, trend, fuzzyConfidence, models] =
+      await Promise.all([
+        this.querySummary(db, window),
+        this.queryLatency(db, window),
+        this.queryByVersion(db, window),
+        this.queryByModel(db, window),
+        this.queryDisagreements(db, window),
+        this.queryTrend(db, window),
+        this.queryFuzzyConfidenceDistribution(db, window),
+        this.queryModels(db),
+      ]);
 
-    return { summary, latency, byVersion, byModel, disagreements, trend };
+    return { summary, latency, byVersion, byModel, disagreements, trend, fuzzyConfidence, models };
   }
 
   // --------------------------------------------------------------------------
@@ -382,6 +392,77 @@ export class LlmRoutingProjection extends DbBackedProjectionView<LlmRoutingPaylo
     });
   }
 
+  /**
+   * Query fuzzy confidence distribution (OMN-3447).
+   * Buckets: no_data, 0–30%, 30–50%, 50–70%, 70–90%, 90–100%.
+   * sort_key is stable (0–5) for ordered rendering.
+   */
+  async queryFuzzyConfidenceDistribution(
+    db: Db,
+    window: LlmRoutingTimeWindow = '7d'
+  ): Promise<LlmRoutingFuzzyConfidenceBucket[]> {
+    const cutoff = windowCutoff(window);
+
+    const result = await db.execute(sql`
+      SELECT
+        bucket,
+        sort_key,
+        COUNT(*)::int AS count
+      FROM (
+        SELECT
+          CASE
+            WHEN fuzzy_confidence IS NULL THEN 'no_data'
+            WHEN fuzzy_confidence < 0.3   THEN '0–30%'
+            WHEN fuzzy_confidence < 0.5   THEN '30–50%'
+            WHEN fuzzy_confidence < 0.7   THEN '50–70%'
+            WHEN fuzzy_confidence < 0.9   THEN '70–90%'
+            ELSE '90–100%'
+          END AS bucket,
+          CASE
+            WHEN fuzzy_confidence IS NULL THEN 0
+            WHEN fuzzy_confidence < 0.3   THEN 1
+            WHEN fuzzy_confidence < 0.5   THEN 2
+            WHEN fuzzy_confidence < 0.7   THEN 3
+            WHEN fuzzy_confidence < 0.9   THEN 4
+            ELSE 5
+          END AS sort_key
+        FROM llm_routing_decisions
+        WHERE created_at >= ${cutoff}
+      ) sub
+      GROUP BY bucket, sort_key
+      ORDER BY sort_key
+    `);
+
+    const rows = result.rows as Array<Record<string, unknown>>;
+    return rows.map((r) => ({
+      bucket: String(r.bucket ?? ''),
+      sort_key: Number(r.sort_key ?? 0),
+      count: Number(r.count ?? 0),
+    }));
+  }
+
+  /**
+   * Query distinct model names active in the last 30d (OMN-3447).
+   * Used as the stable model list for the ModelSwitcher dropdown.
+   * Always uses 30d regardless of the dashboard window because the switcher
+   * needs a stable list that does not change as the user switches windows.
+   */
+  async queryModels(db: Db): Promise<string[]> {
+    const cutoff = windowCutoff('30d');
+
+    const result = await db.execute(sql`
+      SELECT DISTINCT COALESCE(model, 'unknown') AS model
+      FROM llm_routing_decisions
+      WHERE created_at >= ${cutoff}
+        AND model IS NOT NULL
+        AND model != ''
+      ORDER BY model
+    `);
+
+    const rows = result.rows as Array<Record<string, unknown>>;
+    return rows.map((r) => String(r.model ?? 'unknown'));
+  }
+
   async queryDisagreements(
     db: Db,
     window: LlmRoutingTimeWindow = '7d'
@@ -514,23 +595,29 @@ export class LlmRoutingProjection extends DbBackedProjectionView<LlmRoutingPaylo
       this.queryByModel(db, window),
       this.queryDisagreements(db, window),
       this.queryTrend(db, window),
+      this.queryFuzzyConfidenceDistribution(db, window),
+      this.queryModels(db),
     ])
-      .then(([summary, latency, byVersion, byModel, disagreements, trend]) => {
-        const payload: LlmRoutingPayload = {
-          summary,
-          latency,
-          byVersion,
-          byModel,
-          disagreements,
-          trend,
-          window,
-        };
+      .then(
+        ([summary, latency, byVersion, byModel, disagreements, trend, fuzzyConfidence, models]) => {
+          const payload: LlmRoutingPayload = {
+            summary,
+            latency,
+            byVersion,
+            byModel,
+            disagreements,
+            trend,
+            fuzzyConfidence,
+            models,
+            window,
+          };
 
-        this._windowCache.set(window, payload);
-        this._windowCacheExpiresAt.set(window, Date.now() + WINDOW_CACHE_TTL_MS);
+          this._windowCache.set(window, payload);
+          this._windowCacheExpiresAt.set(window, Date.now() + WINDOW_CACHE_TTL_MS);
 
-        return payload;
-      })
+          return payload;
+        }
+      )
       .catch((err: unknown) => {
         // The DB query failed. Degrade to the already-cached 7d base-class
         // snapshot without issuing a second DB round-trip. We read the cached
