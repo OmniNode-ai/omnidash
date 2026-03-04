@@ -221,8 +221,8 @@ export const insertPatternLineageEdgeSchema = createInsertSchema(patternLineageE
 export const patternQualityMetrics = pgTable('pattern_quality_metrics', {
   id: uuid('id').primaryKey().defaultRandom(),
   patternId: uuid('pattern_id').notNull().unique(),
-  qualityScore: numeric('quality_score', { precision: 10, scale: 6 }).notNull(),
-  confidence: numeric('confidence', { precision: 10, scale: 6 }).notNull(),
+  qualityScore: doublePrecision('quality_score').notNull(),
+  confidence: doublePrecision('confidence').notNull(),
   measurementTimestamp: timestamp('measurement_timestamp', { withTimezone: true })
     .notNull()
     .defaultNow(),
@@ -256,6 +256,9 @@ export const patternLearningArtifacts = pgTable(
 
     // Composite score (indexed for sorting)
     compositeScore: numeric('composite_score', { precision: 10, scale: 6 }).notNull(),
+
+    // Evidence tier for promotion gating (migration 011)
+    evidenceTier: text('evidence_tier').notNull().default('unmeasured'),
 
     // JSONB fields for full evidence
     scoringEvidence: jsonb('scoring_evidence').notNull(),
@@ -1198,3 +1201,169 @@ export const planReviewRuns = pgTable(
 export const insertPlanReviewRunSchema = createInsertSchema(planReviewRuns);
 export type PlanReviewRunRow = typeof planReviewRuns.$inferSelect;
 export type InsertPlanReviewRun = typeof planReviewRuns.$inferInsert;
+
+// ============================================================================
+// Pattern Pipeline Tables (OMN-2191)
+//
+// These tables track the pattern injection pipeline: injection events with A/B
+// experiment support, lifecycle audit trail, and evidence-based attribution.
+// They exist in PostgreSQL (created by omniintelligence migrations 007/010/012/013).
+// ============================================================================
+
+/**
+ * Pattern Injections Table (migration 007 + 013)
+ * Tracks every pattern injection event with A/B experiment support
+ * for measuring effectiveness. Includes run_id for pipeline measurement linkage.
+ */
+export const patternInjections = pgTable(
+  'pattern_injections',
+  {
+    injectionId: uuid('injection_id').primaryKey().defaultRandom(),
+
+    // Session and tracing
+    sessionId: uuid('session_id').notNull(),
+    correlationId: uuid('correlation_id'),
+
+    // Pattern tracking (UUID array, no FK - PostgreSQL limitation)
+    patternIds: uuid('pattern_ids')
+      .array()
+      .notNull()
+      .default(sql`'{}'::uuid[]`),
+
+    // Timing
+    injectedAt: timestamp('injected_at', { withTimezone: true }).notNull().defaultNow(),
+
+    // Injection context
+    injectionContext: varchar('injection_context', { length: 30 }).notNull(),
+
+    // A/B experiment tracking
+    cohort: varchar('cohort', { length: 20 }).notNull().default('treatment'),
+    assignmentSeed: bigint('assignment_seed', { mode: 'number' }).notNull(),
+
+    // Compiled content
+    compiledContent: text('compiled_content'),
+    compiledTokenCount: integer('compiled_token_count'),
+
+    // Outcome tracking
+    outcomeRecorded: boolean('outcome_recorded').notNull().default(false),
+    outcomeSuccess: boolean('outcome_success'),
+    outcomeRecordedAt: timestamp('outcome_recorded_at', { withTimezone: true }),
+    outcomeFailureReason: text('outcome_failure_reason'),
+
+    // Contribution heuristic
+    contributionHeuristic: jsonb('contribution_heuristic'),
+    heuristicMethod: varchar('heuristic_method', { length: 50 }),
+    heuristicConfidence: doublePrecision('heuristic_confidence'),
+
+    // Pipeline run linkage (migration 013)
+    runId: uuid('run_id'),
+
+    // Auditing
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [
+    index('idx_pi_session_id').on(table.sessionId),
+    index('idx_pi_cohort').on(table.cohort),
+    index('idx_pi_injected_at').on(table.injectedAt),
+    index('idx_pi_correlation_id').on(table.correlationId),
+    index('idx_pi_run_id').on(table.runId),
+  ]
+);
+
+export const insertPatternInjectionSchema = createInsertSchema(patternInjections);
+export type PatternInjectionRow = typeof patternInjections.$inferSelect;
+export type InsertPatternInjection = typeof patternInjections.$inferInsert;
+
+/**
+ * Pattern Lifecycle Transitions Table (migration 010)
+ * Audit table tracking all pattern status transitions for the reducer-first
+ * state machine. Supports promotion/demotion history visualization.
+ */
+export const patternLifecycleTransitions = pgTable(
+  'pattern_lifecycle_transitions',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+
+    // Request tracking (for idempotency)
+    requestId: uuid('request_id').notNull(),
+
+    // Pattern reference
+    patternId: uuid('pattern_id').notNull(),
+
+    // State transition
+    fromStatus: varchar('from_status', { length: 20 }).notNull(),
+    toStatus: varchar('to_status', { length: 20 }).notNull(),
+    transitionTrigger: varchar('transition_trigger', { length: 50 }).notNull(),
+
+    // Tracing and attribution
+    correlationId: uuid('correlation_id'),
+    actor: varchar('actor', { length: 100 }),
+    reason: text('reason'),
+
+    // Snapshot of gate conditions at transition time
+    gateSnapshot: jsonb('gate_snapshot'),
+
+    // Timing
+    transitionAt: timestamp('transition_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [
+    index('idx_plt_pattern_id').on(table.patternId),
+    index('idx_plt_transition_at').on(table.transitionAt),
+    index('idx_plt_correlation_id').on(table.correlationId),
+    index('idx_plt_trigger').on(table.transitionTrigger),
+    index('idx_plt_from_to_status').on(table.fromStatus, table.toStatus),
+    uniqueIndex('uq_plt_request_pattern').on(table.requestId, table.patternId),
+  ]
+);
+
+export const insertPatternLifecycleTransitionSchema = createInsertSchema(
+  patternLifecycleTransitions
+);
+export type PatternLifecycleTransitionRow = typeof patternLifecycleTransitions.$inferSelect;
+export type InsertPatternLifecycleTransition = typeof patternLifecycleTransitions.$inferInsert;
+
+/**
+ * Pattern Measured Attributions Table (migration 012)
+ * Audit trail for evidence-based attribution binding. Links session outcomes
+ * to pipeline runs and records evidence tier computations.
+ */
+export const patternMeasuredAttributions = pgTable(
+  'pattern_measured_attributions',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+
+    // Pattern reference
+    patternId: uuid('pattern_id').notNull(),
+
+    // Session that triggered this attribution
+    sessionId: uuid('session_id').notNull(),
+
+    // Pipeline run (nullable: run_id=NULL means OBSERVED-only attribution)
+    runId: uuid('run_id'),
+
+    // Evidence tier
+    evidenceTier: text('evidence_tier').notNull(),
+
+    // Full measured attribution contract as JSON
+    measuredAttributionJson: jsonb('measured_attribution_json'),
+
+    // Correlation tracing
+    correlationId: uuid('correlation_id'),
+
+    // Timing
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [
+    index('idx_pma_pattern_created').on(table.patternId, table.createdAt),
+    index('idx_pma_session').on(table.sessionId),
+    index('idx_pma_run_id').on(table.runId),
+    index('idx_pma_correlation').on(table.correlationId),
+  ]
+);
+
+export const insertPatternMeasuredAttributionSchema = createInsertSchema(
+  patternMeasuredAttributions
+);
+export type PatternMeasuredAttributionRow = typeof patternMeasuredAttributions.$inferSelect;
+export type InsertPatternMeasuredAttribution = typeof patternMeasuredAttributions.$inferInsert;
