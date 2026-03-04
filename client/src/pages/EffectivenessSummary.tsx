@@ -53,6 +53,7 @@ import {
   Users,
   RefreshCw,
   ArrowRight,
+  Syringe,
 } from 'lucide-react';
 
 // ============================================================================
@@ -137,6 +138,37 @@ export default function EffectivenessSummary() {
   } = useQuery<EffectivenessTrendPoint[]>({
     queryKey: [...queryKeys.effectiveness.trend(), trendDays],
     queryFn: () => effectivenessSource.trend(trendDays, { demoMode: isDemoMode }),
+    refetchInterval: 15_000,
+  });
+
+  // Cohort injection data from the pattern_injections table (OMN-2191)
+  interface CohortRow {
+    cohort: string;
+    total_injections: string;
+    outcomes_recorded: string;
+    successes: string;
+    failures: string;
+    success_rate: string | null;
+    avg_heuristic_confidence: number | null;
+    avg_token_count: number | null;
+  }
+
+  const { data: cohortData, isLoading: cohortLoading } = useQuery<{
+    cohorts: CohortRow[];
+    timeWindow: string;
+  }>({
+    queryKey: [
+      'intelligence',
+      'injections',
+      'cohort-summary',
+      trendDays <= 7 ? '7d' : trendDays <= 14 ? '7d' : '30d',
+    ],
+    queryFn: async () => {
+      const tw = trendDays <= 7 ? '7d' : trendDays <= 14 ? '7d' : '30d';
+      const res = await fetch(`/api/intelligence/injections/cohort-summary?timeWindow=${tw}`);
+      if (!res.ok) throw new Error('Failed to fetch cohort data');
+      return res.json();
+    },
     refetchInterval: 15_000,
   });
 
@@ -559,6 +591,46 @@ export default function EffectivenessSummary() {
           )}
         </CardContent>
       </Card>
+
+      {/* Injection Cohort Data (OMN-2191) */}
+      {cohortData && cohortData.cohorts.length > 0 && (
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-base flex items-center gap-2">
+              <Syringe className="w-4 h-4 text-muted-foreground" />
+              Injection Pipeline - A/B Cohort Breakdown
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+              {cohortData.cohorts.map((row) => (
+                <div key={row.cohort} className="space-y-1">
+                  <div className="text-xs uppercase tracking-wide text-muted-foreground">
+                    {row.cohort}
+                  </div>
+                  <div className="text-xl font-bold font-mono">
+                    {Number(row.total_injections).toLocaleString()}
+                  </div>
+                  <div className="text-xs text-muted-foreground">injections</div>
+                  {row.success_rate != null && (
+                    <div className="text-xs">
+                      <span className="text-green-400">
+                        {(Number(row.success_rate) * 100).toFixed(1)}%
+                      </span>{' '}
+                      success rate
+                    </div>
+                  )}
+                  {row.avg_token_count != null && (
+                    <div className="text-xs text-muted-foreground">
+                      ~{Math.round(Number(row.avg_token_count))} avg tokens
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       {/* Sub-Navigation */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
