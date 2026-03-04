@@ -27,6 +27,7 @@ import { runStartupBackfillIfEmpty } from './startup-backfill';
 import { startCdqaGateWatcher } from './cdqa-gate-watcher';
 import { startPipelineHealthWatcher, stopPipelineHealthWatcher } from './pipeline-health-watcher';
 import { startEventBusHealthPoller, stopEventBusHealthPoller } from './event-bus-health-poller';
+import { startWorkerHealthPoller, stopWorkerHealthPoller } from './worker-health-poller';
 
 const app = express();
 
@@ -276,6 +277,9 @@ app.use((req, res, next) => {
   // Start event bus health poller — polls Redpanda Admin API (OMN-3192)
   startEventBusHealthPoller();
 
+  // Start worker health poller — polls docker inspect for runtime containers (OMN-3598)
+  startWorkerHealthPoller();
+
   // Backfill injection_effectiveness and latency_breakdowns from event_bus_events
   // if the tables are empty (OMN-2920). Fire-and-forget: non-fatal if it fails.
   runStartupBackfillIfEmpty().catch((err) => {
@@ -421,6 +425,7 @@ app.use((req, res, next) => {
     stopMockRegistryEvents();
     stopPipelineHealthWatcher();
     stopEventBusHealthPoller();
+    stopWorkerHealthPoller();
     server.close(() => {
       log('Server closed');
       process.exit(0);
@@ -444,6 +449,7 @@ app.use((req, res, next) => {
     stopMockRegistryEvents();
     stopPipelineHealthWatcher();
     stopEventBusHealthPoller();
+    stopWorkerHealthPoller();
     server.close(() => {
       log('Server closed');
       process.exit(0);

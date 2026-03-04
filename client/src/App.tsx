@@ -62,6 +62,8 @@ import PipelineHealthDashboard from '@/pages/PipelineHealthDashboard';
 import EventBusHealthDashboard from '@/pages/EventBusHealthDashboard';
 // Plan reviewer dashboard (OMN-3324)
 import PlanReviewer from '@/pages/PlanReviewer';
+// Runtime health dashboard (OMN-3598)
+import WorkerHealthPage from '@/components/worker-health/WorkerHealthPage';
 
 // Phase 2: Category landing pages (OMN-2181)
 import SpeedCategory from '@/pages/SpeedCategory';
@@ -167,6 +169,9 @@ function Router() {
 
       {/* Plan Reviewer — strategy comparison + model accuracy leaderboard (OMN-3324) */}
       <Route path="/plan-reviewer" component={PlanReviewer} />
+
+      {/* Runtime Health — container status + restart counts (OMN-3598) */}
+      <Route path="/worker-health" component={WorkerHealthPage} />
 
       {/* Preview routes */}
       <Route path="/preview/analytics" component={EnhancedAnalytics} />
