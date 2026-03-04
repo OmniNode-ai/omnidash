@@ -24,6 +24,7 @@ import {
   GitPullRequest,
   Server,
   FileSearch,
+  Container,
 } from 'lucide-react';
 import { Link, useLocation } from 'wouter';
 import {
@@ -233,6 +234,13 @@ const advancedSubGroups: AdvancedSubGroup[] = [
         url: '/event-bus-health',
         icon: Server,
         description: 'Consumer lag, DLQ traffic, missing topics per Redpanda topic (OMN-3192)',
+      },
+      {
+        title: 'Runtime Health',
+        url: '/worker-health',
+        icon: Container,
+        description:
+          'Container status, restart counts, Docker healthcheck for runtime workers (OMN-3598)',
       },
     ],
   },
