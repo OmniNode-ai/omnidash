@@ -14,62 +14,62 @@
   --elevate-1: rgba(0,0,0, .03);
   --elevate-2: rgba(0,0,0, .08);
 
-  --background: 210 5% 98%;
+  --background: 230 5% 98%;
 
-  --foreground: 210 6% 12%;
+  --foreground: 235 9% 28%;
 
-  --border: 210 6% 88%;
+  --border: 230 6% 88%;
 
-  --card: 210 5% 96%;
+  --card: 230 5% 96%;
 
-  --card-foreground: 210 6% 14%;
+  --card-foreground: 235 6% 14%;
 
-  --card-border: 210 6% 90%;
+  --card-border: 230 6% 90%;
 
-  --sidebar: 210 5% 94%;
+  --sidebar: 230 5% 94%;
 
-  --sidebar-foreground: 210 6% 16%;
+  --sidebar-foreground: 235 6% 16%;
 
-  --sidebar-border: 210 6% 86%;
+  --sidebar-border: 230 6% 86%;
 
-  --sidebar-primary: 211 92% 42%;
+  --sidebar-primary: 225 74% 40%;
 
-  --sidebar-primary-foreground: 210 5% 98%;
+  --sidebar-primary-foreground: 230 5% 98%;
 
-  --sidebar-accent: 210 8% 86%;
+  --sidebar-accent: 230 8% 86%;
 
-  --sidebar-accent-foreground: 210 6% 18%;
+  --sidebar-accent-foreground: 235 6% 18%;
 
-  --sidebar-ring: 211 92% 42%;
+  --sidebar-ring: 225 74% 40%;
 
-  --popover: 210 5% 92%;
+  --popover: 230 5% 92%;
 
-  --popover-foreground: 210 6% 18%;
+  --popover-foreground: 235 6% 18%;
 
-  --popover-border: 210 6% 84%;
+  --popover-border: 230 6% 84%;
 
-  --primary: 211 92% 42%;
+  --primary: 225 74% 40%;
 
-  --primary-foreground: 210 5% 98%;
+  --primary-foreground: 230 5% 98%;
 
-  --secondary: 210 6% 88%;
+  --secondary: 230 6% 88%;
 
-  --secondary-foreground: 210 6% 20%;
+  --secondary-foreground: 235 6% 20%;
 
-  --muted: 210 8% 90%;
+  --muted: 230 8% 90%;
 
-  --muted-foreground: 210 6% 35%;
+  --muted-foreground: 235 6% 35%;
 
-  --accent: 210 12% 88%;
+  --accent: 230 12% 88%;
 
-  --accent-foreground: 210 6% 22%;
+  --accent-foreground: 235 6% 22%;
 
   --destructive: 0 84% 45%;
 
   --destructive-foreground: 0 5% 98%;
 
-  --input: 210 8% 70%;
-  --ring: 211 92% 42%;
+  --input: 230 8% 70%;
+  --ring: 225 74% 40%;
 
   /*
    * Chart Color Palette - 7 distinct colors with 60°+ hue separation
@@ -85,7 +85,7 @@
    * Note: chart-2 was changed from cyan (187°) to green (142°) to improve
    * hue separation from blue (211°), increasing gap from 24° to 69°.
    */
-  --chart-1: 211 92% 35%;   /* Blue */
+  --chart-1: 225 74% 35%;   /* Blue */
   --chart-2: 142 76% 36%;   /* Green (was cyan - improved hue separation) */
   --chart-3: 271 72% 42%;   /* Purple */
   --chart-4: 32 95% 48%;    /* Orange */
@@ -97,14 +97,14 @@
   --font-serif: Georgia, serif;
   --font-mono: IBM Plex Mono, "Courier New", monospace;
   --radius: .5rem;
-  --shadow-2xs: 0px 1px 2px 0px hsl(210 10% 10% / 0.05);
-  --shadow-xs: 0px 1px 3px 0px hsl(210 10% 10% / 0.08);
-  --shadow-sm: 0px 2px 4px 0px hsl(210 10% 10% / 0.06), 0px 1px 2px -1px hsl(210 10% 10% / 0.04);
-  --shadow: 0px 4px 6px 0px hsl(210 10% 10% / 0.07), 0px 2px 4px -1px hsl(210 10% 10% / 0.05);
-  --shadow-md: 0px 6px 12px 0px hsl(210 10% 10% / 0.08), 0px 4px 6px -2px hsl(210 10% 10% / 0.06);
-  --shadow-lg: 0px 10px 20px 0px hsl(210 10% 10% / 0.10), 0px 6px 8px -2px hsl(210 10% 10% / 0.08);
-  --shadow-xl: 0px 16px 32px 0px hsl(210 10% 10% / 0.12), 0px 8px 12px -4px hsl(210 10% 10% / 0.10);
-  --shadow-2xl: 0px 24px 48px 0px hsl(210 10% 10% / 0.14);
+  --shadow-2xs: 0px 1px 2px 0px hsl(230 10% 10% / 0.05);
+  --shadow-xs: 0px 1px 3px 0px hsl(230 10% 10% / 0.08);
+  --shadow-sm: 0px 2px 4px 0px hsl(230 10% 10% / 0.06), 0px 1px 2px -1px hsl(230 10% 10% / 0.04);
+  --shadow: 0px 4px 6px 0px hsl(230 10% 10% / 0.07), 0px 2px 4px -1px hsl(230 10% 10% / 0.05);
+  --shadow-md: 0px 6px 12px 0px hsl(230 10% 10% / 0.08), 0px 4px 6px -2px hsl(230 10% 10% / 0.06);
+  --shadow-lg: 0px 10px 20px 0px hsl(230 10% 10% / 0.10), 0px 6px 8px -2px hsl(230 10% 10% / 0.08);
+  --shadow-xl: 0px 16px 32px 0px hsl(230 10% 10% / 0.12), 0px 8px 12px -4px hsl(230 10% 10% / 0.10);
+  --shadow-2xl: 0px 24px 48px 0px hsl(230 10% 10% / 0.14);
   --tracking-normal: 0em;
   --spacing: 0.25rem;
 
