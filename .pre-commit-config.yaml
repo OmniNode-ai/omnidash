@@ -16,7 +16,7 @@ repos:
     hooks:
       - id: no-env-file
         name: Reject committed .env files (except .env.example)
-        entry: bash -c 'if git diff --cached --name-only | grep -qE "(^|/)\\.env([._-].+)?$" | grep -vE "\\.env\\.example"; then echo "BLOCKED: .env staged — use ~/.omnibase/.env instead. Run: git reset HEAD <file>"; exit 1; fi'
+        entry: bash -c 'git diff --cached --name-only | grep -E "(^|/)\\.env([._-].+)?$" | grep -vE "\\.env\\.example" | grep -q . && { echo "BLOCKED: .env staged — use ~/.omnibase/.env instead. Run: git reset HEAD <file>"; exit 1; }'
         language: system
         pass_filenames: false
         always_run: true
