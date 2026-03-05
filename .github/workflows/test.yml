@@ -103,18 +103,105 @@ jobs:
       - name: Build
         run: npm run build
 
+  # OMN-3749: Migration integration test.
+  # Applies all SQL migrations against a fresh PostgreSQL, verifies idempotency
+  # (double-apply), runs parity check, and asserts a reasonable table count.
+  migration-integration:
+    name: Migration Integration
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_PASSWORD: test_password
+          POSTGRES_DB: omnidash_analytics
+        ports:
+          - "5436:5432"
+        options: >-
+          --health-cmd="pg_isready -U postgres"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=5
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v6
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: '22'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Apply all migrations (first run)
+        env:
+          OMNIDASH_ANALYTICS_DB_URL: "postgresql://postgres:test_password@localhost:5436/omnidash_analytics"
+        run: npm run db:migrate
+
+      - name: Apply all migrations again (idempotency test)
+        env:
+          OMNIDASH_ANALYTICS_DB_URL: "postgresql://postgres:test_password@localhost:5436/omnidash_analytics"
+        run: npm run db:migrate
+
+      - name: Run parity check
+        env:
+          OMNIDASH_ANALYTICS_DB_URL: "postgresql://postgres:test_password@localhost:5436/omnidash_analytics"
+        run: npx tsx scripts/check-migration-parity.ts
+
+      - name: Assert expected table count
+        run: |
+          TABLE_COUNT=$(PGPASSWORD=test_password psql -h localhost -p 5436 -U postgres -d omnidash_analytics \
+            -tc "SELECT count(*) FROM information_schema.tables WHERE table_schema='public'" \
+            | tr -d ' ')
+          echo "Public tables found: $TABLE_COUNT"
+          # Expect at least 10 tables (migrations create many) but not wildly more than expected.
+          # Range accommodates future growth. Adjust upper bound as migrations accumulate.
+          if [ "$TABLE_COUNT" -lt 10 ] || [ "$TABLE_COUNT" -gt 80 ]; then
+            echo "::error::Unexpected table count: $TABLE_COUNT (expected 10-80)"
+            exit 1
+          fi
+          echo "OK: table count $TABLE_COUNT is within expected range"
+
+  # OMN-3749: Projection-migration coupling gate.
+  # Detects PRs that modify read-model-consumer.ts without a migration file.
+  migration-coupling:
+    name: Migration Coupling Gate
+    runs-on: ubuntu-latest
+    if: github.event_name == 'pull_request'
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: '22'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Check projection-migration coupling
+        run: npx tsx scripts/check-migration-required.ts --ci
+
   # Aggregator job: branch protection requires this single check name
   # instead of individual matrix entries (which change when versions update).
   tests-gate:
     name: CI Tests Gate
     runs-on: ubuntu-latest
-    needs: [test, arch-guard]
+    needs: [test, arch-guard, migration-integration]
     if: always()
     steps:
       - name: Check test results
         env:
           TEST_RESULT: ${{ needs.test.result }}
           ARCH_RESULT: ${{ needs.arch-guard.result }}
+          MIGRATION_RESULT: ${{ needs.migration-integration.result }}
         run: |
           FAILED=0
           if [ "$TEST_RESULT" != "success" ]; then
@@ -127,5 +214,10 @@ jobs:
             echo "Arch guard result: $ARCH_RESULT"
             FAILED=1
           fi
+          if [ "$MIGRATION_RESULT" != "success" ]; then
+            echo "::error::Migration integration test failed"
+            echo "Migration result: $MIGRATION_RESULT"
+            FAILED=1
+          fi
           if [ "$FAILED" = "1" ]; then exit 1; fi
-          echo "All checks passed (tests: $TEST_RESULT, arch-guard: $ARCH_RESULT)"
+          echo "All checks passed (tests: $TEST_RESULT, arch-guard: $ARCH_RESULT, migration: $MIGRATION_RESULT)"
