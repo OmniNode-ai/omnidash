@@ -1128,7 +1128,7 @@ export class ReadModelConsumer {
   /**
    * Project a context enrichment event into the `context_enrichment_events` table.
    *
-   * The table is created by SQL migration 0005_context_enrichment_events.sql.
+   * The table is created by SQL migration 0005b_context_enrichment_events.sql.
    * Returns true when written, false when the DB is unavailable.
    *
    * Deduplication key: (correlation_id) — each enrichment operation has a
@@ -1292,7 +1292,7 @@ export class ReadModelConsumer {
   /**
    * Project an LLM routing decision event into the `llm_routing_decisions` table (OMN-2279).
    *
-   * The table is created by SQL migration 0006_llm_routing_decisions.sql.
+   * The table is created by SQL migration 0006b_llm_routing_decisions.sql.
    * Returns true when written, false when the DB is unavailable.
    *
    * Deduplication key: (correlation_id) — each routing decision has a unique
@@ -2147,7 +2147,7 @@ export class ReadModelConsumer {
           // Deduplicate breakdown rows by action (keep last occurrence) to prevent
           // duplicate action entries that would cause _deriveSummary() to double-count
           // promote_count/shadow_count/etc. A DB-level UNIQUE(snapshot_id, action)
-          // index is added by migrations/0006_baselines_breakdown_unique.sql as a
+          // index is added by migrations/0006a_baselines_breakdown_unique.sql as a
           // backup guard; this app-level dedup remains as the primary defence so
           // the transaction never surfaces a constraint violation to callers.
           // (Analogous to the dedup applied to trend rows above, backed by 0005.)

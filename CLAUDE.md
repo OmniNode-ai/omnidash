@@ -41,9 +41,21 @@ npm run test:coverage     # Generate test coverage report
 **Database**:
 
 ```bash
-npm run db:push     # Push Drizzle schema changes to PostgreSQL
-npm run db:migrate  # Run SQL migrations from migrations/ (recommended for omnidash_analytics read-model)
+npm run db:migrate        # Run SQL migrations from migrations/ (canonical)
+npm run db:check-parity   # Verify migration state matches disk
+npm run db:check-coupling # Detect schema changes missing a migration
 ```
+
+> **SQL-first migration rule (OMN-3750)**: SQL migrations in `migrations/` are the
+> single source of truth for the `omnidash_analytics` schema. Drizzle schema
+> definitions in `shared/intelligence-schema.ts` are the ORM layer that MUST match
+> the migrations -- never the other way around. `db:push` is disabled; use
+> `db:migrate` instead. When adding a new table or altering a column:
+>
+> 1. Write a new `migrations/NNNN_description.sql` file
+> 2. Add/update the Drizzle `pgTable()` definition in `shared/intelligence-schema.ts`
+> 3. Run `npm run db:migrate` to apply
+> 4. Run `npm run db:check-parity` to verify
 
 **Testing APIs**:
 

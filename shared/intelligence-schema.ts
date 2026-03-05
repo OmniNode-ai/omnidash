@@ -257,7 +257,7 @@ export const patternLearningArtifacts = pgTable(
     // Composite score (indexed for sorting)
     compositeScore: numeric('composite_score', { precision: 10, scale: 6 }).notNull(),
 
-    // Evidence tier for promotion gating (migration 011)
+    // Evidence tier for promotion gating (migration 0014)
     evidenceTier: text('evidence_tier').notNull().default('unmeasured'),
 
     // JSONB fields for full evidence
@@ -1207,11 +1207,11 @@ export type InsertPlanReviewRun = typeof planReviewRuns.$inferInsert;
 //
 // These tables track the pattern injection pipeline: injection events with A/B
 // experiment support, lifecycle audit trail, and evidence-based attribution.
-// They exist in PostgreSQL (created by omniintelligence migrations 007/010/012/013).
+// They exist in PostgreSQL (created by omnidash migration 0014_pattern_pipeline_tables).
 // ============================================================================
 
 /**
- * Pattern Injections Table (migration 007 + 013)
+ * Pattern Injections Table (migration 0014)
  * Tracks every pattern injection event with A/B experiment support
  * for measuring effectiveness. Includes run_id for pipeline measurement linkage.
  */
@@ -1367,3 +1367,330 @@ export const insertPatternMeasuredAttributionSchema = createInsertSchema(
 );
 export type PatternMeasuredAttributionRow = typeof patternMeasuredAttributions.$inferSelect;
 export type InsertPatternMeasuredAttribution = typeof patternMeasuredAttributions.$inferInsert;
+
+// ============================================================================
+// Migration-only tables backfilled with Drizzle definitions (OMN-3750)
+//
+// These tables were created by SQL migrations but had no corresponding Drizzle
+// pgTable() definition. Each definition below matches the column types in the
+// migration file exactly (accounting for subsequent ALTER migrations).
+// ============================================================================
+
+/**
+ * Users Table (migration 0000)
+ * Basic user authentication table created by Drizzle's initial push.
+ */
+export const users = pgTable('users', {
+  id: varchar('id')
+    .primaryKey()
+    .default(sql`gen_random_uuid()`),
+  username: text('username').notNull().unique(),
+  password: text('password').notNull(),
+});
+
+export const insertUserSchema = createInsertSchema(users);
+export type UserRow = typeof users.$inferSelect;
+export type InsertUser = typeof users.$inferInsert;
+
+/**
+ * Pattern Enforcement Events Table (migration 0002)
+ * Projected events from onex.evt.omniclaude.pattern-enforcement.v1
+ */
+export const patternEnforcementEvents = pgTable(
+  'pattern_enforcement_events',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    correlationId: text('correlation_id').notNull(),
+    sessionId: text('session_id'),
+    repo: text('repo'),
+    language: text('language').notNull().default('unknown'),
+    domain: text('domain').notNull().default('unknown'),
+    patternName: text('pattern_name').notNull(),
+    patternLifecycleState: text('pattern_lifecycle_state'),
+    outcome: text('outcome').notNull(),
+    confidence: numeric('confidence', { precision: 5, scale: 4 }),
+    agentName: text('agent_name'),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+    projectedAt: timestamp('projected_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [
+    uniqueIndex('idx_pee_correlation_id').on(table.correlationId),
+    index('idx_pee_created_at').on(table.createdAt),
+    index('idx_pee_outcome').on(table.outcome),
+    index('idx_pee_language').on(table.language),
+    index('idx_pee_domain').on(table.domain),
+    index('idx_pee_pattern_name').on(table.patternName),
+    index('idx_pee_created_outcome').on(table.createdAt, table.outcome),
+  ]
+);
+
+export const insertPatternEnforcementEventSchema = createInsertSchema(patternEnforcementEvents);
+export type PatternEnforcementEventRow = typeof patternEnforcementEvents.$inferSelect;
+export type InsertPatternEnforcementEvent = typeof patternEnforcementEvents.$inferInsert;
+
+/**
+ * Context Enrichment Events Table (migration 0005b)
+ * Projected events from onex.evt.omniclaude.context-enrichment.v1
+ */
+export const contextEnrichmentEvents = pgTable(
+  'context_enrichment_events',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    correlationId: text('correlation_id').notNull(),
+    sessionId: text('session_id'),
+    channel: text('channel').notNull(),
+    modelName: text('model_name').notNull().default('unknown'),
+    cacheHit: boolean('cache_hit').notNull().default(false),
+    outcome: text('outcome').notNull(),
+    latencyMs: integer('latency_ms').notNull().default(0),
+    tokensBefore: integer('tokens_before').notNull().default(0),
+    tokensAfter: integer('tokens_after').notNull().default(0),
+    netTokensSaved: integer('net_tokens_saved').notNull().default(0),
+    similarityScore: numeric('similarity_score', { precision: 5, scale: 4 }),
+    qualityScore: numeric('quality_score', { precision: 5, scale: 4 }),
+    repo: text('repo'),
+    agentName: text('agent_name'),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+    projectedAt: timestamp('projected_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [
+    uniqueIndex('idx_cee_correlation_id').on(table.correlationId),
+    index('idx_cee_created_at').on(table.createdAt),
+    index('idx_cee_outcome').on(table.outcome),
+    index('idx_cee_channel').on(table.channel),
+    index('idx_cee_model_name').on(table.modelName),
+    index('idx_cee_created_channel').on(table.channel, table.createdAt),
+  ]
+);
+
+export const insertContextEnrichmentEventSchema = createInsertSchema(contextEnrichmentEvents);
+export type ContextEnrichmentEventRow = typeof contextEnrichmentEvents.$inferSelect;
+export type InsertContextEnrichmentEvent = typeof contextEnrichmentEvents.$inferInsert;
+
+/**
+ * LLM Routing Decisions Table (migration 0006b, altered by 0011a + 0011b)
+ * Projected events from onex.evt.omniclaude.llm-routing-decision.v1
+ *
+ * Note: correlation_id was TEXT in 0006b, converted to UUID by 0011a.
+ * fuzzy_agent was NOT NULL in 0006b, made nullable by 0011b.
+ */
+export const llmRoutingDecisions = pgTable(
+  'llm_routing_decisions',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    correlationId: uuid('correlation_id').notNull().unique(),
+    sessionId: text('session_id'),
+    llmAgent: text('llm_agent').notNull(),
+    fuzzyAgent: text('fuzzy_agent'),
+    agreement: boolean('agreement').notNull().default(false),
+    llmConfidence: numeric('llm_confidence', { precision: 5, scale: 4 }),
+    fuzzyConfidence: numeric('fuzzy_confidence', { precision: 5, scale: 4 }),
+    llmLatencyMs: integer('llm_latency_ms').notNull().default(0),
+    fuzzyLatencyMs: integer('fuzzy_latency_ms').notNull().default(0),
+    usedFallback: boolean('used_fallback').notNull().default(false),
+    routingPromptVersion: text('routing_prompt_version').notNull().default('unknown'),
+    intent: text('intent'),
+    model: text('model'),
+    costUsd: numeric('cost_usd', { precision: 12, scale: 8 }),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+    projectedAt: timestamp('projected_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [
+    index('idx_lrd_created_at').on(table.createdAt),
+    index('idx_lrd_agreement').on(table.agreement, table.createdAt),
+    index('idx_lrd_used_fallback').on(table.usedFallback, table.createdAt),
+    index('idx_lrd_prompt_version').on(table.routingPromptVersion, table.createdAt),
+    index('idx_lrd_agent_pair').on(table.llmAgent, table.fuzzyAgent, table.createdAt),
+  ]
+);
+
+export const insertLlmRoutingDecisionSchema = createInsertSchema(llmRoutingDecisions);
+export type LlmRoutingDecisionRow = typeof llmRoutingDecisions.$inferSelect;
+export type InsertLlmRoutingDecision = typeof llmRoutingDecisions.$inferInsert;
+
+/**
+ * Gate Decisions Table (migration 0009)
+ * Projected events from onex.evt.omniclaude.gate-decision.v1
+ */
+export const gateDecisions = pgTable(
+  'gate_decisions',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    correlationId: text('correlation_id').notNull().unique(),
+    sessionId: text('session_id'),
+    prNumber: integer('pr_number'),
+    repo: text('repo'),
+    gateName: text('gate_name').notNull().default('unknown'),
+    outcome: text('outcome').notNull().default('unknown'),
+    blocking: boolean('blocking').notNull().default(false),
+    details: jsonb('details'),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+    projectedAt: timestamp('projected_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [
+    index('idx_gate_decisions_created_at').on(table.createdAt),
+    index('idx_gate_decisions_pr_number').on(table.prNumber, table.createdAt),
+    index('idx_gate_decisions_gate_name').on(table.gateName, table.createdAt),
+    index('idx_gate_decisions_blocking').on(table.blocking, table.createdAt),
+  ]
+);
+
+export const insertGateDecisionSchema = createInsertSchema(gateDecisions);
+export type GateDecisionRow = typeof gateDecisions.$inferSelect;
+export type InsertGateDecision = typeof gateDecisions.$inferInsert;
+
+/**
+ * Epic Run Events Table (migration 0009)
+ * Append-only event log from onex.evt.omniclaude.epic-run-updated.v1
+ */
+export const epicRunEvents = pgTable(
+  'epic_run_events',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    correlationId: text('correlation_id').notNull().unique(),
+    epicRunId: text('epic_run_id').notNull(),
+    eventType: text('event_type').notNull().default('unknown'),
+    ticketId: text('ticket_id'),
+    repo: text('repo'),
+    payload: jsonb('payload'),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+    projectedAt: timestamp('projected_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [
+    index('idx_epic_run_events_created_at').on(table.createdAt),
+    index('idx_epic_run_events_epic_run_id').on(table.epicRunId, table.createdAt),
+    index('idx_epic_run_events_event_type').on(table.eventType, table.createdAt),
+    index('idx_epic_run_events_ticket_id').on(table.ticketId, table.createdAt),
+  ]
+);
+
+export const insertEpicRunEventSchema = createInsertSchema(epicRunEvents);
+export type EpicRunEventRow = typeof epicRunEvents.$inferSelect;
+export type InsertEpicRunEvent = typeof epicRunEvents.$inferInsert;
+
+/**
+ * Epic Run Lease Table (migration 0009)
+ * Current lease holder per epic run, upserted on each epic-run-updated.v1 event.
+ */
+export const epicRunLease = pgTable(
+  'epic_run_lease',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    epicRunId: text('epic_run_id').notNull().unique(),
+    leaseHolder: text('lease_holder').notNull().default('unknown'),
+    leaseExpiresAt: timestamp('lease_expires_at', { withTimezone: true }),
+    updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+    projectedAt: timestamp('projected_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [
+    index('idx_epic_run_lease_expires_at').on(table.leaseExpiresAt),
+    index('idx_epic_run_lease_holder').on(table.leaseHolder),
+  ]
+);
+
+export const insertEpicRunLeaseSchema = createInsertSchema(epicRunLease);
+export type EpicRunLeaseRow = typeof epicRunLease.$inferSelect;
+export type InsertEpicRunLease = typeof epicRunLease.$inferInsert;
+
+/**
+ * PR Watch State Table (migration 0009)
+ * Per-PR watch state snapshots from onex.evt.omniclaude.pr-watch-updated.v1
+ */
+export const prWatchState = pgTable(
+  'pr_watch_state',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    correlationId: text('correlation_id').notNull().unique(),
+    prNumber: integer('pr_number'),
+    repo: text('repo'),
+    state: text('state').notNull().default('unknown'),
+    checksStatus: text('checks_status'),
+    reviewStatus: text('review_status'),
+    metadata: jsonb('metadata'),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+    projectedAt: timestamp('projected_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [
+    index('idx_pr_watch_state_created_at').on(table.createdAt),
+    index('idx_pr_watch_state_pr_number').on(table.prNumber, table.createdAt),
+    index('idx_pr_watch_state_state').on(table.state, table.createdAt),
+  ]
+);
+
+export const insertPrWatchStateSchema = createInsertSchema(prWatchState);
+export type PrWatchStateRow = typeof prWatchState.$inferSelect;
+export type InsertPrWatchState = typeof prWatchState.$inferInsert;
+
+/**
+ * Pipeline Budget State Table (migration 0009)
+ * Budget cap hit events from onex.evt.omniclaude.budget-cap-hit.v1
+ */
+export const pipelineBudgetState = pgTable(
+  'pipeline_budget_state',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    correlationId: text('correlation_id').notNull().unique(),
+    pipelineId: text('pipeline_id').notNull(),
+    budgetType: text('budget_type').notNull().default('tokens'),
+    capValue: numeric('cap_value', { precision: 18, scale: 4 }),
+    currentValue: numeric('current_value', { precision: 18, scale: 4 }),
+    capHit: boolean('cap_hit').notNull().default(true),
+    repo: text('repo'),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+    projectedAt: timestamp('projected_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [
+    index('idx_pipeline_budget_state_created_at').on(table.createdAt),
+    index('idx_pipeline_budget_state_pipeline_id').on(table.pipelineId, table.createdAt),
+    index('idx_pipeline_budget_state_budget_type').on(table.budgetType, table.createdAt),
+  ]
+);
+
+export const insertPipelineBudgetStateSchema = createInsertSchema(pipelineBudgetState);
+export type PipelineBudgetStateRow = typeof pipelineBudgetState.$inferSelect;
+export type InsertPipelineBudgetState = typeof pipelineBudgetState.$inferInsert;
+
+/**
+ * Debug Escalation Counts Table (migration 0009)
+ * Circuit breaker trip events from onex.evt.omniclaude.circuit-breaker-tripped.v1
+ */
+export const debugEscalationCounts = pgTable(
+  'debug_escalation_counts',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    correlationId: text('correlation_id').notNull().unique(),
+    sessionId: text('session_id'),
+    agentName: text('agent_name').notNull().default('unknown'),
+    escalationCount: integer('escalation_count').notNull().default(1),
+    windowStart: timestamp('window_start', { withTimezone: true }),
+    windowEnd: timestamp('window_end', { withTimezone: true }),
+    tripped: boolean('tripped').notNull().default(true),
+    repo: text('repo'),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+    projectedAt: timestamp('projected_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [
+    index('idx_debug_escalation_counts_created_at').on(table.createdAt),
+    index('idx_debug_escalation_counts_agent_name').on(table.agentName, table.createdAt),
+    index('idx_debug_escalation_counts_session_id').on(table.sessionId, table.createdAt),
+    index('idx_debug_escalation_counts_tripped').on(table.tripped, table.createdAt),
+  ]
+);
+
+export const insertDebugEscalationCountSchema = createInsertSchema(debugEscalationCounts);
+export type DebugEscalationCountRow = typeof debugEscalationCounts.$inferSelect;
+export type InsertDebugEscalationCount = typeof debugEscalationCounts.$inferInsert;
+
+/**
+ * Routing Config Table (migration 0012)
+ * Generic key-value store for routing configuration (model switcher, prompt version).
+ */
+export const routingConfig = pgTable('routing_config', {
+  key: text('key').primaryKey(),
+  value: text('value').notNull(),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+});
+
+export const insertRoutingConfigSchema = createInsertSchema(routingConfig);
+export type RoutingConfigRow = typeof routingConfig.$inferSelect;
+export type InsertRoutingConfig = typeof routingConfig.$inferInsert;
