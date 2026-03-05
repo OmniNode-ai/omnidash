@@ -180,7 +180,7 @@ describe('App', () => {
     render(<App />);
 
     expect(screen.getByTestId('app-sidebar')).toBeInTheDocument();
-    expect(screen.getByText('OmniNode')).toBeInTheDocument();
+    expect(screen.getByAltText('OmniNode')).toBeInTheDocument();
     expect(screen.getByText('Connected')).toBeInTheDocument();
   });
 
