@@ -233,15 +233,7 @@ function App() {
                     <div className="flex items-center gap-4">
                       <SidebarTrigger data-testid="button-sidebar-toggle" />
                       <div className="flex items-center gap-3">
-                        <div className="p-2 rounded-lg bg-primary/10">
-                          <img src="/favicon.svg" alt="OmniNode icon" className="w-5 h-5" />
-                        </div>
-                        <div>
-                          <h1 className="text-lg font-semibold">OmniNode</h1>
-                          <p className="text-xs text-muted-foreground">
-                            Code Intelligence Platform
-                          </p>
-                        </div>
+                        <img src="/logo-inline.svg" alt="OmniNode" className="h-7 w-auto max-w-[180px]" />
                       </div>
                     </div>
 
