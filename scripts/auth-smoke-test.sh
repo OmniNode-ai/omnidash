@@ -16,9 +16,9 @@ SKIP=0
 result() {
   local status="$1" label="$2" detail="${3:-}"
   case "$status" in
-    PASS) ((PASS++)); printf "\033[32m[PASS]\033[0m %s" "$label" ;;
-    FAIL) ((FAIL++)); printf "\033[31m[FAIL]\033[0m %s" "$label" ;;
-    SKIP) ((SKIP++)); printf "\033[33m[SKIP]\033[0m %s" "$label" ;;
+    PASS) PASS=$((PASS + 1)); printf "\033[32m[PASS]\033[0m %s" "$label" ;;
+    FAIL) FAIL=$((FAIL + 1)); printf "\033[31m[FAIL]\033[0m %s" "$label" ;;
+    SKIP) SKIP=$((SKIP + 1)); printf "\033[33m[SKIP]\033[0m %s" "$label" ;;
   esac
   if [ -n "$detail" ]; then
     printf " -- %s" "$detail"
