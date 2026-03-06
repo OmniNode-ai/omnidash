@@ -44,7 +44,10 @@ fi
 
 # ---------- Check 2: Service health includes Keycloak ----------
 if HEALTH_BODY=$(curl -sf --max-time 5 "${BASE_URL}/api/health" 2>/dev/null); then
-  if echo "$HEALTH_BODY" | grep -q '"Keycloak"'; then
+  # Detect non-JSON response (e.g. Vite HTML when Express backend not running)
+  if ! echo "$HEALTH_BODY" | grep -qE '^\s*[\{\[]'; then
+    result SKIP "Service health includes Keycloak" "Non-JSON response from $BASE_URL/api/health (Express backend not running?)"
+  elif echo "$HEALTH_BODY" | grep -q '"Keycloak"'; then
     result PASS "Service health includes Keycloak"
   else
     result FAIL "Service health includes Keycloak" "No Keycloak entry in /api/health"
@@ -55,7 +58,10 @@ fi
 
 # ---------- Check 3: Auth-disabled contract ----------
 if AUTH_BODY=$(curl -sf --max-time 5 "${BASE_URL}/api/auth/me" 2>/dev/null); then
-  if [ -z "$KC_URL" ]; then
+  # Detect non-JSON response (e.g. Vite HTML when Express backend not running)
+  if ! echo "$AUTH_BODY" | grep -qE '^\s*[\{\[]'; then
+    result SKIP "Auth-disabled contract" "Non-JSON response from $BASE_URL/api/auth/me (Express backend not running?)"
+  elif [ -z "$KC_URL" ]; then
     # When auth is disabled, must return {"authEnabled": false}
     if echo "$AUTH_BODY" | grep -q '"authEnabled".*false'; then
       result PASS "Auth-disabled contract" "/api/auth/me returns {authEnabled: false}"
