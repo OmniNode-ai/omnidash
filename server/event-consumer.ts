@@ -964,7 +964,7 @@ export class EventConsumer extends EventEmitter {
     super(); // Initialize EventEmitter
 
     // Get brokers from environment variable - required, no fallback
-    const brokers = process.env.KAFKA_BROKERS || process.env.KAFKA_BOOTSTRAP_SERVERS;
+    const brokers = process.env.KAFKA_BOOTSTRAP_SERVERS || process.env.KAFKA_BROKERS;
     if (!brokers) {
       throw new Error(
         'KAFKA_BROKERS or KAFKA_BOOTSTRAP_SERVERS environment variable is required. ' +
@@ -1077,7 +1077,7 @@ export class EventConsumer extends EventEmitter {
    * ```
    */
   async validateConnection(): Promise<boolean> {
-    const brokers = process.env.KAFKA_BROKERS || process.env.KAFKA_BOOTSTRAP_SERVERS;
+    const brokers = process.env.KAFKA_BOOTSTRAP_SERVERS || process.env.KAFKA_BROKERS;
 
     if (!brokers) {
       console.error(
