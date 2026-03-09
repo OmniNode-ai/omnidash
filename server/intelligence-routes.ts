@@ -501,7 +501,7 @@ intelligenceRouter.get('/agents/routing-strategy', async (req, res) => {
 
     const total = strategyData.reduce((sum, s) => sum + s.count, 0);
     const formattedData: RoutingStrategyBreakdown[] = strategyData.map((s) => ({
-      strategy: s.strategy,
+      strategy: s.strategy ?? 'unknown',
       count: s.count,
       percentage: total > 0 ? parseFloat(((s.count / total) * 100).toFixed(1)) : 0,
     }));
