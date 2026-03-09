@@ -153,10 +153,10 @@ export class AgentRoutingProjection extends DbBackedProjectionView<AgentRoutingP
 
     return rows.map((row) => ({
       id: row.id,
-      query: row.userRequest,
+      query: row.userRequest ?? '',
       agent: row.selectedAgent,
       confidence: Math.round(parseFloat(row.confidenceScore) * 100),
-      time: `${row.routingTimeMs}ms`,
+      time: `${row.routingTimeMs ?? 0}ms`,
       timestamp: row.createdAt?.toISOString() ?? new Date().toISOString(),
     }));
   }
@@ -177,7 +177,7 @@ export class AgentRoutingProjection extends DbBackedProjectionView<AgentRoutingP
       .groupBy(agentRoutingDecisions.routingStrategy);
 
     return rows.map((row) => ({
-      name: row.strategy,
+      name: row.strategy ?? 'unknown',
       count: row.count,
       usage: total > 0 ? Math.round((row.count / total) * 100) : 0,
       accuracy: Math.round(parseFloat(row.avgConfidence ?? '0') * 100 * 10) / 10,

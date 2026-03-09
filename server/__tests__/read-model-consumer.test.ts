@@ -1462,6 +1462,198 @@ describe('OMN-2924: Pattern projection write handlers', () => {
 });
 
 // ============================================================================
+// ============================================================================
+// OMN-4081: projectRoutingDecision field aliasing from omniclaude producer
+//
+// The omniclaude routing.decision event payload uses different field names
+// than the omnidash read-model schema:
+//   prompt_preview   → user_request     (OMN-3320)
+//   routing_policy   → routing_strategy (fallback: 'unknown')
+//   (absent)         → routing_time_ms  (fallback: 0)
+//   confidence       → confidence_score (OMN-3320)
+//
+// These tests verify that the consumer correctly maps omniclaude-style
+// payloads into the agent_routing_decisions schema without constraint
+// violations, regardless of which field names the producer uses.
+// ============================================================================
+
+describe('OMN-4081: projectRoutingDecision via handleMessage — omniclaude field aliasing', () => {
+  let consumer: ReadModelConsumer;
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    consumer = new ReadModelConsumer();
+  });
+
+  function getHandleMessage(c: ReadModelConsumer) {
+    return (
+      c as unknown as { handleMessage: (p: EachMessagePayload) => Promise<void> }
+    ).handleMessage.bind(c);
+  }
+
+  const TOPIC = 'onex.evt.omniclaude.routing-decision.v1';
+
+  function makeRoutingDecisionPayload(overrides: Record<string, unknown> = {}) {
+    return makeKafkaPayload(TOPIC, {
+      correlation_id: '11111111-1111-1111-1111-111111111111',
+      claude_session_id: 'test-session',
+      selected_agent: 'polymorphic-agent',
+      confidence_score: 0.92,
+      created_at: '2026-03-09T00:00:00.000Z',
+      ...overrides,
+    });
+  }
+
+  it('skips projection when DB is unavailable', async () => {
+    const { tryGetIntelligenceDb } = await import('../storage');
+    (tryGetIntelligenceDb as ReturnType<typeof vi.fn>).mockReturnValue(null);
+
+    const handleMessage = getHandleMessage(consumer);
+    await handleMessage(makeRoutingDecisionPayload({ prompt_preview: 'Hello world' }));
+
+    expect(consumer.getStats().eventsProjected).toBe(0);
+  });
+
+  it('maps prompt_preview → userRequest when user_request is absent [OMN-3320]', async () => {
+    const { tryGetIntelligenceDb } = await import('../storage');
+    const onConflictDoNothingMock = vi.fn().mockResolvedValue(undefined);
+    const valuesMock = vi.fn().mockReturnValue({ onConflictDoNothing: onConflictDoNothingMock });
+    const insertMock = vi.fn().mockReturnValue({ values: valuesMock });
+    const executeMock = vi.fn().mockResolvedValue(undefined);
+    (tryGetIntelligenceDb as ReturnType<typeof vi.fn>).mockReturnValue({
+      insert: insertMock,
+      execute: executeMock,
+    });
+
+    const handleMessage = getHandleMessage(consumer);
+    // Omniclaude-style payload: uses prompt_preview, not user_request
+    await handleMessage(
+      makeRoutingDecisionPayload({
+        prompt_preview: 'Fix the bug in auth module',
+        routing_policy: 'trigger_match',
+        confidence: 0.85,
+        // routing_time_ms intentionally absent
+      })
+    );
+
+    expect(insertMock).toHaveBeenCalled();
+    const insertedRow = valuesMock.mock.calls[0]?.[0];
+    expect(insertedRow).toBeDefined();
+    // prompt_preview must be mapped to userRequest
+    expect(insertedRow.userRequest).toBe('Fix the bug in auth module');
+  });
+
+  it('maps confidence → confidenceScore when confidence_score is absent [OMN-3320]', async () => {
+    const { tryGetIntelligenceDb } = await import('../storage');
+    const onConflictDoNothingMock = vi.fn().mockResolvedValue(undefined);
+    const valuesMock = vi.fn().mockReturnValue({ onConflictDoNothing: onConflictDoNothingMock });
+    const insertMock = vi.fn().mockReturnValue({ values: valuesMock });
+    const executeMock = vi.fn().mockResolvedValue(undefined);
+    (tryGetIntelligenceDb as ReturnType<typeof vi.fn>).mockReturnValue({
+      insert: insertMock,
+      execute: executeMock,
+    });
+
+    const handleMessage = getHandleMessage(consumer);
+    // Build payload without confidence_score so the consumer must fall back to confidence
+    await handleMessage(
+      makeKafkaPayload(TOPIC, {
+        correlation_id: '22222222-2222-2222-2222-222222222222',
+        claude_session_id: 'test-session',
+        selected_agent: 'polymorphic-agent',
+        prompt_preview: 'Deploy to staging',
+        confidence: 0.77,
+        // confidence_score intentionally absent — consumer must fall back to confidence
+      })
+    );
+
+    expect(insertMock).toHaveBeenCalled();
+    const insertedRow = valuesMock.mock.calls[0]?.[0];
+    expect(insertedRow).toBeDefined();
+    expect(insertedRow.confidenceScore).toBe('0.77');
+  });
+
+  it('defaults routingStrategy to "unknown" when routing_strategy and routingStrategy are absent', async () => {
+    const { tryGetIntelligenceDb } = await import('../storage');
+    const onConflictDoNothingMock = vi.fn().mockResolvedValue(undefined);
+    const valuesMock = vi.fn().mockReturnValue({ onConflictDoNothing: onConflictDoNothingMock });
+    const insertMock = vi.fn().mockReturnValue({ values: valuesMock });
+    const executeMock = vi.fn().mockResolvedValue(undefined);
+    (tryGetIntelligenceDb as ReturnType<typeof vi.fn>).mockReturnValue({
+      insert: insertMock,
+      execute: executeMock,
+    });
+
+    const handleMessage = getHandleMessage(consumer);
+    await handleMessage(
+      makeRoutingDecisionPayload({
+        prompt_preview: 'Write tests',
+        // routing_strategy and routingStrategy intentionally absent
+      })
+    );
+
+    expect(insertMock).toHaveBeenCalled();
+    const insertedRow = valuesMock.mock.calls[0]?.[0];
+    expect(insertedRow).toBeDefined();
+    expect(insertedRow.routingStrategy).toBe('unknown');
+  });
+
+  it('defaults routingTimeMs to 0 when routing_time_ms is absent', async () => {
+    const { tryGetIntelligenceDb } = await import('../storage');
+    const onConflictDoNothingMock = vi.fn().mockResolvedValue(undefined);
+    const valuesMock = vi.fn().mockReturnValue({ onConflictDoNothing: onConflictDoNothingMock });
+    const insertMock = vi.fn().mockReturnValue({ values: valuesMock });
+    const executeMock = vi.fn().mockResolvedValue(undefined);
+    (tryGetIntelligenceDb as ReturnType<typeof vi.fn>).mockReturnValue({
+      insert: insertMock,
+      execute: executeMock,
+    });
+
+    const handleMessage = getHandleMessage(consumer);
+    await handleMessage(
+      makeRoutingDecisionPayload({
+        prompt_preview: 'Analyze logs',
+        // routing_time_ms intentionally absent
+      })
+    );
+
+    expect(insertMock).toHaveBeenCalled();
+    const insertedRow = valuesMock.mock.calls[0]?.[0];
+    expect(insertedRow).toBeDefined();
+    expect(insertedRow.routingTimeMs).toBe(0);
+  });
+
+  it('accepts canonical field names when producer emits them directly', async () => {
+    const { tryGetIntelligenceDb } = await import('../storage');
+    const onConflictDoNothingMock = vi.fn().mockResolvedValue(undefined);
+    const valuesMock = vi.fn().mockReturnValue({ onConflictDoNothing: onConflictDoNothingMock });
+    const insertMock = vi.fn().mockReturnValue({ values: valuesMock });
+    const executeMock = vi.fn().mockResolvedValue(undefined);
+    (tryGetIntelligenceDb as ReturnType<typeof vi.fn>).mockReturnValue({
+      insert: insertMock,
+      execute: executeMock,
+    });
+
+    const handleMessage = getHandleMessage(consumer);
+    await handleMessage(
+      makeRoutingDecisionPayload({
+        user_request: 'Create a PR for OMN-4081',
+        routing_strategy: 'event',
+        routing_time_ms: 123,
+        confidence_score: 0.95,
+      })
+    );
+
+    expect(insertMock).toHaveBeenCalled();
+    const insertedRow = valuesMock.mock.calls[0]?.[0];
+    expect(insertedRow).toBeDefined();
+    expect(insertedRow.userRequest).toBe('Create a PR for OMN-4081');
+    expect(insertedRow.routingStrategy).toBe('event');
+    expect(insertedRow.routingTimeMs).toBe(123);
+    expect(insertedRow.confidenceScore).toBe('0.95');
+  });
+});
+
 // OMN-2760: Regression — OMNICLAUDE_AGENT_TOPICS coverage in READ_MODEL_TOPICS
 //
 // Ensures that every topic in the canonical OMNICLAUDE_AGENT_TOPICS array is

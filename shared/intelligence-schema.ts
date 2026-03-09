@@ -29,19 +29,24 @@ export const agentRoutingDecisions = pgTable(
     id: uuid('id').primaryKey().defaultRandom(),
     correlationId: uuid('correlation_id').notNull(),
     sessionId: uuid('session_id'),
-    userRequest: text('user_request').notNull(),
+    // OMN-4081: user_request, routing_strategy, routing_time_ms are nullable.
+    // The omniclaude producer emits prompt_preview (not user_request) and
+    // routing_policy (not routing_strategy); the read-model-consumer applies
+    // safe fallbacks (OMN-3320). The DB constraint is dropped so future
+    // producers that omit these fields do not cause constraint violations.
+    userRequest: text('user_request'),
     userRequestHash: text('user_request_hash'),
     contextSnapshot: jsonb('context_snapshot'),
     selectedAgent: text('selected_agent').notNull(),
     confidenceScore: numeric('confidence_score', { precision: 5, scale: 4 }).notNull(),
-    routingStrategy: text('routing_strategy').notNull(),
+    routingStrategy: text('routing_strategy'),
     triggerConfidence: numeric('trigger_confidence', { precision: 5, scale: 4 }),
     contextConfidence: numeric('context_confidence', { precision: 5, scale: 4 }),
     capabilityConfidence: numeric('capability_confidence', { precision: 5, scale: 4 }),
     historicalConfidence: numeric('historical_confidence', { precision: 5, scale: 4 }),
     alternatives: jsonb('alternatives'),
     reasoning: text('reasoning'),
-    routingTimeMs: integer('routing_time_ms').notNull(),
+    routingTimeMs: integer('routing_time_ms'),
     cacheHit: boolean('cache_hit').default(false),
     selectionValidated: boolean('selection_validated').default(false),
     actualSuccess: boolean('actual_success'), // @deprecated Use executionSucceeded instead
