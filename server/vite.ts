@@ -1,12 +1,8 @@
 import express, { type Express } from 'express';
 import fs from 'fs';
 import path from 'path';
-import { createServer as createViteServer, createLogger } from 'vite';
 import { type Server } from 'http';
-import viteConfig from '../vite.config';
 import { nanoid } from 'nanoid';
-
-const viteLogger = createLogger();
 
 export function log(message: string, source = 'express') {
   const formattedTime = new Date().toLocaleTimeString('en-US', {
@@ -20,6 +16,14 @@ export function log(message: string, source = 'express') {
 }
 
 export async function setupVite(app: Express, server: Server) {
+  // Dynamic imports keep vite out of the module graph in production builds.
+  // The static top-level import caused ERR_MODULE_NOT_FOUND at startup because
+  // vite is a devDependency not present in the production image.
+  const { createServer: createViteServer, createLogger } = await import('vite');
+  const viteConfig = (await import('../vite.config')).default;
+
+  const viteLogger = createLogger();
+
   const serverOptions = {
     middlewareMode: true,
     hmr: { server },
