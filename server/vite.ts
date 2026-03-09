@@ -16,11 +16,14 @@ export function log(message: string, source = 'express') {
 }
 
 export async function setupVite(app: Express, server: Server) {
-  // Dynamic imports keep vite out of the module graph in production builds.
-  // The static top-level import caused ERR_MODULE_NOT_FOUND at startup because
-  // vite is a devDependency not present in the production image.
+  // Dynamic imports keep vite (and vite.config.ts) out of the module graph in
+  // production builds. The original static top-level imports caused
+  // ERR_MODULE_NOT_FOUND at startup because vite is a devDependency not present
+  // in the production image. vite.config.ts is also not imported here — its
+  // resolve aliases are reproduced inline to avoid pulling in vite's static
+  // imports transitively through the config file.
   const { createServer: createViteServer, createLogger } = await import('vite');
-  const viteConfig = (await import('../vite.config')).default;
+  const { default: react } = await import('@vitejs/plugin-react');
 
   const viteLogger = createLogger();
 
@@ -31,8 +34,16 @@ export async function setupVite(app: Express, server: Server) {
   };
 
   const vite = await createViteServer({
-    ...viteConfig,
     configFile: false,
+    plugins: [react()],
+    resolve: {
+      alias: {
+        '@': path.resolve(import.meta.dirname, '..', 'client', 'src'),
+        '@shared': path.resolve(import.meta.dirname, '..', 'shared'),
+        '@assets': path.resolve(import.meta.dirname, '..', 'attached_assets'),
+      },
+    },
+    root: path.resolve(import.meta.dirname, '..', 'client'),
     customLogger: {
       ...viteLogger,
       error: (msg, options) => {
