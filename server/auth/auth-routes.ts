@@ -21,7 +21,7 @@ router.get('/login', (req: Request, res: Response) => {
   req.session.returnTo = (req.query.returnTo as string) || '/';
 
   const authUrl = client.authorizationUrl({
-    scope: 'openid profile email',
+    scope: 'openid profile email offline_access',
     state,
     nonce,
     code_challenge: codeChallenge,
