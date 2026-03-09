@@ -4,6 +4,7 @@ import type { IncomingMessage } from 'http';
 import { z } from 'zod';
 import { getSessionMiddleware } from './auth/session-config';
 import { isAuthEnabled } from './auth/oidc-client';
+import { refreshTokenIfNeeded } from './auth/middleware';
 import {
   eventConsumer,
   type NodeIntrospectionEvent,
@@ -343,24 +344,59 @@ export function setupWebSocket(httpServer: HTTPServer) {
   httpServer.on('upgrade', (request, socket, head) => {
     const { pathname } = new URL(request.url || '/', `http://${request.headers.host}`);
     if (pathname === '/ws') {
-      // Parse session cookie for auth check
       const sessionMiddleware = getSessionMiddleware();
+
+      // resShim satisfies sessionMiddleware and refreshTokenIfNeeded.
+      // WARNING: this shim is valid only as long as refreshTokenIfNeeded uses
+      // res exclusively via res.status(401).json() on failure. Any future
+      // expansion of that middleware's res usage requires re-auditing this path.
       const resShim = {
         getHeader: () => undefined,
         setHeader: () => resShim,
         writeHead: () => resShim,
         end: () => {},
+        status: (code: number) => ({
+          json: (_body: unknown) => {
+            console.warn(`[ws:upgrade] token refresh returned ${code} — rejecting upgrade`);
+            socket.write('HTTP/1.1 401 Unauthorized\r\n\r\n');
+            socket.destroy();
+          },
+        }),
       } as any;
 
       sessionMiddleware(request as any, resShim, () => {
-        const session = (request as any).session;
-        if (isAuthEnabled() && (!session?.user || !session?.tokenSet)) {
-          socket.write('HTTP/1.1 401 Unauthorized\r\n\r\n');
-          socket.destroy();
-          return;
-        }
-        wss.handleUpgrade(request, socket, head, (ws) => {
-          wss.emit('connection', ws, request);
+        // Attempt token refresh before the auth gate.
+        // refreshTokenIfNeeded calls next() immediately if token is valid (>60s remaining).
+        // On expiry it refreshes and mutates req.session.tokenSet in-place, then calls next().
+        // On refresh failure it calls res.status(401).json() and does NOT call next().
+        refreshTokenIfNeeded(request as any, resShim, () => {
+          const req = request as any;
+          const session = req.session;
+
+          if (isAuthEnabled() && (!session?.user || !session?.tokenSet)) {
+            console.warn('[ws:upgrade] auth check failed after refresh attempt — rejecting');
+            socket.write('HTTP/1.1 401 Unauthorized\r\n\r\n');
+            socket.destroy();
+            return;
+          }
+
+          // Explicitly persist session to Redis before upgrade.
+          // The WS upgrade path has no HTTP response-end to trigger auto-save.
+          // Without this, the refreshed tokenSet lives only in memory and the
+          // next request reading from Redis may still see the stale token.
+          // On save failure: log and proceed — the live WS connection is preserved
+          // but subsequent HTTP requests may still read stale session state from Redis.
+          (session as any).save((err: Error | null) => {
+            if (err) {
+              console.error(
+                '[ws:upgrade] session.save() failed after token refresh — proceeding with in-memory state:',
+                err
+              );
+            }
+            wss.handleUpgrade(request, socket, head, (ws) => {
+              wss.emit('connection', ws, request);
+            });
+          });
         });
       });
     }
@@ -644,27 +680,47 @@ export function setupWebSocket(httpServer: HTTPServer) {
   // Tells clients to re-fetch Wave 2 dashboard data when events are projected.
 
   const gateDecisionInvalidateHandler = (data: { correlationId: string }) => {
-    broadcast('GATE_DECISION_INVALIDATE', { correlationId: data.correlationId, timestamp: Date.now() }, 'gate-decisions');
+    broadcast(
+      'GATE_DECISION_INVALIDATE',
+      { correlationId: data.correlationId, timestamp: Date.now() },
+      'gate-decisions'
+    );
   };
   gateDecisionEventEmitter.on('gate-decision-invalidate', gateDecisionInvalidateHandler);
 
   const epicRunInvalidateHandler = (data: { epicRunId: string }) => {
-    broadcast('EPIC_RUN_INVALIDATE', { epicRunId: data.epicRunId, timestamp: Date.now() }, 'epic-run');
+    broadcast(
+      'EPIC_RUN_INVALIDATE',
+      { epicRunId: data.epicRunId, timestamp: Date.now() },
+      'epic-run'
+    );
   };
   epicRunEventEmitter.on('epic-run-invalidate', epicRunInvalidateHandler);
 
   const prWatchInvalidateHandler = (data: { correlationId: string }) => {
-    broadcast('PR_WATCH_INVALIDATE', { correlationId: data.correlationId, timestamp: Date.now() }, 'pr-watch');
+    broadcast(
+      'PR_WATCH_INVALIDATE',
+      { correlationId: data.correlationId, timestamp: Date.now() },
+      'pr-watch'
+    );
   };
   prWatchEventEmitter.on('pr-watch-invalidate', prWatchInvalidateHandler);
 
   const pipelineBudgetInvalidateHandler = (data: { correlationId: string }) => {
-    broadcast('PIPELINE_BUDGET_INVALIDATE', { correlationId: data.correlationId, timestamp: Date.now() }, 'pipeline-budget');
+    broadcast(
+      'PIPELINE_BUDGET_INVALIDATE',
+      { correlationId: data.correlationId, timestamp: Date.now() },
+      'pipeline-budget'
+    );
   };
   pipelineBudgetEventEmitter.on('pipeline-budget-invalidate', pipelineBudgetInvalidateHandler);
 
   const debugEscalationInvalidateHandler = (data: { correlationId: string }) => {
-    broadcast('DEBUG_ESCALATION_INVALIDATE', { correlationId: data.correlationId, timestamp: Date.now() }, 'debug-escalation');
+    broadcast(
+      'DEBUG_ESCALATION_INVALIDATE',
+      { correlationId: data.correlationId, timestamp: Date.now() },
+      'debug-escalation'
+    );
   };
   circuitBreakerEventEmitter.on('circuit-breaker-invalidate', debugEscalationInvalidateHandler);
 
@@ -1269,11 +1325,20 @@ export function setupWebSocket(httpServer: HTTPServer) {
     statusEventEmitter.removeListener('status-invalidate', statusInvalidateHandler);
 
     // Remove Wave 2 state event listeners (OMN-2602)
-    gateDecisionEventEmitter.removeListener('gate-decision-invalidate', gateDecisionInvalidateHandler);
+    gateDecisionEventEmitter.removeListener(
+      'gate-decision-invalidate',
+      gateDecisionInvalidateHandler
+    );
     epicRunEventEmitter.removeListener('epic-run-invalidate', epicRunInvalidateHandler);
     prWatchEventEmitter.removeListener('pr-watch-invalidate', prWatchInvalidateHandler);
-    pipelineBudgetEventEmitter.removeListener('pipeline-budget-invalidate', pipelineBudgetInvalidateHandler);
-    circuitBreakerEventEmitter.removeListener('circuit-breaker-invalidate', debugEscalationInvalidateHandler);
+    pipelineBudgetEventEmitter.removeListener(
+      'pipeline-budget-invalidate',
+      pipelineBudgetInvalidateHandler
+    );
+    circuitBreakerEventEmitter.removeListener(
+      'circuit-breaker-invalidate',
+      debugEscalationInvalidateHandler
+    );
 
     // Remove event bus data source listeners
     console.log(`Removing ${eventBusListeners.length} event bus data source listeners...`);
