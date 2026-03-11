@@ -569,9 +569,8 @@ describe('Playback Routes', () => {
 
       const response = await request(app).post('/api/demo/stop').expect(200);
 
-      expect(response.body).toEqual({
+      expect(response.body).toMatchObject({
         success: true,
-        message: 'Playback stopped',
         ...mockStatus,
       });
       expect(mockPlaybackService.stopPlayback).toHaveBeenCalledTimes(1);

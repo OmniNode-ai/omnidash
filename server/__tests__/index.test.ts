@@ -51,9 +51,11 @@ vi.mock('../websocket', () => ({
 }));
 
 vi.mock('../projections/node-registry-projection', () => ({
-  NodeRegistryProjection: vi.fn().mockImplementation(() => ({
-    viewId: 'node-registry',
-  })),
+  NodeRegistryProjection: vi.fn().mockImplementation(function () {
+    return {
+      viewId: 'node-registry',
+    };
+  }),
 }));
 
 vi.mock('../projection-routes', () => ({
@@ -112,15 +114,13 @@ vi.mock('../read-model-consumer', () => ({
   readModelConsumer: {
     start: vi.fn().mockResolvedValue(undefined),
     stop: vi.fn().mockResolvedValue(undefined),
-    getStats: vi
-      .fn()
-      .mockReturnValue({
-        isRunning: false,
-        eventsProjected: 0,
-        errorsCount: 0,
-        lastProjectedAt: null,
-        topicStats: {},
-      }),
+    getStats: vi.fn().mockReturnValue({
+      isRunning: false,
+      eventsProjected: 0,
+      errorsCount: 0,
+      lastProjectedAt: null,
+      topicStats: {},
+    }),
   },
 }));
 

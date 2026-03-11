@@ -37,13 +37,12 @@ describe('IntelligenceEventAdapter', () => {
       disconnect: vi.fn().mockResolvedValue(undefined),
     };
 
-    vi.mocked(Kafka).mockImplementation(
-      () =>
-        ({
-          producer: () => mockProducer,
-          consumer: () => mockConsumer,
-        }) as any
-    );
+    vi.mocked(Kafka).mockImplementation(function () {
+      return {
+        producer: () => mockProducer,
+        consumer: () => mockConsumer,
+      } as any;
+    });
 
     adapter = new IntelligenceEventAdapter(['localhost:9092']);
   });

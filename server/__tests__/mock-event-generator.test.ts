@@ -21,7 +21,9 @@ const kafkaInstanceMock = {
 };
 
 vi.mock('kafkajs', () => ({
-  Kafka: vi.fn(() => kafkaInstanceMock),
+  Kafka: vi.fn(function () {
+    return kafkaInstanceMock;
+  }),
 }));
 
 describe('MockEventGenerator', () => {

@@ -4,11 +4,13 @@ import React from 'react';
 import { RealtimeChart } from '../RealtimeChart';
 
 // Mock ResizeObserver for Recharts
-global.ResizeObserver = vi.fn().mockImplementation(() => ({
-  observe: vi.fn(),
-  unobserve: vi.fn(),
-  disconnect: vi.fn(),
-}));
+global.ResizeObserver = vi.fn().mockImplementation(function () {
+  return {
+    observe: vi.fn(),
+    unobserve: vi.fn(),
+    disconnect: vi.fn(),
+  };
+});
 
 describe('RealtimeChart', () => {
   const mockData = [

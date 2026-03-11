@@ -63,12 +63,11 @@ describe('Service Health Checks', () => {
         disconnect: vi.fn().mockResolvedValue(undefined),
       };
 
-      vi.mocked(Kafka).mockImplementation(
-        () =>
-          ({
-            admin: () => mockAdmin,
-          }) as any
-      );
+      vi.mocked(Kafka).mockImplementation(function () {
+        return {
+          admin: () => mockAdmin,
+        } as any;
+      });
 
       vi.mocked(global.fetch).mockResolvedValue({
         ok: true,
@@ -99,12 +98,11 @@ describe('Service Health Checks', () => {
         disconnect: vi.fn().mockResolvedValue(undefined),
       };
 
-      vi.mocked(Kafka).mockImplementation(
-        () =>
-          ({
-            admin: () => mockAdmin,
-          }) as any
-      );
+      vi.mocked(Kafka).mockImplementation(function () {
+        return {
+          admin: () => mockAdmin,
+        } as any;
+      });
 
       vi.mocked(global.fetch).mockResolvedValue({
         ok: true,
@@ -140,12 +138,11 @@ describe('Service Health Checks', () => {
         disconnect: vi.fn().mockResolvedValue(undefined),
       };
 
-      vi.mocked(Kafka).mockImplementation(
-        () =>
-          ({
-            admin: () => mockAdmin,
-          }) as any
-      );
+      vi.mocked(Kafka).mockImplementation(function () {
+        return {
+          admin: () => mockAdmin,
+        } as any;
+      });
 
       vi.mocked(global.fetch).mockResolvedValue({
         ok: true,
@@ -179,12 +176,11 @@ describe('Service Health Checks', () => {
         disconnect: vi.fn().mockResolvedValue(undefined),
       };
 
-      vi.mocked(Kafka).mockImplementation(
-        () =>
-          ({
-            admin: () => mockAdmin,
-          }) as any
-      );
+      vi.mocked(Kafka).mockImplementation(function () {
+        return {
+          admin: () => mockAdmin,
+        } as any;
+      });
 
       vi.mocked(global.fetch).mockResolvedValue({
         ok: true,
@@ -215,12 +211,11 @@ describe('Service Health Checks', () => {
         connect: vi.fn().mockRejectedValue(new Error('Connection refused')),
       };
 
-      vi.mocked(Kafka).mockImplementation(
-        () =>
-          ({
-            admin: () => mockAdmin,
-          }) as any
-      );
+      vi.mocked(Kafka).mockImplementation(function () {
+        return {
+          admin: () => mockAdmin,
+        } as any;
+      });
 
       vi.mocked(global.fetch).mockResolvedValue({
         ok: true,
@@ -252,12 +247,11 @@ describe('Service Health Checks', () => {
         disconnect: vi.fn().mockResolvedValue(undefined),
       };
 
-      vi.mocked(Kafka).mockImplementation(
-        () =>
-          ({
-            admin: () => mockAdmin,
-          }) as any
-      );
+      vi.mocked(Kafka).mockImplementation(function () {
+        return {
+          admin: () => mockAdmin,
+        } as any;
+      });
 
       vi.mocked(global.fetch).mockResolvedValue({
         ok: true,
@@ -288,12 +282,11 @@ describe('Service Health Checks', () => {
         disconnect: vi.fn().mockResolvedValue(undefined),
       };
 
-      vi.mocked(Kafka).mockImplementation(
-        () =>
-          ({
-            admin: () => mockAdmin,
-          }) as any
-      );
+      vi.mocked(Kafka).mockImplementation(function () {
+        return {
+          admin: () => mockAdmin,
+        } as any;
+      });
 
       vi.mocked(global.fetch).mockResolvedValue({
         ok: true,
@@ -323,12 +316,11 @@ describe('Service Health Checks', () => {
         disconnect: vi.fn().mockResolvedValue(undefined),
       };
 
-      vi.mocked(Kafka).mockImplementation(
-        () =>
-          ({
-            admin: () => mockAdmin,
-          }) as any
-      );
+      vi.mocked(Kafka).mockImplementation(function () {
+        return {
+          admin: () => mockAdmin,
+        } as any;
+      });
 
       vi.mocked(global.fetch).mockResolvedValue({
         ok: true,
@@ -381,7 +373,9 @@ describe('Service Health Checks', () => {
         listTopics: vi.fn().mockResolvedValue([]),
         disconnect: vi.fn().mockResolvedValue(undefined),
       };
-      vi.mocked(Kafka).mockImplementation(() => ({ admin: () => mockAdmin }) as any);
+      vi.mocked(Kafka).mockImplementation(function () {
+        return { admin: () => mockAdmin } as any;
+      });
       vi.mocked(eventConsumer.getHealthStatus).mockReturnValue({ status: 'healthy' } as any);
 
       const results = await checkAllServices();
@@ -406,7 +400,9 @@ describe('Service Health Checks', () => {
         listTopics: vi.fn().mockResolvedValue([]),
         disconnect: vi.fn().mockResolvedValue(undefined),
       };
-      vi.mocked(Kafka).mockImplementation(() => ({ admin: () => mockAdmin }) as any);
+      vi.mocked(Kafka).mockImplementation(function () {
+        return { admin: () => mockAdmin } as any;
+      });
       vi.mocked(eventConsumer.getHealthStatus).mockReturnValue({ status: 'healthy' } as any);
 
       const results = await checkAllServices();
@@ -432,12 +428,11 @@ describe('Service Health Checks', () => {
         disconnect: vi.fn().mockResolvedValue(undefined),
       };
 
-      vi.mocked(Kafka).mockImplementation(
-        () =>
-          ({
-            admin: () => mockAdmin,
-          }) as any
-      );
+      vi.mocked(Kafka).mockImplementation(function () {
+        return {
+          admin: () => mockAdmin,
+        } as any;
+      });
 
       vi.mocked(global.fetch).mockResolvedValue({
         ok: true,
