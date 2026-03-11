@@ -48,6 +48,9 @@ import workerHealthRoutes from './worker-health-routes';
 import schemaHealthRoutes from './schema-health';
 // Model Efficiency Index routes (OMN-3937)
 import modelEfficiencyRoutes from './model-efficiency-routes';
+// Prometheus metrics endpoint (OMN-4609)
+import { createMetricsRouter } from './metrics-routes';
+import type { DataSourcesHealthResponse } from './health-data-sources-routes';
 
 export async function registerRoutes(app: Express): Promise<Server> {
   // put application routes here
@@ -158,6 +161,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // Model Efficiency Index routes (OMN-3937)
   app.use('/api/model-efficiency', modelEfficiencyRoutes);
+
+  // Prometheus metrics endpoint (OMN-4609)
+  // Route: GET /metrics — NO authentication. Prometheus scrapes without tokens.
+  // getHealth fetches /api/health/data-sources internally via loopback.
+  // PORT defaults to 3000 matching the server's own listen port.
+  app.use(
+    '/metrics',
+    createMetricsRouter(async (): Promise<DataSourcesHealthResponse> => {
+      const port = process.env.PORT ?? '3000';
+      const res = await fetch(`http://localhost:${port}/api/health/data-sources`);
+      if (!res.ok) throw new Error(`Health probe returned ${res.status}`);
+      return res.json() as Promise<DataSourcesHealthResponse>;
+    })
+  );
 
   // Conditionally mount golden path test routes (OMN-2079)
   // Only enabled when ENABLE_TEST_ROUTES=true AND (NODE_ENV=test OR OMNIDASH_TEST_MODE=true)
