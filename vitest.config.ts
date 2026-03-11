@@ -25,16 +25,11 @@ export default defineConfig({
       '**/tests/e2e/**', // Exclude Playwright E2E tests (run with playwright test, not vitest)
       '**/server/__tests__/integration/**', // Integration tests require a local DB — not run in CI
     ],
-    // Limit parallelism to prevent CPU overload
+    // Limit parallelism to prevent CPU overload (vitest 4: poolOptions removed, use top-level options)
     pool: 'threads',
-    poolOptions: {
-      threads: {
-        singleThread: false,
-        maxThreads: 2, // Max 2 worker threads
-        minThreads: 1,
-        isolate: true, // Isolate each test file for better cleanup
-      },
-    },
+    maxWorkers: 2,
+    minWorkers: 1,
+    isolate: true, // Isolate each test file for better cleanup
     // Run tests sequentially within files to reduce CPU load
     sequence: {
       concurrent: false,

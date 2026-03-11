@@ -45,24 +45,26 @@ const {
 
 // Mock kafkajs module
 vi.mock('kafkajs', () => ({
-  Kafka: vi.fn().mockImplementation(() => ({
-    consumer: vi.fn().mockReturnValue({
-      connect: mockConsumerConnect,
-      disconnect: mockConsumerDisconnect,
-      subscribe: mockConsumerSubscribe,
-      run: mockConsumerRun,
-    }),
-    producer: vi.fn().mockReturnValue({
-      connect: vi.fn().mockResolvedValue(undefined),
-      disconnect: vi.fn().mockResolvedValue(undefined),
-      send: vi.fn().mockResolvedValue(undefined),
-    }),
-    admin: vi.fn().mockReturnValue({
-      connect: mockAdminConnect,
-      disconnect: mockAdminDisconnect,
-      listTopics: mockAdminListTopics,
-    }),
-  })),
+  Kafka: vi.fn().mockImplementation(function () {
+    return {
+      consumer: vi.fn().mockReturnValue({
+        connect: mockConsumerConnect,
+        disconnect: mockConsumerDisconnect,
+        subscribe: mockConsumerSubscribe,
+        run: mockConsumerRun,
+      }),
+      producer: vi.fn().mockReturnValue({
+        connect: vi.fn().mockResolvedValue(undefined),
+        disconnect: vi.fn().mockResolvedValue(undefined),
+        send: vi.fn().mockResolvedValue(undefined),
+      }),
+      admin: vi.fn().mockReturnValue({
+        connect: mockAdminConnect,
+        disconnect: mockAdminDisconnect,
+        listTopics: mockAdminListTopics,
+      }),
+    };
+  }),
 }));
 
 // Mock storage module
@@ -79,10 +81,10 @@ vi.mock('../storage', () => ({
 vi.mock('../topic-catalog-manager', async () => {
   const { EventEmitter } = await import('events');
   return {
-    TopicCatalogManager: vi.fn().mockImplementation(() => {
+    TopicCatalogManager: vi.fn().mockImplementation(function () {
       const emitter = new EventEmitter();
       return {
-        bootstrap: vi.fn().mockImplementation(() => {
+        bootstrap: vi.fn().mockImplementation(function () {
           // Emit catalogTimeout after current microtask so once() listeners
           // are registered first, matching the real production code path
           Promise.resolve().then(() => emitter.emit('catalogTimeout'));

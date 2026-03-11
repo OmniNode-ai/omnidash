@@ -25,14 +25,18 @@ vi.mock('../storage', () => ({
 
 // Mock kafkajs
 vi.mock('kafkajs', () => ({
-  Kafka: vi.fn(() => ({
-    consumer: vi.fn(() => ({
-      connect: vi.fn(),
-      subscribe: vi.fn(),
-      run: vi.fn(),
-      disconnect: vi.fn(),
-    })),
-  })),
+  Kafka: vi.fn(function () {
+    return {
+      consumer: vi.fn(function () {
+        return {
+          connect: vi.fn(),
+          subscribe: vi.fn(),
+          run: vi.fn(),
+          disconnect: vi.fn(),
+        };
+      }),
+    };
+  }),
 }));
 
 // Mock projection-bootstrap so baselinesProjection.reset() and
@@ -60,12 +64,14 @@ const mockCatalogManagerOn = vi.fn();
 const mockCatalogManagerOnce = vi.fn();
 
 vi.mock('../topic-catalog-manager', () => ({
-  TopicCatalogManager: vi.fn(() => ({
-    bootstrap: mockBootstrap,
-    stop: mockStop,
-    once: mockCatalogManagerOnce,
-    on: mockCatalogManagerOn,
-  })),
+  TopicCatalogManager: vi.fn(function () {
+    return {
+      bootstrap: mockBootstrap,
+      stop: mockStop,
+      once: mockCatalogManagerOnce,
+      on: mockCatalogManagerOn,
+    };
+  }),
 }));
 
 import { ReadModelConsumer } from '../read-model-consumer';
