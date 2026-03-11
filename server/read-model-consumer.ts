@@ -373,41 +373,59 @@ export class ReadModelConsumer {
         console.log('[ReadModelConsumer] Connected to Kafka');
 
         // -----------------------------------------------------------------------
-        // Catalog-driven topic subscription (OMN-2926)
+        // Topic subscription (OMN-2926, OMN-4587)
         //
-        // Query the platform topic-catalog service to get the dynamic topic
-        // list. Falls back to READ_MODEL_TOPICS if catalog does not respond.
-        // Uses a 10s timeout (longer than EventConsumer's 5s) to account for
-        // the read-model consumer starting after EventConsumer.
+        // OMNIDASH_READ_MODEL_USE_CATALOG=false bypasses catalog-driven
+        // subscription and always uses the static READ_MODEL_TOPICS list.
+        // This prevents multi-replica rebalance storms where two pods racing
+        // through the catalog query can receive different topic subsets,
+        // causing their group memberships to diverge and trigger an infinite
+        // rebalance loop. Set to 'false' in production k8s deployments.
+        //
+        // When enabled (default), queries the platform topic-catalog service
+        // for the dynamic topic list, filtered to READ_MODEL_TOPICS. Falls
+        // back to READ_MODEL_TOPICS if catalog does not respond.
         // -----------------------------------------------------------------------
-        const catalogTopics = await this.fetchCatalogTopics();
-        const supported = new Set(READ_MODEL_TOPICS as readonly string[]);
-        const subscribeTopics = catalogTopics.filter((t) => supported.has(t));
-        const unsupportedCatalogTopics = catalogTopics.filter((t) => !supported.has(t));
+        const useCatalog = process.env.OMNIDASH_READ_MODEL_USE_CATALOG !== 'false';
+        let finalTopics: string[];
 
-        this.catalogSource = catalogTopics.length > 0 ? 'catalog' : 'fallback';
-        this.stats.catalogSource = this.catalogSource;
-
-        const startupLogMsg =
-          `[ReadModelConsumer] source=${this.catalogSource} ` +
-          `subscribed=${subscribeTopics.length} ` +
-          `catalog_size=${catalogTopics.length} ` +
-          `unsupported=${unsupportedCatalogTopics.length}`;
-        if (this.catalogSource === 'fallback') {
-          console.warn(startupLogMsg);
-        } else {
-          console.info(startupLogMsg);
-        }
-
-        if (unsupportedCatalogTopics.length > 0) {
-          console.warn(
-            `[ReadModelConsumer] DRIFT: catalog has handlers not in consumer: ${unsupportedCatalogTopics.join(', ')}`
+        if (!useCatalog) {
+          this.catalogSource = 'static';
+          this.stats.catalogSource = 'static';
+          finalTopics = [...READ_MODEL_TOPICS];
+          console.info(
+            `[ReadModelConsumer] source=static subscribed=${finalTopics.length} (catalog disabled via OMNIDASH_READ_MODEL_USE_CATALOG=false)`
           );
-          // Surface in health endpoint so drift is visible without log scraping.
-          this.stats.unsupportedCatalogTopics = unsupportedCatalogTopics;
-        }
+        } else {
+          const catalogTopics = await this.fetchCatalogTopics();
+          const supported = new Set(READ_MODEL_TOPICS as readonly string[]);
+          const subscribeTopics = catalogTopics.filter((t) => supported.has(t));
+          const unsupportedCatalogTopics = catalogTopics.filter((t) => !supported.has(t));
 
-        const finalTopics = subscribeTopics.length > 0 ? subscribeTopics : [...READ_MODEL_TOPICS];
+          this.catalogSource = catalogTopics.length > 0 ? 'catalog' : 'fallback';
+          this.stats.catalogSource = this.catalogSource;
+
+          const startupLogMsg =
+            `[ReadModelConsumer] source=${this.catalogSource} ` +
+            `subscribed=${subscribeTopics.length} ` +
+            `catalog_size=${catalogTopics.length} ` +
+            `unsupported=${unsupportedCatalogTopics.length}`;
+          if (this.catalogSource === 'fallback') {
+            console.warn(startupLogMsg);
+          } else {
+            console.info(startupLogMsg);
+          }
+
+          if (unsupportedCatalogTopics.length > 0) {
+            console.warn(
+              `[ReadModelConsumer] DRIFT: catalog has handlers not in consumer: ${unsupportedCatalogTopics.join(', ')}`
+            );
+            // Surface in health endpoint so drift is visible without log scraping.
+            this.stats.unsupportedCatalogTopics = unsupportedCatalogTopics;
+          }
+
+          finalTopics = subscribeTopics.length > 0 ? subscribeTopics : [...READ_MODEL_TOPICS];
+        }
 
         // Subscribe to all final topics individually so that a single
         // missing/uncreated topic (which returns invalid partition metadata from
