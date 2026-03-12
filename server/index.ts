@@ -33,6 +33,7 @@ import { eventBusDataSource } from './event-bus-data-source';
 import { eventBusMockGenerator } from './event-bus-mock-generator';
 import { startMockRegistryEvents, stopMockRegistryEvents } from './registry-events';
 import { runtimeIdentity } from './runtime-identity';
+import { getBrokerString } from './bus-config.js';
 import { initProjectionListeners, teardownProjectionListeners } from './projection-instance';
 import { wireProjectionSources, projectionService } from './projection-bootstrap';
 import { NodeRegistryProjection } from './projections/node-registry-projection';
@@ -268,7 +269,7 @@ app.use((req, res, next) => {
         log('✅ Read-model consumer started - projecting events to omnidash_analytics');
       } else {
         const hasEnvVars =
-          !!(process.env.KAFKA_BROKERS || process.env.KAFKA_BOOTSTRAP_SERVERS) &&
+          getBrokerString() !== 'not configured' &&
           !!process.env.OMNIDASH_ANALYTICS_DB_URL;
         if (hasEnvVars) {
           log(
@@ -285,7 +286,7 @@ app.use((req, res, next) => {
     })
     .catch((error) => {
       const hasEnvVars =
-        !!(process.env.KAFKA_BROKERS || process.env.KAFKA_BOOTSTRAP_SERVERS) &&
+        getBrokerString() !== 'not configured' &&
         !!process.env.OMNIDASH_ANALYTICS_DB_URL;
       if (hasEnvVars) {
         console.error(
@@ -391,12 +392,11 @@ app.use((req, res, next) => {
   // Internal-only: bus/environment identity for omnidash header badge
   // Not intended for public internet exposure. Contains broker topology info (non-secret).
   app.get('/api/runtime-environment', (_req, res) => {
-    // Mirror runtime precedence: KAFKA_BROKERS takes priority (legacy), fall back to standard var
-    // TODO follow-up: standardize omnidash to KAFKA_BOOTSTRAP_SERVERS only
-    const brokers = process.env.KAFKA_BROKERS || process.env.KAFKA_BOOTSTRAP_SERVERS || 'unknown';
+    // Use bus-config singleton for consistent broker resolution (OMN-4774)
+    const brokers = getBrokerString();
     res.json({
       busId: process.env.BUS_ID || 'unknown',
-      kafkaBrokers: brokers,
+      kafkaBrokers: brokers === 'not configured' ? 'unknown' : brokers,
       namespace: process.env.K8S_NAMESPACE || 'local',
     });
   });
