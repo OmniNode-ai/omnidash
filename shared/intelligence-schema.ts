@@ -28,7 +28,10 @@ export const agentRoutingDecisions = pgTable(
   {
     id: uuid('id').primaryKey().defaultRandom(),
     correlationId: uuid('correlation_id').notNull(),
-    sessionId: uuid('session_id'),
+    // OMN-4821: Changed from uuid to text — session IDs are application-level
+    // identifiers (e.g. "session-abc123"), not UUIDs. uuid type caused INSERT
+    // failures when non-UUID text values were written by the read-model-consumer.
+    sessionId: text('session_id'),
     // OMN-4081: user_request, routing_strategy, routing_time_ms are nullable.
     // The omniclaude producer emits prompt_preview (not user_request) and
     // routing_policy (not routing_strategy); the read-model-consumer applies
