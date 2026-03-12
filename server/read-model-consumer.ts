@@ -26,6 +26,7 @@
 
 import crypto from 'node:crypto';
 import { Kafka, Consumer, EachMessagePayload, KafkaMessage } from 'kafkajs';
+import { resolveBrokers } from './bus-config.js';
 import { TopicCatalogManager } from './topic-catalog-manager';
 import { tryGetIntelligenceDb } from './storage';
 import { sql, eq } from 'drizzle-orm';
@@ -320,11 +321,10 @@ export class ReadModelConsumer {
     // Reset stopped flag so start() can be called again after stop().
     this.stopped = false;
 
-    const brokers = (process.env.KAFKA_BROKERS || process.env.KAFKA_BOOTSTRAP_SERVERS || '')
-      .split(',')
-      .filter(Boolean);
-
-    if (brokers.length === 0) {
+    let brokers: string[];
+    try {
+      brokers = resolveBrokers();
+    } catch {
       console.warn('[ReadModelConsumer] No Kafka brokers configured -- skipping');
       return;
     }
