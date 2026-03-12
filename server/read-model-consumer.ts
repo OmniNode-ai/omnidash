@@ -1,3 +1,4 @@
+// no-migration: OMN-4587 No schema change — only controls which topics the consumer subscribes to at startup.
 /**
  * Read-Model Consumer (OMN-2061)
  *
@@ -261,7 +262,7 @@ export interface ReadModelConsumerStats {
   errorsCount: number;
   lastProjectedAt: Date | null;
   topicStats: Record<string, { projected: number; errors: number }>;
-  catalogSource: 'catalog' | 'fallback';
+  catalogSource: 'catalog' | 'fallback' | 'static';
   unsupportedCatalogTopics: string[];
 }
 
@@ -278,7 +279,7 @@ export class ReadModelConsumer {
   private running = false;
   private stopped = false;
   private catalogManager: TopicCatalogManager | null = null;
-  private catalogSource: 'catalog' | 'fallback' = 'fallback';
+  private catalogSource: 'catalog' | 'fallback' | 'static' = 'fallback';
   private stats: ReadModelConsumerStats = {
     isRunning: false,
     eventsProjected: 0,
