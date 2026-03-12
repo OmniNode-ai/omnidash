@@ -34,6 +34,7 @@ import { eventBusMockGenerator } from './event-bus-mock-generator';
 import { startMockRegistryEvents, stopMockRegistryEvents } from './registry-events';
 import { runtimeIdentity } from './runtime-identity';
 import { getBrokerString } from './bus-config.js';
+import { printStartupBanner } from './startup-banner.js';
 import { initProjectionListeners, teardownProjectionListeners } from './projection-instance';
 import { wireProjectionSources, projectionService } from './projection-bootstrap';
 import { NodeRegistryProjection } from './projections/node-registry-projection';
@@ -105,6 +106,9 @@ app.use((req, res, next) => {
 });
 
 (async () => {
+  // Print bus mode banner before any consumers start (OMN-4776)
+  printStartupBanner();
+
   // Log runtime identity on startup (identity loaded from shared module)
   if (runtimeIdentity.supervised) {
     log(`Running under ONEX runtime: node_id=${runtimeIdentity.nodeId}`);
