@@ -1,5 +1,6 @@
 import { Kafka, Producer, Consumer } from 'kafkajs';
 import { randomUUID } from 'crypto';
+import { resolveBrokers } from './bus-config.js';
 import {
   SUFFIX_INTELLIGENCE_CODE_ANALYSIS_CMD,
   SUFFIX_INTELLIGENCE_CODE_ANALYSIS_COMPLETED,
@@ -83,17 +84,7 @@ export class IntelligenceEventAdapter {
     process.env.INTEL_FAILED_TOPIC || SUFFIX_INTELLIGENCE_CODE_ANALYSIS_FAILED;
 
   constructor(
-    private readonly brokers: string[] = (() => {
-      const brokerString = process.env.KAFKA_BOOTSTRAP_SERVERS || process.env.KAFKA_BROKERS;
-      if (!brokerString) {
-        throw new Error(
-          'KAFKA_BROKERS or KAFKA_BOOTSTRAP_SERVERS environment variable is required. ' +
-            'Set it in .env file or export it before starting the server. ' +
-            'Example: KAFKA_BROKERS=host:port'
-        );
-      }
-      return brokerString.split(',');
-    })()
+    private readonly brokers: string[] = resolveBrokers()
   ) {
     this.kafka = new Kafka({
       brokers: this.brokers,

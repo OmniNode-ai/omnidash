@@ -1,4 +1,5 @@
 import { Kafka, Consumer, Producer, KafkaMessage } from 'kafkajs';
+import { resolveBrokers, getBrokerString } from './bus-config.js';
 import { EventEmitter } from 'events';
 import crypto from 'node:crypto';
 import { getIntelligenceDb } from './storage';
@@ -965,18 +966,11 @@ export class EventConsumer extends EventEmitter {
   constructor() {
     super(); // Initialize EventEmitter
 
-    // Get brokers from environment variable - required, no fallback
-    const brokers = process.env.KAFKA_BOOTSTRAP_SERVERS || process.env.KAFKA_BROKERS;
-    if (!brokers) {
-      throw new Error(
-        'KAFKA_BROKERS or KAFKA_BOOTSTRAP_SERVERS environment variable is required. ' +
-          'Set it in .env file or export it before starting the server. ' +
-          'Example: KAFKA_BROKERS=host:port'
-      );
-    }
+    // Get brokers from bus-config singleton (KAFKA_BOOTSTRAP_SERVERS > KAFKA_BROKERS)
+    const brokers = resolveBrokers();
 
     this.kafka = new Kafka({
-      brokers: brokers.split(','),
+      brokers,
       clientId: 'omnidash-event-consumer',
       connectionTimeout: 10000,
       requestTimeout: 30000,
@@ -1079,29 +1073,29 @@ export class EventConsumer extends EventEmitter {
    * ```
    */
   async validateConnection(): Promise<boolean> {
-    const brokers = process.env.KAFKA_BOOTSTRAP_SERVERS || process.env.KAFKA_BROKERS;
+    const brokerStr = getBrokerString();
 
-    if (!brokers) {
+    if (brokerStr === 'not configured') {
       console.error(
-        '❌ KAFKA_BROKERS not configured - Kafka is required infrastructure. Set KAFKA_BROKERS in .env to connect to the Redpanda/Kafka broker.'
+        '❌ KAFKA_BOOTSTRAP_SERVERS not configured - Kafka is required infrastructure. Set KAFKA_BOOTSTRAP_SERVERS in .env to connect to the Redpanda/Kafka broker.'
       );
       return false;
     }
 
     try {
-      intentLogger.info(`Validating Kafka broker connection: ${brokers}`);
+      intentLogger.info(`Validating Kafka broker connection: ${brokerStr}`);
 
       const admin = this.kafka.admin();
       await admin.connect();
 
       // Quick health check - list topics to verify connectivity
       const topics = await admin.listTopics();
-      intentLogger.info(`Kafka broker reachable: ${brokers} (${topics.length} topics available)`);
+      intentLogger.info(`Kafka broker reachable: ${brokerStr} (${topics.length} topics available)`);
 
       await admin.disconnect();
       return true;
     } catch (error) {
-      console.error(`❌ Kafka broker unreachable: ${brokers}`);
+      console.error(`❌ Kafka broker unreachable: ${brokerStr}`);
       console.error(`   Error: ${error instanceof Error ? error.message : String(error)}`);
       console.error(
         '   Real-time event streaming is unavailable — check KAFKA_BROKERS and network connectivity.'
