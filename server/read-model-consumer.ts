@@ -122,6 +122,42 @@ function deterministicCorrelationId(topic: string, partition: number, offset: st
 }
 
 /**
+ * Sanitize a session_id value before writing to agent_routing_decisions (OMN-4823).
+ *
+ * After OMN-4821, session_id is typed text so any string is valid at the DB
+ * layer. This helper enforces application-level quality:
+ * - Trims whitespace
+ * - Returns undefined (null in DB) for empty, null, or whitespace-only values
+ * - Logs a warning when the raw value was non-empty but malformed (not a UUID
+ *   and not a plain printable string)
+ *
+ * All INSERT sites for agent_routing_decisions.session_id must route through
+ * this helper — do not inline session_id sanitization at call sites.
+ */
+function sanitizeSessionId(
+  raw: string | null | undefined,
+  context: { correlationId?: string } = {}
+): string | undefined {
+  if (raw == null) return undefined;
+  const trimmed = raw.trim();
+  if (trimmed === '') {
+    // Empty/whitespace is treated as absent — write null to DB.
+    return undefined;
+  }
+  // Check for control characters or non-printable content that indicates
+  // a corrupted or unexpected value.
+  // eslint-disable-next-line no-control-regex
+  if (/[\x00-\x1f\x7f]/.test(trimmed)) {
+    console.warn('[read-model-consumer] session_id contains control characters — writing null', {
+      rawLength: raw.length,
+      correlationId: context.correlationId,
+    });
+    return undefined;
+  }
+  return trimmed;
+}
+
+/**
  * Parse a date string safely, returning the current wall-clock time (`new
  * Date()`) when the input is missing or produces an invalid Date (e.g.
  * malformed ISO string).
@@ -884,7 +920,13 @@ export class ReadModelConsumer {
     const row: InsertAgentRoutingDecision = {
       correlationId:
         (data.correlation_id as string) || (data.correlationId as string) || fallbackId,
-      sessionId: (data.session_id as string) || (data.sessionId as string) || undefined,
+      // OMN-4823: sanitize session_id before INSERT — strips whitespace, maps
+      // empty/null/control-char values to undefined (null in DB).
+      sessionId: sanitizeSessionId(
+        (data.session_id as string | null | undefined) ??
+          (data.sessionId as string | null | undefined),
+        { correlationId: (data.correlation_id as string) || (data.correlationId as string) }
+      ),
       // user_request / userRequest: canonical names.
       // prompt_preview: field name used by omniclaude routing.decision events. [OMN-3320]
       userRequest:
