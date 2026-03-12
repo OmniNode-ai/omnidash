@@ -180,11 +180,11 @@ export class EventBusDataSource extends EventEmitter {
       await admin.disconnect();
 
       console.log(
-        `[EventBusDataSource] Kafka broker reachable: ${brokers} (${topics.length} topics)`
+        `[EventBusDataSource] Kafka broker reachable: ${brokerStr} (${topics.length} topics)`
       );
       return true;
     } catch (error) {
-      console.error(`[EventBusDataSource] Kafka broker unreachable: ${brokers}`, error);
+      console.error(`[EventBusDataSource] Kafka broker unreachable: ${brokerStr}`, error);
       return false;
     }
   }
