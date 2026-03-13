@@ -2849,12 +2849,11 @@ export class EventConsumer extends EventEmitter {
       // OMN-4957: Emit intentUpdate so projection-bootstrap wires intent events
       // through the same consumerEventNames pipeline as other event types.
       this.emit('intentUpdate', {
-        id: intentEvent.id,
+        ...intentEvent,
         topic: INTENT_CLASSIFIED_TOPIC,
         type: 'intent-classified',
         actionType: 'intent-classified',
         timestamp: new Date().toISOString(),
-        ...intentEvent,
       });
 
       // Forward to IntentEventEmitter for new WebSocket subscription pattern

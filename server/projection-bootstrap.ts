@@ -1,3 +1,4 @@
+// no-migration: OMN-4957 event wiring change only, no schema change
 /**
  * Projection Bootstrap — Wire Event Sources to ProjectionService (OMN-2095)
  *
