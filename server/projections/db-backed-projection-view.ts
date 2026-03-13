@@ -37,6 +37,55 @@ export const DEFAULT_CACHE_TTL_MS = 5_000;
 export abstract class DbBackedProjectionView<TPayload> implements ProjectionView<TPayload> {
   abstract readonly viewId: string;
 
+  // ---------------------------------------------------------------------------
+  // OMN-4958: Static instance registry for startup warm-up
+  // ---------------------------------------------------------------------------
+
+  /** All instantiated DbBackedProjectionView instances, for warmAll(). */
+
+  private static instances = new Set<DbBackedProjectionView<any>>();
+
+  /**
+   * Warm all registered DbBackedProjectionView instances by calling
+   * forceRefresh() on each. Called once at server startup (after listen())
+   * so that the first API request gets real data instead of emptyPayload().
+   *
+   * Failures are logged but do not throw — a single view failing to warm
+   * must not crash the server or block other views from warming.
+   */
+  static async warmAll(): Promise<void> {
+    const views = Array.from(DbBackedProjectionView.instances);
+    if (views.length === 0) return;
+
+    console.log(`[projection:warmAll] Warming ${views.length} DB-backed views...`);
+    const results = await Promise.allSettled(
+      views.map((v) =>
+        v.forceRefresh().then(
+          () => ({ viewId: v.viewId, status: 'ok' as const }),
+          (err) => {
+            console.error(`[projection:warmAll] Failed to warm ${v.viewId}:`, err);
+            return { viewId: v.viewId, status: 'error' as const };
+          }
+        )
+      )
+    );
+
+    const ok = results.filter((r) => r.status === 'fulfilled').length;
+    console.log(`[projection:warmAll] Done: ${ok}/${views.length} views warmed`);
+  }
+
+  /**
+   * Reset the instance registry. For test isolation only — prevents
+   * cross-test leakage of singleton state.
+   */
+  static resetInstances(): void {
+    DbBackedProjectionView.instances.clear();
+  }
+
+  // ---------------------------------------------------------------------------
+  // Instance state
+  // ---------------------------------------------------------------------------
+
   private cachedSnapshot: ProjectionResponse<TPayload> | null = null;
   private cacheExpiresAt = 0;
   private readonly cacheTtlMs: number;
@@ -59,6 +108,8 @@ export abstract class DbBackedProjectionView<TPayload> implements ProjectionView
 
   constructor(cacheTtlMs?: number) {
     this.cacheTtlMs = cacheTtlMs ?? DEFAULT_CACHE_TTL_MS;
+    // Auto-register for warmAll()
+    DbBackedProjectionView.instances.add(this);
   }
 
   // --------------------------------------------------------------------------
