@@ -35,6 +35,7 @@ import { startMockRegistryEvents, stopMockRegistryEvents } from './registry-even
 import { runtimeIdentity } from './runtime-identity';
 import { getBrokerString } from './bus-config.js';
 import { printStartupBanner } from './startup-banner.js';
+import { getBrokerString } from './bus-config.js';
 import { initProjectionListeners, teardownProjectionListeners } from './projection-instance';
 import { wireProjectionSources, projectionService } from './projection-bootstrap';
 import { NodeRegistryProjection } from './projections/node-registry-projection';
