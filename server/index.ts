@@ -45,6 +45,7 @@ import { startCdqaGateWatcher } from './cdqa-gate-watcher';
 import { startPipelineHealthWatcher, stopPipelineHealthWatcher } from './pipeline-health-watcher';
 import { startEventBusHealthPoller, stopEventBusHealthPoller } from './event-bus-health-poller';
 import { startWorkerHealthPoller, stopWorkerHealthPoller } from './worker-health-poller';
+import selfTestRoutes, { runStartupSelfTest } from './startup-self-test';
 
 const app = express();
 
@@ -136,6 +137,10 @@ app.use((req, res, next) => {
   // indicator (OMN-4515). Registered BEFORE the requireAuth gate so unauthenticated
   // callers (k8s liveness/readiness, frontend without session) can reach it.
   app.use('/api/health-probe', healthProbeRoutes);
+
+  // /api/health/self-test — startup self-test report (OMN-4974).
+  // Registered BEFORE the requireAuth gate so health checks can access it.
+  app.use('/api/health', selfTestRoutes);
 
   // Token refresh + auth gate for all /api routes (skip /api/auth/me and /api/health-probe)
   const skipPublicRoutes = (req: Request, _res: Response, next: NextFunction) => {
@@ -439,9 +444,12 @@ app.use((req, res, next) => {
     // OMN-4958: Warm all DB-backed projection views so the first API request
     // returns real data instead of emptyPayload(). Fire-and-forget — warm-up
     // failures are logged but must not block the server.
-    DbBackedProjectionView.warmAll().catch((err) => {
-      console.error('[startup] DbBackedProjectionView.warmAll() failed:', err);
-    });
+    // OMN-4974: After warm-up, run the startup self-test to report data source status.
+    DbBackedProjectionView.warmAll()
+      .then(() => runStartupSelfTest())
+      .catch((err) => {
+        console.error('[startup] warmAll/self-test failed:', err);
+      });
   });
 
   // Graceful shutdown
