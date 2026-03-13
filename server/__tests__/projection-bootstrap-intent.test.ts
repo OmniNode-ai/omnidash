@@ -1,3 +1,4 @@
+// no-migration: OMN-4957 test file only, no schema change
 /**
  * projection-bootstrap intentUpdate wiring test (OMN-4957)
  *
