@@ -26,6 +26,7 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import { Activity, GitBranch, Clock, List } from 'lucide-react';
+import { DataSourceEmptyState } from '@/components/EmptyState';
 import type {
   EpicRunPayload,
   EpicRunEventRow,
@@ -233,8 +234,14 @@ export default function EpicPipelineDashboard() {
         </p>
       </div>
 
-      {isError && (
-        <p className="text-sm text-destructive">Failed to load epic run data.</p>
+      {isError && <p className="text-sm text-destructive">Failed to load epic run data.</p>}
+
+      {!isLoading && !isError && (summary?.total_events ?? 0) === 0 && events.length === 0 && (
+        <DataSourceEmptyState
+          sourceName="Epic Pipeline Events"
+          producerName="epic-team skill (omniclaude)"
+          instructions="Run an epic orchestration session to produce epic-run-updated events."
+        />
       )}
 
       {/* Summary Cards */}

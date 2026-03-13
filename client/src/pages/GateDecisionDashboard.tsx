@@ -26,6 +26,7 @@ import {
 } from '@/components/ui/table';
 import { CheckCircle2, XCircle, ShieldAlert, BarChart3, Percent } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { DataSourceEmptyState } from '@/components/EmptyState';
 import type {
   GateDecisionsPayload,
   GateDecisionRow,
@@ -98,13 +99,7 @@ function StatCard({
   );
 }
 
-function GateDecisionTable({
-  rows,
-  isLoading,
-}: {
-  rows: GateDecisionRow[];
-  isLoading: boolean;
-}) {
+function GateDecisionTable({ rows, isLoading }: { rows: GateDecisionRow[]; isLoading: boolean }) {
   return (
     <Card>
       <CardHeader>
@@ -154,9 +149,7 @@ function GateDecisionTable({
                       <CheckCircle2 className="h-4 w-4 text-green-500" />
                     )}
                   </TableCell>
-                  <TableCell className="font-mono text-xs">
-                    {row.pr_number ?? '—'}
-                  </TableCell>
+                  <TableCell className="font-mono text-xs">{row.pr_number ?? '—'}</TableCell>
                   <TableCell className="font-mono text-xs max-w-[120px] truncate">
                     {row.repo ?? '—'}
                   </TableCell>
@@ -219,8 +212,14 @@ export default function GateDecisionDashboard() {
         </p>
       </div>
 
-      {isError && (
-        <p className="text-sm text-destructive">Failed to load gate decision data.</p>
+      {isError && <p className="text-sm text-destructive">Failed to load gate decision data.</p>}
+
+      {!isLoading && !isError && (summary?.total ?? 0) === 0 && rows.length === 0 && (
+        <DataSourceEmptyState
+          sourceName="Gate Decision Events"
+          producerName="CI gate evaluation (omniclaude)"
+          instructions="Trigger CI on a PR with gate checks enabled to produce gate-decision events."
+        />
       )}
 
       {/* Summary Cards */}
