@@ -51,5 +51,19 @@ repos:
         always_run: true
         stages: [pre-commit]
 
+      # --------------------------------------------------------------------------
+      # SPDX Header Enforcement (OMN-4859, ONEX ecosystem parity)
+      # Validates: All Python source files carry MIT SPDX headers
+      # Scope: scripts/, tests/ (.py files only)
+      # --------------------------------------------------------------------------
+      - id: validate-spdx-headers
+        name: ONEX SPDX Header Requirement
+        entry: bash scripts/validate_spdx_headers.sh
+        language: system
+        pass_filenames: true
+        files: ^(scripts|tests)/.*\.py$
+        exclude: ^(archived/|archive/)
+        stages: [pre-commit]
+
 default_stages: [pre-commit]
 fail_fast: false
