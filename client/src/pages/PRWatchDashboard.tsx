@@ -26,10 +26,8 @@ import {
 } from '@/components/ui/table';
 import { GitPullRequest, GitMerge, XCircle, CheckCircle2, BarChart3 } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import type {
-  PrWatchPayload,
-  PrWatchRow,
-} from '../../../server/projections/pr-watch-projection';
+import { DataSourceEmptyState } from '@/components/EmptyState';
+import type { PrWatchPayload, PrWatchRow } from '../../../server/projections/pr-watch-projection';
 
 // ============================================================================
 // Helpers
@@ -214,8 +212,14 @@ export default function PRWatchDashboard() {
         </p>
       </div>
 
-      {isError && (
-        <p className="text-sm text-destructive">Failed to load PR watch data.</p>
+      {isError && <p className="text-sm text-destructive">Failed to load PR watch data.</p>}
+
+      {!isLoading && !isError && (summary?.total ?? 0) === 0 && rows.length === 0 && (
+        <DataSourceEmptyState
+          sourceName="PR Watch Events"
+          producerName="pr-watch skill (omniclaude)"
+          instructions="Run a PR watch monitoring session to produce pr-watch-updated events."
+        />
       )}
 
       {/* Summary Cards */}
