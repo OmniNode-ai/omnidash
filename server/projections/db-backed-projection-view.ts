@@ -59,19 +59,19 @@ export abstract class DbBackedProjectionView<TPayload> implements ProjectionView
     if (views.length === 0) return;
 
     console.log(`[projection:warmAll] Warming ${views.length} DB-backed views...`);
-    const results = await Promise.allSettled(
-      views.map((v) =>
-        v.forceRefresh().then(
-          () => ({ viewId: v.viewId, status: 'ok' as const }),
-          (err) => {
-            console.error(`[projection:warmAll] Failed to warm ${v.viewId}:`, err);
-            return { viewId: v.viewId, status: 'error' as const };
-          }
-        )
-      )
+    const results = await Promise.all(
+      views.map(async (v) => {
+        try {
+          await v.forceRefresh();
+          return { viewId: v.viewId, status: 'ok' as const };
+        } catch (err) {
+          console.error(`[projection:warmAll] Failed to warm ${v.viewId}:`, err);
+          return { viewId: v.viewId, status: 'error' as const };
+        }
+      })
     );
 
-    const ok = results.filter((r) => r.status === 'fulfilled').length;
+    const ok = results.filter((r) => r.status === 'ok').length;
     console.log(`[projection:warmAll] Done: ${ok}/${views.length} views warmed`);
   }
 
