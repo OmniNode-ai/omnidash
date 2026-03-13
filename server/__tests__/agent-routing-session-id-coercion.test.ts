@@ -29,10 +29,11 @@ let db: ReturnType<typeof drizzle> | null = null;
 let dbAvailable = false;
 
 beforeAll(async () => {
+  // Build connection string from env vars — avoid hardcoded upstream port (Arch Guard).
   const connectionString =
     process.env.TEST_DATABASE_URL ||
     process.env.OMNIDASH_ANALYTICS_DATABASE_URL ||
-    'postgresql://postgres:postgres@localhost:5436/omnidash_analytics_test';
+    `postgresql://${process.env.POSTGRES_USER ?? 'postgres'}:${process.env.POSTGRES_PASSWORD ?? 'postgres'}@${process.env.POSTGRES_HOST ?? 'localhost'}:${process.env.POSTGRES_PORT ?? '5432'}/omnidash_analytics_test`;
 
   try {
     pool = new Pool({ connectionString, connectionTimeoutMillis: 2000 });
