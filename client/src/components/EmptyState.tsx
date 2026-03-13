@@ -259,4 +259,35 @@ export function RegistryEmptyState({
   );
 }
 
+/**
+ * DataSourceEmptyState — Shown when a page has no data because its upstream
+ * producer has not yet run (OMN-4969). Includes data-testid="empty-state"
+ * for automated verification.
+ */
+export function DataSourceEmptyState({
+  sourceName,
+  producerName,
+  instructions,
+  className,
+}: {
+  /** Human-readable name of the data source (e.g., "Epic Pipeline Events") */
+  sourceName: string;
+  /** Name of the skill or service that produces the data */
+  producerName: string;
+  /** Brief instruction for how to populate the page */
+  instructions: string;
+  className?: string;
+}) {
+  return (
+    <div data-testid="empty-state">
+      <EmptyState
+        variant="no-data"
+        title={`No ${sourceName} data yet`}
+        description={`Producer: ${producerName}. ${instructions}`}
+        className={className}
+      />
+    </div>
+  );
+}
+
 export default EmptyState;

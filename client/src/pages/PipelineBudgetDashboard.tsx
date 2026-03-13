@@ -26,6 +26,7 @@ import {
 } from '@/components/ui/table';
 import { DollarSign, Zap, AlertTriangle, BarChart3 } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { DataSourceEmptyState } from '@/components/EmptyState';
 import type {
   PipelineBudgetPayload,
   PipelineBudgetRow,
@@ -208,8 +209,14 @@ export default function PipelineBudgetDashboard() {
         </p>
       </div>
 
-      {isError && (
-        <p className="text-sm text-destructive">Failed to load pipeline budget data.</p>
+      {isError && <p className="text-sm text-destructive">Failed to load pipeline budget data.</p>}
+
+      {!isLoading && !isError && (summary?.total_cap_hits ?? 0) === 0 && rows.length === 0 && (
+        <DataSourceEmptyState
+          sourceName="Pipeline Budget Events"
+          producerName="Budget enforcement (omniclaude)"
+          instructions="Run a pipeline that exceeds its configured budget cap to produce budget-cap-hit events."
+        />
       )}
 
       {/* Summary Cards */}
