@@ -2910,6 +2910,7 @@ export class EventConsumer extends EventEmitter {
 
   private handleIntentStored(event: RawIntentStoredEvent): void {
     try {
+      const intentEventId = event.id || crypto.randomUUID();
       // Validate and sanitize timestamp
       const createdAt = sanitizeTimestamp(
         event.timestamp || event.created_at || event.createdAt,
@@ -2920,7 +2921,7 @@ export class EventConsumer extends EventEmitter {
       this.emit('intent-event', {
         topic: INTENT_STORED_TOPIC,
         payload: {
-          id: event.id || crypto.randomUUID(),
+          id: intentEventId,
           intentId: event.intent_id || event.intentId,
           intentType: event.intent_type || event.intentType,
           storageLocation: event.storage_location || event.storageLocation,
@@ -2933,7 +2934,7 @@ export class EventConsumer extends EventEmitter {
       // OMN-4957: Emit intentUpdate so projection-bootstrap wires intent events
       // through the same consumerEventNames pipeline as other event types.
       this.emit('intentUpdate', {
-        id: event.id || crypto.randomUUID(),
+        id: intentEventId,
         topic: INTENT_STORED_TOPIC,
         type: 'intent-stored',
         actionType: 'intent-stored',
