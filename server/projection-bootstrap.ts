@@ -78,6 +78,14 @@ if (!projectionService.getView(eventBusProjection.viewId)) {
  * DB-backed projection singletons (OMN-2325).
  * These views query PostgreSQL on getSnapshot() with TTL-based caching,
  * unlike event-driven views that build state from Kafka events.
+ *
+ * OMN-4965: Both ExtractionMetricsProjection and EffectivenessMetricsProjection
+ * extend DbBackedProjectionView, which auto-registers each instance in the
+ * static `instances` Set via the constructor. The warmAll() call at server
+ * startup (OMN-4958) eagerly populates their caches so the first API request
+ * returns real data instead of emptyPayload(). This eliminates the cold-cache
+ * race condition that previously caused /effectiveness and /extraction to
+ * return empty results on fresh restarts.
  */
 export const extractionMetricsProjection = new ExtractionMetricsProjection();
 export const effectivenessMetricsProjection = new EffectivenessMetricsProjection();
