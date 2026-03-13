@@ -1,3 +1,4 @@
+// no-migration: OMN-4958 adds warmAll() to existing class, no schema change
 /**
  * DbBackedProjectionView — Base class for DB-query-backed projections (OMN-2325)
  *
