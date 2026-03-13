@@ -6,8 +6,19 @@
  * All data access goes through the EffectivenessMetricsProjection view
  * (projection-only read path). No direct DB imports.
  *
+ * A/B Cohort Pipeline (OMN-4967):
+ * - omniclaude assigns sessions to treatment (80%) or control (20%) cohorts
+ *   via deterministic hash (cohort_assignment.py)
+ * - Control sessions receive NO pattern injection; treatment sessions do
+ * - utilization_score is computed as (patterns_used / patterns_injected) by
+ *   omniclaude's feedback_guardrails.py
+ * - Events flow via Kafka topic onex.evt.omniclaude.context-utilization.v1
+ * - extraction-aggregator.ts persists to injection_effectiveness table
+ * - /effectiveness/ab endpoint returns both cohorts for comparison
+ *
  * @see OMN-1891 - Build Effectiveness Dashboard
  * @see OMN-2325 - Decouple dashboard routes from database schema
+ * @see OMN-4967 - Treatment/control cohort and utilization score pipeline
  */
 
 import { Router } from 'express';
