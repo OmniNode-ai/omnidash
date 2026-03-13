@@ -17,6 +17,7 @@
 
 import { Kafka, Consumer, EachMessagePayload } from 'kafkajs';
 import { EventEmitter } from 'events';
+import { resolveBrokers, getBrokerString } from './bus-config.js';
 import { getIntelligenceDb } from './storage';
 import { sql, SQL } from 'drizzle-orm';
 
@@ -136,17 +137,8 @@ export class EventBusDataSource extends EventEmitter {
   constructor() {
     super();
 
-    const brokers = process.env.KAFKA_BROKERS || process.env.KAFKA_BOOTSTRAP_SERVERS;
-    if (!brokers) {
-      throw new Error(
-        'KAFKA_BROKERS or KAFKA_BOOTSTRAP_SERVERS environment variable is required. ' +
-          'Set it in .env file or export it before starting the server. ' +
-          'Example: KAFKA_BROKERS=host:port'
-      );
-    }
-
     this.kafka = new Kafka({
-      brokers: brokers.split(','),
+      brokers: resolveBrokers(),
       clientId: 'omnidash-event-bus-data-source',
       connectionTimeout: 10000,
       requestTimeout: 30000,
@@ -174,10 +166,10 @@ export class EventBusDataSource extends EventEmitter {
    * Validate Kafka broker connection
    */
   async validateConnection(): Promise<boolean> {
-    const brokers = process.env.KAFKA_BROKERS || process.env.KAFKA_BOOTSTRAP_SERVERS;
+    const brokerStr = getBrokerString();
 
-    if (!brokers) {
-      console.error('[EventBusDataSource] KAFKA_BROKERS not configured');
+    if (brokerStr === 'not configured') {
+      console.error('[EventBusDataSource] KAFKA_BOOTSTRAP_SERVERS not configured');
       return false;
     }
 
@@ -188,11 +180,11 @@ export class EventBusDataSource extends EventEmitter {
       await admin.disconnect();
 
       console.log(
-        `[EventBusDataSource] Kafka broker reachable: ${brokers} (${topics.length} topics)`
+        `[EventBusDataSource] Kafka broker reachable: ${brokerStr} (${topics.length} topics)`
       );
       return true;
     } catch (error) {
-      console.error(`[EventBusDataSource] Kafka broker unreachable: ${brokers}`, error);
+      console.error(`[EventBusDataSource] Kafka broker unreachable: ${brokerStr}`, error);
       return false;
     }
   }

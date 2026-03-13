@@ -146,7 +146,7 @@ describe('EventConsumer', () => {
       delete process.env.KAFKA_BROKERS;
 
       expect(() => new EventConsumer()).toThrow(
-        'KAFKA_BROKERS or KAFKA_BOOTSTRAP_SERVERS environment variable is required'
+        'KAFKA_BOOTSTRAP_SERVERS (or KAFKA_BROKERS) environment variable is required'
       );
     });
   });
@@ -157,7 +157,7 @@ describe('EventConsumer', () => {
       delete process.env.KAFKA_BROKERS;
 
       expect(() => new EventConsumer()).toThrow(
-        'KAFKA_BROKERS or KAFKA_BOOTSTRAP_SERVERS environment variable is required'
+        'KAFKA_BOOTSTRAP_SERVERS (or KAFKA_BROKERS) environment variable is required'
       );
     });
 
