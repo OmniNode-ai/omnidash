@@ -7,6 +7,7 @@ import { tryGetIntelligenceDb, isDatabaseConfigured, getDatabaseError } from './
 import { sql } from 'drizzle-orm';
 import { eventConsumer } from './event-consumer';
 import { Kafka } from 'kafkajs';
+import { resolveBrokers, getBrokerString } from './bus-config.js';
 
 export interface ServiceHealthCheck {
   service: string;
@@ -98,22 +99,22 @@ async function checkPostgreSQL(): Promise<ServiceHealthCheck> {
 
 async function checkKafka(): Promise<ServiceHealthCheck> {
   const startTime = Date.now();
-  const brokersEnv = process.env.KAFKA_BROKERS || process.env.KAFKA_BOOTSTRAP_SERVERS;
+  const brokerStr = getBrokerString();
 
   // If no brokers configured, return down status with helpful message
-  if (!brokersEnv) {
+  if (brokerStr === 'not configured') {
     return {
       service: 'Kafka/Redpanda',
       status: 'down',
       latencyMs: Date.now() - startTime,
-      error: 'KAFKA_BROKERS or KAFKA_BOOTSTRAP_SERVERS environment variable not configured',
+      error: 'KAFKA_BOOTSTRAP_SERVERS environment variable not configured',
       details: {
-        message: 'Set KAFKA_BROKERS in .env file (e.g., KAFKA_BROKERS=host:port)',
+        message: 'Set KAFKA_BOOTSTRAP_SERVERS in .env file (e.g., KAFKA_BOOTSTRAP_SERVERS=localhost:19092)',
       },
     };
   }
 
-  const brokers = brokersEnv.split(',');
+  const brokers = resolveBrokers();
 
   try {
     // Create a test Kafka client

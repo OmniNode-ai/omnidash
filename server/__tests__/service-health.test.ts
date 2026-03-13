@@ -160,7 +160,7 @@ describe('Service Health Checks', () => {
       expect(kafkaResult).toBeDefined();
       expect(kafkaResult?.status).toBe('down');
       expect(kafkaResult?.error).toContain('environment variable not configured');
-      expect(kafkaResult?.details?.message).toContain('Set KAFKA_BROKERS in .env file');
+      expect(kafkaResult?.details?.message).toContain('Set KAFKA_BOOTSTRAP_SERVERS in .env file');
 
       // Restore environment variables for subsequent tests
       process.env.KAFKA_BROKERS = 'localhost:9092';
