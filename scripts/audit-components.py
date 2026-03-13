@@ -1,4 +1,6 @@
 #!/usr/bin/env python3
+# SPDX-FileCopyrightText: 2025 OmniNode.ai Inc.
+# SPDX-License-Identifier: MIT
 """
 Dashboard Component Health Audit (OMN-3263)
 
@@ -345,7 +347,9 @@ def check_kafka_topics(
         topic_name = item.get("topic", "")
         if topic_name:
             broker_topics.add(topic_name)
-            partitions_per_topic[topic_name] = partitions_per_topic.get(topic_name, 0) + 1
+            partitions_per_topic[topic_name] = (
+                partitions_per_topic.get(topic_name, 0) + 1
+            )
 
     result: dict[str, str] = {}
     for topic in topics:
@@ -803,7 +807,10 @@ def parse_args() -> argparse.Namespace:
         "--broker",
         default=os.environ.get(
             "KAFKA_BROKERS",
-            os.environ.get("KAFKA_BOOTSTRAP_SERVERS", "192.168.86.200:29092"),  # cloud-bus-ok OMN-4494
+            os.environ.get(
+                "KAFKA_BOOTSTRAP_SERVERS",
+                "192.168.86.200:29092",  # cloud-bus-ok OMN-4494
+            ),
         ),
         help="Kafka broker address (used for documentation only; actual probing via admin API)",
     )
