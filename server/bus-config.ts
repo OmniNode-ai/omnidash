@@ -10,7 +10,7 @@
  *
  * Bus modes inferred from broker address:
  *   local   — localhost:19092 (local Docker Redpanda; start with `infra-up`)
- *   cloud   — localhost:29092 (cloud bus launchd tunnel → k8s Redpanda)
+ *   cloud   — localhost:29092 (cloud bus launchd tunnel → k8s Redpanda) # cloud-bus-ok OMN-4746
  *   unknown — anything else (k8s pod-internal address, custom host, CI broker, etc.)
  *
  * Callsite audit (2026-03-12, OMN-4747):
@@ -35,7 +35,7 @@ export type BusMode = 'local' | 'cloud' | 'unknown';
  */
 export function getBusMode(brokerString: string): BusMode {
   if (brokerString.includes(':19092')) return 'local';
-  if (brokerString.includes(':29092')) return 'cloud';
+  if (brokerString.includes(':29092')) return 'cloud'; // cloud-bus-ok OMN-4746
   return 'unknown';
 }
 
@@ -51,7 +51,7 @@ export function resolveBrokers(): string[] {
     throw new Error(
       'KAFKA_BOOTSTRAP_SERVERS is not set. ' +
         'Set it in .env or run `npm run dev:local` (local bus) / `npm run dev:cloud` (cloud bus). ' +
-        'Local bus: localhost:19092 | Cloud bus: localhost:29092'
+        'Local bus: localhost:19092 | Cloud bus: localhost:29092' // cloud-bus-ok OMN-4746
     );
   }
   return raw

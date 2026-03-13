@@ -28,6 +28,7 @@
 import { EventEmitter } from 'events';
 import crypto from 'node:crypto';
 import { Kafka, type Consumer, type Producer } from 'kafkajs';
+import { resolveBrokers } from './bus-config.js';
 import {
   SUFFIX_PLATFORM_TOPIC_CATALOG_QUERY,
   SUFFIX_PLATFORM_TOPIC_CATALOG_RESPONSE,
@@ -155,19 +156,13 @@ export class TopicCatalogManager extends EventEmitter {
     this.consumerGroupId = `omnidash.catalog.${this.instanceUuid}`;
 
     // Allow callers to inject a Kafka instance (useful for testing).
-    // In production, build one from environment variables.
+    // In production, build one from bus-config (single source of truth).
     if (kafka) {
       this.kafka = kafka;
     } else {
-      const brokers = process.env.KAFKA_BROKERS || process.env.KAFKA_BOOTSTRAP_SERVERS;
-      if (!brokers) {
-        throw new Error(
-          'KAFKA_BROKERS or KAFKA_BOOTSTRAP_SERVERS environment variable is required.'
-        );
-      }
       this.kafka = new Kafka({
         clientId: `omnidash-catalog-manager-${this.instanceUuid}`,
-        brokers: brokers.split(','),
+        brokers: resolveBrokers(),
         connectionTimeout: 5000,
         requestTimeout: 10000,
       });

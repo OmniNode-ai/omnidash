@@ -145,9 +145,7 @@ describe('EventConsumer', () => {
       delete process.env.KAFKA_BOOTSTRAP_SERVERS;
       delete process.env.KAFKA_BROKERS;
 
-      expect(() => new EventConsumer()).toThrow(
-        'KAFKA_BROKERS or KAFKA_BOOTSTRAP_SERVERS environment variable is required'
-      );
+      expect(() => new EventConsumer()).toThrow('KAFKA_BOOTSTRAP_SERVERS is not set');
     });
   });
 
@@ -156,9 +154,7 @@ describe('EventConsumer', () => {
       delete process.env.KAFKA_BOOTSTRAP_SERVERS;
       delete process.env.KAFKA_BROKERS;
 
-      expect(() => new EventConsumer()).toThrow(
-        'KAFKA_BROKERS or KAFKA_BOOTSTRAP_SERVERS environment variable is required'
-      );
+      expect(() => new EventConsumer()).toThrow('KAFKA_BOOTSTRAP_SERVERS is not set');
     });
 
     it('should successfully validate broker connection', async () => {

@@ -23,15 +23,15 @@ describe('bus-config', () => {
 
     it('KAFKA_BOOTSTRAP_SERVERS takes precedence over KAFKA_BROKERS', async () => {
       process.env.KAFKA_BOOTSTRAP_SERVERS = 'localhost:19092';
-      process.env.KAFKA_BROKERS = 'localhost:29092';
+      process.env.KAFKA_BROKERS = 'localhost:29092'; // cloud-bus-ok OMN-4746
       const { resolveBrokers } = await import('../bus-config');
       expect(resolveBrokers()).toEqual(['localhost:19092']);
     });
 
     it('falls back to KAFKA_BROKERS when KAFKA_BOOTSTRAP_SERVERS is absent', async () => {
-      process.env.KAFKA_BROKERS = 'localhost:29092';
+      process.env.KAFKA_BROKERS = 'localhost:29092'; // cloud-bus-ok OMN-4746
       const { resolveBrokers } = await import('../bus-config');
-      expect(resolveBrokers()).toEqual(['localhost:29092']);
+      expect(resolveBrokers()).toEqual(['localhost:29092']); // cloud-bus-ok OMN-4746
     });
 
     it('supports comma-separated broker lists', async () => {
@@ -52,9 +52,9 @@ describe('bus-config', () => {
       expect(getBusMode('localhost:19092')).toBe('local');
     });
 
-    it('identifies cloud bus by port 29092', async () => {
+    it('identifies cloud bus by port 29092', async () => { // cloud-bus-ok OMN-4746
       const { getBusMode } = await import('../bus-config');
-      expect(getBusMode('localhost:29092')).toBe('cloud');
+      expect(getBusMode('localhost:29092')).toBe('cloud'); // cloud-bus-ok OMN-4746
     });
 
     it('returns unknown for unrecognised port', async () => {
@@ -83,8 +83,8 @@ describe('bus-config', () => {
       expect(getCurrentBusMode()).toBe('local');
     });
 
-    it('returns cloud when KAFKA_BOOTSTRAP_SERVERS is localhost:29092', async () => {
-      process.env.KAFKA_BOOTSTRAP_SERVERS = 'localhost:29092';
+    it('returns cloud when KAFKA_BOOTSTRAP_SERVERS is localhost:29092', async () => { // cloud-bus-ok OMN-4746
+      process.env.KAFKA_BOOTSTRAP_SERVERS = 'localhost:29092'; // cloud-bus-ok OMN-4746
       const { getCurrentBusMode } = await import('../bus-config');
       expect(getCurrentBusMode()).toBe('cloud');
     });

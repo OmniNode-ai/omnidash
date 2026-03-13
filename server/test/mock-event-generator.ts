@@ -1,5 +1,6 @@
 import { Kafka, Producer } from 'kafkajs';
 import { TOPIC_OMNICLAUDE_ROUTING_DECISIONS, TOPIC_OMNICLAUDE_AGENT_ACTIONS } from '@shared/topics';
+import { resolveBrokers, getBrokerString } from '../bus-config.js';
 
 /**
  * Mock Event Generator for Kafka Topics
@@ -166,16 +167,8 @@ class MockEventGenerator {
   ];
 
   constructor() {
-    const brokers = process.env.KAFKA_BROKERS || process.env.KAFKA_BOOTSTRAP_SERVERS;
-    if (!brokers) {
-      throw new Error(
-        'KAFKA_BROKERS or KAFKA_BOOTSTRAP_SERVERS environment variable is required. ' +
-          'Set it in .env file or export it before running mock generator. ' +
-          'Example: KAFKA_BROKERS=host:port'
-      );
-    }
     this.kafka = new Kafka({
-      brokers: brokers.split(','),
+      brokers: resolveBrokers(),
       clientId: 'omnidash-mock-generator',
     });
     this.producer = this.kafka.producer();
@@ -187,7 +180,7 @@ class MockEventGenerator {
     try {
       await this.producer!.connect();
       console.log('Mock event generator connected to Kafka');
-      console.log(`Brokers: ${process.env.KAFKA_BROKERS || process.env.KAFKA_BOOTSTRAP_SERVERS}`);
+      console.log(`Brokers: ${getBrokerString()}`);
       this.isRunning = true;
 
       // Publish initial batch of events

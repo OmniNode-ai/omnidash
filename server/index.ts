@@ -33,6 +33,7 @@ import { eventBusDataSource } from './event-bus-data-source';
 import { eventBusMockGenerator } from './event-bus-mock-generator';
 import { startMockRegistryEvents, stopMockRegistryEvents } from './registry-events';
 import { runtimeIdentity } from './runtime-identity';
+import { getBrokerString } from './bus-config.js';
 import { initProjectionListeners, teardownProjectionListeners } from './projection-instance';
 import { wireProjectionSources, projectionService } from './projection-bootstrap';
 import { NodeRegistryProjection } from './projections/node-registry-projection';
@@ -268,16 +269,15 @@ app.use((req, res, next) => {
         log('✅ Read-model consumer started - projecting events to omnidash_analytics');
       } else {
         const hasEnvVars =
-          !!(process.env.KAFKA_BROKERS || process.env.KAFKA_BOOTSTRAP_SERVERS) &&
-          !!process.env.OMNIDASH_ANALYTICS_DB_URL;
+          getBrokerString() !== 'not configured' && !!process.env.OMNIDASH_ANALYTICS_DB_URL;
         if (hasEnvVars) {
           log(
             '⚠️  Read-model consumer failed to connect after max retries (Kafka connectivity issue)'
           );
-          log('   Check that KAFKA_BROKERS is reachable and the broker is healthy');
+          log('   Check that KAFKA_BOOTSTRAP_SERVERS is reachable and the broker is healthy');
         } else {
           log(
-            '⚠️  Read-model consumer skipped (missing KAFKA_BROKERS or OMNIDASH_ANALYTICS_DB_URL)'
+            '⚠️  Read-model consumer skipped (missing KAFKA_BOOTSTRAP_SERVERS or OMNIDASH_ANALYTICS_DB_URL)'
           );
         }
         log('   Read-model tables will not receive new projections');
@@ -285,17 +285,16 @@ app.use((req, res, next) => {
     })
     .catch((error) => {
       const hasEnvVars =
-        !!(process.env.KAFKA_BROKERS || process.env.KAFKA_BOOTSTRAP_SERVERS) &&
-        !!process.env.OMNIDASH_ANALYTICS_DB_URL;
+        getBrokerString() !== 'not configured' && !!process.env.OMNIDASH_ANALYTICS_DB_URL;
       if (hasEnvVars) {
         console.error(
           '❌ Read-model consumer failed after retries (Kafka connectivity issue):',
           error
         );
-        console.error('   Check that KAFKA_BROKERS is reachable and the broker is healthy');
+        console.error('   Check that KAFKA_BOOTSTRAP_SERVERS is reachable and the broker is healthy');
       } else {
         console.error(
-          '❌ Failed to start read-model consumer (missing KAFKA_BROKERS or OMNIDASH_ANALYTICS_DB_URL):',
+          '❌ Failed to start read-model consumer (missing KAFKA_BOOTSTRAP_SERVERS or OMNIDASH_ANALYTICS_DB_URL):',
           error
         );
       }
@@ -391,12 +390,10 @@ app.use((req, res, next) => {
   // Internal-only: bus/environment identity for omnidash header badge
   // Not intended for public internet exposure. Contains broker topology info (non-secret).
   app.get('/api/runtime-environment', (_req, res) => {
-    // Mirror runtime precedence: KAFKA_BROKERS takes priority (legacy), fall back to standard var
-    // TODO follow-up: standardize omnidash to KAFKA_BOOTSTRAP_SERVERS only
-    const brokers = process.env.KAFKA_BROKERS || process.env.KAFKA_BOOTSTRAP_SERVERS || 'unknown';
+    const brokers = getBrokerString();
     res.json({
-      busId: process.env.BUS_ID || 'unknown',
-      kafkaBrokers: brokers,
+      busId: process.env.BUS_ID || process.env.OMNIDASH_BUS_MODE || 'unknown',
+      kafkaBrokers: brokers === 'not configured' ? 'unknown' : brokers,
       namespace: process.env.K8S_NAMESPACE || 'local',
     });
   });

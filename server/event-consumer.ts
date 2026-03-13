@@ -1,6 +1,7 @@
 import { Kafka, Consumer, Producer, KafkaMessage } from 'kafkajs';
 import { EventEmitter } from 'events';
 import crypto from 'node:crypto';
+import { resolveBrokers, getBrokerString } from './bus-config.js';
 import { getIntelligenceDb } from './storage';
 import { sql } from 'drizzle-orm';
 import { LRUCache } from 'lru-cache';
@@ -965,18 +966,11 @@ export class EventConsumer extends EventEmitter {
   constructor() {
     super(); // Initialize EventEmitter
 
-    // Get brokers from environment variable - required, no fallback
-    const brokers = process.env.KAFKA_BOOTSTRAP_SERVERS || process.env.KAFKA_BROKERS;
-    if (!brokers) {
-      throw new Error(
-        'KAFKA_BROKERS or KAFKA_BOOTSTRAP_SERVERS environment variable is required. ' +
-          'Set it in .env file or export it before starting the server. ' +
-          'Example: KAFKA_BROKERS=host:port'
-      );
-    }
+    // Get brokers from bus-config (single source of truth for broker resolution)
+    const brokers = resolveBrokers();
 
     this.kafka = new Kafka({
-      brokers: brokers.split(','),
+      brokers,
       clientId: 'omnidash-event-consumer',
       connectionTimeout: 10000,
       requestTimeout: 30000,
@@ -1079,11 +1073,11 @@ export class EventConsumer extends EventEmitter {
    * ```
    */
   async validateConnection(): Promise<boolean> {
-    const brokers = process.env.KAFKA_BOOTSTRAP_SERVERS || process.env.KAFKA_BROKERS;
+    const brokers = getBrokerString();
 
-    if (!brokers) {
+    if (brokers === 'not configured') {
       console.error(
-        '❌ KAFKA_BROKERS not configured - Kafka is required infrastructure. Set KAFKA_BROKERS in .env to connect to the Redpanda/Kafka broker.'
+        '❌ KAFKA_BOOTSTRAP_SERVERS not configured - Kafka is required infrastructure. Set KAFKA_BOOTSTRAP_SERVERS in .env to connect to the Redpanda/Kafka broker.'
       );
       return false;
     }
