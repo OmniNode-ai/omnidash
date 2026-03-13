@@ -28,6 +28,7 @@ import healthProbeRoutes from './health-probe-routes';
 import { registerRoutes } from './routes';
 import { setupVite, serveStatic, log } from './vite';
 import { setupWebSocket } from './websocket';
+import { DbBackedProjectionView } from './projections/db-backed-projection-view';
 import { eventConsumer } from './event-consumer';
 import { eventBusDataSource } from './event-bus-data-source';
 import { eventBusMockGenerator } from './event-bus-mock-generator';
@@ -273,8 +274,7 @@ app.use((req, res, next) => {
         log('✅ Read-model consumer started - projecting events to omnidash_analytics');
       } else {
         const hasEnvVars =
-          getBrokerString() !== 'not configured' &&
-          !!process.env.OMNIDASH_ANALYTICS_DB_URL;
+          getBrokerString() !== 'not configured' && !!process.env.OMNIDASH_ANALYTICS_DB_URL;
         if (hasEnvVars) {
           log(
             '⚠️  Read-model consumer failed to connect after max retries (Kafka connectivity issue)'
@@ -290,8 +290,7 @@ app.use((req, res, next) => {
     })
     .catch((error) => {
       const hasEnvVars =
-        getBrokerString() !== 'not configured' &&
-        !!process.env.OMNIDASH_ANALYTICS_DB_URL;
+        getBrokerString() !== 'not configured' && !!process.env.OMNIDASH_ANALYTICS_DB_URL;
       if (hasEnvVars) {
         console.error(
           '❌ Read-model consumer failed after retries (Kafka connectivity issue):',
@@ -436,6 +435,13 @@ app.use((req, res, next) => {
     } catch {
       // Non-fatal: PID file is a best-effort cleanup aid
     }
+
+    // OMN-4958: Warm all DB-backed projection views so the first API request
+    // returns real data instead of emptyPayload(). Fire-and-forget — warm-up
+    // failures are logged but must not block the server.
+    DbBackedProjectionView.warmAll().catch((err) => {
+      console.error('[startup] DbBackedProjectionView.warmAll() failed:', err);
+    });
   });
 
   // Graceful shutdown
