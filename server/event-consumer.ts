@@ -18,7 +18,9 @@ import {
 } from '@shared/intent-types';
 // Import intentEventEmitter for WebSocket broadcasting of intent events
 import { getIntentEventEmitter } from './intent-events';
-// Import topic catalog manager (OMN-2315) — retained for fallback path
+// @deprecated (OMN-5030) TopicCatalogManager — retained only for legacy fallback
+// path (OMNIDASH_USE_REGISTRY_DISCOVERY=false). Will be fully removed once
+// registry-driven discovery is validated in production.
 import { TopicCatalogManager } from './topic-catalog-manager';
 // Registry-driven topic discovery (OMN-5027)
 import { getTopicRegistryService } from './services/topic-registry-service';

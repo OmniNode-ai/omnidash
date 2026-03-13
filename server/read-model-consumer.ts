@@ -27,6 +27,9 @@
 import crypto from 'node:crypto';
 import { Kafka, Consumer, EachMessagePayload, KafkaMessage } from 'kafkajs';
 import { resolveBrokers } from './bus-config.js';
+// @deprecated (OMN-5030) TopicCatalogManager — no longer used on primary path.
+// Retained for fetchCatalogTopics() legacy method. Will be fully removed once
+// manifest-driven loading is validated in production.
 import { TopicCatalogManager } from './topic-catalog-manager';
 // Manifest-driven topic loading (OMN-5029)
 import { loadManifestTopics } from './services/topic-manifest-loader';
