@@ -2846,6 +2846,17 @@ export class EventConsumer extends EventEmitter {
         timestamp: new Date().toISOString(),
       });
 
+      // OMN-4957: Emit intentUpdate so projection-bootstrap wires intent events
+      // through the same consumerEventNames pipeline as other event types.
+      this.emit('intentUpdate', {
+        id: intentEvent.id,
+        topic: INTENT_CLASSIFIED_TOPIC,
+        type: 'intent-classified',
+        actionType: 'intent-classified',
+        timestamp: new Date().toISOString(),
+        ...intentEvent,
+      });
+
       // Forward to IntentEventEmitter for new WebSocket subscription pattern
       // Use type guard for validation before emitting
       if (isIntentClassifiedEvent(event)) {
@@ -2917,6 +2928,18 @@ export class EventConsumer extends EventEmitter {
           correlationId: event.correlation_id || event.correlationId,
           createdAt,
         },
+        timestamp: new Date().toISOString(),
+      });
+
+      // OMN-4957: Emit intentUpdate so projection-bootstrap wires intent events
+      // through the same consumerEventNames pipeline as other event types.
+      this.emit('intentUpdate', {
+        id: event.id || crypto.randomUUID(),
+        topic: INTENT_STORED_TOPIC,
+        type: 'intent-stored',
+        actionType: 'intent-stored',
+        intentId: event.intent_id || event.intentId,
+        intentType: event.intent_type || event.intentType,
         timestamp: new Date().toISOString(),
       });
 

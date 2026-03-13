@@ -399,6 +399,7 @@ export function wireProjectionSources(): ProjectionSourceCleanup {
       'nodeIntrospectionUpdate',
       'nodeHeartbeatUpdate',
       'nodeStateChangeUpdate',
+      'intentUpdate',
     ] as const;
 
     for (const eventName of consumerEventNames) {
