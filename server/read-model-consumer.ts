@@ -989,6 +989,13 @@ export class ReadModelConsumer {
   /**
    * Project an agent action event into agent_actions table.
    * Returns true if the row was successfully written, false if the DB was unavailable.
+   *
+   * IMPORTANT (OMN-4966): agent_actions stores HIGH-LEVEL action summaries
+   * (one row per named action like "file_read" or "git_commit"). This is
+   * distinct from tool-executed events (onex.evt.omniclaude.tool-executed.v1)
+   * which capture every low-level tool invocation and number 50-100x more.
+   * A single agent_action row may correspond to many tool-executed events.
+   * See docs/architecture/AGENT_ACTIONS_VS_TOOL_EXECUTED.md for details.
    */
   private async projectAgentAction(
     data: Record<string, unknown>,
