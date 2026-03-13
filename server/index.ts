@@ -33,7 +33,6 @@ import { eventBusDataSource } from './event-bus-data-source';
 import { eventBusMockGenerator } from './event-bus-mock-generator';
 import { startMockRegistryEvents, stopMockRegistryEvents } from './registry-events';
 import { runtimeIdentity } from './runtime-identity';
-import { getBrokerString } from './bus-config.js';
 import { printStartupBanner } from './startup-banner.js';
 import { getBrokerString } from './bus-config.js';
 import { initProjectionListeners, teardownProjectionListeners } from './projection-instance';
