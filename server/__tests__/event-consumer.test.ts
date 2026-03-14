@@ -100,47 +100,6 @@ vi.mock('../topic-catalog-manager', async () => {
   };
 });
 
-// Mock registry-driven discovery services (OMN-5027) so waitForDiscovery()
-// resolves immediately with the fallback topic list
-vi.mock('../services/topic-registry-service', async () => {
-  const { EventEmitter } = await import('events');
-  return {
-    getTopicRegistryService: vi.fn(() => {
-      const emitter = new EventEmitter();
-      return Object.assign(emitter, {
-        getAllEvtTopics: vi.fn().mockReturnValue([]),
-        getNodeCount: vi.fn().mockReturnValue(0),
-        snapshot: vi
-          .fn()
-          .mockReturnValue({ evt_topics: [], node_count: 0, nodes: {}, last_update_utc: '' }),
-        updateNodeTopics: vi.fn(),
-      });
-    }),
-    resetTopicRegistryService: vi.fn(),
-  };
-});
-
-vi.mock('../services/topic-discovery-coordinator', async () => {
-  const { buildSubscriptionTopics } = await import('@shared/topics');
-  return {
-    TopicDiscoveryCoordinator: vi.fn().mockImplementation(function () {
-      return {
-        waitForDiscovery: vi.fn().mockResolvedValue({
-          topics: buildSubscriptionTopics(),
-          source: 'bootstrap',
-          degraded: false,
-          registryTopicCount: 0,
-          nodeCount: 0,
-          durationMs: 0,
-        }),
-        getCurrentTopics: vi.fn().mockReturnValue([]),
-        getBootstrapTopics: vi.fn().mockReturnValue([]),
-      };
-    }),
-    BOOTSTRAP_TOPICS: [],
-  };
-});
-
 // Import after mocks are set up - this will use our mocks
 import { EventConsumer } from '../event-consumer';
 import {
@@ -242,13 +201,11 @@ describe('EventConsumer', () => {
       await consumer.start();
 
       expect(mockConsumerConnect).toHaveBeenCalled();
-      // Verify the final (Phase B) subscription topics match the shared builder output.
-      // With registry discovery, subscribe() is called twice: Phase 1 (bootstrap) + Phase B (full).
-      const calls = mockConsumerSubscribe.mock.calls;
-      const lastCall = calls[calls.length - 1][0];
-      expect(lastCall.fromBeginning).toBe(false);
+      // Verify subscription topics match the shared builder output
+      const call = mockConsumerSubscribe.mock.calls[0][0];
+      expect(call.fromBeginning).toBe(false);
       const expectedTopics = buildSubscriptionTopics();
-      expect(lastCall.topics).toEqual(expectedTopics);
+      expect(call.topics).toEqual(expectedTopics);
       expect(mockConsumerRun).toHaveBeenCalled();
     });
 

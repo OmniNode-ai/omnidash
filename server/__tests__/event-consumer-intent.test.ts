@@ -1,3 +1,4 @@
+// no-migration: OMN-5022 test-only changes, no schema impact
 /**
  * EventConsumer intent/action event processing tests.
  *
@@ -99,68 +100,6 @@ vi.mock('../intent-events', () => ({
   IntentEventEmitter: vi.fn(),
   intentEventEmitter: mockIntentEventEmitter,
 }));
-
-// Mock TopicCatalogManager so it immediately falls back (catalogTimeout)
-vi.mock('../topic-catalog-manager', async () => {
-  const { EventEmitter } = await import('events');
-  return {
-    TopicCatalogManager: vi.fn().mockImplementation(function () {
-      const emitter = new EventEmitter();
-      return {
-        bootstrap: vi.fn().mockImplementation(function () {
-          Promise.resolve().then(() => emitter.emit('catalogTimeout'));
-          return Promise.resolve();
-        }),
-        stop: vi.fn().mockResolvedValue(undefined),
-        once: emitter.once.bind(emitter),
-        on: emitter.on.bind(emitter),
-        instanceUuid: null,
-      };
-    }),
-    CATALOG_TIMEOUT_MS: 200,
-  };
-});
-
-// Mock registry-driven discovery services (OMN-5027) so waitForDiscovery()
-// resolves immediately with the fallback topic list
-vi.mock('../services/topic-registry-service', async () => {
-  const { EventEmitter } = await import('events');
-  return {
-    getTopicRegistryService: vi.fn(() => {
-      const emitter = new EventEmitter();
-      return Object.assign(emitter, {
-        getAllEvtTopics: vi.fn().mockReturnValue([]),
-        getNodeCount: vi.fn().mockReturnValue(0),
-        snapshot: vi
-          .fn()
-          .mockReturnValue({ evt_topics: [], node_count: 0, nodes: {}, last_update_utc: '' }),
-        updateNodeTopics: vi.fn(),
-      });
-    }),
-    resetTopicRegistryService: vi.fn(),
-  };
-});
-
-vi.mock('../services/topic-discovery-coordinator', async () => {
-  const { buildSubscriptionTopics } = await import('@shared/topics');
-  return {
-    TopicDiscoveryCoordinator: vi.fn().mockImplementation(function () {
-      return {
-        waitForDiscovery: vi.fn().mockResolvedValue({
-          topics: buildSubscriptionTopics(),
-          source: 'bootstrap',
-          degraded: false,
-          registryTopicCount: 0,
-          nodeCount: 0,
-          durationMs: 0,
-        }),
-        getCurrentTopics: vi.fn().mockReturnValue([]),
-        getBootstrapTopics: vi.fn().mockReturnValue([]),
-      };
-    }),
-    BOOTSTRAP_TOPICS: [],
-  };
-});
 
 // Import after mocks are set up
 import { EventConsumer } from '../event-consumer';
