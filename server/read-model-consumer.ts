@@ -74,6 +74,10 @@ import {
   SUFFIX_INTELLIGENCE_PATTERN_LEARNED,
   SUFFIX_INTELLIGENCE_PATTERN_STORED,
   SUFFIX_OMNICLAUDE_LATENCY_BREAKDOWN,
+  // OMN-5038: canonical producers for execution graph
+  SUFFIX_OMNICLAUDE_TOOL_EXECUTED,
+  SUFFIX_OMNICLAUDE_AGENT_MATCH,
+  SUFFIX_OMNICLAUDE_ROUTING_DECISION,
 } from '@shared/topics';
 import type { LlmRoutingDecisionEvent } from '@shared/llm-routing-types';
 import type { TaskDelegatedEvent, DelegationShadowComparisonEvent } from '@shared/delegation-types';
@@ -226,6 +230,10 @@ const READ_MODEL_TOPICS = [
   SUFFIX_INTELLIGENCE_PATTERN_LEARNED,
   SUFFIX_INTELLIGENCE_PATTERN_STORED,
   SUFFIX_OMNICLAUDE_LATENCY_BREAKDOWN,
+  // OMN-5038: canonical execution graph topics (omniclaude publishes here, not to legacy flat names)
+  SUFFIX_OMNICLAUDE_TOOL_EXECUTED,
+  SUFFIX_OMNICLAUDE_AGENT_MATCH,
+  SUFFIX_OMNICLAUDE_ROUTING_DECISION,
 ] as const;
 
 type ReadModelTopic = (typeof READ_MODEL_TOPICS)[number];
@@ -574,6 +582,14 @@ export class ReadModelConsumer {
         case SUFFIX_OMNICLAUDE_LATENCY_BREAKDOWN:
           projected = await this.projectLatencyBreakdownEvent(parsed, fallbackId);
           break;
+        // OMN-5038: canonical execution graph topics
+        case SUFFIX_OMNICLAUDE_TOOL_EXECUTED:
+          projected = await this.projectToolExecutedAsAgentAction(parsed, fallbackId);
+          break;
+        case SUFFIX_OMNICLAUDE_AGENT_MATCH:
+        case SUFFIX_OMNICLAUDE_ROUTING_DECISION:
+          projected = await this.projectAgentMatchAsRoutingDecision(parsed, fallbackId);
+          break;
         default:
           console.warn(
             `[ReadModelConsumer] Received message on unknown topic "${topic}" -- skipping`
@@ -721,6 +737,91 @@ export class ReadModelConsumer {
       .insert(agentActions)
       .values(row)
       .onConflictDoNothing({ target: agentActions.correlationId });
+
+    return true;
+  }
+
+  /**
+   * Project a tool-executed event (onex.evt.omniclaude.tool-executed.v1) into agent_actions.
+   *
+   * OMN-5038: omniclaude publishes tool calls to this canonical topic, not to the legacy
+   * flat 'agent-actions' topic. Maps tool_name → actionType/actionName, summary → actionDetails.
+   */
+  private async projectToolExecutedAsAgentAction(
+    data: Record<string, unknown>,
+    fallbackId: string
+  ): Promise<boolean> {
+    const db = tryGetIntelligenceDb();
+    if (!db) return false;
+
+    const toolName = (data.tool_name as string) || 'unknown';
+    const row: InsertAgentAction = {
+      correlationId:
+        (data.correlation_id as string) || (data.correlationId as string) || fallbackId,
+      agentName: 'omniclaude',
+      actionType: 'tool_call',
+      actionName: toolName,
+      actionDetails: {
+        tool_name: toolName,
+        success: data.success,
+        summary: data.summary,
+        action_description: data.action_description,
+        session_id: data.session_id,
+      },
+      debugMode: false,
+      durationMs: data.duration_ms != null ? Number(data.duration_ms) : undefined,
+      createdAt: safeParseDate(data.emitted_at ?? data.created_at),
+    };
+
+    await db
+      .insert(agentActions)
+      .values(row)
+      .onConflictDoNothing({ target: agentActions.correlationId });
+
+    return true;
+  }
+
+  /**
+   * Project an agent-match or routing-decision event into agent_routing_decisions.
+   *
+   * OMN-5038: omniclaude publishes routing outcomes to canonical topics
+   * (onex.evt.omniclaude.agent-match.v1, onex.evt.omniclaude.routing-decision.v1),
+   * not to the legacy flat 'agent-routing-decisions' topic.
+   * Maps selected_agent/confidence/routing_method from agent-match payload.
+   */
+  private async projectAgentMatchAsRoutingDecision(
+    data: Record<string, unknown>,
+    fallbackId: string
+  ): Promise<boolean> {
+    const db = tryGetIntelligenceDb();
+    if (!db) return false;
+
+    const row: InsertAgentRoutingDecision = {
+      correlationId:
+        (data.correlation_id as string) || (data.correlationId as string) || fallbackId,
+      sessionId: (data.session_id as string) || (data.sessionId as string) || undefined,
+      userRequest: '',
+      selectedAgent: (data.selected_agent as string) || (data.selectedAgent as string) || 'unknown',
+      confidenceScore: String(
+        data.confidence ?? data.confidence_score ?? data.confidenceScore ?? 0
+      ),
+      routingStrategy:
+        (data.routing_method as string) ||
+        (data.routingMethod as string) ||
+        (data.routing_strategy as string) ||
+        'event_routing',
+      alternatives: data.alternatives || undefined,
+      reasoning: (data.reasoning as string) || undefined,
+      routingTimeMs: 0,
+      cacheHit: Boolean(data.cache_hit ?? data.cacheHit ?? false),
+      selectionValidated: false,
+      createdAt: safeParseDate(data.emitted_at ?? data.created_at),
+    };
+
+    await db
+      .insert(agentRoutingDecisions)
+      .values(row)
+      .onConflictDoNothing({ target: agentRoutingDecisions.correlationId });
 
     return true;
   }
