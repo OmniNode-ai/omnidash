@@ -1767,9 +1767,17 @@ export class ReadModelConsumer {
 
     // Build the filtered trend rows outside the transaction so the post-filter
     // count is accessible for the success log below (Issue 1 fix).
+    //
+    // OMN-5040: Accept both the legacy format (date/avg_cost_savings/avg_outcome_improvement)
+    // and the new A/B treatment/control format from NodeBaselinesBatchCompute (OMN-3045):
+    //   trend_date, cohort, session_count, success_rate, avg_latency_ms, roi_pct.
+    // The new format uses trend_date instead of date. Map roi_pct → avgCostSavings and
+    // success_rate → avgOutcomeImprovement for storage in the existing schema.
+    // Each (trend_date, cohort) pair maps to one trend row keyed by "<date>:<cohort>".
     const trendRows: InsertBaselinesTrend[] = (rawTrend as Record<string, unknown>[])
       .filter((t) => {
-        const date = t.date ?? t.dateStr;
+        // Accept trend_date (new A/B format) or date/dateStr (legacy format)
+        const date = t.trend_date ?? t.date ?? t.dateStr;
         if (date == null || date === '') {
           console.warn(
             '[ReadModelConsumer] Skipping trend row with blank/null date:',
@@ -1786,22 +1794,43 @@ export class ReadModelConsumer {
         }
         return true;
       })
-      .map((t) => ({
-        snapshotId,
-        date: String(t.date ?? t.dateStr),
-        // NUMERIC(8,6) column: max 99.999999. Clamp to [0, 99] to prevent
-        // PostgreSQL overflow if producer sends percentage-scale values (e.g. 12.5%).
-        avgCostSavings: String(
-          Math.min(Math.max(Number(t.avg_cost_savings ?? t.avgCostSavings ?? 0), 0), 99)
-        ),
-        avgOutcomeImprovement: String(
-          Math.min(
-            Math.max(Number(t.avg_outcome_improvement ?? t.avgOutcomeImprovement ?? 0), 0),
-            99
-          )
-        ),
-        comparisonsEvaluated: Number(t.comparisons_evaluated ?? t.comparisonsEvaluated ?? 0),
-      }));
+      .map((t) => {
+        // New A/B format: trend_date + cohort. Legacy format: date/dateStr.
+        const rawDate = String(t.trend_date ?? t.date ?? t.dateStr);
+        const cohort = t.cohort ? String(t.cohort) : '';
+        // Disambiguate multiple rows per date (treatment vs control) by appending cohort.
+        // Legacy events have one row per date so cohort is empty and the key is just the date.
+        const dateKey = cohort ? `${rawDate}:${cohort}` : rawDate;
+        // Map new A/B fields to legacy schema columns:
+        //   roi_pct → avgCostSavings (treat ROI % as cost savings proxy)
+        //   success_rate (0-1 fraction) → avgOutcomeImprovement (scale to 0-99 range)
+        //   session_count → comparisonsEvaluated
+        const roiPct = Number(t.roi_pct ?? 0);
+        const successRate = Number(t.success_rate ?? 0);
+        const avgCostSavingsValue =
+          t.avg_cost_savings != null || t.avgCostSavings != null
+            ? Number(t.avg_cost_savings ?? t.avgCostSavings ?? 0)
+            : Math.abs(roiPct);
+        const avgOutcomeImprovementValue =
+          t.avg_outcome_improvement != null || t.avgOutcomeImprovement != null
+            ? Number(t.avg_outcome_improvement ?? t.avgOutcomeImprovement ?? 0)
+            : successRate * 100;
+        return {
+          snapshotId,
+          date: dateKey,
+          // NUMERIC(8,6) column: max 99.999999. Clamp to [0, 99] to prevent
+          // PostgreSQL overflow if producer sends percentage-scale values (e.g. 12.5%).
+          avgCostSavings: String(Math.min(Math.max(avgCostSavingsValue, 0), 99)),
+          avgOutcomeImprovement: String(Math.min(Math.max(avgOutcomeImprovementValue, 0), 99)),
+          comparisonsEvaluated: Number(
+            t.comparisons_evaluated ??
+              t.comparisonsEvaluated ??
+              t.session_count ??
+              t.sessionCount ??
+              0
+          ),
+        };
+      });
 
     // Deduplicate trend rows by date to prevent duplicate date inserts that would
     // inflate projection averages. Migration 0005 adds a UNIQUE(snapshot_id, date)
@@ -1872,46 +1901,106 @@ export class ReadModelConsumer {
           .where(eq(baselinesComparisons.snapshotId, snapshotId));
 
         if (rawComparisons.length > 0) {
+          // OMN-5040: Accept both the legacy pattern-comparison format (pattern_id, pattern_name,
+          // recommendation, confidence) and the new A/B treatment/control format from
+          // NodeBaselinesBatchCompute (OMN-3045): comparison_date, treatment_sessions,
+          // control_sessions, roi_pct, sample_size.
+          //
+          // For the new A/B format, derive the legacy fields synthetically:
+          //   pattern_id  → comparison_date string (stable unique key per day)
+          //   pattern_name → period_label or comparison_date
+          //   recommendation → 'promote' if roi_pct > 5, 'suppress' if roi_pct < -5, else 'shadow'
+          //   confidence → 'high' if sample_size >= 20, 'medium' if >= 5, else 'low'
+          //   sample_size → treatment_sessions + control_sessions
           const comparisonRows: InsertBaselinesComparison[] = (
             rawComparisons as Record<string, unknown>[]
           )
             .filter((c) => {
+              // Accept if either pattern_id (legacy) or comparison_date (new A/B) is present
               const pid = String(c.pattern_id ?? c.patternId ?? '').trim();
-              if (!pid) {
+              const compDate = String(c.comparison_date ?? c.comparisonDate ?? '').trim();
+              if (!pid && !compDate) {
                 console.warn(
-                  `[read-model-consumer] Skipping comparison row with blank pattern_id for snapshot ${snapshotId}`
+                  `[read-model-consumer] Skipping comparison row with no pattern_id or comparison_date for snapshot ${snapshotId}`
                 );
                 return false;
               }
               return true;
             })
-            .map((c) => ({
-              snapshotId,
-              patternId: String(c.pattern_id ?? c.patternId ?? ''),
-              patternName: String(c.pattern_name ?? c.patternName ?? ''),
-              sampleSize: Number(c.sample_size ?? c.sampleSize ?? 0),
-              windowStart: String(c.window_start ?? c.windowStart ?? ''),
-              windowEnd: String(c.window_end ?? c.windowEnd ?? ''),
-              tokenDelta: (c.token_delta ?? c.tokenDelta ?? {}) as Record<string, unknown>,
-              timeDelta: (c.time_delta ?? c.timeDelta ?? {}) as Record<string, unknown>,
-              retryDelta: (c.retry_delta ?? c.retryDelta ?? {}) as Record<string, unknown>,
-              testPassRateDelta: (c.test_pass_rate_delta ?? c.testPassRateDelta ?? {}) as Record<
-                string,
-                unknown
-              >,
-              reviewIterationDelta: (c.review_iteration_delta ??
-                c.reviewIterationDelta ??
-                {}) as Record<string, unknown>,
-              recommendation: (() => {
-                const raw = String(c.recommendation ?? '');
-                return VALID_PROMOTION_ACTIONS.has(raw) ? raw : 'shadow';
-              })(),
-              confidence: (() => {
-                const raw = String(c.confidence ?? '').toLowerCase();
-                return VALID_CONFIDENCE_LEVELS.has(raw) ? raw : 'low';
-              })(),
-              rationale: String(c.rationale ?? ''),
-            }));
+            .map((c) => {
+              // Determine if this is a new A/B row (has comparison_date but no pattern_id)
+              const compDate = String(c.comparison_date ?? c.comparisonDate ?? '').trim();
+              const legacyPid = String(c.pattern_id ?? c.patternId ?? '').trim();
+              const isNewFormat = !legacyPid && compDate.length > 0;
+
+              // Derive pattern_id: use comparison_date as stable string key for new format
+              const patternId = isNewFormat ? compDate : legacyPid;
+              const patternName = isNewFormat
+                ? String(c.period_label ?? c.periodLabel ?? compDate)
+                : String(c.pattern_name ?? c.patternName ?? '');
+
+              // Derive sample_size from treatment + control sessions for new A/B format
+              const treatmentSessions = Number(c.treatment_sessions ?? c.treatmentSessions ?? 0);
+              const controlSessions = Number(c.control_sessions ?? c.controlSessions ?? 0);
+              const sampleSize = isNewFormat
+                ? treatmentSessions + controlSessions
+                : Number(c.sample_size ?? c.sampleSize ?? 0);
+
+              // Derive recommendation from roi_pct for new A/B format
+              const roiPct = Number(c.roi_pct ?? c.roiPct ?? 0);
+              const recommendation = isNewFormat
+                ? roiPct > 5
+                  ? 'promote'
+                  : roiPct < -5
+                    ? 'suppress'
+                    : 'shadow'
+                : (() => {
+                    const raw = String(c.recommendation ?? '');
+                    return VALID_PROMOTION_ACTIONS.has(raw) ? raw : 'shadow';
+                  })();
+
+              // Derive confidence from sample_size for new A/B format
+              const confidence = isNewFormat
+                ? sampleSize >= 20
+                  ? 'high'
+                  : sampleSize >= 5
+                    ? 'medium'
+                    : 'low'
+                : (() => {
+                    const raw = String(c.confidence ?? '').toLowerCase();
+                    return VALID_CONFIDENCE_LEVELS.has(raw) ? raw : 'low';
+                  })();
+
+              // Window start/end from comparison_date or explicit fields
+              const windowStart = isNewFormat
+                ? compDate
+                : String(c.window_start ?? c.windowStart ?? '');
+              const windowEnd = isNewFormat ? compDate : String(c.window_end ?? c.windowEnd ?? '');
+
+              return {
+                snapshotId,
+                patternId,
+                patternName,
+                sampleSize,
+                windowStart,
+                windowEnd,
+                tokenDelta: (c.token_delta ?? c.tokenDelta ?? {}) as Record<string, unknown>,
+                timeDelta: (c.time_delta ?? c.timeDelta ?? {}) as Record<string, unknown>,
+                retryDelta: (c.retry_delta ?? c.retryDelta ?? {}) as Record<string, unknown>,
+                testPassRateDelta: (c.test_pass_rate_delta ?? c.testPassRateDelta ?? {}) as Record<
+                  string,
+                  unknown
+                >,
+                reviewIterationDelta: (c.review_iteration_delta ??
+                  c.reviewIterationDelta ??
+                  {}) as Record<string, unknown>,
+                recommendation,
+                confidence,
+                rationale: isNewFormat
+                  ? `A/B: treatment=${treatmentSessions} sessions, control=${controlSessions} sessions, roi=${roiPct.toFixed(1)}%`
+                  : String(c.rationale ?? ''),
+              };
+            });
           if (comparisonRows.length === 0) {
             console.warn(
               `[baselines] all ${rawComparisons.length} comparison rows filtered out for snapshot ${snapshotId} — check upstream data`
@@ -1931,20 +2020,46 @@ export class ReadModelConsumer {
         await tx.delete(baselinesBreakdown).where(eq(baselinesBreakdown.snapshotId, snapshotId));
 
         if (rawBreakdown.length > 0) {
+          // OMN-5040: Accept both the legacy breakdown format (action, count, avg_confidence)
+          // and the new A/B per-agent breakdown format from NodeBaselinesBatchCompute (OMN-3045):
+          //   pattern_label, sample_count, treatment_count, control_count, roi_pct, confidence.
+          //
+          // For the new A/B format, map fields to the existing schema:
+          //   action → 'promote' if roi_pct > 5, 'suppress' if roi_pct < -5, else 'shadow'
+          //   count  → sample_count (total sessions for this agent pattern)
+          //   avg_confidence → confidence (0-1 float from handler, already in correct range)
           const breakdownRowsRaw: InsertBaselinesBreakdown[] = (
             rawBreakdown as Record<string, unknown>[]
           ).map((b) => {
-            const rawAction = String(b.action ?? '');
-            const action = VALID_PROMOTION_ACTIONS.has(rawAction) ? rawAction : 'shadow';
+            // Detect new A/B format by presence of pattern_label or pattern_id without action
+            const hasLegacyAction = b.action != null;
+            const patternLabel = b.pattern_label ?? b.patternLabel;
+            const isNewFormat = !hasLegacyAction && (patternLabel != null || b.pattern_id != null);
+
+            let action: string;
+            let count: number;
+            let avgConfidenceNum: number;
+
+            if (isNewFormat) {
+              const roiPct = Number(b.roi_pct ?? b.roiPct ?? 0);
+              action = roiPct > 5 ? 'promote' : roiPct < -5 ? 'suppress' : 'shadow';
+              count = Number(b.sample_count ?? b.sampleCount ?? 0);
+              // confidence from handler is already 0-1 (or null when sample_count < 20)
+              avgConfidenceNum = b.confidence != null ? Number(b.confidence) : 0;
+            } else {
+              const rawAction = String(b.action ?? '');
+              action = VALID_PROMOTION_ACTIONS.has(rawAction) ? rawAction : 'shadow';
+              count = Number(b.count ?? 0);
+              avgConfidenceNum = Number(b.avg_confidence ?? b.avgConfidence ?? 0);
+            }
+
             return {
               snapshotId,
               action,
-              count: Number(b.count ?? 0),
+              count,
               // NUMERIC(5,4) column: max 9.9999. Clamp to [0, 1] since confidence
               // is a 0-1 ratio; guard against out-of-range producer values.
-              avgConfidence: String(
-                Math.min(Math.max(Number(b.avg_confidence ?? b.avgConfidence ?? 0), 0), 1)
-              ),
+              avgConfidence: String(Math.min(Math.max(avgConfidenceNum, 0), 1)),
             };
           });
 
