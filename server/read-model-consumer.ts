@@ -38,6 +38,9 @@ import {
   baselinesBreakdown,
   delegationEvents,
   delegationShadowComparisons,
+  learnedPatterns,
+  patternLearningArtifacts,
+  latencyBreakdowns,
 } from '@shared/intelligence-schema';
 import type {
   InsertAgentRoutingDecision,
@@ -50,6 +53,9 @@ import type {
   InsertBaselinesBreakdown,
   InsertDelegationEvent,
   InsertDelegationShadowComparison,
+  InsertLearnedPattern,
+  InsertPatternLearningArtifact,
+  InsertLatencyBreakdown,
 } from '@shared/intelligence-schema';
 import type { PatternEnforcementEvent } from '@shared/enforcement-types';
 import { ENRICHMENT_OUTCOMES } from '@shared/enrichment-types';
@@ -65,6 +71,9 @@ import {
   SUFFIX_OMNICLAUDE_PR_WATCH_UPDATED,
   SUFFIX_OMNICLAUDE_BUDGET_CAP_HIT,
   SUFFIX_OMNICLAUDE_CIRCUIT_BREAKER_TRIPPED,
+  SUFFIX_INTELLIGENCE_PATTERN_LEARNED,
+  SUFFIX_INTELLIGENCE_PATTERN_STORED,
+  SUFFIX_OMNICLAUDE_LATENCY_BREAKDOWN,
 } from '@shared/topics';
 import type { LlmRoutingDecisionEvent } from '@shared/llm-routing-types';
 import type { TaskDelegatedEvent, DelegationShadowComparisonEvent } from '@shared/delegation-types';
@@ -213,6 +222,10 @@ const READ_MODEL_TOPICS = [
   SUFFIX_OMNICLAUDE_PR_WATCH_UPDATED,
   SUFFIX_OMNICLAUDE_BUDGET_CAP_HIT,
   SUFFIX_OMNICLAUDE_CIRCUIT_BREAKER_TRIPPED,
+  // Pattern Learning + Latency panels (OMN-2583)
+  SUFFIX_INTELLIGENCE_PATTERN_LEARNED,
+  SUFFIX_INTELLIGENCE_PATTERN_STORED,
+  SUFFIX_OMNICLAUDE_LATENCY_BREAKDOWN,
 ] as const;
 
 type ReadModelTopic = (typeof READ_MODEL_TOPICS)[number];
@@ -550,6 +563,16 @@ export class ReadModelConsumer {
           break;
         case SUFFIX_OMNICLAUDE_CIRCUIT_BREAKER_TRIPPED:
           projected = await this.projectCircuitBreakerTrippedEvent(parsed, fallbackId);
+          break;
+        // Pattern Learning + Latency panels (OMN-2583)
+        case SUFFIX_INTELLIGENCE_PATTERN_LEARNED:
+          projected = await this.projectPatternLearnedEvent(parsed, fallbackId);
+          break;
+        case SUFFIX_INTELLIGENCE_PATTERN_STORED:
+          projected = await this.projectPatternStoredEvent(parsed, fallbackId);
+          break;
+        case SUFFIX_OMNICLAUDE_LATENCY_BREAKDOWN:
+          projected = await this.projectLatencyBreakdownEvent(parsed, fallbackId);
           break;
         default:
           console.warn(
@@ -2246,6 +2269,222 @@ export class ReadModelConsumer {
     }
 
     emitCircuitBreakerInvalidate(correlationId);
+    return true;
+  }
+
+  // ---------------------------------------------------------------------------
+  // Pattern Learning + Latency panel projections (OMN-2583)
+  // ---------------------------------------------------------------------------
+
+  /**
+   * Project a pattern-learned event into learned_patterns table.
+   *
+   * The omniintelligence producer emits this event when a pattern has been
+   * learned/recognised by the pattern-learning pipeline. One row per
+   * pattern_signature + domain_id — ON CONFLICT DO NOTHING to protect
+   * idempotency on redelivery.
+   *
+   * Returns true if the write succeeded (or was skipped as a known dup),
+   * false if the DB was unavailable (caller will NOT advance the watermark).
+   */
+  private async projectPatternLearnedEvent(
+    data: Record<string, unknown>,
+    fallbackId: string
+  ): Promise<boolean> {
+    const db = tryGetIntelligenceDb();
+    if (!db) return false;
+
+    const patternSignature =
+      (data.pattern_signature as string) || (data.patternSignature as string) || fallbackId;
+    const domainId = (data.domain_id as string) || (data.domainId as string) || 'unknown';
+    const domainVersion = (data.domain_version as string) || (data.domainVersion as string) || '1';
+    const confidence = Number(data.confidence ?? 0.5);
+    const signatureHash =
+      (data.signature_hash as string) ||
+      (data.signatureHash as string) ||
+      crypto.createHash('sha256').update(patternSignature).digest('hex').slice(0, 32);
+
+    const row: InsertLearnedPattern = {
+      patternSignature,
+      domainId,
+      domainVersion,
+      domainCandidates: (data.domain_candidates ?? data.domainCandidates ?? []) as unknown[],
+      keywords: Array.isArray(data.keywords) ? (data.keywords as string[]) : undefined,
+      confidence: String(confidence),
+      status: (data.status as string) || 'candidate',
+      promotedAt: data.promoted_at ? safeParseDate(data.promoted_at) : undefined,
+      deprecatedAt: data.deprecated_at ? safeParseDate(data.deprecated_at) : undefined,
+      deprecationReason: (data.deprecation_reason as string) || undefined,
+      sourceSessionIds: Array.isArray(data.source_session_ids)
+        ? (data.source_session_ids as string[])
+        : [],
+      recurrenceCount: Number(data.recurrence_count ?? data.recurrenceCount ?? 1),
+      firstSeenAt: safeParseDate(data.first_seen_at ?? data.firstSeenAt ?? data.created_at),
+      lastSeenAt: safeParseDate(data.last_seen_at ?? data.lastSeenAt ?? data.created_at),
+      distinctDaysSeen: Number(data.distinct_days_seen ?? data.distinctDaysSeen ?? 1),
+      qualityScore: data.quality_score != null ? String(data.quality_score) : '0.5',
+      injectionCountRolling20: Number(data.injection_count_rolling_20 ?? 0),
+      successCountRolling20: Number(data.success_count_rolling_20 ?? 0),
+      failureCountRolling20: Number(data.failure_count_rolling_20 ?? 0),
+      failureStreak: Number(data.failure_streak ?? 0),
+      version: Number(data.version ?? 1),
+      isCurrent: Boolean(data.is_current ?? true),
+      supersedes: (data.supersedes as string) || undefined,
+      supersededBy: (data.superseded_by as string) || undefined,
+      compiledSnippet: (data.compiled_snippet as string) || undefined,
+      compiledTokenCount:
+        data.compiled_token_count != null ? Number(data.compiled_token_count) : undefined,
+      compiledAt: data.compiled_at ? safeParseDate(data.compiled_at) : undefined,
+      createdAt: safeParseDate(data.created_at ?? data.createdAt),
+      updatedAt: safeParseDate(data.updated_at ?? data.updatedAt ?? data.created_at),
+      signatureHash,
+    };
+
+    try {
+      await db.insert(learnedPatterns).values(row).onConflictDoNothing();
+    } catch (err) {
+      const pgCode = (err as { code?: string }).code;
+      const msg = err instanceof Error ? err.message : String(err);
+      if (
+        pgCode === '42P01' ||
+        (msg.includes('learned_patterns') && msg.includes('does not exist'))
+      ) {
+        console.warn(
+          '[ReadModelConsumer] learned_patterns table not yet created -- ' +
+            'run migrations to enable pattern-learned projection'
+        );
+        return true;
+      }
+      throw err;
+    }
+
+    return true;
+  }
+
+  /**
+   * Project a pattern-stored event into pattern_learning_artifacts table.
+   *
+   * The omniintelligence producer emits this event when a pattern artifact has
+   * been persisted by the learning pipeline (e.g. after scoring). One row per
+   * pattern_id — ON CONFLICT DO NOTHING for idempotency on redelivery.
+   *
+   * Returns true if the write succeeded (or was skipped as a known dup),
+   * false if the DB was unavailable.
+   */
+  private async projectPatternStoredEvent(
+    data: Record<string, unknown>,
+    fallbackId: string
+  ): Promise<boolean> {
+    const db = tryGetIntelligenceDb();
+    if (!db) return false;
+
+    const patternId = (data.pattern_id as string) || (data.patternId as string) || fallbackId;
+    const patternName = (data.pattern_name as string) || (data.patternName as string) || 'unknown';
+    const patternType = (data.pattern_type as string) || (data.patternType as string) || 'unknown';
+
+    if (!data.composite_score && data.compositeScore == null && data.score == null) {
+      console.warn(
+        '[ReadModelConsumer] pattern-stored event missing composite_score ' +
+          `(pattern_id=${patternId}) -- defaulting to 0`
+      );
+    }
+
+    const row: InsertPatternLearningArtifact = {
+      patternId,
+      patternName,
+      patternType,
+      language: (data.language as string) || undefined,
+      lifecycleState:
+        (data.lifecycle_state as string) || (data.lifecycleState as string) || 'candidate',
+      stateChangedAt: data.state_changed_at ? safeParseDate(data.state_changed_at) : undefined,
+      compositeScore: String(
+        Number(data.composite_score ?? data.compositeScore ?? data.score ?? 0)
+      ),
+      scoringEvidence: (data.scoring_evidence ?? data.scoringEvidence ?? {}) as object,
+      signature: (data.signature ?? {}) as object,
+      metrics: (data.metrics ?? {}) as object,
+      metadata: (data.metadata ?? {}) as object,
+      createdAt: safeParseDate(data.created_at ?? data.createdAt),
+      updatedAt: safeParseDate(data.updated_at ?? data.updatedAt ?? data.created_at),
+    };
+
+    try {
+      await db.insert(patternLearningArtifacts).values(row).onConflictDoNothing();
+    } catch (err) {
+      const pgCode = (err as { code?: string }).code;
+      const msg = err instanceof Error ? err.message : String(err);
+      if (
+        pgCode === '42P01' ||
+        (msg.includes('pattern_learning_artifacts') && msg.includes('does not exist'))
+      ) {
+        console.warn(
+          '[ReadModelConsumer] pattern_learning_artifacts table not yet created -- ' +
+            'run migrations to enable pattern-stored projection'
+        );
+        return true;
+      }
+      throw err;
+    }
+
+    return true;
+  }
+
+  /**
+   * Project a latency-breakdown event into latency_breakdowns table.
+   *
+   * The omniclaude producer emits this event per prompt with per-phase timings.
+   * The unique constraint (session_id, prompt_id, cohort) prevents duplicate
+   * rows on Kafka redelivery — ON CONFLICT DO NOTHING.
+   *
+   * Previously this topic was only consumed by EventConsumer (in-memory) and
+   * dispatched to ExtractionMetricsAggregator. Adding it here ensures durable
+   * persistence into the analytics DB so the latency_breakdowns table has data.
+   *
+   * Returns true if the write succeeded (or was skipped as a known dup),
+   * false if the DB was unavailable.
+   */
+  private async projectLatencyBreakdownEvent(
+    data: Record<string, unknown>,
+    fallbackId: string
+  ): Promise<boolean> {
+    const db = tryGetIntelligenceDb();
+    if (!db) return false;
+
+    const sessionId = (data.session_id as string) || (data.sessionId as string) || fallbackId;
+    const promptId = (data.prompt_id as string) || (data.promptId as string) || fallbackId;
+    const cohort = (data.cohort as string) || 'unknown';
+
+    const row: InsertLatencyBreakdown = {
+      sessionId,
+      promptId,
+      cohort,
+      routingTimeMs: data.routing_time_ms != null ? Number(data.routing_time_ms) : undefined,
+      retrievalTimeMs: data.retrieval_time_ms != null ? Number(data.retrieval_time_ms) : undefined,
+      injectionTimeMs: data.injection_time_ms != null ? Number(data.injection_time_ms) : undefined,
+      userVisibleLatencyMs:
+        data.user_visible_latency_ms != null ? Number(data.user_visible_latency_ms) : undefined,
+      cacheHit: Boolean(data.cache_hit ?? data.cacheHit ?? false),
+      createdAt: safeParseDate(data.timestamp ?? data.created_at ?? data.createdAt),
+    };
+
+    try {
+      await db.insert(latencyBreakdowns).values(row).onConflictDoNothing();
+    } catch (err) {
+      const pgCode = (err as { code?: string }).code;
+      const msg = err instanceof Error ? err.message : String(err);
+      if (
+        pgCode === '42P01' ||
+        (msg.includes('latency_breakdowns') && msg.includes('does not exist'))
+      ) {
+        console.warn(
+          '[ReadModelConsumer] latency_breakdowns table not yet created -- ' +
+            'run migrations to enable latency breakdown projection'
+        );
+        return true;
+      }
+      throw err;
+    }
+
     return true;
   }
 
