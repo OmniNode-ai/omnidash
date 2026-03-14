@@ -72,6 +72,9 @@ const HANDLED_EVENT_TYPES = new Set([
   'node-heartbeat',
   'node-state-change',
   'node-registry-seed',
+  // Canonical active-node event (onex.evt.platform.node-became-active.v1).
+  // extractActionFromTopic() maps the full topic suffix to this short name.
+  'node-became-active',
 ]);
 
 // ============================================================================
@@ -259,6 +262,9 @@ export class NodeRegistryProjection implements ProjectionView<NodeRegistryPayloa
         break;
       case 'node-registry-seed':
         applied = this.handleSeed(event);
+        break;
+      case 'node-became-active':
+        applied = this.handleNodeBecameActive(event);
         break;
     }
 
@@ -508,6 +514,58 @@ export class NodeRegistryProjection implements ProjectionView<NodeRegistryPayloa
     if (seeded === 0) return false;
 
     this.rebuildStats();
+    return true;
+  }
+
+  /**
+   * Handle canonical node-became-active events (onex.evt.platform.node-became-active.v1).
+   *
+   * The payload carries { node_id, capabilities } (NodeBecameActivePayloadSchema).
+   * Capabilities arrive as Record<string, unknown> (canonical infra format);
+   * extractCapabilities() normalises them into NodeCapabilities.declared keys.
+   *
+   * Uses the same MonotonicMergeTracker gate as other handlers to reject stale
+   * or out-of-order events.
+   */
+  private handleNodeBecameActive(event: ProjectionEvent): boolean {
+    const payload = event.payload;
+    const nodeId = (payload.node_id ?? payload.nodeId) as string | undefined;
+    if (!nodeId) return false;
+
+    if (
+      !this.mergeTracker.checkAndUpdate(nodeId, {
+        eventTime: event.eventTimeMs,
+        seq: event.ingestSeq,
+      })
+    ) {
+      return false;
+    }
+
+    const existing = this.nodes.get(nodeId);
+    const oldState = existing?.state;
+    const newState: RegistrationState = 'active';
+
+    const capabilities = extractCapabilities(payload, existing?.capabilities);
+    const metadata = extractMetadata(payload, existing?.metadata);
+
+    const node: NodeState = {
+      nodeId,
+      nodeType: (existing?.nodeType ?? 'COMPUTE') as NodeType,
+      state: newState,
+      version: (existing?.version ?? '1.0.0') as string,
+      uptimeSeconds: existing?.uptimeSeconds ?? 0,
+      lastSeen: displayTimestamp(event.eventTimeMs),
+      memoryUsageMb: existing?.memoryUsageMb,
+      cpuUsagePercent: existing?.cpuUsagePercent,
+      endpoints: existing?.endpoints,
+      capabilities,
+      metadata,
+      reason: existing?.reason,
+    };
+
+    this.nodes.set(nodeId, node);
+    this.updateStats(oldState, newState, !existing);
+
     return true;
   }
 

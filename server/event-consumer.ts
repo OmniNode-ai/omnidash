@@ -1021,6 +1021,10 @@ export class EventConsumer extends EventEmitter {
 
   /**
    * Parse a Kafka message into a validated ONEX event envelope with typed payload.
+   * Handles two envelope formats:
+   * 1. Flat: entity_id/emitted_at at root, payload nested (EventEnvelopeSchema)
+   * 2. Two-layer: outer envelope has envelope_timestamp/correlation_id, inner payload
+   *    has entity_id/emitted_at (actual ONEX 2.x format from omnibase_infra)
    * Returns null if parsing or validation fails.
    */
   private parseEnvelope<T>(
@@ -1029,9 +1033,40 @@ export class EventConsumer extends EventEmitter {
   ): EventEnvelope<T> | null {
     try {
       const raw = JSON.parse(message.value?.toString() || '{}');
-      const envelope = EventEnvelopeSchema.parse(raw);
-      const payload = payloadSchema.parse(envelope.payload);
-      return { ...envelope, payload };
+
+      // Try flat schema first (entity_id at root)
+      const flatResult = EventEnvelopeSchema.safeParse(raw);
+      if (flatResult.success) {
+        const payload = payloadSchema.parse(flatResult.data.payload);
+        return { ...flatResult.data, payload };
+      }
+
+      // Try two-layer schema: outer envelope wraps an inner payload with entity_id/emitted_at
+      // Actual format: { correlation_id, envelope_timestamp, payload: { entity_id, emitted_at, ... } }
+      const innerPayload = raw.payload;
+      if (innerPayload && typeof innerPayload === 'object') {
+        const normalized = {
+          entity_id: innerPayload.entity_id,
+          correlation_id: innerPayload.correlation_id ?? raw.correlation_id,
+          causation_id: innerPayload.causation_id,
+          emitted_at: innerPayload.emitted_at ?? raw.envelope_timestamp,
+          payload: innerPayload,
+        };
+        const envelopeResult = EventEnvelopeSchema.safeParse(normalized);
+        if (envelopeResult.success) {
+          const payload = payloadSchema.parse(envelopeResult.data.payload);
+          return { ...envelopeResult.data, payload };
+        }
+      }
+
+      // Both formats failed — log and return null
+      console.warn('[EventConsumer] Failed to parse event envelope:', {
+        error: flatResult.error?.message,
+        offset: message.offset,
+        key: message.key?.toString(),
+        valuePreview: message.value?.toString().slice(0, 200),
+      });
+      return null;
     } catch (e) {
       console.warn('[EventConsumer] Failed to parse event envelope:', {
         error: e instanceof Error ? e.message : String(e),
@@ -4380,6 +4415,66 @@ export class EventConsumer extends EventEmitter {
           // Route through the same handler as live Kafka events for consistent state updates
           this.handlePerformanceMetric(event as RawPerformanceMetricEvent);
           break;
+
+        // Canonical node-became-active — the DB stores the inner payload directly
+        // (entity_id, node_id, emitted_at, capabilities at top level), without
+        // the outer correlation_id needed by parseEnvelope. Update canonicalNodes
+        // and registeredNodes directly to avoid re-parsing an incomplete envelope.
+        case TOPIC.NODE_BECAME_ACTIVE: {
+          const nodeId = (event.node_id ?? event.entity_id) as string | undefined;
+          const emittedAt = event.emitted_at
+            ? new Date(event.emitted_at as string).getTime()
+            : Date.now();
+          if (nodeId) {
+            const existing = this.canonicalNodes.get(nodeId);
+            if (!existing || this.shouldProcess(existing, emittedAt)) {
+              const canonical: CanonicalOnexNode = {
+                node_id: nodeId,
+                state: 'ACTIVE',
+                capabilities: event.capabilities as Record<string, unknown> | undefined,
+                activated_at: emittedAt,
+                last_heartbeat_at: emittedAt,
+                last_event_at: emittedAt,
+              };
+              this.canonicalNodes.set(nodeId, canonical);
+              this.syncCanonicalToRegistered(canonical);
+              this.emit('nodeRegistryUpdate', this.getRegisteredNodes());
+            }
+          }
+          break;
+        }
+
+        // node-heartbeat playback — update uptime/resource fields for known nodes
+        case TOPIC.NODE_HEARTBEAT: {
+          const nodeId = (event.node_id ?? event.entity_id) as string | undefined;
+          const emittedAt = event.emitted_at
+            ? new Date(event.emitted_at as string).getTime()
+            : Date.now();
+          if (nodeId) {
+            const existing = this.canonicalNodes.get(nodeId);
+            if (existing && this.shouldProcess(existing, emittedAt)) {
+              const updated: CanonicalOnexNode = {
+                ...existing,
+                last_heartbeat_at: emittedAt,
+                last_event_at: emittedAt,
+              };
+              this.canonicalNodes.set(nodeId, updated);
+              this.syncCanonicalToRegistered(updated);
+            } else if (!existing) {
+              // Create a minimal entry for previously-unseen heartbeating nodes
+              const canonical: CanonicalOnexNode = {
+                node_id: nodeId,
+                state: 'ACTIVE',
+                last_heartbeat_at: emittedAt,
+                last_event_at: emittedAt,
+              };
+              this.canonicalNodes.set(nodeId, canonical);
+              this.syncCanonicalToRegistered(canonical);
+              this.emit('nodeRegistryUpdate', this.getRegisteredNodes());
+            }
+          }
+          break;
+        }
 
         default:
           intentLogger.debug(`Unknown playback topic: ${topic}, emitting as generic event`);
