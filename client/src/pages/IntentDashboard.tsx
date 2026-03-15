@@ -449,33 +449,20 @@ export default function IntentDashboard() {
   // Transform projection snapshot → IntentItem[] for child components.
   // ProjectionEventItem wraps intent fields inside .payload; IntentItem expects them flat.
   //
-  // Field name notes: the event-consumer stores InternalIntentClassifiedEvent in camelCase
-  // (intentType, sessionId, createdAt) while the shared IntentRecordPayload wire format uses
-  // snake_case (intent_category, session_ref, created_at). Both casings must be checked here
-  // because the projection stores the raw InternalIntentClassifiedEvent payload verbatim.
+  // OMN-5055: event-consumer.ts now normalizes to canonical snake_case at the write site,
+  // so the projection payload always carries session_ref / intent_category / created_at.
+  // No dual-casing fallbacks needed here.
   const projectionIntentItems = useMemo((): IntentItem[] | undefined => {
     if (!snapshot?.recentIntents?.length) return undefined;
     return snapshot.recentIntents.map((e) => ({
       intent_id: e.id,
-      // session_ref: check both snake_case (wire format) and camelCase (InternalIntentClassifiedEvent)
-      session_ref: String(
-        e.payload.session_ref ?? e.payload.sessionId ?? e.payload.session_id ?? ''
-      ),
-      // intent_category: check all field name variants used across event schemas
-      intent_category: String(
-        e.payload.intent_category ??
-          e.payload.intentCategory ??
-          e.payload.intent_type ??
-          e.payload.intentType ??
-          ''
-      ),
+      session_ref: String(e.payload.session_ref ?? ''),
+      intent_category: String(e.payload.intent_category ?? ''),
       confidence: Number(e.payload.confidence ?? 0),
       keywords: [],
-      // created_at: check both snake_case and camelCase, fall back to eventTimeMs
-      created_at:
-        (e.payload.created_at ?? e.payload.createdAt)
-          ? String(e.payload.created_at ?? e.payload.createdAt)
-          : new Date(e.eventTimeMs ?? Date.now()).toISOString(),
+      created_at: e.payload.created_at
+        ? String(e.payload.created_at)
+        : new Date(e.eventTimeMs ?? Date.now()).toISOString(),
       user_context: undefined,
     }));
   }, [snapshot]);
