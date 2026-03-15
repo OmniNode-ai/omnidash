@@ -145,6 +145,7 @@ export const lifecycleStateSchema = z.enum([
   'provisional', // Above threshold, pending validation
   'validated', // Confirmed as learned pattern
   'deprecated', // Superseded or invalidated
+  'requested', // Raw pipeline event, not yet processed
 ]);
 
 // ===========================
@@ -152,25 +153,34 @@ export const lifecycleStateSchema = z.enum([
 // ===========================
 
 export const scoringEvidenceSchema = z.object({
-  labelAgreement: z.object({
-    score: z.number().min(0).max(1),
-    matchedLabels: z.array(z.string()),
-    totalLabels: z.number(),
-    disagreements: z.array(z.string()).optional(),
-  }),
-  clusterCohesion: z.object({
-    score: z.number().min(0).max(1),
-    clusterId: z.string(),
-    memberCount: z.number(),
-    avgPairwiseSimilarity: z.number(),
-    medoidId: z.string().optional(),
-  }),
-  frequencyFactor: z.object({
-    score: z.number().min(0).max(1),
-    observedCount: z.number(),
-    minRequired: z.number(),
-    windowDays: z.number(),
-  }),
+  labelAgreement: z
+    .object({
+      score: z.number().min(0).max(1),
+      matchedLabels: z.array(z.string()),
+      totalLabels: z.number(),
+      disagreements: z.array(z.string()).optional(),
+    })
+    .optional()
+    .default({ score: 0, matchedLabels: [], totalLabels: 0 }),
+  clusterCohesion: z
+    .object({
+      score: z.number().min(0).max(1),
+      clusterId: z.string(),
+      memberCount: z.number(),
+      avgPairwiseSimilarity: z.number(),
+      medoidId: z.string().optional(),
+    })
+    .optional()
+    .default({ score: 0, clusterId: '', memberCount: 0, avgPairwiseSimilarity: 0 }),
+  frequencyFactor: z
+    .object({
+      score: z.number().min(0).max(1),
+      observedCount: z.number(),
+      minRequired: z.number(),
+      windowDays: z.number(),
+    })
+    .optional()
+    .default({ score: 0, observedCount: 0, minRequired: 0, windowDays: 0 }),
 });
 
 // ===========================
@@ -228,10 +238,10 @@ export const similarPatternEntrySchema = z.object({
 // ===========================
 
 export const patternSignatureSchema = z.object({
-  hash: z.string(),
-  version: z.string(),
-  algorithm: z.string().default('sha256'),
-  inputs: z.array(z.string()),
+  hash: z.string().optional().default(''),
+  version: z.string().optional().default(''),
+  algorithm: z.string().optional().default('sha256'),
+  inputs: z.array(z.string()).optional().default([]),
   normalizations: z.array(z.string()).optional(),
 });
 
@@ -247,23 +257,30 @@ export const patlearnArtifactSchema = z.object({
   language: z.string().nullable().optional(),
   lifecycleState: lifecycleStateSchema,
   stateChangedAt: z.string().optional(),
-  compositeScore: z.number().min(0).max(1),
-  scoringEvidence: scoringEvidenceSchema,
-  signature: patternSignatureSchema,
-  metrics: z.object({
-    processingTimeMs: z.number(),
-    inputCount: z.number(),
-    clusterCount: z.number(),
-    dedupMergeCount: z.number(),
-    scoreHistory: z
-      .array(
-        z.object({
-          score: z.number(),
-          timestamp: z.string(),
-        })
-      )
-      .optional(),
-  }),
+  compositeScore: z.number().min(0).max(1).optional().default(0),
+  scoringEvidence: scoringEvidenceSchema
+    .optional()
+    .default({ labelAgreement: undefined, clusterCohesion: undefined, frequencyFactor: undefined }),
+  signature: patternSignatureSchema
+    .optional()
+    .default({ hash: '', version: '', algorithm: 'sha256', inputs: [] }),
+  metrics: z
+    .object({
+      processingTimeMs: z.number().optional().default(0),
+      inputCount: z.number().optional().default(0),
+      clusterCount: z.number().optional().default(0),
+      dedupMergeCount: z.number().optional().default(0),
+      scoreHistory: z
+        .array(
+          z.object({
+            score: z.number(),
+            timestamp: z.string(),
+          })
+        )
+        .optional(),
+    })
+    .optional()
+    .default({}),
   // Optional metadata for pattern descriptions and code examples (demo patterns)
   metadata: z
     .object({
@@ -272,6 +289,7 @@ export const patlearnArtifactSchema = z.object({
       __demo: z.boolean().optional(),
       __demoCreatedAt: z.string().optional(),
     })
+    .passthrough()
     .optional(),
   createdAt: z.string(),
   updatedAt: z.string().optional(),
