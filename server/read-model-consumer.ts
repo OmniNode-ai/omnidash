@@ -49,6 +49,7 @@ import {
   patternLearningArtifacts,
   planReviewRuns,
   modelEfficiencyRollups,
+  correlationTraceSpans,
 } from '@shared/intelligence-schema';
 import type {
   InsertAgentRoutingDecision,
@@ -67,6 +68,7 @@ import type { PatternEnforcementEvent } from '@shared/enforcement-types';
 import { ENRICHMENT_OUTCOMES } from '@shared/enrichment-types';
 import type { ContextEnrichmentEvent } from '@shared/enrichment-types';
 import {
+  SUFFIX_OMNICLAUDE_CORRELATION_TRACE,
   SUFFIX_OMNICLAUDE_CONTEXT_ENRICHMENT,
   SUFFIX_OMNICLAUDE_LLM_ROUTING_DECISION,
   SUFFIX_OMNICLAUDE_TASK_DELEGATED,
@@ -88,6 +90,7 @@ import {
   SUFFIX_INTELLIGENCE_PATTERN_LEARNING_CMD,
   TOPIC_INTELLIGENCE_PLAN_REVIEW_STRATEGY_RUN_COMPLETED,
   SUFFIX_OMNICLAUDE_PR_VALIDATION_ROLLUP,
+  SUFFIX_INTELLIGENCE_RUN_EVALUATED,
 } from '@shared/topics';
 import type { LlmRoutingDecisionEvent } from '@shared/llm-routing-types';
 import type { TaskDelegatedEvent, DelegationShadowComparisonEvent } from '@shared/delegation-types';
@@ -294,6 +297,10 @@ export const READ_MODEL_TOPICS = [
   // OMN-3324: Plan reviewer strategy run completions from omniintelligence.
   TOPIC_INTELLIGENCE_PLAN_REVIEW_STRATEGY_RUN_COMPLETED,
   SUFFIX_OMNICLAUDE_PR_VALIDATION_ROLLUP,
+  // OMN-5048: Objective evaluation results from omniintelligence
+  SUFFIX_INTELLIGENCE_RUN_EVALUATED,
+  // OMN-5047: Correlation trace spans emitted by omniclaude trace emitter.
+  SUFFIX_OMNICLAUDE_CORRELATION_TRACE,
 ] as const;
 
 type ReadModelTopic = (typeof READ_MODEL_TOPICS)[number];
@@ -819,6 +826,14 @@ export class ReadModelConsumer {
         // OMN-3933: PR validation rollup events for MEI dashboard
         case SUFFIX_OMNICLAUDE_PR_VALIDATION_ROLLUP:
           projected = await this.projectPrValidationRollup(parsed);
+          break;
+        // OMN-5048: Objective evaluation results
+        case SUFFIX_INTELLIGENCE_RUN_EVALUATED:
+          projected = await this.projectRunEvaluated(parsed, fallbackId);
+          break;
+        // OMN-5047: Correlation trace spans from omniclaude trace emitter
+        case SUFFIX_OMNICLAUDE_CORRELATION_TRACE:
+          projected = await this.projectCorrelationTrace(parsed);
           break;
         default:
           console.warn(
@@ -3127,6 +3142,181 @@ export class ReadModelConsumer {
         console.warn(
           '[ReadModelConsumer] model_efficiency_rollups table not yet created -- ' +
             'run migrations to enable MEI projection'
+        );
+        return true;
+      }
+      throw err;
+    }
+  }
+
+  // ===========================================================================
+  // OMN-5048: Objective evaluation projection
+  // ===========================================================================
+
+  /**
+   * Project a RunEvaluatedEvent from omniintelligence into the
+   * objective_evaluations read-model table and derive gate failure
+   * rows for the objective_gate_failures table.
+   *
+   * Topic: onex.evt.omniintelligence.run-evaluated.v1
+   * Source model: ModelRunEvaluatedEvent (omniintelligence)
+   */
+  private async projectRunEvaluated(
+    data: Record<string, unknown>,
+    fallbackId: string
+  ): Promise<boolean> {
+    const db = tryGetIntelligenceDb();
+    if (!db) return false;
+
+    const runId = (data.run_id as string) || (data.runId as string);
+    if (!runId) {
+      console.warn('[ReadModelConsumer] run-evaluated missing run_id — skipping');
+      return true;
+    }
+
+    const sessionId = (data.session_id as string) || (data.sessionId as string) || '';
+    const agentName = (data.agent_name as string) || (data.agentName as string) || 'unknown';
+    const taskClass = (data.task_class as string) || (data.taskClass as string) || 'default';
+    const bundleFingerprint =
+      (data.bundle_fingerprint as string) || (data.bundleFingerprint as string) || fallbackId;
+    const passed = Boolean(data.passed);
+    const failures = Array.isArray(data.failures) ? (data.failures as string[]) : [];
+    const scoreCorrectness =
+      typeof data.score_correctness === 'number' ? data.score_correctness : 0;
+    const scoreSafety = typeof data.score_safety === 'number' ? data.score_safety : 0;
+    const scoreCost = typeof data.score_cost === 'number' ? data.score_cost : 0;
+    const scoreLatency = typeof data.score_latency === 'number' ? data.score_latency : 0;
+    const scoreMaintainability =
+      typeof data.score_maintainability === 'number' ? data.score_maintainability : 0;
+    const scoreHumanTime = typeof data.score_human_time === 'number' ? data.score_human_time : 0;
+    const evaluatedAt =
+      (data.evaluated_at_utc as string) ||
+      (data.evaluatedAtUtc as string) ||
+      (data.evaluated_at as string) ||
+      new Date().toISOString();
+
+    try {
+      // Insert evaluation row (idempotent on run_id + bundle_fingerprint)
+      const evalResult = await db.execute<{ id: string }>(sql`
+        INSERT INTO objective_evaluations (
+          run_id, session_id, agent_name, task_class, bundle_fingerprint,
+          passed, failures,
+          score_correctness, score_safety, score_cost, score_latency,
+          score_maintainability, score_human_time, evaluated_at
+        ) VALUES (
+          ${runId}, ${sessionId}, ${agentName}, ${taskClass}, ${bundleFingerprint},
+          ${passed}, ${failures},
+          ${scoreCorrectness}, ${scoreSafety}, ${scoreCost}, ${scoreLatency},
+          ${scoreMaintainability}, ${scoreHumanTime}, ${evaluatedAt}
+        )
+        ON CONFLICT (run_id, bundle_fingerprint) DO UPDATE SET
+          evaluated_at = EXCLUDED.evaluated_at
+        RETURNING id
+      `);
+
+      // Derive gate failure rows when evaluation failed
+      if (!passed && failures.length > 0 && evalResult.rows && evalResult.rows.length > 0) {
+        const evaluationId = evalResult.rows[0].id;
+        // Map each failure gate to a gate_failure row
+        // Score value is 0 (failed gates produce zero scores), threshold defaults to 0.5
+        for (const gateId of failures) {
+          await db.execute(sql`
+            INSERT INTO objective_gate_failures (
+              occurred_at, gate_type, session_id, agent_name,
+              evaluation_id, attribution_refs, score_value, threshold
+            ) VALUES (
+              ${evaluatedAt}, ${gateId}, ${sessionId}, ${agentName},
+              ${evaluationId}::uuid, '[]'::jsonb, ${0.0}, ${0.5}
+            )
+          `);
+        }
+      }
+
+      return true;
+    } catch (err) {
+      const pgCode = (err as { code?: string }).code;
+      const msg = err instanceof Error ? err.message : String(err);
+      // Table not yet created — graceful degradation
+      if (
+        pgCode === '42P01' ||
+        (msg.includes('objective_evaluations') && msg.includes('does not exist'))
+      ) {
+        console.warn(
+          '[ReadModelConsumer] objective_evaluations table not yet created — ' +
+            'run migrations to enable objective evaluation projection'
+        );
+        return true;
+      }
+      throw err;
+    }
+  }
+
+  /**
+   * Project a correlation trace span event into correlation_trace_spans table (OMN-5047).
+   * Returns true if the row was successfully written, false if the DB was unavailable.
+   *
+   * Payload shape (from ModelCorrelationTraceSpanPayload):
+   *   trace_id, span_id, parent_span_id, span_kind, span_name, status,
+   *   started_at, ended_at, metadata, correlation_id, session_id
+   */
+  private async projectCorrelationTrace(data: Record<string, unknown>): Promise<boolean> {
+    const db = tryGetIntelligenceDb();
+    if (!db) return false;
+
+    const traceId = (data.trace_id as string) || (data.traceId as string);
+    const spanId = (data.span_id as string) || (data.spanId as string);
+    if (!traceId || !spanId) {
+      console.warn('[ReadModelConsumer] correlation-trace missing trace_id or span_id — skipping');
+      return true;
+    }
+
+    const correlationId =
+      (data.correlation_id as string) || (data.correlationId as string) || traceId;
+
+    const startedAt = safeParseDate(data.started_at ?? data.startedAt);
+    const endedAtRaw = data.ended_at ?? data.endedAt;
+    const endedAt = endedAtRaw ? safeParseDate(endedAtRaw) : null;
+    const durationMs =
+      typeof (data.duration_ms ?? data.durationMs) === 'number'
+        ? ((data.duration_ms ?? data.durationMs) as number)
+        : endedAt
+          ? endedAt.getTime() - startedAt.getTime()
+          : null;
+
+    try {
+      await db
+        .insert(correlationTraceSpans)
+        .values({
+          traceId,
+          spanId,
+          parentSpanId: (data.parent_span_id as string) || (data.parentSpanId as string) || null,
+          correlationId,
+          sessionId: sanitizeSessionId(
+            (data.session_id as string | null | undefined) ??
+              (data.sessionId as string | null | undefined),
+            { correlationId }
+          ),
+          spanKind: (data.span_kind as string) || (data.spanKind as string) || 'internal',
+          spanName: (data.span_name as string) || (data.spanName as string) || 'unknown',
+          status: (data.status as string) || 'ok',
+          startedAt,
+          endedAt,
+          durationMs,
+          metadata: data.metadata || {},
+        })
+        .onConflictDoNothing();
+
+      return true;
+    } catch (err) {
+      const pgCode = (err as { code?: string }).code;
+      const msg = err instanceof Error ? err.message : String(err);
+      if (
+        pgCode === '42P01' ||
+        (msg.includes('correlation_trace_spans') && msg.includes('does not exist'))
+      ) {
+        console.warn(
+          '[ReadModelConsumer] correlation_trace_spans table not yet created -- ' +
+            'run migrations to enable trace span projection'
         );
         return true;
       }

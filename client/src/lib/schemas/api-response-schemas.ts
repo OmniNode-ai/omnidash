@@ -155,32 +155,29 @@ export const lifecycleStateSchema = z.enum([
 export const scoringEvidenceSchema = z.object({
   labelAgreement: z
     .object({
-      score: z.number().min(0).max(1),
-      matchedLabels: z.array(z.string()),
-      totalLabels: z.number(),
+      score: z.number().min(0).max(1).optional(),
+      matchedLabels: z.array(z.string()).optional(),
+      totalLabels: z.number().optional(),
       disagreements: z.array(z.string()).optional(),
     })
-    .optional()
-    .default({ score: 0, matchedLabels: [], totalLabels: 0 }),
+    .optional(),
   clusterCohesion: z
     .object({
-      score: z.number().min(0).max(1),
-      clusterId: z.string(),
-      memberCount: z.number(),
-      avgPairwiseSimilarity: z.number(),
+      score: z.number().min(0).max(1).optional(),
+      clusterId: z.string().optional(),
+      memberCount: z.number().optional(),
+      avgPairwiseSimilarity: z.number().optional(),
       medoidId: z.string().optional(),
     })
-    .optional()
-    .default({ score: 0, clusterId: '', memberCount: 0, avgPairwiseSimilarity: 0 }),
+    .optional(),
   frequencyFactor: z
     .object({
-      score: z.number().min(0).max(1),
-      observedCount: z.number(),
-      minRequired: z.number(),
-      windowDays: z.number(),
+      score: z.number().min(0).max(1).optional(),
+      observedCount: z.number().optional(),
+      minRequired: z.number().optional(),
+      windowDays: z.number().optional(),
     })
-    .optional()
-    .default({ score: 0, observedCount: 0, minRequired: 0, windowDays: 0 }),
+    .optional(),
 });
 
 // ===========================
@@ -238,10 +235,10 @@ export const similarPatternEntrySchema = z.object({
 // ===========================
 
 export const patternSignatureSchema = z.object({
-  hash: z.string().optional().default(''),
-  version: z.string().optional().default(''),
-  algorithm: z.string().optional().default('sha256'),
-  inputs: z.array(z.string()).optional().default([]),
+  hash: z.string().optional(),
+  version: z.string().optional(),
+  algorithm: z.string().default('sha256').optional(),
+  inputs: z.array(z.string()).optional(),
   normalizations: z.array(z.string()).optional(),
 });
 
@@ -257,30 +254,23 @@ export const patlearnArtifactSchema = z.object({
   language: z.string().nullable().optional(),
   lifecycleState: lifecycleStateSchema,
   stateChangedAt: z.string().optional(),
-  compositeScore: z.number().min(0).max(1).optional().default(0),
-  scoringEvidence: scoringEvidenceSchema
-    .optional()
-    .default({ labelAgreement: undefined, clusterCohesion: undefined, frequencyFactor: undefined }),
-  signature: patternSignatureSchema
-    .optional()
-    .default({ hash: '', version: '', algorithm: 'sha256', inputs: [] }),
-  metrics: z
-    .object({
-      processingTimeMs: z.number().optional().default(0),
-      inputCount: z.number().optional().default(0),
-      clusterCount: z.number().optional().default(0),
-      dedupMergeCount: z.number().optional().default(0),
-      scoreHistory: z
-        .array(
-          z.object({
-            score: z.number(),
-            timestamp: z.string(),
-          })
-        )
-        .optional(),
-    })
-    .optional()
-    .default({}),
+  compositeScore: z.number().min(0).max(1),
+  scoringEvidence: scoringEvidenceSchema,
+  signature: patternSignatureSchema,
+  metrics: z.object({
+    processingTimeMs: z.number().optional(),
+    inputCount: z.number().optional(),
+    clusterCount: z.number().optional(),
+    dedupMergeCount: z.number().optional(),
+    scoreHistory: z
+      .array(
+        z.object({
+          score: z.number(),
+          timestamp: z.string(),
+        })
+      )
+      .optional(),
+  }),
   // Optional metadata for pattern descriptions and code examples (demo patterns)
   metadata: z
     .object({

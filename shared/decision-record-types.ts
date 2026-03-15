@@ -200,3 +200,22 @@ export interface IntentVsPlanResponse {
   executed_at: string;
   fields: IntentPlanField[];
 }
+
+/** Summary of a session that has at least one DecisionRecord. */
+export interface DecisionSessionSummary {
+  session_id: string;
+  /** Number of decision records in this session */
+  decision_count: number;
+  /** ISO-8601 timestamp of the earliest decision */
+  first_decided_at: string;
+  /** ISO-8601 timestamp of the latest decision */
+  last_decided_at: string;
+}
+
+/** Response envelope for GET /api/decisions/sessions */
+export interface DecisionSessionsResponse {
+  /** Total number of distinct sessions with decision records */
+  total: number;
+  /** Session summaries, newest-first (by last_decided_at) */
+  sessions: DecisionSessionSummary[];
+}

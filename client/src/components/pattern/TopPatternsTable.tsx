@@ -75,8 +75,8 @@ function sortPatterns(patterns: PatlearnArtifact[], config: SortConfig): Patlear
         comparison = a.compositeScore - b.compositeScore;
         break;
       case 'usage':
-        const usageA = a.scoringEvidence.frequencyFactor.observedCount;
-        const usageB = b.scoringEvidence.frequencyFactor.observedCount;
+        const usageA = a.scoringEvidence?.frequencyFactor?.observedCount ?? 0;
+        const usageB = b.scoringEvidence?.frequencyFactor?.observedCount ?? 0;
         comparison = usageA - usageB;
         break;
       case 'state':
@@ -321,7 +321,7 @@ export function TopPatternsTable({
                   </span>
                 </TableCell>
                 <TableCell className="text-right font-mono">
-                  {pattern.scoringEvidence.frequencyFactor.observedCount.toLocaleString()}
+                  {(pattern.scoringEvidence?.frequencyFactor?.observedCount ?? 0).toLocaleString()}
                 </TableCell>
                 {showActions && (
                   <TableCell>

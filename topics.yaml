@@ -27,6 +27,8 @@ read_model_topics:
     handler: "projectCircuitBreakerTripped"
   - topic: "onex.evt.omniclaude.context-enrichment.v1"
     handler: "projectContextEnrichment"
+  - topic: "onex.evt.omniclaude.correlation-trace.v1"
+    handler: "projectCorrelationTrace"
   - topic: "onex.evt.omniclaude.delegation-shadow-comparison.v1"
     handler: "projectDelegationShadowComparison"
   - topic: "onex.evt.omniclaude.epic-run-updated.v1"
@@ -61,6 +63,8 @@ read_model_topics:
     handler: "projectPatternProjection"
   - topic: "onex.evt.omniintelligence.plan-review-strategy-run-completed.v1"
     handler: "projectPlanReviewStrategyRunCompleted"
+  - topic: "onex.evt.omniintelligence.run-evaluated.v1"
+    handler: "projectRunEvaluated"
 
   # --- omnimemory topics ---
   - topic: "onex.evt.omnimemory.intent-stored.v1"
