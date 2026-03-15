@@ -30,6 +30,8 @@ import type {
   DecisionTimelineRow,
   DecisionTimelineResponse,
   IntentVsPlanResponse,
+  DecisionSessionSummary,
+  DecisionSessionsResponse,
 } from '@shared/decision-record-types';
 
 // ============================================================================
@@ -143,11 +145,78 @@ function validateSessionId(req: Request, res: Response): string | null {
   return sessionId;
 }
 
+/**
+ * Retrieve distinct sessions that have at least one DecisionRecord.
+ * Returns summaries sorted newest-first (by last decision timestamp).
+ */
+function getDistinctSessions(): DecisionSessionSummary[] {
+  const allRecords = getAllDecisionRecords();
+  const sessionMap = new Map<string, { count: number; firstAt: string; lastAt: string }>();
+
+  for (const record of allRecords) {
+    const existing = sessionMap.get(record.session_id);
+    if (!existing) {
+      sessionMap.set(record.session_id, {
+        count: 1,
+        firstAt: record.decided_at,
+        lastAt: record.decided_at,
+      });
+    } else {
+      existing.count++;
+      if (record.decided_at < existing.firstAt) existing.firstAt = record.decided_at;
+      if (record.decided_at > existing.lastAt) existing.lastAt = record.decided_at;
+    }
+  }
+
+  const summaries: DecisionSessionSummary[] = [];
+  for (const [sessionId, info] of sessionMap) {
+    summaries.push({
+      session_id: sessionId,
+      decision_count: info.count,
+      first_decided_at: info.firstAt,
+      last_decided_at: info.lastAt,
+    });
+  }
+
+  // Sort newest-first by last decision timestamp
+  summaries.sort(
+    (a, b) => new Date(b.last_decided_at).getTime() - new Date(a.last_decided_at).getTime()
+  );
+
+  return summaries;
+}
+
 // ============================================================================
 // Router
 // ============================================================================
 
 const router = Router();
+
+// ============================================================================
+// GET /api/decisions/sessions
+// ============================================================================
+//
+// Returns a list of all sessions that have at least one DecisionRecord.
+// Used by the session picker in the Why This Happened page.
+// Sessions are sorted newest-first (by last_decided_at).
+//
+// Response: DecisionSessionsResponse
+
+router.get('/sessions', (_req: Request, res: Response) => {
+  try {
+    const sessions = getDistinctSessions();
+
+    const response: DecisionSessionsResponse = {
+      total: sessions.length,
+      sessions,
+    };
+
+    return res.json(response);
+  } catch (error) {
+    console.error('[decision-records] Error fetching sessions:', error);
+    return res.status(500).json({ error: 'Failed to fetch decision sessions' });
+  }
+});
 
 // ============================================================================
 // GET /api/decisions/timeline?session_id=<id>
@@ -295,6 +364,7 @@ export const _testHelpers = {
   getAllRecords: getAllDecisionRecords,
   getBySession: getDecisionsBySession,
   getById: getDecisionById,
+  getDistinctSessions,
   toTimelineRow,
   resetBuffer: () => {
     decisionBuffer.fill(undefined);
