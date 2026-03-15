@@ -21,6 +21,25 @@ import type {
   PatternSignature,
 } from '@/lib/schemas/api-response-schemas';
 
+/** Sub-object shape after runtime validation confirms score is present. */
+type WithRequiredScore<T> = T & { score: number };
+
+/**
+ * Narrowed type representing ScoringEvidence after runtime validation confirms
+ * that all three sub-objects and their score fields are present.
+ */
+type ValidatedScoringEvidence = {
+  labelAgreement: WithRequiredScore<NonNullable<ScoringEvidence['labelAgreement']>>;
+  clusterCohesion: WithRequiredScore<NonNullable<ScoringEvidence['clusterCohesion']>>;
+  frequencyFactor: WithRequiredScore<NonNullable<ScoringEvidence['frequencyFactor']>>;
+};
+
+/**
+ * Narrowed type representing PatternSignature after runtime validation confirms
+ * that hash (string) and inputs (array) are present.
+ */
+type ValidatedSignature = PatternSignature & { hash: string; inputs: string[] };
+
 interface PatternScoreDebuggerProps {
   artifact: PatlearnArtifact | null;
   open: boolean;
@@ -31,7 +50,7 @@ interface PatternScoreDebuggerProps {
  * Validates that scoringEvidence has the expected nested structure.
  * Returns true if all required nested objects exist with their score properties.
  */
-function isValidScoringEvidence(evidence: unknown): evidence is ScoringEvidence {
+function isValidScoringEvidence(evidence: unknown): evidence is ValidatedScoringEvidence {
   if (!evidence || typeof evidence !== 'object') return false;
   const e = evidence as Record<string, unknown>;
 
@@ -56,7 +75,7 @@ function isValidScoringEvidence(evidence: unknown): evidence is ScoringEvidence 
 /**
  * Validates that signature has the expected structure.
  */
-function isValidSignature(sig: unknown): sig is PatternSignature {
+function isValidSignature(sig: unknown): sig is ValidatedSignature {
   if (!sig || typeof sig !== 'object') return false;
   const s = sig as Record<string, unknown>;
   return typeof s.hash === 'string' && Array.isArray(s.inputs);
