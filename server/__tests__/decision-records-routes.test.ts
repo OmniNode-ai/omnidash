@@ -18,6 +18,7 @@ import type {
   DecisionRecord,
   DecisionTimelineResponse,
   IntentVsPlanResponse,
+  DecisionSessionsResponse,
 } from '@shared/decision-record-types';
 
 // ============================================================================
@@ -371,6 +372,92 @@ describe('GET /api/decisions/:decision_id', () => {
     expect(res.status).toBe(200);
     expect(res.body.decision_id).toBe('dr-beta');
     expect(res.body.selected_candidate).toBe('model-B');
+  });
+});
+
+// ============================================================================
+// GET /api/decisions/sessions (OMN-5046)
+// ============================================================================
+
+describe('GET /api/decisions/sessions', () => {
+  beforeEach(() => {
+    _testHelpers.resetBuffer();
+  });
+
+  afterEach(() => {
+    _testHelpers.resetBuffer();
+  });
+
+  it('returns empty sessions array when no decisions exist', async () => {
+    const app = buildApp();
+    const res = await request(app).get('/api/decisions/sessions');
+    expect(res.status).toBe(200);
+
+    const body = res.body as DecisionSessionsResponse;
+    expect(body.total).toBe(0);
+    expect(body.sessions).toEqual([]);
+  });
+
+  it('returns distinct sessions with correct counts', async () => {
+    _testHelpers.addToStore(makeRecord({ session_id: 'session-A', decision_id: 'dr-a1' }));
+    _testHelpers.addToStore(makeRecord({ session_id: 'session-A', decision_id: 'dr-a2' }));
+    _testHelpers.addToStore(makeRecord({ session_id: 'session-B', decision_id: 'dr-b1' }));
+
+    const app = buildApp();
+    const res = await request(app).get('/api/decisions/sessions');
+    expect(res.status).toBe(200);
+
+    const body = res.body as DecisionSessionsResponse;
+    expect(body.total).toBe(2);
+
+    const sessionA = body.sessions.find((s) => s.session_id === 'session-A');
+    const sessionB = body.sessions.find((s) => s.session_id === 'session-B');
+
+    expect(sessionA).toBeDefined();
+    expect(sessionA!.decision_count).toBe(2);
+
+    expect(sessionB).toBeDefined();
+    expect(sessionB!.decision_count).toBe(1);
+  });
+
+  it('returns sessions sorted newest-first by last_decided_at', async () => {
+    const t1 = new Date(BASE_TIME).toISOString();
+    const t2 = new Date(BASE_TIME + 5000).toISOString();
+
+    _testHelpers.addToStore(
+      makeRecord({ session_id: 'session-old', decision_id: 'dr-old', decided_at: t1 })
+    );
+    _testHelpers.addToStore(
+      makeRecord({ session_id: 'session-new', decision_id: 'dr-new', decided_at: t2 })
+    );
+
+    const app = buildApp();
+    const res = await request(app).get('/api/decisions/sessions');
+    expect(res.status).toBe(200);
+
+    const body = res.body as DecisionSessionsResponse;
+    expect(body.sessions[0].session_id).toBe('session-new');
+    expect(body.sessions[1].session_id).toBe('session-old');
+  });
+
+  it('tracks first and last decided_at correctly', async () => {
+    const t1 = new Date(BASE_TIME).toISOString();
+    const t2 = new Date(BASE_TIME + 3000).toISOString();
+
+    _testHelpers.addToStore(
+      makeRecord({ session_id: 'session-range', decision_id: 'dr-first', decided_at: t1 })
+    );
+    _testHelpers.addToStore(
+      makeRecord({ session_id: 'session-range', decision_id: 'dr-last', decided_at: t2 })
+    );
+
+    const app = buildApp();
+    const res = await request(app).get('/api/decisions/sessions');
+    expect(res.status).toBe(200);
+
+    const session = res.body.sessions[0];
+    expect(session.first_decided_at).toBe(t1);
+    expect(session.last_decided_at).toBe(t2);
   });
 });
 

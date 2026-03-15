@@ -1,8 +1,11 @@
 /**
- * E2E Tests — Why This Happened Panel (OMN-2469)
+ * E2E Tests — Why This Happened Panel (OMN-2469, OMN-5046)
  *
  * Covers all four views of the "Why This Happened" panel with live
- * DecisionRecord data (mock data mode).
+ * DecisionRecord data from the /api/decisions/* endpoints.
+ *
+ * Uses Playwright route interception to seed the API responses so tests
+ * are deterministic regardless of whether real Kafka events have been consumed.
  *
  * Views tested:
  *   1. Intent vs Resolved Plan (OMN-2468)
@@ -18,34 +21,236 @@
  *   npx playwright test tests/e2e/why-panel.spec.ts --project=chromium-desktop
  *
  * @see OMN-2469 (part 1-of-2)
+ * @see OMN-5046 (live API wiring)
  */
 
 import { test, expect } from '@playwright/test';
+import type {
+  DecisionRecord,
+  DecisionSessionsResponse,
+  DecisionTimelineResponse,
+  IntentVsPlanResponse,
+} from '../../shared/decision-record-types';
 
 const WHY_URL = '/why';
+
+// ============================================================================
+// Seed data for API route interception
+// ============================================================================
+
+const SEED_SESSION_ID = 'session-e2e-test-001';
+
+const SEED_RECORDS: DecisionRecord[] = [
+  {
+    decision_id: 'dr-001',
+    session_id: SEED_SESSION_ID,
+    decided_at: new Date(Date.now() - 62_000).toISOString(),
+    decision_type: 'model_select',
+    selected_candidate: 'claude-opus-4-6',
+    candidates_considered: [
+      {
+        id: 'claude-opus-4-6',
+        eliminated: false,
+        selected: true,
+        scoring_breakdown: { latency: 0.91, context: 1.0, tools: 1.0 },
+        total_score: 0.94,
+      },
+      {
+        id: 'claude-sonnet-4-6',
+        eliminated: false,
+        selected: false,
+        scoring_breakdown: { latency: 0.95, context: 0.9, tools: 1.0 },
+        total_score: 0.87,
+      },
+      {
+        id: 'claude-haiku-4-5',
+        eliminated: true,
+        elimination_reason: 'context_length < 100k',
+        selected: false,
+        scoring_breakdown: {},
+        total_score: null,
+      },
+    ],
+    constraints_applied: [
+      {
+        description: 'context_length >= 100k',
+        eliminates: ['claude-haiku-4-5'],
+        satisfied_by_selected: true,
+      },
+      { description: 'supports_tools = true', eliminates: [], satisfied_by_selected: true },
+    ],
+    tie_breaker: null,
+    agent_rationale:
+      'I chose claude-opus-4-6 because it balances capability and cost effectively for this task.',
+  },
+  {
+    decision_id: 'dr-002',
+    session_id: SEED_SESSION_ID,
+    decided_at: new Date(Date.now() - 61_500).toISOString(),
+    decision_type: 'tool_select',
+    selected_candidate: 'Read, Write, Bash',
+    candidates_considered: [
+      {
+        id: 'Read, Write, Bash',
+        eliminated: false,
+        selected: true,
+        scoring_breakdown: { coverage: 1.0, safety: 0.85 },
+        total_score: 0.93,
+      },
+      {
+        id: 'Read, Write',
+        eliminated: false,
+        selected: false,
+        scoring_breakdown: { coverage: 0.7, safety: 1.0 },
+        total_score: 0.78,
+      },
+    ],
+    constraints_applied: [],
+    tie_breaker: null,
+    agent_rationale: null,
+  },
+  {
+    decision_id: 'dr-004',
+    session_id: SEED_SESSION_ID,
+    decided_at: new Date(Date.now() - 61_000).toISOString(),
+    decision_type: 'route_select',
+    selected_candidate: 'agent-api-architect',
+    candidates_considered: [
+      {
+        id: 'agent-api-architect',
+        eliminated: false,
+        selected: true,
+        scoring_breakdown: { relevance: 0.95, specialization: 0.9 },
+        total_score: 0.93,
+      },
+      {
+        id: 'polymorphic-agent',
+        eliminated: false,
+        selected: false,
+        scoring_breakdown: { relevance: 0.7, specialization: 0.5 },
+        total_score: 0.62,
+      },
+    ],
+    constraints_applied: [],
+    tie_breaker: null,
+    agent_rationale:
+      'The user prompt mentions API design, which strongly matches agent-api-architect. Cost efficiency also favors a specialized agent.',
+  },
+  {
+    decision_id: 'dr-003',
+    session_id: SEED_SESSION_ID,
+    decided_at: new Date(Date.now() - 60_500).toISOString(),
+    decision_type: 'default_apply',
+    selected_candidate: '30s',
+    candidates_considered: [
+      { id: '30s', eliminated: false, selected: true, scoring_breakdown: {}, total_score: null },
+    ],
+    constraints_applied: [],
+    tie_breaker: null,
+    agent_rationale: null,
+  },
+];
+
+const SEED_SESSIONS_RESPONSE: DecisionSessionsResponse = {
+  total: 1,
+  sessions: [
+    {
+      session_id: SEED_SESSION_ID,
+      decision_count: SEED_RECORDS.length,
+      first_decided_at: SEED_RECORDS[0].decided_at,
+      last_decided_at: SEED_RECORDS[SEED_RECORDS.length - 1].decided_at,
+    },
+  ],
+};
+
+const SEED_TIMELINE_RESPONSE: DecisionTimelineResponse = {
+  session_id: SEED_SESSION_ID,
+  total: SEED_RECORDS.length,
+  rows: SEED_RECORDS.map((r) => ({
+    decision_id: r.decision_id,
+    decided_at: r.decided_at,
+    decision_type: r.decision_type,
+    selected_candidate: r.selected_candidate,
+    candidates_count: r.candidates_considered.length,
+    full_record: r,
+  })),
+};
+
+const SEED_INTENT_RESPONSE: IntentVsPlanResponse = {
+  session_id: SEED_SESSION_ID,
+  executed_at: SEED_RECORDS[0].decided_at,
+  fields: [
+    {
+      field_name: 'Model',
+      intent_value: null,
+      resolved_value: 'claude-opus-4-6',
+      origin: 'inferred',
+      decision_id: 'dr-001',
+    },
+    {
+      field_name: 'Tools',
+      intent_value: 'Read, Write',
+      resolved_value: 'Read, Write, Bash',
+      origin: 'inferred',
+      decision_id: 'dr-002',
+    },
+    {
+      field_name: 'Context',
+      intent_value: '/my/project',
+      resolved_value: '/my/project',
+      origin: 'user_specified',
+      decision_id: null,
+    },
+    {
+      field_name: 'Default timeout',
+      intent_value: null,
+      resolved_value: '30s',
+      origin: 'default',
+      decision_id: 'dr-003',
+    },
+    {
+      field_name: 'Agent',
+      intent_value: null,
+      resolved_value: 'agent-api-architect',
+      origin: 'inferred',
+      decision_id: 'dr-004',
+    },
+  ],
+};
 
 // ============================================================================
 // Shared helpers
 // ============================================================================
 
 /**
- * Navigate to the Why This Happened page and wait for it to load.
+ * Set up API route interception with seed data, then navigate to the page.
  */
 async function gotoWhyPanel(page: import('@playwright/test').Page) {
+  // Intercept API calls with deterministic seed data
+  await page.route('**/api/decisions/sessions', (route) =>
+    route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify(SEED_SESSIONS_RESPONSE),
+    })
+  );
+  await page.route('**/api/decisions/timeline*', (route) =>
+    route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify(SEED_TIMELINE_RESPONSE),
+    })
+  );
+  await page.route('**/api/decisions/intent-vs-plan*', (route) =>
+    route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify(SEED_INTENT_RESPONSE),
+    })
+  );
+
   await page.goto(WHY_URL);
   await page.waitForSelector('[data-testid="why-this-happened-page"]', { timeout: 10_000 });
-}
-
-/**
- * Click a tab by its test ID and wait for the content to become visible.
- */
-async function _clickTab(
-  page: import('@playwright/test').Page,
-  tabTestId: string,
-  contentTestId: string
-) {
-  await page.click(`[data-testid="${tabTestId}"]`);
-  await page.waitForSelector(`[data-testid="${contentTestId}"]`, { timeout: 5_000 });
 }
 
 // ============================================================================
@@ -74,6 +279,10 @@ test.describe('Why This Happened panel — all four views', () => {
     await expect(page.locator('[data-testid="tab-narrative"]')).toBeVisible();
   });
 
+  test('session picker is visible with seeded session', async ({ page }) => {
+    await expect(page.locator('[data-testid="session-picker"]')).toBeVisible();
+  });
+
   // --------------------------------------------------------------------------
   // View 1: Intent vs Resolved Plan (OMN-2468)
   // --------------------------------------------------------------------------
@@ -89,7 +298,7 @@ test.describe('Why This Happened panel — all four views', () => {
       await expect(page.getByText('Resolved Plan')).toBeVisible();
     });
 
-    test('shows at least one field row with mock data', async ({ page }) => {
+    test('shows at least one field row with live data', async ({ page }) => {
       const rows = page.locator('[data-testid="intent-vs-plan-fields"] [role="row"]');
       await expect(rows.first()).toBeVisible();
       const count = await rows.count();
@@ -103,7 +312,6 @@ test.describe('Why This Happened panel — all four views', () => {
     test('inferred value badge is clickable and triggers navigation to Comparison tab', async ({
       page,
     }) => {
-      // Click the Model inferred badge (links to dr-001)
       const modelBadge = page.locator('[data-testid="origin-badge-model"]');
       await expect(modelBadge).toBeVisible();
       await modelBadge.click();
@@ -137,18 +345,14 @@ test.describe('Why This Happened panel — all four views', () => {
     });
 
     test('timeline rows show decision type badges', async ({ page }) => {
-      // At least one model_select or other type badge should be visible
       const typeBadges = page.locator('[data-testid^="timeline-type-"]');
       const count = await typeBadges.count();
       expect(count).toBeGreaterThan(0);
     });
 
     test('expanding a row reveals Layer 1 detail', async ({ page }) => {
-      // Find the first timeline row toggle and click it
       const firstToggle = page.locator('[data-testid^="timeline-row-toggle-"]').first();
       await firstToggle.click();
-
-      // Layer 1 detail should appear
       await expect(page.locator('[data-testid="layer1-detail"]')).toBeVisible();
     });
 
@@ -156,14 +360,11 @@ test.describe('Why This Happened panel — all four views', () => {
       const firstToggle = page.locator('[data-testid^="timeline-row-toggle-"]').first();
       await firstToggle.click();
 
-      // Layer 2 should NOT be visible yet
       await expect(page.locator('[data-testid="layer2-detail"]')).not.toBeVisible();
 
-      // Find the show narrative button for the expanded row
       const narrativeBtn = page.locator('[data-testid^="show-narrative-btn-"]').first();
       await narrativeBtn.click();
 
-      // Layer 2 should now be visible
       await expect(page.locator('[data-testid="layer2-detail"]')).toBeVisible();
     });
 
@@ -204,7 +405,6 @@ test.describe('Why This Happened panel — all four views', () => {
     test('ELIMINATED badge is shown for eliminated candidates (model_select view)', async ({
       page,
     }) => {
-      // Default view is dr-001 (model_select) which has haiku-4-5 eliminated
       const eliminatedBadges = page.getByText('ELIMINATED');
       await expect(eliminatedBadges.first()).toBeVisible();
     });
@@ -222,10 +422,7 @@ test.describe('Why This Happened panel — all four views', () => {
       const count = await decisionBtns.count();
       expect(count).toBeGreaterThan(1);
 
-      // Click the second decision
       await decisionBtns.nth(1).click();
-
-      // Comparison table should still be visible with updated data
       await expect(page.locator('[data-testid="candidate-comparison-panel"]')).toBeVisible();
     });
   });
@@ -279,8 +476,6 @@ test.describe('Why This Happened panel — all four views', () => {
     test('mismatch banner appears for decisions with mismatch (model_select + cost mention)', async ({
       page,
     }) => {
-      // The default decision (dr-001 model_select) mentions "cost" in its
-      // agent_rationale but has no cost constraint in Layer 1 — mismatch detected
       await expect(page.locator('[data-testid="mismatch-banner"]')).toBeVisible();
     });
 
