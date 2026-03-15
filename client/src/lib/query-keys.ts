@@ -752,6 +752,38 @@ export const queryKeys = {
     snapshot: () => [...queryKeys.debugEscalation.all, 'snapshot'] as const,
   },
 
+  // ============================================================================
+  // Decision Provenance / Why This Happened (OMN-5046)
+  // ============================================================================
+
+  /**
+   * Decision provenance query keys for the /why page.
+   *
+   * Hierarchical key structure:
+   * - `all` invalidates all decision data
+   * - `sessions()` invalidates only the session list
+   * - `timeline(sessionId)` invalidates timeline for a specific session
+   * - `intentVsPlan(sessionId)` invalidates intent-vs-plan for a session
+   * - `record(decisionId)` invalidates a single decision record
+   */
+  decisions: {
+    /** Base key for all decision provenance queries */
+    all: ['decisions'] as const,
+
+    /** Session list (distinct sessions with decision records) */
+    sessions: () => [...queryKeys.decisions.all, 'sessions'] as const,
+
+    /** Timeline for a specific session */
+    timeline: (sessionId: string) => [...queryKeys.decisions.all, 'timeline', sessionId] as const,
+
+    /** Intent-vs-plan for a specific session */
+    intentVsPlan: (sessionId: string) =>
+      [...queryKeys.decisions.all, 'intent-vs-plan', sessionId] as const,
+
+    /** Single decision record by ID */
+    record: (decisionId: string) => [...queryKeys.decisions.all, 'record', decisionId] as const,
+  },
+
   /** CDQA gate query keys — file-poll from ~/.claude/skill-results (OMN-3190) */
   cdqaGates: {
     all: ['cdqa-gates'] as const,
