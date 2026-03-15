@@ -302,6 +302,7 @@ export const patlearnArtifactSchema = z.object({
 export const patlearnSummarySchema = z.object({
   totalPatterns: z.number().min(0),
   byState: z.object({
+    requested: z.number().min(0),
     candidate: z.number().min(0),
     provisional: z.number().min(0),
     validated: z.number().min(0),
