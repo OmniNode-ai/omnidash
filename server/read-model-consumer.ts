@@ -38,6 +38,9 @@ import {
   baselinesBreakdown,
   delegationEvents,
   delegationShadowComparisons,
+  learnedPatterns,
+  patternLearningArtifacts,
+  latencyBreakdowns,
 } from '@shared/intelligence-schema';
 import type {
   InsertAgentRoutingDecision,
@@ -50,6 +53,9 @@ import type {
   InsertBaselinesBreakdown,
   InsertDelegationEvent,
   InsertDelegationShadowComparison,
+  InsertLearnedPattern,
+  InsertPatternLearningArtifact,
+  InsertLatencyBreakdown,
 } from '@shared/intelligence-schema';
 import type { PatternEnforcementEvent } from '@shared/enforcement-types';
 import { ENRICHMENT_OUTCOMES } from '@shared/enrichment-types';
@@ -65,6 +71,13 @@ import {
   SUFFIX_OMNICLAUDE_PR_WATCH_UPDATED,
   SUFFIX_OMNICLAUDE_BUDGET_CAP_HIT,
   SUFFIX_OMNICLAUDE_CIRCUIT_BREAKER_TRIPPED,
+  SUFFIX_INTELLIGENCE_PATTERN_LEARNED,
+  SUFFIX_INTELLIGENCE_PATTERN_STORED,
+  SUFFIX_OMNICLAUDE_LATENCY_BREAKDOWN,
+  // OMN-5038: canonical producers for execution graph
+  SUFFIX_OMNICLAUDE_TOOL_EXECUTED,
+  SUFFIX_OMNICLAUDE_AGENT_MATCH,
+  SUFFIX_OMNICLAUDE_ROUTING_DECISION,
 } from '@shared/topics';
 import type { LlmRoutingDecisionEvent } from '@shared/llm-routing-types';
 import type { TaskDelegatedEvent, DelegationShadowComparisonEvent } from '@shared/delegation-types';
@@ -213,6 +226,14 @@ const READ_MODEL_TOPICS = [
   SUFFIX_OMNICLAUDE_PR_WATCH_UPDATED,
   SUFFIX_OMNICLAUDE_BUDGET_CAP_HIT,
   SUFFIX_OMNICLAUDE_CIRCUIT_BREAKER_TRIPPED,
+  // Pattern Learning + Latency panels (OMN-2583)
+  SUFFIX_INTELLIGENCE_PATTERN_LEARNED,
+  SUFFIX_INTELLIGENCE_PATTERN_STORED,
+  SUFFIX_OMNICLAUDE_LATENCY_BREAKDOWN,
+  // OMN-5038: canonical execution graph topics (omniclaude publishes here, not to legacy flat names)
+  SUFFIX_OMNICLAUDE_TOOL_EXECUTED,
+  SUFFIX_OMNICLAUDE_AGENT_MATCH,
+  SUFFIX_OMNICLAUDE_ROUTING_DECISION,
 ] as const;
 
 type ReadModelTopic = (typeof READ_MODEL_TOPICS)[number];
@@ -551,6 +572,24 @@ export class ReadModelConsumer {
         case SUFFIX_OMNICLAUDE_CIRCUIT_BREAKER_TRIPPED:
           projected = await this.projectCircuitBreakerTrippedEvent(parsed, fallbackId);
           break;
+        // Pattern Learning + Latency panels (OMN-2583)
+        case SUFFIX_INTELLIGENCE_PATTERN_LEARNED:
+          projected = await this.projectPatternLearnedEvent(parsed, fallbackId);
+          break;
+        case SUFFIX_INTELLIGENCE_PATTERN_STORED:
+          projected = await this.projectPatternStoredEvent(parsed, fallbackId);
+          break;
+        case SUFFIX_OMNICLAUDE_LATENCY_BREAKDOWN:
+          projected = await this.projectLatencyBreakdownEvent(parsed, fallbackId);
+          break;
+        // OMN-5038: canonical execution graph topics
+        case SUFFIX_OMNICLAUDE_TOOL_EXECUTED:
+          projected = await this.projectToolExecutedAsAgentAction(parsed, fallbackId);
+          break;
+        case SUFFIX_OMNICLAUDE_AGENT_MATCH:
+        case SUFFIX_OMNICLAUDE_ROUTING_DECISION:
+          projected = await this.projectAgentMatchAsRoutingDecision(parsed, fallbackId);
+          break;
         default:
           console.warn(
             `[ReadModelConsumer] Received message on unknown topic "${topic}" -- skipping`
@@ -698,6 +737,91 @@ export class ReadModelConsumer {
       .insert(agentActions)
       .values(row)
       .onConflictDoNothing({ target: agentActions.correlationId });
+
+    return true;
+  }
+
+  /**
+   * Project a tool-executed event (onex.evt.omniclaude.tool-executed.v1) into agent_actions.
+   *
+   * OMN-5038: omniclaude publishes tool calls to this canonical topic, not to the legacy
+   * flat 'agent-actions' topic. Maps tool_name → actionType/actionName, summary → actionDetails.
+   */
+  private async projectToolExecutedAsAgentAction(
+    data: Record<string, unknown>,
+    fallbackId: string
+  ): Promise<boolean> {
+    const db = tryGetIntelligenceDb();
+    if (!db) return false;
+
+    const toolName = (data.tool_name as string) || 'unknown';
+    const row: InsertAgentAction = {
+      correlationId:
+        (data.correlation_id as string) || (data.correlationId as string) || fallbackId,
+      agentName: 'omniclaude',
+      actionType: 'tool_call',
+      actionName: toolName,
+      actionDetails: {
+        tool_name: toolName,
+        success: data.success,
+        summary: data.summary,
+        action_description: data.action_description,
+        session_id: data.session_id,
+      },
+      debugMode: false,
+      durationMs: data.duration_ms != null ? Number(data.duration_ms) : undefined,
+      createdAt: safeParseDate(data.emitted_at ?? data.created_at),
+    };
+
+    await db
+      .insert(agentActions)
+      .values(row)
+      .onConflictDoNothing({ target: agentActions.correlationId });
+
+    return true;
+  }
+
+  /**
+   * Project an agent-match or routing-decision event into agent_routing_decisions.
+   *
+   * OMN-5038: omniclaude publishes routing outcomes to canonical topics
+   * (onex.evt.omniclaude.agent-match.v1, onex.evt.omniclaude.routing-decision.v1),
+   * not to the legacy flat 'agent-routing-decisions' topic.
+   * Maps selected_agent/confidence/routing_method from agent-match payload.
+   */
+  private async projectAgentMatchAsRoutingDecision(
+    data: Record<string, unknown>,
+    fallbackId: string
+  ): Promise<boolean> {
+    const db = tryGetIntelligenceDb();
+    if (!db) return false;
+
+    const row: InsertAgentRoutingDecision = {
+      correlationId:
+        (data.correlation_id as string) || (data.correlationId as string) || fallbackId,
+      sessionId: (data.session_id as string) || (data.sessionId as string) || undefined,
+      userRequest: '',
+      selectedAgent: (data.selected_agent as string) || (data.selectedAgent as string) || 'unknown',
+      confidenceScore: String(
+        data.confidence ?? data.confidence_score ?? data.confidenceScore ?? 0
+      ),
+      routingStrategy:
+        (data.routing_method as string) ||
+        (data.routingMethod as string) ||
+        (data.routing_strategy as string) ||
+        'event_routing',
+      alternatives: data.alternatives || undefined,
+      reasoning: (data.reasoning as string) || undefined,
+      routingTimeMs: 0,
+      cacheHit: Boolean(data.cache_hit ?? data.cacheHit ?? false),
+      selectionValidated: false,
+      createdAt: safeParseDate(data.emitted_at ?? data.created_at),
+    };
+
+    await db
+      .insert(agentRoutingDecisions)
+      .values(row)
+      .onConflictDoNothing({ target: agentRoutingDecisions.correlationId });
 
     return true;
   }
@@ -1643,9 +1767,17 @@ export class ReadModelConsumer {
 
     // Build the filtered trend rows outside the transaction so the post-filter
     // count is accessible for the success log below (Issue 1 fix).
+    //
+    // OMN-5040: Accept both the legacy format (date/avg_cost_savings/avg_outcome_improvement)
+    // and the new A/B treatment/control format from NodeBaselinesBatchCompute (OMN-3045):
+    //   trend_date, cohort, session_count, success_rate, avg_latency_ms, roi_pct.
+    // The new format uses trend_date instead of date. Map roi_pct → avgCostSavings and
+    // success_rate → avgOutcomeImprovement for storage in the existing schema.
+    // Each (trend_date, cohort) pair maps to one trend row keyed by "<date>:<cohort>".
     const trendRows: InsertBaselinesTrend[] = (rawTrend as Record<string, unknown>[])
       .filter((t) => {
-        const date = t.date ?? t.dateStr;
+        // Accept trend_date (new A/B format) or date/dateStr (legacy format)
+        const date = t.trend_date ?? t.date ?? t.dateStr;
         if (date == null || date === '') {
           console.warn(
             '[ReadModelConsumer] Skipping trend row with blank/null date:',
@@ -1662,22 +1794,43 @@ export class ReadModelConsumer {
         }
         return true;
       })
-      .map((t) => ({
-        snapshotId,
-        date: String(t.date ?? t.dateStr),
-        // NUMERIC(8,6) column: max 99.999999. Clamp to [0, 99] to prevent
-        // PostgreSQL overflow if producer sends percentage-scale values (e.g. 12.5%).
-        avgCostSavings: String(
-          Math.min(Math.max(Number(t.avg_cost_savings ?? t.avgCostSavings ?? 0), 0), 99)
-        ),
-        avgOutcomeImprovement: String(
-          Math.min(
-            Math.max(Number(t.avg_outcome_improvement ?? t.avgOutcomeImprovement ?? 0), 0),
-            99
-          )
-        ),
-        comparisonsEvaluated: Number(t.comparisons_evaluated ?? t.comparisonsEvaluated ?? 0),
-      }));
+      .map((t) => {
+        // New A/B format: trend_date + cohort. Legacy format: date/dateStr.
+        const rawDate = String(t.trend_date ?? t.date ?? t.dateStr);
+        const cohort = t.cohort ? String(t.cohort) : '';
+        // Disambiguate multiple rows per date (treatment vs control) by appending cohort.
+        // Legacy events have one row per date so cohort is empty and the key is just the date.
+        const dateKey = cohort ? `${rawDate}:${cohort}` : rawDate;
+        // Map new A/B fields to legacy schema columns:
+        //   roi_pct → avgCostSavings (treat ROI % as cost savings proxy)
+        //   success_rate (0-1 fraction) → avgOutcomeImprovement (scale to 0-99 range)
+        //   session_count → comparisonsEvaluated
+        const roiPct = Number(t.roi_pct ?? 0);
+        const successRate = Number(t.success_rate ?? 0);
+        const avgCostSavingsValue =
+          t.avg_cost_savings != null || t.avgCostSavings != null
+            ? Number(t.avg_cost_savings ?? t.avgCostSavings ?? 0)
+            : Math.abs(roiPct);
+        const avgOutcomeImprovementValue =
+          t.avg_outcome_improvement != null || t.avgOutcomeImprovement != null
+            ? Number(t.avg_outcome_improvement ?? t.avgOutcomeImprovement ?? 0)
+            : successRate * 100;
+        return {
+          snapshotId,
+          date: dateKey,
+          // NUMERIC(8,6) column: max 99.999999. Clamp to [0, 99] to prevent
+          // PostgreSQL overflow if producer sends percentage-scale values (e.g. 12.5%).
+          avgCostSavings: String(Math.min(Math.max(avgCostSavingsValue, 0), 99)),
+          avgOutcomeImprovement: String(Math.min(Math.max(avgOutcomeImprovementValue, 0), 99)),
+          comparisonsEvaluated: Number(
+            t.comparisons_evaluated ??
+              t.comparisonsEvaluated ??
+              t.session_count ??
+              t.sessionCount ??
+              0
+          ),
+        };
+      });
 
     // Deduplicate trend rows by date to prevent duplicate date inserts that would
     // inflate projection averages. Migration 0005 adds a UNIQUE(snapshot_id, date)
@@ -1748,46 +1901,106 @@ export class ReadModelConsumer {
           .where(eq(baselinesComparisons.snapshotId, snapshotId));
 
         if (rawComparisons.length > 0) {
+          // OMN-5040: Accept both the legacy pattern-comparison format (pattern_id, pattern_name,
+          // recommendation, confidence) and the new A/B treatment/control format from
+          // NodeBaselinesBatchCompute (OMN-3045): comparison_date, treatment_sessions,
+          // control_sessions, roi_pct, sample_size.
+          //
+          // For the new A/B format, derive the legacy fields synthetically:
+          //   pattern_id  → comparison_date string (stable unique key per day)
+          //   pattern_name → period_label or comparison_date
+          //   recommendation → 'promote' if roi_pct > 5, 'suppress' if roi_pct < -5, else 'shadow'
+          //   confidence → 'high' if sample_size >= 20, 'medium' if >= 5, else 'low'
+          //   sample_size → treatment_sessions + control_sessions
           const comparisonRows: InsertBaselinesComparison[] = (
             rawComparisons as Record<string, unknown>[]
           )
             .filter((c) => {
+              // Accept if either pattern_id (legacy) or comparison_date (new A/B) is present
               const pid = String(c.pattern_id ?? c.patternId ?? '').trim();
-              if (!pid) {
+              const compDate = String(c.comparison_date ?? c.comparisonDate ?? '').trim();
+              if (!pid && !compDate) {
                 console.warn(
-                  `[read-model-consumer] Skipping comparison row with blank pattern_id for snapshot ${snapshotId}`
+                  `[read-model-consumer] Skipping comparison row with no pattern_id or comparison_date for snapshot ${snapshotId}`
                 );
                 return false;
               }
               return true;
             })
-            .map((c) => ({
-              snapshotId,
-              patternId: String(c.pattern_id ?? c.patternId ?? ''),
-              patternName: String(c.pattern_name ?? c.patternName ?? ''),
-              sampleSize: Number(c.sample_size ?? c.sampleSize ?? 0),
-              windowStart: String(c.window_start ?? c.windowStart ?? ''),
-              windowEnd: String(c.window_end ?? c.windowEnd ?? ''),
-              tokenDelta: (c.token_delta ?? c.tokenDelta ?? {}) as Record<string, unknown>,
-              timeDelta: (c.time_delta ?? c.timeDelta ?? {}) as Record<string, unknown>,
-              retryDelta: (c.retry_delta ?? c.retryDelta ?? {}) as Record<string, unknown>,
-              testPassRateDelta: (c.test_pass_rate_delta ?? c.testPassRateDelta ?? {}) as Record<
-                string,
-                unknown
-              >,
-              reviewIterationDelta: (c.review_iteration_delta ??
-                c.reviewIterationDelta ??
-                {}) as Record<string, unknown>,
-              recommendation: (() => {
-                const raw = String(c.recommendation ?? '');
-                return VALID_PROMOTION_ACTIONS.has(raw) ? raw : 'shadow';
-              })(),
-              confidence: (() => {
-                const raw = String(c.confidence ?? '').toLowerCase();
-                return VALID_CONFIDENCE_LEVELS.has(raw) ? raw : 'low';
-              })(),
-              rationale: String(c.rationale ?? ''),
-            }));
+            .map((c) => {
+              // Determine if this is a new A/B row (has comparison_date but no pattern_id)
+              const compDate = String(c.comparison_date ?? c.comparisonDate ?? '').trim();
+              const legacyPid = String(c.pattern_id ?? c.patternId ?? '').trim();
+              const isNewFormat = !legacyPid && compDate.length > 0;
+
+              // Derive pattern_id: use comparison_date as stable string key for new format
+              const patternId = isNewFormat ? compDate : legacyPid;
+              const patternName = isNewFormat
+                ? String(c.period_label ?? c.periodLabel ?? compDate)
+                : String(c.pattern_name ?? c.patternName ?? '');
+
+              // Derive sample_size from treatment + control sessions for new A/B format
+              const treatmentSessions = Number(c.treatment_sessions ?? c.treatmentSessions ?? 0);
+              const controlSessions = Number(c.control_sessions ?? c.controlSessions ?? 0);
+              const sampleSize = isNewFormat
+                ? treatmentSessions + controlSessions
+                : Number(c.sample_size ?? c.sampleSize ?? 0);
+
+              // Derive recommendation from roi_pct for new A/B format
+              const roiPct = Number(c.roi_pct ?? c.roiPct ?? 0);
+              const recommendation = isNewFormat
+                ? roiPct > 5
+                  ? 'promote'
+                  : roiPct < -5
+                    ? 'suppress'
+                    : 'shadow'
+                : (() => {
+                    const raw = String(c.recommendation ?? '');
+                    return VALID_PROMOTION_ACTIONS.has(raw) ? raw : 'shadow';
+                  })();
+
+              // Derive confidence from sample_size for new A/B format
+              const confidence = isNewFormat
+                ? sampleSize >= 20
+                  ? 'high'
+                  : sampleSize >= 5
+                    ? 'medium'
+                    : 'low'
+                : (() => {
+                    const raw = String(c.confidence ?? '').toLowerCase();
+                    return VALID_CONFIDENCE_LEVELS.has(raw) ? raw : 'low';
+                  })();
+
+              // Window start/end from comparison_date or explicit fields
+              const windowStart = isNewFormat
+                ? compDate
+                : String(c.window_start ?? c.windowStart ?? '');
+              const windowEnd = isNewFormat ? compDate : String(c.window_end ?? c.windowEnd ?? '');
+
+              return {
+                snapshotId,
+                patternId,
+                patternName,
+                sampleSize,
+                windowStart,
+                windowEnd,
+                tokenDelta: (c.token_delta ?? c.tokenDelta ?? {}) as Record<string, unknown>,
+                timeDelta: (c.time_delta ?? c.timeDelta ?? {}) as Record<string, unknown>,
+                retryDelta: (c.retry_delta ?? c.retryDelta ?? {}) as Record<string, unknown>,
+                testPassRateDelta: (c.test_pass_rate_delta ?? c.testPassRateDelta ?? {}) as Record<
+                  string,
+                  unknown
+                >,
+                reviewIterationDelta: (c.review_iteration_delta ??
+                  c.reviewIterationDelta ??
+                  {}) as Record<string, unknown>,
+                recommendation,
+                confidence,
+                rationale: isNewFormat
+                  ? `A/B: treatment=${treatmentSessions} sessions, control=${controlSessions} sessions, roi=${roiPct.toFixed(1)}%`
+                  : String(c.rationale ?? ''),
+              };
+            });
           if (comparisonRows.length === 0) {
             console.warn(
               `[baselines] all ${rawComparisons.length} comparison rows filtered out for snapshot ${snapshotId} — check upstream data`
@@ -1807,20 +2020,46 @@ export class ReadModelConsumer {
         await tx.delete(baselinesBreakdown).where(eq(baselinesBreakdown.snapshotId, snapshotId));
 
         if (rawBreakdown.length > 0) {
+          // OMN-5040: Accept both the legacy breakdown format (action, count, avg_confidence)
+          // and the new A/B per-agent breakdown format from NodeBaselinesBatchCompute (OMN-3045):
+          //   pattern_label, sample_count, treatment_count, control_count, roi_pct, confidence.
+          //
+          // For the new A/B format, map fields to the existing schema:
+          //   action → 'promote' if roi_pct > 5, 'suppress' if roi_pct < -5, else 'shadow'
+          //   count  → sample_count (total sessions for this agent pattern)
+          //   avg_confidence → confidence (0-1 float from handler, already in correct range)
           const breakdownRowsRaw: InsertBaselinesBreakdown[] = (
             rawBreakdown as Record<string, unknown>[]
           ).map((b) => {
-            const rawAction = String(b.action ?? '');
-            const action = VALID_PROMOTION_ACTIONS.has(rawAction) ? rawAction : 'shadow';
+            // Detect new A/B format by presence of pattern_label or pattern_id without action
+            const hasLegacyAction = b.action != null;
+            const patternLabel = b.pattern_label ?? b.patternLabel;
+            const isNewFormat = !hasLegacyAction && (patternLabel != null || b.pattern_id != null);
+
+            let action: string;
+            let count: number;
+            let avgConfidenceNum: number;
+
+            if (isNewFormat) {
+              const roiPct = Number(b.roi_pct ?? b.roiPct ?? 0);
+              action = roiPct > 5 ? 'promote' : roiPct < -5 ? 'suppress' : 'shadow';
+              count = Number(b.sample_count ?? b.sampleCount ?? 0);
+              // confidence from handler is already 0-1 (or null when sample_count < 20)
+              avgConfidenceNum = b.confidence != null ? Number(b.confidence) : 0;
+            } else {
+              const rawAction = String(b.action ?? '');
+              action = VALID_PROMOTION_ACTIONS.has(rawAction) ? rawAction : 'shadow';
+              count = Number(b.count ?? 0);
+              avgConfidenceNum = Number(b.avg_confidence ?? b.avgConfidence ?? 0);
+            }
+
             return {
               snapshotId,
               action,
-              count: Number(b.count ?? 0),
+              count,
               // NUMERIC(5,4) column: max 9.9999. Clamp to [0, 1] since confidence
               // is a 0-1 ratio; guard against out-of-range producer values.
-              avgConfidence: String(
-                Math.min(Math.max(Number(b.avg_confidence ?? b.avgConfidence ?? 0), 0), 1)
-              ),
+              avgConfidence: String(Math.min(Math.max(avgConfidenceNum, 0), 1)),
             };
           });
 
@@ -2246,6 +2485,222 @@ export class ReadModelConsumer {
     }
 
     emitCircuitBreakerInvalidate(correlationId);
+    return true;
+  }
+
+  // ---------------------------------------------------------------------------
+  // Pattern Learning + Latency panel projections (OMN-2583)
+  // ---------------------------------------------------------------------------
+
+  /**
+   * Project a pattern-learned event into learned_patterns table.
+   *
+   * The omniintelligence producer emits this event when a pattern has been
+   * learned/recognised by the pattern-learning pipeline. One row per
+   * pattern_signature + domain_id — ON CONFLICT DO NOTHING to protect
+   * idempotency on redelivery.
+   *
+   * Returns true if the write succeeded (or was skipped as a known dup),
+   * false if the DB was unavailable (caller will NOT advance the watermark).
+   */
+  private async projectPatternLearnedEvent(
+    data: Record<string, unknown>,
+    fallbackId: string
+  ): Promise<boolean> {
+    const db = tryGetIntelligenceDb();
+    if (!db) return false;
+
+    const patternSignature =
+      (data.pattern_signature as string) || (data.patternSignature as string) || fallbackId;
+    const domainId = (data.domain_id as string) || (data.domainId as string) || 'unknown';
+    const domainVersion = (data.domain_version as string) || (data.domainVersion as string) || '1';
+    const confidence = Number(data.confidence ?? 0.5);
+    const signatureHash =
+      (data.signature_hash as string) ||
+      (data.signatureHash as string) ||
+      crypto.createHash('sha256').update(patternSignature).digest('hex').slice(0, 32);
+
+    const row: InsertLearnedPattern = {
+      patternSignature,
+      domainId,
+      domainVersion,
+      domainCandidates: (data.domain_candidates ?? data.domainCandidates ?? []) as unknown[],
+      keywords: Array.isArray(data.keywords) ? (data.keywords as string[]) : undefined,
+      confidence: String(confidence),
+      status: (data.status as string) || 'candidate',
+      promotedAt: data.promoted_at ? safeParseDate(data.promoted_at) : undefined,
+      deprecatedAt: data.deprecated_at ? safeParseDate(data.deprecated_at) : undefined,
+      deprecationReason: (data.deprecation_reason as string) || undefined,
+      sourceSessionIds: Array.isArray(data.source_session_ids)
+        ? (data.source_session_ids as string[])
+        : [],
+      recurrenceCount: Number(data.recurrence_count ?? data.recurrenceCount ?? 1),
+      firstSeenAt: safeParseDate(data.first_seen_at ?? data.firstSeenAt ?? data.created_at),
+      lastSeenAt: safeParseDate(data.last_seen_at ?? data.lastSeenAt ?? data.created_at),
+      distinctDaysSeen: Number(data.distinct_days_seen ?? data.distinctDaysSeen ?? 1),
+      qualityScore: data.quality_score != null ? String(data.quality_score) : '0.5',
+      injectionCountRolling20: Number(data.injection_count_rolling_20 ?? 0),
+      successCountRolling20: Number(data.success_count_rolling_20 ?? 0),
+      failureCountRolling20: Number(data.failure_count_rolling_20 ?? 0),
+      failureStreak: Number(data.failure_streak ?? 0),
+      version: Number(data.version ?? 1),
+      isCurrent: Boolean(data.is_current ?? true),
+      supersedes: (data.supersedes as string) || undefined,
+      supersededBy: (data.superseded_by as string) || undefined,
+      compiledSnippet: (data.compiled_snippet as string) || undefined,
+      compiledTokenCount:
+        data.compiled_token_count != null ? Number(data.compiled_token_count) : undefined,
+      compiledAt: data.compiled_at ? safeParseDate(data.compiled_at) : undefined,
+      createdAt: safeParseDate(data.created_at ?? data.createdAt),
+      updatedAt: safeParseDate(data.updated_at ?? data.updatedAt ?? data.created_at),
+      signatureHash,
+    };
+
+    try {
+      await db.insert(learnedPatterns).values(row).onConflictDoNothing();
+    } catch (err) {
+      const pgCode = (err as { code?: string }).code;
+      const msg = err instanceof Error ? err.message : String(err);
+      if (
+        pgCode === '42P01' ||
+        (msg.includes('learned_patterns') && msg.includes('does not exist'))
+      ) {
+        console.warn(
+          '[ReadModelConsumer] learned_patterns table not yet created -- ' +
+            'run migrations to enable pattern-learned projection'
+        );
+        return true;
+      }
+      throw err;
+    }
+
+    return true;
+  }
+
+  /**
+   * Project a pattern-stored event into pattern_learning_artifacts table.
+   *
+   * The omniintelligence producer emits this event when a pattern artifact has
+   * been persisted by the learning pipeline (e.g. after scoring). One row per
+   * pattern_id — ON CONFLICT DO NOTHING for idempotency on redelivery.
+   *
+   * Returns true if the write succeeded (or was skipped as a known dup),
+   * false if the DB was unavailable.
+   */
+  private async projectPatternStoredEvent(
+    data: Record<string, unknown>,
+    fallbackId: string
+  ): Promise<boolean> {
+    const db = tryGetIntelligenceDb();
+    if (!db) return false;
+
+    const patternId = (data.pattern_id as string) || (data.patternId as string) || fallbackId;
+    const patternName = (data.pattern_name as string) || (data.patternName as string) || 'unknown';
+    const patternType = (data.pattern_type as string) || (data.patternType as string) || 'unknown';
+
+    if (!data.composite_score && data.compositeScore == null && data.score == null) {
+      console.warn(
+        '[ReadModelConsumer] pattern-stored event missing composite_score ' +
+          `(pattern_id=${patternId}) -- defaulting to 0`
+      );
+    }
+
+    const row: InsertPatternLearningArtifact = {
+      patternId,
+      patternName,
+      patternType,
+      language: (data.language as string) || undefined,
+      lifecycleState:
+        (data.lifecycle_state as string) || (data.lifecycleState as string) || 'candidate',
+      stateChangedAt: data.state_changed_at ? safeParseDate(data.state_changed_at) : undefined,
+      compositeScore: String(
+        Number(data.composite_score ?? data.compositeScore ?? data.score ?? 0)
+      ),
+      scoringEvidence: (data.scoring_evidence ?? data.scoringEvidence ?? {}) as object,
+      signature: (data.signature ?? {}) as object,
+      metrics: (data.metrics ?? {}) as object,
+      metadata: (data.metadata ?? {}) as object,
+      createdAt: safeParseDate(data.created_at ?? data.createdAt),
+      updatedAt: safeParseDate(data.updated_at ?? data.updatedAt ?? data.created_at),
+    };
+
+    try {
+      await db.insert(patternLearningArtifacts).values(row).onConflictDoNothing();
+    } catch (err) {
+      const pgCode = (err as { code?: string }).code;
+      const msg = err instanceof Error ? err.message : String(err);
+      if (
+        pgCode === '42P01' ||
+        (msg.includes('pattern_learning_artifacts') && msg.includes('does not exist'))
+      ) {
+        console.warn(
+          '[ReadModelConsumer] pattern_learning_artifacts table not yet created -- ' +
+            'run migrations to enable pattern-stored projection'
+        );
+        return true;
+      }
+      throw err;
+    }
+
+    return true;
+  }
+
+  /**
+   * Project a latency-breakdown event into latency_breakdowns table.
+   *
+   * The omniclaude producer emits this event per prompt with per-phase timings.
+   * The unique constraint (session_id, prompt_id, cohort) prevents duplicate
+   * rows on Kafka redelivery — ON CONFLICT DO NOTHING.
+   *
+   * Previously this topic was only consumed by EventConsumer (in-memory) and
+   * dispatched to ExtractionMetricsAggregator. Adding it here ensures durable
+   * persistence into the analytics DB so the latency_breakdowns table has data.
+   *
+   * Returns true if the write succeeded (or was skipped as a known dup),
+   * false if the DB was unavailable.
+   */
+  private async projectLatencyBreakdownEvent(
+    data: Record<string, unknown>,
+    fallbackId: string
+  ): Promise<boolean> {
+    const db = tryGetIntelligenceDb();
+    if (!db) return false;
+
+    const sessionId = (data.session_id as string) || (data.sessionId as string) || fallbackId;
+    const promptId = (data.prompt_id as string) || (data.promptId as string) || fallbackId;
+    const cohort = (data.cohort as string) || 'unknown';
+
+    const row: InsertLatencyBreakdown = {
+      sessionId,
+      promptId,
+      cohort,
+      routingTimeMs: data.routing_time_ms != null ? Number(data.routing_time_ms) : undefined,
+      retrievalTimeMs: data.retrieval_time_ms != null ? Number(data.retrieval_time_ms) : undefined,
+      injectionTimeMs: data.injection_time_ms != null ? Number(data.injection_time_ms) : undefined,
+      userVisibleLatencyMs:
+        data.user_visible_latency_ms != null ? Number(data.user_visible_latency_ms) : undefined,
+      cacheHit: Boolean(data.cache_hit ?? data.cacheHit ?? false),
+      createdAt: safeParseDate(data.timestamp ?? data.created_at ?? data.createdAt),
+    };
+
+    try {
+      await db.insert(latencyBreakdowns).values(row).onConflictDoNothing();
+    } catch (err) {
+      const pgCode = (err as { code?: string }).code;
+      const msg = err instanceof Error ? err.message : String(err);
+      if (
+        pgCode === '42P01' ||
+        (msg.includes('latency_breakdowns') && msg.includes('does not exist'))
+      ) {
+        console.warn(
+          '[ReadModelConsumer] latency_breakdowns table not yet created -- ' +
+            'run migrations to enable latency breakdown projection'
+        );
+        return true;
+      }
+      throw err;
+    }
+
     return true;
   }
 

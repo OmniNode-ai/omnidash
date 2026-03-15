@@ -337,13 +337,17 @@ async function probeExecutionGraph(): Promise<DataSourceInfo> {
       return { status: 'mock', reason: 'no_projection_registered' };
     }
     const rawEvents = await dataSource.queryEvents({
+      // OMN-5038: omniclaude publishes to canonical ONEX topics, not legacy flat names.
+      // Stored event_type matches the topic name (see EventBusDataSource.handleMessage).
       event_types: [
+        // Canonical producers (active)
+        'onex.evt.omniclaude.tool-executed.v1',
+        'onex.evt.omniclaude.agent-match.v1',
+        'onex.evt.omniclaude.routing-decision.v1',
+        // Legacy flat names retained for backward compat (zero producers in practice)
         'agent-actions',
         'agent-routing-decisions',
         'agent-transformation-events',
-        'AGENT_ACTION',
-        'ROUTING_DECISION',
-        'AGENT_TRANSFORMATION',
       ],
       limit: 1,
       order_by: 'timestamp',

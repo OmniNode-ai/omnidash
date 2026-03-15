@@ -617,6 +617,44 @@ intelligenceRouter.get('/read-model/status', async (req, res) => {
   }
 });
 
+/**
+ * POST /api/intelligence/read-model/restart
+ * Restart the read-model consumer after it has stopped (e.g. after exhausting
+ * retry budget at startup or after a transient Kafka outage).
+ * OMN-5040: Added to allow consumer recovery without full server restart.
+ */
+intelligenceRouter.post('/read-model/restart', async (_req, res) => {
+  try {
+    const stats = readModelConsumer.getStats();
+    if (stats.isRunning) {
+      return res.json({
+        status: 'already_running',
+        message: 'Read-model consumer is already running',
+      });
+    }
+    // Fire-and-forget: same pattern as index.ts startup — do NOT await the start()
+    // promise, because with exponential backoff and 10 retries the wait is minutes.
+    readModelConsumer
+      .start()
+      .then(() => {
+        const newStats = readModelConsumer.getStats();
+        console.log(
+          `[intelligence-routes] Read-model consumer restart ${newStats.isRunning ? 'succeeded' : 'failed'}`
+        );
+      })
+      .catch((err) => {
+        console.error('[intelligence-routes] Read-model consumer restart error:', err);
+      });
+    return res.json({ status: 'restarting', message: 'Read-model consumer restart initiated' });
+  } catch (error) {
+    console.error('Error restarting read-model consumer:', error);
+    return res.status(500).json({
+      error: 'Failed to restart read-model consumer',
+      message: error instanceof Error ? error.message : 'Unknown error',
+    });
+  }
+});
+
 // ============================================================================
 // Runtime Identity Endpoint
 // ============================================================================

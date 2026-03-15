@@ -27,6 +27,7 @@ import { EpicRunProjection } from './projections/epic-run-projection';
 import { PrWatchProjection } from './projections/pr-watch-projection';
 import { PipelineBudgetProjection } from './projections/pipeline-budget-projection';
 import { DebugEscalationProjection } from './projections/debug-escalation-projection';
+import { NodeRegistryProjection } from './projections/node-registry-projection';
 import { eventConsumer } from './event-consumer';
 import { eventBusDataSource } from './event-bus-data-source';
 import { extractActionFromTopic, extractProducerFromTopicOrDefault } from '@shared/topics';
@@ -108,6 +109,13 @@ export const prWatchProjection = new PrWatchProjection();
 export const pipelineBudgetProjection = new PipelineBudgetProjection();
 /** Debug escalation projection. Queries debug_escalation_counts table. */
 export const debugEscalationProjection = new DebugEscalationProjection();
+/**
+ * Node Registry projection (OMN-2097). In-memory event-driven view materialised
+ * from canonical node lifecycle topics (node-became-active, node-heartbeat,
+ * node-introspection, node-state-change). Registered with ProjectionService so
+ * that EventBusDataSource fan-out populates it in real time.
+ */
+export const nodeRegistryProjection = new NodeRegistryProjection();
 
 if (!projectionService.getView(extractionMetricsProjection.viewId)) {
   projectionService.registerView(extractionMetricsProjection);
@@ -151,6 +159,9 @@ if (!projectionService.getView(pipelineBudgetProjection.viewId)) {
 }
 if (!projectionService.getView(debugEscalationProjection.viewId)) {
   projectionService.registerView(debugEscalationProjection);
+}
+if (!projectionService.getView(nodeRegistryProjection.viewId)) {
+  projectionService.registerView(nodeRegistryProjection);
 }
 
 // ============================================================================

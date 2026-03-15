@@ -209,12 +209,24 @@ export class CostMetricsProjection extends DbBackedProjectionView<CostMetricsPay
           : 7 * 24 * 60 * 60 * 1000;
     const priorCutoff = new Date(cutoff.getTime() - windowMs);
 
-    const [current, prior] = await Promise.all([
+    // Three parallel queries:
+    // 1. cost-filtered: sum costs (only rows where total_cost_usd > 0 — excludes
+    //    zero-cost local/Ollama calls so average-cost metrics are meaningful)
+    // 2. unfiltered volume: sum tokens + count sessions/models across ALL rows,
+    //    including zero-cost calls (Ollama, local models). Token volume is a
+    //    meaningful metric regardless of whether a cost was reported.
+    // 3. prior-period cost (cost-filtered) for cost_change_pct delta.
+    const [currentCost, currentVolume, prior] = await Promise.all([
       db
         .select({
           total_cost: sql<string>`COALESCE(SUM(${lca.totalCostUsd}::numeric), 0)::text`,
           reported_cost: sql<string>`COALESCE(SUM(${lca.reportedCostUsd}::numeric), 0)::text`,
           estimated_cost: sql<string>`COALESCE(SUM(${lca.estimatedCostUsd}::numeric), 0)::text`,
+        })
+        .from(lca)
+        .where(and(gte(lca.bucketTime, cutoff), gt(lca.totalCostUsd, '0'))),
+      db
+        .select({
           total_tokens: sql<number>`COALESCE(SUM(${lca.totalTokens}), 0)::bigint`,
           prompt_tokens: sql<number>`COALESCE(SUM(${lca.promptTokens}), 0)::bigint`,
           completion_tokens: sql<number>`COALESCE(SUM(${lca.completionTokens}), 0)::bigint`,
@@ -222,7 +234,7 @@ export class CostMetricsProjection extends DbBackedProjectionView<CostMetricsPay
           model_count: sql<number>`COUNT(DISTINCT ${lca.modelName})::int`,
         })
         .from(lca)
-        .where(and(gte(lca.bucketTime, cutoff), gt(lca.totalCostUsd, '0'))),
+        .where(gte(lca.bucketTime, cutoff)),
       db
         .select({
           total_cost: sql<string>`COALESCE(SUM(${lca.totalCostUsd}::numeric), 0)::text`,
@@ -237,15 +249,19 @@ export class CostMetricsProjection extends DbBackedProjectionView<CostMetricsPay
         ),
     ]);
 
-    const cur = current[0] ?? {
-      total_cost: '0',
-      reported_cost: '0',
-      estimated_cost: '0',
-      total_tokens: 0,
-      prompt_tokens: 0,
-      completion_tokens: 0,
-      session_count: 0,
-      model_count: 0,
+    const cur = {
+      ...(currentCost[0] ?? {
+        total_cost: '0',
+        reported_cost: '0',
+        estimated_cost: '0',
+      }),
+      ...(currentVolume[0] ?? {
+        total_tokens: 0,
+        prompt_tokens: 0,
+        completion_tokens: 0,
+        session_count: 0,
+        model_count: 0,
+      }),
     };
 
     const totalCost = parseFloat(cur.total_cost);
