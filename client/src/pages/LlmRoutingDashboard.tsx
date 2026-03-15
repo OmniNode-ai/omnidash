@@ -917,11 +917,15 @@ export default function LlmRoutingDashboard() {
   // Only fire the disagreement alert when fuzzy routing is actually running.
   // If the fallback_rate is very high (≥0.9), fuzzy routing data is unavailable
   // and the disagreement rate is not meaningful.
+  // Also suppress the alert when total_decisions is 0: agreement_rate defaults
+  // to 0 with no data (0/0 edge case), which would incorrectly read as 100%
+  // disagreement. The alert is only meaningful with actual routing decisions.
   const showFuzzyUnavailableBanner =
     !summaryLoading && summary != null && (summary.fallback_rate ?? 0) >= 0.9;
   const showDisagreementAlert =
     !summaryLoading &&
     summary != null &&
+    summary.total_decisions > 0 &&
     disagreementRate > DISAGREEMENT_ALERT_THRESHOLD &&
     !showFuzzyUnavailableBanner;
 

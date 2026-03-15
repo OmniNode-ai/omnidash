@@ -209,12 +209,22 @@ export class CostMetricsProjection extends DbBackedProjectionView<CostMetricsPay
           : 7 * 24 * 60 * 60 * 1000;
     const priorCutoff = new Date(cutoff.getTime() - windowMs);
 
-    const [current, prior] = await Promise.all([
+    // Two queries per period:
+    //   costFiltered — rows with totalCostUsd > 0 only, used for cost aggregates.
+    //   unfiltered   — all rows in window, used for token/session/model counts.
+    // This ensures zero-cost Ollama/local-LLM calls are counted in usage metrics
+    // even though they don't contribute to cost totals.
+    const [currentCost, currentUsage, prior] = await Promise.all([
       db
         .select({
           total_cost: sql<string>`COALESCE(SUM(${lca.totalCostUsd}::numeric), 0)::text`,
           reported_cost: sql<string>`COALESCE(SUM(${lca.reportedCostUsd}::numeric), 0)::text`,
           estimated_cost: sql<string>`COALESCE(SUM(${lca.estimatedCostUsd}::numeric), 0)::text`,
+        })
+        .from(lca)
+        .where(and(gte(lca.bucketTime, cutoff), gt(lca.totalCostUsd, '0'))),
+      db
+        .select({
           total_tokens: sql<number>`COALESCE(SUM(${lca.totalTokens}), 0)::bigint`,
           prompt_tokens: sql<number>`COALESCE(SUM(${lca.promptTokens}), 0)::bigint`,
           completion_tokens: sql<number>`COALESCE(SUM(${lca.completionTokens}), 0)::bigint`,
@@ -222,7 +232,7 @@ export class CostMetricsProjection extends DbBackedProjectionView<CostMetricsPay
           model_count: sql<number>`COUNT(DISTINCT ${lca.modelName})::int`,
         })
         .from(lca)
-        .where(and(gte(lca.bucketTime, cutoff), gt(lca.totalCostUsd, '0'))),
+        .where(gte(lca.bucketTime, cutoff)),
       db
         .select({
           total_cost: sql<string>`COALESCE(SUM(${lca.totalCostUsd}::numeric), 0)::text`,
@@ -237,10 +247,12 @@ export class CostMetricsProjection extends DbBackedProjectionView<CostMetricsPay
         ),
     ]);
 
-    const cur = current[0] ?? {
+    const curCost = currentCost[0] ?? {
       total_cost: '0',
       reported_cost: '0',
       estimated_cost: '0',
+    };
+    const curUsage = currentUsage[0] ?? {
       total_tokens: 0,
       prompt_tokens: 0,
       completion_tokens: 0,
@@ -248,10 +260,10 @@ export class CostMetricsProjection extends DbBackedProjectionView<CostMetricsPay
       model_count: 0,
     };
 
-    const totalCost = parseFloat(cur.total_cost);
-    const reportedCost = parseFloat(cur.reported_cost);
-    const estimatedCost = parseFloat(cur.estimated_cost);
-    const sessionCount = Number(cur.session_count);
+    const totalCost = parseFloat(curCost.total_cost);
+    const reportedCost = parseFloat(curCost.reported_cost);
+    const estimatedCost = parseFloat(curCost.estimated_cost);
+    const sessionCount = Number(curUsage.session_count);
     const priorCost = parseFloat(prior[0]?.total_cost ?? '0');
 
     const reportedCoverage = totalCost > 0 ? (reportedCost / totalCost) * 100 : 0;
@@ -268,11 +280,11 @@ export class CostMetricsProjection extends DbBackedProjectionView<CostMetricsPay
       reported_cost_usd: reportedCost,
       estimated_cost_usd: estimatedCost,
       reported_coverage_pct: reportedCoverage,
-      total_tokens: Number(cur.total_tokens),
-      prompt_tokens: Number(cur.prompt_tokens),
-      completion_tokens: Number(cur.completion_tokens),
+      total_tokens: Number(curUsage.total_tokens),
+      prompt_tokens: Number(curUsage.prompt_tokens),
+      completion_tokens: Number(curUsage.completion_tokens),
       session_count: sessionCount,
-      model_count: Number(cur.model_count),
+      model_count: Number(curUsage.model_count),
       avg_cost_per_session: avgCostPerSession,
       cost_change_pct: costChangePct,
       active_alerts: 0, // Budget alerts table not yet implemented
@@ -464,10 +476,11 @@ export class CostMetricsProjection extends DbBackedProjectionView<CostMetricsPay
         usage_source: sql<string | null>`mode() WITHIN GROUP (ORDER BY ${lca.usageSource})`,
       })
       .from(lca)
-      // Note: excludes zero-cost completions (e.g. cached responses or free-tier model calls)
-      // — this is intentional to filter noise, but means the token-usage series may undercount
-      // for models with free tiers or cache hits.
-      .where(and(gte(lca.bucketTime, cutoff), gt(lca.totalCostUsd, '0')))
+      // Include all rows regardless of cost so that zero-cost local-LLM calls
+      // (e.g. Ollama, where estimated_cost_usd is null/0) are reflected in the
+      // token-usage chart. Unlike cost trend panels, token usage is always
+      // meaningful even when the cost is $0.
+      .where(gte(lca.bucketTime, cutoff))
       .groupBy(sql`date_trunc(${sql.raw(`'${unit}'`)}, ${lca.bucketTime})`)
       .orderBy(sql`date_trunc(${sql.raw(`'${unit}'`)}, ${lca.bucketTime})`);
 
