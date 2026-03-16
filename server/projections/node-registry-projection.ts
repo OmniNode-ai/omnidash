@@ -345,7 +345,7 @@ export class NodeRegistryProjection implements ProjectionView<NodeRegistryPayloa
 
   private handleIntrospection(event: ProjectionEvent): boolean {
     const payload = event.payload;
-    const nodeId = (payload.nodeId ?? payload.node_id) as string | undefined;
+    const nodeId = (payload.node_id ?? payload.nodeId) as string | undefined;
     if (!nodeId) return false;
 
     if (
@@ -378,16 +378,16 @@ export class NodeRegistryProjection implements ProjectionView<NodeRegistryPayloa
     // handshake phase — a null current_state from an introspection event means the
     // runtime hasn't wired the FSM, not that the node is waiting to be registered.
     const resolvedState =
-      payload.currentState ??
       (payload.current_state !== null ? payload.current_state : undefined) ??
+      payload.currentState ??
       existing?.state ??
       'active';
 
     const node: NodeState = {
       nodeId,
-      nodeType: normalizeNodeType(payload.nodeType ?? payload.node_type ?? existing?.nodeType),
+      nodeType: normalizeNodeType(payload.node_type ?? payload.nodeType ?? existing?.nodeType),
       state: resolvedState as RegistrationState,
-      version: toVersionString(payload.nodeVersion ?? payload.node_version ?? existing?.version),
+      version: toVersionString(payload.node_version ?? payload.nodeVersion ?? existing?.version),
       uptimeSeconds: existing?.uptimeSeconds ?? 0,
       lastSeen: displayTimestamp(event.eventTimeMs),
       memoryUsageMb: existing?.memoryUsageMb,
@@ -425,7 +425,7 @@ export class NodeRegistryProjection implements ProjectionView<NodeRegistryPayloa
 
   private handleHeartbeat(event: ProjectionEvent): boolean {
     const payload = event.payload;
-    const nodeId = (payload.nodeId ?? payload.node_id) as string | undefined;
+    const nodeId = (payload.node_id ?? payload.nodeId) as string | undefined;
     if (!nodeId) return false;
 
     if (
@@ -445,10 +445,10 @@ export class NodeRegistryProjection implements ProjectionView<NodeRegistryPayloa
         nodeType: 'COMPUTE',
         state: 'active',
         version: '1.0.0',
-        uptimeSeconds: (payload.uptimeSeconds ?? payload.uptime_seconds ?? 0) as number,
+        uptimeSeconds: (payload.uptime_seconds ?? payload.uptimeSeconds ?? 0) as number,
         lastSeen: displayTimestamp(event.eventTimeMs),
-        memoryUsageMb: (payload.memoryUsageMb ?? payload.memory_usage_mb) as number | undefined,
-        cpuUsagePercent: (payload.cpuUsagePercent ?? payload.cpu_usage_percent) as
+        memoryUsageMb: (payload.memory_usage_mb ?? payload.memoryUsageMb) as number | undefined,
+        cpuUsagePercent: (payload.cpu_usage_percent ?? payload.cpuUsagePercent) as
           | number
           | undefined,
       };
@@ -459,15 +459,15 @@ export class NodeRegistryProjection implements ProjectionView<NodeRegistryPayloa
 
     this.nodes.set(nodeId, {
       ...existing,
-      uptimeSeconds: (payload.uptimeSeconds ??
-        payload.uptime_seconds ??
+      uptimeSeconds: (payload.uptime_seconds ??
+        payload.uptimeSeconds ??
         existing.uptimeSeconds) as number,
       lastSeen: displayTimestamp(event.eventTimeMs),
-      memoryUsageMb: (payload.memoryUsageMb ??
-        payload.memory_usage_mb ??
+      memoryUsageMb: (payload.memory_usage_mb ??
+        payload.memoryUsageMb ??
         existing.memoryUsageMb) as number | undefined,
-      cpuUsagePercent: (payload.cpuUsagePercent ??
-        payload.cpu_usage_percent ??
+      cpuUsagePercent: (payload.cpu_usage_percent ??
+        payload.cpuUsagePercent ??
         existing.cpuUsagePercent) as number | undefined,
     });
 
@@ -476,10 +476,10 @@ export class NodeRegistryProjection implements ProjectionView<NodeRegistryPayloa
 
   private handleStateChange(event: ProjectionEvent): boolean {
     const payload = event.payload;
-    const nodeId = (payload.nodeId ?? payload.node_id) as string | undefined;
+    const nodeId = (payload.node_id ?? payload.nodeId) as string | undefined;
     if (!nodeId) return false;
 
-    const newState = (payload.newState ?? payload.new_state) as RegistrationState | undefined;
+    const newState = (payload.new_state ?? payload.newState) as RegistrationState | undefined;
     if (!newState) return false;
 
     if (
@@ -538,14 +538,14 @@ export class NodeRegistryProjection implements ProjectionView<NodeRegistryPayloa
     // behavior (Map insertion order is stable per spec).
     const deduped = new Map<string, Record<string, unknown>>();
     for (const raw of rawNodes) {
-      const nid = (raw.nodeId ?? raw.node_id) as string;
+      const nid = (raw.node_id ?? raw.nodeId) as string;
       if (nid) deduped.set(nid, raw);
     }
 
     let seeded = 0;
 
     for (const raw of deduped.values()) {
-      const nodeId = (raw.nodeId ?? raw.node_id) as string;
+      const nodeId = (raw.node_id ?? raw.nodeId) as string;
 
       // Seed events have no real timestamp — use sentinel epoch 0 so that
       // any node already tracked with a real-timestamped event is not overwritten.
@@ -560,10 +560,10 @@ export class NodeRegistryProjection implements ProjectionView<NodeRegistryPayloa
 
       const node: NodeState = {
         nodeId,
-        nodeType: normalizeNodeType(raw.nodeType ?? raw.node_type),
+        nodeType: normalizeNodeType(raw.node_type ?? raw.nodeType),
         state: (raw.state ?? 'pending_registration') as RegistrationState,
         version: toVersionString(raw.version),
-        uptimeSeconds: (raw.uptimeSeconds ?? raw.uptime_seconds ?? 0) as number,
+        uptimeSeconds: (raw.uptime_seconds ?? raw.uptimeSeconds ?? 0) as number,
         lastSeen: raw.lastSeen
           ? raw.lastSeen instanceof Date
             ? (raw.lastSeen as Date).toISOString()
@@ -620,7 +620,7 @@ export class NodeRegistryProjection implements ProjectionView<NodeRegistryPayloa
 
     const node: NodeState = {
       nodeId,
-      nodeType: normalizeNodeType(payload.nodeType ?? payload.node_type ?? existing?.nodeType),
+      nodeType: normalizeNodeType(payload.node_type ?? payload.nodeType ?? existing?.nodeType),
       state: newState,
       version: (existing?.version ?? '1.0.0') as string,
       uptimeSeconds: existing?.uptimeSeconds ?? 0,
