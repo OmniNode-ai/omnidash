@@ -3381,6 +3381,25 @@ export class EventConsumer extends EventEmitter {
     // Sync into legacy registeredNodes so getRegisteredNodes() reflects this update
     this.syncCanonicalToRegistered(this.canonicalNodes.get(payload.node_id)!);
 
+    // Compatibility bridge: emit granular introspection event so the projection's
+    // handleIntrospection() processes this node with full state resolution
+    this.emit('nodeIntrospectionUpdate', {
+      nodeId: payload.node_id,
+      node_id: payload.node_id,
+      nodeType: payload.node_type ?? 'COMPUTE',
+      node_type: payload.node_type ?? 'COMPUTE',
+      version: nodeVersion ?? '1.0.0',
+      currentState: resolvedState,
+      current_state: resolvedState,
+      capabilities: payload.capabilities ?? [],
+      metadata: {},
+      endpoints: {},
+      reason: null,
+      eventBus: {},
+      event_bus: {},
+      emitted_at: envelope_timestamp,
+    });
+
     // Emit dashboard event for WebSocket broadcast
     this.emit('nodeRegistryUpdate', this.getRegisteredNodes());
 
