@@ -71,7 +71,8 @@ export function getBusMode(brokerString: string): BusMode {
  * detect the missing-config case reliably.
  */
 export function resolveBrokers(): string[] {
-  const brokerString = process.env.KAFKA_BOOTSTRAP_SERVERS ?? process.env.KAFKA_BROKERS;
+  const brokerString =
+    process.env.KAFKA_BOOTSTRAP_SERVERS?.trim() || process.env.KAFKA_BROKERS?.trim() || '';
   if (!brokerString) {
     throw new Error(
       'KAFKA_BOOTSTRAP_SERVERS (or KAFKA_BROKERS) environment variable is required. ' +
@@ -91,7 +92,7 @@ export function resolveBrokers(): string[] {
  * Useful for logging and health-check endpoints.
  */
 export function getBrokerString(): string {
-  return process.env.KAFKA_BOOTSTRAP_SERVERS ?? process.env.KAFKA_BROKERS ?? 'not configured';
+  return process.env.KAFKA_BOOTSTRAP_SERVERS?.trim() || process.env.KAFKA_BROKERS?.trim() || 'not configured';
 }
 
 /**
