@@ -8,6 +8,7 @@
  * done inline in NodeRegistry.tsx.
  */
 
+// no-migration: OMN-5132 display-only field addition, no projection schema change
 import type { DashboardData } from '@/lib/dashboard-schema';
 import { deriveNodeName } from '@/lib/node-display-utils';
 import type {
