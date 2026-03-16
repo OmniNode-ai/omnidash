@@ -65,7 +65,7 @@ import { readModelConsumer } from './read-model-consumer';
 // Types
 // ============================================================================
 
-export type DataSourceStatus = 'live' | 'mock' | 'error' | 'offline' | 'expected_idle_local';
+export type DataSourceStatus = 'live' | 'mock' | 'error' | 'offline' | 'expected_idle_local' | 'not_applicable';
 
 export interface DataSourceInfo {
   status: DataSourceStatus;
@@ -83,6 +83,7 @@ export interface DataSourcesHealthResponse {
     error: number;
     offline: number;
     expected_idle_local: number;
+    not_applicable: number;
   };
   checkedAt: string;
 }
@@ -91,7 +92,7 @@ export interface DataSourcesHealthResponse {
 // Constants
 // ============================================================================
 
-const ENV_SYNC_STALE_SECS = 3600; // 1 hour (2× the 5-min throttle window)
+const ENV_SYNC_STALE_SECS = 86400; // 24 hours — local dev sessions are long-running (OMN-5155)
 
 /**
  * Detect whether this is a local (non-cloud) environment.
@@ -114,12 +115,10 @@ function isLocalEnvironment(): boolean {
  */
 const LOCAL_IDLE_EXPECTED: Set<string> = new Set([
   'intents',
-  'topicParity',
   'baselines',
   'validation',
   'patterns',
   'insights',
-  'envSync',
 ]);
 
 // ============================================================================
@@ -479,7 +478,7 @@ function probeEnvSync(): DataSourceInfo {
   try {
     const infisicalAddr = process.env.INFISICAL_ADDR ?? '';
     if (!infisicalAddr.trim()) {
-      return { status: 'mock', reason: 'infisical_disabled' };
+      return { status: 'not_applicable', reason: 'infisical_disabled' };
     }
     const infraDir = process.env.OMNIBASE_INFRA_DIR ?? '';
     const candidates = infraDir
@@ -510,54 +509,50 @@ function probeEnvSync(): DataSourceInfo {
 }
 
 /**
- * Probe topic subscription parity (OMN-4964).
+ * Probe topic subscription parity (OMN-4964, OMN-5155).
  *
- * Compares three topic lists at runtime:
- *   1. READ_MODEL_TOPICS — what the read-model consumer intends to subscribe to
- *   2. EXPECTED_TOPICS — what the health poller expects to find on the broker
- *   3. Actual subscribed topics — what the consumer actually subscribed to after startup
- *
- * Returns healthy when all lists are consistent, degraded with specifics otherwise.
+ * Measures subscription parity: are we subscribed to everything in READ_MODEL_TOPICS?
+ * Contract completeness (EXPECTED_TOPICS gaps) is reported as informational metadata,
+ * not as health degradation.
  */
-function probeTopicParity(): DataSourceInfo & { missing?: string[]; extra?: string[] } {
+function probeTopicParity(): DataSourceInfo & { metadata?: { unsubscribed?: string[]; contractGaps?: string[] } } {
   try {
-    const readModelSet = new Set(READ_MODEL_TOPICS as readonly string[]);
-    const expectedSet = new Set(EXPECTED_TOPICS as readonly string[]);
-
-    // Get actually subscribed topics from consumer stats (topicStats keys)
     const stats = readModelConsumer.getStats();
+
+    // If consumer is not running, that's a real problem
+    if (!stats.isRunning) {
+      return { status: 'offline', reason: 'consumer_not_running' };
+    }
+
     const subscribedSet = new Set(Object.keys(stats.topicStats));
 
-    // Check 1: EXPECTED_TOPICS that are not in READ_MODEL_TOPICS
-    // (broker-level expectation not backed by a consumer subscription)
-    const expectedNotSubscribed = [...expectedSet].filter((t) => !readModelSet.has(t));
-
-    // Check 2: If consumer is running, check for topics in READ_MODEL_TOPICS
-    // that failed to subscribe (present in intent but absent from actual)
-    const failedToSubscribe: string[] = [];
-    if (stats.isRunning && subscribedSet.size > 0) {
+    // Primary check: subscription parity
+    const unsubscribed: string[] = [];
+    if (subscribedSet.size > 0) {
       for (const topic of READ_MODEL_TOPICS) {
         if (!subscribedSet.has(topic)) {
-          failedToSubscribe.push(topic);
+          unsubscribed.push(topic);
         }
       }
     }
 
-    const missing = [...expectedNotSubscribed, ...failedToSubscribe].sort();
-    const extra = [...subscribedSet].filter((t) => !readModelSet.has(t)).sort();
+    // Informational: contract gaps (not health degradation)
+    const readModelSet = new Set(READ_MODEL_TOPICS as readonly string[]);
+    const expectedSet = new Set(EXPECTED_TOPICS as readonly string[]);
+    const contractGaps = [...expectedSet].filter((t) => !readModelSet.has(t));
 
-    if (missing.length === 0 && extra.length === 0) {
+    if (unsubscribed.length > 0) {
       return {
-        status: 'live',
-        lastEvent: new Date().toISOString(),
+        status: 'offline',
+        reason: `subscription_gap: ${unsubscribed.length} topics not subscribed`,
+        metadata: { unsubscribed, ...(contractGaps.length > 0 ? { contractGaps } : {}) },
       };
     }
 
     return {
-      status: 'mock',
-      reason: `topic_parity_drift: ${missing.length} missing, ${extra.length} extra`,
-      missing,
-      extra,
+      status: 'live',
+      lastEvent: new Date().toISOString(),
+      ...(contractGaps.length > 0 ? { metadata: { contractGaps } } : {}),
     };
   } catch {
     return { status: 'error', reason: 'probe_threw' };
@@ -690,12 +685,13 @@ router.get('/data-sources', async (_req, res) => {
             acc[info.status] = (acc[info.status] ?? 0) + 1;
             return acc;
           },
-          { live: 0, mock: 0, error: 0, offline: 0, expected_idle_local: 0 } as {
+          { live: 0, mock: 0, error: 0, offline: 0, expected_idle_local: 0, not_applicable: 0 } as {
             live: number;
             mock: number;
             error: number;
             offline: number;
             expected_idle_local: number;
+            not_applicable: number;
           }
         );
 
