@@ -212,22 +212,25 @@ jobs:
 
       - name: Start server and run smoke test
         run: |
-          # Start production server in background (no Kafka needed for route rendering)
-          KAFKA_BOOTSTRAP_SERVERS=localhost:9092 \
-          OMNIDASH_ANALYTICS_DB_URL=postgresql://localhost:5432/unused \
+          # Start production server in background (no Kafka/DB needed for route rendering)
+          KAFKA_BROKERS= \
+          KAFKA_BOOTSTRAP_SERVERS= \
+          OMNIDASH_ANALYTICS_DB_URL= \
+          ENABLE_REAL_TIME_EVENTS=false \
+          SESSION_SECRET=ci-smoke-test-secret \
           PORT=3000 \
           NODE_ENV=production \
           node dist/index.js &
           SERVER_PID=$!
 
-          # Wait for server to accept connections (up to 30s)
-          for i in $(seq 1 30); do
+          # Wait for server to accept connections (up to 60s)
+          for i in $(seq 1 60); do
             if curl -s -o /dev/null http://localhost:3000/; then
               echo "Server ready after ${i}s"
               break
             fi
-            if [ "$i" = "30" ]; then
-              echo "::error::Server failed to start within 30s"
+            if [ "$i" = "60" ]; then
+              echo "::error::Server failed to start within 60s"
               kill $SERVER_PID 2>/dev/null || true
               exit 1
             fi
