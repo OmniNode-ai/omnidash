@@ -231,6 +231,11 @@ export const SUFFIX_NODE_REGISTRATION_ACK_RECEIVED =
 export const SUFFIX_NODE_REGISTRATION_ACK_TIMED_OUT =
   'onex.evt.platform.node-registration-ack-timed-out.v1';
 
+/** Node activation event — emitted when a node transitions to ACTIVE (OMN-5132) */
+export const SUFFIX_NODE_BECAME_ACTIVE = 'onex.evt.platform.node-became-active.v1';
+/** Node liveness expiration — emitted when a node's liveness deadline passes */
+export const SUFFIX_NODE_LIVENESS_EXPIRED = 'onex.evt.platform.node-liveness-expired.v1';
+
 /** Registry announces it wants nodes to re-introspect (evt counterpart to the cmd variant) */
 export const SUFFIX_REGISTRY_REQUEST_INTROSPECTION =
   'onex.evt.platform.registry-request-introspection.v1';
@@ -498,6 +503,8 @@ export const PLATFORM_NODE_SUFFIXES = [
   SUFFIX_NODE_REGISTRATION_RESULT,
   SUFFIX_NODE_REGISTRATION_ACK_RECEIVED,
   SUFFIX_NODE_REGISTRATION_ACK_TIMED_OUT,
+  SUFFIX_NODE_BECAME_ACTIVE,
+  SUFFIX_NODE_LIVENESS_EXPIRED,
   SUFFIX_REGISTRATION_SNAPSHOTS,
   SUFFIX_FSM_STATE_TRANSITIONS,
   SUFFIX_RUNTIME_TICK,

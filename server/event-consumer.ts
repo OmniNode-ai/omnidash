@@ -96,9 +96,12 @@ import {
   SUFFIX_GITHUB_PR_STATUS,
   SUFFIX_GIT_HOOK,
   SUFFIX_LINEAR_SNAPSHOT,
+  SUFFIX_NODE_BECAME_ACTIVE,
+  SUFFIX_NODE_LIVENESS_EXPIRED,
 } from '@shared/topics';
 import {
   EventEnvelopeSchema,
+  NodeBecameActivePayloadSchema,
   NodeHeartbeatPayloadSchema,
   NodeIntrospectionPayloadSchema,
   OFFLINE_NODE_TTL_MS,
@@ -214,6 +217,8 @@ const TOPIC = {
   NODE_REGISTRATION_RESULT: SUFFIX_NODE_REGISTRATION_RESULT,
   NODE_REGISTRATION_ACK_RECEIVED: SUFFIX_NODE_REGISTRATION_ACK_RECEIVED,
   NODE_REGISTRATION_ACK_TIMED_OUT: SUFFIX_NODE_REGISTRATION_ACK_TIMED_OUT,
+  NODE_BECAME_ACTIVE: SUFFIX_NODE_BECAME_ACTIVE,
+  NODE_LIVENESS_EXPIRED: SUFFIX_NODE_LIVENESS_EXPIRED,
   REGISTRY_REQUEST_INTROSPECTION: SUFFIX_REGISTRY_REQUEST_INTROSPECTION,
   FSM_STATE_TRANSITIONS: SUFFIX_FSM_STATE_TRANSITIONS,
   RUNTIME_TICK: SUFFIX_RUNTIME_TICK,
@@ -1580,13 +1585,23 @@ export class EventConsumer extends EventEmitter {
                     case TOPIC.NODE_REGISTRATION_ACKED:
                     case TOPIC.NODE_REGISTRATION_RESULT:
                     case TOPIC.NODE_REGISTRATION_ACK_RECEIVED:
-                    case TOPIC.NODE_REGISTRATION_ACK_TIMED_OUT: {
+                    case TOPIC.NODE_REGISTRATION_ACK_TIMED_OUT:
+                    case TOPIC.NODE_LIVENESS_EXPIRED: {
                       if (isDebug) {
                         intentLogger.debug(
                           `Processing node registration lifecycle event from topic: ${topic}`
                         );
                       }
                       this.handleCanonicalNodeIntrospection(message);
+                      break;
+                    }
+                    case TOPIC.NODE_BECAME_ACTIVE: {
+                      if (isDebug) {
+                        intentLogger.debug(
+                          `Processing node-became-active event from topic: ${topic}`
+                        );
+                      }
+                      this.handleCanonicalNodeBecameActive(message);
                       break;
                     }
                     case TOPIC.REGISTRY_REQUEST_INTROSPECTION: {
@@ -3371,6 +3386,58 @@ export class EventConsumer extends EventEmitter {
 
     if (DEBUG_CANONICAL_EVENTS) {
       intentLogger.debug(`Canonical node-introspection processed: ${payload.node_id}`);
+    }
+  }
+
+  /**
+   * Handle canonical node-became-active events (OMN-5132).
+   *
+   * When a node transitions to ACTIVE (via auto-ack or ack handshake), the
+   * runtime publishes a NodeBecameActive event. This handler updates both the
+   * canonical and legacy node maps to reflect the ACTIVE state, and emits
+   * nodeStateChangeUpdate so the projection bridge picks it up.
+   */
+  private handleCanonicalNodeBecameActive(message: KafkaMessage): void {
+    const envelope = this.parseEnvelope(message, NodeBecameActivePayloadSchema);
+    if (!envelope) return;
+    if (this.isDuplicate(envelope.correlation_id)) return;
+
+    const { payload, envelope_timestamp } = envelope;
+    const emittedAtMs = new Date(envelope_timestamp).getTime();
+    const nodeId = payload.node_id;
+
+    // Update canonical node state to ACTIVE
+    const existing = this.canonicalNodes.get(nodeId);
+    const node: CanonicalOnexNode = existing
+      ? {
+          ...existing,
+          state: 'ACTIVE' as OnexNodeState,
+          capabilities: payload.capabilities || existing.capabilities,
+          last_event_at: emittedAtMs,
+        }
+      : {
+          node_id: nodeId,
+          state: 'ACTIVE' as OnexNodeState,
+          node_type: undefined,
+          node_version: undefined,
+          capabilities: payload.capabilities,
+          last_event_at: emittedAtMs,
+        };
+
+    this.canonicalNodes.set(nodeId, node);
+    this.syncCanonicalToRegistered(node);
+
+    // Emit state change event for the projection bridge (server/index.ts)
+    // so NodeRegistryProjection.handleNodeBecameActive() is invoked.
+    this.emit('nodeBecameActive', {
+      node_id: nodeId,
+      capabilities: payload.capabilities,
+      emitted_at: envelope_timestamp,
+    });
+    this.emit('nodeRegistryUpdate', this.getRegisteredNodes());
+
+    if (DEBUG_CANONICAL_EVENTS) {
+      intentLogger.debug(`Canonical node-became-active processed: ${nodeId}`);
     }
   }
 

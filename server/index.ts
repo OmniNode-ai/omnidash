@@ -205,6 +205,16 @@ app.use((req, res, next) => {
         payload: event,
       });
     },
+    // OMN-5132: Bridge node-became-active events to the projection service
+    // so NodeRegistryProjection.handleNodeBecameActive() transitions nodes to 'active'.
+    nodeBecameActive: (event: Record<string, unknown>) => {
+      projectionService.ingest({
+        type: 'node-became-active',
+        source: 'event-consumer',
+        eventTimeMs: extractBridgeTimestamp(event),
+        payload: event,
+      });
+    },
     // Canonical event handlers (handleCanonicalNode*) only emit 'nodeRegistryUpdate',
     // not the granular events above. Bridge the full registry snapshot as a seed event
     // so the projection stays in sync with canonical-path updates. The seed handler
