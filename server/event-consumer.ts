@@ -3388,10 +3388,7 @@ export class EventConsumer extends EventEmitter {
     if (previousState && previousState !== resolvedState) {
       this.emit('nodeStateChangeUpdate', {
         node_id: payload.node_id,
-        nodeId: payload.node_id,
-        previousState: previousState,
         previous_state: previousState,
-        newState: resolvedState,
         new_state: resolvedState,
         emitted_at: envelope_timestamp,
       });
@@ -3403,18 +3400,14 @@ export class EventConsumer extends EventEmitter {
     // Compatibility bridge: emit granular introspection event so the projection's
     // handleIntrospection() processes this node with full state resolution
     this.emit('nodeIntrospectionUpdate', {
-      nodeId: payload.node_id,
       node_id: payload.node_id,
-      nodeType: payload.node_type ?? 'COMPUTE',
       node_type: payload.node_type ?? 'COMPUTE',
       version: nodeVersion ?? '1.0.0',
-      currentState: resolvedState,
       current_state: resolvedState,
       capabilities: payload.capabilities ?? [],
       metadata: {},
       endpoints: {},
       reason: null,
-      eventBus: {},
       event_bus: {},
       emitted_at: envelope_timestamp,
     });
