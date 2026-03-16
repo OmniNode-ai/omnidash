@@ -99,7 +99,14 @@ describe('Canonical handler emit coverage', () => {
       const handlerRegex = new RegExp(`private ${handler}[\\s\\S]*?\\n  \\}`, 'm');
       const handlerBody = eventConsumerSource.match(handlerRegex);
       expect(handlerBody).not.toBeNull();
-      expect(handlerBody![0]).toContain(`this.emit('${expectedEvent}'`);
+      // emit may be single-line: this.emit('event', ...)
+      // or multi-line with validateBridgeEmit:
+      //   this.emit(
+      //     'event',
+      //     validateBridgeEmit(...)
+      //   )
+      const body = handlerBody![0].replace(/\s+/g, ' ');
+      expect(body).toContain(`this.emit( '${expectedEvent}'`);
     });
   }
 });
