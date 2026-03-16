@@ -139,7 +139,7 @@ export function transformNodeRegistryPayload(payload: NodeRegistryPayload): Dash
       n.metadata?.description ?? (capsList.length > 0 ? capsList.join(', ') : null);
     return {
       node_id: n.nodeId,
-      node_name: deriveNodeName(n.nodeId),
+      node_name: deriveNodeName(n.nodeId, n.metadata),
       node_description: description,
       node_type: n.nodeType,
       state: n.state,
