@@ -3766,7 +3766,7 @@ function transformPatlearnArtifact(row: PatternLearningArtifact) {
     signature: row.signature,
     metrics: row.metrics || {},
     metadata,
-    createdAt: row.createdAt.toISOString(),
+    createdAt: row.createdAt?.toISOString() ?? new Date().toISOString(),
     updatedAt: row.updatedAt?.toISOString() ?? null,
   };
 }
