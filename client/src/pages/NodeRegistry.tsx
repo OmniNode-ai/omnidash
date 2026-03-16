@@ -472,7 +472,7 @@ function NodesTab({
       <DetailSheet
         open={isPanelOpen}
         onOpenChange={setIsPanelOpen}
-        title={selectedNode ? deriveNodeName(selectedNode.nodeId) : 'Node Details'}
+        title={selectedNode ? deriveNodeName(selectedNode.nodeId, selectedNode.metadata) : 'Node Details'}
         subtitle={selectedNode?.nodeId}
       >
         {selectedNode && <NodeDetailContent node={selectedNode} />}

@@ -294,6 +294,7 @@ export interface NodeMetadata {
   region?: string;
   cluster?: string;
   description?: string;
+  node_name?: string;
   priority?: number;
 }
 
