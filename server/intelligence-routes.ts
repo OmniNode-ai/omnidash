@@ -3760,14 +3760,14 @@ function transformPatlearnArtifact(row: PatternLearningArtifact) {
     patternType: row.patternType,
     language: row.language,
     lifecycleState: row.lifecycleState,
-    stateChangedAt: row.stateChangedAt,
+    stateChangedAt: row.stateChangedAt?.toISOString() ?? null,
     compositeScore,
     scoringEvidence: row.scoringEvidence,
     signature: row.signature,
     metrics: row.metrics || {},
     metadata,
-    createdAt: row.createdAt,
-    updatedAt: row.updatedAt,
+    createdAt: row.createdAt?.toISOString() ?? new Date().toISOString(),
+    updatedAt: row.updatedAt?.toISOString() ?? null,
   };
 }
 
