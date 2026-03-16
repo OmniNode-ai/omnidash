@@ -294,7 +294,7 @@ export interface NodeMetadata {
   region?: string;
   cluster?: string;
   description?: string;
-  node_name?: string;
+  node_name?: string; // no-migration: OMN-5179 display-only field, not stored in DB
   priority?: number;
 }
 
