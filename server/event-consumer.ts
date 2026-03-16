@@ -3383,6 +3383,20 @@ export class EventConsumer extends EventEmitter {
 
     this.canonicalNodes.set(payload.node_id, node);
 
+    // Emit state change so Registration Events feed gets populated (OMN-5132)
+    const previousState = existing?.state;
+    if (previousState && previousState !== resolvedState) {
+      this.emit('nodeStateChangeUpdate', {
+        node_id: payload.node_id,
+        nodeId: payload.node_id,
+        previousState: previousState,
+        previous_state: previousState,
+        newState: resolvedState,
+        new_state: resolvedState,
+        emitted_at: envelope_timestamp,
+      });
+    }
+
     // Sync into legacy registeredNodes so getRegisteredNodes() reflects this update
     this.syncCanonicalToRegistered(this.canonicalNodes.get(payload.node_id)!);
 
