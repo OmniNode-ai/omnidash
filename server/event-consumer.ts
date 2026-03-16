@@ -136,6 +136,14 @@ import { statusProjection } from './projections/status-projection';
 import { emitStatusInvalidate } from './status-events';
 // Kafka topic preflight: crash-loop on missing required topics (OMN-4607)
 import { assertTopicsExist } from './lib/kafka-topic-preflight';
+// Bridge event schema validation (OMN-5163)
+import {
+  BridgeNodeIntrospectionSchema,
+  BridgeNodeHeartbeatSchema,
+  BridgeNodeStateChangeSchema,
+  BridgeNodeBecameActiveSchema,
+  validateBridgeEmit,
+} from '@shared/schemas/bridge-events';
 
 const isTestEnv = process.env.VITEST === 'true' || process.env.NODE_ENV === 'test';
 const DEBUG_CANONICAL_EVENTS = process.env.DEBUG_CANONICAL_EVENTS === 'true' || isTestEnv;
@@ -3245,7 +3253,10 @@ export class EventConsumer extends EventEmitter {
         cpuUsagePercent: payload.cpu_usage_percent ?? 0,
         createdAt: new Date(emittedAtMs),
       };
-      this.emit('nodeHeartbeatUpdate', newNodeHeartbeatEvent);
+      this.emit(
+        'nodeHeartbeatUpdate',
+        validateBridgeEmit(BridgeNodeHeartbeatSchema, newNodeHeartbeatEvent, 'nodeHeartbeatUpdate')
+      );
 
       // Emit dashboard event so newly discovered nodes appear immediately
       this.emit('nodeRegistryUpdate', this.getRegisteredNodes());
@@ -3287,7 +3298,10 @@ export class EventConsumer extends EventEmitter {
       cpuUsagePercent: payload.cpu_usage_percent ?? 0,
       createdAt: new Date(emittedAtMs),
     };
-    this.emit('nodeHeartbeatUpdate', heartbeatEvent);
+    this.emit(
+      'nodeHeartbeatUpdate',
+      validateBridgeEmit(BridgeNodeHeartbeatSchema, heartbeatEvent, 'nodeHeartbeatUpdate')
+    );
 
     // Emit dashboard event for WebSocket broadcast
     this.emit('nodeRegistryUpdate', this.getRegisteredNodes());
@@ -3386,12 +3400,19 @@ export class EventConsumer extends EventEmitter {
     // Emit state change so Registration Events feed gets populated (OMN-5132)
     const previousState = existing?.state;
     if (previousState && previousState !== resolvedState) {
-      this.emit('nodeStateChangeUpdate', {
-        node_id: payload.node_id,
-        previous_state: previousState,
-        new_state: resolvedState,
-        emitted_at: envelope_timestamp,
-      });
+      this.emit(
+        'nodeStateChangeUpdate',
+        validateBridgeEmit(
+          BridgeNodeStateChangeSchema,
+          {
+            node_id: payload.node_id,
+            previous_state: previousState,
+            new_state: resolvedState,
+            emitted_at: envelope_timestamp,
+          },
+          'nodeStateChangeUpdate'
+        )
+      );
     }
 
     // Sync into legacy registeredNodes so getRegisteredNodes() reflects this update
@@ -3399,18 +3420,25 @@ export class EventConsumer extends EventEmitter {
 
     // Compatibility bridge: emit granular introspection event so the projection's
     // handleIntrospection() processes this node with full state resolution
-    this.emit('nodeIntrospectionUpdate', {
-      node_id: payload.node_id,
-      node_type: payload.node_type ?? 'COMPUTE',
-      version: nodeVersion ?? '1.0.0',
-      current_state: resolvedState,
-      capabilities: payload.capabilities ?? [],
-      metadata: {},
-      endpoints: {},
-      reason: null,
-      event_bus: {},
-      emitted_at: envelope_timestamp,
-    });
+    this.emit(
+      'nodeIntrospectionUpdate',
+      validateBridgeEmit(
+        BridgeNodeIntrospectionSchema,
+        {
+          node_id: payload.node_id,
+          node_type: payload.node_type ?? 'COMPUTE',
+          version: nodeVersion ?? '1.0.0',
+          current_state: resolvedState,
+          capabilities: payload.capabilities ?? [],
+          metadata: {},
+          endpoints: {},
+          reason: null,
+          event_bus: {},
+          emitted_at: envelope_timestamp,
+        },
+        'nodeIntrospectionUpdate'
+      )
+    );
 
     // Emit dashboard event for WebSocket broadcast
     this.emit('nodeRegistryUpdate', this.getRegisteredNodes());
@@ -3460,11 +3488,18 @@ export class EventConsumer extends EventEmitter {
 
     // Emit state change event for the projection bridge (server/index.ts)
     // so NodeRegistryProjection.handleNodeBecameActive() is invoked.
-    this.emit('nodeBecameActive', {
-      node_id: nodeId,
-      capabilities: payload.capabilities,
-      emitted_at: envelope_timestamp,
-    });
+    this.emit(
+      'nodeBecameActive',
+      validateBridgeEmit(
+        BridgeNodeBecameActiveSchema,
+        {
+          node_id: nodeId,
+          capabilities: payload.capabilities,
+          emitted_at: envelope_timestamp,
+        },
+        'nodeBecameActive'
+      )
+    );
     this.emit('nodeRegistryUpdate', this.getRegisteredNodes());
 
     if (DEBUG_CANONICAL_EVENTS) {
