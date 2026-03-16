@@ -476,6 +476,7 @@ export interface CanonicalOnexNode {
   capabilities?: Record<string, unknown>;
   activated_at?: number;
   last_heartbeat_at?: number;
+  last_introspection_at?: number;
   last_event_at: number;
   offline_at?: number;
 }
@@ -3220,6 +3221,7 @@ export class EventConsumer extends EventEmitter {
       this.canonicalNodes.set(payload.node_id, {
         node_id: payload.node_id,
         state: 'PENDING',
+        node_type: payload.node_type,
         last_heartbeat_at: emittedAtMs,
         last_event_at: emittedAtMs,
       });
@@ -3257,6 +3259,7 @@ export class EventConsumer extends EventEmitter {
     // Update heartbeat timestamp (immutable update)
     this.canonicalNodes.set(payload.node_id, {
       ...node,
+      node_type: payload.node_type ?? node.node_type,
       last_heartbeat_at: emittedAtMs,
       last_event_at: emittedAtMs,
     });
@@ -3334,7 +3337,7 @@ export class EventConsumer extends EventEmitter {
     const emittedAtMs = new Date(envelope_timestamp).getTime();
 
     const existing = this.canonicalNodes.get(payload.node_id);
-    if (existing && !this.shouldProcess(existing, emittedAtMs)) {
+    if (existing && emittedAtMs <= (existing.last_introspection_at ?? 0)) {
       if (DEBUG_CANONICAL_EVENTS) {
         intentLogger.debug(`Stale node-introspection event, skipping: ${payload.node_id}`);
       }
@@ -3365,6 +3368,7 @@ export class EventConsumer extends EventEmitter {
           node_type: payload.node_type ?? existing.node_type,
           node_version: nodeVersion ?? existing.node_version,
           capabilities: payload.capabilities || existing.capabilities,
+          last_introspection_at: emittedAtMs,
           last_event_at: emittedAtMs,
         }
       : {
@@ -3373,6 +3377,7 @@ export class EventConsumer extends EventEmitter {
           node_type: payload.node_type,
           node_version: nodeVersion,
           capabilities: payload.capabilities,
+          last_introspection_at: emittedAtMs,
           last_event_at: emittedAtMs,
         };
 
