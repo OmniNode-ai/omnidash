@@ -73,6 +73,30 @@ describe('bus-config', () => {
     expect(() => resolveBrokers()).toThrow('KAFKA_BOOTSTRAP_SERVERS');
   });
 
+  // Test 5b: Throws when both vars are empty strings (OMN-5181 — CI sets KAFKA_BROKERS= to disable Kafka)
+  it('throws when both vars are empty strings', async () => {
+    process.env.KAFKA_BOOTSTRAP_SERVERS = '';
+    process.env.KAFKA_BROKERS = '';
+    const { resolveBrokers } = await loadBusConfig();
+    expect(() => resolveBrokers()).toThrow('KAFKA_BOOTSTRAP_SERVERS');
+  });
+
+  // Test 5c: getBrokerString returns 'not configured' for empty strings (OMN-5181)
+  it("getBrokerString returns 'not configured' when vars are empty", async () => {
+    process.env.KAFKA_BOOTSTRAP_SERVERS = '';
+    process.env.KAFKA_BROKERS = '';
+    const { getBrokerString } = await loadBusConfig();
+    expect(getBrokerString()).toBe('not configured');
+  });
+
+  // Test 5d: Falls back to KAFKA_BROKERS when KAFKA_BOOTSTRAP_SERVERS is empty string
+  it('falls back to KAFKA_BROKERS when KAFKA_BOOTSTRAP_SERVERS is empty string', async () => {
+    process.env.KAFKA_BOOTSTRAP_SERVERS = '';
+    process.env.KAFKA_BROKERS = 'localhost:19092';
+    const { resolveBrokers } = await loadBusConfig();
+    expect(resolveBrokers()).toEqual(['localhost:19092']);
+  });
+
   // Test 6: getBusMode local
   it("getBusMode('localhost:19092') returns 'local'", async () => {
     const { getBusMode } = await loadBusConfig();

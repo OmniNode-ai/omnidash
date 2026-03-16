@@ -189,12 +189,69 @@ jobs:
       - name: Check projection-migration coupling
         run: npx tsx scripts/check-migration-required.ts --ci
 
+  # OMN-5181: Smoke-test every dashboard route after a production build.
+  # Catches SSR/render crashes, missing imports, and broken pages before merge.
+  smoke-test:
+    name: Route Smoke Test
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v6
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: '22'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build
+        run: npm run build
+
+      - name: Start server and run smoke test
+        run: |
+          # Start production server in background (no Kafka/DB needed for route rendering)
+          KAFKA_BROKERS= \
+          KAFKA_BOOTSTRAP_SERVERS= \
+          OMNIDASH_ANALYTICS_DB_URL= \
+          ENABLE_REAL_TIME_EVENTS=false \
+          SESSION_SECRET=ci-smoke-test-secret \
+          PORT=3000 \
+          NODE_ENV=production \
+          node dist/index.js &
+          SERVER_PID=$!
+
+          # Wait for server to accept connections (up to 60s)
+          for i in $(seq 1 60); do
+            if curl -s -o /dev/null http://localhost:3000/; then
+              echo "Server ready after ${i}s"
+              break
+            fi
+            if [ "$i" = "60" ]; then
+              echo "::error::Server failed to start within 60s"
+              kill $SERVER_PID 2>/dev/null || true
+              exit 1
+            fi
+            sleep 1
+          done
+
+          # Run smoke test
+          npm run test:smoke
+          RESULT=$?
+
+          # Cleanup
+          kill $SERVER_PID 2>/dev/null || true
+          exit $RESULT
+        timeout-minutes: 5
+
   # Aggregator job: branch protection requires this single check name
   # instead of individual matrix entries (which change when versions update).
   tests-gate:
     name: CI Tests Gate
     runs-on: ubuntu-latest
-    needs: [test, arch-guard, migration-integration]
+    needs: [test, arch-guard, migration-integration, smoke-test]
     if: always()
     steps:
       - name: Check test results
@@ -202,6 +259,7 @@ jobs:
           TEST_RESULT: ${{ needs.test.result }}
           ARCH_RESULT: ${{ needs.arch-guard.result }}
           MIGRATION_RESULT: ${{ needs.migration-integration.result }}
+          SMOKE_RESULT: ${{ needs.smoke-test.result }}
         run: |
           FAILED=0
           if [ "$TEST_RESULT" != "success" ]; then
@@ -219,8 +277,13 @@ jobs:
             echo "Migration result: $MIGRATION_RESULT"
             FAILED=1
           fi
+          if [ "$SMOKE_RESULT" != "success" ]; then
+            echo "::error::Route smoke test failed -- one or more dashboard pages returned non-2xx"
+            echo "Smoke test result: $SMOKE_RESULT"
+            FAILED=1
+          fi
           if [ "$FAILED" = "1" ]; then exit 1; fi
-          echo "All checks passed (tests: $TEST_RESULT, arch-guard: $ARCH_RESULT, migration: $MIGRATION_RESULT)"
+          echo "All checks passed (tests: $TEST_RESULT, arch-guard: $ARCH_RESULT, migration: $MIGRATION_RESULT, smoke: $SMOKE_RESULT)"
 
   # ⚠️ Do not rename — branch protection requires this exact check name
   ci-summary:
