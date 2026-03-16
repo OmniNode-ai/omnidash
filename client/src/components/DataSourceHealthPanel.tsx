@@ -16,7 +16,7 @@ import { Activity, AlertTriangle, CheckCircle, MinusCircle, WifiOff, XCircle } f
 // Types (mirrors server/health-data-sources-routes.ts)
 // ============================================================================
 
-export type DataSourceStatus = 'live' | 'mock' | 'error' | 'offline' | 'expected_idle_local';
+export type DataSourceStatus = 'live' | 'mock' | 'error' | 'offline' | 'expected_idle_local' | 'not_applicable';
 
 export interface DataSourceInfo {
   status: DataSourceStatus;
@@ -32,6 +32,7 @@ export interface DataSourcesHealthResponse {
     error: number;
     offline: number;
     expected_idle_local: number;
+    not_applicable: number;
   };
   checkedAt: string;
 }
@@ -78,7 +79,7 @@ const REASON_LABELS: Record<string, string> = {
   upstream_service_offline: 'Upstream service not running',
   upstream_never_emitted: 'Upstream producer has never emitted',
   probe_disabled: 'Probe disabled (set ENABLE_ENV_SYNC_PROBE=true)',
-  infisical_disabled: 'Infisical opt-out (INFISICAL_ADDR not set)',
+  infisical_disabled: 'Infisical not configured (opt-out)',
   sync_script_missing: 'sync-omnibase-env.py not on this host (OMN-3216)',
   sync_never_run: 'Sync script has never run',
   sync_stale: 'Last sync >1 h ago — no recent session start',
@@ -105,6 +106,8 @@ function StatusIcon({ status }: { status: DataSourceStatus }) {
       return <WifiOff className="w-4 h-4 text-slate-400" />;
     case 'expected_idle_local':
       return <MinusCircle className="w-4 h-4 text-blue-400" />;
+    case 'not_applicable':
+      return <MinusCircle className="w-4 h-4 text-gray-500/50" />;
     default:
       return <Activity className="w-4 h-4 text-gray-400" />;
   }
@@ -138,6 +141,12 @@ function StatusBadge({ status }: { status: DataSourceStatus }) {
       return (
         <Badge className="bg-blue-500/20 text-blue-400 border-blue-500/30 text-[10px]">
           Idle (local)
+        </Badge>
+      );
+    case 'not_applicable':
+      return (
+        <Badge className="bg-gray-500/10 text-gray-500 border-gray-500/20 text-[10px]">
+          N/A
         </Badge>
       );
     default:
@@ -194,6 +203,7 @@ function SummaryBar({
     error: number;
     offline: number;
     expected_idle_local: number;
+    not_applicable: number;
   };
 }) {
   // total from summary object — should equal Object.keys(dataSources).length;
@@ -227,6 +237,12 @@ function SummaryBar({
         <span className="flex items-center gap-1.5 text-blue-400">
           <MinusCircle className="w-3.5 h-3.5" />
           {summary.expected_idle_local} idle
+        </span>
+      )}
+      {summary.not_applicable > 0 && (
+        <span className="flex items-center gap-1.5 text-gray-500">
+          <MinusCircle className="w-3.5 h-3.5" />
+          {summary.not_applicable} n/a
         </span>
       )}
       <span className="text-muted-foreground text-xs ml-auto">{total} total sources</span>

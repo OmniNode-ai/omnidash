@@ -379,8 +379,48 @@ describe('GET /api/health/data-sources', () => {
       summary.mock +
       summary.error +
       (summary.offline ?? 0) +
-      (summary.expected_idle_local ?? 0);
+      (summary.expected_idle_local ?? 0) +
+      (summary.not_applicable ?? 0);
     expect(total).toBe(15);
+  });
+
+  it('reports envSync as not_applicable when INFISICAL_ADDR is empty', async () => {
+    const original = process.env.INFISICAL_ADDR;
+    delete process.env.INFISICAL_ADDR;
+
+    vi.mocked(projectionService.getView).mockReturnValue(null);
+    setupEmptyDb();
+
+    const app = makeApp();
+    const res = await request(app).get('/api/health/data-sources');
+
+    expect(res.body.dataSources.envSync.status).toBe('not_applicable');
+    expect(res.body.dataSources.envSync.reason).toBe('infisical_disabled');
+
+    if (original !== undefined) process.env.INFISICAL_ADDR = original;
+    else delete process.env.INFISICAL_ADDR;
+  });
+
+  it('reports topicParity as offline when consumer is not running', async () => {
+    const { readModelConsumer } = await import('../read-model-consumer');
+    vi.mocked(readModelConsumer.getStats).mockReturnValue({
+      isRunning: false,
+      eventsProjected: 0,
+      errorsCount: 0,
+      lastProjectedAt: null,
+      topicStats: {},
+      catalogSource: 'static',
+      unsupportedCatalogTopics: [],
+    });
+
+    vi.mocked(projectionService.getView).mockReturnValue(null);
+    setupEmptyDb();
+
+    const app = makeApp();
+    const res = await request(app).get('/api/health/data-sources');
+
+    expect(res.body.dataSources.topicParity.status).toBe('offline');
+    expect(res.body.dataSources.topicParity.reason).toBe('consumer_not_running');
   });
 
   it('includes all 15 expected data sources', async () => {
