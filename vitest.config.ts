@@ -8,6 +8,8 @@ export default defineConfig({
     globals: true,
     environment: 'jsdom',
     setupFiles: ['./client/src/tests/setup.ts'],
+    // Ensure omnidash_analytics_test DB exists and is migrated before tests run
+    globalSetup: ['./vitest.global-setup.ts'],
     // Global teardown to ensure clean exit in CI
     globalTeardown: './client/src/tests/teardown.ts',
     // Test timeout to prevent hanging tests
