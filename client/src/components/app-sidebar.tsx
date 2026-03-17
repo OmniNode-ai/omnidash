@@ -19,6 +19,7 @@ import {
   ShieldAlert,
   Cpu,
   GitFork,
+  GitCommit,
   Target,
   ClipboardCheck,
   GitPullRequest,
