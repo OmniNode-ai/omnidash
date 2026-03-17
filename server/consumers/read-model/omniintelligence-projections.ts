@@ -17,11 +17,13 @@ import {
   patternLearningArtifacts,
   planReviewRuns,
   intentDriftEvents,
+  routingFeedbackEvents,
 } from '@shared/intelligence-schema';
 import type {
   InsertLlmCostAggregate,
   InsertPatternLearningArtifact,
   InsertIntentDrift,
+  InsertRoutingFeedbackEvent,
 } from '@shared/intelligence-schema';
 import {
   TOPIC_OMNIINTELLIGENCE_LLM_CALL_COMPLETED,
@@ -32,6 +34,7 @@ import {
   SUFFIX_INTELLIGENCE_RUN_EVALUATED,
   SUFFIX_INTELLIGENCE_INTENT_DRIFT_DETECTED,
   SUFFIX_INTELLIGENCE_CI_DEBUG_ESCALATION,
+  SUFFIX_INTELLIGENCE_ROUTING_FEEDBACK_PROCESSED,
 } from '@shared/topics';
 import {
   PatternProjectionEventSchema,
@@ -52,6 +55,7 @@ const OMNIINTELLIGENCE_TOPICS = new Set([
   SUFFIX_INTELLIGENCE_RUN_EVALUATED,
   SUFFIX_INTELLIGENCE_INTENT_DRIFT_DETECTED,
   SUFFIX_INTELLIGENCE_CI_DEBUG_ESCALATION,
+  SUFFIX_INTELLIGENCE_ROUTING_FEEDBACK_PROCESSED,
 ]);
 
 export class OmniintelligenceProjectionHandler implements ProjectionHandler {
@@ -93,6 +97,8 @@ export class OmniintelligenceProjectionHandler implements ProjectionHandler {
         return this.projectIntentDriftDetected(data, context);
       case SUFFIX_INTELLIGENCE_CI_DEBUG_ESCALATION:
         return this.projectCiDebugEscalation(data, fallbackId, context);
+      case SUFFIX_INTELLIGENCE_ROUTING_FEEDBACK_PROCESSED:
+        return this.projectRoutingFeedbackProcessed(data, context);
       default:
         return false;
     }
@@ -671,6 +677,69 @@ export class OmniintelligenceProjectionHandler implements ProjectionHandler {
         console.warn(
           '[ReadModelConsumer] ci_debug_escalation_events table not yet created -- ' +
             'run migrations to enable CI debug escalation projection'
+        );
+        return true;
+      }
+      throw err;
+    }
+
+    return true;
+  }
+
+  // -------------------------------------------------------------------------
+  // Routing feedback processed -> routing_feedback_events (OMN-5284)
+  // -------------------------------------------------------------------------
+
+  private async projectRoutingFeedbackProcessed(
+    data: Record<string, unknown>,
+    context: ProjectionContext
+  ): Promise<boolean> {
+    const { db } = context;
+    if (!db) return false;
+
+    /** Parse a numeric field, returning null for NaN/Infinity. */
+    const safeNum = (v: unknown): number | null => {
+      const n = Number(v);
+      return Number.isFinite(n) ? n : null;
+    };
+
+    const agentId = String(data.agent_id ?? data.agentId ?? '').trim();
+    const feedbackType = String(data.feedback_type ?? data.feedbackType ?? '').trim();
+    const originalRoute = String(data.original_route ?? data.originalRoute ?? '').trim();
+
+    if (!agentId || !feedbackType || !originalRoute) {
+      console.warn(
+        '[ReadModelConsumer] routing-feedback-processed missing required fields (agent_id, feedback_type, original_route)'
+      );
+      return true;
+    }
+
+    const row: InsertRoutingFeedbackEvent = {
+      agentId,
+      feedbackType,
+      originalRoute,
+      correctedRoute:
+        data.corrected_route != null
+          ? String(data.corrected_route)
+          : data.correctedRoute != null
+            ? String(data.correctedRoute)
+            : null,
+      accuracyScore:
+        data.accuracy_score != null
+          ? safeNum(data.accuracy_score)
+          : data.accuracyScore != null
+            ? safeNum(data.accuracyScore)
+            : null,
+    };
+
+    try {
+      await db.insert(routingFeedbackEvents).values(row);
+      console.log(`[ReadModelConsumer] Projected routing-feedback for agent ${agentId}`);
+    } catch (err) {
+      if (isTableMissingError(err, 'routing_feedback_events')) {
+        console.warn(
+          '[ReadModelConsumer] routing_feedback_events table not yet created -- ' +
+            'run migrations to enable routing feedback projection'
         );
         return true;
       }

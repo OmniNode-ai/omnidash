@@ -366,6 +366,12 @@ export const SUFFIX_INTELLIGENCE_INTENT_DRIFT_DETECTED =
 export const SUFFIX_INTELLIGENCE_CI_DEBUG_ESCALATION =
   'onex.evt.omniintelligence.ci-debug-escalation.v1';
 
+/** Routing feedback processed event (OMN-5284).
+ * Emitted by omniintelligence after processing agent routing feedback.
+ * Consumed by the ReadModelConsumer to project into routing_feedback_events table. */
+export const SUFFIX_INTELLIGENCE_ROUTING_FEEDBACK_PROCESSED =
+  'onex.evt.omniintelligence.routing-feedback-processed.v1';
+
 /** Full topic string: plan review strategy run completed event.
  * Emitted by node_plan_reviewer_multi_compute (omniintelligence).
  * Consumed only by READ_MODEL_TOPICS in read-model-consumer.ts (OMN-3282). */
