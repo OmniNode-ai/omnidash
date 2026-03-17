@@ -13,31 +13,7 @@ import { TopicCatalogManager } from './topic-catalog-manager';
 import { loadManifestTopics } from './services/topic-manifest-loader';
 import { tryGetIntelligenceDb } from './storage';
 import { sql } from 'drizzle-orm';
-import {
-  OMNICLAUDE_AGENT_TOPICS,
-  TOPIC_OMNIINTELLIGENCE_LLM_CALL_COMPLETED,
-  SUFFIX_OMNICLAUDE_CONTEXT_ENRICHMENT,
-  SUFFIX_OMNICLAUDE_LLM_ROUTING_DECISION,
-  SUFFIX_OMNICLAUDE_TASK_DELEGATED,
-  SUFFIX_OMNICLAUDE_DELEGATION_SHADOW_COMPARISON,
-  SUFFIX_OMNICLAUDE_GATE_DECISION,
-  SUFFIX_OMNICLAUDE_EPIC_RUN_UPDATED,
-  SUFFIX_OMNICLAUDE_PR_WATCH_UPDATED,
-  SUFFIX_OMNICLAUDE_BUDGET_CAP_HIT,
-  SUFFIX_OMNICLAUDE_CIRCUIT_BREAKER_TRIPPED,
-  SUFFIX_MEMORY_INTENT_STORED,
-  SUFFIX_INTELLIGENCE_PATTERN_PROJECTION,
-  SUFFIX_INTELLIGENCE_PATTERN_LIFECYCLE_TRANSITIONED,
-  SUFFIX_INTELLIGENCE_PATTERN_LEARNING_CMD,
-  TOPIC_INTELLIGENCE_PLAN_REVIEW_STRATEGY_RUN_COMPLETED,
-  SUFFIX_OMNICLAUDE_PR_VALIDATION_ROLLUP,
-  SUFFIX_INTELLIGENCE_RUN_EVALUATED,
-  SUFFIX_OMNICLAUDE_CORRELATION_TRACE,
-  SUFFIX_OMNICLAUDE_SESSION_OUTCOME,
-  SUFFIX_OMNICLAUDE_PHASE_METRICS,
-  SUFFIX_OMNICLAUDE_DOD_VERIFY_COMPLETED,
-  SUFFIX_OMNICLAUDE_DOD_GUARD_FIRED,
-} from '@shared/topics';
+// OMN-5251: @shared/topics imports removed — topic list now driven by topics.yaml
 import { createProjectionHandlers, deterministicCorrelationId } from './consumers/read-model/index';
 import type { ProjectionHandler, ProjectionContext } from './consumers/read-model/index';
 
@@ -48,36 +24,23 @@ const RETRY_BASE_DELAY_MS = isTestEnv ? 20 : 2000;
 const RETRY_MAX_DELAY_MS = isTestEnv ? 200 : 30000;
 const MAX_RETRY_ATTEMPTS = isTestEnv ? 2 : 10;
 
-/** Topics this consumer subscribes to. Exported for regression testing (OMN-2760). */
-export const READ_MODEL_TOPICS = [
-  ...OMNICLAUDE_AGENT_TOPICS,
-  'onex.evt.omniclaude.pattern-enforcement.v1',
-  TOPIC_OMNIINTELLIGENCE_LLM_CALL_COMPLETED,
-  'onex.evt.omnibase-infra.baselines-computed.v1',
-  SUFFIX_OMNICLAUDE_CONTEXT_ENRICHMENT,
-  SUFFIX_OMNICLAUDE_LLM_ROUTING_DECISION,
-  SUFFIX_OMNICLAUDE_TASK_DELEGATED,
-  SUFFIX_OMNICLAUDE_DELEGATION_SHADOW_COMPARISON,
-  SUFFIX_OMNICLAUDE_GATE_DECISION,
-  SUFFIX_OMNICLAUDE_EPIC_RUN_UPDATED,
-  SUFFIX_OMNICLAUDE_PR_WATCH_UPDATED,
-  SUFFIX_OMNICLAUDE_BUDGET_CAP_HIT,
-  SUFFIX_OMNICLAUDE_CIRCUIT_BREAKER_TRIPPED,
-  SUFFIX_MEMORY_INTENT_STORED,
-  SUFFIX_INTELLIGENCE_PATTERN_PROJECTION,
-  SUFFIX_INTELLIGENCE_PATTERN_LIFECYCLE_TRANSITIONED,
-  SUFFIX_INTELLIGENCE_PATTERN_LEARNING_CMD,
-  TOPIC_INTELLIGENCE_PLAN_REVIEW_STRATEGY_RUN_COMPLETED,
-  SUFFIX_OMNICLAUDE_PR_VALIDATION_ROLLUP,
-  SUFFIX_INTELLIGENCE_RUN_EVALUATED,
-  SUFFIX_OMNICLAUDE_CORRELATION_TRACE,
-  SUFFIX_OMNICLAUDE_SESSION_OUTCOME,
-  SUFFIX_OMNICLAUDE_PHASE_METRICS,
-  SUFFIX_OMNICLAUDE_DOD_VERIFY_COMPLETED,
-  SUFFIX_OMNICLAUDE_DOD_GUARD_FIRED,
-] as const;
-
-type ReadModelTopic = (typeof READ_MODEL_TOPICS)[number];
+// Topics this consumer subscribes to.
+// OMN-5251: Single source of truth is now topics.yaml (loaded by topic-manifest-loader.ts).
+// READ_MODEL_TOPICS is derived from the manifest at module load time.
+// Fail-fast: if topics.yaml cannot be loaded, the process exits immediately.
+export const READ_MODEL_TOPICS: readonly string[] = (() => {
+  try {
+    return loadManifestTopics();
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err);
+    console.error(
+      `[ReadModelConsumer] FATAL: Failed to load topics.yaml — cannot start without topic manifest.\n` +
+        `  Error: ${msg}\n` +
+        `  Ensure topics.yaml exists and is valid YAML (checked paths: TOPICS_MANIFEST_PATH env, ./topics.yaml, /app/topics.yaml).`
+    );
+    process.exit(1);
+  }
+})();
 
 export interface ReadModelConsumerStats {
   isRunning: boolean;
@@ -161,22 +124,17 @@ export class ReadModelConsumer {
         await this.consumer.connect();
         console.log('[ReadModelConsumer] Connected to Kafka');
 
-        // Topic subscription (OMN-5029 -- manifest-driven, falls back to static list)
-        let finalTopics: string[];
-        try {
-          finalTopics = loadManifestTopics();
-          this.catalogSource = 'manifest' as 'catalog' | 'fallback';
-          this.stats.catalogSource = 'manifest' as typeof this.stats.catalogSource;
-          console.info(`[read-model] topic source: manifest (subscribed=${finalTopics.length})`);
-        } catch (manifestErr) {
-          console.warn(
-            '[ReadModelConsumer] Failed to load topics.yaml -- falling back:',
-            manifestErr instanceof Error ? manifestErr.message : manifestErr
-          );
-          finalTopics = [...READ_MODEL_TOPICS];
-          this.catalogSource = 'fallback';
-          this.stats.catalogSource = 'fallback';
-        }
+        // -----------------------------------------------------------------------
+        // Topic subscription (OMN-5251 — topics.yaml is the single source of truth)
+        //
+        // READ_MODEL_TOPICS is populated from topics.yaml at module load time.
+        // No fallback: if topics.yaml is missing or invalid, the process exits
+        // at import time before reaching this code path.
+        // -----------------------------------------------------------------------
+        const finalTopics: string[] = [...READ_MODEL_TOPICS];
+        this.catalogSource = 'manifest' as 'catalog' | 'fallback';
+        this.stats.catalogSource = 'manifest' as typeof this.stats.catalogSource;
+        console.info(`[read-model] topic source: manifest (subscribed=${finalTopics.length})`);
 
         const subscribedTopics: string[] = [];
         const skippedTopics: string[] = [];
@@ -288,7 +246,11 @@ export class ReadModelConsumer {
     }
   }
 
-  /** @deprecated (OMN-5030) Use manifest-driven loading. Retained for legacy tests. */
+  /**
+   * @deprecated (OMN-5251) Legacy catalog fetch — no longer used on primary path.
+   * Topic truth is now topics.yaml (loaded at module init via READ_MODEL_TOPICS).
+   * Retained only for fetchCatalogTopics() in legacy code paths.
+   */
   private async fetchCatalogTopics(): Promise<string[]> {
     this.catalogSource = 'fallback';
     this.stats.catalogSource = 'fallback';

@@ -1,11 +1,11 @@
 /**
- * Tests for TopicManifestLoader (OMN-5028)
+ * Tests for TopicManifestLoader (OMN-5028, OMN-5251)
  *
  * Verifies:
  *   1. Manifest loads from project root (topics.yaml)
  *   2. Returns correct topic strings
  *   3. Validates manifest schema (rejects invalid)
- *   4. Parity: manifest topics match READ_MODEL_TOPICS from shared/topics.ts
+ *   4. READ_MODEL_TOPICS is identical to manifest (OMN-5251: manifest is sole source)
  */
 
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
@@ -15,7 +15,6 @@ import {
   loadManifestTopics,
   resetManifestCache,
 } from '../services/topic-manifest-loader';
-import { READ_MODEL_TOPICS } from '../../server/read-model-consumer';
 
 describe('TopicManifestLoader', () => {
   beforeEach(() => {
@@ -67,7 +66,7 @@ describe('TopicManifestLoader', () => {
   });
 });
 
-describe('TopicManifest parity with READ_MODEL_TOPICS', () => {
+describe('OMN-5251: READ_MODEL_TOPICS is derived from topics.yaml manifest', () => {
   beforeEach(() => {
     resetManifestCache();
   });
@@ -77,25 +76,21 @@ describe('TopicManifest parity with READ_MODEL_TOPICS', () => {
     delete process.env.TOPICS_MANIFEST_PATH;
   });
 
-  it('manifest contains all READ_MODEL_TOPICS entries', () => {
-    process.env.TOPICS_MANIFEST_PATH = path.resolve(__dirname, '../../topics.yaml');
-
-    const manifestTopics = new Set(loadManifestTopics());
-    const readModelTopics = [...READ_MODEL_TOPICS];
-
-    const missing = readModelTopics.filter((t) => !manifestTopics.has(t));
-
-    expect(missing).toEqual([]);
-  });
-
-  it('READ_MODEL_TOPICS contains all manifest entries', () => {
+  it('READ_MODEL_TOPICS matches manifest exactly', async () => {
     process.env.TOPICS_MANIFEST_PATH = path.resolve(__dirname, '../../topics.yaml');
 
     const manifestTopics = loadManifestTopics();
-    const readModelSet = new Set(READ_MODEL_TOPICS as readonly string[]);
+    // READ_MODEL_TOPICS is populated from topics.yaml at module load time
+    const { READ_MODEL_TOPICS } = await import('../read-model-consumer');
 
-    const extra = manifestTopics.filter((t) => !readModelSet.has(t));
+    // Both should contain exactly the same topics
+    expect([...READ_MODEL_TOPICS].sort()).toEqual([...manifestTopics].sort());
+  });
 
-    expect(extra).toEqual([]);
+  it('manifest has at least one topic', () => {
+    process.env.TOPICS_MANIFEST_PATH = path.resolve(__dirname, '../../topics.yaml');
+
+    const topics = loadManifestTopics();
+    expect(topics.length).toBeGreaterThan(0);
   });
 });
