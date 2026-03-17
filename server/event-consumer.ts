@@ -1,10 +1,10 @@
 /**
  * EventConsumer — Thin Kafka consumer orchestrator [OMN-5191]
  *
- * Domain handlers live in server/consumers/domain/.
- * Preload/buffer logic in server/consumers/event-preload.ts.
- * State helpers in server/consumers/consumer-state-helpers.ts.
- * Types re-exported for backward compatibility.
+ * Domain handlers: server/consumers/domain/
+ * Preload/buffer: server/consumers/event-preload.ts
+ * State helpers: server/consumers/consumer-state-helpers.ts
+ * Singleton/proxy: server/consumers/consumer-lifecycle.ts
  */
 
 import { Kafka, Consumer, Producer, KafkaMessage } from 'kafkajs';
@@ -16,7 +16,6 @@ import type { EventBusEvent } from './event-bus-data-source';
 import { buildSubscriptionTopics, extractSuffix, SUFFIX_NODE_HEARTBEAT } from '@shared/topics';
 import { EventEnvelopeSchema, OFFLINE_NODE_TTL_MS, CLEANUP_INTERVAL_MS } from '@shared/schemas';
 import type { EventEnvelope } from '@shared/schemas';
-import { TopicCatalogManager } from './topic-catalog-manager';
 import { getTopicRegistryService } from './services/topic-registry-service';
 import {
   TopicDiscoveryCoordinator,
@@ -25,8 +24,6 @@ import {
 import { ExtractionMetricsAggregator } from './extraction-aggregator';
 import { MonotonicMergeTracker, extractEventTimeMs, parseOffsetAsSeq } from './monotonic-merge';
 import { assertTopicsExist } from './lib/kafka-topic-preflight';
-
-// Domain handler registry
 import {
   createDomainHandlers,
   intentLogger,
@@ -37,9 +34,7 @@ import type {
   DomainHandler,
   ConsumerContext,
   CanonicalOnexNode,
-  OnexNodeState,
   RegisteredNode,
-  NodeType,
   AgentAction,
   RoutingDecision,
   TransformationEvent,
@@ -49,8 +44,6 @@ import type {
   InternalIntentClassifiedEvent,
   AgentMetrics,
 } from './consumers/domain';
-
-// Extracted helpers
 import {
   captureLiveEventBusEvent,
   preloadEventsFromDatabase,
@@ -69,6 +62,7 @@ import {
   computeCanonicalNodeStats,
   pruneOldData,
 } from './consumers/consumer-state-helpers';
+import { fetchCatalogTopics as _fetchCatalog } from './consumers/consumer-lifecycle';
 
 // Re-export ALL types for backward compatibility
 export type {
@@ -99,6 +93,14 @@ export type {
 } from './consumers/domain';
 export { normalizeActionFields };
 
+// Re-export singleton/proxy from lifecycle module
+export {
+  getEventConsumer,
+  isEventConsumerAvailable,
+  getEventConsumerError,
+  createEventConsumerProxy,
+} from './consumers/consumer-lifecycle';
+
 const isTestEnv = process.env.VITEST === 'true' || process.env.NODE_ENV === 'test';
 const LOG_LEVELS = { debug: 0, info: 1, warn: 2, error: 3 } as const;
 const RETRY_BASE_DELAY_MS = isTestEnv ? 20 : 1000;
@@ -106,7 +108,6 @@ const RETRY_MAX_DELAY_MS = isTestEnv ? 200 : 30000;
 const DEFAULT_MAX_RETRY_ATTEMPTS = 5;
 const PERFORMANCE_METRICS_BUFFER_SIZE = 200;
 const MAX_TIMESTAMPS_PER_CATEGORY = 1000;
-
 const safeInt = (envVar: string, fallback: number) => {
   const p = parseInt(process.env[envVar] || String(fallback), 10);
   return Number.isFinite(p) && p >= 0 ? p : fallback;
@@ -115,7 +116,6 @@ const PRELOAD_WINDOW_MINUTES = safeInt('PRELOAD_WINDOW_MINUTES', 1440);
 const MAX_PRELOAD_EVENTS = safeInt('MAX_PRELOAD_EVENTS', 5000);
 const ENABLE_BACKFILL = process.env.ENABLE_BACKFILL === 'true';
 const BACKFILL_MAX_EVENTS = safeInt('BACKFILL_MAX_EVENTS', 2000);
-
 const TOPIC = {
   NODE_HEARTBEAT: SUFFIX_NODE_HEARTBEAT,
   REQUEST_INTROSPECTION: 'onex.cmd.platform.request-introspection.v1',
@@ -190,7 +190,7 @@ export class EventConsumer extends EventEmitter {
   private catalogTopics: string[] = [];
   private catalogWarnings: string[] = [];
   private catalogSource: 'catalog' | 'fallback' = 'fallback';
-  private catalogManager: TopicCatalogManager | null = null;
+  private catalogManager: import('./topic-catalog-manager').TopicCatalogManager | null = null;
   private topicSource: 'registry' | 'catalog' | 'fallback' = 'fallback';
   private discoveryCoordinator: TopicDiscoveryCoordinator | null = null;
   private preloadedEventBusEvents: EventBusEvent[] = [];
@@ -397,7 +397,6 @@ export class EventConsumer extends EventEmitter {
           }
         });
       }
-
       const useRegistryDiscovery = process.env.OMNIDASH_USE_REGISTRY_DISCOVERY !== 'false';
       let subscriptionTopics: string[];
       if (useRegistryDiscovery) {
@@ -412,9 +411,16 @@ export class EventConsumer extends EventEmitter {
           this.topicSource = 'fallback';
         }
       } else {
-        subscriptionTopics = await this.fetchCatalogTopics();
+        subscriptionTopics = await _fetchCatalog({
+          catalogTopics: this.catalogTopics,
+          catalogWarnings: this.catalogWarnings,
+          catalogSource: this.catalogSource,
+          catalogManager: this.catalogManager,
+          emit: (e, ...a) => this.emit(e, ...a),
+          handleCatalogChanged: (a, r) => this.handleCatalogChanged(a, r),
+        });
+        this.catalogSource = 'catalog';
       }
-
       if (!isTestEnv) {
         const preflightAdmin = this.kafka.admin();
         await assertTopicsExist(preflightAdmin, [
@@ -422,19 +428,16 @@ export class EventConsumer extends EventEmitter {
           'onex.evt.omniclaude.skill-completed.v1',
         ]);
       }
-
       await this.consumer.subscribe({ topics: subscriptionTopics, fromBeginning: false });
       intentLogger.info(
         `Kafka subscription started (source=${this.topicSource}, topics=${subscriptionTopics.length})`
       );
-
       this.isRunning = true;
       this.pruneTimer = setInterval(() => this.pruneOldData(), this.PRUNE_INTERVAL_MS);
       this.canonicalNodeCleanupInterval = setInterval(
         () => this.cleanupStaleCanonicalNodes(),
         CLEANUP_INTERVAL_MS
       );
-
       this.runConsumerLoop(subscriptionTopics);
     } catch (error) {
       console.error('Failed to start event consumer:', error);
@@ -506,7 +509,6 @@ export class EventConsumer extends EventEmitter {
               consumerCrashed = true;
             }
           });
-
           if (isTestEnv) break;
           while (this.isRunning && !consumerCrashed) {
             await new Promise((resolve) => setTimeout(resolve, 1000));
@@ -546,15 +548,13 @@ export class EventConsumer extends EventEmitter {
         backfillMaxEvents: BACKFILL_MAX_EVENTS,
       });
       this.preloadedEventBusEvents = result.preloadedEvents;
-
       let injected = 0;
       for (const row of result.playbackRows) {
         try {
           const event =
             typeof row.payload === 'string' ? JSON.parse(row.payload) : row.payload || {};
-          const topic = extractSuffix(row.topic);
           this.injectPlaybackEvent(
-            topic,
+            extractSuffix(row.topic),
             event as Record<string, unknown>,
             row.partition ?? undefined
           );
@@ -563,7 +563,6 @@ export class EventConsumer extends EventEmitter {
           /* skip */
         }
       }
-
       intentLogger.info(
         `Preload complete: Injected ${injected}/${result.playbackRows.length} events in ${Date.now() - preloadStart}ms`
       );
@@ -663,8 +662,9 @@ export class EventConsumer extends EventEmitter {
   }
   getActionsByAgent(agentName: string, timeWindow = '1h') {
     const windowMs = timeWindow === '24h' ? 86400000 : timeWindow === '7d' ? 604800000 : 3600000;
-    const since = new Date(Date.now() - windowMs);
-    return this.recentActions.filter((a) => a.agentName === agentName && a.createdAt >= since);
+    return this.recentActions.filter(
+      (a) => a.agentName === agentName && a.createdAt >= new Date(Date.now() - windowMs)
+    );
   }
   getRoutingDecisions(filters?: { agent?: string; minConfidence?: number }) {
     let d = this.routingDecisions;
@@ -762,7 +762,6 @@ export class EventConsumer extends EventEmitter {
     this.arrivalSeq = 0;
     this.emit('stateReset');
   }
-
   snapshotState(): void {
     this.stateSnapshot = {
       recentActions: [...this.recentActions],
@@ -781,7 +780,6 @@ export class EventConsumer extends EventEmitter {
     };
     this.emit('stateSnapshotted');
   }
-
   restoreState(): boolean {
     const s = this.stateSnapshot as any;
     if (!s) return false;
@@ -799,7 +797,6 @@ export class EventConsumer extends EventEmitter {
     this.emit('stateRestored');
     return true;
   }
-
   hasStateSnapshot(): boolean {
     return this.stateSnapshot !== null;
   }
@@ -842,40 +839,6 @@ export class EventConsumer extends EventEmitter {
     }
   }
 
-  private async fetchCatalogTopics(): Promise<string[]> {
-    this.catalogSource = 'fallback';
-    this.catalogTopics = [];
-    this.catalogWarnings = [];
-    try {
-      const manager = new TopicCatalogManager();
-      this.catalogManager = manager;
-      return await new Promise<string[]>((resolve) => {
-        manager.once('catalogReceived', (event) => {
-          this.catalogTopics = event.topics;
-          this.catalogWarnings = event.warnings;
-          this.catalogSource = 'catalog';
-          if (event.warnings.length > 0) this.emit('catalogWarnings', event.warnings);
-          manager.on('catalogChanged', (e) =>
-            this.handleCatalogChanged(e.topicsAdded, e.topicsRemoved)
-          );
-          resolve(event.topics);
-        });
-        manager.once('catalogTimeout', () => {
-          manager.stop().catch(() => {});
-          this.catalogManager = null;
-          resolve(buildSubscriptionTopics());
-        });
-        manager.bootstrap().catch(() => {
-          manager.stop().catch(() => {});
-          this.catalogManager = null;
-          resolve(buildSubscriptionTopics());
-        });
-      });
-    } catch {
-      return buildSubscriptionTopics();
-    }
-  }
-
   private handleCatalogChanged(topicsAdded: string[], topicsRemoved: string[]): void {
     if (topicsAdded.length === 0 && topicsRemoved.length === 0) return;
     const currentSet = new Set(this.catalogTopics);
@@ -886,14 +849,13 @@ export class EventConsumer extends EventEmitter {
   }
 
   public getCatalogStatus() {
-    if (this.topicSource === 'registry' && this.discoveryCoordinator) {
+    if (this.topicSource === 'registry' && this.discoveryCoordinator)
       return {
         topics: this.discoveryCoordinator.getCurrentTopics(),
         warnings: this.catalogWarnings,
         source: 'registry' as const,
         instanceUuid: null,
       };
-    }
     return {
       topics: this.catalogSource === 'catalog' ? this.catalogTopics : buildSubscriptionTopics(),
       warnings: this.catalogWarnings,
@@ -903,111 +865,6 @@ export class EventConsumer extends EventEmitter {
   }
 }
 
-let eventConsumerInstance: EventConsumer | null = null;
-let initializationError: Error | null = null;
-
-export function getEventConsumer(): EventConsumer | null {
-  if (eventConsumerInstance) return eventConsumerInstance;
-  if (initializationError) return null;
-  try {
-    eventConsumerInstance = new EventConsumer();
-    return eventConsumerInstance;
-  } catch (error) {
-    initializationError = error instanceof Error ? error : new Error(String(error));
-    console.error('EventConsumer initialization failed:', initializationError.message);
-    return null;
-  }
-}
-
-export function isEventConsumerAvailable(): boolean {
-  getEventConsumer();
-  return eventConsumerInstance !== null;
-}
-export function getEventConsumerError(): Error | null {
-  return initializationError;
-}
-
-const PROXY_STUBS: Record<string, () => unknown> = {
-  validateConnection: () => async () => false,
-  start: () => async () => {
-    throw new Error('[EventConsumer] start called before initialization');
-  },
-  stop: () => async () => {},
-  getHealthStatus: () => () => ({
-    status: 'unhealthy',
-    eventsProcessed: 0,
-    recentActionsCount: 0,
-    registeredNodesCount: 0,
-    timestamp: new Date().toISOString(),
-  }),
-  getIntentDistribution: () => () => ({}),
-  getIntentStats: () => () => ({
-    totalIntents: 0,
-    recentIntentsCount: 0,
-    typeDistribution: {},
-    topIntentTypes: [],
-  }),
-  getNodeRegistryStats: () => () => ({
-    totalNodes: 0,
-    activeNodes: 0,
-    pendingNodes: 0,
-    failedNodes: 0,
-    typeDistribution: {},
-  }),
-  getCanonicalNodeStats: () => () => ({
-    totalNodes: 0,
-    activeNodes: 0,
-    pendingNodes: 0,
-    offlineNodes: 0,
-  }),
-  getPerformanceStats: () => () => ({
-    totalQueries: 0,
-    cacheHitCount: 0,
-    avgRoutingDuration: 0,
-    totalRoutingDuration: 0,
-    cacheHitRate: 0,
-  }),
-  getCatalogStatus: () => () => ({
-    topics: [] as string[],
-    warnings: [] as string[],
-    source: 'fallback' as const,
-    instanceUuid: null,
-  }),
-};
-const ARRAY_GETTERS = new Set([
-  'getAgentMetrics',
-  'getRecentActions',
-  'getRoutingDecisions',
-  'getRecentTransformations',
-  'getPerformanceMetrics',
-  'getRegisteredNodes',
-  'getNodeIntrospectionEvents',
-  'getNodeHeartbeatEvents',
-  'getNodeStateChangeEvents',
-  'getRecentIntents',
-  'getCanonicalNodes',
-  'getPreloadedEventBusEvents',
-  'getActionsByAgent',
-]);
-
-export const eventConsumer = new Proxy({} as EventConsumer, {
-  get(_target, prop) {
-    const instance = getEventConsumer();
-    if (!instance) {
-      const stub = PROXY_STUBS[prop as string];
-      if (stub) return stub();
-      if (ARRAY_GETTERS.has(prop as string)) return () => [];
-      if (prop === 'getRegisteredNode' || prop === 'getCanonicalNode') return () => undefined;
-      if (prop === 'on' || prop === 'once' || prop === 'emit' || prop === 'removeListener')
-        return (..._args: unknown[]) => {
-          if (prop === 'emit') return false;
-          return eventConsumer;
-        };
-      return undefined;
-    }
-    const value = instance[prop as keyof EventConsumer];
-    if (typeof value === 'function')
-      return (value as (...args: unknown[]) => unknown).bind(instance);
-    return value;
-  },
-});
+// Backward-compatible named export
+import { createEventConsumerProxy } from './consumers/consumer-lifecycle';
+export const eventConsumer = createEventConsumerProxy();
