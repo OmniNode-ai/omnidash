@@ -224,3 +224,72 @@ export const debugEscalationPayloadSchema = z.object({
   summary: debugEscalationSummarySchema,
 });
 export type DebugEscalationPayload = z.infer<typeof debugEscalationPayloadSchema>;
+
+// ============================================================================
+// DoD Verification Runs (OMN-5199 / OMN-5200)
+// ============================================================================
+
+export const dodVerifyRuns = pgTable('dod_verify_runs', {
+  id: text('id').primaryKey(),
+  ticket_id: text('ticket_id').notNull(),
+  status: text('status').notNull(), // 'pass' | 'fail'
+  checks_passed: integer('checks_passed').notNull(),
+  checks_total: integer('checks_total').notNull(),
+  policy_mode: text('policy_mode').notNull(), // 'enforce' | 'warn' | 'off'
+  evidence_items: text('evidence_items'), // JSON-encoded array
+  event_timestamp: timestamp('event_timestamp', { withTimezone: true }).notNull(),
+});
+
+export const dodVerifyRunRowSchema = createSelectSchema(dodVerifyRuns, {
+  event_timestamp: z.coerce.string(),
+});
+export type DodVerifyRunRow = Omit<InferSelectModel<typeof dodVerifyRuns>, 'event_timestamp'> & {
+  event_timestamp: string;
+};
+
+// ============================================================================
+// DoD Guard Events (OMN-5199 / OMN-5200)
+// ============================================================================
+
+export const dodGuardEvents = pgTable('dod_guard_events', {
+  id: text('id').primaryKey(),
+  ticket_id: text('ticket_id').notNull(),
+  guard_outcome: text('guard_outcome').notNull(), // 'allowed' | 'warned' | 'blocked'
+  policy_mode: text('policy_mode').notNull(),
+  receipt_age_hours: integer('receipt_age_hours'),
+  event_timestamp: timestamp('event_timestamp', { withTimezone: true }).notNull(),
+});
+
+export const dodGuardEventRowSchema = createSelectSchema(dodGuardEvents, {
+  event_timestamp: z.coerce.string(),
+});
+export type DodGuardEventRow = Omit<InferSelectModel<typeof dodGuardEvents>, 'event_timestamp'> & {
+  event_timestamp: string;
+};
+
+// ============================================================================
+// DoD Dashboard Payload (OMN-5200)
+// ============================================================================
+
+export const dodStatsSchema = z.object({
+  total_runs: z.number(),
+  pass_rate_7d: z.number(),
+  guard_blocks_7d: z.number(),
+  tickets_with_evidence: z.number(),
+});
+export type DodStats = z.infer<typeof dodStatsSchema>;
+
+export const dodTrendPointSchema = z.object({
+  date: z.string(),
+  pass_rate: z.number(),
+  total: z.number(),
+});
+export type DodTrendPoint = z.infer<typeof dodTrendPointSchema>;
+
+export const dodPayloadSchema = z.object({
+  stats: dodStatsSchema,
+  verify_runs: z.array(dodVerifyRunRowSchema),
+  guard_events: z.array(dodGuardEventRowSchema),
+  trends: z.array(dodTrendPointSchema),
+});
+export type DodPayload = z.infer<typeof dodPayloadSchema>;

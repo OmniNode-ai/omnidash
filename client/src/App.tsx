@@ -73,6 +73,8 @@ import DelegationDashboard from '@/pages/DelegationDashboard';
 import TopicTopologyDashboard from '@/pages/TopicTopologyDashboard';
 // Decision Store dashboard (OMN-5280)
 import DecisionStoreDashboard from '@/pages/DecisionStoreDashboard';
+// DoD Verification dashboard (OMN-5200)
+import DodDashboard from '@/pages/DodDashboard';
 // Runtime health dashboard (OMN-3598)
 import WorkerHealthPage from '@/components/worker-health/WorkerHealthPage';
 
@@ -195,6 +197,9 @@ function Router() {
 
       {/* Decision Store dashboard (OMN-5280) */}
       <Route path="/decisions" component={DecisionStoreDashboard} />
+
+      {/* DoD Verification dashboard (OMN-5200) */}
+      <Route path="/dod" component={DodDashboard} />
 
       {/* Preview routes */}
       <Route path="/preview/analytics" component={EnhancedAnalytics} />
