@@ -155,6 +155,12 @@ const advancedSubGroups: AdvancedSubGroup[] = [
         icon: TrendingUp,
         description: 'LLM cost and token usage trends with drill-down',
       },
+      {
+        title: 'CI Intelligence',
+        url: '/ci-intelligence',
+        icon: GitCommit,
+        description: 'CI failure pattern analysis and escalation trigger timeline (OMN-5282)',
+      },
     ],
   },
   {

@@ -381,6 +381,12 @@ export const SUFFIX_OMNICLAUDE_DOD_VERIFY_COMPLETED = 'onex.evt.omniclaude.dod-v
  * Consumed by ReadModelConsumer to project into dod_guard_events table. */
 export const SUFFIX_OMNICLAUDE_DOD_GUARD_FIRED = 'onex.evt.omniclaude.dod-guard-fired.v1';
 
+/** Debug trigger record event (OMN-5282).
+ * Emitted by omniclaude when a debug escalation is triggered.
+ * Consumed by ReadModelConsumer to project into debug_trigger_records table. */
+export const SUFFIX_OMNICLAUDE_DEBUG_TRIGGER_RECORD =
+  'onex.evt.omniclaude.debug-trigger-record.v1';
+
 // ============================================================================
 // Miscellaneous Topics
 // ============================================================================

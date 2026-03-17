@@ -60,6 +60,7 @@ import {
   SUFFIX_OMNICLAUDE_CORRELATION_TRACE,
   SUFFIX_OMNICLAUDE_SESSION_OUTCOME,
   SUFFIX_OMNICLAUDE_PHASE_METRICS,
+  SUFFIX_OMNICLAUDE_DEBUG_TRIGGER_RECORD,
 } from '@shared/topics';
 import { llmRoutingProjection } from '../../projection-bootstrap';
 import { emitLlmRoutingInvalidate } from '../../llm-routing-events';
@@ -95,6 +96,7 @@ const OMNICLAUDE_TOPICS = new Set([
   SUFFIX_OMNICLAUDE_CORRELATION_TRACE,
   SUFFIX_OMNICLAUDE_SESSION_OUTCOME,
   SUFFIX_OMNICLAUDE_PHASE_METRICS,
+  SUFFIX_OMNICLAUDE_DEBUG_TRIGGER_RECORD,
 ]);
 
 export class OmniclaudeProjectionHandler implements ProjectionHandler {
@@ -146,6 +148,8 @@ export class OmniclaudeProjectionHandler implements ProjectionHandler {
         return this.projectSessionOutcome(data, context);
       case SUFFIX_OMNICLAUDE_PHASE_METRICS:
         return this.projectPhaseMetrics(data, context);
+      case SUFFIX_OMNICLAUDE_DEBUG_TRIGGER_RECORD:
+        return this.projectDebugTriggerRecord(data, fallbackId, context);
       default:
         return false;
     }
@@ -1202,5 +1206,50 @@ export class OmniclaudeProjectionHandler implements ProjectionHandler {
       }
       throw err;
     }
+  }
+
+  // -------------------------------------------------------------------------
+  // Debug trigger records -> debug_trigger_records (OMN-5282)
+  // -------------------------------------------------------------------------
+
+  private async projectDebugTriggerRecord(
+    data: Record<string, unknown>,
+    fallbackId: string,
+    context: ProjectionContext
+  ): Promise<boolean> {
+    const { db } = context;
+    if (!db) return false;
+
+    const correlationId =
+      (data.correlation_id as string) || (data.correlationId as string) || fallbackId;
+
+    try {
+      await db.execute(sql`
+        INSERT INTO debug_trigger_records (
+          correlation_id, session_id, agent_name, trigger_reason,
+          workflow, repo, created_at
+        ) VALUES (
+          ${correlationId},
+          ${(data.session_id as string) ?? null},
+          ${(data.agent_name as string) ?? (data.agentName as string) ?? 'unknown'},
+          ${(data.trigger_reason as string) ?? (data.triggerReason as string) ?? null},
+          ${(data.workflow as string) ?? null},
+          ${(data.repo as string) ?? null},
+          ${safeParseDate(data.timestamp ?? data.created_at)}
+        )
+        ON CONFLICT (correlation_id) DO NOTHING
+      `);
+    } catch (err) {
+      if (isTableMissingError(err, 'debug_trigger_records')) {
+        console.warn(
+          '[ReadModelConsumer] debug_trigger_records table not yet created -- ' +
+            'run migrations to enable debug trigger record projection'
+        );
+        return true;
+      }
+      throw err;
+    }
+
+    return true;
   }
 }

@@ -59,6 +59,8 @@ read_model_topics:
     handler: "projectSessionOutcome"
   - topic: "onex.evt.omniclaude.task-delegated.v1"
     handler: "projectTaskDelegated"
+  - topic: "onex.evt.omniclaude.debug-trigger-record.v1"
+    handler: "projectDebugTriggerRecord"
 
   # --- omnibase-infra topics ---
   - topic: "onex.evt.omnibase-infra.baselines-computed.v1"

@@ -57,6 +57,7 @@ import EpicPipelineDashboard from '@/pages/EpicPipelineDashboard';
 import PRWatchDashboard from '@/pages/PRWatchDashboard';
 import PipelineBudgetDashboard from '@/pages/PipelineBudgetDashboard';
 import DebugEscalationDashboard from '@/pages/DebugEscalationDashboard';
+import CIIntelligenceDashboard from '@/pages/CIIntelligenceDashboard';
 import ObjectiveEvaluation from '@/pages/ObjectiveEvaluation';
 // CDQA gate dashboard (OMN-3190)
 import CdqaGateDashboard from '@/pages/CdqaGateDashboard';
@@ -177,6 +178,8 @@ function Router() {
       <Route path="/pr-watch" component={PRWatchDashboard} />
       <Route path="/pipeline-budget" component={PipelineBudgetDashboard} />
       <Route path="/debug-escalation" component={DebugEscalationDashboard} />
+      {/* CI Intelligence Dashboard — failure pattern analysis + escalation timeline (OMN-5282) */}
+      <Route path="/ci-intelligence" component={CIIntelligenceDashboard} />
       <Route path="/cdqa-gates" component={CdqaGateDashboard} />
       {/* Integration command center dashboards (OMN-3192) */}
       <Route path="/pipeline-health" component={PipelineHealthDashboard} />
