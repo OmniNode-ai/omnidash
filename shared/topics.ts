@@ -374,6 +374,12 @@ export const SUFFIX_INTELLIGENCE_CI_DEBUG_ESCALATION =
 export const SUFFIX_INTELLIGENCE_ROUTING_FEEDBACK_PROCESSED =
   'onex.evt.omniintelligence.routing-feedback-processed.v1';
 
+/** Compliance evaluated event (OMN-5285).
+ * Emitted by omniintelligence after evaluating a repo against a rule set.
+ * Consumed by the ReadModelConsumer to project into compliance_evaluations table. */
+export const SUFFIX_INTELLIGENCE_COMPLIANCE_EVALUATED =
+  'onex.evt.omniintelligence.compliance-evaluated.v1';
+
 /** Full topic string: plan review strategy run completed event.
  * Emitted by node_plan_reviewer_multi_compute (omniintelligence).
  * Consumed only by READ_MODEL_TOPICS in read-model-consumer.ts (OMN-3282). */
