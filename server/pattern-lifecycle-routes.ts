@@ -12,9 +12,8 @@
  */
 
 import { Router } from 'express';
-import { desc, sql } from 'drizzle-orm';
-import { tryGetIntelligenceDb } from './storage';
-import { patternLifecycleTransitions } from '@shared/intelligence-schema';
+import { projectionService } from './projection-bootstrap';
+import type { PatternLifecyclePayload } from './projections/pattern-lifecycle-projection';
 
 const router = Router();
 
@@ -24,32 +23,22 @@ const router = Router();
 
 router.get('/recent', async (req, res) => {
   try {
-    const db = tryGetIntelligenceDb();
-    if (!db) {
-      res.status(503).json({ error: 'Database not available' });
+    const view = projectionService.getView<PatternLifecyclePayload>('pattern-lifecycle');
+    if (!view) {
+      res.status(503).json({ error: 'Projection not available' });
       return;
     }
 
     const rawLimit = parseInt(req.query.limit as string, 10);
     const limit = Number.isFinite(rawLimit) ? Math.min(Math.max(rawLimit, 1), 200) : 100;
 
-    const rows = await db
-      .select({
-        id: patternLifecycleTransitions.id,
-        patternId: patternLifecycleTransitions.patternId,
-        fromStatus: patternLifecycleTransitions.fromStatus,
-        toStatus: patternLifecycleTransitions.toStatus,
-        transitionTrigger: patternLifecycleTransitions.transitionTrigger,
-        actor: patternLifecycleTransitions.actor,
-        reason: patternLifecycleTransitions.reason,
-        correlationId: patternLifecycleTransitions.correlationId,
-        transitionAt: patternLifecycleTransitions.transitionAt,
-      })
-      .from(patternLifecycleTransitions)
-      .orderBy(desc(patternLifecycleTransitions.transitionAt))
-      .limit(limit);
+    const snapshot = await view.getSnapshot({ limit });
+    if (!snapshot.payload) {
+      res.json([]);
+      return;
+    }
 
-    res.json(rows);
+    res.json(snapshot.payload.recent.slice(0, limit));
   } catch (error) {
     console.error('[pattern-lifecycle] Error fetching recent transitions:', error);
     res.status(500).json({
@@ -65,23 +54,14 @@ router.get('/recent', async (req, res) => {
 
 router.get('/state-summary', async (_req, res) => {
   try {
-    const db = tryGetIntelligenceDb();
-    if (!db) {
-      res.status(503).json({ error: 'Database not available' });
+    const view = projectionService.getView<PatternLifecyclePayload>('pattern-lifecycle');
+    if (!view) {
+      res.status(503).json({ error: 'Projection not available' });
       return;
     }
 
-    // Count transitions by to_status (final states reached)
-    const rows = await db
-      .select({
-        state: patternLifecycleTransitions.toStatus,
-        count: sql<number>`count(*)::int`.as('count'),
-      })
-      .from(patternLifecycleTransitions)
-      .groupBy(patternLifecycleTransitions.toStatus)
-      .orderBy(sql`count(*) DESC`);
-
-    res.json(rows);
+    const snapshot = await view.getSnapshot();
+    res.json(snapshot.payload?.stateSummary ?? []);
   } catch (error) {
     console.error('[pattern-lifecycle] Error fetching state summary:', error);
     res.status(500).json({
@@ -97,27 +77,14 @@ router.get('/state-summary', async (_req, res) => {
 
 router.get('/trend', async (_req, res) => {
   try {
-    const db = tryGetIntelligenceDb();
-    if (!db) {
-      res.status(503).json({ error: 'Database not available' });
+    const view = projectionService.getView<PatternLifecyclePayload>('pattern-lifecycle');
+    if (!view) {
+      res.status(503).json({ error: 'Projection not available' });
       return;
     }
 
-    const rows = await db
-      .select({
-        day: sql<string>`date_trunc('day', ${patternLifecycleTransitions.transitionAt})::text`.as(
-          'day'
-        ),
-        count: sql<number>`count(*)::int`.as('count'),
-      })
-      .from(patternLifecycleTransitions)
-      .where(
-        sql`${patternLifecycleTransitions.transitionAt} >= now() - interval '30 days'`
-      )
-      .groupBy(sql`date_trunc('day', ${patternLifecycleTransitions.transitionAt})`)
-      .orderBy(sql`date_trunc('day', ${patternLifecycleTransitions.transitionAt}) ASC`);
-
-    res.json(rows);
+    const snapshot = await view.getSnapshot();
+    res.json(snapshot.payload?.trend ?? []);
   } catch (error) {
     console.error('[pattern-lifecycle] Error fetching trend:', error);
     res.status(500).json({
