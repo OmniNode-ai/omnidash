@@ -4,6 +4,7 @@
  * Projects events from omnibase-infra topics into the omnidash_analytics read-model:
  * - Baselines computed -> baselines_snapshots / baselines_comparisons / baselines_trend / baselines_breakdown
  * - LLM health snapshot -> llm_health_snapshots (OMN-5279)
+ * - Wiring health snapshot -> in-memory WiringHealthProjection (OMN-5292)
  */
 
 import { eq } from 'drizzle-orm';
@@ -27,6 +28,8 @@ import {
   SUFFIX_OMNIBASE_INFRA_BASELINES_COMPUTED,
   SUFFIX_OMNIBASE_INFRA_LLM_HEALTH_SNAPSHOT,
 } from '@shared/topics';
+import { wiringHealthProjection } from '../../projections/wiring-health-projection';
+import type { TopicWiringRecord } from '../../projections/wiring-health-projection';
 
 import type { ProjectionHandler, ProjectionContext, MessageMeta } from './types';
 import {
@@ -42,10 +45,12 @@ import {
 
 const BASELINES_TOPIC = SUFFIX_OMNIBASE_INFRA_BASELINES_COMPUTED;
 const LLM_HEALTH_TOPIC = SUFFIX_OMNIBASE_INFRA_LLM_HEALTH_SNAPSHOT;
+const WIRING_HEALTH_TOPIC = 'onex.evt.omnibase-infra.wiring-health-snapshot.v1';
 
 const OMNIBASE_INFRA_TOPICS = new Set([
   SUFFIX_OMNIBASE_INFRA_BASELINES_COMPUTED,
   SUFFIX_OMNIBASE_INFRA_LLM_HEALTH_SNAPSHOT,
+  WIRING_HEALTH_TOPIC,
 ]);
 
 export class OmnibaseInfraProjectionHandler implements ProjectionHandler {
@@ -64,6 +69,9 @@ export class OmnibaseInfraProjectionHandler implements ProjectionHandler {
     }
     if (topic === LLM_HEALTH_TOPIC) {
       return this.projectLlmHealthSnapshot(data, context);
+    }
+    if (topic === WIRING_HEALTH_TOPIC) {
+      return this.projectWiringHealthSnapshot(data);
     }
     return false;
   }
@@ -134,6 +142,33 @@ export class OmnibaseInfraProjectionHandler implements ProjectionHandler {
     }
 
     return true;
+  }
+
+  private projectWiringHealthSnapshot(data: Record<string, unknown>): boolean {
+    try {
+      const rawTopics = Array.isArray(data.topics) ? data.topics : [];
+      const topics: TopicWiringRecord[] = (rawTopics as Record<string, unknown>[]).map((t) => ({
+        topic: String(t.topic ?? ''),
+        emitCount: Number(t.emit_count ?? t.emitCount ?? 0),
+        consumeCount: Number(t.consume_count ?? t.consumeCount ?? 0),
+        mismatchRatio: Number(t.mismatch_ratio ?? t.mismatchRatio ?? 0),
+        isHealthy: Boolean(t.is_healthy ?? t.isHealthy ?? true),
+      }));
+
+      wiringHealthProjection.ingest({
+        timestamp: String(data.timestamp ?? new Date().toISOString()),
+        overallHealthy: Boolean(data.overall_healthy ?? data.overallHealthy ?? true),
+        unhealthyCount: Number(data.unhealthy_count ?? data.unhealthyCount ?? 0),
+        threshold: Number(data.threshold ?? 0.05),
+        topics,
+        correlationId: String(data.correlation_id ?? data.correlationId ?? ''),
+        receivedAt: new Date().toISOString(),
+      });
+      return true;
+    } catch (err) {
+      console.error('[ReadModelConsumer] Failed to project wiring health snapshot:', err);
+      return false;
+    }
   }
 
   private async projectBaselinesSnapshot(

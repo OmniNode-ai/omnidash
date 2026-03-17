@@ -195,6 +195,8 @@ function Router() {
       {/* Integration command center dashboards (OMN-3192) */}
       <Route path="/pipeline-health" component={PipelineHealthDashboard} />
       <Route path="/event-bus-health" component={EventBusHealthDashboard} />
+      {/* Wiring Health dashboard (OMN-5292) */}
+      <Route path="/wiring-health" component={WiringHealthDashboard} />
 
       {/* Objective Evaluation — score vectors, gate failures, policy state, anti-gaming (OMN-2583) */}
       <Route path="/objective" component={ObjectiveEvaluation} />
