@@ -6,7 +6,7 @@
  * // TODO: migrate to ProjectionService
  */
 import type { Router, Request, Response } from 'express';
-import { sql, desc, asc, eq, or, and, inArray, ne } from 'drizzle-orm';
+import { sql, desc, asc, eq, or, and, inArray, ne, gte } from 'drizzle-orm';
 import { getIntelligenceDb } from '../../storage';
 import {
   patternLineageNodes,
