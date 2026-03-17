@@ -10,7 +10,6 @@
 
 import { z } from 'zod';
 import {
-  resolveTopicName,
   SUFFIX_VALIDATION_RUN_STARTED,
   SUFFIX_VALIDATION_VIOLATIONS_BATCH,
   SUFFIX_VALIDATION_RUN_COMPLETED,
@@ -36,16 +35,14 @@ import {
 // See platform_topic_suffixes.py for the matching producer-side suffixes.
 // ============================================================================
 
-/** Kafka topic for validation run started events */
-export const VALIDATION_RUN_STARTED_TOPIC = resolveTopicName(SUFFIX_VALIDATION_RUN_STARTED);
+/** Kafka topic for validation run started events (canonical ONEX name, no env prefix) */
+export const VALIDATION_RUN_STARTED_TOPIC = SUFFIX_VALIDATION_RUN_STARTED;
 
-/** Kafka topic for validation violations batch events */
-export const VALIDATION_VIOLATIONS_BATCH_TOPIC = resolveTopicName(
-  SUFFIX_VALIDATION_VIOLATIONS_BATCH
-);
+/** Kafka topic for validation violations batch events (canonical ONEX name, no env prefix) */
+export const VALIDATION_VIOLATIONS_BATCH_TOPIC = SUFFIX_VALIDATION_VIOLATIONS_BATCH;
 
-/** Kafka topic for validation run completed events */
-export const VALIDATION_RUN_COMPLETED_TOPIC = resolveTopicName(SUFFIX_VALIDATION_RUN_COMPLETED);
+/** Kafka topic for validation run completed events (canonical ONEX name, no env prefix) */
+export const VALIDATION_RUN_COMPLETED_TOPIC = SUFFIX_VALIDATION_RUN_COMPLETED;
 
 /** WebSocket channel for validation events */
 export const WS_CHANNEL_VALIDATION = 'validation';

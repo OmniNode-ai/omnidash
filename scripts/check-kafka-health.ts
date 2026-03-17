@@ -19,7 +19,6 @@
 import 'dotenv/config';
 import { Kafka, logLevel } from 'kafkajs';
 import {
-  buildSubscriptionTopics,
   SUFFIX_INTELLIGENCE_TOOL_CONTENT,
   SUFFIX_OMNICLAUDE_SESSION_STARTED,
   SUFFIX_OMNICLAUDE_PROMPT_SUBMITTED,
@@ -27,6 +26,7 @@ import {
   SUFFIX_OMNICLAUDE_SESSION_ENDED,
   SUFFIX_INTELLIGENCE_CLAUDE_HOOK,
 } from '@shared/topics';
+import { loadManifestTopics } from '../server/services/topic-manifest-loader';
 
 // ---------------------------------------------------------------------------
 // Configuration
@@ -260,7 +260,7 @@ async function main() {
   console.log(`Total topics on broker: ${allBrokerTopics.length}\n`);
 
   // 3. Build our subscription list
-  const subscriptionTopics = buildSubscriptionTopics();
+  const subscriptionTopics = loadManifestTopics();
   const canonicalTopics = subscriptionTopics.filter((t) => t.startsWith('onex.'));
   const legacyFlatTopics = subscriptionTopics.filter((t) => !t.startsWith('onex.'));
 

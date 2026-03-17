@@ -1660,27 +1660,29 @@ describe('OMN-4081: projectRoutingDecision via handleMessage — omniclaude fiel
   });
 });
 
-// OMN-2760: Regression — OMNICLAUDE_AGENT_TOPICS coverage in READ_MODEL_TOPICS
+// OMN-2760 / OMN-5251: Regression — topics.yaml coverage
 //
-// Ensures that every topic in the canonical OMNICLAUDE_AGENT_TOPICS array is
-// subscribed to by the read-model-consumer. If a new topic is added to
-// OMNICLAUDE_AGENT_TOPICS in shared/topics.ts without a corresponding entry in
-// READ_MODEL_TOPICS, this test will catch it at CI time.
+// OMN-5251: READ_MODEL_TOPICS is now derived from topics.yaml at module load.
+// These tests verify the manifest contains expected canonical topics and
+// excludes legacy flat names.
 // ============================================================================
 
-describe('OMN-2760: OMNICLAUDE_AGENT_TOPICS → READ_MODEL_TOPICS coverage', () => {
-  it('every topic in OMNICLAUDE_AGENT_TOPICS is present in READ_MODEL_TOPICS', async () => {
-    const { OMNICLAUDE_AGENT_TOPICS } = await import('@shared/topics');
+describe('OMN-2760/OMN-5251: topics.yaml coverage', () => {
+  it('READ_MODEL_TOPICS contains expected canonical agent topics', async () => {
     const { READ_MODEL_TOPICS } = await import('../read-model-consumer');
+    const expectedAgentTopics = [
+      'onex.evt.omniclaude.agent-actions.v1',
+      'onex.evt.omniclaude.routing-decision.v1',
+      'onex.evt.omniclaude.agent-transformation.v1',
+      'onex.evt.omniclaude.performance-metrics.v1',
+    ];
 
-    for (const topic of OMNICLAUDE_AGENT_TOPICS) {
+    for (const topic of expectedAgentTopics) {
       expect(READ_MODEL_TOPICS).toContain(topic);
     }
   });
 
-  it('READ_MODEL_TOPICS contains no legacy flat agent topic strings', () => {
-    // This is a compile-time invariant enforced by the import of OMNICLAUDE_AGENT_TOPICS,
-    // but we also assert it at runtime to catch any accidental re-introduction.
+  it('READ_MODEL_TOPICS contains no legacy flat agent topic strings', async () => {
     const FORBIDDEN = [
       'agent-actions',
       'agent-routing-decisions',
@@ -1688,12 +1690,9 @@ describe('OMN-2760: OMNICLAUDE_AGENT_TOPICS → READ_MODEL_TOPICS coverage', () 
       'router-performance-metrics',
     ];
 
-    // We import synchronously from the module cache after the vi.mock() calls above.
-    // Use a dynamic import to resolve the actual READ_MODEL_TOPICS value.
-    return import('../read-model-consumer').then(({ READ_MODEL_TOPICS }) => {
-      for (const forbidden of FORBIDDEN) {
-        expect(READ_MODEL_TOPICS).not.toContain(forbidden);
-      }
-    });
+    const { READ_MODEL_TOPICS } = await import('../read-model-consumer');
+    for (const forbidden of FORBIDDEN) {
+      expect(READ_MODEL_TOPICS).not.toContain(forbidden);
+    }
   });
 });

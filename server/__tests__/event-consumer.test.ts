@@ -104,12 +104,12 @@ vi.mock('../topic-catalog-manager', async () => {
 // Import after mocks are set up - this will use our mocks
 import { EventConsumer } from '../event-consumer';
 import {
-  buildSubscriptionTopics,
   TOPIC_OMNICLAUDE_ROUTING_DECISIONS,
   TOPIC_OMNICLAUDE_AGENT_ACTIONS,
   TOPIC_OMNICLAUDE_AGENT_TRANSFORMATION,
   TOPIC_OMNICLAUDE_PERFORMANCE_METRICS,
 } from '@shared/topics';
+import { loadManifestTopics } from '../services/topic-manifest-loader';
 
 describe('EventConsumer', () => {
   let consumer: InstanceType<typeof EventConsumer>;
@@ -206,7 +206,7 @@ describe('EventConsumer', () => {
       // Verify subscription topics match the shared builder output
       const call = mockConsumerSubscribe.mock.calls[0][0];
       expect(call.fromBeginning).toBe(false);
-      const expectedTopics = buildSubscriptionTopics();
+      const expectedTopics = loadManifestTopics();
       expect(call.topics).toEqual(expectedTopics);
       expect(mockConsumerRun).toHaveBeenCalled();
     });

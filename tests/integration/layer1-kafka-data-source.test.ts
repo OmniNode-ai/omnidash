@@ -13,7 +13,6 @@
 
 import { Kafka, Admin, logLevel } from 'kafkajs';
 import {
-  buildSubscriptionTopics,
   ENVIRONMENT_PREFIXES,
   SUFFIX_OMNICLAUDE_SESSION_STARTED,
   SUFFIX_OMNICLAUDE_PROMPT_SUBMITTED,
@@ -21,6 +20,7 @@ import {
   SUFFIX_INTELLIGENCE_CLAUDE_HOOK,
   SUFFIX_INTELLIGENCE_TOOL_CONTENT,
 } from '@shared/topics';
+import { loadManifestTopics } from '../../server/services/topic-manifest-loader';
 
 // ---------------------------------------------------------------------------
 // Kafka connection config
@@ -200,7 +200,7 @@ describe.skipIf(!shouldRun)('Layer 1: Kafka Data Source', () => {
     console.log('  LAYER 1 KAFKA DATA SOURCE - SUMMARY');
     console.log('====================================================');
 
-    const allTopics = buildSubscriptionTopics();
+    const allTopics = loadManifestTopics();
     const canonicalTopics = allTopics.filter((t) => t.startsWith('onex.'));
     const legacyFlatTopics = allTopics.filter((t) => !t.startsWith('onex.'));
     const existingTopics = await admin.listTopics();
@@ -247,7 +247,7 @@ describe.skipIf(!shouldRun)('Layer 1: Kafka Data Source', () => {
   // -----------------------------------------------------------------------
 
   it('canonical topics exist', async () => {
-    const allTopics = buildSubscriptionTopics();
+    const allTopics = loadManifestTopics();
     // Separate canonical ONEX topics from legacy flat topics
     const canonicalTopics = allTopics.filter((t) => t.startsWith('onex.'));
 

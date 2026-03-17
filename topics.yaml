@@ -1,8 +1,10 @@
-# topics.yaml — Contract-first topic manifest for ReadModelConsumer (OMN-5028)
+# topics.yaml — Single source of truth for ReadModelConsumer topic subscriptions
 #
-# This file is the single source of truth for topics that the ReadModelConsumer
-# subscribes to. Each entry corresponds to a topic that has a projection handler
-# in read-model-consumer.ts.
+# OMN-5028: Created as contract-first manifest.
+# OMN-5251: Replaced READ_MODEL_TOPICS as sole topic source (no fallback).
+#
+# READ_MODEL_TOPICS in read-model-consumer.ts is populated from this file at
+# module load time. If this file is missing or invalid, the process exits.
 #
 # Rules:
 #   - Only add topics that have a corresponding handler in the ReadModelConsumer
@@ -11,7 +13,7 @@
 #   - When adding a new projection, add the topic here AND wire the handler
 #
 # Used by: server/services/topic-manifest-loader.ts
-# Consumed by: server/read-model-consumer.ts (will replace READ_MODEL_TOPICS in OMN-5029)
+# Consumed by: server/read-model-consumer.ts (READ_MODEL_TOPICS)
 
 version: "1"
 

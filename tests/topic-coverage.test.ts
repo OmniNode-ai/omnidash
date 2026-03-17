@@ -1,30 +1,31 @@
 /**
- * CI Assertion: Event Registration Coverage Test (OMN-2910, updated OMN-5192)
+ * CI Assertion: Event Registration Coverage Test (OMN-2910, OMN-5192, OMN-5251)
  *
- * Asserts that every topic in READ_MODEL_TOPICS has a corresponding handler
+ * Asserts that every topic in topics.yaml has a corresponding handler
  * in the projection handler modules.
  *
  * Root cause this prevents:
- *   When a new topic is added to READ_MODEL_TOPICS (subscribed) but no
+ *   When a new topic is added to topics.yaml (subscribed) but no
  *   matching handler case is added, messages arrive silently and are discarded.
  *   Dashboard pages show empty state with no error -- invisible drift.
  *
- * Approach (OMN-5192 decomposition):
- *   1. Import READ_MODEL_TOPICS at runtime.
+ * Approach (OMN-5192 decomposition + OMN-5251 topics.yaml source):
+ *   1. Load topics from topics.yaml via the manifest loader (OMN-5251).
  *   2. Parse handler source files (consumers/read-model/*-projections.ts) to
  *      extract case labels from switch statements and topic set literals.
  *   3. Resolve identifier names -> string values via shared/topics.ts.
- *   4. Assert: for each topic string in READ_MODEL_TOPICS, that topic appears
+ *   4. Assert: for each topic string in topics.yaml, that topic appears
  *      in the combined set of handled topics across all handler files.
  *
  * Also scans the orchestrator (read-model-consumer.ts) for any remaining case
  * branches to support both the decomposed and any transitional architectures.
  */
 
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import * as fs from 'fs';
 import * as path from 'path';
 import * as sharedTopics from '@shared/topics';
+import { loadManifestTopics, resetManifestCache } from '../server/services/topic-manifest-loader';
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -70,6 +71,9 @@ function extractTopicTokens(filePath: string): string[] {
 
 /**
  * Build a map of exported string constants from shared/topics.ts.
+ *
+ * This lets us resolve identifier names like SUFFIX_OMNICLAUDE_GATE_DECISION
+ * to their actual string values (e.g. "onex.evt.omniclaude.gate-decision.v1").
  */
 function buildConstantResolver(): Map<string, string> {
   const resolver = new Map<string, string>();
@@ -118,9 +122,19 @@ const HANDLER_FILES = [
 // Test
 // ---------------------------------------------------------------------------
 
-describe('OMN-2910: READ_MODEL_TOPICS -> handler coverage', () => {
-  it('every topic in READ_MODEL_TOPICS has a corresponding handler', async () => {
-    const { READ_MODEL_TOPICS } = await import('../server/read-model-consumer');
+describe('OMN-2910/OMN-5251: topics.yaml -> handler coverage', () => {
+  beforeEach(() => {
+    resetManifestCache();
+    process.env.TOPICS_MANIFEST_PATH = path.resolve(__dirname, '../topics.yaml');
+  });
+
+  afterEach(() => {
+    resetManifestCache();
+    delete process.env.TOPICS_MANIFEST_PATH;
+  });
+
+  it('every topic in topics.yaml has a corresponding handler', () => {
+    const manifestTopics = loadManifestTopics();
 
     // Collect handled topics from all handler files + orchestrator
     const resolver = buildConstantResolver();
@@ -136,7 +150,7 @@ describe('OMN-2910: READ_MODEL_TOPICS -> handler coverage', () => {
 
     // Assert: every subscribed topic has a handler.
     const missingHandlers: string[] = [];
-    for (const topic of READ_MODEL_TOPICS) {
+    for (const topic of manifestTopics) {
       if (!handledTopics.has(topic)) {
         missingHandlers.push(topic);
       }
@@ -144,7 +158,7 @@ describe('OMN-2910: READ_MODEL_TOPICS -> handler coverage', () => {
 
     if (missingHandlers.length > 0) {
       throw new Error(
-        `The following topics appear in READ_MODEL_TOPICS but have no ` +
+        `The following topics appear in topics.yaml but have no ` +
           `corresponding handler:\n` +
           missingHandlers.map((t) => `  - ${t}`).join('\n') +
           `\n\nAdd a handler case in the appropriate projection file in ` +
@@ -152,12 +166,13 @@ describe('OMN-2910: READ_MODEL_TOPICS -> handler coverage', () => {
       );
     }
 
-    expect(handledTopics.size).toBeGreaterThanOrEqual(READ_MODEL_TOPICS.length);
+    // Sanity check: we extracted at least as many cases as manifest topics.
+    expect(handledTopics.size).toBeGreaterThanOrEqual(manifestTopics.length);
   });
 
-  it('no orphaned handler cases for topics not in READ_MODEL_TOPICS', async () => {
-    const { READ_MODEL_TOPICS } = await import('../server/read-model-consumer');
-    const subscribedSet = new Set<string>(READ_MODEL_TOPICS as readonly string[]);
+  it('no orphaned handler cases for topics not in topics.yaml', () => {
+    const manifestTopics = loadManifestTopics();
+    const subscribedSet = new Set<string>(manifestTopics);
 
     const resolver = buildConstantResolver();
     const handledTopics = new Set<string>();
@@ -179,8 +194,8 @@ describe('OMN-2910: READ_MODEL_TOPICS -> handler coverage', () => {
 
     const orphanedMsg =
       orphanedCases.length > 0
-        ? `Orphaned handler cases not in READ_MODEL_TOPICS: ${orphanedCases.join(', ')}. ` +
-          `Either add them to READ_MODEL_TOPICS or remove the dead handler case.`
+        ? `Orphaned handler cases not in topics.yaml: ${orphanedCases.join(', ')}. ` +
+          `Either add them to topics.yaml or remove the dead handler case.`
         : '';
     expect(orphanedMsg).toBe('');
   });

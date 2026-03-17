@@ -1,3 +1,4 @@
+// no-migration: OMN-5252 No schema change — replaces buildSubscriptionTopics() with loadManifestTopics() as fallback topic source.
 /**
  * Consumer lifecycle utilities — singleton, proxy, catalog management [OMN-5191]
  *
@@ -6,7 +7,7 @@
 
 import type { EventConsumer } from '../event-consumer';
 import { TopicCatalogManager } from '../topic-catalog-manager';
-import { buildSubscriptionTopics } from '@shared/topics';
+import { loadManifestTopics } from '../services/topic-manifest-loader';
 
 // ============================================================================
 // Catalog Management
@@ -42,16 +43,16 @@ export async function fetchCatalogTopics(state: CatalogState): Promise<string[]>
       manager.once('catalogTimeout', () => {
         manager.stop().catch(() => {});
         state.catalogManager = null;
-        resolve(buildSubscriptionTopics());
+        resolve(loadManifestTopics());
       });
       manager.bootstrap().catch(() => {
         manager.stop().catch(() => {});
         state.catalogManager = null;
-        resolve(buildSubscriptionTopics());
+        resolve(loadManifestTopics());
       });
     });
   } catch {
-    return buildSubscriptionTopics();
+    return loadManifestTopics();
   }
 }
 
