@@ -27,6 +27,8 @@ import { AgentRoutingProjection } from './projections/agent-routing-projection';
 import { GateDecisionsProjection } from './projections/gate-decisions-projection';
 // Plan reviewer projection (OMN-3324)
 import { PlanReviewerProjection } from './projections/plan-reviewer-projection';
+// DoD verification projection (OMN-5200)
+import { DodProjection } from './projections/dod-projection';
 import { EpicRunProjection } from './projections/epic-run-projection';
 import { PrWatchProjection } from './projections/pr-watch-projection';
 import { PipelineBudgetProjection } from './projections/pipeline-budget-projection';
@@ -128,6 +130,8 @@ export const debugEscalationProjection = new DebugEscalationProjection();
  * invalidation, no ingest pipeline).
  */
 export const planReviewerProjection = new PlanReviewerProjection();
+/** DoD verification projection (OMN-5200). Queries dod_verify_runs + dod_guard_events tables. */
+export const dodProjection = new DodProjection();
 
 if (!projectionService.getView(extractionMetricsProjection.viewId)) {
   projectionService.registerView(extractionMetricsProjection);

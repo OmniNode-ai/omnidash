@@ -28,6 +28,7 @@ import {
   BarChart3,
   Users,
   Network,
+  ListChecks,
 } from 'lucide-react';
 import { Link, useLocation } from 'wouter';
 import {
@@ -251,6 +252,12 @@ const advancedSubGroups: AdvancedSubGroup[] = [
         url: '/pipeline-health',
         icon: GitPullRequest,
         description: 'Per-ticket pipeline state, stuck detection, CDQA gate results (OMN-3192)',
+      },
+      {
+        title: 'DoD Verification',
+        url: '/dod',
+        icon: ListChecks,
+        description: 'Definition of Done verification runs and guard enforcement (OMN-5200)',
       },
       {
         title: 'Event Bus Health',

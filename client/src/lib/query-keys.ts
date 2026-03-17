@@ -872,6 +872,16 @@ export const queryKeys = {
     summary: (window: string) => ['phase-metrics', 'summary', window] as const,
     byPhase: (window: string) => ['phase-metrics', 'by-phase', window] as const,
   },
+
+  // ============================================================================
+  // DoD Verification (OMN-5200)
+  // ============================================================================
+
+  /** DoD verification dashboard query keys */
+  dod: {
+    all: ['dod'] as const,
+    snapshot: () => ['dod', 'snapshot'] as const,
+  },
 } as const;
 
 /**
