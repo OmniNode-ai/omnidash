@@ -83,6 +83,8 @@ read_model_topics:
     handler: "projectIntentDriftDetected"
   - topic: "onex.evt.omniintelligence.run-evaluated.v1"
     handler: "projectRunEvaluated"
+  - topic: "onex.evt.omniintelligence.routing-feedback-processed.v1"
+    handler: "projectRoutingFeedbackEvent"
 
   # --- omnimemory topics ---
   - topic: "onex.evt.omnimemory.intent-stored.v1"

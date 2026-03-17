@@ -1968,3 +1968,32 @@ export const llmHealthSnapshots = pgTable(
 export const insertLlmHealthSnapshotSchema = createInsertSchema(llmHealthSnapshots);
 export type LlmHealthSnapshotRow = typeof llmHealthSnapshots.$inferSelect;
 export type InsertLlmHealthSnapshot = typeof llmHealthSnapshots.$inferInsert;
+
+// ============================================================================
+// Routing Feedback Events Table (migration 0024_routing_feedback_events, OMN-5284)
+// Tracks per-event routing feedback for the Routing Feedback Dashboard.
+// Source topic: onex.evt.omniintelligence.routing-feedback-processed.v1
+// Replay policy: APPEND-ONLY.
+// ============================================================================
+
+export const routingFeedbackEvents = pgTable(
+  'routing_feedback_events',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    agentId: text('agent_id').notNull(),
+    feedbackType: text('feedback_type').notNull(),
+    originalRoute: text('original_route').notNull(),
+    correctedRoute: text('corrected_route'),
+    accuracyScore: doublePrecision('accuracy_score'),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [
+    index('idx_routing_feedback_agent_id').on(table.agentId),
+    index('idx_routing_feedback_created_at').on(table.createdAt),
+    index('idx_routing_feedback_type').on(table.feedbackType),
+  ]
+);
+
+export const insertRoutingFeedbackEventSchema = createInsertSchema(routingFeedbackEvents);
+export type RoutingFeedbackEventRow = typeof routingFeedbackEvents.$inferSelect;
+export type InsertRoutingFeedbackEvent = typeof routingFeedbackEvents.$inferInsert;

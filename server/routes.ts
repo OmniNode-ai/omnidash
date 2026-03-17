@@ -44,6 +44,8 @@ import eventBusHealthRoutes from './event-bus-health-routes';
 import planReviewerRoutes from './plan-reviewer-routes';
 // Routing config routes (OMN-3445)
 import routingConfigRoutes from './routing-config-routes';
+// Routing feedback routes (OMN-5284)
+import routingFeedbackRoutes from './routing-feedback-routes';
 // Worker health routes (OMN-3598)
 import workerHealthRoutes from './worker-health-routes';
 // LLM Health Dashboard routes (OMN-5279)
@@ -172,6 +174,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // Routing config routes (OMN-3445)
   app.use('/api/routing-config', routingConfigRoutes);
+
+  // Routing feedback routes (OMN-5284)
+  app.use('/api/routing-feedback', routingFeedbackRoutes);
 
   // Worker health routes (OMN-3598)
   app.use('/api/worker-health', workerHealthRoutes);
