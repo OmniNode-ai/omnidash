@@ -17,3 +17,5 @@ CREATE TABLE IF NOT EXISTS llm_health_snapshots (
 CREATE INDEX IF NOT EXISTS idx_llm_health_model_id   ON llm_health_snapshots (model_id);
 CREATE INDEX IF NOT EXISTS idx_llm_health_created_at ON llm_health_snapshots (created_at);
 CREATE INDEX IF NOT EXISTS idx_llm_health_status     ON llm_health_snapshots (status);
+-- Composite index for the primary read pattern: latest snapshot per model_id
+CREATE INDEX IF NOT EXISTS idx_llm_health_model_created ON llm_health_snapshots (model_id, created_at DESC);

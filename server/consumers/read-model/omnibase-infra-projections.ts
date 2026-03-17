@@ -83,32 +83,38 @@ export class OmnibaseInfraProjectionHandler implements ProjectionHandler {
       return true;
     }
 
+    /** Parse a numeric field, returning null for NaN/Infinity/non-finite values. */
+    const safeNum = (v: unknown): number | null => {
+      const n = Number(v);
+      return Number.isFinite(n) ? n : null;
+    };
+
     const row: InsertLlmHealthSnapshot = {
       modelId,
       endpointUrl,
       latencyP50Ms:
         data.latency_p50_ms != null
-          ? Number(data.latency_p50_ms)
+          ? safeNum(data.latency_p50_ms)
           : data.latencyP50Ms != null
-            ? Number(data.latencyP50Ms)
+            ? safeNum(data.latencyP50Ms)
             : null,
       latencyP99Ms:
         data.latency_p99_ms != null
-          ? Number(data.latency_p99_ms)
+          ? safeNum(data.latency_p99_ms)
           : data.latencyP99Ms != null
-            ? Number(data.latencyP99Ms)
+            ? safeNum(data.latencyP99Ms)
             : null,
       errorRate:
         data.error_rate != null
-          ? Number(data.error_rate)
+          ? safeNum(data.error_rate)
           : data.errorRate != null
-            ? Number(data.errorRate)
+            ? safeNum(data.errorRate)
             : null,
       tokensPerSecond:
         data.tokens_per_second != null
-          ? Number(data.tokens_per_second)
+          ? safeNum(data.tokens_per_second)
           : data.tokensPerSecond != null
-            ? Number(data.tokensPerSecond)
+            ? safeNum(data.tokensPerSecond)
             : null,
       status: String(data.status ?? 'unknown'),
     };

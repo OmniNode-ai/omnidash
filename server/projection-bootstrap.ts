@@ -195,6 +195,9 @@ if (!projectionService.getView(ciIntelProjection.viewId)) {
 if (!projectionService.getView(patternLifecycleProjection.viewId)) {
   projectionService.registerView(patternLifecycleProjection);
 }
+if (!projectionService.getView(llmHealthProjection.viewId)) {
+  projectionService.registerView(llmHealthProjection);
+}
 
 // ============================================================================
 // Module-scoped fallback sequence counter

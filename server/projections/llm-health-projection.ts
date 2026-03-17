@@ -53,14 +53,10 @@ export class LlmHealthProjection extends DbBackedProjectionView<LlmHealthPayload
         generatedAt: new Date().toISOString(),
       };
     } catch (err) {
-      // Graceful degrade: table may not exist yet (migration pending)
+      // Graceful degrade: table may not exist yet (migration 0024 pending)
       const pgCode = (err as { code?: string }).code;
-      const msg = err instanceof Error ? err.message : String(err);
-      if (
-        pgCode === '42P01' ||
-        msg.includes('llm_health_snapshots') ||
-        msg.includes('does not exist')
-      ) {
+      if (pgCode === '42P01') {
+        // PostgreSQL "undefined_table" — migration not yet applied
         return this.emptyPayload();
       }
       throw err;

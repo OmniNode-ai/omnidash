@@ -1960,6 +1960,8 @@ export const llmHealthSnapshots = pgTable(
     index('idx_llm_health_model_id').on(table.modelId),
     index('idx_llm_health_created_at').on(table.createdAt),
     index('idx_llm_health_status').on(table.status),
+    // Composite index for the primary read pattern: latest snapshot per model_id
+    index('idx_llm_health_model_created').on(table.modelId, table.createdAt),
   ]
 );
 
