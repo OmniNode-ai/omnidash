@@ -253,7 +253,7 @@ export const patlearnArtifactSchema = z.object({
   patternType: z.string(),
   language: z.string().nullable().optional(),
   lifecycleState: lifecycleStateSchema,
-  stateChangedAt: z.string().optional(),
+  stateChangedAt: z.string().nullable().optional(),
   compositeScore: z.number().min(0).max(1),
   scoringEvidence: scoringEvidenceSchema,
   signature: patternSignatureSchema,
@@ -282,7 +282,7 @@ export const patlearnArtifactSchema = z.object({
     .passthrough()
     .optional(),
   createdAt: z.string(),
-  updatedAt: z.string().optional(),
+  updatedAt: z.string().nullable().optional(),
 });
 
 // ===========================

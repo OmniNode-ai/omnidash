@@ -1008,7 +1008,7 @@ intelligenceRouter.get('/patterns/list', async (req, res) => {
         pln.pattern_name as name,
         pln.pattern_type as "patternType",
         pln.language,
-        pln.file_path as "filePath",
+        pln.pattern_data->>'file_path' as "filePath",
         pln.created_at as "createdAt",
         pqm.quality_score as "qualityScore",
         pqm.confidence as "qualityConfidence"

@@ -52,6 +52,36 @@ describe('API → Client Zod Schema Parity', () => {
       expect(result.success).toBe(true);
     });
 
+    it('accepts artifact with null stateChangedAt and updatedAt (regression guard for OMN-5177)', () => {
+      const result = patlearnArtifactSchema.safeParse({
+        ...validArtifact,
+        stateChangedAt: null,
+        updatedAt: null,
+      });
+      expect(result.success).toBe(true);
+    });
+
+    it('accepts artifact matching real API shape (requested state, empty evidence)', () => {
+      const realApiShape = {
+        id: 'c953173a-1c89-47e1-a8b8-6b691b4eb304',
+        patternId: '1afb071b-8142-4570-b5bb-a8d1fc4726f2',
+        patternName: 'learning_requested',
+        patternType: 'pipeline_request',
+        language: null,
+        lifecycleState: 'requested' as const,
+        stateChangedAt: null,
+        compositeScore: 0,
+        scoringEvidence: {},
+        signature: { trigger: 'session_stop', session_id: 'abc123' },
+        metrics: {},
+        metadata: { source: 'PatternLearningRequested' },
+        createdAt: '2026-03-16T23:23:03.327Z',
+        updatedAt: '2026-03-16T23:23:03.327Z',
+      };
+      const result = patlearnArtifactSchema.safeParse(realApiShape);
+      expect(result.success).toBe(true);
+    });
+
     it('raw Date objects fail validation (regression guard for OMN-5178)', () => {
       const withDates = {
         ...validArtifact,
