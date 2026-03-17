@@ -752,6 +752,12 @@ export const queryKeys = {
     snapshot: () => [...queryKeys.debugEscalation.all, 'snapshot'] as const,
   },
 
+  /** CI intelligence query keys (onex.evt.omniintelligence.ci-debug-escalation.v1) */
+  ciIntel: {
+    all: ['ci-intel'] as const,
+    snapshot: () => [...queryKeys.ciIntel.all, 'snapshot'] as const,
+  },
+
   // ============================================================================
   // Decision Provenance / Why This Happened (OMN-5046)
   // ============================================================================
