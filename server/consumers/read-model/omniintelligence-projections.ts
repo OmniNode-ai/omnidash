@@ -31,6 +31,7 @@ import {
   TOPIC_INTELLIGENCE_PLAN_REVIEW_STRATEGY_RUN_COMPLETED,
   SUFFIX_INTELLIGENCE_RUN_EVALUATED,
   SUFFIX_INTELLIGENCE_INTENT_DRIFT_DETECTED,
+  SUFFIX_INTELLIGENCE_CI_DEBUG_ESCALATION,
 } from '@shared/topics';
 import {
   PatternProjectionEventSchema,
@@ -50,6 +51,7 @@ const OMNIINTELLIGENCE_TOPICS = new Set([
   TOPIC_INTELLIGENCE_PLAN_REVIEW_STRATEGY_RUN_COMPLETED,
   SUFFIX_INTELLIGENCE_RUN_EVALUATED,
   SUFFIX_INTELLIGENCE_INTENT_DRIFT_DETECTED,
+  SUFFIX_INTELLIGENCE_CI_DEBUG_ESCALATION,
 ]);
 
 export class OmniintelligenceProjectionHandler implements ProjectionHandler {
@@ -89,6 +91,8 @@ export class OmniintelligenceProjectionHandler implements ProjectionHandler {
         return this.projectRunEvaluated(data, fallbackId, context);
       case SUFFIX_INTELLIGENCE_INTENT_DRIFT_DETECTED:
         return this.projectIntentDriftDetected(data, context);
+      case SUFFIX_INTELLIGENCE_CI_DEBUG_ESCALATION:
+        return this.projectCiDebugEscalation(data, fallbackId, context);
       default:
         return false;
     }
@@ -602,8 +606,7 @@ export class OmniintelligenceProjectionHandler implements ProjectionHandler {
 
     const row: InsertIntentDrift = {
       sessionId: (data.session_id as string) || (data.sessionId as string) || null,
-      originalIntent:
-        (data.original_intent as string) || (data.originalIntent as string) || null,
+      originalIntent: (data.original_intent as string) || (data.originalIntent as string) || null,
       currentIntent: (data.current_intent as string) || (data.currentIntent as string) || null,
       driftScore:
         typeof data.drift_score === 'number'
@@ -621,6 +624,53 @@ export class OmniintelligenceProjectionHandler implements ProjectionHandler {
         console.warn(
           '[ReadModelConsumer] intent_drift_events table not yet created -- ' +
             'run migrations to enable intent drift projection'
+        );
+        return true;
+      }
+      throw err;
+    }
+
+    return true;
+  }
+
+  // -------------------------------------------------------------------------
+  // CI debug escalation -> ci_debug_escalation_events (OMN-5282)
+  // -------------------------------------------------------------------------
+
+  private async projectCiDebugEscalation(
+    data: Record<string, unknown>,
+    fallbackId: string,
+    context: ProjectionContext
+  ): Promise<boolean> {
+    const { db } = context;
+    if (!db) return false;
+
+    const runId = (data.run_id as string) || (data.runId as string) || fallbackId;
+    const nodeId = (data.node_id as string) || (data.nodeId as string) || 'unknown';
+
+    try {
+      await db.execute(sql`
+        INSERT INTO ci_debug_escalation_events (
+          run_id, node_id, error_type, escalation_level, resolution, event_timestamp
+        ) VALUES (
+          ${runId},
+          ${nodeId},
+          ${(data.error_type as string) ?? (data.errorType as string) ?? 'unknown'},
+          ${(data.escalation_level as string) ?? (data.escalationLevel as string) ?? 'low'},
+          ${(data.resolution as string) ?? null},
+          ${safeParseDate(data.timestamp ?? data.created_at)}
+        )
+        ON CONFLICT (run_id, node_id) DO UPDATE SET
+          error_type = EXCLUDED.error_type,
+          escalation_level = EXCLUDED.escalation_level,
+          resolution = EXCLUDED.resolution,
+          event_timestamp = EXCLUDED.event_timestamp
+      `);
+    } catch (err) {
+      if (isTableMissingError(err, 'ci_debug_escalation_events')) {
+        console.warn(
+          '[ReadModelConsumer] ci_debug_escalation_events table not yet created -- ' +
+            'run migrations to enable CI debug escalation projection'
         );
         return true;
       }
