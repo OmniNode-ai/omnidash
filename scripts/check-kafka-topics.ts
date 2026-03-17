@@ -10,7 +10,12 @@
  */
 
 import { Kafka } from 'kafkajs';
-import { OMNICLAUDE_AGENT_TOPICS } from '@shared/topics';
+import {
+  TOPIC_OMNICLAUDE_AGENT_ACTIONS,
+  TOPIC_OMNICLAUDE_ROUTING_DECISIONS,
+  TOPIC_OMNICLAUDE_AGENT_TRANSFORMATION,
+  TOPIC_OMNICLAUDE_PERFORMANCE_METRICS,
+} from '@shared/topics';
 
 const brokers = process.env.KAFKA_BROKERS || process.env.KAFKA_BOOTSTRAP_SERVERS;
 if (!brokers) {
@@ -27,7 +32,12 @@ const kafka = new Kafka({
   clientId: 'omnidash-topic-checker',
 });
 
-const TOPICS_TO_CHECK = [...OMNICLAUDE_AGENT_TOPICS];
+const TOPICS_TO_CHECK = [
+  TOPIC_OMNICLAUDE_AGENT_ACTIONS,
+  TOPIC_OMNICLAUDE_ROUTING_DECISIONS,
+  TOPIC_OMNICLAUDE_AGENT_TRANSFORMATION,
+  TOPIC_OMNICLAUDE_PERFORMANCE_METRICS,
+];
 
 const CONSUMER_GROUP = 'omnidash-consumers-v2';
 

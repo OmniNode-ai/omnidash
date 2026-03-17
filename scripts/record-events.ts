@@ -23,7 +23,7 @@ import { Kafka, Consumer, EachMessagePayload } from 'kafkajs';
 import * as fs from 'fs';
 import * as path from 'path';
 import 'dotenv/config';
-import { buildSubscriptionTopics } from '@shared/topics';
+import { loadManifestTopics } from '../server/services/topic-manifest-loader';
 
 // Configuration
 const brokersEnv = process.env.KAFKA_BOOTSTRAP_SERVERS || process.env.KAFKA_BROKERS;
@@ -38,7 +38,7 @@ const KAFKA_BROKERS = brokersEnv.split(',');
 const DEFAULT_DURATION_SECONDS = 60;
 
 // Topics to record - same as event-consumer.ts plus pattern learning topic
-const DEFAULT_TOPICS = [...buildSubscriptionTopics()];
+const DEFAULT_TOPICS = [...loadManifestTopics()];
 
 interface RecordedEvent {
   timestamp: string;

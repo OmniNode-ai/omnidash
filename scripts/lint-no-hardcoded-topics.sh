@@ -79,30 +79,27 @@ else
 fi
 
 # ---------------------------------------------------------------------------
-# Check 3: No new buildSubscriptionTopics() imports in non-deprecated locations
+# Check 3: No buildSubscriptionTopics() usage (OMN-5252: deleted)
 # ---------------------------------------------------------------------------
 echo ""
-echo "Check 3: No new buildSubscriptionTopics() usage outside deprecated fallback..."
+echo "Check 3: No buildSubscriptionTopics() usage (function deleted in OMN-5252)..."
 
-# Count non-deprecated imports of buildSubscriptionTopics in server/ files
-# (excluding shared/topics.ts where it's defined, and test files)
-NEW_IMPORTS=$(grep -r "import.*buildSubscriptionTopics" "$PROJECT_ROOT/server/" \
+NEW_IMPORTS=$(grep -r "buildSubscriptionTopics" "$PROJECT_ROOT/server/" "$PROJECT_ROOT/shared/" "$PROJECT_ROOT/scripts/" \
   --include="*.ts" \
   -l 2>/dev/null || true)
 
 if [ -n "$NEW_IMPORTS" ]; then
-  # Filter: event-consumer.ts is allowed (it has the deprecated fallback)
   for file in $NEW_IMPORTS; do
     basename_file=$(basename "$file")
-    if [[ "$basename_file" != "event-consumer.ts" && "$basename_file" != *.test.ts ]]; then
-      echo -e "${RED}  FAIL${NC}: New buildSubscriptionTopics() import in $basename_file"
+    if [[ "$basename_file" != *.test.ts ]]; then
+      echo -e "${RED}  FAIL${NC}: buildSubscriptionTopics() reference in $basename_file (deleted in OMN-5252)"
       VIOLATIONS=$((VIOLATIONS + 1))
     fi
   done
 fi
 
 if [ "$VIOLATIONS" -eq 0 ]; then
-  echo -e "${GREEN}  PASS${NC}: No new buildSubscriptionTopics() usage"
+  echo -e "${GREEN}  PASS${NC}: No buildSubscriptionTopics() usage"
 fi
 
 # ---------------------------------------------------------------------------

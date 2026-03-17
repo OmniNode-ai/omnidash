@@ -14,7 +14,6 @@
 
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import {
-  buildSubscriptionTopics,
   extractSuffix,
   ENVIRONMENT_PREFIXES,
   SUFFIX_OMNICLAUDE_SESSION_STARTED,
@@ -28,6 +27,7 @@ import {
   TOPIC_OMNICLAUDE_AGENT_TRANSFORMATION,
   TOPIC_OMNICLAUDE_PERFORMANCE_METRICS,
 } from '@shared/topics';
+import { loadManifestTopics } from '../../server/services/topic-manifest-loader';
 
 // ---------------------------------------------------------------------------
 // Fixture: sample events for each topic type
@@ -112,11 +112,11 @@ const FIXTURE_PERFORMANCE_METRIC = {
 
 describe('Layer 2: Topic Resolution', () => {
   // --------------------------------------------------------------------------
-  // buildSubscriptionTopics
+  // loadManifestTopics (OMN-5252: replaced buildSubscriptionTopics)
   // --------------------------------------------------------------------------
 
-  it('buildSubscriptionTopics returns only canonical topic names (no legacy env prefix)', () => {
-    const topics = buildSubscriptionTopics();
+  it('loadManifestTopics returns only canonical topic names (no legacy env prefix)', () => {
+    const topics = loadManifestTopics();
 
     expect(topics.length).toBeGreaterThan(0);
 
@@ -128,24 +128,13 @@ describe('Layer 2: Topic Resolution', () => {
     }
   });
 
-  it('buildSubscriptionTopics includes legacy flat agent topics', () => {
-    const topics = buildSubscriptionTopics();
+  it('loadManifestTopics includes canonical agent topics', () => {
+    const topics = loadManifestTopics();
 
     expect(topics).toContain(TOPIC_OMNICLAUDE_AGENT_ACTIONS);
     expect(topics).toContain(TOPIC_OMNICLAUDE_ROUTING_DECISIONS);
     expect(topics).toContain(TOPIC_OMNICLAUDE_AGENT_TRANSFORMATION);
     expect(topics).toContain(TOPIC_OMNICLAUDE_PERFORMANCE_METRICS);
-  });
-
-  it('buildSubscriptionTopics includes canonical ONEX topics', () => {
-    const topics = buildSubscriptionTopics();
-
-    expect(topics).toContain(SUFFIX_OMNICLAUDE_SESSION_STARTED);
-    expect(topics).toContain(SUFFIX_OMNICLAUDE_PROMPT_SUBMITTED);
-    expect(topics).toContain(SUFFIX_OMNICLAUDE_TOOL_EXECUTED);
-    expect(topics).toContain(SUFFIX_NODE_HEARTBEAT);
-    expect(topics).toContain(SUFFIX_NODE_INTROSPECTION);
-    expect(topics).toContain(SUFFIX_VALIDATION_RUN_STARTED);
   });
 
   // --------------------------------------------------------------------------

@@ -14,6 +14,8 @@ import { LRUCache } from 'lru-cache';
 import { z } from 'zod';
 import type { EventBusEvent } from './event-bus-data-source';
 import { buildSubscriptionTopics, extractSuffix, SUFFIX_NODE_HEARTBEAT } from '@shared/topics';
+// Manifest-driven topic loading for fallback (OMN-5252)
+import { loadManifestTopics } from './services/topic-manifest-loader';
 import { EventEnvelopeSchema, OFFLINE_NODE_TTL_MS, CLEANUP_INTERVAL_MS } from '@shared/schemas';
 import type { EventEnvelope } from '@shared/schemas';
 import { getTopicRegistryService } from './services/topic-registry-service';
@@ -406,8 +408,26 @@ export class EventConsumer extends EventEmitter {
         const discoveryResult = await this.discoveryCoordinator.waitForDiscovery();
         this.topicSource = discoveryResult.source === 'registry' ? 'registry' : 'fallback';
         subscriptionTopics = discoveryResult.topics;
+
+        if (discoveryResult.degraded) {
+          intentLogger.warn(
+            `[EventConsumer] Topic discovery degraded after ${discoveryResult.durationMs}ms — ` +
+              `proceeding with ${discoveryResult.registryTopicCount} registry topics + bootstrap`
+          );
+        } else {
+          intentLogger.info(
+            `[EventConsumer] Topic discovery stabilized in ${discoveryResult.durationMs}ms — ` +
+              `${discoveryResult.registryTopicCount} registry topics from ${discoveryResult.nodeCount} nodes`
+          );
+        }
+
+        // If registry found no topics beyond bootstrap, fall back to loadManifestTopics()
+        // to ensure we don't miss events during initial deployment before nodes report event_bus
         if (discoveryResult.registryTopicCount === 0) {
-          subscriptionTopics = buildSubscriptionTopics();
+          intentLogger.info(
+            '[EventConsumer] No registry topics discovered — falling back to loadManifestTopics()'
+          );
+          subscriptionTopics = loadManifestTopics();
           this.topicSource = 'fallback';
         }
       } else {
