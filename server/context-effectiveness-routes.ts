@@ -16,7 +16,13 @@ import { Router } from 'express';
 import { tryGetIntelligenceDb } from './storage';
 import { injectionEffectiveness } from '@shared/intelligence-schema';
 import { and, eq, gte, sql, desc, lt } from 'drizzle-orm';
-import { ACCEPTED_WINDOWS } from './sql-safety';
+import {
+  ACCEPTED_WINDOWS,
+  safeInterval,
+  safeTruncUnit,
+  timeWindowToInterval,
+  truncUnitForWindow,
+} from './sql-safety';
 import type {
   ContextEffectivenessSummary,
   UtilizationByMethod,
@@ -42,28 +48,6 @@ function getWindow(query: Record<string, unknown>): string | null {
   return windowParam;
 }
 
-function windowToInterval(window: string): string {
-  switch (window) {
-    case '7d':
-      return '7 days';
-    case '30d':
-      return '30 days';
-    default:
-      return '24 hours';
-  }
-}
-
-function windowToTruncUnit(window: string): string {
-  switch (window) {
-    case '7d':
-      return 'hour';
-    case '30d':
-      return 'day';
-    default:
-      return 'hour';
-  }
-}
-
 function emptySummary(): ContextEffectivenessSummary {
   return {
     avg_utilization_score: 0,
@@ -83,14 +67,16 @@ function emptySummary(): ContextEffectivenessSummary {
 router.get('/summary', async (req, res) => {
   const window = getWindow(req.query as Record<string, unknown>);
   if (window === null) {
-    return res.status(400).json({ error: 'Invalid window parameter. Must be one of: 24h, 7d, 30d' });
+    return res
+      .status(400)
+      .json({ error: 'Invalid window parameter. Must be one of: 24h, 7d, 30d' });
   }
   const db = tryGetIntelligenceDb();
   if (!db) {
     return res.json(emptySummary());
   }
   try {
-    const interval = windowToInterval(window);
+    const interval = timeWindowToInterval(window);
     const rows = await db
       .select({
         avg_utilization_score: sql<number>`COALESCE(AVG(NULLIF(CAST(${injectionEffectiveness.utilizationScore} AS NUMERIC), 0)), 0)`,
@@ -105,7 +91,7 @@ router.get('/summary', async (req, res) => {
           eq(injectionEffectiveness.eventType, 'context_utilization'),
           gte(
             injectionEffectiveness.createdAt,
-            sql`NOW() - INTERVAL ${sql.raw(`'${interval}'`)}` as unknown as Date
+            sql`NOW() - INTERVAL ${safeInterval(interval)}` as unknown as Date
           )
         )
       );
@@ -127,7 +113,7 @@ router.get('/summary', async (req, res) => {
           eq(injectionEffectiveness.eventType, 'context_utilization'),
           gte(
             injectionEffectiveness.createdAt,
-            sql`NOW() - INTERVAL ${sql.raw(`'${interval}'`)}` as unknown as Date
+            sql`NOW() - INTERVAL ${safeInterval(interval)}` as unknown as Date
           )
         )
       )
@@ -158,14 +144,16 @@ router.get('/summary', async (req, res) => {
 router.get('/by-method', async (req, res) => {
   const window = getWindow(req.query as Record<string, unknown>);
   if (window === null) {
-    return res.status(400).json({ error: 'Invalid window parameter. Must be one of: 24h, 7d, 30d' });
+    return res
+      .status(400)
+      .json({ error: 'Invalid window parameter. Must be one of: 24h, 7d, 30d' });
   }
   const db = tryGetIntelligenceDb();
   if (!db) {
     return res.json([]);
   }
   try {
-    const interval = windowToInterval(window);
+    const interval = timeWindowToInterval(window);
     const rows = await db
       .select({
         method: injectionEffectiveness.detectionMethod,
@@ -179,7 +167,7 @@ router.get('/by-method', async (req, res) => {
           eq(injectionEffectiveness.eventType, 'context_utilization'),
           gte(
             injectionEffectiveness.createdAt,
-            sql`NOW() - INTERVAL ${sql.raw(`'${interval}'`)}` as unknown as Date
+            sql`NOW() - INTERVAL ${safeInterval(interval)}` as unknown as Date
           )
         )
       )
@@ -209,18 +197,20 @@ router.get('/by-method', async (req, res) => {
 router.get('/trend', async (req, res) => {
   const window = getWindow(req.query as Record<string, unknown>);
   if (window === null) {
-    return res.status(400).json({ error: 'Invalid window parameter. Must be one of: 24h, 7d, 30d' });
+    return res
+      .status(400)
+      .json({ error: 'Invalid window parameter. Must be one of: 24h, 7d, 30d' });
   }
   const db = tryGetIntelligenceDb();
   if (!db) {
     return res.json([]);
   }
   try {
-    const interval = windowToInterval(window);
-    const truncUnit = windowToTruncUnit(window);
+    const interval = timeWindowToInterval(window);
+    const truncUnit = truncUnitForWindow(window);
     const rows = await db
       .select({
-        date: sql<string>`DATE_TRUNC('${sql.raw(truncUnit)}', ${injectionEffectiveness.createdAt})`,
+        date: sql<string>`DATE_TRUNC(${safeTruncUnit(truncUnit)}, ${injectionEffectiveness.createdAt})`,
         avg_utilization_score: sql<number>`COALESCE(AVG(NULLIF(CAST(${injectionEffectiveness.utilizationScore} AS NUMERIC), 0)), 0)`,
         session_count: sql<number>`COUNT(*)`,
         injection_occurred_count: sql<number>`SUM(CASE WHEN ${injectionEffectiveness.injectionOccurred} THEN 1 ELSE 0 END)`,
@@ -231,12 +221,12 @@ router.get('/trend', async (req, res) => {
           eq(injectionEffectiveness.eventType, 'context_utilization'),
           gte(
             injectionEffectiveness.createdAt,
-            sql`NOW() - INTERVAL ${sql.raw(`'${interval}'`)}` as unknown as Date
+            sql`NOW() - INTERVAL ${safeInterval(interval)}` as unknown as Date
           )
         )
       )
-      .groupBy(sql`DATE_TRUNC('${sql.raw(truncUnit)}', ${injectionEffectiveness.createdAt})`)
-      .orderBy(sql`DATE_TRUNC('${sql.raw(truncUnit)}', ${injectionEffectiveness.createdAt})`);
+      .groupBy(sql`DATE_TRUNC(${safeTruncUnit(truncUnit)}, ${injectionEffectiveness.createdAt})`)
+      .orderBy(sql`DATE_TRUNC(${safeTruncUnit(truncUnit)}, ${injectionEffectiveness.createdAt})`);
 
     const result: EffectivenessTrendPoint[] = rows.map((r) => ({
       date: String(r.date),
@@ -261,14 +251,16 @@ router.get('/trend', async (req, res) => {
 router.get('/outcomes', async (req, res) => {
   const window = getWindow(req.query as Record<string, unknown>);
   if (window === null) {
-    return res.status(400).json({ error: 'Invalid window parameter. Must be one of: 24h, 7d, 30d' });
+    return res
+      .status(400)
+      .json({ error: 'Invalid window parameter. Must be one of: 24h, 7d, 30d' });
   }
   const db = tryGetIntelligenceDb();
   if (!db) {
     return res.json([]);
   }
   try {
-    const interval = windowToInterval(window);
+    const interval = timeWindowToInterval(window);
     const rows = await db
       .select({
         outcome: injectionEffectiveness.sessionOutcome,
@@ -281,7 +273,7 @@ router.get('/outcomes', async (req, res) => {
           eq(injectionEffectiveness.eventType, 'context_utilization'),
           gte(
             injectionEffectiveness.createdAt,
-            sql`NOW() - INTERVAL ${sql.raw(`'${interval}'`)}` as unknown as Date
+            sql`NOW() - INTERVAL ${safeInterval(interval)}` as unknown as Date
           )
         )
       )
@@ -308,14 +300,16 @@ router.get('/outcomes', async (req, res) => {
 router.get('/low-utilization', async (req, res) => {
   const window = getWindow(req.query as Record<string, unknown>);
   if (window === null) {
-    return res.status(400).json({ error: 'Invalid window parameter. Must be one of: 24h, 7d, 30d' });
+    return res
+      .status(400)
+      .json({ error: 'Invalid window parameter. Must be one of: 24h, 7d, 30d' });
   }
   const db = tryGetIntelligenceDb();
   if (!db) {
     return res.json([]);
   }
   try {
-    const interval = windowToInterval(window);
+    const interval = timeWindowToInterval(window);
     const rows = await db
       .select({
         sessionId: injectionEffectiveness.sessionId,
@@ -333,12 +327,9 @@ router.get('/low-utilization', async (req, res) => {
           eq(injectionEffectiveness.eventType, 'context_utilization'),
           gte(
             injectionEffectiveness.createdAt,
-            sql`NOW() - INTERVAL ${sql.raw(`'${interval}'`)}` as unknown as Date
+            sql`NOW() - INTERVAL ${safeInterval(interval)}` as unknown as Date
           ),
-          lt(
-            sql`NULLIF(CAST(${injectionEffectiveness.utilizationScore} AS NUMERIC), 0)`,
-            sql`0.3`
-          )
+          lt(sql`NULLIF(CAST(${injectionEffectiveness.utilizationScore} AS NUMERIC), 0)`, sql`0.3`)
         )
       )
       .orderBy(desc(injectionEffectiveness.createdAt))
