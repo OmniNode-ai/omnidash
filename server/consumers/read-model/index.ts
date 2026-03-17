@@ -1,0 +1,46 @@
+/**
+ * Projection handler registry (OMN-5192).
+ *
+ * Exports all projection handlers and the shared types used by the
+ * read-model consumer orchestrator.
+ */
+
+export type { ProjectionHandler, ProjectionContext, MessageMeta } from './types';
+export {
+  deterministicCorrelationId,
+  sanitizeSessionId,
+  safeParseDate,
+  safeParseDateOrMin,
+  isTableMissingError,
+  UUID_RE,
+  MAX_BATCH_ROWS,
+  VALID_PROMOTION_ACTIONS,
+  VALID_CONFIDENCE_LEVELS,
+} from './types';
+
+export { OmniclaudeProjectionHandler } from './omniclaude-projections';
+export { OmniintelligenceProjectionHandler } from './omniintelligence-projections';
+export { OmnibaseInfraProjectionHandler } from './omnibase-infra-projections';
+export { PlatformProjectionHandler } from './platform-projections';
+
+import type { ProjectionHandler } from './types';
+import { OmniclaudeProjectionHandler } from './omniclaude-projections';
+import { OmniintelligenceProjectionHandler } from './omniintelligence-projections';
+import { OmnibaseInfraProjectionHandler } from './omnibase-infra-projections';
+import { PlatformProjectionHandler } from './platform-projections';
+
+/**
+ * Create the ordered list of all projection handlers.
+ *
+ * The order matters only for the first-match short circuit in the
+ * orchestrator's dispatch loop. Placing the highest-traffic handler
+ * (omniclaude) first minimises unnecessary canHandle() calls.
+ */
+export function createProjectionHandlers(): ProjectionHandler[] {
+  return [
+    new OmniclaudeProjectionHandler(),
+    new OmniintelligenceProjectionHandler(),
+    new OmnibaseInfraProjectionHandler(),
+    new PlatformProjectionHandler(),
+  ];
+}
