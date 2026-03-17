@@ -405,6 +405,16 @@ export const TOPIC_INTELLIGENCE_PLAN_REVIEW_STRATEGY_RUN_COMPLETED =
  * Consumed only by the read-model-consumer via READ_MODEL_TOPICS. */
 export const SUFFIX_OMNICLAUDE_PR_VALIDATION_ROLLUP = 'onex.evt.omniclaude.pr-validation-rollup.v1';
 
+/** DoD verification completed event (OMN-5199).
+ * Emitted by omniclaude dod-verify skill after running all DoD checks.
+ * Consumed by ReadModelConsumer to project into dod_verify_runs table. */
+export const SUFFIX_OMNICLAUDE_DOD_VERIFY_COMPLETED = 'onex.evt.omniclaude.dod-verify-completed.v1';
+
+/** DoD guard fired event (OMN-5199).
+ * Emitted by omniclaude dod-guard hook when a guard decision is made.
+ * Consumed by ReadModelConsumer to project into dod_guard_events table. */
+export const SUFFIX_OMNICLAUDE_DOD_GUARD_FIRED = 'onex.evt.omniclaude.dod-guard-fired.v1';
+
 // ============================================================================
 // Miscellaneous Topics
 // ============================================================================

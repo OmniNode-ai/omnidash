@@ -1843,3 +1843,70 @@ export const phaseMetricsEvents = pgTable(
 export const insertPhaseMetricsEventSchema = createInsertSchema(phaseMetricsEvents);
 export type PhaseMetricsEventRow = typeof phaseMetricsEvents.$inferSelect;
 export type InsertPhaseMetricsEvent = typeof phaseMetricsEvents.$inferInsert;
+
+// ============================================================================
+// DoD Verify Runs Table (migration 0023, OMN-5199)
+// Tracks DoD verification run completions emitted by omniclaude dod-verify skill.
+// Source topic: onex.evt.omniclaude.dod-verify-completed.v1
+// Replay policy: INSERT with ON CONFLICT (run_id) DO NOTHING (idempotent).
+// ============================================================================
+
+export const dodVerifyRuns = pgTable(
+  'dod_verify_runs',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    ticketId: text('ticket_id').notNull(),
+    runId: text('run_id').notNull().unique(),
+    sessionId: text('session_id'),
+    correlationId: text('correlation_id'),
+    totalChecks: integer('total_checks').notNull(),
+    passedChecks: integer('passed_checks').notNull(),
+    failedChecks: integer('failed_checks').notNull(),
+    skippedChecks: integer('skipped_checks').notNull(),
+    overallPass: boolean('overall_pass').notNull(),
+    policyMode: text('policy_mode').notNull(),
+    evidenceItems: jsonb('evidence_items').notNull(),
+    eventTimestamp: timestamp('event_timestamp', { withTimezone: true }).notNull(),
+    ingestedAt: timestamp('ingested_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [
+    index('idx_dod_verify_runs_ticket_id').on(table.ticketId),
+    index('idx_dod_verify_runs_event_timestamp').on(table.eventTimestamp),
+    index('idx_dod_verify_runs_overall_pass').on(table.overallPass),
+  ]
+);
+
+export const insertDodVerifyRunSchema = createInsertSchema(dodVerifyRuns);
+export type DodVerifyRunRow = typeof dodVerifyRuns.$inferSelect;
+export type InsertDodVerifyRun = typeof dodVerifyRuns.$inferInsert;
+
+// ============================================================================
+// DoD Guard Events Table (migration 0023, OMN-5199)
+// Tracks DoD guard decisions emitted by omniclaude dod-guard hook.
+// Source topic: onex.evt.omniclaude.dod-guard-fired.v1
+// Replay policy: APPEND-ONLY (no natural dedup key).
+// ============================================================================
+
+export const dodGuardEvents = pgTable(
+  'dod_guard_events',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    ticketId: text('ticket_id').notNull(),
+    sessionId: text('session_id'),
+    guardOutcome: text('guard_outcome').notNull(),
+    policyMode: text('policy_mode').notNull(),
+    receiptAgeSeconds: numeric('receipt_age_seconds', { precision: 12, scale: 3 }),
+    receiptPass: boolean('receipt_pass'),
+    eventTimestamp: timestamp('event_timestamp', { withTimezone: true }).notNull(),
+    ingestedAt: timestamp('ingested_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [
+    index('idx_dod_guard_events_ticket_id').on(table.ticketId),
+    index('idx_dod_guard_events_event_timestamp').on(table.eventTimestamp),
+    index('idx_dod_guard_events_guard_outcome').on(table.guardOutcome),
+  ]
+);
+
+export const insertDodGuardEventSchema = createInsertSchema(dodGuardEvents);
+export type DodGuardEventRow = typeof dodGuardEvents.$inferSelect;
+export type InsertDodGuardEvent = typeof dodGuardEvents.$inferInsert;
