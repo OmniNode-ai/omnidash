@@ -52,7 +52,7 @@ export const runtimeIdentity: RuntimeIdentity = {
   nodeId: process.env.ONEX_NODE_ID || null,
   contractFingerprint: process.env.ONEX_CONTRACT_FINGERPRINT || null,
   runtimeMode: parseRuntimeMode(process.env.ONEX_RUNTIME_MODE),
-  env: process.env.ONEX_ENV || 'dev',
+  env: process.env.ONEX_ENV || 'local',
   supervised: !!process.env.ONEX_NODE_ID,
   supervisorPid: process.env.ONEX_SUPERVISOR_PID || null,
   injectedAt: process.env.ONEX_INJECTED_AT || null,

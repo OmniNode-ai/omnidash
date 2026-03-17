@@ -47,13 +47,14 @@ export type EnvironmentPrefix = (typeof ENVIRONMENT_PREFIXES)[number];
  * Set `VITE_TOPIC_ENV_PREFIX=staging` (or `TOPIC_ENV_PREFIX=staging`) in the
  * build environment to override for non-production deployments.
  *
- * **Server-side**: Reads from `TOPIC_ENV_PREFIX` or `ONEX_ENV` env vars.
- * These must be set BEFORE any module that imports from this file is evaluated,
+ * **Server-side**: Reads from `TOPIC_ENV_PREFIX` env var only. `ONEX_ENV` is
+ * reserved for runtime identity metadata and must NOT influence topic naming.
+ * Must be set BEFORE any module that imports from this file is evaluated,
  * because topic constants are resolved at module load time (not lazily).
  */
 export function getTopicEnvPrefix(): string {
   if (typeof process !== 'undefined' && process.env !== undefined) {
-    const prefix = process.env.TOPIC_ENV_PREFIX ?? process.env.ONEX_ENV;
+    const prefix = process.env.TOPIC_ENV_PREFIX;
     return prefix !== undefined && prefix !== '' ? prefix : '';
   }
   return '';
