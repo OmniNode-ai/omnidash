@@ -11,7 +11,7 @@
  * Color-coded: stuck=red, blocked=orange, done=green, running=blue
  */
 
-import { useQuery } from '@tanstack/react-query';
+import { useDataSource } from '@/hooks/useDataSource';
 import { queryKeys } from '@/lib/query-keys';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -35,6 +35,7 @@ import {
   Shield,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { LocalDataUnavailableBanner } from '@/components/LocalDataUnavailableBanner';
 import type { PipelineHealthSummary } from '../../../server/projections/pipeline-health-projection';
 
 // ============================================================================
@@ -262,18 +263,22 @@ function PipelineTable({
 async function fetchPipelines(): Promise<PipelineHealthSummary[]> {
   const res = await fetch('/api/pipeline-health');
   if (!res.ok) throw new Error('Failed to fetch pipeline health');
-  return res.json() as Promise<PipelineHealthSummary[]>;
+  const body = await res.json();
+  // Server returns { data: PipelineHealthSummary[], source: string } (OMN-5202)
+  // or a raw array for backward compatibility
+  return (Array.isArray(body) ? body : (body.data ?? [])) as PipelineHealthSummary[];
 }
 
 export default function PipelineHealthDashboard() {
-  const { data, isLoading, isError } = useQuery({
+  const { data, source, isLoading } = useDataSource({
     queryKey: queryKeys.pipelineHealth.summaries(),
     queryFn: fetchPipelines,
+    fallbackData: [] as PipelineHealthSummary[],
     refetchInterval: 15_000,
     staleTime: 10_000,
   });
 
-  const pipelines = data ?? [];
+  const pipelines = data;
 
   const total = pipelines.length;
   const stuck = pipelines.filter((p) => p.stuck).length;
@@ -291,7 +296,7 @@ export default function PipelineHealthDashboard() {
         </p>
       </div>
 
-      {isError && <p className="text-sm text-destructive">Failed to load pipeline health data.</p>}
+      {source === 'unavailable' && <LocalDataUnavailableBanner />}
 
       {/* Summary Cards */}
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">

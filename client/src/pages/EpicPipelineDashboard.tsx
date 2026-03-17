@@ -11,8 +11,9 @@
  */
 
 import { useCallback } from 'react';
-import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { useQueryClient } from '@tanstack/react-query';
 import { useWebSocket } from '@/hooks/useWebSocket';
+import { useDataSource } from '@/hooks/useDataSource';
 import { queryKeys } from '@/lib/query-keys';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -27,6 +28,7 @@ import {
 } from '@/components/ui/table';
 import { Activity, GitBranch, Clock, List } from 'lucide-react';
 import { DataSourceEmptyState } from '@/components/EmptyState';
+import { LocalDataUnavailableBanner } from '@/components/LocalDataUnavailableBanner';
 import type {
   EpicRunPayload,
   EpicRunEventRow,
@@ -212,9 +214,10 @@ export default function EpicPipelineDashboard() {
     debug: false,
   });
 
-  const { data, isLoading, isError } = useQuery({
+  const { data, source, isLoading } = useDataSource({
     queryKey: queryKeys.epicRun.snapshot(),
     queryFn: fetchEpicRunSnapshot,
+    fallbackData: { summary: null, events: [], leases: [] } as unknown as EpicRunPayload,
     refetchInterval: 30_000,
     staleTime: 15_000,
   });
@@ -234,9 +237,11 @@ export default function EpicPipelineDashboard() {
         </p>
       </div>
 
-      {isError && <p className="text-sm text-destructive">Failed to load epic run data.</p>}
+      {source === 'unavailable' && (
+        <LocalDataUnavailableBanner topic="onex.evt.omniclaude.epic-run-updated.v1" />
+      )}
 
-      {!isLoading && !isError && (summary?.total_events ?? 0) === 0 && events.length === 0 && (
+      {!isLoading && source !== 'unavailable' && (summary?.total_events ?? 0) === 0 && events.length === 0 && (
         <DataSourceEmptyState
           sourceName="Epic Pipeline Events"
           producerName="epic-team skill (omniclaude)"

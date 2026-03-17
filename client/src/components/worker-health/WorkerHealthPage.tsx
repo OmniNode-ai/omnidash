@@ -12,7 +12,8 @@
  * Docker-unavailable warning banner when docker CLI is not reachable.
  */
 
-import { useQuery } from '@tanstack/react-query';
+import { useDataSource } from '@/hooks/useDataSource';
+import { LocalDataUnavailableBanner } from '@/components/LocalDataUnavailableBanner';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -292,9 +293,15 @@ async function fetchWorkerHealth(): Promise<WorkerHealthPayload> {
 }
 
 export default function WorkerHealthPage() {
-  const { data, isLoading, isError } = useQuery({
+  const { data, source, isLoading } = useDataSource({
     queryKey: ['worker-health', 'full'],
     queryFn: fetchWorkerHealth,
+    fallbackData: {
+      workers: [],
+      summary: { total: 0, healthy: 0, restarting: 0, down: 0 },
+      dockerAvailable: false,
+      restartThreshold: 5,
+    } as WorkerHealthPayload,
     refetchInterval: 30_000,
     staleTime: 20_000,
   });
@@ -314,11 +321,7 @@ export default function WorkerHealthPage() {
         </p>
       </div>
 
-      {isError && (
-        <p className="text-sm text-destructive">
-          Failed to load worker health data. Ensure the omnidash server is running.
-        </p>
-      )}
+      {source === 'unavailable' && <LocalDataUnavailableBanner />}
 
       {/* Docker unavailable warning */}
       {!isLoading && !dockerAvailable && <DockerUnavailableBanner />}
