@@ -84,8 +84,9 @@ describe('Bridge wiring integration', () => {
 });
 
 describe('Canonical handler emit coverage', () => {
-  const EVENT_CONSUMER_PATH = path.resolve(__dirname, '../event-consumer.ts');
-  const eventConsumerSource = fs.readFileSync(EVENT_CONSUMER_PATH, 'utf-8');
+  // OMN-5191: handlers moved from event-consumer.ts to domain/platform-handler.ts
+  const PLATFORM_HANDLER_PATH = path.resolve(__dirname, '../consumers/domain/platform-handler.ts');
+  const platformHandlerSource = fs.readFileSync(PLATFORM_HANDLER_PATH, 'utf-8');
 
   const EXPECTED_EMITS: [string, string][] = [
     ['handleCanonicalNodeIntrospection', 'nodeIntrospectionUpdate'],
@@ -95,18 +96,13 @@ describe('Canonical handler emit coverage', () => {
 
   for (const [handler, expectedEvent] of EXPECTED_EMITS) {
     it(`${handler} emits '${expectedEvent}'`, () => {
-      // Extract handler body using regex
-      const handlerRegex = new RegExp(`private ${handler}[\\s\\S]*?\\n  \\}`, 'm');
-      const handlerBody = eventConsumerSource.match(handlerRegex);
+      // Extract handler body using regex — now a free function, not a private method
+      const handlerRegex = new RegExp(`function ${handler}[\\s\\S]*?\\n\\}`, 'm');
+      const handlerBody = platformHandlerSource.match(handlerRegex);
       expect(handlerBody).not.toBeNull();
-      // emit may be single-line: this.emit('event', ...)
-      // or multi-line with validateBridgeEmit:
-      //   this.emit(
-      //     'event',
-      //     validateBridgeEmit(...)
-      //   )
+      // Handlers now use ctx.emit() instead of this.emit()
       const body = handlerBody![0].replace(/\s+/g, ' ');
-      expect(body).toContain(`this.emit( '${expectedEvent}'`);
+      expect(body).toMatch(new RegExp(`ctx\\.emit\\(\\s*'${expectedEvent}'`));
     });
   }
 });
