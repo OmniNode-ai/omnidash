@@ -59,12 +59,16 @@ read_model_topics:
     handler: "projectSessionOutcome"
   - topic: "onex.evt.omniclaude.task-delegated.v1"
     handler: "projectTaskDelegated"
+  - topic: "onex.evt.omniclaude.debug-trigger-record.v1"
+    handler: "projectDebugTriggerRecord"
 
   # --- omnibase-infra topics ---
   - topic: "onex.evt.omnibase-infra.baselines-computed.v1"
     handler: "projectBaselinesComputed"
 
   # --- omniintelligence topics ---
+  - topic: "onex.evt.omniintelligence.ci-debug-escalation.v1"
+    handler: "projectCiDebugEscalation"
   - topic: "onex.evt.omniintelligence.llm-call-completed.v1"
     handler: "projectLlmCostEvent"
   - topic: "onex.evt.omniintelligence.pattern-lifecycle-transitioned.v1"

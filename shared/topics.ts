@@ -360,6 +360,12 @@ export const SUFFIX_INTELLIGENCE_RUN_EVALUATED = 'onex.evt.omniintelligence.run-
 export const SUFFIX_INTELLIGENCE_INTENT_DRIFT_DETECTED =
   'onex.evt.omniintelligence.intent-drift-detected.v1';
 
+/** CI debug escalation event (OMN-5282).
+ * Emitted by omniintelligence when a CI failure is escalated for debug analysis.
+ * Consumed by the ReadModelConsumer to project into ci_debug_escalation_events table. */
+export const SUFFIX_INTELLIGENCE_CI_DEBUG_ESCALATION =
+  'onex.evt.omniintelligence.ci-debug-escalation.v1';
+
 /** Full topic string: plan review strategy run completed event.
  * Emitted by node_plan_reviewer_multi_compute (omniintelligence).
  * Consumed only by READ_MODEL_TOPICS in read-model-consumer.ts (OMN-3282). */
@@ -380,6 +386,11 @@ export const SUFFIX_OMNICLAUDE_DOD_VERIFY_COMPLETED = 'onex.evt.omniclaude.dod-v
  * Emitted by omniclaude dod-guard hook when a guard decision is made.
  * Consumed by ReadModelConsumer to project into dod_guard_events table. */
 export const SUFFIX_OMNICLAUDE_DOD_GUARD_FIRED = 'onex.evt.omniclaude.dod-guard-fired.v1';
+
+/** Debug trigger record event (OMN-5282).
+ * Emitted by omniclaude when a debug escalation is triggered.
+ * Consumed by ReadModelConsumer to project into debug_trigger_records table. */
+export const SUFFIX_OMNICLAUDE_DEBUG_TRIGGER_RECORD = 'onex.evt.omniclaude.debug-trigger-record.v1';
 
 // ============================================================================
 // Miscellaneous Topics

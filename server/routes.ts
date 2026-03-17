@@ -32,6 +32,8 @@ import epicRunRoutes from './epic-run-routes';
 import prWatchRoutes from './pr-watch-routes';
 import pipelineBudgetRoutes from './pipeline-budget-routes';
 import debugEscalationRoutes from './debug-escalation-routes';
+// CI Intelligence routes (OMN-5282)
+import ciIntelRoutes from './ci-intel-routes';
 import objectiveRoutes from './objective-routes';
 // CDQA gate routes (OMN-3190)
 import cdqaGatesRoutes from './cdqa-gates-routes';
@@ -150,6 +152,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.use('/api/pr-watch', prWatchRoutes);
   app.use('/api/pipeline-budget', pipelineBudgetRoutes);
   app.use('/api/debug-escalation', debugEscalationRoutes);
+
+  // CI Intelligence dashboard routes (OMN-5282)
+  app.use('/api/ci-intel', ciIntelRoutes);
 
   // CDQA gate dashboard routes (OMN-3190)
   app.use('/api/cdqa-gates', cdqaGatesRoutes);
