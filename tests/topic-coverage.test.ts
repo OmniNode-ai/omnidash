@@ -108,6 +108,7 @@ const ORCHESTRATOR_PATH = path.resolve(__dirname, '../server/read-model-consumer
 // All handler files that contain projection logic
 const HANDLER_FILES = [
   path.join(HANDLER_DIR, 'omniclaude-projections.ts'),
+  path.join(HANDLER_DIR, 'dod-projections.ts'),
   path.join(HANDLER_DIR, 'omniintelligence-projections.ts'),
   path.join(HANDLER_DIR, 'omnibase-infra-projections.ts'),
   path.join(HANDLER_DIR, 'platform-projections.ts'),

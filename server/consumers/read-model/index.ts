@@ -19,12 +19,14 @@ export {
 } from './types';
 
 export { OmniclaudeProjectionHandler } from './omniclaude-projections';
+export { DodProjectionHandler } from './dod-projections';
 export { OmniintelligenceProjectionHandler } from './omniintelligence-projections';
 export { OmnibaseInfraProjectionHandler } from './omnibase-infra-projections';
 export { PlatformProjectionHandler } from './platform-projections';
 
 import type { ProjectionHandler } from './types';
 import { OmniclaudeProjectionHandler } from './omniclaude-projections';
+import { DodProjectionHandler } from './dod-projections';
 import { OmniintelligenceProjectionHandler } from './omniintelligence-projections';
 import { OmnibaseInfraProjectionHandler } from './omnibase-infra-projections';
 import { PlatformProjectionHandler } from './platform-projections';
@@ -39,6 +41,7 @@ import { PlatformProjectionHandler } from './platform-projections';
 export function createProjectionHandlers(): ProjectionHandler[] {
   return [
     new OmniclaudeProjectionHandler(),
+    new DodProjectionHandler(),
     new OmniintelligenceProjectionHandler(),
     new OmnibaseInfraProjectionHandler(),
     new PlatformProjectionHandler(),

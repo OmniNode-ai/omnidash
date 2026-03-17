@@ -35,6 +35,8 @@ import {
   SUFFIX_OMNICLAUDE_CORRELATION_TRACE,
   SUFFIX_OMNICLAUDE_SESSION_OUTCOME,
   SUFFIX_OMNICLAUDE_PHASE_METRICS,
+  SUFFIX_OMNICLAUDE_DOD_VERIFY_COMPLETED,
+  SUFFIX_OMNICLAUDE_DOD_GUARD_FIRED,
 } from '@shared/topics';
 import { createProjectionHandlers, deterministicCorrelationId } from './consumers/read-model/index';
 import type { ProjectionHandler, ProjectionContext } from './consumers/read-model/index';
@@ -71,6 +73,8 @@ export const READ_MODEL_TOPICS = [
   SUFFIX_OMNICLAUDE_CORRELATION_TRACE,
   SUFFIX_OMNICLAUDE_SESSION_OUTCOME,
   SUFFIX_OMNICLAUDE_PHASE_METRICS,
+  SUFFIX_OMNICLAUDE_DOD_VERIFY_COMPLETED,
+  SUFFIX_OMNICLAUDE_DOD_GUARD_FIRED,
 ] as const;
 
 type ReadModelTopic = (typeof READ_MODEL_TOPICS)[number];
