@@ -436,6 +436,11 @@ export const SUFFIX_AGENT_STATUS = 'onex.evt.omniclaude.agent-status.v1';
 export const SUFFIX_MEMORY_INTENT_STORED = 'onex.evt.omnimemory.intent-stored.v1';
 export const SUFFIX_MEMORY_INTENT_QUERY_RESPONSE = 'onex.evt.omnimemory.intent-query-response.v1';
 export const SUFFIX_MEMORY_INTENT_QUERY_REQUESTED = 'onex.cmd.omnimemory.intent-query-requested.v1';
+// Document ingestion + memory lifecycle topics (OMN-5290)
+export const SUFFIX_MEMORY_DOCUMENT_DISCOVERED = 'onex.evt.omnimemory.document-discovered.v1';
+export const SUFFIX_MEMORY_STORED = 'onex.evt.omnimemory.memory-stored.v1';
+export const SUFFIX_MEMORY_RETRIEVAL_RESPONSE = 'onex.evt.omnimemory.memory-retrieval-response.v1';
+export const SUFFIX_MEMORY_EXPIRED = 'onex.evt.omnimemory.memory-expired.v1';
 
 // ============================================================================
 // GitHub / Git / Linear Status Topics (OMN-2658 — produced by OMN-2656 Kafka producers)

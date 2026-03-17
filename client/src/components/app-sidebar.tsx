@@ -8,6 +8,7 @@ import {
   Brain,
   Sparkles,
   ShieldCheck,
+  Database,
   Gauge,
   Activity,
   Lightbulb,
@@ -249,6 +250,13 @@ const advancedSubGroups: AdvancedSubGroup[] = [
         url: '/decisions',
         icon: FileSearch,
         description: 'Decision provenance and intent-vs-plan comparison',
+      },
+      {
+        title: 'OmniMemory',
+        url: '/memory',
+        icon: Database,
+        description:
+          'Document ingestion stats, memory store status, and retrieval metrics (OMN-5290)',
       },
     ],
   },
