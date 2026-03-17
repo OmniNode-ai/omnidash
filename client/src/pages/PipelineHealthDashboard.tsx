@@ -263,7 +263,10 @@ function PipelineTable({
 async function fetchPipelines(): Promise<PipelineHealthSummary[]> {
   const res = await fetch('/api/pipeline-health');
   if (!res.ok) throw new Error('Failed to fetch pipeline health');
-  return res.json() as Promise<PipelineHealthSummary[]>;
+  const body = await res.json();
+  // Server returns { data: PipelineHealthSummary[], source: string } (OMN-5202)
+  // or a raw array for backward compatibility
+  return (Array.isArray(body) ? body : (body.data ?? [])) as PipelineHealthSummary[];
 }
 
 export default function PipelineHealthDashboard() {
