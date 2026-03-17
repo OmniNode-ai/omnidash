@@ -25,6 +25,13 @@ import type {
 } from '@shared/enforcement-types';
 import { DbBackedProjectionView } from './db-backed-projection-view';
 import { tryGetIntelligenceDb } from '../storage';
+import {
+  safeInterval,
+  safeTruncUnit,
+  timeWindowToInterval,
+  truncUnitForWindow,
+  ACCEPTED_WINDOWS,
+} from '../sql-safety';
 
 // ============================================================================
 // Payload type
@@ -40,47 +47,9 @@ export interface EnforcementPayload {
 
 type Db = NonNullable<ReturnType<typeof tryGetIntelligenceDb>>;
 
-/**
- * Convert a window string ('24h' | '7d' | '30d') to a PostgreSQL INTERVAL
- * literal for use in WHERE created_at >= NOW() - INTERVAL '...' queries.
- *
- * Only called from _queryForWindow(), which is itself only reachable via:
- *   - ensureFreshForWindow() — validates against ACCEPTED_WINDOWS before calling
- *   - querySnapshot()        — hardcodes '24h', always a valid value
- *
- * @param window - Time window identifier. Accepted values: '24h', '7d', '30d'.
- * @returns A PostgreSQL INTERVAL string suitable for interpolation into a raw
- *   SQL fragment (e.g. `INTERVAL '24 hours'`).
- * @throws {Error} If `window` is not one of the three accepted values.
- */
-function windowToInterval(window: string): string {
-  switch (window) {
-    case '24h':
-      return '24 hours';
-    case '7d':
-      return '7 days';
-    case '30d':
-      return '30 days';
-    default:
-      throw new Error(
-        `windowToInterval: unrecognised window "${window}". Accepted values: '24h', '7d', '30d'.`
-      );
-  }
-}
-
 // ============================================================================
 // Projection
 // ============================================================================
-
-/**
- * The set of time-window values accepted by ensureFreshForWindow.
- *
- * Single source of truth for accepted window values — imported by both
- * enforcement-routes.ts (route-layer guard) and ensureFreshForWindow (secondary
- * safety net). Adding a new window here automatically makes it valid in both
- * layers; no separate constant needs updating.
- */
-export const ACCEPTED_WINDOWS = new Set(['24h', '7d', '30d']);
 
 /**
  * Minimum interval (ms) between successive non-coalesced DB query sets for
@@ -248,7 +217,7 @@ export class EnforcementProjection extends DbBackedProjectionView<EnforcementPay
    * and assemble the results into a single EnforcementPayload.
    */
   private async _queryForWindow(db: Db, window: string): Promise<EnforcementPayload> {
-    const interval = windowToInterval(window);
+    const interval = timeWindowToInterval(window);
 
     const [summary, byLanguage, byDomain, violatedPatterns, trend] = await Promise.all([
       this._querySummary(db, interval, window),
@@ -299,13 +268,13 @@ export class EnforcementProjection extends DbBackedProjectionView<EnforcementPay
         FROM pattern_enforcement_events
         -- NOTE: The interval string is produced only by windowToInterval(), which maps
         -- pre-validated window values to hardcoded literals. No user input reaches
-        -- sql.raw() — the two-layer ACCEPTED_WINDOWS guard and route 400 ensure this.
-        WHERE created_at >= NOW() - INTERVAL ${sql.raw(`'${interval}'`)}
+        -- interval validated by safeInterval() allowlist (sql-safety.ts)
+        WHERE created_at >= NOW() - INTERVAL ${safeInterval(interval)}
       `),
       // Correction rate trend bucketed by hour or day
       db.execute(sql`
         SELECT
-          DATE_TRUNC(${sql.raw(`'${window === '24h' ? 'hour' : 'day'}'`)}, created_at) AT TIME ZONE 'UTC' AS bucket,
+          DATE_TRUNC(${safeTruncUnit(truncUnitForWindow(window))}, created_at) AT TIME ZONE 'UTC' AS bucket,
           ROUND(
             CASE
               WHEN COUNT(*) FILTER (WHERE outcome IN ('violation','corrected')) = 0 THEN 0.0
@@ -314,7 +283,7 @@ export class EnforcementProjection extends DbBackedProjectionView<EnforcementPay
             END, 4
           ) AS correction_rate
         FROM pattern_enforcement_events
-        WHERE created_at >= NOW() - INTERVAL ${sql.raw(`'${interval}'`)}
+        WHERE created_at >= NOW() - INTERVAL ${safeInterval(interval)}
         GROUP BY bucket
         ORDER BY bucket ASC
       `),
@@ -323,7 +292,7 @@ export class EnforcementProjection extends DbBackedProjectionView<EnforcementPay
         SELECT COUNT(DISTINCT pattern_name)::int AS violated_pattern_count
         FROM pattern_enforcement_events
         WHERE outcome = 'violation'
-          AND created_at >= NOW() - INTERVAL ${sql.raw(`'${interval}'`)}
+          AND created_at >= NOW() - INTERVAL ${safeInterval(interval)}
       `),
     ]);
 
@@ -373,8 +342,8 @@ export class EnforcementProjection extends DbBackedProjectionView<EnforcementPay
         COUNT(*) FILTER (WHERE outcome = 'false_positive')::int                             AS false_positives,
         ROUND(AVG(CASE WHEN outcome = 'hit' THEN 1.0 ELSE 0.0 END)::numeric, 4)            AS hit_rate
       FROM pattern_enforcement_events
-      -- see windowToInterval() NOTE above for sql.raw() interval safety rationale
-      WHERE created_at >= NOW() - INTERVAL ${sql.raw(`'${interval}'`)}
+      -- interval validated by safeInterval() allowlist (sql-safety.ts)
+      WHERE created_at >= NOW() - INTERVAL ${safeInterval(interval)}
       GROUP BY language
       ORDER BY evaluations DESC
     `);
@@ -409,8 +378,8 @@ export class EnforcementProjection extends DbBackedProjectionView<EnforcementPay
         COUNT(*) FILTER (WHERE outcome = 'false_positive')::int                             AS false_positives,
         ROUND(AVG(CASE WHEN outcome = 'hit' THEN 1.0 ELSE 0.0 END)::numeric, 4)            AS hit_rate
       FROM pattern_enforcement_events
-      -- see windowToInterval() NOTE above for sql.raw() interval safety rationale
-      WHERE created_at >= NOW() - INTERVAL ${sql.raw(`'${interval}'`)}
+      -- interval validated by safeInterval() allowlist (sql-safety.ts)
+      WHERE created_at >= NOW() - INTERVAL ${safeInterval(interval)}
       GROUP BY domain
       ORDER BY evaluations DESC
     `);
@@ -456,8 +425,8 @@ export class EnforcementProjection extends DbBackedProjectionView<EnforcementPay
         MODE() WITHIN GROUP (ORDER BY language)                                               AS language,
         MODE() WITHIN GROUP (ORDER BY domain)                                                 AS domain
       FROM pattern_enforcement_events
-      -- see windowToInterval() NOTE above for sql.raw() interval safety rationale
-      WHERE created_at >= NOW() - INTERVAL ${sql.raw(`'${interval}'`)}
+      -- interval validated by safeInterval() allowlist (sql-safety.ts)
+      WHERE created_at >= NOW() - INTERVAL ${safeInterval(interval)}
       GROUP BY pattern_name
       HAVING COUNT(*) FILTER (WHERE outcome = 'violation') > 0
       ORDER BY violation_count DESC
@@ -499,20 +468,12 @@ export class EnforcementProjection extends DbBackedProjectionView<EnforcementPay
     interval: string,
     window: string
   ): Promise<EnforcementTrendPoint[]> {
-    const truncUnit = window === '24h' ? 'hour' : 'day';
+    const truncUnit = truncUnitForWindow(window);
 
-    // Explicit allowlist guard before sql.raw() interpolation.
-    // The ternary above already constrains truncUnit to 'hour' | 'day'.
-    if (truncUnit !== 'hour' && truncUnit !== 'day') {
-      throw new Error(
-        `_queryTrend: invalid truncation unit '${truncUnit as string}' — must be 'hour' or 'day'`
-      );
-    }
-
-    // sql.raw() is safe: truncUnit is produced by the ternary above, never from user input
+    // safeTruncUnit() validates against the centralized allowlist in sql-safety.ts
     const rows = await db.execute(sql`
       SELECT
-        DATE_TRUNC(${sql.raw(`'${truncUnit}'`)}, created_at) AT TIME ZONE 'UTC'               AS bucket,
+        DATE_TRUNC(${safeTruncUnit(truncUnit)}, created_at) AT TIME ZONE 'UTC'               AS bucket,
         ROUND(AVG(CASE WHEN outcome = 'hit'            THEN 1.0 ELSE 0.0 END)::numeric, 4)    AS hit_rate,
         ROUND(
           CASE
@@ -524,8 +485,8 @@ export class EnforcementProjection extends DbBackedProjectionView<EnforcementPay
         ROUND(AVG(CASE WHEN outcome = 'false_positive' THEN 1.0 ELSE 0.0 END)::numeric, 4)    AS false_positive_rate,
         COUNT(*)::int                                                                          AS total_evaluations
       FROM pattern_enforcement_events
-      -- see windowToInterval() NOTE above for sql.raw() interval safety rationale
-      WHERE created_at >= NOW() - INTERVAL ${sql.raw(`'${interval}'`)}
+      -- interval validated by safeInterval() allowlist (sql-safety.ts)
+      WHERE created_at >= NOW() - INTERVAL ${safeInterval(interval)}
       GROUP BY bucket
       ORDER BY bucket ASC
     `);

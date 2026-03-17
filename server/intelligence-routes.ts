@@ -25,30 +25,14 @@ import {
 } from '@shared/intelligence-schema';
 import { sql, desc, asc, gte, eq, or, and, inArray, ne } from 'drizzle-orm';
 import { checkAllServices } from './service-health';
+import {
+  safeInterval,
+  safeTruncUnit,
+  timeWindowToInterval,
+  truncUnitForWindow,
+} from './sql-safety';
 
 export const intelligenceRouter = Router();
-
-// ============================================================================
-// Helper Functions
-// ============================================================================
-
-/**
- * Convert time window to appropriate aggregation interval for PostgreSQL
- * @param timeWindow - Time window: '24h', '7d', or '30d'
- * @returns PostgreSQL interval string
- */
-function getIntervalFromTimeWindow(timeWindow: string): string {
-  switch (timeWindow) {
-    case '24h':
-      return '24 hours';
-    case '7d':
-      return '7 days';
-    case '30d':
-      return '30 days';
-    default:
-      return '24 hours';
-  }
-}
 
 // ============================================================================
 // Type Definitions for Pattern Discovery Responses
@@ -244,10 +228,8 @@ intelligenceRouter.get('/agents/summary', async (req, res) => {
     console.log(`[API] Event consumer metrics empty, falling back to database query`);
 
     // Fallback: query PostgreSQL directly when event stream is empty
-    const interval = getIntervalFromTimeWindow(timeWindow);
-    const rowsResult = await getIntelligenceDb().execute(
-      sql.raw(
-        `
+    const interval = timeWindowToInterval(timeWindow);
+    const rowsResult = await getIntelligenceDb().execute(sql`
       SELECT
         COALESCE(ard.selected_agent, aa.agent_name) AS agent,
         COUNT(DISTINCT COALESCE(aa.id, ard.id)) AS total_requests,
@@ -256,15 +238,13 @@ intelligenceRouter.get('/agents/summary', async (req, res) => {
       FROM agent_actions aa
       FULL OUTER JOIN agent_routing_decisions ard
         ON aa.correlation_id = ard.correlation_id
-      WHERE (aa.created_at >= NOW() - INTERVAL '${interval}')
-         OR (ard.created_at >= NOW() - INTERVAL '${interval}')
+      WHERE (aa.created_at >= NOW() - INTERVAL ${safeInterval(interval)})
+         OR (ard.created_at >= NOW() - INTERVAL ${safeInterval(interval)})
       GROUP BY COALESCE(ard.selected_agent, aa.agent_name)
       HAVING COUNT(DISTINCT COALESCE(aa.id, ard.id)) > 0
       ORDER BY total_requests DESC
-      LIMIT 50;
-      `
-      )
-    );
+      LIMIT 50
+    `);
 
     // Handle different return types from Drizzle
     const rows = Array.isArray(rowsResult) ? rowsResult : rowsResult?.rows || rowsResult || [];
@@ -331,16 +311,12 @@ intelligenceRouter.get('/actions/recent', async (req, res) => {
 
     // Fallback: pull most recent actions from PostgreSQL
     try {
-      const rowsResult = await getIntelligenceDb().execute(
-        sql.raw(
-          `
+      const rowsResult = await getIntelligenceDb().execute(sql`
         SELECT id, correlation_id, agent_name, action_type, action_name, action_details, debug_mode, duration_ms, created_at
         FROM agent_actions
         ORDER BY created_at DESC
-        LIMIT ${limit};
-        `
-        )
-      );
+        LIMIT ${Math.max(1, Math.min(limit, 1000))}
+      `);
 
       // Handle different return types from Drizzle
       const rows = Array.isArray(rowsResult) ? rowsResult : rowsResult?.rows || rowsResult || [];
@@ -486,7 +462,7 @@ intelligenceRouter.get('/agents/routing-strategy', async (req, res) => {
     const timeWindow = (req.query.timeWindow as string) || '24h';
 
     // Determine time interval
-    const interval = getIntervalFromTimeWindow(timeWindow);
+    const interval = timeWindowToInterval(timeWindow);
 
     // Query routing decisions grouped by strategy
     const strategyData = await getIntelligenceDb()
@@ -495,7 +471,7 @@ intelligenceRouter.get('/agents/routing-strategy', async (req, res) => {
         count: sql<number>`COUNT(*)::int`,
       })
       .from(agentRoutingDecisions)
-      .where(sql`${agentRoutingDecisions.createdAt} > NOW() - INTERVAL '${sql.raw(interval)}'`)
+      .where(sql`${agentRoutingDecisions.createdAt} > NOW() - INTERVAL ${safeInterval(interval)}`)
       .groupBy(agentRoutingDecisions.routingStrategy)
       .orderBy(sql`COUNT(*) DESC`);
 
@@ -918,13 +894,13 @@ intelligenceRouter.get('/patterns/trends', async (req, res) => {
     }
 
     // Determine time interval and truncation
-    const interval = getIntervalFromTimeWindow(timeWindow);
+    const interval = timeWindowToInterval(timeWindow);
 
     const truncation = timeWindow === '24h' ? 'hour' : 'day';
 
     const trends = await getIntelligenceDb()
       .select({
-        period: sql<string>`DATE_TRUNC('${sql.raw(truncation)}', ${patternLineageNodes.createdAt})::text`,
+        period: sql<string>`DATE_TRUNC(${safeTruncUnit(truncation)}, ${patternLineageNodes.createdAt})::text`,
         // Actual pattern count per time period (not hardcoded 1)
         manifestsGenerated: sql<number>`COUNT(*)::int`,
         avgPatternsPerManifest: sql<number>`COUNT(*)::numeric`,
@@ -932,9 +908,11 @@ intelligenceRouter.get('/patterns/trends', async (req, res) => {
         avgQueryTimeMs: sql<number>`0::numeric`,
       })
       .from(patternLineageNodes)
-      .where(sql`${patternLineageNodes.createdAt} > NOW() - INTERVAL '${sql.raw(interval)}'`)
-      .groupBy(sql`DATE_TRUNC('${sql.raw(truncation)}', ${patternLineageNodes.createdAt})`)
-      .orderBy(sql`DATE_TRUNC('${sql.raw(truncation)}', ${patternLineageNodes.createdAt}) DESC`);
+      .where(sql`${patternLineageNodes.createdAt} > NOW() - INTERVAL ${safeInterval(interval)}`)
+      .groupBy(sql`DATE_TRUNC(${safeTruncUnit(truncation)}, ${patternLineageNodes.createdAt})`)
+      .orderBy(
+        sql`DATE_TRUNC(${safeTruncUnit(truncation)}, ${patternLineageNodes.createdAt}) DESC`
+      );
 
     const formattedTrends: PatternTrend[] = trends.map((t) => ({
       period: t.period,
@@ -1422,7 +1400,7 @@ intelligenceRouter.get('/transformations/summary', async (req, res) => {
     const timeWindow = (req.query.timeWindow as string) || '24h';
 
     // Determine time interval
-    const interval = getIntervalFromTimeWindow(timeWindow);
+    const interval = timeWindowToInterval(timeWindow);
 
     const [summaryResult] = await getIntelligenceDb()
       .select({
@@ -1437,7 +1415,9 @@ intelligenceRouter.get('/transformations/summary', async (req, res) => {
         )::numeric`,
       })
       .from(agentTransformationEvents)
-      .where(sql`${agentTransformationEvents.createdAt} > NOW() - INTERVAL '${sql.raw(interval)}'`);
+      .where(
+        sql`${agentTransformationEvents.createdAt} > NOW() - INTERVAL ${safeInterval(interval)}`
+      );
 
     const mostCommonResult = await getIntelligenceDb()
       .select({
@@ -1446,7 +1426,9 @@ intelligenceRouter.get('/transformations/summary', async (req, res) => {
         count: sql<number>`COUNT(*)::int`,
       })
       .from(agentTransformationEvents)
-      .where(sql`${agentTransformationEvents.createdAt} > NOW() - INTERVAL '${sql.raw(interval)}'`)
+      .where(
+        sql`${agentTransformationEvents.createdAt} > NOW() - INTERVAL ${safeInterval(interval)}`
+      )
       .groupBy(agentTransformationEvents.sourceAgent, agentTransformationEvents.targetAgent)
       .orderBy(sql`COUNT(*) DESC`)
       .limit(1);
@@ -1461,7 +1443,9 @@ intelligenceRouter.get('/transformations/summary', async (req, res) => {
         avgDurationMs: sql<number>`ROUND(AVG(${agentTransformationEvents.transformationDurationMs}), 0)::numeric`,
       })
       .from(agentTransformationEvents)
-      .where(sql`${agentTransformationEvents.createdAt} > NOW() - INTERVAL '${sql.raw(interval)}'`)
+      .where(
+        sql`${agentTransformationEvents.createdAt} > NOW() - INTERVAL ${safeInterval(interval)}`
+      )
       .groupBy(agentTransformationEvents.sourceAgent, agentTransformationEvents.targetAgent)
       .orderBy(sql`COUNT(*) DESC`)
       .limit(50); // Limit to top 50 flows for visualization
@@ -2020,14 +2004,14 @@ intelligenceRouter.get('/metrics/operations-per-minute', async (req, res) => {
     const timeWindow = (req.query.timeWindow as string) || '24h';
 
     // Determine time interval and truncation
-    const interval = getIntervalFromTimeWindow(timeWindow);
+    const interval = timeWindowToInterval(timeWindow);
 
     const truncation = timeWindow === '24h' ? 'hour' : 'day';
 
     // Query agent actions grouped by time period and action type
     const operationsData = await getIntelligenceDb()
       .select({
-        period: sql<string>`DATE_TRUNC('${sql.raw(truncation)}', ${agentActions.createdAt})::text`,
+        period: sql<string>`DATE_TRUNC(${safeTruncUnit(truncation)}, ${agentActions.createdAt})::text`,
         actionType: agentActions.actionType,
         totalOperations: sql<number>`COUNT(*)::int`,
         // Calculate operations per minute based on truncation
@@ -2035,19 +2019,19 @@ intelligenceRouter.get('/metrics/operations-per-minute', async (req, res) => {
         // For daily: count / 1440 minutes (24 hours * 60 minutes)
         operationsPerMinute: sql<number>`
           CASE
-            WHEN '${sql.raw(truncation)}' = 'hour' THEN ROUND(COUNT(*)::numeric / 60.0, 2)
-            WHEN '${sql.raw(truncation)}' = 'day' THEN ROUND(COUNT(*)::numeric / 1440.0, 2)
+            WHEN ${safeTruncUnit(truncation)} = 'hour' THEN ROUND(COUNT(*)::numeric / 60.0, 2)
+            WHEN ${safeTruncUnit(truncation)} = 'day' THEN ROUND(COUNT(*)::numeric / 1440.0, 2)
             ELSE ROUND(COUNT(*)::numeric / 60.0, 2)
           END
         `,
       })
       .from(agentActions)
-      .where(sql`${agentActions.createdAt} > NOW() - INTERVAL '${sql.raw(interval)}'`)
+      .where(sql`${agentActions.createdAt} > NOW() - INTERVAL ${safeInterval(interval)}`)
       .groupBy(
-        sql`DATE_TRUNC('${sql.raw(truncation)}', ${agentActions.createdAt})`,
+        sql`DATE_TRUNC(${safeTruncUnit(truncation)}, ${agentActions.createdAt})`,
         agentActions.actionType
       )
-      .orderBy(sql`DATE_TRUNC('${sql.raw(truncation)}', ${agentActions.createdAt}) DESC`);
+      .orderBy(sql`DATE_TRUNC(${safeTruncUnit(truncation)}, ${agentActions.createdAt}) DESC`);
 
     const formattedData = operationsData.map((d) => ({
       period: d.period,
@@ -2086,14 +2070,14 @@ intelligenceRouter.get('/metrics/quality-impact', async (req, res) => {
     const timeWindow = (req.query.timeWindow as string) || '24h';
 
     // Determine time interval and truncation for database query
-    const interval = getIntervalFromTimeWindow(timeWindow);
+    const interval = timeWindowToInterval(timeWindow);
 
     const truncation = timeWindow === '24h' ? 'hour' : 'day';
 
     // Compare quality scores before and after manifest injections to measure impact
     const qualityImpactData = await getIntelligenceDb()
       .select({
-        period: sql<string>`DATE_TRUNC('${sql.raw(truncation)}', ${agentManifestInjections.createdAt})::text`,
+        period: sql<string>`DATE_TRUNC(${safeTruncUnit(truncation)}, ${agentManifestInjections.createdAt})::text`,
         // Calculate average quality improvement (only for successful executions)
         avgQualityImprovement: sql<number>`
           ROUND(AVG(
@@ -2115,10 +2099,10 @@ intelligenceRouter.get('/metrics/quality-impact', async (req, res) => {
         `,
       })
       .from(agentManifestInjections)
-      .where(sql`${agentManifestInjections.createdAt} > NOW() - INTERVAL '${sql.raw(interval)}'`)
-      .groupBy(sql`DATE_TRUNC('${sql.raw(truncation)}', ${agentManifestInjections.createdAt})`)
+      .where(sql`${agentManifestInjections.createdAt} > NOW() - INTERVAL ${safeInterval(interval)}`)
+      .groupBy(sql`DATE_TRUNC(${safeTruncUnit(truncation)}, ${agentManifestInjections.createdAt})`)
       .orderBy(
-        sql`DATE_TRUNC('${sql.raw(truncation)}', ${agentManifestInjections.createdAt}) DESC`
+        sql`DATE_TRUNC(${safeTruncUnit(truncation)}, ${agentManifestInjections.createdAt}) DESC`
       );
 
     const formattedImpacts = qualityImpactData.map((d) => ({
@@ -2251,20 +2235,20 @@ intelligenceRouter.get('/developer/velocity', async (req, res) => {
     const timeWindow = (req.query.timeWindow as string) || '24h';
 
     // Determine time interval and truncation
-    const interval = getIntervalFromTimeWindow(timeWindow);
+    const interval = timeWindowToInterval(timeWindow);
 
     const truncation = timeWindow === '24h' ? 'hour' : 'day';
 
     // Query velocity metrics
     const velocityData = await getIntelligenceDb()
       .select({
-        period: sql<string>`DATE_TRUNC('${sql.raw(truncation)}', ${agentActions.createdAt})::text`,
+        period: sql<string>`DATE_TRUNC(${safeTruncUnit(truncation)}, ${agentActions.createdAt})::text`,
         actionCount: sql<number>`COUNT(*)::int`,
       })
       .from(agentActions)
-      .where(sql`${agentActions.createdAt} > NOW() - INTERVAL '${sql.raw(interval)}'`)
-      .groupBy(sql`DATE_TRUNC('${sql.raw(truncation)}', ${agentActions.createdAt})`)
-      .orderBy(sql`DATE_TRUNC('${sql.raw(truncation)}', ${agentActions.createdAt}) ASC`);
+      .where(sql`${agentActions.createdAt} > NOW() - INTERVAL ${safeInterval(interval)}`)
+      .groupBy(sql`DATE_TRUNC(${safeTruncUnit(truncation)}, ${agentActions.createdAt})`)
+      .orderBy(sql`DATE_TRUNC(${safeTruncUnit(truncation)}, ${agentActions.createdAt}) ASC`);
 
     // Format time labels and velocity values
     const formattedVelocity = velocityData.map((v) => {
@@ -2318,14 +2302,14 @@ intelligenceRouter.get('/developer/productivity', async (req, res) => {
     const timeWindow = (req.query.timeWindow as string) || '24h';
 
     // Determine time interval and truncation
-    const interval = getIntervalFromTimeWindow(timeWindow);
+    const interval = timeWindowToInterval(timeWindow);
 
     const truncation = timeWindow === '24h' ? 'hour' : 'day';
 
     // Query productivity metrics (using success rate only - no join due to schema mismatch)
     const productivityData = await getIntelligenceDb()
       .select({
-        period: sql<string>`DATE_TRUNC('${sql.raw(truncation)}', ${agentActions.createdAt})::text`,
+        period: sql<string>`DATE_TRUNC(${safeTruncUnit(truncation)}, ${agentActions.createdAt})::text`,
         // Calculate success rate from action types
         successRate: sql<number>`
           COUNT(*) FILTER (WHERE ${agentActions.actionType} IN ('success', 'tool_call'))::numeric /
@@ -2335,9 +2319,9 @@ intelligenceRouter.get('/developer/productivity', async (req, res) => {
         avgConfidence: sql<number>`0.85::numeric`,
       })
       .from(agentActions)
-      .where(sql`${agentActions.createdAt} > NOW() - INTERVAL '${sql.raw(interval)}'`)
-      .groupBy(sql`DATE_TRUNC('${sql.raw(truncation)}', ${agentActions.createdAt})`)
-      .orderBy(sql`DATE_TRUNC('${sql.raw(truncation)}', ${agentActions.createdAt}) ASC`);
+      .where(sql`${agentActions.createdAt} > NOW() - INTERVAL ${safeInterval(interval)}`)
+      .groupBy(sql`DATE_TRUNC(${safeTruncUnit(truncation)}, ${agentActions.createdAt})`)
+      .orderBy(sql`DATE_TRUNC(${safeTruncUnit(truncation)}, ${agentActions.createdAt}) ASC`);
 
     // Calculate productivity score and format
     const formattedProductivity = productivityData.map((p) => {
@@ -2398,22 +2382,24 @@ intelligenceRouter.get('/developer/task-velocity', async (req, res) => {
     const timeWindow = (req.query.timeWindow as string) || '7d';
 
     // Determine time interval and truncation
-    const interval = getIntervalFromTimeWindow(timeWindow);
+    const interval = timeWindowToInterval(timeWindow);
 
     const truncation = timeWindow === '24h' ? 'hour' : 'day';
 
     // Query task completion metrics grouped by date
     const velocityData = await getIntelligenceDb()
       .select({
-        period: sql<string>`DATE_TRUNC('${sql.raw(truncation)}', ${taskCompletionMetrics.createdAt})::text`,
+        period: sql<string>`DATE_TRUNC(${safeTruncUnit(truncation)}, ${taskCompletionMetrics.createdAt})::text`,
         tasksCompleted: sql<number>`COUNT(*) FILTER (WHERE ${taskCompletionMetrics.success} = TRUE)::int`,
         avgDurationMs: sql<number>`ROUND(AVG(${taskCompletionMetrics.completionTimeMs}) FILTER (WHERE ${taskCompletionMetrics.success} = TRUE), 1)::numeric`,
         totalTasks: sql<number>`COUNT(*)::int`,
       })
       .from(taskCompletionMetrics)
-      .where(sql`${taskCompletionMetrics.createdAt} > NOW() - INTERVAL '${sql.raw(interval)}'`)
-      .groupBy(sql`DATE_TRUNC('${sql.raw(truncation)}', ${taskCompletionMetrics.createdAt})`)
-      .orderBy(sql`DATE_TRUNC('${sql.raw(truncation)}', ${taskCompletionMetrics.createdAt}) ASC`);
+      .where(sql`${taskCompletionMetrics.createdAt} > NOW() - INTERVAL ${safeInterval(interval)}`)
+      .groupBy(sql`DATE_TRUNC(${safeTruncUnit(truncation)}, ${taskCompletionMetrics.createdAt})`)
+      .orderBy(
+        sql`DATE_TRUNC(${safeTruncUnit(truncation)}, ${taskCompletionMetrics.createdAt}) ASC`
+      );
 
     // Format response with tasks per day calculation
     const formattedVelocity = velocityData.map((v) => {
@@ -2609,7 +2595,7 @@ intelligenceRouter.get('/documents/top-accessed', async (req, res) => {
     const limit = Math.min(parseInt(req.query.limit as string) || 10, 50);
 
     // Determine time interval for filtering
-    const interval = getIntervalFromTimeWindow(timeWindow);
+    const interval = timeWindowToInterval(timeWindow);
 
     // Get top accessed documents (ordered by access_count)
     const topDocuments = await getIntelligenceDb()
@@ -2627,7 +2613,7 @@ intelligenceRouter.get('/documents/top-accessed', async (req, res) => {
           eq(documentMetadata.status, 'active'),
           // Filter by last_accessed_at if provided, otherwise show all
           timeWindow === '24h' || timeWindow === '7d' || timeWindow === '30d'
-            ? sql`${documentMetadata.lastAccessedAt} > NOW() - INTERVAL '${sql.raw(interval)}' OR ${documentMetadata.lastAccessedAt} IS NULL`
+            ? sql`${documentMetadata.lastAccessedAt} > NOW() - INTERVAL ${safeInterval(interval)} OR ${documentMetadata.lastAccessedAt} IS NULL`
             : sql`1=1`
         )
       )
@@ -2728,7 +2714,7 @@ intelligenceRouter.get('/code/compliance', async (req, res) => {
     const timeWindow = (req.query.timeWindow as string) || '24h';
 
     // Determine time interval
-    const interval = getIntervalFromTimeWindow(timeWindow);
+    const interval = timeWindowToInterval(timeWindow);
 
     const truncation = timeWindow === '24h' ? 'hour' : 'day';
 
@@ -2785,7 +2771,7 @@ intelligenceRouter.get('/code/compliance', async (req, res) => {
         `,
       })
       .from(onexComplianceStamps)
-      .where(sql`${onexComplianceStamps.createdAt} > NOW() - INTERVAL '${sql.raw(interval)}'`);
+      .where(sql`${onexComplianceStamps.createdAt} > NOW() - INTERVAL ${safeInterval(interval)}`);
 
     const totalFiles = summaryResult?.totalFiles || 0;
     const compliantFiles = summaryResult?.compliantFiles || 0;
@@ -2810,7 +2796,7 @@ intelligenceRouter.get('/code/compliance', async (req, res) => {
         count: sql<number>`COUNT(DISTINCT ${onexComplianceStamps.filePath})::int`,
       })
       .from(onexComplianceStamps)
-      .where(sql`${onexComplianceStamps.createdAt} > NOW() - INTERVAL '${sql.raw(interval)}'`)
+      .where(sql`${onexComplianceStamps.createdAt} > NOW() - INTERVAL ${safeInterval(interval)}`)
       .groupBy(onexComplianceStamps.complianceStatus);
 
     const statusBreakdown = statusBreakdownQuery.map((s) => ({
@@ -2833,7 +2819,7 @@ intelligenceRouter.get('/code/compliance', async (req, res) => {
       .from(onexComplianceStamps)
       .where(
         and(
-          sql`${onexComplianceStamps.createdAt} > NOW() - INTERVAL '${sql.raw(interval)}'`,
+          sql`${onexComplianceStamps.createdAt} > NOW() - INTERVAL ${safeInterval(interval)}`,
           sql`${onexComplianceStamps.nodeType} IS NOT NULL`
         )
       )
@@ -2850,7 +2836,7 @@ intelligenceRouter.get('/code/compliance', async (req, res) => {
     // Get compliance trend over time
     const trendQuery = await getIntelligenceDb()
       .select({
-        period: sql<string>`DATE_TRUNC('${sql.raw(truncation)}', ${onexComplianceStamps.createdAt})::text`,
+        period: sql<string>`DATE_TRUNC(${safeTruncUnit(truncation)}, ${onexComplianceStamps.createdAt})::text`,
         totalFiles: sql<number>`COUNT(DISTINCT ${onexComplianceStamps.filePath})::int`,
         compliantFiles: sql<number>`
           COUNT(DISTINCT ${onexComplianceStamps.filePath}) FILTER (
@@ -2859,9 +2845,11 @@ intelligenceRouter.get('/code/compliance', async (req, res) => {
         `,
       })
       .from(onexComplianceStamps)
-      .where(sql`${onexComplianceStamps.createdAt} > NOW() - INTERVAL '${sql.raw(interval)}'`)
-      .groupBy(sql`DATE_TRUNC('${sql.raw(truncation)}', ${onexComplianceStamps.createdAt})`)
-      .orderBy(sql`DATE_TRUNC('${sql.raw(truncation)}', ${onexComplianceStamps.createdAt}) ASC`);
+      .where(sql`${onexComplianceStamps.createdAt} > NOW() - INTERVAL ${safeInterval(interval)}`)
+      .groupBy(sql`DATE_TRUNC(${safeTruncUnit(truncation)}, ${onexComplianceStamps.createdAt})`)
+      .orderBy(
+        sql`DATE_TRUNC(${safeTruncUnit(truncation)}, ${onexComplianceStamps.createdAt}) ASC`
+      );
 
     const trend = trendQuery.map((t) => ({
       period: t.period,
@@ -4051,7 +4039,7 @@ intelligenceRouter.get('/injections/cohort-summary', async (req: Request, res: R
     if (!db) return res.status(503).json({ error: 'Intelligence DB not available' });
 
     const timeWindow = (req.query.timeWindow as string) || '7d';
-    const interval = getIntervalFromTimeWindow(timeWindow);
+    const interval = timeWindowToInterval(timeWindow);
 
     const summary = await db.execute(sql`
       SELECT
@@ -4067,7 +4055,7 @@ intelligenceRouter.get('/injections/cohort-summary', async (req: Request, res: R
         AVG(heuristic_confidence) AS avg_heuristic_confidence,
         AVG(compiled_token_count) AS avg_token_count
       FROM pattern_injections
-      WHERE injected_at >= NOW() - ${sql.raw(`INTERVAL '${interval}'`)}
+      WHERE injected_at >= NOW() - INTERVAL ${safeInterval(interval)}
       GROUP BY cohort
       ORDER BY cohort
     `);
@@ -4118,7 +4106,7 @@ intelligenceRouter.get('/lifecycle/summary', async (req: Request, res: Response)
     if (!db) return res.status(503).json({ error: 'Intelligence DB not available' });
 
     const timeWindow = (req.query.timeWindow as string) || '7d';
-    const interval = getIntervalFromTimeWindow(timeWindow);
+    const interval = timeWindowToInterval(timeWindow);
 
     const summary = await db.execute(sql`
       SELECT
@@ -4128,7 +4116,7 @@ intelligenceRouter.get('/lifecycle/summary', async (req: Request, res: Response)
         COUNT(*) AS transition_count,
         COUNT(DISTINCT pattern_id) AS unique_patterns
       FROM pattern_lifecycle_transitions
-      WHERE transition_at >= NOW() - ${sql.raw(`INTERVAL '${interval}'`)}
+      WHERE transition_at >= NOW() - INTERVAL ${safeInterval(interval)}
       GROUP BY from_status, to_status, transition_trigger
       ORDER BY transition_count DESC
     `);
@@ -4205,7 +4193,7 @@ intelligenceRouter.get('/attributions/summary', async (req: Request, res: Respon
     if (!db) return res.status(503).json({ error: 'Intelligence DB not available' });
 
     const timeWindow = (req.query.timeWindow as string) || '7d';
-    const interval = getIntervalFromTimeWindow(timeWindow);
+    const interval = timeWindowToInterval(timeWindow);
 
     const summary = await db.execute(sql`
       SELECT
@@ -4215,7 +4203,7 @@ intelligenceRouter.get('/attributions/summary', async (req: Request, res: Respon
         COUNT(DISTINCT session_id) AS unique_sessions,
         COUNT(run_id) AS with_pipeline_run
       FROM pattern_measured_attributions
-      WHERE created_at >= NOW() - ${sql.raw(`INTERVAL '${interval}'`)}
+      WHERE created_at >= NOW() - INTERVAL ${safeInterval(interval)}
       GROUP BY evidence_tier
       ORDER BY evidence_tier
     `);

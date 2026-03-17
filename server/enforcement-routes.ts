@@ -10,7 +10,7 @@
 
 import { Router } from 'express';
 import { enforcementProjection } from './projection-bootstrap';
-import { ACCEPTED_WINDOWS } from './projections/enforcement-projection';
+import { ACCEPTED_WINDOWS } from './sql-safety';
 
 const router = Router();
 

@@ -27,6 +27,13 @@ import type {
 } from '@shared/delegation-types';
 import { DbBackedProjectionView } from './db-backed-projection-view';
 import { tryGetIntelligenceDb } from '../storage';
+import {
+  safeInterval,
+  safeTruncUnit,
+  timeWindowToInterval,
+  truncUnitForWindow,
+  ACCEPTED_WINDOWS,
+} from '../sql-safety';
 
 // ============================================================================
 // Payload type
@@ -42,27 +49,6 @@ export interface DelegationPayload {
 }
 
 type Db = NonNullable<ReturnType<typeof tryGetIntelligenceDb>>;
-
-// ============================================================================
-// Helpers
-// ============================================================================
-
-const ACCEPTED_WINDOWS = new Set(['24h', '7d', '30d']);
-
-function windowToInterval(window: string): string {
-  switch (window) {
-    case '24h':
-      return '24 hours';
-    case '7d':
-      return '7 days';
-    case '30d':
-      return '30 days';
-    default:
-      throw new Error(
-        `windowToInterval: unrecognised window "${window}". Accepted values: '24h', '7d', '30d'.`
-      );
-  }
-}
 
 // ============================================================================
 // Projection
@@ -161,7 +147,7 @@ export class DelegationProjection extends DbBackedProjectionView<DelegationPaylo
   // --------------------------------------------------------------------------
 
   private async _queryForWindow(db: Db, window: string): Promise<DelegationPayload> {
-    const interval = windowToInterval(window);
+    const interval = timeWindowToInterval(window);
 
     const [summary, byTaskType, costSavings, qualityGates, shadowDivergence, trend] =
       await Promise.all([
@@ -187,7 +173,7 @@ export class DelegationProjection extends DbBackedProjectionView<DelegationPaylo
         COALESCE(AVG(cost_savings_usd::numeric), 0)                          AS avg_cost_savings,
         COALESCE(AVG(delegation_latency_ms), 0)::int                         AS avg_latency
       FROM delegation_events
-      WHERE timestamp >= NOW() - INTERVAL ${sql.raw(`'${interval}'`)}
+      WHERE timestamp >= NOW() - INTERVAL ${safeInterval(interval)}
     `);
 
     // Query delegation_shadow_comparisons aggregate
@@ -197,7 +183,7 @@ export class DelegationProjection extends DbBackedProjectionView<DelegationPaylo
         COUNT(*) FILTER (WHERE divergence_detected = true)::int              AS diverged,
         COUNT(*) FILTER (WHERE divergence_detected = false)::int             AS agreed
       FROM delegation_shadow_comparisons
-      WHERE timestamp >= NOW() - INTERVAL ${sql.raw(`'${interval}'`)}
+      WHERE timestamp >= NOW() - INTERVAL ${safeInterval(interval)}
     `);
 
     // Delegation rate: delegated / total agent_actions in window
@@ -206,7 +192,7 @@ export class DelegationProjection extends DbBackedProjectionView<DelegationPaylo
       SELECT
         COUNT(*)::int AS action_count
       FROM agent_actions
-      WHERE created_at >= NOW() - INTERVAL ${sql.raw(`'${interval}'`)}
+      WHERE created_at >= NOW() - INTERVAL ${safeInterval(interval)}
     `);
 
     const d = ((delegationRows.rows ?? delegationRows)[0] as Record<string, unknown>) ?? {};
@@ -231,7 +217,7 @@ export class DelegationProjection extends DbBackedProjectionView<DelegationPaylo
         timestamp::date::text AS date,
         ROUND(AVG(CASE WHEN quality_gate_passed THEN 1.0 ELSE 0.0 END)::numeric, 4) AS value
       FROM delegation_events
-      WHERE timestamp >= NOW() - INTERVAL ${sql.raw(`'${interval}'`)}
+      WHERE timestamp >= NOW() - INTERVAL ${safeInterval(interval)}
       GROUP BY timestamp::date
       ORDER BY timestamp::date ASC
     `);
@@ -273,10 +259,10 @@ export class DelegationProjection extends DbBackedProjectionView<DelegationPaylo
           SELECT COUNT(*) FROM delegation_shadow_comparisons dsc
           WHERE dsc.task_type = de.task_type
             AND dsc.divergence_detected = true
-            AND dsc.timestamp >= NOW() - INTERVAL ${sql.raw(`'${interval}'`)}
+            AND dsc.timestamp >= NOW() - INTERVAL ${safeInterval(interval)}
         ), 0)::int AS shadow_divergences
       FROM delegation_events de
-      WHERE de.timestamp >= NOW() - INTERVAL ${sql.raw(`'${interval}'`)}
+      WHERE de.timestamp >= NOW() - INTERVAL ${safeInterval(interval)}
       GROUP BY de.task_type
       ORDER BY total DESC
     `);
@@ -302,17 +288,17 @@ export class DelegationProjection extends DbBackedProjectionView<DelegationPaylo
     interval: string,
     window: string
   ): Promise<DelegationCostSavingsTrendPoint[]> {
-    const truncUnit = window === '24h' ? 'hour' : 'day';
+    const truncUnit = truncUnitForWindow(window);
 
     const rows = await db.execute(sql`
       SELECT
-        DATE_TRUNC(${sql.raw(`'${truncUnit}'`)}, timestamp) AT TIME ZONE 'UTC' AS bucket,
+        DATE_TRUNC(${safeTruncUnit(truncUnit)}, timestamp) AT TIME ZONE 'UTC' AS bucket,
         COALESCE(SUM(cost_savings_usd::numeric), 0)  AS cost_savings_usd,
         COALESCE(SUM(cost_usd::numeric), 0)          AS total_cost_usd,
         COUNT(*)::int                                 AS total_delegations,
         COALESCE(AVG(cost_savings_usd::numeric), 0)  AS avg_savings_usd
       FROM delegation_events
-      WHERE timestamp >= NOW() - INTERVAL ${sql.raw(`'${interval}'`)}
+      WHERE timestamp >= NOW() - INTERVAL ${safeInterval(interval)}
       GROUP BY bucket
       ORDER BY bucket ASC
     `);
@@ -334,16 +320,16 @@ export class DelegationProjection extends DbBackedProjectionView<DelegationPaylo
     interval: string,
     window: string
   ): Promise<DelegationQualityGatePoint[]> {
-    const truncUnit = window === '24h' ? 'hour' : 'day';
+    const truncUnit = truncUnitForWindow(window);
 
     const rows = await db.execute(sql`
       SELECT
-        DATE_TRUNC(${sql.raw(`'${truncUnit}'`)}, timestamp) AT TIME ZONE 'UTC' AS bucket,
+        DATE_TRUNC(${safeTruncUnit(truncUnit)}, timestamp) AT TIME ZONE 'UTC' AS bucket,
         COUNT(*)::int                                                         AS total_checked,
         COUNT(*) FILTER (WHERE quality_gate_passed = true)::int              AS passed,
         COUNT(*) FILTER (WHERE quality_gate_passed = false)::int             AS failed
       FROM delegation_events
-      WHERE timestamp >= NOW() - INTERVAL ${sql.raw(`'${interval}'`)}
+      WHERE timestamp >= NOW() - INTERVAL ${safeInterval(interval)}
       GROUP BY bucket
       ORDER BY bucket ASC
     `);
@@ -377,7 +363,7 @@ export class DelegationProjection extends DbBackedProjectionView<DelegationPaylo
         COALESCE(AVG(primary_latency_ms), 0)::int                AS avg_primary_latency_ms,
         COALESCE(AVG(shadow_latency_ms), 0)::int                 AS avg_shadow_latency_ms
       FROM delegation_shadow_comparisons
-      WHERE timestamp >= NOW() - INTERVAL ${sql.raw(`'${interval}'`)}
+      WHERE timestamp >= NOW() - INTERVAL ${safeInterval(interval)}
         AND divergence_detected = true
       GROUP BY primary_agent, shadow_agent, task_type
       ORDER BY count DESC
@@ -401,27 +387,27 @@ export class DelegationProjection extends DbBackedProjectionView<DelegationPaylo
     interval: string,
     window: string
   ): Promise<DelegationTrendPoint[]> {
-    const truncUnit = window === '24h' ? 'hour' : 'day';
+    const truncUnit = truncUnitForWindow(window);
 
     // Join delegation_events and shadow comparisons per bucket
     const rows = await db.execute(sql`
       WITH buckets AS (
         SELECT
-          DATE_TRUNC(${sql.raw(`'${truncUnit}'`)}, timestamp) AT TIME ZONE 'UTC' AS bucket,
+          DATE_TRUNC(${safeTruncUnit(truncUnit)}, timestamp) AT TIME ZONE 'UTC' AS bucket,
           COUNT(*)::int AS total_delegations,
           ROUND(AVG(CASE WHEN quality_gate_passed THEN 1.0 ELSE 0.0 END)::numeric, 4) AS qg_pass_rate,
           COALESCE(SUM(cost_savings_usd::numeric), 0) AS cost_savings_usd
         FROM delegation_events
-        WHERE timestamp >= NOW() - INTERVAL ${sql.raw(`'${interval}'`)}
+        WHERE timestamp >= NOW() - INTERVAL ${safeInterval(interval)}
         GROUP BY bucket
       ),
       shadow_buckets AS (
         SELECT
-          DATE_TRUNC(${sql.raw(`'${truncUnit}'`)}, timestamp) AT TIME ZONE 'UTC' AS bucket,
+          DATE_TRUNC(${safeTruncUnit(truncUnit)}, timestamp) AT TIME ZONE 'UTC' AS bucket,
           COUNT(*)::int AS total_shadow,
           COUNT(*) FILTER (WHERE divergence_detected = true)::int AS diverged
         FROM delegation_shadow_comparisons
-        WHERE timestamp >= NOW() - INTERVAL ${sql.raw(`'${interval}'`)}
+        WHERE timestamp >= NOW() - INTERVAL ${safeInterval(interval)}
         GROUP BY bucket
       )
       SELECT

@@ -37,6 +37,7 @@ import type {
 } from '@shared/cost-types';
 import { DbBackedProjectionView, DEFAULT_CACHE_TTL_MS } from './db-backed-projection-view';
 import { tryGetIntelligenceDb } from '../storage';
+import { safeTruncUnit } from '../sql-safety';
 
 // ============================================================================
 // Payload type
@@ -296,18 +297,10 @@ export class CostMetricsProjection extends DbBackedProjectionView<CostMetricsPay
     const cutoff = windowCutoff(window);
     const unit = truncUnit(window);
 
-    // Explicit allowlist guard before sql.raw() interpolation.
-    // truncUnit() already constrains the type to 'hour' | 'day', but this
-    // runtime check ensures no future refactor can introduce an unsafe value.
-    if (unit !== 'hour' && unit !== 'day') {
-      throw new Error(
-        `queryTrend: invalid truncation unit '${unit as string}' — must be 'hour' or 'day'`
-      );
-    }
-
+    // safeTruncUnit() validates against the centralized allowlist in sql-safety.ts
     const rows = await db
       .select({
-        bucket: sql<string>`date_trunc(${sql.raw(`'${unit}'`)}, ${lca.bucketTime})::text`,
+        bucket: sql<string>`date_trunc(${safeTruncUnit(unit)}, ${lca.bucketTime})::text`,
         total_cost: sql<string>`COALESCE(SUM(${lca.totalCostUsd}::numeric), 0)::text`,
         reported_cost: sql<string>`COALESCE(SUM(${lca.reportedCostUsd}::numeric), 0)::text`,
         estimated_cost: sql<string>`COALESCE(SUM(${lca.estimatedCostUsd}::numeric), 0)::text`,
@@ -315,8 +308,8 @@ export class CostMetricsProjection extends DbBackedProjectionView<CostMetricsPay
       })
       .from(lca)
       .where(and(gte(lca.bucketTime, cutoff), gt(lca.totalCostUsd, '0')))
-      .groupBy(sql`date_trunc(${sql.raw(`'${unit}'`)}, ${lca.bucketTime})`)
-      .orderBy(sql`date_trunc(${sql.raw(`'${unit}'`)}, ${lca.bucketTime})`);
+      .groupBy(sql`date_trunc(${safeTruncUnit(unit)}, ${lca.bucketTime})`)
+      .orderBy(sql`date_trunc(${safeTruncUnit(unit)}, ${lca.bucketTime})`);
 
     return rows.map((r) => ({
       timestamp: r.bucket,
@@ -459,16 +452,10 @@ export class CostMetricsProjection extends DbBackedProjectionView<CostMetricsPay
     const cutoff = windowCutoff(window);
     const unit = truncUnit(window);
 
-    // Explicit allowlist guard before sql.raw() interpolation (same pattern as queryTrend).
-    if (unit !== 'hour' && unit !== 'day') {
-      throw new Error(
-        `queryTokenUsage: invalid truncation unit '${unit as string}' — must be 'hour' or 'day'`
-      );
-    }
-
+    // safeTruncUnit() validates against the centralized allowlist in sql-safety.ts
     const rows = await db
       .select({
-        bucket: sql<string>`date_trunc(${sql.raw(`'${unit}'`)}, ${lca.bucketTime})::text`,
+        bucket: sql<string>`date_trunc(${safeTruncUnit(unit)}, ${lca.bucketTime})::text`,
         prompt_tokens: sql<number>`COALESCE(SUM(${lca.promptTokens}), 0)::bigint`,
         completion_tokens: sql<number>`COALESCE(SUM(${lca.completionTokens}), 0)::bigint`,
         total_tokens: sql<number>`COALESCE(SUM(${lca.totalTokens}), 0)::bigint`,
@@ -481,8 +468,8 @@ export class CostMetricsProjection extends DbBackedProjectionView<CostMetricsPay
       // token-usage chart. Unlike cost trend panels, token usage is always
       // meaningful even when the cost is $0.
       .where(gte(lca.bucketTime, cutoff))
-      .groupBy(sql`date_trunc(${sql.raw(`'${unit}'`)}, ${lca.bucketTime})`)
-      .orderBy(sql`date_trunc(${sql.raw(`'${unit}'`)}, ${lca.bucketTime})`);
+      .groupBy(sql`date_trunc(${safeTruncUnit(unit)}, ${lca.bucketTime})`)
+      .orderBy(sql`date_trunc(${safeTruncUnit(unit)}, ${lca.bucketTime})`);
 
     return rows.map((r) => ({
       timestamp: r.bucket,

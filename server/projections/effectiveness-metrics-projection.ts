@@ -30,6 +30,7 @@ import type {
 } from '@shared/effectiveness-types';
 import { DbBackedProjectionView } from './db-backed-projection-view';
 import type { tryGetIntelligenceDb } from '../storage';
+import { safeTruncUnit } from '../sql-safety';
 
 // ============================================================================
 // Payload type
@@ -485,7 +486,7 @@ export class EffectivenessMetricsProjection extends DbBackedProjectionView<Effec
 
     const rows = await db
       .select({
-        bucket: sql<string>`date_trunc(${sql.raw(`'${truncUnit}'`)}, ${ie.createdAt})::text`,
+        bucket: sql<string>`date_trunc(${safeTruncUnit(truncUnit)}, ${ie.createdAt})::text`,
         injection_rate: sql<number>`AVG(CASE WHEN ${ie.cohort} = 'treatment' AND ${ie.injectionOccurred} THEN 1.0 WHEN ${ie.cohort} = 'treatment' THEN 0.0 END)`,
         avg_utilization: sql<number>`AVG(CASE WHEN ${ie.utilizationScore} IS NOT NULL THEN ${ie.utilizationScore}::numeric END)`,
         avg_accuracy: sql<number>`AVG(CASE WHEN ${ie.agentMatchScore} IS NOT NULL THEN ${ie.agentMatchScore}::numeric END)`,
@@ -493,8 +494,8 @@ export class EffectivenessMetricsProjection extends DbBackedProjectionView<Effec
       })
       .from(ie)
       .where(gte(ie.createdAt, cutoff))
-      .groupBy(sql`date_trunc(${sql.raw(`'${truncUnit}'`)}, ${ie.createdAt})::text`)
-      .orderBy(sql`date_trunc(${sql.raw(`'${truncUnit}'`)}, ${ie.createdAt})::text`);
+      .groupBy(sql`date_trunc(${safeTruncUnit(truncUnit)}, ${ie.createdAt})::text`)
+      .orderBy(sql`date_trunc(${safeTruncUnit(truncUnit)}, ${ie.createdAt})::text`);
 
     return rows
       .filter((r) => r.avg_latency_delta_ms != null)

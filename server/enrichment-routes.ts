@@ -11,7 +11,7 @@
 
 import { Router } from 'express';
 import { enrichmentProjection } from './projection-bootstrap';
-import { ACCEPTED_WINDOWS } from './projections/enrichment-projection';
+import { ACCEPTED_WINDOWS } from './sql-safety';
 
 const router = Router();
 
