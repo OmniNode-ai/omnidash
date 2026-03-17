@@ -5,6 +5,7 @@ import {
   agentManifestInjections,
   agentRoutingDecisions,
 } from '@shared/intelligence-schema';
+import { safeInterval } from './sql-safety';
 
 /**
  * Alert Metrics Cache
@@ -103,7 +104,7 @@ async function getErrorRateUncached(timeWindow: string): Promise<number> {
         `,
       })
       .from(agentActions)
-      .where(sql`${agentActions.createdAt} > NOW() - INTERVAL '${sql.raw(interval)}'`);
+      .where(sql`${agentActions.createdAt} > NOW() - INTERVAL ${safeInterval(interval)}`);
 
     if (!result || result.totalActions === 0) {
       return 0;
@@ -134,7 +135,9 @@ async function getManifestInjectionSuccessRateUncached(timeWindow: string): Prom
         `,
       })
       .from(agentManifestInjections)
-      .where(sql`${agentManifestInjections.createdAt} > NOW() - INTERVAL '${sql.raw(interval)}'`);
+      .where(
+        sql`${agentManifestInjections.createdAt} > NOW() - INTERVAL ${safeInterval(interval)}`
+      );
 
     if (!result || result.totalInjections === 0) {
       return 1.0;
@@ -166,7 +169,7 @@ async function getAvgResponseTimeUncached(timeWindow: string): Promise<number> {
         avgTimeMs: sql<number>`ROUND(AVG(${agentRoutingDecisions.routingTimeMs}))::int`,
       })
       .from(agentRoutingDecisions)
-      .where(sql`${agentRoutingDecisions.createdAt} > NOW() - INTERVAL '${sql.raw(interval)}'`);
+      .where(sql`${agentRoutingDecisions.createdAt} > NOW() - INTERVAL ${safeInterval(interval)}`);
 
     if (!result || !result.avgTimeMs) {
       return 0;
@@ -197,7 +200,7 @@ async function getSuccessRateUncached(timeWindow: string): Promise<number> {
         `,
       })
       .from(agentRoutingDecisions)
-      .where(sql`${agentRoutingDecisions.createdAt} > NOW() - INTERVAL '${sql.raw(interval)}'`);
+      .where(sql`${agentRoutingDecisions.createdAt} > NOW() - INTERVAL ${safeInterval(interval)}`);
 
     if (!result || result.totalDecisions === 0) {
       return 1.0;

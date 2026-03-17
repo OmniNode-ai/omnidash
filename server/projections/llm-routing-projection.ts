@@ -34,6 +34,7 @@ import type {
 } from '@shared/llm-routing-types';
 import { DbBackedProjectionView, DEFAULT_CACHE_TTL_MS } from './db-backed-projection-view';
 import { tryGetIntelligenceDb } from '../storage';
+import { safeTruncUnit } from '../sql-safety';
 
 // ============================================================================
 // Payload type
@@ -219,13 +220,7 @@ export class LlmRoutingProjection extends DbBackedProjectionView<LlmRoutingPaylo
     const cutoff = windowCutoff(window);
     const unit = truncUnit(window);
 
-    // Explicit allowlist guard before sql.raw() interpolation.
-    if (unit !== 'hour' && unit !== 'day') {
-      throw new Error(
-        `querySummary: invalid truncation unit '${unit as string}' — must be 'hour' or 'day'`
-      );
-    }
-
+    // safeTruncUnit() validates against the centralized allowlist in sql-safety.ts
     // Single aggregate query for hero card metrics.
     const aggResult = await db.execute(sql`
       SELECT
@@ -265,14 +260,14 @@ export class LlmRoutingProjection extends DbBackedProjectionView<LlmRoutingPaylo
     // Rolling trend for agreement rate — one bucket per day (or hour for 24h window).
     const trendResult = await db.execute(sql`
       SELECT
-        date_trunc(${sql.raw(`'${unit}'`)}, created_at)::text                                  AS bucket,
+        date_trunc(${safeTruncUnit(unit)}, created_at)::text                                  AS bucket,
         COUNT(*) FILTER (WHERE agreement = TRUE AND used_fallback = FALSE)::int                 AS agreed,
         (COUNT(*) FILTER (WHERE agreement = FALSE AND used_fallback = FALSE) +
          COUNT(*) FILTER (WHERE agreement = TRUE AND used_fallback = FALSE))::int              AS non_fallback
       FROM llm_routing_decisions
       WHERE created_at >= ${cutoff}
-      GROUP BY date_trunc(${sql.raw(`'${unit}'`)}, created_at)
-      ORDER BY date_trunc(${sql.raw(`'${unit}'`)}, created_at)
+      GROUP BY date_trunc(${safeTruncUnit(unit)}, created_at)
+      ORDER BY date_trunc(${safeTruncUnit(unit)}, created_at)
     `);
 
     const trendRows = trendResult.rows as Array<Record<string, unknown>>;
@@ -576,16 +571,10 @@ export class LlmRoutingProjection extends DbBackedProjectionView<LlmRoutingPaylo
     const cutoff = windowCutoff(window);
     const unit = truncUnit(window);
 
-    // Explicit allowlist guard before sql.raw() interpolation.
-    if (unit !== 'hour' && unit !== 'day') {
-      throw new Error(
-        `queryTrend: invalid truncation unit '${unit as string}' — must be 'hour' or 'day'`
-      );
-    }
-
+    // safeTruncUnit() validates against the centralized allowlist in sql-safety.ts
     const result = await db.execute(sql`
       SELECT
-        date_trunc(${sql.raw(`'${unit}'`)}, created_at)::text                               AS bucket,
+        date_trunc(${safeTruncUnit(unit)}, created_at)::text                               AS bucket,
         COUNT(*)::int                                                                        AS total_decisions,
         COUNT(*) FILTER (WHERE agreement = TRUE AND used_fallback = FALSE)::int             AS agreed,
         COUNT(*) FILTER (WHERE used_fallback = FALSE)::int                                  AS non_fallback,
@@ -593,8 +582,8 @@ export class LlmRoutingProjection extends DbBackedProjectionView<LlmRoutingPaylo
         COALESCE(AVG(cost_usd) FILTER (WHERE cost_usd IS NOT NULL), 0)::float               AS avg_cost_usd
       FROM llm_routing_decisions
       WHERE created_at >= ${cutoff}
-      GROUP BY date_trunc(${sql.raw(`'${unit}'`)}, created_at)
-      ORDER BY date_trunc(${sql.raw(`'${unit}'`)}, created_at)
+      GROUP BY date_trunc(${safeTruncUnit(unit)}, created_at)
+      ORDER BY date_trunc(${safeTruncUnit(unit)}, created_at)
     `);
 
     const rows = result.rows as Array<Record<string, unknown>>;

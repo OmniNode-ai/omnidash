@@ -41,6 +41,42 @@ jobs:
           fi
           echo "OK: No hardcoded :5436 upstream DB port"
 
+      - name: No unsafe sql.raw() usage (OMN-5196)
+        run: |
+          # sql.raw() is banned outside of sql-safety.ts and test helpers.
+          # All SQL interpolation must go through safeInterval() / safeTruncUnit()
+          # from server/sql-safety.ts to prevent injection risks.
+          #
+          # Allowed exceptions:
+          #   - server/sql-safety.ts (centralized safe wrappers that use sql.raw internally)
+          #   - server/__tests__/ (test helpers with explicit regex guards)
+          #   - Comments (lines starting with // or * or --)
+          VIOLATIONS=$(grep -rn 'sql\.raw(' \
+            --include="*.ts" --include="*.tsx" \
+            --exclude-dir=node_modules \
+            --exclude-dir=dist \
+            --exclude-dir=.git \
+            --exclude-dir=coverage \
+            --exclude-dir=__tests__ \
+            server/ \
+            | grep -v 'server/sql-safety\.ts' \
+            | grep -v '^\s*//' \
+            | grep -v '^\s*\*' \
+            | grep -v '^\s*--' \
+            | grep -v '// .*sql\.raw' \
+            | grep -v '\* .*sql\.raw' \
+            || true)
+          if [ -n "$VIOLATIONS" ]; then
+            echo "::error::Security violation: unsafe sql.raw() usage detected outside sql-safety.ts."
+            echo "All SQL interpolation must use safeInterval() / safeTruncUnit() from server/sql-safety.ts."
+            echo "See OMN-5196 for details."
+            echo ""
+            echo "Violations found:"
+            echo "$VIOLATIONS"
+            exit 1
+          fi
+          echo "OK: No unsafe sql.raw() usage outside sql-safety.ts"
+
       - name: No deprecated omniarchon references
         run: |
           VIOLATIONS=$(grep -rn "omniarchon" \

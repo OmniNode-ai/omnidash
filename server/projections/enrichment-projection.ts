@@ -26,6 +26,13 @@ import type {
 } from '@shared/enrichment-types';
 import { DbBackedProjectionView } from './db-backed-projection-view';
 import { tryGetIntelligenceDb } from '../storage';
+import {
+  safeInterval,
+  safeTruncUnit,
+  timeWindowToInterval,
+  truncUnitForWindow,
+  ACCEPTED_WINDOWS,
+} from '../sql-safety';
 
 // ============================================================================
 // Payload type
@@ -42,53 +49,9 @@ export interface EnrichmentPayload {
 
 type Db = NonNullable<ReturnType<typeof tryGetIntelligenceDb>>;
 
-/**
- * Convert a window string ('24h' | '7d' | '30d') to a PostgreSQL INTERVAL
- * literal for use in WHERE created_at >= NOW() - INTERVAL '...' queries.
- *
- * Only called from _queryForWindow(), which is itself only reachable via:
- *   - ensureFreshForWindow() — validates against ACCEPTED_WINDOWS before calling
- *   - querySnapshot()        — hardcodes '24h', always a valid value
- *
- * Because every call path guarantees a valid window, a silent fallback
- * default is intentionally absent. An explicit `default: throw` is used so
- * that any future caller that bypasses the validation layer receives an
- * immediate error rather than silently getting 7-day data for an unrecognised
- * window.
- *
- * @param window - Time window identifier. Accepted values: '24h', '7d', '30d'.
- * @returns A PostgreSQL INTERVAL string suitable for interpolation into a raw
- *   SQL fragment (e.g. `INTERVAL '24 hours'`).
- * @throws {Error} If `window` is not one of the three accepted values.
- */
-function windowToInterval(window: string): string {
-  switch (window) {
-    case '24h':
-      return '24 hours';
-    case '7d':
-      return '7 days';
-    case '30d':
-      return '30 days';
-    default:
-      throw new Error(
-        `windowToInterval: unrecognised window "${window}". Accepted values: '24h', '7d', '30d'.`
-      );
-  }
-}
-
 // ============================================================================
 // Projection
 // ============================================================================
-
-/**
- * The set of time-window values accepted by ensureFreshForWindow.
- *
- * Single source of truth for accepted window values — imported by both
- * enrichment-routes.ts (route-layer guard) and ensureFreshForWindow (secondary
- * safety net). Adding a new window here automatically makes it valid in both
- * layers; no separate constant needs updating.
- */
-export const ACCEPTED_WINDOWS = new Set(['24h', '7d', '30d']);
 
 export class EnrichmentProjection extends DbBackedProjectionView<EnrichmentPayload> {
   readonly viewId = 'enrichment';
@@ -417,7 +380,7 @@ export class EnrichmentProjection extends DbBackedProjectionView<EnrichmentPaylo
    *   rather than return partial or stale data silently.
    */
   private async _queryForWindow(db: Db, window: string): Promise<EnrichmentPayload> {
-    const interval = windowToInterval(window);
+    const interval = timeWindowToInterval(window);
 
     const [
       summary,
@@ -477,18 +440,8 @@ export class EnrichmentProjection extends DbBackedProjectionView<EnrichmentPaylo
         COUNT(*) FILTER (WHERE outcome = 'error')::int                              AS errors,
         COUNT(*) FILTER (WHERE outcome = 'inflated')::int                           AS inflated
       FROM context_enrichment_events
-      -- NOTE: The interval string is produced only by windowToInterval(), which maps
-      -- pre-validated window values to hardcoded literals. No user input reaches
-      -- sql.raw() — the two-layer ACCEPTED_WINDOWS guard and route 400 ensure this.
-      -- Parameterized INTERVAL bindings are not used here because the Drizzle neon
-      -- driver does not support interval parameters in all contexts; this allowlist
-      -- approach is the intentional design (see PR #104).
-      -- TODO: Migrate sql.raw() INTERVAL interpolation to parameterized INTERVAL
-      -- bindings (e.g. using a typed cast like NOW() - $1::interval) once the Neon serverless
-      -- driver reliably supports typed interval parameters. Until then, all callers
-      -- must continue to guarantee the interval value is allowlist-validated before
-      -- reaching this point.
-      WHERE created_at >= NOW() - INTERVAL ${sql.raw(`'${interval}'`)}
+      -- interval validated by safeInterval() allowlist (sql-safety.ts)
+      WHERE created_at >= NOW() - INTERVAL ${safeInterval(interval)}
     `);
 
     const r = (rows.rows ?? rows)[0] as Record<string, unknown> | undefined;
@@ -548,8 +501,8 @@ export class EnrichmentProjection extends DbBackedProjectionView<EnrichmentPaylo
         ROUND(AVG(latency_ms)::numeric, 2)                                          AS avg_latency_ms,
         ROUND(AVG(net_tokens_saved)::numeric, 2)                                    AS avg_net_tokens_saved
       FROM context_enrichment_events
-      -- see windowToInterval() NOTE above for sql.raw() interval safety rationale
-      WHERE created_at >= NOW() - INTERVAL ${sql.raw(`'${interval}'`)}
+      -- interval validated by safeInterval() allowlist (sql-safety.ts)
+      WHERE created_at >= NOW() - INTERVAL ${safeInterval(interval)}
       GROUP BY channel
       ORDER BY total DESC
     `);
@@ -596,8 +549,8 @@ export class EnrichmentProjection extends DbBackedProjectionView<EnrichmentPaylo
         COALESCE(PERCENTILE_CONT(0.99) WITHIN GROUP (ORDER BY latency_ms), 0)::int AS p99_ms,
         COUNT(*)::int                                                                AS sample_count
       FROM context_enrichment_events
-      -- see windowToInterval() NOTE above for sql.raw() interval safety rationale
-      WHERE created_at >= NOW() - INTERVAL ${sql.raw(`'${interval}'`)}
+      -- interval validated by safeInterval() allowlist (sql-safety.ts)
+      WHERE created_at >= NOW() - INTERVAL ${safeInterval(interval)}
       GROUP BY model_name
       ORDER BY sample_count DESC
     `);
@@ -621,7 +574,7 @@ export class EnrichmentProjection extends DbBackedProjectionView<EnrichmentPaylo
    * - `'24h'` → hourly buckets
    * - `'7d'` / `'30d'` → daily buckets
    *
-   * The `truncUnit` string is embedded via `sql.raw()`. This is safe because
+   * The `truncUnit` string is validated by `safeTruncUnit()`. This is safe because
    * its value is determined entirely by the `window` parameter comparison
    * above, never from user-supplied input.
    *
@@ -643,28 +596,19 @@ export class EnrichmentProjection extends DbBackedProjectionView<EnrichmentPaylo
     //   24h  → hour buckets
     //   7d   → day buckets
     //   30d  → day buckets
-    const truncUnit = window === '24h' ? 'hour' : 'day';
+    const truncUnit = truncUnitForWindow(window);
 
-    // Explicit allowlist guard before sql.raw() interpolation.
-    // The ternary above already constrains truncUnit to 'hour' | 'day', but this
-    // runtime check ensures no future refactor can introduce an unsafe value.
-    if (truncUnit !== 'hour' && truncUnit !== 'day') {
-      throw new Error(
-        `_queryTokenSavingsTrend: invalid truncation unit '${truncUnit as string}' — must be 'hour' or 'day'`
-      );
-    }
-
-    // sql.raw() is safe: truncUnit is produced by the ternary above, never from user input
+    // safeTruncUnit() validates against the centralized allowlist in sql-safety.ts
     const rows = await db.execute(sql`
       SELECT
-        DATE_TRUNC(${sql.raw(`'${truncUnit}'`)}, created_at) AT TIME ZONE 'UTC' AS bucket,
+        DATE_TRUNC(${safeTruncUnit(truncUnit)}, created_at) AT TIME ZONE 'UTC' AS bucket,
         SUM(net_tokens_saved)::int                               AS net_tokens_saved,
         COUNT(*)::int                                            AS total_enrichments,
         ROUND(AVG(tokens_before)::numeric, 2)                   AS avg_tokens_before,
         ROUND(AVG(tokens_after)::numeric, 2)                    AS avg_tokens_after
       FROM context_enrichment_events
-      -- see windowToInterval() NOTE above for sql.raw() interval safety rationale
-      WHERE created_at >= NOW() - INTERVAL ${sql.raw(`'${interval}'`)}
+      -- interval validated by safeInterval() allowlist (sql-safety.ts)
+      WHERE created_at >= NOW() - INTERVAL ${safeInterval(interval)}
       GROUP BY bucket
       ORDER BY bucket ASC
     `);
@@ -697,7 +641,7 @@ export class EnrichmentProjection extends DbBackedProjectionView<EnrichmentPaylo
    * Only rows where `similarity_score IS NOT NULL` are included, so the
    * averages reflect actual scored lookups rather than unenriched events.
    *
-   * The `truncUnit` string is embedded via `sql.raw()`. This is safe because
+   * The `truncUnit` string is validated by `safeTruncUnit()`. This is safe because
    * its value is determined entirely by the `window` comparison above, never
    * from user-supplied input.
    *
@@ -716,27 +660,18 @@ export class EnrichmentProjection extends DbBackedProjectionView<EnrichmentPaylo
     interval: string,
     window: string
   ): Promise<SimilarityQualityPoint[]> {
-    const truncUnit = window === '24h' ? 'hour' : 'day';
+    const truncUnit = truncUnitForWindow(window);
 
-    // Explicit allowlist guard before sql.raw() interpolation (same pattern as _queryTokenSavingsTrend).
-    // The ternary above already constrains truncUnit to 'hour' | 'day', but this
-    // runtime check ensures no future refactor can introduce an unsafe value.
-    if (truncUnit !== 'hour' && truncUnit !== 'day') {
-      throw new Error(
-        `_querySimilarityQuality: invalid truncation unit '${truncUnit as string}' — must be 'hour' or 'day'`
-      );
-    }
-
-    // sql.raw() is safe: truncUnit is produced by the ternary above, never from user input
+    // safeTruncUnit() validates against the centralized allowlist in sql-safety.ts
     const rows = await db.execute(sql`
       SELECT
-        DATE_TRUNC(${sql.raw(`'${truncUnit}'`)}, created_at) AT TIME ZONE 'UTC' AS bucket,
+        DATE_TRUNC(${safeTruncUnit(truncUnit)}, created_at) AT TIME ZONE 'UTC' AS bucket,
         ROUND(AVG(similarity_score)::numeric, 4)                AS avg_similarity_score,
         ROUND(AVG(quality_score)::numeric, 4)                   AS avg_quality_score,
         COUNT(*)::int                                            AS search_count
       FROM context_enrichment_events
-      -- see windowToInterval() NOTE above for sql.raw() interval safety rationale
-      WHERE created_at >= NOW() - INTERVAL ${sql.raw(`'${interval}'`)}
+      -- interval validated by safeInterval() allowlist (sql-safety.ts)
+      WHERE created_at >= NOW() - INTERVAL ${safeInterval(interval)}
         -- Only events with a similarity score are counted here — events processed via
         -- exact-match or fallback path have NULL similarity_score and are intentionally
         -- excluded from quality trend metrics. This means search_count here will be lower
@@ -790,8 +725,8 @@ export class EnrichmentProjection extends DbBackedProjectionView<EnrichmentPaylo
         agent_name
       FROM context_enrichment_events
       WHERE outcome = 'inflated'
-        -- see windowToInterval() NOTE above for sql.raw() interval safety rationale
-        AND created_at >= NOW() - INTERVAL ${sql.raw(`'${interval}'`)}
+        -- interval validated by safeInterval() allowlist (sql-safety.ts)
+        AND created_at >= NOW() - INTERVAL ${safeInterval(interval)}
       ORDER BY created_at DESC
       LIMIT 100
     `);
