@@ -393,6 +393,27 @@ export const SUFFIX_OMNICLAUDE_DOD_GUARD_FIRED = 'onex.evt.omniclaude.dod-guard-
 export const SUFFIX_OMNICLAUDE_DEBUG_TRIGGER_RECORD = 'onex.evt.omniclaude.debug-trigger-record.v1';
 
 // ============================================================================
+// ONEX Change Control Topics (OMN-5291)
+// ============================================================================
+
+/** Governance check completed event — emitted by onex-change-control CLIs
+ * (validate-yaml, check-schema-purity) after each run.
+ * Consumed by ReadModelConsumer to project into governance_checks table. */
+export const TOPIC_GOVERNANCE_CHECK_COMPLETED =
+  'onex.evt.onex-change-control.governance-check-completed.v1';
+
+/** Drift detected event — emitted by onex-change-control when schema or
+ * contract drift is identified.
+ * Consumed by ReadModelConsumer to project into drift_detections table. */
+export const TOPIC_DRIFT_DETECTED = 'onex.evt.onex-change-control.drift-detected.v1';
+
+/** Cosmetic compliance scored event — emitted by onex-change-control
+ * cosmetic-lint CLI after each run.
+ * Consumed by ReadModelConsumer to project into governance_checks table. */
+export const TOPIC_COSMETIC_COMPLIANCE_SCORED =
+  'onex.evt.onex-change-control.cosmetic-compliance-scored.v1';
+
+// ============================================================================
 // Miscellaneous Topics
 // ============================================================================
 

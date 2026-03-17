@@ -1935,3 +1935,78 @@ export const intentDriftEvents = pgTable(
 
 export type IntentDriftRow = typeof intentDriftEvents.$inferSelect;
 export type InsertIntentDrift = typeof intentDriftEvents.$inferInsert;
+
+// ============================================================================
+// Governance Tables (OMN-5291)
+// Tracks governance check results from onex-change-control events.
+// Source topics: onex.evt.onex-change-control.governance-check-completed.v1, etc.
+// ============================================================================
+
+export const governanceChecks = pgTable(
+  'governance_checks',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    eventId: text('event_id').notNull().unique(),
+    checkType: text('check_type').notNull().default('unknown'),
+    target: text('target').notNull().default(''),
+    passed: boolean('passed').notNull().default(false),
+    violationCount: integer('violation_count').notNull().default(0),
+    details: jsonb('details'),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+    projectedAt: timestamp('projected_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [
+    index('idx_governance_checks_created_at').on(table.createdAt),
+    index('idx_governance_checks_check_type').on(table.checkType),
+  ]
+);
+
+export const insertGovernanceCheckSchema = createInsertSchema(governanceChecks);
+export type GovernanceCheckRow = typeof governanceChecks.$inferSelect;
+export type InsertGovernanceCheck = typeof governanceChecks.$inferInsert;
+
+export const governanceDrifts = pgTable(
+  'governance_drifts',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    eventId: text('event_id').notNull().unique(),
+    ticketId: text('ticket_id').notNull().default(''),
+    driftKind: text('drift_kind').notNull().default('unknown'),
+    description: text('description').notNull().default(''),
+    severity: text('severity').notNull().default('warning'),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+    projectedAt: timestamp('projected_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [
+    index('idx_governance_drifts_created_at').on(table.createdAt),
+    index('idx_governance_drifts_severity').on(table.severity),
+  ]
+);
+
+export const insertGovernanceDriftSchema = createInsertSchema(governanceDrifts);
+export type GovernanceDriftRow = typeof governanceDrifts.$inferSelect;
+export type InsertGovernanceDrift = typeof governanceDrifts.$inferInsert;
+
+export const governanceCosmeticScores = pgTable(
+  'governance_cosmetic_scores',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    eventId: text('event_id').notNull().unique(),
+    target: text('target').notNull().default(''),
+    score: doublePrecision('score').notNull().default(0),
+    totalChecks: integer('total_checks').notNull().default(0),
+    passedChecks: integer('passed_checks').notNull().default(0),
+    failedChecks: integer('failed_checks').notNull().default(0),
+    violations: jsonb('violations'),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+    projectedAt: timestamp('projected_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [
+    index('idx_governance_cosmetic_scores_created_at').on(table.createdAt),
+    index('idx_governance_cosmetic_scores_target').on(table.target),
+  ]
+);
+
+export const insertGovernanceCosmeticScoreSchema = createInsertSchema(governanceCosmeticScores);
+export type GovernanceCosmeticScoreRow = typeof governanceCosmeticScores.$inferSelect;
+export type InsertGovernanceCosmeticScore = typeof governanceCosmeticScores.$inferInsert;

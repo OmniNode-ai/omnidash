@@ -23,6 +23,7 @@ export { DodProjectionHandler } from './dod-projections';
 export { OmniintelligenceProjectionHandler } from './omniintelligence-projections';
 export { OmnibaseInfraProjectionHandler } from './omnibase-infra-projections';
 export { PlatformProjectionHandler } from './platform-projections';
+export { OnexChangeControlProjectionHandler } from './onex-change-control-projections';
 
 import type { ProjectionHandler } from './types';
 import { OmniclaudeProjectionHandler } from './omniclaude-projections';
@@ -30,6 +31,7 @@ import { DodProjectionHandler } from './dod-projections';
 import { OmniintelligenceProjectionHandler } from './omniintelligence-projections';
 import { OmnibaseInfraProjectionHandler } from './omnibase-infra-projections';
 import { PlatformProjectionHandler } from './platform-projections';
+import { OnexChangeControlProjectionHandler } from './onex-change-control-projections';
 
 /**
  * Create the ordered list of all projection handlers.
@@ -45,5 +47,6 @@ export function createProjectionHandlers(): ProjectionHandler[] {
     new OmniintelligenceProjectionHandler(),
     new OmnibaseInfraProjectionHandler(),
     new PlatformProjectionHandler(),
+    new OnexChangeControlProjectionHandler(),
   ];
 }

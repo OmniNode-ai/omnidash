@@ -86,6 +86,14 @@ read_model_topics:
   - topic: "onex.evt.omnimemory.intent-stored.v1"
     handler: "projectIntentStored"
 
+  # --- onex-change-control topics ---
+  - topic: "onex.evt.onex-change-control.governance-check-completed.v1"
+    handler: "projectGovernanceCheckCompleted"
+  - topic: "onex.evt.onex-change-control.drift-detected.v1"
+    handler: "projectDriftDetected"
+  - topic: "onex.evt.onex-change-control.cosmetic-compliance-scored.v1"
+    handler: "projectCosmeticComplianceScored"
+
   # --- omniintelligence command topics (backfill source) ---
   - topic: "onex.cmd.omniintelligence.pattern-learning.v1"
     handler: "projectPatternLearningRequested"

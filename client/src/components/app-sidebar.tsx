@@ -256,6 +256,12 @@ const advancedSubGroups: AdvancedSubGroup[] = [
         description: 'Contract-driven node and service discovery',
       },
       {
+        title: 'Governance',
+        url: '/governance',
+        icon: ClipboardCheck,
+        description: 'Schema purity checks, drift detections, and cosmetic compliance scores (OMN-5291)',
+      },
+      {
         title: 'Validation',
         url: '/validation',
         icon: ShieldCheck,

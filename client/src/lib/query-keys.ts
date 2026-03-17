@@ -758,6 +758,12 @@ export const queryKeys = {
     snapshot: () => [...queryKeys.ciIntel.all, 'snapshot'] as const,
   },
 
+  /** Governance dashboard query keys (OMN-5291, onex-change-control topics) */
+  governance: {
+    all: ['governance'] as const,
+    snapshot: () => [...queryKeys.governance.all, 'snapshot'] as const,
+  },
+
   // ============================================================================
   // Decision Provenance / Why This Happened (OMN-5046)
   // ============================================================================
