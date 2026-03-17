@@ -396,6 +396,12 @@ export const SUFFIX_OMNICLAUDE_DEBUG_TRIGGER_RECORD = 'onex.evt.omniclaude.debug
 // OmniBase Infra Topics
 // ============================================================================
 
+/** Baselines computed (OMN-5192).
+ * Emitted by omnibase-infra after computing baseline comparisons.
+ * Consumed by ReadModelConsumer to project into baselines_* tables. */
+export const SUFFIX_OMNIBASE_INFRA_BASELINES_COMPUTED =
+  'onex.evt.omnibase-infra.baselines-computed.v1';
+
 /** LLM endpoint health snapshot (OMN-5279).
  * Emitted by omnibase-infra health poller after probing configured LLM endpoints.
  * Consumed by ReadModelConsumer to project into llm_health_snapshots table. */

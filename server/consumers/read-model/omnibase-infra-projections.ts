@@ -23,6 +23,10 @@ import type {
 } from '@shared/intelligence-schema';
 import { baselinesProjection } from '../../projection-bootstrap';
 import { emitBaselinesUpdate } from '../../baselines-events';
+import {
+  SUFFIX_OMNIBASE_INFRA_BASELINES_COMPUTED,
+  SUFFIX_OMNIBASE_INFRA_LLM_HEALTH_SNAPSHOT,
+} from '@shared/topics';
 
 import type { ProjectionHandler, ProjectionContext, MessageMeta } from './types';
 import {
@@ -36,10 +40,13 @@ import {
   VALID_CONFIDENCE_LEVELS,
 } from './types';
 
-const BASELINES_TOPIC = 'onex.evt.omnibase-infra.baselines-computed.v1';
-const LLM_HEALTH_TOPIC = 'onex.evt.omnibase-infra.llm-health-snapshot.v1';
+const BASELINES_TOPIC = SUFFIX_OMNIBASE_INFRA_BASELINES_COMPUTED;
+const LLM_HEALTH_TOPIC = SUFFIX_OMNIBASE_INFRA_LLM_HEALTH_SNAPSHOT;
 
-const OMNIBASE_INFRA_TOPICS = new Set([BASELINES_TOPIC, LLM_HEALTH_TOPIC]);
+const OMNIBASE_INFRA_TOPICS = new Set([
+  SUFFIX_OMNIBASE_INFRA_BASELINES_COMPUTED,
+  SUFFIX_OMNIBASE_INFRA_LLM_HEALTH_SNAPSHOT,
+]);
 
 export class OmnibaseInfraProjectionHandler implements ProjectionHandler {
   canHandle(topic: string): boolean {
@@ -80,13 +87,29 @@ export class OmnibaseInfraProjectionHandler implements ProjectionHandler {
       modelId,
       endpointUrl,
       latencyP50Ms:
-        data.latency_p50_ms != null ? Number(data.latency_p50_ms) : data.latencyP50Ms != null ? Number(data.latencyP50Ms) : null,
+        data.latency_p50_ms != null
+          ? Number(data.latency_p50_ms)
+          : data.latencyP50Ms != null
+            ? Number(data.latencyP50Ms)
+            : null,
       latencyP99Ms:
-        data.latency_p99_ms != null ? Number(data.latency_p99_ms) : data.latencyP99Ms != null ? Number(data.latencyP99Ms) : null,
+        data.latency_p99_ms != null
+          ? Number(data.latency_p99_ms)
+          : data.latencyP99Ms != null
+            ? Number(data.latencyP99Ms)
+            : null,
       errorRate:
-        data.error_rate != null ? Number(data.error_rate) : data.errorRate != null ? Number(data.errorRate) : null,
+        data.error_rate != null
+          ? Number(data.error_rate)
+          : data.errorRate != null
+            ? Number(data.errorRate)
+            : null,
       tokensPerSecond:
-        data.tokens_per_second != null ? Number(data.tokens_per_second) : data.tokensPerSecond != null ? Number(data.tokensPerSecond) : null,
+        data.tokens_per_second != null
+          ? Number(data.tokens_per_second)
+          : data.tokensPerSecond != null
+            ? Number(data.tokensPerSecond)
+            : null,
       status: String(data.status ?? 'unknown'),
     };
 
