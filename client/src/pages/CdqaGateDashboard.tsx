@@ -11,7 +11,7 @@
  * Color-coded: PASS=green, WARN=yellow, BLOCK=red
  */
 
-import { useQuery } from '@tanstack/react-query';
+import { useDataSource } from '@/hooks/useDataSource';
 import { queryKeys } from '@/lib/query-keys';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -26,6 +26,7 @@ import {
 } from '@/components/ui/table';
 import { CheckCircle2, XCircle, AlertTriangle, ShieldCheck, BarChart3 } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { LocalDataUnavailableBanner } from '@/components/LocalDataUnavailableBanner';
 import type { PrGateSummary } from '../../../server/projections/cdqa-gate-projection';
 
 // ============================================================================
@@ -191,18 +192,22 @@ function GateTable({ summaries, isLoading }: { summaries: PrGateSummary[]; isLoa
 async function fetchCdqaGateSummaries(): Promise<PrGateSummary[]> {
   const res = await fetch('/api/cdqa-gates');
   if (!res.ok) throw new Error('Failed to fetch CDQA gate summaries');
-  return res.json() as Promise<PrGateSummary[]>;
+  const body = await res.json();
+  // Server returns { data: PrGateSummary[], source: string } (OMN-5202)
+  // or a raw array for backward compatibility
+  return (Array.isArray(body) ? body : (body.data ?? [])) as PrGateSummary[];
 }
 
 export default function CdqaGateDashboard() {
-  const { data, isLoading, isError } = useQuery({
+  const { data, source, isLoading } = useDataSource({
     queryKey: queryKeys.cdqaGates.summaries(),
     queryFn: fetchCdqaGateSummaries,
+    fallbackData: [] as PrGateSummary[],
     refetchInterval: 15_000,
     staleTime: 10_000,
   });
 
-  const summaries = data ?? [];
+  const summaries = data;
 
   const totalPrs = summaries.length;
   const blocked = summaries.filter((s) => s.overallResult === 'BLOCK').length;
@@ -219,7 +224,7 @@ export default function CdqaGateDashboard() {
         </p>
       </div>
 
-      {isError && <p className="text-sm text-destructive">Failed to load CDQA gate data.</p>}
+      {source === 'unavailable' && <LocalDataUnavailableBanner />}
 
       {/* Summary Cards */}
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
