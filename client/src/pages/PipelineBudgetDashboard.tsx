@@ -10,8 +10,9 @@
  */
 
 import { useCallback } from 'react';
-import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { useQueryClient } from '@tanstack/react-query';
 import { useWebSocket } from '@/hooks/useWebSocket';
+import { useDataSource } from '@/hooks/useDataSource';
 import { queryKeys } from '@/lib/query-keys';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -27,6 +28,7 @@ import {
 import { DollarSign, Zap, AlertTriangle, BarChart3 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { DataSourceEmptyState } from '@/components/EmptyState';
+import { LocalDataUnavailableBanner } from '@/components/LocalDataUnavailableBanner';
 import type {
   PipelineBudgetPayload,
   PipelineBudgetRow,
@@ -188,9 +190,10 @@ export default function PipelineBudgetDashboard() {
     debug: false,
   });
 
-  const { data, isLoading, isError } = useQuery({
+  const { data, source, isLoading } = useDataSource({
     queryKey: queryKeys.pipelineBudget.snapshot(),
     queryFn: fetchPipelineBudgetSnapshot,
+    fallbackData: { summary: null, recent: [] } as unknown as PipelineBudgetPayload,
     refetchInterval: 30_000,
     staleTime: 15_000,
   });
@@ -209,9 +212,11 @@ export default function PipelineBudgetDashboard() {
         </p>
       </div>
 
-      {isError && <p className="text-sm text-destructive">Failed to load pipeline budget data.</p>}
+      {source === 'unavailable' && (
+        <LocalDataUnavailableBanner topic="onex.evt.omniclaude.budget-cap-hit.v1" />
+      )}
 
-      {!isLoading && !isError && (summary?.total_cap_hits ?? 0) === 0 && rows.length === 0 && (
+      {!isLoading && source !== 'unavailable' && (summary?.total_cap_hits ?? 0) === 0 && rows.length === 0 && (
         <DataSourceEmptyState
           sourceName="Pipeline Budget Events"
           producerName="Budget enforcement (omniclaude)"
