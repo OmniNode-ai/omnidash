@@ -13,7 +13,7 @@ import { EventEmitter } from 'events';
 import { LRUCache } from 'lru-cache';
 import { z } from 'zod';
 import type { EventBusEvent } from './event-bus-data-source';
-import { buildSubscriptionTopics, extractSuffix, SUFFIX_NODE_HEARTBEAT } from '@shared/topics';
+import { extractSuffix, SUFFIX_NODE_HEARTBEAT } from '@shared/topics';
 // Manifest-driven topic loading for fallback (OMN-5252)
 import { loadManifestTopics } from './services/topic-manifest-loader';
 import { EventEnvelopeSchema, OFFLINE_NODE_TTL_MS, CLEANUP_INTERVAL_MS } from '@shared/schemas';
@@ -877,7 +877,7 @@ export class EventConsumer extends EventEmitter {
         instanceUuid: null,
       };
     return {
-      topics: this.catalogSource === 'catalog' ? this.catalogTopics : buildSubscriptionTopics(),
+      topics: this.catalogSource === 'catalog' ? this.catalogTopics : loadManifestTopics(),
       warnings: this.catalogWarnings,
       source: this.catalogSource,
       instanceUuid: this.catalogManager?.instanceUuid ?? null,
