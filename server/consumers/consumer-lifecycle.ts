@@ -1,3 +1,4 @@
+// no-migration: OMN-5252 No schema change — replaces buildSubscriptionTopics() with loadManifestTopics() as fallback topic source.
 /**
  * Consumer lifecycle utilities — singleton, proxy, catalog management [OMN-5191]
  *
