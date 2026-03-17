@@ -67,6 +67,8 @@ import EventBusHealthDashboard from '@/pages/EventBusHealthDashboard';
 import PlanReviewer from '@/pages/PlanReviewer';
 // Model Efficiency Index dashboard (OMN-3941)
 import ModelEfficiencyDashboard from '@/pages/ModelEfficiencyDashboard';
+// Delegation Metrics dashboard (OMN-2284) — wired in OMN-5194
+import DelegationDashboard from '@/pages/DelegationDashboard';
 // Runtime health dashboard (OMN-3598)
 import WorkerHealthPage from '@/components/worker-health/WorkerHealthPage';
 
@@ -180,6 +182,9 @@ function Router() {
 
       {/* Model Efficiency Index dashboard (OMN-3941) */}
       <Route path="/model-efficiency" component={ModelEfficiencyDashboard} />
+
+      {/* Delegation Metrics dashboard (OMN-2284) — wired in OMN-5194 */}
+      <Route path="/delegation" component={DelegationDashboard} />
 
       {/* Preview routes */}
       <Route path="/preview/analytics" component={EnhancedAnalytics} />

@@ -26,6 +26,7 @@ import {
   FileSearch,
   Container,
   BarChart3,
+  Users,
 } from 'lucide-react';
 import { Link, useLocation } from 'wouter';
 import {
@@ -213,6 +214,13 @@ const advancedSubGroups: AdvancedSubGroup[] = [
         icon: BarChart3,
         description:
           'Model Efficiency Index (MEI) — VTS per kLoC comparison across models (OMN-3941)',
+      },
+      {
+        title: 'Delegation',
+        url: '/delegation',
+        icon: Users,
+        description:
+          'Task delegation rate, quality gate pass rate, shadow validation divergence (OMN-2284)',
       },
     ],
   },
