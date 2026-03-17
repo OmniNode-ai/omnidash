@@ -11,7 +11,6 @@
 import { useState } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { queryKeys } from '@/lib/query-keys';
-import { apiRequest } from '@/lib/queryClient';
 import { MetricCard } from '@/components/MetricCard';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -50,7 +49,6 @@ import {
 } from 'recharts';
 import { cn } from '@/lib/utils';
 import { POLLING_INTERVAL_SLOW, getPollingInterval } from '@/lib/constants/query-config';
-import { useDemoMode } from '@/contexts/DemoModeContext';
 
 // ============================================================================
 // Types
@@ -82,34 +80,40 @@ interface ComplianceEvaluationsResponse {
   evaluations: ComplianceEvaluation[];
 }
 
+interface RepoBreakdown {
+  repo: string;
+  total: number;
+  passed: number;
+  failed: number;
+  passRate: number;
+  avgScore: number;
+}
+
+interface RuleSetBreakdown {
+  ruleSet: string;
+  total: number;
+  passed: number;
+  failed: number;
+  passRate: number;
+  avgScore: number;
+}
+
 interface ComplianceSummaryResponse {
-  byRepo: Array<{
-    repo: string;
-    total: number;
-    passed: number;
-    failed: number;
-    passRate: number;
-    avgScore: number;
-  }>;
-  byRuleSet: Array<{
-    ruleSet: string;
-    total: number;
-    passed: number;
-    failed: number;
-    passRate: number;
-    avgScore: number;
-  }>;
+  byRepo: RepoBreakdown[];
+  byRuleSet: RuleSetBreakdown[];
+}
+
+interface TrendPoint {
+  period: string;
+  total: number;
+  passed: number;
+  failed: number;
+  passRate: number;
+  avgScore: number;
 }
 
 interface ComplianceTrendResponse {
-  trend: Array<{
-    period: string;
-    total: number;
-    passed: number;
-    failed: number;
-    passRate: number;
-    avgScore: number;
-  }>;
+  trend: TrendPoint[];
 }
 
 // ============================================================================
@@ -123,6 +127,28 @@ const TIME_WINDOWS: { value: TimeWindow; label: string }[] = [
 ];
 
 const PASS_RATE_TARGET = 90;
+
+// ============================================================================
+// Fetchers
+// ============================================================================
+
+async function fetchEvaluations(window: TimeWindow): Promise<ComplianceEvaluationsResponse> {
+  const res = await fetch(`/api/compliance?window=${window}&limit=50`);
+  if (!res.ok) throw new Error('Failed to fetch compliance evaluations');
+  return res.json() as Promise<ComplianceEvaluationsResponse>;
+}
+
+async function fetchSummary(window: TimeWindow): Promise<ComplianceSummaryResponse> {
+  const res = await fetch(`/api/compliance/summary?window=${window}`);
+  if (!res.ok) throw new Error('Failed to fetch compliance summary');
+  return res.json() as Promise<ComplianceSummaryResponse>;
+}
+
+async function fetchTrend(window: TimeWindow): Promise<ComplianceTrendResponse> {
+  const res = await fetch(`/api/compliance/trend?window=${window}`);
+  if (!res.ok) throw new Error('Failed to fetch compliance trend');
+  return res.json() as Promise<ComplianceTrendResponse>;
+}
 
 // ============================================================================
 // Helpers
@@ -146,6 +172,12 @@ function formatPeriod(period: string, window: TimeWindow): string {
   return d.toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
 }
 
+function passRateColor(rate: number): string {
+  if (rate >= PASS_RATE_TARGET) return '#22c55e';
+  if (rate >= 70) return '#f59e0b';
+  return '#ef4444';
+}
+
 // ============================================================================
 // ComplianceDashboard
 // ============================================================================
@@ -153,35 +185,32 @@ function formatPeriod(period: string, window: TimeWindow): string {
 export default function ComplianceDashboard() {
   const [window, setWindow] = useState<TimeWindow>('7d');
   const queryClient = useQueryClient();
-  const { isDemoMode } = useDemoMode();
 
-  const pollingInterval = getPollingInterval(isDemoMode, POLLING_INTERVAL_SLOW);
+  const pollingInterval = getPollingInterval(POLLING_INTERVAL_SLOW);
 
   const evaluationsQuery = useQuery<ComplianceEvaluationsResponse>({
     queryKey: queryKeys.compliance.evaluations(window),
-    queryFn: () =>
-      apiRequest<ComplianceEvaluationsResponse>(`/api/compliance?window=${window}&limit=50`),
+    queryFn: () => fetchEvaluations(window),
     refetchInterval: pollingInterval,
     staleTime: 30_000,
   });
 
   const summaryQuery = useQuery<ComplianceSummaryResponse>({
     queryKey: queryKeys.compliance.summary(window),
-    queryFn: () =>
-      apiRequest<ComplianceSummaryResponse>(`/api/compliance/summary?window=${window}`),
+    queryFn: () => fetchSummary(window),
     refetchInterval: pollingInterval,
     staleTime: 30_000,
   });
 
   const trendQuery = useQuery<ComplianceTrendResponse>({
     queryKey: queryKeys.compliance.trend(window),
-    queryFn: () => apiRequest<ComplianceTrendResponse>(`/api/compliance/trend?window=${window}`),
+    queryFn: () => fetchTrend(window),
     refetchInterval: pollingInterval,
     staleTime: 30_000,
   });
 
   function handleRefresh() {
-    queryClient.invalidateQueries({ queryKey: queryKeys.compliance.all });
+    void queryClient.invalidateQueries({ queryKey: queryKeys.compliance.all });
   }
 
   const isLoading =
@@ -203,12 +232,12 @@ export default function ComplianceDashboard() {
   const byRepo = summaryQuery.data?.byRepo ?? [];
   const byRuleSet = summaryQuery.data?.byRuleSet ?? [];
 
-  const passRateColor =
+  const passRateStatus =
     summary.passRate >= PASS_RATE_TARGET
-      ? 'text-green-600'
+      ? ('healthy' as const)
       : summary.passRate >= 70
-        ? 'text-yellow-600'
-        : 'text-red-600';
+        ? ('warning' as const)
+        : ('error' as const);
 
   return (
     <div className="flex flex-col gap-6 p-6">
@@ -225,7 +254,6 @@ export default function ComplianceDashboard() {
           </p>
         </div>
         <div className="flex items-center gap-2">
-          {/* Time window selector */}
           <div className="flex items-center rounded-md border overflow-hidden">
             {TIME_WINDOWS.map((tw) => (
               <button
@@ -267,31 +295,31 @@ export default function ComplianceDashboard() {
         ) : (
           <>
             <MetricCard
-              title="Pass Rate"
+              label="Pass Rate"
               value={`${summary.passRate}%`}
               subtitle={`Target: ${PASS_RATE_TARGET}%`}
-              icon={<CheckCircle2 className={cn('h-5 w-5', passRateColor)} />}
-              trend={summary.passRate >= PASS_RATE_TARGET ? 'up' : 'down'}
+              icon={ShieldCheck}
+              status={passRateStatus}
             />
             <MetricCard
-              title="Total Evaluations"
+              label="Total Evaluations"
               value={summary.total}
               subtitle={`${window} window`}
-              icon={<BarChart3 className="h-5 w-5 text-blue-500" />}
+              icon={BarChart3}
             />
             <MetricCard
-              title="Passed"
+              label="Passed"
               value={summary.passed}
               subtitle="evaluations passed"
-              icon={<CheckCircle2 className="h-5 w-5 text-green-500" />}
-              trend="up"
+              icon={CheckCircle2}
+              status="healthy"
             />
             <MetricCard
-              title="Failed"
+              label="Failed"
               value={summary.failed}
               subtitle="evaluations failed"
-              icon={<XCircle className="h-5 w-5 text-red-500" />}
-              trend={summary.failed === 0 ? 'up' : 'down'}
+              icon={XCircle}
+              status={summary.failed === 0 ? 'healthy' : 'error'}
             />
           </>
         )}
@@ -319,7 +347,12 @@ export default function ComplianceDashboard() {
                 <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
                 <XAxis dataKey="period" tick={{ fontSize: 11 }} />
                 <YAxis yAxisId="rate" domain={[0, 100]} unit="%" tick={{ fontSize: 11 }} />
-                <YAxis yAxisId="score" orientation="right" domain={[0, 1]} tick={{ fontSize: 11 }} />
+                <YAxis
+                  yAxisId="score"
+                  orientation="right"
+                  domain={[0, 1]}
+                  tick={{ fontSize: 11 }}
+                />
                 <Tooltip />
                 <Legend />
                 <Line
@@ -369,20 +402,16 @@ export default function ComplianceDashboard() {
                 >
                   <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
                   <XAxis type="number" domain={[0, 100]} unit="%" tick={{ fontSize: 11 }} />
-                  <YAxis type="category" dataKey="repo" tick={{ fontSize: 11 }} width={100} />
-                  <Tooltip formatter={(v) => `${v}%`} />
+                  <YAxis
+                    type="category"
+                    dataKey="repo"
+                    tick={{ fontSize: 11 }}
+                    width={100}
+                  />
+                  <Tooltip formatter={(v: number) => `${v}%`} />
                   <Bar dataKey="passRate" name="Pass Rate %" radius={[0, 4, 4, 0]}>
                     {byRepo.map((entry) => (
-                      <Cell
-                        key={entry.repo}
-                        fill={
-                          entry.passRate >= PASS_RATE_TARGET
-                            ? '#22c55e'
-                            : entry.passRate >= 70
-                              ? '#f59e0b'
-                              : '#ef4444'
-                        }
-                      />
+                      <Cell key={entry.repo} fill={passRateColor(entry.passRate)} />
                     ))}
                   </Bar>
                 </BarChart>
@@ -418,19 +447,10 @@ export default function ComplianceDashboard() {
                     tick={{ fontSize: 11 }}
                     width={110}
                   />
-                  <Tooltip formatter={(v) => `${v}%`} />
+                  <Tooltip formatter={(v: number) => `${v}%`} />
                   <Bar dataKey="passRate" name="Pass Rate %" radius={[0, 4, 4, 0]}>
                     {byRuleSet.map((entry) => (
-                      <Cell
-                        key={entry.ruleSet}
-                        fill={
-                          entry.passRate >= PASS_RATE_TARGET
-                            ? '#22c55e'
-                            : entry.passRate >= 70
-                              ? '#f59e0b'
-                              : '#ef4444'
-                        }
-                      />
+                      <Cell key={entry.ruleSet} fill={passRateColor(entry.passRate)} />
                     ))}
                   </Bar>
                 </BarChart>
@@ -444,7 +464,9 @@ export default function ComplianceDashboard() {
       <Card>
         <CardHeader>
           <CardTitle>Recent Evaluations</CardTitle>
-          <CardDescription>Latest compliance-evaluated.v1 events ({window} window)</CardDescription>
+          <CardDescription>
+            Latest compliance-evaluated.v1 events ({window} window)
+          </CardDescription>
         </CardHeader>
         <CardContent>
           {isLoading ? (
