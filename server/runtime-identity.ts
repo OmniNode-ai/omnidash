@@ -8,7 +8,7 @@
  * - ONEX_NODE_ID: Unique identifier assigned by the runtime supervisor
  * - ONEX_CONTRACT_FINGERPRINT: Hash of the node's contract.yaml
  * - ONEX_RUNTIME_MODE: Operating mode — one of the RuntimeMode union values
- * - ONEX_ENV: Environment name (dev, staging, prod)
+ * - ONEX_ENVIRONMENT: Environment name (local, staging, prod) — OMN-5189: ONEX_ENV is vestigial
  * - ONEX_SUPERVISOR_PID: Process ID of the supervising runtime
  * - ONEX_INJECTED_AT: ISO timestamp when identity was injected
  */
@@ -52,7 +52,7 @@ export const runtimeIdentity: RuntimeIdentity = {
   nodeId: process.env.ONEX_NODE_ID || null,
   contractFingerprint: process.env.ONEX_CONTRACT_FINGERPRINT || null,
   runtimeMode: parseRuntimeMode(process.env.ONEX_RUNTIME_MODE),
-  env: process.env.ONEX_ENV || 'local',
+  env: process.env.ONEX_ENVIRONMENT || 'local',
   supervised: !!process.env.ONEX_NODE_ID,
   supervisorPid: process.env.ONEX_SUPERVISOR_PID || null,
   injectedAt: process.env.ONEX_INJECTED_AT || null,
