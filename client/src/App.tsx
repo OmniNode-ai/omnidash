@@ -85,6 +85,8 @@ import IntentDriftDashboard from '@/pages/IntentDriftDashboard';
 import WorkerHealthPage from '@/components/worker-health/WorkerHealthPage';
 // LLM Health Dashboard (OMN-5279)
 import LlmHealthDashboard from '@/pages/LlmHealthDashboard';
+// Wiring Health Dashboard (OMN-5292)
+import WiringHealthDashboard from '@/pages/WiringHealthDashboard';
 
 // Phase 2: Category landing pages (OMN-2181)
 import SpeedCategory from '@/pages/SpeedCategory';
