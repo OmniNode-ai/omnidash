@@ -16,6 +16,7 @@ import {
   SUFFIX_MEMORY_STORED,
   SUFFIX_MEMORY_RETRIEVAL_RESPONSE,
   SUFFIX_MEMORY_EXPIRED,
+  SUFFIX_MEMORY_INTENT_STORED,
 } from '@shared/topics';
 
 import type { ProjectionHandler, ProjectionContext, MessageMeta } from './types';
@@ -26,6 +27,7 @@ const OMNIMEMORY_TOPICS = new Set([
   SUFFIX_MEMORY_STORED,
   SUFFIX_MEMORY_RETRIEVAL_RESPONSE,
   SUFFIX_MEMORY_EXPIRED,
+  SUFFIX_MEMORY_INTENT_STORED,
 ]);
 
 export class OmniMemoryProjectionHandler implements ProjectionHandler {
@@ -48,6 +50,10 @@ export class OmniMemoryProjectionHandler implements ProjectionHandler {
         return this.projectRetrievalResponse(data, context);
       case SUFFIX_MEMORY_EXPIRED:
         return this.projectMemoryExpired(data, context);
+      case SUFFIX_MEMORY_INTENT_STORED:
+        // intent-stored events carry session-level intent metadata.
+        // No dedicated read-model table yet — acknowledge to advance watermark.
+        return true;
       default:
         return true;
     }
@@ -67,18 +73,14 @@ export class OmniMemoryProjectionHandler implements ProjectionHandler {
     const documentId =
       (data.document_id as string | null) ?? (data.documentId as string | null) ?? null;
     if (!documentId) {
-      console.warn(
-        '[ReadModelConsumer] document-discovered event missing document_id -- skipping'
-      );
+      console.warn('[ReadModelConsumer] document-discovered event missing document_id -- skipping');
       return true;
     }
 
     const row: InsertMemoryDocument = {
       documentId,
-      sourcePath:
-        (data.source_path as string | null) ?? (data.sourcePath as string | null) ?? null,
-      sourceType:
-        (data.source_type as string | null) ?? (data.sourceType as string | null) ?? null,
+      sourcePath: (data.source_path as string | null) ?? (data.sourcePath as string | null) ?? null,
+      sourceType: (data.source_type as string | null) ?? (data.sourceType as string | null) ?? null,
       contentHash:
         (data.content_hash as string | null) ?? (data.contentHash as string | null) ?? null,
       sizeBytes:
@@ -92,8 +94,7 @@ export class OmniMemoryProjectionHandler implements ProjectionHandler {
         (data.memory_backend as string | null) ?? (data.memoryBackend as string | null) ?? null,
       correlationId:
         (data.correlation_id as string | null) ?? (data.correlationId as string | null) ?? null,
-      sessionId:
-        (data.session_id as string | null) ?? (data.sessionId as string | null) ?? null,
+      sessionId: (data.session_id as string | null) ?? (data.sessionId as string | null) ?? null,
       eventTimestamp: safeParseDate(
         data.event_timestamp ?? data.eventTimestamp ?? data.timestamp ?? data.created_at
       ),
@@ -148,10 +149,8 @@ export class OmniMemoryProjectionHandler implements ProjectionHandler {
 
     const row: InsertMemoryDocument = {
       documentId,
-      sourcePath:
-        (data.source_path as string | null) ?? (data.sourcePath as string | null) ?? null,
-      sourceType:
-        (data.source_type as string | null) ?? (data.sourceType as string | null) ?? null,
+      sourcePath: (data.source_path as string | null) ?? (data.sourcePath as string | null) ?? null,
+      sourceType: (data.source_type as string | null) ?? (data.sourceType as string | null) ?? null,
       contentHash:
         (data.content_hash as string | null) ?? (data.contentHash as string | null) ?? null,
       sizeBytes:
@@ -165,8 +164,7 @@ export class OmniMemoryProjectionHandler implements ProjectionHandler {
         (data.memory_backend as string | null) ?? (data.memoryBackend as string | null) ?? null,
       correlationId:
         (data.correlation_id as string | null) ?? (data.correlationId as string | null) ?? null,
-      sessionId:
-        (data.session_id as string | null) ?? (data.sessionId as string | null) ?? null,
+      sessionId: (data.session_id as string | null) ?? (data.sessionId as string | null) ?? null,
       eventTimestamp: safeParseDate(
         data.event_timestamp ?? data.eventTimestamp ?? data.timestamp ?? data.created_at
       ),
@@ -227,10 +225,8 @@ export class OmniMemoryProjectionHandler implements ProjectionHandler {
     const row: InsertMemoryRetrieval = {
       correlationId:
         (data.correlation_id as string | null) ?? (data.correlationId as string | null) ?? null,
-      sessionId:
-        (data.session_id as string | null) ?? (data.sessionId as string | null) ?? null,
-      queryType:
-        (data.query_type as string | null) ?? (data.queryType as string | null) ?? null,
+      sessionId: (data.session_id as string | null) ?? (data.sessionId as string | null) ?? null,
+      queryType: (data.query_type as string | null) ?? (data.queryType as string | null) ?? null,
       resultCount,
       success,
       latencyMs:

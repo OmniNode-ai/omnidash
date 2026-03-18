@@ -2,19 +2,17 @@
  * OmniMemory API Routes (OMN-5290)
  *
  * REST endpoints for the /memory dashboard page.
+ * Data served via MemoryProjection (DB-backed, TTL-cached).
+ * Per OMN-2325: no direct DB imports in route files.
  *
  * Endpoints:
  *   GET /api/memory/stats      — totals and status breakdown for memory_documents
  *   GET /api/memory/documents  — paginated list of memory documents (newest-first)
  *   GET /api/memory/retrievals — paginated list of memory retrievals (newest-first)
- *
- * Data source: memory_documents and memory_retrievals tables (read-model projection).
  */
 
 import { Router, type Request, type Response } from 'express';
-import { desc, count, sql } from 'drizzle-orm';
-import { tryGetIntelligenceDb } from './storage';
-import { memoryDocuments, memoryRetrievals } from '@shared/intelligence-schema';
+import { memoryProjection } from './projection-bootstrap';
 
 const router = Router();
 
@@ -43,64 +41,9 @@ function parseOffset(raw: unknown): number {
 //   - retrieval success rate (last 24h)
 
 router.get('/stats', async (_req: Request, res: Response) => {
-  const db = tryGetIntelligenceDb();
-  if (!db) {
-    return res.json({
-      totalDocuments: 0,
-      byStatus: {},
-      totalRetrievals: 0,
-      retrievalSuccessRate: null,
-    });
-  }
-
   try {
-    const [docStats, retrievalStats, recentRetrievals] = await Promise.all([
-      db
-        .select({
-          status: memoryDocuments.status,
-          count: count(),
-        })
-        .from(memoryDocuments)
-        .groupBy(memoryDocuments.status),
-
-      db
-        .select({ total: count() })
-        .from(memoryRetrievals),
-
-      db
-        .select({
-          success: memoryRetrievals.success,
-          count: count(),
-        })
-        .from(memoryRetrievals)
-        .where(sql`event_timestamp > NOW() - INTERVAL '24 hours'`)
-        .groupBy(memoryRetrievals.success),
-    ]);
-
-    const byStatus: Record<string, number> = {};
-    let totalDocuments = 0;
-    for (const row of docStats) {
-      byStatus[row.status] = Number(row.count);
-      totalDocuments += Number(row.count);
-    }
-
-    const totalRetrievals = Number(retrievalStats[0]?.total ?? 0);
-
-    let retrievalSuccessRate: number | null = null;
-    const recentTotal = recentRetrievals.reduce((sum, r) => sum + Number(r.count), 0);
-    if (recentTotal > 0) {
-      const successRow = recentRetrievals.find((r) => r.success === true);
-      retrievalSuccessRate = successRow
-        ? Math.round((Number(successRow.count) / recentTotal) * 100)
-        : 0;
-    }
-
-    return res.json({
-      totalDocuments,
-      byStatus,
-      totalRetrievals,
-      retrievalSuccessRate,
-    });
+    const payload = await memoryProjection.ensureFresh();
+    return res.json(payload.stats);
   } catch (error) {
     console.error('[memory] Error fetching stats:', error);
     return res.status(500).json({ error: 'Failed to fetch memory stats' });
@@ -112,28 +55,15 @@ router.get('/stats', async (_req: Request, res: Response) => {
 // ============================================================================
 
 router.get('/documents', async (req: Request, res: Response) => {
-  const db = tryGetIntelligenceDb();
-  if (!db) {
-    return res.json({ total: 0, rows: [] });
-  }
-
   const limit = parseLimit(req.query.limit);
   const offset = parseOffset(req.query.offset);
 
   try {
-    const [rows, totalResult] = await Promise.all([
-      db
-        .select()
-        .from(memoryDocuments)
-        .orderBy(desc(memoryDocuments.eventTimestamp))
-        .limit(limit)
-        .offset(offset),
-      db.select({ total: count() }).from(memoryDocuments),
-    ]);
-
+    const payload = await memoryProjection.ensureFresh();
+    const slice = payload.recentDocuments.slice(offset, offset + limit);
     return res.json({
-      total: Number(totalResult[0]?.total ?? 0),
-      rows,
+      total: payload.documentTotal,
+      rows: slice,
     });
   } catch (error) {
     console.error('[memory] Error fetching documents:', error);
@@ -146,28 +76,15 @@ router.get('/documents', async (req: Request, res: Response) => {
 // ============================================================================
 
 router.get('/retrievals', async (req: Request, res: Response) => {
-  const db = tryGetIntelligenceDb();
-  if (!db) {
-    return res.json({ total: 0, rows: [] });
-  }
-
   const limit = parseLimit(req.query.limit);
   const offset = parseOffset(req.query.offset);
 
   try {
-    const [rows, totalResult] = await Promise.all([
-      db
-        .select()
-        .from(memoryRetrievals)
-        .orderBy(desc(memoryRetrievals.eventTimestamp))
-        .limit(limit)
-        .offset(offset),
-      db.select({ total: count() }).from(memoryRetrievals),
-    ]);
-
+    const payload = await memoryProjection.ensureFresh();
+    const slice = payload.recentRetrievals.slice(offset, offset + limit);
     return res.json({
-      total: Number(totalResult[0]?.total ?? 0),
-      rows,
+      total: payload.retrievalTotal,
+      rows: slice,
     });
   } catch (error) {
     console.error('[memory] Error fetching retrievals:', error);
