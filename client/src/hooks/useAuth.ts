@@ -10,8 +10,11 @@ interface AuthUser {
 }
 
 interface AuthResponse {
-  authenticated: boolean;
-  user: AuthUser | null;
+  // When auth is enabled: { authenticated: boolean, user: AuthUser | null }
+  // When auth is disabled: { authEnabled: false }
+  authenticated?: boolean;
+  authEnabled?: boolean;
+  user?: AuthUser | null;
 }
 
 export function useAuth() {
@@ -22,9 +25,13 @@ export function useAuth() {
     retry: false,
   });
 
+  // When auth is disabled the server returns { authEnabled: false }.
+  // Treat auth-disabled as pass-through: show the dashboard without a login wall.
+  const authDisabled = data != null && data.authEnabled === false;
+
   return {
     user: data?.user ?? null,
-    authenticated: data?.authenticated ?? false,
+    authenticated: authDisabled || (data?.authenticated ?? false),
     isLoading,
   };
 }
