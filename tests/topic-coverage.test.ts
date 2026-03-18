@@ -116,6 +116,8 @@ const HANDLER_FILES = [
   path.join(HANDLER_DIR, 'omniintelligence-projections.ts'),
   path.join(HANDLER_DIR, 'omnibase-infra-projections.ts'),
   path.join(HANDLER_DIR, 'platform-projections.ts'),
+  // OmniMemory projection handler (OMN-5290)
+  path.join(HANDLER_DIR, 'omnimemory-projections.ts'),
 ];
 
 // ---------------------------------------------------------------------------
