@@ -114,6 +114,7 @@ function handleIntentClassified(event: RawIntentClassifiedEvent, ctx: ConsumerCo
       sessionId: event.session_id || event.sessionId || '',
       intentType,
       confidence: event.confidence ?? 0,
+      keywords: Array.isArray(event.keywords) ? event.keywords : [],
       rawText: event.raw_text || event.rawText || '',
       extractedEntities: event.extracted_entities || event.extractedEntities,
       metadata: event.metadata,
