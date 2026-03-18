@@ -27,6 +27,7 @@ import { emitBaselinesUpdate } from '../../baselines-events';
 import {
   SUFFIX_OMNIBASE_INFRA_BASELINES_COMPUTED,
   SUFFIX_OMNIBASE_INFRA_LLM_HEALTH_SNAPSHOT,
+  TOPIC_OMNIBASE_INFRA_WIRING_HEALTH_SNAPSHOT,
 } from '@shared/topics';
 import { wiringHealthProjection } from '../../projections/wiring-health-projection';
 import type { TopicWiringRecord } from '../../projections/wiring-health-projection';
@@ -45,12 +46,12 @@ import {
 
 const BASELINES_TOPIC = SUFFIX_OMNIBASE_INFRA_BASELINES_COMPUTED;
 const LLM_HEALTH_TOPIC = SUFFIX_OMNIBASE_INFRA_LLM_HEALTH_SNAPSHOT;
-const WIRING_HEALTH_TOPIC = 'onex.evt.omnibase-infra.wiring-health-snapshot.v1';
+const WIRING_HEALTH_TOPIC = TOPIC_OMNIBASE_INFRA_WIRING_HEALTH_SNAPSHOT;
 
 const OMNIBASE_INFRA_TOPICS = new Set([
   SUFFIX_OMNIBASE_INFRA_BASELINES_COMPUTED,
   SUFFIX_OMNIBASE_INFRA_LLM_HEALTH_SNAPSHOT,
-  WIRING_HEALTH_TOPIC,
+  TOPIC_OMNIBASE_INFRA_WIRING_HEALTH_SNAPSHOT,
 ]);
 
 export class OmnibaseInfraProjectionHandler implements ProjectionHandler {
