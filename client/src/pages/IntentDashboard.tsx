@@ -446,16 +446,36 @@ export default function IntentDashboard() {
 
   const timeRangeHours = parseInt(timeRange, 10);
 
-  // Transform projection snapshot → IntentItem[] for child components.
-  // ProjectionEventItem wraps intent fields inside .payload; IntentItem expects them flat.
+  // ─── REGRESSION WARNING ───────────────────────────────────────────────────
+  // Transform projection snapshot → IntentItem[] for RecentIntents + SessionTimeline.
   //
-  // OMN-5318: InternalIntentClassifiedEvent uses camelCase (intentType, sessionId, createdAt)
-  // while the dashboard expects snake_case. Fall back to camelCase aliases so both casing
-  // conventions in the projection payload are handled correctly.
+  // WHY THE DUAL-CASING FALLBACKS EXIST (do NOT remove them):
+  //
+  //   handleIntentClassified() in omniintelligence-handler.ts builds an
+  //   InternalIntentClassifiedEvent that uses camelCase field names:
+  //     { intentType, sessionId, createdAt, correlationId, ... }
+  //
+  //   That object is emitted verbatim as the 'intent-event' payload, which
+  //   projection-instance.ts forwards directly to ProjectionService.ingest().
+  //   The raw camelCase payload is then stored inside each ProjectionEvent.
+  //
+  //   When the snapshot is fetched, e.payload still contains camelCase keys.
+  //   If this mapping reads only snake_case (intent_category, session_ref,
+  //   created_at), every field resolves to undefined → '' → the resolver
+  //   returns 'unknown' → every dot on the Session Timeline turns gray and
+  //   every category badge in Recent Intents goes blank.
+  //
+  //   This has regressed multiple times (OMN-5318, prior incidents). The
+  //   camelCase fallbacks below are the correct, intentional fix.
+  //   DO NOT simplify this to a single casing without also normalising the
+  //   payload at the write site in projection-instance.ts.
+  // ─────────────────────────────────────────────────────────────────────────
   const projectionIntentItems = useMemo((): IntentItem[] | undefined => {
     if (!snapshot?.recentIntents?.length) return undefined;
     return snapshot.recentIntents.map((e) => ({
       intent_id: e.id,
+      // camelCase fallback required: payload may carry intentType (InternalIntentClassifiedEvent)
+      // or intent_category (IntentStoredEvent / future normalized events). Never read only one.
       session_ref: String(
         e.payload.session_ref ?? e.payload.sessionId ?? e.payload.session_id ?? ''
       ),
@@ -464,6 +484,7 @@ export default function IntentDashboard() {
       ),
       confidence: Number(e.payload.confidence ?? 0),
       keywords: Array.isArray(e.payload.keywords) ? (e.payload.keywords as string[]) : [],
+      // camelCase fallback: InternalIntentClassifiedEvent uses createdAt, not created_at
       created_at:
         (e.payload.created_at as string | undefined) ||
         (e.payload.createdAt as string | undefined) ||
