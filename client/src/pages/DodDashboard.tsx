@@ -76,8 +76,15 @@ function relativeTime(isoTs: string): string {
   return `${Math.floor(hours / 24)}d ago`;
 }
 
-function statusBadgeVariant(status: string): 'default' | 'destructive' {
-  return status === 'pass' ? 'default' : 'destructive';
+function statusBadgeVariant(overallPass: boolean): 'default' | 'destructive' {
+  return overallPass ? 'default' : 'destructive';
+}
+
+function formatReceiptAge(seconds: number | null): string {
+  if (seconds == null) return '--';
+  if (seconds < 60) return `${Math.round(seconds)}s`;
+  if (seconds < 3600) return `${Math.floor(seconds / 60)}m`;
+  return `${Math.floor(seconds / 3600)}h`;
 }
 
 function guardOutcomeBadgeVariant(outcome: string): 'default' | 'secondary' | 'destructive' {
@@ -164,14 +171,7 @@ function VerifyRunsTable({ rows, isLoading }: { rows: DodVerifyRunRow[]; isLoadi
             <TableBody>
               {rows.map((row) => {
                 const isExpanded = expandedId === row.id;
-                let evidenceItems: string[] = [];
-                if (row.evidence_items) {
-                  try {
-                    evidenceItems = JSON.parse(row.evidence_items);
-                  } catch {
-                    // ignore parse errors
-                  }
-                }
+                const evidenceItems = Array.isArray(row.evidence_items) ? row.evidence_items : [];
                 const hasEvidence = evidenceItems.length > 0;
 
                 return (
@@ -192,12 +192,12 @@ function VerifyRunsTable({ rows, isLoading }: { rows: DodVerifyRunRow[]; isLoadi
                       </TableCell>
                       <TableCell className="font-mono text-xs">{row.ticket_id}</TableCell>
                       <TableCell>
-                        <Badge variant={statusBadgeVariant(row.status)} className="text-xs">
-                          {row.status}
+                        <Badge variant={statusBadgeVariant(row.overall_pass)} className="text-xs">
+                          {row.overall_pass ? 'pass' : 'fail'}
                         </Badge>
                       </TableCell>
                       <TableCell className="font-mono text-xs">
-                        {row.checks_passed}/{row.checks_total}
+                        {row.passed_checks}/{row.total_checks}
                       </TableCell>
                       <TableCell className="text-xs">{row.policy_mode}</TableCell>
                       <TableCell className="text-right text-xs text-muted-foreground">
@@ -211,7 +211,7 @@ function VerifyRunsTable({ rows, isLoading }: { rows: DodVerifyRunRow[]; isLoadi
                             <p className="font-medium mb-1">Evidence Items:</p>
                             <ul className="list-disc list-inside space-y-0.5 text-muted-foreground">
                               {evidenceItems.map((item, idx) => (
-                                <li key={idx}>{item}</li>
+                                <li key={idx}>{String(item)}</li>
                               ))}
                             </ul>
                           </div>
@@ -275,7 +275,7 @@ function GuardActivityTable({ rows, isLoading }: { rows: DodGuardEventRow[]; isL
                   </TableCell>
                   <TableCell className="text-xs">{row.policy_mode}</TableCell>
                   <TableCell className="text-xs">
-                    {row.receipt_age_hours != null ? `${row.receipt_age_hours}h` : '--'}
+                    {formatReceiptAge(row.receipt_age_seconds)}
                   </TableCell>
                   <TableCell className="text-right text-xs text-muted-foreground">
                     {relativeTime(row.event_timestamp)}

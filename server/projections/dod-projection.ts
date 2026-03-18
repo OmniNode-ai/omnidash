@@ -47,9 +47,12 @@ export class DodProjection extends DbBackedProjectionView<DodPayload> {
           SELECT
             id,
             ticket_id,
-            status,
-            checks_passed,
-            checks_total,
+            run_id,
+            overall_pass,
+            passed_checks,
+            total_checks,
+            failed_checks,
+            skipped_checks,
             policy_mode,
             evidence_items,
             event_timestamp::text
@@ -63,9 +66,11 @@ export class DodProjection extends DbBackedProjectionView<DodPayload> {
           SELECT
             id,
             ticket_id,
+            session_id,
             guard_outcome,
             policy_mode,
-            receipt_age_hours,
+            receipt_age_seconds,
+            receipt_pass,
             event_timestamp::text
           FROM dod_guard_events
           ORDER BY event_timestamp DESC
@@ -77,7 +82,7 @@ export class DodProjection extends DbBackedProjectionView<DodPayload> {
           SELECT
             (SELECT COUNT(*)::int FROM dod_verify_runs) AS total_runs,
             COALESCE(
-              (SELECT COUNT(*) FILTER (WHERE status = 'pass')::float
+              (SELECT COUNT(*) FILTER (WHERE overall_pass = true)::float
                / NULLIF(COUNT(*)::float, 0)
                FROM dod_verify_runs
                WHERE event_timestamp >= NOW() - INTERVAL '7 days'),
@@ -94,7 +99,7 @@ export class DodProjection extends DbBackedProjectionView<DodPayload> {
           SELECT
             d::date::text AS date,
             COALESCE(
-              COUNT(*) FILTER (WHERE v.status = 'pass')::float
+              COUNT(*) FILTER (WHERE v.overall_pass = true)::float
               / NULLIF(COUNT(v.id)::float, 0),
               0
             ) AS pass_rate,
@@ -133,14 +138,11 @@ export class DodProjection extends DbBackedProjectionView<DodPayload> {
 
       return dodPayloadSchema.parse({ stats, verify_runs, guard_events, trends });
     } catch (err) {
-      // Graceful degrade: tables may not exist yet (OMN-5199 migration pending)
+      // Graceful degrade: tables may not exist yet (OMN-5199 migration pending).
+      // Only catch 42P01 (undefined_table). Do NOT catch 42703 (undefined_column)
+      // — that indicates a schema-query drift bug that must surface loudly.
       const pgCode = (err as { code?: string }).code;
-      const msg = err instanceof Error ? err.message : String(err);
-      if (
-        pgCode === '42P01' ||
-        (msg.includes('dod_verify_runs') && msg.includes('does not exist')) ||
-        (msg.includes('dod_guard_events') && msg.includes('does not exist'))
-      ) {
+      if (pgCode === '42P01') {
         return this.emptyPayload();
       }
       throw err;
