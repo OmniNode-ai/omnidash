@@ -25,12 +25,14 @@
 import { Router } from 'express';
 import { eventConsumer } from './event-consumer';
 import { getEventBusDataSource } from './event-bus-data-source';
+import { checkSchemaParity } from './schema-health';
 
 export interface HealthProbeResponse {
   status: 'up' | 'degraded' | 'down';
   services: {
     eventConsumer: 'up' | 'down';
     eventBus: 'up' | 'down';
+    database: 'up' | 'down';
   };
   checkedAt: string;
 }
@@ -53,7 +55,7 @@ export function clearHealthProbeCache(): void {
  * Public endpoint — no authentication required.
  * Returns aggregate health status without sensitive details.
  */
-router.get('/', (_req, res) => {
+router.get('/', async (_req, res) => {
   try {
     if (cache && Date.now() < cache.expiresAt) {
       res.set('Cache-Control', 'no-store');
@@ -81,9 +83,19 @@ router.get('/', (_req, res) => {
       // Leave as 'down'
     }
 
+    // --- Database + migration parity probe [OMN-5365] ---
+    let databaseStatus: 'up' | 'down' = 'down';
+    try {
+      const schemaHealth = await checkSchemaParity();
+      databaseStatus = schemaHealth.status === 'ok' ? 'up' : 'down';
+    } catch {
+      // Leave as 'down'
+    }
+
     // Aggregate: "up" if all up, "degraded" if some up, "down" if all down
-    const allUp = eventConsumerStatus === 'up' && eventBusStatus === 'up';
-    const allDown = eventConsumerStatus === 'down' && eventBusStatus === 'down';
+    const statuses = [eventConsumerStatus, eventBusStatus, databaseStatus];
+    const allUp = statuses.every((s) => s === 'up');
+    const allDown = statuses.every((s) => s === 'down');
     const aggregateStatus: 'up' | 'degraded' | 'down' = allUp
       ? 'up'
       : allDown
@@ -95,6 +107,7 @@ router.get('/', (_req, res) => {
       services: {
         eventConsumer: eventConsumerStatus,
         eventBus: eventBusStatus,
+        database: databaseStatus,
       },
       checkedAt: new Date().toISOString(),
     };
@@ -106,7 +119,7 @@ router.get('/', (_req, res) => {
     res.set('Cache-Control', 'no-store');
     res.status(503).json({
       status: 'down',
-      services: { eventConsumer: 'down', eventBus: 'down' },
+      services: { eventConsumer: 'down', eventBus: 'down', database: 'down' },
       checkedAt: new Date().toISOString(),
     });
   }
