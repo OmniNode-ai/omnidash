@@ -87,7 +87,7 @@ async function getMigrationsInDb(): Promise<string[] | null> {
 /**
  * Perform the schema parity check.
  */
-async function checkSchemaParity(): Promise<SchemaHealthResponse> {
+export async function checkSchemaParity(): Promise<SchemaHealthResponse> {
   const filesOnDisk = getMigrationsOnDisk();
   const filesInDb = await getMigrationsInDb();
 
