@@ -64,7 +64,7 @@ async function query24h(db: Db): Promise<ContextEffectivenessWindowPayload> {
         cache_hit_count: string;
       }>(sql`
         SELECT
-          AVG(NULLIF(CAST(utilization_score AS NUMERIC), 0))::text AS avg_utilization_score,
+          AVG(CAST(utilization_score AS NUMERIC))::text AS avg_utilization_score,
           COUNT(*)::text AS total_injected_sessions,
           SUM(CASE WHEN injection_occurred THEN 1 ELSE 0 END)::text AS injection_occurred_count,
           AVG(patterns_count)::text AS avg_patterns_count,
@@ -74,7 +74,7 @@ async function query24h(db: Db): Promise<ContextEffectivenessWindowPayload> {
           AND created_at >= NOW() - INTERVAL '24 hours'
       `),
       db.execute<{ method: string | null }>(sql`
-        SELECT utilization_method AS method
+        SELECT detection_method AS method
         FROM injection_effectiveness
         WHERE event_type = 'context_utilization'
           AND created_at >= NOW() - INTERVAL '24 hours'
@@ -90,7 +90,7 @@ async function query24h(db: Db): Promise<ContextEffectivenessWindowPayload> {
       }>(sql`
         SELECT
           detection_method AS method,
-          AVG(NULLIF(CAST(utilization_score AS NUMERIC), 0))::text AS avg_score,
+          AVG(CAST(utilization_score AS NUMERIC))::text AS avg_score,
           COUNT(*)::text AS session_count,
           SUM(CASE WHEN injection_occurred THEN 1 ELSE 0 END)::text AS injection_occurred_count
         FROM injection_effectiveness
@@ -107,7 +107,7 @@ async function query24h(db: Db): Promise<ContextEffectivenessWindowPayload> {
       }>(sql`
         SELECT
           DATE_TRUNC('hour', created_at)::text AS date,
-          AVG(NULLIF(CAST(utilization_score AS NUMERIC), 0))::text AS avg_utilization_score,
+          AVG(CAST(utilization_score AS NUMERIC))::text AS avg_utilization_score,
           COUNT(*)::text AS session_count,
           SUM(CASE WHEN injection_occurred THEN 1 ELSE 0 END)::text AS injection_occurred_count
         FROM injection_effectiveness
@@ -147,7 +147,7 @@ async function query24h(db: Db): Promise<ContextEffectivenessWindowPayload> {
         FROM injection_effectiveness
         WHERE event_type = 'context_utilization'
           AND created_at >= NOW() - INTERVAL '24 hours'
-          AND NULLIF(CAST(utilization_score AS NUMERIC), 0) < 0.3
+          AND CAST(utilization_score AS NUMERIC) < 0.3
         ORDER BY created_at DESC
         LIMIT 50
       `),
@@ -173,7 +173,7 @@ async function query7d(db: Db): Promise<ContextEffectivenessWindowPayload> {
         cache_hit_count: string;
       }>(sql`
         SELECT
-          AVG(NULLIF(CAST(utilization_score AS NUMERIC), 0))::text AS avg_utilization_score,
+          AVG(CAST(utilization_score AS NUMERIC))::text AS avg_utilization_score,
           COUNT(*)::text AS total_injected_sessions,
           SUM(CASE WHEN injection_occurred THEN 1 ELSE 0 END)::text AS injection_occurred_count,
           AVG(patterns_count)::text AS avg_patterns_count,
@@ -183,7 +183,7 @@ async function query7d(db: Db): Promise<ContextEffectivenessWindowPayload> {
           AND created_at >= NOW() - INTERVAL '7 days'
       `),
       db.execute<{ method: string | null }>(sql`
-        SELECT utilization_method AS method
+        SELECT detection_method AS method
         FROM injection_effectiveness
         WHERE event_type = 'context_utilization'
           AND created_at >= NOW() - INTERVAL '7 days'
@@ -199,7 +199,7 @@ async function query7d(db: Db): Promise<ContextEffectivenessWindowPayload> {
       }>(sql`
         SELECT
           detection_method AS method,
-          AVG(NULLIF(CAST(utilization_score AS NUMERIC), 0))::text AS avg_score,
+          AVG(CAST(utilization_score AS NUMERIC))::text AS avg_score,
           COUNT(*)::text AS session_count,
           SUM(CASE WHEN injection_occurred THEN 1 ELSE 0 END)::text AS injection_occurred_count
         FROM injection_effectiveness
@@ -216,7 +216,7 @@ async function query7d(db: Db): Promise<ContextEffectivenessWindowPayload> {
       }>(sql`
         SELECT
           DATE_TRUNC('day', created_at)::text AS date,
-          AVG(NULLIF(CAST(utilization_score AS NUMERIC), 0))::text AS avg_utilization_score,
+          AVG(CAST(utilization_score AS NUMERIC))::text AS avg_utilization_score,
           COUNT(*)::text AS session_count,
           SUM(CASE WHEN injection_occurred THEN 1 ELSE 0 END)::text AS injection_occurred_count
         FROM injection_effectiveness
@@ -256,7 +256,7 @@ async function query7d(db: Db): Promise<ContextEffectivenessWindowPayload> {
         FROM injection_effectiveness
         WHERE event_type = 'context_utilization'
           AND created_at >= NOW() - INTERVAL '7 days'
-          AND NULLIF(CAST(utilization_score AS NUMERIC), 0) < 0.3
+          AND CAST(utilization_score AS NUMERIC) < 0.3
         ORDER BY created_at DESC
         LIMIT 50
       `),
@@ -282,7 +282,7 @@ async function query30d(db: Db): Promise<ContextEffectivenessWindowPayload> {
         cache_hit_count: string;
       }>(sql`
         SELECT
-          AVG(NULLIF(CAST(utilization_score AS NUMERIC), 0))::text AS avg_utilization_score,
+          AVG(CAST(utilization_score AS NUMERIC))::text AS avg_utilization_score,
           COUNT(*)::text AS total_injected_sessions,
           SUM(CASE WHEN injection_occurred THEN 1 ELSE 0 END)::text AS injection_occurred_count,
           AVG(patterns_count)::text AS avg_patterns_count,
@@ -292,7 +292,7 @@ async function query30d(db: Db): Promise<ContextEffectivenessWindowPayload> {
           AND created_at >= NOW() - INTERVAL '30 days'
       `),
       db.execute<{ method: string | null }>(sql`
-        SELECT utilization_method AS method
+        SELECT detection_method AS method
         FROM injection_effectiveness
         WHERE event_type = 'context_utilization'
           AND created_at >= NOW() - INTERVAL '30 days'
@@ -308,7 +308,7 @@ async function query30d(db: Db): Promise<ContextEffectivenessWindowPayload> {
       }>(sql`
         SELECT
           detection_method AS method,
-          AVG(NULLIF(CAST(utilization_score AS NUMERIC), 0))::text AS avg_score,
+          AVG(CAST(utilization_score AS NUMERIC))::text AS avg_score,
           COUNT(*)::text AS session_count,
           SUM(CASE WHEN injection_occurred THEN 1 ELSE 0 END)::text AS injection_occurred_count
         FROM injection_effectiveness
@@ -325,7 +325,7 @@ async function query30d(db: Db): Promise<ContextEffectivenessWindowPayload> {
       }>(sql`
         SELECT
           DATE_TRUNC('day', created_at)::text AS date,
-          AVG(NULLIF(CAST(utilization_score AS NUMERIC), 0))::text AS avg_utilization_score,
+          AVG(CAST(utilization_score AS NUMERIC))::text AS avg_utilization_score,
           COUNT(*)::text AS session_count,
           SUM(CASE WHEN injection_occurred THEN 1 ELSE 0 END)::text AS injection_occurred_count
         FROM injection_effectiveness
@@ -365,7 +365,7 @@ async function query30d(db: Db): Promise<ContextEffectivenessWindowPayload> {
         FROM injection_effectiveness
         WHERE event_type = 'context_utilization'
           AND created_at >= NOW() - INTERVAL '30 days'
-          AND NULLIF(CAST(utilization_score AS NUMERIC), 0) < 0.3
+          AND CAST(utilization_score AS NUMERIC) < 0.3
         ORDER BY created_at DESC
         LIMIT 50
       `),

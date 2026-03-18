@@ -40,6 +40,7 @@ import {
   SUFFIX_INTELLIGENCE_COMPLIANCE_EVALUATED,
   SUFFIX_INTELLIGENCE_CONTEXT_EFFECTIVENESS,
 } from '@shared/topics';
+import { emitEffectivenessUpdate } from '../../effectiveness-events';
 import {
   PatternProjectionEventSchema,
   PatternLifecycleTransitionedEventSchema,
@@ -838,6 +839,13 @@ export class OmniintelligenceProjectionHandler implements ProjectionHandler {
   private async projectContextEffectiveness(_context: ProjectionContext): Promise<boolean> {
     // No read-model write required — ContextEffectivenessProjection queries
     // injection_effectiveness directly via its own TTL-based refresh cycle.
+    // Emit effectiveness update so WebSocket clients receive fresh data immediately
+    // rather than waiting for TTL expiry (mirrors emitEnrichmentInvalidate pattern).
+    try {
+      emitEffectivenessUpdate();
+    } catch (e) {
+      console.warn('[ReadModelConsumer] emitEffectivenessUpdate() failed post-commit:', e);
+    }
     return true;
   }
 }
