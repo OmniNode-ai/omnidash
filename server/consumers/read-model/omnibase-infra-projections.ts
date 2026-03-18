@@ -147,18 +147,30 @@ export class OmnibaseInfraProjectionHandler implements ProjectionHandler {
 
   private projectWiringHealthSnapshot(data: Record<string, unknown>): boolean {
     try {
+      /** Explicit boolean parse: handles boolean, "true"/"false" strings, and numbers. */
+      const parseBool = (value: unknown, fallback: boolean): boolean => {
+        if (typeof value === 'boolean') return value;
+        if (typeof value === 'string') {
+          const normalized = value.trim().toLowerCase();
+          if (normalized === 'true') return true;
+          if (normalized === 'false') return false;
+        }
+        if (typeof value === 'number') return value !== 0;
+        return fallback;
+      };
+
       const rawTopics = Array.isArray(data.topics) ? data.topics : [];
       const topics: TopicWiringRecord[] = (rawTopics as Record<string, unknown>[]).map((t) => ({
         topic: String(t.topic ?? ''),
         emitCount: Number(t.emit_count ?? t.emitCount ?? 0),
         consumeCount: Number(t.consume_count ?? t.consumeCount ?? 0),
         mismatchRatio: Number(t.mismatch_ratio ?? t.mismatchRatio ?? 0),
-        isHealthy: Boolean(t.is_healthy ?? t.isHealthy ?? true),
+        isHealthy: parseBool(t.is_healthy ?? t.isHealthy, true),
       }));
 
       wiringHealthProjection.ingest({
         timestamp: String(data.timestamp ?? new Date().toISOString()),
-        overallHealthy: Boolean(data.overall_healthy ?? data.overallHealthy ?? true),
+        overallHealthy: parseBool(data.overall_healthy ?? data.overallHealthy, true),
         unhealthyCount: Number(data.unhealthy_count ?? data.unhealthyCount ?? 0),
         threshold: Number(data.threshold ?? 0.05),
         topics,

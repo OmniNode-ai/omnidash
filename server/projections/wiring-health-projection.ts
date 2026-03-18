@@ -9,38 +9,16 @@
  */
 
 // ============================================================================
-// Types
+// Types (sourced from shared; re-exported for server-side consumers)
 // ============================================================================
 
-/** Per-topic health record from the wiring health snapshot event. */
-export interface TopicWiringRecord {
-  topic: string;
-  emitCount: number;
-  consumeCount: number;
-  mismatchRatio: number;
-  isHealthy: boolean;
-}
+import type {
+  TopicWiringRecord,
+  WiringHealthSnapshot,
+  WiringHealthSummary,
+} from '@shared/wiring-health-types';
 
-/** A single wiring health snapshot. */
-export interface WiringHealthSnapshot {
-  timestamp: string;
-  overallHealthy: boolean;
-  unhealthyCount: number;
-  threshold: number;
-  topics: TopicWiringRecord[];
-  correlationId: string;
-  receivedAt: string;
-}
-
-/** Summary counts for the dashboard header. */
-export interface WiringHealthSummary {
-  overallHealthy: boolean;
-  unhealthyCount: number;
-  totalTopics: number;
-  threshold: number;
-  lastSnapshotAt: string | null;
-  snapshotCount: number;
-}
+export type { TopicWiringRecord, WiringHealthSnapshot, WiringHealthSummary };
 
 // ============================================================================
 // Constants

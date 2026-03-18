@@ -33,7 +33,7 @@ import type {
   WiringHealthSnapshot,
   WiringHealthSummary,
   TopicWiringRecord,
-} from '../../../server/projections/wiring-health-projection';
+} from '@shared/wiring-health-types';
 
 // ============================================================================
 // Types
