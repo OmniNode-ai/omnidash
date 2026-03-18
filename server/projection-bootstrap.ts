@@ -43,6 +43,8 @@ import { RoutingFeedbackProjection } from './projections/routing-feedback-projec
 import { ComplianceProjection } from './projections/compliance-projection';
 // Context Effectiveness projection (OMN-5286)
 import { ContextEffectivenessProjection } from './projections/context-effectiveness-projection';
+// OmniMemory projection (OMN-5290)
+import { MemoryProjection } from './projections/memory-projection';
 import { eventConsumer } from './event-consumer';
 import { eventBusDataSource } from './event-bus-data-source';
 import { extractActionFromTopic, extractProducerFromTopicOrDefault } from '@shared/topics';
@@ -154,6 +156,8 @@ export const routingFeedbackProjection = new RoutingFeedbackProjection();
 export const complianceProjection = new ComplianceProjection();
 /** Context effectiveness projection (OMN-5286). Queries injection_effectiveness table. */
 export const contextEffectivenessProjection = new ContextEffectivenessProjection();
+/** OmniMemory projection (OMN-5290). Queries memory_documents and memory_retrievals tables. */
+export const memoryProjection = new MemoryProjection();
 
 if (!projectionService.getView(extractionMetricsProjection.viewId)) {
   projectionService.registerView(extractionMetricsProjection);
@@ -218,6 +222,9 @@ if (!projectionService.getView(complianceProjection.viewId)) {
 }
 if (!projectionService.getView(contextEffectivenessProjection.viewId)) {
   projectionService.registerView(contextEffectivenessProjection);
+}
+if (!projectionService.getView(memoryProjection.viewId)) {
+  projectionService.registerView(memoryProjection);
 }
 
 // ============================================================================

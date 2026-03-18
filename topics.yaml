@@ -91,8 +91,16 @@ read_model_topics:
     handler: "projectComplianceEvaluated"
 
   # --- omnimemory topics ---
+  - topic: "onex.evt.omnimemory.document-discovered.v1"
+    handler: "projectDocumentDiscovered"
   - topic: "onex.evt.omnimemory.intent-stored.v1"
     handler: "projectIntentStored"
+  - topic: "onex.evt.omnimemory.memory-expired.v1"
+    handler: "projectMemoryExpired"
+  - topic: "onex.evt.omnimemory.memory-retrieval-response.v1"
+    handler: "projectRetrievalResponse"
+  - topic: "onex.evt.omnimemory.memory-stored.v1"
+    handler: "projectMemoryStored"
 
   # --- omniintelligence command topics (backfill source) ---
   - topic: "onex.cmd.omniintelligence.pattern-learning.v1"

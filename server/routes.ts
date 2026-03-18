@@ -72,6 +72,8 @@ import { createMetricsRouter } from './metrics-routes';
 import type { DataSourcesHealthResponse } from './health-data-sources-routes';
 // Context Effectiveness dashboard routes (OMN-5286)
 import contextEffectivenessRoutes from './context-effectiveness-routes';
+// OmniMemory dashboard routes (OMN-5290)
+import memoryRoutes from './memory-routes';
 
 export async function registerRoutes(app: Express): Promise<Server> {
   // put application routes here
@@ -133,6 +135,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // Mount context effectiveness routes for context utilization dashboard (OMN-5286)
   app.use('/api/context-effectiveness', contextEffectivenessRoutes);
+
+  // Mount OmniMemory routes for memory document and retrieval dashboard (OMN-5290)
+  app.use('/api/memory', memoryRoutes);
 
   // Mount topic catalog routes for catalog status and warnings (OMN-2315)
   app.use('/api/catalog', topicCatalogRoutes);

@@ -2029,3 +2029,69 @@ export const complianceEvaluations = pgTable(
 export const insertComplianceEvaluationSchema = createInsertSchema(complianceEvaluations);
 export type ComplianceEvaluationRow = typeof complianceEvaluations.$inferSelect;
 export type InsertComplianceEvaluation = typeof complianceEvaluations.$inferInsert;
+
+// ============================================================================
+// Memory Documents Table (migration 0024_omnimemory_tables, OMN-5290)
+// Tracks ingested documents in the OmniMemory store (one row per document,
+// upserted on document_id).
+// Source topics:
+//   onex.evt.omnimemory.document-discovered.v1
+//   onex.evt.omnimemory.memory-stored.v1
+//   onex.evt.omnimemory.memory-expired.v1
+// ============================================================================
+
+export const memoryDocuments = pgTable(
+  'memory_documents',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    documentId: text('document_id').notNull().unique(),
+    sourcePath: text('source_path'),
+    sourceType: text('source_type'),
+    contentHash: text('content_hash'),
+    sizeBytes: integer('size_bytes'),
+    status: text('status').notNull().default('discovered'),
+    memoryBackend: text('memory_backend'),
+    correlationId: text('correlation_id'),
+    sessionId: text('session_id'),
+    eventTimestamp: timestamp('event_timestamp', { withTimezone: true }).notNull(),
+    ingestedAt: timestamp('ingested_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [
+    index('idx_memory_documents_event_timestamp').on(table.eventTimestamp),
+    index('idx_memory_documents_status').on(table.status),
+    index('idx_memory_documents_source_type').on(table.sourceType),
+  ]
+);
+
+export type MemoryDocumentRow = typeof memoryDocuments.$inferSelect;
+export type InsertMemoryDocument = typeof memoryDocuments.$inferInsert;
+
+// ============================================================================
+// Memory Retrievals Table (migration 0024_omnimemory_tables, OMN-5290)
+// Append-only log of OmniMemory retrieval responses.
+// Source topic: onex.evt.omnimemory.memory-retrieval-response.v1
+// ============================================================================
+
+export const memoryRetrievals = pgTable(
+  'memory_retrievals',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    correlationId: text('correlation_id'),
+    sessionId: text('session_id'),
+    queryType: text('query_type'),
+    resultCount: integer('result_count').notNull().default(0),
+    success: boolean('success').notNull().default(true),
+    latencyMs: integer('latency_ms'),
+    errorMessage: text('error_message'),
+    eventTimestamp: timestamp('event_timestamp', { withTimezone: true }).notNull(),
+    ingestedAt: timestamp('ingested_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [
+    index('idx_memory_retrievals_event_timestamp').on(table.eventTimestamp),
+    index('idx_memory_retrievals_success').on(table.success),
+    index('idx_memory_retrievals_session_id').on(table.sessionId),
+  ]
+);
+
+export type MemoryRetrievalRow = typeof memoryRetrievals.$inferSelect;
+export type InsertMemoryRetrieval = typeof memoryRetrievals.$inferInsert;
