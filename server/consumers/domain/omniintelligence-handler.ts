@@ -114,6 +114,7 @@ function handleIntentClassified(event: RawIntentClassifiedEvent, ctx: ConsumerCo
       sessionId: event.session_id || event.sessionId || '',
       intentType,
       confidence: event.confidence ?? 0,
+      keywords: Array.isArray(event.keywords) ? event.keywords : [],
       rawText: event.raw_text || event.rawText || '',
       extractedEntities: event.extracted_entities || event.extractedEntities,
       metadata: event.metadata,
@@ -140,6 +141,22 @@ function handleIntentClassified(event: RawIntentClassifiedEvent, ctx: ConsumerCo
       });
     }
 
+    // ── REGRESSION WARNING ────────────────────────────────────────────────
+    // 'intent-event' carries intentEvent verbatim — camelCase fields only:
+    //   intentType, sessionId, createdAt, correlationId, confidence, ...
+    //
+    // projection-instance.ts forwards this payload directly to ProjectionService,
+    // so the stored ProjectionEvent.payload has camelCase keys.
+    // IntentDashboard reads them with dual-casing fallbacks:
+    //   intent_category ?? intentType,  session_ref ?? sessionId, etc.
+    //
+    // 'intentUpdate' (below) is the WebSocket path — it manually adds
+    // snake_case aliases (intent_category, session_ref, created_at) so
+    // RecentIntents' WebSocket handler can read them directly.
+    //
+    // If you rename fields on InternalIntentClassifiedEvent, update BOTH
+    // the fallback chains in IntentDashboard.tsx AND the aliases on intentUpdate.
+    // ─────────────────────────────────────────────────────────────────────
     ctx.emit('intent-event', {
       topic: INTENT_CLASSIFIED_TOPIC,
       payload: intentEvent,

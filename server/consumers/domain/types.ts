@@ -278,6 +278,7 @@ export interface InternalIntentClassifiedEvent {
   sessionId: string;
   intentType: string;
   confidence: number;
+  keywords: string[];
   rawText: string;
   extractedEntities?: Record<string, unknown>;
   metadata?: Record<string, unknown>;
@@ -296,6 +297,7 @@ export interface RawIntentClassifiedEvent {
   intent_type?: string;
   intentType?: string;
   confidence?: number;
+  keywords?: string[];
   timestamp?: string;
   raw_text?: string;
   rawText?: string;

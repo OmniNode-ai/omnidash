@@ -1,3 +1,4 @@
+// no-migration: OMN-5318 comments only — no schema changes, no new projection tables
 /**
  * Intent Projection Wiring (OMN-2096)
  *
@@ -40,6 +41,20 @@ let initialized = false;
  *
  * @param event - Raw intent event from EventConsumer ('intent-event' emission)
  */
+// ─── REGRESSION WARNING ───────────────────────────────────────────────────
+// The 'intent-event' payload forwarded here is an InternalIntentClassifiedEvent,
+// which uses camelCase field names:
+//   { intentType, sessionId, createdAt, correlationId, confidence, ... }
+//
+// This camelCase object is ingested verbatim as the ProjectionEvent payload.
+// IntentDashboard.projectionIntentItems reads it with dual-casing fallbacks
+// (e.g. intent_category ?? intentType) specifically because of this.
+//
+// If you ever normalise the payload to snake_case HERE, also remove the
+// camelCase fallbacks in IntentDashboard.tsx. If you do it the other way
+// around — removing the fallbacks without normalising here — the Session
+// Timeline dots turn gray and category badges go blank (regressed OMN-5318).
+// ─────────────────────────────────────────────────────────────────────────
 function handleIntentEvent(event: {
   topic: string;
   payload: Record<string, unknown>;
@@ -71,7 +86,7 @@ function handleIntentEvent(event: {
     type: resolvedType,
     source: 'event-consumer',
     severity: 'info',
-    payload,
+    payload, // camelCase fields preserved — see warning above before changing
     eventTimeMs: extractTimestampMs(event),
   });
 }
