@@ -27,7 +27,7 @@ dlqRoutes.get('/', async (req, res) => {
   const limit = isNaN(limitRaw) || limitRaw < 1 || limitRaw > 500 ? 100 : limitRaw;
 
   try {
-    const [messagesResult, breakdownResult] = await Promise.all([
+    const [messagesResult, breakdownResult, countResult] = await Promise.all([
       db.execute(sql`
         SELECT
           id,
@@ -65,12 +65,18 @@ dlqRoutes.get('/', async (req, res) => {
       `) as unknown as Promise<{
         rows: Array<{ error_type: string; count: number }>;
       }>,
+
+      db.execute(sql`
+        SELECT COUNT(*)::int AS total FROM dlq_messages
+      `) as unknown as Promise<{
+        rows: Array<{ total: number }>;
+      }>,
     ]);
 
     return res.json({
       messages: messagesResult.rows,
       errorBreakdown: breakdownResult.rows,
-      total: messagesResult.rows.length,
+      total: countResult.rows[0]?.total ?? 0,
       since: null,
     });
   } catch (err) {

@@ -182,7 +182,12 @@ export class PlatformProjectionHandler implements ProjectionHandler {
         originalTopic,
         errorMessage,
         errorType,
-        retryCount: typeof data.retry_count === 'number' ? data.retry_count : 0,
+        retryCount:
+          typeof data.retry_count === 'number'
+            ? data.retry_count
+            : typeof data.retryCount === 'number'
+              ? data.retryCount
+              : 0,
         consumerGroup,
         messageKey: (data.message_key as string) || (data.messageKey as string) || null,
         rawPayload: typeof data === 'object' ? data : null,

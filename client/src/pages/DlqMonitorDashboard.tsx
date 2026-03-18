@@ -140,10 +140,7 @@ function ErrorBreakdownCard({ breakdown }: { breakdown: ErrorBreakdownItem[] }) 
                   </Badge>
                 </div>
                 <div className="flex-1 h-2 bg-muted rounded overflow-hidden">
-                  <div
-                    className="h-full bg-orange-500 rounded"
-                    style={{ width: `${pct}%` }}
-                  />
+                  <div className="h-full bg-orange-500 rounded" style={{ width: `${pct}%` }} />
                 </div>
                 <span className="text-xs text-muted-foreground w-12 text-right">
                   {item.count} ({pct}%)
@@ -158,7 +155,7 @@ function ErrorBreakdownCard({ breakdown }: { breakdown: ErrorBreakdownItem[] }) 
 }
 
 function TimelineCard() {
-  const { data, isLoading } = useQuery<TimelineResponse>({
+  const { data, isLoading, isError } = useQuery<TimelineResponse>({
     queryKey: queryKeys.dlq.timeline(),
     queryFn: async () => {
       const res = await fetch('/api/dlq/timeline');
@@ -176,6 +173,19 @@ function TimelineCard() {
         </CardHeader>
         <CardContent>
           <Skeleton className="h-20 w-full" />
+        </CardContent>
+      </Card>
+    );
+  }
+
+  if (isError) {
+    return (
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-sm font-medium">DLQ Rate (24h)</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <p className="text-sm text-red-500">Failed to load DLQ timeline.</p>
         </CardContent>
       </Card>
     );
@@ -210,7 +220,11 @@ function TimelineCard() {
             const heightPct = (b.count / maxCount) * 100;
             const hour = new Date(b.bucket).getHours().toString().padStart(2, '0') + ':00';
             return (
-              <div key={b.bucket} className="flex-1 flex flex-col items-center gap-1" title={`${hour}: ${b.count} failure(s)`}>
+              <div
+                key={b.bucket}
+                className="flex-1 flex flex-col items-center gap-1"
+                title={`${hour}: ${b.count} failure(s)`}
+              >
                 <div
                   className="w-full bg-orange-500 rounded-t"
                   style={{ height: `${heightPct}%` }}
@@ -278,7 +292,7 @@ export default function DlqMonitorDashboard() {
             {isLoading ? (
               <Skeleton className="h-8 w-16" />
             ) : (
-              <span className="text-2xl font-bold">{messages.length}</span>
+              <span className="text-2xl font-bold">{data?.total ?? 0}</span>
             )}
           </CardContent>
         </Card>
@@ -355,7 +369,10 @@ export default function DlqMonitorDashboard() {
               <TableBody>
                 {messages.map((msg) => (
                   <TableRow key={msg.id}>
-                    <TableCell className="font-mono text-xs max-w-[200px] truncate" title={msg.original_topic}>
+                    <TableCell
+                      className="font-mono text-xs max-w-[200px] truncate"
+                      title={msg.original_topic}
+                    >
                       {truncate(msg.original_topic, 40)}
                     </TableCell>
                     <TableCell>
