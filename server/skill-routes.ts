@@ -17,10 +17,14 @@ export function createSkillRouter(): Router {
   router.get('/', async (_req, res) => {
     try {
       const payload = await skillProjection.ensureFresh();
-      return res.json({ skills: payload.skills, recent: payload.recent });
+      return res.json({ skills: payload.skills, recent: payload.recent, totals: payload.totals });
     } catch (err) {
       console.error('[skill-routes] GET /api/skills error:', err);
-      return res.json({ skills: [], recent: [] });
+      return res.json({
+        skills: [],
+        recent: [],
+        totals: { totalInvocations: 0, uniqueSkills: 0, overallSuccessRate: 0 },
+      });
     }
   });
 

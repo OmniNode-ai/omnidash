@@ -1267,7 +1267,7 @@ export class OmniclaudeProjectionHandler implements ProjectionHandler {
     context: ProjectionContext
   ): Promise<boolean> {
     const db = context.db;
-    if (!db) return true;
+    if (!db) return false;
     try {
       await db.insert(skillInvocations).values({
         skillName: String(data.skill_name ?? ''),

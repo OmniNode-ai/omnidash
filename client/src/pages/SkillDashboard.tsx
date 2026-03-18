@@ -48,9 +48,16 @@ interface SkillInvocationRow {
   created_at: string;
 }
 
+interface SkillTotals {
+  totalInvocations: number;
+  uniqueSkills: number;
+  overallSuccessRate: number;
+}
+
 interface SkillsPayload {
   skills: SkillSummaryRow[];
   recent: SkillInvocationRow[];
+  totals: SkillTotals;
 }
 
 // ============================================================================
@@ -124,7 +131,9 @@ function SkillsBarChart({ skills, isLoading }: { skills: SkillSummaryRow[]; isLo
           <BarChart3 className="h-4 w-4" />
           Top Skills by Invocation Count
         </CardTitle>
-        <CardDescription>Most-used skills (horizontal bars = relative invocation volume)</CardDescription>
+        <CardDescription>
+          Most-used skills (horizontal bars = relative invocation volume)
+        </CardDescription>
       </CardHeader>
       <CardContent>
         {isLoading ? (
@@ -149,17 +158,22 @@ function SkillsBarChart({ skills, isLoading }: { skills: SkillSummaryRow[]; isLo
                     <span className="font-mono truncate max-w-[200px]">{row.skill_name}</span>
                     <div className="flex items-center gap-4 text-muted-foreground text-xs">
                       <span>{row.invocations} calls</span>
-                      <span className={successPct >= 0.8 ? 'text-green-500' : successPct >= 0.6 ? 'text-yellow-500' : 'text-red-500'}>
+                      <span
+                        className={
+                          successPct >= 0.8
+                            ? 'text-green-500'
+                            : successPct >= 0.6
+                              ? 'text-yellow-500'
+                              : 'text-red-500'
+                        }
+                      >
                         {fmtPct(successPct)} ok
                       </span>
                       <span>{fmtMs(row.avg_ms)} avg</span>
                     </div>
                   </div>
                   <div className="h-2 w-full bg-muted rounded">
-                    <div
-                      className="h-2 rounded bg-primary"
-                      style={{ width: `${widthPct}%` }}
-                    />
+                    <div className="h-2 rounded bg-primary" style={{ width: `${widthPct}%` }} />
                   </div>
                 </div>
               );
@@ -268,13 +282,11 @@ export default function SkillDashboard() {
 
   const skills = data?.skills ?? [];
   const recent = data?.recent ?? [];
+  const totals = data?.totals ?? { totalInvocations: 0, uniqueSkills: 0, overallSuccessRate: 0 };
 
-  const totalInvocations = skills.reduce((sum, s) => sum + s.invocations, 0);
-  const overallSuccessRate =
-    skills.length > 0
-      ? skills.reduce((sum, s) => sum + s.success_rate * s.invocations, 0) / Math.max(totalInvocations, 1)
-      : 0;
-  const uniqueSkills = skills.length;
+  const totalInvocations = totals.totalInvocations;
+  const overallSuccessRate = totals.overallSuccessRate;
+  const uniqueSkills = totals.uniqueSkills;
 
   return (
     <div className="space-y-6" data-testid="page-skill-dashboard">

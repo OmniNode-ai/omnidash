@@ -30,21 +30,32 @@ export interface SkillInvocationRow {
   createdAt: string;
 }
 
+export interface SkillTotals {
+  totalInvocations: number;
+  uniqueSkills: number;
+  overallSuccessRate: number;
+}
+
 export interface SkillPayload {
   skills: SkillSummaryRow[];
   recent: SkillInvocationRow[];
+  totals: SkillTotals;
 }
 
 export class SkillProjection extends DbBackedProjectionView<SkillPayload> {
   readonly viewId = 'skills';
 
   protected emptyPayload(): SkillPayload {
-    return { skills: [], recent: [] };
+    return {
+      skills: [],
+      recent: [],
+      totals: { totalInvocations: 0, uniqueSkills: 0, overallSuccessRate: 0 },
+    };
   }
 
   protected async querySnapshot(db: Db): Promise<SkillPayload> {
     try {
-      const [skillRows, recentRows] = await Promise.all([
+      const [skillRows, recentRows, totalsRows] = await Promise.all([
         db.execute<{
           skill_name: string;
           invocations: string;
@@ -79,7 +90,24 @@ export class SkillProjection extends DbBackedProjectionView<SkillPayload> {
           ORDER BY created_at DESC
           LIMIT 50
         `),
+
+        db.execute<{
+          total_invocations: string;
+          unique_skills: string;
+          overall_success_rate: string;
+        }>(sql`
+          SELECT
+            COUNT(*)::text AS total_invocations,
+            COUNT(DISTINCT skill_name)::text AS unique_skills,
+            ROUND(
+              SUM(CASE WHEN success THEN 1 ELSE 0 END)::numeric / NULLIF(COUNT(*), 0),
+              4
+            )::text AS overall_success_rate
+          FROM skill_invocations
+        `),
       ]);
+
+      const t = totalsRows.rows[0];
 
       return {
         skills: skillRows.rows.map((r) => ({
@@ -97,6 +125,11 @@ export class SkillProjection extends DbBackedProjectionView<SkillPayload> {
           error: r.error ?? null,
           createdAt: String(r.created_at),
         })),
+        totals: {
+          totalInvocations: Number(t?.total_invocations ?? 0),
+          uniqueSkills: Number(t?.unique_skills ?? 0),
+          overallSuccessRate: parseFloat(String(t?.overall_success_rate ?? 0)),
+        },
       };
     } catch (err) {
       const pgCode = (err as { code?: string }).code;
