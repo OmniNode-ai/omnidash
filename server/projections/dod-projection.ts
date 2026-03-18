@@ -42,14 +42,19 @@ export class DodProjection extends DbBackedProjectionView<DodPayload> {
   protected async querySnapshot(db: Db, limit = 50): Promise<DodPayload> {
     try {
       const [verifyRows, guardRows, statsRows, trendRows] = await Promise.all([
-        // Recent verification runs
+        // Recent verification runs (columns match migration 0023)
         db.execute(sql`
           SELECT
             id,
             ticket_id,
-            status,
-            checks_passed,
-            checks_total,
+            run_id,
+            session_id,
+            correlation_id,
+            total_checks,
+            passed_checks,
+            failed_checks,
+            skipped_checks,
+            overall_pass,
             policy_mode,
             evidence_items,
             event_timestamp::text
@@ -58,14 +63,16 @@ export class DodProjection extends DbBackedProjectionView<DodPayload> {
           LIMIT ${limit}
         `),
 
-        // Recent guard events
+        // Recent guard events (columns match migration 0023)
         db.execute(sql`
           SELECT
             id,
             ticket_id,
+            session_id,
             guard_outcome,
             policy_mode,
-            receipt_age_hours,
+            receipt_age_seconds::float,
+            receipt_pass,
             event_timestamp::text
           FROM dod_guard_events
           ORDER BY event_timestamp DESC
@@ -77,7 +84,7 @@ export class DodProjection extends DbBackedProjectionView<DodPayload> {
           SELECT
             (SELECT COUNT(*)::int FROM dod_verify_runs) AS total_runs,
             COALESCE(
-              (SELECT COUNT(*) FILTER (WHERE status = 'pass')::float
+              (SELECT COUNT(*) FILTER (WHERE overall_pass = true)::float
                / NULLIF(COUNT(*)::float, 0)
                FROM dod_verify_runs
                WHERE event_timestamp >= NOW() - INTERVAL '7 days'),
@@ -94,7 +101,7 @@ export class DodProjection extends DbBackedProjectionView<DodPayload> {
           SELECT
             d::date::text AS date,
             COALESCE(
-              COUNT(*) FILTER (WHERE v.status = 'pass')::float
+              COUNT(*) FILTER (WHERE v.overall_pass = true)::float
               / NULLIF(COUNT(v.id)::float, 0),
               0
             ) AS pass_rate,

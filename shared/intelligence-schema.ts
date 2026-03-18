@@ -1878,7 +1878,6 @@ export const dodVerifyRuns = pgTable(
 );
 
 export const insertDodVerifyRunSchema = createInsertSchema(dodVerifyRuns);
-export type DodVerifyRunRow = typeof dodVerifyRuns.$inferSelect;
 export type InsertDodVerifyRun = typeof dodVerifyRuns.$inferInsert;
 
 // ============================================================================
@@ -1909,7 +1908,6 @@ export const dodGuardEvents = pgTable(
 );
 
 export const insertDodGuardEventSchema = createInsertSchema(dodGuardEvents);
-export type DodGuardEventRow = typeof dodGuardEvents.$inferSelect;
 export type InsertDodGuardEvent = typeof dodGuardEvents.$inferInsert;
 
 // ============================================================================
@@ -2165,7 +2163,9 @@ export type InsertDlqMessage = typeof dlqMessages.$inferInsert;
 export const circuitBreakerEvents = pgTable(
   'circuit_breaker_events',
   {
-    id: text('id').primaryKey().default(sql`gen_random_uuid()::text`),
+    id: text('id')
+      .primaryKey()
+      .default(sql`gen_random_uuid()::text`),
     serviceName: text('service_name').notNull(),
     state: text('state').notNull(),
     previousState: text('previous_state').notNull(),

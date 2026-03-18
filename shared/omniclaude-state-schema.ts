@@ -227,45 +227,47 @@ export type DebugEscalationPayload = z.infer<typeof debugEscalationPayloadSchema
 
 // ============================================================================
 // DoD Verification Runs (OMN-5199 / OMN-5200)
+// Single schema ownership: pgTable definitions live in intelligence-schema.ts.
+// Re-exported here for consumers that import from this module.
+// Zod row schemas below are hand-written to match the raw SQL projection
+// queries in dod-projection.ts (which return snake_case DB column names).
+// See: OMN-5430
 // ============================================================================
 
-export const dodVerifyRuns = pgTable('dod_verify_runs', {
-  id: text('id').primaryKey(),
-  ticket_id: text('ticket_id').notNull(),
-  status: text('status').notNull(), // 'pass' | 'fail'
-  checks_passed: integer('checks_passed').notNull(),
-  checks_total: integer('checks_total').notNull(),
-  policy_mode: text('policy_mode').notNull(), // 'enforce' | 'warn' | 'off'
-  evidence_items: text('evidence_items'), // JSON-encoded array
-  event_timestamp: timestamp('event_timestamp', { withTimezone: true }).notNull(),
-});
+export { dodVerifyRuns, dodGuardEvents } from './intelligence-schema';
 
-export const dodVerifyRunRowSchema = createSelectSchema(dodVerifyRuns, {
+export const dodVerifyRunRowSchema = z.object({
+  id: z.string(),
+  ticket_id: z.string(),
+  run_id: z.string(),
+  session_id: z.string().nullable(),
+  correlation_id: z.string().nullable(),
+  total_checks: z.number(),
+  passed_checks: z.number(),
+  failed_checks: z.number(),
+  skipped_checks: z.number(),
+  overall_pass: z.boolean(),
+  policy_mode: z.string(),
+  evidence_items: z.unknown(),
   event_timestamp: z.coerce.string(),
 });
-export type DodVerifyRunRow = Omit<InferSelectModel<typeof dodVerifyRuns>, 'event_timestamp'> & {
-  event_timestamp: string;
-};
+export type DodVerifyRunRow = z.infer<typeof dodVerifyRunRowSchema>;
 
 // ============================================================================
 // DoD Guard Events (OMN-5199 / OMN-5200)
 // ============================================================================
 
-export const dodGuardEvents = pgTable('dod_guard_events', {
-  id: text('id').primaryKey(),
-  ticket_id: text('ticket_id').notNull(),
-  guard_outcome: text('guard_outcome').notNull(), // 'allowed' | 'warned' | 'blocked'
-  policy_mode: text('policy_mode').notNull(),
-  receipt_age_hours: integer('receipt_age_hours'),
-  event_timestamp: timestamp('event_timestamp', { withTimezone: true }).notNull(),
-});
-
-export const dodGuardEventRowSchema = createSelectSchema(dodGuardEvents, {
+export const dodGuardEventRowSchema = z.object({
+  id: z.string(),
+  ticket_id: z.string(),
+  session_id: z.string().nullable(),
+  guard_outcome: z.string(),
+  policy_mode: z.string(),
+  receipt_age_seconds: z.coerce.number().nullable(),
+  receipt_pass: z.boolean().nullable(),
   event_timestamp: z.coerce.string(),
 });
-export type DodGuardEventRow = Omit<InferSelectModel<typeof dodGuardEvents>, 'event_timestamp'> & {
-  event_timestamp: string;
-};
+export type DodGuardEventRow = z.infer<typeof dodGuardEventRowSchema>;
 
 // ============================================================================
 // DoD Dashboard Payload (OMN-5200)
