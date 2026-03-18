@@ -1277,7 +1277,7 @@ export class OmniclaudeProjectionHandler implements ProjectionHandler {
         error: data.error ? String(data.error) : null,
       });
     } catch (e) {
-      if (isTableMissingError(e)) return true;
+      if (isTableMissingError(e, 'skill_invocations')) return true;
       throw e;
     }
     return true;
