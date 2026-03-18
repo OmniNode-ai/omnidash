@@ -59,7 +59,7 @@ export interface SearchFilterConfig {
   /** Callback when value changes */
   onChange: (value: string) => void;
   /** Ref for the input element (for focus management) */
-  inputRef?: RefObject<HTMLInputElement>;
+  inputRef?: RefObject<HTMLInputElement | null>;
 }
 
 export type FilterConfig = SelectFilterConfig | SearchFilterConfig;

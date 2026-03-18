@@ -73,7 +73,7 @@ export interface UseRegistryFiltersReturn extends RegistryFilterState, RegistryF
   /** Whether any filters are currently active */
   hasFilters: boolean;
   /** Ref for capability search input (for keyboard shortcut focus) */
-  capabilityInputRef: RefObject<HTMLInputElement>;
+  capabilityInputRef: RefObject<HTMLInputElement | null>;
 }
 
 /**
