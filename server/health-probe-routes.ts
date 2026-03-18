@@ -87,7 +87,7 @@ router.get('/', async (_req, res) => {
     let databaseStatus: 'up' | 'down' = 'down';
     try {
       const schemaHealth = await checkSchemaParity();
-      databaseStatus = schemaHealth.status === 'ok' ? 'up' : 'down';
+      databaseStatus = schemaHealth.schema_ok ? 'up' : 'down';
     } catch {
       // Leave as 'down'
     }
