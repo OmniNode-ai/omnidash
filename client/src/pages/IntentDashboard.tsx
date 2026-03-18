@@ -449,20 +449,25 @@ export default function IntentDashboard() {
   // Transform projection snapshot → IntentItem[] for child components.
   // ProjectionEventItem wraps intent fields inside .payload; IntentItem expects them flat.
   //
-  // OMN-5055: event-consumer.ts now normalizes to canonical snake_case at the write site,
-  // so the projection payload always carries session_ref / intent_category / created_at.
-  // No dual-casing fallbacks needed here.
+  // OMN-5318: InternalIntentClassifiedEvent uses camelCase (intentType, sessionId, createdAt)
+  // while the dashboard expects snake_case. Fall back to camelCase aliases so both casing
+  // conventions in the projection payload are handled correctly.
   const projectionIntentItems = useMemo((): IntentItem[] | undefined => {
     if (!snapshot?.recentIntents?.length) return undefined;
     return snapshot.recentIntents.map((e) => ({
       intent_id: e.id,
-      session_ref: String(e.payload.session_ref ?? ''),
-      intent_category: String(e.payload.intent_category ?? ''),
+      session_ref: String(
+        e.payload.session_ref ?? e.payload.sessionId ?? e.payload.session_id ?? ''
+      ),
+      intent_category: String(
+        e.payload.intent_category ?? e.payload.intentType ?? e.payload.intent_type ?? ''
+      ),
       confidence: Number(e.payload.confidence ?? 0),
-      keywords: [],
-      created_at: e.payload.created_at
-        ? String(e.payload.created_at)
-        : new Date(e.eventTimeMs ?? Date.now()).toISOString(),
+      keywords: Array.isArray(e.payload.keywords) ? (e.payload.keywords as string[]) : [],
+      created_at:
+        (e.payload.created_at as string | undefined) ||
+        (e.payload.createdAt as string | undefined) ||
+        new Date(e.eventTimeMs ?? Date.now()).toISOString(),
       user_context: undefined,
     }));
   }, [snapshot]);
