@@ -30,7 +30,7 @@ import {
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { Calendar } from '@/components/ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import { DateRange } from 'react-day-picker';
+import type { DateRange } from 'react-day-picker';
 import { format } from 'date-fns';
 import { getSuccessRateVariant } from '@/lib/utils';
 
