@@ -147,7 +147,7 @@ export default function CircuitBreakerDashboard() {
     },
     [queryClient]
   );
-  useWebSocket(handleMessage);
+  useWebSocket({ onMessage: handleMessage });
 
   const stateCounts = summary?.stateCounts ?? { closed: 0, open: 0, half_open: 0 };
   const services = summary?.services ?? [];

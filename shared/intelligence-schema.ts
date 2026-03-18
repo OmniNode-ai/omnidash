@@ -2165,7 +2165,7 @@ export type InsertDlqMessage = typeof dlqMessages.$inferInsert;
 export const circuitBreakerEvents = pgTable(
   'circuit_breaker_events',
   {
-    id: text('id').primaryKey(),
+    id: text('id').primaryKey().default(sql`gen_random_uuid()::text`),
     serviceName: text('service_name').notNull(),
     state: text('state').notNull(),
     previousState: text('previous_state').notNull(),

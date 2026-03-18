@@ -90,6 +90,11 @@ export class CircuitBreakerProjection extends DbBackedProjectionView<CircuitBrea
     };
   }
 
+  /** Required by DbBackedProjectionView — delegates to 24h window. */
+  protected async querySnapshot(db: Db): Promise<CircuitBreakerPayload> {
+    return this._computeForWindow(db, '24h');
+  }
+
   /** Return cached result if < 10 s old, else recompute. */
   async ensureFreshForWindow(window: CircuitBreakerWindow): Promise<CircuitBreakerPayload> {
     const cached = this.windowCache.get(window);
