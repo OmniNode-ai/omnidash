@@ -1,3 +1,4 @@
+// no-migration: OMN-5318 comments only — no schema changes, no new projection tables
 /**
  * Intent Projection Wiring (OMN-2096)
  *
