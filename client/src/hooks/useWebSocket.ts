@@ -76,15 +76,15 @@ export function useWebSocket({
   const [error, setError] = useState<string | null>(null);
 
   const wsRef = useRef<WebSocket | null>(null);
-  const reconnectTimeoutRef = useRef<NodeJS.Timeout>();
+  const reconnectTimeoutRef = useRef<NodeJS.Timeout | undefined>(undefined);
   const reconnectCountRef = useRef(0);
   const mountedRef = useRef(true);
 
   // Timeout: transition from 'connecting' to 'offline' after 10 seconds
-  const connectingTimeoutRef = useRef<NodeJS.Timeout>();
+  const connectingTimeoutRef = useRef<NodeJS.Timeout | undefined>(undefined);
 
   // Stabilization: Track connection state changes to prevent flickering
-  const disconnectTimeoutRef = useRef<NodeJS.Timeout>();
+  const disconnectTimeoutRef = useRef<NodeJS.Timeout | undefined>(undefined);
   const stableConnectionRef = useRef(false);
   const connectionTimestampRef = useRef<number>(0);
 
