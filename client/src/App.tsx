@@ -94,6 +94,10 @@ import DlqMonitorDashboard from '@/pages/DlqMonitorDashboard';
 import CircuitBreakerDashboard from '@/pages/CircuitBreakerDashboard';
 // Feature Flags dashboard (OMN-5582)
 import FeatureFlagsDashboard from '@/pages/FeatureFlagsDashboard';
+// Consumer Health dashboard (OMN-5527)
+import ConsumerHealthDashboard from '@/pages/ConsumerHealthDashboard';
+// Runtime Errors dashboard (OMN-5528)
+import RuntimeErrorsDashboard from '@/pages/RuntimeErrorsDashboard';
 
 // Phase 2: Category landing pages (OMN-2181)
 import SpeedCategory from '@/pages/SpeedCategory';
@@ -230,6 +234,12 @@ function Router() {
 
       {/* Feature Flags — contract-declared feature flag management (OMN-5582) */}
       <Route path="/feature-flags" component={FeatureFlagsDashboard} />
+
+      {/* Consumer Health — consumer heartbeat/session/rebalance events (OMN-5527) */}
+      <Route path="/consumer-health" component={ConsumerHealthDashboard} />
+
+      {/* Runtime Errors — structured runtime error events (OMN-5528) */}
+      <Route path="/runtime-errors" component={RuntimeErrorsDashboard} />
 
       {/* Model Efficiency Index dashboard (OMN-3941) */}
       <Route path="/model-efficiency" component={ModelEfficiencyDashboard} />
