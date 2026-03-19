@@ -8,6 +8,7 @@
  * - Pattern learning requested -> pattern_learning_artifacts (insert pending)
  * - Plan review strategy run -> plan_review_runs
  * - Run evaluated -> objective_evaluations / objective_gate_failures
+ * - Episode boundary -> rl_episodes (upsert by episode_id)
  */
 
 import crypto from 'node:crypto';
@@ -19,6 +20,7 @@ import {
   intentDriftEvents,
   routingFeedbackEvents,
   complianceEvaluations,
+  rlEpisodes,
 } from '@shared/intelligence-schema';
 import type {
   InsertLlmCostAggregate,
@@ -39,6 +41,7 @@ import {
   SUFFIX_INTELLIGENCE_ROUTING_FEEDBACK_PROCESSED,
   SUFFIX_INTELLIGENCE_COMPLIANCE_EVALUATED,
   SUFFIX_INTELLIGENCE_CONTEXT_EFFECTIVENESS,
+  SUFFIX_INTELLIGENCE_EPISODE_BOUNDARY,
 } from '@shared/topics';
 import { emitEffectivenessUpdate } from '../../effectiveness-events';
 import {
@@ -63,6 +66,7 @@ const OMNIINTELLIGENCE_TOPICS = new Set([
   SUFFIX_INTELLIGENCE_ROUTING_FEEDBACK_PROCESSED,
   SUFFIX_INTELLIGENCE_COMPLIANCE_EVALUATED,
   SUFFIX_INTELLIGENCE_CONTEXT_EFFECTIVENESS,
+  SUFFIX_INTELLIGENCE_EPISODE_BOUNDARY,
 ]);
 
 export class OmniintelligenceProjectionHandler implements ProjectionHandler {
@@ -110,6 +114,8 @@ export class OmniintelligenceProjectionHandler implements ProjectionHandler {
         return this.projectComplianceEvaluated(data, context);
       case SUFFIX_INTELLIGENCE_CONTEXT_EFFECTIVENESS:
         return this.projectContextEffectiveness(context);
+      case SUFFIX_INTELLIGENCE_EPISODE_BOUNDARY:
+        return this.projectEpisodeEvent(data, context);
       default:
         return false;
     }
@@ -846,6 +852,129 @@ export class OmniintelligenceProjectionHandler implements ProjectionHandler {
     } catch (e) {
       console.warn('[ReadModelConsumer] emitEffectivenessUpdate() failed post-commit:', e);
     }
+    return true;
+  }
+
+  // -------------------------------------------------------------------------
+  // Episode boundary -> rl_episodes (OMN-5559)
+  // Start events CREATE the row, complete events UPDATE with outcome data.
+  // Idempotent by episode_id (upsert).
+  // -------------------------------------------------------------------------
+
+  private async projectEpisodeEvent(
+    data: Record<string, unknown>,
+    context: ProjectionContext
+  ): Promise<boolean> {
+    const { db } = context;
+    if (!db) return false;
+
+    const episodeId = (data.episode_id as string) || (data.episodeId as string);
+    if (!episodeId || !UUID_RE.test(episodeId)) {
+      console.warn(
+        `[ReadModelConsumer] episode-boundary missing or invalid episode_id "${episodeId}" -- skipping`
+      );
+      return true;
+    }
+
+    const phase = (data.phase as string) || 'started';
+    const surface = (data.surface as string) || 'routing';
+
+    try {
+      if (phase === 'completed') {
+        // Complete event: UPDATE existing row with outcome data
+        const terminalStatus =
+          (data.terminal_status as string) || (data.terminalStatus as string) || 'incomplete';
+        const outcomeMetrics =
+          (data.outcome_metrics as Record<string, unknown>) ||
+          (data.outcomeMetrics as Record<string, unknown>) ||
+          {};
+        const emittedAt = safeParseDate(data.emitted_at ?? data.emittedAt);
+
+        const result = await db
+          .update(rlEpisodes)
+          .set({
+            phase: 'completed',
+            terminalStatus,
+            outcomeMetrics,
+            completedAt: emittedAt ?? new Date(),
+            projectedAt: new Date(),
+          })
+          .where(eq(rlEpisodes.episodeId, episodeId))
+          .returning({ id: rlEpisodes.id });
+
+        if (result.length === 0) {
+          // Start event may not have arrived yet — insert a complete row
+          await db.execute(sql`
+            INSERT INTO rl_episodes (
+              episode_id, surface, phase, terminal_status,
+              decision_snapshot, observation_timestamp, action_taken,
+              outcome_metrics, started_at, completed_at, emitted_at, projected_at
+            ) VALUES (
+              ${episodeId}::uuid,
+              ${surface},
+              ${'completed'},
+              ${terminalStatus},
+              ${(data.decision_snapshot as Record<string, unknown>) || (data.decisionSnapshot as Record<string, unknown>) || {}}::jsonb,
+              ${safeParseDate(data.observation_timestamp ?? data.observationTimestamp) ?? new Date()},
+              ${(data.action_taken as Record<string, unknown>) || (data.actionTaken as Record<string, unknown>) || {}}::jsonb,
+              ${outcomeMetrics}::jsonb,
+              ${safeParseDate(data.observation_timestamp ?? data.observationTimestamp) ?? new Date()},
+              ${emittedAt ?? new Date()},
+              ${emittedAt ?? new Date()},
+              ${new Date()}
+            )
+            ON CONFLICT (episode_id) DO UPDATE SET
+              phase = EXCLUDED.phase,
+              terminal_status = EXCLUDED.terminal_status,
+              outcome_metrics = EXCLUDED.outcome_metrics,
+              completed_at = EXCLUDED.completed_at,
+              projected_at = EXCLUDED.projected_at
+          `);
+        }
+      } else {
+        // Start event: INSERT new row (or no-op if already exists)
+        const decisionSnapshot =
+          (data.decision_snapshot as Record<string, unknown>) ||
+          (data.decisionSnapshot as Record<string, unknown>) ||
+          {};
+        const observationTimestamp = safeParseDate(
+          data.observation_timestamp ?? data.observationTimestamp
+        );
+        const actionTaken =
+          (data.action_taken as Record<string, unknown>) ||
+          (data.actionTaken as Record<string, unknown>) ||
+          {};
+        const emittedAt = safeParseDate(data.emitted_at ?? data.emittedAt);
+
+        await db.execute(sql`
+          INSERT INTO rl_episodes (
+            episode_id, surface, phase, decision_snapshot,
+            observation_timestamp, action_taken, started_at, emitted_at, projected_at
+          ) VALUES (
+            ${episodeId}::uuid,
+            ${surface},
+            ${'started'},
+            ${decisionSnapshot}::jsonb,
+            ${observationTimestamp ?? new Date()},
+            ${actionTaken}::jsonb,
+            ${observationTimestamp ?? new Date()},
+            ${emittedAt ?? new Date()},
+            ${new Date()}
+          )
+          ON CONFLICT (episode_id) DO NOTHING
+        `);
+      }
+    } catch (err) {
+      if (isTableMissingError(err, 'rl_episodes')) {
+        console.warn(
+          '[ReadModelConsumer] rl_episodes table not yet created -- ' +
+            'run migrations to enable episode projection'
+        );
+        return true;
+      }
+      throw err;
+    }
+
     return true;
   }
 }
