@@ -21,7 +21,7 @@ import {
   eventBusHealthProjection,
   type TopicHealthRecord,
 } from './projections/event-bus-health-projection';
-import { loadManifestTopics } from './services/topic-manifest-loader';
+import { loadManifestTopics, loadMonitoredTopics } from './services/topic-manifest-loader';
 
 // ============================================================================
 // Constants
@@ -66,7 +66,8 @@ const ADDITIONAL_MONITORED_TOPICS: string[] = [
 function buildExpectedTopics(): string[] {
   try {
     const manifestTopics = loadManifestTopics();
-    const combined = new Set([...manifestTopics, ...ADDITIONAL_MONITORED_TOPICS]);
+    const monitoredTopics = loadMonitoredTopics();
+    const combined = new Set([...manifestTopics, ...monitoredTopics]);
     return [...combined];
   } catch (err) {
     console.warn(

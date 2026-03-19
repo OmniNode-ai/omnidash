@@ -115,3 +115,21 @@ read_model_topics:
   # --- omniintelligence command topics (backfill source) ---
   - topic: "onex.cmd.omniintelligence.pattern-learning.v1"
     handler: "projectPatternLearningRequested"
+
+# Topics omnidash monitors for broker health but does NOT consume into read models.
+# These indicate healthy upstream producers. No handler is needed.
+# Rules:
+#   - Only add topics that exist in upstream contract/manifests
+#   - Keep entries sorted by producer, then by event-name
+monitored_topics:
+  # --- omniintelligence topics ---
+  - topic: "onex.evt.omniintelligence.intent-classified.v1"
+  - topic: "onex.evt.omniintelligence.pattern-discovery.v1"
+  - topic: "onex.evt.omniintelligence.pattern-refined.v1"
+
+  # --- omnimemory topics ---
+  - topic: "onex.evt.omnimemory.document-ingested.v1"
+
+  # --- omninode topics ---
+  - topic: "onex.cmd.omninode.routing-requested.v1"
+  - topic: "onex.evt.omninode.routing-completed.v1"
