@@ -70,8 +70,16 @@ repos:
     hooks:
       - id: no-hardcoded-topics
         stages: [pre-commit]
-        # Pre-existing violations — pending migration to canonical topic constants
-        exclude: ^(server/consumers/read-model/(platform|omniclaude)-projections\.ts|server/event-consumer\.ts|server/services/topic-registry-service\.ts|server/startup-backfill\.ts|server/event-bus-health-poller\.ts|client/src/lib/mock-data/event-bus-demo\.ts|scripts/audit-components\.py|scripts/check-bus-parity\.ts)$
+        # Pre-existing violations — pending migration to canonical topic constants.
+        # Justifications for each exclude:
+        #   platform-projections.ts     — hardcoded topic in SQL template literal (1 violation)
+        #   omniclaude-projections.ts   — hardcoded pattern-enforcement topic in projection switch (2 violations)
+        #   event-consumer.ts           — hardcoded introspection cmd + skill topics (3 violations)
+        #   topic-registry-service.ts   — startsWith('onex.evt.') prefix filter, not a topic literal (1 false positive)
+        #   event-bus-demo.ts           — mock/demo data with sample topic strings (8+ violations)
+        #   audit-components.py         — audit script with hardcoded expected topic references (4 violations)
+        #   check-bus-parity.ts         — parity checker with expected topic list (3 violations)
+        exclude: ^(server/consumers/read-model/(platform|omniclaude)-projections\.ts|server/event-consumer\.ts|server/services/topic-registry-service\.ts|client/src/lib/mock-data/event-bus-demo\.ts|scripts/audit-components\.py|scripts/check-bus-parity\.ts)$
 
 default_stages: [pre-commit]
 fail_fast: false
