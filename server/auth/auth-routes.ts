@@ -123,7 +123,7 @@ const meRouter = Router();
 meRouter.get('/me', (req: Request, res: Response) => {
   if (!isAuthEnabled()) {
     // Auth-disabled contract: signal that auth is not configured
-    return res.json({ authEnabled: false });
+    return res.json({ authEnabled: false, authenticated: true });
   }
 
   if (req.session.user && req.session.tokenSet) {
