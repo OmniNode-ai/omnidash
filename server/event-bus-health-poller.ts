@@ -21,7 +21,7 @@ import {
   eventBusHealthProjection,
   type TopicHealthRecord,
 } from './projections/event-bus-health-projection';
-import { loadManifestTopics } from './services/topic-manifest-loader';
+import { loadManifestTopics, loadMonitoredTopics } from './services/topic-manifest-loader';
 
 // ============================================================================
 // Constants
@@ -48,33 +48,18 @@ const WATCHED_CONSUMER_GROUPS: string[] = [
  * Any topic in this list that is absent from the broker generates a
  * missingFromBroker: true record in the projection.
  *
- * OMN-5184: Now derived from topics.yaml manifest (via TopicManifestLoader)
- * merged with additional external topics we want to monitor but don't consume.
+ * OMN-5184: Derived from topics.yaml manifest (via TopicManifestLoader)
+ * — read_model_topics + monitored_topics sections.
  * Adding a new topic to topics.yaml automatically updates health probe coverage.
+ *
+ * No fallback: if topics.yaml cannot be loaded, the error propagates and
+ * omnidash fails startup (manifest is required infrastructure).
  */
-const ADDITIONAL_MONITORED_TOPICS: string[] = [
-  // Topics we want to verify exist on the broker but are not in topics.yaml
-  // (omnidash doesn't consume them, but they indicate healthy upstream producers)
-  'onex.evt.omniintelligence.pattern-discovery.v1',
-  'onex.evt.omniintelligence.pattern-refined.v1',
-  'onex.evt.omniintelligence.intent-classified.v1',
-  'onex.evt.omnimemory.document-ingested.v1',
-  'onex.cmd.omninode.routing-requested.v1',
-  'onex.evt.omninode.routing-completed.v1',
-];
-
 function buildExpectedTopics(): string[] {
-  try {
-    const manifestTopics = loadManifestTopics();
-    const combined = new Set([...manifestTopics, ...ADDITIONAL_MONITORED_TOPICS]);
-    return [...combined];
-  } catch (err) {
-    console.warn(
-      '[EventBusHealthPoller] Failed to load topics.yaml, falling back to additional topics only:',
-      err instanceof Error ? err.message : err
-    );
-    return [...ADDITIONAL_MONITORED_TOPICS];
-  }
+  const manifestTopics = loadManifestTopics();
+  const monitoredTopics = loadMonitoredTopics();
+  const combined = new Set([...manifestTopics, ...monitoredTopics]);
+  return [...combined];
 }
 
 export const EXPECTED_TOPICS: string[] = buildExpectedTopics();

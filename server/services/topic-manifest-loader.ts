@@ -29,6 +29,7 @@ const TopicManifestEntrySchema = z.object({
 const TopicManifestSchema = z.object({
   version: z.string(),
   read_model_topics: z.array(TopicManifestEntrySchema),
+  monitored_topics: z.array(TopicManifestEntrySchema).optional().default([]),
 });
 
 export type TopicManifestEntry = z.infer<typeof TopicManifestEntrySchema>;
@@ -85,7 +86,7 @@ export function loadTopicManifest(): TopicManifest {
       _resolvedPath = p;
 
       console.log(
-        `[topic-manifest-loader] Loaded ${validated.read_model_topics.length} topics from ${p}`
+        `[topic-manifest-loader] Loaded ${validated.read_model_topics.length} read-model + ${validated.monitored_topics.length} monitored topics from ${p}`
       );
 
       return validated;
@@ -101,6 +102,15 @@ export function loadTopicManifest(): TopicManifest {
 export function loadManifestTopics(): string[] {
   const manifest = loadTopicManifest();
   return manifest.read_model_topics.map((entry) => entry.topic);
+}
+
+/**
+ * Get just the monitored topic strings from the manifest (convenience helper).
+ * These are upstream topics omnidash health-probes but doesn't consume.
+ */
+export function loadMonitoredTopics(): string[] {
+  const manifest = loadTopicManifest();
+  return manifest.monitored_topics.map((entry) => entry.topic);
 }
 
 /**
