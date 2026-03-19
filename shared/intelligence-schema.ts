@@ -2111,7 +2111,9 @@ export const skillInvocations = pgTable(
     sessionId: text('session_id'),
     durationMs: integer('duration_ms'),
     success: boolean('success').notNull().default(true),
+    status: text('status').notNull().default('success'),
     error: text('error'),
+    emittedAt: timestamp('emitted_at', { withTimezone: true }),
     createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
   },
   (table) => [
