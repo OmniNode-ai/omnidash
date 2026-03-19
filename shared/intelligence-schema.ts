@@ -2364,3 +2364,61 @@ export const runtimeErrorEvents = pgTable(
 export const insertRuntimeErrorEventSchema = createInsertSchema(runtimeErrorEvents);
 export type RuntimeErrorEventRow = typeof runtimeErrorEvents.$inferSelect;
 export type InsertRuntimeErrorEvent = typeof runtimeErrorEvents.$inferInsert;
+
+// ============================================================================
+// Routing Shadow Decisions Table (OMN-5570)
+// Stores shadow routing decisions from Bifrost gateway's learned policy
+// for comparison with static routing rules. Used by the RL Routing
+// dashboard to evaluate promotion gate criteria.
+// ============================================================================
+
+export const routingShadowDecisions = pgTable(
+  'routing_shadow_decisions',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    correlationId: uuid('correlation_id').notNull(),
+    timestamp: timestamp('timestamp', { withTimezone: true }).notNull().defaultNow(),
+
+    // Static (actual) routing decision
+    staticBackendSelected: text('static_backend_selected').notNull(),
+    staticRuleId: uuid('static_rule_id'),
+
+    // Shadow (learned policy) recommendation
+    shadowBackendRecommended: text('shadow_backend_recommended').notNull(),
+    agreed: boolean('agreed').notNull(),
+
+    // Request context
+    requestOperationType: text('request_operation_type').notNull(),
+    requestCostTier: text('request_cost_tier').notNull(),
+    requestMaxLatencyMs: integer('request_max_latency_ms').notNull(),
+    estimatedTokenCount: integer('estimated_token_count'),
+    tenantId: uuid('tenant_id').notNull(),
+
+    // Shadow policy metadata
+    shadowConfidence: doublePrecision('shadow_confidence').notNull(),
+    shadowLatencyMs: doublePrecision('shadow_latency_ms').notNull(),
+    policyVersion: text('policy_version').notNull(),
+    shadowActionDistribution: jsonb('shadow_action_distribution').default(sql`'{}'::jsonb`),
+
+    // Cost/latency estimates for reward delta computation
+    staticBackendEstimatedCost: doublePrecision('static_backend_estimated_cost'),
+    shadowBackendEstimatedCost: doublePrecision('shadow_backend_estimated_cost'),
+    staticBackendEstimatedLatencyMs: doublePrecision('static_backend_estimated_latency_ms'),
+    shadowBackendEstimatedLatencyMs: doublePrecision('shadow_backend_estimated_latency_ms'),
+
+    // Projection metadata
+    projectedAt: timestamp('projected_at', { withTimezone: true }).defaultNow(),
+  },
+  (table) => [
+    index('idx_rsd_correlation_id').on(table.correlationId),
+    index('idx_rsd_timestamp').on(table.timestamp),
+    index('idx_rsd_operation_type_agreed').on(table.requestOperationType, table.agreed),
+    index('idx_rsd_policy_version').on(table.policyVersion),
+    index('idx_rsd_shadow_backend').on(table.shadowBackendRecommended),
+    index('idx_rsd_cost_tier_agreed').on(table.requestCostTier, table.agreed),
+  ]
+);
+
+export const insertRoutingShadowDecisionSchema = createInsertSchema(routingShadowDecisions);
+export type RoutingShadowDecisionRow = typeof routingShadowDecisions.$inferSelect;
+export type InsertRoutingShadowDecision = typeof routingShadowDecisions.$inferInsert;

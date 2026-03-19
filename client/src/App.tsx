@@ -98,6 +98,8 @@ import FeatureFlagsDashboard from '@/pages/FeatureFlagsDashboard';
 import ConsumerHealthDashboard from '@/pages/ConsumerHealthDashboard';
 // Runtime Errors dashboard (OMN-5528)
 import RuntimeErrorsDashboard from '@/pages/RuntimeErrorsDashboard';
+// RL Routing Comparison dashboard (OMN-5570)
+import RLRouting from '@/pages/RLRouting';
 
 // Phase 2: Category landing pages (OMN-2181)
 import SpeedCategory from '@/pages/SpeedCategory';
@@ -240,6 +242,9 @@ function Router() {
 
       {/* Runtime Errors — structured runtime error events (OMN-5528) */}
       <Route path="/runtime-errors" component={RuntimeErrorsDashboard} />
+
+      {/* RL Routing Comparison — shadow mode vs static routing (OMN-5570) */}
+      <Route path="/rl-routing" component={RLRouting} />
 
       {/* Model Efficiency Index dashboard (OMN-3941) */}
       <Route path="/model-efficiency" component={ModelEfficiencyDashboard} />
