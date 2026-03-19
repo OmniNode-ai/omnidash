@@ -445,6 +445,11 @@ export const TOPIC_OMNIBASE_INFRA_CIRCUIT_BREAKER =
 /** Alias for TOPIC_OMNIBASE_INFRA_CIRCUIT_BREAKER (SUFFIX_ naming convention). */
 export const SUFFIX_OMNIBASE_INFRA_CIRCUIT_BREAKER = TOPIC_OMNIBASE_INFRA_CIRCUIT_BREAKER;
 
+/** Tiered token savings attribution estimates (OMN-5552).
+ * Consumed by ReadModelConsumer to project into savings_estimates table. */
+export const SUFFIX_OMNIBASE_INFRA_SAVINGS_ESTIMATED =
+  'onex.evt.omnibase-infra.savings-estimated.v1';
+
 // ============================================================================
 // Miscellaneous Topics
 // ============================================================================
