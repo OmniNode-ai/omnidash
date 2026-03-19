@@ -22,3 +22,13 @@ export {
   type RunSummary,
   type RunsListResponse,
 } from './validation-source';
+
+// Savings estimation data source (OMN-5554)
+export {
+  savingsSource,
+  type SavingsMetrics,
+  type AgentComparison,
+  type TimeSeriesData,
+  type ProviderSavings,
+  type SavingsAllResponse,
+} from './savings-source';

@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
 import { MockDataBadge } from '@/components/MockDataBadge';
 import { useQuery } from '@tanstack/react-query';
-import { intelligenceSavingsSource, intelligenceAnalyticsSource } from '@/lib/data-sources';
+import { savingsSource } from '@/lib/data-sources/savings-source';
+import { intelligenceAnalyticsSource } from '@/lib/data-sources';
 import { getPollingInterval } from '@/lib/constants/query-config';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -33,80 +34,6 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import type { DateRange } from 'react-day-picker';
 import { format } from 'date-fns';
 import { getSuccessRateVariant } from '@/lib/utils';
-
-interface _SavingsMetrics {
-  totalSavings: number;
-  monthlySavings: number;
-  weeklySavings: number;
-  dailySavings: number;
-  intelligenceRuns: number;
-  baselineRuns: number;
-  avgTokensPerRun: number;
-  avgComputePerRun: number;
-  costPerToken: number;
-  costPerCompute: number;
-  efficiencyGain: number;
-  timeSaved: number;
-}
-
-interface _AgentComparison {
-  agentId: string;
-  agentName: string;
-  withIntelligence: {
-    avgTokens: number;
-    avgCompute: number;
-    avgTime: number;
-    successRate: number;
-    cost: number;
-  };
-  withoutIntelligence: {
-    avgTokens: number;
-    avgCompute: number;
-    avgTime: number;
-    successRate: number;
-    cost: number;
-  };
-  savings: {
-    tokens: number;
-    compute: number;
-    time: number;
-    cost: number;
-    percentage: number;
-  };
-}
-
-interface _TimeSeriesData {
-  date: string;
-  withIntelligence: {
-    tokens: number;
-    compute: number;
-    cost: number;
-    runs: number;
-  };
-  withoutIntelligence: {
-    tokens: number;
-    compute: number;
-    cost: number;
-    runs: number;
-  };
-  savings: {
-    tokens: number;
-    compute: number;
-    cost: number;
-    percentage: number;
-  };
-}
-
-interface _ProviderSavings {
-  providerId: string;
-  providerName: string;
-  savingsAmount: number;
-  tokensProcessed: number;
-  tokensOffloaded: number;
-  percentageOfTotal: number;
-  avgCostPerToken: number;
-  runsCount: number;
-}
 
 interface UnifiedModelData {
   model: string;
@@ -149,17 +76,10 @@ export default function IntelligenceSavings() {
   >('cost');
   const [sortDirection, setSortDirection] = React.useState<'asc' | 'desc'>('desc');
 
-  // Use centralized data source
+  // Use savings data source backed by /api/savings endpoints
   const { data: savingsData, isLoading: _isLoading } = useQuery({
     queryKey: ['savings-all', timeRange, customRange],
-    queryFn: () => {
-      if (timeRange === 'custom' && customRange?.from && customRange?.to) {
-        // Note: fetchCustomRange would need to be implemented in the data source
-        // For now, falls back to fetchAll
-        return intelligenceSavingsSource.fetchAll(timeRange);
-      }
-      return intelligenceSavingsSource.fetchAll(timeRange);
-    },
+    queryFn: () => savingsSource.fetchAll(timeRange),
     refetchInterval: getPollingInterval(60000),
   });
 
