@@ -99,6 +99,8 @@ read_model_topics:
     handler: "projectRoutingFeedbackEvent"
   - topic: "onex.evt.omniintelligence.compliance-evaluated.v1"
     handler: "projectComplianceEvaluated"
+  - topic: "onex.evt.omniintelligence.episode-boundary.v1"
+    handler: "projectEpisodeEvent"
 
   # --- omnimemory topics ---
   - topic: "onex.evt.omnimemory.document-discovered.v1"

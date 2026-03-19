@@ -2165,7 +2165,9 @@ export type InsertDlqMessage = typeof dlqMessages.$inferInsert;
 export const circuitBreakerEvents = pgTable(
   'circuit_breaker_events',
   {
-    id: text('id').primaryKey().default(sql`gen_random_uuid()::text`),
+    id: text('id')
+      .primaryKey()
+      .default(sql`gen_random_uuid()::text`),
     serviceName: text('service_name').notNull(),
     state: text('state').notNull(),
     previousState: text('previous_state').notNull(),
@@ -2184,3 +2186,51 @@ export const circuitBreakerEvents = pgTable(
 export const insertCircuitBreakerEventSchema = createInsertSchema(circuitBreakerEvents);
 export type CircuitBreakerEventRow = typeof circuitBreakerEvents.$inferSelect;
 export type InsertCircuitBreakerEvent = typeof circuitBreakerEvents.$inferInsert;
+
+// ============================================================================
+// RL Episodes Table (OMN-5559)
+// Materialized episode table for RL training data.
+// Two-phase lifecycle: started events INSERT, completed events UPDATE.
+// Source topic: onex.evt.omniintelligence.episode-boundary.v1
+// Replay policy: UPSERT by episode_id (idempotent).
+// ============================================================================
+
+export const rlEpisodes = pgTable(
+  'rl_episodes',
+  {
+    id: serial('id').primaryKey(),
+    episodeId: uuid('episode_id').notNull().unique(),
+    surface: text('surface').notNull(),
+    phase: text('phase').notNull().default('started'),
+    terminalStatus: text('terminal_status'),
+
+    /** Pre-action observation state ONLY (no outcome leakage). */
+    decisionSnapshot: jsonb('decision_snapshot').notNull().default({}),
+    /** When the observation was frozen (decision time, not processing time). */
+    observationTimestamp: timestamp('observation_timestamp', { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+
+    /** The selected action. */
+    actionTaken: jsonb('action_taken').notNull().default({}),
+
+    /** Post-execution metrics (populated on completed events). */
+    outcomeMetrics: jsonb('outcome_metrics').notNull().default({}),
+
+    startedAt: timestamp('started_at', { withTimezone: true }).notNull().defaultNow(),
+    completedAt: timestamp('completed_at', { withTimezone: true }),
+    emittedAt: timestamp('emitted_at', { withTimezone: true }).notNull().defaultNow(),
+    projectedAt: timestamp('projected_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [
+    index('idx_rl_episodes_surface').on(table.surface),
+    index('idx_rl_episodes_phase').on(table.phase),
+    index('idx_rl_episodes_terminal_status').on(table.terminalStatus),
+    index('idx_rl_episodes_started_at').on(table.startedAt),
+    index('idx_rl_episodes_surface_status').on(table.surface, table.terminalStatus),
+  ]
+);
+
+export const insertRlEpisodeSchema = createInsertSchema(rlEpisodes);
+export type RlEpisodeRow = typeof rlEpisodes.$inferSelect;
+export type InsertRlEpisode = typeof rlEpisodes.$inferInsert;

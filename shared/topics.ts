@@ -394,6 +394,11 @@ export const SUFFIX_INTELLIGENCE_ROUTING_FEEDBACK_PROCESSED =
 export const TOPIC_INTELLIGENCE_PLAN_REVIEW_STRATEGY_RUN_COMPLETED =
   'onex.evt.omniintelligence.plan-review-strategy-run-completed.v1';
 
+/** Episode boundary event (OMN-5559).
+ * Emitted by omniintelligence when an RL episode starts or completes.
+ * Consumed by ReadModelConsumer to project into rl_episodes table. */
+export const SUFFIX_INTELLIGENCE_EPISODE_BOUNDARY = 'onex.evt.omniintelligence.episode-boundary.v1';
+
 /** PR validation rollup events for the Model Efficiency Index (MEI) dashboard (OMN-3933).
  * Emitted by omniclaude pr-validation pipeline after a PR run completes.
  * Consumed only by the read-model-consumer via READ_MODEL_TOPICS. */
@@ -440,8 +445,7 @@ export const SUFFIX_OMNIBASE_INFRA_LLM_HEALTH_SNAPSHOT =
  * States: CLOSED | OPEN | HALF_OPEN
  * (OMN-5293)
  */
-export const TOPIC_OMNIBASE_INFRA_CIRCUIT_BREAKER =
-  'onex.evt.omnibase-infra.circuit-breaker.v1';
+export const TOPIC_OMNIBASE_INFRA_CIRCUIT_BREAKER = 'onex.evt.omnibase-infra.circuit-breaker.v1';
 /** Alias for TOPIC_OMNIBASE_INFRA_CIRCUIT_BREAKER (SUFFIX_ naming convention). */
 export const SUFFIX_OMNIBASE_INFRA_CIRCUIT_BREAKER = TOPIC_OMNIBASE_INFRA_CIRCUIT_BREAKER;
 
