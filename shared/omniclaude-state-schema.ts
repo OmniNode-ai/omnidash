@@ -20,7 +20,16 @@
  *   onex.evt.omniclaude.circuit-breaker-tripped.v1 → debugEscalationCounts (debug_escalation_counts)
  */
 
-import { pgTable, text, integer, boolean, timestamp } from 'drizzle-orm/pg-core';
+import {
+  pgTable,
+  text,
+  integer,
+  boolean,
+  timestamp,
+  uuid,
+  jsonb,
+  numeric,
+} from 'drizzle-orm/pg-core';
 import type { InferSelectModel } from 'drizzle-orm';
 import { createSelectSchema } from 'drizzle-zod';
 import { z } from 'zod';
@@ -230,21 +239,34 @@ export type DebugEscalationPayload = z.infer<typeof debugEscalationPayloadSchema
 // ============================================================================
 
 export const dodVerifyRuns = pgTable('dod_verify_runs', {
-  id: text('id').primaryKey(),
+  id: uuid('id').primaryKey().defaultRandom(),
   ticket_id: text('ticket_id').notNull(),
-  status: text('status').notNull(), // 'pass' | 'fail'
-  checks_passed: integer('checks_passed').notNull(),
-  checks_total: integer('checks_total').notNull(),
-  policy_mode: text('policy_mode').notNull(), // 'enforce' | 'warn' | 'off'
-  evidence_items: text('evidence_items'), // JSON-encoded array
+  run_id: text('run_id').notNull().unique(),
+  session_id: text('session_id'),
+  correlation_id: text('correlation_id'),
+  total_checks: integer('total_checks').notNull(),
+  passed_checks: integer('passed_checks').notNull(),
+  failed_checks: integer('failed_checks').notNull(),
+  skipped_checks: integer('skipped_checks').notNull(),
+  overall_pass: boolean('overall_pass').notNull(),
+  policy_mode: text('policy_mode').notNull(),
+  evidence_items: jsonb('evidence_items').notNull(),
   event_timestamp: timestamp('event_timestamp', { withTimezone: true }).notNull(),
+  ingested_at: timestamp('ingested_at', { withTimezone: true }).notNull().defaultNow(),
 });
 
 export const dodVerifyRunRowSchema = createSelectSchema(dodVerifyRuns, {
   event_timestamp: z.coerce.string(),
+  ingested_at: z.coerce.string(),
+  evidence_items: z.array(z.unknown()),
 });
-export type DodVerifyRunRow = Omit<InferSelectModel<typeof dodVerifyRuns>, 'event_timestamp'> & {
+export type DodVerifyRunRow = Omit<
+  InferSelectModel<typeof dodVerifyRuns>,
+  'event_timestamp' | 'ingested_at' | 'evidence_items'
+> & {
   event_timestamp: string;
+  ingested_at: string;
+  evidence_items: unknown[];
 };
 
 // ============================================================================
@@ -252,19 +274,29 @@ export type DodVerifyRunRow = Omit<InferSelectModel<typeof dodVerifyRuns>, 'even
 // ============================================================================
 
 export const dodGuardEvents = pgTable('dod_guard_events', {
-  id: text('id').primaryKey(),
+  id: uuid('id').primaryKey().defaultRandom(),
   ticket_id: text('ticket_id').notNull(),
-  guard_outcome: text('guard_outcome').notNull(), // 'allowed' | 'warned' | 'blocked'
+  session_id: text('session_id'),
+  guard_outcome: text('guard_outcome').notNull(),
   policy_mode: text('policy_mode').notNull(),
-  receipt_age_hours: integer('receipt_age_hours'),
+  receipt_age_seconds: numeric('receipt_age_seconds', { precision: 12, scale: 3 }),
+  receipt_pass: boolean('receipt_pass'),
   event_timestamp: timestamp('event_timestamp', { withTimezone: true }).notNull(),
+  ingested_at: timestamp('ingested_at', { withTimezone: true }).notNull().defaultNow(),
 });
 
 export const dodGuardEventRowSchema = createSelectSchema(dodGuardEvents, {
   event_timestamp: z.coerce.string(),
+  ingested_at: z.coerce.string(),
+  receipt_age_seconds: z.coerce.number().nullable(),
 });
-export type DodGuardEventRow = Omit<InferSelectModel<typeof dodGuardEvents>, 'event_timestamp'> & {
+export type DodGuardEventRow = Omit<
+  InferSelectModel<typeof dodGuardEvents>,
+  'event_timestamp' | 'ingested_at' | 'receipt_age_seconds'
+> & {
   event_timestamp: string;
+  ingested_at: string;
+  receipt_age_seconds: number | null;
 };
 
 // ============================================================================
