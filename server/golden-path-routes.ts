@@ -28,7 +28,7 @@ import { patternLearningArtifacts, injectionEffectiveness } from '@shared/intell
  * - TEST_ROUTE_AUTH_TOKEN is set
  */
 export function createGoldenPathRoutes(): Router | null {
-  const enabled = process.env.ENABLE_TEST_ROUTES === 'true';
+  const enabled = process.env.ENABLE_TEST_ROUTES === 'true'; // ONEX_FLAG_EXEMPT: migration
   const testEnv = process.env.NODE_ENV === 'test' || process.env.OMNIDASH_TEST_MODE === 'true';
   const authToken = process.env.TEST_ROUTE_AUTH_TOKEN;
 

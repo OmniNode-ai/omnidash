@@ -66,7 +66,7 @@ repos:
         stages: [pre-commit]
 
   - repo: https://github.com/OmniNode-ai/onex_change_control
-    rev: 39a09ffb2432b8b7d3f47b334b869b55c9cb4fc6
+    rev: a3d309f216f29f7ff3a4d992478cecf61274002a
     hooks:
       - id: no-hardcoded-topics
         stages: [pre-commit]
@@ -79,7 +79,11 @@ repos:
         #   event-bus-demo.ts           — mock/demo data with sample topic strings (8+ violations)
         #   audit-components.py         — audit script with hardcoded expected topic references (4 violations)
         #   check-bus-parity.ts         — parity checker with expected topic list (3 violations)
-        exclude: ^(server/consumers/read-model/(platform|omniclaude)-projections\.ts|server/event-consumer\.ts|server/services/topic-registry-service\.ts|client/src/lib/mock-data/event-bus-demo\.ts|scripts/audit-components\.py|scripts/check-bus-parity\.ts)$
+        #   startup-backfill.ts         — backfill script with hardcoded topics
+        #   event-bus-health-poller.ts  — health poller with hardcoded topics
+        exclude: ^(server/consumers/read-model/(platform|omniclaude)-projections\.ts|server/event-consumer\.ts|server/services/topic-registry-service\.ts|server/startup-backfill\.ts|server/event-bus-health-poller\.ts|client/src/lib/mock-data/event-bus-demo\.ts|scripts/audit-components\.py|scripts/check-bus-parity\.ts)$
+      - id: no-bare-feature-flags
+        stages: [pre-commit]
 
 default_stages: [pre-commit]
 fail_fast: false
