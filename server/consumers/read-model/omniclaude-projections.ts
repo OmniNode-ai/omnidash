@@ -1268,17 +1268,49 @@ export class OmniclaudeProjectionHandler implements ProjectionHandler {
   ): Promise<boolean> {
     const db = context.db;
     if (!db) return false;
+
+    const skillName = String(data.skill_name ?? data.skillName ?? '');
+    const sessionId =
+      (data.session_id as string | null) ?? (data.sessionId as string | null) ?? null;
+    const durationMs =
+      data.duration_ms != null
+        ? Number(data.duration_ms)
+        : data.durationMs != null
+          ? Number(data.durationMs)
+          : null;
+    const isSuccess = data.success !== false;
+
+    // Derive status text from explicit field or boolean success flag
+    const rawStatus =
+      (data.status as string | null) ?? (isSuccess ? 'success' : 'failed');
+    const status = ['success', 'failed', 'partial'].includes(rawStatus)
+      ? rawStatus
+      : isSuccess
+        ? 'success'
+        : 'failed';
+
+    const emittedAt = safeParseDate(
+      data.emitted_at ?? data.emittedAt ?? data.timestamp ?? data.created_at
+    );
+    const errorText =
+      (data.error as string | null) ?? (data.errorMessage as string | null) ?? null;
+
     try {
       await db.insert(skillInvocations).values({
-        skillName: String(data.skill_name ?? ''),
-        sessionId: data.session_id ? String(data.session_id) : null,
-        durationMs: data.duration_ms ? Number(data.duration_ms) : null,
-        success: data.success !== false,
-        error: data.error ? String(data.error) : null,
+        skillName,
+        sessionId,
+        durationMs,
+        success: isSuccess,
+        status,
+        error: errorText,
+        emittedAt,
       });
-    } catch (e) {
-      if (isTableMissingError(e, 'skill_invocations')) return true;
-      throw e;
+    } catch (err: unknown) {
+      if (isTableMissingError(err, 'skill_invocations')) return true;
+      // Dedup: unique index violation on (session_id, skill_name, emitted_at) is expected
+      const pgErr = err as { code?: string };
+      if (pgErr.code === '23505') return true;
+      throw err;
     }
     return true;
   }
