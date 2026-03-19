@@ -32,11 +32,12 @@
  */
 
 import { sql } from 'drizzle-orm';
+import {
+  SUFFIX_OMNICLAUDE_CONTEXT_UTILIZATION,
+  SUFFIX_OMNICLAUDE_AGENT_MATCH,
+  SUFFIX_OMNICLAUDE_LATENCY_BREAKDOWN,
+} from '../shared/topics';
 import { tryGetIntelligenceDb } from './storage';
-
-const TOPIC_CONTEXT_UTILIZATION = 'onex.evt.omniclaude.context-utilization.v1';
-const TOPIC_AGENT_MATCH = 'onex.evt.omniclaude.agent-match.v1';
-const TOPIC_LATENCY_BREAKDOWN = 'onex.evt.omniclaude.latency-breakdown.v1';
 
 /**
  * Run the startup backfill if and only if both injection_effectiveness and
@@ -104,7 +105,7 @@ export async function runStartupBackfillIfEmpty(): Promise<number> {
           timestamp
         )                                                            AS created_at
       FROM event_bus_events
-      WHERE event_type = ${TOPIC_CONTEXT_UTILIZATION}
+      WHERE event_type = ${SUFFIX_OMNICLAUDE_CONTEXT_UTILIZATION}
         AND (payload->>'correlation_id') IS NOT NULL
         AND (payload->>'correlation_id') ~ '^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$'
       ON CONFLICT DO NOTHING
@@ -139,7 +140,7 @@ export async function runStartupBackfillIfEmpty(): Promise<number> {
           timestamp
         )                                                            AS created_at
       FROM event_bus_events
-      WHERE event_type = ${TOPIC_AGENT_MATCH}
+      WHERE event_type = ${SUFFIX_OMNICLAUDE_AGENT_MATCH}
         AND (payload->>'correlation_id') IS NOT NULL
         AND (payload->>'correlation_id') ~ '^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$'
       ON CONFLICT DO NOTHING
@@ -177,7 +178,7 @@ export async function runStartupBackfillIfEmpty(): Promise<number> {
           timestamp
         )                                                            AS created_at
       FROM event_bus_events
-      WHERE event_type = ${TOPIC_LATENCY_BREAKDOWN}
+      WHERE event_type = ${SUFFIX_OMNICLAUDE_LATENCY_BREAKDOWN}
         AND (payload->>'correlation_id') IS NOT NULL
       ON CONFLICT DO NOTHING
       RETURNING id
