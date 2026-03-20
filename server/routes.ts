@@ -82,6 +82,10 @@ import { dlqRoutes } from './dlq-routes';
 import { circuitBreakerRoutes } from './circuit-breaker-routes';
 // Feature Flags BFF routes (OMN-5581)
 import featureFlagRoutes from './feature-flag-routes';
+// Consumer Health dashboard routes (OMN-5527)
+import { consumerHealthRoutes } from './consumer-health-routes';
+// Runtime Errors dashboard routes (OMN-5528)
+import { runtimeErrorsRoutes } from './runtime-errors-routes';
 
 export async function registerRoutes(app: Express): Promise<Server> {
   // put application routes here
@@ -238,6 +242,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // Feature Flags BFF routes (OMN-5581)
   app.use('/api/feature-flags', featureFlagRoutes);
+
+  // Consumer Health dashboard routes (OMN-5527)
+  app.use('/api/consumer-health', consumerHealthRoutes);
+
+  // Runtime Errors dashboard routes (OMN-5528)
+  app.use('/api/runtime-errors', runtimeErrorsRoutes);
 
   // Prometheus metrics endpoint (OMN-4609)
   // Route: GET /metrics — NO authentication. Prometheus scrapes without tokens.

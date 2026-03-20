@@ -34,6 +34,8 @@ import {
   ListChecks,
   AlertTriangle,
   ToggleLeft,
+  HeartPulse,
+  Bug,
 } from 'lucide-react';
 import { Link, useLocation } from 'wouter';
 import {
@@ -335,6 +337,19 @@ const advancedSubGroups: AdvancedSubGroup[] = [
         icon: ToggleLeft,
         description:
           'Contract-declared feature flags with runtime state and toggle controls (OMN-5582)',
+      },
+      {
+        title: 'Consumer Health',
+        url: '/consumer-health',
+        icon: HeartPulse,
+        description:
+          'Kafka consumer heartbeat failures, session timeouts, and rebalance events (OMN-5527)',
+      },
+      {
+        title: 'Runtime Errors',
+        url: '/runtime-errors',
+        icon: Bug,
+        description: 'Structured runtime errors captured from allowlisted loggers (OMN-5528)',
       },
     ],
   },

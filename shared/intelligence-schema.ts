@@ -2285,3 +2285,82 @@ export const savingsEstimates = pgTable(
 export const insertSavingsEstimateSchema = createInsertSchema(savingsEstimates);
 export type SavingsEstimateRow = typeof savingsEstimates.$inferSelect;
 export type InsertSavingsEstimate = typeof savingsEstimates.$inferInsert;
+
+// ============================================================================
+// Consumer Health Events Table (OMN-5527)
+// Stores consumer health events for the Consumer Health Dashboard.
+// Source topic: onex.evt.omnibase-infra.consumer-health.v1
+// Replay policy: INSERT (append-only audit log).
+// ============================================================================
+
+export const consumerHealthEvents = pgTable(
+  'consumer_health_events',
+  {
+    id: text('id').primaryKey(),
+    consumerIdentity: text('consumer_identity').notNull(),
+    consumerGroup: text('consumer_group').notNull(),
+    topic: text('topic').notNull(),
+    eventType: text('event_type').notNull(),
+    severity: text('severity').notNull(),
+    fingerprint: text('fingerprint').notNull(),
+    errorMessage: text('error_message').notNull().default(''),
+    errorType: text('error_type').notNull().default(''),
+    hostname: text('hostname').notNull().default(''),
+    serviceLabel: text('service_label').notNull().default(''),
+    rebalanceDurationMs: integer('rebalance_duration_ms'),
+    partitionsAssigned: integer('partitions_assigned'),
+    partitionsRevoked: integer('partitions_revoked'),
+    emittedAt: timestamp('emitted_at', { withTimezone: true }).notNull(),
+    ingestedAt: timestamp('ingested_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [
+    index('idx_che_consumer_identity').on(table.consumerIdentity),
+    index('idx_che_event_type').on(table.eventType),
+    index('idx_che_severity').on(table.severity),
+    index('idx_che_emitted_at').on(table.emittedAt),
+    index('idx_che_fingerprint').on(table.fingerprint),
+  ]
+);
+
+export const insertConsumerHealthEventSchema = createInsertSchema(consumerHealthEvents);
+export type ConsumerHealthEventRow = typeof consumerHealthEvents.$inferSelect;
+export type InsertConsumerHealthEvent = typeof consumerHealthEvents.$inferInsert;
+
+// ============================================================================
+// Runtime Error Events Table (OMN-5528)
+// Stores runtime error events for the Runtime Errors Dashboard.
+// Source topic: onex.evt.omnibase-infra.runtime-error.v1
+// Replay policy: INSERT (append-only audit log).
+// ============================================================================
+
+export const runtimeErrorEvents = pgTable(
+  'runtime_error_events',
+  {
+    id: text('id').primaryKey(),
+    loggerFamily: text('logger_family').notNull(),
+    logLevel: text('log_level').notNull(),
+    messageTemplate: text('message_template').notNull(),
+    rawMessage: text('raw_message').notNull().default(''),
+    errorCategory: text('error_category').notNull(),
+    severity: text('severity').notNull(),
+    fingerprint: text('fingerprint').notNull(),
+    exceptionType: text('exception_type').notNull().default(''),
+    exceptionMessage: text('exception_message').notNull().default(''),
+    stackTrace: text('stack_trace').notNull().default(''),
+    hostname: text('hostname').notNull().default(''),
+    serviceLabel: text('service_label').notNull().default(''),
+    emittedAt: timestamp('emitted_at', { withTimezone: true }).notNull(),
+    ingestedAt: timestamp('ingested_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [
+    index('idx_ree_error_category').on(table.errorCategory),
+    index('idx_ree_severity').on(table.severity),
+    index('idx_ree_emitted_at').on(table.emittedAt),
+    index('idx_ree_fingerprint').on(table.fingerprint),
+    index('idx_ree_logger_family').on(table.loggerFamily),
+  ]
+);
+
+export const insertRuntimeErrorEventSchema = createInsertSchema(runtimeErrorEvents);
+export type RuntimeErrorEventRow = typeof runtimeErrorEvents.$inferSelect;
+export type InsertRuntimeErrorEvent = typeof runtimeErrorEvents.$inferInsert;
