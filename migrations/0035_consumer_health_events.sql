@@ -1,4 +1,4 @@
--- 0034_consumer_health_events.sql
+-- 0035_consumer_health_events.sql
 -- OMN-5527: Consumer Health Dashboard — stores consumer health events.
 -- Source topic: onex.evt.omnibase-infra.consumer-health.v1
 -- Replay policy: INSERT (append-only audit log; one row per health event).

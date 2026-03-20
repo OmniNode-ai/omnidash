@@ -1,4 +1,4 @@
--- 0035_runtime_error_events.sql
+-- 0036_runtime_error_events.sql
 -- OMN-5528: Runtime Errors Dashboard — stores runtime error events.
 -- Source topic: onex.evt.omnibase-infra.runtime-error.v1
 -- Replay policy: INSERT (append-only audit log; one row per error event).

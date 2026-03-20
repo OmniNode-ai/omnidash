@@ -6,7 +6,7 @@
  *  - Top fingerprints by occurrence
  *  - Recent error event log
  *
- * Source table: runtime_error_events (migration 0035)
+ * Source table: runtime_error_events (migration 0036)
  * Source topic: onex.evt.omnibase-infra.runtime-error.v1
  */
 

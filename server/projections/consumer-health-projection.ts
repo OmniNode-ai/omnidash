@@ -6,7 +6,7 @@
  *  - Recent health event log
  *  - Severity distribution counts within a time window
  *
- * Source table: consumer_health_events (migration 0034)
+ * Source table: consumer_health_events (migration 0035)
  * Source topic: onex.evt.omnibase-infra.consumer-health.v1
  */
 
