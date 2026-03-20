@@ -65,7 +65,13 @@ import { readModelConsumer } from './read-model-consumer';
 // Types
 // ============================================================================
 
-export type DataSourceStatus = 'live' | 'mock' | 'error' | 'offline' | 'expected_idle_local' | 'not_applicable';
+export type DataSourceStatus =
+  | 'live'
+  | 'mock'
+  | 'error'
+  | 'offline'
+  | 'expected_idle_local'
+  | 'not_applicable';
 
 export interface DataSourceInfo {
   status: DataSourceStatus;
@@ -119,6 +125,13 @@ const LOCAL_IDLE_EXPECTED: Set<string> = new Set([
   'validation',
   'patterns',
   'insights',
+  // Topic parity depends on all manifest topics existing on the broker,
+  // which only happens in cloud. Local dev has a subset of topics.
+  'topicParity',
+  // Env sync requires Infisical which only runs with --profile secrets.
+  'envSync',
+  // Cost trends depend on LLM cost aggregation upstream service.
+  'costTrends',
 ]);
 
 // ============================================================================
@@ -515,7 +528,9 @@ function probeEnvSync(): DataSourceInfo {
  * Contract completeness (EXPECTED_TOPICS gaps) is reported as informational metadata,
  * not as health degradation.
  */
-function probeTopicParity(): DataSourceInfo & { metadata?: { unsubscribed?: string[]; contractGaps?: string[] } } {
+function probeTopicParity(): DataSourceInfo & {
+  metadata?: { unsubscribed?: string[]; contractGaps?: string[] };
+} {
   try {
     const stats = readModelConsumer.getStats();
 

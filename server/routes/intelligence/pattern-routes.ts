@@ -335,24 +335,62 @@ export function registerPatternRoutes(router: Router): void {
   });
 
   // GET /patterns/summary
+  //
+  // Primary data source: pattern_learning_artifacts (PATLEARN pipeline output).
+  // Fallback: pattern_lineage_nodes (legacy lineage graph).
+  // The PATLEARN table has real data (1400+ rows) while lineage_nodes may be
+  // empty if the lineage extraction pipeline hasn't run. Always prefer PATLEARN.
   router.get('/patterns/summary', async (req, res) => {
     try {
+      const db = getIntelligenceDb();
+
+      // Primary: aggregate from pattern_learning_artifacts (canonical PATLEARN data)
+      const [artifactSummary] = await db
+        .select({
+          total_patterns: sql<number>`COUNT(*)::int`,
+          candidates: sql<number>`COUNT(*) FILTER (WHERE ${patternLearningArtifacts.lifecycleState} = 'candidate')::int`,
+          provisional: sql<number>`COUNT(*) FILTER (WHERE ${patternLearningArtifacts.lifecycleState} = 'provisional')::int`,
+          validated: sql<number>`COUNT(*) FILTER (WHERE ${patternLearningArtifacts.lifecycleState} = 'validated')::int`,
+          deprecated: sql<number>`COUNT(*) FILTER (WHERE ${patternLearningArtifacts.lifecycleState} = 'deprecated')::int`,
+          requested: sql<number>`COUNT(*) FILTER (WHERE ${patternLearningArtifacts.lifecycleState} = 'requested')::int`,
+          languages: sql<number>`COUNT(DISTINCT NULLIF(${patternLearningArtifacts.language}, ''))::int`,
+          unique_executions: sql<number>`COUNT(DISTINCT ${patternLearningArtifacts.patternId})::int`,
+        })
+        .from(patternLearningArtifacts);
+
+      const totalPatterns = artifactSummary?.total_patterns || 0;
+
+      if (totalPatterns > 0) {
+        return res.json({
+          total_patterns: totalPatterns,
+          candidates: artifactSummary?.candidates || 0,
+          provisional: artifactSummary?.provisional || 0,
+          validated: artifactSummary?.validated || 0,
+          deprecated: artifactSummary?.deprecated || 0,
+          requested: artifactSummary?.requested || 0,
+          languages: artifactSummary?.languages || 0,
+          unique_executions: artifactSummary?.unique_executions || 0,
+          source: 'pattern_learning_artifacts',
+        });
+      }
+
+      // Fallback: try pattern_lineage_nodes for legacy data
       try {
-        await getIntelligenceDb().execute(sql`SELECT 1 FROM pattern_lineage_nodes LIMIT 1`);
+        await db.execute(sql`SELECT 1 FROM pattern_lineage_nodes LIMIT 1`);
       } catch (tableError: any) {
         const errorCode = tableError?.code || tableError?.errno || '';
         if (errorCode === '42P01' || tableError?.message?.includes('does not exist')) {
-          console.log('⚠ pattern_lineage_nodes table does not exist - returning empty summary');
           return res.json({
             total_patterns: 0,
             languages: 0,
             unique_executions: 0,
+            source: 'empty',
           });
         }
         throw tableError;
       }
 
-      const [summaryResult] = await getIntelligenceDb()
+      const [lineageSummary] = await db
         .select({
           total_patterns: sql<number>`COUNT(*)::int`,
           languages: sql<number>`COUNT(DISTINCT ${patternLineageNodes.language})::int`,
@@ -360,13 +398,12 @@ export function registerPatternRoutes(router: Router): void {
         })
         .from(patternLineageNodes);
 
-      const summary = {
-        total_patterns: summaryResult?.total_patterns || 0,
-        languages: summaryResult?.languages || 0,
-        unique_executions: summaryResult?.unique_executions || 0,
-      };
-
-      res.json(summary);
+      res.json({
+        total_patterns: lineageSummary?.total_patterns || 0,
+        languages: lineageSummary?.languages || 0,
+        unique_executions: lineageSummary?.unique_executions || 0,
+        source: 'pattern_lineage_nodes',
+      });
     } catch (error) {
       console.error('Error fetching pattern summary:', error);
       res.status(500).json({
@@ -377,22 +414,57 @@ export function registerPatternRoutes(router: Router): void {
   });
 
   // GET /patterns/recent
+  //
+  // Primary: pattern_learning_artifacts (PATLEARN). Fallback: pattern_lineage_nodes.
   router.get('/patterns/recent', async (req, res) => {
     try {
       const limit = parseInt(req.query.limit as string) || 20;
+      const db = getIntelligenceDb();
 
+      // Primary: recent artifacts from PATLEARN pipeline
+      const artifacts = await db
+        .select({
+          pattern_name: patternLearningArtifacts.patternName,
+          pattern_type: patternLearningArtifacts.patternType,
+          lifecycle_state: patternLearningArtifacts.lifecycleState,
+          language: patternLearningArtifacts.language,
+          created_at: patternLearningArtifacts.createdAt,
+          pattern_id: patternLearningArtifacts.patternId,
+          composite_score: patternLearningArtifacts.compositeScore,
+          signature: patternLearningArtifacts.signature,
+        })
+        .from(patternLearningArtifacts)
+        .orderBy(desc(patternLearningArtifacts.createdAt))
+        .limit(limit);
+
+      if (artifacts.length > 0) {
+        return res.json(
+          artifacts.map((a) => ({
+            pattern_name: a.pattern_name,
+            pattern_type: a.pattern_type,
+            lifecycle_state: a.lifecycle_state,
+            language: a.language || null,
+            created_at: a.created_at,
+            pattern_id: a.pattern_id,
+            composite_score: parseFloat(a.composite_score ?? '0'),
+            signature: a.signature,
+            source: 'pattern_learning_artifacts',
+          }))
+        );
+      }
+
+      // Fallback: pattern_lineage_nodes
       try {
-        await getIntelligenceDb().execute(sql`SELECT 1 FROM pattern_lineage_nodes LIMIT 1`);
+        await db.execute(sql`SELECT 1 FROM pattern_lineage_nodes LIMIT 1`);
       } catch (tableError: any) {
         const errorCode = tableError?.code || tableError?.errno || '';
         if (errorCode === '42P01' || tableError?.message?.includes('does not exist')) {
-          console.log('⚠ pattern_lineage_nodes table does not exist - returning empty array');
           return res.json([]);
         }
         throw tableError;
       }
 
-      const patterns = await getIntelligenceDb()
+      const patterns = await db
         .select({
           pattern_name: patternLineageNodes.patternName,
           pattern_version: patternLineageNodes.patternVersion,
@@ -973,15 +1045,16 @@ export function registerPatternRoutes(router: Router): void {
         );
 
       const byState: Record<string, number> = {
+        requested: 0,
         candidate: 0,
         provisional: 0,
         validated: 0,
         deprecated: 0,
       };
       stateCounts.forEach((row) => {
-        if (row.lifecycleState in byState) {
-          byState[row.lifecycleState] = row.count;
-        }
+        // Accept all lifecycle states from the DB, not just the known ones.
+        // 'requested' is a valid state emitted by the pattern learning pipeline.
+        byState[row.lifecycleState] = row.count;
       });
 
       const totalPatterns = Object.values(byState).reduce((a, b) => a + b, 0);
