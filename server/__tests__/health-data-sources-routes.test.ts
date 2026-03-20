@@ -177,7 +177,8 @@ describe('GET /api/health/data-sources', () => {
     expect(dataSources.extraction.status).toBe('mock');
     // baselines is in LOCAL_IDLE_EXPECTED → reclassified in test env
     expect(dataSources.baselines.status).toBe('expected_idle_local');
-    expect(dataSources.costTrends.status).toBe('mock');
+    // costTrends is in LOCAL_IDLE_EXPECTED → reclassified in test env (OMN-5600)
+    expect(dataSources.costTrends.status).toBe('expected_idle_local');
     // intents is in LOCAL_IDLE_EXPECTED → reclassified in test env
     expect(dataSources.intents.status).toBe('expected_idle_local');
     expect(dataSources.nodeRegistry.status).toBe('mock');
@@ -419,8 +420,9 @@ describe('GET /api/health/data-sources', () => {
     const app = makeApp();
     const res = await request(app).get('/api/health/data-sources');
 
-    expect(res.body.dataSources.topicParity.status).toBe('offline');
-    expect(res.body.dataSources.topicParity.reason).toBe('consumer_not_running');
+    // In local dev, topicParity is reclassified to expected_idle_local (OMN-5600)
+    expect(res.body.dataSources.topicParity.status).toBe('expected_idle_local');
+    expect(res.body.dataSources.topicParity.reason).toContain('consumer_not_running');
   });
 
   it('includes all 15 expected data sources', async () => {

@@ -326,15 +326,18 @@ describe('Intelligence Routes', () => {
   });
 
   describe('GET /api/intelligence/patterns/summary', () => {
-    it('should return pattern summary', async () => {
-      // Mock the table existence check to succeed
-      vi.mocked(mockDb.execute).mockResolvedValue([{ check: 1 }] as any);
-
-      // Mock the select query result
+    it('should return pattern summary from pattern_learning_artifacts', async () => {
+      // The summary endpoint first queries pattern_learning_artifacts.
+      // Mock the select query to return aggregate data from artifacts.
       vi.mocked(mockDb.select).mockReturnValue({
         from: vi.fn().mockResolvedValue([
           {
             total_patterns: 100,
+            candidates: 20,
+            provisional: 10,
+            validated: 50,
+            deprecated: 5,
+            requested: 15,
             languages: 3,
             unique_executions: 50,
           },
@@ -345,25 +348,46 @@ describe('Intelligence Routes', () => {
 
       expect(response.body).toHaveProperty('total_patterns');
       expect(response.body.total_patterns).toBe(100);
+      expect(response.body).toHaveProperty('source', 'pattern_learning_artifacts');
     });
 
-    it('should return empty summary when table does not exist', async () => {
-      // Mock table existence check to fail with table not found error
-      const tableError = new Error('relation "pattern_lineage_nodes" does not exist');
-      (tableError as any).code = '42P01';
-      // Use mockRejectedValueOnce for the first execute call (table check)
-      vi.mocked(mockDb.execute).mockRejectedValueOnce(tableError);
+    it('should fall back to lineage_nodes when artifacts table is empty', async () => {
+      // First call: pattern_learning_artifacts returns 0
+      // Second call: lineage_nodes table check
+      // Third call: lineage_nodes query
+      let callCount = 0;
+      vi.mocked(mockDb.select).mockReturnValue({
+        from: vi.fn().mockImplementation(() => {
+          callCount++;
+          if (callCount === 1) {
+            // First call returns empty artifacts
+            return Promise.resolve([
+              {
+                total_patterns: 0,
+                candidates: 0,
+                provisional: 0,
+                validated: 0,
+                deprecated: 0,
+                requested: 0,
+                languages: 0,
+                unique_executions: 0,
+              },
+            ]);
+          }
+          // Fallback lineage query
+          return Promise.resolve([{ total_patterns: 0, languages: 0, unique_executions: 0 }]);
+        }),
+      } as any);
+      vi.mocked(mockDb.execute).mockResolvedValue([{ check: 1 }] as any);
 
       const response = await request(app).get('/api/intelligence/patterns/summary').expect(200);
 
       expect(response.body).toHaveProperty('total_patterns', 0);
-      expect(response.body).toHaveProperty('languages', 0);
-      expect(response.body).toHaveProperty('unique_executions', 0);
+      expect(response.body).toHaveProperty('source');
     });
 
     it('should handle errors gracefully', async () => {
-      // Mock table check to succeed, but select query to fail
-      vi.mocked(mockDb.execute).mockResolvedValue([{ check: 1 }] as any);
+      // Mock select query to fail
       vi.mocked(mockDb.select).mockReturnValue({
         from: vi.fn().mockRejectedValue(new Error('Database connection error')),
       } as any);
