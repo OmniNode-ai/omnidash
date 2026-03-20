@@ -135,11 +135,19 @@ export function transformNodeRegistryPayload(payload: NodeRegistryPayload): Dash
   // Transform nodes to client-expected snake_case format with extended fields
   const registeredNodes = nodes.map((n) => {
     const capsList = flattenCapabilities(n.capabilities);
+    const nodeName = deriveNodeName(n.nodeId, n.metadata);
+    // Build a description from available data. Priority:
+    // 1. Explicit metadata description
+    // 2. Capabilities list
+    // 3. Synthesized from node type + name (so the column is never just "-")
     const description =
-      n.metadata?.description ?? (capsList.length > 0 ? capsList.join(', ') : null);
+      n.metadata?.description ??
+      (capsList.length > 0
+        ? capsList.join(', ')
+        : `${n.nodeType} node${n.reason ? ` (${n.reason})` : ''}`);
     return {
       node_id: n.nodeId,
-      node_name: deriveNodeName(n.nodeId, n.metadata),
+      node_name: nodeName,
       node_description: description,
       node_type: n.nodeType,
       state: n.state,

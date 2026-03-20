@@ -125,15 +125,20 @@ read_model_topics:
 # Rules:
 #   - Only add topics that exist in upstream contract/manifests
 #   - Keep entries sorted by producer, then by event-name
+#
+# NOTE: Some upstream producers use underscore-prefixed topic names (e.g.
+# _omniintelligence.pattern-discovery.v1) which are the ACTUAL names on the
+# broker. The canonical ONEX names are listed as aliases below. The health
+# poller checks for the actual broker topic name.
 monitored_topics:
   # --- omniintelligence topics ---
   - topic: "onex.evt.omniintelligence.intent-classified.v1"
-  - topic: "onex.evt.omniintelligence.pattern-discovery.v1"
-  - topic: "onex.evt.omniintelligence.pattern-refined.v1"
+  - topic: "_omniintelligence.pattern-discovery.v1"
+  - topic: "_omniintelligence.pattern-refined.v1"
 
   # --- omnimemory topics ---
-  - topic: "onex.evt.omnimemory.document-ingested.v1"
+  - topic: "_omnimemory.document-ingested.v1"
 
   # --- omninode topics ---
-  - topic: "onex.cmd.omninode.routing-requested.v1"
+  - topic: "_omninode.routing-requested.v1"
   - topic: "onex.evt.omninode.routing-completed.v1"
