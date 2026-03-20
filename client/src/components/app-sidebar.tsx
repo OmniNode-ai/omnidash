@@ -215,6 +215,12 @@ const advancedSubGroups: AdvancedSubGroup[] = [
         icon: GitFork,
         description: 'LLM vs fuzzy routing agreement rate, latency, cost per decision',
       },
+      {
+        title: 'RL Routing',
+        url: '/rl-routing',
+        icon: GitFork,
+        description: 'Shadow mode learned policy vs static rules comparison (OMN-5570)',
+      },
       // NOTE: 'Why This Happened' (/why) is hidden until OMN-2467 (DecisionRecord API) ships.
       // The page exists but always shows mock data, so it is excluded from nav outside demo mode.
       {
