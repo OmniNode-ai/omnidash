@@ -119,7 +119,7 @@ const safeInt = (envVar: string, fallback: number) => {
 };
 const PRELOAD_WINDOW_MINUTES = safeInt('PRELOAD_WINDOW_MINUTES', 1440);
 const MAX_PRELOAD_EVENTS = safeInt('MAX_PRELOAD_EVENTS', 5000);
-const ENABLE_BACKFILL = process.env.ENABLE_BACKFILL === 'true';
+const ENABLE_BACKFILL = process.env.ENABLE_BACKFILL === 'true'; // ONEX_FLAG_EXEMPT: migration
 const BACKFILL_MAX_EVENTS = safeInt('BACKFILL_MAX_EVENTS', 2000);
 const TOPIC = {
   NODE_HEARTBEAT: SUFFIX_NODE_HEARTBEAT,
@@ -373,7 +373,7 @@ export class EventConsumer extends EventEmitter {
     try {
       await this.connectWithRetry();
       this.emit('connected');
-      if (process.env.ENABLE_EVENT_PRELOAD !== 'false') {
+      if (process.env.ENABLE_EVENT_PRELOAD !== 'false') { // ONEX_FLAG_EXEMPT: migration
         try {
           await this.preloadFromDatabase();
         } catch (e) {
