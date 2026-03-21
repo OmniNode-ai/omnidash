@@ -240,6 +240,8 @@ export const patternSignatureSchema = z.object({
   algorithm: z.string().default('sha256').optional(),
   inputs: z.array(z.string()).optional(),
   normalizations: z.array(z.string()).optional(),
+  /** Full pattern signature text from omniintelligence (e.g. file paths, tool sequences) */
+  pattern_signature: z.string().optional(),
 });
 
 // ===========================

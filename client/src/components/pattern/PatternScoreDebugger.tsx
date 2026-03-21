@@ -36,9 +36,13 @@ type ValidatedScoringEvidence = {
 
 /**
  * Narrowed type representing PatternSignature after runtime validation confirms
- * that hash (string) and inputs (array) are present.
+ * that at least hash+inputs or pattern_signature is present.
  */
-type ValidatedSignature = PatternSignature & { hash: string; inputs: string[] };
+type ValidatedSignature = PatternSignature & {
+  hash?: string;
+  inputs?: string[];
+  pattern_signature?: string;
+};
 
 interface PatternScoreDebuggerProps {
   artifact: PatlearnArtifact | null;
@@ -78,7 +82,11 @@ function isValidScoringEvidence(evidence: unknown): evidence is ValidatedScoring
 function isValidSignature(sig: unknown): sig is ValidatedSignature {
   if (!sig || typeof sig !== 'object') return false;
   const s = sig as Record<string, unknown>;
-  return typeof s.hash === 'string' && Array.isArray(s.inputs);
+  // Accept signature if it has pattern_signature text OR the legacy hash+inputs format
+  return (
+    typeof s.pattern_signature === 'string' ||
+    (typeof s.hash === 'string' && Array.isArray(s.inputs))
+  );
 }
 
 /**
@@ -269,10 +277,20 @@ export function PatternScoreDebugger({ artifact, open, onOpenChange }: PatternSc
               <DataUnavailable section="Signature" />
             ) : (
               <div className="space-y-4 text-sm">
-                <div className="grid grid-cols-2 gap-2">
-                  <div className="text-muted-foreground">Hash:</div>
-                  <div className="font-mono text-xs break-all">{signature.hash}</div>
-                </div>
+                {signature.pattern_signature && (
+                  <div>
+                    <div className="text-muted-foreground mb-1">Pattern Signature:</div>
+                    <div className="font-mono text-xs break-all bg-muted/50 p-2 rounded">
+                      {signature.pattern_signature}
+                    </div>
+                  </div>
+                )}
+                {signature.hash && (
+                  <div className="grid grid-cols-2 gap-2">
+                    <div className="text-muted-foreground">Hash:</div>
+                    <div className="font-mono text-xs break-all">{signature.hash}</div>
+                  </div>
+                )}
                 <div className="grid grid-cols-2 gap-2">
                   <div className="text-muted-foreground">Version:</div>
                   <div>{signature.version ?? 'Unknown'}</div>
@@ -281,20 +299,22 @@ export function PatternScoreDebugger({ artifact, open, onOpenChange }: PatternSc
                   <div className="text-muted-foreground">Algorithm:</div>
                   <div>{signature.algorithm ?? 'sha256'}</div>
                 </div>
-                <div>
-                  <div className="text-muted-foreground mb-1">Inputs:</div>
-                  <div className="flex flex-wrap gap-1">
-                    {signature.inputs.length > 0 ? (
-                      signature.inputs.map((input) => (
-                        <Badge key={input} variant="outline" className="text-xs">
-                          {input}
-                        </Badge>
-                      ))
-                    ) : (
-                      <span className="text-muted-foreground text-xs">No inputs recorded</span>
-                    )}
+                {Array.isArray(signature.inputs) && (
+                  <div>
+                    <div className="text-muted-foreground mb-1">Inputs:</div>
+                    <div className="flex flex-wrap gap-1">
+                      {signature.inputs.length > 0 ? (
+                        signature.inputs.map((input) => (
+                          <Badge key={input} variant="outline" className="text-xs">
+                            {input}
+                          </Badge>
+                        ))
+                      ) : (
+                        <span className="text-muted-foreground text-xs">No inputs recorded</span>
+                      )}
+                    </div>
                   </div>
-                </div>
+                )}
               </div>
             )}
           </TabsContent>
