@@ -2399,6 +2399,46 @@ export type RuntimeErrorEventRow = typeof runtimeErrorEvents.$inferSelect;
 export type InsertRuntimeErrorEvent = typeof runtimeErrorEvents.$inferInsert;
 
 // ============================================================================
+// Runtime Error Triage State Table (OMN-5652)
+// Fingerprint-scoped triage results from NodeRuntimeErrorTriageEffect.
+// Source topic: onex.evt.omnibase-infra.error-triaged.v1
+// Replay policy: UPSERT by fingerprint (latest triage action per error family).
+// ============================================================================
+
+export const runtimeErrorTriageState = pgTable(
+  'runtime_error_triage_state',
+  {
+    fingerprint: text('fingerprint').primaryKey(),
+    lastEventId: text('last_event_id').notNull(),
+    action: text('action').notNull(),
+    actionStatus: text('action_status').notNull(),
+    ticketId: text('ticket_id'),
+    ticketUrl: text('ticket_url'),
+    autoFixType: text('auto_fix_type'),
+    autoFixVerified: boolean('auto_fix_verified'),
+    severity: text('severity').notNull(),
+    errorCategory: text('error_category').notNull(),
+    container: text('container').notNull(),
+    operatorAttentionRequired: boolean('operator_attention_required').default(false),
+    recurrenceCount: integer('recurrence_count').default(1),
+    firstSeenAt: timestamp('first_seen_at', { withTimezone: true }).notNull(),
+    lastSeenAt: timestamp('last_seen_at', { withTimezone: true }).notNull(),
+    lastTriagedAt: timestamp('last_triaged_at', { withTimezone: true }).notNull(),
+    createdAt: timestamp('created_at', { withTimezone: true }).defaultNow(),
+    updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow(),
+  },
+  (table) => [
+    index('idx_rets_action').on(table.action),
+    index('idx_rets_error_category').on(table.errorCategory),
+    index('idx_rets_severity').on(table.severity),
+    index('idx_rets_last_triaged').on(table.lastTriagedAt),
+  ]
+);
+
+export type RuntimeErrorTriageStateRow = typeof runtimeErrorTriageState.$inferSelect;
+export type InsertRuntimeErrorTriageState = typeof runtimeErrorTriageState.$inferInsert;
+
+// ============================================================================
 // Routing Shadow Decisions Table (OMN-5570)
 // Stores shadow routing decisions from Bifrost gateway's learned policy
 // for comparison with static routing rules. Used by the RL Routing
