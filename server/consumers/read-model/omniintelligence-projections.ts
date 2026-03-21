@@ -55,6 +55,84 @@ import {
 import type { ProjectionHandler, ProjectionContext, MessageMeta } from './types';
 import { safeParseDate, isTableMissingError, UUID_RE } from './types';
 
+// -------------------------------------------------------------------------
+// Pattern signature display-name derivation (OMN-5644)
+// -------------------------------------------------------------------------
+
+/**
+ * Derive a human-readable display name and type from a raw pattern_signature.
+ *
+ * Signature format: "type_prefix::sub_type: details..."
+ * Examples:
+ *   "file_access_pattern::co_access: /path/a, /path/b"
+ *     -> displayName: "File Access: Co-Access"
+ *        patternTypeFromSig: "file_access_pattern"
+ *
+ *   "tool_sequence_pattern::Read,Edit: common editing flow"
+ *     -> displayName: "Tool Sequence: Read, Edit"
+ *        patternTypeFromSig: "tool_sequence_pattern"
+ */
+function derivePatternDisplayName(signature: string): {
+  displayName: string;
+  patternTypeFromSig: string;
+} {
+  if (!signature) return { displayName: '', patternTypeFromSig: '' };
+
+  // Split on "::" to get type prefix and remainder
+  const colonColonIdx = signature.indexOf('::');
+  if (colonColonIdx === -1) {
+    // No :: separator — use the whole signature as a name (truncated)
+    const truncated = signature.length > 80 ? signature.slice(0, 77) + '...' : signature;
+    return { displayName: truncated, patternTypeFromSig: '' };
+  }
+
+  const typePrefix = signature.slice(0, colonColonIdx).trim();
+  const remainder = signature.slice(colonColonIdx + 2).trim();
+
+  // Convert type_prefix from snake_case to Title Case
+  // e.g. "file_access_pattern" -> "File Access"
+  const typeName = typePrefix
+    .replace(/_pattern$/, '')
+    .split('_')
+    .map((w) => w.charAt(0).toUpperCase() + w.slice(1))
+    .join(' ');
+
+  // Extract sub-type (before first colon in remainder)
+  const colonIdx = remainder.indexOf(':');
+  if (colonIdx === -1) {
+    // No sub-type details, just sub-type name
+    const subType = remainder
+      .split('_')
+      .map((w) => w.charAt(0).toUpperCase() + w.slice(1))
+      .join(' ');
+    const displayName = `${typeName}: ${subType}`.slice(0, 255);
+    return { displayName, patternTypeFromSig: typePrefix };
+  }
+
+  const subTypePart = remainder.slice(0, colonIdx).trim();
+  const detailsPart = remainder.slice(colonIdx + 1).trim();
+
+  // Format sub-type
+  const subType = subTypePart
+    .split('_')
+    .map((w) => w.charAt(0).toUpperCase() + w.slice(1))
+    .join(' ');
+
+  // Shorten file paths in details for readability
+  const shortDetails = detailsPart
+    .split(',')
+    .map((p) => {
+      const trimmed = p.trim();
+      // Extract just the filename from long paths
+      const lastSlash = trimmed.lastIndexOf('/');
+      return lastSlash > 20 ? '...' + trimmed.slice(lastSlash) : trimmed;
+    })
+    .join(', ');
+
+  const displayName = `${typeName}: ${subType} (${shortDetails})`.slice(0, 255);
+  return { displayName, patternTypeFromSig: typePrefix };
+}
+
 const OMNIINTELLIGENCE_TOPICS = new Set([
   TOPIC_OMNIINTELLIGENCE_LLM_CALL_COMPLETED,
   SUFFIX_INTELLIGENCE_PATTERN_PROJECTION,
@@ -276,14 +354,29 @@ export class OmniintelligenceProjectionHandler implements ProjectionHandler {
           continue;
         }
 
+        // Derive meaningful display name from pattern_signature (OMN-5644).
+        // pattern_signature format: "type_prefix::sub_type: details"
+        // e.g. "file_access_pattern::co_access: /path/a, /path/b"
+        const rawSignature =
+          (pattern.pattern_signature as string) || (pattern.patternSignature as string) || '';
+        const { displayName, patternTypeFromSig } = derivePatternDisplayName(rawSignature);
+
         const patternName =
-          (pattern.domain_id as string) ||
+          displayName ||
           (pattern.pattern_name as string) ||
           (pattern.patternName as string) ||
+          (pattern.domain_id as string) ||
           'unknown';
 
         const patternType =
-          (pattern.pattern_type as string) || (pattern.patternType as string) || 'unknown';
+          patternTypeFromSig ||
+          ((pattern.pattern_type as string) !== 'unmeasured'
+            ? (pattern.pattern_type as string)
+            : undefined) ||
+          ((pattern.patternType as string) !== 'unmeasured'
+            ? (pattern.patternType as string)
+            : undefined) ||
+          'learned_pattern';
 
         const lifecycleState =
           (pattern.status as string) ||
@@ -296,20 +389,48 @@ export class OmniintelligenceProjectionHandler implements ProjectionHandler {
         );
 
         const scoringEvidence = pattern.scoring_evidence ?? pattern.scoringEvidence ?? {};
-        const signature = pattern.signature ?? { hash: pattern.signature_hash ?? '' };
+        const rawSigObj = pattern.signature ?? { hash: pattern.signature_hash ?? '' };
+        // Enrich signature JSONB with the full pattern_signature text (OMN-5644)
+        const signature =
+          rawSignature && typeof rawSigObj === 'object' && rawSigObj !== null
+            ? { ...(rawSigObj as Record<string, unknown>), pattern_signature: rawSignature }
+            : rawSigObj;
         const metrics = pattern.metrics ?? {};
-        const metadata = pattern.metadata ?? {};
+        const rawMeta = (pattern.metadata ?? {}) as Record<string, unknown>;
+        // Store pattern_signature and domain_id in metadata for display (OMN-5644)
+        const metadata = rawSignature
+          ? {
+              ...rawMeta,
+              pattern_signature: rawSignature,
+              domain_id: (pattern.domain_id as string) || undefined,
+            }
+          : rawMeta;
+
+        // Derive evidence_tier from scoring_evidence or pattern-level field (OMN-5644)
+        const evidenceTier =
+          (pattern.evidence_tier as string) ||
+          ((scoringEvidence as Record<string, unknown>).evidence_tier as string) ||
+          'unmeasured';
+
+        // Derive language from keywords array if present
+        const keywords = pattern.keywords as string[] | undefined;
+        const language =
+          (pattern.language as string) ||
+          (Array.isArray(keywords) && keywords.length > 0 ? keywords[0] : undefined) ||
+          undefined;
 
         const row: InsertPatternLearningArtifact = {
           patternId,
           patternName,
           patternType,
+          language,
           lifecycleState,
           compositeScore,
           scoringEvidence,
           signature,
           metrics,
           metadata,
+          evidenceTier,
           updatedAt: safeParseDate(data.snapshot_at ?? data.snapshotAt),
           projectedAt: new Date(),
         };
@@ -322,12 +443,14 @@ export class OmniintelligenceProjectionHandler implements ProjectionHandler {
             set: {
               patternName: row.patternName,
               patternType: row.patternType,
+              language: row.language,
               lifecycleState: row.lifecycleState,
               compositeScore: row.compositeScore,
               scoringEvidence: row.scoringEvidence,
               signature: row.signature,
               metrics: row.metrics,
               metadata: row.metadata,
+              evidenceTier: row.evidenceTier,
               updatedAt: row.updatedAt,
               projectedAt: row.projectedAt,
             },
