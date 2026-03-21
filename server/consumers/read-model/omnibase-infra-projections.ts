@@ -19,6 +19,8 @@ import {
   llmHealthSnapshots,
   circuitBreakerEvents,
   savingsEstimates,
+  runtimeErrorEvents,
+  runtimeErrorTriageState,
 } from '@shared/intelligence-schema';
 import type {
   InsertBaselinesSnapshot,
@@ -28,6 +30,8 @@ import type {
   InsertLlmHealthSnapshot,
   InsertCircuitBreakerEvent,
   InsertSavingsEstimate,
+  InsertRuntimeErrorEvent,
+  InsertRuntimeErrorTriageState,
 } from '@shared/intelligence-schema';
 import { baselinesProjection } from '../../projection-bootstrap';
 import { emitBaselinesUpdate } from '../../baselines-events';
@@ -37,6 +41,8 @@ import {
   TOPIC_OMNIBASE_INFRA_WIRING_HEALTH_SNAPSHOT,
   TOPIC_OMNIBASE_INFRA_CIRCUIT_BREAKER,
   SUFFIX_OMNIBASE_INFRA_SAVINGS_ESTIMATED,
+  TOPIC_OMNIBASE_INFRA_RUNTIME_ERROR,
+  TOPIC_OMNIBASE_INFRA_ERROR_TRIAGED,
 } from '@shared/topics';
 import { wiringHealthProjection } from '../../projections/wiring-health-projection';
 import type { TopicWiringRecord } from '../../projections/wiring-health-projection';
@@ -59,12 +65,17 @@ const WIRING_HEALTH_TOPIC = TOPIC_OMNIBASE_INFRA_WIRING_HEALTH_SNAPSHOT;
 const CIRCUIT_BREAKER_TOPIC = TOPIC_OMNIBASE_INFRA_CIRCUIT_BREAKER;
 const SAVINGS_ESTIMATED_TOPIC = SUFFIX_OMNIBASE_INFRA_SAVINGS_ESTIMATED;
 
+const RUNTIME_ERROR_TOPIC = TOPIC_OMNIBASE_INFRA_RUNTIME_ERROR;
+const ERROR_TRIAGED_TOPIC = TOPIC_OMNIBASE_INFRA_ERROR_TRIAGED;
+
 const OMNIBASE_INFRA_TOPICS = new Set([
   SUFFIX_OMNIBASE_INFRA_BASELINES_COMPUTED,
   SUFFIX_OMNIBASE_INFRA_LLM_HEALTH_SNAPSHOT,
   TOPIC_OMNIBASE_INFRA_WIRING_HEALTH_SNAPSHOT,
   TOPIC_OMNIBASE_INFRA_CIRCUIT_BREAKER,
   SUFFIX_OMNIBASE_INFRA_SAVINGS_ESTIMATED,
+  TOPIC_OMNIBASE_INFRA_RUNTIME_ERROR,
+  TOPIC_OMNIBASE_INFRA_ERROR_TRIAGED,
 ]);
 
 export class OmnibaseInfraProjectionHandler implements ProjectionHandler {
@@ -92,6 +103,12 @@ export class OmnibaseInfraProjectionHandler implements ProjectionHandler {
     }
     if (topic === SAVINGS_ESTIMATED_TOPIC) {
       return this.projectSavingsEstimated(data, context, meta);
+    }
+    if (topic === RUNTIME_ERROR_TOPIC) {
+      return this.projectRuntimeErrorEvent(data, context);
+    }
+    if (topic === ERROR_TRIAGED_TOPIC) {
+      return this.projectErrorTriaged(data, context);
     }
     return false;
   }
@@ -629,6 +646,156 @@ export class OmnibaseInfraProjectionHandler implements ProjectionHandler {
         console.warn(
           '[ReadModelConsumer] savings_estimates table not yet created -- ' +
             'run migrations to enable savings projection'
+        );
+        return true;
+      }
+      throw err;
+    }
+
+    return true;
+  }
+
+  // --------------------------------------------------------------------------
+  // Runtime error event projection (OMN-5652)
+  // --------------------------------------------------------------------------
+
+  private async projectRuntimeErrorEvent(
+    data: Record<string, unknown>,
+    context: ProjectionContext
+  ): Promise<boolean> {
+    const { db } = context;
+    if (!db) return false;
+
+    const fingerprint = String(data.fingerprint ?? '').trim();
+    const errorCategory = String(data.error_category ?? data.errorCategory ?? 'UNKNOWN').trim();
+    const severity = String(data.severity ?? 'MEDIUM').trim();
+    const logLevel = String(data.log_level ?? data.logLevel ?? 'ERROR').trim();
+    const loggerFamily = String(data.logger_family ?? data.loggerFamily ?? 'unknown').trim();
+    const errorMessage = String(data.error_message ?? data.errorMessage ?? '').trim();
+    const rawLine = String(data.raw_line ?? data.rawLine ?? '').trim();
+    const exceptionType = String(data.exception_type ?? data.exceptionType ?? '').trim();
+    const stackTrace = String(data.stack_trace ?? data.stackTrace ?? '').trim();
+    const container = String(data.container ?? '').trim();
+    const emittedAtRaw = data.detected_at ?? data.detectedAt ?? data.first_seen_at ?? data.firstSeenAt;
+    const emittedAt = safeParseDate(emittedAtRaw) ?? new Date();
+
+    if (!fingerprint) {
+      console.warn('[ReadModelConsumer] runtime-error event missing fingerprint, skipping');
+      return true;
+    }
+
+    const row: InsertRuntimeErrorEvent = {
+      id: String(data.event_id ?? data.eventId ?? randomUUID()),
+      loggerFamily,
+      logLevel,
+      messageTemplate: errorMessage.slice(0, 500),
+      rawMessage: rawLine.slice(0, 2000),
+      errorCategory,
+      severity,
+      fingerprint,
+      exceptionType,
+      exceptionMessage: errorMessage.slice(0, 1000),
+      stackTrace: stackTrace.slice(0, 5000),
+      hostname: container,
+      serviceLabel: String(data.source_service ?? data.sourceService ?? container).trim(),
+      emittedAt,
+    };
+
+    try {
+      await db.insert(runtimeErrorEvents).values(row).onConflictDoNothing();
+      console.log(
+        `[ReadModelConsumer] Projected runtime-error event (fp=${fingerprint.slice(0, 12)}..., cat=${errorCategory})`
+      );
+    } catch (err) {
+      if (isTableMissingError(err, 'runtime_error_events')) {
+        console.warn(
+          '[ReadModelConsumer] runtime_error_events table not yet created -- ' +
+            'run migrations to enable runtime error projection'
+        );
+        return true;
+      }
+      throw err;
+    }
+
+    return true;
+  }
+
+  // --------------------------------------------------------------------------
+  // Error triage state projection (OMN-5652)
+  // --------------------------------------------------------------------------
+
+  private async projectErrorTriaged(
+    data: Record<string, unknown>,
+    context: ProjectionContext
+  ): Promise<boolean> {
+    const { db } = context;
+    if (!db) return false;
+
+    const fingerprint = String(data.fingerprint ?? '').trim();
+    const action = String(data.action ?? '').trim();
+    const actionStatus = String(data.action_status ?? data.actionStatus ?? 'SUCCESS').trim();
+
+    if (!fingerprint || !action) {
+      console.warn('[ReadModelConsumer] error-triaged event missing fingerprint or action, skipping');
+      return true;
+    }
+
+    const triagedAtRaw = data.triaged_at ?? data.triagedAt;
+    const triagedAt = safeParseDate(triagedAtRaw) ?? new Date();
+    const firstSeenAtRaw = data.first_seen_at ?? data.firstSeenAt;
+    const firstSeenAt = safeParseDate(firstSeenAtRaw) ?? triagedAt;
+
+    const row: InsertRuntimeErrorTriageState = {
+      fingerprint,
+      lastEventId: String(data.event_id ?? data.eventId ?? randomUUID()),
+      action,
+      actionStatus,
+      ticketId: data.ticket_id != null ? String(data.ticket_id) : null,
+      ticketUrl: data.ticket_url != null ? String(data.ticket_url) : null,
+      autoFixType: data.auto_fix_type != null ? String(data.auto_fix_type) : null,
+      autoFixVerified: data.auto_fix_verified != null ? Boolean(data.auto_fix_verified) : null,
+      severity: String(data.severity ?? 'MEDIUM').trim(),
+      errorCategory: String(data.error_category ?? data.errorCategory ?? 'UNKNOWN').trim(),
+      container: String(data.container ?? '').trim(),
+      operatorAttentionRequired: Boolean(data.operator_attention_required ?? data.operatorAttentionRequired ?? false),
+      recurrenceCount: Number(data.recurrence_count ?? data.recurrenceCount ?? 1),
+      firstSeenAt,
+      lastSeenAt: triagedAt,
+      lastTriagedAt: triagedAt,
+    };
+
+    try {
+      await db
+        .insert(runtimeErrorTriageState)
+        .values(row)
+        .onConflictDoUpdate({
+          target: runtimeErrorTriageState.fingerprint,
+          set: {
+            lastEventId: row.lastEventId,
+            action: row.action,
+            actionStatus: row.actionStatus,
+            ticketId: row.ticketId,
+            ticketUrl: row.ticketUrl,
+            autoFixType: row.autoFixType,
+            autoFixVerified: row.autoFixVerified,
+            severity: row.severity,
+            errorCategory: row.errorCategory,
+            container: row.container,
+            operatorAttentionRequired: row.operatorAttentionRequired,
+            recurrenceCount: row.recurrenceCount,
+            lastSeenAt: row.lastSeenAt,
+            lastTriagedAt: row.lastTriagedAt,
+            updatedAt: new Date(),
+          },
+        });
+      console.log(
+        `[ReadModelConsumer] Projected error-triaged (fp=${fingerprint.slice(0, 12)}..., action=${action})`
+      );
+    } catch (err) {
+      if (isTableMissingError(err, 'runtime_error_triage_state')) {
+        console.warn(
+          '[ReadModelConsumer] runtime_error_triage_state table not yet created -- ' +
+            'run migrations to enable triage state projection'
         );
         return true;
       }

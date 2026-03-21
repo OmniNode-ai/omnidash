@@ -454,6 +454,14 @@ export const SUFFIX_OMNIBASE_INFRA_CIRCUIT_BREAKER = TOPIC_OMNIBASE_INFRA_CIRCUI
 export const SUFFIX_OMNIBASE_INFRA_SAVINGS_ESTIMATED =
   'onex.evt.omnibase-infra.savings-estimated.v1';
 
+/** Runtime container error events from monitor_logs.py (OMN-5649).
+ * Consumed by ReadModelConsumer to project into runtime_error_events table. */
+export const TOPIC_OMNIBASE_INFRA_RUNTIME_ERROR = 'onex.evt.omnibase-infra.runtime-error.v1';
+
+/** Runtime error triage results from NodeRuntimeErrorTriageEffect (OMN-5650).
+ * Consumed by ReadModelConsumer to project into runtime_error_triage_state table. */
+export const TOPIC_OMNIBASE_INFRA_ERROR_TRIAGED = 'onex.evt.omnibase-infra.error-triaged.v1';
+
 // ============================================================================
 // Miscellaneous Topics
 // ============================================================================
