@@ -763,7 +763,9 @@ function PatternLearningContent() {
                     className="cursor-pointer hover:bg-muted/50"
                     onClick={() => handleRowClick(artifact)}
                   >
-                    <TableCell className="font-medium">{artifact.patternName}</TableCell>
+                    <TableCell className="font-medium max-w-xs" title={artifact.patternName}>
+                      <span className="block truncate">{artifact.patternName}</span>
+                    </TableCell>
                     <TableCell>
                       <Badge variant="outline">{artifact.patternType}</Badge>
                     </TableCell>

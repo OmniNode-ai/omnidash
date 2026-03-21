@@ -255,7 +255,7 @@ export const patternLearningArtifacts = pgTable(
   {
     id: uuid('id').primaryKey().defaultRandom(),
     patternId: uuid('pattern_id').notNull(),
-    patternName: varchar('pattern_name', { length: 255 }).notNull(),
+    patternName: text('pattern_name').notNull(),
     patternType: varchar('pattern_type', { length: 100 }).notNull(),
     language: varchar('language', { length: 50 }),
 
