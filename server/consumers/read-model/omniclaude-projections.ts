@@ -844,7 +844,30 @@ export class OmniclaudeProjectionHandler implements ProjectionHandler {
 
     const correlationId =
       (data.correlation_id as string) || (data.correlationId as string) || fallbackId;
-    const epicRunId = (data.epic_run_id as string) || (data.epicRunId as string) || correlationId;
+    // Emitter sends run_id, DB column is epic_run_id
+    const epicRunId =
+      (data.run_id as string) || (data.epic_run_id as string) ||
+      (data.epicRunId as string) || correlationId;
+    // Emitter sends status, DB column is event_type — map status to event_type
+    const eventType =
+      (data.status as string) ?? (data.event_type as string) ??
+      (data.eventType as string) ?? 'unknown';
+    // epic_id is available from emitter — store in ticket_id column as the
+    // closest semantic match (the epic identifier being tracked)
+    const ticketId =
+      (data.epic_id as string) ?? (data.ticket_id as string) ??
+      (data.ticketId as string) ?? null;
+    // Build a summary payload from emitter fields not mapped to columns
+    const summaryPayload: Record<string, unknown> = {};
+    if (data.tickets_total != null) summaryPayload.tickets_total = data.tickets_total;
+    if (data.tickets_completed != null) summaryPayload.tickets_completed = data.tickets_completed;
+    if (data.tickets_failed != null) summaryPayload.tickets_failed = data.tickets_failed;
+    if (data.phase != null) summaryPayload.phase = data.phase;
+    const payloadJson = data.payload != null
+      ? JSON.stringify(data.payload)
+      : Object.keys(summaryPayload).length > 0
+        ? JSON.stringify(summaryPayload)
+        : null;
 
     try {
       await db.execute(sql`
@@ -854,11 +877,11 @@ export class OmniclaudeProjectionHandler implements ProjectionHandler {
         ) VALUES (
           ${correlationId},
           ${epicRunId},
-          ${(data.event_type as string) ?? (data.eventType as string) ?? 'unknown'},
-          ${(data.ticket_id as string) ?? (data.ticketId as string) ?? null},
+          ${eventType},
+          ${ticketId},
           ${(data.repo as string) ?? null},
-          ${data.payload != null ? JSON.stringify(data.payload) : null},
-          ${safeParseDate(data.timestamp ?? data.created_at)}
+          ${payloadJson},
+          ${safeParseDate(data.emitted_at ?? data.timestamp ?? data.created_at)}
         )
         ON CONFLICT (correlation_id) DO NOTHING
       `);
