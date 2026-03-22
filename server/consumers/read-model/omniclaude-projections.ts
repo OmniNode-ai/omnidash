@@ -63,6 +63,7 @@ import {
   SUFFIX_OMNICLAUDE_PHASE_METRICS,
   SUFFIX_OMNICLAUDE_DEBUG_TRIGGER_RECORD,
   SUFFIX_OMNICLAUDE_SKILL_INVOKED,
+  SUFFIX_OMNICLAUDE_HOSTILE_REVIEWER_COMPLETED,
 } from '@shared/topics';
 import { llmRoutingProjection } from '../../projection-bootstrap';
 import { emitLlmRoutingInvalidate } from '../../llm-routing-events';
@@ -100,6 +101,7 @@ const OMNICLAUDE_TOPICS = new Set([
   SUFFIX_OMNICLAUDE_PHASE_METRICS,
   SUFFIX_OMNICLAUDE_DEBUG_TRIGGER_RECORD,
   SUFFIX_OMNICLAUDE_SKILL_INVOKED,
+  SUFFIX_OMNICLAUDE_HOSTILE_REVIEWER_COMPLETED,
 ]);
 
 export class OmniclaudeProjectionHandler implements ProjectionHandler {
@@ -155,6 +157,8 @@ export class OmniclaudeProjectionHandler implements ProjectionHandler {
         return this.projectDebugTriggerRecord(data, fallbackId, context);
       case SUFFIX_OMNICLAUDE_SKILL_INVOKED:
         return this.projectSkillInvoked(data, context);
+      case SUFFIX_OMNICLAUDE_HOSTILE_REVIEWER_COMPLETED:
+        return this.projectHostileReviewerCompleted(data, fallbackId, context);
       default:
         return false;
     }
@@ -1335,6 +1339,58 @@ export class OmniclaudeProjectionHandler implements ProjectionHandler {
       if (pgErr.code === '23505') return true;
       throw err;
     }
+    return true;
+  }
+
+  // -------------------------------------------------------------------------
+  // Hostile reviewer completed -> hostile_reviewer_runs (OMN-5864)
+  // -------------------------------------------------------------------------
+
+  private async projectHostileReviewerCompleted(
+    data: Record<string, unknown>,
+    fallbackId: string,
+    context: ProjectionContext
+  ): Promise<boolean> {
+    const { db } = context;
+    if (!db) return false;
+
+    const eventId =
+      (data.event_id as string) || (data.eventId as string) || fallbackId;
+    const correlationId =
+      (data.correlation_id as string) || (data.correlationId as string) || eventId;
+
+    try {
+      await db.execute(sql`
+        INSERT INTO hostile_reviewer_runs (
+          event_id, correlation_id, mode, target,
+          models_attempted, models_succeeded, verdict,
+          total_findings, critical_count, major_count, created_at
+        ) VALUES (
+          ${eventId},
+          ${correlationId},
+          ${(data.mode as string) ?? 'unknown'},
+          ${(data.target as string) ?? 'unknown'},
+          ${sql.raw(`ARRAY[${((data.models_attempted as string[]) || []).map((m: string) => `'${m.replace(/'/g, "''")}'`).join(',')}]::text[]`)},
+          ${sql.raw(`ARRAY[${((data.models_succeeded as string[]) || []).map((m: string) => `'${m.replace(/'/g, "''")}'`).join(',')}]::text[]`)},
+          ${(data.verdict as string) ?? 'unknown'},
+          ${Number(data.total_findings ?? 0)},
+          ${Number(data.critical_count ?? data.criticalCount ?? 0)},
+          ${Number(data.major_count ?? data.majorCount ?? 0)},
+          ${safeParseDate(data.emitted_at ?? data.timestamp ?? data.created_at)}
+        )
+        ON CONFLICT (event_id) DO NOTHING
+      `);
+    } catch (err) {
+      if (isTableMissingError(err, 'hostile_reviewer_runs')) {
+        console.warn(
+          '[ReadModelConsumer] hostile_reviewer_runs table not yet created -- ' +
+            'run migrations to enable hostile reviewer projection'
+        );
+        return true;
+      }
+      throw err;
+    }
+
     return true;
   }
 }
