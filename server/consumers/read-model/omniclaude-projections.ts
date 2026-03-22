@@ -942,6 +942,19 @@ export class OmniclaudeProjectionHandler implements ProjectionHandler {
     const correlationId =
       (data.correlation_id as string) || (data.correlationId as string) || fallbackId;
 
+    // Build metadata from emitter fields not mapped to columns
+    const metadata: Record<string, unknown> = {};
+    if (data.run_id != null) metadata.run_id = data.run_id;
+    if (data.ticket_id != null) metadata.ticket_id = data.ticket_id;
+    if (data.review_cycles_used != null) metadata.review_cycles_used = data.review_cycles_used;
+    if (data.watch_duration_hours != null) metadata.watch_duration_hours = data.watch_duration_hours;
+    const existingMetadata = data.metadata != null ? data.metadata : null;
+    const metadataJson = existingMetadata
+      ? JSON.stringify(existingMetadata)
+      : Object.keys(metadata).length > 0
+        ? JSON.stringify(metadata)
+        : null;
+
     try {
       await db.execute(sql`
         INSERT INTO pr_watch_state (
@@ -951,11 +964,11 @@ export class OmniclaudeProjectionHandler implements ProjectionHandler {
           ${correlationId},
           ${data.pr_number != null ? Number(data.pr_number) : null},
           ${(data.repo as string) ?? null},
-          ${(data.state as string) ?? 'unknown'},
+          ${(data.status as string) ?? (data.state as string) ?? 'unknown'},
           ${(data.checks_status as string) ?? (data.checksStatus as string) ?? null},
           ${(data.review_status as string) ?? (data.reviewStatus as string) ?? null},
-          ${data.metadata != null ? JSON.stringify(data.metadata) : null},
-          ${safeParseDate(data.timestamp ?? data.created_at)}
+          ${metadataJson},
+          ${safeParseDate(data.emitted_at ?? data.timestamp ?? data.created_at)}
         )
         ON CONFLICT (correlation_id) DO NOTHING
       `);
