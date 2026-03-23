@@ -1372,6 +1372,15 @@ export class OmniclaudeProjectionHandler implements ProjectionHandler {
     const correlationId =
       (data.correlation_id as string) || (data.correlationId as string) || eventId;
 
+    // Serialize arrays as JSON for safe parameterized insertion (no sql.raw needed).
+    // PostgreSQL casts json text[] via ::text[] on the jsonb_array_elements_text result.
+    const modelsAttemptedJson = JSON.stringify(
+      ((data.models_attempted as string[]) || []).map(String)
+    );
+    const modelsSucceededJson = JSON.stringify(
+      ((data.models_succeeded as string[]) || []).map(String)
+    );
+
     try {
       await db.execute(sql`
         INSERT INTO hostile_reviewer_runs (
@@ -1383,8 +1392,8 @@ export class OmniclaudeProjectionHandler implements ProjectionHandler {
           ${correlationId},
           ${(data.mode as string) ?? 'unknown'},
           ${(data.target as string) ?? 'unknown'},
-          ${sql.raw(`ARRAY[${((data.models_attempted as string[]) || []).map((m: string) => `'${m.replace(/'/g, "''")}'`).join(',')}]::text[]`)},
-          ${sql.raw(`ARRAY[${((data.models_succeeded as string[]) || []).map((m: string) => `'${m.replace(/'/g, "''")}'`).join(',')}]::text[]`)},
+          (SELECT COALESCE(array_agg(elem), ARRAY[]::text[]) FROM jsonb_array_elements_text(${modelsAttemptedJson}::jsonb) AS elem),
+          (SELECT COALESCE(array_agg(elem), ARRAY[]::text[]) FROM jsonb_array_elements_text(${modelsSucceededJson}::jsonb) AS elem),
           ${(data.verdict as string) ?? 'unknown'},
           ${Number(data.total_findings ?? 0)},
           ${Number(data.critical_count ?? data.criticalCount ?? 0)},
