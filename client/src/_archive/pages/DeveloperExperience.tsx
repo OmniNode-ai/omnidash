@@ -82,9 +82,7 @@ export default function DeveloperExperience() {
         case 'WORKFLOW_COMPLETED':
         case 'AGENT_ACTION_CREATED':
           queryClient.invalidateQueries({
-            queryKey: [
-              `http://localhost:8053/api/intelligence/developer/metrics?timeWindow=${timeRange}`,
-            ],
+            queryKey: [`/api/intelligence/developer/metrics?timeWindow=${timeRange}`],
           });
           break;
         case 'INITIAL_STATE':
@@ -96,13 +94,14 @@ export default function DeveloperExperience() {
     debug: false,
   });
 
-  // Fetch unified developer metrics from omniintelligence with standard polling
+  // Fetch unified developer metrics via omnidash proxy (proxies to OmniIntelligence API)
+  // Previously fetched directly from localhost:8053 which caused CORS + offline failures [OMN-6150]
   const {
     data: metricsData,
     isLoading: metricsLoading,
     error: metricsError,
   } = useQuery<DeveloperMetricsResponse>({
-    queryKey: [`http://localhost:8053/api/intelligence/developer/metrics?timeWindow=${timeRange}`],
+    queryKey: [`/api/intelligence/developer/metrics?timeWindow=${timeRange}`],
     refetchInterval: getPollingInterval(POLLING_INTERVAL_MEDIUM),
   });
 

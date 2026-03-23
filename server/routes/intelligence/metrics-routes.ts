@@ -348,6 +348,53 @@ export function registerMetricsRoutes(router: Router): void {
     }
   });
 
+  // GET /developer/metrics
+  // Proxy to OmniIntelligence API (localhost:8053) with graceful fallback [OMN-6150]
+  // Previously the frontend fetched directly from the external service, causing
+  // "Failed to load developer metrics" when the service was offline.
+  router.get('/developer/metrics', async (req, res) => {
+    const timeWindow = (req.query.timeWindow as string) || '24h';
+    const upstreamUrl = `http://localhost:8053/api/intelligence/developer/metrics?timeWindow=${timeWindow}`;
+
+    try {
+      const controller = new AbortController();
+      const timeout = setTimeout(() => controller.abort(), 5000);
+
+      const upstream = await fetch(upstreamUrl, { signal: controller.signal });
+      clearTimeout(timeout);
+
+      if (!upstream.ok) {
+        throw new Error(`Upstream returned ${upstream.status}`);
+      }
+
+      const data = await upstream.json();
+      res.json(data);
+    } catch (error) {
+      // Graceful fallback: return empty metrics shape so the page renders without crashing
+      console.warn(
+        '[metrics-routes] OmniIntelligence API unreachable, returning empty metrics:',
+        error instanceof Error ? error.message : error
+      );
+      res.json({
+        workflows: {
+          workflows: [],
+          total_developers: 0,
+          total_code_generated: 0,
+        },
+        velocity: {
+          time_window: timeWindow,
+          data: [],
+        },
+        productivity: {
+          time_window: timeWindow,
+          data: [],
+          avg_productivity_gain: 0,
+          pattern_reuse_rate: 0,
+        },
+      });
+    }
+  });
+
   // GET /performance/metrics
   router.get('/performance/metrics', async (req, res) => {
     try {

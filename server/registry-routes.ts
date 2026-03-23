@@ -266,13 +266,17 @@ router.get('/discovery', (req: Request, res: Response) => {
       else if (isFailedState(node.state)) failedNodes++;
     }
 
+    // Convert by_type from Record to array format to match client RegistryDiscoverySummary interface
+    // Client expects: { name: string; value: number }[] (not Record<string, number>)
+    const byTypeArray = Object.entries(byType).map(([name, value]) => ({ name, value }));
+
     const summary = {
       total_nodes: filteredNodes.length,
       active_nodes: activeNodes,
       pending_nodes: pendingNodes,
       failed_nodes: failedNodes,
       unhealthy_instances: 0, // Instances not tracked in projection
-      by_type: byType,
+      by_type: byTypeArray,
       by_health: { passing: 0, warning: 0, critical: 0, unknown: 0 },
     };
 
