@@ -64,7 +64,16 @@ import {
   SUFFIX_OMNICLAUDE_DEBUG_TRIGGER_RECORD,
   SUFFIX_OMNICLAUDE_SKILL_INVOKED,
   SUFFIX_OMNICLAUDE_HOSTILE_REVIEWER_COMPLETED,
+  SUFFIX_OMNICLAUDE_CONTEXT_UTILIZATION,
+  SUFFIX_OMNICLAUDE_AGENT_MATCH,
+  SUFFIX_OMNICLAUDE_LATENCY_BREAKDOWN,
 } from '@shared/topics';
+import { ExtractionMetricsAggregator } from '../../extraction-aggregator';
+import type {
+  ContextUtilizationEvent,
+  AgentMatchEvent,
+  LatencyBreakdownEvent,
+} from '@shared/extraction-types';
 import { llmRoutingProjection } from '../../projection-bootstrap';
 import { emitLlmRoutingInvalidate } from '../../llm-routing-events';
 import { emitDelegationInvalidate } from '../../delegation-events';
@@ -102,7 +111,13 @@ const OMNICLAUDE_TOPICS = new Set([
   SUFFIX_OMNICLAUDE_DEBUG_TRIGGER_RECORD,
   SUFFIX_OMNICLAUDE_SKILL_INVOKED,
   SUFFIX_OMNICLAUDE_HOSTILE_REVIEWER_COMPLETED,
+  SUFFIX_OMNICLAUDE_CONTEXT_UTILIZATION,
+  SUFFIX_OMNICLAUDE_AGENT_MATCH,
+  SUFFIX_OMNICLAUDE_LATENCY_BREAKDOWN,
 ]);
+
+/** Shared extraction aggregator instance for context-utilization, agent-match, latency-breakdown */
+const extractionAggregator = new ExtractionMetricsAggregator();
 
 export class OmniclaudeProjectionHandler implements ProjectionHandler {
   canHandle(topic: string): boolean {
@@ -159,6 +174,12 @@ export class OmniclaudeProjectionHandler implements ProjectionHandler {
         return this.projectSkillInvoked(data, context);
       case SUFFIX_OMNICLAUDE_HOSTILE_REVIEWER_COMPLETED:
         return this.projectHostileReviewerCompleted(data, fallbackId, context);
+      case SUFFIX_OMNICLAUDE_CONTEXT_UTILIZATION:
+        return this.projectContextUtilization(data, meta);
+      case SUFFIX_OMNICLAUDE_AGENT_MATCH:
+        return this.projectAgentMatch(data, meta);
+      case SUFFIX_OMNICLAUDE_LATENCY_BREAKDOWN:
+        return this.projectLatencyBreakdown(data, meta);
       default:
         return false;
     }
@@ -850,28 +871,32 @@ export class OmniclaudeProjectionHandler implements ProjectionHandler {
       (data.correlation_id as string) || (data.correlationId as string) || fallbackId;
     // Emitter sends run_id, DB column is epic_run_id
     const epicRunId =
-      (data.run_id as string) || (data.epic_run_id as string) ||
-      (data.epicRunId as string) || correlationId;
+      (data.run_id as string) ||
+      (data.epic_run_id as string) ||
+      (data.epicRunId as string) ||
+      correlationId;
     // Emitter sends status, DB column is event_type — map status to event_type
     const eventType =
-      (data.status as string) ?? (data.event_type as string) ??
-      (data.eventType as string) ?? 'unknown';
+      (data.status as string) ??
+      (data.event_type as string) ??
+      (data.eventType as string) ??
+      'unknown';
     // epic_id is available from emitter — store in ticket_id column as the
     // closest semantic match (the epic identifier being tracked)
     const ticketId =
-      (data.epic_id as string) ?? (data.ticket_id as string) ??
-      (data.ticketId as string) ?? null;
+      (data.epic_id as string) ?? (data.ticket_id as string) ?? (data.ticketId as string) ?? null;
     // Build a summary payload from emitter fields not mapped to columns
     const summaryPayload: Record<string, unknown> = {};
     if (data.tickets_total != null) summaryPayload.tickets_total = data.tickets_total;
     if (data.tickets_completed != null) summaryPayload.tickets_completed = data.tickets_completed;
     if (data.tickets_failed != null) summaryPayload.tickets_failed = data.tickets_failed;
     if (data.phase != null) summaryPayload.phase = data.phase;
-    const payloadJson = data.payload != null
-      ? JSON.stringify(data.payload)
-      : Object.keys(summaryPayload).length > 0
-        ? JSON.stringify(summaryPayload)
-        : null;
+    const payloadJson =
+      data.payload != null
+        ? JSON.stringify(data.payload)
+        : Object.keys(summaryPayload).length > 0
+          ? JSON.stringify(summaryPayload)
+          : null;
 
     try {
       await db.execute(sql`
@@ -947,7 +972,8 @@ export class OmniclaudeProjectionHandler implements ProjectionHandler {
     if (data.run_id != null) metadata.run_id = data.run_id;
     if (data.ticket_id != null) metadata.ticket_id = data.ticket_id;
     if (data.review_cycles_used != null) metadata.review_cycles_used = data.review_cycles_used;
-    if (data.watch_duration_hours != null) metadata.watch_duration_hours = data.watch_duration_hours;
+    if (data.watch_duration_hours != null)
+      metadata.watch_duration_hours = data.watch_duration_hours;
     const existingMetadata = data.metadata != null ? data.metadata : null;
     const metadataJson = existingMetadata
       ? JSON.stringify(existingMetadata)
@@ -1321,8 +1347,7 @@ export class OmniclaudeProjectionHandler implements ProjectionHandler {
     const isSuccess = data.success !== false;
 
     // Derive status text from explicit field or boolean success flag
-    const rawStatus =
-      (data.status as string | null) ?? (isSuccess ? 'success' : 'failed');
+    const rawStatus = (data.status as string | null) ?? (isSuccess ? 'success' : 'failed');
     const status = ['success', 'failed', 'partial'].includes(rawStatus)
       ? rawStatus
       : isSuccess
@@ -1332,8 +1357,7 @@ export class OmniclaudeProjectionHandler implements ProjectionHandler {
     const emittedAt = safeParseDate(
       data.emitted_at ?? data.emittedAt ?? data.timestamp ?? data.created_at
     );
-    const errorText =
-      (data.error as string | null) ?? (data.errorMessage as string | null) ?? null;
+    const errorText = (data.error as string | null) ?? (data.errorMessage as string | null) ?? null;
 
     try {
       await db.insert(skillInvocations).values({
@@ -1367,8 +1391,7 @@ export class OmniclaudeProjectionHandler implements ProjectionHandler {
     const { db } = context;
     if (!db) return false;
 
-    const eventId =
-      (data.event_id as string) || (data.eventId as string) || fallbackId;
+    const eventId = (data.event_id as string) || (data.eventId as string) || fallbackId;
     const correlationId =
       (data.correlation_id as string) || (data.correlationId as string) || eventId;
 
@@ -1413,6 +1436,49 @@ export class OmniclaudeProjectionHandler implements ProjectionHandler {
       throw err;
     }
 
+    return true;
+  }
+
+  // -------------------------------------------------------------------------
+  // Extraction pipeline events -> injection_effectiveness / latency_breakdowns
+  // Delegates to ExtractionMetricsAggregator (OMN-6154)
+  // -------------------------------------------------------------------------
+
+  private async projectContextUtilization(
+    data: Record<string, unknown>,
+    _meta: MessageMeta
+  ): Promise<boolean> {
+    try {
+      await extractionAggregator.handleContextUtilization(
+        data as unknown as ContextUtilizationEvent
+      );
+    } catch (err) {
+      console.error('[ReadModelConsumer] context-utilization projection error:', err);
+    }
+    return true;
+  }
+
+  private async projectAgentMatch(
+    data: Record<string, unknown>,
+    _meta: MessageMeta
+  ): Promise<boolean> {
+    try {
+      await extractionAggregator.handleAgentMatch(data as unknown as AgentMatchEvent);
+    } catch (err) {
+      console.error('[ReadModelConsumer] agent-match projection error:', err);
+    }
+    return true;
+  }
+
+  private async projectLatencyBreakdown(
+    data: Record<string, unknown>,
+    _meta: MessageMeta
+  ): Promise<boolean> {
+    try {
+      await extractionAggregator.handleLatencyBreakdown(data as unknown as LatencyBreakdownEvent);
+    } catch (err) {
+      console.error('[ReadModelConsumer] latency-breakdown projection error:', err);
+    }
     return true;
   }
 }
