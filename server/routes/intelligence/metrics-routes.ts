@@ -3,7 +3,7 @@
  * Extracted from intelligence-routes.ts (OMN-5193).
  *
  * Data access: Mixed (eventConsumer in-memory + direct DB)
- * // TODO: migrate direct DB queries to ProjectionService
+ * // TODO(OMN-6111): migrate direct DB queries to ProjectionService
  */
 import type { Router } from 'express';
 import { sql } from 'drizzle-orm';
@@ -18,7 +18,7 @@ import { safeInterval, safeTruncUnit, timeWindowToInterval } from '../../sql-saf
 
 export function registerMetricsRoutes(router: Router): void {
   // GET /metrics/operations-per-minute
-  // TODO: migrate to ProjectionService
+  // TODO(OMN-6111): migrate to ProjectionService
   router.get('/metrics/operations-per-minute', async (req, res) => {
     try {
       const timeWindow = (req.query.timeWindow as string) || '24h';
@@ -63,7 +63,7 @@ export function registerMetricsRoutes(router: Router): void {
   });
 
   // GET /metrics/quality-impact
-  // TODO: migrate to ProjectionService
+  // TODO(OMN-6111): migrate to ProjectionService
   router.get('/metrics/quality-impact', async (req, res) => {
     try {
       const timeWindow = (req.query.timeWindow as string) || '24h';
@@ -119,7 +119,7 @@ export function registerMetricsRoutes(router: Router): void {
   });
 
   // GET /developer/workflows
-  // TODO: migrate to ProjectionService
+  // TODO(OMN-6111): migrate to ProjectionService
   router.get('/developer/workflows', async (req, res) => {
     try {
       const workflows = await getIntelligenceDb()
@@ -194,7 +194,7 @@ export function registerMetricsRoutes(router: Router): void {
   });
 
   // GET /developer/velocity
-  // TODO: migrate to ProjectionService
+  // TODO(OMN-6111): migrate to ProjectionService
   router.get('/developer/velocity', async (req, res) => {
     try {
       const timeWindow = (req.query.timeWindow as string) || '24h';
@@ -241,7 +241,7 @@ export function registerMetricsRoutes(router: Router): void {
   });
 
   // GET /developer/productivity
-  // TODO: migrate to ProjectionService
+  // TODO(OMN-6111): migrate to ProjectionService
   router.get('/developer/productivity', async (req, res) => {
     try {
       const timeWindow = (req.query.timeWindow as string) || '24h';
@@ -296,7 +296,7 @@ export function registerMetricsRoutes(router: Router): void {
   });
 
   // GET /developer/task-velocity
-  // TODO: migrate to ProjectionService
+  // TODO(OMN-6111): migrate to ProjectionService
   router.get('/developer/task-velocity', async (req, res) => {
     try {
       const timeWindow = (req.query.timeWindow as string) || '7d';

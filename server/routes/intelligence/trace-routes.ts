@@ -3,7 +3,7 @@
  * Extracted from intelligence-routes.ts (OMN-5193).
  *
  * Data access: Direct DB (getIntelligenceDb)
- * // TODO: migrate to ProjectionService
+ * // TODO(OMN-6111): migrate to ProjectionService
  */
 import type { Router } from 'express';
 import { sql, desc, eq, inArray } from 'drizzle-orm';
@@ -16,7 +16,7 @@ import {
 
 export function registerTraceRoutes(router: Router): void {
   // GET /traces/recent
-  // TODO: migrate to ProjectionService
+  // TODO(OMN-6111): migrate to ProjectionService
   router.get('/traces/recent', async (req, res) => {
     try {
       const rawLimit = parseInt(req.query.limit as string, 10);
@@ -93,7 +93,7 @@ export function registerTraceRoutes(router: Router): void {
   });
 
   // GET /trace/:correlationId
-  // TODO: migrate to ProjectionService
+  // TODO(OMN-6111): migrate to ProjectionService
   router.get('/trace/:correlationId', async (req, res) => {
     try {
       const { correlationId } = req.params;
@@ -244,7 +244,7 @@ export function registerTraceRoutes(router: Router): void {
   });
 
   // GET /execution/:correlationId
-  // TODO: migrate to ProjectionService
+  // TODO(OMN-6111): migrate to ProjectionService
   router.get('/execution/:correlationId', async (req, res) => {
     try {
       const { correlationId } = req.params;

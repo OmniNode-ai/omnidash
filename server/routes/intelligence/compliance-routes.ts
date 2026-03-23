@@ -3,7 +3,7 @@
  * Extracted from intelligence-routes.ts (OMN-5193).
  *
  * Data access: Direct DB (getIntelligenceDb)
- * // TODO: migrate to ProjectionService
+ * // TODO(OMN-6111): migrate to ProjectionService
  */
 import type { Router } from 'express';
 import { sql, desc, eq, and } from 'drizzle-orm';
@@ -13,7 +13,7 @@ import { safeInterval, safeTruncUnit, timeWindowToInterval } from '../../sql-saf
 
 export function registerComplianceRoutes(router: Router): void {
   // GET /code/compliance
-  // TODO: migrate to ProjectionService
+  // TODO(OMN-6111): migrate to ProjectionService
   router.get('/code/compliance', async (req, res) => {
     try {
       const timeWindow = (req.query.timeWindow as string) || '24h';
@@ -193,7 +193,7 @@ export function registerComplianceRoutes(router: Router): void {
   });
 
   // GET /documents/top-accessed
-  // TODO: migrate to ProjectionService
+  // TODO(OMN-6111): migrate to ProjectionService
   router.get('/documents/top-accessed', async (req, res) => {
     try {
       const timeWindow = (req.query.timeWindow as string) || '7d';
