@@ -3,7 +3,7 @@
  * Extracted from intelligence-routes.ts (OMN-5193).
  *
  * Data access: Mixed (eventConsumer + direct DB)
- * // TODO: migrate direct DB queries to ProjectionService
+ * // TODO(OMN-6111): migrate direct DB queries to ProjectionService
  */
 import type { Router } from 'express';
 import { sql, eq, gte, and } from 'drizzle-orm';
@@ -66,7 +66,7 @@ export function registerHealthRoutes(router: Router): void {
   });
 
   // GET /health/manifest-injection
-  // TODO: migrate to ProjectionService
+  // TODO(OMN-6111): migrate to ProjectionService
   router.get('/health/manifest-injection', async (req, res) => {
     try {
       const twentyFourHoursAgo = new Date(Date.now() - 24 * 60 * 60 * 1000);
@@ -208,7 +208,7 @@ export function registerHealthRoutes(router: Router): void {
   });
 
   // GET /platform/services
-  // TODO: migrate to ProjectionService
+  // TODO(OMN-6111): migrate to ProjectionService
   router.get('/platform/services', async (req, res) => {
     try {
       const services = await getIntelligenceDb()

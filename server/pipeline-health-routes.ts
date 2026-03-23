@@ -26,7 +26,7 @@ const router = Router();
 router.get('/', async (_req, res) => {
   try {
     // Primary: Kafka read-model (not yet wired — throws immediately so local is used)
-    // TODO: replace primary stub with read-model query once Kafka projection exists
+    // TODO(OMN-6111): replace primary stub with read-model query once Kafka projection exists
     const result = await withFallback(
       async () => {
         throw new Error('kafka read-model not yet wired for pipeline-health');

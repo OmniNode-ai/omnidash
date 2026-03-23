@@ -3,7 +3,7 @@
  * Extracted from intelligence-routes.ts (OMN-5193).
  *
  * Data access: Direct DB (getIntelligenceDb)
- * // TODO: migrate to ProjectionService
+ * // TODO(OMN-6111): migrate to ProjectionService
  */
 import type { Router, Request, Response } from 'express';
 import { sql, desc, asc, eq, or, and, inArray, ne, gte } from 'drizzle-orm';

@@ -366,7 +366,7 @@ export class PostgresAdapter {
       agent_actions: schema.agentActions,
       agent_manifest_injections: schema.agentManifestInjections,
       agent_transformation_events: schema.agentTransformationEvents,
-      // 'error_events': schema.errorEvents, // TODO: Add errorEvents table to schema when needed
+      // 'error_events': schema.errorEvents, // TODO(OMN-6111): Add errorEvents table to schema when needed
       pattern_lineage_nodes: schema.patternLineageNodes,
       pattern_lineage_edges: schema.patternLineageEdges,
       injection_effectiveness: schema.injectionEffectiveness,

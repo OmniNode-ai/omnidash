@@ -3,7 +3,7 @@
  * Extracted from intelligence-routes.ts (OMN-5193).
  *
  * Data access: Direct DB (getIntelligenceDb)
- * // TODO: migrate to ProjectionService
+ * // TODO(OMN-6111): migrate to ProjectionService
  */
 import type { Router, Request, Response } from 'express';
 import { sql, desc, asc, eq, gte } from 'drizzle-orm';
@@ -17,7 +17,7 @@ import { safeInterval, timeWindowToInterval } from '../../sql-safety';
 
 export function registerPipelineRoutes(router: Router): void {
   // GET /injections/recent
-  // TODO: migrate to ProjectionService
+  // TODO(OMN-6111): migrate to ProjectionService
   router.get('/injections/recent', async (req: Request, res: Response) => {
     try {
       const db = getIntelligenceDb();
@@ -41,7 +41,7 @@ export function registerPipelineRoutes(router: Router): void {
   });
 
   // GET /injections/cohort-summary
-  // TODO: migrate to ProjectionService
+  // TODO(OMN-6111): migrate to ProjectionService
   router.get('/injections/cohort-summary', async (req: Request, res: Response) => {
     try {
       const db = getIntelligenceDb();
@@ -80,7 +80,7 @@ export function registerPipelineRoutes(router: Router): void {
   });
 
   // GET /lifecycle/recent
-  // TODO: migrate to ProjectionService
+  // TODO(OMN-6111): migrate to ProjectionService
   router.get('/lifecycle/recent', async (req: Request, res: Response) => {
     try {
       const db = getIntelligenceDb();
@@ -104,7 +104,7 @@ export function registerPipelineRoutes(router: Router): void {
   });
 
   // GET /lifecycle/summary
-  // TODO: migrate to ProjectionService
+  // TODO(OMN-6111): migrate to ProjectionService
   router.get('/lifecycle/summary', async (req: Request, res: Response) => {
     try {
       const db = getIntelligenceDb();
@@ -137,7 +137,7 @@ export function registerPipelineRoutes(router: Router): void {
   });
 
   // GET /lifecycle/pattern/:patternId
-  // TODO: migrate to ProjectionService
+  // TODO(OMN-6111): migrate to ProjectionService
   router.get('/lifecycle/pattern/:patternId', async (req: Request, res: Response) => {
     try {
       const db = getIntelligenceDb();
@@ -161,7 +161,7 @@ export function registerPipelineRoutes(router: Router): void {
   });
 
   // GET /attributions/recent
-  // TODO: migrate to ProjectionService
+  // TODO(OMN-6111): migrate to ProjectionService
   router.get('/attributions/recent', async (req: Request, res: Response) => {
     try {
       const db = getIntelligenceDb();
@@ -185,7 +185,7 @@ export function registerPipelineRoutes(router: Router): void {
   });
 
   // GET /attributions/summary
-  // TODO: migrate to ProjectionService
+  // TODO(OMN-6111): migrate to ProjectionService
   router.get('/attributions/summary', async (req: Request, res: Response) => {
     try {
       const db = getIntelligenceDb();

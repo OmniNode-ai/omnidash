@@ -97,10 +97,10 @@ chatRouter.post('/send', async (req, res) => {
       });
     }
 
-    // TODO: Implement message sending to chat service
-    // TODO: Store message in database
-    // TODO: Get AI response
-    // TODO: Store AI response in database
+    // TODO(OMN-6111): Implement message sending to chat service
+    // TODO(OMN-6111): Store message in database
+    // TODO(OMN-6111): Get AI response
+    // TODO(OMN-6111): Store AI response in database
 
     res.status(501).json({
       error: 'Not implemented',

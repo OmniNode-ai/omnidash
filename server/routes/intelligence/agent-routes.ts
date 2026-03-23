@@ -3,7 +3,7 @@
  * Extracted from intelligence-routes.ts (OMN-5193).
  *
  * Data access: Mixed (eventConsumer in-memory + direct DB fallback)
- * // TODO: migrate direct DB queries to ProjectionService
+ * // TODO(OMN-6111): migrate direct DB queries to ProjectionService
  */
 import type { Router } from 'express';
 import { sql } from 'drizzle-orm';
@@ -39,7 +39,7 @@ export function registerAgentRoutes(router: Router): void {
       console.log(`[API] Event consumer metrics empty, falling back to database query`);
 
       // Fallback: query PostgreSQL directly when event stream is empty
-      // TODO: migrate to ProjectionService
+      // TODO(OMN-6111): migrate to ProjectionService
       const interval = timeWindowToInterval(timeWindow);
       const rowsResult = await getIntelligenceDb().execute(sql`
         SELECT
@@ -99,7 +99,7 @@ export function registerAgentRoutes(router: Router): void {
       console.log(`[API] Event consumer actions empty, falling back to database`);
 
       // Fallback: pull most recent actions from PostgreSQL
-      // TODO: migrate to ProjectionService
+      // TODO(OMN-6111): migrate to ProjectionService
       try {
         const rowsResult = await getIntelligenceDb().execute(sql`
           SELECT id, correlation_id, agent_name, action_type, action_name, action_details, debug_mode, duration_ms, created_at
@@ -218,7 +218,7 @@ export function registerAgentRoutes(router: Router): void {
   });
 
   // GET /agents/routing-strategy
-  // TODO: migrate to ProjectionService
+  // TODO(OMN-6111): migrate to ProjectionService
   router.get('/agents/routing-strategy', async (req, res) => {
     try {
       const timeWindow = (req.query.timeWindow as string) || '24h';
@@ -279,7 +279,7 @@ export function registerAgentRoutes(router: Router): void {
   });
 
   // GET /transformations/summary
-  // TODO: migrate to ProjectionService
+  // TODO(OMN-6111): migrate to ProjectionService
   router.get('/transformations/summary', async (req, res) => {
     try {
       const timeWindow = (req.query.timeWindow as string) || '24h';
