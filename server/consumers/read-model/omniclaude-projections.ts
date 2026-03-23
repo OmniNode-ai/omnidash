@@ -74,6 +74,11 @@ import type {
   AgentMatchEvent,
   LatencyBreakdownEvent,
 } from '@shared/extraction-types';
+import {
+  isContextUtilizationEvent,
+  isAgentMatchEvent,
+  isLatencyBreakdownEvent,
+} from '@shared/extraction-types';
 import { llmRoutingProjection } from '../../projection-bootstrap';
 import { emitLlmRoutingInvalidate } from '../../llm-routing-events';
 import { emitDelegationInvalidate } from '../../delegation-events';
@@ -1448,12 +1453,23 @@ export class OmniclaudeProjectionHandler implements ProjectionHandler {
     data: Record<string, unknown>,
     _meta: MessageMeta
   ): Promise<boolean> {
-    try {
-      await extractionAggregator.handleContextUtilization(
-        data as unknown as ContextUtilizationEvent
+    if (!isContextUtilizationEvent(data)) {
+      console.warn(
+        '[ReadModelConsumer] context-utilization event missing required fields -- skipping malformed event'
       );
+      return true;
+    }
+    try {
+      await extractionAggregator.handleContextUtilization(data);
     } catch (err) {
-      console.error('[ReadModelConsumer] context-utilization projection error:', err);
+      if (isTableMissingError(err, 'injection_effectiveness')) {
+        console.warn(
+          '[ReadModelConsumer] injection_effectiveness table not yet created -- ' +
+            'run migrations to enable extraction projection'
+        );
+        return true;
+      }
+      throw err;
     }
     return true;
   }
@@ -1462,10 +1478,23 @@ export class OmniclaudeProjectionHandler implements ProjectionHandler {
     data: Record<string, unknown>,
     _meta: MessageMeta
   ): Promise<boolean> {
+    if (!isAgentMatchEvent(data)) {
+      console.warn(
+        '[ReadModelConsumer] agent-match event missing required fields -- skipping malformed event'
+      );
+      return true;
+    }
     try {
-      await extractionAggregator.handleAgentMatch(data as unknown as AgentMatchEvent);
+      await extractionAggregator.handleAgentMatch(data);
     } catch (err) {
-      console.error('[ReadModelConsumer] agent-match projection error:', err);
+      if (isTableMissingError(err, 'injection_effectiveness')) {
+        console.warn(
+          '[ReadModelConsumer] injection_effectiveness table not yet created -- ' +
+            'run migrations to enable extraction projection'
+        );
+        return true;
+      }
+      throw err;
     }
     return true;
   }
@@ -1474,10 +1503,23 @@ export class OmniclaudeProjectionHandler implements ProjectionHandler {
     data: Record<string, unknown>,
     _meta: MessageMeta
   ): Promise<boolean> {
+    if (!isLatencyBreakdownEvent(data)) {
+      console.warn(
+        '[ReadModelConsumer] latency-breakdown event missing required fields -- skipping malformed event'
+      );
+      return true;
+    }
     try {
-      await extractionAggregator.handleLatencyBreakdown(data as unknown as LatencyBreakdownEvent);
+      await extractionAggregator.handleLatencyBreakdown(data);
     } catch (err) {
-      console.error('[ReadModelConsumer] latency-breakdown projection error:', err);
+      if (isTableMissingError(err, 'latency_breakdowns')) {
+        console.warn(
+          '[ReadModelConsumer] latency_breakdowns table not yet created -- ' +
+            'run migrations to enable extraction projection'
+        );
+        return true;
+      }
+      throw err;
     }
     return true;
   }
