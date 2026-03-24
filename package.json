@@ -33,6 +33,7 @@
     "db:migrate": "tsx scripts/run-migrations.ts",
     "db:check-parity": "tsx scripts/check-migration-parity.ts",
     "db:check-coupling": "tsx scripts/check-migration-required.ts",
+    "db:check-drizzle-parity": "tsx scripts/check-drizzle-migration-parity.ts",
     "db:test:setup": "tsx scripts/setup-test-db.ts",
     "seed-events": "tsx scripts/seed-events.ts",
     "seed-events:continuous": "tsx scripts/seed-events.ts --continuous",
