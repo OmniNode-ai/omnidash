@@ -856,4 +856,159 @@ describe('NodeRegistryProjection', () => {
       expect(projection.getSnapshot().payload.nodes).toHaveLength(1);
     });
   });
+
+  // --------------------------------------------------------------------------
+  // normalizeNodeType — _GENERIC suffix and class name handling (OMN-6410)
+  // --------------------------------------------------------------------------
+
+  describe('normalizeNodeType (OMN-6410)', () => {
+    it.each([
+      ['effect', 'EFFECT'],
+      ['EFFECT', 'EFFECT'],
+      ['EFFECT_GENERIC', 'EFFECT'],
+      ['effect_generic', 'EFFECT'],
+      ['COMPUTE_GENERIC', 'COMPUTE'],
+      ['ORCHESTRATOR_GENERIC', 'ORCHESTRATOR'],
+      ['REDUCER_GENERIC', 'REDUCER'],
+      ['NodeRegistrationOrchestrator', 'ORCHESTRATOR'],
+      ['NodeRegistryEffect', 'EFFECT'],
+      ['SomethingUnknown', 'COMPUTE'],
+    ])('normalizes "%s" to "%s"', (input, expected) => {
+      const applied = projection.applyEvent(
+        makeEvent({
+          type: 'node-introspection',
+          payload: { node_id: 'type-test', node_type: input },
+        })
+      );
+      expect(applied).toBe(true);
+      const snap = projection.getSnapshot();
+      expect(snap.payload.nodes[0].nodeType).toBe(expected);
+    });
+  });
+
+  // --------------------------------------------------------------------------
+  // extractMetadata — node_name extraction (OMN-6411)
+  // --------------------------------------------------------------------------
+
+  describe('extractMetadata node_name (OMN-6411)', () => {
+    it('should extract node_name from nested metadata', () => {
+      projection.applyEvent(
+        makeEvent({
+          type: 'node-introspection',
+          payload: {
+            node_id: 'meta-test',
+            node_type: 'effect',
+            metadata: {
+              node_name: 'registration-orchestrator',
+              description: 'Orchestrates registration',
+            },
+          },
+        })
+      );
+      const snap = projection.getSnapshot();
+      expect(snap.payload.nodes[0].metadata?.node_name).toBe('registration-orchestrator');
+      expect(snap.payload.nodes[0].metadata?.description).toBe('Orchestrates registration');
+    });
+  });
+
+  // --------------------------------------------------------------------------
+  // handleIntrospection — top-level description and node_name (OMN-6412)
+  // --------------------------------------------------------------------------
+
+  describe('handleIntrospection top-level fields (OMN-6412)', () => {
+    it('should read description from top-level payload', () => {
+      projection.applyEvent(
+        makeEvent({
+          type: 'node-introspection',
+          payload: {
+            node_id: 'top-level-test',
+            node_type: 'effect',
+            description: 'Handles registration',
+            node_name: 'node_registry_effect',
+          },
+        })
+      );
+      const snap = projection.getSnapshot();
+      expect(snap.payload.nodes[0].metadata?.description).toBe('Handles registration');
+      expect(snap.payload.nodes[0].metadata?.node_name).toBe('node_registry_effect');
+    });
+
+    it('should prefer top-level description over nested metadata.description', () => {
+      projection.applyEvent(
+        makeEvent({
+          type: 'node-introspection',
+          payload: {
+            node_id: 'precedence-test',
+            node_type: 'effect',
+            description: 'Top level',
+            metadata: { description: 'Nested' },
+          },
+        })
+      );
+      const snap = projection.getSnapshot();
+      expect(snap.payload.nodes[0].metadata?.description).toBe('Top level');
+    });
+
+    it('should fall back to nested metadata when no top-level fields', () => {
+      projection.applyEvent(
+        makeEvent({
+          type: 'node-introspection',
+          payload: {
+            node_id: 'fallback-test',
+            node_type: 'compute',
+            metadata: { description: 'From nested', node_name: 'nested_name' },
+          },
+        })
+      );
+      const snap = projection.getSnapshot();
+      expect(snap.payload.nodes[0].metadata?.description).toBe('From nested');
+      expect(snap.payload.nodes[0].metadata?.node_name).toBe('nested_name');
+    });
+  });
+
+  // --------------------------------------------------------------------------
+  // E2E: realistic introspection event produces correct node state (OMN-6415)
+  // --------------------------------------------------------------------------
+
+  describe('e2e introspection pipeline (OMN-6415)', () => {
+    it('should produce correct node state from realistic event', () => {
+      projection.applyEvent(
+        makeEvent({
+          type: 'node-introspection',
+          payload: {
+            node_id: 'node-abc-123',
+            node_type: 'EFFECT_GENERIC',
+            node_name: 'node_registry_effect',
+            description: 'Writes node registrations to PostgreSQL',
+            node_version: { major: 1, minor: 2, patch: 0 },
+            current_state: 'active',
+            capabilities: { declared: ['postgres_registration', 'node_upsert'] },
+          },
+        })
+      );
+      const snap = projection.getSnapshot();
+      const node = snap.payload.nodes[0];
+
+      expect(node.nodeType).toBe('EFFECT');
+      expect(node.metadata?.description).toBe('Writes node registrations to PostgreSQL');
+      expect(node.metadata?.node_name).toBe('node_registry_effect');
+      expect(node.version).toBe('1.2.0');
+    });
+
+    it('should degrade gracefully for legacy event without description', () => {
+      projection.applyEvent(
+        makeEvent({
+          type: 'node-introspection',
+          payload: {
+            node_id: 'legacy-node',
+            node_type: 'compute',
+            current_state: 'active',
+          },
+        })
+      );
+      const snap = projection.getSnapshot();
+      expect(snap.payload.nodes[0].nodeType).toBe('COMPUTE');
+      expect(snap.payload.nodes[0].metadata?.description).toBeUndefined();
+    });
+  });
 });
