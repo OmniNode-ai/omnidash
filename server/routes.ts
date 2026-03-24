@@ -91,6 +91,8 @@ import { runtimeErrorsRoutes } from './runtime-errors-routes';
 import reviewCalibrationRoutes from './review-calibration-routes';
 // Projection health diagnostic routes (OMN-6390)
 import projectionHealthRoutes from './projection-health-routes';
+// Staleness API routes (OMN-6398)
+import stalenessRoutes from './staleness-routes';
 
 export async function registerRoutes(app: Express): Promise<Server> {
   // put application routes here
@@ -260,6 +262,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // Projection health diagnostic routes (OMN-6390)
   app.use('/api/projection-health', projectionHealthRoutes);
+
+  // Staleness API routes (OMN-6398)
+  app.use('/api/staleness', stalenessRoutes);
 
   // Prometheus metrics endpoint (OMN-4609)
   // Route: GET /metrics — NO authentication. Prometheus scrapes without tokens.
