@@ -8,7 +8,7 @@ import { defineConfig } from '@playwright/test';
  *
  * Config for tests that require LIVE local infrastructure:
  *   - Kafka/Redpanda on localhost:19092
- *   - PostgreSQL on localhost:5436
+ *   - PostgreSQL on the external host port (see ~/.omnibase/.env)
  *   - omnidash dev server on localhost:3000
  *
  * Targets dataflow.spec.ts (Kafka -> projection -> page) and
