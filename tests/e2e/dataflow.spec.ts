@@ -10,7 +10,7 @@
  *
  * Prerequisites:
  *   - Local Kafka/Redpanda on localhost:19092
- *   - PostgreSQL on localhost:5436
+ *   - PostgreSQL on the external host port (see ~/.omnibase/.env)
  *   - omnidash running on localhost:3000 with live Kafka/DB
  *
  * Run with:
