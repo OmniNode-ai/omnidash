@@ -1519,13 +1519,32 @@ export class OmniclaudeProjectionHandler implements ProjectionHandler {
     _meta: MessageMeta
   ): Promise<boolean> {
     if (!isLatencyBreakdownEvent(data)) {
+      // Log actual keys to help diagnose future mismatches (OMN-6392)
+      const keys = Object.keys(data).filter((k) => !k.startsWith('_')).sort().join(', ');
       console.warn(
-        '[ReadModelConsumer] latency-breakdown event missing required fields -- skipping malformed event'
+        `[ReadModelConsumer] latency-breakdown event failed guard -- skipping. ` +
+        `Available keys: [${keys}]`
       );
       return true;
     }
+
+    // Normalize camelCase fields to snake_case for the aggregator (OMN-6392).
+    // The type guard now accepts both forms, but the DB column names are snake_case.
+    const normalized: Record<string, unknown> = { ...data };
+    if (!normalized.session_id && normalized.sessionId) {
+      normalized.session_id = normalized.sessionId;
+    }
+    if (!normalized.prompt_id && normalized.promptId) {
+      normalized.prompt_id = normalized.promptId;
+    }
+    if (!normalized.cohort) {
+      normalized.cohort = 'unknown';
+    }
+
     try {
-      await extractionAggregator.handleLatencyBreakdown(data);
+      await extractionAggregator.handleLatencyBreakdown(
+        normalized as import('@shared/extraction-types').LatencyBreakdownEvent
+      );
     } catch (err) {
       if (isTableMissingError(err, 'latency_breakdowns')) {
         console.warn(
