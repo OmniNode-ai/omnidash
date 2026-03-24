@@ -20,6 +20,7 @@
 import { Router } from 'express';
 import { tryGetIntelligenceDb } from './storage';
 import { sql } from 'drizzle-orm';
+import { safeCountQuery, safeMaxTimestampQuery } from './sql-safety';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -177,9 +178,7 @@ export async function getProjectionHealth(
   for (const tableName of tableNames) {
     try {
       // Use reltuples for fast approximate count, fall back to exact count for small tables
-      const countResult = await db.execute(
-        sql.raw(`SELECT COUNT(*) AS count FROM "${tableName}"`)
-      );
+      const countResult = await db.execute(safeCountQuery(tableName));
       const countRows = Array.isArray(countResult)
         ? countResult
         : ((countResult as any).rows ?? []);
@@ -189,12 +188,8 @@ export async function getProjectionHealth(
       const tsCol = TIMESTAMP_COLUMNS[tableName];
       if (tsCol && rowCount > 0) {
         try {
-          const tsResult = await db.execute(
-            sql.raw(`SELECT MAX("${tsCol}") AS last_updated FROM "${tableName}"`)
-          );
-          const tsRows = Array.isArray(tsResult)
-            ? tsResult
-            : ((tsResult as any).rows ?? []);
+          const tsResult = await db.execute(safeMaxTimestampQuery(tableName, tsCol));
+          const tsRows = Array.isArray(tsResult) ? tsResult : ((tsResult as any).rows ?? []);
           const rawTs = tsRows[0]?.last_updated;
           if (rawTs) {
             lastUpdated = new Date(rawTs as string).toISOString();
@@ -205,9 +200,7 @@ export async function getProjectionHealth(
       }
 
       const isStale =
-        rowCount === 0 ||
-        !lastUpdated ||
-        now - new Date(lastUpdated).getTime() > thresholdMs;
+        rowCount === 0 || !lastUpdated || now - new Date(lastUpdated).getTime() > thresholdMs;
 
       tables[tableName] = {
         rowCount,

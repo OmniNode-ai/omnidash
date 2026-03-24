@@ -16,12 +16,12 @@
 
 import { Router } from 'express';
 import { tryGetIntelligenceDb } from './storage';
-import { sql } from 'drizzle-orm';
 import {
   getStaleSeverity,
   type StalenessInfo,
   type StalenessApiResponse,
 } from '@shared/staleness-types';
+import { safeMaxTimestampQuery } from './sql-safety';
 
 // ---------------------------------------------------------------------------
 // Feature-to-table mapping
@@ -82,9 +82,7 @@ export async function getStalenessInfo(): Promise<StalenessApiResponse> {
 
   for (const [name, { table, tsCol }] of Object.entries(FEATURE_TABLE_MAP)) {
     try {
-      const result = await db.execute(
-        sql.raw(`SELECT MAX("${tsCol}") AS last_updated FROM "${table}"`)
-      );
+      const result = await db.execute(safeMaxTimestampQuery(table, tsCol));
       const rows = Array.isArray(result) ? result : ((result as any).rows ?? []);
       const rawTs = rows[0]?.last_updated;
       const lastUpdated = rawTs ? new Date(rawTs as string).toISOString() : null;
