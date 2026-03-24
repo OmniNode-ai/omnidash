@@ -289,7 +289,7 @@ export default function ContextEffectivenessDashboard() {
         <FeatureNotEnabledBanner
           featureName="Context Effectiveness"
           eventTopic="onex.evt.omniclaude.context-utilization.v1"
-          flagHint="ENABLE_CONTEXT_UTILIZATION"
+          flagHint="INTELLIGENCE_SERVICE_URL"
         />
       )}
 
@@ -334,7 +334,9 @@ export default function ContextEffectivenessDashboard() {
               </CardDescription>
             </div>
             <Badge
-              variant={summaryLoading ? 'secondary' : scoreBadge(summary?.avg_utilization_score ?? 0)}
+              variant={
+                summaryLoading ? 'secondary' : scoreBadge(summary?.avg_utilization_score ?? 0)
+              }
               className="text-xs"
             >
               {summaryLoading
@@ -426,7 +428,9 @@ export default function ContextEffectivenessDashboard() {
           </CardHeader>
           <CardContent>
             {methodError ? (
-              <p className="text-sm text-destructive py-4 text-center">Failed to load method data.</p>
+              <p className="text-sm text-destructive py-4 text-center">
+                Failed to load method data.
+              </p>
             ) : methodLoading ? (
               <Skeleton className="h-52 w-full" />
             ) : (byMethod?.length ?? 0) === 0 ? (
@@ -492,10 +496,7 @@ export default function ContextEffectivenessDashboard() {
               <p className="text-sm text-muted-foreground py-4 text-center">No data.</p>
             ) : (
               <ResponsiveContainer width="100%" height={220}>
-                <BarChart
-                  data={outcomes}
-                  margin={{ top: 0, right: 16, left: 8, bottom: 0 }}
-                >
+                <BarChart data={outcomes} margin={{ top: 0, right: 16, left: 8, bottom: 0 }}>
                   <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
                   <XAxis
                     dataKey="outcome"
@@ -554,15 +555,11 @@ export default function ContextEffectivenessDashboard() {
             <TrendingUp className="h-4 w-4" />
             Effectiveness Score Trend
           </CardTitle>
-          <CardDescription>
-            Average utilization score and injection rate over time
-          </CardDescription>
+          <CardDescription>Average utilization score and injection rate over time</CardDescription>
         </CardHeader>
         <CardContent>
           {trendError ? (
-            <p className="text-sm text-destructive py-8 text-center">
-              Failed to load trend data.
-            </p>
+            <p className="text-sm text-destructive py-8 text-center">Failed to load trend data.</p>
           ) : trendLoading ? (
             <Skeleton className="h-64 w-full" />
           ) : (trend?.length ?? 0) === 0 ? (
