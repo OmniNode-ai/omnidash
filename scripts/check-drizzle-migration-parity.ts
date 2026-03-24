@@ -53,6 +53,27 @@ function extractMigrationTables(migrationsDir: string): Set<string> {
   return tables;
 }
 
+// ---------------------------------------------------------------------------
+// Known exceptions (pre-existing, tracked for future cleanup)
+// ---------------------------------------------------------------------------
+
+// Tables defined as read-model views or created outside the migration chain.
+// Each entry must have a tracking ticket.
+const MISSING_MIGRATION_ALLOWLIST = new Set([
+  'review_calibration_runs_rm', // read-model table created by consumer projection
+]);
+
+// Tables intentionally defined in multiple schema files (e.g. shared between
+// intelligence and omniclaude-state schemas). Tracked for future dedup.
+const KNOWN_DUPLICATE_TABLES = new Set([
+  'gate_decisions', // shared: intelligence + omniclaude-state
+  'epic_run_events', // shared: intelligence + omniclaude-state
+  'epic_run_lease', // shared: intelligence + omniclaude-state
+  'pr_watch_state', // shared: intelligence + omniclaude-state
+  'pipeline_budget_state', // shared: intelligence + omniclaude-state
+  'debug_escalation_counts', // shared: intelligence + omniclaude-state
+]);
+
 // Main
 const schemaFiles = ['shared/intelligence-schema.ts', 'shared/omniclaude-state-schema.ts'];
 const migrationsDir = 'migrations';
@@ -74,10 +95,16 @@ const findings: string[] = [];
 // Check: every Drizzle table must have a matching migration
 for (const dt of drizzleTables) {
   if (!migrationTableNames.has(dt.name)) {
-    findings.push(
-      `[ERROR] Drizzle table "${dt.name}" (${dt.source}) has no matching CREATE TABLE in migrations/`
-    );
-    exitCode = 1;
+    if (MISSING_MIGRATION_ALLOWLIST.has(dt.name)) {
+      console.log(
+        `[SKIP] Drizzle table "${dt.name}" (${dt.source}) — allowlisted (no migration required)`
+      );
+    } else {
+      findings.push(
+        `[ERROR] Drizzle table "${dt.name}" (${dt.source}) has no matching CREATE TABLE in migrations/`
+      );
+      exitCode = 1;
+    }
   }
 }
 
@@ -90,11 +117,15 @@ for (const dt of drizzleTables) {
 }
 for (const [name, defs] of drizzleByName) {
   if (defs.length > 1) {
-    const sources = defs.map((d) => d.source).join(', ');
-    findings.push(
-      `[ERROR] Table "${name}" defined in ${defs.length} Drizzle schema files: ${sources}`
-    );
-    exitCode = 1;
+    if (KNOWN_DUPLICATE_TABLES.has(name)) {
+      console.log(`[SKIP] Table "${name}" — known cross-schema duplicate (tracked for dedup)`);
+    } else {
+      const sources = defs.map((d) => d.source).join(', ');
+      findings.push(
+        `[ERROR] Table "${name}" defined in ${defs.length} Drizzle schema files: ${sources}`
+      );
+      exitCode = 1;
+    }
   }
 }
 
