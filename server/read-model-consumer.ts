@@ -341,7 +341,14 @@ export class ReadModelConsumer {
     if (!message.value) return null;
     try {
       const raw = JSON.parse(message.value.toString());
+      // Unwrap ONEX envelope: { payload: { ... } } or { data: { ... } }
+      // Many producers use 'payload', others use 'data' as the envelope key.
       if (raw.payload && typeof raw.payload === 'object') return { ...raw.payload, _envelope: raw };
+      if (raw.data && typeof raw.data === 'object' && !Array.isArray(raw.data)) {
+        // Heuristic: if 'data' contains domain fields (not just metadata), unwrap it.
+        // Preserve envelope-level fields like event_type, correlation_id as fallbacks.
+        return { ...raw.data, _envelope: raw, _event_type: raw.event_type, _correlation_id: raw.correlation_id };
+      }
       return raw;
     } catch {
       return null;

@@ -1192,9 +1192,24 @@ export class OmniclaudeProjectionHandler implements ProjectionHandler {
     const { db } = context;
     if (!db) return false;
 
-    const sessionId = (data.session_id as string) || (data.sessionId as string);
+    // Try multiple field name patterns for session identifier.
+    // Producers may use snake_case (session_id), camelCase (sessionId),
+    // or the event may carry only a correlation_id at the envelope level.
+    const sessionId =
+      (data.session_id as string) ||
+      (data.sessionId as string) ||
+      (data.correlation_id as string) ||
+      (data.correlationId as string) ||
+      (data._correlation_id as string) || // from envelope unwrap
+      '';
+
     if (!sessionId) {
-      console.warn('[ReadModelConsumer] session-outcome event missing session_id -- skipping');
+      // Log actual keys to help diagnose future mismatches
+      const keys = Object.keys(data).filter((k) => !k.startsWith('_')).sort().join(', ');
+      console.warn(
+        `[ReadModelConsumer] session-outcome event missing session_id -- skipping. ` +
+        `Available keys: [${keys}]`
+      );
       return true;
     }
 
