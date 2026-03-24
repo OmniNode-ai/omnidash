@@ -137,13 +137,15 @@ export function transformNodeRegistryPayload(payload: NodeRegistryPayload): Dash
     const capsList = flattenCapabilities(n.capabilities);
     const nodeName = deriveNodeName(n.nodeId, n.metadata);
     // Build a description from available data. Priority:
-    // 1. Explicit metadata description
-    // 2. Capabilities list
-    // 3. Synthesized from node type + name (so the column is never just "-")
+    // 1. Explicit metadata description (contract-sourced)
+    // 2. Capabilities list (comma-separated)
+    // 3. Node type + derived name (when name differs from nodeId)
+    // 4. Node type alone as last resort
     const description =
       n.metadata?.description ??
-      (capsList.length > 0
-        ? capsList.join(', ')
+      (capsList.length > 0 ? capsList.join(', ') : null) ??
+      (nodeName && nodeName !== n.nodeId
+        ? `${n.nodeType.charAt(0) + n.nodeType.slice(1).toLowerCase()} node — ${nodeName}`
         : `${n.nodeType} node${n.reason ? ` (${n.reason})` : ''}`);
     return {
       node_id: n.nodeId,

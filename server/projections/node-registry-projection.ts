@@ -93,9 +93,16 @@ function toVersionString(v: unknown): string {
  */
 function normalizeNodeType(value: unknown): NodeType {
   if (typeof value !== 'string') return 'COMPUTE';
-  const upper = value.toUpperCase() as NodeType;
   const valid: NodeType[] = ['EFFECT', 'COMPUTE', 'REDUCER', 'ORCHESTRATOR'];
-  return valid.includes(upper) ? upper : 'COMPUTE';
+  // Strip _GENERIC suffix, uppercase
+  const stripped = value.replace(/_GENERIC$/i, '').toUpperCase();
+  if (valid.includes(stripped as NodeType)) return stripped as NodeType;
+  // Extract from class name (e.g., NodeRegistrationOrchestrator)
+  const lower = value.toLowerCase();
+  for (const t of valid) {
+    if (lower.includes(t.toLowerCase())) return t;
+  }
+  return 'COMPUTE';
 }
 
 /** Event types this view handles */
@@ -180,6 +187,7 @@ function extractMetadata(
       region: (raw.region as string) ?? existing?.region,
       cluster: (raw.cluster as string) ?? existing?.cluster,
       description: (raw.description as string) ?? existing?.description,
+      node_name: (raw.node_name as string) ?? existing?.node_name,
       priority: (raw.priority as number) ?? existing?.priority,
     };
   }
@@ -365,8 +373,19 @@ export class NodeRegistryProjection implements ProjectionView<NodeRegistryPayloa
     // or as a flat string[] (legacy). Normalize both into NodeCapabilities.
     const capabilities = extractCapabilities(payload, existing?.capabilities);
 
-    // Extract metadata if present in the payload
-    const metadata = extractMetadata(payload, existing?.metadata);
+    // Extract metadata if present in the payload, then merge top-level
+    // description and node_name (top-level wins over nested metadata).
+    const extractedMetadata = extractMetadata(payload, existing?.metadata);
+    const topDescription = payload.description as string | undefined;
+    const topNodeName = (payload.node_name ?? payload.nodeName) as string | undefined;
+    const metadata: NodeMetadata | undefined =
+      extractedMetadata || topDescription || topNodeName
+        ? {
+            ...(extractedMetadata ?? {}),
+            ...(topDescription ? { description: topDescription } : {}),
+            ...(topNodeName ? { node_name: topNodeName } : {}),
+          }
+        : undefined;
 
     // Extract introspection reason
     const reason = (payload.reason ?? existing?.reason) as IntrospectionReason | undefined;
