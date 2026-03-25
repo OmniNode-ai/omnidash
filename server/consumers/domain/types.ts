@@ -448,10 +448,10 @@ export interface ConsumerContext {
   /** Propagate heartbeat metrics to registered node */
   propagateHeartbeatMetrics(payload: {
     node_id: string;
-    uptime_seconds?: number | null;
+    uptime_seconds?: number;
     memory_usage_mb?: number | null;
     cpu_usage_percent?: number | null;
-    active_operations_count?: number | null;
+    active_operations_count?: number;
   }): void;
 
   /** Clean up old metrics entries */

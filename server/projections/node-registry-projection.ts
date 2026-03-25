@@ -93,7 +93,7 @@ function toVersionString(v: unknown): string {
  */
 function normalizeNodeType(value: unknown): NodeType {
   if (typeof value !== 'string') return 'COMPUTE';
-  const valid: NodeType[] = ['EFFECT', 'COMPUTE', 'REDUCER', 'ORCHESTRATOR'];
+  const valid: NodeType[] = ['EFFECT', 'COMPUTE', 'REDUCER', 'ORCHESTRATOR', 'SERVICE'];
   // Strip _GENERIC suffix, uppercase
   const stripped = value.replace(/_GENERIC$/i, '').toUpperCase();
   if (valid.includes(stripped as NodeType)) return stripped as NodeType;
