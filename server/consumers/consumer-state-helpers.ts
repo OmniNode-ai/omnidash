@@ -1,3 +1,4 @@
+// no-migration: OMN-6405 type-only change (added | null to optional heartbeat fields)
 /**
  * Consumer state helpers — pure functions for state management [OMN-5191]
  *
