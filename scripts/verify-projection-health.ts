@@ -1,3 +1,4 @@
+// no-migration: OMN-6404 health verification script, no schema changes
 /* eslint-disable no-console */
 /**
  * Projection Health Verification Script (OMN-6404)

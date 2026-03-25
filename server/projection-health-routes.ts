@@ -1,3 +1,4 @@
+// no-migration: OMN-6390 read-only diagnostic endpoint, no schema changes
 /**
  * Projection Health Diagnostic Endpoint (OMN-6390)
  *

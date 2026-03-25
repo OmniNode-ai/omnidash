@@ -1,3 +1,4 @@
+// no-migration: OMN-6401 e2e test only, no schema changes
 /**
  * Playwright E2E Test: Projection Data Flow (OMN-6401)
  *

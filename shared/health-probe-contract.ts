@@ -89,7 +89,6 @@ export const HEALTH_PROBE_CONTRACT: Record<InfraProfile, ProfileExpectation> = {
       'executionGraph',
       'enforcement',
       'envSync',
-      'consumerLag',
     ],
   },
 
@@ -116,7 +115,6 @@ export const HEALTH_PROBE_CONTRACT: Record<InfraProfile, ProfileExpectation> = {
       'executionGraph',
       'enforcement',
       'envSync',
-      'consumerLag',
     ],
   },
 
@@ -134,7 +132,6 @@ export const HEALTH_PROBE_CONTRACT: Record<InfraProfile, ProfileExpectation> = {
       'topicParity',
       'enforcement',
       'envSync',
-      'consumerLag',
     ],
     acceptableIdle: [
       // These depend on specific upstream producers that may not have
@@ -171,7 +168,6 @@ export const ALL_DATA_SOURCE_KEYS = [
   'enforcement',
   'envSync',
   'topicParity',
-  'consumerLag',
 ] as const;
 
 export type DataSourceKey = (typeof ALL_DATA_SOURCE_KEYS)[number];
