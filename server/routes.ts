@@ -93,6 +93,8 @@ import reviewCalibrationRoutes from './review-calibration-routes';
 import projectionHealthRoutes from './projection-health-routes';
 // Staleness API routes (OMN-6398)
 import stalenessRoutes from './staleness-routes';
+// Compliance dashboard routes (OMN-5285)
+import complianceRoutes from './compliance-routes';
 
 export async function registerRoutes(app: Express): Promise<Server> {
   // put application routes here
@@ -265,6 +267,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // Staleness API routes (OMN-6398)
   app.use('/api/staleness', stalenessRoutes);
+
+  // Compliance dashboard routes (OMN-5285)
+  app.use('/api/compliance', complianceRoutes);
 
   // Prometheus metrics endpoint (OMN-4609)
   // Route: GET /metrics — NO authentication. Prometheus scrapes without tokens.
