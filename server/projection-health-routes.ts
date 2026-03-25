@@ -21,6 +21,9 @@ import { Router } from 'express';
 import { tryGetIntelligenceDb } from './storage';
 import { sql } from 'drizzle-orm';
 import { safeCountQuery, safeMaxTimestampQuery } from './sql-safety';
+import { getAllHandlerStats } from './consumers/read-model/types';
+import type { ProjectionHandlerStats } from './consumers/read-model/types';
+import { getReadModelConsumerLag, type ConsumerGroupLag } from './event-bus-health-poller';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -45,6 +48,8 @@ export interface WatermarkInfo {
 export interface ProjectionHealthResponse {
   tables: Record<string, TableHealth>;
   watermarks: WatermarkInfo[];
+  handlerStats: Record<string, ProjectionHandlerStats>;
+  consumerLag: ConsumerGroupLag | null;
   summary: {
     totalTables: number;
     populatedTables: number;
@@ -154,6 +159,8 @@ export async function getProjectionHealth(
     return {
       tables: {},
       watermarks: [],
+      handlerStats: getAllHandlerStats(),
+      consumerLag: getReadModelConsumerLag(),
       summary: { totalTables: 0, populatedTables: 0, emptyTables: 0, staleTables: 0 },
       checkedAt: new Date().toISOString(),
     };
@@ -257,6 +264,8 @@ export async function getProjectionHealth(
   return {
     tables,
     watermarks,
+    handlerStats: getAllHandlerStats(),
+    consumerLag: getReadModelConsumerLag(),
     summary: { totalTables, populatedTables, emptyTables, staleTables },
     checkedAt: new Date().toISOString(),
   };
