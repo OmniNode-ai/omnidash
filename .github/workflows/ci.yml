@@ -25,13 +25,20 @@ jobs:
         run: |
           # Port 5436 is the external port for the upstream PostgreSQL instance.
           # omnidash should never open a connection to it directly.
+          # Exclude comment lines (// or * or JSDoc or <!--) to avoid false positives.
           VIOLATIONS=$(grep -rn ":5436" \
             --include="*.ts" --include="*.tsx" \
             --exclude-dir=node_modules \
             --exclude-dir=dist \
             --exclude-dir=.git \
             --exclude-dir=coverage \
-            . || true)
+            --exclude="no-omninode-bridge-refs.test.ts" \
+            . \
+            | grep -v '^\s*//' \
+            | grep -v '^\s*\*' \
+            | grep -v '^\s*<!--' \
+            | grep -v '// .*:5436' \
+            || true)
           if [ -n "$VIOLATIONS" ]; then
             echo "::error::Architectural violation: direct connection to upstream PostgreSQL port 5436 detected."
             echo "omnidash connects only to omnidash_analytics via OMNIDASH_ANALYTICS_DB_URL."
