@@ -1205,10 +1205,13 @@ export class OmniclaudeProjectionHandler implements ProjectionHandler {
 
     if (!sessionId) {
       // Log actual keys to help diagnose future mismatches
-      const keys = Object.keys(data).filter((k) => !k.startsWith('_')).sort().join(', ');
+      const keys = Object.keys(data)
+        .filter((k) => !k.startsWith('_'))
+        .sort()
+        .join(', ');
       console.warn(
         `[ReadModelConsumer] session-outcome event missing session_id -- skipping. ` +
-        `Available keys: [${keys}]`
+          `Available keys: [${keys}]`
       );
       return true;
     }
@@ -1520,10 +1523,13 @@ export class OmniclaudeProjectionHandler implements ProjectionHandler {
   ): Promise<boolean> {
     if (!isLatencyBreakdownEvent(data)) {
       // Log actual keys to help diagnose future mismatches (OMN-6392)
-      const keys = Object.keys(data).filter((k) => !k.startsWith('_')).sort().join(', ');
+      const keys = Object.keys(data)
+        .filter((k) => !k.startsWith('_'))
+        .sort()
+        .join(', ');
       console.warn(
         `[ReadModelConsumer] latency-breakdown event failed guard -- skipping. ` +
-        `Available keys: [${keys}]`
+          `Available keys: [${keys}]`
       );
       return true;
     }
@@ -1543,7 +1549,7 @@ export class OmniclaudeProjectionHandler implements ProjectionHandler {
 
     try {
       await extractionAggregator.handleLatencyBreakdown(
-        normalized as import('@shared/extraction-types').LatencyBreakdownEvent
+        normalized as unknown as import('@shared/extraction-types').LatencyBreakdownEvent
       );
     } catch (err) {
       if (isTableMissingError(err, 'latency_breakdowns')) {
