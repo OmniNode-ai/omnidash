@@ -113,6 +113,9 @@ const DASHBOARD_ROUTES = [
   '/dod',
   '/intent-drift',
   '/review-calibration',
+  '/compliance',
+  '/routing-feedback',
+  '/pattern-lifecycle',
 
   // Preview pages
   '/preview/analytics',
