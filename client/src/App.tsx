@@ -102,6 +102,12 @@ import RuntimeErrorsDashboard from '@/pages/RuntimeErrorsDashboard';
 import RLRouting from '@/pages/RLRouting';
 // Review Calibration dashboard (OMN-6177)
 import ReviewCalibrationDashboard from '@/pages/ReviewCalibrationDashboard';
+// Compliance dashboard (OMN-5285)
+import ComplianceDashboard from '@/pages/ComplianceDashboard';
+// Routing Feedback dashboard (OMN-5284)
+import RoutingFeedbackDashboard from '@/pages/RoutingFeedbackDashboard';
+// Pattern Lifecycle dashboard (OMN-5283)
+import PatternLifecycleDashboard from '@/pages/PatternLifecycleDashboard';
 
 // Phase 2: Category landing pages (OMN-2181)
 import SpeedCategory from '@/pages/SpeedCategory';
@@ -250,6 +256,15 @@ function Router() {
 
       {/* Review Calibration — convergence metrics, noise trends, model scores (OMN-6177) */}
       <Route path="/review-calibration" component={ReviewCalibrationDashboard} />
+
+      {/* Compliance dashboard (OMN-5285) */}
+      <Route path="/compliance" component={ComplianceDashboard} />
+
+      {/* Routing Feedback dashboard (OMN-5284) */}
+      <Route path="/routing-feedback" component={RoutingFeedbackDashboard} />
+
+      {/* Pattern Lifecycle dashboard (OMN-5283) */}
+      <Route path="/pattern-lifecycle" component={PatternLifecycleDashboard} />
 
       {/* Model Efficiency Index dashboard (OMN-3941) */}
       <Route path="/model-efficiency" component={ModelEfficiencyDashboard} />

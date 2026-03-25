@@ -168,6 +168,24 @@ const advancedSubGroups: AdvancedSubGroup[] = [
         icon: GitCommit,
         description: 'CI failure pattern analysis and escalation trigger timeline (OMN-5282)',
       },
+      {
+        title: 'Epic Pipeline',
+        url: '/epic-pipeline',
+        icon: GitBranch,
+        description: 'Epic-team pipeline run status and ticket progress',
+      },
+      {
+        title: 'PR Watch',
+        url: '/pr-watch',
+        icon: GitPullRequest,
+        description: 'Open PR tracking with merge-readiness and staleness alerts',
+      },
+      {
+        title: 'Pipeline Budget',
+        url: '/pipeline-budget',
+        icon: DollarSign,
+        description: 'Token and cost budget caps per pipeline run',
+      },
     ],
   },
   {
@@ -275,6 +293,24 @@ const advancedSubGroups: AdvancedSubGroup[] = [
         description:
           'Calibration loop convergence, noise trends, model scores, few-shot injection log (OMN-6177)',
       },
+      {
+        title: 'Skills',
+        url: '/skills',
+        icon: Wrench,
+        description: 'Registered skill inventory and execution metrics (OMN-5278)',
+      },
+      {
+        title: 'Routing Feedback',
+        url: '/routing-feedback',
+        icon: GitFork,
+        description: 'Routing decision feedback loop and correction rate (OMN-5284)',
+      },
+      {
+        title: 'Pattern Lifecycle',
+        url: '/pattern-lifecycle',
+        icon: Sparkles,
+        description: 'Pattern creation, promotion, deprecation, and retirement (OMN-5283)',
+      },
     ],
   },
   {
@@ -363,6 +399,36 @@ const advancedSubGroups: AdvancedSubGroup[] = [
         url: '/runtime-errors',
         icon: Bug,
         description: 'Structured runtime errors captured from allowlisted loggers (OMN-5528)',
+      },
+      {
+        title: 'Gate Decisions',
+        url: '/gate-decisions',
+        icon: ShieldCheck,
+        description: 'Merge gate verdicts with reasoning and override history',
+      },
+      {
+        title: 'Debug Escalation',
+        url: '/debug-escalation',
+        icon: Bug,
+        description: 'Escalated debug sessions requiring human attention',
+      },
+      {
+        title: 'Status',
+        url: '/status',
+        icon: Activity,
+        description: 'GitHub PR and Linear ticket snapshot overview',
+      },
+      {
+        title: 'Wiring Health',
+        url: '/wiring-health',
+        icon: Network,
+        description: 'Cross-repo wiring completeness and gap detection (OMN-5292)',
+      },
+      {
+        title: 'Compliance',
+        url: '/compliance',
+        icon: ShieldAlert,
+        description: 'Contract compliance status and violation tracking (OMN-5285)',
       },
     ],
   },
