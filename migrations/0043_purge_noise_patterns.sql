@@ -18,4 +18,4 @@ WHERE pattern_name LIKE 'file_access_pattern::co_access:%';
 
 -- 2. Purge stale "Requested" rows that never advanced
 DELETE FROM pattern_learning_artifacts
-WHERE lifecycle_state = 'Requested';
+WHERE LOWER(lifecycle_state) = 'requested';
