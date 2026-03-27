@@ -31,7 +31,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { AlertTriangle, Bug, Database, Globe, Server, Wifi } from 'lucide-react';
+import { Bug, CheckCircle2, Database, Globe, Wifi } from 'lucide-react';
+import { cn } from '@/lib/utils';
 import {
   runtimeErrorsSource,
   type RuntimeErrorWindow,
@@ -149,8 +150,14 @@ export default function RuntimeErrorsDashboard() {
               <Skeleton className="h-8 w-16" />
             ) : (
               <div className="text-2xl font-bold flex items-center gap-2">
-                <Bug className="h-5 w-5 text-red-500" />
-                {summary?.totalEvents ?? 0}
+                {(summary?.totalEvents ?? 0) > 0 ? (
+                  <Bug className="h-5 w-5 text-red-500" />
+                ) : (
+                  <CheckCircle2 className="h-5 w-5 text-green-500" />
+                )}
+                <span className={(summary?.totalEvents ?? 0) === 0 ? 'text-green-600' : undefined}>
+                  {summary?.totalEvents ?? 0}
+                </span>
               </div>
             )}
           </CardContent>
@@ -164,8 +171,23 @@ export default function RuntimeErrorsDashboard() {
               <Skeleton className="h-8 w-16" />
             ) : (
               <div className="text-2xl font-bold flex items-center gap-2">
-                <Wifi className="h-5 w-5 text-purple-500" />
-                {(cats?.kafkaConsumer ?? 0) + (cats?.kafkaProducer ?? 0)}
+                <Wifi
+                  className={cn(
+                    'h-5 w-5',
+                    (cats?.kafkaConsumer ?? 0) + (cats?.kafkaProducer ?? 0) > 0
+                      ? 'text-purple-500'
+                      : 'text-green-500'
+                  )}
+                />
+                <span
+                  className={
+                    (cats?.kafkaConsumer ?? 0) + (cats?.kafkaProducer ?? 0) === 0
+                      ? 'text-green-600'
+                      : undefined
+                  }
+                >
+                  {(cats?.kafkaConsumer ?? 0) + (cats?.kafkaProducer ?? 0)}
+                </span>
               </div>
             )}
           </CardContent>
@@ -179,8 +201,15 @@ export default function RuntimeErrorsDashboard() {
               <Skeleton className="h-8 w-16" />
             ) : (
               <div className="text-2xl font-bold flex items-center gap-2">
-                <Database className="h-5 w-5 text-blue-500" />
-                {cats?.database ?? 0}
+                <Database
+                  className={cn(
+                    'h-5 w-5',
+                    (cats?.database ?? 0) > 0 ? 'text-blue-500' : 'text-green-500'
+                  )}
+                />
+                <span className={(cats?.database ?? 0) === 0 ? 'text-green-600' : undefined}>
+                  {cats?.database ?? 0}
+                </span>
               </div>
             )}
           </CardContent>
@@ -194,8 +223,23 @@ export default function RuntimeErrorsDashboard() {
               <Skeleton className="h-8 w-16" />
             ) : (
               <div className="text-2xl font-bold flex items-center gap-2">
-                <Globe className="h-5 w-5 text-teal-500" />
-                {(cats?.httpClient ?? 0) + (cats?.httpServer ?? 0)}
+                <Globe
+                  className={cn(
+                    'h-5 w-5',
+                    (cats?.httpClient ?? 0) + (cats?.httpServer ?? 0) > 0
+                      ? 'text-teal-500'
+                      : 'text-green-500'
+                  )}
+                />
+                <span
+                  className={
+                    (cats?.httpClient ?? 0) + (cats?.httpServer ?? 0) === 0
+                      ? 'text-green-600'
+                      : undefined
+                  }
+                >
+                  {(cats?.httpClient ?? 0) + (cats?.httpServer ?? 0)}
+                </span>
               </div>
             )}
           </CardContent>
@@ -258,8 +302,8 @@ export default function RuntimeErrorsDashboard() {
               ))}
             </div>
           ) : !events?.events.length ? (
-            <div className="flex items-center justify-center py-12 text-muted-foreground">
-              <AlertTriangle className="mr-2 h-5 w-5" />
+            <div className="flex items-center justify-center py-12 text-green-600">
+              <CheckCircle2 className="mr-2 h-5 w-5" />
               No runtime errors in this window
             </div>
           ) : (

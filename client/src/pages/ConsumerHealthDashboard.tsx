@@ -31,7 +31,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { CheckCircle2, AlertTriangle, XCircle, Activity, Server, HeartPulse } from 'lucide-react';
+import { CheckCircle2, AlertTriangle, XCircle, Activity, Server } from 'lucide-react';
+import { cn } from '@/lib/utils';
 import {
   consumerHealthSource,
   type ConsumerHealthWindow,
@@ -176,8 +177,19 @@ export default function ConsumerHealthDashboard() {
               <Skeleton className="h-8 w-16" />
             ) : (
               <div className="text-2xl font-bold flex items-center gap-2">
-                <XCircle className="h-5 w-5 text-red-500" />
-                {summary?.severityCounts.critical ?? 0}
+                <XCircle
+                  className={cn(
+                    'h-5 w-5',
+                    (summary?.severityCounts.critical ?? 0) > 0 ? 'text-red-500' : 'text-green-500'
+                  )}
+                />
+                <span
+                  className={
+                    (summary?.severityCounts.critical ?? 0) === 0 ? 'text-green-600' : undefined
+                  }
+                >
+                  {summary?.severityCounts.critical ?? 0}
+                </span>
               </div>
             )}
           </CardContent>
@@ -191,8 +203,19 @@ export default function ConsumerHealthDashboard() {
               <Skeleton className="h-8 w-16" />
             ) : (
               <div className="text-2xl font-bold flex items-center gap-2">
-                <AlertTriangle className="h-5 w-5 text-orange-500" />
-                {summary?.severityCounts.error ?? 0}
+                <AlertTriangle
+                  className={cn(
+                    'h-5 w-5',
+                    (summary?.severityCounts.error ?? 0) > 0 ? 'text-orange-500' : 'text-green-500'
+                  )}
+                />
+                <span
+                  className={
+                    (summary?.severityCounts.error ?? 0) === 0 ? 'text-green-600' : undefined
+                  }
+                >
+                  {summary?.severityCounts.error ?? 0}
+                </span>
               </div>
             )}
           </CardContent>
@@ -268,9 +291,9 @@ export default function ConsumerHealthDashboard() {
               ))}
             </div>
           ) : !events?.events.length ? (
-            <div className="flex items-center justify-center py-12 text-muted-foreground">
-              <HeartPulse className="mr-2 h-5 w-5" />
-              No health events in this window
+            <div className="flex items-center justify-center py-12 text-green-600">
+              <CheckCircle2 className="mr-2 h-5 w-5" />
+              No health events in this window — all consumers healthy
             </div>
           ) : (
             <Table>
