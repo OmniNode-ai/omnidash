@@ -23,7 +23,7 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
-import { AlertTriangle, RefreshCw } from 'lucide-react';
+import { AlertTriangle, CheckCircle2, RefreshCw } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 // ============================================================================
@@ -266,7 +266,11 @@ export default function DlqMonitorDashboard() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
-          <AlertTriangle className="h-5 w-5 text-orange-500" />
+          {(data?.total ?? 0) > 0 ? (
+            <AlertTriangle className="h-5 w-5 text-orange-500" />
+          ) : (
+            <CheckCircle2 className="h-5 w-5 text-green-500" />
+          )}
           <div>
             <h1 className="text-xl font-semibold">DLQ Monitor</h1>
             <p className="text-sm text-muted-foreground">
@@ -292,7 +296,14 @@ export default function DlqMonitorDashboard() {
             {isLoading ? (
               <Skeleton className="h-8 w-16" />
             ) : (
-              <span className="text-2xl font-bold">{data?.total ?? 0}</span>
+              <span
+                className={cn(
+                  'text-2xl font-bold',
+                  (data?.total ?? 0) === 0 ? 'text-green-600' : 'text-red-600'
+                )}
+              >
+                {data?.total ?? 0}
+              </span>
             )}
           </CardContent>
         </Card>
@@ -305,7 +316,14 @@ export default function DlqMonitorDashboard() {
             {isLoading ? (
               <Skeleton className="h-8 w-16" />
             ) : (
-              <span className="text-2xl font-bold">{breakdown.length}</span>
+              <span
+                className={cn(
+                  'text-2xl font-bold',
+                  breakdown.length === 0 ? 'text-green-600' : 'text-red-600'
+                )}
+              >
+                {breakdown.length}
+              </span>
             )}
           </CardContent>
         </Card>
@@ -318,7 +336,14 @@ export default function DlqMonitorDashboard() {
             {isLoading ? (
               <Skeleton className="h-8 w-16" />
             ) : (
-              <span className="text-2xl font-bold">
+              <span
+                className={cn(
+                  'text-2xl font-bold',
+                  new Set(messages.map((m) => m.original_topic)).size === 0
+                    ? 'text-green-600'
+                    : 'text-red-600'
+                )}
+              >
                 {new Set(messages.map((m) => m.original_topic)).size}
               </span>
             )}
