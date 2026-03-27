@@ -40,6 +40,10 @@ const ROUTES = [
   '/event-bus-health',
   '/showcase',
   '/plan-reviewer',
+  '/agents',
+  '/drift',
+  '/pipeline',
+  '/settings',
 ];
 
 async function smoke(): Promise<void> {

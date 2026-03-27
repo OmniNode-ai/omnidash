@@ -117,6 +117,12 @@ const DASHBOARD_ROUTES = [
   '/routing-feedback',
   '/pattern-lifecycle',
 
+  // Empty route scaffolds (OMN-6753)
+  '/agents',
+  '/drift',
+  '/pipeline',
+  '/settings',
+
   // Preview pages
   '/preview/analytics',
   '/preview/health',

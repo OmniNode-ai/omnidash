@@ -36,6 +36,10 @@ import {
   ToggleLeft,
   HeartPulse,
   Bug,
+  Bot,
+  GitCompare,
+  Workflow,
+  Settings,
 } from 'lucide-react';
 import { Link, useLocation } from 'wouter';
 import {
@@ -430,6 +434,24 @@ const advancedSubGroups: AdvancedSubGroup[] = [
         icon: ShieldAlert,
         description: 'Contract compliance status and violation tracking (OMN-5285)',
       },
+      {
+        title: 'Agents',
+        url: '/agents',
+        icon: Bot,
+        description: 'Registered agent inventory and runtime status (OMN-6753)',
+      },
+      {
+        title: 'Contract Drift',
+        url: '/drift',
+        icon: GitCompare,
+        description: 'Cross-repo contract drift detection from onex_change_control (OMN-6753)',
+      },
+      {
+        title: 'Pipeline',
+        url: '/pipeline',
+        icon: Workflow,
+        description: 'Unified pipeline health and status overview (OMN-6753)',
+      },
     ],
   },
   {
@@ -446,6 +468,12 @@ const advancedSubGroups: AdvancedSubGroup[] = [
         url: '/insights',
         icon: Lightbulb,
         description: 'Patterns and conventions from OmniClaude sessions',
+      },
+      {
+        title: 'Settings',
+        url: '/settings',
+        icon: Settings,
+        description: 'Runtime environment configuration and system info (OMN-6753)',
       },
     ],
   },

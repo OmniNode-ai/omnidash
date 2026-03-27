@@ -108,6 +108,11 @@ import ComplianceDashboard from '@/pages/ComplianceDashboard';
 import RoutingFeedbackDashboard from '@/pages/RoutingFeedbackDashboard';
 // Pattern Lifecycle dashboard (OMN-5283)
 import PatternLifecycleDashboard from '@/pages/PatternLifecycleDashboard';
+// Empty route scaffolds (OMN-6753)
+import AgentsDashboard from '@/pages/AgentsDashboard';
+import DriftDashboard from '@/pages/DriftDashboard';
+import PipelineDashboard from '@/pages/PipelineDashboard';
+import SettingsDashboard from '@/pages/SettingsDashboard';
 
 // Phase 2: Category landing pages (OMN-2181)
 import SpeedCategory from '@/pages/SpeedCategory';
@@ -280,6 +285,12 @@ function Router() {
 
       {/* Intent Drift dashboard (OMN-5281) */}
       <Route path="/intent-drift" component={IntentDriftDashboard} />
+
+      {/* Empty route scaffolds (OMN-6753) */}
+      <Route path="/agents" component={AgentsDashboard} />
+      <Route path="/drift" component={DriftDashboard} />
+      <Route path="/pipeline" component={PipelineDashboard} />
+      <Route path="/settings" component={SettingsDashboard} />
 
       {/* Preview routes */}
       <Route path="/preview/analytics" component={EnhancedAnalytics} />
