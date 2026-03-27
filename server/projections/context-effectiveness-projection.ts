@@ -78,7 +78,7 @@ async function query24h(db: Db): Promise<ContextEffectivenessWindowPayload> {
         FROM injection_effectiveness
         WHERE event_type = 'context_utilization'
           AND created_at >= NOW() - INTERVAL '24 hours'
-        GROUP BY utilization_method
+        GROUP BY detection_method
         ORDER BY COUNT(*) DESC
         LIMIT 1
       `),
@@ -187,7 +187,7 @@ async function query7d(db: Db): Promise<ContextEffectivenessWindowPayload> {
         FROM injection_effectiveness
         WHERE event_type = 'context_utilization'
           AND created_at >= NOW() - INTERVAL '7 days'
-        GROUP BY utilization_method
+        GROUP BY detection_method
         ORDER BY COUNT(*) DESC
         LIMIT 1
       `),
@@ -296,7 +296,7 @@ async function query30d(db: Db): Promise<ContextEffectivenessWindowPayload> {
         FROM injection_effectiveness
         WHERE event_type = 'context_utilization'
           AND created_at >= NOW() - INTERVAL '30 days'
-        GROUP BY utilization_method
+        GROUP BY detection_method
         ORDER BY COUNT(*) DESC
         LIMIT 1
       `),
