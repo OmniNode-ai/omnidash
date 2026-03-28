@@ -1205,10 +1205,10 @@ describe('OMN-2924: Pattern projection write handlers', () => {
   });
 
   describe('projectPatternProjectionEvent', () => {
-    it('returns true and upserts patterns into pattern_learning_artifacts', async () => {
+    it('returns true and upserts patterns into pattern_learning_artifacts and pattern_quality_metrics', async () => {
       const { tryGetIntelligenceDb } = await import('../storage');
 
-      // Mock onConflictDoUpdate chain
+      // Mock onConflictDoUpdate chain (used by both patternLearningArtifacts and patternQualityMetrics)
       const mockOnConflict = vi.fn().mockResolvedValue({ rowCount: 1 });
       const mockValues = vi.fn().mockReturnValue({ onConflictDoUpdate: mockOnConflict });
       const mockInsert = vi.fn().mockReturnValue({ values: mockValues });
@@ -1235,9 +1235,10 @@ describe('OMN-2924: Pattern projection write handlers', () => {
 
       await handleMessage(payload);
 
-      expect(mockInsert).toHaveBeenCalledTimes(1);
-      expect(mockValues).toHaveBeenCalledTimes(1);
-      expect(mockOnConflict).toHaveBeenCalledTimes(1);
+      // 2 inserts per pattern: pattern_learning_artifacts + pattern_quality_metrics (OMN-6804)
+      expect(mockInsert).toHaveBeenCalledTimes(2);
+      expect(mockValues).toHaveBeenCalledTimes(2);
+      expect(mockOnConflict).toHaveBeenCalledTimes(2);
     });
 
     it('returns true without DB writes when patterns array is empty', async () => {
@@ -1397,14 +1398,24 @@ describe('OMN-2924: Pattern projection write handlers', () => {
   });
 
   describe('projectPatternLifecycleTransitionedEvent', () => {
-    it('updates lifecycle_state when pattern_id and to_status are present', async () => {
+    it('updates lifecycle_state and inserts audit row when pattern_id and to_status are present', async () => {
       const { tryGetIntelligenceDb } = await import('../storage');
 
+      // Mock update chain for pattern_learning_artifacts
       const mockReturning = vi.fn().mockResolvedValue([{ id: 'row-id-1' }]);
       const mockWhere = vi.fn().mockReturnValue({ returning: mockReturning });
       const mockSet = vi.fn().mockReturnValue({ where: mockWhere });
       const mockUpdate = vi.fn().mockReturnValue({ set: mockSet });
-      const mockDb = { update: mockUpdate } as unknown as ReturnType<typeof tryGetIntelligenceDb>;
+
+      // Mock insert chain for pattern_lifecycle_transitions (OMN-6804)
+      const mockOnConflictDoNothing = vi.fn().mockResolvedValue({ rowCount: 1 });
+      const mockValues = vi.fn().mockReturnValue({ onConflictDoNothing: mockOnConflictDoNothing });
+      const mockInsert = vi.fn().mockReturnValue({ values: mockValues });
+
+      const mockDb = {
+        update: mockUpdate,
+        insert: mockInsert,
+      } as unknown as ReturnType<typeof tryGetIntelligenceDb>;
       (tryGetIntelligenceDb as ReturnType<typeof vi.fn>).mockReturnValue(mockDb);
 
       const handleMessage = getHandleMessage(consumer);
@@ -1426,6 +1437,8 @@ describe('OMN-2924: Pattern projection write handlers', () => {
       expect(mockUpdate).toHaveBeenCalledTimes(1);
       expect(mockSet).toHaveBeenCalledTimes(1);
       expect(mockWhere).toHaveBeenCalledTimes(1);
+      // OMN-6804: Also inserts into pattern_lifecycle_transitions
+      expect(mockInsert).toHaveBeenCalledTimes(1);
     });
 
     it('skips silently when pattern_id is missing', async () => {

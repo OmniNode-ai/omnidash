@@ -3,8 +3,8 @@
  *
  * Projects events from omniintelligence topics into the omnidash_analytics read-model:
  * - LLM call completed -> llm_cost_aggregates
- * - Pattern projection -> pattern_learning_artifacts (upsert)
- * - Pattern lifecycle transitioned -> pattern_learning_artifacts (update)
+ * - Pattern projection -> pattern_learning_artifacts (upsert) + pattern_quality_metrics (upsert)
+ * - Pattern lifecycle transitioned -> pattern_learning_artifacts (update) + pattern_lifecycle_transitions (insert)
  * - Pattern learning requested -> pattern_learning_artifacts (insert pending)
  * - Plan review strategy run -> plan_review_runs
  * - Run evaluated -> objective_evaluations / objective_gate_failures
@@ -16,6 +16,8 @@ import { sql, eq } from 'drizzle-orm';
 import {
   llmCostAggregates,
   patternLearningArtifacts,
+  patternQualityMetrics,
+  patternLifecycleTransitions,
   planReviewRuns,
   intentDriftEvents,
   routingFeedbackEvents,
@@ -493,6 +495,56 @@ export class OmniintelligenceProjectionHandler implements ProjectionHandler {
               projectedAt: row.projectedAt,
             },
           });
+
+        // OMN-6804: Also project into pattern_quality_metrics
+        const qualityScore = Number(
+          pattern.quality_score ?? pattern.composite_score ?? pattern.compositeScore ?? 0
+        );
+        const confidence = Number(
+          (pattern as Record<string, unknown>).confidence ??
+            (pattern.scoring_evidence as Record<string, unknown> | undefined)?.confidence ??
+            (pattern.scoringEvidence as Record<string, unknown> | undefined)?.confidence ??
+            0.5
+        );
+
+        try {
+          await db
+            .insert(patternQualityMetrics)
+            .values({
+              patternId,
+              qualityScore: Number.isFinite(qualityScore) ? qualityScore : 0,
+              confidence: Number.isFinite(confidence) ? confidence : 0.5,
+              measurementTimestamp:
+                safeParseDate(data.snapshot_at ?? data.snapshotAt) ?? new Date(),
+              version: '1.0.0',
+              metadata: { source: 'pattern-projection.v1' },
+              projectedAt: new Date(),
+            })
+            .onConflictDoUpdate({
+              target: patternQualityMetrics.patternId,
+              set: {
+                qualityScore: Number.isFinite(qualityScore) ? qualityScore : 0,
+                confidence: Number.isFinite(confidence) ? confidence : 0.5,
+                measurementTimestamp:
+                  safeParseDate(data.snapshot_at ?? data.snapshotAt) ?? new Date(),
+                updatedAt: new Date(),
+                projectedAt: new Date(),
+              },
+            });
+        } catch (qmErr) {
+          if (isTableMissingError(qmErr, 'pattern_quality_metrics')) {
+            console.warn(
+              '[ReadModelConsumer] pattern_quality_metrics table not yet created -- ' +
+                'run migrations to enable quality metrics projection'
+            );
+          } else {
+            console.warn(
+              `[ReadModelConsumer] pattern_quality_metrics upsert failed for ${patternId}:`,
+              qmErr
+            );
+          }
+          // Non-fatal: continue processing remaining patterns
+        }
       }
     } catch (err) {
       if (isTableMissingError(err, 'pattern_learning_artifacts')) {
@@ -509,7 +561,7 @@ export class OmniintelligenceProjectionHandler implements ProjectionHandler {
   }
 
   // -------------------------------------------------------------------------
-  // Pattern lifecycle transitioned -> pattern_learning_artifacts (OMN-2924)
+  // Pattern lifecycle transitioned -> pattern_learning_artifacts + pattern_lifecycle_transitions (OMN-2924, OMN-6804)
   // -------------------------------------------------------------------------
 
   private async projectPatternLifecycleTransitionedEvent(
@@ -536,6 +588,26 @@ export class OmniintelligenceProjectionHandler implements ProjectionHandler {
       );
       return true;
     }
+
+    const fromStatus = (data.from_status as string) || (data.fromStatus as string) || 'unknown';
+    const transitionTrigger =
+      (data.trigger as string) ||
+      (data.transition_trigger as string) ||
+      (data.transitionTrigger as string) ||
+      'lifecycle_event';
+    const correlationId = (data.correlation_id as string) || (data.correlationId as string) || null;
+    const actor = (data.actor as string) || null;
+    const reason = (data.reason as string) || null;
+    const requestId =
+      (data.request_id as string) ||
+      (data.requestId as string) ||
+      (data.event_id as string) ||
+      (data.eventId as string) ||
+      crypto.randomUUID();
+    const gateSnapshot =
+      (data.gate_snapshot as Record<string, unknown>) ||
+      (data.gateSnapshot as Record<string, unknown>) ||
+      null;
 
     const transitionedAt = safeParseDate(
       data.transitioned_at ?? data.transitionedAt ?? data.timestamp ?? data.created_at
@@ -567,6 +639,38 @@ export class OmniintelligenceProjectionHandler implements ProjectionHandler {
         return true;
       }
       throw err;
+    }
+
+    // OMN-6804: Also insert into pattern_lifecycle_transitions audit table
+    try {
+      await db
+        .insert(patternLifecycleTransitions)
+        .values({
+          requestId,
+          patternId,
+          fromStatus,
+          toStatus,
+          transitionTrigger,
+          correlationId,
+          actor,
+          reason,
+          gateSnapshot,
+          transitionAt: transitionedAt ?? new Date(),
+        })
+        .onConflictDoNothing();
+    } catch (err) {
+      if (isTableMissingError(err, 'pattern_lifecycle_transitions')) {
+        console.warn(
+          '[ReadModelConsumer] pattern_lifecycle_transitions table not yet created -- ' +
+            'run migrations to enable lifecycle transition audit'
+        );
+      } else {
+        console.warn(
+          `[ReadModelConsumer] pattern_lifecycle_transitions insert failed for ${patternId}:`,
+          err
+        );
+      }
+      // Non-fatal: the primary projection (pattern_learning_artifacts) succeeded
     }
 
     return true;
