@@ -31,13 +31,14 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { Bug, CheckCircle2, Database, Globe, Wifi } from 'lucide-react';
+import { Bug, CheckCircle2, Database, Globe, Shield, Wifi } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import {
   runtimeErrorsSource,
   type RuntimeErrorWindow,
   type RuntimeErrorsSummary,
   type RuntimeErrorsEvents,
+  type RuntimeErrorsTriageState,
 } from '@/lib/data-sources/runtime-errors-source';
 
 // ============================================================================
@@ -103,15 +104,23 @@ export default function RuntimeErrorsDashboard() {
     refetchInterval: 15_000,
   });
 
+  const triageQuery = useQuery<RuntimeErrorsTriageState>({
+    queryKey: ['runtime-errors-triage'],
+    queryFn: () => runtimeErrorsSource.triage(),
+    refetchInterval: 30_000,
+  });
+
   const handleWsMessage = useCallback(() => {
     queryClient.invalidateQueries({ queryKey: ['runtime-errors-summary'] });
     queryClient.invalidateQueries({ queryKey: ['runtime-errors-events'] });
+    queryClient.invalidateQueries({ queryKey: ['runtime-errors-triage'] });
   }, [queryClient]);
 
   useWebSocket({ onMessage: handleWsMessage });
 
   const summary = summaryQuery.data;
   const events = eventsQuery.data;
+  const triage = triageQuery.data;
   const isLoading = summaryQuery.isLoading;
   const cats = summary?.categoryCounts;
 
@@ -344,6 +353,87 @@ export default function RuntimeErrorsDashboard() {
           )}
         </CardContent>
       </Card>
+
+      {/* Triage state table (OMN-5654) */}
+      {triage && triage.triageEntries.length > 0 && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Shield className="h-5 w-5" />
+              Triage State
+            </CardTitle>
+            <CardDescription>Latest triage decisions per error fingerprint</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Category</TableHead>
+                  <TableHead>Severity</TableHead>
+                  <TableHead>Container</TableHead>
+                  <TableHead>Action</TableHead>
+                  <TableHead>Status</TableHead>
+                  <TableHead>Recurrence</TableHead>
+                  <TableHead>Ticket</TableHead>
+                  <TableHead>Last Triaged</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {triage.triageEntries.map((t) => (
+                  <TableRow key={t.fingerprint}>
+                    <TableCell>
+                      <CategoryBadge category={t.errorCategory} />
+                    </TableCell>
+                    <TableCell>
+                      <SeverityBadge severity={t.severity} />
+                    </TableCell>
+                    <TableCell className="font-mono text-xs">{t.container}</TableCell>
+                    <TableCell>
+                      <Badge
+                        className={cn(
+                          'text-xs',
+                          t.action === 'AUTO_FIXED' && 'bg-green-600 text-white',
+                          t.action === 'TICKET_CREATED' && 'bg-blue-600 text-white',
+                          t.action === 'DEDUPED' && 'bg-gray-500 text-white',
+                          t.action === 'ESCALATED' && 'bg-red-600 text-white'
+                        )}
+                      >
+                        {t.action.replace(/_/g, ' ')}
+                      </Badge>
+                    </TableCell>
+                    <TableCell>
+                      <Badge
+                        variant={t.actionStatus === 'SUCCESS' ? 'default' : 'destructive'}
+                        className="text-xs"
+                      >
+                        {t.actionStatus}
+                      </Badge>
+                    </TableCell>
+                    <TableCell className="text-center">{t.recurrenceCount ?? 1}</TableCell>
+                    <TableCell className="text-xs">
+                      {t.ticketUrl ? (
+                        <a
+                          href={t.ticketUrl}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-blue-500 hover:underline"
+                        >
+                          {t.ticketId ?? 'View'}
+                        </a>
+                      ) : (
+                        '-'
+                      )}
+                    </TableCell>
+                    <TableCell className="text-xs text-muted-foreground">
+                      {t.lastTriagedAt ? relativeTime(t.lastTriagedAt) : 'never'}
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </CardContent>
+        </Card>
+      )}
     </div>
   );
 }
