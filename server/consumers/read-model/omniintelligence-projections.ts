@@ -500,12 +500,13 @@ export class OmniintelligenceProjectionHandler implements ProjectionHandler {
         const qualityScore = Number(
           pattern.quality_score ?? pattern.composite_score ?? pattern.compositeScore ?? 0
         );
-        const confidence = Number(
-          (pattern as Record<string, unknown>).confidence ??
-            (pattern.scoring_evidence as Record<string, unknown> | undefined)?.confidence ??
-            (pattern.scoringEvidence as Record<string, unknown> | undefined)?.confidence ??
-            0.5
-        );
+        const scoringEvidenceObj =
+          typeof pattern.scoring_evidence === 'object' && pattern.scoring_evidence !== null
+            ? (pattern.scoring_evidence as Record<string, unknown>)
+            : typeof pattern.scoringEvidence === 'object' && pattern.scoringEvidence !== null
+              ? (pattern.scoringEvidence as Record<string, unknown>)
+              : null;
+        const confidence = Number(pattern.confidence ?? scoringEvidenceObj?.confidence ?? 0.5);
 
         try {
           await db
