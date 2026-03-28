@@ -47,6 +47,9 @@ import {
   SUFFIX_INTELLIGENCE_CONTEXT_EFFECTIVENESS,
   SUFFIX_INTELLIGENCE_EPISODE_BOUNDARY,
   SUFFIX_INTELLIGENCE_CALIBRATION_RUN_COMPLETED,
+  SUFFIX_INTELLIGENCE_PATTERN_PROMOTED,
+  SUFFIX_INTELLIGENCE_PATTERN_STORED,
+  SUFFIX_PATTERN_DISCOVERED,
 } from '@shared/topics';
 import { emitEffectivenessUpdate } from '../../effectiveness-events';
 import {
@@ -163,6 +166,9 @@ const OMNIINTELLIGENCE_TOPICS = new Set([
   SUFFIX_INTELLIGENCE_CONTEXT_EFFECTIVENESS,
   SUFFIX_INTELLIGENCE_EPISODE_BOUNDARY,
   SUFFIX_INTELLIGENCE_CALIBRATION_RUN_COMPLETED,
+  SUFFIX_INTELLIGENCE_PATTERN_PROMOTED,
+  SUFFIX_INTELLIGENCE_PATTERN_STORED,
+  SUFFIX_PATTERN_DISCOVERED,
 ]);
 
 export class OmniintelligenceProjectionHandler implements ProjectionHandler {
@@ -238,6 +244,12 @@ export class OmniintelligenceProjectionHandler implements ProjectionHandler {
         return this.projectEpisodeEvent(data, context);
       case SUFFIX_INTELLIGENCE_CALIBRATION_RUN_COMPLETED:
         return this.projectCalibrationRunCompleted(data, context);
+      case SUFFIX_INTELLIGENCE_PATTERN_PROMOTED:
+        return this.projectPatternLifecycleStateChange(data, 'promoted', fallbackId, context);
+      case SUFFIX_INTELLIGENCE_PATTERN_STORED:
+        return this.projectPatternLifecycleStateChange(data, 'stored', fallbackId, context);
+      case SUFFIX_PATTERN_DISCOVERED:
+        return this.projectPatternDiscoveredEvent(data, fallbackId, context);
       default:
         return false;
     }
@@ -672,6 +684,215 @@ export class OmniintelligenceProjectionHandler implements ProjectionHandler {
         );
       }
       // Non-fatal: the primary projection (pattern_learning_artifacts) succeeded
+    }
+
+    return true;
+  }
+
+  // -------------------------------------------------------------------------
+  // Pattern promoted / stored -> update lifecycle_state + audit row (OMN-5602)
+  // -------------------------------------------------------------------------
+
+  private async projectPatternLifecycleStateChange(
+    data: Record<string, unknown>,
+    targetState: string,
+    _fallbackId: string,
+    context: ProjectionContext
+  ): Promise<boolean> {
+    const { db } = context;
+    if (!db) return false;
+
+    const patternId = (data.pattern_id as string) || (data.patternId as string);
+    if (!patternId) {
+      console.warn(
+        `[ReadModelConsumer] Pattern ${targetState} event missing pattern_id -- skipping`
+      );
+      return true;
+    }
+
+    const fromStatus = (data.from_status as string) || (data.fromStatus as string) || 'unknown';
+    const transitionTrigger =
+      (data.trigger as string) ||
+      (data.transition_trigger as string) ||
+      (data.transitionTrigger as string) ||
+      `${targetState}_event`;
+    const correlationId = (data.correlation_id as string) || (data.correlationId as string) || null;
+    const actor = (data.actor as string) || null;
+    const reason = (data.reason as string) || null;
+    const requestId =
+      (data.request_id as string) ||
+      (data.requestId as string) ||
+      (data.event_id as string) ||
+      (data.eventId as string) ||
+      crypto.randomUUID();
+    const eventTimestamp = safeParseDate(
+      data.promoted_at ??
+        data.promotedAt ??
+        data.stored_at ??
+        data.storedAt ??
+        data.timestamp ??
+        data.created_at
+    );
+
+    // Update lifecycle_state in pattern_learning_artifacts
+    try {
+      await db
+        .update(patternLearningArtifacts)
+        .set({
+          lifecycleState: targetState,
+          stateChangedAt: eventTimestamp,
+          updatedAt: new Date(),
+        })
+        .where(eq(patternLearningArtifacts.patternId, patternId));
+    } catch (err) {
+      if (isTableMissingError(err, 'pattern_learning_artifacts')) {
+        console.warn(
+          `[ReadModelConsumer] pattern_learning_artifacts table not yet created -- ` +
+            `skipping ${targetState} projection`
+        );
+        return true;
+      }
+      throw err;
+    }
+
+    // Insert audit row into pattern_lifecycle_transitions
+    try {
+      await db
+        .insert(patternLifecycleTransitions)
+        .values({
+          requestId,
+          patternId,
+          fromStatus,
+          toStatus: targetState,
+          transitionTrigger,
+          correlationId,
+          actor,
+          reason,
+          transitionAt: eventTimestamp ?? new Date(),
+        })
+        .onConflictDoNothing();
+    } catch (err) {
+      if (isTableMissingError(err, 'pattern_lifecycle_transitions')) {
+        console.warn(
+          '[ReadModelConsumer] pattern_lifecycle_transitions table not yet created -- ' +
+            'run migrations to enable lifecycle transition audit'
+        );
+      } else {
+        console.warn(
+          `[ReadModelConsumer] pattern_lifecycle_transitions insert failed for ${patternId}:`,
+          err
+        );
+      }
+    }
+
+    return true;
+  }
+
+  // -------------------------------------------------------------------------
+  // Pattern discovered -> insert new pattern_learning_artifacts row (OMN-5602)
+  // -------------------------------------------------------------------------
+
+  private async projectPatternDiscoveredEvent(
+    data: Record<string, unknown>,
+    _fallbackId: string,
+    context: ProjectionContext
+  ): Promise<boolean> {
+    const { db } = context;
+    if (!db) return false;
+
+    const patternId = (data.pattern_id as string) || (data.patternId as string);
+    if (!patternId) {
+      console.warn('[ReadModelConsumer] Pattern discovered event missing pattern_id -- skipping');
+      return true;
+    }
+
+    const patternName =
+      (data.pattern_name as string) || (data.patternName as string) || 'discovered_pattern';
+    const patternType =
+      (data.pattern_type as string) || (data.patternType as string) || 'learned_pattern';
+    const compositeScore = String(
+      data.quality_score ?? data.composite_score ?? data.compositeScore ?? 0
+    );
+    const language = (data.language as string) || null;
+    const eventTimestamp = safeParseDate(
+      data.discovered_at ?? data.discoveredAt ?? data.timestamp ?? data.created_at
+    );
+
+    // Insert or update pattern_learning_artifacts with 'discovered' state
+    try {
+      await db
+        .insert(patternLearningArtifacts)
+        .values({
+          patternId,
+          patternName,
+          patternType,
+          language,
+          lifecycleState: 'discovered',
+          compositeScore,
+          scoringEvidence: data.scoring_evidence ?? data.scoringEvidence ?? {},
+          signature: data.signature ?? { hash: '' },
+          metrics: data.metrics ?? {},
+          metadata: data.metadata ?? {},
+          evidenceTier: (data.evidence_tier as string) || 'unmeasured',
+          updatedAt: eventTimestamp,
+          projectedAt: new Date(),
+        })
+        .onConflictDoUpdate({
+          target: patternLearningArtifacts.patternId,
+          set: {
+            lifecycleState: 'discovered',
+            stateChangedAt: eventTimestamp,
+            updatedAt: new Date(),
+            projectedAt: new Date(),
+          },
+        });
+    } catch (err) {
+      if (isTableMissingError(err, 'pattern_learning_artifacts')) {
+        console.warn(
+          '[ReadModelConsumer] pattern_learning_artifacts table not yet created -- ' +
+            'skipping discovered projection'
+        );
+        return true;
+      }
+      throw err;
+    }
+
+    // Insert audit row into pattern_lifecycle_transitions
+    const requestId =
+      (data.request_id as string) ||
+      (data.requestId as string) ||
+      (data.event_id as string) ||
+      (data.eventId as string) ||
+      crypto.randomUUID();
+    const correlationId = (data.correlation_id as string) || (data.correlationId as string) || null;
+
+    try {
+      await db
+        .insert(patternLifecycleTransitions)
+        .values({
+          requestId,
+          patternId,
+          fromStatus: 'none',
+          toStatus: 'discovered',
+          transitionTrigger: 'discovery_event',
+          correlationId,
+          actor: (data.actor as string) || null,
+          reason: (data.reason as string) || null,
+          transitionAt: eventTimestamp ?? new Date(),
+        })
+        .onConflictDoNothing();
+    } catch (err) {
+      if (isTableMissingError(err, 'pattern_lifecycle_transitions')) {
+        console.warn(
+          '[ReadModelConsumer] pattern_lifecycle_transitions table not yet created -- ' +
+            'run migrations to enable lifecycle transition audit'
+        );
+      } else {
+        console.warn(
+          `[ReadModelConsumer] pattern_lifecycle_transitions insert failed for ${patternId}:`,
+          err
+        );
+      }
     }
 
     return true;

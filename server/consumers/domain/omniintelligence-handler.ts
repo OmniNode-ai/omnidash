@@ -327,8 +327,8 @@ export class OmniintelligenceHandler implements DomainHandler {
       case SUFFIX_INTELLIGENCE_PATTERN_PROMOTED:
       case SUFFIX_INTELLIGENCE_PATTERN_STORED:
       case SUFFIX_PATTERN_DISCOVERED:
-        // intentional-skip: TRANSITIONED + LEARNING_CMD projected by read-model consumer.
-        // PROMOTED/STORED/DISCOVERED projections deferred to OMN-5602.
+        // intentional-skip: all pattern lifecycle events projected by read-model consumer
+        // (omniintelligence-projections.ts). Domain handler advances offset only.
         if (ctx.isDebug) {
           intentLogger.debug(`Processing pattern lifecycle event from topic: ${topic}`);
         }

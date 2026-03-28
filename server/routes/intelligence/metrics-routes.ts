@@ -349,12 +349,13 @@ export function registerMetricsRoutes(router: Router): void {
   });
 
   // GET /developer/metrics
-  // Proxy to OmniIntelligence API (localhost:8053) with graceful fallback [OMN-6150]
+  // Proxy to OmniIntelligence API with graceful fallback [OMN-6150, OMN-6758]
   // Previously the frontend fetched directly from the external service, causing
   // "Failed to load developer metrics" when the service was offline.
   router.get('/developer/metrics', async (req, res) => {
     const timeWindow = (req.query.timeWindow as string) || '24h';
-    const upstreamUrl = `http://localhost:8053/api/intelligence/developer/metrics?timeWindow=${timeWindow}`;
+    const intelligenceBaseUrl = process.env.INTELLIGENCE_SERVICE_URL || 'http://localhost:8053';
+    const upstreamUrl = `${intelligenceBaseUrl}/api/intelligence/developer/metrics?timeWindow=${timeWindow}`;
 
     try {
       const controller = new AbortController();
