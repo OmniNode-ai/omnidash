@@ -1,7 +1,7 @@
 -- 0044_agent_status_events.sql
 -- OMN-5604: Agent Status Events — append-only audit table for agent lifecycle
 -- status transitions. Used by agent registry page for timeline and latest-status.
--- Source topic: onex.evt.omniclaude.agent-status-changed.v1
+-- Source topic: onex.evt.omniclaude.agent-status.v1
 -- Replay policy: APPEND (idempotent via unique source_event_id).
 
 CREATE TABLE IF NOT EXISTS agent_status_events (

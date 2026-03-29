@@ -279,9 +279,9 @@ export class PlatformProjectionHandler implements ProjectionHandler {
     const correlationId = (data.correlation_id as string) || (data.correlationId as string) || null;
     const reason = (data.reason as string) || null;
     const metadata = (data.metadata ?? {}) as Record<string, unknown>;
-    const reportedAt = safeParseDate(
-      data.reported_at ?? data.reportedAt ?? data.timestamp ?? data.created_at
-    );
+    const reportedAt =
+      safeParseDate(data.reported_at ?? data.reportedAt ?? data.timestamp ?? data.created_at) ??
+      new Date();
 
     try {
       await db

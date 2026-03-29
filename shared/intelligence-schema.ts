@@ -2560,3 +2560,4 @@ export const agentStatusEvents = pgTable(
 
 export type AgentStatusEventRow = typeof agentStatusEvents.$inferSelect;
 export type InsertAgentStatusEvent = typeof agentStatusEvents.$inferInsert;
+export const insertAgentStatusEventSchema = createInsertSchema(agentStatusEvents);
