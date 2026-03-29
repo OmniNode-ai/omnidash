@@ -7,13 +7,10 @@
  */
 
 import { Router } from 'express';
-import { desc } from 'drizzle-orm';
-import { runtimeErrorTriageState } from '@shared/intelligence-schema';
 import {
   RuntimeErrorsProjection,
   type RuntimeErrorWindow,
 } from './projections/runtime-errors-projection';
-import { tryGetIntelligenceDb } from './storage';
 
 export const runtimeErrorsRoutes = Router();
 
@@ -62,37 +59,10 @@ runtimeErrorsRoutes.get('/events', async (req, res) => {
 });
 
 // GET /api/runtime-errors/triage — latest triage state per fingerprint (OMN-5654)
+// Data access goes through RuntimeErrorsProjection per OMN-2325 (no direct DB in routes).
 runtimeErrorsRoutes.get('/triage', async (_req, res) => {
   try {
-    const db = tryGetIntelligenceDb();
-    if (!db) {
-      return res.json({ triageEntries: [] });
-    }
-
-    const rows = await db
-      .select()
-      .from(runtimeErrorTriageState)
-      .orderBy(desc(runtimeErrorTriageState.lastTriagedAt))
-      .limit(100);
-
-    const triageEntries = rows.map((r) => ({
-      fingerprint: r.fingerprint,
-      action: r.action,
-      actionStatus: r.actionStatus,
-      ticketId: r.ticketId,
-      ticketUrl: r.ticketUrl,
-      autoFixType: r.autoFixType,
-      autoFixVerified: r.autoFixVerified,
-      severity: r.severity,
-      errorCategory: r.errorCategory,
-      container: r.container,
-      operatorAttentionRequired: r.operatorAttentionRequired,
-      recurrenceCount: r.recurrenceCount,
-      firstSeenAt: r.firstSeenAt?.toISOString() ?? null,
-      lastSeenAt: r.lastSeenAt?.toISOString() ?? null,
-      lastTriagedAt: r.lastTriagedAt?.toISOString() ?? null,
-    }));
-
+    const triageEntries = await projection.getTriageEntries();
     return res.json({ triageEntries });
   } catch (error) {
     console.error('Error fetching triage state:', error);

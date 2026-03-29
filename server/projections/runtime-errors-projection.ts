@@ -11,7 +11,7 @@
  */
 
 import { sql, desc, gte } from 'drizzle-orm';
-import { runtimeErrorEvents } from '@shared/intelligence-schema';
+import { runtimeErrorEvents, runtimeErrorTriageState } from '@shared/intelligence-schema';
 import { DbBackedProjectionView } from './db-backed-projection-view';
 import { tryGetIntelligenceDb } from '../storage';
 
@@ -53,6 +53,24 @@ export interface RuntimeErrorRecentEvent {
   hostname: string;
   serviceLabel: string;
   emittedAt: string;
+}
+
+export interface RuntimeErrorTriageEntry {
+  fingerprint: string;
+  action: string | null;
+  actionStatus: string | null;
+  ticketId: string | null;
+  ticketUrl: string | null;
+  autoFixType: string | null;
+  autoFixVerified: boolean | null;
+  severity: string | null;
+  errorCategory: string | null;
+  container: string | null;
+  operatorAttentionRequired: boolean | null;
+  recurrenceCount: number | null;
+  firstSeenAt: string | null;
+  lastSeenAt: string | null;
+  lastTriagedAt: string | null;
 }
 
 export interface RuntimeErrorsPayload {
@@ -120,6 +138,39 @@ export class RuntimeErrorsProjection extends DbBackedProjectionView<RuntimeError
     const payload = await this._computeForWindow(db, window);
     this.windowCache.set(window, { payload, ts: Date.now() });
     return payload;
+  }
+
+  /**
+   * Query the latest triage state per fingerprint (OMN-5654).
+   * Encapsulates direct DB access so route files stay projection-only (OMN-2325).
+   */
+  async getTriageEntries(limit = 100): Promise<RuntimeErrorTriageEntry[]> {
+    const db = tryGetIntelligenceDb();
+    if (!db) return [];
+
+    const rows = await db
+      .select()
+      .from(runtimeErrorTriageState)
+      .orderBy(desc(runtimeErrorTriageState.lastTriagedAt))
+      .limit(limit);
+
+    return rows.map((r) => ({
+      fingerprint: r.fingerprint,
+      action: r.action,
+      actionStatus: r.actionStatus,
+      ticketId: r.ticketId,
+      ticketUrl: r.ticketUrl,
+      autoFixType: r.autoFixType,
+      autoFixVerified: r.autoFixVerified,
+      severity: r.severity,
+      errorCategory: r.errorCategory,
+      container: r.container,
+      operatorAttentionRequired: r.operatorAttentionRequired,
+      recurrenceCount: r.recurrenceCount,
+      firstSeenAt: r.firstSeenAt?.toISOString() ?? null,
+      lastSeenAt: r.lastSeenAt?.toISOString() ?? null,
+      lastTriagedAt: r.lastTriagedAt?.toISOString() ?? null,
+    }));
   }
 
   private async _computeForWindow(
