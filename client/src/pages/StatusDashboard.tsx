@@ -30,16 +30,42 @@ import {
   XOctagon,
   Activity,
   Layers,
+  ShieldCheck,
 } from 'lucide-react';
 import type { TriageState, GitHookEvent, WorkstreamStatus } from '@shared/status-types';
 import type { GitHubPRStatusEvent } from '@shared/status-types';
 import { formatDistanceToNow } from 'date-fns';
+import { buildApiUrl } from '@/lib/data-sources/api-base';
+
+// ============================================================================
+// Compliance types & fetcher (OMN-6845)
+// ============================================================================
+
+interface ComplianceSummaryForStatus {
+  total: number;
+  passed: number;
+  failed: number;
+  passRate: number;
+}
+
+interface ComplianceEvaluationsResponse {
+  summary: ComplianceSummaryForStatus;
+  evaluations: unknown[];
+}
+
+async function fetchComplianceSummary(): Promise<ComplianceSummaryForStatus> {
+  const res = await fetch(buildApiUrl('/api/compliance?window=7d&limit=1'));
+  if (!res.ok) throw new Error('Failed to fetch compliance summary');
+  const data = (await res.json()) as ComplianceEvaluationsResponse;
+  return data.summary;
+}
 
 // ============================================================================
 // Constants
 // ============================================================================
 
 const REFETCH_INTERVAL_MS = 60_000; // 60 seconds
+const COMPLIANCE_PASS_RATE_TARGET = 90;
 
 // ============================================================================
 // Triage helpers
@@ -271,6 +297,14 @@ export default function StatusDashboard() {
     staleTime: 30_000,
   });
 
+  // Compliance metrics for status overview (OMN-6845)
+  const { data: complianceData, isLoading: complianceLoading } = useQuery({
+    queryKey: queryKeys.compliance.evaluations('7d'),
+    queryFn: fetchComplianceSummary,
+    refetchInterval: REFETCH_INTERVAL_MS,
+    staleTime: 60_000,
+  });
+
   // Flatten all PRs in triage order (excluding closed/merged by default)
   const allPRs: Array<GitHubPRStatusEvent & { triage_state: TriageState }> = [];
   if (prsData) {
@@ -287,7 +321,7 @@ export default function StatusDashboard() {
         <div>
           <h2 className="text-2xl font-bold tracking-tight">Status</h2>
           <p className="text-muted-foreground text-sm">
-            Live PR triage, workstream progress, and git hook activity
+            Compliance metrics, PR triage, workstream progress, and git hook activity
           </p>
         </div>
         {summaryData && (
@@ -303,6 +337,67 @@ export default function StatusDashboard() {
               </span>
             )}
           </div>
+        )}
+      </div>
+
+      {/* Compliance metrics cards (OMN-6845) */}
+      <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
+        {complianceLoading ? (
+          Array.from({ length: 4 }).map((_, i) => <Skeleton key={i} className="h-20 rounded-xl" />)
+        ) : complianceData ? (
+          <>
+            <Card className="p-4">
+              <div className="flex items-center gap-2 text-sm text-muted-foreground mb-1">
+                <ShieldCheck className="h-4 w-4" />
+                Pass Rate
+              </div>
+              <div className="flex items-baseline gap-2">
+                <span
+                  className={`text-2xl font-bold ${
+                    complianceData.passRate >= COMPLIANCE_PASS_RATE_TARGET
+                      ? 'text-green-500'
+                      : complianceData.passRate >= 70
+                        ? 'text-yellow-500'
+                        : 'text-red-500'
+                  }`}
+                >
+                  {complianceData.passRate}%
+                </span>
+                <span className="text-xs text-muted-foreground">
+                  target: {COMPLIANCE_PASS_RATE_TARGET}%
+                </span>
+              </div>
+            </Card>
+            <Card className="p-4">
+              <div className="text-sm text-muted-foreground mb-1">Total Handlers</div>
+              <span className="text-2xl font-bold">{complianceData.total}</span>
+            </Card>
+            <Card className="p-4">
+              <div className="flex items-center gap-2 text-sm text-muted-foreground mb-1">
+                <CheckCircle2 className="h-4 w-4 text-green-500" />
+                Compliant
+              </div>
+              <span className="text-2xl font-bold text-green-500">{complianceData.passed}</span>
+            </Card>
+            <Card className="p-4">
+              <div className="flex items-center gap-2 text-sm text-muted-foreground mb-1">
+                <XCircle className="h-4 w-4 text-red-500" />
+                Violations
+              </div>
+              <span
+                className={`text-2xl font-bold ${complianceData.failed > 0 ? 'text-red-500' : 'text-green-500'}`}
+              >
+                {complianceData.failed}
+              </span>
+            </Card>
+          </>
+        ) : (
+          <Card className="col-span-full p-4">
+            <div className="flex items-center gap-2 text-sm text-muted-foreground">
+              <ShieldCheck className="h-4 w-4" />
+              No compliance data available yet
+            </div>
+          </Card>
         )}
       </div>
 
