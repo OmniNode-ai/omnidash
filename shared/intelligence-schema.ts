@@ -2130,7 +2130,7 @@ export type InsertMemoryRetrieval = typeof memoryRetrievals.$inferInsert;
 // ============================================================================
 // Skill Invocations Table (OMN-5278)
 // Tracks each skill invocation event from the omniclaude agent.
-// Source topic: onex.evt.omniclaude.skill-invoked.v1
+// Source topics: onex.evt.omniclaude.skill-started.v1, onex.evt.omniclaude.skill-completed.v1
 // Replay policy: APPEND-ONLY.
 // ============================================================================
 
