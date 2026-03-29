@@ -1,7 +1,7 @@
 /**
- * Runtime Errors API Routes (OMN-5528)
+ * Runtime Errors API Routes (OMN-5528, OMN-5654)
  *
- * Serves runtime error summaries and recent events,
+ * Serves runtime error summaries, recent events, and triage state,
  * powered by RuntimeErrorsProjection.
  * Used by the RuntimeErrorsDashboard page.
  */
@@ -53,6 +53,21 @@ runtimeErrorsRoutes.get('/events', async (req, res) => {
     console.error('Error fetching runtime error events:', error);
     res.status(500).json({
       error: 'Failed to fetch runtime error events',
+      message: error instanceof Error ? error.message : 'Unknown error',
+    });
+  }
+});
+
+// GET /api/runtime-errors/triage — latest triage state per fingerprint (OMN-5654)
+// Data access goes through RuntimeErrorsProjection per OMN-2325 (no direct DB in routes).
+runtimeErrorsRoutes.get('/triage', async (_req, res) => {
+  try {
+    const triageEntries = await projection.getTriageEntries();
+    return res.json({ triageEntries });
+  } catch (error) {
+    console.error('Error fetching triage state:', error);
+    return res.status(500).json({
+      error: 'Failed to fetch triage state',
       message: error instanceof Error ? error.message : 'Unknown error',
     });
   }

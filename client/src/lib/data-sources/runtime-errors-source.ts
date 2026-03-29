@@ -55,6 +55,28 @@ export interface RuntimeErrorsEvents {
   window: RuntimeErrorWindow;
 }
 
+export interface RuntimeErrorTriageEntry {
+  fingerprint: string;
+  action: string;
+  actionStatus: string;
+  ticketId: string | null;
+  ticketUrl: string | null;
+  autoFixType: string | null;
+  autoFixVerified: boolean | null;
+  severity: string;
+  errorCategory: string;
+  container: string;
+  operatorAttentionRequired: boolean | null;
+  recurrenceCount: number | null;
+  firstSeenAt: string | null;
+  lastSeenAt: string | null;
+  lastTriagedAt: string | null;
+}
+
+export interface RuntimeErrorsTriageState {
+  triageEntries: RuntimeErrorTriageEntry[];
+}
+
 class RuntimeErrorsSource {
   private baseUrl = buildApiUrl('/api/runtime-errors');
 
@@ -66,6 +88,12 @@ class RuntimeErrorsSource {
 
   async events(window: RuntimeErrorWindow = '24h'): Promise<RuntimeErrorsEvents> {
     const response = await fetch(`${this.baseUrl}/events?window=${window}`);
+    if (!response.ok) throw new Error(`HTTP ${response.status}`);
+    return response.json();
+  }
+
+  async triage(): Promise<RuntimeErrorsTriageState> {
+    const response = await fetch(`${this.baseUrl}/triage`);
     if (!response.ok) throw new Error(`HTTP ${response.status}`);
     return response.json();
   }
