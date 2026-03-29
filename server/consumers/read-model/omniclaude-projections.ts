@@ -62,7 +62,8 @@ import {
   SUFFIX_OMNICLAUDE_SESSION_OUTCOME,
   SUFFIX_OMNICLAUDE_PHASE_METRICS,
   SUFFIX_OMNICLAUDE_DEBUG_TRIGGER_RECORD,
-  SUFFIX_OMNICLAUDE_SKILL_INVOKED,
+  SUFFIX_OMNICLAUDE_SKILL_STARTED,
+  SUFFIX_OMNICLAUDE_SKILL_COMPLETED,
   SUFFIX_OMNICLAUDE_HOSTILE_REVIEWER_COMPLETED,
   SUFFIX_OMNICLAUDE_CONTEXT_UTILIZATION,
   SUFFIX_OMNICLAUDE_AGENT_MATCH,
@@ -126,7 +127,8 @@ const OMNICLAUDE_TOPICS = new Set([
   SUFFIX_OMNICLAUDE_SESSION_OUTCOME,
   SUFFIX_OMNICLAUDE_PHASE_METRICS,
   SUFFIX_OMNICLAUDE_DEBUG_TRIGGER_RECORD,
-  SUFFIX_OMNICLAUDE_SKILL_INVOKED,
+  SUFFIX_OMNICLAUDE_SKILL_STARTED,
+  SUFFIX_OMNICLAUDE_SKILL_COMPLETED,
   SUFFIX_OMNICLAUDE_HOSTILE_REVIEWER_COMPLETED,
   SUFFIX_OMNICLAUDE_CONTEXT_UTILIZATION,
   SUFFIX_OMNICLAUDE_AGENT_MATCH,
@@ -209,8 +211,10 @@ export class OmniclaudeProjectionHandler implements ProjectionHandler {
         return this.projectPhaseMetrics(data, context);
       case SUFFIX_OMNICLAUDE_DEBUG_TRIGGER_RECORD:
         return this.projectDebugTriggerRecord(data, fallbackId, context);
-      case SUFFIX_OMNICLAUDE_SKILL_INVOKED:
-        return this.projectSkillInvoked(data, context);
+      case SUFFIX_OMNICLAUDE_SKILL_STARTED:
+        return this.projectSkillStarted(data, context);
+      case SUFFIX_OMNICLAUDE_SKILL_COMPLETED:
+        return this.projectSkillCompleted(data, context);
       case SUFFIX_OMNICLAUDE_HOSTILE_REVIEWER_COMPLETED:
         return this.projectHostileReviewerCompleted(data, fallbackId, context);
       case SUFFIX_OMNICLAUDE_CONTEXT_UTILIZATION:
@@ -1383,9 +1387,43 @@ export class OmniclaudeProjectionHandler implements ProjectionHandler {
 
   // -------------------------------------------------------------------------
   // Skill invocations -> skill_invocations
+  // Consumes both skill-started.v1 (INSERT) and skill-completed.v1 (UPDATE)
   // -------------------------------------------------------------------------
 
-  private async projectSkillInvoked(
+  private async projectSkillStarted(
+    data: Record<string, unknown>,
+    context: ProjectionContext
+  ): Promise<boolean> {
+    const db = context.db;
+    if (!db) return false;
+
+    const skillName = String(data.skill_name ?? data.skillName ?? '');
+    const sessionId =
+      (data.session_id as string | null) ?? (data.sessionId as string | null) ?? null;
+    const emittedAt = safeParseDate(
+      data.emitted_at ?? data.emittedAt ?? data.started_at ?? data.timestamp ?? data.created_at
+    );
+
+    try {
+      await db.insert(skillInvocations).values({
+        skillName,
+        sessionId,
+        durationMs: null,
+        success: true,
+        status: 'running',
+        error: null,
+        emittedAt,
+      });
+    } catch (err: unknown) {
+      if (isTableMissingError(err, 'skill_invocations')) return true;
+      const pgErr = err as { code?: string };
+      if (pgErr.code === '23505') return true;
+      throw err;
+    }
+    return true;
+  }
+
+  private async projectSkillCompleted(
     data: Record<string, unknown>,
     context: ProjectionContext
   ): Promise<boolean> {
@@ -1403,7 +1441,6 @@ export class OmniclaudeProjectionHandler implements ProjectionHandler {
           : null;
     const isSuccess = data.success !== false;
 
-    // Derive status text from explicit field or boolean success flag
     const rawStatus = (data.status as string | null) ?? (isSuccess ? 'success' : 'failed');
     const status = ['success', 'failed', 'partial'].includes(rawStatus)
       ? rawStatus
@@ -1412,11 +1449,24 @@ export class OmniclaudeProjectionHandler implements ProjectionHandler {
         : 'failed';
 
     const emittedAt = safeParseDate(
-      data.emitted_at ?? data.emittedAt ?? data.timestamp ?? data.created_at
+      data.emitted_at ?? data.emittedAt ?? data.completed_at ?? data.timestamp ?? data.created_at
     );
     const errorText = (data.error as string | null) ?? (data.errorMessage as string | null) ?? null;
 
     try {
+      // Try to update matching started row first
+      if (sessionId && skillName) {
+        const updated = await db
+          .update(skillInvocations)
+          .set({ durationMs, success: isSuccess, status, error: errorText })
+          .where(
+            sql`${skillInvocations.sessionId} = ${sessionId} AND ${skillInvocations.skillName} = ${skillName} AND ${skillInvocations.status} = 'running'`
+          );
+        const rowCount = (updated as unknown as { rowCount?: number }).rowCount ?? 0;
+        if (rowCount > 0) return true;
+      }
+
+      // No matching started row — insert directly (handles out-of-order or replay)
       await db.insert(skillInvocations).values({
         skillName,
         sessionId,
@@ -1428,7 +1478,6 @@ export class OmniclaudeProjectionHandler implements ProjectionHandler {
       });
     } catch (err: unknown) {
       if (isTableMissingError(err, 'skill_invocations')) return true;
-      // Dedup: unique index violation on (session_id, skill_name, emitted_at) is expected
       const pgErr = err as { code?: string };
       if (pgErr.code === '23505') return true;
       throw err;

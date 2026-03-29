@@ -722,7 +722,7 @@ export const queryKeys = {
   // Wave 2 omniclaude state event dashboards (OMN-2602)
   // ============================================================================
 
-  /** Skill invocations query keys (onex.evt.omniclaude.skill-invoked.v1) */
+  /** Skill invocations query keys (onex.evt.omniclaude.skill-started.v1 / skill-completed.v1) */
   skills: {
     all: ['skills'] as const,
     list: () => [...queryKeys.skills.all, 'list'] as const,
