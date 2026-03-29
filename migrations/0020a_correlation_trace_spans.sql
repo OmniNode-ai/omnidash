@@ -28,13 +28,13 @@ CREATE TABLE IF NOT EXISTS correlation_trace_spans (
 );
 
 -- Index: look up all spans for a given trace
-CREATE INDEX idx_cts_trace_id ON correlation_trace_spans (trace_id);
+CREATE INDEX IF NOT EXISTS idx_cts_trace_id ON correlation_trace_spans (trace_id);
 
 -- Index: look up spans by correlation_id (join with routing_decisions)
-CREATE INDEX idx_cts_correlation_id ON correlation_trace_spans (correlation_id);
+CREATE INDEX IF NOT EXISTS idx_cts_correlation_id ON correlation_trace_spans (correlation_id);
 
 -- Index: look up spans by session_id for the /trace page session filter
-CREATE INDEX idx_cts_session_id ON correlation_trace_spans (session_id);
+CREATE INDEX IF NOT EXISTS idx_cts_session_id ON correlation_trace_spans (session_id);
 
 -- Index: time-range queries (recent traces listing)
-CREATE INDEX idx_cts_started_at ON correlation_trace_spans (started_at DESC);
+CREATE INDEX IF NOT EXISTS idx_cts_started_at ON correlation_trace_spans (started_at DESC);
