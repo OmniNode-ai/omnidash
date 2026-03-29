@@ -1,7 +1,7 @@
 /**
  * Skill Dashboard (OMN-5278)
  *
- * Displays skill invocation analytics from: onex.evt.omniclaude.skill-invoked.v1
+ * Displays skill invocation analytics from: onex.evt.omniclaude.skill-started.v1 / skill-completed.v1
  * Source table: skill_invocations (populated by read-model-consumer.ts)
  *
  * Shows:
@@ -145,7 +145,10 @@ function SkillsBarChart({ skills, isLoading }: { skills: SkillSummaryRow[]; isLo
         ) : skills.length === 0 ? (
           <p className="text-sm text-muted-foreground py-4 text-center">
             No skill invocations yet. Waiting for{' '}
-            <code className="text-xs">onex.evt.omniclaude.skill-invoked.v1</code> events.
+            <code className="text-xs">
+              onex.evt.omniclaude.skill-started.v1 / skill-completed.v1
+            </code>{' '}
+            events.
           </p>
         ) : (
           <div className="space-y-3">
@@ -295,7 +298,7 @@ export default function SkillDashboard() {
         <h1 className="text-3xl font-bold tracking-tight">Skill Dashboard</h1>
         <p className="text-muted-foreground">
           Skill invocation analytics from{' '}
-          <code className="text-xs">onex.evt.omniclaude.skill-invoked.v1</code>
+          <code className="text-xs">onex.evt.omniclaude.skill-started.v1 / skill-completed.v1</code>
         </p>
       </div>
 
@@ -305,7 +308,7 @@ export default function SkillDashboard() {
         <DataSourceEmptyState
           sourceName="Skill Invocation Events"
           producerName="omniclaude skill executor"
-          instructions="Invoke omniclaude skills to produce skill-invoked events."
+          instructions="Invoke omniclaude skills to produce skill-started/skill-completed events."
         />
       )}
 
