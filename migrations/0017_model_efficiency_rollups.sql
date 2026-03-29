@@ -34,7 +34,7 @@ CREATE TABLE IF NOT EXISTS model_efficiency_rollups (
     projected_at TIMESTAMP WITH TIME ZONE DEFAULT now()
 );
 
-CREATE INDEX idx_mer_model_id ON model_efficiency_rollups(model_id);
-CREATE INDEX idx_mer_repo_id ON model_efficiency_rollups(repo_id);
-CREATE INDEX idx_mer_emitted_at ON model_efficiency_rollups(emitted_at);
-CREATE INDEX idx_mer_rollup_status ON model_efficiency_rollups(rollup_status);
+CREATE INDEX IF NOT EXISTS idx_mer_model_id ON model_efficiency_rollups(model_id);
+CREATE INDEX IF NOT EXISTS idx_mer_repo_id ON model_efficiency_rollups(repo_id);
+CREATE INDEX IF NOT EXISTS idx_mer_emitted_at ON model_efficiency_rollups(emitted_at);
+CREATE INDEX IF NOT EXISTS idx_mer_rollup_status ON model_efficiency_rollups(rollup_status);
