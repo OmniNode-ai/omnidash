@@ -7,11 +7,16 @@
  */
 
 import { sql } from 'drizzle-orm';
-import { modelEfficiencyRollups, dlqMessages } from '@shared/intelligence-schema';
+import {
+  modelEfficiencyRollups,
+  dlqMessages,
+  agentStatusEvents,
+} from '@shared/intelligence-schema';
 import {
   SUFFIX_MEMORY_INTENT_STORED,
   SUFFIX_OMNICLAUDE_PR_VALIDATION_ROLLUP,
   SUFFIX_PLATFORM_DLQ_MESSAGE,
+  SUFFIX_AGENT_STATUS,
 } from '@shared/topics';
 
 import type {
@@ -31,6 +36,7 @@ const PLATFORM_TOPICS = new Set([
   SUFFIX_MEMORY_INTENT_STORED,
   SUFFIX_OMNICLAUDE_PR_VALIDATION_ROLLUP,
   SUFFIX_PLATFORM_DLQ_MESSAGE,
+  SUFFIX_AGENT_STATUS,
 ]);
 
 export class PlatformProjectionHandler implements ProjectionHandler {
@@ -75,6 +81,8 @@ export class PlatformProjectionHandler implements ProjectionHandler {
         return this.projectPrValidationRollup(data, context);
       case SUFFIX_PLATFORM_DLQ_MESSAGE:
         return this.projectDlqMessage(data, context);
+      case SUFFIX_AGENT_STATUS:
+        return this.projectAgentStatusEvent(data, fallbackId, context);
       default:
         return false;
     }
@@ -231,6 +239,72 @@ export class PlatformProjectionHandler implements ProjectionHandler {
         console.warn(
           '[ReadModelConsumer] dlq_messages table not yet created -- ' +
             'run migrations to enable DLQ projection'
+        );
+        return true;
+      }
+      throw err;
+    }
+  }
+
+  // -------------------------------------------------------------------------
+  // Agent status -> agent_status_events (OMN-5604)
+  // -------------------------------------------------------------------------
+
+  private async projectAgentStatusEvent(
+    data: Record<string, unknown>,
+    fallbackId: string,
+    context: ProjectionContext
+  ): Promise<boolean> {
+    const { db } = context;
+    if (!db) return false;
+
+    const agentId = (data.agent_id as string) || (data.agentId as string);
+    if (!agentId) {
+      console.warn('[ReadModelConsumer] Agent status event missing agent_id -- skipping');
+      return true;
+    }
+
+    const sourceEventId =
+      (data.event_id as string) ||
+      (data.eventId as string) ||
+      (data.source_event_id as string) ||
+      (data.sourceEventId as string) ||
+      fallbackId;
+
+    const status = (data.status as string) || (data.agent_status as string) || 'unknown';
+    const previousStatus =
+      (data.previous_status as string) || (data.previousStatus as string) || null;
+    const agentName = (data.agent_name as string) || (data.agentName as string) || null;
+    const sessionId = (data.session_id as string) || (data.sessionId as string) || null;
+    const correlationId = (data.correlation_id as string) || (data.correlationId as string) || null;
+    const reason = (data.reason as string) || null;
+    const metadata = (data.metadata ?? {}) as Record<string, unknown>;
+    const reportedAt =
+      safeParseDate(data.reported_at ?? data.reportedAt ?? data.timestamp ?? data.created_at) ??
+      new Date();
+
+    try {
+      await db
+        .insert(agentStatusEvents)
+        .values({
+          sourceEventId,
+          agentId,
+          agentName,
+          status,
+          previousStatus,
+          sessionId,
+          correlationId,
+          reason,
+          metadata,
+          reportedAt,
+        })
+        .onConflictDoNothing();
+      return true;
+    } catch (err) {
+      if (isTableMissingError(err, 'agent_status_events')) {
+        console.warn(
+          '[ReadModelConsumer] agent_status_events table not yet created -- ' +
+            'run migrations to enable agent status projection'
         );
         return true;
       }

@@ -101,6 +101,10 @@ read_model_topics:
     handler: "projectLlmCostEvent"
   - topic: "onex.evt.omniintelligence.pattern-lifecycle-transitioned.v1"
     handler: "projectPatternLifecycleTransitioned"
+  - topic: "onex.evt.omniintelligence.pattern-promoted.v1"
+    handler: "projectPatternLifecycleStateChange"
+  - topic: "onex.evt.omniintelligence.pattern-stored.v1"
+    handler: "projectPatternLifecycleStateChange"
   - topic: "onex.evt.omniintelligence.pattern-projection.v1"
     handler: "projectPatternProjection"
   - topic: "onex.evt.omniintelligence.plan-review-strategy-run-completed.v1"
@@ -133,6 +137,14 @@ read_model_topics:
   # --- review-pairing topics ---
   - topic: "onex.evt.review-pairing.calibration-run-completed.v1"
     handler: "projectCalibrationRunCompleted"
+
+  # --- cross-cutting pattern topics ---
+  - topic: "onex.evt.pattern.discovered.v1"
+    handler: "projectPatternDiscoveredEvent"
+
+  # --- omniclaude agent lifecycle topics ---
+  - topic: "onex.evt.omniclaude.agent-status.v1"
+    handler: "projectAgentStatusEvent"
 
   # --- omniintelligence command topics (backfill source) ---
   - topic: "onex.cmd.omniintelligence.pattern-learning.v1"

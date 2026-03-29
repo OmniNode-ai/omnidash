@@ -2526,3 +2526,38 @@ export const reviewCalibrationRuns = pgTable(
 
 export type ReviewCalibrationRunRow = typeof reviewCalibrationRuns.$inferSelect;
 export type InsertReviewCalibrationRun = typeof reviewCalibrationRuns.$inferInsert;
+
+// ============================================================================
+// Agent Status Events Table (OMN-5604)
+// Append-only audit table tracking agent lifecycle status transitions.
+// Used by the agent registry page for timeline and latest-status queries.
+// ============================================================================
+
+export const agentStatusEvents = pgTable(
+  'agent_status_events',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    sourceEventId: text('source_event_id').notNull(),
+    agentId: text('agent_id').notNull(),
+    agentName: text('agent_name'),
+    status: varchar('status', { length: 50 }).notNull(),
+    previousStatus: varchar('previous_status', { length: 50 }),
+    sessionId: text('session_id'),
+    correlationId: text('correlation_id'),
+    reason: text('reason'),
+    metadata: jsonb('metadata').default({}),
+    reportedAt: timestamp('reported_at', { withTimezone: true }).notNull(),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+    projectedAt: timestamp('projected_at', { withTimezone: true }).defaultNow(),
+  },
+  (table) => [
+    index('idx_ase_agent_id').on(table.agentId),
+    index('idx_ase_reported_at').on(table.reportedAt),
+    index('idx_ase_agent_reported').on(table.agentId, table.reportedAt),
+    uniqueIndex('uq_ase_source_event').on(table.sourceEventId),
+  ]
+);
+
+export type AgentStatusEventRow = typeof agentStatusEvents.$inferSelect;
+export type InsertAgentStatusEvent = typeof agentStatusEvents.$inferInsert;
+export const insertAgentStatusEventSchema = createInsertSchema(agentStatusEvents);
