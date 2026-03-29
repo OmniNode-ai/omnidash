@@ -3,7 +3,7 @@
  *
  * Permanent regression test that verifies no route handlers contain
  * unimplemented stubs. Complements the CI stub guard (OMN-5606) which
- * catches `// stub:` markers. This test checks for runtime stubs like
+ * catches forbidden stub markers in source files. This test checks for runtime stubs like
  * `throw new Error('Not implemented')` or empty handler bodies in
  * server route files.
  *
