@@ -8,10 +8,10 @@
  * constraint that route files must not import DB accessors directly.
  */
 
-import { sql } from 'drizzle-orm';
 import { tryGetIntelligenceDb } from '../storage';
 import wiringStatusData from '../../shared/wiring-status.json';
 import type { WiringStatus } from '../../shared/wiring-status';
+import { safeCountAndMaxTimestampQuery } from '../sql-safety';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -73,12 +73,7 @@ async function getTableStats(
   const tsCol = table === 'pr_watch_state' ? 'updated_at' : 'created_at';
 
   try {
-    // Both table and tsCol are from the allowlisted wiring-status.json manifest,
-    // not from user input. sql.raw() is safe here because assertAllowedTable()
-    // has already validated the table name above.
-    const result = await db.execute(
-      sql.raw(`SELECT COUNT(*)::int AS cnt, MAX("${tsCol}") AS last_event FROM "${table}"`)
-    );
+    const result = await db.execute(safeCountAndMaxTimestampQuery(table, tsCol));
     const rows = Array.isArray(result) ? result : ((result as any).rows ?? []);
     const row = rows[0] as { cnt?: number; last_event?: string } | undefined;
     return {
