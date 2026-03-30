@@ -117,6 +117,8 @@ import PipelineDashboard from '@/pages/PipelineDashboard';
 import SettingsDashboard from '@/pages/SettingsDashboard';
 // Wiring Status dashboard (OMN-6975)
 import WiringStatusPage from '@/pages/WiringStatus';
+// Subsystem Health dashboard (OMN-7007)
+import SubsystemHealthPage from '@/pages/SubsystemHealthPage';
 
 // Phase 2: Category landing pages (OMN-2181)
 import SpeedCategory from '@/pages/SpeedCategory';
@@ -301,6 +303,8 @@ function Router() {
 
       {/* Wiring Status dashboard (OMN-6975) */}
       <Route path="/wiring-status" component={WiringStatusPage} />
+      {/* Subsystem Health dashboard (OMN-7007) */}
+      <Route path="/subsystem-health" component={SubsystemHealthPage} />
 
       {/* Preview routes */}
       <Route path="/preview/analytics" component={EnhancedAnalytics} />

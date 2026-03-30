@@ -40,6 +40,7 @@ import {
   GitCompare,
   Workflow,
   Settings,
+  CheckCircle2,
 } from 'lucide-react';
 import { Link, useLocation } from 'wouter';
 import {
@@ -470,6 +471,12 @@ const advancedSubGroups: AdvancedSubGroup[] = [
         url: '/wiring-status',
         icon: Activity,
         description: 'Pipeline wiring status for all dashboard pages (OMN-6975)',
+      },
+      {
+        title: 'Subsystem Health',
+        url: '/subsystem-health',
+        icon: CheckCircle2,
+        description: 'Verification status from close-out cycles (OMN-7007)',
       },
     ],
   },
