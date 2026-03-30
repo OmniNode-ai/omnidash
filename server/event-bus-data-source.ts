@@ -22,6 +22,23 @@ import { getIntelligenceDb } from './storage';
 import { sql, SQL } from 'drizzle-orm';
 
 /**
+ * Topics excluded from database storage.
+ * Heartbeats: ~37K/day, zero analytical value stored raw (~265 MB/month).
+ * Pattern pipeline events: already projected into pattern_learning_artifacts by
+ * OmniintelligenceProjectionHandler — storing raw events is redundant (~100 MB).
+ *
+ * Note: These topics are still subscribed for real-time WebSocket streaming —
+ * only database storage is filtered.
+ */
+export const EXCLUDED_TOPICS_FOR_STORAGE = new Set([
+  'onex.evt.platform.node-heartbeat.v1',
+  'onex.evt.omniintelligence.pattern-learned.v1',
+  'onex.evt.omniintelligence.pattern-stored.v1',
+  'onex.evt.omniintelligence.pattern-projection.v1',
+  'onex.cmd.omniintelligence.pattern-learning.v1',
+]);
+
+/**
  * Normalized event envelope structure matching event catalog
  */
 export interface EventBusEvent {
@@ -530,6 +547,11 @@ export class EventBusDataSource extends EventEmitter {
    * Public method to allow mock generators to inject events
    */
   async storeEvent(event: EventBusEvent): Promise<void> {
+    // Skip storage for excluded topics — these are noise or already projected elsewhere.
+    // Real-time WebSocket streaming is unaffected.
+    if (EXCLUDED_TOPICS_FOR_STORAGE.has(event.topic)) {
+      return;
+    }
     try {
       await getIntelligenceDb().execute(sql`
         INSERT INTO event_bus_events (
