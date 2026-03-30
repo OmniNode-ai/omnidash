@@ -444,6 +444,7 @@ jobs:
           DATABASE_URL: postgresql://postgres:testpass@localhost:5432/omnidash_analytics
           KAFKA_BOOTSTRAP_SERVERS: localhost:9092
           NODE_ENV: production
+          SESSION_SECRET: ci-test-secret-not-for-production
 
       - name: Upload Playwright report
         if: failure()
