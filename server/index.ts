@@ -245,7 +245,8 @@ app.use((req, res, next) => {
 
   // Validate and start Kafka event consumer
   try {
-    const brokerAddr = process.env.KAFKA_BOOTSTRAP_SERVERS || process.env.KAFKA_BROKERS || '(not configured)';
+    const brokerAddr =
+      process.env.KAFKA_BOOTSTRAP_SERVERS || process.env.KAFKA_BROKERS || '(not configured)';
     log(`   Kafka broker address: ${brokerAddr}`);
 
     // First validate that Kafka broker is reachable
@@ -257,7 +258,9 @@ app.use((req, res, next) => {
     } else {
       log(`⚠️  Kafka broker unreachable at ${brokerAddr} - continuing without real-time events`);
       log('   WebSocket live-events and graph pages will show OFFLINE');
-      log('   Fix: ensure Redpanda is running (infra-up) and KAFKA_BOOTSTRAP_SERVERS=localhost:19092');
+      log(
+        '   Fix: ensure Redpanda is running (infra-up) and KAFKA_BOOTSTRAP_SERVERS=localhost:19092'
+      );
       log('   Or use: npm run dev:local (forces local bus)');
     }
   } catch (error) {
@@ -333,6 +336,16 @@ app.use((req, res, next) => {
       console.error('   Application will continue with limited functionality');
     });
 
+  // Start periodic retention cleanup for event_bus_events (OMN-7011).
+  // Runs on startup + every 1 hour. Tiered: 14d general, 3d high-volume, purge never-store.
+  import('./event-retention-cleanup.js')
+    .then(({ startRetentionCleanup }) => {
+      startRetentionCleanup();
+    })
+    .catch((err) => {
+      console.error('[retention-cleanup] Failed to start:', err);
+    });
+
   // Wire projection event sources (after EventConsumer and EventBusDataSource are started)
   // This covers EventBusProjection wiring; NodeRegistry bridge listeners are above.
   let cleanupProjectionSources: (() => void) | undefined;
@@ -385,7 +398,8 @@ app.use((req, res, next) => {
   // Setup WebSocket for real-time events
   // Infer from KAFKA_BROKERS presence or legacy ENABLE_REAL_TIME_EVENTS [OMN-5363]
   const kafkaBrokersConfigured = Boolean(process.env.KAFKA_BROKERS);
-  if (kafkaBrokersConfigured || process.env.ENABLE_REAL_TIME_EVENTS === 'true') { // ONEX_FLAG_EXEMPT: migration
+  if (kafkaBrokersConfigured || process.env.ENABLE_REAL_TIME_EVENTS === 'true') {
+    // ONEX_FLAG_EXEMPT: migration
     setupWebSocket(server);
   }
 
@@ -411,7 +425,8 @@ app.use((req, res, next) => {
     }
 
     // Mock registry events (fake heartbeats, state changes)
-    if (process.env.ENABLE_REAL_TIME_EVENTS === 'true') { // ONEX_FLAG_EXEMPT: migration
+    if (process.env.ENABLE_REAL_TIME_EVENTS === 'true') {
+      // ONEX_FLAG_EXEMPT: migration
       const parsedInterval = parseInt(process.env.MOCK_REGISTRY_EVENT_INTERVAL || '5000', 10);
       const mockInterval =
         !Number.isFinite(parsedInterval) || parsedInterval < 1000 ? 5000 : parsedInterval;
