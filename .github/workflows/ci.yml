@@ -420,7 +420,7 @@ jobs:
         run: |
           npx tsx scripts/seed-demo-patterns.ts
           npx tsx scripts/seed-effectiveness.ts
-          npx tsx scripts/seed-intent-events.ts
+          # seed-intent-events.ts requires Kafka — skipped in CI (DB-only seeding)
         env:
           DATABASE_URL: postgresql://postgres:testpass@localhost:5432/omnidash_analytics
 
@@ -442,6 +442,7 @@ jobs:
           CI: true
           PORT: 3000
           DATABASE_URL: postgresql://postgres:testpass@localhost:5432/omnidash_analytics
+          KAFKA_BOOTSTRAP_SERVERS: localhost:9092
           NODE_ENV: production
 
       - name: Upload Playwright report
