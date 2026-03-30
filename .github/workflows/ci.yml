@@ -442,7 +442,7 @@ jobs:
           CI: true
           PORT: 3000
           DATABASE_URL: postgresql://postgres:testpass@localhost:5432/omnidash_analytics
-          KAFKA_BOOTSTRAP_SERVERS: localhost:9092
+          KAFKA_BOOTSTRAP_SERVERS: ''
           NODE_ENV: production
           SESSION_SECRET: ci-test-secret-not-for-production
 
