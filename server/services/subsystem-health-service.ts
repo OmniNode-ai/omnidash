@@ -91,7 +91,7 @@ export async function getSubsystemHealth(): Promise<SubsystemHealthResult> {
     ORDER BY subsystem, verified_at DESC
   `);
 
-  const subsystems = (results.rows as SubsystemHealthRow[]).map((row) => ({
+  const subsystems = (results.rows as unknown as SubsystemHealthRow[]).map((row) => ({
     subsystem: row.subsystem,
     status: degradeStatus(row.status, row.verified_at),
     originalStatus: row.status,
