@@ -73,9 +73,9 @@ describe('Pattern Intelligence Pipeline (OMN-6999)', () => {
     // which is a regression we need to catch.
     if (total === 0 && (!patterns || (Array.isArray(patterns) && patterns.length === 0))) {
       // Check if this is a DB-unavailable case (demo mode) vs empty table
-      const hasDbError = res.body.error || res.body.message;
+      const hasDbError = res.body.error || res.body.message || res.body._demo;
       if (hasDbError) {
-        // DB not available — skip rather than fail
+        // DB not available or demo mode — skip rather than fail
         return;
       }
       // DB available but empty — this is the regression we detect
