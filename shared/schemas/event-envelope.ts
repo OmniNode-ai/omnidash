@@ -210,5 +210,7 @@ export const NodeIntrospectionPayloadSchema = z.object({
   metadata: z.record(z.string(), z.unknown()).nullable(),
   current_state: z.string().nullable(),
   event_bus: NodeEventBusConfigSchema.nullable(),
+  // Top-level display fields emitted by the Python runtime (OMN-7088/OMN-7090)
+  description: z.string().nullable().optional(),
 });
 export type NodeIntrospectionPayload = z.infer<typeof NodeIntrospectionPayloadSchema>;
