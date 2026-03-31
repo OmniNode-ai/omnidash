@@ -77,7 +77,13 @@ export function sanitizeTimestamp(timestamp: string | undefined | null, fallback
 // Enum Validation Guards
 // ============================================================================
 
-const VALID_NODE_TYPES: readonly NodeType[] = ['EFFECT', 'COMPUTE', 'REDUCER', 'ORCHESTRATOR'];
+const VALID_NODE_TYPES: readonly NodeType[] = [
+  'EFFECT',
+  'COMPUTE',
+  'REDUCER',
+  'ORCHESTRATOR',
+  'SERVICE',
+];
 const VALID_REGISTRATION_STATES: readonly RegistrationState[] = [
   'pending_registration',
   'accepted',
@@ -90,8 +96,10 @@ const VALID_REGISTRATION_STATES: readonly RegistrationState[] = [
 ];
 const VALID_INTROSPECTION_REASONS: readonly IntrospectionReason[] = [
   'STARTUP',
+  'SHUTDOWN',
   'HEARTBEAT',
   'REQUESTED',
+  'CONFIG_CHANGE',
 ];
 
 function isValidNodeType(value: unknown): value is NodeType {

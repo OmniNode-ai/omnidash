@@ -41,10 +41,12 @@ NODE_TYPE_HITS=$(grep -rn \
   -e "=== 'COMPUTE'" \
   -e "=== 'REDUCER'" \
   -e "=== 'ORCHESTRATOR'" \
+  -e "=== 'SERVICE'" \
   -e '=== "EFFECT"' \
   -e '=== "COMPUTE"' \
   -e '=== "REDUCER"' \
   -e '=== "ORCHESTRATOR"' \
+  -e '=== "SERVICE"' \
   --include="*.ts" --include="*.tsx" \
   "$PROJECT_ROOT/server/" "$PROJECT_ROOT/client/" "$PROJECT_ROOT/shared/" 2>/dev/null \
   | grep -v "node_modules" \
@@ -71,11 +73,15 @@ echo "Check 2: No raw string comparisons against IntrospectionReason enum values
 
 REASON_HITS=$(grep -rn \
   -e "=== 'STARTUP'" \
+  -e "=== 'SHUTDOWN'" \
   -e "=== 'HEARTBEAT'" \
   -e "=== 'REQUESTED'" \
+  -e "=== 'CONFIG_CHANGE'" \
   -e '=== "STARTUP"' \
+  -e '=== "SHUTDOWN"' \
   -e '=== "HEARTBEAT"' \
   -e '=== "REQUESTED"' \
+  -e '=== "CONFIG_CHANGE"' \
   --include="*.ts" --include="*.tsx" \
   "$PROJECT_ROOT/server/" "$PROJECT_ROOT/client/" "$PROJECT_ROOT/shared/" 2>/dev/null \
   | grep -v "node_modules" \
@@ -100,9 +106,9 @@ echo ""
 if [ "$VIOLATIONS" -gt 0 ]; then
   echo -e "${RED}FAILED${NC}: $VIOLATIONS violation(s) found"
   echo ""
-  echo "Fix: Use parseNodeType() / parseIntrospectionReason() / parseRegistrationState()"
-  echo "     from consumer-utils.ts instead of raw string comparisons."
-  echo "     These functions handle case normalization. See OMN-7094 for details."
+  echo "Fix: Use parseNodeType() / parseIntrospectionReason() from consumer-utils.ts"
+  echo "     instead of raw string comparisons. These functions handle case"
+  echo "     normalization. See OMN-7094 for details."
   exit 1
 else
   echo -e "${GREEN}PASSED${NC}: All enum comparison lint checks pass"
