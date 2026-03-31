@@ -202,9 +202,15 @@ export const NodeIntrospectionPayloadSchema = z.object({
       }),
     ])
     .nullable(),
-  capabilities: NodeCapabilitiesSchema.nullable(),
+  declared_capabilities: NodeCapabilitiesSchema.nullable(),
+  discovered_capabilities: z.record(z.string(), z.unknown()).nullable(),
+  // Transitional alias — remove once old seed/test data migrated.
+  capabilities: NodeCapabilitiesSchema.nullable().optional(),
+  node_name: z.string().nullable().optional(),
   metadata: z.record(z.string(), z.unknown()).nullable(),
   current_state: z.string().nullable(),
   event_bus: NodeEventBusConfigSchema.nullable(),
+  // Top-level display fields emitted by the Python runtime (OMN-7088/OMN-7090)
+  description: z.string().nullable().optional(),
 });
 export type NodeIntrospectionPayload = z.infer<typeof NodeIntrospectionPayloadSchema>;

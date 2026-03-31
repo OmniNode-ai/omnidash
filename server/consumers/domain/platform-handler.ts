@@ -318,7 +318,9 @@ function handleCanonicalNodeIntrospection(message: KafkaMessage, ctx: ConsumerCo
         state: resolvedState,
         node_type: payload.node_type ?? existing.node_type,
         node_version: nodeVersion ?? existing.node_version,
-        capabilities: payload.capabilities || existing.capabilities,
+        capabilities: payload.declared_capabilities ?? payload.capabilities ?? existing.capabilities,
+        node_name: payload.node_name ?? existing.node_name,
+        description: payload.description ?? existing.description,
         last_introspection_at: emittedAtMs,
         last_event_at: emittedAtMs,
       }
@@ -327,7 +329,9 @@ function handleCanonicalNodeIntrospection(message: KafkaMessage, ctx: ConsumerCo
         state: resolvedState,
         node_type: payload.node_type,
         node_version: nodeVersion,
-        capabilities: payload.capabilities,
+        capabilities: payload.declared_capabilities ?? payload.capabilities ?? null,
+        node_name: payload.node_name,
+        description: payload.description,
         last_introspection_at: emittedAtMs,
         last_event_at: emittedAtMs,
       };
@@ -363,19 +367,15 @@ function handleCanonicalNodeIntrospection(message: KafkaMessage, ctx: ConsumerCo
         node_type: payload.node_type ?? 'COMPUTE',
         version: nodeVersion ?? '1.0.0',
         current_state: resolvedState,
-        capabilities: payload.capabilities ?? [],
+        capabilities: payload.declared_capabilities ?? payload.capabilities ?? [],
         metadata: payload.metadata ?? {},
         endpoints: {},
         reason: null,
         event_bus: payload.event_bus ?? {},
         emitted_at: envelope_timestamp,
-        // Thread top-level fields the projection uses for display (OMN-6405)
-        ...((payload as Record<string, unknown>).description != null
-          ? { description: (payload as Record<string, unknown>).description }
-          : {}),
-        ...((payload as Record<string, unknown>).node_name != null
-          ? { node_name: (payload as Record<string, unknown>).node_name }
-          : {}),
+        // Thread top-level fields the projection uses for display (OMN-6405, OMN-7090)
+        ...(payload.description != null ? { description: payload.description } : {}),
+        ...(payload.node_name != null ? { node_name: payload.node_name } : {}),
       },
       'nodeIntrospectionUpdate'
     )

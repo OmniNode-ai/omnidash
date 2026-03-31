@@ -131,6 +131,8 @@ read_model_topics:
     handler: "projectEpisodeEvent"
   - topic: "onex.evt.omniintelligence.intent-classified.v1"
     handler: "projectIntentClassified"
+  - topic: "onex.evt.omniintelligence.eval-completed.v1"
+    handler: "projectEvalCompleted"
 
   # --- omnimemory topics ---
   - topic: "onex.evt.omnimemory.document-discovered.v1"
