@@ -150,15 +150,14 @@ export class AgentMetricsProjection extends DbBackedProjectionView<AgentMetricsP
     const db = tryGetIntelligenceDb();
     if (!db) return [];
     try {
-      let query = `
+      const rows = await db.execute(sql`
         SELECT id, correlation_id, user_request, selected_agent,
                confidence_score, routing_strategy, routing_time_ms,
                execution_succeeded, created_at
         FROM agent_routing_decisions
         ORDER BY created_at DESC
         LIMIT 1000
-      `;
-      const rows = await db.execute(sql.raw(query));
+      `);
       const resultRows = Array.isArray(rows) ? rows : rows?.rows || [];
       let results = (resultRows as any[]).map((r) => ({
         id: r.id,

@@ -1,3 +1,4 @@
+// no-migration: OMN-7125 test-only guard, no schema changes
 /**
  * Anti-regression guard: No production code should import EventConsumer (OMN-7135)
  *
