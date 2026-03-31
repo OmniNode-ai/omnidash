@@ -17,21 +17,26 @@
  */
 
 import { Router } from 'express';
-import { eventConsumer } from './event-consumer';
+import { eventBusDataSource } from './event-bus-data-source';
 
 const router = Router();
 
 /**
  * GET /api/catalog/status
  *
- * Returns the current topic catalog state including active topics, any
- * warnings received from the catalog service, the data source
- * ('catalog' or 'fallback'), and the per-process instance UUID.
+ * Returns the current topic catalog state. With the single-consumer
+ * architecture (OMN-7125), EventBusDataSource is the sole consumer.
+ * Catalog status is derived from EventBusDataSource's subscription state.
  */
 router.get('/status', (_req, res) => {
   try {
-    const status = eventConsumer.getCatalogStatus();
-    res.json(status);
+    const isActive = eventBusDataSource.isActive();
+    res.json({
+      topics: [],
+      warnings: isActive ? [] : ['EventBusDataSource is not active'],
+      source: 'fallback' as const,
+      instanceUuid: null,
+    });
   } catch (err) {
     console.error('[CatalogRoutes] Error fetching catalog status:', err);
     res.status(500).json({ error: 'Failed to fetch catalog status' });

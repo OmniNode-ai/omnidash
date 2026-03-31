@@ -56,7 +56,6 @@ import { AgentMetricsProjection } from './projections/agent-metrics-projection';
 import { NodeRegistryDbProjection } from './projections/node-registry-db-projection';
 // Intent DB-backed projection (OMN-7129)
 import { IntentDbProjection } from './projections/intent-db-projection';
-import { eventConsumer } from './event-consumer';
 import { eventBusDataSource } from './event-bus-data-source';
 import { extractActionFromTopic, extractProducerFromTopicOrDefault } from '@shared/topics';
 import { enrichmentPipeline } from './projections/event-enrichment-handlers';
@@ -483,92 +482,6 @@ export function wireProjectionSources(): ProjectionSourceCleanup {
     sources.push('EventBusDataSource');
   } else {
     console.warn('[projection] EventBusDataSource.on not available — skipping wiring');
-  }
-
-  // --------------------------------------------------------------------------
-  // EventConsumer: enriched legacy agent events
-  // --------------------------------------------------------------------------
-
-  if (typeof eventConsumer.on !== 'function') {
-    console.warn('[projection] EventConsumer.on not available — skipping consumer wiring');
-  } else {
-    const consumerEventNames = [
-      'actionUpdate',
-      'routingUpdate',
-      'transformationUpdate',
-      'performanceUpdate',
-      'nodeIntrospectionUpdate',
-      'nodeHeartbeatUpdate',
-      'nodeStateChangeUpdate',
-      'intentUpdate',
-    ] as const;
-
-    for (const eventName of consumerEventNames) {
-      const handler = (data: Record<string, unknown>): void => {
-        try {
-          // Skip if already ingested via EventBusDataSource.
-          // Uses shared deriveFallbackDedupKey for symmetric key derivation:
-          // both sources derive identical keys from topic+type+timestamp when
-          // event_id/id is missing, so dedup works regardless of which source
-          // delivers first. If both sources lack an ID AND share the same
-          // topic+type+timestamp, the second is dropped (acceptable — see
-          // collision risk comment on deriveFallbackDedupKey above).
-          const id = data.id as string | undefined;
-          const dedupKey = id || deriveFallbackDedupKey(data);
-          if (dedupSet.has(dedupKey)) return;
-
-          // OMN-2197: Bidirectional correlation-ID dedup.
-          // EventConsumer reshapes events with new crypto.randomUUID() IDs,
-          // so ID-based dedup misses cross-source duplicates. The correlation_id
-          // is preserved across both sources. Both sources CHECK and TRACK the
-          // corrDedupSet so dedup works regardless of arrival order.
-          const corrIdRaw = data.correlationId ?? data.correlation_id;
-          const corrId = corrIdRaw != null ? String(corrIdRaw) : '';
-          if (corrId && corrDedupSet.has(corrId)) return;
-
-          const derivedTopic = (data.topic as string) || eventName;
-          const derivedType = (data.actionType as string) || (data.type as string) || eventName;
-
-          const raw: RawEventInput = {
-            id,
-            topic: derivedTopic,
-            type: derivedType,
-            source:
-              (data.agentName as string) ||
-              (data.sourceAgent as string) ||
-              (data.node_id as string) ||
-              'system',
-            severity: mapSeverity(data),
-            // IMPORTANT: `data` is the full AgentAction (or similar) emitted by
-            // EventConsumer. Client-side display logic (EventBusMonitor's
-            // computeNormalizedType / getEventDisplayLabel) depends on `toolName`
-            // being present inside this serialized payload for specific tool
-            // name rendering (OMN-2196). Changing the shape of `data` here will
-            // break the Event Type column display.
-            payload: data,
-            eventTimeMs: extractTimestamp(data),
-            enrichment: enrichmentPipeline.run(data, derivedType, derivedTopic),
-          };
-
-          projectionService.ingest(raw);
-
-          // Track dedup state only after successful ingest so that if ingest
-          // throws, the other source's copy of this event is not silently dropped.
-          trackEventId(dedupKey);
-          if (corrId) trackCorrelationId(corrId);
-        } catch (err) {
-          console.error(`[projection] EventConsumer ${eventName} handler error:`, err);
-        }
-      };
-
-      eventConsumer.on(eventName, handler);
-      cleanups.push(() => {
-        if (typeof eventConsumer.removeListener === 'function') {
-          eventConsumer.removeListener(eventName, handler);
-        }
-      });
-    }
-    sources.push('EventConsumer');
   }
 
   if (sources.length > 0) {
