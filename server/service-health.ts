@@ -5,7 +5,6 @@
 
 import { tryGetIntelligenceDb, isDatabaseConfigured, getDatabaseError } from './storage';
 import { sql } from 'drizzle-orm';
-import { eventConsumer } from './event-consumer';
 import { Kafka } from 'kafkajs';
 import { resolveBrokers, getBrokerString } from './bus-config.js';
 
@@ -109,7 +108,8 @@ async function checkKafka(): Promise<ServiceHealthCheck> {
       latencyMs: Date.now() - startTime,
       error: 'KAFKA_BOOTSTRAP_SERVERS environment variable not configured',
       details: {
-        message: 'Set KAFKA_BOOTSTRAP_SERVERS in .env file (e.g., KAFKA_BOOTSTRAP_SERVERS=localhost:19092)',
+        message:
+          'Set KAFKA_BOOTSTRAP_SERVERS in .env file (e.g., KAFKA_BOOTSTRAP_SERVERS=localhost:19092)',
       },
     };
   }
@@ -231,15 +231,41 @@ async function checkKeycloak(): Promise<ServiceHealthCheck> {
 
 async function checkEventConsumer(): Promise<ServiceHealthCheck> {
   try {
-    const health = eventConsumer.getHealthStatus();
+    const db = tryGetIntelligenceDb();
+    if (!db) {
+      return {
+        service: 'Event Consumer',
+        status: 'down',
+        details: { message: 'Database not available for watermark check' },
+      };
+    }
+
+    const watermarkRows = await db.execute(sql`
+      SELECT topic, last_offset, updated_at
+      FROM projection_watermarks
+      ORDER BY updated_at DESC
+      LIMIT 20
+    `);
+    const rows = Array.isArray(watermarkRows) ? watermarkRows : watermarkRows?.rows || [];
+    const topicCount = rows.length;
+    const mostRecent = (rows as any[])[0]?.updated_at;
+
+    let status: 'up' | 'down' | 'warning' = 'down';
+    if (topicCount >= 3 && mostRecent) {
+      const ageMs = Date.now() - new Date(mostRecent).getTime();
+      status = ageMs < 60_000 ? 'up' : 'warning';
+    } else if (topicCount > 0) {
+      status = 'warning';
+    }
 
     return {
       service: 'Event Consumer',
-      status: health.status === 'healthy' ? 'up' : 'down',
+      status,
       details: {
-        isRunning: eventConsumer['isRunning'] || false,
-        eventsProcessed: health.eventsProcessed || 0,
-        recentActionsCount: health.recentActionsCount || 0,
+        source: 'projection_watermarks',
+        topicCount,
+        lastWatermark: mostRecent || null,
+        checkedAt: new Date().toISOString(),
       },
     };
   } catch (error) {

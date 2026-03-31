@@ -23,9 +23,10 @@
  */
 
 import { Router } from 'express';
-import { eventConsumer } from './event-consumer';
 import { getEventBusDataSource } from './event-bus-data-source';
 import { checkSchemaParity } from './schema-health';
+import { tryGetIntelligenceDb } from './storage';
+import { sql } from 'drizzle-orm';
 
 export interface HealthProbeResponse {
   status: 'up' | 'degraded' | 'down';
@@ -65,11 +66,27 @@ router.get('/', async (_req, res) => {
       return;
     }
 
-    // --- Event consumer probe ---
+    // --- Event consumer probe (DB watermark-based) ---
     let eventConsumerStatus: 'up' | 'down' = 'down';
     try {
-      const health = eventConsumer.getHealthStatus();
-      eventConsumerStatus = health.status === 'healthy' ? 'up' : 'down';
+      const db = tryGetIntelligenceDb();
+      if (db) {
+        const watermarkRows = await db.execute(sql`
+          SELECT topic, last_offset, updated_at
+          FROM projection_watermarks
+          ORDER BY updated_at DESC
+          LIMIT 20
+        `);
+        const rows = Array.isArray(watermarkRows) ? watermarkRows : watermarkRows?.rows || [];
+        const topicCount = rows.length;
+        if (topicCount >= 3) {
+          const mostRecent = (rows as any[])[0]?.updated_at;
+          if (mostRecent) {
+            const ageMs = Date.now() - new Date(mostRecent).getTime();
+            eventConsumerStatus = ageMs < 60_000 ? 'up' : 'down';
+          }
+        }
+      }
     } catch {
       // Leave as 'down'
     }
