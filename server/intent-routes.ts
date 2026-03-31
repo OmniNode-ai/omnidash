@@ -10,6 +10,7 @@
 import { Router, type Request, type Response, type NextFunction } from 'express';
 import type { IntentRecord, IntentRecordPayload } from './intent-events';
 import { toSnakeCase } from './intent-events';
+import { intentDbProjection } from './projection-bootstrap';
 
 // ============================================================================
 // Constants
@@ -399,6 +400,36 @@ router.get('/distribution', (_req: Request, res: Response) => {
       distribution: {},
       total_intents: 0,
       time_range_hours: 24,
+    });
+  }
+});
+
+/**
+ * GET /api/intents/snapshot
+ * Returns the DB-backed intent projection snapshot (OMN-7129).
+ * Sources data from intent_signals table via IntentDbProjection.
+ * This is the preferred endpoint for the Intent Dashboard — the in-memory
+ * buffer endpoints (/recent, /distribution) are retained for backward compat.
+ */
+router.get('/snapshot', async (_req: Request, res: Response) => {
+  const start = Date.now();
+  try {
+    const payload = await intentDbProjection.ensureFresh();
+    return res.json({
+      ok: true,
+      ...payload,
+      source: 'db-projection',
+      execution_time_ms: Date.now() - start,
+    });
+  } catch (err) {
+    return res.status(500).json({
+      ok: false,
+      error: String(err),
+      recentIntents: [],
+      distribution: [],
+      totalIntents: 0,
+      categoryCount: 0,
+      lastEventTimeMs: null,
     });
   }
 });
