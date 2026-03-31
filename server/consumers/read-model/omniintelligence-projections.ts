@@ -1252,11 +1252,12 @@ export class OmniintelligenceProjectionHandler implements ProjectionHandler {
       `);
     } catch (err) {
       if (isTableMissingError(err, 'intent_signals')) {
-        console.warn(
-          '[ReadModelConsumer] intent_signals table not yet created -- ' +
-            'run migrations to enable intent classified projection'
+        console.error(
+          '[ReadModelConsumer] intent_signals table missing -- ' +
+            'run `npm run db:migrate` to apply migration 0037. ' +
+            'Returning false so event routes to DLQ for visibility.'
         );
-        return true;
+        return false;
       }
       throw err;
     }
@@ -1292,11 +1293,12 @@ export class OmniintelligenceProjectionHandler implements ProjectionHandler {
       await db.insert(intentDriftEvents).values(row);
     } catch (err) {
       if (isTableMissingError(err, 'intent_drift_events')) {
-        console.warn(
-          '[ReadModelConsumer] intent_drift_events table not yet created -- ' +
-            'run migrations to enable intent drift projection'
+        console.error(
+          '[ReadModelConsumer] intent_drift_events table missing -- ' +
+            'run `npm run db:migrate` to apply migrations. ' +
+            'Returning false so event routes to DLQ for visibility.'
         );
-        return true;
+        return false;
       }
       throw err;
     }
