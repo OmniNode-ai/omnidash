@@ -85,6 +85,12 @@ read_model_topics:
   # --- platform topics ---
   - topic: "onex.evt.platform.dlq-message.v1"
     handler: "projectDlqMessage"
+  - topic: "onex.evt.platform.node-introspection.v1"
+    handler: "projectNodeIntrospectionEvent"
+  - topic: "onex.evt.platform.node-heartbeat.v1"
+    handler: "projectNodeHeartbeatEvent"
+  - topic: "onex.evt.platform.node-state-change.v1"
+    handler: "projectNodeStateChangeEvent"
 
   # --- omnibase-infra topics ---
   - topic: "onex.evt.omnibase-infra.baselines-computed.v1"
