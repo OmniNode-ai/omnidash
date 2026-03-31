@@ -8,7 +8,7 @@
 import type { Router } from 'express';
 import { sql, eq, gte, and } from 'drizzle-orm';
 import { getIntelligenceDb } from '../../storage';
-import { eventConsumer } from '../../event-consumer';
+import { agentMetricsProjection } from '../../projection-bootstrap';
 import { readModelConsumer } from '../../read-model-consumer';
 import { getRuntimeIdentityForApi, runtimeIdentity } from '../../runtime-identity';
 import { checkAllServices } from '../../service-health';
@@ -19,7 +19,7 @@ export function registerHealthRoutes(router: Router): void {
   // GET /health
   router.get('/health', async (req, res) => {
     try {
-      const health = eventConsumer.getHealthStatus();
+      const health = await agentMetricsProjection.getHealthStatus();
       res.json({
         ...health,
         runtime: {

@@ -3,11 +3,11 @@
  * Projection Bootstrap — Wire Event Sources to ProjectionService (OMN-2095)
  *
  * Creates the ProjectionService singleton, registers views, and wires
- * event sources (EventBusDataSource, EventConsumer) so that every Kafka
- * event is routed through the projection pipeline.
+ * EventBusDataSource so that every Kafka event is routed through the
+ * projection pipeline.
  *
- * Call `wireProjectionSources()` after EventConsumer/EventBusDataSource
- * have started to begin live ingestion.
+ * Call `wireProjectionSources()` after EventBusDataSource has started
+ * to begin live ingestion.
  */
 
 import { ProjectionService, type RawEventInput } from './projection-service';
@@ -50,7 +50,12 @@ import { SkillProjection } from './projections/skill-projection';
 import { HostileReviewerProjection } from './projections/hostile-reviewer-projection';
 // Review calibration projection (OMN-6176)
 import { ReviewCalibrationProjection } from './projections/review-calibration-projection';
-import { eventConsumer } from './event-consumer';
+// Agent metrics projection (OMN-7132) — replaces EventConsumer in-memory metrics
+import { AgentMetricsProjection } from './projections/agent-metrics-projection';
+// Node registry DB-backed projection (OMN-7127)
+import { NodeRegistryDbProjection } from './projections/node-registry-db-projection';
+// Intent DB-backed projection (OMN-7129)
+import { IntentDbProjection } from './projections/intent-db-projection';
 import { eventBusDataSource } from './event-bus-data-source';
 import { extractActionFromTopic, extractProducerFromTopicOrDefault } from '@shared/topics';
 import { enrichmentPipeline } from './projections/event-enrichment-handlers';
@@ -169,6 +174,12 @@ export const skillProjection = new SkillProjection();
 export const hostileReviewerProjection = new HostileReviewerProjection();
 /** Review calibration projection (OMN-6176). Queries review_calibration_runs_rm table. */
 export const reviewCalibrationProjection = new ReviewCalibrationProjection();
+/** Node registry DB-backed projection (OMN-7127). Queries node_service_registry table. */
+export const nodeRegistryDbProjection = new NodeRegistryDbProjection();
+/** Intent DB-backed projection (OMN-7129). Queries intent_signals table. */
+export const intentDbProjection = new IntentDbProjection();
+/** Agent metrics projection (OMN-7132). Replaces EventConsumer in-memory agent metrics. */
+export const agentMetricsProjection = new AgentMetricsProjection();
 
 if (!projectionService.getView(extractionMetricsProjection.viewId)) {
   projectionService.registerView(extractionMetricsProjection);
@@ -246,18 +257,15 @@ if (!projectionService.getView(hostileReviewerProjection.viewId)) {
 if (!projectionService.getView(reviewCalibrationProjection.viewId)) {
   projectionService.registerView(reviewCalibrationProjection);
 }
-
-// ============================================================================
-// Module-scoped fallback sequence counter
-// ============================================================================
-
-// Intentionally module-scoped (not inside wireProjectionSources) so that the
-// counter persists across rewires within a single process lifetime. If it were
-// local to wireProjectionSources, each call (e.g. test teardown/setup,
-// hot-reload) would reset the counter to 0, allowing dedup keys from a
-// previous wiring to collide with those from the new wiring.
-let fallbackSeq = 0;
-const FALLBACK_SEQ_MAX = Number.MAX_SAFE_INTEGER;
+if (!projectionService.getView(nodeRegistryDbProjection.viewId)) {
+  projectionService.registerView(nodeRegistryDbProjection);
+}
+if (!projectionService.getView(intentDbProjection.viewId)) {
+  projectionService.registerView(intentDbProjection);
+}
+if (!projectionService.getView(agentMetricsProjection.viewId)) {
+  projectionService.registerView(agentMetricsProjection);
+}
 
 // ============================================================================
 // Event source wiring
@@ -267,145 +275,29 @@ const FALLBACK_SEQ_MAX = Number.MAX_SAFE_INTEGER;
 export type ProjectionSourceCleanup = () => void;
 
 /**
- * Wire EventBusDataSource and EventConsumer to the ProjectionService.
+ * Wire EventBusDataSource to the ProjectionService.
  *
- * EventBusDataSource provides full 197-topic coverage (all Kafka events).
- * EventConsumer provides enriched events for legacy agent topics.
- * We deduplicate by tracking event IDs ingested from EventBusDataSource
- * to avoid double-counting when the same event arrives through both sources.
+ * EventBusDataSource provides full Kafka topic coverage. Each event is
+ * enriched, mapped to a RawEventInput, and ingested into the projection
+ * pipeline for fan-out to all registered views.
  *
  * @returns Cleanup function that removes all registered listeners.
  *          Call on shutdown or before re-wiring to prevent listener leaks.
  */
 export function wireProjectionSources(): ProjectionSourceCleanup {
-  // Guard: if module caching broke (symlink aliasing, path mismatches, or
-  // bundler re-evaluation), a second ProjectionService instance may exist
-  // with zero views. Surface the problem immediately instead of silently
-  // routing events into the void.
   if (projectionService.viewCount === 0) {
     console.warn(
       '[projection] WARNING: projectionService has no registered views — possible module caching issue'
     );
   }
 
-  // Ring-buffer deduplication: O(1) per add, no periodic pruning spikes.
-  // Tracks event IDs from EventBusDataSource so EventConsumer doesn't double-count.
-  // Trade-off: if an ID is evicted from the ring before EventConsumer delivers
-  // the same event, a rare double-count can occur. At DEDUP_CAPACITY=5000 and
-  // typical inter-source latency <1s, this is negligible.
-  const DEDUP_CAPACITY = 5000;
-  // Pre-fill with null to keep V8 packed-elements representation (faster property
-  // access than a holey array created by `new Array(n)` with sparse slots).
-  // null (not '') so that a real empty-string event ID is evictable.
-  const dedupRing: (string | null)[] = new Array<string | null>(DEDUP_CAPACITY).fill(null);
-  const dedupSet = new Set<string>();
-  let dedupIdx = 0;
-
-  function trackEventId(id: string): void {
-    // Evict oldest entry if ring is full (null sentinel marks unused slots)
-    const evicted = dedupRing[dedupIdx];
-    if (evicted !== null) dedupSet.delete(evicted);
-    dedupRing[dedupIdx] = id;
-    dedupSet.add(id);
-    dedupIdx = (dedupIdx + 1) % DEDUP_CAPACITY;
-  }
-
-  // OMN-2197: Secondary correlation-ID-based dedup ring (bidirectional).
-  // The same tool call can appear on multiple Kafka topics (e.g. legacy
-  // `agent-actions` AND canonical `onex.cmd.omniintelligence.tool-content.v1`).
-  // EventBusDataSource and EventConsumer produce different event IDs for the
-  // same underlying action (EventConsumer reshapes with crypto.randomUUID()),
-  // making ID-based dedup insufficient. The correlation_id is preserved across
-  // both paths, so it provides a reliable cross-source dedup dimension.
-  //
-  // BIDIRECTIONAL: Both EventBusDataSource and EventConsumer CHECK the set
-  // before ingestion and TRACK after ingestion, so dedup works regardless of
-  // which source delivers first. This eliminates the race condition where
-  // EventConsumer-first delivery would bypass one-directional dedup.
-  const corrDedupCapacity = 5000;
-  const corrDedupRing: (string | null)[] = new Array<string | null>(corrDedupCapacity).fill(null);
-  const corrDedupSet = new Set<string>();
-  let corrDedupIdx = 0;
-
-  function trackCorrelationId(corrId: string): void {
-    if (!corrId) return;
-    const evicted = corrDedupRing[corrDedupIdx];
-    if (evicted !== null) corrDedupSet.delete(evicted);
-    corrDedupRing[corrDedupIdx] = corrId;
-    corrDedupSet.add(corrId);
-    corrDedupIdx = (corrDedupIdx + 1) % corrDedupCapacity;
-  }
-
-  // Normalized fallback key: tries all known field name variants so the same
-  // event produces an identical key regardless of which source delivers it.
-  // Collision risk: two distinct events with identical topic + type + timestamp
-  // (plausible at >1000 events/ms) would share a key, causing the second to be
-  // silently dropped. This is acceptable because: (1) events with no event_id
-  // are already low-fidelity (legacy format), (2) the dedup window is only
-  // DEDUP_CAPACITY=5000 events, and (3) a rare duplicate miss is preferable
-  // to a rare duplicate count.
-  //
-  // When timestamp is missing (sentinel 0/''), a monotonic counter is appended
-  // to prevent collisions between events that share the same topic+type.
-  // Wraps at MAX_SAFE_INTEGER to prevent loss of integer precision.
-  // After wrap-around, early sequence numbers reappear. If the dedup ring
-  // still holds a key from those early numbers (extremely unlikely given
-  // DEDUP_CAPACITY=5000 and 9-quadrillion wraps), a collision can occur.
-  // This is acceptable for the same reasons as timestamp-based collisions:
-  // events without IDs are already low-fidelity, and a rare duplicate is
-  // preferable to a rare missed dedup.
-  // Note: fallbackSeq and FALLBACK_SEQ_MAX are module-scoped — see above.
-  function deriveFallbackDedupKey(data: Record<string, unknown>): string {
-    const topic = (data.topic as string) || '';
-    const type =
-      (data.event_type as string) || (data.actionType as string) || (data.type as string) || '';
-    const ts =
-      (data.timestamp as string | number) ||
-      (data.createdAt as string | number) ||
-      (data.created_at as string | number) ||
-      '';
-    // If timestamp is missing/empty/zero, append a monotonic sequence to avoid
-    // collisions between distinct events with the same topic + type.
-    if (!ts || ts === 0) {
-      const seq = fallbackSeq;
-      fallbackSeq = (fallbackSeq + 1) % FALLBACK_SEQ_MAX;
-      return `${topic}:${type}:_seq${seq}`;
-    }
-    return `${topic}:${type}:${ts}`;
-  }
-
-  const sources: string[] = [];
-  // Track registered listeners for cleanup
   const cleanups: Array<() => void> = [];
+  let wired = false;
 
-  // --------------------------------------------------------------------------
-  // EventBusDataSource: full 197-topic coverage
-  // --------------------------------------------------------------------------
-
-  // Duck-type check: eventBusDataSource may not extend EventEmitter in all
-  // environments (e.g. test mocks, alternative implementations). Checking for
-  // .on as a function is the standard Node.js pattern for optional listeners.
   if (typeof eventBusDataSource.on === 'function') {
     const handleDataSourceEvent = (event: Record<string, unknown>): void => {
       try {
         const eventId = event.event_id as string | undefined;
-        // Compute dedup key early; only track after corr-id check passes
-        // so that skipped duplicates don't evict entries from the event-id
-        // dedup ring (which would shrink the effective dedup window).
-        const dedupKey = eventId || deriveFallbackDedupKey(event);
-
-        // OMN-2197: Bidirectional correlation-ID dedup.
-        // The same tool call can appear on multiple Kafka topics (e.g. legacy
-        // `agent-actions` AND canonical `onex.cmd.omniintelligence.tool-content.v1`).
-        // EventConsumer reshapes events with new crypto.randomUUID() IDs, so
-        // ID-based dedup misses cross-source duplicates. The correlation_id is
-        // preserved across both sources, so we use it as a secondary dedup key.
-        //
-        // Both sources CHECK and TRACK the corrDedupSet to handle either
-        // arrival order (EventBusDataSource-first or EventConsumer-first).
-        const corrIdRaw = event.correlation_id ?? event.correlationId;
-        const corrId = corrIdRaw != null ? String(corrIdRaw) : '';
-        if (corrId && corrDedupSet.has(corrId)) return; // Already ingested via EventConsumer
 
         let payload: Record<string, unknown>;
         const rawPayload = event.payload;
@@ -419,13 +311,7 @@ export function wireProjectionSources(): ProjectionSourceCleanup {
         const rawType = (event.event_type as string) || '';
         const rawSource = (event.source as string) || '';
 
-        // OMN-2196: When event_type is empty, extract the action name from the
-        // topic (e.g. 'onex.cmd.omniintelligence.tool-content.v1' → 'tool-content').
         const type = rawType || extractActionFromTopic(topic);
-
-        // OMN-2195: When source is empty or the literal 'unknown' default from
-        // EventBusDataSource, infer the producer from the topic name
-        // (e.g. 'onex.evt.omniclaude.session-started.v1' → 'omniclaude').
         const source =
           rawSource && rawSource !== 'unknown'
             ? rawSource
@@ -443,11 +329,6 @@ export function wireProjectionSources(): ProjectionSourceCleanup {
         };
 
         projectionService.ingest(raw);
-
-        // Track dedup state only after successful ingest so that if ingest
-        // throws, the other source's copy of this event is not silently dropped.
-        trackEventId(dedupKey);
-        if (corrId) trackCorrelationId(corrId);
       } catch (err) {
         console.error('[projection] EventBusDataSource event handler error:', err);
       }
@@ -459,100 +340,14 @@ export function wireProjectionSources(): ProjectionSourceCleanup {
         eventBusDataSource.removeListener('event', handleDataSourceEvent);
       }
     });
-    sources.push('EventBusDataSource');
+    wired = true;
   } else {
     console.warn('[projection] EventBusDataSource.on not available — skipping wiring');
   }
 
-  // --------------------------------------------------------------------------
-  // EventConsumer: enriched legacy agent events
-  // --------------------------------------------------------------------------
-
-  if (typeof eventConsumer.on !== 'function') {
-    console.warn('[projection] EventConsumer.on not available — skipping consumer wiring');
-  } else {
-    const consumerEventNames = [
-      'actionUpdate',
-      'routingUpdate',
-      'transformationUpdate',
-      'performanceUpdate',
-      'nodeIntrospectionUpdate',
-      'nodeHeartbeatUpdate',
-      'nodeStateChangeUpdate',
-      'intentUpdate',
-    ] as const;
-
-    for (const eventName of consumerEventNames) {
-      const handler = (data: Record<string, unknown>): void => {
-        try {
-          // Skip if already ingested via EventBusDataSource.
-          // Uses shared deriveFallbackDedupKey for symmetric key derivation:
-          // both sources derive identical keys from topic+type+timestamp when
-          // event_id/id is missing, so dedup works regardless of which source
-          // delivers first. If both sources lack an ID AND share the same
-          // topic+type+timestamp, the second is dropped (acceptable — see
-          // collision risk comment on deriveFallbackDedupKey above).
-          const id = data.id as string | undefined;
-          const dedupKey = id || deriveFallbackDedupKey(data);
-          if (dedupSet.has(dedupKey)) return;
-
-          // OMN-2197: Bidirectional correlation-ID dedup.
-          // EventConsumer reshapes events with new crypto.randomUUID() IDs,
-          // so ID-based dedup misses cross-source duplicates. The correlation_id
-          // is preserved across both sources. Both sources CHECK and TRACK the
-          // corrDedupSet so dedup works regardless of arrival order.
-          const corrIdRaw = data.correlationId ?? data.correlation_id;
-          const corrId = corrIdRaw != null ? String(corrIdRaw) : '';
-          if (corrId && corrDedupSet.has(corrId)) return;
-
-          const derivedTopic = (data.topic as string) || eventName;
-          const derivedType = (data.actionType as string) || (data.type as string) || eventName;
-
-          const raw: RawEventInput = {
-            id,
-            topic: derivedTopic,
-            type: derivedType,
-            source:
-              (data.agentName as string) ||
-              (data.sourceAgent as string) ||
-              (data.node_id as string) ||
-              'system',
-            severity: mapSeverity(data),
-            // IMPORTANT: `data` is the full AgentAction (or similar) emitted by
-            // EventConsumer. Client-side display logic (EventBusMonitor's
-            // computeNormalizedType / getEventDisplayLabel) depends on `toolName`
-            // being present inside this serialized payload for specific tool
-            // name rendering (OMN-2196). Changing the shape of `data` here will
-            // break the Event Type column display.
-            payload: data,
-            eventTimeMs: extractTimestamp(data),
-            enrichment: enrichmentPipeline.run(data, derivedType, derivedTopic),
-          };
-
-          projectionService.ingest(raw);
-
-          // Track dedup state only after successful ingest so that if ingest
-          // throws, the other source's copy of this event is not silently dropped.
-          trackEventId(dedupKey);
-          if (corrId) trackCorrelationId(corrId);
-        } catch (err) {
-          console.error(`[projection] EventConsumer ${eventName} handler error:`, err);
-        }
-      };
-
-      eventConsumer.on(eventName, handler);
-      cleanups.push(() => {
-        if (typeof eventConsumer.removeListener === 'function') {
-          eventConsumer.removeListener(eventName, handler);
-        }
-      });
-    }
-    sources.push('EventConsumer');
-  }
-
-  if (sources.length > 0) {
+  if (wired) {
     console.log(
-      `[projection] Wired to ${sources.join(' + ')}. Views:`,
+      '[projection] Wired to EventBusDataSource. Views:',
       projectionService.viewIds.join(', ')
     );
   } else {

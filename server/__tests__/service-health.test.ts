@@ -1,6 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { checkAllServices } from '../service-health';
-import { eventConsumer } from '../event-consumer';
 import { Kafka } from 'kafkajs';
 
 // Mock dependencies
@@ -15,15 +14,15 @@ vi.mock('../storage', () => ({
   getDatabaseError: vi.fn(() => null),
 }));
 
-vi.mock('../event-consumer', () => ({
-  eventConsumer: {
-    getHealthStatus: vi.fn(),
-  },
-}));
-
 vi.mock('kafkajs', () => ({
   Kafka: vi.fn(),
 }));
+
+// Stub for legacy eventConsumer references in test assertions.
+// service-health.ts no longer imports EventConsumer (uses DB watermarks).
+const eventConsumer = {
+  getHealthStatus: vi.fn(),
+};
 
 // Mock global fetch
 global.fetch = vi.fn();
@@ -237,9 +236,17 @@ describe('Service Health Checks', () => {
     });
   });
 
-  describe('checkEventConsumer (via checkAllServices)', () => {
-    it('should return up status when event consumer is healthy', async () => {
-      vi.mocked(mockDb.execute).mockResolvedValue([{ check: 1 }] as any);
+  describe('checkEventConsumer / DB watermark (via checkAllServices)', () => {
+    it('should return up status when watermarks show recent activity', async () => {
+      // checkEventConsumer now queries projection_watermarks table (DB watermarks).
+      // Return DB connectivity check first, then watermark rows.
+      const recentDate = new Date().toISOString();
+      const watermarkRows = [
+        { topic: 'topic-a', last_offset: '100', updated_at: recentDate },
+        { topic: 'topic-b', last_offset: '200', updated_at: recentDate },
+        { topic: 'topic-c', last_offset: '50', updated_at: recentDate },
+      ];
+      vi.mocked(mockDb.execute).mockResolvedValue({ rows: watermarkRows } as any);
 
       const mockAdmin = {
         connect: vi.fn().mockResolvedValue(undefined),
@@ -257,12 +264,6 @@ describe('Service Health Checks', () => {
         ok: true,
         status: 200,
         json: vi.fn().mockResolvedValue({}),
-      } as any);
-
-      vi.mocked(eventConsumer.getHealthStatus).mockReturnValue({
-        status: 'healthy',
-        eventsProcessed: 100,
-        recentActionsCount: 10,
       } as any);
 
       const results = await checkAllServices();
@@ -270,11 +271,10 @@ describe('Service Health Checks', () => {
 
       expect(eventConsumerResult).toBeDefined();
       expect(eventConsumerResult?.status).toBe('up');
-      expect(eventConsumerResult?.details?.eventsProcessed).toBe(100);
     });
 
-    it('should return down status when event consumer is unhealthy', async () => {
-      vi.mocked(mockDb.execute).mockResolvedValue([{ check: 1 }] as any);
+    it('should return down status when no watermark rows exist', async () => {
+      vi.mocked(mockDb.execute).mockResolvedValue({ rows: [] } as any);
 
       const mockAdmin = {
         connect: vi.fn().mockResolvedValue(undefined),
@@ -292,12 +292,6 @@ describe('Service Health Checks', () => {
         ok: true,
         status: 200,
         json: vi.fn().mockResolvedValue({}),
-      } as any);
-
-      vi.mocked(eventConsumer.getHealthStatus).mockReturnValue({
-        status: 'unhealthy',
-        eventsProcessed: 0,
-        recentActionsCount: 0,
       } as any);
 
       const results = await checkAllServices();
@@ -308,7 +302,7 @@ describe('Service Health Checks', () => {
     });
 
     it('should handle errors gracefully', async () => {
-      vi.mocked(mockDb.execute).mockResolvedValue([{ check: 1 }] as any);
+      vi.mocked(mockDb.execute).mockRejectedValue(new Error('DB connection failed'));
 
       const mockAdmin = {
         connect: vi.fn().mockResolvedValue(undefined),
@@ -328,17 +322,12 @@ describe('Service Health Checks', () => {
         json: vi.fn().mockResolvedValue({}),
       } as any);
 
-      vi.mocked(eventConsumer.getHealthStatus).mockImplementation(() => {
-        throw new Error('Event consumer error');
-      });
-
       const results = await checkAllServices();
       const eventConsumerResult = results.find((r) => r.service === 'Event Consumer');
 
       expect(eventConsumerResult).toBeDefined();
       expect(eventConsumerResult?.status).toBe('down');
       expect(eventConsumerResult?.error).toBeDefined();
-      expect(eventConsumerResult?.error).toContain('Event consumer error');
     });
   });
 

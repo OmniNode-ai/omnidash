@@ -8,7 +8,7 @@
 import type { Router } from 'express';
 import { sql } from 'drizzle-orm';
 import { getIntelligenceDb } from '../../storage';
-import { eventConsumer } from '../../event-consumer';
+import { agentMetricsProjection } from '../../projection-bootstrap';
 import {
   agentActions,
   agentManifestInjections,
@@ -401,8 +401,8 @@ export function registerMetricsRoutes(router: Router): void {
     try {
       const limit = Math.min(parseInt(req.query.limit as string) || 100, 1000);
 
-      const metrics = eventConsumer.getPerformanceMetrics(limit);
-      const stats = eventConsumer.getPerformanceStats();
+      const metrics = await agentMetricsProjection.getPerformanceMetrics(limit);
+      const stats = await agentMetricsProjection.getPerformanceStatsPublic();
 
       res.json({
         metrics,
@@ -421,7 +421,7 @@ export function registerMetricsRoutes(router: Router): void {
   // GET /performance/summary
   router.get('/performance/summary', async (req, res) => {
     try {
-      const stats = eventConsumer.getPerformanceStats();
+      const stats = await agentMetricsProjection.getPerformanceStatsPublic();
 
       res.json(stats);
     } catch (error) {

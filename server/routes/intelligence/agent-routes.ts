@@ -2,13 +2,12 @@
  * Agent routing, actions, transformations, and agent detail routes.
  * Extracted from intelligence-routes.ts (OMN-5193).
  *
- * Data access: Mixed (eventConsumer in-memory + direct DB fallback)
- * // TODO(OMN-6111): migrate direct DB queries to ProjectionService
+ * Data access: DB-backed via AgentMetricsProjection (OMN-7132)
  */
 import type { Router } from 'express';
 import { sql } from 'drizzle-orm';
 import { getIntelligenceDb } from '../../storage';
-import { eventConsumer } from '../../event-consumer';
+import { agentMetricsProjection } from '../../projection-bootstrap';
 import { agentRoutingDecisions, agentTransformationEvents } from '@shared/intelligence-schema';
 import { safeInterval, timeWindowToInterval } from '../../sql-safety';
 import type {
@@ -30,16 +29,15 @@ export function registerAgentRoutes(router: Router): void {
         Expires: '0',
       });
 
-      const metrics = eventConsumer.getAgentMetrics();
-      if (Array.isArray(metrics) && metrics.length > 0) {
-        console.log(`[API] Returning ${metrics.length} agents from event consumer`);
+      const metrics = await agentMetricsProjection.getAgentSummary(timeWindow);
+      if (metrics.length > 0) {
+        console.log(`[API] Returning ${metrics.length} agents from agent-metrics projection`);
         return res.json(metrics);
       }
 
-      console.log(`[API] Event consumer metrics empty, falling back to database query`);
+      console.log(`[API] Agent metrics projection empty, falling back to database query`);
 
-      // Fallback: query PostgreSQL directly when event stream is empty
-      // TODO(OMN-6111): migrate to ProjectionService
+      // Fallback: query PostgreSQL directly when projection is empty
       const interval = timeWindowToInterval(timeWindow);
       const rowsResult = await getIntelligenceDb().execute(sql`
         SELECT
@@ -90,16 +88,15 @@ export function registerAgentRoutes(router: Router): void {
     try {
       const limit = Math.min(parseInt(req.query.limit as string) || 100, 1000);
 
-      const actionsMem = eventConsumer.getRecentActions();
-      if (Array.isArray(actionsMem) && actionsMem.length > 0) {
-        console.log(`[API] Returning ${actionsMem.length} actions from event consumer`);
+      const actionsMem = await agentMetricsProjection.getRecentActions(limit);
+      if (actionsMem.length > 0) {
+        console.log(`[API] Returning ${actionsMem.length} actions from agent-metrics projection`);
         return res.json(actionsMem.slice(0, limit));
       }
 
-      console.log(`[API] Event consumer actions empty, falling back to database`);
+      console.log(`[API] Agent-metrics projection actions empty, falling back to database`);
 
       // Fallback: pull most recent actions from PostgreSQL
-      // TODO(OMN-6111): migrate to ProjectionService
       try {
         const rowsResult = await getIntelligenceDb().execute(sql`
           SELECT id, correlation_id, agent_name, action_type, action_name, action_details, debug_mode, duration_ms, created_at
@@ -206,7 +203,7 @@ export function registerAgentRoutes(router: Router): void {
       const timeWindow = (req.query.timeWindow as string) || '1h';
       const limit = Math.min(parseInt(req.query.limit as string) || 100, 1000);
 
-      const actions = eventConsumer.getActionsByAgent(agent, timeWindow).slice(0, limit);
+      const actions = await agentMetricsProjection.getActionsByAgent(agent, timeWindow, limit);
       res.json(actions);
     } catch (error) {
       console.error('Error fetching agent actions:', error);
@@ -218,7 +215,6 @@ export function registerAgentRoutes(router: Router): void {
   });
 
   // GET /agents/routing-strategy
-  // TODO(OMN-6111): migrate to ProjectionService
   router.get('/agents/routing-strategy', async (req, res) => {
     try {
       const timeWindow = (req.query.timeWindow as string) || '24h';
@@ -260,15 +256,16 @@ export function registerAgentRoutes(router: Router): void {
         ? parseFloat(req.query.minConfidence as string)
         : undefined;
 
-      const decisions = eventConsumer
-        .getRoutingDecisions({
-          agent: agentFilter,
-          minConfidence,
-        })
-        .slice(0, limit);
+      const decisions = await agentMetricsProjection.getRoutingDecisions({
+        agent: agentFilter,
+        minConfidence,
+      });
 
-      console.log(`[API] Returning ${decisions.length} routing decisions from event consumer`);
-      res.json(decisions);
+      const sliced = decisions.slice(0, limit);
+      console.log(
+        `[API] Returning ${sliced.length} routing decisions from agent-metrics projection`
+      );
+      res.json(sliced);
     } catch (error) {
       console.error('Error fetching routing decisions:', error);
       res.status(500).json({
@@ -279,7 +276,6 @@ export function registerAgentRoutes(router: Router): void {
   });
 
   // GET /transformations/summary
-  // TODO(OMN-6111): migrate to ProjectionService
   router.get('/transformations/summary', async (req, res) => {
     try {
       const timeWindow = (req.query.timeWindow as string) || '24h';
@@ -394,7 +390,7 @@ export function registerAgentRoutes(router: Router): void {
     try {
       const limit = Math.min(parseInt(req.query.limit as string) || 50, 500);
 
-      const transformations = eventConsumer.getRecentTransformations(limit);
+      const transformations = await agentMetricsProjection.getRecentTransformations(limit);
 
       res.json({
         transformations,
@@ -415,7 +411,7 @@ export function registerAgentRoutes(router: Router): void {
       const { agentName } = req.params;
       const timeWindow = (req.query.timeWindow as string) || '24h';
 
-      const metrics = eventConsumer.getAgentMetrics();
+      const metrics = await agentMetricsProjection.getAgentSummary(timeWindow);
       const agentMetric = metrics.find((m) => m.agent === agentName);
 
       if (!agentMetric) {
@@ -425,19 +421,19 @@ export function registerAgentRoutes(router: Router): void {
         });
       }
 
-      const actions = eventConsumer.getActionsByAgent(agentName, timeWindow);
+      const actions = await agentMetricsProjection.getActionsByAgent(agentName, timeWindow);
 
       const totalActions = actions.length;
       const successfulActions = actions.filter(
         (a) =>
           a.actionDetails &&
           typeof a.actionDetails === 'object' &&
-          'success' in a.actionDetails &&
-          a.actionDetails.success === true
+          'success' in (a.actionDetails as Record<string, unknown>) &&
+          (a.actionDetails as Record<string, unknown>).success === true
       ).length;
       const successRate = totalActions > 0 ? (successfulActions / totalActions) * 100 : 0;
 
-      const actionDurations = actions.filter((a) => a.durationMs).map((a) => a.durationMs!);
+      const actionDurations = actions.filter((a) => a.durationMs).map((a) => a.durationMs);
       const avgResponseTime =
         actionDurations.length > 0
           ? actionDurations.reduce((sum, d) => sum + d, 0) / actionDurations.length
@@ -445,7 +441,10 @@ export function registerAgentRoutes(router: Router): void {
 
       const recentActions = actions.slice(0, 5);
       const hasRecentErrors = recentActions.some(
-        (a) => a.actionDetails && typeof a.actionDetails === 'object' && 'error' in a.actionDetails
+        (a) =>
+          a.actionDetails &&
+          typeof a.actionDetails === 'object' &&
+          'error' in (a.actionDetails as Record<string, unknown>)
       );
       const status = hasRecentErrors ? 'error' : totalActions > 0 ? 'active' : 'idle';
 
@@ -455,7 +454,7 @@ export function registerAgentRoutes(router: Router): void {
       const recentActivity = recentActions.map((action) => ({
         id: action.id,
         timestamp: action.createdAt,
-        description: `${action.actionType}: ${action.actionName || 'Unknown'}${action.actionDetails && typeof action.actionDetails === 'object' && 'error' in action.actionDetails ? ' (failed)' : ''}`,
+        description: `${action.actionType}: ${action.actionName || 'Unknown'}${action.actionDetails && typeof action.actionDetails === 'object' && 'error' in (action.actionDetails as Record<string, unknown>) ? ' (failed)' : ''}`,
       }));
 
       const response = {

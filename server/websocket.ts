@@ -4,19 +4,7 @@ import type { IncomingMessage } from 'http';
 import { z } from 'zod';
 import { getSessionMiddleware } from './auth/session-config';
 import { isAuthEnabled } from './auth/oidc-client';
-import {
-  eventConsumer,
-  type NodeIntrospectionEvent,
-  type NodeHeartbeatEvent,
-  type NodeStateChangeEvent,
-  type RegisteredNode,
-} from './event-consumer';
-import {
-  transformNodeIntrospectionToSnakeCase,
-  transformNodeHeartbeatToSnakeCase,
-  transformNodeStateChangeToSnakeCase,
-  transformNodesToSnakeCase,
-} from './utils/case-transform';
+import { agentMetricsProjection } from './projection-bootstrap';
 import { registryEventEmitter, type RegistryEvent } from './registry-events';
 import {
   intentEventEmitter,
@@ -229,20 +217,12 @@ async function getEventsForInitialState(): Promise<{
         return { recentActions, eventBusEvents: events };
       }
     } catch (error) {
-      console.error(
-        '[WebSocket] Failed to query DB for initial state, falling back to in-memory:',
-        error
-      );
+      console.error('[WebSocket] Failed to query DB for initial state:', error);
     }
   }
 
-  // Fallback: use EventConsumer's in-memory buffer (covers only ~30 topics)
-  const events = eventConsumer.getPreloadedEventBusEvents();
-  if (events.length === 0) {
-    return { recentActions: [], eventBusEvents: [] };
-  }
-  const recentActions = events.map(transformEventToClientAction);
-  return { recentActions, eventBusEvents: events };
+  // DB unavailable — return degraded state indicator (not empty array)
+  return { recentActions: [], eventBusEvents: [] };
 }
 
 // Valid subscription topics that clients can subscribe to
@@ -375,28 +355,7 @@ export function setupWebSocket(httpServer: HTTPServer) {
   // Track connected clients with their preferences
   const clients = new Map<WebSocket, ClientData>();
 
-  /**
-   * Memory Leak Prevention Strategy:
-   *
-   * EventConsumer listeners are SERVER-WIDE, not per-client. They broadcast to ALL connected clients.
-   * This array tracks all listeners registered with EventConsumer so we can remove them when the server closes.
-   *
-   * Why we track listeners:
-   * - EventEmitters keep references to all registered handlers
-   * - Without cleanup, restarting the WebSocket server would accumulate handlers
-   * - Each restart would add 6 more listeners (metricUpdate, actionUpdate, routingUpdate, error, connected, disconnected)
-   * - Over time, this causes memory leaks and duplicate event handling
-   *
-   * Cleanup happens in wss.on('close') handler:
-   * - All listeners are removed from EventConsumer
-   * - eventListeners array is cleared
-   * - All client connections are terminated
-   * - clients Map is cleared
-   *
-   * Note: We do NOT remove listeners when individual clients disconnect because listeners are shared.
-   * The broadcast() function filters events per-client based on their subscriptions.
-   */
-  const eventListeners: Array<{ event: string; handler: (...args: any[]) => void }> = [];
+  // Event listener tracking for cleanup on server close
 
   // Heartbeat interval (30 seconds) with tolerance for missed pings
   const HEARTBEAT_INTERVAL_MS = 30000;
@@ -424,12 +383,6 @@ export function setupWebSocket(httpServer: HTTPServer) {
     });
   }, HEARTBEAT_INTERVAL_MS);
 
-  // Helper function to register EventConsumer listeners with cleanup tracking
-  const registerEventListener = <T extends any[]>(event: string, handler: (...args: T) => void) => {
-    eventConsumer.on(event, handler);
-    eventListeners.push({ event, handler });
-  };
-
   // Broadcast helper function with filtering
   const broadcast = (type: string, data: any, eventType?: string) => {
     const message = JSON.stringify({
@@ -451,117 +404,6 @@ export function setupWebSocket(httpServer: HTTPServer) {
       }
     });
   };
-
-  // Listen to EventConsumer events with automatic cleanup tracking
-  registerEventListener('metricUpdate', (metrics) => {
-    broadcast('AGENT_METRIC_UPDATE', metrics, 'metrics');
-  });
-
-  registerEventListener('actionUpdate', (action) => {
-    broadcast('AGENT_ACTION', action, 'actions');
-  });
-
-  registerEventListener('routingUpdate', (decision) => {
-    broadcast('ROUTING_DECISION', decision, 'routing');
-  });
-
-  registerEventListener('transformationUpdate', (transformation) => {
-    broadcast('AGENT_TRANSFORMATION', transformation, 'transformations');
-  });
-
-  registerEventListener('performanceUpdate', ({ metric, stats }) => {
-    broadcast('PERFORMANCE_METRIC', { metric, stats }, 'performance');
-  });
-
-  registerEventListener('error', (error) => {
-    console.error('EventConsumer error:', error);
-    broadcast(
-      'ERROR',
-      {
-        message: error instanceof Error ? error.message : 'Unknown error',
-        timestamp: new Date().toISOString(),
-      },
-      'errors'
-    );
-  });
-
-  registerEventListener('connected', () => {
-    console.log('EventConsumer connected');
-    broadcast('CONSUMER_STATUS', { status: 'connected' }, 'system');
-  });
-
-  registerEventListener('disconnected', () => {
-    console.log('EventConsumer disconnected');
-    broadcast('CONSUMER_STATUS', { status: 'disconnected' }, 'system');
-  });
-
-  // Demo mode state events - signal clients to clear/restore their local state
-  registerEventListener('stateReset', () => {
-    console.log('[WebSocket] Demo mode: state reset - broadcasting DEMO_STATE_RESET');
-    broadcast('DEMO_STATE_RESET', { timestamp: Date.now() }, 'all');
-  });
-
-  registerEventListener('stateRestored', () => {
-    console.log('[WebSocket] Demo mode: state restored - broadcasting DEMO_STATE_RESTORED');
-    broadcast('DEMO_STATE_RESTORED', { timestamp: Date.now() }, 'all');
-
-    // After notifying clients to clear their state, send fresh initial state with restored data.
-    // Query PostgreSQL for full event set (same path as connection handler) so all 197+ topics
-    // are included, not just EventConsumer's ~30 topic in-memory buffer.
-    // Small delay (100ms) ensures DEMO_STATE_RESTORED is processed first.
-    void setTimeout(
-      safeAsyncHandler('demo-restore', async () => {
-        console.log('[WebSocket] Demo mode: broadcasting restored INITIAL_STATE');
-        const { recentActions: realActions, eventBusEvents } = await getEventsForInitialState();
-        const legacyActions = eventConsumer.getRecentActions();
-        const combinedActions = realActions.length > 0 ? realActions : legacyActions;
-
-        broadcast(
-          'INITIAL_STATE',
-          {
-            metrics: eventConsumer.getAgentMetrics(),
-            recentActions: combinedActions,
-            routingDecisions: eventConsumer.getRoutingDecisions(),
-            recentTransformations: eventConsumer.getRecentTransformations(),
-            performanceStats: eventConsumer.getPerformanceStats(),
-            health: eventConsumer.getHealthStatus(),
-            registeredNodes: transformNodesToSnakeCase(eventConsumer.getRegisteredNodes()),
-            nodeRegistryStats: eventConsumer.getNodeRegistryStats(),
-            eventBusEvents: eventBusEvents,
-          },
-          'all'
-        );
-      }),
-      100
-    );
-  });
-
-  registerEventListener('stateSnapshotted', () => {
-    console.log('[WebSocket] Demo mode: state snapshotted');
-    // No broadcast needed - just logging for debugging
-  });
-
-  // Cross-repo validation event listener (OMN-1907)
-  // Broadcasts validation lifecycle events (run-started, violations-batch, run-completed)
-  // to clients subscribed to the 'validation' topic
-  registerEventListener('validation-event', (data: { type: string; event: any }) => {
-    // Send minimal payload - clients only need the type for query invalidation,
-    // plus run_id for targeted cache updates. Full violation data stays server-side.
-    broadcast('VALIDATION_EVENT', { type: data.type, run_id: data.event?.run_id }, 'validation');
-  });
-
-  // Extraction pipeline event listener (OMN-1804)
-  // Invalidation-only broadcast: tells clients to re-fetch, does NOT carry data payloads.
-  // PostgreSQL is the single source of truth; clients re-query API endpoints on invalidation.
-  registerEventListener('extraction-event', (data: { type: string }) => {
-    broadcast('EXTRACTION_INVALIDATE', { type: data.type }, 'extraction');
-  });
-
-  // Circuit breaker event listener (OMN-5293)
-  // Tells clients to re-fetch circuit breaker state when a new transition is ingested.
-  registerEventListener('circuit-breaker-event', () => {
-    broadcast('circuit-breaker-event', { timestamp: Date.now() }, 'circuit-breaker');
-  });
 
   // Learned Insights invalidation listener (OMN-2306)
   // Tells clients to re-fetch insights data when new patterns are learned.
@@ -698,31 +540,6 @@ export function setupWebSocket(httpServer: HTTPServer) {
     );
   };
   circuitBreakerEventEmitter.on('circuit-breaker-invalidate', debugEscalationInvalidateHandler);
-
-  // Node Registry event listeners
-  registerEventListener('nodeIntrospectionUpdate', (event: NodeIntrospectionEvent) => {
-    // Transform to client-expected format (snake_case for consistency with Kafka events)
-    const data = transformNodeIntrospectionToSnakeCase(event);
-    broadcast('NODE_INTROSPECTION', data, 'node-introspection');
-  });
-
-  registerEventListener('nodeHeartbeatUpdate', (event: NodeHeartbeatEvent) => {
-    // Transform to client-expected format
-    const data = transformNodeHeartbeatToSnakeCase(event);
-    broadcast('NODE_HEARTBEAT', data, 'node-heartbeat');
-  });
-
-  registerEventListener('nodeStateChangeUpdate', (event: NodeStateChangeEvent) => {
-    // Transform to client-expected format
-    const data = transformNodeStateChangeToSnakeCase(event);
-    broadcast('NODE_STATE_CHANGE', data, 'node-state-change');
-  });
-
-  registerEventListener('nodeRegistryUpdate', (nodes: RegisteredNode[]) => {
-    // Transform to client-expected format (snake_case for registered nodes)
-    const data = transformNodesToSnakeCase(nodes);
-    broadcast('NODE_REGISTRY_UPDATE', data, 'node-registry');
-  });
 
   // Intent classification event listeners (OMN-1516)
   // Note: Intent events are emitted from intentEventEmitter, NOT eventConsumer.
@@ -889,29 +706,6 @@ export function setupWebSocket(httpServer: HTTPServer) {
     );
   }
 
-  // Execution graph event listener (OMN-2302)
-  // Re-broadcasts AGENT_ACTION, ROUTING_DECISION, and AGENT_TRANSFORMATION events to clients
-  // subscribed to the 'execution-graph' topic so the graph page can build live graphs.
-  registerEventListener('actionUpdate', (action) => {
-    broadcast('EXECUTION_GRAPH_EVENT', { type: 'AGENT_ACTION', data: action }, 'execution-graph');
-  });
-
-  registerEventListener('routingUpdate', (decision) => {
-    broadcast(
-      'EXECUTION_GRAPH_EVENT',
-      { type: 'ROUTING_DECISION', data: decision },
-      'execution-graph'
-    );
-  });
-
-  registerEventListener('transformationUpdate', (transformation) => {
-    broadcast(
-      'EXECUTION_GRAPH_EVENT',
-      { type: 'AGENT_TRANSFORMATION', data: transformation },
-      'execution-graph'
-    );
-  });
-
   // Projection invalidation bridge (OMN-2095)
   // Bridges the server-side ProjectionService EventEmitter to WebSocket clients.
   // When a projection view applies an event, broadcast PROJECTION_INVALIDATE so
@@ -1027,30 +821,33 @@ export function setupWebSocket(httpServer: HTTPServer) {
 
         // Send initial state by querying PostgreSQL for latest events across ALL topics.
         // This ensures events from EventBusDataSource's 197+ topics persist across reloads.
-        const { recentActions: realActions, eventBusEvents } = await getEventsForInitialState();
+        const { recentActions, eventBusEvents } = await getEventsForInitialState();
 
-        // Get legacy data for backward compatibility with other dashboards
-        const legacyActions = eventConsumer.getRecentActions();
-        const legacyRouting = eventConsumer.getRoutingDecisions();
-
-        // Combine real actions with legacy actions (real events take priority)
-        // Real events are more recent and accurate for Event Bus Monitor
-        const combinedActions = realActions.length > 0 ? realActions : legacyActions;
+        // Fetch DB-backed metrics for initial state
+        const [metrics, routingDecisions, transformations, perfStats, health] = await Promise.all([
+          agentMetricsProjection.getAgentSummary(),
+          agentMetricsProjection.getRoutingDecisions(),
+          agentMetricsProjection.getRecentTransformations(),
+          agentMetricsProjection.getPerformanceStatsPublic(),
+          agentMetricsProjection.getHealthStatus(),
+        ]);
 
         if (ws.readyState === WebSocket.OPEN) {
+          const dbAvailable = recentActions.length > 0 || eventBusEvents.length > 0;
           ws.send(
             JSON.stringify({
               type: 'INITIAL_STATE',
+              ...(dbAvailable ? {} : { status: 'degraded', reason: 'db_unavailable' }),
               data: {
-                metrics: eventConsumer.getAgentMetrics(),
-                recentActions: combinedActions,
-                routingDecisions: legacyRouting,
-                recentTransformations: eventConsumer.getRecentTransformations(),
-                performanceStats: eventConsumer.getPerformanceStats(),
-                health: eventConsumer.getHealthStatus(),
-                registeredNodes: transformNodesToSnakeCase(eventConsumer.getRegisteredNodes()),
-                nodeRegistryStats: eventConsumer.getNodeRegistryStats(),
-                eventBusEvents: eventBusEvents,
+                metrics,
+                recentActions,
+                routingDecisions,
+                recentTransformations: transformations,
+                performanceStats: perfStats,
+                health,
+                registeredNodes: [],
+                nodeRegistryStats: { total: 0, active: 0, inactive: 0 },
+                eventBusEvents,
               },
               timestamp: new Date().toISOString(),
             })
@@ -1110,28 +907,37 @@ export function setupWebSocket(httpServer: HTTPServer) {
                 break;
               case 'getState': {
                 // Send current state on demand by querying PostgreSQL
-                const { recentActions: realActions, eventBusEvents } =
+                const { recentActions: stateActions, eventBusEvents: stateEvents } =
                   await getEventsForInitialState();
 
-                const legacyActions = eventConsumer.getRecentActions();
-                const combinedActions = realActions.length > 0 ? realActions : legacyActions;
+                const [
+                  stateMetrics,
+                  stateRouting,
+                  stateTransformations,
+                  statePerfStats,
+                  stateHealth,
+                ] = await Promise.all([
+                  agentMetricsProjection.getAgentSummary(),
+                  agentMetricsProjection.getRoutingDecisions(),
+                  agentMetricsProjection.getRecentTransformations(),
+                  agentMetricsProjection.getPerformanceStatsPublic(),
+                  agentMetricsProjection.getHealthStatus(),
+                ]);
 
                 if (ws.readyState === WebSocket.OPEN) {
                   ws.send(
                     JSON.stringify({
                       type: 'CURRENT_STATE',
                       data: {
-                        metrics: eventConsumer.getAgentMetrics(),
-                        recentActions: combinedActions,
-                        routingDecisions: eventConsumer.getRoutingDecisions(),
-                        recentTransformations: eventConsumer.getRecentTransformations(),
-                        performanceStats: eventConsumer.getPerformanceStats(),
-                        health: eventConsumer.getHealthStatus(),
-                        registeredNodes: transformNodesToSnakeCase(
-                          eventConsumer.getRegisteredNodes()
-                        ),
-                        nodeRegistryStats: eventConsumer.getNodeRegistryStats(),
-                        eventBusEvents: eventBusEvents,
+                        metrics: stateMetrics,
+                        recentActions: stateActions,
+                        routingDecisions: stateRouting,
+                        recentTransformations: stateTransformations,
+                        performanceStats: statePerfStats,
+                        health: stateHealth,
+                        registeredNodes: [],
+                        nodeRegistryStats: { total: 0, active: 0, inactive: 0 },
+                        eventBusEvents: stateEvents,
                       },
                       timestamp: new Date().toISOString(),
                     })
@@ -1253,13 +1059,6 @@ export function setupWebSocket(httpServer: HTTPServer) {
 
     // Clear heartbeat interval
     clearInterval(heartbeatInterval);
-
-    // Remove all EventConsumer listeners to prevent memory leaks
-    console.log(`Removing ${eventListeners.length} EventConsumer listeners...`);
-    eventListeners.forEach(({ event, handler }) => {
-      eventConsumer.removeListener(event, handler);
-    });
-    eventListeners.length = 0; // Clear the array
 
     // Remove registry event listeners
     console.log(`Removing ${registryListeners.length} registry event listeners...`);

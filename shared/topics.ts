@@ -171,6 +171,7 @@ export const SUFFIX_NODE_INTROSPECTION = 'onex.evt.platform.node-introspection.v
 export const SUFFIX_NODE_HEARTBEAT = 'onex.evt.platform.node-heartbeat.v1';
 export const SUFFIX_REQUEST_INTROSPECTION = 'onex.cmd.platform.request-introspection.v1';
 export const SUFFIX_FSM_STATE_TRANSITIONS = 'onex.evt.platform.fsm-state-transitions.v1';
+export const SUFFIX_NODE_STATE_CHANGE = 'onex.evt.platform.node-state-change.v1';
 export const SUFFIX_RUNTIME_TICK = 'onex.intent.platform.runtime-tick.v1';
 export const SUFFIX_REGISTRATION_SNAPSHOTS = 'onex.snapshot.platform.registration-snapshots.v1';
 

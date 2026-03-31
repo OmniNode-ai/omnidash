@@ -17,6 +17,9 @@ import {
   SUFFIX_OMNICLAUDE_PR_VALIDATION_ROLLUP,
   SUFFIX_PLATFORM_DLQ_MESSAGE,
   SUFFIX_AGENT_STATUS,
+  SUFFIX_NODE_INTROSPECTION,
+  SUFFIX_NODE_HEARTBEAT,
+  SUFFIX_NODE_STATE_CHANGE,
 } from '@shared/topics';
 
 import type {
@@ -37,6 +40,9 @@ const PLATFORM_TOPICS = new Set([
   SUFFIX_OMNICLAUDE_PR_VALIDATION_ROLLUP,
   SUFFIX_PLATFORM_DLQ_MESSAGE,
   SUFFIX_AGENT_STATUS,
+  SUFFIX_NODE_INTROSPECTION,
+  SUFFIX_NODE_HEARTBEAT,
+  SUFFIX_NODE_STATE_CHANGE,
 ]);
 
 export class PlatformProjectionHandler implements ProjectionHandler {
@@ -83,6 +89,12 @@ export class PlatformProjectionHandler implements ProjectionHandler {
         return this.projectDlqMessage(data, context);
       case SUFFIX_AGENT_STATUS:
         return this.projectAgentStatusEvent(data, fallbackId, context);
+      case SUFFIX_NODE_INTROSPECTION:
+        return this.projectNodeIntrospectionEvent(data, context);
+      case SUFFIX_NODE_HEARTBEAT:
+        return this.projectNodeHeartbeatEvent(data, context);
+      case SUFFIX_NODE_STATE_CHANGE:
+        return this.projectNodeStateChangeEvent(data, context);
       default:
         return false;
     }
@@ -310,5 +322,173 @@ export class PlatformProjectionHandler implements ProjectionHandler {
       }
       throw err;
     }
+  }
+
+  // -------------------------------------------------------------------------
+  // Node introspection -> node_service_registry (full upsert) (OMN-7126)
+  // -------------------------------------------------------------------------
+
+  private async projectNodeIntrospectionEvent(
+    data: Record<string, unknown>,
+    context: ProjectionContext
+  ): Promise<boolean> {
+    const { db } = context;
+    if (!db) return false;
+
+    const serviceName =
+      (data.service_name as string) || (data.node_id as string) || (data.nodeId as string);
+    if (!serviceName) {
+      console.warn(
+        '[ReadModelConsumer] node-introspection missing service_name/node_id -- skipping'
+      );
+      return true;
+    }
+
+    const serviceUrl = (data.service_url as string) || (data.serviceUrl as string) || '';
+    const serviceType =
+      (data.service_type as string) ||
+      (data.serviceType as string) ||
+      (data.node_type as string) ||
+      (data.nodeType as string) ||
+      null;
+    const healthStatus =
+      (data.health_status as string) ||
+      (data.healthStatus as string) ||
+      (data.current_state as string) ||
+      'unknown';
+    const metadata = (data.metadata ?? data.capabilities ?? {}) as Record<string, unknown>;
+
+    try {
+      await db.execute(sql`
+        INSERT INTO node_service_registry (
+          service_name, service_url, service_type, health_status,
+          last_health_check, metadata, is_active, updated_at, projected_at
+        ) VALUES (
+          ${serviceName},
+          ${serviceUrl},
+          ${serviceType},
+          ${healthStatus},
+          NOW(),
+          ${JSON.stringify(metadata)}::jsonb,
+          true,
+          NOW(),
+          NOW()
+        )
+        ON CONFLICT (service_name) DO UPDATE SET
+          service_url = EXCLUDED.service_url,
+          service_type = EXCLUDED.service_type,
+          health_status = EXCLUDED.health_status,
+          last_health_check = EXCLUDED.last_health_check,
+          metadata = EXCLUDED.metadata,
+          is_active = EXCLUDED.is_active,
+          updated_at = EXCLUDED.updated_at,
+          projected_at = EXCLUDED.projected_at
+      `);
+    } catch (err) {
+      if (isTableMissingError(err, 'node_service_registry')) {
+        console.warn(
+          '[ReadModelConsumer] node_service_registry table not yet created -- ' +
+            'run migrations to enable node registration projection'
+        );
+        return true;
+      }
+      throw err;
+    }
+
+    return true;
+  }
+
+  // -------------------------------------------------------------------------
+  // Node heartbeat -> node_service_registry (liveness only) (OMN-7126)
+  // -------------------------------------------------------------------------
+
+  private async projectNodeHeartbeatEvent(
+    data: Record<string, unknown>,
+    context: ProjectionContext
+  ): Promise<boolean> {
+    const { db } = context;
+    if (!db) return false;
+
+    const serviceName =
+      (data.service_name as string) || (data.node_id as string) || (data.nodeId as string);
+    if (!serviceName) {
+      console.warn('[ReadModelConsumer] node-heartbeat missing service_name/node_id -- skipping');
+      return true;
+    }
+
+    const healthStatus =
+      (data.health_status as string) || (data.healthStatus as string) || 'healthy';
+
+    try {
+      // Update liveness fields ONLY — do NOT touch metadata, capabilities, service_type, etc.
+      await db.execute(sql`
+        UPDATE node_service_registry
+        SET health_status = ${healthStatus},
+            last_health_check = NOW(),
+            updated_at = NOW()
+        WHERE service_name = ${serviceName}
+      `);
+    } catch (err) {
+      if (isTableMissingError(err, 'node_service_registry')) {
+        console.warn(
+          '[ReadModelConsumer] node_service_registry table not yet created -- ' +
+            'run migrations to enable node registration projection'
+        );
+        return true;
+      }
+      throw err;
+    }
+
+    return true;
+  }
+
+  // -------------------------------------------------------------------------
+  // Node state change -> node_service_registry (state only) (OMN-7126)
+  // -------------------------------------------------------------------------
+
+  private async projectNodeStateChangeEvent(
+    data: Record<string, unknown>,
+    context: ProjectionContext
+  ): Promise<boolean> {
+    const { db } = context;
+    if (!db) return false;
+
+    const serviceName =
+      (data.service_name as string) || (data.node_id as string) || (data.nodeId as string);
+    if (!serviceName) {
+      console.warn(
+        '[ReadModelConsumer] node-state-change missing service_name/node_id -- skipping'
+      );
+      return true;
+    }
+
+    const newState =
+      (data.new_state as string) ||
+      (data.newState as string) ||
+      (data.health_status as string) ||
+      'unknown';
+    const isActive = newState.toLowerCase() === 'active';
+
+    try {
+      // Update state transition fields ONLY — do NOT touch metadata, capabilities, etc.
+      await db.execute(sql`
+        UPDATE node_service_registry
+        SET health_status = ${newState},
+            is_active = ${isActive},
+            updated_at = NOW()
+        WHERE service_name = ${serviceName}
+      `);
+    } catch (err) {
+      if (isTableMissingError(err, 'node_service_registry')) {
+        console.warn(
+          '[ReadModelConsumer] node_service_registry table not yet created -- ' +
+            'run migrations to enable node registration projection'
+        );
+        return true;
+      }
+      throw err;
+    }
+
+    return true;
   }
 }

@@ -1,5 +1,5 @@
 /**
- * Health Probe Honesty Tests (OMN-6973)
+ * Health Probe Honesty Tests (OMN-6973, updated for OMN-7125 single-consumer)
  *
  * Validates that health probes distinguish between:
  * - Dependency truly unavailable -> report 'down'
@@ -7,17 +7,18 @@
  * - Partial state -> report 'degraded' with specifics
  *
  * Internal probe exceptions must NEVER collapse into false "service down" status.
+ *
+ * OMN-7125: event-consumer was deleted. The health probe now checks consumer
+ * liveness via projection_watermarks DB query instead of eventConsumer.getHealthStatus().
  */
 
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import express from 'express';
 import request from 'supertest';
 
-// Mock dependencies
-vi.mock('../event-consumer', () => ({
-  eventConsumer: {
-    getHealthStatus: vi.fn().mockReturnValue({ status: 'healthy' }),
-  },
+// Mock dependencies — OMN-7125: storage replaces event-consumer for consumer health
+vi.mock('../storage', () => ({
+  tryGetIntelligenceDb: vi.fn(),
 }));
 
 vi.mock('../event-bus-data-source', () => ({
@@ -30,8 +31,26 @@ vi.mock('../schema-health', () => ({
 
 import healthProbeRoutes, { clearHealthProbeCache } from '../health-probe-routes';
 import { checkSchemaParity } from '../schema-health';
+import { tryGetIntelligenceDb } from '../storage';
 
 const mockCheckSchemaParity = vi.mocked(checkSchemaParity);
+const mockTryGetIntelligenceDb = vi.mocked(tryGetIntelligenceDb);
+
+/**
+ * Create a mock DB that returns watermark rows indicating healthy consumer.
+ */
+function mockHealthyDb() {
+  const now = new Date().toISOString();
+  return {
+    execute: vi.fn().mockResolvedValue({
+      rows: [
+        { topic: 'topic-a', last_offset: 100, updated_at: now },
+        { topic: 'topic-b', last_offset: 200, updated_at: now },
+        { topic: 'topic-c', last_offset: 300, updated_at: now },
+      ],
+    }),
+  };
+}
 
 function createApp() {
   const app = express();
@@ -43,6 +62,8 @@ describe('Health Probe Honesty (OMN-6973)', () => {
   beforeEach(() => {
     clearHealthProbeCache();
     vi.clearAllMocks();
+    // Default: DB available with healthy watermarks
+    mockTryGetIntelligenceDb.mockReturnValue(mockHealthyDb() as any);
   });
 
   afterEach(() => {

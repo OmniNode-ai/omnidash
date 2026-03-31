@@ -50,14 +50,6 @@ vi.mock('../websocket', () => ({
   setupWebSocket: setupWebSocketMock,
 }));
 
-vi.mock('../projections/node-registry-projection', () => ({
-  NodeRegistryProjection: vi.fn().mockImplementation(function () {
-    return {
-      viewId: 'node-registry',
-    };
-  }),
-}));
-
 vi.mock('../projection-routes', () => ({
   createProjectionRoutes: vi.fn(),
 }));
@@ -65,20 +57,6 @@ vi.mock('../projection-routes', () => ({
 vi.mock('../projection-instance', () => ({
   initProjectionListeners: vi.fn(),
   teardownProjectionListeners: vi.fn(),
-}));
-
-const eventConsumerOnMock = vi.fn().mockReturnThis();
-const getRegisteredNodesMock = vi.fn().mockReturnValue([]);
-
-vi.mock('../event-consumer', () => ({
-  eventConsumer: {
-    validateConnection: validateConnectionMock,
-    start: startMock,
-    stop: stopMock,
-    on: eventConsumerOnMock,
-    removeListener: vi.fn(),
-    getRegisteredNodes: getRegisteredNodesMock,
-  },
 }));
 
 vi.mock('../event-bus-data-source', () => ({
@@ -183,8 +161,6 @@ describe('server/index bootstrap', () => {
     await importIndex();
 
     expect(registerRoutesMock).toHaveBeenCalledTimes(1);
-    expect(validateConnectionMock).toHaveBeenCalledTimes(1);
-    expect(startMock).toHaveBeenCalledTimes(1);
     expect(setupWebSocketMock).toHaveBeenCalledWith(mockServer);
     expect(setupViteMock).toHaveBeenCalledWith(expect.anything(), mockServer);
     expect(serveStaticMock).not.toHaveBeenCalled();
@@ -209,48 +185,5 @@ describe('server/index bootstrap', () => {
     expect(setupViteMock).not.toHaveBeenCalled();
     expect(serveStaticMock).toHaveBeenCalledWith(expect.anything());
     expect(mockServer.listen).toHaveBeenCalledWith(3000, '0.0.0.0', expect.any(Function));
-  });
-
-  it('logs and continues when event consumer fails to start', async () => {
-    process.env.NODE_ENV = 'development';
-    process.env.ENABLE_REAL_TIME_EVENTS = 'true';
-    validateConnectionMock.mockResolvedValueOnce(true);
-    const failure = new Error('broker unavailable');
-    startMock.mockRejectedValueOnce(failure);
-
-    const consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
-
-    await importIndex();
-
-    expect(validateConnectionMock).toHaveBeenCalled();
-    expect(startMock).toHaveBeenCalled();
-    expect(consoleErrorSpy).toHaveBeenCalledWith('❌ Failed to start event consumer:', failure);
-    expect(consoleErrorSpy).toHaveBeenCalledWith(
-      '   Intelligence endpoints will not receive real-time data'
-    );
-    expect(setupWebSocketMock).toHaveBeenCalledWith(mockServer);
-
-    consoleErrorSpy.mockRestore();
-  });
-
-  it('registers NodeRegistryProjection before registerRoutes', async () => {
-    process.env.NODE_ENV = 'development';
-
-    const callOrder: string[] = [];
-    projectionServiceMock.registerView.mockImplementation(() => {
-      callOrder.push('registerView');
-    });
-    registerRoutesMock.mockImplementation(async () => {
-      callOrder.push('registerRoutes');
-      return mockServer;
-    });
-
-    await importIndex();
-
-    const viewIdx = callOrder.indexOf('registerView');
-    const routesIdx = callOrder.indexOf('registerRoutes');
-    expect(viewIdx).toBeGreaterThanOrEqual(0);
-    expect(routesIdx).toBeGreaterThanOrEqual(0);
-    expect(viewIdx).toBeLessThan(routesIdx);
   });
 });

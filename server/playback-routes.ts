@@ -18,7 +18,6 @@ import path from 'path';
 import { fileURLToPath } from 'url';
 import { Router, Request, Response } from 'express';
 import { getPlaybackService, playbackLogger } from './event-playback';
-import { getEventConsumer } from './event-consumer';
 import { getPlaybackDataSource } from './playback-data-source';
 import {
   PLAYBACK_CONFIG,
@@ -356,18 +355,6 @@ router.post('/start', async (req: Request, res: Response) => {
 
     const filePath = resolvedPath;
 
-    // Wire up playback events to the EventConsumer
-    const eventConsumer = getEventConsumer();
-
-    // Snapshot current live data, then reset for clean demo experience
-    if (eventConsumer) {
-      // Only snapshot if there isn't already one (prevents overwriting during rapid restarts)
-      if (!eventConsumer.hasStateSnapshot()) {
-        eventConsumer.snapshotState();
-      }
-      eventConsumer.resetState();
-    }
-
     // Remove only our previous handler to avoid duplicates
     // (using targeted removal instead of removeAllListeners to preserve other listeners)
     if (currentEventHandler) {
@@ -491,17 +478,10 @@ router.post('/stop', (_req: Request, res: Response) => {
 
   playback.stopPlayback();
 
-  // Restore live data from snapshot taken before demo started
-  const eventConsumer = getEventConsumer();
-  let stateRestored = false;
-  if (eventConsumer) {
-    stateRestored = eventConsumer.restoreState();
-  }
-
   res.json({
     success: true,
-    message: stateRestored ? 'Playback stopped, live data restored' : 'Playback stopped',
-    stateRestored,
+    message: 'Playback stopped',
+    stateRestored: false,
     ...playback.getStatus(),
   });
 });
@@ -593,15 +573,6 @@ export function cleanupPlaybackRoutes(): void {
   // at true if the module is somehow re-evaluated in tests.
   isStartingPlayback = false;
   playback.stopPlayback();
-
-  // Restore the EventConsumer state snapshot if playback is active at shutdown
-  // time (e.g. SIGTERM mid-playback). The /stop route calls restoreState() on a
-  // normal user-initiated stop; mirror that here so the snapshot is not silently
-  // discarded when the process is killed while demo playback is in flight.
-  const eventConsumer = getEventConsumer();
-  if (eventConsumer) {
-    eventConsumer.restoreState();
-  }
 }
 
 export default router;
