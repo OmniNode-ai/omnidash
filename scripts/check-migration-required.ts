@@ -38,6 +38,10 @@ function isProjectionFile(filePath: string): boolean {
   return PROJECTION_PATTERNS.some((p) => p.test(filePath));
 }
 
+function isDeletedFile(filePath: string): boolean {
+  return !fs.existsSync(filePath);
+}
+
 function hasBypassComment(filePath: string): boolean {
   try {
     const content = fs.readFileSync(filePath, 'utf-8');
@@ -127,9 +131,7 @@ function main(): void {
   }
 
   // Check if the PR already includes a migration file
-  const hasMigration = changedFiles.some(
-    (f) => f.startsWith(MIGRATION_DIR) && f.endsWith('.sql')
-  );
+  const hasMigration = changedFiles.some((f) => f.startsWith(MIGRATION_DIR) && f.endsWith('.sql'));
   if (hasMigration) {
     console.log('OK: projection files changed with accompanying migration, coupling check passed.');
     process.exit(0);
@@ -138,6 +140,10 @@ function main(): void {
   // Check each projection file for bypass comment or cosmetic-only changes
   const violations: string[] = [];
   for (const pf of projectionFiles) {
+    if (isDeletedFile(pf)) {
+      console.log(`SKIP: ${pf} was deleted — no schema change possible.`);
+      continue;
+    }
     if (hasBypassComment(pf)) {
       console.log(`BYPASS: ${pf} has no-migration bypass comment.`);
       continue;
