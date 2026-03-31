@@ -36,6 +36,7 @@ const mockDb = createMockQueryBuilder();
 
 vi.mock('../storage', () => ({
   getIntelligenceDb: vi.fn(() => mockDb),
+  tryGetIntelligenceDb: vi.fn(() => mockDb),
 }));
 
 vi.mock('../intelligence-event-adapter', () => ({
@@ -45,27 +46,34 @@ vi.mock('../intelligence-event-adapter', () => ({
   },
 }));
 
-vi.mock('../event-consumer', () => ({
-  eventConsumer: {
-    getAgentMetrics: vi.fn().mockReturnValue([]),
-    getRecentActions: vi.fn().mockReturnValue([]),
-    getRoutingDecisions: vi.fn().mockReturnValue([]),
-    getActionsByAgent: vi.fn().mockReturnValue([]),
-    getHealthStatus: vi.fn().mockReturnValue({
-      status: 'healthy',
-      agents: 0,
-      recentActions: 0,
-      routingDecisions: 0,
-    }),
-    getRecentTransformations: vi.fn().mockReturnValue([]),
-    getPerformanceMetrics: vi.fn().mockReturnValue([]),
-    getPerformanceStats: vi.fn().mockReturnValue({
-      avgRoutingDurationMs: 0,
+vi.mock('../projection-bootstrap', () => ({
+  agentMetricsProjection: {
+    getAgentSummary: vi.fn().mockResolvedValue([]),
+    getRecentActions: vi.fn().mockResolvedValue([]),
+    getRoutingDecisions: vi.fn().mockResolvedValue([]),
+    getActionsByAgent: vi.fn().mockResolvedValue([]),
+    getRecentTransformations: vi.fn().mockResolvedValue([]),
+    getPerformanceMetrics: vi.fn().mockResolvedValue([]),
+    getPerformanceStatsPublic: vi.fn().mockResolvedValue({
+      avgRoutingDuration: 0,
       cacheHitRate: 0,
-      totalQueries: 0,
-      avgCandidatesEvaluated: 0,
-      strategyBreakdown: {},
+      totalDecisions: 0,
+      successRate: 0,
     }),
+    getHealthStatus: vi.fn().mockResolvedValue({
+      status: 'healthy',
+      eventsProcessed: 0,
+      recentActionsCount: 0,
+    }),
+    ensureFresh: vi.fn().mockResolvedValue(undefined),
+  },
+  projectionService: {
+    getView: vi.fn(),
+    registerView: vi.fn(),
+    viewCount: 0,
+    viewIds: [],
+    on: vi.fn(),
+    removeListener: vi.fn(),
   },
 }));
 

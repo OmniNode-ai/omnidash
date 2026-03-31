@@ -32,15 +32,9 @@ function collectTsFiles(dir: string): string[] {
   return files;
 }
 
-// Files that are PART of the EventConsumer module itself (allowed to reference it)
-const ALLOWED_FILES = new Set([
-  'event-consumer.ts',
-  'consumers/consumer-lifecycle.ts',
-  'consumers/consumer-state-helpers.ts',
-  'consumers/event-preload.ts',
-  'consumers/domain/types.ts',
-  'consumers/domain/consumer-utils.ts',
-]);
+// No production files are allowed to reference EventConsumer.
+// The EventConsumer module and its helpers have been deleted (OMN-7137).
+const ALLOWED_FILES = new Set<string>([]);
 
 describe('No EventConsumer regression (OMN-7135)', () => {
   const tsFiles = collectTsFiles(SERVER_DIR);
