@@ -50,6 +50,8 @@ import { SkillProjection } from './projections/skill-projection';
 import { HostileReviewerProjection } from './projections/hostile-reviewer-projection';
 // Review calibration projection (OMN-6176)
 import { ReviewCalibrationProjection } from './projections/review-calibration-projection';
+// Node registry DB-backed projection (OMN-7127)
+import { NodeRegistryDbProjection } from './projections/node-registry-db-projection';
 import { eventConsumer } from './event-consumer';
 import { eventBusDataSource } from './event-bus-data-source';
 import { extractActionFromTopic, extractProducerFromTopicOrDefault } from '@shared/topics';
@@ -169,6 +171,8 @@ export const skillProjection = new SkillProjection();
 export const hostileReviewerProjection = new HostileReviewerProjection();
 /** Review calibration projection (OMN-6176). Queries review_calibration_runs_rm table. */
 export const reviewCalibrationProjection = new ReviewCalibrationProjection();
+/** Node registry DB-backed projection (OMN-7127). Queries node_service_registry table. */
+export const nodeRegistryDbProjection = new NodeRegistryDbProjection();
 
 if (!projectionService.getView(extractionMetricsProjection.viewId)) {
   projectionService.registerView(extractionMetricsProjection);
@@ -245,6 +249,9 @@ if (!projectionService.getView(hostileReviewerProjection.viewId)) {
 }
 if (!projectionService.getView(reviewCalibrationProjection.viewId)) {
   projectionService.registerView(reviewCalibrationProjection);
+}
+if (!projectionService.getView(nodeRegistryDbProjection.viewId)) {
+  projectionService.registerView(nodeRegistryDbProjection);
 }
 
 // ============================================================================

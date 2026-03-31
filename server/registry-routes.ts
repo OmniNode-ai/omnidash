@@ -15,8 +15,7 @@
 
 import { Router, type Request, type Response } from 'express';
 import type { NodeType, RegistrationState, NodeState } from '@shared/projection-types';
-import { projectionService } from './projection-bootstrap';
-import type { NodeRegistryProjection } from './projections/node-registry-projection';
+import { nodeRegistryDbProjection } from './projection-bootstrap';
 
 // DEMO_MODE imports — only used when DEMO_MODE=true and projection is empty
 import { mockDataStore, filterNodes, getWidgetMappings } from './registry-mock-data';
@@ -28,19 +27,21 @@ const router = Router();
 // Projection access
 // ============================================================================
 
-/** Retrieve the materialized node-registry projection, if bootstrapped. */
-function getProjection(): NodeRegistryProjection | undefined {
-  return projectionService.getView('node-registry') as NodeRegistryProjection | undefined;
+/**
+ * Retrieve the DB-backed node-registry projection.
+ * Returns the NodeRegistryDbProjection singleton which reads from
+ * node_service_registry table with TTL-based caching.
+ */
+function getDbProjection(): typeof nodeRegistryDbProjection {
+  return nodeRegistryDbProjection;
 }
 
 /**
  * Check if we should use mock data (DEMO_MODE=true and projection has no nodes).
  */
-function shouldUseMockData(projection: NodeRegistryProjection | undefined): boolean {
+function shouldUseMockData(nodes: { length: number }): boolean {
   if (process.env.DEMO_MODE !== 'true') return false;
-  if (!projection) return true;
-  const snapshot = projection.getSnapshot();
-  return (snapshot.payload?.nodes?.length ?? 0) === 0;
+  return nodes.length === 0;
 }
 
 // ============================================================================
@@ -226,27 +227,19 @@ function filterProjectionNodes(nodes: NodeState[], params: FilterParams): NodeSt
  * Full dashboard payload with nodes, summary statistics.
  * Supports filtering by state, type, and capability.
  */
-router.get('/discovery', (req: Request, res: Response) => {
+router.get('/discovery', async (req: Request, res: Response) => {
   try {
     setNoCacheHeaders(res);
 
     const { limit, offset } = parsePaginationParams(req);
-    const projection = getProjection();
+    const projection = getDbProjection();
+    const payload = await projection.ensureFresh();
+    const allNodes = payload.nodes;
 
     // DEMO_MODE fallback: use mock data when projection is empty
-    if (shouldUseMockData(projection)) {
+    if (shouldUseMockData(allNodes)) {
       return serveMockDiscovery(req, res, limit, offset);
     }
-
-    if (!projection) {
-      return res
-        .status(503)
-        .json(createErrorResponse('service_unavailable', 'Node registry projection not ready'));
-    }
-
-    const snapshot = projection.getSnapshot();
-    const allNodes = snapshot.payload.nodes;
-    const _stats = snapshot.payload.stats; // reserved for future stats endpoint
 
     // Apply filters
     const params: FilterParams = {
@@ -301,7 +294,7 @@ router.get('/discovery', (req: Request, res: Response) => {
         limit,
         offset,
       },
-      source: 'projection',
+      source: 'db-projection',
     };
 
     res.json(response);
@@ -316,25 +309,18 @@ router.get('/discovery', (req: Request, res: Response) => {
  *
  * Node list with filtering and pagination.
  */
-router.get('/nodes', (req: Request, res: Response) => {
+router.get('/nodes', async (req: Request, res: Response) => {
   try {
     setNoCacheHeaders(res);
 
     const { limit, offset } = parsePaginationParams(req);
-    const projection = getProjection();
+    const projection = getDbProjection();
+    const payload = await projection.ensureFresh();
+    const allNodes = payload.nodes;
 
-    if (shouldUseMockData(projection)) {
+    if (shouldUseMockData(allNodes)) {
       return serveMockNodes(req, res, limit, offset);
     }
-
-    if (!projection) {
-      return res
-        .status(503)
-        .json(createErrorResponse('service_unavailable', 'Node registry projection not ready'));
-    }
-
-    const snapshot = projection.getSnapshot();
-    const allNodes = snapshot.payload.nodes;
 
     const params: FilterParams = {
       state: req.query.state as string | undefined,
@@ -356,7 +342,7 @@ router.get('/nodes', (req: Request, res: Response) => {
         limit,
         offset,
       },
-      source: 'projection',
+      source: 'db-projection',
     };
 
     res.json(response);
@@ -373,27 +359,20 @@ router.get('/nodes', (req: Request, res: Response) => {
  * and mock modes. Name-based lookup is intentionally not supported here;
  * use the `search` query parameter on GET /api/registry/nodes instead.
  */
-router.get('/nodes/:id', (req: Request, res: Response) => {
+router.get('/nodes/:id', async (req: Request, res: Response) => {
   try {
     setNoCacheHeaders(res);
 
     const { id } = req.params;
-    const projection = getProjection();
+    const projection = getDbProjection();
+    const payload = await projection.ensureFresh();
 
-    if (shouldUseMockData(projection)) {
+    if (shouldUseMockData(payload.nodes)) {
       return serveMockNodeDetail(req, res, id);
     }
 
-    if (!projection) {
-      return res
-        .status(503)
-        .json(createErrorResponse('service_unavailable', 'Node registry projection not ready'));
-    }
-
-    const snapshot = projection.getSnapshot();
     // Lookup by nodeId only -- consistent with mock mode (see serveMockNodeDetail).
-    // NodeState has no separate name field, so name-based lookup is not possible.
-    const node = snapshot.payload.nodes.find((n) => n.nodeId === id);
+    const node = payload.nodes.find((n) => n.nodeId === id);
 
     if (!node) {
       return res
@@ -405,7 +384,7 @@ router.get('/nodes/:id', (req: Request, res: Response) => {
       timestamp: new Date().toISOString(),
       node: adaptNodeState(node),
       instances: [], // Instances not tracked in projection
-      source: 'projection',
+      source: 'db-projection',
     };
 
     res.json(response);
@@ -445,14 +424,13 @@ router.get('/widgets/mapping', (_req: Request, res: Response) => {
  *
  * Service health check. Reports projection health when available.
  */
-router.get('/health', (_req: Request, res: Response) => {
+router.get('/health', async (_req: Request, res: Response) => {
   try {
     setNoCacheHeaders(res);
 
-    const projection = getProjection();
-    const hasProjectionData = projection
-      ? projection.getSnapshot().payload.nodes.length > 0
-      : false;
+    const projection = getDbProjection();
+    const payload = await projection.ensureFresh();
+    const hasProjectionData = payload.nodes.length > 0;
 
     const response = {
       timestamp: new Date().toISOString(),
@@ -461,7 +439,7 @@ router.get('/health', (_req: Request, res: Response) => {
         projection: hasProjectionData ? ('healthy' as const) : ('degraded' as const),
       },
       source: hasProjectionData
-        ? 'projection'
+        ? 'db-projection'
         : process.env.DEMO_MODE === 'true'
           ? 'mock'
           : 'empty',
