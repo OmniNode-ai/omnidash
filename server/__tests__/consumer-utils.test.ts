@@ -1,3 +1,4 @@
+// no-migration: OMN-7094 test-only — no schema change
 /**
  * Unit tests for consumer-utils enum parsing functions [OMN-7094]
  *

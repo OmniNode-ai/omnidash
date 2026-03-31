@@ -1,3 +1,4 @@
+// no-migration: OMN-7094 case-insensitive enum parsing — no schema change
 /**
  * Shared utility functions for domain handlers [OMN-5191]
  *
