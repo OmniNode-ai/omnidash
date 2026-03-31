@@ -50,6 +50,8 @@ import { SkillProjection } from './projections/skill-projection';
 import { HostileReviewerProjection } from './projections/hostile-reviewer-projection';
 // Review calibration projection (OMN-6176)
 import { ReviewCalibrationProjection } from './projections/review-calibration-projection';
+// Agent metrics projection (OMN-7132) — replaces EventConsumer in-memory metrics
+import { AgentMetricsProjection } from './projections/agent-metrics-projection';
 // Node registry DB-backed projection (OMN-7127)
 import { NodeRegistryDbProjection } from './projections/node-registry-db-projection';
 // Intent DB-backed projection (OMN-7129)
@@ -177,6 +179,8 @@ export const reviewCalibrationProjection = new ReviewCalibrationProjection();
 export const nodeRegistryDbProjection = new NodeRegistryDbProjection();
 /** Intent DB-backed projection (OMN-7129). Queries intent_signals table. */
 export const intentDbProjection = new IntentDbProjection();
+/** Agent metrics projection (OMN-7132). Replaces EventConsumer in-memory agent metrics. */
+export const agentMetricsProjection = new AgentMetricsProjection();
 
 if (!projectionService.getView(extractionMetricsProjection.viewId)) {
   projectionService.registerView(extractionMetricsProjection);
@@ -259,6 +263,9 @@ if (!projectionService.getView(nodeRegistryDbProjection.viewId)) {
 }
 if (!projectionService.getView(intentDbProjection.viewId)) {
   projectionService.registerView(intentDbProjection);
+}
+if (!projectionService.getView(agentMetricsProjection.viewId)) {
+  projectionService.registerView(agentMetricsProjection);
 }
 
 // ============================================================================
