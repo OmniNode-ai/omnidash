@@ -108,6 +108,12 @@ const EXEMPT_FILES = new Set([
   // are not yet representable as a ProjectionService view.
   // TODO(OMN-5287-followup): migrate to ProjectionService view.
   'dlq-routes.ts',
+
+  // Intent breakdown routes query intent_signals (populated by ReadModelConsumer
+  // projection via Kafka). Aggregation query (GROUP BY intent_type) is not yet
+  // representable as a ProjectionService view.
+  // TODO(OMN-5288-followup): migrate to ProjectionService view.
+  'intent-breakdown-routes.ts',
 ]);
 
 /**
