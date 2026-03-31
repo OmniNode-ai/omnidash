@@ -81,6 +81,11 @@ const EXEMPT_FILES = new Set([
   // Not a data-access read path. (OMN-6390)
   'projection-health-routes.ts',
 
+  // Health probe route — queries projection_watermarks to determine event consumer
+  // liveness via DB watermark freshness (single-consumer architecture, OMN-7125).
+  // This is an operational probe, not a data-access read path.
+  'health-probe-routes.ts',
+
   // Staleness API — infrastructure probe that queries MAX(timestamp) from key tables.
   // Direct DB access is inherent to the purpose. Not a data-access read path. (OMN-6398)
   'staleness-routes.ts',
