@@ -1,11 +1,15 @@
 /**
  * Tests for NodeIntrospectionPayloadSchema event_bus extension (OMN-5023)
+ * and declared_capabilities / discovered_capabilities alignment (OMN-7087)
  *
  * Verifies that:
  *   1. Payloads without event_bus parse successfully (backward compat)
  *   2. Payloads with event_bus parse successfully
  *   3. EventBusTopicEntrySchema validates topic entries
  *   4. NodeEventBusConfigSchema validates the full event_bus block
+ *   5. declared_capabilities and discovered_capabilities are accepted
+ *   6. Legacy capabilities field still accepted (transitional)
+ *   7. node_name is accepted when present
  */
 
 import { describe, it, expect } from 'vitest';
@@ -84,7 +88,8 @@ describe('NodeIntrospectionPayloadSchema with event_bus', () => {
       node_id: VALID_UUID,
       node_type: 'EFFECT',
       node_version: '1.0.0',
-      capabilities: null,
+      declared_capabilities: null,
+      discovered_capabilities: null,
       metadata: null,
       current_state: null,
       event_bus: null,
@@ -98,7 +103,8 @@ describe('NodeIntrospectionPayloadSchema with event_bus', () => {
       node_id: VALID_UUID,
       node_type: 'EFFECT',
       node_version: '1.0.0',
-      capabilities: null,
+      declared_capabilities: null,
+      discovered_capabilities: null,
       metadata: null,
       current_state: null,
       event_bus: {
@@ -120,7 +126,8 @@ describe('NodeIntrospectionPayloadSchema with event_bus', () => {
       node_id: VALID_UUID,
       node_type: 'EFFECT',
       node_version: null,
-      capabilities: null,
+      declared_capabilities: null,
+      discovered_capabilities: null,
       metadata: null,
       current_state: null,
       event_bus: {
@@ -137,7 +144,8 @@ describe('NodeIntrospectionPayloadSchema with event_bus', () => {
       node_id: VALID_UUID,
       node_type: 'COMPUTE',
       node_version: null,
-      capabilities: null,
+      declared_capabilities: null,
+      discovered_capabilities: null,
       metadata: null,
       current_state: null,
       event_bus: {},
@@ -151,7 +159,8 @@ describe('NodeIntrospectionPayloadSchema with event_bus', () => {
       node_id: VALID_UUID,
       node_type: 'COMPUTE',
       node_version: { major: 2, minor: 1, patch: 0 },
-      capabilities: { streaming: true },
+      declared_capabilities: { streaming: true },
+      discovered_capabilities: { auto_retry: true, max_batch: 50 },
       metadata: { region: 'us-east-1' },
       current_state: 'ACTIVE',
       event_bus: {
@@ -160,9 +169,63 @@ describe('NodeIntrospectionPayloadSchema with event_bus', () => {
     });
     expect(result.node_type).toBe('COMPUTE');
     expect(result.node_version).toEqual({ major: 2, minor: 1, patch: 0 });
-    expect(result.capabilities).toEqual({ streaming: true });
+    expect(result.declared_capabilities).toEqual({ streaming: true });
+    expect(result.discovered_capabilities).toEqual({ auto_retry: true, max_batch: 50 });
     expect(result.metadata).toEqual({ region: 'us-east-1' });
     expect(result.current_state).toBe('ACTIVE');
     expect(result.event_bus!.publish_topics).toHaveLength(1);
+  });
+
+  it('accepts legacy capabilities field as transitional alias', () => {
+    const result = NodeIntrospectionPayloadSchema.parse({
+      node_id: VALID_UUID,
+      node_type: 'COMPUTE',
+      node_version: '1.0.0',
+      declared_capabilities: null,
+      discovered_capabilities: null,
+      capabilities: { streaming: true },
+      metadata: null,
+      current_state: null,
+      event_bus: null,
+    });
+    expect(result.capabilities).toEqual({ streaming: true });
+  });
+
+  it('parses payload with node_name and real capability objects', () => {
+    const result = NodeIntrospectionPayloadSchema.parse({
+      node_id: VALID_UUID,
+      node_type: 'EFFECT',
+      node_version: '2.0.0',
+      declared_capabilities: { streaming: true, batch_processing: false },
+      discovered_capabilities: { auto_retry: true, max_concurrency: 10 },
+      node_name: 'session-tracker-effect',
+      metadata: { owner: 'platform-team' },
+      current_state: 'ACTIVE',
+      event_bus: null,
+    });
+    expect(result.node_name).toBe('session-tracker-effect');
+    expect(result.declared_capabilities).toEqual({
+      streaming: true,
+      batch_processing: false,
+    });
+    expect(result.discovered_capabilities).toEqual({
+      auto_retry: true,
+      max_concurrency: 10,
+    });
+  });
+
+  it('accepts payload without optional node_name and capabilities', () => {
+    const result = NodeIntrospectionPayloadSchema.parse({
+      node_id: VALID_UUID,
+      node_type: 'COMPUTE',
+      node_version: '1.0.0',
+      declared_capabilities: null,
+      discovered_capabilities: null,
+      metadata: null,
+      current_state: null,
+      event_bus: null,
+    });
+    expect(result.node_name).toBeUndefined();
+    expect(result.capabilities).toBeUndefined();
   });
 });
