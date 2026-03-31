@@ -50,6 +50,7 @@ import {
   SUFFIX_INTELLIGENCE_PATTERN_PROMOTED,
   SUFFIX_INTELLIGENCE_PATTERN_STORED,
   SUFFIX_PATTERN_DISCOVERED,
+  SUFFIX_INTELLIGENCE_EVAL_COMPLETED,
 } from '@shared/topics';
 import { emitEffectivenessUpdate } from '../../effectiveness-events';
 import {
@@ -260,6 +261,8 @@ export class OmniintelligenceProjectionHandler implements ProjectionHandler {
         }
         return this.projectPatternLifecycleStateChange(data, 'stored', fallbackId, context);
       }
+      case SUFFIX_INTELLIGENCE_EVAL_COMPLETED:
+        return this.projectEvalCompleted(data, context);
       case SUFFIX_PATTERN_DISCOVERED: {
         const pid = (data.pattern_id as string) || (data.patternId as string);
         if (!pid) {
@@ -1473,6 +1476,27 @@ export class OmniintelligenceProjectionHandler implements ProjectionHandler {
       throw err;
     }
 
+    return true;
+  }
+
+  // -------------------------------------------------------------------------
+  // Eval completed -> log & ack (OMN-6798)
+  // -------------------------------------------------------------------------
+
+  private async projectEvalCompleted(
+    data: Record<string, unknown>,
+    context: ProjectionContext
+  ): Promise<boolean> {
+    // Acknowledge the event to advance the watermark.
+    // Eval-completed events are informational signals from omniintelligence;
+    // the objective_evaluations table is populated by the run-evaluated handler.
+    const evalId =
+      (data.eval_id as string) ||
+      (data.evalId as string) ||
+      (data.evaluation_id as string) ||
+      (data.evaluationId as string) ||
+      'unknown';
+    console.log(`[ReadModelConsumer] eval-completed acknowledged: ${evalId}`);
     return true;
   }
 
