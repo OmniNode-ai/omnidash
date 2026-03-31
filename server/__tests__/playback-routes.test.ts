@@ -17,14 +17,6 @@ interface MockPlaybackService {
   off: Mock;
 }
 
-interface MockEventConsumer {
-  resetState: Mock;
-  injectPlaybackEvent: Mock;
-  snapshotState: Mock;
-  restoreState: Mock;
-  hasStateSnapshot: Mock;
-}
-
 interface MockPlaybackDataSource {
   injectPlaybackEvent: Mock;
   injectEvent: Mock;
@@ -44,7 +36,7 @@ vi.hoisted(() => {
 });
 
 // Use vi.hoisted to define mocks that will be available during module mocking
-const { mockPlaybackService, mockEventConsumer, mockPlaybackDataSource } = vi.hoisted(() => {
+const { mockPlaybackService, mockPlaybackDataSource } = vi.hoisted(() => {
   const mockPlaybackService: MockPlaybackService = {
     listRecordings: vi.fn(),
     getStatus: vi.fn(),
@@ -58,14 +50,6 @@ const { mockPlaybackService, mockEventConsumer, mockPlaybackDataSource } = vi.ho
     off: vi.fn(),
   };
 
-  const mockEventConsumer: MockEventConsumer = {
-    resetState: vi.fn(),
-    injectPlaybackEvent: vi.fn(),
-    snapshotState: vi.fn(),
-    restoreState: vi.fn().mockReturnValue(true),
-    hasStateSnapshot: vi.fn().mockReturnValue(false),
-  };
-
   const mockPlaybackDataSource: MockPlaybackDataSource = {
     injectPlaybackEvent: vi.fn(),
     injectEvent: vi.fn(),
@@ -77,7 +61,7 @@ const { mockPlaybackService, mockEventConsumer, mockPlaybackDataSource } = vi.ho
     emit: vi.fn(),
   };
 
-  return { mockPlaybackService, mockEventConsumer, mockPlaybackDataSource };
+  return { mockPlaybackService, mockPlaybackDataSource };
 });
 
 // Mock event-playback module
@@ -89,11 +73,6 @@ vi.mock('../event-playback', () => ({
     warn: vi.fn(),
     error: vi.fn(),
   },
-}));
-
-// Mock event-consumer module
-vi.mock('../event-consumer', () => ({
-  getEventConsumer: () => mockEventConsumer,
 }));
 
 // Mock playback-data-source module
@@ -277,7 +256,6 @@ describe('Playback Routes', () => {
         ...mockStatus,
       });
       expect(mockPlaybackService.startPlayback).toHaveBeenCalledTimes(1);
-      expect(mockEventConsumer.resetState).toHaveBeenCalledTimes(1);
     });
 
     it('should start playback with custom speed', async () => {
@@ -899,24 +877,6 @@ describe('Playback Routes', () => {
 
       // Should have cleaned up the event handler
       expect(mockPlaybackService.off).toHaveBeenCalledWith('event', expect.any(Function));
-    });
-  });
-
-  describe('EventConsumer integration', () => {
-    it('should reset EventConsumer state when starting playback', async () => {
-      mockPlaybackService.startPlayback.mockResolvedValue(undefined);
-      mockPlaybackService.getStatus.mockReturnValue({
-        isPlaying: true,
-        isPaused: false,
-        currentIndex: 0,
-        totalEvents: 100,
-        progress: 0,
-        recordingFile: '/demo/recordings/test.jsonl',
-      });
-
-      await request(app).post('/api/demo/start').send({ file: 'test.jsonl' }).expect(200);
-
-      expect(mockEventConsumer.resetState).toHaveBeenCalledTimes(1);
     });
   });
 

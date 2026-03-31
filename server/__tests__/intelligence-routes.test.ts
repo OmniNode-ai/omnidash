@@ -3,9 +3,9 @@ import request from 'supertest';
 import express, { type Express } from 'express';
 import { intelligenceRouter } from '../intelligence-routes';
 import { intelligenceEvents } from '../intelligence-event-adapter';
-import { eventConsumer } from '../event-consumer';
 import { checkAllServices } from '../service-health';
 import { dbAdapter } from '../db-adapter';
+import { agentMetricsProjection } from '../projection-bootstrap';
 
 // Mock dependencies - create a proper query builder mock that chains correctly
 const createMockQueryBuilder = () => {
@@ -217,8 +217,8 @@ describe('Intelligence Routes', () => {
   });
 
   describe('GET /api/intelligence/agents/summary', () => {
-    it('should return agent metrics from event consumer', async () => {
-      vi.mocked(eventConsumer.getAgentMetrics).mockReturnValue([
+    it('should return agent metrics from projection', async () => {
+      vi.mocked(agentMetricsProjection.getAgentSummary).mockResolvedValueOnce([
         {
           agent: 'test-agent',
           totalRequests: 100,
@@ -233,8 +233,8 @@ describe('Intelligence Routes', () => {
       expect(response.body.length).toBeGreaterThan(0);
     });
 
-    it('should fall back to database when event consumer is empty', async () => {
-      vi.mocked(eventConsumer.getAgentMetrics).mockReturnValue([]);
+    it('should fall back to database when projection is empty', async () => {
+      vi.mocked(agentMetricsProjection.getAgentSummary).mockResolvedValueOnce([]);
       vi.mocked(mockDb.execute).mockResolvedValue([
         {
           agent: 'test-agent',
@@ -253,7 +253,7 @@ describe('Intelligence Routes', () => {
 
     // eslint-disable-next-line vitest/expect-expect
     it('should handle different time windows', async () => {
-      vi.mocked(eventConsumer.getAgentMetrics).mockReturnValue([]);
+      vi.mocked(agentMetricsProjection.getAgentSummary).mockResolvedValue([]);
       vi.mocked(mockDb.execute).mockResolvedValue([]);
 
       await request(app).get('/api/intelligence/agents/summary?timeWindow=7d').expect(200);
@@ -264,7 +264,7 @@ describe('Intelligence Routes', () => {
 
   describe('GET /api/intelligence/actions/recent', () => {
     it('should return recent actions from event consumer', async () => {
-      vi.mocked(eventConsumer.getRecentActions).mockReturnValue([
+      vi.mocked(agentMetricsProjection.getRecentActions).mockResolvedValue([
         {
           id: '1',
           agentName: 'test-agent',
@@ -279,7 +279,7 @@ describe('Intelligence Routes', () => {
     });
 
     it('should accept limit parameter', async () => {
-      vi.mocked(eventConsumer.getRecentActions).mockReturnValue([]);
+      vi.mocked(agentMetricsProjection.getRecentActions).mockResolvedValue([]);
 
       const response = await request(app)
         .get('/api/intelligence/actions/recent?limit=10')
@@ -291,7 +291,7 @@ describe('Intelligence Routes', () => {
 
   describe('GET /api/intelligence/health', () => {
     it('should return health status', async () => {
-      vi.mocked(eventConsumer.getHealthStatus).mockReturnValue({
+      vi.mocked(agentMetricsProjection.getHealthStatus).mockResolvedValue({
         status: 'healthy',
         agents: 5,
         recentActions: 10,
@@ -305,7 +305,7 @@ describe('Intelligence Routes', () => {
     });
 
     it('should include runtime identity fields in health response', async () => {
-      vi.mocked(eventConsumer.getHealthStatus).mockReturnValue({
+      vi.mocked(agentMetricsProjection.getHealthStatus).mockResolvedValue({
         status: 'healthy',
         agents: 5,
         recentActions: 10,
@@ -322,9 +322,9 @@ describe('Intelligence Routes', () => {
     });
 
     it('should handle errors gracefully', async () => {
-      vi.mocked(eventConsumer.getHealthStatus).mockImplementation(() => {
-        throw new Error('Health check failed');
-      });
+      vi.mocked(agentMetricsProjection.getHealthStatus).mockRejectedValueOnce(
+        new Error('Health check failed')
+      );
 
       const response = await request(app).get('/api/intelligence/health').expect(503);
 
@@ -408,7 +408,7 @@ describe('Intelligence Routes', () => {
 
   describe('GET /api/intelligence/agents/:agent/actions', () => {
     it('should return actions for a specific agent', async () => {
-      vi.mocked(eventConsumer.getActionsByAgent).mockReturnValue([
+      vi.mocked(agentMetricsProjection.getActionsByAgent).mockResolvedValue([
         {
           id: '1',
           agentName: 'test-agent',
@@ -425,7 +425,7 @@ describe('Intelligence Routes', () => {
     });
 
     it('should accept timeWindow and limit parameters', async () => {
-      vi.mocked(eventConsumer.getActionsByAgent).mockReturnValue([]);
+      vi.mocked(agentMetricsProjection.getActionsByAgent).mockResolvedValue([]);
 
       const response = await request(app)
         .get('/api/intelligence/agents/test-agent/actions?timeWindow=24h&limit=50')
@@ -435,9 +435,9 @@ describe('Intelligence Routes', () => {
     });
 
     it('should handle errors gracefully', async () => {
-      vi.mocked(eventConsumer.getActionsByAgent).mockImplementation(() => {
-        throw new Error('Failed to get actions');
-      });
+      vi.mocked(agentMetricsProjection.getActionsByAgent).mockRejectedValueOnce(
+        new Error('Failed to get actions')
+      );
 
       const response = await request(app)
         .get('/api/intelligence/agents/test-agent/actions')
@@ -487,7 +487,7 @@ describe('Intelligence Routes', () => {
 
   describe('GET /api/intelligence/routing/decisions', () => {
     it('should return routing decisions', async () => {
-      vi.mocked(eventConsumer.getRoutingDecisions).mockReturnValue([
+      vi.mocked(agentMetricsProjection.getRoutingDecisions).mockResolvedValue([
         {
           id: '1',
           selectedAgent: 'test-agent',
@@ -501,7 +501,7 @@ describe('Intelligence Routes', () => {
     });
 
     it('should accept limit, agent, and minConfidence parameters', async () => {
-      vi.mocked(eventConsumer.getRoutingDecisions).mockReturnValue([]);
+      vi.mocked(agentMetricsProjection.getRoutingDecisions).mockResolvedValue([]);
 
       const response = await request(app)
         .get('/api/intelligence/routing/decisions?limit=50&agent=test-agent&minConfidence=0.8')
@@ -1036,7 +1036,7 @@ describe('Intelligence Routes', () => {
         { id: 't1', agent: 'agent-a', success: true },
         { id: 't2', agent: 'agent-b', success: false },
       ];
-      vi.mocked(eventConsumer.getRecentTransformations).mockReturnValue(sample as any);
+      vi.mocked(agentMetricsProjection.getRecentTransformations).mockResolvedValue(sample as any);
 
       const response = await request(app)
         .get('/api/intelligence/transformations/recent?limit=10')
@@ -1046,16 +1046,16 @@ describe('Intelligence Routes', () => {
         transformations: sample,
         total: sample.length,
       });
-      expect(eventConsumer.getRecentTransformations).toHaveBeenCalledWith(10);
+      expect(agentMetricsProjection.getRecentTransformations).toHaveBeenCalledWith(10);
 
-      vi.mocked(eventConsumer.getRecentTransformations).mockReset();
-      vi.mocked(eventConsumer.getRecentTransformations).mockReturnValue([]);
+      vi.mocked(agentMetricsProjection.getRecentTransformations).mockReset();
+      vi.mocked(agentMetricsProjection.getRecentTransformations).mockResolvedValue([]);
     });
 
     it('should handle transformation errors gracefully', async () => {
-      vi.mocked(eventConsumer.getRecentTransformations).mockImplementationOnce(() => {
-        throw new Error('transformations down');
-      });
+      vi.mocked(agentMetricsProjection.getRecentTransformations).mockRejectedValueOnce(
+        new Error('transformations down')
+      );
 
       const response = await request(app)
         .get('/api/intelligence/transformations/recent')
@@ -1075,18 +1075,18 @@ describe('Intelligence Routes', () => {
         avgCandidatesEvaluated: 2,
         strategyBreakdown: { enhanced_fuzzy_matching: 7 },
       };
-      vi.mocked(eventConsumer.getPerformanceMetrics).mockReturnValue(metrics as any);
-      vi.mocked(eventConsumer.getPerformanceStats).mockReturnValue(stats as any);
+      vi.mocked(agentMetricsProjection.getPerformanceMetrics).mockResolvedValue(metrics as any);
+      vi.mocked(agentMetricsProjection.getPerformanceStatsPublic).mockResolvedValue(stats as any);
 
       const response = await request(app)
         .get('/api/intelligence/performance/metrics?limit=5')
         .expect(200);
 
       expect(response.body).toEqual({ metrics, stats, total: metrics.length });
-      expect(eventConsumer.getPerformanceMetrics).toHaveBeenCalledWith(5);
+      expect(agentMetricsProjection.getPerformanceMetrics).toHaveBeenCalledWith(5);
 
-      vi.mocked(eventConsumer.getPerformanceMetrics).mockReturnValue([]);
-      vi.mocked(eventConsumer.getPerformanceStats).mockReturnValue({
+      vi.mocked(agentMetricsProjection.getPerformanceMetrics).mockResolvedValue([]);
+      vi.mocked(agentMetricsProjection.getPerformanceStatsPublic).mockResolvedValue({
         avgRoutingDurationMs: 0,
         cacheHitRate: 0,
         totalQueries: 0,
@@ -1096,9 +1096,9 @@ describe('Intelligence Routes', () => {
     });
 
     it('should handle performance metrics errors gracefully', async () => {
-      vi.mocked(eventConsumer.getPerformanceMetrics).mockImplementationOnce(() => {
-        throw new Error('metrics error');
-      });
+      vi.mocked(agentMetricsProjection.getPerformanceMetrics).mockRejectedValueOnce(
+        new Error('metrics error')
+      );
 
       const response = await request(app).get('/api/intelligence/performance/metrics').expect(500);
 
@@ -1115,13 +1115,13 @@ describe('Intelligence Routes', () => {
         avgCandidatesEvaluated: 3,
         strategyBreakdown: { enhanced_fuzzy_matching: 15 },
       };
-      vi.mocked(eventConsumer.getPerformanceStats).mockReturnValue(stats as any);
+      vi.mocked(agentMetricsProjection.getPerformanceStatsPublic).mockResolvedValue(stats as any);
 
       const response = await request(app).get('/api/intelligence/performance/summary').expect(200);
 
       expect(response.body).toEqual(stats);
 
-      vi.mocked(eventConsumer.getPerformanceStats).mockReturnValue({
+      vi.mocked(agentMetricsProjection.getPerformanceStatsPublic).mockResolvedValue({
         avgRoutingDurationMs: 0,
         cacheHitRate: 0,
         totalQueries: 0,
@@ -1131,9 +1131,9 @@ describe('Intelligence Routes', () => {
     });
 
     it('should handle performance summary errors gracefully', async () => {
-      vi.mocked(eventConsumer.getPerformanceStats).mockImplementationOnce(() => {
-        throw new Error('summary failure');
-      });
+      vi.mocked(agentMetricsProjection.getPerformanceStatsPublic).mockRejectedValueOnce(
+        new Error('summary failure')
+      );
 
       const response = await request(app).get('/api/intelligence/performance/summary').expect(500);
 
@@ -1392,7 +1392,7 @@ describe('Intelligence Routes', () => {
 
   describe('GET /api/intelligence/agents/:agentName/details', () => {
     it('should return agent drill-down metrics', async () => {
-      vi.mocked(eventConsumer.getAgentMetrics).mockReturnValueOnce([
+      vi.mocked(agentMetricsProjection.getAgentSummary).mockResolvedValueOnce([
         {
           agent: 'agent-1',
           totalRequests: 10,
@@ -1400,7 +1400,7 @@ describe('Intelligence Routes', () => {
           avgRoutingTime: 50,
         },
       ] as any);
-      vi.mocked(eventConsumer.getActionsByAgent).mockReturnValueOnce([
+      vi.mocked(agentMetricsProjection.getActionsByAgent).mockResolvedValueOnce([
         {
           id: 'action-1',
           actionType: 'tool_call',
@@ -1425,7 +1425,7 @@ describe('Intelligence Routes', () => {
     });
 
     it('should return 404 when agent not found', async () => {
-      vi.mocked(eventConsumer.getAgentMetrics).mockReturnValueOnce([] as any);
+      vi.mocked(agentMetricsProjection.getAgentSummary).mockResolvedValueOnce([] as any);
 
       const response = await request(app)
         .get('/api/intelligence/agents/missing-agent/details')
