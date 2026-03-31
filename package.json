@@ -16,6 +16,7 @@
     "lint": "eslint . --ext .ts,.tsx --max-warnings 0",
     "lint:fix": "eslint . --ext .ts,.tsx --fix",
     "lint:topics": "bash scripts/lint-no-hardcoded-topics.sh",
+    "lint:enums": "bash scripts/lint-no-raw-enum-comparison.sh",
     "test": "vitest",
     "test:ci": "vitest run --no-coverage --reporter=verbose",
     "test:ui": "vitest --ui",
