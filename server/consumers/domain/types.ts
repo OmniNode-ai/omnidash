@@ -97,6 +97,10 @@ export interface CanonicalOnexNode {
   node_type?: string;
   node_version?: string;
   capabilities?: Record<string, unknown> | null;
+  /** Human-readable node name from introspection (OMN-7090) */
+  node_name?: string | null;
+  /** Node description from introspection (OMN-7090) */
+  description?: string | null;
   activated_at?: number;
   last_heartbeat_at?: number;
   last_introspection_at?: number;

@@ -66,12 +66,17 @@ function adaptNodeState(node: NodeState): Record<string, unknown> {
   }
   const flatCapabilities = Array.from(capSet);
 
+  // Prefer node_name from metadata; fall back to nodeId (UUID) (OMN-7090)
+  const nodeName = node.metadata?.node_name ?? node.nodeId;
+  const description = node.metadata?.description ?? null;
+
   return {
     node_id: node.nodeId,
-    name: node.nodeId, // projection does not have a separate name; use nodeId
-    service_name: node.nodeId,
+    name: nodeName,
+    service_name: nodeName,
     namespace: node.metadata?.cluster ?? null,
-    display_name: node.nodeId,
+    display_name: nodeName,
+    description,
     node_type: node.nodeType,
     version: node.version,
     state: node.state,
@@ -201,7 +206,11 @@ function filterProjectionNodes(nodes: NodeState[], params: FilterParams): NodeSt
 
   if (params.search) {
     const searchLower = params.search.toLowerCase();
-    filtered = filtered.filter((n) => n.nodeId.toLowerCase().includes(searchLower));
+    filtered = filtered.filter(
+      (n) =>
+        n.nodeId.toLowerCase().includes(searchLower) ||
+        (n.metadata?.node_name ?? '').toLowerCase().includes(searchLower)
+    );
   }
 
   return filtered;
