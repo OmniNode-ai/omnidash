@@ -37,7 +37,6 @@ import { printStartupBanner } from './startup-banner.js';
 import { getBrokerString } from './bus-config.js';
 import { initProjectionListeners, teardownProjectionListeners } from './projection-instance';
 import { wireProjectionSources, projectionService } from './projection-bootstrap';
-import { NodeRegistryProjection } from './projections/node-registry-projection';
 import { readModelConsumer } from './read-model-consumer';
 import { runStartupBackfillIfEmpty } from './startup-backfill';
 import { startCdqaGateWatcher } from './cdqa-gate-watcher';
@@ -157,16 +156,6 @@ app.use((req, res, next) => {
   };
   app.use('/api', skipPublicRoutes, refreshTokenIfNeeded);
   app.use('/api', skipPublicRoutes, requireAuth);
-
-  // --------------------------------------------------------------------------
-  // Node Registry Projection (OMN-2097)
-  // Register into the shared ProjectionService singleton BEFORE routes are
-  // registered so that projection REST endpoints are available immediately.
-  // --------------------------------------------------------------------------
-  const nodeRegistryView = new NodeRegistryProjection();
-  if (!projectionService.getView(nodeRegistryView.viewId)) {
-    projectionService.registerView(nodeRegistryView);
-  }
 
   const server = await registerRoutes(app);
 

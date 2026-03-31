@@ -50,14 +50,6 @@ vi.mock('../websocket', () => ({
   setupWebSocket: setupWebSocketMock,
 }));
 
-vi.mock('../projections/node-registry-projection', () => ({
-  NodeRegistryProjection: vi.fn().mockImplementation(function () {
-    return {
-      viewId: 'node-registry',
-    };
-  }),
-}));
-
 vi.mock('../projection-routes', () => ({
   createProjectionRoutes: vi.fn(),
 }));
@@ -231,26 +223,5 @@ describe('server/index bootstrap', () => {
     expect(setupWebSocketMock).toHaveBeenCalledWith(mockServer);
 
     consoleErrorSpy.mockRestore();
-  });
-
-  it('registers NodeRegistryProjection before registerRoutes', async () => {
-    process.env.NODE_ENV = 'development';
-
-    const callOrder: string[] = [];
-    projectionServiceMock.registerView.mockImplementation(() => {
-      callOrder.push('registerView');
-    });
-    registerRoutesMock.mockImplementation(async () => {
-      callOrder.push('registerRoutes');
-      return mockServer;
-    });
-
-    await importIndex();
-
-    const viewIdx = callOrder.indexOf('registerView');
-    const routesIdx = callOrder.indexOf('registerRoutes');
-    expect(viewIdx).toBeGreaterThanOrEqual(0);
-    expect(routesIdx).toBeGreaterThanOrEqual(0);
-    expect(viewIdx).toBeLessThan(routesIdx);
   });
 });
