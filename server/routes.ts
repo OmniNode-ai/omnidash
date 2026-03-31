@@ -70,6 +70,8 @@ import topologyRoutes from './topology-routes';
 import dodRoutes from './dod-routes';
 // Intent drift routes (OMN-5281)
 import intentDriftRoutes from './intent-drift-routes';
+// Intent breakdown routes (OMN-5288)
+import intentBreakdownRoutes from './intent-breakdown-routes';
 // Prometheus metrics endpoint (OMN-4609)
 import { createMetricsRouter } from './metrics-routes';
 import type { DataSourcesHealthResponse } from './health-data-sources-routes';
@@ -249,6 +251,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // Intent drift routes (OMN-5281)
   app.use('/api/intent-drift', intentDriftRoutes);
+
+  // Intent breakdown routes (OMN-5288)
+  app.use('/api/intents/breakdown', intentBreakdownRoutes);
 
   // DLQ Monitor dashboard routes (OMN-5287)
   app.use('/api/dlq', dlqRoutes);
