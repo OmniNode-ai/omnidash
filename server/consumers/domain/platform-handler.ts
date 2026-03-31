@@ -318,7 +318,8 @@ function handleCanonicalNodeIntrospection(message: KafkaMessage, ctx: ConsumerCo
         state: resolvedState,
         node_type: payload.node_type ?? existing.node_type,
         node_version: nodeVersion ?? existing.node_version,
-        capabilities: payload.capabilities || existing.capabilities,
+        capabilities:
+          payload.declared_capabilities ?? payload.capabilities ?? existing.capabilities,
         last_introspection_at: emittedAtMs,
         last_event_at: emittedAtMs,
       }
@@ -327,7 +328,7 @@ function handleCanonicalNodeIntrospection(message: KafkaMessage, ctx: ConsumerCo
         state: resolvedState,
         node_type: payload.node_type,
         node_version: nodeVersion,
-        capabilities: payload.capabilities,
+        capabilities: payload.declared_capabilities ?? payload.capabilities ?? null,
         last_introspection_at: emittedAtMs,
         last_event_at: emittedAtMs,
       };
@@ -363,7 +364,7 @@ function handleCanonicalNodeIntrospection(message: KafkaMessage, ctx: ConsumerCo
         node_type: payload.node_type ?? 'COMPUTE',
         version: nodeVersion ?? '1.0.0',
         current_state: resolvedState,
-        capabilities: payload.capabilities ?? [],
+        capabilities: payload.declared_capabilities ?? payload.capabilities ?? [],
         metadata: payload.metadata ?? {},
         endpoints: {},
         reason: null,

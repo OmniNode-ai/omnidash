@@ -202,7 +202,11 @@ export const NodeIntrospectionPayloadSchema = z.object({
       }),
     ])
     .nullable(),
-  capabilities: NodeCapabilitiesSchema.nullable(),
+  declared_capabilities: NodeCapabilitiesSchema.nullable(),
+  discovered_capabilities: z.record(z.string(), z.unknown()).nullable(),
+  // Transitional alias — remove once old seed/test data migrated.
+  capabilities: NodeCapabilitiesSchema.nullable().optional(),
+  node_name: z.string().nullable().optional(),
   metadata: z.record(z.string(), z.unknown()).nullable(),
   current_state: z.string().nullable(),
   event_bus: NodeEventBusConfigSchema.nullable(),
