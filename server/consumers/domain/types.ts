@@ -14,7 +14,7 @@ import type { EventEnvelope } from '@shared/schemas';
 // Re-export all domain types that were previously in event-consumer.ts
 // so downstream consumers can import from a single location.
 
-export type NodeType = 'EFFECT' | 'COMPUTE' | 'REDUCER' | 'ORCHESTRATOR';
+export type NodeType = 'EFFECT' | 'COMPUTE' | 'REDUCER' | 'ORCHESTRATOR' | 'SERVICE';
 
 export type RegistrationState =
   | 'pending_registration'
@@ -26,7 +26,12 @@ export type RegistrationState =
   | 'ack_timed_out'
   | 'liveness_expired';
 
-export type IntrospectionReason = 'STARTUP' | 'HEARTBEAT' | 'REQUESTED';
+export type IntrospectionReason =
+  | 'STARTUP'
+  | 'SHUTDOWN'
+  | 'HEARTBEAT'
+  | 'REQUESTED'
+  | 'CONFIG_CHANGE';
 
 export interface AgentMetrics {
   agent: string;

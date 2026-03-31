@@ -1,3 +1,4 @@
+// no-migration: OMN-7094 case-insensitive enum parsing — no schema change
 /**
  * Shared utility functions for domain handlers [OMN-5191]
  *
@@ -76,7 +77,13 @@ export function sanitizeTimestamp(timestamp: string | undefined | null, fallback
 // Enum Validation Guards
 // ============================================================================
 
-const VALID_NODE_TYPES: readonly NodeType[] = ['EFFECT', 'COMPUTE', 'REDUCER', 'ORCHESTRATOR'];
+const VALID_NODE_TYPES: readonly NodeType[] = [
+  'EFFECT',
+  'COMPUTE',
+  'REDUCER',
+  'ORCHESTRATOR',
+  'SERVICE',
+];
 const VALID_REGISTRATION_STATES: readonly RegistrationState[] = [
   'pending_registration',
   'accepted',
@@ -89,29 +96,33 @@ const VALID_REGISTRATION_STATES: readonly RegistrationState[] = [
 ];
 const VALID_INTROSPECTION_REASONS: readonly IntrospectionReason[] = [
   'STARTUP',
+  'SHUTDOWN',
   'HEARTBEAT',
   'REQUESTED',
+  'CONFIG_CHANGE',
 ];
 
 function isValidNodeType(value: unknown): value is NodeType {
-  return typeof value === 'string' && VALID_NODE_TYPES.includes(value as NodeType);
+  if (typeof value !== 'string') return false;
+  const normalized = value.toUpperCase().replace(/_GENERIC$/, '') as NodeType;
+  return VALID_NODE_TYPES.includes(normalized);
 }
 
 function isValidRegistrationState(value: unknown): value is RegistrationState {
-  return (
-    typeof value === 'string' && VALID_REGISTRATION_STATES.includes(value as RegistrationState)
-  );
+  if (typeof value !== 'string') return false;
+  const normalized = value.toLowerCase() as RegistrationState;
+  return VALID_REGISTRATION_STATES.includes(normalized);
 }
 
 function isValidIntrospectionReason(value: unknown): value is IntrospectionReason {
-  return (
-    typeof value === 'string' && VALID_INTROSPECTION_REASONS.includes(value as IntrospectionReason)
-  );
+  if (typeof value !== 'string') return false;
+  const normalized = value.toUpperCase() as IntrospectionReason;
+  return VALID_INTROSPECTION_REASONS.includes(normalized);
 }
 
 export function parseNodeType(value: unknown, defaultValue: NodeType = 'COMPUTE'): NodeType {
   if (isValidNodeType(value)) {
-    return value;
+    return (value as string).toUpperCase().replace(/_GENERIC$/, '') as NodeType;
   }
   if (value !== undefined && value !== null) {
     console.warn(
@@ -126,7 +137,7 @@ export function parseRegistrationState(
   defaultValue: RegistrationState = 'pending_registration'
 ): RegistrationState {
   if (isValidRegistrationState(value)) {
-    return value;
+    return (value as string).toLowerCase() as RegistrationState;
   }
   if (value !== undefined && value !== null) {
     console.warn(
@@ -141,7 +152,7 @@ export function parseIntrospectionReason(
   defaultValue: IntrospectionReason = 'STARTUP'
 ): IntrospectionReason {
   if (isValidIntrospectionReason(value)) {
-    return value;
+    return (value as string).toUpperCase() as IntrospectionReason;
   }
   if (value !== undefined && value !== null) {
     console.warn(
