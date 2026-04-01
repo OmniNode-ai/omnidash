@@ -102,21 +102,58 @@ describe('PlatformProjectionHandler — node registration (OMN-7126)', () => {
       expect(sqlStr).toContain('metadata = EXCLUDED.metadata');
     });
 
-    it('uses service_name over node_id when both provided', async () => {
+    it('uses service_name over node_name and node_id when all provided', async () => {
       const { db, calls } = createMockDb();
       const context: ProjectionContext = { db: db as unknown as ProjectionContext['db'] };
 
       const data = {
         service_name: 'my-custom-service',
+        node_name: 'my-node',
         node_id: 'node-abc-123',
         service_url: 'http://localhost:8085',
       };
 
       await handler.projectEvent(SUFFIX_NODE_INTROSPECTION, data, context, makeMeta());
 
-      // The service_name value should appear in the SQL params
       const sqlStr = extractSqlText(calls[0]);
       expect(sqlStr).toContain('my-custom-service');
+    });
+
+    it('prefers node_name over node_id when service_name is absent (OMN-6405)', async () => {
+      const { db, calls } = createMockDb();
+      const context: ProjectionContext = { db: db as unknown as ProjectionContext['db'] };
+
+      const data = {
+        node_name: 'intent_classifier',
+        node_id: 'eec09dd8-3057-5625-b276-3e798d97ec5d',
+        node_type: 'compute',
+      };
+
+      await handler.projectEvent(SUFFIX_NODE_INTROSPECTION, data, context, makeMeta());
+
+      const sqlStr = extractSqlText(calls[0]);
+      expect(sqlStr).toContain('intent_classifier');
+      // node_id should be stored in metadata, not used as service_name
+      expect(sqlStr).toContain('eec09dd8-3057-5625-b276-3e798d97ec5d');
+    });
+
+    it('stores node_name in metadata even when falling back to node_id (OMN-6405)', async () => {
+      const { db, calls } = createMockDb();
+      const context: ProjectionContext = { db: db as unknown as ProjectionContext['db'] };
+
+      // Simulate current upstream: node_name is null, only node_id present
+      const data = {
+        node_id: 'eec09dd8-3057-5625-b276-3e798d97ec5d',
+        node_type: 'orchestrator',
+        metadata: { environment: 'local' },
+      };
+
+      await handler.projectEvent(SUFFIX_NODE_INTROSPECTION, data, context, makeMeta());
+
+      const sqlStr = extractSqlText(calls[0]);
+      // node_id should be stored in metadata for display fallback
+      expect(sqlStr).toContain('node_id');
+      expect(sqlStr).toContain('eec09dd8-3057-5625-b276-3e798d97ec5d');
     });
 
     it('skips when service_name/node_id is missing', async () => {
