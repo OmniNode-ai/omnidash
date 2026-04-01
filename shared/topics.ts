@@ -498,6 +498,16 @@ export const SUFFIX_PATTERN_DISCOVERED = 'onex.evt.pattern.discovered.v1';
 export const SUFFIX_AGENT_STATUS = 'onex.evt.omniclaude.agent-status.v1';
 
 // ============================================================================
+// onex_change_control Topics
+// ============================================================================
+
+/** Contract drift detected (OMN-6753).
+ * Emitted by onex_change_control when cross-repo contract drift is detected.
+ * Consumed by ReadModelConsumer to project into contract_drift_events table. */
+export const SUFFIX_CHANGE_CONTROL_CONTRACT_DRIFT_DETECTED =
+  'onex.evt.onex-change-control.contract-drift-detected.v1';
+
+// ============================================================================
 // OmniMemory Topics
 // ============================================================================
 

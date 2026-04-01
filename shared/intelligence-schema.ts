@@ -2561,3 +2561,34 @@ export const agentStatusEvents = pgTable(
 export type AgentStatusEventRow = typeof agentStatusEvents.$inferSelect;
 export type InsertAgentStatusEvent = typeof agentStatusEvents.$inferInsert;
 export const insertAgentStatusEventSchema = createInsertSchema(agentStatusEvents);
+
+// ============================================================================
+// Contract Drift Events Table (migration 0048_contract_drift_events, OMN-6753)
+// Persists contract drift detection results from onex_change_control.
+// Source topic: onex.evt.onex-change-control.contract-drift-detected.v1
+// ============================================================================
+
+export const contractDriftEvents = pgTable(
+  'contract_drift_events',
+  {
+    id: serial('id').primaryKey(),
+    repo: text('repo').notNull(),
+    nodeName: text('node_name'),
+    driftType: text('drift_type').notNull(),
+    severity: text('severity'),
+    description: text('description'),
+    expectedValue: text('expected_value'),
+    actualValue: text('actual_value'),
+    contractPath: text('contract_path'),
+    detectedAt: timestamp('detected_at', { withTimezone: true }).notNull().defaultNow(),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [
+    index('idx_cde_repo').on(table.repo),
+    index('idx_cde_drift_type').on(table.driftType),
+    index('idx_cde_detected_at').on(table.detectedAt),
+  ]
+);
+
+export type ContractDriftEventRow = typeof contractDriftEvents.$inferSelect;
+export type InsertContractDriftEvent = typeof contractDriftEvents.$inferInsert;
