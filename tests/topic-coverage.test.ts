@@ -118,6 +118,8 @@ const HANDLER_FILES = [
   path.join(HANDLER_DIR, 'platform-projections.ts'),
   // OmniMemory projection handler (OMN-5290)
   path.join(HANDLER_DIR, 'omnimemory-projections.ts'),
+  // Change Control projection handler (OMN-6753)
+  path.join(HANDLER_DIR, 'change-control-projections.ts'),
 ];
 
 // ---------------------------------------------------------------------------

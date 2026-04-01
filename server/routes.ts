@@ -103,6 +103,10 @@ import wiringStatusRoutes from './wiring-status-routes';
 import subsystemHealthRoutes from './subsystem-health-routes';
 // Agent Coordination dashboard routes (OMN-7036)
 import teamCoordinationRoutes from './team-coordination-routes';
+// Contract Drift dashboard routes (OMN-6753)
+import contractDriftRoutes from './contract-drift-routes';
+// Pipeline Overview dashboard routes (OMN-6753)
+import pipelineOverviewRoutes from './pipeline-overview-routes';
 
 export async function registerRoutes(app: Express): Promise<Server> {
   // put application routes here
@@ -290,6 +294,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // Agent Coordination dashboard routes (OMN-7036)
   app.use('/api/team-coordination', teamCoordinationRoutes);
+
+  // Contract Drift dashboard routes (OMN-6753)
+  app.use('/api/contract-drift', contractDriftRoutes);
+
+  // Pipeline Overview dashboard routes (OMN-6753)
+  app.use('/api/pipeline-overview', pipelineOverviewRoutes);
 
   // Prometheus metrics endpoint (OMN-4609)
   // Route: GET /metrics — NO authentication. Prometheus scrapes without tokens.
