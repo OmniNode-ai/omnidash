@@ -9,7 +9,6 @@
  * Falls back to mock data when backend is unavailable.
  */
 
-import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -88,16 +87,96 @@ const MOCK_REPORT: EvalReport = {
   suite_version: '1.0.0',
   generated_at: new Date().toISOString(),
   pairs: [
-    { task_id: 'eval-001-fix-import-error', verdict: 'onex_better', delta_metrics: { latency_ms: -120, token_count: -50 }, onex_on_success: true, onex_off_success: true, onex_on_latency_ms: 180, onex_off_latency_ms: 300 },
-    { task_id: 'eval-002-fix-pydantic-validation', verdict: 'onex_better', delta_metrics: { latency_ms: -80, token_count: -30 }, onex_on_success: true, onex_off_success: false, onex_on_latency_ms: 220, onex_off_latency_ms: 300 },
-    { task_id: 'eval-003-fix-kafka-topic-typo', verdict: 'neutral', delta_metrics: { latency_ms: 5, token_count: 2 }, onex_on_success: true, onex_off_success: true, onex_on_latency_ms: 150, onex_off_latency_ms: 145 },
-    { task_id: 'eval-004-extract-shared-validation', verdict: 'onex_better', delta_metrics: { latency_ms: -200, token_count: -100 }, onex_on_success: true, onex_off_success: false, onex_on_latency_ms: 400, onex_off_latency_ms: 600 },
-    { task_id: 'eval-005-rename-enum-values', verdict: 'onex_worse', delta_metrics: { latency_ms: 50, token_count: 20 }, onex_on_success: true, onex_off_success: true, onex_on_latency_ms: 350, onex_off_latency_ms: 300 },
-    { task_id: 'eval-006-add-eval-suite-loader', verdict: 'onex_better', delta_metrics: { latency_ms: -150, token_count: -80 }, onex_on_success: true, onex_off_success: true, onex_on_latency_ms: 450, onex_off_latency_ms: 600 },
-    { task_id: 'eval-007-add-eval-report-export', verdict: 'onex_better', delta_metrics: { latency_ms: -100, token_count: -60 }, onex_on_success: true, onex_off_success: false, onex_on_latency_ms: 500, onex_off_latency_ms: 600 },
-    { task_id: 'eval-008-review-handler-compliance', verdict: 'neutral', delta_metrics: { latency_ms: -10, token_count: 5 }, onex_on_success: true, onex_off_success: true, onex_on_latency_ms: 290, onex_off_latency_ms: 300 },
-    { task_id: 'eval-009-review-error-handling', verdict: 'onex_better', delta_metrics: { latency_ms: -90, token_count: -40 }, onex_on_success: true, onex_off_success: true, onex_on_latency_ms: 210, onex_off_latency_ms: 300 },
-    { task_id: 'eval-010-document-eval-models', verdict: 'neutral', delta_metrics: { latency_ms: -5, token_count: 10 }, onex_on_success: true, onex_off_success: true, onex_on_latency_ms: 195, onex_off_latency_ms: 200 },
+    {
+      task_id: 'eval-001-fix-import-error',
+      verdict: 'onex_better',
+      delta_metrics: { latency_ms: -120, token_count: -50 },
+      onex_on_success: true,
+      onex_off_success: true,
+      onex_on_latency_ms: 180,
+      onex_off_latency_ms: 300,
+    },
+    {
+      task_id: 'eval-002-fix-pydantic-validation',
+      verdict: 'onex_better',
+      delta_metrics: { latency_ms: -80, token_count: -30 },
+      onex_on_success: true,
+      onex_off_success: false,
+      onex_on_latency_ms: 220,
+      onex_off_latency_ms: 300,
+    },
+    {
+      task_id: 'eval-003-fix-kafka-topic-typo',
+      verdict: 'neutral',
+      delta_metrics: { latency_ms: 5, token_count: 2 },
+      onex_on_success: true,
+      onex_off_success: true,
+      onex_on_latency_ms: 150,
+      onex_off_latency_ms: 145,
+    },
+    {
+      task_id: 'eval-004-extract-shared-validation',
+      verdict: 'onex_better',
+      delta_metrics: { latency_ms: -200, token_count: -100 },
+      onex_on_success: true,
+      onex_off_success: false,
+      onex_on_latency_ms: 400,
+      onex_off_latency_ms: 600,
+    },
+    {
+      task_id: 'eval-005-rename-enum-values',
+      verdict: 'onex_worse',
+      delta_metrics: { latency_ms: 50, token_count: 20 },
+      onex_on_success: true,
+      onex_off_success: true,
+      onex_on_latency_ms: 350,
+      onex_off_latency_ms: 300,
+    },
+    {
+      task_id: 'eval-006-add-eval-suite-loader',
+      verdict: 'onex_better',
+      delta_metrics: { latency_ms: -150, token_count: -80 },
+      onex_on_success: true,
+      onex_off_success: true,
+      onex_on_latency_ms: 450,
+      onex_off_latency_ms: 600,
+    },
+    {
+      task_id: 'eval-007-add-eval-report-export',
+      verdict: 'onex_better',
+      delta_metrics: { latency_ms: -100, token_count: -60 },
+      onex_on_success: true,
+      onex_off_success: false,
+      onex_on_latency_ms: 500,
+      onex_off_latency_ms: 600,
+    },
+    {
+      task_id: 'eval-008-review-handler-compliance',
+      verdict: 'neutral',
+      delta_metrics: { latency_ms: -10, token_count: 5 },
+      onex_on_success: true,
+      onex_off_success: true,
+      onex_on_latency_ms: 290,
+      onex_off_latency_ms: 300,
+    },
+    {
+      task_id: 'eval-009-review-error-handling',
+      verdict: 'onex_better',
+      delta_metrics: { latency_ms: -90, token_count: -40 },
+      onex_on_success: true,
+      onex_off_success: true,
+      onex_on_latency_ms: 210,
+      onex_off_latency_ms: 300,
+    },
+    {
+      task_id: 'eval-010-document-eval-models',
+      verdict: 'neutral',
+      delta_metrics: { latency_ms: -5, token_count: 10 },
+      onex_on_success: true,
+      onex_off_success: true,
+      onex_on_latency_ms: 195,
+      onex_off_latency_ms: 200,
+    },
   ],
   summary: {
     total_tasks: 10,
@@ -119,13 +198,17 @@ const MOCK_REPORT: EvalReport = {
 function verdictBadge(verdict: string) {
   switch (verdict) {
     case 'onex_better':
-      return <Badge className="bg-green-500/20 text-green-400 border-green-500/30">ONEX Better</Badge>;
+      return (
+        <Badge className="bg-green-500/20 text-green-400 border-green-500/30">ONEX Better</Badge>
+      );
     case 'onex_worse':
       return <Badge className="bg-red-500/20 text-red-400 border-red-500/30">ONEX Worse</Badge>;
     case 'neutral':
       return <Badge className="bg-gray-500/20 text-gray-400 border-gray-500/30">Neutral</Badge>;
     default:
-      return <Badge className="bg-yellow-500/20 text-yellow-400 border-yellow-500/30">Incomplete</Badge>;
+      return (
+        <Badge className="bg-yellow-500/20 text-yellow-400 border-yellow-500/30">Incomplete</Badge>
+      );
   }
 }
 
@@ -140,17 +223,20 @@ function deltaIcon(value: number) {
 // ============================================================================
 
 export default function EvalResults() {
-  const { data: report, isLoading, error } = useQuery<EvalReport>({
+  const {
+    data: report,
+    isLoading,
+    error,
+  } = useQuery<EvalReport>({
     queryKey: ['eval-results', 'latest'],
     queryFn: async () => {
-      try {
-        const res = await fetch('/api/eval-results/latest');
-        if (!res.ok) throw new Error(`HTTP ${res.status}`);
-        return res.json();
-      } catch {
-        // Fall back to mock data
+      const res = await fetch('/api/eval-results/latest');
+      if (res.status === 404) {
+        // No reports yet — return mock data for demo
         return MOCK_REPORT;
       }
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      return res.json();
     },
     staleTime: 60_000,
   });
@@ -159,10 +245,24 @@ export default function EvalResults() {
     return (
       <div className="space-y-4 p-6">
         <Skeleton className="h-8 w-64" />
-        <div className="grid grid-cols-4 gap-4">
-          {[1, 2, 3, 4].map(i => <Skeleton key={i} className="h-32" />)}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+          {[1, 2, 3, 4].map((i) => (
+            <Skeleton key={i} className="h-32" />
+          ))}
         </div>
       </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <Alert variant="destructive" className="m-6">
+        <AlertTriangle className="h-4 w-4" />
+        <AlertTitle>Error Loading Eval Results</AlertTitle>
+        <AlertDescription>
+          {error instanceof Error ? error.message : 'Unknown error'}
+        </AlertDescription>
+      </Alert>
     );
   }
 
@@ -179,7 +279,7 @@ export default function EvalResults() {
   const { summary, pairs } = report;
 
   // Chart data: per-task latency comparison
-  const chartData = pairs.map(p => ({
+  const chartData = pairs.map((p) => ({
     name: p.task_id.replace('eval-', '').replace(/-/g, ' ').substring(0, 20),
     'ONEX ON': p.onex_on_latency_ms,
     'ONEX OFF': p.onex_off_latency_ms,
@@ -233,7 +333,9 @@ export default function EvalResults() {
           <CardContent>
             <div className="flex items-center gap-2">
               <Activity className="h-5 w-5 text-blue-400" />
-              <span className={`text-2xl font-bold ${summary.avg_latency_delta_ms < 0 ? 'text-green-400' : 'text-red-400'}`}>
+              <span
+                className={`text-2xl font-bold ${summary.avg_latency_delta_ms < 0 ? 'text-green-400' : 'text-red-400'}`}
+              >
                 {summary.avg_latency_delta_ms.toFixed(0)}ms
               </span>
             </div>
@@ -249,9 +351,19 @@ export default function EvalResults() {
           </CardHeader>
           <CardContent>
             <div className="flex items-center gap-2">
-              <span className="text-lg">ON: <span className="font-bold text-green-400">{(summary.avg_success_rate_on * 100).toFixed(0)}%</span></span>
+              <span className="text-lg">
+                ON:{' '}
+                <span className="font-bold text-green-400">
+                  {(summary.avg_success_rate_on * 100).toFixed(0)}%
+                </span>
+              </span>
               <span className="text-muted-foreground">vs</span>
-              <span className="text-lg">OFF: <span className="font-bold text-gray-400">{(summary.avg_success_rate_off * 100).toFixed(0)}%</span></span>
+              <span className="text-lg">
+                OFF:{' '}
+                <span className="font-bold text-gray-400">
+                  {(summary.avg_success_rate_off * 100).toFixed(0)}%
+                </span>
+              </span>
             </div>
           </CardContent>
         </Card>
@@ -267,7 +379,13 @@ export default function EvalResults() {
           <ResponsiveContainer width="100%" height={300}>
             <BarChart data={chartData}>
               <CartesianGrid strokeDasharray="3 3" stroke="#374151" />
-              <XAxis dataKey="name" tick={{ fontSize: 10 }} angle={-30} textAnchor="end" height={80} />
+              <XAxis
+                dataKey="name"
+                tick={{ fontSize: 10 }}
+                angle={-30}
+                textAnchor="end"
+                height={80}
+              />
               <YAxis />
               <Tooltip />
               <Legend />
@@ -297,7 +415,7 @@ export default function EvalResults() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {pairs.map(pair => (
+              {pairs.map((pair) => (
                 <TableRow key={pair.task_id}>
                   <TableCell className="font-mono text-xs">{pair.task_id}</TableCell>
                   <TableCell>{verdictBadge(pair.verdict)}</TableCell>
@@ -310,14 +428,18 @@ export default function EvalResults() {
                     {(pair.delta_metrics?.token_count ?? 0).toFixed(0)}
                   </TableCell>
                   <TableCell>
-                    {pair.onex_on_success
-                      ? <CheckCircle2 className="w-4 h-4 text-green-400" />
-                      : <XCircle className="w-4 h-4 text-red-400" />}
+                    {pair.onex_on_success ? (
+                      <CheckCircle2 className="w-4 h-4 text-green-400" />
+                    ) : (
+                      <XCircle className="w-4 h-4 text-red-400" />
+                    )}
                   </TableCell>
                   <TableCell>
-                    {pair.onex_off_success
-                      ? <CheckCircle2 className="w-4 h-4 text-green-400" />
-                      : <XCircle className="w-4 h-4 text-red-400" />}
+                    {pair.onex_off_success ? (
+                      <CheckCircle2 className="w-4 h-4 text-green-400" />
+                    ) : (
+                      <XCircle className="w-4 h-4 text-red-400" />
+                    )}
                   </TableCell>
                 </TableRow>
               ))}

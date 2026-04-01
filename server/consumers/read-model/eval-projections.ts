@@ -5,6 +5,7 @@
  * the /eval-results dashboard page.
  */
 
+import { sql } from 'drizzle-orm';
 import { SUFFIX_CHANGE_CONTROL_EVAL_COMPLETED } from '@shared/topics';
 
 import type {
@@ -13,7 +14,12 @@ import type {
   MessageMeta,
   ProjectionHandlerStats,
 } from './types';
-import { isTableMissingError, createHandlerStats, registerHandlerStats, safeParseDate } from './types';
+import {
+  isTableMissingError,
+  createHandlerStats,
+  registerHandlerStats,
+  safeParseDate,
+} from './types';
 
 const EVAL_TOPICS = new Set([SUFFIX_CHANGE_CONTROL_EVAL_COMPLETED]);
 
@@ -40,9 +46,8 @@ export class EvalProjectionHandler implements ProjectionHandler {
       const result = await this.projectEvalCompleted(data, context);
       if (result) {
         this.stats.projected++;
-      } else {
-        this.stats.dropped.db_unavailable++;
       }
+      // Drop reasons are tracked inside projectEvalCompleted
       return result;
     }
 
@@ -54,7 +59,10 @@ export class EvalProjectionHandler implements ProjectionHandler {
     context: ProjectionContext
   ): Promise<boolean> {
     const { db } = context;
-    if (!db) return false;
+    if (!db) {
+      this.stats.dropped.db_unavailable++;
+      return false;
+    }
 
     const reportId = (data.report_id as string) || (data.reportId as string);
     if (!reportId) {
@@ -65,35 +73,30 @@ export class EvalProjectionHandler implements ProjectionHandler {
     const summary = (data.summary as Record<string, unknown>) || {};
 
     try {
-      await db.execute({
-        sql: `
-          INSERT INTO eval_reports (
-            report_id, suite_id, suite_version, generated_at,
-            total_tasks, onex_better_count, onex_worse_count, neutral_count,
-            avg_latency_delta_ms, avg_token_delta,
-            avg_success_rate_on, avg_success_rate_off,
-            pattern_hit_rate_on, raw_payload
-          ) VALUES (
-            $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14
-          ) ON CONFLICT (report_id) DO NOTHING
-        `,
-        params: [
-          reportId,
-          (data.suite_id as string) || '',
-          (data.suite_version as string) || '',
-          safeParseDate(data.generated_at),
-          (summary.total_tasks as number) || 0,
-          (summary.onex_better_count as number) || 0,
-          (summary.onex_worse_count as number) || 0,
-          (summary.neutral_count as number) || 0,
-          (summary.avg_latency_delta_ms as number) || 0,
-          (summary.avg_token_delta as number) || 0,
-          (summary.avg_success_rate_on as number) || 0,
-          (summary.avg_success_rate_off as number) || 0,
-          (summary.pattern_hit_rate_on as number) || 0,
-          JSON.stringify(data),
-        ],
-      });
+      await db.execute(sql`
+        INSERT INTO eval_reports (
+          report_id, suite_id, suite_version, generated_at,
+          total_tasks, onex_better_count, onex_worse_count, neutral_count,
+          avg_latency_delta_ms, avg_token_delta,
+          avg_success_rate_on, avg_success_rate_off,
+          pattern_hit_rate_on, raw_payload
+        ) VALUES (
+          ${reportId},
+          ${(data.suite_id as string) || ''},
+          ${(data.suite_version as string) || ''},
+          ${safeParseDate(data.generated_at)},
+          ${(summary.total_tasks as number) || 0},
+          ${(summary.onex_better_count as number) || 0},
+          ${(summary.onex_worse_count as number) || 0},
+          ${(summary.neutral_count as number) || 0},
+          ${(summary.avg_latency_delta_ms as number) || 0},
+          ${(summary.avg_token_delta as number) || 0},
+          ${(summary.avg_success_rate_on as number) || 0},
+          ${(summary.avg_success_rate_off as number) || 0},
+          ${(summary.pattern_hit_rate_on as number) || 0},
+          ${JSON.stringify(data)}
+        ) ON CONFLICT (report_id) DO NOTHING
+      `);
       return true;
     } catch (err) {
       if (isTableMissingError(err, 'eval_reports')) {
