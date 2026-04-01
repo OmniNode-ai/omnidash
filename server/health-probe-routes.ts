@@ -31,8 +31,8 @@ import { sql } from 'drizzle-orm';
 export interface HealthProbeResponse {
   status: 'up' | 'degraded' | 'down';
   services: {
-    eventConsumer: 'up' | 'down';
-    eventBus: 'up' | 'down';
+    eventConsumer: 'up' | 'degraded' | 'down';
+    eventBus: 'up' | 'degraded' | 'down';
     database: 'up' | 'degraded' | 'down';
   };
   checkedAt: string;
@@ -66,8 +66,11 @@ router.get('/', async (_req, res) => {
       return;
     }
 
-    // --- Event consumer probe (DB watermark-based) ---
-    let eventConsumerStatus: 'up' | 'down' = 'down';
+    const probeErrors: string[] = [];
+
+    // --- Event consumer probe (DB watermark-based) [OMN-6982] ---
+    // Probe logic errors must surface as 'degraded' (not false 'down').
+    let eventConsumerStatus: 'up' | 'degraded' | 'down' = 'down';
     try {
       const db = tryGetIntelligenceDb();
       if (db) {
@@ -87,26 +90,32 @@ router.get('/', async (_req, res) => {
           }
         }
       }
-    } catch {
-      // Leave as 'down'
+    } catch (err) {
+      // Probe logic error — report as degraded, NOT as dependency down.
+      eventConsumerStatus = 'degraded';
+      const msg = err instanceof Error ? err.message : String(err);
+      probeErrors.push(`event-consumer probe error: ${msg}`);
     }
 
-    // --- Event bus probe ---
-    let eventBusStatus: 'up' | 'down' = 'down';
+    // --- Event bus probe [OMN-6982] ---
+    // Probe logic errors must surface as 'degraded' (not false 'down').
+    let eventBusStatus: 'up' | 'degraded' | 'down' = 'down';
     try {
       const dataSource = getEventBusDataSource();
       if (dataSource?.isActive()) {
         eventBusStatus = 'up';
       }
-    } catch {
-      // Leave as 'down'
+    } catch (err) {
+      // Probe logic error — report as degraded, NOT as dependency down.
+      eventBusStatus = 'degraded';
+      const msg = err instanceof Error ? err.message : String(err);
+      probeErrors.push(`event-bus probe error: ${msg}`);
     }
 
     // --- Database + migration parity probe [OMN-5365, OMN-6973] ---
     // Probe logic errors must surface as 'degraded' (not false 'down').
     // False 'down' from internal exceptions hides that the DB is actually healthy.
     let databaseStatus: 'up' | 'degraded' | 'down' = 'down';
-    const probeErrors: string[] = [];
     try {
       const schemaHealth = await checkSchemaParity();
       databaseStatus = schemaHealth.schema_ok ? 'up' : 'down';
