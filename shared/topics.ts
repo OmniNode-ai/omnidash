@@ -577,6 +577,12 @@ export const TOPIC_OMNICLAUDE_AGENT_TRANSFORMATION = 'onex.evt.omniclaude.agent-
 /** Routing performance metrics and cache statistics. */
 export const TOPIC_OMNICLAUDE_PERFORMANCE_METRICS = 'onex.evt.omniclaude.performance-metrics.v1';
 
+/** A/B eval completed event (OMN-6779).
+ * Emitted by eval orchestrator after completing an A/B eval suite run.
+ * Consumed by ReadModelConsumer to project into eval_reports table. */
+export const SUFFIX_CHANGE_CONTROL_EVAL_COMPLETED =
+  'onex.evt.onex-change-control.eval-completed.v1';
+
 // ============================================================================
 // Topic Groups — DELETED (OMN-5252 / OMN-5031)
 //

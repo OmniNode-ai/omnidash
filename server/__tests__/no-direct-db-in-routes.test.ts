@@ -130,6 +130,12 @@ const EXEMPT_FILES = new Set([
   // in-memory projections. DB access is read-only aggregation.
   // TODO(OMN-6753-followup): migrate to ProjectionService view.
   'pipeline-overview-routes.ts',
+
+  // Eval results routes query eval_reports (populated by ReadModelConsumer
+  // projection via Kafka). Aggregation queries (latest report, paginated list)
+  // are not yet representable as a ProjectionService view.
+  // TODO(OMN-6780-followup): migrate to ProjectionService view.
+  'eval-results-routes.ts',
 ]);
 
 /**

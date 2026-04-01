@@ -134,6 +134,9 @@ const DASHBOARD_ROUTES = [
   '/pipeline',
   '/settings',
 
+  // Eval results (OMN-6780)
+  '/eval-results',
+
   // Preview pages
   '/preview/analytics',
   '/preview/health',
