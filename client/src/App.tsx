@@ -15,6 +15,7 @@ import { DemoControlPanel } from '@/components/DemoControlPanel';
 import { useWebSocket } from '@/hooks/useWebSocket';
 import { useAuth } from '@/hooks/useAuth';
 import { useHealthProbe, type HealthProbeStatus } from '@/hooks/useHealthProbe';
+import { usePostHogPageview } from '@/hooks/use-posthog-pageview';
 import LoginPage from '@/pages/LoginPage';
 
 // Archived legacy pages (OMN-1377)
@@ -370,6 +371,8 @@ function SystemHealthIndicator({ status }: { status: HealthProbeStatus }) {
 }
 
 function Dashboard() {
+  usePostHogPageview();
+
   const style = {
     '--sidebar-width': '16rem',
     '--sidebar-width-icon': '3rem',
