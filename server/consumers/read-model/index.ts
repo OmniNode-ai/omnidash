@@ -34,6 +34,7 @@ export { OmnibaseInfraProjectionHandler } from './omnibase-infra-projections';
 export { PlatformProjectionHandler } from './platform-projections';
 export { OmniMemoryProjectionHandler } from './omnimemory-projections';
 export { ChangeControlProjectionHandler } from './change-control-projections';
+export { EvalProjectionHandler } from './eval-projections';
 
 import type { ProjectionHandler } from './types';
 import { OmniclaudeProjectionHandler } from './omniclaude-projections';
@@ -43,6 +44,7 @@ import { OmnibaseInfraProjectionHandler } from './omnibase-infra-projections';
 import { PlatformProjectionHandler } from './platform-projections';
 import { OmniMemoryProjectionHandler } from './omnimemory-projections';
 import { ChangeControlProjectionHandler } from './change-control-projections';
+import { EvalProjectionHandler } from './eval-projections';
 
 /**
  * Create the ordered list of all projection handlers.
@@ -60,5 +62,6 @@ export function createProjectionHandlers(): ProjectionHandler[] {
     new PlatformProjectionHandler(),
     new OmniMemoryProjectionHandler(),
     new ChangeControlProjectionHandler(),
+    new EvalProjectionHandler(),
   ];
 }

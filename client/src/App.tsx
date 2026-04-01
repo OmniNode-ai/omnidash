@@ -63,6 +63,8 @@ import PipelineBudgetDashboard from '@/pages/PipelineBudgetDashboard';
 import DebugEscalationDashboard from '@/pages/DebugEscalationDashboard';
 import CIIntelligenceDashboard from '@/pages/CIIntelligenceDashboard';
 import ObjectiveEvaluation from '@/pages/ObjectiveEvaluation';
+// A/B Eval Results dashboard (OMN-6780)
+import EvalResults from '@/pages/EvalResults';
 // CDQA gate dashboard (OMN-3190)
 import CdqaGateDashboard from '@/pages/CdqaGateDashboard';
 // Integration command center dashboards (OMN-3192)
@@ -239,6 +241,9 @@ function Router() {
 
       {/* Objective Evaluation — score vectors, gate failures, policy state, anti-gaming (OMN-2583) */}
       <Route path="/objective" component={ObjectiveEvaluation} />
+
+      {/* A/B Eval Results — ONEX ON vs OFF comparison (OMN-6780) */}
+      <Route path="/eval-results" component={EvalResults} />
 
       {/* Plan Reviewer — strategy comparison + model accuracy leaderboard (OMN-3324) */}
       <Route path="/plan-reviewer" component={PlanReviewer} />
