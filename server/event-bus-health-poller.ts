@@ -27,7 +27,8 @@ import { loadManifestTopics, loadMonitoredTopics } from './services/topic-manife
 // Constants
 // ============================================================================
 
-const REDPANDA_ADMIN_URL = process.env.REDPANDA_ADMIN_URL ?? 'http://localhost:9644';
+const REDPANDA_ADMIN_URL = process.env.REDPANDA_ADMIN_URL;
+if (!REDPANDA_ADMIN_URL) throw new Error('REDPANDA_ADMIN_URL is required');
 
 /** Poll interval in milliseconds. */
 const POLL_INTERVAL_MS = 30_000;
