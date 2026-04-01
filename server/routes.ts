@@ -89,6 +89,8 @@ import featureFlagRoutes from './feature-flag-routes';
 import { consumerHealthRoutes } from './consumer-health-routes';
 // Runtime Errors dashboard routes (OMN-5528)
 import { runtimeErrorsRoutes } from './runtime-errors-routes';
+// Skill invocation dashboard routes (OMN-5278)
+import { createSkillRouter } from './skill-routes';
 // Review Calibration dashboard routes (OMN-6176)
 import reviewCalibrationRoutes from './review-calibration-routes';
 // Projection health diagnostic routes (OMN-6390)
@@ -273,6 +275,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // Runtime Errors dashboard routes (OMN-5528)
   app.use('/api/runtime-errors', runtimeErrorsRoutes);
+
+  // Skill invocation dashboard routes (OMN-5278)
+  app.use('/api/skills', createSkillRouter());
 
   // Review Calibration dashboard routes (OMN-6176)
   app.use('/api/review-calibration', reviewCalibrationRoutes);
