@@ -289,7 +289,7 @@ export default function PatternLifecycleDashboard() {
                     tickFormatter={(v: string) => v.slice(5, 10)}
                   />
                   <YAxis tick={{ fontSize: 12 }} />
-                  <Tooltip labelFormatter={(v: string) => v.slice(0, 10)} />
+                  <Tooltip labelFormatter={(v: any) => String(v).slice(0, 10)} />
                   <Line
                     type="monotone"
                     dataKey="count"

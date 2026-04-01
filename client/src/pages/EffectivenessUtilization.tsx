@@ -348,7 +348,7 @@ export default function EffectivenessUtilization() {
                   }}
                   labelStyle={{ color: 'hsl(var(--foreground))' }}
                   cursor={{ fill: 'hsl(var(--muted))', fillOpacity: 0.15 }}
-                  formatter={(value: number) => [value, 'Sessions']}
+                  formatter={(value: any) => [value, 'Sessions']}
                 />
                 <ReferenceLine
                   x="0.6-0.7"

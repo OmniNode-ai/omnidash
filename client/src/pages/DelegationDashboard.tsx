@@ -238,7 +238,7 @@ function QualityGateHero({
                       dot={false}
                     />
                     <Tooltip
-                      formatter={(v: number) => [fmtPct(v), 'Pass Rate']}
+                      formatter={(v: any) => [fmtPct(v), 'Pass Rate']}
                       labelFormatter={(l) => String(l).slice(0, 10)}
                       contentStyle={{ fontSize: '11px' }}
                     />
@@ -653,7 +653,7 @@ export default function DelegationDashboard() {
                   stroke="hsl(var(--muted-foreground))"
                 />
                 <Tooltip
-                  formatter={(v: number, name: string) => {
+                  formatter={(v: any, name: any) => {
                     if (name === 'cost_savings_usd') return [fmtCost(v), 'Cost Savings'];
                     return [
                       fmtPct(v),
@@ -753,7 +753,7 @@ export default function DelegationDashboard() {
                     stroke="hsl(var(--muted-foreground))"
                   />
                   <Tooltip
-                    formatter={(v: number, name: string) => {
+                    formatter={(v: any, name: any) => {
                       if (name === 'quality_gate_pass_rate') return [fmtPct(v), 'Pass Rate'];
                       return [fmtCost(v), 'Avg Savings'];
                     }}
@@ -804,7 +804,7 @@ export default function DelegationDashboard() {
                     stroke="hsl(var(--muted-foreground))"
                   />
                   <Tooltip
-                    formatter={(v: number, name: string) => [
+                    formatter={(v: any, name: any) => [
                       fmtCost(v),
                       name === 'cost_savings_usd' ? 'Cost Savings' : 'Total Cost',
                     ]}
@@ -882,7 +882,7 @@ export default function DelegationDashboard() {
                   stroke="hsl(var(--muted-foreground))"
                 />
                 <Tooltip
-                  formatter={(v: number, name: string) => {
+                  formatter={(v: any, name: any) => {
                     if (name === 'pass_rate') return [fmtPct(v), 'Pass Rate'];
                     return [fmtCount(v), name === 'passed' ? 'Passed' : 'Failed'];
                   }}

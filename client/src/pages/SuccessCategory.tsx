@@ -13,7 +13,11 @@ import { useEffect } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useWebSocket } from '@/hooks/useWebSocket';
 import { effectivenessSource } from '@/lib/data-sources/effectiveness-source';
-import { sessionOutcomeSource, type SessionOutcomeSummary, type SessionOutcomeTrend } from '@/lib/data-sources/session-outcome-source';
+import {
+  sessionOutcomeSource,
+  type SessionOutcomeSummary,
+  type SessionOutcomeTrend,
+} from '@/lib/data-sources/session-outcome-source';
 import { queryKeys } from '@/lib/query-keys';
 import { MetricCard } from '@/components/MetricCard';
 import { HeroMetric } from '@/components/HeroMetric';
@@ -92,7 +96,7 @@ function CohortComparisonChart({ data }: { data: ABComparison | undefined }) {
             borderRadius: '6px',
             fontSize: '12px',
           }}
-          formatter={(value: number, name: string) => {
+          formatter={(value: any, name: any) => {
             if (name === 'Sessions') return [value.toLocaleString(), name];
             return [`${value.toFixed(1)}%`, name];
           }}
@@ -139,7 +143,7 @@ function EffectivenessTrendChart({ data }: { data: EffectivenessTrendPoint[] | u
             borderRadius: '6px',
             fontSize: '12px',
           }}
-          formatter={(value: number, name: string) => {
+          formatter={(value: any, name: any) => {
             const labels: Record<string, string> = {
               injection_rate: 'Injection Rate',
               avg_utilization: 'Utilization',
@@ -221,23 +225,19 @@ export default function SuccessCategory() {
   });
 
   // OMN-5184: Session outcome data from real session-outcome.v1 events
-  const {
-    data: sessionOutcomeSummary,
-    isLoading: sessionOutcomeLoading,
-  } = useQuery<SessionOutcomeSummary>({
-    queryKey: queryKeys.sessionOutcomes.summary('7d'),
-    queryFn: () => sessionOutcomeSource.summary('7d'),
-    refetchInterval: 15_000,
-  });
+  const { data: sessionOutcomeSummary, isLoading: sessionOutcomeLoading } =
+    useQuery<SessionOutcomeSummary>({
+      queryKey: queryKeys.sessionOutcomes.summary('7d'),
+      queryFn: () => sessionOutcomeSource.summary('7d'),
+      refetchInterval: 15_000,
+    });
 
-  const {
-    data: sessionOutcomeTrend,
-    isLoading: sessionOutcomeTrendLoading,
-  } = useQuery<SessionOutcomeTrend>({
-    queryKey: queryKeys.sessionOutcomes.trend('7d'),
-    queryFn: () => sessionOutcomeSource.trend('7d'),
-    refetchInterval: 15_000,
-  });
+  const { data: sessionOutcomeTrend, isLoading: sessionOutcomeTrendLoading } =
+    useQuery<SessionOutcomeTrend>({
+      queryKey: queryKeys.sessionOutcomes.trend('7d'),
+      queryFn: () => sessionOutcomeSource.trend('7d'),
+      refetchInterval: 15_000,
+    });
 
   // ---------------------------------------------------------------------------
   // WebSocket
@@ -513,7 +513,7 @@ export default function SuccessCategory() {
               <div className="mt-4">
                 <ResponsiveContainer width="100%" height={200}>
                   <BarChart
-                    data={sessionOutcomeTrend.points.map(p => ({
+                    data={sessionOutcomeTrend.points.map((p) => ({
                       bucket: p.bucket.slice(5, 10),
                       Success: p.success,
                       Failed: p.failed,
@@ -539,9 +539,19 @@ export default function SuccessCategory() {
                       }}
                     />
                     <Legend wrapperStyle={{ fontSize: '12px' }} />
-                    <Bar dataKey="Success" fill="#22c55e" stackId="outcomes" radius={[0, 0, 0, 0]} />
+                    <Bar
+                      dataKey="Success"
+                      fill="#22c55e"
+                      stackId="outcomes"
+                      radius={[0, 0, 0, 0]}
+                    />
                     <Bar dataKey="Failed" fill="#ef4444" stackId="outcomes" radius={[0, 0, 0, 0]} />
-                    <Bar dataKey="Abandoned" fill="#f59e0b" stackId="outcomes" radius={[2, 2, 0, 0]} />
+                    <Bar
+                      dataKey="Abandoned"
+                      fill="#f59e0b"
+                      stackId="outcomes"
+                      radius={[2, 2, 0, 0]}
+                    />
                   </BarChart>
                 </ResponsiveContainer>
               </div>

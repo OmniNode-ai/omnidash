@@ -504,7 +504,7 @@ export default function EffectivenessAB() {
                   }}
                   labelStyle={{ color: 'hsl(var(--foreground))' }}
                   cursor={{ fill: 'hsl(var(--muted))', fillOpacity: 0.15 }}
-                  formatter={(value: number) => [`${value.toFixed(1)}%`, undefined]}
+                  formatter={(value: any) => [`${value.toFixed(1)}%`, undefined]}
                 />
                 <Legend />
                 <Bar dataKey="Treatment" fill={TREATMENT_COLOR} radius={[4, 4, 0, 0]} />
@@ -553,7 +553,7 @@ export default function EffectivenessAB() {
                   }}
                   labelStyle={{ color: 'hsl(var(--foreground))' }}
                   cursor={{ fill: 'hsl(var(--muted))', fillOpacity: 0.15 }}
-                  formatter={(value: number) => [`${value.toFixed(0)}ms`, 'Avg Latency']}
+                  formatter={(value: any) => [`${value.toFixed(0)}ms`, 'Avg Latency']}
                 />
                 <Bar dataKey="latency" name="Avg Latency" radius={[4, 4, 0, 0]}>
                   {buildLatencyChartData(treatment, control).map((entry, index) => (

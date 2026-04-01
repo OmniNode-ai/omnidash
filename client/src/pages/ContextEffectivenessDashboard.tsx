@@ -462,7 +462,7 @@ export default function ContextEffectivenessDashboard() {
                     stroke="hsl(var(--muted-foreground))"
                   />
                   <Tooltip
-                    formatter={(v: number, name: string) => [
+                    formatter={(v: any, name: any) => [
                       name === 'avg_score' ? fmtScore(v) : v.toLocaleString(),
                       name === 'avg_score' ? 'Avg Score' : 'Sessions',
                     ]}
@@ -520,7 +520,7 @@ export default function ContextEffectivenessDashboard() {
                     stroke="hsl(var(--muted-foreground))"
                   />
                   <Tooltip
-                    formatter={(v: number, name: string) => [
+                    formatter={(v: any, name: any) => [
                       name === 'count' ? v.toLocaleString() : fmtScore(v),
                       name === 'count' ? 'Sessions' : 'Avg Score',
                     ]}
@@ -583,7 +583,7 @@ export default function ContextEffectivenessDashboard() {
                   stroke="hsl(var(--muted-foreground))"
                 />
                 <Tooltip
-                  formatter={(v: number, name: string) => [
+                  formatter={(v: any, name: any) => [
                     name === 'avg_utilization_score' ? fmtScore(v) : fmtPct(v),
                     name === 'avg_utilization_score' ? 'Avg Score' : 'Injection Rate',
                   ]}

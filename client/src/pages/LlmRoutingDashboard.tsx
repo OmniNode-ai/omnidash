@@ -277,7 +277,7 @@ function AgreementRateHero({
                       dot={false}
                     />
                     <Tooltip
-                      formatter={(v: number) => [fmtPct(v), 'Agreement Rate']}
+                      formatter={(v: any) => [fmtPct(v), 'Agreement Rate']}
                       labelFormatter={(l) => String(l).slice(0, 10)}
                       contentStyle={{ fontSize: '11px' }}
                     />
@@ -449,7 +449,7 @@ export function ModelEffectivenessChart({ data }: { data: LlmRoutingByModel[] })
         <XAxis type="number" domain={[0, 100]} tickFormatter={(v: number) => `${v}%`} />
         <YAxis type="category" dataKey="model" width={100} tick={{ fontSize: 11 }} />
         <Tooltip
-          formatter={(v: number) => [`${v}%`, 'Agreement Rate']}
+          formatter={(v: any) => [`${v}%`, 'Agreement Rate']}
           contentStyle={{ fontSize: '12px' }}
         />
         <Bar
@@ -513,7 +513,7 @@ function FuzzyConfidenceChart({
               />
               <YAxis tick={{ fontSize: 11 }} stroke="hsl(var(--muted-foreground))" />
               <Tooltip
-                formatter={(v: number) => [v.toLocaleString(), 'Decisions']}
+                formatter={(v: any) => [v.toLocaleString(), 'Decisions']}
                 contentStyle={{ fontSize: '12px' }}
               />
               <Bar dataKey="count" radius={[4, 4, 0, 0]}>
@@ -1143,7 +1143,7 @@ export default function LlmRoutingDashboard() {
                     stroke="hsl(var(--muted-foreground))"
                   />
                   <Tooltip
-                    formatter={(v: number, name: string) => {
+                    formatter={(v: any, name: any) => {
                       if (name === 'avg_cost_usd') return [fmtCost(v), 'Avg Cost'];
                       return [
                         fmtPct(v),
@@ -1239,7 +1239,7 @@ export default function LlmRoutingDashboard() {
                     stroke="hsl(var(--muted-foreground))"
                   />
                   <Tooltip
-                    formatter={(v: number, name: string) => [
+                    formatter={(v: any, name: any) => [
                       fmtMs(v),
                       name === 'p50_ms'
                         ? 'p50'
@@ -1316,7 +1316,7 @@ export default function LlmRoutingDashboard() {
                     stroke="hsl(var(--muted-foreground))"
                   />
                   <Tooltip
-                    formatter={(v: number) => [fmtPct(v), 'Agreement Rate']}
+                    formatter={(v: any) => [fmtPct(v), 'Agreement Rate']}
                     contentStyle={{ fontSize: '12px' }}
                   />
                   <Bar dataKey="agreement_rate" radius={[0, 4, 4, 0]}>

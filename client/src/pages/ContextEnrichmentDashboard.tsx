@@ -572,13 +572,17 @@ export default function ContextEnrichmentDashboard() {
       )}
 
       {/* Feature not enabled banner — shown when API returns zero data (not mock, not demo) */}
-      {allSettled && !isDemoMode && !isUsingMockData && !summaryError && (summary?.total_enrichments ?? 0) === 0 && (
-        <FeatureNotEnabledBanner
-          featureName="Context Enrichment"
-          eventTopic="onex.evt.omniclaude.context-enrichment.v1"
-          flagHint="ENABLE_CONTEXT_ENRICHMENT"
-        />
-      )}
+      {allSettled &&
+        !isDemoMode &&
+        !isUsingMockData &&
+        !summaryError &&
+        (summary?.total_enrichments ?? 0) === 0 && (
+          <FeatureNotEnabledBanner
+            featureName="Context Enrichment"
+            eventTopic="onex.evt.omniclaude.context-enrichment.v1"
+            flagHint="ENABLE_CONTEXT_ENRICHMENT"
+          />
+        )}
 
       {/* Context Inflation Alert Banner */}
       {showInflationWarning && summary && (
@@ -737,7 +741,7 @@ export default function ContextEnrichmentDashboard() {
                     stroke="hsl(var(--muted-foreground))"
                   />
                   <Tooltip
-                    formatter={(v: number, name: string) => [
+                    formatter={(v: any, name: any) => [
                       name === 'hit_rate' ? fmtPct(v) : fmtMs(Number(v)),
                       name === 'hit_rate' ? 'Hit Rate' : 'Avg Latency',
                     ]}
@@ -788,7 +792,7 @@ export default function ContextEnrichmentDashboard() {
                     stroke="hsl(var(--muted-foreground))"
                   />
                   <Tooltip
-                    formatter={(v: number, name: string) => [
+                    formatter={(v: any, name: any) => [
                       `${v}ms`,
                       name === 'p50_ms' ? 'P50' : name === 'p95_ms' ? 'P95' : 'P99',
                     ]}
@@ -858,7 +862,7 @@ export default function ContextEnrichmentDashboard() {
                   stroke="hsl(var(--muted-foreground))"
                 />
                 <Tooltip
-                  formatter={(v: number, name: string) => [
+                  formatter={(v: any, name: any) => [
                     fmtTokens(v),
                     name === 'net_tokens_saved'
                       ? 'Net Tokens Saved'
@@ -949,7 +953,7 @@ export default function ContextEnrichmentDashboard() {
                   stroke="hsl(var(--muted-foreground))"
                 />
                 <Tooltip
-                  formatter={(v: number, name: string) => [
+                  formatter={(v: any, name: any) => [
                     fmtPct(v),
                     name === 'avg_similarity_score' ? 'Similarity Score' : 'Quality Score',
                   ]}

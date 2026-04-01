@@ -1085,7 +1085,7 @@ const TechDebtAnalysis: React.FC = () => {
                       borderRadius: '6px',
                       fontSize: '12px',
                     }}
-                    formatter={(value: number, name: string) => {
+                    formatter={(value: any, name: any) => {
                       const labels: Record<string, string> = {
                         debtRatio: 'Tech Debt Ratio',
                         complexity: 'Code Complexity',

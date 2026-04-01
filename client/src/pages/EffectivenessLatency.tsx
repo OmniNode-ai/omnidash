@@ -34,8 +34,7 @@ import {
 import { queryKeys } from '@/lib/query-keys';
 import { Link } from 'wouter';
 import type { LatencyBreakdown, LatencyTrendPoint } from '@shared/effectiveness-types';
-import type { Payload } from 'recharts/types/component/DefaultLegendContent';
-import type { CategoricalChartState } from 'recharts/types/chart/types';
+import type { LegendPayload } from 'recharts/types/component/DefaultLegendContent';
 import { Clock, ChevronLeft, RefreshCw, Zap, Database, AlertTriangle } from 'lucide-react';
 import {
   BarChart,
@@ -133,7 +132,7 @@ export default function EffectivenessLatency() {
 
   const [hiddenSeries, setHiddenSeries] = useState<Set<string>>(new Set());
 
-  const handleLegendClick = useCallback((entry: Payload) => {
+  const handleLegendClick = useCallback((entry: LegendPayload) => {
     const key = entry.dataKey != null ? String(entry.dataKey) : null;
     if (!key) return;
     setHiddenSeries((prev) => {
@@ -176,30 +175,33 @@ export default function EffectivenessLatency() {
   const p95Delta = (treatmentBreakdown?.p95_ms ?? 0) - (controlBreakdown?.p95_ms ?? 0);
 
   /** Handle clicking a data point on the latency trend chart (OMN-2049 F1). */
-  const handleLatencyTrendClick = useCallback((state: CategoricalChartState) => {
-    if (!state?.activePayload?.length) return;
-    const payload = state.activePayload[0].payload as LatencyTrendPoint;
-    setTrendDrillDown({
-      date: payload.date,
-      metrics: [
-        {
-          label: 'Treatment P95',
-          value: `${Math.round(payload.treatment_p95)}ms`,
-          color: CHART_COLORS.treatmentP95,
-        },
-        {
-          label: 'Control P95',
-          value: `${Math.round(payload.control_p95)}ms`,
-          color: CHART_COLORS.controlP95,
-        },
-        {
-          label: 'Delta P95',
-          value: `${Math.round(payload.delta_p95)}ms`,
-          color: CHART_COLORS.deltaP95,
-        },
-      ],
-    });
-  }, []);
+  const handleLatencyTrendClick = useCallback(
+    (state: { activePayload?: Array<{ payload: any }> }) => {
+      if (!state?.activePayload?.length) return;
+      const payload = state.activePayload[0].payload as LatencyTrendPoint;
+      setTrendDrillDown({
+        date: payload.date,
+        metrics: [
+          {
+            label: 'Treatment P95',
+            value: `${Math.round(payload.treatment_p95)}ms`,
+            color: CHART_COLORS.treatmentP95,
+          },
+          {
+            label: 'Control P95',
+            value: `${Math.round(payload.control_p95)}ms`,
+            color: CHART_COLORS.controlP95,
+          },
+          {
+            label: 'Delta P95',
+            value: `${Math.round(payload.delta_p95)}ms`,
+            color: CHART_COLORS.deltaP95,
+          },
+        ],
+      });
+    },
+    []
+  );
 
   // ---------------------------------------------------------------------------
   // Render
@@ -331,7 +333,7 @@ export default function EffectivenessLatency() {
                   }}
                   labelStyle={{ color: 'hsl(var(--foreground))' }}
                   cursor={{ fill: 'hsl(var(--muted))', fillOpacity: 0.15 }}
-                  formatter={(value: number, name: string) => {
+                  formatter={(value: any, name: any) => {
                     const labels: Record<string, string> = {
                       routing_avg_ms: 'Routing',
                       retrieval_avg_ms: 'Retrieval',
@@ -463,7 +465,7 @@ export default function EffectivenessLatency() {
               <LineChart
                 data={trendData}
                 margin={{ top: 10, right: 30, left: 0, bottom: 0 }}
-                onClick={handleLatencyTrendClick}
+                onClick={handleLatencyTrendClick as any}
               >
                 <CartesianGrid strokeDasharray="3 3" className="opacity-30" />
                 <XAxis
@@ -483,7 +485,7 @@ export default function EffectivenessLatency() {
                   }}
                   labelStyle={{ color: 'hsl(var(--foreground))' }}
                   cursor={{ fill: 'hsl(var(--muted))', fillOpacity: 0.15 }}
-                  formatter={(value: number, name: string) => {
+                  formatter={(value: any, name: any) => {
                     const labels: Record<string, string> = {
                       treatment_p95: 'Treatment P95',
                       control_p95: 'Control P95',

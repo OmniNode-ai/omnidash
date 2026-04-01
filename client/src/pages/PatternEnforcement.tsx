@@ -217,7 +217,7 @@ function CorrectionRateHero({
                       dot={false}
                     />
                     <Tooltip
-                      formatter={(v: number) => [fmtPct(v), 'Correction Rate']}
+                      formatter={(v: any) => [fmtPct(v), 'Correction Rate']}
                       labelFormatter={(l) => String(l).slice(0, 10)}
                       contentStyle={{ fontSize: '11px' }}
                     />
@@ -623,7 +623,7 @@ export default function PatternEnforcement() {
                   stroke="hsl(var(--muted-foreground))"
                 />
                 <Tooltip
-                  formatter={(v: number, name: string) => [
+                  formatter={(v: any, name: any) => [
                     fmtPct(v),
                     name === 'hit_rate'
                       ? 'Hit Rate'
@@ -716,7 +716,7 @@ export default function PatternEnforcement() {
                     stroke="hsl(var(--muted-foreground))"
                   />
                   <Tooltip
-                    formatter={(v: number) => [fmtPct(v), 'Hit Rate']}
+                    formatter={(v: any) => [fmtPct(v), 'Hit Rate']}
                     contentStyle={{ fontSize: '12px' }}
                   />
                   <Bar dataKey="hit_rate" radius={[0, 4, 4, 0]}>
@@ -774,7 +774,7 @@ export default function PatternEnforcement() {
                     stroke="hsl(var(--muted-foreground))"
                   />
                   <Tooltip
-                    formatter={(v: number) => [fmtPct(v), 'Hit Rate']}
+                    formatter={(v: any) => [fmtPct(v), 'Hit Rate']}
                     contentStyle={{ fontSize: '12px' }}
                   />
                   <Bar dataKey="hit_rate" radius={[0, 4, 4, 0]}>

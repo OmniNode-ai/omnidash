@@ -257,7 +257,7 @@ function ScoreVectorPanel({
               ))}
               <Legend wrapperStyle={{ fontSize: 11 }} />
               <Tooltip
-                formatter={(value: number) => [`${value}%`, '']}
+                formatter={(value: any) => [`${value}%`, '']}
                 contentStyle={{ fontSize: 11 }}
               />
             </RadarChart>
@@ -358,7 +358,7 @@ function GateFailureTimelinePanel({
                 <YAxis tick={{ fontSize: 10 }} allowDecimals={false} />
                 <Tooltip
                   contentStyle={{ fontSize: 11 }}
-                  formatter={(v: number, name: string) => [v, name.replace(/_/g, ' ')]}
+                  formatter={(v: any, name: any) => [v, name.replace(/_/g, ' ')]}
                 />
                 <Legend wrapperStyle={{ fontSize: 10 }} formatter={(v) => v.replace(/_/g, ' ')} />
                 {gateTypes.map((gt) => (
@@ -598,7 +598,7 @@ function PolicyStateHistoryPanel({
                 <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
                 <XAxis dataKey="ts" tick={{ fontSize: 10 }} />
                 <YAxis domain={[0, 100]} tick={{ fontSize: 10 }} unit="%" />
-                <Tooltip contentStyle={{ fontSize: 11 }} formatter={(v: number) => [`${v}%`, '']} />
+                <Tooltip contentStyle={{ fontSize: 11 }} formatter={(v: any) => [`${v}%`, '']} />
                 <Legend wrapperStyle={{ fontSize: 10 }} />
                 {policyIds.flatMap((pid, idx) => [
                   <Line
@@ -608,42 +608,49 @@ function PolicyStateHistoryPanel({
                     name={`${pid} reliability`}
                     stroke={policyColors[idx % policyColors.length]}
                     strokeWidth={2}
-                    dot={(props: {
-                      cx: number;
-                      cy: number;
-                      payload: { is_auto_blacklist?: boolean; is_transition?: boolean };
-                    }) => {
-                      if (props.payload.is_auto_blacklist) {
+                    dot={
+                      ((props: {
+                        cx: number;
+                        cy: number;
+                        payload: { is_auto_blacklist?: boolean; is_transition?: boolean };
+                      }) => {
+                        if (props.payload.is_auto_blacklist) {
+                          return (
+                            <circle
+                              key={`${props.cx}-${props.cy}`}
+                              cx={props.cx}
+                              cy={props.cy}
+                              r={6}
+                              fill="#ef4444"
+                              stroke="white"
+                              strokeWidth={1.5}
+                              style={{ cursor: 'pointer' }}
+                            />
+                          );
+                        }
+                        if (props.payload.is_transition) {
+                          return (
+                            <circle
+                              key={`${props.cx}-${props.cy}`}
+                              cx={props.cx}
+                              cy={props.cy}
+                              r={4}
+                              fill={policyColors[idx % policyColors.length]}
+                              stroke="white"
+                              strokeWidth={1.5}
+                            />
+                          );
+                        }
                         return (
                           <circle
                             key={`${props.cx}-${props.cy}`}
                             cx={props.cx}
                             cy={props.cy}
-                            r={6}
-                            fill="#ef4444"
-                            stroke="white"
-                            strokeWidth={1.5}
-                            style={{ cursor: 'pointer' }}
+                            r={0}
                           />
                         );
-                      }
-                      if (props.payload.is_transition) {
-                        return (
-                          <circle
-                            key={`${props.cx}-${props.cy}`}
-                            cx={props.cx}
-                            cy={props.cy}
-                            r={4}
-                            fill={policyColors[idx % policyColors.length]}
-                            stroke="white"
-                            strokeWidth={1.5}
-                          />
-                        );
-                      }
-                      return (
-                        <circle key={`${props.cx}-${props.cy}`} cx={props.cx} cy={props.cy} r={0} />
-                      );
-                    }}
+                      }) as any
+                    }
                   />,
                   <Line
                     key={`${pid}_confidence`}

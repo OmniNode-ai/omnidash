@@ -385,7 +385,7 @@ export default function PlanReviewer() {
                   tickFormatter={(v: number) => `${v}%`}
                 />
                 <Tooltip
-                  formatter={(value: number, name: string) => [
+                  formatter={(value: any, name: any) => [
                     `${value}%`,
                     name === 'avg_confidence_pct' ? 'Avg Confidence' : 'Block Rate',
                   ]}

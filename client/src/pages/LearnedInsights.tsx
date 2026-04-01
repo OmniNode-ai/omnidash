@@ -41,7 +41,7 @@ import {
   Legend,
   ResponsiveContainer,
 } from 'recharts';
-import type { Payload } from 'recharts/types/component/DefaultLegendContent';
+import type { LegendPayload } from 'recharts/types/component/DefaultLegendContent';
 import {
   Brain,
   ChevronDown,
@@ -319,7 +319,7 @@ export default function LearnedInsights() {
 
   const handleRefresh = () => refetchSummary();
 
-  const handleLegendClick = useCallback((entry: Payload) => {
+  const handleLegendClick = useCallback((entry: LegendPayload) => {
     const key = entry.dataKey != null ? String(entry.dataKey) : null;
     if (!key) return;
     setHiddenSeries((prev) => {

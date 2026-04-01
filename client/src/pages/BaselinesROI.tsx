@@ -117,7 +117,7 @@ function ROITrendChart({ data }: { data: ROITrendPoint[] | undefined }) {
             borderRadius: '6px',
             fontSize: '12px',
           }}
-          formatter={(value: number, name: string) => [`${value.toFixed(1)}%`, name]}
+          formatter={(value: any, name: any) => [`${value.toFixed(1)}%`, name]}
         />
         <Legend wrapperStyle={{ fontSize: '12px' }} />
         <Line type="monotone" dataKey="Cost Savings" stroke="#22c55e" strokeWidth={2} dot={false} />

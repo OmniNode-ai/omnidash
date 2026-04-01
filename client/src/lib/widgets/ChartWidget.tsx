@@ -632,7 +632,7 @@ function renderDonutChart(chartData: unknown[], config: WidgetConfigChart) {
       </Pie>
       <Tooltip
         contentStyle={tooltipStyle}
-        formatter={(value: number, name: string) => {
+        formatter={(value: any, name: any) => {
           const safePercent = total > 0 ? ((value / total) * 100).toFixed(1) : '0.0';
           return [`${value.toLocaleString()} (${safePercent}%)`, name];
         }}

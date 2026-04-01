@@ -519,7 +519,7 @@ export default function RLRouting() {
                   <XAxis type="number" domain={[0, 100]} tickFormatter={(v) => `${v}%`} />
                   <YAxis dataKey="backend_id" type="category" width={100} tick={{ fontSize: 12 }} />
                   <Tooltip
-                    formatter={(value: number) => `${value.toFixed(1)}%`}
+                    formatter={(value: any) => `${value.toFixed(1)}%`}
                     contentStyle={{
                       background: 'hsl(var(--card))',
                       border: '1px solid hsl(var(--border))',
@@ -554,7 +554,7 @@ export default function RLRouting() {
                   <XAxis dataKey="value" tick={{ fontSize: 11 }} />
                   <YAxis tickFormatter={(v) => `${(v * 100).toFixed(0)}%`} domain={[0, 1]} />
                   <Tooltip
-                    formatter={(value: number) => `${(value * 100).toFixed(1)}%`}
+                    formatter={(value: any) => `${(value * 100).toFixed(1)}%`}
                     contentStyle={{
                       background: 'hsl(var(--card))',
                       border: '1px solid hsl(var(--border))',
@@ -589,7 +589,7 @@ export default function RLRouting() {
                   <XAxis dataKey="value" tick={{ fontSize: 11 }} />
                   <YAxis tickFormatter={(v) => `${(v * 100).toFixed(0)}%`} domain={[0, 1]} />
                   <Tooltip
-                    formatter={(value: number) => `${(value * 100).toFixed(1)}%`}
+                    formatter={(value: any) => `${(value * 100).toFixed(1)}%`}
                     contentStyle={{
                       background: 'hsl(var(--card))',
                       border: '1px solid hsl(var(--border))',
