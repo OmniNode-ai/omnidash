@@ -10,7 +10,9 @@ export function isAuthEnabled(): boolean {
 }
 
 export function getBaseUrl(): string {
-  return process.env.OMNIDASH_BASE_URL || 'http://localhost:3000';
+  const url = process.env.OMNIDASH_BASE_URL;
+  if (!url) throw new Error('OMNIDASH_BASE_URL is required');
+  return url;
 }
 
 export function getOidcClient(): Client {
@@ -25,7 +27,8 @@ export async function initOidcClient(): Promise<void> {
   // When OMNIDASH_AUTH_ENABLED=false, auth is unconditionally disabled regardless of
   // KEYCLOAK_ISSUER. This prevents ~/.omnibase/.env Keycloak vars from enabling auth
   // in local development where no Keycloak server is running.
-  if (process.env.OMNIDASH_AUTH_ENABLED === 'false') { // ONEX_FLAG_EXEMPT: migration
+  if (process.env.OMNIDASH_AUTH_ENABLED === 'false') {
+    // ONEX_FLAG_EXEMPT: migration
     console.log('[oidc] OMNIDASH_AUTH_ENABLED=false -- auth disabled by explicit env override');
     authEnabled = false;
     return;

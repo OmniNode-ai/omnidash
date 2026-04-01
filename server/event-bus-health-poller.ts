@@ -27,7 +27,16 @@ import { loadManifestTopics, loadMonitoredTopics } from './services/topic-manife
 // Constants
 // ============================================================================
 
-const REDPANDA_ADMIN_URL = process.env.REDPANDA_ADMIN_URL ?? 'http://localhost:9644';
+/**
+ * Returns the configured Redpanda Admin API URL.
+ * Throws at call-time (not import-time) so tests and CI environments that
+ * never start the poller are not blocked by a missing env var.
+ */
+function getRedpandaAdminUrl(): string {
+  const url = process.env.REDPANDA_ADMIN_URL;
+  if (!url) throw new Error('REDPANDA_ADMIN_URL is required');
+  return url;
+}
 
 /** Poll interval in milliseconds. */
 const POLL_INTERVAL_MS = 30_000;
@@ -230,7 +239,7 @@ async function pollEventBusHealth(): Promise<void> {
 }
 
 export async function fetchTopicNames(): Promise<string[]> {
-  const url = `${REDPANDA_ADMIN_URL}/v1/partitions`;
+  const url = `${getRedpandaAdminUrl()}/v1/partitions`;
   const res = await fetch(url, { signal: AbortSignal.timeout(5_000) });
   if (!res.ok) throw new Error(`HTTP ${res.status} from ${url}`);
   const raw = await res.json();
@@ -245,7 +254,7 @@ export async function fetchTopicNames(): Promise<string[]> {
 }
 
 async function fetchGroupOffsets(group: string): Promise<RedpandaGroupOffset[]> {
-  const url = `${REDPANDA_ADMIN_URL}/v1/groups/${encodeURIComponent(group)}/offsets`;
+  const url = `${getRedpandaAdminUrl()}/v1/groups/${encodeURIComponent(group)}/offsets`;
   const res = await fetch(url, { signal: AbortSignal.timeout(5_000) });
   if (!res.ok) throw new Error(`HTTP ${res.status} from ${url}`);
   const json = (await res.json()) as { topics?: RedpandaGroupOffset[] } | RedpandaGroupOffset[];
@@ -268,8 +277,13 @@ let intervalHandle: ReturnType<typeof setInterval> | null = null;
 export function startEventBusHealthPoller(): void {
   if (intervalHandle !== null) return;
 
+  if (!process.env.REDPANDA_ADMIN_URL) {
+    console.warn('[event-bus-health-poller] REDPANDA_ADMIN_URL not set — skipping');
+    return;
+  }
+
   console.log(
-    `[event-bus-health-poller] Starting — polling ${REDPANDA_ADMIN_URL} every ${POLL_INTERVAL_MS}ms`
+    `[event-bus-health-poller] Starting — polling ${getRedpandaAdminUrl()} every ${POLL_INTERVAL_MS}ms`
   );
 
   // Immediate first poll (fire-and-forget, errors are caught inside)

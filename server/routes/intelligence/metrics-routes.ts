@@ -354,7 +354,11 @@ export function registerMetricsRoutes(router: Router): void {
   // "Failed to load developer metrics" when the service was offline.
   router.get('/developer/metrics', async (req, res) => {
     const timeWindow = (req.query.timeWindow as string) || '24h';
-    const intelligenceBaseUrl = process.env.INTELLIGENCE_SERVICE_URL || 'http://localhost:8053';
+    const intelligenceBaseUrl = process.env.INTELLIGENCE_SERVICE_URL;
+    if (!intelligenceBaseUrl) {
+      res.status(503).json({ error: 'INTELLIGENCE_SERVICE_URL is not configured' });
+      return;
+    }
     const upstreamUrl = `${intelligenceBaseUrl}/api/intelligence/developer/metrics?timeWindow=${timeWindow}`;
 
     try {

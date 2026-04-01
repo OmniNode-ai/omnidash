@@ -1,15 +1,26 @@
-import { describe, it, expect, vi, beforeEach, afterAll } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterAll, afterEach } from 'vitest';
 
 // Stub fetch once at module level, before static import of module under test.
 // This stays active for the entire suite; afterAll cleans up.
 const mockFetch = vi.fn();
 vi.stubGlobal('fetch', mockFetch);
 
+// Set REDPANDA_ADMIN_URL before importing the module under test so that
+// fetchTopicNames() calls succeed. The env var is cleaned up in afterAll.
+const ORIGINAL_REDPANDA_ADMIN_URL = process.env.REDPANDA_ADMIN_URL;
+process.env.REDPANDA_ADMIN_URL = 'http://test-redpanda:9644';
+
 import { fetchTopicNames, EXPECTED_TOPICS } from '../event-bus-health-poller';
 
 // Module-level cleanup: unstub globals after all describe blocks complete
 afterAll(() => {
   vi.unstubAllGlobals();
+  // Restore original env value
+  if (ORIGINAL_REDPANDA_ADMIN_URL !== undefined) {
+    process.env.REDPANDA_ADMIN_URL = ORIGINAL_REDPANDA_ADMIN_URL;
+  } else {
+    delete process.env.REDPANDA_ADMIN_URL;
+  }
 });
 
 describe('fetchTopicNames', () => {
@@ -73,7 +84,7 @@ describe('event-bus-health-poller configuration (OMN-4970)', () => {
     vi.resetAllMocks();
   });
 
-  it('REDPANDA_ADMIN_URL defaults to http://localhost:9644 (port from OMN-4959)', async () => {
+  it('uses REDPANDA_ADMIN_URL from env (OMN-7227: no localhost fallback)', async () => {
     mockFetch.mockResolvedValueOnce({
       ok: true,
       json: async () => [],
@@ -81,11 +92,21 @@ describe('event-bus-health-poller configuration (OMN-4970)', () => {
 
     await fetchTopicNames();
 
-    // Verify the default URL matches the port exposed by OMN-4959
+    // Verify the URL from process.env.REDPANDA_ADMIN_URL is used
     expect(mockFetch).toHaveBeenCalledWith(
-      'http://localhost:9644/v1/partitions',
+      'http://test-redpanda:9644/v1/partitions',
       expect.objectContaining({ signal: expect.any(Object) })
     );
+  });
+
+  it('throws when REDPANDA_ADMIN_URL is not set (OMN-7227)', async () => {
+    const saved = process.env.REDPANDA_ADMIN_URL;
+    delete process.env.REDPANDA_ADMIN_URL;
+    try {
+      await expect(fetchTopicNames()).rejects.toThrow('REDPANDA_ADMIN_URL is required');
+    } finally {
+      process.env.REDPANDA_ADMIN_URL = saved;
+    }
   });
 
   it('EXPECTED_TOPICS includes core ONEX topic names for health monitoring', () => {
