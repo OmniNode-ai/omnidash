@@ -1735,7 +1735,7 @@ export class OmniclaudeProjectionHandler implements ProjectionHandler {
       return true;
     }
 
-    const emittedAt = safeParseDate(data.emitted_at ?? data.emittedAt) ?? new Date();
+    const emittedAt = safeParseDate(data.emitted_at ?? data.emittedAt);
 
     const row = {
       id: id || crypto.randomUUID(),

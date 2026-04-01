@@ -6,7 +6,7 @@
  */
 
 import { hookHealthEvents } from '@shared/intelligence-schema';
-import { desc, gte, count } from 'drizzle-orm';
+import { desc, gte, count, max, sql } from 'drizzle-orm';
 import { tryGetIntelligenceDb } from '../storage';
 
 export interface HookHealthSummary {
@@ -40,70 +40,93 @@ export class HookHealthProjection {
     const since = new Date(Date.now() - windowMinutes * 60 * 1000);
 
     try {
-      // Use SQL COUNT for accurate total (not rows.length which is capped)
-      const totalResult = await db
-        .select({ count: count() })
-        .from(hookHealthEvents)
-        .where(gte(hookHealthEvents.emittedAt, since));
+      // All aggregations use SQL GROUP BY for accuracy across the full window
+      // (no in-memory capping that would skew breakdowns vs total_errors).
 
-      // Fetch recent rows for breakdown aggregation
-      const rows = await db
-        .select()
-        .from(hookHealthEvents)
-        .where(gte(hookHealthEvents.emittedAt, since))
-        .orderBy(desc(hookHealthEvents.emittedAt))
-        .limit(1000);
+      const [totalResult, tierResult, categoryResult, hookResult, fingerprintResult] =
+        await Promise.all([
+          // Total error count
+          db
+            .select({ count: count() })
+            .from(hookHealthEvents)
+            .where(gte(hookHealthEvents.emittedAt, since)),
+
+          // Tier breakdown
+          db
+            .select({
+              tier: hookHealthEvents.errorTier,
+              count: count(),
+            })
+            .from(hookHealthEvents)
+            .where(gte(hookHealthEvents.emittedAt, since))
+            .groupBy(hookHealthEvents.errorTier),
+
+          // Category breakdown
+          db
+            .select({
+              category: hookHealthEvents.errorCategory,
+              count: count(),
+            })
+            .from(hookHealthEvents)
+            .where(gte(hookHealthEvents.emittedAt, since))
+            .groupBy(hookHealthEvents.errorCategory),
+
+          // Hook breakdown
+          db
+            .select({
+              hookName: hookHealthEvents.hookName,
+              count: count(),
+            })
+            .from(hookHealthEvents)
+            .where(gte(hookHealthEvents.emittedAt, since))
+            .groupBy(hookHealthEvents.hookName),
+
+          // Top fingerprints (skip blank fingerprints)
+          db
+            .select({
+              fingerprint: hookHealthEvents.fingerprint,
+              hookName: hookHealthEvents.hookName,
+              errorCategory: hookHealthEvents.errorCategory,
+              errorMessage: hookHealthEvents.errorMessage,
+              count: count(),
+              lastSeen: max(hookHealthEvents.emittedAt),
+            })
+            .from(hookHealthEvents)
+            .where(gte(hookHealthEvents.emittedAt, since))
+            .groupBy(
+              hookHealthEvents.fingerprint,
+              hookHealthEvents.hookName,
+              hookHealthEvents.errorCategory,
+              hookHealthEvents.errorMessage
+            )
+            .having(sql`trim(${hookHealthEvents.fingerprint}) != ''`)
+            .orderBy(desc(count()))
+            .limit(10),
+        ]);
 
       const tierCounts: Record<string, number> = {};
-      const categoryCounts: Record<string, number> = {};
-      const hookCounts: Record<string, number> = {};
-      const fingerprintMap = new Map<
-        string,
-        {
-          hook_name: string;
-          error_category: string;
-          error_message: string;
-          count: number;
-          last_seen: string;
-        }
-      >();
-
-      for (const row of rows) {
-        tierCounts[row.errorTier] = (tierCounts[row.errorTier] || 0) + 1;
-        categoryCounts[row.errorCategory] = (categoryCounts[row.errorCategory] || 0) + 1;
-        hookCounts[row.hookName] = (hookCounts[row.hookName] || 0) + 1;
-
-        const fingerprint = row.fingerprint?.trim();
-        if (!fingerprint) continue;
-
-        const existing = fingerprintMap.get(fingerprint);
-        if (existing) {
-          existing.count++;
-          if (row.emittedAt.toISOString() > existing.last_seen) {
-            existing.last_seen = row.emittedAt.toISOString();
-          }
-        } else {
-          fingerprintMap.set(fingerprint, {
-            hook_name: row.hookName,
-            error_category: row.errorCategory,
-            error_message: (row.errorMessage ?? '').slice(0, 200),
-            count: 1,
-            last_seen: row.emittedAt.toISOString(),
-          });
-        }
+      for (const r of tierResult) {
+        tierCounts[r.tier] = r.count;
       }
 
-      const topFingerprints = [...fingerprintMap.entries()]
-        .sort((a, b) => b[1].count - a[1].count)
-        .slice(0, 10)
-        .map(([fp, data]) => ({
-          fingerprint: fp,
-          hook_name: data.hook_name,
-          error_category: data.error_category,
-          error_message: data.error_message,
-          occurrence_count: data.count,
-          last_seen: data.last_seen,
-        }));
+      const categoryCounts: Record<string, number> = {};
+      for (const r of categoryResult) {
+        categoryCounts[r.category] = r.count;
+      }
+
+      const hookCounts: Record<string, number> = {};
+      for (const r of hookResult) {
+        hookCounts[r.hookName] = r.count;
+      }
+
+      const topFingerprints = fingerprintResult.map((r) => ({
+        fingerprint: r.fingerprint,
+        hook_name: r.hookName,
+        error_category: r.errorCategory,
+        error_message: (r.errorMessage ?? '').slice(0, 200),
+        occurrence_count: r.count,
+        last_seen: r.lastSeen?.toISOString() ?? new Date().toISOString(),
+      }));
 
       return {
         total_errors: totalResult[0]?.count ?? 0,

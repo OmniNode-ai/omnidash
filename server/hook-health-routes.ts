@@ -12,7 +12,7 @@ export const hookHealthRoutes = Router();
 
 const projection = new HookHealthProjection();
 
-const SUPPORTED_WINDOWS: Record<string, number> = {
+const SUPPORTED_WINDOWS = {
   '5m': 5,
   '15m': 15,
   '30m': 30,
@@ -30,12 +30,12 @@ const SUPPORTED_WINDOWS: Record<string, number> = {
 hookHealthRoutes.get('/summary', async (req, res) => {
   try {
     const windowParam = typeof req.query.window === 'string' ? req.query.window : '24h';
-    if (!(windowParam in SUPPORTED_WINDOWS)) {
+    if (!Object.hasOwn(SUPPORTED_WINDOWS, windowParam)) {
       return res.status(400).json({
         error: `Invalid window. Use one of: ${Object.keys(SUPPORTED_WINDOWS).join(', ')}`,
       });
     }
-    const windowMinutes = SUPPORTED_WINDOWS[windowParam];
+    const windowMinutes = SUPPORTED_WINDOWS[windowParam as keyof typeof SUPPORTED_WINDOWS];
     const summary = await projection.summary(windowMinutes);
     return res.json(summary);
   } catch (err) {
