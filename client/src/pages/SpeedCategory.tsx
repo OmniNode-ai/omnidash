@@ -14,7 +14,11 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useWebSocket } from '@/hooks/useWebSocket';
 import { extractionSource } from '@/lib/data-sources/extraction-source';
 import { effectivenessSource } from '@/lib/data-sources/effectiveness-source';
-import { phaseMetricsSource, type PhaseMetricsSummary, type PhaseMetricsByPhase } from '@/lib/data-sources/phase-metrics-source';
+import {
+  phaseMetricsSource,
+  type PhaseMetricsSummary,
+  type PhaseMetricsByPhase,
+} from '@/lib/data-sources/phase-metrics-source';
 import { queryKeys } from '@/lib/query-keys';
 import { MetricCard } from '@/components/MetricCard';
 import { HeroMetric } from '@/components/HeroMetric';
@@ -87,7 +91,7 @@ function LatencyPercentilesChart({ data }: { data: LatencyDetails | undefined })
             borderRadius: '6px',
             fontSize: '12px',
           }}
-          formatter={(value: number, name: string) => [`${value.toFixed(0)}ms`, name]}
+          formatter={(value: any, name: any) => [`${value.toFixed(0)}ms`, name]}
         />
         <Legend wrapperStyle={{ fontSize: '12px' }} />
         <Bar dataKey="P50" fill="#22c55e" radius={[2, 2, 0, 0]} />
@@ -138,23 +142,19 @@ export default function SpeedCategory() {
   });
 
   // OMN-5184: Phase metrics from real pipeline instrumentation
-  const {
-    data: phaseMetricsSummary,
-    isLoading: phaseMetricsLoading,
-  } = useQuery<PhaseMetricsSummary>({
-    queryKey: queryKeys.phaseMetrics.summary('7d'),
-    queryFn: () => phaseMetricsSource.summary('7d'),
-    refetchInterval: 30_000,
-  });
+  const { data: phaseMetricsSummary, isLoading: phaseMetricsLoading } =
+    useQuery<PhaseMetricsSummary>({
+      queryKey: queryKeys.phaseMetrics.summary('7d'),
+      queryFn: () => phaseMetricsSource.summary('7d'),
+      refetchInterval: 30_000,
+    });
 
-  const {
-    data: phaseMetricsByPhase,
-    isLoading: phasesByPhaseLoading,
-  } = useQuery<PhaseMetricsByPhase>({
-    queryKey: queryKeys.phaseMetrics.byPhase('7d'),
-    queryFn: () => phaseMetricsSource.byPhase('7d'),
-    refetchInterval: 30_000,
-  });
+  const { data: phaseMetricsByPhase, isLoading: phasesByPhaseLoading } =
+    useQuery<PhaseMetricsByPhase>({
+      queryKey: queryKeys.phaseMetrics.byPhase('7d'),
+      queryFn: () => phaseMetricsSource.byPhase('7d'),
+      refetchInterval: 30_000,
+    });
 
   // Ref-based mock-flag aggregation (mirrors ExtractionDashboard).
   // Each data source writes its mock status into `mockFlags.current[key]`
@@ -383,7 +383,7 @@ export default function SpeedCategory() {
       <LatencyHeatmap timeWindow={timeWindow} onMockStateChange={onLatencyHeatmapMock} />
 
       {/* OMN-5184: Pipeline Phase Metrics (real data from phase_instrumentation) */}
-      {(phaseMetricsSummary && phaseMetricsSummary.totalPhaseRuns > 0) && (
+      {phaseMetricsSummary && phaseMetricsSummary.totalPhaseRuns > 0 && (
         <>
           <Card>
             <CardHeader className="pb-2">
@@ -419,7 +419,10 @@ export default function SpeedCategory() {
                   icon={Gauge}
                   status={
                     phaseMetricsSummary.byStatus.success + phaseMetricsSummary.byStatus.failure > 0
-                      ? phaseMetricsSummary.byStatus.success / (phaseMetricsSummary.byStatus.success + phaseMetricsSummary.byStatus.failure) >= 0.9
+                      ? phaseMetricsSummary.byStatus.success /
+                          (phaseMetricsSummary.byStatus.success +
+                            phaseMetricsSummary.byStatus.failure) >=
+                        0.9
                         ? 'healthy'
                         : 'warning'
                       : undefined
@@ -441,7 +444,7 @@ export default function SpeedCategory() {
               <CardContent>
                 <ResponsiveContainer width="100%" height={240}>
                   <BarChart
-                    data={phaseMetricsByPhase.phases.map(p => ({
+                    data={phaseMetricsByPhase.phases.map((p) => ({
                       phase: p.phase.replace(/_/g, ' '),
                       'Avg Duration (ms)': Math.round(p.avgDurationMs),
                       count: p.count,
@@ -465,7 +468,7 @@ export default function SpeedCategory() {
                         borderRadius: '6px',
                         fontSize: '12px',
                       }}
-                      formatter={(value: number, name: string) => [`${value}ms`, name]}
+                      formatter={(value: any, name: any) => [`${value}ms`, name]}
                     />
                     <Bar dataKey="Avg Duration (ms)" fill="#3b82f6" radius={[2, 2, 0, 0]} />
                   </BarChart>

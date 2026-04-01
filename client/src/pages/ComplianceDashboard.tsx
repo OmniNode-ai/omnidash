@@ -213,8 +213,7 @@ export default function ComplianceDashboard() {
     void queryClient.invalidateQueries({ queryKey: queryKeys.compliance.all });
   }
 
-  const isLoading =
-    evaluationsQuery.isLoading || summaryQuery.isLoading || trendQuery.isLoading;
+  const isLoading = evaluationsQuery.isLoading || summaryQuery.isLoading || trendQuery.isLoading;
   const isError = evaluationsQuery.isError || summaryQuery.isError || trendQuery.isError;
 
   const summary = evaluationsQuery.data?.summary ?? {
@@ -289,9 +288,7 @@ export default function ComplianceDashboard() {
       {/* Summary metric cards */}
       <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
         {isLoading ? (
-          Array.from({ length: 4 }).map((_, i) => (
-            <Skeleton key={i} className="h-28 rounded-xl" />
-          ))
+          Array.from({ length: 4 }).map((_, i) => <Skeleton key={i} className="h-28 rounded-xl" />)
         ) : (
           <>
             <MetricCard
@@ -402,13 +399,8 @@ export default function ComplianceDashboard() {
                 >
                   <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
                   <XAxis type="number" domain={[0, 100]} unit="%" tick={{ fontSize: 11 }} />
-                  <YAxis
-                    type="category"
-                    dataKey="repo"
-                    tick={{ fontSize: 11 }}
-                    width={100}
-                  />
-                  <Tooltip formatter={(v: number) => `${v}%`} />
+                  <YAxis type="category" dataKey="repo" tick={{ fontSize: 11 }} width={100} />
+                  <Tooltip formatter={(v: any) => `${v}%`} />
                   <Bar dataKey="passRate" name="Pass Rate %" radius={[0, 4, 4, 0]}>
                     {byRepo.map((entry) => (
                       <Cell key={entry.repo} fill={passRateColor(entry.passRate)} />
@@ -441,13 +433,8 @@ export default function ComplianceDashboard() {
                 >
                   <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
                   <XAxis type="number" domain={[0, 100]} unit="%" tick={{ fontSize: 11 }} />
-                  <YAxis
-                    type="category"
-                    dataKey="ruleSet"
-                    tick={{ fontSize: 11 }}
-                    width={110}
-                  />
-                  <Tooltip formatter={(v: number) => `${v}%`} />
+                  <YAxis type="category" dataKey="ruleSet" tick={{ fontSize: 11 }} width={110} />
+                  <Tooltip formatter={(v: any) => `${v}%`} />
                   <Bar dataKey="passRate" name="Pass Rate %" radius={[0, 4, 4, 0]}>
                     {byRuleSet.map((entry) => (
                       <Cell key={entry.ruleSet} fill={passRateColor(entry.passRate)} />
@@ -464,9 +451,7 @@ export default function ComplianceDashboard() {
       <Card>
         <CardHeader>
           <CardTitle>Recent Evaluations</CardTitle>
-          <CardDescription>
-            Latest compliance-evaluated.v1 events ({window} window)
-          </CardDescription>
+          <CardDescription>Latest compliance-evaluated.v1 events ({window} window)</CardDescription>
         </CardHeader>
         <CardContent>
           {isLoading ? (
@@ -513,10 +498,7 @@ export default function ComplianceDashboard() {
                           pass
                         </Badge>
                       ) : (
-                        <Badge
-                          variant="outline"
-                          className="border-red-500 text-red-600 text-xs"
-                        >
+                        <Badge variant="outline" className="border-red-500 text-red-600 text-xs">
                           <XCircle className="h-3 w-3 mr-1" />
                           fail
                         </Badge>

@@ -260,7 +260,7 @@ function CostTrendChart({
             borderRadius: '6px',
             fontSize: '12px',
           }}
-          formatter={(value: number, name: string) => [`$${value.toFixed(2)}`, name]}
+          formatter={(value: any, name: any) => [`$${value.toFixed(2)}`, name]}
         />
         <Legend wrapperStyle={{ fontSize: '12px' }} />
         <Line type="monotone" dataKey="Total" stroke="#3b82f6" strokeWidth={2} dot={false} />
@@ -331,7 +331,7 @@ function CostByModelChart({ data }: { data: CostByModel[] | undefined }) {
             borderRadius: '6px',
             fontSize: '12px',
           }}
-          formatter={(value: number) => [`$${value.toFixed(2)}`, 'Cost']}
+          formatter={(value: any) => [`$${value.toFixed(2)}`, 'Cost']}
         />
         <Bar dataKey="cost" radius={[4, 4, 0, 0]}>
           {chartData.map((_, index) => (
@@ -392,7 +392,7 @@ function CostByRepoChart({ data }: { data: CostByRepo[] | undefined }) {
             borderRadius: '6px',
             fontSize: '12px',
           }}
-          formatter={(value: number) => [`$${value.toFixed(2)}`, 'Cost']}
+          formatter={(value: any) => [`$${value.toFixed(2)}`, 'Cost']}
         />
         <Bar dataKey="cost" radius={[4, 4, 0, 0]}>
           {chartData.map((_, index) => (
@@ -613,7 +613,7 @@ function TokenUsageChart({ data }: { data: TokenUsagePoint[] | undefined }) {
             borderRadius: '6px',
             fontSize: '12px',
           }}
-          formatter={(value: number, name: string) => [value.toLocaleString(), name]}
+          formatter={(value: any, name: any) => [value.toLocaleString(), name]}
         />
         <Legend wrapperStyle={{ fontSize: '12px' }} />
         <Bar dataKey="Prompt" stackId="a" fill="#3b82f6" radius={[0, 0, 0, 0]} />

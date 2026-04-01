@@ -43,8 +43,7 @@ import {
   Legend,
   ResponsiveContainer,
 } from 'recharts';
-import type { Payload } from 'recharts/types/component/DefaultLegendContent';
-import type { CategoricalChartState } from 'recharts/types/chart/types';
+import type { LegendPayload } from 'recharts/types/component/DefaultLegendContent';
 import {
   Activity,
   AlertTriangle,
@@ -179,7 +178,7 @@ export default function EffectivenessSummary() {
   // Legend toggle + refresh handlers
   // ---------------------------------------------------------------------------
 
-  const handleLegendClick = useCallback((entry: Payload) => {
+  const handleLegendClick = useCallback((entry: LegendPayload) => {
     const key = entry.dataKey != null ? String(entry.dataKey) : null;
     if (!key) return;
     setHiddenSeries((prev) => {
@@ -200,7 +199,7 @@ export default function EffectivenessSummary() {
 
   /** Handle clicking a data point on the effectiveness trend chart (F1). */
   const handleTrendChartClick = useCallback(
-    (state: CategoricalChartState) => {
+    (state: { activePayload?: Array<{ payload: any }> }) => {
       if (!state?.activePayload?.length || !trend) return;
       const payload = state.activePayload[0].payload as EffectivenessTrendPoint;
       setTrendDrillDown({
@@ -444,7 +443,7 @@ export default function EffectivenessSummary() {
               <ComposedChart
                 data={trend}
                 margin={{ top: 5, right: 10, left: 0, bottom: 5 }}
-                onClick={handleTrendChartClick}
+                onClick={handleTrendChartClick as any}
               >
                 <CartesianGrid strokeDasharray="3 3" className="opacity-30" />
                 <XAxis
@@ -472,7 +471,7 @@ export default function EffectivenessSummary() {
                     fontSize: '12px',
                   }}
                   labelStyle={{ color: 'hsl(var(--foreground))' }}
-                  formatter={(value: number, name: string) => {
+                  formatter={(value: any, name: any) => {
                     if (name === 'avg_latency_delta_ms')
                       return [`${value.toFixed(0)}ms`, 'Latency Delta'];
                     return [

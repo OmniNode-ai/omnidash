@@ -68,7 +68,13 @@ const STATE_COLORS: Record<LifecycleState, { fill: string; hover: string; label:
   },
 };
 
-const LIFECYCLE_ORDER: LifecycleState[] = ['requested', 'candidate', 'provisional', 'validated', 'deprecated'];
+const LIFECYCLE_ORDER: LifecycleState[] = [
+  'requested',
+  'candidate',
+  'provisional',
+  'validated',
+  'deprecated',
+];
 
 // ===========================
 // Custom Tooltip
@@ -272,8 +278,9 @@ export function PatternStatusDistribution({
               paddingAngle={2}
               dataKey="value"
               onClick={(data) => {
-                if (onStateClick && data?.state) {
-                  const clickedState = data.state as LifecycleState;
+                const payload = (data as any)?.payload ?? data;
+                if (onStateClick && payload?.state) {
+                  const clickedState = payload.state as LifecycleState;
                   onStateClick(selectedState === clickedState ? null : clickedState);
                 }
               }}
@@ -293,7 +300,7 @@ export function PatternStatusDistribution({
               content={({ active, payload }) => (
                 <CustomTooltip
                   active={active}
-                  payload={payload as TooltipPayload[] | undefined}
+                  payload={payload as unknown as TooltipPayload[] | undefined}
                   total={totalPatterns}
                 />
               )}

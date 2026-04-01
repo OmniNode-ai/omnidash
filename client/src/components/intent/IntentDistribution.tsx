@@ -367,11 +367,12 @@ export function IntentDistribution({
               dataKey="count"
               radius={[0, 4, 4, 0]}
               style={{ cursor: onCategoryClick ? 'pointer' : undefined }}
-              onClick={(data: { payload: IntentCategoryCount }, _index: number) => {
+              onClick={(data: any) => {
                 if (!onCategoryClick) return;
-                onCategoryClick(
-                  selectedCategory === data.payload.category ? null : data.payload.category
-                );
+                const payload = data?.payload as IntentCategoryCount | undefined;
+                if (payload) {
+                  onCategoryClick(selectedCategory === payload.category ? null : payload.category);
+                }
               }}
             >
               <LabelList dataKey="count" content={BarLabelContent} />

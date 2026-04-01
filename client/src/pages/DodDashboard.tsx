@@ -332,8 +332,8 @@ function PassRateTrendChart({ data, isLoading }: { data: DodTrendPoint[]; isLoad
                 tickFormatter={(v: number) => `${v}%`}
               />
               <Tooltip
-                formatter={(value: number) => [`${value}%`, 'Pass Rate']}
-                labelFormatter={(label: string) => new Date(label).toLocaleDateString()}
+                formatter={(value: any) => [`${value}%`, 'Pass Rate']}
+                labelFormatter={(label: any) => new Date(label).toLocaleDateString()}
               />
               <Line
                 type="monotone"
