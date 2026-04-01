@@ -119,6 +119,17 @@ const EXEMPT_FILES = new Set([
   // representable as a ProjectionService view.
   // TODO(OMN-5288-followup): migrate to ProjectionService view.
   'intent-breakdown-routes.ts',
+
+  // Contract drift routes query contract_drift_events (populated by ReadModelConsumer
+  // projection via Kafka). Aggregation queries (severity/type breakdowns, by-repo)
+  // are not yet representable as a ProjectionService view.
+  // TODO(OMN-6753-followup): migrate to ProjectionService view.
+  'contract-drift-routes.ts',
+
+  // Pipeline overview routes aggregate from pipeline_budget_state plus
+  // in-memory projections. DB access is read-only aggregation.
+  // TODO(OMN-6753-followup): migrate to ProjectionService view.
+  'pipeline-overview-routes.ts',
 ]);
 
 /**

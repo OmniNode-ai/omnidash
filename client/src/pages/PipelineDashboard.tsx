@@ -3,16 +3,23 @@
  *
  * High-level pipeline status overview. Aggregates signals from existing
  * pipeline-health, pipeline-budget, and epic-pipeline dashboards into
- * a single landing page.
+ * a single landing page with summary stats and links to sub-dashboards.
  *
- * No dedicated backend endpoint exists yet -- this page will link to
- * the granular sub-dashboards until a unified pipeline API is built.
+ * Data source: /api/pipeline-overview
  */
 
+import { useQuery } from '@tanstack/react-query';
 import { Link } from 'wouter';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
+import { Skeleton } from '@/components/ui/skeleton';
 import { ArrowRight, Workflow, GitBranch, DollarSign, HeartPulse } from 'lucide-react';
+
+interface PipelineOverview {
+  pipelineHealth: { total: number; stuck: number; active: number };
+  epicRun: { totalRuns: number; activeRuns: number };
+  budget: { totalBudgets: number; overBudget: number };
+}
 
 const PIPELINE_PAGES = [
   {
@@ -20,22 +27,51 @@ const PIPELINE_PAGES = [
     url: '/pipeline-health',
     icon: HeartPulse,
     description: 'Per-ticket pipeline state, stuck detection, and CDQA gate results',
+    statKey: 'pipelineHealth' as const,
   },
   {
     title: 'Epic Pipeline',
     url: '/epic-pipeline',
     icon: GitBranch,
     description: 'Epic-team pipeline run status and ticket progress',
+    statKey: 'epicRun' as const,
   },
   {
     title: 'Pipeline Budget',
     url: '/pipeline-budget',
     icon: DollarSign,
     description: 'Token and cost budget caps per pipeline run',
+    statKey: 'budget' as const,
   },
 ];
 
+function StatBadge({
+  label,
+  value,
+  variant,
+}: {
+  label: string;
+  value: number;
+  variant?: 'destructive' | 'secondary' | 'outline';
+}) {
+  return (
+    <Badge variant={variant || 'secondary'} className="text-xs">
+      {label}: {value}
+    </Badge>
+  );
+}
+
 export default function PipelineDashboard() {
+  const { data, isLoading } = useQuery<PipelineOverview>({
+    queryKey: ['pipeline-overview'],
+    queryFn: async () => {
+      const res = await fetch('/api/pipeline-overview');
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      return res.json();
+    },
+    refetchInterval: 30_000,
+  });
+
   return (
     <div className="space-y-6">
       <div>
@@ -43,23 +79,67 @@ export default function PipelineDashboard() {
         <p className="text-muted-foreground mt-1">Unified pipeline health and status overview</p>
       </div>
 
-      <Card className="border-dashed">
-        <CardHeader className="text-center pb-2">
-          <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-full bg-muted">
-            <Workflow className="h-7 w-7 text-muted-foreground" />
-          </div>
-          <CardTitle>Coming Soon</CardTitle>
-          <CardDescription className="max-w-md mx-auto">
-            This dashboard will aggregate pipeline signals into a single overview. In the meantime,
-            use the dedicated sub-dashboards below.
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="flex justify-center mt-2">
-            <Badge variant="secondary">Pending unified pipeline API</Badge>
-          </div>
-        </CardContent>
-      </Card>
+      {/* Summary stats row */}
+      {isLoading ? (
+        <div className="grid gap-4 md:grid-cols-3">
+          <Skeleton className="h-24" />
+          <Skeleton className="h-24" />
+          <Skeleton className="h-24" />
+        </div>
+      ) : data ? (
+        <div className="grid gap-4 md:grid-cols-3">
+          <Card>
+            <CardContent className="pt-6">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm text-muted-foreground">Pipelines Tracked</p>
+                  <p className="text-2xl font-bold">{data.pipelineHealth.total}</p>
+                </div>
+                <div className="flex flex-col gap-1">
+                  <StatBadge label="Active" value={data.pipelineHealth.active} />
+                  {data.pipelineHealth.stuck > 0 && (
+                    <StatBadge
+                      label="Stuck"
+                      value={data.pipelineHealth.stuck}
+                      variant="destructive"
+                    />
+                  )}
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardContent className="pt-6">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm text-muted-foreground">Epic Runs</p>
+                  <p className="text-2xl font-bold">{data.epicRun.totalRuns}</p>
+                </div>
+                <StatBadge label="Running" value={data.epicRun.activeRuns} />
+              </div>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardContent className="pt-6">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm text-muted-foreground">Budget Caps</p>
+                  <p className="text-2xl font-bold">{data.budget.totalBudgets}</p>
+                </div>
+                {data.budget.overBudget > 0 ? (
+                  <StatBadge
+                    label="Over Budget"
+                    value={data.budget.overBudget}
+                    variant="destructive"
+                  />
+                ) : (
+                  <StatBadge label="All OK" value={0} variant="outline" />
+                )}
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      ) : null}
 
       {/* Links to existing pipeline sub-dashboards */}
       <div className="grid gap-4 md:grid-cols-3">

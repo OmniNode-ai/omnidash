@@ -156,6 +156,10 @@ read_model_topics:
   - topic: "onex.evt.review-pairing.calibration-run-completed.v1"
     handler: "projectCalibrationRunCompleted"
 
+  # --- onex_change_control topics ---
+  - topic: "onex.evt.onex-change-control.contract-drift-detected.v1"
+    handler: "projectContractDriftDetected"
+
   # --- cross-cutting pattern topics ---
   - topic: "onex.evt.pattern.discovered.v1"
     handler: "projectPatternDiscoveredEvent"

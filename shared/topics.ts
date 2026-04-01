@@ -421,6 +421,10 @@ export const SUFFIX_INTELLIGENCE_EVAL_COMPLETED = 'onex.evt.omniintelligence.eva
 export const SUFFIX_INTELLIGENCE_CALIBRATION_RUN_COMPLETED =
   'onex.evt.review-pairing.calibration-run-completed.v1';
 
+/** Pattern enforcement events emitted by the omniclaude PostToolUse hook.
+ * Consumed by ReadModelConsumer to project into pattern_enforcement_events table. */
+export const SUFFIX_OMNICLAUDE_PATTERN_ENFORCEMENT = 'onex.evt.omniclaude.pattern-enforcement.v1';
+
 /** PR validation rollup events for the Model Efficiency Index (MEI) dashboard (OMN-3933).
  * Emitted by omniclaude pr-validation pipeline after a PR run completes.
  * Consumed only by the read-model-consumer via READ_MODEL_TOPICS. */
@@ -496,6 +500,16 @@ export const TOPIC_OMNIBASE_INFRA_ERROR_TRIAGED = 'onex.evt.omnibase-infra.error
 
 export const SUFFIX_PATTERN_DISCOVERED = 'onex.evt.pattern.discovered.v1';
 export const SUFFIX_AGENT_STATUS = 'onex.evt.omniclaude.agent-status.v1';
+
+// ============================================================================
+// onex_change_control Topics
+// ============================================================================
+
+/** Contract drift detected (OMN-6753).
+ * Emitted by onex_change_control when cross-repo contract drift is detected.
+ * Consumed by ReadModelConsumer to project into contract_drift_events table. */
+export const SUFFIX_CHANGE_CONTROL_CONTRACT_DRIFT_DETECTED =
+  'onex.evt.onex-change-control.contract-drift-detected.v1';
 
 // ============================================================================
 // OmniMemory Topics
