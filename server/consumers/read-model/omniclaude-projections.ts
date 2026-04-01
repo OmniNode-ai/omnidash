@@ -240,7 +240,7 @@ export class OmniclaudeProjectionHandler implements ProjectionHandler {
       case SUFFIX_OMNICLAUDE_EVIDENCE_WRITTEN:
         return this.projectTeamEvent(topic, data, fallbackId, context);
       case TOPIC_OMNICLAUDE_HOOK_HEALTH_ERROR:
-        return this.projectHookHealthError(data, context);
+        return this.projectHookHealthError(data, fallbackId, context);
       default:
         return false;
     }
@@ -1715,12 +1715,13 @@ export class OmniclaudeProjectionHandler implements ProjectionHandler {
 
   private async projectHookHealthError(
     data: Record<string, unknown>,
+    fallbackId: string,
     context: ProjectionContext
   ): Promise<boolean> {
     const { db } = context;
     if (!db) return false;
 
-    const id = String(data.event_id ?? data.eventId ?? data.id ?? '').trim();
+    const id = String(data.event_id ?? data.eventId ?? data.id ?? fallbackId ?? '').trim();
     const hookName = String(data.hook_name ?? data.hookName ?? '').trim();
     const errorTier = String(data.error_tier ?? data.errorTier ?? '').trim();
     const errorCategory = String(data.error_category ?? data.errorCategory ?? '').trim();

@@ -73,17 +73,20 @@ export class HookHealthProjection {
         categoryCounts[row.errorCategory] = (categoryCounts[row.errorCategory] || 0) + 1;
         hookCounts[row.hookName] = (hookCounts[row.hookName] || 0) + 1;
 
-        const existing = fingerprintMap.get(row.fingerprint);
+        const fingerprint = row.fingerprint?.trim();
+        if (!fingerprint) continue;
+
+        const existing = fingerprintMap.get(fingerprint);
         if (existing) {
           existing.count++;
           if (row.emittedAt.toISOString() > existing.last_seen) {
             existing.last_seen = row.emittedAt.toISOString();
           }
         } else {
-          fingerprintMap.set(row.fingerprint, {
+          fingerprintMap.set(fingerprint, {
             hook_name: row.hookName,
             error_category: row.errorCategory,
-            error_message: row.errorMessage.slice(0, 200),
+            error_message: (row.errorMessage ?? '').slice(0, 200),
             count: 1,
             last_seen: row.emittedAt.toISOString(),
           });

@@ -173,7 +173,11 @@ export default function AgentCoordinationDashboard() {
     refetchInterval: 10_000,
   });
 
-  const { data: hookHealth } = useQuery<HookHealthSummary>({
+  const {
+    data: hookHealth,
+    isLoading: isHookHealthLoading,
+    isError: isHookHealthError,
+  } = useQuery<HookHealthSummary>({
     queryKey: ['hook-health'],
     queryFn: async () => {
       const res = await fetch('/api/hook-health/summary?window=24h');
@@ -269,7 +273,7 @@ export default function AgentCoordinationDashboard() {
                 {hookHealth?.tier_counts?.intentional_block ?? 0} intentional
               </Badge>
             ) : null}
-            {(hookHealth?.total_errors ?? 0) === 0 ? (
+            {!isHookHealthLoading && !isHookHealthError && (hookHealth?.total_errors ?? 0) === 0 ? (
               <Badge
                 variant="secondary"
                 className="text-sm bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400"
@@ -279,7 +283,11 @@ export default function AgentCoordinationDashboard() {
               </Badge>
             ) : null}
             <span className="text-sm text-muted-foreground ml-auto">
-              {hookHealth?.total_errors ?? 0} total errors
+              {isHookHealthLoading
+                ? 'Loading\u2026'
+                : isHookHealthError
+                  ? 'Unavailable'
+                  : `${hookHealth?.total_errors ?? 0} total errors`}
             </span>
           </div>
           {(hookHealth?.top_fingerprints?.length ?? 0) > 0 && (

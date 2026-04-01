@@ -12,25 +12,30 @@ export const hookHealthRoutes = Router();
 
 const projection = new HookHealthProjection();
 
+const SUPPORTED_WINDOWS: Record<string, number> = {
+  '5m': 5,
+  '15m': 15,
+  '30m': 30,
+  '1h': 60,
+  '24h': 1440,
+  '7d': 10080,
+} as const;
+
 /**
  * GET /api/hook-health/summary
  *
  * Returns hook error summary for a time window.
- * Query params: ?window=5m|15m|1h|24h|7d (default: 24h)
+ * Query params: ?window=5m|15m|30m|1h|24h|7d (default: 24h)
  */
 hookHealthRoutes.get('/summary', async (req, res) => {
   try {
-    const windowParam = String(req.query.window ?? '24h');
-    let windowMinutes: number;
-    if (windowParam.endsWith('m')) {
-      windowMinutes = parseInt(windowParam) || 1440;
-    } else if (windowParam === '1h') {
-      windowMinutes = 60;
-    } else if (windowParam === '7d') {
-      windowMinutes = 10080;
-    } else {
-      windowMinutes = 1440; // default 24h
+    const windowParam = typeof req.query.window === 'string' ? req.query.window : '24h';
+    if (!(windowParam in SUPPORTED_WINDOWS)) {
+      return res.status(400).json({
+        error: `Invalid window. Use one of: ${Object.keys(SUPPORTED_WINDOWS).join(', ')}`,
+      });
     }
+    const windowMinutes = SUPPORTED_WINDOWS[windowParam];
     const summary = await projection.summary(windowMinutes);
     return res.json(summary);
   } catch (err) {
