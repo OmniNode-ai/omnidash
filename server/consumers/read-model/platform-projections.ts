@@ -335,11 +335,14 @@ export class PlatformProjectionHandler implements ProjectionHandler {
     const { db } = context;
     if (!db) return false;
 
-    const serviceName =
-      (data.service_name as string) || (data.node_id as string) || (data.nodeId as string);
+    // Use node_name as service_name when available; fall back to node_id (UUID).
+    // Upstream introspection events carry node_name but it may be null (OMN-6405).
+    const nodeName = (data.node_name as string) || (data.nodeName as string) || null;
+    const nodeId = (data.node_id as string) || (data.nodeId as string) || null;
+    const serviceName = (data.service_name as string) || nodeName || nodeId;
     if (!serviceName) {
       console.warn(
-        '[ReadModelConsumer] node-introspection missing service_name/node_id -- skipping'
+        '[ReadModelConsumer] node-introspection missing service_name/node_name/node_id -- skipping'
       );
       return true;
     }
@@ -356,7 +359,14 @@ export class PlatformProjectionHandler implements ProjectionHandler {
       (data.healthStatus as string) ||
       (data.current_state as string) ||
       'unknown';
-    const metadata = (data.metadata ?? data.capabilities ?? {}) as Record<string, unknown>;
+    // Merge node_name into metadata so the display layer can show a human-readable
+    // name even when node_name is not used as service_name (OMN-6405).
+    const rawMetadata = (data.metadata ?? {}) as Record<string, unknown>;
+    const metadata: Record<string, unknown> = {
+      ...rawMetadata,
+      ...(nodeName ? { node_name: nodeName } : {}),
+      ...(nodeId ? { node_id: nodeId } : {}),
+    };
 
     try {
       await db.execute(sql`
@@ -410,7 +420,11 @@ export class PlatformProjectionHandler implements ProjectionHandler {
     if (!db) return false;
 
     const serviceName =
-      (data.service_name as string) || (data.node_id as string) || (data.nodeId as string);
+      (data.service_name as string) ||
+      (data.node_name as string) ||
+      (data.nodeName as string) ||
+      (data.node_id as string) ||
+      (data.nodeId as string);
     if (!serviceName) {
       console.warn('[ReadModelConsumer] node-heartbeat missing service_name/node_id -- skipping');
       return true;
@@ -454,7 +468,11 @@ export class PlatformProjectionHandler implements ProjectionHandler {
     if (!db) return false;
 
     const serviceName =
-      (data.service_name as string) || (data.node_id as string) || (data.nodeId as string);
+      (data.service_name as string) ||
+      (data.node_name as string) ||
+      (data.nodeName as string) ||
+      (data.node_id as string) ||
+      (data.nodeId as string);
     if (!serviceName) {
       console.warn(
         '[ReadModelConsumer] node-state-change missing service_name/node_id -- skipping'
