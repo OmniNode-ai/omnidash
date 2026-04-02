@@ -141,6 +141,12 @@ const EXEMPT_FILES = new Set([
   // projection via Kafka). Aggregation queries (sweep summaries, paginated history)
   // are not yet representable as a ProjectionService view.
   'doc-freshness-routes.ts',
+
+  // Alert history routes query skill_invocations (populated by ReadModelConsumer
+  // projection via Kafka). Aggregation queries (severity breakdowns, time-windowed
+  // history) are not yet representable as a ProjectionService view.
+  // TODO(OMN-7241-followup): migrate to ProjectionService view.
+  'alert-history-routes.ts',
 ]);
 
 /**

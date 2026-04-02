@@ -89,8 +89,8 @@ alertHistoryRoutes.get('/', async (req, res) => {
 
     const db = getIntelligenceDb();
 
-    // Build skill name filter: skill_name IN ('hook_health_alert', 'slack_gate', ...)
-    const skillFilter = ALERT_SKILL_NAMES.map((s) => `'${s}'`).join(', ');
+    // Build skill name filter using parameterized sql.join (no sql.raw)
+    const skillParams = ALERT_SKILL_NAMES.map((s) => sql`${s}`);
 
     // Query alert-related skill invocations
     const alertRows = await db.execute<{
@@ -104,7 +104,7 @@ alertHistoryRoutes.get('/', async (req, res) => {
     }>(sql`
       SELECT id, skill_name, session_id, duration_ms, success, error, created_at
       FROM skill_invocations
-      WHERE skill_name IN (${sql.raw(skillFilter)})
+      WHERE skill_name IN (${sql.join(skillParams, sql`, `)})
         AND created_at > NOW() - INTERVAL ${safeInterval(intervalStr)}
       ORDER BY created_at DESC
       LIMIT 200
