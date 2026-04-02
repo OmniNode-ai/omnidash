@@ -4,14 +4,11 @@
  * Projects eval-completed and run-evaluated events into the eval_reports
  * table for the /eval-results dashboard page.
  *
- * Subscribes to omniintelligence eval-completed and run-evaluated topics
- * (primary), plus the legacy onex-change-control eval-completed topic
- * for backwards compatibility.
+ * Subscribes to omniintelligence eval-completed and run-evaluated topics.
  */
 
 import { sql } from 'drizzle-orm';
 import {
-  SUFFIX_CHANGE_CONTROL_EVAL_COMPLETED,
   SUFFIX_INTELLIGENCE_EVAL_COMPLETED,
   SUFFIX_INTELLIGENCE_RUN_EVALUATED,
 } from '@shared/topics';
@@ -32,7 +29,6 @@ import {
 const EVAL_TOPICS = new Set([
   SUFFIX_INTELLIGENCE_EVAL_COMPLETED,
   SUFFIX_INTELLIGENCE_RUN_EVALUATED,
-  SUFFIX_CHANGE_CONTROL_EVAL_COMPLETED, // backwards compat
 ]);
 
 export class EvalProjectionHandler implements ProjectionHandler {
@@ -56,8 +52,7 @@ export class EvalProjectionHandler implements ProjectionHandler {
 
     if (
       topic === SUFFIX_INTELLIGENCE_EVAL_COMPLETED ||
-      topic === SUFFIX_INTELLIGENCE_RUN_EVALUATED ||
-      topic === SUFFIX_CHANGE_CONTROL_EVAL_COMPLETED
+      topic === SUFFIX_INTELLIGENCE_RUN_EVALUATED
     ) {
       const result = await this.projectEvalCompleted(data, context);
       if (result) {
