@@ -13,3 +13,4 @@ export { registerComplianceRoutes } from './compliance-routes';
 export { registerTraceRoutes } from './trace-routes';
 export { registerPipelineRoutes } from './pipeline-routes';
 export { registerMockRoutes } from './mock-routes';
+export { registerGoldenChainRoutes } from './golden-chain-routes';
