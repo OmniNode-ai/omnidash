@@ -492,6 +492,12 @@ const advancedSubGroups: AdvancedSubGroup[] = [
         icon: CheckCircle2,
         description: 'Verification status from close-out cycles (OMN-7007)',
       },
+      {
+        title: 'Alert History',
+        url: '/alert-history',
+        icon: AlertTriangle,
+        description: 'Historical alerts from health checks and slack gate invocations',
+      },
     ],
   },
   {
