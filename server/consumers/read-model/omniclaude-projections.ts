@@ -314,6 +314,7 @@ export class OmniclaudeProjectionHandler implements ProjectionHandler {
         (data.user_request as string) ||
         (data.userRequest as string) ||
         (data.prompt_preview as string) ||
+        ((data.metadata as any)?.prompt_preview as string) ||
         '',
       userRequestHash:
         (data.user_request_hash as string) || (data.userRequestHash as string) || undefined,
@@ -323,7 +324,10 @@ export class OmniclaudeProjectionHandler implements ProjectionHandler {
         data.confidence_score ?? data.confidenceScore ?? data.confidence ?? 0
       ),
       routingStrategy:
-        (data.routing_strategy as string) || (data.routingStrategy as string) || 'unknown',
+        (data.routing_strategy as string) ||
+        (data.routingStrategy as string) ||
+        ((data.metadata as any)?.routing_method as string) ||
+        'unknown',
       triggerConfidence:
         data.trigger_confidence != null ? String(data.trigger_confidence) : undefined,
       contextConfidence:
@@ -333,8 +337,10 @@ export class OmniclaudeProjectionHandler implements ProjectionHandler {
       historicalConfidence:
         data.historical_confidence != null ? String(data.historical_confidence) : undefined,
       alternatives: data.alternatives || undefined,
-      reasoning: (data.reasoning as string) || undefined,
-      routingTimeMs: Number(data.routing_time_ms ?? data.routingTimeMs ?? 0),
+      reasoning: (data.reasoning as string) || (data.routing_reason as string) || undefined,
+      routingTimeMs: Number(
+        data.routing_time_ms ?? data.routingTimeMs ?? (data.metadata as any)?.latency_ms ?? 0
+      ),
       cacheHit: Boolean(data.cache_hit ?? data.cacheHit ?? false),
       selectionValidated: Boolean(data.selection_validated ?? data.selectionValidated ?? false),
       actualSuccess: data.actual_success != null ? Boolean(data.actual_success) : undefined,
@@ -772,7 +778,11 @@ export class OmniclaudeProjectionHandler implements ProjectionHandler {
       (evt.correlation_id as string) || (data.correlationId as string) || fallbackId;
 
     const taskType = (evt.task_type as string) || (data.taskType as string);
-    const delegatedTo = (evt.delegated_to as string) || (data.delegatedTo as string);
+    const delegatedTo =
+      (evt.delegated_to as string) ||
+      (data.delegatedTo as string) ||
+      (data.model_used as string) ||
+      (data.modelUsed as string);
     if (!taskType || !delegatedTo) {
       console.warn(
         '[ReadModelConsumer] task-delegated event missing required fields ' +
@@ -784,10 +794,15 @@ export class OmniclaudeProjectionHandler implements ProjectionHandler {
     const row: InsertDelegationEvent = {
       correlationId,
       sessionId: (evt.session_id as string) || (data.sessionId as string) || null,
-      timestamp: safeParseDate(evt.timestamp),
+      timestamp: safeParseDate(evt.timestamp || data.emitted_at),
       taskType,
       delegatedTo,
-      delegatedBy: (evt.delegated_by as string) || (data.delegatedBy as string) || null,
+      delegatedBy:
+        (evt.delegated_by as string) ||
+        (data.delegatedBy as string) ||
+        (data.handler_used as string) ||
+        (data.handlerUsed as string) ||
+        null,
       qualityGatePassed: Boolean(evt.quality_gate_passed ?? data.qualityGatePassed ?? false),
       qualityGatesChecked:
         evt.quality_gates_checked ??
@@ -802,11 +817,19 @@ export class OmniclaudeProjectionHandler implements ProjectionHandler {
         return v != null && !Number.isNaN(Number(v)) ? String(Number(v)) : null;
       })(),
       costSavingsUsd: (() => {
-        const v = evt.cost_savings_usd ?? data.costSavingsUsd;
+        const v =
+          evt.cost_savings_usd ??
+          data.costSavingsUsd ??
+          data.estimated_savings_usd ??
+          data.estimatedSavingsUsd;
         return v != null && !Number.isNaN(Number(v)) ? String(Number(v)) : null;
       })(),
       delegationLatencyMs: (() => {
-        const v = evt.delegation_latency_ms ?? data.delegationLatencyMs;
+        const v =
+          evt.delegation_latency_ms ??
+          data.delegationLatencyMs ??
+          data.latency_ms ??
+          data.latencyMs;
         return v != null && !Number.isNaN(Number(v)) ? Math.round(Number(v)) : null;
       })(),
       repo: (evt.repo as string) || (data.repo as string) || null,
