@@ -41,6 +41,7 @@ import {
   Workflow,
   Settings,
   CheckCircle2,
+  FileText,
 } from 'lucide-react';
 import { Link, useLocation } from 'wouter';
 import {
@@ -454,6 +455,12 @@ const advancedSubGroups: AdvancedSubGroup[] = [
         url: '/compliance',
         icon: ShieldAlert,
         description: 'Contract compliance status and violation tracking (OMN-5285)',
+      },
+      {
+        title: 'Doc Freshness',
+        url: '/doc-freshness',
+        icon: FileText,
+        description: 'Documentation freshness sweep results and stale content tracking',
       },
       {
         title: 'Agents',
