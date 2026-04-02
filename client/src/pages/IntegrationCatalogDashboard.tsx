@@ -93,11 +93,8 @@ function healthBadgeVariant(health: IntegrationStatus['health']): string {
 
 function fmtTimestamp(ts: string | null): string {
   if (!ts) return 'Never';
-  try {
-    return new Date(ts).toLocaleString();
-  } catch {
-    return ts;
-  }
+  const date = new Date(ts);
+  return Number.isNaN(date.getTime()) ? ts : date.toLocaleString();
 }
 
 // ============================================================================
