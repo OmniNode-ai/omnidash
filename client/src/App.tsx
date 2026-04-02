@@ -124,6 +124,8 @@ import WiringStatusPage from '@/pages/WiringStatus';
 import SubsystemHealthPage from '@/pages/SubsystemHealthPage';
 // Agent Coordination dashboard (OMN-7036)
 import AgentCoordinationDashboard from '@/pages/AgentCoordinationDashboard';
+// Event Ledger dashboard (feature-hookup Phase 1)
+import EventLedgerDashboard from '@/pages/EventLedgerDashboard';
 
 // Phase 2: Category landing pages (OMN-2181)
 import SpeedCategory from '@/pages/SpeedCategory';
@@ -315,6 +317,8 @@ function Router() {
       <Route path="/subsystem-health" component={SubsystemHealthPage} />
       {/* Agent Coordination dashboard (OMN-7036) */}
       <Route path="/agent-coordination" component={AgentCoordinationDashboard} />
+      {/* Event Ledger dashboard (feature-hookup Phase 1) */}
+      <Route path="/event-ledger" component={EventLedgerDashboard} />
 
       {/* Preview routes */}
       <Route path="/preview/analytics" component={EnhancedAnalytics} />

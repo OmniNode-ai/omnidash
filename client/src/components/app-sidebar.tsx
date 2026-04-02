@@ -491,6 +491,12 @@ const advancedSubGroups: AdvancedSubGroup[] = [
     label: 'Tools',
     items: [
       {
+        title: 'Event Ledger',
+        url: '/event-ledger',
+        icon: Database,
+        description: 'Browse the immutable audit log of all ONEX event bus events',
+      },
+      {
         title: 'Correlation Trace',
         url: '/trace',
         icon: Search,
@@ -679,7 +685,10 @@ function AdvancedNavSection({ location, showAll = false }: AdvancedNavSectionPro
                           className={cn('group pl-5', isActive && 'bg-sidebar-accent')}
                           data-testid={`nav-${item.url.slice(1).replace(/\//g, '-')}`}
                         >
-                          <Link href={item.url} onClick={() => Analytics.sidebarNavigation(item.url)}>
+                          <Link
+                            href={item.url}
+                            onClick={() => Analytics.sidebarNavigation(item.url)}
+                          >
                             <item.icon className="w-4 h-4" />
                             <span>{item.title}</span>
                             {isActive ? (
