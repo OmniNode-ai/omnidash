@@ -2645,3 +2645,35 @@ export const githubWebhookDeliveries = pgTable(
 
 export type GitHubWebhookDeliveryRow = typeof githubWebhookDeliveries.$inferSelect;
 export type InsertGitHubWebhookDelivery = typeof githubWebhookDeliveries.$inferInsert;
+
+// ============================================================================
+// Golden Chain Sweep Results Table (migration 0051_golden_chain_sweep_results, OMN-7358)
+// Stores per-chain results from golden chain validation sweeps that verify
+// Kafka-to-DB-projection data flow end-to-end through the omnidash read-model.
+// Source: golden_chain_sweep_orchestrator node (omniclaude).
+// ============================================================================
+
+export const goldenChainSweepResults = pgTable(
+  'golden_chain_sweep_results',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    sweepId: uuid('sweep_id').notNull(),
+    chainName: text('chain_name').notNull(),
+    headTopic: text('head_topic').notNull(),
+    tailTable: text('tail_table').notNull(),
+    status: text('status').notNull(),
+    publishLatencyMs: doublePrecision('publish_latency_ms'),
+    projectionLatencyMs: doublePrecision('projection_latency_ms'),
+    assertionResults: jsonb('assertion_results'),
+    errorReason: text('error_reason'),
+    correlationId: text('correlation_id').notNull(),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [
+    index('idx_golden_chain_sweep_id').on(table.sweepId),
+    index('idx_golden_chain_created_at').on(table.createdAt),
+  ]
+);
+
+export type GoldenChainSweepResultRow = typeof goldenChainSweepResults.$inferSelect;
+export type InsertGoldenChainSweepResult = typeof goldenChainSweepResults.$inferInsert;
