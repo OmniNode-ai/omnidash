@@ -34,7 +34,6 @@ import {
   ChevronLeft,
   ChevronRight,
 } from 'lucide-react';
-import { cn } from '@/lib/utils';
 import { LocalDataUnavailableBanner } from '@/components/LocalDataUnavailableBanner';
 
 // ============================================================================

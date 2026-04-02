@@ -24,7 +24,10 @@ const router = Router();
 router.get('/', async (_req, res) => {
   const db = tryGetIntelligenceDb();
   if (!db) {
-    return res.json({ runs: [], summary: { total: 0, succeeded: 0, failed: 0, success_rate: 0 } });
+    return res.json({
+      runs: [],
+      summary: { total: 0, succeeded: 0, failed: 0, success_rate: 0, avg_duration_ms: 0 },
+    });
   }
 
   try {
