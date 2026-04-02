@@ -40,6 +40,7 @@ import {
   registerComplianceRoutes,
   registerTraceRoutes,
   registerPipelineRoutes,
+  registerGoldenChainRoutes,
 } from './routes/intelligence';
 
 export const intelligenceRouter = Router();
@@ -53,6 +54,7 @@ registerMetricsRoutes(intelligenceRouter);
 registerComplianceRoutes(intelligenceRouter);
 registerTraceRoutes(intelligenceRouter);
 registerPipelineRoutes(intelligenceRouter);
+registerGoldenChainRoutes(intelligenceRouter);
 
 // Mount alert sub-router
 import { alertRouter } from './alert-routes';
