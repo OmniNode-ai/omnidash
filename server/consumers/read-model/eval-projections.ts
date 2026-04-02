@@ -1,12 +1,20 @@
 /**
- * Eval report projection handler (OMN-6781).
+ * Eval report projection handler (OMN-6781, OMN-7377).
  *
- * Projects eval-completed events into the eval_reports table for
- * the /eval-results dashboard page.
+ * Projects eval-completed and run-evaluated events into the eval_reports
+ * table for the /eval-results dashboard page.
+ *
+ * Subscribes to omniintelligence eval-completed and run-evaluated topics
+ * (primary), plus the legacy onex-change-control eval-completed topic
+ * for backwards compatibility.
  */
 
 import { sql } from 'drizzle-orm';
-import { SUFFIX_CHANGE_CONTROL_EVAL_COMPLETED } from '@shared/topics';
+import {
+  SUFFIX_CHANGE_CONTROL_EVAL_COMPLETED,
+  SUFFIX_INTELLIGENCE_EVAL_COMPLETED,
+  SUFFIX_INTELLIGENCE_RUN_EVALUATED,
+} from '@shared/topics';
 
 import type {
   ProjectionHandler,
@@ -21,7 +29,11 @@ import {
   safeParseDate,
 } from './types';
 
-const EVAL_TOPICS = new Set([SUFFIX_CHANGE_CONTROL_EVAL_COMPLETED]);
+const EVAL_TOPICS = new Set([
+  SUFFIX_INTELLIGENCE_EVAL_COMPLETED,
+  SUFFIX_INTELLIGENCE_RUN_EVALUATED,
+  SUFFIX_CHANGE_CONTROL_EVAL_COMPLETED, // backwards compat
+]);
 
 export class EvalProjectionHandler implements ProjectionHandler {
   readonly stats: ProjectionHandlerStats = createHandlerStats();
@@ -42,7 +54,11 @@ export class EvalProjectionHandler implements ProjectionHandler {
   ): Promise<boolean> {
     this.stats.received++;
 
-    if (topic === SUFFIX_CHANGE_CONTROL_EVAL_COMPLETED) {
+    if (
+      topic === SUFFIX_INTELLIGENCE_EVAL_COMPLETED ||
+      topic === SUFFIX_INTELLIGENCE_RUN_EVALUATED ||
+      topic === SUFFIX_CHANGE_CONTROL_EVAL_COMPLETED
+    ) {
       const result = await this.projectEvalCompleted(data, context);
       if (result) {
         this.stats.projected++;
