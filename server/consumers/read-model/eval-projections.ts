@@ -1,8 +1,16 @@
 /**
- * Eval report projection handler (OMN-6781).
+ * Eval report projection handler (OMN-6781, OMN-7377).
  *
  * Projects eval-completed events into the eval_reports table for
  * the /eval-results dashboard page.
+ *
+ * Subscribes to: SUFFIX_INTELLIGENCE_EVAL_COMPLETED
+ *   (payload contains report_id, suite_id, suite_version, generated_at)
+ *
+ * Note: SUFFIX_INTELLIGENCE_RUN_EVALUATED is intentionally excluded.
+ * That topic carries run_id/score_correctness/score_safety fields and
+ * requires a dedicated handler — routing it here would cause silent drops
+ * because projectEvalCompleted requires report_id.
  */
 
 import { sql } from 'drizzle-orm';
