@@ -6,7 +6,7 @@
  */
 
 import { sql } from 'drizzle-orm';
-import { SUFFIX_CHANGE_CONTROL_EVAL_COMPLETED } from '@shared/topics';
+import { SUFFIX_INTELLIGENCE_EVAL_COMPLETED } from '@shared/topics';
 
 import type {
   ProjectionHandler,
@@ -21,7 +21,7 @@ import {
   safeParseDate,
 } from './types';
 
-const EVAL_TOPICS = new Set([SUFFIX_CHANGE_CONTROL_EVAL_COMPLETED]);
+const EVAL_TOPICS = new Set([SUFFIX_INTELLIGENCE_EVAL_COMPLETED]);
 
 export class EvalProjectionHandler implements ProjectionHandler {
   readonly stats: ProjectionHandlerStats = createHandlerStats();
@@ -42,7 +42,7 @@ export class EvalProjectionHandler implements ProjectionHandler {
   ): Promise<boolean> {
     this.stats.received++;
 
-    if (topic === SUFFIX_CHANGE_CONTROL_EVAL_COMPLETED) {
+    if (topic === SUFFIX_INTELLIGENCE_EVAL_COMPLETED) {
       const result = await this.projectEvalCompleted(data, context);
       if (result) {
         this.stats.projected++;
