@@ -76,30 +76,20 @@ async function fetchGitHubWorkflowRuns(
     return [];
   }
 
-  const data = (await res.json()) as {
-    workflow_runs: Array<{
-      conclusion: string | null;
-      status: string;
-      run_number: number;
-      html_url: string;
-      created_at: string;
-      updated_at: string;
-      head_branch: string;
-      head_sha: string;
-    }>;
-  };
+  const data = await res.json();
+  const workflowRuns = Array.isArray(data?.workflow_runs) ? data.workflow_runs : [];
 
-  return (data.workflow_runs ?? []).map((run) => ({
+  return workflowRuns.map((run: Record<string, unknown>) => ({
     repo,
     workflow: workflowFile,
-    conclusion: run.conclusion,
-    status: run.status,
-    runNumber: run.run_number,
-    htmlUrl: run.html_url,
-    createdAt: run.created_at,
-    updatedAt: run.updated_at,
-    headBranch: run.head_branch,
-    headSha: run.head_sha,
+    conclusion: (run?.conclusion as string | null) ?? null,
+    status: (run?.status as string) ?? 'unknown',
+    runNumber: (run?.run_number as number) ?? 0,
+    htmlUrl: (run?.html_url as string) ?? '',
+    createdAt: (run?.created_at as string) ?? '',
+    updatedAt: (run?.updated_at as string) ?? '',
+    headBranch: (run?.head_branch as string) ?? '',
+    headSha: (run?.head_sha as string) ?? '',
   }));
 }
 
