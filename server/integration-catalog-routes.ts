@@ -74,7 +74,7 @@ function loadCatalog(): CatalogYaml | null {
   // Look for the catalog YAML relative to common locations
   const candidates = [
     // When omnibase_infra is cloned alongside omnidash (omni_home layout)
-    path.resolve(__dirname, '../../..', 'omnibase_infra/src/omnibase_infra/contracts/integrations/catalog.yaml'),
+    path.resolve(__dirname, '../..', 'omnibase_infra/src/omnibase_infra/contracts/integrations/catalog.yaml'),
     // Env-specified path
     process.env.INTEGRATION_CATALOG_PATH,
   ].filter(Boolean) as string[];
@@ -83,7 +83,12 @@ function loadCatalog(): CatalogYaml | null {
     try {
       if (fs.existsSync(candidate)) {
         const raw = fs.readFileSync(candidate, 'utf-8');
-        cachedCatalog = yaml.load(raw) as CatalogYaml;
+        const parsed = yaml.load(raw) as CatalogYaml;
+        if (!parsed || !Array.isArray(parsed.integrations) || !parsed.catalog_version) {
+          catalogLoadError = `Invalid catalog structure in ${candidate}: missing integrations array or catalog_version`;
+          continue;
+        }
+        cachedCatalog = parsed;
         catalogLoadError = null;
         return cachedCatalog;
       }
