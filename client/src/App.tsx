@@ -130,6 +130,8 @@ import EventLedgerDashboard from '@/pages/EventLedgerDashboard';
 import DocFreshnessDashboard from '@/pages/DocFreshnessDashboard';
 // Security Posture dashboard (feature-hookup Phase 4)
 import SecurityPostureDashboard from '@/pages/SecurityPostureDashboard';
+// Alert History dashboard
+import AlertHistoryDashboard from '@/pages/AlertHistoryDashboard';
 
 // Phase 2: Category landing pages (OMN-2181)
 import SpeedCategory from '@/pages/SpeedCategory';
@@ -328,6 +330,9 @@ function Router() {
       <Route path="/event-ledger" component={EventLedgerDashboard} />
       {/* Doc Freshness dashboard (feature-hookup Phase 2) */}
       <Route path="/doc-freshness" component={DocFreshnessDashboard} />
+
+      {/* Alert History dashboard */}
+      <Route path="/alert-history" component={AlertHistoryDashboard} />
 
       {/* Preview routes */}
       <Route path="/preview/analytics" component={EnhancedAnalytics} />

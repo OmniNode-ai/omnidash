@@ -133,6 +133,9 @@ const DASHBOARD_ROUTES = [
   // Security posture (OMN-7240)
   '/security-posture',
 
+  // Alert history dashboard
+  '/alert-history',
+
   // Empty route scaffolds (OMN-6753)
   '/agents',
   '/drift',
