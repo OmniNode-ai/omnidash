@@ -92,13 +92,13 @@ interface SbomResponse {
 // ============================================================================
 
 async function fetchPosture(): Promise<SecurityPostureResponse> {
-  const res = await fetch('/api/security-posture');
+  const res = await fetch('/api/security-posture', { credentials: 'include' });
   if (!res.ok) throw new Error('Failed to fetch security posture');
   return res.json() as Promise<SecurityPostureResponse>;
 }
 
 async function fetchSbom(): Promise<SbomResponse> {
-  const res = await fetch('/api/security-posture/sbom');
+  const res = await fetch('/api/security-posture/sbom', { credentials: 'include' });
   if (!res.ok) throw new Error('Failed to fetch SBOM data');
   return res.json() as Promise<SbomResponse>;
 }
