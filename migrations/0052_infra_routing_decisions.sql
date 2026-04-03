@@ -1,4 +1,4 @@
--- 0050: Infrastructure-level model routing decisions (OMN-7447)
+-- 0052: Infrastructure-level model routing decisions (OMN-7447)
 -- Projected from onex.evt.omnibase-infra.routing-decided.v1
 -- Tracks AdapterModelRouter provider selection decisions
 
