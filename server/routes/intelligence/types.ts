@@ -21,7 +21,7 @@ export interface PatternListItem {
   id: string;
   name: string;
   description: string;
-  quality: number;
+  quality: number | null;
   usage: number;
   trend: 'up' | 'down' | 'stable';
   trendPercentage: number;
