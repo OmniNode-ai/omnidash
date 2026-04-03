@@ -580,8 +580,7 @@ export function registerPatternRoutes(router: Router): void {
       `);
 
       const formattedPatterns: PatternListItem[] = patterns.rows.map((p) => {
-        const quality =
-          p.qualityScore !== null ? p.qualityScore : p.language === 'python' ? 0.87 : 0.82;
+        const quality = p.qualityScore;
         const usage = 1;
         const createdAt = p.createdAt ? new Date(p.createdAt) : new Date();
         const ageInHours = (Date.now() - createdAt.getTime()) / (1000 * 60 * 60);
@@ -868,7 +867,7 @@ export function registerPatternRoutes(router: Router): void {
         .orderBy(desc(patternQualityMetrics.createdAt))
         .limit(10);
 
-      const qualityScore = qualityMetrics.length > 0 ? qualityMetrics[0].qualityScore : 0;
+      const qualityScore = qualityMetrics.length > 0 ? qualityMetrics[0].qualityScore : null;
 
       let trend = 0;
       if (qualityMetrics.length >= 2) {
