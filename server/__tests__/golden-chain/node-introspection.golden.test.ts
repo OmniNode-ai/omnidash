@@ -87,8 +87,16 @@ describe(`Golden Chain: ${TOPIC} -> node_service_registry`, () => {
 
     await handleMessage(makeKafkaPayload(TOPIC, payload));
 
-    // Uses db.execute(sql`...`) for the upsert
+    // Uses db.execute(sql`...`) for the upsert + watermark
     expect(executeMock).toHaveBeenCalled();
+    // Verify projection SQL contains expected values including merged metadata
+    const allCalls = executeMock.mock.calls.map((c: unknown[]) => JSON.stringify(c));
+    const projCall = allCalls.find((s: string) => s.includes('node_service_registry'));
+    expect(projCall).toBeDefined();
+    expect(projCall).toContain('golden-node-001');
+    expect(projCall).toContain('intelligence');
+    expect(projCall).toContain('healthy');
+    expect(projCall).toContain('pattern-extraction');
 
     const stats = consumer.getStats();
     expect(stats.eventsProjected).toBe(1);
@@ -112,6 +120,11 @@ describe(`Golden Chain: ${TOPIC} -> node_service_registry`, () => {
     await handleMessage(makeKafkaPayload(TOPIC, payload));
 
     expect(executeMock).toHaveBeenCalled();
+    // Verify node_name ('my-node') is used as service_name, not node_id
+    const allCalls = executeMock.mock.calls.map((c: unknown[]) => JSON.stringify(c));
+    const projCall = allCalls.find((s: string) => s.includes('node_service_registry'));
+    expect(projCall).toBeDefined();
+    expect(projCall).toContain('my-node');
     expect(consumer.getStats().eventsProjected).toBe(1);
   });
 
@@ -130,7 +143,10 @@ describe(`Golden Chain: ${TOPIC} -> node_service_registry`, () => {
 
     await handleMessage(makeKafkaPayload(TOPIC, payload));
 
-    // Event is acknowledged but no DB write (skipped with warning)
+    // Event is acknowledged but no projection write (only watermark)
+    const allCalls = executeMock.mock.calls.map((c: unknown[]) => JSON.stringify(c));
+    const projCall = allCalls.find((s: string) => s.includes('node_service_registry'));
+    expect(projCall).toBeUndefined();
     const stats = consumer.getStats();
     expect(stats.eventsProjected).toBe(1);
   });
@@ -151,6 +167,11 @@ describe(`Golden Chain: ${TOPIC} -> node_service_registry`, () => {
     await handleMessage(makeKafkaPayload(TOPIC, payload));
 
     expect(executeMock).toHaveBeenCalled();
+    // Verify 'unknown' default health_status in the projection SQL
+    const allCalls = executeMock.mock.calls.map((c: unknown[]) => JSON.stringify(c));
+    const projCall = allCalls.find((s: string) => s.includes('node_service_registry'));
+    expect(projCall).toBeDefined();
+    expect(projCall).toContain('unknown');
     expect(consumer.getStats().eventsProjected).toBe(1);
   });
 

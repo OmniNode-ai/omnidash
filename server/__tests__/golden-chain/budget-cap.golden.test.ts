@@ -141,6 +141,12 @@ describe(`Golden Chain: ${TOPIC} -> pipeline_budget_state`, () => {
     await handleMessage(makeKafkaPayload(TOPIC, payload));
 
     expect(executeMock).toHaveBeenCalled();
+    // Verify the default 'tokens' budget_type was applied in the SQL
+    const projCall = executeMock.mock.calls.find((c: unknown[]) =>
+      JSON.stringify(c).includes('pipeline_budget_state')
+    );
+    expect(projCall).toBeDefined();
+    expect(JSON.stringify(projCall)).toContain('tokens');
     const stats = consumer.getStats();
     expect(stats.eventsProjected).toBe(1);
   });

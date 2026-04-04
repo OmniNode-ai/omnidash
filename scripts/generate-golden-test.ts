@@ -11,7 +11,7 @@
  *     --handler projectNewEvent
  */
 
-import { writeFileSync, existsSync } from 'fs';
+import { writeFileSync, openSync, closeSync, constants } from 'fs';
 import { resolve, dirname } from 'path';
 import { fileURLToPath } from 'url';
 import { parseArgs } from 'util';
@@ -39,9 +39,17 @@ const slug = values.topic
 
 const outPath = resolve(__dirname, `../server/__tests__/golden-chain/${slug}.golden.test.ts`);
 
-if (existsSync(outPath)) {
-  console.error(`File already exists: ${outPath}`);
-  process.exit(1);
+// Atomic check-and-create: open with O_CREAT|O_EXCL to avoid TOCTOU race
+let fd: number;
+try {
+  fd = openSync(outPath, constants.O_WRONLY | constants.O_CREAT | constants.O_EXCL);
+  closeSync(fd);
+} catch (err: unknown) {
+  if ((err as NodeJS.ErrnoException).code === 'EEXIST') {
+    console.error(`File already exists: ${outPath}`);
+    process.exit(1);
+  }
+  throw err;
 }
 
 const template = `/**

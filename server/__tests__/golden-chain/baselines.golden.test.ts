@@ -75,7 +75,12 @@ describe(`Golden Chain: ${TOPIC} -> baselines_snapshots`, () => {
     // Build a mock DB that supports transactions
     const deleteMock = vi.fn().mockReturnValue({ where: vi.fn().mockResolvedValue(undefined) });
     const onConflictDoUpdate = vi.fn().mockResolvedValue(undefined);
-    const valuesMock = vi.fn().mockReturnValue({ onConflictDoUpdate });
+    const capturedRows: Record<string, unknown>[][] = [];
+    const valuesMock = vi.fn().mockImplementation((rows: unknown) => {
+      if (Array.isArray(rows)) capturedRows.push(rows);
+      else capturedRows.push([rows as Record<string, unknown>]);
+      return { onConflictDoUpdate };
+    });
     const insertMock = vi.fn().mockReturnValue({ values: valuesMock });
     const executeMock = vi.fn().mockResolvedValue(undefined);
 
@@ -144,6 +149,22 @@ describe(`Golden Chain: ${TOPIC} -> baselines_snapshots`, () => {
 
     // Snapshot header was inserted
     expect(insertMock).toHaveBeenCalled();
+
+    // Verify snapshot header row contains canonical fields
+    const allRows = capturedRows.flat();
+    const headerRow = allRows.find((r) => r.snapshotId === snapshotId);
+    expect(headerRow).toBeDefined();
+    expect(headerRow!.contractVersion).toBe(2);
+    expect(new Date(headerRow!.computedAtUtc as string).toISOString()).toBe(
+      '2026-04-04T12:00:00.000Z'
+    );
+
+    // Verify comparison child row
+    const compRow = allRows.find((r) => r.patternId === 'pattern-001');
+    expect(compRow).toBeDefined();
+    expect(compRow!.snapshotId).toBe(snapshotId);
+    expect(compRow!.recommendation).toBe('promote');
+    expect(compRow!.confidence).toBe('high');
 
     const stats = consumer.getStats();
     expect(stats.eventsProjected).toBe(1);

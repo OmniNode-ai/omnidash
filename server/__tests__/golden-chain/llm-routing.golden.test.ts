@@ -109,9 +109,10 @@ describe(`Golden Chain: ${TOPIC} -> llm_routing_decisions`, () => {
 
   it('skips fallback_used=true events without error', async () => {
     const { tryGetIntelligenceDb } = await import('../../storage');
+    const insertMock = vi.fn();
     const executeMock = vi.fn().mockResolvedValue(undefined);
     (tryGetIntelligenceDb as ReturnType<typeof vi.fn>).mockReturnValue({
-      insert: vi.fn(),
+      insert: insertMock,
       execute: executeMock,
     });
 
@@ -123,18 +124,22 @@ describe(`Golden Chain: ${TOPIC} -> llm_routing_decisions`, () => {
 
     await handleMessage(makeKafkaPayload(TOPIC, payload));
 
-    // Should NOT call execute for the routing insert (only watermark)
+    // Should NOT call insert for the routing insert (only watermark)
     // The handler returns true without writing — event is acknowledged
     const stats = consumer.getStats();
     expect(stats.eventsProjected).toBe(1);
     expect(stats.errorsCount).toBe(0);
+
+    // Verify routing decision was not inserted (fallback should not be persisted)
+    expect(insertMock).not.toHaveBeenCalled();
   });
 
   it('skips non-UUID correlation_id with warning', async () => {
     const { tryGetIntelligenceDb } = await import('../../storage');
+    const insertMock = vi.fn();
     const executeMock = vi.fn().mockResolvedValue(undefined);
     (tryGetIntelligenceDb as ReturnType<typeof vi.fn>).mockReturnValue({
-      insert: vi.fn(),
+      insert: insertMock,
       execute: executeMock,
     });
 
@@ -145,10 +150,13 @@ describe(`Golden Chain: ${TOPIC} -> llm_routing_decisions`, () => {
 
     await handleMessage(makeKafkaPayload(TOPIC, payload));
 
-    // Event is acknowledged (eventsProjected=1) but no DB write
+    // Event is acknowledged (eventsProjected=1) but no DB write for routing decision
     const stats = consumer.getStats();
     expect(stats.eventsProjected).toBe(1);
     expect(stats.errorsCount).toBe(0);
+
+    // Verify routing decision was not inserted (non-UUID skip)
+    expect(insertMock).not.toHaveBeenCalled();
   });
 
   it('handles missing DB gracefully', async () => {

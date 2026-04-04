@@ -8,7 +8,9 @@ name: Golden Chain Coverage Gate
 on:
   pull_request:
     paths:
+      - 'server/read-model-consumer.ts'
       - 'server/consumers/read-model/**'
+      - 'migrations/**/*.sql'
       - 'server/__tests__/golden-chain/**'
       - 'topics.yaml'
       - 'shared/intelligence-schema.ts'
