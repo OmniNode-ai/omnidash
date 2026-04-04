@@ -19,12 +19,14 @@ import type { CostMetricsPayload } from '../projections/cost-metrics-projection'
 // ---------------------------------------------------------------------------
 
 // vi.hoisted() ensures this runs before vi.mock() factory execution
-const { mockEnsureFresh, mockEnsureFreshForWindow, mockForceRefresh } = vi.hoisted(() => ({
-  mockEnsureFresh: vi.fn(),
-  mockEnsureFreshForWindow: vi.fn(),
-  // Separate fn so accidental calls to forceRefresh() are detectable (not aliased to ensureFresh).
-  mockForceRefresh: vi.fn(),
-}));
+const { mockEnsureFresh, mockEnsureFreshForWindow, mockForceRefresh, mockBudgetEnsureFresh } =
+  vi.hoisted(() => ({
+    mockEnsureFresh: vi.fn(),
+    mockEnsureFreshForWindow: vi.fn(),
+    // Separate fn so accidental calls to forceRefresh() are detectable (not aliased to ensureFresh).
+    mockForceRefresh: vi.fn(),
+    mockBudgetEnsureFresh: vi.fn(),
+  }));
 
 vi.mock('../projection-bootstrap', () => {
   const mockView = {
@@ -61,6 +63,10 @@ vi.mock('../projection-bootstrap', () => {
     extractionMetricsProjection: { viewId: 'extraction-metrics' },
     effectivenessMetricsProjection: { viewId: 'effectiveness-metrics' },
     costMetricsProjection: mockView,
+    pipelineBudgetProjection: {
+      viewId: 'pipeline-budget',
+      ensureFresh: mockBudgetEnsureFresh,
+    },
     wireProjectionSources: vi.fn(() => () => {}),
   };
 });
@@ -124,6 +130,7 @@ describe('Cost Routes', () => {
     vi.clearAllMocks();
     mockEnsureFresh.mockResolvedValue(emptyPayload());
     mockEnsureFreshForWindow.mockResolvedValue(emptyPayload());
+    mockBudgetEnsureFresh.mockResolvedValue({ recent: [], summary: { total_cap_hits: 0 } });
 
     app = express();
     app.use(express.json());
@@ -161,10 +168,12 @@ describe('Cost Routes', () => {
             model_count: 3,
             avg_cost_per_session: 0.354,
             cost_change_pct: -12.5,
-            active_alerts: 1,
+            active_alerts: 0,
           },
         })
       );
+      // active_alerts is now derived from pipeline budget projection
+      mockBudgetEnsureFresh.mockResolvedValue({ recent: [], summary: { total_cap_hits: 1 } });
 
       const res = await request(app).get('/api/costs/summary').expect(200);
 
@@ -734,22 +743,20 @@ describe('Cost Routes', () => {
   // =========================================================================
 
   describe('GET /api/costs/alerts', () => {
-    it('should return 501 when budget alerts are not yet implemented', async () => {
-      // Budget alerts not yet implemented (tracked in OMN-2240).
-      // Returns 501 to signal the feature is not available.
-      const res = await request(app).get('/api/costs/alerts').expect(501);
+    it('should return empty alerts array when no budget cap hits exist', async () => {
+      mockBudgetEnsureFresh.mockResolvedValue({ recent: [], summary: { total_cap_hits: 0 } });
 
-      expect(res.body).toHaveProperty('alerts', []);
-      expect(res.body).toHaveProperty('message');
+      const res = await request(app).get('/api/costs/alerts').expect(200);
+
+      expect(res.body).toEqual([]);
     });
 
-    it('should return 501 regardless of DB state', async () => {
-      // alerts endpoint returns 501 unconditionally — no DB access
-      mockEnsureFresh.mockRejectedValue(new Error('DB error'));
+    it('should return 500 when pipeline budget projection is unavailable', async () => {
+      mockBudgetEnsureFresh.mockRejectedValue(new Error('DB error'));
 
-      const res = await request(app).get('/api/costs/alerts').expect(501);
+      const res = await request(app).get('/api/costs/alerts').expect(500);
 
-      expect(res.body).toHaveProperty('alerts', []);
+      expect(res.body).toEqual({ error: 'Failed to fetch budget alerts' });
     });
   });
 
