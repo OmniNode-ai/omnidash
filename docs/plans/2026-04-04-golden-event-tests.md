@@ -8,7 +8,14 @@
 
 ## Goal
 
-Verify every Kafka topic to DB projection to API route pipeline end-to-end via golden event tests. Each test publishes a known event payload, asserts the projection handler writes correct fields to the DB, and asserts the API returns the data. A CI gate fails the build if any `topics.yaml` read-model topic lacks a golden test or any golden test fails.
+Verify every Kafka topic-to-DB projection pipeline via two explicit test layers:
+
+- **Golden Projection Tests** (unit mode, CI): canonical payload -> handler invocation -> DB write assertions. Proves mapper contract.
+- **Golden Chain Integration Tests** (integration mode, local): real Kafka publish -> real projection consumer -> real DB row -> real API assertion. Proves full chain.
+
+CI enforces projection coverage. Integration chain coverage expands over time.
+
+A CI gate fails the build if any `topics.yaml` Tier 1 read-model topic lacks a golden projection test or any golden test fails.
 
 ## Architecture
 
@@ -20,16 +27,32 @@ golden-chain-coverage.yml (CI gate)
     |
     v
 GoldenEventTestRunner (base class)
-    |-- GOLDEN_MODE=unit   -> direct handleMessage + mock DB assertions
-    |-- GOLDEN_MODE=integration -> real Kafka (192.168.86.201:19092) + real Postgres
+    |-- GOLDEN_MODE=unit   -> Golden Projection Tests: direct handleMessage + mock DB assertions
+    |-- GOLDEN_MODE=integration -> Golden Chain Integration Tests: real Kafka + real Postgres + real API
     |
     v
 server/__tests__/golden-chain/<pipeline>.golden.test.ts
 ```
 
 **Dual mode**: Same test code, `GOLDEN_MODE` env var swaps the backend:
-- `GOLDEN_MODE=unit` (CI default): calls projection handler directly via `ReadModelConsumer.handleMessage`; mock DB captures insert arguments for field-level assertions.
-- `GOLDEN_MODE=integration` (local): Publishes to real Kafka via KafkaJS; polls real Postgres for arrival.
+- `GOLDEN_MODE=unit` (CI default): **Golden Projection Tests** — calls projection handler directly via `ReadModelConsumer.handleMessage`; mock DB captures insert arguments for field-level assertions. Proves handler mapping correctness.
+- `GOLDEN_MODE=integration` (local): **Golden Chain Integration Tests** — Publishes to real Kafka via KafkaJS; polls real Postgres for arrival; asserts API returns expected data. Proves full runtime chain health.
+
+## Coverage Semantics
+
+- **CI guarantee**: Tier 1 Golden Projection Tests verify canonical payload-to-projection contract for 9 high-value read-model topics. Passing unit mode proves handler mapping correctness, not full runtime chain health.
+- **Integration guarantee**: Golden Chain Integration Tests verify real Kafka -> real DB -> real API for each pipeline. These run locally against .201, not in CI.
+- **Coverage gate**: Enforces topic test file presence for Tier 1 topics. Does not enforce semantic sufficiency of assertions.
+- **Unit mode passing != full chain proof.** It proves the projection handler correctly maps the canonical payload to the expected DB columns.
+
+## Integration Mode Prerequisites
+
+Integration tests require:
+- omnidash server running locally (`npm run dev`)
+- Real Kafka/Redpanda reachable at `KAFKA_BOOTSTRAP_SERVERS`
+- Real Postgres reachable at `POSTGRES_HOST:POSTGRES_PORT`
+- Cleanup: tests use `golden-*` prefixed IDs; a cleanup helper removes rows matching this prefix after each test
+- Tests do NOT share state -- each test uses unique golden IDs
 
 ## Tech Stack
 
@@ -151,11 +174,15 @@ export async function publishEvent(
  * SAFETY: This is test infrastructure only. The tableName and where parameters
  * are hardcoded in test files, never from user input. In integration mode,
  * this polls real Postgres with a timeout for eventual consistency.
+ *
+ * Uses a structured equality map instead of raw SQL strings to prevent
+ * injection and improve readability. Builds parameterized queries from the map.
  */
 export async function assertDbRow(
   db: ReturnType<typeof import('drizzle-orm/node-postgres').drizzle>,
   tableName: string,
-  whereClause: string,
+  where: Record<string, string | number | boolean>,
+  expectedFields?: Record<string, unknown>,
   options: { timeout?: number; pollInterval?: number } = {}
 ): Promise<Record<string, unknown>[]> {
   // Validate tableName is a safe identifier (letters, digits, underscores only)
@@ -163,20 +190,41 @@ export async function assertDbRow(
     throw new Error(`assertDbRow: invalid table name "${tableName}"`);
   }
 
+  // Build parameterized WHERE clause from structured equality map
+  const keys = Object.keys(where);
+  if (keys.length === 0) {
+    throw new Error('assertDbRow: where map must have at least one key');
+  }
+  const conditions = keys.map((k, i) => `"${k}" = $${i + 1}`).join(' AND ');
+  const values = keys.map((k) => where[k]);
+
   const mode = getMode();
   const timeout = options.timeout || (mode === 'integration' ? 10000 : 0);
   const pollInterval = options.pollInterval || 500;
 
-  const query = sql.raw(`SELECT * FROM ${tableName} WHERE ${whereClause}`);
   const start = Date.now();
 
   while (true) {
-    const result = await db.execute(query);
+    const result = await db.execute(
+      sql.raw(`SELECT * FROM ${tableName} WHERE ${conditions}`, values)
+    );
     const rows = (result as unknown as { rows: Record<string, unknown>[] }).rows;
-    if (rows && rows.length > 0) return rows;
+    if (rows && rows.length > 0) {
+      // If expectedFields provided, verify them on the first row
+      if (expectedFields) {
+        for (const [field, expected] of Object.entries(expectedFields)) {
+          if (rows[0][field] !== expected) {
+            throw new Error(
+              `assertDbRow: expected ${field}=${JSON.stringify(expected)}, got ${JSON.stringify(rows[0][field])}`
+            );
+          }
+        }
+      }
+      return rows;
+    }
     if (Date.now() - start >= timeout) {
       throw new Error(
-        `assertDbRow: no rows found in ${tableName} matching [${whereClause}] after ${timeout}ms`
+        `assertDbRow: no rows found in ${tableName} matching ${JSON.stringify(where)} after ${timeout}ms`
       );
     }
     await new Promise((r) => setTimeout(r, pollInterval));
@@ -207,7 +255,7 @@ export function goldenId(suffix?: string): string {
 
 **Important**: `vi.mock()` calls are hoisted to the top of the file by Vitest's transform. They cannot be called from imported functions. Each golden test file MUST declare its own `vi.mock()` calls at the top level. The standard mock block (storage, kafkajs, projection-bootstrap, baselines-events, topic-catalog-manager, and all event emitters) is provided as a copy-paste template in the auto-generator (Task 14) and in the LLM Cost golden test (Task 3).
 
-The required mocks for ALL golden chain tests (copy into each `.golden.test.ts`):
+The required mocks for ALL golden projection/chain tests (copy into each `.golden.test.ts`):
 ```typescript
 vi.mock('../../storage', () => ({
   tryGetIntelligenceDb: vi.fn(),
@@ -422,8 +470,10 @@ describe(`Golden Chain: ${TOPIC} -> ${TABLE}`, () => {
 });
 ```
 
-**API verification** (integration mode extension, Task 11):
-- `GET /api/costs/summary` should return aggregated costs including the golden event's model.
+**API Assertion (integration mode):**
+- Route: `/api/costs/summary`
+- Expected fields: `total_cost_usd > 0`, `model_count >= 1`
+- Mode: integration only (unit mode skips API assertions)
 
 **Test command**: `npx vitest run server/__tests__/golden-chain/llm-cost.golden.test.ts`
 
@@ -455,6 +505,11 @@ describe(`Golden Chain: ${TOPIC} -> ${TABLE}`, () => {
 - `used_fallback=false` events are projected; `used_fallback=true` events are skipped
 - Non-UUID `correlation_id` events are skipped with warning
 
+**API Assertion (integration mode):**
+- Route: `/api/intelligence/routing/summary`
+- Expected fields: `total_decisions >= 1`, `agreement_rate` defined
+- Mode: integration only (unit mode skips API assertions)
+
 ---
 
 ## Task 5: Golden Test — Savings Pipeline
@@ -483,6 +538,11 @@ describe(`Golden Chain: ${TOPIC} -> ${TABLE}`, () => {
 - Upsert on `source_event_id` updates existing row
 - Missing `session_id` returns true (skipped) without DB write
 
+**API Assertion (integration mode):**
+- Route: `/api/savings/summary`
+- Expected fields: `total_savings_usd > 0`, `estimate_count >= 1`
+- Mode: integration only (unit mode skips API assertions)
+
 ---
 
 ## Task 6: Golden Test — Baselines Pipeline
@@ -506,6 +566,11 @@ describe(`Golden Chain: ${TOPIC} -> ${TABLE}`, () => {
 - Invalid `confidence` values coerce to `'low'`
 - Malformed trend dates are filtered with warning
 - `baselinesProjection.reset()` and `emitBaselinesUpdate()` called post-commit
+
+**API Assertion (integration mode):**
+- Route: `/api/baselines/summary`
+- Expected fields: `snapshot_count >= 1`, `comparisons` array non-empty
+- Mode: integration only (unit mode skips API assertions)
 
 ---
 
@@ -531,6 +596,11 @@ describe(`Golden Chain: ${TOPIC} -> ${TABLE}`, () => {
 - `emitPipelineBudgetInvalidate()` called with correct correlation_id
 - ON CONFLICT DO NOTHING on duplicate correlation_id
 
+**API Assertion (integration mode):**
+- Route: `/api/costs/alerts`
+- Expected fields: `alerts` array contains entry with matching `pipeline_id`, `cap_hit === true`
+- Mode: integration only (unit mode skips API assertions)
+
 ---
 
 ## Task 8: Golden Test — Node Introspection Pipeline
@@ -552,6 +622,11 @@ describe(`Golden Chain: ${TOPIC} -> ${TABLE}`, () => {
 - `last_health_check` set to NOW()
 - `metadata` JSONB contains `node_name` and `node_id`
 - ON CONFLICT updates all fields (full upsert)
+
+**API Assertion (integration mode):**
+- Route: `/api/intelligence/registry/nodes`
+- Expected fields: `nodes` array contains entry with matching `service_name`, `is_active === true`
+- Mode: integration only (unit mode skips API assertions)
 
 ---
 
@@ -583,6 +658,11 @@ describe(`Golden Chain: ${TOPIC} -> ${TABLE}`, () => {
 - Missing `task_type` or `delegated_to` returns true (skipped) with warning
 - `emitDelegationInvalidate()` called with correct correlation_id
 - Cost fields stored as numeric strings
+
+**API Assertion (integration mode):**
+- Route: `/api/delegation/summary`
+- Expected fields: `total_delegations >= 1`, `task_types` array non-empty
+- Mode: integration only (unit mode skips API assertions)
 
 ---
 
@@ -616,6 +696,11 @@ describe(`Golden Chain: ${TOPIC} -> ${TABLE}`, () => {
 - `routing_strategy` defaults to `'unknown'` when absent
 - ON CONFLICT DO NOTHING on duplicate `correlation_id`
 
+**API Assertion (integration mode):**
+- Route: `/api/intelligence/routing/decisions`
+- Expected fields: `decisions` array contains entry with matching `correlation_id`, `selected_agent` defined
+- Mode: integration only (unit mode skips API assertions)
+
 ---
 
 ## Task 11: Golden Test — Session Outcome Pipeline
@@ -636,7 +721,10 @@ describe(`Golden Chain: ${TOPIC} -> ${TABLE}`, () => {
 - Missing session_id returns true (skipped) with warning listing available keys
 - `ingestedAt` set to `NOW()` on upsert
 
-**API endpoint**: `/api/session-outcomes/summary` (from `server/session-outcome-routes.ts`)
+**API Assertion (integration mode):**
+- Route: `/api/session-outcomes/summary`
+- Expected fields: `total_outcomes >= 1`, `outcome_distribution` contains matching `outcome`
+- Mode: integration only (unit mode skips API assertions)
 
 ---
 
@@ -704,33 +792,40 @@ describe('Golden Chain Coverage Gate', () => {
       'onex.evt.omniclaude.session-outcome.v1',
     ]);
 
-    // Topics with no DB write (ack-only or in-memory) — permanently exempt
+    // Infrastructure topics that are not projection chains — permanently exempt
     const PERMANENTLY_EXEMPT = new Set([
-      'onex.evt.omniclaude.performance-metrics.v1',
-      'onex.evt.omniintelligence.context-effectiveness.v1',
-      'onex.evt.omniintelligence.eval-completed.v1',
+      'onex.evt.platform.dlq-message.v1',  // infrastructure, not a projection chain
+      'onex.evt.omniclaude.performance-metrics.v1',  // in-memory only, no DB write
+      'onex.evt.omniintelligence.context-effectiveness.v1',  // ack-only
+      'onex.evt.omniintelligence.eval-completed.v1',  // ack-only
     ]);
 
-    // Log tier coverage stats for CI visibility
-    const tier2Count = topics.filter(
-      (t: string) => !TIER1_REQUIRED.has(t) && !PERMANENTLY_EXEMPT.has(t)
-    ).length;
-    console.log(
-      `[coverage-gate] Tier 1: ${TIER1_REQUIRED.size} required, ` +
-      `${tier2Count} deferred to Tier 2, ` +
-      `${PERMANENTLY_EXEMPT.size} permanently exempt`
-    );
-
-    const EXEMPTIONS = new Set([
-      ...PERMANENTLY_EXEMPT,
+    // Topics with projections but not yet covered by golden tests.
+    // Each entry should have a tracking ticket. Move to TIER1_REQUIRED
+    // when a golden projection test is added.
+    const TIER2_DEFERRED = new Set([
       ...topics.filter(
         (t: string) => !TIER1_REQUIRED.has(t) && !PERMANENTLY_EXEMPT.has(t)
       ),
+      // Explicit Tier 2 entries (with projections, not yet tested):
+      // 'onex.evt.omniclaude.agent-actions.v1',
+      // ... etc — add with tracking ticket reference
     ]);
+
+    // Log tier coverage stats for CI visibility
+    console.log(
+      `[coverage-gate] Tier 1: ${TIER1_REQUIRED.size} required, ` +
+      `${TIER2_DEFERRED.size} deferred to Tier 2, ` +
+      `${PERMANENTLY_EXEMPT.size} permanently exempt`
+    );
 
     const uncovered: string[] = [];
     for (const topic of topics) {
-      if (!coveredTopics.has(topic) && !EXEMPTIONS.has(topic)) {
+      if (
+        !coveredTopics.has(topic) &&
+        !PERMANENTLY_EXEMPT.has(topic) &&
+        !TIER2_DEFERRED.has(topic)
+      ) {
         uncovered.push(topic);
       }
     }
@@ -739,7 +834,7 @@ describe('Golden Chain Coverage Gate', () => {
       throw new Error(
         `${uncovered.length} topics in topics.yaml lack golden tests:\n` +
           uncovered.map((t) => `  - ${t}`).join('\n') +
-          '\n\nAdd a golden test in server/__tests__/golden-chain/ or add to EXEMPTIONS.'
+          '\n\nAdd a golden projection test for each topic, or add to TIER2_DEFERRED with a tracking ticket.'
       );
     }
   });
@@ -814,12 +909,12 @@ jobs:
 
       - run: npm ci
 
-      - name: Run golden chain tests (unit mode)
+      - name: Run golden projection tests (unit mode)
         run: npx vitest run server/__tests__/golden-chain/ --reporter=verbose
         env:
           GOLDEN_MODE: unit
 
-      - name: Verify coverage gate
+      - name: Verify projection coverage gate
         run: npx vitest run server/__tests__/golden-chain/coverage-gate.test.ts --reporter=verbose
 ```
 
@@ -876,14 +971,15 @@ if (existsSync(outPath)) {
 }
 
 const template = `/**
- * Golden Chain Test: ${values.topic}
+ * Golden Projection Test: ${values.topic}
  * Table: ${values.table}
  * Handler: ${values.handler}
  *
  * AUTO-GENERATED — fill in payload fields and assertions.
  */
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { makeKafkaPayload } from './runner';
+import { randomUUID } from 'crypto';
+import { makeKafkaPayload, goldenId } from './runner';
 
 // Mock infrastructure
 vi.mock('../../storage', () => ({
@@ -940,6 +1036,9 @@ describe(\`Golden Chain: \${TOPIC} -> \${TABLE}\`, () => {
   });
 
   it('projects golden payload to ${values.table}', async () => {
+    // TODO: Fill in exact payload fields and assertions for this pipeline
+    throw new Error('Golden test skeleton — fill in payload and assertions before committing');
+
     const { tryGetIntelligenceDb } = await import('../../storage');
     const insertValues = vi.fn().mockResolvedValue(undefined);
     const insertMock = vi.fn().mockReturnValue({ values: insertValues });
@@ -950,7 +1049,7 @@ describe(\`Golden Chain: \${TOPIC} -> \${TABLE}\`, () => {
 
     const payload = {
       // TODO: Fill in golden payload fields from handler source
-      correlation_id: crypto.randomUUID(),
+      correlation_id: goldenId('${values.handler}'),
     };
 
     await handleMessage(makeKafkaPayload(TOPIC, payload));
@@ -965,7 +1064,7 @@ describe(\`Golden Chain: \${TOPIC} -> \${TABLE}\`, () => {
     (tryGetIntelligenceDb as ReturnType<typeof vi.fn>).mockReturnValue(null);
 
     await handleMessage(makeKafkaPayload(TOPIC, {
-      correlation_id: crypto.randomUUID(),
+      correlation_id: goldenId('${values.handler}-no-db'),
     }));
 
     expect(consumer.getStats().eventsProjected).toBe(0);
