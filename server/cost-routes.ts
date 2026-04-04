@@ -12,12 +12,13 @@
  */
 
 import { Router } from 'express';
-import type { CostTimeWindow } from '@shared/cost-types';
-import { projectionService } from './projection-bootstrap';
+import type { CostTimeWindow, BudgetAlert } from '@shared/cost-types';
+import { projectionService, pipelineBudgetProjection } from './projection-bootstrap';
 import type {
   CostMetricsProjection,
   CostMetricsPayload,
 } from './projections/cost-metrics-projection';
+import type { PipelineBudgetRow } from './projections/pipeline-budget-projection';
 
 const router = Router();
 
@@ -139,6 +140,15 @@ router.get('/summary', async (req, res) => {
       summary.reported_coverage_pct = summary.total_cost_usd > 0 ? 100 : 0;
       summary.avg_cost_per_session =
         summary.session_count > 0 ? summary.total_cost_usd / summary.session_count : 0;
+    }
+    // Derive active_alerts from pipeline budget cap-hit data (SOW-Phase2).
+    // Gracefully falls back to 0 if the pipeline budget projection is unavailable.
+    try {
+      const budgetPayload = await pipelineBudgetProjection.ensureFresh();
+      summary.active_alerts = budgetPayload.summary.total_cap_hits;
+    } catch (err) {
+      // Pipeline budget projection unavailable — keep the default 0
+      console.warn('[costs] Pipeline budget projection unavailable for active_alerts:', err);
     }
     return res.json(summary);
   } catch (error) {
@@ -319,13 +329,51 @@ router.get('/token-usage', async (req, res) => {
 // GET /api/costs/alerts
 // ============================================================================
 
-router.get('/alerts', (_req, res) => {
-  // Budget alerts not yet implemented (tracked in OMN-2240).
-  // Returns 501 with empty data to signal the feature is not available.
-  return res.status(501).json({
-    alerts: [],
-    message: 'Budget alerts not yet implemented (OMN-2240)',
+/**
+ * Derive BudgetAlert[] from pipeline_budget_state cap-hit records.
+ *
+ * Each unique (pipeline_id, budget_type) pair that has cap_hit=true becomes
+ * an alert. The most recent row per pair determines current_value / cap_value.
+ * Utilization is calculated as (current_value / cap_value) * 100.
+ */
+function deriveBudgetAlerts(rows: PipelineBudgetRow[]): BudgetAlert[] {
+  // Group by pipeline_id + budget_type to get the latest cap hit per pair
+  const latest = new Map<string, PipelineBudgetRow>();
+  for (const row of rows) {
+    const key = `${row.pipeline_id}::${row.budget_type}`;
+    const existing = latest.get(key);
+    if (!existing || row.created_at > existing.created_at) {
+      latest.set(key, row);
+    }
+  }
+
+  return Array.from(latest.values()).map((row): BudgetAlert => {
+    const capValue = row.cap_value ?? 0;
+    const currentValue = row.current_value ?? 0;
+    const utilization = capValue > 0 ? (currentValue / capValue) * 100 : 0;
+
+    return {
+      id: row.correlation_id,
+      name: `${row.pipeline_id} ${row.budget_type} cap`,
+      threshold_usd: capValue,
+      period: 'daily',
+      current_spend_usd: currentValue,
+      utilization_pct: Math.round(utilization * 100) / 100,
+      is_triggered: row.cap_hit,
+      last_evaluated: row.created_at,
+    };
   });
+}
+
+router.get('/alerts', async (_req, res) => {
+  try {
+    const payload = await pipelineBudgetProjection.ensureFresh();
+    const alerts = deriveBudgetAlerts(payload.recent);
+    return res.json(alerts);
+  } catch (error) {
+    console.error('[costs] Error fetching alerts:', error);
+    return res.status(500).json({ error: 'Failed to fetch budget alerts' });
+  }
 });
 
 export default router;
