@@ -37,7 +37,7 @@ export function makeKafkaPayload(
       offset: overrides.offset ?? '0',
       timestamp: Date.now().toString(),
       attributes: 0,
-      headers: undefined,
+      headers: {},
     },
     heartbeat: () => Promise.resolve(),
     pause: () => () => {},
