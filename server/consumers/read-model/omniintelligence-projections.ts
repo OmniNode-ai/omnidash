@@ -1244,7 +1244,7 @@ export class OmniintelligenceProjectionHandler implements ProjectionHandler {
           ${correlationId},
           ${eventId},
           ${intentType},
-          ${'onex.evt.omniintelligence.intent-classified.v1'},
+          ${SUFFIX_INTELLIGENCE_INTENT_CLASSIFIED},
           ${JSON.stringify(data)},
           ${safeParseDate(data.timestamp ?? data.created_at ?? data.createdAt)}
         )

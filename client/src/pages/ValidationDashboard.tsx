@@ -11,7 +11,7 @@
 import { useState, useMemo, useEffect, Fragment } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useWebSocket } from '@/hooks/useWebSocket';
-import { useDemoMode } from '@/contexts/DemoModeContext';
+
 import { DemoBanner } from '@/components/DemoBanner';
 import { validationSource } from '@/lib/data-sources/validation-source';
 import type { ValidationSummary, RunsListResponse } from '@/lib/data-sources/validation-source';
@@ -248,8 +248,6 @@ export default function ValidationDashboard() {
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [expandedRunId, setExpandedRunId] = useState<string | null>(null);
   const [selectedRepo, setSelectedRepo] = useState<string | null>(null);
-  const { isDemoMode } = useDemoMode();
-
   // ---------------------------------------------------------------------------
   // WebSocket: subscribe to validation topic for real-time query invalidation
   // ---------------------------------------------------------------------------
@@ -280,7 +278,7 @@ export default function ValidationDashboard() {
     refetch: refetchSummary,
   } = useQuery<ValidationSummary>({
     queryKey: queryKeys.validation.summary(),
-    queryFn: () => validationSource.summary({ demoMode: isDemoMode }),
+    queryFn: () => validationSource.summary(),
     refetchInterval: 15_000,
   });
 
@@ -291,20 +289,19 @@ export default function ValidationDashboard() {
     refetch: refetchRuns,
   } = useQuery<RunsListResponse>({
     queryKey: queryKeys.validation.list(statusFilter),
-    queryFn: () =>
-      validationSource.listRuns({ status: statusFilter, limit: 50 }, { demoMode: isDemoMode }),
+    queryFn: () => validationSource.listRuns({ status: statusFilter, limit: 50 }),
     refetchInterval: 15_000,
   });
 
   const { data: runDetail } = useQuery<ValidationRun | null>({
     queryKey: queryKeys.validation.detail(expandedRunId ?? ''),
-    queryFn: () => validationSource.getRunDetail(expandedRunId!, { demoMode: isDemoMode }),
+    queryFn: () => validationSource.getRunDetail(expandedRunId!),
     enabled: !!expandedRunId,
   });
 
   const { data: repoTrends } = useQuery<RepoTrends>({
     queryKey: queryKeys.validation.trends(selectedRepo ?? ''),
-    queryFn: () => validationSource.getRepoTrends(selectedRepo!, { demoMode: isDemoMode }),
+    queryFn: () => validationSource.getRepoTrends(selectedRepo!),
     enabled: !!selectedRepo,
   });
 
@@ -319,7 +316,7 @@ export default function ValidationDashboard() {
     refetch: refetchLifecycle,
   } = useQuery<LifecycleSummary>({
     queryKey: queryKeys.validation.lifecycle(),
-    queryFn: () => validationSource.getLifecycleSummary({ demoMode: isDemoMode }),
+    queryFn: () => validationSource.getLifecycleSummary(),
     refetchInterval: 30_000,
     enabled: activeTab === 'lifecycle',
     refetchOnWindowFocus: false,
