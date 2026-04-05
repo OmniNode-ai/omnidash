@@ -58,6 +58,8 @@ import {
   CONFIDENCE_THRESHOLD_HIGH,
   CONFIDENCE_THRESHOLD_MEDIUM,
   CONFIDENCE_THRESHOLD_LOW,
+  INTENT_COLORS,
+  DEFAULT_INTENT_COLOR,
 } from '@/lib/intent-colors';
 import {
   Brain,
@@ -623,18 +625,27 @@ export default function IntentDashboard() {
                     const total = breakdownData.breakdown.reduce((s, b) => s + b.count, 0);
                     const pct = total > 0 ? ((item.count / total) * 100).toFixed(1) : '0.0';
                     return (
-                      <div
-                        key={item.intent_type}
-                        className="flex items-center justify-between text-sm"
-                      >
-                        <div className="flex items-center gap-2">
-                          <Badge variant="outline" className="text-xs">
-                            {item.intent_type}
-                          </Badge>
+                      <div key={item.intent_type} className="space-y-1">
+                        <div className="flex items-center justify-between text-sm">
+                          <div className="flex items-center gap-2">
+                            <Badge variant="outline" className="text-xs">
+                              {item.intent_type}
+                            </Badge>
+                          </div>
+                          <span className="font-mono text-muted-foreground">
+                            {item.count} ({pct}%)
+                          </span>
                         </div>
-                        <span className="font-mono text-muted-foreground">
-                          {item.count} ({pct}%)
-                        </span>
+                        <div className="h-2 w-full rounded-full bg-muted">
+                          <div
+                            className="h-2 rounded-full transition-all"
+                            style={{
+                              width: `${pct}%`,
+                              backgroundColor:
+                                INTENT_COLORS[item.intent_type] ?? DEFAULT_INTENT_COLOR,
+                            }}
+                          />
+                        </div>
                       </div>
                     );
                   })}
