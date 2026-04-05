@@ -10,7 +10,6 @@
  *  - Smoke test (renders without crashing)
  *  - Page heading and description
  *  - Time window selector tabs (24h / 7d / 30d)
- *  - Mock data banner renders when isUsingMockData is true
  *  - Score Vector panel heading and "never scalar" description
  *  - Gate Failure Timeline panel heading
  *  - Policy State History panel heading
@@ -21,7 +20,7 @@
  */
 
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { screen, waitFor, fireEvent } from '@testing-library/react';
+import { screen, waitFor } from '@testing-library/react';
 import { createTestLifecycle } from '@/tests/test-utils';
 import {
   getMockScoreVectorSummary,
@@ -49,8 +48,6 @@ vi.mock('@/lib/data-sources/objective-source', () => ({
     policyStateHistory: vi.fn().mockResolvedValue(getMockPolicyStateHistory('7d')),
     antiGamingAlerts: vi.fn().mockResolvedValue(getMockAntiGamingAlerts('7d')),
     acknowledgeAlert: vi.fn().mockResolvedValue(undefined),
-    isUsingMockData: true,
-    clearMockState: vi.fn(),
   },
 }));
 
@@ -118,17 +115,6 @@ describe('ObjectiveEvaluation', () => {
   it('renders the 30d time window button', () => {
     lifecycle.render(<ObjectiveEvaluation />);
     expect(screen.getByRole('button', { name: '30d' })).toBeInTheDocument();
-  });
-
-  // ───────────────────────────────────────────────
-  // Mock data banner
-  // ───────────────────────────────────────────────
-
-  it('renders the Demo Data banner when isUsingMockData is true', async () => {
-    lifecycle.render(<ObjectiveEvaluation />);
-    await waitFor(() => {
-      expect(screen.getByText('Demo Data')).toBeInTheDocument();
-    });
   });
 
   // ───────────────────────────────────────────────
@@ -226,14 +212,6 @@ describe('ObjectiveEvaluation', () => {
   it('renders a Refresh button', () => {
     lifecycle.render(<ObjectiveEvaluation />);
     expect(screen.getByRole('button', { name: /Refresh/i })).toBeInTheDocument();
-  });
-
-  it('calls clearMockState when Refresh is clicked', async () => {
-    const { objectiveSource } = await import('@/lib/data-sources/objective-source');
-    lifecycle.render(<ObjectiveEvaluation />);
-    const refreshBtn = screen.getByRole('button', { name: /Refresh/i });
-    fireEvent.click(refreshBtn);
-    expect(objectiveSource.clearMockState).toHaveBeenCalledOnce();
   });
 
   // ───────────────────────────────────────────────
