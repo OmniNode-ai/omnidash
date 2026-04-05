@@ -18,7 +18,6 @@
  */
 
 import { useState, useCallback } from 'react';
-import { useDemoMode } from '@/contexts/DemoModeContext';
 import { useQuery, useQueryClient, useMutation } from '@tanstack/react-query';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -148,36 +147,16 @@ const ALERT_TYPE_ICONS: Record<string, React.ReactNode> = {
 // Sub-components
 // ============================================================================
 
-function MockDataBanner() {
-  return (
-    <Alert className="border-yellow-500/50 bg-yellow-500/10 mb-4">
-      <AlertTriangle className="h-4 w-4 text-yellow-500" />
-      <AlertTitle className="text-yellow-600 dark:text-yellow-400">Demo Data</AlertTitle>
-      <AlertDescription className="text-yellow-700 dark:text-yellow-300 text-xs">
-        Displaying mock data. Connect the OMN-2545 (ScoringReducer) and OMN-2557 (PolicyState)
-        backends for live data.
-      </AlertDescription>
-    </Alert>
-  );
-}
-
 // ============================================================================
 // Panel 1: Score Vector (Radar Chart)
 // ============================================================================
 
-function ScoreVectorPanel({
-  window,
-  demoMode,
-}: {
-  window: ObjectiveTimeWindow;
-  demoMode: boolean;
-}) {
+function ScoreVectorPanel({ window }: { window: ObjectiveTimeWindow }) {
   const [selectedAgent, setSelectedAgent] = useState<string>('all');
 
   const { data, isLoading, error } = useQuery({
-    queryKey: [...queryKeys.objective.scoreVector(window), demoMode],
-    queryFn: () =>
-      objectiveSource.scoreVector(window, { fallbackToMock: demoMode, mockOnEmpty: demoMode }),
+    queryKey: queryKeys.objective.scoreVector(window),
+    queryFn: () => objectiveSource.scoreVector(window),
     staleTime: 30_000,
     refetchInterval: 60_000,
   });
@@ -263,7 +242,7 @@ function ScoreVectorPanel({
             </RadarChart>
           </ResponsiveContainer>
         )}
-        {data && objectiveSource.isUsingMockData && (
+        {data && (
           <p className="text-xs text-muted-foreground mt-2 text-center">
             Sample count: {data.aggregates.reduce((s, a) => s + a.sample_count, 0)} evaluations
           </p>
@@ -277,22 +256,12 @@ function ScoreVectorPanel({
 // Panel 2: Gate Failure Timeline
 // ============================================================================
 
-function GateFailureTimelinePanel({
-  window,
-  demoMode,
-}: {
-  window: ObjectiveTimeWindow;
-  demoMode: boolean;
-}) {
+function GateFailureTimelinePanel({ window }: { window: ObjectiveTimeWindow }) {
   const [drilldownEvent, setDrilldownEvent] = useState<GateFailureEvent | null>(null);
 
   const { data, isLoading, error } = useQuery({
-    queryKey: [...queryKeys.objective.gateFailures(window), demoMode],
-    queryFn: () =>
-      objectiveSource.gateFailureTimeline(window, {
-        fallbackToMock: demoMode,
-        mockOnEmpty: demoMode,
-      }),
+    queryKey: queryKeys.objective.gateFailures(window),
+    queryFn: () => objectiveSource.gateFailureTimeline(window),
     staleTime: 30_000,
     refetchInterval: 60_000,
   });
@@ -511,23 +480,13 @@ function GateFailureTimelinePanel({
 // Panel 3: Policy State History
 // ============================================================================
 
-function PolicyStateHistoryPanel({
-  window,
-  demoMode,
-}: {
-  window: ObjectiveTimeWindow;
-  demoMode: boolean;
-}) {
+function PolicyStateHistoryPanel({ window }: { window: ObjectiveTimeWindow }) {
   const [selectedPolicy, setSelectedPolicy] = useState<string>('all');
   const [drilldownPoint, setDrilldownPoint] = useState<PolicyStatePoint | null>(null);
 
   const { data, isLoading, error } = useQuery({
-    queryKey: [...queryKeys.objective.policyState(window), demoMode],
-    queryFn: () =>
-      objectiveSource.policyStateHistory(window, {
-        fallbackToMock: demoMode,
-        mockOnEmpty: demoMode,
-      }),
+    queryKey: queryKeys.objective.policyState(window),
+    queryFn: () => objectiveSource.policyStateHistory(window),
     staleTime: 30_000,
     refetchInterval: 60_000,
   });
@@ -766,19 +725,12 @@ function PolicyStateHistoryPanel({
 // Panel 4: Anti-Gaming Alert Feed
 // ============================================================================
 
-function AntiGamingAlertFeed({
-  window,
-  demoMode,
-}: {
-  window: ObjectiveTimeWindow;
-  demoMode: boolean;
-}) {
+function AntiGamingAlertFeed({ window }: { window: ObjectiveTimeWindow }) {
   const queryClient = useQueryClient();
 
   const { data, isLoading, error } = useQuery({
-    queryKey: [...queryKeys.objective.antiGaming(window), demoMode],
-    queryFn: () =>
-      objectiveSource.antiGamingAlerts(window, { fallbackToMock: demoMode, mockOnEmpty: demoMode }),
+    queryKey: queryKeys.objective.antiGaming(window),
+    queryFn: () => objectiveSource.antiGamingAlerts(window),
     staleTime: 15_000,
     refetchInterval: 30_000,
   });
@@ -934,11 +886,9 @@ function AlertCard({
 
 export default function ObjectiveEvaluation() {
   const queryClient = useQueryClient();
-  const { isDemoMode } = useDemoMode();
   const [timeWindow, setTimeWindow] = useState<ObjectiveTimeWindow>('7d');
 
   const handleRefreshAll = useCallback(() => {
-    objectiveSource.clearMockState();
     void queryClient.invalidateQueries({ queryKey: queryKeys.objective.all });
   }, [queryClient]);
 
@@ -980,14 +930,12 @@ export default function ObjectiveEvaluation() {
         </div>
       </div>
 
-      {objectiveSource.isUsingMockData && <MockDataBanner />}
-
       {/* Panel layout: 2-column grid on large screens */}
       <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
-        <ScoreVectorPanel window={timeWindow} demoMode={isDemoMode} />
-        <GateFailureTimelinePanel window={timeWindow} demoMode={isDemoMode} />
-        <PolicyStateHistoryPanel window={timeWindow} demoMode={isDemoMode} />
-        <AntiGamingAlertFeed window={timeWindow} demoMode={isDemoMode} />
+        <ScoreVectorPanel window={timeWindow} />
+        <GateFailureTimelinePanel window={timeWindow} />
+        <PolicyStateHistoryPanel window={timeWindow} />
+        <AntiGamingAlertFeed window={timeWindow} />
       </div>
     </div>
   );

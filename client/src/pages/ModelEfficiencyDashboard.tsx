@@ -11,7 +11,6 @@
 import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { modelEfficiencySource } from '@/lib/data-sources/model-efficiency-source';
-import { useDemoMode } from '@/contexts/DemoModeContext';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -266,31 +265,24 @@ function RollupDrillDown({
 // ============================================================================
 
 export default function ModelEfficiencyDashboard() {
-  const { isDemoMode } = useDemoMode();
-  const fetchOptions = {
-    fallbackToMock: true,
-    mockOnEmpty: isDemoMode,
-    demoMode: isDemoMode,
-  };
-
   // Summary query
   const { data: summaryData, isLoading: summaryLoading } = useQuery({
-    queryKey: ['model-efficiency', 'summary', isDemoMode],
-    queryFn: () => modelEfficiencySource.summary(30, fetchOptions),
+    queryKey: ['model-efficiency', 'summary'],
+    queryFn: () => modelEfficiencySource.summary(30),
     refetchInterval: getPollingInterval(POLLING_INTERVAL_MEDIUM),
   });
 
   // Trend query
   const { data: trendData, isLoading: trendLoading } = useQuery({
-    queryKey: ['model-efficiency', 'trend', isDemoMode],
-    queryFn: () => modelEfficiencySource.trend(14, undefined, fetchOptions),
+    queryKey: ['model-efficiency', 'trend'],
+    queryFn: () => modelEfficiencySource.trend(14),
     refetchInterval: getPollingInterval(POLLING_INTERVAL_MEDIUM),
   });
 
   // Rollups query (drill-down)
   const { data: rollupsData, isLoading: rollupsLoading } = useQuery({
-    queryKey: ['model-efficiency', 'rollups', isDemoMode],
-    queryFn: () => modelEfficiencySource.rollups(undefined, 50, undefined, fetchOptions),
+    queryKey: ['model-efficiency', 'rollups'],
+    queryFn: () => modelEfficiencySource.rollups(undefined, 50),
     refetchInterval: getPollingInterval(POLLING_INTERVAL_MEDIUM),
   });
 
@@ -347,7 +339,6 @@ export default function ModelEfficiencyDashboard() {
             Incomplete rollups detected
           </Badge>
         )}
-        {modelEfficiencySource.isUsingMockData && <Badge variant="secondary">Demo Data</Badge>}
       </div>
 
       {/* Summary metric cards */}

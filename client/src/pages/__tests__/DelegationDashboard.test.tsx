@@ -11,7 +11,6 @@
  *  - testid sentinel
  *  - Golden metric card label (Quality Gate Pass Rate)
  *  - Time window selector (24h / 7d / 30d tabs)
- *  - Demo Mode banner renders when isUsingMockData is true
  *  - Quality gate alert renders when quality_gate_pass_rate < 0.6 (threshold)
  *  - Stat card labels (Total Delegations, Total Cost Savings, etc.)
  *  - Section headings (Delegation Trends, task type chart, shadow table)
@@ -45,8 +44,8 @@ vi.mock('@/hooks/useWebSocket', () => ({
 
 // Mock the delegationSource singleton so that all methods return
 // deterministic mock data without hitting the network.
-// isUsingMockData starts as true (mirrors what the real singleton sets when
-// the API returns empty / 404, which is the normal state in jsdom).
+// Mock the delegationSource singleton so that all methods return
+// deterministic mock data without hitting the network.
 vi.mock('@/lib/data-sources/delegation-source', () => ({
   delegationSource: {
     summary: vi.fn().mockResolvedValue(getMockDelegationSummary('7d')),
@@ -55,8 +54,6 @@ vi.mock('@/lib/data-sources/delegation-source', () => ({
     qualityGates: vi.fn().mockResolvedValue(getMockDelegationQualityGates('7d')),
     shadowDivergence: vi.fn().mockResolvedValue(getMockDelegationShadowDivergence('7d')),
     trend: vi.fn().mockResolvedValue(getMockDelegationTrend('7d')),
-    isUsingMockData: true,
-    clearMockState: vi.fn(),
   },
 }));
 
@@ -158,29 +155,6 @@ describe('DelegationDashboard', () => {
     lifecycle.render(<DelegationDashboard />);
     await waitFor(() => {
       expect(screen.getByText('Avg Delegation Latency')).toBeInTheDocument();
-    });
-  });
-
-  // ───────────────────────────────────────────────
-  // Demo Mode banner
-  // ───────────────────────────────────────────────
-
-  it('renders the Demo Mode banner when isUsingMockData is true', async () => {
-    lifecycle.render(<DelegationDashboard />);
-    // The banner is conditional on allSettled && isUsingMockData.
-    // allSettled is true immediately because all mock resolvers are synchronous
-    // (vi.fn().mockResolvedValue resolves on the next microtask).
-    await waitFor(() => {
-      expect(screen.getByText('Demo Mode')).toBeInTheDocument();
-    });
-  });
-
-  it('renders the Demo Mode banner description text', async () => {
-    lifecycle.render(<DelegationDashboard />);
-    await waitFor(() => {
-      expect(
-        screen.getByText(/Database unavailable or no delegation events yet/i)
-      ).toBeInTheDocument();
     });
   });
 

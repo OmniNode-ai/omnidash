@@ -22,7 +22,6 @@ import { queryKeys } from '@/lib/query-keys';
 import { MetricCard } from '@/components/MetricCard';
 import { HeroMetric } from '@/components/HeroMetric';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Link } from 'wouter';
@@ -336,11 +335,6 @@ export default function SuccessCategory() {
           </p>
         </div>
         <div className="flex items-center gap-2">
-          {effectivenessSource.isUsingMockData && (
-            <Badge className="bg-yellow-500/20 text-yellow-400 border-yellow-500/30">
-              Demo Data
-            </Badge>
-          )}
           <div className="flex items-center gap-1.5">
             <div
               className={`h-2 w-2 rounded-full ${isConnected ? 'bg-green-500 animate-pulse' : 'bg-muted-foreground'}`}
