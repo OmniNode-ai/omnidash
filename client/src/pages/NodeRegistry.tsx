@@ -472,7 +472,9 @@ function NodesTab({
       <DetailSheet
         open={isPanelOpen}
         onOpenChange={setIsPanelOpen}
-        title={selectedNode ? deriveNodeName(selectedNode.nodeId, selectedNode.metadata) : 'Node Details'}
+        title={
+          selectedNode ? deriveNodeName(selectedNode.nodeId, selectedNode.metadata) : 'Node Details'
+        }
         subtitle={selectedNode?.nodeId}
       >
         {selectedNode && <NodeDetailContent node={selectedNode} />}
@@ -502,7 +504,7 @@ export default function NodeRegistry() {
   });
 
   // Nodes projection (only active when Nodes tab is shown)
-  const nodesStream = useProjectionStream<NodeRegistryPayload>('node-registry', undefined, {
+  const nodesStream = useProjectionStream<NodeRegistryPayload>('node-registry-db', undefined, {
     enabled: activeTab === 'nodes',
   });
 
