@@ -61,7 +61,10 @@ import { useState, useEffect } from 'react';
 import { cn } from '@/lib/utils';
 import type { LucideIcon } from 'lucide-react';
 import { useDemoMode } from '@/contexts/DemoModeContext';
+import { usePreferences } from '@/contexts/PreferencesContext';
+import { useDashboardHealth } from '@/hooks/useDashboardHealth';
 import { isRouteVisible, getRouteWiringStatus } from '@shared/wiring-status';
+import { getDataSourceForRoute } from '@shared/data-source-route-map';
 import { Analytics } from '@/lib/analytics-events';
 
 /** A single sidebar navigation entry with its route, icon, and description. */
@@ -616,20 +619,30 @@ interface AdvancedNavSectionProps {
   location: string;
   /** When true, show all pages regardless of wiring status (demo/dev mode). */
   showAll?: boolean;
+  /** Returns true if the route's backing data source is live. */
+  isRouteLive: (route: string) => boolean;
+  /** Returns true if the user has hidden this route in preferences. */
+  isRouteHidden: (route: string) => boolean;
 }
 
 /**
- * Filter advanced sub-groups by wiring status.
- * Pages with status 'working' or 'partial' are always shown.
+ * Filter advanced sub-groups by wiring status and user preferences.
+ * Pages with status 'working' or 'partial' are always shown (unless user-hidden).
  * Pages with 'preview', 'stub', or 'missing' are hidden unless showAll is true.
+ * User-hidden routes are always removed from the sidebar.
  * Empty groups after filtering are omitted entirely.
  */
-function filterSubGroups(groups: AdvancedSubGroup[], showAll: boolean): AdvancedSubGroup[] {
-  if (showAll) return groups;
+function filterSubGroups(
+  groups: AdvancedSubGroup[],
+  showAll: boolean,
+  isRouteHidden: (route: string) => boolean
+): AdvancedSubGroup[] {
   return groups
     .map((group) => ({
       ...group,
-      items: group.items.filter((item) => isRouteVisible(item.url)),
+      items: group.items.filter(
+        (item) => !isRouteHidden(item.url) && (showAll || isRouteVisible(item.url))
+      ),
     }))
     .filter((group) => group.items.length > 0);
 }
@@ -650,8 +663,22 @@ function WiringBadge({ url }: { url: string }) {
   return null;
 }
 
+/** "No Data" badge for sidebar items whose backing data source is not live. */
+function NoDataBadge() {
+  return (
+    <span className="ml-auto text-[9px] font-medium px-1.5 py-0.5 rounded bg-muted text-muted-foreground uppercase tracking-wider">
+      No Data
+    </span>
+  );
+}
+
 /** Collapsible Advanced section containing all granular drill-down pages. */
-function AdvancedNavSection({ location, showAll = false }: AdvancedNavSectionProps) {
+function AdvancedNavSection({
+  location,
+  showAll = false,
+  isRouteLive,
+  isRouteHidden,
+}: AdvancedNavSectionProps) {
   const hasActiveChild = isAdvancedRoute(location);
   const [isOpen, setIsOpen] = useState(hasActiveChild);
 
@@ -666,7 +693,7 @@ function AdvancedNavSection({ location, showAll = false }: AdvancedNavSectionPro
     }
   }, [hasActiveChild]);
 
-  const filteredGroups = filterSubGroups(advancedSubGroups, showAll);
+  const filteredGroups = filterSubGroups(advancedSubGroups, showAll, isRouteHidden);
 
   return (
     <Collapsible open={isOpen} onOpenChange={setIsOpen} data-testid="advanced-section">
@@ -696,12 +723,19 @@ function AdvancedNavSection({ location, showAll = false }: AdvancedNavSectionPro
                       normalizedLocation === item.url ||
                       (item.url === '/events' && normalizedLocation === '/') ||
                       normalizedLocation.startsWith(`${item.url}/`);
+                    const hasDataSource = !!getDataSourceForRoute(item.url);
+                    const live = isRouteLive(item.url);
+                    const dimmed = hasDataSource && !live;
                     return (
                       <SidebarMenuItem key={item.title}>
                         <SidebarMenuButton
                           asChild
                           tooltip={item.description}
-                          className={cn('group pl-5', isActive && 'bg-sidebar-accent')}
+                          className={cn(
+                            'group pl-5',
+                            isActive && 'bg-sidebar-accent',
+                            dimmed && !isActive && 'opacity-50'
+                          )}
                           data-testid={`nav-${item.url.slice(1).replace(/\//g, '-')}`}
                         >
                           <Link
@@ -712,6 +746,8 @@ function AdvancedNavSection({ location, showAll = false }: AdvancedNavSectionPro
                             <span>{item.title}</span>
                             {isActive ? (
                               <ChevronRight className="w-4 h-4 ml-auto text-sidebar-accent-foreground" />
+                            ) : dimmed ? (
+                              <NoDataBadge />
                             ) : (
                               <WiringBadge url={item.url} />
                             )}
@@ -734,12 +770,19 @@ function AdvancedNavSection({ location, showAll = false }: AdvancedNavSectionPro
 export function AppSidebar() {
   const [location] = useLocation();
   const { isDemoMode, toggleDemoMode } = useDemoMode();
+  const { isRouteHidden } = usePreferences();
+  const { isRouteLive } = useDashboardHealth();
 
   return (
     <Sidebar>
       <SidebarContent>
         <NavGroup label="Dashboards" items={categories} location={location} />
-        <AdvancedNavSection location={location} showAll={isDemoMode} />
+        <AdvancedNavSection
+          location={location}
+          showAll={isDemoMode}
+          isRouteLive={isRouteLive}
+          isRouteHidden={isRouteHidden}
+        />
       </SidebarContent>
 
       <SidebarFooter className="p-2">

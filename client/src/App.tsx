@@ -10,6 +10,7 @@ import { ThemeProvider } from '@/components/ThemeProvider';
 import { ThemeToggle } from '@/components/ThemeToggle';
 import { AlertBanner } from '@/components/AlertBanner';
 import { DemoModeProvider } from '@/contexts/DemoModeContext';
+import { PreferencesProvider } from '@/contexts/PreferencesContext';
 import { DemoModeToggle } from '@/components/DemoModeToggle';
 import { DemoControlPanel } from '@/components/DemoControlPanel';
 import { useWebSocket } from '@/hooks/useWebSocket';
@@ -539,12 +540,14 @@ function App() {
   return (
     <QueryClientProvider client={queryClient}>
       <DemoModeProvider>
-        <ThemeProvider defaultTheme="dark">
-          <TooltipProvider>
-            <AuthGate />
-            <Toaster />
-          </TooltipProvider>
-        </ThemeProvider>
+        <PreferencesProvider>
+          <ThemeProvider defaultTheme="dark">
+            <TooltipProvider>
+              <AuthGate />
+              <Toaster />
+            </TooltipProvider>
+          </ThemeProvider>
+        </PreferencesProvider>
       </DemoModeProvider>
     </QueryClientProvider>
   );
