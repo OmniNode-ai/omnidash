@@ -9,7 +9,7 @@
  * - Multi-metric trend chart (hit rate, correction rate, false positive rate)
  */
 
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { useDemoMode } from '@/contexts/DemoModeContext';
 import { useFeatureStaleness } from '@/hooks/useStaleness';
@@ -39,7 +39,6 @@ import {
   XCircle,
   TrendingUp,
   BarChart3,
-  AlertCircle,
 } from 'lucide-react';
 import {
   LineChart,
@@ -377,7 +376,7 @@ export default function PatternEnforcement() {
     refetch: refetchSummary,
   } = useQuery({
     queryKey: queryKeys.enforcement.summary(timeWindow),
-    queryFn: () => enforcementSource.summary(timeWindow, { demoMode: isDemoMode }),
+    queryFn: () => enforcementSource.summary(timeWindow),
     refetchInterval: getPollingInterval(POLLING_INTERVAL_MEDIUM),
     staleTime: 30_000,
   });
@@ -389,7 +388,7 @@ export default function PatternEnforcement() {
     refetch: refetchLang,
   } = useQuery({
     queryKey: queryKeys.enforcement.byLanguage(timeWindow),
-    queryFn: () => enforcementSource.byLanguage(timeWindow, { demoMode: isDemoMode }),
+    queryFn: () => enforcementSource.byLanguage(timeWindow),
     refetchInterval: getPollingInterval(POLLING_INTERVAL_SLOW),
     staleTime: 60_000,
   });
@@ -401,7 +400,7 @@ export default function PatternEnforcement() {
     refetch: refetchDomain,
   } = useQuery({
     queryKey: queryKeys.enforcement.byDomain(timeWindow),
-    queryFn: () => enforcementSource.byDomain(timeWindow, { demoMode: isDemoMode }),
+    queryFn: () => enforcementSource.byDomain(timeWindow),
     refetchInterval: getPollingInterval(POLLING_INTERVAL_SLOW),
     staleTime: 60_000,
   });
@@ -413,7 +412,7 @@ export default function PatternEnforcement() {
     refetch: refetchViolated,
   } = useQuery({
     queryKey: queryKeys.enforcement.violatedPatterns(timeWindow),
-    queryFn: () => enforcementSource.violatedPatterns(timeWindow, { demoMode: isDemoMode }),
+    queryFn: () => enforcementSource.violatedPatterns(timeWindow),
     refetchInterval: getPollingInterval(POLLING_INTERVAL_MEDIUM),
     staleTime: 30_000,
   });
@@ -425,7 +424,7 @@ export default function PatternEnforcement() {
     refetch: refetchTrend,
   } = useQuery({
     queryKey: queryKeys.enforcement.trend(timeWindow),
-    queryFn: () => enforcementSource.trend(timeWindow, { demoMode: isDemoMode }),
+    queryFn: () => enforcementSource.trend(timeWindow),
     refetchInterval: getPollingInterval(POLLING_INTERVAL_SLOW),
     staleTime: 60_000,
   });
@@ -439,25 +438,6 @@ export default function PatternEnforcement() {
     refetchViolated();
     refetchTrend();
   };
-
-  // enforcementSource.isUsingMockData reads a mutable Set on the singleton.
-  // It is always false at mount (before any query resolves), so we use an
-  // effect that re-reads it once all queries have settled.
-  const [isUsingMockData, setIsUsingMockData] = useState(false);
-  const allSettled =
-    !summaryLoading && !langLoading && !domainLoading && !violatedLoading && !trendLoading;
-  useEffect(() => {
-    if (allSettled) {
-      setIsUsingMockData(enforcementSource.isUsingMockData);
-    }
-  }, [allSettled, timeWindow]);
-
-  // Reset the mock-data banner immediately when the time window changes so it
-  // does not persist while new queries are in-flight. The effect above will
-  // re-evaluate isUsingMockData once all queries settle for the new window.
-  useEffect(() => {
-    setIsUsingMockData(false);
-  }, [timeWindow]);
 
   // ── Render ───────────────────────────────────────────────────────────────
 
@@ -484,24 +464,9 @@ export default function PatternEnforcement() {
         </div>
       </div>
 
-      {/* Demo Mode Banner */}
-      {isUsingMockData && (
-        <Alert variant="default" className="border-yellow-500/50 bg-yellow-500/10">
-          <AlertCircle className="h-4 w-4 text-yellow-500" />
-          <AlertTitle className="text-yellow-500">Demo Mode</AlertTitle>
-          <AlertDescription className="text-muted-foreground">
-            Database unavailable or no enforcement events yet. Showing representative demo data. The
-            dashboard will show live data once{' '}
-            <code className="text-xs">onex.evt.omniclaude.pattern-enforcement.v1</code> events are
-            received.
-          </AlertDescription>
-        </Alert>
-      )}
-
-      {/* Feature not enabled banner — shown when API returns zero data (not mock, not demo) */}
-      {allSettled &&
+      {/* Feature not enabled banner — shown when API returns zero data (not demo) */}
+      {!summaryLoading &&
         !isDemoMode &&
-        !isUsingMockData &&
         !summaryError &&
         (summary?.total_evaluations ?? 0) === 0 && (
           <FeatureNotEnabledBanner

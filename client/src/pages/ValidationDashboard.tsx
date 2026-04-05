@@ -352,11 +352,6 @@ export default function ValidationDashboard() {
           </p>
         </div>
         <div className="flex items-center gap-3">
-          {validationSource.isUsingMockData && (
-            <Badge className="bg-yellow-500/20 text-yellow-400 border-yellow-500/30">
-              Demo Data
-            </Badge>
-          )}
           <Button variant="outline" size="sm" onClick={handleRefresh}>
             <RefreshCw className="w-4 h-4 mr-1" />
             Refresh

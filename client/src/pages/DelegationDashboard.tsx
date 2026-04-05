@@ -13,7 +13,7 @@
  *   onex.evt.omniclaude.delegation-shadow-comparison.v1
  */
 
-import { useState, useCallback, useEffect } from 'react';
+import { useState, useCallback } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useWebSocket } from '@/hooks/useWebSocket';
 import { delegationSource } from '@/lib/data-sources/delegation-source';
@@ -38,7 +38,6 @@ import {
   CheckCircle2,
   DollarSign,
   BarChart3,
-  AlertCircle,
   TrendingUp,
   GitBranch,
   ShieldCheck,
@@ -64,7 +63,6 @@ import {
   POLLING_INTERVAL_SLOW,
   getPollingInterval,
 } from '@/lib/constants/query-config';
-import { useDemoMode } from '@/contexts/DemoModeContext';
 import type { DelegationTimeWindow, DelegationShadowDivergence } from '@shared/delegation-types';
 
 // ============================================================================
@@ -353,12 +351,6 @@ function ShadowDivergenceTable({
 export default function DelegationDashboard() {
   const [timeWindow, setTimeWindow] = useState<DelegationTimeWindow>('7d');
   const queryClient = useQueryClient();
-  const { isDemoMode } = useDemoMode();
-
-  // Clear singleton mock state on mount so a remount always starts from a clean slate.
-  useEffect(() => {
-    delegationSource.clearMockState();
-  }, []);
 
   // Invalidate all delegation queries on WebSocket DELEGATION_INVALIDATE event
   useWebSocket({
@@ -375,16 +367,14 @@ export default function DelegationDashboard() {
 
   // ── Queries ──────────────────────────────────────────────────────────────
 
-  const fetchOptions = { demoMode: isDemoMode };
-
   const {
     data: summary,
     isLoading: summaryLoading,
     isError: summaryError,
     refetch: refetchSummary,
   } = useQuery({
-    queryKey: [...queryKeys.delegation.summary(timeWindow), isDemoMode],
-    queryFn: () => delegationSource.summary(timeWindow, fetchOptions),
+    queryKey: queryKeys.delegation.summary(timeWindow),
+    queryFn: () => delegationSource.summary(timeWindow),
     refetchInterval: getPollingInterval(POLLING_INTERVAL_MEDIUM),
     staleTime: 30_000,
   });
@@ -395,8 +385,8 @@ export default function DelegationDashboard() {
     isError: taskTypeError,
     refetch: refetchTaskType,
   } = useQuery({
-    queryKey: [...queryKeys.delegation.byTaskType(timeWindow), isDemoMode],
-    queryFn: () => delegationSource.byTaskType(timeWindow, fetchOptions),
+    queryKey: queryKeys.delegation.byTaskType(timeWindow),
+    queryFn: () => delegationSource.byTaskType(timeWindow),
     refetchInterval: getPollingInterval(POLLING_INTERVAL_SLOW),
     staleTime: 60_000,
   });
@@ -407,8 +397,8 @@ export default function DelegationDashboard() {
     isError: costSavingsError,
     refetch: refetchCostSavings,
   } = useQuery({
-    queryKey: [...queryKeys.delegation.costSavings(timeWindow), isDemoMode],
-    queryFn: () => delegationSource.costSavings(timeWindow, fetchOptions),
+    queryKey: queryKeys.delegation.costSavings(timeWindow),
+    queryFn: () => delegationSource.costSavings(timeWindow),
     refetchInterval: getPollingInterval(POLLING_INTERVAL_SLOW),
     staleTime: 60_000,
   });
@@ -419,8 +409,8 @@ export default function DelegationDashboard() {
     isError: qualityGatesError,
     refetch: refetchQualityGates,
   } = useQuery({
-    queryKey: [...queryKeys.delegation.qualityGates(timeWindow), isDemoMode],
-    queryFn: () => delegationSource.qualityGates(timeWindow, fetchOptions),
+    queryKey: queryKeys.delegation.qualityGates(timeWindow),
+    queryFn: () => delegationSource.qualityGates(timeWindow),
     refetchInterval: getPollingInterval(POLLING_INTERVAL_SLOW),
     staleTime: 60_000,
   });
@@ -431,8 +421,8 @@ export default function DelegationDashboard() {
     isError: shadowDivergenceError,
     refetch: refetchShadowDivergence,
   } = useQuery({
-    queryKey: [...queryKeys.delegation.shadowDivergence(timeWindow), isDemoMode],
-    queryFn: () => delegationSource.shadowDivergence(timeWindow, fetchOptions),
+    queryKey: queryKeys.delegation.shadowDivergence(timeWindow),
+    queryFn: () => delegationSource.shadowDivergence(timeWindow),
     refetchInterval: getPollingInterval(POLLING_INTERVAL_MEDIUM),
     staleTime: 30_000,
   });
@@ -443,8 +433,8 @@ export default function DelegationDashboard() {
     isError: trendError,
     refetch: refetchTrend,
   } = useQuery({
-    queryKey: [...queryKeys.delegation.trend(timeWindow), isDemoMode],
-    queryFn: () => delegationSource.trend(timeWindow, fetchOptions),
+    queryKey: queryKeys.delegation.trend(timeWindow),
+    queryFn: () => delegationSource.trend(timeWindow),
     refetchInterval: getPollingInterval(POLLING_INTERVAL_SLOW),
     staleTime: 60_000,
   });
@@ -459,30 +449,6 @@ export default function DelegationDashboard() {
     void refetchShadowDivergence();
     void refetchTrend();
   };
-
-  // Track mock data state
-  const [isUsingMockData, setIsUsingMockData] = useState(false);
-
-  const allSettled =
-    !summaryLoading &&
-    !taskTypeLoading &&
-    !costSavingsLoading &&
-    !qualityGatesLoading &&
-    !shadowDivergenceLoading &&
-    !trendLoading;
-
-  useEffect(() => {
-    if (allSettled) {
-      // All queries have resolved: snapshot the mock-data state now that every
-      // fetch callback has had a chance to call markMock()/markReal(). Clearing
-      // before this point would race with in-flight callbacks that share the
-      // singleton _mockEndpoints Set and cause isUsingMockData to report false
-      // even when endpoints fell back to mock data.
-      const isMock = delegationSource.isUsingMockData; // read FIRST
-      delegationSource.clearMockState(); // THEN clear
-      setIsUsingMockData(isMock); // then set state
-    }
-  }, [allSettled, timeWindow]);
 
   const qualityGateRate = summary?.quality_gate_pass_rate ?? 0;
   const showQualityGateAlert =
@@ -508,20 +474,6 @@ export default function DelegationDashboard() {
           </Button>
         </div>
       </div>
-
-      {/* Demo Mode Banner */}
-      {isUsingMockData && (
-        <Alert variant="default" className="border-yellow-500/50 bg-yellow-500/10">
-          <AlertCircle className="h-4 w-4 text-yellow-500" />
-          <AlertTitle className="text-yellow-500">Demo Mode</AlertTitle>
-          <AlertDescription className="text-muted-foreground">
-            Database unavailable or no delegation events yet. Showing representative demo data. The
-            dashboard will show live data once{' '}
-            <code className="text-xs">onex.evt.omniclaude.task-delegated.v1</code> events are
-            received.
-          </AlertDescription>
-        </Alert>
-      )}
 
       {/* Quality Gate Alert */}
       {showQualityGateAlert && (
