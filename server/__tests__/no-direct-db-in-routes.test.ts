@@ -66,6 +66,11 @@ const EXEMPT_FILES = new Set([
   // health-probe abstraction that doesn't import the DB accessor directly.
   'health-data-sources-routes.ts',
 
+  // System activity queries multiple tables for cross-cutting activity views.
+  // Direct DB access is inherent to the aggregation purpose.
+  // TODO(OMN-7566-followup): migrate to ProjectionService view.
+  'system-activity-routes.ts',
+
   // Backwards-compatibility shim — proxies /api/patterns to pattern_learning_artifacts.
   // The canonical endpoint is /api/intelligence/patterns/patlearn (intelligence-routes.ts,
   // already exempt). This route will be removed once all clients migrate to the canonical

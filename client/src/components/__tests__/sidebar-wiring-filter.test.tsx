@@ -32,6 +32,7 @@ vi.mock('@/hooks/useHealthProbe', () => ({
 // Must import after mocks
 import { AppSidebar } from '@/components/app-sidebar';
 import { DemoModeProvider } from '@/contexts/DemoModeContext';
+import { PreferencesProvider } from '@/contexts/PreferencesContext';
 import { SidebarProvider } from '@/components/ui/sidebar';
 import {
   isRouteVisible,
@@ -47,11 +48,13 @@ function renderSidebar() {
   });
   return render(
     <QueryClientProvider client={queryClient}>
-      <DemoModeProvider>
-        <SidebarProvider defaultOpen={true}>
-          <AppSidebar />
-        </SidebarProvider>
-      </DemoModeProvider>
+      <PreferencesProvider>
+        <DemoModeProvider>
+          <SidebarProvider defaultOpen={true}>
+            <AppSidebar />
+          </SidebarProvider>
+        </DemoModeProvider>
+      </PreferencesProvider>
     </QueryClientProvider>
   );
 }

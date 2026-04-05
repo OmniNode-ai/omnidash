@@ -29,15 +29,18 @@ vi.mock('@shared/wiring-status', () => ({
 import { AppSidebar } from '../app-sidebar';
 import { SidebarProvider } from '@/components/ui/sidebar';
 import { DemoModeProvider } from '@/contexts/DemoModeContext';
+import { PreferencesProvider } from '@/contexts/PreferencesContext';
 
 function renderSidebar() {
   // wouter useLocation needs to be available; provide a minimal wrapper
   return render(
-    <DemoModeProvider>
-      <SidebarProvider>
-        <AppSidebar />
-      </SidebarProvider>
-    </DemoModeProvider>
+    <PreferencesProvider>
+      <DemoModeProvider>
+        <SidebarProvider>
+          <AppSidebar />
+        </SidebarProvider>
+      </DemoModeProvider>
+    </PreferencesProvider>
   );
 }
 

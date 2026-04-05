@@ -133,6 +133,9 @@ const DASHBOARD_ROUTES = [
   // Security posture (OMN-7240)
   '/security-posture',
 
+  // System activity (OMN-7566)
+  '/system-activity',
+
   // Alert history dashboard
   '/alert-history',
 

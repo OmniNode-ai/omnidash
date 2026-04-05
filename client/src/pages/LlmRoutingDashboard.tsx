@@ -1045,7 +1045,7 @@ export default function LlmRoutingDashboard() {
         <StatCard
           title="Total Decisions"
           value={summaryLoading ? '—' : fmtCount(summary?.total_decisions ?? 0)}
-          description={`${fmtCount(summary?.counts.disagreed ?? 0)} disagreements`}
+          description={`${fmtCount(summary?.counts?.disagreed ?? 0)} disagreements`}
           icon={BarChart3}
           isLoading={summaryLoading}
         />
