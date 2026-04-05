@@ -1,13 +1,11 @@
 import { describe, it, expect, vi } from 'vitest';
 import { render, screen } from '@testing-library/react';
-import React from 'react';
+import type { ReactNode } from 'react';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 
 /**
  * Verify that the Token Savings page is listed in the Intelligence
  * subgroup of the sidebar and routes to /savings (OMN-6968).
- *
- * These tests import the sidebar nav data directly to avoid needing
- * a full router/sidebar provider setup.
  *
  * The wiring-status module is mocked so that all pages are visible
  * regardless of their pipeline status. Wiring-based filtering is
@@ -20,34 +18,69 @@ vi.mock('@shared/wiring-status', () => ({
   getRouteWiringStatus: () => 'working',
 }));
 
-// We test the nav item data declaratively by importing the module
-// and checking the advancedSubGroups array programmatically.
-// Since the array is not exported, we render and query the DOM.
+// Mock wouter to avoid router issues in tests.
+// Do NOT set data-testid on the <a> — it would override the data-testid
+// from SidebarMenuButton's asChild/Slot merge.
+vi.mock('wouter', () => ({
+  Link: ({
+    href,
+    children,
+    ...rest
+  }: {
+    href: string;
+    children: ReactNode;
+    [k: string]: unknown;
+  }) => (
+    <a href={href} {...rest}>
+      {children}
+    </a>
+  ),
+  // Location is /events — an advanced route — so the Advanced collapsible
+  // section auto-opens on render without needing a click.
+  useLocation: () => ['/events', vi.fn()],
+}));
 
-// Lightweight wrapper: render just the sidebar link list so we can
-// assert the Token Savings entry exists.
+// Mock useWebSocket
+vi.mock('@/hooks/useWebSocket', () => ({
+  useWebSocket: vi.fn().mockReturnValue({ isConnected: false, connectionStatus: 'disconnected' }),
+}));
+
+// Mock useAuth
+vi.mock('@/hooks/useAuth', () => ({
+  useAuth: vi.fn().mockReturnValue({ authenticated: true, isLoading: false, user: null }),
+}));
+
+// Mock useHealthProbe
+vi.mock('@/hooks/useHealthProbe', () => ({
+  useHealthProbe: vi.fn().mockReturnValue({ status: 'up' }),
+}));
+
+// Must import after mocks
 import { AppSidebar } from '../app-sidebar';
 import { SidebarProvider } from '@/components/ui/sidebar';
 import { DemoModeProvider } from '@/contexts/DemoModeContext';
 import { PreferencesProvider } from '@/contexts/PreferencesContext';
 
 function renderSidebar() {
-  // wouter useLocation needs to be available; provide a minimal wrapper
+  const queryClient = new QueryClient({
+    defaultOptions: { queries: { retry: false, gcTime: Infinity, staleTime: Infinity } },
+  });
   return render(
-    <PreferencesProvider>
-      <DemoModeProvider>
-        <SidebarProvider>
-          <AppSidebar />
-        </SidebarProvider>
-      </DemoModeProvider>
-    </PreferencesProvider>
+    <QueryClientProvider client={queryClient}>
+      <PreferencesProvider>
+        <DemoModeProvider>
+          <SidebarProvider defaultOpen={true}>
+            <AppSidebar />
+          </SidebarProvider>
+        </DemoModeProvider>
+      </PreferencesProvider>
+    </QueryClientProvider>
   );
 }
 
 describe('AppSidebar - Token Savings (OMN-6968)', () => {
   it('should include Token Savings link in sidebar navigation', () => {
     renderSidebar();
-    // The sidebar renders a data-testid based on the URL: nav-savings
     const link = screen.getByTestId('nav-savings');
     expect(link).toBeInTheDocument();
     expect(link).toHaveTextContent('Token Savings');
@@ -56,7 +89,8 @@ describe('AppSidebar - Token Savings (OMN-6968)', () => {
   it('should link Token Savings to /savings route', () => {
     renderSidebar();
     const link = screen.getByTestId('nav-savings');
-    // The SidebarMenuButton wraps an <a> tag via the Link component
+    // SidebarMenuButton uses asChild — the merged <a> element receives
+    // both the data-testid from the button and the href from the Link mock.
     const anchor = link.closest('a') ?? link.querySelector('a');
     expect(anchor).toBeTruthy();
     expect(anchor?.getAttribute('href')).toBe('/savings');
