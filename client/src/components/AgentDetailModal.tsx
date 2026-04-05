@@ -129,7 +129,7 @@ export function AgentDetailModal({ agent, isOpen, onClose }: AgentDetailModalPro
             success: true,
             output:
               'The database connection timeout issues are caused by insufficient connection pool size. The current pool size is 5, but peak load requires at least 20 connections. Additionally, connection retry logic is missing, causing immediate failures. Recommendations:\n\n1. Increase connection pool size to 25 with a maximum of 50\n2. Implement exponential backoff retry logic\n3. Add connection health checks\n4. Monitor connection usage patterns',
-            qualityScore: 0.92,
+            qualityScore: 0.92, // fallback-ok: placeholder data
             metrics: {
               tokensUsed: 1250,
               computeUnits: 45,
@@ -137,7 +137,7 @@ export function AgentDetailModal({ agent, isOpen, onClose }: AgentDetailModalPro
             },
           },
           routingDecision: {
-            confidence: 0.89,
+            confidence: 0.89, // fallback-ok: placeholder data
             strategy: 'direct-routing',
             alternatives: ['agent-debug-intelligence'],
           },
@@ -152,7 +152,7 @@ export function AgentDetailModal({ agent, isOpen, onClose }: AgentDetailModalPro
           result: {
             success: true,
             output: 'Created UserProfile.tsx component with edit functionality...',
-            qualityScore: 0.88,
+            qualityScore: 0.88, // fallback-ok: placeholder data
             metrics: {
               tokensUsed: 2100,
               computeUnits: 67,
@@ -160,7 +160,7 @@ export function AgentDetailModal({ agent, isOpen, onClose }: AgentDetailModalPro
             },
           },
           routingDecision: {
-            confidence: 0.91,
+            confidence: 0.91, // fallback-ok: placeholder data
             strategy: 'direct-routing',
           },
         },
@@ -174,7 +174,7 @@ export function AgentDetailModal({ agent, isOpen, onClose }: AgentDetailModalPro
           result: {
             success: false,
             error: 'Timeout: Analysis exceeded maximum execution time of 10 seconds',
-            qualityScore: 0.0,
+            qualityScore: 0.0, // fallback-ok: placeholder data
             metrics: {
               tokensUsed: 850,
               computeUnits: 12,
@@ -182,7 +182,7 @@ export function AgentDetailModal({ agent, isOpen, onClose }: AgentDetailModalPro
             },
           },
           routingDecision: {
-            confidence: 0.65,
+            confidence: 0.65, // fallback-ok: placeholder data
             strategy: 'fallback-routing',
             alternatives: ['agent-performance', 'agent-debug-intelligence'],
           },
@@ -455,10 +455,10 @@ export function AgentDetailModal({ agent, isOpen, onClose }: AgentDetailModalPro
                   {
                     time: '14:32:18',
                     level: 'DEBUG',
-                    message: 'Routing decision: direct-routing (confidence: 0.89)',
+                    message: 'Routing decision: direct-routing (confidence: 0.89)', // fallback-ok: demo log
                   },
                   { time: '14:32:25', level: 'INFO', message: 'Execution completed in 20s' },
-                  { time: '14:32:26', level: 'INFO', message: 'Quality score: 0.92' },
+                  { time: '14:32:26', level: 'INFO', message: 'Quality score: 0.92' }, // fallback-ok: demo log
                 ].map((log, idx) => (
                   <div key={idx} className="flex gap-4">
                     <span className="text-muted-foreground w-20">{log.time}</span>

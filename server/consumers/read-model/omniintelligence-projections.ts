@@ -572,7 +572,7 @@ export class OmniintelligenceProjectionHandler implements ProjectionHandler {
             .values({
               patternId,
               qualityScore: Number.isFinite(qualityScore) ? qualityScore : 0,
-              confidence: Number.isFinite(confidence) ? confidence : 0.5,
+              confidence: Number.isFinite(confidence) ? confidence : 0.5, // fallback-ok: NaN safety guard
               measurementTimestamp:
                 safeParseDate(data.snapshot_at ?? data.snapshotAt) ?? new Date(),
               version: '1.0.0',
@@ -583,7 +583,7 @@ export class OmniintelligenceProjectionHandler implements ProjectionHandler {
               target: patternQualityMetrics.patternId,
               set: {
                 qualityScore: Number.isFinite(qualityScore) ? qualityScore : 0,
-                confidence: Number.isFinite(confidence) ? confidence : 0.5,
+                confidence: Number.isFinite(confidence) ? confidence : 0.5, // fallback-ok: NaN safety guard
                 measurementTimestamp:
                   safeParseDate(data.snapshot_at ?? data.snapshotAt) ?? new Date(),
                 updatedAt: new Date(),

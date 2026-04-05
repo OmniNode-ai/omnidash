@@ -204,7 +204,7 @@ const DEMO_TRACE_DETAIL: TraceSpansResponse = (() => {
         durationMs: 38,
         metadata: {
           selectedAgent: 'frontend-developer',
-          confidence: 0.94,
+          confidence: 0.94, // fallback-ok: demo data
         },
       },
       {
