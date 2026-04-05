@@ -156,7 +156,7 @@ describe('server/index bootstrap', () => {
   it('starts services with realtime events enabled in development', async () => {
     process.env.NODE_ENV = 'development';
     process.env.PORT = '4001';
-    process.env.ENABLE_REAL_TIME_EVENTS = 'true';
+    process.env.ENABLE_REAL_TIME_EVENTS = 'true'; // ONEX_FLAG_EXEMPT: test fixture
 
     await importIndex();
 
@@ -172,7 +172,7 @@ describe('server/index bootstrap', () => {
 
   it('falls back to serveStatic when realtime events disabled or unavailable', async () => {
     process.env.NODE_ENV = 'production';
-    process.env.ENABLE_REAL_TIME_EVENTS = 'false';
+    process.env.ENABLE_REAL_TIME_EVENTS = 'false'; // ONEX_FLAG_EXEMPT: test fixture
     delete process.env.PORT;
 
     validateConnectionMock.mockResolvedValueOnce(false);

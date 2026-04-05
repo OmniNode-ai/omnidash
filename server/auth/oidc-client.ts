@@ -27,8 +27,8 @@ export async function initOidcClient(): Promise<void> {
   // When OMNIDASH_AUTH_ENABLED=false, auth is unconditionally disabled regardless of
   // KEYCLOAK_ISSUER. This prevents ~/.omnibase/.env Keycloak vars from enabling auth
   // in local development where no Keycloak server is running.
-  if (process.env.OMNIDASH_AUTH_ENABLED === 'false') {
-    // ONEX_FLAG_EXEMPT: migration
+  const authExplicitlyDisabled = process.env.OMNIDASH_AUTH_ENABLED === 'false'; // ONEX_FLAG_EXEMPT: migration
+  if (authExplicitlyDisabled) {
     console.log('[oidc] OMNIDASH_AUTH_ENABLED=false -- auth disabled by explicit env override');
     authEnabled = false;
     return;

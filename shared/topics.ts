@@ -334,6 +334,8 @@ export const SUFFIX_INTELLIGENCE_PATTERN_DISCOVERED =
   'onex.evt.omniintelligence.pattern-discovered.v1';
 export const SUFFIX_INTELLIGENCE_PATTERN_LEARNED = 'onex.evt.omniintelligence.pattern-learned.v1';
 export const SUFFIX_INTELLIGENCE_TOOL_CONTENT = 'onex.cmd.omniintelligence.tool-content.v1';
+export const SUFFIX_INTELLIGENCE_PROMOTION_CHECK_REQUESTED =
+  'onex.cmd.omniintelligence.promotion-check-requested.v1';
 
 /** Intelligence pipeline commands (consumed by omniintelligence) */
 export const SUFFIX_INTELLIGENCE_CODE_ANALYSIS_CMD = 'onex.cmd.omniintelligence.code-analysis.v1';

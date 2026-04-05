@@ -15,6 +15,7 @@
  */
 
 import { test, expect } from '@playwright/test';
+import { SUFFIX_OMNICLAUDE_SESSION_OUTCOME } from '@shared/topics';
 
 // Tag: requires infrastructure (Kafka + PostgreSQL running)
 test.describe('@infra Projection Data Flow [OMN-6401]', () => {
@@ -145,7 +146,7 @@ test.describe('@infra Projection Data Flow [OMN-6401]', () => {
     //    This is a simplified approach -- in practice, you would use
     //    the Kafka producer directly.
     const testEvent = {
-      topic: 'onex.evt.omniclaude.session-outcome.v1',
+      topic: SUFFIX_OMNICLAUDE_SESSION_OUTCOME,
       payload: {
         session_id: `test-projection-flow-${Date.now()}`,
         outcome: 'success',

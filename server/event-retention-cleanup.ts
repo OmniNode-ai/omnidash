@@ -14,6 +14,18 @@
 
 import { sql } from 'drizzle-orm';
 import { tryGetIntelligenceDb } from './storage.js';
+import {
+  SUFFIX_OMNICLAUDE_TOOL_EXECUTED,
+  SUFFIX_INTELLIGENCE_TOOL_CONTENT,
+  TOPIC_OMNIBASE_INFRA_WIRING_HEALTH_SNAPSHOT,
+  SUFFIX_INTELLIGENCE_PROMOTION_CHECK_REQUESTED,
+  SUFFIX_NODE_INTROSPECTION,
+  SUFFIX_NODE_HEARTBEAT,
+  SUFFIX_INTELLIGENCE_PATTERN_LEARNED,
+  SUFFIX_INTELLIGENCE_PATTERN_STORED,
+  SUFFIX_INTELLIGENCE_PATTERN_PROJECTION,
+  SUFFIX_INTELLIGENCE_PATTERN_LEARNING_CMD,
+} from '@shared/topics';
 
 const CLEANUP_INTERVAL_MS = parseInt(
   process.env.EVENT_RETENTION_CLEANUP_INTERVAL_MS ?? '3600000',
@@ -28,19 +40,19 @@ const HIGH_VOLUME_RETENTION_DAYS = parseInt(
 );
 
 const HIGH_VOLUME_TOPICS = [
-  'onex.evt.omniclaude.tool-executed.v1',
-  'onex.cmd.omniintelligence.tool-content.v1',
-  'onex.evt.omnibase-infra.wiring-health-snapshot.v1',
-  'onex.cmd.omniintelligence.promotion-check-requested.v1',
-  'onex.evt.platform.node-introspection.v1',
+  SUFFIX_OMNICLAUDE_TOOL_EXECUTED,
+  SUFFIX_INTELLIGENCE_TOOL_CONTENT,
+  TOPIC_OMNIBASE_INFRA_WIRING_HEALTH_SNAPSHOT,
+  SUFFIX_INTELLIGENCE_PROMOTION_CHECK_REQUESTED,
+  SUFFIX_NODE_INTROSPECTION,
 ];
 
 const NEVER_STORE_TOPICS = [
-  'onex.evt.platform.node-heartbeat.v1',
-  'onex.evt.omniintelligence.pattern-learned.v1',
-  'onex.evt.omniintelligence.pattern-stored.v1',
-  'onex.evt.omniintelligence.pattern-projection.v1',
-  'onex.cmd.omniintelligence.pattern-learning.v1',
+  SUFFIX_NODE_HEARTBEAT,
+  SUFFIX_INTELLIGENCE_PATTERN_LEARNED,
+  SUFFIX_INTELLIGENCE_PATTERN_STORED,
+  SUFFIX_INTELLIGENCE_PATTERN_PROJECTION,
+  SUFFIX_INTELLIGENCE_PATTERN_LEARNING_CMD,
 ];
 
 let cleanupTimer: ReturnType<typeof setInterval> | null = null;
