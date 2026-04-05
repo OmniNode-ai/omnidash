@@ -67,13 +67,13 @@ function renderSidebar() {
   });
   return render(
     <QueryClientProvider client={queryClient}>
-      <PreferencesProvider>
-        <DemoModeProvider>
+      <DemoModeProvider>
+        <PreferencesProvider>
           <SidebarProvider defaultOpen={true}>
             <AppSidebar />
           </SidebarProvider>
-        </DemoModeProvider>
-      </PreferencesProvider>
+        </PreferencesProvider>
+      </DemoModeProvider>
     </QueryClientProvider>
   );
 }
