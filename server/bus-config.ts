@@ -41,8 +41,12 @@
 
 // Register Snappy codec for kafkajs — Redpanda may send snappy-compressed messages.
 // Placed here (shared bus config) so every Kafka client picks it up on first import.
-import { CompressionTypes, CompressionCodecs } from 'kafkajs';
-import SnappyCodec from 'kafkajs-snappy';
+// Both kafkajs and kafkajs-snappy are CJS; CompressionCodecs is not a named ESM export,
+// so we use createRequire for runtime compat (esbuild --packages=external keeps them external).
+import { createRequire } from 'node:module';
+const _require = createRequire(import.meta.url);
+const { CompressionTypes, CompressionCodecs } = _require('kafkajs');
+const SnappyCodec = _require('kafkajs-snappy');
 CompressionCodecs[CompressionTypes.Snappy] = SnappyCodec;
 
 /**
