@@ -15,23 +15,34 @@ interface ModelSelectorProps {
   value: string | null;
   onChange: (model: string | null) => void;
   className?: string;
+  /**
+   * When provided, the selector uses this list of model names directly
+   * instead of fetching from the cost-by-model endpoint. Useful when
+   * the model list should come from a different domain (e.g. LLM routing).
+   */
+  models?: string[];
 }
 
 /**
  * Shared dropdown for selecting an LLM model.
- * Fetches distinct model names from the cost-by-model endpoint.
+ * By default fetches distinct model names from the cost-by-model endpoint.
+ * Pass the `models` prop to supply an external model list instead.
  * "All Models" resets the selection to null.
  */
 export const ModelSelector = memo(function ModelSelector({
   value,
   onChange,
   className,
+  models: externalModels,
 }: ModelSelectorProps) {
-  const { data: models } = useQuery<CostByModel[]>({
+  const { data: costModels } = useQuery<CostByModel[]>({
     queryKey: queryKeys.costs.byModel(),
     queryFn: () => costSource.byModel(),
     refetchInterval: 30_000,
+    enabled: externalModels === undefined,
   });
+
+  const modelNames = externalModels ?? costModels?.map((m) => m.model_name) ?? [];
 
   return (
     <Select value={value ?? 'all'} onValueChange={(v) => onChange(v === 'all' ? null : v)}>
@@ -40,9 +51,9 @@ export const ModelSelector = memo(function ModelSelector({
       </SelectTrigger>
       <SelectContent>
         <SelectItem value="all">All Models</SelectItem>
-        {models?.map((m) => (
-          <SelectItem key={m.model_name} value={m.model_name}>
-            {m.model_name}
+        {modelNames.map((name) => (
+          <SelectItem key={name} value={name}>
+            {name}
           </SelectItem>
         ))}
       </SelectContent>

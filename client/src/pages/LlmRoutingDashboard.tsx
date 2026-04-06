@@ -825,6 +825,17 @@ export default function LlmRoutingDashboard() {
     staleTime: 30_000,
   });
 
+  const routingModelsUrl = buildApiUrl('/api/llm-routing/models');
+  const { data: routingModels } = useQuery<string[]>({
+    queryKey: ['llm-routing', 'models'],
+    queryFn: async () => {
+      const res = await fetch(routingModelsUrl);
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      return res.json() as Promise<string[]>;
+    },
+    staleTime: 60_000,
+  });
+
   const {
     data: trend,
     isLoading: trendLoading,
@@ -1106,6 +1117,7 @@ export default function LlmRoutingDashboard() {
               value={trendModelFilter ?? null}
               onChange={(m) => setTrendModelFilter(m ?? undefined)}
               className="h-8 w-48 text-xs"
+              models={routingModels}
             />
           </div>
         </CardHeader>
