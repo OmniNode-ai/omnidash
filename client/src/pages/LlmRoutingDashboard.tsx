@@ -77,6 +77,7 @@ import {
   Bar,
   Cell,
 } from 'recharts';
+import { ModelSelector } from '@/components/ModelSelector';
 import { cn } from '@/lib/utils';
 import {
   POLLING_INTERVAL_MEDIUM,
@@ -872,19 +873,6 @@ export default function LlmRoutingDashboard() {
     staleTime: 60_000,
   });
 
-  // ── Models list for trend filter (OMN-7643) ─────────────────────────────
-
-  const modelsUrl = buildApiUrl('/api/llm-routing/models');
-  const { data: trendModels = [] } = useQuery<string[]>({
-    queryKey: ['llm-routing', 'models'],
-    queryFn: async () => {
-      const res = await fetch(modelsUrl);
-      if (!res.ok) throw new Error(`HTTP ${res.status}`);
-      return res.json() as Promise<string[]>;
-    },
-    staleTime: 60_000,
-  });
-
   // ── Helpers ──────────────────────────────────────────────────────────────
 
   const handleRefresh = () => {
@@ -1114,24 +1102,11 @@ export default function LlmRoutingDashboard() {
               </CardTitle>
               <CardDescription>Agreement rate, fallback rate, and cost over time</CardDescription>
             </div>
-            <Select
-              value={trendModelFilter ?? '__all__'}
-              onValueChange={(v) => setTrendModelFilter(v === '__all__' ? undefined : v)}
-            >
-              <SelectTrigger className="h-8 w-48 text-xs">
-                <SelectValue placeholder="All models" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="__all__" className="text-xs">
-                  All models
-                </SelectItem>
-                {trendModels.map((m) => (
-                  <SelectItem key={m} value={m} className="text-xs font-mono">
-                    {m}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            <ModelSelector
+              value={trendModelFilter ?? null}
+              onChange={(m) => setTrendModelFilter(m ?? undefined)}
+              className="h-8 w-48 text-xs"
+            />
           </div>
         </CardHeader>
         <CardContent>
