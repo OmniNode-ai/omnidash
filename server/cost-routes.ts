@@ -19,6 +19,7 @@ import type {
   CostMetricsPayload,
 } from './projections/cost-metrics-projection';
 import type { PipelineBudgetRow } from './projections/pipeline-budget-projection';
+import { tryGetIntelligenceDb } from './storage';
 
 const router = Router();
 
@@ -165,29 +166,41 @@ router.get('/trend', async (req, res) => {
   try {
     const timeWindow = parseWindow(req.query.window);
     const includeEstimated = parseIncludeEstimated(req.query.includeEstimated);
+    const modelFilter = typeof req.query.model === 'string' ? req.query.model : undefined;
 
     const view = getCostView();
     if (!view) {
       return res.json([]);
     }
 
-    const payload = await getPayloadForWindow(view, timeWindow);
-    // Communicate degradation via headers so the response body always remains
-    // an array regardless of degradation state (fixes breaking contract change).
-    if (payload.degraded) {
-      res.setHeader('X-Degraded', 'true');
-      if (payload.window !== undefined) res.setHeader('X-Degraded-Window', payload.window);
+    // When a model filter is specified, query the DB directly with the filter
+    // instead of using the cached (all-models) payload.
+    let trend;
+    if (modelFilter) {
+      const db = tryGetIntelligenceDb();
+      if (!db) {
+        return res.json([]);
+      }
+      trend = await view.queryTrend(db, timeWindow, modelFilter);
+    } else {
+      const payload = await getPayloadForWindow(view, timeWindow);
+      if (payload.degraded) {
+        res.setHeader('X-Degraded', 'true');
+        if (payload.window !== undefined) res.setHeader('X-Degraded-Window', payload.window);
+      }
+      trend = payload.trend;
     }
+
     // When includeEstimated=false, subtract estimated costs from each trend point.
     if (!includeEstimated) {
-      const filtered = payload.trend.map((p) => ({
+      const filtered = trend.map((p) => ({
         ...p,
         total_cost_usd: p.total_cost_usd - p.estimated_cost_usd,
         estimated_cost_usd: 0,
       }));
       return res.json(filtered);
     }
-    return res.json(payload.trend);
+    return res.json(trend);
   } catch (error) {
     console.error('[costs] Error fetching trend:', error);
     return res.status(500).json({ error: 'Failed to fetch cost trend' });

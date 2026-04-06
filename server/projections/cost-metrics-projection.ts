@@ -23,7 +23,7 @@
  * when there is no data for the requested window.
  */
 
-import { sql, gte, lt, and, gt, desc } from 'drizzle-orm';
+import { sql, gte, lt, and, gt, desc, eq } from 'drizzle-orm';
 import { llmCostAggregates } from '@shared/intelligence-schema';
 import type {
   CostSummary,
@@ -292,10 +292,19 @@ export class CostMetricsProjection extends DbBackedProjectionView<CostMetricsPay
     };
   }
 
-  async queryTrend(db: Db, window: CostTimeWindow = '7d'): Promise<CostTrendPoint[]> {
+  async queryTrend(
+    db: Db,
+    window: CostTimeWindow = '7d',
+    modelName?: string
+  ): Promise<CostTrendPoint[]> {
     const lca = llmCostAggregates;
     const cutoff = windowCutoff(window);
     const unit = truncUnit(window);
+
+    const conditions = [gte(lca.bucketTime, cutoff), gt(lca.totalCostUsd, '0')];
+    if (modelName) {
+      conditions.push(eq(lca.modelName, modelName));
+    }
 
     // safeTruncUnit() validates against the centralized allowlist in sql-safety.ts
     const rows = await db
@@ -307,7 +316,7 @@ export class CostMetricsProjection extends DbBackedProjectionView<CostMetricsPay
         session_count: sql<number>`COUNT(DISTINCT ${lca.sessionId}) FILTER (WHERE ${lca.sessionId} IS NOT NULL)::int`,
       })
       .from(lca)
-      .where(and(gte(lca.bucketTime, cutoff), gt(lca.totalCostUsd, '0')))
+      .where(and(...conditions))
       .groupBy(sql`date_trunc(${safeTruncUnit(unit)}, ${lca.bucketTime})`)
       .orderBy(sql`date_trunc(${safeTruncUnit(unit)}, ${lca.bucketTime})`);
 
