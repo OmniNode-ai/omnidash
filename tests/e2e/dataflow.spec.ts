@@ -19,6 +19,11 @@
 
 import { test, expect } from '@playwright/test';
 import { seedEvent, marker, disconnectProducer } from './helpers/kafka-seeder';
+import {
+  TOPIC_OMNICLAUDE_AGENT_ACTIONS,
+  SUFFIX_OMNICLAUDE_AGENT_MATCH,
+  TOPIC_OMNICLAUDE_AGENT_TRANSFORMATION,
+} from '@shared/topics';
 
 // Seeded markers — unique per test run to avoid cross-run collisions
 const AGENT_ACTION_MARKER = marker('agent-action');
@@ -36,7 +41,7 @@ test.describe('Data-flow: Kafka -> Projection -> Page', () => {
 
   test('agent-actions event appears on /events page', async ({ page }) => {
     // Seed an agent-actions event with a unique marker
-    await seedEvent('onex.evt.omniclaude.agent-actions.v1', {
+    await seedEvent(TOPIC_OMNICLAUDE_AGENT_ACTIONS, {
       event_type: 'agent_action',
       session_id: AGENT_ACTION_MARKER,
       action: 'tool_call',
@@ -60,7 +65,7 @@ test.describe('Data-flow: Kafka -> Projection -> Page', () => {
 
   test('routing-decision event appears on /llm-routing page', async ({ page }) => {
     // Seed a routing decision event
-    await seedEvent('onex.evt.omniclaude.agent-match.v1', {
+    await seedEvent(SUFFIX_OMNICLAUDE_AGENT_MATCH, {
       event_type: 'agent_match',
       session_id: ROUTING_AGENT_MARKER,
       agent_name: ROUTING_AGENT_MARKER,
@@ -81,7 +86,7 @@ test.describe('Data-flow: Kafka -> Projection -> Page', () => {
 
   test('transformation event appears on /extraction page', async ({ page }) => {
     // Seed a transformation event
-    await seedEvent('onex.evt.omniclaude.agent-transformation.v1', {
+    await seedEvent(TOPIC_OMNICLAUDE_AGENT_TRANSFORMATION, {
       event_type: 'agent_transformation',
       session_id: TRANSFORM_PATTERN_MARKER,
       pattern_name: TRANSFORM_PATTERN_MARKER,
@@ -127,7 +132,7 @@ test.describe('Data-flow: Kafka -> Projection -> Page', () => {
     await page.waitForLoadState('networkidle');
 
     // Seed an event AFTER the page is loaded (so WebSocket can catch it)
-    await seedEvent('onex.evt.omniclaude.agent-actions.v1', {
+    await seedEvent(TOPIC_OMNICLAUDE_AGENT_ACTIONS, {
       event_type: 'agent_action',
       session_id: LIVE_EVENT_MARKER,
       action: 'tool_call',

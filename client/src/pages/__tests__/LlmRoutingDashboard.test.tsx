@@ -23,6 +23,7 @@ const { stubSummary, stubLatency, stubByVersion, stubDisagreements, stubTrend } 
       fuzzy_p50_latency_ms: 12,
       fallback_rate: 0.05,
       avg_cost_per_decision: 0.0023,
+      counts: { total: 500, agreed: 352, disagreed: 148, fallback: 25 },
     },
     stubLatency: [
       { method: 'llm', p50: 45, p95: 120, p99: 200 },

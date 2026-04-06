@@ -20,6 +20,13 @@ import { EventEmitter } from 'events';
 import { resolveBrokers, getBrokerString } from './bus-config.js';
 import { getIntelligenceDb } from './storage';
 import { sql, SQL } from 'drizzle-orm';
+import {
+  SUFFIX_NODE_HEARTBEAT,
+  SUFFIX_INTELLIGENCE_PATTERN_LEARNED,
+  SUFFIX_INTELLIGENCE_PATTERN_STORED,
+  SUFFIX_INTELLIGENCE_PATTERN_PROJECTION,
+  SUFFIX_INTELLIGENCE_PATTERN_LEARNING_CMD,
+} from '@shared/topics';
 
 /**
  * Topics excluded from database storage.
@@ -31,11 +38,11 @@ import { sql, SQL } from 'drizzle-orm';
  * only database storage is filtered.
  */
 export const EXCLUDED_TOPICS_FOR_STORAGE = new Set([
-  'onex.evt.platform.node-heartbeat.v1',
-  'onex.evt.omniintelligence.pattern-learned.v1',
-  'onex.evt.omniintelligence.pattern-stored.v1',
-  'onex.evt.omniintelligence.pattern-projection.v1',
-  'onex.cmd.omniintelligence.pattern-learning.v1',
+  SUFFIX_NODE_HEARTBEAT,
+  SUFFIX_INTELLIGENCE_PATTERN_LEARNED,
+  SUFFIX_INTELLIGENCE_PATTERN_STORED,
+  SUFFIX_INTELLIGENCE_PATTERN_PROJECTION,
+  SUFFIX_INTELLIGENCE_PATTERN_LEARNING_CMD,
 ]);
 
 /**

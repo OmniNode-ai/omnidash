@@ -272,8 +272,8 @@ app.use((req, res, next) => {
   // Setup WebSocket for real-time events
   // Infer from KAFKA_BROKERS presence or legacy ENABLE_REAL_TIME_EVENTS [OMN-5363]
   const kafkaBrokersConfigured = Boolean(process.env.KAFKA_BROKERS);
-  if (kafkaBrokersConfigured || process.env.ENABLE_REAL_TIME_EVENTS === 'true') {
-    // ONEX_FLAG_EXEMPT: migration
+  const legacyRealtimeEnabled = process.env.ENABLE_REAL_TIME_EVENTS === 'true'; // ONEX_FLAG_EXEMPT: migration
+  if (kafkaBrokersConfigured || legacyRealtimeEnabled) {
     setupWebSocket(server);
   }
 
@@ -299,8 +299,7 @@ app.use((req, res, next) => {
     }
 
     // Mock registry events (fake heartbeats, state changes)
-    if (process.env.ENABLE_REAL_TIME_EVENTS === 'true') {
-      // ONEX_FLAG_EXEMPT: migration
+    if (legacyRealtimeEnabled) {
       const parsedInterval = parseInt(process.env.MOCK_REGISTRY_EVENT_INTERVAL || '5000', 10);
       const mockInterval =
         !Number.isFinite(parsedInterval) || parsedInterval < 1000 ? 5000 : parsedInterval;
