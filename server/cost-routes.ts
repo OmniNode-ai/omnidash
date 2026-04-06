@@ -19,7 +19,6 @@ import type {
   CostMetricsPayload,
 } from './projections/cost-metrics-projection';
 import type { PipelineBudgetRow } from './projections/pipeline-budget-projection';
-import { tryGetIntelligenceDb } from './storage';
 
 const router = Router();
 
@@ -173,15 +172,15 @@ router.get('/trend', async (req, res) => {
       return res.json([]);
     }
 
-    // When a model filter is specified, query the DB directly with the filter
-    // instead of using the cached (all-models) payload.
+    // When a model filter is specified, query via the projection's
+    // queryTrendForModel (which obtains the DB internally, respecting OMN-2325).
     let trend;
     if (modelFilter) {
-      const db = tryGetIntelligenceDb();
-      if (!db) {
+      const filtered = await view.queryTrendForModel(timeWindow, modelFilter);
+      if (!filtered) {
         return res.json([]);
       }
-      trend = await view.queryTrend(db, timeWindow, modelFilter);
+      trend = filtered;
     } else {
       const payload = await getPayloadForWindow(view, timeWindow);
       if (payload.degraded) {

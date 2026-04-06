@@ -329,6 +329,24 @@ export class CostMetricsProjection extends DbBackedProjectionView<CostMetricsPay
     }));
   }
 
+  /**
+   * Query trend data filtered by model name, obtaining the DB handle internally.
+   *
+   * This method exists so that route handlers can request model-filtered trend
+   * data without importing tryGetIntelligenceDb directly (which violates the
+   * OMN-2325 no-direct-DB-in-routes arch rule).
+   *
+   * Returns null when the DB is unavailable (caller should return [] or degrade).
+   */
+  async queryTrendForModel(
+    window: CostTimeWindow,
+    modelName: string
+  ): Promise<CostTrendPoint[] | null> {
+    const db = tryGetIntelligenceDb();
+    if (!db) return null;
+    return this.queryTrend(db, window, modelName);
+  }
+
   async queryByModel(db: Db): Promise<CostByModel[]> {
     const lca = llmCostAggregates;
     // Intentionally hardcoded to 30d regardless of the active trend window.
