@@ -748,6 +748,7 @@ function ByModelTable({
 
 export default function LlmRoutingDashboard() {
   const [timeWindow, setTimeWindow] = useState<LlmRoutingTimeWindow>('7d');
+  const [trendModelFilter, setTrendModelFilter] = useState<string | undefined>(undefined);
   const queryClient = useQueryClient();
   const llmRoutingLastUpdated = useFeatureStaleness('llm-routing');
 
@@ -829,8 +830,8 @@ export default function LlmRoutingDashboard() {
     isError: trendError,
     refetch: refetchTrend,
   } = useQuery({
-    queryKey: queryKeys.llmRouting.trend(timeWindow),
-    queryFn: () => llmRoutingSource.trend(timeWindow),
+    queryKey: [...queryKeys.llmRouting.trend(timeWindow), trendModelFilter ?? 'all'],
+    queryFn: () => llmRoutingSource.trend(timeWindow, trendModelFilter),
     refetchInterval: getPollingInterval(POLLING_INTERVAL_SLOW),
     staleTime: 60_000,
   });
@@ -868,6 +869,19 @@ export default function LlmRoutingDashboard() {
     queryKey: queryKeys.llmRouting.byOmninodeMode(timeWindow),
     queryFn: () => fetchByOmninodeMode(timeWindow),
     refetchInterval: getPollingInterval(POLLING_INTERVAL_SLOW),
+    staleTime: 60_000,
+  });
+
+  // ── Models list for trend filter (OMN-7643) ─────────────────────────────
+
+  const modelsUrl = buildApiUrl('/api/llm-routing/models');
+  const { data: trendModels = [] } = useQuery<string[]>({
+    queryKey: ['llm-routing', 'models'],
+    queryFn: async () => {
+      const res = await fetch(modelsUrl);
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      return res.json() as Promise<string[]>;
+    },
     staleTime: 60_000,
   });
 
@@ -1092,11 +1106,33 @@ export default function LlmRoutingDashboard() {
       {/* ── Trend Chart ─────────────────────────────────────────────────── */}
       <Card>
         <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <TrendingUp className="h-4 w-4" />
-            Routing Effectiveness Trends
-          </CardTitle>
-          <CardDescription>Agreement rate, fallback rate, and cost over time</CardDescription>
+          <div className="flex items-center justify-between">
+            <div>
+              <CardTitle className="flex items-center gap-2">
+                <TrendingUp className="h-4 w-4" />
+                Routing Effectiveness Trends
+              </CardTitle>
+              <CardDescription>Agreement rate, fallback rate, and cost over time</CardDescription>
+            </div>
+            <Select
+              value={trendModelFilter ?? '__all__'}
+              onValueChange={(v) => setTrendModelFilter(v === '__all__' ? undefined : v)}
+            >
+              <SelectTrigger className="h-8 w-48 text-xs">
+                <SelectValue placeholder="All models" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="__all__" className="text-xs">
+                  All models
+                </SelectItem>
+                {trendModels.map((m) => (
+                  <SelectItem key={m} value={m} className="text-xs font-mono">
+                    {m}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
         </CardHeader>
         <CardContent>
           {trendError ? (
