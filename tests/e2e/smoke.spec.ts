@@ -151,9 +151,6 @@ const DASHBOARD_ROUTES = [
   // Eval results (OMN-6780)
   '/eval-results',
 
-  // System activity
-  '/system-activity',
-
   // Preview pages
   '/preview/analytics',
   '/preview/health',

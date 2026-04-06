@@ -114,7 +114,9 @@ describe('LlmRoutingSource', () => {
     it('throws when fetch fails', async () => {
       setupFetchMock(new Map([['/api/llm-routing/summary', new Error('Network error')]]));
 
-      await expect(llmRoutingSource.summary('7d')).rejects.toThrow('Network error');
+      await expect(llmRoutingSource.summary('7d')).rejects.toThrow(
+        'Failed to fetch LLM routing summary'
+      );
     });
   });
 
@@ -136,7 +138,9 @@ describe('LlmRoutingSource', () => {
     it('throws when fetch fails', async () => {
       setupFetchMock(new Map([['/api/llm-routing/latency', new Error('Network error')]]));
 
-      await expect(llmRoutingSource.latency('7d')).rejects.toThrow('Network error');
+      await expect(llmRoutingSource.latency('7d')).rejects.toThrow(
+        'Failed to fetch LLM routing latency'
+      );
     });
   });
 
@@ -158,7 +162,9 @@ describe('LlmRoutingSource', () => {
     it('throws when fetch fails', async () => {
       setupFetchMock(new Map([['/api/llm-routing/by-version', new Error('Network error')]]));
 
-      await expect(llmRoutingSource.byVersion('7d')).rejects.toThrow('Network error');
+      await expect(llmRoutingSource.byVersion('7d')).rejects.toThrow(
+        'Failed to fetch LLM routing by version'
+      );
     });
   });
 
@@ -192,7 +198,9 @@ describe('LlmRoutingSource', () => {
     it('throws when fetch fails', async () => {
       setupFetchMock(new Map([['/api/llm-routing/disagreements', new Error('Network error')]]));
 
-      await expect(llmRoutingSource.disagreements('7d')).rejects.toThrow('Network error');
+      await expect(llmRoutingSource.disagreements('7d')).rejects.toThrow(
+        'Failed to fetch LLM routing disagreements'
+      );
     });
   });
 
@@ -222,7 +230,9 @@ describe('LlmRoutingSource', () => {
     it('throws when fetch fails', async () => {
       setupFetchMock(new Map([['/api/llm-routing/trend', new Error('Network error')]]));
 
-      await expect(llmRoutingSource.trend('7d')).rejects.toThrow('Network error');
+      await expect(llmRoutingSource.trend('7d')).rejects.toThrow(
+        'Failed to fetch LLM routing trend'
+      );
     });
   });
 });
