@@ -34,7 +34,7 @@ function validateWindow(req: Request, res: Response) {
   const raw = typeof req.query.window === 'string' ? req.query.window : '7d';
   const result = LlmRoutingTimeWindowSchema.safeParse(raw);
   if (!result.success) {
-    res.status(400).json({ error: 'Invalid window parameter. Must be one of: 24h, 7d, 30d' });
+    res.status(400).json({ error: 'Invalid window parameter. Must be one of: 24h, 7d, 30d, all' });
     return null;
   }
   return result.data;

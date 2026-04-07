@@ -63,6 +63,7 @@ import {
   POLLING_INTERVAL_SLOW,
   getPollingInterval,
 } from '@/lib/constants/query-config';
+import { TOOLTIP_STYLE, TOOLTIP_STYLE_SM } from '@/lib/constants/chart-theme';
 import type { DelegationTimeWindow, DelegationShadowDivergence } from '@shared/delegation-types';
 
 // ============================================================================
@@ -73,6 +74,7 @@ const TIME_WINDOWS: { value: DelegationTimeWindow; label: string }[] = [
   { value: '24h', label: '24h' },
   { value: '7d', label: '7d' },
   { value: '30d', label: '30d' },
+  { value: 'all', label: 'All' },
 ];
 
 /** Golden metric target for quality gate pass rate. */
@@ -238,7 +240,7 @@ function QualityGateHero({
                     <Tooltip
                       formatter={(v: any) => [fmtPct(v), 'Pass Rate']}
                       labelFormatter={(l) => String(l).slice(0, 10)}
-                      contentStyle={{ fontSize: '11px' }}
+                      contentStyle={TOOLTIP_STYLE_SM}
                     />
                   </LineChart>
                 </ResponsiveContainer>
@@ -615,7 +617,7 @@ export default function DelegationDashboard() {
                     ];
                   }}
                   labelFormatter={(l) => String(l).slice(0, 10)}
-                  contentStyle={{ fontSize: '12px' }}
+                  contentStyle={TOOLTIP_STYLE}
                 />
                 <Legend
                   formatter={(value) =>
@@ -709,7 +711,7 @@ export default function DelegationDashboard() {
                       if (name === 'quality_gate_pass_rate') return [fmtPct(v), 'Pass Rate'];
                       return [fmtCost(v), 'Avg Savings'];
                     }}
-                    contentStyle={{ fontSize: '12px' }}
+                    contentStyle={TOOLTIP_STYLE}
                   />
                   <Bar dataKey="quality_gate_pass_rate" radius={[0, 4, 4, 0]}>
                     {(byTaskType ?? []).map((_, idx) => (
@@ -761,7 +763,7 @@ export default function DelegationDashboard() {
                       name === 'cost_savings_usd' ? 'Cost Savings' : 'Total Cost',
                     ]}
                     labelFormatter={(l) => String(l).slice(0, 10)}
-                    contentStyle={{ fontSize: '12px' }}
+                    contentStyle={TOOLTIP_STYLE}
                   />
                   <Legend
                     formatter={(value) =>
@@ -839,7 +841,7 @@ export default function DelegationDashboard() {
                     return [fmtCount(v), name === 'passed' ? 'Passed' : 'Failed'];
                   }}
                   labelFormatter={(l) => String(l).slice(0, 10)}
-                  contentStyle={{ fontSize: '12px' }}
+                  contentStyle={TOOLTIP_STYLE}
                 />
                 <Legend />
                 <Bar yAxisId="count" dataKey="passed" stackId="a" fill="#22c55e" name="passed" />
