@@ -555,7 +555,50 @@ export function registerPatternRoutes(router: Router): void {
   // GET /patterns/quality-trends
   router.get('/patterns/quality-trends', async (req, res) => {
     try {
-      return res.json([]);
+      const timeWindow = (req.query.timeWindow as string) || '7d';
+
+      try {
+        await getIntelligenceDb().execute(sql`SELECT 1 FROM pattern_quality_metrics LIMIT 1`);
+      } catch (tableError: any) {
+        const errorCode = tableError?.code || tableError?.errno || '';
+        if (errorCode === '42P01' || tableError?.message?.includes('does not exist')) {
+          console.log('⚠ pattern_quality_metrics table does not exist - returning empty array');
+          return res.json([]);
+        }
+        throw tableError;
+      }
+
+      const interval = timeWindowToInterval(timeWindow);
+      const truncation = timeWindow === '24h' ? 'hour' : 'day';
+
+      const trends = await getIntelligenceDb()
+        .select({
+          period: sql<string>`DATE_TRUNC(${safeTruncUnit(truncation)}, ${patternQualityMetrics.measurementTimestamp})::text`,
+          avgQualityScore: sql<number>`ROUND(AVG(${patternQualityMetrics.qualityScore})::numeric, 3)`,
+          avgConfidence: sql<number>`ROUND(AVG(${patternQualityMetrics.confidence})::numeric, 3)`,
+          measurementCount: sql<number>`COUNT(*)::int`,
+          uniquePatterns: sql<number>`COUNT(DISTINCT ${patternQualityMetrics.patternId})::int`,
+        })
+        .from(patternQualityMetrics)
+        .where(
+          sql`${patternQualityMetrics.measurementTimestamp} > NOW() - INTERVAL ${safeInterval(interval)}`
+        )
+        .groupBy(
+          sql`DATE_TRUNC(${safeTruncUnit(truncation)}, ${patternQualityMetrics.measurementTimestamp})`
+        )
+        .orderBy(
+          sql`DATE_TRUNC(${safeTruncUnit(truncation)}, ${patternQualityMetrics.measurementTimestamp}) ASC`
+        );
+
+      res.json(
+        trends.map((t) => ({
+          period: t.period,
+          avgQualityScore: parseFloat(t.avgQualityScore?.toString() || '0'),
+          avgConfidence: parseFloat(t.avgConfidence?.toString() || '0'),
+          measurementCount: t.measurementCount,
+          uniquePatterns: t.uniquePatterns,
+        }))
+      );
     } catch (error) {
       console.error('Error fetching quality trends:', error);
       res.status(500).json({
