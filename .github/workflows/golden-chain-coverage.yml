@@ -1,6 +1,7 @@
 # .github/workflows/golden-chain-coverage.yml
 # Golden Chain Coverage Gate (OMN-7495)
 #
+# Runs golden projection tests in unit mode and verifies Tier 1 topic coverage.
 # Always produces a `golden-chain` check status (required by branch protection).
 # Skips the heavy test run when no projection-related files changed.
 name: Golden Chain Coverage Gate
