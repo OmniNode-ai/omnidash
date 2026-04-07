@@ -45,7 +45,7 @@ function validateWindow(req: Request, res: Response) {
  * Uses ensureFresh() for the default 7d window (avoids per-window cache overhead),
  * and ensureFreshForWindow() for non-default windows.
  */
-async function fetchPayload(window: '24h' | '7d' | '30d') {
+async function fetchPayload(window: '24h' | '7d' | '30d' | 'all') {
   if (window === '7d') {
     return llmRoutingProjection.ensureFresh();
   }
@@ -63,7 +63,7 @@ async function fetchPayload(window: '24h' | '7d' | '30d') {
  */
 function setDegradedHeader(
   res: Response,
-  requestedWindow: '24h' | '7d' | '30d',
+  requestedWindow: '24h' | '7d' | '30d' | 'all',
   payload: Awaited<ReturnType<typeof fetchPayload>>
 ): void {
   if (

@@ -14,7 +14,7 @@ import { delegationProjection } from './projection-bootstrap';
 
 const router = Router();
 
-const VALID_WINDOWS = ['24h', '7d', '30d'] as const;
+const VALID_WINDOWS = ['24h', '7d', '30d', 'all'] as const;
 
 function validateWindow(req: Request, res: Response): string | null {
   const timeWindow = typeof req.query.window === 'string' ? req.query.window : '7d';
