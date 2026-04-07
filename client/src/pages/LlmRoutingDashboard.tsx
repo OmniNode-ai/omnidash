@@ -13,6 +13,11 @@
  * - Prompt version bump button (OMN-3447)
  *
  * Events consumed from: onex.evt.omniclaude.llm-routing-decision.v1
+ *
+ * Infrastructure Routing section (OMN-7736):
+ * - Provider selection decisions from AdapterModelRouter
+ * - Enriched fields: provider, model, reason, selection_mode, fallback_indicator
+ * - Events consumed from: onex.evt.omnibase-infra.routing-decided.v1
  */
 
 import { useState, useCallback, useEffect } from 'react';
@@ -90,6 +95,47 @@ import type {
   LlmRoutingDisagreement,
   LlmRoutingFuzzyConfidenceBucket,
 } from '@shared/llm-routing-types';
+
+// ============================================================================
+// Infrastructure Routing types & fetch (OMN-7736)
+// ============================================================================
+
+interface InfraRoutingDecision {
+  id: string;
+  correlationId: string;
+  sessionId: string | null;
+  selectedProvider: string;
+  selectedModel: string;
+  reason: string;
+  selectionMode: string;
+  isFallback: boolean;
+  candidatesEvaluated: number;
+  taskType: string | null;
+  latencyMs: number | null;
+  createdAt: string;
+}
+
+interface InfraRoutingSummary {
+  totalDecisions: number;
+  fallbackCount: number;
+  fallbackRate: number;
+  avgLatencyMs: number | null;
+  byProvider: Array<{ provider: string; count: number }>;
+  byModel: Array<{ model: string; count: number }>;
+}
+
+async function fetchInfraRoutingDecisions(): Promise<InfraRoutingDecision[]> {
+  const res = await fetch(buildApiUrl('/api/infra-routing/decisions?limit=50'));
+  if (!res.ok) throw new Error(`infra-routing decisions: ${res.status}`);
+  const json = (await res.json()) as { decisions: InfraRoutingDecision[] };
+  return json.decisions;
+}
+
+async function fetchInfraRoutingSummary(): Promise<InfraRoutingSummary> {
+  const res = await fetch(buildApiUrl('/api/infra-routing/summary'));
+  if (!res.ok) throw new Error(`infra-routing summary: ${res.status}`);
+  return (await res.json()) as InfraRoutingSummary;
+}
 
 // ============================================================================
 // Constants
@@ -871,6 +917,31 @@ export default function LlmRoutingDashboard() {
     staleTime: 60_000,
   });
 
+  // ── Infra Routing queries (OMN-7736) ───────────────────────────────────
+
+  const {
+    data: infraDecisions = [],
+    isLoading: infraDecisionsLoading,
+    isError: infraDecisionsError,
+    refetch: refetchInfraDecisions,
+  } = useQuery<InfraRoutingDecision[]>({
+    queryKey: queryKeys.infraRouting.decisions(),
+    queryFn: fetchInfraRoutingDecisions,
+    refetchInterval: getPollingInterval(POLLING_INTERVAL_MEDIUM),
+    staleTime: 30_000,
+  });
+
+  const {
+    data: infraSummary,
+    isLoading: infraSummaryLoading,
+    refetch: refetchInfraSummary,
+  } = useQuery<InfraRoutingSummary>({
+    queryKey: queryKeys.infraRouting.summary(),
+    queryFn: fetchInfraRoutingSummary,
+    refetchInterval: getPollingInterval(POLLING_INTERVAL_MEDIUM),
+    staleTime: 30_000,
+  });
+
   // ── Helpers ──────────────────────────────────────────────────────────────
 
   const handleRefresh = () => {
@@ -882,6 +953,8 @@ export default function LlmRoutingDashboard() {
     void refetchByModel();
     void refetchFuzzyConfidence();
     void refetchByOmninodeMode();
+    void refetchInfraDecisions();
+    void refetchInfraSummary();
   };
 
   // false reads a mutable Set on the singleton.
@@ -1429,6 +1502,150 @@ export default function LlmRoutingDashboard() {
             <Skeleton className="h-52 w-full" />
           ) : (
             <ModelEffectivenessChart data={byModel} />
+          )}
+        </CardContent>
+      </Card>
+
+      {/* ── Infrastructure Routing Decisions (OMN-7736) ──────────────────── */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Cpu className="h-4 w-4" />
+            Infrastructure Provider Routing
+          </CardTitle>
+          <CardDescription>
+            Model router provider selection decisions with enriched schema fields
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          {infraSummaryLoading ? (
+            <Skeleton className="h-24 w-full mb-4" />
+          ) : infraSummary ? (
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-4">
+              <div className="rounded-lg border p-3">
+                <div className="text-xs text-muted-foreground">Total Decisions</div>
+                <div className="text-xl font-bold tabular-nums">
+                  {fmtCount(infraSummary.totalDecisions)}
+                </div>
+              </div>
+              <div className="rounded-lg border p-3">
+                <div className="text-xs text-muted-foreground">Fallback Rate</div>
+                <div
+                  className={cn(
+                    'text-xl font-bold tabular-nums',
+                    infraSummary.fallbackRate > 20
+                      ? 'text-red-500'
+                      : infraSummary.fallbackRate > 5
+                        ? 'text-yellow-500'
+                        : 'text-green-500'
+                  )}
+                >
+                  {infraSummary.fallbackRate.toFixed(1)}%
+                </div>
+              </div>
+              <div className="rounded-lg border p-3">
+                <div className="text-xs text-muted-foreground">Avg Latency</div>
+                <div className="text-xl font-bold tabular-nums">
+                  {infraSummary.avgLatencyMs != null ? fmtMs(infraSummary.avgLatencyMs) : '--'}
+                </div>
+              </div>
+              <div className="rounded-lg border p-3">
+                <div className="text-xs text-muted-foreground">Providers</div>
+                <div className="text-xl font-bold tabular-nums">
+                  {infraSummary.byProvider.length}
+                </div>
+              </div>
+            </div>
+          ) : null}
+
+          {infraSummary && infraSummary.byProvider.length > 0 && (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+              <div className="rounded-lg border p-3">
+                <h4 className="text-sm font-medium mb-2">By Provider</h4>
+                <div className="space-y-1">
+                  {infraSummary.byProvider.map((p) => (
+                    <div key={p.provider} className="flex justify-between text-xs">
+                      <span className="text-muted-foreground font-mono">{p.provider}</span>
+                      <span className="font-mono tabular-nums">{fmtCount(p.count)}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+              <div className="rounded-lg border p-3">
+                <h4 className="text-sm font-medium mb-2">By Model</h4>
+                <div className="space-y-1">
+                  {infraSummary.byModel.map((m) => (
+                    <div key={m.model} className="flex justify-between text-xs">
+                      <span className="text-muted-foreground font-mono truncate max-w-48">
+                        {m.model || '(default)'}
+                      </span>
+                      <span className="font-mono tabular-nums">{fmtCount(m.count)}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+          )}
+
+          {infraDecisionsError ? (
+            <p className="text-sm text-destructive py-4 text-center">
+              Failed to load infrastructure routing decisions.
+            </p>
+          ) : infraDecisionsLoading ? (
+            <Skeleton className="h-40 w-full" />
+          ) : infraDecisions.length === 0 ? (
+            <p className="text-sm text-muted-foreground py-4 text-center">
+              No infrastructure routing decisions in the last 24 hours.
+            </p>
+          ) : (
+            <div className="overflow-x-auto">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead className="text-xs">Provider</TableHead>
+                    <TableHead className="text-xs">Model</TableHead>
+                    <TableHead className="text-xs">Reason</TableHead>
+                    <TableHead className="text-xs">Selection Mode</TableHead>
+                    <TableHead className="text-xs">Fallback</TableHead>
+                    <TableHead className="text-xs">Latency</TableHead>
+                    <TableHead className="text-xs">Time</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {infraDecisions.slice(0, 20).map((d) => (
+                    <TableRow key={d.id}>
+                      <TableCell className="text-xs font-mono">{d.selectedProvider}</TableCell>
+                      <TableCell className="text-xs font-mono truncate max-w-32">
+                        {d.selectedModel || '--'}
+                      </TableCell>
+                      <TableCell className="text-xs">{d.reason || '--'}</TableCell>
+                      <TableCell className="text-xs">
+                        <Badge variant="secondary" className="text-[10px]">
+                          {d.selectionMode}
+                        </Badge>
+                      </TableCell>
+                      <TableCell className="text-xs">
+                        {d.isFallback ? (
+                          <Badge variant="destructive" className="text-[10px]">
+                            fallback
+                          </Badge>
+                        ) : (
+                          <Badge variant="default" className="text-[10px]">
+                            primary
+                          </Badge>
+                        )}
+                      </TableCell>
+                      <TableCell className="text-xs font-mono tabular-nums">
+                        {d.latencyMs != null ? fmtMs(d.latencyMs) : '--'}
+                      </TableCell>
+                      <TableCell className="text-xs text-muted-foreground">
+                        {relativeTime(d.createdAt)}
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
           )}
         </CardContent>
       </Card>
