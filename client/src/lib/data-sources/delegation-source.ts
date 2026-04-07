@@ -7,6 +7,7 @@
 import type {
   DelegationSummary,
   DelegationByTaskType,
+  DelegationByModel,
   DelegationCostSavingsTrendPoint,
   DelegationQualityGatePoint,
   DelegationShadowDivergence,
@@ -36,6 +37,16 @@ class DelegationSource {
     const response = await fetch(`${this.baseUrl}/by-task-type${this.buildWindowParam(window)}`);
     if (!response.ok) throw new Error(`HTTP ${response.status}`);
     const data: DelegationByTaskType[] = await response.json();
+    if (!Array.isArray(data)) {
+      throw new Error('Malformed response: expected array');
+    }
+    return data;
+  }
+
+  async byModel(window: DelegationTimeWindow = '7d'): Promise<DelegationByModel[]> {
+    const response = await fetch(`${this.baseUrl}/by-model${this.buildWindowParam(window)}`);
+    if (!response.ok) throw new Error(`HTTP ${response.status}`);
+    const data: DelegationByModel[] = await response.json();
     if (!Array.isArray(data)) {
       throw new Error('Malformed response: expected array');
     }
