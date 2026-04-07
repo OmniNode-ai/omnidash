@@ -702,6 +702,7 @@ export function registerPatternRoutes(router: Router): void {
       }
 
       if (nodeUuids.length === 0) {
+        // fallback-ok: empty query result
         res.json([]);
         return;
       }

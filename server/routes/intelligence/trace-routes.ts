@@ -36,6 +36,7 @@ export function registerTraceRoutes(router: Router): void {
         .limit(limit);
 
       if (decisions.length === 0) {
+        // fallback-ok: empty query result
         res.json([]);
         return;
       }
