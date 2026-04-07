@@ -80,7 +80,7 @@ function adaptNodeState(node: NodeState): Record<string, unknown> {
     description,
     node_type: node.nodeType,
     version: node.version,
-    state: node.state,
+    state: node.state?.toUpperCase() ?? 'ACTIVE',
     capabilities: flatCapabilities,
     registered_at: node.lastSeen,
     last_heartbeat_at: node.lastSeen,
@@ -494,12 +494,13 @@ function serveMockDiscovery(req: Request, res: Response, limit: number, offset: 
 
   for (const node of filteredNodes) {
     byType[node.node_type] = (byType[node.node_type] ?? 0) + 1;
-    if (node.state === 'ACTIVE') activeNodes++;
+    const upperState = node.state?.toUpperCase() ?? '';
+    if (upperState === 'ACTIVE') activeNodes++;
     else if (
-      ['PENDING_REGISTRATION', 'ACCEPTED', 'AWAITING_ACK', 'ACK_RECEIVED'].includes(node.state)
+      ['PENDING_REGISTRATION', 'ACCEPTED', 'AWAITING_ACK', 'ACK_RECEIVED'].includes(upperState)
     )
       pendingNodes++;
-    else if (['ACK_TIMED_OUT', 'LIVENESS_EXPIRED', 'REJECTED'].includes(node.state)) failedNodes++;
+    else if (['ACK_TIMED_OUT', 'LIVENESS_EXPIRED', 'REJECTED'].includes(upperState)) failedNodes++;
   }
   for (const instance of filteredInstances) {
     byHealth[instance.health_status] = (byHealth[instance.health_status] ?? 0) + 1;
