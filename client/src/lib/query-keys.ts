@@ -675,6 +675,9 @@ export const queryKeys = {
     /** Delegation breakdown by task type */
     byTaskType: (window: string) => [...queryKeys.delegation.all, 'by-task-type', window] as const,
 
+    /** Delegation breakdown by model */
+    byModel: (window: string) => [...queryKeys.delegation.all, 'by-model', window] as const,
+
     /** Cost savings trend */
     costSavings: (window: string) => [...queryKeys.delegation.all, 'cost-savings', window] as const,
 
