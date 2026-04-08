@@ -1,45 +1,21 @@
-import { Router, type Request, type Response, type NextFunction } from 'express';
+import { Router, type Request, type Response } from 'express';
+import rateLimit from 'express-rate-limit';
 import * as client from 'openid-client';
 import { getOidcConfig, isAuthEnabled, getBaseUrl } from './oidc-client';
 
 // Rate limiter for auth endpoints (15 requests per 60s window per IP)
-const AUTH_RATE_LIMIT_WINDOW_MS = 60_000;
-const AUTH_RATE_LIMIT_MAX = 15;
-const authRateLimitStore = new Map<string, { count: number; resetTime: number }>();
-
-setInterval(() => {
-  const now = Date.now();
-  for (const [ip, entry] of authRateLimitStore) {
-    if (now > entry.resetTime) authRateLimitStore.delete(ip);
-  }
-}, AUTH_RATE_LIMIT_WINDOW_MS).unref();
-
-function authRateLimitMiddleware(req: Request, res: Response, next: NextFunction): void {
-  const ip = req.ip ?? req.socket?.remoteAddress ?? 'unknown';
-  const now = Date.now();
-  const entry = authRateLimitStore.get(ip);
-
-  if (!entry || now > entry.resetTime) {
-    authRateLimitStore.set(ip, { count: 1, resetTime: now + AUTH_RATE_LIMIT_WINDOW_MS });
-    next();
-    return;
-  }
-
-  entry.count++;
-  if (entry.count > AUTH_RATE_LIMIT_MAX) {
-    const retryAfter = Math.ceil((entry.resetTime - now) / 1000);
-    res.set('Retry-After', String(retryAfter));
-    res.status(429).json({ error: 'Too many authentication requests, please try again later' });
-    return;
-  }
-
-  next();
-}
+const authRateLimiter = rateLimit({
+  windowMs: 60_000,
+  max: 15,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { error: 'Too many authentication requests, please try again later' },
+});
 
 const router = Router();
 
 // GET /auth/login — initiate OIDC authorization code flow with PKCE
-router.get('/login', authRateLimitMiddleware, async (req: Request, res: Response) => {
+router.get('/login', authRateLimiter, async (req: Request, res: Response) => {
   if (!isAuthEnabled()) {
     return res.status(503).json({ error: 'Authentication is not enabled' });
   }
@@ -77,7 +53,7 @@ router.get('/login', authRateLimitMiddleware, async (req: Request, res: Response
 });
 
 // GET /auth/callback — exchange authorization code for tokens
-router.get('/callback', authRateLimitMiddleware, async (req: Request, res: Response) => {
+router.get('/callback', authRateLimiter, async (req: Request, res: Response) => {
   if (!isAuthEnabled()) {
     return res.status(503).json({ error: 'Authentication is not enabled' });
   }
