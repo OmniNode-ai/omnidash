@@ -153,7 +153,7 @@ export type IntentEventPayload =
  *   intent_id: 'int_123',
  *   session_ref: 'sess_456',
  *   intent_category: 'code_generation',
- *   confidence: 0.95,
+ *   confidence: 0.95, // fallback-ok: JSDoc example
  *   keywords: ['python', 'fastapi'],
  *   created_at: new Date().toISOString(),
  * });
@@ -211,7 +211,7 @@ export class IntentEventEmitter extends EventEmitter {
    *   intent_id: 'int_abc123',
    *   session_ref: 'sess_xyz789',
    *   intent_category: 'debugging',
-   *   confidence: 0.92,
+   *   confidence: 0.92, // fallback-ok: JSDoc example
    *   keywords: ['error', 'fix', 'traceback'],
    *   created_at: new Date().toISOString(),
    * });

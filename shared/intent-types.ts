@@ -628,6 +628,7 @@ export interface RecentQueryOptions {
 export function createDistributionQuery(
   options: DistributionQueryOptions = {}
 ): IntentQueryRequestedEvent {
+  // fallback-ok: min_confidence=0.0 is a parameter default (no threshold)
   const { time_range_hours = 24, min_confidence = 0.0, correlation_id = generateUUID() } = options;
 
   return {
@@ -660,6 +661,7 @@ export function createSessionQuery(
   session_ref: string,
   options: SessionQueryOptions = {}
 ): IntentQueryRequestedEvent {
+  // fallback-ok: min_confidence=0.0 is a parameter default (no threshold)
   const { min_confidence = 0.0, limit = 100, correlation_id = generateUUID() } = options;
 
   return {
@@ -692,7 +694,7 @@ export function createRecentQuery(options: RecentQueryOptions = {}): IntentQuery
   const {
     time_range_hours = 24,
     limit = 100,
-    min_confidence = 0.0,
+    min_confidence = 0.0, // fallback-ok: parameter default (no threshold)
     correlation_id = generateUUID(),
   } = options;
 

@@ -88,7 +88,7 @@ const PatternsQuerySchema = z.object({
  *
  * Query Parameters:
  * - status: candidate|provisional|validated|deprecated
- * - min_confidence: 0.0-1.0 (maps to composite_score)
+ * - min_confidence: 0.0-1.0 (maps to composite_score) fallback-ok: JSDoc param range
  * - limit: 1-250 (default 50)
  * - offset: pagination offset (default 0)
  */

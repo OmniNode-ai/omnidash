@@ -152,6 +152,12 @@ const EXEMPT_FILES = new Set([
   // history) are not yet representable as a ProjectionService view.
   // TODO(OMN-7241-followup): migrate to ProjectionService view.
   'alert-history-routes.ts',
+
+  // System activity routes aggregate from skill_invocations, session_outcomes,
+  // delegation_events, and build_loop_phases tables. Complex multi-table
+  // aggregation queries are not yet representable as a ProjectionService view.
+  // Added in PR #516 (System Activity dashboard).
+  'system-activity-routes.ts',
 ]);
 
 /**

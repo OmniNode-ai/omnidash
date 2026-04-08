@@ -79,7 +79,7 @@ const DEMO_DATA: RoutingFeedbackResponse = {
       feedback_type: 'correction',
       original_route: 'llm-coder',
       corrected_route: 'llm-fast',
-      accuracy_score: 0.62,
+      accuracy_score: 0.62, // fallback-ok: demo data
       created_at: new Date(Date.now() - 1000 * 60 * 5).toISOString(),
     },
     {
@@ -88,7 +88,7 @@ const DEMO_DATA: RoutingFeedbackResponse = {
       feedback_type: 'positive',
       original_route: 'llm-reasoning',
       corrected_route: null,
-      accuracy_score: 0.94,
+      accuracy_score: 0.94, // fallback-ok: demo data
       created_at: new Date(Date.now() - 1000 * 60 * 15).toISOString(),
     },
     {
@@ -97,7 +97,7 @@ const DEMO_DATA: RoutingFeedbackResponse = {
       feedback_type: 'negative',
       original_route: 'llm-coder',
       corrected_route: null,
-      accuracy_score: 0.31,
+      accuracy_score: 0.31, // fallback-ok: demo data
       created_at: new Date(Date.now() - 1000 * 60 * 30).toISOString(),
     },
     {
@@ -106,7 +106,7 @@ const DEMO_DATA: RoutingFeedbackResponse = {
       feedback_type: 'correction',
       original_route: 'llm-fast',
       corrected_route: 'llm-coder',
-      accuracy_score: 0.55,
+      accuracy_score: 0.55, // fallback-ok: demo data
       created_at: new Date(Date.now() - 1000 * 60 * 45).toISOString(),
     },
     {
@@ -115,7 +115,7 @@ const DEMO_DATA: RoutingFeedbackResponse = {
       feedback_type: 'positive',
       original_route: 'llm-coder',
       corrected_route: null,
-      accuracy_score: 0.91,
+      accuracy_score: 0.91, // fallback-ok: demo data
       created_at: new Date(Date.now() - 1000 * 60 * 60).toISOString(),
     },
   ],
@@ -168,9 +168,7 @@ function accuracyColor(score: number): string {
   return 'text-red-500';
 }
 
-function feedbackBadgeVariant(
-  type: string
-): 'default' | 'secondary' | 'destructive' | 'outline' {
+function feedbackBadgeVariant(type: string): 'default' | 'secondary' | 'destructive' | 'outline' {
   if (type === 'positive') return 'default';
   if (type === 'negative') return 'destructive';
   if (type === 'correction') return 'secondary';
@@ -227,11 +225,7 @@ function AccuracyTrendChart({ trend }: { trend: AccuracyTrendEntry[] }) {
         const score = entry.avgAccuracy ?? 0;
         const pct = Math.round((score / maxScore) * 100);
         const barColor =
-          score >= 0.8
-            ? 'bg-emerald-500'
-            : score >= 0.6
-              ? 'bg-amber-500'
-              : 'bg-red-500';
+          score >= 0.8 ? 'bg-emerald-500' : score >= 0.6 ? 'bg-amber-500' : 'bg-red-500';
 
         return (
           <div key={entry.day} className="flex items-center gap-3 text-xs">
@@ -245,9 +239,7 @@ function AccuracyTrendChart({ trend }: { trend: AccuracyTrendEntry[] }) {
             <span className={`w-10 text-right font-mono ${accuracyColor(score)}`}>
               {(score * 100).toFixed(0)}%
             </span>
-            <span className="w-14 text-right text-muted-foreground">
-              {entry.eventCount} evt
-            </span>
+            <span className="w-14 text-right text-muted-foreground">{entry.eventCount} evt</span>
           </div>
         );
       })}
@@ -255,7 +247,13 @@ function AccuracyTrendChart({ trend }: { trend: AccuracyTrendEntry[] }) {
   );
 }
 
-function DistributionChart({ distribution, total }: { distribution: DistributionEntry[]; total: number }) {
+function DistributionChart({
+  distribution,
+  total,
+}: {
+  distribution: DistributionEntry[];
+  total: number;
+}) {
   if (total === 0 || distribution.length === 0) {
     return (
       <div className="flex items-center justify-center h-16 text-muted-foreground text-sm">
@@ -284,10 +282,7 @@ function DistributionChart({ distribution, total }: { distribution: Distribution
               </span>
             </div>
             <div className="bg-muted rounded-full h-2 overflow-hidden">
-              <div
-                className={`h-full rounded-full ${barColor}`}
-                style={{ width: `${pct}%` }}
-              />
+              <div className={`h-full rounded-full ${barColor}`} style={{ width: `${pct}%` }} />
             </div>
           </div>
         );
@@ -369,14 +364,10 @@ export default function RoutingFeedbackDashboard() {
         <MetricTile
           label="Avg Accuracy"
           value={
-            summary.avgAccuracy !== null
-              ? `${(summary.avgAccuracy * 100).toFixed(1)}%`
-              : 'N/A'
+            summary.avgAccuracy !== null ? `${(summary.avgAccuracy * 100).toFixed(1)}%` : 'N/A'
           }
           icon={GitBranch}
-          colorClass={
-            summary.avgAccuracy !== null ? accuracyColor(summary.avgAccuracy) : undefined
-          }
+          colorClass={summary.avgAccuracy !== null ? accuracyColor(summary.avgAccuracy) : undefined}
         />
         <MetricTile
           label="Positive"

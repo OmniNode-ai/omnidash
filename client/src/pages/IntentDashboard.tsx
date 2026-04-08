@@ -87,7 +87,7 @@ function makeDemoIntentSnapshot(): IntentProjectionPayload {
       severity: 'info',
       payload: {
         intent_category: 'code_generation',
-        confidence: 0.94,
+        confidence: 0.94, // fallback-ok: demo data
         session_ref: 'ses-demo-7f3a',
         created_at: new Date(now - 720_000).toISOString(),
       },
@@ -102,7 +102,7 @@ function makeDemoIntentSnapshot(): IntentProjectionPayload {
       severity: 'info',
       payload: {
         intent_category: 'debugging',
-        confidence: 0.88,
+        confidence: 0.88, // fallback-ok: demo data
         session_ref: 'ses-demo-8b2c',
         created_at: new Date(now - 600_000).toISOString(),
       },
@@ -117,7 +117,7 @@ function makeDemoIntentSnapshot(): IntentProjectionPayload {
       severity: 'info',
       payload: {
         intent_category: 'code_generation',
-        confidence: 0.91,
+        confidence: 0.91, // fallback-ok: demo data
         session_ref: 'ses-demo-7f3a',
         created_at: new Date(now - 480_000).toISOString(),
       },
@@ -132,7 +132,7 @@ function makeDemoIntentSnapshot(): IntentProjectionPayload {
       severity: 'info',
       payload: {
         intent_category: 'refactoring',
-        confidence: 0.79,
+        confidence: 0.79, // fallback-ok: demo data
         session_ref: 'ses-demo-9c4d',
         created_at: new Date(now - 360_000).toISOString(),
       },
@@ -147,7 +147,7 @@ function makeDemoIntentSnapshot(): IntentProjectionPayload {
       severity: 'info',
       payload: {
         intent_category: 'code_review',
-        confidence: 0.85,
+        confidence: 0.85, // fallback-ok: demo data
         session_ref: 'ses-demo-9c4d',
         created_at: new Date(now - 240_000).toISOString(),
       },
@@ -162,7 +162,7 @@ function makeDemoIntentSnapshot(): IntentProjectionPayload {
       severity: 'info',
       payload: {
         intent_category: 'debugging',
-        confidence: 0.92,
+        confidence: 0.92, // fallback-ok: demo data
         session_ref: 'ses-demo-8b2c',
         created_at: new Date(now - 120_000).toISOString(),
       },
@@ -177,7 +177,7 @@ function makeDemoIntentSnapshot(): IntentProjectionPayload {
       severity: 'info',
       payload: {
         intent_category: 'code_generation',
-        confidence: 0.96,
+        confidence: 0.96, // fallback-ok: demo data
         session_ref: 'ses-demo-7f3a',
         created_at: new Date(now - 60_000).toISOString(),
       },
