@@ -1032,7 +1032,8 @@ export class OmniintelligenceProjectionHandler implements ProjectionHandler {
         INSERT INTO pattern_learning_artifacts (
           pattern_id, pattern_name, pattern_type, lifecycle_state,
           composite_score, scoring_evidence, signature, metrics,
-          metadata, created_at, updated_at, projected_at
+          metadata, evidence_tier, state_changed_at,
+          created_at, updated_at, projected_at
         )
         SELECT
           ${correlationId}::uuid,
@@ -1044,6 +1045,8 @@ export class OmniintelligenceProjectionHandler implements ProjectionHandler {
           ${{ session_id: sessionId, trigger }}::jsonb,
           ${{}}::jsonb,
           ${{ source: 'PatternLearningRequested', trigger, session_id: sessionId }}::jsonb,
+          ${'unmeasured'}::text,
+          ${requestedAt},
           ${requestedAt},
           ${requestedAt},
           ${new Date()}

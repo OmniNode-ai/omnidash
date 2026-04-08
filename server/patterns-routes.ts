@@ -148,6 +148,7 @@ router.get('/', async (req, res) => {
           patternType: patternLearningArtifacts.patternType,
           lifecycleState: patternLearningArtifacts.lifecycleState,
           compositeScore: patternLearningArtifacts.compositeScore,
+          scoringEvidence: patternLearningArtifacts.scoringEvidence,
           createdAt: patternLearningArtifacts.createdAt,
           updatedAt: patternLearningArtifacts.updatedAt,
           projectedAt: patternLearningArtifacts.projectedAt,
@@ -165,18 +166,27 @@ router.get('/', async (req, res) => {
     const total = countResult[0]?.count ?? 0;
 
     // Map to legacy PatternListItem shape for backwards compatibility
-    const patterns = rows.map((row) => ({
-      id: row.id,
-      name: row.patternName,
-      signature: row.patternType,
-      status: row.lifecycleState as PatternStatus,
-      confidence: parseFloat(row.compositeScore ?? '0'),
-      quality_score: parseFloat(row.compositeScore ?? '0'),
-      usage_count_rolling_20: 0,
-      success_rate_rolling_20: null,
-      last_seen_at: row.updatedAt?.toISOString() ?? null,
-      created_at: row.createdAt?.toISOString() ?? null,
-    }));
+    const patterns = rows.map((row) => {
+      const evidence = row.scoringEvidence as Record<string, unknown> | null;
+      const injectionCount = Number(evidence?.injection_count_rolling_20 ?? 0);
+      const successCount = Number(evidence?.success_count_rolling_20 ?? 0);
+      const failureCount = Number(evidence?.failure_count_rolling_20 ?? 0);
+      const totalOutcomes = successCount + failureCount;
+      const successRate = totalOutcomes > 0 ? successCount / totalOutcomes : null;
+
+      return {
+        id: row.id,
+        name: row.patternName,
+        signature: row.patternType,
+        status: row.lifecycleState as PatternStatus,
+        confidence: parseFloat(row.compositeScore ?? '0'),
+        quality_score: parseFloat(row.compositeScore ?? '0'),
+        usage_count_rolling_20: injectionCount,
+        success_rate_rolling_20: successRate,
+        last_seen_at: row.updatedAt?.toISOString() ?? null,
+        created_at: row.createdAt?.toISOString() ?? null,
+      };
+    });
 
     res.set({
       'Cache-Control': 'no-cache, no-store, must-revalidate',
