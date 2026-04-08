@@ -298,6 +298,7 @@ export class DelegationProjection extends DbBackedProjectionView<DelegationPaylo
         COALESCE(AVG(de.cost_savings_usd::numeric), 0)                       AS avg_cost_savings
       FROM delegation_events de
       WHERE de.timestamp >= NOW() - INTERVAL ${safeInterval(interval)}
+        AND de.delegated_to IS NOT NULL
       GROUP BY de.delegated_to
       ORDER BY total DESC
     `);
