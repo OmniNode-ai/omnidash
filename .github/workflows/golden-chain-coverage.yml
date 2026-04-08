@@ -44,7 +44,7 @@ jobs:
             echo "No projection files changed — skipping tests"
           fi
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v6
         if: steps.changes.outputs.run_tests == 'true'
         with:
           node-version: '20'
