@@ -435,4 +435,60 @@ export class DelegationProjection extends DbBackedProjectionView<DelegationPaylo
       };
     });
   }
+
+  // --------------------------------------------------------------------------
+  // Recent individual decisions (OMN-7768)
+  // --------------------------------------------------------------------------
+
+  /**
+   * Return the most recent delegation decisions from the delegation_events table.
+   * Used by the /api/delegation/decisions proof route.
+   */
+  async queryRecentDecisions(
+    limit: number = 50
+  ): Promise<
+    Array<{
+      correlation_id: string;
+      task_type: string;
+      delegated_to: string;
+      delegated_by: string | null;
+      quality_gate_passed: boolean;
+      cost_usd: number | null;
+      cost_savings_usd: number | null;
+      repo: string | null;
+      timestamp: string;
+    }>
+  > {
+    const db = tryGetIntelligenceDb();
+    if (!db) return [];
+
+    const safeLimit = Math.min(Math.max(limit, 1), 250);
+    const rows = await db.execute(sql`
+      SELECT
+        correlation_id,
+        task_type,
+        delegated_to,
+        delegated_by,
+        quality_gate_passed,
+        cost_usd,
+        cost_savings_usd,
+        repo,
+        timestamp::text AS timestamp
+      FROM delegation_events
+      ORDER BY timestamp DESC
+      LIMIT ${safeLimit}
+    `);
+
+    return ((rows.rows ?? rows) as Record<string, unknown>[]).map((r) => ({
+      correlation_id: String(r.correlation_id ?? ''),
+      task_type: String(r.task_type ?? ''),
+      delegated_to: String(r.delegated_to ?? ''),
+      delegated_by: r.delegated_by != null ? String(r.delegated_by) : null,
+      quality_gate_passed: Boolean(r.quality_gate_passed),
+      cost_usd: r.cost_usd != null ? Number(r.cost_usd) : null,
+      cost_savings_usd: r.cost_savings_usd != null ? Number(r.cost_savings_usd) : null,
+      repo: r.repo != null ? String(r.repo) : null,
+      timestamp: String(r.timestamp ?? ''),
+    }));
+  }
 }
