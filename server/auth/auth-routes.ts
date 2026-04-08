@@ -37,10 +37,9 @@ function authRateLimitMiddleware(req: Request, res: Response, next: NextFunction
 }
 
 const router = Router();
-router.use(authRateLimitMiddleware);
 
 // GET /auth/login — initiate OIDC authorization code flow with PKCE
-router.get('/login', async (req: Request, res: Response) => {
+router.get('/login', authRateLimitMiddleware, async (req: Request, res: Response) => {
   if (!isAuthEnabled()) {
     return res.status(503).json({ error: 'Authentication is not enabled' });
   }
@@ -78,7 +77,7 @@ router.get('/login', async (req: Request, res: Response) => {
 });
 
 // GET /auth/callback — exchange authorization code for tokens
-router.get('/callback', async (req: Request, res: Response) => {
+router.get('/callback', authRateLimitMiddleware, async (req: Request, res: Response) => {
   if (!isAuthEnabled()) {
     return res.status(503).json({ error: 'Authentication is not enabled' });
   }
