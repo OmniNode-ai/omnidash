@@ -64,8 +64,13 @@ class LlmRoutingSource {
     return data;
   }
 
-  async trend(window: LlmRoutingTimeWindow = '7d'): Promise<LlmRoutingTrendPoint[]> {
-    const response = await fetch(`${this.baseUrl}/trend${this.buildWindowParam(window)}`);
+  async trend(
+    window: LlmRoutingTimeWindow = '7d',
+    model?: string
+  ): Promise<LlmRoutingTrendPoint[]> {
+    const params = new URLSearchParams({ window });
+    if (model) params.set('model', model);
+    const response = await fetch(`${this.baseUrl}/trend?${params.toString()}`);
     if (!response.ok) throw new Error(`HTTP ${response.status}`);
     const data: LlmRoutingTrendPoint[] = await response.json();
     if (!Array.isArray(data)) {

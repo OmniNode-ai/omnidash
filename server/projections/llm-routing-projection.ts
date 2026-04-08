@@ -568,23 +568,49 @@ export class LlmRoutingProjection extends DbBackedProjectionView<LlmRoutingPaylo
   }
 
   async queryTrend(db: Db, window: LlmRoutingTimeWindow = '7d'): Promise<LlmRoutingTrendPoint[]> {
+    return this.queryTrendByModel(db, window);
+  }
+
+  /**
+   * Trend query with optional model filter (OMN-7643).
+   * When model is provided, only rows matching that model are included.
+   */
+  async queryTrendByModel(
+    db: Db,
+    window: LlmRoutingTimeWindow = '7d',
+    model?: string
+  ): Promise<LlmRoutingTrendPoint[]> {
     const cutoff = windowCutoff(window);
     const unit = truncUnit(window);
 
     // safeTruncUnit() validates against the centralized allowlist in sql-safety.ts
-    const result = await db.execute(sql`
-      SELECT
-        date_trunc(${safeTruncUnit(unit)}, created_at)::text                               AS bucket,
-        COUNT(*)::int                                                                        AS total_decisions,
-        COUNT(*) FILTER (WHERE agreement = TRUE AND used_fallback = FALSE)::int             AS agreed,
-        COUNT(*) FILTER (WHERE used_fallback = FALSE)::int                                  AS non_fallback,
-        COUNT(*) FILTER (WHERE used_fallback = TRUE)::int                                   AS fallback_count,
-        COALESCE(AVG(cost_usd) FILTER (WHERE cost_usd IS NOT NULL), 0)::float               AS avg_cost_usd
-      FROM llm_routing_decisions
-      WHERE created_at >= ${cutoff}
-      GROUP BY date_trunc(${safeTruncUnit(unit)}, created_at)
-      ORDER BY date_trunc(${safeTruncUnit(unit)}, created_at)
-    `);
+    const result = model
+      ? await db.execute(sql`
+          SELECT
+            date_trunc(${safeTruncUnit(unit)}, created_at)::text                               AS bucket,
+            COUNT(*)::int                                                                        AS total_decisions,
+            COUNT(*) FILTER (WHERE agreement = TRUE AND used_fallback = FALSE)::int             AS agreed,
+            COUNT(*) FILTER (WHERE used_fallback = FALSE)::int                                  AS non_fallback,
+            COUNT(*) FILTER (WHERE used_fallback = TRUE)::int                                   AS fallback_count,
+            COALESCE(AVG(cost_usd) FILTER (WHERE cost_usd IS NOT NULL), 0)::float               AS avg_cost_usd
+          FROM llm_routing_decisions
+          WHERE created_at >= ${cutoff} AND model = ${model}
+          GROUP BY date_trunc(${safeTruncUnit(unit)}, created_at)
+          ORDER BY date_trunc(${safeTruncUnit(unit)}, created_at)
+        `)
+      : await db.execute(sql`
+          SELECT
+            date_trunc(${safeTruncUnit(unit)}, created_at)::text                               AS bucket,
+            COUNT(*)::int                                                                        AS total_decisions,
+            COUNT(*) FILTER (WHERE agreement = TRUE AND used_fallback = FALSE)::int             AS agreed,
+            COUNT(*) FILTER (WHERE used_fallback = FALSE)::int                                  AS non_fallback,
+            COUNT(*) FILTER (WHERE used_fallback = TRUE)::int                                   AS fallback_count,
+            COALESCE(AVG(cost_usd) FILTER (WHERE cost_usd IS NOT NULL), 0)::float               AS avg_cost_usd
+          FROM llm_routing_decisions
+          WHERE created_at >= ${cutoff}
+          GROUP BY date_trunc(${safeTruncUnit(unit)}, created_at)
+          ORDER BY date_trunc(${safeTruncUnit(unit)}, created_at)
+        `);
 
     const rows = result.rows as Array<Record<string, unknown>>;
     return rows.map((r) => {
@@ -600,6 +626,20 @@ export class LlmRoutingProjection extends DbBackedProjectionView<LlmRoutingPaylo
         total_decisions: total,
       };
     });
+  }
+
+  /**
+   * Fetch trend data filtered by model (OMN-7643).
+   * Acquires the DB handle internally so route files don't need to import storage.
+   * Returns null if the DB is unavailable.
+   */
+  async fetchTrendByModel(
+    window: LlmRoutingTimeWindow,
+    model: string
+  ): Promise<LlmRoutingTrendPoint[] | null> {
+    const db = tryGetIntelligenceDb();
+    if (!db) return null;
+    return this.queryTrendByModel(db, window, model);
   }
 
   // --------------------------------------------------------------------------
