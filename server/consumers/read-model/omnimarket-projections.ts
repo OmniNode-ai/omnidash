@@ -109,14 +109,14 @@ export class OmnimarketProjectionHandler implements ProjectionHandler {
       this.stats.projected++;
       return true;
     } catch (err) {
-      if (isTableMissingError(err)) {
+      if (isTableMissingError(err, 'build_loop_orchestrator_events')) {
         console.warn(
           '[OmnimarketProjectionHandler] build_loop_orchestrator_events table missing — run migrations'
         );
         return false;
       }
       console.error('[OmnimarketProjectionHandler] Failed to project build loop event:', err);
-      this.stats.errors++;
+      this.stats.dropped.missing_field++;
       return true;
     }
   }
