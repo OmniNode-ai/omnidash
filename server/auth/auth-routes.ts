@@ -1,8 +1,43 @@
-import { Router, type Request, type Response } from 'express';
+import { Router, type Request, type Response, type NextFunction } from 'express';
 import * as client from 'openid-client';
 import { getOidcConfig, isAuthEnabled, getBaseUrl } from './oidc-client';
 
+// Rate limiter for auth endpoints (15 requests per 60s window per IP)
+const AUTH_RATE_LIMIT_WINDOW_MS = 60_000;
+const AUTH_RATE_LIMIT_MAX = 15;
+const authRateLimitStore = new Map<string, { count: number; resetTime: number }>();
+
+setInterval(() => {
+  const now = Date.now();
+  for (const [ip, entry] of authRateLimitStore) {
+    if (now > entry.resetTime) authRateLimitStore.delete(ip);
+  }
+}, AUTH_RATE_LIMIT_WINDOW_MS).unref();
+
+function authRateLimitMiddleware(req: Request, res: Response, next: NextFunction): void {
+  const ip = req.ip ?? req.socket?.remoteAddress ?? 'unknown';
+  const now = Date.now();
+  const entry = authRateLimitStore.get(ip);
+
+  if (!entry || now > entry.resetTime) {
+    authRateLimitStore.set(ip, { count: 1, resetTime: now + AUTH_RATE_LIMIT_WINDOW_MS });
+    next();
+    return;
+  }
+
+  entry.count++;
+  if (entry.count > AUTH_RATE_LIMIT_MAX) {
+    const retryAfter = Math.ceil((entry.resetTime - now) / 1000);
+    res.set('Retry-After', String(retryAfter));
+    res.status(429).json({ error: 'Too many authentication requests, please try again later' });
+    return;
+  }
+
+  next();
+}
+
 const router = Router();
+router.use(authRateLimitMiddleware);
 
 // GET /auth/login — initiate OIDC authorization code flow with PKCE
 router.get('/login', async (req: Request, res: Response) => {
@@ -16,10 +51,19 @@ router.get('/login', async (req: Request, res: Response) => {
   const codeVerifier = client.randomPKCECodeVerifier();
   const codeChallenge = await client.calculatePKCECodeChallenge(codeVerifier);
 
+  // Regenerate session to prevent session fixation attacks
+  const returnTo = (req.query.returnTo as string) || '/';
+  await new Promise<void>((resolve, reject) => {
+    req.session.regenerate((err) => {
+      if (err) reject(err);
+      else resolve();
+    });
+  });
+
   req.session.oidcState = state;
   req.session.oidcNonce = nonce;
   req.session.oidcCodeVerifier = codeVerifier;
-  req.session.returnTo = (req.query.returnTo as string) || '/';
+  req.session.returnTo = returnTo;
 
   const authUrl = client.buildAuthorizationUrl(config, {
     scope: 'openid profile email offline_access',
@@ -71,7 +115,9 @@ router.get('/callback', async (req: Request, res: Response) => {
         sub: claims.sub,
         email: (claims as Record<string, unknown>).email as string | undefined,
         name: (claims as Record<string, unknown>).name as string | undefined,
-        preferred_username: (claims as Record<string, unknown>).preferred_username as string | undefined,
+        preferred_username: (claims as Record<string, unknown>).preferred_username as
+          | string
+          | undefined,
         realm_roles: realmAccess?.roles,
       };
     }
