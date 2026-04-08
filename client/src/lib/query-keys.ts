@@ -518,8 +518,9 @@ export const queryKeys = {
     /** Summary metrics for a time window */
     summary: (window: string) => [...queryKeys.costs.all, 'summary', window] as const,
 
-    /** Cost trend over time */
-    trend: (window: string) => [...queryKeys.costs.all, 'trend', window] as const,
+    /** Cost trend over time, optionally filtered by model */
+    trend: (window: string, model?: string) =>
+      [...queryKeys.costs.all, 'trend', window, model ?? 'all'] as const,
 
     /** Cost breakdown by model */
     byModel: () => [...queryKeys.costs.all, 'by-model'] as const,
@@ -674,6 +675,9 @@ export const queryKeys = {
 
     /** Delegation breakdown by task type */
     byTaskType: (window: string) => [...queryKeys.delegation.all, 'by-task-type', window] as const,
+
+    /** Delegation breakdown by model */
+    byModel: (window: string) => [...queryKeys.delegation.all, 'by-model', window] as const,
 
     /** Cost savings trend */
     costSavings: (window: string) => [...queryKeys.delegation.all, 'cost-savings', window] as const,

@@ -629,26 +629,44 @@ interface AdvancedNavSectionProps {
   isRouteLive: (route: string) => boolean;
   /** Returns true if the user has hidden this route in preferences. */
   isRouteHidden: (route: string) => boolean;
+  /** Returns true if the user has explicitly force-shown this route. */
+  isRouteForceShown: (route: string) => boolean;
+  /** When true, auto-hide pages whose data source is not live. */
+  hideNoData: boolean;
 }
 
 /**
- * Filter advanced sub-groups by wiring status and user preferences.
- * Pages with status 'working' or 'partial' are always shown (unless user-hidden).
- * Pages with 'preview', 'stub', or 'missing' are hidden unless showAll is true.
- * User-hidden routes are always removed from the sidebar.
+ * Filter advanced sub-groups by wiring status, data health, and user preferences.
+ *
+ * Filtering layers (in order):
+ * 1. User-hidden routes are always removed.
+ * 2. In demo/showAll mode, everything else passes.
+ * 3. Wiring status gate: only 'working' or 'partial' pass.
+ * 4. User force-shown routes bypass the data health check.
+ * 5. When hideNoData is true, pages with a mapped data source that is not live
+ *    are hidden automatically.
+ *
  * Empty groups after filtering are omitted entirely.
  */
 function filterSubGroups(
   groups: AdvancedSubGroup[],
   showAll: boolean,
-  isRouteHidden: (route: string) => boolean
+  isRouteHidden: (route: string) => boolean,
+  hideNoData: boolean,
+  isRouteLive: (route: string) => boolean,
+  isRouteForceShown: (route: string) => boolean
 ): AdvancedSubGroup[] {
   return groups
     .map((group) => ({
       ...group,
-      items: group.items.filter(
-        (item) => !isRouteHidden(item.url) && (showAll || isRouteVisible(item.url))
-      ),
+      items: group.items.filter((item) => {
+        if (isRouteHidden(item.url)) return false;
+        if (showAll) return true;
+        if (!isRouteVisible(item.url)) return false;
+        if (isRouteForceShown(item.url)) return true;
+        if (hideNoData && !isRouteLive(item.url)) return false;
+        return true;
+      }),
     }))
     .filter((group) => group.items.length > 0);
 }
@@ -684,6 +702,8 @@ function AdvancedNavSection({
   showAll = false,
   isRouteLive,
   isRouteHidden,
+  isRouteForceShown,
+  hideNoData,
 }: AdvancedNavSectionProps) {
   const hasActiveChild = isAdvancedRoute(location);
   const [isOpen, setIsOpen] = useState(hasActiveChild);
@@ -699,7 +719,14 @@ function AdvancedNavSection({
     }
   }, [hasActiveChild]);
 
-  const filteredGroups = filterSubGroups(advancedSubGroups, showAll, isRouteHidden);
+  const filteredGroups = filterSubGroups(
+    advancedSubGroups,
+    showAll,
+    isRouteHidden,
+    hideNoData,
+    isRouteLive,
+    isRouteForceShown
+  );
 
   return (
     <Collapsible open={isOpen} onOpenChange={setIsOpen} data-testid="advanced-section">
@@ -776,7 +803,7 @@ function AdvancedNavSection({
 export function AppSidebar() {
   const [location] = useLocation();
   const { isDemoMode, toggleDemoMode } = useDemoMode();
-  const { isRouteHidden } = usePreferences();
+  const { isRouteHidden, isRouteForceShown, hideNoData } = usePreferences();
   const { isRouteLive } = useDashboardHealth();
 
   return (
@@ -788,6 +815,8 @@ export function AppSidebar() {
           showAll={isDemoMode}
           isRouteLive={isRouteLive}
           isRouteHidden={isRouteHidden}
+          isRouteForceShown={isRouteForceShown}
+          hideNoData={hideNoData}
         />
       </SidebarContent>
 

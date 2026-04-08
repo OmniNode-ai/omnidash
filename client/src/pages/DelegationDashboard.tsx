@@ -42,6 +42,7 @@ import {
   GitBranch,
   ShieldCheck,
   Clock,
+  Cpu,
 } from 'lucide-react';
 import {
   LineChart,
@@ -64,7 +65,11 @@ import {
   getPollingInterval,
 } from '@/lib/constants/query-config';
 import { TOOLTIP_STYLE, TOOLTIP_STYLE_SM } from '@/lib/constants/chart-theme';
-import type { DelegationTimeWindow, DelegationShadowDivergence } from '@shared/delegation-types';
+import type {
+  DelegationTimeWindow,
+  DelegationShadowDivergence,
+  DelegationByModel,
+} from '@shared/delegation-types';
 
 // ============================================================================
 // Constants
@@ -394,6 +399,18 @@ export default function DelegationDashboard() {
   });
 
   const {
+    data: byModel,
+    isLoading: byModelLoading,
+    isError: byModelError,
+    refetch: refetchByModel,
+  } = useQuery({
+    queryKey: queryKeys.delegation.byModel(timeWindow),
+    queryFn: () => delegationSource.byModel(timeWindow),
+    refetchInterval: getPollingInterval(POLLING_INTERVAL_SLOW),
+    staleTime: 60_000,
+  });
+
+  const {
     data: costSavings,
     isLoading: costSavingsLoading,
     isError: costSavingsError,
@@ -446,6 +463,7 @@ export default function DelegationDashboard() {
   const handleRefresh = () => {
     void refetchSummary();
     void refetchTaskType();
+    void refetchByModel();
     void refetchCostSavings();
     void refetchQualityGates();
     void refetchShadowDivergence();
@@ -791,6 +809,76 @@ export default function DelegationDashboard() {
           </CardContent>
         </Card>
       </div>
+
+      {/* ── Model Comparison ──────────────────────────────────────────── */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Cpu className="h-4 w-4" />
+            Delegation by Model
+          </CardTitle>
+          <CardDescription>
+            Per-model delegation count, latency, cost savings, and quality gate pass rate
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          {byModelError ? (
+            <p className="text-sm text-destructive py-4 text-center">Failed to load model data.</p>
+          ) : byModelLoading ? (
+            <div className="space-y-2">
+              {[...Array(4)].map((_, i) => (
+                <Skeleton key={i} className="h-10 w-full" />
+              ))}
+            </div>
+          ) : (byModel?.length ?? 0) === 0 ? (
+            <p className="text-sm text-muted-foreground py-4 text-center">
+              No model data available.
+            </p>
+          ) : (
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Model</TableHead>
+                  <TableHead className="text-right">Delegations</TableHead>
+                  <TableHead className="text-right">Avg Latency</TableHead>
+                  <TableHead className="text-right">Cost Savings</TableHead>
+                  <TableHead className="text-right">Avg Savings</TableHead>
+                  <TableHead className="text-right">QG Pass Rate</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {(byModel ?? []).map((m) => (
+                  <TableRow key={m.model}>
+                    <TableCell>
+                      <span className="font-mono text-xs text-blue-400">{m.model}</span>
+                    </TableCell>
+                    <TableCell className="text-right font-mono text-sm">
+                      {fmtCount(m.total)}
+                    </TableCell>
+                    <TableCell className="text-right font-mono text-xs">
+                      {fmtMs(m.avg_latency_ms)}
+                    </TableCell>
+                    <TableCell className="text-right font-mono text-xs text-green-400">
+                      {fmtCost(m.total_cost_savings_usd)}
+                    </TableCell>
+                    <TableCell className="text-right font-mono text-xs">
+                      {fmtCost(m.avg_cost_savings_usd)}
+                    </TableCell>
+                    <TableCell className="text-right">
+                      <Badge
+                        variant={qualityGateBadge(m.quality_gate_pass_rate)}
+                        className="text-[10px] px-1.5 py-0"
+                      >
+                        {fmtPct(m.quality_gate_pass_rate)}
+                      </Badge>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          )}
+        </CardContent>
+      </Card>
 
       {/* ── Quality Gate Pass Rate Time Series ───────────────────────────── */}
       <Card>

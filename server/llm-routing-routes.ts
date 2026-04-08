@@ -144,13 +144,25 @@ router.get('/disagreements', async (req, res) => {
 });
 
 // ============================================================================
-// GET /api/llm-routing/trend?window=7d
+// GET /api/llm-routing/trend?window=7d&model=<name>   (OMN-7643)
 // ============================================================================
 
 router.get('/trend', async (req, res) => {
   try {
     const timeWindow = validateWindow(req, res);
     if (timeWindow === null) return;
+    const model = typeof req.query.model === 'string' ? req.query.model : undefined;
+
+    // When a model filter is provided, query the DB via the projection
+    // (bypassing the cached unfiltered payload).
+    if (model) {
+      const trend = await llmRoutingProjection.fetchTrendByModel(timeWindow, model);
+      if (trend === null) {
+        return res.status(503).json({ error: 'Database unavailable' });
+      }
+      return res.json(trend satisfies LlmRoutingTrendPoint[]);
+    }
+
     const payload = await fetchPayload(timeWindow);
     setDegradedHeader(res, timeWindow, payload);
     return res.json(payload.trend satisfies LlmRoutingTrendPoint[]);

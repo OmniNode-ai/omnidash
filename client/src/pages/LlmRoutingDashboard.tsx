@@ -77,6 +77,7 @@ import {
   Bar,
   Cell,
 } from 'recharts';
+import { ModelSelector } from '@/components/ModelSelector';
 import { cn } from '@/lib/utils';
 import {
   POLLING_INTERVAL_MEDIUM,
@@ -747,6 +748,7 @@ function ByModelTable({
 
 export default function LlmRoutingDashboard() {
   const [timeWindow, setTimeWindow] = useState<LlmRoutingTimeWindow>('7d');
+  const [trendModelFilter, setTrendModelFilter] = useState<string | undefined>(undefined);
   const queryClient = useQueryClient();
   const llmRoutingLastUpdated = useFeatureStaleness('llm-routing');
 
@@ -822,14 +824,25 @@ export default function LlmRoutingDashboard() {
     staleTime: 30_000,
   });
 
+  const routingModelsUrl = buildApiUrl('/api/llm-routing/models');
+  const { data: routingModels } = useQuery<string[]>({
+    queryKey: ['llm-routing', 'models'],
+    queryFn: async () => {
+      const res = await fetch(routingModelsUrl);
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      return res.json() as Promise<string[]>;
+    },
+    staleTime: 60_000,
+  });
+
   const {
     data: trend,
     isLoading: trendLoading,
     isError: trendError,
     refetch: refetchTrend,
   } = useQuery({
-    queryKey: queryKeys.llmRouting.trend(timeWindow),
-    queryFn: () => llmRoutingSource.trend(timeWindow),
+    queryKey: [...queryKeys.llmRouting.trend(timeWindow), trendModelFilter ?? 'all'],
+    queryFn: () => llmRoutingSource.trend(timeWindow, trendModelFilter),
     refetchInterval: getPollingInterval(POLLING_INTERVAL_SLOW),
     staleTime: 60_000,
   });
@@ -1091,11 +1104,21 @@ export default function LlmRoutingDashboard() {
       {/* ── Trend Chart ─────────────────────────────────────────────────── */}
       <Card>
         <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <TrendingUp className="h-4 w-4" />
-            Routing Effectiveness Trends
-          </CardTitle>
-          <CardDescription>Agreement rate, fallback rate, and cost over time</CardDescription>
+          <div className="flex items-center justify-between">
+            <div>
+              <CardTitle className="flex items-center gap-2">
+                <TrendingUp className="h-4 w-4" />
+                Routing Effectiveness Trends
+              </CardTitle>
+              <CardDescription>Agreement rate, fallback rate, and cost over time</CardDescription>
+            </div>
+            <ModelSelector
+              value={trendModelFilter ?? null}
+              onChange={(m) => setTrendModelFilter(m ?? undefined)}
+              className="h-8 w-48 text-xs"
+              models={routingModels}
+            />
+          </div>
         </CardHeader>
         <CardContent>
           {trendError ? (
