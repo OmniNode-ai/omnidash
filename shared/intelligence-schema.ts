@@ -1477,11 +1477,12 @@ export type ContextEnrichmentEventRow = typeof contextEnrichmentEvents.$inferSel
 export type InsertContextEnrichmentEvent = typeof contextEnrichmentEvents.$inferInsert;
 
 /**
- * LLM Routing Decisions Table (migration 0006b, altered by 0011a + 0011b)
+ * LLM Routing Decisions Table (migration 0006b, altered by 0011a + 0011b + 0013)
  * Projected events from onex.evt.omniclaude.llm-routing-decision.v1
  *
  * Note: correlation_id was TEXT in 0006b, converted to UUID by 0011a.
  * fuzzy_agent was NOT NULL in 0006b, made nullable by 0011b.
+ * Token columns (prompt_tokens, completion_tokens, total_tokens, omninode_enabled) added by 0013.
  */
 export const llmRoutingDecisions = pgTable(
   'llm_routing_decisions',
@@ -1501,6 +1502,10 @@ export const llmRoutingDecisions = pgTable(
     intent: text('intent'),
     model: text('model'),
     costUsd: numeric('cost_usd', { precision: 12, scale: 8 }),
+    promptTokens: integer('prompt_tokens').notNull().default(0),
+    completionTokens: integer('completion_tokens').notNull().default(0),
+    totalTokens: integer('total_tokens').notNull().default(0),
+    omninodeEnabled: boolean('omninode_enabled').notNull().default(true),
     createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
     projectedAt: timestamp('projected_at', { withTimezone: true }).notNull().defaultNow(),
   },
@@ -1510,6 +1515,8 @@ export const llmRoutingDecisions = pgTable(
     index('idx_lrd_used_fallback').on(table.usedFallback, table.createdAt),
     index('idx_lrd_prompt_version').on(table.routingPromptVersion, table.createdAt),
     index('idx_lrd_agent_pair').on(table.llmAgent, table.fuzzyAgent, table.createdAt),
+    index('idx_lrd_tokens').on(table.totalTokens),
+    index('idx_lrd_omninode').on(table.omninodeEnabled),
   ]
 );
 
