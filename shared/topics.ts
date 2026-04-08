@@ -585,6 +585,22 @@ export const TOPIC_OMNICLAUDE_AGENT_TRANSFORMATION = 'onex.evt.omniclaude.agent-
 export const TOPIC_OMNICLAUDE_PERFORMANCE_METRICS = 'onex.evt.omniclaude.performance-metrics.v1';
 
 // ============================================================================
+// OmniMarket Topics (OMN-7920)
+// ============================================================================
+
+/** Build loop orchestrator phase transition event.
+ * Emitted by node_build_loop_orchestrator on each FSM state change.
+ * Consumed by ReadModelConsumer to project into build_loop_orchestrator_events table. */
+export const TOPIC_OMNIMARKET_BUILD_LOOP_ORCHESTRATOR_PHASE_TRANSITION =
+  'onex.evt.omnimarket.build-loop-orchestrator-phase-transition.v1';
+
+/** Build loop orchestrator completed event.
+ * Emitted by node_build_loop_orchestrator when a run reaches COMPLETE or FAILED.
+ * Consumed by ReadModelConsumer to project into build_loop_orchestrator_events table. */
+export const TOPIC_OMNIMARKET_BUILD_LOOP_ORCHESTRATOR_COMPLETED =
+  'onex.evt.omnimarket.build-loop-orchestrator-completed.v1';
+
+// ============================================================================
 // Topic Groups — DELETED (OMN-5252 / OMN-5031)
 //
 // The following arrays and buildSubscriptionTopics() were removed:

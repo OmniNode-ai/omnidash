@@ -2718,3 +2718,30 @@ export const infraRoutingDecisions = pgTable(
 
 export type InfraRoutingDecisionRow = typeof infraRoutingDecisions.$inferSelect;
 export type InsertInfraRoutingDecision = typeof infraRoutingDecisions.$inferInsert;
+
+// ---------------------------------------------------------------------------
+// build_loop_orchestrator_events (OMN-7920)
+// Projected from:
+//   onex.evt.omnimarket.build-loop-orchestrator-phase-transition.v1
+//   onex.evt.omnimarket.build-loop-orchestrator-completed.v1
+// ---------------------------------------------------------------------------
+
+export const buildLoopOrchestratorEvents = pgTable('build_loop_orchestrator_events', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  correlationId: uuid('correlation_id').notNull(),
+  eventType: text('event_type').notNull(),
+  phase: text('phase'),
+  previousPhase: text('previous_phase'),
+  cyclesCompleted: integer('cycles_completed'),
+  cyclesFailed: integer('cycles_failed'),
+  totalTicketsDispatched: integer('total_tickets_dispatched'),
+  status: text('status'),
+  occurredAt: timestamp('occurred_at', { withTimezone: true }).notNull().defaultNow(),
+  rawPayload: jsonb('raw_payload'),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+});
+
+export const insertBuildLoopOrchestratorEventSchema = createInsertSchema(
+  buildLoopOrchestratorEvents
+);
+export type InsertBuildLoopOrchestratorEvent = typeof buildLoopOrchestratorEvents.$inferInsert;

@@ -176,6 +176,17 @@ read_model_topics:
   - topic: "onex.cmd.omniintelligence.pattern-learning.v1"
     handler: "projectPatternLearningRequested"
 
+  # --- omnimarket topics (OMN-7920) ---
+  # Only topics with a defined projection handler are subscribed here.
+  # Gaps (no handler defined in this phase, excluded per plan Task 5):
+  #   onex.evt.omnimarket.delegation-attempt.v1 — no projection table
+  #   onex.evt.omnimarket.delegation-metrics.v1 — no projection table
+  #   All other omnimarket sweep/pipeline/release/loop topics — no handler defined
+  - topic: "onex.evt.omnimarket.build-loop-orchestrator-phase-transition.v1"
+    handler: "projectBuildLoopOrchestratorEvent"
+  - topic: "onex.evt.omnimarket.build-loop-orchestrator-completed.v1"
+    handler: "projectBuildLoopOrchestratorEvent"
+
 # Topics omnidash monitors for broker health but does NOT consume into read models.
 # These indicate healthy upstream producers. No handler is needed.
 # Rules:
