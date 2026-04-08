@@ -93,10 +93,12 @@ router.get('/quality-gates', async (req, res) => {
 // GET /api/delegation/shadow-divergence
 // ============================================================================
 
-router.get('/shadow-divergence', async (_req, res) => {
+router.get('/shadow-divergence', async (req, res) => {
   try {
-    // Shadow divergence currently returns empty — future table.
-    return res.json([]);
+    const timeWindow = validateWindow(req, res);
+    if (timeWindow === null) return;
+    const payload = await delegationProjection.ensureFreshForWindow(timeWindow);
+    return res.json(payload.shadowDivergence);
   } catch (error) {
     console.error('[delegation] Error fetching shadow-divergence:', error);
     return res.status(500).json({ error: 'Failed to fetch delegation shadow divergence' });
