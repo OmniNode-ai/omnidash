@@ -32,7 +32,7 @@ import { safeMaxTimestampQuery } from './sql-safety';
  * to determine data freshness.
  */
 const FEATURE_TABLE_MAP: Record<string, { table: string; tsCol: string }> = {
-  patterns: { table: 'pattern_learning_artifacts', tsCol: 'created_at' },
+  patterns: { table: 'pattern_learning_artifacts', tsCol: 'projected_at' },
   enforcement: { table: 'pattern_enforcement_events', tsCol: 'created_at' },
   effectiveness: { table: 'injection_effectiveness', tsCol: 'created_at' },
   'rl-episodes': { table: 'rl_episodes', tsCol: 'created_at' },
