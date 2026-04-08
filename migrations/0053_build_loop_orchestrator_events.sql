@@ -18,6 +18,11 @@ CREATE TABLE IF NOT EXISTS build_loop_orchestrator_events (
   created_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
+-- Unique constraint so onConflictDoNothing() is effective for idempotent projection
+ALTER TABLE build_loop_orchestrator_events
+  ADD CONSTRAINT uq_blo_events_correlation_type_phase
+  UNIQUE (correlation_id, event_type, phase);
+
 CREATE INDEX IF NOT EXISTS idx_blo_events_correlation ON build_loop_orchestrator_events (correlation_id);
 CREATE INDEX IF NOT EXISTS idx_blo_events_occurred ON build_loop_orchestrator_events (occurred_at DESC);
 CREATE INDEX IF NOT EXISTS idx_blo_events_event_type ON build_loop_orchestrator_events (event_type);

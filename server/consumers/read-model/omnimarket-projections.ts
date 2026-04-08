@@ -85,7 +85,7 @@ export class OmnimarketProjectionHandler implements ProjectionHandler {
         return true;
       }
 
-      const occurredAt = safeParseDate(data['timestamp'] as string | undefined) ?? new Date();
+      const occurredAt = safeParseDate(data['timestamp'] as string | undefined);
 
       const row: InsertBuildLoopOrchestratorEvent = {
         correlationId,
