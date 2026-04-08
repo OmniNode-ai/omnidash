@@ -60,7 +60,7 @@ import {
   nodeServiceRegistry,
   validationRuns,
 } from '@shared/intelligence-schema';
-import { count, sql } from 'drizzle-orm';
+import { sql } from 'drizzle-orm';
 import { getEventBusDataSource } from './event-bus-data-source';
 import {
   TOPIC_OMNICLAUDE_AGENT_ACTIONS,
@@ -164,12 +164,18 @@ async function probeEventBus(): Promise<DataSourceInfo> {
   try {
     const db = tryGetIntelligenceDb();
     if (db) {
-      const result = await db.execute(sql`SELECT COUNT(*)::int AS total FROM event_bus_events`);
-      const total = (result.rows[0] as { total: number } | undefined)?.total ?? 0;
-      if (total > 0) {
-        return { status: 'live' };
+      try {
+        const result = await db.execute(
+          sql`SELECT EXISTS(SELECT 1 FROM event_bus_events) AS exists`
+        );
+        const exists = (result.rows[0] as { exists: boolean } | undefined)?.exists ?? false;
+        if (exists) {
+          return { status: 'live' };
+        }
+        // DB reachable but empty — fall through to in-memory fallback
+      } catch {
+        // DB query failed — fall through to in-memory fallback
       }
-      // DB reachable but empty — fall through to in-memory fallback
     }
     // In-memory fallback
     const view = projectionService.getView<EventBusPayload>('event-bus');
@@ -184,9 +190,7 @@ async function probeEventBus(): Promise<DataSourceInfo> {
     if (!payload || payload.totalEventsIngested === 0) {
       return { status: 'mock', reason: 'no_events_ingested' };
     }
-    const lastEvent =
-      snapshot.snapshotTimeMs != null ? new Date(snapshot.snapshotTimeMs).toISOString() : undefined;
-    return { status: 'live', lastEvent };
+    return { status: 'live' };
   } catch {
     return { status: 'error', reason: 'probe_threw' };
   }
@@ -201,10 +205,13 @@ async function probeEffectiveness(): Promise<DataSourceInfo> {
   try {
     const db = tryGetIntelligenceDb();
     if (db) {
-      const result = await db.select({ total: count() }).from(injectionEffectiveness);
-      const total = result[0]?.total ?? 0;
-      if (total > 0) {
-        return { status: 'live' };
+      try {
+        const rows = await db.select().from(injectionEffectiveness).limit(1);
+        if (rows.length > 0) {
+          return { status: 'live' };
+        }
+      } catch {
+        // DB query failed — fall through to in-memory fallback
       }
     }
     // In-memory fallback
@@ -237,10 +244,13 @@ async function probeExtraction(): Promise<DataSourceInfo> {
   try {
     const db = tryGetIntelligenceDb();
     if (db) {
-      const result = await db.select({ total: count() }).from(agentManifestInjections);
-      const total = result[0]?.total ?? 0;
-      if (total > 0) {
-        return { status: 'live' };
+      try {
+        const rows = await db.select().from(agentManifestInjections).limit(1);
+        if (rows.length > 0) {
+          return { status: 'live' };
+        }
+      } catch {
+        // DB query failed — fall through to in-memory fallback
       }
     }
     // In-memory fallback
@@ -274,12 +284,15 @@ async function probeBaselines(): Promise<DataSourceInfo> {
   try {
     const db = tryGetIntelligenceDb();
     if (db) {
-      const result = await db.select({ total: count() }).from(baselinesComparisons);
-      const total = result[0]?.total ?? 0;
-      if (total > 0) {
-        return { status: 'live' };
+      try {
+        const rows = await db.select().from(baselinesComparisons).limit(1);
+        if (rows.length > 0) {
+          return { status: 'live' };
+        }
+        return { status: 'offline', reason: 'upstream_service_offline' };
+      } catch {
+        // DB query failed — fall through to in-memory fallback
       }
-      return { status: 'offline', reason: 'upstream_service_offline' };
     }
     // In-memory fallback
     const view = projectionService.getView<BaselinesPayload>('baselines') as
@@ -312,18 +325,20 @@ async function probeCost(): Promise<DataSourceInfo> {
   try {
     const db = tryGetIntelligenceDb();
     if (db) {
-      const costResult = await db.select({ total: count() }).from(llmCostAggregates);
-      const costTotal = costResult[0]?.total ?? 0;
-      if (costTotal > 0) {
-        return { status: 'live' };
+      try {
+        const costRows = await db.select().from(llmCostAggregates).limit(1);
+        if (costRows.length > 0) {
+          return { status: 'live' };
+        }
+        // llm_cost_aggregates empty — check llm_routing_decisions as proxy
+        const routingRows = await db.select().from(llmRoutingDecisions).limit(1);
+        if (routingRows.length > 0) {
+          return { status: 'live' };
+        }
+        return { status: 'offline', reason: 'upstream_service_offline' };
+      } catch {
+        // DB query failed — fall through to in-memory fallback
       }
-      // llm_cost_aggregates empty — check llm_routing_decisions as proxy
-      const routingResult = await db.select({ total: count() }).from(llmRoutingDecisions);
-      const routingTotal = routingResult[0]?.total ?? 0;
-      if (routingTotal > 0) {
-        return { status: 'live' };
-      }
-      return { status: 'offline', reason: 'upstream_service_offline' };
     }
     // In-memory fallback
     const view = projectionService.getView<CostMetricsPayload>('cost-metrics') as
@@ -358,12 +373,15 @@ async function probeIntents(): Promise<DataSourceInfo> {
   try {
     const db = tryGetIntelligenceDb();
     if (db) {
-      const result = await db.select({ total: count() }).from(intentSignals);
-      const total = result[0]?.total ?? 0;
-      if (total > 0) {
-        return { status: 'live' };
+      try {
+        const rows = await db.select().from(intentSignals).limit(1);
+        if (rows.length > 0) {
+          return { status: 'live' };
+        }
+        // DB reachable but empty — fall through to in-memory fallback
+      } catch {
+        // DB query failed — fall through to in-memory fallback
       }
-      // DB reachable but empty — fall through to in-memory fallback
     }
     // In-memory fallback
     const view = projectionService.getView<IntentProjectionPayload>('intent-db');
@@ -395,12 +413,15 @@ async function probeNodeRegistry(): Promise<DataSourceInfo> {
   try {
     const db = tryGetIntelligenceDb();
     if (db) {
-      const result = await db.select({ total: count() }).from(nodeServiceRegistry);
-      const total = result[0]?.total ?? 0;
-      if (total > 0) {
-        return { status: 'live' };
+      try {
+        const rows = await db.select().from(nodeServiceRegistry).limit(1);
+        if (rows.length > 0) {
+          return { status: 'live' };
+        }
+        // DB reachable but empty — fall through to in-memory fallback
+      } catch {
+        // DB query failed — fall through to in-memory fallback
       }
-      // DB reachable but empty — fall through to in-memory fallback
     }
     // In-memory fallback
     const view = projectionService.getView<NodeRegistryPayload>('node-registry-db');
@@ -431,12 +452,15 @@ async function probeValidation(): Promise<DataSourceInfo> {
   try {
     const db = tryGetIntelligenceDb();
     if (db) {
-      const result = await db.select({ total: count() }).from(validationRuns);
-      const total = result[0]?.total ?? 0;
-      if (total > 0) {
-        return { status: 'live' };
+      try {
+        const rows = await db.select().from(validationRuns).limit(1);
+        if (rows.length > 0) {
+          return { status: 'live' };
+        }
+        return { status: 'offline', reason: 'upstream_service_offline' };
+      } catch {
+        // DB query failed — fall through to in-memory fallback
       }
-      return { status: 'offline', reason: 'upstream_service_offline' };
     }
     // In-memory fallback
     const view = projectionService.getView<ValidationProjectionPayload>('validation') as
@@ -471,9 +495,8 @@ async function probeInsights(): Promise<DataSourceInfo> {
     if (!db) {
       return { status: 'mock', reason: 'no_db_connection' };
     }
-    const result = await db.select({ total: count() }).from(patternLearningArtifacts);
-    const total = result[0]?.total ?? 0;
-    if (total === 0) {
+    const rows = await db.select().from(patternLearningArtifacts).limit(1);
+    if (rows.length === 0) {
       return { status: 'offline', reason: 'upstream_never_emitted' };
     }
     return { status: 'live' };
@@ -484,19 +507,22 @@ async function probeInsights(): Promise<DataSourceInfo> {
 
 /**
  * Probe the patterns data source.
- * DB-first: queries pattern_learning_artifacts row count (same table as insights).
+ * DB-first: queries pattern_learning_artifacts (same table as insights).
  * Falls back to in-memory projection snapshot if DB is unavailable.
  */
 async function probePatterns(): Promise<DataSourceInfo> {
   try {
     const db = tryGetIntelligenceDb();
     if (db) {
-      const result = await db.select({ total: count() }).from(patternLearningArtifacts);
-      const total = result[0]?.total ?? 0;
-      if (total > 0) {
-        return { status: 'live' };
+      try {
+        const rows = await db.select().from(patternLearningArtifacts).limit(1);
+        if (rows.length > 0) {
+          return { status: 'live' };
+        }
+        return { status: 'offline', reason: 'upstream_never_emitted' };
+      } catch {
+        // DB query failed — fall through to in-memory fallback
       }
-      return { status: 'offline', reason: 'upstream_never_emitted' };
     }
     // In-memory fallback
     const view = projectionService.getView<PatternsProjectionPayload>('patterns') as
