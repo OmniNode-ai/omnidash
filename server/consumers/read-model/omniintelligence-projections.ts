@@ -572,7 +572,7 @@ export class OmniintelligenceProjectionHandler implements ProjectionHandler {
             .values({
               patternId,
               qualityScore: Number.isFinite(qualityScore) ? qualityScore : 0,
-              confidence: Number.isFinite(confidence) ? confidence : 0.5,
+              confidence: Number.isFinite(confidence) ? confidence : 0.5, // fallback-ok: NaN safety guard
               measurementTimestamp:
                 safeParseDate(data.snapshot_at ?? data.snapshotAt) ?? new Date(),
               version: '1.0.0',
@@ -583,7 +583,7 @@ export class OmniintelligenceProjectionHandler implements ProjectionHandler {
               target: patternQualityMetrics.patternId,
               set: {
                 qualityScore: Number.isFinite(qualityScore) ? qualityScore : 0,
-                confidence: Number.isFinite(confidence) ? confidence : 0.5,
+                confidence: Number.isFinite(confidence) ? confidence : 0.5, // fallback-ok: NaN safety guard
                 measurementTimestamp:
                   safeParseDate(data.snapshot_at ?? data.snapshotAt) ?? new Date(),
                 updatedAt: new Date(),
@@ -1006,62 +1006,17 @@ export class OmniintelligenceProjectionHandler implements ProjectionHandler {
   // -------------------------------------------------------------------------
 
   private async projectPatternLearningRequestedEvent(
-    data: Record<string, unknown>,
-    fallbackId: string,
-    context: ProjectionContext
+    _data: Record<string, unknown>,
+    _fallbackId: string,
+    _context: ProjectionContext
   ): Promise<boolean> {
-    const { db } = context;
-    if (!db) return false;
-
-    const correlationId =
-      (data.correlation_id as string) || (data.correlationId as string) || fallbackId;
-    if (!UUID_RE.test(correlationId)) {
-      console.warn(
-        `[ReadModelConsumer] PatternLearningRequested: correlation_id "${correlationId}" is not a ` +
-          'valid UUID -- skipping row'
-      );
-      return true;
-    }
-
-    const sessionId = (data.session_id as string) || (data.sessionId as string) || null;
-    const trigger = (data.trigger as string) || 'unknown';
-    const requestedAt = safeParseDate(data.timestamp ?? data.created_at);
-
-    try {
-      await db.execute(sql`
-        INSERT INTO pattern_learning_artifacts (
-          pattern_id, pattern_name, pattern_type, lifecycle_state,
-          composite_score, scoring_evidence, signature, metrics,
-          metadata, created_at, updated_at, projected_at
-        )
-        SELECT
-          ${correlationId}::uuid,
-          ${'learning_requested'}::varchar(255),
-          ${'pipeline_request'}::varchar(100),
-          ${'requested'}::text,
-          ${0}::numeric(10,6),
-          ${{}}::jsonb,
-          ${{ session_id: sessionId, trigger }}::jsonb,
-          ${{}}::jsonb,
-          ${{ source: 'PatternLearningRequested', trigger, session_id: sessionId }}::jsonb,
-          ${requestedAt},
-          ${requestedAt},
-          ${new Date()}
-        WHERE NOT EXISTS (
-          SELECT 1 FROM pattern_learning_artifacts WHERE pattern_id = ${correlationId}::uuid
-        )
-      `);
-    } catch (err) {
-      if (isTableMissingError(err, 'pattern_learning_artifacts')) {
-        console.warn(
-          '[ReadModelConsumer] pattern_learning_artifacts table not yet created -- ' +
-            'run migrations to enable pattern learning request projection'
-        );
-        return true;
-      }
-      throw err;
-    }
-
+    // OMN-7014: Learning-requested events carry no pattern name, confidence,
+    // or analytical payload — they are bare lifecycle triggers.  Inserting
+    // placeholder rows (pattern_name='learning_requested', score=0) created
+    // thousands of noise rows that polluted the pattern intelligence page.
+    // Real pattern data arrives via pattern-projection events, which already
+    // have the OMN-7014 quality filter.  Acknowledge the event without
+    // writing to the database.
     return true;
   }
 

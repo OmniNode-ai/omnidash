@@ -14,7 +14,9 @@
  *   GET /api/costs/token-usage
  *
  * Source table: llm_cost_aggregates (defined in shared/intelligence-schema.ts)
- * Zero-cost rows are excluded from aggregates (total_cost_usd = 0 is filtered out).
+ * Zero-cost rows (local/free LLMs) are INCLUDED in token-based aggregates.
+ * Cost-specific queries (cost_change_pct, prior-period comparison) still filter
+ * on total_cost_usd > 0 to avoid skewing cost deltas with $0.00 rows.
  *
  * Note on NULL handling: even though numeric columns are declared NOT NULL with a
  * DEFAULT of '0', PostgreSQL's SUM() aggregate returns NULL (not 0) when the
@@ -23,7 +25,7 @@
  * when there is no data for the requested window.
  */
 
-import { sql, gte, lt, and, gt, desc } from 'drizzle-orm';
+import { sql, gte, lt, and, gt, desc, eq } from 'drizzle-orm';
 import { llmCostAggregates } from '@shared/intelligence-schema';
 import type {
   CostSummary,
@@ -78,13 +80,16 @@ function windowCutoff(window: CostTimeWindow): Date {
   const now = Date.now();
   if (window === '24h') return new Date(now - 24 * 60 * 60 * 1000);
   if (window === '30d') return new Date(now - 30 * 24 * 60 * 60 * 1000);
+  if (window === 'all') return new Date(0); // epoch — captures all data
   // default: 7d
   return new Date(now - 7 * 24 * 60 * 60 * 1000);
 }
 
-/** Return 'hour' or 'day' truncation unit based on window. */
-function truncUnit(window: CostTimeWindow): 'hour' | 'day' {
-  return window === '24h' ? 'hour' : 'day';
+/** Return 'hour', 'day', or 'week' truncation unit based on window. */
+function truncUnit(window: CostTimeWindow): 'hour' | 'day' | 'week' {
+  if (window === '24h') return 'hour';
+  if (window === 'all') return 'week';
+  return 'day';
 }
 
 // ============================================================================
@@ -207,7 +212,9 @@ export class CostMetricsProjection extends DbBackedProjectionView<CostMetricsPay
         ? 24 * 60 * 60 * 1000
         : window === '30d'
           ? 30 * 24 * 60 * 60 * 1000
-          : 7 * 24 * 60 * 60 * 1000;
+          : window === 'all'
+            ? Date.now() // entire history — prior period comparison not meaningful
+            : 7 * 24 * 60 * 60 * 1000;
     const priorCutoff = new Date(cutoff.getTime() - windowMs);
 
     // Two queries per period:
@@ -292,10 +299,22 @@ export class CostMetricsProjection extends DbBackedProjectionView<CostMetricsPay
     };
   }
 
-  async queryTrend(db: Db, window: CostTimeWindow = '7d'): Promise<CostTrendPoint[]> {
+  async queryTrend(
+    db: Db,
+    window: CostTimeWindow = '7d',
+    modelName?: string
+  ): Promise<CostTrendPoint[]> {
     const lca = llmCostAggregates;
     const cutoff = windowCutoff(window);
     const unit = truncUnit(window);
+
+    // Include all rows regardless of cost so that zero-cost local-LLM calls
+    // (e.g. Ollama, local vLLM) are reflected in the trend chart. The cost
+    // line will show $0.00 for those periods, which is correct.
+    const conditions = [gte(lca.bucketTime, cutoff)];
+    if (modelName) {
+      conditions.push(eq(lca.modelName, modelName));
+    }
 
     // safeTruncUnit() validates against the centralized allowlist in sql-safety.ts
     const rows = await db
@@ -307,7 +326,7 @@ export class CostMetricsProjection extends DbBackedProjectionView<CostMetricsPay
         session_count: sql<number>`COUNT(DISTINCT ${lca.sessionId}) FILTER (WHERE ${lca.sessionId} IS NOT NULL)::int`,
       })
       .from(lca)
-      .where(and(gte(lca.bucketTime, cutoff), gt(lca.totalCostUsd, '0')))
+      .where(and(...conditions))
       .groupBy(sql`date_trunc(${safeTruncUnit(unit)}, ${lca.bucketTime})`)
       .orderBy(sql`date_trunc(${safeTruncUnit(unit)}, ${lca.bucketTime})`);
 
@@ -318,6 +337,24 @@ export class CostMetricsProjection extends DbBackedProjectionView<CostMetricsPay
       estimated_cost_usd: parseFloat(r.estimated_cost),
       session_count: Number(r.session_count),
     }));
+  }
+
+  /**
+   * Query trend data filtered by model name, obtaining the DB handle internally.
+   *
+   * This method exists so that route handlers can request model-filtered trend
+   * data without importing tryGetIntelligenceDb directly (which violates the
+   * OMN-2325 no-direct-DB-in-routes arch rule).
+   *
+   * Returns null when the DB is unavailable (caller should return [] or degrade).
+   */
+  async queryTrendForModel(
+    window: CostTimeWindow,
+    modelName: string
+  ): Promise<CostTrendPoint[] | null> {
+    const db = tryGetIntelligenceDb();
+    if (!db) return null;
+    return this.queryTrend(db, window, modelName);
   }
 
   async queryByModel(db: Db): Promise<CostByModel[]> {
@@ -344,7 +381,9 @@ export class CostMetricsProjection extends DbBackedProjectionView<CostMetricsPay
         usage_source: sql<string | null>`mode() WITHIN GROUP (ORDER BY ${lca.usageSource})`,
       })
       .from(lca)
-      .where(and(gte(lca.bucketTime, cutoff), gt(lca.totalCostUsd, '0')))
+      // Include zero-cost rows so local LLMs (e.g. Ollama, local vLLM) appear
+      // in the breakdown. Their cost column will show $0.00 which is accurate.
+      .where(gte(lca.bucketTime, cutoff))
       .groupBy(lca.modelName)
       .orderBy(desc(sql`SUM(${lca.totalCostUsd}::numeric)`));
 
@@ -384,7 +423,8 @@ export class CostMetricsProjection extends DbBackedProjectionView<CostMetricsPay
         usage_source: sql<string | null>`mode() WITHIN GROUP (ORDER BY ${lca.usageSource})`,
       })
       .from(lca)
-      .where(and(gte(lca.bucketTime, cutoff), gt(lca.totalCostUsd, '0')))
+      // Include zero-cost rows so local LLMs appear in the repo breakdown.
+      .where(gte(lca.bucketTime, cutoff))
       .groupBy(lca.repoName)
       .orderBy(desc(sql`SUM(${lca.totalCostUsd}::numeric)`));
 
@@ -422,7 +462,8 @@ export class CostMetricsProjection extends DbBackedProjectionView<CostMetricsPay
         usage_source: sql<string | null>`mode() WITHIN GROUP (ORDER BY ${lca.usageSource})`,
       })
       .from(lca)
-      .where(and(gte(lca.bucketTime, cutoff), gt(lca.totalCostUsd, '0')))
+      // Include zero-cost rows so local LLMs appear in the pattern breakdown.
+      .where(gte(lca.bucketTime, cutoff))
       .groupBy(lca.patternId, lca.patternName)
       .orderBy(desc(sql`SUM(${lca.totalCostUsd}::numeric)`));
 

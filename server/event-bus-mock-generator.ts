@@ -187,7 +187,7 @@ export class EventBusMockGenerator {
         query,
         result: {
           analysis: 'Code analysis completed',
-          quality_score: 0.85 + Math.random() * 0.1,
+          quality_score: 0.85 + Math.random() * 0.1, // fallback-ok: mock data
           recommendations: ['Optimize query', 'Add caching'],
         },
         duration_ms: Math.floor(100 + Math.random() * 300),
@@ -245,7 +245,7 @@ export class EventBusMockGenerator {
       schema_ref: 'registry://omninode/agent/routing_completed/v1',
       payload: {
         selected_agent: agent,
-        confidence_score: 0.8 + Math.random() * 0.15,
+        confidence_score: 0.8 + Math.random() * 0.15, // fallback-ok: mock data
         routing_strategy: 'semantic_similarity',
         routing_time_ms: Math.floor(50 + Math.random() * 100),
       },

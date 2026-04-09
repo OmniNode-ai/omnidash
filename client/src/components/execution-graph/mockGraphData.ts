@@ -160,7 +160,7 @@ export function generateMockEventStream(correlationId?: string): GraphEvent[] {
     durationMs: DEMO_NODES.inferenceEngine.typicalDurationMs,
     outputPayload: {
       inferenceCount: 42,
-      averageConfidence: 0.92,
+      averageConfidence: 0.92, // fallback-ok: mock data
       highConfidenceCount: 38,
       lowConfidenceCount: 4,
     },

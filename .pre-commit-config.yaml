@@ -65,6 +65,19 @@ repos:
         exclude: ^(archived/|archive/)
         stages: [pre-commit]
 
+      # --------------------------------------------------------------------------
+      # Hardcoded Fallback Detection (OMN-7479 / OMN-7436)
+      # Blocks ternary patterns like `? 0.87 : 0.82` in production code.
+      # Suppress with `// fallback-ok` comment.
+      # --------------------------------------------------------------------------
+      - id: no-hardcoded-fallbacks
+        name: Block hardcoded numeric fallbacks
+        entry: bash scripts/check_no_hardcoded_fallbacks.sh
+        language: system
+        pass_filenames: false
+        always_run: true
+        stages: [pre-commit]
+
   - repo: https://github.com/OmniNode-ai/onex_change_control
     rev: 16659f5db9f03b7f248da5fc319647013be18682 # pragma: allowlist secret
     hooks:

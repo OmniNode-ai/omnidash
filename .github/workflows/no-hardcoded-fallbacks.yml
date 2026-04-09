@@ -21,7 +21,7 @@ jobs:
     name: Scan for hardcoded numeric fallbacks
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
       - name: Check for hardcoded fallback patterns
         run: |
@@ -37,6 +37,7 @@ jobs:
               -E '\?\s*0\.\d+\s*:\s*0\.\d+' \
               --exclude-dir=test --exclude-dir=tests --exclude-dir=node_modules \
               --exclude-dir=.next --exclude-dir=demo --exclude-dir=fixtures \
+              --exclude-dir=_archive --exclude-dir=archive \
               --exclude='*.test.*' --exclude='*.spec.*' --exclude='*.stories.*' \
               server/ shared/ src/ client/ config/ 2>/dev/null \
             | grep -v 'fallback-ok' \

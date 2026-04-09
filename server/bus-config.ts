@@ -39,6 +39,16 @@
  * ──────────────────────────────────────────────────────────────────────────────
  */
 
+// Register Snappy codec for kafkajs — Redpanda may send snappy-compressed messages.
+// Placed here (shared bus config) so every Kafka client picks it up on first import.
+// Both kafkajs and kafkajs-snappy are CJS; CompressionCodecs is not a named ESM export,
+// so we use createRequire for runtime compat (esbuild --packages=external keeps them external).
+import { createRequire } from 'node:module';
+const _require = createRequire(import.meta.url);
+const { CompressionTypes, CompressionCodecs } = _require('kafkajs');
+const SnappyCodec = _require('kafkajs-snappy');
+CompressionCodecs[CompressionTypes.Snappy] = SnappyCodec;
+
 /**
  * Bus mode inferred from broker address port.
  * - 'local'   → port 19092 (local Docker Redpanda)
@@ -92,7 +102,11 @@ export function resolveBrokers(): string[] {
  * Useful for logging and health-check endpoints.
  */
 export function getBrokerString(): string {
-  return process.env.KAFKA_BOOTSTRAP_SERVERS?.trim() || process.env.KAFKA_BROKERS?.trim() || 'not configured';
+  return (
+    process.env.KAFKA_BOOTSTRAP_SERVERS?.trim() ||
+    process.env.KAFKA_BROKERS?.trim() ||
+    'not configured'
+  );
 }
 
 /**
