@@ -656,6 +656,17 @@ export const queryKeys = {
     byOmninodeMode: (window: string) =>
       [...queryKeys.llmRouting.all, 'by-omninode-mode', window] as const,
   },
+
+  // ============================================================================
+  // Infrastructure Routing (OMN-7736)
+  // ============================================================================
+
+  infraRouting: {
+    all: ['infra-routing'] as const,
+    decisions: () => [...queryKeys.infraRouting.all, 'decisions'] as const,
+    summary: () => [...queryKeys.infraRouting.all, 'summary'] as const,
+  },
+
   // ============================================================================
   // Delegation Metrics (OMN-2284)
   // ============================================================================
