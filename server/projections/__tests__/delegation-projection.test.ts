@@ -150,13 +150,9 @@ describe('DelegationProjection', () => {
     // After the first await in _querySummary, the remaining 5 Promise.all
     // queries that each make one execute() call will interleave. The exact
     // order depends on microtask scheduling. Let's trace it:
-    // Promise.all starts: _querySummary, _queryByTaskType, _queryCostSavings,
-    //   _queryQualityGates, _queryShadowDivergence, _queryTrend
-    // All 6 start concurrently. Each calls db.execute() immediately.
-    // _querySummary's first execute() resolves -> calls 1-5 haven't started
-    // yet because they're async functions that start with db.execute().
-    // Actually with Promise.all, all 6 async functions start executing
-    // synchronously up to their first await.
+    // Promise.all starts: _querySummary, _queryByTaskType, _queryByModel,
+    //   _queryCostSavings, _queryQualityGates, _queryShadowDivergence, _queryTrend
+    // All 7 start concurrently. Each calls db.execute() immediately.
     //
     // So the call order is:
     // 0: _querySummary's 1st execute (delegation agg)

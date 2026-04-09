@@ -106,6 +106,22 @@ router.get('/quality-gates', async (req, res) => {
 });
 
 // ============================================================================
+// GET /api/delegation/by-model?window=7d
+// ============================================================================
+
+router.get('/by-model', async (req, res) => {
+  try {
+    const timeWindow = validateWindow(req, res);
+    if (timeWindow === null) return;
+    const payload = await delegationProjection.ensureFreshForWindow(timeWindow);
+    return res.json(payload.byModel);
+  } catch (error) {
+    console.error('[delegation] Error fetching by-model:', error);
+    return res.status(500).json({ error: 'Failed to fetch delegation by model' });
+  }
+});
+
+// ============================================================================
 // GET /api/delegation/shadow-divergence
 // ============================================================================
 
