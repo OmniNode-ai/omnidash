@@ -702,8 +702,7 @@ export function registerPatternRoutes(router: Router): void {
       }
 
       if (nodeUuids.length === 0) {
-        // fallback-ok: empty query result
-        res.json([]);
+        res.json([]); // fallback-ok: no matching pattern nodes found for requested IDs; empty graph is valid
         return;
       }
 
