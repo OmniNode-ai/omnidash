@@ -13,10 +13,10 @@ import { useQuery } from '@tanstack/react-query';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Switch } from '@/components/ui/switch';
-import { Server, Radio, Eye } from 'lucide-react';
+import { Server, Radio, Eye, EyeOff } from 'lucide-react';
 import { usePreferences } from '@/contexts/PreferencesContext';
 import { useDashboardHealth } from '@/hooks/useDashboardHealth';
-import { getDataSourceForRoute } from '@shared/data-source-route-map';
+import { getDataSourceForRoute, isRouteLiveByHealth } from '@shared/data-source-route-map';
 import type { DataSourceStatus } from '@/components/DataSourceHealthPanel';
 
 interface RuntimeEnvironment {
@@ -151,7 +151,14 @@ function ConfigRow({ label, value, mono }: { label: string; value: string; mono?
 }
 
 export default function SettingsDashboard() {
-  const { isRouteHidden, toggleRouteVisibility } = usePreferences();
+  const {
+    isRouteHidden,
+    toggleRouteVisibility,
+    isRouteForceShown,
+    toggleRouteForceShow,
+    hideNoData,
+    setHideNoData,
+  } = usePreferences();
   const { healthData } = useDashboardHealth();
 
   const getRouteStatus = (url: string): DataSourceStatus | 'no_mapping' => {
@@ -159,6 +166,14 @@ export default function SettingsDashboard() {
     if (!key) return 'no_mapping';
     if (!healthData) return 'no_mapping';
     return healthData[key]?.status ?? 'no_mapping';
+  };
+
+  const isAutoHidden = (url: string): boolean => {
+    if (!hideNoData) return false;
+    if (isRouteForceShown(url)) return false;
+    const key = getDataSourceForRoute(url);
+    if (!key) return false;
+    return !isRouteLiveByHealth(url, healthData);
   };
 
   const { data: env, isLoading: envLoading } = useQuery<RuntimeEnvironment>({
@@ -261,6 +276,25 @@ export default function SettingsDashboard() {
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-6">
+          {/* Global auto-hide toggle */}
+          <div className="flex items-center justify-between py-3 px-4 rounded-lg border bg-muted/30">
+            <div className="flex items-center gap-3">
+              <EyeOff className="w-4 h-4 text-muted-foreground" />
+              <div>
+                <p className="text-sm font-medium">Hide pages without data</p>
+                <p className="text-xs text-muted-foreground">
+                  Automatically hide pages whose data source is offline or mock
+                </p>
+              </div>
+            </div>
+            <Switch
+              checked={hideNoData}
+              onCheckedChange={setHideNoData}
+              aria-label="Toggle auto-hide pages without data"
+              data-testid="hide-no-data-toggle"
+            />
+          </div>
+
           {DASHBOARD_GROUPS.map((group) => (
             <div key={group.label}>
               <h3 className="text-xs uppercase tracking-widest text-muted-foreground/60 font-medium mb-3">
@@ -270,6 +304,8 @@ export default function SettingsDashboard() {
                 {group.items.map((item) => {
                   const status = getRouteStatus(item.url);
                   const hidden = isRouteHidden(item.url);
+                  const autoHidden = isAutoHidden(item.url);
+                  const forceShown = isRouteForceShown(item.url);
                   return (
                     <div
                       key={item.url}
@@ -277,17 +313,49 @@ export default function SettingsDashboard() {
                     >
                       <div className="flex items-center gap-3">
                         <span
-                          className={`text-sm ${hidden ? 'text-muted-foreground line-through' : ''}`}
+                          className={`text-sm ${hidden || autoHidden ? 'text-muted-foreground line-through' : ''}`}
                         >
                           {item.title}
                         </span>
                         <DataStatusBadge status={status} />
+                        {autoHidden && !hidden && (
+                          <span className="text-[10px] font-medium px-1.5 py-0.5 rounded bg-muted text-muted-foreground uppercase tracking-wider">
+                            Auto-hidden
+                          </span>
+                        )}
+                        {forceShown && (
+                          <span className="text-[10px] font-medium px-1.5 py-0.5 rounded bg-blue-500/15 text-blue-400 uppercase tracking-wider">
+                            Pinned
+                          </span>
+                        )}
                       </div>
-                      <Switch
-                        checked={!hidden}
-                        onCheckedChange={() => toggleRouteVisibility(item.url)}
-                        aria-label={`Toggle ${item.title} visibility`}
-                      />
+                      <div className="flex items-center gap-2">
+                        {autoHidden && !hidden && (
+                          <button
+                            onClick={() => toggleRouteForceShow(item.url)}
+                            className="text-xs text-blue-400 hover:text-blue-300 transition-colors"
+                            title={
+                              forceShown ? 'Unpin (allow auto-hide)' : 'Pin (override auto-hide)'
+                            }
+                          >
+                            {forceShown ? 'Unpin' : 'Pin'}
+                          </button>
+                        )}
+                        {forceShown && !autoHidden && (
+                          <button
+                            onClick={() => toggleRouteForceShow(item.url)}
+                            className="text-xs text-blue-400 hover:text-blue-300 transition-colors"
+                            title="Unpin (allow auto-hide)"
+                          >
+                            Unpin
+                          </button>
+                        )}
+                        <Switch
+                          checked={!hidden}
+                          onCheckedChange={() => toggleRouteVisibility(item.url)}
+                          aria-label={`Toggle ${item.title} visibility`}
+                        />
+                      </div>
                     </div>
                   );
                 })}

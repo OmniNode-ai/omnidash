@@ -20,6 +20,7 @@ import { sql } from 'drizzle-orm';
 import type {
   DelegationSummary,
   DelegationByTaskType,
+  DelegationByModel,
   DelegationCostSavingsTrendPoint,
   DelegationQualityGatePoint,
   DelegationShadowDivergence,
@@ -42,6 +43,7 @@ import {
 export interface DelegationPayload {
   summary: DelegationSummary;
   byTaskType: DelegationByTaskType[];
+  byModel: DelegationByModel[];
   costSavings: DelegationCostSavingsTrendPoint[];
   qualityGates: DelegationQualityGatePoint[];
   shadowDivergence: DelegationShadowDivergence[];
@@ -86,6 +88,7 @@ export class DelegationProjection extends DbBackedProjectionView<DelegationPaylo
         quality_gate_trend: [],
       },
       byTaskType: [],
+      byModel: [],
       costSavings: [],
       qualityGates: [],
       shadowDivergence: [],
@@ -149,17 +152,18 @@ export class DelegationProjection extends DbBackedProjectionView<DelegationPaylo
   private async _queryForWindow(db: Db, window: string): Promise<DelegationPayload> {
     const interval = timeWindowToInterval(window);
 
-    const [summary, byTaskType, costSavings, qualityGates, shadowDivergence, trend] =
+    const [summary, byTaskType, byModel, costSavings, qualityGates, shadowDivergence, trend] =
       await Promise.all([
         this._querySummary(db, interval),
         this._queryByTaskType(db, interval),
+        this._queryByModel(db, interval),
         this._queryCostSavings(db, interval, window),
         this._queryQualityGates(db, interval, window),
         this._queryShadowDivergence(db, interval),
         this._queryTrend(db, interval, window),
       ]);
 
-    return { summary, byTaskType, costSavings, qualityGates, shadowDivergence, trend };
+    return { summary, byTaskType, byModel, costSavings, qualityGates, shadowDivergence, trend };
   }
 
   private async _querySummary(db: Db, interval: string): Promise<DelegationSummary> {
@@ -279,6 +283,37 @@ export class DelegationProjection extends DbBackedProjectionView<DelegationPaylo
         avg_cost_savings_usd: Number(Number(r.avg_cost_savings ?? 0).toFixed(2)),
         avg_latency_ms: Number(r.avg_latency ?? 0),
         shadow_divergences: Number(r.shadow_divergences ?? 0),
+      };
+    });
+  }
+
+  private async _queryByModel(db: Db, interval: string): Promise<DelegationByModel[]> {
+    const rows = await db.execute(sql`
+      SELECT
+        de.delegated_to                                                       AS model,
+        COUNT(*)::int                                                         AS total,
+        COUNT(*) FILTER (WHERE de.quality_gate_passed = true)::int           AS qg_passed,
+        COALESCE(AVG(de.delegation_latency_ms), 0)::int                      AS avg_latency,
+        COALESCE(SUM(de.cost_savings_usd::numeric), 0)                       AS total_cost_savings,
+        COALESCE(AVG(de.cost_savings_usd::numeric), 0)                       AS avg_cost_savings
+      FROM delegation_events de
+      WHERE de.timestamp >= NOW() - INTERVAL ${safeInterval(interval)}
+        AND de.delegated_to IS NOT NULL
+      GROUP BY de.delegated_to
+      ORDER BY total DESC
+    `);
+
+    return ((rows.rows ?? rows) as Record<string, unknown>[]).map((r) => {
+      const total = Number(r.total ?? 0);
+      const qgPassed = Number(r.qg_passed ?? 0);
+      return {
+        model: String(r.model ?? ''),
+        total,
+        quality_gate_passed: qgPassed,
+        quality_gate_pass_rate: total > 0 ? Math.round((qgPassed / total) * 10000) / 10000 : 0,
+        avg_latency_ms: Number(r.avg_latency ?? 0),
+        total_cost_savings_usd: Number(Number(r.total_cost_savings ?? 0).toFixed(2)),
+        avg_cost_savings_usd: Number(Number(r.avg_cost_savings ?? 0).toFixed(2)),
       };
     });
   }
@@ -434,5 +469,61 @@ export class DelegationProjection extends DbBackedProjectionView<DelegationPaylo
         total_delegations: Number(r.total_delegations ?? 0),
       };
     });
+  }
+
+  // --------------------------------------------------------------------------
+  // Recent individual decisions (OMN-7768)
+  // --------------------------------------------------------------------------
+
+  /**
+   * Return the most recent delegation decisions from the delegation_events table.
+   * Used by the /api/delegation/decisions proof route.
+   */
+  async queryRecentDecisions(
+    limit: number = 50
+  ): Promise<
+    Array<{
+      correlation_id: string;
+      task_type: string;
+      delegated_to: string;
+      delegated_by: string | null;
+      quality_gate_passed: boolean;
+      cost_usd: number | null;
+      cost_savings_usd: number | null;
+      repo: string | null;
+      timestamp: string;
+    }>
+  > {
+    const db = tryGetIntelligenceDb();
+    if (!db) return [];
+
+    const safeLimit = Math.min(Math.max(limit, 1), 250);
+    const rows = await db.execute(sql`
+      SELECT
+        correlation_id,
+        task_type,
+        delegated_to,
+        delegated_by,
+        quality_gate_passed,
+        cost_usd,
+        cost_savings_usd,
+        repo,
+        timestamp::text AS timestamp
+      FROM delegation_events
+      ORDER BY timestamp DESC
+      LIMIT ${safeLimit}
+    `);
+
+    return ((rows.rows ?? rows) as Record<string, unknown>[]).map((r) => ({
+      correlation_id: String(r.correlation_id ?? ''),
+      task_type: String(r.task_type ?? ''),
+      delegated_to: String(r.delegated_to ?? ''),
+      delegated_by: r.delegated_by != null ? String(r.delegated_by) : null,
+      quality_gate_passed: Boolean(r.quality_gate_passed),
+      cost_usd: r.cost_usd != null ? Number(r.cost_usd) : null,
+      cost_savings_usd: r.cost_savings_usd != null ? Number(r.cost_savings_usd) : null,
+      repo: r.repo != null ? String(r.repo) : null,
+      timestamp: String(r.timestamp ?? ''),
+    }));
   }
 }

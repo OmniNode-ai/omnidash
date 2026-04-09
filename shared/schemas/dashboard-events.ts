@@ -88,11 +88,11 @@ export type OfflineState = (typeof OFFLINE_STATES)[number];
 export type PendingState = (typeof PENDING_STATES)[number];
 
 export function isOfflineState(state: string): state is OfflineState {
-  return (OFFLINE_STATES as readonly string[]).includes(state);
+  return (OFFLINE_STATES as readonly string[]).includes(state.toUpperCase());
 }
 
 export function isPendingState(state: string): state is PendingState {
-  return (PENDING_STATES as readonly string[]).includes(state);
+  return (PENDING_STATES as readonly string[]).includes(state.toUpperCase());
 }
 
 export const HEALTH_THRESHOLDS = {

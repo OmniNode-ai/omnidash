@@ -214,5 +214,23 @@ export interface DelegationTrendPoint {
   total_delegations: number;
 }
 
+/** Delegation breakdown by model (delegated_to agent/model). */
+export interface DelegationByModel {
+  /** Model/agent name (from delegated_to field) */
+  model: string;
+  /** Total delegations to this model */
+  total: number;
+  /** Delegations that passed quality gates */
+  quality_gate_passed: number;
+  /** Quality gate pass rate for this model (0-1) */
+  quality_gate_pass_rate: number;
+  /** Average delegation latency for this model (ms) */
+  avg_latency_ms: number;
+  /** Total cost savings for this model (USD) */
+  total_cost_savings_usd: number;
+  /** Average cost savings per delegation for this model (USD) */
+  avg_cost_savings_usd: number;
+}
+
 /** Valid time windows for delegation dashboard queries. */
-export type DelegationTimeWindow = '24h' | '7d' | '30d';
+export type DelegationTimeWindow = '24h' | '7d' | '30d' | 'all';

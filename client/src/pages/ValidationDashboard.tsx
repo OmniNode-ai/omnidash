@@ -11,7 +11,6 @@
 import { useState, useMemo, useEffect, Fragment } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useWebSocket } from '@/hooks/useWebSocket';
-
 import { DemoBanner } from '@/components/DemoBanner';
 import { validationSource } from '@/lib/data-sources/validation-source';
 import type { ValidationSummary, RunsListResponse } from '@/lib/data-sources/validation-source';

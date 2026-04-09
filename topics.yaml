@@ -176,24 +176,34 @@ read_model_topics:
   - topic: "onex.cmd.omniintelligence.pattern-learning.v1"
     handler: "projectPatternLearningRequested"
 
+  # --- omnimarket topics (OMN-7920) ---
+  # Only topics with a defined projection handler are subscribed here.
+  # Gaps (no handler defined in this phase, excluded per plan Task 5):
+  #   onex.evt.omnimarket.delegation-attempt.v1 — no projection table
+  #   onex.evt.omnimarket.delegation-metrics.v1 — no projection table
+  #   All other omnimarket sweep/pipeline/release/loop topics — no handler defined
+  - topic: "onex.evt.omnimarket.build-loop-orchestrator-phase-transition.v1"
+    handler: "projectBuildLoopOrchestratorEvent"
+  - topic: "onex.evt.omnimarket.build-loop-orchestrator-completed.v1"
+    handler: "projectBuildLoopOrchestratorEvent"
+
 # Topics omnidash monitors for broker health but does NOT consume into read models.
 # These indicate healthy upstream producers. No handler is needed.
 # Rules:
 #   - Only add topics that exist in upstream contract/manifests
 #   - Keep entries sorted by producer, then by event-name
 #
-# NOTE: Some upstream producers use underscore-prefixed topic names (e.g.
-# _omniintelligence.pattern-discovery.v1) which are the ACTUAL names on the
-# broker. The canonical ONEX names are listed as aliases below. The health
-# poller checks for the actual broker topic name.
+# OMN-7810: Migrated from non-canonical underscore-prefixed names to canonical
+# ONEX topic names. These now match the provisioned topics in omnibase_infra
+# platform_topic_suffixes.py and services/topics.yaml.
 monitored_topics:
   # --- omniintelligence topics ---
-  - topic: "_omniintelligence.pattern-discovery.v1"
-  - topic: "_omniintelligence.pattern-refined.v1"
+  - topic: "onex.evt.pattern.discovered.v1"
+  - topic: "onex.evt.omniintelligence.pattern-refined.v1"
 
   # --- omnimemory topics ---
-  - topic: "_omnimemory.document-ingested.v1"
+  - topic: "onex.evt.omnimemory.document-ingested.v1"
 
   # --- omninode topics ---
-  - topic: "_omninode.routing-requested.v1"
+  - topic: "onex.cmd.omninode.routing-requested.v1"
   - topic: "onex.evt.omninode.routing-completed.v1"

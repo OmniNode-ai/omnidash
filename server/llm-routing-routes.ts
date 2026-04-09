@@ -34,7 +34,7 @@ function validateWindow(req: Request, res: Response) {
   const raw = typeof req.query.window === 'string' ? req.query.window : '7d';
   const result = LlmRoutingTimeWindowSchema.safeParse(raw);
   if (!result.success) {
-    res.status(400).json({ error: 'Invalid window parameter. Must be one of: 24h, 7d, 30d' });
+    res.status(400).json({ error: 'Invalid window parameter. Must be one of: 24h, 7d, 30d, all' });
     return null;
   }
   return result.data;
@@ -45,7 +45,7 @@ function validateWindow(req: Request, res: Response) {
  * Uses ensureFresh() for the default 7d window (avoids per-window cache overhead),
  * and ensureFreshForWindow() for non-default windows.
  */
-async function fetchPayload(window: '24h' | '7d' | '30d') {
+async function fetchPayload(window: '24h' | '7d' | '30d' | 'all') {
   if (window === '7d') {
     return llmRoutingProjection.ensureFresh();
   }
@@ -63,7 +63,7 @@ async function fetchPayload(window: '24h' | '7d' | '30d') {
  */
 function setDegradedHeader(
   res: Response,
-  requestedWindow: '24h' | '7d' | '30d',
+  requestedWindow: '24h' | '7d' | '30d' | 'all',
   payload: Awaited<ReturnType<typeof fetchPayload>>
 ): void {
   if (
@@ -144,13 +144,25 @@ router.get('/disagreements', async (req, res) => {
 });
 
 // ============================================================================
-// GET /api/llm-routing/trend?window=7d
+// GET /api/llm-routing/trend?window=7d&model=<name>   (OMN-7643)
 // ============================================================================
 
 router.get('/trend', async (req, res) => {
   try {
     const timeWindow = validateWindow(req, res);
     if (timeWindow === null) return;
+    const model = typeof req.query.model === 'string' ? req.query.model : undefined;
+
+    // When a model filter is provided, query the DB via the projection
+    // (bypassing the cached unfiltered payload).
+    if (model) {
+      const trend = await llmRoutingProjection.fetchTrendByModel(timeWindow, model);
+      if (trend === null) {
+        return res.status(503).json({ error: 'Database unavailable' });
+      }
+      return res.json(trend satisfies LlmRoutingTrendPoint[]);
+    }
+
     const payload = await fetchPayload(timeWindow);
     setDegradedHeader(res, timeWindow, payload);
     return res.json(payload.trend satisfies LlmRoutingTrendPoint[]);
