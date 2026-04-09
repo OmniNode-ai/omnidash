@@ -373,16 +373,13 @@ export const SUFFIX_INTELLIGENCE_PATTERN_LIFECYCLE_TRANSITIONED =
   'onex.evt.omniintelligence.pattern-lifecycle-transitioned.v1';
 export const SUFFIX_INTELLIGENCE_PATTERN_PROMOTED = 'onex.evt.omniintelligence.pattern-promoted.v1';
 export const SUFFIX_INTELLIGENCE_PATTERN_STORED = 'onex.evt.omniintelligence.pattern-stored.v1';
-export const SUFFIX_INTELLIGENCE_PATTERN_REFINED =
-  'onex.evt.omniintelligence.pattern-refined.v1';
+export const SUFFIX_INTELLIGENCE_PATTERN_REFINED = 'onex.evt.omniintelligence.pattern-refined.v1';
 
 /** OmniMemory document ingestion event (OMN-7810) */
-export const SUFFIX_OMNIMEMORY_DOCUMENT_INGESTED =
-  'onex.evt.omnimemory.document-ingested.v1';
+export const SUFFIX_OMNIMEMORY_DOCUMENT_INGESTED = 'onex.evt.omnimemory.document-ingested.v1';
 
 /** OmniNode routing events (OMN-7810) */
-export const SUFFIX_OMNINODE_ROUTING_REQUESTED =
-  'onex.cmd.omninode.routing-requested.v1';
+export const SUFFIX_OMNINODE_ROUTING_REQUESTED = 'onex.cmd.omninode.routing-requested.v1';
 
 /** Intelligence pattern projection snapshot (OMN-2924) */
 export const SUFFIX_INTELLIGENCE_PATTERN_PROJECTION =
@@ -446,6 +443,12 @@ export const SUFFIX_OMNICLAUDE_PR_VALIDATION_ROLLUP = 'onex.evt.omniclaude.pr-va
  * Emitted by omniclaude dod-verify skill after running all DoD checks.
  * Consumed by ReadModelConsumer to project into dod_verify_runs table. */
 export const SUFFIX_OMNICLAUDE_DOD_VERIFY_COMPLETED = 'onex.evt.omniclaude.dod-verify-completed.v1';
+
+/** Bloom eval suite completed event (OMN-8146).
+ * Emitted by node_bloom_eval_orchestrator after a full bloom eval run.
+ * Consumed by ReadModelConsumer to project into intelligence_bloom_eval_results table. */
+export const TOPIC_INTELLIGENCE_BLOOM_EVAL_COMPLETED =
+  'onex.evt.omniintelligence.bloom-eval-completed.v1';
 
 /** DoD guard fired event (OMN-5199).
  * Emitted by omniclaude dod-guard hook when a guard decision is made.
