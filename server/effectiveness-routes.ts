@@ -167,7 +167,7 @@ router.get('/trend', async (_req, res) => {
     const view = getEffectivenessView();
     if (!view) {
       res.setHeader('X-Projection-Status', 'empty');
-      return res.json([]);
+      return res.json([]); // fallback-ok: projection not available
     }
 
     const result = await view.ensureFresh();

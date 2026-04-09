@@ -30,7 +30,7 @@ router.get('/summary', async (req, res) => {
     const db = tryGetIntelligenceDb();
     if (!db) {
       res.setHeader('X-Projection-Status', 'empty');
-      return res.json([]);
+      return res.json([]); // fallback-ok: projection not available
     }
 
     const daysParam = Array.isArray(req.query.days) ? req.query.days[0] : req.query.days;
@@ -74,7 +74,7 @@ router.get('/trend', async (req, res) => {
     const db = tryGetIntelligenceDb();
     if (!db) {
       res.setHeader('X-Projection-Status', 'empty');
-      return res.json([]);
+      return res.json([]); // fallback-ok: projection not available
     }
 
     const daysParam = Array.isArray(req.query.days) ? req.query.days[0] : req.query.days;
@@ -115,7 +115,7 @@ router.get('/rollups', async (req, res) => {
     const db = tryGetIntelligenceDb();
     if (!db) {
       res.setHeader('X-Projection-Status', 'empty');
-      return res.json([]);
+      return res.json([]); // fallback-ok: projection not available
     }
 
     const limitParam = Array.isArray(req.query.limit) ? req.query.limit[0] : req.query.limit;
@@ -169,7 +169,7 @@ router.get('/comparison', async (req, res) => {
     const db = tryGetIntelligenceDb();
     if (!db) {
       res.setHeader('X-Projection-Status', 'empty');
-      return res.json([]);
+      return res.json([]); // fallback-ok: projection not available
     }
 
     const rows = await db.execute(sql`
