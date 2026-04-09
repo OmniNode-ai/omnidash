@@ -325,11 +325,12 @@ export const SUFFIX_OMNICLAUDE_CIRCUIT_BREAKER_TRIPPED =
 export const SUFFIX_INTELLIGENCE_CLAUDE_HOOK = 'onex.cmd.omniintelligence.claude-hook-event.v1';
 export const SUFFIX_INTELLIGENCE_INTENT_CLASSIFIED =
   'onex.evt.omniintelligence.intent-classified.v1';
+// TODO(OMN-8163): verify omniclaude Kafka publisher for this topic; no confirmed active producer
 export const SUFFIX_INTELLIGENCE_SESSION_OUTCOME_CMD =
   'onex.cmd.omniintelligence.session-outcome.v1';
-export const SUFFIX_INTELLIGENCE_SESSION_OUTCOME_EVT =
-  'onex.evt.omniintelligence.session-outcome.v1';
+// TODO(OMN-8161): producer not yet implemented in omniintelligence
 export const SUFFIX_INTELLIGENCE_PATTERN_SCORED = 'onex.evt.omniintelligence.pattern-scored.v1';
+// TODO(OMN-8162): producer not yet implemented in omniintelligence
 export const SUFFIX_INTELLIGENCE_PATTERN_DISCOVERED =
   'onex.evt.omniintelligence.pattern-discovered.v1';
 export const SUFFIX_INTELLIGENCE_PATTERN_LEARNED = 'onex.evt.omniintelligence.pattern-learned.v1';
