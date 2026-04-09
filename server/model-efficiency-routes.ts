@@ -29,6 +29,7 @@ router.get('/summary', async (req, res) => {
   try {
     const db = tryGetIntelligenceDb();
     if (!db) {
+      res.setHeader('X-Projection-Status', 'empty');
       return res.json([]);
     }
 
@@ -72,6 +73,7 @@ router.get('/trend', async (req, res) => {
   try {
     const db = tryGetIntelligenceDb();
     if (!db) {
+      res.setHeader('X-Projection-Status', 'empty');
       return res.json([]);
     }
 
@@ -112,6 +114,7 @@ router.get('/rollups', async (req, res) => {
   try {
     const db = tryGetIntelligenceDb();
     if (!db) {
+      res.setHeader('X-Projection-Status', 'empty');
       return res.json([]);
     }
 
@@ -165,6 +168,7 @@ router.get('/comparison', async (req, res) => {
   try {
     const db = tryGetIntelligenceDb();
     if (!db) {
+      res.setHeader('X-Projection-Status', 'empty');
       return res.json([]);
     }
 

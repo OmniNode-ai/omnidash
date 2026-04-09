@@ -107,6 +107,7 @@ router.get('/summary', async (req, res) => {
 
     const view = getCostView();
     if (!view) {
+      res.setHeader('X-Projection-Status', 'empty');
       return res.json({
         total_cost_usd: 0,
         reported_cost_usd: 0,
@@ -169,6 +170,7 @@ router.get('/trend', async (req, res) => {
 
     const view = getCostView();
     if (!view) {
+      res.setHeader('X-Projection-Status', 'empty');
       return res.json([]);
     }
 
@@ -224,6 +226,7 @@ router.get('/by-model', async (req, res) => {
 
     const view = getCostView();
     if (!view) {
+      res.setHeader('X-Projection-Status', 'empty');
       return res.json([]);
     }
 
@@ -258,6 +261,7 @@ router.get('/by-repo', async (req, res) => {
 
     const view = getCostView();
     if (!view) {
+      res.setHeader('X-Projection-Status', 'empty');
       return res.json([]);
     }
 
@@ -290,6 +294,7 @@ router.get('/by-pattern', async (req, res) => {
 
     const view = getCostView();
     if (!view) {
+      res.setHeader('X-Projection-Status', 'empty');
       return res.json([]);
     }
 
@@ -315,6 +320,7 @@ router.get('/token-usage', async (req, res) => {
 
     const view = getCostView();
     if (!view) {
+      res.setHeader('X-Projection-Status', 'empty');
       return res.json([]);
     }
 
