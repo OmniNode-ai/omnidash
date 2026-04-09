@@ -131,7 +131,7 @@ export class AgentMetricsProjection extends DbBackedProjectionView<AgentMetricsP
                action_details, debug_mode, duration_ms, created_at
         FROM agent_actions
         WHERE agent_name = ${agentName}
-          AND created_at >= NOW() - INTERVAL ${interval}
+          AND created_at >= NOW() - INTERVAL ${sql.raw(`'${interval}'`)}
         ORDER BY created_at DESC
         LIMIT ${Math.max(1, Math.min(limit, 1000))}
       `);
@@ -277,8 +277,8 @@ export class AgentMetricsProjection extends DbBackedProjectionView<AgentMetricsP
       FROM agent_actions aa
       FULL OUTER JOIN agent_routing_decisions ard
         ON aa.correlation_id = ard.correlation_id
-      WHERE (aa.created_at >= NOW() - INTERVAL ${interval})
-         OR (ard.created_at >= NOW() - INTERVAL ${interval})
+      WHERE (aa.created_at >= NOW() - INTERVAL ${sql.raw(`'${interval}'`)})
+         OR (ard.created_at >= NOW() - INTERVAL ${sql.raw(`'${interval}'`)})
       GROUP BY COALESCE(ard.selected_agent, aa.agent_name)
       HAVING COUNT(DISTINCT COALESCE(aa.id, ard.id)) > 0
       ORDER BY total_requests DESC
