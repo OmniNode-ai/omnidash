@@ -18,7 +18,7 @@ while IFS= read -r line; do
   lineno=$(echo "$line" | cut -d: -f2)
 
   # Check the matching line itself and the line above for an annotation
-  prev_lineno=$((lineno - 1))
+  prev_lineno=$((lineno > 1 ? lineno - 1 : 1))
   context=$(sed -n "${prev_lineno},${lineno}p" "$file")
 
   if echo "$context" | grep -q "fallback-ok\|empty-response-ok"; then
@@ -26,7 +26,7 @@ while IFS= read -r line; do
   fi
 
   VIOLATIONS="${VIOLATIONS}${line}\n"
-done < <(grep -rn 'res\.json(\[\])\|res\.json({})' "$SEARCH_DIR" --include="*.ts" || true)
+done < <(grep -rnE 'res\.json\(\s*(\[\s*\]|\{\s*\})\s*\)' "$SEARCH_DIR" --include="*.ts" || true)
 
 if [ -n "$VIOLATIONS" ]; then
   echo "ERROR: Unannotated hardcoded empty responses found:"
