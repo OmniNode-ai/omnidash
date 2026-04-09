@@ -124,6 +124,8 @@ const HANDLER_FILES = [
   path.join(HANDLER_DIR, 'eval-projections.ts'),
   // OmniMarket projection handler (OMN-7920)
   path.join(HANDLER_DIR, 'omnimarket-projections.ts'),
+  // Bloom eval projection handler (OMN-8146)
+  path.join(HANDLER_DIR, 'bloom-eval-projections.ts'),
 ];
 
 // ---------------------------------------------------------------------------
