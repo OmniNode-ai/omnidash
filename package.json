@@ -102,7 +102,7 @@
     "express-session": "^1.19.0",
     "framer-motion": "^11.13.1",
     "input-otp": "^1.4.2",
-    "jose": "^6.2.1",
+    "jose": "^6.2.2",
     "js-yaml": "^4.1.0",
     "kafkajs": "^2.2.4",
     "kafkajs-snappy": "^1.1.0",
