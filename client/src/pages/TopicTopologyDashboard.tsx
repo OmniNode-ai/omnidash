@@ -215,7 +215,7 @@ function TopologyGraph({ data, filter }: GraphProps) {
               y2={tgt.y}
               stroke={active ? src.color : '#e2e8f0'}
               strokeWidth={active ? 1.5 : 0.8}
-              strokeOpacity={active ? 0.7 : 0.2}
+              strokeOpacity={active ? 0.7 : 0.2} // fallback-ok: SVG visual opacity
             />
           );
         })}
@@ -258,7 +258,7 @@ function TopologyGraph({ data, filter }: GraphProps) {
                   dy="13"
                   fontSize={7.5}
                   fill="#475569"
-                  opacity={visible ? 0.85 : 0.2}
+                  opacity={visible ? 0.85 : 0.2} // fallback-ok: SVG visual opacity
                 >
                   {node.topicCount} topic{node.topicCount !== 1 ? 's' : ''}
                 </text>

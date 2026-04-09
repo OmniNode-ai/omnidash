@@ -25,7 +25,12 @@ class LlmRoutingSource {
   }
 
   async summary(window: LlmRoutingTimeWindow = '7d'): Promise<LlmRoutingSummary> {
-    const response = await fetch(`${this.baseUrl}/summary${this.buildWindowParam(window)}`);
+    let response: Response;
+    try {
+      response = await fetch(`${this.baseUrl}/summary${this.buildWindowParam(window)}`);
+    } catch {
+      throw new Error('Failed to fetch LLM routing summary');
+    }
     if (!response.ok) throw new Error(`HTTP ${response.status}`);
     const data: LlmRoutingSummary = await response.json();
     if (data.total_decisions == null) {
@@ -35,7 +40,12 @@ class LlmRoutingSource {
   }
 
   async latency(window: LlmRoutingTimeWindow = '7d'): Promise<LlmRoutingLatencyPoint[]> {
-    const response = await fetch(`${this.baseUrl}/latency${this.buildWindowParam(window)}`);
+    let response: Response;
+    try {
+      response = await fetch(`${this.baseUrl}/latency${this.buildWindowParam(window)}`);
+    } catch {
+      throw new Error('Failed to fetch LLM routing latency');
+    }
     if (!response.ok) throw new Error(`HTTP ${response.status}`);
     const data: LlmRoutingLatencyPoint[] = await response.json();
     if (!Array.isArray(data)) {
@@ -45,7 +55,12 @@ class LlmRoutingSource {
   }
 
   async byVersion(window: LlmRoutingTimeWindow = '7d'): Promise<LlmRoutingByVersion[]> {
-    const response = await fetch(`${this.baseUrl}/by-version${this.buildWindowParam(window)}`);
+    let response: Response;
+    try {
+      response = await fetch(`${this.baseUrl}/by-version${this.buildWindowParam(window)}`);
+    } catch {
+      throw new Error('Failed to fetch LLM routing by version');
+    }
     if (!response.ok) throw new Error(`HTTP ${response.status}`);
     const data: LlmRoutingByVersion[] = await response.json();
     if (!Array.isArray(data)) {
@@ -55,7 +70,12 @@ class LlmRoutingSource {
   }
 
   async disagreements(window: LlmRoutingTimeWindow = '7d'): Promise<LlmRoutingDisagreement[]> {
-    const response = await fetch(`${this.baseUrl}/disagreements${this.buildWindowParam(window)}`);
+    let response: Response;
+    try {
+      response = await fetch(`${this.baseUrl}/disagreements${this.buildWindowParam(window)}`);
+    } catch {
+      throw new Error('Failed to fetch LLM routing disagreements');
+    }
     if (!response.ok) throw new Error(`HTTP ${response.status}`);
     const data: LlmRoutingDisagreement[] = await response.json();
     if (!Array.isArray(data)) {
@@ -64,8 +84,18 @@ class LlmRoutingSource {
     return data;
   }
 
-  async trend(window: LlmRoutingTimeWindow = '7d'): Promise<LlmRoutingTrendPoint[]> {
-    const response = await fetch(`${this.baseUrl}/trend${this.buildWindowParam(window)}`);
+  async trend(
+    window: LlmRoutingTimeWindow = '7d',
+    model?: string
+  ): Promise<LlmRoutingTrendPoint[]> {
+    const params = new URLSearchParams({ window });
+    if (model) params.set('model', model);
+    let response: Response;
+    try {
+      response = await fetch(`${this.baseUrl}/trend?${params.toString()}`);
+    } catch {
+      throw new Error('Failed to fetch LLM routing trend');
+    }
     if (!response.ok) throw new Error(`HTTP ${response.status}`);
     const data: LlmRoutingTrendPoint[] = await response.json();
     if (!Array.isArray(data)) {
@@ -75,7 +105,12 @@ class LlmRoutingSource {
   }
 
   async byModel(window: LlmRoutingTimeWindow = '7d'): Promise<LlmRoutingByModel[]> {
-    const response = await fetch(`${this.baseUrl}/by-model${this.buildWindowParam(window)}`);
+    let response: Response;
+    try {
+      response = await fetch(`${this.baseUrl}/by-model${this.buildWindowParam(window)}`);
+    } catch {
+      throw new Error('Failed to fetch LLM routing by model');
+    }
     if (!response.ok) throw new Error(`HTTP ${response.status}`);
     const data: LlmRoutingByModel[] = await response.json();
     if (!Array.isArray(data)) {

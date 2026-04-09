@@ -373,6 +373,16 @@ export const SUFFIX_INTELLIGENCE_PATTERN_LIFECYCLE_TRANSITIONED =
   'onex.evt.omniintelligence.pattern-lifecycle-transitioned.v1';
 export const SUFFIX_INTELLIGENCE_PATTERN_PROMOTED = 'onex.evt.omniintelligence.pattern-promoted.v1';
 export const SUFFIX_INTELLIGENCE_PATTERN_STORED = 'onex.evt.omniintelligence.pattern-stored.v1';
+export const SUFFIX_INTELLIGENCE_PATTERN_REFINED =
+  'onex.evt.omniintelligence.pattern-refined.v1';
+
+/** OmniMemory document ingestion event (OMN-7810) */
+export const SUFFIX_OMNIMEMORY_DOCUMENT_INGESTED =
+  'onex.evt.omnimemory.document-ingested.v1';
+
+/** OmniNode routing events (OMN-7810) */
+export const SUFFIX_OMNINODE_ROUTING_REQUESTED =
+  'onex.cmd.omninode.routing-requested.v1';
 
 /** Intelligence pattern projection snapshot (OMN-2924) */
 export const SUFFIX_INTELLIGENCE_PATTERN_PROJECTION =
@@ -583,6 +593,22 @@ export const TOPIC_OMNICLAUDE_ROUTING_DECISIONS = 'onex.evt.omniclaude.routing-d
 export const TOPIC_OMNICLAUDE_AGENT_TRANSFORMATION = 'onex.evt.omniclaude.agent-transformation.v1';
 /** Routing performance metrics and cache statistics. */
 export const TOPIC_OMNICLAUDE_PERFORMANCE_METRICS = 'onex.evt.omniclaude.performance-metrics.v1';
+
+// ============================================================================
+// OmniMarket Topics (OMN-7920)
+// ============================================================================
+
+/** Build loop orchestrator phase transition event.
+ * Emitted by node_build_loop_orchestrator on each FSM state change.
+ * Consumed by ReadModelConsumer to project into build_loop_orchestrator_events table. */
+export const TOPIC_OMNIMARKET_BUILD_LOOP_ORCHESTRATOR_PHASE_TRANSITION =
+  'onex.evt.omnimarket.build-loop-orchestrator-phase-transition.v1';
+
+/** Build loop orchestrator completed event.
+ * Emitted by node_build_loop_orchestrator when a run reaches COMPLETE or FAILED.
+ * Consumed by ReadModelConsumer to project into build_loop_orchestrator_events table. */
+export const TOPIC_OMNIMARKET_BUILD_LOOP_ORCHESTRATOR_COMPLETED =
+  'onex.evt.omnimarket.build-loop-orchestrator-completed.v1';
 
 // ============================================================================
 // Topic Groups — DELETED (OMN-5252 / OMN-5031)

@@ -237,7 +237,9 @@ Three-directory monorepo with TypeScript path aliases:
 - `server/agent-registry-routes.ts` - Agent discovery and management
 - `server/alert-routes.ts` - Alert management system
 - `server/websocket.ts` - WebSocket server with subscription management
-- `server/event-consumer.ts` - Kafka consumer with event aggregation
+- `server/read-model-consumer.ts` - Kafka consumer projecting events into omnidash_analytics
+- `server/event-bus-data-source.ts` - Event bus subscription, normalization, and query layer
+- `server/event-bus-health-poller.ts` - Data source health monitoring
 - `server/db-adapter.ts` - PostgreSQL connection pooling and queries
 - `server/service-health.ts` - Service health monitoring
 
@@ -297,14 +299,20 @@ export const insertUserSchema = createInsertSchema(users); // Zod schema
 - Heartbeat monitoring with 30-second intervals and missed ping tolerance
 - Graceful connection management and cleanup
 
-**Event Consumer** (`server/event-consumer.ts`):
+**Read-Model Consumer** (`server/read-model-consumer.ts`):
 
 - Kafka consumer using `kafkajs` library
 - Connects to the broker configured via `KAFKA_BROKERS` in `.env`
-- Consumes from multiple topics: `agent-routing-decisions`, `agent-transformation-events`, `router-performance-metrics`, `agent-actions`
-- In-memory event aggregation and caching
-- Provides aggregated metrics via `getAggregatedMetrics()` method
-- EventEmitter-based pub/sub for internal event distribution
+- Projects events into the `omnidash_analytics` PostgreSQL database
+- Topic list driven by `topics.yaml` manifest (loaded by `server/services/topic-manifest-loader.ts`)
+- Projection handlers live in `server/consumers/read-model/` domain modules
+
+**Event Bus Data Source** (`server/event-bus-data-source.ts`):
+
+- Subscribes to all topics matching event catalog patterns
+- Normalizes event envelope structure and stores in PostgreSQL
+- Provides query APIs for dashboard data sources
+- Emits events for WebSocket broadcasting
 
 **Client Integration Pattern**:
 
@@ -359,7 +367,7 @@ ws.onmessage = (event) => {
 **Already Implemented**:
 
 - **WebSocket Server**: `server/websocket.ts` provides real-time event streaming to clients
-- **Kafka Consumer**: `server/event-consumer.ts` consumes events from Kafka topics
+- **Kafka Consumers**: `server/read-model-consumer.ts` (DB projections) and `server/event-bus-data-source.ts` (real-time event queries)
 - **Database Adapter**: `server/db-adapter.ts` reads from PostgreSQL intelligence database
 - **Intelligence Schema**: `shared/intelligence-schema.ts` defines 30+ tables for agent observability
 - **API Routes**: Multiple route files serve intelligence data:
@@ -395,11 +403,12 @@ Add to `.env` for intelligence integration (see `.env.example` for template):
 
 ```bash
 # Omnidash Read-Model Database (omnidash's own database)
-# See .env file for actual credentials - NEVER commit passwords to git!
-OMNIDASH_ANALYTICS_DB_URL="postgresql://postgres:<password>@192.168.86.201:5436/omnidash_analytics"
+# See ~/.omnibase/.env for actual credentials — NEVER commit passwords to git!
+OMNIDASH_ANALYTICS_DB_URL="postgresql://postgres:<password>@<POSTGRES_HOST>:<POSTGRES_PORT>/omnidash_analytics"
 
 # Kafka Event Streaming (source of events projected into omnidash_analytics)
-KAFKA_BROKERS=192.168.86.201:19092
+# Value sourced from ~/.omnibase/.env
+KAFKA_BROKERS=<KAFKA_BOOTSTRAP_SERVERS>
 KAFKA_CLIENT_ID=omnidash-dashboard
 KAFKA_CONSUMER_GROUP=omnidash-consumers-v2
 
@@ -420,7 +429,7 @@ ENABLE_REAL_TIME_EVENTS=true
 **Pattern 2: WebSocket for Real-Time Updates** (✅ Implemented)
 
 - WebSocket server at `/ws` in `server/websocket.ts`
-- Consumes Kafka topics via `server/event-consumer.ts`
+- Consumes Kafka topics via `server/event-bus-data-source.ts`
 - Broadcasts events to subscribed clients (<100ms latency)
 - Client subscription model for targeted updates
 
@@ -455,7 +464,7 @@ All tables use Drizzle ORM with Zod validation schemas auto-generated via `creat
 - Intelligence schema with 30+ tables in `shared/intelligence-schema.ts`
 - Database adapter in `server/db-adapter.ts` with connection pooling
 - API endpoints in `server/intelligence-routes.ts` and related route files
-- KafkaJS consumer in `server/event-consumer.ts` with event aggregation
+- KafkaJS consumers in `server/read-model-consumer.ts` and `server/event-bus-data-source.ts`
 
 **✅ Phase 2: Real-Time Streaming (Completed)**
 
