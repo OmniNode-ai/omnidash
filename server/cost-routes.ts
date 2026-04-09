@@ -107,6 +107,7 @@ router.get('/summary', async (req, res) => {
 
     const view = getCostView();
     if (!view) {
+      res.setHeader('X-Projection-Status', 'empty');
       return res.json({
         total_cost_usd: 0,
         reported_cost_usd: 0,
@@ -169,7 +170,8 @@ router.get('/trend', async (req, res) => {
 
     const view = getCostView();
     if (!view) {
-      return res.json([]);
+      res.setHeader('X-Projection-Status', 'empty');
+      return res.json([]); // fallback-ok: projection not available
     }
 
     // When a model filter is specified, query via the projection's
@@ -178,7 +180,7 @@ router.get('/trend', async (req, res) => {
     if (modelFilter) {
       const filtered = await view.queryTrendForModel(timeWindow, modelFilter);
       if (!filtered) {
-        return res.json([]);
+        return res.json([]); // fallback-ok: projection not available // fallback-ok: no trend data for specified model filter; empty is a valid result
       }
       trend = filtered;
     } else {
@@ -224,7 +226,8 @@ router.get('/by-model', async (req, res) => {
 
     const view = getCostView();
     if (!view) {
-      return res.json([]);
+      res.setHeader('X-Projection-Status', 'empty');
+      return res.json([]); // fallback-ok: projection not available
     }
 
     const payload = await view.ensureFresh();
@@ -258,7 +261,8 @@ router.get('/by-repo', async (req, res) => {
 
     const view = getCostView();
     if (!view) {
-      return res.json([]);
+      res.setHeader('X-Projection-Status', 'empty');
+      return res.json([]); // fallback-ok: projection not available
     }
 
     const payload = await view.ensureFresh();
@@ -290,7 +294,8 @@ router.get('/by-pattern', async (req, res) => {
 
     const view = getCostView();
     if (!view) {
-      return res.json([]);
+      res.setHeader('X-Projection-Status', 'empty');
+      return res.json([]); // fallback-ok: projection not available
     }
 
     const payload = await view.ensureFresh();
@@ -315,7 +320,8 @@ router.get('/token-usage', async (req, res) => {
 
     const view = getCostView();
     if (!view) {
-      return res.json([]);
+      res.setHeader('X-Projection-Status', 'empty');
+      return res.json([]); // fallback-ok: projection not available
     }
 
     const payload = await getPayloadForWindow(view, timeWindow);

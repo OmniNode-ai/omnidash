@@ -645,13 +645,55 @@ describe('Intelligence Routes', () => {
   });
 
   describe('GET /api/intelligence/patterns/quality-trends', () => {
-    it('should return empty array (service no longer exists)', async () => {
+    it('should return empty array when table does not exist', async () => {
+      const tableError = new Error('relation "pattern_quality_metrics" does not exist');
+      (tableError as any).code = '42P01';
+      vi.mocked(mockDb.execute).mockRejectedValue(tableError);
+
       const response = await request(app)
         .get('/api/intelligence/patterns/quality-trends?timeWindow=7d')
         .expect(200);
 
       expect(Array.isArray(response.body)).toBe(true);
       expect(response.body.length).toBe(0);
+    });
+
+    it('should return quality trend data when table exists', async () => {
+      // First call: table existence check succeeds
+      vi.mocked(mockDb.execute).mockResolvedValueOnce({ rows: [{ '?column?': 1 }] } as any);
+
+      // Second call: the actual query via Drizzle select chain
+      vi.mocked(mockDb.select).mockReturnValue({
+        from: vi.fn().mockReturnValue({
+          where: vi.fn().mockReturnValue({
+            groupBy: vi.fn().mockReturnValue({
+              orderBy: vi.fn().mockResolvedValue([
+                {
+                  period: '2026-04-01 00:00:00+00',
+                  avgQualityScore: '0.850',
+                  avgConfidence: '0.920',
+                  measurementCount: 15,
+                  uniquePatterns: 8,
+                },
+              ]),
+            }),
+          }),
+        }),
+      } as any);
+
+      const response = await request(app)
+        .get('/api/intelligence/patterns/quality-trends?timeWindow=7d')
+        .expect(200);
+
+      expect(Array.isArray(response.body)).toBe(true);
+      expect(response.body.length).toBe(1);
+      expect(response.body[0]).toEqual({
+        period: '2026-04-01 00:00:00+00',
+        avgQualityScore: 0.85,
+        avgConfidence: 0.92,
+        measurementCount: 15,
+        uniquePatterns: 8,
+      });
     });
   });
 

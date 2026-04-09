@@ -260,7 +260,8 @@ export function NodeDetailPanel({ node, instances = [], open, onClose }: NodeDet
   if (!node) return null;
 
   const typeConfig = NODE_TYPE_CONFIG[node.node_type];
-  const stateConfig = NODE_STATE_CONFIG[node.state];
+  const normalizedState = (node.state?.toUpperCase() ?? 'ACTIVE') as NodeState;
+  const stateConfig = NODE_STATE_CONFIG[normalizedState] ?? NODE_STATE_CONFIG.ACTIVE;
   const TypeIcon = typeConfig.icon;
 
   return (
@@ -467,7 +468,8 @@ export function NodeTypeIcon({
  * NodeStateBadge - Reusable state badge component
  */
 export function NodeStateBadge({ state, className }: { state: NodeState; className?: string }) {
-  const config = NODE_STATE_CONFIG[state];
+  const normalizedState = (state?.toUpperCase() ?? 'ACTIVE') as NodeState;
+  const config = NODE_STATE_CONFIG[normalizedState] ?? NODE_STATE_CONFIG.ACTIVE;
 
   return (
     <Badge variant={config.variant} className={cn(config.className, className)}>

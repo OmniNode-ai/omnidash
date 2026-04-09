@@ -107,6 +107,9 @@ jobs:
           fi
           echo "OK: No omniarchon references"
 
+      - name: No unannotated empty responses (OMN-7769)
+        run: bash scripts/lint-empty-responses.sh server
+
       - name: No forbidden stub markers (OMN-5606)
         run: |
           # Uses the same detector as the pre-commit hook (single source of truth)
