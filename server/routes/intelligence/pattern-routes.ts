@@ -231,7 +231,7 @@ export function registerPatternRoutes(router: Router): void {
         if (errorCode === '42P01' || tableError?.message?.includes('does not exist')) {
           console.log('⚠ pattern_lineage_nodes table does not exist - returning empty');
           res.setHeader('X-Projection-Status', 'empty');
-          return res.json([]);
+          return res.json([]); // fallback-ok: table not yet created
         }
         throw tableError;
       }
@@ -388,7 +388,7 @@ export function registerPatternRoutes(router: Router): void {
         const errorCode = tableError?.code || tableError?.errno || '';
         if (errorCode === '42P01' || tableError?.message?.includes('does not exist')) {
           res.setHeader('X-Projection-Status', 'empty');
-          return res.json([]);
+          return res.json([]); // fallback-ok: table not yet created
         }
         throw tableError;
       }
@@ -427,7 +427,7 @@ export function registerPatternRoutes(router: Router): void {
         if (errorCode === '42P01' || tableError?.message?.includes('does not exist')) {
           console.log('⚠ pattern_lineage_nodes table does not exist - returning empty array');
           res.setHeader('X-Projection-Status', 'empty');
-          return res.json([]);
+          return res.json([]); // fallback-ok: table not yet created
         }
         throw tableError;
       }
@@ -476,7 +476,7 @@ export function registerPatternRoutes(router: Router): void {
         if (errorCode === '42P01' || tableError?.message?.includes('does not exist')) {
           console.log('⚠ pattern_lineage_nodes table does not exist - returning empty array');
           res.setHeader('X-Projection-Status', 'empty');
-          return res.json([]);
+          return res.json([]); // fallback-ok: table not yet created
         }
         throw tableError;
       }
@@ -568,7 +568,7 @@ export function registerPatternRoutes(router: Router): void {
         if (errorCode === '42P01' || tableError?.message?.includes('does not exist')) {
           console.log('⚠ pattern_quality_metrics table does not exist - returning empty array');
           res.setHeader('X-Projection-Status', 'empty');
-          return res.json([]);
+          return res.json([]); // fallback-ok: table not yet created
         }
         throw tableError;
       }
@@ -667,7 +667,7 @@ export function registerPatternRoutes(router: Router): void {
         if (errorCode === '42P01' || tableError?.message?.includes('does not exist')) {
           console.log('⚠ pattern_lineage_nodes table does not exist - returning empty array');
           res.setHeader('X-Projection-Status', 'empty');
-          return res.json([]);
+          return res.json([]); // fallback-ok: table not yet created
         }
         throw tableError;
       }
@@ -792,7 +792,7 @@ export function registerPatternRoutes(router: Router): void {
         if (errorCode === '42P01' || tableError?.message?.includes('does not exist')) {
           console.log('⚠ pattern_lineage_nodes table does not exist - returning empty array');
           res.setHeader('X-Projection-Status', 'empty');
-          return res.json([]);
+          return res.json([]); // fallback-ok: table not yet created
         }
         throw tableError;
       }

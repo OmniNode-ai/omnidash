@@ -128,7 +128,7 @@ export function registerAgentRoutes(router: Router): void {
 
       // No data available from projection or database
       res.setHeader('X-Projection-Status', 'empty');
-      return res.json([]);
+      return res.json([]); // fallback-ok: projection not available
     } catch (error) {
       console.error('Error in /actions/recent endpoint:', error);
       res.status(500).json({

@@ -35,7 +35,7 @@ router.get('/recent', async (req, res) => {
     const snapshot = await view.getSnapshot({ limit });
     if (!snapshot.payload) {
       res.setHeader('X-Projection-Status', 'empty');
-      res.json([]);
+      res.json([]); // fallback-ok: projection not available
       return;
     }
 
