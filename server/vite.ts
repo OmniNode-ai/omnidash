@@ -40,9 +40,20 @@ export async function setupVite(app: Express, server: Server) {
     appType: 'custom',
   });
 
-  app.use(vite.middlewares);
+  app.use((req, res, next) => {
+    // Skip Vite middlewares for API routes — they must be handled by Express
+    if (req.url.startsWith('/api/') || req.url.startsWith('/api?')) {
+      return next();
+    }
+    vite.middlewares.handle(req, res, next);
+  });
   app.use('*', async (req, res, next) => {
     const url = req.originalUrl;
+
+    // Never serve HTML for API routes
+    if (url.startsWith('/api/') || url.startsWith('/api?')) {
+      return next();
+    }
 
     try {
       const clientTemplate = path.resolve(import.meta.dirname, '..', 'client', 'index.html');
@@ -70,8 +81,14 @@ export function serveStatic(app: Express) {
 
   app.use(express.static(distPath));
 
-  // fall through to index.html if the file doesn't exist
-  app.use('*', (_req, res) => {
-    res.sendFile(path.resolve(distPath, 'index.html'));
+  // Read index.html once at startup to avoid per-request filesystem access
+  const indexHtml = fs.readFileSync(path.resolve(distPath, 'index.html'), 'utf-8');
+
+  // fall through to index.html if the file doesn't exist (skip API routes)
+  app.use('*', (req, res, next) => {
+    if (req.originalUrl.startsWith('/api/') || req.originalUrl.startsWith('/api?')) {
+      return next();
+    }
+    res.status(200).set({ 'Content-Type': 'text/html' }).end(indexHtml);
   });
 }
