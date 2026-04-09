@@ -36,6 +36,7 @@ export { OmniMemoryProjectionHandler } from './omnimemory-projections';
 export { ChangeControlProjectionHandler } from './change-control-projections';
 export { EvalProjectionHandler } from './eval-projections';
 export { OmnimarketProjectionHandler } from './omnimarket-projections';
+export { BloomEvalProjectionHandler } from './bloom-eval-projections';
 
 import type { ProjectionHandler } from './types';
 import { OmniclaudeProjectionHandler } from './omniclaude-projections';
@@ -47,6 +48,7 @@ import { OmniMemoryProjectionHandler } from './omnimemory-projections';
 import { ChangeControlProjectionHandler } from './change-control-projections';
 import { EvalProjectionHandler } from './eval-projections';
 import { OmnimarketProjectionHandler } from './omnimarket-projections';
+import { BloomEvalProjectionHandler } from './bloom-eval-projections';
 
 /**
  * Create the ordered list of all projection handlers.
@@ -66,5 +68,6 @@ export function createProjectionHandlers(): ProjectionHandler[] {
     new ChangeControlProjectionHandler(),
     new EvalProjectionHandler(),
     new OmnimarketProjectionHandler(),
+    new BloomEvalProjectionHandler(),
   ];
 }

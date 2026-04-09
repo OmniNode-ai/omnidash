@@ -2755,3 +2755,35 @@ export const insertBuildLoopOrchestratorEventSchema = createInsertSchema(
   buildLoopOrchestratorEvents
 );
 export type InsertBuildLoopOrchestratorEvent = typeof buildLoopOrchestratorEvents.$inferInsert;
+
+// ---------------------------------------------------------------------------
+// Bloom Eval Results (OMN-8146)
+// ---------------------------------------------------------------------------
+
+export const intelligenceBloomEvalResults = pgTable(
+  'intelligence_bloom_eval_results',
+  {
+    id: bigint('id', { mode: 'number' }).primaryKey().generatedAlwaysAsIdentity(),
+    suiteId: uuid('suite_id').notNull(),
+    specId: uuid('spec_id').notNull(),
+    failureMode: text('failure_mode').notNull().default(''),
+    totalScenarios: integer('total_scenarios').notNull().default(0),
+    passedCount: integer('passed_count').notNull().default(0),
+    failureRate: doublePrecision('failure_rate').notNull().default(0),
+    passedThreshold: boolean('passed_threshold').notNull().default(false),
+    correlationId: text('correlation_id'),
+    emittedAt: timestamp('emitted_at', { withTimezone: true }),
+    projectedAt: timestamp('projected_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    uniqueIndex('uq_bloom_eval_suite_emitted').on(t.suiteId, t.emittedAt),
+    index('idx_bloom_eval_results_suite_id').on(t.suiteId),
+    index('idx_bloom_eval_results_spec_id').on(t.specId),
+    index('idx_bloom_eval_results_emitted_at').on(t.emittedAt),
+  ]
+);
+
+export const insertIntelligenceBloomEvalResultSchema = createInsertSchema(
+  intelligenceBloomEvalResults
+);
+export type InsertIntelligenceBloomEvalResult = typeof intelligenceBloomEvalResults.$inferInsert;
