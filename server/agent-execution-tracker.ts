@@ -286,7 +286,7 @@ export class AgentExecutionTracker {
           },
         },
         routingDecision: {
-          confidence: 0.7 + Math.random() * 0.3,
+          confidence: 0.7 + Math.random() * 0.3, // fallback-ok: mock data
           strategy: 'enhanced_fuzzy_matching',
           alternatives: agents.filter((a) => a !== agentId).slice(0, 2),
         },

@@ -63,7 +63,7 @@ function parseIncludeEstimated(raw: unknown): boolean {
 
 /** Validate and normalize the time window query parameter. */
 function parseWindow(raw: unknown): CostTimeWindow {
-  if (raw === '24h' || raw === '7d' || raw === '30d') return raw;
+  if (raw === '24h' || raw === '7d' || raw === '30d' || raw === 'all') return raw;
   if (raw !== undefined) {
     console.warn(
       `[costs] parseWindow: unrecognised window value ${JSON.stringify(raw)} — defaulting to '7d'`
@@ -107,6 +107,7 @@ router.get('/summary', async (req, res) => {
 
     const view = getCostView();
     if (!view) {
+      res.setHeader('X-Projection-Status', 'empty');
       return res.json({
         total_cost_usd: 0,
         reported_cost_usd: 0,
@@ -165,29 +166,42 @@ router.get('/trend', async (req, res) => {
   try {
     const timeWindow = parseWindow(req.query.window);
     const includeEstimated = parseIncludeEstimated(req.query.includeEstimated);
+    const modelFilter = typeof req.query.model === 'string' ? req.query.model : undefined;
 
     const view = getCostView();
     if (!view) {
-      return res.json([]);
+      res.setHeader('X-Projection-Status', 'empty');
+      return res.json([]); // fallback-ok: projection not available
     }
 
-    const payload = await getPayloadForWindow(view, timeWindow);
-    // Communicate degradation via headers so the response body always remains
-    // an array regardless of degradation state (fixes breaking contract change).
-    if (payload.degraded) {
-      res.setHeader('X-Degraded', 'true');
-      if (payload.window !== undefined) res.setHeader('X-Degraded-Window', payload.window);
+    // When a model filter is specified, query via the projection's
+    // queryTrendForModel (which obtains the DB internally, respecting OMN-2325).
+    let trend;
+    if (modelFilter) {
+      const filtered = await view.queryTrendForModel(timeWindow, modelFilter);
+      if (!filtered) {
+        return res.json([]); // fallback-ok: projection not available // fallback-ok: no trend data for specified model filter; empty is a valid result
+      }
+      trend = filtered;
+    } else {
+      const payload = await getPayloadForWindow(view, timeWindow);
+      if (payload.degraded) {
+        res.setHeader('X-Degraded', 'true');
+        if (payload.window !== undefined) res.setHeader('X-Degraded-Window', payload.window);
+      }
+      trend = payload.trend;
     }
+
     // When includeEstimated=false, subtract estimated costs from each trend point.
     if (!includeEstimated) {
-      const filtered = payload.trend.map((p) => ({
+      const filtered = trend.map((p) => ({
         ...p,
         total_cost_usd: p.total_cost_usd - p.estimated_cost_usd,
         estimated_cost_usd: 0,
       }));
       return res.json(filtered);
     }
-    return res.json(payload.trend);
+    return res.json(trend);
   } catch (error) {
     console.error('[costs] Error fetching trend:', error);
     return res.status(500).json({ error: 'Failed to fetch cost trend' });
@@ -212,7 +226,8 @@ router.get('/by-model', async (req, res) => {
 
     const view = getCostView();
     if (!view) {
-      return res.json([]);
+      res.setHeader('X-Projection-Status', 'empty');
+      return res.json([]); // fallback-ok: projection not available
     }
 
     const payload = await view.ensureFresh();
@@ -246,7 +261,8 @@ router.get('/by-repo', async (req, res) => {
 
     const view = getCostView();
     if (!view) {
-      return res.json([]);
+      res.setHeader('X-Projection-Status', 'empty');
+      return res.json([]); // fallback-ok: projection not available
     }
 
     const payload = await view.ensureFresh();
@@ -278,7 +294,8 @@ router.get('/by-pattern', async (req, res) => {
 
     const view = getCostView();
     if (!view) {
-      return res.json([]);
+      res.setHeader('X-Projection-Status', 'empty');
+      return res.json([]); // fallback-ok: projection not available
     }
 
     const payload = await view.ensureFresh();
@@ -303,7 +320,8 @@ router.get('/token-usage', async (req, res) => {
 
     const view = getCostView();
     if (!view) {
-      return res.json([]);
+      res.setHeader('X-Projection-Status', 'empty');
+      return res.json([]); // fallback-ok: projection not available
     }
 
     const payload = await getPayloadForWindow(view, timeWindow);

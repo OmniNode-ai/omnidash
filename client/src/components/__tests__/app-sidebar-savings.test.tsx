@@ -61,19 +61,27 @@ import { SidebarProvider } from '@/components/ui/sidebar';
 import { DemoModeProvider } from '@/contexts/DemoModeContext';
 import { PreferencesProvider } from '@/contexts/PreferencesContext';
 
+// Mock useDashboardHealth so all routes appear as live (bypass hideNoData filtering).
+vi.mock('@/hooks/useDashboardHealth', () => ({
+  useDashboardHealth: () => ({
+    isRouteLive: () => true,
+    healthData: undefined,
+  }),
+}));
+
 function renderSidebar() {
   const queryClient = new QueryClient({
     defaultOptions: { queries: { retry: false, gcTime: Infinity, staleTime: Infinity } },
   });
   return render(
     <QueryClientProvider client={queryClient}>
-      <PreferencesProvider>
-        <DemoModeProvider>
+      <DemoModeProvider>
+        <PreferencesProvider>
           <SidebarProvider defaultOpen={true}>
             <AppSidebar />
           </SidebarProvider>
-        </DemoModeProvider>
-      </PreferencesProvider>
+        </PreferencesProvider>
+      </DemoModeProvider>
     </QueryClientProvider>
   );
 }
