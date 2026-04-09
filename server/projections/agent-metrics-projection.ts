@@ -24,6 +24,7 @@ import { tryGetIntelligenceDb } from '../storage';
 
 /** Parse a time window like '1h', '30m', '7d' into { num, unit } for MAKE_INTERVAL. */
 function parseTimeWindow(tw: string): { num: number; unit: 'hours' | 'mins' | 'days' } {
+  if (tw === 'all') return { num: 10000, unit: 'days' };
   const match = tw.match(/^(\d+)([hmd])$/);
   if (!match) return { num: 24, unit: 'hours' };
   const num = Math.max(1, parseInt(match[1], 10));
