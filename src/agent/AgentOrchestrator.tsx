@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo } from 'react';
 import { AgentActionDispatcher } from './AgentActionDispatcher';
 import { usePageAgent } from './usePageAgent';
 import { buildSystemPrompt } from './buildSystemPrompt';
+import { buildUserContext } from './contextUtils';
 import { AgentChatPanel } from '@/components/agent/AgentChatPanel';
 import { useFrameStore } from '@/store/store';
 import { useRegistry } from '@/registry/RegistryProvider';
@@ -17,6 +18,7 @@ export function AgentOrchestrator() {
   const status = useFrameStore((s) => s.status);
   const isPanelOpen = useFrameStore((s) => s.isPanelOpen);
   const activeDashboard = useFrameStore((s) => s.activeDashboard);
+  const globalFilters = useFrameStore((s) => s.globalFilters);
 
   // Read store actions via getState() — safe for event handlers that don't need re-renders
   const { appendMessage, setStatus, setPanelOpen } = useFrameStore.getState();
@@ -133,10 +135,18 @@ export function AgentOrchestrator() {
 
   const handleSend = useCallback(
     async (userMessage: string) => {
+      // Append original message to UI — context prefix is NOT shown to the user
       appendMessage({ role: 'user', content: userMessage });
       setStatus('thinking');
       try {
-        await sendMessage(userMessage);
+        // Inject current layout context to improve multi-turn reference resolution
+        const context = buildUserContext({
+          layout: activeDashboard?.layout ?? [],
+          timeRange: globalFilters.timeRange,
+          filters: globalFilters,
+        });
+        const contextualMessage = `[Context: ${context}]\n\nUser: ${userMessage}`;
+        await sendMessage(contextualMessage);
       } catch (err) {
         const error = err instanceof Error ? err.message : String(err);
         appendMessage({
@@ -148,7 +158,7 @@ export function AgentOrchestrator() {
       }
       return '';
     },
-    [appendMessage, setStatus, sendMessage]
+    [appendMessage, setStatus, sendMessage, activeDashboard, globalFilters]
   );
 
   // Respect VITE_AGENT_ENABLED=false kill switch

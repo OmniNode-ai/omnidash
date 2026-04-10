@@ -1,6 +1,7 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
 import type { ConversationMessage } from '@/store/conversationSlice';
 import { MessageBubble } from './MessageBubble';
+import { SuggestedPrompts } from './SuggestedPrompts';
 import * as s from './AgentChatPanel.css';
 
 interface AgentChatPanelProps {
@@ -61,16 +62,18 @@ export function AgentChatPanel({
         <>
           <div className={s.messageList} ref={listRef}>
             {messages.length === 0 && (
-              <div
-                style={{
-                  color: 'hsl(var(--muted))',
-                  fontSize: '0.8125rem',
-                  textAlign: 'center',
-                  padding: '2rem 1rem',
-                }}
-              >
-                Ask me to build or configure your dashboard. Try:{' '}
-                &ldquo;Start from the Platform Health template&rdquo;
+              <div style={{ padding: '1rem 0' }}>
+                <div
+                  style={{
+                    color: 'hsl(var(--muted))',
+                    fontSize: '0.8125rem',
+                    textAlign: 'center',
+                    padding: '1rem 1rem 0.5rem',
+                  }}
+                >
+                  Ask me to build or configure your dashboard.
+                </div>
+                <SuggestedPrompts onSelect={(p) => setInput(p)} />
               </div>
             )}
             {messages.map((msg) => (
