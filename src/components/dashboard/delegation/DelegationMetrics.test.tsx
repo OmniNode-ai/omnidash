@@ -6,7 +6,7 @@ import DelegationMetrics from './DelegationMetrics';
 const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } });
 
 vi.mock('echarts-for-react', () => ({
-  default: ({ option }: any) => <div data-testid="echarts-mock">chart</div>,
+  default: () => <div data-testid="echarts-mock">chart</div>,
 }));
 
 describe('DelegationMetrics', () => {

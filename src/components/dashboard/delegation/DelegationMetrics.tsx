@@ -11,7 +11,7 @@ interface DelegationSummary {
   byTaskType: Array<{ taskType: string; count: number }>;
 }
 
-export default function DelegationMetrics({ config }: { config: Record<string, unknown> }) {
+export default function DelegationMetrics({ config: _config }: { config: Record<string, unknown> }) {
   const { data, isLoading, error } = useComponentData<DelegationSummary>(
     '/api/delegation/summary',
     { queryKey: ['delegation-summary'], refetchInterval: 60_000 }

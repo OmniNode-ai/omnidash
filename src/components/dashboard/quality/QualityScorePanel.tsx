@@ -10,7 +10,7 @@ interface QualitySummary {
   totalMeasurements: number;
 }
 
-export default function QualityScorePanel({ config }: { config: Record<string, unknown> }) {
+export default function QualityScorePanel({ config: _config }: { config: Record<string, unknown> }) {
   const { data, isLoading, error } = useComponentData<QualitySummary>(
     '/api/intelligence/quality/summary',
     { queryKey: ['quality-summary'], refetchInterval: 60_000 }

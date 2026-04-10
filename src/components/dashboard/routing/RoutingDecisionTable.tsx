@@ -12,7 +12,7 @@ interface RoutingDecision {
   cost_usd: number;
 }
 
-export default function RoutingDecisionTable({ config }: { config: Record<string, unknown> }) {
+export default function RoutingDecisionTable({ config: _config }: { config: Record<string, unknown> }) {
   const { data, isLoading, error } = useComponentData<RoutingDecision[]>(
     '/api/llm-routing/decisions',
     { queryKey: ['routing-decisions'], refetchInterval: 60_000 }

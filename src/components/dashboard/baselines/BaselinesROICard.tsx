@@ -26,7 +26,7 @@ function DeltaMetric({ label, value, unit }: { label: string; value: number; uni
   );
 }
 
-export default function BaselinesROICard({ config }: { config: Record<string, unknown> }) {
+export default function BaselinesROICard({ config: _config }: { config: Record<string, unknown> }) {
   const { data, isLoading, error } = useComponentData<BaselinesSummary | null>(
     '/api/baselines/summary',
     { queryKey: ['baselines-summary'], refetchInterval: 120_000 }

@@ -40,7 +40,7 @@ function DimensionCard({ dim }: { dim: ReadinessDimension }) {
   );
 }
 
-export default function ReadinessGate({ config }: { config: Record<string, unknown> }) {
+export default function ReadinessGate({ config: _config }: { config: Record<string, unknown> }) {
   const { data, isLoading, error } = useComponentData<ReadinessSummary>(
     '/api/readiness/summary',
     { queryKey: ['readiness-summary'], refetchInterval: 120_000 }
