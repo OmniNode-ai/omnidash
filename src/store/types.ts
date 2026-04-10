@@ -23,4 +23,16 @@ export interface FiltersSlice {
   clearFilters: () => void;
 }
 
-export type FrameStore = EditModeSlice & FiltersSlice;
+import type { DashboardDefinition, DashboardLayoutItem } from '@shared/types/dashboard';
+import type { GridSize } from '@shared/types/component-manifest';
+
+export interface DashboardSlice {
+  activeDashboard: DashboardDefinition | null;
+  setActiveDashboard: (dashboard: DashboardDefinition | null) => void;
+  addComponentToLayout: (componentName: string, componentVersion: string, defaultSize: GridSize) => void;
+  removeComponentFromLayout: (itemId: string) => void;
+  updateLayout: (layout: DashboardLayoutItem[]) => void;
+  updateComponentConfig: (itemId: string, config: Record<string, unknown>) => void;
+}
+
+export type FrameStore = EditModeSlice & FiltersSlice & DashboardSlice;
