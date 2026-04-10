@@ -87,7 +87,7 @@ router.get('/agents', (req, res) => {
 
     const registry = loadAgentRegistry();
     if (!registry || !registry.agents) {
-      return res.status(404).json({ error: 'Agent registry not found', agents: [] });
+      return res.status(500).json({ error: 'Agent registry not found', agents: [] });
     }
 
     let agents = Object.entries(registry.agents).map(([key, agentData]: [string, any]) => {
