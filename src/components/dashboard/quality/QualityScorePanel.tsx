@@ -1,7 +1,7 @@
 import { useMemo } from 'react';
 import ReactECharts from 'echarts-for-react';
 import { ComponentWrapper } from '../ComponentWrapper';
-import { useComponentData } from '@/hooks/useComponentData';
+import { useProjectionQuery } from '@/hooks/useProjectionQuery';
 import { useThemeColors } from '@/theme';
 
 interface QualitySummary {
@@ -11,7 +11,7 @@ interface QualitySummary {
 }
 
 export default function QualityScorePanel({ config: _config }: { config: Record<string, unknown> }) {
-  const { data, isLoading, error } = useComponentData<QualitySummary>(
+  const { data, isLoading, error } = useProjectionQuery<QualitySummary>(
     '/api/intelligence/quality/summary',
     { queryKey: ['quality-summary'], refetchInterval: 60_000 }
   );

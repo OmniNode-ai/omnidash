@@ -5,7 +5,9 @@
   "main": "index.js",
   "scripts": {
     "dev": "vite --port 3001",
+    "dev:server": "tsx watch server/index.ts",
     "build": "tsc && vite build",
+    "build:server": "tsc --project tsconfig.node.json",
     "preview": "vite preview",
     "test": "vitest",
     "test:run": "vitest run",
@@ -19,6 +21,9 @@
   "dependencies": {
     "@neondatabase/serverless": "^1.0.2",
     "@tanstack/react-query": "^5.97.0",
+    "@types/express": "^5.0.6",
+    "@types/pg": "^8.20.0",
+    "@types/ws": "^8.18.1",
     "@vanilla-extract/css": "^1.20.1",
     "@vanilla-extract/dynamic": "^2.1.5",
     "@vanilla-extract/recipes": "^0.5.7",
@@ -26,10 +31,13 @@
     "drizzle-orm": "^0.45.2",
     "echarts": "^6.0.0",
     "echarts-for-react": "^3.0.6",
+    "express": "^5.2.1",
     "mitt": "^3.0.1",
+    "pg": "^8.20.0",
     "react": "^19.2.5",
     "react-dom": "^19.2.5",
     "react-grid-layout": "^2.2.3",
+    "ws": "^8.20.0",
     "zustand": "^5.0.12"
   },
   "devDependencies": {
