@@ -2787,3 +2787,70 @@ export const insertIntelligenceBloomEvalResultSchema = createInsertSchema(
   intelligenceBloomEvalResults
 );
 export type InsertIntelligenceBloomEvalResult = typeof intelligenceBloomEvalResults.$inferInsert;
+
+// ---------------------------------------------------------------------------
+// Session Post-Mortems (OMN-8189)
+// Projected from: onex.evt.omnimarket.session-post-mortem.v1
+// ---------------------------------------------------------------------------
+
+export const sessionPostMortems = pgTable(
+  'session_post_mortems',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    sessionId: text('session_id').notNull(),
+    sessionLabel: text('session_label').notNull().default(''),
+    outcome: text('outcome').notNull(),
+    phasesPlanned: text('phases_planned')
+      .array()
+      .notNull()
+      .default(sql`'{}'`),
+    phasesCompleted: text('phases_completed')
+      .array()
+      .notNull()
+      .default(sql`'{}'`),
+    phasesFailed: text('phases_failed')
+      .array()
+      .notNull()
+      .default(sql`'{}'`),
+    phasesSkipped: text('phases_skipped')
+      .array()
+      .notNull()
+      .default(sql`'{}'`),
+    stalledAgents: text('stalled_agents')
+      .array()
+      .notNull()
+      .default(sql`'{}'`),
+    prsMerged: text('prs_merged')
+      .array()
+      .notNull()
+      .default(sql`'{}'`),
+    prsOpen: text('prs_open')
+      .array()
+      .notNull()
+      .default(sql`'{}'`),
+    prsFailed: text('prs_failed')
+      .array()
+      .notNull()
+      .default(sql`'{}'`),
+    carryForwardItems: text('carry_forward_items')
+      .array()
+      .notNull()
+      .default(sql`'{}'`),
+    frictionEventCount: integer('friction_event_count').notNull().default(0),
+    reportPath: text('report_path'),
+    startedAt: timestamp('started_at', { withTimezone: true }),
+    completedAt: timestamp('completed_at', { withTimezone: true }),
+    emittedAt: timestamp('emitted_at', { withTimezone: true }),
+    projectedAt: timestamp('projected_at', { withTimezone: true }).notNull().defaultNow(),
+    rawPayload: jsonb('raw_payload'),
+  },
+  (t) => [
+    uniqueIndex('uq_session_post_mortems_session_id').on(t.sessionId),
+    index('idx_spm_projected_at').on(t.projectedAt),
+    index('idx_spm_completed_at').on(t.completedAt),
+    index('idx_spm_outcome').on(t.outcome),
+  ]
+);
+
+export const insertSessionPostMortemSchema = createInsertSchema(sessionPostMortems);
+export type InsertSessionPostMortem = typeof sessionPostMortems.$inferInsert;

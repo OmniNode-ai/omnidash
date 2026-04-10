@@ -188,6 +188,8 @@ read_model_topics:
     handler: "projectBuildLoopOrchestratorEvent"
   - topic: "onex.evt.omnimarket.build-loop-orchestrator-completed.v1"
     handler: "projectBuildLoopOrchestratorEvent"
+  - topic: "onex.evt.omnimarket.session-post-mortem.v1"
+    handler: "projectSessionPostMortem"
 
 # Topics omnidash monitors for broker health but does NOT consume into read models.
 # These indicate healthy upstream producers. No handler is needed.
