@@ -962,7 +962,14 @@ export class OmnibaseInfraProjectionHandler implements ProjectionHandler {
     const { db } = context;
     if (!db) return false;
 
-    const id = String(data.event_id ?? data.eventId ?? data.id ?? '').trim() || meta.fallbackId;
+    const rawId = String(data.event_id ?? data.eventId ?? data.id ?? '').trim();
+    const id = rawId && UUID_RE.test(rawId) ? rawId : meta.fallbackId;
+
+    const toNullableNumber = (value: unknown): number | null => {
+      if (value == null || value === '') return null;
+      const n = Number(value);
+      return Number.isFinite(n) ? n : null;
+    };
     const consumerIdentity = String(data.consumer_identity ?? data.consumerIdentity ?? '').trim();
     const consumerGroup = String(data.consumer_group ?? data.consumerGroup ?? '').trim();
     const topic = String(data.topic ?? '').trim();
@@ -990,11 +997,15 @@ export class OmnibaseInfraProjectionHandler implements ProjectionHandler {
       errorType: String(data.error_type ?? data.errorType ?? '').trim(),
       hostname: String(data.hostname ?? '').trim(),
       serviceLabel: String(data.service_label ?? data.serviceLabel ?? '').trim(),
-      rebalanceDurationMs:
-        data.rebalance_duration_ms != null ? Number(data.rebalance_duration_ms) : null,
-      partitionsAssigned:
-        data.partitions_assigned != null ? Number(data.partitions_assigned) : null,
-      partitionsRevoked: data.partitions_revoked != null ? Number(data.partitions_revoked) : null,
+      rebalanceDurationMs: toNullableNumber(
+        data.rebalance_duration_ms ?? data.rebalanceDurationMs
+      ),
+      partitionsAssigned: toNullableNumber(
+        data.partitions_assigned ?? data.partitionsAssigned
+      ),
+      partitionsRevoked: toNullableNumber(
+        data.partitions_revoked ?? data.partitionsRevoked
+      ),
       emittedAt: safeParseDate(data.emitted_at ?? data.emittedAt ?? data.timestamp),
     };
 
