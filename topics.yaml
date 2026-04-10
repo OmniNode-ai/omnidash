@@ -187,6 +187,8 @@ read_model_topics:
     handler: "projectBuildLoopOrchestratorEvent"
   - topic: "onex.evt.omnimarket.build-loop-orchestrator-completed.v1"
     handler: "projectBuildLoopOrchestratorEvent"
+  - topic: "onex.evt.omnimarket.session-post-mortem.v1"
+    handler: "projectSessionPostMortem"
   # Sweep result events (OMN-8172) — emitted by sweep nodes after each run
   - topic: "onex.evt.omnimarket.sweep-result.v1"
     handler: "projectSweepResult"

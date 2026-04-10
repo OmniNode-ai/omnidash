@@ -614,6 +614,11 @@ export const TOPIC_OMNIMARKET_BUILD_LOOP_ORCHESTRATOR_PHASE_TRANSITION =
 export const TOPIC_OMNIMARKET_BUILD_LOOP_ORCHESTRATOR_COMPLETED =
   'onex.evt.omnimarket.build-loop-orchestrator-completed.v1';
 
+/** Session post-mortem event (OMN-8189).
+ * Emitted by node_session_post_mortem at session end with a ModelPostMortemReport payload.
+ * Consumed by ReadModelConsumer to project into session_post_mortems table. */
+export const TOPIC_OMNIMARKET_SESSION_POST_MORTEM = 'onex.evt.omnimarket.session-post-mortem.v1';
+
 /** Sweep result event (OMN-8172).
  * Emitted by sweep nodes (aislop, coverage, compliance, contract, dashboard, runtime, data_flow)
  * after each run. Consumed by ReadModelConsumer to project into sweep_results table. */
