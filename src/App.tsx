@@ -1,9 +1,10 @@
 import { FrameLayout } from './components/frame/FrameLayout';
+import { DashboardBuilder } from './pages/DashboardBuilder';
 
 export function App() {
   return (
     <FrameLayout>
-      <div id="omnidash-v2-root">omnidash v2</div>
+      <DashboardBuilder />
     </FrameLayout>
   );
 }

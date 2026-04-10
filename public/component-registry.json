@@ -1,0 +1,428 @@
+{
+  "manifestVersion": "1.0",
+  "generatedAt": "2026-04-10T17:45:00.167Z",
+  "components": {
+    "cost-trend-panel": {
+      "name": "cost-trend-panel",
+      "displayName": "Cost Trend",
+      "description": "LLM cost trends, budget alerts, and token usage over time",
+      "category": "metrics",
+      "version": "1.0.0",
+      "implementationKey": "cost-trend/CostTrendPanel",
+      "configSchema": {
+        "type": "object",
+        "properties": {
+          "granularity": {
+            "type": "string",
+            "enum": [
+              "hour",
+              "day"
+            ],
+            "default": "day"
+          },
+          "showBudgetLine": {
+            "type": "boolean",
+            "default": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "dataSources": [
+        {
+          "type": "api",
+          "endpoint": "/api/intelligence/cost/trends",
+          "required": true,
+          "purpose": "initial_fetch"
+        }
+      ],
+      "events": {
+        "emits": [],
+        "consumes": [
+          {
+            "name": "time_range_changed"
+          }
+        ]
+      },
+      "defaultSize": {
+        "w": 8,
+        "h": 5
+      },
+      "minSize": {
+        "w": 4,
+        "h": 3
+      },
+      "maxSize": {
+        "w": 12,
+        "h": 8
+      },
+      "emptyState": {
+        "message": "No cost data available",
+        "hint": "Cost data appears after LLM calls are tracked"
+      },
+      "capabilities": {
+        "supports_compare": false,
+        "supports_export": true,
+        "supports_fullscreen": true
+      }
+    },
+    "delegation-metrics": {
+      "name": "delegation-metrics",
+      "displayName": "Delegation Metrics",
+      "description": "Task delegation events, cost savings, and quality gate pass rates",
+      "category": "metrics",
+      "version": "1.0.0",
+      "implementationKey": "delegation/DelegationMetrics",
+      "configSchema": {
+        "type": "object",
+        "properties": {
+          "showSavings": {
+            "type": "boolean",
+            "default": true
+          },
+          "showQualityGates": {
+            "type": "boolean",
+            "default": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "dataSources": [
+        {
+          "type": "api",
+          "endpoint": "/api/delegation/summary",
+          "required": true,
+          "purpose": "initial_fetch"
+        },
+        {
+          "type": "websocket",
+          "topic": "delegation",
+          "required": false,
+          "purpose": "live_updates"
+        }
+      ],
+      "events": {
+        "emits": [
+          {
+            "name": "task_type_selected",
+            "schema": {
+              "type": "object",
+              "properties": {
+                "taskType": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        ],
+        "consumes": [
+          {
+            "name": "time_range_changed"
+          }
+        ]
+      },
+      "defaultSize": {
+        "w": 6,
+        "h": 5
+      },
+      "minSize": {
+        "w": 4,
+        "h": 3
+      },
+      "maxSize": {
+        "w": 12,
+        "h": 8
+      },
+      "emptyState": {
+        "message": "No delegation events",
+        "hint": "Delegation events appear when tasks are delegated to agents"
+      },
+      "capabilities": {
+        "supports_compare": false,
+        "supports_export": true,
+        "supports_fullscreen": true
+      }
+    },
+    "routing-decision-table": {
+      "name": "routing-decision-table",
+      "displayName": "Routing Decisions",
+      "description": "LLM routing decision log with agreement rates and confidence scores",
+      "category": "table",
+      "version": "1.0.0",
+      "implementationKey": "routing/RoutingDecisionTable",
+      "configSchema": {
+        "type": "object",
+        "properties": {
+          "pageSize": {
+            "type": "number",
+            "default": 20
+          }
+        },
+        "additionalProperties": false
+      },
+      "dataSources": [
+        {
+          "type": "api",
+          "endpoint": "/api/llm-routing/decisions",
+          "required": true,
+          "purpose": "initial_fetch"
+        },
+        {
+          "type": "websocket",
+          "topic": "llm-routing",
+          "required": false,
+          "purpose": "live_updates"
+        }
+      ],
+      "events": {
+        "emits": [
+          {
+            "name": "decision_selected"
+          }
+        ],
+        "consumes": [
+          {
+            "name": "time_range_changed"
+          }
+        ]
+      },
+      "defaultSize": {
+        "w": 12,
+        "h": 6
+      },
+      "minSize": {
+        "w": 6,
+        "h": 4
+      },
+      "maxSize": {
+        "w": 12,
+        "h": 12
+      },
+      "emptyState": {
+        "message": "No routing decisions",
+        "hint": "Routing decisions appear when LLM routing is active"
+      },
+      "capabilities": {
+        "supports_compare": false,
+        "supports_export": true,
+        "supports_fullscreen": true
+      }
+    },
+    "baselines-roi-card": {
+      "name": "baselines-roi-card",
+      "displayName": "Baselines ROI",
+      "description": "Token/time delta, retry counts, and promotion recommendations",
+      "category": "metrics",
+      "version": "1.0.0",
+      "implementationKey": "baselines/BaselinesROICard",
+      "configSchema": {
+        "type": "object",
+        "properties": {},
+        "additionalProperties": false
+      },
+      "dataSources": [
+        {
+          "type": "api",
+          "endpoint": "/api/baselines/summary",
+          "required": true,
+          "purpose": "initial_fetch"
+        },
+        {
+          "type": "websocket",
+          "topic": "baselines",
+          "required": false,
+          "purpose": "live_updates"
+        }
+      ],
+      "events": {
+        "emits": [],
+        "consumes": [
+          {
+            "name": "time_range_changed"
+          }
+        ]
+      },
+      "defaultSize": {
+        "w": 6,
+        "h": 4
+      },
+      "minSize": {
+        "w": 3,
+        "h": 3
+      },
+      "maxSize": {
+        "w": 12,
+        "h": 6
+      },
+      "emptyState": {
+        "message": "No baselines data",
+        "hint": "Baselines data appears after A/B pattern evaluation"
+      },
+      "capabilities": {
+        "supports_compare": false,
+        "supports_export": true,
+        "supports_fullscreen": false
+      }
+    },
+    "quality-score-panel": {
+      "name": "quality-score-panel",
+      "displayName": "Quality Scores",
+      "description": "Pattern quality scores and confidence metrics from omniintelligence",
+      "category": "metrics",
+      "version": "1.0.0",
+      "implementationKey": "quality/QualityScorePanel",
+      "configSchema": {
+        "type": "object",
+        "properties": {},
+        "additionalProperties": false
+      },
+      "dataSources": [
+        {
+          "type": "api",
+          "endpoint": "/api/intelligence/quality/summary",
+          "required": true,
+          "purpose": "initial_fetch"
+        }
+      ],
+      "events": {
+        "emits": [],
+        "consumes": []
+      },
+      "defaultSize": {
+        "w": 6,
+        "h": 4
+      },
+      "minSize": {
+        "w": 3,
+        "h": 3
+      },
+      "maxSize": {
+        "w": 12,
+        "h": 6
+      },
+      "emptyState": {
+        "message": "No quality scores",
+        "hint": "Quality scores appear after patterns are evaluated"
+      },
+      "capabilities": {
+        "supports_compare": false,
+        "supports_export": true,
+        "supports_fullscreen": false
+      }
+    },
+    "readiness-gate": {
+      "name": "readiness-gate",
+      "displayName": "Readiness Gate",
+      "description": "7-dimension tri-state platform readiness aggregation",
+      "category": "status",
+      "version": "1.0.0",
+      "implementationKey": "readiness/ReadinessGate",
+      "configSchema": {
+        "type": "object",
+        "properties": {},
+        "additionalProperties": false
+      },
+      "dataSources": [
+        {
+          "type": "api",
+          "endpoint": "/api/readiness/summary",
+          "required": true,
+          "purpose": "initial_fetch"
+        }
+      ],
+      "events": {
+        "emits": [
+          {
+            "name": "dimension_selected"
+          }
+        ],
+        "consumes": []
+      },
+      "defaultSize": {
+        "w": 12,
+        "h": 4
+      },
+      "minSize": {
+        "w": 6,
+        "h": 3
+      },
+      "maxSize": {
+        "w": 12,
+        "h": 6
+      },
+      "emptyState": {
+        "message": "No readiness data",
+        "hint": "Run the platform readiness gate to see results"
+      },
+      "capabilities": {
+        "supports_compare": false,
+        "supports_export": true,
+        "supports_fullscreen": false
+      }
+    },
+    "event-stream": {
+      "name": "event-stream",
+      "displayName": "Event Stream",
+      "description": "Live Kafka event feed with filtering and search",
+      "category": "stream",
+      "version": "1.0.0",
+      "implementationKey": "events/EventStream",
+      "configSchema": {
+        "type": "object",
+        "properties": {
+          "maxEvents": {
+            "type": "number",
+            "default": 200
+          },
+          "autoScroll": {
+            "type": "boolean",
+            "default": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "dataSources": [
+        {
+          "type": "websocket",
+          "topic": "event-bus",
+          "required": true,
+          "purpose": "live_updates"
+        },
+        {
+          "type": "api",
+          "endpoint": "/api/events/recent",
+          "required": true,
+          "purpose": "initial_fetch"
+        }
+      ],
+      "events": {
+        "emits": [
+          {
+            "name": "event_selected"
+          }
+        ],
+        "consumes": []
+      },
+      "defaultSize": {
+        "w": 12,
+        "h": 6
+      },
+      "minSize": {
+        "w": 6,
+        "h": 4
+      },
+      "maxSize": {
+        "w": 12,
+        "h": 12
+      },
+      "emptyState": {
+        "message": "No events streaming",
+        "hint": "Events appear when the Kafka bus is connected"
+      },
+      "capabilities": {
+        "supports_compare": false,
+        "supports_export": false,
+        "supports_fullscreen": true
+      }
+    }
+  }
+}

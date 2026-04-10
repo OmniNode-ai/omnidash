@@ -1,28 +1,45 @@
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, beforeEach } from 'vitest';
 import { Providers } from './providers/Providers';
+import { RegistryProvider } from './registry/RegistryProvider';
 import { App } from './App';
 import { useFrameStore } from './store/store';
 import { eventBus } from './events/eventBus';
+import { createEmptyDashboard } from '@shared/types/dashboard';
+import type { RegistryManifest } from './registry/types';
+
+const manifest: RegistryManifest = {
+  manifestVersion: '1.0',
+  generatedAt: '2026-04-10T00:00:00Z',
+  components: {},
+};
+
+function renderApp() {
+  return render(
+    <Providers>
+      <RegistryProvider manifest={manifest}>
+        <App />
+      </RegistryProvider>
+    </Providers>
+  );
+}
 
 describe('Part 1 smoke proof — frame liveness, provider wiring, theme switching, local state/event behavior', () => {
+  beforeEach(() => {
+    useFrameStore.setState({ editMode: false, activeDashboard: null, globalFilters: {} });
+    const dash = createEmptyDashboard('Integration Test Dashboard', 'jonah');
+    useFrameStore.getState().setActiveDashboard(dash);
+  });
+
   it('renders frame layout with header and main area', () => {
-    render(
-      <Providers>
-        <App />
-      </Providers>
-    );
+    renderApp();
     expect(screen.getByText('omnidash')).toBeInTheDocument();
-    expect(screen.getByText('omnidash v2')).toBeInTheDocument();
+    expect(screen.getByText('Integration Test Dashboard')).toBeInTheDocument();
   });
 
   it('theme toggle switches between dark and light', async () => {
-    render(
-      <Providers>
-        <App />
-      </Providers>
-    );
+    renderApp();
     const themeBtn = screen.getByRole('button', { name: /theme/i });
     expect(themeBtn.textContent).toBe('dark');
 
