@@ -1,7 +1,7 @@
 import { useMemo } from 'react';
 import ReactECharts from 'echarts-for-react';
 import { ComponentWrapper } from '../ComponentWrapper';
-import { useComponentData } from '@/hooks/useComponentData';
+import { useProjectionQuery } from '@/hooks/useProjectionQuery';
 import { useThemeColors } from '@/theme';
 
 interface DelegationSummary {
@@ -12,7 +12,7 @@ interface DelegationSummary {
 }
 
 export default function DelegationMetrics({ config: _config }: { config: Record<string, unknown> }) {
-  const { data, isLoading, error } = useComponentData<DelegationSummary>(
+  const { data, isLoading, error } = useProjectionQuery<DelegationSummary>(
     '/api/delegation/summary',
     { queryKey: ['delegation-summary'], refetchInterval: 60_000 }
   );
@@ -55,6 +55,7 @@ export default function DelegationMetrics({ config: _config }: { config: Record<
               <div style={{ fontSize: '0.6875rem', color: colors.muted }}>Total Delegations</div>
             </div>
             <div>
+              {/* 0.8 (80%) is hardcoded product policy — should eventually be configurable via component config */}
               <div style={{ fontSize: '1.5rem', fontWeight: 700, color: data.qualityGatePassRate >= 0.8 ? colors.status.healthy : colors.status.warning }}>
                 {Math.round(data.qualityGatePassRate * 100)}%
               </div>

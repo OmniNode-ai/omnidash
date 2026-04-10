@@ -15,6 +15,11 @@ export class ComponentRegistry {
     }
   }
 
+  /**
+   * @provisional — uses a generated static import map (`componentImports`) built at compile time.
+   * The durable solution is to scan omnimarket `contract.yaml` files at build time and
+   * generate this map automatically. Do not treat the current import map as a stable API.
+   */
   async resolveImplementations(): Promise<void> {
     for (const [, entry] of this.components) {
       const key = entry.manifest.implementationKey;
@@ -48,7 +53,7 @@ export class ComponentRegistry {
     const schema = entry.manifest.configSchema;
     if (!schema || typeof schema !== 'object') return { valid: true, errors: [] };
 
-    // Basic JSON Schema validation for type: object with properties
+    // Basic config shape checking against a restricted schema subset (not full JSON Schema)
     const errors: string[] = [];
     const props = (schema as any).properties || {};
     const additionalProperties = (schema as any).additionalProperties;
