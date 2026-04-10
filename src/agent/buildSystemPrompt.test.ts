@@ -2,6 +2,10 @@ import { describe, it, expect } from 'vitest';
 import { buildSystemPrompt } from './buildSystemPrompt';
 import type { RegisteredComponent } from '@/registry/types';
 
+const STUB_SIZE = { w: 6, h: 4 };
+const STUB_CAPABILITIES = { supports_compare: false, supports_export: false, supports_fullscreen: false };
+const STUB_EMPTY_STATE = { message: 'No data' };
+
 const mockComponents: RegisteredComponent[] = [
   {
     name: 'cost-trend-panel',
@@ -14,9 +18,13 @@ const mockComponents: RegisteredComponent[] = [
       version: '1.0.0',
       implementationKey: 'cost-trend-panel',
       configSchema: {},
-      defaultSize: { w: 6, h: 4 },
+      defaultSize: STUB_SIZE,
+      minSize: STUB_SIZE,
+      maxSize: { w: 12, h: 12 },
       dataSources: [],
-      events: [],
+      events: { emits: [], consumes: [] },
+      emptyState: STUB_EMPTY_STATE,
+      capabilities: STUB_CAPABILITIES,
     },
   },
   {
@@ -31,8 +39,12 @@ const mockComponents: RegisteredComponent[] = [
       implementationKey: 'event-stream',
       configSchema: {},
       defaultSize: { w: 12, h: 6 },
+      minSize: { w: 6, h: 4 },
+      maxSize: { w: 12, h: 12 },
       dataSources: [],
-      events: [],
+      events: { emits: [], consumes: [] },
+      emptyState: STUB_EMPTY_STATE,
+      capabilities: STUB_CAPABILITIES,
     },
   },
 ];
