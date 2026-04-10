@@ -338,11 +338,16 @@ export class OmniintelligenceProjectionHandler implements ProjectionHandler {
       totalTokens = rawTotalTokens;
     }
 
-    const rawEstimatedCost = data.estimated_cost_usd ?? data.estimatedCostUsd;
+    // OMN-8019: eval_llm_client emits `cost_usd` (flat field) rather than
+    // `estimated_cost_usd` / `total_cost_usd`. Accept it as a fallback so local
+    // model calls (Qwen3, DeepSeek) are visible even at $0.00.
+    const rawCostUsdFlat = data.cost_usd ?? data.costUsd;
+
+    const rawEstimatedCost = data.estimated_cost_usd ?? data.estimatedCostUsd ?? rawCostUsdFlat;
     const nEstimatedCost = Number(rawEstimatedCost);
     const estimatedCostUsd = String(Number.isFinite(nEstimatedCost) ? nEstimatedCost : 0);
 
-    const rawTotalCost = data.total_cost_usd ?? data.totalCostUsd ?? rawEstimatedCost;
+    const rawTotalCost = data.total_cost_usd ?? data.totalCostUsd ?? rawCostUsdFlat ?? rawEstimatedCost;
     const nTotalCost = Number(rawTotalCost);
     const totalCostUsd = String(Number.isFinite(nTotalCost) ? nTotalCost : 0);
 
