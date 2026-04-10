@@ -1,3 +1,9 @@
+import { FrameLayout } from './components/frame/FrameLayout';
+
 export function App() {
-  return <div id="omnidash-v2-root">omnidash v2</div>;
+  return (
+    <FrameLayout>
+      <div id="omnidash-v2-root">omnidash v2</div>
+    </FrameLayout>
+  );
 }
