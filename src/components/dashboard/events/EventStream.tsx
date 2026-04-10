@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { ComponentWrapper } from '../ComponentWrapper';
-import { useComponentData } from '@/hooks/useComponentData';
+import { useProjectionQuery } from '@/hooks/useProjectionQuery';
 import { useThemeColors } from '@/theme';
 
 interface StreamEvent {
@@ -16,7 +16,7 @@ interface EventStreamConfig {
   autoScroll?: boolean;
 }
 
-const WS_URL = (import.meta.env.VITE_WS_BASE || 'ws://localhost:3000') + '/ws';
+const WS_URL = 'ws://localhost:3002/ws';
 const RECONNECT_DELAYS = [1_000, 2_000, 4_000, 8_000, 16_000];
 
 function useEventWebSocket(onEvent: (e: StreamEvent) => void) {
@@ -67,7 +67,7 @@ export default function EventStream({ config }: { config: EventStreamConfig }) {
   const maxEvents = config.maxEvents ?? 200;
   const autoScroll = config.autoScroll ?? true;
 
-  const { data: initialData, isLoading, error } = useComponentData<StreamEvent[]>(
+  const { data: initialData, isLoading, error } = useProjectionQuery<StreamEvent[]>(
     '/api/events/recent',
     { queryKey: ['events-recent'] }
   );

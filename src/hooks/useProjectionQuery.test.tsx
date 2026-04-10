@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { renderHook, waitFor } from '@testing-library/react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { useComponentData } from './useComponentData';
+import { useProjectionQuery } from './useProjectionQuery';
 import type { ReactNode } from 'react';
 
 const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
@@ -9,7 +9,7 @@ const wrapper = ({ children }: { children: ReactNode }) => (
   <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
 );
 
-describe('useComponentData', () => {
+describe('useProjectionQuery', () => {
   beforeEach(() => {
     queryClient.clear();
     vi.stubGlobal('fetch', vi.fn());
@@ -19,14 +19,14 @@ describe('useComponentData', () => {
     vi.restoreAllMocks();
   });
 
-  it('fetches data from endpoint', async () => {
+  it('fetches data from projection endpoint', async () => {
     (fetch as any).mockResolvedValueOnce({
       ok: true,
       json: async () => ({ total: 42 }),
     });
 
     const { result } = renderHook(
-      () => useComponentData('/api/test', { queryKey: ['test'] }),
+      () => useProjectionQuery('/api/test', { queryKey: ['test'] }),
       { wrapper }
     );
 
@@ -42,7 +42,7 @@ describe('useComponentData', () => {
     });
 
     const { result } = renderHook(
-      () => useComponentData('/api/test-error', { queryKey: ['test-error'] }),
+      () => useProjectionQuery('/api/test-error', { queryKey: ['test-error'] }),
       { wrapper }
     );
 

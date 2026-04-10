@@ -1,5 +1,5 @@
 import { ComponentWrapper } from '../ComponentWrapper';
-import { useComponentData } from '@/hooks/useComponentData';
+import { useProjectionQuery } from '@/hooks/useProjectionQuery';
 
 interface RoutingDecision {
   id: string;
@@ -13,7 +13,7 @@ interface RoutingDecision {
 }
 
 export default function RoutingDecisionTable({ config: _config }: { config: Record<string, unknown> }) {
-  const { data, isLoading, error } = useComponentData<RoutingDecision[]>(
+  const { data, isLoading, error } = useProjectionQuery<RoutingDecision[]>(
     '/api/llm-routing/decisions',
     { queryKey: ['routing-decisions'], refetchInterval: 60_000 }
   );

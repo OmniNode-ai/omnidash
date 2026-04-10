@@ -1,5 +1,5 @@
 import { ComponentWrapper } from '../ComponentWrapper';
-import { useComponentData } from '@/hooks/useComponentData';
+import { useProjectionQuery } from '@/hooks/useProjectionQuery';
 import { useThemeColors } from '@/theme';
 
 type DimensionStatus = 'PASS' | 'WARN' | 'FAIL';
@@ -41,7 +41,7 @@ function DimensionCard({ dim }: { dim: ReadinessDimension }) {
 }
 
 export default function ReadinessGate({ config: _config }: { config: Record<string, unknown> }) {
-  const { data, isLoading, error } = useComponentData<ReadinessSummary>(
+  const { data, isLoading, error } = useProjectionQuery<ReadinessSummary>(
     '/api/readiness/summary',
     { queryKey: ['readiness-summary'], refetchInterval: 120_000 }
   );

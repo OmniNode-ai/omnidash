@@ -1,5 +1,5 @@
 import { ComponentWrapper } from '../ComponentWrapper';
-import { useComponentData } from '@/hooks/useComponentData';
+import { useProjectionQuery } from '@/hooks/useProjectionQuery';
 import { useThemeColors } from '@/theme';
 
 interface BaselinesSummary {
@@ -27,7 +27,7 @@ function DeltaMetric({ label, value, unit }: { label: string; value: number; uni
 }
 
 export default function BaselinesROICard({ config: _config }: { config: Record<string, unknown> }) {
-  const { data, isLoading, error } = useComponentData<BaselinesSummary | null>(
+  const { data, isLoading, error } = useProjectionQuery<BaselinesSummary | null>(
     '/api/baselines/summary',
     { queryKey: ['baselines-summary'], refetchInterval: 120_000 }
   );
