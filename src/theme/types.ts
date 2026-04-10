@@ -30,7 +30,7 @@ export function validateThemeDefinition(theme: ThemeDefinition): ThemeValidation
   for (const token of REQUIRED_TOKENS) {
     if (!(token in theme.tokens)) {
       errors.push(`Missing required token: ${token}`);
-    } else if (!HSL_PATTERN.test(theme.tokens[token])) {
+    } else if (!HSL_PATTERN.test(theme.tokens[token] as string)) {
       errors.push(`Invalid HSL value for token "${token}": ${theme.tokens[token]}`);
     }
   }
