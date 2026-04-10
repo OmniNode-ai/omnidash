@@ -1,0 +1,12 @@
+{
+  "ticket_id": "OMN-8272",
+  "status": "pass",
+  "pr_url": "https://github.com/OmniNode-ai/omnibase_infra/pull/1225",
+  "pr_state": "merged",
+  "tests_pass": true,
+  "ci_green": true,
+  "timestamp": "2026-04-10T18:55:00Z",
+  "result": {"verified": 4, "failed": 0, "skipped": 0},
+  "notes": "node_onboarding_orchestrator contract.yaml present. Subscribes to onex.cmd.omnibase-infra.onboarding-start.v1, handler_routing: handle_onboarding. Contract path pre-flight CI check passes. Added to _BASELINE_DEAD_LETTER_ALLOWLIST with owner/expiry.",
+  "verified_at": "2026-04-10T18:55:00Z"
+}

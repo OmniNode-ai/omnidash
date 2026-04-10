@@ -1,0 +1,12 @@
+{
+  "ticket_id": "OMN-8271",
+  "status": "pass",
+  "pr_url": "https://github.com/OmniNode-ai/omnibase_infra/pull/1225",
+  "pr_state": "merged",
+  "tests_pass": true,
+  "ci_green": true,
+  "timestamp": "2026-04-10T18:55:00Z",
+  "result": {"verified": 4, "failed": 0, "skipped": 0},
+  "notes": "new_employee.yaml policy file present in omnibase_infra PR 1225 (merged). Policy defines onboarding checklist steps with ~45min SLA. test_new_employee_policy.py passes (>= 4 policies, new_employee in policy names).",
+  "verified_at": "2026-04-10T18:55:00Z"
+}

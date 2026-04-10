@@ -1,0 +1,12 @@
+{
+  "ticket_id": "OMN-8274",
+  "status": "pass",
+  "pr_url": "https://github.com/OmniNode-ai/omnibase_infra/pull/1225",
+  "pr_state": "merged",
+  "tests_pass": true,
+  "ci_green": true,
+  "timestamp": "2026-04-10T18:55:00Z",
+  "result": {"verified": 4, "failed": 0, "skipped": 0},
+  "notes": "node_onboarding_orchestrator node.py implements declarative node class. handler handle_onboarding present as module-level async function. Added to _INV4_WIRING_EXEMPTIONS (module-level async, invoked via asyncio.run()). CI Arch Invariants Split 1/15 passes.",
+  "verified_at": "2026-04-10T18:55:00Z"
+}
