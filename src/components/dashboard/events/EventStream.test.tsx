@@ -1,0 +1,62 @@
+import { render, screen } from '@testing-library/react';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import EventStream from './EventStream';
+
+const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+
+// WebSocket mock
+class MockWebSocket {
+  static instance: MockWebSocket | null = null;
+  url: string;
+  onopen: (() => void) | null = null;
+  onmessage: ((e: MessageEvent) => void) | null = null;
+  onclose: (() => void) | null = null;
+  onerror: (() => void) | null = null;
+  readyState = 1;
+  send = vi.fn();
+  close = vi.fn();
+  constructor(url: string) {
+    this.url = url;
+    MockWebSocket.instance = this;
+  }
+}
+
+describe('EventStream', () => {
+  beforeEach(() => {
+    qc.clear();
+    vi.stubGlobal('fetch', vi.fn());
+    vi.stubGlobal('WebSocket', MockWebSocket);
+    MockWebSocket.instance = null;
+  });
+  afterEach(() => vi.restoreAllMocks());
+
+  it('shows loading state initially', () => {
+    (fetch as any).mockReturnValue(new Promise(() => {}));
+    render(<QueryClientProvider client={qc}><EventStream config={{ maxEvents: 200, autoScroll: true }} /></QueryClientProvider>);
+    expect(screen.getByText('Loading...')).toBeInTheDocument();
+  });
+
+  it('renders initial events from REST endpoint', async () => {
+    (fetch as any).mockResolvedValueOnce({
+      ok: true,
+      json: async () => ([
+        { id: '1', event_type: 'onex.evt.delegation.completed.v1', source: 'omnimarket', correlation_id: 'abc', timestamp: '2026-04-10T12:00:00Z' },
+      ]),
+    });
+    render(<QueryClientProvider client={qc}><EventStream config={{ maxEvents: 200, autoScroll: true }} /></QueryClientProvider>);
+    expect(await screen.findByText('onex.evt.delegation.completed.v1')).toBeInTheDocument();
+    expect(screen.getByText('omnimarket')).toBeInTheDocument();
+  });
+
+  it('caps events at maxEvents (200) dropping extras', async () => {
+    const manyEvents = Array.from({ length: 205 }, (_, i) => ({
+      id: String(i), event_type: `event-${i}`, source: 'test', correlation_id: `cid-${i}`, timestamp: new Date().toISOString(),
+    }));
+    (fetch as any).mockResolvedValueOnce({ ok: true, json: async () => manyEvents });
+    render(<QueryClientProvider client={qc}><EventStream config={{ maxEvents: 200, autoScroll: true }} /></QueryClientProvider>);
+    await screen.findByText('event-0'); // first rendered
+    const rows = screen.queryAllByTestId('event-row');
+    expect(rows.length).toBeLessThanOrEqual(200);
+  });
+});
