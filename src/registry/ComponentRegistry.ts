@@ -1,6 +1,6 @@
-import { lazy } from 'react';
 import type { ComponentCategory } from '@shared/types/component-manifest';
 import type { RegisteredComponent, RegistryManifest, ValidationResult } from './types';
+import { componentImports } from '@/components/dashboard';
 
 export class ComponentRegistry {
   private components = new Map<string, RegisteredComponent>();
@@ -15,31 +15,13 @@ export class ComponentRegistry {
     }
   }
 
-  // PROVISIONAL: resolveImplementations() is NOT called in the Part 2 runtime path.
-  // All components default to `not_implemented` in this phase. Part 3 will resolve
-  // implementations once concrete component files exist.
-  //
-  // The dynamic import approach below (@vite-ignore with variable paths) is provisional
-  // runtime resolution only — it is NOT the durable component loading architecture.
-  // The durable solution will use a generated static import map (e.g., a code-generated
-  // switch/object mapping implementationKey → () => import('./path/to/Component')) so
-  // that Vite can statically analyze all import paths at build time.
   async resolveImplementations(): Promise<void> {
     for (const [, entry] of this.components) {
-      try {
-        const key = entry.manifest.implementationKey;
-        const mod = await import(
-          /* @vite-ignore */ `../components/dashboard/${key}.tsx`
-        );
-        if (mod.default) {
-          entry.component = lazy(() => import(
-            /* @vite-ignore */ `../components/dashboard/${key}.tsx`
-          ));
-          entry.status = 'available';
-        } else {
-          entry.status = 'not_implemented';
-        }
-      } catch {
+      const key = entry.manifest.implementationKey;
+      if (key in componentImports) {
+        entry.component = componentImports[key];
+        entry.status = 'available';
+      } else {
         entry.status = 'not_implemented';
       }
     }
