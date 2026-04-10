@@ -29,7 +29,7 @@ describe('Proof of Life — Part 3 (Full System)', () => {
 
   beforeEach(() => {
     qc = new QueryClient({ defaultOptions: { queries: { retry: false } } });
-    useFrameStore.setState({ editMode: false, activeDashboard: null, globalFilters: {} }, true);
+    useFrameStore.setState({ editMode: false, activeDashboard: null, globalFilters: {} });
     vi.stubGlobal('fetch', vi.fn().mockResolvedValue({
       ok: true,
       json: async () => ([]),
