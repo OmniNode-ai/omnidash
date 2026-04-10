@@ -33,6 +33,7 @@
     "echarts-for-react": "^3.0.6",
     "express": "^5.2.1",
     "mitt": "^3.0.1",
+    "page-agent": "^1.7.1",
     "pg": "^8.20.0",
     "react": "^19.2.5",
     "react-dom": "^19.2.5",
