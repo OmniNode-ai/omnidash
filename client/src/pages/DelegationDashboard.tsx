@@ -65,7 +65,11 @@ import {
   getPollingInterval,
 } from '@/lib/constants/query-config';
 import { TOOLTIP_STYLE, TOOLTIP_STYLE_SM } from '@/lib/constants/chart-theme';
-import type { DelegationTimeWindow, DelegationShadowDivergence } from '@shared/delegation-types';
+import type {
+  DelegationTimeWindow,
+  DelegationShadowDivergence,
+  DelegationByModel as _DelegationByModel,
+} from '@shared/delegation-types';
 
 // ============================================================================
 // Constants

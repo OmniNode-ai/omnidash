@@ -376,8 +376,8 @@ export const SUFFIX_INTELLIGENCE_PATTERN_PROMOTED = 'onex.evt.omniintelligence.p
 export const SUFFIX_INTELLIGENCE_PATTERN_STORED = 'onex.evt.omniintelligence.pattern-stored.v1';
 export const SUFFIX_INTELLIGENCE_PATTERN_REFINED = 'onex.evt.omniintelligence.pattern-refined.v1';
 
-/** OmniMemory document ingestion event (OMN-7810) */
-export const SUFFIX_OMNIMEMORY_DOCUMENT_INGESTED = 'onex.evt.omnimemory.document-ingested.v1';
+/** OmniMemory document indexed event (OMN-8169) — producer emits document-indexed.v1, not document-ingested.v1 */
+export const SUFFIX_OMNIMEMORY_DOCUMENT_INDEXED = 'onex.evt.omnimemory.document-indexed.v1';
 
 /** OmniNode routing events (OMN-7810) */
 export const SUFFIX_OMNINODE_ROUTING_REQUESTED = 'onex.cmd.omninode.routing-requested.v1';
@@ -618,6 +618,11 @@ export const TOPIC_OMNIMARKET_BUILD_LOOP_ORCHESTRATOR_COMPLETED =
  * Emitted by node_session_post_mortem at session end with a ModelPostMortemReport payload.
  * Consumed by ReadModelConsumer to project into session_post_mortems table. */
 export const TOPIC_OMNIMARKET_SESSION_POST_MORTEM = 'onex.evt.omnimarket.session-post-mortem.v1';
+
+/** Sweep result event (OMN-8172).
+ * Emitted by sweep nodes (aislop, coverage, compliance, contract, dashboard, runtime, data_flow)
+ * after each run. Consumed by ReadModelConsumer to project into sweep_results table. */
+export const TOPIC_OMNIMARKET_SWEEP_RESULT = 'onex.evt.omnimarket.sweep-result.v1';
 
 // ============================================================================
 // Topic Groups — DELETED (OMN-5252 / OMN-5031)

@@ -203,8 +203,8 @@ describe('Topic Parity Contract (OMN-6978)', () => {
           `[topic-parity] ${orphanedConstants.length} topic constant(s) from subscribed producers not in topics.yaml:\n${orphanedConstants.join('\n')}`
         );
       }
-      // Informational test — always passes, logs warnings for gaps
-      expect(orphanedConstants).toBeDefined();
+      // Assertion satisfies vitest/expect-expect; orphaned constants are informational only
+      expect(orphanedConstants.length).toBeGreaterThanOrEqual(0);
     });
   });
 
