@@ -1,10 +1,16 @@
 import { useMemo, type LazyExoticComponent, type ComponentType } from 'react';
-import { ReactGridLayout, type Layout } from 'react-grid-layout';
+import { ReactGridLayout, verticalCompactor, type LayoutItem } from 'react-grid-layout';
 import 'react-grid-layout/css/styles.css';
 import 'react-resizable/css/styles.css';
 import { ComponentCell } from './ComponentCell';
 import type { DashboardLayoutItem } from '@shared/types/dashboard';
 import * as s from './DashboardGrid.css';
+
+// In react-grid-layout v2, Layout = readonly LayoutItem[]
+type RGLLayout = readonly LayoutItem[];
+
+// react-grid-layout v2 requires an explicit width prop
+const CONTAINER_WIDTH = 1200;
 
 interface DashboardGridProps {
   layout: DashboardLayoutItem[];
@@ -19,7 +25,7 @@ export function DashboardGrid({ layout, editMode, onLayoutChange, resolveCompone
     [layout]
   );
 
-  const handleLayoutChange = (newLayout: Layout[]) => {
+  const handleLayoutChange = (newLayout: RGLLayout) => {
     const updated = layout.map((item) => {
       const match = newLayout.find((l) => l.i === item.i);
       if (match) {
@@ -33,14 +39,13 @@ export function DashboardGrid({ layout, editMode, onLayoutChange, resolveCompone
   return (
     <div className={s.gridContainer}>
       <ReactGridLayout
+        width={CONTAINER_WIDTH}
         layout={rglLayout}
-        cols={12}
-        rowHeight={80}
-        isDraggable={editMode}
-        isResizable={editMode}
+        gridConfig={{ cols: 12, rowHeight: 80, margin: [12, 12] }}
+        dragConfig={{ enabled: editMode, bounded: false, threshold: 3 }}
+        resizeConfig={{ enabled: editMode, handles: ['se'] }}
         onLayoutChange={handleLayoutChange}
-        compactType="vertical"
-        margin={[12, 12]}
+        compactor={verticalCompactor}
       >
         {layout.map((item) => (
           <div key={item.i} className={`${s.gridItem} ${editMode ? s.gridItemEdit : ''}`} data-testid="grid-item">
