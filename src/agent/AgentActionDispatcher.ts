@@ -8,9 +8,9 @@ export interface DispatchResult {
   data?: unknown;
 }
 
+// Minimal shape required by dispatcher — duck-typed to accept both full DashboardDefinition and test stubs
 export interface DashboardDefinition {
   name: string;
-  [key: string]: unknown;
 }
 
 export interface DashboardLayoutItem {

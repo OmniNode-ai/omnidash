@@ -40,11 +40,10 @@ export function usePageAgent(options: UsePageAgentOptions) {
       const shape: Record<string, import('zod/v4').ZodType> = {};
       for (const [paramName, paramDef] of Object.entries(action.parameters)) {
         if (paramDef.type === 'string') {
-          let schema = z.string().describe(paramDef.description);
-          if (paramDef.enum) {
-            schema = z.enum(paramDef.enum as [string, ...string[]]).describe(paramDef.description);
-          }
-          shape[paramName] = paramDef.required ? schema : schema.optional();
+          const base = paramDef.enum
+            ? (z.enum(paramDef.enum as [string, ...string[]]).describe(paramDef.description) as unknown as import('zod/v4').ZodString)
+            : z.string().describe(paramDef.description);
+          shape[paramName] = paramDef.required ? base : base.optional();
         } else if (paramDef.type === 'object') {
           const objSchema = z.record(z.string(), z.unknown()).describe(paramDef.description);
           shape[paramName] = paramDef.required ? objSchema : objSchema.optional();
