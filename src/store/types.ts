@@ -35,4 +35,7 @@ export interface DashboardSlice {
   updateComponentConfig: (itemId: string, config: Record<string, unknown>) => void;
 }
 
-export type FrameStore = EditModeSlice & FiltersSlice & DashboardSlice;
+import type { ConversationSlice } from './conversationSlice';
+export type { ConversationSlice };
+
+export type FrameStore = EditModeSlice & FiltersSlice & DashboardSlice & ConversationSlice;
