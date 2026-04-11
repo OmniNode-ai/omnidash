@@ -1,3 +1,4 @@
+// no-migration: OMN-6971 Unit test for heartbeat emitter; no schema change.
 /**
  * Tests for ConsumerHealthHeartbeat (OMN-6971)
  *

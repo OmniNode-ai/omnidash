@@ -1,3 +1,4 @@
+// no-migration: OMN-6971 Adds a periodic heartbeat emitter that writes to the existing consumer_health_events table; no schema change.
 /**
  * Consumer Health Heartbeat (OMN-6971)
  *
