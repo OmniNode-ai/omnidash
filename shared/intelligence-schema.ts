@@ -2605,7 +2605,7 @@ export type InsertAgentStatusEvent = typeof agentStatusEvents.$inferInsert;
 export const insertAgentStatusEventSchema = createInsertSchema(agentStatusEvents);
 
 // ============================================================================
-// Contract Drift Events Table (migration 0048_contract_drift_events, OMN-6753)
+// Contract Drift Events Table (migration 0063_contract_drift_events, OMN-6753)
 // Persists contract drift detection results from onex_change_control.
 // Source topic: onex.evt.onex-change-control.contract-drift-detected.v1
 // ============================================================================
