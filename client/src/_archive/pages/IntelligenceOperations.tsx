@@ -640,39 +640,8 @@ export default function IntelligenceOperations() {
 
         <DataTable<TopAccessedDocument>
           title="Top Accessed Documents"
-          data={
-            topDocumentsData && topDocumentsData.length > 0
-              ? topDocumentsData
-              : [
-                  {
-                    id: 'm1',
-                    repository: 'omniintelligence',
-                    filePath: 'https://repo/docs/INTRO.md',
-                    accessCount: 128,
-                    lastAccessedAt: new Date().toISOString(),
-                    trend: 'up',
-                    trendPercentage: 18,
-                  },
-                  {
-                    id: 'm2',
-                    repository: 'omniintelligence',
-                    filePath: 'https://repo/docs/API.md',
-                    accessCount: 64,
-                    lastAccessedAt: new Date(Date.now() - 86400000).toISOString(),
-                    trend: 'stable',
-                    trendPercentage: 0,
-                  },
-                  {
-                    id: 'm3',
-                    repository: 'omniintelligence',
-                    filePath: 'https://repo/docs/SETUP.md',
-                    accessCount: 29,
-                    lastAccessedAt: null,
-                    trend: 'down',
-                    trendPercentage: 7,
-                  },
-                ]
-          }
+          data={topDocumentsData || []}
+          emptyMessage="No document access data available for selected time range"
           columns={[
             {
               key: 'filePath',
