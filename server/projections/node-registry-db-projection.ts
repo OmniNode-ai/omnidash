@@ -91,7 +91,7 @@ function normalizeRegistrationState(healthStatus: string, isActive: boolean): Re
 // ============================================================================
 
 export class NodeRegistryDbProjection extends DbBackedProjectionView<NodeRegistryPayload> {
-  readonly viewId = 'node-registry-db';
+  readonly viewId = 'node-registry';
 
   protected emptyPayload(): NodeRegistryPayload {
     return {
