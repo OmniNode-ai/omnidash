@@ -26,7 +26,12 @@ async function getConnectionString(): Promise<string | null> {
   const { POSTGRES_HOST, POSTGRES_PORT, POSTGRES_DATABASE, POSTGRES_USER, POSTGRES_PASSWORD } =
     process.env;
   if (POSTGRES_HOST && POSTGRES_PORT && POSTGRES_DATABASE && POSTGRES_USER && POSTGRES_PASSWORD) {
-    return `postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@${POSTGRES_HOST}:${POSTGRES_PORT}/${POSTGRES_DATABASE}`;
+    const url = new URL(
+      `postgresql://${POSTGRES_HOST}:${POSTGRES_PORT}/${encodeURIComponent(POSTGRES_DATABASE)}`
+    );
+    url.username = POSTGRES_USER;
+    url.password = POSTGRES_PASSWORD;
+    return url.toString();
   }
   return null;
 }
@@ -47,7 +52,11 @@ export async function runStartupMigrations(): Promise<void> {
   const safeUrl = connectionString.replace(/:([^@]+)@/, ':****@');
   console.log(`[startup-migrations] Connecting to: ${safeUrl}`);
 
-  const pool = new Pool({ connectionString });
+  const pool = new Pool({
+    connectionString,
+    connectionTimeoutMillis: 5000,
+    statement_timeout: 5000,
+  });
 
   try {
     await pool.query('SELECT 1');
@@ -93,20 +102,23 @@ export async function runStartupMigrations(): Promise<void> {
       const sqlContent = fs.readFileSync(path.join(migrationsDir, file), 'utf-8');
       console.log(`[startup-migrations] Applying: ${file}`);
 
+      const client = await pool.connect();
       try {
-        await pool.query('BEGIN');
-        await pool.query(sqlContent);
-        await pool.query('INSERT INTO schema_migrations (filename) VALUES ($1)', [file]);
-        await pool.query('COMMIT');
+        await client.query('BEGIN');
+        await client.query(sqlContent);
+        await client.query('INSERT INTO schema_migrations (filename) VALUES ($1)', [file]);
+        await client.query('COMMIT');
         console.log(`[startup-migrations] OK: ${file}`);
         applied++;
       } catch (err) {
-        await pool.query('ROLLBACK').catch(() => {});
+        await client.query('ROLLBACK').catch(() => {});
         console.error(
           `[startup-migrations] FAILED: ${file}`,
           err instanceof Error ? err.message : err
         );
         throw err;
+      } finally {
+        client.release();
       }
     }
 

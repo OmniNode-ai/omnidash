@@ -111,12 +111,7 @@ app.use((req, res, next) => {
 (async () => {
   // Auto-apply any pending SQL migrations on startup (OMN-8643).
   // Idempotent: already-applied migrations are skipped. Non-fatal if DB is unreachable.
-  await runStartupMigrations().catch((err) => {
-    console.error(
-      '[startup] Migration failed — server will continue but schema may be incomplete:',
-      err
-    );
-  });
+  await runStartupMigrations();
 
   // Print bus mode banner before any consumers start (OMN-4776)
   printStartupBanner();
