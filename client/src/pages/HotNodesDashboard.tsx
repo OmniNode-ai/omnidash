@@ -111,7 +111,7 @@ function RankBadge({ rank }: { rank: number }) {
 function SkeletonRow() {
   return (
     <TableRow>
-      {[...Array(5)].map((_, i) => (
+      {[...Array(4)].map((_, i) => (
         <TableCell key={i}>
           <Skeleton className="h-4 w-full" />
         </TableCell>
