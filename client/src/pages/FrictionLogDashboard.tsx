@@ -42,6 +42,7 @@ interface FrictionEvent {
   resolution?: string;
   fix_direction?: string;
   ticket_id?: string;
+  ticket_needed?: boolean;
   _filename: string;
   _effective_date: string;
 }
