@@ -46,6 +46,7 @@ import { startEventBusHealthPoller, stopEventBusHealthPoller } from './event-bus
 import { startWorkerHealthPoller, stopWorkerHealthPoller } from './worker-health-poller';
 import selfTestRoutes, { runStartupSelfTest } from './startup-self-test';
 import buildInfoRoutes from './build-info-routes';
+import { runStartupMigrations } from './startup-migrations';
 
 const app = express();
 
@@ -108,6 +109,10 @@ app.use((req, res, next) => {
 });
 
 (async () => {
+  // Auto-apply any pending SQL migrations on startup (OMN-8643).
+  // Idempotent: already-applied migrations are skipped. Non-fatal if DB is unreachable.
+  await runStartupMigrations();
+
   // Print bus mode banner before any consumers start (OMN-4776)
   printStartupBanner();
 
