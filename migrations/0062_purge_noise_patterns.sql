@@ -17,10 +17,14 @@
 DELETE FROM pattern_learning_artifacts
 WHERE pattern_type = 'file_access_pattern';
 
--- 2. Purge architecture module_boundary noise
+-- 2. Purge architecture module_boundary noise (all casing/separator variants)
 DELETE FROM pattern_learning_artifacts
 WHERE pattern_type = 'architecture_pattern'
-  AND pattern_name ILIKE '%Module Boundary%';
+  AND (
+    pattern_name ILIKE '%module boundary%'
+    OR pattern_name ILIKE '%module_boundary%'
+    OR pattern_name ILIKE '%module-boundary%'
+  );
 
 -- 3. Purge any broader noise-type patterns by naming convention
 DELETE FROM pattern_learning_artifacts
