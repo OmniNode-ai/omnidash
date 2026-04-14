@@ -13,115 +13,27 @@
  * Default: /Users/jonah/.onex_state/friction (local dev) — override for .201 deploy.
  */
 
-import { Router, type Request, type Response, type NextFunction } from 'express';
+import { Router } from 'express';
 import { readdirSync, readFileSync } from 'fs';
 import { join, extname } from 'path';
 import yaml from 'js-yaml';
+import rateLimit from 'express-rate-limit';
 
 // ============================================================================
 // Rate Limiting
 // ============================================================================
 
-const _rawRateLimitWindowMs = parseInt(process.env.RATE_LIMIT_WINDOW_MS ?? '', 10);
-const RATE_LIMIT_WINDOW_MS =
-  isNaN(_rawRateLimitWindowMs) || _rawRateLimitWindowMs <= 0 ? 60000 : _rawRateLimitWindowMs;
+const _rawWindowMs = parseInt(process.env.RATE_LIMIT_WINDOW_MS ?? '', 10);
+const windowMs = isNaN(_rawWindowMs) || _rawWindowMs <= 0 ? 60000 : _rawWindowMs;
 
-const _rawRateLimitMaxRequests = parseInt(process.env.RATE_LIMIT_MAX_REQUESTS ?? '', 10);
-const RATE_LIMIT_MAX_REQUESTS =
-  isNaN(_rawRateLimitMaxRequests) || _rawRateLimitMaxRequests <= 0 ? 100 : _rawRateLimitMaxRequests;
+const _rawMax = parseInt(process.env.RATE_LIMIT_MAX_REQUESTS ?? '', 10);
+const max = isNaN(_rawMax) || _rawMax <= 0 ? 100 : _rawMax;
 
-const MAX_RATE_LIMIT_STORE_SIZE = 10000;
-
-interface RateLimitEntry {
-  count: number;
-  resetTime: number;
-}
-
-const rateLimitStore = new Map<string, RateLimitEntry>();
-
-const rateLimitEvictionInterval = setInterval(() => {
-  const now = Date.now();
-  for (const [ip, entry] of rateLimitStore) {
-    if (now > entry.resetTime) rateLimitStore.delete(ip);
-  }
-}, RATE_LIMIT_WINDOW_MS).unref();
-
-function pruneRateLimitStore(): void {
-  if (rateLimitStore.size <= MAX_RATE_LIMIT_STORE_SIZE) return;
-  const entries = Array.from(rateLimitStore.entries()).sort(
-    ([, a], [, b]) => a.resetTime - b.resetTime
-  );
-  const pruneCount = Math.ceil(MAX_RATE_LIMIT_STORE_SIZE * 0.2);
-  for (let i = 0; i < pruneCount && i < entries.length; i++) {
-    rateLimitStore.delete(entries[i][0]);
-  }
-}
-
-function checkRateLimit(ip: string): boolean {
-  const now = Date.now();
-  const entry = rateLimitStore.get(ip);
-
-  if (!entry || now > entry.resetTime) {
-    rateLimitStore.set(ip, { count: 1, resetTime: now + RATE_LIMIT_WINDOW_MS });
-    pruneRateLimitStore();
-    return true;
-  }
-
-  if (entry.count >= RATE_LIMIT_MAX_REQUESTS) {
-    return false;
-  }
-
-  entry.count++;
-  return true;
-}
-
-function getRateLimitRemaining(ip: string): number {
-  const now = Date.now();
-  const entry = rateLimitStore.get(ip);
-
-  if (!entry || now > entry.resetTime) {
-    return RATE_LIMIT_MAX_REQUESTS;
-  }
-
-  return Math.max(0, RATE_LIMIT_MAX_REQUESTS - entry.count);
-}
-
-function getRateLimitResetSeconds(ip: string): number {
-  const now = Date.now();
-  const entry = rateLimitStore.get(ip);
-
-  if (!entry || now > entry.resetTime) {
-    return Math.ceil(RATE_LIMIT_WINDOW_MS / 1000);
-  }
-
-  return Math.ceil((entry.resetTime - now) / 1000);
-}
-
-function rateLimitMiddleware(req: Request, res: Response, next: NextFunction): void {
-  const ip = req.ip ?? req.socket?.remoteAddress ?? 'unknown';
-
-  if (!checkRateLimit(ip)) {
-    const resetSecs = getRateLimitResetSeconds(ip);
-    res.setHeader('X-RateLimit-Limit', RATE_LIMIT_MAX_REQUESTS);
-    res.setHeader('X-RateLimit-Remaining', 0);
-    res.setHeader('X-RateLimit-Reset', resetSecs);
-    res.status(429).json({
-      ok: false,
-      error: 'Rate limit exceeded',
-      retry_after_seconds: resetSecs,
-    });
-    return;
-  }
-
-  res.setHeader('X-RateLimit-Limit', RATE_LIMIT_MAX_REQUESTS);
-  res.setHeader('X-RateLimit-Remaining', getRateLimitRemaining(ip));
-  res.setHeader('X-RateLimit-Reset', getRateLimitResetSeconds(ip));
-  next();
-}
-
-process.on('SIGTERM', () => {
-  clearInterval(rateLimitEvictionInterval);
-  rateLimitStore.clear();
+const frictionRateLimiter = rateLimit({
+  windowMs,
+  max,
+  standardHeaders: true,
+  legacyHeaders: false,
 });
 
 // ============================================================================
@@ -129,7 +41,6 @@ process.on('SIGTERM', () => {
 // ============================================================================
 
 const router = Router();
-router.use(rateLimitMiddleware);
 
 const DEFAULT_FRICTION_PATH = process.env.FRICTION_LOG_PATH ?? '/Users/jonah/.onex_state/friction';
 
@@ -197,7 +108,7 @@ function parseFrictionFile(filePath: string, filename: string): FrictionEvent | 
   }
 }
 
-router.get('/', rateLimitMiddleware, (req, res) => {
+router.get('/', frictionRateLimiter, (req, res) => {
   const frictionPath = DEFAULT_FRICTION_PATH;
   const limit = Math.min(parseInt((req.query.limit as string) ?? '50', 10), 500);
   const surface = (req.query.surface as string) ?? '';
