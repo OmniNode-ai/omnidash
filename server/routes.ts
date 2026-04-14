@@ -126,6 +126,8 @@ import { alertHistoryRoutes } from './alert-history-routes';
 import integrationCatalogRoutes from './integration-catalog-routes';
 // System Activity dashboard routes
 import { systemActivityRoutes } from './system-activity-routes';
+// Hot Nodes traffic distribution routes (OMN-8695)
+import hotNodesRoutes from './hot-nodes-routes';
 
 export async function registerRoutes(app: Express): Promise<Server> {
   // put application routes here
@@ -349,6 +351,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // System Activity dashboard routes
   app.use('/api/system-activity', systemActivityRoutes);
+
+  // Hot Nodes traffic distribution routes (OMN-8695)
+  app.use('/api/nodes/hot', hotNodesRoutes);
 
   // Prometheus metrics endpoint (OMN-4609)
   // Route: GET /metrics — NO authentication. Prometheus scrapes without tokens.
