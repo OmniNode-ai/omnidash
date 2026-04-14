@@ -95,6 +95,7 @@ const DASHBOARD_ROUTES = [
   '/pr-watch',
   '/pipeline-budget',
   '/debug-escalation',
+  '/hot-nodes',
   '/ci-intelligence',
   '/cdqa-gates',
   '/pipeline-health',

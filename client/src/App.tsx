@@ -65,6 +65,8 @@ import PipelineBudgetDashboard from '@/pages/PipelineBudgetDashboard';
 import DebugEscalationDashboard from '@/pages/DebugEscalationDashboard';
 import CIIntelligenceDashboard from '@/pages/CIIntelligenceDashboard';
 import ObjectiveEvaluation from '@/pages/ObjectiveEvaluation';
+// Hot Nodes traffic distribution dashboard (OMN-8695)
+import HotNodesDashboard from '@/pages/HotNodesDashboard';
 // A/B Eval Results dashboard (OMN-6780)
 import EvalResults from '@/pages/EvalResults';
 // CDQA gate dashboard (OMN-3190)
@@ -250,6 +252,7 @@ function Router() {
       <Route path="/pr-watch" component={PRWatchDashboard} />
       <Route path="/pipeline-budget" component={PipelineBudgetDashboard} />
       <Route path="/debug-escalation" component={DebugEscalationDashboard} />
+      <Route path="/hot-nodes" component={HotNodesDashboard} />
       {/* CI Intelligence Dashboard — failure pattern analysis + escalation timeline (OMN-5282) */}
       <Route path="/ci-intelligence" component={CIIntelligenceDashboard} />
       <Route path="/cdqa-gates" component={CdqaGateDashboard} />
