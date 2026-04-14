@@ -197,8 +197,7 @@ function parseFrictionFile(filePath: string, filename: string): FrictionEvent | 
   }
 }
 
-// lgtm[js/missing-rate-limiting] -- rateLimitMiddleware applied via router.use() above
-router.get('/', (req, res) => {
+router.get('/', rateLimitMiddleware, (req, res) => {
   const frictionPath = DEFAULT_FRICTION_PATH;
   const limit = Math.min(parseInt((req.query.limit as string) ?? '50', 10), 500);
   const surface = (req.query.surface as string) ?? '';

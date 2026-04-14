@@ -605,7 +605,7 @@ export function registerPatternRoutes(router: Router): void {
         }))
       );
     } catch (error) {
-      console.error('Error fetching quality trends:', error instanceof Error ? error.message : String(error));
+      console.error('Error fetching quality trends');
       res.status(500).json({
         error: 'Failed to fetch quality trends',
         message: error instanceof Error ? error.message : 'Unknown error',
