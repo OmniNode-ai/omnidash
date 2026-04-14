@@ -26,9 +26,17 @@ CREATE TABLE IF NOT EXISTS session_post_mortems (
 );
 
 -- Unique on session_id so upsert / onConflictDoNothing() is idempotent
-ALTER TABLE session_post_mortems
-  ADD CONSTRAINT uq_session_post_mortems_session_id
-  UNIQUE (session_id);
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_constraint
+    WHERE conname = 'uq_session_post_mortems_session_id'
+  ) THEN
+    ALTER TABLE session_post_mortems
+      ADD CONSTRAINT uq_session_post_mortems_session_id
+      UNIQUE (session_id);
+  END IF;
+END $$;
 
 CREATE INDEX IF NOT EXISTS idx_spm_projected_at   ON session_post_mortems (projected_at DESC);
 CREATE INDEX IF NOT EXISTS idx_spm_completed_at   ON session_post_mortems (completed_at DESC);
