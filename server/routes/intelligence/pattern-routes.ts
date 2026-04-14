@@ -458,7 +458,7 @@ export function registerPatternRoutes(router: Router): void {
 
       res.json(formattedTrends);
     } catch (error) {
-      console.error('Error fetching pattern trends:', error instanceof Error ? error.message : String(error));
+      console.error('Error fetching pattern trends');
       res.status(500).json({
         error: 'Failed to fetch pattern trends',
         message: error instanceof Error ? error.message : 'Unknown error',
