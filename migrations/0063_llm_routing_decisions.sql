@@ -58,7 +58,8 @@ CREATE TABLE IF NOT EXISTS llm_routing_decisions (
   prompt_tokens          INTEGER NOT NULL DEFAULT 0,
   completion_tokens      INTEGER NOT NULL DEFAULT 0,
   total_tokens           INTEGER NOT NULL DEFAULT 0,
-  omninode_enabled       BOOLEAN NOT NULL DEFAULT TRUE
+  omninode_enabled       BOOLEAN NOT NULL DEFAULT TRUE,
+  CONSTRAINT chk_lrd_token_columns_nn CHECK (prompt_tokens >= 0 AND completion_tokens >= 0 AND total_tokens >= 0)
 );
 
 -- Named alias for the unique index that backs the inline UNIQUE constraint on

@@ -26,11 +26,14 @@ CREATE TABLE IF NOT EXISTS session_post_mortems (
 );
 
 -- Unique on session_id so upsert / onConflictDoNothing() is idempotent
+-- conrelid scopes the lookup to the session_post_mortems table so a
+-- same-named constraint on a different table does not cause a false skip.
 DO $$
 BEGIN
   IF NOT EXISTS (
     SELECT 1 FROM pg_constraint
     WHERE conname = 'uq_session_post_mortems_session_id'
+      AND conrelid = 'session_post_mortems'::regclass
   ) THEN
     ALTER TABLE session_post_mortems
       ADD CONSTRAINT uq_session_post_mortems_session_id
