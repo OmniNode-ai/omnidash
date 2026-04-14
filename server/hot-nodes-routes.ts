@@ -14,6 +14,7 @@
 import { Router } from 'express';
 import { sql } from 'drizzle-orm';
 import { getIntelligenceDb, isDatabaseConfigured } from './storage';
+import { safeInterval } from './sql-safety';
 
 const router = Router();
 
@@ -45,6 +46,7 @@ router.get('/', async (req, res) => {
 
   try {
     const db = getIntelligenceDb();
+    const intervalSql = safeInterval(interval);
 
     const result = await db.execute(sql`
       SELECT
@@ -54,7 +56,7 @@ router.get('/', async (req, res) => {
         MAX(created_at) AS last_seen,
         ROW_NUMBER() OVER (ORDER BY COUNT(*) DESC)::int AS rank
       FROM agent_routing_decisions
-      WHERE created_at >= NOW() - INTERVAL ${sql.raw(`'${interval}'`)}
+      WHERE created_at >= NOW() - INTERVAL ${intervalSql}
       GROUP BY selected_agent
       ORDER BY event_count DESC
       LIMIT 20
