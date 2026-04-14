@@ -81,6 +81,11 @@ const EXEMPT_FILES = new Set([
   // TODO(OMN-3445-followup): migrate to event-sourced projection.
   'routing-config-routes.ts',
 
+  // Hot nodes — queries agent_routing_decisions with time-windowed COUNT aggregation.
+  // Complex window SQL is not yet representable as a ProjectionService view.
+  // TODO(OMN-8695-followup): migrate to ProjectionService view.
+  'hot-nodes-routes.ts',
+
   // Projection health diagnostic — infrastructure probe that queries every table
   // for row counts and watermarks. Direct DB access is inherent to the purpose.
   // Not a data-access read path. (OMN-6390)
