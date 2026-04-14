@@ -26,6 +26,7 @@ export interface InfraRoutingDecisionRow {
   reason: string;
   selectionMode: string;
   isFallback: boolean;
+  fallbackIndicator: boolean;
   candidatesEvaluated: number;
   taskType: string | null;
   latencyMs: number | null;
@@ -93,6 +94,7 @@ export class InfraRoutingProjection extends DbBackedProjectionView<InfraRoutingP
             reason,
             selection_mode AS "selectionMode",
             is_fallback AS "isFallback",
+            is_fallback AS "fallbackIndicator",
             candidates_evaluated AS "candidatesEvaluated",
             task_type AS "taskType",
             latency_ms AS "latencyMs",
