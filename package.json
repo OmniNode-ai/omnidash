@@ -154,7 +154,7 @@
     "@types/ws": "^8.5.13",
     "@typescript-eslint/eslint-plugin": "^8.57.2",
     "@typescript-eslint/parser": "^8.47.0",
-    "@vitejs/plugin-react": "^4.7.0",
+    "@vitejs/plugin-react": "^6.0.1",
     "@vitest/coverage-v8": "~4.0.18",
     "autoprefixer": "^10.4.27",
     "drizzle-kit": "^0.31.10",
