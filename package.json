@@ -12,7 +12,8 @@
     "test": "vitest",
     "test:run": "vitest run",
     "check": "tsc --noEmit",
-    "generate:registry": "tsx scripts/generate-registry.ts"
+    "generate:registry": "tsx scripts/generate-registry.ts",
+    "generate:fixtures": "uv run --project ../omnibase/repos/omnibase_infra python scripts/generate_fixtures.py"
   },
   "keywords": [],
   "author": "",
