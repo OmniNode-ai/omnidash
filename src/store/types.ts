@@ -38,4 +38,7 @@ export interface DashboardSlice {
 import type { ConversationSlice } from './conversationSlice';
 export type { ConversationSlice };
 
-export type FrameStore = EditModeSlice & FiltersSlice & DashboardSlice & ConversationSlice;
+import type { ConfigSlice } from './configSlice';
+export type { ConfigSlice };
+
+export type FrameStore = EditModeSlice & FiltersSlice & DashboardSlice & ConversationSlice & ConfigSlice;

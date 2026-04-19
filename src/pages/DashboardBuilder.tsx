@@ -3,12 +3,27 @@ import { useFrameStore } from '@/store/store';
 import { useRegistry } from '@/registry/RegistryProvider';
 import { DashboardGrid } from '@/components/dashboard/DashboardGrid';
 import { ComponentPalette } from '@/components/dashboard/ComponentPalette';
+import { ComponentConfigPanel } from '@/config/ComponentConfigPanel';
 import type { DashboardLayoutItem } from '@shared/types/dashboard';
 import { layoutPersistence } from '@/layout/layout-persistence';
 import * as s from './DashboardBuilder.css';
 
 export function DashboardBuilder() {
-  const { activeDashboard, editMode, setEditMode, addComponentToLayout, updateLayout, removeComponentFromLayout, setActiveDashboard } = useFrameStore();
+  const {
+    activeDashboard,
+    editMode,
+    setEditMode,
+    addComponentToLayout,
+    updateLayout,
+    removeComponentFromLayout,
+    setActiveDashboard,
+    selectedPlacementId,
+    setSelectedPlacementId,
+    placementDrafts,
+    updateComponentConfig,
+    clearAllDrafts,
+    anyPlacementHasValidationErrors,
+  } = useFrameStore();
   const registry = useRegistry();
   const snapshotRef = useRef<DashboardLayoutItem[] | null>(null);
 
@@ -41,17 +56,25 @@ export function DashboardBuilder() {
   }, [activeDashboard, setEditMode]);
 
   const handleSave = useCallback(() => {
+    // Flush all drafts into the persisted layout before clearing.
+    if (activeDashboard) {
+      for (const [placementId, draft] of Object.entries(placementDrafts)) {
+        updateComponentConfig(placementId, draft.draftConfig);
+      }
+    }
+    clearAllDrafts();
     snapshotRef.current = null;
     setEditMode(false);
-  }, [setEditMode]);
+  }, [activeDashboard, placementDrafts, updateComponentConfig, clearAllDrafts, setEditMode]);
 
   const handleDiscard = useCallback(() => {
     if (snapshotRef.current && activeDashboard) {
       updateLayout(snapshotRef.current);
     }
+    clearAllDrafts();
     snapshotRef.current = null;
     setEditMode(false);
-  }, [activeDashboard, updateLayout, setEditMode]);
+  }, [activeDashboard, updateLayout, clearAllDrafts, setEditMode]);
 
   const handleAddComponent = useCallback(
     (name: string) => {
@@ -71,6 +94,13 @@ export function DashboardBuilder() {
     [registry]
   );
 
+  const handleSelectPlacement = useCallback(
+    (placementId: string) => {
+      setSelectedPlacementId(placementId);
+    },
+    [setSelectedPlacementId]
+  );
+
   if (!activeDashboard) {
     return <div className={s.emptyState}>No dashboard selected</div>;
   }
@@ -79,6 +109,8 @@ export function DashboardBuilder() {
   // interface but not yet wired to UI in this phase (no per-item delete button yet).
   void removeComponentFromLayout;
 
+  const saveBlocked = editMode && anyPlacementHasValidationErrors();
+
   return (
     <div>
       <div className={s.toolbar}>
@@ -86,7 +118,14 @@ export function DashboardBuilder() {
         <div className={s.toolbarActions}>
           {editMode ? (
             <>
-              <button className={`${s.button} ${s.buttonPrimary}`} onClick={handleSave} aria-label="Save">Save</button>
+              <button
+                className={`${s.button} ${s.buttonPrimary}`}
+                onClick={handleSave}
+                aria-label="Save"
+                disabled={saveBlocked}
+              >
+                Save
+              </button>
               <button className={s.button} onClick={handleDiscard} aria-label="Discard">Discard</button>
             </>
           ) : (
@@ -106,6 +145,7 @@ export function DashboardBuilder() {
               editMode={editMode}
               onLayoutChange={updateLayout}
               resolveComponent={resolveComponent}
+              onPlacementClick={handleSelectPlacement}
             />
           )}
         </div>
@@ -115,6 +155,9 @@ export function DashboardBuilder() {
               components={registry.getAvailableComponents()}
               onAddComponent={handleAddComponent}
             />
+            {selectedPlacementId && (
+              <ComponentConfigPanel placementId={selectedPlacementId} />
+            )}
           </div>
         )}
       </div>

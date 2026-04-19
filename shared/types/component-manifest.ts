@@ -1,3 +1,5 @@
+import type { JSONSchema7 } from 'json-schema';
+
 export const COMPONENT_CATEGORIES = ['visualization', 'metrics', 'table', 'status', 'stream'] as const;
 export type ComponentCategory = (typeof COMPONENT_CATEGORIES)[number];
 
@@ -27,7 +29,7 @@ export interface ComponentManifest {
   category: ComponentCategory;
   version: string;
   implementationKey: string;
-  configSchema: Record<string, unknown>;
+  configSchema: JSONSchema7;
   dataSources: DataSourceDeclaration[];
   events: {
     emits: ComponentEvent[];
