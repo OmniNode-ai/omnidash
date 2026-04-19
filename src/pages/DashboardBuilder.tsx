@@ -1,15 +1,37 @@
-import { useCallback, useRef } from 'react';
+import { useCallback, useEffect, useRef } from 'react';
 import { useFrameStore } from '@/store/store';
 import { useRegistry } from '@/registry/RegistryProvider';
 import { DashboardGrid } from '@/components/dashboard/DashboardGrid';
 import { ComponentPalette } from '@/components/dashboard/ComponentPalette';
 import type { DashboardLayoutItem } from '@shared/types/dashboard';
+import { layoutPersistence } from '@/layout/layout-persistence';
 import * as s from './DashboardBuilder.css';
 
 export function DashboardBuilder() {
-  const { activeDashboard, editMode, setEditMode, addComponentToLayout, updateLayout, removeComponentFromLayout } = useFrameStore();
+  const { activeDashboard, editMode, setEditMode, addComponentToLayout, updateLayout, removeComponentFromLayout, setActiveDashboard } = useFrameStore();
   const registry = useRegistry();
   const snapshotRef = useRef<DashboardLayoutItem[] | null>(null);
+
+  // Load the persisted "default" layout on mount.
+  // If absent (404) or invalid (no layout array) we keep the current empty-state behavior.
+  useEffect(() => {
+    layoutPersistence.read('default').then((persisted) => {
+      // Guard: persisted must be a valid DashboardDefinition (has a layout array).
+      if (!persisted || !Array.isArray(persisted.layout)) return;
+      // Read live state from the store (not the stale closure) to avoid clobbering
+      // a dashboard that was loaded between mount and the async read resolving.
+      const currentDashboard = useFrameStore.getState().activeDashboard;
+      if (!currentDashboard) {
+        setActiveDashboard(persisted);
+      }
+      // If a dashboard is already active, do not overwrite it — the persisted
+      // layout is for the cold-start case only.
+    }).catch((err: unknown) => {
+      console.warn('[DashboardBuilder] failed to load persisted layout:', err);
+    });
+    // Intentionally empty: runs once on mount. setActiveDashboard is stable (Zustand).
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const handleEdit = useCallback(() => {
     if (activeDashboard) {

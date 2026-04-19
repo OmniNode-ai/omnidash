@@ -1,15 +1,34 @@
 import type { DashboardDefinition } from '@shared/types/dashboard';
 import { validateDashboardDefinition } from '@shared/types/dashboard';
+import type { LayoutPersistence } from '@/layout/layout-persistence';
+import { layoutPersistence } from '@/layout/layout-persistence';
 
 export class DashboardService {
   private store = new Map<string, DashboardDefinition>();
+  private readonly persistence: LayoutPersistence;
+
+  constructor(persistence: LayoutPersistence = layoutPersistence) {
+    this.persistence = persistence;
+  }
 
   async save(dashboard: DashboardDefinition): Promise<void> {
     const validation = validateDashboardDefinition(dashboard);
     if (!validation.valid) {
       throw new Error(`Invalid dashboard: ${validation.errors.join(', ')}`);
     }
-    this.store.set(dashboard.id, { ...dashboard, updatedAt: new Date().toISOString() });
+    const updated = { ...dashboard, updatedAt: new Date().toISOString() };
+    this.store.set(dashboard.id, updated);
+    // Async side effect — fire and forget; does not block the hot-path save.
+    this.persistence.write(dashboard.name, updated).catch((err: unknown) => {
+      console.warn('[DashboardService] layout persistence write failed:', err);
+    });
+  }
+
+  async loadByName(name: string): Promise<DashboardDefinition | null> {
+    return this.persistence.read(name).catch((err: unknown) => {
+      console.warn('[DashboardService] layout persistence read failed:', err);
+      return null;
+    });
   }
 
   async getById(id: string): Promise<DashboardDefinition | undefined> {
