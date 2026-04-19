@@ -19,33 +19,30 @@ describe('useProjectionQuery', () => {
     vi.restoreAllMocks();
   });
 
-  it('fetches data from projection endpoint', async () => {
-    (fetch as any).mockResolvedValueOnce({
-      ok: true,
-      json: async () => ({ total: 42 }),
-    });
+  it('fetches data from projection topic via FileSnapshotSource', async () => {
+    // FileSnapshotSource pattern: index.json → ["0.json"], then the item file
+    (fetch as any)
+      .mockResolvedValueOnce({ ok: true, json: async () => ['0.json'] })
+      .mockResolvedValueOnce({ ok: true, json: async () => ({ total: 42 }) });
 
     const { result } = renderHook(
-      () => useProjectionQuery('/api/test', { queryKey: ['test'] }),
+      () => useProjectionQuery({ topic: 'onex.snapshot.projection.test.v1', queryKey: ['test'] }),
       { wrapper }
     );
 
     await waitFor(() => expect(result.current.isSuccess).toBe(true));
-    expect(result.current.data).toEqual({ total: 42 });
+    expect(result.current.data).toEqual([{ total: 42 }]);
   });
 
-  it('handles fetch errors gracefully', async () => {
-    (fetch as any).mockResolvedValueOnce({
-      ok: false,
-      status: 500,
-      statusText: 'Internal Server Error',
-    });
+  it('returns empty array when index.json is not found', async () => {
+    (fetch as any).mockResolvedValueOnce({ ok: false, status: 404, statusText: 'Not Found' });
 
     const { result } = renderHook(
-      () => useProjectionQuery('/api/test-error', { queryKey: ['test-error'] }),
+      () => useProjectionQuery({ topic: 'onex.snapshot.projection.missing.v1', queryKey: ['test-missing'] }),
       { wrapper }
     );
 
-    await waitFor(() => expect(result.current.isError).toBe(true));
+    await waitFor(() => expect(result.current.isSuccess).toBe(true));
+    expect(result.current.data).toEqual([]);
   });
 });

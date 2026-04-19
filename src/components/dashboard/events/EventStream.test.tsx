@@ -22,6 +22,19 @@ class MockWebSocket {
   }
 }
 
+// Helper: mock FileSnapshotSource fetch pattern — index.json then each file
+function mockFetchWithItems(items: unknown[]) {
+  const fileNames = items.map((_, i) => `${i}.json`);
+  const fileMap = new Map(fileNames.map((name, i) => [name, items[i]]));
+  (fetch as any)
+    .mockResolvedValueOnce({ ok: true, json: async () => fileNames })
+    .mockImplementation((url: string) => {
+      const filename = url.split('/').pop() ?? '';
+      const item = fileMap.get(filename) ?? null;
+      return Promise.resolve({ ok: true, json: async () => item });
+    });
+}
+
 describe('EventStream', () => {
   beforeEach(() => {
     qc.clear();
@@ -38,12 +51,9 @@ describe('EventStream', () => {
   });
 
   it('renders initial events from REST endpoint', async () => {
-    (fetch as any).mockResolvedValueOnce({
-      ok: true,
-      json: async () => ([
-        { id: '1', event_type: 'onex.evt.delegation.completed.v1', source: 'omnimarket', correlation_id: 'abc', timestamp: '2026-04-10T12:00:00Z' },
-      ]),
-    });
+    mockFetchWithItems([
+      { id: '1', event_type: 'onex.evt.delegation.completed.v1', source: 'omnimarket', correlation_id: 'abc', timestamp: '2026-04-10T12:00:00Z' },
+    ]);
     render(<QueryClientProvider client={qc}><EventStream config={{ maxEvents: 200, autoScroll: true }} /></QueryClientProvider>);
     expect(await screen.findByText('onex.evt.delegation.completed.v1')).toBeInTheDocument();
     expect(screen.getByText('omnimarket')).toBeInTheDocument();
@@ -53,9 +63,10 @@ describe('EventStream', () => {
     const manyEvents = Array.from({ length: 205 }, (_, i) => ({
       id: String(i), event_type: `event-${i}`, source: 'test', correlation_id: `cid-${i}`, timestamp: new Date().toISOString(),
     }));
-    (fetch as any).mockResolvedValueOnce({ ok: true, json: async () => manyEvents });
+    mockFetchWithItems(manyEvents);
     render(<QueryClientProvider client={qc}><EventStream config={{ maxEvents: 200, autoScroll: true }} /></QueryClientProvider>);
-    await screen.findByText('event-0'); // first rendered
+    // Wait for data to load by checking that event rows appear
+    await screen.findAllByTestId('event-row');
     const rows = screen.queryAllByTestId('event-row');
     expect(rows.length).toBeLessThanOrEqual(200);
   });

@@ -67,10 +67,10 @@ export default function EventStream({ config }: { config: EventStreamConfig }) {
   const maxEvents = config.maxEvents ?? 200;
   const autoScroll = config.autoScroll ?? true;
 
-  const { data: initialData, isLoading, error } = useProjectionQuery<StreamEvent[]>(
-    '/api/events/recent',
-    { queryKey: ['events-recent'] }
-  );
+  const { data: initialData, isLoading, error } = useProjectionQuery<StreamEvent>({
+    topic: 'onex.snapshot.projection.registration.v1',
+    queryKey: ['events-recent'],
+  });
 
   const [events, setEvents] = useState<StreamEvent[]>([]);
   const [seenIds] = useState(() => new Set<string>());

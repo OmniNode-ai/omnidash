@@ -12,10 +12,12 @@ interface DelegationSummary {
 }
 
 export default function DelegationMetrics({ config: _config }: { config: Record<string, unknown> }) {
-  const { data, isLoading, error } = useProjectionQuery<DelegationSummary>(
-    '/api/delegation/summary',
-    { queryKey: ['delegation-summary'], refetchInterval: 60_000 }
-  );
+  const { data: dataArr, isLoading, error } = useProjectionQuery<DelegationSummary>({
+    topic: 'onex.snapshot.projection.delegation.v1',
+    queryKey: ['delegation-summary'],
+    refetchInterval: 60_000,
+  });
+  const data = dataArr?.[0];
   const colors = useThemeColors();
 
   const chartOption = useMemo(() => {

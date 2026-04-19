@@ -9,20 +9,30 @@ vi.mock('echarts-for-react', () => ({
   default: () => <div data-testid="echarts-mock">chart</div>,
 }));
 
+// Helper: mock FileSnapshotSource fetch pattern — index.json then each file
+function mockFetchWithItems(items: unknown[]) {
+  const fileNames = items.map((_, i) => `${i}.json`);
+  const fileMap = new Map(fileNames.map((name, i) => [name, items[i]]));
+  (fetch as any)
+    .mockResolvedValueOnce({ ok: true, json: async () => fileNames })
+    .mockImplementation((url: string) => {
+      const filename = url.split('/').pop() ?? '';
+      const item = fileMap.get(filename) ?? null;
+      return Promise.resolve({ ok: true, json: async () => item });
+    });
+}
+
 describe('DelegationMetrics', () => {
   beforeEach(() => { qc.clear(); vi.stubGlobal('fetch', vi.fn()); });
   afterEach(() => vi.restoreAllMocks());
 
   it('renders metrics when data is available', async () => {
-    (fetch as any).mockResolvedValueOnce({
-      ok: true,
-      json: async () => ({
-        totalDelegations: 150,
-        qualityGatePassRate: 0.85,
-        totalSavingsUsd: 42.5,
-        byTaskType: [{ taskType: 'code-review', count: 80 }, { taskType: 'refactor', count: 70 }],
-      }),
-    });
+    mockFetchWithItems([{
+      totalDelegations: 150,
+      qualityGatePassRate: 0.85,
+      totalSavingsUsd: 42.5,
+      byTaskType: [{ taskType: 'code-review', count: 80 }, { taskType: 'refactor', count: 70 }],
+    }]);
     render(
       <QueryClientProvider client={qc}>
         <DelegationMetrics config={{}} />
@@ -33,10 +43,12 @@ describe('DelegationMetrics', () => {
   });
 
   it('shows empty state when no delegations', async () => {
-    (fetch as any).mockResolvedValueOnce({
-      ok: true,
-      json: async () => ({ totalDelegations: 0, qualityGatePassRate: 0, totalSavingsUsd: 0, byTaskType: [] }),
-    });
+    mockFetchWithItems([{
+      totalDelegations: 0,
+      qualityGatePassRate: 0,
+      totalSavingsUsd: 0,
+      byTaskType: [],
+    }]);
     render(
       <QueryClientProvider client={qc}>
         <DelegationMetrics config={{}} />

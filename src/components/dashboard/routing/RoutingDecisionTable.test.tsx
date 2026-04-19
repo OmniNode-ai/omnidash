@@ -5,6 +5,19 @@ import RoutingDecisionTable from './RoutingDecisionTable';
 
 const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } });
 
+// Helper: mock FileSnapshotSource fetch pattern — index.json then each file
+function mockFetchWithItems(items: unknown[]) {
+  const fileNames = items.map((_, i) => `${i}.json`);
+  const fileMap = new Map(fileNames.map((name, i) => [name, items[i]]));
+  (fetch as any)
+    .mockResolvedValueOnce({ ok: true, json: async () => fileNames })
+    .mockImplementation((url: string) => {
+      const filename = url.split('/').pop() ?? '';
+      const item = fileMap.get(filename) ?? null;
+      return Promise.resolve({ ok: true, json: async () => item });
+    });
+}
+
 describe('RoutingDecisionTable', () => {
   beforeEach(() => { qc.clear(); vi.stubGlobal('fetch', vi.fn()); });
   afterEach(() => vi.restoreAllMocks());
@@ -16,12 +29,9 @@ describe('RoutingDecisionTable', () => {
   });
 
   it('renders decision rows when data is available', async () => {
-    (fetch as any).mockResolvedValueOnce({
-      ok: true,
-      json: async () => ([
-        { id: '1', created_at: '2026-04-10T12:00:00Z', llm_agent: 'claude-opus', fuzzy_agent: 'gpt-4o', agreement: true, llm_confidence: 0.92, fuzzy_confidence: 0.88, cost_usd: 0.0042 },
-      ]),
-    });
+    mockFetchWithItems([
+      { id: '1', created_at: '2026-04-10T12:00:00Z', llm_agent: 'claude-opus', fuzzy_agent: 'gpt-4o', agreement: true, llm_confidence: 0.92, fuzzy_confidence: 0.88, cost_usd: 0.0042 },
+    ]);
     render(<QueryClientProvider client={qc}><RoutingDecisionTable config={{}} /></QueryClientProvider>);
     expect(await screen.findByText('claude-opus')).toBeInTheDocument();
     expect(screen.getByText('gpt-4o')).toBeInTheDocument();
@@ -29,7 +39,7 @@ describe('RoutingDecisionTable', () => {
   });
 
   it('shows empty state when no decisions', async () => {
-    (fetch as any).mockResolvedValueOnce({ ok: true, json: async () => ([]) });
+    (fetch as any).mockResolvedValueOnce({ ok: false });
     render(<QueryClientProvider client={qc}><RoutingDecisionTable config={{}} /></QueryClientProvider>);
     expect(await screen.findByText(/no routing decisions/i)).toBeInTheDocument();
   });
