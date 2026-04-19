@@ -21,10 +21,11 @@ interface CostTrendConfig {
 
 export default function CostTrendPanel({ config }: { config: CostTrendConfig }) {
   const granularity = config.granularity || 'day';
-  const { data, isLoading, error } = useProjectionQuery<CostDataPoint[]>(
-    `/api/intelligence/cost/trends?granularity=${granularity}`,
-    { queryKey: ['cost-trends', granularity], refetchInterval: 60_000 }
-  );
+  const { data, isLoading, error } = useProjectionQuery<CostDataPoint>({
+    topic: 'onex.snapshot.projection.llm_cost.v1',
+    queryKey: ['cost-trends', granularity],
+    refetchInterval: 60_000,
+  });
 
   const colors = useThemeColors();
 

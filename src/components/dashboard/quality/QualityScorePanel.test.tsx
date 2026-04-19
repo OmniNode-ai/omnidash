@@ -9,6 +9,19 @@ vi.mock('echarts-for-react', () => ({
   default: ({ option }: any) => <div data-testid="echarts-mock">chart-{option.series?.[0]?.data?.length ?? 0}</div>,
 }));
 
+// Helper: mock FileSnapshotSource fetch pattern — index.json then each file
+function mockFetchWithItems(items: unknown[]) {
+  const fileNames = items.map((_, i) => `${i}.json`);
+  const fileMap = new Map(fileNames.map((name, i) => [name, items[i]]));
+  (fetch as any)
+    .mockResolvedValueOnce({ ok: true, json: async () => fileNames })
+    .mockImplementation((url: string) => {
+      const filename = url.split('/').pop() ?? '';
+      const item = fileMap.get(filename) ?? null;
+      return Promise.resolve({ ok: true, json: async () => item });
+    });
+}
+
 describe('QualityScorePanel', () => {
   beforeEach(() => { qc.clear(); vi.stubGlobal('fetch', vi.fn()); });
   afterEach(() => vi.restoreAllMocks());
@@ -20,28 +33,22 @@ describe('QualityScorePanel', () => {
   });
 
   it('renders bar chart with 5 distribution buckets', async () => {
-    (fetch as any).mockResolvedValueOnce({
-      ok: true,
-      json: async () => ({
-        meanScore: 0.74,
-        distribution: [
-          { bucket: '0.0-0.2', count: 5 }, { bucket: '0.2-0.4', count: 12 },
-          { bucket: '0.4-0.6', count: 34 }, { bucket: '0.6-0.8', count: 67 },
-          { bucket: '0.8-1.0', count: 41 },
-        ],
-        totalMeasurements: 159,
-      }),
-    });
+    mockFetchWithItems([{
+      meanScore: 0.74,
+      distribution: [
+        { bucket: '0.0-0.2', count: 5 }, { bucket: '0.2-0.4', count: 12 },
+        { bucket: '0.4-0.6', count: 34 }, { bucket: '0.6-0.8', count: 67 },
+        { bucket: '0.8-1.0', count: 41 },
+      ],
+      totalMeasurements: 159,
+    }]);
     render(<QueryClientProvider client={qc}><QualityScorePanel config={{}} /></QueryClientProvider>);
     expect(await screen.findByText('chart-5')).toBeInTheDocument();
     expect(screen.getByText(/0\.74/)).toBeInTheDocument();
   });
 
   it('shows empty state when no measurements', async () => {
-    (fetch as any).mockResolvedValueOnce({
-      ok: true,
-      json: async () => ({ meanScore: 0, distribution: [], totalMeasurements: 0 }),
-    });
+    mockFetchWithItems([{ meanScore: 0, distribution: [], totalMeasurements: 0 }]);
     render(<QueryClientProvider client={qc}><QualityScorePanel config={{}} /></QueryClientProvider>);
     expect(await screen.findByText(/no quality data/i)).toBeInTheDocument();
   });

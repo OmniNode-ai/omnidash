@@ -13,10 +13,11 @@ interface RoutingDecision {
 }
 
 export default function RoutingDecisionTable({ config: _config }: { config: Record<string, unknown> }) {
-  const { data, isLoading, error } = useProjectionQuery<RoutingDecision[]>(
-    '/api/llm-routing/decisions',
-    { queryKey: ['routing-decisions'], refetchInterval: 60_000 }
-  );
+  const { data, isLoading, error } = useProjectionQuery<RoutingDecision>({
+    topic: 'onex.snapshot.projection.delegation.v1',
+    queryKey: ['routing-decisions'],
+    refetchInterval: 60_000,
+  });
 
   const isEmpty = !data || data.length === 0;
 

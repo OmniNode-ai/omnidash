@@ -27,10 +27,12 @@ function DeltaMetric({ label, value, unit }: { label: string; value: number; uni
 }
 
 export default function BaselinesROICard({ config: _config }: { config: Record<string, unknown> }) {
-  const { data, isLoading, error } = useProjectionQuery<BaselinesSummary | null>(
-    '/api/baselines/summary',
-    { queryKey: ['baselines-summary'], refetchInterval: 120_000 }
-  );
+  const { data: dataArr, isLoading, error } = useProjectionQuery<BaselinesSummary>({
+    topic: 'onex.snapshot.projection.baselines.v1',
+    queryKey: ['baselines-summary'],
+    refetchInterval: 120_000,
+  });
+  const data = dataArr?.[0] ?? null;
 
   const colors = useThemeColors();
 

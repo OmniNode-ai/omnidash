@@ -41,10 +41,12 @@ function DimensionCard({ dim }: { dim: ReadinessDimension }) {
 }
 
 export default function ReadinessGate({ config: _config }: { config: Record<string, unknown> }) {
-  const { data, isLoading, error } = useProjectionQuery<ReadinessSummary>(
-    '/api/readiness/summary',
-    { queryKey: ['readiness-summary'], refetchInterval: 120_000 }
-  );
+  const { data: dataArr, isLoading, error } = useProjectionQuery<ReadinessSummary>({
+    topic: 'onex.snapshot.projection.overnight.v1',
+    queryKey: ['readiness-summary'],
+    refetchInterval: 120_000,
+  });
+  const data = dataArr?.[0];
   const colors = useThemeColors();
 
   return (
