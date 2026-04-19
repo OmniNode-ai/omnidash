@@ -5,16 +5,57 @@
  * with 7 hard-coded MVP component manifests. The real implementation will
  * scan omnimarket contract metadata.yaml files at build time.
  *
+ * Also scans node_modules/@omninode/* for packages declaring dashboardComponents
+ * in their package.json and merges discovered manifests. Local manifests win on
+ * name collision (with a warning).
+ *
  * Usage: npx tsx scripts/generate-registry.ts
  */
-import { writeFileSync } from 'fs';
-import { resolve, dirname } from 'path';
+import { writeFileSync, existsSync, readFileSync, readdirSync } from 'fs';
+import { resolve, dirname, join } from 'path';
 import { fileURLToPath } from 'url';
+import type { ComponentManifest } from '../shared/types/component-manifest.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 
-const MVP_COMPONENTS = {
+interface PackageJsonWithDashboard {
+  name: string;
+  version: string;
+  dashboardComponents?: string; // relative path to a JSON file listing manifests
+}
+
+/**
+ * Scan node_modules/@omninode/* for packages declaring dashboardComponents.
+ * Returns discovered ComponentManifest[] with _sourcePackage set for traceability.
+ */
+export function scanInstalledPackages(nodeModulesDir: string): ComponentManifest[] {
+  const scopeDir = join(nodeModulesDir, '@omninode');
+  if (!existsSync(scopeDir)) return [];
+  const found: ComponentManifest[] = [];
+  for (const pkg of readdirSync(scopeDir)) {
+    const pkgJsonPath = join(scopeDir, pkg, 'package.json');
+    if (!existsSync(pkgJsonPath)) continue;
+    const pkgJson = JSON.parse(readFileSync(pkgJsonPath, 'utf8')) as PackageJsonWithDashboard;
+    if (!pkgJson.dashboardComponents) continue;
+    const manifestPath = resolve(dirname(pkgJsonPath), pkgJson.dashboardComponents);
+    if (!existsSync(manifestPath)) {
+      console.warn(
+        `[registry] ${pkg} declares dashboardComponents but file missing: ${manifestPath}`,
+      );
+      continue;
+    }
+    const manifests = JSON.parse(readFileSync(manifestPath, 'utf8')) as ComponentManifest[];
+    for (const m of manifests) {
+      // Mark origin so collisions are traceable
+      (m as ComponentManifest & { _sourcePackage: string })._sourcePackage = pkgJson.name;
+      found.push(m);
+    }
+  }
+  return found;
+}
+
+const MVP_COMPONENTS: Record<string, ComponentManifest> = {
   'cost-trend-panel': {
     name: 'cost-trend-panel',
     displayName: 'Cost Trend',
@@ -172,12 +213,30 @@ const MVP_COMPONENTS = {
   },
 };
 
+// Scan node_modules/@omninode/* for packages declaring dashboardComponents
+const nodeModulesDir = resolve(__dirname, '../node_modules');
+const scannedComponents = scanInstalledPackages(nodeModulesDir);
+
+// Merge: local wins on name collision
+const mergedComponents: Record<string, ComponentManifest> = { ...MVP_COMPONENTS };
+for (const scanned of scannedComponents) {
+  if (mergedComponents[scanned.name]) {
+    console.warn(
+      `[registry] name collision on "${scanned.name}" — keeping local, ignoring scanned from ${(scanned as ComponentManifest & { _sourcePackage?: string })._sourcePackage ?? 'unknown package'}`,
+    );
+  } else {
+    mergedComponents[scanned.name] = scanned;
+  }
+}
+
 const manifest = {
   manifestVersion: '1.0',
   generatedAt: new Date().toISOString(),
-  components: MVP_COMPONENTS,
+  components: mergedComponents,
 };
 
 const outPath = resolve(__dirname, '../public/component-registry.json');
 writeFileSync(outPath, JSON.stringify(manifest, null, 2));
-console.log(`Generated component-registry.json with ${Object.keys(MVP_COMPONENTS).length} components`);
+console.log(
+  `Generated component-registry.json with ${Object.keys(mergedComponents).length} components (${Object.keys(MVP_COMPONENTS).length} local + ${scannedComponents.length} scanned)`,
+);
