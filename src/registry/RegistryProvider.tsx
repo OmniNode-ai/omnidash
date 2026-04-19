@@ -5,7 +5,13 @@ import type { RegistryManifest } from './types';
 const RegistryContext = createContext<ComponentRegistry | null>(null);
 
 export function RegistryProvider({ manifest, children }: { manifest: RegistryManifest; children: ReactNode }) {
-  const registry = useMemo(() => new ComponentRegistry(manifest), [manifest]);
+  const registry = useMemo(() => {
+    const r = new ComponentRegistry(manifest);
+    // resolveImplementations() has no real await — iterates a map synchronously.
+    // Safe to fire-and-forget until dynamic imports land; see OMN-39.
+    void r.resolveImplementations();
+    return r;
+  }, [manifest]);
   return <RegistryContext.Provider value={registry}>{children}</RegistryContext.Provider>;
 }
 
