@@ -22,6 +22,9 @@
   "type": "module",
   "dependencies": {
     "@neondatabase/serverless": "^1.0.2",
+    "@rjsf/core": "^6.5.1",
+    "@rjsf/utils": "^6.5.1",
+    "@rjsf/validator-ajv8": "^6.5.1",
     "@tanstack/react-query": "^5.97.0",
     "@types/express": "^5.0.6",
     "@types/pg": "^8.20.0",

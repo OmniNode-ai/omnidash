@@ -17,9 +17,11 @@ interface DashboardGridProps {
   editMode: boolean;
   onLayoutChange: (layout: DashboardLayoutItem[]) => void;
   resolveComponent: (name: string) => LazyExoticComponent<ComponentType<any>> | undefined;
+  /** Called in edit mode when the user clicks a placed component to select it for config editing. */
+  onPlacementClick?: (placementId: string) => void;
 }
 
-export function DashboardGrid({ layout, editMode, onLayoutChange, resolveComponent }: DashboardGridProps) {
+export function DashboardGrid({ layout, editMode, onLayoutChange, resolveComponent, onPlacementClick }: DashboardGridProps) {
   const rglLayout = useMemo(
     () => layout.map((item) => ({ i: item.i, x: item.x, y: item.y, w: item.w, h: item.h })),
     [layout]
@@ -48,7 +50,12 @@ export function DashboardGrid({ layout, editMode, onLayoutChange, resolveCompone
         compactor={verticalCompactor}
       >
         {layout.map((item) => (
-          <div key={item.i} className={`${s.gridItem} ${editMode ? s.gridItemEdit : ''}`} data-testid="grid-item">
+          <div
+            key={item.i}
+            className={`${s.gridItem} ${editMode ? s.gridItemEdit : ''}`}
+            data-testid="grid-item"
+            onClick={editMode && onPlacementClick ? () => onPlacementClick(item.i) : undefined}
+          >
             <ComponentCell
               componentName={item.componentName}
               config={item.config}
