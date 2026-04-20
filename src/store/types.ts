@@ -27,8 +27,22 @@ import type { DashboardDefinition, DashboardLayoutItem } from '@shared/types/das
 import type { GridSize } from '@shared/types/component-manifest';
 
 export interface DashboardSlice {
+  // Multi-dashboard list (OMN-43)
+  dashboards: DashboardDefinition[];
+  activeDashboardId: string | null;
+  // Derived accessor — reads dashboards.find(d => d.id === activeDashboardId)
   activeDashboard: DashboardDefinition | null;
+
+  // List-level actions
+  createDashboard: (name: string) => DashboardDefinition;
+  renameDashboard: (id: string, newName: string) => void;
+  deleteDashboard: (id: string) => void;
+  setActiveDashboardById: (id: string) => void;
+
+  // Legacy setter — kept for backward compat with OMN-38/41 tests
   setActiveDashboard: (dashboard: DashboardDefinition | null) => void;
+
+  // Layout-level actions
   addComponentToLayout: (componentName: string, componentVersion: string, defaultSize: GridSize) => void;
   removeComponentFromLayout: (itemId: string) => void;
   updateLayout: (layout: DashboardLayoutItem[]) => void;

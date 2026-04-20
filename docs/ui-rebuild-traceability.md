@@ -37,10 +37,13 @@ The prototype handoff bundle is hosted by Claude Design and was extracted locall
 | `src/styles/globals.css` | n/a | `OmniDash.html:12-67` (`:root`, `[data-theme="dark"]`, `[data-density="compact"]` blocks) | 0 (verbatim token port; Tailwind directives and `@fontsource` imports are v2-specific additions) | OMN-42 |
 | `tailwind.config.ts` | n/a | n/a (config wires tokens into Tailwind) | NO PROTOTYPE SOURCE — v2-specific | OMN-42 |
 | `src/lib/utils.ts` | n/a | n/a | NO PROTOTYPE SOURCE — shadcn standard `cn()` helper | OMN-42 |
+| `src/components/frame/Sidebar.tsx` | `src/app.jsx:339-422` | `OmniDash.html:93-240` | 4 (Tailwind replaces CSS classes; shadcn DropdownMenu replaces custom positioned menu; inline rename state local; wired to Zustand store) | OMN-43 |
+| `src/components/frame/FrameLayout.tsx` | `src/app.jsx:208-251` | `OmniDash.html:93-95` | 2 (sidebar as direct import not prop; Tailwind grid utilities replace `.app` CSS class) | OMN-43 |
+| `src/components/frame/Header.tsx` | `src/app.jsx:423-451` | `OmniDash.html:242-326` | 3 (Tailwind replaces CSS; theme toggle retained from OMN-38; inline new-dashboard form removed — moved to Sidebar) | OMN-43 |
+| `src/pages/DashboardView.tsx` | `src/app.jsx:452-537` | `OmniDash.html:327-439` | 3 (v2 DashboardDefinition model; 2-col CSS grid, no drag-drop; ComponentPalette retained from OMN-38) | OMN-43 |
+| `src/store/dashboardSlice.ts` | n/a | n/a | NO PROTOTYPE SOURCE — v2 Zustand slice; actions mirror prototype app.jsx:128-163 | OMN-43 |
 
 ## Future rows
-
-OMN-43 (Phase 2) will add rows for: `FrameLayout.tsx`, `Header.tsx`, `Sidebar.tsx`, `DashboardView.tsx`, `dashboardSlice.ts` additions.
 
 OMN-44 (Phase 3) will add rows for: `WidgetCard.tsx`, `WidgetLibrary.tsx`, `DropIndicator.tsx`, HTML5 DnD handlers.
 

@@ -34,8 +34,12 @@ describe('Part 1 smoke proof — frame liveness, provider wiring, theme switchin
 
   it('renders frame layout with header and main area', () => {
     renderApp();
-    expect(screen.getByText('omnidash')).toBeInTheDocument();
-    expect(screen.getByText('Integration Test Dashboard')).toBeInTheDocument();
+    // "Dashboards" appears in both the sidebar nav label and the header breadcrumb.
+    const dashboardsEls = screen.getAllByText('Dashboards');
+    expect(dashboardsEls.length).toBeGreaterThan(0);
+    // Dashboard name appears in both sidebar list and DashboardView toolbar.
+    const nameEls = screen.getAllByText('Integration Test Dashboard');
+    expect(nameEls.length).toBeGreaterThan(0);
   });
 
   it('theme toggle switches between dark and light', async () => {
