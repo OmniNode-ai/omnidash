@@ -12,7 +12,7 @@ interface QualitySummary {
 
 export default function QualityScorePanel({ config: _config }: { config: Record<string, unknown> }) {
   const { data: dataArr, isLoading, error } = useProjectionQuery<QualitySummary>({
-    topic: 'onex.snapshot.projection.baselines.v1',
+    topic: 'onex.snapshot.projection.baselines.quality.v1',
     queryKey: ['quality-summary'],
     refetchInterval: 60_000,
   });

@@ -28,7 +28,7 @@ function DeltaMetric({ label, value, unit }: { label: string; value: number; uni
 
 export default function BaselinesROICard({ config: _config }: { config: Record<string, unknown> }) {
   const { data: dataArr, isLoading, error } = useProjectionQuery<BaselinesSummary>({
-    topic: 'onex.snapshot.projection.baselines.v1',
+    topic: 'onex.snapshot.projection.baselines.roi.v1',
     queryKey: ['baselines-summary'],
     refetchInterval: 120_000,
   });

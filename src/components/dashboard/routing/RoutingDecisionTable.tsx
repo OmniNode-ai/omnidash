@@ -14,7 +14,7 @@ interface RoutingDecision {
 
 export default function RoutingDecisionTable({ config: _config }: { config: Record<string, unknown> }) {
   const { data, isLoading, error } = useProjectionQuery<RoutingDecision>({
-    topic: 'onex.snapshot.projection.delegation.v1',
+    topic: 'onex.snapshot.projection.delegation.decisions.v1',
     queryKey: ['routing-decisions'],
     refetchInterval: 60_000,
   });
