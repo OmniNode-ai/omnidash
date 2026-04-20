@@ -1,11 +1,12 @@
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { describe, it, expect, beforeEach } from 'vitest';
+import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { Providers } from '@/providers/Providers';
 import { RegistryProvider } from '@/registry/RegistryProvider';
 import { DashboardBuilder } from './DashboardBuilder';
 import { useFrameStore } from '@/store/store';
 import { createEmptyDashboard } from '@shared/types/dashboard';
+import { layoutPersistence } from '@/layout/layout-persistence';
 import type { RegistryManifest } from '@/registry/types';
 
 const manifest: RegistryManifest = {
@@ -69,5 +70,23 @@ describe('DashboardBuilder', () => {
     await userEvent.click(screen.getByRole('button', { name: /edit/i }));
     expect(screen.getByRole('button', { name: /save/i })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /discard/i })).toBeInTheDocument();
+  });
+
+  it('[OMN-41] Save persists the active dashboard via layoutPersistence.write', async () => {
+    const writeSpy = vi.spyOn(layoutPersistence, 'write').mockResolvedValue(undefined);
+    // Test dashboard set up in beforeEach is named "Test Dashboard".
+    const expectedName = useFrameStore.getState().activeDashboard!.name;
+
+    renderBuilder();
+    await userEvent.click(screen.getByRole('button', { name: /edit/i }));
+    await userEvent.click(screen.getByRole('button', { name: /save/i }));
+
+    expect(writeSpy).toHaveBeenCalledTimes(1);
+    expect(writeSpy).toHaveBeenCalledWith(
+      expectedName,
+      expect.objectContaining({ name: expectedName, layout: expect.any(Array) })
+    );
+
+    writeSpy.mockRestore();
   });
 });
