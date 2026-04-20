@@ -63,6 +63,18 @@ export function DashboardBuilder() {
       }
     }
     clearAllDrafts();
+
+    // Persist to disk. Read the latest activeDashboard from the store because
+    // the closure above may be stale after updateComponentConfig() writes.
+    const dashboardToPersist = useFrameStore.getState().activeDashboard;
+    if (dashboardToPersist) {
+      layoutPersistence
+        .write(dashboardToPersist.name, dashboardToPersist)
+        .catch((err: unknown) => {
+          console.warn('[DashboardBuilder] layout persistence write failed:', err);
+        });
+    }
+
     snapshotRef.current = null;
     setEditMode(false);
   }, [activeDashboard, placementDrafts, updateComponentConfig, clearAllDrafts, setEditMode]);
