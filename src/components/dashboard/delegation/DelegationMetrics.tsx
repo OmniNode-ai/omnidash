@@ -13,7 +13,7 @@ interface DelegationSummary {
 
 export default function DelegationMetrics({ config: _config }: { config: Record<string, unknown> }) {
   const { data: dataArr, isLoading, error } = useProjectionQuery<DelegationSummary>({
-    topic: 'onex.snapshot.projection.delegation.v1',
+    topic: 'onex.snapshot.projection.delegation.summary.v1',
     queryKey: ['delegation-summary'],
     refetchInterval: 60_000,
   });
