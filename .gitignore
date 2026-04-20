@@ -5,3 +5,12 @@ dist/
 fixtures/
 build/
 dashboard-layouts/
+
+# Skill-result artifacts (local runs; not for repo)
+.onex_state/
+
+# Stray compiled JS from .ts sources (pre-existing, should not be in repo)
+src/**/*.js
+src/**/*.test.js
+shared/**/*.js
+shared/**/*.test.js
