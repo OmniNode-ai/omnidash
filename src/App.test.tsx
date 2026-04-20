@@ -28,6 +28,8 @@ describe('App', () => {
         </RegistryProvider>
       </Providers>
     );
-    expect(screen.getByText('My Dashboard')).toBeInTheDocument();
+    // Dashboard name appears in both Sidebar list and DashboardView toolbar.
+    const matches = screen.getAllByText('My Dashboard');
+    expect(matches.length).toBeGreaterThan(0);
   });
 });

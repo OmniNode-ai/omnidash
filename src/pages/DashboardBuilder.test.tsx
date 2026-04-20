@@ -1,3 +1,5 @@
+// Updated for OMN-43: DashboardBuilder is now a re-export shim for DashboardView.
+// Tests import via the shim to verify backward compat; semantics unchanged.
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, it, expect, beforeEach, vi } from 'vitest';
@@ -42,7 +44,7 @@ function renderBuilder() {
   );
 }
 
-describe('DashboardBuilder', () => {
+describe('DashboardBuilder (DashboardView shim)', () => {
   beforeEach(() => {
     useFrameStore.setState({ editMode: false, activeDashboard: null, globalFilters: {} });
     const dash = createEmptyDashboard('Test Dashboard', 'jonah');
@@ -74,7 +76,6 @@ describe('DashboardBuilder', () => {
 
   it('[OMN-41] Save persists the active dashboard via layoutPersistence.write', async () => {
     const writeSpy = vi.spyOn(layoutPersistence, 'write').mockResolvedValue(undefined);
-    // Test dashboard set up in beforeEach is named "Test Dashboard".
     const expectedName = useFrameStore.getState().activeDashboard!.name;
 
     renderBuilder();
@@ -84,7 +85,7 @@ describe('DashboardBuilder', () => {
     expect(writeSpy).toHaveBeenCalledTimes(1);
     expect(writeSpy).toHaveBeenCalledWith(
       expectedName,
-      expect.objectContaining({ name: expectedName, layout: expect.any(Array) })
+      expect.objectContaining({ name: expectedName, layout: expect.any(Array) }),
     );
 
     writeSpy.mockRestore();

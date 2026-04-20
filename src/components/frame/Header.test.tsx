@@ -1,63 +1,36 @@
-import { describe, it, expect, beforeEach } from 'vitest';
+// Updated for OMN-43: Header no longer contains the new-dashboard inline form
+// (that flow moved to Sidebar). These tests verify the new Topbar behavior.
+import { describe, it, expect } from 'vitest';
 import { render, screen } from '@testing-library/react';
-import userEvent from '@testing-library/user-event';
 import { Header } from './Header';
-import { useFrameStore } from '@/store/store';
 import { ThemeProvider } from '@/theme';
 
 function Wrapper({ children }: { children: React.ReactNode }) {
   return <ThemeProvider>{children}</ThemeProvider>;
 }
 
-describe('Header — new dashboard flow', () => {
-  beforeEach(() => {
-    useFrameStore.getState().setActiveDashboard(null);
+describe('Header — topbar chrome', () => {
+  it('renders breadcrumbs with "Dashboards" as current page', () => {
+    render(<Header />, { wrapper: Wrapper });
+    expect(screen.getByText('Dashboards')).toBeInTheDocument();
+    expect(screen.getByText('Home')).toBeInTheDocument();
   });
 
-  it('is hidden until the new-dashboard button is clicked', () => {
+  it('has a theme toggle button', () => {
+    render(<Header />, { wrapper: Wrapper });
+    expect(screen.getByRole('button', { name: /toggle theme/i })).toBeInTheDocument();
+  });
+
+  it('renders Refresh, Help, and Notifications icon buttons', () => {
+    render(<Header />, { wrapper: Wrapper });
+    expect(screen.getByRole('button', { name: /refresh/i })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /help/i })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /notifications/i })).toBeInTheDocument();
+  });
+
+  it('does NOT contain a "New dashboard" form (flow moved to Sidebar)', () => {
     render(<Header />, { wrapper: Wrapper });
     expect(screen.queryByLabelText('Dashboard name')).not.toBeInTheDocument();
-  });
-
-  it('submits an empty dashboard to the store and clears the form', async () => {
-    const user = userEvent.setup();
-    render(<Header />, { wrapper: Wrapper });
-
-    await user.click(screen.getByLabelText('New dashboard'));
-    const input = screen.getByLabelText('Dashboard name') as HTMLInputElement;
-    await user.type(input, 'My Board');
-    await user.click(screen.getByLabelText('Create dashboard'));
-
-    const active = useFrameStore.getState().activeDashboard;
-    expect(active).not.toBeNull();
-    expect(active?.name).toBe('My Board');
-    expect(active?.layout).toEqual([]);
-    expect(screen.queryByLabelText('Dashboard name')).not.toBeInTheDocument();
-  });
-
-  it('cancel closes the form without touching the store', async () => {
-    const user = userEvent.setup();
-    render(<Header />, { wrapper: Wrapper });
-
-    await user.click(screen.getByLabelText('New dashboard'));
-    await user.type(screen.getByLabelText('Dashboard name'), 'Abandoned');
-    await user.click(screen.getByLabelText('Cancel'));
-
-    expect(useFrameStore.getState().activeDashboard).toBeNull();
-    expect(screen.queryByLabelText('Dashboard name')).not.toBeInTheDocument();
-  });
-
-  it('rejects empty / whitespace-only names (Create button disabled)', async () => {
-    const user = userEvent.setup();
-    render(<Header />, { wrapper: Wrapper });
-
-    await user.click(screen.getByLabelText('New dashboard'));
-    const createBtn = screen.getByLabelText('Create dashboard') as HTMLButtonElement;
-    expect(createBtn.disabled).toBe(true);
-
-    await user.type(screen.getByLabelText('Dashboard name'), '   ');
-    expect(createBtn.disabled).toBe(true);
-
-    expect(useFrameStore.getState().activeDashboard).toBeNull();
+    expect(screen.queryByLabelText('New dashboard')).not.toBeInTheDocument();
   });
 });
