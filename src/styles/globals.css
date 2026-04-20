@@ -1,0 +1,85 @@
+/*
+ * GLOBAL STYLES + DESIGN TOKENS
+ *
+ * SOURCE: Claude Design prototype
+ *   /tmp/claude-design/experimental/omnidash/project/OmniDash.html:12-67 (regular theme)
+ *
+ * Port is verbatim for tokens. Tailwind directives + the @fontsource imports
+ * are v2-specific additions (no prototype source).
+ */
+
+@import "@fontsource/ibm-plex-sans/400.css";
+@import "@fontsource/ibm-plex-sans/500.css";
+@import "@fontsource/ibm-plex-sans/600.css";
+@import "@fontsource/ibm-plex-sans/700.css";
+@import "@fontsource/ibm-plex-mono/400.css";
+@import "@fontsource/ibm-plex-mono/500.css";
+@import "@fontsource/ibm-plex-mono/600.css";
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --accent-h: 120;
+    --accent: oklch(72% 0.15 var(--accent-h));
+    --accent-soft: oklch(92% 0.08 var(--accent-h));
+    --accent-ink: oklch(35% 0.10 var(--accent-h));
+
+    --bg: oklch(98.5% 0.004 85);
+    --panel: oklch(100% 0 0);
+    --panel-2: oklch(97% 0.004 85);
+    --ink: oklch(22% 0.01 260);
+    --ink-2: oklch(45% 0.01 260);
+    --ink-3: oklch(62% 0.01 260);
+    --line: oklch(90% 0.005 260);
+    --line-2: oklch(94% 0.004 260);
+    --sidebar: oklch(18% 0.008 260);
+    --sidebar-ink: oklch(92% 0.005 260);
+    --sidebar-ink-2: oklch(65% 0.01 260);
+    --sidebar-line: oklch(28% 0.01 260);
+
+    --status-ok: oklch(70% 0.15 145);
+    --status-warn: oklch(78% 0.15 75);
+    --status-bad: oklch(65% 0.18 25);
+
+    --radius: 8px;
+    --radius-lg: 12px;
+
+    --pad-y: 14px;
+    --pad-x: 16px;
+    --row-gap: 16px;
+
+    --shadow-sm: 0 1px 2px oklch(20% 0.01 260 / 0.06), 0 1px 0 oklch(20% 0.01 260 / 0.02);
+    --shadow-md: 0 4px 14px oklch(20% 0.01 260 / 0.08), 0 1px 2px oklch(20% 0.01 260 / 0.05);
+    --shadow-lg: 0 24px 60px oklch(20% 0.01 260 / 0.18), 0 2px 8px oklch(20% 0.01 260 / 0.06);
+  }
+
+  [data-theme="dark"] {
+    --bg: oklch(16% 0.008 260);
+    --panel: oklch(20% 0.008 260);
+    --panel-2: oklch(23% 0.008 260);
+    --ink: oklch(94% 0.005 260);
+    --ink-2: oklch(72% 0.01 260);
+    --ink-3: oklch(55% 0.01 260);
+    --line: oklch(28% 0.01 260);
+    --line-2: oklch(24% 0.01 260);
+    --sidebar: oklch(12% 0.008 260);
+    --sidebar-ink: oklch(94% 0.005 260);
+    --sidebar-ink-2: oklch(62% 0.01 260);
+    --sidebar-line: oklch(22% 0.01 260);
+
+    --accent-soft: oklch(32% 0.10 var(--accent-h));
+    --accent-ink: oklch(85% 0.14 var(--accent-h));
+    --shadow-sm: 0 1px 2px oklch(0% 0 0 / 0.3);
+    --shadow-md: 0 4px 14px oklch(0% 0 0 / 0.35), 0 1px 2px oklch(0% 0 0 / 0.3);
+    --shadow-lg: 0 24px 60px oklch(0% 0 0 / 0.5), 0 2px 8px oklch(0% 0 0 / 0.3);
+  }
+
+  [data-density="compact"] {
+    --pad-y: 10px;
+    --pad-x: 12px;
+    --row-gap: 12px;
+  }
+}
