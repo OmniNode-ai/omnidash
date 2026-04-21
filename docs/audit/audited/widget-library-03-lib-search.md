@@ -10,7 +10,7 @@ prototype_css:
 v2_targets:
   - src/components/dashboard/ComponentPalette.tsx
   - src/styles/library.css
-status: todo
+status: audited
 dependencies: []
 blocked_reason: null
 ---
@@ -72,15 +72,18 @@ Walk each axis completely. Each ☐ must become either ✅ "no issues" or a popu
 
 ### Design
 
-(fill in)
+- No issues found. The `.lib-search` and `.lib-search input` / `.lib-search input:focus` rules in `src/styles/library.css:26-40` are a verbatim port of the prototype's CSS (lines 462-476) with the documented `--accent` → `--brand` token rename on the focus rule (library.css:40). All padding (12px 18px wrapper, 8px 12px input), 6px radius, 13px font, `var(--panel-2)` background, `var(--line)` border, `outline: none`, and 150ms `border-color`/`background` transitions match exactly. Note that the CSS rules are currently dead code because no markup targets them — the missing-markup issue is logged under Structure.
 
 ### Structure
 
-(fill in)
+**Issue [CRITICAL]**: `.lib-search` wrapper and its `<input>` are entirely absent from v2 (user-flagged missing feature).
+- Prototype: `src/app.jsx:638-640` renders `<div className="lib-search"><input placeholder="Search widgets…" value={q} onChange={e => setQ(e.target.value)}/></div>` between `.lib-head` and the card list, with `q`/`setQ` state declared at `src/app.jsx:619` and a substring filter at `src/app.jsx:621-623`.
+- v2: `src/components/dashboard/ComponentPalette.tsx:37-43` jumps straight from the `.lib-head` block to the `.lib-body` group iteration — there is no `lib-search` div, no `<input>`, no `useState` for a query string, and no filter step over `components`. The source comment at `ComponentPalette.tsx:7` ("No search, no drag, no slide-in animation yet — those are OMN-44 scope") acknowledges the gap.
+- Impact: Users cannot filter the widget catalog. As the catalog grows, the palette becomes a long scrolling list with no way to narrow to a specific widget by name or description. The `.lib-search` CSS rules in `library.css:26-40` are orphaned (no DOM element consumes them).
 
 ### Content
 
-(fill in)
+- No issues found — content-level checks (placeholder string exactness, case-insensitive substring match across `name` and `desc`) are moot because the element does not exist in v2. They will need to be re-verified once the CRITICAL Structure gap is fixed.
 
 ## Resolution
 
