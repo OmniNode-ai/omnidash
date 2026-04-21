@@ -10,10 +10,10 @@ prototype_css:
 v2_targets:
   - src/pages/DashboardView.tsx
   - src/styles/dashboard.css
-status: audited
+status: blocked
 dependencies:
   - dashboard-07
-blocked_reason: null
+blocked_reason: "Deferred to OMN-44 (drag-and-drop + kebab menu wiring). See DashboardView.tsx:8 and ComponentWrapper.tsx:9 for scope note."
 ---
 
 # dashboard-08 — `<WidgetCard/>` render inside `.grid` + trailing drop indicator

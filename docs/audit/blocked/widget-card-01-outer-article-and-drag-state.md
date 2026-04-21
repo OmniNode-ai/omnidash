@@ -10,9 +10,9 @@ prototype_css:
 v2_targets:
   - src/components/dashboard/ComponentWrapper.tsx
   - src/styles/dashboard.css
-status: audited
+status: blocked
 dependencies: []
-blocked_reason: null
+blocked_reason: "Deferred to OMN-44 (drag-and-drop + kebab menu wiring). See DashboardView.tsx:8 and ComponentWrapper.tsx:9 for scope note."
 ---
 
 # widget-card-01 — Outer `<div className="widget">` wrapper with drag state classes and drag handlers

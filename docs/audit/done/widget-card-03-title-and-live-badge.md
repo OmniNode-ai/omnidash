@@ -10,7 +10,7 @@ prototype_css:
 v2_targets:
   - src/components/dashboard/ComponentWrapper.tsx
   - src/styles/dashboard.css
-status: audited
+status: done
 dependencies: []
 blocked_reason: null
 ---
@@ -91,4 +91,4 @@ Walk each axis completely. Each ☐ must become either ✅ "no issues" or a popu
 
 ## Resolution
 
-(filled by orchestrator after fixes are applied; one-line pointer to the fix commit)
+Fixed in commit `31d988e` — fix(ui): gate widget Live badge on isLive prop [OMN-48]. Badge now renders only when `isLive=true`; EventStream opts in, other widgets stay silent. Structural note about `.widget-live` being sibling of `.widget-head-left` retained as v2 layout choice — prototype placed it inside `.widget-title`, which is cosmetically equivalent here.

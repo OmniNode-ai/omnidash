@@ -150,4 +150,3 @@
   display: grid; grid-template-columns: 1fr 1fr; gap: var(--row-gap);
   margin-top: var(--row-gap);
 }
-.library-open .grid .widget { transition: transform 0.2s; }

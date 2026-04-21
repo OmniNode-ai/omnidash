@@ -10,7 +10,7 @@ prototype_css:
 v2_targets:
   - src/pages/DashboardView.tsx
   - src/styles/dashboard.css
-status: audited
+status: done
 dependencies:
   - dashboard-01
   - dashboard-07
@@ -68,4 +68,4 @@ Walk each axis completely. Each check must become either "no issues" or a popula
 
 ## Resolution
 
-(filled by orchestrator after fixes are applied; one-line pointer to the fix commit)
+Resolved by deleting the dead `.library-open .grid .widget` selector from `src/styles/dashboard.css`. v2 uses editMode state (not a `library-open` class) to gate the library panel, so the selector could never fire. No equivalent v2 wiring needed — library panel slide behavior is deferred to OMN-44 and will use a different mechanism.
