@@ -21,11 +21,16 @@ describe('Header — topbar chrome', () => {
     expect(screen.getByRole('button', { name: /toggle theme/i })).toBeInTheDocument();
   });
 
-  it('renders Refresh, Help, and Notifications icon buttons', () => {
+  it('renders the Refresh icon button', () => {
     render(<Header />, { wrapper: Wrapper });
     expect(screen.getByRole('button', { name: /refresh/i })).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: /help/i })).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: /notifications/i })).toBeInTheDocument();
+  });
+
+  it('does NOT render Bell/Help/user-chip/breadcrumb-Menu (removed — no backing systems yet)', () => {
+    render(<Header />, { wrapper: Wrapper });
+    expect(screen.queryByRole('button', { name: /help/i })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /notifications/i })).not.toBeInTheDocument();
+    expect(screen.queryByText('Jamie Sun')).not.toBeInTheDocument();
   });
 
   it('does NOT contain a "New dashboard" form (flow moved to Sidebar)', () => {

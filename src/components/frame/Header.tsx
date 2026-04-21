@@ -5,11 +5,15 @@
 //   - Theme toggle retained from OMN-38 (toggling `data-theme` attribute on <html>).
 //   - "+ New dashboard" inline form removed — new-dashboard flow moved to Sidebar (OMN-43).
 //   - Real breadcrumb navigation deferred; static "Home / Dashboards" for now.
-//   - Avatar initials static "JS" as in prototype; user system out of scope.
 //   - OMN-47: CSS ported verbatim to src/styles/topbar.css; TSX rewritten to use prototype class names.
+//   - Post-OMN-48: removed the user chip (#23), Bell + HelpCircle buttons (#24), and the
+//     breadcrumb Menu icon (#28). None of them had a real system behind them — no users,
+//     no notifications, no help, and the Menu icon looked like an interactive hamburger
+//     control but had no onClick. Keeping them invited users to click things that did
+//     nothing.
 
 import { useTheme } from '@/theme';
-import { Menu, RefreshCw, HelpCircle, Bell } from 'lucide-react';
+import { RefreshCw } from 'lucide-react';
 
 export function Header() {
   const { theme, setTheme, availableThemes } = useTheme();
@@ -24,7 +28,6 @@ export function Header() {
     <header className="topbar">
       {/* Left — breadcrumbs */}
       <nav className="breadcrumbs">
-        <Menu size={16} />
         <span>Home</span>
         <span className="sep">/</span>
         <span className="cur">Dashboards</span>
@@ -34,13 +37,6 @@ export function Header() {
       <div className="topbar-right">
         <button className="icon-btn" title="Refresh" aria-label="Refresh">
           <RefreshCw size={16} />
-        </button>
-        <button className="icon-btn" title="Help" aria-label="Help">
-          <HelpCircle size={16} />
-        </button>
-        <button className="icon-btn" title="Notifications" aria-label="Notifications">
-          <Bell size={16} />
-          <span className="badge" />
         </button>
 
         {/* Theme toggle (retained from OMN-38) */}
@@ -53,15 +49,6 @@ export function Header() {
         >
           {theme}
         </button>
-
-        {/* User chip */}
-        <div className="user-chip" role="button" tabIndex={0}>
-          <div className="avatar">JS</div>
-          <div className="user-info">
-            <span className="name">Jamie Sun</span>
-            <span className="org">Platform Eng</span>
-          </div>
-        </div>
       </div>
     </header>
   );
