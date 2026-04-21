@@ -10,7 +10,7 @@ prototype_css:
 v2_targets:
   - src/pages/DashboardView.tsx
   - src/styles/dashboard.css
-status: todo
+status: audited
 dependencies:
   - dashboard-09
 blocked_reason: null
@@ -69,15 +69,24 @@ Walk each axis completely. Each check must become either "no issues" or a popula
 
 ### Design
 
-(fill in)
+- No issues found. `.drop-slot` and `.drop-slot.active` rules in `src/styles/dashboard.css:133-148` match the prototype (border 1.5px dashed var(--line), radius var(--radius-lg), min-height 80px, grid place-items center, var(--ink-3), 12px, IBM Plex Mono, transitions on border-color/background/min-height). Active state sets border-color/background/color using the `--brand*` tokens (intentional OMN-42 rename, documented in the chunk preamble and in `src/styles/dashboard.css:2-3`) and min-height 120px.
 
 ### Structure
 
-(fill in)
+**Issue: `DropIndicator` component not implemented in v2.**
+- Axis: Structure
+- Severity: CRITICAL (blocking for dashboard-07/dashboard-08 drop-preview render sites, but see dependency note — dashboard-10 depends on dashboard-09, which is almost certainly also unimplemented since full drag-and-drop is deferred per `src/pages/DashboardView.tsx:8` ("Drag-and-drop deferred to OMN-44")).
+- Evidence: grep for `DropIndicator` across `/mnt/c/Code/omninode_ai/omnidash-v2/src` returns zero matches. `src/pages/DashboardView.tsx` contains no `<div className="drop-slot active">` render, no `gridColumn: "1 / -1"` span, and no "drop here" text. The only references to `drop-slot` in v2 are the CSS rules themselves (`src/styles/dashboard.css:133`, `:143`).
+- Expected: a `DropIndicator` function component returning `<div className="drop-slot active" style={{gridColumn: "1 / -1", minHeight: 60}}>▼ drop here</div>`, no props, used as an inline preview inside `.grid` at the two render sites governed by dashboard-07/dashboard-08.
+- Recommendation: defer implementation until dashboard-09 / OMN-44 full drag-and-drop work lands; verify the header comment in `DashboardView.tsx` is updated when drag preview is wired in.
 
 ### Content
 
-(fill in)
+**Issue: literal "▼ drop here" string and inline style object are absent.**
+- Axis: Content
+- Severity: CRITICAL (same root cause as the Structure finding — the component is not rendered anywhere, so the U+25BC triangle + space + lowercase `drop here` text and the `gridColumn`/`minHeight` inline style keys are not present in v2).
+- Evidence: grep for `drop here` across `src/` returns zero matches.
+- Recommendation: rolled up with the Structure fix.
 
 ## Resolution
 
