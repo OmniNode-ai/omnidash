@@ -10,7 +10,7 @@ prototype_css:
 v2_targets:
   - src/components/frame/Sidebar.tsx
   - src/styles/sidebar.css
-status: todo
+status: audited
 dependencies: []
 blocked_reason: null
 ---
@@ -53,15 +53,27 @@ Walk each axis completely. Each ☐ must become either ✅ "no issues" or a popu
 
 ### Design
 
-(fill in)
+**Issue [MINOR]** — `lineHeight` divergence on empty-state wrapper.
+- Prototype (`src/app.jsx:404-412`): `lineHeight:1.5` on the wrapper `<div>` inline style.
+- v2 (`src/components/frame/Sidebar.tsx:203`): `lineHeight: 1.6` on the wrapper `<div>` inline style.
+- Impact: ~0.1em of extra vertical spacing between `No dashboards yet.` and the CTA button. Purely stylistic; no layout shift beyond ~2px.
+- Fix: change `lineHeight: 1.6` → `lineHeight: 1.5` in `Sidebar.tsx` line 203.
+
+All other inline-style values on the wrapper match verbatim (`padding: '20px 12px'`, `fontSize: '12px'`, `color: 'var(--sidebar-ink-2)'`, `textAlign: 'center'`).
+
+Button inline style values match (modulo the documented intentional `--accent` → `--brand` rename): `color: 'var(--brand)'`, `textDecoration: 'underline'`, `marginTop: '4px'`.
 
 ### Structure
 
-(fill in)
+- No issues found.
+
+The block is correctly gated on `dashboards.length === 0` (line 202), renders the wrapper `<div>`, a literal `<br />` (line 205), and a `<button>` whose `onClick={handleCreate}` wraps the CTA text. `handleCreate` is the v2 equivalent of the prototype's `onCreate` prop (it invokes `createDashboard` and sets rename state — an intentional, documented deviation per the file header). Closing `</div>` of `.dash-list` is present (line 214).
 
 ### Content
 
-(fill in)
+- No issues found.
+
+Wrapper text reads `No dashboards yet.` verbatim (line 204). Button text reads `Create your first one →` (line 210) with the correct right-arrow glyph `→` (U+2192), not the `->` digraph.
 
 ## Resolution
 
