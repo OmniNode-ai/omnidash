@@ -10,7 +10,7 @@ prototype_css:
 v2_targets:
   - src/components/frame/Sidebar.tsx
   - src/styles/sidebar.css
-status: audited
+status: done
 dependencies: []
 blocked_reason: null
 ---
@@ -96,4 +96,4 @@ SVG `viewBox="0 0 32 32"` matches (`Sidebar.tsx:26`); gradient `id="bm-g"`, `x1/
 
 ## Resolution
 
-(filled by orchestrator after fixes are applied; one-line pointer to the fix commit)
+No changes needed — chunk audited clean across all three axes; CSS and JSX are verbatim ports.

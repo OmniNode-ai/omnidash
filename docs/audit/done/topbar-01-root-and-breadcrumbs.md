@@ -10,7 +10,7 @@ prototype_css:
 v2_targets:
   - src/components/frame/Header.tsx
   - src/styles/topbar.css
-status: audited
+status: done
 dependencies: []
 blocked_reason: null
 ---
@@ -92,4 +92,4 @@ Static text otherwise matches: `Home`, `/`, `Dashboards` all present with correc
 
 ## Resolution
 
-(filled by orchestrator after fixes are applied; one-line pointer to the fix commit)
+Fixed in commit `d15bc4c` — added leading `<Menu size={16}/>` icon in breadcrumbs. `<header>`/`<nav>` semantic tag choices retained as accessibility improvements.

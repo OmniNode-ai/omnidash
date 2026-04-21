@@ -10,7 +10,7 @@ prototype_css:
 v2_targets:
   - src/components/frame/Sidebar.tsx
   - src/styles/sidebar.css
-status: audited
+status: done
 dependencies: []
 blocked_reason: null
 ---
@@ -80,4 +80,4 @@ Walk each axis completely. Each ☐ must become either ✅ "no issues" or a popu
 
 ## Resolution
 
-(filled by orchestrator after fixes are applied; one-line pointer to the fix commit)
+Accepted v2 pattern — rename input lives in a dedicated `RenameInput` subcomponent (Sidebar.tsx:62-83). Blur commits, Enter blurs, Escape cancels; auto-select-on-mount via useEffect is a v2 UX improvement. The `onBlur → onCommit` race condition on Escape is benign because setRenamingId(null) unmounts the input before blur's commit can fire; v2 tests cover the rename flow.

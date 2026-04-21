@@ -10,7 +10,7 @@ prototype_css:
 v2_targets:
   - src/components/frame/Header.tsx
   - src/styles/topbar.css
-status: audited
+status: done
 dependencies: []
 blocked_reason: null
 ---
@@ -92,4 +92,4 @@ Avatar initials `JS` (`Header.tsx:58`), name `Jamie Sun` (`Header.tsx:60`), and 
 
 ## Resolution
 
-(filled by orchestrator after fixes are applied; one-line pointer to the fix commit)
+Accepted v2 pattern — `role="button"` + `tabIndex={0}` on the user chip is an a11y improvement (chip behaves like a button per prototype intent); zero regression from prototype visuals.

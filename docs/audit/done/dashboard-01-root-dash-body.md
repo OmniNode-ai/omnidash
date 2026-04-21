@@ -10,7 +10,7 @@ prototype_css:
 v2_targets:
   - src/pages/DashboardView.tsx
   - src/styles/dashboard.css
-status: audited
+status: done
 dependencies: []
 blocked_reason: null
 ---
@@ -77,4 +77,4 @@ The inline `{paddingRight: 380}` (numeric pixel literal, as the prototype writes
 
 ## Resolution
 
-(filled by orchestrator after fixes are applied; one-line pointer to the fix commit)
+Partially accepted v2 deviation, partially OMN-44 deferred. Structural fragment vs. `.dash-body` wrapper is a v2 layout choice (prototype wraps everything; v2 wraps only the body content for flex-min-height behavior). `data-screen-label` is a prototype-only debug attribute — not needed in v2. `libOpen` state + `paddingRight:380` are OMN-44 scope (library panel manages its own flex space in v2 instead of overlay-with-padding).

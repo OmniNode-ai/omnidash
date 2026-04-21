@@ -10,7 +10,7 @@ prototype_css:
 v2_targets:
   - src/components/frame/Sidebar.tsx
   - src/styles/sidebar.css
-status: audited
+status: done
 dependencies: []
 blocked_reason: null
 ---
@@ -66,4 +66,4 @@ Walk each axis completely. Each ☐ must become either ✅ "no issues" or a popu
 
 ## Resolution
 
-(filled by orchestrator after fixes are applied; one-line pointer to the fix commit)
+False positive — v2 achieves the prototype's inline-style result via Tailwind utilities on the `RenameInput` className (`bg-transparent border-0 outline-0 text-sidebar-ink font-[inherit] text-[13px] w-full`). Visual output is equivalent. Accepted as stylistic-equivalence deviation, not a regression.

@@ -10,7 +10,7 @@ prototype_css:
 v2_targets:
   - src/pages/DashboardView.tsx
   - src/styles/dashboard.css
-status: audited
+status: done
 dependencies:
   - dashboard-01
 blocked_reason: null
@@ -84,4 +84,4 @@ v2 keys the map by `item.i` (the layout-item identifier in the v2 data model); p
 
 ## Resolution
 
-(filled by orchestrator after fixes are applied; one-line pointer to the fix commit)
+Empty-state branch resolved in commit `4145b96` (`<EmptyState onAdd={handleEdit}/>`); onAdd wired correctly. React.Fragment wrapping + DropIndicator + dragOverSlot guard are OMN-44 scope (drag-and-drop); related blocked chunks: widget-card-01/02/04, dashboard-08/09/10.

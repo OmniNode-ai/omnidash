@@ -10,7 +10,7 @@ prototype_css:
 v2_targets:
   - src/components/dashboard/ComponentPalette.tsx
   - src/styles/library.css
-status: audited
+status: done
 dependencies: []
 blocked_reason: null
 ---
@@ -87,4 +87,4 @@ Walk each axis completely. Each ☐ must become either ✅ "no issues" or a popu
 
 ## Resolution
 
-(filled by orchestrator after fixes are applied; one-line pointer to the fix commit)
+Accepted v2 deviation — palette iterates `COMPONENT_CATEGORIES` enum with empty-group filtering rather than `Object.entries(grouped)` from a reduce. Produces deterministic enum-ordered headings (stable display) at the cost of dropping unknown categories. Intentional; matches v2's registry invariants.

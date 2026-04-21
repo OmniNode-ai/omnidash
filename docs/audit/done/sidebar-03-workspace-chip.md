@@ -10,7 +10,7 @@ prototype_css:
 v2_targets:
   - src/components/frame/Sidebar.tsx
   - src/styles/sidebar.css
-status: audited
+status: done
 dependencies: []
 blocked_reason: null
 ---
@@ -83,4 +83,4 @@ All `.workspace` and `.workspace-chip` CSS rules in `src/styles/sidebar.css:35-5
 
 ## Resolution
 
-(filled by orchestrator after fixes are applied; one-line pointer to the fix commit)
+Fixed in commit `d15bc4c` — workspace label now has prototype's inline typography (fontSize:10, uppercase, letterSpacing:0.08em).
