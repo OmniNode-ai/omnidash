@@ -10,7 +10,7 @@ prototype_css:
 v2_targets:
   - src/components/frame/Header.tsx
   - src/styles/topbar.css
-status: todo
+status: audited
 dependencies: []
 blocked_reason: null
 ---
@@ -71,15 +71,24 @@ Walk each axis completely. Each ☐ must become either ✅ "no issues" or a popu
 
 ### Design
 
-(fill in)
+- No issues found.
+
+All `.user-chip`, `.user-chip:hover`, `.avatar`, `.user-info`, `.user-info .name`, and `.user-info .org` declarations in `src/styles/topbar.css:33-49` match the prototype (`OmniDash.html:247-263`) property-for-property, including the 135deg linear-gradient and both `oklch()` color expressions. The documented `var(--accent)` → `var(--brand)` token rename is applied at `src/styles/topbar.css:42`; `var(--accent-h)` is retained as the live hue token (confirmed in `src/styles/globals.css:51`) and correctly preserved inside both `oklch()` calls.
 
 ### Structure
 
-(fill in)
+**Issue [MINOR]**: `.user-chip` wrapper carries `role="button"` and `tabIndex={0}` not present in the prototype.
+- Prototype: `src/app.jsx:439` (`<div className="user-chip">` — no role/tabIndex)
+- v2: `src/components/frame/Header.tsx:57`
+- Impact: v2 exposes the chip as a focusable button to assistive tech and keyboard users even though no click handler is wired. The prototype renders the chip as a decorative static div. The divergence is undocumented in the deviations header comment (`src/components/frame/Header.tsx:1-9`). Functionally benign (no a11y regression — arguably an improvement) but is a structural deviation from the prototype and should either be reverted or recorded as an intentional deviation in the source comment.
+
+Otherwise the element tree matches: `.user-chip > .avatar` plus `.user-chip > .user-info > (span.name, span.org)`, nesting, element types, and class names identical to prototype.
 
 ### Content
 
-(fill in)
+- No issues found.
+
+Avatar initials `JS` (`Header.tsx:58`), name `Jamie Sun` (`Header.tsx:60`), and org `Platform Eng` (`Header.tsx:61`) match the prototype verbatim.
 
 ## Resolution
 
