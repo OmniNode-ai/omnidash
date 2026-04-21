@@ -115,7 +115,9 @@ export function Sidebar() {
 
       {/* Workspace chip */}
       <div className="workspace">
-        <div>Workspace</div>
+        <div style={{ fontSize: 10, textTransform: 'uppercase', letterSpacing: '0.08em' }}>
+          Workspace
+        </div>
         <div className="workspace-chip">
           <span className="ws-name">Platform Eng</span>
           <ChevronDown size={14} />
@@ -127,6 +129,7 @@ export function Sidebar() {
         <span className="nav-section-title">Dashboards</span>
         <button
           aria-label="New dashboard"
+          title="New dashboard"
           onClick={handleCreate}
           className="nav-new"
         >
@@ -200,7 +203,7 @@ export function Sidebar() {
         })}
 
         {dashboards.length === 0 && (
-          <div style={{ padding: '20px 12px', fontSize: '12px', color: 'var(--sidebar-ink-2)', textAlign: 'center', lineHeight: 1.6 }}>
+          <div style={{ padding: '20px 12px', fontSize: '12px', color: 'var(--sidebar-ink-2)', textAlign: 'center', lineHeight: 1.5 }}>
             No dashboards yet.
             <br />
             <button
