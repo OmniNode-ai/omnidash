@@ -10,7 +10,7 @@ prototype_css:
 v2_targets:
   - src/components/frame/Sidebar.tsx
   - src/styles/sidebar.css
-status: todo
+status: audited
 dependencies: []
 blocked_reason: null
 ---
@@ -88,15 +88,21 @@ Walk each axis completely. Each ☐ must become either ✅ "no issues" or a popu
 
 ### Design
 
-(fill in)
+- No issues found.
+
+All prototype rules for `.dash-list`, `.dash-item` (including `:hover` and `.active`), `.dash-item .dash-marker`, and `.dash-item.active .dash-marker` are present at `src/styles/sidebar.css:70-106` with identical values. The `var(--accent)` → `var(--brand)` substitution at line 104 is the documented OMN-42 rename (called out in the file header at lines 2-3), not a finding.
 
 ### Structure
 
-(fill in)
+- No issues found.
+
+`src/components/frame/Sidebar.tsx:138-200` wraps the list in `<div className="dash-list">`, maps `dashboards` with `key={d.id}`, applies an equivalent conditional `active` class via `` `dash-item${isActive ? ' active' : ''}` `` (line 145), wires `onClick={() => setActiveDashboardById(d.id)}` (line 146), and renders `<span className="dash-marker">` as the first child at lines 149-151. The template-literal form (no leading space before `active`) produces an identical rendered class string and is not a deviation. A `data-testid` attribute (line 144) is additive and does not affect fidelity.
 
 ### Content
 
-(fill in)
+- No issues found.
+
+Marker content at `src/components/frame/Sidebar.tsx:150` is `isActive ? '▸' : String(i + 1).padStart(2, '0')`, matching the prototype character-for-character (U+25B8 BLACK RIGHT-POINTING SMALL TRIANGLE and zero-padded 2-digit index).
 
 ## Resolution
 
