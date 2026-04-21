@@ -50,7 +50,7 @@ describe('Proof of Life — Part 2', () => {
 
   it('palette shows all 7 components in edit mode', async () => {
     renderWithRegistry();
-    await userEvent.click(screen.getByRole('button', { name: /edit/i }));
+    await userEvent.click(screen.getByRole('button', { name: /add widget/i }));
     expect(screen.getByText('Cost Trend')).toBeInTheDocument();
     expect(screen.getByText('Delegation Metrics')).toBeInTheDocument();
     expect(screen.getByText('Routing Decisions')).toBeInTheDocument();

@@ -56,20 +56,20 @@ describe('DashboardBuilder (DashboardView shim)', () => {
     expect(screen.getByText('Test Dashboard')).toBeInTheDocument();
   });
 
-  it('shows Edit button in view mode', () => {
+  it('shows Add Widget button in view mode', () => {
     renderBuilder();
-    expect(screen.getByRole('button', { name: /edit/i })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /add widget/i })).toBeInTheDocument();
   });
 
   it('shows palette in edit mode', async () => {
     renderBuilder();
-    await userEvent.click(screen.getByRole('button', { name: /edit/i }));
+    await userEvent.click(screen.getByRole('button', { name: /add widget/i }));
     expect(screen.getByText('Test Widget')).toBeInTheDocument();
   });
 
   it('shows Save and Discard buttons in edit mode', async () => {
     renderBuilder();
-    await userEvent.click(screen.getByRole('button', { name: /edit/i }));
+    await userEvent.click(screen.getByRole('button', { name: /add widget/i }));
     expect(screen.getByRole('button', { name: /save/i })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /discard/i })).toBeInTheDocument();
   });
@@ -79,7 +79,7 @@ describe('DashboardBuilder (DashboardView shim)', () => {
     const expectedName = useFrameStore.getState().activeDashboard!.name;
 
     renderBuilder();
-    await userEvent.click(screen.getByRole('button', { name: /edit/i }));
+    await userEvent.click(screen.getByRole('button', { name: /add widget/i }));
     await userEvent.click(screen.getByRole('button', { name: /save/i }));
 
     expect(writeSpy).toHaveBeenCalledTimes(1);
