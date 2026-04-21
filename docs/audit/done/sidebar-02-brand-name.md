@@ -10,7 +10,7 @@ prototype_css:
 v2_targets:
   - src/components/frame/Sidebar.tsx
   - src/styles/sidebar.css
-status: audited
+status: done
 dependencies: []
 blocked_reason: null
 ---
@@ -85,4 +85,4 @@ All six prototype CSS rules are present in `src/styles/sidebar.css:21-33` with i
 
 ## Resolution
 
-(filled by orchestrator after fixes are applied; one-line pointer to the fix commit)
+No changes needed — chunk audited clean across all three axes.

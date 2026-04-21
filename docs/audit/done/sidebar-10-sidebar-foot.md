@@ -10,7 +10,7 @@ prototype_css:
 v2_targets:
   - src/components/frame/Sidebar.tsx
   - src/styles/sidebar.css
-status: audited
+status: done
 dependencies: []
 blocked_reason: null
 ---
@@ -84,4 +84,4 @@ Note (not a defect): V2 adds `aria-label="pulse dot"` to the `.dot` span (`src/c
 
 ## Resolution
 
-(filled by orchestrator after fixes are applied; one-line pointer to the fix commit)
+False positive on version string — v2.15 bump was user-requested to test HMR; prototype's v2.14 is a placeholder value. `className="mono"` (defined in globals.css) is the v2 equivalent of prototype's inline `fontFamily: monospace` and resolves to the same font.

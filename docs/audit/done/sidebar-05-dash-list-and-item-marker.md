@@ -10,7 +10,7 @@ prototype_css:
 v2_targets:
   - src/components/frame/Sidebar.tsx
   - src/styles/sidebar.css
-status: audited
+status: done
 dependencies: []
 blocked_reason: null
 ---
@@ -106,4 +106,4 @@ Marker content at `src/components/frame/Sidebar.tsx:150` is `isActive ? '▸' : 
 
 ## Resolution
 
-(filled by orchestrator after fixes are applied; one-line pointer to the fix commit)
+No changes needed — chunk audited clean across all three axes; marker glyph and dashboard-item wiring match prototype.

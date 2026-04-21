@@ -10,7 +10,7 @@ prototype_css:
 v2_targets:
   - src/components/frame/Sidebar.tsx
   - src/styles/sidebar.css
-status: audited
+status: done
 dependencies: []
 blocked_reason: null
 ---
@@ -77,4 +77,4 @@ Wrapper text reads `No dashboards yet.` verbatim (line 204). Button text reads `
 
 ## Resolution
 
-(filled by orchestrator after fixes are applied; one-line pointer to the fix commit)
+Fixed in commit `d15bc4c` — lineHeight adjusted from 1.6 to 1.5 to match prototype.

@@ -10,7 +10,7 @@ prototype_css:
 v2_targets:
   - src/components/dashboard/ComponentPalette.tsx
   - src/styles/library.css
-status: audited
+status: done
 dependencies: []
 blocked_reason: null
 ---
@@ -79,4 +79,4 @@ Walk each axis completely. Each ☐ must become either ✅ "no issues" or a popu
 
 ## Resolution
 
-(filled by orchestrator after fixes are applied; one-line pointer to the fix commit)
+Accepted v2 architectural deviation — `className="library open"` is hardcoded because v2 conditionally renders the palette (editMode toggles mount/unmount) rather than using the prototype's CSS slide-in transition. Close button now calls onClose (OMN-48 prior commit `4145b96`), so the rail can be dismissed. The `.library` transform rule is unused by design in v2.

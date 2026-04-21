@@ -10,7 +10,7 @@ prototype_css:
 v2_targets:
   - src/components/frame/Header.tsx
   - src/styles/topbar.css
-status: audited
+status: done
 dependencies: []
 blocked_reason: null
 ---
@@ -89,4 +89,4 @@ All `.topbar-right`, `.icon-btn`, `:hover`, and `.icon-btn .badge` rules in `src
 
 ## Resolution
 
-(filled by orchestrator after fixes are applied; one-line pointer to the fix commit)
+Accepted v2 pattern — lucide-react icons (`RefreshCw`, `HelpCircle`, `Bell`) substitute for prototype's custom `<Icon>` component; this is the repo-wide convention. `aria-label` additions are a11y improvements.

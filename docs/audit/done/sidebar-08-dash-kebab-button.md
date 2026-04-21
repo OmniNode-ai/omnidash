@@ -10,7 +10,7 @@ prototype_css:
 v2_targets:
   - src/components/frame/Sidebar.tsx
   - src/styles/sidebar.css
-status: audited
+status: done
 dependencies: []
 blocked_reason: null
 ---
@@ -83,4 +83,4 @@ v2 additionally adds an `aria-label={`Dashboard options for ${d.name}`}` on the 
 
 ## Resolution
 
-(filled by orchestrator after fixes are applied; one-line pointer to the fix commit)
+Accepted v2 pattern — kebab menu uses shadcn/ui DropdownMenu instead of prototype's custom onMenu callback (documented in Sidebar.tsx file header). `data-menu-trigger` is not needed because shadcn owns dismissal. lucide `<MoreHorizontal>` is the repo-wide icon pattern.

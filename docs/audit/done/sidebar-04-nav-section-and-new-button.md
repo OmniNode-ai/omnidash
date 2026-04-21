@@ -10,7 +10,7 @@ prototype_css:
 v2_targets:
   - src/components/frame/Sidebar.tsx
   - src/styles/sidebar.css
-status: audited
+status: done
 dependencies: []
 blocked_reason: null
 ---
@@ -88,4 +88,4 @@ Walk each axis completely. Each ☐ must become either ✅ "no issues" or a popu
 
 ## Resolution
 
-(filled by orchestrator after fixes are applied; one-line pointer to the fix commit)
+Fixed in commit `d15bc4c` — native title="New dashboard" tooltip added. lucide `<Plus>` substitution is a repo-wide pattern (accepted deviation).
