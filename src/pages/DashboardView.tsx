@@ -1,14 +1,12 @@
 // SOURCE: Claude Design prototype
 //   React:   src/app.jsx:452-537 (DashboardView component)
-//   Styling: OmniDash.html:327-439 (.dash-body, .dash-header, .grid, .widget)
+//   Styling: OmniDash.html:265-439 (.dash-header, .dash-body, .grid, .widget, .widget-head, .widget-body, .empty-state)
 // Deviations from source:
-//   - Uses v2 data model (DashboardDefinition + DashboardLayoutItem) instead of prototype's
-//     widget-array shape.
-//   - Tailwind utility classes replace vanilla CSS.
+//   - Uses v2 data model (DashboardDefinition + DashboardLayoutItem) instead of prototype's widget-array shape.
 //   - ComponentCell/ComponentPalette used for rendering/adding widgets (OMN-44 will replace).
 //   - Edit/Save/Discard flow preserved from OMN-41 (layoutPersistence.write on Save).
 //   - Drag-and-drop deferred to OMN-44; strict 2-column grid is non-draggable for now.
-//   - `react-grid-layout` removed; DashboardGrid.tsx no longer imported here.
+//   - OMN-47: CSS ported verbatim to src/styles/dashboard.css + buttons.css; TSX rewritten to use prototype class names.
 
 import { useCallback, useEffect, useRef } from 'react';
 import { useFrameStore } from '@/store/store';
@@ -116,8 +114,10 @@ export function DashboardView() {
 
   if (!activeDashboard) {
     return (
-      <div className="flex items-center justify-center h-full text-ink-2 text-sm">
-        No dashboard selected — create one in the sidebar
+      <div className="dash-body" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+        <span style={{ color: 'var(--ink-2)', fontSize: '14px' }}>
+          No dashboard selected — create one in the sidebar
+        </span>
       </div>
     );
   }
@@ -128,15 +128,22 @@ export function DashboardView() {
   const saveBlocked = editMode && anyPlacementHasValidationErrors();
 
   return (
-    <div className="flex flex-col flex-1 min-h-0 overflow-hidden">
-      {/* Dashboard toolbar */}
-      <div className="flex items-center justify-between px-5 py-3 border-b border-line bg-panel flex-shrink-0">
-        <span className="text-[17px] font-semibold text-ink">{activeDashboard.name}</span>
-        <div className="flex gap-2">
+    <>
+      {/* Dashboard header */}
+      <div className="dash-header">
+        <div className="dash-title-wrap">
+          <div className="dash-title">
+            {activeDashboard.name}
+          </div>
+          <div className="dash-meta">
+            <span>{activeDashboard.layout.length} widget{activeDashboard.layout.length !== 1 ? 's' : ''}</span>
+          </div>
+        </div>
+        <div className="header-actions">
           {editMode ? (
             <>
               <button
-                className="px-3 py-1.5 rounded border border-line text-[13px] bg-[var(--accent)] text-white font-medium transition-opacity hover:opacity-90 disabled:opacity-50"
+                className="btn primary"
                 onClick={handleSave}
                 aria-label="Save"
                 disabled={saveBlocked}
@@ -144,7 +151,7 @@ export function DashboardView() {
                 Save
               </button>
               <button
-                className="px-3 py-1.5 rounded border border-line text-[13px] bg-panel-2 text-ink transition-colors hover:bg-line"
+                className="btn ghost"
                 onClick={handleDiscard}
                 aria-label="Discard"
               >
@@ -153,7 +160,7 @@ export function DashboardView() {
             </>
           ) : (
             <button
-              className="px-3 py-1.5 rounded border border-line text-[13px] bg-panel-2 text-ink transition-colors hover:bg-line"
+              className="btn ghost"
               onClick={handleEdit}
               aria-label="Edit"
             >
@@ -164,31 +171,35 @@ export function DashboardView() {
       </div>
 
       {/* Main content area */}
-      <div className="flex flex-1 min-h-0 overflow-hidden">
-        {/* Widget grid — strict 2-column */}
-        <div className="flex-1 overflow-y-auto p-5">
+      <div style={{ display: 'flex', flex: 1, minHeight: 0, overflow: 'hidden' }}>
+        {/* Widget grid */}
+        <div className="dash-body">
           {activeDashboard.layout.length === 0 ? (
-            <div className="flex items-center justify-center h-full text-ink-2 text-sm">
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%', color: 'var(--ink-2)', fontSize: '14px' }}>
               {editMode
                 ? 'Add components from the palette'
                 : 'Empty dashboard — click Edit to add components'}
             </div>
           ) : (
-            <div className="grid grid-cols-2 gap-[var(--row-gap)]">
+            <div className="grid">
               {activeDashboard.layout.map((item) => (
                 <div
                   key={item.i}
                   data-testid="grid-item"
-                  className={`bg-panel rounded-lg border border-line shadow-sm overflow-hidden${
-                    editMode ? ' cursor-pointer ring-2 ring-transparent hover:ring-[var(--accent)] transition-all' : ''
-                  }`}
+                  className="widget"
                   onClick={
                     editMode && handleSelectPlacement
                       ? () => handleSelectPlacement(item.i)
                       : undefined
                   }
+                  style={editMode ? { cursor: 'pointer' } : undefined}
                 >
-                  <div className="p-4">
+                  <div className="widget-head">
+                    <div className="widget-head-left">
+                      <span className="widget-title">{item.componentName}</span>
+                    </div>
+                  </div>
+                  <div className="widget-body">
                     <ComponentCell
                       componentName={item.componentName}
                       config={item.config}
@@ -203,7 +214,7 @@ export function DashboardView() {
 
         {/* Edit-mode palette / config */}
         {editMode && (
-          <div className="w-[280px] flex-shrink-0 border-l border-line overflow-y-auto">
+          <div style={{ width: '280px', flexShrink: 0, borderLeft: '1px solid var(--line)', overflowY: 'auto' }}>
             <ComponentPalette
               components={registry.getAvailableComponents()}
               onAddComponent={handleAddComponent}
@@ -214,6 +225,6 @@ export function DashboardView() {
           </div>
         )}
       </div>
-    </div>
+    </>
   );
 }

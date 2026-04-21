@@ -1,5 +1,15 @@
+// SOURCE: Claude Design prototype
+//   Styling: OmniDash.html:279-360 (.widget, .widget-head, .widget-title, .widget-live, .widget-body)
+//            — ported verbatim to src/styles/dashboard.css
+//   React:   app.jsx:587-617 (WidgetCard chrome)
+// Deviations from source:
+//   - OMN-47 follow-up: was using vanilla-extract ComponentWrapper.css; now uses prototype
+//     semantic class names (.widget / .widget-head / .widget-body) from dashboard.css.
+//   - Widget "Live" badge rendered unconditionally (prototype ties it to real-time state).
+//   - Grip handle and kebab menu omitted at this layer — OMN-44 handles drag; menu lives
+//     in the outer shell (ComponentCell) and will be wired in a later pass.
+//   - Loading / error / empty states render inside the widget body; kept minimal for now.
 import type { ReactNode } from 'react';
-import * as s from './ComponentWrapper.css';
 
 interface ComponentWrapperProps {
   title: string;
@@ -11,19 +21,32 @@ interface ComponentWrapperProps {
   children: ReactNode;
 }
 
-export function ComponentWrapper({ title, isLoading, error, isEmpty, emptyMessage, emptyHint, children }: ComponentWrapperProps) {
+export function ComponentWrapper({
+  title,
+  isLoading,
+  error,
+  isEmpty,
+  emptyMessage,
+  emptyHint,
+  children,
+}: ComponentWrapperProps) {
   return (
-    <div className={s.wrapper}>
-      <div className={s.componentHeader}>
-        <span className={s.componentTitle}>{title}</span>
+    <div className="widget">
+      <div className="widget-head">
+        <div className="widget-head-left">
+          <span className="widget-title">{title}</span>
+        </div>
+        <span className="widget-live">Live</span>
       </div>
-      <div className={s.componentBody}>
-        {isLoading && <div className={s.loadingState}>Loading...</div>}
-        {error && <div className={s.errorState}>Error: {error.message}</div>}
+      <div className="widget-body">
+        {isLoading && <div style={{ color: 'var(--ink-3)', fontSize: 13 }}>Loading...</div>}
+        {error && !isLoading && (
+          <div style={{ color: 'var(--status-bad)', fontSize: 13 }}>Error: {error.message}</div>
+        )}
         {!isLoading && !error && isEmpty && (
-          <div className={s.emptyState}>
-            <span className={s.emptyMessage}>{emptyMessage || 'No data available'}</span>
-            {emptyHint && <span className={s.emptyHint}>{emptyHint}</span>}
+          <div style={{ color: 'var(--ink-3)', fontSize: 13, lineHeight: 1.5 }}>
+            <div>{emptyMessage || 'No data available'}</div>
+            {emptyHint && <div style={{ marginTop: 4, fontSize: 12 }}>{emptyHint}</div>}
           </div>
         )}
         {!isLoading && !error && !isEmpty && children}

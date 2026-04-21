@@ -1,4 +1,4 @@
-import { createGlobalTheme, globalStyle } from '@vanilla-extract/css';
+import { createGlobalTheme } from '@vanilla-extract/css';
 import { vars } from './tokens.css';
 
 // Dark theme (default)
@@ -67,10 +67,6 @@ createGlobalTheme('.theme-light', vars, {
   },
 });
 
-// Apply token values as hsl() to actual CSS
-globalStyle('body', {
-  backgroundColor: `hsl(${vars.color.background})`,
-  color: `hsl(${vars.color.foreground})`,
-  fontFamily: vars.font.sans,
-  margin: 0,
-});
+// Body-level styles moved entirely to src/styles/globals.css where they use
+// the prototype's OKLCH tokens. The vanilla-extract theme layer here only
+// defines theme variables; it does not paint body. [OMN-47 follow-up]

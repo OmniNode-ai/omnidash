@@ -2,15 +2,14 @@
 //   React:   src/app.jsx:423-451 (Topbar component)
 //   Styling: OmniDash.html:242-326 (.topbar, .breadcrumbs, .topbar-right, .icon-btn, .user-chip)
 // Deviations from source:
-//   - Tailwind utility classes replace vanilla CSS.
 //   - Theme toggle retained from OMN-38 (toggling `data-theme` attribute on <html>).
 //   - "+ New dashboard" inline form removed — new-dashboard flow moved to Sidebar (OMN-43).
 //   - Real breadcrumb navigation deferred; static "Home / Dashboards" for now.
 //   - Avatar initials static "JS" as in prototype; user system out of scope.
+//   - OMN-47: CSS ported verbatim to src/styles/topbar.css; TSX rewritten to use prototype class names.
 
 import { useTheme } from '@/theme';
-import { RefreshCw, HelpCircle, Bell, Menu } from 'lucide-react';
-import { cn } from '@/lib/utils';
+import { RefreshCw, HelpCircle, Bell } from 'lucide-react';
 
 export function Header() {
   const { theme, setTheme, availableThemes } = useTheme();
@@ -22,46 +21,31 @@ export function Header() {
   };
 
   return (
-    <header className="h-[52px] flex-shrink-0 flex items-center justify-between px-5 border-b border-line bg-panel">
+    <header className="topbar">
       {/* Left — breadcrumbs */}
-      <div className="flex items-center gap-2 text-ink-2 text-[13px]">
-        <Menu size={16} />
+      <nav className="breadcrumbs">
         <span>Home</span>
-        <span className="text-ink-3">/</span>
-        <span className="text-ink font-medium">Dashboards</span>
-      </div>
+        <span className="sep">/</span>
+        <span className="cur">Dashboards</span>
+      </nav>
 
       {/* Right — action cluster */}
-      <div className="flex items-center gap-1.5">
-        <button
-          className="w-[34px] h-[34px] rounded-md grid place-items-center text-ink-2 transition-colors hover:bg-panel-2 hover:text-ink"
-          title="Refresh"
-          aria-label="Refresh"
-        >
+      <div className="topbar-right">
+        <button className="icon-btn" title="Refresh" aria-label="Refresh">
           <RefreshCw size={16} />
         </button>
-        <button
-          className="w-[34px] h-[34px] rounded-md grid place-items-center text-ink-2 transition-colors hover:bg-panel-2 hover:text-ink"
-          title="Help"
-          aria-label="Help"
-        >
+        <button className="icon-btn" title="Help" aria-label="Help">
           <HelpCircle size={16} />
         </button>
-        <button
-          className="relative w-[34px] h-[34px] rounded-md grid place-items-center text-ink-2 transition-colors hover:bg-panel-2 hover:text-ink"
-          title="Notifications"
-          aria-label="Notifications"
-        >
+        <button className="icon-btn" title="Notifications" aria-label="Notifications">
           <Bell size={16} />
-          <span className="absolute top-[6px] right-[7px] w-[7px] h-[7px] rounded-full bg-status-bad"
-                style={{ boxShadow: '0 0 0 2px var(--panel)' }} />
+          <span className="badge" />
         </button>
 
         {/* Theme toggle (retained from OMN-38) */}
         <button
-          className={cn(
-            'h-[34px] px-3 rounded-md text-[12px] font-medium text-ink-2 transition-colors hover:bg-panel-2 hover:text-ink',
-          )}
+          className="icon-btn"
+          style={{ width: 'auto', padding: '0 10px', fontSize: '12px', fontWeight: 500 }}
           onClick={nextTheme}
           aria-label="Toggle theme"
           title="Toggle theme"
@@ -70,13 +54,11 @@ export function Header() {
         </button>
 
         {/* User chip */}
-        <div className="flex items-center gap-2.5 pl-1 pr-2.5 py-1 rounded-full ml-1.5 border border-line transition-colors hover:bg-panel-2 cursor-pointer">
-          <div className="w-7 h-7 rounded-full grid place-items-center text-[11px] font-bold bg-[var(--accent-soft)] text-[var(--accent-ink)]">
-            JS
-          </div>
-          <div className="flex flex-col leading-none">
-            <span className="text-[13px] font-medium text-ink">Jamie Sun</span>
-            <span className="text-[11px] text-ink-2">Platform Eng</span>
+        <div className="user-chip" role="button" tabIndex={0}>
+          <div className="avatar">JS</div>
+          <div className="user-info">
+            <span className="name">Jamie Sun</span>
+            <span className="org">Platform Eng</span>
           </div>
         </div>
       </div>
