@@ -10,7 +10,7 @@ prototype_css:
 v2_targets:
   - src/components/frame/Sidebar.tsx
   - src/styles/sidebar.css
-status: todo
+status: audited
 dependencies: []
 blocked_reason: null
 ---
@@ -78,15 +78,21 @@ Walk each axis completely. Each ☐ must become either ✅ "no issues" or a popu
 
 ### Design
 
-(fill in)
+- No issues found.
+
+All three selectors (`.sidebar`, `.brand`, `.brand-mark`) ported verbatim to `src/styles/sidebar.css:6-20`. Every property and value matches the prototype block.
 
 ### Structure
 
-(fill in)
+- No issues found.
+
+`src/components/frame/Sidebar.tsx:104` renders `<aside className="sidebar">`, `:106` renders `<div className="brand">`, and the `BrandMark` component at `:24-52` emits the exact `<svg className="brand-mark" viewBox="0 0 32 32" fill="none">` with `<defs>`, `<linearGradient>`, and three `<path>` elements in the same order and nesting as the prototype.
 
 ### Content
 
-(fill in)
+- No issues found.
+
+SVG `viewBox="0 0 32 32"` matches (`Sidebar.tsx:26`); gradient `id="bm-g"`, `x1/y1/x2/y2="0/0/32/32"`, and `gradientUnits="userSpaceOnUse"` match (`:28`); stop offsets `0%/55%/100%` and stopColors `oklch(70% 0.14 230)` / `oklch(75% 0.13 200)` / `oklch(82% 0.14 170)` match (`:29-31`); hexagon `d="M16 2 L28 9 L28 23 L16 30 L4 23 L4 9 Z"` with `strokeWidth="2.2"` and `strokeLinejoin="miter"` matches (`:35-40`); chevron `d="M11 9 L11 23 L17 23 L22 18 L22 14 L17 9 Z"` with `strokeWidth="2"`, `strokeLinejoin="miter"`, `fill="none"` matches (`:42-48`); inner slash `d="M14 14 L18 18"` with `strokeWidth="2"` and `strokeLinecap="square"` matches (`:49`).
 
 ## Resolution
 
