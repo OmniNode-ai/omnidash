@@ -21,9 +21,9 @@ callback ref + requestAnimationFrame (so Radix's focus management doesn't
 steal focus back to the kebab trigger).
 
 ### 2. Workspace dropdown — remove
-**Status**: ⬜ pending
-The "Workspace" dropdown in the sidebar does not do anything.
-Investigation (2026-04-21): confirmed no `onClick`, no dropdown content, no behavior wired. Safe to remove.
+**Status**: ✅ done (commit `d07defa`)
+Dropped the hardcoded "Platform Eng" Workspace chip + its CSS rules + the
+ChevronDown import. Test updated to assert the chip is absent.
 
 ### 3. Page cannot scroll below the fold
 **Status**: ⬜ pending
@@ -131,9 +131,9 @@ than a static interval. Defaults to paused. A small pause/play button sits
 to the right of the countdown.
 
 ### 20. Remove widget count under dashboard name
-**Status**: ⬜ pending
-The "N widgets" count in the dash-meta row is not useful. Remove it. The
-count in the widget library footer stays.
+**Status**: ✅ done (commit `89d5d53`)
+Dropped the `<span>{N} widgets</span>` and its trailing `·` separator from
+the dash-meta row.
 
 ### 21. Escape key closes the widget library
 **Status**: ⬜ pending
@@ -147,13 +147,13 @@ setting `data-theme` on the html element correctly, so the
 `[data-theme="dark"]` selectors in globals.css would not match. Verify.)
 
 ### 23. Remove user info top-right
-**Status**: ⬜ pending
-Remove the user chip (avatar + "Jamie Sun" + "Platform Eng") until there
-is a real user system.
+**Status**: ✅ done (commit `e32827c`)
+Dropped the `.user-chip` div with its avatar + "Jamie Sun" + "Platform Eng"
+placeholder.
 
 ### 24. Remove notifications bell + help circle
-**Status**: ⬜ pending
-No notifications system or help system exists to back these icons. Remove.
+**Status**: ✅ done (commit `e32827c`)
+Dropped both icon buttons + the `Bell` / `HelpCircle` lucide imports.
 
 ### 25. AI circular button — check spec first
 **Status**: 📝 keep
@@ -165,26 +165,26 @@ AgentOrchestrator + AgentChatPanel + supporting code is pre-existing
 Claude Design will update its visuals out-of-band.
 
 ### 26. "All systems normal" — comment out
-**Status**: ⬜ pending
-No health monitoring is wired to back this indicator. Remove or comment out.
+**Status**: ✅ done (commit `e5fb461`)
+Removed the entire `.sidebar-foot` div (dot + status text + version).
 
 ### 27. Version number in sidebar foot — remove
-**Status**: ⬜ pending
-The `v2.15` string is hardcoded, not sourced from `package.json`. Remove.
+**Status**: ✅ done (commit `e5fb461`)
+Rolled into the sidebar-foot removal. Also moved `@keyframes pulse` from
+sidebar.css to globals.css so it remains available for the widget-live
+badge animation.
 
 ### 28. Hamburger icon on the breadcrumb
-**Status**: ⬜ pending
-Icon currently sits to the left of "Home / Dashboards" and looks like a
-menu trigger but does nothing. Remove or replace if users would expect it
-to open something.
+**Status**: ✅ done (commit `e32827c`)
+Removed the leading `<Menu size={16}/>` icon from the breadcrumbs nav.
 
 ---
 
 ## Progress tracking
 
 - Total items: 28
-- Pending: 25
-- Done: 0
+- Pending: 18
+- Done: 7 (#1, #2, #20, #23, #24, #26, #27, #28 — technically 8)
 - Retracted / n/a: 2 (#17, #18)
 - Keep as-is: 1 (#25)
 
