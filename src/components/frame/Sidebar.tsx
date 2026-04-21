@@ -247,15 +247,6 @@ export function Sidebar() {
         )}
       </div>
 
-      {/* Sidebar foot */}
-      <div className="sidebar-foot">
-        <span
-          className="dot"
-          aria-label="pulse dot"
-        />
-        <span>All systems normal</span>
-        <span className="mono" style={{ marginLeft: 'auto', fontSize: '11px' }}>v2.15</span>
-      </div>
     </aside>
   );
 }
