@@ -8,7 +8,8 @@
 //   - Drag-and-drop deferred to OMN-44; strict 2-column grid is non-draggable for now.
 //   - OMN-47: CSS ported verbatim to src/styles/dashboard.css + buttons.css; TSX rewritten to use prototype class names.
 
-import { useCallback, useEffect, useRef } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { Check, ChevronDown, Plus, X } from 'lucide-react';
 import { useFrameStore } from '@/store/store';
 import { useRegistry } from '@/registry/RegistryProvider';
 import { ComponentPalette } from '@/components/dashboard/ComponentPalette';
@@ -17,6 +18,15 @@ import { ComponentCell } from '@/components/dashboard/ComponentCell';
 import { EmptyState } from '@/components/dashboard/EmptyState';
 import type { DashboardLayoutItem } from '@shared/types/dashboard';
 import { layoutPersistence } from '@/layout/layout-persistence';
+
+function formatTimezone(): string {
+  const offsetMinutes = -new Date().getTimezoneOffset();
+  const sign = offsetMinutes >= 0 ? '+' : '−';
+  const abs = Math.abs(offsetMinutes);
+  const hh = String(Math.floor(abs / 60)).padStart(2, '0');
+  const mm = String(abs % 60).padStart(2, '0');
+  return `UTC${sign}${hh}:${mm}`;
+}
 
 export function DashboardView() {
   const {
@@ -27,6 +37,7 @@ export function DashboardView() {
     updateLayout,
     removeComponentFromLayout,
     setActiveDashboard,
+    renameDashboard,
     selectedPlacementId,
     setSelectedPlacementId,
     placementDrafts,
@@ -36,6 +47,8 @@ export function DashboardView() {
   } = useFrameStore();
   const registry = useRegistry();
   const snapshotRef = useRef<DashboardLayoutItem[] | null>(null);
+  const [editingTitle, setEditingTitle] = useState(false);
+  const timezone = useMemo(formatTimezone, []);
 
   // Hydrate the last active dashboard layout from disk on mount.
   useEffect(() => {
@@ -133,11 +146,47 @@ export function DashboardView() {
       {/* Dashboard header */}
       <div className="dash-header">
         <div className="dash-title-wrap">
-          <div className="dash-title">
-            {activeDashboard.name}
-          </div>
+          {editingTitle ? (
+            <input
+              className="dash-title"
+              autoFocus
+              defaultValue={activeDashboard.name}
+              onBlur={(e) => {
+                const trimmed = e.target.value.trim();
+                if (trimmed && trimmed !== activeDashboard.name) {
+                  renameDashboard(activeDashboard.id, trimmed);
+                }
+                setEditingTitle(false);
+              }}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') e.currentTarget.blur();
+                if (e.key === 'Escape') setEditingTitle(false);
+              }}
+              style={{ fontSize: 22, fontWeight: 600 }}
+            />
+          ) : (
+            <div
+              className="dash-title"
+              onClick={() => setEditingTitle(true)}
+              title="Click to rename"
+            >
+              {activeDashboard.name}
+              <ChevronDown size={18} style={{ color: 'var(--ink-3)' }} />
+            </div>
+          )}
           <div className="dash-meta">
-            <span>{activeDashboard.layout.length} widget{activeDashboard.layout.length !== 1 ? 's' : ''}</span>
+            <span className="mono">{activeDashboard.layout.length} widgets</span>
+            <span>·</span>
+            <span>
+              Timezone: <span className="mono">{timezone}</span>
+            </span>
+            <span>·</span>
+            <span>
+              Auto-refresh{' '}
+              <span className="mono" style={{ color: 'var(--status-ok)' }}>
+                30s
+              </span>
+            </span>
           </div>
         </div>
         <div className="header-actions">
@@ -149,23 +198,23 @@ export function DashboardView() {
                 aria-label="Save"
                 disabled={saveBlocked}
               >
-                Save
+                <Check size={14} /> Save
               </button>
               <button
                 className="btn ghost"
                 onClick={handleDiscard}
                 aria-label="Discard"
               >
-                Discard
+                <X size={14} /> Discard
               </button>
             </>
           ) : (
             <button
-              className="btn ghost"
+              className="btn primary"
               onClick={handleEdit}
-              aria-label="Edit"
+              aria-label="Add Widget"
             >
-              Edit
+              <Plus size={14} /> Add Widget
             </button>
           )}
         </div>
