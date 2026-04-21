@@ -10,7 +10,7 @@ prototype_css:
 v2_targets:
   - src/components/frame/Header.tsx
   - src/styles/topbar.css
-status: todo
+status: audited
 dependencies: []
 blocked_reason: null
 ---
@@ -64,15 +64,28 @@ Walk each axis completely. Each ☐ must become either ✅ "no issues" or a popu
 
 ### Design
 
-(fill in)
+- No issues found.
+
+All `.topbar-right`, `.icon-btn`, `:hover`, and `.icon-btn .badge` rules in `src/styles/topbar.css:19-32` match the prototype values exactly (width/height 34px, border-radius 6px, display grid, place-items center, color var(--ink-2), position relative, transitions; hover background var(--panel-2), color var(--ink); badge position absolute top 6px right 7px, 7x7, border-radius 50%, background var(--status-bad), box-shadow 0 0 0 2px var(--panel)).
 
 ### Structure
 
-(fill in)
+**Issue [MINOR]**: Icon component source differs from prototype (`lucide-react` vs custom `<Icon>`)
+- Prototype: `src/app.jsx:433-437` uses `<Icon name="refresh|help|bell" size={16}/>`
+- v2: `src/components/frame/Header.tsx:12,35,38,41` imports `RefreshCw`, `HelpCircle`, `Bell` from `lucide-react`
+- Impact: Visual icon glyph fidelity depends on lucide-react glyphs matching the prototype's custom `<Icon>` set; structurally correct (buttons, nesting, badge span placement are all preserved) but the rendered SVG path is not guaranteed to match pixel-for-pixel.
+
+**Issue [NIT]**: Extra `aria-label` attribute added to each icon button
+- Prototype: `src/app.jsx:433-437` — buttons only carry `title` and `className`
+- v2: `src/components/frame/Header.tsx:34,37,40` — each button has both `title` and `aria-label`
+- Impact: None visually; accessibility-only enhancement. Does not violate structural fidelity but is a non-prototype addition.
 
 ### Content
 
-(fill in)
+**Issue [MINOR]**: Icon `name` identifiers not preserved (lucide component names instead)
+- Prototype: `src/app.jsx:433-437` Icon `name` values are `"refresh"`, `"help"`, `"bell"`
+- v2: `src/components/frame/Header.tsx:35,38,41` uses `RefreshCw`, `HelpCircle`, `Bell` components (no `name` prop)
+- Impact: Semantically equivalent (refresh → RefreshCw, help → HelpCircle, bell → Bell) but the literal string identifiers from the prototype are gone. Icon `size={16}` and button `title` text (`Refresh`, `Help`, `Notifications`) match exactly.
 
 ## Resolution
 
