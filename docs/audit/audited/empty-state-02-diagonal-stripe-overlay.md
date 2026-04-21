@@ -9,7 +9,7 @@ prototype_css:
   lines: "N/A"
 v2_targets:
   - src/pages/DashboardView.tsx
-status: todo
+status: audited
 dependencies:
   - empty-state-01
 blocked_reason: null
@@ -60,15 +60,21 @@ Walk each axis completely. Each ☐ must become either ✅ "no issues" or a popu
 
 ### Design
 
-(fill in)
+**Issue [CRITICAL]**: Diagonal-stripe overlay is completely absent from v2.
+- Prototype: Renders an absolutely-positioned decorative `<div>` with `backgroundImage: "repeating-linear-gradient(45deg, transparent 0 10px, var(--line-2) 10px 11px)"`, `opacity: 0.4`, and `pointerEvents: "none"` (chunk lines 27-32).
+- v2: `src/pages/DashboardView.tsx:177-182` renders only a single centered `<div>` containing text — no absolutely-positioned overlay element, no gradient, no stripes. None of the five required CSS properties (`position: absolute`, `inset: 0`, the `repeating-linear-gradient` background, `opacity: 0.4`, `pointer-events: none`) are applied anywhere in the empty-state fallback.
+- Impact: The dashed card's characteristic 45-degree hatched texture is missing entirely; v2's empty state appears as flat centered text with no visual treatment, losing the prototype's graph-paper-under-glass aesthetic and the signal that this is a "no content yet" placeholder zone.
 
 ### Structure
 
-(fill in)
+**Issue [CRITICAL]**: Overlay `<div>` element does not exist in v2's empty-state DOM.
+- Prototype: The decorative `<div/>` is the first child of the outer empty-state container, preceding subsequent content children (chunk lines 27-32, per spec it stacks under siblings that carry `position: relative`).
+- v2: `src/pages/DashboardView.tsx:177-182` — the empty branch produces exactly one flex `<div>` with inline text; there is no sibling overlay element, no wrapper establishing stacking context, and no `position: relative` parent for overlay containment. The element was neither replaced with a `::before` pseudo-element (no CSS rule targets this state) nor preserved as a div — it is simply omitted.
+- Impact: Because the overlay element is missing, even if styles were added later there is no DOM node to paint them on; the fix requires adding the `<div/>` as first child of a newly-introduced relative-positioned empty-state container (pairs with empty-state-01's missing dashed outer container).
 
 ### Content
 
-(fill in)
+- No issues found.
 
 ## Resolution
 
