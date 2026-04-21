@@ -14,6 +14,7 @@ import { useRegistry } from '@/registry/RegistryProvider';
 import { ComponentPalette } from '@/components/dashboard/ComponentPalette';
 import { ComponentConfigPanel } from '@/config/ComponentConfigPanel';
 import { ComponentCell } from '@/components/dashboard/ComponentCell';
+import { EmptyState } from '@/components/dashboard/EmptyState';
 import type { DashboardLayoutItem } from '@shared/types/dashboard';
 import { layoutPersistence } from '@/layout/layout-persistence';
 
@@ -175,11 +176,7 @@ export function DashboardView() {
         {/* Widget grid */}
         <div className="dash-body">
           {activeDashboard.layout.length === 0 ? (
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%', color: 'var(--ink-2)', fontSize: '14px' }}>
-              {editMode
-                ? 'Add components from the palette'
-                : 'Empty dashboard — click Edit to add components'}
-            </div>
+            <EmptyState onAdd={editMode ? () => {} : handleEdit} />
           ) : (
             <div className="grid">
               {activeDashboard.layout.map((item) => (
@@ -218,6 +215,7 @@ export function DashboardView() {
             <ComponentPalette
               components={registry.getAvailableComponents()}
               onAddComponent={handleAddComponent}
+              onClose={handleDiscard}
             />
             {selectedPlacementId && (
               <ComponentConfigPanel placementId={selectedPlacementId} />
