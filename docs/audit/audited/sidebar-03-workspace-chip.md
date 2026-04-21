@@ -10,7 +10,7 @@ prototype_css:
 v2_targets:
   - src/components/frame/Sidebar.tsx
   - src/styles/sidebar.css
-status: todo
+status: audited
 dependencies: []
 blocked_reason: null
 ---
@@ -66,15 +66,20 @@ Walk each axis completely. Each ☐ must become either ✅ "no issues" or a popu
 
 ### Design
 
-(fill in)
+**Issue [MAJOR]**: Inline style on the "Workspace" label div is missing from v2, so the label is not rendered at 10px uppercase with 0.08em letter-spacing.
+- Prototype: src/app.jsx:365 — `<div style={{fontSize:10, textTransform:"uppercase", letterSpacing:"0.08em"}}>Workspace</div>`
+- v2: src/components/frame/Sidebar.tsx:118 — `<div>Workspace</div>` (no style, no class)
+- Impact: The "Workspace" label renders at the inherited 12px, mixed case, with normal letter-spacing instead of the intended tiny all-caps tracked caption, making the chip section visually heavier and off-brand.
+
+All `.workspace` and `.workspace-chip` CSS rules in `src/styles/sidebar.css:35-50` match the prototype verbatim (padding, border-bottom, font-size, color, margin-top, flex layout, background oklch values, padding, border-radius, cursor, border, transition, hover state, and `.ws-name` weight/size).
 
 ### Structure
 
-(fill in)
+- No issues found. v2 has `<div className="workspace">` wrapping the label div and `<div className="workspace-chip">` containing `<span className="ws-name">` and a chevron icon, in the same nesting order (Sidebar.tsx:117-123). Note: v2 uses `<ChevronDown size={14} />` from lucide-react rather than a generic `<Icon name="chevron-down" size={14}/>` wrapper, but this is consistent with other icons in v2 and documented in the file header.
 
 ### Content
 
-(fill in)
+- No issues found. Label text is `Workspace`, `.ws-name` text is `Platform Eng`, chevron size is `14`.
 
 ## Resolution
 
