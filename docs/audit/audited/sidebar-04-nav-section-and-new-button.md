@@ -10,7 +10,7 @@ prototype_css:
 v2_targets:
   - src/components/frame/Sidebar.tsx
   - src/styles/sidebar.css
-status: todo
+status: audited
 dependencies: []
 blocked_reason: null
 ---
@@ -68,15 +68,23 @@ Walk each axis completely. Each ☐ must become either ✅ "no issues" or a popu
 
 ### Design
 
-(fill in)
+- No issues found.
+
+(The prototype `.nav-new:hover` uses `background: var(--accent)` and v2 uses `var(--brand)`; this is the documented OMN-42 token rename called out in the chunk header, not a finding. All other properties on `.nav-section`, `.nav-section-title`, `.nav-new` base, `:hover` (color + transform), and `:active` match exactly — see `src/styles/sidebar.css:52-68`.)
 
 ### Structure
 
-(fill in)
+**Issue [MINOR]**: Icon element differs from prototype (custom `<Icon>` → lucide `<Plus>`).
+- Prototype: `src/app.jsx:374` — `<Icon name="plus" size={14} stroke={2.4}/>`
+- v2: `src/components/frame/Sidebar.tsx:133` — `<Plus size={14} strokeWidth={2.4} />`
+- Impact: Visually equivalent (same size 14, same stroke 2.4 via lucide's `strokeWidth`), and this substitution is a repo-wide pattern (lucide-react in place of the prototype's custom `Icon` component). Flagging as MINOR since the tag name and prop name (`stroke` → `strokeWidth`) technically diverge from the verbatim prototype, but the rendered output should be identical. No action likely needed if lucide is the adopted convention.
 
 ### Content
 
-(fill in)
+**Issue [MAJOR]**: `title="New dashboard"` attribute is missing on the `.nav-new` button.
+- Prototype: `src/app.jsx:373` — `<button className="nav-new" onClick={onCreate} title="New dashboard">`
+- v2: `src/components/frame/Sidebar.tsx:128-132` — button has `aria-label="New dashboard"` but no `title` attribute.
+- Impact: User-visible regression — hovering the `+` button in the prototype surfaces a native browser tooltip reading "New dashboard"; in v2 no tooltip appears on hover because `aria-label` does not render a tooltip (it is exposed only to assistive tech). Sighted users lose the hover affordance that explains what the circular `+` button does. Fix: add `title="New dashboard"` alongside the existing `aria-label` (keep both — `aria-label` for a11y, `title` for the hover tooltip the prototype relies on).
 
 ## Resolution
 
