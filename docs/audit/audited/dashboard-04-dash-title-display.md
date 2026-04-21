@@ -10,7 +10,7 @@ prototype_css:
 v2_targets:
   - src/pages/DashboardView.tsx
   - src/styles/dashboard.css
-status: todo
+status: audited
 dependencies:
   - dashboard-02
 blocked_reason: null
@@ -58,15 +58,32 @@ Walk each axis completely. Each check must become either "no issues" or a popula
 
 ### Design
 
-(fill in)
+- No issues found. `.dash-title` rule in `src/styles/dashboard.css:12-18` matches prototype verbatim (display: flex, align-items: center, gap: 8px, font-size: 22px, font-weight: 600, letter-spacing: -0.015em, cursor: pointer, color: var(--ink), padding: 2px 8px, border-radius: 6px, margin-left: -8px, transition: background 0.15s). `:hover { background: var(--panel-2); }` present at line 19.
 
 ### Structure
 
-(fill in)
+**Issue: `.dash-title` display branch is missing the `onClick` handler, `title` tooltip, and chevron `<Icon>` child**
+
+- Location: `src/pages/DashboardView.tsx:135-137`
+- Expected (prototype): `<div className="dash-title" onClick={() => setEditingTitle(true)} title="Click to rename">{dash.name}<Icon name="chevron-down" size={18} style={{color:"var(--ink-3)"}}/></div>`
+- Actual (v2): `<div className="dash-title">{activeDashboard.name}</div>` — no `onClick`, no `title` attribute, no `<Icon name="chevron-down">` child.
+- Impact: CRITICAL. The entire click-to-rename affordance (including chevron indicator and tooltip) is absent. There is also no `editingTitle` state or branching (no ternary), so dashboard-03 (input branch) is implicitly unreachable too.
 
 ### Content
 
-(fill in)
+**Issue: chevron-down icon literal is absent**
+
+- Location: `src/pages/DashboardView.tsx:135-137`
+- Expected: `<Icon name="chevron-down" size={18} style={{color: "var(--ink-3)"}}/>` child with `name="chevron-down"`, numeric `size={18}`, inline style color `var(--ink-3)`.
+- Actual: no `<Icon>` element rendered inside `.dash-title`.
+- Impact: CRITICAL content miss — icon asset and color token both absent.
+
+**Issue: "Click to rename" tooltip string is absent**
+
+- Location: `src/pages/DashboardView.tsx:135`
+- Expected: `title="Click to rename"` attribute on the `.dash-title` div.
+- Actual: no `title` attribute set.
+- Impact: CRITICAL content miss — accessibility/affordance hint is not rendered.
 
 ## Resolution
 
