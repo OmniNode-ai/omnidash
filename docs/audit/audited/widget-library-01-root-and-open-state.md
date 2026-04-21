@@ -10,7 +10,7 @@ prototype_css:
 v2_targets:
   - src/components/dashboard/ComponentPalette.tsx
   - src/styles/library.css
-status: todo
+status: audited
 dependencies: []
 blocked_reason: null
 ---
@@ -60,15 +60,22 @@ Walk each axis completely. Each ☐ must become either ✅ "no issues" or a popu
 
 ### Design
 
-(fill in)
+- No issues found.
+
+(Every property in the prototype `.library` and `.library.open` blocks — `position: fixed`, `top: 52px`, `right: 0`, `width: 360px`, `height: calc(100vh - 52px)`, `background: var(--panel)`, `border-left: 1px solid var(--line)`, `box-shadow: var(--shadow-lg)`, `display: flex`, `flex-direction: column`, `transform: translateX(100%)`, `transition: transform 0.3s cubic-bezier(.2,.8,.2,1)`, `z-index: 50`, and `.library.open { transform: none; }` — is present with identical values at `src/styles/library.css:6-18`.)
 
 ### Structure
 
-(fill in)
+**Issue [MAJOR]**: `open` modifier is hardcoded rather than toggled by visibility state.
+- Prototype: JSX renders `<aside className="library open">` (chunk lines 25-26) — and the underlying `.library` vs `.library.open` CSS contract is explicitly a two-state transform (slides off-canvas when `open` is absent, slides in when present). The checklist item for Structure calls this out: rail must carry "an `open` modifier toggled by visibility state".
+- v2: `src/components/dashboard/ComponentPalette.tsx:36` hardcodes `className="library open"` as a string literal. There is no prop, state, or conditional driving the `open` class. The file-level comment at `src/components/dashboard/ComponentPalette.tsx:7` also documents "No … slide-in animation yet — those are OMN-44 scope," confirming this is a deliberate deferral, not an accidental omission.
+- Impact: The rail is stuck permanently open. The slide-in/slide-out transition defined in `library.css` is dead code at runtime — users cannot dismiss or reveal the library via the `open` class toggle that the prototype contract relies on. Any future close affordance will be inert until a visibility prop is wired up.
 
 ### Content
 
-(fill in)
+- No issues found.
+
+(The static class tokens `library` and `library.open` are used verbatim in both `ComponentPalette.tsx:36` and `library.css:6,18`; no `palette` / `component-palette` / other renames are present on this element.)
 
 ## Resolution
 
