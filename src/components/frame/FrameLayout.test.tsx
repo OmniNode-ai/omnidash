@@ -32,9 +32,8 @@ describe('FrameLayout', () => {
       </FrameLayout>,
       { wrapper: Wrapper },
     );
-    // Brand renders as "Omni" + <em>Dash</em> inside a span; "Omni" is a text node.
-    // Check the sidebar footer or brand region for a reliable unique string.
-    expect(screen.getByText('All systems normal')).toBeInTheDocument();
+    // Brand renders as "Omni" + <em>Dash</em>; check the "an omninode product" tagline.
+    expect(screen.getByText('an omninode product')).toBeInTheDocument();
   });
 
   it('renders children in the main area', () => {

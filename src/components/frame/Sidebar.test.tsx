@@ -91,9 +91,10 @@ describe('Sidebar — dashboard CRUD flows (OMN-43)', () => {
     expect(screen.getByText('▸')).toBeInTheDocument();
   });
 
-  it('renders "All systems normal" in the sidebar footer', () => {
+  it('does NOT render sidebar-foot (no health monitoring / version source)', () => {
     renderSidebar();
-    expect(screen.getByText('All systems normal')).toBeInTheDocument();
+    expect(screen.queryByText('All systems normal')).not.toBeInTheDocument();
+    expect(screen.queryByText(/v2\./)).not.toBeInTheDocument();
   });
 
   it('does NOT render the workspace chip (removed — no workspaces concept)', () => {

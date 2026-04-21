@@ -161,3 +161,6 @@
   /* ---------- APP CHROME ---------- */
   .app { display: grid; grid-template-columns: 240px 1fr; height: 100vh; }
 }
+
+/* Shared animation keyframes (referenced by .widget-live::before in dashboard.css) */
+@keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.5; } }
