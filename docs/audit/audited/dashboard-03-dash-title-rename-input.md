@@ -10,7 +10,7 @@ prototype_css:
 v2_targets:
   - src/pages/DashboardView.tsx
   - src/styles/dashboard.css
-status: todo
+status: audited
 dependencies:
   - dashboard-02
 blocked_reason: null
@@ -68,15 +68,35 @@ Walk each axis completely. Each check must become either "no issues" or a popula
 
 ### Design
 
-(fill in)
+**Issue: `.dash-title input` CSS rule is present but unused**
+- Severity: MINOR
+- Location: `src/styles/dashboard.css:20-24`
+- Expected: CSS selector `.dash-title input` applies when the title is in edit mode.
+- Actual: The CSS rule is ported verbatim (font/letter-spacing inherit, transparent background, no border/outline, width 100%) but there is no `<input>` descendant of `.dash-title` in v2 — the rule is dead code because the input is never rendered.
+- Note: Purely a CSS fidelity observation; becomes live once the Structure gap below is resolved.
 
 ### Structure
 
-(fill in)
+**Issue: `editingTitle === true` branch is entirely missing**
+- Severity: CRITICAL
+- Location: `src/pages/DashboardView.tsx:134-137`
+- Expected: A ternary on `editingTitle` that, when true, renders `<input className="dash-title" autoFocus defaultValue={dash.name} onBlur={…onRename + setEditingTitle(false)} onKeyDown={Enter→blur, Escape→setEditingTitle(false)} />`.
+- Actual: v2 renders only a static `<div className="dash-title">{activeDashboard.name}</div>`. There is no `editingTitle` state in `useFrameStore`, no `onRename` handler, no `<input>` element, no autoFocus, no blur-to-commit, and no Enter/Escape keyboard handlers. The rename UX does not exist.
+- Also missing: the trigger that would toggle `editingTitle` to true (likely an `onClick` / `onDoubleClick` on the display-branch div — covered by dashboard-02, which this chunk depends on).
 
 ### Content
 
-(fill in)
+**Issue: Inline `{fontSize:22, fontWeight:600}` style object absent**
+- Severity: CRITICAL (derivative of the Structure gap)
+- Location: `src/pages/DashboardView.tsx:135` (would be on the missing `<input>`)
+- Expected: The input carries the numeric inline style `{fontSize:22, fontWeight:600}` exactly (numbers, not strings).
+- Actual: Because no `<input>` is rendered, the inline style is absent. Note that `.dash-title` CSS already provides `font-size: 22px; font-weight: 600;`, so the inline style is technically redundant visually, but the prototype specifies it verbatim on the input element and it must be reproduced for fidelity.
+
+**Issue: Key-name string comparisons `"Enter"` / `"Escape"` absent**
+- Severity: CRITICAL (derivative of the Structure gap)
+- Location: `src/pages/DashboardView.tsx` (would be inside the missing `onKeyDown`)
+- Expected: `onKeyDown` handler with case-sensitive comparisons `e.key === "Enter"` (triggers `e.target.blur()`) and `e.key === "Escape"` (triggers `setEditingTitle(false)`).
+- Actual: No `onKeyDown` handler exists; neither key comparison is present in the file.
 
 ## Resolution
 
