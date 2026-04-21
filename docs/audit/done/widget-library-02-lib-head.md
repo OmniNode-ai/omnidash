@@ -10,7 +10,7 @@ prototype_css:
 v2_targets:
   - src/components/dashboard/ComponentPalette.tsx
   - src/styles/library.css
-status: audited
+status: done
 dependencies: []
 blocked_reason: null
 ---
@@ -80,4 +80,4 @@ Walk each axis completely. Each ☐ must become either ✅ "no issues" or a popu
 
 ## Resolution
 
-(filled by orchestrator after fixes are applied; one-line pointer to the fix commit)
+Fixed in commit `4145b96` — feat(ui): port EmptyState + WidgetLibrary missing structure [OMN-48].
