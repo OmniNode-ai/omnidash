@@ -10,7 +10,7 @@ prototype_css:
 v2_targets:
   - src/components/frame/Sidebar.tsx
   - src/styles/sidebar.css
-status: todo
+status: audited
 dependencies: []
 blocked_reason: null
 ---
@@ -49,15 +49,20 @@ Walk each axis completely. Each ☐ must become either ✅ "no issues" or a popu
 
 ### Design
 
-(fill in)
+**Issue [CRITICAL]**: Rename `<input>` missing inline style prop — no transparent background, no border/outline reset, no inherited color/font, no `width:100%`.
+- Prototype: `src/app.jsx:393` — `style={{background:"transparent", border:0, outline:0, color:"inherit", font:"inherit", width:"100%"}}`
+- v2: `src/components/frame/Sidebar.tsx:68-78` (the returned `<input>` has no `style` prop, and `src/styles/sidebar.css` has no `.dash-item input` rule either)
+- Impact: When a user double-clicks to rename or creates a new dashboard, the input renders with the browser default chrome (white background, grey border, default font/color, intrinsic width) instead of blending seamlessly into the dashboard row. Visually breaks the sidebar row layout and looks unstyled.
+
+`.dash-item .dash-name` rule at `src/styles/sidebar.css:107` matches prototype exactly (`flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;`).
 
 ### Structure
 
-(fill in)
+- No issues found. The ternary pivots correctly (`) : (`), the span carries `className="dash-name"`, `onDoubleClick` calls `e.stopPropagation()` then triggers the rename. Calling `setRenamingId(d.id)` instead of a prop `onRenameStart(d.id)` is a documented deviation per `Sidebar.tsx:7` (rename handled via local state).
 
 ### Content
 
-(fill in)
+- No issues found. Span body renders `{d.name}` verbatim with no wrapper or formatting.
 
 ## Resolution
 
