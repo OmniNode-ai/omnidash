@@ -9,7 +9,7 @@ prototype_css:
   lines: "N/A"
 v2_targets:
   - src/pages/DashboardView.tsx
-status: todo
+status: audited
 dependencies:
   - empty-state-01
 blocked_reason: null
@@ -56,15 +56,24 @@ Walk each axis completely. Each ☐ must become either ✅ "no issues" or a popu
 
 ### Design
 
-(fill in)
+**Issue [CRITICAL]**: No CTA button rendered in v2 empty state.
+- Prototype: `<button className="btn primary" onClick={onAdd} style={{position:"relative"}}>` (chunk lines 27-29) — primary-styled button using the shared `.btn.primary` class (defined in `src/styles/buttons.css:16-20`) with `position: relative` inline.
+- v2: `src/pages/DashboardView.tsx:177-182` renders only a `<div>` of plain text ("Empty dashboard — click Edit to add components") styled with `color: var(--ink-2); fontSize: 14px`. No `<button>` is emitted at all, so `.btn.primary` styling and the `position: relative` stacking-context fix are both absent.
+- Impact: User sees an instruction string instead of a clickable primary CTA. Hierarchy of the empty state is lost and the one-click path into edit/add flow is removed — user must find and click the header "Edit" button instead.
 
 ### Structure
 
-(fill in)
+**Issue [CRITICAL]**: Button element and click handler are missing.
+- Prototype: The empty state's last child is a `<button>` wired to `onAdd` (chunk line 27), containing exactly two children — `<Icon name="plus" size={14}/>` and the trailing text (chunk line 28).
+- v2: `src/pages/DashboardView.tsx:178-182` renders a single text `<div>`. There is no `<button>`, no `onClick`, no icon child, and no handler wired to a v2 equivalent of `onAdd` (e.g., `handleEdit` at line 53 or `setEditMode(true)` / opening the palette).
+- Impact: Empty state provides no interactive affordance. The structural contract of "container + CTA button as final child" is broken; downstream chunks depending on the button's presence (icon, label) have nothing to attach to.
 
 ### Content
 
-(fill in)
+**Issue [CRITICAL]**: Icon and label text are absent.
+- Prototype: Icon is `<Icon name="plus" size={14}/>` followed by the literal label ` Add first widget` (leading space preserved; chunk line 28). No trailing punctuation.
+- v2: `src/pages/DashboardView.tsx:179-181` emits the strings `'Add components from the palette'` (edit mode) or `'Empty dashboard — click Edit to add components'` (view mode). No plus icon is rendered, and neither string matches the prototype copy `Add first widget`.
+- Impact: Copy does not match the design; the visual "plus" glyph that communicates "create new" is missing, so the empty state reads as a status message rather than an invitation to act.
 
 ## Resolution
 
