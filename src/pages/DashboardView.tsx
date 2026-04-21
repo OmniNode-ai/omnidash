@@ -175,8 +175,6 @@ export function DashboardView() {
             </div>
           )}
           <div className="dash-meta">
-            <span className="mono">{activeDashboard.layout.length} widgets</span>
-            <span>·</span>
             <span>
               Timezone: <span className="mono">{timezone}</span>
             </span>
