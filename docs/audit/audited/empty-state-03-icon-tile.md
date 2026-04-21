@@ -9,7 +9,7 @@ prototype_css:
   lines: "N/A"
 v2_targets:
   - src/pages/DashboardView.tsx
-status: todo
+status: audited
 dependencies:
   - empty-state-01
 blocked_reason: null
@@ -68,15 +68,24 @@ Walk each axis completely. Each ☐ must become either ✅ "no issues" or a popu
 
 ### Design
 
-(fill in)
+**Issue [CRITICAL]**: v2 empty-state icon tile is entirely missing — no styled 48×48 rounded panel.
+- Prototype: chunk's quoted JSX block lines 27–35 render a `<div>` with inline styles `width: 48, height: 48, borderRadius: 10, background: "var(--panel-2)", border: "1px solid var(--line)", display: "grid", placeItems: "center", margin: "0 auto 14px", color: "var(--accent-ink)", position: "relative"`.
+- v2: `src/pages/DashboardView.tsx:178-182` renders only a single flex container with a text string — zero width/height/border-radius/background/border tile exists. None of the ten required style properties are applied anywhere.
+- Impact: User sees a bare centered sentence instead of the branded empty-state card; the visual anchor (rounded panel with accent-colored glyph) that signals "this is an empty surface, not a broken one" is absent.
 
 ### Structure
 
-(fill in)
+**Issue [CRITICAL]**: The icon-tile `<div>` element is not present in the v2 DOM tree.
+- Prototype: chunk's quoted block shows a `<div>` wrapper whose sole child is `<Icon name="grid" size={22}/>`, positioned as the second child of the outer empty-state container (after the stripe overlay, before the headline).
+- v2: `src/pages/DashboardView.tsx:178-182` — the empty-state branch is a single `<div>` containing only the fallback text string. There is no wrapper div, no stripe overlay, no headline, and therefore no slot in which the icon tile could be the "second child". The entire empty-state structure from the prototype is collapsed to a one-line text node.
+- Impact: Fix for this chunk cannot land in isolation — empty-state-01 (outer container + stripe) must be built first so the tile has a parent to sit inside. Dependency on `empty-state-01` in frontmatter is correct.
 
 ### Content
 
-(fill in)
+**Issue [CRITICAL]**: The `<Icon name="grid" size={22}/>` child is not rendered in v2.
+- Prototype: chunk's quoted block line 34 renders `<Icon name="grid" size={22}/>` as the tile's only child.
+- v2: `src/pages/DashboardView.tsx:177-182` — no `Icon` component is imported or used anywhere in the empty-state branch; neither the name `"grid"` nor the size `22` appears. The `Icon` symbol is not imported in this file at all.
+- Impact: Even once the tile wrapper is added, the glyph that makes the tile recognizable as a dashboard-empty affordance will be missing unless `Icon` is imported and invoked with exactly `name="grid"` and `size={22}`.
 
 ## Resolution
 
