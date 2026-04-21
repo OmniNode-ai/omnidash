@@ -9,7 +9,7 @@
 //   - OMN-47: CSS ported verbatim to src/styles/topbar.css; TSX rewritten to use prototype class names.
 
 import { useTheme } from '@/theme';
-import { RefreshCw, HelpCircle, Bell } from 'lucide-react';
+import { Menu, RefreshCw, HelpCircle, Bell } from 'lucide-react';
 
 export function Header() {
   const { theme, setTheme, availableThemes } = useTheme();
@@ -24,6 +24,7 @@ export function Header() {
     <header className="topbar">
       {/* Left — breadcrumbs */}
       <nav className="breadcrumbs">
+        <Menu size={16} />
         <span>Home</span>
         <span className="sep">/</span>
         <span className="cur">Dashboards</span>
