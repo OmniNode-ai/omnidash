@@ -220,8 +220,17 @@ export function DashboardView() {
         </div>
       </div>
 
-      {/* Main content area */}
-      <div style={{ display: 'flex', flex: 1, minHeight: 0, overflow: 'hidden' }}>
+      {/* Main content area. Reserve 360px on the right when editMode is active so
+          the position:fixed widget library rail doesn't overlay the grid. */}
+      <div
+        style={{
+          display: 'flex',
+          flex: 1,
+          minHeight: 0,
+          overflow: 'hidden',
+          paddingRight: editMode ? 360 : 0,
+        }}
+      >
         {/* Widget grid */}
         <div className="dash-body">
           {activeDashboard.layout.length === 0 ? (
@@ -258,20 +267,31 @@ export function DashboardView() {
           )}
         </div>
 
-        {/* Edit-mode palette / config */}
-        {editMode && (
-          <div style={{ width: '280px', flexShrink: 0, borderLeft: '1px solid var(--line)', overflowY: 'auto' }}>
-            <ComponentPalette
-              components={registry.getAvailableComponents()}
-              onAddComponent={handleAddComponent}
-              onClose={handleDiscard}
-            />
-            {selectedPlacementId && (
-              <ComponentConfigPanel placementId={selectedPlacementId} />
-            )}
+        {/* Inline config panel (v2-specific — sits between grid and the fixed library rail). */}
+        {editMode && selectedPlacementId && (
+          <div
+            style={{
+              width: 280,
+              flexShrink: 0,
+              borderLeft: '1px solid var(--line)',
+              overflowY: 'auto',
+            }}
+          >
+            <ComponentConfigPanel placementId={selectedPlacementId} />
           </div>
         )}
       </div>
+
+      {/* Widget library rail — position:fixed via library.css. Close keeps changes
+          (handleSave) rather than reverting, so widgets added while the rail is open
+          don't vanish on dismissal. */}
+      {editMode && (
+        <ComponentPalette
+          components={registry.getAvailableComponents()}
+          onAddComponent={handleAddComponent}
+          onClose={handleSave}
+        />
+      )}
     </>
   );
 }
