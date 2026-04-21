@@ -9,7 +9,7 @@ prototype_css:
   lines: "N/A"
 v2_targets:
   - src/pages/DashboardView.tsx
-status: audited
+status: done
 dependencies:
   - empty-state-01
 blocked_reason: null
@@ -89,4 +89,4 @@ Walk each axis completely. Each ☐ must become either ✅ "no issues" or a popu
 
 ## Resolution
 
-(filled by orchestrator after fixes are applied; one-line pointer to the fix commit)
+Fixed in commit `4145b96` — feat(ui): port EmptyState + WidgetLibrary missing structure [OMN-48].
