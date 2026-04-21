@@ -96,8 +96,8 @@ describe('Sidebar — dashboard CRUD flows (OMN-43)', () => {
     expect(screen.getByText('All systems normal')).toBeInTheDocument();
   });
 
-  it('renders the workspace chip with "Platform Eng"', () => {
+  it('does NOT render the workspace chip (removed — no workspaces concept)', () => {
     renderSidebar();
-    expect(screen.getByText('Platform Eng')).toBeInTheDocument();
+    expect(screen.queryByText('Platform Eng')).not.toBeInTheDocument();
   });
 });

@@ -6,11 +6,12 @@
 //   - Rename in-place handled via local `renamingId` state rather than lifted to App.
 //   - Wired to Zustand store (dashboards, activeDashboardId, createDashboard, renameDashboard,
 //     deleteDashboard, setActiveDashboardById) instead of receiving all as props.
-//   - "Platform Eng" workspace chip is static (dynamic workspaces are out of scope).
 //   - OMN-47: CSS ported verbatim to src/styles/sidebar.css; TSX rewritten to use prototype class names.
+//   - Post-OMN-48: "Platform Eng" workspace chip removed — it was static markup with no behavior
+//     wired, and the product has no workspaces concept yet.
 
-import { useState } from 'react';
-import { ChevronDown, Plus, MoreHorizontal } from 'lucide-react';
+import { useEffect, useLayoutEffect, useRef, useState } from 'react';
+import { Plus, MoreHorizontal } from 'lucide-react';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -58,23 +59,39 @@ interface RenameInputProps {
 }
 
 function RenameInput({ initialValue, onCommit, onCancel }: RenameInputProps) {
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  // Focus + select after React has finished applying defaultValue but before the
+  // browser paints. Doing this in the callback ref raced against React's value
+  // assignment; `useLayoutEffect` guarantees the value string is in place.
+  useLayoutEffect(() => {
+    const input = inputRef.current;
+    if (!input) return;
+    input.focus();
+    input.select();
+  }, []);
+
+  // Commit only on genuine user "click outside" — a real pointerdown whose target
+  // is outside this input. This avoids committing on spurious blur events caused
+  // by Radix's DropdownMenu focus-management teardown.
+  useEffect(() => {
+    const handler = (e: PointerEvent) => {
+      const input = inputRef.current;
+      if (!input) return;
+      if (e.target instanceof Node && input.contains(e.target)) return;
+      onCommit(input.value);
+    };
+    document.addEventListener('pointerdown', handler);
+    return () => document.removeEventListener('pointerdown', handler);
+  }, [onCommit]);
+
   return (
     <input
-      ref={(el) => {
-        if (el) {
-          // Defer focus+select until after Radix's focus-management settles,
-          // otherwise the menu's onCloseAutoFocus sequence can clobber us.
-          requestAnimationFrame(() => {
-            el.focus();
-            el.select();
-          });
-        }
-      }}
+      ref={inputRef}
       defaultValue={initialValue}
       onClick={(e) => e.stopPropagation()}
-      onBlur={(e) => onCommit(e.target.value)}
       onKeyDown={(e) => {
-        if (e.key === 'Enter') e.currentTarget.blur();
+        if (e.key === 'Enter') onCommit(e.currentTarget.value);
         if (e.key === 'Escape') onCancel();
       }}
       style={{
@@ -123,17 +140,6 @@ export function Sidebar() {
             Omni<em>Dash</em>
           </span>
           <span className="parent">an omninode product</span>
-        </div>
-      </div>
-
-      {/* Workspace chip */}
-      <div className="workspace">
-        <div style={{ fontSize: 10, textTransform: 'uppercase', letterSpacing: '0.08em' }}>
-          Workspace
-        </div>
-        <div className="workspace-chip">
-          <span className="ws-name">Platform Eng</span>
-          <ChevronDown size={14} />
         </div>
       </div>
 
@@ -203,7 +209,14 @@ export function Sidebar() {
                   onCloseAutoFocus={(e) => e.preventDefault()}
                 >
                   <DropdownMenuItem
-                    onSelect={() => setRenamingId(d.id)}
+                    onSelect={() => {
+                      // Defer enter-rename-mode until after Radix's close sequence
+                      // finishes. Radix's focus-scope teardown dispatches a blur on
+                      // the previously-focused element during the current tick;
+                      // mounting the input after that tick means our focus+select in
+                      // useLayoutEffect isn't interrupted.
+                      queueMicrotask(() => setRenamingId(d.id));
+                    }}
                   >
                     Rename
                   </DropdownMenuItem>
