@@ -10,7 +10,7 @@ prototype_css:
 v2_targets:
   - src/pages/DashboardView.tsx
   - src/styles/dashboard.css
-status: todo
+status: audited
 dependencies:
   - dashboard-01
   - dashboard-07
@@ -50,15 +50,21 @@ Walk each axis completely. Each check must become either "no issues" or a popula
 
 ### Design
 
-(fill in)
+- No issues found. `src/styles/dashboard.css:153` contains exactly `.library-open .grid .widget { transition: transform 0.2s; }` — byte-identical to the prototype rule.
 
 ### Structure
 
-(fill in)
+**Issue: `library-open` class is never applied by any ancestor in v2 — selector can never match.**
+
+- Severity: CRITICAL (dead rule — the transition hook will never fire when the widget library rail is toggled).
+- Evidence: `grep -rn "library-open\|libOpen\|libraryOpen"` across `/mnt/c/Code/omninode_ai/omnidash-v2/src` returns exactly one hit — the CSS rule itself at `src/styles/dashboard.css:153`. There is no `libOpen` state, no className toggle in `DashboardView.tsx`, and no ancestor wrapper (no `DashboardBuilder.tsx` found; the prototype's `App`/layout-level toggle was not ported).
+- Prototype contract (from `src/app.jsx:463-465` cross-ref in the chunk and the `paddingRight: 380` sibling behavior already audited in dashboard-01): an ancestor of `.dash-body` sets `className="library-open"` when `libOpen === true`. v2's `DashboardView.tsx` renders `.dash-body` and `.grid` (lines 176, 184) but neither it nor any wrapper component sets the flag.
+- Consequence: the CSS rule is inert. When the widget library rail eventually lands in v2, this selector will silently fail to apply the `transform 0.2s` transition unless the ancestor wiring is added alongside it.
+- Note: dashboard-01's `paddingRight: 380` inline style is also absent from v2's `.dash-body` element (line 176 has no `style` prop conditional on `libOpen`), which is consistent with the whole `libOpen` feature being unported — not a regression within this chunk, but confirms the structural gap is systemic.
 
 ### Content
 
-(fill in)
+- No issues found. Class name is hyphenated `library-open` (not camelCase or snake_case); duration is `0.2s` (not `200ms`); selector chain `.library-open .grid .widget` matches the prototype exactly.
 
 ## Resolution
 
