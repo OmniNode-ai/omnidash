@@ -120,6 +120,7 @@ export default function EventStream({ config }: { config: EventStreamConfig }) {
       isEmpty={isEmpty}
       emptyMessage="No events"
       emptyHint="Events appear as Kafka messages arrive"
+      isLive
     >
       <div ref={scrollRef} onScroll={handleScroll} style={{ height: '100%', overflowY: 'auto' }}>
         {events.map((ev) => (
