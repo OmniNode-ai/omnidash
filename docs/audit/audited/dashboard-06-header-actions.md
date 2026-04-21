@@ -10,7 +10,7 @@ prototype_css:
 v2_targets:
   - src/pages/DashboardView.tsx
   - src/styles/dashboard.css
-status: todo
+status: audited
 dependencies:
   - dashboard-02
 blocked_reason: null
@@ -81,15 +81,21 @@ Walk each axis completely. Each check must become either "no issues" or a popula
 
 ### Design
 
-(fill in)
+- No issues found. All `.btn`, `.btn:hover`, `.btn:active`, `.btn.primary` (+ dark variant), `.btn.primary:hover` (+ dark variant), `.btn.accent`, `.btn.accent:hover`, `.btn.ghost`, `.btn.ghost:hover`, and `.header-actions` rules are present verbatim in `src/styles/buttons.css` and `src/styles/dashboard.css` (lines 5–30 of buttons.css; line 31 of dashboard.css), with the documented `--accent` → `--brand` token rename applied.
 
 ### Structure
 
-(fill in)
+**Issue [CRITICAL]** — The three-button cluster specified by the prototype (`ghost` Refresh, `ghost` Share, conditional `btn ${libOpen ? "accent" : "primary"}` Add Widget wired to `onAddClick`) is **entirely absent** from v2. `src/pages/DashboardView.tsx` lines 142–170 render a different cluster: a single `btn ghost` "Edit" button in view mode, and `btn primary` "Save" + `btn ghost` "Discard" buttons in edit mode. No Refresh button, no Share button, no Add Widget button, and no `libOpen`/`onAddClick` wiring exists. The `.header-actions` container is correctly placed as the second child of `.dash-header`, but its contents do not match the prototype.
+
+**Issue [CRITICAL]** — The conditional-variant Add Widget button (`btn accent` when library panel is open, `btn primary` when closed) has no analogue in v2. The library/palette toggle in v2 is implicit (`editMode ? <ComponentPalette/> : null` on line 216), without a dedicated header button to toggle it. This removes the prototype's `.btn.accent` runtime usage from the header — `.btn.accent` is defined in CSS but never applied by a TSX site. (Still a structural/content gap, not a CSS gap.)
 
 ### Content
 
-(fill in)
+**Issue [CRITICAL]** — All three prototype-mandated `<Icon>` children are missing. Prototype specifies `<Icon name="refresh" size={14}/>`, `<Icon name="share" size={14}/>`, `<Icon name="plus" size={14}/>` inside the three buttons; v2's Edit/Save/Discard buttons render text-only with no `<Icon>` children at all.
+
+**Issue [CRITICAL]** — Button label content diverges from prototype. Prototype labels are `" Refresh"`, `" Share"`, `" Add Widget"` (with leading space after the icon); v2 labels are `"Edit"`, `"Save"`, `"Discard"` with no leading space. The `title` attributes `"Refresh"` and `"Share"` from the prototype are also absent; v2 uses `aria-label` instead (`"Edit"`, `"Save"`, `"Discard"`).
+
+**Issue [MINOR]** — v2 adds a `disabled={saveBlocked}` prop on the primary button (line 149) that has no prototype counterpart. This is a v2-only edit-mode validation gate; flagging for orchestrator awareness but it is an intentional feature addition beyond the prototype's scope.
 
 ## Resolution
 
