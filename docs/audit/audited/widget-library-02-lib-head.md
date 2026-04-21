@@ -10,7 +10,7 @@ prototype_css:
 v2_targets:
   - src/components/dashboard/ComponentPalette.tsx
   - src/styles/library.css
-status: todo
+status: audited
 dependencies: []
 blocked_reason: null
 ---
@@ -57,15 +57,26 @@ Walk each axis completely. Each ☐ must become either ✅ "no issues" or a popu
 
 ### Design
 
-(fill in)
+- No issues found. `.lib-head`, `.lib-head h3`, and `.lib-head p` rules in `src/styles/library.css:19-25` are a verbatim port of the prototype block (padding `16px 18px 12px`, bottom border, flex `space-between`, h3 `15px`/`600`/`-0.01em`/`margin:0`, p `2px 0 0`/`12px`/`var(--ink-3)`).
 
 ### Structure
 
-(fill in)
+**Issue [CRITICAL]**: Close `icon-btn` is missing entirely from `.lib-head`.
+- Prototype: `.lib-head` ends with `<button className="icon-btn" onClick={onClose}><Icon name="x" size={16}/></button>` (chunk lines 25-31), making it a two-child flex row where `justify-content: space-between` pushes the title block left and the close button right.
+- v2: `src/components/dashboard/ComponentPalette.tsx:37-42` renders only the inner `<div>` with `<h3>` + `<p>`; there is no close button, no `<Icon name="x" size={16}/>`, and no `onClose` prop on `ComponentPaletteProps` (`src/components/dashboard/ComponentPalette.tsx:17-20`).
+- Impact: Users cannot dismiss the Widget Library rail from inside the rail. The `space-between` layout also degenerates to a single flex child pinned left, so the visual balance of the header is wrong even when the rail is open.
 
 ### Content
 
-(fill in)
+**Issue [MAJOR]**: Subtitle copy does not match prototype.
+- Prototype: `<p>Drag onto the dashboard, or click to add.</p>` (chunk line 28) — communicates both affordances (drag + click).
+- v2: `src/components/dashboard/ComponentPalette.tsx:40` renders `<p>Click a widget to add it to the dashboard.</p>`.
+- Impact: Users are told only about the click path, hiding the drag-to-place affordance the prototype advertises. Wording and length also differ, changing the visual rhythm of the header.
+
+**Issue [CRITICAL]**: Close-button `x` icon at `size={16}` is absent.
+- Prototype: `<Icon name="x" size={16}/>` inside the `.icon-btn` (chunk line 30).
+- v2: No `Icon` import and no `x` glyph rendered anywhere in `ComponentPalette.tsx`.
+- Impact: The `x` affordance that signals "this panel is closable" is not present, compounding the structural gap above. (Tracked here under Content for the icon name/size mismatch; the missing element itself is covered by the Structure CRITICAL.)
 
 ## Resolution
 
