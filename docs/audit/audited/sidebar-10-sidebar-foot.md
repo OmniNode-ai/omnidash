@@ -10,7 +10,7 @@ prototype_css:
 v2_targets:
   - src/components/frame/Sidebar.tsx
   - src/styles/sidebar.css
-status: todo
+status: audited
 dependencies: []
 blocked_reason: null
 ---
@@ -61,15 +61,26 @@ Walk each axis completely. Each ☐ must become either ✅ "no issues" or a popu
 
 ### Design
 
-(fill in)
+- No issues found.
+
+Notes (not defects): The prototype sets `fontFamily:"'IBM Plex Mono', monospace"` as an inline style on the version span. V2 achieves the same font via `className="mono"` (defined in `src/styles/globals.css:154` as `font-family: "IBM Plex Mono", ui-monospace, Menlo, monospace; font-feature-settings: "tnum", "ss01";`). Per audit policy, a class-based equivalent that produces the same visual result is a MINOR stylistic divergence only — not a CRITICAL missing style. The `marginLeft: 'auto'` and `fontSize: '11px'` inline styles match. All `.sidebar-foot`, `.sidebar-foot .dot`, and `@keyframes pulse` rules in `src/styles/sidebar.css:116-127` match the prototype verbatim.
 
 ### Structure
 
-(fill in)
+- No issues found.
+
+Note (not a defect): V2 adds `aria-label="pulse dot"` to the `.dot` span (`src/components/frame/Sidebar.tsx:220`). Prototype has no attribute. This is an accessibility enhancement, not a structural defect. Three spans in order (`.dot`, status text span, version span) and `</aside>` close are correct.
 
 ### Content
 
-(fill in)
+**Issue [MAJOR]** — Version string mismatch.
+
+- **Location**: `src/components/frame/Sidebar.tsx:223`
+- **Prototype**: `<span …>v2.14</span>` (chunk frontmatter `src/app.jsx:413-418`, verbatim block line 28)
+- **V2**: `<span className="mono" style={{ marginLeft: 'auto', fontSize: '11px' }}>v2.15</span>`
+- **Expected**: Text content must read exactly `v2.14` to match the prototype.
+- **Actual**: Text content reads `v2.15`.
+- **Fix**: Change the version span's text from `v2.15` to `v2.14` in `Sidebar.tsx:223`.
 
 ## Resolution
 
