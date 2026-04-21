@@ -10,7 +10,7 @@ prototype_css:
 v2_targets:
   - src/pages/DashboardView.tsx
   - src/styles/dashboard.css
-status: audited
+status: done
 dependencies:
   - dashboard-01
 blocked_reason: null
@@ -65,4 +65,4 @@ Walk each axis completely. Each check must become either "no issues" or a popula
 
 ## Resolution
 
-(filled by orchestrator after fixes are applied; one-line pointer to the fix commit)
+Fixed in commit `a3668f3` — feat(ui): port dashboard header + meta row per prototype [OMN-48].
