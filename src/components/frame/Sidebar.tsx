@@ -9,7 +9,7 @@
 //   - "Platform Eng" workspace chip is static (dynamic workspaces are out of scope).
 //   - OMN-47: CSS ported verbatim to src/styles/sidebar.css; TSX rewritten to use prototype class names.
 
-import { useState, useRef, useEffect } from 'react';
+import { useState } from 'react';
 import { ChevronDown, Plus, MoreHorizontal } from 'lucide-react';
 import {
   DropdownMenu,
@@ -58,22 +58,35 @@ interface RenameInputProps {
 }
 
 function RenameInput({ initialValue, onCommit, onCancel }: RenameInputProps) {
-  const ref = useRef<HTMLInputElement>(null);
-
-  useEffect(() => {
-    ref.current?.select();
-  }, []);
-
   return (
     <input
-      ref={ref}
-      autoFocus
+      ref={(el) => {
+        if (el) {
+          // Defer focus+select until after Radix's focus-management settles,
+          // otherwise the menu's onCloseAutoFocus sequence can clobber us.
+          requestAnimationFrame(() => {
+            el.focus();
+            el.select();
+          });
+        }
+      }}
       defaultValue={initialValue}
       onClick={(e) => e.stopPropagation()}
       onBlur={(e) => onCommit(e.target.value)}
       onKeyDown={(e) => {
         if (e.key === 'Enter') e.currentTarget.blur();
         if (e.key === 'Escape') onCancel();
+      }}
+      style={{
+        background: 'oklch(28% 0.01 260)',
+        border: '1px solid var(--brand)',
+        borderRadius: 4,
+        outline: 'none',
+        color: 'var(--sidebar-ink)',
+        font: 'inherit',
+        width: '100%',
+        padding: '2px 6px',
+        margin: '-2px -6px',
       }}
     />
   );
@@ -183,7 +196,12 @@ export function Sidebar() {
                     <MoreHorizontal size={14} />
                   </button>
                 </DropdownMenuTrigger>
-                <DropdownMenuContent side="right" align="start" className="w-36">
+                <DropdownMenuContent
+                  side="right"
+                  align="start"
+                  className="w-36"
+                  onCloseAutoFocus={(e) => e.preventDefault()}
+                >
                   <DropdownMenuItem
                     onSelect={() => setRenamingId(d.id)}
                   >

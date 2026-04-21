@@ -162,7 +162,7 @@ export function DashboardView() {
                 if (e.key === 'Enter') e.currentTarget.blur();
                 if (e.key === 'Escape') setEditingTitle(false);
               }}
-              style={{ fontSize: 22, fontWeight: 600 }}
+              style={{ fontSize: 22, fontWeight: 600, color: 'var(--ink)', background: 'transparent' }}
             />
           ) : (
             <div
