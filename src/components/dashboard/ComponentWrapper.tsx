@@ -5,7 +5,8 @@
 // Deviations from source:
 //   - OMN-47 follow-up: was using vanilla-extract ComponentWrapper.css; now uses prototype
 //     semantic class names (.widget / .widget-head / .widget-body) from dashboard.css.
-//   - Widget "Live" badge rendered unconditionally (prototype ties it to real-time state).
+//   - Widget "Live" badge now gated on `isLive` prop (OMN-48 fix: prototype ties it to
+//     real-time streams like requests/logs/regions, not every widget).
 //   - Grip handle and kebab menu omitted at this layer — OMN-44 handles drag; menu lives
 //     in the outer shell (ComponentCell) and will be wired in a later pass.
 //   - Loading / error / empty states render inside the widget body; kept minimal for now.
@@ -18,6 +19,7 @@ interface ComponentWrapperProps {
   isEmpty?: boolean;
   emptyMessage?: string;
   emptyHint?: string;
+  isLive?: boolean;
   children: ReactNode;
 }
 
@@ -28,6 +30,7 @@ export function ComponentWrapper({
   isEmpty,
   emptyMessage,
   emptyHint,
+  isLive = false,
   children,
 }: ComponentWrapperProps) {
   return (
@@ -36,7 +39,7 @@ export function ComponentWrapper({
         <div className="widget-head-left">
           <span className="widget-title">{title}</span>
         </div>
-        <span className="widget-live">Live</span>
+        {isLive && <span className="widget-live">Live</span>}
       </div>
       <div className="widget-body">
         {isLoading && <div style={{ color: 'var(--ink-3)', fontSize: 13 }}>Loading...</div>}
