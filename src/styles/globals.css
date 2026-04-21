@@ -15,6 +15,14 @@
  *     additions and have no prototype analog.
  */
 
+/* ===== ALL @import STATEMENTS MUST PRECEDE EVERYTHING ELSE =====
+ * Per CSS spec, @import must come before every other at-rule except
+ * @charset and empty @layer. Vite's CSS pipeline enforces this strictly.
+ * Both the @fontsource font imports and the verbatim prototype CSS port
+ * must land above the @tailwind directives.
+ */
+
+/* Font imports */
 @import "@fontsource/ibm-plex-sans/400.css";
 @import "@fontsource/ibm-plex-sans/500.css";
 @import "@fontsource/ibm-plex-sans/600.css";
@@ -22,6 +30,16 @@
 @import "@fontsource/ibm-plex-mono/400.css";
 @import "@fontsource/ibm-plex-mono/500.css";
 @import "@fontsource/ibm-plex-mono/600.css";
+
+/* Verbatim prototype CSS port (OMN-47). Each file starts with a SOURCE
+ * comment pointing at the exact prototype line range. Load order matches
+ * the prototype's stylesheet ordering. */
+@import "./buttons.css";
+@import "./sidebar.css";
+@import "./topbar.css";
+@import "./dashboard.css";
+@import "./library.css";
+@import "./modals.css";
 
 @tailwind base;
 @tailwind components;
@@ -84,6 +102,11 @@
     --input: var(--line);
     --ring: var(--brand);
     --ring-offset-background: var(--bg);
+
+    /* ===== STATUS TOKEN ALIASES (OMN-47) ===== */
+    --color-healthy: var(--status-ok);
+    --color-warning: var(--status-warn);
+    --color-destructive: var(--status-bad);
   }
 
   [data-theme="dark"] {
@@ -115,16 +138,26 @@
     --row-gap: 12px;
   }
 
-  /* Body defaults */
-  html, body, #root {
-    height: 100%;
-  }
+  /* Base resets and layout — OmniDash.html:73-93 verbatim */
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; height: 100%; }
   body {
-    margin: 0;
     font-family: "IBM Plex Sans", system-ui, -apple-system, Helvetica, Arial, sans-serif;
-    background: var(--bg);
     color: var(--ink);
+    background: var(--bg);
     font-size: 14px;
     line-height: 1.45;
+    -webkit-font-smoothing: antialiased;
+    overflow: hidden;
   }
+
+  .mono { font-family: "IBM Plex Mono", ui-monospace, Menlo, monospace; font-feature-settings: "tnum", "ss01"; }
+
+  button { font: inherit; color: inherit; background: none; border: 0; cursor: pointer; padding: 0; }
+  input, select, textarea { font: inherit; color: inherit; }
+
+  #root { height: 100vh; display: flex; flex-direction: column; }
+
+  /* ---------- APP CHROME ---------- */
+  .app { display: grid; grid-template-columns: 240px 1fr; height: 100vh; }
 }

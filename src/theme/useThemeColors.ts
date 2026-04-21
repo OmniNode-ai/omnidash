@@ -17,12 +17,25 @@ interface ThemeColors {
   chart: string[];
 }
 
-function hslToHex(hsl: string): string {
-  const parts = hsl.trim().split(/\s+/);
-  if (parts.length < 3) return '#888888';
+/**
+ * Parse a CSS color value to a hex string where possible.
+ * oklch(...) and other modern color functions are passed through as-is
+ * since browsers can resolve them directly and hslToHex cannot handle them.
+ */
+function parseColor(value: string): string {
+  const trimmed = value.trim();
+  if (!trimmed) return '#888888';
+  // Pass through any non-HSL color function (oklch, rgb, hsl with parens, etc.)
+  if (/^oklch|^rgb|^hsl\s*\(|^color\(|^lab\(|^lch\(/.test(trimmed)) {
+    return trimmed;
+  }
+  // Attempt to parse bare "H S% L%" HSL shorthand (shadcn token style)
+  const parts = trimmed.split(/\s+/);
+  if (parts.length < 3) return trimmed;
   const h = parseFloat(parts[0]);
   const s = parseFloat(parts[1]) / 100;
   const l = parseFloat(parts[2]) / 100;
+  if (isNaN(h) || isNaN(s) || isNaN(l)) return trimmed;
 
   const a = s * Math.min(l, 1 - l);
   const f = (n: number) => {
@@ -35,8 +48,8 @@ function hslToHex(hsl: string): string {
 
 function readToken(name: string): string {
   if (typeof document === 'undefined') return '#888888';
-  const value = getComputedStyle(document.body).getPropertyValue(`--${name}`).trim();
-  return value ? hslToHex(value) : '#888888';
+  const value = getComputedStyle(document.documentElement).getPropertyValue(`--${name}`).trim();
+  return value ? parseColor(value) : '#888888';
 }
 
 function readAllColors(): ThemeColors {
@@ -73,7 +86,7 @@ export function useThemeColors(): ThemeColors {
     const observer = new MutationObserver(() => {
       setColors(readAllColors());
     });
-    observer.observe(document.body, { attributes: true, attributeFilter: ['class'] });
+    observer.observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme', 'data-density', 'class'] });
     return () => observer.disconnect();
   }, []);
 

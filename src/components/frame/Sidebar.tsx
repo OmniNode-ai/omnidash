@@ -2,13 +2,12 @@
 //   React:   src/app.jsx:339-422
 //   Styling: OmniDash.html:93-240
 // Deviations from source:
-//   - Replaced vanilla CSS classes with Tailwind utility classes (prototype uses CSS-in-HTML).
-//   - Exotic `oklch` values expressed as Tailwind arbitrary-value syntax.
 //   - `...` kebab menu implemented via shadcn DropdownMenu instead of a custom positioned div.
 //   - Rename in-place handled via local `renamingId` state rather than lifted to App.
 //   - Wired to Zustand store (dashboards, activeDashboardId, createDashboard, renameDashboard,
 //     deleteDashboard, setActiveDashboardById) instead of receiving all as props.
 //   - "Platform Eng" workspace chip is static (dynamic workspaces are out of scope).
+//   - OMN-47: CSS ported verbatim to src/styles/sidebar.css; TSX rewritten to use prototype class names.
 
 import { useState, useRef, useEffect } from 'react';
 import { ChevronDown, Plus, MoreHorizontal } from 'lucide-react';
@@ -20,12 +19,11 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { useFrameStore } from '@/store/store';
-import { cn } from '@/lib/utils';
 
 /** Inline OmniDash brand-mark SVG from prototype (visual fidelity preferred over lucide Hexagon). */
 function BrandMark() {
   return (
-    <svg className="w-7 h-7 flex-shrink-0" viewBox="0 0 32 32" fill="none">
+    <svg className="brand-mark" viewBox="0 0 32 32" fill="none">
       <defs>
         <linearGradient id="bm-g" x1="0" y1="0" x2="32" y2="32" gradientUnits="userSpaceOnUse">
           <stop offset="0%" stopColor="oklch(70% 0.14 230)" />
@@ -77,7 +75,6 @@ function RenameInput({ initialValue, onCommit, onCancel }: RenameInputProps) {
         if (e.key === 'Enter') e.currentTarget.blur();
         if (e.key === 'Escape') onCancel();
       }}
-      className="bg-transparent border-0 outline-0 text-sidebar-ink font-[inherit] text-[13px] w-full leading-tight"
     />
   );
 }
@@ -99,73 +96,57 @@ export function Sidebar() {
   };
 
   const handleRenameCancel = (id: string) => {
-    // If name is still "Untitled Dashboard" and we cancel, keep it
     setRenamingId(null);
     void id;
   };
 
   return (
-    <aside className="bg-sidebar text-sidebar-ink flex flex-col border-r border-sidebar-line h-full">
+    <aside className="sidebar">
       {/* Brand block */}
-      <div className="px-4 py-[18px] pb-3.5 border-b border-sidebar-line flex items-center gap-2.5">
+      <div className="brand">
         <BrandMark />
-        <div className="font-semibold text-[15px] tracking-tight flex flex-col leading-none">
-          <span className="text-sidebar-ink">
-            Omni<em className="not-italic text-[var(--accent)]">Dash</em>
+        <div className="brand-name">
+          <span className="primary">
+            Omni<em>Dash</em>
           </span>
-          <span className="font-mono text-[9px] font-medium tracking-[0.1em] uppercase text-sidebar-ink-2 opacity-70 mt-0.5">
-            an omninode product
-          </span>
+          <span className="parent">an omninode product</span>
         </div>
       </div>
 
       {/* Workspace chip */}
-      <div className="px-3.5 py-3 border-b border-sidebar-line text-xs text-sidebar-ink-2">
-        <div className="text-[10px] uppercase tracking-[0.08em]">Workspace</div>
-        <div className="mt-1.5 flex items-center justify-between bg-[oklch(26%_0.01_260)] text-sidebar-ink px-2.5 py-2 rounded-md cursor-pointer border border-sidebar-line transition-colors hover:bg-[oklch(30%_0.01_260)]">
-          <span className="font-medium text-[13px]">Platform Eng</span>
+      <div className="workspace">
+        <div>Workspace</div>
+        <div className="workspace-chip">
+          <span className="ws-name">Platform Eng</span>
           <ChevronDown size={14} />
         </div>
       </div>
 
       {/* Section header */}
-      <div className="px-2.5 pt-3.5 pb-2 flex items-center justify-between">
-        <span className="text-[11px] uppercase tracking-[0.09em] text-sidebar-ink-2 font-semibold px-1.5">
-          Dashboards
-        </span>
+      <div className="nav-section">
+        <span className="nav-section-title">Dashboards</span>
         <button
           aria-label="New dashboard"
           onClick={handleCreate}
-          className="w-[22px] h-[22px] rounded-full grid place-items-center bg-sidebar-ink text-sidebar transition-all duration-150 hover:bg-[var(--accent)] hover:scale-[1.08] active:scale-95"
+          className="nav-new"
         >
           <Plus size={14} strokeWidth={2.4} />
         </button>
       </div>
 
       {/* Dashboard list */}
-      <div className="px-2 flex-1 overflow-y-auto flex flex-col gap-px">
+      <div className="dash-list">
         {dashboards.map((d, i) => {
           const isActive = d.id === activeDashboardId;
           return (
             <div
               key={d.id}
               data-testid={`dash-item-${d.id}`}
-              className={cn(
-                'grid items-center gap-2 px-2.5 py-[7px] text-[13px] cursor-pointer rounded-none transition-colors duration-150',
-                'grid-cols-[14px_1fr_20px]',
-                isActive
-                  ? 'text-sidebar-ink font-medium bg-transparent'
-                  : 'text-sidebar-ink-2 hover:text-sidebar-ink hover:bg-[oklch(22%_0.01_260)]',
-              )}
+              className={`dash-item${isActive ? ' active' : ''}`}
               onClick={() => setActiveDashboardById(d.id)}
             >
               {/* Marker */}
-              <span
-                className={cn(
-                  'font-mono text-[12px] text-center leading-none',
-                  isActive ? 'text-[var(--accent)] opacity-100' : 'text-sidebar-ink-2 opacity-45',
-                )}
-              >
+              <span className="dash-marker">
                 {isActive ? '▸' : String(i + 1).padStart(2, '0')}
               </span>
 
@@ -178,7 +159,7 @@ export function Sidebar() {
                 />
               ) : (
                 <span
-                  className="truncate"
+                  className="dash-name"
                   onDoubleClick={(e) => {
                     e.stopPropagation();
                     setRenamingId(d.id);
@@ -194,13 +175,7 @@ export function Sidebar() {
                   <button
                     aria-label={`Dashboard options for ${d.name}`}
                     onClick={(e) => e.stopPropagation()}
-                    className={cn(
-                      'w-5 h-5 rounded grid place-items-center transition-all duration-150',
-                      'opacity-0 group-hover:opacity-100',
-                      isActive ? 'opacity-100' : 'opacity-0',
-                      'hover:opacity-100 hover:bg-[oklch(36%_0.01_260)]',
-                      '[.dash-item:hover_&]:opacity-100',
-                    )}
+                    className="dash-kebab"
                   >
                     <MoreHorizontal size={14} />
                   </button>
@@ -225,12 +200,12 @@ export function Sidebar() {
         })}
 
         {dashboards.length === 0 && (
-          <div className="px-3 py-5 text-[12px] text-sidebar-ink-2 text-center leading-relaxed">
+          <div style={{ padding: '20px 12px', fontSize: '12px', color: 'var(--sidebar-ink-2)', textAlign: 'center', lineHeight: 1.6 }}>
             No dashboards yet.
             <br />
             <button
               onClick={handleCreate}
-              className="text-[var(--accent)] underline mt-1"
+              style={{ color: 'var(--brand)', textDecoration: 'underline', marginTop: '4px' }}
             >
               Create your first one →
             </button>
@@ -239,14 +214,13 @@ export function Sidebar() {
       </div>
 
       {/* Sidebar foot */}
-      <div className="px-3.5 py-2.5 border-t border-sidebar-line flex items-center gap-2.5 text-[12px] text-sidebar-ink-2">
+      <div className="sidebar-foot">
         <span
+          className="dot"
           aria-label="pulse dot"
-          className="w-2 h-2 rounded-full bg-status-ok animate-pulse"
-          style={{ boxShadow: '0 0 0 3px oklch(70% 0.15 145 / 0.15)' }}
         />
         <span>All systems normal</span>
-        <span className="ml-auto font-mono text-[11px]">v2.14</span>
+        <span className="mono" style={{ marginLeft: 'auto', fontSize: '11px' }}>v2.15</span>
       </div>
     </aside>
   );

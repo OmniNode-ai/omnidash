@@ -1,0 +1,127 @@
+/* SOURCE: OmniDash.html:95-217 — verbatim port. Do not hand-edit; re-port if the prototype updates. */
+/* NOTE: var(--accent) in prototype = var(--brand) in v2 (globals.css renamed --accent* → --brand* to free
+   the --accent namespace for shadcn. Substitutions applied here to preserve visual fidelity.) */
+
+/* Sidebar */
+.sidebar {
+  background: var(--sidebar);
+  color: var(--sidebar-ink);
+  display: flex;
+  flex-direction: column;
+  border-right: 1px solid var(--sidebar-line);
+}
+.brand {
+  padding: 18px 16px 14px;
+  border-bottom: 1px solid var(--sidebar-line);
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.brand-mark { width: 28px; height: 28px; flex-shrink: 0; }
+.brand-name {
+  font-weight: 600; font-size: 15px; letter-spacing: -0.005em;
+  display: flex; flex-direction: column; line-height: 1.1;
+}
+.brand-name .primary { color: var(--sidebar-ink); }
+.brand-name .primary em { font-style: normal; color: var(--brand); }
+.brand-name .parent {
+  font-family: "IBM Plex Mono", monospace;
+  font-size: 9px; font-weight: 500;
+  letter-spacing: 0.1em; text-transform: uppercase;
+  color: var(--sidebar-ink-2); opacity: 0.7;
+  margin-top: 2px;
+}
+
+.workspace {
+  padding: 12px 14px;
+  border-bottom: 1px solid var(--sidebar-line);
+  font-size: 12px;
+  color: var(--sidebar-ink-2);
+}
+.workspace-chip {
+  margin-top: 6px;
+  display: flex; align-items: center; justify-content: space-between;
+  background: oklch(26% 0.01 260); color: var(--sidebar-ink);
+  padding: 8px 10px; border-radius: 6px;
+  cursor: pointer; border: 1px solid var(--sidebar-line);
+  transition: background 0.15s;
+}
+.workspace-chip:hover { background: oklch(30% 0.01 260); }
+.workspace-chip .ws-name { font-weight: 500; font-size: 13px; }
+
+.nav-section {
+  padding: 14px 10px 8px;
+  display: flex; align-items: center; justify-content: space-between;
+}
+.nav-section-title {
+  font-size: 11px; text-transform: uppercase; letter-spacing: 0.09em;
+  color: var(--sidebar-ink-2); font-weight: 600; padding: 0 6px;
+}
+.nav-new {
+  width: 22px; height: 22px; border-radius: 50%;
+  display: grid; place-items: center;
+  background: var(--sidebar-ink);
+  color: var(--sidebar);
+  transition: background 0.15s, transform 0.1s;
+}
+.nav-new:hover { background: var(--brand); color: oklch(15% 0.05 var(--accent-h)); transform: scale(1.08); }
+.nav-new:active { transform: scale(0.96); }
+
+.dash-list {
+  padding: 0 8px;
+  flex: 1;
+  overflow-y: auto;
+  display: flex; flex-direction: column; gap: 1px;
+}
+.dash-item {
+  display: grid;
+  grid-template-columns: 14px 1fr 20px;
+  align-items: center;
+  gap: 8px;
+  padding: 7px 10px;
+  color: var(--sidebar-ink-2);
+  font-size: 13px;
+  cursor: pointer;
+  position: relative;
+  border-radius: 0;
+  transition: color 0.12s, background 0.12s;
+}
+.dash-item:hover { color: var(--sidebar-ink); background: oklch(22% 0.01 260); }
+.dash-item.active {
+  color: var(--sidebar-ink);
+  background: transparent;
+  font-weight: 500;
+}
+.dash-item .dash-marker {
+  font-family: "IBM Plex Mono", monospace;
+  font-size: 12px;
+  color: var(--sidebar-ink-2);
+  opacity: 0.45;
+  text-align: center;
+  line-height: 1;
+}
+.dash-item.active .dash-marker {
+  color: var(--brand);
+  opacity: 1;
+}
+.dash-item .dash-name { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.dash-item .dash-kebab {
+  opacity: 0; width: 20px; height: 20px; border-radius: 4px;
+  display: grid; place-items: center;
+  transition: opacity 0.15s, background 0.15s;
+}
+.dash-item:hover .dash-kebab, .dash-item.active .dash-kebab { opacity: 1; }
+.dash-item .dash-kebab:hover { background: oklch(36% 0.01 260); }
+
+.sidebar-foot {
+  padding: 10px 14px;
+  border-top: 1px solid var(--sidebar-line);
+  display: flex; align-items: center; gap: 10px;
+  font-size: 12px; color: var(--sidebar-ink-2);
+}
+.sidebar-foot .dot {
+  width: 8px; height: 8px; border-radius: 50%; background: var(--status-ok);
+  box-shadow: 0 0 0 3px oklch(70% 0.15 145 / 0.15);
+  animation: pulse 2s ease-in-out infinite;
+}
+@keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: 0.5; } }
