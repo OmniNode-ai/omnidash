@@ -41,12 +41,12 @@ export default function CostTrendPanel({ config }: { config: CostTrendConfig }) 
       xAxis: {
         type: 'category' as const,
         data: dates.map((d) => d.split('T')[0]),
-        axisLabel: { color: colors.muted },
+        axisLabel: { color: colors.mutedForeground },
       },
       yAxis: {
         type: 'value' as const,
         name: 'Cost (USD)',
-        axisLabel: { color: colors.muted, formatter: '${value}' },
+        axisLabel: { color: colors.mutedForeground, formatter: '${value}' },
       },
       series: models.map((model, i) => ({
         name: model,

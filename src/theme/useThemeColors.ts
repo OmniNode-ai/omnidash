@@ -7,7 +7,16 @@ interface ThemeColors {
   foreground: string;
   card: string;
   border: string;
+  /**
+   * A **background** tint (maps to `--muted` → `--panel-2`). Do NOT use as text color.
+   * For low-emphasis text, use `mutedForeground` instead.
+   */
   muted: string;
+  /**
+   * Low-emphasis text color (maps to `--muted-foreground` → `--ink-2`).
+   * Use for secondary labels, timestamps, axis labels, etc.
+   */
+  mutedForeground: string;
   destructive: string;
   status: {
     healthy: string;
@@ -61,6 +70,7 @@ function readAllColors(): ThemeColors {
     card: readToken('card'),
     border: readToken('border'),
     muted: readToken('muted'),
+    mutedForeground: readToken('muted-foreground'),
     destructive: readToken('destructive'),
     status: {
       healthy: readToken('status-healthy'),
