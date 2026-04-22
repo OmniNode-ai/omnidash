@@ -60,9 +60,11 @@ Several widgets (e.g. cost-trend-panel) have an outer card containing a
 single inner card. Flatten when the widget body is a single element.
 
 ### 9. Grid reflow — masonry layout
-**Status**: ⬜ pending
-Current grid uses fixed rows; taller widgets leave dead gaps under their
-shorter siblings. Target: column-wise masonry flow.
+**Status**: ✅ done (commit pending)
+Switched `.grid` from `display: grid; grid-template-columns: 1fr 1fr` to
+`columns: 2; column-gap: var(--row-gap)`. `.widget` gets
+`break-inside: avoid` + `margin-bottom: var(--row-gap)`. Shorter widgets
+now stack under their column-mates instead of leaving dead space.
 
 Broken current behavior:
 ```
