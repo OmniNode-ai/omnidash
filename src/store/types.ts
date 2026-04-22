@@ -37,6 +37,8 @@ export interface DashboardSlice {
   createDashboard: (name: string) => DashboardDefinition;
   renameDashboard: (id: string, newName: string) => void;
   deleteDashboard: (id: string) => void;
+  /** Clone a dashboard (all layout items copied, fresh id, "(copy)" name suffix). Returns the copy or null if source is missing. */
+  duplicateDashboard: (id: string) => DashboardDefinition | null;
   setActiveDashboardById: (id: string) => void;
 
   // Legacy setter — kept for backward compat with OMN-38/41 tests
@@ -45,6 +47,8 @@ export interface DashboardSlice {
   // Layout-level actions
   addComponentToLayout: (componentName: string, componentVersion: string, defaultSize: GridSize) => void;
   removeComponentFromLayout: (itemId: string) => void;
+  /** Clone a placement (same component + config, new id). New copy appended to layout. */
+  duplicateLayoutItem: (itemId: string) => void;
   updateLayout: (layout: DashboardLayoutItem[]) => void;
   updateComponentConfig: (itemId: string, config: Record<string, unknown>) => void;
 }

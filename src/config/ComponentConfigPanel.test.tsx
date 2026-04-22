@@ -49,9 +49,9 @@ function wrapper({ children }: { children: ReactNode }) {
   return <RegistryProvider manifest={manifest}>{children}</RegistryProvider>;
 }
 
-function renderPanel(placementId = PLACEMENT_ID) {
+function renderPanel(placementId: string | null = PLACEMENT_ID) {
   return render(
-    <ComponentConfigPanel placementId={placementId} />,
+    <ComponentConfigPanel placementId={placementId} onOpenChange={() => {}} />,
     { wrapper }
   );
 }

@@ -2,23 +2,23 @@
 //   React:   src/app.jsx:339-422
 //   Styling: OmniDash.html:93-240
 // Deviations from source:
-//   - `...` kebab menu implemented via shadcn DropdownMenu instead of a custom positioned div.
 //   - Rename in-place handled via local `renamingId` state rather than lifted to App.
 //   - Wired to Zustand store (dashboards, activeDashboardId, createDashboard, renameDashboard,
 //     deleteDashboard, setActiveDashboardById) instead of receiving all as props.
 //   - OMN-47: CSS ported verbatim to src/styles/sidebar.css; TSX rewritten to use prototype class names.
 //   - Post-OMN-48: "Platform Eng" workspace chip removed — it was static markup with no behavior
 //     wired, and the product has no workspaces concept yet.
+//   - Widget-menu infrastructure (PositionedMenu) is also used here for the dashboard kebab,
+//     keeping the menu pattern consistent with the prototype across the whole app.
 
 import { useEffect, useLayoutEffect, useRef, useState } from 'react';
-import { Plus, MoreHorizontal } from 'lucide-react';
+import { Edit, Copy, Share2, Plus, MoreHorizontal, Trash2 } from 'lucide-react';
 import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu';
+  PositionedMenu,
+  MenuItem,
+  MenuSeparator,
+  usePositionedMenu,
+} from '@/components/ui/positioned-menu';
 import { useFrameStore } from '@/store/store';
 
 /** Inline OmniDash brand-mark SVG from prototype (visual fidelity preferred over lucide Hexagon). */
@@ -109,9 +109,56 @@ function RenameInput({ initialValue, onCommit, onCancel }: RenameInputProps) {
   );
 }
 
+interface DashboardKebabProps {
+  dashboardName: string;
+  onRename: () => void;
+  onDuplicate: () => void;
+  onDelete: () => void;
+}
+
+/** Per-row kebab menu. Hook state must be per-row so each menu positions from its own trigger. */
+function DashboardKebab({ dashboardName, onRename, onDuplicate, onDelete }: DashboardKebabProps) {
+  const menu = usePositionedMenu();
+  return (
+    <>
+      <button
+        aria-label={`Dashboard options for ${dashboardName}`}
+        className="dash-kebab"
+        onClick={menu.open}
+      >
+        <MoreHorizontal size={14} />
+      </button>
+      {menu.isOpen && (
+        <PositionedMenu anchor={menu.anchor} onClose={menu.close} placement="right-start">
+          <MenuItem onSelect={menu.select(onRename)}>
+            <Edit size={14} /> Rename
+          </MenuItem>
+          <MenuItem onSelect={menu.select(onDuplicate)}>
+            <Copy size={14} /> Duplicate
+          </MenuItem>
+          <MenuItem onSelect={menu.select(() => { /* Share link — no-op until wired */ })}>
+            <Share2 size={14} /> Share Link
+          </MenuItem>
+          <MenuSeparator />
+          <MenuItem variant="danger" onSelect={menu.select(onDelete)}>
+            <Trash2 size={14} /> Delete
+          </MenuItem>
+        </PositionedMenu>
+      )}
+    </>
+  );
+}
+
 export function Sidebar() {
-  const { dashboards, activeDashboardId, createDashboard, renameDashboard, deleteDashboard, setActiveDashboardById } =
-    useFrameStore();
+  const {
+    dashboards,
+    activeDashboardId,
+    createDashboard,
+    renameDashboard,
+    deleteDashboard,
+    duplicateDashboard,
+    setActiveDashboardById,
+  } = useFrameStore();
 
   const [renamingId, setRenamingId] = useState<string | null>(null);
 
@@ -191,44 +238,13 @@ export function Sidebar() {
                 </span>
               )}
 
-              {/* Kebab menu */}
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <button
-                    aria-label={`Dashboard options for ${d.name}`}
-                    onClick={(e) => e.stopPropagation()}
-                    className="dash-kebab"
-                  >
-                    <MoreHorizontal size={14} />
-                  </button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent
-                  side="right"
-                  align="start"
-                  className="w-36"
-                  onCloseAutoFocus={(e) => e.preventDefault()}
-                >
-                  <DropdownMenuItem
-                    onSelect={() => {
-                      // Defer enter-rename-mode until after Radix's close sequence
-                      // finishes. Radix's focus-scope teardown dispatches a blur on
-                      // the previously-focused element during the current tick;
-                      // mounting the input after that tick means our focus+select in
-                      // useLayoutEffect isn't interrupted.
-                      queueMicrotask(() => setRenamingId(d.id));
-                    }}
-                  >
-                    Rename
-                  </DropdownMenuItem>
-                  <DropdownMenuSeparator />
-                  <DropdownMenuItem
-                    onSelect={() => deleteDashboard(d.id)}
-                    className="text-destructive focus:text-destructive"
-                  >
-                    Delete
-                  </DropdownMenuItem>
-                </DropdownMenuContent>
-              </DropdownMenu>
+              {/* Kebab menu (PositionedMenu — prototype pattern) */}
+              <DashboardKebab
+                dashboardName={d.name}
+                onRename={() => setRenamingId(d.id)}
+                onDuplicate={() => duplicateDashboard(d.id)}
+                onDelete={() => deleteDashboard(d.id)}
+              />
             </div>
           );
         })}

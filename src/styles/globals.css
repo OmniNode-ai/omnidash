@@ -156,7 +156,10 @@
   button { font: inherit; color: inherit; background: none; border: 0; cursor: pointer; padding: 0; }
   input, select, textarea { font: inherit; color: inherit; }
 
-  #root { height: 100vh; display: flex; flex-direction: column; }
+  /* Scoped to div so it doesn't collide with @rjsf/core's <fieldset id="root">
+     (rjsf's default id for the root schema group). Without the tag qualifier,
+     the rjsf fieldset inherits height:100vh and overflows the modal. */
+  div#root { height: 100vh; display: flex; flex-direction: column; }
 
   /* ---------- APP CHROME ---------- */
   .app { display: grid; grid-template-columns: 240px 1fr; height: 100vh; }

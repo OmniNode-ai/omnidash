@@ -14,3 +14,7 @@ src/**/*.js
 src/**/*.test.js
 shared/**/*.js
 shared/**/*.test.js
+
+# Prototype design files — captured locally, large, not committed.
+# reference/README.md is tracked as a breadcrumb to where the files came from.
+reference/claude-design/

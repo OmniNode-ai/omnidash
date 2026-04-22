@@ -12,6 +12,7 @@ import { createContext, useContext } from 'react';
  */
 export interface WidgetChromeHandlers {
   onConfigure?: () => void;
+  onDuplicate?: () => void;
   onDelete?: () => void;
 }
 

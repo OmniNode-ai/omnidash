@@ -25,7 +25,6 @@ export function DashboardGrid({
       {layout.map((item) => (
         <div
           key={item.i}
-          data-testid="grid-item"
           className={`bg-panel rounded-lg border border-line shadow-sm overflow-hidden${
             editMode
               ? ' cursor-pointer ring-2 ring-transparent hover:ring-[var(--accent)] transition-all'
@@ -36,6 +35,7 @@ export function DashboardGrid({
           }
         >
           <div className="p-4">
+            {/* ComponentCell provides data-testid="grid-item" on both success (via ComponentWrapper) and fallback paths. */}
             <ComponentCell
               componentName={item.componentName}
               config={item.config}

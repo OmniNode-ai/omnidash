@@ -6,9 +6,11 @@ interface ComponentCellProps {
   config: Record<string, unknown>;
   component?: LazyExoticComponent<ComponentType<any>>;
   emptyMessage?: string;
-  /** Called when the widget's kebab-menu "Configure" item is selected. */
+  /** Called when the widget's kebab-menu "Configure Widget" item is selected. */
   onConfigure?: () => void;
-  /** Called when the widget's kebab-menu "Delete" item is selected. */
+  /** Called when the widget's kebab-menu "Duplicate" item is selected. */
+  onDuplicate?: () => void;
+  /** Called when the widget's kebab-menu "Remove Widget" item is selected. */
   onDelete?: () => void;
 }
 
@@ -17,31 +19,38 @@ export function ComponentCell({
   config,
   component: LazyComponent,
   onConfigure,
+  onDuplicate,
   onDelete,
 }: ComponentCellProps) {
-  const chrome = useMemo<WidgetChromeHandlers>(() => ({ onConfigure, onDelete }), [onConfigure, onDelete]);
+  const chrome = useMemo<WidgetChromeHandlers>(
+    () => ({ onConfigure, onDuplicate, onDelete }),
+    [onConfigure, onDuplicate, onDelete],
+  );
 
   if (!LazyComponent) {
     // Fallback path keeps its wrapper — it has no ComponentWrapper to provide
     // widget chrome, so this div is what the user sees.
     return (
-      <div data-testid="grid-cell" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '2rem', opacity: 0.5, border: '1px solid var(--line)', borderRadius: 'var(--radius-lg)' }}>
+      <div
+        data-testid="grid-item"
+        style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '2rem', opacity: 0.5, border: '1px solid var(--line)', borderRadius: 'var(--radius-lg)' }}
+      >
         <span>{componentName} — not available</span>
       </div>
     );
   }
 
-  // Normal path: no extra wrapper div. The LazyComponent renders its own
-  // <ComponentWrapper> which produces a <div class="widget">. That widget
-  // div becomes the direct child of .dash-grid in the normal flow — important
-  // for CSS columns layout, where an intervening wrapper with
-  // `overflow: hidden` creates a new block formatting context that
-  // prevents the child from flowing into columns properly.
+  // Normal path: a thin wrapper with `display: contents` holds the grid-item
+  // testid and the chrome context provider without introducing a visible DOM
+  // box between .dash-grid and .widget (which would create a new block
+  // formatting context and break CSS columns flow).
   return (
     <WidgetChromeContext.Provider value={chrome}>
-      <Suspense fallback={<div style={{ padding: '1rem', color: 'var(--ink-3)' }}>Loading {componentName}…</div>}>
-        <LazyComponent config={config} />
-      </Suspense>
+      <div data-testid="grid-item" style={{ display: 'contents' }}>
+        <Suspense fallback={<div style={{ padding: '1rem', color: 'var(--ink-3)' }}>Loading {componentName}…</div>}>
+          <LazyComponent config={config} />
+        </Suspense>
+      </div>
     </WidgetChromeContext.Provider>
   );
 }

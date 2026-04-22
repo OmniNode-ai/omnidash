@@ -59,3 +59,127 @@
 }
 .check:hover { background: var(--panel-2); }
 .check input { accent-color: var(--brand); }
+
+/* ---------- RJSF FORM STYLING ----------
+   The prototype hand-authors its form fields with .field / .check. Our v2 widgets
+   publish JSON schemas and we render them with @rjsf/core, which emits its own
+   class names (`.form-group`, `.rjsf-field`, `.control-label`, `.form-control`,
+   `.checkbox`). Mirror the prototype's .field/.check look onto rjsf's classes
+   so the two form styles are visually identical. Scoped to .modal-body so the
+   rules don't leak to any other rjsf form elsewhere in the app.
+
+   Also resets <fieldset>'s user-agent defaults (border, padding, legacy
+   `min-inline-size: min-content`) so the field content doesn't overflow the
+   modal's max-height scroll container. */
+
+.modal-body form { margin: 0; }
+
+.modal-body fieldset {
+  border: 0;
+  padding: 0;
+  margin: 0;
+  min-width: 0;
+}
+
+/* rjsf's `.form-group`/`.rjsf-field` is analogous to the prototype's `.field`. */
+.modal-body .form-group,
+.modal-body .rjsf-field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-bottom: 14px;
+}
+
+.modal-body .control-label,
+.modal-body .form-group > label {
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--ink-2);
+}
+
+.modal-body .form-control,
+.modal-body input[type="text"],
+.modal-body input[type="number"],
+.modal-body input[type="email"],
+.modal-body input[type="url"],
+.modal-body select,
+.modal-body textarea {
+  padding: 8px 10px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: var(--panel);
+  color: var(--ink);
+  font: inherit;
+  font-size: 13px;
+  outline: none;
+  transition: border-color 0.15s;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.modal-body .form-control:focus,
+.modal-body input:focus,
+.modal-body select:focus,
+.modal-body textarea:focus {
+  border-color: var(--brand);
+}
+
+/* Boolean fields: rjsf wraps a checkbox row as
+   <div class="form-group rjsf-field-boolean">
+     <div class="checkbox"><label><input type="checkbox"/><span>Label</span></label></div>
+   </div>
+   We want the outer .form-group to have no extra column gap, and the inner
+   .checkbox to look like the prototype's .check row. */
+.modal-body .rjsf-field-boolean {
+  margin-bottom: 8px;
+}
+.modal-body .rjsf-field-boolean > .checkbox {
+  margin: 0;
+}
+.modal-body .checkbox {
+  display: block;
+}
+.modal-body .checkbox label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 8px;
+  border-radius: 5px;
+  cursor: pointer;
+  font-size: 13px;
+  color: var(--ink);
+  margin: 0;
+  width: 100%;
+}
+.modal-body .checkbox label:hover {
+  background: var(--panel-2);
+}
+.modal-body .checkbox input {
+  accent-color: var(--brand);
+  width: auto;
+  padding: 0;
+  border: 0;
+  margin: 0;
+}
+
+/* Validation errors. rjsf surfaces these via .text-danger and sometimes a
+   .panel-danger summary block at the top. Style the inline message, hide the
+   separate summary box since liveValidate already highlights fields. */
+.modal-body .text-danger,
+.modal-body .rjsf-errors {
+  color: var(--status-bad);
+  font-size: 12px;
+  margin-top: 4px;
+}
+.modal-body .panel-danger,
+.modal-body .rjsf-error-summary {
+  display: none;
+}
+
+/* Field description / help text. */
+.modal-body .field-description,
+.modal-body .help-block {
+  font-size: 11px;
+  color: var(--ink-3);
+  margin-top: 2px;
+}
