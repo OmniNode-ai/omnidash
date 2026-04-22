@@ -144,11 +144,15 @@ the dash-meta row.
 When the library is open, pressing Escape should close it.
 
 ### 22. Light/dark theme working
-**Status**: ⬜ pending
-Theme toggle should flip CSS tokens end-to-end across every surface.
-(Investigation note: earlier work suggested the ThemeProvider may not be
-setting `data-theme` on the html element correctly, so the
-`[data-theme="dark"]` selectors in globals.css would not match. Verify.)
+**Status**: ✅ done (commit pending)
+Root cause confirmed as suspected: ThemeProvider was setting
+`theme-dark`/`theme-light` classes on `<body>`, which drives the legacy
+vanilla-extract theme, but NOT the `data-theme` attribute on `<html>`
+that activates the OKLCH tokens in globals.css used by all
+prototype-ported chrome. Theme toggle was therefore a no-op for the
+widget/sidebar/topbar surfaces. Fix: set both in parallel. Also added
+a synchronous `data-theme="dark"` bootstrap in index.html to prevent
+the light-mode flash before React hydrates.
 
 ### 23. Remove user info top-right
 **Status**: ✅ done (commit `e32827c`)
