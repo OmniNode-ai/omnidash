@@ -81,7 +81,21 @@ const DropdownMenuItem = React.forwardRef<
   <DropdownMenuPrimitive.Item
     ref={ref}
     className={cn(
-      "relative flex cursor-default select-none items-center gap-2 rounded-sm px-2 py-1.5 text-sm outline-none transition-colors focus:bg-accent focus:text-accent-foreground data-[disabled]:pointer-events-none data-[disabled]:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0",
+      // Base + hover/focus styling. Uses var(--panel-2) (the prototype's
+      // convention — see dashboard.css `.menu-item:hover`) rather than
+      // `--accent`, because `--accent` in light mode resolves to a 92%-light
+      // oklch green that's imperceptible on the panel's 100% white background.
+      // `--panel-2` is a clear gray tint that reads in both themes.
+      //
+      // Triple-covered: hover:, focus:, and data-[highlighted]: — Radix tracks
+      // highlight via focus() + data-highlighted attribute, but pointer hover
+      // still fires :hover, and having all three catches every path.
+      "relative flex cursor-pointer select-none items-center gap-2 rounded-sm px-2 py-1.5 text-sm outline-none transition-colors",
+      "hover:bg-[var(--panel-2)]",
+      "focus:bg-[var(--panel-2)]",
+      "data-[highlighted]:bg-[var(--panel-2)]",
+      "data-[disabled]:pointer-events-none data-[disabled]:opacity-50",
+      "[&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0",
       inset && "pl-8",
       className
     )}
