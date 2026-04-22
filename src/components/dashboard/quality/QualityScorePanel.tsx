@@ -51,11 +51,13 @@ export default function QualityScorePanel({ config: _config }: { config: Record<
       emptyHint="Quality scores appear after pattern evaluations are recorded"
     >
       {data && !isEmpty && (
-        <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
+        <div>
           <div style={{ fontSize: '0.75rem', color: colors.muted, marginBottom: '0.5rem' }}>
             Mean Score: <strong>{data.meanScore.toFixed(2)}</strong> · {data.totalMeasurements.toLocaleString()} measurements
           </div>
-          {chartOption && <ReactECharts option={chartOption} style={{ flex: 1, minHeight: '150px' }} notMerge />}
+          {/* Fixed 320px to match CostTrendPanel. The prior flex:1 + minHeight:150px
+              inside an unconstrained height:100% flex column resolved to ~7px. */}
+          {chartOption && <ReactECharts option={chartOption} style={{ height: '320px' }} notMerge />}
         </div>
       )}
     </ComponentWrapper>

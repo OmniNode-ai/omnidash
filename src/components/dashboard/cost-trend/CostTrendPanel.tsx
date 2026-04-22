@@ -72,7 +72,10 @@ export default function CostTrendPanel({ config }: { config: CostTrendConfig }) 
       emptyHint="Cost data appears after LLM calls are tracked"
     >
       {chartOption && (
-        <ReactECharts option={chartOption} style={{ height: '100%', minHeight: '200px' }} notMerge />
+        // Fixed 320px height. height:100% resolved to nothing because the
+        // .widget-body ancestor has no height constraint; the chart fell
+        // back to the 200px minHeight. Users wanted roughly 2× that.
+        <ReactECharts option={chartOption} style={{ height: '320px' }} notMerge />
       )}
     </ComponentWrapper>
   );
