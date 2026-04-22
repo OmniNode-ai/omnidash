@@ -144,13 +144,6 @@ export function DashboardView() {
     [registry],
   );
 
-  const handleSelectPlacement = useCallback(
-    (placementId: string) => {
-      setSelectedPlacementId(placementId);
-    },
-    [setSelectedPlacementId],
-  );
-
   if (!activeDashboard) {
     return (
       <div className="dash-body" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
@@ -259,32 +252,20 @@ export function DashboardView() {
           {activeDashboard.layout.length === 0 ? (
             <EmptyState onAdd={editMode ? () => {} : handleEdit} />
           ) : (
-            <div className="grid">
+            <div className="dash-grid">
               {activeDashboard.layout.map((item) => (
-                <div
+                // ComponentCell provides widget chrome via ComponentWrapper.
+                // No outer .widget wrapper here — that created a redundant
+                // double card (#8). Click-to-configure removed too (#14) —
+                // Configure lives in the widget's kebab menu instead.
+                <ComponentCell
                   key={item.i}
-                  data-testid="grid-item"
-                  className="widget"
-                  onClick={
-                    editMode && handleSelectPlacement
-                      ? () => handleSelectPlacement(item.i)
-                      : undefined
-                  }
-                  style={editMode ? { cursor: 'pointer' } : undefined}
-                >
-                  <div className="widget-head">
-                    <div className="widget-head-left">
-                      <span className="widget-title">{item.componentName}</span>
-                    </div>
-                  </div>
-                  <div className="widget-body">
-                    <ComponentCell
-                      componentName={item.componentName}
-                      config={item.config}
-                      component={resolveComponent(item.componentName)}
-                    />
-                  </div>
-                </div>
+                  componentName={item.componentName}
+                  config={item.config}
+                  component={resolveComponent(item.componentName)}
+                  onConfigure={() => setSelectedPlacementId(item.i)}
+                  onDelete={() => removeComponentFromLayout(item.i)}
+                />
               ))}
             </div>
           )}
