@@ -36,11 +36,15 @@
   padding: 6px 24px 40px;
   position: relative;
 }
+/* Masonry-style reflow via CSS columns. A 2-column grid with varying
+   widget heights leaves dead vertical space under shorter widgets when
+   a row-mate is tall. `columns: 2` flows items top-to-bottom within each
+   column instead, so shorter items stack under each other naturally.
+   `column-gap` matches the previous grid gap; `break-inside: avoid` on
+   `.widget` keeps each card intact within one column. */
 .grid {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: var(--row-gap);
-  align-items: start;
+  columns: 2;
+  column-gap: var(--row-gap);
 }
 
 .widget {
@@ -50,6 +54,12 @@
   overflow: hidden;
   box-shadow: var(--shadow-sm);
   position: relative;
+  /* `break-inside: avoid` keeps each widget intact within a single column
+     instead of being split at a column boundary. `margin-bottom` reproduces
+     the former grid gap spacing between column-mates. CSS columns flows
+     block children naturally, so no width/display overrides needed. */
+  break-inside: avoid;
+  margin-bottom: var(--row-gap);
   transition: box-shadow 0.2s, border-color 0.15s, transform 0.2s, opacity 0.2s;
   animation: widget-in 0.35s cubic-bezier(.2,.8,.2,1);
 }
