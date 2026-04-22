@@ -26,9 +26,13 @@ Dropped the hardcoded "Platform Eng" Workspace chip + its CSS rules + the
 ChevronDown import. Test updated to assert the chip is absent.
 
 ### 3. Page cannot scroll below the fold
-**Status**: ⬜ pending
-Content below the viewport is not reachable. Likely a `.dash-body` or
-main-content overflow rule that's blocking scroll. Needs diagnosis.
+**Status**: ✅ done (commit pending)
+Root cause: `.main` (right column in FrameLayout) had no height constraint,
+so children exceeding 100vh pushed `.main` past the viewport, and
+`body { overflow: hidden }` clipped them unreachably. Fixed by adding
+`height: 100%; min-height: 0; overflow: hidden` to `.main` so it's pinned
+to its 100vh `.app` grid cell. Internal scroll happens inside `.dash-body`
+as intended.
 
 ### 4. Widget text contrast — audit all
 **Status**: ⬜ pending
@@ -173,6 +177,16 @@ Removed the entire `.sidebar-foot` div (dot + status text + version).
 Rolled into the sidebar-foot removal. Also moved `@keyframes pulse` from
 sidebar.css to globals.css so it remains available for the widget-live
 badge animation.
+
+### 29. Sidebar kebab menu items — hover highlight + pointer cursor
+**Status**: ⬜ pending
+Added during session on 2026-04-21. The kebab menu for sidebar dashboard
+items (Rename, Delete) has no visible hover state and the cursor stays
+as a text/arrow. Add hover highlight and `cursor: pointer`. If the
+project already uses a shadcn DropdownMenuItem component with hover
+styling elsewhere, prefer tweaking that component to applying per-use
+styling here. If not, a one-off style tweak is fine — do not extract a
+new component unless it has meaningful reuse.
 
 ### 28. Hamburger icon on the breadcrumb
 **Status**: ✅ done (commit `e32827c`)

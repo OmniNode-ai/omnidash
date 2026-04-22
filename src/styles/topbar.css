@@ -2,8 +2,16 @@
 /* NOTE: var(--accent*) in prototype = var(--brand*) in v2 (globals.css renamed --accent* → --brand*).
    Substitutions applied here to preserve visual fidelity. */
 
-/* Main */
-.main { display: flex; flex-direction: column; min-width: 0; background: var(--bg); }
+/* Main. height:100% + min-height:0 + overflow:hidden constrain .main to its
+   .app grid cell (100vh). Without these, inner content pushes .main past the
+   viewport and body { overflow:hidden } in globals.css clips the bottom
+   unreachably. Internal scroll lives in .dash-body. */
+.main {
+  display: flex; flex-direction: column;
+  min-width: 0; min-height: 0;
+  height: 100%; overflow: hidden;
+  background: var(--bg);
+}
 
 .topbar {
   height: 52px; flex-shrink: 0;
