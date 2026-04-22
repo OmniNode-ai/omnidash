@@ -35,7 +35,7 @@ function DimensionCard({ dim }: { dim: ReadinessDimension }) {
     }}>
       <div style={{ fontSize: '0.6875rem', fontWeight: 700, textTransform: 'uppercase', color: STATUS_COLORS[dim.status] }}>{dim.status}</div>
       <div style={{ fontSize: '0.8125rem', fontWeight: 600, color: colors.foreground }}>{dim.name}</div>
-      <div style={{ fontSize: '0.75rem', color: colors.muted }}>{dim.detail}</div>
+      <div style={{ fontSize: '0.75rem', color: colors.mutedForeground }}>{dim.detail}</div>
     </div>
   );
 }
@@ -61,9 +61,9 @@ export default function ReadinessGate({ config: _config }: { config: Record<stri
       {data && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-            <span style={{ fontSize: '0.75rem', color: colors.muted }}>Overall:</span>
+            <span style={{ fontSize: '0.75rem', color: colors.foreground }}>Overall:</span>
             <span style={{ fontSize: '0.875rem', fontWeight: 700, color: STATUS_COLORS[data.overallStatus] }}>{data.overallStatus}</span>
-            <span style={{ fontSize: '0.6875rem', color: colors.muted, marginLeft: 'auto' }}>
+            <span style={{ fontSize: '0.6875rem', color: colors.mutedForeground, marginLeft: 'auto' }}>
               Checked {new Date(data.lastCheckedAt).toLocaleTimeString()}
             </span>
           </div>

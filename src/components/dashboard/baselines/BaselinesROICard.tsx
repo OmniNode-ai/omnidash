@@ -21,7 +21,7 @@ function DeltaMetric({ label, value, unit }: { label: string; value: number; uni
       <div style={{ fontSize: '1.25rem', fontWeight: 700, color: improved ? colors.status.healthy : colors.status.warning }}>
         {value > 0 ? '+' : ''}{formatted}{unit ?? ''}
       </div>
-      <div style={{ fontSize: '0.6875rem', color: colors.muted }}>{label}</div>
+      <div style={{ fontSize: '0.6875rem', color: colors.foreground }}>{label}</div>
     </div>
   );
 }
@@ -53,12 +53,12 @@ export default function BaselinesROICard({ config: _config }: { config: Record<s
             <DeltaMetric label="Retry Delta" value={data.retryDelta} />
           </div>
           <div style={{ borderTop: `1px solid hsl(${colors.border})`, paddingTop: '0.75rem' }}>
-            <div style={{ fontSize: '0.6875rem', color: colors.muted, marginBottom: '0.5rem' }}>Recommendations</div>
+            <div style={{ fontSize: '0.6875rem', color: colors.foreground, marginBottom: '0.5rem' }}>Recommendations</div>
             <div style={{ display: 'flex', gap: '1rem' }}>
               {Object.entries(data.recommendations).map(([k, v]) => (
                 <div key={k}>
                   <div style={{ fontSize: '1rem', fontWeight: 700 }}>{v}</div>
-                  <div style={{ fontSize: '0.6875rem', color: colors.muted, textTransform: 'capitalize' }}>{k}</div>
+                  <div style={{ fontSize: '0.6875rem', color: colors.foreground, textTransform: 'capitalize' }}>{k}</div>
                 </div>
               ))}
             </div>

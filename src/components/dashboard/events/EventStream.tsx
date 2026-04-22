@@ -136,9 +136,9 @@ export default function EventStream({ config }: { config: EventStreamConfig }) {
               fontSize: '0.75rem',
             }}
           >
-            <span style={{ color: colors.muted }}>{new Date(ev.timestamp).toLocaleTimeString()}</span>
+            <span style={{ color: colors.mutedForeground }}>{new Date(ev.timestamp).toLocaleTimeString()}</span>
             <span style={{ color: colors.foreground, fontFamily: 'monospace' }}>{ev.event_type}</span>
-            <span style={{ color: colors.muted }}>{ev.source}</span>
+            <span style={{ color: colors.mutedForeground }}>{ev.source}</span>
           </div>
         ))}
       </div>
