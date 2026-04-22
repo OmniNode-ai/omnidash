@@ -28,6 +28,13 @@ interface ComponentPaletteProps {
   components: RegisteredComponent[];
   onAddComponent: (name: string) => void;
   onClose?: () => void;
+  /**
+   * Whether the rail is visible. When false, the rail slides off-screen via
+   * CSS transform. The component stays mounted so the slide transition runs
+   * on both open and close, and so internal state (search query) persists
+   * across toggles.
+   */
+  isOpen?: boolean;
 }
 
 const CATEGORY_ICONS: Record<ComponentCategory, ComponentType<{ size?: number; strokeWidth?: number }>> = {
@@ -38,7 +45,7 @@ const CATEGORY_ICONS: Record<ComponentCategory, ComponentType<{ size?: number; s
   stream: Radio,
 };
 
-export function ComponentPalette({ components, onAddComponent, onClose }: ComponentPaletteProps) {
+export function ComponentPalette({ components, onAddComponent, onClose, isOpen = true }: ComponentPaletteProps) {
   const [q, setQ] = useState('');
 
   const filtered = useMemo(() => {
@@ -64,7 +71,7 @@ export function ComponentPalette({ components, onAddComponent, onClose }: Compon
   }, [filtered]);
 
   return (
-    <aside className="library open">
+    <aside className={`library${isOpen ? ' open' : ''}`} aria-hidden={!isOpen}>
       <div className="lib-head">
         <div>
           <h3>Widget Library</h3>
