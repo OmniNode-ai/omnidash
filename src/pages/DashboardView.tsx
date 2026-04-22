@@ -64,6 +64,31 @@ export function DashboardView() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  // Close the widget library when the user switches dashboards. We compare to
+  // the previous id (via ref) to skip the initial mount — otherwise a fresh
+  // load would always force editMode off.
+  const prevDashboardIdRef = useRef<string | undefined>(undefined);
+  useEffect(() => {
+    const currentId = activeDashboard?.id;
+    if (prevDashboardIdRef.current !== undefined && prevDashboardIdRef.current !== currentId) {
+      setEditMode(false);
+    }
+    prevDashboardIdRef.current = currentId;
+  }, [activeDashboard?.id, setEditMode]);
+
+  // Escape key closes the widget library when it's open.
+  useEffect(() => {
+    if (!editMode) return;
+    const handler = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        e.preventDefault();
+        setEditMode(false);
+      }
+    };
+    window.addEventListener('keydown', handler);
+    return () => window.removeEventListener('keydown', handler);
+  }, [editMode, setEditMode]);
+
   const handleEdit = useCallback(() => {
     if (activeDashboard) {
       snapshotRef.current = [...activeDashboard.layout];
@@ -280,16 +305,17 @@ export function DashboardView() {
         )}
       </div>
 
-      {/* Widget library rail — position:fixed via library.css. Close keeps changes
-          (handleSave) rather than reverting, so widgets added while the rail is open
-          don't vanish on dismissal. */}
-      {editMode && (
-        <ComponentPalette
-          components={registry.getAvailableComponents()}
-          onAddComponent={handleAddComponent}
-          onClose={handleSave}
-        />
-      )}
+      {/* Widget library rail — position:fixed via library.css. Always rendered so
+          the open/close slide transition (transform 0.3s) runs in both directions;
+          `isOpen` toggles the `.library.open` class that drives the transform.
+          Close keeps changes (handleSave) rather than reverting, so widgets added
+          while the rail is open don't vanish on dismissal. */}
+      <ComponentPalette
+        components={registry.getAvailableComponents()}
+        onAddComponent={handleAddComponent}
+        onClose={handleSave}
+        isOpen={editMode}
+      />
     </>
   );
 }
