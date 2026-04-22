@@ -16,6 +16,8 @@ export interface ConfigSlice {
 
   setSelectedPlacementId: (id: string | null) => void;
   setDraftConfig: (placementId: string, config: Record<string, unknown>, hasErrors: boolean) => void;
+  /** Commit a placement's draft config to its persisted layout item, then clear the draft. */
+  commitDraft: (placementId: string) => void;
   discardDraft: (placementId: string) => void;
   clearAllDrafts: () => void;
   /** True if any placement has validation errors (used to gate Save). */
@@ -35,6 +37,27 @@ export const createConfigSlice: StateCreator<FrameStore, [], [], ConfigSlice> = 
         [placementId]: { draftConfig: config, hasValidationErrors: hasErrors },
       },
     })),
+
+  commitDraft: (placementId) =>
+    set((state) => {
+      const draft = state.placementDrafts[placementId];
+      if (!draft) return state;
+      if (!state.activeDashboard) return state;
+      const nextLayout = state.activeDashboard.layout.map((item) =>
+        item.i === placementId ? { ...item, config: draft.draftConfig } : item,
+      );
+      const activeDashboard = {
+        ...state.activeDashboard,
+        layout: nextLayout,
+        updatedAt: new Date().toISOString(),
+      };
+      const dashboards = state.dashboards.map((d) =>
+        d.id === activeDashboard.id ? activeDashboard : d,
+      );
+      const nextDrafts = { ...state.placementDrafts };
+      delete nextDrafts[placementId];
+      return { activeDashboard, dashboards, placementDrafts: nextDrafts };
+    }),
 
   discardDraft: (placementId) =>
     set((state) => {

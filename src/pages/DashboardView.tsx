@@ -36,6 +36,7 @@ export function DashboardView() {
     addComponentToLayout,
     updateLayout,
     removeComponentFromLayout,
+    duplicateLayoutItem,
     setActiveDashboard,
     renameDashboard,
     selectedPlacementId,
@@ -154,9 +155,6 @@ export function DashboardView() {
     );
   }
 
-  // Suppress unused warning — removeComponentFromLayout retained in interface but no delete UI yet
-  void removeComponentFromLayout;
-
   const saveBlocked = editMode && anyPlacementHasValidationErrors();
 
   return (
@@ -264,6 +262,7 @@ export function DashboardView() {
                   config={item.config}
                   component={resolveComponent(item.componentName)}
                   onConfigure={() => setSelectedPlacementId(item.i)}
+                  onDuplicate={() => duplicateLayoutItem(item.i)}
                   onDelete={() => removeComponentFromLayout(item.i)}
                 />
               ))}
@@ -271,20 +270,18 @@ export function DashboardView() {
           )}
         </div>
 
-        {/* Inline config panel (v2-specific — sits between grid and the fixed library rail). */}
-        {editMode && selectedPlacementId && (
-          <div
-            style={{
-              width: 280,
-              flexShrink: 0,
-              borderLeft: '1px solid var(--line)',
-              overflowY: 'auto',
-            }}
-          >
-            <ComponentConfigPanel placementId={selectedPlacementId} />
-          </div>
-        )}
       </div>
+
+      {/* Config panel as a floating modal — opens when a widget's kebab "Configure"
+          is selected (sets selectedPlacementId). Rendered at top level so it overlays
+          whatever is beneath instead of sharing the content-flex-row with the grid
+          and widget library. */}
+      <ComponentConfigPanel
+        placementId={selectedPlacementId}
+        onOpenChange={(open) => {
+          if (!open) setSelectedPlacementId(null);
+        }}
+      />
 
       {/* Widget library rail — position:fixed via library.css. Always rendered so
           the open/close slide transition (transform 0.3s) runs in both directions;

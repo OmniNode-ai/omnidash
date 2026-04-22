@@ -1,65 +1,125 @@
+// SOURCE: Claude Design prototype (app.jsx:704-775, OmniDash.html:524-580).
+// Markup follows the prototype's .modal-backdrop / .modal structure verbatim
+// so future design iterations from Claude Design can be integrated with
+// minimal translation. CSS for .modal-* / .field / .check lives in
+// src/styles/modals.css.
+//
+// Deviations from the prototype:
+//   - Form body uses @rjsf/core rendering from the widget's JSON configSchema
+//     rather than hand-authored fields. The prototype's widgets have static,
+//     known field sets; v2 widgets publish arbitrary schemas, so schema-driven
+//     rendering is the correct fit.
+//   - Save button commits this placement's draft via the store's commitDraft
+//     action; the prototype calls onSave(newValues) — same effect, different
+//     wiring.
 import Form from '@rjsf/core';
 import validator from '@rjsf/validator-ajv8';
 import type { IChangeEvent } from '@rjsf/core';
+import { useEffect } from 'react';
+import { X } from 'lucide-react';
 import { useFrameStore } from '@/store/store';
 import { useRegistry } from '@/registry/RegistryProvider';
-import * as s from './ComponentConfigPanel.css';
 
 interface ComponentConfigPanelProps {
-  placementId: string;
+  /** Placement id currently being configured; null when the dialog is closed. */
+  placementId: string | null;
+  onOpenChange: (open: boolean) => void;
 }
 
-export function ComponentConfigPanel({ placementId }: ComponentConfigPanelProps) {
+export function ComponentConfigPanel({ placementId, onOpenChange }: ComponentConfigPanelProps) {
   const registry = useRegistry();
 
   const placement = useFrameStore((s) =>
-    s.activeDashboard?.layout.find((l) => l.i === placementId) ?? null
+    placementId ? (s.activeDashboard?.layout.find((l) => l.i === placementId) ?? null) : null,
   );
-  const draft = useFrameStore((s) => s.placementDrafts[placementId]);
+  const draft = useFrameStore((s) => (placementId ? s.placementDrafts[placementId] : undefined));
   const setDraftConfig = useFrameStore((s) => s.setDraftConfig);
+  const commitDraft = useFrameStore((s) => s.commitDraft);
   const discardDraft = useFrameStore((s) => s.discardDraft);
 
-  if (!placement) return null;
+  const entry = placement ? registry.getComponent(placement.componentName) : null;
+  const open = Boolean(placementId && placement && entry);
 
-  const entry = registry.getComponent(placement.componentName);
-  if (!entry) return null;
+  // Escape dismisses without committing. Outside-click (backdrop) also
+  // dismisses — handled via the backdrop onClick below.
+  useEffect(() => {
+    if (!open) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        e.preventDefault();
+        onOpenChange(false);
+      }
+    };
+    document.addEventListener('keydown', onKey);
+    return () => document.removeEventListener('keydown', onKey);
+  }, [open, onOpenChange]);
 
-  const schema = entry.manifest.configSchema;
+  if (!open || !entry || !placementId) return null;
 
-  // The live formData: prefer the in-memory draft, fall back to persisted config.
-  const formData: Record<string, unknown> = draft?.draftConfig ?? { ...placement.config };
+  const formData: Record<string, unknown> =
+    draft?.draftConfig ?? (placement ? { ...placement.config } : {});
 
   const handleChange = (e: IChangeEvent<Record<string, unknown>>) => {
     const hasErrors = (e.errors?.length ?? 0) > 0;
     setDraftConfig(placementId, e.formData ?? {}, hasErrors);
   };
 
-  const handleDiscard = () => {
+  const handleCancel = () => {
+    // Cancel discards this placement's draft and closes.
     discardDraft(placementId);
+    onOpenChange(false);
   };
 
+  const handleSave = () => {
+    commitDraft(placementId);
+    onOpenChange(false);
+  };
+
+  const hasErrors = draft?.hasValidationErrors ?? false;
+
   return (
-    <div className={s.panel} data-testid="config-panel">
-      <div className={s.header}>
-        <span className={s.title}>{entry.manifest.displayName} Config</span>
-        <button
-          type="button"
-          className={s.discardButton}
-          aria-label="Discard config changes"
-          onClick={handleDiscard}
-        >
-          Discard
-        </button>
+    <div className="modal-backdrop" onClick={() => onOpenChange(false)}>
+      <div className="modal" onClick={(e) => e.stopPropagation()} data-testid="config-panel">
+        <div className="modal-head">
+          <h2>Configure · {entry.manifest.displayName}</h2>
+          <button
+            type="button"
+            className="icon-btn"
+            onClick={() => onOpenChange(false)}
+            aria-label="Close"
+          >
+            <X size={16} />
+          </button>
+        </div>
+        <div className="modal-body">
+          <Form
+            schema={entry.manifest.configSchema}
+            formData={formData}
+            validator={validator}
+            onChange={handleChange}
+            uiSchema={{ 'ui:submitButtonOptions': { norender: true } }}
+            liveValidate
+          />
+        </div>
+        <div className="modal-foot">
+          <button
+            type="button"
+            className="btn ghost"
+            onClick={handleCancel}
+            aria-label="Discard config changes"
+          >
+            Cancel
+          </button>
+          <button
+            type="button"
+            className="btn primary"
+            onClick={handleSave}
+            disabled={hasErrors}
+          >
+            Save changes
+          </button>
+        </div>
       </div>
-      <Form
-        schema={schema}
-        formData={formData}
-        validator={validator}
-        onChange={handleChange}
-        // Suppress the submit button — Save is handled at the DashboardBuilder level.
-        uiSchema={{ 'ui:submitButtonOptions': { norender: true } }}
-        liveValidate
-      />
     </div>
   );
 }

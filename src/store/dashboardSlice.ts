@@ -113,6 +113,33 @@ export const createDashboardSlice: StateCreator<FrameStore, [], [], DashboardSli
     });
   },
 
+  duplicateDashboard: (id: string) => {
+    let duplicated: DashboardDefinition | null = null;
+    set((state) => {
+      const source = state.dashboards.find((d) => d.id === id);
+      if (!source) return state;
+      const copy: DashboardDefinition = {
+        ...source,
+        id: `dash-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
+        name: `${source.name} (copy)`,
+        // Deep-copy layout so edits to the duplicate don't mutate the original.
+        layout: JSON.parse(JSON.stringify(source.layout)),
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      };
+      duplicated = copy;
+      const dashboards = [...state.dashboards, copy];
+      persistList(dashboards);
+      persistActiveId(copy.id);
+      return {
+        dashboards,
+        activeDashboardId: copy.id,
+        activeDashboard: copy,
+      };
+    });
+    return duplicated;
+  },
+
   setActiveDashboardById: (id: string) => {
     set((state) => {
       persistActiveId(id);
@@ -177,6 +204,29 @@ export const createDashboardSlice: StateCreator<FrameStore, [], [], DashboardSli
       const activeDashboard: DashboardDefinition = {
         ...state.activeDashboard,
         layout: state.activeDashboard.layout.filter((l) => l.i !== itemId),
+        updatedAt: new Date().toISOString(),
+      };
+      const dashboards = state.dashboards.map((d) =>
+        d.id === activeDashboard.id ? activeDashboard : d,
+      );
+      return { activeDashboard, dashboards };
+    }),
+
+  duplicateLayoutItem: (itemId: string) =>
+    set((state) => {
+      if (!state.activeDashboard) return state;
+      const source = state.activeDashboard.layout.find((l) => l.i === itemId);
+      if (!source) return state;
+      itemCounter++;
+      const copy: DashboardLayoutItem = {
+        ...source,
+        i: `component-${Date.now()}-${itemCounter}`,
+        // Deep-copy config so edits to the duplicate don't mutate the original.
+        config: JSON.parse(JSON.stringify(source.config)),
+      };
+      const activeDashboard: DashboardDefinition = {
+        ...state.activeDashboard,
+        layout: [...state.activeDashboard.layout, copy],
         updatedAt: new Date().toISOString(),
       };
       const dashboards = state.dashboards.map((d) =>
