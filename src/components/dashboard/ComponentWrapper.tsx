@@ -5,12 +5,21 @@
 // Deviations from source:
 //   - OMN-47 follow-up: was using vanilla-extract ComponentWrapper.css; now uses prototype
 //     semantic class names (.widget / .widget-head / .widget-body) from dashboard.css.
-//   - Widget "Live" badge now gated on `isLive` prop (OMN-48 fix: prototype ties it to
-//     real-time streams like requests/logs/regions, not every widget).
-//   - Grip handle and kebab menu omitted at this layer — OMN-44 handles drag; menu lives
-//     in the outer shell (ComponentCell) and will be wired in a later pass.
-//   - Loading / error / empty states render inside the widget body; kept minimal for now.
+//   - Widget "Live" badge gated on `isLive` prop (prototype ties it to real-time streams
+//     like requests/logs/regions, not every widget).
+//   - Post-OMN-48 #14: kebab menu (MoreVertical) renders in the widget head when
+//     `WidgetChromeContext` supplies onConfigure/onDelete handlers. Available in both
+//     view and edit modes; click-widget-to-configure is no longer used.
 import type { ReactNode } from 'react';
+import { MoreVertical } from 'lucide-react';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
+import { useWidgetChrome } from './WidgetChromeContext';
 
 interface ComponentWrapperProps {
   title: string;
@@ -33,6 +42,9 @@ export function ComponentWrapper({
   isLive = false,
   children,
 }: ComponentWrapperProps) {
+  const { onConfigure, onDelete } = useWidgetChrome();
+  const hasMenu = Boolean(onConfigure || onDelete);
+
   return (
     <div className="widget">
       <div className="widget-head">
@@ -40,6 +52,39 @@ export function ComponentWrapper({
           <span className="widget-title">{title}</span>
         </div>
         {isLive && <span className="widget-live">Live</span>}
+        {hasMenu && (
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <button
+                className="widget-kebab"
+                aria-label={`${title} options`}
+                type="button"
+                onClick={(e) => e.stopPropagation()}
+              >
+                <MoreVertical size={14} />
+              </button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent
+              side="bottom"
+              align="end"
+              className="w-36"
+              onCloseAutoFocus={(e) => e.preventDefault()}
+            >
+              {onConfigure && (
+                <DropdownMenuItem onSelect={() => onConfigure()}>Configure</DropdownMenuItem>
+              )}
+              {onConfigure && onDelete && <DropdownMenuSeparator />}
+              {onDelete && (
+                <DropdownMenuItem
+                  onSelect={() => onDelete()}
+                  className="text-destructive focus:text-destructive"
+                >
+                  Delete
+                </DropdownMenuItem>
+              )}
+            </DropdownMenuContent>
+          </DropdownMenu>
+        )}
       </div>
       <div className="widget-body">
         {isLoading && <div style={{ color: 'var(--ink-3)', fontSize: 13 }}>Loading...</div>}

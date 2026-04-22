@@ -41,8 +41,13 @@
    a row-mate is tall. `columns: 2` flows items top-to-bottom within each
    column instead, so shorter items stack under each other naturally.
    `column-gap` matches the previous grid gap; `break-inside: avoid` on
-   `.widget` keeps each card intact within one column. */
-.grid {
+   `.widget` keeps each card intact within one column.
+
+   Named .dash-grid (not .grid) because Tailwind generates its own
+   `.grid { display: grid; }` utility in the utilities layer, which
+   loads after this file and would otherwise win on source order —
+   `display: grid` defeats `columns: N`. */
+.dash-grid {
   columns: 2;
   column-gap: var(--row-gap);
 }
