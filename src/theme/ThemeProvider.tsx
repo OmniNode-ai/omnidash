@@ -26,8 +26,27 @@ export function ThemeProvider({ children, defaultTheme = 'dark' }: { children: R
   }, []);
 
   useEffect(() => {
+    // Two parallel theme systems share this state:
+    //
+    //   1. Prototype OKLCH tokens in src/styles/globals.css activate via
+    //      `[data-theme="dark"]` on <html> for the dark override; light
+    //      is the implicit default. We set data-theme on documentElement.
+    //
+    //   2. Vanilla-extract theme tokens (src/theme/themes.css.ts) activate
+    //      via `.theme-dark` / `.theme-light` classes on <body>. These are
+    //      legacy, but still consumed by AgentChatPanel and older components.
+    //
+    // Both must be driven from the same theme state or the two halves of
+    // the app drift apart visually.
+    const html = document.documentElement;
     const body = document.body;
-    // Remove all theme-* classes
+
+    if (theme === 'dark') {
+      html.setAttribute('data-theme', 'dark');
+    } else {
+      html.removeAttribute('data-theme');
+    }
+
     body.className = body.className.replace(/\btheme-\S+/g, '').trim();
     body.classList.add(`theme-${theme}`);
   }, [theme]);
