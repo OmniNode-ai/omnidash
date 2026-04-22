@@ -178,15 +178,26 @@ Rolled into the sidebar-foot removal. Also moved `@keyframes pulse` from
 sidebar.css to globals.css so it remains available for the widget-live
 badge animation.
 
-### 29. Sidebar kebab menu items — hover highlight + pointer cursor
+### 30. Chart colors lack differentiation
 **Status**: ⬜ pending
-Added during session on 2026-04-21. The kebab menu for sidebar dashboard
-items (Rename, Delete) has no visible hover state and the cursor stays
-as a text/arrow. Add hover highlight and `cursor: pointer`. If the
-project already uses a shadcn DropdownMenuItem component with hover
-styling elsewhere, prefer tweaking that component to applying per-use
-styling here. If not, a one-off style tweak is fine — do not extract a
-new component unless it has meaningful reuse.
+Added during session on 2026-04-21. Lines in the Cost Trend chart, bars
+in the Quality Score chart, and pie/bar slices elsewhere render in
+similar colors, making them hard to tell apart. Likely root cause:
+the `--chart-1` through `--chart-7` CSS tokens in `globals.css` are
+either missing, near-identical, or all mapping to a single brand color.
+Investigation first, then expand the palette to distinct hues with
+sufficient separation in both light and dark themes.
+
+### 29. Sidebar kebab menu items — hover highlight + pointer cursor
+**Status**: ✅ done (commit pending)
+Fixed at the component level in `src/components/ui/dropdown-menu.tsx`
+so every DropdownMenu in the app benefits. Two issues: (a) cursor was
+`cursor-default` — changed to `cursor-pointer`; (b) `focus:bg-accent`
+did fire but `--accent` is a near-white OKLCH green that was invisible
+on the white panel. Switched the highlight bg to `--panel-2` (the
+prototype's convention, see `dashboard.css .menu-item:hover`). Covered
+`hover:`, `focus:`, and `data-[highlighted]:` selectors to catch every
+path Radix uses for highlighting.
 
 ### 28. Hamburger icon on the breadcrumb
 **Status**: ✅ done (commit `e32827c`)
