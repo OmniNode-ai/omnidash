@@ -1,12 +1,17 @@
-// 2D stacked-area chart rendered via three.js on an orthographic camera
+// 2D stacked chart rendered via three.js on an orthographic camera
 // whose frustum matches canvas pixel coordinates (top-left origin, y-down).
+// Supports two visual modes on the same StackedSlice data:
+//   - 'area': filled bands (one triangle strip per model) + top-edge
+//             polyline outlines. Good for continuous time-series reading.
+//   - 'bar':  one rectangle per (bucket × visible-model) cell. Reads more
+//             like discrete observations than a trend.
 // Replaces an ECharts-backed implementation whose hover/emphasis model
 // produced intermittent flicker on stacked areas; owning the render loop
 // gives us full control over hover and tooltip behavior.
 //
-// Scope: filled bands + top-edge lines + horizontal grid + axis labels +
-// hover guide + tooltip. No animations, no zoom/pan. Re-renders on
-// size/data/theme changes only — no rAF loop.
+// Common across modes: horizontal grid + axis labels + hover guide +
+// tooltip. Re-renders on size/data/theme/chartType changes only — no
+// rAF loop.
 import { useEffect, useMemo, useRef, useState } from 'react';
 import * as THREE from 'three';
 import { useThemeColors } from '@/theme';
@@ -56,7 +61,9 @@ export interface StackedSlice {
   maxTotal: number;
 }
 
-interface StackedAreaChartProps {
+export type ChartType = 'area' | 'bar';
+
+interface StackedChartProps {
   stacked: StackedSlice;
   /** Full model list — used for stable chart-color indexing independent of visibility. */
   allModels: string[];
@@ -64,6 +71,8 @@ interface StackedAreaChartProps {
   formatBucketTick: (iso: string) => string;
   /** Pixel height of the chart area. Width inherits from parent. */
   height?: number;
+  /** Visual mode. Defaults to 'area'. */
+  chartType?: ChartType;
 }
 
 // ---------- Layout constants ----------
@@ -74,6 +83,10 @@ const MAX_X_TICKS = 6;
 const BAND_OPACITY = 0.55;
 const OUTLINE_OPACITY = 0.9;
 const GRID_OPACITY = 0.22;
+// Bar-mode tuning. A 0.72 fill ratio leaves a readable gap between
+// buckets even when the plot is narrow and the dataset is dense.
+const BAR_FILL_OPACITY = 0.85;
+const BAR_WIDTH_RATIO = 0.72;
 
 // ---------- Scale helpers ----------
 
@@ -189,6 +202,54 @@ function buildBand(
   return new THREE.Mesh(geom, mat);
 }
 
+/**
+ * Build the stacked-rectangle geometry for one model in bar mode.
+ * Each bucket contributes a single rectangle (4 verts / 2 tris) sitting
+ * between the previous model's cumulative total and this model's.
+ * Zero-height cells are skipped via index-buffer omission so we don't
+ * emit degenerate triangles.
+ */
+function buildBars(
+  scales: Scales,
+  stacked: StackedSlice,
+  modelIdx: number,
+  color: THREE.Color,
+  barWidth: number,
+): THREE.Mesh {
+  const N = stacked.buckets.length;
+  const positions = new Float32Array(N * 4 * 3);
+  const indices: number[] = [];
+  const halfW = barWidth / 2;
+  for (let i = 0; i < N; i++) {
+    const cx = scales.xForBucket(i);
+    const bottomCost = modelIdx === 0 ? 0 : stacked.cumulative[i][modelIdx - 1];
+    const topCost = stacked.cumulative[i][modelIdx];
+    const bottomY = scales.yForValue(bottomCost);
+    const topY = scales.yForValue(topCost);
+    const base = i * 4 * 3;
+    // Vertex layout: 0=BL, 1=BR, 2=TR, 3=TL
+    positions[base + 0] = cx - halfW; positions[base + 1] = bottomY; positions[base + 2] = 0;
+    positions[base + 3] = cx + halfW; positions[base + 4] = bottomY; positions[base + 5] = 0;
+    positions[base + 6] = cx + halfW; positions[base + 7] = topY;    positions[base + 8] = 0;
+    positions[base + 9] = cx - halfW; positions[base + 10] = topY;   positions[base + 11] = 0;
+    if (topCost > bottomCost) {
+      const b = i * 4;
+      indices.push(b + 0, b + 1, b + 2, b + 0, b + 2, b + 3);
+    }
+  }
+  const geom = new THREE.BufferGeometry();
+  geom.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+  geom.setIndex(indices);
+  const mat = new THREE.MeshBasicMaterial({
+    color,
+    transparent: true,
+    opacity: BAR_FILL_OPACITY,
+    depthWrite: false,
+    side: THREE.DoubleSide,
+  });
+  return new THREE.Mesh(geom, mat);
+}
+
 function buildOutline(
   scales: Scales,
   stacked: StackedSlice,
@@ -252,9 +313,9 @@ interface HoverInfo {
   pointerClientY: number;
 }
 
-export function StackedAreaChart({
-  stacked, allModels, formatBucketTick, height = 320,
-}: StackedAreaChartProps) {
+export function StackedChart({
+  stacked, allModels, formatBucketTick, height = 320, chartType = 'area',
+}: StackedChartProps) {
   const mountRef = useRef<HTMLDivElement>(null);
   const rendererRef = useRef<THREE.WebGLRenderer | null>(null);
   const sceneRef = useRef<THREE.Scene | null>(null);
@@ -383,21 +444,35 @@ export function StackedAreaChart({
     // Grid first so bands draw on top.
     group.add(buildGrid(scales, yTicks, themeColors.grid));
 
-    // Bands — bottom-first. Color index comes from the stable allModels
-    // list so a model's color doesn't shift when other models toggle
-    // on/off.
-    for (let i = 0; i < stacked.visibleModels.length; i++) {
-      const model = stacked.visibleModels[i];
-      const allIdx = allModels.indexOf(model);
-      const color = themeColors.bandColors[allIdx];
-      group.add(buildBand(scales, stacked, i, color));
-      group.add(buildOutline(scales, stacked, i, color));
+    // Bands / bars — bottom-first. Color index comes from the stable
+    // allModels list so a model's color doesn't shift when other models
+    // toggle on/off.
+    if (chartType === 'bar') {
+      // Bar width: divide the plot into one cell per bucket, keep a
+      // gap so bars read as discrete. Floor to ≥2px so very narrow
+      // widgets still render a visible sliver instead of collapsing.
+      const cellWidth = scales.plotWidth / Math.max(1, stacked.buckets.length);
+      const barWidth = Math.max(2, cellWidth * BAR_WIDTH_RATIO);
+      for (let i = 0; i < stacked.visibleModels.length; i++) {
+        const model = stacked.visibleModels[i];
+        const allIdx = allModels.indexOf(model);
+        const color = themeColors.bandColors[allIdx];
+        group.add(buildBars(scales, stacked, i, color, barWidth));
+      }
+    } else {
+      for (let i = 0; i < stacked.visibleModels.length; i++) {
+        const model = stacked.visibleModels[i];
+        const allIdx = allModels.indexOf(model);
+        const color = themeColors.bandColors[allIdx];
+        group.add(buildBand(scales, stacked, i, color));
+        group.add(buildOutline(scales, stacked, i, color));
+      }
     }
 
     scene.add(group);
     dataGroupRef.current = group;
     renderer.render(scene, camera);
-  }, [size, stacked, scales, yTicks, themeColors, allModels]);
+  }, [size, stacked, scales, yTicks, themeColors, allModels, chartType]);
 
   // Pointer → bucket index. Handled on the wrapper div so the whole
   // plot area (not just the canvas, which may have different hit

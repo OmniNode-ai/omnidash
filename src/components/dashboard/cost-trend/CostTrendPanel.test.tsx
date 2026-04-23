@@ -8,12 +8,16 @@ const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } });
 // Stub the three.js-backed chart so tests run in jsdom (no WebGL context).
 // The stub exposes the data it would have rendered via data attributes
 // so we can verify the outer component plumbed things through.
-vi.mock('./StackedAreaChart', () => ({
-  StackedAreaChart: ({ stacked }: { stacked: { buckets: string[]; visibleModels: string[] } }) => (
+vi.mock('./StackedChart', () => ({
+  StackedChart: ({ stacked, chartType }: {
+    stacked: { buckets: string[]; visibleModels: string[] };
+    chartType?: string;
+  }) => (
     <div
-      data-testid="stacked-area-chart"
+      data-testid="stacked-chart"
       data-bucket-count={stacked.buckets.length}
       data-visible-models={stacked.visibleModels.length}
+      data-chart-type={chartType ?? 'area'}
     />
   ),
 }));
@@ -59,10 +63,24 @@ describe('CostTrendPanel', () => {
       </QueryClientProvider>
     );
     // Wait for chart to render
-    const chart = await screen.findByTestId('stacked-area-chart');
+    const chart = await screen.findByTestId('stacked-chart');
     expect(chart).toBeInTheDocument();
     expect(chart.getAttribute('data-bucket-count')).toBe('2');
     expect(chart.getAttribute('data-visible-models')).toBe('1');
+    expect(chart.getAttribute('data-chart-type')).toBe('area');
+  });
+
+  it('plumbs chartType=bar from config into the chart component', async () => {
+    mockFetchWithItems([
+      { bucket_time: '2026-04-01', model_name: 'claude-3', total_cost_usd: '12.50', total_tokens: 50000 },
+    ]);
+    render(
+      <QueryClientProvider client={qc}>
+        <CostTrendPanel config={{ granularity: 'day', chartType: 'bar' }} />
+      </QueryClientProvider>
+    );
+    const chart = await screen.findByTestId('stacked-chart');
+    expect(chart.getAttribute('data-chart-type')).toBe('bar');
   });
 
   it('shows empty state when no data', async () => {

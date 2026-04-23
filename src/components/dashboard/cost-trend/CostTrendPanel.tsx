@@ -4,7 +4,7 @@ import { useProjectionQuery } from '@/hooks/useProjectionQuery';
 import { applyTimeRange, resolveTimeRange } from '@/hooks/useTimeRange';
 import { useThemeColors } from '@/theme';
 import { useFrameStore } from '@/store/store';
-import { StackedAreaChart, type StackedSlice } from './StackedAreaChart';
+import { StackedChart, type StackedSlice, type ChartType } from './StackedChart';
 
 interface CostDataPoint {
   bucket_time: string;
@@ -18,6 +18,7 @@ interface CostDataPoint {
 
 interface CostTrendConfig {
   granularity?: 'hour' | 'day';
+  chartType?: ChartType;
   showBudgetLine?: boolean;
 }
 
@@ -68,6 +69,7 @@ function buildStacked(
 
 export default function CostTrendPanel({ config }: { config: CostTrendConfig }) {
   const granularity = config.granularity || 'hour';
+  const chartType: ChartType = config.chartType === 'bar' ? 'bar' : 'area';
   const { data, isLoading, error } = useProjectionQuery<CostDataPoint>({
     topic: 'onex.snapshot.projection.llm_cost.v1',
     queryKey: ['cost-trends', granularity],
@@ -144,10 +146,11 @@ export default function CostTrendPanel({ config }: { config: CostTrendConfig }) 
         <div>
           <div style={{ position: 'relative' }}>
             {stacked ? (
-              <StackedAreaChart
+              <StackedChart
                 stacked={stacked}
                 allModels={allModels}
                 formatBucketTick={formatBucketTick}
+                chartType={chartType}
                 height={320}
               />
             ) : (
