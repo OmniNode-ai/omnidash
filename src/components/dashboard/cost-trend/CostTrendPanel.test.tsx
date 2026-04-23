@@ -5,9 +5,17 @@ import CostTrendPanel from './CostTrendPanel';
 
 const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } });
 
-// Mock ECharts to avoid canvas rendering in jsdom
-vi.mock('echarts-for-react', () => ({
-  default: ({ option }: any) => <div data-testid="echarts-mock">{JSON.stringify(option.series?.[0]?.data?.length ?? 0)}</div>,
+// Stub the three.js-backed chart so tests run in jsdom (no WebGL context).
+// The stub exposes the data it would have rendered via data attributes
+// so we can verify the outer component plumbed things through.
+vi.mock('./StackedAreaChart', () => ({
+  StackedAreaChart: ({ stacked }: { stacked: { buckets: string[]; visibleModels: string[] } }) => (
+    <div
+      data-testid="stacked-area-chart"
+      data-bucket-count={stacked.buckets.length}
+      data-visible-models={stacked.visibleModels.length}
+    />
+  ),
 }));
 
 // Helper: mock FileSnapshotSource fetch pattern — index.json then each file
@@ -51,8 +59,10 @@ describe('CostTrendPanel', () => {
       </QueryClientProvider>
     );
     // Wait for chart to render
-    const chart = await screen.findByTestId('echarts-mock');
+    const chart = await screen.findByTestId('stacked-area-chart');
     expect(chart).toBeInTheDocument();
+    expect(chart.getAttribute('data-bucket-count')).toBe('2');
+    expect(chart.getAttribute('data-visible-models')).toBe('1');
   });
 
   it('shows empty state when no data', async () => {
