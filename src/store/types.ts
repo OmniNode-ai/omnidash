@@ -1,6 +1,13 @@
 export interface TimeRange {
   start: string;
   end: string;
+  /**
+   * Optional human-readable label set when the range came from a preset
+   * (e.g. "Last 24h"). Used by the UI selector for a compact display
+   * instead of formatting the absolute timestamps. Absent for ranges
+   * entered as a custom start/end.
+   */
+  label?: string;
 }
 
 export interface GlobalFilters {

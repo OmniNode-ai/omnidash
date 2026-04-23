@@ -66,7 +66,7 @@ const MVP_COMPONENTS: Record<string, ComponentManifest> = {
     configSchema: {
       type: 'object',
       properties: {
-        granularity: { type: 'string', enum: ['hour', 'day'], default: 'day' },
+        granularity: { type: 'string', enum: ['hour', 'day'], default: 'hour' },
         showBudgetLine: { type: 'boolean', default: true },
       },
       additionalProperties: false,
@@ -79,7 +79,7 @@ const MVP_COMPONENTS: Record<string, ComponentManifest> = {
     minSize: { w: 4, h: 3 },
     maxSize: { w: 12, h: 8 },
     emptyState: { message: 'No cost data available', hint: 'Cost data appears after LLM calls are tracked' },
-    capabilities: { supports_compare: false, supports_export: true, supports_fullscreen: true },
+    capabilities: { supports_compare: false, supports_export: true, supports_fullscreen: true, supports_time_range: true },
   },
   'cost-trend-3d': {
     name: 'cost-trend-3d',
@@ -97,7 +97,7 @@ const MVP_COMPONENTS: Record<string, ComponentManifest> = {
     minSize: { w: 4, h: 4 },
     maxSize: { w: 12, h: 10 },
     emptyState: { message: 'No cost data available', hint: '3D cost visualization renders after LLM calls are tracked' },
-    capabilities: { supports_compare: false, supports_export: false, supports_fullscreen: true },
+    capabilities: { supports_compare: false, supports_export: false, supports_fullscreen: true, supports_time_range: true },
   },
   'delegation-metrics': {
     name: 'delegation-metrics',
@@ -123,7 +123,7 @@ const MVP_COMPONENTS: Record<string, ComponentManifest> = {
     minSize: { w: 4, h: 3 },
     maxSize: { w: 12, h: 8 },
     emptyState: { message: 'No delegation events', hint: 'Delegation events appear when tasks are delegated to agents' },
-    capabilities: { supports_compare: false, supports_export: true, supports_fullscreen: true },
+    capabilities: { supports_compare: false, supports_export: true, supports_fullscreen: true, supports_time_range: false },
   },
   'routing-decision-table': {
     name: 'routing-decision-table',
@@ -146,7 +146,7 @@ const MVP_COMPONENTS: Record<string, ComponentManifest> = {
     minSize: { w: 6, h: 4 },
     maxSize: { w: 12, h: 12 },
     emptyState: { message: 'No routing decisions', hint: 'Routing decisions appear when LLM routing is active' },
-    capabilities: { supports_compare: false, supports_export: true, supports_fullscreen: true },
+    capabilities: { supports_compare: false, supports_export: true, supports_fullscreen: true, supports_time_range: true },
   },
   'baselines-roi-card': {
     name: 'baselines-roi-card',
@@ -165,7 +165,7 @@ const MVP_COMPONENTS: Record<string, ComponentManifest> = {
     minSize: { w: 3, h: 3 },
     maxSize: { w: 12, h: 6 },
     emptyState: { message: 'No baselines data', hint: 'Baselines data appears after A/B pattern evaluation' },
-    capabilities: { supports_compare: false, supports_export: true, supports_fullscreen: false },
+    capabilities: { supports_compare: false, supports_export: true, supports_fullscreen: false, supports_time_range: false },
   },
   'quality-score-panel': {
     name: 'quality-score-panel',
@@ -183,7 +183,7 @@ const MVP_COMPONENTS: Record<string, ComponentManifest> = {
     minSize: { w: 3, h: 3 },
     maxSize: { w: 12, h: 6 },
     emptyState: { message: 'No quality scores', hint: 'Quality scores appear after patterns are evaluated' },
-    capabilities: { supports_compare: false, supports_export: true, supports_fullscreen: false },
+    capabilities: { supports_compare: false, supports_export: true, supports_fullscreen: false, supports_time_range: false },
   },
   'readiness-gate': {
     name: 'readiness-gate',
@@ -201,7 +201,7 @@ const MVP_COMPONENTS: Record<string, ComponentManifest> = {
     minSize: { w: 6, h: 3 },
     maxSize: { w: 12, h: 6 },
     emptyState: { message: 'No readiness data', hint: 'Run the platform readiness gate to see results' },
-    capabilities: { supports_compare: false, supports_export: true, supports_fullscreen: false },
+    capabilities: { supports_compare: false, supports_export: true, supports_fullscreen: false, supports_time_range: false },
   },
   'event-stream': {
     name: 'event-stream',
@@ -227,7 +227,9 @@ const MVP_COMPONENTS: Record<string, ComponentManifest> = {
     minSize: { w: 6, h: 4 },
     maxSize: { w: 12, h: 12 },
     emptyState: { message: 'No events streaming', hint: 'Events appear when the Kafka bus is connected' },
-    capabilities: { supports_compare: false, supports_export: false, supports_fullscreen: true },
+    // EventStream is a live tail, not a windowed query — the range
+    // selector doesn't map onto its behavior, so it opts out.
+    capabilities: { supports_compare: false, supports_export: false, supports_fullscreen: true, supports_time_range: false },
   },
 };
 

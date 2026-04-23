@@ -46,6 +46,18 @@ export interface ComponentManifest {
     supports_compare: boolean;
     supports_export: boolean;
     supports_fullscreen: boolean;
+    /**
+     * Whether the widget participates in the dashboard-level time range
+     * filter. `true` for time-series widgets (cost trend, routing
+     * decisions, etc.) that can slice their data by a start/end window.
+     * `false` for point-in-time snapshots (readiness, baselines) or
+     * pre-aggregated summary widgets whose numbers are computed over an
+     * opaque window and can't be re-sliced client-side.
+     *
+     * Optional so existing manifests that predate the field stay valid;
+     * consumers should treat `undefined` as `false`.
+     */
+    supports_time_range?: boolean;
   };
 }
 

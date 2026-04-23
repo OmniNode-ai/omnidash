@@ -1,6 +1,6 @@
 {
   "manifestVersion": "1.0",
-  "generatedAt": "2026-04-23T01:54:32.459Z",
+  "generatedAt": "2026-04-23T17:17:28.829Z",
   "components": {
     "cost-trend-panel": {
       "name": "cost-trend-panel",
@@ -18,7 +18,7 @@
               "hour",
               "day"
             ],
-            "default": "day"
+            "default": "hour"
           },
           "showBudgetLine": {
             "type": "boolean",
@@ -62,7 +62,8 @@
       "capabilities": {
         "supports_compare": false,
         "supports_export": true,
-        "supports_fullscreen": true
+        "supports_fullscreen": true,
+        "supports_time_range": true
       }
     },
     "cost-trend-3d": {
@@ -112,7 +113,8 @@
       "capabilities": {
         "supports_compare": false,
         "supports_export": false,
-        "supports_fullscreen": true
+        "supports_fullscreen": true,
+        "supports_time_range": true
       }
     },
     "delegation-metrics": {
@@ -189,7 +191,8 @@
       "capabilities": {
         "supports_compare": false,
         "supports_export": true,
-        "supports_fullscreen": true
+        "supports_fullscreen": true,
+        "supports_time_range": false
       }
     },
     "routing-decision-table": {
@@ -254,7 +257,8 @@
       "capabilities": {
         "supports_compare": false,
         "supports_export": true,
-        "supports_fullscreen": true
+        "supports_fullscreen": true,
+        "supports_time_range": true
       }
     },
     "baselines-roi-card": {
@@ -310,7 +314,8 @@
       "capabilities": {
         "supports_compare": false,
         "supports_export": true,
-        "supports_fullscreen": false
+        "supports_fullscreen": false,
+        "supports_time_range": false
       }
     },
     "quality-score-panel": {
@@ -356,7 +361,8 @@
       "capabilities": {
         "supports_compare": false,
         "supports_export": true,
-        "supports_fullscreen": false
+        "supports_fullscreen": false,
+        "supports_time_range": false
       }
     },
     "readiness-gate": {
@@ -406,7 +412,8 @@
       "capabilities": {
         "supports_compare": false,
         "supports_export": true,
-        "supports_fullscreen": false
+        "supports_fullscreen": false,
+        "supports_time_range": false
       }
     },
     "event-stream": {
@@ -471,7 +478,8 @@
       "capabilities": {
         "supports_compare": false,
         "supports_export": false,
-        "supports_fullscreen": true
+        "supports_fullscreen": true,
+        "supports_time_range": false
       }
     }
   }
