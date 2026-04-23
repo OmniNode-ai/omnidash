@@ -52,7 +52,7 @@ export default function QualityScorePanel({ config: _config }: { config: Record<
     >
       {data && !isEmpty && (
         <div>
-          <div style={{ fontSize: '0.75rem', color: colors.mutedForeground, marginBottom: '0.5rem' }}>
+          <div style={{ fontSize: '0.8125rem', color: colors.foreground, marginBottom: '0.5rem' }}>
             Mean Score: <strong>{data.meanScore.toFixed(2)}</strong> · {data.totalMeasurements.toLocaleString()} measurements
           </div>
           {/* Fixed 320px to match CostTrendPanel. The prior flex:1 + minHeight:150px
