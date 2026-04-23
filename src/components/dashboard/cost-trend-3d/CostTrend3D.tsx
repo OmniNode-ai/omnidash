@@ -16,6 +16,7 @@ import { ComponentWrapper } from '../ComponentWrapper';
 import { useProjectionQuery } from '@/hooks/useProjectionQuery';
 import { applyTimeRange, resolveTimeRange } from '@/hooks/useTimeRange';
 import { useFrameStore } from '@/store/store';
+import { useThemeName } from '@/theme';
 
 interface CostDataPoint {
   bucket_time: string;
@@ -204,22 +205,6 @@ const LIGHT_THEME: ThemeConfig = {
   tooltipSubtle: '#6b7580',
   tooltipValue: '#000000',
 };
-
-function useThemeName(): 'light' | 'dark' {
-  const [name, setName] = useState<'light' | 'dark'>(() => {
-    if (typeof document === 'undefined') return 'dark';
-    return document.documentElement.dataset.theme === 'dark' ? 'dark' : 'light';
-  });
-  useEffect(() => {
-    const update = () => {
-      setName(document.documentElement.dataset.theme === 'dark' ? 'dark' : 'light');
-    };
-    const observer = new MutationObserver(update);
-    observer.observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme'] });
-    return () => observer.disconnect();
-  }, []);
-  return name;
-}
 
 function colorForModel(palette: string[], index: number): THREE.Color {
   return new THREE.Color(palette[index % palette.length]);
