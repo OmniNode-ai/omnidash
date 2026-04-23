@@ -1,6 +1,6 @@
 {
   "manifestVersion": "1.0",
-  "generatedAt": "2026-04-23T17:17:28.829Z",
+  "generatedAt": "2026-04-23T18:43:57.128Z",
   "components": {
     "cost-trend-panel": {
       "name": "cost-trend-panel",
@@ -19,6 +19,16 @@
               "day"
             ],
             "default": "hour"
+          },
+          "chartType": {
+            "type": "string",
+            "enum": [
+              "area",
+              "bar"
+            ],
+            "default": "area",
+            "title": "Chart type",
+            "description": "How each model's cost contribution is drawn over time. Area stacks smooth filled bands; bar stacks discrete columns per time bucket."
           },
           "showBudgetLine": {
             "type": "boolean",

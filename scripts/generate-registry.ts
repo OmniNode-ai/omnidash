@@ -67,6 +67,13 @@ const MVP_COMPONENTS: Record<string, ComponentManifest> = {
       type: 'object',
       properties: {
         granularity: { type: 'string', enum: ['hour', 'day'], default: 'hour' },
+        chartType: {
+          type: 'string',
+          enum: ['area', 'bar'],
+          default: 'area',
+          title: 'Chart type',
+          description: 'How each model\'s cost contribution is drawn over time. Area stacks smooth filled bands; bar stacks discrete columns per time bucket.',
+        },
         showBudgetLine: { type: 'boolean', default: true },
       },
       additionalProperties: false,
