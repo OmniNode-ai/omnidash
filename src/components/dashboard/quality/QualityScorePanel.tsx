@@ -60,12 +60,14 @@ function scoreToX(score: number): number {
   return (score - 0.1) / (0.9 - 0.1) * ((BAR_COUNT - 1) * BAR_SPACING) - STRIP_HALF_WIDTH;
 }
 
-// Quality tier color: red (0) → amber (middle) → green (1).
-// Returned as a hex number suitable for THREE.Color construction.
+// Quality tier color: red (0) → amber (middle) → green (1). High
+// saturation + mid-high lightness for the Tron neon look — the
+// values match the aesthetic of cost-trend-3d's bar palette so the
+// two three.js widgets feel like siblings.
 function tierHexForIndex(i: number): number {
   const t = BAR_COUNT > 1 ? i / (BAR_COUNT - 1) : 0;
-  const hue = t * 120; // 0=red, 120=green
-  return new THREE.Color().setHSL(hue / 360, 0.6, 0.55).getHex();
+  const hue = t * 120; // 0=red, 60=yellow, 120=green
+  return new THREE.Color().setHSL(hue / 360, 0.85, 0.62).getHex();
 }
 
 // ---------- 3D chart ----------
@@ -96,6 +98,9 @@ function ThreeBarChart({
   const barsRef = useRef<THREE.Mesh[]>([]);
   const [hover, setHover] = useState<HoverInfo | null>(null);
   const [size, setSize] = useState<{ w: number; h: number }>({ w: 0, h: 0 });
+  // Mean marker's projected canvas-pixel position. Recomputed during
+  // every scene rebuild so the HTML "MEAN 0.XX" label tracks the cone.
+  const [meanLabelPos, setMeanLabelPos] = useState<{ x: number; y: number } | null>(null);
 
   // Mount once.
   useEffect(() => {
@@ -126,13 +131,9 @@ function ThreeBarChart({
     camera.lookAt(0, 0.9, 0);
     cameraRef.current = camera;
 
-    // Ground + key light. Cheap flat lighting — MeshStandardMaterial
-    // so bars catch the directional light and read as three-
-    // dimensional.
-    scene.add(new THREE.AmbientLight(0xffffff, 0.55));
-    const key = new THREE.DirectionalLight(0xffffff, 0.9);
-    key.position.set(4, 6, 5);
-    scene.add(key);
+    // No lights — all materials below are MeshBasicMaterial (unlit),
+    // matching the cost-trend-3d Tron aesthetic where edges + self-
+    // colored fills carry the 3D read without shading.
 
     const ro = new ResizeObserver((entries) => {
       for (const e of entries) {
@@ -187,21 +188,22 @@ function ThreeBarChart({
     const group = new THREE.Group();
     group.name = 'dynamic';
 
-    // Subtle ground plane sized to the bar strip.
+    // Subtle ground plane sized to the bar strip. Unlit — the dark
+    // colour reads the same with or without lighting.
     const groundW = STRIP_HALF_WIDTH * 2 + BAR_WIDTH + 1.2;
     const groundD = BAR_DEPTH * 2.2;
     const ground = new THREE.Mesh(
       new THREE.PlaneGeometry(groundW, groundD),
-      new THREE.MeshStandardMaterial({
-        color: cssColorToHex('var(--panel-2)', 0x151922),
-        roughness: 1,
+      new THREE.MeshBasicMaterial({
+        color: cssColorToHex('var(--panel-2)', 0x0b0e14),
       }),
     );
     ground.rotation.x = -Math.PI / 2;
     ground.position.y = -0.01;
     group.add(ground);
 
-    // Tick gridlines on the ground at each bucket x-boundary.
+    // Tick gridlines on the ground at each bucket x-boundary. Brighter
+    // cyan at moderate opacity for the Tron look.
     const tickPositions: number[] = [];
     for (let i = 0; i <= BAR_COUNT; i++) {
       tickPositions.push(-STRIP_HALF_WIDTH - BAR_SPACING / 2 + i * BAR_SPACING);
@@ -215,28 +217,49 @@ function ThreeBarChart({
     group.add(new THREE.LineSegments(
       gridGeom,
       new THREE.LineBasicMaterial({
-        color: cssColorToHex('var(--line)', 0x2c3540),
+        color: 0x00e5ff,
         transparent: true,
-        opacity: 0.5,
+        opacity: 0.35,
       }),
     ));
 
-    // Bars.
+    // Bars — Tron recipe: translucent coloured core + bright edges.
+    // The EdgesGeometry outline on all 12 cube edges carries the 3D
+    // read without needing lighting, and stays crisp against the dark
+    // ground. Opacity 0.55 on the core (vs cost-trend-3d's 0.18)
+    // because here we WANT the bars to read as solid objects rather
+    // than ethereal data beams.
     const bars: THREE.Mesh[] = [];
     distribution.forEach((b, i) => {
       const heightFactor = maxCount > 0 ? b.count / maxCount : 0;
       const h = Math.max(0.02, heightFactor * MAX_BAR_HEIGHT);
-      const geom = new THREE.BoxGeometry(BAR_WIDTH, h, BAR_DEPTH);
       const color = tierHexForIndex(i);
-      const mat = new THREE.MeshStandardMaterial({
-        color, metalness: 0.1, roughness: 0.55,
-        emissive: color, emissiveIntensity: 0.12,
-      });
-      const mesh = new THREE.Mesh(geom, mat);
-      mesh.position.set(xForBucketIndex(i), h / 2, 0);
-      mesh.userData.bucketIdx = i;
-      group.add(mesh);
-      bars.push(mesh);
+
+      const boxGeom = new THREE.BoxGeometry(BAR_WIDTH, h, BAR_DEPTH);
+      const core = new THREE.Mesh(
+        boxGeom,
+        new THREE.MeshBasicMaterial({
+          color,
+          transparent: true,
+          opacity: 0.55,
+          depthWrite: false,
+        }),
+      );
+      core.position.set(xForBucketIndex(i), h / 2, 0);
+      core.userData.bucketIdx = i;
+      group.add(core);
+      bars.push(core);
+
+      const edges = new THREE.LineSegments(
+        new THREE.EdgesGeometry(boxGeom),
+        new THREE.LineBasicMaterial({
+          color,
+          transparent: true,
+          opacity: 0.95,
+        }),
+      );
+      edges.position.copy(core.position);
+      group.add(edges);
     });
     barsRef.current = bars;
 
@@ -244,21 +267,21 @@ function ThreeBarChart({
     // corresponding to `passThreshold`. Everything on its right side
     // is "passing"; the plane itself reads as a dividing wall.
     const thresholdX = scoreToX(passThreshold);
-    const planeMat = new THREE.MeshBasicMaterial({
-      color: 0xffffff,
-      transparent: true,
-      opacity: 0.12,
-      side: THREE.DoubleSide,
-      depthWrite: false,
-    });
     const plane = new THREE.Mesh(
       new THREE.PlaneGeometry(BAR_DEPTH * 2, MAX_BAR_HEIGHT + 0.6),
-      planeMat,
+      new THREE.MeshBasicMaterial({
+        color: 0xffffff,
+        transparent: true,
+        opacity: 0.08,
+        side: THREE.DoubleSide,
+        depthWrite: false,
+      }),
     );
     plane.position.set(thresholdX, (MAX_BAR_HEIGHT + 0.6) / 2, 0);
-    plane.rotation.y = Math.PI / 2; // face along x
+    plane.rotation.y = Math.PI / 2;
     group.add(plane);
-    // Bright outline on the threshold plane so it reads as a line.
+    // Rectangle outline on the threshold plane so it reads as a crisp
+    // dividing wall rather than just a faint tint.
     const thresholdLineGeom = new THREE.BufferGeometry();
     const thP = [
       thresholdX, 0, -BAR_DEPTH,
@@ -270,51 +293,42 @@ function ThreeBarChart({
     group.add(new THREE.LineSegments(
       thresholdLineGeom,
       new THREE.LineBasicMaterial({
-        color: cssColorToHex('var(--ink)', 0xffffff),
+        color: 0xffffff,
         transparent: true,
-        opacity: 0.5,
+        opacity: 0.75,
       }),
     ));
 
-    // Mean marker. Small inverted cone hovering just above the bar
-    // tops pointing down at the mean score's x-position. Uses the
-    // brand token so it reads as "the headline stat" visually.
+    // Mean marker. Inverted cone hovering above the bars pointing
+    // down at the mean score's x-position. Unlit material (matches
+    // the rest of the scene); emissive is redundant here since there
+    // are no lights. The previous dashed drop line was removed — it
+    // kept getting hidden behind the tallest bar, and an HTML label
+    // tied to the cone's projected position communicates the cone's
+    // meaning more directly.
     const meanX = scoreToX(meanScore);
-    const markerColor = cssColorToHex('var(--brand)', 0x4cc38a);
-    const markerGeom = new THREE.ConeGeometry(0.16, 0.3, 12);
-    markerGeom.rotateX(Math.PI); // point down
+    const markerColor = cssColorToHex('var(--brand)', 0x00e5ff);
+    const markerGeom = new THREE.ConeGeometry(0.2, 0.42, 16);
+    markerGeom.rotateX(Math.PI);
     const marker = new THREE.Mesh(
       markerGeom,
-      new THREE.MeshStandardMaterial({
-        color: markerColor,
-        emissive: markerColor,
-        emissiveIntensity: 0.5,
-        metalness: 0.2,
-        roughness: 0.4,
-      }),
+      new THREE.MeshBasicMaterial({ color: markerColor }),
     );
-    marker.position.set(meanX, MAX_BAR_HEIGHT + 0.5, 0);
+    const markerY = MAX_BAR_HEIGHT + 0.55;
+    marker.position.set(meanX, markerY, 0);
     group.add(marker);
-    // Dashed drop line from the marker down to the ground.
-    const dropGeom = new THREE.BufferGeometry();
-    dropGeom.setAttribute(
-      'position',
-      new THREE.Float32BufferAttribute(
-        [meanX, MAX_BAR_HEIGHT + 0.35, 0, meanX, 0, 0], 3,
-      ),
-    );
-    const dropMat = new THREE.LineDashedMaterial({
-      color: markerColor,
-      dashSize: 0.12,
-      gapSize: 0.08,
-      transparent: true,
-      opacity: 0.6,
-    });
-    const drop = new THREE.Line(dropGeom, dropMat);
-    drop.computeLineDistances();
-    group.add(drop);
 
     scene.add(group);
+
+    // Project the marker's world position to canvas pixels so the
+    // HTML "MEAN X.XX" label can be anchored just above the cone.
+    // Camera matrices are current because we just called
+    // updateProjectionMatrix above.
+    const projected = new THREE.Vector3(meanX, markerY, 0).project(camera);
+    const screenX = (projected.x * 0.5 + 0.5) * size.w;
+    const screenY = (-projected.y * 0.5 + 0.5) * size.h;
+    setMeanLabelPos({ x: screenX, y: screenY });
+
     renderer.render(scene, camera);
   }, [distribution, meanScore, passThreshold, maxCount, size]);
 
@@ -386,6 +400,33 @@ function ThreeBarChart({
       >
         Pass ≥ {passThreshold.toFixed(2)}
       </div>
+
+      {/* Mean label anchored to the cone marker's projected canvas
+          position. Positioned just above the cone so the relationship
+          ("this shape marks the mean") reads without a drop line. */}
+      {meanLabelPos && (
+        <div
+          style={{
+            position: 'absolute',
+            left: meanLabelPos.x,
+            top: meanLabelPos.y - 6,
+            transform: 'translate(-50%, -100%)',
+            padding: '2px 6px',
+            background: 'var(--panel)',
+            border: '1px solid var(--brand)',
+            borderRadius: 3,
+            fontSize: 10,
+            letterSpacing: '0.04em',
+            textTransform: 'uppercase',
+            color: 'var(--brand-ink, var(--ink))',
+            fontFamily: 'var(--font-mono, "IBM Plex Mono", monospace)',
+            pointerEvents: 'none',
+            whiteSpace: 'nowrap',
+          }}
+        >
+          Mean {meanScore.toFixed(2)}
+        </div>
+      )}
 
       {hover && hoverInfo && (
         <div
