@@ -198,30 +198,47 @@ def _now_iso(offset_minutes: int = 0) -> str:
 # ---------------------------------------------------------------------------
 
 
-def _llm_cost_points(n: int = 10) -> list[tuple[str, _LlmCostPoint]]:
+def _llm_cost_points(n_buckets: int = 48) -> list[tuple[str, _LlmCostPoint]]:
+    """Full cross product of (time bucket × model), hourly buckets.
+
+    Previous version picked one random model per index, which left the
+    (time × model) grid sparse and uneven. The 3D Cost Trend widget plots
+    a cell per (time, model) pair, so a dense rectangular grid reads far
+    better. Each model also gets a cost-multiplier so the series look
+    distinct rather than uniformly noisy (opus costs > sonnet > qwen >
+    deepseek is a defensible default for demo data).
+    """
+    model_cost_multiplier = {
+        "claude-opus-4-7": 2.5,
+        "claude-sonnet-4-6": 1.3,
+        "qwen3-coder-30b": 0.6,
+        "deepseek-r1-32b": 0.4,
+    }
     records = []
-    for i in range(n):
-        model = random.choice(_AGENTS)
-        prompt = random.randint(500, 50_000)
-        completion = random.randint(100, 10_000)
-        total = prompt + completion
-        cost = round((total / 1_000) * random.uniform(0.001, 0.015), 6)
-        eid = str(uuid4())
-        records.append(
-            (
-                eid,
-                _LlmCostPoint(
-                    entity_id=eid,
-                    bucket_time=_now_iso(i * 15),
-                    model_name=model,
-                    total_cost_usd=f"{cost:.6f}",
-                    total_tokens=total,
-                    prompt_tokens=prompt,
-                    completion_tokens=completion,
-                    request_count=random.randint(1, 20),
-                ),
+    for i in range(n_buckets):
+        bucket = _now_iso(i * 60)  # hourly buckets, newest first
+        for model in _AGENTS:
+            prompt = random.randint(500, 50_000)
+            completion = random.randint(100, 10_000)
+            total = prompt + completion
+            base_cost = (total / 1_000) * random.uniform(0.001, 0.015)
+            cost = round(base_cost * model_cost_multiplier.get(model, 1.0), 6)
+            eid = str(uuid4())
+            records.append(
+                (
+                    eid,
+                    _LlmCostPoint(
+                        entity_id=eid,
+                        bucket_time=bucket,
+                        model_name=model,
+                        total_cost_usd=f"{cost:.6f}",
+                        total_tokens=total,
+                        prompt_tokens=prompt,
+                        completion_tokens=completion,
+                        request_count=random.randint(1, 20),
+                    ),
+                )
             )
-        )
     return records
 
 
@@ -461,7 +478,7 @@ def build_projections() -> list[tuple[str, list[tuple[str, object]]]]:
         # --- Projection / summary topics (widget-facing) ---
         (
             "onex.snapshot.projection.llm_cost.v1",
-            _llm_cost_points(10),
+            _llm_cost_points(48),
         ),
         (
             "onex.snapshot.projection.delegation.summary.v1",

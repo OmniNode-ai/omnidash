@@ -49,11 +49,11 @@ describe('Proof of Life — Part 3 (Full System)', () => {
     }
   });
 
-  it('all 7 components resolve via import map after resolveImplementations', async () => {
+  it('all components resolve via import map after resolveImplementations', async () => {
     const registry = new ComponentRegistry(manifest);
     await registry.resolveImplementations();
     const available = registry.getAvailableComponents().filter((c) => c.status === 'available');
-    expect(available.length).toBe(7);
+    expect(available.length).toBe(8);
   });
 
   it('both templates pass validation', () => {
