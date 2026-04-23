@@ -1,6 +1,6 @@
+import type { CSSProperties } from 'react';
 import { ComponentWrapper } from '../ComponentWrapper';
 import { useProjectionQuery } from '@/hooks/useProjectionQuery';
-import { useThemeColors } from '@/theme';
 
 type DimensionStatus = 'PASS' | 'WARN' | 'FAIL';
 
@@ -17,26 +17,29 @@ interface ReadinessSummary {
 }
 
 const STATUS_COLORS: Record<DimensionStatus, string> = {
-  PASS: 'var(--color-healthy)',
-  WARN: 'var(--color-warning)',
-  FAIL: 'var(--color-destructive)',
+  PASS: 'var(--status-ok)',
+  WARN: 'var(--status-warn)',
+  FAIL: 'var(--status-bad)',
 };
 
-function DimensionCard({ dim }: { dim: ReadinessDimension }) {
-  const colors = useThemeColors();
+function StatusPill({ status }: { status: DimensionStatus }) {
   return (
-    <div style={{
-      border: `1px solid ${STATUS_COLORS[dim.status]}`,
-      borderRadius: '0.375rem',
-      padding: '0.5rem 0.75rem',
-      display: 'flex',
-      flexDirection: 'column',
-      gap: '0.25rem',
-    }}>
-      <div style={{ fontSize: '0.6875rem', fontWeight: 700, textTransform: 'uppercase', color: STATUS_COLORS[dim.status] }}>{dim.status}</div>
-      <div style={{ fontSize: '0.8125rem', fontWeight: 600, color: colors.foreground }}>{dim.name}</div>
-      <div style={{ fontSize: '0.75rem', color: colors.mutedForeground }}>{dim.detail}</div>
-    </div>
+    <span
+      style={{
+        display: 'inline-block',
+        minWidth: 44,
+        textAlign: 'center',
+        padding: '2px 8px',
+        borderRadius: 4,
+        fontSize: 10,
+        fontWeight: 700,
+        letterSpacing: '0.04em',
+        color: STATUS_COLORS[status],
+        border: `1px solid ${STATUS_COLORS[status]}`,
+      }}
+    >
+      {status}
+    </span>
   );
 }
 
@@ -47,7 +50,6 @@ export default function ReadinessGate({ config: _config }: { config: Record<stri
     refetchInterval: 120_000,
   });
   const data = dataArr?.[0];
-  const colors = useThemeColors();
 
   return (
     <ComponentWrapper
@@ -59,19 +61,68 @@ export default function ReadinessGate({ config: _config }: { config: Record<stri
       emptyHint="Readiness dimensions appear after checks are registered"
     >
       {data && (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-            <span style={{ fontSize: '0.75rem', color: colors.foreground }}>Overall:</span>
-            <span style={{ fontSize: '0.875rem', fontWeight: 700, color: STATUS_COLORS[data.overallStatus] }}>{data.overallStatus}</span>
-            <span style={{ fontSize: '0.6875rem', color: colors.mutedForeground, marginLeft: 'auto' }}>
+            <span style={{ fontSize: 12, color: 'var(--ink-2)' }}>Overall</span>
+            <StatusPill status={data.overallStatus} />
+            <span style={{ fontSize: 11, color: 'var(--ink-3)', marginLeft: 'auto' }}>
               Checked {new Date(data.lastCheckedAt).toLocaleTimeString()}
             </span>
           </div>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: '0.5rem' }}>
-            {data.dimensions.map((dim) => <DimensionCard key={dim.name} dim={dim} />)}
+
+          <div style={{ border: '1px solid var(--line-2)', borderRadius: 6, overflow: 'hidden' }}>
+            <table
+              style={{
+                width: '100%',
+                borderCollapse: 'collapse',
+                fontSize: '0.8125rem',
+                tableLayout: 'fixed',
+              }}
+            >
+              <colgroup>
+                <col style={{ width: 72 }} />
+                <col style={{ width: '40%' }} />
+                <col />
+              </colgroup>
+              <thead>
+                <tr>
+                  <th scope="col" style={thStyle}>Status</th>
+                  <th scope="col" style={thStyle}>Dimension</th>
+                  <th scope="col" style={thStyle}>Detail</th>
+                </tr>
+              </thead>
+              <tbody>
+                {data.dimensions.map((dim) => (
+                  <tr key={dim.name} style={{ borderTop: '1px solid var(--line-2)' }}>
+                    <td style={tdStyle}>
+                      <StatusPill status={dim.status} />
+                    </td>
+                    <td style={{ ...tdStyle, fontWeight: 600, color: 'var(--ink)' }}>{dim.name}</td>
+                    <td style={{ ...tdStyle, color: 'var(--ink-2)' }}>{dim.detail}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
           </div>
         </div>
       )}
     </ComponentWrapper>
   );
 }
+
+const thStyle: CSSProperties = {
+  textAlign: 'left',
+  padding: '0.375rem 0.625rem',
+  fontWeight: 600,
+  fontSize: 11,
+  textTransform: 'uppercase',
+  letterSpacing: '0.04em',
+  color: 'var(--ink-2)',
+  background: 'var(--panel-2)',
+  borderBottom: '1px solid var(--line)',
+};
+
+const tdStyle: CSSProperties = {
+  padding: '0.5rem 0.625rem',
+  verticalAlign: 'middle',
+};
