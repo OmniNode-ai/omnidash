@@ -3,9 +3,10 @@
 // plus HH:MM time inputs for each side, so the user can pin the window
 // to a specific minute if they want. Commits a TimeRange with no `label`
 // so the selector renders the resolved dates rather than a preset name.
-import { useMemo, useState, type CSSProperties } from 'react';
+import { useMemo, useState } from 'react';
 import { DayPicker, type DateRange } from 'react-day-picker';
 import 'react-day-picker/style.css';
+import './CustomRangePicker.css';
 import type { TimeRange } from '@/store/types';
 
 interface CustomRangePickerProps {
@@ -15,11 +16,6 @@ interface CustomRangePickerProps {
   onApply: (range: TimeRange) => void;
 }
 
-// Parse an ISO timestamp into a 24h "HH:MM" string for the time input.
-function toHHMM(d: Date): string {
-  return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
-}
-
 // Combine a calendar day + "HH:MM" into a concrete Date preserving local tz.
 function combine(day: Date, hhmm: string): Date {
   const [h, m] = hhmm.split(':').map(Number);
@@ -27,6 +23,13 @@ function combine(day: Date, hhmm: string): Date {
   out.setHours(Number.isFinite(h) ? h : 0, Number.isFinite(m) ? m : 0, 0, 0);
   return out;
 }
+
+// Time-input defaults that feel sensible on first open. The common case
+// is "I want the full day(s) between these two dates" — seeding the
+// inputs with the specific time from the currently-active preset (e.g.
+// the 14:37 that happens to be on `now-24h`) was confusing.
+const DEFAULT_START_TIME = '00:00';
+const DEFAULT_END_TIME = '23:59';
 
 export function CustomRangePicker({ initial, onCancel, onApply }: CustomRangePickerProps) {
   // Seed from the current range (if set) so reopening shows what the user
@@ -48,8 +51,8 @@ export function CustomRangePicker({ initial, onCancel, onApply }: CustomRangePic
     from: seed.from,
     to: seed.to,
   });
-  const [startTime, setStartTime] = useState<string>(toHHMM(seed.from));
-  const [endTime, setEndTime] = useState<string>(toHHMM(seed.to));
+  const [startTime, setStartTime] = useState<string>(DEFAULT_START_TIME);
+  const [endTime, setEndTime] = useState<string>(DEFAULT_END_TIME);
 
   const canApply = Boolean(range?.from && range?.to);
   const handleApply = () => {
@@ -62,36 +65,16 @@ export function CustomRangePicker({ initial, onCancel, onApply }: CustomRangePic
     onApply({ start: lo.toISOString(), end: hi.toISOString() });
   };
 
-  // Theme the calendar via CSS vars on the wrapper. react-day-picker
-  // exposes --rdp-* knobs that cascade into its internal stylesheet;
-  // binding them to our dashboard tokens means the calendar picks up
-  // the active light/dark theme automatically with no JS plumbing.
-  const wrapperStyle: CSSProperties = {
-    ['--rdp-accent-color' as string]: 'var(--brand)',
-    ['--rdp-accent-background-color' as string]: 'var(--brand-soft)',
-    ['--rdp-range_middle-background-color' as string]: 'var(--brand-soft)',
-    ['--rdp-range_middle-color' as string]: 'var(--brand-ink)',
-    ['--rdp-range_start-color' as string]: 'var(--brand-ink)',
-    ['--rdp-range_end-color' as string]: 'var(--brand-ink)',
-    ['--rdp-today-color' as string]: 'var(--brand)',
-    ['--rdp-day-height' as string]: '30px',
-    ['--rdp-day-width' as string]: '30px',
-    ['--rdp-day_button-height' as string]: '28px',
-    ['--rdp-day_button-width' as string]: '28px',
-    ['--rdp-nav-height' as string]: '2rem',
-    ['--rdp-nav_button-height' as string]: '1.75rem',
-    ['--rdp-nav_button-width' as string]: '1.75rem',
-    padding: 8,
-    color: 'var(--ink)',
-    fontSize: 13,
-  };
-
   return (
-    <div style={wrapperStyle} onPointerDown={(e) => e.stopPropagation()}>
+    <div
+      className="dash-calendar-wrapper"
+      style={{ padding: 8, color: 'var(--ink)', fontSize: 13 }}
+      onPointerDown={(e) => e.stopPropagation()}
+    >
       {/* stopPropagation above keeps PositionedMenu's outside-click handler
           from dismissing the popover when the user clicks inside the
-          calendar (react-day-picker buttons don't use the same element
-          we anchored against, and the outside-check walks via contains). */}
+          calendar. Theming is in CustomRangePicker.css, loaded after the
+          library stylesheet so the --rdp-* overrides win the cascade. */}
       <DayPicker
         mode="range"
         selected={range}
