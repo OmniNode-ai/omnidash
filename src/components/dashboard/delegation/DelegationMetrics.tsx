@@ -54,18 +54,18 @@ export default function DelegationMetrics({ config: _config }: { config: Record<
           <div style={{ flex: '0 0 auto', display: 'flex', flexDirection: 'column', gap: '0.75rem', padding: '0.5rem 0' }}>
             <div>
               <div style={{ fontSize: '1.5rem', fontWeight: 700, color: colors.foreground }}>{data.totalDelegations}</div>
-              <div style={{ fontSize: '0.6875rem', color: colors.foreground }}>Total Delegations</div>
+              <div style={{ fontSize: '0.75rem', color: colors.foreground }}>Total Delegations</div>
             </div>
             <div>
               {/* 0.8 (80%) is hardcoded product policy — should eventually be configurable via component config */}
               <div style={{ fontSize: '1.5rem', fontWeight: 700, color: data.qualityGatePassRate >= 0.8 ? colors.status.healthy : colors.status.warning }}>
                 {Math.round(data.qualityGatePassRate * 100)}%
               </div>
-              <div style={{ fontSize: '0.6875rem', color: colors.foreground }}>Quality Gate Pass Rate</div>
+              <div style={{ fontSize: '0.75rem', color: colors.foreground }}>Quality Gate Pass Rate</div>
             </div>
             <div>
               <div style={{ fontSize: '1.5rem', fontWeight: 700, color: colors.foreground }}>${data.totalSavingsUsd.toFixed(2)}</div>
-              <div style={{ fontSize: '0.6875rem', color: colors.foreground }}>Cost Savings</div>
+              <div style={{ fontSize: '0.75rem', color: colors.foreground }}>Cost Savings</div>
             </div>
           </div>
           <div style={{ flex: 1, minHeight: '150px' }}>
