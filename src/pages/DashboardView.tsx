@@ -3,12 +3,17 @@
 //   Styling: OmniDash.html:265-439 (.dash-header, .dash-body, .grid, .widget, .widget-head, .widget-body, .empty-state)
 // Deviations from source:
 //   - Uses v2 data model (DashboardDefinition + DashboardLayoutItem) instead of prototype's widget-array shape.
-//   - ComponentCell/ComponentPalette used for rendering/adding widgets (OMN-44 will replace).
 //   - Edit/Save/Discard flow preserved from OMN-41 (layoutPersistence.write on Save).
-//   - Drag-and-drop deferred to OMN-44; strict 2-column grid is non-draggable for now.
+//   - Drag-and-drop (#12): palette cards and existing widgets are both drag sources.
+//     Drop onto any widget inserts before it; trailing append zone appears at the
+//     grid tail while dragging. Drag is gated to edit mode. Prototype used a CSS
+//     grid with inline DropIndicator between widgets; v2 uses a masonry columns
+//     layout (#9), so insertion feedback lives on the target widget itself via
+//     the `.drop-target` class (brand top-edge bar). The append zone is a
+//     `.drop-slot` styled to span both columns.
 //   - OMN-47: CSS ported verbatim to src/styles/dashboard.css + buttons.css; TSX rewritten to use prototype class names.
 
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState, type DragEvent } from 'react';
 import { Check, ChevronDown, Plus, X } from 'lucide-react';
 import { useFrameStore } from '@/store/store';
 import { useRegistry } from '@/registry/RegistryProvider';
@@ -34,6 +39,8 @@ export function DashboardView() {
     editMode,
     setEditMode,
     addComponentToLayout,
+    insertComponentAt,
+    moveLayoutItem,
     updateLayout,
     removeComponentFromLayout,
     duplicateLayoutItem,
@@ -50,6 +57,15 @@ export function DashboardView() {
   const snapshotRef = useRef<DashboardLayoutItem[] | null>(null);
   const [editingTitle, setEditingTitle] = useState(false);
   const timezone = useMemo(formatTimezone, []);
+
+  // Drag-and-drop state (#12). Exactly one of these is non-null at a time:
+  //  - draggedWidgetId: an existing widget is being reordered
+  //  - draggedPaletteName: a palette card is being inserted
+  // dropTargetIndex is the insertion index: 0..layout.length (length = append).
+  const [draggedWidgetId, setDraggedWidgetId] = useState<string | null>(null);
+  const [draggedPaletteName, setDraggedPaletteName] = useState<string | null>(null);
+  const [dropTargetIndex, setDropTargetIndex] = useState<number | null>(null);
+  const isDragging = draggedWidgetId !== null || draggedPaletteName !== null;
 
   // Hydrate the last active dashboard layout from disk on mount.
   useEffect(() => {
@@ -136,6 +152,72 @@ export function DashboardView() {
     },
     [registry, addComponentToLayout],
   );
+
+  // ---------- Drag-and-drop handlers (#12) ----------
+
+  const resetDragState = useCallback(() => {
+    setDraggedWidgetId(null);
+    setDraggedPaletteName(null);
+    setDropTargetIndex(null);
+  }, []);
+
+  const handleWidgetDragStart = useCallback((widgetId: string) => (e: DragEvent<HTMLDivElement>) => {
+    e.dataTransfer.effectAllowed = 'move';
+    e.dataTransfer.setData('text/plain', widgetId);
+    setDraggedWidgetId(widgetId);
+  }, []);
+
+  const handleWidgetDragOver = useCallback((targetIndex: number) => (e: DragEvent<HTMLDivElement>) => {
+    if (!isDragging) return;
+    e.preventDefault();
+    e.dataTransfer.dropEffect = draggedPaletteName !== null ? 'copy' : 'move';
+    setDropTargetIndex(targetIndex);
+  }, [isDragging, draggedPaletteName]);
+
+  const handleWidgetDragLeave = useCallback(() => {
+    // Intentionally no-op: dragOver on the next target immediately resets
+    // dropTargetIndex. Clearing here would cause flicker when the cursor
+    // crosses between adjacent widgets.
+  }, []);
+
+  const commitDropAt = useCallback((index: number) => {
+    if (draggedPaletteName !== null) {
+      const component = registry.getComponent(draggedPaletteName);
+      if (component) {
+        insertComponentAt(
+          draggedPaletteName,
+          component.manifest.version,
+          component.manifest.defaultSize,
+          index,
+        );
+      }
+    } else if (draggedWidgetId !== null) {
+      moveLayoutItem(draggedWidgetId, index);
+    }
+    resetDragState();
+  }, [draggedPaletteName, draggedWidgetId, registry, insertComponentAt, moveLayoutItem, resetDragState]);
+
+  const handleWidgetDrop = useCallback((targetIndex: number) => (e: DragEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    commitDropAt(targetIndex);
+  }, [commitDropAt]);
+
+  const handleAppendDragOver = useCallback((e: DragEvent<HTMLDivElement>) => {
+    if (!isDragging || !activeDashboard) return;
+    e.preventDefault();
+    e.dataTransfer.dropEffect = draggedPaletteName !== null ? 'copy' : 'move';
+    setDropTargetIndex(activeDashboard.layout.length);
+  }, [isDragging, draggedPaletteName, activeDashboard]);
+
+  const handleAppendDrop = useCallback((e: DragEvent<HTMLDivElement>) => {
+    if (!activeDashboard) return;
+    e.preventDefault();
+    commitDropAt(activeDashboard.layout.length);
+  }, [commitDropAt, activeDashboard]);
+
+  const handlePaletteDragStart = useCallback((componentName: string) => {
+    setDraggedPaletteName(componentName);
+  }, []);
 
   const resolveComponent = useCallback(
     (name: string) => {
@@ -248,14 +330,31 @@ export function DashboardView() {
         {/* Widget grid */}
         <div className="dash-body">
           {activeDashboard.layout.length === 0 ? (
-            <EmptyState onAdd={editMode ? () => {} : handleEdit} />
+            editMode && isDragging ? (
+              // While dragging a palette card into an empty dashboard, the
+              // empty state hides so the append drop-slot below can accept
+              // the drop. Without this, EmptyState's click-to-add hint sits
+              // in the way.
+              <div
+                className={`drop-slot${dropTargetIndex === 0 ? ' active' : ''}`}
+                style={{ margin: 'var(--row-gap)' }}
+                onDragOver={handleAppendDragOver}
+                onDrop={handleAppendDrop}
+              >
+                drop to add
+              </div>
+            ) : (
+              <EmptyState onAdd={editMode ? () => {} : handleEdit} />
+            )
           ) : (
             <div className="dash-grid">
-              {activeDashboard.layout.map((item) => (
+              {activeDashboard.layout.map((item, index) => (
                 // ComponentCell provides widget chrome via ComponentWrapper.
                 // No outer .widget wrapper here — that created a redundant
                 // double card (#8). Click-to-configure removed too (#14) —
                 // Configure lives in the widget's kebab menu instead.
+                // Drag props are forwarded into WidgetChromeContext and
+                // applied to the `.widget` root by ComponentWrapper.
                 <ComponentCell
                   key={item.i}
                   componentName={item.componentName}
@@ -264,8 +363,26 @@ export function DashboardView() {
                   onConfigure={() => setSelectedPlacementId(item.i)}
                   onDuplicate={() => duplicateLayoutItem(item.i)}
                   onDelete={() => removeComponentFromLayout(item.i)}
+                  draggable={editMode}
+                  isDragging={draggedWidgetId === item.i}
+                  isDropTarget={isDragging && dropTargetIndex === index && draggedWidgetId !== item.i}
+                  onDragStart={handleWidgetDragStart(item.i)}
+                  onDragEnd={resetDragState}
+                  onDragOver={handleWidgetDragOver(index)}
+                  onDragLeave={handleWidgetDragLeave}
+                  onDrop={handleWidgetDrop(index)}
                 />
               ))}
+              {isDragging && (
+                <div
+                  className={`drop-slot${dropTargetIndex === activeDashboard.layout.length ? ' active' : ''}`}
+                  style={{ columnSpan: 'all', minHeight: 60 } as React.CSSProperties}
+                  onDragOver={handleAppendDragOver}
+                  onDrop={handleAppendDrop}
+                >
+                  drop to append
+                </div>
+              )}
             </div>
           )}
         </div>
@@ -293,6 +410,8 @@ export function DashboardView() {
         onAddComponent={handleAddComponent}
         onClose={handleSave}
         isOpen={editMode}
+        onPaletteDragStart={handlePaletteDragStart}
+        onPaletteDragEnd={resetDragState}
       />
     </>
   );

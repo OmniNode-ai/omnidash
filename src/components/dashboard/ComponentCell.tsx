@@ -1,4 +1,4 @@
-import { Suspense, useMemo, type LazyExoticComponent, type ComponentType } from 'react';
+import { Suspense, useMemo, type DragEvent, type LazyExoticComponent, type ComponentType } from 'react';
 import { WidgetChromeContext, type WidgetChromeHandlers } from './WidgetChromeContext';
 
 interface ComponentCellProps {
@@ -12,6 +12,15 @@ interface ComponentCellProps {
   onDuplicate?: () => void;
   /** Called when the widget's kebab-menu "Remove Widget" item is selected. */
   onDelete?: () => void;
+  /** When true, the widget root advertises itself as an HTML5 drag source. */
+  draggable?: boolean;
+  isDragging?: boolean;
+  isDropTarget?: boolean;
+  onDragStart?: (e: DragEvent<HTMLDivElement>) => void;
+  onDragEnd?: (e: DragEvent<HTMLDivElement>) => void;
+  onDragOver?: (e: DragEvent<HTMLDivElement>) => void;
+  onDragLeave?: (e: DragEvent<HTMLDivElement>) => void;
+  onDrop?: (e: DragEvent<HTMLDivElement>) => void;
 }
 
 export function ComponentCell({
@@ -21,15 +30,34 @@ export function ComponentCell({
   onConfigure,
   onDuplicate,
   onDelete,
+  draggable,
+  isDragging,
+  isDropTarget,
+  onDragStart,
+  onDragEnd,
+  onDragOver,
+  onDragLeave,
+  onDrop,
 }: ComponentCellProps) {
   const chrome = useMemo<WidgetChromeHandlers>(
-    () => ({ onConfigure, onDuplicate, onDelete }),
-    [onConfigure, onDuplicate, onDelete],
+    () => ({
+      onConfigure,
+      onDuplicate,
+      onDelete,
+      draggable,
+      isDragging,
+      isDropTarget,
+      onDragStart,
+      onDragEnd,
+      onDragOver,
+      onDragLeave,
+      onDrop,
+    }),
+    [onConfigure, onDuplicate, onDelete, draggable, isDragging, isDropTarget,
+      onDragStart, onDragEnd, onDragOver, onDragLeave, onDrop],
   );
 
   if (!LazyComponent) {
-    // Fallback path keeps its wrapper — it has no ComponentWrapper to provide
-    // widget chrome, so this div is what the user sees.
     return (
       <div
         data-testid="grid-item"
@@ -40,10 +68,9 @@ export function ComponentCell({
     );
   }
 
-  // Normal path: a thin wrapper with `display: contents` holds the grid-item
-  // testid and the chrome context provider without introducing a visible DOM
-  // box between .dash-grid and .widget (which would create a new block
-  // formatting context and break CSS columns flow).
+  // `display: contents` holds the grid-item testid and the chrome context
+  // provider without introducing a visible DOM box between .dash-grid and
+  // .widget (which would break CSS columns flow).
   return (
     <WidgetChromeContext.Provider value={chrome}>
       <div data-testid="grid-item" style={{ display: 'contents' }}>

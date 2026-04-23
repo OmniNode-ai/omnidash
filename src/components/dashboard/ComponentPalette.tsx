@@ -35,6 +35,10 @@ interface ComponentPaletteProps {
    * across toggles.
    */
   isOpen?: boolean;
+  /** Called when the user starts dragging a palette card. Receives the component name. */
+  onPaletteDragStart?: (componentName: string) => void;
+  /** Called when the palette drag ends (drop, cancel, or leave). */
+  onPaletteDragEnd?: () => void;
 }
 
 const CATEGORY_ICONS: Record<ComponentCategory, ComponentType<{ size?: number; strokeWidth?: number }>> = {
@@ -45,7 +49,14 @@ const CATEGORY_ICONS: Record<ComponentCategory, ComponentType<{ size?: number; s
   stream: Radio,
 };
 
-export function ComponentPalette({ components, onAddComponent, onClose, isOpen = true }: ComponentPaletteProps) {
+export function ComponentPalette({
+  components,
+  onAddComponent,
+  onClose,
+  isOpen = true,
+  onPaletteDragStart,
+  onPaletteDragEnd,
+}: ComponentPaletteProps) {
   const [q, setQ] = useState('');
 
   const filtered = useMemo(() => {
@@ -113,6 +124,17 @@ export function ComponentPalette({ components, onAddComponent, onClose, isOpen =
                     tabIndex={disabled ? -1 : 0}
                     aria-disabled={disabled || undefined}
                     className={`lib-card${disabled ? ' added' : ''}`}
+                    draggable={!disabled && Boolean(onPaletteDragStart) || undefined}
+                    onDragStart={(e) => {
+                      if (disabled || !onPaletteDragStart) return;
+                      // Non-empty dataTransfer is required by Firefox to allow the drag.
+                      // We track the actual dragged component in React state via the callback;
+                      // the string payload is just a sentinel.
+                      e.dataTransfer.effectAllowed = 'copy';
+                      e.dataTransfer.setData('text/plain', c.name);
+                      onPaletteDragStart(c.name);
+                    }}
+                    onDragEnd={() => onPaletteDragEnd?.()}
                     onClick={() => !disabled && onAddComponent(c.name)}
                     onKeyDown={(e) => {
                       if (disabled) return;

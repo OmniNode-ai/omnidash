@@ -10,8 +10,8 @@
 //     in both view and edit modes; click-widget-to-configure is no longer used.
 //   - Uses `PositionedMenu` (prototype pattern) rather than a third-party dropdown
 //     primitive, so the markup and behavior match the prototype 1:1.
-import type { ReactNode } from 'react';
-import { MoreVertical, Settings, Copy, Trash2 } from 'lucide-react';
+import { useRef, type ReactNode, type DragEvent, type MouseEvent } from 'react';
+import { GripVertical, MoreVertical, Settings, Copy, Trash2 } from 'lucide-react';
 import {
   PositionedMenu,
   MenuItem,
@@ -41,14 +41,57 @@ export function ComponentWrapper({
   isLive = false,
   children,
 }: ComponentWrapperProps) {
-  const { onConfigure, onDuplicate, onDelete } = useWidgetChrome();
+  const chrome = useWidgetChrome();
+  const { onConfigure, onDuplicate, onDelete, draggable, isDragging, isDropTarget,
+    onDragStart, onDragEnd, onDragOver, onDragLeave, onDrop } = chrome;
   const hasMenu = Boolean(onConfigure || onDuplicate || onDelete);
   const menu = usePositionedMenu();
 
+  const widgetClass = [
+    'widget',
+    isDragging && 'dragging',
+    isDropTarget && 'drop-target',
+  ].filter(Boolean).join(' ');
+
+  // HTML5 drag is initiated by the browser on mousedown → mousemove on any
+  // draggable ancestor, regardless of which child the mouse was on. Interactive
+  // widget content (3D canvases, charts with their own pan/zoom) needs a way
+  // to veto this so their own pointer handlers can run. Convention:
+  //   - Mark the interactive region with `data-drag-exclude="true"`.
+  //   - Before the browser fires dragstart it fires mousedown; we record
+  //     whether mousedown landed inside an excluded region. In dragstart we
+  //     `preventDefault()` to cancel the drag if so.
+  const dragBlockedRef = useRef(false);
+  const handleMouseDown = (e: MouseEvent<HTMLDivElement>) => {
+    const target = e.target as HTMLElement | null;
+    dragBlockedRef.current = Boolean(target?.closest('[data-drag-exclude]'));
+  };
+  const handleDragStart = (e: DragEvent<HTMLDivElement>) => {
+    if (dragBlockedRef.current) {
+      e.preventDefault();
+      return;
+    }
+    onDragStart?.(e);
+  };
+
   return (
-    <div className="widget">
+    <div
+      className={widgetClass}
+      draggable={draggable || undefined}
+      onMouseDown={handleMouseDown}
+      onDragStart={handleDragStart}
+      onDragEnd={onDragEnd}
+      onDragOver={onDragOver}
+      onDragLeave={onDragLeave}
+      onDrop={onDrop}
+    >
       <div className="widget-head">
         <div className="widget-head-left">
+          {draggable && (
+            <span className="widget-grip" aria-hidden="true">
+              <GripVertical size={14} />
+            </span>
+          )}
           <span className="widget-title">{title}</span>
         </div>
         {isLive && <span className="widget-live">Live</span>}

@@ -46,9 +46,13 @@ export interface DashboardSlice {
 
   // Layout-level actions
   addComponentToLayout: (componentName: string, componentVersion: string, defaultSize: GridSize) => void;
+  /** Insert a new placement at the given index. Out-of-range `atIndex` is clamped to [0, length]. */
+  insertComponentAt: (componentName: string, componentVersion: string, defaultSize: GridSize, atIndex: number) => void;
   removeComponentFromLayout: (itemId: string) => void;
   /** Clone a placement (same component + config, new id). New copy appended to layout. */
   duplicateLayoutItem: (itemId: string) => void;
+  /** Reorder an existing placement to a new index in the layout. No-op if itemId is not found. */
+  moveLayoutItem: (itemId: string, toIndex: number) => void;
   updateLayout: (layout: DashboardLayoutItem[]) => void;
   updateComponentConfig: (itemId: string, config: Record<string, unknown>) => void;
 }
