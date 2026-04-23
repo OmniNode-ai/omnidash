@@ -14,6 +14,8 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import * as THREE from 'three';
 import { ComponentWrapper } from '../ComponentWrapper';
 import { useProjectionQuery } from '@/hooks/useProjectionQuery';
+import { applyTimeRange, resolveTimeRange } from '@/hooks/useTimeRange';
+import { useFrameStore } from '@/store/store';
 
 interface CostDataPoint {
   bucket_time: string;
@@ -1006,7 +1008,19 @@ export default function CostTrend3D({ config: _config }: { config: Record<string
     return () => window.removeEventListener('keydown', handler);
   }, [focusedCell]);
 
-  const dataset = useMemo(() => (data ? reshapeToGrid(data) : null), [data]);
+  // Apply the dashboard-level time range before reshaping — the grid is
+  // built from whatever falls inside the window. Widget declares
+  // supports_time_range: true in its manifest.
+  const timeRange = useFrameStore((s) => s.globalFilters.timeRange);
+  const resolvedRange = useMemo(() => resolveTimeRange(timeRange), [timeRange]);
+  const filteredData = useMemo(
+    () => applyTimeRange(data, (d) => d.bucket_time, resolvedRange),
+    [data, resolvedRange],
+  );
+  const dataset = useMemo(
+    () => (filteredData.length > 0 ? reshapeToGrid(filteredData) : null),
+    [filteredData],
+  );
   const isEmpty = !data || data.length === 0 || !dataset;
 
   // If the focused cell disappears from a new dataset, drop the focus.

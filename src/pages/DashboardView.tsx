@@ -20,6 +20,7 @@ import { useRegistry } from '@/registry/RegistryProvider';
 import { ComponentPalette } from '@/components/dashboard/ComponentPalette';
 import { ComponentConfigPanel } from '@/config/ComponentConfigPanel';
 import { ComponentCell } from '@/components/dashboard/ComponentCell';
+import { DateRangeSelector } from '@/components/dashboard/DateRangeSelector';
 import { EmptyState } from '@/components/dashboard/EmptyState';
 import type { DashboardLayoutItem } from '@shared/types/dashboard';
 import { layoutPersistence } from '@/layout/layout-persistence';
@@ -286,6 +287,7 @@ export function DashboardView() {
           </div>
         </div>
         <div className="header-actions">
+          <DateRangeSelector />
           {editMode ? (
             <>
               <button

@@ -2,6 +2,8 @@ import { useMemo, useState } from 'react';
 import { ChevronUp, ChevronDown, Search } from 'lucide-react';
 import { ComponentWrapper } from '../ComponentWrapper';
 import { useProjectionQuery } from '@/hooks/useProjectionQuery';
+import { applyTimeRange, resolveTimeRange } from '@/hooks/useTimeRange';
+import { useFrameStore } from '@/store/store';
 
 interface RoutingDecision {
   id: string;
@@ -45,19 +47,28 @@ export default function RoutingDecisionTable({ config: _config }: { config: Reco
   const [sort, setSort] = useState<{ key: SortKey; dir: SortDir } | null>(null);
   const [page, setPage] = useState(0);
 
-  // Filter → sort → paginate. Recompute only when inputs change.
+  // Dashboard-level time range. Applied first (before the search filter)
+  // so the row count shown in the footer reflects the window the user
+  // selected. supports_time_range: true in the manifest.
+  const timeRange = useFrameStore((s) => s.globalFilters.timeRange);
+  const resolved = useMemo(() => resolveTimeRange(timeRange), [timeRange]);
+  const inRange = useMemo(
+    () => applyTimeRange(data, (d) => d.created_at, resolved),
+    [data, resolved],
+  );
+
+  // Search filter on top of the time-windowed rows.
   const filtered = useMemo(() => {
-    if (!data) return [] as RoutingDecision[];
     const q = query.trim().toLowerCase();
-    if (!q) return data;
-    return data.filter((row) => {
+    if (!q) return inRange;
+    return inRange.filter((row) => {
       return (
         row.llm_agent.toLowerCase().includes(q) ||
         row.fuzzy_agent.toLowerCase().includes(q) ||
         (row.agreement ? 'agree' : 'disagree').includes(q)
       );
     });
-  }, [data, query]);
+  }, [inRange, query]);
 
   const sorted = useMemo(() => {
     if (!sort) return filtered;
@@ -265,7 +276,7 @@ export default function RoutingDecisionTable({ config: _config }: { config: Reco
           >
             <span>
               {sorted.length} {sorted.length === 1 ? 'result' : 'results'}
-              {query && ` (filtered from ${data.length})`}
+              {query && ` (filtered from ${inRange.length})`}
             </span>
             <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
               <button
