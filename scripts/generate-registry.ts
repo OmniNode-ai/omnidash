@@ -177,17 +177,32 @@ const MVP_COMPONENTS: Record<string, ComponentManifest> = {
   'quality-score-panel': {
     name: 'quality-score-panel',
     displayName: 'Quality Scores',
-    description: 'Pattern quality scores and confidence metrics from omniintelligence',
+    description: 'Pattern quality score distribution with pass-rate headline and tier-coloured bars',
     category: 'metrics',
-    version: '1.0.0',
+    version: '1.1.0',
     implementationKey: 'quality/QualityScorePanel',
-    configSchema: { type: 'object', properties: {}, additionalProperties: false },
+    configSchema: {
+      type: 'object',
+      properties: {
+        passThreshold: {
+          type: 'number',
+          minimum: 0,
+          maximum: 1,
+          default: 0.8,
+          title: 'Pass threshold',
+          description: 'Score at or above which a measurement is counted as passing. Drives both the headline pass-rate number and the translucent wall behind the bars.',
+        },
+      },
+      additionalProperties: false,
+    },
     dataSources: [
       { type: 'api', endpoint: '/api/intelligence/quality/summary', required: true, purpose: 'initial_fetch' },
     ],
     events: { emits: [], consumes: [] },
+    // minSize bumped from 3 → 4 because the new split layout (130px
+    // stats pane + 3D chart) needs room for the chart to stay legible.
     defaultSize: { w: 6, h: 4 },
-    minSize: { w: 3, h: 3 },
+    minSize: { w: 4, h: 3 },
     maxSize: { w: 12, h: 6 },
     emptyState: { message: 'No quality scores', hint: 'Quality scores appear after patterns are evaluated' },
     capabilities: { supports_compare: false, supports_export: true, supports_fullscreen: false, supports_time_range: false },

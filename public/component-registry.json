@@ -1,6 +1,6 @@
 {
   "manifestVersion": "1.0",
-  "generatedAt": "2026-04-23T18:43:57.128Z",
+  "generatedAt": "2026-04-23T20:45:46.552Z",
   "components": {
     "cost-trend-panel": {
       "name": "cost-trend-panel",
@@ -331,13 +331,22 @@
     "quality-score-panel": {
       "name": "quality-score-panel",
       "displayName": "Quality Scores",
-      "description": "Pattern quality scores and confidence metrics from omniintelligence",
+      "description": "Pattern quality score distribution with pass-rate headline and tier-coloured bars",
       "category": "metrics",
-      "version": "1.0.0",
+      "version": "1.1.0",
       "implementationKey": "quality/QualityScorePanel",
       "configSchema": {
         "type": "object",
-        "properties": {},
+        "properties": {
+          "passThreshold": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 1,
+            "default": 0.8,
+            "title": "Pass threshold",
+            "description": "Score at or above which a measurement is counted as passing. Drives both the headline pass-rate number and the translucent wall behind the bars."
+          }
+        },
         "additionalProperties": false
       },
       "dataSources": [
@@ -357,7 +366,7 @@
         "h": 4
       },
       "minSize": {
-        "w": 3,
+        "w": 4,
         "h": 3
       },
       "maxSize": {

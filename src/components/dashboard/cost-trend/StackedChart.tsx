@@ -14,39 +14,7 @@
 // rAF loop.
 import { useEffect, useMemo, useRef, useState } from 'react';
 import * as THREE from 'three';
-import { useThemeColors } from '@/theme';
-
-// Parse any CSS color string — including modern color functions like
-// oklch() / lab() / color-mix() that THREE.Color.setStyle() doesn't
-// understand — into a numeric sRGB hex. We use a hidden 1×1 canvas:
-// Canvas 2D's fillStyle setter accepts the full CSS color syntax and
-// the browser normalizes it for us when we read the pixel back.
-// Without this conversion, our --chart-* tokens (which are defined as
-// oklch() in globals.css) all fell back to neutral grey inside THREE.
-function cssColorToHex(cssValue: string | undefined, fallback = 0x888888): number {
-  if (!cssValue || typeof document === 'undefined') return fallback;
-  try {
-    const canvas = document.createElement('canvas');
-    canvas.width = 1;
-    canvas.height = 1;
-    const ctx = canvas.getContext('2d');
-    if (!ctx) return fallback;
-    // Seed with an unusual sentinel: Canvas 2D's fillStyle setter
-    // silently ignores invalid colors and retains the previous value,
-    // so we test whether the setter accepted `cssValue` by comparing
-    // the normalized read-back.
-    const sentinel = '#fe00fd';
-    ctx.fillStyle = sentinel;
-    ctx.fillStyle = cssValue;
-    const normalized = (ctx.fillStyle as string).toLowerCase();
-    if (normalized === sentinel) return fallback;
-    ctx.fillRect(0, 0, 1, 1);
-    const d = ctx.getImageData(0, 0, 1, 1).data;
-    return (d[0] << 16) | (d[1] << 8) | d[2];
-  } catch {
-    return fallback;
-  }
-}
+import { useThemeColors, cssColorToHex } from '@/theme';
 
 // ---------- Types ----------
 
