@@ -26,14 +26,30 @@ interface Column {
   label: string;
 }
 
-const COLUMNS: Column[] = [
-  { key: 'created_at', label: 'Timestamp' },
-  { key: 'llm_agent', label: 'LLM Agent' },
-  { key: 'fuzzy_agent', label: 'Fuzzy Agent' },
-  { key: 'agreement', label: 'Agreement' },
-  { key: 'llm_confidence', label: 'LLM Conf.' },
-  { key: 'cost_usd', label: 'Cost' },
+// Column widths are declared via a <colgroup> so `tableLayout: fixed`
+// respects them — otherwise the browser distributes 1/6 to each column
+// regardless of content, which made Timestamp wrap and wasted space on
+// LLM Conf. and Cost (which only hold 3–7 chars).
+const COLUMNS: Array<Column & { width: string }> = [
+  { key: 'created_at',    label: 'Timestamp',   width: '24%' },
+  { key: 'llm_agent',     label: 'LLM Agent',   width: '21%' },
+  { key: 'fuzzy_agent',   label: 'Fuzzy Agent', width: '21%' },
+  { key: 'agreement',     label: 'Agreement',   width: '13%' },
+  { key: 'llm_confidence', label: 'LLM Conf.',  width: '9%' },
+  { key: 'cost_usd',      label: 'Cost',        width: '12%' },
 ];
+
+function formatTimestamp(iso: string): string {
+  // Compact "MM/DD HH:MM AM/PM" — fits the Timestamp column without
+  // wrapping at typical widget widths. toLocaleString() was producing
+  // strings like "4/20/2026, 10:40:00 AM" which are ~22 chars and
+  // wrap whenever the widget isn't full-width.
+  const d = new Date(iso);
+  const mm = String(d.getMonth() + 1).padStart(2, '0');
+  const dd = String(d.getDate()).padStart(2, '0');
+  const time = d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+  return `${mm}/${dd} ${time}`;
+}
 
 export default function RoutingDecisionTable({ config: _config }: { config: Record<string, unknown> }) {
   const { data, isLoading, error } = useProjectionQuery<RoutingDecision>({
@@ -159,6 +175,11 @@ export default function RoutingDecisionTable({ config: _config }: { config: Reco
                 tableLayout: 'fixed',
               }}
             >
+              <colgroup>
+                {COLUMNS.map((col) => (
+                  <col key={col.key} style={{ width: col.width }} />
+                ))}
+              </colgroup>
               <thead>
                 <tr>
                   {COLUMNS.map((col) => {
@@ -238,8 +259,17 @@ export default function RoutingDecisionTable({ config: _config }: { config: Reco
                 )}
                 {pageRows.map((row) => (
                   <tr key={row.id} style={{ borderBottom: '1px solid var(--line-2)' }}>
-                    <td style={{ padding: '0.375rem 0.5rem', fontVariantNumeric: 'tabular-nums' }}>
-                      {new Date(row.created_at).toLocaleString()}
+                    <td
+                      style={{
+                        padding: '0.375rem 0.5rem',
+                        fontVariantNumeric: 'tabular-nums',
+                        whiteSpace: 'nowrap',
+                        overflow: 'hidden',
+                        textOverflow: 'ellipsis',
+                      }}
+                      title={new Date(row.created_at).toLocaleString()}
+                    >
+                      {formatTimestamp(row.created_at)}
                     </td>
                     <td style={{ padding: '0.375rem 0.5rem' }}>{row.llm_agent}</td>
                     <td style={{ padding: '0.375rem 0.5rem' }}>{row.fuzzy_agent}</td>
