@@ -198,6 +198,58 @@ export const createDashboardSlice: StateCreator<FrameStore, [], [], DashboardSli
       return { activeDashboard, dashboards };
     }),
 
+  insertComponentAt: (componentName, componentVersion, defaultSize, atIndex) =>
+    set((state) => {
+      if (!state.activeDashboard) return state;
+      itemCounter++;
+      const newItem: DashboardLayoutItem = {
+        i: `component-${Date.now()}-${itemCounter}`,
+        componentName,
+        componentVersion,
+        x: 0,
+        y: Infinity,
+        w: defaultSize.w,
+        h: defaultSize.h,
+        config: {},
+      };
+      const layout = [...state.activeDashboard.layout];
+      const safeIndex = Math.max(0, Math.min(atIndex, layout.length));
+      layout.splice(safeIndex, 0, newItem);
+      const activeDashboard: DashboardDefinition = {
+        ...state.activeDashboard,
+        layout,
+        updatedAt: new Date().toISOString(),
+      };
+      const dashboards = state.dashboards.map((d) =>
+        d.id === activeDashboard.id ? activeDashboard : d,
+      );
+      return { activeDashboard, dashboards };
+    }),
+
+  moveLayoutItem: (itemId, toIndex) =>
+    set((state) => {
+      if (!state.activeDashboard) return state;
+      const layout = [...state.activeDashboard.layout];
+      const fromIndex = layout.findIndex((l) => l.i === itemId);
+      if (fromIndex < 0) return state;
+      // Removing the source shifts indices down by one when fromIndex < toIndex,
+      // so adjust the target to preserve the user's intent ("drop before widget at toIndex").
+      const adjusted = fromIndex < toIndex ? toIndex - 1 : toIndex;
+      const [item] = layout.splice(fromIndex, 1);
+      const safeIndex = Math.max(0, Math.min(adjusted, layout.length));
+      if (safeIndex === fromIndex) return state; // no-op
+      layout.splice(safeIndex, 0, item);
+      const activeDashboard: DashboardDefinition = {
+        ...state.activeDashboard,
+        layout,
+        updatedAt: new Date().toISOString(),
+      };
+      const dashboards = state.dashboards.map((d) =>
+        d.id === activeDashboard.id ? activeDashboard : d,
+      );
+      return { activeDashboard, dashboards };
+    }),
+
   removeComponentFromLayout: (itemId: string) =>
     set((state) => {
       if (!state.activeDashboard) return state;
