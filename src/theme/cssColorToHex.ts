@@ -37,3 +37,23 @@ export function cssColorToHex(cssValue: string | undefined, fallback = 0x888888)
     return fallback;
   }
 }
+
+/**
+ * Resolve a CSS variable (e.g. `--brand`) to a numeric sRGB hex.
+ *
+ * Canvas 2D's fillStyle setter — which cssColorToHex uses for parsing —
+ * does NOT accept `var()` syntax; passing `"var(--brand)"` straight in
+ * falls through to the fallback. This helper bridges the gap: it reads
+ * the variable's computed value off documentElement (resolving its
+ * chain of fallbacks and theme overrides) and passes the resulting
+ * color literal into cssColorToHex.
+ *
+ * `varName` should include the leading double-dash (for example
+ * `"--brand"` or `"--panel-2"`).
+ */
+export function cssVarToHex(varName: string, fallback = 0x888888): number {
+  if (typeof document === 'undefined') return fallback;
+  const raw = getComputedStyle(document.documentElement).getPropertyValue(varName).trim();
+  if (!raw) return fallback;
+  return cssColorToHex(raw, fallback);
+}
