@@ -1,10 +1,10 @@
 import { useMemo, useState } from 'react';
-import ReactECharts from 'echarts-for-react';
 import { ComponentWrapper } from '../ComponentWrapper';
 import { useProjectionQuery } from '@/hooks/useProjectionQuery';
 import { applyTimeRange, resolveTimeRange } from '@/hooks/useTimeRange';
 import { useThemeColors } from '@/theme';
 import { useFrameStore } from '@/store/store';
+import { StackedAreaChart, type StackedSlice } from './StackedAreaChart';
 
 interface CostDataPoint {
   bucket_time: string;
@@ -19,6 +19,51 @@ interface CostDataPoint {
 interface CostTrendConfig {
   granularity?: 'hour' | 'day';
   showBudgetLine?: boolean;
+}
+
+function buildStacked(
+  data: CostDataPoint[],
+  allModels: string[],
+  disabledModels: Set<string>,
+): StackedSlice | null {
+  if (!data || data.length === 0) return null;
+  const visibleModels = allModels.filter((m) => !disabledModels.has(m));
+  if (visibleModels.length === 0) return null;
+  const buckets = [...new Set(data.map((d) => d.bucket_time))].sort();
+
+  // Index raw data by (bucket, model) → cost so we can look up quickly
+  // and default missing cells to 0 without another pass.
+  const byKey = new Map<string, number>();
+  for (const d of data) {
+    byKey.set(`${d.bucket_time}|${d.model_name}`, parseFloat(d.total_cost_usd) || 0);
+  }
+  const perModelCost: Record<string, number[]> = {};
+  for (const m of visibleModels) {
+    const arr = new Array(buckets.length).fill(0);
+    for (let i = 0; i < buckets.length; i++) {
+      arr[i] = byKey.get(`${buckets[i]}|${m}`) ?? 0;
+    }
+    perModelCost[m] = arr;
+  }
+  const cumulative: number[][] = [];
+  let maxTotal = 0;
+  for (let i = 0; i < buckets.length; i++) {
+    const row: number[] = [];
+    let sum = 0;
+    for (let j = 0; j < visibleModels.length; j++) {
+      sum += perModelCost[visibleModels[j]][i];
+      row.push(sum);
+    }
+    cumulative.push(row);
+    if (sum > maxTotal) maxTotal = sum;
+  }
+  return {
+    buckets,
+    visibleModels,
+    cumulative,
+    perModelCost,
+    maxTotal: maxTotal > 0 ? maxTotal : 1,
+  };
 }
 
 export default function CostTrendPanel({ config }: { config: CostTrendConfig }) {
@@ -43,8 +88,8 @@ export default function CostTrendPanel({ config }: { config: CostTrendConfig }) 
 
   // Model list derived from the full dataset (not the time-filtered one)
   // so the legend is stable as the user scrubs the range. A model whose
-  // bucket all fall outside the window still appears in the legend — its
-  // stacked band is just empty — which keeps the color↔model mapping
+  // buckets all fall outside the window still appears in the legend —
+  // its stacked band is just empty — which keeps the color↔model mapping
   // consistent and avoids the legend flickering on range changes.
   const allModels = useMemo(
     () => (data ? [...new Set(data.map((d) => d.model_name))].sort() : []),
@@ -65,79 +110,26 @@ export default function CostTrendPanel({ config }: { config: CostTrendConfig }) 
     });
   };
 
-  const chartOption = useMemo(() => {
-    if (!filteredData || filteredData.length === 0) return null;
+  const stacked = useMemo(
+    () => buildStacked(filteredData, allModels, disabledModels),
+    [filteredData, allModels, disabledModels],
+  );
 
-    const visibleModels = allModels.filter((m) => !disabledModels.has(m));
-    const dates = [...new Set(filteredData.map((d) => d.bucket_time))].sort();
-
-    // X-axis ticks: prefer date-only for day granularity; include the hour
-    // for hourly buckets so adjacent ticks don't collapse to the same label.
-    const tickFor = (iso: string) => {
-      const d = new Date(iso);
-      const date = `${String(d.getMonth() + 1).padStart(2, '0')}/${String(d.getDate()).padStart(2, '0')}`;
-      if (granularity === 'hour') {
-        return `${date} ${String(d.getHours()).padStart(2, '0')}:00`;
-      }
-      return date;
-    };
-
-    return {
-      tooltip: {
-        trigger: 'axis' as const,
-        axisPointer: { type: 'line' as const },
-        valueFormatter: (v: number) => `$${v.toFixed(4)}`,
-      },
-      // Built-in legend is hidden — we render a custom HTML legend below
-      // the chart so the styling matches the rest of the dashboard and
-      // can host more controls in the future (isolate, mute, etc.).
-      legend: { show: false },
-      grid: { top: 12, right: 16, bottom: 28, left: 54 },
-      xAxis: {
-        type: 'category' as const,
-        data: dates.map(tickFor),
-        axisLabel: { color: colors.mutedForeground },
-      },
-      yAxis: {
-        type: 'value' as const,
-        name: 'Cost (USD)',
-        axisLabel: { color: colors.mutedForeground, formatter: '${value}' },
-      },
-      // Stacked area: each model is an additive layer so the top of the
-      // stack reads as total cost over time and each band reads as that
-      // model's contribution. No emphasis.focus — with an axis-triggered
-      // tooltip, series emphasis causes the rest of the stack to dim on
-      // hover, which made the chart appear to "isolate" the hovered band
-      // and flicker as the mouse moved between series.
-      series: visibleModels.map((model) => {
-        const colorIdx = allModels.indexOf(model);
-        return {
-          name: model,
-          type: 'line' as const,
-          stack: 'total',
-          smooth: true,
-          showSymbol: false,
-          areaStyle: { opacity: 0.55 },
-          lineStyle: { width: 1, opacity: 0.9 },
-          data: dates.map((date) => {
-            const point = filteredData.find(
-              (d) => d.bucket_time === date && d.model_name === model,
-            );
-            return point ? parseFloat(point.total_cost_usd) : 0;
-          }),
-          itemStyle: { color: colors.chart[colorIdx % colors.chart.length] },
-        };
-      }),
-      backgroundColor: 'transparent',
-    };
-  }, [filteredData, allModels, disabledModels, colors, granularity]);
+  const formatBucketTick = (iso: string): string => {
+    const d = new Date(iso);
+    const date = `${String(d.getMonth() + 1).padStart(2, '0')}/${String(d.getDate()).padStart(2, '0')}`;
+    if (granularity === 'hour') {
+      return `${date} ${String(d.getHours()).padStart(2, '0')}:00`;
+    }
+    return date;
+  };
 
   // Treat the widget as empty when the underlying topic has no data at
   // all. A range filter that clips away everything reads more clearly as
   // "no results for the selected window" than as a blank empty state.
   const hasAnyData = Boolean(data && data.length > 0);
-  const filteredIsEmpty = !filteredData || filteredData.length === 0;
   const rangeActive = Boolean(resolved);
+  const showNoDataInRange = hasAnyData && stacked === null;
 
   return (
     <ComponentWrapper
@@ -151,10 +143,24 @@ export default function CostTrendPanel({ config }: { config: CostTrendConfig }) 
       {hasAnyData && (
         <div>
           <div style={{ position: 'relative' }}>
-            {chartOption && (
-              <ReactECharts option={chartOption} style={{ height: '320px' }} notMerge />
+            {stacked ? (
+              <StackedAreaChart
+                stacked={stacked}
+                allModels={allModels}
+                formatBucketTick={formatBucketTick}
+                height={320}
+              />
+            ) : (
+              <div
+                style={{
+                  height: 320,
+                  borderRadius: 6,
+                  background: 'var(--panel-2)',
+                  border: '1px solid var(--line-2)',
+                }}
+              />
             )}
-            {filteredIsEmpty && rangeActive && (
+            {showNoDataInRange && (
               <div
                 style={{
                   position: 'absolute', inset: 0,
@@ -162,7 +168,9 @@ export default function CostTrendPanel({ config }: { config: CostTrendConfig }) 
                   color: 'var(--ink-3)', fontSize: 13,
                 }}
               >
-                No cost data in the selected time range
+                {rangeActive
+                  ? 'No cost data in the selected time range'
+                  : 'All models are hidden'}
               </div>
             )}
           </div>
