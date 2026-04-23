@@ -23,11 +23,21 @@ npm run generate:registry
 npm run dev
 ```
 
-**Add a new widget:**
-1. Create `src/components/dashboard/<name>/<Name>.tsx` that accepts `{ projection, snapshots }` via its config.
-2. Create `src/components/dashboard/<name>/manifest.ts` exporting a `ComponentManifest`.
-3. Run `npm run generate:registry` to pick it up.
-4. Restart dev server.
+**Add a new widget (two tracks — pick one):**
+
+_Track A — local MVP widget (the seven current widgets use this path):_
+1. Create `src/components/dashboard/<name>/<Name>.tsx`. Default-export a React component that accepts a `config` prop shaped per its manifest.
+2. Register the lazy import in `src/components/dashboard/index.ts` under its `implementationKey` (e.g. `'<name>/<Name>': lazy(() => import('./<name>/<Name>'))`).
+3. Add the manifest entry to the `MVP_COMPONENTS` object in `scripts/generate-registry.ts`. This is the canonical MVP manifest location — there is no per-widget `manifest.ts` file for local widgets.
+4. Run `npm run generate:registry` to rewrite `public/component-registry.json`.
+5. Restart dev server.
+
+_Track B — external package widget (plugin extension path):_
+1. Publish an `@omninode/*` npm package containing your widget component plus a JSON manifest file listing one or more `ComponentManifest` entries.
+2. Reference the manifest path in the package's `package.json` via `"dashboardComponents": "./path/to/manifests.json"`.
+3. `npm install` the package into omnidash-v2.
+4. Run `npm run generate:registry` — the script auto-scans `node_modules/@omninode/*` and merges discovered manifests into the registry.
+5. Dynamic code loading for external packages is a future phase; for now they surface in the palette with `status: 'not_implemented'` unless their `implementationKey` also appears in the local `componentImports` map.
 
 **Add a new data source adapter:**
 1. Create `src/data-source/<name>-snapshot-source.ts` implementing `ProtocolSnapshotSource`.
@@ -48,4 +58,6 @@ npm run dev
 - Palette: `src/components/dashboard/ComponentPalette.tsx`
 - Edit/view toggle: `src/store/editModeSlice.ts`, `src/pages/DashboardBuilder.tsx`
 - Layout persistence: `src/layout/layout-persistence.ts`
-- Widget manifests: `src/components/dashboard/<name>/manifest.ts`
+- Widget lazy-import map: `src/components/dashboard/index.ts`
+- Widget MVP manifests: `scripts/generate-registry.ts` (`MVP_COMPONENTS`)
+- External package manifest discovery: `scripts/generate-registry.ts` → `scanInstalledPackages()`
