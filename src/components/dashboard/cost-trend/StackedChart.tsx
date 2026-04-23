@@ -104,7 +104,13 @@ interface Scales {
   valueForY: (y: number) => number;
 }
 
-function buildScales(width: number, height: number, numBuckets: number, maxTotal: number): Scales {
+function buildScales(
+  width: number,
+  height: number,
+  numBuckets: number,
+  maxTotal: number,
+  chartType: ChartType,
+): Scales {
   const plotLeft = MARGIN.left;
   const plotRight = width - MARGIN.right;
   const plotTop = MARGIN.top;
@@ -112,10 +118,26 @@ function buildScales(width: number, height: number, numBuckets: number, maxTotal
   const plotWidth = Math.max(1, plotRight - plotLeft);
   const plotHeight = Math.max(1, plotBottom - plotTop);
 
-  const xForBucket = (i: number) => {
-    if (numBuckets <= 1) return plotLeft + plotWidth / 2;
-    return plotLeft + (i / (numBuckets - 1)) * plotWidth;
-  };
+  // X mapping differs by chart type on purpose:
+  //   - 'area' places samples at both plot edges. A continuous trend
+  //     line reads correctly when its endpoints hit plotLeft /
+  //     plotRight; users expect the line to span the full plot area.
+  //   - 'bar' places samples at the centers of N evenly-spaced cells
+  //     of width plotWidth/N. Every bar (of width cellWidth * 0.72)
+  //     stays fully inside the plot area, regardless of bucket count,
+  //     so the leftmost/rightmost bars don't bleed into the y-axis
+  //     label column or past the canvas right edge.
+  const xForBucket =
+    chartType === 'bar'
+      ? (i: number) => {
+          if (numBuckets <= 0) return plotLeft + plotWidth / 2;
+          const cellWidth = plotWidth / numBuckets;
+          return plotLeft + (i + 0.5) * cellWidth;
+        }
+      : (i: number) => {
+          if (numBuckets <= 1) return plotLeft + plotWidth / 2;
+          return plotLeft + (i / (numBuckets - 1)) * plotWidth;
+        };
   // y=0 at plotBottom, y=maxTotal at plotTop. Screen y grows downward in our frustum.
   const yForValue = (v: number) => plotBottom - (v / maxTotal) * plotHeight;
   const valueForY = (y: number) => ((plotBottom - y) / plotHeight) * maxTotal;
@@ -399,8 +421,8 @@ export function StackedChart({
   // Y-axis ticks + DOM positions for labels. Computed here because the
   // HTML overlay needs them too.
   const scales = useMemo(
-    () => buildScales(size.w, size.h, stacked.buckets.length, stacked.maxTotal),
-    [size, stacked],
+    () => buildScales(size.w, size.h, stacked.buckets.length, stacked.maxTotal, chartType),
+    [size, stacked, chartType],
   );
   const yTicks = useMemo(() => niceYTicks(stacked.maxTotal, NUM_Y_TICKS), [stacked]);
   const xTickStride = useMemo(
@@ -545,20 +567,26 @@ export function StackedChart({
           color: 'var(--ink-3)',
         }}
       >
-        {yTickLabels.map((t) => (
-          <div
-            key={`y-${t.value}`}
-            style={{
-              position: 'absolute',
-              right: `calc(100% - ${scales.plotLeft - 4}px)`,
-              top: t.top,
-              transform: 'translateY(-50%)',
-              whiteSpace: 'nowrap',
-            }}
-          >
-            {`$${t.value.toFixed(t.value >= 1 ? 2 : 4)}`}
-          </div>
-        ))}
+        {/* Skip the $0 tick label — the x-axis baseline already
+            communicates "zero" visually, and the label sits in the
+            same bottom-left corner as the leftmost date label, which
+            made the two collide at narrow widget widths. */}
+        {yTickLabels
+          .filter((t) => t.value > 0)
+          .map((t) => (
+            <div
+              key={`y-${t.value}`}
+              style={{
+                position: 'absolute',
+                right: `calc(100% - ${scales.plotLeft - 4}px)`,
+                top: t.top,
+                transform: 'translateY(-50%)',
+                whiteSpace: 'nowrap',
+              }}
+            >
+              {`$${t.value.toFixed(t.value >= 1 ? 2 : 4)}`}
+            </div>
+          ))}
         {xTickLabels.map((t) => (
           <div
             key={`x-${t.i}`}
