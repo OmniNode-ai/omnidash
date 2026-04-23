@@ -18,7 +18,7 @@ import { useEffect, useMemo, useRef, useState, useCallback } from 'react';
 import * as THREE from 'three';
 import { ComponentWrapper } from '../ComponentWrapper';
 import { useProjectionQuery } from '@/hooks/useProjectionQuery';
-import { cssColorToHex, useThemeName } from '@/theme';
+import { cssVarToHex, useThemeName } from '@/theme';
 
 interface QualityDistributionBucket {
   bucket: string;
@@ -88,8 +88,17 @@ interface EffectiveColors {
   barLightness: number;
   /** CSS var string for the mount div background. */
   canvasBg: string;
-  /** CSS var string for the ground plane — distinct from canvasBg so depth reads. */
-  groundCssVar: string;
+  /**
+   * Explicit sRGB hex for the ground plane. We use a concrete number
+   * rather than a CSS variable lookup here because Canvas 2D's
+   * fillStyle setter (which cssColorToHex uses under the hood)
+   * rejects `var()` syntax and previously fell through to a near-
+   * black fallback — which looked correct on the dark theme but
+   * produced a black floor in light mode. Values mirror the
+   * DARK_THEME / LIGHT_THEME floors cost-trend-3d ships with so the
+   * two three.js widgets stay visually consistent.
+   */
+  groundHex: number;
 }
 
 const DARK_EFFECTIVE: EffectiveColors = {
@@ -104,7 +113,7 @@ const DARK_EFFECTIVE: EffectiveColors = {
   barSaturation: 0.85,
   barLightness: 0.62,
   canvasBg: 'var(--panel-2)',
-  groundCssVar: 'var(--panel)',
+  groundHex: 0x020812,          // matches cost-trend-3d DARK_THEME.floor
 };
 
 const LIGHT_EFFECTIVE: EffectiveColors = {
@@ -119,7 +128,7 @@ const LIGHT_EFFECTIVE: EffectiveColors = {
   barSaturation: 0.6,           //   garish on white; soften the palette to
   barLightness: 0.5,            //   match the pastel aesthetic used elsewhere
   canvasBg: 'var(--panel-2)',
-  groundCssVar: 'var(--panel)',
+  groundHex: 0xf7f8fa,          // matches cost-trend-3d LIGHT_THEME.floor
 };
 
 // ---------- 3D chart ----------
@@ -251,9 +260,7 @@ function ThreeBarChart({
     const groundD = BAR_DEPTH * 2.2;
     const ground = new THREE.Mesh(
       new THREE.PlaneGeometry(groundW, groundD),
-      new THREE.MeshBasicMaterial({
-        color: cssColorToHex(effective.groundCssVar, 0x0b0e14),
-      }),
+      new THREE.MeshBasicMaterial({ color: effective.groundHex }),
     );
     ground.rotation.x = -Math.PI / 2;
     ground.position.y = -0.01;
@@ -362,7 +369,7 @@ function ThreeBarChart({
     // tied to the cone's projected position communicates the cone's
     // meaning more directly.
     const meanX = scoreToX(meanScore);
-    const markerColor = cssColorToHex('var(--brand)', 0x00e5ff);
+    const markerColor = cssVarToHex('--brand', 0x00e5ff);
     const markerGeom = new THREE.ConeGeometry(0.2, 0.42, 16);
     markerGeom.rotateX(Math.PI);
     const marker = new THREE.Mesh(
