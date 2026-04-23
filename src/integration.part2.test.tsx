@@ -33,12 +33,13 @@ describe('Proof of Life — Part 2', () => {
     useFrameStore.getState().setActiveDashboard(dash);
   });
 
-  it('registry loads all 7 MVP components from generated manifest', () => {
+  it('registry loads all MVP components from generated manifest', () => {
     const registry = new ComponentRegistry(manifest);
     const all = registry.getAvailableComponents();
-    expect(all.length).toBe(7);
+    expect(all.length).toBe(8);
     expect(all.map((c) => c.name).sort()).toEqual([
       'baselines-roi-card',
+      'cost-trend-3d',
       'cost-trend-panel',
       'delegation-metrics',
       'event-stream',
@@ -48,10 +49,11 @@ describe('Proof of Life — Part 2', () => {
     ]);
   });
 
-  it('palette shows all 7 components in edit mode', async () => {
+  it('palette shows all components in edit mode', async () => {
     renderWithRegistry();
     await userEvent.click(screen.getByRole('button', { name: /add widget/i }));
     expect(screen.getByText('Cost Trend')).toBeInTheDocument();
+    expect(screen.getByText('Cost Trend (3D)')).toBeInTheDocument();
     expect(screen.getByText('Delegation Metrics')).toBeInTheDocument();
     expect(screen.getByText('Routing Decisions')).toBeInTheDocument();
     expect(screen.getByText('Baselines ROI')).toBeInTheDocument();
