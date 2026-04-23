@@ -107,6 +107,26 @@
     --color-healthy: var(--status-ok);
     --color-warning: var(--status-warn);
     --color-destructive: var(--status-bad);
+
+    /* Aliases so useThemeColors() (which reads --status-healthy/--status-warning
+       /--status-error off documentElement) finds values. The prototype uses
+       --status-ok/--status-warn/--status-bad; this keeps both vocabularies in sync. */
+    --status-healthy: var(--status-ok);
+    --status-warning: var(--status-warn);
+    --status-error: var(--status-bad);
+
+    /* ===== CHART PALETTE =====
+       Seven distinct hues at similar lightness / chroma so no one line dominates
+       in multi-series charts. Tuned for panel backgrounds (white in light mode).
+       Hue spacing chosen to stay clear of the brand's green (--accent-h = 120)
+       and to keep adjacent slots visually separable. */
+    --chart-1: oklch(68% 0.15 250);  /* blue */
+    --chart-2: oklch(72% 0.14 160);  /* teal */
+    --chart-3: oklch(78% 0.14 85);   /* yellow */
+    --chart-4: oklch(68% 0.18 30);   /* orange-red */
+    --chart-5: oklch(66% 0.20 350);  /* magenta */
+    --chart-6: oklch(66% 0.16 290);  /* purple */
+    --chart-7: oklch(72% 0.12 200);  /* cyan */
   }
 
   [data-theme="dark"] {
@@ -130,6 +150,16 @@
     --shadow-sm: 0 1px 2px oklch(0% 0 0 / 0.3);
     --shadow-md: 0 4px 14px oklch(0% 0 0 / 0.35), 0 1px 2px oklch(0% 0 0 / 0.3);
     --shadow-lg: 0 24px 60px oklch(0% 0 0 / 0.5), 0 2px 8px oklch(0% 0 0 / 0.3);
+
+    /* Slightly brighter chart palette for dark panels — higher lightness, similar
+       chroma, same hues so series identity stays consistent across theme toggle. */
+    --chart-1: oklch(75% 0.17 250);
+    --chart-2: oklch(78% 0.16 160);
+    --chart-3: oklch(83% 0.15 85);
+    --chart-4: oklch(74% 0.19 30);
+    --chart-5: oklch(72% 0.21 350);
+    --chart-6: oklch(72% 0.17 290);
+    --chart-7: oklch(77% 0.14 200);
   }
 
   [data-density="compact"] {
