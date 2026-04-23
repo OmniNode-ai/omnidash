@@ -18,7 +18,7 @@ import { useEffect, useMemo, useRef, useState, useCallback } from 'react';
 import * as THREE from 'three';
 import { ComponentWrapper } from '../ComponentWrapper';
 import { useProjectionQuery } from '@/hooks/useProjectionQuery';
-import { cssColorToHex } from '@/theme';
+import { cssColorToHex, useThemeName } from '@/theme';
 
 interface QualityDistributionBucket {
   bucket: string;
@@ -60,15 +60,67 @@ function scoreToX(score: number): number {
   return (score - 0.1) / (0.9 - 0.1) * ((BAR_COUNT - 1) * BAR_SPACING) - STRIP_HALF_WIDTH;
 }
 
-// Quality tier color: red (0) → amber (middle) → green (1). High
-// saturation + mid-high lightness for the Tron neon look — the
-// values match the aesthetic of cost-trend-3d's bar palette so the
-// two three.js widgets feel like siblings.
-function tierHexForIndex(i: number): number {
+// Quality tier color: red (0) → amber (middle) → green (1). Saturation
+// + lightness come from the theme-specific `effective` block below so
+// the palette tones down for the light theme (garish neon on white
+// reads badly, and we want to match the pastel aesthetic that
+// cost-trend-3d established for light mode).
+function tierHexForIndex(i: number, sat: number, light: number): number {
   const t = BAR_COUNT > 1 ? i / (BAR_COUNT - 1) : 0;
   const hue = t * 120; // 0=red, 60=yellow, 120=green
-  return new THREE.Color().setHSL(hue / 360, 0.85, 0.62).getHex();
+  return new THREE.Color().setHSL(hue / 360, sat, light).getHex();
 }
+
+// Per-theme visual knobs. Dark theme leans into the Tron look
+// (saturated bars, cyan grid, bright outlines). Light theme tones
+// everything down and replaces white-on-white combinations (which
+// were invisible) with neutral greys and slate.
+interface EffectiveColors {
+  gridColor: number;
+  gridOpacity: number;
+  thresholdPlaneColor: number;
+  thresholdPlaneOpacity: number;
+  thresholdOutlineColor: number;
+  thresholdOutlineOpacity: number;
+  barCoreOpacity: number;
+  barEdgeOpacity: number;
+  barSaturation: number;
+  barLightness: number;
+  /** CSS var string for the mount div background. */
+  canvasBg: string;
+  /** CSS var string for the ground plane — distinct from canvasBg so depth reads. */
+  groundCssVar: string;
+}
+
+const DARK_EFFECTIVE: EffectiveColors = {
+  gridColor: 0x00e5ff,          // cyan, Tron signature
+  gridOpacity: 0.35,
+  thresholdPlaneColor: 0xffffff,
+  thresholdPlaneOpacity: 0.08,
+  thresholdOutlineColor: 0xffffff,
+  thresholdOutlineOpacity: 0.75,
+  barCoreOpacity: 0.55,
+  barEdgeOpacity: 0.95,
+  barSaturation: 0.85,
+  barLightness: 0.62,
+  canvasBg: 'var(--panel-2)',
+  groundCssVar: 'var(--panel)',
+};
+
+const LIGHT_EFFECTIVE: EffectiveColors = {
+  gridColor: 0x6b7280,          // medium slate, visible on near-white
+  gridOpacity: 0.45,
+  thresholdPlaneColor: 0x334155, // dark slate — white-on-white was invisible
+  thresholdPlaneOpacity: 0.1,
+  thresholdOutlineColor: 0x334155,
+  thresholdOutlineOpacity: 0.7,
+  barCoreOpacity: 0.72,         // more opaque so bars read against white bg
+  barEdgeOpacity: 0.8,          // slightly less than dark — neon edges feel
+  barSaturation: 0.6,           //   garish on white; soften the palette to
+  barLightness: 0.5,            //   match the pastel aesthetic used elsewhere
+  canvasBg: 'var(--panel-2)',
+  groundCssVar: 'var(--panel)',
+};
 
 // ---------- 3D chart ----------
 
@@ -101,6 +153,9 @@ function ThreeBarChart({
   // Mean marker's projected canvas-pixel position. Recomputed during
   // every scene rebuild so the HTML "MEAN 0.XX" label tracks the cone.
   const [meanLabelPos, setMeanLabelPos] = useState<{ x: number; y: number } | null>(null);
+
+  const themeName = useThemeName();
+  const effective = themeName === 'dark' ? DARK_EFFECTIVE : LIGHT_EFFECTIVE;
 
   // Mount once.
   useEffect(() => {
@@ -188,22 +243,23 @@ function ThreeBarChart({
     const group = new THREE.Group();
     group.name = 'dynamic';
 
-    // Subtle ground plane sized to the bar strip. Unlit — the dark
-    // colour reads the same with or without lighting.
+    // Subtle ground plane sized to the bar strip. Uses `var(--panel)`
+    // so it sits a step away from the canvas background (`--panel-2`)
+    // in both themes — gives the floor a visible boundary without
+    // needing a shadow or gradient.
     const groundW = STRIP_HALF_WIDTH * 2 + BAR_WIDTH + 1.2;
     const groundD = BAR_DEPTH * 2.2;
     const ground = new THREE.Mesh(
       new THREE.PlaneGeometry(groundW, groundD),
       new THREE.MeshBasicMaterial({
-        color: cssColorToHex('var(--panel-2)', 0x0b0e14),
+        color: cssColorToHex(effective.groundCssVar, 0x0b0e14),
       }),
     );
     ground.rotation.x = -Math.PI / 2;
     ground.position.y = -0.01;
     group.add(ground);
 
-    // Tick gridlines on the ground at each bucket x-boundary. Brighter
-    // cyan at moderate opacity for the Tron look.
+    // Tick gridlines on the ground at each bucket x-boundary.
     const tickPositions: number[] = [];
     for (let i = 0; i <= BAR_COUNT; i++) {
       tickPositions.push(-STRIP_HALF_WIDTH - BAR_SPACING / 2 + i * BAR_SPACING);
@@ -217,23 +273,22 @@ function ThreeBarChart({
     group.add(new THREE.LineSegments(
       gridGeom,
       new THREE.LineBasicMaterial({
-        color: 0x00e5ff,
+        color: effective.gridColor,
         transparent: true,
-        opacity: 0.35,
+        opacity: effective.gridOpacity,
       }),
     ));
 
-    // Bars — Tron recipe: translucent coloured core + bright edges.
-    // The EdgesGeometry outline on all 12 cube edges carries the 3D
-    // read without needing lighting, and stays crisp against the dark
-    // ground. Opacity 0.55 on the core (vs cost-trend-3d's 0.18)
-    // because here we WANT the bars to read as solid objects rather
-    // than ethereal data beams.
+    // Bars — translucent coloured core + bright edges. The
+    // EdgesGeometry outline on all 12 cube edges carries the 3D read
+    // without lighting. Per-theme saturation / lightness / opacity
+    // means dark theme keeps the Tron look while light theme softens
+    // to pastel-on-white for legibility.
     const bars: THREE.Mesh[] = [];
     distribution.forEach((b, i) => {
       const heightFactor = maxCount > 0 ? b.count / maxCount : 0;
       const h = Math.max(0.02, heightFactor * MAX_BAR_HEIGHT);
-      const color = tierHexForIndex(i);
+      const color = tierHexForIndex(i, effective.barSaturation, effective.barLightness);
 
       const boxGeom = new THREE.BoxGeometry(BAR_WIDTH, h, BAR_DEPTH);
       const core = new THREE.Mesh(
@@ -241,7 +296,7 @@ function ThreeBarChart({
         new THREE.MeshBasicMaterial({
           color,
           transparent: true,
-          opacity: 0.55,
+          opacity: effective.barCoreOpacity,
           depthWrite: false,
         }),
       );
@@ -255,7 +310,7 @@ function ThreeBarChart({
         new THREE.LineBasicMaterial({
           color,
           transparent: true,
-          opacity: 0.95,
+          opacity: effective.barEdgeOpacity,
         }),
       );
       edges.position.copy(core.position);
@@ -263,16 +318,16 @@ function ThreeBarChart({
     });
     barsRef.current = bars;
 
-    // Pass-threshold plane. Vertical quad sitting at the x-position
-    // corresponding to `passThreshold`. Everything on its right side
-    // is "passing"; the plane itself reads as a dividing wall.
+    // Pass-threshold plane. Vertical quad at the x-position matching
+    // `passThreshold`. Everything to its right is "passing"; the
+    // plane reads as a dividing wall.
     const thresholdX = scoreToX(passThreshold);
     const plane = new THREE.Mesh(
       new THREE.PlaneGeometry(BAR_DEPTH * 2, MAX_BAR_HEIGHT + 0.6),
       new THREE.MeshBasicMaterial({
-        color: 0xffffff,
+        color: effective.thresholdPlaneColor,
         transparent: true,
-        opacity: 0.08,
+        opacity: effective.thresholdPlaneOpacity,
         side: THREE.DoubleSide,
         depthWrite: false,
       }),
@@ -281,7 +336,7 @@ function ThreeBarChart({
     plane.rotation.y = Math.PI / 2;
     group.add(plane);
     // Rectangle outline on the threshold plane so it reads as a crisp
-    // dividing wall rather than just a faint tint.
+    // divider rather than a faint tint.
     const thresholdLineGeom = new THREE.BufferGeometry();
     const thP = [
       thresholdX, 0, -BAR_DEPTH,
@@ -293,9 +348,9 @@ function ThreeBarChart({
     group.add(new THREE.LineSegments(
       thresholdLineGeom,
       new THREE.LineBasicMaterial({
-        color: 0xffffff,
+        color: effective.thresholdOutlineColor,
         transparent: true,
-        opacity: 0.75,
+        opacity: effective.thresholdOutlineOpacity,
       }),
     ));
 
@@ -330,7 +385,7 @@ function ThreeBarChart({
     setMeanLabelPos({ x: screenX, y: screenY });
 
     renderer.render(scene, camera);
-  }, [distribution, meanScore, passThreshold, maxCount, size]);
+  }, [distribution, meanScore, passThreshold, maxCount, size, effective]);
 
   // Hover raycast. On pointer move inside the canvas, find the bar
   // under the pointer (if any) and surface it for the tooltip.
@@ -375,7 +430,7 @@ function ThreeBarChart({
         position: 'relative',
         width: '100%',
         height: CANVAS_HEIGHT,
-        background: 'var(--panel-2)',
+        background: effective.canvasBg,
         border: '1px solid var(--line-2)',
         borderRadius: 6,
       }}
