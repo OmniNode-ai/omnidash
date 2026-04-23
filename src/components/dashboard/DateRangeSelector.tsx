@@ -5,9 +5,10 @@
 // their data accordingly.
 //
 // Design notes:
-//   - Preset-only for v1 (Last 1h / 6h / 24h / 7d / 30d + "All time").
-//     Custom start/end is deferrable; presets cover the common case and
-//     avoid shipping a date-picker dependency.
+//   - Two views in the same popover: preset list and a custom
+//     start/end range picker (calendar + time inputs). The popover
+//     stays open when switching between them; Apply commits + closes,
+//     Cancel returns to the preset list.
 //   - Preset selection resolves to absolute ISO timestamps at click-time
 //     and stores those in the range. The window doesn't auto-advance
 //     with auto-refresh — the user re-picks to refresh. This keeps the
@@ -16,7 +17,7 @@
 //   - On first mount, if the store has no time range yet, we seed the
 //     default preset (Last 24h). Makes fresh dashboards land on a
 //     sensible window rather than "show me 48h of synthetic fixtures".
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { Calendar, ChevronDown } from 'lucide-react';
 import {
   PositionedMenu,
@@ -31,11 +32,16 @@ import {
   rangeFromPreset,
   type TimeRangePreset,
 } from '@/hooks/useTimeRange';
+import type { TimeRange } from '@/store/types';
+import { CustomRangePicker } from './CustomRangePicker';
+
+type MenuView = 'presets' | 'custom';
 
 export function DateRangeSelector() {
   const range = useFrameStore((s) => s.globalFilters.timeRange);
   const setTimeRange = useFrameStore((s) => s.setTimeRange);
   const menu = usePositionedMenu();
+  const [view, setView] = useState<MenuView>('presets');
 
   // Seed the default preset on first mount if the store is empty.
   useEffect(() => {
@@ -47,8 +53,16 @@ export function DateRangeSelector() {
   const applyPreset = (preset: TimeRangePreset) => {
     setTimeRange(rangeFromPreset(preset));
   };
-
   const clearRange = () => setTimeRange(undefined);
+  const applyCustom = (custom: TimeRange) => {
+    setTimeRange(custom);
+    menu.close();
+    setView('presets');
+  };
+  const closeMenu = () => {
+    menu.close();
+    setView('presets');
+  };
 
   let label: string;
   if (!range) {
@@ -69,7 +83,7 @@ export function DateRangeSelector() {
       <button
         type="button"
         className="btn ghost"
-        onClick={menu.open}
+        onClick={(e) => { setView('presets'); menu.open(e); }}
         aria-label="Time range"
         aria-haspopup="menu"
         aria-expanded={menu.isOpen}
@@ -80,14 +94,32 @@ export function DateRangeSelector() {
         <ChevronDown size={12} style={{ opacity: 0.7 }} />
       </button>
       {menu.isOpen && (
-        <PositionedMenu anchor={menu.anchor} onClose={menu.close} placement="bottom-end">
-          {TIME_RANGE_PRESETS.map((p) => (
-            <MenuItem key={p.label} onSelect={menu.select(() => applyPreset(p))}>
-              {p.label}
-            </MenuItem>
-          ))}
-          <MenuSeparator />
-          <MenuItem onSelect={menu.select(clearRange)}>All time</MenuItem>
+        <PositionedMenu
+          anchor={menu.anchor}
+          onClose={closeMenu}
+          placement="bottom-end"
+          minWidth={view === 'custom' ? 320 : 180}
+        >
+          {view === 'presets' ? (
+            <>
+              {TIME_RANGE_PRESETS.map((p) => (
+                <MenuItem key={p.label} onSelect={menu.select(() => applyPreset(p))}>
+                  {p.label}
+                </MenuItem>
+              ))}
+              <MenuSeparator />
+              {/* Note: intentionally not wrapped in menu.select — we want
+                  the menu to stay OPEN and just swap to the custom view. */}
+              <MenuItem onSelect={() => setView('custom')}>Custom range…</MenuItem>
+              <MenuItem onSelect={menu.select(clearRange)}>All time</MenuItem>
+            </>
+          ) : (
+            <CustomRangePicker
+              initial={range}
+              onCancel={() => setView('presets')}
+              onApply={applyCustom}
+            />
+          )}
         </PositionedMenu>
       )}
     </>
