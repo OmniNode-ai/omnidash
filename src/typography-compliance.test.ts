@@ -94,8 +94,6 @@ describe('Phase 2: Text + Heading components', () => {
   const TEXT_MODULE = resolve(ROOT, 'src/components/ui/typography/Text.tsx');
   const HEADING_MODULE = resolve(ROOT, 'src/components/ui/typography/Heading.tsx');
   const BARREL_MODULE = resolve(ROOT, 'src/components/ui/typography/index.ts');
-  const TYPO_STORIES = resolve(ROOT, 'src/components/ui/typography/Typography.stories.tsx');
-  const HEADING_STORIES = resolve(ROOT, 'src/components/ui/typography/Heading.stories.tsx');
 
   beforeAll(async () => {
     if (existsSync(TEXT_MODULE)) {
@@ -265,7 +263,7 @@ describe('Phase 5: ESLint rule', () => {
       `const X = () => <div style={{ fontSize: 10 }}>x</div>;`,
       { filePath: resolve(ROOT, 'src/__lint_fixture_forbidden.tsx') }
     );
-    expect(r.messages.filter((m) => m.ruleId?.endsWith('no-typography-inline')).length).toBeGreaterThan(0);
+    expect(r.messages.filter((m: { ruleId?: string }) => m.ruleId?.endsWith('no-typography-inline')).length).toBeGreaterThan(0);
   });
   it('rule allows inline style inside src/components/ui/typography/', async () => {
     // String-concat module name so Vite can't statically resolve —
@@ -277,7 +275,7 @@ describe('Phase 5: ESLint rule', () => {
       `const X = () => <div style={{ fontSize: 10 }}>x</div>;`,
       { filePath: resolve(ROOT, 'src/components/ui/typography/__lint_fixture_allowed.tsx') }
     );
-    expect(r.messages.filter((m) => m.ruleId?.endsWith('no-typography-inline')).length).toBe(0);
+    expect(r.messages.filter((m: { ruleId?: string }) => m.ruleId?.endsWith('no-typography-inline')).length).toBe(0);
   });
 });
 
