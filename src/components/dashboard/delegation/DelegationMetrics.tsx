@@ -3,6 +3,7 @@ import ReactECharts from 'echarts-for-react';
 import { ComponentWrapper } from '../ComponentWrapper';
 import { useProjectionQuery } from '@/hooks/useProjectionQuery';
 import { useThemeColors } from '@/theme';
+import { Text } from '@/components/ui/typography';
 
 interface DelegationSummary {
   totalDelegations: number;
@@ -32,7 +33,7 @@ export default function DelegationMetrics({ config: _config }: { config: Record<
           value: t.count,
           itemStyle: { color: colors.chart[i % colors.chart.length] },
         })),
-        label: { color: colors.foreground, fontSize: 11 },
+        label: { color: colors.foreground },
       }],
       backgroundColor: 'transparent',
     };
@@ -53,19 +54,19 @@ export default function DelegationMetrics({ config: _config }: { config: Record<
         <div style={{ display: 'flex', gap: '1rem', height: '100%' }}>
           <div style={{ flex: '0 0 auto', display: 'flex', flexDirection: 'column', gap: '0.75rem', padding: '0.5rem 0' }}>
             <div>
-              <div style={{ fontSize: '1.5rem', fontWeight: 700, color: colors.foreground }}>{data.totalDelegations}</div>
-              <div style={{ fontSize: '0.75rem', color: colors.foreground }}>Total Delegations</div>
+              <Text as="div" size="4xl" weight="bold" color="primary">{data.totalDelegations}</Text>
+              <Text as="div" size="md" color="primary">Total Delegations</Text>
             </div>
             <div>
               {/* 0.8 (80%) is hardcoded product policy — should eventually be configurable via component config */}
-              <div style={{ fontSize: '1.5rem', fontWeight: 700, color: data.qualityGatePassRate >= 0.8 ? colors.status.healthy : colors.status.warning }}>
+              <Text as="div" size="4xl" weight="bold" color={data.qualityGatePassRate >= 0.8 ? 'ok' : 'warn'}>
                 {Math.round(data.qualityGatePassRate * 100)}%
-              </div>
-              <div style={{ fontSize: '0.75rem', color: colors.foreground }}>Quality Gate Pass Rate</div>
+              </Text>
+              <Text as="div" size="md" color="primary">Quality Gate Pass Rate</Text>
             </div>
             <div>
-              <div style={{ fontSize: '1.5rem', fontWeight: 700, color: colors.foreground }}>${data.totalSavingsUsd.toFixed(2)}</div>
-              <div style={{ fontSize: '0.75rem', color: colors.foreground }}>Cost Savings</div>
+              <Text as="div" size="4xl" weight="bold" color="primary">${data.totalSavingsUsd.toFixed(2)}</Text>
+              <Text as="div" size="md" color="primary">Cost Savings</Text>
             </div>
           </div>
           <div style={{ flex: 1, minHeight: '150px' }}>
