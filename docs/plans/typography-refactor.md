@@ -1,3 +1,8 @@
+---
+epic_id: OMN-59
+repo: omnidash-v2
+---
+
 # Typography System Implementation Plan
 
 > **For Claude:** REQUIRED SUB-SKILL: Use executing-plans to implement this plan task-by-task.
@@ -123,6 +128,8 @@ Recorded 2026-04-24 as part of the design-to-plan Phase 2→3 gate.
 ---
 
 ## Task 1: Create compliance test scorecard
+
+**Dependencies:** None
 
 **Files:**
 - Create: `src/typography-compliance.test.ts`
@@ -452,6 +459,8 @@ git commit -m "test(typography): compliance scorecard baseline [OMN-59]"
 
 ## Task 2: Write ADR
 
+**Dependencies:** None
+
 **Files:**
 - Create: `docs/adr/001-typography-system.md`
 
@@ -482,6 +491,8 @@ git commit -m "docs(adr): establish typography system direction [OMN-59]"
 ---
 
 ## Task 3: Add typography tokens to globals.css
+
+**Dependencies:** P1
 
 **Files:**
 - Modify: `src/styles/globals.css`
@@ -551,6 +562,8 @@ git commit -m "feat(styles): add typography type-scale + weight + leading + text
 
 ## Task 4: Create typography token maps
 
+**Dependencies:** P3
+
 **Files:**
 - Create: `src/components/ui/typography/tokens.ts`
 
@@ -605,6 +618,8 @@ git commit -m "feat(typography): add token type definitions and CSS var maps [OM
 ---
 
 ## Task 5: Write Text component tests (failing)
+
+**Dependencies:** P4
 
 **Files:**
 - Create: `src/components/ui/typography/Text.test.tsx`
@@ -707,6 +722,8 @@ git commit -m "test(typography): add Text component tests (pre-implementation) [
 ---
 
 ## Task 6: Implement Text component
+
+**Dependencies:** P5
 
 **Files:**
 - Create: `src/components/ui/typography/Text.tsx`
@@ -813,6 +830,8 @@ git commit -m "feat(typography): implement Text component [OMN-59]"
 
 ## Task 7: Write Heading component tests (failing)
 
+**Dependencies:** P4
+
 **Files:**
 - Create: `src/components/ui/typography/Heading.test.tsx`
 
@@ -872,6 +891,8 @@ git commit -m "test(typography): add Heading component tests (pre-implementation
 ---
 
 ## Task 8: Implement Heading component
+
+**Dependencies:** P7
 
 **Files:**
 - Create: `src/components/ui/typography/Heading.tsx`
@@ -950,6 +971,8 @@ git commit -m "feat(typography): implement Heading component [OMN-59]"
 
 ## Task 9: Create typography barrel export
 
+**Dependencies:** P6, P8
+
 **Files:**
 - Create: `src/components/ui/typography/index.ts`
 
@@ -985,6 +1008,8 @@ git commit -m "feat(typography): add barrel export [OMN-59]"
 ---
 
 ## Task 10: Install Storybook + addons
+
+**Dependencies:** None
 
 **Files:**
 - Modify: `package.json` (devDependencies)
@@ -1024,6 +1049,8 @@ git commit -m "chore(storybook): scaffold Storybook + theme/a11y addons [OMN-59]
 ---
 
 ## Task 11: Configure Storybook main.ts
+
+**Dependencies:** P10
 
 **Files:**
 - Modify: `.storybook/main.ts`
@@ -1068,6 +1095,8 @@ git commit -m "chore(storybook): configure main.ts for typography story path [OM
 ---
 
 ## Task 12: Configure Storybook preview.tsx with theme decorator
+
+**Dependencies:** P11
 
 **Files:**
 - Modify: `.storybook/preview.tsx` (rename from `.ts` if needed)
@@ -1118,6 +1147,8 @@ git commit -m "chore(storybook): configure preview with theme decorator [OMN-59]
 ---
 
 ## Task 13: Write Typography.stories.tsx
+
+**Dependencies:** P9, P12
 
 **Files:**
 - Create: `src/components/ui/typography/Typography.stories.tsx`
@@ -1196,6 +1227,8 @@ git commit -m "docs(storybook): Typography showcase (10 stories) [OMN-59]"
 
 ## Task 14: Write Heading.stories.tsx
 
+**Dependencies:** P9, P12
+
 **Files:**
 - Create: `src/components/ui/typography/Heading.stories.tsx`
 
@@ -1238,6 +1271,8 @@ git commit -m "docs(storybook): Heading levels story [OMN-59]"
 
 ## Task 15: Add Storybook build to CI
 
+**Dependencies:** P13, P14
+
 **Files:**
 - Modify: `.github/workflows/ci.yml` (or equivalent CI workflow file)
 
@@ -1274,6 +1309,8 @@ git commit -m "ci(storybook): add Storybook build job [OMN-59]"
 ---
 
 ## Task 16: Migrate RoutingDecisionTable to <Text>
+
+**Dependencies:** P9
 
 **Files:**
 - Modify: `src/components/dashboard/routing/RoutingDecisionTable.tsx`
@@ -1332,6 +1369,8 @@ git commit -m "refactor(typography): migrate RoutingDecisionTable to <Text> [OMN
 
 ## Task 17: Migrate EventStream to <Text>
 
+**Dependencies:** P9
+
 **Files:**
 - Modify: `src/components/dashboard/events/EventStream.tsx`
 - Reference test: `src/components/dashboard/events/EventStream.test.tsx`
@@ -1353,6 +1392,8 @@ Actually no — to keep the compliance test simple, use a CSS class on inputs in
 
 ## Task 18: Migrate CostTrendPanel to <Text>
 
+**Dependencies:** P9
+
 **Files:**
 - Modify: `src/components/dashboard/cost-trend/CostTrendPanel.tsx`
 
@@ -1365,6 +1406,8 @@ Same recipe as Task 16. Known hits: model-legend pill label spans, "Models" uppe
 ---
 
 ## Task 19: Migrate CostTrend3D to <Text>
+
+**Dependencies:** P9
 
 **Files:**
 - Modify: `src/components/dashboard/cost-trend-3d/CostTrend3D.tsx`
@@ -1381,6 +1424,8 @@ Same recipe. Known hits: axis labels overlay, model-legend pill, tooltip content
 
 ## Task 20: Migrate CostByModelPie to <Text>
 
+**Dependencies:** P9
+
 **Files:**
 - Modify: `src/components/dashboard/cost-by-model/CostByModelPie.tsx`
 
@@ -1393,6 +1438,8 @@ Same recipe. Known hits: legend rows, tooltip content, "Models" uppercase label,
 ---
 
 ## Task 21: Migrate QualityScorePanel to <Text>
+
+**Dependencies:** P9
 
 **Files:**
 - Modify: `src/components/dashboard/quality/QualityScorePanel.tsx`
@@ -1407,6 +1454,8 @@ Same recipe. Known hits: threshold wall label, mean marker label, pass-rate head
 
 ## Task 22: Migrate DelegationMetrics to <Text>
 
+**Dependencies:** P9
+
 **Files:**
 - Modify: `src/components/dashboard/delegation/DelegationMetrics.tsx`
 
@@ -1420,6 +1469,8 @@ Otherwise: same recipe.
 
 ## Task 23: Migrate BaselinesRoiCard to <Text>
 
+**Dependencies:** P9
+
 **Files:**
 - Modify: `src/components/dashboard/baselines/BaselinesRoiCard.tsx`
 
@@ -1430,6 +1481,8 @@ Same recipe. Inventory first; migrate or no-op.
 ---
 
 ## Task 24: Migrate ReadinessGate to <Text>
+
+**Dependencies:** P9
 
 **Files:**
 - Modify: `src/components/dashboard/readiness/ReadinessGate.tsx`
@@ -1442,6 +1495,8 @@ Same recipe.
 
 ## Task 25: Migrate CustomRangePicker to <Text>
 
+**Dependencies:** P9
+
 **Files:**
 - Modify: `src/components/dashboard/CustomRangePicker.tsx`
 
@@ -1452,6 +1507,8 @@ Same recipe. Known hits: the two time-input labels + input elements (see input e
 ---
 
 ## Task 26: Migrate DateRangeSelector to <Text>
+
+**Dependencies:** P9
 
 **Files:**
 - Modify: `src/components/dashboard/DateRangeSelector.tsx`
@@ -1464,6 +1521,8 @@ Same recipe.
 
 ## Task 27: Migrate TimezoneSelector to <Text>
 
+**Dependencies:** P9
+
 **Files:**
 - Modify: `src/components/dashboard/TimezoneSelector.tsx`
 
@@ -1474,6 +1533,8 @@ Current state uses `className="mono"` + inline `fontSize: 12`. Migrate to `<Text
 ---
 
 ## Task 28: Migrate AutoRefreshSelector to <Text>
+
+**Dependencies:** P9
 
 **Files:**
 - Modify: `src/components/dashboard/AutoRefreshSelector.tsx`
@@ -1486,6 +1547,8 @@ Same pattern as Task 27. Interval text uses `color: 'var(--status-ok)'` inline �
 
 ## Task 29: Migrate DashboardView header to <Text>
 
+**Dependencies:** P9
+
 **Files:**
 - Modify: `src/pages/DashboardView.tsx`
 
@@ -1496,6 +1559,8 @@ Known hits: title chevron styling, any inline text-styling in the header row. Da
 ---
 
 ## Task 30: Migrate ComponentWrapper to <Text>
+
+**Dependencies:** P9
 
 **Files:**
 - Modify: `src/components/dashboard/ComponentWrapper.tsx`
@@ -1508,6 +1573,8 @@ Same recipe. Known area: widget title rendering, empty-state message + hint text
 
 ## Task 31: Migrate ComponentPalette to <Text>
 
+**Dependencies:** P9
+
 **Files:**
 - Modify: `src/components/dashboard/ComponentPalette.tsx`
 
@@ -1519,6 +1586,8 @@ Same recipe.
 
 ## Task 32: Migrate sidebar components to <Text>
 
+**Dependencies:** P9
+
 **Files:**
 - Modify: any file(s) under `src/components/sidebar/` or similar directory that have inline typography (run the inventory grep to discover).
 
@@ -1529,6 +1598,8 @@ This is a catch-all for any remaining dashboard-related chrome. Run the complian
 ---
 
 ## Task 33: Create no-typography-inline ESLint rule
+
+**Dependencies:** P16, P17, P18, P19, P20, P21, P22, P23, P24, P25, P26, P27, P28, P29, P30, P31, P32
 
 **Files:**
 - Create: `eslint-rules/no-typography-inline.cjs`
@@ -1600,6 +1671,8 @@ git commit -m "feat(eslint): no-typography-inline custom rule [OMN-59]"
 
 ## Task 34: Wire ESLint rule + add lint script
 
+**Dependencies:** P33
+
 **Files:**
 - Modify: `.eslintrc.cjs` (or equivalent ESLint config; discover with `ls -la`)
 - Modify: `package.json`
@@ -1658,6 +1731,8 @@ git commit -m "feat(eslint): wire no-typography-inline rule + lint script [OMN-5
 
 ## Task 35: Add lint job to CI
 
+**Dependencies:** P34
+
 **Files:**
 - Modify: `.github/workflows/ci.yml`
 
@@ -1682,6 +1757,8 @@ git commit -m "ci(eslint): add lint job [OMN-59]"
 ---
 
 ## Task 36: Update CLAUDE.md with Typography section
+
+**Dependencies:** P2
 
 **Files:**
 - Modify: `omnidash-v2/CLAUDE.md`
@@ -1721,6 +1798,8 @@ git commit -m "docs(claude): add Typography conventions section [OMN-59]"
 
 ## Task 37: Write typography README
 
+**Dependencies:** P9
+
 **Files:**
 - Create: `src/components/ui/typography/README.md`
 
@@ -1754,6 +1833,8 @@ git commit -m "docs(typography): README with usage examples [OMN-59]"
 
 ## Task 38: Update ux-polish-checklist
 
+**Dependencies:** P2
+
 **Files:**
 - Modify: `omnidash-v2/docs/ux-polish-checklist.md`
 
@@ -1778,6 +1859,8 @@ git commit -m "docs(ux-polish): mark typography refactor complete [OMN-59]"
 ---
 
 ## Task 39: Proof of Life — End-to-End Verification
+
+**Dependencies:** P15, P35, P36, P37, P38
 
 **Files:**
 - Modify: `vitest.config.ts` (remove compliance from exclude — becomes a permanent gate)
