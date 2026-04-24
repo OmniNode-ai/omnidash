@@ -19,6 +19,7 @@ import {
   usePositionedMenu,
 } from '@/components/ui/positioned-menu';
 import { useWidgetChrome } from './WidgetChromeContext';
+import { Text } from '@/components/ui/typography';
 
 interface ComponentWrapperProps {
   title: string;
@@ -129,15 +130,19 @@ export function ComponentWrapper({
         )}
       </div>
       <div className="widget-body">
-        {isLoading && <div style={{ color: 'var(--ink-3)', fontSize: 13 }}>Loading...</div>}
+        {isLoading && <Text as="div" size="lg" color="tertiary">Loading...</Text>}
         {error && !isLoading && (
-          <div style={{ color: 'var(--status-bad)', fontSize: 13 }}>Error: {error.message}</div>
+          <Text as="div" size="lg" color="bad">Error: {error.message}</Text>
         )}
         {!isLoading && !error && isEmpty && (
-          <div style={{ color: 'var(--ink-3)', fontSize: 13, lineHeight: 1.5 }}>
+          <Text as="div" size="lg" color="tertiary">
             <div>{emptyMessage || 'No data available'}</div>
-            {emptyHint && <div style={{ marginTop: 4, fontSize: 12 }}>{emptyHint}</div>}
-          </div>
+            {emptyHint && (
+              <div style={{ marginTop: 4 }}>
+                <Text as="span" size="md" color="tertiary">{emptyHint}</Text>
+              </div>
+            )}
+          </Text>
         )}
         {!isLoading && !error && !isEmpty && children}
       </div>
