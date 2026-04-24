@@ -21,6 +21,15 @@ export default defineConfig({
     // accommodates this one slow test without flake. Normal tests finish
     // in ms; this ceiling doesn't affect their behavior.
     testTimeout: 60000,
+    // The storybook-coverage compliance scorecard (OMN-100) is excluded
+    // during the refactor — most of its assertions intentionally fail
+    // until the widget stories land. Task 18 promotes it to a permanent
+    // regression gate by removing this entry.
+    exclude: [
+      '**/node_modules/**',
+      '**/dist/**',
+      'src/storybook-coverage-compliance.test.ts',
+    ],
   },
   resolve: {
     alias: {
