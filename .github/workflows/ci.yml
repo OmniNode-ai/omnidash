@@ -30,6 +30,9 @@ jobs:
       - name: TypeScript typecheck
         run: npx tsc --noEmit
 
+      - name: Lint
+        run: npm run lint
+
       - name: Run tests
         run: npx vitest run
         env:
