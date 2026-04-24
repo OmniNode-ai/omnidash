@@ -4,6 +4,7 @@ import { useProjectionQuery } from '@/hooks/useProjectionQuery';
 import { applyTimeRange, resolveTimeRange } from '@/hooks/useTimeRange';
 import { useThemeColors } from '@/theme';
 import { useFrameStore } from '@/store/store';
+import { Text } from '@/components/ui/typography';
 import { StackedChart, type StackedSlice, type ChartType } from './StackedChart';
 
 interface CostDataPoint {
@@ -188,12 +189,13 @@ export default function CostTrendPanel({ config }: { config: CostTrendConfig }) 
                 style={{
                   position: 'absolute', inset: 0,
                   display: 'flex', alignItems: 'center', justifyContent: 'center',
-                  color: 'var(--ink-3)', fontSize: 13,
                 }}
               >
-                {rangeActive
-                  ? 'No cost data in the selected time range'
-                  : 'All models are hidden'}
+                <Text size="lg" color="tertiary">
+                  {rangeActive
+                    ? 'No cost data in the selected time range'
+                    : 'All models are hidden'}
+                </Text>
               </div>
             )}
           </div>
@@ -215,23 +217,17 @@ export default function CostTrendPanel({ config }: { config: CostTrendConfig }) 
               background: 'var(--panel-2)',
               border: '1px solid var(--line)',
               borderRadius: 6,
-              fontFamily: 'var(--font-mono)',
-              fontSize: 11,
-              color: 'var(--ink-2)',
             }}
           >
-            <span
-              style={{
-                fontSize: 10,
-                letterSpacing: '0.08em',
-                textTransform: 'uppercase',
-                color: 'var(--ink-3)',
-                marginRight: 4,
-                alignSelf: 'center',
-              }}
+            <Text
+              size="xs"
+              color="tertiary"
+              family="mono"
+              transform="uppercase"
+              style={{ marginRight: 4, alignSelf: 'center' }}
             >
               Models
-            </span>
+            </Text>
             {allModels.map((model, i) => {
               const disabled = disabledModels.has(model);
               const isolated = isolatedModel === model;
@@ -281,15 +277,18 @@ export default function CostTrendPanel({ config }: { config: CostTrendConfig }) 
                       flexShrink: 0,
                     }}
                   />
-                  <span
+                  <Text
+                    size="sm"
+                    family="mono"
+                    color={isolated ? 'inherit' : 'primary'}
+                    weight={isolated ? 'semibold' : 'regular'}
                     style={{
                       textDecoration: disabled ? 'line-through' : 'none',
-                      color: isolated ? color : 'var(--ink)',
-                      fontWeight: isolated ? 600 : 400,
+                      ...(isolated ? { color } : {}),
                     }}
                   >
                     {model}
-                  </span>
+                  </Text>
                 </div>
               );
             })}
