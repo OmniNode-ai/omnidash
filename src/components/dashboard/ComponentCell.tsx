@@ -1,5 +1,6 @@
 import { Suspense, useMemo, type DragEvent, type LazyExoticComponent, type ComponentType } from 'react';
 import { WidgetChromeContext, type WidgetChromeHandlers } from './WidgetChromeContext';
+import { Text } from '@/components/ui/typography';
 
 interface ComponentCellProps {
   componentName: string;
@@ -74,7 +75,7 @@ export function ComponentCell({
   return (
     <WidgetChromeContext.Provider value={chrome}>
       <div data-testid="grid-item" style={{ display: 'contents' }}>
-        <Suspense fallback={<div style={{ padding: '1rem', color: 'var(--ink-3)' }}>Loading {componentName}…</div>}>
+        <Suspense fallback={<Text as="div" color="tertiary" style={{ padding: '1rem' }}>Loading {componentName}…</Text>}>
           <LazyComponent config={config} />
         </Suspense>
       </div>
