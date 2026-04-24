@@ -171,8 +171,13 @@ export default function RoutingDecisionTable({ config: _config }: { config: Reco
               style={{
                 width: '100%',
                 borderCollapse: 'collapse',
-                fontSize: '0.8125rem',
+                // Font sizing matches EventStream's row/header so the two
+                // "data feed" widgets read as a set: 0.75rem body rows,
+                // 10px uppercase headers. Both derive from the same mono
+                // token declared in globals.css.
+                fontSize: '0.75rem',
                 tableLayout: 'fixed',
+                fontFamily: 'var(--font-mono)',
               }}
             >
               <colgroup>
@@ -200,7 +205,7 @@ export default function RoutingDecisionTable({ config: _config }: { config: Reco
                           textAlign: 'left',
                           padding: '0.375rem 0.5rem',
                           fontWeight: 600,
-                          fontSize: 11,
+                          fontSize: 10,
                           textTransform: 'uppercase',
                           letterSpacing: '0.04em',
                           color: 'var(--ink-2)',
@@ -266,6 +271,10 @@ export default function RoutingDecisionTable({ config: _config }: { config: Reco
                         whiteSpace: 'nowrap',
                         overflow: 'hidden',
                         textOverflow: 'ellipsis',
+                        // Timestamps are ambient metadata; dim them so the
+                        // primary data columns read as primary. Matches
+                        // EventStream's treatment of its time column.
+                        color: 'var(--ink-3)',
                       }}
                       title={new Date(row.created_at).toLocaleString()}
                     >
@@ -294,17 +303,20 @@ export default function RoutingDecisionTable({ config: _config }: { config: Reco
             </table>
           </div>
 
-          {/* Pagination controls */}
+          {/* Pagination controls — status text mirrors EventStream's
+              status row (11px, --ink-2, mono on the numeric spans);
+              buttons keep the shared .btn chrome (sans-serif) for
+              consistency with other buttons in the app. */}
           <div
             style={{
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'space-between',
-              fontSize: 12,
+              fontSize: 11,
               color: 'var(--ink-2)',
             }}
           >
-            <span>
+            <span style={{ fontFamily: 'var(--font-mono)' }}>
               {sorted.length} {sorted.length === 1 ? 'result' : 'results'}
               {query && ` (filtered from ${inRange.length})`}
             </span>
@@ -318,7 +330,7 @@ export default function RoutingDecisionTable({ config: _config }: { config: Reco
               >
                 Previous
               </button>
-              <span>
+              <span style={{ fontFamily: 'var(--font-mono)' }}>
                 Page {safePage + 1} of {totalPages}
               </span>
               <button

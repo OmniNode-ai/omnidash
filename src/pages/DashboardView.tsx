@@ -13,7 +13,7 @@
 //     `.drop-slot` styled to span both columns.
 //   - OMN-47: CSS ported verbatim to src/styles/dashboard.css + buttons.css; TSX rewritten to use prototype class names.
 
-import { useCallback, useEffect, useMemo, useRef, useState, type DragEvent } from 'react';
+import { useCallback, useEffect, useRef, useState, type DragEvent } from 'react';
 import { Check, ChevronDown, Plus, X } from 'lucide-react';
 import { useFrameStore } from '@/store/store';
 import { useRegistry } from '@/registry/RegistryProvider';
@@ -21,18 +21,11 @@ import { ComponentPalette } from '@/components/dashboard/ComponentPalette';
 import { ComponentConfigPanel } from '@/config/ComponentConfigPanel';
 import { ComponentCell } from '@/components/dashboard/ComponentCell';
 import { DateRangeSelector } from '@/components/dashboard/DateRangeSelector';
+import { TimezoneSelector } from '@/components/dashboard/TimezoneSelector';
+import { AutoRefreshSelector } from '@/components/dashboard/AutoRefreshSelector';
 import { EmptyState } from '@/components/dashboard/EmptyState';
 import type { DashboardLayoutItem } from '@shared/types/dashboard';
 import { layoutPersistence } from '@/layout/layout-persistence';
-
-function formatTimezone(): string {
-  const offsetMinutes = -new Date().getTimezoneOffset();
-  const sign = offsetMinutes >= 0 ? '+' : '−';
-  const abs = Math.abs(offsetMinutes);
-  const hh = String(Math.floor(abs / 60)).padStart(2, '0');
-  const mm = String(abs % 60).padStart(2, '0');
-  return `UTC${sign}${hh}:${mm}`;
-}
 
 export function DashboardView() {
   const {
@@ -57,7 +50,6 @@ export function DashboardView() {
   const registry = useRegistry();
   const snapshotRef = useRef<DashboardLayoutItem[] | null>(null);
   const [editingTitle, setEditingTitle] = useState(false);
-  const timezone = useMemo(formatTimezone, []);
 
   // Drag-and-drop state (#12). Exactly one of these is non-null at a time:
   //  - draggedWidgetId: an existing widget is being reordered
@@ -273,21 +265,25 @@ export function DashboardView() {
               <ChevronDown size={18} style={{ color: 'var(--ink-3)' }} />
             </div>
           )}
-          <div className="dash-meta">
-            <span>
-              Timezone: <span className="mono">{timezone}</span>
-            </span>
-            <span>·</span>
-            <span>
-              Auto-refresh{' '}
-              <span className="mono" style={{ color: 'var(--status-ok)' }}>
-                30s
-              </span>
-            </span>
+          {/* Filter row — timezone, auto-refresh, and time range as
+              peer ghost buttons. Sits directly under the title so the
+              header-actions cluster on the right is reserved for the
+              mode-dependent primary controls (Add Widget / Save / Discard). */}
+          <div
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: 6,
+              marginLeft: -8,
+              marginTop: 2,
+            }}
+          >
+            <TimezoneSelector />
+            <AutoRefreshSelector />
+            <DateRangeSelector />
           </div>
         </div>
         <div className="header-actions">
-          <DateRangeSelector />
           {editMode ? (
             <>
               <button

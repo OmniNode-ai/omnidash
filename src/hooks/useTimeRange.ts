@@ -74,4 +74,4 @@ export function rangeFromPreset(preset: TimeRangePreset): TimeRange {
 }
 
 /** The default preset selected on first dashboard load. */
-export const DEFAULT_TIME_RANGE_PRESET: TimeRangePreset = TIME_RANGE_PRESETS[2]; // Last 24h
+export const DEFAULT_TIME_RANGE_PRESET: TimeRangePreset = TIME_RANGE_PRESETS[3]; // Last 7d
