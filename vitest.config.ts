@@ -13,16 +13,14 @@ export default defineConfig({
     setupFiles: ['./src/tests/setup.ts'],
     globals: true,
     css: { modules: { classNameStrategy: 'non-scoped' } },
-    // Exclude the typography-refactor compliance scorecard from the default
-    // test run. It's a phase-by-phase progress indicator that starts ~95%
-    // RED; running it in the default suite would falsely red the CI until
-    // the refactor completes. Task 39 (Proof of Life) removes this line and
-    // promotes the compliance file to a permanent regression gate.
-    exclude: [
-      '**/node_modules/**', '**/dist/**', '**/.idea/**',
-      '**/.git/**', '**/.cache/**',
-      'src/typography-compliance.test.ts',
-    ],
+    // The typography compliance scorecard (src/typography-compliance.test.ts)
+    // is a permanent regression gate as of OMN-98. Its Phase 5 case
+    // dynamically imports ESLint's module graph. Cold-start is ~8s in
+    // isolation but under concurrent-test pressure (370+ tests running
+    // across jsdom workers) it climbs to ~47s in practice. 60s ceiling
+    // accommodates this one slow test without flake. Normal tests finish
+    // in ms; this ceiling doesn't affect their behavior.
+    testTimeout: 60000,
   },
   resolve: {
     alias: {
