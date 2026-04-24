@@ -6,6 +6,7 @@
 //   - onAdd in v2 enters edit mode (which reveals the widget library) since v2 has no
 //     separate libOpen state.
 import { LayoutGrid, Plus } from 'lucide-react';
+import { Text } from '@/components/ui/typography';
 
 interface EmptyStateProps {
   onAdd: () => void;
@@ -20,7 +21,6 @@ export function EmptyState({ onAdd }: EmptyStateProps) {
         padding: '56px 20px',
         textAlign: 'center',
         margin: '0 24px',
-        color: 'var(--ink-3)',
         position: 'relative',
         overflow: 'hidden',
       }}
@@ -51,20 +51,18 @@ export function EmptyState({ onAdd }: EmptyStateProps) {
       >
         <LayoutGrid size={22} strokeWidth={1.5} />
       </div>
-      <div
-        style={{
-          fontSize: 17,
-          fontWeight: 600,
-          color: 'var(--ink)',
-          marginBottom: 6,
-          position: 'relative',
-        }}
+      <Text
+        as="div"
+        size="3xl"
+        weight="semibold"
+        color="primary"
+        style={{ marginBottom: 6, position: 'relative' }}
       >
         This dashboard is empty
-      </div>
-      <div style={{ fontSize: 13, marginBottom: 16, position: 'relative' }}>
+      </Text>
+      <Text as="div" size="lg" color="tertiary" style={{ marginBottom: 16, position: 'relative' }}>
         Add a widget to start monitoring. Drag from the library, or click below.
-      </div>
+      </Text>
       <button
         className="btn primary"
         onClick={onAdd}

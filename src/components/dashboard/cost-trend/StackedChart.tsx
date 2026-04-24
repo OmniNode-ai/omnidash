@@ -15,6 +15,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import * as THREE from 'three';
 import { useThemeColors, cssColorToHex } from '@/theme';
+import { Text } from '@/components/ui/typography';
 
 // ---------- Types ----------
 
@@ -530,9 +531,6 @@ export function StackedChart({
           position: 'absolute',
           inset: 0,
           pointerEvents: 'none',
-          fontFamily: 'var(--font-mono)',
-          fontSize: 10,
-          color: 'var(--ink-3)',
         }}
       >
         {/* Skip the $0 tick label — the x-axis baseline already
@@ -542,8 +540,12 @@ export function StackedChart({
         {yTickLabels
           .filter((t) => t.value > 0)
           .map((t) => (
-            <div
+            <Text
               key={`y-${t.value}`}
+              as="div"
+              family="mono"
+              size="xs"
+              color="tertiary"
               style={{
                 position: 'absolute',
                 right: `calc(100% - ${scales.plotLeft - 4}px)`,
@@ -553,11 +555,15 @@ export function StackedChart({
               }}
             >
               {`$${t.value.toFixed(t.value >= 1 ? 2 : 4)}`}
-            </div>
+            </Text>
           ))}
         {xTickLabels.map((t) => (
-          <div
+          <Text
             key={`x-${t.i}`}
+            as="div"
+            family="mono"
+            size="xs"
+            color="tertiary"
             style={{
               position: 'absolute',
               left: t.left,
@@ -567,7 +573,7 @@ export function StackedChart({
             }}
           >
             {formatBucketTick(t.bucket)}
-          </div>
+          </Text>
         ))}
       </div>
 
@@ -598,24 +604,21 @@ export function StackedChart({
                 border: '1px solid var(--line)',
                 borderRadius: 6,
                 boxShadow: 'var(--shadow-md)',
-                fontFamily: 'var(--font-mono)',
-                fontSize: 11,
-                color: 'var(--ink)',
                 minWidth: 200,
                 pointerEvents: 'none',
                 zIndex: 1000,
               }}
             >
-              <div style={{ color: 'var(--ink-2)', marginBottom: 6 }}>
+              <Text as="div" family="mono" size="sm" color="secondary" style={{ marginBottom: 6 }}>
                 {new Date(tooltip.bucket).toLocaleString()}
-              </div>
+              </Text>
               {/* Stack-order (top-to-bottom visually). We render the
                   rows in reverse so the top of the stacked graph is
                   the first row in the tooltip. */}
               {[...tooltip.rows].reverse().map((row) => (
                 <div
                   key={row.model}
-                  style={{ display: 'flex', alignItems: 'center', gap: 8, lineHeight: 1.4 }}
+                  style={{ display: 'flex', alignItems: 'center', gap: 8 }}
                 >
                   <span
                     style={{
@@ -623,23 +626,24 @@ export function StackedChart({
                       background: colors.chart[row.colorIdx % colors.chart.length],
                     }}
                   />
-                  <span style={{ flex: 1 }}>{row.model}</span>
-                  <span style={{ fontVariantNumeric: 'tabular-nums' }}>
+                  <Text family="mono" size="sm" color="primary" leading="normal" style={{ flex: 1 }}>
+                    {row.model}
+                  </Text>
+                  <Text family="mono" size="sm" color="primary" leading="normal" tabularNums>
                     ${row.cost.toFixed(4)}
-                  </span>
+                  </Text>
                 </div>
               ))}
               <div
                 style={{
                   marginTop: 6, paddingTop: 6, borderTop: '1px solid var(--line-2)',
                   display: 'flex', justifyContent: 'space-between', gap: 8,
-                  color: 'var(--ink-2)',
                 }}
               >
-                <span>total</span>
-                <span style={{ color: 'var(--ink)', fontWeight: 600 }}>
+                <Text family="mono" size="sm" color="secondary">total</Text>
+                <Text family="mono" size="sm" color="primary" weight="semibold">
                   ${tooltip.total.toFixed(4)}
-                </span>
+                </Text>
               </div>
             </div>
           </>
