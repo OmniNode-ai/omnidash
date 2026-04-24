@@ -20,6 +20,6 @@
       "@shared/*": ["shared/*"]
     }
   },
-  "include": ["src", "shared", "src/vite-env.d.ts"],
+  "include": ["src", "shared", "src/vite-env.d.ts", ".storybook"],
   "references": [{ "path": "./tsconfig.node.json" }]
 }
