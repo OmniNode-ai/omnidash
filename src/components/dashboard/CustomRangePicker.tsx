@@ -8,6 +8,7 @@ import { DayPicker, type DateRange } from 'react-day-picker';
 import 'react-day-picker/style.css';
 import './CustomRangePicker.css';
 import type { TimeRange } from '@/store/types';
+import { Text } from '@/components/ui/typography';
 
 interface CustomRangePickerProps {
   /** Current range from the store, if any — used to pre-fill the calendar + time inputs. */
@@ -68,7 +69,7 @@ export function CustomRangePicker({ initial, onCancel, onApply }: CustomRangePic
   return (
     <div
       className="dash-calendar-wrapper"
-      style={{ padding: 8, color: 'var(--ink)', fontSize: 13 }}
+      style={{ padding: 8 }}
       onPointerDown={(e) => e.stopPropagation()}
     >
       {/* stopPropagation above keeps PositionedMenu's outside-click handler
@@ -87,40 +88,40 @@ export function CustomRangePicker({ initial, onCancel, onApply }: CustomRangePic
           gridTemplateColumns: 'auto 1fr',
           gap: '6px 10px',
           padding: '6px 8px 2px',
-          fontSize: 12,
-          color: 'var(--ink-2)',
         }}
       >
-        <label htmlFor="crp-start" style={{ alignSelf: 'center' }}>Start</label>
+        <label htmlFor="crp-start" style={{ alignSelf: 'center' }}>
+          <Text size="md" color="secondary">Start</Text>
+        </label>
         <input
           id="crp-start"
           type="time"
           value={startTime}
           onChange={(e) => setStartTime(e.target.value)}
+          className="text-input-sm mono"
           style={{
             padding: '3px 6px',
             background: 'var(--panel-2)',
             border: '1px solid var(--line)',
             borderRadius: 4,
-            color: 'var(--ink)',
-            fontFamily: 'var(--font-mono)',
-            fontSize: 12,
+            color: 'inherit',
           }}
         />
-        <label htmlFor="crp-end" style={{ alignSelf: 'center' }}>End</label>
+        <label htmlFor="crp-end" style={{ alignSelf: 'center' }}>
+          <Text size="md" color="secondary">End</Text>
+        </label>
         <input
           id="crp-end"
           type="time"
           value={endTime}
           onChange={(e) => setEndTime(e.target.value)}
+          className="text-input-sm mono"
           style={{
             padding: '3px 6px',
             background: 'var(--panel-2)',
             border: '1px solid var(--line)',
             borderRadius: 4,
-            color: 'var(--ink)',
-            fontFamily: 'var(--font-mono)',
-            fontSize: 12,
+            color: 'inherit',
           }}
         />
       </div>
@@ -134,17 +135,16 @@ export function CustomRangePicker({ initial, onCancel, onApply }: CustomRangePic
           marginTop: 6,
         }}
       >
-        <button type="button" className="btn ghost" onClick={onCancel} style={{ fontSize: 12 }}>
-          Cancel
+        <button type="button" className="btn ghost" onClick={onCancel}>
+          <Text size="md" color="inherit">Cancel</Text>
         </button>
         <button
           type="button"
           className="btn primary"
           onClick={handleApply}
           disabled={!canApply}
-          style={{ fontSize: 12 }}
         >
-          Apply
+          <Text size="md" color="inherit">Apply</Text>
         </button>
       </div>
     </div>
