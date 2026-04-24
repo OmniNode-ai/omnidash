@@ -4,6 +4,7 @@ import { ComponentWrapper } from '../ComponentWrapper';
 import { useProjectionQuery } from '@/hooks/useProjectionQuery';
 import { applyTimeRange, resolveTimeRange } from '@/hooks/useTimeRange';
 import { useFrameStore } from '@/store/store';
+import { Text } from '@/components/ui/typography';
 
 interface RoutingDecision {
   id: string;
@@ -143,7 +144,7 @@ export default function RoutingDecisionTable({ config: _config }: { config: Reco
               background: 'var(--panel-2)',
             }}
           >
-            <Search size={14} style={{ color: 'var(--ink-3)', flexShrink: 0 }} />
+            <Search size={14} style={{ color: 'var(--text-tertiary)', flexShrink: 0 }} />
             <input
               type="text"
               value={query}
@@ -153,14 +154,13 @@ export default function RoutingDecisionTable({ config: _config }: { config: Reco
               }}
               placeholder="Search agents or agreement…"
               aria-label="Filter routing decisions"
+              className="text-input-md"
               style={{
                 flex: 1,
                 border: 0,
                 outline: 0,
                 background: 'transparent',
-                color: 'var(--ink)',
-                fontSize: 13,
-                fontFamily: 'inherit',
+                color: 'inherit',
               }}
             />
           </div>
@@ -174,10 +174,9 @@ export default function RoutingDecisionTable({ config: _config }: { config: Reco
                 // Font sizing matches EventStream's row/header so the two
                 // "data feed" widgets read as a set: 0.75rem body rows,
                 // 10px uppercase headers. Both derive from the same mono
-                // token declared in globals.css.
-                fontSize: '0.75rem',
+                // token declared in globals.css. Typography is now applied
+                // per-cell via <Text family="mono"> wrappers.
                 tableLayout: 'fixed',
-                fontFamily: 'var(--font-mono)',
               }}
             >
               <colgroup>
@@ -204,11 +203,6 @@ export default function RoutingDecisionTable({ config: _config }: { config: Reco
                           top: 0,
                           textAlign: 'left',
                           padding: '0.375rem 0.5rem',
-                          fontWeight: 600,
-                          fontSize: 10,
-                          textTransform: 'uppercase',
-                          letterSpacing: '0.04em',
-                          color: 'var(--ink-2)',
                           background: 'var(--panel-2)',
                           borderBottom: '1px solid var(--line)',
                           cursor: 'pointer',
@@ -232,12 +226,19 @@ export default function RoutingDecisionTable({ config: _config }: { config: Reco
                             background: 'transparent',
                             border: 0,
                             padding: 0,
-                            font: 'inherit',
-                            color: 'inherit',
                             cursor: 'pointer',
                           }}
                         >
-                          {col.label}
+                          <Text
+                            size="xs"
+                            weight="semibold"
+                            color="secondary"
+                            family="mono"
+                            transform="uppercase"
+                            className="text-tracked"
+                          >
+                            {col.label}
+                          </Text>
                           {isSorted &&
                             (sort.dir === 'asc' ? <ChevronUp size={12} /> : <ChevronDown size={12} />)}
                         </button>
@@ -254,11 +255,11 @@ export default function RoutingDecisionTable({ config: _config }: { config: Reco
                       style={{
                         padding: '2rem 0.5rem',
                         textAlign: 'center',
-                        color: 'var(--ink-3)',
-                        fontSize: 13,
                       }}
                     >
-                      No routing decisions match "{query}"
+                      <Text size="lg" color="tertiary" family="mono">
+                        No routing decisions match "{query}"
+                      </Text>
                     </td>
                   </tr>
                 )}
@@ -267,35 +268,44 @@ export default function RoutingDecisionTable({ config: _config }: { config: Reco
                     <td
                       style={{
                         padding: '0.375rem 0.5rem',
-                        fontVariantNumeric: 'tabular-nums',
                         whiteSpace: 'nowrap',
                         overflow: 'hidden',
                         textOverflow: 'ellipsis',
-                        // Timestamps are ambient metadata; dim them so the
-                        // primary data columns read as primary. Matches
-                        // EventStream's treatment of its time column.
-                        color: 'var(--ink-3)',
                       }}
                       title={new Date(row.created_at).toLocaleString()}
                     >
-                      {formatTimestamp(row.created_at)}
+                      {/* Timestamps are ambient metadata; dim them so the
+                          primary data columns read as primary. Matches
+                          EventStream's treatment of its time column. */}
+                      <Text size="md" family="mono" color="tertiary" tabularNums>
+                        {formatTimestamp(row.created_at)}
+                      </Text>
                     </td>
-                    <td style={{ padding: '0.375rem 0.5rem' }}>{row.llm_agent}</td>
-                    <td style={{ padding: '0.375rem 0.5rem' }}>{row.fuzzy_agent}</td>
-                    <td
-                      style={{
-                        padding: '0.375rem 0.5rem',
-                        color: row.agreement ? 'var(--status-ok)' : 'var(--status-bad)',
-                        fontWeight: 500,
-                      }}
-                    >
-                      {row.agreement ? 'Agree' : 'Disagree'}
+                    <td style={{ padding: '0.375rem 0.5rem' }}>
+                      <Text size="md" family="mono">{row.llm_agent}</Text>
                     </td>
-                    <td style={{ padding: '0.375rem 0.5rem', fontVariantNumeric: 'tabular-nums' }}>
-                      {(row.llm_confidence * 100).toFixed(0)}%
+                    <td style={{ padding: '0.375rem 0.5rem' }}>
+                      <Text size="md" family="mono">{row.fuzzy_agent}</Text>
                     </td>
-                    <td style={{ padding: '0.375rem 0.5rem', fontVariantNumeric: 'tabular-nums' }}>
-                      ${row.cost_usd.toFixed(4)}
+                    <td style={{ padding: '0.375rem 0.5rem' }}>
+                      <Text
+                        size="md"
+                        family="mono"
+                        weight="medium"
+                        color={row.agreement ? 'ok' : 'bad'}
+                      >
+                        {row.agreement ? 'Agree' : 'Disagree'}
+                      </Text>
+                    </td>
+                    <td style={{ padding: '0.375rem 0.5rem' }}>
+                      <Text size="md" family="mono" tabularNums>
+                        {(row.llm_confidence * 100).toFixed(0)}%
+                      </Text>
+                    </td>
+                    <td style={{ padding: '0.375rem 0.5rem' }}>
+                      <Text size="md" family="mono" tabularNums>
+                        ${row.cost_usd.toFixed(4)}
+                      </Text>
                     </td>
                   </tr>
                 ))}
@@ -312,35 +322,33 @@ export default function RoutingDecisionTable({ config: _config }: { config: Reco
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'space-between',
-              fontSize: 11,
-              color: 'var(--ink-2)',
             }}
           >
-            <span style={{ fontFamily: 'var(--font-mono)' }}>
+            <Text size="sm" color="secondary" family="mono">
               {sorted.length} {sorted.length === 1 ? 'result' : 'results'}
               {query && ` (filtered from ${inRange.length})`}
-            </span>
+            </Text>
             <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
               <button
                 type="button"
                 className="btn ghost"
                 onClick={() => setPage((p) => Math.max(0, p - 1))}
                 disabled={safePage === 0}
-                style={{ fontSize: 12, padding: '4px 10px' }}
+                style={{ padding: '4px 10px' }}
               >
-                Previous
+                <Text size="sm">Previous</Text>
               </button>
-              <span style={{ fontFamily: 'var(--font-mono)' }}>
+              <Text size="sm" color="secondary" family="mono">
                 Page {safePage + 1} of {totalPages}
-              </span>
+              </Text>
               <button
                 type="button"
                 className="btn ghost"
                 onClick={() => setPage((p) => Math.min(totalPages - 1, p + 1))}
                 disabled={safePage >= totalPages - 1}
-                style={{ fontSize: 12, padding: '4px 10px' }}
+                style={{ padding: '4px 10px' }}
               >
-                Next
+                <Text size="sm">Next</Text>
               </button>
             </div>
           </div>
