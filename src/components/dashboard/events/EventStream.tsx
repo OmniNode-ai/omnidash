@@ -4,7 +4,7 @@ import { ComponentWrapper } from '../ComponentWrapper';
 import { useProjectionQuery } from '@/hooks/useProjectionQuery';
 import { Text } from '@/components/ui/typography';
 
-interface StreamEvent {
+export interface StreamEvent {
   id: string;
   event_type: string;
   source: string;

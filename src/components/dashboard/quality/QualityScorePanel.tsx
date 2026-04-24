@@ -21,12 +21,12 @@ import { useProjectionQuery } from '@/hooks/useProjectionQuery';
 import { cssVarToHex, useThemeName } from '@/theme';
 import { Text, Heading } from '@/components/ui/typography';
 
-interface QualityDistributionBucket {
+export interface QualityDistributionBucket {
   bucket: string;
   count: number;
 }
 
-interface QualitySummary {
+export interface QualitySummary {
   meanScore: number;
   distribution: QualityDistributionBucket[];
   totalMeasurements: number;

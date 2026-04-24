@@ -3,7 +3,7 @@ import { useProjectionQuery } from '@/hooks/useProjectionQuery';
 import { useThemeColors } from '@/theme';
 import { Text } from '@/components/ui/typography';
 
-interface BaselinesSummary {
+export interface BaselinesSummary {
   snapshotId: string;
   capturedAt: string;
   tokenDelta: number;

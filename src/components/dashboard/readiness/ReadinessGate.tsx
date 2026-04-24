@@ -3,15 +3,15 @@ import { ComponentWrapper } from '../ComponentWrapper';
 import { Text } from '@/components/ui/typography';
 import { useProjectionQuery } from '@/hooks/useProjectionQuery';
 
-type DimensionStatus = 'PASS' | 'WARN' | 'FAIL';
+export type DimensionStatus = 'PASS' | 'WARN' | 'FAIL';
 
-interface ReadinessDimension {
+export interface ReadinessDimension {
   name: string;
   status: DimensionStatus;
   detail: string;
 }
 
-interface ReadinessSummary {
+export interface ReadinessSummary {
   dimensions: ReadinessDimension[];
   overallStatus: DimensionStatus;
   lastCheckedAt: string;

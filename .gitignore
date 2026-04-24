@@ -3,6 +3,9 @@ dist/
 .vite/
 *.local
 fixtures/
+# Storybook fixture builders are part of the source tree (OMN-103).
+!src/storybook/fixtures/
+!src/storybook/fixtures/**
 build/
 dashboard-layouts/
 
