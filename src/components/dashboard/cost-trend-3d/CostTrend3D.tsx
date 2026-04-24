@@ -17,6 +17,7 @@ import { useProjectionQuery } from '@/hooks/useProjectionQuery';
 import { applyTimeRange, resolveTimeRange } from '@/hooks/useTimeRange';
 import { useFrameStore } from '@/store/store';
 import { useThemeName } from '@/theme';
+import { Text } from '@/components/ui/typography';
 
 interface CostDataPoint {
   bucket_time: string;
@@ -1102,15 +1103,15 @@ export default function CostTrend3D({ config: _config }: { config: Record<string
     >
       {dataset && !isEmpty && (
         contextLost ? (
-          <div style={{ padding: 16, fontSize: 13, lineHeight: 1.5, color: 'var(--ink-2)' }}>
-            <div style={{ color: 'var(--status-bad)', fontWeight: 600, marginBottom: 8 }}>
-              WebGL context lost
-            </div>
-            <div style={{ marginBottom: 12 }}>
+          <div style={{ padding: 16 }}>
+            <Text as="div" size="lg" color="secondary" leading="loose" style={{ marginBottom: 8 }} weight="semibold">
+              <Text color="bad" weight="semibold">WebGL context lost</Text>
+            </Text>
+            <Text as="div" size="lg" color="secondary" leading="loose" style={{ marginBottom: 12 }}>
               The 3D scene lost its WebGL context. This is usually transient.
-            </div>
-            <button type="button" className="btn ghost" style={{ fontSize: 12 }} onClick={() => setContextLost(false)}>
-              Retry
+            </Text>
+            <button type="button" className="btn ghost" onClick={() => setContextLost(false)}>
+              <Text size="md">Retry</Text>
             </button>
           </div>
         ) : (
@@ -1150,8 +1151,6 @@ export default function CostTrend3D({ config: _config }: { config: Record<string
                 transform: focusedCell ? 'translateX(0)' : 'translateX(calc(100% + 20px))',
                 opacity: focusedCell ? 1 : 0,
                 transition: `transform ${STATS_SLIDE_MS}ms cubic-bezier(.2,.8,.2,1), opacity ${STATS_SLIDE_MS}ms ease-out`,
-                fontFamily: 'var(--font-mono)',
-                fontSize: 11,
                 color: theme.tooltipText,
                 pointerEvents: focusedCell ? 'auto' : 'none',
               }}
@@ -1173,16 +1172,14 @@ export default function CostTrend3D({ config: _config }: { config: Record<string
                         background: hoverColor,
                         boxShadow: themeName === 'dark' ? `0 0 8px ${hoverColor}` : 'none',
                       }} />
-                      <span style={{ color: hoverColor, fontWeight: 600, fontSize: 13 }}>
+                      <Text family="mono" size="lg" weight="semibold" style={{ color: hoverColor }}>
                         {focusedCell.modelName}
-                      </span>
+                      </Text>
                       <button
                         type="button"
                         onClick={() => setFocusedCell(null)}
                         style={{
                           marginLeft: 'auto',
-                          fontFamily: 'inherit', fontSize: 10,
-                          color: theme.panelText,
                           background: 'transparent',
                           border: `1px solid ${theme.panelBorder}`,
                           borderRadius: 3, padding: '2px 6px',
@@ -1190,37 +1187,37 @@ export default function CostTrend3D({ config: _config }: { config: Record<string
                         }}
                         aria-label="Close focus"
                       >
-                        ✕
+                        <Text family="mono" size="xs" style={{ color: theme.panelText }}>✕</Text>
                       </button>
                     </div>
-                    <div style={{ color: theme.tooltipSubtle, marginBottom: 12 }}>
+                    <Text as="div" family="mono" size="sm" style={{ color: theme.tooltipSubtle, marginBottom: 12 }}>
                       {dateStr} · {timeStr}
-                    </div>
+                    </Text>
                     <div style={{ display: 'grid', gridTemplateColumns: 'auto 1fr', gap: '6px 12px' }}>
-                      <span style={{ color: theme.tooltipSubtle }}>cost</span>
-                      <span style={{ color: theme.tooltipValue, fontWeight: 600 }}>
+                      <Text family="mono" size="sm" style={{ color: theme.tooltipSubtle }}>cost</Text>
+                      <Text family="mono" size="sm" weight="semibold" style={{ color: theme.tooltipValue }}>
                         ${focusedCell.cost.toFixed(4)}
-                      </span>
-                      <span style={{ color: theme.tooltipSubtle }}>tokens</span>
-                      <span style={{ color: theme.tooltipValue }}>
+                      </Text>
+                      <Text family="mono" size="sm" style={{ color: theme.tooltipSubtle }}>tokens</Text>
+                      <Text family="mono" size="sm" style={{ color: theme.tooltipValue }}>
                         {focusedCell.totalTokens.toLocaleString()}
-                      </span>
-                      <span style={{ color: theme.tooltipSubtle }}>requests</span>
-                      <span style={{ color: theme.tooltipValue }}>
+                      </Text>
+                      <Text family="mono" size="sm" style={{ color: theme.tooltipSubtle }}>requests</Text>
+                      <Text family="mono" size="sm" style={{ color: theme.tooltipValue }}>
                         {focusedCell.requestCount}
-                      </span>
-                      <span style={{ color: theme.tooltipSubtle }}>cost / request</span>
-                      <span style={{ color: theme.tooltipValue }}>
+                      </Text>
+                      <Text family="mono" size="sm" style={{ color: theme.tooltipSubtle }}>cost / request</Text>
+                      <Text family="mono" size="sm" style={{ color: theme.tooltipValue }}>
                         ${cpr.toFixed(5)}
-                      </span>
-                      <span style={{ color: theme.tooltipSubtle }}>tokens / request</span>
-                      <span style={{ color: theme.tooltipValue }}>
+                      </Text>
+                      <Text family="mono" size="sm" style={{ color: theme.tooltipSubtle }}>tokens / request</Text>
+                      <Text family="mono" size="sm" style={{ color: theme.tooltipValue }}>
                         {tpr.toFixed(0)}
-                      </span>
+                      </Text>
                     </div>
-                    <div style={{ marginTop: 12, fontSize: 10, color: theme.tooltipSubtle }}>
+                    <Text as="div" family="mono" size="xs" style={{ marginTop: 12, color: theme.tooltipSubtle }}>
                       esc to close · click elsewhere to clear
-                    </div>
+                    </Text>
                   </>
                 );
               })()}
@@ -1241,12 +1238,14 @@ export default function CostTrend3D({ config: _config }: { config: Record<string
                 height: CANVAS_HEIGHT,
                 overflow: 'hidden',
                 pointerEvents: 'none',
-                fontFamily: 'var(--font-mono)',
-                fontSize: 10,
               }}
             >
               {axes.bucketLabels.map((l, i) => (
-                <div
+                <Text
+                  as="div"
+                  family="mono"
+                  size="xs"
+                  leading="tight"
                   key={`b-${i}`}
                   style={{
                     position: 'absolute',
@@ -1257,15 +1256,17 @@ export default function CostTrend3D({ config: _config }: { config: Record<string
                     textShadow: theme.labelShadow,
                     whiteSpace: 'nowrap',
                     textAlign: 'center',
-                    lineHeight: 1.15,
                   }}
                 >
                   {l.date && <div>{l.date}</div>}
-                  <div style={{ color: theme.labelSecondary, fontSize: 9 }}>{l.time}</div>
-                </div>
+                  <Text as="div" family="mono" size="xs" style={{ color: theme.labelSecondary }}>{l.time}</Text>
+                </Text>
               ))}
               {axes.modelLabels.map((l, i) => (
-                <div
+                <Text
+                  as="div"
+                  family="mono"
+                  size="xs"
                   key={`m-${i}`}
                   style={{
                     position: 'absolute',
@@ -1279,7 +1280,7 @@ export default function CostTrend3D({ config: _config }: { config: Record<string
                   }}
                 >
                   {l.text}
-                </div>
+                </Text>
               ))}
             </div>
 
@@ -1291,12 +1292,10 @@ export default function CostTrend3D({ config: _config }: { config: Record<string
                 display: 'flex',
                 alignItems: 'center',
                 gap: 10,
-                fontFamily: 'var(--font-mono)',
-                fontSize: 10,
                 color: theme.labelPrimary,
               }}
             >
-              <span style={{ minWidth: 52, textAlign: 'right', lineHeight: 1.2 }}>
+              <Text as="span" family="mono" size="xs" leading="tight" style={{ minWidth: 52, textAlign: 'right', color: theme.labelPrimary }}>
                 {(() => {
                   const d = new Date(dataset.buckets[0]);
                   const date = `${String(d.getMonth() + 1).padStart(2, '0')}/${String(d.getDate()).padStart(2, '0')}`;
@@ -1304,11 +1303,11 @@ export default function CostTrend3D({ config: _config }: { config: Record<string
                   return (
                     <>
                       <div>{date}</div>
-                      <div style={{ color: theme.labelSecondary, fontSize: 9 }}>{time}</div>
+                      <Text as="div" family="mono" size="xs" style={{ color: theme.labelSecondary }}>{time}</Text>
                     </>
                   );
                 })()}
-              </span>
+              </Text>
               <input
                 type="range"
                 min={scrollRange.min}
@@ -1319,7 +1318,7 @@ export default function CostTrend3D({ config: _config }: { config: Record<string
                 aria-label="Scroll timeline"
                 style={{ flex: 1, accentColor: theme.scrollbarAccent }}
               />
-              <span style={{ minWidth: 52, lineHeight: 1.2 }}>
+              <Text as="span" family="mono" size="xs" leading="tight" style={{ minWidth: 52, color: theme.labelPrimary }}>
                 {(() => {
                   const d = new Date(dataset.buckets[dataset.buckets.length - 1]);
                   const date = `${String(d.getMonth() + 1).padStart(2, '0')}/${String(d.getDate()).padStart(2, '0')}`;
@@ -1327,11 +1326,11 @@ export default function CostTrend3D({ config: _config }: { config: Record<string
                   return (
                     <>
                       <div>{date}</div>
-                      <div style={{ color: theme.labelSecondary, fontSize: 9 }}>{time}</div>
+                      <Text as="div" family="mono" size="xs" style={{ color: theme.labelSecondary }}>{time}</Text>
                     </>
                   );
                 })()}
-              </span>
+              </Text>
             </div>
 
             {/* Model filter legend — horizontal row below the scrollbar so
@@ -1353,14 +1352,17 @@ export default function CostTrend3D({ config: _config }: { config: Record<string
                 background: theme.panelBg,
                 border: `1px solid ${theme.panelBorder}`,
                 borderRadius: 6,
-                fontFamily: 'var(--font-mono)',
-                fontSize: 11,
                 color: theme.panelText,
               }}
             >
-              <span style={{ fontSize: 10, letterSpacing: '0.08em', textTransform: 'uppercase', color: theme.panelHeader, marginRight: 4 }}>
+              <Text
+                family="mono"
+                size="xs"
+                transform="uppercase"
+                style={{ color: theme.panelHeader, marginRight: 4 }}
+              >
                 Models
-              </span>
+              </Text>
               {dataset.models.map((model, i) => {
                 const disabled = disabledModels.has(model);
                 const isolated = isolatedModel === model;
@@ -1412,15 +1414,17 @@ export default function CostTrend3D({ config: _config }: { config: Record<string
                         flexShrink: 0,
                       }}
                     />
-                    <span
+                    <Text
+                      family="mono"
+                      size="sm"
+                      weight={isolated ? 'semibold' : 'regular'}
                       style={{
                         textDecoration: disabled ? 'line-through' : 'none',
-                        color: isolated ? color : undefined,
-                        fontWeight: isolated ? 600 : 400,
+                        color: isolated ? color : theme.panelText,
                       }}
                     >
                       {model}
-                    </span>
+                    </Text>
                   </div>
                 );
               })}
@@ -1430,19 +1434,16 @@ export default function CostTrend3D({ config: _config }: { config: Record<string
                   onClick={() => setIsolatedModel(null)}
                   style={{
                     marginLeft: 'auto',
-                    fontFamily: 'inherit',
-                    fontSize: 10,
-                    color: theme.panelText,
                     background: 'transparent',
                     border: `1px solid ${theme.panelBorder}`,
                     borderRadius: 3,
                     padding: '3px 8px',
                     cursor: 'pointer',
-                    letterSpacing: '0.04em',
-                    textTransform: 'uppercase',
                   }}
                 >
-                  Clear focus
+                  <Text family="mono" size="xs" transform="uppercase" style={{ color: theme.panelText }}>
+                    Clear focus
+                  </Text>
                 </button>
               )}
             </div>
