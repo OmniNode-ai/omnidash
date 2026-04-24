@@ -50,6 +50,36 @@ Each deferred item has a named re-evaluation trigger in Phase 7.
 
 ---
 
+## Known Types Inventory
+
+> Types discovered in the repository that are relevant to this plan.
+> Verified via `grep` scan on 2026-04-24.
+> Any new type introduced by a task below MUST reference this inventory
+> and state why an existing type does not suffice.
+
+### Typography-related types in the codebase today
+
+- **None.** No `TextSize`, `TextColor`, `TextWeight`, `TextLeading`, `TextFamily`, `TextTransform`, `TextAlign`, `TextProps`, or `HeadingProps` currently exist in `src/`.
+- **No existing `Text.tsx`, `Heading.tsx`, or `Typography.tsx` component files.**
+- No existing `*Size` union or enum types in `src/`.
+
+### Adjacent theme/token types (existing, will NOT be duplicated)
+
+- `ThemeDefinition` — `src/theme/types.ts:11` — shape of imported custom theme JSON
+- `RequiredToken` — `src/theme/types.ts:7` — union of required color token names
+- `KnownOptionalToken` — `src/theme/types.ts:9` — already lists `'font-sans' | 'font-mono' | 'radius-sm' | 'radius-md' | 'radius-lg'`; this refactor does NOT add to it (type-scale tokens are internal to widgets, not authored by imported themes)
+- `ThemeColors` — `src/theme/useThemeColors.ts:3` — runtime color values for three.js; typography has no parallel (fonts are CSS-only)
+
+### Existing typography-utility class
+
+- `.mono` — `src/styles/globals.css:202` — font-family + tnum/ss01 features. Will continue to exist as a class utility; `<Text family="mono">` is the component-level equivalent.
+
+### Justification for new types
+
+All new types in Phase 2 (`TextSize`, `TextColor`, `TextWeight`, `TextLeading`, `TextFamily`, `TextTransform`, `TextAlign`, `TextProps`, `HeadingProps`) are introduced fresh. **Not reusing existing types because:** none exist. The scan returned zero matches for any of these names or any adjacent typography component. The theme-JSON types (`ThemeDefinition`, `KnownOptionalToken`) operate at a different layer (file-format schema for imported custom themes) and are not appropriate for component-prop modeling.
+
+---
+
 ## Phase order
 
 1. **Phase -1** — Compliance test harness (the scorecard)
@@ -864,7 +894,7 @@ After each widget's commit:
 
 - Its file passes the Phase 4 compliance test (no forbidden patterns)
 - Widget-specific unit tests pass
-- Screenshot diff is visually equivalent (human judgment, in both themes)
+- Dev server screenshot comparison in both themes shows: identical font size at 100% zoom (measured with browser devtools computed-style inspector — record the pre/post computed `font-size` values in the commit message body), identical color (matching `color` computed values), identical positioning (no shift in widget bounding-box). Automated visual regression is explicitly deferred to Phase 7.
 
 ## 4.4 Overall acceptance
 
@@ -1018,6 +1048,40 @@ Record in the ADR, with a named re-evaluation trigger each:
 | **Total** | **~20 hours** |
 
 Realistic calendar: 3 focused days, or ~1 week elapsed with interrupts.
+
+---
+
+# Pattern Gate Result
+
+Recorded 2026-04-24 as part of the design-to-plan Phase 2→3 gate.
+
+- **Adversarial R1-R10 review:** Converged in 1 round. 1 CRITICAL resolved (missing Known Types Inventory — added), 1 MINOR resolved (subjective "visually equivalent" language in Phase 4.3 — tightened to measured computed-style comparison). See review summary below.
+- **R8 Runtime State Grounding:** **N/A** — this plan does not touch DB tables, Kafka topics, or consumer groups. Target is frontend React / TypeScript / CSS only.
+- **R9 Data Flow Proof:** **N/A** — plan does not touch event pipelines. The Phase -1 compliance test file acts as the end-to-end proof of correctness for the CSS / React flow.
+- **R10 Rendered Output Proof:** **ACCEPTED** — plan includes per-widget dev-server screenshot comparison in both themes (tightened in 4.3). Automated visual regression (Playwright / Chromatic) is explicitly deferred to Phase 7 with a named re-evaluation trigger (≥30 Storybook stories or a shipped typography regression).
+- **Phase 2c Multi-model review (`hostile_reviewer`):** **SKIPPED** — `onex:hostile_reviewer` is tuned for the Python/ONEX backend pattern set (Kafka topics, Pydantic models, contract YAMLs, Docker services, consumer groups). None of those patterns appear in this frontend React/TS plan. Invoking it would produce noise, not signal. Recorded as adapted context, not silent pass.
+- **Phase 2→3 ONEX Pattern Gate (`hostile_reviewer --static`):** **SKIPPED** — same reason. The gate's enforced anti-patterns (Docker service design, `str` fields without typed models, hardcoded topic strings, uncited runtime state) are backend concerns that do not apply.
+- **HARD FORMAT REQUIREMENT:** Plan uses `# Phase N` / `## N.M` structure, NOT `## Task N:` flat structure. This **blocks `plan-to-tickets` routing** if that routing is chosen in Phase 3. For ticket-pipeline or manual/epic-team execution the current structure is fine. Unresolved — requires user decision.
+
+**Gate status:** ESCALATED — backend-specific gates skipped with justification; HARD FORMAT decision deferred to user.
+
+---
+
+## R1-R10 Review Summary (Phase 2b)
+
+| Check | Result | Evidence |
+|---|---|---|
+| R1 — Count integrity | ✓ clean | 9 phases listed in "Phase order" = 9 phase headings (-1 through 7). 17 widgets in migration list = 17 bullets. 10 required stories = 10 named. 8-step type scale = 8 listed. |
+| R2 — Acceptance criteria strength | FIXED | "Visually equivalent (human judgment)" tightened to computed-style comparison in 4.3. No other subjective qualifiers found. |
+| R3 — Scope violations | ✓ clean | Phase 0 (ADR) claims no code. Phase 1 (tokens) doesn't claim components. Phase 2 (components) doesn't claim widget migration. Each phase's acceptance matches its scope. |
+| R4 — Integration traps | ✓ clean | Import paths are internal to the new `@/components/ui/typography` namespace (verified convention exists via other `@/` imports). No external signature claims. |
+| R5 — Idempotency | ✓ clean | ADR check uses existsSync. Token additions are CSS variables in a single `:root` block (CSS will error on duplicates). Component files are new. Compliance test is the end-state gate regardless of intermediate state. |
+| R6 — Verification soundness | ✓ clean (medium+) | Phase 1: regex-vs-file content (medium). Phase 2: render + style assertion (strong). Phase 4: grep patterns against file content (strong for this purpose). Phase 5: ESLint programmatic lint against fixtures (strong). |
+| R7 — Type duplication | FIXED | Known Types Inventory added. 0 collisions found; all new types justified against empty prior state. |
+| R8 — Runtime state grounding | N/A | Frontend-only plan, no DB / Kafka / consumer groups. |
+| R9 — Data flow proof | N/A | Not an event pipeline. The compliance test file IS the end-to-end proof. |
+| R10 — Rendered output proof | ✓ accepted | Per-widget dev-server screenshot comparison + computed-style assertion (4.3). Automated visual regression deferred to Phase 7. |
+| HARD FORMAT | **UNRESOLVED** | Plan structured as phases, not flat `## Task N:` headings. Blocks `plan-to-tickets` routing. See gate result above. |
 
 ---
 
