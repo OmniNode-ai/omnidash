@@ -90,41 +90,43 @@ interface SliceHandle {
   sliceIdx: number;
 }
 
-// Per-theme visual knobs. Dark theme keeps the Tron energy with
-// brighter diffuse + a touch of emissive on the fill; light theme
-// tones saturation down and drops the emissive so slices read as
-// solid pastel on white.
+// Per-theme visual knobs. Dark theme uses a lit MeshStandardMaterial
+// with emissive for the Tron-ish glow; light theme uses unlit
+// MeshBasicMaterial so slice colours render at their exact palette
+// value (matching how the ECharts-based Delegation Metrics pie looks
+// in light mode). With MeshStandardMaterial + ambient/key lighting
+// but no emissive, the pastel light palette was getting multiplied
+// by a total intensity ≤ 1 and reading as noticeably dulled.
+type PieMaterialKind = 'standard' | 'basic';
 interface PieTheme {
-  ambient: number;
-  keyIntensity: number;
-  sliceMetalness: number;
-  sliceRoughness: number;
-  /** 0 means no self-emission; 0.1 gives a subtle glow in dark mode. */
-  emissiveIntensity: number;
-  /** Applied as scene.background via renderer.setClearColor. */
-  clearAlpha: 0;
+  materialKind: PieMaterialKind;
+  ambient: number;         // only consumed by 'standard'
+  keyIntensity: number;    // only consumed by 'standard'
+  sliceMetalness: number;  // only consumed by 'standard'
+  sliceRoughness: number;  // only consumed by 'standard'
+  emissiveIntensity: number; // only consumed by 'standard'
   canvasBgCss: string;
   groundHex: number;
 }
 
 const DARK_PIE_THEME: PieTheme = {
+  materialKind: 'standard',
   ambient: 0.55,
   keyIntensity: 0.9,
   sliceMetalness: 0.15,
   sliceRoughness: 0.45,
   emissiveIntensity: 0.12,
-  clearAlpha: 0,
   canvasBgCss: 'var(--panel-2)',
   groundHex: 0x020812,
 };
 
 const LIGHT_PIE_THEME: PieTheme = {
-  ambient: 0.7,
-  keyIntensity: 0.75,
-  sliceMetalness: 0.08,
-  sliceRoughness: 0.55,
+  materialKind: 'basic',
+  ambient: 0,      // unused under 'basic'
+  keyIntensity: 0, // unused under 'basic'
+  sliceMetalness: 0,
+  sliceRoughness: 0,
   emissiveIntensity: 0,
-  clearAlpha: 0,
   canvasBgCss: 'var(--panel-2)',
   groundHex: 0xf7f8fa,
 };
@@ -295,13 +297,15 @@ function ThreePieChart({ slices, chartColors, themeName }: ThreePieChartProps) {
         curveSegments: CURVE_SEGMENTS,
       });
       const colorHex = paletteHex[s.colorIdx % paletteHex.length];
-      const mat = new THREE.MeshStandardMaterial({
-        color: colorHex,
-        metalness: pieTheme.sliceMetalness,
-        roughness: pieTheme.sliceRoughness,
-        emissive: colorHex,
-        emissiveIntensity: pieTheme.emissiveIntensity,
-      });
+      const mat = pieTheme.materialKind === 'basic'
+        ? new THREE.MeshBasicMaterial({ color: colorHex })
+        : new THREE.MeshStandardMaterial({
+            color: colorHex,
+            metalness: pieTheme.sliceMetalness,
+            roughness: pieTheme.sliceRoughness,
+            emissive: colorHex,
+            emissiveIntensity: pieTheme.emissiveIntensity,
+          });
       const mesh = new THREE.Mesh(geom, mat);
       mesh.userData.sliceIdx = i;
       pieGroup.add(mesh);
@@ -425,7 +429,7 @@ function ThreePieChart({ slices, chartColors, themeName }: ThreePieChartProps) {
             border: '1px solid var(--line)',
             borderRadius: 6,
             boxShadow: 'var(--shadow-md)',
-            fontFamily: 'var(--font-mono, "IBM Plex Mono", monospace)',
+            fontFamily: 'var(--font-mono)',
             fontSize: 11,
             color: 'var(--ink)',
             minWidth: 160,
@@ -547,7 +551,7 @@ export default function CostByModelPie({ config: _config }: { config: Record<str
               flexDirection: 'column',
               gap: 4,
               padding: '4px 2px',
-              fontFamily: 'var(--font-mono, "IBM Plex Mono", monospace)',
+              fontFamily: 'var(--font-mono)',
               fontSize: 11,
               color: 'var(--ink)',
               minWidth: 0,

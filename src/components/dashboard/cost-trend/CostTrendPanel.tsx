@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { ComponentWrapper } from '../ComponentWrapper';
 import { useProjectionQuery } from '@/hooks/useProjectionQuery';
 import { applyTimeRange, resolveTimeRange } from '@/hooks/useTimeRange';
@@ -112,9 +112,29 @@ export default function CostTrendPanel({ config }: { config: CostTrendConfig }) 
     });
   };
 
+  // Shift-click on a legend pill solos that model — the stack
+  // collapses to a single series. Independent of the disabled set, so
+  // clearing isolation restores whatever the user had toggled before.
+  const [isolatedModel, setIsolatedModel] = useState<string | null>(null);
+
+  // Drop isolation when the underlying model list no longer includes
+  // the isolated model (e.g., dataset refresh drops that model).
+  useEffect(() => {
+    if (isolatedModel && !allModels.includes(isolatedModel)) {
+      setIsolatedModel(null);
+    }
+  }, [isolatedModel, allModels]);
+
+  const effectiveDisabled = useMemo(() => {
+    if (!isolatedModel) return disabledModels;
+    const s = new Set<string>();
+    for (const m of allModels) if (m !== isolatedModel) s.add(m);
+    return s;
+  }, [isolatedModel, disabledModels, allModels]);
+
   const stacked = useMemo(
-    () => buildStacked(filteredData, allModels, disabledModels),
-    [filteredData, allModels, disabledModels],
+    () => buildStacked(filteredData, allModels, effectiveDisabled),
+    [filteredData, allModels, effectiveDisabled],
   );
 
   const formatBucketTick = (iso: string): string => {
@@ -179,9 +199,9 @@ export default function CostTrendPanel({ config }: { config: CostTrendConfig }) 
           </div>
 
           {/* Model legend — below the chart, styled like the 3D widget's
-              legend so the two Cost Trend widgets read as a set. Click a
-              chip to toggle visibility; no isolate behavior here (the 3D
-              widget gets that, 2D doesn't need it). */}
+              legend so the two Cost Trend widgets read as a set. Plain
+              click toggles visibility; shift-click solos the model
+              (same semantics as shift-click on a bar in the 3D widget). */}
           <div
             style={{
               marginTop: 8,
@@ -195,7 +215,7 @@ export default function CostTrendPanel({ config }: { config: CostTrendConfig }) 
               background: 'var(--panel-2)',
               border: '1px solid var(--line)',
               borderRadius: 6,
-              fontFamily: 'var(--font-mono, "IBM Plex Mono", monospace)',
+              fontFamily: 'var(--font-mono)',
               fontSize: 11,
               color: 'var(--ink-2)',
             }}
@@ -214,17 +234,28 @@ export default function CostTrendPanel({ config }: { config: CostTrendConfig }) 
             </span>
             {allModels.map((model, i) => {
               const disabled = disabledModels.has(model);
+              const isolated = isolatedModel === model;
               const color = colors.chart[i % colors.chart.length];
               return (
                 <div
                   key={model}
                   role="button"
                   tabIndex={0}
-                  onClick={() => toggleModel(model)}
+                  onClick={(e) => {
+                    if (e.shiftKey) {
+                      setIsolatedModel(isolated ? null : model);
+                      return;
+                    }
+                    toggleModel(model);
+                  }}
                   onKeyDown={(e) => {
                     if (e.key === 'Enter' || e.key === ' ') {
                       e.preventDefault();
-                      toggleModel(model);
+                      if (e.shiftKey) {
+                        setIsolatedModel(isolated ? null : model);
+                      } else {
+                        toggleModel(model);
+                      }
                     }
                   }}
                   style={{
@@ -233,11 +264,11 @@ export default function CostTrendPanel({ config }: { config: CostTrendConfig }) 
                     gap: 6,
                     padding: '3px 8px',
                     borderRadius: 12,
-                    border: '1px solid var(--line)',
+                    border: `1px solid ${isolated ? color : 'var(--line)'}`,
                     cursor: 'pointer',
                     opacity: disabled ? 0.45 : 1,
                     userSelect: 'none',
-                    background: 'transparent',
+                    background: isolated ? `${color}22` : 'transparent',
                   }}
                 >
                   <span
@@ -253,7 +284,8 @@ export default function CostTrendPanel({ config }: { config: CostTrendConfig }) 
                   <span
                     style={{
                       textDecoration: disabled ? 'line-through' : 'none',
-                      color: 'var(--ink)',
+                      color: isolated ? color : 'var(--ink)',
+                      fontWeight: isolated ? 600 : 400,
                     }}
                   >
                     {model}

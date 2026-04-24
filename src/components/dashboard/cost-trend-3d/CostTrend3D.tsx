@@ -602,6 +602,13 @@ function ThreeCanvas({
     const focusLookAt = new THREE.Vector3();
     const blendedPos = new THREE.Vector3();
     const blendedLookAt = new THREE.Vector3();
+    // Scratch color for per-frame color restore. The idle-restore loop
+    // writes material colors each frame (so a hover-tint cleans up when
+    // the pointer leaves) and needs to re-evaluate the dim color per
+    // frame against the current theme.
+    const HOVER_WHITE = new THREE.Color(1, 1, 1);
+    const HOVER_TINT = 0.35; // originalColor → lerp toward white by 0.35
+    const tmpDimColor = new THREE.Color();
 
     const applyViewOffset = () => {
       renderer.getSize(tmpSize);
@@ -693,6 +700,8 @@ function ThreeCanvas({
           const disabled = disabledModelsRef.current.has(bar.modelName);
           const isolated = isolatedModelRef.current !== null
             && bar.modelName !== isolatedModelRef.current && !disabled;
+          const soloed = isolatedModelRef.current !== null
+            && bar.modelName === isolatedModelRef.current && !disabled;
           // Base opacities = what the filter effect would set without focus.
           let baseCore: number, baseEdge: number, baseTop: number;
           if (disabled) {
@@ -702,7 +711,10 @@ function ThreeCanvas({
             baseEdge = themeRef.current.dimEdgeOpacity;
             baseTop = themeRef.current.dimTopOpacity;
           } else {
-            baseCore = themeRef.current.barCoreOpacity;
+            // Soloed bar's sides push to top opacity so it reads solid.
+            baseCore = soloed
+              ? themeRef.current.barTopOpacity
+              : themeRef.current.barCoreOpacity;
             baseEdge = themeRef.current.barEdgeOpacity;
             baseTop = themeRef.current.barTopOpacity;
           }
@@ -744,28 +756,48 @@ function ThreeCanvas({
             hoveredBar = barsRef.current.find((b) => b.group.children[0] === hit) ?? null;
           }
         }
+        tmpDimColor.set(themeRef.current.isolatedDimColor);
         for (const bar of barsRef.current) {
           const disabled = disabledModelsRef.current.has(bar.modelName);
           const isolated = isolatedModelRef.current !== null
             && bar.modelName !== isolatedModelRef.current && !disabled;
+          const soloed = isolatedModelRef.current !== null
+            && bar.modelName === isolatedModelRef.current && !disabled;
           if (bar === hoveredBar && !disabled) {
-            // Hover highlight — bar becomes fully solid. Edges and top
-            // stay at near-1 so the cube reads as a complete object.
+            // Hover highlight — bar becomes fully solid AND shifts its
+            // color toward white. Opacity alone isn't enough feedback
+            // for a soloed bar (already near-solid); the tint guarantees
+            // a visible hover cue in every state.
             bar.coreMat.opacity = 1;
             bar.edgeMat.opacity = 1;
             bar.topMat.opacity = 1;
+            bar.coreMat.color.copy(bar.originalColor).lerp(HOVER_WHITE, HOVER_TINT);
+            bar.edgeMat.color.copy(bar.originalColor).lerp(HOVER_WHITE, HOVER_TINT);
+            bar.topMat.color.copy(bar.originalColor).lerp(HOVER_WHITE, HOVER_TINT);
           } else if (disabled) {
             bar.coreMat.opacity = 0.03;
             bar.edgeMat.opacity = 0.08;
             bar.topMat.opacity = 0.05;
+            bar.coreMat.color.copy(bar.originalColor);
+            bar.edgeMat.color.copy(bar.originalColor);
+            bar.topMat.color.copy(bar.originalColor);
           } else if (isolated) {
             bar.coreMat.opacity = themeRef.current.dimCoreOpacity;
             bar.edgeMat.opacity = themeRef.current.dimEdgeOpacity;
             bar.topMat.opacity = themeRef.current.dimTopOpacity;
+            bar.coreMat.color.copy(tmpDimColor);
+            bar.edgeMat.color.copy(tmpDimColor);
+            bar.topMat.color.copy(tmpDimColor);
           } else {
-            bar.coreMat.opacity = themeRef.current.barCoreOpacity;
+            // Soloed bar's sides push to top opacity so it reads solid.
+            bar.coreMat.opacity = soloed
+              ? themeRef.current.barTopOpacity
+              : themeRef.current.barCoreOpacity;
             bar.edgeMat.opacity = themeRef.current.barEdgeOpacity;
             bar.topMat.opacity = themeRef.current.barTopOpacity;
+            bar.coreMat.color.copy(bar.originalColor);
+            bar.edgeMat.color.copy(bar.originalColor);
+            bar.topMat.color.copy(bar.originalColor);
           }
         }
         if (gridMaterialRef.current) {
@@ -907,17 +939,21 @@ function ThreeCanvas({
     targetBarRef.current = match ?? null;
   }, [focusedCell, dataset]);
 
-  // Apply model filter + isolation. Three states per bar:
+  // Apply model filter + isolation. Four states per bar:
   //   disabled  — user toggled the model off in the legend. Near-invisible.
   //   dimmed    — another model is isolated. Desaturate to the theme's
   //               neutral dim color + reduce opacity so the bar sits back
   //               but keeps spatial context.
+  //   soloed    — this bar IS the isolated model. Sides pushed up to
+  //               match the top opacity so the solo'd bars read as solid
+  //               blocks rather than the usual translucent wireframe.
   //   normal    — full color and opacity (as determined by theme).
   useEffect(() => {
     const dimColor = new THREE.Color(theme.isolatedDimColor);
     for (const bar of barsRef.current) {
       const disabled = disabledModels.has(bar.modelName);
       const dimmed = isolatedModel !== null && bar.modelName !== isolatedModel && !disabled;
+      const soloed = isolatedModel !== null && bar.modelName === isolatedModel && !disabled;
       if (disabled) {
         bar.coreMat.color.copy(bar.originalColor);
         bar.edgeMat.color.copy(bar.originalColor);
@@ -936,7 +972,7 @@ function ThreeCanvas({
         bar.coreMat.color.copy(bar.originalColor);
         bar.edgeMat.color.copy(bar.originalColor);
         bar.topMat.color.copy(bar.originalColor);
-        bar.coreMat.opacity = theme.barCoreOpacity;
+        bar.coreMat.opacity = soloed ? theme.barTopOpacity : theme.barCoreOpacity;
         bar.edgeMat.opacity = theme.barEdgeOpacity;
         bar.topMat.opacity = theme.barTopOpacity;
       }
@@ -1114,7 +1150,7 @@ export default function CostTrend3D({ config: _config }: { config: Record<string
                 transform: focusedCell ? 'translateX(0)' : 'translateX(calc(100% + 20px))',
                 opacity: focusedCell ? 1 : 0,
                 transition: `transform ${STATS_SLIDE_MS}ms cubic-bezier(.2,.8,.2,1), opacity ${STATS_SLIDE_MS}ms ease-out`,
-                fontFamily: 'var(--font-mono, "IBM Plex Mono", monospace)',
+                fontFamily: 'var(--font-mono)',
                 fontSize: 11,
                 color: theme.tooltipText,
                 pointerEvents: focusedCell ? 'auto' : 'none',
@@ -1205,7 +1241,7 @@ export default function CostTrend3D({ config: _config }: { config: Record<string
                 height: CANVAS_HEIGHT,
                 overflow: 'hidden',
                 pointerEvents: 'none',
-                fontFamily: 'var(--font-mono, "IBM Plex Mono", monospace)',
+                fontFamily: 'var(--font-mono)',
                 fontSize: 10,
               }}
             >
@@ -1255,7 +1291,7 @@ export default function CostTrend3D({ config: _config }: { config: Record<string
                 display: 'flex',
                 alignItems: 'center',
                 gap: 10,
-                fontFamily: 'var(--font-mono, "IBM Plex Mono", monospace)',
+                fontFamily: 'var(--font-mono)',
                 fontSize: 10,
                 color: theme.labelPrimary,
               }}
@@ -1317,7 +1353,7 @@ export default function CostTrend3D({ config: _config }: { config: Record<string
                 background: theme.panelBg,
                 border: `1px solid ${theme.panelBorder}`,
                 borderRadius: 6,
-                fontFamily: 'var(--font-mono, "IBM Plex Mono", monospace)',
+                fontFamily: 'var(--font-mono)',
                 fontSize: 11,
                 color: theme.panelText,
               }}
@@ -1334,11 +1370,24 @@ export default function CostTrend3D({ config: _config }: { config: Record<string
                     key={model}
                     role="button"
                     tabIndex={0}
-                    onClick={() => toggleModel(model)}
+                    onClick={(e) => {
+                      // Shift-click mirrors shift-click on a bar:
+                      // toggle focus/isolation for this model. Plain
+                      // click stays as the visibility toggle.
+                      if (e.shiftKey) {
+                        setIsolatedModel(isolatedModel === model ? null : model);
+                        return;
+                      }
+                      toggleModel(model);
+                    }}
                     onKeyDown={(e) => {
                       if (e.key === 'Enter' || e.key === ' ') {
                         e.preventDefault();
-                        toggleModel(model);
+                        if (e.shiftKey) {
+                          setIsolatedModel(isolatedModel === model ? null : model);
+                        } else {
+                          toggleModel(model);
+                        }
                       }
                     }}
                     style={{
