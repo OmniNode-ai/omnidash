@@ -13,22 +13,21 @@ export default defineConfig({
     setupFiles: ['./src/tests/setup.ts'],
     globals: true,
     css: { modules: { classNameStrategy: 'non-scoped' } },
-    // The typography compliance scorecard (src/typography-compliance.test.ts)
-    // is a permanent regression gate as of OMN-98. Its Phase 5 case
-    // dynamically imports ESLint's module graph. Cold-start is ~8s in
-    // isolation but under concurrent-test pressure (370+ tests running
-    // across jsdom workers) it climbs to ~47s in practice. 60s ceiling
-    // accommodates this one slow test without flake. Normal tests finish
-    // in ms; this ceiling doesn't affect their behavior.
+    // Both compliance scorecards are permanent regression gates that
+    // run on every `npm test`:
+    //   - typography-compliance.test.ts (OMN-98) — Phase 5 dynamically
+    //     imports ESLint's module graph; cold-start is ~8s in isolation
+    //     but under concurrent-test pressure (420+ tests running across
+    //     jsdom workers) it climbs to ~47s in practice.
+    //   - storybook-coverage-compliance.test.ts (OMN-100/OMN-118) —
+    //     enforces every widget exposes at minimum `Empty` and
+    //     `Populated` story exports plus state-specific variants.
+    // 60s ceiling accommodates these two slow tests without flake.
+    // Normal tests finish in ms; this ceiling doesn't affect their behavior.
     testTimeout: 60000,
-    // The storybook-coverage compliance scorecard (OMN-100) is excluded
-    // during the refactor — most of its assertions intentionally fail
-    // until the widget stories land. Task 18 promotes it to a permanent
-    // regression gate by removing this entry.
     exclude: [
       '**/node_modules/**',
       '**/dist/**',
-      'src/storybook-coverage-compliance.test.ts',
     ],
   },
   resolve: {

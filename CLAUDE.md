@@ -72,3 +72,22 @@ _Track B — external package widget (plugin extension path):_
 - Tokens live in `src/styles/globals.css :root`. See
   `docs/adr/001-typography-system.md` for rationale.
 - Showcase: `npm run storybook` → Typography pages.
+
+## Storybook conventions
+
+- New stories live alongside their component as `<Name>.stories.tsx`
+  (e.g. `src/components/dashboard/quality/QualityScorePanel.stories.tsx`).
+- Any widget that calls `useProjectionQuery` must wrap its stories with
+  `makeDashboardDecorator(...)` from
+  `@/storybook/decorators/withDashboardContext` so the projection client
+  is seeded with deterministic fixture data.
+- Fixtures live under `src/storybook/fixtures/` and are exported via
+  `src/storybook/fixtures/index.ts`. Extend existing fixtures rather
+  than duplicating — every story should compose from the shared barrel.
+- Each widget must expose at minimum `Empty` and `Populated` story
+  exports. State-specific variants (`Loading`, `Error`,
+  `HighDisagreement`, `BalancedSplit`, etc.) are encouraged where
+  meaningful. The compliance scorecard
+  `src/storybook-coverage-compliance.test.ts` enforces this contract on
+  every `npm test`. See `docs/adr/002-storybook-widget-coverage.md` for
+  rationale.
