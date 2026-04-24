@@ -6,7 +6,7 @@ import { applyTimeRange, resolveTimeRange } from '@/hooks/useTimeRange';
 import { useFrameStore } from '@/store/store';
 import { Text } from '@/components/ui/typography';
 
-interface RoutingDecision {
+export interface RoutingDecision {
   id: string;
   created_at: string;
   llm_agent: string;

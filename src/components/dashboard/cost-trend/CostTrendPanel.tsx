@@ -7,7 +7,7 @@ import { useFrameStore } from '@/store/store';
 import { Text } from '@/components/ui/typography';
 import { StackedChart, type StackedSlice, type ChartType } from './StackedChart';
 
-interface CostDataPoint {
+export interface CostDataPoint {
   bucket_time: string;
   model_name: string;
   total_cost_usd: string;

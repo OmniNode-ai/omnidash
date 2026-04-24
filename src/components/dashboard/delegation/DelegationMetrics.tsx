@@ -5,7 +5,7 @@ import { useProjectionQuery } from '@/hooks/useProjectionQuery';
 import { useThemeColors } from '@/theme';
 import { Text } from '@/components/ui/typography';
 
-interface DelegationSummary {
+export interface DelegationSummary {
   totalDelegations: number;
   qualityGatePassRate: number;
   totalSavingsUsd: number;
