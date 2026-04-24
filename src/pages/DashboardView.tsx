@@ -15,6 +15,7 @@
 
 import { useCallback, useEffect, useRef, useState, type DragEvent } from 'react';
 import { Check, ChevronDown, Plus, X } from 'lucide-react';
+import { Text } from '@/components/ui/typography';
 import { useFrameStore } from '@/store/store';
 import { useRegistry } from '@/registry/RegistryProvider';
 import { ComponentPalette } from '@/components/dashboard/ComponentPalette';
@@ -223,9 +224,9 @@ export function DashboardView() {
   if (!activeDashboard) {
     return (
       <div className="dash-body" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-        <span style={{ color: 'var(--ink-2)', fontSize: '14px' }}>
+        <Text color="secondary">
           No dashboard selected — create one in the sidebar
-        </span>
+        </Text>
       </div>
     );
   }
@@ -253,7 +254,7 @@ export function DashboardView() {
                 if (e.key === 'Enter') e.currentTarget.blur();
                 if (e.key === 'Escape') setEditingTitle(false);
               }}
-              style={{ fontSize: 22, fontWeight: 600, color: 'var(--ink)', background: 'transparent' }}
+              style={{ fontSize: 'var(--text-4xl)', fontWeight: 'var(--weight-semibold)', color: 'var(--text-primary)', background: 'transparent' }}
             />
           ) : (
             <div
@@ -262,7 +263,7 @@ export function DashboardView() {
               title="Click to rename"
             >
               {activeDashboard.name}
-              <ChevronDown size={18} style={{ color: 'var(--ink-3)' }} />
+              <ChevronDown size={18} style={{ color: 'var(--text-tertiary)' }} />
             </div>
           )}
           {/* Filter row — timezone, auto-refresh, and time range as
