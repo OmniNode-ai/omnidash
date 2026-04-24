@@ -15,6 +15,7 @@
 import { useEffect, useMemo, useRef, useState, useCallback } from 'react';
 import * as THREE from 'three';
 import { ComponentWrapper } from '../ComponentWrapper';
+import { Text } from '@/components/ui/typography';
 import { useProjectionQuery } from '@/hooks/useProjectionQuery';
 import { applyTimeRange, resolveTimeRange } from '@/hooks/useTimeRange';
 import { useThemeColors, useThemeName, cssColorToHex } from '@/theme';
@@ -429,28 +430,32 @@ function ThreePieChart({ slices, chartColors, themeName }: ThreePieChartProps) {
             border: '1px solid var(--line)',
             borderRadius: 6,
             boxShadow: 'var(--shadow-md)',
-            fontFamily: 'var(--font-mono)',
-            fontSize: 11,
-            color: 'var(--ink)',
             minWidth: 160,
             pointerEvents: 'none',
             zIndex: 1000,
           }}
         >
-          <div style={{ color: 'var(--ink-2)', marginBottom: 2, fontWeight: 600 }}>
+          <Text
+            as="div"
+            size="sm"
+            family="mono"
+            color="secondary"
+            weight="semibold"
+            style={{ marginBottom: 2 }}
+          >
             {hoverInfo.model}
-          </div>
+          </Text>
           <div style={{ display: 'flex', justifyContent: 'space-between', gap: 10 }}>
-            <span style={{ color: 'var(--ink-2)' }}>cost</span>
-            <span style={{ fontVariantNumeric: 'tabular-nums' }}>
+            <Text as="span" size="sm" family="mono" color="secondary">cost</Text>
+            <Text as="span" size="sm" family="mono" tabularNums>
               ${hoverInfo.cost.toFixed(4)}
-            </span>
+            </Text>
           </div>
           <div style={{ display: 'flex', justifyContent: 'space-between', gap: 10 }}>
-            <span style={{ color: 'var(--ink-2)' }}>share</span>
-            <span style={{ fontVariantNumeric: 'tabular-nums', fontWeight: 600 }}>
+            <Text as="span" size="sm" family="mono" color="secondary">share</Text>
+            <Text as="span" size="sm" family="mono" weight="semibold" tabularNums>
               {hoverInfo.percentage.toFixed(1)}%
-            </span>
+            </Text>
           </div>
         </div>
       )}
@@ -531,14 +536,14 @@ export default function CostByModelPie({ config: _config }: { config: Record<str
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',
-                  color: 'var(--ink-3)',
-                  fontSize: 13,
                   pointerEvents: 'none',
                 }}
               >
-                {rangeActive
-                  ? 'No cost data in the selected time range'
-                  : 'No cost data'}
+                <Text size="lg" color="tertiary">
+                  {rangeActive
+                    ? 'No cost data in the selected time range'
+                    : 'No cost data'}
+                </Text>
               </div>
             )}
           </div>
@@ -551,23 +556,19 @@ export default function CostByModelPie({ config: _config }: { config: Record<str
               flexDirection: 'column',
               gap: 4,
               padding: '4px 2px',
-              fontFamily: 'var(--font-mono)',
-              fontSize: 11,
-              color: 'var(--ink)',
               minWidth: 0,
             }}
           >
-            <div
-              style={{
-                fontSize: 10,
-                letterSpacing: '0.08em',
-                textTransform: 'uppercase',
-                color: 'var(--ink-3)',
-                marginBottom: 4,
-              }}
+            <Text
+              as="div"
+              size="xs"
+              family="mono"
+              color="tertiary"
+              transform="uppercase"
+              style={{ marginBottom: 4 }}
             >
               Models
-            </div>
+            </Text>
             {slices.map((s) => {
               const color = colors.chart[s.colorIdx % colors.chart.length];
               return (
@@ -590,26 +591,25 @@ export default function CostByModelPie({ config: _config }: { config: Record<str
                       flexShrink: 0,
                     }}
                   />
-                  <span
-                    style={{
-                      flex: 1,
-                      overflow: 'hidden',
-                      textOverflow: 'ellipsis',
-                      whiteSpace: 'nowrap',
-                    }}
+                  <Text
+                    as="span"
+                    size="sm"
+                    family="mono"
+                    truncate
+                    style={{ flex: 1 }}
                     title={s.model}
                   >
                     {s.model}
-                  </span>
-                  <span
-                    style={{
-                      fontVariantNumeric: 'tabular-nums',
-                      color: 'var(--ink-2)',
-                      fontSize: 10,
-                    }}
+                  </Text>
+                  <Text
+                    as="span"
+                    size="xs"
+                    family="mono"
+                    color="secondary"
+                    tabularNums
                   >
                     {s.percentage.toFixed(1)}%
-                  </span>
+                  </Text>
                 </div>
               );
             })}
@@ -621,19 +621,20 @@ export default function CostByModelPie({ config: _config }: { config: Record<str
                   borderTop: '1px solid var(--line-2)',
                   display: 'flex',
                   justifyContent: 'space-between',
-                  color: 'var(--ink-2)',
                 }}
               >
-                <span>total</span>
-                <span
-                  style={{
-                    color: 'var(--ink)',
-                    fontWeight: 600,
-                    fontVariantNumeric: 'tabular-nums',
-                  }}
+                <Text as="span" size="sm" family="mono" color="secondary">
+                  total
+                </Text>
+                <Text
+                  as="span"
+                  size="sm"
+                  family="mono"
+                  weight="semibold"
+                  tabularNums
                 >
                   ${total.toFixed(2)}
-                </span>
+                </Text>
               </div>
             )}
           </div>
