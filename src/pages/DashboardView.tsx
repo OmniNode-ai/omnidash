@@ -72,7 +72,9 @@ export function DashboardView() {
     }).catch((err: unknown) => {
       console.warn('[DashboardView] failed to load persisted layout:', err);
     });
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    // Intentional: this effect should run only once on mount — rerunning when
+    // setActiveDashboard changes would re-hydrate and clobber live state.
+    // (react-hooks/exhaustive-deps is not wired into this repo's ESLint yet.)
   }, []);
 
   // Close the widget library when the user switches dashboards. We compare to
@@ -240,7 +242,7 @@ export function DashboardView() {
         <div className="dash-title-wrap">
           {editingTitle ? (
             <input
-              className="dash-title"
+              className="dash-title text-input-xl"
               autoFocus
               defaultValue={activeDashboard.name}
               onBlur={(e) => {
@@ -254,7 +256,7 @@ export function DashboardView() {
                 if (e.key === 'Enter') e.currentTarget.blur();
                 if (e.key === 'Escape') setEditingTitle(false);
               }}
-              style={{ fontSize: 'var(--text-4xl)', fontWeight: 'var(--weight-semibold)', color: 'var(--text-primary)', background: 'transparent' }}
+              style={{ background: 'transparent' }}
             />
           ) : (
             <div

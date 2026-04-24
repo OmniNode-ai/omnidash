@@ -245,13 +245,16 @@
        has no `letterSpacing` prop; compose `<Text transform="uppercase"
        className="text-tracked">` to restore the spaced-caps tech look
        that several widgets used pre-migration.
-     - `.text-input-md` / `.text-input-sm` set font-size on native
-       <input>/<textarea>/<select> elements which cannot be rendered
-       via <Text>. Use `className="text-input-md"` (13px) for search
-       inputs and `.text-input-sm` (12px) for dense date/time fields. */
+     - `.text-input-md` / `.text-input-sm` / `.text-input-xl` set
+       font-size on native <input>/<textarea>/<select> elements which
+       cannot be rendered via <Text>. Use `className="text-input-md"`
+       (13px) for search inputs, `.text-input-sm` (12px) for dense
+       date/time fields, and `.text-input-xl` (22px) for the
+       dashboard-title rename input. */
   .text-tracked { letter-spacing: 0.08em; }
   .text-input-md { font-size: var(--text-lg); }
   .text-input-sm { font-size: var(--text-md); }
+  .text-input-xl { font-size: var(--text-4xl); }
 
   button { font: inherit; color: inherit; background: none; border: 0; cursor: pointer; padding: 0; }
   input, select, textarea { font: inherit; color: inherit; }
