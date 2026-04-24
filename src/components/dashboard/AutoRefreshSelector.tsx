@@ -4,6 +4,7 @@
 // wired up in a follow-up. The interval label keeps the green
 // "active" cue the previous text-based readout used.
 import { RefreshCw, ChevronDown } from 'lucide-react';
+import { Text } from '@/components/ui/typography';
 
 const INTERVAL_LABEL = '30s';
 
@@ -17,12 +18,9 @@ export function AutoRefreshSelector() {
       style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}
     >
       <RefreshCw size={14} />
-      <span
-        className="mono"
-        style={{ fontSize: 12, color: 'var(--status-ok)' }}
-      >
+      <Text size="md" family="mono" color="ok">
         {INTERVAL_LABEL}
-      </span>
+      </Text>
       <ChevronDown size={12} style={{ opacity: 0.7 }} />
     </button>
   );
