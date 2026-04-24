@@ -19,6 +19,7 @@ import {
   MenuSeparator,
   usePositionedMenu,
 } from '@/components/ui/positioned-menu';
+import { Text } from '@/components/ui/typography';
 import { useFrameStore } from '@/store/store';
 
 /** Inline OmniDash brand-mark SVG from prototype (visual fidelity preferred over lucide Hexagon). */
@@ -250,7 +251,13 @@ export function Sidebar() {
         })}
 
         {dashboards.length === 0 && (
-          <div style={{ padding: '20px 12px', fontSize: '12px', color: 'var(--sidebar-ink-2)', textAlign: 'center', lineHeight: 1.5 }}>
+          <Text
+            as="div"
+            size="md"
+            leading="loose"
+            align="center"
+            style={{ padding: '20px 12px', color: 'var(--sidebar-ink-2)' }}
+          >
             No dashboards yet.
             <br />
             <button
@@ -259,7 +266,7 @@ export function Sidebar() {
             >
               Create your first one →
             </button>
-          </div>
+          </Text>
         )}
       </div>
 

@@ -13,6 +13,7 @@
 //     nothing.
 
 import { useTheme } from '@/theme';
+import { Text } from '@/components/ui/typography';
 import { RefreshCw } from 'lucide-react';
 
 export function Header() {
@@ -42,12 +43,12 @@ export function Header() {
         {/* Theme toggle (retained from OMN-38) */}
         <button
           className="icon-btn"
-          style={{ width: 'auto', padding: '0 10px', fontSize: '12px', fontWeight: 500 }}
+          style={{ width: 'auto', padding: '0 10px' }}
           onClick={nextTheme}
           aria-label="Toggle theme"
           title="Toggle theme"
         >
-          {theme}
+          <Text size="md" weight="medium" color="inherit">{theme}</Text>
         </button>
       </div>
     </header>
