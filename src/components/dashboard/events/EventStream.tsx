@@ -2,6 +2,7 @@ import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { ArrowUp, Search } from 'lucide-react';
 import { ComponentWrapper } from '../ComponentWrapper';
 import { useProjectionQuery } from '@/hooks/useProjectionQuery';
+import { Text } from '@/components/ui/typography';
 
 interface StreamEvent {
   id: string;
@@ -228,21 +229,19 @@ export default function EventStream({ config }: { config: EventStreamConfig }) {
             background: 'var(--panel-2)',
           }}
         >
-          <Search size={14} style={{ color: 'var(--ink-3)', flexShrink: 0 }} />
+          <Search size={14} style={{ color: 'var(--text-tertiary)', flexShrink: 0 }} />
           <input
             type="text"
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             placeholder="Filter events…"
             aria-label="Filter event stream"
+            className="text-input-md"
             style={{
               flex: 1,
               border: 0,
               outline: 0,
               background: 'transparent',
-              color: 'var(--ink)',
-              fontSize: 13,
-              fontFamily: 'inherit',
             }}
           />
         </div>
@@ -271,16 +270,11 @@ export default function EventStream({ config }: { config: EventStreamConfig }) {
                 padding: '6px 10px',
                 background: 'var(--panel-2)',
                 borderBottom: '1px solid var(--line)',
-                fontSize: 10,
-                letterSpacing: '0.04em',
-                textTransform: 'uppercase',
-                color: 'var(--ink-2)',
-                fontWeight: 600,
               }}
             >
-              <span>Time</span>
-              <span>Event</span>
-              <span>Source</span>
+              <Text size="xs" weight="semibold" transform="uppercase" color="secondary" className="text-tracked">Time</Text>
+              <Text size="xs" weight="semibold" transform="uppercase" color="secondary" className="text-tracked">Event</Text>
+              <Text size="xs" weight="semibold" transform="uppercase" color="secondary" className="text-tracked">Source</Text>
             </div>
 
             {filtered.map((ev) => {
@@ -298,47 +292,30 @@ export default function EventStream({ config }: { config: EventStreamConfig }) {
                     alignItems: 'center',
                     padding: '6px 10px',
                     borderBottom: '1px solid var(--line-2)',
-                    fontSize: '0.75rem',
                   }}
                 >
-                  <span
-                    style={{
-                      color: 'var(--ink-3)',
-                      fontVariantNumeric: 'tabular-nums',
-                      fontFamily: 'var(--font-mono)',
-                    }}
-                  >
+                  <Text size="md" family="mono" color="tertiary" tabularNums>
                     {formatEventTime(ev.timestamp)}
-                  </span>
-                  <span
-                    style={{
-                      color: 'var(--ink)',
-                      fontFamily: 'var(--font-mono)',
-                      overflow: 'hidden',
-                      textOverflow: 'ellipsis',
-                      whiteSpace: 'nowrap',
-                    }}
-                  >
+                  </Text>
+                  <Text size="md" family="mono" truncate>
                     {ev.event_type}
-                  </span>
-                  <span
+                  </Text>
+                  <Text
+                    size="xs"
+                    family="mono"
+                    truncate
                     style={{
                       display: 'inline-block',
                       padding: '1px 6px',
                       borderRadius: 3,
                       border: `1px solid ${sourceColor}`,
                       color: sourceColor,
-                      fontSize: 10,
-                      fontFamily: 'var(--font-mono)',
-                      whiteSpace: 'nowrap',
-                      overflow: 'hidden',
-                      textOverflow: 'ellipsis',
                       justifySelf: 'start',
                       maxWidth: '100%',
                     }}
                   >
                     {ev.source}
-                  </span>
+                  </Text>
                 </div>
               );
             })}
@@ -348,11 +325,9 @@ export default function EventStream({ config }: { config: EventStreamConfig }) {
                 style={{
                   padding: '2rem 0.5rem',
                   textAlign: 'center',
-                  color: 'var(--ink-3)',
-                  fontSize: 13,
                 }}
               >
-                No events match "{query}"
+                <Text size="lg" color="tertiary">No events match "{query}"</Text>
               </div>
             )}
           </div>
@@ -374,8 +349,6 @@ export default function EventStream({ config }: { config: EventStreamConfig }) {
                 color: 'var(--brand-ink)',
                 border: '1px solid var(--brand)',
                 borderRadius: 12,
-                fontSize: 11,
-                fontFamily: 'inherit',
                 cursor: 'pointer',
                 display: 'flex',
                 alignItems: 'center',
@@ -384,7 +357,7 @@ export default function EventStream({ config }: { config: EventStreamConfig }) {
               }}
             >
               <ArrowUp size={12} />
-              {newSincePause} new {newSincePause === 1 ? 'event' : 'events'}
+              <Text size="sm">{newSincePause} new {newSincePause === 1 ? 'event' : 'events'}</Text>
             </button>
           )}
         </div>
@@ -395,19 +368,16 @@ export default function EventStream({ config }: { config: EventStreamConfig }) {
             display: 'flex',
             justifyContent: 'space-between',
             alignItems: 'center',
-            fontSize: 11,
-            color: 'var(--ink-2)',
-            fontFamily: 'var(--font-mono)',
           }}
         >
-          <span>
+          <Text size="sm" family="mono" color="secondary">
             {filtered.length === events.length
               ? `${events.length} / ${maxEvents}`
               : `${filtered.length} shown · ${events.length} / ${maxEvents} buffered`}
-            {bufferFull && <span style={{ color: 'var(--ink-3)' }}> · buffer full</span>}
-          </span>
+            {bufferFull && <Text size="sm" family="mono" color="tertiary"> · buffer full</Text>}
+          </Text>
           {userScrolledUp && (
-            <span style={{ color: 'var(--ink-3)' }}>auto-scroll paused</span>
+            <Text size="sm" family="mono" color="tertiary">auto-scroll paused</Text>
           )}
         </div>
       </div>
