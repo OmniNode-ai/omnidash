@@ -227,12 +227,26 @@ path Radix uses for highlighting.
 **Status**: ✅ done (commit `e32827c`)
 Removed the leading `<Menu size={16}/>` icon from the breadcrumbs nav.
 
+### 31. Typography system refactor (OMN-59)
+**Status**: 🟡 in progress on branch `clone45/typography-refactor`
+Replaces ad-hoc inline `style={{ fontSize, fontWeight, ... }}` usage across
+widgets with a single typography system: CSS tokens (`--font-size-*`,
+`--font-weight-*`, `--line-height-*`, `--letter-spacing-*`) plus React
+component primitives (`<Text>`, `<Heading>`) exported from
+`src/components/ui/typography/`, documented in Storybook, and enforced by
+a custom ESLint rule (`no-typography-inline`) that forbids inline
+typography style props outside the primitives themselves. Full scope and
+rationale captured in [ADR 001](./adr/001-typography-system.md). Will be
+marked ✅ done when Task 39 (Proof of Life) completes and the compliance
+suite runs as a permanent regression gate.
+
 ---
 
 ## Progress tracking
 
-- Total items: 28
+- Total items: 29
 - Pending: 3 (#12, #16, #19)
+- In progress: 1 (#31)
 - Done: 24 (#1, #2, #3, #4, #5, #6, #7, #8, #9, #10, #11, #13, #14, #15, #20, #21, #22, #23, #24, #26, #27, #28, #29, #30 — plus ReadinessGate tabular rework, off-list)
 - Retracted / n/a: 2 (#17, #18)
 - Keep as-is: 1 (#25)
