@@ -13,6 +13,16 @@ export default defineConfig({
     setupFiles: ['./src/tests/setup.ts'],
     globals: true,
     css: { modules: { classNameStrategy: 'non-scoped' } },
+    // Exclude the typography-refactor compliance scorecard from the default
+    // test run. It's a phase-by-phase progress indicator that starts ~95%
+    // RED; running it in the default suite would falsely red the CI until
+    // the refactor completes. Task 39 (Proof of Life) removes this line and
+    // promotes the compliance file to a permanent regression gate.
+    exclude: [
+      '**/node_modules/**', '**/dist/**', '**/.idea/**',
+      '**/.git/**', '**/.cache/**',
+      'src/typography-compliance.test.ts',
+    ],
   },
   resolve: {
     alias: {
