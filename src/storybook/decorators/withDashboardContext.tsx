@@ -47,7 +47,17 @@ export interface DashboardContextOptions {
  * `docs/adr/002-storybook-widget-coverage.md` for context.
  */
 export function makeDashboardDecorator(opts: DashboardContextOptions = {}): Decorator {
-  return (Story) => {
+  return (Story, context) => {
+    // Read the active Storybook theme (set by `withThemeByDataAttribute`
+    // in `.storybook/preview.tsx`) and pass it into our `ThemeProvider`
+    // as the initial state. Without this, `ThemeProvider` defaults to
+    // 'dark' on every story mount, runs its useEffect which writes
+    // `data-theme="dark"` onto <html>, and then the addon's effect
+    // overwrites it back to 'light' — producing a visible dark→light
+    // flash on every story click while in light mode.
+    const themeKey = (context.globals?.theme as string | undefined) ?? 'Light';
+    const initialTheme = themeKey.toLowerCase() === 'dark' ? 'dark' : 'light';
+
     const queryClient = new QueryClient({
       defaultOptions: {
         queries: {
@@ -56,6 +66,18 @@ export function makeDashboardDecorator(opts: DashboardContextOptions = {}): Deco
           // status forever, which is what `useQuery` returns while
           // initially fetching.
           enabled: !opts.forceLoading,
+          // For stories with prefetched data: prevent React Query from
+          // refetching in the background. Default `staleTime: 0` would
+          // mark the seeded cache as stale on mount, fire the widget's
+          // queryFn (which calls createSnapshotSource() → fails in the
+          // Storybook iframe because no Vite middleware serves
+          // /_layouts/... or /_fixtures/... there), and surface an
+          // `error` to the widget. ComponentWrapper renders error state
+          // OVER the cached `data`, so every Populated story would show
+          // the same error message regardless of which fixture was
+          // seeded. Infinity locks the cache as fresh — exactly what
+          // we want for static-fixture demos.
+          staleTime: opts.prefetched ? Infinity : 0,
         },
       },
     });
@@ -80,7 +102,7 @@ export function makeDashboardDecorator(opts: DashboardContextOptions = {}): Deco
 
     return (
       <QueryClientProvider client={queryClient}>
-        <ThemeProvider>
+        <ThemeProvider defaultTheme={initialTheme}>
           <div style={{ padding: 16, minWidth: 320 }}>
             <Story />
           </div>
