@@ -19,6 +19,7 @@ import * as THREE from 'three';
 import { ComponentWrapper } from '../ComponentWrapper';
 import { useProjectionQuery } from '@/hooks/useProjectionQuery';
 import { cssVarToHex, useThemeName } from '@/theme';
+import { Text, Heading } from '@/components/ui/typography';
 
 interface QualityDistributionBucket {
   bucket: string;
@@ -452,15 +453,17 @@ function ThreeBarChart({
           position: 'absolute',
           top: 6,
           right: 8,
-          fontSize: 10,
-          letterSpacing: '0.04em',
-          textTransform: 'uppercase',
-          color: 'var(--ink-3)',
-          fontFamily: 'var(--font-mono)',
           pointerEvents: 'none',
         }}
       >
-        Pass ≥ {passThreshold.toFixed(2)}
+        <Text
+          size="xs"
+          color="tertiary"
+          family="mono"
+          transform="uppercase"
+        >
+          Pass ≥ {passThreshold.toFixed(2)}
+        </Text>
       </div>
 
       {/* Mean label anchored to the cone marker's projected canvas
@@ -477,16 +480,18 @@ function ThreeBarChart({
             background: 'var(--panel)',
             border: '1px solid var(--brand)',
             borderRadius: 3,
-            fontSize: 10,
-            letterSpacing: '0.04em',
-            textTransform: 'uppercase',
-            color: 'var(--brand-ink, var(--ink))',
-            fontFamily: 'var(--font-mono)',
             pointerEvents: 'none',
             whiteSpace: 'nowrap',
           }}
         >
-          Mean {meanScore.toFixed(2)}
+          <Text
+            size="xs"
+            family="mono"
+            transform="uppercase"
+            style={{ color: 'var(--brand-ink, var(--ink))' }}
+          >
+            Mean {meanScore.toFixed(2)}
+          </Text>
         </div>
       )}
 
@@ -501,28 +506,25 @@ function ThreeBarChart({
             border: '1px solid var(--line)',
             borderRadius: 6,
             boxShadow: 'var(--shadow-md)',
-            fontFamily: 'var(--font-mono)',
-            fontSize: 11,
-            color: 'var(--ink)',
             minWidth: 140,
             pointerEvents: 'none',
             zIndex: 1000,
           }}
         >
-          <div style={{ color: 'var(--ink-2)', marginBottom: 2 }}>
+          <Text as="div" size="sm" family="mono" color="secondary" style={{ marginBottom: 2 }}>
             Score {hoverInfo.bucket.bucket}
-          </div>
+          </Text>
           <div style={{ display: 'flex', justifyContent: 'space-between', gap: 10 }}>
-            <span style={{ color: 'var(--ink-2)' }}>count</span>
-            <span style={{ fontVariantNumeric: 'tabular-nums', fontWeight: 600 }}>
+            <Text size="sm" family="mono" color="secondary">count</Text>
+            <Text size="sm" family="mono" weight="semibold" tabularNums>
               {hoverInfo.bucket.count.toLocaleString()}
-            </span>
+            </Text>
           </div>
           <div style={{ display: 'flex', justifyContent: 'space-between', gap: 10 }}>
-            <span style={{ color: 'var(--ink-2)' }}>share</span>
-            <span style={{ fontVariantNumeric: 'tabular-nums' }}>
+            <Text size="sm" family="mono" color="secondary">share</Text>
+            <Text size="sm" family="mono" tabularNums>
               {hoverInfo.pct.toFixed(1)}%
-            </span>
+            </Text>
           </div>
         </div>
       )}
@@ -587,33 +589,30 @@ export default function QualityScorePanel({ config }: { config: QualityScoreConf
               flexDirection: 'column',
               justifyContent: 'center',
               padding: '6px 2px',
-              fontFamily: 'var(--font-mono)',
             }}
           >
-            <div
-              style={{
-                fontSize: 42,
-                fontWeight: 600,
-                lineHeight: 1,
-                color: stats.passRate >= 0.8 ? 'var(--status-ok)'
-                  : stats.passRate >= 0.6 ? 'var(--status-warn)'
-                  : 'var(--status-bad)',
-                fontVariantNumeric: 'tabular-nums',
-              }}
+            <Heading
+              level={1}
+              color={
+                stats.passRate >= 0.8 ? 'ok'
+                  : stats.passRate >= 0.6 ? 'warn'
+                  : 'bad'
+              }
             >
-              {Math.round(stats.passRate * 100)}%
-            </div>
-            <div
-              style={{
-                fontSize: 10,
-                letterSpacing: '0.08em',
-                textTransform: 'uppercase',
-                color: 'var(--ink-3)',
-                marginTop: 2,
-              }}
+              <Text as="span" color="inherit" weight="semibold" tabularNums>
+                {Math.round(stats.passRate * 100)}%
+              </Text>
+            </Heading>
+            <Text
+              as="div"
+              size="xs"
+              color="tertiary"
+              family="mono"
+              transform="uppercase"
+              style={{ marginTop: 2 }}
             >
               Pass Rate
-            </div>
+            </Text>
 
             <div
               style={{
@@ -623,20 +622,28 @@ export default function QualityScorePanel({ config }: { config: QualityScoreConf
               }}
             />
 
-            <div
-              style={{
-                fontSize: 13,
-                color: 'var(--ink-2)',
-                marginBottom: 4,
-              }}
+            <Text
+              as="div"
+              size="lg"
+              color="secondary"
+              family="mono"
+              style={{ marginBottom: 4 }}
             >
-              Mean <strong style={{ color: 'var(--ink)', fontVariantNumeric: 'tabular-nums' }}>
+              Mean{' '}
+              <Text
+                as="strong"
+                size="lg"
+                color="primary"
+                family="mono"
+                weight="semibold"
+                tabularNums
+              >
                 {stats.meanScore.toFixed(2)}
-              </strong>
-            </div>
-            <div style={{ fontSize: 11, color: 'var(--ink-3)' }}>
+              </Text>
+            </Text>
+            <Text as="div" size="sm" color="tertiary" family="mono">
               {stats.totalMeasurements.toLocaleString()} measurements
-            </div>
+            </Text>
           </div>
 
           {/* Chart pane. */}
