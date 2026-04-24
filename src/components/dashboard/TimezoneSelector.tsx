@@ -4,6 +4,7 @@
 // the auto-refresh picker.
 import { useMemo } from 'react';
 import { Globe, ChevronDown } from 'lucide-react';
+import { Text } from '@/components/ui/typography';
 
 function formatLocalTimezone(): string {
   const offsetMinutes = -new Date().getTimezoneOffset();
@@ -25,7 +26,7 @@ export function TimezoneSelector() {
       style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}
     >
       <Globe size={14} />
-      <span className="mono" style={{ fontSize: 12 }}>{tz}</span>
+      <Text size="md" family="mono">{tz}</Text>
       <ChevronDown size={12} style={{ opacity: 0.7 }} />
     </button>
   );
