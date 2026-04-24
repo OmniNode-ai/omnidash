@@ -31,7 +31,7 @@ const actionStyle: CSSProperties = {
   backgroundColor: 'rgba(0,0,0,0.15)',
   borderRadius: '4px',
   fontSize: '0.75rem',
-  fontFamily: 'monospace',
+  fontFamily: 'var(--font-mono)',
 };
 
 export function MessageBubble({ message }: MessageBubbleProps) {

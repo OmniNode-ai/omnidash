@@ -47,6 +47,21 @@
 
 @layer base {
   :root {
+    /* ===== TYPOGRAPHY TOKENS =====
+       Font stacks are authored here as the single source of truth. Widgets
+       and CSS files reference these vars (never the literal family strings)
+       so a theme override at :root or [data-theme="X"] scope rebrands the
+       whole app. `font-sans` and `font-mono` are already part of the
+       importable theme schema (see src/theme/types.ts) as optional tokens;
+       a custom theme can override them via the themeIO import path.
+
+       Fonts today happen to be identical in light and dark — only color
+       palette changes between modes. If a future theme wants a different
+       family (e.g. a "brutalist" theme swapping to Space Grotesk + Space
+       Mono), it overrides these two vars in its scope. */
+    --font-sans: "IBM Plex Sans", system-ui, -apple-system, Helvetica, Arial, sans-serif;
+    --font-mono: "IBM Plex Mono", ui-monospace, Menlo, monospace;
+
     /* ===== PROTOTYPE TOKENS (OmniDash.html:12-49, renamed) ===== */
     --accent-h: 120;
     --brand: oklch(72% 0.15 var(--accent-h));
@@ -172,7 +187,7 @@
   * { box-sizing: border-box; }
   html, body { margin: 0; padding: 0; height: 100%; }
   body {
-    font-family: "IBM Plex Sans", system-ui, -apple-system, Helvetica, Arial, sans-serif;
+    font-family: var(--font-sans);
     color: var(--ink);
     background: var(--bg);
     font-size: 14px;
@@ -181,7 +196,10 @@
     overflow: hidden;
   }
 
-  .mono { font-family: "IBM Plex Mono", ui-monospace, Menlo, monospace; font-feature-settings: "tnum", "ss01"; }
+  /* Utility class bundling the mono stack with tabular-figure + ss01
+     stylistic-set OpenType features. Useful when applying mono to a
+     span without inline styles. */
+  .mono { font-family: var(--font-mono); font-feature-settings: "tnum", "ss01"; }
 
   button { font: inherit; color: inherit; background: none; border: 0; cursor: pointer; padding: 0; }
   input, select, textarea { font: inherit; color: inherit; }

@@ -103,7 +103,7 @@ export function CustomRangePicker({ initial, onCancel, onApply }: CustomRangePic
             border: '1px solid var(--line)',
             borderRadius: 4,
             color: 'var(--ink)',
-            fontFamily: 'var(--font-mono, "IBM Plex Mono", monospace)',
+            fontFamily: 'var(--font-mono)',
             fontSize: 12,
           }}
         />
@@ -119,7 +119,7 @@ export function CustomRangePicker({ initial, onCancel, onApply }: CustomRangePic
             border: '1px solid var(--line)',
             borderRadius: 4,
             color: 'var(--ink)',
-            fontFamily: 'var(--font-mono, "IBM Plex Mono", monospace)',
+            fontFamily: 'var(--font-mono)',
             fontSize: 12,
           }}
         />

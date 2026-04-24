@@ -530,7 +530,7 @@ export function StackedChart({
           position: 'absolute',
           inset: 0,
           pointerEvents: 'none',
-          fontFamily: 'var(--font-mono, "IBM Plex Mono", monospace)',
+          fontFamily: 'var(--font-mono)',
           fontSize: 10,
           color: 'var(--ink-3)',
         }}
@@ -598,7 +598,7 @@ export function StackedChart({
                 border: '1px solid var(--line)',
                 borderRadius: 6,
                 boxShadow: 'var(--shadow-md)',
-                fontFamily: 'var(--font-mono, "IBM Plex Mono", monospace)',
+                fontFamily: 'var(--font-mono)',
                 fontSize: 11,
                 color: 'var(--ink)',
                 minWidth: 200,

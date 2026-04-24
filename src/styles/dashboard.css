@@ -168,7 +168,7 @@
   display: grid; place-items: center;
   color: var(--ink-3);
   font-size: 12px;
-  font-family: "IBM Plex Mono", monospace;
+  font-family: var(--font-mono);
   transition: border-color 0.15s, background 0.15s, min-height 0.2s;
 }
 .drop-slot.active {

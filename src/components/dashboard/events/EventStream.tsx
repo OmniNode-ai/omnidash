@@ -305,7 +305,7 @@ export default function EventStream({ config }: { config: EventStreamConfig }) {
                     style={{
                       color: 'var(--ink-3)',
                       fontVariantNumeric: 'tabular-nums',
-                      fontFamily: 'var(--font-mono, "IBM Plex Mono", monospace)',
+                      fontFamily: 'var(--font-mono)',
                     }}
                   >
                     {formatEventTime(ev.timestamp)}
@@ -313,7 +313,7 @@ export default function EventStream({ config }: { config: EventStreamConfig }) {
                   <span
                     style={{
                       color: 'var(--ink)',
-                      fontFamily: 'var(--font-mono, "IBM Plex Mono", monospace)',
+                      fontFamily: 'var(--font-mono)',
                       overflow: 'hidden',
                       textOverflow: 'ellipsis',
                       whiteSpace: 'nowrap',
@@ -329,7 +329,7 @@ export default function EventStream({ config }: { config: EventStreamConfig }) {
                       border: `1px solid ${sourceColor}`,
                       color: sourceColor,
                       fontSize: 10,
-                      fontFamily: 'var(--font-mono, "IBM Plex Mono", monospace)',
+                      fontFamily: 'var(--font-mono)',
                       whiteSpace: 'nowrap',
                       overflow: 'hidden',
                       textOverflow: 'ellipsis',
@@ -397,7 +397,7 @@ export default function EventStream({ config }: { config: EventStreamConfig }) {
             alignItems: 'center',
             fontSize: 11,
             color: 'var(--ink-2)',
-            fontFamily: 'var(--font-mono, "IBM Plex Mono", monospace)',
+            fontFamily: 'var(--font-mono)',
           }}
         >
           <span>

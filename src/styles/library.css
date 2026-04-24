@@ -82,4 +82,4 @@
   display: flex; justify-content: space-between; align-items: center;
   font-size: 12px; color: var(--ink-3);
 }
-.lib-foot .hint { font-family: "IBM Plex Mono", monospace; }
+.lib-foot .hint { font-family: var(--font-mono); }

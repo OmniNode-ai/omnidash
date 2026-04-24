@@ -23,10 +23,6 @@ createGlobalTheme('.theme-dark', vars, {
     chart6: '199 89% 48%',
     chart7: '326 80% 60%',
   },
-  font: {
-    sans: "'Inter', system-ui, sans-serif",
-    mono: "'JetBrains Mono', monospace",
-  },
   radius: {
     sm: '0.25rem',
     md: '0.5rem',
@@ -55,10 +51,6 @@ createGlobalTheme('.theme-light', vars, {
     chart5: '0 84% 50%',
     chart6: '199 89% 40%',
     chart7: '326 80% 50%',
-  },
-  font: {
-    sans: "'Inter', system-ui, sans-serif",
-    mono: "'JetBrains Mono', monospace",
   },
   radius: {
     sm: '0.25rem',

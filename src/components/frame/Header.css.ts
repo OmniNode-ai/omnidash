@@ -40,7 +40,7 @@ export const newDashboardInput = style({
 export const title = style({
   fontSize: '1.125rem',
   fontWeight: 600,
-  fontFamily: vars.font.mono,
+  fontFamily: 'var(--font-mono)',
   color: `hsl(${vars.color.foreground})`,
 });
 
