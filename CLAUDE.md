@@ -61,3 +61,14 @@ _Track B — external package widget (plugin extension path):_
 - Widget lazy-import map: `src/components/dashboard/index.ts`
 - Widget MVP manifests: `scripts/generate-registry.ts` (`MVP_COMPONENTS`)
 - External package manifest discovery: `scripts/generate-registry.ts` → `scanInstalledPackages()`
+
+## Typography
+
+- All text in widgets must be rendered via `<Text>` or `<Heading>` from
+  `@/components/ui/typography`. Do not set `fontSize`, `fontFamily`,
+  `fontWeight`, text `color`, `textTransform`, or `letterSpacing` in
+  inline `style` props — enforced by the local ESLint rule
+  `local/no-typography-inline`.
+- Tokens live in `src/styles/globals.css :root`. See
+  `docs/adr/001-typography-system.md` for rationale.
+- Showcase: `npm run storybook` → Typography pages.
