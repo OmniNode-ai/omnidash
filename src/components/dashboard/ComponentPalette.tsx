@@ -23,6 +23,7 @@ import {
 } from 'lucide-react';
 import type { RegisteredComponent } from '@/registry/types';
 import { COMPONENT_CATEGORIES, type ComponentCategory } from '@shared/types/component-manifest';
+import { Text } from '@/components/ui/typography';
 
 interface ComponentPaletteProps {
   components: RegisteredComponent[];
@@ -101,6 +102,7 @@ export function ComponentPalette({
       </div>
       <div className="lib-search">
         <input
+          className="text-input-md"
           placeholder="Search widgets…"
           value={q}
           onChange={(e) => setQ(e.target.value)}
@@ -159,16 +161,15 @@ export function ComponentPalette({
           );
         })}
         {filtered.length === 0 && (
-          <div
-            style={{
-              padding: '40px 10px',
-              textAlign: 'center',
-              color: 'var(--ink-3)',
-              fontSize: 13,
-            }}
+          <Text
+            as="div"
+            size="lg"
+            color="tertiary"
+            align="center"
+            style={{ padding: '40px 10px' }}
           >
             No widgets match "{q}"
-          </div>
+          </Text>
         )}
       </div>
       <div className="lib-foot">
