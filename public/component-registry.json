@@ -1,6 +1,6 @@
 {
   "manifestVersion": "1.0",
-  "generatedAt": "2026-04-23T20:45:46.552Z",
+  "generatedAt": "2026-04-24T01:32:58.090Z",
   "components": {
     "cost-trend-panel": {
       "name": "cost-trend-panel",
@@ -119,6 +119,57 @@
       "emptyState": {
         "message": "No cost data available",
         "hint": "3D cost visualization renders after LLM calls are tracked"
+      },
+      "capabilities": {
+        "supports_compare": false,
+        "supports_export": false,
+        "supports_fullscreen": true,
+        "supports_time_range": true
+      }
+    },
+    "cost-by-model": {
+      "name": "cost-by-model",
+      "displayName": "Cost by Model",
+      "description": "Three.js pie chart of LLM cost share per model over the selected time range",
+      "category": "visualization",
+      "version": "1.0.0",
+      "implementationKey": "cost-by-model/CostByModelPie",
+      "configSchema": {
+        "type": "object",
+        "properties": {},
+        "additionalProperties": false
+      },
+      "dataSources": [
+        {
+          "type": "api",
+          "endpoint": "/api/intelligence/cost/trends",
+          "required": true,
+          "purpose": "initial_fetch"
+        }
+      ],
+      "events": {
+        "emits": [],
+        "consumes": [
+          {
+            "name": "time_range_changed"
+          }
+        ]
+      },
+      "defaultSize": {
+        "w": 6,
+        "h": 4
+      },
+      "minSize": {
+        "w": 4,
+        "h": 3
+      },
+      "maxSize": {
+        "w": 12,
+        "h": 8
+      },
+      "emptyState": {
+        "message": "No cost data available",
+        "hint": "Cost data appears after LLM calls are tracked"
       },
       "capabilities": {
         "supports_compare": false,

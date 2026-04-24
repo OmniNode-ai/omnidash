@@ -36,9 +36,10 @@ describe('Proof of Life — Part 2', () => {
   it('registry loads all MVP components from generated manifest', () => {
     const registry = new ComponentRegistry(manifest);
     const all = registry.getAvailableComponents();
-    expect(all.length).toBe(8);
+    expect(all.length).toBe(9);
     expect(all.map((c) => c.name).sort()).toEqual([
       'baselines-roi-card',
+      'cost-by-model',
       'cost-trend-3d',
       'cost-trend-panel',
       'delegation-metrics',
@@ -54,6 +55,7 @@ describe('Proof of Life — Part 2', () => {
     await userEvent.click(screen.getByRole('button', { name: /add widget/i }));
     expect(screen.getByText('Cost Trend')).toBeInTheDocument();
     expect(screen.getByText('Cost Trend (3D)')).toBeInTheDocument();
+    expect(screen.getByText('Cost by Model')).toBeInTheDocument();
     expect(screen.getByText('Delegation Metrics')).toBeInTheDocument();
     expect(screen.getByText('Routing Decisions')).toBeInTheDocument();
     expect(screen.getByText('Baselines ROI')).toBeInTheDocument();
