@@ -8,7 +8,7 @@
 
 **Tech Stack:** React 19, TypeScript, Vite, Vitest, Storybook 8+, ESLint (custom rule), CSS custom properties. No new runtime dependencies.
 
-**Related ticket:** OMN-22 (UX polish epic — follow-up)
+**Related ticket:** OMN-59 (Typography System Refactor epic, child of OMN-22 UX polish)
 
 **Routing:** plan-to-tickets → omninode multi-agent workflow.
 
@@ -114,7 +114,7 @@ Recorded 2026-04-24 as part of the design-to-plan Phase 2→3 gate.
 
 ## Conventions used below
 
-- **Commit format:** `<type>(<scope>): <description> [OMN-22]` per repo conventions.
+- **Commit format:** `<type>(<scope>): <description> [OMN-59]` per repo conventions.
 - **Branch:** All tasks execute on `clone45/typography-refactor`.
 - **Test runner:** `npx vitest run <target>` is the canonical invocation.
 - **Compliance test:** `src/typography-compliance.test.ts` is the single source of truth for phase-completion. Every task's acceptance is tied to one or more `it(...)` cases in that file.
@@ -443,7 +443,7 @@ Expected: all existing tests pass; compliance file not included.
 
 ```bash
 git add src/typography-compliance.test.ts vitest.config.ts
-git commit -m "test(typography): compliance scorecard baseline [OMN-22]"
+git commit -m "test(typography): compliance scorecard baseline [OMN-59]"
 ```
 
 **Acceptance:** File exists, is excluded from default run, baseline score recorded. No compliance-suite cases are expected to pass yet (some may pass as trivial positives — record the exact count).
@@ -474,7 +474,7 @@ Expected: `ADR file exists` and `ADR contains required sections` PASS. `CLAUDE.m
 
 ```bash
 git add docs/adr/001-typography-system.md
-git commit -m "docs(adr): establish typography system direction [OMN-22]"
+git commit -m "docs(adr): establish typography system direction [OMN-59]"
 ```
 
 **Acceptance:** ADR file present with 5 required section headings. 2 of 3 Phase 0 compliance tests pass.
@@ -542,7 +542,7 @@ Run: `npx vitest run` — all existing tests still pass.
 
 ```bash
 git add src/styles/globals.css
-git commit -m "feat(styles): add typography type-scale + weight + leading + text-color tokens [OMN-22]"
+git commit -m "feat(styles): add typography type-scale + weight + leading + text-color tokens [OMN-59]"
 ```
 
 **Acceptance:** All 23 Phase 1 compliance tests pass.
@@ -597,7 +597,7 @@ Expected: clean.
 
 ```bash
 git add src/components/ui/typography/tokens.ts
-git commit -m "feat(typography): add token type definitions and CSS var maps [OMN-22]"
+git commit -m "feat(typography): add token type definitions and CSS var maps [OMN-59]"
 ```
 
 **Acceptance:** File exists, exports 7 type aliases + 5 constant maps, typecheck clean. No Vitest cases exercise it directly; Task 6 and Task 8 tests cover it transitively.
@@ -699,7 +699,7 @@ Expected: file fails to load (Cannot find module `./Text`). This is the correct 
 
 ```bash
 git add src/components/ui/typography/Text.test.tsx
-git commit -m "test(typography): add Text component tests (pre-implementation) [OMN-22]"
+git commit -m "test(typography): add Text component tests (pre-implementation) [OMN-59]"
 ```
 
 **Acceptance:** Test file exists; running it produces a module-not-found failure.
@@ -804,7 +804,7 @@ Expected: all Text-focused compliance cases pass. Heading cases still fail (next
 
 ```bash
 git add src/components/ui/typography/Text.tsx
-git commit -m "feat(typography): implement Text component [OMN-22]"
+git commit -m "feat(typography): implement Text component [OMN-59]"
 ```
 
 **Acceptance:** Text.test.tsx 100% pass; all Text-related compliance cases pass.
@@ -864,7 +864,7 @@ Expected: module-not-found RED.
 
 ```bash
 git add src/components/ui/typography/Heading.test.tsx
-git commit -m "test(typography): add Heading component tests (pre-implementation) [OMN-22]"
+git commit -m "test(typography): add Heading component tests (pre-implementation) [OMN-59]"
 ```
 
 **Acceptance:** Test file exists and fails for the expected reason.
@@ -941,7 +941,7 @@ Expected: all pass.
 
 ```bash
 git add src/components/ui/typography/Heading.tsx
-git commit -m "feat(typography): implement Heading component [OMN-22]"
+git commit -m "feat(typography): implement Heading component [OMN-59]"
 ```
 
 **Acceptance:** Heading.test.tsx 100% pass.
@@ -977,7 +977,7 @@ Expected: all 28+ Phase 2 cases PASS (barrel, Text, Heading).
 
 ```bash
 git add src/components/ui/typography/index.ts
-git commit -m "feat(typography): add barrel export [OMN-22]"
+git commit -m "feat(typography): add barrel export [OMN-59]"
 ```
 
 **Acceptance:** Barrel exports `Text`, `Heading`, and the 7 type aliases. All Phase 2 compliance cases pass.
@@ -1016,7 +1016,7 @@ Remove `src/stories/` if present.
 
 ```bash
 git add package.json package-lock.json .storybook/ .gitignore
-git commit -m "chore(storybook): scaffold Storybook + theme/a11y addons [OMN-22]"
+git commit -m "chore(storybook): scaffold Storybook + theme/a11y addons [OMN-59]"
 ```
 
 **Acceptance:** `npm run storybook` boots; `.storybook/` directory exists; package.json has exact-pinned Storybook versions.
@@ -1060,7 +1060,7 @@ Expected: PASS.
 
 ```bash
 git add .storybook/main.ts
-git commit -m "chore(storybook): configure main.ts for typography story path [OMN-22]"
+git commit -m "chore(storybook): configure main.ts for typography story path [OMN-59]"
 ```
 
 **Acceptance:** main.ts exists with the exact config above; Storybook boots.
@@ -1110,7 +1110,7 @@ Expected: PASS.
 
 ```bash
 git add .storybook/preview.tsx
-git commit -m "chore(storybook): configure preview with theme decorator [OMN-22]"
+git commit -m "chore(storybook): configure preview with theme decorator [OMN-59]"
 ```
 
 **Acceptance:** preview.tsx imports globals.css, sets `data-theme` via the theme decorator; Storybook theme toggle switches correctly.
@@ -1187,7 +1187,7 @@ Expected: PASS.
 
 ```bash
 git add src/components/ui/typography/Typography.stories.tsx
-git commit -m "docs(storybook): Typography showcase (10 stories) [OMN-22]"
+git commit -m "docs(storybook): Typography showcase (10 stories) [OMN-59]"
 ```
 
 **Acceptance:** All 10 required story names exported; every story renders in both themes without error.
@@ -1229,7 +1229,7 @@ Expected: PASS.
 
 ```bash
 git add src/components/ui/typography/Heading.stories.tsx
-git commit -m "docs(storybook): Heading levels story [OMN-22]"
+git commit -m "docs(storybook): Heading levels story [OMN-59]"
 ```
 
 **Acceptance:** `Levels` story exported and renders in both themes.
@@ -1266,7 +1266,7 @@ Add `storybook-static/` to `.gitignore` if not already present.
 
 ```bash
 git add .github/workflows/ci.yml .gitignore
-git commit -m "ci(storybook): add Storybook build job [OMN-22]"
+git commit -m "ci(storybook): add Storybook build job [OMN-59]"
 ```
 
 **Acceptance:** Storybook builds via CLI; CI workflow contains the build step.
@@ -1323,7 +1323,7 @@ Boot `npm run dev`. In the RoutingDecisionTable widget, with devtools open:
 
 ```bash
 git add src/components/dashboard/routing/RoutingDecisionTable.tsx
-git commit -m "refactor(typography): migrate RoutingDecisionTable to <Text> [OMN-22]"
+git commit -m "refactor(typography): migrate RoutingDecisionTable to <Text> [OMN-59]"
 ```
 
 **Acceptance:** File passes the Phase 4 compliance grep-test; 3 widget tests pass; pre/post computed-style values recorded in commit message body.
@@ -1345,7 +1345,7 @@ Actually no — to keep the compliance test simple, use a CSS class on inputs in
 
 - Sticky column header, data rows, source pill, new-events button, status row → all become `<Text>` wrappers with appropriate size/color/family/weight.
 
-**Commit:** `refactor(typography): migrate EventStream to <Text> [OMN-22]`
+**Commit:** `refactor(typography): migrate EventStream to <Text> [OMN-59]`
 
 **Acceptance:** Same as Task 16.
 
@@ -1358,7 +1358,7 @@ Actually no — to keep the compliance test simple, use a CSS class on inputs in
 
 Same recipe as Task 16. Known hits: model-legend pill label spans, "Models" uppercase label, chart empty-state.
 
-**Commit:** `refactor(typography): migrate CostTrendPanel to <Text> [OMN-22]`
+**Commit:** `refactor(typography): migrate CostTrendPanel to <Text> [OMN-59]`
 
 **Acceptance:** Phase 4 compliance for this file passes; CostTrendPanel.test.tsx (4 tests) still passes.
 
@@ -1373,7 +1373,7 @@ Same recipe. Known hits: axis labels overlay, model-legend pill, tooltip content
 
 **Note:** the overlay text atop the three.js canvas is HTML inside absolutely-positioned divs — standard `<Text>` migration applies.
 
-**Commit:** `refactor(typography): migrate CostTrend3D to <Text> [OMN-22]`
+**Commit:** `refactor(typography): migrate CostTrend3D to <Text> [OMN-59]`
 
 **Acceptance:** Phase 4 compliance for this file passes; no visual regression in either theme.
 
@@ -1386,7 +1386,7 @@ Same recipe. Known hits: axis labels overlay, model-legend pill, tooltip content
 
 Same recipe. Known hits: legend rows, tooltip content, "Models" uppercase label, total-row value.
 
-**Commit:** `refactor(typography): migrate CostByModelPie to <Text> [OMN-22]`
+**Commit:** `refactor(typography): migrate CostByModelPie to <Text> [OMN-59]`
 
 **Acceptance:** Phase 4 compliance for this file passes; CostByModelPie.test.tsx (3 tests) still passes.
 
@@ -1399,7 +1399,7 @@ Same recipe. Known hits: legend rows, tooltip content, "Models" uppercase label,
 
 Same recipe. Known hits: threshold wall label, mean marker label, pass-rate headline, legend.
 
-**Commit:** `refactor(typography): migrate QualityScorePanel to <Text> [OMN-22]`
+**Commit:** `refactor(typography): migrate QualityScorePanel to <Text> [OMN-59]`
 
 **Acceptance:** Phase 4 compliance for this file passes.
 
@@ -1410,7 +1410,7 @@ Same recipe. Known hits: threshold wall label, mean marker label, pass-rate head
 **Files:**
 - Modify: `src/components/dashboard/delegation/DelegationMetrics.tsx`
 
-**Step 1 recon:** run the inventory grep. If the file has no forbidden patterns, the task is a no-op — commit with message `refactor(typography): DelegationMetrics already clean [OMN-22]` and move on.
+**Step 1 recon:** run the inventory grep. If the file has no forbidden patterns, the task is a no-op — commit with message `refactor(typography): DelegationMetrics already clean [OMN-59]` and move on.
 
 Otherwise: same recipe.
 
@@ -1591,7 +1591,7 @@ module.exports = {
 
 ```bash
 git add eslint-rules/
-git commit -m "feat(eslint): no-typography-inline custom rule [OMN-22]"
+git commit -m "feat(eslint): no-typography-inline custom rule [OMN-59]"
 ```
 
 **Acceptance:** Rule file loadable via `require`; returns the expected rule metadata.
@@ -1649,7 +1649,7 @@ Expected: all 3 tests pass.
 
 ```bash
 git add .eslintrc.cjs package.json
-git commit -m "feat(eslint): wire no-typography-inline rule + lint script [OMN-22]"
+git commit -m "feat(eslint): wire no-typography-inline rule + lint script [OMN-59]"
 ```
 
 **Acceptance:** `npm run lint` passes; Phase 5 compliance passes.
@@ -1674,7 +1674,7 @@ Place before the test step.
 
 ```bash
 git add .github/workflows/ci.yml
-git commit -m "ci(eslint): add lint job [OMN-22]"
+git commit -m "ci(eslint): add lint job [OMN-59]"
 ```
 
 **Acceptance:** CI workflow contains the lint step.
@@ -1712,7 +1712,7 @@ Expected: all Phase 0 tests now pass (CLAUDE.md linkage); Phase 6 typography-ref
 
 ```bash
 git add omnidash-v2/CLAUDE.md
-git commit -m "docs(claude): add Typography conventions section [OMN-22]"
+git commit -m "docs(claude): add Typography conventions section [OMN-59]"
 ```
 
 **Acceptance:** Phase 0 compliance 100% pass; `grep typography` in CLAUDE.md returns matches.
@@ -1745,7 +1745,7 @@ Expected: PASS.
 
 ```bash
 git add src/components/ui/typography/README.md
-git commit -m "docs(typography): README with usage examples [OMN-22]"
+git commit -m "docs(typography): README with usage examples [OMN-59]"
 ```
 
 **Acceptance:** README file present; Phase 6 README test passes.
@@ -1770,7 +1770,7 @@ Expected: all 3 Phase 6 tests pass (README, ux-polish ref, no vars.font).
 
 ```bash
 git add docs/ux-polish-checklist.md
-git commit -m "docs(ux-polish): mark typography refactor complete [OMN-22]"
+git commit -m "docs(ux-polish): mark typography refactor complete [OMN-59]"
 ```
 
 **Acceptance:** Phase 6 compliance passes in full.
@@ -1828,7 +1828,7 @@ Boot `npm run storybook`. Walk through every story in both themes. Confirm a11y 
 
 ```bash
 git add vitest.config.ts
-git commit -m "chore(typography): refactor complete — compliance is now a permanent gate [OMN-22]"
+git commit -m "chore(typography): refactor complete — compliance is now a permanent gate [OMN-59]"
 ```
 
 **Acceptance:**
@@ -1891,7 +1891,7 @@ Realistic calendar: 3 focused days for a single dev, or ~3-4 days elapsed with a
 - **Visual baseline:** Before starting Task 16, capture a screenshot of every migrated widget in both themes. These are the comparison baseline for Task 39 step 8.
 - **Multi-agent parallelism:** Tasks 16-32 have no inter-task dependencies (each migrates a single file). They can be dispatched to parallel agents. Tasks 1-15 are sequential. Tasks 33-35 depend on 32 completing. Tasks 36-38 are independent after components exist. Task 39 depends on everything.
 - **Input / textarea exemption:** HTML `<input>`, `<textarea>`, and `<select>` elements may need inline typography for native rendering reasons. When this arises, add a CSS class utility (e.g., `.text-input-md`) to globals.css rather than an inline style exemption. The lint rule does not exempt inputs.
-- **Task completion commit format:** `<type>(<scope>): <description> [OMN-22]`. Commits are per-task; do not batch across tasks.
+- **Task completion commit format:** `<type>(<scope>): <description> [OMN-59]`. Commits are per-task; do not batch across tasks.
 
 ---
 
