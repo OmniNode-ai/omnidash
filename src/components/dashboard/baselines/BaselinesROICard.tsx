@@ -1,6 +1,7 @@
 import { ComponentWrapper } from '../ComponentWrapper';
 import { useProjectionQuery } from '@/hooks/useProjectionQuery';
 import { useThemeColors } from '@/theme';
+import { Text } from '@/components/ui/typography';
 
 interface BaselinesSummary {
   snapshotId: string;
@@ -13,15 +14,14 @@ interface BaselinesSummary {
 }
 
 function DeltaMetric({ label, value, unit }: { label: string; value: number; unit?: string }) {
-  const colors = useThemeColors();
   const improved = value <= 0;
   const formatted = value.toLocaleString();
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '0.125rem' }}>
-      <div style={{ fontSize: '1.25rem', fontWeight: 700, color: improved ? colors.status.healthy : colors.status.warning }}>
+      <Text as="div" size="3xl" weight="bold" color={improved ? 'ok' : 'warn'}>
         {value > 0 ? '+' : ''}{formatted}{unit ?? ''}
-      </div>
-      <div style={{ fontSize: '0.75rem', color: colors.foreground }}>{label}</div>
+      </Text>
+      <Text as="div" size="md" color="secondary">{label}</Text>
     </div>
   );
 }
@@ -53,12 +53,14 @@ export default function BaselinesROICard({ config: _config }: { config: Record<s
             <DeltaMetric label="Retry Delta" value={data.retryDelta} />
           </div>
           <div style={{ borderTop: `1px solid hsl(${colors.border})`, paddingTop: '0.75rem' }}>
-            <div style={{ fontSize: '0.75rem', color: colors.foreground, marginBottom: '0.5rem' }}>Recommendations</div>
+            <div style={{ marginBottom: '0.5rem' }}>
+              <Text as="div" size="md" color="secondary">Recommendations</Text>
+            </div>
             <div style={{ display: 'flex', gap: '1rem' }}>
               {Object.entries(data.recommendations).map(([k, v]) => (
                 <div key={k}>
-                  <div style={{ fontSize: '1rem', fontWeight: 700 }}>{v}</div>
-                  <div style={{ fontSize: '0.75rem', color: colors.foreground, textTransform: 'capitalize' }}>{k}</div>
+                  <Text as="div" size="2xl" weight="bold">{v}</Text>
+                  <Text as="div" size="md" color="secondary" transform="capitalize">{k}</Text>
                 </div>
               ))}
             </div>
