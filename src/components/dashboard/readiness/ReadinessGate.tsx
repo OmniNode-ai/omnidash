@@ -1,5 +1,6 @@
 import type { CSSProperties } from 'react';
 import { ComponentWrapper } from '../ComponentWrapper';
+import { Text } from '@/components/ui/typography';
 import { useProjectionQuery } from '@/hooks/useProjectionQuery';
 
 type DimensionStatus = 'PASS' | 'WARN' | 'FAIL';
@@ -22,24 +23,30 @@ const STATUS_COLORS: Record<DimensionStatus, string> = {
   FAIL: 'var(--status-bad)',
 };
 
+const STATUS_TEXT_COLOR: Record<DimensionStatus, 'ok' | 'warn' | 'bad'> = {
+  PASS: 'ok',
+  WARN: 'warn',
+  FAIL: 'bad',
+};
+
 function StatusPill({ status }: { status: DimensionStatus }) {
   return (
-    <span
+    <Text
+      size="xs"
+      weight="bold"
+      color={STATUS_TEXT_COLOR[status]}
+      className="text-tracked"
       style={{
         display: 'inline-block',
         minWidth: 44,
         textAlign: 'center',
         padding: '2px 8px',
         borderRadius: 4,
-        fontSize: 10,
-        fontWeight: 700,
-        letterSpacing: '0.04em',
-        color: STATUS_COLORS[status],
         border: `1px solid ${STATUS_COLORS[status]}`,
       }}
     >
       {status}
-    </span>
+    </Text>
   );
 }
 
@@ -63,11 +70,11 @@ export default function ReadinessGate({ config: _config }: { config: Record<stri
       {data && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-            <span style={{ fontSize: 12, color: 'var(--ink-2)' }}>Overall</span>
+            <Text size="md" color="secondary">Overall</Text>
             <StatusPill status={data.overallStatus} />
-            <span style={{ fontSize: 11, color: 'var(--ink-3)', marginLeft: 'auto' }}>
+            <Text size="sm" color="tertiary" style={{ marginLeft: 'auto' }}>
               Checked {new Date(data.lastCheckedAt).toLocaleTimeString()}
-            </span>
+            </Text>
           </div>
 
           <div style={{ border: '1px solid var(--line-2)', borderRadius: 6, overflow: 'hidden' }}>
@@ -75,7 +82,6 @@ export default function ReadinessGate({ config: _config }: { config: Record<stri
               style={{
                 width: '100%',
                 borderCollapse: 'collapse',
-                fontSize: '0.8125rem',
                 tableLayout: 'fixed',
               }}
             >
@@ -86,9 +92,15 @@ export default function ReadinessGate({ config: _config }: { config: Record<stri
               </colgroup>
               <thead>
                 <tr>
-                  <th scope="col" style={thStyle}>Status</th>
-                  <th scope="col" style={thStyle}>Dimension</th>
-                  <th scope="col" style={thStyle}>Detail</th>
+                  <th scope="col" style={thStyle}>
+                    <Text size="sm" weight="semibold" color="secondary" transform="uppercase" className="text-tracked">Status</Text>
+                  </th>
+                  <th scope="col" style={thStyle}>
+                    <Text size="sm" weight="semibold" color="secondary" transform="uppercase" className="text-tracked">Dimension</Text>
+                  </th>
+                  <th scope="col" style={thStyle}>
+                    <Text size="sm" weight="semibold" color="secondary" transform="uppercase" className="text-tracked">Detail</Text>
+                  </th>
                 </tr>
               </thead>
               <tbody>
@@ -97,8 +109,12 @@ export default function ReadinessGate({ config: _config }: { config: Record<stri
                     <td style={tdStyle}>
                       <StatusPill status={dim.status} />
                     </td>
-                    <td style={{ ...tdStyle, fontWeight: 600, color: 'var(--ink)' }}>{dim.name}</td>
-                    <td style={{ ...tdStyle, color: 'var(--ink-2)' }}>{dim.detail}</td>
+                    <td style={tdStyle}>
+                      <Text size="lg" weight="semibold" color="primary">{dim.name}</Text>
+                    </td>
+                    <td style={tdStyle}>
+                      <Text size="lg" color="secondary">{dim.detail}</Text>
+                    </td>
                   </tr>
                 ))}
               </tbody>
@@ -113,11 +129,6 @@ export default function ReadinessGate({ config: _config }: { config: Record<stri
 const thStyle: CSSProperties = {
   textAlign: 'left',
   padding: '0.375rem 0.625rem',
-  fontWeight: 600,
-  fontSize: 11,
-  textTransform: 'uppercase',
-  letterSpacing: '0.04em',
-  color: 'var(--ink-2)',
   background: 'var(--panel-2)',
   borderBottom: '1px solid var(--line)',
 };
