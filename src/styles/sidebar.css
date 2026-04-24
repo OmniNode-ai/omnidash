@@ -25,7 +25,7 @@
 .brand-name .primary { color: var(--sidebar-ink); }
 .brand-name .primary em { font-style: normal; color: var(--brand); }
 .brand-name .parent {
-  font-family: "IBM Plex Mono", monospace;
+  font-family: var(--font-mono);
   font-size: 9px; font-weight: 500;
   letter-spacing: 0.1em; text-transform: uppercase;
   color: var(--sidebar-ink-2); opacity: 0.7;
@@ -76,7 +76,7 @@
   font-weight: 500;
 }
 .dash-item .dash-marker {
-  font-family: "IBM Plex Mono", monospace;
+  font-family: var(--font-mono);
   font-size: 12px;
   color: var(--sidebar-ink-2);
   opacity: 0.45;

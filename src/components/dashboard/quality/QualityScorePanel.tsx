@@ -456,7 +456,7 @@ function ThreeBarChart({
           letterSpacing: '0.04em',
           textTransform: 'uppercase',
           color: 'var(--ink-3)',
-          fontFamily: 'var(--font-mono, "IBM Plex Mono", monospace)',
+          fontFamily: 'var(--font-mono)',
           pointerEvents: 'none',
         }}
       >
@@ -481,7 +481,7 @@ function ThreeBarChart({
             letterSpacing: '0.04em',
             textTransform: 'uppercase',
             color: 'var(--brand-ink, var(--ink))',
-            fontFamily: 'var(--font-mono, "IBM Plex Mono", monospace)',
+            fontFamily: 'var(--font-mono)',
             pointerEvents: 'none',
             whiteSpace: 'nowrap',
           }}
@@ -501,7 +501,7 @@ function ThreeBarChart({
             border: '1px solid var(--line)',
             borderRadius: 6,
             boxShadow: 'var(--shadow-md)',
-            fontFamily: 'var(--font-mono, "IBM Plex Mono", monospace)',
+            fontFamily: 'var(--font-mono)',
             fontSize: 11,
             color: 'var(--ink)',
             minWidth: 140,
@@ -587,7 +587,7 @@ export default function QualityScorePanel({ config }: { config: QualityScoreConf
               flexDirection: 'column',
               justifyContent: 'center',
               padding: '6px 2px',
-              fontFamily: 'var(--font-mono, "IBM Plex Mono", monospace)',
+              fontFamily: 'var(--font-mono)',
             }}
           >
             <div
