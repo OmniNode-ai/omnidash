@@ -17,6 +17,11 @@ export default function DelegationMetrics({ config }: { config: Record<string, u
   // configs pre-date the wiring) keep their full stat layout.
   const showSavings = config.showSavings !== false;
   const showQualityGates = config.showQualityGates !== false;
+  // T19 (OMN-160): the gate threshold used to be a hardcoded 0.8.
+  // It now comes from manifest config, mirroring quality-score-panel's
+  // passThreshold pattern. Pre-existing layouts get the 0.8 default.
+  const qualityGateThreshold =
+    typeof config.qualityGateThreshold === 'number' ? config.qualityGateThreshold : 0.8;
 
   const { data: dataArr, isLoading, error } = useProjectionQuery<DelegationSummary>({
     topic: TOPICS.delegationSummary,
@@ -61,8 +66,7 @@ export default function DelegationMetrics({ config }: { config: Record<string, u
             </div>
             {showQualityGates && (
               <div>
-                {/* 0.8 (80%) is hardcoded product policy — should eventually be configurable via component config */}
-                <Text as="div" size="4xl" weight="bold" color={data.qualityGatePassRate >= 0.8 ? 'ok' : 'warn'}>
+                <Text as="div" size="4xl" weight="bold" color={data.qualityGatePassRate >= qualityGateThreshold ? 'ok' : 'warn'}>
                   {Math.round(data.qualityGatePassRate * 100)}%
                 </Text>
                 <Text as="div" size="md" color="primary">Quality Gate Pass Rate</Text>

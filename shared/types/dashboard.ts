@@ -122,12 +122,10 @@ export function parseDashboardDefinition(value: unknown): ParsedDashboardResult 
   return { valid: true, dashboard: value as DashboardDefinition };
 }
 
-let counter = 0;
 export function createEmptyDashboard(name: string, author: string): DashboardDefinition {
   const now = new Date().toISOString();
-  counter++;
   return {
-    id: `dash-${Date.now()}-${counter}`,
+    id: `dash-${crypto.randomUUID()}`,
     schemaVersion: '1.0',
     name,
     layout: [],

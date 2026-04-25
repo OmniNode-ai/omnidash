@@ -36,15 +36,17 @@ describe('Proof of Life — Part 2', () => {
   it('registry loads all MVP components from generated manifest', () => {
     const registry = new ComponentRegistry(manifest);
     const all = registry.getAvailableComponents();
-    expect(all.length).toBe(9);
+    expect(all.length).toBe(11);
     expect(all.map((c) => c.name).sort()).toEqual([
       'baselines-roi-card',
       'cost-by-model',
+      'cost-by-model-2d',
       'cost-trend-3d',
       'cost-trend-panel',
       'delegation-metrics',
       'event-stream',
       'quality-score-panel',
+      'quality-score-panel-2d',
       'readiness-gate',
       'routing-decision-table',
     ]);

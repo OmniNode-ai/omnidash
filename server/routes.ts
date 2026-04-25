@@ -110,7 +110,10 @@ router.get('/api/baselines/summary', async (_req, res) => {
     );
 
     if (snapshotRows.length === 0) {
-      return res.json(null);
+      // T21 / M7: 204 No Content instead of `res.json(null)` so typed
+      // consumers don't have to special-case a literal null body. Callers
+      // that expected a 200-with-null branch must check the status.
+      return res.status(204).end();
     }
 
     const snap = snapshotRows[0];

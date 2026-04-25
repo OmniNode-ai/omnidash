@@ -108,7 +108,7 @@ const MVP_COMPONENTS: Record<string, ComponentManifest> = {
   },
   'cost-by-model': {
     name: 'cost-by-model',
-    displayName: 'Cost by Model',
+    displayName: 'Cost by Model (3D)',
     description: 'Three.js pie chart of LLM cost share per model over the selected time range',
     category: 'cost',
     version: '1.0.0',
@@ -124,6 +124,27 @@ const MVP_COMPONENTS: Record<string, ComponentManifest> = {
     emptyState: { message: 'No cost data available', hint: 'Cost data appears after LLM calls are tracked' },
     capabilities: { supports_compare: false, supports_export: false, supports_fullscreen: true, supports_time_range: true },
   },
+  'cost-by-model-2d': {
+    // T17 (OMN-158): 2D companion to CostByModelPie. Same data shape and
+    // projection topic; horizontal bar chart sorts by cost desc and
+    // encodes magnitude by length (perceptually accurate).
+    name: 'cost-by-model-2d',
+    displayName: 'Cost by Model',
+    description: 'Horizontal bar chart of LLM cost share per model over the selected time range',
+    category: 'cost',
+    version: '1.0.0',
+    implementationKey: 'cost-by-model-2d/CostByModelBars',
+    // No configSchema — widget has no per-instance options to configure.
+    dataSources: [
+      { type: 'api', endpoint: '/api/intelligence/cost/trends', required: true, purpose: 'initial_fetch' },
+    ],
+    events: { emits: [], consumes: [{ name: 'time_range_changed' }] },
+    defaultSize: { w: 6, h: 4 },
+    minSize: { w: 3, h: 3 },
+    maxSize: { w: 12, h: 8 },
+    emptyState: { message: 'No cost data available', hint: 'Cost data appears after LLM calls are tracked' },
+    capabilities: { supports_compare: false, supports_export: true, supports_fullscreen: false, supports_time_range: true },
+  },
   'delegation-metrics': {
     name: 'delegation-metrics',
     displayName: 'Delegation Metrics',
@@ -136,6 +157,15 @@ const MVP_COMPONENTS: Record<string, ComponentManifest> = {
       properties: {
         showSavings: { type: 'boolean', default: true },
         showQualityGates: { type: 'boolean', default: true },
+        qualityGateThreshold: {
+          type: 'number',
+          minimum: 0,
+          maximum: 1,
+          default: 0.8,
+          title: 'Quality gate threshold',
+          description:
+            'Pass-rate at or above which the Quality Gate Pass Rate stat reads green. Below this, it reads warn-amber.',
+        },
       },
       additionalProperties: false,
     },
@@ -227,6 +257,41 @@ const MVP_COMPONENTS: Record<string, ComponentManifest> = {
     events: { emits: [], consumes: [] },
     // minSize bumped from 3 → 4 because the new split layout (130px
     // stats pane + 3D chart) needs room for the chart to stay legible.
+    defaultSize: { w: 6, h: 4 },
+    minSize: { w: 4, h: 3 },
+    maxSize: { w: 12, h: 6 },
+    emptyState: { message: 'No quality scores', hint: 'Quality scores appear after patterns are evaluated' },
+    capabilities: { supports_compare: false, supports_export: true, supports_fullscreen: false, supports_time_range: false },
+  },
+  'quality-score-panel-2d': {
+    // T18 (OMN-159): 2D companion to QualityScorePanel. Vertical
+    // histogram with red→green tier gradient, threshold line, and mean
+    // marker. Same data shape; lower priority than the 3D version since
+    // ordered buckets read fine in 3D too — this is a flat alternative.
+    name: 'quality-score-panel-2d',
+    displayName: 'Quality Scores (2D)',
+    description: 'Flat histogram of quality-score distribution with threshold line and mean marker',
+    category: 'quality',
+    version: '1.0.0',
+    implementationKey: 'quality-score-panel-2d/QualityScoreHistogram',
+    configSchema: {
+      type: 'object',
+      properties: {
+        passThreshold: {
+          type: 'number',
+          minimum: 0,
+          maximum: 1,
+          default: 0.8,
+          title: 'Pass threshold',
+          description: 'Score at or above which a measurement counts as passing.',
+        },
+      },
+      additionalProperties: false,
+    },
+    dataSources: [
+      { type: 'api', endpoint: '/api/intelligence/quality/summary', required: true, purpose: 'initial_fetch' },
+    ],
+    events: { emits: [], consumes: [] },
     defaultSize: { w: 6, h: 4 },
     minSize: { w: 4, h: 3 },
     maxSize: { w: 12, h: 6 },

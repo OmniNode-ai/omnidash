@@ -92,11 +92,12 @@ describe('server/routes (T10 smoke coverage)', () => {
     expect(res.body[0].id).toBe('r1');
   });
 
-  it('GET /api/baselines/summary returns null when no snapshot rows', async () => {
+  it('GET /api/baselines/summary returns 204 when no snapshot rows (M7)', async () => {
     mockQuery.mockResolvedValueOnce([]);
     const res = await request(buildApp()).get('/api/baselines/summary');
-    expect(res.status).toBe(200);
-    expect(res.body).toBeNull();
+    expect(res.status).toBe(204);
+    // 204 No Content has an empty body — supertest reports {} for that.
+    expect(res.body).toEqual({});
   });
 
   it('GET /api/baselines/summary aggregates recommendations', async () => {

@@ -2,6 +2,7 @@ import { render, screen } from '@testing-library/react';
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { QueryClient } from '@tanstack/react-query';
 import { DataSourceTestProvider } from '@/test-utils/dataSourceTestProvider';
+import { mockFetchWithItems } from '@/test-utils/mockFetch';
 import CostByModelPie from './CostByModelPie';
 
 const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } });
@@ -32,17 +33,6 @@ class FakeResizeObserver {
   disconnect() {}
 }
 
-function mockFetchWithItems(items: unknown[]) {
-  const fileNames = items.map((_, i) => `${i}.json`);
-  const fileMap = new Map(fileNames.map((name, i) => [name, items[i]]));
-  (fetch as any)
-    .mockResolvedValueOnce({ ok: true, json: async () => fileNames })
-    .mockImplementation((url: string) => {
-      const filename = url.split('/').pop() ?? '';
-      const item = fileMap.get(filename) ?? null;
-      return Promise.resolve({ ok: true, json: async () => item });
-    });
-}
 
 describe('CostByModelPie', () => {
   beforeEach(() => {
