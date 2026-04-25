@@ -12,17 +12,37 @@
 //     control but had no onClick. Keeping them invited users to click things that did
 //     nothing.
 
+import { useState } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
 import { useTheme } from '@/theme';
 import { Text } from '@/components/ui/typography';
 import { RefreshCw } from 'lucide-react';
 
+// Length of the visual spin after a manual refresh. Long enough to
+// register as deliberate feedback, short enough that a chain of
+// quick clicks doesn't queue up animations forever (the second
+// click while spinning just resets the timer below).
+const SPIN_DURATION_MS = 700;
+
 export function Header() {
   const { theme, setTheme, availableThemes } = useTheme();
+  const queryClient = useQueryClient();
+  const [isRefreshing, setIsRefreshing] = useState(false);
 
   const nextTheme = () => {
     const idx = availableThemes.indexOf(theme);
     const next = availableThemes[(idx + 1) % availableThemes.length];
     setTheme(next);
+  };
+
+  // Manual refresh: invalidate every cached query so React Query
+  // refetches the active ones in place. No page reload, same hard
+  // constraint as OMN-126 — full reloads would interrupt edit mode,
+  // drag-in-progress, and modal state.
+  const handleRefresh = () => {
+    void queryClient.invalidateQueries();
+    setIsRefreshing(true);
+    window.setTimeout(() => setIsRefreshing(false), SPIN_DURATION_MS);
   };
 
   return (
@@ -36,8 +56,13 @@ export function Header() {
 
       {/* Right — action cluster */}
       <div className="topbar-right">
-        <button className="icon-btn" title="Refresh" aria-label="Refresh">
-          <RefreshCw size={16} />
+        <button
+          className="icon-btn"
+          title="Refresh"
+          aria-label="Refresh"
+          onClick={handleRefresh}
+        >
+          <RefreshCw size={16} className={isRefreshing ? 'spin-once' : undefined} />
         </button>
 
         {/* Theme toggle (retained from OMN-38) */}
