@@ -167,12 +167,28 @@ function makeLabelSprite(text: string, color: string): THREE.Sprite {
     map: texture,
     transparent: true,
     depthTest: false, // labels float above geometry — never occluded
+    // Constant screen size regardless of depth. Default `true` would
+    // shrink the label as the slice rotates away from the camera and
+    // grow it as the slice rotates toward the camera, which made the
+    // labels feel "alive" in a distracting way. Setting this to false
+    // pegs the sprite at a fixed pixel size at any depth.
+    sizeAttenuation: false,
   });
   const sprite = new THREE.Sprite(material);
-  // Maintain 3:1 aspect-ish in world space proportional to canvas.
-  const worldScaleY = 0.18;
-  const worldScaleX = (canvas.width / canvas.height) * worldScaleY;
-  sprite.scale.set(worldScaleX, worldScaleY, 1);
+  // Anchor at bottom-center so the sprite's `position` corresponds
+  // to where the skewer line meets the bottom of the label, and the
+  // text extends straight up from there.
+  sprite.center.set(0.5, 0);
+  // With sizeAttenuation false, scale is interpreted as a fraction
+  // of the camera's view height (it gets multiplied by depth in the
+  // shader to cancel the perspective division). 0.10 lands the label
+  // at roughly the size the previous depth-attenuated sprite hit at
+  // its farthest point — i.e. the smallest size the user was already
+  // seeing. X is derived from the canvas aspect so the rendered text
+  // doesn't squash.
+  const screenScaleY = 0.10;
+  const screenScaleX = (canvas.width / canvas.height) * screenScaleY;
+  sprite.scale.set(screenScaleX, screenScaleY, 1);
   // Render labels last so they always sit on top of slices/leader lines.
   sprite.renderOrder = 10;
   return sprite;
@@ -421,10 +437,14 @@ export function DoughnutChart({ slices, height = 260 }: DoughnutChartProps) {
       // attaches to the bottom of the text instead of bisecting it.
       const labelText = `${s.label}  ${s.percentage.toFixed(0)}%`;
       const sprite = makeLabelSprite(labelText, theme.labelTextColor);
+      // Sprite is anchored at its bottom-center (see makeLabelSprite),
+      // so positioning the sprite at the top of the skewer puts the
+      // line tip at the bottom of the text. A tiny world-space gap
+      // keeps the line from visually touching the descenders.
       sprite.position.set(
         skewerX,
         skewerY,
-        THICKNESS + SKEWER_LENGTH + sprite.scale.y / 2 + SKEWER_LABEL_GAP,
+        THICKNESS + SKEWER_LENGTH + SKEWER_LABEL_GAP,
       );
       sliceGroup.add(sprite);
 
