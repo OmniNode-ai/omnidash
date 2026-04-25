@@ -28,6 +28,11 @@ export interface DoughnutSlice {
 }
 
 interface SliceHandle {
+  /** Per-slice subgroup containing the wedge mesh, the skewer line, and the
+   *  label sprite. Hover-pop translates this whole group so the candle
+   *  travels with the slice instead of staying behind. */
+  group: THREE.Group;
+  /** Wedge mesh kept on the handle for raycasting; raycaster needs Mesh, not Group. */
   mesh: THREE.Mesh;
   midAngle: number;
   sliceIdx: number;
@@ -47,12 +52,15 @@ const THICKNESS = 0.18;
 const POP_OUT = 0.09;
 const CURVE_SEGMENTS = 64;
 
-// Distance from center the label anchor sits at, and the position the
-// leader line ends. Both are slightly outside the outer rim so the
-// label and its connector clear the slice.
-const LABEL_DISTANCE = 1.45;
-const LEADER_LINE_INNER = OUTER_R + 0.02;
-const LEADER_LINE_OUTER = LABEL_DISTANCE - 0.10;
+// Vertical-skewer label layout. Each slice gets a "candle":
+//   - a vertical line rising from the slice's top surface
+//   - a label sprite at the top of the line
+// The skewer's base sits at the slice's radial centroid (midway
+// between inner and outer rim) so it visually anchors to the slice
+// rather than the rim.
+const SKEWER_BASE_RADIUS = (INNER_R + OUTER_R) / 2;
+const SKEWER_LENGTH = 0.55;
+const SKEWER_LABEL_GAP = 0.02; // small gap between line top and label bottom
 
 // One full revolution every ~30 seconds — slow enough to read labels
 // but obviously alive. Pauses on hover via the rotation-paused flag
@@ -245,15 +253,31 @@ export function DoughnutChart({ slices, height = 260 }: DoughnutChartProps) {
     });
     ro.observe(mount);
 
-    // rAF loop — advances the doughnut's Y rotation and re-renders.
-    // Cheap: a single transform plus a render of an already-built scene.
+    // rAF loop — advances the spin and re-renders. Cheap: a single
+    // transform plus a render of an already-built scene.
+    //
+    // Important: we increment `rotation.z`, not `rotation.y`. The
+    // doughnut shape lives in its local XY plane, so its central
+    // axis (the axis through the hole) is the local Z axis. With
+    // default Euler order 'XYZ', vertices are transformed as
+    // M*v = Rx * Ry * Rz * v — meaning Rz is applied FIRST. So the
+    // spin happens in the doughnut's own plane (a flat frisbee
+    // spin around its central axis), and then the standing
+    // `rotation.x = -π/2` tilt drops the whole spinning shape
+    // onto the floor. Net effect: the doughnut stays flat and
+    // spins around the world's vertical (Y) axis.
+    //
+    // Using `rotation.y` here would interleave the spin BEFORE the
+    // tilt around an axis IN the doughnut's plane, producing a
+    // coin-tipping motion where the rim alternately lifts and dips
+    // — explicitly NOT what we want.
     let rafId = 0;
     let lastT = performance.now();
     const tick = (t: number) => {
       const dt = (t - lastT) / 1000;
       lastT = t;
       if (!rotationPausedRef.current && doughnutGroupRef.current) {
-        doughnutGroupRef.current.rotation.y += dt * RADIANS_PER_SECOND;
+        doughnutGroupRef.current.rotation.z += dt * RADIANS_PER_SECOND;
       }
       const r = rendererRef.current;
       const s = sceneRef.current;
@@ -364,52 +388,58 @@ export function DoughnutChart({ slices, height = 260 }: DoughnutChartProps) {
             emissive: colorHex,
             emissiveIntensity: theme.emissiveIntensity,
           });
+      // Per-slice subgroup. Hover-pop translates this group so the
+      // candle (skewer + label) travels with its slice instead of
+      // staying behind on the original radius.
+      const sliceGroup = new THREE.Group();
+
       const mesh = new THREE.Mesh(geom, mat);
       mesh.userData.sliceIdx = i;
-      doughnutGroup.add(mesh);
-      handles.push({ mesh, midAngle, sliceIdx: i });
+      sliceGroup.add(mesh);
 
-      // Leader line: from outer-rim midpoint outward to the label
-      // anchor, in the slice's local 2D plane (pre-rotation).
+      // Vertical skewer: a thin line rising straight up from the
+      // slice's top surface at its radial centroid. In local space
+      // we extrude in +Z; after the doughnut group's tilt of
+      // -π/2 around X, local +Z maps to world +Y, so the skewer
+      // points vertically up in the rendered scene.
+      const skewerX = SKEWER_BASE_RADIUS * Math.cos(midAngle);
+      const skewerY = SKEWER_BASE_RADIUS * Math.sin(midAngle);
       const lineGeom = new THREE.BufferGeometry().setFromPoints([
-        new THREE.Vector3(
-          LEADER_LINE_INNER * Math.cos(midAngle),
-          LEADER_LINE_INNER * Math.sin(midAngle),
-          THICKNESS / 2,
-        ),
-        new THREE.Vector3(
-          LEADER_LINE_OUTER * Math.cos(midAngle),
-          LEADER_LINE_OUTER * Math.sin(midAngle),
-          THICKNESS / 2,
-        ),
+        new THREE.Vector3(skewerX, skewerY, THICKNESS),
+        new THREE.Vector3(skewerX, skewerY, THICKNESS + SKEWER_LENGTH),
       ]);
       const lineMat = new THREE.LineBasicMaterial({
         color: theme.leaderLineHex,
         transparent: true,
-        opacity: 0.7,
+        opacity: 0.8,
       });
       const line = new THREE.Line(lineGeom, lineMat);
-      doughnutGroup.add(line);
+      sliceGroup.add(line);
 
-      // Label sprite at the outer end of the leader line. Sprites
-      // always face the camera, so labels stay readable while the
-      // doughnut rotates.
+      // Label sprite sits at the top of the skewer, lifted up by
+      // half its world height + a small gap so the line visually
+      // attaches to the bottom of the text instead of bisecting it.
       const labelText = `${s.label}  ${s.percentage.toFixed(0)}%`;
       const sprite = makeLabelSprite(labelText, theme.labelTextColor);
       sprite.position.set(
-        LABEL_DISTANCE * Math.cos(midAngle),
-        LABEL_DISTANCE * Math.sin(midAngle),
-        THICKNESS / 2,
+        skewerX,
+        skewerY,
+        THICKNESS + SKEWER_LENGTH + sprite.scale.y / 2 + SKEWER_LABEL_GAP,
       );
-      doughnutGroup.add(sprite);
+      sliceGroup.add(sprite);
+
+      doughnutGroup.add(sliceGroup);
+      handles.push({ group: sliceGroup, mesh, midAngle, sliceIdx: i });
 
       angle -= sweep;
     }
 
-    // Ground disk under the doughnut for shadow contrast — same convention
-    // as the cost-by-model pie.
+    // Ground disk under the doughnut for shadow contrast — same
+    // convention as the cost-by-model pie. Sized off OUTER_R so it
+    // hugs the doughnut footprint; labels float above it on their
+    // skewers and don't need ground coverage.
     const ground = new THREE.Mesh(
-      new THREE.CircleGeometry(LABEL_DISTANCE * 1.2, 48),
+      new THREE.CircleGeometry(OUTER_R * 1.3, 48),
       new THREE.MeshBasicMaterial({ color: theme.groundHex }),
     );
     ground.position.y = -0.001;
@@ -430,18 +460,19 @@ export function DoughnutChart({ slices, height = 260 }: DoughnutChartProps) {
 
   // Hover-pop: separate effect so we don't rebuild the whole doughnut
   // on every pointer move. Also pauses the rotation so the label is
-  // readable.
+  // readable. Translates the per-slice subgroup (mesh + skewer +
+  // label) so the candle moves with its slice.
   useEffect(() => {
     rotationPausedRef.current = hover !== null;
     for (const h of slicesRef.current) {
       if (hover && hover.sliceIdx === h.sliceIdx) {
-        h.mesh.position.set(
+        h.group.position.set(
           Math.cos(h.midAngle) * POP_OUT,
           Math.sin(h.midAngle) * POP_OUT,
           0,
         );
       } else {
-        h.mesh.position.set(0, 0, 0);
+        h.group.position.set(0, 0, 0);
       }
     }
     // No explicit render() call — the rAF loop handles it on the next frame.
