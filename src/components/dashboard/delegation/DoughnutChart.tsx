@@ -122,7 +122,7 @@ const LIGHT_DOUGHNUT_THEME: DoughnutTheme = {
   emissiveIntensity: 0,
   canvasBgCss: 'var(--panel-2)',
   groundHex: 0xf7f8fa,
-  labelTextColor: '#2a3038',
+  labelTextColor: '#0a0d12',
   leaderLineHex: 0x6b7580,
 };
 
@@ -139,9 +139,9 @@ const LIGHT_DOUGHNUT_THEME: DoughnutTheme = {
 function makeLabelSprite(text: string, color: string): THREE.Sprite {
   // Two-pass canvas: measure, then render. Padding chosen so descenders
   // and the leader-line attachment have breathing room.
-  const padX = 14;
-  const padY = 8;
-  const fontSize = 28;
+  const padX = 12;
+  const padY = 6;
+  const fontSize = 22;
   const canvas = document.createElement('canvas');
   const ctx = canvas.getContext('2d');
   if (!ctx) {
