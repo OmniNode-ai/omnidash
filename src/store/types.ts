@@ -26,6 +26,19 @@ export interface GlobalFilters {
    * `refetchInterval` for every projection query.
    */
   autoRefreshInterval?: number | null;
+  /**
+   * Dashboard-level timezone for rendering timestamps and bucket
+   * labels. `undefined` means "browser local" — every widget's
+   * `toLocaleString*` call renders without an explicit `timeZone`
+   * option, deferring to the browser. A non-empty string is an
+   * IANA zone identifier (e.g. `'UTC'`, `'America/New_York'`) that
+   * widgets pass through as `{ timeZone: ... }`.
+   *
+   * Wired by OMN-125: `TimezoneSelector` writes here, `useTimezone`
+   * reads it, and time-rendering widgets thread the zone into
+   * their existing date-formatting calls.
+   */
+  timezone?: string;
 }
 
 export interface EditModeSlice {
@@ -36,10 +49,10 @@ export interface EditModeSlice {
 /**
  * Subset of `GlobalFilters` keys that are simple string values and
  * therefore manipulated through the generic `setFilter(key, value)`
- * setter. `timeRange` and `autoRefreshInterval` are excluded: each
- * has its own typed setter because their values are not strings.
+ * setter. `timeRange`, `autoRefreshInterval`, and `timezone` each
+ * have their own typed setter and are excluded from this union.
  */
-export type ScalarFilterKey = Exclude<keyof GlobalFilters, 'timeRange' | 'autoRefreshInterval'>;
+export type ScalarFilterKey = Exclude<keyof GlobalFilters, 'timeRange' | 'autoRefreshInterval' | 'timezone'>;
 
 export interface FiltersSlice {
   globalFilters: GlobalFilters;
@@ -47,6 +60,8 @@ export interface FiltersSlice {
   setFilter: (key: ScalarFilterKey, value: string | undefined) => void;
   /** OMN-126: set the dashboard-level auto-refresh interval. */
   setAutoRefreshInterval: (interval: number | null) => void;
+  /** OMN-125: set the dashboard-level timezone (IANA name) or undefined to revert to browser local. */
+  setTimezone: (timezone: string | undefined) => void;
   clearFilters: () => void;
 }
 

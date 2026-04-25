@@ -3,6 +3,7 @@ import { ChevronUp, ChevronDown, Search } from 'lucide-react';
 import { ComponentWrapper } from '../ComponentWrapper';
 import { useProjectionQuery } from '@/hooks/useProjectionQuery';
 import { applyTimeRange, resolveTimeRange } from '@/hooks/useTimeRange';
+import { useTimezone } from '@/hooks/useTimezone';
 import { useFrameStore } from '@/store/store';
 import { Text } from '@/components/ui/typography';
 
@@ -40,16 +41,27 @@ const COLUMNS: Array<Column & { width: string }> = [
   { key: 'cost_usd',      label: 'Cost',        width: '12%' },
 ];
 
-function formatTimestamp(iso: string): string {
+function formatTimestamp(iso: string, timeZone: string): string {
   // Compact "MM/DD HH:MM AM/PM" — fits the Timestamp column without
   // wrapping at typical widget widths. toLocaleString() was producing
   // strings like "4/20/2026, 10:40:00 AM" which are ~22 chars and
   // wrap whenever the widget isn't full-width.
+  //
+  // `timeZone` is the dashboard-level zone (`useTimezone()`); MM/DD
+  // and HH:MM both come from the same zone so a row's date and time
+  // can never disagree across a midnight boundary.
   const d = new Date(iso);
-  const mm = String(d.getMonth() + 1).padStart(2, '0');
-  const dd = String(d.getDate()).padStart(2, '0');
-  const time = d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-  return `${mm}/${dd} ${time}`;
+  const parts = new Intl.DateTimeFormat('en-US', {
+    timeZone,
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+  }).formatToParts(d);
+  const get = (type: string) => parts.find((p) => p.type === type)?.value ?? '';
+  const dayPeriod = parts.find((p) => p.type === 'dayPeriod')?.value;
+  const time = `${get('hour')}:${get('minute')}${dayPeriod ? ` ${dayPeriod}` : ''}`;
+  return `${get('month')}/${get('day')} ${time}`;
 }
 
 export default function RoutingDecisionTable({ config: _config }: { config: Record<string, unknown> }) {
@@ -59,6 +71,7 @@ export default function RoutingDecisionTable({ config: _config }: { config: Reco
     refetchInterval: 60_000,
   });
 
+  const tz = useTimezone();
   const [query, setQuery] = useState('');
   // null sort = insertion order; otherwise { key, dir }.
   const [sort, setSort] = useState<{ key: SortKey; dir: SortDir } | null>(null);
@@ -272,13 +285,13 @@ export default function RoutingDecisionTable({ config: _config }: { config: Reco
                         overflow: 'hidden',
                         textOverflow: 'ellipsis',
                       }}
-                      title={new Date(row.created_at).toLocaleString()}
+                      title={new Date(row.created_at).toLocaleString(undefined, { timeZone: tz })}
                     >
                       {/* Timestamps are ambient metadata; dim them so the
                           primary data columns read as primary. Matches
                           EventStream's treatment of its time column. */}
                       <Text size="md" family="mono" color="tertiary" tabularNums>
-                        {formatTimestamp(row.created_at)}
+                        {formatTimestamp(row.created_at, tz)}
                       </Text>
                     </td>
                     <td style={{ padding: '0.375rem 0.5rem' }}>
