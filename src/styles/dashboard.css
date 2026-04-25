@@ -51,13 +51,15 @@
   columns: 2;
   column-gap: var(--row-gap);
 }
-/* Drop to a single column once the viewport gets too narrow for two
-   widgets side by side. 720px is the threshold below which two
-   columns each squeeze a widget below its useful min-width
-   (~340-360px after gap + chrome). The single-column layout flows
-   all widgets vertically, full-width — no widget-internal
+/* Drop to a single column once the dashboard's CONTENT area gets
+   too narrow for two widgets side by side. The breakpoint is on the
+   viewport, but we have to account for the 240px sidebar — so the
+   viewport threshold (960px) leaves the main pane at ~720px, the
+   width below which two columns each squeeze a widget below its
+   useful min-width (~340-360px after gap + chrome). Single column
+   flows all widgets vertically, full-width — no widget-internal
    responsiveness needed. */
-@media (max-width: 720px) {
+@media (max-width: 960px) {
   .dash-grid {
     columns: 1;
   }
