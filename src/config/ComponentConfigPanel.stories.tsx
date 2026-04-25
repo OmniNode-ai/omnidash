@@ -53,7 +53,7 @@ function makeManifest(name: string, displayName: string, configSchema: JSONSchem
     name,
     displayName,
     description: `Storybook fixture component for ${displayName}`,
-    category: 'metrics',
+    category: 'quality',
     version: '1.0.0',
     implementationKey: `fixtures/${name}`,
     configSchema,

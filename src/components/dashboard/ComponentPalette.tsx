@@ -13,11 +13,10 @@
 //     rather than from an explicit `icon` manifest field, which v2 doesn't have.
 import { useMemo, useState, type ComponentType } from 'react';
 import {
-  LineChart,
-  Gauge,
-  Table as TableIcon,
-  ShieldCheck,
-  Radio,
+  DollarSign,
+  Activity,
+  BadgeCheck,
+  HeartPulse,
   LayoutGrid,
   X,
 } from 'lucide-react';
@@ -43,11 +42,10 @@ interface ComponentPaletteProps {
 }
 
 const CATEGORY_ICONS: Record<ComponentCategory, ComponentType<{ size?: number; strokeWidth?: number }>> = {
-  visualization: LineChart,
-  metrics: Gauge,
-  table: TableIcon,
-  status: ShieldCheck,
-  stream: Radio,
+  cost: DollarSign,
+  activity: Activity,
+  quality: BadgeCheck,
+  health: HeartPulse,
 };
 
 export function ComponentPalette({
