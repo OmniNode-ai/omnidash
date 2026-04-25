@@ -51,7 +51,7 @@ export class ComponentRegistry {
     const entry = this.components.get(name);
     if (!entry) return { valid: false, errors: [`Component "${name}" not found`] };
 
-    const schema: JSONSchema7 = entry.manifest.configSchema;
+    const schema: JSONSchema7 | undefined = entry.manifest.configSchema;
     if (!schema || typeof schema !== 'object') return { valid: true, errors: [] };
 
     // Restricted JSON Schema subset: properties + additionalProperties + leaf type.

@@ -1,11 +1,12 @@
 import express from 'express';
 import http from 'http';
+import { fileURLToPath } from 'node:url';
 import { WebSocketServer, WebSocket } from 'ws';
 import routes from './routes.js';
 
 const PORT = parseInt(process.env.PORT ?? '3002', 10);
 
-const app = express();
+export const app = express();
 app.use(express.json());
 app.use(routes);
 
@@ -26,8 +27,14 @@ httpServer.on('upgrade', (req, socket, head) => {
 });
 
 type Subscription = Set<string>;
-const clients = new Map<WebSocket, Subscription>();
+export const clients = new Map<WebSocket, Subscription>();
 
+/**
+ * Filtered broadcast helper. Sends an INVALIDATE frame to every client whose
+ * subscription set contains either the '*' wildcard or the exact channel.
+ * Tested in isolation by stubbing the `clients` map with mock WebSocket
+ * instances (server/broadcast.test.ts).
+ */
 export function broadcast(channel: string, data: unknown) {
   const msg = JSON.stringify({ type: 'INVALIDATE', channel, data, ts: Date.now() });
   for (const [ws, subs] of clients) {
@@ -57,6 +64,11 @@ wss.on('connection', (ws: WebSocket) => {
   ws.on('error', () => clients.delete(ws));
 });
 
-httpServer.listen(PORT, () => {
-  console.log(`[omnidash-v2 server] Listening on port ${PORT}`);
-});
+// Only start listening when this file is the entrypoint — importing it from
+// a test or another module must not bind to a port. ESM equivalent of the
+// `require.main === module` idiom.
+if (process.argv[1] === fileURLToPath(import.meta.url)) {
+  httpServer.listen(PORT, () => {
+    console.log(`[omnidash-v2 server] Listening on port ${PORT}`);
+  });
+}

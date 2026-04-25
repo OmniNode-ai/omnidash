@@ -17,7 +17,7 @@ import { useProjectionQuery } from '@/hooks/useProjectionQuery';
 import { applyTimeRange, resolveTimeRange } from '@/hooks/useTimeRange';
 import { useTimezone } from '@/hooks/useTimezone';
 import { useFrameStore } from '@/store/store';
-import { useThemeName } from '@/theme';
+import { useThemeName, useThemeColors } from '@/theme';
 import { Text } from '@/components/ui/typography';
 
 /**
@@ -1056,7 +1056,16 @@ export default function CostTrend3D({ config: _config }: { config: Record<string
   const containerRef = useRef<HTMLDivElement | null>(null);
 
   const themeName = useThemeName();
-  const theme = themeName === 'dark' ? DARK_THEME : LIGHT_THEME;
+  const themeColors = useThemeColors();
+  // Override the per-theme `modelPalette` with the shared chart palette from
+  // CSS tokens (`--chart-1`..`--chart-7`). This is the same source the 2D
+  // widgets read, so the same model lands in the same color across 2D and 3D
+  // (Brett review §4 H4 / OMN-149).
+  const theme = useMemo<ThemeConfig>(() => {
+    const base = themeName === 'dark' ? DARK_THEME : LIGHT_THEME;
+    const palette = themeColors.chart.length > 0 ? themeColors.chart : base.modelPalette;
+    return { ...base, modelPalette: palette };
+  }, [themeName, themeColors]);
   const tz = useTimezone();
 
   // Escape clears focus.

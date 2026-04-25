@@ -24,3 +24,6 @@ reference/claude-design/
 
 *storybook.log
 storybook-static
+
+# tsc --build / project references — intermediate cache files
+*.tsbuildinfo

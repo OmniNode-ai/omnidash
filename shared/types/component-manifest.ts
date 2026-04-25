@@ -32,7 +32,12 @@ export interface ComponentManifest {
   category: ComponentCategory;
   version: string;
   implementationKey: string;
-  configSchema: JSONSchema7;
+  /**
+   * JSON schema describing the widget's per-instance config. Omit when the
+   * widget has nothing to configure — the kebab "Configure Widget" item is
+   * gated on this field being present and having non-empty properties.
+   */
+  configSchema?: JSONSchema7;
   dataSources: DataSourceDeclaration[];
   events: {
     emits: ComponentEvent[];
