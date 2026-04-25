@@ -30,8 +30,11 @@ jobs:
       - name: Env-contamination gate
         run: bash scripts/check-no-env-contamination.sh
 
-      - name: TypeScript typecheck
+      - name: TypeScript typecheck (frontend)
         run: npx tsc --noEmit
+
+      - name: TypeScript typecheck (server / vite config)
+        run: npm run build:server
 
       - name: Lint
         run: npm run lint

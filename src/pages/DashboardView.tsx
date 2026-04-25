@@ -363,14 +363,12 @@ export function DashboardView() {
                   component={resolveComponent(item.componentName)}
                   // Only surface "Configure Widget" in the kebab when the
                   // widget actually has something to configure — otherwise
-                  // the modal opens to an empty form. We treat
-                  // `configSchema.properties` being absent or {} as
-                  // "no config".
+                  // the modal opens to an empty form. We treat absent
+                  // `configSchema` and `configSchema.properties` being {}
+                  // as "no config".
                   onConfigure={
                     Object.keys(
-                      (registry.getComponent(item.componentName)?.manifest.configSchema as
-                        { properties?: Record<string, unknown> } | undefined)
-                        ?.properties ?? {},
+                      registry.getComponent(item.componentName)?.manifest.configSchema?.properties ?? {},
                     ).length > 0
                       ? () => setSelectedPlacementId(item.i)
                       : undefined

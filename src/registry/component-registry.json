@@ -1,6 +1,6 @@
 {
   "manifestVersion": "1.0",
-  "generatedAt": "2026-04-25T16:58:38.919Z",
+  "generatedAt": "2026-04-25T22:34:15.837Z",
   "components": {
     "cost-trend-panel": {
       "name": "cost-trend-panel",
@@ -79,11 +79,6 @@
       "category": "cost",
       "version": "0.1.0",
       "implementationKey": "cost-trend-3d/CostTrend3D",
-      "configSchema": {
-        "type": "object",
-        "properties": {},
-        "additionalProperties": false
-      },
       "dataSources": [
         {
           "type": "api",
@@ -130,11 +125,6 @@
       "category": "cost",
       "version": "1.0.0",
       "implementationKey": "cost-by-model/CostByModelPie",
-      "configSchema": {
-        "type": "object",
-        "properties": {},
-        "additionalProperties": false
-      },
       "dataSources": [
         {
           "type": "api",
@@ -333,11 +323,6 @@
       "category": "health",
       "version": "1.0.0",
       "implementationKey": "baselines/BaselinesROICard",
-      "configSchema": {
-        "type": "object",
-        "properties": {},
-        "additionalProperties": false
-      },
       "dataSources": [
         {
           "type": "api",
@@ -446,11 +431,6 @@
       "category": "health",
       "version": "1.0.0",
       "implementationKey": "readiness/ReadinessGate",
-      "configSchema": {
-        "type": "object",
-        "properties": {},
-        "additionalProperties": false
-      },
       "dataSources": [
         {
           "type": "api",

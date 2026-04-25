@@ -97,33 +97,35 @@ describe('Phase 1: Foundation', () => {
   });
 });
 
-describe('Phase 2: Widget stories', () => {
-  // Each entry: [relative path, friendly id]. The id is used in the
-  // `it(...)` description so failures point at a specific widget.
-  const STORY_FILES: Array<{ rel: string; id: string }> = [
-    { rel: 'src/components/dashboard/routing/RoutingDecisionTable.stories.tsx', id: 'RoutingDecisionTable.stories' },
-    { rel: 'src/components/dashboard/events/EventStream.stories.tsx', id: 'EventStream.stories' },
-    { rel: 'src/components/dashboard/cost-trend/CostTrendPanel.stories.tsx', id: 'CostTrendPanel.stories' },
-    { rel: 'src/components/dashboard/cost-trend-3d/CostTrend3D.stories.tsx', id: 'CostTrend3D.stories' },
-    { rel: 'src/components/dashboard/cost-by-model/CostByModelPie.stories.tsx', id: 'CostByModelPie.stories' },
-    { rel: 'src/components/dashboard/quality/QualityScorePanel.stories.tsx', id: 'QualityScorePanel.stories' },
-    { rel: 'src/components/dashboard/delegation/DelegationMetrics.stories.tsx', id: 'DelegationMetrics.stories' },
-    { rel: 'src/components/dashboard/baselines/BaselinesROICard.stories.tsx', id: 'BaselinesROICard.stories' },
-    { rel: 'src/components/dashboard/readiness/ReadinessGate.stories.tsx', id: 'ReadinessGate.stories' },
-    { rel: 'src/components/dashboard/CustomRangePicker.stories.tsx', id: 'CustomRangePicker.stories' },
-    { rel: 'src/components/dashboard/DateRangeSelector.stories.tsx', id: 'DateRangeSelector.stories' },
-    { rel: 'src/components/dashboard/Selectors.stories.tsx', id: 'Selectors.stories' },
-    { rel: 'src/components/dashboard/ComponentWrapper.stories.tsx', id: 'ComponentWrapper.stories' },
-    { rel: 'src/components/dashboard/ComponentPalette.stories.tsx', id: 'ComponentPalette.stories' },
-    { rel: 'src/components/frame/Header.stories.tsx', id: 'Header.stories' },
-    { rel: 'src/components/frame/Sidebar.stories.tsx', id: 'Sidebar.stories' },
-    { rel: 'src/components/frame/FrameLayout.stories.tsx', id: 'FrameLayout.stories' },
-    { rel: 'src/components/frame/DeleteDashboardDialog.stories.tsx', id: 'DeleteDashboardDialog.stories' },
-    { rel: 'src/components/agent/AgentLauncher.stories.tsx', id: 'AgentLauncher.stories' },
-    { rel: 'src/components/agent/AgentChatPanel.stories.tsx', id: 'AgentChatPanel.stories' },
-    { rel: 'src/config/ComponentConfigPanel.stories.tsx', id: 'ComponentConfigPanel.stories' },
-  ];
+// `widget: true` flags the dashboard widgets — the canonical things this
+// scorecard polices for full test + story coverage. The remaining entries
+// are infrastructure components (frame, agent shell, config dialog,
+// shared dashboard chrome) where stories alone are sufficient for now.
+const STORY_FILES: Array<{ rel: string; id: string; widget: boolean }> = [
+  { rel: 'src/components/dashboard/routing/RoutingDecisionTable.stories.tsx', id: 'RoutingDecisionTable.stories', widget: true },
+  { rel: 'src/components/dashboard/events/EventStream.stories.tsx', id: 'EventStream.stories', widget: true },
+  { rel: 'src/components/dashboard/cost-trend/CostTrendPanel.stories.tsx', id: 'CostTrendPanel.stories', widget: true },
+  { rel: 'src/components/dashboard/cost-trend-3d/CostTrend3D.stories.tsx', id: 'CostTrend3D.stories', widget: true },
+  { rel: 'src/components/dashboard/cost-by-model/CostByModelPie.stories.tsx', id: 'CostByModelPie.stories', widget: true },
+  { rel: 'src/components/dashboard/quality/QualityScorePanel.stories.tsx', id: 'QualityScorePanel.stories', widget: true },
+  { rel: 'src/components/dashboard/delegation/DelegationMetrics.stories.tsx', id: 'DelegationMetrics.stories', widget: true },
+  { rel: 'src/components/dashboard/baselines/BaselinesROICard.stories.tsx', id: 'BaselinesROICard.stories', widget: true },
+  { rel: 'src/components/dashboard/readiness/ReadinessGate.stories.tsx', id: 'ReadinessGate.stories', widget: true },
+  { rel: 'src/components/dashboard/CustomRangePicker.stories.tsx', id: 'CustomRangePicker.stories', widget: false },
+  { rel: 'src/components/dashboard/DateRangeSelector.stories.tsx', id: 'DateRangeSelector.stories', widget: false },
+  { rel: 'src/components/dashboard/Selectors.stories.tsx', id: 'Selectors.stories', widget: false },
+  { rel: 'src/components/dashboard/ComponentWrapper.stories.tsx', id: 'ComponentWrapper.stories', widget: false },
+  { rel: 'src/components/dashboard/ComponentPalette.stories.tsx', id: 'ComponentPalette.stories', widget: false },
+  { rel: 'src/components/frame/Header.stories.tsx', id: 'Header.stories', widget: false },
+  { rel: 'src/components/frame/Sidebar.stories.tsx', id: 'Sidebar.stories', widget: false },
+  { rel: 'src/components/frame/FrameLayout.stories.tsx', id: 'FrameLayout.stories', widget: false },
+  { rel: 'src/components/frame/DeleteDashboardDialog.stories.tsx', id: 'DeleteDashboardDialog.stories', widget: false },
+  { rel: 'src/components/agent/AgentLauncher.stories.tsx', id: 'AgentLauncher.stories', widget: false },
+  { rel: 'src/components/agent/AgentChatPanel.stories.tsx', id: 'AgentChatPanel.stories', widget: false },
+  { rel: 'src/config/ComponentConfigPanel.stories.tsx', id: 'ComponentConfigPanel.stories', widget: false },
+];
 
+describe('Phase 2: Widget stories', () => {
   for (const { rel, id } of STORY_FILES) {
     describe(id, () => {
       it(`${rel} exists`, () => {
@@ -145,6 +147,20 @@ describe('Phase 2: Widget stories', () => {
         const content = readSrc(rel);
         expect(content).toMatch(/export\s+const\s+Populated\s*[:=]/);
       });
+    });
+  }
+});
+
+describe('Phase 4: Widget tests (T11 / OMN-152)', () => {
+  // Mirror of Phase 2 but for the `<widget>.test.tsx` neighbour file. The
+  // contract: every widget that has stories must also have a test. Phase
+  // 4 is scoped to entries flagged `widget: true` — infrastructure
+  // components are still encouraged to gain tests, but not gated here.
+  for (const { rel, id, widget } of STORY_FILES) {
+    if (!widget) continue;
+    const testPath = rel.replace(/\.stories\.tsx$/, '.test.tsx');
+    it(`${id}: ${testPath} exists`, () => {
+      expect(srcExists(testPath)).toBe(true);
     });
   }
 });

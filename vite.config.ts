@@ -9,7 +9,7 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 export function fixturesMiddleware(opts: { root: string }) {
   const root = opts.root;
-  const handler = (req: any, res: any, next: any) => {
+  const handler = (req: any, res: any, _next: any) => {
     // NOTE: req.url arrives WITHOUT the /_fixtures prefix (Vite strips it).
     const urlPath = (req.url ?? '').split('?')[0];
     const parts = urlPath.split('/').filter(Boolean);
@@ -52,7 +52,7 @@ export function fixturesMiddleware(opts: { root: string }) {
 
 export function layoutsMiddleware(opts: { root: string }) {
   const root = opts.root;
-  const handler = (req: any, res: any, next: any) => {
+  const handler = (req: any, res: any, _next: any) => {
     // NOTE: req.url arrives WITHOUT the /_layouts prefix (Vite strips it).
     const urlPath = (req.url ?? '').split('?')[0];
     const parts = urlPath.split('/').filter(Boolean);

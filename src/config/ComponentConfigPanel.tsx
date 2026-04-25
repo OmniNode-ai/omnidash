@@ -55,6 +55,10 @@ export function ComponentConfigPanel({ placementId, onOpenChange }: ComponentCon
   }, [open, onOpenChange]);
 
   if (!open || !entry || !placementId) return null;
+  // Defensive — DashboardView gates the kebab on this same condition, so a
+  // widget without a configSchema should never reach this dialog. If it does
+  // (programmatic open), bail rather than rendering an empty form.
+  if (!entry.manifest.configSchema) return null;
 
   const formData: Record<string, unknown> =
     draft?.draftConfig ?? (placement ? { ...placement.config } : {});

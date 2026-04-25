@@ -94,7 +94,7 @@ const MVP_COMPONENTS: Record<string, ComponentManifest> = {
     category: 'cost',
     version: '0.1.0',
     implementationKey: 'cost-trend-3d/CostTrend3D',
-    configSchema: { type: 'object', properties: {}, additionalProperties: false },
+    // No configSchema — widget has no per-instance options to configure.
     dataSources: [
       { type: 'api', endpoint: '/api/intelligence/cost/trends', required: true, purpose: 'initial_fetch' },
     ],
@@ -112,7 +112,7 @@ const MVP_COMPONENTS: Record<string, ComponentManifest> = {
     category: 'cost',
     version: '1.0.0',
     implementationKey: 'cost-by-model/CostByModelPie',
-    configSchema: { type: 'object', properties: {}, additionalProperties: false },
+    // No configSchema — widget has no per-instance options to configure.
     dataSources: [
       { type: 'api', endpoint: '/api/intelligence/cost/trends', required: true, purpose: 'initial_fetch' },
     ],
@@ -187,7 +187,7 @@ const MVP_COMPONENTS: Record<string, ComponentManifest> = {
     category: 'health',
     version: '1.0.0',
     implementationKey: 'baselines/BaselinesROICard',
-    configSchema: { type: 'object', properties: {}, additionalProperties: false },
+    // No configSchema — widget has no per-instance options to configure.
     dataSources: [
       { type: 'api', endpoint: '/api/baselines/summary', required: true, purpose: 'initial_fetch' },
       { type: 'websocket', topic: 'baselines', required: false, purpose: 'live_updates' },
@@ -239,7 +239,7 @@ const MVP_COMPONENTS: Record<string, ComponentManifest> = {
     category: 'health',
     version: '1.0.0',
     implementationKey: 'readiness/ReadinessGate',
-    configSchema: { type: 'object', properties: {}, additionalProperties: false },
+    // No configSchema — widget has no per-instance options to configure.
     dataSources: [
       { type: 'api', endpoint: '/api/readiness/summary', required: true, purpose: 'initial_fetch' },
     ],
