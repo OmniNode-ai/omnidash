@@ -28,7 +28,7 @@ The 04-17 plan listed 8 acceptance items. Their current state:
 | # | Criterion | Status |
 |---|---|---|
 | 1 | `npm install && npm run types:generate && npm run generate:fixtures && npm run generate:registry && VITE_DATA_SOURCE=file npm run dev` reaches the dashboard at `localhost:3001` within 10 minutes | ✅ **Met** — confirmed during the engagement and again during ongoing work this week. |
-| 2 | `npm test` (vitest) passes | ✅ **Met** — last full run ~433/434 tests passing. The one flake is a pre-existing concurrent-load timeout on the typography-compliance ESLint test; passes in isolation. |
+| 2 | `npm test` (vitest) passes | ✅ **Met** — 443/443 tests pass across 58 test files. (An earlier audit pass under-counted — five regressions were introduced by polish work this week and have been fixed: the registry move broke three integration tests; the palette regroup left a stale assertion in `buildSystemPrompt.test.ts`; the widget-config audit removed `showBudgetLine` but a manifest-validation test still referenced it. Full suite re-run after the fixes is the source for this row.) |
 | 3 | `npm run check` (`tsc --noEmit` strict) passes | ✅ **Met** — typechecked clean before every commit this session. |
 | 4 | All 7 widgets render in file-mode against fixtures from `generate_fixtures.py` | ✅ **Met** — registry now lists 9 widgets (7 originals + Cost Trend 3D + Cost by Model added later). All have summary fixtures. |
 | 4b | HTTP-mode best-effort | ⏸ **Best-effort, not blocking** — `HttpSnapshotSource` has unit tests confirming the contract; not end-to-end verified against a live Express server (none running on contractor machine). |

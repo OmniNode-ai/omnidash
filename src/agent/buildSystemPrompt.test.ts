@@ -14,7 +14,7 @@ const mockComponents: RegisteredComponent[] = [
       name: 'cost-trend-panel',
       displayName: 'Cost Trend',
       description: 'Shows cost over time',
-      category: 'quality',
+      category: 'cost',
       version: '1.0.0',
       implementationKey: 'cost-trend-panel',
       configSchema: {},
@@ -75,7 +75,10 @@ describe('buildSystemPrompt', () => {
 
   it('lists category for each component', () => {
     const prompt = buildSystemPrompt({ components: mockComponents, themes: [], templateNames: [] });
-    expect(prompt).toContain('metrics');
-    expect(prompt).toContain('stream');
+    // Categories were renamed in the OMN-22 palette regroup
+    // (visualization/metrics/table/status/stream → cost/activity/quality/health).
+    // Mocks above use 'cost' for cost-trend-panel and 'activity' for event-stream.
+    expect(prompt).toContain('cost');
+    expect(prompt).toContain('activity');
   });
 });
