@@ -118,7 +118,12 @@ describe('Phase 2: Widget stories', () => {
     { rel: 'src/components/frame/Header.stories.tsx', id: 'Header.stories' },
     { rel: 'src/components/frame/Sidebar.stories.tsx', id: 'Sidebar.stories' },
     { rel: 'src/components/frame/FrameLayout.stories.tsx', id: 'FrameLayout.stories' },
+<<<<<<< HEAD
     { rel: 'src/components/frame/DeleteDashboardDialog.stories.tsx', id: 'DeleteDashboardDialog.stories' },
+=======
+    { rel: 'src/components/agent/AgentLauncher.stories.tsx', id: 'AgentLauncher.stories' },
+    { rel: 'src/components/agent/AgentChatPanel.stories.tsx', id: 'AgentChatPanel.stories' },
+>>>>>>> clone45/omn-119-agent-chat-stories
     { rel: 'src/config/ComponentConfigPanel.stories.tsx', id: 'ComponentConfigPanel.stories' },
   ];
 
