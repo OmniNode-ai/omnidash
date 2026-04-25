@@ -8,7 +8,7 @@
 // `seedStoreDecorator(...)` reaches through the store API directly so
 // stories don't drift when the store shape changes.
 //
-// Stories cover three visible states:
+// Stories cover four visible states:
 //   - `EmptyList` (Empty alias): no dashboards → renders the
 //     "No dashboards yet" empty-state CTA.
 //   - `Populated`: a fixture list of 4 dashboards with the second one
@@ -17,6 +17,12 @@
 //   - `SingleDashboard`: edge case — exactly one dashboard, active.
 //     Verifies the list still renders correctly when there is no
 //     "next" item to highlight a transition.
+//   - `Renaming`: simulates a double-click on the second dashboard's
+//     name on mount via the same effect-driven DOM-dispatch pattern
+//     `ComponentPalette.stories.tsx` uses for its search prefill, so
+//     reviewers see the inline `RenameInput` directly without having
+//     to interact. Covers the rename interaction per OMN-121.
+import { useEffect, useRef } from 'react';
 import type { Meta, StoryObj } from '@storybook/react-vite';
 import { Sidebar } from './Sidebar';
 import { makeDashboardDecorator } from '@/storybook/decorators/withDashboardContext';
@@ -102,6 +108,47 @@ export const Populated: Story = {
 export const SingleDashboard: Story = {
   decorators: [
     seedStoreDecorator([FIXTURE_DASHBOARDS[0]], 'dash-1'),
+    makeDashboardDecorator({}),
+  ],
+};
+
+// ----- Renaming ------------------------------------------------------
+//
+// Sidebar's inline rename mode is local component state
+// (`renamingId`) that the user enters by either double-clicking the
+// `.dash-name` span or selecting "Rename" from the kebab. Neither
+// path is reachable from the store, so this story renders a wrapper
+// that finds the second dashboard's name on mount and dispatches a
+// real `dblclick` event against it — same imperative recipe
+// `ComponentPalette.stories.tsx` uses to prefill its search input.
+//
+// On render, dash-2's row swaps the `<span class="dash-name">` for
+// the focused `<input>` from `RenameInput`, with the dashboard name
+// pre-selected. Pressing Enter commits via `renameDashboard()`,
+// Escape cancels — both branches reachable via interaction in the
+// canvas.
+function SidebarRenamingDash2() {
+  const containerRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    const container = containerRef.current;
+    if (!container) return;
+    const target = container.querySelector<HTMLElement>(
+      '[data-testid="dash-item-dash-2"] .dash-name',
+    );
+    if (!target) return;
+    target.dispatchEvent(new MouseEvent('dblclick', { bubbles: true }));
+  }, []);
+  return (
+    <div ref={containerRef}>
+      <Sidebar />
+    </div>
+  );
+}
+
+export const Renaming: Story = {
+  render: () => <SidebarRenamingDash2 />,
+  decorators: [
+    seedStoreDecorator(FIXTURE_DASHBOARDS, 'dash-1'),
     makeDashboardDecorator({}),
   ],
 };
