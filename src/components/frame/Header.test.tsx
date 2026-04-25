@@ -1,12 +1,21 @@
 // Updated for OMN-43: Header no longer contains the new-dashboard inline form
 // (that flow moved to Sidebar). These tests verify the new Topbar behavior.
+//
+// OMN-131: the Refresh button now calls `useQueryClient()`, so the test
+// wrapper needs a QueryClientProvider in addition to ThemeProvider.
 import { describe, it, expect } from 'vitest';
 import { render, screen } from '@testing-library/react';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { Header } from './Header';
 import { ThemeProvider } from '@/theme';
 
 function Wrapper({ children }: { children: React.ReactNode }) {
-  return <ThemeProvider>{children}</ThemeProvider>;
+  const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+  return (
+    <QueryClientProvider client={qc}>
+      <ThemeProvider>{children}</ThemeProvider>
+    </QueryClientProvider>
+  );
 }
 
 describe('Header — topbar chrome', () => {

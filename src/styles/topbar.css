@@ -76,3 +76,10 @@
 }
 @keyframes toast-in { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: none; } }
 .toast .dot { width: 6px; height: 6px; border-radius: 50%; background: var(--brand); }
+
+/* OMN-131 — one-shot spin for the topbar Refresh icon. Duration
+   matches the SPIN_DURATION_MS constant in Header.tsx; the class is
+   removed from the SVG once the timeout fires, ending the animation
+   in place rather than letting it loop. */
+@keyframes spin-once { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+.icon-btn .spin-once { animation: spin-once 700ms cubic-bezier(.2,.8,.2,1); }
