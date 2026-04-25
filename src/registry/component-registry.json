@@ -1,6 +1,6 @@
 {
   "manifestVersion": "1.0",
-  "generatedAt": "2026-04-25T16:30:53.405Z",
+  "generatedAt": "2026-04-25T16:58:38.919Z",
   "components": {
     "cost-trend-panel": {
       "name": "cost-trend-panel",
@@ -29,10 +29,6 @@
             "default": "area",
             "title": "Chart type",
             "description": "How each model's cost contribution is drawn over time. Area stacks smooth filled bands; bar stacks discrete columns per time bucket."
-          },
-          "showBudgetLine": {
-            "type": "boolean",
-            "default": true
           }
         },
         "additionalProperties": false
@@ -268,7 +264,15 @@
         "properties": {
           "pageSize": {
             "type": "number",
-            "default": 20
+            "enum": [
+              10,
+              25,
+              50,
+              100
+            ],
+            "default": 25,
+            "title": "Rows per page",
+            "description": "How many decisions to render per page before pagination controls."
           }
         },
         "additionalProperties": false

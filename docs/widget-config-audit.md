@@ -4,6 +4,26 @@ Per-widget audit of the **Configure Widget** modal: what fields the
 manifest declares, whether the widget actually reads them, and a
 recommendation for each.
 
+## Status — applied changes
+
+The bug-fix recommendations and the empty-modal cleanup have been
+applied. Nice-to-have additions (top-N, compact mode, source filter,
+title override, etc.) were intentionally **deferred** to avoid
+introducing visual regressions before delivery.
+
+| Change | Status |
+|---|---|
+| Drop `showBudgetLine` from Cost Trend manifest | ✅ Applied |
+| Wire `showSavings` + `showQualityGates` in Delegation Metrics | ✅ Applied |
+| Wire `pageSize` in Routing Decisions; convert to enum, default 25 | ✅ Applied |
+| Hide "Configure Widget" kebab item when manifest has no configurable properties | ✅ Applied (DashboardView passes `onConfigure` only when `configSchema.properties` is non-empty) |
+| `qualityGateThreshold`, top-N for Cost Trend / Cost by Model, compact Readiness, etc. | ⏸ Deferred |
+
+Sections below remain as the original audit so future readers can see
+both the analysis and the decisions taken.
+
+---
+
 Methodology: read every widget's `config: Record<string, unknown>`
 destructure (the only place a manifest field is consumed at runtime),
 then cross-reference against the `configSchema` block in

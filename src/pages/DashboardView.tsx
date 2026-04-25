@@ -361,7 +361,20 @@ export function DashboardView() {
                   componentName={item.componentName}
                   config={item.config}
                   component={resolveComponent(item.componentName)}
-                  onConfigure={() => setSelectedPlacementId(item.i)}
+                  // Only surface "Configure Widget" in the kebab when the
+                  // widget actually has something to configure — otherwise
+                  // the modal opens to an empty form. We treat
+                  // `configSchema.properties` being absent or {} as
+                  // "no config".
+                  onConfigure={
+                    Object.keys(
+                      (registry.getComponent(item.componentName)?.manifest.configSchema as
+                        { properties?: Record<string, unknown> } | undefined)
+                        ?.properties ?? {},
+                    ).length > 0
+                      ? () => setSelectedPlacementId(item.i)
+                      : undefined
+                  }
                   onDuplicate={() => duplicateLayoutItem(item.i)}
                   onDelete={() => removeComponentFromLayout(item.i)}
                   draggable={editMode}
