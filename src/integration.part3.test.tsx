@@ -21,7 +21,7 @@ vi.mock('echarts-for-react', () => ({
 import { fileURLToPath } from 'url';
 import { dirname } from 'path';
 const __dirname = dirname(fileURLToPath(import.meta.url));
-const manifestJson = readFileSync(resolve(__dirname, '../public/component-registry.json'), 'utf-8');
+const manifestJson = readFileSync(resolve(__dirname, '../registry/component-registry.json'), 'utf-8');
 const manifest: RegistryManifest = JSON.parse(manifestJson);
 
 describe('Proof of Life — Part 3 (Full System)', () => {

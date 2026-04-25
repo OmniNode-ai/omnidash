@@ -13,7 +13,7 @@ import { ComponentRegistry } from './registry/ComponentRegistry';
 import type { RegistryManifest } from './registry/types';
 
 // Load the generated registry manifest
-const manifestJson = readFileSync(resolve(__dirname, '../public/component-registry.json'), 'utf-8');
+const manifestJson = readFileSync(resolve(__dirname, '../registry/component-registry.json'), 'utf-8');
 const manifest: RegistryManifest = JSON.parse(manifestJson);
 
 function renderWithRegistry() {

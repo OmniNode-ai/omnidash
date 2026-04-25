@@ -7,7 +7,7 @@ This repo runs in two modes:
 ### Hard rules
 
 1. **Do NOT hardcode** `localhost:3002` anywhere. All data access goes through `src/data-source/` — either `FileSnapshotSource` or `HttpSnapshotSource`, selected by `VITE_DATA_SOURCE`.
-2. **Do NOT hand-edit** `public/component-registry.json`. Run `npm run generate:registry`.
+2. **Do NOT hand-edit** `src/registry/component-registry.json`. Run `npm run generate:registry`.
 3. **Do NOT hand-edit** anything under `src/shared/types/generated/`. Run `npm run types:generate`.
 4. **Do NOT edit** any file under `node_modules/`. Components discovered there are read-only.
 5. **Fixtures and layouts are not committed.** They live under `./fixtures/` and `./dashboard-layouts/`, both gitignored.
@@ -29,7 +29,7 @@ _Track A — local MVP widget (the seven current widgets use this path):_
 1. Create `src/components/dashboard/<name>/<Name>.tsx`. Default-export a React component that accepts a `config` prop shaped per its manifest.
 2. Register the lazy import in `src/components/dashboard/index.ts` under its `implementationKey` (e.g. `'<name>/<Name>': lazy(() => import('./<name>/<Name>'))`).
 3. Add the manifest entry to the `MVP_COMPONENTS` object in `scripts/generate-registry.ts`. This is the canonical MVP manifest location — there is no per-widget `manifest.ts` file for local widgets.
-4. Run `npm run generate:registry` to rewrite `public/component-registry.json`.
+4. Run `npm run generate:registry` to rewrite `src/registry/component-registry.json`.
 5. Restart dev server.
 
 _Track B — external package widget (plugin extension path):_
@@ -48,7 +48,7 @@ _Track B — external package widget (plugin extension path):_
 
 - Edit mode toggle is in the Zustand `editModeSlice`. Drag and resize are ONLY enabled when edit mode is active.
 - When you move a widget on the canvas, save the layout explicitly (`Save` button) — it does NOT auto-persist per drag.
-- If the palette is empty, your `public/component-registry.json` is likely out of date. Run `npm run generate:registry`.
+- If the palette is empty, your `src/registry/component-registry.json` is likely out of date. Run `npm run generate:registry`.
 - If widgets render but show "no data", check `./fixtures/<topic>/` has JSON files and `./fixtures/registry.json` lists the topic.
 
 ### Where to look

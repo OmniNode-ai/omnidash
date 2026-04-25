@@ -295,7 +295,11 @@ const manifest = {
   components: mergedComponents,
 };
 
-const outPath = resolve(__dirname, '../public/component-registry.json');
+// Lives under src/ so Vite can resolve it as a module import without
+// the "Assets in public directory cannot be imported from JavaScript"
+// warning. Nothing fetches this file over HTTP — it's only consumed
+// via JS imports — so it doesn't need to be a static asset.
+const outPath = resolve(__dirname, '../src/registry/component-registry.json');
 writeFileSync(outPath, JSON.stringify(manifest, null, 2));
 console.log(
   `Generated component-registry.json with ${Object.keys(mergedComponents).length} components (${Object.keys(MVP_COMPONENTS).length} local + ${scannedComponents.length} scanned)`,
