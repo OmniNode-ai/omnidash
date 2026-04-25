@@ -19,7 +19,7 @@ const manifest: RegistryManifest = {
       name: 'test-widget',
       displayName: 'Test Widget',
       description: 'A test widget with a real schema',
-      category: 'metrics',
+      category: 'quality',
       version: '1.0.0',
       implementationKey: 'test/TestWidget',
       configSchema: {

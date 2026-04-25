@@ -6,7 +6,7 @@ describe('ComponentManifest validation', () => {
     name: 'cost-trend-panel',
     displayName: 'Cost Trend',
     description: 'LLM cost trends over time',
-    category: 'metrics',
+    category: 'quality',
     version: '1.0.0',
     implementationKey: 'cost-trend/CostTrendPanel',
     configSchema: { type: 'object', properties: {}, additionalProperties: false },

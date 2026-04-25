@@ -111,14 +111,14 @@ describe('Proof of Life — Part 3 (Full System)', () => {
     expect(cells.length).toBe(4);
   });
 
-  it('registry categories span all 5 types', () => {
+  it('registry categories span all 4 domain types', () => {
     const registry = new ComponentRegistry(manifest);
     const categories = new Set(
       registry.getAvailableComponents().map((c) => c.manifest.category)
     );
-    expect(categories.has('metrics')).toBe(true);
-    expect(categories.has('table')).toBe(true);
-    expect(categories.has('status')).toBe(true);
-    expect(categories.has('stream')).toBe(true);
+    expect(categories.has('cost')).toBe(true);
+    expect(categories.has('activity')).toBe(true);
+    expect(categories.has('quality')).toBe(true);
+    expect(categories.has('health')).toBe(true);
   });
 });

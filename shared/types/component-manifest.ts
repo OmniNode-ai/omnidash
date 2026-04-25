@@ -1,6 +1,9 @@
 import type { JSONSchema7 } from 'json-schema';
 
-export const COMPONENT_CATEGORIES = ['visualization', 'metrics', 'table', 'status', 'stream'] as const;
+// Widget palette categories. Grouped by domain (what the widget is about),
+// not by chart shape (what it looks like) — so 2D and 3D variants of the
+// same data live together. See OMN chat 2026-04-25 for the rationale.
+export const COMPONENT_CATEGORIES = ['cost', 'activity', 'quality', 'health'] as const;
 export type ComponentCategory = (typeof COMPONENT_CATEGORIES)[number];
 
 export interface GridSize {
