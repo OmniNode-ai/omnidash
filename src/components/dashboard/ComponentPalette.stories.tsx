@@ -60,7 +60,7 @@ const mockComponents: RegisteredComponent[] = [
       name: 'cost-trend-panel',
       displayName: 'Cost Trend',
       description: 'LLM cost trends and token usage over time',
-      category: 'quality',
+      category: 'cost',
       implementationKey: 'cost-trend/CostTrendPanel',
     },
   },
