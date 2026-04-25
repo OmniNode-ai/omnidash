@@ -179,14 +179,13 @@ function makeLabelSprite(text: string, color: string): THREE.Sprite {
   // to where the skewer line meets the bottom of the label, and the
   // text extends straight up from there.
   sprite.center.set(0.5, 0);
-  // With sizeAttenuation false, scale is interpreted as a fraction
-  // of the camera's view height (it gets multiplied by depth in the
-  // shader to cancel the perspective division). 0.10 lands the label
-  // at roughly the size the previous depth-attenuated sprite hit at
-  // its farthest point — i.e. the smallest size the user was already
-  // seeing. X is derived from the canvas aspect so the rendered text
-  // doesn't squash.
-  const screenScaleY = 0.10;
+  // With sizeAttenuation false, scale is interpreted as a world-unit
+  // size at the camera's reference depth — the shader cancels the
+  // perspective division so screen size stays constant regardless of
+  // the sprite's actual depth. 0.05 lands the label at roughly
+  // half the previous attenuated max size. X is derived from the
+  // canvas aspect so the rendered text doesn't squash.
+  const screenScaleY = 0.05;
   const screenScaleX = (canvas.width / canvas.height) * screenScaleY;
   sprite.scale.set(screenScaleX, screenScaleY, 1);
   // Render labels last so they always sit on top of slices/leader lines.
