@@ -13,7 +13,7 @@ import { ComponentRegistry } from './registry/ComponentRegistry';
 import type { RegistryManifest } from './registry/types';
 
 // Load the generated registry manifest
-const manifestJson = readFileSync(resolve(__dirname, '../registry/component-registry.json'), 'utf-8');
+const manifestJson = readFileSync(resolve(__dirname, './registry/component-registry.json'), 'utf-8');
 const manifest: RegistryManifest = JSON.parse(manifestJson);
 
 function renderWithRegistry() {
@@ -101,11 +101,15 @@ describe('Proof of Life — Part 2', () => {
 
   it('config validation works against manifest schema', () => {
     const registry = new ComponentRegistry(manifest);
-    // Valid config
-    const valid = registry.validateConfig('cost-trend-panel', { granularity: 'day', showBudgetLine: true });
+    // Valid config — uses fields that actually exist in the
+    // cost-trend-panel schema today (granularity + chartType).
+    // `showBudgetLine` was dropped during the widget-config audit;
+    // see docs/widget-config-audit.md.
+    const valid = registry.validateConfig('cost-trend-panel', { granularity: 'day', chartType: 'bar' });
     expect(valid.valid).toBe(true);
 
-    // Invalid config — unknown key
+    // Invalid config — unknown key. `additionalProperties: false`
+    // in the schema rejects this.
     const invalid = registry.validateConfig('cost-trend-panel', { unknownKey: 'value' });
     expect(invalid.valid).toBe(false);
   });
