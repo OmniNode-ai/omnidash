@@ -115,6 +115,7 @@ describe('Phase 2: Widget stories', () => {
     { rel: 'src/components/dashboard/Selectors.stories.tsx', id: 'Selectors.stories' },
     { rel: 'src/components/dashboard/ComponentWrapper.stories.tsx', id: 'ComponentWrapper.stories' },
     { rel: 'src/components/dashboard/ComponentPalette.stories.tsx', id: 'ComponentPalette.stories' },
+    { rel: 'src/config/ComponentConfigPanel.stories.tsx', id: 'ComponentConfigPanel.stories' },
   ];
 
   for (const { rel, id } of STORY_FILES) {
