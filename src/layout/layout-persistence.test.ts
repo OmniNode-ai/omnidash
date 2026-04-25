@@ -88,6 +88,22 @@ describe('HttpLayoutPersistence', () => {
 
       expect(fetch).toHaveBeenCalledWith('/_layouts/my%20layout%2Fwith%20spaces');
     });
+
+    it('throws on malformed dashboard payload (T2 acceptance)', async () => {
+      // Server returns 200 OK but the body is missing required fields.
+      // Callers must see a typed error, not a typed-but-corrupt return.
+      vi.stubGlobal(
+        'fetch',
+        vi.fn().mockResolvedValue({
+          ok: true,
+          status: 200,
+          statusText: 'OK',
+          json: async () => ({ id: 'x', name: 'partial' }),
+        })
+      );
+
+      await expect(persistence.read('corrupt')).rejects.toThrow(/malformed dashboard/);
+    });
   });
 
   describe('write()', () => {

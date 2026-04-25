@@ -3,7 +3,7 @@ import type { StateCreator } from 'zustand';
 import type { FrameStore, DashboardSlice } from './types';
 import type { DashboardDefinition, DashboardLayoutItem } from '@shared/types/dashboard';
 import type { GridSize } from '@shared/types/component-manifest';
-import { createEmptyDashboard } from '@shared/types/dashboard';
+import { createEmptyDashboard, parseDashboardDefinition } from '@shared/types/dashboard';
 
 const LS_LIST_KEY = 'omnidash.dashboards.list.v1';
 const LS_ACTIVE_KEY = 'omnidash.lastActiveId.v1';
@@ -31,14 +31,28 @@ function persistActiveId(id: string | null): void {
 function hydrateList(): DashboardDefinition[] {
   try {
     const raw = localStorage.getItem(LS_LIST_KEY);
-    if (raw) {
-      const parsed: unknown = JSON.parse(raw);
-      if (Array.isArray(parsed)) return parsed as DashboardDefinition[];
+    if (!raw) return [];
+    const parsed: unknown = JSON.parse(raw);
+    if (!Array.isArray(parsed)) return [];
+
+    const valid: DashboardDefinition[] = [];
+    for (const [idx, entry] of parsed.entries()) {
+      const result = parseDashboardDefinition(entry);
+      if (result.valid) {
+        valid.push(result.dashboard);
+      } else {
+        // Drop the corrupted entry but keep hydrating — never crash render
+        // on bad localStorage. Surface the reason for diagnosis.
+        console.warn(
+          `[dashboardSlice] Dropping corrupted dashboard at index ${idx}: ${result.errors.join('; ')}`,
+        );
+      }
     }
+    return valid;
   } catch {
-    // parse error — start fresh
+    // top-level parse error — start fresh rather than crash
+    return [];
   }
-  return [];
 }
 
 function hydrateActiveId(): string | null {

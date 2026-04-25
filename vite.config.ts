@@ -131,16 +131,20 @@ export default defineConfig(({ mode }) => {
       },
     },
     server: {
-      port: 3001,
-      proxy: {
-        // Routes /llm-proxy/* → LLM host to avoid CORS in dev
-        // VITE_LLM_BASE_URL holds host only (no /v1 suffix)
-        '/llm-proxy': {
-          target: env.VITE_LLM_BASE_URL ?? 'http://<lan-ip-redacted>:8000',
-          changeOrigin: true,
-          rewrite: (p) => p.replace(/^\/llm-proxy/, ''),
-        },
-      },
+      port: Number(env.VITE_DEV_PORT ?? 3001),
+      proxy: env.VITE_LLM_BASE_URL
+        ? {
+            // Routes /llm-proxy/* → LLM host to avoid CORS in dev.
+            // Only registered when VITE_LLM_BASE_URL is set, so dev does
+            // not silently fall through to a hardcoded host.
+            // VITE_LLM_BASE_URL holds host only (no /v1 suffix).
+            '/llm-proxy': {
+              target: env.VITE_LLM_BASE_URL,
+              changeOrigin: true,
+              rewrite: (p) => p.replace(/^\/llm-proxy/, ''),
+            },
+          }
+        : undefined,
     },
   };
 });

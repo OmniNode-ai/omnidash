@@ -5,7 +5,20 @@
 set -euo pipefail
 
 REPO="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-OMNIBASE_CORE="${OMNIBASE_CORE_PATH:-/mnt/c/Code/omninode_ai/omnibase/repos/omnibase_core}"
+
+if [[ -z "${OMNIBASE_CORE_PATH:-}" ]]; then
+  echo "ERROR: OMNIBASE_CORE_PATH is not set." >&2
+  echo "       Set it to the path of an omnibase_core checkout." >&2
+  echo "       See .env.example for details." >&2
+  exit 1
+fi
+
+if [[ ! -d "$OMNIBASE_CORE_PATH" ]]; then
+  echo "ERROR: OMNIBASE_CORE_PATH does not exist: $OMNIBASE_CORE_PATH" >&2
+  exit 1
+fi
+
+OMNIBASE_CORE="$OMNIBASE_CORE_PATH"
 SCHEMA_OUT="$REPO/build/onex-schemas.json"
 TS_OUT="$REPO/src/shared/types/generated/onex-models.ts"
 ENUM_OUT="$REPO/src/shared/types/generated/enum-dashboard-widget-type.ts"
