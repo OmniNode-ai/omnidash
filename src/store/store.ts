@@ -5,6 +5,7 @@ import { createFiltersSlice } from './filtersSlice';
 import { createDashboardSlice } from './dashboardSlice';
 import { createConversationSlice } from './conversationSlice';
 import { createConfigSlice } from './configSlice';
+import { createUISlice } from './uiSlice';
 
 export const useFrameStore = create<FrameStore>()((...a) => ({
   ...createEditModeSlice(...a),
@@ -12,4 +13,5 @@ export const useFrameStore = create<FrameStore>()((...a) => ({
   ...createDashboardSlice(...a),
   ...createConversationSlice(...a),
   ...createConfigSlice(...a),
+  ...createUISlice(...a),
 }));

@@ -12,7 +12,7 @@
 //     keeping the menu pattern consistent with the prototype across the whole app.
 
 import { useEffect, useLayoutEffect, useRef, useState } from 'react';
-import { Edit, Copy, Plus, MoreHorizontal, Trash2 } from 'lucide-react';
+import { Edit, Copy, Plus, MoreHorizontal, Trash2, ChevronsLeft, ChevronsRight } from 'lucide-react';
 import {
   PositionedMenu,
   MenuItem,
@@ -158,11 +158,17 @@ export function Sidebar() {
     duplicateDashboard,
     setActiveDashboardById,
   } = useFrameStore();
+  const collapsed = useFrameStore((s) => s.sidebarCollapsed);
+  const toggleCollapsed = useFrameStore((s) => s.toggleSidebarCollapsed);
 
   const [renamingId, setRenamingId] = useState<string | null>(null);
   const [pendingDeletionId, setPendingDeletionId] = useState<string | null>(null);
 
   const handleCreate = () => {
+    // If the user creates a dashboard while the sidebar is collapsed,
+    // there's no rename input visible to type into. Auto-expand so the
+    // user actually sees the inline rename appear.
+    if (collapsed) toggleCollapsed();
     const nd = createDashboard('Untitled Dashboard');
     setRenamingId(nd.id);
   };
@@ -178,21 +184,33 @@ export function Sidebar() {
   };
 
   return (
-    <aside className="sidebar">
+    <aside className={`sidebar${collapsed ? ' collapsed' : ''}`}>
       {/* Brand block */}
       <div className="brand">
         <BrandMark />
-        <div className="brand-name">
-          <span className="primary">
-            Omni<em>Dash</em>
-          </span>
-          <span className="parent">an omninode product</span>
-        </div>
+        {!collapsed && (
+          <div className="brand-name">
+            <span className="primary">
+              Omni<em>Dash</em>
+            </span>
+            <span className="parent">an omninode product</span>
+          </div>
+        )}
+        <button
+          type="button"
+          className="sidebar-toggle"
+          aria-label={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+          title={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+          aria-pressed={collapsed}
+          onClick={toggleCollapsed}
+        >
+          {collapsed ? <ChevronsRight size={14} /> : <ChevronsLeft size={14} />}
+        </button>
       </div>
 
       {/* Section header */}
       <div className="nav-section">
-        <span className="nav-section-title">Dashboards</span>
+        {!collapsed && <span className="nav-section-title">Dashboards</span>}
         <button
           aria-label="New dashboard"
           title="New dashboard"
@@ -213,14 +231,17 @@ export function Sidebar() {
               data-testid={`dash-item-${d.id}`}
               className={`dash-item${isActive ? ' active' : ''}`}
               onClick={() => setActiveDashboardById(d.id)}
+              // Show the dashboard name on hover when the sidebar is
+              // collapsed — otherwise users have no way to read it.
+              title={collapsed ? d.name : undefined}
             >
               {/* Marker */}
               <span className="dash-marker">
                 {isActive ? '▸' : String(i + 1).padStart(2, '0')}
               </span>
 
-              {/* Name or inline rename */}
-              {renamingId === d.id ? (
+              {/* Name or inline rename — hidden when collapsed. */}
+              {!collapsed && (renamingId === d.id ? (
                 <RenameInput
                   initialValue={d.name}
                   onCommit={(val) => handleRenameCommit(d.id, val)}
@@ -236,20 +257,24 @@ export function Sidebar() {
                 >
                   {d.name}
                 </span>
-              )}
+              ))}
 
-              {/* Kebab menu (PositionedMenu — prototype pattern) */}
-              <DashboardKebab
-                dashboardName={d.name}
-                onRename={() => setRenamingId(d.id)}
-                onDuplicate={() => duplicateDashboard(d.id)}
-                onDelete={() => setPendingDeletionId(d.id)}
-              />
+              {/* Kebab menu (PositionedMenu — prototype pattern). Hidden
+                  when collapsed; rename / duplicate / delete are still
+                  reachable after expanding. */}
+              {!collapsed && (
+                <DashboardKebab
+                  dashboardName={d.name}
+                  onRename={() => setRenamingId(d.id)}
+                  onDuplicate={() => duplicateDashboard(d.id)}
+                  onDelete={() => setPendingDeletionId(d.id)}
+                />
+              )}
             </div>
           );
         })}
 
-        {dashboards.length === 0 && (
+        {dashboards.length === 0 && !collapsed && (
           <Text
             as="div"
             size="md"

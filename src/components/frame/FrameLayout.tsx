@@ -7,14 +7,16 @@
 
 import type { ReactNode } from 'react';
 import { Sidebar } from './Sidebar';
+import { useFrameStore } from '@/store/store';
 
 interface FrameLayoutProps {
   children: ReactNode;
 }
 
 export function FrameLayout({ children }: FrameLayoutProps) {
+  const sidebarCollapsed = useFrameStore((s) => s.sidebarCollapsed);
   return (
-    <div className="app">
+    <div className={`app${sidebarCollapsed ? ' sidebar-collapsed' : ''}`}>
       <Sidebar />
       <div className="main">
         {children}
