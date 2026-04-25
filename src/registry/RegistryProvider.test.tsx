@@ -50,7 +50,7 @@ describe('RegistryProvider', () => {
 
   it('[OMN-39] resolves built-in component implementations eagerly so palette entries are available on first render', async () => {
     // Use the real generated manifest so we assert against the real componentImports map.
-    const manifestJson = (await import('../../public/component-registry.json')).default;
+    const manifestJson = (await import('./component-registry.json')).default;
     const realManifest = manifestJson as unknown as RegistryManifest;
 
     let statuses: string[] = [];

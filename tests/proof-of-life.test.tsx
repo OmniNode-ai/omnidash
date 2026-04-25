@@ -16,7 +16,7 @@ describe('Proof of Life', () => {
   });
 
   it('component registry lists at least 7 components', async () => {
-    const registry = await import('../public/component-registry.json');
+    const registry = await import('../src/registry/component-registry.json');
     // components is a record object; count keys
     expect(Object.keys(registry.components).length).toBeGreaterThanOrEqual(7);
   });
