@@ -1,9 +1,8 @@
 import { useMemo } from 'react';
-import ReactECharts from 'echarts-for-react';
 import { ComponentWrapper } from '../ComponentWrapper';
 import { useProjectionQuery } from '@/hooks/useProjectionQuery';
-import { useThemeColors } from '@/theme';
 import { Text } from '@/components/ui/typography';
+import { DoughnutChart, type DoughnutSlice } from './DoughnutChart';
 
 export interface DelegationSummary {
   totalDelegations: number;
@@ -19,25 +18,22 @@ export default function DelegationMetrics({ config: _config }: { config: Record<
     refetchInterval: 60_000,
   });
   const data = dataArr?.[0];
-  const colors = useThemeColors();
 
-  const chartOption = useMemo(() => {
-    if (!data || data.byTaskType.length === 0) return null;
-    return {
-      tooltip: { trigger: 'item' as const },
-      series: [{
-        type: 'pie' as const,
-        radius: ['40%', '70%'],
-        data: data.byTaskType.map((t, i) => ({
-          name: t.taskType,
-          value: t.count,
-          itemStyle: { color: colors.chart[i % colors.chart.length] },
-        })),
-        label: { color: colors.foreground },
-      }],
-      backgroundColor: 'transparent',
-    };
-  }, [data, colors]);
+  // Pre-compute slice percentages once so DoughnutChart can stay
+  // presentational. Sorted descending by count so the largest slice
+  // starts at 12 o'clock — matches CostByModelPie's reading order.
+  const slices = useMemo<DoughnutSlice[]>(() => {
+    if (!data || data.byTaskType.length === 0) return [];
+    const total = data.byTaskType.reduce((acc, t) => acc + t.count, 0);
+    if (total === 0) return [];
+    return data.byTaskType
+      .map((t) => ({
+        label: t.taskType,
+        value: t.count,
+        percentage: (t.count / total) * 100,
+      }))
+      .sort((a, b) => b.value - a.value);
+  }, [data]);
 
   const isEmpty = !data || data.totalDelegations === 0;
 
@@ -70,7 +66,7 @@ export default function DelegationMetrics({ config: _config }: { config: Record<
             </div>
           </div>
           <div style={{ flex: 1, minHeight: '150px' }}>
-            {chartOption && <ReactECharts option={chartOption} style={{ height: '100%' }} notMerge />}
+            <DoughnutChart slices={slices} height={260} />
           </div>
         </div>
       )}

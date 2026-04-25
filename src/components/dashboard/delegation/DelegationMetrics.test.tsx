@@ -5,9 +5,33 @@ import DelegationMetrics from './DelegationMetrics';
 
 const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } });
 
-vi.mock('echarts-for-react', () => ({
-  default: () => <div data-testid="echarts-mock">chart</div>,
-}));
+// jsdom has no WebGL context — stub the renderer so DoughnutChart's
+// scene builder can execute without throwing. Same recipe used by
+// CostByModelPie.test.tsx. The aggregation, slice-percentage, and
+// empty-state branches still run for real, which is what these tests
+// actually care about.
+vi.mock('three', async () => {
+  const actual = await vi.importActual<typeof import('three')>('three');
+  class FakeWebGLRenderer {
+    domElement = (() => {
+      const el = document.createElement('canvas');
+      el.style.display = 'block';
+      return el;
+    })();
+    setPixelRatio() {}
+    setClearColor() {}
+    setSize() {}
+    render() {}
+    dispose() {}
+  }
+  return { ...actual, WebGLRenderer: FakeWebGLRenderer };
+});
+
+class FakeResizeObserver {
+  observe() {}
+  unobserve() {}
+  disconnect() {}
+}
 
 // Helper: mock FileSnapshotSource fetch pattern — index.json then each file
 function mockFetchWithItems(items: unknown[]) {
@@ -23,7 +47,11 @@ function mockFetchWithItems(items: unknown[]) {
 }
 
 describe('DelegationMetrics', () => {
-  beforeEach(() => { qc.clear(); vi.stubGlobal('fetch', vi.fn()); });
+  beforeEach(() => {
+    qc.clear();
+    vi.stubGlobal('fetch', vi.fn());
+    vi.stubGlobal('ResizeObserver', FakeResizeObserver);
+  });
   afterEach(() => vi.restoreAllMocks());
 
   it('renders metrics when data is available', async () => {
