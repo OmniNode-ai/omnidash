@@ -15,6 +15,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import * as THREE from 'three';
 import { useThemeColors, cssColorToHex } from '@/theme';
+import { useTimezone } from '@/hooks/useTimezone';
 import { Text } from '@/components/ui/typography';
 
 // ---------- Types ----------
@@ -315,6 +316,7 @@ export function StackedChart({
   const [size, setSize] = useState<{ w: number; h: number }>({ w: 0, h: 0 });
   const [hover, setHover] = useState<HoverInfo | null>(null);
   const colors = useThemeColors();
+  const tz = useTimezone();
 
   // Mount renderer + scene + camera once.
   useEffect(() => {
@@ -610,7 +612,7 @@ export function StackedChart({
               }}
             >
               <Text as="div" family="mono" size="sm" color="secondary" style={{ marginBottom: 6 }}>
-                {new Date(tooltip.bucket).toLocaleString()}
+                {new Date(tooltip.bucket).toLocaleString(undefined, { timeZone: tz })}
               </Text>
               {/* Stack-order (top-to-bottom visually). We render the
                   rows in reverse so the top of the stacked graph is

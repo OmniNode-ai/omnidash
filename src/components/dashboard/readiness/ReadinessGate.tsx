@@ -2,6 +2,7 @@ import type { CSSProperties } from 'react';
 import { ComponentWrapper } from '../ComponentWrapper';
 import { Text } from '@/components/ui/typography';
 import { useProjectionQuery } from '@/hooks/useProjectionQuery';
+import { useTimezone } from '@/hooks/useTimezone';
 
 export type DimensionStatus = 'PASS' | 'WARN' | 'FAIL';
 
@@ -57,6 +58,7 @@ export default function ReadinessGate({ config: _config }: { config: Record<stri
     refetchInterval: 120_000,
   });
   const data = dataArr?.[0];
+  const tz = useTimezone();
 
   return (
     <ComponentWrapper
@@ -73,7 +75,7 @@ export default function ReadinessGate({ config: _config }: { config: Record<stri
             <Text size="md" color="secondary">Overall</Text>
             <StatusPill status={data.overallStatus} />
             <Text size="sm" color="tertiary" style={{ marginLeft: 'auto' }}>
-              Checked {new Date(data.lastCheckedAt).toLocaleTimeString()}
+              Checked {new Date(data.lastCheckedAt).toLocaleTimeString(undefined, { timeZone: tz })}
             </Text>
           </div>
 
