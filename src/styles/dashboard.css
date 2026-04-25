@@ -51,6 +51,17 @@
   columns: 2;
   column-gap: var(--row-gap);
 }
+/* Drop to a single column once the viewport gets too narrow for two
+   widgets side by side. 720px is the threshold below which two
+   columns each squeeze a widget below its useful min-width
+   (~340-360px after gap + chrome). The single-column layout flows
+   all widgets vertically, full-width — no widget-internal
+   responsiveness needed. */
+@media (max-width: 720px) {
+  .dash-grid {
+    columns: 1;
+  }
+}
 
 .widget {
   background: var(--panel);
