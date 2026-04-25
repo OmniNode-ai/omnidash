@@ -99,6 +99,7 @@
   border-bottom: 1px solid var(--line-2);
 }
 .widget-head-left { display: flex; align-items: center; gap: 8px; min-width: 0; }
+.widget-head-right { display: flex; align-items: center; gap: 8px; }
 .widget-grip {
   color: var(--ink-3); cursor: grab;
   opacity: 0; transition: opacity 0.15s;

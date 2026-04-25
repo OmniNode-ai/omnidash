@@ -95,39 +95,41 @@ export function ComponentWrapper({
           )}
           <span className="widget-title">{title}</span>
         </div>
-        {isLive && <span className="widget-live">Live</span>}
-        {hasMenu && (
-          <>
-            <button
-              className="widget-kebab"
-              aria-label={`${title} options`}
-              type="button"
-              onClick={menu.open}
-            >
-              <MoreVertical size={16} />
-            </button>
-            {menu.isOpen && (
-              <PositionedMenu anchor={menu.anchor} onClose={menu.close} placement="bottom-end">
-                {onConfigure && (
-                  <MenuItem onSelect={menu.select(onConfigure)}>
-                    <Settings size={14} /> Configure Widget
-                  </MenuItem>
-                )}
-                {onDuplicate && (
-                  <MenuItem onSelect={menu.select(onDuplicate)}>
-                    <Copy size={14} /> Duplicate
-                  </MenuItem>
-                )}
-                {(onConfigure || onDuplicate) && onDelete && <MenuSeparator />}
-                {onDelete && (
-                  <MenuItem variant="danger" onSelect={menu.select(onDelete)}>
-                    <Trash2 size={14} /> Remove Widget
-                  </MenuItem>
-                )}
-              </PositionedMenu>
-            )}
-          </>
-        )}
+        <div className="widget-head-right">
+          {isLive && <span className="widget-live">Live</span>}
+          {hasMenu && (
+            <>
+              <button
+                className="widget-kebab"
+                aria-label={`${title} options`}
+                type="button"
+                onClick={menu.open}
+              >
+                <MoreVertical size={16} />
+              </button>
+              {menu.isOpen && (
+                <PositionedMenu anchor={menu.anchor} onClose={menu.close} placement="bottom-end">
+                  {onConfigure && (
+                    <MenuItem onSelect={menu.select(onConfigure)}>
+                      <Settings size={14} /> Configure Widget
+                    </MenuItem>
+                  )}
+                  {onDuplicate && (
+                    <MenuItem onSelect={menu.select(onDuplicate)}>
+                      <Copy size={14} /> Duplicate
+                    </MenuItem>
+                  )}
+                  {(onConfigure || onDuplicate) && onDelete && <MenuSeparator />}
+                  {onDelete && (
+                    <MenuItem variant="danger" onSelect={menu.select(onDelete)}>
+                      <Trash2 size={14} /> Remove Widget
+                    </MenuItem>
+                  )}
+                </PositionedMenu>
+              )}
+            </>
+          )}
+        </div>
       </div>
       <div className="widget-body">
         {isLoading && <Text as="div" size="lg" color="tertiary">Loading...</Text>}
