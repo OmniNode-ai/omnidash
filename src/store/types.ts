@@ -14,6 +14,18 @@ export interface GlobalFilters {
   timeRange?: TimeRange;
   repo?: string;
   author?: string;
+  /**
+   * Dashboard-level auto-refresh interval in milliseconds. `null`
+   * means the user explicitly disabled auto-refresh. `undefined`
+   * means "no global preference set" — `useProjectionQuery` falls
+   * back to its widget-supplied `refetchInterval`. A `number` value
+   * overrides whatever the widget supplied.
+   *
+   * Wired by OMN-126: `AutoRefreshSelector` writes here,
+   * `useProjectionQuery` reads it and resolves the final
+   * `refetchInterval` for every projection query.
+   */
+  autoRefreshInterval?: number | null;
 }
 
 export interface EditModeSlice {
@@ -21,12 +33,20 @@ export interface EditModeSlice {
   setEditMode: (value: boolean) => void;
 }
 
-export type ScalarFilterKey = Exclude<keyof GlobalFilters, 'timeRange'>;
+/**
+ * Subset of `GlobalFilters` keys that are simple string values and
+ * therefore manipulated through the generic `setFilter(key, value)`
+ * setter. `timeRange` and `autoRefreshInterval` are excluded: each
+ * has its own typed setter because their values are not strings.
+ */
+export type ScalarFilterKey = Exclude<keyof GlobalFilters, 'timeRange' | 'autoRefreshInterval'>;
 
 export interface FiltersSlice {
   globalFilters: GlobalFilters;
   setTimeRange: (range: TimeRange | undefined) => void;
   setFilter: (key: ScalarFilterKey, value: string | undefined) => void;
+  /** OMN-126: set the dashboard-level auto-refresh interval. */
+  setAutoRefreshInterval: (interval: number | null) => void;
   clearFilters: () => void;
 }
 
