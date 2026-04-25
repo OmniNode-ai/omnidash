@@ -1,6 +1,7 @@
 import { render, screen } from '@testing-library/react';
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { QueryClient } from '@tanstack/react-query';
+import { DataSourceTestProvider } from '@/test-utils/dataSourceTestProvider';
 import EventStream from './EventStream';
 
 const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } });
@@ -46,7 +47,7 @@ describe('EventStream', () => {
 
   it('shows loading state initially', () => {
     (fetch as any).mockReturnValue(new Promise(() => {}));
-    render(<QueryClientProvider client={qc}><EventStream config={{ maxEvents: 200, autoScroll: true }} /></QueryClientProvider>);
+    render(<DataSourceTestProvider client={qc}><EventStream config={{ maxEvents: 200, autoScroll: true }} /></DataSourceTestProvider>);
     expect(screen.getByText('Loading...')).toBeInTheDocument();
   });
 
@@ -54,7 +55,7 @@ describe('EventStream', () => {
     mockFetchWithItems([
       { id: '1', event_type: 'onex.evt.delegation.completed.v1', source: 'omnimarket', correlation_id: 'abc', timestamp: '2026-04-10T12:00:00Z' },
     ]);
-    render(<QueryClientProvider client={qc}><EventStream config={{ maxEvents: 200, autoScroll: true }} /></QueryClientProvider>);
+    render(<DataSourceTestProvider client={qc}><EventStream config={{ maxEvents: 200, autoScroll: true }} /></DataSourceTestProvider>);
     expect(await screen.findByText('onex.evt.delegation.completed.v1')).toBeInTheDocument();
     expect(screen.getByText('omnimarket')).toBeInTheDocument();
   });
@@ -64,7 +65,7 @@ describe('EventStream', () => {
       id: String(i), event_type: `event-${i}`, source: 'test', correlation_id: `cid-${i}`, timestamp: new Date().toISOString(),
     }));
     mockFetchWithItems(manyEvents);
-    render(<QueryClientProvider client={qc}><EventStream config={{ maxEvents: 200, autoScroll: true }} /></QueryClientProvider>);
+    render(<DataSourceTestProvider client={qc}><EventStream config={{ maxEvents: 200, autoScroll: true }} /></DataSourceTestProvider>);
     // Wait for data to load by checking that event rows appear
     await screen.findAllByTestId('event-row');
     const rows = screen.queryAllByTestId('event-row');

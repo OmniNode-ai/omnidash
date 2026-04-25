@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { ComponentWrapper } from '../ComponentWrapper';
 import { useProjectionQuery } from '@/hooks/useProjectionQuery';
+import { TOPICS } from '@shared/types/topics';
 import { applyTimeRange, resolveTimeRange } from '@/hooks/useTimeRange';
 import { useThemeColors } from '@/theme';
 import { useFrameStore } from '@/store/store';
@@ -72,7 +73,7 @@ export default function CostTrendPanel({ config }: { config: CostTrendConfig }) 
   const granularity = config.granularity || 'hour';
   const chartType: ChartType = config.chartType === 'bar' ? 'bar' : 'area';
   const { data, isLoading, error } = useProjectionQuery<CostDataPoint>({
-    topic: 'onex.snapshot.projection.llm_cost.v1',
+    topic: TOPICS.llmCost,
     queryKey: ['cost-trends', granularity],
     refetchInterval: 60_000,
   });

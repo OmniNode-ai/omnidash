@@ -1,5 +1,6 @@
 import type { Decorator } from '@storybook/react-vite';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { SnapshotSourceProvider } from '@/data-source';
 import { ThemeProvider } from '@/theme';
 
 /**
@@ -102,11 +103,13 @@ export function makeDashboardDecorator(opts: DashboardContextOptions = {}): Deco
 
     return (
       <QueryClientProvider client={queryClient}>
-        <ThemeProvider defaultTheme={initialTheme}>
-          <div style={{ padding: 16, minWidth: 320 }}>
-            <Story />
-          </div>
-        </ThemeProvider>
+        <SnapshotSourceProvider>
+          <ThemeProvider defaultTheme={initialTheme}>
+            <div style={{ padding: 16, minWidth: 320 }}>
+              <Story />
+            </div>
+          </ThemeProvider>
+        </SnapshotSourceProvider>
       </QueryClientProvider>
     );
   };

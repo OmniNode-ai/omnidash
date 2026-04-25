@@ -2,6 +2,7 @@ import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { ArrowUp, Search } from 'lucide-react';
 import { ComponentWrapper } from '../ComponentWrapper';
 import { useProjectionQuery } from '@/hooks/useProjectionQuery';
+import { TOPICS } from '@shared/types/topics';
 import { useTimezone } from '@/hooks/useTimezone';
 import { Text } from '@/components/ui/typography';
 import { getWebSocketUrl } from '@/data-source';
@@ -126,7 +127,7 @@ export default function EventStream({ config }: { config: EventStreamConfig }) {
   const tz = useTimezone();
 
   const { data: initialData, isLoading, error } = useProjectionQuery<StreamEvent>({
-    topic: 'onex.snapshot.projection.registration.v1',
+    topic: TOPICS.registration,
     queryKey: ['events-recent'],
   });
 

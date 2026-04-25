@@ -1,6 +1,7 @@
 import { render, screen } from '@testing-library/react';
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { QueryClient } from '@tanstack/react-query';
+import { DataSourceTestProvider } from '@/test-utils/dataSourceTestProvider';
 import RoutingDecisionTable from './RoutingDecisionTable';
 
 const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } });
@@ -24,7 +25,7 @@ describe('RoutingDecisionTable', () => {
 
   it('shows loading state initially', () => {
     (fetch as any).mockReturnValue(new Promise(() => {}));
-    render(<QueryClientProvider client={qc}><RoutingDecisionTable config={{}} /></QueryClientProvider>);
+    render(<DataSourceTestProvider client={qc}><RoutingDecisionTable config={{}} /></DataSourceTestProvider>);
     expect(screen.getByText('Loading...')).toBeInTheDocument();
   });
 
@@ -32,7 +33,7 @@ describe('RoutingDecisionTable', () => {
     mockFetchWithItems([
       { id: '1', created_at: '2026-04-10T12:00:00Z', llm_agent: 'claude-opus', fuzzy_agent: 'gpt-4o', agreement: true, llm_confidence: 0.92, fuzzy_confidence: 0.88, cost_usd: 0.0042 },
     ]);
-    render(<QueryClientProvider client={qc}><RoutingDecisionTable config={{}} /></QueryClientProvider>);
+    render(<DataSourceTestProvider client={qc}><RoutingDecisionTable config={{}} /></DataSourceTestProvider>);
     expect(await screen.findByText('claude-opus')).toBeInTheDocument();
     expect(screen.getByText('gpt-4o')).toBeInTheDocument();
     expect(screen.getByText('Agree')).toBeInTheDocument();
@@ -40,7 +41,7 @@ describe('RoutingDecisionTable', () => {
 
   it('shows empty state when no decisions', async () => {
     (fetch as any).mockResolvedValueOnce({ ok: false });
-    render(<QueryClientProvider client={qc}><RoutingDecisionTable config={{}} /></QueryClientProvider>);
+    render(<DataSourceTestProvider client={qc}><RoutingDecisionTable config={{}} /></DataSourceTestProvider>);
     expect(await screen.findByText(/no routing decisions/i)).toBeInTheDocument();
   });
 });

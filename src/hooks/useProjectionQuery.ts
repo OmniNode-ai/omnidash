@@ -1,6 +1,5 @@
 import { useQuery } from '@tanstack/react-query';
-import { useMemo } from 'react';
-import { createSnapshotSource } from '../data-source';
+import { useSnapshotSource } from '../data-source';
 import { useFrameStore } from '../store/store';
 
 interface UseProjectionQueryOptions {
@@ -11,7 +10,10 @@ interface UseProjectionQueryOptions {
 }
 
 export function useProjectionQuery<T>(options: UseProjectionQueryOptions) {
-  const source = useMemo(() => createSnapshotSource(), []);
+  // T15 (OMN-156): the source is provided once at app root via
+  // SnapshotSourceProvider. Tests and Storybook stories wrap their tree
+  // in their own provider with a mock source.
+  const source = useSnapshotSource();
 
   // OMN-126: dashboard-level auto-refresh override. The
   // `AutoRefreshSelector` writes `globalFilters.autoRefreshInterval`,

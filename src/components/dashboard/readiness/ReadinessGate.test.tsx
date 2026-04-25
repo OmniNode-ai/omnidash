@@ -1,6 +1,7 @@
 import { render, screen } from '@testing-library/react';
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { QueryClient } from '@tanstack/react-query';
+import { DataSourceTestProvider } from '@/test-utils/dataSourceTestProvider';
 import ReadinessGate from './ReadinessGate';
 
 const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } });
@@ -24,7 +25,7 @@ describe('ReadinessGate', () => {
 
   it('shows loading state initially', () => {
     (fetch as any).mockReturnValue(new Promise(() => {}));
-    render(<QueryClientProvider client={qc}><ReadinessGate config={{}} /></QueryClientProvider>);
+    render(<DataSourceTestProvider client={qc}><ReadinessGate config={{}} /></DataSourceTestProvider>);
     expect(screen.getByText('Loading...')).toBeInTheDocument();
   });
 
@@ -42,7 +43,7 @@ describe('ReadinessGate', () => {
       overallStatus: 'WARN',
       lastCheckedAt: '2026-04-10T11:45:00Z',
     }]);
-    render(<QueryClientProvider client={qc}><ReadinessGate config={{}} /></QueryClientProvider>);
+    render(<DataSourceTestProvider client={qc}><ReadinessGate config={{}} /></DataSourceTestProvider>);
     for (const name of ['CI', 'Tests', 'Coverage', 'Contracts', 'Dependencies', 'Security', 'Performance']) {
       expect(await screen.findByText(name)).toBeInTheDocument();
     }
@@ -59,7 +60,7 @@ describe('ReadinessGate', () => {
       overallStatus: 'FAIL',
       lastCheckedAt: '2026-04-10T11:45:00Z',
     }]);
-    render(<QueryClientProvider client={qc}><ReadinessGate config={{}} /></QueryClientProvider>);
+    render(<DataSourceTestProvider client={qc}><ReadinessGate config={{}} /></DataSourceTestProvider>);
     const failElements = await screen.findAllByText('FAIL');
     expect(failElements.length).toBeGreaterThan(0);
   });

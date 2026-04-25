@@ -2,6 +2,7 @@ import { ComponentWrapper } from '../ComponentWrapper';
 import { useProjectionQuery } from '@/hooks/useProjectionQuery';
 import { useThemeColors } from '@/theme';
 import { Text } from '@/components/ui/typography';
+import { TOPICS } from '@shared/types/topics';
 
 export interface BaselinesSummary {
   snapshotId: string;
@@ -28,7 +29,7 @@ function DeltaMetric({ label, value, unit }: { label: string; value: number; uni
 
 export default function BaselinesROICard({ config: _config }: { config: Record<string, unknown> }) {
   const { data: dataArr, isLoading, error } = useProjectionQuery<BaselinesSummary>({
-    topic: 'onex.snapshot.projection.baselines.roi.v1',
+    topic: TOPICS.baselinesRoi,
     queryKey: ['baselines-summary'],
     refetchInterval: 120_000,
   });

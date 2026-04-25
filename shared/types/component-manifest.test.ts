@@ -42,4 +42,40 @@ describe('ComponentManifest validation', () => {
     });
     expect(result.valid).toBe(false);
   });
+
+  // T16 (OMN-157): generator-time discipline.
+  it('rejects a websocket dataSource without a topic', () => {
+    const result = validateComponentManifest({
+      ...validManifest,
+      dataSources: [
+        { type: 'websocket', required: false, purpose: 'live_updates' },
+      ],
+    });
+    expect(result.valid).toBe(false);
+    expect(result.errors[0]).toMatch(/websocket/);
+    expect(result.errors[0]).toMatch(/topic/);
+  });
+
+  it('rejects an api dataSource without an endpoint', () => {
+    const result = validateComponentManifest({
+      ...validManifest,
+      dataSources: [
+        { type: 'api', required: true, purpose: 'initial_fetch' },
+      ],
+    });
+    expect(result.valid).toBe(false);
+    expect(result.errors[0]).toMatch(/api/);
+    expect(result.errors[0]).toMatch(/endpoint/);
+  });
+
+  it('accepts a websocket dataSource with topic and an api dataSource with endpoint', () => {
+    const result = validateComponentManifest({
+      ...validManifest,
+      dataSources: [
+        { type: 'websocket', topic: 'onex.snapshot.projection.test.v1', required: true, purpose: 'live_updates' },
+        { type: 'api', endpoint: '/api/test', required: true, purpose: 'initial_fetch' },
+      ],
+    });
+    expect(result.valid).toBe(true);
+  });
 });

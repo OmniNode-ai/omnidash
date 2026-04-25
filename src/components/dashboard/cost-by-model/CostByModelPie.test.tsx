@@ -1,6 +1,7 @@
 import { render, screen } from '@testing-library/react';
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { QueryClient } from '@tanstack/react-query';
+import { DataSourceTestProvider } from '@/test-utils/dataSourceTestProvider';
 import CostByModelPie from './CostByModelPie';
 
 const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } });
@@ -54,9 +55,9 @@ describe('CostByModelPie', () => {
   it('shows loading state initially', () => {
     (fetch as any).mockReturnValue(new Promise(() => {}));
     render(
-      <QueryClientProvider client={qc}>
+      <DataSourceTestProvider client={qc}>
         <CostByModelPie config={{}} />
-      </QueryClientProvider>,
+      </DataSourceTestProvider>,
     );
     expect(screen.getByText('Loading...')).toBeInTheDocument();
   });
@@ -70,9 +71,9 @@ describe('CostByModelPie', () => {
       { bucket_time: '2026-04-20T04:00:00Z', model_name: 'qwen3-coder-30b', total_cost_usd: '1.00' },
     ]);
     render(
-      <QueryClientProvider client={qc}>
+      <DataSourceTestProvider client={qc}>
         <CostByModelPie config={{}} />
-      </QueryClientProvider>,
+      </DataSourceTestProvider>,
     );
     expect(await screen.findByText('deepseek-r1-32b')).toBeInTheDocument();
     expect(screen.getByText('claude-sonnet-4-6')).toBeInTheDocument();
@@ -88,9 +89,9 @@ describe('CostByModelPie', () => {
   it('shows empty state when no cost data at all', async () => {
     mockFetchWithItems([]);
     render(
-      <QueryClientProvider client={qc}>
+      <DataSourceTestProvider client={qc}>
         <CostByModelPie config={{}} />
-      </QueryClientProvider>,
+      </DataSourceTestProvider>,
     );
     expect(await screen.findByText(/no cost data available/i)).toBeInTheDocument();
   });

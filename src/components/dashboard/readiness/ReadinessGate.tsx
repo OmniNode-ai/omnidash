@@ -2,6 +2,7 @@ import type { CSSProperties } from 'react';
 import { ComponentWrapper } from '../ComponentWrapper';
 import { Text } from '@/components/ui/typography';
 import { useProjectionQuery } from '@/hooks/useProjectionQuery';
+import { TOPICS } from '@shared/types/topics';
 import { useTimezone } from '@/hooks/useTimezone';
 
 export type DimensionStatus = 'PASS' | 'WARN' | 'FAIL';
@@ -53,7 +54,7 @@ function StatusPill({ status }: { status: DimensionStatus }) {
 
 export default function ReadinessGate({ config: _config }: { config: Record<string, unknown> }) {
   const { data: dataArr, isLoading, error } = useProjectionQuery<ReadinessSummary>({
-    topic: 'onex.snapshot.projection.overnight.v1',
+    topic: TOPICS.overnightReadiness,
     queryKey: ['readiness-summary'],
     refetchInterval: 120_000,
   });

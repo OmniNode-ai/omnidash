@@ -1,6 +1,7 @@
 import { render, screen } from '@testing-library/react';
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { QueryClient } from '@tanstack/react-query';
+import { DataSourceTestProvider } from '@/test-utils/dataSourceTestProvider';
 import DelegationMetrics from './DelegationMetrics';
 
 const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } });
@@ -62,9 +63,9 @@ describe('DelegationMetrics', () => {
       byTaskType: [{ taskType: 'code-review', count: 80 }, { taskType: 'refactor', count: 70 }],
     }]);
     render(
-      <QueryClientProvider client={qc}>
+      <DataSourceTestProvider client={qc}>
         <DelegationMetrics config={{}} />
-      </QueryClientProvider>
+      </DataSourceTestProvider>
     );
     expect(await screen.findByText('150')).toBeInTheDocument();
     expect(screen.getByText('85%')).toBeInTheDocument();
@@ -78,9 +79,9 @@ describe('DelegationMetrics', () => {
       byTaskType: [],
     }]);
     render(
-      <QueryClientProvider client={qc}>
+      <DataSourceTestProvider client={qc}>
         <DelegationMetrics config={{}} />
-      </QueryClientProvider>
+      </DataSourceTestProvider>
     );
     expect(await screen.findByText(/no delegation events/i)).toBeInTheDocument();
   });

@@ -1,66 +1,30 @@
 // NO PROTOTYPE SOURCE — v2-specific store slice; actions mirror prototype app.jsx:128-163
+//
+// T14 (OMN-155): all persistence side effects flow through the
+// `dashboardService` singleton. The slice no longer touches localStorage
+// directly; that contract is the whole point of the service-led
+// architecture decision (Brett review §3 cluster C, Option 1).
 import type { StateCreator } from 'zustand';
 import type { FrameStore, DashboardSlice } from './types';
 import type { DashboardDefinition, DashboardLayoutItem } from '@shared/types/dashboard';
 import type { GridSize } from '@shared/types/component-manifest';
-import { createEmptyDashboard, parseDashboardDefinition } from '@shared/types/dashboard';
-
-const LS_LIST_KEY = 'omnidash.dashboards.list.v1';
-const LS_ACTIVE_KEY = 'omnidash.lastActiveId.v1';
+import { createEmptyDashboard } from '@shared/types/dashboard';
+import { dashboardService } from '@/services/dashboardService';
 
 function persistList(dashboards: DashboardDefinition[]): void {
-  try {
-    localStorage.setItem(LS_LIST_KEY, JSON.stringify(dashboards));
-  } catch {
-    // storage unavailable — non-fatal
-  }
+  dashboardService.persistList(dashboards);
 }
 
 function persistActiveId(id: string | null): void {
-  try {
-    if (id === null) {
-      localStorage.removeItem(LS_ACTIVE_KEY);
-    } else {
-      localStorage.setItem(LS_ACTIVE_KEY, id);
-    }
-  } catch {
-    // storage unavailable — non-fatal
-  }
+  dashboardService.persistActiveId(id);
 }
 
 function hydrateList(): DashboardDefinition[] {
-  try {
-    const raw = localStorage.getItem(LS_LIST_KEY);
-    if (!raw) return [];
-    const parsed: unknown = JSON.parse(raw);
-    if (!Array.isArray(parsed)) return [];
-
-    const valid: DashboardDefinition[] = [];
-    for (const [idx, entry] of parsed.entries()) {
-      const result = parseDashboardDefinition(entry);
-      if (result.valid) {
-        valid.push(result.dashboard);
-      } else {
-        // Drop the corrupted entry but keep hydrating — never crash render
-        // on bad localStorage. Surface the reason for diagnosis.
-        console.warn(
-          `[dashboardSlice] Dropping corrupted dashboard at index ${idx}: ${result.errors.join('; ')}`,
-        );
-      }
-    }
-    return valid;
-  } catch {
-    // top-level parse error — start fresh rather than crash
-    return [];
-  }
+  return dashboardService.hydrateList();
 }
 
 function hydrateActiveId(): string | null {
-  try {
-    return localStorage.getItem(LS_ACTIVE_KEY) ?? null;
-  } catch {
-    return null;
-  }
+  return dashboardService.hydrateActiveId();
 }
 
 let itemCounter = 0;
