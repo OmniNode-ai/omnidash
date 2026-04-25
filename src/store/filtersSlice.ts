@@ -16,5 +16,13 @@ export const createFiltersSlice: StateCreator<FrameStore, [], [], FiltersSlice> 
       }
       return { globalFilters: { ...state.globalFilters, [key]: value } };
     }),
+  setTimezone: (timezone) =>
+    set((state) => {
+      if (timezone === undefined) {
+        const { timezone: _, ...rest } = state.globalFilters;
+        return { globalFilters: rest };
+      }
+      return { globalFilters: { ...state.globalFilters, timezone } };
+    }),
   clearFilters: () => set({ globalFilters: {} }),
 });

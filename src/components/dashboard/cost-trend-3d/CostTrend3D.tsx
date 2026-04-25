@@ -15,9 +15,39 @@ import * as THREE from 'three';
 import { ComponentWrapper } from '../ComponentWrapper';
 import { useProjectionQuery } from '@/hooks/useProjectionQuery';
 import { applyTimeRange, resolveTimeRange } from '@/hooks/useTimeRange';
+import { useTimezone } from '@/hooks/useTimezone';
 import { useFrameStore } from '@/store/store';
 import { useThemeName } from '@/theme';
 import { Text } from '@/components/ui/typography';
+
+/**
+ * Zoned date components for the dashboard's active timezone. Used in
+ * place of `Date.prototype.getMonth/getDate/getFullYear/getHours/getMinutes`
+ * everywhere this widget formats bucket labels — those raw getters
+ * read browser-local values and would disagree with the rest of the
+ * dashboard once the user picks an explicit zone via TimezoneSelector.
+ */
+function zonedComponents(d: Date, timeZone: string): {
+  year: string; month: string; day: string; hour: string; minute: string;
+} {
+  const parts = new Intl.DateTimeFormat('en-US', {
+    timeZone,
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+    hour12: false,
+  }).formatToParts(d);
+  const get = (type: string) => parts.find((p) => p.type === type)?.value ?? '00';
+  return {
+    year: get('year'),
+    month: get('month'),
+    day: get('day'),
+    hour: get('hour'),
+    minute: get('minute'),
+  };
+}
 
 interface CostDataPoint {
   bucket_time: string;
@@ -394,6 +424,8 @@ interface ThreeCanvasProps {
   focusedCell: GridCell | null;
   cameraX: number;
   theme: ThemeConfig;
+  /** Dashboard-level timezone (`useTimezone()`) — used for bucket-label MM/DD HH:MM formatting and the day-rollover check. */
+  timeZone: string;
   onIsolate: (modelName: string | null) => void;
   onFocus: (cell: GridCell | null) => void;
   onAxisProjection: (projection: AxisProjection) => void;
@@ -401,7 +433,7 @@ interface ThreeCanvasProps {
 }
 
 function ThreeCanvas({
-  dataset, disabledModels, isolatedModel, focusedCell, cameraX, theme,
+  dataset, disabledModels, isolatedModel, focusedCell, cameraX, theme, timeZone,
   onIsolate, onFocus, onAxisProjection, onContextLost,
 }: ThreeCanvasProps) {
   const mountRef = useRef<HTMLDivElement | null>(null);
@@ -419,6 +451,13 @@ function ThreeCanvas({
   disabledModelsRef.current = disabledModels;
   const isolatedModelRef = useRef<string | null>(isolatedModel);
   isolatedModelRef.current = isolatedModel;
+  // Same pattern as the other prop refs: keep `timeZone` reachable
+  // from the long-lived per-frame `tick` closure inside the mount
+  // useEffect. The mount effect deliberately doesn't take `timeZone`
+  // as a dep — re-running it would tear down and rebuild the entire
+  // three.js scene every time the user switched zones.
+  const timeZoneRef = useRef<string>(timeZone);
+  timeZoneRef.current = timeZone;
   const themeRef = useRef<ThemeConfig>(theme);
   themeRef.current = theme;
   const onIsolateRef = useRef(onIsolate);
@@ -821,19 +860,21 @@ function ThreeCanvas({
           const z = spanZ / 2 + 0.45;
           const s = toScreen(new THREE.Vector3(x, 0, z));
           const d = new Date(bucket);
-          const date = `${String(d.getMonth() + 1).padStart(2, '0')}/${String(d.getDate()).padStart(2, '0')}`;
-          const time = `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
+          const c = zonedComponents(d, timeZoneRef.current);
+          const date = `${c.month}/${c.day}`;
+          const time = `${c.hour}:${c.minute}`;
           // Only print the date on the first bucket or whenever the calendar
           // day rolls over. Printing `MM/DD` on every hourly bucket produced a
           // wall of repeated "4/21"s — visual noise that hid the actual
-          // timeline structure. If we later want it sparser (week/month
-          // edges only) or denser, change the comparison below.
+          // timeline structure. The rollover check uses the SAME zone so a
+          // user in Tokyo viewing UTC sees rollovers at UTC midnight, not at
+          // their local midnight.
           let showDate = i === 0;
           if (!showDate) {
-            const prev = new Date(ds.buckets[i - 1]);
-            showDate = prev.getDate() !== d.getDate()
-              || prev.getMonth() !== d.getMonth()
-              || prev.getFullYear() !== d.getFullYear();
+            const prev = zonedComponents(new Date(ds.buckets[i - 1]), timeZoneRef.current);
+            showDate = prev.day !== c.day
+              || prev.month !== c.month
+              || prev.year !== c.year;
           }
           return { date: showDate ? date : '', time, x: s.x, y: s.y };
         });
@@ -1016,6 +1057,7 @@ export default function CostTrend3D({ config: _config }: { config: Record<string
 
   const themeName = useThemeName();
   const theme = themeName === 'dark' ? DARK_THEME : LIGHT_THEME;
+  const tz = useTimezone();
 
   // Escape clears focus.
   useEffect(() => {
@@ -1123,6 +1165,7 @@ export default function CostTrend3D({ config: _config }: { config: Record<string
               focusedCell={focusedCell}
               cameraX={cameraX}
               theme={theme}
+              timeZone={tz}
               onIsolate={handleIsolate}
               onFocus={handleFocus}
               onAxisProjection={handleAxes}
@@ -1158,8 +1201,8 @@ export default function CostTrend3D({ config: _config }: { config: Record<string
               {focusedCell && (() => {
                 const hoverColor = hexForModel(theme.modelPalette, focusedCell.modelIndex);
                 const d = new Date(focusedCell.bucketTime);
-                const dateStr = d.toLocaleDateString();
-                const timeStr = d.toLocaleTimeString();
+                const dateStr = d.toLocaleDateString(undefined, { timeZone: tz });
+                const timeStr = d.toLocaleTimeString(undefined, { timeZone: tz });
                 const cpr = focusedCell.requestCount > 0
                   ? focusedCell.cost / focusedCell.requestCount : 0;
                 const tpr = focusedCell.requestCount > 0
@@ -1297,9 +1340,9 @@ export default function CostTrend3D({ config: _config }: { config: Record<string
             >
               <Text as="span" family="mono" size="xs" leading="tight" style={{ minWidth: 52, textAlign: 'right', color: theme.labelPrimary }}>
                 {(() => {
-                  const d = new Date(dataset.buckets[0]);
-                  const date = `${String(d.getMonth() + 1).padStart(2, '0')}/${String(d.getDate()).padStart(2, '0')}`;
-                  const time = `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
+                  const c = zonedComponents(new Date(dataset.buckets[0]), tz);
+                  const date = `${c.month}/${c.day}`;
+                  const time = `${c.hour}:${c.minute}`;
                   return (
                     <>
                       <div>{date}</div>
@@ -1320,9 +1363,9 @@ export default function CostTrend3D({ config: _config }: { config: Record<string
               />
               <Text as="span" family="mono" size="xs" leading="tight" style={{ minWidth: 52, color: theme.labelPrimary }}>
                 {(() => {
-                  const d = new Date(dataset.buckets[dataset.buckets.length - 1]);
-                  const date = `${String(d.getMonth() + 1).padStart(2, '0')}/${String(d.getDate()).padStart(2, '0')}`;
-                  const time = `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
+                  const c = zonedComponents(new Date(dataset.buckets[dataset.buckets.length - 1]), tz);
+                  const date = `${c.month}/${c.day}`;
+                  const time = `${c.hour}:${c.minute}`;
                   return (
                     <>
                       <div>{date}</div>
