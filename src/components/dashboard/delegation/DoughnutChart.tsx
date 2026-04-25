@@ -5,10 +5,14 @@
 //     full pie wedge. Inner radius is non-zero, leaving a hole.
 //   - Slow continuous rotation around Y. Pauses on hover so users
 //     can read the labels without chasing a moving target.
-//   - Labels live in 3D as `THREE.Sprite`s positioned just outside
-//     the slice's outer rim, connected to the rim midpoint by a
-//     thin `THREE.Line`. Sprites always face the camera, so labels
-//     stay legible while the doughnut spins.
+//   - Labels rendered via `CSS2DRenderer` as real DOM elements
+//     positioned in 3D space. Native browser font rendering means
+//     they're sharp at any zoom — the previous canvas-texture
+//     `THREE.Sprite` approach produced bilinear-sampling blur that
+//     was particularly visible on the smaller font sizes the user
+//     wanted. Each label sits at the top of a vertical "skewer"
+//     line rising from the slice's surface; the labels track their
+//     slice as the doughnut spins.
 //
 // Architecture matches the CostByModelPie scaffold so future visual
 // changes can be ported between the two without divergence: per-theme
@@ -17,6 +21,7 @@
 // positions without rebuilding the doughnut.
 import { useEffect, useMemo, useRef, useState, useCallback } from 'react';
 import * as THREE from 'three';
+import { CSS2DRenderer, CSS2DObject } from 'three/addons/renderers/CSS2DRenderer.js';
 import { Text } from '@/components/ui/typography';
 import { useThemeColors, useThemeName, cssColorToHex } from '@/theme';
 
@@ -126,71 +131,40 @@ const LIGHT_DOUGHNUT_THEME: DoughnutTheme = {
   leaderLineHex: 0x6b7580,
 };
 
-// ---------- Sprite label helper ----------
+// ---------- DOM label helper ----------
 
 /**
- * Render label text into a canvas and wrap it in a `THREE.Sprite` so
- * the label always faces the camera regardless of doughnut rotation.
+ * Build a `CSS2DObject` carrying a `<div>` with the slice's label
+ * text. `CSS2DRenderer` projects the object's world position into
+ * screen space each frame and translates the DOM element to match —
+ * so the label tracks its slice through the doughnut's rotation
+ * while the text itself is rendered natively by the browser at the
+ * device's pixel ratio. No texture, no bilinear blur.
  *
- * The canvas is sized to fit the text at high DPI; the sprite's world
- * scale is set so the rendered glyph is consistent in size at our
- * fixed camera distance.
+ * `center` anchors the BOTTOM-center of the element at the world
+ * position, so positioning the label at the top of a vertical
+ * skewer line makes the text sit directly on the skewer's tip with
+ * the text extending upward.
  */
-function makeLabelSprite(text: string, color: string): THREE.Sprite {
-  // Two-pass canvas: measure, then render. Padding chosen so descenders
-  // and the leader-line attachment have breathing room.
-  const padX = 8;
-  const padY = 4;
-  const fontSize = 15;
-  const canvas = document.createElement('canvas');
-  const ctx = canvas.getContext('2d');
-  if (!ctx) {
-    // Defensive fallback — should never happen in real browsers.
-    return new THREE.Sprite(new THREE.SpriteMaterial({ transparent: true }));
-  }
-  ctx.font = `600 ${fontSize}px IBM Plex Sans, system-ui, sans-serif`;
-  const metrics = ctx.measureText(text);
-  const textWidth = Math.ceil(metrics.width);
-  canvas.width = textWidth + padX * 2;
-  canvas.height = fontSize + padY * 2;
-  const ctx2 = canvas.getContext('2d')!;
-  ctx2.font = `600 ${fontSize}px IBM Plex Sans, system-ui, sans-serif`;
-  ctx2.fillStyle = color;
-  ctx2.textBaseline = 'middle';
-  ctx2.textAlign = 'left';
-  ctx2.fillText(text, padX, canvas.height / 2);
-
-  const texture = new THREE.CanvasTexture(canvas);
-  texture.minFilter = THREE.LinearFilter;
-  texture.magFilter = THREE.LinearFilter;
-  const material = new THREE.SpriteMaterial({
-    map: texture,
-    transparent: true,
-    depthTest: false, // labels float above geometry — never occluded
-    // Constant screen size regardless of depth. Default `true` would
-    // shrink the label as the slice rotates away from the camera and
-    // grow it as the slice rotates toward the camera, which made the
-    // labels feel "alive" in a distracting way. Setting this to false
-    // pegs the sprite at a fixed pixel size at any depth.
-    sizeAttenuation: false,
-  });
-  const sprite = new THREE.Sprite(material);
-  // Anchor at bottom-center so the sprite's `position` corresponds
-  // to where the skewer line meets the bottom of the label, and the
-  // text extends straight up from there.
-  sprite.center.set(0.5, 0);
-  // With sizeAttenuation false, scale is interpreted as a world-unit
-  // size at the camera's reference depth — the shader cancels the
-  // perspective division so screen size stays constant regardless of
-  // the sprite's actual depth. 0.05 lands the label at roughly
-  // half the previous attenuated max size. X is derived from the
-  // canvas aspect so the rendered text doesn't squash.
-  const screenScaleY = 0.05;
-  const screenScaleX = (canvas.width / canvas.height) * screenScaleY;
-  sprite.scale.set(screenScaleX, screenScaleY, 1);
-  // Render labels last so they always sit on top of slices/leader lines.
-  sprite.renderOrder = 10;
-  return sprite;
+function makeLabelObject(text: string, color: string): CSS2DObject {
+  const el = document.createElement('div');
+  el.textContent = text;
+  el.style.fontFamily = "'IBM Plex Sans', system-ui, sans-serif";
+  el.style.fontSize = '11px';
+  el.style.fontWeight = '600';
+  el.style.lineHeight = '1';
+  el.style.color = color;
+  el.style.whiteSpace = 'nowrap';
+  el.style.userSelect = 'none';
+  // Disable pointer-events so the slice mesh below stays raycastable
+  // even when the cursor is over a label.
+  el.style.pointerEvents = 'none';
+  const obj = new CSS2DObject(el);
+  // Anchor bottom-center: the element's bottom edge sits at the
+  // object's world position. With the skewer's top as the anchor,
+  // the text reads as sitting on top of the line.
+  obj.center.set(0.5, 1);
+  return obj;
 }
 
 // ---------- Component ----------
@@ -208,6 +182,11 @@ export function DoughnutChart({ slices, height = 260 }: DoughnutChartProps) {
 
   const mountRef = useRef<HTMLDivElement>(null);
   const rendererRef = useRef<THREE.WebGLRenderer | null>(null);
+  // Parallel CSS2DRenderer for native-DOM labels. Its DOM container
+  // overlays the WebGL canvas (via absolute positioning + pointer-
+  // events: none) and renders each `CSS2DObject`'s element at the
+  // projected screen position of its 3D world coordinates.
+  const labelRendererRef = useRef<CSS2DRenderer | null>(null);
   const sceneRef = useRef<THREE.Scene | null>(null);
   const cameraRef = useRef<THREE.PerspectiveCamera | null>(null);
   const doughnutGroupRef = useRef<THREE.Group | null>(null);
@@ -240,6 +219,19 @@ export function DoughnutChart({ slices, height = 260 }: DoughnutChartProps) {
     renderer.domElement.style.height = '100%';
     mount.appendChild(renderer.domElement);
     rendererRef.current = renderer;
+
+    // Overlay DOM-label renderer. Positioned absolute over the WebGL
+    // canvas; pointer-events disabled so the slice raycaster on
+    // `mountRef` still receives hover events through the overlay.
+    const labelRenderer = new CSS2DRenderer();
+    labelRenderer.domElement.style.position = 'absolute';
+    labelRenderer.domElement.style.top = '0';
+    labelRenderer.domElement.style.left = '0';
+    labelRenderer.domElement.style.width = '100%';
+    labelRenderer.domElement.style.height = '100%';
+    labelRenderer.domElement.style.pointerEvents = 'none';
+    mount.appendChild(labelRenderer.domElement);
+    labelRendererRef.current = labelRenderer;
 
     const scene = new THREE.Scene();
     sceneRef.current = scene;
@@ -295,9 +287,14 @@ export function DoughnutChart({ slices, height = 260 }: DoughnutChartProps) {
         doughnutGroupRef.current.rotation.z += dt * RADIANS_PER_SECOND;
       }
       const r = rendererRef.current;
+      const lr = labelRendererRef.current;
       const s = sceneRef.current;
       const c = cameraRef.current;
       if (r && s && c) r.render(s, c);
+      // Render labels AFTER the WebGL pass — same scene + camera, so
+      // each `CSS2DObject`'s element gets translated to the correct
+      // screen position for this frame's doughnut rotation.
+      if (lr && s && c) lr.render(s, c);
       rafId = requestAnimationFrame(tick);
     };
     rafId = requestAnimationFrame(tick);
@@ -313,9 +310,9 @@ export function DoughnutChart({ slices, height = 260 }: DoughnutChartProps) {
             const mat = o.material;
             if (Array.isArray(mat)) mat.forEach((m) => m.dispose());
             else mat?.dispose();
-          } else if (o instanceof THREE.Sprite) {
-            o.material.map?.dispose();
-            o.material.dispose();
+          } else if (o instanceof CSS2DObject) {
+            // Detach the DOM element from the overlay container.
+            o.element.remove();
           } else if (o instanceof THREE.Line) {
             o.geometry?.dispose();
             (o.material as THREE.Material).dispose();
@@ -325,9 +322,11 @@ export function DoughnutChart({ slices, height = 260 }: DoughnutChartProps) {
       }
       renderer.dispose();
       if (renderer.domElement.parentNode === mount) mount.removeChild(renderer.domElement);
+      if (labelRenderer.domElement.parentNode === mount) mount.removeChild(labelRenderer.domElement);
       sceneRef.current = null;
       cameraRef.current = null;
       rendererRef.current = null;
+      labelRendererRef.current = null;
     };
   }, []);
 
@@ -342,6 +341,12 @@ export function DoughnutChart({ slices, height = 260 }: DoughnutChartProps) {
     if (size.w < 2 || size.h < 2) return;
 
     renderer.setSize(size.w, size.h, false);
+    // Keep the DOM-label renderer's coordinate space in sync with the
+    // WebGL canvas. Mismatched sizes would project labels to the wrong
+    // pixel positions.
+    if (labelRendererRef.current) {
+      labelRendererRef.current.setSize(size.w, size.h);
+    }
     camera.aspect = size.w / size.h;
     camera.updateProjectionMatrix();
 
@@ -359,9 +364,10 @@ export function DoughnutChart({ slices, height = 260 }: DoughnutChartProps) {
           const mat = o.material;
           if (Array.isArray(mat)) mat.forEach((m) => m.dispose());
           else mat?.dispose();
-        } else if (o instanceof THREE.Sprite) {
-          o.material.map?.dispose();
-          o.material.dispose();
+        } else if (o instanceof CSS2DObject) {
+          // Detach the DOM element from the overlay so it doesn't
+          // linger after the slice it belonged to is gone.
+          o.element.remove();
         } else if (o instanceof THREE.Line) {
           o.geometry?.dispose();
           (o.material as THREE.Material).dispose();
@@ -431,21 +437,19 @@ export function DoughnutChart({ slices, height = 260 }: DoughnutChartProps) {
       const line = new THREE.Line(lineGeom, lineMat);
       sliceGroup.add(line);
 
-      // Label sprite sits at the top of the skewer, lifted up by
-      // half its world height + a small gap so the line visually
-      // attaches to the bottom of the text instead of bisecting it.
-      const labelText = `${s.label}  ${s.percentage.toFixed(0)}%`;
-      const sprite = makeLabelSprite(labelText, theme.labelTextColor);
-      // Sprite is anchored at its bottom-center (see makeLabelSprite),
-      // so positioning the sprite at the top of the skewer puts the
+      // CSS2DObject label at the top of the skewer. The DOM element
+      // is anchored at its bottom-center (see makeLabelObject), so
+      // positioning the object at the top of the skewer puts the
       // line tip at the bottom of the text. A tiny world-space gap
       // keeps the line from visually touching the descenders.
-      sprite.position.set(
+      const labelText = `${s.label}  ${s.percentage.toFixed(0)}%`;
+      const label = makeLabelObject(labelText, theme.labelTextColor);
+      label.position.set(
         skewerX,
         skewerY,
         THICKNESS + SKEWER_LENGTH + SKEWER_LABEL_GAP,
       );
-      sliceGroup.add(sprite);
+      sliceGroup.add(label);
 
       doughnutGroup.add(sliceGroup);
       handles.push({ group: sliceGroup, mesh, midAngle, sliceIdx: i });
