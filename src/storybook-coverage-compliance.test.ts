@@ -118,6 +118,7 @@ describe('Phase 2: Widget stories', () => {
     { rel: 'src/components/frame/Header.stories.tsx', id: 'Header.stories' },
     { rel: 'src/components/frame/Sidebar.stories.tsx', id: 'Sidebar.stories' },
     { rel: 'src/components/frame/FrameLayout.stories.tsx', id: 'FrameLayout.stories' },
+    { rel: 'src/components/frame/DeleteDashboardDialog.stories.tsx', id: 'DeleteDashboardDialog.stories' },
     { rel: 'src/config/ComponentConfigPanel.stories.tsx', id: 'ComponentConfigPanel.stories' },
   ];
 

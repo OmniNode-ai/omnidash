@@ -28,3 +28,15 @@
 .btn.accent:hover { background: oklch(78% 0.15 var(--accent-h)); border-color: oklch(78% 0.15 var(--accent-h)); }
 .btn.ghost { border-color: transparent; }
 .btn.ghost:hover { background: var(--panel-2); border-color: var(--line); }
+
+/* OMN-127 — destructive variant for confirm-deletion buttons. Uses
+   --status-bad so colour drift is automatic when the bad-status token
+   is retuned per theme. Not in the OmniDash.html prototype yet, but
+   needed for the Delete Dashboard confirm flow. */
+.btn.danger {
+  background: var(--status-bad);
+  border-color: var(--status-bad);
+  color: oklch(15% 0.04 25);
+}
+.btn.danger:hover { background: oklch(58% 0.18 25); border-color: oklch(58% 0.18 25); }
+[data-theme="dark"] .btn.danger { color: oklch(98% 0.01 25); }

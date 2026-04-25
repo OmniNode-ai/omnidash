@@ -21,6 +21,7 @@ import {
 } from '@/components/ui/positioned-menu';
 import { Text } from '@/components/ui/typography';
 import { useFrameStore } from '@/store/store';
+import { DeleteDashboardDialog } from './DeleteDashboardDialog';
 
 /** Inline OmniDash brand-mark SVG from prototype (visual fidelity preferred over lucide Hexagon). */
 function BrandMark() {
@@ -159,6 +160,7 @@ export function Sidebar() {
   } = useFrameStore();
 
   const [renamingId, setRenamingId] = useState<string | null>(null);
+  const [pendingDeletionId, setPendingDeletionId] = useState<string | null>(null);
 
   const handleCreate = () => {
     const nd = createDashboard('Untitled Dashboard');
@@ -241,7 +243,7 @@ export function Sidebar() {
                 dashboardName={d.name}
                 onRename={() => setRenamingId(d.id)}
                 onDuplicate={() => duplicateDashboard(d.id)}
-                onDelete={() => deleteDashboard(d.id)}
+                onDelete={() => setPendingDeletionId(d.id)}
               />
             </div>
           );
@@ -267,6 +269,18 @@ export function Sidebar() {
         )}
       </div>
 
+      <DeleteDashboardDialog
+        dashboardName={
+          pendingDeletionId
+            ? (dashboards.find((d) => d.id === pendingDeletionId)?.name ?? null)
+            : null
+        }
+        onConfirm={() => {
+          if (pendingDeletionId) deleteDashboard(pendingDeletionId);
+          setPendingDeletionId(null);
+        }}
+        onCancel={() => setPendingDeletionId(null)}
+      />
     </aside>
   );
 }
