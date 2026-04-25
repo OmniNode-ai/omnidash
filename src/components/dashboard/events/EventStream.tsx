@@ -2,6 +2,7 @@ import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { ArrowUp, Search } from 'lucide-react';
 import { ComponentWrapper } from '../ComponentWrapper';
 import { useProjectionQuery } from '@/hooks/useProjectionQuery';
+import { useTimezone } from '@/hooks/useTimezone';
 import { Text } from '@/components/ui/typography';
 
 export interface StreamEvent {
@@ -33,18 +34,28 @@ const SCROLL_UP_THRESHOLD_PX = 40;
  * for older events so the date isn't lost. The title attribute on each
  * row exposes the full local string for developers debugging a specific
  * event.
+ *
+ * `timeZone` is the dashboard-level zone (`useTimezone()`); both the
+ * MM/DD calendar parts and the HH:MM clock parts must come from the
+ * same zone so they can never disagree at a day boundary.
  */
-function formatEventTime(iso: string): string {
+function formatEventTime(iso: string, timeZone: string): string {
   const d = new Date(iso);
   if (Number.isNaN(d.getTime())) return '—';
   const ageMs = Date.now() - d.getTime();
   if (ageMs < 24 * 60 * 60 * 1000) {
-    return d.toLocaleTimeString([], { hour12: false });
+    return d.toLocaleTimeString([], { timeZone, hour12: false });
   }
-  const mm = String(d.getMonth() + 1).padStart(2, '0');
-  const dd = String(d.getDate()).padStart(2, '0');
-  const hm = d.toLocaleTimeString([], { hour12: false, hour: '2-digit', minute: '2-digit' });
-  return `${mm}/${dd} ${hm}`;
+  const parts = new Intl.DateTimeFormat('en-US', {
+    timeZone,
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+    hour12: false,
+  }).formatToParts(d);
+  const get = (type: string) => parts.find((p) => p.type === type)?.value ?? '';
+  return `${get('month')}/${get('day')} ${get('hour')}:${get('minute')}`;
 }
 
 /**
@@ -115,6 +126,7 @@ function useEventWebSocket(onEvent: (e: StreamEvent) => void) {
 export default function EventStream({ config }: { config: EventStreamConfig }) {
   const maxEvents = config.maxEvents ?? 200;
   const autoScroll = config.autoScroll ?? true;
+  const tz = useTimezone();
 
   const { data: initialData, isLoading, error } = useProjectionQuery<StreamEvent>({
     topic: 'onex.snapshot.projection.registration.v1',
@@ -284,7 +296,7 @@ export default function EventStream({ config }: { config: EventStreamConfig }) {
                 <div
                   key={ev.id}
                   data-testid="event-row"
-                  title={`${ev.event_type}\nsource: ${ev.source}\ncorrelation: ${ev.correlation_id}\n${new Date(ev.timestamp).toLocaleString()}`}
+                  title={`${ev.event_type}\nsource: ${ev.source}\ncorrelation: ${ev.correlation_id}\n${new Date(ev.timestamp).toLocaleString(undefined, { timeZone: tz })}`}
                   style={{
                     display: 'grid',
                     gridTemplateColumns: ROW_COLUMNS,
@@ -295,7 +307,7 @@ export default function EventStream({ config }: { config: EventStreamConfig }) {
                   }}
                 >
                   <Text size="md" family="mono" color="tertiary" tabularNums>
-                    {formatEventTime(ev.timestamp)}
+                    {formatEventTime(ev.timestamp, tz)}
                   </Text>
                   <Text size="md" family="mono" truncate>
                     {ev.event_type}

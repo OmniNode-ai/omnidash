@@ -27,5 +27,13 @@ export const createFiltersSlice: StateCreator<FrameStore, [], [], FiltersSlice> 
     set((state) => ({
       globalFilters: { ...state.globalFilters, autoRefreshInterval: interval },
     })),
+  setTimezone: (timezone) =>
+    set((state) => {
+      if (timezone === undefined) {
+        const { timezone: _, ...rest } = state.globalFilters;
+        return { globalFilters: rest };
+      }
+      return { globalFilters: { ...state.globalFilters, timezone } };
+    }),
   clearFilters: () => set({ globalFilters: { autoRefreshInterval: DEFAULT_AUTO_REFRESH_MS } }),
 });
