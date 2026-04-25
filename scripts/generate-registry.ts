@@ -74,7 +74,6 @@ const MVP_COMPONENTS: Record<string, ComponentManifest> = {
           title: 'Chart type',
           description: 'How each model\'s cost contribution is drawn over time. Area stacks smooth filled bands; bar stacks discrete columns per time bucket.',
         },
-        showBudgetLine: { type: 'boolean', default: true },
       },
       additionalProperties: false,
     },
@@ -159,7 +158,15 @@ const MVP_COMPONENTS: Record<string, ComponentManifest> = {
     implementationKey: 'routing/RoutingDecisionTable',
     configSchema: {
       type: 'object',
-      properties: { pageSize: { type: 'number', default: 20 } },
+      properties: {
+        pageSize: {
+          type: 'number',
+          enum: [10, 25, 50, 100],
+          default: 25,
+          title: 'Rows per page',
+          description: 'How many decisions to render per page before pagination controls.',
+        },
+      },
       additionalProperties: false,
     },
     dataSources: [

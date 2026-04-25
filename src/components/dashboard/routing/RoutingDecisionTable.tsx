@@ -21,7 +21,10 @@ export interface RoutingDecision {
 type SortKey = 'created_at' | 'llm_agent' | 'fuzzy_agent' | 'agreement' | 'llm_confidence' | 'cost_usd';
 type SortDir = 'asc' | 'desc';
 
-const PAGE_SIZE = 25;
+// Default rows-per-page when the placement doesn't override via
+// `config.pageSize`. The manifest enum is [10, 25, 50, 100]; the
+// default there matches this constant.
+const DEFAULT_PAGE_SIZE = 25;
 
 interface Column {
   key: SortKey;
@@ -64,7 +67,11 @@ function formatTimestamp(iso: string, timeZone: string): string {
   return `${get('month')}/${get('day')} ${time}`;
 }
 
-export default function RoutingDecisionTable({ config: _config }: { config: Record<string, unknown> }) {
+export default function RoutingDecisionTable({ config }: { config: Record<string, unknown> }) {
+  const pageSize = typeof config.pageSize === 'number' && config.pageSize > 0
+    ? config.pageSize
+    : DEFAULT_PAGE_SIZE;
+
   const { data, isLoading, error } = useProjectionQuery<RoutingDecision>({
     topic: 'onex.snapshot.projection.delegation.decisions.v1',
     queryKey: ['routing-decisions'],
@@ -116,10 +123,10 @@ export default function RoutingDecisionTable({ config: _config }: { config: Reco
     return copy;
   }, [filtered, sort]);
 
-  const totalPages = Math.max(1, Math.ceil(sorted.length / PAGE_SIZE));
+  const totalPages = Math.max(1, Math.ceil(sorted.length / pageSize));
   const safePage = Math.min(page, totalPages - 1);
   const pageRows = useMemo(
-    () => sorted.slice(safePage * PAGE_SIZE, (safePage + 1) * PAGE_SIZE),
+    () => sorted.slice(safePage * pageSize, (safePage + 1) * pageSize),
     [sorted, safePage],
   );
 

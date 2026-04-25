@@ -11,7 +11,12 @@ export interface DelegationSummary {
   byTaskType: Array<{ taskType: string; count: number }>;
 }
 
-export default function DelegationMetrics({ config: _config }: { config: Record<string, unknown> }) {
+export default function DelegationMetrics({ config }: { config: Record<string, unknown> }) {
+  // Each `show*` flag defaults to true so existing dashboards (whose
+  // configs pre-date the wiring) keep their full stat layout.
+  const showSavings = config.showSavings !== false;
+  const showQualityGates = config.showQualityGates !== false;
+
   const { data: dataArr, isLoading, error } = useProjectionQuery<DelegationSummary>({
     topic: 'onex.snapshot.projection.delegation.summary.v1',
     queryKey: ['delegation-summary'],
@@ -53,17 +58,21 @@ export default function DelegationMetrics({ config: _config }: { config: Record<
               <Text as="div" size="4xl" weight="bold" color="primary">{data.totalDelegations}</Text>
               <Text as="div" size="md" color="primary">Total Delegations</Text>
             </div>
-            <div>
-              {/* 0.8 (80%) is hardcoded product policy — should eventually be configurable via component config */}
-              <Text as="div" size="4xl" weight="bold" color={data.qualityGatePassRate >= 0.8 ? 'ok' : 'warn'}>
-                {Math.round(data.qualityGatePassRate * 100)}%
-              </Text>
-              <Text as="div" size="md" color="primary">Quality Gate Pass Rate</Text>
-            </div>
-            <div>
-              <Text as="div" size="4xl" weight="bold" color="primary">${data.totalSavingsUsd.toFixed(2)}</Text>
-              <Text as="div" size="md" color="primary">Cost Savings</Text>
-            </div>
+            {showQualityGates && (
+              <div>
+                {/* 0.8 (80%) is hardcoded product policy — should eventually be configurable via component config */}
+                <Text as="div" size="4xl" weight="bold" color={data.qualityGatePassRate >= 0.8 ? 'ok' : 'warn'}>
+                  {Math.round(data.qualityGatePassRate * 100)}%
+                </Text>
+                <Text as="div" size="md" color="primary">Quality Gate Pass Rate</Text>
+              </div>
+            )}
+            {showSavings && (
+              <div>
+                <Text as="div" size="4xl" weight="bold" color="primary">${data.totalSavingsUsd.toFixed(2)}</Text>
+                <Text as="div" size="md" color="primary">Cost Savings</Text>
+              </div>
+            )}
           </div>
           <div style={{ flex: 1, minHeight: '150px' }}>
             <DoughnutChart slices={slices} height={260} />
