@@ -68,8 +68,21 @@ function formatTimestamp(iso: string, timeZone: string): string {
 }
 
 export default function RoutingDecisionTable({ config }: { config: Record<string, unknown> }) {
-  const pageSize = typeof config.pageSize === 'number' && config.pageSize > 0
-    ? config.pageSize
+  // Coerce because RJSF renders the manifest's number-enum as a
+  // `<select>` whose option `value` attributes are strings, and the
+  // validator (`@rjsf/validator-ajv8` without `coerceTypes`) doesn't
+  // convert them back. So `config.pageSize` can arrive as either a
+  // number (manifest default seeded into a fresh placement) or a
+  // string (user picked from the dropdown).
+  const rawPageSize = config.pageSize;
+  const parsedPageSize =
+    typeof rawPageSize === 'number'
+      ? rawPageSize
+      : typeof rawPageSize === 'string'
+        ? Number(rawPageSize)
+        : NaN;
+  const pageSize = Number.isFinite(parsedPageSize) && parsedPageSize > 0
+    ? parsedPageSize
     : DEFAULT_PAGE_SIZE;
 
   const { data, isLoading, error } = useProjectionQuery<RoutingDecision>({
