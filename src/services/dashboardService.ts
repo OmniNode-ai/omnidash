@@ -133,11 +133,9 @@ export class DashboardService {
     if (!original) return undefined;
 
     const now = new Date().toISOString();
-    // PROVISIONAL ID: dash-${Date.now()}-clone is a temporary collision-prone ID.
-    // Real persistence will use UUIDs from the Drizzle schema (uuid().primaryKey().defaultRandom()).
     const cloned: DashboardDefinition = {
       ...structuredClone(original),
-      id: `dash-${Date.now()}-clone`,
+      id: `dash-${crypto.randomUUID()}-clone`,
       name: newName,
       createdAt: now,
       updatedAt: now,
@@ -156,11 +154,9 @@ export class DashboardService {
   async importJson(json: string): Promise<DashboardDefinition> {
     const parsed = JSON.parse(json) as DashboardDefinition;
     const now = new Date().toISOString();
-    // PROVISIONAL ID: dash-${Date.now()}-import is a temporary collision-prone ID.
-    // Real persistence will use UUIDs from the Drizzle schema.
     const imported: DashboardDefinition = {
       ...parsed,
-      id: `dash-${Date.now()}-import`,
+      id: `dash-${crypto.randomUUID()}-import`,
       createdAt: now,
       updatedAt: now,
     };

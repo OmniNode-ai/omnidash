@@ -35,7 +35,7 @@ export const createConversationSlice: StateCreator<ConversationSlice> = (set) =>
     set((state) => {
       const newMessage: ConversationMessage = {
         ...msg,
-        id: `msg-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
+        id: `msg-${crypto.randomUUID()}`,
         timestamp: Date.now(),
       };
       const updated = [...state.messages, newMessage];

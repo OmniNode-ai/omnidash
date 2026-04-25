@@ -27,7 +27,6 @@ function hydrateActiveId(): string | null {
   return dashboardService.hydrateActiveId();
 }
 
-let itemCounter = 0;
 
 function deriveActive(
   dashboards: DashboardDefinition[],
@@ -98,7 +97,7 @@ export const createDashboardSlice: StateCreator<FrameStore, [], [], DashboardSli
       if (!source) return state;
       const copy: DashboardDefinition = {
         ...source,
-        id: `dash-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
+        id: `dash-${crypto.randomUUID()}`,
         name: `${source.name} (copy)`,
         // Deep-copy layout so edits to the duplicate don't mutate the original.
         layout: JSON.parse(JSON.stringify(source.layout)),
@@ -154,9 +153,8 @@ export const createDashboardSlice: StateCreator<FrameStore, [], [], DashboardSli
   addComponentToLayout: (componentName: string, componentVersion: string, defaultSize: GridSize) =>
     set((state) => {
       if (!state.activeDashboard) return state;
-      itemCounter++;
       const newItem = {
-        i: `component-${Date.now()}-${itemCounter}`,
+        i: `component-${crypto.randomUUID()}`,
         componentName,
         componentVersion,
         x: 0,
@@ -179,9 +177,8 @@ export const createDashboardSlice: StateCreator<FrameStore, [], [], DashboardSli
   insertComponentAt: (componentName, componentVersion, defaultSize, atIndex) =>
     set((state) => {
       if (!state.activeDashboard) return state;
-      itemCounter++;
       const newItem: DashboardLayoutItem = {
-        i: `component-${Date.now()}-${itemCounter}`,
+        i: `component-${crypto.randomUUID()}`,
         componentName,
         componentVersion,
         x: 0,
@@ -247,10 +244,9 @@ export const createDashboardSlice: StateCreator<FrameStore, [], [], DashboardSli
       if (!state.activeDashboard) return state;
       const source = state.activeDashboard.layout.find((l) => l.i === itemId);
       if (!source) return state;
-      itemCounter++;
       const copy: DashboardLayoutItem = {
         ...source,
-        i: `component-${Date.now()}-${itemCounter}`,
+        i: `component-${crypto.randomUUID()}`,
         // Deep-copy config so edits to the duplicate don't mutate the original.
         config: JSON.parse(JSON.stringify(source.config)),
       };

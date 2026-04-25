@@ -54,7 +54,7 @@ describe('Proof of Life — Part 3 (Full System)', () => {
     const registry = new ComponentRegistry(manifest);
     await registry.resolveImplementations();
     const available = registry.getAvailableComponents().filter((c) => c.status === 'available');
-    expect(available.length).toBe(9);
+    expect(available.length).toBe(11);
   });
 
   it('both templates pass validation', () => {

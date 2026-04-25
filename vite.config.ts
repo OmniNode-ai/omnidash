@@ -4,12 +4,21 @@ import { vanillaExtractPlugin } from '@vanilla-extract/vite-plugin';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import { readdirSync, readFileSync, writeFileSync, mkdirSync, existsSync, statSync } from 'node:fs';
+import type { IncomingMessage, ServerResponse } from 'node:http';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
+/**
+ * `next` is part of the Connect middleware contract but neither of our
+ * handlers calls it (each request resolves with res.end()). Typed for
+ * clarity rather than borrowed from `connect` to avoid pulling another
+ * type-only dep just for this signature.
+ */
+type ConnectNext = (err?: unknown) => void;
+
 export function fixturesMiddleware(opts: { root: string }) {
   const root = opts.root;
-  const handler = (req: any, res: any, _next: any) => {
+  const handler = (req: IncomingMessage, res: ServerResponse, _next: ConnectNext) => {
     // NOTE: req.url arrives WITHOUT the /_fixtures prefix (Vite strips it).
     const urlPath = (req.url ?? '').split('?')[0];
     const parts = urlPath.split('/').filter(Boolean);
@@ -52,7 +61,7 @@ export function fixturesMiddleware(opts: { root: string }) {
 
 export function layoutsMiddleware(opts: { root: string }) {
   const root = opts.root;
-  const handler = (req: any, res: any, _next: any) => {
+  const handler = (req: IncomingMessage, res: ServerResponse, _next: ConnectNext) => {
     // NOTE: req.url arrives WITHOUT the /_layouts prefix (Vite strips it).
     const urlPath = (req.url ?? '').split('?')[0];
     const parts = urlPath.split('/').filter(Boolean);

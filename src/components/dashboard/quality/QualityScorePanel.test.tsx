@@ -2,6 +2,7 @@ import { render, screen } from '@testing-library/react';
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { QueryClient } from '@tanstack/react-query';
 import { DataSourceTestProvider } from '@/test-utils/dataSourceTestProvider';
+import { mockFetchWithItems } from '@/test-utils/mockFetch';
 import QualityScorePanel from './QualityScorePanel';
 
 const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } });
@@ -28,17 +29,6 @@ vi.mock('three', async () => {
   return { ...actual, WebGLRenderer: FakeWebGLRenderer };
 });
 
-function mockFetchWithItems(items: unknown[]) {
-  const fileNames = items.map((_, i) => `${i}.json`);
-  const fileMap = new Map(fileNames.map((name, i) => [name, items[i]]));
-  (fetch as any)
-    .mockResolvedValueOnce({ ok: true, json: async () => fileNames })
-    .mockImplementation((url: string) => {
-      const filename = url.split('/').pop() ?? '';
-      const item = fileMap.get(filename) ?? null;
-      return Promise.resolve({ ok: true, json: async () => item });
-    });
-}
 
 // jsdom doesn't implement ResizeObserver; the three.js widget observes
 // its mount div to drive canvas sizing, so we shim a no-op here.
