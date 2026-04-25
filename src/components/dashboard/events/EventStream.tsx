@@ -4,6 +4,7 @@ import { ComponentWrapper } from '../ComponentWrapper';
 import { useProjectionQuery } from '@/hooks/useProjectionQuery';
 import { useTimezone } from '@/hooks/useTimezone';
 import { Text } from '@/components/ui/typography';
+import { getWebSocketUrl } from '@/data-source';
 
 export interface StreamEvent {
   id: string;
@@ -18,10 +19,6 @@ interface EventStreamConfig {
   autoScroll?: boolean;
 }
 
-// WebSocket URL: still hardcoded because the push-based surface for
-// events hasn't been moved behind the data-source port yet. Tracked as
-// OMN-37 (WebSocket carve-out sibling of the HTTP one in src/data-source/).
-const WS_URL = 'ws://localhost:3002/ws';
 const RECONNECT_DELAYS = [1_000, 2_000, 4_000, 8_000, 16_000];
 const SCROLL_HEIGHT = 320;
 const SCROLL_UP_THRESHOLD_PX = 40;
@@ -82,7 +79,7 @@ function useEventWebSocket(onEvent: (e: StreamEvent) => void) {
 
   const connect = useCallback(() => {
     if (!mountedRef.current) return;
-    const ws = new WebSocket(WS_URL);
+    const ws = new WebSocket(getWebSocketUrl());
     wsRef.current = ws;
 
     ws.onopen = () => {

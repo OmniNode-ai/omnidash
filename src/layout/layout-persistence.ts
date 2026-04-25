@@ -9,6 +9,7 @@
  */
 
 import type { DashboardDefinition } from '@shared/types/dashboard';
+import { parseDashboardDefinition } from '@shared/types/dashboard';
 
 export interface LayoutPersistence {
   read(name: string): Promise<DashboardDefinition | null>;
@@ -27,7 +28,14 @@ export class HttpLayoutPersistence implements LayoutPersistence {
     const res = await fetch(url);
     if (res.status === 404) return null;
     if (!res.ok) throw new Error(`/_layouts read failed: ${res.status} ${res.statusText}`);
-    return (await res.json()) as DashboardDefinition;
+    const body: unknown = await res.json();
+    const result = parseDashboardDefinition(body);
+    if (!result.valid) {
+      throw new Error(
+        `/_layouts read returned malformed dashboard for "${name}": ${result.errors.join('; ')}`,
+      );
+    }
+    return result.dashboard;
   }
 
   async write(name: string, layout: DashboardDefinition): Promise<void> {

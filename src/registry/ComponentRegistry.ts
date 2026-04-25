@@ -1,3 +1,4 @@
+import type { JSONSchema7, JSONSchema7Definition, JSONSchema7TypeName } from 'json-schema';
 import type { ComponentCategory } from '@shared/types/component-manifest';
 import type { RegisteredComponent, RegistryManifest, ValidationResult } from './types';
 import { componentImports } from '@/components/dashboard';
@@ -50,13 +51,15 @@ export class ComponentRegistry {
     const entry = this.components.get(name);
     if (!entry) return { valid: false, errors: [`Component "${name}" not found`] };
 
-    const schema = entry.manifest.configSchema;
+    const schema: JSONSchema7 = entry.manifest.configSchema;
     if (!schema || typeof schema !== 'object') return { valid: true, errors: [] };
 
-    // Basic config shape checking against a restricted schema subset (not full JSON Schema)
+    // Restricted JSON Schema subset: properties + additionalProperties + leaf type.
+    // Anything richer (oneOf, $ref, format) is intentionally not supported here
+    // — RJSF + ajv8 do the full validation in the configure-widget UI.
     const errors: string[] = [];
-    const props = (schema as any).properties || {};
-    const additionalProperties = (schema as any).additionalProperties;
+    const props: Record<string, JSONSchema7Definition> = schema.properties ?? {};
+    const additionalProperties = schema.additionalProperties;
 
     if (config && typeof config === 'object' && !Array.isArray(config)) {
       const configObj = config as Record<string, unknown>;
@@ -69,21 +72,38 @@ export class ComponentRegistry {
       }
       for (const [key, propSchema] of Object.entries(props)) {
         const val = configObj[key];
-        if (val !== undefined && (propSchema as any).type) {
-          const expectedType = (propSchema as any).type;
-          if (expectedType === 'string' && typeof val !== 'string') {
-            errors.push(`Config key "${key}" must be a string`);
-          }
-          if (expectedType === 'number' && typeof val !== 'number') {
-            errors.push(`Config key "${key}" must be a number`);
-          }
-          if (expectedType === 'boolean' && typeof val !== 'boolean') {
-            errors.push(`Config key "${key}" must be a boolean`);
-          }
+        if (val === undefined) continue;
+        // boolean propSchema (`true` / `false`) means "allow anything" / "deny";
+        // we only type-check the object form.
+        if (typeof propSchema !== 'object') continue;
+        const expectedType = propSchema.type;
+        if (typeof expectedType !== 'string') continue;
+        if (!checkLeafType(expectedType, val)) {
+          errors.push(`Config key "${key}" must be a ${expectedType}`);
         }
       }
     }
 
     return { valid: errors.length === 0, errors };
+  }
+}
+
+function checkLeafType(expected: JSONSchema7TypeName, val: unknown): boolean {
+  switch (expected) {
+    case 'string':
+      return typeof val === 'string';
+    case 'number':
+    case 'integer':
+      return typeof val === 'number';
+    case 'boolean':
+      return typeof val === 'boolean';
+    case 'array':
+      return Array.isArray(val);
+    case 'object':
+      return val !== null && typeof val === 'object' && !Array.isArray(val);
+    case 'null':
+      return val === null;
+    default:
+      return true;
   }
 }

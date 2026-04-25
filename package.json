@@ -14,7 +14,7 @@
     "check": "tsc --noEmit",
     "lint": "eslint \"src/**/*.{ts,tsx}\" \"eslint-rules/**/*.cjs\" --max-warnings=0",
     "generate:registry": "tsx scripts/generate-registry.ts",
-    "generate:fixtures": "uv run --project ../omnibase/repos/omnibase_infra python scripts/generate_fixtures.py",
+    "generate:fixtures": "bash scripts/run-generate-fixtures.sh",
     "types:generate": "bash scripts/run-types-generate.sh",
     "storybook": "storybook dev -p 6006",
     "build-storybook": "storybook build"

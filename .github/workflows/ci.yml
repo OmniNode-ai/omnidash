@@ -27,6 +27,9 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
+      - name: Env-contamination gate
+        run: bash scripts/check-no-env-contamination.sh
+
       - name: TypeScript typecheck
         run: npx tsc --noEmit
 
