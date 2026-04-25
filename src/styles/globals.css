@@ -179,6 +179,12 @@
   }
 
   [data-theme="dark"] {
+    /* Tells the browser to render native UI (scrollbars, form
+       controls, autofill, etc.) in their dark variant. Without this
+       Chrome's scrollbar stays the OS-default light grey even when
+       every other surface in the app has flipped to dark. */
+    color-scheme: dark;
+
     --bg: oklch(16% 0.008 260);
     --panel: oklch(20% 0.008 260);
     --panel-2: oklch(23% 0.008 260);
