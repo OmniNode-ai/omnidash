@@ -139,9 +139,9 @@ const LIGHT_DOUGHNUT_THEME: DoughnutTheme = {
 function makeLabelSprite(text: string, color: string): THREE.Sprite {
   // Two-pass canvas: measure, then render. Padding chosen so descenders
   // and the leader-line attachment have breathing room.
-  const padX = 12;
-  const padY = 6;
-  const fontSize = 22;
+  const padX = 8;
+  const padY = 4;
+  const fontSize = 15;
   const canvas = document.createElement('canvas');
   const ctx = canvas.getContext('2d');
   if (!ctx) {
