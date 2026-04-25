@@ -9,6 +9,7 @@
   display: flex;
   flex-direction: column;
   border-right: 1px solid var(--sidebar-line);
+  overflow: hidden; /* keep collapsed-state truncation clean during the width transition */
 }
 .brand {
   padding: 18px 16px 14px;
@@ -16,6 +17,38 @@
   display: flex;
   align-items: center;
   gap: 10px;
+}
+.sidebar-toggle {
+  margin-left: auto;
+  width: 22px; height: 22px; border-radius: 4px;
+  display: grid; place-items: center;
+  color: var(--sidebar-ink-2);
+  transition: background 0.15s, color 0.15s;
+}
+.sidebar-toggle:hover { background: oklch(22% 0.01 260); color: var(--sidebar-ink); }
+
+/* ---------- Collapsed state ---------- */
+.sidebar.collapsed .brand {
+  padding: 18px 6px 14px;
+  flex-direction: column;
+  gap: 8px;
+}
+.sidebar.collapsed .sidebar-toggle { margin-left: 0; }
+.sidebar.collapsed .nav-section {
+  padding: 14px 6px 8px;
+  justify-content: center;
+}
+/* Marker-only rows when collapsed; the name + kebab are unmounted by
+   the JSX, but we also collapse the grid template so the centred
+   marker doesn't sit in a 14-px column nudged left. */
+.sidebar.collapsed .dash-list { padding: 0 4px; }
+.sidebar.collapsed .dash-item {
+  grid-template-columns: 1fr;
+  justify-items: center;
+  padding: 8px 0;
+}
+.sidebar.collapsed .dash-item .dash-marker {
+  text-align: center;
 }
 .brand-mark { width: 28px; height: 28px; flex-shrink: 0; }
 .brand-name {
