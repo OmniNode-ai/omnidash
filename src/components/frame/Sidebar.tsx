@@ -12,7 +12,7 @@
 //     keeping the menu pattern consistent with the prototype across the whole app.
 
 import { useEffect, useLayoutEffect, useRef, useState } from 'react';
-import { Edit, Copy, Share2, Plus, MoreHorizontal, Trash2 } from 'lucide-react';
+import { Edit, Copy, Plus, MoreHorizontal, Trash2 } from 'lucide-react';
 import {
   PositionedMenu,
   MenuItem,
@@ -136,9 +136,6 @@ function DashboardKebab({ dashboardName, onRename, onDuplicate, onDelete }: Dash
           </MenuItem>
           <MenuItem onSelect={menu.select(onDuplicate)}>
             <Copy size={14} /> Duplicate
-          </MenuItem>
-          <MenuItem onSelect={menu.select(() => { /* Share link — no-op until wired */ })}>
-            <Share2 size={14} /> Share Link
           </MenuItem>
           <MenuSeparator />
           <MenuItem variant="danger" onSelect={menu.select(onDelete)}>
