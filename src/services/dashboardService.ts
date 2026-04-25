@@ -1,14 +1,36 @@
 import type { DashboardDefinition } from '@shared/types/dashboard';
-import { validateDashboardDefinition } from '@shared/types/dashboard';
+import { validateDashboardDefinition, parseDashboardDefinition } from '@shared/types/dashboard';
 import type { LayoutPersistence } from '@/layout/layout-persistence';
 import { layoutPersistence } from '@/layout/layout-persistence';
+
+// localStorage keys for the multi-dashboard list. Owned exclusively by this
+// service (T14 / OMN-155) — no other module is permitted to read or write
+// these keys.
+const LS_LIST_KEY = 'omnidash.dashboards.list.v1';
+const LS_ACTIVE_KEY = 'omnidash.lastActiveId.v1';
+
+interface StorageLike {
+  getItem(key: string): string | null;
+  setItem(key: string, value: string): void;
+  removeItem(key: string): void;
+}
+
+function defaultStorage(): StorageLike | null {
+  if (typeof localStorage === 'undefined') return null;
+  return localStorage;
+}
 
 export class DashboardService {
   private store = new Map<string, DashboardDefinition>();
   private readonly persistence: LayoutPersistence;
+  private readonly storage: StorageLike | null;
 
-  constructor(persistence: LayoutPersistence = layoutPersistence) {
+  constructor(
+    persistence: LayoutPersistence = layoutPersistence,
+    storage: StorageLike | null = defaultStorage(),
+  ) {
     this.persistence = persistence;
+    this.storage = storage;
   }
 
   async save(dashboard: DashboardDefinition): Promise<void> {
@@ -29,6 +51,67 @@ export class DashboardService {
       console.warn('[DashboardService] layout persistence read failed:', err);
       return null;
     });
+  }
+
+  // ── Multi-dashboard list persistence ────────────────────────────────
+  // These methods own localStorage[LS_LIST_KEY] and LS_ACTIVE_KEY. They
+  // are the canonical replacement for the persistList/persistActiveId
+  // helpers that used to live in dashboardSlice.
+
+  persistList(dashboards: DashboardDefinition[]): void {
+    if (!this.storage) return;
+    try {
+      this.storage.setItem(LS_LIST_KEY, JSON.stringify(dashboards));
+    } catch {
+      // storage unavailable — non-fatal
+    }
+  }
+
+  persistActiveId(id: string | null): void {
+    if (!this.storage) return;
+    try {
+      if (id === null) {
+        this.storage.removeItem(LS_ACTIVE_KEY);
+      } else {
+        this.storage.setItem(LS_ACTIVE_KEY, id);
+      }
+    } catch {
+      // storage unavailable — non-fatal
+    }
+  }
+
+  hydrateList(): DashboardDefinition[] {
+    if (!this.storage) return [];
+    try {
+      const raw = this.storage.getItem(LS_LIST_KEY);
+      if (!raw) return [];
+      const parsed: unknown = JSON.parse(raw);
+      if (!Array.isArray(parsed)) return [];
+
+      const valid: DashboardDefinition[] = [];
+      for (const [idx, entry] of parsed.entries()) {
+        const result = parseDashboardDefinition(entry);
+        if (result.valid) {
+          valid.push(result.dashboard);
+        } else {
+          console.warn(
+            `[DashboardService] Dropping corrupted dashboard at index ${idx}: ${result.errors.join('; ')}`,
+          );
+        }
+      }
+      return valid;
+    } catch {
+      return [];
+    }
+  }
+
+  hydrateActiveId(): string | null {
+    if (!this.storage) return null;
+    try {
+      return this.storage.getItem(LS_ACTIVE_KEY);
+    } catch {
+      return null;
+    }
   }
 
   async getById(id: string): Promise<DashboardDefinition | undefined> {
@@ -89,3 +172,10 @@ export class DashboardService {
     return imported;
   }
 }
+
+/**
+ * Application-wide singleton. The dashboardSlice and DashboardView import
+ * this rather than constructing their own service so all writes land in
+ * the same persistence path (T14 / OMN-155).
+ */
+export const dashboardService = new DashboardService();

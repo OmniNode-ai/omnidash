@@ -1,6 +1,7 @@
 import { render, screen } from '@testing-library/react';
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { QueryClient } from '@tanstack/react-query';
+import { DataSourceTestProvider } from '@/test-utils/dataSourceTestProvider';
 import CostTrendPanel from './CostTrendPanel';
 
 const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } });
@@ -45,9 +46,9 @@ describe('CostTrendPanel', () => {
   it('shows loading state initially', () => {
     (fetch as any).mockReturnValue(new Promise(() => {})); // never resolves
     render(
-      <QueryClientProvider client={qc}>
+      <DataSourceTestProvider client={qc}>
         <CostTrendPanel config={{ granularity: 'day' }} />
-      </QueryClientProvider>
+      </DataSourceTestProvider>
     );
     expect(screen.getByText('Loading...')).toBeInTheDocument();
   });
@@ -58,9 +59,9 @@ describe('CostTrendPanel', () => {
       { bucket_time: '2026-04-02', model_name: 'claude-3', total_cost_usd: '15.00', total_tokens: 60000 },
     ]);
     render(
-      <QueryClientProvider client={qc}>
+      <DataSourceTestProvider client={qc}>
         <CostTrendPanel config={{ granularity: 'day' }} />
-      </QueryClientProvider>
+      </DataSourceTestProvider>
     );
     // Wait for chart to render
     const chart = await screen.findByTestId('stacked-chart');
@@ -75,9 +76,9 @@ describe('CostTrendPanel', () => {
       { bucket_time: '2026-04-01', model_name: 'claude-3', total_cost_usd: '12.50', total_tokens: 50000 },
     ]);
     render(
-      <QueryClientProvider client={qc}>
+      <DataSourceTestProvider client={qc}>
         <CostTrendPanel config={{ granularity: 'day', chartType: 'bar' }} />
-      </QueryClientProvider>
+      </DataSourceTestProvider>
     );
     const chart = await screen.findByTestId('stacked-chart');
     expect(chart.getAttribute('data-chart-type')).toBe('bar');
@@ -86,9 +87,9 @@ describe('CostTrendPanel', () => {
   it('shows empty state when no data', async () => {
     (fetch as any).mockResolvedValueOnce({ ok: false });
     render(
-      <QueryClientProvider client={qc}>
+      <DataSourceTestProvider client={qc}>
         <CostTrendPanel config={{ granularity: 'day' }} />
-      </QueryClientProvider>
+      </DataSourceTestProvider>
     );
     expect(await screen.findByText(/no cost data/i)).toBeInTheDocument();
   });

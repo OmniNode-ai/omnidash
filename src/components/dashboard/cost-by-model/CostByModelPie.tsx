@@ -17,6 +17,7 @@ import * as THREE from 'three';
 import { ComponentWrapper } from '../ComponentWrapper';
 import { Text } from '@/components/ui/typography';
 import { useProjectionQuery } from '@/hooks/useProjectionQuery';
+import { TOPICS } from '@shared/types/topics';
 import { applyTimeRange, resolveTimeRange } from '@/hooks/useTimeRange';
 import { useThemeColors, useThemeName, cssColorToHex } from '@/theme';
 import { useFrameStore } from '@/store/store';
@@ -467,7 +468,7 @@ function ThreePieChart({ slices, chartColors, themeName }: ThreePieChartProps) {
 
 export default function CostByModelPie({ config: _config }: { config: Record<string, unknown> }) {
   const { data, isLoading, error } = useProjectionQuery<CostDataPoint>({
-    topic: 'onex.snapshot.projection.llm_cost.v1',
+    topic: TOPICS.llmCost,
     queryKey: ['cost-by-model'],
     refetchInterval: 60_000,
   });

@@ -1,6 +1,7 @@
 import { render, screen } from '@testing-library/react';
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { QueryClient } from '@tanstack/react-query';
+import { DataSourceTestProvider } from '@/test-utils/dataSourceTestProvider';
 import QualityScorePanel from './QualityScorePanel';
 
 const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } });
@@ -58,9 +59,9 @@ describe('QualityScorePanel', () => {
   it('shows loading state initially', () => {
     (fetch as any).mockReturnValue(new Promise(() => {}));
     render(
-      <QueryClientProvider client={qc}>
+      <DataSourceTestProvider client={qc}>
         <QualityScorePanel config={{}} />
-      </QueryClientProvider>,
+      </DataSourceTestProvider>,
     );
     expect(screen.getByText('Loading...')).toBeInTheDocument();
   });
@@ -82,9 +83,9 @@ describe('QualityScorePanel', () => {
       totalMeasurements: 30,
     }]);
     render(
-      <QueryClientProvider client={qc}>
+      <DataSourceTestProvider client={qc}>
         <QualityScorePanel config={{}} />
-      </QueryClientProvider>,
+      </DataSourceTestProvider>,
     );
     expect(await screen.findByText('33%')).toBeInTheDocument();
     expect(screen.getByText(/0\.65/)).toBeInTheDocument();
@@ -106,9 +107,9 @@ describe('QualityScorePanel', () => {
       totalMeasurements: 30,
     }]);
     render(
-      <QueryClientProvider client={qc}>
+      <DataSourceTestProvider client={qc}>
         <QualityScorePanel config={{ passThreshold: 0.6 }} />
-      </QueryClientProvider>,
+      </DataSourceTestProvider>,
     );
     expect(await screen.findByText('67%')).toBeInTheDocument();
   });
@@ -116,9 +117,9 @@ describe('QualityScorePanel', () => {
   it('shows empty state when no measurements', async () => {
     mockFetchWithItems([{ meanScore: 0, distribution: [], totalMeasurements: 0 }]);
     render(
-      <QueryClientProvider client={qc}>
+      <DataSourceTestProvider client={qc}>
         <QualityScorePanel config={{}} />
-      </QueryClientProvider>,
+      </DataSourceTestProvider>,
     );
     expect(await screen.findByText(/no quality data/i)).toBeInTheDocument();
   });

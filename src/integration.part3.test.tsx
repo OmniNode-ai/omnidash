@@ -3,6 +3,7 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { readFileSync } from 'fs';
 import { resolve } from 'path';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { SnapshotSourceProvider } from './data-source';
 import { ThemeProvider } from './theme';
 import { RegistryProvider } from './registry/RegistryProvider';
 import { ComponentRegistry } from './registry/ComponentRegistry';
@@ -78,13 +79,13 @@ describe('Proof of Life — Part 3 (Full System)', () => {
     useFrameStore.getState().setActiveDashboard({ ...tpl, id: `test-${Date.now()}` });
 
     render(
-      <QueryClientProvider client={qc}>
+      <QueryClientProvider client={qc}><SnapshotSourceProvider>
         <ThemeProvider>
           <RegistryProvider manifest={manifest}>
             <DashboardBuilder />
           </RegistryProvider>
         </ThemeProvider>
-      </QueryClientProvider>
+      </SnapshotSourceProvider></QueryClientProvider>
     );
 
     expect(screen.getByText('Cost & Delegation')).toBeInTheDocument();
@@ -97,13 +98,13 @@ describe('Proof of Life — Part 3 (Full System)', () => {
     useFrameStore.getState().setActiveDashboard({ ...tpl, id: `test-${Date.now()}` });
 
     render(
-      <QueryClientProvider client={qc}>
+      <QueryClientProvider client={qc}><SnapshotSourceProvider>
         <ThemeProvider>
           <RegistryProvider manifest={manifest}>
             <DashboardBuilder />
           </RegistryProvider>
         </ThemeProvider>
-      </QueryClientProvider>
+      </SnapshotSourceProvider></QueryClientProvider>
     );
 
     expect(screen.getByText('Platform Health')).toBeInTheDocument();

@@ -40,3 +40,4 @@ export function getWebSocketUrl(): string {
 export type { ProtocolSnapshotSource };
 export { FileSnapshotSource } from './file-snapshot-source';
 export { HttpSnapshotSource } from './http-snapshot-source';
+export { SnapshotSourceProvider, useSnapshotSource } from './SnapshotSourceProvider';

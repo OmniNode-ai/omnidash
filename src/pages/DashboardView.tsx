@@ -3,7 +3,8 @@
 //   Styling: OmniDash.html:265-439 (.dash-header, .dash-body, .grid, .widget, .widget-head, .widget-body, .empty-state)
 // Deviations from source:
 //   - Uses v2 data model (DashboardDefinition + DashboardLayoutItem) instead of prototype's widget-array shape.
-//   - Edit/Save/Discard flow preserved from OMN-41 (layoutPersistence.write on Save).
+//   - Edit/Save/Discard flow preserved from OMN-41; Save now delegates
+//     to dashboardService.save() (T14 / OMN-155 — canonical write path).
 //   - Drag-and-drop (#12): palette cards and existing widgets are both drag sources.
 //     Drop onto any widget inserts before it; trailing append zone appears at the
 //     grid tail while dragging. Drag is gated to edit mode. Prototype used a CSS
@@ -26,7 +27,7 @@ import { TimezoneSelector } from '@/components/dashboard/TimezoneSelector';
 import { AutoRefreshSelector } from '@/components/dashboard/AutoRefreshSelector';
 import { EmptyState } from '@/components/dashboard/EmptyState';
 import type { DashboardLayoutItem } from '@shared/types/dashboard';
-import { layoutPersistence } from '@/layout/layout-persistence';
+import { dashboardService } from '@/services/dashboardService';
 
 export function DashboardView() {
   const {
@@ -63,7 +64,7 @@ export function DashboardView() {
 
   // Hydrate the last active dashboard layout from disk on mount.
   useEffect(() => {
-    layoutPersistence.read('default').then((persisted) => {
+    dashboardService.loadByName('default').then((persisted) => {
       if (!persisted || !Array.isArray(persisted.layout)) return;
       const currentDashboard = useFrameStore.getState().activeDashboard;
       if (!currentDashboard) {
@@ -119,11 +120,9 @@ export function DashboardView() {
 
     const dashboardToPersist = useFrameStore.getState().activeDashboard;
     if (dashboardToPersist) {
-      layoutPersistence
-        .write(dashboardToPersist.name, dashboardToPersist)
-        .catch((err: unknown) => {
-          console.warn('[DashboardView] layout persistence write failed:', err);
-        });
+      dashboardService.save(dashboardToPersist).catch((err: unknown) => {
+        console.warn('[DashboardView] dashboardService.save failed:', err);
+      });
     }
 
     snapshotRef.current = null;

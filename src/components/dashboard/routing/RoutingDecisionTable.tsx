@@ -2,6 +2,7 @@ import { useMemo, useState } from 'react';
 import { ChevronUp, ChevronDown, Search } from 'lucide-react';
 import { ComponentWrapper } from '../ComponentWrapper';
 import { useProjectionQuery } from '@/hooks/useProjectionQuery';
+import { TOPICS } from '@shared/types/topics';
 import { applyTimeRange, resolveTimeRange } from '@/hooks/useTimeRange';
 import { useTimezone } from '@/hooks/useTimezone';
 import { useFrameStore } from '@/store/store';
@@ -86,7 +87,7 @@ export default function RoutingDecisionTable({ config }: { config: Record<string
     : DEFAULT_PAGE_SIZE;
 
   const { data, isLoading, error } = useProjectionQuery<RoutingDecision>({
-    topic: 'onex.snapshot.projection.delegation.decisions.v1',
+    topic: TOPICS.delegationDecisions,
     queryKey: ['routing-decisions'],
     refetchInterval: 60_000,
   });

@@ -1,6 +1,7 @@
 import { useMemo } from 'react';
 import { ComponentWrapper } from '../ComponentWrapper';
 import { useProjectionQuery } from '@/hooks/useProjectionQuery';
+import { TOPICS } from '@shared/types/topics';
 import { Text } from '@/components/ui/typography';
 import { DoughnutChart, type DoughnutSlice } from './DoughnutChart';
 
@@ -18,7 +19,7 @@ export default function DelegationMetrics({ config }: { config: Record<string, u
   const showQualityGates = config.showQualityGates !== false;
 
   const { data: dataArr, isLoading, error } = useProjectionQuery<DelegationSummary>({
-    topic: 'onex.snapshot.projection.delegation.summary.v1',
+    topic: TOPICS.delegationSummary,
     queryKey: ['delegation-summary'],
     refetchInterval: 60_000,
   });

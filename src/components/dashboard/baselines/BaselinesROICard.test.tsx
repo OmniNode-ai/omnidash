@@ -1,6 +1,7 @@
 import { render, screen } from '@testing-library/react';
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { QueryClient } from '@tanstack/react-query';
+import { DataSourceTestProvider } from '@/test-utils/dataSourceTestProvider';
 import BaselinesROICard from './BaselinesROICard';
 
 const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } });
@@ -24,7 +25,7 @@ describe('BaselinesROICard', () => {
 
   it('shows loading state initially', () => {
     (fetch as any).mockReturnValue(new Promise(() => {}));
-    render(<QueryClientProvider client={qc}><BaselinesROICard config={{}} /></QueryClientProvider>);
+    render(<DataSourceTestProvider client={qc}><BaselinesROICard config={{}} /></DataSourceTestProvider>);
     expect(screen.getByText('Loading...')).toBeInTheDocument();
   });
 
@@ -35,14 +36,14 @@ describe('BaselinesROICard', () => {
       recommendations: { promote: 4, shadow: 2, suppress: 1, fork: 0 },
       confidence: 0.87,
     }]);
-    render(<QueryClientProvider client={qc}><BaselinesROICard config={{}} /></QueryClientProvider>);
+    render(<DataSourceTestProvider client={qc}><BaselinesROICard config={{}} /></DataSourceTestProvider>);
     expect(await screen.findByText('-12,500')).toBeInTheDocument();
     expect(screen.getByText('4')).toBeInTheDocument();
   });
 
   it('shows empty state when no snapshot available', async () => {
     (fetch as any).mockResolvedValueOnce({ ok: false });
-    render(<QueryClientProvider client={qc}><BaselinesROICard config={{}} /></QueryClientProvider>);
+    render(<DataSourceTestProvider client={qc}><BaselinesROICard config={{}} /></DataSourceTestProvider>);
     expect(await screen.findByText(/no baseline snapshot/i)).toBeInTheDocument();
   });
 });

@@ -15,6 +15,7 @@ import { writeFileSync, existsSync, readFileSync, readdirSync } from 'fs';
 import { resolve, dirname, join } from 'path';
 import { fileURLToPath } from 'url';
 import type { ComponentManifest } from '../shared/types/component-manifest.js';
+import { validateComponentManifest } from '../shared/types/component-manifest.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -294,6 +295,23 @@ for (const scanned of scannedComponents) {
   } else {
     mergedComponents[scanned.name] = scanned;
   }
+}
+
+// T16 (OMN-157): generator-time check that every manifest is structurally
+// complete. dataSources entries must have a topic (websocket) or
+// endpoint (api) — see validateComponentManifest. Failing fast here is
+// strictly better than the runtime widget rendering an empty stream.
+const validationFailures: string[] = [];
+for (const [name, m] of Object.entries(mergedComponents)) {
+  const result = validateComponentManifest(m);
+  if (!result.valid) {
+    validationFailures.push(`  ${name}: ${result.errors.join('; ')}`);
+  }
+}
+if (validationFailures.length > 0) {
+  console.error('[registry] manifest validation failed:');
+  for (const line of validationFailures) console.error(line);
+  process.exit(1);
 }
 
 const manifest = {

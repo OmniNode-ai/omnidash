@@ -1,12 +1,13 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { renderHook, waitFor } from '@testing-library/react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { DataSourceTestProvider } from '@/test-utils/dataSourceTestProvider';
 import { useProjectionQuery } from './useProjectionQuery';
 import type { ReactNode } from 'react';
 
 const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
 const wrapper = ({ children }: { children: ReactNode }) => (
-  <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
+  <DataSourceTestProvider client={queryClient}>{children}</DataSourceTestProvider>
 );
 
 describe('useProjectionQuery', () => {
@@ -44,5 +45,19 @@ describe('useProjectionQuery', () => {
 
     await waitFor(() => expect(result.current.isSuccess).toBe(true));
     expect(result.current.data).toEqual([]);
+  });
+
+  // T15 acceptance (OMN-156): calling outside <SnapshotSourceProvider>
+  // throws a clear error.
+  it('throws when called outside <SnapshotSourceProvider>', () => {
+    const qcOnly = ({ children }: { children: ReactNode }) => (
+      <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
+    );
+    expect(() =>
+      renderHook(
+        () => useProjectionQuery({ topic: 'x', queryKey: ['x'] }),
+        { wrapper: qcOnly },
+      ),
+    ).toThrow(/SnapshotSourceProvider/);
   });
 });

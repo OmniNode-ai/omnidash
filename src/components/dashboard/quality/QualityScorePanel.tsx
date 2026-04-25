@@ -18,6 +18,7 @@ import { useEffect, useMemo, useRef, useState, useCallback } from 'react';
 import * as THREE from 'three';
 import { ComponentWrapper } from '../ComponentWrapper';
 import { useProjectionQuery } from '@/hooks/useProjectionQuery';
+import { TOPICS } from '@shared/types/topics';
 import { cssVarToHex, useThemeName } from '@/theme';
 import { Text, Heading } from '@/components/ui/typography';
 
@@ -537,7 +538,7 @@ function ThreeBarChart({
 export default function QualityScorePanel({ config }: { config: QualityScoreConfig }) {
   const passThreshold = config.passThreshold ?? 0.8;
   const { data: dataArr, isLoading, error } = useProjectionQuery<QualitySummary>({
-    topic: 'onex.snapshot.projection.baselines.quality.v1',
+    topic: TOPICS.baselinesQuality,
     queryKey: ['quality-summary'],
     refetchInterval: 60_000,
   });
