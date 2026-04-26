@@ -1,6 +1,5 @@
 import { ComponentWrapper } from '../ComponentWrapper';
 import { useProjectionQuery } from '@/hooks/useProjectionQuery';
-import { useThemeColors } from '@/theme';
 import { Text } from '@/components/ui/typography';
 import { TOPICS } from '@shared/types/topics';
 
@@ -35,8 +34,6 @@ export default function BaselinesROICard({ config: _config }: { config: Record<s
   });
   const data = dataArr?.[0] ?? null;
 
-  const colors = useThemeColors();
-
   return (
     <ComponentWrapper
       title="Baselines ROI"
@@ -53,7 +50,7 @@ export default function BaselinesROICard({ config: _config }: { config: Record<s
             <DeltaMetric label="Time Delta" value={data.timeDeltaMs} unit="ms" />
             <DeltaMetric label="Retry Delta" value={data.retryDelta} />
           </div>
-          <div style={{ borderTop: `1px solid hsl(${colors.border})`, paddingTop: '0.75rem' }}>
+          <div style={{ borderTop: '1px solid var(--line)', paddingTop: '0.75rem' }}>
             <div style={{ marginBottom: '0.5rem' }}>
               <Text as="div" size="md" color="secondary">Recommendations</Text>
             </div>

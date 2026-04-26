@@ -14,7 +14,6 @@ describe('DashboardGrid', () => {
       <DashboardGrid
         layout={layout}
         editMode={false}
-        onLayoutChange={() => {}}
         resolveComponent={() => undefined}
       />
     );
@@ -26,7 +25,6 @@ describe('DashboardGrid', () => {
       <DashboardGrid
         layout={layout}
         editMode={false}
-        onLayoutChange={() => {}}
         resolveComponent={() => undefined}
       />
     );

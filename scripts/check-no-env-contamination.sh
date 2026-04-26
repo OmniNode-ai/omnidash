@@ -52,6 +52,7 @@ EXCLUDE_DIRS=(
   'dashboard-layouts'
   'fixtures'
   '.onex_state'
+  'coverage'
 )
 
 # Files that are explicitly permitted to reference the patterns above.

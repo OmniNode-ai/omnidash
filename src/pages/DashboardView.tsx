@@ -15,7 +15,7 @@
 //   - OMN-47: CSS ported verbatim to src/styles/dashboard.css + buttons.css; TSX rewritten to use prototype class names.
 
 import { useCallback, useEffect, useRef, useState, type DragEvent } from 'react';
-import { Check, ChevronDown, Plus, X } from 'lucide-react';
+import { Check, ChevronDown, Pencil, Plus, X } from 'lucide-react';
 import { Text } from '@/components/ui/typography';
 import { useFrameStore } from '@/store/store';
 import { useRegistry } from '@/registry/RegistryProvider';
@@ -305,13 +305,30 @@ export function DashboardView() {
               </button>
             </>
           ) : (
-            <button
-              className="btn primary"
-              onClick={handleEdit}
-              aria-label="Add Widget"
-            >
-              <Plus size={14} /> Add Widget
-            </button>
+            // H16 (review §4): the header used to expose only "Add Widget"
+            // as a label for what was actually the edit-mode toggle.
+            // Splitting it: "Edit Layout" is the honest label for entering
+            // edit mode (rearrange / configure / remove), and "Add Widget"
+            // remains for the common case of dropping in a new one. Both
+            // call handleEdit() — the palette opens automatically in edit
+            // mode either way — so the split is purely about affordance
+            // honesty.
+            <>
+              <button
+                className="btn ghost"
+                onClick={handleEdit}
+                aria-label="Edit Layout"
+              >
+                <Pencil size={14} /> Edit Layout
+              </button>
+              <button
+                className="btn primary"
+                onClick={handleEdit}
+                aria-label="Add Widget"
+              >
+                <Plus size={14} /> Add Widget
+              </button>
+            </>
           )}
         </div>
       </div>
