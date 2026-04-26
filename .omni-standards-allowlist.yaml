@@ -1,0 +1,15 @@
+# SPDX-FileCopyrightText: 2026 OmniNode.ai Inc.
+# SPDX-License-Identifier: MIT
+#
+# Per-repo allowlist for omni-standards-compliance.yml checks.
+# Entries here are SUBTRACTED from the forbidden list before the check runs.
+# Each entry MUST carry a rationale explaining the architectural justification.
+#
+# Format:
+#   forbidden_state_management:
+#     - package: <package-name>
+#       rationale: "<explanation>"
+
+forbidden_state_management:
+  - package: zustand
+    rationale: "wrapped by DashboardService per Bret PR 35 truth-ownership refactor; service is the canonical write path, Zustand is the UI cache"
