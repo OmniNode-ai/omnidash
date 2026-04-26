@@ -29,6 +29,35 @@ export default defineConfig({
       '**/node_modules/**',
       '**/dist/**',
     ],
+    coverage: {
+      // Conservative initial floor — guards against coverage collapsing,
+      // not a bar of excellence. Tighten incrementally as the suite
+      // grows. A floor is much cheaper to maintain than chasing why
+      // coverage dropped 30% in a refactor without a gate. (M14 fix.)
+      provider: 'v8',
+      reporter: ['text', 'lcov', 'html'],
+      include: ['src/**/*.{ts,tsx}', 'shared/**/*.ts', 'server/**/*.ts'],
+      exclude: [
+        'src/**/*.stories.tsx',
+        'src/**/*.test.{ts,tsx}',
+        'src/**/*.test.js',
+        'src/storybook/**',
+        'src/test-utils/**',
+        'src/main.tsx',
+        'src/vite-env.d.ts',
+        'src/shared/types/generated/**',
+        'shared/**/*.test.ts',
+        'shared/**/*.test.js',
+        'server/**/*.test.ts',
+        '**/*.css.ts',
+      ],
+      thresholds: {
+        lines: 50,
+        functions: 50,
+        statements: 50,
+        branches: 50,
+      },
+    },
   },
   resolve: {
     alias: {

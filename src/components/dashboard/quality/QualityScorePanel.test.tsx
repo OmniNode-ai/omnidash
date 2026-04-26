@@ -57,18 +57,19 @@ describe('QualityScorePanel', () => {
   });
 
   it('computes pass rate from bucket midpoints and the threshold', async () => {
-    // Fixture: 30 measurements total. Buckets at midpoints 0.1/0.3/0.5/0.7/0.9
-    // with counts 2/3/5/10/10. Pass threshold default 0.8 → passing buckets
-    // are those with midpoint ≥ 0.8 = only bucket 4 (midpoint 0.9, count 10).
-    // Pass rate = 10 / 30 ≈ 33%.
+    // Fixture matches the actual server shape: 5 buckets keyed by the
+    // integer-string output of WIDTH_BUCKET (1..5), counts 2/3/5/10/10.
+    // Widget midpoints (derived from BAR_COUNT=5) are 0.1/0.3/0.5/0.7/0.9.
+    // Pass threshold default 0.8 → only the last bucket (midpoint 0.9,
+    // count 10) qualifies. Pass rate = 10 / 30 ≈ 33%.
     mockFetchWithItems([{
       meanScore: 0.65,
       distribution: [
-        { bucket: '0.0-0.2', count: 2 },
-        { bucket: '0.2-0.4', count: 3 },
-        { bucket: '0.4-0.6', count: 5 },
-        { bucket: '0.6-0.8', count: 10 },
-        { bucket: '0.8-1.0', count: 10 },
+        { bucket: '1', count: 2 },
+        { bucket: '2', count: 3 },
+        { bucket: '3', count: 5 },
+        { bucket: '4', count: 10 },
+        { bucket: '5', count: 10 },
       ],
       totalMeasurements: 30,
     }]);
@@ -84,15 +85,15 @@ describe('QualityScorePanel', () => {
 
   it('respects a custom passThreshold from config', async () => {
     // Same data but with threshold 0.6 → passing buckets have midpoint
-    // ≥ 0.6, i.e. buckets 3 (count 10) + 4 (count 10) = 20 / 30 ≈ 67%.
+    // ≥ 0.6, i.e. buckets 4 (count 10) + 5 (count 10) = 20 / 30 ≈ 67%.
     mockFetchWithItems([{
       meanScore: 0.65,
       distribution: [
-        { bucket: '0.0-0.2', count: 2 },
-        { bucket: '0.2-0.4', count: 3 },
-        { bucket: '0.4-0.6', count: 5 },
-        { bucket: '0.6-0.8', count: 10 },
-        { bucket: '0.8-1.0', count: 10 },
+        { bucket: '1', count: 2 },
+        { bucket: '2', count: 3 },
+        { bucket: '3', count: 5 },
+        { bucket: '4', count: 10 },
+        { bucket: '5', count: 10 },
       ],
       totalMeasurements: 30,
     }]);

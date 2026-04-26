@@ -72,4 +72,33 @@ describe('HttpSnapshotSource', () => {
 
     expect(results).toHaveLength(0);
   });
+
+  // M8 (review §4) — additional error-path coverage matching the
+  // FileSnapshotSource test set.
+
+  it('yields nothing for an empty array body (200, [])', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValueOnce({
+      ok: true,
+      json: async () => [],
+    }));
+
+    const source = new HttpSnapshotSource({ baseUrl: 'http://localhost:3002' });
+    const results: unknown[] = [];
+    for await (const item of source.readAll('onex.snapshot.empty.v1')) {
+      results.push(item);
+    }
+
+    expect(results).toHaveLength(0);
+  });
+
+  it('propagates network errors to the caller (fetch rejects)', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockRejectedValueOnce(new Error('connect ECONNREFUSED')));
+
+    const source = new HttpSnapshotSource({ baseUrl: 'http://localhost:3002' });
+    await expect(async () => {
+      for await (const _item of source.readAll('onex.snapshot.test.v1')) {
+        /* unreachable */
+      }
+    }).rejects.toThrow(/ECONNREFUSED/);
+  });
 });

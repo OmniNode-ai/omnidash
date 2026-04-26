@@ -20,35 +20,7 @@ import { useTimezone } from '@/hooks/useTimezone';
 import { useFrameStore } from '@/store/store';
 import { useThemeName, useThemeColors } from '@/theme';
 import { Text } from '@/components/ui/typography';
-
-/**
- * Zoned date components for the dashboard's active timezone. Used in
- * place of `Date.prototype.getMonth/getDate/getFullYear/getHours/getMinutes`
- * everywhere this widget formats bucket labels — those raw getters
- * read browser-local values and would disagree with the rest of the
- * dashboard once the user picks an explicit zone via TimezoneSelector.
- */
-function zonedComponents(d: Date, timeZone: string): {
-  year: string; month: string; day: string; hour: string; minute: string;
-} {
-  const parts = new Intl.DateTimeFormat('en-US', {
-    timeZone,
-    year: 'numeric',
-    month: '2-digit',
-    day: '2-digit',
-    hour: '2-digit',
-    minute: '2-digit',
-    hour12: false,
-  }).formatToParts(d);
-  const get = (type: string) => parts.find((p) => p.type === type)?.value ?? '00';
-  return {
-    year: get('year'),
-    month: get('month'),
-    day: get('day'),
-    hour: get('hour'),
-    minute: get('minute'),
-  };
-}
+import { zonedComponents } from '@/lib/zonedComponents';
 
 interface CostDataPoint {
   bucket_time: string;
