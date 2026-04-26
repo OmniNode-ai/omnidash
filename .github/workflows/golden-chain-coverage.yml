@@ -1,0 +1,66 @@
+# .github/workflows/golden-chain-coverage.yml
+# Golden Chain Coverage Gate (OMN-9845)
+#
+# Adapted from omnidash v1 (OMN-7495).
+# v2 path changes:
+#   - v1 watched: server/consumers/read-model/** (Kafka read-model consumer dir)
+#   - v2 watches: src/data-source/** (snapshot projection sources) + shared/types/topics.ts
+#
+# Always produces a `golden-chain` check status (required by branch protection).
+# Skips the heavy test run when no projection-related files changed.
+name: Golden Chain Coverage Gate
+
+on:
+  pull_request:
+  merge_group:
+  push:
+    branches: [main]
+
+jobs:
+  golden-chain:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Check for projection-related changes
+        id: changes
+        run: |
+          if [ "${{ github.event_name }}" = "push" ] || [ "${{ github.event_name }}" = "merge_group" ]; then
+            echo "run_tests=true" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          BASE_SHA="${{ github.event.pull_request.base.sha }}"
+          HEAD_SHA="${{ github.event.pull_request.head.sha }}"
+          CHANGED=$(git diff --name-only "$BASE_SHA" "$HEAD_SHA" -- \
+            'src/data-source/**' \
+            'shared/types/topics.ts' \
+            'server/__tests__/golden-chain/**' \
+          )
+          if [ -n "$CHANGED" ]; then
+            echo "run_tests=true" >> "$GITHUB_OUTPUT"
+            echo "Projection files changed — running golden chain tests"
+          else
+            echo "run_tests=false" >> "$GITHUB_OUTPUT"
+            echo "No projection files changed — skipping tests"
+          fi
+
+      - uses: actions/setup-node@v4
+        if: steps.changes.outputs.run_tests == 'true'
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - run: npm ci
+        if: steps.changes.outputs.run_tests == 'true'
+
+      - name: Run golden projection tests (unit mode)
+        if: steps.changes.outputs.run_tests == 'true'
+        run: npx vitest run server/__tests__/golden-chain/ --reporter=verbose
+        env:
+          GOLDEN_MODE: unit
+
+      - name: Verify projection coverage gate
+        if: steps.changes.outputs.run_tests == 'true'
+        run: npx vitest run server/__tests__/golden-chain/coverage-gate.test.ts --reporter=verbose
