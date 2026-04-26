@@ -1,3 +1,9 @@
+> **Shared Standards**: See `~/.claude/CLAUDE.md` for shared development standards
+> (Git, testing, infrastructure, env config priority).
+> See `omni_home/CLAUDE.md` for repository registry and the worktree workflow.
+>
+> This file contains **omnidash-v2-specific** frontend architecture and conventions.
+
 ## Local dev mode (no infra)
 
 This repo runs in two modes:

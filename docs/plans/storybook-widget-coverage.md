@@ -17,7 +17,7 @@ repo: omnidash-v2
 
 **Routing:** plan-to-tickets → omninode multi-agent workflow.
 
-**Branch:** `clone45/storybook-widget-coverage` (created from `main` after OMN-59 merges, OR from `clone45/typography-refactor` if OMN-59 still open).
+**Branch:** `jonah/storybook-widget-coverage` (created from `main` after OMN-59 merges, OR from `jonah/typography-refactor` if OMN-59 still open).
 
 ---
 
@@ -126,7 +126,7 @@ Recorded 2026-04-24 as part of the design-to-plan Phase 2→3 gate.
 ## Conventions used below
 
 - **Commit format:** `<type>(<scope>): <description> [OMN-NNNN]` per repo conventions.
-- **Branch:** All tasks execute on `clone45/storybook-widget-coverage`.
+- **Branch:** All tasks execute on `jonah/storybook-widget-coverage`.
 - **Test runner:** `npx vitest run <target>` is the canonical invocation. Storybook build: `npx storybook build -o /tmp/sb-verify` (cleanup after).
 - **Compliance test:** `src/storybook-coverage-compliance.test.ts` is the single source of truth for phase-completion. Every task's acceptance is tied to one or more `it(...)` cases in that file. Excluded from default vitest run during the refactor; promoted to permanent gate at Task 18 (Proof of Life).
 - **Granularity:** each Task is one logical unit ending in one commit. Steps within a task aim for 2-5 minutes each.

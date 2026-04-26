@@ -19,7 +19,7 @@ Minimum-viable UI to create a dashboard. No dashboard-list picker (future work);
 ## Changes
 
 1. `src/components/frame/Header.css.ts` — add styles for the new button and inline form.
-2. `src/components/frame/Header.tsx` — add "New Dashboard" button. On click, reveals an inline form (input + Create + Cancel). Submit calls `setActiveDashboard(createEmptyDashboard(name, 'clone45'))`.
+2. `src/components/frame/Header.tsx` — add "New Dashboard" button. On click, reveals an inline form (input + Create + Cancel). Submit calls `setActiveDashboard(createEmptyDashboard(name, 'OmniNode-ai'))`.
 3. `src/components/frame/Header.test.tsx` — new test confirming the submit path creates an active dashboard.
 
 ## Out of scope

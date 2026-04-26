@@ -2,7 +2,7 @@
 
 **Status:** Accepted
 **Date:** 2026-04-24
-**Authors:** clone45
+**Authors:** OmniNode-ai
 **Related:** OMN-100 (Storybook Coverage for Dashboard Widgets epic), OMN-22 (UX polish parent), OMN-59 (Typography Refactor sibling), `docs/plans/storybook-widget-coverage.md`
 
 ## Context

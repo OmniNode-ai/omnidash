@@ -21,10 +21,10 @@ intentionally deferred — see §8 for rationale.
 
 | Stage | Title | Tickets / items | Commit on `main` |
 |---|---|---|---|
-| [PR #33](https://github.com/clone45/omnidash-v2/pull/33) | env-var sweep + I/O validation + WS carve-out + grep gate | T1–T5 | `9a14197` |
-| [PR #34](https://github.com/clone45/omnidash-v2/pull/34) | capability/test honesty + server typecheck discipline | T6, T7, T9–T13 | `f3e85a0` |
-| [PR #35](https://github.com/clone45/omnidash-v2/pull/35) | truth-ownership refactor — service-led writes + source context + topic SoT | T14–T16 | `18a7651` |
-| [PR #36](https://github.com/clone45/omnidash-v2/pull/36) | 2D companions + threshold config + cleanup bundle | T17–T21 | `7a0beb3` |
+| [PR #33](https://github.com/OmniNode-ai/omnidash-v2/pull/33) | env-var sweep + I/O validation + WS carve-out + grep gate | T1–T5 | `9a14197` |
+| [PR #34](https://github.com/OmniNode-ai/omnidash-v2/pull/34) | capability/test honesty + server typecheck discipline | T6, T7, T9–T13 | `f3e85a0` |
+| [PR #35](https://github.com/OmniNode-ai/omnidash-v2/pull/35) | truth-ownership refactor — service-led writes + source context + topic SoT | T14–T16 | `18a7651` |
+| [PR #36](https://github.com/OmniNode-ai/omnidash-v2/pull/36) | 2D companions + threshold config + cleanup bundle | T17–T21 | `7a0beb3` |
 | Bundle 1 | small mechanical leftovers + this response doc | M4, M16, LOW.6, LOW.8 | `6c2a9c6` |
 | Bundle 2 | test-discipline pass | M8, M9, M14, M1 | `f0260ab` |
 | Bundle 3 | UI/UX polish | H5, H16, LOW.1, LOW.7 | `e0cb96f` |
