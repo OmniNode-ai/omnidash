@@ -19,7 +19,7 @@ export interface RoutingDecision {
   cost_usd: number;
 }
 
-type SortKey = 'created_at' | 'llm_agent' | 'fuzzy_agent' | 'agreement' | 'llm_confidence' | 'cost_usd';
+type SortKey = 'created_at' | 'llm_agent' | 'fuzzy_agent' | 'agreement' | 'llm_confidence' | 'fuzzy_confidence' | 'cost_usd';
 type SortDir = 'asc' | 'desc';
 
 // Default rows-per-page when the placement doesn't override via
@@ -37,12 +37,13 @@ interface Column {
 // regardless of content, which made Timestamp wrap and wasted space on
 // LLM Conf. and Cost (which only hold 3–7 chars).
 const COLUMNS: Array<Column & { width: string }> = [
-  { key: 'created_at',    label: 'Timestamp',   width: '24%' },
-  { key: 'llm_agent',     label: 'LLM Agent',   width: '21%' },
-  { key: 'fuzzy_agent',   label: 'Fuzzy Agent', width: '21%' },
-  { key: 'agreement',     label: 'Agreement',   width: '13%' },
-  { key: 'llm_confidence', label: 'LLM Conf.',  width: '9%' },
-  { key: 'cost_usd',      label: 'Cost',        width: '12%' },
+  { key: 'created_at',      label: 'Timestamp',   width: '22%' },
+  { key: 'llm_agent',       label: 'LLM Agent',   width: '20%' },
+  { key: 'fuzzy_agent',     label: 'Fuzzy Agent', width: '20%' },
+  { key: 'agreement',       label: 'Agreement',   width: '11%' },
+  { key: 'llm_confidence',  label: 'LLM Conf.',   width: '8%' },
+  { key: 'fuzzy_confidence', label: 'Fuzzy Conf.', width: '8%' },
+  { key: 'cost_usd',        label: 'Cost',        width: '11%' },
 ];
 
 function formatTimestamp(iso: string, timeZone: string): string {
@@ -334,6 +335,11 @@ export default function RoutingDecisionTable({ config }: { config: Record<string
                     <td style={{ padding: '0.375rem 0.5rem' }}>
                       <Text size="md" family="mono" tabularNums>
                         {(row.llm_confidence * 100).toFixed(0)}%
+                      </Text>
+                    </td>
+                    <td style={{ padding: '0.375rem 0.5rem' }}>
+                      <Text size="md" family="mono" tabularNums>
+                        {(row.fuzzy_confidence * 100).toFixed(0)}%
                       </Text>
                     </td>
                     <td style={{ padding: '0.375rem 0.5rem' }}>

@@ -9,7 +9,6 @@ import type { DashboardLayoutItem } from '@shared/types/dashboard';
 interface DashboardGridProps {
   layout: DashboardLayoutItem[];
   editMode: boolean;
-  onLayoutChange: (layout: DashboardLayoutItem[]) => void;
   resolveComponent: (name: string) => LazyExoticComponent<ComponentType<unknown>> | undefined;
   /** Called in edit mode when the user clicks a placed component to select it for config editing. */
   onPlacementClick?: (placementId: string) => void;
