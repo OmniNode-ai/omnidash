@@ -502,7 +502,6 @@ function ThreeCanvas({
 
     const handleContextLost = (e: Event) => {
       e.preventDefault();
-      // eslint-disable-next-line no-console
       console.warn('[CostTrend3D] WebGL context lost');
       onContextLost();
     };

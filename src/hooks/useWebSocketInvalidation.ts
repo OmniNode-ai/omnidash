@@ -44,11 +44,23 @@ export function useWebSocketInvalidation() {
 
     ws.onmessage = (e) => {
       try {
-        const msg = JSON.parse(e.data as string) as { type: string; channel?: string };
-        if (msg.type === 'INVALIDATE' && msg.channel) {
-          const keys = CHANNEL_TO_QUERY_KEY[msg.channel];
-          if (keys) {
-            queryClient.invalidateQueries({ queryKey: keys });
+        // Validate the inbound frame at the I/O boundary rather than
+        // casting straight from JSON.parse(). Anything we can't read
+        // as { type: 'INVALIDATE', channel: string } is a malformed
+        // frame and gets silently ignored — same observable behavior
+        // as the previous catch-all but without the unsafe cast.
+        const raw: unknown = JSON.parse(e.data as string);
+        if (
+          raw &&
+          typeof raw === 'object' &&
+          (raw as { type?: unknown }).type === 'INVALIDATE'
+        ) {
+          const channel = (raw as { channel?: unknown }).channel;
+          if (typeof channel === 'string') {
+            const keys = CHANNEL_TO_QUERY_KEY[channel];
+            if (keys) {
+              queryClient.invalidateQueries({ queryKey: keys });
+            }
           }
         }
       } catch { /* ignore malformed frames */ }

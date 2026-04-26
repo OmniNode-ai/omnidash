@@ -129,10 +129,12 @@ export default function RoutingDecisionTable({ config }: { config: Record<string
     copy.sort((a, b) => {
       const av = a[key];
       const bv = b[key];
-      let cmp = 0;
-      if (typeof av === 'number' && typeof bv === 'number') cmp = av - bv;
-      else if (typeof av === 'boolean' && typeof bv === 'boolean') cmp = Number(av) - Number(bv);
-      else cmp = String(av).localeCompare(String(bv));
+      const cmp =
+        typeof av === 'number' && typeof bv === 'number'
+          ? av - bv
+          : typeof av === 'boolean' && typeof bv === 'boolean'
+            ? Number(av) - Number(bv)
+            : String(av).localeCompare(String(bv));
       return dir === 'asc' ? cmp : -cmp;
     });
     return copy;

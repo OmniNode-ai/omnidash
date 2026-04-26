@@ -152,18 +152,25 @@ export class DashboardService {
   }
 
   async importJson(json: string): Promise<DashboardDefinition> {
-    const parsed = JSON.parse(json) as DashboardDefinition;
+    // Validate the parsed JSON shape at the I/O boundary before doing
+    // anything else with it. The previous code cast straight from
+    // JSON.parse() to DashboardDefinition and only validated *after*
+    // spreading the (possibly malformed) value into a new object —
+    // which meant fields like `layout` could be `undefined` and crash
+    // the spread, or could be the wrong type and pass spread but
+    // corrupt the in-memory store.
+    const raw: unknown = JSON.parse(json);
+    const parseResult = parseDashboardDefinition(raw);
+    if (!parseResult.valid) {
+      throw new Error(`Invalid dashboard JSON: ${parseResult.errors.join(', ')}`);
+    }
     const now = new Date().toISOString();
     const imported: DashboardDefinition = {
-      ...parsed,
+      ...parseResult.dashboard,
       id: `dash-${crypto.randomUUID()}-import`,
       createdAt: now,
       updatedAt: now,
     };
-    const validation = validateDashboardDefinition(imported);
-    if (!validation.valid) {
-      throw new Error(`Invalid dashboard JSON: ${validation.errors.join(', ')}`);
-    }
     this.store.set(imported.id, imported);
     return imported;
   }
