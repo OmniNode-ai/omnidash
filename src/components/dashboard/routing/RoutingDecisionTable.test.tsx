@@ -33,4 +33,32 @@ describe('RoutingDecisionTable', () => {
     render(<DataSourceTestProvider client={qc}><RoutingDecisionTable config={{}} /></DataSourceTestProvider>);
     expect(await screen.findByText(/no routing decisions/i)).toBeInTheDocument();
   });
+
+  // §8.B (review acceptance) — config.pageSize must actually slice
+  // the rendered row count.
+  it('config.pageSize=10 renders only the first 10 of 12 rows', async () => {
+    const rows = Array.from({ length: 12 }, (_, i) => ({
+      id: `r${i}`,
+      created_at: `2026-04-10T12:${String(i).padStart(2, '0')}:00Z`,
+      llm_agent: 'claude-opus',
+      fuzzy_agent: `gpt-${i}`,
+      agreement: true,
+      llm_confidence: 0.9,
+      fuzzy_confidence: 0.85,
+      cost_usd: 0.001 * i,
+    }));
+    mockFetchWithItems(rows);
+    render(
+      <DataSourceTestProvider client={qc}>
+        <RoutingDecisionTable config={{ pageSize: 10 }} />
+      </DataSourceTestProvider>
+    );
+    // Wait for rows to land — use the first agent-cell text that's
+    // unique to the populated dataset.
+    expect(await screen.findByText('gpt-0')).toBeInTheDocument();
+    // Page 1 of 2: rows 0..9 visible, rows 10 + 11 not.
+    expect(screen.getByText('gpt-9')).toBeInTheDocument();
+    expect(screen.queryByText('gpt-10')).not.toBeInTheDocument();
+    expect(screen.queryByText('gpt-11')).not.toBeInTheDocument();
+  });
 });

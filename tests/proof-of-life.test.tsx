@@ -1,20 +1,15 @@
 import { describe, it, expect } from 'vitest';
-import { existsSync } from 'node:fs';
-import path from 'node:path';
-import { fileURLToPath } from 'node:url';
 
-const __dirname = path.dirname(fileURLToPath(import.meta.url));
-const ROOT = path.resolve(__dirname, '..');
-
-// fixtures/ is gitignored and only exists after running `npm run generate:fixtures` locally.
-// Skip in CI (where generate:fixtures is not part of the pipeline).
-const inCI = process.env['CI'] === 'true';
+// Sanity tests for the build-time outputs. The earlier
+// `fixtures/onex.snapshot.projection.llm_cost.v1` existence check was
+// removed (M17 fix): it asserted only that a contributor had run
+// `generate:fixtures` locally, never that the fixture pipeline itself
+// worked, and was permanently `skipIf(inCI)` because CI doesn't run
+// generate:fixtures. The actual fixture-rendering surface is covered
+// by every widget's unit tests (which mock fetch against the same
+// shape) and by the integration tests in src/integration.part*.test.tsx.
 
 describe('Proof of Life', () => {
-  it.skipIf(inCI)('fixtures exist after generate:fixtures', () => {
-    expect(existsSync(path.join(ROOT, 'fixtures/onex.snapshot.projection.llm_cost.v1'))).toBe(true);
-  });
-
   it('component registry lists at least 7 components', async () => {
     const registry = await import('../src/registry/component-registry.json');
     // components is a record object; count keys

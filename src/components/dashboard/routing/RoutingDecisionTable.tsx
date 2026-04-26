@@ -144,7 +144,7 @@ export default function RoutingDecisionTable({ config }: { config: Record<string
   const safePage = Math.min(page, totalPages - 1);
   const pageRows = useMemo(
     () => sorted.slice(safePage * pageSize, (safePage + 1) * pageSize),
-    [sorted, safePage],
+    [sorted, safePage, pageSize],
   );
 
   const toggleSort = (key: SortKey) => {

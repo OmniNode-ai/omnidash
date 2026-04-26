@@ -77,6 +77,14 @@ export default [
       'local/no-typography-inline': 'error',
       'local/no-cast-on-parsed-json': 'error',
       'react-hooks/rules-of-hooks': 'error',
+      // `exhaustive-deps` is set to `warn` rather than `error` so that
+      // genuine one-shot effects (mount-only hydration, resize observer
+      // setup, etc.) can carry an inline `// eslint-disable-next-line
+      // react-hooks/exhaustive-deps -- <reason>` comment instead of
+      // breaking the build. The lint surface is "max-warnings=0" so
+      // unaddressed warnings still fail; a real warning is just an
+      // un-justified deps mismatch.
+      'react-hooks/exhaustive-deps': 'warn',
       // Conservative pragma: the codebase has many intentional
       // narrowing casts (`as const`, `as Foo` for narrowing in test
       // fixtures, etc.) and turning on no-explicit-any across the
