@@ -1,0 +1,57 @@
+---
+# SPDX-FileCopyrightText: 2026 OmniNode.ai Inc.
+# SPDX-License-Identifier: MIT
+repos:
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v5.0.0
+    hooks:
+      - id: trailing-whitespace
+      - id: end-of-file-fixer
+      - id: check-added-large-files
+      - id: check-merge-conflict
+      - id: check-yaml
+      - id: check-json
+
+  - repo: local
+    hooks:
+      - id: no-env-file
+        name: Reject committed .env files (except .env.example)
+        entry: >-
+          bash -c 'FILES=$(git diff --cached --name-only | grep -E "(^|/)\.env([._-].+)?$" |
+          grep -vE "\.env\.example"); [ -n "$FILES" ] &&
+          { echo "BLOCKED: .env staged - use ~/.omnibase/.env instead. Run: git reset HEAD <file>"; exit 1; } ||
+          true'
+        language: system
+        pass_filenames: false
+        always_run: true
+
+      - id: no-planning-docs
+        name: Block planning docs (belong in omni_home/docs/plans/)
+        entry: >-
+          bash -c 'PLAN_FILES=$(git diff --cached --name-only -- "docs/plans/");
+          if [ -n "$PLAN_FILES" ]; then
+          echo "ERROR: Planning docs must live in omni_home/docs/plans/, not in this repo:";
+          echo "$PLAN_FILES"; exit 1; fi'
+        language: system
+        pass_filenames: false
+        always_run: true
+
+      - id: env-contamination-grep
+        name: Block hardcoded URLs/IPs/paths
+        entry: bash scripts/check-no-env-contamination.sh
+        language: system
+        pass_filenames: false
+        always_run: true
+
+      - id: eslint
+        name: ESLint (changed JS/TS files)
+        entry: ./node_modules/.bin/eslint --fix
+        language: system
+        files: \.(js|jsx|ts|tsx)$
+
+      - id: tsc-typecheck
+        name: TypeScript typecheck
+        entry: ./node_modules/.bin/tsc --noEmit
+        language: system
+        pass_filenames: false
+        always_run: true

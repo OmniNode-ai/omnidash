@@ -1,4 +1,5 @@
 import { defineConfig, loadEnv } from 'vite';
+import type { ViteDevServer } from 'vite';
 import react from '@vitejs/plugin-react';
 import { vanillaExtractPlugin } from '@vanilla-extract/vite-plugin';
 import path from 'path';
@@ -18,7 +19,7 @@ type ConnectNext = (err?: unknown) => void;
 
 export function fixturesMiddleware(opts: { root: string }) {
   const root = opts.root;
-  const handler = (req: IncomingMessage, res: ServerResponse, _next: ConnectNext) => {
+  const handler = (req: IncomingMessage, res: ServerResponse, _next: ConnectNext): void => {
     // NOTE: req.url arrives WITHOUT the /_fixtures prefix (Vite strips it).
     const urlPath = (req.url ?? '').split('?')[0];
     const parts = urlPath.split('/').filter(Boolean);
@@ -51,7 +52,7 @@ export function fixturesMiddleware(opts: { root: string }) {
 
   const plugin = {
     name: 'fixtures-middleware',
-    configureServer(server: any) {
+    configureServer(server: ViteDevServer) {
       server.middlewares.use('/_fixtures', handler);
     },
   };
@@ -61,7 +62,7 @@ export function fixturesMiddleware(opts: { root: string }) {
 
 export function layoutsMiddleware(opts: { root: string }) {
   const root = opts.root;
-  const handler = (req: IncomingMessage, res: ServerResponse, _next: ConnectNext) => {
+  const handler = (req: IncomingMessage, res: ServerResponse, _next: ConnectNext): void => {
     // NOTE: req.url arrives WITHOUT the /_layouts prefix (Vite strips it).
     const urlPath = (req.url ?? '').split('?')[0];
     const parts = urlPath.split('/').filter(Boolean);
@@ -101,7 +102,7 @@ export function layoutsMiddleware(opts: { root: string }) {
           res.setHeader('Content-Type', 'application/json');
           res.statusCode = 200;
           return res.end(body);
-        } catch (err) {
+        } catch (_err) {
           res.statusCode = 400;
           return res.end(JSON.stringify({ error: 'Invalid JSON body' }));
         }
@@ -115,7 +116,7 @@ export function layoutsMiddleware(opts: { root: string }) {
 
   const plugin = {
     name: 'layouts-middleware',
-    configureServer(server: any) {
+    configureServer(server: ViteDevServer) {
       server.middlewares.use('/_layouts', handler);
     },
   };
