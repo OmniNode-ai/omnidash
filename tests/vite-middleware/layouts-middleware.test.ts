@@ -14,15 +14,18 @@ describe('layoutsMiddleware (handler logic)', () => {
   });
   afterEach(() => rmSync(root, { recursive: true, force: true }));
 
+  type FakeReq = { url: string; method: string; on: (event: string, cb: (chunk?: Buffer) => void) => void };
+  type FakeRes = { setHeader: () => void; end: (b?: string) => void; statusCode: number };
+
   const call = (
-    handler: (req: any, res: any, next: any) => void,
+    handler: (req: FakeReq, res: FakeRes, next: () => void) => void,
     method: string,
     url: string,
     body?: string
   ): Promise<{ statusCode: number; body: string }> => {
     return new Promise((resolve) => {
       let statusCode = 200;
-      const res: any = {
+      const res: FakeRes = {
         setHeader: () => {},
         end: (b?: string) => resolve({ statusCode, body: b ?? '' }),
         get statusCode() { return statusCode; },
@@ -30,11 +33,11 @@ describe('layoutsMiddleware (handler logic)', () => {
       };
 
       // Simulate a simple readable stream for the request body
-      const listeners: Record<string, ((chunk?: any) => void)[]> = {};
-      const req: any = {
+      const listeners: Record<string, ((chunk?: Buffer) => void)[]> = {};
+      const req: FakeReq = {
         url,
         method,
-        on: (event: string, cb: (chunk?: any) => void) => {
+        on: (event: string, cb: (chunk?: Buffer) => void) => {
           listeners[event] = listeners[event] ?? [];
           listeners[event].push(cb);
         },

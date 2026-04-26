@@ -12,12 +12,15 @@ describe('fixturesMiddleware (handler logic)', () => {
   });
   afterEach(() => rmSync(root, { recursive: true, force: true }));
 
-  const call = async (handler: Function, url: string) => {
+  type FakeReq = { url: string };
+  type FakeRes = { setHeader: () => void; end: (b?: string) => void; statusCode: number };
+  type Handler = (req: FakeReq, res: FakeRes, next: () => void) => void;
+
+  const call = async (handler: Handler, url: string) => {
     return await new Promise<{ statusCode: number; body: string }>((resolve) => {
-      const req: any = { url };
+      const req: FakeReq = { url };
       let statusCode = 200;
-      let body = '';
-      const res: any = {
+      const res: FakeRes = {
         setHeader: () => {},
         end: (b?: string) => resolve({ statusCode, body: b ?? '' }),
         get statusCode() { return statusCode; },
