@@ -56,7 +56,7 @@ export default [
   // The local plugin's typography rule + the new no-cast-on-parsed-json
   // rule both apply to all .ts/.tsx files.
   {
-    files: ['src/**/*.{ts,tsx}', 'shared/**/*.ts', 'server/**/*.ts'],
+    files: ['src/**/*.{ts,tsx}', 'shared/**/*.ts', 'server/**/*.ts', 'tests/**/*.ts', 'vite.config.ts'],
     plugins: {
       local: localPlugin,
       'react-hooks': reactHooks,

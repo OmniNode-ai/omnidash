@@ -230,7 +230,7 @@ router.get('/api/events/recent', async (_req, res) => {
        LIMIT 200`
     );
     res.json(rows);
-  } catch (err) {
+  } catch (_err) {
     // event_bus_events may not exist in this schema — return empty gracefully
     console.warn('[routes] /api/events/recent: table may not exist, returning []');
     res.json([]);
