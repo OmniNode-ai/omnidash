@@ -120,7 +120,7 @@ Recorded 2026-04-24 as part of the design-to-plan Phase 2→3 gate.
 ## Conventions used below
 
 - **Commit format:** `<type>(<scope>): <description> [OMN-59]` per repo conventions.
-- **Branch:** All tasks execute on `clone45/typography-refactor`.
+- **Branch:** All tasks execute on `jonah/typography-refactor`.
 - **Test runner:** `npx vitest run <target>` is the canonical invocation.
 - **Compliance test:** `src/typography-compliance.test.ts` is the single source of truth for phase-completion. Every task's acceptance is tied to one or more `it(...)` cases in that file.
 - **Granularity:** each Task is one logical unit of work that ends in one commit. Steps within a task are expected to take 2-5 minutes each.

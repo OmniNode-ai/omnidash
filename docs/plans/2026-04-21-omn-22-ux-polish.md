@@ -4,7 +4,7 @@ epic_id: OMN-22
 
 # OMN-22 UX polish round (post-OMN-48)
 
-Follow-up UX issues surfaced by clone45 after OMN-48 landed. 28 observations
+Follow-up UX issues surfaced by Bret after OMN-48 landed. 28 observations
 triaged down to 10 tickets grouped by file/theme so each becomes a PR-sized
 unit of work. Already-done and user-retracted items are noted at the bottom
 for traceability.
@@ -187,17 +187,17 @@ Dependencies: None
 ## Already addressed — do not ticket
 
 - Header cleanup (remove user chip, Bell, HelpCircle, breadcrumb Menu
-  icon) — shipped by clone45 directly as an edit to `Header.tsx`.
-- Refresh button existence — clone45 retracted after confirming it was
+  icon) — shipped by Bret directly as an edit to `Header.tsx`.
+- Refresh button existence — Bret retracted after confirming it was
   already present.
-- Agent UI preservation — clone45 ruled to keep the pre-existing
+- Agent UI preservation — Bret ruled to keep the pre-existing
   AgentOrchestrator / AgentChatPanel / AgentActionDispatcher code
   untouched; Claude Design will update its visuals in a separate
   out-of-band pass.
 
 ## Constraints
 
-- Branch is `clone45/omn-48-chunked-audit` off `main`. Work here.
+- Branch is `jonah/omn-48-chunked-audit` off `main`. Work here.
 - Tests must pass (`npx tsc --noEmit` + `npx vitest run`) before any
   commit. Current baseline: 242 passing.
 - All 10 tickets under existing epic OMN-22. Do not create a new epic.
@@ -206,7 +206,7 @@ Dependencies: None
 
 ## Definition of Done (rollup)
 
-- All 10 tickets merged into `clone45/omn-48-chunked-audit` (or a
+- All 10 tickets merged into `jonah/omn-48-chunked-audit` (or a
   follow-up branch rebased onto it).
 - 242+ tests passing.
 - Tailwind typecheck clean.
