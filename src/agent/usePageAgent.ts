@@ -40,8 +40,16 @@ export function usePageAgent(options: UsePageAgentOptions) {
       const shape: Record<string, import('zod/v4').ZodType> = {};
       for (const [paramName, paramDef] of Object.entries(action.parameters)) {
         if (paramDef.type === 'string') {
+          // No outer cast: the conditional yields ZodEnum | ZodString, both
+          // of which are assignable to ZodType (the shape's value type) and
+          // both expose `.optional()`. The previous `as unknown as ZodString`
+          // forced the wider type into the narrower one for no observable
+          // benefit. The inner `as [string, ...string[]]` is still needed
+          // because z.enum() requires a non-empty tuple at the type level
+          // and `paramDef.enum` is typed as `string[]` from the action
+          // parameter contract.
           const base = paramDef.enum
-            ? (z.enum(paramDef.enum as [string, ...string[]]).describe(paramDef.description) as unknown as import('zod/v4').ZodString)
+            ? z.enum(paramDef.enum as [string, ...string[]]).describe(paramDef.description)
             : z.string().describe(paramDef.description);
           shape[paramName] = paramDef.required ? base : base.optional();
         } else if (paramDef.type === 'object') {
