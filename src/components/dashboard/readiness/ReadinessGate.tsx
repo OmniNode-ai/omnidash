@@ -1,51 +1,65 @@
+import type { CSSProperties } from 'react';
 import { ComponentWrapper } from '../ComponentWrapper';
+import { Text } from '@/components/ui/typography';
 import { useProjectionQuery } from '@/hooks/useProjectionQuery';
-import { useThemeColors } from '@/theme';
+import { TOPICS } from '@shared/types/topics';
+import { useTimezone } from '@/hooks/useTimezone';
 
-type DimensionStatus = 'PASS' | 'WARN' | 'FAIL';
+export type DimensionStatus = 'PASS' | 'WARN' | 'FAIL';
 
-interface ReadinessDimension {
+export interface ReadinessDimension {
   name: string;
   status: DimensionStatus;
   detail: string;
 }
 
-interface ReadinessSummary {
+export interface ReadinessSummary {
   dimensions: ReadinessDimension[];
   overallStatus: DimensionStatus;
   lastCheckedAt: string;
 }
 
 const STATUS_COLORS: Record<DimensionStatus, string> = {
-  PASS: 'var(--color-healthy)',
-  WARN: 'var(--color-warning)',
-  FAIL: 'var(--color-destructive)',
+  PASS: 'var(--status-ok)',
+  WARN: 'var(--status-warn)',
+  FAIL: 'var(--status-bad)',
 };
 
-function DimensionCard({ dim }: { dim: ReadinessDimension }) {
-  const colors = useThemeColors();
+const STATUS_TEXT_COLOR: Record<DimensionStatus, 'ok' | 'warn' | 'bad'> = {
+  PASS: 'ok',
+  WARN: 'warn',
+  FAIL: 'bad',
+};
+
+function StatusPill({ status }: { status: DimensionStatus }) {
   return (
-    <div style={{
-      border: `1px solid ${STATUS_COLORS[dim.status]}`,
-      borderRadius: '0.375rem',
-      padding: '0.5rem 0.75rem',
-      display: 'flex',
-      flexDirection: 'column',
-      gap: '0.25rem',
-    }}>
-      <div style={{ fontSize: '0.6875rem', fontWeight: 700, textTransform: 'uppercase', color: STATUS_COLORS[dim.status] }}>{dim.status}</div>
-      <div style={{ fontSize: '0.8125rem', fontWeight: 600, color: colors.foreground }}>{dim.name}</div>
-      <div style={{ fontSize: '0.75rem', color: colors.muted }}>{dim.detail}</div>
-    </div>
+    <Text
+      size="xs"
+      weight="bold"
+      color={STATUS_TEXT_COLOR[status]}
+      className="text-tracked"
+      style={{
+        display: 'inline-block',
+        minWidth: 44,
+        textAlign: 'center',
+        padding: '2px 8px',
+        borderRadius: 4,
+        border: `1px solid ${STATUS_COLORS[status]}`,
+      }}
+    >
+      {status}
+    </Text>
   );
 }
 
 export default function ReadinessGate({ config: _config }: { config: Record<string, unknown> }) {
-  const { data, isLoading, error } = useProjectionQuery<ReadinessSummary>(
-    '/api/readiness/summary',
-    { queryKey: ['readiness-summary'], refetchInterval: 120_000 }
-  );
-  const colors = useThemeColors();
+  const { data: dataArr, isLoading, error } = useProjectionQuery<ReadinessSummary>({
+    topic: TOPICS.overnightReadiness,
+    queryKey: ['readiness-summary'],
+    refetchInterval: 120_000,
+  });
+  const data = dataArr?.[0];
+  const tz = useTimezone();
 
   return (
     <ComponentWrapper
@@ -57,19 +71,72 @@ export default function ReadinessGate({ config: _config }: { config: Record<stri
       emptyHint="Readiness dimensions appear after checks are registered"
     >
       {data && (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-            <span style={{ fontSize: '0.75rem', color: colors.muted }}>Overall:</span>
-            <span style={{ fontSize: '0.875rem', fontWeight: 700, color: STATUS_COLORS[data.overallStatus] }}>{data.overallStatus}</span>
-            <span style={{ fontSize: '0.6875rem', color: colors.muted, marginLeft: 'auto' }}>
-              Checked {new Date(data.lastCheckedAt).toLocaleTimeString()}
-            </span>
+            <Text size="md" color="secondary">Overall</Text>
+            <StatusPill status={data.overallStatus} />
+            <Text size="sm" color="tertiary" style={{ marginLeft: 'auto' }}>
+              Checked {new Date(data.lastCheckedAt).toLocaleTimeString(undefined, { timeZone: tz })}
+            </Text>
           </div>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: '0.5rem' }}>
-            {data.dimensions.map((dim) => <DimensionCard key={dim.name} dim={dim} />)}
+
+          <div style={{ border: '1px solid var(--line-2)', borderRadius: 6, overflow: 'hidden' }}>
+            <table
+              style={{
+                width: '100%',
+                borderCollapse: 'collapse',
+                tableLayout: 'fixed',
+              }}
+            >
+              <colgroup>
+                <col style={{ width: 72 }} />
+                <col style={{ width: '40%' }} />
+                <col />
+              </colgroup>
+              <thead>
+                <tr>
+                  <th scope="col" style={thStyle}>
+                    <Text size="sm" weight="semibold" color="secondary" transform="uppercase" className="text-tracked">Status</Text>
+                  </th>
+                  <th scope="col" style={thStyle}>
+                    <Text size="sm" weight="semibold" color="secondary" transform="uppercase" className="text-tracked">Dimension</Text>
+                  </th>
+                  <th scope="col" style={thStyle}>
+                    <Text size="sm" weight="semibold" color="secondary" transform="uppercase" className="text-tracked">Detail</Text>
+                  </th>
+                </tr>
+              </thead>
+              <tbody>
+                {data.dimensions.map((dim) => (
+                  <tr key={dim.name} style={{ borderTop: '1px solid var(--line-2)' }}>
+                    <td style={tdStyle}>
+                      <StatusPill status={dim.status} />
+                    </td>
+                    <td style={tdStyle}>
+                      <Text size="lg" weight="semibold" color="primary">{dim.name}</Text>
+                    </td>
+                    <td style={tdStyle}>
+                      <Text size="lg" color="secondary">{dim.detail}</Text>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
           </div>
         </div>
       )}
     </ComponentWrapper>
   );
 }
+
+const thStyle: CSSProperties = {
+  textAlign: 'left',
+  padding: '0.375rem 0.625rem',
+  background: 'var(--panel-2)',
+  borderBottom: '1px solid var(--line)',
+};
+
+const tdStyle: CSSProperties = {
+  padding: '0.5rem 0.625rem',
+  verticalAlign: 'middle',
+};

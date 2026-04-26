@@ -1,0 +1,42 @@
+/* SOURCE: OmniDash.html:291-318 — verbatim port. Do not hand-edit; re-port if the prototype updates. */
+/* NOTE: var(--accent*) in prototype = var(--brand*) in v2 (globals.css renamed --accent* → --brand*).
+   Substitutions applied here to preserve visual fidelity. */
+
+.btn {
+  display: inline-flex; align-items: center; gap: 7px;
+  padding: 8px 14px; border-radius: 6px;
+  font-size: 13px; font-weight: 500;
+  border: 1px solid var(--line);
+  background: var(--panel);
+  color: var(--ink);
+  transition: background 0.15s, border-color 0.15s, transform 0.05s;
+}
+.btn:hover { background: var(--panel-2); border-color: var(--ink-3); }
+.btn:active { transform: translateY(1px); }
+.btn.primary {
+  background: var(--ink);
+  color: var(--panel);
+  border-color: var(--ink);
+}
+[data-theme="dark"] .btn.primary { background: var(--brand); color: oklch(15% 0.05 var(--accent-h)); border-color: var(--brand); }
+.btn.primary:hover { background: oklch(32% 0.01 260); }
+[data-theme="dark"] .btn.primary:hover { background: oklch(78% 0.15 var(--accent-h)); }
+.btn.accent {
+  background: var(--brand); border-color: var(--brand);
+  color: oklch(20% 0.08 var(--accent-h));
+}
+.btn.accent:hover { background: oklch(78% 0.15 var(--accent-h)); border-color: oklch(78% 0.15 var(--accent-h)); }
+.btn.ghost { border-color: transparent; }
+.btn.ghost:hover { background: var(--panel-2); border-color: var(--line); }
+
+/* OMN-127 — destructive variant for confirm-deletion buttons. Uses
+   --status-bad so colour drift is automatic when the bad-status token
+   is retuned per theme. Not in the OmniDash.html prototype yet, but
+   needed for the Delete Dashboard confirm flow. */
+.btn.danger {
+  background: var(--status-bad);
+  border-color: var(--status-bad);
+  color: oklch(15% 0.04 25);
+}
+.btn.danger:hover { background: oklch(58% 0.18 25); border-color: oklch(58% 0.18 25); }
+[data-theme="dark"] .btn.danger { color: oklch(98% 0.01 25); }

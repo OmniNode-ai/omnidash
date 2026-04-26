@@ -1,14 +1,29 @@
 import { render, screen } from '@testing-library/react';
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { QueryClient } from '@tanstack/react-query';
+import { DataSourceTestProvider } from '@/test-utils/dataSourceTestProvider';
+import { mockFetchWithItems } from '@/test-utils/mockFetch';
 import CostTrendPanel from './CostTrendPanel';
 
 const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } });
 
-// Mock ECharts to avoid canvas rendering in jsdom
-vi.mock('echarts-for-react', () => ({
-  default: ({ option }: any) => <div data-testid="echarts-mock">{JSON.stringify(option.series?.[0]?.data?.length ?? 0)}</div>,
+// Stub the three.js-backed chart so tests run in jsdom (no WebGL context).
+// The stub exposes the data it would have rendered via data attributes
+// so we can verify the outer component plumbed things through.
+vi.mock('./StackedChart', () => ({
+  StackedChart: ({ stacked, chartType }: {
+    stacked: { buckets: string[]; visibleModels: string[] };
+    chartType?: string;
+  }) => (
+    <div
+      data-testid="stacked-chart"
+      data-bucket-count={stacked.buckets.length}
+      data-visible-models={stacked.visibleModels.length}
+      data-chart-type={chartType ?? 'area'}
+    />
+  ),
 }));
+
 
 describe('CostTrendPanel', () => {
   beforeEach(() => {
@@ -20,37 +35,50 @@ describe('CostTrendPanel', () => {
   it('shows loading state initially', () => {
     (fetch as any).mockReturnValue(new Promise(() => {})); // never resolves
     render(
-      <QueryClientProvider client={qc}>
+      <DataSourceTestProvider client={qc}>
         <CostTrendPanel config={{ granularity: 'day' }} />
-      </QueryClientProvider>
+      </DataSourceTestProvider>
     );
     expect(screen.getByText('Loading...')).toBeInTheDocument();
   });
 
   it('renders chart when data is available', async () => {
-    (fetch as any).mockResolvedValueOnce({
-      ok: true,
-      json: async () => ([
-        { bucket_time: '2026-04-01', model_name: 'claude-3', total_cost_usd: '12.50', total_tokens: 50000 },
-        { bucket_time: '2026-04-02', model_name: 'claude-3', total_cost_usd: '15.00', total_tokens: 60000 },
-      ]),
-    });
+    mockFetchWithItems([
+      { bucket_time: '2026-04-01', model_name: 'claude-3', total_cost_usd: '12.50', total_tokens: 50000 },
+      { bucket_time: '2026-04-02', model_name: 'claude-3', total_cost_usd: '15.00', total_tokens: 60000 },
+    ]);
     render(
-      <QueryClientProvider client={qc}>
+      <DataSourceTestProvider client={qc}>
         <CostTrendPanel config={{ granularity: 'day' }} />
-      </QueryClientProvider>
+      </DataSourceTestProvider>
     );
     // Wait for chart to render
-    const chart = await screen.findByTestId('echarts-mock');
+    const chart = await screen.findByTestId('stacked-chart');
     expect(chart).toBeInTheDocument();
+    expect(chart.getAttribute('data-bucket-count')).toBe('2');
+    expect(chart.getAttribute('data-visible-models')).toBe('1');
+    expect(chart.getAttribute('data-chart-type')).toBe('area');
+  });
+
+  it('plumbs chartType=bar from config into the chart component', async () => {
+    mockFetchWithItems([
+      { bucket_time: '2026-04-01', model_name: 'claude-3', total_cost_usd: '12.50', total_tokens: 50000 },
+    ]);
+    render(
+      <DataSourceTestProvider client={qc}>
+        <CostTrendPanel config={{ granularity: 'day', chartType: 'bar' }} />
+      </DataSourceTestProvider>
+    );
+    const chart = await screen.findByTestId('stacked-chart');
+    expect(chart.getAttribute('data-chart-type')).toBe('bar');
   });
 
   it('shows empty state when no data', async () => {
-    (fetch as any).mockResolvedValueOnce({ ok: true, json: async () => ([]) });
+    (fetch as any).mockResolvedValueOnce({ ok: false });
     render(
-      <QueryClientProvider client={qc}>
+      <DataSourceTestProvider client={qc}>
         <CostTrendPanel config={{ granularity: 'day' }} />
-      </QueryClientProvider>
+      </DataSourceTestProvider>
     );
     expect(await screen.findByText(/no cost data/i)).toBeInTheDocument();
   });

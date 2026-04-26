@@ -1,3 +1,5 @@
+import { Text } from '@/components/ui/typography';
+
 interface SuggestedPromptsProps {
   onSelect: (prompt: string) => void;
 }
@@ -24,11 +26,9 @@ export function SuggestedPrompts({ onSelect }: SuggestedPromptsProps) {
             backgroundColor: 'transparent',
             color: 'hsl(var(--foreground))',
             cursor: 'pointer',
-            fontSize: '0.8125rem',
-            lineHeight: 1.4,
           }}
         >
-          {prompt}
+          <Text size="lg" color="inherit" leading="normal">{prompt}</Text>
         </button>
       ))}
     </div>

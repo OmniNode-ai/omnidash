@@ -1,62 +1,49 @@
-import { useMemo, type LazyExoticComponent, type ComponentType } from 'react';
-import { ReactGridLayout, verticalCompactor, type LayoutItem } from 'react-grid-layout';
-import 'react-grid-layout/css/styles.css';
-import 'react-resizable/css/styles.css';
+// Rewritten for OMN-43: react-grid-layout removed; replaced with a simple 2-column CSS grid.
+// DashboardView.tsx renders the grid inline (the live builder); this file is kept as a
+// thin standalone component so it can be reused or imported in tests without booting
+// the full DashboardView tree.
+import type { LazyExoticComponent, ComponentType } from 'react';
 import { ComponentCell } from './ComponentCell';
 import type { DashboardLayoutItem } from '@shared/types/dashboard';
-import * as s from './DashboardGrid.css';
-
-// In react-grid-layout v2, Layout = readonly LayoutItem[]
-type RGLLayout = readonly LayoutItem[];
-
-// react-grid-layout v2 requires an explicit width prop
-const CONTAINER_WIDTH = 1200;
 
 interface DashboardGridProps {
   layout: DashboardLayoutItem[];
   editMode: boolean;
-  onLayoutChange: (layout: DashboardLayoutItem[]) => void;
-  resolveComponent: (name: string) => LazyExoticComponent<ComponentType<any>> | undefined;
+  resolveComponent: (name: string) => LazyExoticComponent<ComponentType<unknown>> | undefined;
+  /** Called in edit mode when the user clicks a placed component to select it for config editing. */
+  onPlacementClick?: (placementId: string) => void;
 }
 
-export function DashboardGrid({ layout, editMode, onLayoutChange, resolveComponent }: DashboardGridProps) {
-  const rglLayout = useMemo(
-    () => layout.map((item) => ({ i: item.i, x: item.x, y: item.y, w: item.w, h: item.h })),
-    [layout]
-  );
-
-  const handleLayoutChange = (newLayout: RGLLayout) => {
-    const updated = layout.map((item) => {
-      const match = newLayout.find((l) => l.i === item.i);
-      if (match) {
-        return { ...item, x: match.x, y: match.y, w: match.w, h: match.h };
-      }
-      return item;
-    });
-    onLayoutChange(updated);
-  };
-
+export function DashboardGrid({
+  layout,
+  editMode,
+  resolveComponent,
+  onPlacementClick,
+}: DashboardGridProps) {
   return (
-    <div className={s.gridContainer}>
-      <ReactGridLayout
-        width={CONTAINER_WIDTH}
-        layout={rglLayout}
-        gridConfig={{ cols: 12, rowHeight: 80, margin: [12, 12] }}
-        dragConfig={{ enabled: editMode, bounded: false, threshold: 3 }}
-        resizeConfig={{ enabled: editMode, handles: ['se'] }}
-        onLayoutChange={handleLayoutChange}
-        compactor={verticalCompactor}
-      >
-        {layout.map((item) => (
-          <div key={item.i} className={`${s.gridItem} ${editMode ? s.gridItemEdit : ''}`} data-testid="grid-item">
+    <div className="grid grid-cols-2 gap-[var(--row-gap)]">
+      {layout.map((item) => (
+        <div
+          key={item.i}
+          className={`bg-panel rounded-lg border border-line shadow-sm overflow-hidden${
+            editMode
+              ? ' cursor-pointer ring-2 ring-transparent hover:ring-[var(--accent)] transition-all'
+              : ''
+          }`}
+          onClick={
+            editMode && onPlacementClick ? () => onPlacementClick(item.i) : undefined
+          }
+        >
+          <div className="p-4">
+            {/* ComponentCell provides data-testid="grid-item" on both success (via ComponentWrapper) and fallback paths. */}
             <ComponentCell
               componentName={item.componentName}
               config={item.config}
               component={resolveComponent(item.componentName)}
             />
           </div>
-        ))}
-      </ReactGridLayout>
+        </div>
+      ))}
     </div>
   );
 }

@@ -1,5 +1,6 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
 import type { ConversationMessage } from '@/store/conversationSlice';
+import { Text } from '@/components/ui/typography';
 import { MessageBubble } from './MessageBubble';
 import { SuggestedPrompts } from './SuggestedPrompts';
 import * as s from './AgentChatPanel.css';
@@ -50,9 +51,9 @@ export function AgentChatPanel({
         <button
           onClick={onToggle}
           aria-label="Close chat panel"
-          style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '1rem' }}
+          style={{ background: 'none', border: 'none', cursor: 'pointer' }}
         >
-          ×
+          <Text size="2xl" color="inherit">×</Text>
         </button>
       </div>
 
@@ -63,16 +64,15 @@ export function AgentChatPanel({
           <div className={s.messageList} ref={listRef}>
             {messages.length === 0 && (
               <div style={{ padding: '1rem 0' }}>
-                <div
-                  style={{
-                    color: 'hsl(var(--muted))',
-                    fontSize: '0.8125rem',
-                    textAlign: 'center',
-                    padding: '1rem 1rem 0.5rem',
-                  }}
+                <Text
+                  as="div"
+                  size="lg"
+                  color="secondary"
+                  align="center"
+                  style={{ padding: '1rem 1rem 0.5rem' }}
                 >
                   Ask me to build or configure your dashboard.
-                </div>
+                </Text>
                 <SuggestedPrompts onSelect={(p) => setInput(p)} />
               </div>
             )}
@@ -80,16 +80,17 @@ export function AgentChatPanel({
               <MessageBubble key={msg.id} message={msg} />
             ))}
             {isThinking && (
-              <div
+              <Text
+                as="div"
+                size="lg"
+                color="secondary"
                 style={{
                   alignSelf: 'flex-start',
-                  color: 'hsl(var(--muted))',
-                  fontSize: '0.8125rem',
                   padding: '0.25rem 0.5rem',
                 }}
               >
                 Thinking...
-              </div>
+              </Text>
             )}
           </div>
           <form className={s.inputRow} onSubmit={handleSubmit}>

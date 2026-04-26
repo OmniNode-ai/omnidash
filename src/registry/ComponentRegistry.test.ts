@@ -6,7 +6,7 @@ const mockManifest: ComponentManifest = {
   name: 'test-component',
   displayName: 'Test Component',
   description: 'A test',
-  category: 'metrics',
+  category: 'quality',
   version: '1.0.0',
   implementationKey: 'test/TestComponent',
   configSchema: { type: 'object', properties: { title: { type: 'string', default: 'Test' } }, additionalProperties: false },
@@ -47,9 +47,9 @@ describe('ComponentRegistry', () => {
   });
 
   it('filters by category', () => {
-    const metrics = registry.getComponentsByCategory('metrics');
+    const metrics = registry.getComponentsByCategory('quality');
     expect(metrics.length).toBe(1);
-    expect(registry.getComponentsByCategory('table').length).toBe(0);
+    expect(registry.getComponentsByCategory('activity').length).toBe(0);
   });
 
   it('validates config against restricted schema subset', () => {

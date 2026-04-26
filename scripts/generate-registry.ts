@@ -5,28 +5,76 @@
  * with 7 hard-coded MVP component manifests. The real implementation will
  * scan omnimarket contract metadata.yaml files at build time.
  *
+ * Also scans node_modules/@omninode/* for packages declaring dashboardComponents
+ * in their package.json and merges discovered manifests. Local manifests win on
+ * name collision (with a warning).
+ *
  * Usage: npx tsx scripts/generate-registry.ts
  */
-import { writeFileSync } from 'fs';
-import { resolve, dirname } from 'path';
+import { writeFileSync, existsSync, readFileSync, readdirSync } from 'fs';
+import { resolve, dirname, join } from 'path';
 import { fileURLToPath } from 'url';
+import type { ComponentManifest } from '../shared/types/component-manifest.js';
+import { validateComponentManifest } from '../shared/types/component-manifest.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 
-const MVP_COMPONENTS = {
+interface PackageJsonWithDashboard {
+  name: string;
+  version: string;
+  dashboardComponents?: string; // relative path to a JSON file listing manifests
+}
+
+/**
+ * Scan node_modules/@omninode/* for packages declaring dashboardComponents.
+ * Returns discovered ComponentManifest[] with _sourcePackage set for traceability.
+ */
+export function scanInstalledPackages(nodeModulesDir: string): ComponentManifest[] {
+  const scopeDir = join(nodeModulesDir, '@omninode');
+  if (!existsSync(scopeDir)) return [];
+  const found: ComponentManifest[] = [];
+  for (const pkg of readdirSync(scopeDir)) {
+    const pkgJsonPath = join(scopeDir, pkg, 'package.json');
+    if (!existsSync(pkgJsonPath)) continue;
+    const pkgJson = JSON.parse(readFileSync(pkgJsonPath, 'utf8')) as PackageJsonWithDashboard;
+    if (!pkgJson.dashboardComponents) continue;
+    const manifestPath = resolve(dirname(pkgJsonPath), pkgJson.dashboardComponents);
+    if (!existsSync(manifestPath)) {
+      console.warn(
+        `[registry] ${pkg} declares dashboardComponents but file missing: ${manifestPath}`,
+      );
+      continue;
+    }
+    const manifests = JSON.parse(readFileSync(manifestPath, 'utf8')) as ComponentManifest[];
+    for (const m of manifests) {
+      // Mark origin so collisions are traceable
+      (m as ComponentManifest & { _sourcePackage: string })._sourcePackage = pkgJson.name;
+      found.push(m);
+    }
+  }
+  return found;
+}
+
+const MVP_COMPONENTS: Record<string, ComponentManifest> = {
   'cost-trend-panel': {
     name: 'cost-trend-panel',
     displayName: 'Cost Trend',
     description: 'LLM cost trends, budget alerts, and token usage over time',
-    category: 'metrics',
+    category: 'cost',
     version: '1.0.0',
     implementationKey: 'cost-trend/CostTrendPanel',
     configSchema: {
       type: 'object',
       properties: {
-        granularity: { type: 'string', enum: ['hour', 'day'], default: 'day' },
-        showBudgetLine: { type: 'boolean', default: true },
+        granularity: { type: 'string', enum: ['hour', 'day'], default: 'hour' },
+        chartType: {
+          type: 'string',
+          enum: ['area', 'bar'],
+          default: 'area',
+          title: 'Chart type',
+          description: 'How each model\'s cost contribution is drawn over time. Area stacks smooth filled bands; bar stacks discrete columns per time bucket.',
+        },
       },
       additionalProperties: false,
     },
@@ -38,13 +86,70 @@ const MVP_COMPONENTS = {
     minSize: { w: 4, h: 3 },
     maxSize: { w: 12, h: 8 },
     emptyState: { message: 'No cost data available', hint: 'Cost data appears after LLM calls are tracked' },
-    capabilities: { supports_compare: false, supports_export: true, supports_fullscreen: true },
+    capabilities: { supports_compare: false, supports_export: true, supports_fullscreen: true, supports_time_range: true },
+  },
+  'cost-trend-3d': {
+    name: 'cost-trend-3d',
+    displayName: 'Cost Trend (3D)',
+    description: 'Experimental 3D cost visualization — orbit, zoom, and play with the data',
+    category: 'cost',
+    version: '0.1.0',
+    implementationKey: 'cost-trend-3d/CostTrend3D',
+    // No configSchema — widget has no per-instance options to configure.
+    dataSources: [
+      { type: 'api', endpoint: '/api/intelligence/cost/trends', required: true, purpose: 'initial_fetch' },
+    ],
+    events: { emits: [], consumes: [{ name: 'time_range_changed' }] },
+    defaultSize: { w: 8, h: 6 },
+    minSize: { w: 4, h: 4 },
+    maxSize: { w: 12, h: 10 },
+    emptyState: { message: 'No cost data available', hint: '3D cost visualization renders after LLM calls are tracked' },
+    capabilities: { supports_compare: false, supports_export: false, supports_fullscreen: true, supports_time_range: true },
+  },
+  'cost-by-model': {
+    name: 'cost-by-model',
+    displayName: 'Cost by Model (3D)',
+    description: 'Three.js pie chart of LLM cost share per model over the selected time range',
+    category: 'cost',
+    version: '1.0.0',
+    implementationKey: 'cost-by-model/CostByModelPie',
+    // No configSchema — widget has no per-instance options to configure.
+    dataSources: [
+      { type: 'api', endpoint: '/api/intelligence/cost/trends', required: true, purpose: 'initial_fetch' },
+    ],
+    events: { emits: [], consumes: [{ name: 'time_range_changed' }] },
+    defaultSize: { w: 6, h: 4 },
+    minSize: { w: 4, h: 3 },
+    maxSize: { w: 12, h: 8 },
+    emptyState: { message: 'No cost data available', hint: 'Cost data appears after LLM calls are tracked' },
+    capabilities: { supports_compare: false, supports_export: false, supports_fullscreen: true, supports_time_range: true },
+  },
+  'cost-by-model-2d': {
+    // T17 (OMN-158): 2D companion to CostByModelPie. Same data shape and
+    // projection topic; horizontal bar chart sorts by cost desc and
+    // encodes magnitude by length (perceptually accurate).
+    name: 'cost-by-model-2d',
+    displayName: 'Cost by Model',
+    description: 'Horizontal bar chart of LLM cost share per model over the selected time range',
+    category: 'cost',
+    version: '1.0.0',
+    implementationKey: 'cost-by-model-2d/CostByModelBars',
+    // No configSchema — widget has no per-instance options to configure.
+    dataSources: [
+      { type: 'api', endpoint: '/api/intelligence/cost/trends', required: true, purpose: 'initial_fetch' },
+    ],
+    events: { emits: [], consumes: [{ name: 'time_range_changed' }] },
+    defaultSize: { w: 6, h: 4 },
+    minSize: { w: 3, h: 3 },
+    maxSize: { w: 12, h: 8 },
+    emptyState: { message: 'No cost data available', hint: 'Cost data appears after LLM calls are tracked' },
+    capabilities: { supports_compare: false, supports_export: true, supports_fullscreen: false, supports_time_range: true },
   },
   'delegation-metrics': {
     name: 'delegation-metrics',
     displayName: 'Delegation Metrics',
     description: 'Task delegation events, cost savings, and quality gate pass rates',
-    category: 'metrics',
+    category: 'quality',
     version: '1.0.0',
     implementationKey: 'delegation/DelegationMetrics',
     configSchema: {
@@ -52,6 +157,15 @@ const MVP_COMPONENTS = {
       properties: {
         showSavings: { type: 'boolean', default: true },
         showQualityGates: { type: 'boolean', default: true },
+        qualityGateThreshold: {
+          type: 'number',
+          minimum: 0,
+          maximum: 1,
+          default: 0.8,
+          title: 'Quality gate threshold',
+          description:
+            'Pass-rate at or above which the Quality Gate Pass Rate stat reads green. Below this, it reads warn-amber.',
+        },
       },
       additionalProperties: false,
     },
@@ -64,18 +178,26 @@ const MVP_COMPONENTS = {
     minSize: { w: 4, h: 3 },
     maxSize: { w: 12, h: 8 },
     emptyState: { message: 'No delegation events', hint: 'Delegation events appear when tasks are delegated to agents' },
-    capabilities: { supports_compare: false, supports_export: true, supports_fullscreen: true },
+    capabilities: { supports_compare: false, supports_export: true, supports_fullscreen: true, supports_time_range: false },
   },
   'routing-decision-table': {
     name: 'routing-decision-table',
     displayName: 'Routing Decisions',
     description: 'LLM routing decision log with agreement rates and confidence scores',
-    category: 'table',
+    category: 'activity',
     version: '1.0.0',
     implementationKey: 'routing/RoutingDecisionTable',
     configSchema: {
       type: 'object',
-      properties: { pageSize: { type: 'number', default: 20 } },
+      properties: {
+        pageSize: {
+          type: 'number',
+          enum: [10, 25, 50, 100],
+          default: 25,
+          title: 'Rows per page',
+          description: 'How many decisions to render per page before pagination controls.',
+        },
+      },
       additionalProperties: false,
     },
     dataSources: [
@@ -87,16 +209,16 @@ const MVP_COMPONENTS = {
     minSize: { w: 6, h: 4 },
     maxSize: { w: 12, h: 12 },
     emptyState: { message: 'No routing decisions', hint: 'Routing decisions appear when LLM routing is active' },
-    capabilities: { supports_compare: false, supports_export: true, supports_fullscreen: true },
+    capabilities: { supports_compare: false, supports_export: true, supports_fullscreen: true, supports_time_range: true },
   },
   'baselines-roi-card': {
     name: 'baselines-roi-card',
     displayName: 'Baselines ROI',
     description: 'Token/time delta, retry counts, and promotion recommendations',
-    category: 'metrics',
+    category: 'health',
     version: '1.0.0',
     implementationKey: 'baselines/BaselinesROICard',
-    configSchema: { type: 'object', properties: {}, additionalProperties: false },
+    // No configSchema — widget has no per-instance options to configure.
     dataSources: [
       { type: 'api', endpoint: '/api/baselines/summary', required: true, purpose: 'initial_fetch' },
       { type: 'websocket', topic: 'baselines', required: false, purpose: 'live_updates' },
@@ -106,34 +228,84 @@ const MVP_COMPONENTS = {
     minSize: { w: 3, h: 3 },
     maxSize: { w: 12, h: 6 },
     emptyState: { message: 'No baselines data', hint: 'Baselines data appears after A/B pattern evaluation' },
-    capabilities: { supports_compare: false, supports_export: true, supports_fullscreen: false },
+    capabilities: { supports_compare: false, supports_export: true, supports_fullscreen: false, supports_time_range: false },
   },
   'quality-score-panel': {
     name: 'quality-score-panel',
     displayName: 'Quality Scores',
-    description: 'Pattern quality scores and confidence metrics from omniintelligence',
-    category: 'metrics',
-    version: '1.0.0',
+    description: 'Pattern quality score distribution with pass-rate headline and tier-coloured bars',
+    category: 'quality',
+    version: '1.1.0',
     implementationKey: 'quality/QualityScorePanel',
-    configSchema: { type: 'object', properties: {}, additionalProperties: false },
+    configSchema: {
+      type: 'object',
+      properties: {
+        passThreshold: {
+          type: 'number',
+          minimum: 0,
+          maximum: 1,
+          default: 0.8,
+          title: 'Pass threshold',
+          description: 'Score at or above which a measurement is counted as passing. Drives both the headline pass-rate number and the translucent wall behind the bars.',
+        },
+      },
+      additionalProperties: false,
+    },
+    dataSources: [
+      { type: 'api', endpoint: '/api/intelligence/quality/summary', required: true, purpose: 'initial_fetch' },
+    ],
+    events: { emits: [], consumes: [] },
+    // minSize bumped from 3 → 4 because the new split layout (130px
+    // stats pane + 3D chart) needs room for the chart to stay legible.
+    defaultSize: { w: 6, h: 4 },
+    minSize: { w: 4, h: 3 },
+    maxSize: { w: 12, h: 6 },
+    emptyState: { message: 'No quality scores', hint: 'Quality scores appear after patterns are evaluated' },
+    capabilities: { supports_compare: false, supports_export: true, supports_fullscreen: false, supports_time_range: false },
+  },
+  'quality-score-panel-2d': {
+    // T18 (OMN-159): 2D companion to QualityScorePanel. Vertical
+    // histogram with red→green tier gradient, threshold line, and mean
+    // marker. Same data shape; lower priority than the 3D version since
+    // ordered buckets read fine in 3D too — this is a flat alternative.
+    name: 'quality-score-panel-2d',
+    displayName: 'Quality Scores (2D)',
+    description: 'Flat histogram of quality-score distribution with threshold line and mean marker',
+    category: 'quality',
+    version: '1.0.0',
+    implementationKey: 'quality-score-panel-2d/QualityScoreHistogram',
+    configSchema: {
+      type: 'object',
+      properties: {
+        passThreshold: {
+          type: 'number',
+          minimum: 0,
+          maximum: 1,
+          default: 0.8,
+          title: 'Pass threshold',
+          description: 'Score at or above which a measurement counts as passing.',
+        },
+      },
+      additionalProperties: false,
+    },
     dataSources: [
       { type: 'api', endpoint: '/api/intelligence/quality/summary', required: true, purpose: 'initial_fetch' },
     ],
     events: { emits: [], consumes: [] },
     defaultSize: { w: 6, h: 4 },
-    minSize: { w: 3, h: 3 },
+    minSize: { w: 4, h: 3 },
     maxSize: { w: 12, h: 6 },
     emptyState: { message: 'No quality scores', hint: 'Quality scores appear after patterns are evaluated' },
-    capabilities: { supports_compare: false, supports_export: true, supports_fullscreen: false },
+    capabilities: { supports_compare: false, supports_export: true, supports_fullscreen: false, supports_time_range: false },
   },
   'readiness-gate': {
     name: 'readiness-gate',
     displayName: 'Readiness Gate',
     description: '7-dimension tri-state platform readiness aggregation',
-    category: 'status',
+    category: 'health',
     version: '1.0.0',
     implementationKey: 'readiness/ReadinessGate',
-    configSchema: { type: 'object', properties: {}, additionalProperties: false },
+    // No configSchema — widget has no per-instance options to configure.
     dataSources: [
       { type: 'api', endpoint: '/api/readiness/summary', required: true, purpose: 'initial_fetch' },
     ],
@@ -142,13 +314,13 @@ const MVP_COMPONENTS = {
     minSize: { w: 6, h: 3 },
     maxSize: { w: 12, h: 6 },
     emptyState: { message: 'No readiness data', hint: 'Run the platform readiness gate to see results' },
-    capabilities: { supports_compare: false, supports_export: true, supports_fullscreen: false },
+    capabilities: { supports_compare: false, supports_export: true, supports_fullscreen: false, supports_time_range: false },
   },
   'event-stream': {
     name: 'event-stream',
     displayName: 'Event Stream',
     description: 'Live Kafka event feed with filtering and search',
-    category: 'stream',
+    category: 'activity',
     version: '1.0.0',
     implementationKey: 'events/EventStream',
     configSchema: {
@@ -168,16 +340,57 @@ const MVP_COMPONENTS = {
     minSize: { w: 6, h: 4 },
     maxSize: { w: 12, h: 12 },
     emptyState: { message: 'No events streaming', hint: 'Events appear when the Kafka bus is connected' },
-    capabilities: { supports_compare: false, supports_export: false, supports_fullscreen: true },
+    // EventStream is a live tail, not a windowed query — the range
+    // selector doesn't map onto its behavior, so it opts out.
+    capabilities: { supports_compare: false, supports_export: false, supports_fullscreen: true, supports_time_range: false },
   },
 };
+
+// Scan node_modules/@omninode/* for packages declaring dashboardComponents
+const nodeModulesDir = resolve(__dirname, '../node_modules');
+const scannedComponents = scanInstalledPackages(nodeModulesDir);
+
+// Merge: local wins on name collision
+const mergedComponents: Record<string, ComponentManifest> = { ...MVP_COMPONENTS };
+for (const scanned of scannedComponents) {
+  if (mergedComponents[scanned.name]) {
+    console.warn(
+      `[registry] name collision on "${scanned.name}" — keeping local, ignoring scanned from ${(scanned as ComponentManifest & { _sourcePackage?: string })._sourcePackage ?? 'unknown package'}`,
+    );
+  } else {
+    mergedComponents[scanned.name] = scanned;
+  }
+}
+
+// T16 (OMN-157): generator-time check that every manifest is structurally
+// complete. dataSources entries must have a topic (websocket) or
+// endpoint (api) — see validateComponentManifest. Failing fast here is
+// strictly better than the runtime widget rendering an empty stream.
+const validationFailures: string[] = [];
+for (const [name, m] of Object.entries(mergedComponents)) {
+  const result = validateComponentManifest(m);
+  if (!result.valid) {
+    validationFailures.push(`  ${name}: ${result.errors.join('; ')}`);
+  }
+}
+if (validationFailures.length > 0) {
+  console.error('[registry] manifest validation failed:');
+  for (const line of validationFailures) console.error(line);
+  process.exit(1);
+}
 
 const manifest = {
   manifestVersion: '1.0',
   generatedAt: new Date().toISOString(),
-  components: MVP_COMPONENTS,
+  components: mergedComponents,
 };
 
-const outPath = resolve(__dirname, '../public/component-registry.json');
+// Lives under src/ so Vite can resolve it as a module import without
+// the "Assets in public directory cannot be imported from JavaScript"
+// warning. Nothing fetches this file over HTTP — it's only consumed
+// via JS imports — so it doesn't need to be a static asset.
+const outPath = resolve(__dirname, '../src/registry/component-registry.json');
 writeFileSync(outPath, JSON.stringify(manifest, null, 2));
-console.log(`Generated component-registry.json with ${Object.keys(MVP_COMPONENTS).length} components`);
+console.log(
+  `Generated component-registry.json with ${Object.keys(mergedComponents).length} components (${Object.keys(MVP_COMPONENTS).length} local + ${scannedComponents.length} scanned)`,
+);
