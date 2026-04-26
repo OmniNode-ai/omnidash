@@ -13,5 +13,5 @@
     "noUnusedLocals": true,
     "noUnusedParameters": true
   },
-  "include": ["vite.config.ts", "server", "shared"]
+  "include": ["vite.config.ts", "server", "shared/types/topics.ts"]
 }
