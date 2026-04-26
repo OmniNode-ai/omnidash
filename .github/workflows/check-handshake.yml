@@ -2,10 +2,15 @@
 # SPDX-License-Identifier: MIT
 #
 # Design note: omnidash-v2 is not an ONEX node, so this is a reinterpretation of the
-# check-handshake concept rather than a verbatim port. "Handshake" here means verifying
-# that v2's contract surface (shared/types/topics.ts) remains compatible with the
-# upstream topic registry declared in omnibase_core — i.e., cross-repo contract surface
-# compatibility (topic registry), not RRH node lifecycle validation.
+# check-handshake concept rather than a verbatim port.
+#
+# Two-part check:
+#   1. Standard architecture handshake: verifies .claude/architecture-handshake.md is
+#      current against omnibase_core. Uses the "omnidash" handshake (same React/TS/Express
+#      stack as v1). This is the RRH-compatible part.
+#   2. Contract surface guard: verifies shared/types/topics.ts exists — v2's canonical
+#      topic registry. This is the v2-specific addition: cross-repo contract surface
+#      compatibility (topic registry), not RRH node lifecycle validation.
 name: Check Architecture Handshake
 
 on:
@@ -50,9 +55,4 @@ jobs:
           fi
 
       - name: Check architecture handshake
-        run: bash omnibase_core/architecture-handshakes/check-handshake.sh
-        env:
-          # Signal to the handshake script that this is a dashboard consumer repo,
-          # not a node repo — the script may use this to select the appropriate
-          # validation path.
-          ONEX_REPO_TYPE: dashboard
+        run: bash omnibase_core/architecture-handshakes/check-handshake.sh omnibase_core
