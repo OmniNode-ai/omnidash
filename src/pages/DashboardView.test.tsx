@@ -1,11 +1,13 @@
-// Updated for OMN-43: DashboardBuilder is now a re-export shim for DashboardView.
-// Tests import via the shim to verify backward compat; semantics unchanged.
+// Component-level tests for DashboardView. Originally `DashboardBuilder.test.tsx`
+// when DashboardBuilder was a re-export shim for DashboardView (OMN-43); the
+// shim was removed once the last callers (the integration tests) migrated, so
+// the test file is now named for what it actually tests.
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { Providers } from '@/providers/Providers';
 import { RegistryProvider } from '@/registry/RegistryProvider';
-import { DashboardBuilder } from './DashboardBuilder';
+import { DashboardView } from './DashboardView';
 import { useFrameStore } from '@/store/store';
 import { createEmptyDashboard } from '@shared/types/dashboard';
 import { layoutPersistence } from '@/layout/layout-persistence';
@@ -34,17 +36,17 @@ const manifest: RegistryManifest = {
   },
 };
 
-function renderBuilder() {
+function renderView() {
   return render(
     <Providers>
       <RegistryProvider manifest={manifest}>
-        <DashboardBuilder />
+        <DashboardView />
       </RegistryProvider>
     </Providers>
   );
 }
 
-describe('DashboardBuilder (DashboardView shim)', () => {
+describe('DashboardView', () => {
   beforeEach(() => {
     useFrameStore.setState({ editMode: false, activeDashboard: null, globalFilters: {} });
     const dash = createEmptyDashboard('Test Dashboard', 'jonah');
@@ -52,23 +54,23 @@ describe('DashboardBuilder (DashboardView shim)', () => {
   });
 
   it('renders the dashboard name', () => {
-    renderBuilder();
+    renderView();
     expect(screen.getByText('Test Dashboard')).toBeInTheDocument();
   });
 
   it('shows Add Widget button in view mode', () => {
-    renderBuilder();
+    renderView();
     expect(screen.getByRole('button', { name: /add widget/i })).toBeInTheDocument();
   });
 
   it('shows palette in edit mode', async () => {
-    renderBuilder();
+    renderView();
     await userEvent.click(screen.getByRole('button', { name: /add widget/i }));
     expect(screen.getByText('Test Widget')).toBeInTheDocument();
   });
 
   it('shows Save and Discard buttons in edit mode', async () => {
-    renderBuilder();
+    renderView();
     await userEvent.click(screen.getByRole('button', { name: /add widget/i }));
     expect(screen.getByRole('button', { name: /save/i })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /discard/i })).toBeInTheDocument();
@@ -78,7 +80,7 @@ describe('DashboardBuilder (DashboardView shim)', () => {
     const writeSpy = vi.spyOn(layoutPersistence, 'write').mockResolvedValue(undefined);
     const expectedName = useFrameStore.getState().activeDashboard!.name;
 
-    renderBuilder();
+    renderView();
     await userEvent.click(screen.getByRole('button', { name: /add widget/i }));
     await userEvent.click(screen.getByRole('button', { name: /save/i }));
 

@@ -6,6 +6,13 @@ interface ComponentCellProps {
   componentName: string;
   config: Record<string, unknown>;
   component?: LazyExoticComponent<ComponentType<any>>;
+  /**
+   * Override text shown when the lazy component for `componentName` cannot be
+   * resolved (e.g. an external plugin widget is in the registry but its
+   * package isn't installed). Defaults to "<componentName> — not available".
+   * Plugin authors / hosts can supply a friendlier message such as
+   * "Install @omninode/foo to enable this widget".
+   */
   emptyMessage?: string;
   /** Called when the widget's kebab-menu "Configure Widget" item is selected. */
   onConfigure?: () => void;
@@ -28,6 +35,7 @@ export function ComponentCell({
   componentName,
   config,
   component: LazyComponent,
+  emptyMessage,
   onConfigure,
   onDuplicate,
   onDelete,
@@ -64,7 +72,7 @@ export function ComponentCell({
         data-testid="grid-item"
         style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '2rem', opacity: 0.5, border: '1px solid var(--line)', borderRadius: 'var(--radius-lg)' }}
       >
-        <span>{componentName} — not available</span>
+        <span>{emptyMessage ?? `${componentName} — not available`}</span>
       </div>
     );
   }

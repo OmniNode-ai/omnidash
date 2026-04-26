@@ -38,14 +38,18 @@ interface QualityScoreConfig {
   passThreshold?: number;
 }
 
-// Score-domain midpoints for the five buckets. The fixture generator
-// emits buckets labeled "0.0-0.2" etc.; the midpoints are hardcoded
-// here because the bucket labels carry ranges, not numeric centers.
-const BUCKET_MIDPOINTS = [0.1, 0.3, 0.5, 0.7, 0.9];
-
 // Layout in world units. 5 bars, evenly spaced, centered around x=0.
 // scoreToX maps a score in [0, 1] onto the bar-strip x range.
 const BAR_COUNT = 5;
+
+// Score-domain midpoints derived from BAR_COUNT so the two stay in sync.
+// For BAR_COUNT = 5 this is [0.1, 0.3, 0.5, 0.7, 0.9] — same values the
+// fixture generator's bucket labels imply ("0.0-0.2" → midpoint 0.1, etc.).
+// Deriving keeps the constants honest if BAR_COUNT ever changes.
+const BUCKET_MIDPOINTS: readonly number[] = Array.from(
+  { length: BAR_COUNT },
+  (_, i) => (i + 0.5) / BAR_COUNT,
+);
 const BAR_SPACING = 1.1;
 const BAR_WIDTH = 0.7;
 const BAR_DEPTH = 0.7;
@@ -553,8 +557,19 @@ export default function QualityScorePanel({ config }: { config: QualityScoreConf
     // approximate with the midpoint, which matches the mean-score
     // computation convention the fixture generator uses.
     let passingCount = 0;
+    // Only count buckets whose index has a known midpoint. If the backend
+    // ever returns more buckets than the widget expects, the surplus is
+    // ignored (rather than silently undercounted by `undefined >= n` being
+    // false). A length mismatch is a real signal — log it once so the
+    // operator notices instead of seeing a quietly-wrong pass rate.
+    if (distribution.length !== BUCKET_MIDPOINTS.length) {
+      console.warn(
+        `[QualityScorePanel] distribution length ${distribution.length} differs from expected ${BUCKET_MIDPOINTS.length}; pass-rate truncated to known buckets`,
+      );
+    }
     distribution.forEach((b, i) => {
-      if (BUCKET_MIDPOINTS[i] >= passThreshold) passingCount += b.count;
+      const midpoint = BUCKET_MIDPOINTS[i];
+      if (midpoint !== undefined && midpoint >= passThreshold) passingCount += b.count;
     });
     const passRate = totalMeasurements > 0 ? passingCount / totalMeasurements : 0;
     const maxCount = distribution.reduce((m, b) => Math.max(m, b.count), 0);

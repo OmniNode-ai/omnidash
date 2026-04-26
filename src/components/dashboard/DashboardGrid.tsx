@@ -1,6 +1,7 @@
 // Rewritten for OMN-43: react-grid-layout removed; replaced with a simple 2-column CSS grid.
-// DashboardGrid is kept as a thin component so DashboardBuilder.tsx (legacy shim) still
-// compiles. DashboardView.tsx renders the grid inline; this file exists for test compatibility.
+// DashboardView.tsx renders the grid inline (the live builder); this file is kept as a
+// thin standalone component so it can be reused or imported in tests without booting
+// the full DashboardView tree.
 import type { LazyExoticComponent, ComponentType } from 'react';
 import { ComponentCell } from './ComponentCell';
 import type { DashboardLayoutItem } from '@shared/types/dashboard';

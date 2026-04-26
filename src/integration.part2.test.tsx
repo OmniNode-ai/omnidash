@@ -5,7 +5,7 @@ import { readFileSync } from 'fs';
 import { resolve } from 'path';
 import { Providers } from './providers/Providers';
 import { RegistryProvider } from './registry/RegistryProvider';
-import { DashboardBuilder } from './pages/DashboardBuilder';
+import { DashboardView } from './pages/DashboardView';
 import { useFrameStore } from './store/store';
 import { createEmptyDashboard } from '@shared/types/dashboard';
 import { DashboardService } from './services/dashboardService';
@@ -20,7 +20,7 @@ function renderWithRegistry() {
   return render(
     <Providers>
       <RegistryProvider manifest={manifest}>
-        <DashboardBuilder />
+        <DashboardView />
       </RegistryProvider>
     </Providers>
   );
