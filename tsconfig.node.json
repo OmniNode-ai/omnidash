@@ -11,7 +11,12 @@
     "skipLibCheck": true,
     "strict": true,
     "noUnusedLocals": true,
-    "noUnusedParameters": true
+    "noUnusedParameters": true,
+    "baseUrl": ".",
+    "paths": {
+      "@shared/*": ["shared/*"]
+    }
   },
-  "include": ["vite.config.ts", "server"]
+  "include": ["vite.config.ts", "server"],
+  "exclude": ["server/**/__tests__/**", "server/**/*.test.ts"]
 }
