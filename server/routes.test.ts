@@ -128,11 +128,13 @@ describe('server/routes (T10 smoke coverage)', () => {
   });
 
   it('GET /api/intelligence/quality/summary returns mean and distribution', async () => {
+    // Server returns 5 buckets (1..5) — matches QualityScorePanel widget's
+    // BAR_COUNT contract. See M9 fix.
     mockQuery
       .mockResolvedValueOnce([{ mean_score: 0.72, total: '50' }])
       .mockResolvedValueOnce([
-        { bucket: '7', count: '20' },
-        { bucket: '8', count: '15' },
+        { bucket: '4', count: '20' },
+        { bucket: '5', count: '15' },
       ]);
     const res = await request(buildApp()).get('/api/intelligence/quality/summary');
     expect(res.status).toBe(200);

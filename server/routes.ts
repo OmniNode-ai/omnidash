@@ -155,8 +155,13 @@ router.get('/api/intelligence/quality/summary', async (_req, res) => {
         `SELECT AVG(quality_score) AS mean_score, COUNT(*)::text AS total
          FROM pattern_quality_metrics`
       ),
+      // The QualityScorePanel widget renders 5 bars (BAR_COUNT=5,
+      // BUCKET_MIDPOINTS length 5). Server returns the matching 5 buckets
+      // so the widget's per-index BUCKET_MIDPOINTS lookup never falls off
+      // the end. Aligning the consumer's contract; do not change the
+      // bucket count without updating the widget at the same time.
       query<{ bucket: string; count: string }>(
-        `SELECT WIDTH_BUCKET(quality_score, 0, 1, 10)::text AS bucket,
+        `SELECT WIDTH_BUCKET(quality_score, 0, 1, 5)::text AS bucket,
                 COUNT(*)::text AS count
          FROM pattern_quality_metrics
          GROUP BY bucket

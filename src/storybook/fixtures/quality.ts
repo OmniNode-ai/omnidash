@@ -16,7 +16,12 @@ export interface BuildQualitySummaryOptions {
   totalMeasurements?: number;
 }
 
-const BUCKET_LABELS = ['0.0-0.2', '0.2-0.4', '0.4-0.6', '0.6-0.8', '0.8-1.0'];
+// Integer-string bucket labels matching the actual server output
+// (`WIDTH_BUCKET(quality_score, 0, 1, 5)::text` returns "1".."5"). The
+// widget consumes the distribution by index, not by parsing the label,
+// so the labels are cosmetic for rendering — but keeping them honest
+// avoids future test/server divergence (M9 fix).
+const BUCKET_LABELS = ['1', '2', '3', '4', '5'];
 const BUCKET_MIDPOINTS = [0.1, 0.3, 0.5, 0.7, 0.9];
 
 const PROFILE_WEIGHTS: Record<NonNullable<BuildQualitySummaryOptions['profile']>, number[]> = {

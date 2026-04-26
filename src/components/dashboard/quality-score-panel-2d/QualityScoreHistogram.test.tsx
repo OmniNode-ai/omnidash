@@ -44,11 +44,11 @@ describe('QualityScoreHistogram (T18)', () => {
         meanScore: 0.72,
         totalMeasurements: 50,
         distribution: [
-          { bucket: '0.0-0.2', count: 1 },
-          { bucket: '0.2-0.4', count: 4 },
-          { bucket: '0.4-0.6', count: 10 },
-          { bucket: '0.6-0.8', count: 20 },
-          { bucket: '0.8-1.0', count: 15 },
+          { bucket: '1', count: 1 },
+          { bucket: '2', count: 4 },
+          { bucket: '3', count: 10 },
+          { bucket: '4', count: 20 },
+          { bucket: '5', count: 15 },
         ],
       },
     ]);

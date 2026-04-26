@@ -3,9 +3,11 @@ import { ComponentWrapper } from '../ComponentWrapper';
 import { useProjectionQuery } from '@/hooks/useProjectionQuery';
 import { TOPICS } from '@shared/types/topics';
 import { applyTimeRange, resolveTimeRange } from '@/hooks/useTimeRange';
+import { useTimezone } from '@/hooks/useTimezone';
 import { useThemeColors } from '@/theme';
 import { useFrameStore } from '@/store/store';
 import { Text } from '@/components/ui/typography';
+import { zonedComponents } from '@/lib/zonedComponents';
 import { StackedChart, type StackedSlice, type ChartType } from './StackedChart';
 
 export interface CostDataPoint {
@@ -72,6 +74,10 @@ function buildStacked(
 export default function CostTrendPanel({ config }: { config: CostTrendConfig }) {
   const granularity = config.granularity || 'hour';
   const chartType: ChartType = config.chartType === 'bar' ? 'bar' : 'area';
+  // M1 (review §4): bucket-tick labels read the dashboard-level
+  // timezone via zonedComponents() so they don't disagree with the rest
+  // of the dashboard once the user picks a non-browser zone.
+  const tz = useTimezone();
   const { data, isLoading, error } = useProjectionQuery<CostDataPoint>({
     topic: TOPICS.llmCost,
     queryKey: ['cost-trends', granularity],
@@ -140,10 +146,10 @@ export default function CostTrendPanel({ config }: { config: CostTrendConfig }) 
   );
 
   const formatBucketTick = (iso: string): string => {
-    const d = new Date(iso);
-    const date = `${String(d.getMonth() + 1).padStart(2, '0')}/${String(d.getDate()).padStart(2, '0')}`;
+    const c = zonedComponents(new Date(iso), tz);
+    const date = `${c.month}/${c.day}`;
     if (granularity === 'hour') {
-      return `${date} ${String(d.getHours()).padStart(2, '0')}:00`;
+      return `${date} ${c.hour}:00`;
     }
     return date;
   };
