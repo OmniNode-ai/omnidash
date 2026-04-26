@@ -22,3 +22,7 @@ jobs:
       actions: read
       contents: read
       security-events: write
+    # Code Scanning (Advanced Security) may not yet be enabled on this repo.
+    # continue-on-error prevents a GitHub-settings gap from blocking PR merges
+    # while the feature is being provisioned. Remove once Code Security is on.
+    continue-on-error: true

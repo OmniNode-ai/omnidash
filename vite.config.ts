@@ -26,28 +26,28 @@ export function fixturesMiddleware(opts: { root: string }) {
 
     if (parts.length === 1 && parts[0] === 'registry.json') {
       const file = path.join(root, 'registry.json');
-      if (!existsSync(file)) { res.statusCode = 404; res.end(); return; }
+      if (!existsSync(file)) { res.statusCode = 404; void res.end(); return; }
       res.setHeader('Content-Type', 'application/json');
-      res.end(readFileSync(file)); return;
+      void res.end(readFileSync(file)); return;
     }
 
     if (parts.length === 2 && parts[1] === 'index.json') {
       const dir = path.join(root, parts[0]!);
-      if (!existsSync(dir) || !statSync(dir).isDirectory()) { res.statusCode = 404; res.end(); return; }
+      if (!existsSync(dir) || !statSync(dir).isDirectory()) { res.statusCode = 404; void res.end(); return; }
       const files = readdirSync(dir).filter((f) => f.endsWith('.json'));
       res.setHeader('Content-Type', 'application/json');
-      res.end(JSON.stringify(files)); return;
+      void res.end(JSON.stringify(files)); return;
     }
 
     if (parts.length === 2 && parts[1]!.endsWith('.json')) {
       const file = path.join(root, parts[0]!, parts[1]!);
-      if (!existsSync(file)) { res.statusCode = 404; res.end(); return; }
+      if (!existsSync(file)) { res.statusCode = 404; void res.end(); return; }
       res.setHeader('Content-Type', 'application/json');
-      res.end(readFileSync(file)); return;
+      void res.end(readFileSync(file)); return;
     }
 
     res.statusCode = 404;
-    res.end();
+    void res.end();
   };
 
   const plugin = {
@@ -70,24 +70,24 @@ export function layoutsMiddleware(opts: { root: string }) {
     // Only handle single-segment paths: /<name>
     if (parts.length !== 1) {
       res.statusCode = 404;
-      res.end(); return;
+      void res.end(); return;
     }
 
     const name = parts[0]!;
     // Guard against path traversal: reject names containing path separators or dot-only segments.
     if (name.includes('/') || name.includes('\\') || name === '..' || name === '.') {
       res.statusCode = 400;
-      res.end(); return;
+      void res.end(); return;
     }
     const file = path.join(root, `${name}.json`);
 
     if (req.method === 'GET') {
       if (!existsSync(file)) {
         res.statusCode = 404;
-        res.end(); return;
+        void res.end(); return;
       }
       res.setHeader('Content-Type', 'application/json');
-      res.end(readFileSync(file)); return;
+      void res.end(readFileSync(file)); return;
     }
 
     if (req.method === 'POST') {
@@ -101,17 +101,17 @@ export function layoutsMiddleware(opts: { root: string }) {
           writeFileSync(file, body, 'utf8');
           res.setHeader('Content-Type', 'application/json');
           res.statusCode = 200;
-          res.end(body);
+          void res.end(body);
         } catch (_err) {
           res.statusCode = 400;
-          res.end(JSON.stringify({ error: 'Invalid JSON body' }));
+          void res.end(JSON.stringify({ error: 'Invalid JSON body' }));
         }
       });
       return;
     }
 
     res.statusCode = 404;
-    res.end();
+    void res.end();
   };
 
   const plugin = {
