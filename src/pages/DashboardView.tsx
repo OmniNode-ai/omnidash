@@ -73,9 +73,11 @@ export function DashboardView() {
     }).catch((err: unknown) => {
       console.warn('[DashboardView] failed to load persisted layout:', err);
     });
-    // Intentional: this effect should run only once on mount — rerunning when
-    // setActiveDashboard changes would re-hydrate and clobber live state.
-    // (react-hooks/exhaustive-deps is not wired into this repo's ESLint yet.)
+    // Intentional one-shot: this effect should run only on mount.
+    // Including `setActiveDashboard` in the deps would re-hydrate every
+    // time Zustand returned a new function reference and clobber live
+    // state. The setter is captured at mount and never changes shape.
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- mount-only by design
   }, []);
 
   // Close the widget library when the user switches dashboards. We compare to

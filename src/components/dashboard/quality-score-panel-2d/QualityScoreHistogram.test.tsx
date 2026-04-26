@@ -65,4 +65,39 @@ describe('QualityScoreHistogram (T18)', () => {
     // Pass rate header — only the 0.8-1.0 bucket has score≥0.8 → 15/50 = 30%.
     expect(screen.getByText('30%')).toBeInTheDocument();
   });
+
+  // §8.B (review acceptance) — config.passThreshold must actually
+  // change the pass-rate computation. Same fixture, two thresholds,
+  // expect different rendered percentages.
+  it('config.passThreshold lowers the displayed rate when raised, raises it when lowered', async () => {
+    const fixture = {
+      meanScore: 0.65,
+      totalMeasurements: 30,
+      distribution: [
+        { bucket: '1', count: 2 },
+        { bucket: '2', count: 3 },
+        { bucket: '3', count: 5 },
+        { bucket: '4', count: 10 },
+        { bucket: '5', count: 10 },
+      ],
+    };
+    // Threshold 0.8: only bucket 5 (midpoint 0.9) qualifies → 10/30 ≈ 33%.
+    mockFetchWithItems([fixture]);
+    const { unmount } = render(
+      <DataSourceTestProvider client={qc}>
+        <QualityScoreHistogram config={{ passThreshold: 0.8 }} />
+      </DataSourceTestProvider>,
+    );
+    expect(await screen.findByText('33%')).toBeInTheDocument();
+    unmount();
+
+    // Threshold 0.6: buckets 4 + 5 qualify (midpoints 0.7, 0.9) → 20/30 ≈ 67%.
+    mockFetchWithItems([fixture]);
+    render(
+      <DataSourceTestProvider client={qc}>
+        <QualityScoreHistogram config={{ passThreshold: 0.6 }} />
+      </DataSourceTestProvider>,
+    );
+    expect(await screen.findByText('67%')).toBeInTheDocument();
+  });
 });
