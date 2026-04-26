@@ -49,7 +49,7 @@ jobs:
       - uses: actions/setup-node@v4
         if: steps.changes.outputs.run_tests == 'true'
         with:
-          node-version: '20'
+          node-version: '20.x'
           cache: 'npm'
 
       - run: npm ci
