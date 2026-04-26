@@ -1,6 +1,6 @@
 # UX polish checklist (post-OMN-48)
 
-Original 28-item list that clone45 dictated on 2026-04-21 after reviewing the
+Original 28-item list that Bret dictated on 2026-04-21 after reviewing the
 post-OMN-48 dashboard. Preserved as-is here so we can work through them
 one at a time together. Updated status column as we go.
 
@@ -138,7 +138,7 @@ applies to all dashboards in the browser session.
 
 ### 17. Refresh button
 **Status**: ❌ retracted
-clone45 retracted after confirming the Refresh button already exists.
+Bret retracted after confirming the Refresh button already exists.
 
 ### 18. (Skipped in original list)
 **Status**: ❌ n/a
@@ -185,7 +185,7 @@ Investigation (2026-04-21): found only one spec reference in
 `docs/ui-fidelity-inventory-2026-04-20.md`, which says agent UI is "out of
 Part 3 scope (not in prototype)" but does not say to remove it. The
 AgentOrchestrator + AgentChatPanel + supporting code is pre-existing
-(present in the unzipped `omnidash-v2.zip`). clone45 decided to keep it;
+(present in the unzipped `omnidash-v2.zip`). Bret decided to keep it;
 Claude Design will update its visuals out-of-band.
 
 ### 26. "All systems normal" — comment out
@@ -228,7 +228,7 @@ path Radix uses for highlighting.
 Removed the leading `<Menu size={16}/>` icon from the breadcrumbs nav.
 
 ### 31. Typography system refactor (OMN-59)
-**Status**: 🟡 in progress on branch `clone45/typography-refactor`
+**Status**: 🟡 in progress on branch `jonah/typography-refactor`
 Replaces ad-hoc inline `style={{ fontSize, fontWeight, ... }}` usage across
 widgets with a single typography system: CSS tokens (`--font-size-*`,
 `--font-weight-*`, `--line-height-*`, `--letter-spacing-*`) plus React

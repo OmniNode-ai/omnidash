@@ -2,7 +2,7 @@
 
 **Status:** Accepted
 **Date:** 2026-04-24
-**Authors:** clone45
+**Authors:** OmniNode-ai
 **Related:** OMN-59 (Typography System Refactor epic), `docs/plans/typography-refactor.md`
 
 ## Context
