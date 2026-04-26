@@ -4,7 +4,7 @@
   "description": "",
   "main": "index.js",
   "scripts": {
-    "dev": "vite --port 3001",
+    "dev": "vite",
     "dev:server": "tsx watch server/index.ts",
     "build": "tsc && vite build",
     "build:server": "tsc --noEmit --project tsconfig.node.json",

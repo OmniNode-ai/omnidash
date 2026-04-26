@@ -7,7 +7,7 @@ import { SnapshotSourceProvider } from './data-source';
 import { ThemeProvider } from './theme';
 import { RegistryProvider } from './registry/RegistryProvider';
 import { ComponentRegistry } from './registry/ComponentRegistry';
-import { DashboardBuilder } from './pages/DashboardBuilder';
+import { DashboardView } from './pages/DashboardView';
 import { useFrameStore } from './store/store';
 import { DASHBOARD_TEMPLATES } from './templates';
 import { validateDashboardDefinition } from '@shared/types/dashboard';
@@ -82,7 +82,7 @@ describe('Proof of Life — Part 3 (Full System)', () => {
       <QueryClientProvider client={qc}><SnapshotSourceProvider>
         <ThemeProvider>
           <RegistryProvider manifest={manifest}>
-            <DashboardBuilder />
+            <DashboardView />
           </RegistryProvider>
         </ThemeProvider>
       </SnapshotSourceProvider></QueryClientProvider>
@@ -101,7 +101,7 @@ describe('Proof of Life — Part 3 (Full System)', () => {
       <QueryClientProvider client={qc}><SnapshotSourceProvider>
         <ThemeProvider>
           <RegistryProvider manifest={manifest}>
-            <DashboardBuilder />
+            <DashboardView />
           </RegistryProvider>
         </ThemeProvider>
       </SnapshotSourceProvider></QueryClientProvider>
