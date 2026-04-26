@@ -17,7 +17,7 @@ import { fileURLToPath } from 'url';
 import type { RegistryManifest } from './registry/types';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
-const manifestJson = readFileSync(resolve(__dirname, '../public/component-registry.json'), 'utf-8');
+const manifestJson = readFileSync(resolve(__dirname, './registry/component-registry.json'), 'utf-8');
 const manifest: RegistryManifest = JSON.parse(manifestJson);
 
 vi.mock('page-agent', () => ({

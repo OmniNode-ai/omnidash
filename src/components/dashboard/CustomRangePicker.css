@@ -1,0 +1,37 @@
+/* Theme-map react-day-picker's --rdp-* variables onto our dashboard
+   tokens. Loaded AFTER `react-day-picker/style.css` via the import order
+   in CustomRangePicker.tsx so these declarations win at the .rdp-root
+   level. Targeting `.dash-calendar-wrapper .rdp-root` (two classes) vs
+   the library's `.rdp-root` (one class) also gives us headroom on
+   specificity if the library shifts things in a future release. */
+.dash-calendar-wrapper .rdp-root {
+  --rdp-accent-color: var(--brand);
+  --rdp-accent-background-color: var(--brand-soft);
+
+  /* Range start/end: the picked endpoint cells get a full brand fill.
+     White text gives a consistent high-contrast reading in both
+     themes (--brand-ink's dark green didn't contrast well enough on
+     --brand). */
+  --rdp-range_start-date-background-color: var(--brand);
+  --rdp-range_end-date-background-color: var(--brand);
+  --rdp-range_start-color: #ffffff;
+  --rdp-range_end-color: #ffffff;
+
+  /* Range middle: days between the endpoints sit on a soft tint. Dark
+     ink on pale brand-soft reads cleanly; the library's default
+     (`inherit`) was picking up a color from the outer light-gray
+     chrome that vanished on top of the soft-green fill. */
+  --rdp-range_middle-background-color: var(--brand-soft);
+  --rdp-range_middle-color: var(--ink);
+
+  --rdp-today-color: var(--brand);
+
+  /* Compact sizing so the popover fits at ~320px wide. */
+  --rdp-day-height: 30px;
+  --rdp-day-width: 30px;
+  --rdp-day_button-height: 28px;
+  --rdp-day_button-width: 28px;
+  --rdp-nav-height: 2rem;
+  --rdp-nav_button-height: 1.75rem;
+  --rdp-nav_button-width: 1.75rem;
+}

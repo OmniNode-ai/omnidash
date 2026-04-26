@@ -4,6 +4,7 @@ import { usePageAgent } from './usePageAgent';
 import { buildSystemPrompt } from './buildSystemPrompt';
 import { buildUserContext } from './contextUtils';
 import { AgentChatPanel } from '@/components/agent/AgentChatPanel';
+import { AgentLauncher } from '@/components/agent/AgentLauncher';
 import { useFrameStore } from '@/store/store';
 import { useRegistry } from '@/registry/RegistryProvider';
 import { useTheme } from '@/theme/ThemeProvider';
@@ -168,27 +169,7 @@ export function AgentOrchestrator() {
 
   return (
     <>
-      <button
-        onClick={() => setPanelOpen(!isPanelOpen)}
-        aria-label="AI Assistant"
-        style={{
-          position: 'fixed',
-          bottom: '1.5rem',
-          right: '1.5rem',
-          width: '48px',
-          height: '48px',
-          borderRadius: '50%',
-          backgroundColor: 'hsl(var(--primary))',
-          color: 'hsl(var(--primary-foreground))',
-          border: 'none',
-          cursor: 'pointer',
-          fontSize: '1.25rem',
-          boxShadow: '0 4px 12px rgba(0,0,0,0.2)',
-          zIndex: 99,
-        }}
-      >
-        AI
-      </button>
+      <AgentLauncher isOpen={isPanelOpen} onClick={() => setPanelOpen(!isPanelOpen)} />
       <AgentChatPanel
         isOpen={isPanelOpen}
         onToggle={() => setPanelOpen(false)}

@@ -1,0 +1,287 @@
+/*
+ * GLOBAL STYLES + DESIGN TOKENS
+ *
+ * SOURCE: Claude Design prototype
+ *   /tmp/claude-design/experimental/omnidash/project/OmniDash.html:12-67 (regular theme)
+ *
+ * Deviations from prototype:
+ *   - Prototype's `--accent*` tokens renamed to `--brand*` to free the
+ *     `--accent` namespace for shadcn/ui's "subtle hover tint" semantic.
+ *     Color values are unchanged; only the variable names differ.
+ *   - A shadcn semantic alias layer is appended below the prototype
+ *     tokens (mapping `--primary`, `--accent`, `--muted`, etc. to
+ *     prototype values).
+ *   - `@fontsource` imports and `@tailwind` directives are v2-specific
+ *     additions and have no prototype analog.
+ */
+
+/* ===== ALL @import STATEMENTS MUST PRECEDE EVERYTHING ELSE =====
+ * Per CSS spec, @import must come before every other at-rule except
+ * @charset and empty @layer. Vite's CSS pipeline enforces this strictly.
+ * Both the @fontsource font imports and the verbatim prototype CSS port
+ * must land above the @tailwind directives.
+ */
+
+/* Font imports */
+@import "@fontsource/ibm-plex-sans/400.css";
+@import "@fontsource/ibm-plex-sans/500.css";
+@import "@fontsource/ibm-plex-sans/600.css";
+@import "@fontsource/ibm-plex-sans/700.css";
+@import "@fontsource/ibm-plex-mono/400.css";
+@import "@fontsource/ibm-plex-mono/500.css";
+@import "@fontsource/ibm-plex-mono/600.css";
+
+/* Verbatim prototype CSS port (OMN-47). Each file starts with a SOURCE
+ * comment pointing at the exact prototype line range. Load order matches
+ * the prototype's stylesheet ordering. */
+@import "./buttons.css";
+@import "./sidebar.css";
+@import "./topbar.css";
+@import "./dashboard.css";
+@import "./library.css";
+@import "./modals.css";
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    /* ===== TYPOGRAPHY TOKENS =====
+       Font stacks are authored here as the single source of truth. Widgets
+       and CSS files reference these vars (never the literal family strings)
+       so a theme override at :root or [data-theme="X"] scope rebrands the
+       whole app. `font-sans` and `font-mono` are already part of the
+       importable theme schema (see src/theme/types.ts) as optional tokens;
+       a custom theme can override them via the themeIO import path.
+
+       Fonts today happen to be identical in light and dark — only color
+       palette changes between modes. If a future theme wants a different
+       family (e.g. a "brutalist" theme swapping to Space Grotesk + Space
+       Mono), it overrides these two vars in its scope. */
+    --font-sans: "IBM Plex Sans", system-ui, -apple-system, Helvetica, Arial, sans-serif;
+    --font-mono: "IBM Plex Mono", ui-monospace, Menlo, monospace;
+
+    /* ===== TYPE SCALE =====
+       8-step scale covering observed usage (10px ... 22px). Authored in
+       rem so a future root-size override scales the whole app. */
+    --text-xs:   0.625rem;   /* 10px — microlabels: column headers, pills, tiny chips */
+    --text-sm:   0.6875rem;  /* 11px — status rows, pagination text */
+    --text-md:   0.75rem;    /* 12px — dense data rows (EventStream, RoutingDecisionTable) */
+    --text-lg:   0.8125rem;  /* 13px — form inputs, empty-state prose */
+    --text-xl:   0.875rem;   /* 14px — body default */
+    --text-2xl:  1rem;       /* 16px — emphasized inline values */
+    --text-3xl:  1.125rem;   /* 18px — widget titles */
+    --text-4xl:  1.375rem;   /* 22px — dashboard title */
+
+    /* ===== LEADING ===== */
+    --leading-tight:   1.2;
+    --leading-normal:  1.45;
+    --leading-loose:   1.65;
+
+    /* ===== WEIGHT ===== */
+    --weight-regular:   400;
+    --weight-medium:    500;
+    --weight-semibold:  600;
+    --weight-bold:      700;
+
+    /* ===== TEXT COLOR ROLES =====
+       Semantic aliases over --ink-*. Widgets express role
+       ("secondary data") rather than rung ("--ink-2"). */
+    --text-primary:   var(--ink);
+    --text-secondary: var(--ink-2);
+    --text-tertiary:  var(--ink-3);
+    --text-brand:     var(--brand);
+    --text-ok:        var(--status-ok);
+    --text-warn:      var(--status-warn);
+    --text-bad:       var(--status-bad);
+
+    /* ===== PROTOTYPE TOKENS (OmniDash.html:12-49, renamed) ===== */
+    --accent-h: 120;
+    --brand: oklch(72% 0.15 var(--accent-h));
+    --brand-soft: oklch(92% 0.08 var(--accent-h));
+    --brand-ink: oklch(35% 0.10 var(--accent-h));
+
+    --bg: oklch(98.5% 0.004 85);
+    --panel: oklch(100% 0 0);
+    --panel-2: oklch(97% 0.004 85);
+    --ink: oklch(22% 0.01 260);
+    --ink-2: oklch(45% 0.01 260);
+    --ink-3: oklch(62% 0.01 260);
+    --line: oklch(90% 0.005 260);
+    --line-2: oklch(94% 0.004 260);
+    --sidebar: oklch(18% 0.008 260);
+    --sidebar-ink: oklch(92% 0.005 260);
+    --sidebar-ink-2: oklch(65% 0.01 260);
+    --sidebar-line: oklch(28% 0.01 260);
+
+    --status-ok: oklch(70% 0.15 145);
+    --status-warn: oklch(78% 0.15 75);
+    --status-bad: oklch(65% 0.18 25);
+
+    --radius: 8px;
+    --radius-lg: 12px;
+
+    --pad-y: 14px;
+    --pad-x: 16px;
+    --row-gap: 16px;
+
+    --shadow-sm: 0 1px 2px oklch(20% 0.01 260 / 0.06), 0 1px 0 oklch(20% 0.01 260 / 0.02);
+    --shadow-md: 0 4px 14px oklch(20% 0.01 260 / 0.08), 0 1px 2px oklch(20% 0.01 260 / 0.05);
+    --shadow-lg: 0 24px 60px oklch(20% 0.01 260 / 0.18), 0 2px 8px oklch(20% 0.01 260 / 0.06);
+
+    /* ===== SHADCN SEMANTIC ALIAS LAYER (v2-specific) ===== */
+    --background: var(--bg);
+    --foreground: var(--ink);
+    --card: var(--panel);
+    --card-foreground: var(--ink);
+    --popover: var(--panel);
+    --popover-foreground: var(--ink);
+    --primary: var(--brand);
+    --primary-foreground: var(--brand-ink);
+    --secondary: var(--panel-2);
+    --secondary-foreground: var(--ink);
+    --muted: var(--panel-2);
+    --muted-foreground: var(--ink-2);
+    --accent: var(--brand-soft);
+    --accent-foreground: var(--brand-ink);
+    --destructive: var(--status-bad);
+    --destructive-foreground: oklch(98% 0 0);
+    --border: var(--line);
+    --input: var(--line);
+    --ring: var(--brand);
+    --ring-offset-background: var(--bg);
+
+    /* ===== STATUS TOKEN ALIASES (OMN-47) ===== */
+    --color-healthy: var(--status-ok);
+    --color-warning: var(--status-warn);
+    --color-destructive: var(--status-bad);
+
+    /* Aliases so useThemeColors() (which reads --status-healthy/--status-warning
+       /--status-error off documentElement) finds values. The prototype uses
+       --status-ok/--status-warn/--status-bad; this keeps both vocabularies in sync. */
+    --status-healthy: var(--status-ok);
+    --status-warning: var(--status-warn);
+    --status-error: var(--status-bad);
+
+    /* ===== CHART PALETTE =====
+       Seven distinct hues at similar lightness / chroma so no one line dominates
+       in multi-series charts. Tuned for panel backgrounds (white in light mode).
+       Hue spacing chosen to stay clear of the brand's green (--accent-h = 120)
+       and to keep adjacent slots visually separable. */
+    --chart-1: oklch(68% 0.15 250);  /* blue */
+    --chart-2: oklch(72% 0.14 160);  /* teal */
+    --chart-3: oklch(78% 0.14 85);   /* yellow */
+    --chart-4: oklch(68% 0.18 30);   /* orange-red */
+    --chart-5: oklch(66% 0.20 350);  /* magenta */
+    --chart-6: oklch(66% 0.16 290);  /* purple */
+    --chart-7: oklch(72% 0.12 200);  /* cyan */
+  }
+
+  [data-theme="dark"] {
+    /* Tells the browser to render native UI (scrollbars, form
+       controls, autofill, etc.) in their dark variant. Without this
+       Chrome's scrollbar stays the OS-default light grey even when
+       every other surface in the app has flipped to dark. */
+    color-scheme: dark;
+
+    --bg: oklch(16% 0.008 260);
+    --panel: oklch(20% 0.008 260);
+    --panel-2: oklch(23% 0.008 260);
+    --ink: oklch(94% 0.005 260);
+    --ink-2: oklch(72% 0.01 260);
+    --ink-3: oklch(55% 0.01 260);
+    --line: oklch(28% 0.01 260);
+    --line-2: oklch(24% 0.01 260);
+    --sidebar: oklch(12% 0.008 260);
+    --sidebar-ink: oklch(94% 0.005 260);
+    --sidebar-ink-2: oklch(62% 0.01 260);
+    --sidebar-line: oklch(22% 0.01 260);
+
+    --brand-soft: oklch(32% 0.10 var(--accent-h));
+    --brand-ink: oklch(85% 0.14 var(--accent-h));
+    --destructive-foreground: oklch(98% 0 0);
+
+    --shadow-sm: 0 1px 2px oklch(0% 0 0 / 0.3);
+    --shadow-md: 0 4px 14px oklch(0% 0 0 / 0.35), 0 1px 2px oklch(0% 0 0 / 0.3);
+    --shadow-lg: 0 24px 60px oklch(0% 0 0 / 0.5), 0 2px 8px oklch(0% 0 0 / 0.3);
+
+    /* Slightly brighter chart palette for dark panels — higher lightness, similar
+       chroma, same hues so series identity stays consistent across theme toggle. */
+    --chart-1: oklch(75% 0.17 250);
+    --chart-2: oklch(78% 0.16 160);
+    --chart-3: oklch(83% 0.15 85);
+    --chart-4: oklch(74% 0.19 30);
+    --chart-5: oklch(72% 0.21 350);
+    --chart-6: oklch(72% 0.17 290);
+    --chart-7: oklch(77% 0.14 200);
+  }
+
+  [data-density="compact"] {
+    --pad-y: 10px;
+    --pad-x: 12px;
+    --row-gap: 12px;
+  }
+
+  /* Base resets and layout — OmniDash.html:73-93 verbatim */
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; height: 100%; }
+  body {
+    font-family: var(--font-sans);
+    color: var(--ink);
+    background: var(--bg);
+    font-size: 14px;
+    line-height: 1.45;
+    -webkit-font-smoothing: antialiased;
+    overflow: hidden;
+  }
+
+  /* Utility class bundling the mono stack with tabular-figure + ss01
+     stylistic-set OpenType features. Useful when applying mono to a
+     span without inline styles. */
+  .mono { font-family: var(--font-mono); font-feature-settings: "tnum", "ss01"; }
+
+  /* Typography utility classes — applied via `className` so widgets can
+     opt into specific typographic features the <Text> component's prop
+     API doesn't cover. Exempt from the `local/no-typography-inline`
+     ESLint rule because they're CSS-file rules, not inline style props.
+
+     - `.text-tracked` preserves the 0.08em letter-spacing used for
+       small-caps uppercase labels ("MODELS", "CLEAR FOCUS"). <Text>
+       has no `letterSpacing` prop; compose `<Text transform="uppercase"
+       className="text-tracked">` to restore the spaced-caps tech look
+       that several widgets used pre-migration.
+     - `.text-input-md` / `.text-input-sm` / `.text-input-xl` set
+       font-size on native <input>/<textarea>/<select> elements which
+       cannot be rendered via <Text>. Use `className="text-input-md"`
+       (13px) for search inputs, `.text-input-sm` (12px) for dense
+       date/time fields, and `.text-input-xl` (22px) for the
+       dashboard-title rename input. */
+  .text-tracked { letter-spacing: 0.08em; }
+  .text-input-md { font-size: var(--text-lg); }
+  .text-input-sm { font-size: var(--text-md); }
+  .text-input-xl { font-size: var(--text-4xl); }
+
+  button { font: inherit; color: inherit; background: none; border: 0; cursor: pointer; padding: 0; }
+  input, select, textarea { font: inherit; color: inherit; }
+
+  /* Scoped to div so it doesn't collide with @rjsf/core's <fieldset id="root">
+     (rjsf's default id for the root schema group). Without the tag qualifier,
+     the rjsf fieldset inherits height:100vh and overflows the modal. */
+  div#root { height: 100vh; display: flex; flex-direction: column; }
+
+  /* ---------- APP CHROME ---------- */
+  /* Sidebar width is exposed as a CSS variable so the collapsed
+     state can override it without touching the grid template. */
+  .app {
+    --sidebar-w: 240px;
+    display: grid;
+    grid-template-columns: var(--sidebar-w) 1fr;
+    height: 100vh;
+    transition: grid-template-columns 0.2s cubic-bezier(.2,.8,.2,1);
+  }
+  .app.sidebar-collapsed { --sidebar-w: 56px; }
+}
+
+/* Shared animation keyframes (referenced by .widget-live::before in dashboard.css) */
+@keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.5; } }

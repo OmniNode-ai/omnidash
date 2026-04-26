@@ -3,7 +3,16 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>omnidash v2</title>
+    <link rel="icon" type="image/svg+xml" href="/icon.svg" />
+    <title>OmniDash</title>
+    <!-- Synchronous theme bootstrap: sets data-theme before React hydrates
+         so the user doesn't see a light-mode flash before ThemeProvider's
+         effect runs. Default is 'dark', matching ThemeProvider's default. -->
+    <script>
+      (function () {
+        document.documentElement.setAttribute('data-theme', 'dark');
+      })();
+    </script>
   </head>
   <body>
     <div id="root"></div>

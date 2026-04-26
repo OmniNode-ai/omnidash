@@ -1,12 +1,12 @@
 {
   "manifestVersion": "1.0",
-  "generatedAt": "2026-04-10T17:45:00.167Z",
+  "generatedAt": "2026-04-25T23:49:55.028Z",
   "components": {
     "cost-trend-panel": {
       "name": "cost-trend-panel",
       "displayName": "Cost Trend",
       "description": "LLM cost trends, budget alerts, and token usage over time",
-      "category": "metrics",
+      "category": "cost",
       "version": "1.0.0",
       "implementationKey": "cost-trend/CostTrendPanel",
       "configSchema": {
@@ -18,11 +18,17 @@
               "hour",
               "day"
             ],
-            "default": "day"
+            "default": "hour"
           },
-          "showBudgetLine": {
-            "type": "boolean",
-            "default": true
+          "chartType": {
+            "type": "string",
+            "enum": [
+              "area",
+              "bar"
+            ],
+            "default": "area",
+            "title": "Chart type",
+            "description": "How each model's cost contribution is drawn over time. Area stacks smooth filled bands; bar stacks discrete columns per time bucket."
           }
         },
         "additionalProperties": false
@@ -62,14 +68,153 @@
       "capabilities": {
         "supports_compare": false,
         "supports_export": true,
-        "supports_fullscreen": true
+        "supports_fullscreen": true,
+        "supports_time_range": true
+      }
+    },
+    "cost-trend-3d": {
+      "name": "cost-trend-3d",
+      "displayName": "Cost Trend (3D)",
+      "description": "Experimental 3D cost visualization — orbit, zoom, and play with the data",
+      "category": "cost",
+      "version": "0.1.0",
+      "implementationKey": "cost-trend-3d/CostTrend3D",
+      "dataSources": [
+        {
+          "type": "api",
+          "endpoint": "/api/intelligence/cost/trends",
+          "required": true,
+          "purpose": "initial_fetch"
+        }
+      ],
+      "events": {
+        "emits": [],
+        "consumes": [
+          {
+            "name": "time_range_changed"
+          }
+        ]
+      },
+      "defaultSize": {
+        "w": 8,
+        "h": 6
+      },
+      "minSize": {
+        "w": 4,
+        "h": 4
+      },
+      "maxSize": {
+        "w": 12,
+        "h": 10
+      },
+      "emptyState": {
+        "message": "No cost data available",
+        "hint": "3D cost visualization renders after LLM calls are tracked"
+      },
+      "capabilities": {
+        "supports_compare": false,
+        "supports_export": false,
+        "supports_fullscreen": true,
+        "supports_time_range": true
+      }
+    },
+    "cost-by-model": {
+      "name": "cost-by-model",
+      "displayName": "Cost by Model (3D)",
+      "description": "Three.js pie chart of LLM cost share per model over the selected time range",
+      "category": "cost",
+      "version": "1.0.0",
+      "implementationKey": "cost-by-model/CostByModelPie",
+      "dataSources": [
+        {
+          "type": "api",
+          "endpoint": "/api/intelligence/cost/trends",
+          "required": true,
+          "purpose": "initial_fetch"
+        }
+      ],
+      "events": {
+        "emits": [],
+        "consumes": [
+          {
+            "name": "time_range_changed"
+          }
+        ]
+      },
+      "defaultSize": {
+        "w": 6,
+        "h": 4
+      },
+      "minSize": {
+        "w": 4,
+        "h": 3
+      },
+      "maxSize": {
+        "w": 12,
+        "h": 8
+      },
+      "emptyState": {
+        "message": "No cost data available",
+        "hint": "Cost data appears after LLM calls are tracked"
+      },
+      "capabilities": {
+        "supports_compare": false,
+        "supports_export": false,
+        "supports_fullscreen": true,
+        "supports_time_range": true
+      }
+    },
+    "cost-by-model-2d": {
+      "name": "cost-by-model-2d",
+      "displayName": "Cost by Model",
+      "description": "Horizontal bar chart of LLM cost share per model over the selected time range",
+      "category": "cost",
+      "version": "1.0.0",
+      "implementationKey": "cost-by-model-2d/CostByModelBars",
+      "dataSources": [
+        {
+          "type": "api",
+          "endpoint": "/api/intelligence/cost/trends",
+          "required": true,
+          "purpose": "initial_fetch"
+        }
+      ],
+      "events": {
+        "emits": [],
+        "consumes": [
+          {
+            "name": "time_range_changed"
+          }
+        ]
+      },
+      "defaultSize": {
+        "w": 6,
+        "h": 4
+      },
+      "minSize": {
+        "w": 3,
+        "h": 3
+      },
+      "maxSize": {
+        "w": 12,
+        "h": 8
+      },
+      "emptyState": {
+        "message": "No cost data available",
+        "hint": "Cost data appears after LLM calls are tracked"
+      },
+      "capabilities": {
+        "supports_compare": false,
+        "supports_export": true,
+        "supports_fullscreen": false,
+        "supports_time_range": true
       }
     },
     "delegation-metrics": {
       "name": "delegation-metrics",
       "displayName": "Delegation Metrics",
       "description": "Task delegation events, cost savings, and quality gate pass rates",
-      "category": "metrics",
+      "category": "quality",
       "version": "1.0.0",
       "implementationKey": "delegation/DelegationMetrics",
       "configSchema": {
@@ -82,6 +227,14 @@
           "showQualityGates": {
             "type": "boolean",
             "default": true
+          },
+          "qualityGateThreshold": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 1,
+            "default": 0.8,
+            "title": "Quality gate threshold",
+            "description": "Pass-rate at or above which the Quality Gate Pass Rate stat reads green. Below this, it reads warn-amber."
           }
         },
         "additionalProperties": false
@@ -139,14 +292,15 @@
       "capabilities": {
         "supports_compare": false,
         "supports_export": true,
-        "supports_fullscreen": true
+        "supports_fullscreen": true,
+        "supports_time_range": false
       }
     },
     "routing-decision-table": {
       "name": "routing-decision-table",
       "displayName": "Routing Decisions",
       "description": "LLM routing decision log with agreement rates and confidence scores",
-      "category": "table",
+      "category": "activity",
       "version": "1.0.0",
       "implementationKey": "routing/RoutingDecisionTable",
       "configSchema": {
@@ -154,7 +308,15 @@
         "properties": {
           "pageSize": {
             "type": "number",
-            "default": 20
+            "enum": [
+              10,
+              25,
+              50,
+              100
+            ],
+            "default": 25,
+            "title": "Rows per page",
+            "description": "How many decisions to render per page before pagination controls."
           }
         },
         "additionalProperties": false
@@ -204,21 +366,17 @@
       "capabilities": {
         "supports_compare": false,
         "supports_export": true,
-        "supports_fullscreen": true
+        "supports_fullscreen": true,
+        "supports_time_range": true
       }
     },
     "baselines-roi-card": {
       "name": "baselines-roi-card",
       "displayName": "Baselines ROI",
       "description": "Token/time delta, retry counts, and promotion recommendations",
-      "category": "metrics",
+      "category": "health",
       "version": "1.0.0",
       "implementationKey": "baselines/BaselinesROICard",
-      "configSchema": {
-        "type": "object",
-        "properties": {},
-        "additionalProperties": false
-      },
       "dataSources": [
         {
           "type": "api",
@@ -260,19 +418,29 @@
       "capabilities": {
         "supports_compare": false,
         "supports_export": true,
-        "supports_fullscreen": false
+        "supports_fullscreen": false,
+        "supports_time_range": false
       }
     },
     "quality-score-panel": {
       "name": "quality-score-panel",
       "displayName": "Quality Scores",
-      "description": "Pattern quality scores and confidence metrics from omniintelligence",
-      "category": "metrics",
-      "version": "1.0.0",
+      "description": "Pattern quality score distribution with pass-rate headline and tier-coloured bars",
+      "category": "quality",
+      "version": "1.1.0",
       "implementationKey": "quality/QualityScorePanel",
       "configSchema": {
         "type": "object",
-        "properties": {},
+        "properties": {
+          "passThreshold": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 1,
+            "default": 0.8,
+            "title": "Pass threshold",
+            "description": "Score at or above which a measurement is counted as passing. Drives both the headline pass-rate number and the translucent wall behind the bars."
+          }
+        },
         "additionalProperties": false
       },
       "dataSources": [
@@ -292,7 +460,7 @@
         "h": 4
       },
       "minSize": {
-        "w": 3,
+        "w": 4,
         "h": 3
       },
       "maxSize": {
@@ -306,21 +474,73 @@
       "capabilities": {
         "supports_compare": false,
         "supports_export": true,
-        "supports_fullscreen": false
+        "supports_fullscreen": false,
+        "supports_time_range": false
+      }
+    },
+    "quality-score-panel-2d": {
+      "name": "quality-score-panel-2d",
+      "displayName": "Quality Scores (2D)",
+      "description": "Flat histogram of quality-score distribution with threshold line and mean marker",
+      "category": "quality",
+      "version": "1.0.0",
+      "implementationKey": "quality-score-panel-2d/QualityScoreHistogram",
+      "configSchema": {
+        "type": "object",
+        "properties": {
+          "passThreshold": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 1,
+            "default": 0.8,
+            "title": "Pass threshold",
+            "description": "Score at or above which a measurement counts as passing."
+          }
+        },
+        "additionalProperties": false
+      },
+      "dataSources": [
+        {
+          "type": "api",
+          "endpoint": "/api/intelligence/quality/summary",
+          "required": true,
+          "purpose": "initial_fetch"
+        }
+      ],
+      "events": {
+        "emits": [],
+        "consumes": []
+      },
+      "defaultSize": {
+        "w": 6,
+        "h": 4
+      },
+      "minSize": {
+        "w": 4,
+        "h": 3
+      },
+      "maxSize": {
+        "w": 12,
+        "h": 6
+      },
+      "emptyState": {
+        "message": "No quality scores",
+        "hint": "Quality scores appear after patterns are evaluated"
+      },
+      "capabilities": {
+        "supports_compare": false,
+        "supports_export": true,
+        "supports_fullscreen": false,
+        "supports_time_range": false
       }
     },
     "readiness-gate": {
       "name": "readiness-gate",
       "displayName": "Readiness Gate",
       "description": "7-dimension tri-state platform readiness aggregation",
-      "category": "status",
+      "category": "health",
       "version": "1.0.0",
       "implementationKey": "readiness/ReadinessGate",
-      "configSchema": {
-        "type": "object",
-        "properties": {},
-        "additionalProperties": false
-      },
       "dataSources": [
         {
           "type": "api",
@@ -356,14 +576,15 @@
       "capabilities": {
         "supports_compare": false,
         "supports_export": true,
-        "supports_fullscreen": false
+        "supports_fullscreen": false,
+        "supports_time_range": false
       }
     },
     "event-stream": {
       "name": "event-stream",
       "displayName": "Event Stream",
       "description": "Live Kafka event feed with filtering and search",
-      "category": "stream",
+      "category": "activity",
       "version": "1.0.0",
       "implementationKey": "events/EventStream",
       "configSchema": {
@@ -421,7 +642,8 @@
       "capabilities": {
         "supports_compare": false,
         "supports_export": false,
-        "supports_fullscreen": true
+        "supports_fullscreen": true,
+        "supports_time_range": false
       }
     }
   }

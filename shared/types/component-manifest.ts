@@ -1,4 +1,9 @@
-export const COMPONENT_CATEGORIES = ['visualization', 'metrics', 'table', 'status', 'stream'] as const;
+import type { JSONSchema7 } from 'json-schema';
+
+// Widget palette categories. Grouped by domain (what the widget is about),
+// not by chart shape (what it looks like) — so 2D and 3D variants of the
+// same data live together. See OMN chat 2026-04-25 for the rationale.
+export const COMPONENT_CATEGORIES = ['cost', 'activity', 'quality', 'health'] as const;
 export type ComponentCategory = (typeof COMPONENT_CATEGORIES)[number];
 
 export interface GridSize {
@@ -27,7 +32,12 @@ export interface ComponentManifest {
   category: ComponentCategory;
   version: string;
   implementationKey: string;
-  configSchema: Record<string, unknown>;
+  /**
+   * JSON schema describing the widget's per-instance config. Omit when the
+   * widget has nothing to configure — the kebab "Configure Widget" item is
+   * gated on this field being present and having non-empty properties.
+   */
+  configSchema?: JSONSchema7;
   dataSources: DataSourceDeclaration[];
   events: {
     emits: ComponentEvent[];
@@ -44,6 +54,18 @@ export interface ComponentManifest {
     supports_compare: boolean;
     supports_export: boolean;
     supports_fullscreen: boolean;
+    /**
+     * Whether the widget participates in the dashboard-level time range
+     * filter. `true` for time-series widgets (cost trend, routing
+     * decisions, etc.) that can slice their data by a start/end window.
+     * `false` for point-in-time snapshots (readiness, baselines) or
+     * pre-aggregated summary widgets whose numbers are computed over an
+     * opaque window and can't be re-sliced client-side.
+     *
+     * Optional so existing manifests that predate the field stay valid;
+     * consumers should treat `undefined` as `false`.
+     */
+    supports_time_range?: boolean;
   };
 }
 
@@ -69,6 +91,21 @@ export function validateComponentManifest(m: ComponentManifest): ManifestValidat
   }
   if (m.defaultSize.w > m.maxSize.w || m.defaultSize.h > m.maxSize.h) {
     errors.push('defaultSize cannot exceed maxSize');
+  }
+
+  // T16 (OMN-157): every dataSource must declare its target. websocket
+  // entries need a `topic`; api entries need an `endpoint`. The generator
+  // calls this validator to fail fast on incomplete manifest entries.
+  for (const [idx, ds] of m.dataSources.entries()) {
+    if (ds.type === 'websocket') {
+      if (!ds.topic || ds.topic.trim() === '') {
+        errors.push(`dataSources[${idx}] of type 'websocket' must declare a non-empty topic`);
+      }
+    } else if (ds.type === 'api') {
+      if (!ds.endpoint || ds.endpoint.trim() === '') {
+        errors.push(`dataSources[${idx}] of type 'api' must declare a non-empty endpoint`);
+      }
+    }
   }
 
   return { valid: errors.length === 0, errors };

@@ -3,8 +3,9 @@ import { createRoot } from 'react-dom/client';
 import { Providers } from './providers/Providers';
 import { RegistryProvider } from './registry/RegistryProvider';
 import { App } from './App';
-import manifestJson from '../public/component-registry.json';
+import manifestJson from './registry/component-registry.json';
 import type { RegistryManifest } from './registry/types';
+import './styles/globals.css';
 import './theme/themes.css';
 
 const manifest = manifestJson as RegistryManifest;

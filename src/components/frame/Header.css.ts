@@ -9,12 +9,38 @@ export const header = style({
   height: '48px',
   borderBottom: `1px solid hsl(${vars.color.border})`,
   backgroundColor: `hsl(${vars.color.card})`,
+  position: 'relative',
+});
+
+export const newDashboardForm = style({
+  position: 'absolute',
+  top: '52px',
+  right: '1rem',
+  display: 'flex',
+  gap: '0.5rem',
+  alignItems: 'center',
+  padding: '0.5rem',
+  border: `1px solid hsl(${vars.color.border})`,
+  borderRadius: vars.radius.md,
+  backgroundColor: `hsl(${vars.color.card})`,
+  boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
+  zIndex: 10,
+});
+
+export const newDashboardInput = style({
+  padding: '0.25rem 0.5rem',
+  borderRadius: vars.radius.sm,
+  border: `1px solid hsl(${vars.color.border})`,
+  backgroundColor: `hsl(${vars.color.background})`,
+  color: `hsl(${vars.color.foreground})`,
+  fontSize: '0.8125rem',
+  minWidth: '200px',
 });
 
 export const title = style({
   fontSize: '1.125rem',
   fontWeight: 600,
-  fontFamily: vars.font.mono,
+  fontFamily: 'var(--font-mono)',
   color: `hsl(${vars.color.foreground})`,
 });
 

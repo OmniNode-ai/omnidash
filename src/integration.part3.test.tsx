@@ -3,10 +3,11 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { readFileSync } from 'fs';
 import { resolve } from 'path';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { SnapshotSourceProvider } from './data-source';
 import { ThemeProvider } from './theme';
 import { RegistryProvider } from './registry/RegistryProvider';
 import { ComponentRegistry } from './registry/ComponentRegistry';
-import { DashboardBuilder } from './pages/DashboardBuilder';
+import { DashboardView } from './pages/DashboardView';
 import { useFrameStore } from './store/store';
 import { DASHBOARD_TEMPLATES } from './templates';
 import { validateDashboardDefinition } from '@shared/types/dashboard';
@@ -21,7 +22,7 @@ vi.mock('echarts-for-react', () => ({
 import { fileURLToPath } from 'url';
 import { dirname } from 'path';
 const __dirname = dirname(fileURLToPath(import.meta.url));
-const manifestJson = readFileSync(resolve(__dirname, '../public/component-registry.json'), 'utf-8');
+const manifestJson = readFileSync(resolve(__dirname, './registry/component-registry.json'), 'utf-8');
 const manifest: RegistryManifest = JSON.parse(manifestJson);
 
 describe('Proof of Life — Part 3 (Full System)', () => {
@@ -49,11 +50,11 @@ describe('Proof of Life — Part 3 (Full System)', () => {
     }
   });
 
-  it('all 7 components resolve via import map after resolveImplementations', async () => {
+  it('all components resolve via import map after resolveImplementations', async () => {
     const registry = new ComponentRegistry(manifest);
     await registry.resolveImplementations();
     const available = registry.getAvailableComponents().filter((c) => c.status === 'available');
-    expect(available.length).toBe(7);
+    expect(available.length).toBe(11);
   });
 
   it('both templates pass validation', () => {
@@ -78,13 +79,13 @@ describe('Proof of Life — Part 3 (Full System)', () => {
     useFrameStore.getState().setActiveDashboard({ ...tpl, id: `test-${Date.now()}` });
 
     render(
-      <QueryClientProvider client={qc}>
+      <QueryClientProvider client={qc}><SnapshotSourceProvider>
         <ThemeProvider>
           <RegistryProvider manifest={manifest}>
-            <DashboardBuilder />
+            <DashboardView />
           </RegistryProvider>
         </ThemeProvider>
-      </QueryClientProvider>
+      </SnapshotSourceProvider></QueryClientProvider>
     );
 
     expect(screen.getByText('Cost & Delegation')).toBeInTheDocument();
@@ -97,13 +98,13 @@ describe('Proof of Life — Part 3 (Full System)', () => {
     useFrameStore.getState().setActiveDashboard({ ...tpl, id: `test-${Date.now()}` });
 
     render(
-      <QueryClientProvider client={qc}>
+      <QueryClientProvider client={qc}><SnapshotSourceProvider>
         <ThemeProvider>
           <RegistryProvider manifest={manifest}>
-            <DashboardBuilder />
+            <DashboardView />
           </RegistryProvider>
         </ThemeProvider>
-      </QueryClientProvider>
+      </SnapshotSourceProvider></QueryClientProvider>
     );
 
     expect(screen.getByText('Platform Health')).toBeInTheDocument();
@@ -111,14 +112,14 @@ describe('Proof of Life — Part 3 (Full System)', () => {
     expect(cells.length).toBe(4);
   });
 
-  it('registry categories span all 5 types', () => {
+  it('registry categories span all 4 domain types', () => {
     const registry = new ComponentRegistry(manifest);
     const categories = new Set(
       registry.getAvailableComponents().map((c) => c.manifest.category)
     );
-    expect(categories.has('metrics')).toBe(true);
-    expect(categories.has('table')).toBe(true);
-    expect(categories.has('status')).toBe(true);
-    expect(categories.has('stream')).toBe(true);
+    expect(categories.has('cost')).toBe(true);
+    expect(categories.has('activity')).toBe(true);
+    expect(categories.has('quality')).toBe(true);
+    expect(categories.has('health')).toBe(true);
   });
 });
