@@ -88,6 +88,8 @@ EXCLUDE_ARGS=()
 for d in "${EXCLUDE_DIRS[@]}"; do
   EXCLUDE_ARGS+=("--exclude-dir=$d")
 done
+# In git worktrees, .git is a file (not a dir), so --exclude-dir=.git misses it.
+EXCLUDE_ARGS+=("--exclude=.git")
 
 violations=0
 for pattern in "${PATTERNS[@]}"; do

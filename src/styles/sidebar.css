@@ -128,4 +128,3 @@
 }
 .dash-item:hover .dash-kebab, .dash-item.active .dash-kebab { opacity: 1; }
 .dash-item .dash-kebab:hover { background: oklch(36% 0.01 260); }
-
