@@ -6,10 +6,25 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 
 const LS_LIST_KEY = 'omnidash.dashboards.list.v1';
 
+function makeMemoryStorage() {
+  const map = new Map<string, string>();
+  return {
+    getItem: (key: string) => map.get(key) ?? null,
+    setItem: (key: string, value: string) => void map.set(key, value),
+    removeItem: (key: string) => void map.delete(key),
+    clear: () => void map.clear(),
+  };
+}
+
 describe('dashboardSlice.hydrateList — T2 corrupted-entry handling', () => {
   beforeEach(() => {
     vi.resetModules();
-    localStorage.clear();
+    const storage = makeMemoryStorage();
+    vi.stubGlobal('localStorage', storage);
+    Object.defineProperty(window, 'localStorage', {
+      configurable: true,
+      value: storage,
+    });
   });
 
   it('drops corrupted entries and keeps valid ones', async () => {
