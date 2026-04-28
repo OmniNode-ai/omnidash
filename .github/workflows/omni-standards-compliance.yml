@@ -3,7 +3,7 @@
 ---
 name: Omni* Ecosystem Standards Compliance
 
-# Validates omnidash-v2-specific structural and ecosystem standards.
+# Validates omnidash-specific structural and ecosystem standards.
 # Lifted from omnidash (v1) omni-standards-compliance.yml and adapted for v2.
 # Adaptation: GAP 2 — v2 uses Zustand (wrapped by DashboardService) so the
 # forbidden-state-management check reads .omni-standards-allowlist.yaml and
@@ -25,7 +25,7 @@ on:
   workflow_dispatch:
 
 env:
-  REPO_NAME: 'omnidash-v2'
+  REPO_NAME: 'omnidash'
 
 jobs:
   structure-validation:
@@ -36,7 +36,7 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Validate omnidash-v2 directory structure
+      - name: Validate omnidash directory structure
         run: |
           MISSING=0
 
@@ -59,7 +59,7 @@ jobs:
             exit 1
           fi
 
-          echo "All required omnidash-v2 directories present."
+          echo "All required omnidash directories present."
 
       - name: Validate required root files
         run: |
@@ -122,7 +122,7 @@ jobs:
           deps = {**p.get('dependencies', {}), **p.get('devDependencies', {})}
           if '@tanstack/react-query' not in deps:
               print('ERROR: @tanstack/react-query not found in dependencies.')
-              print('omnidash-v2 must use TanStack Query for server state.')
+              print('omnidash must use TanStack Query for server state.')
               sys.exit(1)
           print('OK: @tanstack/react-query present')
           "
@@ -219,22 +219,22 @@ jobs:
           ERRORS=0
 
           if [ -f "poetry.lock" ]; then
-            echo "ERROR: poetry.lock found — omnidash-v2 is a Node.js project, not Python"
+            echo "ERROR: poetry.lock found — omnidash is a Node.js project, not Python"
             ERRORS=1
           fi
 
           if [ -f "Pipfile.lock" ]; then
-            echo "ERROR: Pipfile.lock found — omnidash-v2 is a Node.js project, not Python"
+            echo "ERROR: Pipfile.lock found — omnidash is a Node.js project, not Python"
             ERRORS=1
           fi
 
           if [ -f "uv.lock" ]; then
-            echo "ERROR: uv.lock found — omnidash-v2 is a Node.js project, not Python"
+            echo "ERROR: uv.lock found — omnidash is a Node.js project, not Python"
             ERRORS=1
           fi
 
           if [ -f "requirements.txt" ]; then
-            echo "ERROR: requirements.txt found — omnidash-v2 is a Node.js project, not Python"
+            echo "ERROR: requirements.txt found — omnidash is a Node.js project, not Python"
             ERRORS=1
           fi
 

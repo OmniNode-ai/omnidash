@@ -69,6 +69,6 @@ wss.on('connection', (ws: WebSocket) => {
 // `require.main === module` idiom.
 if (process.argv[1] === fileURLToPath(import.meta.url)) {
   httpServer.listen(PORT, () => {
-    console.log(`[omnidash-v2 server] Listening on port ${PORT}`);
+    console.log(`[omnidash server] Listening on port ${PORT}`);
   });
 }
