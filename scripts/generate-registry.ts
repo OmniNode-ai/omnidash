@@ -26,6 +26,26 @@ interface PackageJsonWithDashboard {
   dashboardComponents?: string; // relative path to a JSON file listing manifests
 }
 
+const PROJECTION_ENDPOINTS = {
+  llmCost: '/projection/onex.snapshot.projection.llm_cost.v1',
+  delegationSummary: '/projection/onex.snapshot.projection.delegation.summary.v1',
+  delegationDecisions: '/projection/onex.snapshot.projection.delegation.decisions.v1',
+  baselinesRoi: '/projection/onex.snapshot.projection.baselines.roi.v1',
+  baselinesQuality: '/projection/onex.snapshot.projection.baselines.quality.v1',
+  overnightReadiness: '/projection/onex.snapshot.projection.overnight.v1',
+  registration: '/projection/onex.snapshot.projection.registration.v1',
+} as const;
+
+const INVALIDATION_CHANNELS = {
+  llmCost: 'cost-trends',
+  delegationSummary: 'delegation-summary',
+  delegationDecisions: 'routing-decisions',
+  baselinesRoi: 'baselines-summary',
+  baselinesQuality: 'quality-summary',
+  overnightReadiness: 'readiness-summary',
+  registration: 'events-recent',
+} as const;
+
 /**
  * Scan node_modules/@omninode/* for packages declaring dashboardComponents.
  * Returns discovered ComponentManifest[] with _sourcePackage set for traceability.
@@ -79,7 +99,8 @@ const MVP_COMPONENTS: Record<string, ComponentManifest> = {
       additionalProperties: false,
     },
     dataSources: [
-      { type: 'api', endpoint: '/api/intelligence/cost/trends', required: true, purpose: 'initial_fetch' },
+      { type: 'api', endpoint: PROJECTION_ENDPOINTS.llmCost, required: true, purpose: 'initial_fetch' },
+      { type: 'websocket', topic: INVALIDATION_CHANNELS.llmCost, required: false, purpose: 'live_updates' },
     ],
     events: { emits: [], consumes: [{ name: 'time_range_changed' }] },
     defaultSize: { w: 8, h: 5 },
@@ -97,7 +118,8 @@ const MVP_COMPONENTS: Record<string, ComponentManifest> = {
     implementationKey: 'cost-trend-3d/CostTrend3D',
     // No configSchema — widget has no per-instance options to configure.
     dataSources: [
-      { type: 'api', endpoint: '/api/intelligence/cost/trends', required: true, purpose: 'initial_fetch' },
+      { type: 'api', endpoint: PROJECTION_ENDPOINTS.llmCost, required: true, purpose: 'initial_fetch' },
+      { type: 'websocket', topic: INVALIDATION_CHANNELS.llmCost, required: false, purpose: 'live_updates' },
     ],
     events: { emits: [], consumes: [{ name: 'time_range_changed' }] },
     defaultSize: { w: 8, h: 6 },
@@ -115,7 +137,8 @@ const MVP_COMPONENTS: Record<string, ComponentManifest> = {
     implementationKey: 'cost-by-model/CostByModelPie',
     // No configSchema — widget has no per-instance options to configure.
     dataSources: [
-      { type: 'api', endpoint: '/api/intelligence/cost/trends', required: true, purpose: 'initial_fetch' },
+      { type: 'api', endpoint: PROJECTION_ENDPOINTS.llmCost, required: true, purpose: 'initial_fetch' },
+      { type: 'websocket', topic: INVALIDATION_CHANNELS.llmCost, required: false, purpose: 'live_updates' },
     ],
     events: { emits: [], consumes: [{ name: 'time_range_changed' }] },
     defaultSize: { w: 6, h: 4 },
@@ -136,7 +159,8 @@ const MVP_COMPONENTS: Record<string, ComponentManifest> = {
     implementationKey: 'cost-by-model-2d/CostByModelBars',
     // No configSchema — widget has no per-instance options to configure.
     dataSources: [
-      { type: 'api', endpoint: '/api/intelligence/cost/trends', required: true, purpose: 'initial_fetch' },
+      { type: 'api', endpoint: PROJECTION_ENDPOINTS.llmCost, required: true, purpose: 'initial_fetch' },
+      { type: 'websocket', topic: INVALIDATION_CHANNELS.llmCost, required: false, purpose: 'live_updates' },
     ],
     events: { emits: [], consumes: [{ name: 'time_range_changed' }] },
     defaultSize: { w: 6, h: 4 },
@@ -170,8 +194,8 @@ const MVP_COMPONENTS: Record<string, ComponentManifest> = {
       additionalProperties: false,
     },
     dataSources: [
-      { type: 'api', endpoint: '/api/delegation/summary', required: true, purpose: 'initial_fetch' },
-      { type: 'websocket', topic: 'delegation', required: false, purpose: 'live_updates' },
+      { type: 'api', endpoint: PROJECTION_ENDPOINTS.delegationSummary, required: true, purpose: 'initial_fetch' },
+      { type: 'websocket', topic: INVALIDATION_CHANNELS.delegationSummary, required: false, purpose: 'live_updates' },
     ],
     events: { emits: [{ name: 'task_type_selected', schema: { type: 'object', properties: { taskType: { type: 'string' } } } }], consumes: [{ name: 'time_range_changed' }] },
     defaultSize: { w: 6, h: 5 },
@@ -201,8 +225,8 @@ const MVP_COMPONENTS: Record<string, ComponentManifest> = {
       additionalProperties: false,
     },
     dataSources: [
-      { type: 'api', endpoint: '/api/llm-routing/decisions', required: true, purpose: 'initial_fetch' },
-      { type: 'websocket', topic: 'llm-routing', required: false, purpose: 'live_updates' },
+      { type: 'api', endpoint: PROJECTION_ENDPOINTS.delegationDecisions, required: true, purpose: 'initial_fetch' },
+      { type: 'websocket', topic: INVALIDATION_CHANNELS.delegationDecisions, required: false, purpose: 'live_updates' },
     ],
     events: { emits: [{ name: 'decision_selected' }], consumes: [{ name: 'time_range_changed' }] },
     defaultSize: { w: 12, h: 6 },
@@ -220,8 +244,8 @@ const MVP_COMPONENTS: Record<string, ComponentManifest> = {
     implementationKey: 'baselines/BaselinesROICard',
     // No configSchema — widget has no per-instance options to configure.
     dataSources: [
-      { type: 'api', endpoint: '/api/baselines/summary', required: true, purpose: 'initial_fetch' },
-      { type: 'websocket', topic: 'baselines', required: false, purpose: 'live_updates' },
+      { type: 'api', endpoint: PROJECTION_ENDPOINTS.baselinesRoi, required: true, purpose: 'initial_fetch' },
+      { type: 'websocket', topic: INVALIDATION_CHANNELS.baselinesRoi, required: false, purpose: 'live_updates' },
     ],
     events: { emits: [], consumes: [{ name: 'time_range_changed' }] },
     defaultSize: { w: 6, h: 4 },
@@ -252,7 +276,8 @@ const MVP_COMPONENTS: Record<string, ComponentManifest> = {
       additionalProperties: false,
     },
     dataSources: [
-      { type: 'api', endpoint: '/api/intelligence/quality/summary', required: true, purpose: 'initial_fetch' },
+      { type: 'api', endpoint: PROJECTION_ENDPOINTS.baselinesQuality, required: true, purpose: 'initial_fetch' },
+      { type: 'websocket', topic: INVALIDATION_CHANNELS.baselinesQuality, required: false, purpose: 'live_updates' },
     ],
     events: { emits: [], consumes: [] },
     // minSize bumped from 3 → 4 because the new split layout (130px
@@ -289,7 +314,8 @@ const MVP_COMPONENTS: Record<string, ComponentManifest> = {
       additionalProperties: false,
     },
     dataSources: [
-      { type: 'api', endpoint: '/api/intelligence/quality/summary', required: true, purpose: 'initial_fetch' },
+      { type: 'api', endpoint: PROJECTION_ENDPOINTS.baselinesQuality, required: true, purpose: 'initial_fetch' },
+      { type: 'websocket', topic: INVALIDATION_CHANNELS.baselinesQuality, required: false, purpose: 'live_updates' },
     ],
     events: { emits: [], consumes: [] },
     defaultSize: { w: 6, h: 4 },
@@ -307,7 +333,8 @@ const MVP_COMPONENTS: Record<string, ComponentManifest> = {
     implementationKey: 'readiness/ReadinessGate',
     // No configSchema — widget has no per-instance options to configure.
     dataSources: [
-      { type: 'api', endpoint: '/api/readiness/summary', required: true, purpose: 'initial_fetch' },
+      { type: 'api', endpoint: PROJECTION_ENDPOINTS.overnightReadiness, required: true, purpose: 'initial_fetch' },
+      { type: 'websocket', topic: INVALIDATION_CHANNELS.overnightReadiness, required: false, purpose: 'live_updates' },
     ],
     events: { emits: [{ name: 'dimension_selected' }], consumes: [] },
     defaultSize: { w: 12, h: 4 },
@@ -333,7 +360,8 @@ const MVP_COMPONENTS: Record<string, ComponentManifest> = {
     },
     dataSources: [
       { type: 'websocket', topic: 'event-bus', required: true, purpose: 'live_updates' },
-      { type: 'api', endpoint: '/api/events/recent', required: true, purpose: 'initial_fetch' },
+      { type: 'api', endpoint: PROJECTION_ENDPOINTS.registration, required: true, purpose: 'initial_fetch' },
+      { type: 'websocket', topic: INVALIDATION_CHANNELS.registration, required: false, purpose: 'live_updates' },
     ],
     events: { emits: [{ name: 'event_selected' }], consumes: [] },
     defaultSize: { w: 12, h: 6 },

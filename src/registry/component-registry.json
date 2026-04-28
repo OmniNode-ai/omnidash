@@ -1,6 +1,6 @@
 {
   "manifestVersion": "1.0",
-  "generatedAt": "2026-04-25T23:49:55.028Z",
+  "generatedAt": "2026-04-28T14:44:30.470Z",
   "components": {
     "cost-trend-panel": {
       "name": "cost-trend-panel",
@@ -36,9 +36,15 @@
       "dataSources": [
         {
           "type": "api",
-          "endpoint": "/api/intelligence/cost/trends",
+          "endpoint": "/projection/onex.snapshot.projection.llm_cost.v1",
           "required": true,
           "purpose": "initial_fetch"
+        },
+        {
+          "type": "websocket",
+          "topic": "cost-trends",
+          "required": false,
+          "purpose": "live_updates"
         }
       ],
       "events": {
@@ -82,9 +88,15 @@
       "dataSources": [
         {
           "type": "api",
-          "endpoint": "/api/intelligence/cost/trends",
+          "endpoint": "/projection/onex.snapshot.projection.llm_cost.v1",
           "required": true,
           "purpose": "initial_fetch"
+        },
+        {
+          "type": "websocket",
+          "topic": "cost-trends",
+          "required": false,
+          "purpose": "live_updates"
         }
       ],
       "events": {
@@ -128,9 +140,15 @@
       "dataSources": [
         {
           "type": "api",
-          "endpoint": "/api/intelligence/cost/trends",
+          "endpoint": "/projection/onex.snapshot.projection.llm_cost.v1",
           "required": true,
           "purpose": "initial_fetch"
+        },
+        {
+          "type": "websocket",
+          "topic": "cost-trends",
+          "required": false,
+          "purpose": "live_updates"
         }
       ],
       "events": {
@@ -174,9 +192,15 @@
       "dataSources": [
         {
           "type": "api",
-          "endpoint": "/api/intelligence/cost/trends",
+          "endpoint": "/projection/onex.snapshot.projection.llm_cost.v1",
           "required": true,
           "purpose": "initial_fetch"
+        },
+        {
+          "type": "websocket",
+          "topic": "cost-trends",
+          "required": false,
+          "purpose": "live_updates"
         }
       ],
       "events": {
@@ -242,13 +266,13 @@
       "dataSources": [
         {
           "type": "api",
-          "endpoint": "/api/delegation/summary",
+          "endpoint": "/projection/onex.snapshot.projection.delegation.summary.v1",
           "required": true,
           "purpose": "initial_fetch"
         },
         {
           "type": "websocket",
-          "topic": "delegation",
+          "topic": "delegation-summary",
           "required": false,
           "purpose": "live_updates"
         }
@@ -324,13 +348,13 @@
       "dataSources": [
         {
           "type": "api",
-          "endpoint": "/api/llm-routing/decisions",
+          "endpoint": "/projection/onex.snapshot.projection.delegation.decisions.v1",
           "required": true,
           "purpose": "initial_fetch"
         },
         {
           "type": "websocket",
-          "topic": "llm-routing",
+          "topic": "routing-decisions",
           "required": false,
           "purpose": "live_updates"
         }
@@ -380,13 +404,13 @@
       "dataSources": [
         {
           "type": "api",
-          "endpoint": "/api/baselines/summary",
+          "endpoint": "/projection/onex.snapshot.projection.baselines.roi.v1",
           "required": true,
           "purpose": "initial_fetch"
         },
         {
           "type": "websocket",
-          "topic": "baselines",
+          "topic": "baselines-summary",
           "required": false,
           "purpose": "live_updates"
         }
@@ -446,9 +470,15 @@
       "dataSources": [
         {
           "type": "api",
-          "endpoint": "/api/intelligence/quality/summary",
+          "endpoint": "/projection/onex.snapshot.projection.baselines.quality.v1",
           "required": true,
           "purpose": "initial_fetch"
+        },
+        {
+          "type": "websocket",
+          "topic": "quality-summary",
+          "required": false,
+          "purpose": "live_updates"
         }
       ],
       "events": {
@@ -502,9 +532,15 @@
       "dataSources": [
         {
           "type": "api",
-          "endpoint": "/api/intelligence/quality/summary",
+          "endpoint": "/projection/onex.snapshot.projection.baselines.quality.v1",
           "required": true,
           "purpose": "initial_fetch"
+        },
+        {
+          "type": "websocket",
+          "topic": "quality-summary",
+          "required": false,
+          "purpose": "live_updates"
         }
       ],
       "events": {
@@ -544,9 +580,15 @@
       "dataSources": [
         {
           "type": "api",
-          "endpoint": "/api/readiness/summary",
+          "endpoint": "/projection/onex.snapshot.projection.overnight.v1",
           "required": true,
           "purpose": "initial_fetch"
+        },
+        {
+          "type": "websocket",
+          "topic": "readiness-summary",
+          "required": false,
+          "purpose": "live_updates"
         }
       ],
       "events": {
@@ -610,9 +652,15 @@
         },
         {
           "type": "api",
-          "endpoint": "/api/events/recent",
+          "endpoint": "/projection/onex.snapshot.projection.registration.v1",
           "required": true,
           "purpose": "initial_fetch"
+        },
+        {
+          "type": "websocket",
+          "topic": "events-recent",
+          "required": false,
+          "purpose": "live_updates"
         }
       ],
       "events": {
