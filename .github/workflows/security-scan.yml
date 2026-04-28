@@ -28,3 +28,7 @@ jobs:
       actions: read
       contents: read
       security-events: write
+    # Code Scanning (Advanced Security) is not enabled on every OmniNode repo.
+    # Keep analysis visible without letting a repo-settings gap block PR merges.
+    # Remove once Code Security is provisioned for omnidash.
+    continue-on-error: true
