@@ -1,15 +1,15 @@
 {
-  "name": "omnidash-v2",
+  "name": "omnidash",
   "version": "1.0.0",
   "description": "Composable widget dashboard for real-time observability — Vite + React with per-widget 2D and 3D variants.",
   "main": "index.js",
-  "homepage": "https://github.com/OmniNode-ai/omnidash-v2#readme",
+  "homepage": "https://github.com/OmniNode-ai/omnidash#readme",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/OmniNode-ai/omnidash-v2.git"
+    "url": "git+https://github.com/OmniNode-ai/omnidash.git"
   },
   "bugs": {
-    "url": "https://github.com/OmniNode-ai/omnidash-v2/issues"
+    "url": "https://github.com/OmniNode-ai/omnidash/issues"
   },
   "scripts": {
     "dev": "vite",

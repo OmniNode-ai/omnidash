@@ -2,7 +2,7 @@
 > (Git, testing, infrastructure, env config priority).
 > See `omni_home/CLAUDE.md` for repository registry and the worktree workflow.
 >
-> This file contains **omnidash-v2-specific** frontend architecture and conventions.
+> This file contains **omnidash-specific** frontend architecture and conventions.
 
 ## Local dev mode (no infra)
 
@@ -24,7 +24,6 @@ This repo runs in two modes:
 ```bash
 npm run types:generate
 npm run generate:fixtures
-npm run generate:projection-registry
 npm run generate:registry
 npm run dev
 ```
@@ -41,7 +40,7 @@ _Track A — local MVP widget (the seven current widgets use this path):_
 _Track B — external package widget (plugin extension path):_
 1. Publish an `@omninode/*` npm package containing your widget component plus a JSON manifest file listing one or more `ComponentManifest` entries.
 2. Reference the manifest path in the package's `package.json` via `"dashboardComponents": "./path/to/manifests.json"`.
-3. `npm install` the package into omnidash-v2.
+3. `npm install` the package into omnidash.
 4. Run `npm run generate:registry` — the script auto-scans `node_modules/@omninode/*` and merges discovered manifests into the registry.
 5. Dynamic code loading for external packages is a future phase; for now they surface in the palette with `status: 'not_implemented'` unless their `implementationKey` also appears in the local `componentImports` map.
 

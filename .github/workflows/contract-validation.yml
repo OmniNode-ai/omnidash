@@ -3,10 +3,10 @@
 
 # Contract Validation Gate
 #
-# Validates ONEX ticket contracts for PRs in omnidash-v2 using the
+# Validates ONEX ticket contracts for PRs in omnidash using the
 # reusable composite action from onex_change_control.
 #
-# omnidash-v2 has NO local contracts/ directory — contracts live centrally in
+# omnidash has NO local contracts/ directory — contracts live centrally in
 # OmniNode-ai/onex_change_control/contracts/ (Epic B central-contracts pattern).
 #
 # Required status check: "contract-validation"
