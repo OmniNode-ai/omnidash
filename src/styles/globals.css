@@ -31,6 +31,13 @@
 @import "@fontsource/ibm-plex-mono/500.css";
 @import "@fontsource/ibm-plex-mono/600.css";
 
+/* Brand surface font — Poppins Semibold per the OmniNode branding
+ * guideline. Loaded as a single weight (600) because today the only
+ * surface that uses it is the sidebar product wordmark; if more brand
+ * surfaces adopt Poppins, add additional weights here rather than
+ * pulling the full family. */
+@import "@fontsource/poppins/600.css";
+
 /* Verbatim prototype CSS port (OMN-47). Each file starts with a SOURCE
  * comment pointing at the exact prototype line range. Load order matches
  * the prototype's stylesheet ordering. */
@@ -61,6 +68,10 @@
        Mono), it overrides these two vars in its scope. */
     --font-sans: "IBM Plex Sans", system-ui, -apple-system, Helvetica, Arial, sans-serif;
     --font-mono: "IBM Plex Mono", ui-monospace, Menlo, monospace;
+    /* Brand-surface font. Currently scoped to the sidebar product
+     * wordmark per the branding guideline; do not apply to body text
+     * or chrome unless the guideline expands. */
+    --font-brand: "Poppins", var(--font-sans);
 
     /* ===== TYPE SCALE =====
        8-step scale covering observed usage (10px ... 22px). Authored in

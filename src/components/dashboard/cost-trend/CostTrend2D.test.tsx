@@ -3,7 +3,7 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { QueryClient } from '@tanstack/react-query';
 import { DataSourceTestProvider } from '@/test-utils/dataSourceTestProvider';
 import { mockFetchWithItems } from '@/test-utils/mockFetch';
-import CostTrendPanel from './CostTrendPanel';
+import CostTrendPanel from './CostTrend2D';
 
 const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } });
 

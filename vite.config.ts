@@ -1,5 +1,4 @@
 import { defineConfig, loadEnv } from 'vite';
-import type { ViteDevServer } from 'vite';
 import react from '@vitejs/plugin-react';
 import { vanillaExtractPlugin } from '@vanilla-extract/vite-plugin';
 import path from 'path';
@@ -19,40 +18,40 @@ type ConnectNext = (err?: unknown) => void;
 
 export function fixturesMiddleware(opts: { root: string }) {
   const root = opts.root;
-  const handler = (req: IncomingMessage, res: ServerResponse, _next: ConnectNext): void => {
+  const handler = (req: IncomingMessage, res: ServerResponse, _next: ConnectNext) => {
     // NOTE: req.url arrives WITHOUT the /_fixtures prefix (Vite strips it).
     const urlPath = (req.url ?? '').split('?')[0];
     const parts = urlPath.split('/').filter(Boolean);
 
     if (parts.length === 1 && parts[0] === 'registry.json') {
       const file = path.join(root, 'registry.json');
-      if (!existsSync(file)) { res.statusCode = 404; void res.end(); return; }
+      if (!existsSync(file)) { res.statusCode = 404; return res.end(); }
       res.setHeader('Content-Type', 'application/json');
-      void res.end(readFileSync(file)); return;
+      return res.end(readFileSync(file));
     }
 
     if (parts.length === 2 && parts[1] === 'index.json') {
       const dir = path.join(root, parts[0]!);
-      if (!existsSync(dir) || !statSync(dir).isDirectory()) { res.statusCode = 404; void res.end(); return; }
+      if (!existsSync(dir) || !statSync(dir).isDirectory()) { res.statusCode = 404; return res.end(); }
       const files = readdirSync(dir).filter((f) => f.endsWith('.json'));
       res.setHeader('Content-Type', 'application/json');
-      void res.end(JSON.stringify(files)); return;
+      return res.end(JSON.stringify(files));
     }
 
     if (parts.length === 2 && parts[1]!.endsWith('.json')) {
       const file = path.join(root, parts[0]!, parts[1]!);
-      if (!existsSync(file)) { res.statusCode = 404; void res.end(); return; }
+      if (!existsSync(file)) { res.statusCode = 404; return res.end(); }
       res.setHeader('Content-Type', 'application/json');
-      void res.end(readFileSync(file)); return;
+      return res.end(readFileSync(file));
     }
 
     res.statusCode = 404;
-    void res.end();
+    return res.end();
   };
 
   const plugin = {
     name: 'fixtures-middleware',
-    configureServer(server: ViteDevServer) {
+    configureServer(server: any) {
       server.middlewares.use('/_fixtures', handler);
     },
   };
@@ -62,7 +61,7 @@ export function fixturesMiddleware(opts: { root: string }) {
 
 export function layoutsMiddleware(opts: { root: string }) {
   const root = opts.root;
-  const handler = (req: IncomingMessage, res: ServerResponse, _next: ConnectNext): void => {
+  const handler = (req: IncomingMessage, res: ServerResponse, _next: ConnectNext) => {
     // NOTE: req.url arrives WITHOUT the /_layouts prefix (Vite strips it).
     const urlPath = (req.url ?? '').split('?')[0];
     const parts = urlPath.split('/').filter(Boolean);
@@ -70,24 +69,24 @@ export function layoutsMiddleware(opts: { root: string }) {
     // Only handle single-segment paths: /<name>
     if (parts.length !== 1) {
       res.statusCode = 404;
-      void res.end(); return;
+      return res.end();
     }
 
     const name = parts[0]!;
     // Guard against path traversal: reject names containing path separators or dot-only segments.
     if (name.includes('/') || name.includes('\\') || name === '..' || name === '.') {
       res.statusCode = 400;
-      void res.end(); return;
+      return res.end();
     }
     const file = path.join(root, `${name}.json`);
 
     if (req.method === 'GET') {
       if (!existsSync(file)) {
         res.statusCode = 404;
-        void res.end(); return;
+        return res.end();
       }
       res.setHeader('Content-Type', 'application/json');
-      void res.end(readFileSync(file)); return;
+      return res.end(readFileSync(file));
     }
 
     if (req.method === 'POST') {
@@ -101,22 +100,22 @@ export function layoutsMiddleware(opts: { root: string }) {
           writeFileSync(file, body, 'utf8');
           res.setHeader('Content-Type', 'application/json');
           res.statusCode = 200;
-          void res.end(body);
+          return res.end(body);
         } catch (_err) {
           res.statusCode = 400;
-          void res.end(JSON.stringify({ error: 'Invalid JSON body' }));
+          return res.end(JSON.stringify({ error: 'Invalid JSON body' }));
         }
       });
       return;
     }
 
     res.statusCode = 404;
-    void res.end();
+    return res.end();
   };
 
   const plugin = {
     name: 'layouts-middleware',
-    configureServer(server: ViteDevServer) {
+    configureServer(server: any) {
       server.middlewares.use('/_layouts', handler);
     },
   };

@@ -1,15 +1,15 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
-import DelegationMetrics from './DelegationMetrics';
+import DelegationMetrics2D from './DelegationMetrics2D';
 import { makeDashboardDecorator } from '@/storybook/decorators/withDashboardContext';
 import { buildDelegationMetrics } from '@/storybook/fixtures/delegation';
 
-const meta: Meta<typeof DelegationMetrics> = {
-  title: 'Dashboard / DelegationMetrics',
-  component: DelegationMetrics,
+const meta: Meta<typeof DelegationMetrics2D> = {
+  title: 'Dashboard / DelegationMetrics2D',
+  component: DelegationMetrics2D,
   parameters: { layout: 'padded' },
 };
 export default meta;
-type Story = StoryObj<typeof DelegationMetrics>;
+type Story = StoryObj<typeof DelegationMetrics2D>;
 
 export const Empty: Story = {
   args: { config: {} },

@@ -1,7 +1,7 @@
 import type {
   QualityDistributionBucket,
   QualitySummary,
-} from '@/components/dashboard/quality/QualityScorePanel';
+} from '@/components/dashboard/quality/QualityScoreTilted3D';
 
 export interface BuildQualitySummaryOptions {
   /**

@@ -55,7 +55,13 @@
   font-weight: 600; font-size: 15px; letter-spacing: -0.005em;
   display: flex; flex-direction: column; line-height: 1.1;
 }
-.brand-name .primary { color: var(--sidebar-ink); }
+.brand-name .primary {
+  color: var(--sidebar-ink);
+  /* Per the OmniNode branding guideline (2026-02-04), the product
+     wordmark uses Poppins Semibold. Scoped to this surface only —
+     body/chrome/widget typography is unchanged. */
+  font-family: var(--font-brand);
+}
 .brand-name .primary em { font-style: normal; color: var(--brand); }
 .brand-name .parent {
   font-family: var(--font-mono);
