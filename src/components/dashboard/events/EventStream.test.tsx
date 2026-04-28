@@ -40,7 +40,7 @@ describe('EventStream', () => {
     expect(screen.getByText('Loading...')).toBeInTheDocument();
   });
 
-  it('renders initial events from REST endpoint', async () => {
+  it('renders initial events from the registration projection topic', async () => {
     mockFetchWithItems([
       { id: '1', event_type: 'onex.evt.delegation.completed.v1', source: 'omnimarket', correlation_id: 'abc', timestamp: '2026-04-10T12:00:00Z' },
     ]);

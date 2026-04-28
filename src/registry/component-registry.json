@@ -1,6 +1,6 @@
 {
   "manifestVersion": "1.0",
-  "generatedAt": "2026-04-28T17:40:04.469Z",
+  "generatedAt": "2026-04-28T21:24:21.091Z",
   "components": {
     "cost-trend-panel": {
       "name": "cost-trend-panel",
@@ -45,8 +45,8 @@
       },
       "dataSources": [
         {
-          "type": "api",
-          "endpoint": "/api/intelligence/cost/trends",
+          "type": "projection",
+          "topic": "onex.snapshot.projection.llm_cost.v1",
           "required": true,
           "purpose": "initial_fetch"
         }
@@ -107,8 +107,8 @@
       },
       "dataSources": [
         {
-          "type": "api",
-          "endpoint": "/api/intelligence/cost/trends",
+          "type": "projection",
+          "topic": "onex.snapshot.projection.llm_cost.v1",
           "required": true,
           "purpose": "initial_fetch"
         }
@@ -185,14 +185,14 @@
       },
       "dataSources": [
         {
-          "type": "api",
-          "endpoint": "/api/delegation/summary",
+          "type": "projection",
+          "topic": "onex.snapshot.projection.delegation.summary.v1",
           "required": true,
           "purpose": "initial_fetch"
         },
         {
           "type": "websocket",
-          "topic": "delegation",
+          "topic": "onex.snapshot.projection.delegation.summary.v1",
           "required": false,
           "purpose": "live_updates"
         }
@@ -267,14 +267,14 @@
       },
       "dataSources": [
         {
-          "type": "api",
-          "endpoint": "/api/llm-routing/decisions",
+          "type": "projection",
+          "topic": "onex.snapshot.projection.delegation.decisions.v1",
           "required": true,
           "purpose": "initial_fetch"
         },
         {
           "type": "websocket",
-          "topic": "llm-routing",
+          "topic": "onex.snapshot.projection.delegation.decisions.v1",
           "required": false,
           "purpose": "live_updates"
         }
@@ -323,14 +323,14 @@
       "implementationKey": "baselines/BaselinesROICard",
       "dataSources": [
         {
-          "type": "api",
-          "endpoint": "/api/baselines/summary",
+          "type": "projection",
+          "topic": "onex.snapshot.projection.baselines.roi.v1",
           "required": true,
           "purpose": "initial_fetch"
         },
         {
           "type": "websocket",
-          "topic": "baselines",
+          "topic": "onex.snapshot.projection.baselines.roi.v1",
           "required": false,
           "purpose": "live_updates"
         }
@@ -399,8 +399,8 @@
       },
       "dataSources": [
         {
-          "type": "api",
-          "endpoint": "/api/intelligence/quality/summary",
+          "type": "projection",
+          "topic": "onex.snapshot.projection.baselines.quality.v1",
           "required": true,
           "purpose": "initial_fetch"
         }
@@ -441,8 +441,8 @@
       "implementationKey": "readiness/ReadinessGate",
       "dataSources": [
         {
-          "type": "api",
-          "endpoint": "/api/readiness/summary",
+          "type": "projection",
+          "topic": "onex.snapshot.projection.overnight.v1",
           "required": true,
           "purpose": "initial_fetch"
         }
@@ -501,16 +501,16 @@
       },
       "dataSources": [
         {
-          "type": "websocket",
-          "topic": "event-bus",
-          "required": true,
-          "purpose": "live_updates"
-        },
-        {
-          "type": "api",
-          "endpoint": "/api/events/recent",
+          "type": "projection",
+          "topic": "onex.snapshot.projection.registration.v1",
           "required": true,
           "purpose": "initial_fetch"
+        },
+        {
+          "type": "websocket",
+          "topic": "onex.snapshot.projection.registration.v1",
+          "required": true,
+          "purpose": "live_updates"
         }
       ],
       "events": {

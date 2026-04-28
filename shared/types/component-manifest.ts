@@ -12,9 +12,8 @@ export interface GridSize {
 }
 
 export interface DataSourceDeclaration {
-  type: 'websocket' | 'api';
+  type: 'websocket' | 'projection';
   topic?: string;
-  endpoint?: string;
   required: boolean;
   purpose: 'live_updates' | 'initial_fetch';
   auth_required?: boolean;
@@ -93,18 +92,16 @@ export function validateComponentManifest(m: ComponentManifest): ManifestValidat
     errors.push('defaultSize cannot exceed maxSize');
   }
 
-  // T16 (OMN-157): every dataSource must declare its target. websocket
-  // entries need a `topic`; api entries need an `endpoint`. The generator
-  // calls this validator to fail fast on incomplete manifest entries.
+  // T16 (OMN-157): every dataSource must declare its target. Dashboard-v2
+  // data comes from projection/event-bus topics, not arbitrary REST APIs.
   for (const [idx, ds] of m.dataSources.entries()) {
-    if (ds.type === 'websocket') {
+    if (ds.type === 'websocket' || ds.type === 'projection') {
       if (!ds.topic || ds.topic.trim() === '') {
-        errors.push(`dataSources[${idx}] of type 'websocket' must declare a non-empty topic`);
+        errors.push(`dataSources[${idx}] of type '${ds.type}' must declare a non-empty topic`);
       }
-    } else if (ds.type === 'api') {
-      if (!ds.endpoint || ds.endpoint.trim() === '') {
-        errors.push(`dataSources[${idx}] of type 'api' must declare a non-empty endpoint`);
-      }
+    } else {
+      const unsupported = ds as { type?: unknown };
+      errors.push(`dataSources[${idx}] has unsupported type '${String(unsupported.type)}'`);
     }
   }
 

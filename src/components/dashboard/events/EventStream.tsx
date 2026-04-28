@@ -85,13 +85,13 @@ function useEventWebSocket(onEvent: (e: StreamEvent) => void) {
 
     ws.onopen = () => {
       retryRef.current = 0;
-      ws.send(JSON.stringify({ type: 'subscribe', topic: 'event-bus' }));
+      ws.send(JSON.stringify({ type: 'subscribe', topic: TOPICS.registration }));
     };
 
     ws.onmessage = (e) => {
       try {
         const msg = JSON.parse(e.data);
-        if (msg.type === 'event' && msg.topic === 'event-bus' && msg.data) {
+        if (msg.type === 'event' && msg.topic === TOPICS.registration && msg.data) {
           onEvent(msg.data as StreamEvent);
         }
       } catch {
