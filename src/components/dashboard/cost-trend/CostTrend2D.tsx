@@ -20,6 +20,16 @@ export interface CostDataPoint {
   request_count?: number;
 }
 
+/**
+ * Internal config shape for the 2D Cost Trend renderer. Post-merge this
+ * is no longer the public surface — the unified `CostTrend.tsx` router
+ * owns the externally-visible config and forwards `style` (its public
+ * field) as `chartType` (this file's existing local field name).
+ *
+ * Direct consumers should configure `style` on the merged widget via
+ * the dashboard config panel; `chartType` here is router-driven and
+ * not part of the manifest's `configSchema`.
+ */
 interface CostTrendConfig {
   granularity?: 'hour' | 'day';
   chartType?: ChartType;

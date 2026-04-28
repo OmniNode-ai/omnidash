@@ -1,5 +1,5 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
-import CostTrendPanel from './CostTrendPanel';
+import CostTrendPanel from './CostTrend2D';
 import { makeDashboardDecorator } from '@/storybook/decorators/withDashboardContext';
 import { buildCostDataPoints } from '@/storybook/fixtures/cost';
 

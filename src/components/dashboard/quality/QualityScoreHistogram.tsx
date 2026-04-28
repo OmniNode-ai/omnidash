@@ -122,23 +122,35 @@ export default function QualityScoreHistogram({ config }: { config: Config }) {
                 background: colors.accent,
               }}
             />
-            {/* Bars */}
-            <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'flex-end', gap: '0.5rem' }}>
+            {/* Bars — top region, leaves 16px at the bottom for the label
+                row (mirrors the `bottom: 16` reserved by the threshold line
+                and mean marker above). Bars grow upward from the baseline. */}
+            <div style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 16, display: 'flex', alignItems: 'flex-end', gap: '0.5rem' }}>
               {bars.map((b, i) => (
-                <div key={i} style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4, height: '100%' }}>
-                  <div
-                    role="meter"
-                    aria-label={`bucket ${b.bucket} count ${b.count}`}
-                    aria-valuenow={b.count}
-                    aria-valuemin={0}
-                    style={{
-                      width: '100%',
-                      height: `calc(${b.heightPct}% - 24px)`,
-                      minHeight: 2,
-                      background: b.color,
-                      borderRadius: '2px 2px 0 0',
-                    }}
-                  />
+                <div
+                  key={i}
+                  role="meter"
+                  aria-label={`bucket ${b.bucket} count ${b.count}`}
+                  aria-valuenow={b.count}
+                  aria-valuemin={0}
+                  style={{
+                    flex: 1,
+                    height: `${b.heightPct}%`,
+                    minHeight: 2,
+                    background: b.color,
+                    borderRadius: '2px 2px 0 0',
+                  }}
+                />
+              ))}
+            </div>
+            {/* Bucket labels — fixed-height row pinned to the bottom of the
+                chart area. Pulling labels out of the per-bar columns is what
+                lets bars use 100% of their available height without the
+                stale `calc(... - 24px)` hack that previously clipped every
+                small bar to `minHeight: 2`. */}
+            <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0, height: 16, display: 'flex', gap: '0.5rem' }}>
+              {bars.map((b, i) => (
+                <div key={i} style={{ flex: 1, textAlign: 'center' }}>
                   <Text family="mono" size="xs" color="secondary">{b.bucket}</Text>
                 </div>
               ))}

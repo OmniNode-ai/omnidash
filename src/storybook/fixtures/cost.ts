@@ -1,4 +1,4 @@
-import type { CostDataPoint } from '@/components/dashboard/cost-trend/CostTrendPanel';
+import type { CostDataPoint } from '@/components/dashboard/cost-trend/CostTrend2D';
 
 export interface BuildCostDataPointsOptions {
   /** Specific list of model names to use. Default: 4 representative models. */

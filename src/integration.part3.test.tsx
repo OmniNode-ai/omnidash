@@ -54,7 +54,9 @@ describe('Proof of Life — Part 3 (Full System)', () => {
     const registry = new ComponentRegistry(manifest);
     await registry.resolveImplementations();
     const available = registry.getAvailableComponents().filter((c) => c.status === 'available');
-    expect(available.length).toBe(11);
+    // 8 post-merge (was 11) — three 2D companions consolidated into
+    // their primary entries via dimension config (OMN-22).
+    expect(available.length).toBe(8);
   });
 
   it('both templates pass validation', () => {

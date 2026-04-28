@@ -88,7 +88,10 @@ EXCLUDE_ARGS=()
 for d in "${EXCLUDE_DIRS[@]}"; do
   EXCLUDE_ARGS+=("--exclude-dir=$d")
 done
-# In git worktrees, .git is a file (not a dir), so --exclude-dir=.git misses it.
+
+# In a git worktree, `.git` is a regular file (not a directory) that points at
+# the main checkout's worktrees/ entry — so --exclude-dir=.git does not match
+# it. Exclude the literal `.git` filename to keep the gate clean in worktrees.
 EXCLUDE_ARGS+=("--exclude=.git")
 
 violations=0

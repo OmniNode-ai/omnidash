@@ -1,89 +1,37 @@
-import { useMemo } from 'react';
-import { ComponentWrapper } from '../ComponentWrapper';
-import { useProjectionQuery } from '@/hooks/useProjectionQuery';
-import { TOPICS } from '@shared/types/topics';
-import { Text } from '@/components/ui/typography';
-import { DoughnutChart, type DoughnutSlice } from './DoughnutChart';
+import { lazy, Suspense } from 'react';
+import type { WidgetDimension } from '../_shared/types';
 
-export interface DelegationSummary {
-  totalDelegations: number;
-  qualityGatePassRate: number;
-  totalSavingsUsd: number;
-  byTaskType: Array<{ taskType: string; count: number }>;
+// Public re-export: storybook fixtures and other consumers import the
+// data shape from the router module (the canonical entry point) rather
+// than reaching into the 2D or 3D variant directly.
+export type { DelegationSummary } from './DelegationMetrics3D';
+
+const DelegationMetrics2D = lazy(() => import('./DelegationMetrics2D'));
+const DelegationMetrics3D = lazy(() => import('./DelegationMetrics3D'));
+
+export interface DelegationMetricsConfig {
+  /**
+   * '2d' = flat SVG donut, '3d' = tilted three.js doughnut. Default '2d'
+   * — the SVG variant is cheaper, more portable, and reads at-a-glance
+   * without rotation, which is what most users want for a small panel.
+   */
+  dimension?: WidgetDimension;
+  showSavings?: boolean;
+  showQualityGates?: boolean;
+  qualityGateThreshold?: number;
 }
 
-export default function DelegationMetrics({ config }: { config: Record<string, unknown> }) {
-  // Each `show*` flag defaults to true so existing dashboards (whose
-  // configs pre-date the wiring) keep their full stat layout.
-  const showSavings = config.showSavings !== false;
-  const showQualityGates = config.showQualityGates !== false;
-  // T19 (OMN-160): the gate threshold used to be a hardcoded 0.8.
-  // It now comes from manifest config, mirroring quality-score-panel's
-  // passThreshold pattern. Pre-existing layouts get the 0.8 default.
-  const qualityGateThreshold =
-    typeof config.qualityGateThreshold === 'number' ? config.qualityGateThreshold : 0.8;
-
-  const { data: dataArr, isLoading, error } = useProjectionQuery<DelegationSummary>({
-    topic: TOPICS.delegationSummary,
-    queryKey: ['delegation-summary'],
-    refetchInterval: 60_000,
-  });
-  const data = dataArr?.[0];
-
-  // Pre-compute slice percentages once so DoughnutChart can stay
-  // presentational. Sorted descending by count so the largest slice
-  // starts at 12 o'clock — matches CostByModelPie's reading order.
-  const slices = useMemo<DoughnutSlice[]>(() => {
-    if (!data || data.byTaskType.length === 0) return [];
-    const total = data.byTaskType.reduce((acc, t) => acc + t.count, 0);
-    if (total === 0) return [];
-    return data.byTaskType
-      .map((t) => ({
-        label: t.taskType,
-        value: t.count,
-        percentage: (t.count / total) * 100,
-      }))
-      .sort((a, b) => b.value - a.value);
-  }, [data]);
-
-  const isEmpty = !data || data.totalDelegations === 0;
-
+export default function DelegationMetrics({ config }: { config: DelegationMetricsConfig }) {
+  const dimension: WidgetDimension = config.dimension ?? '2d';
+  // Sub-widgets accept `Record<string, unknown>`; cast through `unknown`
+  // so the structurally-typed config forwards cleanly. Same pattern as
+  // CostByModel and QualityScore.
+  const passthrough = config as unknown as Record<string, unknown>;
   return (
-    <ComponentWrapper
-      title="Delegation Metrics"
-      isLoading={isLoading}
-      error={error ?? undefined}
-      isEmpty={isEmpty}
-      emptyMessage="No delegation events"
-      emptyHint="Delegation events appear when tasks are delegated to agents"
-    >
-      {data && !isEmpty && (
-        <div style={{ display: 'flex', gap: '1rem', height: '100%' }}>
-          <div style={{ flex: '0 0 auto', display: 'flex', flexDirection: 'column', gap: '0.75rem', padding: '0.5rem 0' }}>
-            <div>
-              <Text as="div" size="4xl" weight="bold" color="primary">{data.totalDelegations}</Text>
-              <Text as="div" size="md" color="primary">Total Delegations</Text>
-            </div>
-            {showQualityGates && (
-              <div>
-                <Text as="div" size="4xl" weight="bold" color={data.qualityGatePassRate >= qualityGateThreshold ? 'ok' : 'warn'}>
-                  {Math.round(data.qualityGatePassRate * 100)}%
-                </Text>
-                <Text as="div" size="md" color="primary">Quality Gate Pass Rate</Text>
-              </div>
-            )}
-            {showSavings && (
-              <div>
-                <Text as="div" size="4xl" weight="bold" color="primary">${data.totalSavingsUsd.toFixed(2)}</Text>
-                <Text as="div" size="md" color="primary">Cost Savings</Text>
-              </div>
-            )}
-          </div>
-          <div style={{ flex: 1, minHeight: '150px' }}>
-            <DoughnutChart slices={slices} height={260} />
-          </div>
-        </div>
-      )}
-    </ComponentWrapper>
+    <Suspense fallback={null}>
+      {dimension === '2d'
+        ? <DelegationMetrics2D config={passthrough} />
+        : <DelegationMetrics3D config={passthrough} />}
+    </Suspense>
   );
 }

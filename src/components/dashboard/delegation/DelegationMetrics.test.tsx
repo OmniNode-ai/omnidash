@@ -1,152 +1,30 @@
 import { render, screen } from '@testing-library/react';
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { QueryClient } from '@tanstack/react-query';
-import { DataSourceTestProvider } from '@/test-utils/dataSourceTestProvider';
-import { mockFetchWithItems } from '@/test-utils/mockFetch';
+import { describe, it, expect, vi } from 'vitest';
 import DelegationMetrics from './DelegationMetrics';
 
-const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+// Sub-widgets stubbed to isolate the router. Suspense + lazy means
+// resolution is async, so use findBy* on assertions. Mirrors
+// CostByModel.test.tsx.
+vi.mock('./DelegationMetrics2D', () => ({
+  default: () => <div data-testid="delegation-2d" />,
+}));
+vi.mock('./DelegationMetrics3D', () => ({
+  default: () => <div data-testid="delegation-3d" />,
+}));
 
-// jsdom has no WebGL context — stub the renderer so DoughnutChart's
-// scene builder can execute without throwing. Same recipe used by
-// CostByModelPie.test.tsx. The aggregation, slice-percentage, and
-// empty-state branches still run for real, which is what these tests
-// actually care about.
-vi.mock('three', async () => {
-  const actual = await vi.importActual<typeof import('three')>('three');
-  class FakeWebGLRenderer {
-    domElement = (() => {
-      const el = document.createElement('canvas');
-      el.style.display = 'block';
-      return el;
-    })();
-    setPixelRatio() {}
-    setClearColor() {}
-    setSize() {}
-    render() {}
-    dispose() {}
-  }
-  return { ...actual, WebGLRenderer: FakeWebGLRenderer };
-});
-
-class FakeResizeObserver {
-  observe() {}
-  unobserve() {}
-  disconnect() {}
-}
-
-
-describe('DelegationMetrics', () => {
-  beforeEach(() => {
-    qc.clear();
-    vi.stubGlobal('fetch', vi.fn());
-    vi.stubGlobal('ResizeObserver', FakeResizeObserver);
-  });
-  afterEach(() => vi.restoreAllMocks());
-
-  it('renders metrics when data is available', async () => {
-    mockFetchWithItems([{
-      totalDelegations: 150,
-      qualityGatePassRate: 0.85,
-      totalSavingsUsd: 42.5,
-      byTaskType: [{ taskType: 'code-review', count: 80 }, { taskType: 'refactor', count: 70 }],
-    }]);
-    render(
-      <DataSourceTestProvider client={qc}>
-        <DelegationMetrics config={{}} />
-      </DataSourceTestProvider>
-    );
-    expect(await screen.findByText('150')).toBeInTheDocument();
-    expect(screen.getByText('85%')).toBeInTheDocument();
+describe('DelegationMetrics router', () => {
+  it('renders 2D donut when dimension is 2d', async () => {
+    render(<DelegationMetrics config={{ dimension: '2d' }} />);
+    expect(await screen.findByTestId('delegation-2d')).toBeInTheDocument();
   });
 
-  it('shows empty state when no delegations', async () => {
-    mockFetchWithItems([{
-      totalDelegations: 0,
-      qualityGatePassRate: 0,
-      totalSavingsUsd: 0,
-      byTaskType: [],
-    }]);
-    render(
-      <DataSourceTestProvider client={qc}>
-        <DelegationMetrics config={{}} />
-      </DataSourceTestProvider>
-    );
-    expect(await screen.findByText(/no delegation events/i)).toBeInTheDocument();
+  it('renders 3D doughnut when dimension is 3d', async () => {
+    render(<DelegationMetrics config={{ dimension: '3d' }} />);
+    expect(await screen.findByTestId('delegation-3d')).toBeInTheDocument();
   });
 
-  // §8.B (review acceptance) — every config field a widget exposes
-  // must actually be consumed. These tests pass each field through
-  // and assert an observable effect.
-
-  it('hides Cost Savings when config.showSavings is false', async () => {
-    mockFetchWithItems([{
-      totalDelegations: 10,
-      qualityGatePassRate: 0.9,
-      totalSavingsUsd: 12.34,
-      byTaskType: [{ taskType: 'a', count: 10 }],
-    }]);
-    render(
-      <DataSourceTestProvider client={qc}>
-        <DelegationMetrics config={{ showSavings: false }} />
-      </DataSourceTestProvider>
-    );
-    expect(await screen.findByText('10')).toBeInTheDocument();
-    expect(screen.queryByText(/cost savings/i)).not.toBeInTheDocument();
-    expect(screen.queryByText('$12.34')).not.toBeInTheDocument();
-  });
-
-  it('hides Quality Gate Pass Rate when config.showQualityGates is false', async () => {
-    mockFetchWithItems([{
-      totalDelegations: 10,
-      qualityGatePassRate: 0.9,
-      totalSavingsUsd: 5,
-      byTaskType: [{ taskType: 'a', count: 10 }],
-    }]);
-    render(
-      <DataSourceTestProvider client={qc}>
-        <DelegationMetrics config={{ showQualityGates: false }} />
-      </DataSourceTestProvider>
-    );
-    expect(await screen.findByText('10')).toBeInTheDocument();
-    expect(screen.queryByText(/quality gate pass rate/i)).not.toBeInTheDocument();
-    expect(screen.queryByText('90%')).not.toBeInTheDocument();
-  });
-
-  it('config.qualityGateThreshold flips the pass-rate color from ok to warn when the rate falls below the threshold', async () => {
-    // Pass rate 0.75. With threshold 0.8 the rate reads `warn`
-    // (--text-warn); with threshold 0.7 it reads `ok` (--text-ok).
-    // The Text component sets `style.color` to a CSS var derived from
-    // the `color` prop, so we assert against that rather than parsing
-    // a class name. See src/components/ui/typography/Text.test.tsx for
-    // the contract.
-    mockFetchWithItems([{
-      totalDelegations: 100,
-      qualityGatePassRate: 0.75,
-      totalSavingsUsd: 0,
-      byTaskType: [{ taskType: 'a', count: 100 }],
-    }]);
-    const { unmount } = render(
-      <DataSourceTestProvider client={qc}>
-        <DelegationMetrics config={{ qualityGateThreshold: 0.8 }} />
-      </DataSourceTestProvider>
-    );
-    const warn = (await screen.findByText('75%')) as HTMLElement;
-    expect(warn.style.color).toBe('var(--text-warn)');
-    unmount();
-
-    mockFetchWithItems([{
-      totalDelegations: 100,
-      qualityGatePassRate: 0.75,
-      totalSavingsUsd: 0,
-      byTaskType: [{ taskType: 'a', count: 100 }],
-    }]);
-    render(
-      <DataSourceTestProvider client={qc}>
-        <DelegationMetrics config={{ qualityGateThreshold: 0.7 }} />
-      </DataSourceTestProvider>
-    );
-    const ok = (await screen.findByText('75%')) as HTMLElement;
-    expect(ok.style.color).toBe('var(--text-ok)');
+  it('defaults to 2d when dimension is undefined', async () => {
+    render(<DelegationMetrics config={{}} />);
+    expect(await screen.findByTestId('delegation-2d')).toBeInTheDocument();
   });
 });

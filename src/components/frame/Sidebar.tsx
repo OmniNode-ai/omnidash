@@ -23,37 +23,6 @@ import { Text } from '@/components/ui/typography';
 import { useFrameStore } from '@/store/store';
 import { DeleteDashboardDialog } from './DeleteDashboardDialog';
 
-/** Inline OmniDash brand-mark SVG from prototype (visual fidelity preferred over lucide Hexagon). */
-function BrandMark() {
-  return (
-    <svg className="brand-mark" viewBox="0 0 32 32" fill="none">
-      <defs>
-        <linearGradient id="bm-g" x1="0" y1="0" x2="32" y2="32" gradientUnits="userSpaceOnUse">
-          <stop offset="0%" stopColor="oklch(70% 0.14 230)" />
-          <stop offset="55%" stopColor="oklch(75% 0.13 200)" />
-          <stop offset="100%" stopColor="oklch(82% 0.14 170)" />
-        </linearGradient>
-      </defs>
-      {/* hexagon outer */}
-      <path
-        d="M16 2 L28 9 L28 23 L16 30 L4 23 L4 9 Z"
-        stroke="url(#bm-g)"
-        strokeWidth="2.2"
-        strokeLinejoin="miter"
-      />
-      {/* angular D-chevron inside */}
-      <path
-        d="M11 9 L11 23 L17 23 L22 18 L22 14 L17 9 Z"
-        stroke="url(#bm-g)"
-        strokeWidth="2"
-        strokeLinejoin="miter"
-        fill="none"
-      />
-      <path d="M14 14 L18 18" stroke="url(#bm-g)" strokeWidth="2" strokeLinecap="square" />
-    </svg>
-  );
-}
-
 interface RenameInputProps {
   initialValue: string;
   onCommit: (value: string) => void;
@@ -185,9 +154,15 @@ export function Sidebar() {
 
   return (
     <aside className={`sidebar${collapsed ? ' collapsed' : ''}`}>
-      {/* Brand block */}
+      {/* Brand block. OmniNode icon on the left, OmniDash product label
+          on the right (kept per client direction — branding guideline
+          covers logo + font only, OmniDash text stays). */}
       <div className="brand">
-        <BrandMark />
+        <img
+          src="/brand/logo-icon.svg"
+          alt="OmniNode"
+          className="brand-mark"
+        />
         {!collapsed && (
           <div className="brand-name">
             <span className="primary">
