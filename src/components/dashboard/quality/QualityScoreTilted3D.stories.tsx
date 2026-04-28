@@ -21,7 +21,7 @@
 // 240px-tall canvas have room to breathe (matches the dashboard grid
 // minimum that ships in production).
 import type { Meta, StoryObj } from '@storybook/react-vite';
-import QualityScorePanel from './QualityScorePanel';
+import QualityScorePanel from './QualityScoreTilted3D';
 import { makeDashboardDecorator } from '@/storybook/decorators/withDashboardContext';
 import { buildQualitySummary } from '@/storybook/fixtures/quality';
 

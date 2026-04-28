@@ -4,7 +4,7 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { QueryClient } from '@tanstack/react-query';
 import { DataSourceTestProvider } from '@/test-utils/dataSourceTestProvider';
 import { mockFetchWithItems } from '@/test-utils/mockFetch';
-import CostTrend3D from './CostTrend3D';
+import CostTrend3D from './CostTrend3DBars';
 
 const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } });
 
@@ -96,6 +96,6 @@ describe('CostTrend3D (T9 — H9 acceptance)', () => {
     );
     // The widget header is the most stable assertion — any thrown error
     // during reshape/render would crash the harness before this resolves.
-    expect(await screen.findByText('Cost Trend (3D)')).toBeInTheDocument();
+    expect(await screen.findByText('Cost Trend')).toBeInTheDocument();
   });
 });

@@ -1,15 +1,20 @@
-// Experimental 3D Cost Trend widget — "Tron" visualization.
-// Raw three.js. Data is plotted as translucent glowing columns on a grid:
-// X = time bucket, Z = model, Y = cost.
+// Experimental 3D Cost Trend (Area variant) — pairs with CostTrend3DBars.
+// Same Tron aesthetic, same data, same controls. The Bars variant renders
+// one column per (model × bucket); this variant renders one filled ribbon
+// per model, with the ribbon's silhouette tracing the model's cost over
+// time. Ribbons stack along Z so each model occupies its own depth row.
 //
-// Camera design (intentionally restrictive — more "side-scroller" than
-// first-person-shooter):
-//   - Starts facing the strip of values head-on (looking down -Z).
+// Camera design (intentionally restrictive — same as Bars):
+//   - Starts facing the strip head-on (looking down -Z).
 //   - No free orbit / yaw. No scroll-wheel zoom. No drag-pan.
-//   - Tilt (pitch) is the only free camera control, via mouse-down drag in
-//     the Y direction, clamped to a moderate range.
-//   - Horizontal navigation along the timeline is via an HTML scrollbar
-//     below the canvas.
+//   - Tilt (pitch) is the only free camera control, via mouse-down drag.
+//   - Horizontal navigation along the timeline is via an HTML scrollbar.
+//
+// Compared to the Bars variant: the focus model is a whole MODEL (not a
+// single cell), so click-to-focus brings up that model's totals in the
+// stats panel instead of per-bucket stats. The cinematic camera swoop is
+// retained but adapted — it pivots toward the focused ribbon's depth row
+// instead of zooming onto a single column.
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import * as THREE from 'three';
 import { ComponentWrapper } from '../ComponentWrapper';
@@ -19,6 +24,7 @@ import { applyTimeRange, resolveTimeRange } from '@/hooks/useTimeRange';
 import { useTimezone } from '@/hooks/useTimezone';
 import { useFrameStore } from '@/store/store';
 import { useThemeName, useThemeColors } from '@/theme';
+import { cssColorToHex } from '@/theme/cssColorToHex';
 import { Text } from '@/components/ui/typography';
 import { zonedComponents } from '@/lib/zonedComponents';
 
@@ -109,12 +115,10 @@ interface ThemeConfig {
   gridOpacity: number;
   isolatedDimColor: number;
   modelPalette: string[]; // hex strings
-  barCoreOpacity: number;
-  barEdgeOpacity: number;
-  barTopOpacity: number;
-  dimCoreOpacity: number;
+  ribbonOpacity: number;
+  edgeOpacity: number;
+  dimRibbonOpacity: number;
   dimEdgeOpacity: number;
-  dimTopOpacity: number;
   // HTML overlay colors (CSS strings).
   labelPrimary: string;
   labelSecondary: string;
@@ -143,12 +147,14 @@ const DARK_THEME: ThemeConfig = {
     '#00e5ff', '#ff4fb0', '#ffb547', '#7dff5f',
     '#a385ff', '#ff7046', '#5eb0ff',
   ],
-  barCoreOpacity: 0.18,
-  barEdgeOpacity: 0.95,
-  barTopOpacity: 0.8,
-  dimCoreOpacity: 0.05,
+  // Stacked layout: each ribbon is its own fully opaque band. The Z
+  // stagger gives each model its own card-like layer, so we don't need
+  // translucency to "see through" — we just need each band to be a
+  // distinct, solid color.
+  ribbonOpacity: 1.0,
+  edgeOpacity: 0.95,
+  dimRibbonOpacity: 0.08,
   dimEdgeOpacity: 0.22,
-  dimTopOpacity: 0.08,
   labelPrimary: '#9ad6ff',
   labelSecondary: '#5ea9cf',
   labelShadow: '0 0 4px rgba(0, 229, 255, 0.35)',
@@ -165,10 +171,6 @@ const DARK_THEME: ThemeConfig = {
   tooltipValue: '#ffffff',
 };
 
-// Light theme: greys for lines, washed-out pastels for blocks. Intentionally
-// quiet — the widget should read like an engineering sketch rather than the
-// neon glow of the dark version. Background is pure white so the pastel
-// fills read as soft color rather than bleeding into a grey scene.
 const LIGHT_THEME: ThemeConfig = {
   sceneBg: 0xffffff,
   fog: 0xffffff,
@@ -177,23 +179,13 @@ const LIGHT_THEME: ThemeConfig = {
   gridOpacity: 0.6,
   isolatedDimColor: 0xa0a5b0,
   modelPalette: [
-    '#8fd1d9', // dusty cyan
-    '#d9a5c4', // rose pink
-    '#e8c899', // soft amber
-    '#b5d5ad', // sage
-    '#bfb1e0', // muted lavender
-    '#e0aa98', // coral dust
-    '#a7c2dd', // slate blue
+    '#8fd1d9', '#d9a5c4', '#e8c899', '#b5d5ad',
+    '#bfb1e0', '#e0aa98', '#a7c2dd',
   ],
-  // Bar opacities raised significantly vs. the dark theme — pastels on white
-  // need solid fills to be visible; if they stay translucent they just look
-  // like faint tinted glass that disappears against the background.
-  barCoreOpacity: 0.75,
-  barEdgeOpacity: 0.9,
-  barTopOpacity: 0.9,
-  dimCoreOpacity: 0.2,
-  dimEdgeOpacity: 0.35,
-  dimTopOpacity: 0.25,
+  ribbonOpacity: 1.0,
+  edgeOpacity: 0.85,
+  dimRibbonOpacity: 0.18,
+  dimEdgeOpacity: 0.32,
   labelPrimary: '#4a5260',
   labelSecondary: '#7c8594',
   labelShadow: 'none',
@@ -221,6 +213,7 @@ function hexForModel(palette: string[], index: number): string {
 
 const CELL_SIZE = 1.2;
 const MAX_BAR_HEIGHT = 4;
+const CANVAS_HEIGHT = 200;
 
 function layoutX(bucketIndex: number, bucketCount: number): number {
   const span = bucketCount * CELL_SIZE;
@@ -231,40 +224,22 @@ function layoutZ(modelIndex: number, modelCount: number): number {
   return modelIndex * CELL_SIZE - span / 2 + CELL_SIZE / 2;
 }
 
-// ---------- Camera design constants ----------
+// ---------- Camera + focus animation constants ----------
 
-// Camera orbits a target point on a fixed-radius sphere. Only the pitch
-// angle (polar) and the target's X position are free; azimuth is pinned at
-// 0 (camera always faces along -Z). Pitch is measured from the world +Y
-// axis: π/2 is horizontal, smaller values tilt the camera down toward the
-// ground, larger values raise it. We clamp to a medium range that never
-// goes fully overhead nor fully underground.
-// These values were dialed in via a temporary in-widget tuning panel and
-// then frozen once the composition looked right.
 const CAMERA_DISTANCE = 11;
 const TARGET_Y = 0.6;
 const CAMERA_FOV = 30;
-const CANVAS_HEIGHT = 200;
-const PITCH_DEFAULT = Math.PI / 2 - 0.30; // ~73° from vertical
-const PITCH_MIN = Math.PI / 2 - 0.55;     // ~58° — steeper downward tilt
-const PITCH_MAX = Math.PI / 2 - 0.05;     // ~87° — nearly eye-level
-const PITCH_DRAG_SENSITIVITY = 0.005;     // radians per pixel of mouse Y drag
-// Screen-space vertical pan applied via camera.setViewOffset — purely a
-// framing tweak, doesn't change camera pose. Positive = up, negative = down.
+const PITCH_DEFAULT = Math.PI / 2 - 0.30;
+const PITCH_MIN = Math.PI / 2 - 0.55;
+const PITCH_MAX = Math.PI / 2 - 0.05;
+const PITCH_DRAG_SENSITIVITY = 0.005;
 const Y_OFFSET_PX = -1;
 
-// ---------- Focus animation ----------
-
-// Cinematic swoop constants. Dialed in via a temporary tuning panel and
-// then frozen once the feel was right.
 const FOCUS_DURATION_MS = 900;
-const FOCUS_DISTANCE = 4;          // camera-to-bar distance in world units
-const FOCUS_ELEVATION = 1.2;       // camera height above bar mid-height
-const FOCUS_LOOKAT_X_OFFSET = 1.5; // shifts lookAt right of bar, pushing bar left in frame
-const FOCUS_FOV = 35;
-const FOCUS_DIM_OPACITY = 0.04;    // non-focused bars during focus
-const FOCUS_BAR_OPACITY = 0.85;    // focused bar during focus
-const STATS_SLIDE_MS = 900;        // panel slide-in/out duration (matches camera)
+const FOCUS_FOV = 28; // slight zoom-in during focus
+const FOCUS_DIM_OPACITY = 0.04;
+const FOCUS_RIBBON_OPACITY = 0.95;
+const STATS_SLIDE_MS = 900;
 
 function easeOutCubic(t: number): number {
   const u = 1 - t;
@@ -272,7 +247,6 @@ function easeOutCubic(t: number): number {
 }
 
 function cameraPositionFor(targetX: number, pitch: number): THREE.Vector3 {
-  // Azimuth pinned at 0 → camera sits on +Z side of target, looking -Z.
   return new THREE.Vector3(
     targetX,
     TARGET_Y + CAMERA_DISTANCE * Math.cos(pitch),
@@ -280,20 +254,25 @@ function cameraPositionFor(targetX: number, pitch: number): THREE.Vector3 {
   );
 }
 
-// ---------- Grid (aligned to data cells) ----------
+// ---------- Grid ----------
 
 function buildAlignedGrid(
   dataset: GridDataset, theme: ThemeConfig,
 ): { grid: THREE.LineSegments; material: THREE.LineBasicMaterial } {
+  // Ridge plot: ribbons spread along Z one row per model. The grid mirrors
+  // that — a row line at every model boundary plus bucket dividers spanning
+  // the full Z extent. Each ribbon sits exactly within one row of the grid.
   const bucketCount = dataset.buckets.length;
   const modelCount = dataset.models.length;
   const spanX = bucketCount * CELL_SIZE;
   const spanZ = modelCount * CELL_SIZE;
   const positions: number[] = [];
+  // Per-row floor lines (modelCount + 1 lines = one per row boundary).
   for (let i = 0; i <= modelCount; i++) {
     const z = i * CELL_SIZE - spanZ / 2;
     positions.push(-spanX / 2, 0, z, spanX / 2, 0, z);
   }
+  // Bucket dividers, perpendicular to time axis, spanning full Z.
   for (let i = 0; i <= bucketCount; i++) {
     const x = i * CELL_SIZE - spanX / 2;
     positions.push(x, 0, -spanZ / 2, x, 0, spanZ / 2);
@@ -306,68 +285,139 @@ function buildAlignedGrid(
   return { grid: new THREE.LineSegments(geom, material), material };
 }
 
-// ---------- Bars ----------
+// ---------- Ribbons ----------
 
-interface BarHandle {
-  group: THREE.Group;
-  coreMat: THREE.MeshBasicMaterial;
+interface RibbonHandle {
+  mesh: THREE.Mesh;            // filled ShapeGeometry
+  edges: THREE.LineSegments;   // ribbon outline
+  ribbonMat: THREE.MeshBasicMaterial;
   edgeMat: THREE.LineBasicMaterial;
-  topMat: THREE.MeshBasicMaterial;
   modelName: string;
-  cell: GridCell;
+  modelIndex: number;
+  z: number;                   // depth position
+  centerX: number;             // X midpoint (mostly 0; useful for camera framing)
+  totalCost: number;           // sum across visible buckets
+  totalTokens: number;
+  totalRequests: number;
+  bucketCount: number;
+  firstBucket: string;
+  lastBucket: string;
   originalColor: THREE.Color;
 }
 
-function buildBars(
+function buildAreaRibbons(
   scene: THREE.Scene, dataset: GridDataset, theme: ThemeConfig,
-): { group: THREE.Group; bars: BarHandle[] } {
+): { group: THREE.Group; ribbons: RibbonHandle[] } {
   const group = new THREE.Group();
-  const bars: BarHandle[] = [];
+  const ribbons: RibbonHandle[] = [];
+
+  const bucketCount = dataset.buckets.length;
+  const modelCount = dataset.models.length;
+
+  // Build (bucket × model) lookup matrices once. Models with no cell at a
+  // given bucket contribute 0 — the ribbon still spans the full timeline
+  // and just dips to the baseline at those buckets.
+  const costAt: number[][] = [];
+  const cellAt: Array<Array<GridCell | undefined>> = [];
+  for (let bi = 0; bi < bucketCount; bi++) {
+    costAt.push(new Array(modelCount).fill(0));
+    cellAt.push(new Array(modelCount).fill(undefined));
+  }
   for (const cell of dataset.cells) {
-    const height = Math.max(0.05, (cell.cost / dataset.maxCost) * MAX_BAR_HEIGHT);
-    const x = layoutX(cell.bucketIndex, dataset.buckets.length);
-    const z = layoutZ(cell.modelIndex, dataset.models.length);
-    const color = colorForModel(theme.modelPalette, cell.modelIndex);
-    const barGroup = new THREE.Group();
-    barGroup.position.set(x, 0, z);
-    const coreMat = new THREE.MeshBasicMaterial({
-      color, transparent: true, opacity: theme.barCoreOpacity, depthWrite: false,
+    costAt[cell.bucketIndex][cell.modelIndex] = cell.cost;
+    cellAt[cell.bucketIndex][cell.modelIndex] = cell;
+  }
+
+  // Global Y normalization — every ridge uses the same scale (max single-
+  // bucket cost across all models). This preserves magnitude comparison
+  // between models: a model that costs 10× more than another reads as
+  // 10× taller. Per-row scaling would lose that signal.
+  const maxCost = Math.max(dataset.maxCost, 0.001);
+
+  const xLeftOf = (bi: number) => layoutX(bi, bucketCount) - CELL_SIZE / 2;
+  const xRightOf = (bi: number) => layoutX(bi, bucketCount) + CELL_SIZE / 2;
+  const heightAt = (bi: number, mi: number) =>
+    (costAt[bi][mi] / maxCost) * MAX_BAR_HEIGHT;
+
+  for (let modelIndex = 0; modelIndex < modelCount; modelIndex++) {
+    const modelName = dataset.models[modelIndex];
+    const color = colorForModel(theme.modelPalette, modelIndex);
+    // Ridge plot: each model gets its own depth row. Models are pre-sorted
+    // by total cost desc in `dataset.models`, so the largest-cost model
+    // sits at the back of the scene and smaller models step forward.
+    // Tall back ribbons peek over short front ones for natural depth.
+    const z = layoutZ(modelIndex, modelCount);
+
+    // Step-area outline at this row's baseline (y=0). Bottom edge runs
+    // along y=0 across the full timeline; top edge traces cost(t) with
+    // each bucket holding its level across the bucket width and jumping
+    // at boundaries — same per-bucket discrete read as the Bars variant.
+    const shape = new THREE.Shape();
+    shape.moveTo(xLeftOf(0), 0);
+    shape.lineTo(xLeftOf(0), heightAt(0, modelIndex));
+    for (let bi = 0; bi < bucketCount; bi++) {
+      shape.lineTo(xRightOf(bi), heightAt(bi, modelIndex));
+      if (bi + 1 < bucketCount) {
+        shape.lineTo(xLeftOf(bi + 1), heightAt(bi + 1, modelIndex));
+      }
+    }
+    shape.lineTo(xRightOf(bucketCount - 1), 0);
+    shape.lineTo(xLeftOf(0), 0);
+
+    const geom = new THREE.ShapeGeometry(shape);
+    const ribbonMat = new THREE.MeshBasicMaterial({
+      color, transparent: true, opacity: theme.ribbonOpacity,
+      side: THREE.DoubleSide, depthWrite: false,
     });
-    const core = new THREE.Mesh(
-      new THREE.BoxGeometry(CELL_SIZE * 0.72, height, CELL_SIZE * 0.72),
-      coreMat,
-    );
-    core.position.y = height / 2;
-    core.userData.bar = true;
-    barGroup.add(core);
+    const mesh = new THREE.Mesh(geom, ribbonMat);
+    mesh.position.z = z;
+    mesh.userData.ribbon = true;
+    group.add(mesh);
+
     const edgeMat = new THREE.LineBasicMaterial({
-      color, transparent: true, opacity: theme.barEdgeOpacity,
+      color, transparent: true, opacity: theme.edgeOpacity,
     });
-    const edges = new THREE.LineSegments(new THREE.EdgesGeometry(core.geometry), edgeMat);
-    edges.position.copy(core.position);
-    barGroup.add(edges);
-    const topMat = new THREE.MeshBasicMaterial({
-      color, transparent: true, opacity: theme.barTopOpacity,
-    });
-    const top = new THREE.Mesh(
-      new THREE.PlaneGeometry(CELL_SIZE * 0.72, CELL_SIZE * 0.72),
-      topMat,
-    );
-    top.rotation.x = -Math.PI / 2;
-    top.position.y = height + 0.001;
-    barGroup.add(top);
-    group.add(barGroup);
-    bars.push({
-      group: barGroup, coreMat, edgeMat, topMat,
-      modelName: cell.modelName, cell,
+    const edges = new THREE.LineSegments(new THREE.EdgesGeometry(geom), edgeMat);
+    edges.position.z = z;
+    group.add(edges);
+
+    // Aggregate stats — only count buckets where this model has data.
+    let totalCost = 0;
+    let totalTokens = 0;
+    let totalRequests = 0;
+    let firstBucket = '';
+    let lastBucket = '';
+    let participatingBuckets = 0;
+    for (let bi = 0; bi < bucketCount; bi++) {
+      const cell = cellAt[bi][modelIndex];
+      if (cell) {
+        totalCost += cell.cost;
+        totalTokens += cell.totalTokens;
+        totalRequests += cell.requestCount;
+        if (!firstBucket) firstBucket = cell.bucketTime;
+        lastBucket = cell.bucketTime;
+        participatingBuckets += 1;
+      }
+    }
+
+    ribbons.push({
+      mesh, edges, ribbonMat, edgeMat,
+      modelName, modelIndex,
+      z,
+      centerX: (xLeftOf(0) + xRightOf(bucketCount - 1)) / 2,
+      totalCost, totalTokens, totalRequests,
+      bucketCount: participatingBuckets,
+      firstBucket: firstBucket || dataset.buckets[0],
+      lastBucket: lastBucket || dataset.buckets[bucketCount - 1],
       originalColor: color.clone(),
     });
   }
+
   scene.add(group);
-  return { group, bars };
+  return { group, ribbons };
 }
 
-function disposeBars(group: THREE.Group) {
+function disposeRibbons(group: THREE.Group) {
   group.traverse((obj) => {
     const asMesh = obj as THREE.Mesh;
     const asLine = obj as unknown as THREE.LineSegments;
@@ -394,19 +444,18 @@ interface ThreeCanvasProps {
   dataset: GridDataset | null;
   disabledModels: Set<string>;
   isolatedModel: string | null;
-  focusedCell: GridCell | null;
+  focusedModel: string | null;
   cameraX: number;
   theme: ThemeConfig;
-  /** Dashboard-level timezone (`useTimezone()`) — used for bucket-label MM/DD HH:MM formatting and the day-rollover check. */
   timeZone: string;
   onIsolate: (modelName: string | null) => void;
-  onFocus: (cell: GridCell | null) => void;
+  onFocus: (modelName: string | null) => void;
   onAxisProjection: (projection: AxisProjection) => void;
   onContextLost: () => void;
 }
 
 function ThreeCanvas({
-  dataset, disabledModels, isolatedModel, focusedCell, cameraX, theme, timeZone,
+  dataset, disabledModels, isolatedModel, focusedModel, cameraX, theme, timeZone,
   onIsolate, onFocus, onAxisProjection, onContextLost,
 }: ThreeCanvasProps) {
   const mountRef = useRef<HTMLDivElement | null>(null);
@@ -414,7 +463,7 @@ function ThreeCanvas({
   const cameraRef = useRef<THREE.PerspectiveCamera | null>(null);
   const floorMaterialRef = useRef<THREE.MeshBasicMaterial | null>(null);
   const dataGroupRef = useRef<THREE.Group | null>(null);
-  const barsRef = useRef<BarHandle[]>([]);
+  const ribbonsRef = useRef<RibbonHandle[]>([]);
   const gridMaterialRef = useRef<THREE.LineBasicMaterial | null>(null);
   const datasetRef = useRef<GridDataset | null>(null);
   const cameraXRef = useRef<number>(cameraX);
@@ -424,11 +473,6 @@ function ThreeCanvas({
   disabledModelsRef.current = disabledModels;
   const isolatedModelRef = useRef<string | null>(isolatedModel);
   isolatedModelRef.current = isolatedModel;
-  // Same pattern as the other prop refs: keep `timeZone` reachable
-  // from the long-lived per-frame `tick` closure inside the mount
-  // useEffect. The mount effect deliberately doesn't take `timeZone`
-  // as a dep — re-running it would tear down and rebuild the entire
-  // three.js scene every time the user switched zones.
   const timeZoneRef = useRef<string>(timeZone);
   timeZoneRef.current = timeZone;
   const themeRef = useRef<ThemeConfig>(theme);
@@ -440,19 +484,10 @@ function ThreeCanvas({
   const onAxisProjectionRef = useRef(onAxisProjection);
   onAxisProjectionRef.current = onAxisProjection;
 
-  // Focus animation:
-  //   targetBarRef    — the bar we WANT to be focused on (null = default view)
-  //   activeBarRef    — the bar we're currently animating toward/on (latched)
-  //   progressRef     — linear 0..1 animation progress
-  //   prevTimeRef     — last frame timestamp (for delta-time)
-  // Behavior: if target matches active and progress<1, advance. If target is
-  // null or different from active and progress>0, recede. When progress hits
-  // 0 and target differs from active, swap active to target and start
-  // advancing again. This produces a "retreat then re-launch" feel on
-  // mid-flight target switches — simpler than blending two in-flight poses
-  // and, surprisingly, looks good.
-  const targetBarRef = useRef<BarHandle | null>(null);
-  const activeBarRef = useRef<BarHandle | null>(null);
+  // Focus animation state — same retreat-and-relaunch pattern as Bars,
+  // but the "target" is a RibbonHandle (one per model) instead of a per-cell BarHandle.
+  const targetRibbonRef = useRef<RibbonHandle | null>(null);
+  const activeRibbonRef = useRef<RibbonHandle | null>(null);
   const progressRef = useRef<number>(0);
   const prevTimeRef = useRef<number>(performance.now());
 
@@ -502,43 +537,37 @@ function ThreeCanvas({
 
     const handleContextLost = (e: Event) => {
       e.preventDefault();
-      console.warn('[CostTrend3D] WebGL context lost');
+      console.warn('[CostTrend3DArea] WebGL context lost');
       onContextLost();
     };
     renderer.domElement.addEventListener('webglcontextlost', handleContextLost, false);
 
     // --- Pointer interaction ---
-    // Drag (primary button down): delta-Y changes pitch within clamps.
-    // Tap (down → up with negligible movement): raycast at pointer — shift
-    //   key branches to isolate, plain click triggers the focus animation.
-    // Hover (pointer over canvas, no buttons): raycast continuously to find
-    //   the bar under the cursor; the opacity-update block bumps that bar
-    //   to full for a subtle "this is clickable" signal.
+    // Same gesture model as Bars: drag-Y tilts pitch; tap raycasts for
+    // focus / shift-isolate. The raycast target here is the ribbon mesh,
+    // not a per-cell column.
     const raycaster = new THREE.Raycaster();
     const pointer = new THREE.Vector2();
     let pointerActive = false;
     let dragging = false;
     let lastDragY = 0;
 
-    // Tap-vs-drag discrimination. Any motion > TAP_MOVE_THRESHOLD or hold
-    // > TAP_HOLD_MAX_MS promotes the gesture from "tap" to "drag".
-    const TAP_MOVE_THRESHOLD = 4; // px
+    const TAP_MOVE_THRESHOLD = 4;
     const TAP_HOLD_MAX_MS = 400;
     const tapTrack = { downX: 0, downY: 0, downTime: 0, moved: false };
 
-    const pickBarAtPointer = (): BarHandle | null => {
-      if (barsRef.current.length === 0) return null;
+    const pickRibbonAtPointer = (): RibbonHandle | null => {
+      if (ribbonsRef.current.length === 0) return null;
       raycaster.setFromCamera(pointer, camera);
       const testables: THREE.Object3D[] = [];
-      for (const bar of barsRef.current) {
-        if (disabledModelsRef.current.has(bar.modelName)) continue;
-        const core = bar.group.children[0];
-        if (core) testables.push(core);
+      for (const ribbon of ribbonsRef.current) {
+        if (disabledModelsRef.current.has(ribbon.modelName)) continue;
+        testables.push(ribbon.mesh);
       }
       const hits = raycaster.intersectObjects(testables, false);
       if (hits.length === 0) return null;
       const hit = hits[0].object;
-      return barsRef.current.find((b) => b.group.children[0] === hit) ?? null;
+      return ribbonsRef.current.find((r) => r.mesh === hit) ?? null;
     };
 
     const handlePointerMove = (e: PointerEvent) => {
@@ -553,7 +582,6 @@ function ThreeCanvas({
         }
         const dy = e.clientY - lastDragY;
         lastDragY = e.clientY;
-        // Only apply tilt once the gesture is confirmed as a drag.
         if (tapTrack.moved) {
           pitchRef.current = Math.max(
             PITCH_MIN,
@@ -581,9 +609,9 @@ function ThreeCanvas({
       if (!wasDragging) return;
       const held = performance.now() - tapTrack.downTime;
       if (!tapTrack.moved && held <= TAP_HOLD_MAX_MS) {
-        const hit = pickBarAtPointer();
+        const hit = pickRibbonAtPointer();
         if (e.shiftKey) {
-          // Shift-click: toggle model isolation (the prior plain-click behavior).
+          // Shift-click: toggle model isolation (matches Bars).
           if (hit) {
             const current = isolatedModelRef.current;
             onIsolateRef.current(current === hit.modelName ? null : hit.modelName);
@@ -591,8 +619,9 @@ function ThreeCanvas({
             onIsolateRef.current(null);
           }
         } else {
-          // Plain click: trigger the cinematic focus animation (or clear it).
-          onFocusRef.current(hit ? hit.cell : null);
+          // Plain click on a ribbon: focus its model. Click on empty:
+          // clear focus (mirrors the Bars escape gesture).
+          onFocusRef.current(hit ? hit.modelName : null);
         }
       }
     };
@@ -606,20 +635,14 @@ function ThreeCanvas({
     // --- Animation loop ---
     let rafId = 0;
     const tmpSize = new THREE.Vector2();
-    // Scratch vectors for per-frame pose interpolation (avoid allocs in the
-    // hot path).
     const defaultPos = new THREE.Vector3();
     const defaultLookAt = new THREE.Vector3();
     const focusPos = new THREE.Vector3();
     const focusLookAt = new THREE.Vector3();
     const blendedPos = new THREE.Vector3();
     const blendedLookAt = new THREE.Vector3();
-    // Scratch color for per-frame color restore. The idle-restore loop
-    // writes material colors each frame (so a hover-tint cleans up when
-    // the pointer leaves) and needs to re-evaluate the dim color per
-    // frame against the current theme.
     const HOVER_WHITE = new THREE.Color(1, 1, 1);
-    const HOVER_TINT = 0.35; // originalColor → lerp toward white by 0.35
+    const HOVER_TINT = 0.35;
     const tmpDimColor = new THREE.Color();
 
     const applyViewOffset = () => {
@@ -643,26 +666,21 @@ function ThreeCanvas({
       prevTimeRef.current = now;
 
       // --- Advance focus progress ---
-      const target = targetBarRef.current;
-      const active = activeBarRef.current;
+      const target = targetRibbonRef.current;
+      const active = activeRibbonRef.current;
       let progress = progressRef.current;
       const step = dt / FOCUS_DURATION_MS;
 
       if (target !== null && active === target) {
-        // Already locked onto the right bar — advance.
         progress = Math.min(1, progress + step);
       } else if (target === null && active !== null) {
-        // We want to leave focus mode.
         progress = Math.max(0, progress - step);
-        if (progress === 0) activeBarRef.current = null;
+        if (progress === 0) activeRibbonRef.current = null;
       } else if (target !== null && active !== target) {
-        // Target switched mid-animation. Retreat to 0 first, then re-launch
-        // toward the new target once we land at default.
         progress = Math.max(0, progress - step);
-        if (progress === 0) activeBarRef.current = target;
+        if (progress === 0) activeRibbonRef.current = target;
       } else if (target !== null && active === null) {
-        // Just-decided focus — latch it.
-        activeBarRef.current = target;
+        activeRibbonRef.current = target;
       }
       progressRef.current = progress;
       const eased = easeOutCubic(progress);
@@ -673,15 +691,17 @@ function ThreeCanvas({
       const dPos = cameraPositionFor(sx, pitchRef.current);
       defaultPos.copy(dPos);
 
-      // --- Compute focus pose (if we have an active bar) ---
-      const currentActive = activeBarRef.current;
+      // --- Compute focus pose ---
+      // For a focused ribbon, swing the camera toward that ribbon's
+      // depth row so it's seen broadside rather than edge-on. The
+      // target X is preserved (so the user keeps the time slice they
+      // were already viewing) but the look-at z and camera z shift to
+      // align with the ribbon. The vertical pose lifts slightly to
+      // give a 3/4 angle on the ribbon's surface.
+      const currentActive = activeRibbonRef.current;
       if (currentActive) {
-        const barPos = currentActive.group.position;
-        const core = currentActive.group.children[0] as THREE.Mesh;
-        const coreGeom = core.geometry as THREE.BoxGeometry;
-        const h = coreGeom.parameters.height;
-        focusLookAt.set(barPos.x + FOCUS_LOOKAT_X_OFFSET, h / 2, barPos.z);
-        focusPos.set(barPos.x, h / 2 + FOCUS_ELEVATION, barPos.z + FOCUS_DISTANCE);
+        focusLookAt.set(sx, MAX_BAR_HEIGHT * 0.35, currentActive.z);
+        focusPos.set(sx, TARGET_Y + 3, currentActive.z + 5);
       } else {
         focusLookAt.copy(defaultLookAt);
         focusPos.copy(defaultPos);
@@ -698,49 +718,34 @@ function ThreeCanvas({
       camera.position.copy(blendedPos);
       camera.lookAt(blendedLookAt);
 
-      // --- Drive bar opacities from the focus animation ---
-      // When eased=0, everything uses the theme's base opacities (handled in
-      // the filter effect). When eased>0, we override here each frame:
-      //   focused bar → lerp from base to focusedOpacity
-      //   other bars  → lerp from base to dimOpacity
-      // This is per-frame work proportional to bar count; 192 bars is fine.
+      // --- Drive ribbon opacities from the focus animation ---
+      // Same logic shape as Bars, simplified for ribbons (ribbon mesh +
+      // edges only — no separate "top face").
       if (eased > 0 && currentActive) {
         const dimTarget = FOCUS_DIM_OPACITY;
-        const focusTarget = FOCUS_BAR_OPACITY;
-        const focused = currentActive;
-        for (const bar of barsRef.current) {
-          const disabled = disabledModelsRef.current.has(bar.modelName);
+        const focusTarget = FOCUS_RIBBON_OPACITY;
+        for (const ribbon of ribbonsRef.current) {
+          const disabled = disabledModelsRef.current.has(ribbon.modelName);
           const isolated = isolatedModelRef.current !== null
-            && bar.modelName !== isolatedModelRef.current && !disabled;
-          const soloed = isolatedModelRef.current !== null
-            && bar.modelName === isolatedModelRef.current && !disabled;
-          // Base opacities = what the filter effect would set without focus.
-          let baseCore: number, baseEdge: number, baseTop: number;
+            && ribbon.modelName !== isolatedModelRef.current && !disabled;
+          let baseRibbon: number, baseEdge: number;
           if (disabled) {
-            baseCore = 0.03; baseEdge = 0.08; baseTop = 0.05;
+            baseRibbon = 0.03; baseEdge = 0.08;
           } else if (isolated) {
-            baseCore = themeRef.current.dimCoreOpacity;
+            baseRibbon = themeRef.current.dimRibbonOpacity;
             baseEdge = themeRef.current.dimEdgeOpacity;
-            baseTop = themeRef.current.dimTopOpacity;
           } else {
-            // Soloed bar's sides push to top opacity so it reads solid.
-            baseCore = soloed
-              ? themeRef.current.barTopOpacity
-              : themeRef.current.barCoreOpacity;
-            baseEdge = themeRef.current.barEdgeOpacity;
-            baseTop = themeRef.current.barTopOpacity;
+            baseRibbon = themeRef.current.ribbonOpacity;
+            baseEdge = themeRef.current.edgeOpacity;
           }
-          if (bar === focused) {
-            bar.coreMat.opacity = THREE.MathUtils.lerp(baseCore, focusTarget, eased);
-            bar.edgeMat.opacity = THREE.MathUtils.lerp(baseEdge, Math.min(1, focusTarget + 0.1), eased);
-            bar.topMat.opacity = THREE.MathUtils.lerp(baseTop, Math.min(1, focusTarget + 0.1), eased);
+          if (ribbon === currentActive) {
+            ribbon.ribbonMat.opacity = THREE.MathUtils.lerp(baseRibbon, focusTarget, eased);
+            ribbon.edgeMat.opacity = THREE.MathUtils.lerp(baseEdge, 1, eased);
           } else {
-            bar.coreMat.opacity = THREE.MathUtils.lerp(baseCore, dimTarget, eased);
-            bar.edgeMat.opacity = THREE.MathUtils.lerp(baseEdge, dimTarget * 1.5, eased);
-            bar.topMat.opacity = THREE.MathUtils.lerp(baseTop, dimTarget * 1.5, eased);
+            ribbon.ribbonMat.opacity = THREE.MathUtils.lerp(baseRibbon, dimTarget, eased);
+            ribbon.edgeMat.opacity = THREE.MathUtils.lerp(baseEdge, dimTarget * 1.5, eased);
           }
         }
-        // Grid fade follows the same curve.
         if (gridMaterialRef.current) {
           gridMaterialRef.current.opacity = THREE.MathUtils.lerp(
             themeRef.current.gridOpacity,
@@ -749,67 +754,50 @@ function ThreeCanvas({
           );
         }
       } else if (eased === 0) {
-        // Idle — restore base opacities in case the previous frame of a
-        // retreat animation left anything mid-lerp, and apply the hover
-        // highlight: the bar the pointer is currently over gets fully
-        // opaque so clickability reads at a glance.
-        let hoveredBar: BarHandle | null = null;
-        if (pointerActive && !dragging && barsRef.current.length > 0) {
+        // Idle — restore base opacities + apply hover highlight.
+        let hoveredRibbon: RibbonHandle | null = null;
+        if (pointerActive && !dragging && ribbonsRef.current.length > 0) {
           raycaster.setFromCamera(pointer, camera);
           const testables: THREE.Object3D[] = [];
-          for (const bar of barsRef.current) {
-            if (disabledModelsRef.current.has(bar.modelName)) continue;
-            const core = bar.group.children[0];
-            if (core) testables.push(core);
+          for (const ribbon of ribbonsRef.current) {
+            if (disabledModelsRef.current.has(ribbon.modelName)) continue;
+            testables.push(ribbon.mesh);
           }
           const hits = raycaster.intersectObjects(testables, false);
           if (hits.length > 0) {
             const hit = hits[0].object;
-            hoveredBar = barsRef.current.find((b) => b.group.children[0] === hit) ?? null;
+            hoveredRibbon = ribbonsRef.current.find((r) => r.mesh === hit) ?? null;
           }
         }
+        // Cursor affordance on the canvas — pointer when over a ribbon.
+        renderer.domElement.style.cursor = hoveredRibbon ? 'pointer' : 'default';
+
         tmpDimColor.set(themeRef.current.isolatedDimColor);
-        for (const bar of barsRef.current) {
-          const disabled = disabledModelsRef.current.has(bar.modelName);
+        for (const ribbon of ribbonsRef.current) {
+          const disabled = disabledModelsRef.current.has(ribbon.modelName);
           const isolated = isolatedModelRef.current !== null
-            && bar.modelName !== isolatedModelRef.current && !disabled;
-          const soloed = isolatedModelRef.current !== null
-            && bar.modelName === isolatedModelRef.current && !disabled;
-          if (bar === hoveredBar && !disabled) {
-            // Hover highlight — bar becomes fully solid AND shifts its
-            // color toward white. Opacity alone isn't enough feedback
-            // for a soloed bar (already near-solid); the tint guarantees
-            // a visible hover cue in every state.
-            bar.coreMat.opacity = 1;
-            bar.edgeMat.opacity = 1;
-            bar.topMat.opacity = 1;
-            bar.coreMat.color.copy(bar.originalColor).lerp(HOVER_WHITE, HOVER_TINT);
-            bar.edgeMat.color.copy(bar.originalColor).lerp(HOVER_WHITE, HOVER_TINT);
-            bar.topMat.color.copy(bar.originalColor).lerp(HOVER_WHITE, HOVER_TINT);
+            && ribbon.modelName !== isolatedModelRef.current && !disabled;
+          if (ribbon === hoveredRibbon && !disabled) {
+            // Hover highlight — solid + tint toward white.
+            ribbon.ribbonMat.opacity = Math.min(1, themeRef.current.ribbonOpacity + 0.3);
+            ribbon.edgeMat.opacity = 1;
+            ribbon.ribbonMat.color.copy(ribbon.originalColor).lerp(HOVER_WHITE, HOVER_TINT);
+            ribbon.edgeMat.color.copy(ribbon.originalColor).lerp(HOVER_WHITE, HOVER_TINT);
           } else if (disabled) {
-            bar.coreMat.opacity = 0.03;
-            bar.edgeMat.opacity = 0.08;
-            bar.topMat.opacity = 0.05;
-            bar.coreMat.color.copy(bar.originalColor);
-            bar.edgeMat.color.copy(bar.originalColor);
-            bar.topMat.color.copy(bar.originalColor);
+            ribbon.ribbonMat.opacity = 0.03;
+            ribbon.edgeMat.opacity = 0.08;
+            ribbon.ribbonMat.color.copy(ribbon.originalColor);
+            ribbon.edgeMat.color.copy(ribbon.originalColor);
           } else if (isolated) {
-            bar.coreMat.opacity = themeRef.current.dimCoreOpacity;
-            bar.edgeMat.opacity = themeRef.current.dimEdgeOpacity;
-            bar.topMat.opacity = themeRef.current.dimTopOpacity;
-            bar.coreMat.color.copy(tmpDimColor);
-            bar.edgeMat.color.copy(tmpDimColor);
-            bar.topMat.color.copy(tmpDimColor);
+            ribbon.ribbonMat.opacity = themeRef.current.dimRibbonOpacity;
+            ribbon.edgeMat.opacity = themeRef.current.dimEdgeOpacity;
+            ribbon.ribbonMat.color.copy(tmpDimColor);
+            ribbon.edgeMat.color.copy(tmpDimColor);
           } else {
-            // Soloed bar's sides push to top opacity so it reads solid.
-            bar.coreMat.opacity = soloed
-              ? themeRef.current.barTopOpacity
-              : themeRef.current.barCoreOpacity;
-            bar.edgeMat.opacity = themeRef.current.barEdgeOpacity;
-            bar.topMat.opacity = themeRef.current.barTopOpacity;
-            bar.coreMat.color.copy(bar.originalColor);
-            bar.edgeMat.color.copy(bar.originalColor);
-            bar.topMat.color.copy(bar.originalColor);
+            ribbon.ribbonMat.opacity = themeRef.current.ribbonOpacity;
+            ribbon.edgeMat.opacity = themeRef.current.edgeOpacity;
+            ribbon.ribbonMat.color.copy(ribbon.originalColor);
+            ribbon.edgeMat.color.copy(ribbon.originalColor);
           }
         }
         if (gridMaterialRef.current) {
@@ -825,6 +813,9 @@ function ThreeCanvas({
           const v = w.clone().project(camera);
           return { x: ((v.x + 1) / 2) * rect.width, y: ((1 - v.y) / 2) * rect.height };
         };
+        // Ridge plot: ribbons spread along Z by model. Bucket labels go in
+        // front of the foremost row; model labels go at the left edge of
+        // each row, projected to screen via the row's own Z position.
         const spanZ = ds.models.length * CELL_SIZE;
         const spanX = ds.buckets.length * CELL_SIZE;
         const bucketLabels = ds.buckets.map((bucket, i) => {
@@ -835,12 +826,7 @@ function ThreeCanvas({
           const c = zonedComponents(d, timeZoneRef.current);
           const date = `${c.month}/${c.day}`;
           const time = `${c.hour}:${c.minute}`;
-          // Only print the date on the first bucket or whenever the calendar
-          // day rolls over. Printing `MM/DD` on every hourly bucket produced a
-          // wall of repeated "4/21"s — visual noise that hid the actual
-          // timeline structure. The rollover check uses the SAME zone so a
-          // user in Tokyo viewing UTC sees rollovers at UTC midnight, not at
-          // their local midnight.
+          // Print the date only on rollover.
           let showDate = i === 0;
           if (!showDate) {
             const prev = zonedComponents(new Date(ds.buckets[i - 1]), timeZoneRef.current);
@@ -878,9 +864,9 @@ function ThreeCanvas({
       renderer.domElement.removeEventListener('pointerleave', handlePointerLeave);
       if (dataGroupRef.current) {
         scene.remove(dataGroupRef.current);
-        disposeBars(dataGroupRef.current);
+        disposeRibbons(dataGroupRef.current);
         dataGroupRef.current = null;
-        barsRef.current = [];
+        ribbonsRef.current = [];
       }
       gridMaterialRef.current?.dispose();
       gridMaterialRef.current = null;
@@ -894,17 +880,16 @@ function ThreeCanvas({
     };
   }, [onContextLost]);
 
-  // Rebuild data-dependent scene content (grid + bars) when dataset or
-  // theme changes. Both affect material colors/opacities on every bar and
-  // grid line, so the cleanest path is a full rebuild of the data group.
+  // Rebuild data-dependent scene content (grid + ribbons) when dataset
+  // or theme changes.
   useEffect(() => {
     const scene = sceneRef.current;
     if (!scene) return;
     if (dataGroupRef.current) {
       scene.remove(dataGroupRef.current);
-      disposeBars(dataGroupRef.current);
+      disposeRibbons(dataGroupRef.current);
       dataGroupRef.current = null;
-      barsRef.current = [];
+      ribbonsRef.current = [];
     }
     gridMaterialRef.current?.dispose();
     gridMaterialRef.current = null;
@@ -917,17 +902,16 @@ function ThreeCanvas({
     dataGroup.add(grid);
     gridMaterialRef.current = gridMaterial;
 
-    const { group: barsGroup, bars } = buildBars(scene, dataset, theme);
-    scene.remove(barsGroup);
-    dataGroup.add(barsGroup);
-    barsRef.current = bars;
+    const { group: ribbonsGroup, ribbons } = buildAreaRibbons(scene, dataset, theme);
+    scene.remove(ribbonsGroup);
+    dataGroup.add(ribbonsGroup);
+    ribbonsRef.current = ribbons;
 
     scene.add(dataGroup);
     dataGroupRef.current = dataGroup;
   }, [dataset, theme]);
 
-  // Sync scene-level theme colors (background, fog, floor) in place —
-  // cheap and avoids tearing down the renderer on theme toggle.
+  // Sync scene-level theme colors in place.
   useEffect(() => {
     const scene = sceneRef.current;
     if (!scene) return;
@@ -938,57 +922,41 @@ function ThreeCanvas({
     floorMaterialRef.current?.color.set(theme.floor);
   }, [theme]);
 
-  // Resolve the focused-cell prop to a BarHandle from the current bars array.
-  // Both refs are updated in the same effect so the animation loop sees
-  // consistent state.
+  // Resolve the focused-model prop to a RibbonHandle from the current
+  // ribbons array.
   useEffect(() => {
-    if (!focusedCell) {
-      targetBarRef.current = null;
+    if (!focusedModel) {
+      targetRibbonRef.current = null;
       return;
     }
-    const match = barsRef.current.find(
-      (b) => b.cell.modelName === focusedCell.modelName
-        && b.cell.bucketTime === focusedCell.bucketTime,
-    );
-    targetBarRef.current = match ?? null;
-  }, [focusedCell, dataset]);
+    const match = ribbonsRef.current.find((r) => r.modelName === focusedModel);
+    targetRibbonRef.current = match ?? null;
+  }, [focusedModel, dataset]);
 
-  // Apply model filter + isolation. Four states per bar:
+  // Apply model filter + isolation. Three states per ribbon:
   //   disabled  — user toggled the model off in the legend. Near-invisible.
-  //   dimmed    — another model is isolated. Desaturate to the theme's
-  //               neutral dim color + reduce opacity so the bar sits back
-  //               but keeps spatial context.
-  //   soloed    — this bar IS the isolated model. Sides pushed up to
-  //               match the top opacity so the solo'd bars read as solid
-  //               blocks rather than the usual translucent wireframe.
-  //   normal    — full color and opacity (as determined by theme).
+  //   dimmed    — another model is isolated. Desaturate to dim color.
+  //   normal    — full color and opacity (theme defaults).
   useEffect(() => {
     const dimColor = new THREE.Color(theme.isolatedDimColor);
-    for (const bar of barsRef.current) {
-      const disabled = disabledModels.has(bar.modelName);
-      const dimmed = isolatedModel !== null && bar.modelName !== isolatedModel && !disabled;
-      const soloed = isolatedModel !== null && bar.modelName === isolatedModel && !disabled;
+    for (const ribbon of ribbonsRef.current) {
+      const disabled = disabledModels.has(ribbon.modelName);
+      const dimmed = isolatedModel !== null && ribbon.modelName !== isolatedModel && !disabled;
       if (disabled) {
-        bar.coreMat.color.copy(bar.originalColor);
-        bar.edgeMat.color.copy(bar.originalColor);
-        bar.topMat.color.copy(bar.originalColor);
-        bar.coreMat.opacity = 0.03;
-        bar.edgeMat.opacity = 0.08;
-        bar.topMat.opacity = 0.05;
+        ribbon.ribbonMat.color.copy(ribbon.originalColor);
+        ribbon.edgeMat.color.copy(ribbon.originalColor);
+        ribbon.ribbonMat.opacity = 0.03;
+        ribbon.edgeMat.opacity = 0.08;
       } else if (dimmed) {
-        bar.coreMat.color.copy(dimColor);
-        bar.edgeMat.color.copy(dimColor);
-        bar.topMat.color.copy(dimColor);
-        bar.coreMat.opacity = theme.dimCoreOpacity;
-        bar.edgeMat.opacity = theme.dimEdgeOpacity;
-        bar.topMat.opacity = theme.dimTopOpacity;
+        ribbon.ribbonMat.color.copy(dimColor);
+        ribbon.edgeMat.color.copy(dimColor);
+        ribbon.ribbonMat.opacity = theme.dimRibbonOpacity;
+        ribbon.edgeMat.opacity = theme.dimEdgeOpacity;
       } else {
-        bar.coreMat.color.copy(bar.originalColor);
-        bar.edgeMat.color.copy(bar.originalColor);
-        bar.topMat.color.copy(bar.originalColor);
-        bar.coreMat.opacity = soloed ? theme.barTopOpacity : theme.barCoreOpacity;
-        bar.edgeMat.opacity = theme.barEdgeOpacity;
-        bar.topMat.opacity = theme.barTopOpacity;
+        ribbon.ribbonMat.color.copy(ribbon.originalColor);
+        ribbon.edgeMat.color.copy(ribbon.originalColor);
+        ribbon.ribbonMat.opacity = theme.ribbonOpacity;
+        ribbon.edgeMat.opacity = theme.edgeOpacity;
       }
     }
   }, [disabledModels, isolatedModel, dataset, theme]);
@@ -997,11 +965,6 @@ function ThreeCanvas({
     <div
       ref={mountRef}
       data-drag-exclude="true"
-      // Intentionally wide-short: the 3D content (bars + grid + axis labels)
-      // fills the frame vertically at the configured FOV. Width is driven
-      // by the parent (.widget body) so the ratio stays widescreen. The
-      // inline background matches the theme so the widget shows a coherent
-      // color even during the brief moment before the WebGL context paints.
       style={{
         height: CANVAS_HEIGHT, borderRadius: 8, overflow: 'hidden',
         background: '#' + new THREE.Color(theme.sceneBg).getHexString(),
@@ -1013,49 +976,48 @@ function ThreeCanvas({
 
 // ---------- Outer component ----------
 
-export default function CostTrend3D({ config: _config }: { config: Record<string, unknown> }) {
+export default function CostTrend3DArea({ config: _config }: { config: Record<string, unknown> }) {
   const { data, isLoading, error } = useProjectionQuery<CostDataPoint>({
     topic: TOPICS.llmCost,
-    queryKey: ['cost-trends-3d'],
+    queryKey: ['cost-trends-3d-area'],
     refetchInterval: 60_000,
   });
 
   const [contextLost, setContextLost] = useState(false);
   const [disabledModels, setDisabledModels] = useState<Set<string>>(new Set());
   const [isolatedModel, setIsolatedModel] = useState<string | null>(null);
-  const [focusedCell, setFocusedCell] = useState<GridCell | null>(null);
+  const [focusedModel, setFocusedModel] = useState<string | null>(null);
   const [axes, setAxes] = useState<AxisProjection>({ bucketLabels: [], modelLabels: [] });
   const containerRef = useRef<HTMLDivElement | null>(null);
 
   const themeName = useThemeName();
   const themeColors = useThemeColors();
-  // Override the per-theme `modelPalette` with the shared chart palette from
-  // CSS tokens (`--chart-1`..`--chart-7`). This is the same source the 2D
-  // widgets read, so the same model lands in the same color across 2D and 3D
-  // (Brett review §4 H4 / OMN-149).
+  // Override the per-theme `modelPalette` with the shared chart palette
+  // from CSS tokens. Same wiring as CostTrend3DBars (both 3D variants
+  // need oklch → hex conversion for THREE.Color).
   const theme = useMemo<ThemeConfig>(() => {
     const base = themeName === 'dark' ? DARK_THEME : LIGHT_THEME;
-    const palette = themeColors.chart.length > 0 ? themeColors.chart : base.modelPalette;
+    const palette = themeColors.chart.length > 0
+      ? themeColors.chart.map((c) => '#' + cssColorToHex(c).toString(16).padStart(6, '0'))
+      : base.modelPalette;
     return { ...base, modelPalette: palette };
   }, [themeName, themeColors]);
   const tz = useTimezone();
 
   // Escape clears focus.
   useEffect(() => {
-    if (!focusedCell) return;
+    if (!focusedModel) return;
     const handler = (e: KeyboardEvent) => {
       if (e.key === 'Escape') {
         e.preventDefault();
-        setFocusedCell(null);
+        setFocusedModel(null);
       }
     };
     window.addEventListener('keydown', handler);
     return () => window.removeEventListener('keydown', handler);
-  }, [focusedCell]);
+  }, [focusedModel]);
 
-  // Apply the dashboard-level time range before reshaping — the grid is
-  // built from whatever falls inside the window. Widget declares
-  // supports_time_range: true in its manifest.
+  // Apply dashboard-level time range before reshaping.
   const timeRange = useFrameStore((s) => s.globalFilters.timeRange);
   const resolvedRange = useMemo(() => resolveTimeRange(timeRange), [timeRange]);
   const filteredData = useMemo(
@@ -1068,16 +1030,38 @@ export default function CostTrend3D({ config: _config }: { config: Record<string
   );
   const isEmpty = !data || data.length === 0 || !dataset;
 
-  // If the focused cell disappears from a new dataset, drop the focus.
+  // If the focused model disappears from a new dataset, drop the focus.
   useEffect(() => {
-    if (!focusedCell || !dataset) return;
-    const still = dataset.cells.some(
-      (c) => c.modelName === focusedCell.modelName && c.bucketTime === focusedCell.bucketTime,
-    );
-    if (!still) setFocusedCell(null);
-  }, [dataset, focusedCell]);
+    if (!focusedModel || !dataset) return;
+    if (!dataset.models.includes(focusedModel)) setFocusedModel(null);
+  }, [dataset, focusedModel]);
 
-  // Scrollbar state — camera X along the timeline.
+  // Stats for the focus panel — recomputed when the dataset or focused
+  // model changes. For a focused model, sum cost / tokens / requests
+  // across all buckets in the current view.
+  const focusedStats = useMemo(() => {
+    if (!focusedModel || !dataset) return null;
+    const cells = dataset.cells.filter((c) => c.modelName === focusedModel);
+    if (cells.length === 0) return null;
+    let totalCost = 0;
+    let totalTokens = 0;
+    let totalRequests = 0;
+    let firstBucket = cells[0].bucketTime;
+    let lastBucket = cells[0].bucketTime;
+    for (const cell of cells) {
+      totalCost += cell.cost;
+      totalTokens += cell.totalTokens;
+      totalRequests += cell.requestCount;
+      if (cell.bucketTime < firstBucket) firstBucket = cell.bucketTime;
+      if (cell.bucketTime > lastBucket) lastBucket = cell.bucketTime;
+    }
+    const cpr = totalRequests > 0 ? totalCost / totalRequests : 0;
+    const tpr = totalRequests > 0 ? totalTokens / totalRequests : 0;
+    const modelIndex = dataset.models.indexOf(focusedModel);
+    return { totalCost, totalTokens, totalRequests, firstBucket, lastBucket, cpr, tpr, modelIndex, bucketCount: cells.length };
+  }, [focusedModel, dataset]);
+
+  // Scrollbar state.
   const scrollRange = useMemo(() => {
     if (!dataset) return { min: 0, max: 0, step: 0.01 };
     const bucketCount = dataset.buckets.length;
@@ -1086,14 +1070,13 @@ export default function CostTrend3D({ config: _config }: { config: Record<string
     return { min: leftmost, max: rightmost, step: CELL_SIZE / 10 };
   }, [dataset]);
   const [cameraX, setCameraX] = useState<number>(0);
-  // Reset to center whenever the dataset's extent changes.
   useEffect(() => {
     setCameraX((scrollRange.min + scrollRange.max) / 2);
   }, [scrollRange.min, scrollRange.max]);
 
   const handleContextLost = useCallback(() => setContextLost(true), []);
   const handleIsolate = useCallback((model: string | null) => setIsolatedModel(model), []);
-  const handleFocus = useCallback((cell: GridCell | null) => setFocusedCell(cell), []);
+  const handleFocus = useCallback((model: string | null) => setFocusedModel(model), []);
   const handleAxes = useCallback((proj: AxisProjection) => setAxes(proj), []);
 
   const toggleModel = (model: string) => {
@@ -1103,9 +1086,8 @@ export default function CostTrend3D({ config: _config }: { config: Record<string
       else next.add(model);
       return next;
     });
-    // If we're disabling the currently-isolated model, clear isolation so
-    // the view isn't left showing only dimmed bars.
     if (isolatedModel === model) setIsolatedModel(null);
+    if (focusedModel === model) setFocusedModel(null);
   };
 
   // Clear isolation if a fresh dataset doesn't include the isolated model.
@@ -1117,7 +1099,7 @@ export default function CostTrend3D({ config: _config }: { config: Record<string
 
   return (
     <ComponentWrapper
-      title="Cost Trend (3D)"
+      title="Cost Trend"
       isLoading={isLoading}
       error={error ?? undefined}
       isEmpty={isEmpty}
@@ -1143,7 +1125,7 @@ export default function CostTrend3D({ config: _config }: { config: Record<string
               dataset={dataset}
               disabledModels={disabledModels}
               isolatedModel={isolatedModel}
-              focusedCell={focusedCell}
+              focusedModel={focusedModel}
               cameraX={cameraX}
               theme={theme}
               timeZone={tz}
@@ -1154,8 +1136,9 @@ export default function CostTrend3D({ config: _config }: { config: Record<string
             />
 
             {/* Stats panel — slides in from the right edge of the canvas
-                during focus mode. Animation duration matches focusTuning
-                .statsSlideMs. Sized to fill the right ~40% of the canvas. */}
+                during focus mode. Shows the focused MODEL's totals across
+                the current time window (not per-cell stats — ribbons
+                don't have discrete cells). */}
             <div
               data-drag-exclude="true"
               style={{
@@ -1172,22 +1155,19 @@ export default function CostTrend3D({ config: _config }: { config: Record<string
                 boxShadow: themeName === 'dark'
                   ? '0 0 24px rgba(0, 229, 255, 0.15), 0 4px 16px rgba(0,0,0,0.4)'
                   : '0 6px 20px rgba(0,0,0,0.12)',
-                transform: focusedCell ? 'translateX(0)' : 'translateX(calc(100% + 20px))',
-                opacity: focusedCell ? 1 : 0,
+                transform: focusedModel ? 'translateX(0)' : 'translateX(calc(100% + 20px))',
+                opacity: focusedModel ? 1 : 0,
                 transition: `transform ${STATS_SLIDE_MS}ms cubic-bezier(.2,.8,.2,1), opacity ${STATS_SLIDE_MS}ms ease-out`,
                 color: theme.tooltipText,
-                pointerEvents: focusedCell ? 'auto' : 'none',
+                pointerEvents: focusedModel ? 'auto' : 'none',
               }}
             >
-              {focusedCell && (() => {
-                const hoverColor = hexForModel(theme.modelPalette, focusedCell.modelIndex);
-                const d = new Date(focusedCell.bucketTime);
-                const dateStr = d.toLocaleDateString(undefined, { timeZone: tz });
-                const timeStr = d.toLocaleTimeString(undefined, { timeZone: tz });
-                const cpr = focusedCell.requestCount > 0
-                  ? focusedCell.cost / focusedCell.requestCount : 0;
-                const tpr = focusedCell.requestCount > 0
-                  ? focusedCell.totalTokens / focusedCell.requestCount : 0;
+              {focusedModel && focusedStats && (() => {
+                const hoverColor = hexForModel(theme.modelPalette, focusedStats.modelIndex);
+                const startD = new Date(focusedStats.firstBucket);
+                const endD = new Date(focusedStats.lastBucket);
+                const startStr = `${startD.toLocaleDateString(undefined, { timeZone: tz, month: 'numeric', day: 'numeric' })} ${startD.toLocaleTimeString(undefined, { timeZone: tz, hour: '2-digit', minute: '2-digit' })}`;
+                const endStr = `${endD.toLocaleDateString(undefined, { timeZone: tz, month: 'numeric', day: 'numeric' })} ${endD.toLocaleTimeString(undefined, { timeZone: tz, hour: '2-digit', minute: '2-digit' })}`;
                 return (
                   <>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10 }}>
@@ -1197,11 +1177,11 @@ export default function CostTrend3D({ config: _config }: { config: Record<string
                         boxShadow: themeName === 'dark' ? `0 0 8px ${hoverColor}` : 'none',
                       }} />
                       <Text family="mono" size="lg" weight="semibold" style={{ color: hoverColor }}>
-                        {focusedCell.modelName}
+                        {focusedModel}
                       </Text>
                       <button
                         type="button"
-                        onClick={() => setFocusedCell(null)}
+                        onClick={() => setFocusedModel(null)}
                         style={{
                           marginLeft: 'auto',
                           background: 'transparent',
@@ -1215,28 +1195,32 @@ export default function CostTrend3D({ config: _config }: { config: Record<string
                       </button>
                     </div>
                     <Text as="div" family="mono" size="sm" style={{ color: theme.tooltipSubtle, marginBottom: 12 }}>
-                      {dateStr} · {timeStr}
+                      {startStr} → {endStr}
                     </Text>
                     <div style={{ display: 'grid', gridTemplateColumns: 'auto 1fr', gap: '6px 12px' }}>
-                      <Text family="mono" size="sm" style={{ color: theme.tooltipSubtle }}>cost</Text>
+                      <Text family="mono" size="sm" style={{ color: theme.tooltipSubtle }}>total cost</Text>
                       <Text family="mono" size="sm" weight="semibold" style={{ color: theme.tooltipValue }}>
-                        ${focusedCell.cost.toFixed(4)}
+                        ${focusedStats.totalCost.toFixed(4)}
                       </Text>
-                      <Text family="mono" size="sm" style={{ color: theme.tooltipSubtle }}>tokens</Text>
+                      <Text family="mono" size="sm" style={{ color: theme.tooltipSubtle }}>total tokens</Text>
                       <Text family="mono" size="sm" style={{ color: theme.tooltipValue }}>
-                        {focusedCell.totalTokens.toLocaleString()}
+                        {focusedStats.totalTokens.toLocaleString()}
                       </Text>
                       <Text family="mono" size="sm" style={{ color: theme.tooltipSubtle }}>requests</Text>
                       <Text family="mono" size="sm" style={{ color: theme.tooltipValue }}>
-                        {focusedCell.requestCount}
+                        {focusedStats.totalRequests.toLocaleString()}
+                      </Text>
+                      <Text family="mono" size="sm" style={{ color: theme.tooltipSubtle }}>buckets</Text>
+                      <Text family="mono" size="sm" style={{ color: theme.tooltipValue }}>
+                        {focusedStats.bucketCount}
                       </Text>
                       <Text family="mono" size="sm" style={{ color: theme.tooltipSubtle }}>cost / request</Text>
                       <Text family="mono" size="sm" style={{ color: theme.tooltipValue }}>
-                        ${cpr.toFixed(5)}
+                        ${focusedStats.cpr.toFixed(5)}
                       </Text>
                       <Text family="mono" size="sm" style={{ color: theme.tooltipSubtle }}>tokens / request</Text>
                       <Text family="mono" size="sm" style={{ color: theme.tooltipValue }}>
-                        {tpr.toFixed(0)}
+                        {focusedStats.tpr.toFixed(0)}
                       </Text>
                     </div>
                     <Text as="div" family="mono" size="xs" style={{ marginTop: 12, color: theme.tooltipSubtle }}>
@@ -1247,12 +1231,8 @@ export default function CostTrend3D({ config: _config }: { config: Record<string
               })()}
             </div>
 
-            {/* Axis labels — HTML overlays, positions recomputed each frame
-                from world→screen projection so they stay anchored as the
-                camera tilts and pans. Sized to match the canvas exactly
-                (not `inset: 0` over the whole containerRef) so labels
-                projecting off the canvas's edges are clipped rather than
-                spilling into the scrollbar / legend rows below. */}
+            {/* Axis labels — HTML overlays positioned via world→screen
+                projection. */}
             <div
               style={{
                 position: 'absolute',
@@ -1308,7 +1288,7 @@ export default function CostTrend3D({ config: _config }: { config: Record<string
               ))}
             </div>
 
-            {/* Timeline scrollbar — only mechanism for horizontal navigation. */}
+            {/* Timeline scrollbar. */}
             <div
               data-drag-exclude="true"
               style={{
@@ -1357,11 +1337,9 @@ export default function CostTrend3D({ config: _config }: { config: Record<string
               </Text>
             </div>
 
-            {/* Model filter legend — horizontal row below the scrollbar so
-                it can grow with more models without crowding the 3D view.
-                Reserves a generous minHeight so additional rows of model
-                chips (or future controls in the same panel) have space to
-                live without layout jumping. */}
+            {/* Model filter legend. Plain click = toggle visibility,
+                shift-click = isolate (matches Bars). Click directly on a
+                ribbon in the scene = focus that model. */}
             <div
               data-drag-exclude="true"
               style={{
@@ -1397,9 +1375,6 @@ export default function CostTrend3D({ config: _config }: { config: Record<string
                     role="button"
                     tabIndex={0}
                     onClick={(e) => {
-                      // Shift-click mirrors shift-click on a bar:
-                      // toggle focus/isolation for this model. Plain
-                      // click stays as the visibility toggle.
                       if (e.shiftKey) {
                         setIsolatedModel(isolatedModel === model ? null : model);
                         return;

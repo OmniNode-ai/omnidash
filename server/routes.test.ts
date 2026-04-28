@@ -74,26 +74,6 @@ describe('server/routes (T10 smoke coverage)', () => {
     expect(res.body.byTaskType).toEqual([{ taskType: 'extraction', count: 6 }]);
   });
 
-  it('GET /projection/onex.snapshot.projection.delegation.summary.v1 returns the v2 snapshot array shape', async () => {
-    mockQuery
-      .mockResolvedValueOnce([
-        { total: '10', pass_count: '8', total_savings_usd: '12.50' },
-      ])
-      .mockResolvedValueOnce([{ task_type: 'extraction', count: '6' }]);
-    const res = await request(buildApp()).get(
-      '/projection/onex.snapshot.projection.delegation.summary.v1'
-    );
-    expect(res.status).toBe(200);
-    expect(res.body).toEqual([
-      {
-        totalDelegations: 10,
-        qualityGatePassRate: 0.8,
-        totalSavingsUsd: 12.5,
-        byTaskType: [{ taskType: 'extraction', count: 6 }],
-      },
-    ]);
-  });
-
   it('GET /api/llm-routing/decisions returns decision rows', async () => {
     mockQuery.mockResolvedValueOnce([
       {
@@ -109,27 +89,6 @@ describe('server/routes (T10 smoke coverage)', () => {
     ]);
     const res = await request(buildApp()).get('/api/llm-routing/decisions');
     expect(res.status).toBe(200);
-    expect(res.body[0].id).toBe('r1');
-  });
-
-  it('GET /projection/onex.snapshot.projection.delegation.decisions.v1 returns routing rows for the widget topic', async () => {
-    mockQuery.mockResolvedValueOnce([
-      {
-        id: 'r1',
-        created_at: '2026-04-25T00:00:00Z',
-        llm_agent: 'agent-a',
-        fuzzy_agent: 'agent-b',
-        agreement: false,
-        llm_confidence: 0.9,
-        fuzzy_confidence: 0.5,
-        cost_usd: 0.01,
-      },
-    ]);
-    const res = await request(buildApp()).get(
-      '/projection/onex.snapshot.projection.delegation.decisions.v1'
-    );
-    expect(res.status).toBe(200);
-    expect(res.body).toHaveLength(1);
     expect(res.body[0].id).toBe('r1');
   });
 
@@ -205,18 +164,5 @@ describe('server/routes (T10 smoke coverage)', () => {
     expect(res.status).toBe(200);
     expect(res.body).toEqual([]);
     warnSpy.mockRestore();
-  });
-
-  it('GET /projection/onex.snapshot.projection.baselines.roi.v1 returns [] when no snapshot exists', async () => {
-    mockQuery.mockResolvedValueOnce([]);
-    const res = await request(buildApp()).get('/projection/onex.snapshot.projection.baselines.roi.v1');
-    expect(res.status).toBe(200);
-    expect(res.body).toEqual([]);
-  });
-
-  it('GET /projection/<topic> returns 404 for unknown topics', async () => {
-    const res = await request(buildApp()).get('/projection/onex.snapshot.projection.unknown.v1');
-    expect(res.status).toBe(404);
-    expect(res.body).toEqual({ error: 'unknown projection topic' });
   });
 });

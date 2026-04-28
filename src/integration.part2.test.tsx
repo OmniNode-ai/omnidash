@@ -36,17 +36,17 @@ describe('Proof of Life — Part 2', () => {
   it('registry loads all MVP components from generated manifest', () => {
     const registry = new ComponentRegistry(manifest);
     const all = registry.getAvailableComponents();
-    expect(all.length).toBe(11);
+    // Post-merge (OMN-22 widget consolidation): the 2D companions
+    // (cost-by-model-2d, cost-trend-3d, quality-score-panel-2d) collapsed
+    // into their primary counterparts via per-widget `dimension` config.
+    expect(all.length).toBe(8);
     expect(all.map((c) => c.name).sort()).toEqual([
       'baselines-roi-card',
       'cost-by-model',
-      'cost-by-model-2d',
-      'cost-trend-3d',
       'cost-trend-panel',
       'delegation-metrics',
       'event-stream',
       'quality-score-panel',
-      'quality-score-panel-2d',
       'readiness-gate',
       'routing-decision-table',
     ]);
@@ -56,7 +56,8 @@ describe('Proof of Life — Part 2', () => {
     renderWithRegistry();
     await userEvent.click(screen.getByRole('button', { name: /add widget/i }));
     expect(screen.getByText('Cost Trend')).toBeInTheDocument();
-    expect(screen.getByText('Cost Trend (3D)')).toBeInTheDocument();
+    // Cost Trend (3D) tile collapsed into the unified 'Cost Trend' entry
+    // via the `dimension` config option (OMN-22 widget consolidation).
     expect(screen.getByText('Cost by Model')).toBeInTheDocument();
     expect(screen.getByText('Delegation Metrics')).toBeInTheDocument();
     expect(screen.getByText('Routing Decisions')).toBeInTheDocument();
@@ -103,11 +104,10 @@ describe('Proof of Life — Part 2', () => {
 
   it('config validation works against manifest schema', () => {
     const registry = new ComponentRegistry(manifest);
-    // Valid config — uses fields that actually exist in the
-    // cost-trend-panel schema today (granularity + chartType).
-    // `showBudgetLine` was dropped during the widget-config audit;
-    // see docs/widget-config-audit.md.
-    const valid = registry.validateConfig('cost-trend-panel', { granularity: 'day', chartType: 'bar' });
+    // Valid config — uses fields that exist in the cost-trend-panel
+    // schema today: dimension + style + granularity. `chartType` is
+    // now internal to CostTrend2D and router-driven (OMN-22).
+    const valid = registry.validateConfig('cost-trend-panel', { dimension: '2d', style: 'bar', granularity: 'day' });
     expect(valid.valid).toBe(true);
 
     // Invalid config — unknown key. `additionalProperties: false`
