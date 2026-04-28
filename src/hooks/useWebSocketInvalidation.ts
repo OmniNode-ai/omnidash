@@ -5,14 +5,19 @@ import { getWebSocketUrl } from '@/data-source';
 // Channel → TanStack Query key prefix mapping.
 // When the WebSocket bridge sends INVALIDATE for a channel, we invalidate
 // the matching query so components re-fetch fresh projection data.
-const CHANNEL_TO_QUERY_KEY: Record<string, string[]> = {
-  'cost-trends': ['cost-trends'],
-  'delegation-summary': ['delegation-summary'],
-  'routing-decisions': ['routing-decisions'],
-  'baselines-summary': ['baselines-summary'],
-  'quality-summary': ['quality-summary'],
-  'readiness-summary': ['readiness-summary'],
-  'events-recent': ['events-recent'],
+const CHANNEL_TO_QUERY_KEYS: Record<string, string[][]> = {
+  'cost-trends': [
+    ['cost-trends'],
+    ['cost-trends-3d'],
+    ['cost-by-model'],
+    ['cost-by-model-2d'],
+  ],
+  'delegation-summary': [['delegation-summary']],
+  'routing-decisions': [['routing-decisions']],
+  'baselines-summary': [['baselines-summary']],
+  'quality-summary': [['quality-summary']],
+  'readiness-summary': [['readiness-summary']],
+  'events-recent': [['events-recent']],
 };
 
 const RECONNECT_DELAYS = [1_000, 2_000, 4_000, 8_000, 16_000];
@@ -39,7 +44,7 @@ export function useWebSocketInvalidation() {
     ws.onopen = () => {
       retryRef.current = 0;
       // Subscribe to all projection channels
-      ws.send(JSON.stringify({ action: 'subscribe', channels: Object.keys(CHANNEL_TO_QUERY_KEY) }));
+      ws.send(JSON.stringify({ action: 'subscribe', channels: Object.keys(CHANNEL_TO_QUERY_KEYS) }));
     };
 
     ws.onmessage = (e) => {
@@ -57,9 +62,11 @@ export function useWebSocketInvalidation() {
         ) {
           const channel = (raw as { channel?: unknown }).channel;
           if (typeof channel === 'string') {
-            const keys = CHANNEL_TO_QUERY_KEY[channel];
-            if (keys) {
-              queryClient.invalidateQueries({ queryKey: keys });
+            const queryKeys = CHANNEL_TO_QUERY_KEYS[channel];
+            if (queryKeys) {
+              for (const queryKey of queryKeys) {
+                queryClient.invalidateQueries({ queryKey });
+              }
             }
           }
         }
