@@ -1,10 +1,6 @@
 // T10 — broadcast() channel-filter unit test.
-// db.js is mocked because importing server/index.ts → routes.ts → db.ts
-// would otherwise blow up on the missing OMNIDASH_ANALYTICS_DB_URL.
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { WebSocket } from 'ws';
-
-vi.mock('./db.js', () => ({ query: vi.fn(), pool: {} as unknown }));
 
 import { broadcast, clients } from './index.js';
 

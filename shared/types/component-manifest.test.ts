@@ -56,24 +56,35 @@ describe('ComponentManifest validation', () => {
     expect(result.errors[0]).toMatch(/topic/);
   });
 
-  it('rejects an api dataSource without an endpoint', () => {
+  it('rejects a projection dataSource without a topic', () => {
     const result = validateComponentManifest({
       ...validManifest,
       dataSources: [
-        { type: 'api', required: true, purpose: 'initial_fetch' },
+        { type: 'projection', required: true, purpose: 'initial_fetch' },
       ],
     });
     expect(result.valid).toBe(false);
-    expect(result.errors[0]).toMatch(/api/);
-    expect(result.errors[0]).toMatch(/endpoint/);
+    expect(result.errors[0]).toMatch(/projection/);
+    expect(result.errors[0]).toMatch(/topic/);
   });
 
-  it('accepts a websocket dataSource with topic and an api dataSource with endpoint', () => {
+  it('rejects unsupported dataSource types such as legacy api endpoints', () => {
     const result = validateComponentManifest({
       ...validManifest,
       dataSources: [
-        { type: 'websocket', topic: 'onex.snapshot.projection.test.v1', required: true, purpose: 'live_updates' },
-        { type: 'api', endpoint: '/api/test', required: true, purpose: 'initial_fetch' },
+        { type: 'api', endpoint: '/api/test', required: true, purpose: 'initial_fetch' } as any,
+      ],
+    });
+    expect(result.valid).toBe(false);
+    expect(result.errors[0]).toMatch(/unsupported type 'api'/);
+  });
+
+  it('accepts projection and websocket dataSources with topics', () => {
+    const result = validateComponentManifest({
+      ...validManifest,
+      dataSources: [
+        { type: 'projection', topic: 'onex.snapshot.projection.test.v1', required: true, purpose: 'initial_fetch' },
+        { type: 'websocket', topic: 'onex.snapshot.projection.test.v1', required: false, purpose: 'live_updates' },
       ],
     });
     expect(result.valid).toBe(true);

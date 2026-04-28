@@ -2,7 +2,7 @@
  * Static MVP manifest generator — NOT the real omnimarket contract scanner.
  *
  * This is a provisional placeholder that generates component-registry.json
- * with 7 hard-coded MVP component manifests. The real implementation will
+ * with hard-coded MVP component manifests. The real implementation will
  * scan omnimarket contract metadata.yaml files at build time.
  *
  * Also scans node_modules/@omninode/* for packages declaring dashboardComponents
@@ -16,6 +16,7 @@ import { resolve, dirname, join } from 'path';
 import { fileURLToPath } from 'url';
 import type { ComponentManifest } from '../shared/types/component-manifest.js';
 import { validateComponentManifest } from '../shared/types/component-manifest.js';
+import { TOPICS, type TopicSymbol } from '../shared/types/topics.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -24,6 +25,14 @@ interface PackageJsonWithDashboard {
   name: string;
   version: string;
   dashboardComponents?: string; // relative path to a JSON file listing manifests
+}
+
+function projectionSource(topic: TopicSymbol, required = true): ComponentManifest['dataSources'][number] {
+  return { type: 'projection', topic, required, purpose: 'initial_fetch' };
+}
+
+function liveSource(topic: TopicSymbol, required = false): ComponentManifest['dataSources'][number] {
+  return { type: 'websocket', topic, required, purpose: 'live_updates' };
 }
 
 /**
@@ -85,9 +94,7 @@ const MVP_COMPONENTS: Record<string, ComponentManifest> = {
       },
       additionalProperties: false,
     },
-    dataSources: [
-      { type: 'api', endpoint: '/api/intelligence/cost/trends', required: true, purpose: 'initial_fetch' },
-    ],
+    dataSources: [projectionSource(TOPICS.llmCost)],
     events: { emits: [], consumes: [{ name: 'time_range_changed' }] },
     defaultSize: { w: 8, h: 5 },
     minSize: { w: 4, h: 3 },
@@ -115,9 +122,7 @@ const MVP_COMPONENTS: Record<string, ComponentManifest> = {
       },
       additionalProperties: false,
     },
-    dataSources: [
-      { type: 'api', endpoint: '/api/intelligence/cost/trends', required: true, purpose: 'initial_fetch' },
-    ],
+    dataSources: [projectionSource(TOPICS.llmCost)],
     events: { emits: [], consumes: [{ name: 'time_range_changed' }] },
     defaultSize: { w: 6, h: 4 },
     minSize: { w: 3, h: 3 },
@@ -157,8 +162,8 @@ const MVP_COMPONENTS: Record<string, ComponentManifest> = {
       additionalProperties: false,
     },
     dataSources: [
-      { type: 'api', endpoint: '/api/delegation/summary', required: true, purpose: 'initial_fetch' },
-      { type: 'websocket', topic: 'delegation', required: false, purpose: 'live_updates' },
+      projectionSource(TOPICS.delegationSummary),
+      liveSource(TOPICS.delegationSummary),
     ],
     events: { emits: [{ name: 'task_type_selected', schema: { type: 'object', properties: { taskType: { type: 'string' } } } }], consumes: [{ name: 'time_range_changed' }] },
     defaultSize: { w: 6, h: 5 },
@@ -188,8 +193,8 @@ const MVP_COMPONENTS: Record<string, ComponentManifest> = {
       additionalProperties: false,
     },
     dataSources: [
-      { type: 'api', endpoint: '/api/llm-routing/decisions', required: true, purpose: 'initial_fetch' },
-      { type: 'websocket', topic: 'llm-routing', required: false, purpose: 'live_updates' },
+      projectionSource(TOPICS.delegationDecisions),
+      liveSource(TOPICS.delegationDecisions),
     ],
     events: { emits: [{ name: 'decision_selected' }], consumes: [{ name: 'time_range_changed' }] },
     defaultSize: { w: 12, h: 6 },
@@ -207,8 +212,8 @@ const MVP_COMPONENTS: Record<string, ComponentManifest> = {
     implementationKey: 'baselines/BaselinesROICard',
     // No configSchema — widget has no per-instance options to configure.
     dataSources: [
-      { type: 'api', endpoint: '/api/baselines/summary', required: true, purpose: 'initial_fetch' },
-      { type: 'websocket', topic: 'baselines', required: false, purpose: 'live_updates' },
+      projectionSource(TOPICS.baselinesRoi),
+      liveSource(TOPICS.baselinesRoi),
     ],
     events: { emits: [], consumes: [{ name: 'time_range_changed' }] },
     defaultSize: { w: 6, h: 4 },
@@ -245,9 +250,7 @@ const MVP_COMPONENTS: Record<string, ComponentManifest> = {
       },
       additionalProperties: false,
     },
-    dataSources: [
-      { type: 'api', endpoint: '/api/intelligence/quality/summary', required: true, purpose: 'initial_fetch' },
-    ],
+    dataSources: [projectionSource(TOPICS.baselinesQuality)],
     events: { emits: [], consumes: [] },
     // minSize bumped from 3 → 4 because the new split layout (130px
     // stats pane + 3D chart) needs room for the chart to stay legible.
@@ -265,9 +268,7 @@ const MVP_COMPONENTS: Record<string, ComponentManifest> = {
     version: '1.0.0',
     implementationKey: 'readiness/ReadinessGate',
     // No configSchema — widget has no per-instance options to configure.
-    dataSources: [
-      { type: 'api', endpoint: '/api/readiness/summary', required: true, purpose: 'initial_fetch' },
-    ],
+    dataSources: [projectionSource(TOPICS.overnightReadiness)],
     events: { emits: [{ name: 'dimension_selected' }], consumes: [] },
     defaultSize: { w: 12, h: 4 },
     minSize: { w: 6, h: 3 },
@@ -291,8 +292,8 @@ const MVP_COMPONENTS: Record<string, ComponentManifest> = {
       additionalProperties: false,
     },
     dataSources: [
-      { type: 'websocket', topic: 'event-bus', required: true, purpose: 'live_updates' },
-      { type: 'api', endpoint: '/api/events/recent', required: true, purpose: 'initial_fetch' },
+      projectionSource(TOPICS.registration),
+      liveSource(TOPICS.registration, true),
     ],
     events: { emits: [{ name: 'event_selected' }], consumes: [] },
     defaultSize: { w: 12, h: 6 },
@@ -322,9 +323,8 @@ for (const scanned of scannedComponents) {
 }
 
 // T16 (OMN-157): generator-time check that every manifest is structurally
-// complete. dataSources entries must have a topic (websocket) or
-// endpoint (api) — see validateComponentManifest. Failing fast here is
-// strictly better than the runtime widget rendering an empty stream.
+// complete. Dashboard-v2 dataSources must target projection/event-bus topics;
+// arbitrary REST endpoints are not a valid data path.
 const validationFailures: string[] = [];
 for (const [name, m] of Object.entries(mergedComponents)) {
   const result = validateComponentManifest(m);
