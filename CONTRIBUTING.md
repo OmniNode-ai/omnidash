@@ -5,8 +5,8 @@ Thanks for your interest in contributing. This guide covers the workflow for lan
 ## Getting Started
 
 ```bash
-git clone https://github.com/OmniNode-ai/omnidash-v2.git
-cd omnidash-v2
+git clone https://github.com/OmniNode-ai/omnidash.git
+cd omnidash
 npm install
 pre-commit install   # one time, after the first clone
 npm run dev
@@ -87,7 +87,7 @@ This project adopts the [Contributor Covenant](https://www.contributor-covenant.
 
 ## Reporting Issues
 
-File issues at https://github.com/OmniNode-ai/omnidash-v2/issues. Include:
+File issues at https://github.com/OmniNode-ai/omnidash/issues. Include:
 
 - What you expected to happen.
 - What actually happened.

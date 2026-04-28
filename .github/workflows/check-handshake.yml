@@ -1,7 +1,7 @@
 # SPDX-FileCopyrightText: 2025 OmniNode.ai Inc.
 # SPDX-License-Identifier: MIT
 #
-# Design note: omnidash-v2 is not an ONEX node, so this is a reinterpretation of the
+# Design note: omnidash is not an ONEX node, so this is a reinterpretation of the
 # check-handshake concept rather than a verbatim port.
 #
 # Two-part check:
