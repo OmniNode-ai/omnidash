@@ -65,12 +65,17 @@ function listSourceFiles(dir: string): string[] {
 function importPattern(packageName: string): RegExp {
   const escaped = packageName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
   return new RegExp([
-    `\\b(?:import|export)\\b[\\s\\S]*?\\bfrom\\s*['"]${escaped}['"]`,
+    `\\b(?:import|export)\\b[^;]*?\\bfrom\\s*['"]${escaped}['"]`,
     `\\bimport\\s*['"]${escaped}['"]`,
     `\\bimport\\s*\\(\\s*['"]${escaped}['"]\\s*\\)`,
     `\\brequire(?:\\.resolve)?\\s*\\(\\s*['"]${escaped}['"]\\s*\\)`,
   ].join('|'), 'm');
 }
+
+const FORBIDDEN_IMPORT_PATTERNS = FORBIDDEN_IMPORTS.map((packageName) => ({
+  packageName,
+  pattern: importPattern(packageName),
+}));
 
 describe('dashboard component truth contract', () => {
   it('documents the component-level truth boundary', () => {
@@ -92,6 +97,7 @@ describe('dashboard component truth contract', () => {
     expect(pattern.test("await import('pg');")).toBe(true);
     expect(pattern.test("const pg = require('pg');")).toBe(true);
     expect(pattern.test("require.resolve('pg');")).toBe(true);
+    expect(pattern.test("import { useMemo } from 'react';\nconst note = \"from 'pg'\";")).toBe(false);
     expect(pattern.test("const label = 'pg';")).toBe(false);
   });
 
@@ -100,8 +106,8 @@ describe('dashboard component truth contract', () => {
     for (const file of listSourceFiles(DASHBOARD_DIR)) {
       const src = readFileSync(file, 'utf8');
       const rel = relative(ROOT, file);
-      for (const packageName of FORBIDDEN_IMPORTS) {
-        if (importPattern(packageName).test(src)) {
+      for (const { packageName, pattern } of FORBIDDEN_IMPORT_PATTERNS) {
+        if (pattern.test(src)) {
           violations.push(`${rel}: imports forbidden backend client "${packageName}"`);
         }
       }
