@@ -1,7 +1,9 @@
 import { existsSync, readdirSync, readFileSync } from 'node:fs';
-import { join, relative, resolve } from 'node:path';
+import { dirname, join, relative, resolve } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
 
+const __dirname = dirname(fileURLToPath(import.meta.url));
 const ROOT = resolve(__dirname, '..');
 const DASHBOARD_DIR = resolve(ROOT, 'src/components/dashboard');
 const COMPONENT_README = resolve(DASHBOARD_DIR, 'README.md');
@@ -57,7 +59,11 @@ function listSourceFiles(dir: string): string[] {
 
 function importPattern(packageName: string): RegExp {
   const escaped = packageName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-  return new RegExp(`\\b(?:import|export)\\b[^;\\n]*(?:from\\s*)?['"]${escaped}['"]|\\bimport\\s*\\(\\s*['"]${escaped}['"]\\s*\\)`);
+  return new RegExp([
+    `\\b(?:import|export)\\b[^;\\n]*(?:from\\s*)?['"]${escaped}['"]`,
+    `\\bimport\\s*\\(\\s*['"]${escaped}['"]\\s*\\)`,
+    `\\brequire(?:\\.resolve)?\\s*\\(\\s*['"]${escaped}['"]\\s*\\)`,
+  ].join('|'));
 }
 
 describe('dashboard component truth contract', () => {
@@ -91,4 +97,3 @@ describe('dashboard component truth contract', () => {
     expect(violations).toEqual([]);
   });
 });
-
