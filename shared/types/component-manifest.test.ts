@@ -232,6 +232,24 @@ describe('ComponentManifest validation', () => {
       expect(result.errors[0]).toMatch(/displayContract/);
     });
 
+    it('rejects projectionSchema as an empty object', () => {
+      const result = validateComponentManifest({
+        ...validManifest,
+        projectionSchema: {} as any,
+      });
+      expect(result.valid).toBe(false);
+      expect(result.errors[0]).toMatch(/projectionSchema/);
+    });
+
+    it('rejects projectionSchema as an array', () => {
+      const result = validateComponentManifest({
+        ...validManifest,
+        projectionSchema: [] as any,
+      });
+      expect(result.valid).toBe(false);
+      expect(result.errors[0]).toMatch(/projectionSchema/);
+    });
+
     it('accepts projectionSchema with ordering authority declaration', () => {
       const ordering: ProjectionOrderingAuthority = {
         authority: 'bucket_time',
