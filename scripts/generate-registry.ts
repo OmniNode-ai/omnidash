@@ -69,20 +69,15 @@ const MVP_COMPONENTS: Record<string, ComponentManifest> = {
   'cost-trend-panel': {
     name: 'cost-trend-panel',
     displayName: 'Cost Trend',
-    description: 'LLM cost trends over time; dimension config switches between flat 2D chart and tilted 3D scene, style config switches between stacked area and stacked bars',
+    description: 'LLM cost trends over time rendered as a stacked area or bar chart; dispatched to ITrendChartAdapter (impl: threejs)',
     category: 'cost',
-    version: '2.0.0',
-    implementationKey: 'cost-trend/CostTrend',
+    version: '3.0.0',
+    // Routes through the adapter resolver: ITrendChartAdapter → TrendChartThreeJs.
+    // implementationKey 'threejs' is declared here; bespoke CostTrend router is removed.
+    implementationKey: 'ITrendChartAdapter/threejs',
     configSchema: {
       type: 'object',
       properties: {
-        dimension: {
-          type: 'string',
-          enum: ['2d', '3d'],
-          default: '2d',
-          title: 'Dimension',
-          description: 'Render as a flat 2D chart or a tilted 3D scene.',
-        },
         style: {
           type: 'string',
           enum: ['area', 'bar'],
@@ -93,6 +88,39 @@ const MVP_COMPONENTS: Record<string, ComponentManifest> = {
         granularity: { type: 'string', enum: ['hour', 'day'], default: 'hour' },
       },
       additionalProperties: false,
+    },
+    // Row shape emitted by onex.snapshot.projection.llm_cost.v1.
+    // ordering authority: bucket_time, monotonic ascending.
+    projectionSchema: {
+      type: 'object',
+      required: ['bucket_time', 'model_name', 'total_cost_usd'],
+      properties: {
+        bucket_time: {
+          type: 'string',
+          format: 'date-time',
+          description: 'ISO-8601 time bucket start. Ordering authority: monotonic ascending.',
+        },
+        model_name: { type: 'string', description: 'LLM model identifier, used as the series group key.' },
+        total_cost_usd: { type: 'number', description: 'Total cost in USD for this model in this bucket.' },
+      },
+      'x-orderingAuthority': {
+        authority: 'bucket_time',
+        fieldName: 'bucket_time',
+        direction: 'asc',
+        clockSemantics: 'UTC',
+      },
+    },
+    // Rendered output contract for Playwright assertions (OMN-7093).
+    displayContract: {
+      description: 'Stacked area chart over time. x-axis = bucket_time ascending at configured granularity. y-axis = cumulative total_cost_usd. Each series = one model_name.',
+      type: 'object',
+      properties: {
+        chartType: { type: 'string', enum: ['area', 'bar'] },
+        xAxis: { type: 'string', const: 'bucket_time' },
+        yAxis: { type: 'string', const: 'total_cost_usd' },
+        series: { type: 'string', const: 'model_name' },
+        ordering: { type: 'string', const: 'bucket_time asc' },
+      },
     },
     dataSources: [projectionSource(TOPICS.llmCost)],
     events: { emits: [], consumes: [{ name: 'time_range_changed' }] },
