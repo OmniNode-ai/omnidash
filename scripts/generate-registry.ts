@@ -244,8 +244,7 @@ const MVP_COMPONENTS: Record<string, ComponentManifest> = {
       'LLM cost per repository as a horizontal bar chart; bars sorted by cost descending. Upstream-blocked until repo_name column is added (omnibase_infra migration 031:142).',
     category: 'cost',
     version: '1.0.0',
-    // Routes through the adapter resolver: IBarChartAdapter → BarChartThreeJs.
-    implementationKey: 'IBarChartAdapter/threejs',
+    implementationKey: 'cost-by-repo/CostByRepoAdapter',
     configSchema: {
       type: 'object',
       properties: {
@@ -611,7 +610,7 @@ const MVP_COMPONENTS: Record<string, ComponentManifest> = {
     description: 'Total token consumption over time as a stacked area trend; dispatched to ITrendChartAdapter (impl: threejs). Upstream blocked: omnimarket emitter + omnibase_infra snapshot path missing.',
     category: 'cost',
     version: '1.0.0',
-    implementationKey: 'ITrendChartAdapter/threejs',
+    implementationKey: 'token-usage/TokenUsageAdapter',
     configSchema: {
       type: 'object',
       properties: {

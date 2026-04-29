@@ -26,7 +26,9 @@
     "generate:fixtures": "bash scripts/run-generate-fixtures.sh",
     "types:generate": "bash scripts/run-types-generate.sh",
     "storybook": "storybook dev -p 6006",
-    "build-storybook": "storybook build"
+    "build-storybook": "storybook build",
+    "test:e2e": "playwright test",
+    "test:e2e:ui": "playwright test --ui"
   },
   "keywords": [
     "dashboard",
