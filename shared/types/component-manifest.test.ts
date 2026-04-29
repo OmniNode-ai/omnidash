@@ -53,8 +53,7 @@ describe('ComponentManifest validation', () => {
       ],
     });
     expect(result.valid).toBe(false);
-    expect(result.errors[0]).toMatch(/websocket/);
-    expect(result.errors[0]).toMatch(/topic/);
+    expect(result.errors).toContainEqual(expect.stringMatching(/websocket.*topic/));
   });
 
   it('rejects a projection dataSource without a topic', () => {
@@ -65,8 +64,7 @@ describe('ComponentManifest validation', () => {
       ],
     });
     expect(result.valid).toBe(false);
-    expect(result.errors[0]).toMatch(/projection/);
-    expect(result.errors[0]).toMatch(/topic/);
+    expect(result.errors).toContainEqual(expect.stringMatching(/projection.*topic/));
   });
 
   it('rejects unsupported dataSource types such as legacy api endpoints', () => {
@@ -77,7 +75,7 @@ describe('ComponentManifest validation', () => {
       ],
     });
     expect(result.valid).toBe(false);
-    expect(result.errors[0]).toMatch(/unsupported type 'api'/);
+    expect(result.errors).toContainEqual(expect.stringMatching(/unsupported type 'api'/));
   });
 
   it('accepts projection and websocket dataSources with topics', () => {
@@ -220,7 +218,7 @@ describe('ComponentManifest validation', () => {
         projectionSchema: '',
       });
       expect(result.valid).toBe(false);
-      expect(result.errors[0]).toMatch(/projectionSchema/);
+      expect(result.errors).toContainEqual(expect.stringMatching(/projectionSchema/));
     });
 
     it('rejects displayContract as an empty string', () => {
@@ -229,7 +227,25 @@ describe('ComponentManifest validation', () => {
         displayContract: '   ',
       });
       expect(result.valid).toBe(false);
-      expect(result.errors[0]).toMatch(/displayContract/);
+      expect(result.errors).toContainEqual(expect.stringMatching(/displayContract/));
+    });
+
+    it('rejects projectionSchema as an empty object', () => {
+      const result = validateComponentManifest({
+        ...validManifest,
+        projectionSchema: {},
+      });
+      expect(result.valid).toBe(false);
+      expect(result.errors).toContainEqual(expect.stringMatching(/projectionSchema/));
+    });
+
+    it('rejects displayContract as an array', () => {
+      const result = validateComponentManifest({
+        ...validManifest,
+        displayContract: [] as unknown as ComponentManifest['displayContract'],
+      });
+      expect(result.valid).toBe(false);
+      expect(result.errors).toContainEqual(expect.stringMatching(/displayContract/));
     });
 
     it('accepts projectionSchema with ordering authority declaration', () => {

@@ -109,7 +109,9 @@ export interface ManifestValidationResult {
 
 function isValidSchemaReference(value: unknown): boolean {
   if (typeof value === 'string') return value.trim().length > 0;
-  if (typeof value === 'object' && value !== null) return true;
+  if (typeof value === 'object' && value !== null && !Array.isArray(value)) {
+    return Object.keys(value).length > 0;
+  }
   return false;
 }
 
