@@ -56,3 +56,22 @@ jobs:
 
       - name: Build Storybook
         run: npx storybook build -o storybook-static
+
+  ci-summary:
+    name: CI Summary
+    runs-on: ubuntu-latest
+    needs:
+      - test
+    if: always()
+
+    steps:
+      - name: Verify CI gate results
+        run: |
+          echo "Typecheck & Tests: ${{ needs.test.result }}"
+
+          if [ "${{ needs.test.result }}" != "success" ]; then
+            echo "::error::Typecheck & Tests did not pass."
+            exit 1
+          fi
+
+          echo "CI Summary: PASS"

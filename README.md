@@ -4,6 +4,8 @@ A composable widget dashboard for real-time observability. Vite + React 19, with
 
 OmniDash v2 is the successor to the v1 Next.js dashboard. The rewrite consolidates each widget into a single self-contained directory, lazy-loads heavy 3D bundles only when selected, and runs against local fixtures by default so contributors can develop without any backing infrastructure.
 
+Dashboard v2 follows the [OmniNode deterministic truth doctrine](https://github.com/OmniNode-ai/omni_home/blob/main/docs/standards/OMNINODE_DETERMINISTIC_TRUTH_DOCTRINE.md): widgets render authoritative projection/API data and presentation-only state. They must not read backend databases directly or recreate projection truth in React.
+
 ## Quick Start
 
 ```bash
@@ -37,6 +39,8 @@ VITE_DATA_SOURCE=http npm run dev
 
 Every widget lives under `src/components/dashboard/<widget-name>/` and follows the same shape. The directory groups a single conceptual chart together with its dimension variants, tests, and Storybook stories.
 
+The component truth boundary is documented in [`src/components/dashboard/README.md`](src/components/dashboard/README.md). Read it before adding or modifying any widget.
+
 Canonical example: `src/components/dashboard/cost-trend/`
 
 ```
@@ -60,10 +64,11 @@ The dispatcher (`CostTrend.tsx`) reads `config.dimension` (`'2d'` or `'3d'`) and
 ## Adding a New Widget
 
 1. Create `src/components/dashboard/<name>/<Name>.tsx` and default-export a React component that accepts a `config` prop. If the widget needs both 2D and 3D forms, model the directory on `cost-trend/` — one dispatcher plus one file per dimension variant.
-2. Register the lazy import in `src/components/dashboard/index.ts` under your widget's `implementationKey`.
-3. Add a manifest entry to `MVP_COMPONENTS` in `scripts/generate-registry.ts`. This is the canonical manifest location for in-repo widgets.
-4. Run `npm run generate:registry` to rewrite `src/registry/component-registry.json`. Do not hand-edit that file.
-5. Add at minimum `Empty` and `Populated` Storybook stories alongside the component. The compliance scorecard test enforces this on every `npm test`.
+2. Use `useProjectionQuery(...)` or an approved `src/data-source/` adapter for data access. If the widget needs new truth, add the upstream projection/API contract first.
+3. Register the lazy import in `src/components/dashboard/index.ts` under your widget's `implementationKey`.
+4. Add a manifest entry to `MVP_COMPONENTS` in `scripts/generate-registry.ts`. This is the canonical manifest location for in-repo widgets.
+5. Run `npm run generate:registry` to rewrite `src/registry/component-registry.json`. Do not hand-edit that file.
+6. Add at minimum `Empty` and `Populated` Storybook stories alongside the component. The compliance scorecard test enforces this on every `npm test`.
 
 ## Generating the Registry
 
@@ -85,6 +90,7 @@ Run it any time you add or remove a widget. The output (`src/registry/component-
 
 - [CONTRIBUTING.md](CONTRIBUTING.md) — branch, commit, and review conventions
 - [CLAUDE.md](CLAUDE.md) — agent and developer context
+- [src/components/dashboard/README.md](src/components/dashboard/README.md) — dashboard component truth contract
 - `docs/adr/001-typography-system.md` — typography rules
 - `docs/adr/002-storybook-widget-coverage.md` — Storybook coverage rules
 
