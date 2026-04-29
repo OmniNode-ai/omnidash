@@ -12,6 +12,15 @@ describe('TOPICS constant', () => {
     expect(topic).toBeDefined();
   });
 
+  it('costByRepo key resolves to the correct topic string', () => {
+    expect(TOPICS.costByRepo).toBe('onex.snapshot.projection.cost.by_repo.v1');
+  });
+
+  it('TopicSymbol union includes costByRepo value (compile-time assertion)', () => {
+    const _: TopicSymbol = TOPICS.costByRepo;
+    expect(_).toBe(TOPICS.costByRepo);
+  });
+
   it('all topic values follow the onex.snapshot.projection naming convention', () => {
     for (const [key, value] of Object.entries(TOPICS)) {
       expect(value, `TOPICS.${key} must start with onex.snapshot.projection.`).toMatch(
