@@ -95,6 +95,13 @@ export interface DataTableColumnConfig {
   format?: string;
   /** Optional explicit pixel width. Omit to let the table auto-size. */
   width?: number;
+  /**
+   * When true, this column is declared in the display schema but the upstream
+   * projection does not yet emit the field. The header is rendered; each cell
+   * shows an empty state (reason: 'missing-field') rather than a value.
+   * Callers must NOT substitute a fallback literal such as '--' or 'N/A'.
+   */
+  upstreamBlocked?: boolean;
 }
 
 /**
