@@ -30,6 +30,13 @@ export const TOPICS = {
   registration: 'onex.snapshot.projection.registration.v1',
   /** Cost summary KPI tiles — aggregate spend rollup per period. */
   costSummary: 'onex.snapshot.projection.cost.summary.v1',
+  /**
+   * Token-usage trend widget — total tokens per bucket.
+   * Upstream blocked: omnimarket emitter + omnibase_infra snapshot path missing.
+   * `llm_cost_aggregates.total_tokens BIGINT` (migration 031 line 147) exists
+   * but the aggregation/snapshot emitter path is not yet wired.
+   */
+  costTokenUsage: 'onex.snapshot.projection.cost.token_usage.v1',
 } as const;
 
 export type TopicSymbol = (typeof TOPICS)[keyof typeof TOPICS];
