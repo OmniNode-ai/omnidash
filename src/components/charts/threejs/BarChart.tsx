@@ -25,16 +25,32 @@ const DEFAULT_EMPTY_MESSAGES: Record<EmptyStateReason, string> = {
   'schema-invalid': 'Projection data failed schema validation',
 };
 
+/**
+ * Scans ALL rows (not just the first) so malformed rows in the middle of the
+ * dataset are caught rather than silently coerced. Accepts groupField so a
+ * missing group column is surfaced as missing-field rather than silently
+ * defaulting to an empty string key.
+ */
 function detectEmptyReason(
   projectionData: Record<string, unknown>[],
   xField: string,
   yField: string,
+  groupField?: string,
 ): EmptyStateReason | null {
   if (projectionData.length === 0) return 'no-data';
-  const sample = projectionData[0];
-  if (!(xField in sample) || !(yField in sample)) return 'missing-field';
-  const yVal = sample[yField];
-  if (typeof yVal !== 'number' && typeof yVal !== 'string') return 'schema-invalid';
+  for (const row of projectionData) {
+    if (
+      !(xField in row) ||
+      !(yField in row) ||
+      (groupField !== undefined && !(groupField in row))
+    ) {
+      return 'missing-field';
+    }
+    const yVal = row[yField];
+    if (typeof yVal !== 'number' || !Number.isFinite(yVal)) {
+      return 'schema-invalid';
+    }
+  }
   return null;
 }
 
@@ -73,11 +89,10 @@ function buildStackedSlice(
     const bIdx = bucketIndex.get(bucket);
     if (bIdx === undefined) continue;
     const groupKey = groupField ? String(row[groupField] ?? '') : 'value';
-    const yRaw = row[yField];
-    const yVal = typeof yRaw === 'number' ? yRaw : parseFloat(String(yRaw ?? 0));
-    if (!isNaN(yVal)) {
-      perModelCost[groupKey][bIdx] = (perModelCost[groupKey][bIdx] ?? 0) + yVal;
-    }
+    // y values are pre-validated as finite numbers by detectEmptyReason before
+    // buildStackedSlice is called — no coercion needed here.
+    const yVal = row[yField] as number;
+    perModelCost[groupKey][bIdx] = (perModelCost[groupKey][bIdx] ?? 0) + yVal;
   }
 
   // Build cumulative array [bucketIdx][groupIdx].
@@ -112,8 +127,8 @@ export function BarChart<T extends Record<string, unknown> = Record<string, unkn
   const rows = projectionData as Record<string, unknown>[];
 
   const emptyReason = useMemo(
-    () => detectEmptyReason(rows, xField, yField),
-    [rows, xField, yField],
+    () => detectEmptyReason(rows, xField, yField, groupField),
+    [rows, xField, yField, groupField],
   );
 
   // Always call hooks unconditionally; use emptyReason to guard the render path.
