@@ -211,7 +211,11 @@ export function DataTable<T extends Record<string, unknown>>({
                   const raw = row[col.field];
                   const display = raw == null ? '' : String(raw);
                   return (
-                    <td key={col.field} style={{ padding: '0.375rem 0.5rem' }}>
+                    <td
+                      key={col.field}
+                      style={{ padding: '0.375rem 0.5rem' }}
+                      data-upstream-blocked={col.upstreamBlocked === true ? 'true' : undefined}
+                    >
                       <Text size="md" family="mono">
                         {display}
                       </Text>

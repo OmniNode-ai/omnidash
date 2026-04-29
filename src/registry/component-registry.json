@@ -1,6 +1,6 @@
 {
   "manifestVersion": "1.0",
-  "generatedAt": "2026-04-29T21:02:17.757Z",
+  "generatedAt": "2026-04-29T21:19:03.240Z",
   "components": {
     "cost-trend-panel": {
       "name": "cost-trend-panel",
@@ -419,9 +419,9 @@
     "routing-decision-table": {
       "name": "routing-decision-table",
       "displayName": "Routing Decisions",
-      "description": "LLM routing decision log with agreement rates and confidence scores",
+      "description": "LLM routing decision log with agreement rates and confidence scores; renders via IDataTableAdapter (DataTableThreeJs)",
       "category": "activity",
-      "version": "1.0.0",
+      "version": "2.0.0",
       "implementationKey": "routing/RoutingDecisionTable",
       "configSchema": {
         "type": "object",
@@ -440,6 +440,112 @@
           }
         },
         "additionalProperties": false
+      },
+      "projectionSchema": {
+        "type": "object",
+        "description": "Row shape from onex.snapshot.projection.delegation.decisions.v1 (migration 065_create_llm_routing_decisions.sql). Ordering authority: created_at DESC (monotonic_field).",
+        "required": [
+          "id",
+          "created_at",
+          "llm_agent",
+          "fuzzy_agent",
+          "agreement",
+          "llm_confidence",
+          "fuzzy_confidence",
+          "cost_usd"
+        ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "description": "Row UUID."
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "description": "Decision timestamp. Ordering authority (monotonic DESC)."
+          },
+          "llm_agent": {
+            "type": "string",
+            "description": "Agent selected by the LLM router."
+          },
+          "fuzzy_agent": {
+            "type": "string",
+            "description": "Top agent from deterministic fuzzy matching."
+          },
+          "agreement": {
+            "type": "boolean",
+            "description": "True when LLM and fuzzy candidates agree."
+          },
+          "llm_confidence": {
+            "type": "number",
+            "description": "LLM confidence score (0–1)."
+          },
+          "fuzzy_confidence": {
+            "type": "number",
+            "description": "Fuzzy match confidence score (0–1)."
+          },
+          "cost_usd": {
+            "type": "number",
+            "description": "Routing cost in USD."
+          },
+          "provider": {
+            "type": "string",
+            "description": "UPSTREAM-BLOCKED: LLM provider name. Not yet emitted by omnimarket node_projection_delegation. Follow-up required."
+          },
+          "model": {
+            "type": "string",
+            "description": "UPSTREAM-BLOCKED: Model identifier used for routing. Not yet emitted by omnimarket. Follow-up required."
+          },
+          "reason": {
+            "type": "string",
+            "description": "UPSTREAM-BLOCKED: Human-readable routing rationale. Not yet emitted by omnimarket. Follow-up required."
+          },
+          "selection_mode": {
+            "type": "string",
+            "description": "UPSTREAM-BLOCKED: Routing strategy (e.g. SEMANTIC, RULE_BASED, FALLBACK). Not yet emitted by omnimarket. Follow-up required."
+          },
+          "fallback": {
+            "type": "string",
+            "description": "UPSTREAM-BLOCKED: Fallback agent or strategy used when primary routing fails. Not yet emitted by omnimarket. Follow-up required."
+          }
+        }
+      },
+      "displayContract": {
+        "type": "object",
+        "description": "Tabular layout rendered by IDataTableAdapter (DataTableThreeJs). Sort, paginate, and search controls present. Columns: created_at, provider, model, reason, selection_mode, fallback, llm_agent, fuzzy_agent, agreement, llm_confidence, fuzzy_confidence, cost_usd. Upstream-blocked columns (provider, model, reason, selection_mode, fallback) render headers with empty cells — no fallback literal.",
+        "properties": {
+          "columns": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "enum": [
+                "created_at",
+                "provider",
+                "model",
+                "reason",
+                "selection_mode",
+                "fallback",
+                "llm_agent",
+                "fuzzy_agent",
+                "agreement",
+                "llm_confidence",
+                "fuzzy_confidence",
+                "cost_usd"
+              ]
+            }
+          },
+          "controls": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "enum": [
+                "sort",
+                "pagination",
+                "search"
+              ]
+            }
+          }
+        }
       },
       "dataSources": [
         {
