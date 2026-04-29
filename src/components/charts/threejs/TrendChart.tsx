@@ -57,14 +57,13 @@ function EmptyStateDisplay({ reason, emptyState }: EmptyStateDisplayProps) {
         justifyContent: 'center',
         padding: '24px 16px',
         minHeight: 120,
-        color: 'var(--ink-3, #888)',
         textAlign: 'center',
         gap: 8,
       }}
     >
-      <Text as="span" size="sm" color="tertiary">{message}</Text>
+      <Text size="sm" color="tertiary">{message}</Text>
       {cta && (
-        <Text as="span" size="xs" color="tertiary" style={{ opacity: 0.75 }}>{cta}</Text>
+        <Text size="xs" color="tertiary">{cta}</Text>
       )}
     </div>
   );
