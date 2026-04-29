@@ -173,7 +173,7 @@ The dispatcher (`CostTrend.tsx`) reads `config.dimension` (`'2d'` or `'3d'`) and
 
 ## Documentation Map
 
-- [`docs/README.md`](docs/README.md) — canonical docs index
+- [`docs/README.md`](docs/README.md) — canonical docs index (alias: [`docs/INDEX.md`](docs/INDEX.md))
 - [`docs/architecture/composable-frame.md`](docs/architecture/composable-frame.md) — three-layer architecture
 - [`docs/implementation-status.md`](docs/implementation-status.md) — Parts 1–4 status
 - [`docs/development.md`](docs/development.md) — commands, registry generation, data source modes
