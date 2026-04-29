@@ -39,10 +39,11 @@ describe('Proof of Life — Part 2', () => {
     // Post-merge (OMN-22 widget consolidation): the 2D companions
     // (cost-by-model-2d, cost-trend-3d, quality-score-panel-2d) collapsed
     // into their primary counterparts via per-widget `dimension` config.
-    expect(all.length).toBe(8);
+    expect(all.length).toBe(9);
     expect(all.map((c) => c.name).sort()).toEqual([
       'baselines-roi-card',
       'cost-by-model',
+      'cost-summary',
       'cost-trend-panel',
       'delegation-metrics',
       'event-stream',

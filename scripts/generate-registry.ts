@@ -304,6 +304,103 @@ const MVP_COMPONENTS: Record<string, ComponentManifest> = {
     emptyState: { message: 'No readiness data', hint: 'Run the platform readiness gate to see results' },
     capabilities: { supports_compare: false, supports_export: true, supports_fullscreen: false, supports_time_range: false },
   },
+  'cost-summary': {
+    name: 'cost-summary',
+    displayName: 'Cost Summary',
+    description: 'KPI tile cluster showing aggregate LLM spend: total cost, total savings, and total tokens over the current window; dispatched to IKPITileClusterAdapter (impl: threejs)',
+    category: 'cost',
+    version: '1.0.0',
+    // Routes through the adapter resolver: IKPITileClusterAdapter → KPITileClusterThreeJs.
+    implementationKey: 'IKPITileClusterAdapter/threejs',
+    configSchema: {
+      type: 'object',
+      properties: {
+        tiles: {
+          type: 'array',
+          description: 'Per-tile metric configurations: field, label, format, and optional per-tile emptyState.',
+          items: {
+            type: 'object',
+            required: ['field', 'label'],
+            properties: {
+              field: { type: 'string', description: 'Projection row field name.' },
+              label: { type: 'string', description: 'Human-readable tile label.' },
+              format: { type: 'string', description: 'Optional d3-compatible format string.' },
+            },
+          },
+          default: [
+            { field: 'total_cost_usd', label: 'Total Cost', format: '$,.2f' },
+            { field: 'total_savings_usd', label: 'Total Savings', format: '$,.2f' },
+            { field: 'total_tokens', label: 'Total Tokens', format: ',d' },
+          ],
+        },
+      },
+      additionalProperties: false,
+    },
+    // Row shape emitted by onex.snapshot.projection.cost.summary.v1.
+    // Upstream-blocked: omnimarket emitter + omnibase_infra projection table not yet wired.
+    // ordering authority: captured_at, monotonic descending (latest window first).
+    projectionSchema: {
+      type: 'object',
+      required: ['window', 'total_cost_usd', 'total_savings_usd', 'total_tokens', 'captured_at'],
+      properties: {
+        window: {
+          type: 'string',
+          enum: ['24h', '7d', '30d'],
+          description: 'Aggregation window for this cost summary row.',
+        },
+        total_cost_usd: {
+          type: 'number',
+          description: 'Total LLM spend in USD for the window.',
+        },
+        total_savings_usd: {
+          type: 'number',
+          description: 'Total cost savings in USD for the window (e.g. from routing to cheaper models).',
+        },
+        total_tokens: {
+          type: 'number',
+          description: 'Total tokens consumed across all models for the window.',
+        },
+        captured_at: {
+          type: 'string',
+          format: 'date-time',
+          description: 'ISO-8601 timestamp when this projection row was materialized. Ordering authority: monotonic descending.',
+        },
+      },
+      'x-orderingAuthority': {
+        authority: 'monotonic_field',
+        fieldName: 'captured_at',
+        direction: 'desc',
+        clockSemantics: 'UTC',
+      },
+    },
+    // Rendered output contract for Playwright assertions (OMN-7093).
+    displayContract: {
+      description: 'KPI tile cluster with 3 tiles: total cost (currency USD), total savings (currency USD), total tokens (count). Honest-null per tile when projection field missing.',
+      type: 'object',
+      properties: {
+        tileCount: { type: 'number', const: 3 },
+        tiles: {
+          type: 'array',
+          items: {
+            type: 'object',
+            properties: {
+              field: { type: 'string' },
+              format: { type: 'string', enum: ['currency:USD', 'count'] },
+            },
+          },
+        },
+      },
+    },
+    dataSources: [projectionSource(TOPICS.costSummary)],
+    events: { emits: [], consumes: [{ name: 'time_range_changed' }] },
+    defaultSize: { w: 12, h: 3 },
+    minSize: { w: 6, h: 2 },
+    maxSize: { w: 12, h: 4 },
+    // ComponentManifest.emptyState is the widget palette display message.
+    // Detailed per-reason empty states are in the adapter (CostSummaryAdapter.tsx).
+    emptyState: { message: 'No cost summary data', hint: 'Cost summary appears after LLM calls are tracked. Projection is upstream-blocked until omnimarket emitter lands.' },
+    capabilities: { supports_compare: false, supports_export: true, supports_fullscreen: false, supports_time_range: false },
+  },
   'event-stream': {
     name: 'event-stream',
     displayName: 'Event Stream',
