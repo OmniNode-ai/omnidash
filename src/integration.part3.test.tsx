@@ -54,9 +54,11 @@ describe('Proof of Life — Part 3 (Full System)', () => {
     const registry = new ComponentRegistry(manifest);
     await registry.resolveImplementations();
     const available = registry.getAvailableComponents().filter((c) => c.status === 'available');
-    // 10 post-merge: 8 original + cost-summary (OMN-10301) + token-usage (OMN-10303).
-    // Three 2D companions consolidated into primary entries via dimension config (OMN-22).
-    expect(available.length).toBe(10);
+    // 11 post-OMN-10291 + Wave 5: cost-by-model migrated to IBarChartAdapter (OMN-10291),
+    // cost-by-model-3d added via IDoughnutChartAdapter (OMN-10291), cost-summary + token-usage
+    // resolve via IKPITileClusterAdapter/threejs + ITrendChartAdapter/threejs.
+    // cost-by-repo uses IBarChartAdapter/threejs (not yet in componentImports) — unresolved.
+    expect(available.length).toBe(11);
   });
 
   it('both templates pass validation', () => {

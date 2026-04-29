@@ -2,12 +2,14 @@ import { BarChartThreeJs } from './threejs/BarChart';
 import { TrendChartThreeJs } from './threejs/TrendChart';
 import { KPITileClusterThreeJs } from './threejs/KPITileCluster';
 import { DataTableThreeJs } from './threejs/DataTable';
+import { DoughnutChartAdapterThreeJs } from './threejs/DoughnutChartAdapter';
 
 export type AdapterKey =
   | 'IBarChartAdapter'
   | 'ITrendChartAdapter'
   | 'IKPITileClusterAdapter'
-  | 'IDataTableAdapter';
+  | 'IDataTableAdapter'
+  | 'IDoughnutChartAdapter';
 
 export class UnknownAdapterError extends Error {
   constructor(adapterKey: string) {
@@ -40,6 +42,9 @@ const REGISTRY: Record<AdapterKey, ImplementationMap> = {
   },
   IDataTableAdapter: {
     threejs: DataTableThreeJs,
+  },
+  IDoughnutChartAdapter: {
+    threejs: DoughnutChartAdapterThreeJs,
   },
 };
 

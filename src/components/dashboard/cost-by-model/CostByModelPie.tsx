@@ -28,7 +28,7 @@ interface CostDataPoint {
   total_cost_usd: string;
 }
 
-interface ModelSlice {
+export interface ModelSlice {
   model: string;
   cost: number;
   percentage: number; // 0..100
@@ -149,7 +149,7 @@ interface ThreePieChartProps {
 
 const CANVAS_HEIGHT = 260;
 
-function ThreePieChart({ slices, chartColors, themeName }: ThreePieChartProps) {
+export function ThreePieChart({ slices, chartColors, themeName }: ThreePieChartProps) {
   const mountRef = useRef<HTMLDivElement>(null);
   const rendererRef = useRef<THREE.WebGLRenderer | null>(null);
   const sceneRef = useRef<THREE.Scene | null>(null);
