@@ -43,7 +43,8 @@ function aggregate(data: CostDataPoint[], colorIdxFor: (model: string) => number
 } {
   const byModel = new Map<string, number>();
   for (const d of data) {
-    const cost = parseFloat(d.total_cost_usd) || 0;
+    const cost = parseFloat(d.total_cost_usd);
+    if (!isFinite(cost)) continue;
     byModel.set(d.model_name, (byModel.get(d.model_name) ?? 0) + cost);
   }
   let total = 0;
