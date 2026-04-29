@@ -64,11 +64,12 @@ function listSourceFiles(dir: string): string[] {
 
 function importPattern(packageName: string): RegExp {
   const escaped = packageName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  const specifier = `${escaped}(?:/[^'"\\s)]+)?`;
   return new RegExp([
-    `\\b(?:import|export)\\b[^;]*?\\bfrom\\s*['"]${escaped}['"]`,
-    `\\bimport\\s*['"]${escaped}['"]`,
-    `\\bimport\\s*\\(\\s*['"]${escaped}['"]\\s*\\)`,
-    `\\brequire(?:\\.resolve)?\\s*\\(\\s*['"]${escaped}['"]\\s*\\)`,
+    `\\b(?:import|export)\\b[^;]*?\\bfrom\\s*['"]${specifier}['"]`,
+    `\\bimport\\s*['"]${specifier}['"]`,
+    `\\bimport\\s*\\(\\s*['"]${specifier}['"]\\s*\\)`,
+    `\\brequire(?:\\.resolve)?\\s*\\(\\s*['"]${specifier}['"]\\s*\\)`,
   ].join('|'), 'm');
 }
 
@@ -93,12 +94,19 @@ describe('dashboard component truth contract', () => {
     expect(pattern.test("import { Pool } from 'pg';")).toBe(true);
     expect(pattern.test("import {\n  Pool\n} from 'pg';")).toBe(true);
     expect(pattern.test("export {\n  Pool\n} from 'pg';")).toBe(true);
+    expect(pattern.test("import { Pool } from 'pg/lib';")).toBe(true);
     expect(pattern.test("import 'pg';")).toBe(true);
+    expect(pattern.test("import 'pg/lib';")).toBe(true);
     expect(pattern.test("await import('pg');")).toBe(true);
+    expect(pattern.test("await import('pg/lib');")).toBe(true);
     expect(pattern.test("const pg = require('pg');")).toBe(true);
+    expect(pattern.test("const pg = require('pg/lib');")).toBe(true);
     expect(pattern.test("require.resolve('pg');")).toBe(true);
+    expect(pattern.test("require.resolve('pg/lib');")).toBe(true);
     expect(pattern.test("import { useMemo } from 'react';\nconst note = \"from 'pg'\";")).toBe(false);
     expect(pattern.test("const label = 'pg';")).toBe(false);
+    expect(pattern.test("import pgx from 'pgx';")).toBe(false);
+    expect(importPattern('@prisma/client').test("import runtime from '@prisma/client/runtime/library';")).toBe(true);
   });
 
   it('keeps backend database and event-bus clients out of dashboard components', () => {
