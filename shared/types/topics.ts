@@ -28,6 +28,8 @@ export const TOPICS = {
   overnightReadiness: 'onex.snapshot.projection.overnight.v1',
   /** Event stream widget — registration / event-bus tail. */
   registration: 'onex.snapshot.projection.registration.v1',
+  /** Cost summary KPI tiles — aggregate spend rollup per period. */
+  costSummary: 'onex.snapshot.projection.cost.summary.v1',
 } as const;
 
 export type TopicSymbol = (typeof TOPICS)[keyof typeof TOPICS];
