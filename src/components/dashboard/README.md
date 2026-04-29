@@ -46,4 +46,3 @@ If a widget needs one of those values, add or consume an authoritative projectio
 Every data-driven widget story must seed deterministic fixture data through `makeDashboardDecorator(...)` or `DataSourceTestProvider`. Mocks and fixtures prove component behavior only; they do not prove runtime truth.
 
 Runtime truth claims require durable evidence outside this repo, such as OCC receipts, CI checks, PR review records, Linear evidence, or an approved artifact store.
-
