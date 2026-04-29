@@ -1,3 +1,13 @@
+// OMN-10294 migration audit result: STAY-BESPOKE for both variants.
+//
+// 2D (QualityScoreHistogram): functionally a bar chart, but the threshold-line,
+// mean-marker, and computed pass-rate headline are presentation semantics not
+// expressible via IBarChartAdapter's BarChartFieldMapping{x, y, group, format}.
+// Re-evaluate after IBarChartAdapter gains overlay extension points (iteration-2).
+//
+// 3D (QualityScoreTilted3D): custom three.js — tilted PerspectiveCamera, translucent
+// threshold plane, inverted-cone mean marker, raycasting hover. Materially different
+// from any generic primitive; no migration path at this iteration.
 import { lazy, Suspense } from 'react';
 import type { WidgetDimension } from '../_shared/types';
 
