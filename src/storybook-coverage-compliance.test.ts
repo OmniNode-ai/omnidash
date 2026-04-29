@@ -108,7 +108,9 @@ const STORY_FILES: Array<{ rel: string; id: string; widget: boolean }> = [
   { rel: 'src/components/dashboard/cost-trend/CostTrend3DBars.stories.tsx', id: 'CostTrend3DBars.stories', widget: true },
   { rel: 'src/components/dashboard/cost-trend/CostTrend3DArea.stories.tsx', id: 'CostTrend3DArea.stories', widget: true },
   { rel: 'src/components/dashboard/cost-by-model/CostByModelPie.stories.tsx', id: 'CostByModelPie.stories', widget: true },
-  { rel: 'src/components/dashboard/cost-by-model/CostByModelBars.stories.tsx', id: 'CostByModelBars.stories', widget: true },
+  // CostByModelBars.stories.tsx deleted in OMN-10291 — 2D variant now dispatched via IBarChartAdapter manifest entry.
+  // DoughnutChartAdapter stories cover the 3D variant.
+  { rel: 'src/components/charts/threejs/DoughnutChartAdapter.stories.tsx', id: 'DoughnutChartAdapter.stories', widget: true },
   { rel: 'src/components/dashboard/quality/QualityScoreTilted3D.stories.tsx', id: 'QualityScoreTilted3D.stories', widget: true },
   { rel: 'src/components/dashboard/quality/QualityScoreHistogram.stories.tsx', id: 'QualityScoreHistogram.stories', widget: true },
   { rel: 'src/components/dashboard/delegation/DelegationMetrics2D.stories.tsx', id: 'DelegationMetrics2D.stories', widget: true },

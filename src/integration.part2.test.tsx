@@ -36,16 +36,16 @@ describe('Proof of Life — Part 2', () => {
   it('registry loads all MVP components from generated manifest', () => {
     const registry = new ComponentRegistry(manifest);
     const all = registry.getAvailableComponents();
-    // Post-merge (OMN-22 widget consolidation): the 2D companions
-    // (cost-by-model-2d, cost-trend-3d, quality-score-panel-2d) collapsed
-    // into their primary counterparts via per-widget `dimension` config.
-    // OMN-10301: cost-summary added as IKPITileClusterAdapter manifest entry.
-    // OMN-10302: cost-by-repo added as IBarChartAdapter manifest entry.
-    // OMN-10303: token-usage added as ITrendChartAdapter manifest entry.
-    expect(all.length).toBe(11);
+    // Post-OMN-10291 + Wave 5: 12 total manifest entries.
+    // OMN-10291: cost-by-model migrated to IBarChartAdapter; cost-by-model-3d added (IDoughnutChartAdapter).
+    // OMN-10301: cost-summary added (IKPITileClusterAdapter).
+    // OMN-10302: cost-by-repo added (IBarChartAdapter/threejs).
+    // OMN-10303: token-usage added (ITrendChartAdapter/threejs).
+    expect(all.length).toBe(12);
     expect(all.map((c) => c.name).sort()).toEqual([
       'baselines-roi-card',
       'cost-by-model',
+      'cost-by-model-3d',
       'cost-by-repo',
       'cost-summary',
       'cost-trend-panel',

@@ -133,28 +133,94 @@ const MVP_COMPONENTS: Record<string, ComponentManifest> = {
   'cost-by-model': {
     name: 'cost-by-model',
     displayName: 'Cost by Model',
-    description: 'LLM cost share per model over the selected time range; dimension config switches between 2D bars and tilted 3D pie',
+    description: 'LLM cost share per model — horizontal bars sorted by cost descending',
     category: 'cost',
-    version: '2.0.0',
-    implementationKey: 'cost-by-model/CostByModel',
-    configSchema: {
+    version: '3.0.0',
+    // Manifest-dispatch via IBarChartAdapter (implementationKey=threejs → BarChartThreeJs).
+    // Bespoke CostByModel.tsx router and CostByModelBars.tsx deleted in OMN-10291.
+    // fieldMappings: { x: 'model_name', y: 'total_cost_usd', format: '$,.4f' }
+    implementationKey: 'IBarChartAdapter',
+    projectionSchema: {
       type: 'object',
+      description: 'Row shape from onex.snapshot.projection.llm_cost.v1 (llm_cost_aggregates). Ordering authority: aggregation_key (model_name) for display; no monotonic time ordering required for bar chart.',
       properties: {
-        dimension: {
-          type: 'string',
-          enum: ['2d', '3d'],
-          default: '2d',
-          title: 'Dimension',
-          description: 'Render as 2D bars or a tilted 3D pie chart.',
+        // Source: llm_cost_aggregates.aggregation_key (031:142)
+        model_name: { type: 'string', description: 'Model identifier — aggregation_key (031:142)' },
+        // Source: llm_cost_aggregates.total_cost_usd (031:146)
+        total_cost_usd: { type: 'string', description: 'Total USD cost for this model in the projection window (031:146)' },
+        // Source: llm_cost_aggregates.bucket_time (031:74) — present in rows, used for time-range filter by dispatch layer
+        bucket_time: { type: 'string', format: 'date-time', description: 'Time bucket for this cost row (031:74)' },
+      },
+      required: ['model_name', 'total_cost_usd'],
+    },
+    displayContract: {
+      type: 'object',
+      description: 'Rendered guarantee: horizontal bar per model, bar length proportional to total_cost_usd, label = model_name, sorted cost descending.',
+      properties: {
+        bars: {
+          type: 'array',
+          items: {
+            type: 'object',
+            properties: {
+              model_name: { type: 'string' },
+              total_cost_usd: { type: 'number' },
+            },
+          },
+          description: 'One bar per unique model_name value; sorted by total_cost_usd descending.',
         },
       },
-      additionalProperties: false,
     },
     dataSources: [projectionSource(TOPICS.llmCost)],
     events: { emits: [], consumes: [{ name: 'time_range_changed' }] },
     defaultSize: { w: 6, h: 4 },
     minSize: { w: 3, h: 3 },
     maxSize: { w: 12, h: 8 },
+    emptyState: { message: 'No cost data available', hint: 'Cost data appears after LLM calls are tracked' },
+    capabilities: { supports_compare: false, supports_export: true, supports_fullscreen: true, supports_time_range: true },
+  },
+  'cost-by-model-3d': {
+    name: 'cost-by-model-3d',
+    displayName: 'Cost by Model (3D)',
+    description: 'LLM cost share per model — tilted 3D pie/doughnut with cost-proportional slice angles',
+    category: 'cost',
+    version: '1.0.0',
+    // Manifest-dispatch via IDoughnutChartAdapter (implementationKey=threejs → DoughnutChartAdapterThreeJs).
+    // Wraps ThreePieChart exported from CostByModelPie.tsx.
+    // fieldMappings: { label: 'model_name', value: 'total_cost_usd', format: '$,.4f' }
+    implementationKey: 'IDoughnutChartAdapter',
+    projectionSchema: {
+      type: 'object',
+      description: 'Row shape from onex.snapshot.projection.llm_cost.v1 (llm_cost_aggregates). Same schema as cost-by-model 2D variant.',
+      properties: {
+        model_name: { type: 'string', description: 'Model identifier — aggregation_key (031:142)' },
+        total_cost_usd: { type: 'string', description: 'Total USD cost for this model (031:146)' },
+        bucket_time: { type: 'string', format: 'date-time', description: 'Time bucket (031:74)' },
+      },
+      required: ['model_name', 'total_cost_usd'],
+    },
+    displayContract: {
+      type: 'object',
+      description: 'Rendered guarantee: tilted 3D pie/doughnut, one slice per model, arc proportional to total_cost_usd, slice label = model_name.',
+      properties: {
+        slices: {
+          type: 'array',
+          items: {
+            type: 'object',
+            properties: {
+              model_name: { type: 'string' },
+              total_cost_usd: { type: 'number' },
+              percentage: { type: 'number', description: 'Fraction of total cost (0–100)' },
+            },
+          },
+          description: 'One slice per unique model_name; sorted by total_cost_usd descending.',
+        },
+      },
+    },
+    dataSources: [projectionSource(TOPICS.llmCost)],
+    events: { emits: [], consumes: [{ name: 'time_range_changed' }] },
+    defaultSize: { w: 6, h: 5 },
+    minSize: { w: 4, h: 4 },
+    maxSize: { w: 12, h: 9 },
     emptyState: { message: 'No cost data available', hint: 'Cost data appears after LLM calls are tracked' },
     capabilities: { supports_compare: false, supports_export: true, supports_fullscreen: true, supports_time_range: true },
   },
