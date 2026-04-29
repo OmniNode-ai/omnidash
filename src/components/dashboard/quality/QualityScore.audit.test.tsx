@@ -49,7 +49,10 @@ describe('QualityScore router (OMN-10294 audit)', () => {
     vi.stubGlobal('fetch', vi.fn());
     vi.stubGlobal('ResizeObserver', FakeResizeObserver);
   });
-  afterEach(() => vi.restoreAllMocks());
+  afterEach(() => {
+    vi.restoreAllMocks();
+    vi.unstubAllGlobals();
+  });
 
   it('defaults to the 3D variant when dimension is omitted', async () => {
     // The manifest default is '3d'. If this assertion changes, update the
