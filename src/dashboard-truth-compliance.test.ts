@@ -12,6 +12,11 @@ const SOURCE_EXTENSIONS = ['.ts', '.tsx'];
 const SOURCE_EXCLUDES = ['.test.ts', '.test.tsx', '.stories.ts', '.stories.tsx'];
 
 const FORBIDDEN_IMPORTS = [
+  'net',
+  'http',
+  'https',
+  'tls',
+  'dgram',
   'pg',
   'postgres',
   'postgresql',
@@ -60,10 +65,11 @@ function listSourceFiles(dir: string): string[] {
 function importPattern(packageName: string): RegExp {
   const escaped = packageName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
   return new RegExp([
-    `\\b(?:import|export)\\b[^;\\n]*(?:from\\s*)?['"]${escaped}['"]`,
+    `\\b(?:import|export)\\b[\\s\\S]*?\\bfrom\\s*['"]${escaped}['"]`,
+    `\\bimport\\s*['"]${escaped}['"]`,
     `\\bimport\\s*\\(\\s*['"]${escaped}['"]\\s*\\)`,
     `\\brequire(?:\\.resolve)?\\s*\\(\\s*['"]${escaped}['"]\\s*\\)`,
-  ].join('|'));
+  ].join('|'), 'm');
 }
 
 describe('dashboard component truth contract', () => {
@@ -75,6 +81,18 @@ describe('dashboard component truth contract', () => {
     expect(readme).toContain('must not');
     expect(readme).toContain('read Postgres');
     expect(readme).toContain('React state must not become the source of truth');
+  });
+
+  it('detects forbidden import forms used to bypass static scans', () => {
+    const pattern = importPattern('pg');
+    expect(pattern.test("import { Pool } from 'pg';")).toBe(true);
+    expect(pattern.test("import {\n  Pool\n} from 'pg';")).toBe(true);
+    expect(pattern.test("export {\n  Pool\n} from 'pg';")).toBe(true);
+    expect(pattern.test("import 'pg';")).toBe(true);
+    expect(pattern.test("await import('pg');")).toBe(true);
+    expect(pattern.test("const pg = require('pg');")).toBe(true);
+    expect(pattern.test("require.resolve('pg');")).toBe(true);
+    expect(pattern.test("const label = 'pg';")).toBe(false);
   });
 
   it('keeps backend database and event-bus clients out of dashboard components', () => {
