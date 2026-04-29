@@ -162,6 +162,36 @@ describe('BarChart', () => {
       expect(screen.getByText('No data available')).toBeTruthy();
     });
 
+    // OMN-10302: cost-by-repo upstream-blocked scenario.
+    // The repo_name column is absent from llm_cost_aggregates (omnibase_infra migration 031:142).
+    // When fixture rows have only `aggregation_key` (no `repo_name`), the manifest's
+    // fieldMappings.x = 'repo_name' triggers missing-field.
+    it('renders missing-field when fixture rows lack repo_name (cost-by-repo upstream-blocked scenario)', () => {
+      // Rows that only have aggregation_key — simulates the current DB state before migration
+      const upstreamBlockedRows = [
+        { aggregation_key: 'repo:omniclaude', total_cost_usd: 12.45, window: '7d' },
+        { aggregation_key: 'repo:omnimarket', total_cost_usd: 8.30, window: '7d' },
+      ] as Record<string, unknown>[];
+
+      render(
+        <BarChart
+          projectionData={upstreamBlockedRows}
+          fieldMappings={{ x: 'repo_name', y: 'total_cost_usd' }}
+          emptyState={{
+            reasons: {
+              'missing-field': { message: 'repo_name absent (migration 031:142)' },
+              'upstream-blocked': { message: 'Upstream blocked: repo_name column missing', cta: 'See OMN-10302' },
+            },
+          }}
+        />,
+      );
+      // missing-field fires because repo_name is absent from the rows
+      const container = screen.getByTestId('barchart-canvas');
+      const emptyEl = container.querySelector('[data-empty-reason]');
+      expect(emptyEl).toBeTruthy();
+      expect(emptyEl?.getAttribute('data-empty-reason')).toBe('missing-field');
+    });
+
     it('renders CTA when provided', () => {
       render(
         <BarChart

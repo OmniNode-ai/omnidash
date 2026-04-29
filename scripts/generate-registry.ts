@@ -158,6 +158,113 @@ const MVP_COMPONENTS: Record<string, ComponentManifest> = {
     emptyState: { message: 'No cost data available', hint: 'Cost data appears after LLM calls are tracked' },
     capabilities: { supports_compare: false, supports_export: true, supports_fullscreen: true, supports_time_range: true },
   },
+  /**
+   * Cost by repo — horizontal bar chart, one bar per repository.
+   *
+   * UPSTREAM BLOCKED: The `repo_name` column does NOT exist in `llm_cost_aggregates`
+   * (omnibase_infra migration 031:142 has only generic `aggregation_key`). Until upstream
+   * resolves — either a new migration adding `repo_name` OR standardizing on
+   * `aggregation_key` encoding `repo:<name>` — this widget renders the `upstream-blocked`
+   * empty state. The manifest and projectionSchema ship now so the contract is in place;
+   * the rendering path is unblocked when upstream fills the gap.
+   *
+   * @see OMN-10302 — https://linear.app/omninode/issue/OMN-10302
+   * @see omnibase_infra migration 031:142 for the `aggregation_key`-only schema
+   */
+  'cost-by-repo': {
+    name: 'cost-by-repo',
+    displayName: 'Cost by Repo',
+    description:
+      'LLM cost per repository as a horizontal bar chart; bars sorted by cost descending. Upstream-blocked until repo_name column is added (omnibase_infra migration 031:142).',
+    category: 'cost',
+    version: '1.0.0',
+    // Routes through the adapter resolver: IBarChartAdapter → BarChartThreeJs.
+    implementationKey: 'IBarChartAdapter/threejs',
+    configSchema: {
+      type: 'object',
+      properties: {
+        fieldMappings: {
+          type: 'object',
+          properties: {
+            x: { type: 'string', const: 'repo_name' },
+            y: { type: 'string', const: 'total_cost_usd' },
+          },
+          additionalProperties: false,
+        },
+      },
+      additionalProperties: false,
+    },
+    // Row shape expected from onex.snapshot.projection.cost.by_repo.v1.
+    // UPSTREAM BLOCKED: repo_name column absent (omnibase_infra migration 031:142).
+    // Assumption: upstream adds `repo_name STRING` OR decodes from `aggregation_key`
+    // using `repo:<name>` encoding. Either resolution unblocks this widget.
+    // ordering authority: total_cost_usd, descending (highest-cost repo first).
+    projectionSchema: {
+      type: 'object',
+      required: ['repo_name', 'total_cost_usd', 'window'],
+      properties: {
+        repo_name: {
+          type: 'string',
+          description:
+            'Repository name. UPSTREAM BLOCKED: column absent from llm_cost_aggregates (migration 031:142). ' +
+            'Populated once upstream adds repo_name OR decodes from aggregation_key encoding repo:<name>.',
+        },
+        total_cost_usd: {
+          type: 'number',
+          description: 'Total LLM cost in USD for this repository over the projection window.',
+        },
+        window: {
+          type: 'string',
+          description: 'Aggregation window identifier (e.g. "7d", "30d").',
+        },
+      },
+      'x-orderingAuthority': {
+        authority: 'aggregation_key',
+        fieldName: 'total_cost_usd',
+        direction: 'desc',
+      },
+    },
+    // Rendered output contract for Playwright assertions (OMN-7093).
+    displayContract: {
+      description:
+        'Horizontal bar per repo, x-axis = repo_name, y-axis = total_cost_usd in USD, bars sorted by cost descending. ' +
+        'Upstream-blocked empty state rendered until repo_name column exists in the projection.',
+      type: 'object',
+      properties: {
+        chartType: { type: 'string', const: 'bar' },
+        orientation: { type: 'string', const: 'horizontal' },
+        xAxis: { type: 'string', const: 'repo_name' },
+        yAxis: { type: 'string', const: 'total_cost_usd' },
+        ordering: { type: 'string', const: 'total_cost_usd desc' },
+      },
+    },
+    dataSources: [projectionSource(TOPICS.costByRepo)],
+    events: { emits: [], consumes: [{ name: 'time_range_changed' }] },
+    defaultSize: { w: 6, h: 4 },
+    minSize: { w: 3, h: 3 },
+    maxSize: { w: 12, h: 8 },
+    emptyState: {
+      message: 'No cost-by-repo data available',
+      hint: 'Cost by repository appears after repo_name is populated upstream',
+      reasons: {
+        'no-data': {
+          message: 'No cost records yet — cost-by-repo data appears after LLM calls are tracked.',
+        },
+        'upstream-blocked': {
+          message:
+            'repo_name column is absent from llm_cost_aggregates (omnibase_infra migration 031:142). ' +
+            'Widget renders once upstream adds repo_name or standardises on aggregation_key encoding.',
+          cta: 'See OMN-10302',
+        },
+      },
+    },
+    capabilities: {
+      supports_compare: false,
+      supports_export: true,
+      supports_fullscreen: true,
+      supports_time_range: true,
+    },
+  },
   'delegation-metrics': {
     name: 'delegation-metrics',
     displayName: 'Delegation Metrics',
