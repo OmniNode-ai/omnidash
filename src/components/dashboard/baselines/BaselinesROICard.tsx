@@ -26,6 +26,9 @@ function DeltaMetric({ label, value, unit }: { label: string; value: number; uni
   );
 }
 
+// STAY-BESPOKE (OMN-10296): mixes a 3-column KPI cluster with a recommendation list section.
+// This dual-layout does not decompose cleanly to <KPITileCluster> alone.
+// Re-evaluate migration post-iteration-1 when KPITileCluster has wider adoption.
 export default function BaselinesROICard({ config: _config }: { config: Record<string, unknown> }) {
   const { data: dataArr, isLoading, error } = useProjectionQuery<BaselinesSummary>({
     topic: TOPICS.baselinesRoi,
