@@ -39,7 +39,9 @@ describe('Proof of Life — Part 2', () => {
     // Post-merge (OMN-22 widget consolidation): the 2D companions
     // (cost-by-model-2d, cost-trend-3d, quality-score-panel-2d) collapsed
     // into their primary counterparts via per-widget `dimension` config.
-    expect(all.length).toBe(9);
+    // OMN-10301: cost-summary added as IKPITileClusterAdapter manifest entry.
+    // OMN-10303: token-usage added as ITrendChartAdapter manifest entry.
+    expect(all.length).toBe(10);
     expect(all.map((c) => c.name).sort()).toEqual([
       'baselines-roi-card',
       'cost-by-model',
@@ -50,6 +52,7 @@ describe('Proof of Life — Part 2', () => {
       'quality-score-panel',
       'readiness-gate',
       'routing-decision-table',
+      'token-usage',
     ]);
   });
 

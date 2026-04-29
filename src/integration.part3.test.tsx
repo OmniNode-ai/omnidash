@@ -43,7 +43,7 @@ describe('Proof of Life — Part 3 (Full System)', () => {
 
   afterEach(() => vi.restoreAllMocks());
 
-  it('all 7 component manifests pass validation', () => {
+  it('all component manifests pass validation', () => {
     for (const [name, m] of Object.entries(manifest.components)) {
       const result = validateComponentManifest(m);
       expect(result.valid, `Manifest "${name}" invalid: ${result.errors.join(', ')}`).toBe(true);
@@ -54,10 +54,9 @@ describe('Proof of Life — Part 3 (Full System)', () => {
     const registry = new ComponentRegistry(manifest);
     await registry.resolveImplementations();
     const available = registry.getAvailableComponents().filter((c) => c.status === 'available');
-    // 9 post-merge: 8 original + cost-summary (OMN-10301, T18).
-    // Three 2D companions were already consolidated into their primary
-    // entries via dimension config (OMN-22).
-    expect(available.length).toBe(9);
+    // 10 post-merge: 8 original + cost-summary (OMN-10301) + token-usage (OMN-10303).
+    // Three 2D companions consolidated into primary entries via dimension config (OMN-22).
+    expect(available.length).toBe(10);
   });
 
   it('both templates pass validation', () => {

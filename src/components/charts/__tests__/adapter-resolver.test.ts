@@ -1,4 +1,7 @@
 import { describe, it, expect } from 'vitest';
+import { readFileSync } from 'fs';
+import { resolve, dirname } from 'path';
+import { fileURLToPath } from 'url';
 import {
   resolveChartAdapter,
   UnknownAdapterError,
@@ -12,6 +15,14 @@ import type { IBarChartAdapter } from '@shared/types/chart-adapter-bar';
 import type { ITrendChartAdapter } from '@shared/types/chart-adapter-trend';
 import type { IKPITileClusterAdapter } from '@shared/types/chart-adapter-kpi';
 import type { IDataTableAdapter } from '@shared/types/chart-adapter-table';
+import type { RegistryManifest } from '@/registry/types';
+
+const __dirname = dirname(fileURLToPath(import.meta.url));
+const registryJson = readFileSync(
+  resolve(__dirname, '../../../registry/component-registry.json'),
+  'utf-8',
+);
+const registry: RegistryManifest = JSON.parse(registryJson);
 
 describe('resolveChartAdapter', () => {
   describe('positive resolutions', () => {
@@ -42,6 +53,48 @@ describe('resolveChartAdapter', () => {
       expect(result).toBe(DataTableThreeJs);
       const _check: IDataTableAdapter = result as IDataTableAdapter;
       expect(typeof _check).toBe('function');
+    });
+  });
+
+  describe('token-usage manifest entry (OMN-10303)', () => {
+    it('token-usage entry is present in the generated registry', () => {
+      expect(registry.components['token-usage']).toBeDefined();
+    });
+
+    it('token-usage implementationKey routes to ITrendChartAdapter/threejs', () => {
+      const entry = registry.components['token-usage']!;
+      expect(entry.implementationKey).toBe('ITrendChartAdapter/threejs');
+    });
+
+    it('resolveChartAdapter ITrendChartAdapter + threejs resolves to TrendChartThreeJs', () => {
+      const result = resolveChartAdapter('ITrendChartAdapter', 'threejs');
+      expect(result).toBe(TrendChartThreeJs);
+    });
+
+    it('token-usage projectionSchema declares x-orderingAuthority with bucket_time asc UTC', () => {
+      const entry = registry.components['token-usage']!;
+      const schema = entry.projectionSchema as Record<string, unknown> | undefined;
+      expect(schema).toBeDefined();
+      const authority = schema!['x-orderingAuthority'] as Record<string, string> | undefined;
+      expect(authority).toBeDefined();
+      expect(authority!['fieldName']).toBe('bucket_time');
+      expect(authority!['direction']).toBe('asc');
+      expect(authority!['clockSemantics']).toBe('UTC');
+    });
+
+    it('token-usage emptyState declares both no-data and upstream-blocked reasons', () => {
+      const entry = registry.components['token-usage']!;
+      const reasons = entry.emptyState.reasons;
+      expect(reasons).toBeDefined();
+      const ids = reasons!.map((r: { id: string }) => r.id);
+      expect(ids).toContain('no-data');
+      expect(ids).toContain('upstream-blocked');
+    });
+
+    it('token-usage dataSources references costTokenUsage topic', () => {
+      const entry = registry.components['token-usage']!;
+      const topics = entry.dataSources.map((ds: { topic?: string }) => ds.topic);
+      expect(topics).toContain('onex.snapshot.projection.cost.token_usage.v1');
     });
   });
 
