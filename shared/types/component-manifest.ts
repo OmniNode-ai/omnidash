@@ -1,4 +1,5 @@
 import type { JSONSchema7 } from 'json-schema';
+import type { EmptyStateReason } from './chart-config';
 
 // Widget palette categories. Grouped by domain (what the widget is about),
 // not by chart shape (what it looks like) — so 2D and 3D variants of the
@@ -82,8 +83,15 @@ export interface ComponentManifest {
   emptyState: {
     message: string;
     hint?: string;
-    /** Reason-coded empty states for adapters that distinguish "no-data" from "upstream-blocked". */
-    reasons?: Array<{ id: string; label: string; description: string }>;
+    /**
+     * Per-reason messages for widgets that distinguish between empty-state causes.
+     * When provided, the adapter renders the matching per-reason message in preference
+     * to the top-level `message`. Omit for widgets that do not need distinguished states.
+     *
+     * Key set mirrors `EmptyStateReason` in chart-config.ts. Notably, `upstream-blocked`
+     * MUST be declared for any widget whose projection schema has upstream-blocked columns.
+     */
+    reasons?: Partial<Record<EmptyStateReason, { message: string; cta?: string }>>;
   };
   capabilities: {
     supports_compare: boolean;

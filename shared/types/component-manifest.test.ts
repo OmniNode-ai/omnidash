@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { validateComponentManifest, type ComponentManifest, type ProjectionOrderingAuthority } from './component-manifest';
-import type { BarChartFieldMapping, TrendChartFieldMapping, EmptyStateConfig } from './chart-config';
+import type { BarChartFieldMapping, TrendChartFieldMapping, EmptyStateConfig, EmptyStateReason } from './chart-config';
+import { TOPICS } from './topics';
 
 describe('ComponentManifest validation', () => {
   const validManifest: ComponentManifest = {
@@ -288,6 +289,114 @@ describe('ComponentManifest validation', () => {
         });
         expect(result.valid).toBe(true);
       }
+    });
+  });
+
+  // OMN-10302: cost-by-repo manifest entry validation
+  describe('cost-by-repo manifest entry (OMN-10302)', () => {
+    const costByRepoManifest: ComponentManifest = {
+      name: 'cost-by-repo',
+      displayName: 'Cost by Repo',
+      description: 'LLM cost per repository as a horizontal bar chart; upstream-blocked until repo_name column exists.',
+      category: 'cost',
+      version: '1.0.0',
+      implementationKey: 'IBarChartAdapter/threejs',
+      dataSources: [
+        { type: 'projection', topic: TOPICS.costByRepo, required: true, purpose: 'initial_fetch' },
+      ],
+      events: { emits: [], consumes: [{ name: 'time_range_changed' }] },
+      defaultSize: { w: 6, h: 4 },
+      minSize: { w: 3, h: 3 },
+      maxSize: { w: 12, h: 8 },
+      emptyState: {
+        message: 'No cost-by-repo data available',
+        hint: 'Cost by repository appears after repo_name is populated upstream',
+        reasons: {
+          'no-data': { message: 'No records yet.' },
+          'upstream-blocked': {
+            message: 'repo_name column is absent from llm_cost_aggregates (migration 031:142).',
+            cta: 'See OMN-10302',
+          },
+        },
+      },
+      projectionSchema: {
+        type: 'object',
+        required: ['repo_name', 'total_cost_usd', 'window'],
+        properties: {
+          repo_name: { type: 'string' },
+          total_cost_usd: { type: 'number' },
+          window: { type: 'string' },
+        },
+      },
+      displayContract: {
+        description: 'Horizontal bar per repo, x=repo_name, y=total_cost_usd, sorted descending.',
+        type: 'object',
+        properties: {
+          chartType: { type: 'string', const: 'bar' },
+          orientation: { type: 'string', const: 'horizontal' },
+          xAxis: { type: 'string', const: 'repo_name' },
+          yAxis: { type: 'string', const: 'total_cost_usd' },
+          ordering: { type: 'string', const: 'total_cost_usd desc' },
+        },
+      },
+      capabilities: {
+        supports_compare: false,
+        supports_export: true,
+        supports_fullscreen: true,
+        supports_time_range: true,
+      },
+    };
+
+    it('validates the cost-by-repo manifest entry', () => {
+      const result = validateComponentManifest(costByRepoManifest);
+      expect(result.valid).toBe(true);
+      expect(result.errors).toHaveLength(0);
+    });
+
+    it('uses TOPICS.costByRepo as the data source topic', () => {
+      expect(costByRepoManifest.dataSources[0]!.topic).toBe(TOPICS.costByRepo);
+      expect(TOPICS.costByRepo).toBe('onex.snapshot.projection.cost.by_repo.v1');
+    });
+
+    it('declares implementationKey routing to IBarChartAdapter/threejs', () => {
+      expect(costByRepoManifest.implementationKey).toBe('IBarChartAdapter/threejs');
+    });
+
+    it('emptyState.reasons includes both no-data and upstream-blocked', () => {
+      const reasons = costByRepoManifest.emptyState.reasons!;
+      const reasonKeys = Object.keys(reasons) as EmptyStateReason[];
+      expect(reasonKeys).toContain('no-data');
+      expect(reasonKeys).toContain('upstream-blocked');
+    });
+
+    it('upstream-blocked reason message cites migration 031:142', () => {
+      const upstreamBlockedMsg = costByRepoManifest.emptyState.reasons!['upstream-blocked']!.message;
+      expect(upstreamBlockedMsg).toMatch(/031:142/);
+    });
+
+    it('projectionSchema declares repo_name with upstream-blocked annotation', () => {
+      const schema = costByRepoManifest.projectionSchema as Record<string, unknown>;
+      const props = schema['properties'] as Record<string, { type: string; description?: string }>;
+      expect(props['repo_name']).toBeDefined();
+      expect(props['repo_name']!.type).toBe('string');
+    });
+
+    it('projectionSchema declares total_cost_usd as number', () => {
+      const schema = costByRepoManifest.projectionSchema as Record<string, unknown>;
+      const props = schema['properties'] as Record<string, { type: string }>;
+      expect(props['total_cost_usd']!.type).toBe('number');
+    });
+
+    it('displayContract declares horizontal bar orientation sorted by total_cost_usd desc', () => {
+      const dc = costByRepoManifest.displayContract as Record<string, unknown>;
+      const props = dc['properties'] as Record<string, { type: string; const?: string }>;
+      expect(props['orientation']!.const).toBe('horizontal');
+      expect(props['ordering']!.const).toBe('total_cost_usd desc');
+    });
+
+    it('accepts emptyState with reasons (backward-compatible reasons field)', () => {
+      const result = validateComponentManifest(costByRepoManifest);
+      expect(result.valid).toBe(true);
     });
   });
 });

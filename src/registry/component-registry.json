@@ -1,6 +1,6 @@
 {
   "manifestVersion": "1.0",
-  "generatedAt": "2026-04-29T20:41:04.140Z",
+  "generatedAt": "2026-04-29T21:02:17.757Z",
   "components": {
     "cost-trend-panel": {
       "name": "cost-trend-panel",
@@ -184,6 +184,134 @@
       "emptyState": {
         "message": "No cost data available",
         "hint": "Cost data appears after LLM calls are tracked"
+      },
+      "capabilities": {
+        "supports_compare": false,
+        "supports_export": true,
+        "supports_fullscreen": true,
+        "supports_time_range": true
+      }
+    },
+    "cost-by-repo": {
+      "name": "cost-by-repo",
+      "displayName": "Cost by Repo",
+      "description": "LLM cost per repository as a horizontal bar chart; bars sorted by cost descending. Upstream-blocked until repo_name column is added (omnibase_infra migration 031:142).",
+      "category": "cost",
+      "version": "1.0.0",
+      "implementationKey": "IBarChartAdapter/threejs",
+      "configSchema": {
+        "type": "object",
+        "properties": {
+          "fieldMappings": {
+            "type": "object",
+            "properties": {
+              "x": {
+                "type": "string",
+                "const": "repo_name"
+              },
+              "y": {
+                "type": "string",
+                "const": "total_cost_usd"
+              }
+            },
+            "additionalProperties": false
+          }
+        },
+        "additionalProperties": false
+      },
+      "projectionSchema": {
+        "type": "object",
+        "required": [
+          "repo_name",
+          "total_cost_usd",
+          "window"
+        ],
+        "properties": {
+          "repo_name": {
+            "type": "string",
+            "description": "Repository name. UPSTREAM BLOCKED: column absent from llm_cost_aggregates (migration 031:142). Populated once upstream adds repo_name OR decodes from aggregation_key encoding repo:<name>."
+          },
+          "total_cost_usd": {
+            "type": "number",
+            "description": "Total LLM cost in USD for this repository over the projection window."
+          },
+          "window": {
+            "type": "string",
+            "description": "Aggregation window identifier (e.g. \"7d\", \"30d\")."
+          }
+        },
+        "x-orderingAuthority": {
+          "authority": "aggregation_key",
+          "fieldName": "total_cost_usd",
+          "direction": "desc"
+        }
+      },
+      "displayContract": {
+        "description": "Horizontal bar per repo, x-axis = repo_name, y-axis = total_cost_usd in USD, bars sorted by cost descending. Upstream-blocked empty state rendered until repo_name column exists in the projection.",
+        "type": "object",
+        "properties": {
+          "chartType": {
+            "type": "string",
+            "const": "bar"
+          },
+          "orientation": {
+            "type": "string",
+            "const": "horizontal"
+          },
+          "xAxis": {
+            "type": "string",
+            "const": "repo_name"
+          },
+          "yAxis": {
+            "type": "string",
+            "const": "total_cost_usd"
+          },
+          "ordering": {
+            "type": "string",
+            "const": "total_cost_usd desc"
+          }
+        }
+      },
+      "dataSources": [
+        {
+          "type": "projection",
+          "topic": "onex.snapshot.projection.cost.by_repo.v1",
+          "required": true,
+          "purpose": "initial_fetch"
+        }
+      ],
+      "events": {
+        "emits": [],
+        "consumes": [
+          {
+            "name": "time_range_changed"
+          }
+        ]
+      },
+      "defaultSize": {
+        "w": 6,
+        "h": 4
+      },
+      "minSize": {
+        "w": 3,
+        "h": 3
+      },
+      "maxSize": {
+        "w": 12,
+        "h": 8
+      },
+      "emptyState": {
+        "message": "No cost-by-repo data available",
+        "hint": "Cost by repository appears after repo_name is populated upstream",
+        "reasons": {
+          "no-data": {
+            "message": "No cost records yet — cost-by-repo data appears after LLM calls are tracked."
+          },
+          "upstream-blocked": {
+            "message": "repo_name column is absent from llm_cost_aggregates (omnibase_infra migration 031:142). Widget renders once upstream adds repo_name or standardises on aggregation_key encoding.",
+            "cta": "See OMN-10302"
+          }
+        }
       },
       "capabilities": {
         "supports_compare": false,
@@ -818,18 +946,15 @@
       "emptyState": {
         "message": "No token usage data available",
         "hint": "Token usage data appears after LLM calls are tracked.",
-        "reasons": [
-          {
-            "id": "no-data",
-            "label": "No data",
-            "description": "No token usage buckets emitted for the selected time range."
+        "reasons": {
+          "no-data": {
+            "message": "No token usage buckets emitted for the selected time range."
           },
-          {
-            "id": "upstream-blocked",
-            "label": "Upstream blocked",
-            "description": "The omnimarket token-usage emitter and omnibase_infra aggregation path are not yet wired. total_tokens BIGINT exists in llm_cost_aggregates (migration 031:147) but no snapshot emitter is running."
+          "upstream-blocked": {
+            "message": "Token usage emitter not yet wired: total_tokens BIGINT exists in llm_cost_aggregates (migration 031:147) but the omnimarket emitter and snapshot path are not running.",
+            "cta": "See OMN-10303"
           }
-        ]
+        }
       },
       "capabilities": {
         "supports_compare": false,

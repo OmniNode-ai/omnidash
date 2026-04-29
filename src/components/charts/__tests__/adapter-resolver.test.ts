@@ -86,9 +86,8 @@ describe('resolveChartAdapter', () => {
       const entry = registry.components['token-usage']!;
       const reasons = entry.emptyState.reasons;
       expect(reasons).toBeDefined();
-      const ids = reasons!.map((r: { id: string }) => r.id);
-      expect(ids).toContain('no-data');
-      expect(ids).toContain('upstream-blocked');
+      expect(Object.keys(reasons!)).toContain('no-data');
+      expect(Object.keys(reasons!)).toContain('upstream-blocked');
     });
 
     it('token-usage dataSources references costTokenUsage topic', () => {
