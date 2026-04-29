@@ -4,6 +4,10 @@
 >
 > This file contains **omnidash-specific** frontend architecture and conventions.
 
+## Doctrine integration
+
+Dashboard v2 follows the [OmniNode deterministic truth doctrine](https://github.com/OmniNode-ai/omni_home/blob/main/docs/standards/OMNINODE_DETERMINISTIC_TRUTH_DOCTRINE.md). Components render authoritative data; they do not create it. The component-local contract is `src/components/dashboard/README.md`.
+
 ## Local dev mode (no infra)
 
 This repo runs in two modes:
@@ -13,10 +17,11 @@ This repo runs in two modes:
 ### Hard rules
 
 1. **Do NOT hardcode** `localhost:3002` anywhere. All data access goes through `src/data-source/` — either `FileSnapshotSource` or `HttpSnapshotSource`, selected by `VITE_DATA_SOURCE`.
-2. **Do NOT hand-edit** `src/registry/component-registry.json`. Run `npm run generate:registry`.
-3. **Do NOT hand-edit** anything under `src/shared/types/generated/`. Run `npm run types:generate`.
-4. **Do NOT edit** any file under `node_modules/`. Components discovered there are read-only.
-5. **Fixtures and layouts are not committed.** They live under `./fixtures/` and `./dashboard-layouts/`, both gitignored.
+2. **Do NOT let components own truth.** Widgets may render projection/API data and presentation state only. They must not read Postgres, import backend event-bus/database clients, implement reducers, or infer authoritative state. See `src/components/dashboard/README.md`.
+3. **Do NOT hand-edit** `src/registry/component-registry.json`. Run `npm run generate:registry`.
+4. **Do NOT hand-edit** anything under `src/shared/types/generated/`. Run `npm run types:generate`.
+5. **Do NOT edit** any file under `node_modules/`. Components discovered there are read-only.
+6. **Fixtures and layouts are not committed.** They live under `./fixtures/` and `./dashboard-layouts/`, both gitignored.
 
 ### Common tasks
 
@@ -32,10 +37,11 @@ npm run dev
 
 _Track A — local MVP widget (the seven current widgets use this path):_
 1. Create `src/components/dashboard/<name>/<Name>.tsx`. Default-export a React component that accepts a `config` prop shaped per its manifest.
-2. Register the lazy import in `src/components/dashboard/index.ts` under its `implementationKey` (e.g. `'<name>/<Name>': lazy(() => import('./<name>/<Name>'))`).
-3. Add the manifest entry to the `MVP_COMPONENTS` object in `scripts/generate-registry.ts`. This is the canonical MVP manifest location — there is no per-widget `manifest.ts` file for local widgets.
-4. Run `npm run generate:registry` to rewrite `src/registry/component-registry.json`.
-5. Restart dev server.
+2. Consume data through `useProjectionQuery(...)` or an approved `src/data-source/` adapter. Add an upstream projection/API surface before adding any component-side reducer or backend client.
+3. Register the lazy import in `src/components/dashboard/index.ts` under its `implementationKey` (e.g. `'<name>/<Name>': lazy(() => import('./<name>/<Name>'))`).
+4. Add the manifest entry to the `MVP_COMPONENTS` object in `scripts/generate-registry.ts`. This is the canonical MVP manifest location — there is no per-widget `manifest.ts` file for local widgets.
+5. Run `npm run generate:registry` to rewrite `src/registry/component-registry.json`.
+6. Restart dev server.
 
 _Track B — external package widget (plugin extension path):_
 1. Publish an `@omninode/*` npm package containing your widget component plus a JSON manifest file listing one or more `ComponentManifest` entries.
