@@ -37,6 +37,23 @@ export const TOPICS = {
    * but the aggregation/snapshot emitter path is not yet wired.
    */
   costTokenUsage: 'onex.snapshot.projection.cost.token_usage.v1',
+  /**
+   * Cost aggregated by repository. Topic registration leads consumer.
+   *
+   * Consumer: ships in OMN-10302 (T19 in epic OMN-10282 plan), which adds the
+   * IBarChartAdapter manifest entry once OMN-10286 (T4, BarChart primitive)
+   * lands. Sequenced this way because the manifest entry depends on the
+   * primitive type, which depends on the chart-config schema (OMN-10284, merged).
+   *
+   * Upstream blocker: `repo_name` column is absent from `llm_cost_aggregates`
+   * (omnibase_infra migration 031:142 has only generic `aggregation_key`).
+   * Resolution: either new migration adding `repo_name` OR standardize on
+   * `aggregation_key` encoding `repo:<name>`. Decision pending — tracked in
+   * the OMN-10302 ticket body and the omnimarket emitter ticket (TBD).
+   *
+   * @see {@link https://linear.app/omninode/issue/OMN-10302}
+   */
+  costByRepo: 'onex.snapshot.projection.cost.by_repo.v1',
 } as const;
 
 export type TopicSymbol = (typeof TOPICS)[keyof typeof TOPICS];
