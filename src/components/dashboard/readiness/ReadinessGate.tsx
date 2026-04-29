@@ -5,6 +5,12 @@ import { useProjectionQuery } from '@/hooks/useProjectionQuery';
 import { TOPICS } from '@shared/types/topics';
 import { useTimezone } from '@/hooks/useTimezone';
 
+// STAY-BESPOKE (OMN-10295): This widget renders a status-pill HTML table with
+// per-dimension tri-state rows plus freshness downgrade semantics. It does not
+// decompose cleanly to IBarChartAdapter, ITrendChartAdapter, or
+// IKPITileClusterAdapter at iteration-1. Re-evaluate post-iteration-2 if a
+// generic "status grid" primitive is introduced.
+
 export type DimensionStatus = 'PASS' | 'WARN' | 'FAIL';
 
 export interface ReadinessDimension {
@@ -17,6 +23,27 @@ export interface ReadinessSummary {
   dimensions: ReadinessDimension[];
   overallStatus: DimensionStatus;
   lastCheckedAt: string;
+}
+
+const HOUR_MS = 60 * 60 * 1000;
+
+/**
+ * Applies freshness downgrade per SOW Architectural Decision #4.
+ * >24h old → caps at WARN; >72h old → caps at FAIL.
+ * The projection's declared overallStatus is never upgraded by this function.
+ */
+export function applyFreshnessDowngrade(
+  status: DimensionStatus,
+  lastCheckedAt: string,
+  nowMs = Date.now(),
+): DimensionStatus {
+  const ageMs = nowMs - new Date(lastCheckedAt).getTime();
+  if (ageMs > 72 * HOUR_MS) return 'FAIL';
+  if (ageMs > 24 * HOUR_MS) {
+    if (status === 'PASS') return 'WARN';
+    return status;
+  }
+  return status;
 }
 
 const STATUS_COLORS: Record<DimensionStatus, string> = {
@@ -60,6 +87,9 @@ export default function ReadinessGate({ config: _config }: { config: Record<stri
   });
   const data = dataArr?.[0];
   const tz = useTimezone();
+  const effectiveStatus = data
+    ? applyFreshnessDowngrade(data.overallStatus, data.lastCheckedAt)
+    : undefined;
 
   return (
     <ComponentWrapper
@@ -70,11 +100,11 @@ export default function ReadinessGate({ config: _config }: { config: Record<stri
       emptyMessage="No readiness data"
       emptyHint="Readiness dimensions appear after checks are registered"
     >
-      {data && (
+      {data && effectiveStatus && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
             <Text size="md" color="secondary">Overall</Text>
-            <StatusPill status={data.overallStatus} />
+            <span data-testid="overall-status-pill"><StatusPill status={effectiveStatus} /></span>
             <Text size="sm" color="tertiary" style={{ marginLeft: 'auto' }}>
               Checked {new Date(data.lastCheckedAt).toLocaleTimeString(undefined, { timeZone: tz })}
             </Text>
