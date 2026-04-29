@@ -85,6 +85,44 @@ describe('BarChart', () => {
       ).toBeTruthy();
     });
 
+    it('validates every row instead of only the first row', () => {
+      render(
+        <BarChart
+          projectionData={[
+            { repo: 'omniclaude', cost_usd: 12.45 },
+            { repo: 'omnimarket', cost_usd: { nested: true } },
+          ] as Record<string, unknown>[]}
+          fieldMappings={{ x: 'repo', y: 'cost_usd' }}
+          emptyState={{
+            reasons: { 'schema-invalid': { message: 'Bad row detected' } },
+          }}
+        />,
+      );
+      expect(screen.getByText('Bad row detected')).toBeTruthy();
+      expect(
+        screen.getByTestId('barchart-canvas').querySelector('[data-empty-reason="schema-invalid"]'),
+      ).toBeTruthy();
+    });
+
+    it('requires group field on every row when group mapping is declared', () => {
+      render(
+        <BarChart
+          projectionData={[
+            { repo: 'omniclaude', window: '24h', cost_usd: 4.10 },
+            { repo: 'omnimarket', cost_usd: 2.80 },
+          ] as Record<string, unknown>[]}
+          fieldMappings={{ x: 'repo', y: 'cost_usd', group: 'window' }}
+          emptyState={{
+            reasons: { 'missing-field': { message: 'Group field missing' } },
+          }}
+        />,
+      );
+      expect(screen.getByText('Group field missing')).toBeTruthy();
+      expect(
+        screen.getByTestId('barchart-canvas').querySelector('[data-empty-reason="missing-field"]'),
+      ).toBeTruthy();
+    });
+
     it('does NOT collapse schema-invalid into no-data', () => {
       render(
         <BarChart

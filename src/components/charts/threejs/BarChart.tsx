@@ -35,21 +35,23 @@ function detectEmptyReason(
   projectionData: Record<string, unknown>[],
   xField: string,
   yField: string,
-  groupField?: string,
+  groupField: string | undefined,
 ): EmptyStateReason | null {
   if (projectionData.length === 0) return 'no-data';
   for (const row of projectionData) {
-    if (
-      !(xField in row) ||
-      !(yField in row) ||
-      (groupField !== undefined && !(groupField in row))
-    ) {
+    if (!(xField in row) || !(yField in row) || (groupField !== undefined && !(groupField in row))) {
       return 'missing-field';
     }
-    const yVal = row[yField];
-    if (typeof yVal !== 'number' || !Number.isFinite(yVal)) {
-      return 'schema-invalid';
-    }
+    if (toFiniteNumber(row[yField]) === null) return 'schema-invalid';
+  }
+  return null;
+}
+
+function toFiniteNumber(value: unknown): number | null {
+  if (typeof value === 'number') return Number.isFinite(value) ? value : null;
+  if (typeof value === 'string' && value.trim() !== '') {
+    const parsed = Number(value);
+    return Number.isFinite(parsed) ? parsed : null;
   }
   return null;
 }
@@ -89,9 +91,8 @@ function buildStackedSlice(
     const bIdx = bucketIndex.get(bucket);
     if (bIdx === undefined) continue;
     const groupKey = groupField ? String(row[groupField] ?? '') : 'value';
-    // y values are pre-validated as finite numbers by detectEmptyReason before
-    // buildStackedSlice is called — no coercion needed here.
-    const yVal = row[yField] as number;
+    const yVal = toFiniteNumber(row[yField]);
+    if (yVal === null) continue;
     perModelCost[groupKey][bIdx] = (perModelCost[groupKey][bIdx] ?? 0) + yVal;
   }
 
