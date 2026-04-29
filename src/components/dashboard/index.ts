@@ -1,7 +1,7 @@
 import { lazy } from 'react';
 
 export const componentImports: Record<string, ReturnType<typeof lazy>> = {
-  'cost-trend/CostTrend': lazy(() => import('./cost-trend/CostTrend')),
+  'ITrendChartAdapter/threejs': lazy(() => import('./cost-trend/CostTrendAdapter')),
   'cost-by-model/CostByModel': lazy(() => import('./cost-by-model/CostByModel')),
   'delegation/DelegationMetrics': lazy(() => import('./delegation/DelegationMetrics')),
   'routing/RoutingDecisionTable': lazy(() => import('./routing/RoutingDecisionTable')),

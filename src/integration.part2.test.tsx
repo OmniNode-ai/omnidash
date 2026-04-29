@@ -104,10 +104,11 @@ describe('Proof of Life — Part 2', () => {
 
   it('config validation works against manifest schema', () => {
     const registry = new ComponentRegistry(manifest);
-    // Valid config — uses fields that exist in the cost-trend-panel
-    // schema today: dimension + style + granularity. `chartType` is
-    // now internal to CostTrend2D and router-driven (OMN-22).
-    const valid = registry.validateConfig('cost-trend-panel', { dimension: '2d', style: 'bar', granularity: 'day' });
+    // Valid config — cost-trend-panel v3 schema has style + granularity.
+    // `dimension` was removed when the bespoke CostTrend router was replaced
+    // by ITrendChartAdapter dispatch (OMN-10292); TrendChartThreeJs is the
+    // unified renderer and does not expose a dimension toggle.
+    const valid = registry.validateConfig('cost-trend-panel', { style: 'bar', granularity: 'day' });
     expect(valid.valid).toBe(true);
 
     // Invalid config — unknown key. `additionalProperties: false`
