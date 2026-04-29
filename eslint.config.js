@@ -19,6 +19,9 @@
 //   - react-hooks/exhaustive-deps (we have a few intentional one-shot
 //     effects whose dep arrays are intentionally narrow; turning this
 //     on without auditing would generate noise).
+//   5. local/no-projection-fallback (OMN-10304): flags fallback defaults
+//      applied to projection-derived values (useProjectionQuery results).
+//      v1 scope: direct destructuring + member-expression fallbacks only.
 
 import js from '@eslint/js';
 import tseslint from 'typescript-eslint';
@@ -76,6 +79,7 @@ export default [
     rules: {
       'local/no-typography-inline': 'error',
       'local/no-cast-on-parsed-json': 'error',
+      'local/no-projection-fallback': 'error',
       'react-hooks/rules-of-hooks': 'error',
       // `exhaustive-deps` is set to `warn` rather than `error` so that
       // genuine one-shot effects (mount-only hydration, resize observer

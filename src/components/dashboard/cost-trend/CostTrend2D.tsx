@@ -50,7 +50,9 @@ function buildStacked(
   // and default missing cells to 0 without another pass.
   const byKey = new Map<string, number>();
   for (const d of data) {
-    byKey.set(`${d.bucket_time}|${d.model_name}`, parseFloat(d.total_cost_usd) || 0);
+    const cost = parseFloat(d.total_cost_usd);
+    if (!isFinite(cost)) continue;
+    byKey.set(`${d.bucket_time}|${d.model_name}`, cost);
   }
   const perModelCost: Record<string, number[]> = {};
   for (const m of visibleModels) {

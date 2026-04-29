@@ -60,7 +60,8 @@ function reshapeToGrid(data: CostDataPoint[]): GridDataset {
     bucketSet.add(d.bucket_time);
     modelSet.add(d.model_name);
     const key = `${d.bucket_time}|${d.model_name}`;
-    const cost = parseFloat(d.total_cost_usd) || 0;
+    const cost = parseFloat(d.total_cost_usd);
+    if (!isFinite(cost)) continue;
     const tokens = d.total_tokens ?? 0;
     const reqs = d.request_count ?? 1;
     const existing = byKey.get(key);

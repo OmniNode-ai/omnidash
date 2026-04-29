@@ -48,7 +48,7 @@ export default function QualityScoreHistogram({ config }: { config: Config }) {
   });
   const data = dataArr?.[0];
 
-  const isEmpty = !data || (data.totalMeasurements ?? 0) === 0;
+  const isEmpty = !data || !data.totalMeasurements;
 
   const bars = useMemo(() => {
     if (!data) return [];
