@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { validateComponentManifest, type ComponentManifest } from './component-manifest';
+import type { BarChartFieldMapping, TrendChartFieldMapping, EmptyStateConfig } from './chart-config';
 
 describe('ComponentManifest validation', () => {
   const validManifest: ComponentManifest = {
@@ -88,5 +89,82 @@ describe('ComponentManifest validation', () => {
       ],
     });
     expect(result.valid).toBe(true);
+  });
+
+  // Manifest envelope acceptance: proves configSchema can carry chart-config types.
+  // Task 2 (OMN-10284): no changes to component-manifest.ts — only proving the existing
+  // JSONSchema7-typed configSchema field is flexible enough to carry chart field-mapping
+  // types as a reference object. Chart-specific validation is NOT added here.
+  describe('chart-config type envelope acceptance', () => {
+    it('accepts a manifest whose configSchema references BarChartFieldMapping shape', () => {
+      const barFieldMapping: BarChartFieldMapping = { x: 'model_id', y: 'total_cost_usd' };
+      const result = validateComponentManifest({
+        ...validManifest,
+        configSchema: {
+          type: 'object',
+          description: 'BarChart field mapping config',
+          properties: {
+            x: { type: 'string', description: barFieldMapping.x },
+            y: { type: 'string', description: barFieldMapping.y },
+            group: { type: 'string' },
+            format: { type: 'string' },
+          },
+          required: ['x', 'y'],
+        },
+      });
+      expect(result.valid).toBe(true);
+    });
+
+    it('accepts a manifest whose configSchema references TrendChartFieldMapping shape', () => {
+      const trendFieldMapping: TrendChartFieldMapping = {
+        x: 'bucket_time',
+        y: 'total_cost_usd',
+        granularity: 'day',
+      };
+      const result = validateComponentManifest({
+        ...validManifest,
+        configSchema: {
+          type: 'object',
+          description: 'TrendChart field mapping config',
+          properties: {
+            x: { type: 'string', description: trendFieldMapping.x },
+            y: { type: 'string', description: trendFieldMapping.y },
+            granularity: { type: 'string', enum: ['hour', 'day', 'week'], description: trendFieldMapping.granularity },
+            group: { type: 'string' },
+            format: { type: 'string' },
+          },
+          required: ['x', 'y', 'granularity'],
+        },
+      });
+      expect(result.valid).toBe(true);
+    });
+
+    it('accepts a manifest whose configSchema references EmptyStateConfig shape', () => {
+      const emptyStateCfg: EmptyStateConfig = {
+        defaultMessage: 'No data available',
+        reasons: {
+          'no-data': { message: 'No records', cta: 'Refresh' },
+          'upstream-blocked': { message: 'Upstream blocked' },
+        },
+      };
+      const result = validateComponentManifest({
+        ...validManifest,
+        configSchema: {
+          type: 'object',
+          description: 'EmptyStateConfig reference',
+          properties: {
+            defaultMessage: { type: 'string', description: emptyStateCfg.defaultMessage },
+            reasons: { type: 'object' },
+          },
+        },
+      });
+      expect(result.valid).toBe(true);
+    });
+
+    it('accepts a manifest with no configSchema (chart types are opt-in)', () => {
+      const { configSchema: _, ...manifestWithoutConfig } = validManifest;
+      const result = validateComponentManifest(manifestWithoutConfig as ComponentManifest);
+      expect(result.valid).toBe(true);
+    });
   });
 });
