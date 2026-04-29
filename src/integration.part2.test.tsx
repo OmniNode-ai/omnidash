@@ -40,11 +40,13 @@ describe('Proof of Life — Part 2', () => {
     // (cost-by-model-2d, cost-trend-3d, quality-score-panel-2d) collapsed
     // into their primary counterparts via per-widget `dimension` config.
     // OMN-10301: cost-summary added as IKPITileClusterAdapter manifest entry.
+    // OMN-10302: cost-by-repo added as IBarChartAdapter manifest entry.
     // OMN-10303: token-usage added as ITrendChartAdapter manifest entry.
-    expect(all.length).toBe(10);
+    expect(all.length).toBe(11);
     expect(all.map((c) => c.name).sort()).toEqual([
       'baselines-roi-card',
       'cost-by-model',
+      'cost-by-repo',
       'cost-summary',
       'cost-trend-panel',
       'delegation-metrics',
