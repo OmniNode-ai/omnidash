@@ -6,6 +6,23 @@ import type { JSONSchema7 } from 'json-schema';
 export const COMPONENT_CATEGORIES = ['cost', 'activity', 'quality', 'health'] as const;
 export type ComponentCategory = (typeof COMPONENT_CATEGORIES)[number];
 
+/**
+ * Declares the canonical ordering authority for rows in a projection.
+ * Adapters MUST NOT rely on incidental array order unless this contract is declared.
+ *
+ * - `ingest_sequence`: rows are ordered by their arrival order in the event log
+ * - `bucket_time`: rows are ordered by a time-bucket field (specify via `fieldName`)
+ * - `aggregation_key`: rows are ordered by an aggregation key field (specify via `fieldName`)
+ * - `monotonic_field`: rows are ordered by an arbitrary monotonically increasing field (specify via `fieldName`)
+ */
+export interface ProjectionOrderingAuthority {
+  authority: 'ingest_sequence' | 'bucket_time' | 'aggregation_key' | 'monotonic_field';
+  fieldName?: string;
+  direction?: 'asc' | 'desc';
+  /** ISO-8601 timezone or semantic clock name, required when authority is 'bucket_time' */
+  clockSemantics?: string;
+}
+
 export interface GridSize {
   w: number;
   h: number;
@@ -37,6 +54,23 @@ export interface ComponentManifest {
    * gated on this field being present and having non-empty properties.
    */
   configSchema?: JSONSchema7;
+  /**
+   * Input contract: the JSON schema (or a $ref string pointing to one) that
+   * describes the shape of each row emitted by the upstream projection topic.
+   * Adapters receive data pre-validated against this schema. Omit for widgets
+   * that do not bind to a projection source.
+   *
+   * When row order matters for the widget's output, declare an `ordering`
+   * property inside this schema using `ProjectionOrderingAuthority`.
+   */
+  projectionSchema?: JSONSchema7 | string;
+  /**
+   * Output contract: the JSON schema (or a $ref string pointing to one) that
+   * describes what the rendered widget guarantees to display. Used as the basis
+   * for Playwright assertions (OMN-7093). Omit for widgets with no verifiable
+   * rendered output contract.
+   */
+  displayContract?: JSONSchema7 | string;
   dataSources: DataSourceDeclaration[];
   events: {
     emits: ComponentEvent[];
@@ -73,6 +107,12 @@ export interface ManifestValidationResult {
   errors: string[];
 }
 
+function isValidSchemaReference(value: unknown): boolean {
+  if (typeof value === 'string') return value.trim().length > 0;
+  if (typeof value === 'object' && value !== null) return true;
+  return false;
+}
+
 export function validateComponentManifest(m: ComponentManifest): ManifestValidationResult {
   const errors: string[] = [];
 
@@ -90,6 +130,13 @@ export function validateComponentManifest(m: ComponentManifest): ManifestValidat
   }
   if (m.defaultSize.w > m.maxSize.w || m.defaultSize.h > m.maxSize.h) {
     errors.push('defaultSize cannot exceed maxSize');
+  }
+
+  if (m.projectionSchema !== undefined && !isValidSchemaReference(m.projectionSchema)) {
+    errors.push('projectionSchema must be a JSONSchema7 object or a non-empty $ref string');
+  }
+  if (m.displayContract !== undefined && !isValidSchemaReference(m.displayContract)) {
+    errors.push('displayContract must be a JSONSchema7 object or a non-empty $ref string');
   }
 
   // T16 (OMN-157): every dataSource must declare its target. Dashboard-v2

@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { validateComponentManifest, type ComponentManifest } from './component-manifest';
+import { validateComponentManifest, type ComponentManifest, type ProjectionOrderingAuthority } from './component-manifest';
 import type { BarChartFieldMapping, TrendChartFieldMapping, EmptyStateConfig } from './chart-config';
 
 describe('ComponentManifest validation', () => {
@@ -165,6 +165,113 @@ describe('ComponentManifest validation', () => {
       const { configSchema: _, ...manifestWithoutConfig } = validManifest;
       const result = validateComponentManifest(manifestWithoutConfig as ComponentManifest);
       expect(result.valid).toBe(true);
+    });
+  });
+
+  // OMN-10285: projectionSchema + displayContract envelope acceptance
+  describe('projectionSchema and displayContract fields (OMN-10285)', () => {
+    it('validates a manifest WITH projectionSchema and displayContract (new fields accepted)', () => {
+      const result = validateComponentManifest({
+        ...validManifest,
+        projectionSchema: {
+          type: 'object',
+          properties: {
+            model_id: { type: 'string' },
+            total_cost_usd: { type: 'number' },
+          },
+          required: ['model_id', 'total_cost_usd'],
+        },
+        displayContract: {
+          type: 'object',
+          properties: {
+            bars: { type: 'array', items: { type: 'object' } },
+          },
+        },
+      });
+      expect(result.valid).toBe(true);
+      expect(result.errors).toHaveLength(0);
+    });
+
+    it('validates a manifest WITHOUT projectionSchema and displayContract (backward-compatible)', () => {
+      const result = validateComponentManifest(validManifest);
+      expect(result.valid).toBe(true);
+      expect(result.errors).toHaveLength(0);
+    });
+
+    it('accepts projectionSchema as a $ref string', () => {
+      const result = validateComponentManifest({
+        ...validManifest,
+        projectionSchema: '#/definitions/LLMCostRow',
+      });
+      expect(result.valid).toBe(true);
+    });
+
+    it('accepts displayContract as a $ref string', () => {
+      const result = validateComponentManifest({
+        ...validManifest,
+        displayContract: '#/definitions/BarChartOutput',
+      });
+      expect(result.valid).toBe(true);
+    });
+
+    it('rejects projectionSchema as an empty string', () => {
+      const result = validateComponentManifest({
+        ...validManifest,
+        projectionSchema: '',
+      });
+      expect(result.valid).toBe(false);
+      expect(result.errors[0]).toMatch(/projectionSchema/);
+    });
+
+    it('rejects displayContract as an empty string', () => {
+      const result = validateComponentManifest({
+        ...validManifest,
+        displayContract: '   ',
+      });
+      expect(result.valid).toBe(false);
+      expect(result.errors[0]).toMatch(/displayContract/);
+    });
+
+    it('accepts projectionSchema with ordering authority declaration', () => {
+      const ordering: ProjectionOrderingAuthority = {
+        authority: 'bucket_time',
+        fieldName: 'bucket_time',
+        direction: 'asc',
+        clockSemantics: 'UTC',
+      };
+      const result = validateComponentManifest({
+        ...validManifest,
+        projectionSchema: {
+          type: 'object',
+          properties: {
+            bucket_time: { type: 'string', format: 'date-time' },
+            total_cost_usd: { type: 'number' },
+          },
+          required: ['bucket_time', 'total_cost_usd'],
+          description: JSON.stringify({ ordering }),
+        },
+      });
+      expect(result.valid).toBe(true);
+    });
+
+    it('accepts all four ordering authority variants', () => {
+      const authorities: ProjectionOrderingAuthority['authority'][] = [
+        'ingest_sequence',
+        'bucket_time',
+        'aggregation_key',
+        'monotonic_field',
+      ];
+      for (const authority of authorities) {
+        const ordering: ProjectionOrderingAuthority = { authority };
+        const result = validateComponentManifest({
+          ...validManifest,
+          projectionSchema: {
+            type: 'object',
+            description: JSON.stringify({ ordering }),
+          },
+        });
+        expect(result.valid).toBe(true);
+      }
     });
   });
 });
