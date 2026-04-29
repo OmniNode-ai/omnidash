@@ -194,3 +194,6 @@ export function BarChart<T extends Record<string, unknown> = Record<string, unkn
 // If this assignment fails to typecheck, the component no longer conforms.
 const _typeCheck: IBarChartAdapter = BarChart;
 void _typeCheck;
+
+/** Named alias used by the adapter resolver to identify the threejs implementation. */
+export const BarChartThreeJs: IBarChartAdapter = BarChart as IBarChartAdapter;

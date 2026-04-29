@@ -224,3 +224,6 @@ export function KPITileCluster<T extends Record<string, unknown> = Record<string
 // Compile-time proof that KPITileCluster satisfies IKPITileClusterAdapter.
 const _typeCheck: IKPITileClusterAdapter = KPITileCluster;
 void _typeCheck;
+
+/** Named alias used by the adapter resolver to identify the threejs implementation. */
+export const KPITileClusterThreeJs: IKPITileClusterAdapter = KPITileCluster as IKPITileClusterAdapter;

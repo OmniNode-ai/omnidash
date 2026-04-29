@@ -1,6 +1,7 @@
 import { ChevronUp, ChevronDown, Search } from 'lucide-react';
 import { Text } from '@/components/ui/typography';
 import type { DataTableColumnConfig, EmptyStateConfig } from '@shared/types/chart-config';
+import type { IDataTableAdapter } from '@shared/types/chart-adapter-table';
 import { useTableSearch } from './hooks/useTableSearch';
 import { useTableSort } from './hooks/useTableSort';
 import { useTablePagination } from './hooks/useTablePagination';
@@ -261,6 +262,9 @@ export function DataTable<T extends Record<string, unknown>>({
     </div>
   );
 }
+
+/** Named alias used by the adapter resolver to identify the threejs implementation. */
+export const DataTableThreeJs: IDataTableAdapter = DataTable as IDataTableAdapter;
 
 export type { DataTableProps };
 export { DEFAULT_PAGE_SIZE };
