@@ -61,9 +61,11 @@ describe('resolveChartAdapter', () => {
       expect(registry.components['token-usage']).toBeDefined();
     });
 
-    it('token-usage implementationKey routes to ITrendChartAdapter/threejs', () => {
+    it('token-usage implementationKey routes to token-usage/TokenUsageAdapter (OMN-10305: wired adapter)', () => {
       const entry = registry.components['token-usage']!;
-      expect(entry.implementationKey).toBe('ITrendChartAdapter/threejs');
+      // OMN-10305 wired a dedicated adapter to avoid collision with cost-trend-panel
+      // which also used ITrendChartAdapter/threejs, meaning both would load CostTrendAdapter.
+      expect(entry.implementationKey).toBe('token-usage/TokenUsageAdapter');
     });
 
     it('resolveChartAdapter ITrendChartAdapter + threejs resolves to TrendChartThreeJs', () => {

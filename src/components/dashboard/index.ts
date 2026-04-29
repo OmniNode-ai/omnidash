@@ -3,6 +3,8 @@ import { lazy } from 'react';
 export const componentImports: Record<string, ReturnType<typeof lazy>> = {
   'ITrendChartAdapter/threejs': lazy(() => import('./cost-trend/CostTrendAdapter')),
   'IKPITileClusterAdapter/threejs': lazy(() => import('./cost-summary/CostSummaryAdapter')),
+  'cost-by-repo/CostByRepoAdapter': lazy(() => import('./cost-by-repo/CostByRepoAdapter')),
+  'token-usage/TokenUsageAdapter': lazy(() => import('./token-usage/TokenUsageAdapter')),
   // cost-by-model (2D): manifest-dispatched via IBarChartAdapter → BarChartThreeJs (OMN-10291).
   'IBarChartAdapter': lazy(() =>
     import('@/components/charts/threejs/BarChart').then((m) => ({ default: m.BarChart })),

@@ -6,6 +6,11 @@ fixtures/
 # Storybook fixture builders are part of the source tree (OMN-103).
 !src/storybook/fixtures/
 !src/storybook/fixtures/**
+# OMN-10305: dev server fixtures for E2E proof-of-life (served via /_fixtures middleware).
+!fixtures/
+!fixtures/**
+!server/fixtures/
+!server/fixtures/**
 build/
 dashboard-layouts/
 

@@ -28,6 +28,7 @@ export default defineConfig({
     exclude: [
       '**/node_modules/**',
       '**/dist/**',
+      'tests/**/*.spec.ts',
     ],
     coverage: {
       // Conservative initial floor — guards against coverage collapsing,

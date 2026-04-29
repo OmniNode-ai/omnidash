@@ -1,6 +1,6 @@
 {
   "manifestVersion": "1.0",
-  "generatedAt": "2026-04-29T21:29:18.849Z",
+  "generatedAt": "2026-04-29T22:04:35.806Z",
   "components": {
     "cost-trend-panel": {
       "name": "cost-trend-panel",
@@ -320,7 +320,7 @@
       "description": "LLM cost per repository as a horizontal bar chart; bars sorted by cost descending. Upstream-blocked until repo_name column is added (omnibase_infra migration 031:142).",
       "category": "cost",
       "version": "1.0.0",
-      "implementationKey": "IBarChartAdapter/threejs",
+      "implementationKey": "cost-by-repo/CostByRepoAdapter",
       "configSchema": {
         "type": "object",
         "properties": {
@@ -1054,7 +1054,7 @@
       "description": "Total token consumption over time as a stacked area trend; dispatched to ITrendChartAdapter (impl: threejs). Upstream blocked: omnimarket emitter + omnibase_infra snapshot path missing.",
       "category": "cost",
       "version": "1.0.0",
-      "implementationKey": "ITrendChartAdapter/threejs",
+      "implementationKey": "token-usage/TokenUsageAdapter",
       "configSchema": {
         "type": "object",
         "properties": {
