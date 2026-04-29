@@ -578,18 +578,10 @@ const MVP_COMPONENTS: Record<string, ComponentManifest> = {
     emptyState: {
       message: 'No token usage data available',
       hint: 'Token usage data appears after LLM calls are tracked.',
-      reasons: [
-        {
-          id: 'no-data',
-          label: 'No data',
-          description: 'No token usage buckets emitted for the selected time range.',
-        },
-        {
-          id: 'upstream-blocked',
-          label: 'Upstream blocked',
-          description: 'The omnimarket token-usage emitter and omnibase_infra aggregation path are not yet wired. total_tokens BIGINT exists in llm_cost_aggregates (migration 031:147) but no snapshot emitter is running.',
-        },
-      ],
+      reasons: {
+        'no-data': { message: 'No token usage buckets emitted for the selected time range.' },
+        'upstream-blocked': { message: 'Token usage emitter not yet wired: total_tokens BIGINT exists in llm_cost_aggregates (migration 031:147) but the omnimarket emitter and snapshot path are not running.', cta: 'See OMN-10303' },
+      },
     },
     capabilities: { supports_compare: false, supports_export: true, supports_fullscreen: true, supports_time_range: true },
   },
