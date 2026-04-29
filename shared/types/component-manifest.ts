@@ -82,6 +82,8 @@ export interface ComponentManifest {
   emptyState: {
     message: string;
     hint?: string;
+    /** Reason-coded empty states for adapters that distinguish "no-data" from "upstream-blocked". */
+    reasons?: Array<{ id: string; label: string; description: string }>;
   };
   capabilities: {
     supports_compare: boolean;
