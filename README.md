@@ -12,7 +12,7 @@ OmniDash follows the [OmniNode deterministic truth doctrine](https://github.com/
 
 - Platform developers building or extending dashboard widgets.
 - OmniMarket package authors declaring dashboard component contracts.
-- Platform operators monitoring real-time ONEX runtime events through deployed dashboards.
+- Platform operators monitoring real-time ONEX (OmniNode eXecution) runtime events through deployed dashboards.
 
 ---
 
