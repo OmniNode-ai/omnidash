@@ -1,0 +1,10 @@
+{
+  "id": "33585bd0-2939-41c1-8dc2-fba197924b9b",
+  "created_at": "2026-05-01T04:56:41.168Z",
+  "llm_agent": "claude-opus-4-6",
+  "fuzzy_agent": "deepseek-r1-14b",
+  "agreement": false,
+  "llm_confidence": 0.904,
+  "fuzzy_confidence": 0.688,
+  "cost_usd": 0.017
+}

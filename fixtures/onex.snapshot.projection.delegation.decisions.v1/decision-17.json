@@ -1,0 +1,10 @@
+{
+  "id": "21b7281e-d9e4-4f2a-902c-2952d2d78d8b",
+  "created_at": "2026-04-30T23:43:08.413Z",
+  "llm_agent": "qwen3-coder-30b",
+  "fuzzy_agent": "deepseek-r1-14b",
+  "agreement": false,
+  "llm_confidence": 0.901,
+  "fuzzy_confidence": 0.91,
+  "cost_usd": 0
+}

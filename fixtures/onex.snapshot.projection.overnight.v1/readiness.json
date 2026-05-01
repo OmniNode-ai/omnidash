@@ -1,0 +1,14 @@
+{
+  "run_id": "overnight-2026-05-01",
+  "captured_at": "2026-05-01T06:00:00Z",
+  "overall_status": "pass",
+  "dimensions": [
+    { "name": "kafka_bus", "status": "pass", "detail": "Redpanda healthy, 12 topics active" },
+    { "name": "projection_api", "status": "pass", "detail": "HTTP 200 in 42ms" },
+    { "name": "cost_emitter", "status": "pass", "detail": "847K tokens emitted since midnight" },
+    { "name": "delegation_router", "status": "pass", "detail": "1247 decisions routed, 93% quality gate" },
+    { "name": "model_endpoints", "status": "pass", "detail": "qwen3-coder, deepseek-r1, claude-opus all healthy" },
+    { "name": "database", "status": "pass", "detail": "PostgreSQL latency p99 = 8ms" },
+    { "name": "ci_pipeline", "status": "pass", "detail": "All PRs green, 0 stuck queues" }
+  ]
+}

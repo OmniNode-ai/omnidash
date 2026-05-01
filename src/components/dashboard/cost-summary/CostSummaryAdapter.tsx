@@ -6,6 +6,7 @@ import { useProjectionQuery } from '@/hooks/useProjectionQuery';
 import { TOPICS } from '@shared/types/topics';
 import type { EmptyStateConfig } from '@shared/types/chart-config';
 import { KPITileClusterThreeJs } from '@/components/charts/threejs/KPITileCluster';
+import { Text } from '@/components/ui/typography';
 
 type CostSummaryConfig = Record<string, never>;
 
@@ -39,7 +40,7 @@ const TILES = [
   },
   {
     field: 'total_savings_usd',
-    label: 'Total Savings',
+    label: 'Cloud Cost Avoided',
     format: '$,.2f',
     emptyState: {
       reasons: {
@@ -52,7 +53,7 @@ const TILES = [
   },
   {
     field: 'total_tokens',
-    label: 'Total Tokens',
+    label: 'Tokens Routed Locally',
     format: ',d',
     emptyState: {
       reasons: {
@@ -65,14 +66,54 @@ const TILES = [
   },
 ];
 
+function UsageSourceBadge({ source }: { source: string | undefined }) {
+  if (!source) return null;
+  const isMeasured = source === 'MEASURED';
+  const color = isMeasured ? 'var(--status-ok)' : 'var(--status-warn)';
+  return (
+    <div
+      style={{
+        display: 'inline-flex',
+        alignItems: 'center',
+        gap: 5,
+        padding: '2px 8px',
+        borderRadius: 10,
+        border: `1px solid ${color}`,
+        background: `color-mix(in srgb, ${color} 12%, transparent)`,
+      }}
+    >
+      <span
+        style={{
+          width: 6,
+          height: 6,
+          borderRadius: '50%',
+          background: color,
+          flexShrink: 0,
+        }}
+      />
+      <Text size="xs" family="mono" weight="semibold" style={{ color }}>
+        {source}
+      </Text>
+    </div>
+  );
+}
+
 export default function CostSummaryAdapter(_config: CostSummaryConfig) {
   const { data, isLoading, error } = useProjectionQuery<Record<string, unknown>>({
     queryKey: ['cost-summary', TOPICS.costSummary],
     topic: TOPICS.costSummary,
   });
 
+  const firstRow = data?.[0];
+  const usageSource = typeof firstRow?.usage_source === 'string' ? firstRow.usage_source : undefined;
+
   return (
-    <ComponentWrapper title="Cost Summary" isLoading={isLoading} error={error}>
+    <ComponentWrapper
+      title="Cost Summary"
+      isLoading={isLoading}
+      error={error}
+      headerExtra={<UsageSourceBadge source={usageSource} />}
+    >
       <KPITileClusterThreeJs
         projectionData={data ?? []}
         tiles={TILES}

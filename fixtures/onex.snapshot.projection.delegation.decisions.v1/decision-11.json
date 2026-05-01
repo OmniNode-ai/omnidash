@@ -1,0 +1,10 @@
+{
+  "id": "8abb71b5-7951-4efd-b276-17611de59cf8",
+  "created_at": "2026-05-01T06:29:39.778Z",
+  "llm_agent": "qwen3-coder-30b",
+  "fuzzy_agent": "qwen3-coder-30b",
+  "agreement": true,
+  "llm_confidence": 0.95,
+  "fuzzy_confidence": 0.842,
+  "cost_usd": 0
+}

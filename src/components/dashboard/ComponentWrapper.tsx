@@ -29,6 +29,8 @@ interface ComponentWrapperProps {
   emptyMessage?: string;
   emptyHint?: string;
   isLive?: boolean;
+  /** Optional node rendered in the widget header between the live badge and the kebab menu. */
+  headerExtra?: ReactNode;
   children: ReactNode;
 }
 
@@ -40,6 +42,7 @@ export function ComponentWrapper({
   emptyMessage,
   emptyHint,
   isLive = false,
+  headerExtra,
   children,
 }: ComponentWrapperProps) {
   const chrome = useWidgetChrome();
@@ -97,6 +100,7 @@ export function ComponentWrapper({
         </div>
         <div className="widget-head-right">
           {isLive && <span className="widget-live">Live</span>}
+          {headerExtra}
           {hasMenu && (
             <>
               <button

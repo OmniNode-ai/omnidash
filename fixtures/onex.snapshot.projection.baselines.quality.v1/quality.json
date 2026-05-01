@@ -1,0 +1,12 @@
+{
+  "buckets": [
+    { "score_floor": 0.0, "score_ceiling": 0.2, "count": 3 },
+    { "score_floor": 0.2, "score_ceiling": 0.4, "count": 7 },
+    { "score_floor": 0.4, "score_ceiling": 0.6, "count": 18 },
+    { "score_floor": 0.6, "score_ceiling": 0.8, "count": 42 },
+    { "score_floor": 0.8, "score_ceiling": 1.0, "count": 89 }
+  ],
+  "pass_rate": 0.93,
+  "total_patterns": 159,
+  "captured_at": "2026-05-01T09:00:00Z"
+}

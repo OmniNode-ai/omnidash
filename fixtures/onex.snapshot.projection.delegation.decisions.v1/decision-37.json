@@ -1,0 +1,10 @@
+{
+  "id": "2642342e-450d-46d4-94ac-7042be168852",
+  "created_at": "2026-04-30T09:56:23.934Z",
+  "llm_agent": "claude-opus-4-6",
+  "fuzzy_agent": "claude-opus-4-6",
+  "agreement": true,
+  "llm_confidence": 0.878,
+  "fuzzy_confidence": 0.766,
+  "cost_usd": 0.0169
+}

@@ -1,0 +1,10 @@
+{
+  "id": "51769713-ad18-4aee-a099-d4a045b58f78",
+  "created_at": "2026-05-01T00:05:26.847Z",
+  "llm_agent": "qwen3-coder-30b",
+  "fuzzy_agent": "claude-opus-4-6",
+  "agreement": false,
+  "llm_confidence": 0.786,
+  "fuzzy_confidence": 0.742,
+  "cost_usd": 0
+}

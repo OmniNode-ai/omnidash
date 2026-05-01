@@ -1,0 +1,9 @@
+{
+  "bucket_time": "2026-05-01T06:00:00.000Z",
+  "model_name": "deepseek-r1-14b",
+  "total_cost_usd": "0.000000",
+  "total_tokens": 33658,
+  "prompt_tokens": 21878,
+  "completion_tokens": 11780,
+  "request_count": 37
+}
