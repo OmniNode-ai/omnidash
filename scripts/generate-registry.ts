@@ -333,9 +333,9 @@ const MVP_COMPONENTS: Record<string, ComponentManifest> = {
   'delegation-metrics': {
     name: 'delegation-metrics',
     displayName: 'Delegation Metrics',
-    description: 'Task delegation events, cost savings, and quality gate pass rates; dimension config switches between flat 2D donut and tilted 3D doughnut',
+    description: 'Task delegation events, model breakdown, cost savings, and quality gate pass rates; dimension config switches between flat 2D donut and tilted 3D doughnut',
     category: 'quality',
-    version: '2.0.0',
+    version: '2.1.0',
     implementationKey: 'delegation/DelegationMetrics',
     configSchema: {
       type: 'object',

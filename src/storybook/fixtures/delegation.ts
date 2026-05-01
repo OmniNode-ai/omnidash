@@ -5,6 +5,10 @@ export interface BuildDelegationMetricsOptions {
   totalDelegations?: number;
   /** Quality-gate pass rate, 0..1. Default 0.84. */
   qualityGatePassRate?: number;
+  /** Quality-gate passed count. Derived from passRate * total if omitted. */
+  qualityGatePassed?: number;
+  /** Quality-gate total checks. Defaults to totalDelegations if omitted. */
+  qualityGateTotal?: number;
   /** Total cost savings in USD. Default 158.42. */
   totalSavingsUsd?: number;
   /**
@@ -17,6 +21,7 @@ export interface BuildDelegationMetricsOptions {
 }
 
 const TASK_TYPES = ['code-review', 'pattern-match', 'document-summarize', 'classification'];
+const MODELS = ['Qwen3-Coder-30B', 'glm-4-plus', 'codex-cli', 'gemini-cli'];
 
 /**
  * Build a single `DelegationSummary` record. Story callers should
@@ -28,6 +33,8 @@ export function buildDelegationMetrics(
 ): DelegationSummary {
   const totalDelegations = opts.totalDelegations ?? 247;
   const qualityGatePassRate = opts.qualityGatePassRate ?? 0.84;
+  const qualityGateTotal = opts.qualityGateTotal ?? totalDelegations;
+  const qualityGatePassed = opts.qualityGatePassed ?? Math.round(qualityGatePassRate * qualityGateTotal);
   const totalSavingsUsd = opts.totalSavingsUsd ?? 158.42;
   const profile = opts.profile ?? 'balanced';
 
@@ -43,10 +50,18 @@ export function buildDelegationMetrics(
     count: Math.round(weights[i] * totalDelegations),
   }));
 
+  const byModel = MODELS.map((model, i) => ({
+    model,
+    count: Math.round(weights[i] * totalDelegations),
+  }));
+
   return {
     totalDelegations,
     qualityGatePassRate,
+    qualityGatePassed,
+    qualityGateTotal,
     totalSavingsUsd,
     byTaskType,
+    byModel,
   };
 }

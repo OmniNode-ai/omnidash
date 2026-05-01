@@ -48,8 +48,11 @@ describe('DelegationMetrics', () => {
     mockFetchWithItems([{
       totalDelegations: 150,
       qualityGatePassRate: 0.85,
+      qualityGatePassed: 128,
+      qualityGateTotal: 150,
       totalSavingsUsd: 42.5,
       byTaskType: [{ taskType: 'code-review', count: 80 }, { taskType: 'refactor', count: 70 }],
+      byModel: [{ model: 'Qwen3-Coder-30B', count: 80 }, { model: 'glm-4-plus', count: 70 }],
     }]);
     render(
       <DataSourceTestProvider client={qc}>
@@ -58,14 +61,19 @@ describe('DelegationMetrics', () => {
     );
     expect(await screen.findByText('150')).toBeInTheDocument();
     expect(screen.getByText('85%')).toBeInTheDocument();
+    expect(screen.getByText('128 / 150 passed')).toBeInTheDocument();
+    expect(screen.getByText('Qwen3-Coder-30B (80)')).toBeInTheDocument();
   });
 
   it('shows empty state when no delegations', async () => {
     mockFetchWithItems([{
       totalDelegations: 0,
       qualityGatePassRate: 0,
+      qualityGatePassed: 0,
+      qualityGateTotal: 0,
       totalSavingsUsd: 0,
       byTaskType: [],
+      byModel: [],
     }]);
     render(
       <DataSourceTestProvider client={qc}>
@@ -83,8 +91,11 @@ describe('DelegationMetrics', () => {
     mockFetchWithItems([{
       totalDelegations: 10,
       qualityGatePassRate: 0.9,
+      qualityGatePassed: 9,
+      qualityGateTotal: 10,
       totalSavingsUsd: 12.34,
       byTaskType: [{ taskType: 'a', count: 10 }],
+      byModel: [{ model: 'Qwen3-Coder-30B', count: 10 }],
     }]);
     render(
       <DataSourceTestProvider client={qc}>
@@ -100,8 +111,11 @@ describe('DelegationMetrics', () => {
     mockFetchWithItems([{
       totalDelegations: 10,
       qualityGatePassRate: 0.9,
+      qualityGatePassed: 9,
+      qualityGateTotal: 10,
       totalSavingsUsd: 5,
       byTaskType: [{ taskType: 'a', count: 10 }],
+      byModel: [],
     }]);
     render(
       <DataSourceTestProvider client={qc}>
@@ -123,8 +137,11 @@ describe('DelegationMetrics', () => {
     mockFetchWithItems([{
       totalDelegations: 100,
       qualityGatePassRate: 0.75,
+      qualityGatePassed: 75,
+      qualityGateTotal: 100,
       totalSavingsUsd: 0,
       byTaskType: [{ taskType: 'a', count: 100 }],
+      byModel: [],
     }]);
     const { unmount } = render(
       <DataSourceTestProvider client={qc}>
@@ -138,8 +155,11 @@ describe('DelegationMetrics', () => {
     mockFetchWithItems([{
       totalDelegations: 100,
       qualityGatePassRate: 0.75,
+      qualityGatePassed: 75,
+      qualityGateTotal: 100,
       totalSavingsUsd: 0,
       byTaskType: [{ taskType: 'a', count: 100 }],
+      byModel: [],
     }]);
     render(
       <DataSourceTestProvider client={qc}>

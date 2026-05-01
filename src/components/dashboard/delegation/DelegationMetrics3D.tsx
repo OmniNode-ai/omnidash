@@ -8,8 +8,11 @@ import { DoughnutChart, type DoughnutSlice } from './DoughnutChart';
 export interface DelegationSummary {
   totalDelegations: number;
   qualityGatePassRate: number;
+  qualityGatePassed: number;
+  qualityGateTotal: number;
   totalSavingsUsd: number;
   byTaskType: Array<{ taskType: string; count: number }>;
+  byModel: Array<{ model: string; count: number }>;
 }
 
 export default function DelegationMetrics({ config }: { config: Record<string, unknown> }) {
@@ -70,6 +73,9 @@ export default function DelegationMetrics({ config }: { config: Record<string, u
                   {Math.round(data.qualityGatePassRate * 100)}%
                 </Text>
                 <Text as="div" size="md" color="primary">Quality Gate Pass Rate</Text>
+                <Text as="div" size="sm" color="secondary">
+                  {data.qualityGatePassed} / {data.qualityGateTotal} passed
+                </Text>
               </div>
             )}
             {showSavings && (
@@ -79,8 +85,17 @@ export default function DelegationMetrics({ config }: { config: Record<string, u
               </div>
             )}
           </div>
-          <div style={{ flex: 1, minHeight: '150px' }}>
+          <div style={{ flex: 1, minHeight: '150px', display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
             <DoughnutChart slices={slices} height={260} />
+            {data.byModel.length > 0 && (
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px 12px', justifyContent: 'center', paddingTop: 4, borderTop: '1px solid var(--line-2)' }}>
+                {data.byModel.map((m) => (
+                  <Text key={m.model} as="span" size="sm" color="secondary">
+                    {m.model} ({m.count})
+                  </Text>
+                ))}
+              </div>
+            )}
           </div>
         </div>
       )}

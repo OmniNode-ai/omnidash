@@ -137,6 +137,9 @@ export default function DelegationMetrics2D({ config }: { config: Record<string,
                   {Math.round(data.qualityGatePassRate * 100)}%
                 </Text>
                 <Text as="div" size="md" color="primary">Quality Gate Pass Rate</Text>
+                <Text as="div" size="sm" color="secondary">
+                  {data.qualityGatePassed} / {data.qualityGateTotal} passed
+                </Text>
               </div>
             )}
             {showSavings && (
@@ -237,6 +240,17 @@ export default function DelegationMetrics2D({ config }: { config: Record<string,
                   </Text>
                 </div>
               ))}
+              {data.byModel.length > 0 && (
+                <>
+                  <span aria-hidden style={{ display: 'inline-block', width: 10, height: 1, background: 'var(--line-2)', flex: '0 0 auto' }} />
+                  <Text as="span" size="sm" color="secondary" weight="semibold">Models:</Text>
+                  {data.byModel.map((m) => (
+                    <Text key={m.model} as="span" size="sm" family="mono" color="secondary">
+                      {m.model} ({m.count})
+                    </Text>
+                  ))}
+                </>
+              )}
             </div>
             {hoverIdx !== null && sliceArcs[hoverIdx] && (
               <div
