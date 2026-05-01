@@ -49,7 +49,7 @@ lines, 71.82% branches.
 ### C1 — `server/db.ts:5` Postgres connection string with private IP and empty password
 
 **Status:** Fixed in PR 1 (T1 / OMN-143).
-**Where:** [`server/db.ts`](../server/db.ts).
+**Where:** `server/db.ts` (file consolidated into `server/routes.ts` in current codebase; see [`server/routes.ts`](../server/routes.ts)).
 **What changed:** The fallback connection string was deleted. `OMNIDASH_ANALYTICS_DB_URL` is now required at module load — the server throws at startup with a clear pointer to `.env.example` if it's unset. No silent fallback to any literal host.
 
 ### C2 — `src/agent/llmClient.ts:17` LLM fallback URL hardcoded
@@ -93,7 +93,7 @@ lines, 71.82% branches.
 ### C8 — `pg.Pool` has no `'error'` listener
 
 **Status:** Fixed in PR 1 (T3 / OMN-145).
-**Where:** [`server/db.ts`](../server/db.ts).
+**Where:** `server/db.ts` (file consolidated into `server/routes.ts` in current codebase; see [`server/routes.ts`](../server/routes.ts)).
 **What changed:** Immediately after `new Pool(...)`, `pool.on('error', ...)` is attached and logs without rethrowing. Idle-client errors no longer crash the Node process.
 
 ---
@@ -122,7 +122,7 @@ lines, 71.82% branches.
 ### H4 — Cost Trend 2D / 3D palette divergence
 
 **Status:** Fixed in PR 2 (T7 / OMN-149).
-**Where:** [`src/components/dashboard/cost-trend-3d/CostTrend3D.tsx`](../src/components/dashboard/cost-trend-3d/CostTrend3D.tsx).
+**Where:** [`src/components/dashboard/cost-trend/CostTrend3DBars.tsx`](../src/components/dashboard/cost-trend/CostTrend3DBars.tsx) (formerly `cost-trend-3d/CostTrend3D.tsx`; component was split and relocated).
 **What changed:** The hardcoded `modelPalette` arrays in `DARK_THEME` / `LIGHT_THEME` are kept as fallbacks but the live `theme.modelPalette` now comes from `useThemeColors().chart` — the same source the 2D widgets read. Same model gets the same color across 2D bars / 3D pie / 2D bars / Cost Trend 3D in both themes.
 
 ### H5 — `DashboardGrid.onLayoutChange` declared but unused
@@ -157,7 +157,7 @@ lines, 71.82% branches.
 ### H9 — `CostTrend3D` has no `.test.tsx`
 
 **Status:** Fixed in PR 2 (T9 / OMN-150).
-**Where:** [`src/components/dashboard/cost-trend-3d/CostTrend3D.test.tsx`](../src/components/dashboard/cost-trend-3d/CostTrend3D.test.tsx) (new).
+**Where:** [`src/components/dashboard/cost-trend/CostTrend3DBars.test.tsx`](../src/components/dashboard/cost-trend/CostTrend3DBars.test.tsx) (formerly `cost-trend-3d/CostTrend3D.test.tsx`).
 **What changed:** Mirrors the `CostByModelPie` pattern — `vi.mock('three')` with a `FakeWebGLRenderer`, plus a parallel mock for `CSS2DRenderer` since this widget uses DOM-overlay labels. Covers loading, empty, and populated states.
 
 ### H10 — Express server has zero test coverage
@@ -212,7 +212,7 @@ lines, 71.82% branches.
 ### M1 — `CostTrendPanel` uses timezone-naive Date getters
 
 **Status:** Fixed in Bundle 2 (`f0260ab`).
-**Where:** [`src/lib/zonedComponents.ts`](../src/lib/zonedComponents.ts) (new), [`src/components/dashboard/cost-trend/CostTrendPanel.tsx`](../src/components/dashboard/cost-trend/CostTrendPanel.tsx), [`src/components/dashboard/cost-trend-3d/CostTrend3D.tsx`](../src/components/dashboard/cost-trend-3d/CostTrend3D.tsx).
+**Where:** [`src/lib/zonedComponents.ts`](../src/lib/zonedComponents.ts) (new), [`src/components/dashboard/cost-trend/CostTrend2D.tsx`](../src/components/dashboard/cost-trend/CostTrend2D.tsx) (formerly `CostTrendPanel.tsx`), [`src/components/dashboard/cost-trend/CostTrend3DBars.tsx`](../src/components/dashboard/cost-trend/CostTrend3DBars.tsx) (formerly `cost-trend-3d/CostTrend3D.tsx`).
 **What changed:** Extracted `zonedComponents()` from its private home inside `CostTrend3D.tsx` into a shared util at `src/lib/`. Both Cost Trend widgets now route timestamp formatting through it; raw `Date.prototype.getMonth/getDate/getHours` calls in `CostTrendPanel` are gone.
 
 ### M2 — Delegation Metrics hardcodes 0.8 quality gate threshold
@@ -265,7 +265,7 @@ lines, 71.82% branches.
 ### M9 — `QualityScorePanel.test.tsx` fixture diverges from server output
 
 **Status:** Fixed in Bundle 2 (`f0260ab`).
-**Where:** [`server/routes.ts`](../server/routes.ts), [`server/routes.test.ts`](../server/routes.test.ts), [`src/components/dashboard/quality/QualityScorePanel.test.tsx`](../src/components/dashboard/quality/QualityScorePanel.test.tsx), [`src/components/dashboard/quality-score-panel-2d/QualityScoreHistogram.{test,stories}.tsx`](../src/components/dashboard/quality-score-panel-2d/), [`src/storybook/fixtures/quality.ts`](../src/storybook/fixtures/quality.ts).
+**Where:** [`server/routes.ts`](../server/routes.ts), [`server/routes.test.ts`](../server/routes.test.ts), [`src/components/dashboard/quality/QualityScore.test.tsx`](../src/components/dashboard/quality/QualityScore.test.tsx) (formerly `QualityScorePanel.test.tsx`), [`src/components/dashboard/quality/QualityScoreHistogram.test.tsx`](../src/components/dashboard/quality/QualityScoreHistogram.test.tsx) (formerly `quality-score-panel-2d/`; files relocated to `quality/`), [`src/storybook/fixtures/quality.ts`](../src/storybook/fixtures/quality.ts).
 **What changed:** Discovered the divergence ran deeper than the review described — server emitted 10 buckets (`WIDTH_BUCKET(..., 10)`), widget consumed 5 (BAR_COUNT). The widget would silently undercount any backend distribution past index 4. Aligned the server to the consumer: route now emits 5 buckets (matching the widget's contract), all fixture call-sites updated from range-style labels (`"0.0-0.2"`) to integer-string labels (`"1"`..`"5"`) — what the server actually returns.
 
 ### M10 — `mockFetchWithItems` duplicated across 7 (now 11) test files
