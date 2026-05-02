@@ -41,8 +41,10 @@ describe('Proof of Life — Part 2', () => {
     // OMN-10301: cost-summary added (IKPITileClusterAdapter).
     // OMN-10302: cost-by-repo added (IBarChartAdapter/threejs).
     // OMN-10303: token-usage added (ITrendChartAdapter/threejs).
-    expect(all.length).toBe(12);
+    // OMN-10490: ab-compare added (ab-compare/AbCompareWidget).
+    expect(all.length).toBe(13);
     expect(all.map((c) => c.name).sort()).toEqual([
+      'ab-compare',
       'baselines-roi-card',
       'cost-by-model',
       'cost-by-model-3d',

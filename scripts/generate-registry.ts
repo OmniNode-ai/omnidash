@@ -709,6 +709,77 @@ const MVP_COMPONENTS: Record<string, ComponentManifest> = {
     // selector doesn't map onto its behavior, so it opts out.
     capabilities: { supports_compare: false, supports_export: false, supports_fullscreen: true, supports_time_range: false },
   },
+  'ab-compare': {
+    name: 'ab-compare',
+    displayName: 'AB Model Cost Compare',
+    description: 'Per-model cost, latency, and quality comparison table from the ab-compare CLI; highlights local (free) models in green and shows cost savings summary',
+    category: 'cost',
+    version: '1.0.0',
+    implementationKey: 'ab-compare/AbCompareWidget',
+    // Row shape from onex.snapshot.projection.ab-compare.v1.
+    // ordering authority: created_at DESC (latest run first), then cost_usd ASC within a run.
+    projectionSchema: {
+      type: 'object',
+      required: ['correlation_id', 'model_key', 'display_name', 'prompt_tokens', 'completion_tokens', 'total_tokens', 'cost_usd', 'latency_ms', 'quality', 'error', 'created_at'],
+      properties: {
+        correlation_id: { type: 'string', description: 'Unique identifier for an ab-compare run; groups all model rows together.' },
+        model_key: { type: 'string', description: 'Internal model key (e.g. qwen3-coder-30b).' },
+        display_name: { type: 'string', description: 'Human-readable model name (e.g. Qwen3-Coder-30B).' },
+        prompt_tokens: { type: 'number', description: 'Input token count.' },
+        completion_tokens: { type: 'number', description: 'Output token count.' },
+        total_tokens: { type: 'number', description: 'Total tokens (prompt + completion).' },
+        cost_usd: { type: 'number', description: 'Total cost in USD for this model in this run. Local models emit 0.' },
+        latency_ms: { type: 'number', description: 'End-to-end latency in milliseconds.' },
+        quality: { type: 'string', description: 'Quality verdict (e.g. pass, fail, or a score string).' },
+        error: { type: 'string', description: 'Error message if the model call failed; empty string otherwise.' },
+        created_at: { type: 'string', format: 'date-time', description: 'ISO-8601 timestamp when this row was materialized. Ordering authority: monotonic DESC.' },
+      },
+      'x-orderingAuthority': {
+        authority: 'monotonic_field',
+        fieldName: 'created_at',
+        direction: 'desc',
+        clockSemantics: 'UTC',
+      },
+    },
+    displayContract: {
+      description: 'Table of per-model rows for the most-recent ab-compare run, sorted by cost_usd ascending. Local ($0) rows highlighted green. Savings banner below table shows max-cost minus min-cost.',
+      type: 'object',
+      properties: {
+        rows: {
+          type: 'array',
+          description: 'One row per model in the latest run, sorted by cost_usd ascending.',
+          items: {
+            type: 'object',
+            properties: {
+              display_name: { type: 'string' },
+              total_tokens: { type: 'number' },
+              cost_usd: { type: 'number' },
+              latency_ms: { type: 'number' },
+              quality: { type: 'string' },
+            },
+          },
+        },
+        savingsBanner: {
+          type: 'object',
+          description: 'Savings summary shown when max_cost > min_cost.',
+          properties: {
+            diff_usd: { type: 'number' },
+            pct: { type: 'number' },
+          },
+        },
+      },
+    },
+    dataSources: [projectionSource(TOPICS.abCompare)],
+    events: { emits: [], consumes: [] },
+    defaultSize: { w: 10, h: 5 },
+    minSize: { w: 6, h: 4 },
+    maxSize: { w: 12, h: 10 },
+    emptyState: {
+      message: 'No comparison data yet — run `ab-compare` CLI',
+      hint: 'Results appear after the first ab-compare run completes',
+    },
+    capabilities: { supports_compare: false, supports_export: true, supports_fullscreen: true, supports_time_range: false },
+  },
 };
 
 // Scan node_modules/@omninode/* for packages declaring dashboardComponents

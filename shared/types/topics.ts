@@ -54,6 +54,13 @@ export const TOPICS = {
    * @see {@link https://linear.app/omninode/issue/OMN-10302}
    */
   costByRepo: 'onex.snapshot.projection.cost.by_repo.v1',
+  /**
+   * AB model cost comparison — per-model results from the ab-compare CLI.
+   * Topic: onex.snapshot.projection.ab-compare.v1
+   * Consumer: AbCompareWidget (OMN-10490).
+   * Producer: ab-compare orchestrator in omnimarket.
+   */
+  abCompare: 'onex.snapshot.projection.ab-compare.v1',
 } as const;
 
 export type TopicSymbol = (typeof TOPICS)[keyof typeof TOPICS];
