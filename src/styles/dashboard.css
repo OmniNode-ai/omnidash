@@ -148,6 +148,9 @@
 
 .widget-body { padding: 14px var(--pad-x) var(--pad-x); }
 
+.usage-source-badge-text--ok { color: var(--status-ok); }
+.usage-source-badge-text--warn { color: var(--status-warn); }
+
 /* KEBAB MENU */
 .menu {
   position: absolute; z-index: 100;
