@@ -25,6 +25,49 @@ describe('HttpSnapshotSource', () => {
     );
   });
 
+  it('unwraps projection API envelope and yields rows', async () => {
+    const envelope = {
+      topic: 'onex.snapshot.projection.cost.summary.v1',
+      projection_version: '1.0.0',
+      generated_at: '2026-05-01T12:00:00+00:00',
+      data_freshness: 'fresh',
+      latest_event_at: '2026-05-01T11:59:00+00:00',
+      latest_projection_updated_at: '2026-05-01T11:59:00+00:00',
+      row_count: 2,
+      rows: [{ aggregation_key: 'claude', total_cost_usd: 1.5 }, { aggregation_key: 'openai', total_cost_usd: 0.8 }],
+    };
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValueOnce({
+      ok: true,
+      json: async () => envelope,
+    }));
+
+    const source = new HttpSnapshotSource({ baseUrl: 'http://localhost:3002' });
+    const results: unknown[] = [];
+    for await (const item of source.readAll('onex.snapshot.projection.cost.summary.v1')) {
+      results.push(item);
+    }
+
+    expect(results).toHaveLength(2);
+    expect(results[0]).toEqual({ aggregation_key: 'claude', total_cost_usd: 1.5 });
+    expect(results[1]).toEqual({ aggregation_key: 'openai', total_cost_usd: 0.8 });
+  });
+
+  it('yields nothing when envelope rows is empty', async () => {
+    const envelope = { topic: 't', projection_version: '1.0.0', generated_at: '', data_freshness: 'degraded', latest_event_at: null, latest_projection_updated_at: null, row_count: 0, rows: [] };
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValueOnce({
+      ok: true,
+      json: async () => envelope,
+    }));
+
+    const source = new HttpSnapshotSource({ baseUrl: 'http://localhost:3002' });
+    const results: unknown[] = [];
+    for await (const item of source.readAll('onex.snapshot.empty.v1')) {
+      results.push(item);
+    }
+
+    expect(results).toHaveLength(0);
+  });
+
   it('encodes the topic in the URL', async () => {
     vi.stubGlobal('fetch', vi.fn().mockResolvedValueOnce({
       ok: true,
