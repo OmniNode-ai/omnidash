@@ -36,7 +36,6 @@ function VizPicker({
         onChange={(e) => onVizChange(e.target.value as VisualizationType)}
         style={{
           background: 'var(--panel-2)',
-          color: 'var(--text)',
           border: '1px solid var(--line-2)',
           borderRadius: 4,
           padding: '3px 8px',
@@ -55,15 +54,17 @@ function VizPicker({
 }
 
 function RunSelector({
+  contract,
   control,
   data,
   onRunChange,
 }: {
+  contract: VisualizationContract;
   control: ControlSpec;
   data: Record<string, unknown>[];
   onRunChange: (runId: string | null) => void;
 }) {
-  const field = control.field;
+  const field = control.field ?? contract.query_params?.run_selector?.field;
   if (!field) return null;
 
   const uniqueRuns = [...new Set(data.map((row) => row[field]).filter((v): v is string => typeof v === 'string'))];
@@ -78,7 +79,6 @@ function RunSelector({
         onChange={(e) => onRunChange(e.target.value || null)}
         style={{
           background: 'var(--panel-2)',
-          color: 'var(--text)',
           border: '1px solid var(--line-2)',
           borderRadius: 4,
           padding: '3px 8px',
@@ -129,6 +129,7 @@ export function Toolbar({ contract, data, activeVisualization, onVizChange, onRu
           return (
             <RunSelector
               key={i}
+              contract={contract}
               control={control}
               data={data}
               onRunChange={onRunChange}

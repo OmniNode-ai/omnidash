@@ -80,6 +80,60 @@ describe('Toolbar (OMN-10507)', () => {
     expect(screen.queryByTestId('viz-picker')).toBeNull();
   });
 
+  it('sources run selector options from query_params when control.field is absent', () => {
+    const contract: VisualizationContract = {
+      ...BASE_CONTRACT,
+      controls: [{ type: 'run_selector', param: 'run_id' }],
+      query_params: {
+        run_selector: { field: 'correlation_id', param: 'run_id' },
+      },
+    };
+    render(
+      <Toolbar
+        contract={contract}
+        data={MOCK_DATA}
+        activeVisualization="bar_chart"
+        onVizChange={vi.fn()}
+        onRunChange={vi.fn()}
+      />,
+    );
+    const selector = screen.getByTestId('run-selector') as HTMLSelectElement;
+    const options = Array.from(selector.options).map((o) => o.value);
+    expect(options).toContain('');
+    expect(options).toContain('run-abc');
+    expect(options).toContain('run-xyz');
+    expect(options.filter((o) => o === 'run-abc')).toHaveLength(1);
+  });
+
+  it('sources run selector options from query_params with multiple controls', () => {
+    const contract: VisualizationContract = {
+      ...BASE_CONTRACT,
+      controls: [
+        { type: 'run_selector', param: 'run_id' },
+        { type: 'visualization_picker' },
+      ],
+      query_params: {
+        run_selector: { field: 'correlation_id', param: 'run_id' },
+      },
+    };
+    render(
+      <Toolbar
+        contract={contract}
+        data={MOCK_DATA}
+        activeVisualization="bar_chart"
+        onVizChange={vi.fn()}
+        onRunChange={vi.fn()}
+      />,
+    );
+    expect(screen.getByTestId('viz-picker')).toBeInTheDocument();
+    const selector = screen.getByTestId('run-selector') as HTMLSelectElement;
+    const options = Array.from(selector.options).map((o) => o.value);
+    expect(options).toContain('');
+    expect(options).toContain('run-abc');
+    expect(options).toContain('run-xyz');
+    expect(options.filter((o) => o === 'run-abc')).toHaveLength(1);
+  });
+
   it('returns null when contract.controls is empty', () => {
     const emptyContract: VisualizationContract = { ...BASE_CONTRACT, controls: [] };
     const { container } = render(
