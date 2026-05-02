@@ -44,13 +44,14 @@ function buildPoints(data: unknown[], contract: VisualizationContract): ScatterP
   const raw = data
     .map((d) => {
       const row = d as Record<string, unknown>;
-      const cost = parseFloat(String(row[costField] ?? '0'));
-      const latency = parseFloat(String(row[latencyField] ?? '0'));
-      const tokens = parseFloat(String(row['total_tokens'] ?? row['tokens'] ?? '100'));
+      const cost = Number.parseFloat(String(row[costField] ?? '0'));
+      const latency = Number.parseFloat(String(row[latencyField] ?? '0'));
+      const parsedTokens = Number.parseFloat(String(row['total_tokens'] ?? row['tokens'] ?? ''));
+      const tokens = Number.isFinite(parsedTokens) && parsedTokens > 0 ? parsedTokens : 100;
       const name = String(row[nameField] ?? '');
       return { name, cost, latency, tokens };
     })
-    .filter((r) => isFinite(r.cost) && isFinite(r.latency));
+    .filter((r) => Number.isFinite(r.cost) && Number.isFinite(r.latency));
 
   if (raw.length === 0) return [];
 

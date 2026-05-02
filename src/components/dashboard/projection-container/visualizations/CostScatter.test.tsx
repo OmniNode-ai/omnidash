@@ -48,6 +48,17 @@ describe('CostScatter', () => {
     expect(screen.getByText('expensive-cloud')).toBeInTheDocument();
   });
 
+  it('falls back to a finite radius for invalid token values', () => {
+    const data = [
+      { display_name: 'bad-token-model', cost_usd: '0.0100', latency_ms: '450', total_tokens: 'n/a' },
+    ];
+
+    render(<CostScatter data={data} contract={contract} />);
+
+    const circle = screen.getByTestId('dot-bad-token-model').querySelector('circle');
+    expect(circle?.getAttribute('r')).toBe('18');
+  });
+
   it('renders empty state when data is empty', () => {
     render(<CostScatter data={[]} contract={contract} />);
     expect(screen.getByText(/no data to display/i)).toBeInTheDocument();
