@@ -21,4 +21,5 @@ export const componentImports: Record<string, ReturnType<typeof lazy>> = {
   'quality/QualityScore': lazy(() => import('./quality/QualityScore')),
   'readiness/ReadinessGate': lazy(() => import('./readiness/ReadinessGate')),
   'events/EventStream': lazy(() => import('./events/EventStream')),
+  'ab-compare/AbCompareWidget': lazy(() => import('./ab-compare/AbCompareWidget')),
 };
