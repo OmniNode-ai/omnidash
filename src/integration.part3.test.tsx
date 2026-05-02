@@ -54,9 +54,10 @@ describe('Proof of Life — Part 3 (Full System)', () => {
     const registry = new ComponentRegistry(manifest);
     await registry.resolveImplementations();
     const available = registry.getAvailableComponents().filter((c) => c.status === 'available');
-    // 12 post-merge: 8 original + cost-summary (OMN-10301) + token-usage (OMN-10303) + cost-by-repo (OMN-10302)
-    // + cost-by-model-3d via IDoughnutChartAdapter (OMN-10291). cost-by-repo + token-usage wired (OMN-10305).
-    expect(available.length).toBe(12);
+    // 13 post-merge: 8 original + cost-summary (OMN-10301) + token-usage (OMN-10303) + cost-by-repo (OMN-10302)
+    // + cost-by-model-3d via IDoughnutChartAdapter (OMN-10291) + ab-compare (OMN-10490).
+    // cost-by-repo + token-usage wired (OMN-10305).
+    expect(available.length).toBe(13);
   });
 
   it('both templates pass validation', () => {
