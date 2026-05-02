@@ -1,9 +1,0 @@
-{
-  "bucket_time": "2026-04-30T13:00:00.000Z",
-  "model_name": "claude-opus-4-6",
-  "total_cost_usd": "0.018000",
-  "total_tokens": 1200,
-  "prompt_tokens": 780,
-  "completion_tokens": 420,
-  "request_count": 2
-}

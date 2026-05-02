@@ -1,8 +1,7 @@
 {
   "window": "24h",
-  "total_cost_usd": 5.83,
-  "total_savings_usd": 127.14,
-  "total_tokens": 847293,
-  "usage_source": "MEASURED",
-  "captured_at": "2026-05-01T09:00:00Z"
+  "total_cost_usd": 12.34,
+  "total_savings_usd": 4.56,
+  "total_tokens": 1234567,
+  "captured_at": "2026-04-29T00:00:00Z"
 }

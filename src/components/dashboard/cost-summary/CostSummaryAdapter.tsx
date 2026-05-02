@@ -70,6 +70,7 @@ function UsageSourceBadge({ source }: { source: string | undefined }) {
   if (!source) return null;
   const isMeasured = source === 'MEASURED';
   const color = isMeasured ? 'var(--status-ok)' : 'var(--status-warn)';
+  const textClass = isMeasured ? 'usage-source-badge-text--ok' : 'usage-source-badge-text--warn';
   return (
     <div
       style={{
@@ -91,7 +92,7 @@ function UsageSourceBadge({ source }: { source: string | undefined }) {
           flexShrink: 0,
         }}
       />
-      <Text size="xs" family="mono" weight="semibold" style={{ color }}>
+      <Text size="xs" family="mono" weight="semibold" className={textClass}>
         {source}
       </Text>
     </div>
