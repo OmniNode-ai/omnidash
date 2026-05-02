@@ -42,6 +42,8 @@ describe('Toolbar (OMN-10507)', () => {
     expect(screen.getByTestId('projection-toolbar')).toBeInTheDocument();
     expect(screen.getByTestId('run-selector')).toBeInTheDocument();
     expect(screen.getByTestId('viz-picker')).toBeInTheDocument();
+    expect(screen.getByLabelText('Run filter')).toBeInTheDocument();
+    expect(screen.getByLabelText('Visualization type')).toBeInTheDocument();
   });
 
   it('renders only visualization_picker when only picker declared in contract', () => {
@@ -132,6 +134,29 @@ describe('Toolbar (OMN-10507)', () => {
     expect(options).toContain('run-abc');
     expect(options).toContain('run-xyz');
     expect(options.filter((o) => o === 'run-abc')).toHaveLength(1);
+  });
+
+  it('prefers query_params run selector field over control.field when both are present', () => {
+    const contract: VisualizationContract = {
+      ...BASE_CONTRACT,
+      controls: [{ type: 'run_selector', field: 'legacy_field', param: 'run_id' }],
+      query_params: {
+        run_selector: { field: 'correlation_id', param: 'run_id' },
+      },
+    };
+    render(
+      <Toolbar
+        contract={contract}
+        data={[...MOCK_DATA, { legacy_field: 'wrong-run', correlation_id: 'run-query-param' }]}
+        activeVisualization="bar_chart"
+        onVizChange={vi.fn()}
+        onRunChange={vi.fn()}
+      />,
+    );
+    const selector = screen.getByTestId('run-selector') as HTMLSelectElement;
+    const options = Array.from(selector.options).map((o) => o.value);
+    expect(options).toContain('run-query-param');
+    expect(options).not.toContain('wrong-run');
   });
 
   it('returns null when contract.controls is empty', () => {

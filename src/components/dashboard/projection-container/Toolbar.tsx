@@ -32,6 +32,7 @@ function VizPicker({
         View
       </Text>
       <select
+        aria-label="Visualization type"
         value={active}
         onChange={(e) => onVizChange(e.target.value as VisualizationType)}
         style={{
@@ -64,7 +65,7 @@ function RunSelector({
   data: Record<string, unknown>[];
   onRunChange: (runId: string | null) => void;
 }) {
-  const field = control.field ?? contract.query_params?.run_selector?.field;
+  const field = contract.query_params?.run_selector?.field ?? control.field;
   if (!field) return null;
 
   const uniqueRuns = [...new Set(data.map((row) => row[field]).filter((v): v is string => typeof v === 'string'))];
@@ -75,6 +76,7 @@ function RunSelector({
         Run
       </Text>
       <select
+        aria-label="Run filter"
         defaultValue=""
         onChange={(e) => onRunChange(e.target.value || null)}
         style={{
