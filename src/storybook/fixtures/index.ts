@@ -29,3 +29,6 @@ export type { BuildBaselinesRoiOptions } from './baselines';
 
 export { buildReadinessRows } from './readiness';
 export type { BuildReadinessRowsOptions } from './readiness';
+
+export { buildAbCompareRows } from './ab-compare';
+export type { BuildAbCompareRowsOptions } from './ab-compare';
