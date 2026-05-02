@@ -10,43 +10,37 @@ const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } });
 
 const LOCAL_ROW: AbCompareRow = {
   correlation_id: 'run-1',
-  model_key: 'qwen3-coder-30b',
-  display_name: 'Qwen3-Coder-30B',
+  model_id: 'qwen3-coder-30b',
   prompt_tokens: 512,
   completion_tokens: 256,
   total_tokens: 768,
-  cost_usd: 0,
+  estimated_cost_usd: 0,
   latency_ms: 1200,
-  quality: 'pass',
-  error: '',
+  usage_source: 'router',
   created_at: '2026-05-01T08:00:00Z',
 };
 
 const CLOUD_ROW: AbCompareRow = {
   correlation_id: 'run-1',
-  model_key: 'claude-sonnet-4-6',
-  display_name: 'Claude Sonnet 4.6',
+  model_id: 'claude-sonnet-4-6',
   prompt_tokens: 512,
   completion_tokens: 256,
   total_tokens: 768,
-  cost_usd: 0.002304,
+  estimated_cost_usd: 0.002304,
   latency_ms: 850,
-  quality: 'pass',
-  error: '',
+  usage_source: 'gateway',
   created_at: '2026-05-01T07:59:55Z',
 };
 
-const ERROR_ROW: AbCompareRow = {
+const UNKNOWN_COST_ROW: AbCompareRow = {
   correlation_id: 'run-1',
-  model_key: 'gpt-4o',
-  display_name: 'GPT-4o',
+  model_id: 'gpt-4o',
   prompt_tokens: 512,
-  completion_tokens: 0,
+  completion_tokens: 128,
   total_tokens: 512,
-  cost_usd: 0,
-  latency_ms: 0,
-  quality: '',
-  error: 'timeout after 30s',
+  estimated_cost_usd: null,
+  latency_ms: null,
+  usage_source: null,
   created_at: '2026-05-01T07:59:50Z',
 };
 
@@ -69,26 +63,24 @@ describe('AbCompareWidget', () => {
     expect(await screen.findByText(/no comparison data yet/i)).toBeInTheDocument();
   });
 
-  it('renders model display names from latest run', async () => {
+  it('renders model ids from latest run', async () => {
     mockFetchWithItems([LOCAL_ROW, CLOUD_ROW]);
     render(<DataSourceTestProvider client={qc}><AbCompareWidget config={{}} /></DataSourceTestProvider>);
-    // Qwen3-Coder-30B appears in both the table row AND the savings banner — use getAllByText
-    expect(await screen.findAllByText('Qwen3-Coder-30B')).not.toHaveLength(0);
-    expect(screen.getByText('Claude Sonnet 4.6')).toBeInTheDocument();
+    expect(await screen.findAllByText('qwen3-coder-30b')).not.toHaveLength(0);
+    expect(screen.getByText('claude-sonnet-4-6')).toBeInTheDocument();
   });
 
   it('renders $0.00 for local (free) models', async () => {
     mockFetchWithItems([LOCAL_ROW, CLOUD_ROW]);
     render(<DataSourceTestProvider client={qc}><AbCompareWidget config={{}} /></DataSourceTestProvider>);
-    // Wait for data to appear (cheapest model name shows in table + savings banner)
-    await screen.findAllByText('Qwen3-Coder-30B');
+    await screen.findAllByText('qwen3-coder-30b');
     expect(screen.getByText('$0.00')).toBeInTheDocument();
   });
 
   it('shows savings summary when multiple models have different costs', async () => {
     mockFetchWithItems([LOCAL_ROW, CLOUD_ROW]);
     render(<DataSourceTestProvider client={qc}><AbCompareWidget config={{}} /></DataSourceTestProvider>);
-    await screen.findAllByText('Qwen3-Coder-30B');
+    await screen.findAllByText('qwen3-coder-30b');
     // Savings banner contains "Save" text
     expect(screen.getByText(/save/i)).toBeInTheDocument();
   });
@@ -96,45 +88,44 @@ describe('AbCompareWidget', () => {
   it('does not show savings banner for single-model run', async () => {
     mockFetchWithItems([LOCAL_ROW]);
     render(<DataSourceTestProvider client={qc}><AbCompareWidget config={{}} /></DataSourceTestProvider>);
-    // Single model: name only appears in the table row, not savings banner
-    expect(await screen.findAllByText('Qwen3-Coder-30B')).not.toHaveLength(0);
+    expect(await screen.findAllByText('qwen3-coder-30b')).not.toHaveLength(0);
     expect(screen.queryByText(/save/i)).not.toBeInTheDocument();
   });
 
-  it('renders error message in error column when a model call failed', async () => {
-    mockFetchWithItems([LOCAL_ROW, CLOUD_ROW, ERROR_ROW]);
+  it('renders a dash for nullable projection fields', async () => {
+    mockFetchWithItems([LOCAL_ROW, CLOUD_ROW, UNKNOWN_COST_ROW]);
     render(<DataSourceTestProvider client={qc}><AbCompareWidget config={{}} /></DataSourceTestProvider>);
-    await screen.findAllByText('Qwen3-Coder-30B');
-    expect(screen.getByText(/timeout/i)).toBeInTheDocument();
+    await screen.findAllByText('qwen3-coder-30b');
+    expect(screen.getAllByText('—').length).toBeGreaterThanOrEqual(1);
   });
 
   it('shows only the most-recent run when multiple runs exist', async () => {
     const olderRun: AbCompareRow = {
       ...LOCAL_ROW,
       correlation_id: 'run-0',
-      model_key: 'old-model',
-      display_name: 'OldModel',
+      model_id: 'old-model',
       created_at: '2026-04-30T08:00:00Z',
     };
     mockFetchWithItems([LOCAL_ROW, CLOUD_ROW, olderRun]);
     render(<DataSourceTestProvider client={qc}><AbCompareWidget config={{}} /></DataSourceTestProvider>);
-    await screen.findAllByText('Qwen3-Coder-30B');
+    await screen.findAllByText('qwen3-coder-30b');
     // OldModel is from an older run and should not appear
-    expect(screen.queryByText('OldModel')).not.toBeInTheDocument();
+    expect(screen.queryByText('old-model')).not.toBeInTheDocument();
   });
 
-  it('renders quality column for rows with quality values', async () => {
+  it('renders usage source values from projection rows', async () => {
     mockFetchWithItems([LOCAL_ROW, CLOUD_ROW]);
     render(<DataSourceTestProvider client={qc}><AbCompareWidget config={{}} /></DataSourceTestProvider>);
-    await screen.findAllByText('Qwen3-Coder-30B');
-    expect(screen.getAllByText('pass').length).toBeGreaterThanOrEqual(1);
+    await screen.findAllByText('qwen3-coder-30b');
+    expect(screen.getByText('router')).toBeInTheDocument();
+    expect(screen.getByText('gateway')).toBeInTheDocument();
   });
 
-  it('renders column headers: Model, Tokens, Cost, Latency, Quality', async () => {
+  it('renders column headers: Model, Tokens, Cost, Latency, Source', async () => {
     mockFetchWithItems([LOCAL_ROW, CLOUD_ROW]);
     render(<DataSourceTestProvider client={qc}><AbCompareWidget config={{}} /></DataSourceTestProvider>);
-    await screen.findAllByText('Qwen3-Coder-30B');
-    for (const header of ['Model', 'Tokens', 'Cost', 'Latency', 'Quality']) {
+    await screen.findAllByText('qwen3-coder-30b');
+    for (const header of ['Model', 'Tokens', 'Cost', 'Latency', 'Source']) {
       expect(screen.getByText(header)).toBeInTheDocument();
     }
   });
