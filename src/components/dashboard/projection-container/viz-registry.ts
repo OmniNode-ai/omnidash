@@ -1,5 +1,5 @@
 import type { JSX } from 'react';
-import type { VisualizationContract, VisualizationType } from '../../../../shared/types/visualization-contract';
+import type { VisualizationContract, VisualizationType } from '@shared/types/visualization-contract';
 
 export interface VizAdapter {
   render(props: { data: unknown[]; contract: VisualizationContract }): JSX.Element;

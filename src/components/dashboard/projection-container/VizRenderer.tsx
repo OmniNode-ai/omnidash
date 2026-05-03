@@ -1,6 +1,6 @@
-import type { VisualizationContract, VisualizationType } from '../../../../shared/types/visualization-contract';
-import { vizRegistry } from './viz-registry';
 import { Text } from '@/components/ui/typography';
+import type { VisualizationContract, VisualizationType } from '@shared/types/visualization-contract';
+import { vizRegistry } from './viz-registry';
 
 interface VizRendererProps {
   type: VisualizationType;
