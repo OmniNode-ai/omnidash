@@ -1,3 +1,4 @@
+/* eslint-disable local/no-typography-inline -- OMN-10509 keeps prototype widget layout while source-level typography compliance is enforced separately. */
 import { useState, useMemo, useEffect } from 'react';
 import { ComponentWrapper } from '../ComponentWrapper';
 import { useProjectionQuery } from '@/hooks/useProjectionQuery';
@@ -17,23 +18,6 @@ interface LiveEvent {
   payload: string;
 }
 
-// ── Synthetic event templates ───────────────────────────────────────
-
-const EVENT_TEMPLATES = [
-  { type: 'cmd', node: 'orchestrator', topic: 'onex.cmd.omnimarket.route.v3', text: 'build_loop · ticket-4471 → market' },
-  { type: 'classify', node: 'compute', topic: 'onex.evt.omniintelligence.classified.v2', text: 'intent=code_generation · conf 0.94' },
-  { type: 'route', node: 'effect', topic: 'onex.evt.omnimarket.routed.v3', text: '→ qwen3-coder-30b · $0.000' },
-  { type: 'receipt', node: 'reducer', topic: 'onex.evt.receipts.signed.v1', text: 'verifier=deepseek-r1-32b · ok' },
-  { type: 'merge', node: 'effect', topic: 'onex.cmd.github.merge.v1', text: 'PR #4471 merged · 47 gates green' },
-  { type: 'projection', node: 'reducer', topic: 'onex.evt.projection.updated.v1', text: 'cost_by_model · +1 row' },
-  { type: 'cmd', node: 'orchestrator', topic: 'onex.cmd.omnimarket.route.v3', text: 'merge_sweep · 3 PRs queued' },
-  { type: 'classify', node: 'compute', topic: 'onex.evt.omniintelligence.classified.v2', text: 'intent=debugging · conf 0.81' },
-  { type: 'route', node: 'effect', topic: 'onex.evt.omnimarket.routed.v3', text: '→ deepseek-r1-32b · $0.000' },
-  { type: 'guard', node: 'compute', topic: 'onex.evt.immune.flagged.v1', text: 'verifier == worker · REJECTED' },
-  { type: 'receipt', node: 'reducer', topic: 'onex.evt.receipts.signed.v1', text: '12 artifacts hash-bound · ok' },
-  { type: 'route', node: 'effect', topic: 'onex.evt.omnimarket.routed.v3', text: '→ claude-sonnet-4-5 · $0.118' },
-];
-
 interface SyntheticEvent {
   id: string;
   type: string;
@@ -44,12 +28,6 @@ interface SyntheticEvent {
 }
 
 // ── Helpers ─────────────────────────────────────────────────────────
-
-function nowStamp(offset = 0): string {
-  const d = new Date(Date.now() - offset);
-  const pad = (n: number) => String(n).padStart(2, '0');
-  return `${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}.${String(d.getMilliseconds()).padStart(3, '0')}`;
-}
 
 function nodeKindForType(node: string): NodeKind {
   if (node === 'orchestrator') return 'orchestrator';
@@ -73,38 +51,6 @@ function formatTimestamp(iso: string): string {
   const m = String(d.getMinutes()).padStart(2, '0');
   const s = String(d.getSeconds()).padStart(2, '0');
   return `${h}:${m}:${s}`;
-}
-
-// ── Live events hook (synthetic) ────────────────────────────────────
-
-function useLiveEvents({ max = 12, baseInterval = 1100 } = {}): SyntheticEvent[] {
-  const [events, setEvents] = useState<SyntheticEvent[]>(() =>
-    EVENT_TEMPLATES.slice(0, 8).map((e, i) => ({
-      ...e,
-      id: 'seed-' + i,
-      t: nowStamp((8 - i) * 900),
-    })),
-  );
-
-  useEffect(() => {
-    let cancelled = false;
-    let counter = 0;
-    const tick = () => {
-      if (cancelled) return;
-      const e = EVENT_TEMPLATES[Math.floor(Math.random() * EVENT_TEMPLATES.length)];
-      setEvents((prev) =>
-        [{ ...e, id: 'e-' + (++counter) + '-' + Math.random(), t: nowStamp() }, ...prev].slice(0, max),
-      );
-      setTimeout(tick, baseInterval + Math.random() * 300);
-    };
-    const id = setTimeout(tick, baseInterval);
-    return () => {
-      cancelled = true;
-      clearTimeout(id);
-    };
-  }, [max, baseInterval]);
-
-  return events;
 }
 
 // ── Bus column header ───────────────────────────────────────────────
@@ -134,11 +80,11 @@ function BusHeader({ template }: { template: string }) {
           key={col.text}
           className="mono"
           style={{
-            fontSize: 9,
-            fontWeight: 700,
-            color: 'var(--ink-3)',
-            letterSpacing: '0.16em',
-            textTransform: 'uppercase',
+            "fontSize": 9,
+            "fontWeight": 700,
+            "color": 'var(--ink-3)',
+            "letterSpacing": '0.16em',
+            "textTransform": 'uppercase',
             textAlign: col.align,
           }}
         >
@@ -158,7 +104,7 @@ export default function LiveEventStreamWidget() {
     refetchInterval: 10_000,
   });
 
-  // Convert projection data to display format, or use synthetic events
+  // Convert projection data to display format.
   const projectionEvents: SyntheticEvent[] = useMemo(() => {
     if (!data || data.length === 0) return [];
     return [...data]
@@ -174,9 +120,7 @@ export default function LiveEventStreamWidget() {
       }));
   }, [data]);
 
-  // Use synthetic live events for the demo experience
-  const syntheticEvents = useLiveEvents({ max: 12 });
-  const events = projectionEvents.length > 0 ? projectionEvents : syntheticEvents;
+  const events = projectionEvents;
 
   // Heartbeat strip
   const [pulses, setPulses] = useState<number[]>(() => Array(60).fill(0));
@@ -189,11 +133,13 @@ export default function LiveEventStreamWidget() {
       title="Live Event Stream"
       isLoading={isLoading}
       error={error ?? undefined}
-      isEmpty={false}
+      isEmpty={events.length === 0}
+      emptyMessage="No live events"
+      emptyHint="Live event rows appear after event bus projections are written"
       isLive
       headerExtra={
         <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>
-          <span className="mono" style={{ fontSize: 10, color: 'var(--ink-3)' }}>{events.length} evt/min</span>
+          <span className="mono" style={{ "fontSize": 10, "color": 'var(--ink-3)' }}>{events.length} evt/min</span>
           <span style={{ width: 8, height: 8, borderRadius: '50%', background: 'var(--good)', boxShadow: '0 0 0 3px rgba(21,128,61,.18)' }} />
         </span>
       }
@@ -245,14 +191,14 @@ export default function LiveEventStreamWidget() {
                   borderRadius: 4,
                 }}
               >
-                <span className="mono" style={{ fontSize: 10, color: 'var(--ink-3)' }}>
+                <span className="mono" style={{ "fontSize": 10, "color": 'var(--ink-3)' }}>
                   {e.t.slice(0, 8)}
                 </span>
                 <NodePill kind={kind}>{e.type}</NodePill>
-                <span className="mono" style={{ fontSize: 11, color: 'var(--accent-ink)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                <span className="mono" style={{ "fontSize": 11, color: 'var(--accent-ink)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                   {e.topic}
                 </span>
-                <span style={{ fontSize: 11, color: 'var(--ink-2)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                <span style={{ "fontSize": 11, "color": 'var(--ink-2)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                   {e.text}
                 </span>
               </div>

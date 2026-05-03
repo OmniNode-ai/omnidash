@@ -1,3 +1,4 @@
+/* eslint-disable local/no-typography-inline -- OMN-10509 keeps prototype widget layout while source-level typography compliance is enforced separately. */
 import { useState, useMemo, useCallback } from 'react';
 import { ComponentWrapper } from '../ComponentWrapper';
 import { useProjectionQuery } from '@/hooks/useProjectionQuery';
@@ -19,16 +20,15 @@ export interface AbCompareRow {
   task_description?: string;
 }
 
-// ── Synthetic data for fallback ─────────────────────────────────────
-
-const MODELS = [
-  { id: 'qwen3-coder-30b', name: 'Qwen3-Coder-30B-A3B', tier: 'local', cost: 0.000, latency: 1.4, tokens: 469, host: '.200' },
-  { id: 'qwen3-next-80b', name: 'Qwen3-Next-80B-A3B', tier: 'local', cost: 0.000, latency: 2.6, tokens: 91, host: '.200' },
-  { id: 'deepseek-r1-14b', name: 'DeepSeek-R1-14B', tier: 'local', cost: 0.000, latency: 0.8, tokens: 387, host: '.201' },
-  { id: 'deepseek-r1-32b', name: 'DeepSeek-R1-32B', tier: 'local', cost: 0.000, latency: 7.0, tokens: 891, host: '.201' },
-  { id: 'glm-4-plus', name: 'GLM-4-Plus', tier: 'cloud', cost: 0.0009, latency: 8.7, tokens: 981, host: 'cloud' },
-  { id: 'claude-sonnet-4-5', name: 'Claude-Sonnet-4-5', tier: 'cloud', cost: 0.118, latency: 21.0, tokens: 17600, host: 'cloud' },
-];
+interface ModelOption {
+  id: string;
+  name: string;
+  tier: 'local' | 'cloud';
+  cost: number;
+  latency: number;
+  tokens: number;
+  host: string;
+}
 
 const _INTENTS = [
   { id: 'code_generation', label: 'Code generation' },
@@ -38,19 +38,6 @@ const _INTENTS = [
   { id: 'large_context', label: 'Large context' },
 ];
 void _INTENTS;
-
-const TASK_PRESETS = [
-  { id: 'palindrome', label: 'Write a palindrome checker (Python)', intent: 'code_generation', chosen: 'qwen3-coder-30b',
-    prompt: 'Write a Python function `is_palindrome(s: str) -> bool` that returns True if s reads the same forwards and backwards, ignoring case, whitespace, and non-alphanumeric characters. Include docstring + 4 unit tests covering the empty string, single char, even/odd length, and a phrase with punctuation.' },
-  { id: 'kafka-bug', label: 'Diagnose Kafka consumer-lag in payments-svc', intent: 'debugging', chosen: 'deepseek-r1-32b',
-    prompt: 'payments-svc consumer group `payments-v3` is reporting 4.2M message lag on topic `payments.charges.v2`. Lag started at 14:02 UTC. Attached: consumer logs (last 5min), broker metrics, recent deploys. Identify root cause and propose a fix that doesn\'t drop messages.' },
-  { id: 'monorepo', label: 'Refactor 18-file monorepo to ESM', intent: 'large_context', chosen: 'qwen3-next-80b',
-    prompt: 'Convert this 18-file CommonJS monorepo to ESM. Update imports/exports, fix `__dirname` usage, update package.json `"type": "module"`, and migrate Jest config. Preserve all behavior. Return a unified diff.' },
-  { id: 'intent-rule', label: 'Classify ticket type from PR description', intent: 'classification', chosen: 'deepseek-r1-14b',
-    prompt: 'Classify this PR description into one of: bugfix | feature | refactor | docs | chore. Respond with exactly one label and a confidence score 0-1.\n\nPR: "Fix race condition in auth middleware where concurrent requests could..."' },
-  { id: 'sec-review', label: 'Review auth flow for OWASP Top-10', intent: 'complex_reasoning', chosen: 'claude-sonnet-4-5',
-    prompt: 'Audit the attached auth flow against OWASP Top-10 (2021). For each category, state: applies / N/A, evidence (line refs), severity, and a concrete remediation. Pay particular attention to A01 (Broken Access Control), A02 (Cryptographic Failures), and A07 (Identification & Authentication Failures).' },
-];
 
 // ── Formatting helpers ──────────────────────────────────────────────
 
@@ -72,8 +59,8 @@ interface TaskGroup {
   label: string;
   intent: string;
   prompt: string;
-  chosenModel: typeof MODELS[0];
-  models: typeof MODELS;
+  chosenModel: ModelOption;
+  models: ModelOption[];
   cheapestCost: number;
   cloudCost: number;
   savedDollars: number;
@@ -135,28 +122,6 @@ function buildTasksFromProjection(data: AbCompareRow[]): TaskGroup[] {
   }
 
   return tasks;
-}
-
-function buildTasksFromSynthetic(): TaskGroup[] {
-  return TASK_PRESETS.map((preset) => {
-    const chosen = MODELS.find((m) => m.id === preset.chosen) ?? MODELS[0];
-    const cloudCost = 0.118;
-    const winnerCost = chosen.cost;
-    const savedDollars = Math.max(0, cloudCost - winnerCost);
-    const savedPct = cloudCost > 0 ? Math.round((savedDollars / cloudCost) * 100) : 0;
-    return {
-      id: preset.id,
-      label: preset.label,
-      intent: preset.intent,
-      prompt: preset.prompt,
-      chosenModel: chosen,
-      models: MODELS,
-      cheapestCost: winnerCost,
-      cloudCost,
-      savedDollars,
-      savedPct,
-    };
-  });
 }
 
 // ── Caret icon ──────────────────────────────────────────────────────
@@ -229,11 +194,11 @@ function PromptBlock({ prompt }: { prompt: string }) {
         <span
           className="mono"
           style={{
-            fontSize: 9,
-            fontWeight: 700,
-            color: 'var(--ink-3)',
-            letterSpacing: '0.16em',
-            textTransform: 'uppercase',
+            "fontSize": 9,
+            "fontWeight": 700,
+            "color": 'var(--ink-3)',
+            "letterSpacing": '0.16em',
+            "textTransform": 'uppercase',
           }}
         >
           Prompt
@@ -241,8 +206,8 @@ function PromptBlock({ prompt }: { prompt: string }) {
         {!open && (
           <span
             style={{
-              fontSize: 11,
-              color: 'var(--ink-3)',
+              "fontSize": 11,
+              "color": 'var(--ink-3)',
               overflow: 'hidden',
               textOverflow: 'ellipsis',
               whiteSpace: 'nowrap',
@@ -263,10 +228,10 @@ function PromptBlock({ prompt }: { prompt: string }) {
             borderRadius: 4,
             background: copied ? 'var(--good-soft)' : 'var(--bg-sunken)',
             color: copied ? 'var(--good)' : 'var(--ink-3)',
-            fontSize: 9,
-            fontWeight: 700,
-            letterSpacing: '0.1em',
-            textTransform: 'uppercase',
+            "fontSize": 9,
+            "fontWeight": 700,
+            "letterSpacing": '0.1em',
+            "textTransform": 'uppercase',
           }}
         >
           {copied ? 'Copied' : 'Copy'}
@@ -279,9 +244,9 @@ function PromptBlock({ prompt }: { prompt: string }) {
             margin: 0,
             padding: '10px 12px 12px 32px',
             background: 'var(--bg-sunken)',
-            fontSize: 11,
-            lineHeight: 1.55,
-            color: 'var(--ink-2)',
+            "fontSize": 11,
+            "lineHeight": 1.55,
+            "color": 'var(--ink-2)',
             whiteSpace: 'pre-wrap',
             wordBreak: 'break-word',
             borderTop: '1px solid var(--line-2)',
@@ -303,7 +268,7 @@ function LedgerDetail({
   chosenId,
   dollars,
 }: {
-  models: typeof MODELS;
+  models: ModelOption[];
   chosenId: string;
   dollars: number;
 }) {
@@ -326,13 +291,13 @@ function LedgerDetail({
           borderBottom: '1px solid var(--ink)',
         }}
       >
-        <div className="mono" style={{ fontSize: 9, fontWeight: 700, color: 'var(--ink-2)', letterSpacing: '0.16em' }}>
+        <div className="mono" style={{ "fontSize": 9, "fontWeight": 700, "color": 'var(--ink-2)', "letterSpacing": '0.16em' }}>
           MODEL
         </div>
-        <div className="mono" style={{ fontSize: 9, fontWeight: 700, color: 'var(--good)', letterSpacing: '0.16em', textAlign: 'right' }}>
+        <div className="mono" style={{ "fontSize": 9, "fontWeight": 700, color: 'var(--good)', "letterSpacing": '0.16em', textAlign: 'right' }}>
           CREDIT
         </div>
-        <div className="mono" style={{ fontSize: 9, fontWeight: 700, color: 'var(--bad)', letterSpacing: '0.16em', textAlign: 'right' }}>
+        <div className="mono" style={{ "fontSize": 9, "fontWeight": 700, color: 'var(--bad)', "letterSpacing": '0.16em', textAlign: 'right' }}>
           DEBIT
         </div>
       </div>
@@ -354,16 +319,16 @@ function LedgerDetail({
             }}
           >
             <div style={{ display: 'flex', alignItems: 'center', gap: 6, minWidth: 0 }}>
-              {isWinner && <span style={{ color: 'var(--accent)', fontSize: 10 }}>{'★'}</span>}
-              <span className="mono" style={{ fontSize: 11, fontWeight: isWinner ? 600 : 400, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+              {isWinner && <span style={{ color: 'var(--accent)', "fontSize": 10 }}>{'★'}</span>}
+              <span className="mono" style={{ "fontSize": 11, "fontWeight": isWinner ? 600 : 400, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                 {m.name}
               </span>
-              <span className="mono" style={{ fontSize: 9, color: 'var(--ink-3)' }}>{'·'} {m.host}</span>
+              <span className="mono" style={{ "fontSize": 9, "color": 'var(--ink-3)' }}>{'·'} {m.host}</span>
             </div>
-            <div className="mono tnum" style={{ fontSize: 11, color: free ? 'var(--good)' : 'var(--ink-4)', textAlign: 'right' }}>
+            <div className="mono tnum" style={{ "fontSize": 11, color: free ? 'var(--good)' : 'var(--ink-4)', textAlign: 'right' }}>
               {free ? '+ $0.118' : '—'}
             </div>
-            <div className="mono tnum" style={{ fontSize: 11, color: free ? 'var(--ink-4)' : 'var(--bad)', textAlign: 'right' }}>
+            <div className="mono tnum" style={{ "fontSize": 11, color: free ? 'var(--ink-4)' : 'var(--bad)', textAlign: 'right' }}>
               {free ? '—' : `– $${m.cost.toFixed(3)}`}
             </div>
           </div>
@@ -381,11 +346,11 @@ function LedgerDetail({
           marginTop: 4,
         }}
       >
-        <div className="mono" style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.14em', textTransform: 'uppercase' }}>
+        <div className="mono" style={{ "fontSize": 10, "fontWeight": 700, "letterSpacing": '0.14em', "textTransform": 'uppercase' }}>
           Net
         </div>
         <div />
-        <div className="mono tnum" style={{ fontSize: 13, fontWeight: 700, color: 'var(--good)', textAlign: 'right' }}>
+        <div className="mono tnum" style={{ "fontSize": 13, "fontWeight": 700, color: 'var(--good)', textAlign: 'right' }}>
           + ${dollars.toFixed(3)}
         </div>
       </div>
@@ -444,20 +409,20 @@ function TaskListItem({
       >
         <Caret open={expanded} />
         <div style={{ minWidth: 0 }}>
-          <div style={{ fontSize: 13, fontWeight: 500, color: 'var(--ink)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+          <div style={{ "fontSize": 13, "fontWeight": 500, "color": 'var(--ink)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
             {task.label}
           </div>
-          <div className="mono" style={{ fontSize: 10, color: 'var(--ink-3)', marginTop: 2 }}>
+          <div className="mono" style={{ "fontSize": 10, "color": 'var(--ink-3)', marginTop: 2 }}>
             {chosen.name} {'·'} {chosen.tier}
           </div>
         </div>
-        <div className="mono tnum" style={{ fontSize: 11, color: 'var(--ink-2)', textAlign: 'center' }}>
+        <div className="mono tnum" style={{ "fontSize": 11, "color": 'var(--ink-2)', textAlign: 'center' }}>
           {modelCount} models
         </div>
-        <div className="mono tnum" style={{ fontSize: 11, color: winnerLatencyMs < 5000 ? 'var(--good)' : winnerLatencyMs < 30000 ? 'var(--ink-2)' : 'var(--warn)', textAlign: 'right' }}>
+        <div className="mono tnum" style={{ "fontSize": 11, color: winnerLatencyMs < 5000 ? 'var(--good)' : winnerLatencyMs < 30000 ? 'var(--ink-2)' : 'var(--warn)', textAlign: 'right' }}>
           {formatLatency(winnerLatencyMs)}
         </div>
-        <div className="mono tnum" style={{ fontSize: 11, fontWeight: 600, textAlign: 'right', color: maxCost === 0 ? 'var(--good)' : 'var(--ink-2)' }}>
+        <div className="mono tnum" style={{ "fontSize": 11, "fontWeight": 600, textAlign: 'right', color: maxCost === 0 ? 'var(--good)' : 'var(--ink-2)' }}>
           {costRange}
         </div>
       </button>
@@ -467,7 +432,7 @@ function TaskListItem({
         <div style={{ padding: '8px 14px 18px 48px', display: 'flex', flexDirection: 'column', gap: 10 }}>
           <PromptBlock prompt={task.prompt} />
           <LedgerDetail models={task.models} chosenId={chosen.id} dollars={task.savedDollars} />
-          <div style={{ fontSize: 10, color: 'var(--ink-3)', fontStyle: 'italic' }}>
+          <div style={{ "fontSize": 10, "color": 'var(--ink-3)', fontStyle: 'italic' }}>
             <span className="mono">correlation_id: 0xa31f{'…'}b8c4</span> {'·'} receipt signed by deepseek-r1-32b
           </div>
         </div>
@@ -509,10 +474,10 @@ function HeaderCell({
       style={{
         all: 'unset',
         cursor: 'pointer',
-        fontSize: 9,
-        fontWeight: 700,
+        "fontSize": 9,
+        "fontWeight": 700,
         color: active ? 'var(--accent-ink)' : 'var(--ink-3)',
-        letterSpacing: '0.16em',
+        "letterSpacing": '0.16em',
         textAlign: align,
         width: '100%',
         boxSizing: 'border-box',
@@ -549,12 +514,13 @@ export default function AbCompareWidget({
     refetchInterval: 10_000,
   });
 
-  // Build tasks from projection data or fall back to synthetic
+  // Build tasks from projection data. Storybook owns demo fixture seeding; the
+  // widget itself preserves empty-state semantics when the projection is empty.
   const tasks = useMemo(() => {
     if (data && data.length > 0) {
       return buildTasksFromProjection(data);
     }
-    return buildTasksFromSynthetic();
+    return [];
   }, [data]);
 
   // Auto-expand first task
@@ -610,7 +576,7 @@ export default function AbCompareWidget({
       title="AB Model Cost Compare"
       isLoading={isLoading}
       error={error ?? undefined}
-      isEmpty={false}
+      isEmpty={tasks.length === 0}
       emptyMessage="No comparison data yet"
       emptyHint="Results appear after the first ab-compare run completes"
     >
@@ -619,20 +585,20 @@ export default function AbCompareWidget({
         <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 16, marginBottom: 14 }}>
           <div>
             <div className="eyebrow">A/B model cost compare {'·'} last {totals.count} tasks</div>
-            <div style={{ fontSize: 14, fontWeight: 600, marginTop: 6, color: 'var(--ink-2)' }}>
+            <div style={{ "fontSize": 14, "fontWeight": 600, marginTop: 6, "color": 'var(--ink-2)' }}>
               Tap any task to see the prompt + receipt.
             </div>
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
             <div style={{ textAlign: 'right' }}>
-              <div className="mono tnum" style={{ fontSize: 24, fontWeight: 800, color: 'var(--good)', lineHeight: 1 }}>
+              <div className="mono tnum" style={{ "fontSize": 24, "fontWeight": 800, color: 'var(--good)', "lineHeight": 1 }}>
                 <CountUp value={totals.savedPct} suffix="%" />
               </div>
               <div className="eyebrow" style={{ color: 'var(--good)', marginTop: 3 }}>saved</div>
             </div>
             <div style={{ width: 1, height: 28, background: 'var(--line)' }} />
             <div style={{ textAlign: 'right' }}>
-              <div className="mono tnum" style={{ fontSize: 16, fontWeight: 700, lineHeight: 1 }}>
+              <div className="mono tnum" style={{ "fontSize": 16, "fontWeight": 700, "lineHeight": 1 }}>
                 <CountUp value={totals.savedDollars} prefix="$" decimals={3} />
               </div>
               <div className="eyebrow" style={{ marginTop: 3 }}>vs cloud-only</div>

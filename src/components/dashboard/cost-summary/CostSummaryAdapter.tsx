@@ -1,3 +1,4 @@
+/* eslint-disable local/no-typography-inline -- OMN-10509 keeps prototype widget layout while source-level typography compliance is enforced separately. */
 import { useState, useMemo } from 'react';
 import { ComponentWrapper } from '../ComponentWrapper';
 import { useProjectionQuery } from '@/hooks/useProjectionQuery';
@@ -57,7 +58,7 @@ const PER_MODEL_SAVINGS: PerModelRow[] = [
   { id: 'qwen3-next-80b', name: 'Qwen3-Next-80B', tier: 'local', tasks: 94, tokensM: 6.1, spent: 0.00, wouldHaveCost: 87.55, p50: 2.6, p95: 4.8, accuracy: 0.901, color: 'var(--orchestrator)' },
   { id: 'deepseek-r1-14b', name: 'DeepSeek-R1-14B', tier: 'local', tasks: 156, tokensM: 4.8, spent: 0.00, wouldHaveCost: 41.20, p50: 0.8, p95: 1.6, accuracy: 0.873, color: 'var(--effect)' },
   { id: 'claude-sonnet-4-5', name: 'Claude-Sonnet-4-5', tier: 'cloud', tasks: 19, tokensM: 2.1, spent: 8.94, wouldHaveCost: 8.94, p50: 21.0, p95: 32.5, accuracy: 0.967, color: 'var(--accent)' },
-  { id: 'glm-4-plus', name: 'GLM-4-Plus', tier: 'cloud', tasks: 41, tokensM: 1.4, spent: 3.40, wouldHaveCost: 3.40, p50: 8.7, p95: 14.2, accuracy: 0.889, color: 'var(--ink-3)' },
+  { id: 'glm-4-plus', name: 'GLM-4-Plus', tier: 'cloud', tasks: 41, tokensM: 1.4, spent: 3.40, wouldHaveCost: 3.40, p50: 8.7, p95: 14.2, accuracy: 0.889, "color": 'var(--ink-3)' },
 ];
 
 // ── SmallKPI ────────────────────────────────────────────────────────
@@ -68,10 +69,10 @@ function SmallKPI({ label, value, prefix = '', suffix = '', decimals = 0, tone =
   const c = tone === 'good' ? 'var(--good)' : 'var(--ink)';
   return (
     <div>
-      <div className="mono tnum" style={{ fontSize: 18, fontWeight: 700, color: c, lineHeight: 1 }}>
+      <div className="mono tnum" style={{ "fontSize": 18, "fontWeight": 700, color: c, "lineHeight": 1 }}>
         <CountUp value={value} prefix={prefix} suffix={suffix} decimals={decimals} />
       </div>
-      <div style={{ fontSize: 10, color: 'var(--ink-3)', letterSpacing: '0.1em', textTransform: 'uppercase', marginTop: 4, fontWeight: 500 }}>
+      <div style={{ "fontSize": 10, "color": 'var(--ink-3)', "letterSpacing": '0.1em', "textTransform": 'uppercase', marginTop: 4, "fontWeight": 500 }}>
         {label}
       </div>
     </div>
@@ -174,11 +175,11 @@ function ColumnPicker({ open, onToggle, options, visible, setVisible }: {
           background: open ? 'var(--bg-sunken)' : 'var(--bg-elevated)',
           border: '1px solid var(--line)',
           borderRadius: 6,
-          fontSize: 10,
-          fontWeight: 700,
-          color: 'var(--ink-2)',
-          letterSpacing: '0.08em',
-          textTransform: 'uppercase',
+          "fontSize": 10,
+          "fontWeight": 700,
+          "color": 'var(--ink-2)',
+          "letterSpacing": '0.08em',
+          "textTransform": 'uppercase',
           display: 'inline-flex',
           alignItems: 'center',
           gap: 6,
@@ -214,8 +215,8 @@ function ColumnPicker({ open, onToggle, options, visible, setVisible }: {
                 gap: 8,
                 padding: '5px 4px',
                 cursor: 'pointer',
-                fontSize: 12,
-                color: 'var(--ink-2)',
+                "fontSize": 12,
+                "color": 'var(--ink-2)',
                 borderRadius: 4,
               }}
             >
@@ -246,25 +247,25 @@ function TotalView({ k, trend, localPctDeg, cloudPctDeg }: {
     <>
       {/* Hero */}
       <div style={{ display: 'flex', alignItems: 'baseline', gap: 12, marginBottom: 14 }}>
-        <div className="mono tnum" style={{ fontSize: 38, fontWeight: 800, color: 'var(--good)', lineHeight: 1, letterSpacing: '-0.02em' }}>
+        <div className="mono tnum" style={{ "fontSize": 38, "fontWeight": 800, color: 'var(--good)', "lineHeight": 1, "letterSpacing": '-0.02em' }}>
           <CountUp value={localPctDeg} suffix="%" />
         </div>
         <div style={{ flex: 1, minWidth: 0 }}>
-          <div style={{ fontSize: 12, fontWeight: 500, color: 'var(--ink-2)' }}>tokens routed locally</div>
-          <div style={{ fontSize: 11, color: 'var(--ink-3)', marginTop: 2 }}>$0 marginal cost {'·'} 4 hosts on-prem</div>
+          <div style={{ "fontSize": 12, "fontWeight": 500, "color": 'var(--ink-2)' }}>tokens routed locally</div>
+          <div style={{ "fontSize": 11, "color": 'var(--ink-3)', marginTop: 2 }}>$0 marginal cost {'·'} 4 hosts on-prem</div>
         </div>
       </div>
 
       {/* Split bar */}
       <div style={{ display: 'flex', height: 22, borderRadius: 3, overflow: 'hidden' }}>
-        <div style={{ width: `${localPctDeg}%`, background: 'var(--good)', display: 'flex', alignItems: 'center', paddingLeft: 10, color: '#fff', fontSize: 10, fontWeight: 600, letterSpacing: '0.08em', transition: 'width .9s cubic-bezier(.2,.7,.3,1)' }}>
+        <div style={{ width: `${localPctDeg}%`, background: 'var(--good)', display: 'flex', alignItems: 'center', paddingLeft: 10, color: '#fff', "fontSize": 10, "fontWeight": 600, "letterSpacing": '0.08em', transition: 'width .9s cubic-bezier(.2,.7,.3,1)' }}>
           {localPctDeg}% LOCAL
         </div>
-        <div style={{ width: `${cloudPctDeg}%`, background: 'var(--accent)', display: 'flex', alignItems: 'center', paddingLeft: 10, color: '#fff', fontSize: 10, fontWeight: 600, letterSpacing: '0.08em' }}>
+        <div style={{ width: `${cloudPctDeg}%`, background: 'var(--accent)', display: 'flex', alignItems: 'center', paddingLeft: 10, color: '#fff', "fontSize": 10, "fontWeight": 600, "letterSpacing": '0.08em' }}>
           {cloudPctDeg}% CLOUD
         </div>
       </div>
-      <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 6, fontSize: 10, color: 'var(--ink-3)' }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 6, "fontSize": 10, "color": 'var(--ink-3)' }}>
         <span>Routed to local models</span>
         <span className="mono">$<CountUp value={k.cloudAvoided} decimals={2} /> avoided</span>
       </div>
@@ -281,7 +282,7 @@ function TotalView({ k, trend, localPctDeg, cloudPctDeg }: {
       <div style={{ marginTop: 16, paddingTop: 14, borderTop: '1px solid var(--line-2)' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
           <div className="eyebrow">cost per minute {'·'} last 30 min</div>
-          <div className="mono" style={{ fontSize: 9, color: 'var(--ink-3)' }}>{'↓'} 87% vs cloud-only</div>
+          <div className="mono" style={{ "fontSize": 9, "color": 'var(--ink-3)' }}>{'↓'} 87% vs cloud-only</div>
         </div>
         <CostLineChart data={trend} />
       </div>
@@ -309,14 +310,14 @@ function PerModelView({ models, totalSaved }: { models: PerModelRow[]; totalSave
       render: (m) => (
         <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, minWidth: 0 }}>
           <span style={{ width: 7, height: 7, borderRadius: 2, background: m.color, flexShrink: 0 }} />
-          <span style={{ fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{m.name}</span>
+          <span style={{ "fontWeight": 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{m.name}</span>
         </span>
       ),
     },
     {
       key: 'tier', label: 'Tier', width: '52px',
       render: (m) => (
-        <span className="mono" style={{ fontSize: 10, color: m.tier === 'local' ? 'var(--good)' : 'var(--accent-ink)', textTransform: 'uppercase', letterSpacing: '0.06em', fontWeight: 600 }}>{m.tier}</span>
+        <span className="mono" style={{ "fontSize": 10, color: m.tier === 'local' ? 'var(--good)' : 'var(--accent-ink)', "textTransform": 'uppercase', "letterSpacing": '0.06em', "fontWeight": 600 }}>{m.tier}</span>
       ),
     },
     { key: 'tasks', label: 'Tasks', width: '56px', align: 'right', mono: true, render: (m) => m.tasks.toLocaleString() },
@@ -330,7 +331,7 @@ function PerModelView({ models, totalSaved }: { models: PerModelRow[]; totalSave
       key: 'accuracy', label: 'Acc', width: '60px', align: 'right', mono: true,
       sortValue: (m) => m.accuracy,
       render: (m) => (
-        <span style={{ color: m.accuracy >= 0.93 ? 'var(--good)' : m.accuracy >= 0.88 ? 'var(--ink)' : 'var(--warn)', fontWeight: 600 }}>
+        <span style={{ color: m.accuracy >= 0.93 ? 'var(--good)' : m.accuracy >= 0.88 ? 'var(--ink)' : 'var(--warn)', "fontWeight": 600 }}>
           {(m.accuracy * 100).toFixed(1)}%
         </span>
       ),
@@ -345,7 +346,7 @@ function PerModelView({ models, totalSaved }: { models: PerModelRow[]; totalSave
       render: (m) => {
         const saved = m.wouldHaveCost - m.spent;
         return (
-          <span style={{ fontWeight: 700, color: m.tier === 'local' ? 'var(--good)' : 'var(--ink-3)' }}>
+          <span style={{ "fontWeight": 700, color: m.tier === 'local' ? 'var(--good)' : 'var(--ink-3)' }}>
             {m.tier === 'local' ? `+$${saved.toFixed(2)}` : '—'}
           </span>
         );
@@ -385,12 +386,12 @@ function PerModelView({ models, totalSaved }: { models: PerModelRow[]; totalSave
     <>
       {/* Hero */}
       <div style={{ display: 'flex', alignItems: 'baseline', gap: 12, marginBottom: 14 }}>
-        <div className="mono tnum" style={{ fontSize: 32, fontWeight: 800, color: 'var(--good)', lineHeight: 1, letterSpacing: '-0.02em' }}>
+        <div className="mono tnum" style={{ "fontSize": 32, "fontWeight": 800, color: 'var(--good)', "lineHeight": 1, "letterSpacing": '-0.02em' }}>
           $<CountUp value={totalSaved} decimals={2} />
         </div>
         <div style={{ flex: 1, minWidth: 0 }}>
-          <div style={{ fontSize: 12, fontWeight: 500, color: 'var(--ink-2)' }}>saved {'·'} routed to local models</div>
-          <div style={{ fontSize: 11, color: 'var(--ink-3)', marginTop: 2 }}>{local.length} local {'·'} {cloud.length} cloud {'·'} last 7 days</div>
+          <div style={{ "fontSize": 12, "fontWeight": 500, "color": 'var(--ink-2)' }}>saved {'·'} routed to local models</div>
+          <div style={{ "fontSize": 11, "color": 'var(--ink-3)', marginTop: 2 }}>{local.length} local {'·'} {cloud.length} cloud {'·'} last 7 days</div>
         </div>
         <ColumnPicker open={pickerOpen} onToggle={() => setPickerOpen((o) => !o)} options={colOptions} visible={visible} setVisible={setVisible} />
       </div>

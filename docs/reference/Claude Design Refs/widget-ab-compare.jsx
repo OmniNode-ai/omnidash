@@ -4,6 +4,8 @@ const { useState: abState, useMemo: abMemo } = React;
 function TaskListItem({ task, expanded, onToggle, metaphor }) {
   const models = window.OD_DATA.MODELS;
   const chosen = models.find(m => m.id === task.chosen);
+  const chosenName = chosen?.name ?? task.chosen ?? "unknown-model";
+  const chosenTier = chosen?.tier ?? "cloud";
   const cloudCost = 0.118;
   const winnerCost = chosen?.cost ?? 0;
   const dollars = Math.max(0, cloudCost - winnerCost);
@@ -29,8 +31,8 @@ function TaskListItem({ task, expanded, onToggle, metaphor }) {
           <div style={{ fontSize: 13, fontWeight: 500, color: "var(--ink)", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{task.label}</div>
           <div className="mono" style={{ fontSize: 10, color: "var(--ink-3)", marginTop: 2 }}>{intentLabel}</div>
         </div>
-        <div className="mono" style={{ fontSize: 11, fontWeight: 600, color: chosen.tier === "local" ? "var(--good)" : "var(--effect)", whiteSpace: "nowrap" }}>
-          {chosen.name.split("-").slice(0, 2).join("-")}
+        <div className="mono" style={{ fontSize: 11, fontWeight: 600, color: chosenTier === "local" ? "var(--good)" : "var(--effect)", whiteSpace: "nowrap" }}>
+          {chosenName.split("-").slice(0, 2).join("-")}
         </div>
         <div className="mono tnum" style={{ fontSize: 12, fontWeight: 700, color: winnerCost === 0 ? "var(--good)" : "var(--effect)", textAlign: "right" }}>
           {winnerCost === 0 ? "FREE" : `$${winnerCost.toFixed(3)}`}

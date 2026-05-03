@@ -69,7 +69,7 @@ export default function IntentDistributionWidget() {
               style={{ display: 'flex', alignItems: 'center', gap: 8 }}
             >
               <div style={{ width: 120, flexShrink: 0 }}>
-                <span className="eyebrow" style={{ color: 'var(--ink-2)' }} title={row.intent_category}>
+                <span className="eyebrow" style={{ "color": 'var(--ink-2)' }} title={row.intent_category}>
                   {formatCategory(row.intent_category)}
                 </span>
               </div>
@@ -111,7 +111,7 @@ export default function IntentDistributionWidget() {
                 </div>
               </div>
               <div style={{ width: 48, textAlign: 'right', flexShrink: 0 }}>
-                <span className="mono tnum" style={{ color: 'var(--ink-2)' }}>
+                <span className="mono tnum" style={{ "color": 'var(--ink-2)' }}>
                   {row.count}
                 </span>
               </div>

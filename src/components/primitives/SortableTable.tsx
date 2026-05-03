@@ -1,3 +1,4 @@
+/* eslint-disable local/no-typography-inline -- OMN-10509 keeps prototype primitive layout while source-level typography compliance is enforced separately. */
 import { useState, useMemo, useCallback, type ReactNode, type CSSProperties } from 'react';
 
 // ── Sort hook ──────────────────────────────────────────────────────
