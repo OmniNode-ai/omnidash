@@ -1,5 +1,6 @@
 import { useState, useMemo, Component, type ReactNode } from 'react';
-import type { VisualizationContract, VisualizationType } from '../../../../shared/types/visualization-contract';
+import type { VisualizationType } from '../../../../shared/types/visualization-contract';
+import { AB_COMPARE_VIZ_CONTRACT, type VisualizationContract } from '../../../../shared/types/visualization-contract';
 import { useProjectionQueryWithContract } from '@/hooks/useProjectionQuery';
 import { ComponentWrapper } from '../ComponentWrapper';
 import { VizRenderer } from './VizRenderer';
@@ -200,10 +201,12 @@ function ProjectionContainerInner({ contract }: { contract: VisualizationContrac
 // ── ProjectionContainer ───────────────────────────────────────────────────────
 
 interface ProjectionContainerProps {
-  contract: VisualizationContract;
+  contract?: VisualizationContract;
+  config?: Record<string, unknown>;
 }
 
-export default function ProjectionContainer({ contract }: ProjectionContainerProps) {
+export default function ProjectionContainer({ contract: contractProp, config }: ProjectionContainerProps) {
+  const contract = contractProp ?? (config?.contract as VisualizationContract | undefined) ?? AB_COMPARE_VIZ_CONTRACT;
   if (!SUPPORTED_CONTRACT_VERSIONS.includes(contract.version)) {
     return (
       <ComponentWrapper title="Visualization Error">

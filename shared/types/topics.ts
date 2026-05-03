@@ -61,6 +61,10 @@ export const TOPICS = {
    * Producer: ab-compare orchestrator in omnimarket.
    */
   abCompare: 'onex.snapshot.projection.ab-compare.v1',
+  /** Intent classification widget — category distribution per session. */
+  intentClassification: 'onex.snapshot.projection.intent-classification.v1',
+  /** Live event stream widget — real-time system event feed. */
+  liveEvents: 'onex.snapshot.projection.live-events.v1',
 } as const;
 
 export type TopicSymbol = (typeof TOPICS)[keyof typeof TOPICS];

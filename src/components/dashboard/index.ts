@@ -22,4 +22,8 @@ export const componentImports: Record<string, ReturnType<typeof lazy>> = {
   'readiness/ReadinessGate': lazy(() => import('./readiness/ReadinessGate')),
   'events/EventStream': lazy(() => import('./events/EventStream')),
   'ab-compare/AbCompareWidget': lazy(() => import('./ab-compare/AbCompareWidget')),
+  'projection-container/ProjectionContainer': lazy(() => import('./projection-container/ProjectionContainer')),
+  'intent-distribution/IntentDistributionWidget': lazy(() => import('./intent-distribution/IntentDistributionWidget')),
+  'session-timeline/SessionTimelineWidget': lazy(() => import('./session-timeline/SessionTimelineWidget')),
+  'live-events/LiveEventStreamWidget': lazy(() => import('./live-events/LiveEventStreamWidget')),
 };

@@ -158,7 +158,7 @@ export const createDashboardSlice: StateCreator<FrameStore, [], [], DashboardSli
         componentName,
         componentVersion,
         x: 0,
-        y: Infinity,
+        y: 9999,
         w: defaultSize.w,
         h: defaultSize.h,
         config: {},
@@ -171,6 +171,7 @@ export const createDashboardSlice: StateCreator<FrameStore, [], [], DashboardSli
       const dashboards = state.dashboards.map((d) =>
         d.id === activeDashboard.id ? activeDashboard : d,
       );
+      persistList(dashboards);
       return { activeDashboard, dashboards };
     }),
 
@@ -182,7 +183,7 @@ export const createDashboardSlice: StateCreator<FrameStore, [], [], DashboardSli
         componentName,
         componentVersion,
         x: 0,
-        y: Infinity,
+        y: 9999,
         w: defaultSize.w,
         h: defaultSize.h,
         config: {},
@@ -198,6 +199,7 @@ export const createDashboardSlice: StateCreator<FrameStore, [], [], DashboardSli
       const dashboards = state.dashboards.map((d) =>
         d.id === activeDashboard.id ? activeDashboard : d,
       );
+      persistList(dashboards);
       return { activeDashboard, dashboards };
     }),
 
@@ -222,6 +224,7 @@ export const createDashboardSlice: StateCreator<FrameStore, [], [], DashboardSli
       const dashboards = state.dashboards.map((d) =>
         d.id === activeDashboard.id ? activeDashboard : d,
       );
+      persistList(dashboards);
       return { activeDashboard, dashboards };
     }),
 
@@ -236,6 +239,7 @@ export const createDashboardSlice: StateCreator<FrameStore, [], [], DashboardSli
       const dashboards = state.dashboards.map((d) =>
         d.id === activeDashboard.id ? activeDashboard : d,
       );
+      persistList(dashboards);
       return { activeDashboard, dashboards };
     }),
 
@@ -258,6 +262,7 @@ export const createDashboardSlice: StateCreator<FrameStore, [], [], DashboardSli
       const dashboards = state.dashboards.map((d) =>
         d.id === activeDashboard.id ? activeDashboard : d,
       );
+      persistList(dashboards);
       return { activeDashboard, dashboards };
     }),
 

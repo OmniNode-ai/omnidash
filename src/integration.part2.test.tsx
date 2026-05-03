@@ -42,7 +42,7 @@ describe('Proof of Life — Part 2', () => {
     // OMN-10302: cost-by-repo added (IBarChartAdapter/threejs).
     // OMN-10303: token-usage added (ITrendChartAdapter/threejs).
     // OMN-10490: ab-compare added (ab-compare/AbCompareWidget).
-    expect(all.length).toBe(13);
+    expect(all.length).toBe(17);
     expect(all.map((c) => c.name).sort()).toEqual([
       'ab-compare',
       'baselines-roi-card',
@@ -53,9 +53,13 @@ describe('Proof of Life — Part 2', () => {
       'cost-trend-panel',
       'delegation-metrics',
       'event-stream',
+      'intent-distribution',
+      'live-event-stream',
+      'projection-container',
       'quality-score-panel',
       'readiness-gate',
       'routing-decision-table',
+      'session-timeline',
       'token-usage',
     ]);
   });
