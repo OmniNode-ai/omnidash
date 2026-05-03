@@ -1,3 +1,11 @@
+export type VisualizationType = 'table' | 'bar_chart' | 'scatter_plot' | 'trend_line' | 'kpi_tiles';
+
+export interface ControlSpec {
+  type: 'run_selector' | 'time_range' | 'model_filter' | 'visualization_picker';
+  field?: string;
+  param?: string;
+}
+
 export interface VisualizationContract {
   version: string;
   topic: string;
@@ -14,14 +22,6 @@ export interface VisualizationContract {
     time_range?: { field: string; param: string };
     model_filter?: { field: string; param: string };
   };
-}
-
-export type VisualizationType = 'table' | 'bar_chart' | 'scatter_plot' | 'trend_line' | 'kpi_tiles';
-
-export interface ControlSpec {
-  type: 'run_selector' | 'time_range' | 'model_filter' | 'visualization_picker';
-  field?: string;
-  param?: string;
 }
 
 export const AB_COMPARE_VIZ_CONTRACT: VisualizationContract = {

@@ -61,6 +61,6 @@ repos:
     hooks:
       - id: normalization-symmetry
         name: normalization-symmetry
-        entry: uv run python -m omnibase_core.validators.normalization-symmetry
+        entry: bash -c 'PYTHONPATH="${OMNIBASE_CORE_PATH:-../omnibase_core}/src" uv run --project "${OMNIBASE_CORE_PATH:-../omnibase_core}" python -m omnibase_core.validation.checker_normalization_symmetry'
         language: system
         pass_filenames: false
