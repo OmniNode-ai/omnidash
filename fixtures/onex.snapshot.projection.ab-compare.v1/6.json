@@ -1,0 +1,1 @@
+{"correlation_id": "run-demo-002", "model_id": "cyankiwi/Qwen3-Coder-30B-A3B-Instruct-AWQ-4bit", "estimated_cost_usd": 0, "total_tokens": 312, "latency_ms": 1400, "usage_source": "MEASURED", "created_at": "2026-05-02T22:10:00Z", "task_description": "Diagnose Kafka consumer-lag in payments-svc"}

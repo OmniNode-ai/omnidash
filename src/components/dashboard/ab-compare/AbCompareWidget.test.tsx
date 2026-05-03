@@ -1,4 +1,5 @@
 import { render, screen } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { QueryClient } from '@tanstack/react-query';
 import { DataSourceTestProvider } from '@/test-utils/dataSourceTestProvider';
@@ -66,37 +67,37 @@ describe('AbCompareWidget', () => {
   it('renders model ids from latest run', async () => {
     mockFetchWithItems([LOCAL_ROW, CLOUD_ROW]);
     render(<DataSourceTestProvider client={qc}><AbCompareWidget config={{}} /></DataSourceTestProvider>);
-    expect(await screen.findAllByText('qwen3-coder-30b')).not.toHaveLength(0);
-    expect(screen.getByText('claude-sonnet-4-6')).toBeInTheDocument();
+    expect(await screen.findByText(/qwen3-coder-30b/)).toBeInTheDocument();
+    expect(screen.getByText('2 models')).toBeInTheDocument();
   });
 
-  it('renders $0.00 for local (free) models', async () => {
+  it('renders $0 in the cost range for local models', async () => {
     mockFetchWithItems([LOCAL_ROW, CLOUD_ROW]);
     render(<DataSourceTestProvider client={qc}><AbCompareWidget config={{}} /></DataSourceTestProvider>);
-    await screen.findAllByText('qwen3-coder-30b');
-    expect(screen.getByText('$0.00')).toBeInTheDocument();
+    await screen.findByText(/qwen3-coder-30b/);
+    expect(screen.getByText(/\$0.*\$0\.002/)).toBeInTheDocument();
   });
 
   it('shows savings summary when multiple models have different costs', async () => {
     mockFetchWithItems([LOCAL_ROW, CLOUD_ROW]);
     render(<DataSourceTestProvider client={qc}><AbCompareWidget config={{}} /></DataSourceTestProvider>);
-    await screen.findAllByText('qwen3-coder-30b');
+    await screen.findByText(/qwen3-coder-30b/);
     // Savings banner contains "Save" text
-    expect(screen.getByText(/save/i)).toBeInTheDocument();
+    expect(screen.getByText(/saved/i)).toBeInTheDocument();
   });
 
-  it('does not show savings banner for single-model run', async () => {
+  it('shows a single-model run without adding comparison rows', async () => {
     mockFetchWithItems([LOCAL_ROW]);
     render(<DataSourceTestProvider client={qc}><AbCompareWidget config={{}} /></DataSourceTestProvider>);
-    expect(await screen.findAllByText('qwen3-coder-30b')).not.toHaveLength(0);
-    expect(screen.queryByText(/save/i)).not.toBeInTheDocument();
+    expect(await screen.findByText(/qwen3-coder-30b/)).toBeInTheDocument();
+    expect(screen.getByText('1 models')).toBeInTheDocument();
   });
 
-  it('renders a dash for nullable projection fields', async () => {
+  it('counts nullable projection rows in the comparison group', async () => {
     mockFetchWithItems([LOCAL_ROW, CLOUD_ROW, UNKNOWN_COST_ROW]);
     render(<DataSourceTestProvider client={qc}><AbCompareWidget config={{}} /></DataSourceTestProvider>);
-    await screen.findAllByText('qwen3-coder-30b');
-    expect(screen.getAllByText('—').length).toBeGreaterThanOrEqual(1);
+    await screen.findByText(/qwen3-coder-30b/);
+    expect(screen.getByText('3 models')).toBeInTheDocument();
   });
 
   it('shows only the most-recent run when multiple runs exist', async () => {
@@ -108,24 +109,23 @@ describe('AbCompareWidget', () => {
     };
     mockFetchWithItems([LOCAL_ROW, CLOUD_ROW, olderRun]);
     render(<DataSourceTestProvider client={qc}><AbCompareWidget config={{}} /></DataSourceTestProvider>);
-    await screen.findAllByText('qwen3-coder-30b');
-    // OldModel is from an older run and should not appear
-    expect(screen.queryByText('old-model')).not.toBeInTheDocument();
+    await screen.findByText(/qwen3-coder-30b/);
+    expect(screen.getByText('2 models')).toBeInTheDocument();
   });
 
-  it('renders usage source values from projection rows', async () => {
+  it('opens projection row details', async () => {
     mockFetchWithItems([LOCAL_ROW, CLOUD_ROW]);
     render(<DataSourceTestProvider client={qc}><AbCompareWidget config={{}} /></DataSourceTestProvider>);
-    await screen.findAllByText('qwen3-coder-30b');
-    expect(screen.getByText('router')).toBeInTheDocument();
-    expect(screen.getByText('gateway')).toBeInTheDocument();
+    await userEvent.click(await screen.findByRole('button', { name: /run run-1/i }));
+    expect(screen.getByText('Prompt')).toBeInTheDocument();
+    expect(screen.getByText('MODEL')).toBeInTheDocument();
   });
 
-  it('renders column headers: Model, Tokens, Cost, Latency, Source', async () => {
+  it('renders sortable column headers', async () => {
     mockFetchWithItems([LOCAL_ROW, CLOUD_ROW]);
     render(<DataSourceTestProvider client={qc}><AbCompareWidget config={{}} /></DataSourceTestProvider>);
-    await screen.findAllByText('qwen3-coder-30b');
-    for (const header of ['Model', 'Tokens', 'Cost', 'Latency', 'Source']) {
+    await screen.findByText(/qwen3-coder-30b/);
+    for (const header of ['TASK', 'MODELS', 'LATENCY', 'COST RANGE']) {
       expect(screen.getByText(header)).toBeInTheDocument();
     }
   });

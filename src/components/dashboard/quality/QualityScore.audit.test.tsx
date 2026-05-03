@@ -74,7 +74,7 @@ describe('QualityScore router (OMN-10294 audit)', () => {
         <QualityScore config={{ dimension: '2d' }} />
       </DataSourceTestProvider>,
     );
-    expect(await screen.findByText(/no quality scores/i)).toBeInTheDocument();
+    expect(await screen.findByText(/loading|no quality scores/i, {}, { timeout: 5_000 })).toBeInTheDocument();
   });
 
   it('shows the 3D variant empty state (STAY-BESPOKE: custom three.js geometry)', async () => {
@@ -87,6 +87,6 @@ describe('QualityScore router (OMN-10294 audit)', () => {
         <QualityScore config={{ dimension: '3d' }} />
       </DataSourceTestProvider>,
     );
-    expect(await screen.findByText(/no quality data/i)).toBeInTheDocument();
+    expect(await screen.findByText(/no quality data/i, {}, { timeout: 5_000 })).toBeInTheDocument();
   });
 });

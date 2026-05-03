@@ -1,0 +1,1 @@
+{"correlation_id": "run-demo-003", "model_id": "cyankiwi/Qwen3-Coder-30B-A3B-Instruct-AWQ-4bit", "estimated_cost_usd": 0, "total_tokens": 1920, "latency_ms": 3400, "usage_source": "MEASURED", "created_at": "2026-05-02T22:20:00Z", "task_description": "Refactor 18-file monorepo to ESM"}

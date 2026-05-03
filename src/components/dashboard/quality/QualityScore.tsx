@@ -9,6 +9,7 @@
 // threshold plane, inverted-cone mean marker, raycasting hover. Materially different
 // from any generic primitive; no migration path at this iteration.
 import { lazy, Suspense } from 'react';
+import { Text } from '@/components/ui/typography';
 import type { WidgetDimension } from '../_shared/types';
 
 // Sub-widgets are lazy-loaded so the dimension the user does NOT select
@@ -32,7 +33,7 @@ export default function QualityScore({ config }: { config: QualityScoreConfig })
   // The two sub-widgets accept the same shape minus `dimension`. Forward
   // verbatim — letting React Suspense handle the lazy boundary.
   return (
-    <Suspense fallback={null}>
+    <Suspense fallback={<Text as="div" size="lg" color="tertiary">Loading...</Text>}>
       {dimension === '2d'
         ? <QualityScoreHistogram config={config} />
         : <QualityScoreTilted3D config={config} />}

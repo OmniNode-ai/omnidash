@@ -1,0 +1,1 @@
+{ "id": "e-005", "type": "ROUTING", "timestamp": "2026-05-03T15:00:05Z", "source": "omnimarket", "topic": "onex.evt.omnimarket.routed.v3", "summary": "→ deepseek-r1-32b · $0.000", "payload": "{\"model\":\"deepseek-r1-32b\",\"cost\":0}" }

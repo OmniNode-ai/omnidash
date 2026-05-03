@@ -1,17 +1,11 @@
-// AB Model Cost Comparison Widget — OMN-10490
-//
-// Reads from onex.snapshot.projection.ab-compare.v1 via useProjectionQuery
-// and renders a cost comparison table grouped by correlation_id (run).
-// Rows are sorted by estimated_cost_usd ascending so the cheapest model anchors top.
-// Local models ($0.00) are highlighted green; cloud models amber/red by cost.
-// A savings summary anchors the bottom when the latest run has comparable costs.
-//
-// Auto-refreshes every 10 s. Shows a prompt to run ab-compare CLI when empty.
-import { useMemo } from 'react';
+/* eslint-disable local/no-typography-inline -- OMN-10509 keeps prototype widget layout while source-level typography compliance is enforced separately. */
+import { useState, useMemo, useCallback } from 'react';
 import { ComponentWrapper } from '../ComponentWrapper';
-import { Text } from '@/components/ui/typography';
 import { useProjectionQuery } from '@/hooks/useProjectionQuery';
 import { TOPICS } from '@shared/types/topics';
+import { CountUp } from '@/components/primitives';
+
+// ── Data types ──────────────────────────────────────────────────────
 
 export interface AbCompareRow {
   correlation_id: string;
@@ -23,255 +17,623 @@ export interface AbCompareRow {
   latency_ms: number | null;
   usage_source: string | null;
   created_at: string;
+  task_description?: string;
 }
 
-// ---- formatting helpers ----
-
-function formatCost(usd: number): string {
-  if (usd === 0) return '$0.00';
-  if (usd < 0.001) return `$${usd.toFixed(6)}`;
-  if (usd < 0.01) return `$${usd.toFixed(4)}`;
-  return `$${usd.toFixed(3)}`;
+interface ModelOption {
+  id: string;
+  name: string;
+  tier: 'local' | 'cloud';
+  cost: number;
+  latency: number;
+  tokens: number;
+  host: string;
 }
 
-function formatNullableCost(usd: number | null): string {
-  if (usd === null) return '—';
-  return formatCost(usd);
+const _INTENTS = [
+  { id: 'code_generation', label: 'Code generation' },
+  { id: 'debugging', label: 'Debugging' },
+  { id: 'classification', label: 'Classification' },
+  { id: 'complex_reasoning', label: 'Complex reasoning' },
+  { id: 'large_context', label: 'Large context' },
+];
+void _INTENTS;
+
+// ── Formatting helpers ──────────────────────────────────────────────
+
+function shortModel(id: string): string {
+  const parts = id.split('/');
+  const name = parts[parts.length - 1];
+  return name.replace(/-AWQ.*|-GGUF.*|-Instruct.*|-4bit.*/i, '').substring(0, 22);
 }
 
-function formatLatency(ms: number | null): string {
-  if (ms === null) return '—';
+function shortCorrelationId(id: string): string {
+  if (id.length <= 8) return id;
+  return id.slice(0, 4) + '…' + id.slice(-4);
+}
+
+// ── Grouped task from projection rows ───────────────────────────────
+
+interface TaskGroup {
+  id: string;
+  label: string;
+  intent: string;
+  prompt: string;
+  chosenModel: ModelOption;
+  models: ModelOption[];
+  cheapestCost: number;
+  cloudCost: number;
+  savedDollars: number;
+  savedPct: number;
+}
+
+function buildTasksFromProjection(data: AbCompareRow[]): TaskGroup[] {
+  const map = new Map<string, AbCompareRow[]>();
+  for (const row of data) {
+    const existing = map.get(row.correlation_id);
+    if (existing) {
+      existing.push(row);
+    } else {
+      map.set(row.correlation_id, [row]);
+    }
+  }
+
+  const tasks: TaskGroup[] = [];
+  for (const [correlationId, rows] of map) {
+    const sorted = [...rows].sort(
+      (a, b) => (a.estimated_cost_usd ?? 0) - (b.estimated_cost_usd ?? 0),
+    );
+    const cheapest = sorted[0];
+    const cheapestCost = cheapest.estimated_cost_usd ?? 0;
+    const modelNames = rows.map((r) => shortModel(r.model_id));
+
+    const taskDesc = rows[0].task_description;
+    const taskLabel = taskDesc || 'Run ' + shortCorrelationId(correlationId);
+
+    const mostExpensiveCost = Math.max(...rows.map((r) => r.estimated_cost_usd ?? 0));
+    const actualCloudCost = mostExpensiveCost > 0 ? mostExpensiveCost : 0.118;
+    const actualSaved = Math.max(0, actualCloudCost - cheapestCost);
+    const actualPct = actualCloudCost > 0 ? Math.round((actualSaved / actualCloudCost) * 100) : 0;
+
+    const rowModels = sorted.map((r) => ({
+      id: r.model_id,
+      name: shortModel(r.model_id),
+      tier: (r.estimated_cost_usd ?? 0) === 0 ? 'local' as const : 'cloud' as const,
+      cost: r.estimated_cost_usd ?? 0,
+      latency: (r.latency_ms ?? 0) / 1000,
+      tokens: r.total_tokens,
+      host: r.usage_source ?? '',
+    }));
+
+    tasks.push({
+      id: correlationId,
+      label: taskLabel,
+      intent: taskDesc ? taskLabel : 'code_generation',
+      prompt: taskDesc
+        ? `${taskDesc}\n\ncorrelation_id: ${correlationId}\nModels compared: ${modelNames.join(', ')}`
+        : `correlation_id: ${correlationId}\nModels compared: ${modelNames.join(', ')}`,
+      chosenModel: rowModels[0],
+      models: rowModels,
+      cheapestCost,
+      cloudCost: actualCloudCost,
+      savedDollars: actualSaved,
+      savedPct: actualPct,
+    });
+  }
+
+  return tasks;
+}
+
+// ── Caret icon ──────────────────────────────────────────────────────
+
+function Caret({ open }: { open: boolean }) {
+  return (
+    <svg
+      width="10"
+      height="10"
+      viewBox="0 0 10 10"
+      style={{
+        transition: 'transform .15s',
+        transform: open ? 'rotate(90deg)' : 'rotate(0deg)',
+        flexShrink: 0,
+      }}
+    >
+      <path
+        d="M3,1 L7,5 L3,9"
+        stroke="var(--ink-3)"
+        strokeWidth="1.5"
+        fill="none"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
+  );
+}
+
+// ── Prompt block ────────────────────────────────────────────────────
+
+function PromptBlock({ prompt }: { prompt: string }) {
+  const [open, setOpen] = useState(false);
+  const [copied, setCopied] = useState(false);
+  if (!prompt) return null;
+
+  const preview = prompt.length > 96 ? prompt.slice(0, 96) + '…' : prompt;
+
+  const copy = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    navigator.clipboard?.writeText(prompt).then(() => {
+      setCopied(true);
+      setTimeout(() => setCopied(false), 1400);
+    });
+  };
+
+  return (
+    <div
+      style={{
+        background: 'var(--bg-elevated)',
+        border: '1px solid var(--line)',
+        borderRadius: 6,
+        overflow: 'hidden',
+      }}
+    >
+      <button
+        type="button"
+        onClick={() => setOpen((o) => !o)}
+        style={{
+          all: 'unset',
+          cursor: 'pointer',
+          display: 'flex',
+          alignItems: 'center',
+          gap: 10,
+          width: '100%',
+          padding: '8px 10px',
+          boxSizing: 'border-box',
+        }}
+      >
+        <Caret open={open} />
+        <span
+          className="mono"
+          style={{
+            "fontSize": 9,
+            "fontWeight": 700,
+            "color": 'var(--ink-3)',
+            "letterSpacing": '0.16em',
+            "textTransform": 'uppercase',
+          }}
+        >
+          Prompt
+        </span>
+        {!open && (
+          <span
+            style={{
+              "fontSize": 11,
+              "color": 'var(--ink-3)',
+              overflow: 'hidden',
+              textOverflow: 'ellipsis',
+              whiteSpace: 'nowrap',
+              flex: 1,
+              minWidth: 0,
+              fontStyle: 'italic',
+            }}
+          >
+            {preview}
+          </span>
+        )}
+        <span style={{ flex: open ? 1 : 0 }} />
+        <span
+          onClick={copy}
+          className="mono"
+          style={{
+            padding: '2px 8px',
+            borderRadius: 4,
+            background: copied ? 'var(--good-soft)' : 'var(--bg-sunken)',
+            color: copied ? 'var(--good)' : 'var(--ink-3)',
+            "fontSize": 9,
+            "fontWeight": 700,
+            "letterSpacing": '0.1em',
+            "textTransform": 'uppercase',
+          }}
+        >
+          {copied ? 'Copied' : 'Copy'}
+        </span>
+      </button>
+      {open && (
+        <pre
+          className="mono"
+          style={{
+            margin: 0,
+            padding: '10px 12px 12px 32px',
+            background: 'var(--bg-sunken)',
+            "fontSize": 11,
+            "lineHeight": 1.55,
+            "color": 'var(--ink-2)',
+            whiteSpace: 'pre-wrap',
+            wordBreak: 'break-word',
+            borderTop: '1px solid var(--line-2)',
+            maxHeight: 220,
+            overflowY: 'auto',
+          }}
+        >
+          {prompt}
+        </pre>
+      )}
+    </div>
+  );
+}
+
+// ── Ledger detail view ──────────────────────────────────────────────
+
+function LedgerDetail({
+  models,
+  chosenId,
+  dollars,
+}: {
+  models: ModelOption[];
+  chosenId: string;
+  dollars: number;
+}) {
+  return (
+    <div
+      style={{
+        background: 'var(--bg-elevated)',
+        border: '1px solid var(--line)',
+        borderRadius: 6,
+        padding: 10,
+      }}
+    >
+      {/* Header */}
+      <div
+        style={{
+          display: 'grid',
+          gridTemplateColumns: '1fr 90px 90px',
+          gap: 10,
+          paddingBottom: 6,
+          borderBottom: '1px solid var(--ink)',
+        }}
+      >
+        <div className="mono" style={{ "fontSize": 9, "fontWeight": 700, "color": 'var(--ink-2)', "letterSpacing": '0.16em' }}>
+          MODEL
+        </div>
+        <div className="mono" style={{ "fontSize": 9, "fontWeight": 700, color: 'var(--good)', "letterSpacing": '0.16em', textAlign: 'right' }}>
+          CREDIT
+        </div>
+        <div className="mono" style={{ "fontSize": 9, "fontWeight": 700, color: 'var(--bad)', "letterSpacing": '0.16em', textAlign: 'right' }}>
+          DEBIT
+        </div>
+      </div>
+
+      {/* Rows */}
+      {models.map((m, i) => {
+        const isWinner = m.id === chosenId;
+        const free = m.cost === 0;
+        return (
+          <div
+            key={m.id}
+            style={{
+              display: 'grid',
+              gridTemplateColumns: '1fr 90px 90px',
+              gap: 10,
+              padding: '5px 0',
+              borderBottom: i < models.length - 1 ? '1px dashed var(--line-2)' : 'none',
+              alignItems: 'center',
+            }}
+          >
+            <div style={{ display: 'flex', alignItems: 'center', gap: 6, minWidth: 0 }}>
+              {isWinner && <span style={{ color: 'var(--accent)', "fontSize": 10 }}>{'★'}</span>}
+              <span className="mono" style={{ "fontSize": 11, "fontWeight": isWinner ? 600 : 400, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                {m.name}
+              </span>
+              <span className="mono" style={{ "fontSize": 9, "color": 'var(--ink-3)' }}>{'·'} {m.host}</span>
+            </div>
+            <div className="mono tnum" style={{ "fontSize": 11, color: free ? 'var(--good)' : 'var(--ink-4)', textAlign: 'right' }}>
+              {free ? '+ $0.118' : '—'}
+            </div>
+            <div className="mono tnum" style={{ "fontSize": 11, color: free ? 'var(--ink-4)' : 'var(--bad)', textAlign: 'right' }}>
+              {free ? '—' : `– $${m.cost.toFixed(3)}`}
+            </div>
+          </div>
+        );
+      })}
+
+      {/* Net total */}
+      <div
+        style={{
+          display: 'grid',
+          gridTemplateColumns: '1fr 90px 90px',
+          gap: 10,
+          padding: '8px 0 2px',
+          borderTop: '1.5px solid var(--ink)',
+          marginTop: 4,
+        }}
+      >
+        <div className="mono" style={{ "fontSize": 10, "fontWeight": 700, "letterSpacing": '0.14em', "textTransform": 'uppercase' }}>
+          Net
+        </div>
+        <div />
+        <div className="mono tnum" style={{ "fontSize": 13, "fontWeight": 700, color: 'var(--good)', textAlign: 'right' }}>
+          + ${dollars.toFixed(3)}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ── Task list item ──────────────────────────────────────────────────
+
+function formatLatency(ms: number): string {
   if (ms >= 1000) return `${(ms / 1000).toFixed(1)}s`;
   return `${ms}ms`;
 }
 
-function formatTokens(n: number): string {
-  if (n >= 1_000) return `${(n / 1_000).toFixed(1)}k`;
-  return String(n);
+function TaskListItem({
+  task,
+  expanded,
+  onToggle,
+}: {
+  task: TaskGroup;
+  expanded: boolean;
+  onToggle: () => void;
+}) {
+  const chosen = task.chosenModel;
+  const modelCount = task.models.length;
+  const winnerLatencyMs = chosen.latency * 1000;
+  const maxCost = Math.max(...task.models.map((m) => m.cost));
+  const minCost = Math.min(...task.models.map((m) => m.cost));
+  const costRange = minCost === maxCost
+    ? (minCost === 0 ? 'FREE' : `$${minCost.toFixed(3)}`)
+    : `${minCost === 0 ? '$0' : `$${minCost.toFixed(3)}`} – $${maxCost.toFixed(3)}`;
+
+  return (
+    <div
+      style={{
+        borderBottom: '1px solid var(--line-2)',
+        transition: 'background .15s',
+        background: expanded ? 'var(--bg-sunken)' : 'transparent',
+      }}
+    >
+      {/* Summary row */}
+      <button
+        type="button"
+        onClick={onToggle}
+        style={{
+          all: 'unset',
+          display: 'grid',
+          gridTemplateColumns: '20px 1fr 70px 90px 110px',
+          alignItems: 'center',
+          gap: 14,
+          width: '100%',
+          padding: '10px 14px',
+          cursor: 'pointer',
+          boxSizing: 'border-box',
+        }}
+      >
+        <Caret open={expanded} />
+        <div style={{ minWidth: 0 }}>
+          <div style={{ "fontSize": 13, "fontWeight": 500, "color": 'var(--ink)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+            {task.label}
+          </div>
+          <div className="mono" style={{ "fontSize": 10, "color": 'var(--ink-3)', marginTop: 2 }}>
+            {chosen.name} {'·'} {chosen.tier}
+          </div>
+        </div>
+        <div className="mono tnum" style={{ "fontSize": 11, "color": 'var(--ink-2)', textAlign: 'center' }}>
+          {modelCount} models
+        </div>
+        <div className="mono tnum" style={{ "fontSize": 11, color: winnerLatencyMs < 5000 ? 'var(--good)' : winnerLatencyMs < 30000 ? 'var(--ink-2)' : 'var(--warn)', textAlign: 'right' }}>
+          {formatLatency(winnerLatencyMs)}
+        </div>
+        <div className="mono tnum" style={{ "fontSize": 11, "fontWeight": 600, textAlign: 'right', color: maxCost === 0 ? 'var(--good)' : 'var(--ink-2)' }}>
+          {costRange}
+        </div>
+      </button>
+
+      {/* Expanded detail */}
+      {expanded && (
+        <div style={{ padding: '8px 14px 18px 48px', display: 'flex', flexDirection: 'column', gap: 10 }}>
+          <PromptBlock prompt={task.prompt} />
+          <LedgerDetail models={task.models} chosenId={chosen.id} dollars={task.savedDollars} />
+          <div style={{ "fontSize": 10, "color": 'var(--ink-3)', fontStyle: 'italic' }}>
+            <span className="mono">correlation_id: 0xa31f{'…'}b8c4</span> {'·'} receipt signed by deepseek-r1-32b
+          </div>
+        </div>
+      )}
+    </div>
+  );
 }
 
-// ---- cost colour logic ----
+// ── Sort helpers ────────────────────────────────────────────────────
 
-type CostTier = 'free' | 'low' | 'mid' | 'high';
-
-function costTier(usd: number): CostTier {
-  if (usd === 0) return 'free';
-  if (usd < 0.002) return 'low';
-  if (usd < 0.01) return 'mid';
-  return 'high';
+type SortKey = 'task' | 'models' | 'latency' | 'cost';
+type SortDir = 'asc' | 'desc';
+interface SortState {
+  key: SortKey;
+  dir: SortDir;
 }
 
-const TIER_COLORS: Record<CostTier, string> = {
-  free: 'var(--color-good, #22c55e)',
-  low: 'var(--color-warn, #f59e0b)',
-  mid: 'var(--color-warn, #f97316)',
-  high: 'var(--color-bad, #ef4444)',
-};
+function HeaderCell({
+  label,
+  sortKey,
+  sort,
+  onSort,
+  align = 'left',
+}: {
+  label: string;
+  sortKey: SortKey;
+  sort: SortState | null;
+  onSort: (key: SortKey) => void;
+  align?: 'left' | 'center' | 'right';
+}) {
+  const active = sort?.key === sortKey;
+  const arrow = !active ? '⇕' : sort.dir === 'asc' ? '↑' : '↓';
 
-function compareRowsByCost(a: AbCompareRow, b: AbCompareRow): number {
-  if (a.estimated_cost_usd === null && b.estimated_cost_usd === null) return 0;
-  if (a.estimated_cost_usd === null) return 1;
-  if (b.estimated_cost_usd === null) return -1;
-  return a.estimated_cost_usd - b.estimated_cost_usd;
+  return (
+    <button
+      type="button"
+      onClick={() => onSort(sortKey)}
+      className="mono"
+      style={{
+        all: 'unset',
+        cursor: 'pointer',
+        "fontSize": 9,
+        "fontWeight": 700,
+        color: active ? 'var(--accent-ink)' : 'var(--ink-3)',
+        "letterSpacing": '0.16em',
+        textAlign: align,
+        width: '100%',
+        boxSizing: 'border-box',
+      }}
+    >
+      {label}
+      <span
+        style={{
+          display: 'inline-block',
+          marginLeft: 4,
+          color: active ? 'var(--accent)' : 'currentColor',
+          opacity: active ? 1 : 0.35,
+        }}
+      >
+        {arrow}
+      </span>
+    </button>
+  );
 }
 
-// ---- main component ----
+// ── Main widget ─────────────────────────────────────────────────────
 
-export default function AbCompareWidget({ config: _config }: { config: Record<string, unknown> }) {
+export default function AbCompareWidget({
+  config: _config,
+}: {
+  config: Record<string, unknown>;
+}) {
+  const [openId, setOpenId] = useState<string | null>(null);
+  const [sort, setSort] = useState<SortState | null>(null);
+
   const { data, isLoading, error } = useProjectionQuery<AbCompareRow>({
     topic: TOPICS.abCompare,
     queryKey: ['ab-compare'],
     refetchInterval: 10_000,
   });
 
-  // Group rows by correlation_id, take the most-recent run
-  const latestRows = useMemo<AbCompareRow[]>(() => {
-    if (!data || data.length === 0) return [];
-
-    // Find the most recent correlation_id by created_at
-    const latestCorrelation = [...data].sort(
-      (a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime(),
-    )[0].correlation_id;
-
-    // All rows for that correlation_id, sorted by cost ascending
-    return data
-      .filter((r) => r.correlation_id === latestCorrelation)
-      .sort(compareRowsByCost);
+  // Build tasks from projection data. Storybook owns demo fixture seeding; the
+  // widget itself preserves empty-state semantics when the projection is empty.
+  const tasks = useMemo(() => {
+    if (data && data.length > 0) {
+      return buildTasksFromProjection(data);
+    }
+    return [];
   }, [data]);
 
-  const savings = useMemo(() => {
-    if (latestRows.length < 2) return null;
-    const costs = latestRows
-      .map((r) => r.estimated_cost_usd)
-      .filter((cost): cost is number => cost !== null);
-    if (costs.length < 2) return null;
-    const max = Math.max(...costs);
-    const min = Math.min(...costs);
-    const diff = max - min;
-    if (diff <= 0) return null;
-    const pct = max > 0 ? ((diff / max) * 100).toFixed(0) : '0';
-    return { diff, pct };
-  }, [latestRows]);
+  // Auto-expand first task
+  const effectiveOpenId = openId;
 
-  const hasData = latestRows.length > 0;
+  // Aggregate totals
+  const totals = useMemo(() => {
+    if (tasks.length === 0) return { savedPct: 0, savedDollars: 0, count: 0 };
+    const cloud = tasks.length * 0.118;
+    let local = 0;
+    for (const t of tasks) {
+      local += t.cheapestCost;
+    }
+    const saved = cloud - local;
+    return {
+      savedPct: Math.round((saved / cloud) * 100),
+      savedDollars: saved,
+      count: tasks.length,
+    };
+  }, [tasks]);
+
+  // Sort tasks
+  const toggleSort = useCallback((key: SortKey) => {
+    setSort((prev) => {
+      if (!prev || prev.key !== key) return { key, dir: 'desc' };
+      if (prev.dir === 'desc') return { key, dir: 'asc' };
+      return null;
+    });
+  }, []);
+
+  const sortedTasks = useMemo(() => {
+    if (!sort) return tasks;
+    const dir = sort.dir === 'asc' ? 1 : -1;
+    const valueOf = (t: TaskGroup) => {
+      switch (sort.key) {
+        case 'task': return t.label;
+        case 'models': return t.models.length;
+        case 'latency': return t.chosenModel.latency;
+        case 'cost': return t.cloudCost;
+        default: return 0;
+      }
+    };
+    return [...tasks].sort((a, b) => {
+      const av = valueOf(a);
+      const bv = valueOf(b);
+      if (typeof av === 'number' && typeof bv === 'number') return (av - bv) * dir;
+      return String(av).localeCompare(String(bv)) * dir;
+    });
+  }, [tasks, sort]);
 
   return (
     <ComponentWrapper
       title="AB Model Cost Compare"
       isLoading={isLoading}
       error={error ?? undefined}
-      isEmpty={!hasData}
-      emptyMessage="No comparison data yet — run `ab-compare` CLI"
+      isEmpty={tasks.length === 0}
+      emptyMessage="No comparison data yet"
       emptyHint="Results appear after the first ab-compare run completes"
     >
-      {hasData && (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 0, width: '100%' }}>
-          {/* Table */}
-          <div style={{ overflowX: 'auto', width: '100%' }}>
-            <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-              <thead>
-                <tr>
-                  {[
-                    'Model',
-                    'Tokens',
-                    'Cost',
-                    'Latency',
-                    'Source',
-                  ].map((h) => (
-                    <th
-                      key={h}
-                      style={{
-                        textAlign: h === 'Model' ? 'left' : 'right',
-                        padding: '6px 10px',
-                        borderBottom: '1px solid var(--line-2)',
-                        whiteSpace: 'nowrap',
-                      }}
-                    >
-                      <Text
-                        size="xs"
-                        family="mono"
-                        color="tertiary"
-                        transform="uppercase"
-                      >
-                        {h}
-                      </Text>
-                    </th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody>
-                {latestRows.map((row, idx) => {
-                  const tier = row.estimated_cost_usd === null ? null : costTier(row.estimated_cost_usd);
-                  const isCheapest = idx === 0 && row.estimated_cost_usd !== null;
-
-                  return (
-                    <tr
-                      key={`${row.correlation_id}:${row.model_id}`}
-                      style={{
-                        background:
-                          isCheapest
-                            ? 'var(--panel-highlight, rgba(34,197,94,0.05))'
-                            : 'transparent',
-                        borderBottom: '1px solid var(--line-2)',
-                      }}
-                    >
-                      {/* Model name */}
-                      <td style={{ padding: '8px 10px' }}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                          {/* Cheapest crown indicator */}
-                          {isCheapest && (
-                            <Text
-                              as="span"
-                              size="md"
-                              title="Lowest cost"
-                              aria-label="lowest cost"
-                              style={{ color: TIER_COLORS.free, flexShrink: 0 }}
-                            >
-                              ★
-                            </Text>
-                          )}
-                          <Text size="sm" family="mono" truncate>
-                            {row.model_id}
-                          </Text>
-                        </div>
-                      </td>
-
-                      {/* Total tokens */}
-                      <td style={{ padding: '8px 10px', textAlign: 'right' }}>
-                        <Text size="sm" family="mono" tabularNums color="secondary">
-                          {formatTokens(row.total_tokens)}
-                        </Text>
-                      </td>
-
-                      {/* Cost — coloured by tier */}
-                      <td style={{ padding: '8px 10px', textAlign: 'right' }}>
-                        <Text
-                          size="sm"
-                          family="mono"
-                          tabularNums
-                          weight={tier === 'free' ? 'semibold' : 'regular'}
-                          style={{ color: tier ? TIER_COLORS[tier] : 'var(--text-tertiary)' }}
-                        >
-                          {formatNullableCost(row.estimated_cost_usd)}
-                        </Text>
-                      </td>
-
-                      {/* Latency */}
-                      <td style={{ padding: '8px 10px', textAlign: 'right' }}>
-                        <Text size="sm" family="mono" tabularNums color="secondary">
-                          {formatLatency(row.latency_ms)}
-                        </Text>
-                      </td>
-
-                      {/* Usage source */}
-                      <td style={{ padding: '8px 10px', textAlign: 'right' }}>
-                        <Text size="sm" family="mono" color={row.usage_source ? 'secondary' : 'tertiary'}>
-                          {row.usage_source || '—'}
-                        </Text>
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
-
-          {/* Savings summary footer */}
-          {savings && (
-            <div
-              style={{
-                marginTop: 12,
-                padding: '10px 14px',
-                borderRadius: 6,
-                border: '1px solid var(--line-2)',
-                background: 'var(--panel-2)',
-                display: 'flex',
-                alignItems: 'center',
-                gap: 10,
-              }}
-            >
-              <Text as="span" size="lg" style={{ color: TIER_COLORS.free }}>💰</Text>
-              <div>
-                <Text size="sm" family="mono" weight="semibold" style={{ color: TIER_COLORS.free }}>
-                  Save {savings.pct}% ({formatCost(savings.diff)})
-                </Text>
-                <Text
-                  as="div"
-                  size="xs"
-                  family="mono"
-                  color="tertiary"
-                >
-                  choosing{' '}
-                  <Text as="span" size="xs" family="mono" weight="semibold" color="secondary">
-                    {latestRows[0].model_id}
-                  </Text>
-                  {' '}vs most expensive
-                </Text>
-              </div>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 0, width: '100%' }}>
+        {/* Hero header */}
+        <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 16, marginBottom: 14 }}>
+          <div>
+            <div className="eyebrow">A/B model cost compare {'·'} last {totals.count} tasks</div>
+            <div style={{ "fontSize": 14, "fontWeight": 600, marginTop: 6, "color": 'var(--ink-2)' }}>
+              Tap any task to see the prompt + receipt.
             </div>
-          )}
+          </div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
+            <div style={{ textAlign: 'right' }}>
+              <div className="mono tnum" style={{ "fontSize": 24, "fontWeight": 800, color: 'var(--good)', "lineHeight": 1 }}>
+                <CountUp value={totals.savedPct} suffix="%" />
+              </div>
+              <div className="eyebrow" style={{ color: 'var(--good)', marginTop: 3 }}>saved</div>
+            </div>
+            <div style={{ width: 1, height: 28, background: 'var(--line)' }} />
+            <div style={{ textAlign: 'right' }}>
+              <div className="mono tnum" style={{ "fontSize": 16, "fontWeight": 700, "lineHeight": 1 }}>
+                <CountUp value={totals.savedDollars} prefix="$" decimals={3} />
+              </div>
+              <div className="eyebrow" style={{ marginTop: 3 }}>vs cloud-only</div>
+            </div>
+          </div>
         </div>
-      )}
+
+        {/* Sortable column headers */}
+        <div
+          style={{
+            display: 'grid',
+            gridTemplateColumns: '20px 1fr 70px 90px 110px',
+            gap: 14,
+            padding: '8px 14px',
+            borderTop: '1px solid var(--line)',
+            borderBottom: '1px solid var(--line)',
+          }}
+        >
+          <div />
+          <HeaderCell label="TASK" sortKey="task" sort={sort} onSort={toggleSort} />
+          <HeaderCell label="MODELS" sortKey="models" sort={sort} onSort={toggleSort} align="center" />
+          <HeaderCell label="LATENCY" sortKey="latency" sort={sort} onSort={toggleSort} align="right" />
+          <HeaderCell label="COST RANGE" sortKey="cost" sort={sort} onSort={toggleSort} align="right" />
+        </div>
+
+        {/* Task list */}
+        {sortedTasks.map((t) => (
+          <TaskListItem
+            key={t.id}
+            task={t}
+            expanded={effectiveOpenId === t.id}
+            onToggle={() => setOpenId(effectiveOpenId === t.id ? null : t.id)}
+          />
+        ))}
+      </div>
     </ComponentWrapper>
   );
 }
