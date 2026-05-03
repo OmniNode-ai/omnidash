@@ -16,6 +16,7 @@ export interface AbCompareRow {
   latency_ms: number | null;
   usage_source: string | null;
   created_at: string;
+  task_description?: string;
 }
 
 // ── Synthetic data for fallback ─────────────────────────────────────
@@ -96,30 +97,39 @@ function buildTasksFromProjection(data: AbCompareRow[]): TaskGroup[] {
     );
     const cheapest = sorted[0];
     const cheapestCost = cheapest.estimated_cost_usd ?? 0;
-    const cloudCost = 0.118;
-    const savedDollars = Math.max(0, cloudCost - cheapestCost);
-    const savedPct = cloudCost > 0 ? Math.round((savedDollars / cloudCost) * 100) : 0;
     const modelNames = rows.map((r) => shortModel(r.model_id));
+
+    const taskDesc = rows[0].task_description;
+    const taskLabel = taskDesc || 'Run ' + shortCorrelationId(correlationId);
+
+    const mostExpensiveCost = Math.max(...rows.map((r) => r.estimated_cost_usd ?? 0));
+    const actualCloudCost = mostExpensiveCost > 0 ? mostExpensiveCost : 0.118;
+    const actualSaved = Math.max(0, actualCloudCost - cheapestCost);
+    const actualPct = actualCloudCost > 0 ? Math.round((actualSaved / actualCloudCost) * 100) : 0;
+
+    const rowModels = sorted.map((r) => ({
+      id: r.model_id,
+      name: shortModel(r.model_id),
+      tier: (r.estimated_cost_usd ?? 0) === 0 ? 'local' as const : 'cloud' as const,
+      cost: r.estimated_cost_usd ?? 0,
+      latency: (r.latency_ms ?? 0) / 1000,
+      tokens: r.total_tokens,
+      host: r.usage_source ?? '',
+    }));
 
     tasks.push({
       id: correlationId,
-      label: 'Run ' + shortCorrelationId(correlationId),
-      intent: 'code_generation',
-      prompt: `correlation_id: ${correlationId}\nModels compared: ${modelNames.join(', ')}`,
-      chosenModel: {
-        id: cheapest.model_id,
-        name: shortModel(cheapest.model_id),
-        tier: cheapestCost === 0 ? 'local' : 'cloud',
-        cost: cheapestCost,
-        latency: (cheapest.latency_ms ?? 0) / 1000,
-        tokens: cheapest.total_tokens,
-        host: cheapest.usage_source ?? '',
-      },
-      models: MODELS,
+      label: taskLabel,
+      intent: taskDesc ? taskLabel : 'code_generation',
+      prompt: taskDesc
+        ? `${taskDesc}\n\ncorrelation_id: ${correlationId}\nModels compared: ${modelNames.join(', ')}`
+        : `correlation_id: ${correlationId}\nModels compared: ${modelNames.join(', ')}`,
+      chosenModel: rowModels[0],
+      models: rowModels,
       cheapestCost,
-      cloudCost,
-      savedDollars,
-      savedPct,
+      cloudCost: actualCloudCost,
+      savedDollars: actualSaved,
+      savedPct: actualPct,
     });
   }
 
@@ -537,7 +547,7 @@ export default function AbCompareWidget({
   }, [data]);
 
   // Auto-expand first task
-  const effectiveOpenId = openId ?? tasks[0]?.id ?? null;
+  const effectiveOpenId = openId;
 
   // Aggregate totals
   const totals = useMemo(() => {

@@ -1,1 +1,1 @@
-{"correlation_id":"run-demo-003","model_id":"claude-sonnet-4-6","estimated_cost_usd":0.118,"total_tokens":18400,"latency_ms":24000,"usage_source":"MEASURED","created_at":"2026-05-02T22:20:00Z"}
+{"correlation_id": "run-demo-003", "model_id": "claude-sonnet-4-6", "estimated_cost_usd": 0.118, "total_tokens": 18400, "latency_ms": 24000, "usage_source": "MEASURED", "created_at": "2026-05-02T22:20:00Z", "task_description": "Refactor 18-file monorepo to ESM"}

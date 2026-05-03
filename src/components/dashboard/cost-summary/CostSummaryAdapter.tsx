@@ -81,8 +81,8 @@ function SmallKPI({ label, value, prefix = '', suffix = '', decimals = 0, tone =
 // ── Cost Line Chart ─────────────────────────────────────────────────
 
 function CostLineChart({ data }: { data: typeof COST_TREND }) {
-  const W = 480, H = 110;
-  const padL = 36, padR = 12, padT = 10, padB = 22;
+  const W = 480, H = 140;
+  const padL = 40, padR = 16, padT = 24, padB = 28;
   const innerW = W - padL - padR;
   const innerH = H - padT - padB;
 
@@ -93,60 +93,59 @@ function CostLineChart({ data }: { data: typeof COST_TREND }) {
 
   const allVals = [...baseline, ...data.map((d) => d.cloud)];
   const yMax = Math.max(...allVals, 0.2);
-  const yMin = 0;
 
   const x = (i: number) => padL + (i / (data.length - 1)) * innerW;
-  const y = (v: number) => padT + (1 - (v - yMin) / (yMax - yMin)) * innerH;
+  const y = (v: number) => padT + (1 - v / yMax) * innerH;
 
   const baselinePath = baseline.map((v, i) => `${i === 0 ? 'M' : 'L'} ${x(i).toFixed(1)} ${y(v).toFixed(1)}`).join(' ');
   const actualPath = data.map((d, i) => `${i === 0 ? 'M' : 'L'} ${x(i).toFixed(1)} ${y(d.cloud).toFixed(1)}`).join(' ');
-  const baselineArea = `${baselinePath} L ${x(data.length - 1).toFixed(1)} ${y(0).toFixed(1)} L ${x(0).toFixed(1)} ${y(0).toFixed(1)} Z`;
 
-  const ticks = [0, yMax / 2, yMax];
+  const yTicks = [0, 0.05, 0.10, 0.15, 0.20].filter((t) => t <= yMax);
 
   return (
-    <svg viewBox={`0 0 ${W} ${H}`} width="100%" style={{ display: 'block', overflow: 'visible' }}>
-      {/* gridlines */}
-      {ticks.map((t, i) => (
-        <line key={i} x1={padL} x2={W - padR} y1={y(t)} y2={y(t)} stroke="var(--line-2)" strokeWidth="1" />
+    <svg viewBox={`0 0 ${W} ${H}`} width="100%" style={{ display: 'block' }}>
+      {/* horizontal gridlines */}
+      {yTicks.map((t) => (
+        <line key={t} x1={padL} x2={W - padR} y1={y(t)} y2={y(t)} stroke="var(--ink-4)" strokeWidth="0.5" />
       ))}
+
       {/* y-axis labels */}
-      {ticks.map((t, i) => (
-        <text key={`l-${i}`} x={padL - 6} y={y(t) + 3} fontSize="9" fill="var(--ink-3)" fontFamily="var(--font-mono)" textAnchor="end">
+      {yTicks.map((t) => (
+        <text key={`y-${t}`} x={padL - 6} y={y(t) + 3} fontSize="9" fill="var(--ink-3)" fontFamily="var(--font-mono)" textAnchor="end">
           ${t.toFixed(2)}
         </text>
       ))}
 
-      {/* shaded area under cloud-only baseline */}
-      <path d={baselineArea} fill="var(--accent-soft)" opacity="0.55" />
+      {/* cloud-only baseline — same weight as actual spend */}
+      <path d={baselinePath} fill="none" stroke="var(--warn)" strokeWidth="1.5" />
+      {baseline.map((v, i) => (
+        <circle key={`b-${i}`} cx={x(i)} cy={y(v)} r="1.5" fill="var(--warn)" opacity="0.5" />
+      ))}
 
-      {/* cloud-only baseline (dashed) */}
-      <path d={baselinePath} fill="none" stroke="var(--accent)" strokeWidth="1.5" strokeDasharray="4 3" />
+      {/* actual spend — thin line, small dots */}
+      <path d={actualPath} fill="none" stroke="var(--good)" strokeWidth="1.5" strokeLinejoin="round" />
+      {data.map((d, i) => (
+        <circle key={`a-${i}`} cx={x(i)} cy={y(d.cloud)} r={d.cloud > 0.01 ? 3 : 1.5} fill="var(--good)" />
+      ))}
 
-      {/* actual cloud spend */}
-      <path d={actualPath} fill="none" stroke="var(--good)" strokeWidth="2" strokeLinejoin="round" />
-
-      {/* spike points */}
-      {data.map((d, i) => {
-        if (d.cloud < 0.02) return null;
-        return (
-          <g key={i}>
-            <circle cx={x(i)} cy={y(d.cloud)} r="3" fill="var(--accent)" stroke="var(--bg)" strokeWidth="1.5" />
-          </g>
-        );
-      })}
+      {/* x-axis line */}
+      <line x1={padL} x2={W - padR} y1={y(0)} y2={y(0)} stroke="var(--ink-4)" strokeWidth="0.5" />
 
       {/* x-axis labels */}
-      <text x={padL} y={H - 6} fontSize="9" fill="var(--ink-3)" fontFamily="var(--font-mono)">{'−'}30m</text>
-      <text x={padL + innerW / 2} y={H - 6} fontSize="9" fill="var(--ink-3)" fontFamily="var(--font-mono)" textAnchor="middle">{'−'}15m</text>
-      <text x={W - padR} y={H - 6} fontSize="9" fill="var(--ink-3)" fontFamily="var(--font-mono)" textAnchor="end">now</text>
+      <text x={padL} y={H - 8} fontSize="9" fill="var(--ink-3)" fontFamily="var(--font-mono)">{'−'}30m</text>
+      <text x={padL + innerW * 0.33} y={H - 8} fontSize="9" fill="var(--ink-3)" fontFamily="var(--font-mono)" textAnchor="middle">{'−'}20m</text>
+      <text x={padL + innerW * 0.66} y={H - 8} fontSize="9" fill="var(--ink-3)" fontFamily="var(--font-mono)" textAnchor="middle">{'−'}10m</text>
+      <text x={W - padR} y={H - 8} fontSize="9" fill="var(--ink-3)" fontFamily="var(--font-mono)" textAnchor="end">now</text>
 
       {/* legend */}
-      <g transform={`translate(${padL}, ${padT - 2})`}>
-        <line x1="0" y1="0" x2="14" y2="0" stroke="var(--accent)" strokeWidth="1.5" strokeDasharray="4 3" />
-        <text x="18" y="3" fontSize="9" fill="var(--ink-2)" fontFamily="var(--font-mono)">cloud-only baseline</text>
-        <line x1="140" y1="0" x2="154" y2="0" stroke="var(--good)" strokeWidth="2" />
-        <text x="158" y="3" fontSize="9" fill="var(--ink-2)" fontFamily="var(--font-mono)">actual spend</text>
+      <g transform={`translate(${padL}, ${padT - 12})`}>
+        <line x1="0" y1="0" x2="16" y2="0" stroke="var(--warn)" strokeWidth="1.5" />
+        <circle cx="8" cy="0" r="2" fill="var(--warn)" />
+        <text x="22" y="3" fontSize="9" fill="var(--ink-2)" fontFamily="var(--font-mono)">cloud-only baseline</text>
+
+        <line x1="160" y1="0" x2="176" y2="0" stroke="var(--good)" strokeWidth="1.5" />
+        <circle cx="168" cy="0" r="2" fill="var(--good)" />
+        <text x="182" y="3" fontSize="9" fill="var(--ink-2)" fontFamily="var(--font-mono)">actual spend</text>
       </g>
     </svg>
   );

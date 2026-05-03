@@ -1,1 +1,1 @@
-{"correlation_id":"run-demo-001","model_id":"claude-sonnet-4-6","estimated_cost_usd":0.118,"total_tokens":17840,"latency_ms":21000,"usage_source":"MEASURED","created_at":"2026-05-02T22:00:00Z"}
+{"correlation_id": "run-demo-001", "model_id": "claude-sonnet-4-6", "estimated_cost_usd": 0.118, "total_tokens": 17840, "latency_ms": 21000, "usage_source": "MEASURED", "created_at": "2026-05-02T22:00:00Z", "task_description": "Write a palindrome checker in Python"}

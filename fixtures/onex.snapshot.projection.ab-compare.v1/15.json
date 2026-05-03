@@ -1,1 +1,1 @@
-{"correlation_id":"run-demo-005","model_id":"claude-sonnet-4-6","estimated_cost_usd":0.118,"total_tokens":22400,"latency_ms":31000,"usage_source":"MEASURED","created_at":"2026-05-02T22:40:00Z"}
+{"correlation_id": "run-demo-005", "model_id": "claude-sonnet-4-6", "estimated_cost_usd": 0.118, "total_tokens": 22400, "latency_ms": 31000, "usage_source": "MEASURED", "created_at": "2026-05-02T22:40:00Z", "task_description": "Review auth flow for OWASP Top-10"}
