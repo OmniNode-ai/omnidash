@@ -30,13 +30,14 @@ const MODELS = [
   { id: 'claude-sonnet-4-5', name: 'Claude-Sonnet-4-5', tier: 'cloud', cost: 0.118, latency: 21.0, tokens: 17600, host: 'cloud' },
 ];
 
-const INTENTS = [
+const _INTENTS = [
   { id: 'code_generation', label: 'Code generation' },
   { id: 'debugging', label: 'Debugging' },
   { id: 'classification', label: 'Classification' },
   { id: 'complex_reasoning', label: 'Complex reasoning' },
   { id: 'large_context', label: 'Large context' },
 ];
+void _INTENTS;
 
 const TASK_PRESETS = [
   { id: 'palindrome', label: 'Write a palindrome checker (Python)', intent: 'code_generation', chosen: 'qwen3-coder-30b',
@@ -394,6 +395,11 @@ function LedgerDetail({
 
 // ── Task list item ──────────────────────────────────────────────────
 
+function formatLatency(ms: number): string {
+  if (ms >= 1000) return `${(ms / 1000).toFixed(1)}s`;
+  return `${ms}ms`;
+}
+
 function TaskListItem({
   task,
   expanded,
@@ -404,8 +410,13 @@ function TaskListItem({
   onToggle: () => void;
 }) {
   const chosen = task.chosenModel;
-  const winnerCost = task.cheapestCost;
-  const intentLabel = INTENTS.find((i) => i.id === task.intent)?.label ?? task.intent;
+  const modelCount = task.models.length;
+  const winnerLatencyMs = chosen.latency * 1000;
+  const maxCost = Math.max(...task.models.map((m) => m.cost));
+  const minCost = Math.min(...task.models.map((m) => m.cost));
+  const costRange = minCost === maxCost
+    ? (minCost === 0 ? 'FREE' : `$${minCost.toFixed(3)}`)
+    : `${minCost === 0 ? '$0' : `$${minCost.toFixed(3)}`} – $${maxCost.toFixed(3)}`;
 
   return (
     <div
@@ -422,7 +433,7 @@ function TaskListItem({
         style={{
           all: 'unset',
           display: 'grid',
-          gridTemplateColumns: '20px 1fr 110px 90px 90px',
+          gridTemplateColumns: '20px 1fr 70px 90px 110px',
           alignItems: 'center',
           gap: 14,
           width: '100%',
@@ -437,17 +448,17 @@ function TaskListItem({
             {task.label}
           </div>
           <div className="mono" style={{ fontSize: 10, color: 'var(--ink-3)', marginTop: 2 }}>
-            {intentLabel}
+            {chosen.name} {'·'} {chosen.tier}
           </div>
         </div>
-        <div className="mono" style={{ fontSize: 11, fontWeight: 600, color: chosen.tier === 'local' ? 'var(--good)' : 'var(--effect)', whiteSpace: 'nowrap' }}>
-          {chosen.name.split('-').slice(0, 2).join('-')}
+        <div className="mono tnum" style={{ fontSize: 11, color: 'var(--ink-2)', textAlign: 'center' }}>
+          {modelCount} models
         </div>
-        <div className="mono tnum" style={{ fontSize: 12, fontWeight: 700, color: winnerCost === 0 ? 'var(--good)' : 'var(--effect)', textAlign: 'right' }}>
-          {winnerCost === 0 ? 'FREE' : `$${winnerCost.toFixed(3)}`}
+        <div className="mono tnum" style={{ fontSize: 11, color: winnerLatencyMs < 5000 ? 'var(--good)' : winnerLatencyMs < 30000 ? 'var(--ink-2)' : 'var(--warn)', textAlign: 'right' }}>
+          {formatLatency(winnerLatencyMs)}
         </div>
-        <div className="mono tnum" style={{ fontSize: 12, fontWeight: 700, color: 'var(--good)', textAlign: 'right' }}>
-          +{task.savedPct}%
+        <div className="mono tnum" style={{ fontSize: 11, fontWeight: 600, textAlign: 'right', color: maxCost === 0 ? 'var(--good)' : 'var(--ink-2)' }}>
+          {costRange}
         </div>
       </button>
 
@@ -467,7 +478,7 @@ function TaskListItem({
 
 // ── Sort helpers ────────────────────────────────────────────────────
 
-type SortKey = 'task' | 'routed' | 'cost' | 'saved';
+type SortKey = 'task' | 'models' | 'latency' | 'cost';
 type SortDir = 'asc' | 'desc';
 interface SortState {
   key: SortKey;
@@ -485,7 +496,7 @@ function HeaderCell({
   sortKey: SortKey;
   sort: SortState | null;
   onSort: (key: SortKey) => void;
-  align?: 'left' | 'right';
+  align?: 'left' | 'center' | 'right';
 }) {
   const active = sort?.key === sortKey;
   const arrow = !active ? '⇕' : sort.dir === 'asc' ? '↑' : '↓';
@@ -580,9 +591,9 @@ export default function AbCompareWidget({
     const valueOf = (t: TaskGroup) => {
       switch (sort.key) {
         case 'task': return t.label;
-        case 'routed': return t.chosenModel.name;
-        case 'cost': return t.cheapestCost;
-        case 'saved': return t.savedDollars;
+        case 'models': return t.models.length;
+        case 'latency': return t.chosenModel.latency;
+        case 'cost': return t.cloudCost;
         default: return 0;
       }
     };
@@ -633,7 +644,7 @@ export default function AbCompareWidget({
         <div
           style={{
             display: 'grid',
-            gridTemplateColumns: '20px 1fr 110px 90px 90px',
+            gridTemplateColumns: '20px 1fr 70px 90px 110px',
             gap: 14,
             padding: '8px 14px',
             borderTop: '1px solid var(--line)',
@@ -642,9 +653,9 @@ export default function AbCompareWidget({
         >
           <div />
           <HeaderCell label="TASK" sortKey="task" sort={sort} onSort={toggleSort} />
-          <HeaderCell label="ROUTED TO" sortKey="routed" sort={sort} onSort={toggleSort} />
-          <HeaderCell label="COST" sortKey="cost" sort={sort} onSort={toggleSort} align="right" />
-          <HeaderCell label="SAVED" sortKey="saved" sort={sort} onSort={toggleSort} align="right" />
+          <HeaderCell label="MODELS" sortKey="models" sort={sort} onSort={toggleSort} align="center" />
+          <HeaderCell label="LATENCY" sortKey="latency" sort={sort} onSort={toggleSort} align="right" />
+          <HeaderCell label="COST RANGE" sortKey="cost" sort={sort} onSort={toggleSort} align="right" />
         </div>
 
         {/* Task list */}
