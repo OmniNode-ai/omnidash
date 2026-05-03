@@ -11,15 +11,15 @@ interface IntentRow {
 }
 
 const CATEGORY_COLORS: Record<string, string> = {
-  debugging: '#f97316',
-  code_generation: '#3b82f6',
-  refactoring: '#a855f7',
-  testing: '#22c55e',
-  documentation: '#6b7280',
-  analysis: '#06b6d4',
-  code_review: '#ec4899',
-  deployment: '#f59e0b',
-  unknown: '#9ca3af',
+  debugging: 'var(--effect)',
+  code_generation: 'var(--reducer)',
+  refactoring: 'var(--orchestrator)',
+  testing: 'var(--good)',
+  documentation: 'var(--ink-3)',
+  analysis: 'var(--accent)',
+  code_review: 'var(--bad)',
+  deployment: 'var(--warn)',
+  unknown: 'var(--ink-4)',
 };
 
 function colorForCategory(category: string): string {
@@ -69,15 +69,15 @@ export default function IntentDistributionWidget() {
               style={{ display: 'flex', alignItems: 'center', gap: 8 }}
             >
               <div style={{ width: 120, flexShrink: 0 }}>
-                <Text size="md" truncate title={row.intent_category}>
+                <span className="eyebrow" style={{ color: 'var(--ink-2)' }} title={row.intent_category}>
                   {formatCategory(row.intent_category)}
-                </Text>
+                </span>
               </div>
               <div
                 style={{
                   flex: 1,
                   height: 22,
-                  background: 'var(--panel-2)',
+                  background: 'var(--bg-sunken)',
                   borderRadius: 4,
                   overflow: 'hidden',
                   position: 'relative',
@@ -105,15 +105,15 @@ export default function IntentDistributionWidget() {
                     paddingLeft: 6,
                   }}
                 >
-                  <Text size="sm" weight="semibold" style={{ color: widthPct > 30 ? '#fff' : 'var(--text-primary)' }}>
+                  <Text size="sm" weight="semibold" style={{ color: widthPct > 30 ? '#fff' : 'var(--ink)' }}>
                     {row.percentage.toFixed(1)}%
                   </Text>
                 </div>
               </div>
               <div style={{ width: 48, textAlign: 'right', flexShrink: 0 }}>
-                <Text size="md" family="mono" tabularNums color="secondary">
+                <span className="mono tnum" style={{ color: 'var(--ink-2)' }}>
                   {row.count}
-                </Text>
+                </span>
               </div>
             </div>
           );

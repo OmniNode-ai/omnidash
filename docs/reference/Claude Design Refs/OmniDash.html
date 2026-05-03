@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light" data-density="comfortable">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>OmniDash — Cost Intelligence</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter+Tight:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="tokens.css">
+  <script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+  <script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+  <script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+</head>
+<body>
+  <div id="root"></div>
+
+  <script type="text/babel" src="data.jsx"></script>
+  <script type="text/babel" src="primitives.jsx"></script>
+  <script type="text/babel" src="widget-ab-compare.jsx"></script>
+  <script type="text/babel" src="widget-cost-summary.jsx"></script>
+  <script type="text/babel" src="widget-routing.jsx"></script>
+  <script type="text/babel" src="widget-receipts.jsx"></script>
+  <script type="text/babel" src="widget-livebus.jsx"></script>
+  <script type="text/babel" src="dashboard.jsx"></script>
+  <script type="text/babel" src="tweaks-panel.jsx"></script>
+
+  <script type="text/babel">
+    const { useState, useEffect } = React;
+
+    const TWEAK_DEFAULTS = /*EDITMODE-BEGIN*/{
+      "theme": "light",
+      "density": "comfortable",
+      "metaphor": "ledger",
+      "bus": "bold",
+      "live_speed": 1,
+      "show_receipts": true
+    }/*EDITMODE-END*/;
+
+    function App() {
+      const [tw, setTw] = useTweaks(TWEAK_DEFAULTS);
+
+      useEffect(() => {
+        document.documentElement.setAttribute("data-theme", tw.theme);
+        document.documentElement.setAttribute("data-density", tw.density);
+        window.__OD_LIVE_SPEED = tw.live_speed;
+      }, [tw.theme, tw.density, tw.live_speed]);
+
+      const cfg = {
+        theme: tw.theme,
+        density: tw.density,
+        metaphor: tw.metaphor,
+        bus: tw.bus,
+        showReceipts: tw.show_receipts,
+      };
+
+      return (
+        <>
+          <DashboardScreen config={cfg} />
+
+          <TweaksPanel title="Tweaks">
+            <TweakSection label="Theme & density">
+              <TweakRadio label="Theme" value={tw.theme}
+                options={[{value:"light",label:"Light"},{value:"dark",label:"Dark"}]}
+                onChange={v => setTw("theme", v)} />
+              <TweakRadio label="Density" value={tw.density}
+                options={[{value:"comfortable",label:"Cozy"},{value:"compact",label:"Compact"}]}
+                onChange={v => setTw("density", v)} />
+            </TweakSection>
+            <TweakSection label="Hero metaphor">
+              <TweakRadio label="AB compare" value={tw.metaphor}
+                options={[{value:"ledger",label:"Ledger"},{value:"lollipop",label:"Lollipop"},{value:"race",label:"Race"}]}
+                onChange={v => setTw("metaphor", v)} />
+            </TweakSection>
+            <TweakSection label="Live bus">
+              <TweakRadio label="Variant" value={tw.bus}
+                options={[{value:"subtle",label:"Subtle"},{value:"bold",label:"Bold"},{value:"cinematic",label:"Cine"}]}
+                onChange={v => setTw("bus", v)} />
+              <TweakSlider label="Speed" min={0.25} max={3} step={0.25} value={tw.live_speed} unit="×"
+                onChange={v => setTw("live_speed", v)} />
+            </TweakSection>
+            <TweakSection label="Layout">
+              <TweakToggle label="Show Receipts pane" value={tw.show_receipts}
+                onChange={v => setTw("show_receipts", v)} />
+            </TweakSection>
+          </TweaksPanel>
+        </>
+      );
+    }
+
+    ReactDOM.createRoot(document.getElementById("root")).render(<App />);
+  </script>
+</body>
+</html>

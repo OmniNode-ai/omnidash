@@ -65,6 +65,10 @@ export const TOPICS = {
   intentClassification: 'onex.snapshot.projection.intent-classification.v1',
   /** Live event stream widget — real-time system event feed. */
   liveEvents: 'onex.snapshot.projection.live-events.v1',
+  /** Routing decision widget — model routing traces and rules. */
+  routingDecision: 'onex.snapshot.projection.routing-decision.v1',
+  /** Receipt gate widget — verification gate status per PR. */
+  receiptGate: 'onex.snapshot.projection.receipt-gate.v1',
 } as const;
 
 export type TopicSymbol = (typeof TOPICS)[keyof typeof TOPICS];

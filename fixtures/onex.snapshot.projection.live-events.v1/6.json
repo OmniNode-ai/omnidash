@@ -1,0 +1,1 @@
+{ "id": "e-007", "type": "ROUTING", "timestamp": "2026-05-03T15:00:07Z", "source": "omnimarket", "topic": "onex.evt.omnimarket.routed.v3", "summary": "→ claude-sonnet-4-5 · $0.118", "payload": "{\"model\":\"claude-sonnet-4-5\",\"cost\":0.118}" }

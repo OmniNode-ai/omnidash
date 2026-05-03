@@ -1,0 +1,1 @@
+{ "id": "e-004", "type": "ACTION", "timestamp": "2026-05-03T15:00:04Z", "source": "omnimarket", "topic": "onex.evt.receipts.signed.v1", "summary": "verifier=deepseek-r1-32b · ok", "payload": "{\"verifier\":\"deepseek-r1-32b\",\"pass\":true}" }

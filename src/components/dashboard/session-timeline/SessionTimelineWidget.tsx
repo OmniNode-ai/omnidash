@@ -16,15 +16,15 @@ interface TimelineEvent {
 type ViewMode = 'chart' | 'list';
 
 const CATEGORY_COLORS: Record<string, string> = {
-  debugging: '#f97316',
-  code_generation: '#3b82f6',
-  refactoring: '#a855f7',
-  testing: '#22c55e',
-  documentation: '#6b7280',
-  analysis: '#06b6d4',
-  code_review: '#ec4899',
-  deployment: '#f59e0b',
-  unknown: '#9ca3af',
+  debugging: 'var(--effect)',
+  code_generation: 'var(--reducer)',
+  refactoring: 'var(--orchestrator)',
+  testing: 'var(--good)',
+  documentation: 'var(--ink-3)',
+  analysis: 'var(--accent)',
+  code_review: 'var(--bad)',
+  deployment: 'var(--warn)',
+  unknown: 'var(--ink-4)',
 };
 
 function colorForCategory(category: string): string {
@@ -32,10 +32,10 @@ function colorForCategory(category: string): string {
 }
 
 function confidenceColor(confidence: number): string {
-  if (confidence >= 0.9) return '#22c55e';
-  if (confidence >= 0.7) return '#3b82f6';
-  if (confidence >= 0.5) return '#f59e0b';
-  return '#ef4444';
+  if (confidence >= 0.9) return 'var(--good)';
+  if (confidence >= 0.7) return 'var(--accent)';
+  if (confidence >= 0.5) return 'var(--warn)';
+  return 'var(--bad)';
 }
 
 function formatCategory(category: string): string {
@@ -93,7 +93,7 @@ function ScatterChart({ events }: { events: TimelineEvent[] }) {
               stroke="var(--line-2)"
               strokeDasharray="2,4"
             />
-            <text x={PAD.left - 8} y={y} textAnchor="end" dominantBaseline="middle" fill="var(--text-secondary)" fontSize={11}>
+            <text x={PAD.left - 8} y={y} textAnchor="end" dominantBaseline="middle" fill="var(--ink-2)" fontSize={11}>
               {formatCategory(cat)}
             </text>
           </g>
@@ -130,7 +130,7 @@ function ScatterChart({ events }: { events: TimelineEvent[] }) {
         const d = new Date(t);
         const label = Number.isNaN(d.getTime()) ? '' : formatTime(d.toISOString());
         return (
-          <text key={frac} x={x} y={SVG_H - 8} textAnchor="middle" fill="var(--text-tertiary)" fontSize={10}>
+          <text key={frac} x={x} y={SVG_H - 8} textAnchor="middle" fill="var(--ink-3)" fontSize={10}>
             {label}
           </text>
         );
@@ -153,7 +153,6 @@ function TimelineList({ events }: { events: TimelineEvent[] }) {
       }}
     >
       {events.map((ev) => {
-        const catColor = colorForCategory(ev.intent_category);
         const confColor = confidenceColor(ev.confidence);
         return (
           <div
@@ -173,55 +172,37 @@ function TimelineList({ events }: { events: TimelineEvent[] }) {
                 width: 10,
                 height: 10,
                 borderRadius: '50%',
-                background: catColor,
+                background: colorForCategory(ev.intent_category),
                 flexShrink: 0,
                 marginTop: 4,
               }}
             />
 
             <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 4 }}>
-              {/* Top line: category badge + confidence + time */}
+              {/* Top line: category chip + confidence + time */}
               <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
-                <Text
-                  size="sm"
-                  weight="semibold"
-                  style={{
-                    display: 'inline-block',
-                    padding: '1px 8px',
-                    borderRadius: 4,
-                    background: catColor,
-                    color: '#fff',
-                  }}
-                >
+                <span className="chip">
                   {formatCategory(ev.intent_category)}
-                </Text>
-                <Text size="sm" family="mono" tabularNums style={{ color: confColor }}>
+                </span>
+                <span className="mono tnum" style={{ color: confColor, fontWeight: 600 }}>
                   {(ev.confidence * 100).toFixed(0)}%
-                </Text>
-                <Text size="sm" family="mono" color="tertiary" tabularNums>
+                </span>
+                <span className="mono tnum" style={{ color: 'var(--ink-3)' }}>
                   {formatDate(ev.created_at)} {formatTime(ev.created_at)}
-                </Text>
+                </span>
               </div>
 
               {/* Keywords */}
               {ev.keywords.length > 0 && (
                 <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap' }}>
                   {ev.keywords.map((kw) => (
-                    <Text
+                    <span
                       key={kw}
-                      size="xs"
-                      family="mono"
-                      color="secondary"
-                      style={{
-                        display: 'inline-block',
-                        padding: '0 6px',
-                        borderRadius: 3,
-                        border: '1px solid var(--line)',
-                        background: 'var(--panel-2)',
-                      }}
+                      className="chip"
+                      style={{ height: 18, padding: '0 6px' }}
                     >
-                      {kw}
-                    </Text>
+                      <Text size="xs" family="mono" color="secondary">{kw}</Text>
+                    </span>
                   ))}
                 </div>
               )}
@@ -257,24 +238,17 @@ export default function SessionTimelineWidget() {
 
   const isEmpty = sorted.length === 0 && !isLoading;
 
+  // Segmented control for Chart | List toggle
   const modeToggle = (
-    <div style={{ display: 'flex', gap: 2 }}>
+    <div className="seg">
       {(['chart', 'list'] as const).map((m) => (
         <button
           key={m}
           type="button"
+          className={`seg-btn${mode === m ? ' is-on' : ''}`}
           onClick={() => setMode(m)}
-          style={{
-            padding: '2px 10px',
-            borderRadius: 4,
-            border: '1px solid var(--line)',
-            background: mode === m ? 'var(--panel-2)' : 'transparent',
-            cursor: 'pointer',
-          }}
         >
-          <Text size="sm" weight={mode === m ? 'semibold' : 'regular'} color={mode === m ? 'primary' : 'secondary'}>
-            {m === 'chart' ? 'Chart' : 'List'}
-          </Text>
+          {m === 'chart' ? 'Chart' : 'List'}
         </button>
       ))}
     </div>

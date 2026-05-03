@@ -26,4 +26,6 @@ export const componentImports: Record<string, ReturnType<typeof lazy>> = {
   'intent-distribution/IntentDistributionWidget': lazy(() => import('./intent-distribution/IntentDistributionWidget')),
   'session-timeline/SessionTimelineWidget': lazy(() => import('./session-timeline/SessionTimelineWidget')),
   'live-events/LiveEventStreamWidget': lazy(() => import('./live-events/LiveEventStreamWidget')),
+  'routing-decision/RoutingDecisionWidget': lazy(() => import('./routing-decision/RoutingDecisionWidget')),
+  'receipt-gate/ReceiptGateWidget': lazy(() => import('./receipt-gate/ReceiptGateWidget')),
 };

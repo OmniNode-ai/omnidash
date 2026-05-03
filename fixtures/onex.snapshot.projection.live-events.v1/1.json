@@ -1,0 +1,1 @@
+{ "id": "e-002", "type": "ACTION", "timestamp": "2026-05-03T15:00:02Z", "source": "omniclaude", "topic": "onex.cmd.omnimarket.route.v3", "summary": "build_loop · ticket-4471 → market", "payload": "{\"ticket\":\"OMN-4471\",\"action\":\"route\"}" }

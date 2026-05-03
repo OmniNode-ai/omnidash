@@ -1,0 +1,1 @@
+{ "id": "e-001", "type": "ROUTING", "timestamp": "2026-05-03T15:00:01Z", "source": "omnimarket", "topic": "onex.evt.omnimarket.routed.v3", "summary": "→ qwen3-coder-30b · $0.000", "payload": "{\"model\":\"qwen3-coder-30b\",\"cost\":0,\"confidence\":0.94}" }

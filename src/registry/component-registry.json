@@ -1,6 +1,6 @@
 {
   "manifestVersion": "1.0",
-  "generatedAt": "2026-05-03T13:08:30.373Z",
+  "generatedAt": "2026-05-03T15:44:29.478Z",
   "components": {
     "cost-trend-panel": {
       "name": "cost-trend-panel",
@@ -1526,6 +1526,90 @@
       "emptyState": {
         "message": "No live events",
         "hint": "Events appear when the system is actively processing"
+      },
+      "capabilities": {
+        "supports_compare": false,
+        "supports_export": false,
+        "supports_fullscreen": true,
+        "supports_time_range": false
+      }
+    },
+    "routing-decision": {
+      "name": "routing-decision",
+      "displayName": "Model Routing",
+      "description": "Live decision trace showing INPUT → CLASSIFY → ROUTE with confidence bar, routing rules table, and auto-cycling through tasks",
+      "category": "activity",
+      "version": "1.0.0",
+      "implementationKey": "routing-decision/RoutingDecisionWidget",
+      "dataSources": [
+        {
+          "type": "projection",
+          "topic": "onex.snapshot.projection.routing-decision.v1",
+          "required": false,
+          "purpose": "initial_fetch"
+        }
+      ],
+      "events": {
+        "emits": [],
+        "consumes": []
+      },
+      "defaultSize": {
+        "w": 8,
+        "h": 6
+      },
+      "minSize": {
+        "w": 6,
+        "h": 4
+      },
+      "maxSize": {
+        "w": 12,
+        "h": 10
+      },
+      "emptyState": {
+        "message": "No routing data",
+        "hint": "Routing decisions appear when model routing is active"
+      },
+      "capabilities": {
+        "supports_compare": false,
+        "supports_export": false,
+        "supports_fullscreen": true,
+        "supports_time_range": false
+      }
+    },
+    "receipt-gate": {
+      "name": "receipt-gate",
+      "displayName": "Receipt Gate",
+      "description": "Progressive gate reveal animation showing verification gate status per PR with pass/fail indicators, receipt manifest, and progress meter",
+      "category": "quality",
+      "version": "1.0.0",
+      "implementationKey": "receipt-gate/ReceiptGateWidget",
+      "dataSources": [
+        {
+          "type": "projection",
+          "topic": "onex.snapshot.projection.receipt-gate.v1",
+          "required": false,
+          "purpose": "initial_fetch"
+        }
+      ],
+      "events": {
+        "emits": [],
+        "consumes": []
+      },
+      "defaultSize": {
+        "w": 6,
+        "h": 6
+      },
+      "minSize": {
+        "w": 4,
+        "h": 4
+      },
+      "maxSize": {
+        "w": 12,
+        "h": 10
+      },
+      "emptyState": {
+        "message": "No receipt data",
+        "hint": "Receipt gate appears when PRs have verification receipts"
       },
       "capabilities": {
         "supports_compare": false,

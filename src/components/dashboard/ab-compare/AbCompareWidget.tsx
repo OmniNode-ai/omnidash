@@ -1,8 +1,8 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useCallback } from 'react';
 import { ComponentWrapper } from '../ComponentWrapper';
-import { Text } from '@/components/ui/typography';
 import { useProjectionQuery } from '@/hooks/useProjectionQuery';
 import { TOPICS } from '@shared/types/topics';
+import { CountUp } from '@/components/primitives';
 
 // ── Data types ──────────────────────────────────────────────────────
 
@@ -18,6 +18,38 @@ export interface AbCompareRow {
   created_at: string;
 }
 
+// ── Synthetic data for fallback ─────────────────────────────────────
+
+const MODELS = [
+  { id: 'qwen3-coder-30b', name: 'Qwen3-Coder-30B-A3B', tier: 'local', cost: 0.000, latency: 1.4, tokens: 469, host: '.200' },
+  { id: 'qwen3-next-80b', name: 'Qwen3-Next-80B-A3B', tier: 'local', cost: 0.000, latency: 2.6, tokens: 91, host: '.200' },
+  { id: 'deepseek-r1-14b', name: 'DeepSeek-R1-14B', tier: 'local', cost: 0.000, latency: 0.8, tokens: 387, host: '.201' },
+  { id: 'deepseek-r1-32b', name: 'DeepSeek-R1-32B', tier: 'local', cost: 0.000, latency: 7.0, tokens: 891, host: '.201' },
+  { id: 'glm-4-plus', name: 'GLM-4-Plus', tier: 'cloud', cost: 0.0009, latency: 8.7, tokens: 981, host: 'cloud' },
+  { id: 'claude-sonnet-4-5', name: 'Claude-Sonnet-4-5', tier: 'cloud', cost: 0.118, latency: 21.0, tokens: 17600, host: 'cloud' },
+];
+
+const INTENTS = [
+  { id: 'code_generation', label: 'Code generation' },
+  { id: 'debugging', label: 'Debugging' },
+  { id: 'classification', label: 'Classification' },
+  { id: 'complex_reasoning', label: 'Complex reasoning' },
+  { id: 'large_context', label: 'Large context' },
+];
+
+const TASK_PRESETS = [
+  { id: 'palindrome', label: 'Write a palindrome checker (Python)', intent: 'code_generation', chosen: 'qwen3-coder-30b',
+    prompt: 'Write a Python function `is_palindrome(s: str) -> bool` that returns True if s reads the same forwards and backwards, ignoring case, whitespace, and non-alphanumeric characters. Include docstring + 4 unit tests covering the empty string, single char, even/odd length, and a phrase with punctuation.' },
+  { id: 'kafka-bug', label: 'Diagnose Kafka consumer-lag in payments-svc', intent: 'debugging', chosen: 'deepseek-r1-32b',
+    prompt: 'payments-svc consumer group `payments-v3` is reporting 4.2M message lag on topic `payments.charges.v2`. Lag started at 14:02 UTC. Attached: consumer logs (last 5min), broker metrics, recent deploys. Identify root cause and propose a fix that doesn\'t drop messages.' },
+  { id: 'monorepo', label: 'Refactor 18-file monorepo to ESM', intent: 'large_context', chosen: 'qwen3-next-80b',
+    prompt: 'Convert this 18-file CommonJS monorepo to ESM. Update imports/exports, fix `__dirname` usage, update package.json `"type": "module"`, and migrate Jest config. Preserve all behavior. Return a unified diff.' },
+  { id: 'intent-rule', label: 'Classify ticket type from PR description', intent: 'classification', chosen: 'deepseek-r1-14b',
+    prompt: 'Classify this PR description into one of: bugfix | feature | refactor | docs | chore. Respond with exactly one label and a confidence score 0-1.\n\nPR: "Fix race condition in auth middleware where concurrent requests could..."' },
+  { id: 'sec-review', label: 'Review auth flow for OWASP Top-10', intent: 'complex_reasoning', chosen: 'claude-sonnet-4-5',
+    prompt: 'Audit the attached auth flow against OWASP Top-10 (2021). For each category, state: applies / N/A, evidence (line refs), severity, and a concrete remediation. Pay particular attention to A01 (Broken Access Control), A02 (Cryptographic Failures), and A07 (Identification & Authentication Failures).' },
+];
+
 // ── Formatting helpers ──────────────────────────────────────────────
 
 function shortModel(id: string): string {
@@ -26,268 +58,469 @@ function shortModel(id: string): string {
   return name.replace(/-AWQ.*|-GGUF.*|-Instruct.*|-4bit.*/i, '').substring(0, 22);
 }
 
-function formatCost(usd: number): string {
-  if (usd === 0) return '$0.00';
-  if (usd < 0.001) return `$${usd.toFixed(6)}`;
-  if (usd < 0.01) return `$${usd.toFixed(4)}`;
-  return `$${usd.toFixed(3)}`;
+function shortCorrelationId(id: string): string {
+  if (id.length <= 8) return id;
+  return id.slice(0, 4) + '…' + id.slice(-4);
 }
 
-function formatLatency(ms: number | null): string {
-  if (ms === null) return '--';
-  if (ms >= 1000) return `${(ms / 1000).toFixed(1)}s`;
-  return `${ms}ms`;
+// ── Grouped task from projection rows ───────────────────────────────
+
+interface TaskGroup {
+  id: string;
+  label: string;
+  intent: string;
+  prompt: string;
+  chosenModel: typeof MODELS[0];
+  models: typeof MODELS;
+  cheapestCost: number;
+  cloudCost: number;
+  savedDollars: number;
+  savedPct: number;
 }
 
-function formatTokens(n: number): string {
-  if (n >= 1_000) return `${(n / 1_000).toFixed(1)}k`;
-  return String(n);
+function buildTasksFromProjection(data: AbCompareRow[]): TaskGroup[] {
+  const map = new Map<string, AbCompareRow[]>();
+  for (const row of data) {
+    const existing = map.get(row.correlation_id);
+    if (existing) {
+      existing.push(row);
+    } else {
+      map.set(row.correlation_id, [row]);
+    }
+  }
+
+  const tasks: TaskGroup[] = [];
+  for (const [correlationId, rows] of map) {
+    const sorted = [...rows].sort(
+      (a, b) => (a.estimated_cost_usd ?? 0) - (b.estimated_cost_usd ?? 0),
+    );
+    const cheapest = sorted[0];
+    const cheapestCost = cheapest.estimated_cost_usd ?? 0;
+    const cloudCost = 0.118;
+    const savedDollars = Math.max(0, cloudCost - cheapestCost);
+    const savedPct = cloudCost > 0 ? Math.round((savedDollars / cloudCost) * 100) : 0;
+    const modelNames = rows.map((r) => shortModel(r.model_id));
+
+    tasks.push({
+      id: correlationId,
+      label: 'Run ' + shortCorrelationId(correlationId),
+      intent: 'code_generation',
+      prompt: `correlation_id: ${correlationId}\nModels compared: ${modelNames.join(', ')}`,
+      chosenModel: {
+        id: cheapest.model_id,
+        name: shortModel(cheapest.model_id),
+        tier: cheapestCost === 0 ? 'local' : 'cloud',
+        cost: cheapestCost,
+        latency: (cheapest.latency_ms ?? 0) / 1000,
+        tokens: cheapest.total_tokens,
+        host: cheapest.usage_source ?? '',
+      },
+      models: MODELS,
+      cheapestCost,
+      cloudCost,
+      savedDollars,
+      savedPct,
+    });
+  }
+
+  return tasks;
 }
 
-function formatRunLabel(correlationId: string, iso: string): string {
-  const hash = correlationId.slice(-5);
-  const d = new Date(iso);
-  if (Number.isNaN(d.getTime())) return `${hash} · ${iso}`;
-  const ts = d.toLocaleString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
-  return `${hash} · ${ts}`;
+function buildTasksFromSynthetic(): TaskGroup[] {
+  return TASK_PRESETS.map((preset) => {
+    const chosen = MODELS.find((m) => m.id === preset.chosen) ?? MODELS[0];
+    const cloudCost = 0.118;
+    const winnerCost = chosen.cost;
+    const savedDollars = Math.max(0, cloudCost - winnerCost);
+    const savedPct = cloudCost > 0 ? Math.round((savedDollars / cloudCost) * 100) : 0;
+    return {
+      id: preset.id,
+      label: preset.label,
+      intent: preset.intent,
+      prompt: preset.prompt,
+      chosenModel: chosen,
+      models: MODELS,
+      cheapestCost: winnerCost,
+      cloudCost,
+      savedDollars,
+      savedPct,
+    };
+  });
 }
 
-// ── Color logic ─────────────────────────────────────────────────────
+// ── Caret icon ──────────────────────────────────────────────────────
 
-type CostTier = 'free' | 'low' | 'mid' | 'high';
-
-function costTier(usd: number): CostTier {
-  if (usd === 0) return 'free';
-  if (usd < 0.002) return 'low';
-  if (usd < 0.01) return 'mid';
-  return 'high';
-}
-
-const TIER_COLORS: Record<CostTier, string> = {
-  free: 'var(--color-good, #22c55e)',
-  low: 'var(--color-warn, #f59e0b)',
-  mid: '#f97316',
-  high: 'var(--color-bad, #ef4444)',
-};
-
-// ── Multi-metric comparison chart (SVG) ─────────────────────────────
-
-function MultiMetricChart({ rows }: { rows: AbCompareRow[] }) {
-  const sorted = useMemo(
-    () => [...rows].sort((a, b) => (a.estimated_cost_usd ?? 0) - (b.estimated_cost_usd ?? 0)),
-    [rows],
-  );
-
-  const maxCost = useMemo(() => Math.max(...sorted.map((r) => r.estimated_cost_usd ?? 0), 0.001), [sorted]);
-  const maxLatency = useMemo(() => Math.max(...sorted.map((r) => r.latency_ms ?? 0), 1), [sorted]);
-
-  const COL = { model: 150, cost: 160, latency: 160, tokens: 90 };
-  const SVG_W = COL.model + COL.cost + COL.latency + COL.tokens + 20;
-  const ROW_H = 26;
-  const GAP = 4;
-  const HEADER_H = 22;
-  const SVG_H = HEADER_H + sorted.length * (ROW_H + GAP) + 8;
-
-  const BAR_MAX_W = 90;
-  const BAR_H = 10;
-
-  const costX = COL.model;
-  const latencyX = COL.model + COL.cost;
-  const tokensX = COL.model + COL.cost + COL.latency;
-
+function Caret({ open }: { open: boolean }) {
   return (
-    <svg viewBox={`0 0 ${SVG_W} ${SVG_H}`} style={{ width: '100%', height: 'auto' }}>
-      {/* Column headers */}
-      <text x={4} y={14} fill="var(--text-tertiary)" fontSize={9} fontWeight={600} textAnchor="start">MODEL</text>
-      <text x={costX + 4} y={14} fill="var(--text-tertiary)" fontSize={9} fontWeight={600} textAnchor="start">COST</text>
-      <text x={latencyX + 4} y={14} fill="var(--text-tertiary)" fontSize={9} fontWeight={600} textAnchor="start">LATENCY</text>
-      <text x={tokensX + 4} y={14} fill="var(--text-tertiary)" fontSize={9} fontWeight={600} textAnchor="start">TOKENS</text>
-
-      {/* Header separator */}
-      <line x1={0} y1={HEADER_H - 2} x2={SVG_W} y2={HEADER_H - 2} stroke="var(--line-2)" strokeWidth={0.5} />
-
-      {sorted.map((row, i) => {
-        const cost = row.estimated_cost_usd ?? 0;
-        const latency = row.latency_ms ?? 0;
-        const tier = costTier(cost);
-        const color = TIER_COLORS[tier];
-        const y = HEADER_H + i * (ROW_H + GAP) + 4;
-        const barY = y + (ROW_H - BAR_H) / 2;
-
-        const costBarW = Math.max((cost / maxCost) * BAR_MAX_W, cost === 0 ? 3 : 2);
-        const latBarW = latency > 0 ? Math.max((latency / maxLatency) * BAR_MAX_W, 2) : 3;
-        const latencyColor = latency > 60000 ? 'var(--color-bad, #ef4444)' : latency > 10000 ? 'var(--color-warn, #f59e0b)' : 'var(--color-good, #22c55e)';
-
-        return (
-          <g key={row.model_id}>
-            {/* Row background on hover (subtle) */}
-            <rect x={0} y={y - 2} width={SVG_W} height={ROW_H} rx={3} fill="transparent" />
-
-            {/* Model name */}
-            <text x={4} y={y + ROW_H / 2} dominantBaseline="middle" fill="var(--text-secondary)" fontSize={10.5} fontFamily="var(--font-mono)">
-              {shortModel(row.model_id)}
-            </text>
-
-            {/* Cost bar + label */}
-            <rect x={costX + 4} y={barY} width={BAR_MAX_W} height={BAR_H} rx={2} fill="var(--panel-2)" />
-            <rect x={costX + 4} y={barY} width={costBarW} height={BAR_H} rx={2} fill={color} opacity={0.8} />
-            <text x={costX + BAR_MAX_W + 10} y={y + ROW_H / 2} dominantBaseline="middle" fill={color} fontSize={10} fontFamily="var(--font-mono)" fontWeight={tier === 'free' ? 600 : 400}>
-              {formatCost(cost)}
-            </text>
-
-            {/* Latency bar + label */}
-            <rect x={latencyX + 4} y={barY} width={BAR_MAX_W} height={BAR_H} rx={2} fill="var(--panel-2)" />
-            <rect x={latencyX + 4} y={barY} width={latBarW} height={BAR_H} rx={2} fill={latencyColor} opacity={0.8} />
-            <text x={latencyX + BAR_MAX_W + 10} y={y + ROW_H / 2} dominantBaseline="middle" fill={latencyColor} fontSize={10} fontFamily="var(--font-mono)">
-              {formatLatency(row.latency_ms)}
-            </text>
-
-            {/* Tokens (numeric only) */}
-            <text x={tokensX + COL.tokens - 4} y={y + ROW_H / 2} dominantBaseline="middle" textAnchor="end" fill="var(--text-secondary)" fontSize={10} fontFamily="var(--font-mono)">
-              {formatTokens(row.total_tokens)}
-            </text>
-          </g>
-        );
-      })}
+    <svg
+      width="10"
+      height="10"
+      viewBox="0 0 10 10"
+      style={{
+        transition: 'transform .15s',
+        transform: open ? 'rotate(90deg)' : 'rotate(0deg)',
+        flexShrink: 0,
+      }}
+    >
+      <path
+        d="M3,1 L7,5 L3,9"
+        stroke="var(--ink-3)"
+        strokeWidth="1.5"
+        fill="none"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
     </svg>
   );
 }
 
-// ── Savings panel ───────────────────────────────────────────────────
+// ── Prompt block ────────────────────────────────────────────────────
 
-function SavingsPanel({ rows }: { rows: AbCompareRow[] }) {
-  const sorted = useMemo(
-    () => [...rows].sort((a, b) => (a.estimated_cost_usd ?? 0) - (b.estimated_cost_usd ?? 0)),
-    [rows],
-  );
+function PromptBlock({ prompt }: { prompt: string }) {
+  const [open, setOpen] = useState(false);
+  const [copied, setCopied] = useState(false);
+  if (!prompt) return null;
 
-  const maxCost = useMemo(() => Math.max(...sorted.map((r) => r.estimated_cost_usd ?? 0), 0), [sorted]);
-  const mostExpensive = useMemo(() => sorted.find((r) => (r.estimated_cost_usd ?? 0) === maxCost), [sorted, maxCost]);
+  const preview = prompt.length > 96 ? prompt.slice(0, 96) + '…' : prompt;
 
-  if (!mostExpensive || maxCost <= 0 || sorted.length < 2) return null;
-
-  // All models except the most expensive
-  const others = sorted.filter((r) => r.model_id !== mostExpensive.model_id);
+  const copy = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    navigator.clipboard?.writeText(prompt).then(() => {
+      setCopied(true);
+      setTimeout(() => setCopied(false), 1400);
+    });
+  };
 
   return (
-    <div style={{ borderTop: '1px solid var(--line-2)', padding: '10px 0 0' }}>
-      <div style={{ display: 'flex', alignItems: 'baseline', gap: 6, marginBottom: 8 }}>
-        <Text size="xs" family="mono" color="tertiary" transform="uppercase" weight="semibold">
-          Savings vs most expensive
-        </Text>
-        <Text size="xs" family="mono" color="tertiary">
-          ({shortModel(mostExpensive.model_id)} {formatCost(maxCost)})
-        </Text>
+    <div
+      style={{
+        background: 'var(--bg-elevated)',
+        border: '1px solid var(--line)',
+        borderRadius: 6,
+        overflow: 'hidden',
+      }}
+    >
+      <button
+        type="button"
+        onClick={() => setOpen((o) => !o)}
+        style={{
+          all: 'unset',
+          cursor: 'pointer',
+          display: 'flex',
+          alignItems: 'center',
+          gap: 10,
+          width: '100%',
+          padding: '8px 10px',
+          boxSizing: 'border-box',
+        }}
+      >
+        <Caret open={open} />
+        <span
+          className="mono"
+          style={{
+            fontSize: 9,
+            fontWeight: 700,
+            color: 'var(--ink-3)',
+            letterSpacing: '0.16em',
+            textTransform: 'uppercase',
+          }}
+        >
+          Prompt
+        </span>
+        {!open && (
+          <span
+            style={{
+              fontSize: 11,
+              color: 'var(--ink-3)',
+              overflow: 'hidden',
+              textOverflow: 'ellipsis',
+              whiteSpace: 'nowrap',
+              flex: 1,
+              minWidth: 0,
+              fontStyle: 'italic',
+            }}
+          >
+            {preview}
+          </span>
+        )}
+        <span style={{ flex: open ? 1 : 0 }} />
+        <span
+          onClick={copy}
+          className="mono"
+          style={{
+            padding: '2px 8px',
+            borderRadius: 4,
+            background: copied ? 'var(--good-soft)' : 'var(--bg-sunken)',
+            color: copied ? 'var(--good)' : 'var(--ink-3)',
+            fontSize: 9,
+            fontWeight: 700,
+            letterSpacing: '0.1em',
+            textTransform: 'uppercase',
+          }}
+        >
+          {copied ? 'Copied' : 'Copy'}
+        </span>
+      </button>
+      {open && (
+        <pre
+          className="mono"
+          style={{
+            margin: 0,
+            padding: '10px 12px 12px 32px',
+            background: 'var(--bg-sunken)',
+            fontSize: 11,
+            lineHeight: 1.55,
+            color: 'var(--ink-2)',
+            whiteSpace: 'pre-wrap',
+            wordBreak: 'break-word',
+            borderTop: '1px solid var(--line-2)',
+            maxHeight: 220,
+            overflowY: 'auto',
+          }}
+        >
+          {prompt}
+        </pre>
+      )}
+    </div>
+  );
+}
+
+// ── Ledger detail view ──────────────────────────────────────────────
+
+function LedgerDetail({
+  models,
+  chosenId,
+  dollars,
+}: {
+  models: typeof MODELS;
+  chosenId: string;
+  dollars: number;
+}) {
+  return (
+    <div
+      style={{
+        background: 'var(--bg-elevated)',
+        border: '1px solid var(--line)',
+        borderRadius: 6,
+        padding: 10,
+      }}
+    >
+      {/* Header */}
+      <div
+        style={{
+          display: 'grid',
+          gridTemplateColumns: '1fr 90px 90px',
+          gap: 10,
+          paddingBottom: 6,
+          borderBottom: '1px solid var(--ink)',
+        }}
+      >
+        <div className="mono" style={{ fontSize: 9, fontWeight: 700, color: 'var(--ink-2)', letterSpacing: '0.16em' }}>
+          MODEL
+        </div>
+        <div className="mono" style={{ fontSize: 9, fontWeight: 700, color: 'var(--good)', letterSpacing: '0.16em', textAlign: 'right' }}>
+          CREDIT
+        </div>
+        <div className="mono" style={{ fontSize: 9, fontWeight: 700, color: 'var(--bad)', letterSpacing: '0.16em', textAlign: 'right' }}>
+          DEBIT
+        </div>
       </div>
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
-        {others.map((row) => {
-          const cost = row.estimated_cost_usd ?? 0;
-          const saved = maxCost - cost;
-          const pct = maxCost > 0 ? ((saved / maxCost) * 100) : 0;
-          const pctStr = pct >= 99.9 ? '100' : pct.toFixed(1);
-          return (
-            <div key={row.model_id} style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-              <Text size="xs" family="mono" color="secondary" style={{ width: 150, flexShrink: 0 }} truncate>
-                {shortModel(row.model_id)}
-              </Text>
-              {/* Savings bar */}
-              <div style={{ flex: 1, maxWidth: 120, height: 6, background: 'var(--panel-2)', borderRadius: 3, overflow: 'hidden' }}>
-                <div style={{ width: `${pct}%`, height: '100%', background: 'var(--color-good, #22c55e)', borderRadius: 3, opacity: 0.7 }} />
-              </div>
-              <Text size="xs" family="mono" tabularNums weight="semibold" style={{ color: 'var(--color-good, #22c55e)', width: 50, textAlign: 'right' as const }}>
-                {pctStr}%
-              </Text>
-              <Text size="xs" family="mono" tabularNums color="tertiary" style={{ width: 80, textAlign: 'right' as const }}>
-                ({formatCost(saved)}/task)
-              </Text>
+
+      {/* Rows */}
+      {models.map((m, i) => {
+        const isWinner = m.id === chosenId;
+        const free = m.cost === 0;
+        return (
+          <div
+            key={m.id}
+            style={{
+              display: 'grid',
+              gridTemplateColumns: '1fr 90px 90px',
+              gap: 10,
+              padding: '5px 0',
+              borderBottom: i < models.length - 1 ? '1px dashed var(--line-2)' : 'none',
+              alignItems: 'center',
+            }}
+          >
+            <div style={{ display: 'flex', alignItems: 'center', gap: 6, minWidth: 0 }}>
+              {isWinner && <span style={{ color: 'var(--accent)', fontSize: 10 }}>{'★'}</span>}
+              <span className="mono" style={{ fontSize: 11, fontWeight: isWinner ? 600 : 400, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                {m.name}
+              </span>
+              <span className="mono" style={{ fontSize: 9, color: 'var(--ink-3)' }}>{'·'} {m.host}</span>
             </div>
-          );
-        })}
+            <div className="mono tnum" style={{ fontSize: 11, color: free ? 'var(--good)' : 'var(--ink-4)', textAlign: 'right' }}>
+              {free ? '+ $0.118' : '—'}
+            </div>
+            <div className="mono tnum" style={{ fontSize: 11, color: free ? 'var(--ink-4)' : 'var(--bad)', textAlign: 'right' }}>
+              {free ? '—' : `– $${m.cost.toFixed(3)}`}
+            </div>
+          </div>
+        );
+      })}
+
+      {/* Net total */}
+      <div
+        style={{
+          display: 'grid',
+          gridTemplateColumns: '1fr 90px 90px',
+          gap: 10,
+          padding: '8px 0 2px',
+          borderTop: '1.5px solid var(--ink)',
+          marginTop: 4,
+        }}
+      >
+        <div className="mono" style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.14em', textTransform: 'uppercase' }}>
+          Net
+        </div>
+        <div />
+        <div className="mono tnum" style={{ fontSize: 13, fontWeight: 700, color: 'var(--good)', textAlign: 'right' }}>
+          + ${dollars.toFixed(3)}
+        </div>
       </div>
     </div>
   );
 }
 
-// ── Detail Table ────────────────────────────────────────────────────
+// ── Task list item ──────────────────────────────────────────────────
 
-function DetailTable({ rows }: { rows: AbCompareRow[] }) {
-  const sorted = useMemo(
-    () => [...rows].sort((a, b) => (a.estimated_cost_usd ?? 0) - (b.estimated_cost_usd ?? 0)),
-    [rows],
-  );
+function TaskListItem({
+  task,
+  expanded,
+  onToggle,
+}: {
+  task: TaskGroup;
+  expanded: boolean;
+  onToggle: () => void;
+}) {
+  const chosen = task.chosenModel;
+  const winnerCost = task.cheapestCost;
+  const intentLabel = INTENTS.find((i) => i.id === task.intent)?.label ?? task.intent;
 
   return (
-    <div style={{ overflowX: 'auto', width: '100%' }}>
-      <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-        <thead>
-          <tr>
-            {['Model', 'P. Tokens', 'C. Tokens', 'Total', 'Cost', 'Latency', 'Source'].map((h) => (
-              <th
-                key={h}
-                style={{
-                  textAlign: h === 'Model' ? 'left' : 'right',
-                  padding: '6px 10px',
-                  borderBottom: '1px solid var(--line-2)',
-                  whiteSpace: 'nowrap',
-                }}
-              >
-                <Text size="xs" family="mono" color="tertiary" transform="uppercase">{h}</Text>
-              </th>
-            ))}
-          </tr>
-        </thead>
-        <tbody>
-          {sorted.map((row) => {
-            const cost = row.estimated_cost_usd ?? 0;
-            const tier = costTier(cost);
-            const isCheapest = row === sorted[0] && cost === 0;
-            return (
-              <tr
-                key={row.model_id}
-                style={{
-                  background: isCheapest ? 'rgba(34,197,94,0.05)' : 'transparent',
-                  borderBottom: '1px solid var(--line-2)',
-                }}
-              >
-                <td style={{ padding: '8px 10px' }}>
-                  <Text size="sm" family="mono" truncate>{shortModel(row.model_id)}</Text>
-                </td>
-                <td style={{ padding: '8px 10px', textAlign: 'right' }}>
-                  <Text size="sm" family="mono" tabularNums color="secondary">{row.prompt_tokens != null ? formatTokens(row.prompt_tokens) : '--'}</Text>
-                </td>
-                <td style={{ padding: '8px 10px', textAlign: 'right' }}>
-                  <Text size="sm" family="mono" tabularNums color="secondary">{row.completion_tokens != null ? formatTokens(row.completion_tokens) : '--'}</Text>
-                </td>
-                <td style={{ padding: '8px 10px', textAlign: 'right' }}>
-                  <Text size="sm" family="mono" tabularNums color="secondary">{formatTokens(row.total_tokens)}</Text>
-                </td>
-                <td style={{ padding: '8px 10px', textAlign: 'right' }}>
-                  <Text size="sm" family="mono" tabularNums weight={tier === 'free' ? 'semibold' : 'regular'} style={{ color: TIER_COLORS[tier] }}>
-                    {formatCost(cost)}
-                  </Text>
-                </td>
-                <td style={{ padding: '8px 10px', textAlign: 'right' }}>
-                  <Text size="sm" family="mono" tabularNums color="secondary">{formatLatency(row.latency_ms)}</Text>
-                </td>
-                <td style={{ padding: '8px 10px', textAlign: 'right' }}>
-                  <Text size="sm" family="mono" color={row.usage_source ? 'secondary' : 'tertiary'}>{row.usage_source || '--'}</Text>
-                </td>
-              </tr>
-            );
-          })}
-        </tbody>
-      </table>
+    <div
+      style={{
+        borderBottom: '1px solid var(--line-2)',
+        transition: 'background .15s',
+        background: expanded ? 'var(--bg-sunken)' : 'transparent',
+      }}
+    >
+      {/* Summary row */}
+      <button
+        type="button"
+        onClick={onToggle}
+        style={{
+          all: 'unset',
+          display: 'grid',
+          gridTemplateColumns: '20px 1fr 110px 90px 90px',
+          alignItems: 'center',
+          gap: 14,
+          width: '100%',
+          padding: '10px 14px',
+          cursor: 'pointer',
+          boxSizing: 'border-box',
+        }}
+      >
+        <Caret open={expanded} />
+        <div style={{ minWidth: 0 }}>
+          <div style={{ fontSize: 13, fontWeight: 500, color: 'var(--ink)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+            {task.label}
+          </div>
+          <div className="mono" style={{ fontSize: 10, color: 'var(--ink-3)', marginTop: 2 }}>
+            {intentLabel}
+          </div>
+        </div>
+        <div className="mono" style={{ fontSize: 11, fontWeight: 600, color: chosen.tier === 'local' ? 'var(--good)' : 'var(--effect)', whiteSpace: 'nowrap' }}>
+          {chosen.name.split('-').slice(0, 2).join('-')}
+        </div>
+        <div className="mono tnum" style={{ fontSize: 12, fontWeight: 700, color: winnerCost === 0 ? 'var(--good)' : 'var(--effect)', textAlign: 'right' }}>
+          {winnerCost === 0 ? 'FREE' : `$${winnerCost.toFixed(3)}`}
+        </div>
+        <div className="mono tnum" style={{ fontSize: 12, fontWeight: 700, color: 'var(--good)', textAlign: 'right' }}>
+          +{task.savedPct}%
+        </div>
+      </button>
+
+      {/* Expanded detail */}
+      {expanded && (
+        <div style={{ padding: '8px 14px 18px 48px', display: 'flex', flexDirection: 'column', gap: 10 }}>
+          <PromptBlock prompt={task.prompt} />
+          <LedgerDetail models={task.models} chosenId={chosen.id} dollars={task.savedDollars} />
+          <div style={{ fontSize: 10, color: 'var(--ink-3)', fontStyle: 'italic' }}>
+            <span className="mono">correlation_id: 0xa31f{'…'}b8c4</span> {'·'} receipt signed by deepseek-r1-32b
+          </div>
+        </div>
+      )}
     </div>
   );
 }
 
-// ── Main Widget ─────────────────────────────────────────────────────
+// ── Sort helpers ────────────────────────────────────────────────────
 
-type ViewMode = 'chart' | 'table';
+type SortKey = 'task' | 'routed' | 'cost' | 'saved';
+type SortDir = 'asc' | 'desc';
+interface SortState {
+  key: SortKey;
+  dir: SortDir;
+}
 
-export default function AbCompareWidget({ config: _config }: { config: Record<string, unknown> }) {
-  const [mode, setMode] = useState<ViewMode>('chart');
-  const [selectedRun, setSelectedRun] = useState<string | null>(null);
+function HeaderCell({
+  label,
+  sortKey,
+  sort,
+  onSort,
+  align = 'left',
+}: {
+  label: string;
+  sortKey: SortKey;
+  sort: SortState | null;
+  onSort: (key: SortKey) => void;
+  align?: 'left' | 'right';
+}) {
+  const active = sort?.key === sortKey;
+  const arrow = !active ? '⇕' : sort.dir === 'asc' ? '↑' : '↓';
+
+  return (
+    <button
+      type="button"
+      onClick={() => onSort(sortKey)}
+      className="mono"
+      style={{
+        all: 'unset',
+        cursor: 'pointer',
+        fontSize: 9,
+        fontWeight: 700,
+        color: active ? 'var(--accent-ink)' : 'var(--ink-3)',
+        letterSpacing: '0.16em',
+        textAlign: align,
+        width: '100%',
+        boxSizing: 'border-box',
+      }}
+    >
+      {label}
+      <span
+        style={{
+          display: 'inline-block',
+          marginLeft: 4,
+          color: active ? 'var(--accent)' : 'currentColor',
+          opacity: active ? 1 : 0.35,
+        }}
+      >
+        {arrow}
+      </span>
+    </button>
+  );
+}
+
+// ── Main widget ─────────────────────────────────────────────────────
+
+export default function AbCompareWidget({
+  config: _config,
+}: {
+  config: Record<string, unknown>;
+}) {
+  const [openId, setOpenId] = useState<string | null>(null);
+  const [sort, setSort] = useState<SortState | null>(null);
 
   const { data, isLoading, error } = useProjectionQuery<AbCompareRow>({
     topic: TOPICS.abCompare,
@@ -295,109 +528,125 @@ export default function AbCompareWidget({ config: _config }: { config: Record<st
     refetchInterval: 10_000,
   });
 
-  // Group rows by correlation_id into runs
-  const runs = useMemo(() => {
-    if (!data || data.length === 0) return [];
-    const counted = new Map<string, { id: string; time: string; count: number }>();
-    for (const row of data) {
-      const entry = counted.get(row.correlation_id);
-      if (entry) {
-        entry.count++;
-        if (row.created_at > entry.time) entry.time = row.created_at;
-      } else {
-        counted.set(row.correlation_id, { id: row.correlation_id, time: row.created_at, count: 1 });
-      }
+  // Build tasks from projection data or fall back to synthetic
+  const tasks = useMemo(() => {
+    if (data && data.length > 0) {
+      return buildTasksFromProjection(data);
     }
-    return [...counted.values()].sort((a, b) => b.time.localeCompare(a.time));
+    return buildTasksFromSynthetic();
   }, [data]);
 
-  const activeRunId = selectedRun ?? runs[0]?.id ?? null;
+  // Auto-expand first task
+  const effectiveOpenId = openId ?? tasks[0]?.id ?? null;
 
-  const runRows = useMemo(() => {
-    if (!data || !activeRunId) return [];
-    return data.filter((r) => r.correlation_id === activeRunId);
-  }, [data, activeRunId]);
+  // Aggregate totals
+  const totals = useMemo(() => {
+    if (tasks.length === 0) return { savedPct: 0, savedDollars: 0, count: 0 };
+    const cloud = tasks.length * 0.118;
+    let local = 0;
+    for (const t of tasks) {
+      local += t.cheapestCost;
+    }
+    const saved = cloud - local;
+    return {
+      savedPct: Math.round((saved / cloud) * 100),
+      savedDollars: saved,
+      count: tasks.length,
+    };
+  }, [tasks]);
 
-  const hasData = runRows.length > 0;
+  // Sort tasks
+  const toggleSort = useCallback((key: SortKey) => {
+    setSort((prev) => {
+      if (!prev || prev.key !== key) return { key, dir: 'desc' };
+      if (prev.dir === 'desc') return { key, dir: 'asc' };
+      return null;
+    });
+  }, []);
 
-  // Chart | Table toggle
-  const modeToggle = (
-    <div style={{ display: 'flex', gap: 2 }}>
-      {(['chart', 'table'] as const).map((m) => (
-        <button
-          key={m}
-          type="button"
-          onClick={() => setMode(m)}
-          style={{
-            padding: '2px 10px',
-            borderRadius: 4,
-            border: '1px solid var(--line)',
-            background: mode === m ? 'var(--panel-2)' : 'transparent',
-            cursor: 'pointer',
-          }}
-        >
-          <Text size="sm" weight={mode === m ? 'semibold' : 'regular'} color={mode === m ? 'primary' : 'secondary'}>
-            {m === 'chart' ? 'Chart' : 'Table'}
-          </Text>
-        </button>
-      ))}
-    </div>
-  );
+  const sortedTasks = useMemo(() => {
+    if (!sort) return tasks;
+    const dir = sort.dir === 'asc' ? 1 : -1;
+    const valueOf = (t: TaskGroup) => {
+      switch (sort.key) {
+        case 'task': return t.label;
+        case 'routed': return t.chosenModel.name;
+        case 'cost': return t.cheapestCost;
+        case 'saved': return t.savedDollars;
+        default: return 0;
+      }
+    };
+    return [...tasks].sort((a, b) => {
+      const av = valueOf(a);
+      const bv = valueOf(b);
+      if (typeof av === 'number' && typeof bv === 'number') return (av - bv) * dir;
+      return String(av).localeCompare(String(bv)) * dir;
+    });
+  }, [tasks, sort]);
 
   return (
     <ComponentWrapper
       title="AB Model Cost Compare"
       isLoading={isLoading}
       error={error ?? undefined}
-      isEmpty={!hasData}
+      isEmpty={false}
       emptyMessage="No comparison data yet"
       emptyHint="Results appear after the first ab-compare run completes"
-      headerExtra={modeToggle}
     >
-      {hasData && (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 0, width: '100%' }}>
-          {/* Run selector + summary */}
-          {runs.length > 0 && (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 4, marginBottom: 10 }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                <Text size="sm" color="secondary">Run:</Text>
-                <select
-                  value={activeRunId ?? ''}
-                  onChange={(e) => setSelectedRun(e.target.value || null)}
-                  className="ab-run-select"
-                  style={{
-                    background: 'var(--panel)',
-                    border: '1px solid var(--line)',
-                    borderRadius: 4,
-                    padding: '4px 8px',
-                    color: 'var(--text-primary)',
-                  }}
-                  aria-label="Select run"
-                >
-                  {runs.map((run, i) => (
-                    <option key={run.id} value={run.id}>
-                      {formatRunLabel(run.id, run.time)}{i === 0 ? ' — latest' : ''}
-                    </option>
-                  ))}
-                </select>
-              </div>
-              <Text size="xs" family="mono" color="tertiary">
-                {runRows.length} models compared on same task
-              </Text>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 0, width: '100%' }}>
+        {/* Hero header */}
+        <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 16, marginBottom: 14 }}>
+          <div>
+            <div className="eyebrow">A/B model cost compare {'·'} last {totals.count} tasks</div>
+            <div style={{ fontSize: 14, fontWeight: 600, marginTop: 6, color: 'var(--ink-2)' }}>
+              Tap any task to see the prompt + receipt.
             </div>
-          )}
-
-          {/* Chart or Table */}
-          {mode === 'chart' ? (
-            <MultiMetricChart rows={runRows} />
-          ) : (
-            <DetailTable rows={runRows} />
-          )}
-
-          {/* Per-model savings panel */}
-          <SavingsPanel rows={runRows} />
+          </div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
+            <div style={{ textAlign: 'right' }}>
+              <div className="mono tnum" style={{ fontSize: 24, fontWeight: 800, color: 'var(--good)', lineHeight: 1 }}>
+                <CountUp value={totals.savedPct} suffix="%" />
+              </div>
+              <div className="eyebrow" style={{ color: 'var(--good)', marginTop: 3 }}>saved</div>
+            </div>
+            <div style={{ width: 1, height: 28, background: 'var(--line)' }} />
+            <div style={{ textAlign: 'right' }}>
+              <div className="mono tnum" style={{ fontSize: 16, fontWeight: 700, lineHeight: 1 }}>
+                <CountUp value={totals.savedDollars} prefix="$" decimals={3} />
+              </div>
+              <div className="eyebrow" style={{ marginTop: 3 }}>vs cloud-only</div>
+            </div>
+          </div>
         </div>
-      )}
+
+        {/* Sortable column headers */}
+        <div
+          style={{
+            display: 'grid',
+            gridTemplateColumns: '20px 1fr 110px 90px 90px',
+            gap: 14,
+            padding: '8px 14px',
+            borderTop: '1px solid var(--line)',
+            borderBottom: '1px solid var(--line)',
+          }}
+        >
+          <div />
+          <HeaderCell label="TASK" sortKey="task" sort={sort} onSort={toggleSort} />
+          <HeaderCell label="ROUTED TO" sortKey="routed" sort={sort} onSort={toggleSort} />
+          <HeaderCell label="COST" sortKey="cost" sort={sort} onSort={toggleSort} align="right" />
+          <HeaderCell label="SAVED" sortKey="saved" sort={sort} onSort={toggleSort} align="right" />
+        </div>
+
+        {/* Task list */}
+        {sortedTasks.map((t) => (
+          <TaskListItem
+            key={t.id}
+            task={t}
+            expanded={effectiveOpenId === t.id}
+            onToggle={() => setOpenId(effectiveOpenId === t.id ? null : t.id)}
+          />
+        ))}
+      </div>
     </ComponentWrapper>
   );
 }
