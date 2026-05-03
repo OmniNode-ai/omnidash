@@ -75,15 +75,15 @@ export const AllCloudModels: Story = {
   ],
 };
 
-/** One model in the latest run errored. Error cell shows red. */
-export const WithError: Story = {
+/** One model in the latest run has nullable optional metrics. */
+export const WithUnknownCost: Story = {
   args: { config: {} },
   decorators: [
     makeDashboardDecorator({
       prefetched: [
         {
           queryKey: [...AB_KEY],
-          data: buildAbCompareRows({ modelCount: 4, includeError: true }),
+          data: buildAbCompareRows({ modelCount: 4, includeUnknownCost: true }),
         },
       ],
     }),

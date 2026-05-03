@@ -2,9 +2,9 @@
 //
 // Reads from onex.snapshot.projection.ab-compare.v1 via useProjectionQuery
 // and renders a cost comparison table grouped by correlation_id (run).
-// Rows are sorted by cost_usd ascending so the cheapest model anchors top.
+// Rows are sorted by estimated_cost_usd ascending so the cheapest model anchors top.
 // Local models ($0.00) are highlighted green; cloud models amber/red by cost.
-// A savings summary ("You could save $X vs most expensive") anchors the bottom.
+// A savings summary anchors the bottom when the latest run has comparable costs.
 //
 // Auto-refreshes every 10 s. Shows a prompt to run ab-compare CLI when empty.
 import { useMemo } from 'react';
@@ -15,15 +15,13 @@ import { TOPICS } from '@shared/types/topics';
 
 export interface AbCompareRow {
   correlation_id: string;
-  model_key: string;
-  display_name: string;
+  model_id: string;
   prompt_tokens: number;
   completion_tokens: number;
   total_tokens: number;
-  cost_usd: number;
-  latency_ms: number;
-  quality: string;
-  error: string;
+  estimated_cost_usd: number | null;
+  latency_ms: number | null;
+  usage_source: string | null;
   created_at: string;
 }
 
@@ -36,7 +34,13 @@ function formatCost(usd: number): string {
   return `$${usd.toFixed(3)}`;
 }
 
-function formatLatency(ms: number): string {
+function formatNullableCost(usd: number | null): string {
+  if (usd === null) return '—';
+  return formatCost(usd);
+}
+
+function formatLatency(ms: number | null): string {
+  if (ms === null) return '—';
   if (ms >= 1000) return `${(ms / 1000).toFixed(1)}s`;
   return `${ms}ms`;
 }
@@ -64,6 +68,13 @@ const TIER_COLORS: Record<CostTier, string> = {
   high: 'var(--color-bad, #ef4444)',
 };
 
+function compareRowsByCost(a: AbCompareRow, b: AbCompareRow): number {
+  if (a.estimated_cost_usd === null && b.estimated_cost_usd === null) return 0;
+  if (a.estimated_cost_usd === null) return 1;
+  if (b.estimated_cost_usd === null) return -1;
+  return a.estimated_cost_usd - b.estimated_cost_usd;
+}
+
 // ---- main component ----
 
 export default function AbCompareWidget({ config: _config }: { config: Record<string, unknown> }) {
@@ -85,12 +96,15 @@ export default function AbCompareWidget({ config: _config }: { config: Record<st
     // All rows for that correlation_id, sorted by cost ascending
     return data
       .filter((r) => r.correlation_id === latestCorrelation)
-      .sort((a, b) => a.cost_usd - b.cost_usd);
+      .sort(compareRowsByCost);
   }, [data]);
 
   const savings = useMemo(() => {
     if (latestRows.length < 2) return null;
-    const costs = latestRows.map((r) => r.cost_usd);
+    const costs = latestRows
+      .map((r) => r.estimated_cost_usd)
+      .filter((cost): cost is number => cost !== null);
+    if (costs.length < 2) return null;
     const max = Math.max(...costs);
     const min = Math.min(...costs);
     const diff = max - min;
@@ -122,7 +136,7 @@ export default function AbCompareWidget({ config: _config }: { config: Record<st
                     'Tokens',
                     'Cost',
                     'Latency',
-                    'Quality',
+                    'Source',
                   ].map((h) => (
                     <th
                       key={h}
@@ -147,13 +161,12 @@ export default function AbCompareWidget({ config: _config }: { config: Record<st
               </thead>
               <tbody>
                 {latestRows.map((row, idx) => {
-                  const tier = costTier(row.cost_usd);
-                  const isError = Boolean(row.error);
-                  const isCheapest = idx === 0;
+                  const tier = row.estimated_cost_usd === null ? null : costTier(row.estimated_cost_usd);
+                  const isCheapest = idx === 0 && row.estimated_cost_usd !== null;
 
                   return (
                     <tr
-                      key={row.model_key}
+                      key={`${row.correlation_id}:${row.model_id}`}
                       style={{
                         background:
                           isCheapest
@@ -178,7 +191,7 @@ export default function AbCompareWidget({ config: _config }: { config: Record<st
                             </Text>
                           )}
                           <Text size="sm" family="mono" truncate>
-                            {row.display_name || row.model_key}
+                            {row.model_id}
                           </Text>
                         </div>
                       </td>
@@ -197,34 +210,24 @@ export default function AbCompareWidget({ config: _config }: { config: Record<st
                           family="mono"
                           tabularNums
                           weight={tier === 'free' ? 'semibold' : 'regular'}
-                          style={{ color: TIER_COLORS[tier] }}
+                          style={{ color: tier ? TIER_COLORS[tier] : 'var(--text-tertiary)' }}
                         >
-                          {formatCost(row.cost_usd)}
+                          {formatNullableCost(row.estimated_cost_usd)}
                         </Text>
                       </td>
 
                       {/* Latency */}
                       <td style={{ padding: '8px 10px', textAlign: 'right' }}>
                         <Text size="sm" family="mono" tabularNums color="secondary">
-                          {row.latency_ms > 0 ? formatLatency(row.latency_ms) : '—'}
+                          {formatLatency(row.latency_ms)}
                         </Text>
                       </td>
 
-                      {/* Quality / error */}
+                      {/* Usage source */}
                       <td style={{ padding: '8px 10px', textAlign: 'right' }}>
-                        {isError ? (
-                          <Text size="sm" family="mono" color="bad">
-                            {row.error.length > 20 ? `${row.error.slice(0, 20)}…` : row.error}
-                          </Text>
-                        ) : (
-                          <Text
-                            size="sm"
-                            family="mono"
-                            color={row.quality === 'pass' ? 'ok' : row.quality ? 'secondary' : 'tertiary'}
-                          >
-                            {row.quality || '—'}
-                          </Text>
-                        )}
+                        <Text size="sm" family="mono" color={row.usage_source ? 'secondary' : 'tertiary'}>
+                          {row.usage_source || '—'}
+                        </Text>
                       </td>
                     </tr>
                   );
@@ -260,7 +263,7 @@ export default function AbCompareWidget({ config: _config }: { config: Record<st
                 >
                   choosing{' '}
                   <Text as="span" size="xs" family="mono" weight="semibold" color="secondary">
-                    {latestRows[0].display_name || latestRows[0].model_key}
+                    {latestRows[0].model_id}
                   </Text>
                   {' '}vs most expensive
                 </Text>

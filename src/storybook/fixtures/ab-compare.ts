@@ -5,10 +5,10 @@ export interface BuildAbCompareRowsOptions {
   modelCount?: number;
   /** Number of past runs to include (each with a distinct correlation_id). Default 1. */
   runCount?: number;
-  /** Include at least one model with cost_usd = 0 (local model). Default true. */
+  /** Include at least one model with estimated_cost_usd = 0 (local model). Default true. */
   includeLocalModel?: boolean;
-  /** Include one row with a non-empty error. Default false. */
-  includeError?: boolean;
+  /** Include one row with nullable optional metrics. Default false. */
+  includeUnknownCost?: boolean;
 }
 
 const MODEL_CATALOGUE: Array<{ key: string; name: string; costPerToken: number }> = [
@@ -31,7 +31,7 @@ export function buildAbCompareRows(opts: BuildAbCompareRowsOptions = {}): AbComp
     modelCount = 4,
     runCount = 1,
     includeLocalModel = true,
-    includeError = false,
+    includeUnknownCost = false,
   } = opts;
 
   const models = MODEL_CATALOGUE.slice(0, modelCount);
@@ -54,19 +54,17 @@ export function buildAbCompareRows(opts: BuildAbCompareRowsOptions = {}): AbComp
       const totalTokens = promptTokens + completionTokens;
       const costUsd = model.costPerToken * totalTokens;
       const latencyMs = 800 + m * 350 + (model.costPerToken === 0 ? 1200 : 0);
-      const isError = includeError && m === models.length - 1;
+      const hasUnknownCost = includeUnknownCost && m === models.length - 1;
 
       rows.push({
         correlation_id: correlationId,
-        model_key: model.key,
-        display_name: model.name,
+        model_id: model.key,
         prompt_tokens: promptTokens,
         completion_tokens: completionTokens,
         total_tokens: totalTokens,
-        cost_usd: isError ? 0 : costUsd,
-        latency_ms: isError ? 0 : latencyMs,
-        quality: isError ? '' : m % 3 === 0 ? 'pass' : 'acceptable',
-        error: isError ? 'timeout after 30s' : '',
+        estimated_cost_usd: hasUnknownCost ? null : costUsd,
+        latency_ms: hasUnknownCost ? null : latencyMs,
+        usage_source: hasUnknownCost ? null : m % 2 === 0 ? 'router' : 'gateway',
         created_at: new Date(runBase - m * 5_000).toISOString(),
       });
     }
