@@ -1,6 +1,6 @@
 {
   "manifestVersion": "1.0",
-  "generatedAt": "2026-05-03T15:44:29.478Z",
+  "generatedAt": "2026-05-05T14:01:14.740Z",
   "components": {
     "cost-trend-panel": {
       "name": "cost-trend-panel",
@@ -1616,6 +1616,247 @@
         "supports_export": false,
         "supports_fullscreen": true,
         "supports_time_range": false
+      }
+    },
+    "cost-savings-overview": {
+      "name": "cost-savings-overview",
+      "displayName": "Cost Savings Overview",
+      "description": "Unified view of local-vs-cloud spend, per-model savings breakdown, and execution-mode rollup. Backed by cost-savings projection views composed by node_dashboard_view_composer (OMN-10346). Upstream-blocked until the composer node is deployed; renders with contract-valid fixtures.",
+      "category": "cost",
+      "version": "1.0.0",
+      "implementationKey": "cost-savings-overview/CostSavingsOverviewWidget",
+      "configSchema": {
+        "type": "object",
+        "properties": {
+          "window": {
+            "type": "string",
+            "enum": [
+              "24h",
+              "7d",
+              "30d"
+            ],
+            "default": "7d",
+            "title": "Window",
+            "description": "Aggregation window for cost savings rollup."
+          },
+          "showWarnings": {
+            "type": "boolean",
+            "default": true,
+            "title": "Show warnings",
+            "description": "Display provisional / upstream-blocked warnings below the table."
+          }
+        },
+        "additionalProperties": false
+      },
+      "projectionSchema": {
+        "type": "object",
+        "description": "Row shape from onex.snapshot.projection.cost.savings-overview.v1. Produced by node_dashboard_view_composer (OMN-10346). Upstream-blocked until the composer node is deployed.",
+        "required": [
+          "window",
+          "total_cost_usd",
+          "total_baseline_cost_usd",
+          "total_savings_usd",
+          "savings_rate",
+          "tokens_total",
+          "local_token_pct",
+          "captured_at",
+          "rows",
+          "warnings",
+          "provisioned"
+        ],
+        "properties": {
+          "window": {
+            "type": "string",
+            "enum": [
+              "24h",
+              "7d",
+              "30d"
+            ],
+            "description": "Aggregation window."
+          },
+          "total_cost_usd": {
+            "type": "number",
+            "description": "Total actual cloud spend in USD."
+          },
+          "total_baseline_cost_usd": {
+            "type": "number",
+            "description": "Estimated cost if all tokens had been cloud-routed."
+          },
+          "total_savings_usd": {
+            "type": "number",
+            "description": "Measured savings (baseline − actual) in USD."
+          },
+          "savings_rate": {
+            "type": "number",
+            "description": "Fraction of baseline cost avoided (0–1)."
+          },
+          "tokens_total": {
+            "type": "number",
+            "description": "Total tokens processed across all models."
+          },
+          "local_token_pct": {
+            "type": "number",
+            "description": "Fraction of tokens routed to local models (0–1)."
+          },
+          "captured_at": {
+            "type": "string",
+            "format": "date-time",
+            "description": "Projection materialization timestamp. Ordering authority: monotonic DESC."
+          },
+          "rows": {
+            "type": "array",
+            "description": "Per-model breakdown rows.",
+            "items": {
+              "type": "object",
+              "required": [
+                "model_id",
+                "display_name",
+                "execution_mode",
+                "task_count",
+                "tokens_total",
+                "cost_usd",
+                "baseline_cost_usd",
+                "savings_usd",
+                "savings_pct"
+              ],
+              "properties": {
+                "model_id": {
+                  "type": "string"
+                },
+                "display_name": {
+                  "type": "string"
+                },
+                "execution_mode": {
+                  "type": "string",
+                  "enum": [
+                    "local",
+                    "cloud",
+                    "delegated",
+                    "market",
+                    "workflow_child"
+                  ]
+                },
+                "task_count": {
+                  "type": "number"
+                },
+                "tokens_total": {
+                  "type": "number"
+                },
+                "cost_usd": {
+                  "type": "number"
+                },
+                "baseline_cost_usd": {
+                  "type": "number"
+                },
+                "savings_usd": {
+                  "type": "number"
+                },
+                "savings_pct": {
+                  "type": "number"
+                },
+                "runtime_address": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "evidence_ref": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                }
+              }
+            }
+          },
+          "warnings": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "Provisional / upstream-blocked warning messages."
+          },
+          "provisioned": {
+            "type": "boolean",
+            "description": "True when backed by live projection data; false when using fixtures."
+          }
+        },
+        "x-orderingAuthority": {
+          "authority": "monotonic_field",
+          "fieldName": "captured_at",
+          "direction": "desc",
+          "clockSemantics": "UTC"
+        }
+      },
+      "displayContract": {
+        "description": "KPI bar (cloud spend, avoided, savings rate, local token %), local-vs-cloud split bar, per-model sortable table (model, mode, tasks, tokens, cost, baseline, saved, save%), optional warnings strip, optional upstream-blocked notice.",
+        "type": "object",
+        "properties": {
+          "kpiTiles": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "enum": [
+                "Cloud Spend",
+                "Cloud Avoided",
+                "Savings Rate",
+                "Local Tokens"
+              ]
+            }
+          },
+          "splitBar": {
+            "type": "string",
+            "const": "local_token_pct"
+          },
+          "table": {
+            "type": "string",
+            "const": "per-model savings breakdown, sortable"
+          }
+        }
+      },
+      "dataSources": [
+        {
+          "type": "projection",
+          "topic": "onex.snapshot.projection.cost.savings-overview.v1",
+          "required": false,
+          "purpose": "initial_fetch"
+        }
+      ],
+      "events": {
+        "emits": [],
+        "consumes": [
+          {
+            "name": "time_range_changed"
+          }
+        ]
+      },
+      "defaultSize": {
+        "w": 12,
+        "h": 8
+      },
+      "minSize": {
+        "w": 8,
+        "h": 5
+      },
+      "maxSize": {
+        "w": 12,
+        "h": 14
+      },
+      "emptyState": {
+        "message": "No cost savings data available",
+        "hint": "Cost savings overview appears after node_dashboard_view_composer is deployed (OMN-10346).",
+        "reasons": {
+          "upstream-blocked": {
+            "message": "Composer node not yet deployed — projection emitter not running. Widget renders with contract-valid fixtures until OMN-10346 is complete.",
+            "cta": "See OMN-10346"
+          }
+        }
+      },
+      "capabilities": {
+        "supports_compare": false,
+        "supports_export": true,
+        "supports_fullscreen": true,
+        "supports_time_range": true
       }
     },
     "ab-compare": {
