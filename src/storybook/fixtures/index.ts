@@ -32,3 +32,6 @@ export type { BuildReadinessRowsOptions } from './readiness';
 
 export { buildAbCompareRows } from './ab-compare';
 export type { BuildAbCompareRowsOptions } from './ab-compare';
+
+export { buildCostSavingsOverview, buildCostSavingsOverviewEmpty } from './cost-savings-overview';
+export type { BuildCostSavingsOverviewOptions } from './cost-savings-overview';

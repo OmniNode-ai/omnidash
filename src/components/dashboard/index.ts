@@ -28,4 +28,7 @@ export const componentImports: Record<string, ReturnType<typeof lazy>> = {
   'live-events/LiveEventStreamWidget': lazy(() => import('./live-events/LiveEventStreamWidget')),
   'routing-decision/RoutingDecisionWidget': lazy(() => import('./routing-decision/RoutingDecisionWidget')),
   'receipt-gate/ReceiptGateWidget': lazy(() => import('./receipt-gate/ReceiptGateWidget')),
+  'cost-savings-overview/CostSavingsOverviewWidget': lazy(
+    () => import('./cost-savings-overview/CostSavingsOverviewWidget'),
+  ),
 };

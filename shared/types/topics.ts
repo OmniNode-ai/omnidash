@@ -69,6 +69,14 @@ export const TOPICS = {
   routingDecision: 'onex.snapshot.projection.routing-decision.v1',
   /** Receipt gate widget — verification gate status per PR. */
   receiptGate: 'onex.snapshot.projection.receipt-gate.v1',
+  /**
+   * Cost savings overview — unified view of local-vs-cloud spend, per-model
+   * savings breakdown, and execution-mode rollup. Backed by cost-savings
+   * projection views composed by node_dashboard_view_composer (OMN-10346).
+   * Upstream-blocked: composer node not yet deployed; widget renders with
+   * contract-valid fixtures until the projection emitter lands.
+   */
+  costSavingsOverview: 'onex.snapshot.projection.cost.savings-overview.v1',
 } as const;
 
 export type TopicSymbol = (typeof TOPICS)[keyof typeof TOPICS];
