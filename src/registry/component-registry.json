@@ -1,6 +1,6 @@
 {
   "manifestVersion": "1.0",
-  "generatedAt": "2026-05-05T14:01:14.740Z",
+  "generatedAt": "2026-05-07T12:48:28.249Z",
   "components": {
     "cost-trend-panel": {
       "name": "cost-trend-panel",
@@ -1851,6 +1851,607 @@
             "cta": "See OMN-10346"
           }
         }
+      },
+      "capabilities": {
+        "supports_compare": false,
+        "supports_export": true,
+        "supports_fullscreen": true,
+        "supports_time_range": true
+      }
+    },
+    "delegation-savings": {
+      "name": "delegation-savings",
+      "displayName": "Delegation Savings",
+      "description": "Estimated savings vs baseline model per session and cumulative, with pricing manifest version. Backed by savings_estimates SQLite table (OMN-10623).",
+      "category": "cost",
+      "version": "1.0.0",
+      "implementationKey": "delegation/DelegationSavingsWidget",
+      "configSchema": {
+        "type": "object",
+        "properties": {
+          "showSessions": {
+            "type": "boolean",
+            "default": true,
+            "title": "Show sessions",
+            "description": "Show per-session savings table."
+          },
+          "maxSessions": {
+            "type": "number",
+            "default": 10,
+            "title": "Max sessions",
+            "description": "Maximum sessions to display in the table."
+          }
+        },
+        "additionalProperties": false
+      },
+      "projectionSchema": {
+        "type": "object",
+        "description": "Row shape from onex.snapshot.projection.delegation.savings.v1. Backed by savings_estimates SQLite table (OMN-10623).",
+        "required": [
+          "cumulative_savings_usd",
+          "cumulative_local_cost_usd",
+          "cumulative_cloud_cost_usd",
+          "baseline_model",
+          "pricing_manifest_version",
+          "session_count",
+          "sessions",
+          "captured_at",
+          "provisioned"
+        ],
+        "properties": {
+          "cumulative_savings_usd": {
+            "type": "number",
+            "description": "Total estimated savings across all sessions in USD."
+          },
+          "cumulative_local_cost_usd": {
+            "type": "number",
+            "description": "Total local model cost across all sessions in USD."
+          },
+          "cumulative_cloud_cost_usd": {
+            "type": "number",
+            "description": "Total cloud baseline cost across all sessions in USD."
+          },
+          "baseline_model": {
+            "type": "string",
+            "description": "Baseline model name for savings comparison (e.g. claude-sonnet-4-6)."
+          },
+          "pricing_manifest_version": {
+            "type": "string",
+            "description": "Version of the pricing manifest used for cost estimates."
+          },
+          "session_count": {
+            "type": "number",
+            "description": "Number of sessions with savings data."
+          },
+          "sessions": {
+            "type": "array",
+            "description": "Per-session savings breakdown.",
+            "items": {
+              "type": "object",
+              "required": [
+                "session_id",
+                "local_cost_usd",
+                "cloud_cost_usd",
+                "savings_usd",
+                "baseline_model",
+                "pricing_manifest_version",
+                "savings_method",
+                "usage_source",
+                "created_at"
+              ],
+              "properties": {
+                "session_id": {
+                  "type": "string"
+                },
+                "local_cost_usd": {
+                  "type": "number"
+                },
+                "cloud_cost_usd": {
+                  "type": "number"
+                },
+                "savings_usd": {
+                  "type": "number"
+                },
+                "baseline_model": {
+                  "type": "string"
+                },
+                "pricing_manifest_version": {
+                  "type": "string"
+                },
+                "savings_method": {
+                  "type": "string",
+                  "enum": [
+                    "measured",
+                    "estimated"
+                  ]
+                },
+                "usage_source": {
+                  "type": "string",
+                  "enum": [
+                    "measured",
+                    "estimated",
+                    "unknown"
+                  ]
+                },
+                "created_at": {
+                  "type": "string",
+                  "format": "date-time"
+                }
+              }
+            }
+          },
+          "captured_at": {
+            "type": "string",
+            "format": "date-time",
+            "description": "Projection materialization timestamp."
+          },
+          "provisioned": {
+            "type": "boolean",
+            "description": "True when backed by live projection data."
+          }
+        }
+      },
+      "dataSources": [
+        {
+          "type": "projection",
+          "topic": "onex.snapshot.projection.delegation.savings.v1",
+          "required": false,
+          "purpose": "initial_fetch"
+        },
+        {
+          "type": "websocket",
+          "topic": "onex.snapshot.projection.delegation.savings.v1",
+          "required": false,
+          "purpose": "live_updates"
+        }
+      ],
+      "events": {
+        "emits": [],
+        "consumes": []
+      },
+      "defaultSize": {
+        "w": 8,
+        "h": 6
+      },
+      "minSize": {
+        "w": 6,
+        "h": 4
+      },
+      "maxSize": {
+        "w": 12,
+        "h": 12
+      },
+      "emptyState": {
+        "message": "No delegation savings data",
+        "hint": "Savings data appears once delegation routing is active (OMN-10623)."
+      },
+      "capabilities": {
+        "supports_compare": false,
+        "supports_export": false,
+        "supports_fullscreen": true,
+        "supports_time_range": false
+      }
+    },
+    "delegation-model-routing": {
+      "name": "delegation-model-routing",
+      "displayName": "Model Routing",
+      "description": "Which models handled which task types and at what frequency; hover a model row to see its task-type breakdown. Backed by delegation_events SQLite table (OMN-10623).",
+      "category": "quality",
+      "version": "1.0.0",
+      "implementationKey": "delegation/DelegationModelRoutingWidget",
+      "configSchema": {
+        "type": "object",
+        "properties": {
+          "showTaskBreakdown": {
+            "type": "boolean",
+            "default": true,
+            "title": "Show task breakdown",
+            "description": "Show per-task-type breakdown on hover."
+          }
+        },
+        "additionalProperties": false
+      },
+      "projectionSchema": {
+        "type": "object",
+        "description": "Row shape from onex.snapshot.projection.delegation.model-routing.v1. Backed by delegation_events SQLite table (OMN-10623).",
+        "required": [
+          "total_delegations",
+          "rows",
+          "by_model",
+          "captured_at",
+          "provisioned"
+        ],
+        "properties": {
+          "total_delegations": {
+            "type": "number"
+          },
+          "rows": {
+            "type": "array",
+            "items": {
+              "type": "object"
+            }
+          },
+          "by_model": {
+            "type": "array",
+            "items": {
+              "type": "object"
+            }
+          },
+          "captured_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "provisioned": {
+            "type": "boolean"
+          }
+        }
+      },
+      "dataSources": [
+        {
+          "type": "projection",
+          "topic": "onex.snapshot.projection.delegation.model-routing.v1",
+          "required": false,
+          "purpose": "initial_fetch"
+        },
+        {
+          "type": "websocket",
+          "topic": "onex.snapshot.projection.delegation.model-routing.v1",
+          "required": false,
+          "purpose": "live_updates"
+        }
+      ],
+      "events": {
+        "emits": [],
+        "consumes": []
+      },
+      "defaultSize": {
+        "w": 6,
+        "h": 6
+      },
+      "minSize": {
+        "w": 4,
+        "h": 4
+      },
+      "maxSize": {
+        "w": 12,
+        "h": 12
+      },
+      "emptyState": {
+        "message": "No routing data",
+        "hint": "Routing data appears once delegation events are recorded (OMN-10623)."
+      },
+      "capabilities": {
+        "supports_compare": false,
+        "supports_export": false,
+        "supports_fullscreen": true,
+        "supports_time_range": false
+      }
+    },
+    "delegation-quality-gate": {
+      "name": "delegation-quality-gate",
+      "displayName": "Quality Gate",
+      "description": "Pass/fail rate by check type (deterministic vs heuristic), failure categories, and escalation frequency. Backed by delegation_events SQLite table (OMN-10623).",
+      "category": "quality",
+      "version": "1.0.0",
+      "implementationKey": "delegation/DelegationQualityGateWidget",
+      "configSchema": {
+        "type": "object",
+        "properties": {
+          "passThreshold": {
+            "type": "number",
+            "default": 0.8,
+            "title": "Pass threshold",
+            "description": "Pass rate at or above which the gate is considered passing (0–1)."
+          },
+          "showFailureCategories": {
+            "type": "boolean",
+            "default": true,
+            "title": "Show failure categories",
+            "description": "Show failure category breakdown below the per-check-type table."
+          }
+        },
+        "additionalProperties": false
+      },
+      "projectionSchema": {
+        "type": "object",
+        "description": "Row shape from onex.snapshot.projection.delegation.quality-gate.v1. Backed by delegation_events SQLite table (OMN-10623).",
+        "required": [
+          "overall_pass_rate",
+          "total_passed",
+          "total_failed",
+          "total_checks",
+          "escalation_count",
+          "escalation_rate",
+          "by_check_type",
+          "failure_categories",
+          "captured_at",
+          "provisioned"
+        ],
+        "properties": {
+          "overall_pass_rate": {
+            "type": "number",
+            "description": "Fraction of all gate checks that passed (0–1)."
+          },
+          "total_passed": {
+            "type": "number"
+          },
+          "total_failed": {
+            "type": "number"
+          },
+          "total_checks": {
+            "type": "number"
+          },
+          "escalation_count": {
+            "type": "number",
+            "description": "Number of failed checks that were escalated."
+          },
+          "escalation_rate": {
+            "type": "number",
+            "description": "Fraction of all checks that were escalated (0–1)."
+          },
+          "by_check_type": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "required": [
+                "check_type",
+                "passed",
+                "failed",
+                "total",
+                "pass_rate"
+              ],
+              "properties": {
+                "check_type": {
+                  "type": "string",
+                  "enum": [
+                    "deterministic",
+                    "heuristic",
+                    "unknown"
+                  ]
+                },
+                "passed": {
+                  "type": "number"
+                },
+                "failed": {
+                  "type": "number"
+                },
+                "total": {
+                  "type": "number"
+                },
+                "pass_rate": {
+                  "type": "number"
+                }
+              }
+            }
+          },
+          "failure_categories": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "required": [
+                "category",
+                "count",
+                "pct_of_failures"
+              ],
+              "properties": {
+                "category": {
+                  "type": "string"
+                },
+                "count": {
+                  "type": "number"
+                },
+                "pct_of_failures": {
+                  "type": "number"
+                }
+              }
+            }
+          },
+          "captured_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "provisioned": {
+            "type": "boolean"
+          }
+        }
+      },
+      "dataSources": [
+        {
+          "type": "projection",
+          "topic": "onex.snapshot.projection.delegation.quality-gate.v1",
+          "required": false,
+          "purpose": "initial_fetch"
+        },
+        {
+          "type": "websocket",
+          "topic": "onex.snapshot.projection.delegation.quality-gate.v1",
+          "required": false,
+          "purpose": "live_updates"
+        }
+      ],
+      "events": {
+        "emits": [],
+        "consumes": []
+      },
+      "defaultSize": {
+        "w": 6,
+        "h": 7
+      },
+      "minSize": {
+        "w": 4,
+        "h": 5
+      },
+      "maxSize": {
+        "w": 12,
+        "h": 14
+      },
+      "emptyState": {
+        "message": "No quality gate data",
+        "hint": "Quality gate data appears once delegation events with gate checks are recorded (OMN-10623)."
+      },
+      "capabilities": {
+        "supports_compare": false,
+        "supports_export": false,
+        "supports_fullscreen": true,
+        "supports_time_range": false
+      }
+    },
+    "delegation-token-usage": {
+      "name": "delegation-token-usage",
+      "displayName": "Token Usage",
+      "description": "Per-model token consumption with provenance indicator (measured/estimated/unknown) and optional estimated cost column. Backed by llm_call_metrics SQLite table (OMN-10623).",
+      "category": "cost",
+      "version": "1.0.0",
+      "implementationKey": "delegation/DelegationTokenUsageWidget",
+      "configSchema": {
+        "type": "object",
+        "properties": {
+          "showCost": {
+            "type": "boolean",
+            "default": true,
+            "title": "Show cost",
+            "description": "Show estimated cost column and KPI tile."
+          },
+          "showProvenance": {
+            "type": "boolean",
+            "default": true,
+            "title": "Show provenance",
+            "description": "Show provenance badges (measured/estimated/unknown) on rows."
+          }
+        },
+        "additionalProperties": false
+      },
+      "projectionSchema": {
+        "type": "object",
+        "description": "Row shape from onex.snapshot.projection.delegation.token-usage.v1. Backed by llm_call_metrics SQLite table (OMN-10623).",
+        "required": [
+          "total_prompt_tokens",
+          "total_completion_tokens",
+          "total_tokens",
+          "total_estimated_cost_usd",
+          "provenance_summary",
+          "by_model",
+          "captured_at",
+          "provisioned"
+        ],
+        "properties": {
+          "total_prompt_tokens": {
+            "type": "number"
+          },
+          "total_completion_tokens": {
+            "type": "number"
+          },
+          "total_tokens": {
+            "type": "number"
+          },
+          "total_estimated_cost_usd": {
+            "type": "number"
+          },
+          "provenance_summary": {
+            "type": "object",
+            "description": "Count of models by provenance type.",
+            "additionalProperties": {
+              "type": "number"
+            }
+          },
+          "by_model": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "required": [
+                "model_id",
+                "model_name",
+                "prompt_tokens",
+                "completion_tokens",
+                "total_tokens",
+                "estimated_cost_usd",
+                "usage_source",
+                "token_provenance"
+              ],
+              "properties": {
+                "model_id": {
+                  "type": "string"
+                },
+                "model_name": {
+                  "type": "string"
+                },
+                "prompt_tokens": {
+                  "type": "number"
+                },
+                "completion_tokens": {
+                  "type": "number"
+                },
+                "total_tokens": {
+                  "type": "number"
+                },
+                "estimated_cost_usd": {
+                  "type": "number"
+                },
+                "usage_source": {
+                  "type": "string",
+                  "enum": [
+                    "measured",
+                    "estimated",
+                    "unknown"
+                  ]
+                },
+                "token_provenance": {
+                  "type": "string",
+                  "enum": [
+                    "measured",
+                    "estimated",
+                    "unknown"
+                  ]
+                }
+              }
+            }
+          },
+          "captured_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "provisioned": {
+            "type": "boolean"
+          }
+        }
+      },
+      "dataSources": [
+        {
+          "type": "projection",
+          "topic": "onex.snapshot.projection.delegation.token-usage.v1",
+          "required": false,
+          "purpose": "initial_fetch"
+        },
+        {
+          "type": "websocket",
+          "topic": "onex.snapshot.projection.delegation.token-usage.v1",
+          "required": false,
+          "purpose": "live_updates"
+        }
+      ],
+      "events": {
+        "emits": [],
+        "consumes": [
+          {
+            "name": "time_range_changed"
+          }
+        ]
+      },
+      "defaultSize": {
+        "w": 6,
+        "h": 6
+      },
+      "minSize": {
+        "w": 4,
+        "h": 4
+      },
+      "maxSize": {
+        "w": 12,
+        "h": 12
+      },
+      "emptyState": {
+        "message": "No token usage data",
+        "hint": "Token usage data appears once LLM call metrics are recorded (OMN-10623)."
       },
       "capabilities": {
         "supports_compare": false,

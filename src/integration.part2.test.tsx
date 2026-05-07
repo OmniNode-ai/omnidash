@@ -44,7 +44,8 @@ describe('Proof of Life — Part 2', () => {
     // OMN-10490: ab-compare added (ab-compare/AbCompareWidget).
     // OMN-10509: receipt-gate and routing-decision prototype widgets added.
     // OMN-10346: cost-savings-overview added.
-    expect(all.length).toBe(20);
+    // OMN-10624: delegation-savings, delegation-model-routing, delegation-quality-gate, delegation-token-usage added.
+    expect(all.length).toBe(24);
     expect(all.map((c) => c.name).sort()).toEqual([
       'ab-compare',
       'baselines-roi-card',
@@ -55,6 +56,10 @@ describe('Proof of Life — Part 2', () => {
       'cost-summary',
       'cost-trend-panel',
       'delegation-metrics',
+      'delegation-model-routing',
+      'delegation-quality-gate',
+      'delegation-savings',
+      'delegation-token-usage',
       'event-stream',
       'intent-distribution',
       'live-event-stream',

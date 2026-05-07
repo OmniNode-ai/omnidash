@@ -35,3 +35,16 @@ export type { BuildAbCompareRowsOptions } from './ab-compare';
 
 export { buildCostSavingsOverview, buildCostSavingsOverviewEmpty } from './cost-savings-overview';
 export type { BuildCostSavingsOverviewOptions } from './cost-savings-overview';
+
+export {
+  buildDelegationSavings,
+  buildDelegationModelRouting,
+  buildDelegationQualityGate,
+  buildDelegationTokenUsage,
+} from './delegation-routing';
+export type {
+  BuildDelegationSavingsOptions,
+  BuildDelegationModelRoutingOptions,
+  BuildDelegationQualityGateOptions,
+  BuildDelegationTokenUsageOptions,
+} from './delegation-routing';

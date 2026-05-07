@@ -77,6 +77,29 @@ export const TOPICS = {
    * contract-valid fixtures until the projection emitter lands.
    */
   costSavingsOverview: 'onex.snapshot.projection.cost.savings-overview.v1',
+  /**
+   * Delegation savings widget — estimated savings per session vs a baseline model,
+   * with pricing manifest version. Backed by savings_estimates SQLite table (OMN-10623).
+   * Upstream-blocked: SQLite data source not yet deployed.
+   */
+  delegationSavings: 'onex.snapshot.projection.delegation.savings.v1',
+  /**
+   * Delegation model routing widget — which models handled which task types,
+   * frequency breakdown. Backed by delegation_events SQLite table (OMN-10623).
+   */
+  delegationModelRouting: 'onex.snapshot.projection.delegation.model-routing.v1',
+  /**
+   * Delegation quality gate widget — pass/fail rate by check type
+   * (deterministic vs heuristic), failure categories, escalation frequency.
+   * Backed by delegation_events SQLite table (OMN-10623).
+   */
+  delegationQualityGate: 'onex.snapshot.projection.delegation.quality-gate.v1',
+  /**
+   * Delegation token usage widget — per-model token consumption over time,
+   * with provenance indicator (measured/estimated). Backed by llm_call_metrics
+   * SQLite table (OMN-10623).
+   */
+  delegationTokenUsage: 'onex.snapshot.projection.delegation.token-usage.v1',
 } as const;
 
 export type TopicSymbol = (typeof TOPICS)[keyof typeof TOPICS];
