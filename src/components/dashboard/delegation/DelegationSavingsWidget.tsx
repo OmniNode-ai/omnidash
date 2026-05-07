@@ -91,18 +91,20 @@ function fmtTokens(prompt: number | undefined, completion: number | undefined): 
 
 // ── Session row ───────────────────────────────────────────────────────
 //
-// Columns: Task Type | Model | Tokens | Latency | Local | Saved | Date
-// Grid: task_type is the primary label; session_id is shown as a secondary tooltip.
-// Falls back to truncated session_id when task_type is absent.
+// Columns: Task | Model | Tokens | Latency | Opus Est. | Local | Saved | Date
+// Proportional grid fills available space.
+
+const GRID_COLS = '2fr 2fr 1fr 1fr 1fr 1fr 1fr 1fr';
 
 function SessionRow({ s }: { s: DelegationSavingsSession }) {
-  const rowLabel = s.task_type ?? s.session_id.slice(0, 14) + '…';
+  const rowLabel = s.task_type ?? s.session_id.slice(0, 20);
+  const modelShort = s.model_name?.replace('local-', '').replace('-30b', '') ?? '—';
   return (
     <div
       style={{
         display: 'grid',
-        gridTemplateColumns: '1fr 110px 70px 70px 70px 75px 64px',
-        gap: 8,
+        gridTemplateColumns: GRID_COLS,
+        gap: 6,
         padding: '5px 0',
         borderBottom: '1px solid var(--line-2)',
         alignItems: 'center',
@@ -111,14 +113,17 @@ function SessionRow({ s }: { s: DelegationSavingsSession }) {
       <Text as="span" size="sm" family="mono" color="primary" style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
         {rowLabel}
       </Text>
-      <Text as="span" size="xs" family="mono" color="secondary" style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-        {s.model_name ?? '—'}
+      <Text as="span" size="xs" family="mono" color="secondary" title={s.model_name} style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+        {modelShort}
       </Text>
       <Text as="span" size="xs" family="mono" tabularNums color="secondary" style={{ textAlign: 'right' }}>
         {fmtTokens(s.prompt_tokens, s.completion_tokens)}
       </Text>
       <Text as="span" size="xs" family="mono" tabularNums color="secondary" style={{ textAlign: 'right' }}>
         {s.latency_ms != null ? fmtMs(s.latency_ms) : '—'}
+      </Text>
+      <Text as="span" size="sm" family="mono" tabularNums color="tertiary" style={{ textAlign: 'right' }}>
+        {fmtUsd(s.cloud_cost_usd)}
       </Text>
       <Text as="span" size="sm" family="mono" tabularNums style={{ textAlign: 'right' }}>
         {fmtUsd(s.local_cost_usd)}
@@ -213,14 +218,14 @@ export default function DelegationSavingsWidget(props: { config: DelegationSavin
               <div
                 style={{
                   display: 'grid',
-                  gridTemplateColumns: '1fr 110px 70px 70px 70px 75px 64px',
+                  gridTemplateColumns: GRID_COLS,
                   gap: 8,
                   paddingBottom: 4,
                   borderBottom: '1px solid var(--line)',
                 }}
               >
-                {(['Task Type', 'Model', 'Tokens', 'Latency', 'Local', 'Saved', 'Date'] as const).map((h) => (
-                  <Text key={h} as="span" size="xs" color="tertiary" style={{ textAlign: h === 'Task Type' ? 'left' : 'right' }}>
+                {(['Task', 'Model', 'Tokens', 'Latency', 'Opus Est.', 'Local', 'Saved', 'Date'] as const).map((h) => (
+                  <Text key={h} as="span" size="xs" color="tertiary" style={{ textAlign: h === 'Task' || h === 'Model' ? 'left' : 'right' }}>
                     {h}
                   </Text>
                 ))}
