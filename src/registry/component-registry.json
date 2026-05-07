@@ -1,6 +1,6 @@
 {
   "manifestVersion": "1.0",
-  "generatedAt": "2026-05-07T20:21:14.629Z",
+  "generatedAt": "2026-05-07T22:02:33.779Z",
   "components": {
     "cost-trend-panel": {
       "name": "cost-trend-panel",
@@ -2431,11 +2431,7 @@
       ],
       "events": {
         "emits": [],
-        "consumes": [
-          {
-            "name": "time_range_changed"
-          }
-        ]
+        "consumes": []
       },
       "defaultSize": {
         "w": 6,
@@ -2457,7 +2453,7 @@
         "supports_compare": false,
         "supports_export": true,
         "supports_fullscreen": true,
-        "supports_time_range": true
+        "supports_time_range": false
       }
     },
     "ab-compare": {

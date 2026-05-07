@@ -19,10 +19,10 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
  */
 type ConnectNext = (err?: unknown) => void;
 
-export function fixturesMiddleware(opts: { root: string }) {
+export function fixturesMiddleware(opts: { root: string; dataSource?: string }) {
   const root = opts.root;
 
-  const dataSource = process.env.OMNIDASH_DATA_SOURCE ?? 'fixtures';
+  const dataSource = opts.dataSource ?? process.env.OMNIDASH_DATA_SOURCE ?? 'fixtures';
   let sqliteDb: any = null;
   if (dataSource === 'sqlite') {
     try {
@@ -86,7 +86,8 @@ export function fixturesMiddleware(opts: { root: string }) {
         const modelStats = sqliteDb.prepare(`
           SELECT model_name, COUNT(*) as total, AVG(latency_ms) as avg_latency_ms,
                  CAST(SUM(CASE WHEN quality_gate_passed THEN 1 ELSE 0 END) AS REAL) / COUNT(*) as qg_pass_rate,
-                 GROUP_CONCAT(DISTINCT task_type) as task_types
+                 GROUP_CONCAT(DISTINCT task_type) as task_types,
+                 (SELECT task_type FROM delegation_events d2 WHERE d2.model_name = delegation_events.model_name GROUP BY task_type ORDER BY COUNT(*) DESC LIMIT 1) as top_task_type
           FROM delegation_events GROUP BY model_name
         `).all() as any[];
         const totalAll = rows.reduce((s: number, r: any) => s + r.count, 0);
@@ -95,7 +96,7 @@ export function fixturesMiddleware(opts: { root: string }) {
         const byModel = modelStats.map((ms: any) => ({
           model_name: ms.model_name, total_count: ms.total,
           pct_of_total: totalAll > 0 ? ms.total / totalAll : 0,
-          top_task_type: (ms.task_types || '').split(',')[0] || '',
+          top_task_type: ms.top_task_type || '',
           avg_latency_ms: Math.round(ms.avg_latency_ms || 0),
           qg_pass_rate: ms.qg_pass_rate ?? 1,
           task_types: (ms.task_types || '').split(',').filter(Boolean),
@@ -110,14 +111,40 @@ export function fixturesMiddleware(opts: { root: string }) {
       if (topic === 'onex.snapshot.projection.delegation.quality-gate.v1') {
         const agg = sqliteDb.prepare('SELECT COUNT(*) as total, SUM(CASE WHEN quality_gate_passed THEN 1 ELSE 0 END) as passed, SUM(CASE WHEN quality_gate_passed THEN 0 ELSE 1 END) as failed FROM delegation_events').get() as any;
         const passRate = agg.total > 0 ? agg.passed / agg.total : 0;
-        return [{ overall_pass_rate: passRate, total_passed: agg.passed, total_failed: agg.failed, total_checks: agg.total, escalation_count: 0, escalation_rate: 0, by_check_type: [{ check_type: 'deterministic', passed: agg.passed, failed: agg.failed, pass_rate: passRate }], failure_categories: [], captured_at: new Date().toISOString(), provisioned: true }];
+        const byCheckType = sqliteDb.prepare(`
+          SELECT COALESCE(SUBSTR(quality_gate_detail, 1, INSTR(quality_gate_detail || ':', ':') - 1), 'unknown') as check_type,
+                 SUM(CASE WHEN quality_gate_passed THEN 1 ELSE 0 END) as passed,
+                 SUM(CASE WHEN quality_gate_passed THEN 0 ELSE 1 END) as failed,
+                 CAST(SUM(CASE WHEN quality_gate_passed THEN 1 ELSE 0 END) AS REAL) / COUNT(*) as pass_rate
+          FROM delegation_events GROUP BY check_type
+        `).all() as any[];
+        const failedEvents = sqliteDb.prepare("SELECT quality_gate_detail FROM delegation_events WHERE NOT quality_gate_passed LIMIT 20").all() as any[];
+        const failCategories = [...new Set(failedEvents.map((e: any) => e.quality_gate_detail).filter(Boolean))];
+        return [{ overall_pass_rate: passRate, total_passed: agg.passed, total_failed: agg.failed, total_checks: agg.total, escalation_count: agg.failed, escalation_rate: agg.total > 0 ? agg.failed / agg.total : 0, by_check_type: byCheckType.length > 0 ? byCheckType : [{ check_type: 'deterministic', passed: agg.passed, failed: agg.failed, pass_rate: passRate }], failure_categories: failCategories, captured_at: new Date().toISOString(), provisioned: true }];
       }
       if (topic === 'onex.snapshot.projection.delegation.token-usage.v1') {
-        const rows = sqliteDb.prepare('SELECT model_id as model_name, SUM(prompt_tokens) as prompt_tokens, SUM(completion_tokens) as completion_tokens, SUM(prompt_tokens + completion_tokens) as total_tokens, COALESCE(SUM(estimated_cost_usd), 0) as estimated_cost_usd, COALESCE(token_provenance, \'measured\') as provenance FROM llm_call_metrics GROUP BY model_id').all() as any[];
+        const rows = sqliteDb.prepare(`
+          SELECT model_id as model_name,
+                 SUM(prompt_tokens) as prompt_tokens,
+                 SUM(completion_tokens) as completion_tokens,
+                 SUM(prompt_tokens + completion_tokens) as total_tokens,
+                 COALESCE(SUM(estimated_cost_usd), 0) as estimated_cost_usd
+          FROM llm_call_metrics GROUP BY model_id
+        `).all() as any[];
+        const provenanceCounts = sqliteDb.prepare(`
+          SELECT COALESCE(token_provenance, 'unknown') as prov,
+                 SUM(prompt_tokens + completion_tokens) as tokens
+          FROM llm_call_metrics GROUP BY prov
+        `).all() as any[];
         const totalPrompt = rows.reduce((s: number, r: any) => s + r.prompt_tokens, 0);
         const totalCompletion = rows.reduce((s: number, r: any) => s + r.completion_tokens, 0);
         const totalCost = rows.reduce((s: number, r: any) => s + r.estimated_cost_usd, 0);
-        return [{ total_prompt_tokens: totalPrompt, total_completion_tokens: totalCompletion, total_tokens: totalPrompt + totalCompletion, total_estimated_cost_usd: totalCost, provenance_summary: { measured: totalPrompt + totalCompletion, estimated: 0, unknown: 0 }, by_model: rows, captured_at: new Date().toISOString(), provisioned: true }];
+        const provSummary: Record<string, number> = { measured: 0, estimated: 0, unknown: 0 };
+        for (const p of provenanceCounts) {
+          const key = p.prov === 'measured' ? 'measured' : p.prov === 'estimated' ? 'estimated' : 'unknown';
+          provSummary[key] += p.tokens;
+        }
+        return [{ total_prompt_tokens: totalPrompt, total_completion_tokens: totalCompletion, total_tokens: totalPrompt + totalCompletion, total_estimated_cost_usd: totalCost, provenance_summary: provSummary, by_model: rows, captured_at: new Date().toISOString(), provisioned: true }];
       }
       if (topic === 'onex.snapshot.projection.delegation.summary.v1') {
         const agg = sqliteDb.prepare('SELECT COUNT(*) as total, SUM(CASE WHEN quality_gate_passed THEN 1 ELSE 0 END) as passed FROM delegation_events').get() as any;
@@ -262,6 +289,7 @@ export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, process.cwd(), '');
   const { plugin: fixturesPlugin } = fixturesMiddleware({
     root: path.resolve(__dirname, 'fixtures'),
+    dataSource: env.OMNIDASH_DATA_SOURCE,
   });
   const { plugin: layoutsPlugin } = layoutsMiddleware({
     root: path.resolve(__dirname, 'dashboard-layouts'),
