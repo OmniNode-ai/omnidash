@@ -70,7 +70,7 @@ describe('DelegationSavingsWidget', () => {
       </DataSourceTestProvider>,
     );
     await screen.findByText(/est\. savings vs/i);
-    expect(screen.getByText('Task Type')).toBeInTheDocument();
+    expect(screen.getByText('Task')).toBeInTheDocument();
     expect(screen.getByText('Saved')).toBeInTheDocument();
     // New columns should be visible
     expect(screen.getByText('Tokens')).toBeInTheDocument();
@@ -98,7 +98,7 @@ describe('DelegationSavingsWidget', () => {
       </DataSourceTestProvider>,
     );
     await screen.findByText(/est\. savings vs/i);
-    expect(screen.queryByText('Task Type')).not.toBeInTheDocument();
+    expect(screen.queryByText('Task')).not.toBeInTheDocument();
   });
 
   it('shows upstream-blocked notice when provisioned is false', async () => {
