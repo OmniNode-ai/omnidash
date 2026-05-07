@@ -37,6 +37,15 @@ export function createSnapshotSource(): ProtocolSnapshotSource {
 export function getWebSocketUrl(): string {
   const explicit = import.meta.env.VITE_WS_URL;
   if (explicit) return explicit;
+  // In sqlite mode, use VITE_SQLITE_DATA_SOURCE_URL as the WS base so the
+  // WebSocket invalidation channel targets the same server as HTTP projections.
+  const mode = import.meta.env.VITE_DATA_SOURCE ?? 'file';
+  if (mode === 'sqlite') {
+    const sqliteUrl = import.meta.env.VITE_SQLITE_DATA_SOURCE_URL;
+    if (sqliteUrl) {
+      return sqliteUrl.replace(/^http:/i, 'ws:').replace(/^https:/i, 'wss:').replace(/\/$/, '') + '/ws';
+    }
+  }
   const httpUrl = import.meta.env.VITE_HTTP_DATA_SOURCE_URL;
   if (httpUrl) {
     return httpUrl.replace(/^http:/i, 'ws:').replace(/^https:/i, 'wss:').replace(/\/$/, '') + '/ws';

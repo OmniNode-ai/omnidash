@@ -139,6 +139,16 @@ export default defineConfig(({ mode }) => {
         '@shared': path.resolve(__dirname, 'shared'),
       },
     },
+    build: {
+      rollupOptions: {
+        // better-sqlite3 is a server-side native N-API module. It must never
+        // be bundled by Vite — only server/routes.ts uses it at runtime.
+        external: ['better-sqlite3'],
+      },
+    },
+    optimizeDeps: {
+      exclude: ['better-sqlite3'],
+    },
     server: {
       port: Number(env.VITE_DEV_PORT ?? 3001),
       proxy: env.VITE_LLM_BASE_URL

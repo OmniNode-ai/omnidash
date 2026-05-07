@@ -186,7 +186,7 @@ describe('SqliteProjectionReader', () => {
     expect(Number(rows[0]!.total_local_cost_usd)).toBeCloseTo(0.05);
   });
 
-  it('returns empty savings summary when table is empty', () => {
+  it('returns zeros (not null) for savings summary when table is empty', () => {
     const db = createTestDb(dbPath);
     db.close();
 
@@ -194,6 +194,28 @@ describe('SqliteProjectionReader', () => {
     const rows = reader.readProjection('onex.snapshot.projection.savings.summary.v1');
 
     expect(rows).toHaveLength(1);
-    expect(rows[0]).toMatchObject({ event_count: 0 });
+    expect(rows[0]).toMatchObject({
+      event_count: 0,
+      total_savings_usd: 0,
+      total_local_cost_usd: 0,
+      total_cloud_cost_usd: 0,
+    });
+  });
+
+  it('returns zeros (not null) for delegation summary when table is empty', () => {
+    const db = createTestDb(dbPath);
+    db.close();
+
+    const reader = new SqliteProjectionReader({ dbPath });
+    const rows = reader.readProjection('onex.snapshot.projection.delegation.summary.v1');
+
+    expect(rows).toHaveLength(1);
+    expect(rows[0]).toMatchObject({
+      total_events: 0,
+      quality_passed_count: 0,
+      quality_failed_count: 0,
+      avg_latency_ms: 0,
+      latest_event_at: 0,
+    });
   });
 });

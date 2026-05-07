@@ -66,11 +66,11 @@ export class SqliteProjectionReader {
       case 'onex.snapshot.projection.delegation.summary.v1':
         return db.prepare(`
           SELECT
-            COUNT(*)                                                          AS total_events,
-            SUM(CASE WHEN quality_gate_passed = 1 THEN 1 ELSE 0 END)         AS quality_passed_count,
-            SUM(CASE WHEN quality_gate_passed = 0 THEN 1 ELSE 0 END)         AS quality_failed_count,
-            AVG(latency_ms)                                                   AS avg_latency_ms,
-            MAX(created_at)                                                   AS latest_event_at
+            COUNT(*)                                                                    AS total_events,
+            COALESCE(SUM(CASE WHEN quality_gate_passed = 1 THEN 1 ELSE 0 END), 0)     AS quality_passed_count,
+            COALESCE(SUM(CASE WHEN quality_gate_passed = 0 THEN 1 ELSE 0 END), 0)     AS quality_failed_count,
+            COALESCE(AVG(latency_ms), 0)                                               AS avg_latency_ms,
+            COALESCE(MAX(created_at), 0)                                               AS latest_event_at
           FROM delegation_events
         `).all() as Row[];
 
@@ -115,10 +115,10 @@ export class SqliteProjectionReader {
       case 'onex.snapshot.projection.savings.summary.v1':
         return db.prepare(`
           SELECT
-            COUNT(*)            AS event_count,
-            SUM(local_cost_usd) AS total_local_cost_usd,
-            SUM(cloud_cost_usd) AS total_cloud_cost_usd,
-            SUM(savings_usd)    AS total_savings_usd
+            COUNT(*)                          AS event_count,
+            COALESCE(SUM(local_cost_usd), 0)  AS total_local_cost_usd,
+            COALESCE(SUM(cloud_cost_usd), 0)  AS total_cloud_cost_usd,
+            COALESCE(SUM(savings_usd), 0)     AS total_savings_usd
           FROM savings_estimates
         `).all() as Row[];
 
