@@ -62,10 +62,9 @@ function CheckTypeRow({ row, passThreshold }: { row: QualityGateCheckRow; passTh
       <div
         style={{
           display: 'grid',
-          gridTemplateColumns: '120px 1fr 60px 60px 60px',
+          gridTemplateColumns: '120px 1fr 60px 80px 60px',
           gap: 8,
           alignItems: 'center',
-          marginBottom: 4,
         }}
       >
         <Text as="span" size="sm" weight="semibold" color="primary">
@@ -91,11 +90,18 @@ function CheckTypeRow({ row, passThreshold }: { row: QualityGateCheckRow; passTh
         <Text as="span" size="sm" family="mono" tabularNums style={{ textAlign: 'right', color: passColor }}>
           {(row.pass_rate * 100).toFixed(1)}%
         </Text>
-        <Text as="span" size="sm" family="mono" tabularNums style={{ textAlign: 'right', color: 'var(--good)' }}>
-          {row.passed}
-        </Text>
-        <Text as="span" size="sm" family="mono" tabularNums style={{ textAlign: 'right', color: 'var(--error, var(--warn))' }}>
-          {row.failed}
+        {/* Inline pass / fail fraction: "N pass / M fail" */}
+        <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 4, alignItems: 'center' }}>
+          <Text as="span" size="xs" family="mono" tabularNums style={{ color: 'var(--good)' }}>
+            {row.passed}✓
+          </Text>
+          <Text as="span" size="xs" color="tertiary">/</Text>
+          <Text as="span" size="xs" family="mono" tabularNums style={{ color: 'var(--error, var(--warn))' }}>
+            {row.failed}✗
+          </Text>
+        </div>
+        <Text as="span" size="xs" family="mono" tabularNums color="tertiary" style={{ textAlign: 'right' }}>
+          {row.total}
         </Text>
       </div>
     </div>
@@ -185,7 +191,7 @@ export default function DelegationQualityGateWidget(props: { config: DelegationQ
           <div
             style={{
               display: 'grid',
-              gridTemplateColumns: 'repeat(4, 1fr)',
+              gridTemplateColumns: 'repeat(3, 1fr)',
               gap: 12,
               paddingBottom: 12,
               borderBottom: '1px solid var(--line)',
@@ -207,26 +213,47 @@ export default function DelegationQualityGateWidget(props: { config: DelegationQ
               value={projection.total_failed}
               tone={projection.total_failed > 0 ? 'warn' : 'default'}
             />
-            <KPI
-              label="Escalations"
-              value={projection.escalation_count}
-              caption={`${(projection.escalation_rate * 100).toFixed(1)}% rate`}
-              tone={projection.escalation_count > 0 ? 'warn' : 'default'}
-            />
           </div>
+
+          {/* Escalation banner — only shown when escalation_count > 0 */}
+          {projection.escalation_count > 0 && (
+            <div
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                padding: '8px 12px',
+                background: 'color-mix(in srgb, var(--warn) 12%, transparent)',
+                border: '1px solid color-mix(in srgb, var(--warn) 35%, transparent)',
+                borderRadius: 6,
+              }}
+            >
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                <Text as="span" size="sm" weight="semibold" style={{ color: 'var(--warn)' }}>
+                  ⚠ Escalations
+                </Text>
+                <Text as="span" size="xs" color="secondary">
+                  {projection.escalation_count} delegation{projection.escalation_count !== 1 ? 's' : ''} required human escalation
+                </Text>
+              </div>
+              <Text as="span" size="sm" family="mono" tabularNums weight="semibold" style={{ color: 'var(--warn)' }}>
+                {(projection.escalation_rate * 100).toFixed(1)}% rate
+              </Text>
+            </div>
+          )}
 
           {/* Per-check-type breakdown */}
           <div>
             <div
               style={{
                 display: 'grid',
-                gridTemplateColumns: '120px 1fr 60px 60px 60px',
+                gridTemplateColumns: '120px 1fr 60px 80px 60px',
                 gap: 8,
                 paddingBottom: 4,
                 borderBottom: '1px solid var(--line)',
               }}
             >
-              {(['Type', 'Pass/Fail', 'Rate', 'Pass', 'Fail'] as const).map((h, i) => (
+              {(['Type', 'Pass/Fail bar', 'Rate', 'Pass / Fail', 'Total'] as const).map((h, i) => (
                 <Text
                   key={h}
                   as="span"

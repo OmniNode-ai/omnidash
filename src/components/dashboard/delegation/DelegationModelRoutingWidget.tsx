@@ -20,6 +20,12 @@ export interface ModelRoutingSummary {
   total_count: number;
   pct_of_total: number;
   top_task_type: string;
+  /** Average delegation latency in ms for this model. */
+  avg_latency_ms?: number;
+  /** Quality gate pass rate (0–1) for this model. */
+  qg_pass_rate?: number;
+  /** All task types served by this model (derived from rows). */
+  task_types?: string[];
 }
 
 export interface DelegationModelRoutingProjection {
@@ -34,6 +40,17 @@ export interface DelegationModelRoutingProjection {
 
 export interface DelegationModelRoutingConfig {
   showTaskBreakdown?: boolean;
+}
+
+// ── Formatters ────────────────────────────────────────────────────────
+
+function fmtMs(ms: number): string {
+  if (ms >= 1000) return `${(ms / 1000).toFixed(1)}s`;
+  return `${ms.toFixed(0)}ms`;
+}
+
+function fmtPct(v: number): string {
+  return `${(v * 100).toFixed(1)}%`;
 }
 
 // ── Frequency bar ─────────────────────────────────────────────────────
@@ -158,73 +175,128 @@ export default function DelegationModelRoutingWidget(props: { config: Delegation
           <div
             style={{
               display: 'grid',
-              gridTemplateColumns: '1fr 48px 80px 40px',
+              gridTemplateColumns: '1fr 44px 1fr 72px 60px 80px 36px',
               gap: 8,
               paddingBottom: 4,
               borderBottom: '1px solid var(--line)',
             }}
           >
-            {(['Model', 'Count', 'Frequency', '%'] as const).map((h) => (
-              <Text key={h} as="span" size="xs" color="tertiary" style={{ textAlign: h === 'Model' ? 'left' : 'right' }}>
+            {(['Model', 'N', 'Task Types', 'Latency', 'QG Pass', 'Frequency', '%'] as const).map((h) => (
+              <Text key={h} as="span" size="xs" color="tertiary" style={{ textAlign: h === 'Model' || h === 'Task Types' ? 'left' : 'right' }}>
                 {h}
               </Text>
             ))}
           </div>
 
-          {sorted.map((s, i) => (
-            <div key={s.model_name}>
-              <div
-                tabIndex={0}
-                role="button"
-                aria-label={`Show task breakdown for ${s.model_name}`}
-                onPointerEnter={() => setHoveredModel(s.model_name)}
-                onFocus={() => setHoveredModel(s.model_name)}
-                onBlur={() => setHoveredModel(null)}
-                style={{
-                  display: 'grid',
-                  gridTemplateColumns: '1fr 48px 80px 40px',
-                  gap: 8,
-                  padding: '6px 0',
-                  borderBottom: '1px solid var(--line-2)',
-                  alignItems: 'center',
-                  opacity: hoveredModel === null || hoveredModel === s.model_name ? 1 : 0.65,
-                  transition: 'opacity 120ms ease-out',
-                  cursor: 'pointer',
-                }}
-              >
-                <div style={{ display: 'flex', alignItems: 'center', gap: 6, minWidth: 0 }}>
-                  <span
-                    aria-hidden
+          {sorted.map((s, i) => {
+            // Derive task_types from rows if not provided in summary
+            const taskTypeList: string[] = s.task_types?.length
+              ? s.task_types
+              : [...new Set(projection.rows.filter((r) => r.model_name === s.model_name).map((r) => r.task_type))];
+            return (
+              <div key={s.model_name}>
+                <div
+                  tabIndex={0}
+                  role="button"
+                  aria-label={`Show task breakdown for ${s.model_name}`}
+                  onPointerEnter={() => setHoveredModel(s.model_name)}
+                  onFocus={() => setHoveredModel(s.model_name)}
+                  onBlur={() => setHoveredModel(null)}
+                  style={{
+                    display: 'grid',
+                    gridTemplateColumns: '1fr 44px 1fr 72px 60px 80px 36px',
+                    gap: 8,
+                    padding: '6px 0',
+                    borderBottom: '1px solid var(--line-2)',
+                    alignItems: 'center',
+                    opacity: hoveredModel === null || hoveredModel === s.model_name ? 1 : 0.65,
+                    transition: 'opacity 120ms ease-out',
+                    cursor: 'pointer',
+                  }}
+                >
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 6, minWidth: 0 }}>
+                    <span
+                      aria-hidden
+                      style={{
+                        display: 'inline-block',
+                        width: 8,
+                        height: 8,
+                        borderRadius: 2,
+                        background: colors.chart[i % colors.chart.length],
+                        flex: '0 0 auto',
+                      }}
+                    />
+                    <Text as="span" size="sm" family="mono" color="primary" style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                      {s.model_name}
+                    </Text>
+                  </div>
+                  <Text as="span" size="sm" family="mono" tabularNums style={{ textAlign: 'right' }}>
+                    {s.total_count}
+                  </Text>
+                  {/* Task types: comma-separated chips */}
+                  <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap', overflow: 'hidden' }}>
+                    {taskTypeList.slice(0, 3).map((tt) => (
+                      <Text
+                        key={tt}
+                        as="span"
+                        size="xs"
+                        family="mono"
+                        color="secondary"
+                        style={{
+                          display: 'inline-block',
+                          padding: '1px 5px',
+                          borderRadius: 3,
+                          background: 'var(--panel-2)',
+                          border: '1px solid var(--line-2)',
+                          whiteSpace: 'nowrap',
+                          overflow: 'hidden',
+                          textOverflow: 'ellipsis',
+                          maxWidth: 90,
+                        }}
+                      >
+                        {tt}
+                      </Text>
+                    ))}
+                    {taskTypeList.length > 3 && (
+                      <Text as="span" size="xs" color="tertiary">+{taskTypeList.length - 3}</Text>
+                    )}
+                  </div>
+                  <Text as="span" size="sm" family="mono" tabularNums color="secondary" style={{ textAlign: 'right' }}>
+                    {s.avg_latency_ms != null ? fmtMs(s.avg_latency_ms) : '—'}
+                  </Text>
+                  <Text
+                    as="span"
+                    size="sm"
+                    family="mono"
+                    tabularNums
                     style={{
-                      display: 'inline-block',
-                      width: 8,
-                      height: 8,
-                      borderRadius: 2,
-                      background: colors.chart[i % colors.chart.length],
-                      flex: '0 0 auto',
+                      textAlign: 'right',
+                      color: s.qg_pass_rate == null
+                        ? 'var(--ink-3)'
+                        : s.qg_pass_rate >= 0.8
+                          ? 'var(--good)'
+                          : s.qg_pass_rate >= 0.6
+                            ? 'var(--warn)'
+                            : 'var(--error, var(--warn))',
                     }}
-                  />
-                  <Text as="span" size="sm" family="mono" color="primary" style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                    {s.model_name}
+                  >
+                    {s.qg_pass_rate != null ? fmtPct(s.qg_pass_rate) : '—'}
+                  </Text>
+                  <FrequencyBar pct={s.pct_of_total * 100} color={colors.chart[i % colors.chart.length]} />
+                  <Text as="span" size="sm" family="mono" tabularNums color="secondary" style={{ textAlign: 'right' }}>
+                    {(s.pct_of_total * 100).toFixed(0)}%
                   </Text>
                 </div>
-                <Text as="span" size="sm" family="mono" tabularNums style={{ textAlign: 'right' }}>
-                  {s.total_count}
-                </Text>
-                <FrequencyBar pct={s.pct_of_total * 100} color={colors.chart[i % colors.chart.length]} />
-                <Text as="span" size="sm" family="mono" tabularNums color="secondary" style={{ textAlign: 'right' }}>
-                  {(s.pct_of_total * 100).toFixed(0)}%
-                </Text>
+                {showTaskBreakdown && hoveredModel === s.model_name && (
+                  <TaskBreakdown
+                    rows={projection.rows}
+                    modelName={s.model_name}
+                    colors={colors.chart}
+                  />
+                )}
               </div>
-              {showTaskBreakdown && hoveredModel === s.model_name && (
-                <TaskBreakdown
-                  rows={projection.rows}
-                  modelName={s.model_name}
-                  colors={colors.chart}
-                />
-              )}
-            </div>
-          ))}
+            );
+          })}
 
           {!projection.provisioned && (
             <Text as="em" size="xs" color="tertiary" style={{ marginTop: 8, display: 'block' }}>

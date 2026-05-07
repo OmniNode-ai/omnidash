@@ -70,8 +70,24 @@ describe('DelegationSavingsWidget', () => {
       </DataSourceTestProvider>,
     );
     await screen.findByText(/est\. savings vs/i);
-    expect(screen.getByText('Session')).toBeInTheDocument();
+    expect(screen.getByText('Task Type')).toBeInTheDocument();
     expect(screen.getByText('Saved')).toBeInTheDocument();
+    // New columns should be visible
+    expect(screen.getByText('Tokens')).toBeInTheDocument();
+    expect(screen.getByText('Latency')).toBeInTheDocument();
+    expect(screen.getByText('Model')).toBeInTheDocument();
+  });
+
+  it('shows task_type as row label when present', async () => {
+    mockFetchWithItems([buildDelegationSavings({ sessionCount: 3 })]);
+    render(
+      <DataSourceTestProvider client={qc}>
+        <DelegationSavingsWidget config={{ showSessions: true }} />
+      </DataSourceTestProvider>,
+    );
+    await screen.findByText(/est\. savings vs/i);
+    // Fixture provides task_type 'code-review' for first session
+    expect(screen.getByText('code-review')).toBeInTheDocument();
   });
 
   it('hides session rows when showSessions is false', async () => {
@@ -82,7 +98,7 @@ describe('DelegationSavingsWidget', () => {
       </DataSourceTestProvider>,
     );
     await screen.findByText(/est\. savings vs/i);
-    expect(screen.queryByText('Session')).not.toBeInTheDocument();
+    expect(screen.queryByText('Task Type')).not.toBeInTheDocument();
   });
 
   it('shows upstream-blocked notice when provisioned is false', async () => {

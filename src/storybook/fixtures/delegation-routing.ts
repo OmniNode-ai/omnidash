@@ -22,6 +22,9 @@ const SESSION_IDS = [
   'sess_e5f6a1b2c3d4',
 ];
 
+const SESSION_TASK_TYPES = ['code-review', 'pattern-match', 'document-summarize', 'classification', 'code-review'];
+const SESSION_MODELS = ['Qwen3-Coder-30B', 'glm-4-plus', 'Qwen3-Coder-30B', 'codex-cli', 'claude-sonnet-4-6'];
+
 export function buildDelegationSavings(opts: BuildDelegationSavingsOptions = {}): DelegationSavingsProjection {
   const {
     sessionCount = 5,
@@ -41,8 +44,15 @@ export function buildDelegationSavings(opts: BuildDelegationSavingsOptions = {})
   const sessions: DelegationSavingsSession[] = Array.from({ length: Math.min(sessionCount, SESSION_IDS.length) }, (_, i) => {
     const localCost = rand() * 0.05;
     const cloudCost = 0.08 + rand() * 0.25;
+    const promptTokens = Math.round(800 + rand() * 3200);
+    const completionTokens = Math.round(200 + rand() * 800);
     return {
       session_id: SESSION_IDS[i],
+      task_type: SESSION_TASK_TYPES[i],
+      model_name: SESSION_MODELS[i],
+      prompt_tokens: promptTokens,
+      completion_tokens: completionTokens,
+      latency_ms: Math.round(400 + rand() * 2600),
       local_cost_usd: Number(localCost.toFixed(4)),
       cloud_cost_usd: Number(cloudCost.toFixed(4)),
       savings_usd: Number(Math.max(0, cloudCost - localCost).toFixed(4)),
@@ -99,6 +109,9 @@ export function buildDelegationModelRouting(
     total_count: Math.round(modelWeights[i] * totalDelegations),
     pct_of_total: modelWeights[i],
     top_task_type: TASK_TYPES[0],
+    avg_latency_ms: Math.round(300 + rand() * 2200),
+    qg_pass_rate: Number((0.70 + rand() * 0.28).toFixed(2)),
+    task_types: TASK_TYPES.slice(0, i < 2 ? 4 : 2),
   }));
 
   const rows = ROUTING_MODELS.flatMap((model_name, mi) => {

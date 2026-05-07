@@ -9,6 +9,7 @@ import { KPI } from '@/components/primitives';
 
 export interface DelegationSavingsSession {
   session_id: string;
+  task_type?: string;
   local_cost_usd: number;
   cloud_cost_usd: number;
   savings_usd: number;
@@ -16,6 +17,14 @@ export interface DelegationSavingsSession {
   pricing_manifest_version: string;
   savings_method: 'measured' | 'estimated';
   usage_source: 'measured' | 'estimated' | 'unknown';
+  /** Model used for this session (from delegation_events.model_name). */
+  model_name?: string;
+  /** Total prompt tokens (from llm_call_metrics.prompt_tokens). */
+  prompt_tokens?: number;
+  /** Total completion tokens (from llm_call_metrics.completion_tokens). */
+  completion_tokens?: number;
+  /** Delegation latency in ms (from delegation_events.latency_ms). */
+  latency_ms?: number;
   created_at: string;
 }
 
@@ -44,36 +53,75 @@ function fmtUsd(v: number): string {
   return v === 0 ? '$0.00' : `$${v.toFixed(v < 0.01 ? 4 : 2)}`;
 }
 
-function fmtDate(iso: string): string {
+function fmtDate(value: string | number): string {
   try {
-    return new Date(iso).toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
+    // Handle unix timestamps (seconds or milliseconds) and ISO strings
+    let ts: number;
+    if (typeof value === 'number') {
+      // If it looks like seconds (< 1e12), convert to ms
+      ts = value < 1e12 ? value * 1000 : value;
+    } else {
+      const parsed = Number(value);
+      if (!isNaN(parsed) && parsed > 1e9) {
+        ts = parsed < 1e12 ? parsed * 1000 : parsed;
+      } else {
+        ts = new Date(value).getTime();
+      }
+    }
+    if (isNaN(ts)) return String(value);
+    return new Date(ts).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: '2-digit' });
   } catch {
-    return iso;
+    return String(value);
   }
 }
 
+function fmtMs(ms: number): string {
+  if (ms >= 1000) return `${(ms / 1000).toFixed(1)}s`;
+  return `${ms.toFixed(0)}ms`;
+}
+
+function fmtTokens(prompt: number | undefined, completion: number | undefined): string {
+  const p = prompt ?? 0;
+  const c = completion ?? 0;
+  if (p === 0 && c === 0) return '—';
+  const total = p + c;
+  if (total >= 1000) return `${(total / 1000).toFixed(1)}K`;
+  return String(total);
+}
+
 // ── Session row ───────────────────────────────────────────────────────
+//
+// Columns: Task Type | Model | Tokens | Latency | Local | Saved | Date
+// Grid: task_type is the primary label; session_id is shown as a secondary tooltip.
+// Falls back to truncated session_id when task_type is absent.
 
 function SessionRow({ s }: { s: DelegationSavingsSession }) {
+  const rowLabel = s.task_type ?? s.session_id.slice(0, 14) + '…';
   return (
     <div
       style={{
         display: 'grid',
-        gridTemplateColumns: '1fr 80px 80px 80px 60px',
+        gridTemplateColumns: '1fr 110px 70px 70px 70px 75px 64px',
         gap: 8,
         padding: '5px 0',
         borderBottom: '1px solid var(--line-2)',
         alignItems: 'center',
       }}
     >
-      <Text as="span" size="sm" family="mono" color="secondary" style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-        {s.session_id.slice(0, 12)}…
+      <Text as="span" size="sm" family="mono" color="primary" style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+        {rowLabel}
+      </Text>
+      <Text as="span" size="xs" family="mono" color="secondary" style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+        {s.model_name ?? '—'}
+      </Text>
+      <Text as="span" size="xs" family="mono" tabularNums color="secondary" style={{ textAlign: 'right' }}>
+        {fmtTokens(s.prompt_tokens, s.completion_tokens)}
+      </Text>
+      <Text as="span" size="xs" family="mono" tabularNums color="secondary" style={{ textAlign: 'right' }}>
+        {s.latency_ms != null ? fmtMs(s.latency_ms) : '—'}
       </Text>
       <Text as="span" size="sm" family="mono" tabularNums style={{ textAlign: 'right' }}>
         {fmtUsd(s.local_cost_usd)}
-      </Text>
-      <Text as="span" size="sm" family="mono" tabularNums style={{ textAlign: 'right', color: 'var(--warn)' }}>
-        {fmtUsd(s.cloud_cost_usd)}
       </Text>
       <Text as="span" size="sm" family="mono" tabularNums weight="semibold" style={{ textAlign: 'right', color: s.savings_usd > 0 ? 'var(--good)' : 'var(--ink-3)' }}>
         {s.savings_usd > 0 ? `+${fmtUsd(s.savings_usd)}` : '—'}
@@ -165,14 +213,14 @@ export default function DelegationSavingsWidget(props: { config: DelegationSavin
               <div
                 style={{
                   display: 'grid',
-                  gridTemplateColumns: '1fr 80px 80px 80px 60px',
+                  gridTemplateColumns: '1fr 110px 70px 70px 70px 75px 64px',
                   gap: 8,
                   paddingBottom: 4,
                   borderBottom: '1px solid var(--line)',
                 }}
               >
-                {(['Session', 'Local', 'Cloud', 'Saved', 'Date'] as const).map((h) => (
-                  <Text key={h} as="span" size="xs" color="tertiary" style={{ textAlign: h === 'Session' ? 'left' : 'right' }}>
+                {(['Task Type', 'Model', 'Tokens', 'Latency', 'Local', 'Saved', 'Date'] as const).map((h) => (
+                  <Text key={h} as="span" size="xs" color="tertiary" style={{ textAlign: h === 'Task Type' ? 'left' : 'right' }}>
                     {h}
                   </Text>
                 ))}

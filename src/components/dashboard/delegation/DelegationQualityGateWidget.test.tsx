@@ -49,7 +49,32 @@ describe('DelegationQualityGateWidget', () => {
     expect(await screen.findByText('Pass rate')).toBeInTheDocument();
     expect(screen.getByText('Passed')).toBeInTheDocument();
     expect(screen.getByText('Failed')).toBeInTheDocument();
-    expect(screen.getByText('Escalations')).toBeInTheDocument();
+    // Escalations now shown as a banner when count > 0
+    expect(screen.getByText(/Escalations/i)).toBeInTheDocument();
+  });
+
+  it('shows escalation banner with count and rate when escalations are non-zero', async () => {
+    mockFetchWithItems([buildDelegationQualityGate({ includeEscalations: true })]);
+    render(
+      <DataSourceTestProvider client={qc}>
+        <DelegationQualityGateWidget config={{}} />
+      </DataSourceTestProvider>,
+    );
+    await screen.findByText('Pass rate');
+    expect(screen.getByText(/required human escalation/i)).toBeInTheDocument();
+    // Escalation rate percentage should appear in the banner
+    expect(screen.getByText(/% rate/i)).toBeInTheDocument();
+  });
+
+  it('does not show escalation banner when escalation count is zero', async () => {
+    mockFetchWithItems([buildDelegationQualityGate({ includeEscalations: false })]);
+    render(
+      <DataSourceTestProvider client={qc}>
+        <DelegationQualityGateWidget config={{}} />
+      </DataSourceTestProvider>,
+    );
+    await screen.findByText('Pass rate');
+    expect(screen.queryByText(/required human escalation/i)).not.toBeInTheDocument();
   });
 
   it('renders check type rows (deterministic + heuristic)', async () => {

@@ -70,8 +70,24 @@ describe('DelegationModelRoutingWidget', () => {
     );
     await screen.findByText('Qwen3-Coder-30B');
     expect(screen.getByText('Model')).toBeInTheDocument();
-    expect(screen.getByText('Count')).toBeInTheDocument();
+    expect(screen.getByText('N')).toBeInTheDocument();
     expect(screen.getByText('Frequency')).toBeInTheDocument();
+    // New columns
+    expect(screen.getByText('Task Types')).toBeInTheDocument();
+    expect(screen.getByText('Latency')).toBeInTheDocument();
+    expect(screen.getByText('QG Pass')).toBeInTheDocument();
+  });
+
+  it('renders task type chips from fixture', async () => {
+    mockFetchWithItems([buildDelegationModelRouting()]);
+    render(
+      <DataSourceTestProvider client={qc}>
+        <DelegationModelRoutingWidget config={{}} />
+      </DataSourceTestProvider>,
+    );
+    await screen.findByText('Qwen3-Coder-30B');
+    // Fixture provides task_types including 'code-review'
+    expect(screen.getAllByText('code-review').length).toBeGreaterThan(0);
   });
 
   it('shows upstream-blocked notice when provisioned is false', async () => {
