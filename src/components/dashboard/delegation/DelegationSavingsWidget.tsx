@@ -1,4 +1,3 @@
-/* eslint-disable local/no-typography-inline -- OMN-10624 prototype widget */
 import { useMemo } from 'react';
 import { ComponentWrapper } from '../ComponentWrapper';
 import { useProjectionQuery } from '@/hooks/useProjectionQuery';
@@ -91,7 +90,7 @@ function SessionRow({ s }: { s: DelegationSavingsSession }) {
 export default function DelegationSavingsWidget(props: { config: DelegationSavingsConfig }) {
   const { config } = props;
   const showSessions = config.showSessions ?? true;
-  const maxSessions = config.maxSessions ?? 10;
+  const maxSessions = Math.max(0, Math.trunc(config.maxSessions ?? 10));
 
   const { data, isLoading, error } = useProjectionQuery<DelegationSavingsProjection>({
     queryKey: ['delegation-savings', TOPICS.delegationSavings],
@@ -190,7 +189,7 @@ export default function DelegationSavingsWidget(props: { config: DelegationSavin
           )}
 
           {!projection.provisioned && (
-            <Text as="div" size="xs" color="tertiary" style={{ fontStyle: 'italic' }}>
+            <Text as="em" size="xs" color="tertiary" style={{ display: 'block' }}>
               Projection upstream-blocked — displaying contract-valid fixtures (OMN-10623).
             </Text>
           )}

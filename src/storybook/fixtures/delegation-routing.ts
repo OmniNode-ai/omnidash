@@ -7,6 +7,8 @@ import type { DelegationTokenUsageProjection, TokenProvenance } from '@/componen
 
 export interface BuildDelegationSavingsOptions {
   sessionCount?: number;
+  baselineModel?: string;
+  /** @deprecated use baselineModel */
   baselinModel?: string;
   pricingManifestVersion?: string;
   provisioned?: boolean;
@@ -23,10 +25,12 @@ const SESSION_IDS = [
 export function buildDelegationSavings(opts: BuildDelegationSavingsOptions = {}): DelegationSavingsProjection {
   const {
     sessionCount = 5,
-    baselinModel = 'claude-sonnet-4-6',
+    baselineModel,
+    baselinModel,
     pricingManifestVersion = 'v2026-05-01',
     provisioned = false,
   } = opts;
+  const resolvedBaselineModel = baselineModel ?? baselinModel ?? 'claude-sonnet-4-6';
 
   let seed = 77;
   const rand = () => {
@@ -42,7 +46,7 @@ export function buildDelegationSavings(opts: BuildDelegationSavingsOptions = {})
       local_cost_usd: Number(localCost.toFixed(4)),
       cloud_cost_usd: Number(cloudCost.toFixed(4)),
       savings_usd: Number(Math.max(0, cloudCost - localCost).toFixed(4)),
-      baseline_model: baselinModel,
+      baseline_model: resolvedBaselineModel,
       pricing_manifest_version: pricingManifestVersion,
       savings_method: 'estimated' as const,
       usage_source: (rand() > 0.5 ? 'measured' : 'estimated') as 'measured' | 'estimated',
@@ -58,7 +62,7 @@ export function buildDelegationSavings(opts: BuildDelegationSavingsOptions = {})
     cumulative_savings_usd: Number(cumulativeSavings.toFixed(4)),
     cumulative_local_cost_usd: Number(cumulativeLocalCost.toFixed(4)),
     cumulative_cloud_cost_usd: Number(cumulativeCloudCost.toFixed(4)),
-    baseline_model: baselinModel,
+    baseline_model: resolvedBaselineModel,
     pricing_manifest_version: pricingManifestVersion,
     session_count: sessions.length,
     sessions,
@@ -102,8 +106,13 @@ export function buildDelegationModelRouting(
     const taskWeights = TASK_TYPES.map(() => rand());
     const taskWeightSum = taskWeights.reduce((a, b) => a + b, 0);
     const normalized = taskWeights.map((w) => w / taskWeightSum);
+    let assigned = 0;
     return TASK_TYPES.map((task_type, ti) => {
-      const count = Math.round(normalized[ti] * modelTotal);
+      const count =
+        ti === TASK_TYPES.length - 1
+          ? modelTotal - assigned
+          : Math.round(normalized[ti] * modelTotal);
+      assigned += count;
       return {
         model_name,
         task_type,
@@ -145,12 +154,17 @@ export function buildDelegationQualityGate(
   const totalFailed = totalChecks - totalPassed;
   const escalationCount = includeEscalations ? Math.round(totalFailed * 0.25) : 0;
 
-  const detRate = Math.min(1, overallPassRate + 0.05);
+  const safeOverall = Math.max(0, Math.min(1, overallPassRate));
+  const detRate = Math.min(1, safeOverall + 0.05);
   const detTotal = Math.round(totalChecks * 0.65);
   const heuTotal = totalChecks - detTotal;
+  const detPassed = Math.min(totalPassed, Math.round(detRate * detTotal));
+  const detFailed = detTotal - detPassed;
+  const heuPassed = Math.max(0, totalPassed - detPassed);
+  const heuFailed = Math.max(0, totalFailed - detFailed);
 
   return {
-    overall_pass_rate: overallPassRate,
+    overall_pass_rate: safeOverall,
     total_passed: totalPassed,
     total_failed: totalFailed,
     total_checks: totalChecks,
@@ -159,17 +173,17 @@ export function buildDelegationQualityGate(
     by_check_type: [
       {
         check_type: 'deterministic',
-        passed: Math.round(detRate * detTotal),
-        failed: detTotal - Math.round(detRate * detTotal),
+        passed: detPassed,
+        failed: detFailed,
         total: detTotal,
-        pass_rate: detRate,
+        pass_rate: detTotal > 0 ? detPassed / detTotal : 0,
       },
       {
         check_type: 'heuristic',
-        passed: totalPassed - Math.round(detRate * detTotal),
-        failed: totalFailed - (detTotal - Math.round(detRate * detTotal)),
+        passed: heuPassed,
+        failed: heuFailed,
         total: heuTotal,
-        pass_rate: (totalPassed - Math.round(detRate * detTotal)) / heuTotal,
+        pass_rate: heuTotal > 0 ? heuPassed / heuTotal : 0,
       },
     ],
     failure_categories: [

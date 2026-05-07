@@ -1,4 +1,3 @@
-/* eslint-disable local/no-typography-inline -- OMN-10624 prototype widget */
 import { useMemo, useState } from 'react';
 import { ComponentWrapper } from '../ComponentWrapper';
 import { useProjectionQuery } from '@/hooks/useProjectionQuery';
@@ -175,7 +174,12 @@ export default function DelegationModelRoutingWidget(props: { config: Delegation
           {sorted.map((s, i) => (
             <div key={s.model_name}>
               <div
+                tabIndex={0}
+                role="button"
+                aria-label={`Show task breakdown for ${s.model_name}`}
                 onPointerEnter={() => setHoveredModel(s.model_name)}
+                onFocus={() => setHoveredModel(s.model_name)}
+                onBlur={() => setHoveredModel(null)}
                 style={{
                   display: 'grid',
                   gridTemplateColumns: '1fr 48px 80px 40px',
@@ -223,7 +227,7 @@ export default function DelegationModelRoutingWidget(props: { config: Delegation
           ))}
 
           {!projection.provisioned && (
-            <Text as="div" size="xs" color="tertiary" style={{ marginTop: 8, fontStyle: 'italic' }}>
+            <Text as="em" size="xs" color="tertiary" style={{ marginTop: 8, display: 'block' }}>
               Projection upstream-blocked — displaying contract-valid fixtures (OMN-10623).
             </Text>
           )}
