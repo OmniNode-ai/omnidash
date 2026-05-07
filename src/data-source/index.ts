@@ -21,8 +21,16 @@ export function createSnapshotSource(): ProtocolSnapshotSource {
   // sqlite mode: the Express server reads from the local delegation.sqlite DB
   // when OMNIDASH_DATA_SOURCE=sqlite. The browser side uses the same HTTP
   // projection endpoint — no direct SQLite access in the browser.
+  // VITE_SQLITE_DATA_SOURCE_URL is required; no implicit localhost fallback so
+  // misconfigured standalone installs fail loudly rather than silently hitting
+  // a wrong server.
   if (mode === 'sqlite') {
-    const baseUrl = import.meta.env.VITE_SQLITE_DATA_SOURCE_URL ?? 'http://localhost:3002';
+    const baseUrl = import.meta.env.VITE_SQLITE_DATA_SOURCE_URL;
+    if (!baseUrl) {
+      throw new Error(
+        'VITE_DATA_SOURCE=sqlite requires VITE_SQLITE_DATA_SOURCE_URL to be set (e.g. http://localhost:3002)',
+      );
+    }
     return new HttpSnapshotSource({ baseUrl });
   }
   throw new Error(`Unknown VITE_DATA_SOURCE: ${mode}`);

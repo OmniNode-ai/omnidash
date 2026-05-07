@@ -6,6 +6,13 @@ import { existsSync } from 'node:fs';
 // Default DB path mirrors the Python adapter in omniclaude/delegation/sqlite_adapter.py
 const DEFAULT_DB_PATH = join(homedir(), '.omninode', 'delegation', 'delegation.sqlite');
 
+function expandHomedir(p: string): string {
+  if (p === '~' || p.startsWith('~/') || p.startsWith('~\\')) {
+    return join(homedir(), p.slice(2));
+  }
+  return p;
+}
+
 export interface SqliteProjectionReaderOptions {
   dbPath?: string;
 }
@@ -25,7 +32,7 @@ export class SqliteProjectionReader {
   private readonly dbPath: string;
 
   constructor(options: SqliteProjectionReaderOptions = {}) {
-    this.dbPath = options.dbPath ?? DEFAULT_DB_PATH;
+    this.dbPath = options.dbPath ? expandHomedir(options.dbPath) : DEFAULT_DB_PATH;
   }
 
   readProjection(topic: string): Row[] {
