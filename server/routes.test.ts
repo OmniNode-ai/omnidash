@@ -4,6 +4,7 @@ import request from 'supertest';
 import { mkdtemp, rm, mkdir, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
+import Database from 'better-sqlite3';
 
 async function loadRoutes() {
   vi.resetModules();
@@ -181,6 +182,103 @@ describe('server projection routes — cost-trend cluster (OMN-10305)', () => {
     const routes = await loadRoutes();
     const res = await request(buildApp(routes)).get(
       '/projection/onex.snapshot.projection.cost.summary.v1',
+    );
+    expect(res.status).toBe(200);
+    expect(res.body).toEqual([]);
+  });
+});
+
+// OMN-10623: SQLite data source mode
+describe('server projection routes — OMNIDASH_DATA_SOURCE=sqlite', () => {
+  let tmpDir: string;
+  let dbPath: string;
+
+  beforeEach(async () => {
+    tmpDir = await mkdtemp(join(tmpdir(), 'omnidash-sqlite-routes-'));
+    dbPath = join(tmpDir, 'delegation.sqlite');
+    process.env.OMNIDASH_DATA_SOURCE = 'sqlite';
+    process.env.OMNIDASH_SQLITE_DB_PATH = dbPath;
+  });
+
+  afterEach(async () => {
+    delete process.env.OMNIDASH_DATA_SOURCE;
+    delete process.env.OMNIDASH_SQLITE_DB_PATH;
+    await rm(tmpDir, { recursive: true, force: true });
+  });
+
+  it('returns [] for delegation.decisions topic when DB has no rows', async () => {
+    const db = new Database(dbPath);
+    db.exec(`
+      CREATE TABLE IF NOT EXISTS delegation_events (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        correlation_id TEXT NOT NULL UNIQUE,
+        session_id TEXT,
+        tool_use_id TEXT,
+        hook_name TEXT,
+        task_type TEXT NOT NULL DEFAULT '',
+        delegated_to TEXT NOT NULL DEFAULT '',
+        model_name TEXT NOT NULL DEFAULT '',
+        quality_gate_passed INTEGER NOT NULL DEFAULT 0,
+        quality_gate_detail TEXT,
+        latency_ms INTEGER,
+        input_hash TEXT,
+        input_redaction_policy TEXT NOT NULL DEFAULT 'hash_only',
+        contract_version TEXT NOT NULL DEFAULT 'v1',
+        created_at REAL NOT NULL
+      );
+    `);
+    db.close();
+
+    const routes = await loadRoutes();
+    const res = await request(buildApp(routes)).get(
+      '/projection/onex.snapshot.projection.delegation.decisions.v1',
+    );
+    expect(res.status).toBe(200);
+    expect(res.body).toEqual([]);
+  });
+
+  it('returns delegation_events rows for decisions topic', async () => {
+    const db = new Database(dbPath);
+    db.exec(`
+      CREATE TABLE IF NOT EXISTS delegation_events (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        correlation_id TEXT NOT NULL UNIQUE,
+        session_id TEXT,
+        tool_use_id TEXT,
+        hook_name TEXT,
+        task_type TEXT NOT NULL DEFAULT '',
+        delegated_to TEXT NOT NULL DEFAULT '',
+        model_name TEXT NOT NULL DEFAULT '',
+        quality_gate_passed INTEGER NOT NULL DEFAULT 0,
+        quality_gate_detail TEXT,
+        latency_ms INTEGER,
+        input_hash TEXT,
+        input_redaction_policy TEXT NOT NULL DEFAULT 'hash_only',
+        contract_version TEXT NOT NULL DEFAULT 'v1',
+        created_at REAL NOT NULL
+      );
+    `);
+    db.prepare(`
+      INSERT INTO delegation_events (correlation_id, task_type, delegated_to, model_name, quality_gate_passed, created_at)
+      VALUES ('corr-sqlite-1', 'code', 'local', 'qwen3', 1, 1000.0)
+    `).run();
+    db.close();
+
+    const routes = await loadRoutes();
+    const res = await request(buildApp(routes)).get(
+      '/projection/onex.snapshot.projection.delegation.decisions.v1',
+    );
+    expect(res.status).toBe(200);
+    expect(res.body).toHaveLength(1);
+    expect(res.body[0].correlation_id).toBe('corr-sqlite-1');
+    expect(res.body[0].model_name).toBe('qwen3');
+  });
+
+  it('returns [] for unknown topic in sqlite mode', async () => {
+    // DB file does not need to exist for unknown topics
+    const routes = await loadRoutes();
+    const res = await request(buildApp(routes)).get(
+      '/projection/onex.snapshot.projection.unknown.v1',
     );
     expect(res.status).toBe(200);
     expect(res.body).toEqual([]);

@@ -1,10 +1,17 @@
 import { Router } from 'express';
 import { readFile } from 'node:fs/promises';
 import { resolve } from 'node:path';
+import { SqliteProjectionReader } from './sqlite-projection-reader.js';
 
 const router = Router();
 
 const FIXTURES_DIR = resolve(process.env.VITE_FIXTURES_DIR ?? process.env.FIXTURES_DIR ?? './fixtures');
+
+const DATA_SOURCE = process.env.OMNIDASH_DATA_SOURCE ?? 'postgres';
+
+const sqliteReader = DATA_SOURCE === 'sqlite'
+  ? new SqliteProjectionReader({ dbPath: process.env.OMNIDASH_SQLITE_DB_PATH })
+  : null;
 
 async function readJson(path: string): Promise<unknown> {
   const raw = await readFile(path, 'utf8');
@@ -12,6 +19,10 @@ async function readJson(path: string): Promise<unknown> {
 }
 
 async function readProjection(topic: string): Promise<unknown[]> {
+  if (sqliteReader) {
+    return sqliteReader.readProjection(topic);
+  }
+
   const topicDir = resolve(FIXTURES_DIR, encodeURIComponent(topic));
   if (!topicDir.startsWith(`${FIXTURES_DIR}/`) && topicDir !== FIXTURES_DIR) {
     throw new Error(`Invalid projection topic path: ${topic}`);
