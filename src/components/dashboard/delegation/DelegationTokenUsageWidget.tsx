@@ -206,7 +206,7 @@ export default function DelegationTokenUsageWidget(props: { config: DelegationTo
   const { data, isLoading, error } = useProjectionQuery<DelegationTokenUsageProjection>({
     queryKey: ['delegation-token-usage', TOPICS.delegationTokenUsage],
     topic: TOPICS.delegationTokenUsage,
-    refetchInterval: 60_000,
+    refetchInterval: 5_000,
   });
 
   const projection = useMemo<DelegationTokenUsageProjection | null>(() => {

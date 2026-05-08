@@ -122,4 +122,24 @@ describe('DelegationSavingsWidget', () => {
     await screen.findByText(/est\. savings vs/i);
     expect(screen.queryByText(/upstream-blocked/i)).not.toBeInTheDocument();
   });
+
+});
+
+// OMN-10625: each delegation widget passes refetchInterval: 5_000 to
+// useProjectionQuery so a live SQLite-backed dashboard updates within
+// ~5s of new delegation events landing. Asserted as a source-level
+// invariant because react-query's polling timer interacts poorly with
+// jsdom's window-focus heuristics under fake timers.
+describe('DelegationSavingsWidget — OMN-10625 polling cadence', () => {
+  it('configures useProjectionQuery with a 5-second refetchInterval', async () => {
+    const fs = await import('node:fs');
+    const path = await import('node:path');
+    const url = await import('node:url');
+    const here = path.dirname(url.fileURLToPath(import.meta.url));
+    const src = fs.readFileSync(
+      path.join(here, 'DelegationSavingsWidget.tsx'),
+      'utf8',
+    );
+    expect(src).toMatch(/useProjectionQuery<DelegationSavingsProjection>\(\{[\s\S]*?refetchInterval:\s*5_000/);
+  });
 });
