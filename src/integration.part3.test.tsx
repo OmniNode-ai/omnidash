@@ -58,7 +58,8 @@ describe('Proof of Life — Part 3 (Full System)', () => {
     // + cost-by-model-3d via IDoughnutChartAdapter (OMN-10291) + ab-compare (OMN-10490).
     // cost-by-repo + token-usage wired (OMN-10305), plus OMN-10509 prototype widgets.
     // + cost-savings-overview (OMN-10346).
-    expect(available.length).toBe(20);
+    // + delegation-savings, delegation-model-routing, delegation-quality-gate, delegation-token-usage (OMN-10624).
+    expect(available.length).toBe(24);
   });
 
   it('both templates pass validation', () => {
