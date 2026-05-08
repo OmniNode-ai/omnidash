@@ -1,6 +1,6 @@
 {
   "manifestVersion": "1.0",
-  "generatedAt": "2026-05-07T22:02:33.779Z",
+  "generatedAt": "2026-05-08T01:04:16.273Z",
   "components": {
     "cost-trend-panel": {
       "name": "cost-trend-panel",
@@ -1876,7 +1876,8 @@
             "description": "Show per-session savings table."
           },
           "maxSessions": {
-            "type": "number",
+            "type": "integer",
+            "minimum": 1,
             "default": 10,
             "title": "Max sessions",
             "description": "Maximum sessions to display in the table."
@@ -2068,13 +2069,74 @@
           "rows": {
             "type": "array",
             "items": {
-              "type": "object"
+              "type": "object",
+              "required": [
+                "model_name",
+                "task_type",
+                "count",
+                "pct_of_model",
+                "pct_of_total"
+              ],
+              "properties": {
+                "model_name": {
+                  "type": "string"
+                },
+                "task_type": {
+                  "type": "string"
+                },
+                "count": {
+                  "type": "number"
+                },
+                "pct_of_model": {
+                  "type": "number"
+                },
+                "pct_of_total": {
+                  "type": "number"
+                }
+              },
+              "additionalProperties": false
             }
           },
           "by_model": {
             "type": "array",
             "items": {
-              "type": "object"
+              "type": "object",
+              "required": [
+                "model_name",
+                "total_count",
+                "pct_of_total",
+                "top_task_type"
+              ],
+              "properties": {
+                "model_name": {
+                  "type": "string"
+                },
+                "total_count": {
+                  "type": "number"
+                },
+                "pct_of_total": {
+                  "type": "number"
+                },
+                "top_task_type": {
+                  "type": "string"
+                },
+                "avg_latency_ms": {
+                  "type": "number",
+                  "description": "Average delegation latency in ms."
+                },
+                "qg_pass_rate": {
+                  "type": "number",
+                  "description": "Quality gate pass rate (0–1)."
+                },
+                "task_types": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  },
+                  "description": "Task types served by this model."
+                }
+              },
+              "additionalProperties": false
             }
           },
           "captured_at": {
@@ -2139,6 +2201,8 @@
         "properties": {
           "passThreshold": {
             "type": "number",
+            "minimum": 0,
+            "maximum": 1,
             "default": 0.8,
             "title": "Pass threshold",
             "description": "Pass rate at or above which the gate is considered passing (0–1)."

@@ -960,7 +960,7 @@ const MVP_COMPONENTS: Record<string, ComponentManifest> = {
       type: 'object',
       properties: {
         showSessions: { type: 'boolean', default: true, title: 'Show sessions', description: 'Show per-session savings table.' },
-        maxSessions: { type: 'number', default: 10, title: 'Max sessions', description: 'Maximum sessions to display in the table.' },
+        maxSessions: { type: 'integer', minimum: 1, default: 10, title: 'Max sessions', description: 'Maximum sessions to display in the table.' },
       },
       additionalProperties: false,
     },
@@ -1008,8 +1008,38 @@ const MVP_COMPONENTS: Record<string, ComponentManifest> = {
       required: ['total_delegations', 'rows', 'by_model', 'captured_at', 'provisioned'],
       properties: {
         total_delegations: { type: 'number' },
-        rows: { type: 'array', items: { type: 'object' } },
-        by_model: { type: 'array', items: { type: 'object' } },
+        rows: {
+          type: 'array',
+          items: {
+            type: 'object',
+            required: ['model_name', 'task_type', 'count', 'pct_of_model', 'pct_of_total'],
+            properties: {
+              model_name: { type: 'string' },
+              task_type: { type: 'string' },
+              count: { type: 'number' },
+              pct_of_model: { type: 'number' },
+              pct_of_total: { type: 'number' },
+            },
+            additionalProperties: false,
+          },
+        },
+        by_model: {
+          type: 'array',
+          items: {
+            type: 'object',
+            required: ['model_name', 'total_count', 'pct_of_total', 'top_task_type'],
+            properties: {
+              model_name: { type: 'string' },
+              total_count: { type: 'number' },
+              pct_of_total: { type: 'number' },
+              top_task_type: { type: 'string' },
+              avg_latency_ms: { type: 'number', description: 'Average delegation latency in ms.' },
+              qg_pass_rate: { type: 'number', description: 'Quality gate pass rate (0–1).' },
+              task_types: { type: 'array', items: { type: 'string' }, description: 'Task types served by this model.' },
+            },
+            additionalProperties: false,
+          },
+        },
         captured_at: { type: 'string', format: 'date-time' },
         provisioned: { type: 'boolean' },
       },
@@ -1032,7 +1062,7 @@ const MVP_COMPONENTS: Record<string, ComponentManifest> = {
     configSchema: {
       type: 'object',
       properties: {
-        passThreshold: { type: 'number', default: 0.8, title: 'Pass threshold', description: 'Pass rate at or above which the gate is considered passing (0–1).' },
+        passThreshold: { type: 'number', minimum: 0, maximum: 1, default: 0.8, title: 'Pass threshold', description: 'Pass rate at or above which the gate is considered passing (0–1).' },
         showFailureCategories: { type: 'boolean', default: true, title: 'Show failure categories', description: 'Show failure category breakdown below the per-check-type table.' },
       },
       additionalProperties: false,
