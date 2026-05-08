@@ -148,7 +148,7 @@ export default function DelegationSavingsWidget(props: { config: DelegationSavin
   const { data, isLoading, error } = useProjectionQuery<DelegationSavingsProjection>({
     queryKey: ['delegation-savings', TOPICS.delegationSavings],
     topic: TOPICS.delegationSavings,
-    refetchInterval: 60_000,
+    refetchInterval: 5_000,
   });
 
   const projection = useMemo<DelegationSavingsProjection | null>(() => {

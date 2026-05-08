@@ -134,7 +134,7 @@ export default function DelegationModelRoutingWidget(props: { config: Delegation
   const { data, isLoading, error } = useProjectionQuery<DelegationModelRoutingProjection>({
     queryKey: ['delegation-model-routing', TOPICS.delegationModelRouting],
     topic: TOPICS.delegationModelRouting,
-    refetchInterval: 60_000,
+    refetchInterval: 5_000,
   });
 
   const projection = useMemo<DelegationModelRoutingProjection | null>(() => {

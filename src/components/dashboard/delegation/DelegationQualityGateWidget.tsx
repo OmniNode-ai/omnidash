@@ -162,7 +162,7 @@ export default function DelegationQualityGateWidget(props: { config: DelegationQ
   const { data, isLoading, error } = useProjectionQuery<DelegationQualityGateProjection>({
     queryKey: ['delegation-quality-gate', TOPICS.delegationQualityGate],
     topic: TOPICS.delegationQualityGate,
-    refetchInterval: 60_000,
+    refetchInterval: 5_000,
   });
 
   const projection = useMemo<DelegationQualityGateProjection | null>(() => {
