@@ -62,6 +62,12 @@ ALLOWLIST_FILES=(
   'scripts/check-no-env-contamination.sh'
   'README.md'
   'CLAUDE.md'
+  # ESLint rule unit tests use localhost:3002 as literal fixture inputs to verify
+  # the validator fires correctly — they are testing the detection pattern itself.
+  'src/no-env-fallback.test.ts'
+  # Global test setup stubs VITE_WS_URL to a localhost address so integration
+  # tests that render Providers (which mounts useWebSocketInvalidation) don't throw.
+  'src/tests/setup.ts'
 )
 
 # Allowlist directories — every file under here is permitted.

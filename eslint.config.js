@@ -22,6 +22,9 @@
 //   5. local/no-projection-fallback (OMN-10304): flags fallback defaults
 //      applied to projection-derived values (useProjectionQuery results).
 //      v1 scope: direct destructuring + member-expression fallbacks only.
+//   6. local/no-env-fallback (OMN-10739): flags silent ?? / || fallback
+//      defaults on import.meta.env.VITE_* reads. Callers must fail fast.
+//      Suppress a specific line with: // env-fallback-ok: <reason>
 
 import js from '@eslint/js';
 import tseslint from 'typescript-eslint';
@@ -80,6 +83,7 @@ export default [
       'local/no-typography-inline': 'error',
       'local/no-cast-on-parsed-json': 'error',
       'local/no-projection-fallback': 'error',
+      'local/no-env-fallback': 'error',
       'react-hooks/rules-of-hooks': 'error',
       // `exhaustive-deps` is set to `warn` rather than `error` so that
       // genuine one-shot effects (mount-only hydration, resize observer
