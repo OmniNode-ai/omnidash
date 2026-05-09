@@ -22,6 +22,7 @@
     "test:coverage": "vitest run --coverage",
     "check": "tsc --noEmit",
     "lint": "eslint \"src/**/*.{ts,tsx}\" \"eslint-rules/**/*.cjs\" --max-warnings=0",
+    "generate:config": "tsx scripts/generate-data-source-config.ts",
     "generate:registry": "tsx scripts/generate-registry.ts",
     "generate:fixtures": "bash scripts/run-generate-fixtures.sh",
     "types:generate": "bash scripts/run-types-generate.sh",

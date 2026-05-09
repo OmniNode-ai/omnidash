@@ -1,0 +1,25 @@
+# OMN-10756: Canonical data-source contract for omnidash.
+# This file is the source of truth for data-source selection defaults.
+# Env vars (OMNIDASH_DATA_SOURCE, VITE_DATA_SOURCE, VITE_SQLITE_DATA_SOURCE_URL)
+# are optional overrides only — they must not be set for defaults to apply.
+#
+# Run `npm run generate:config` after editing to regenerate src/config/generated/data-source-defaults.ts.
+
+data_source:
+  # Default data source mode.
+  # Values: sqlite | postgres | file | http
+  # - sqlite: reads from local delegation.sqlite via the Express bridge
+  # - postgres: reads from Postgres projection API (requires OMNIDASH_ANALYTICS_DB_URL)
+  # - file: reads from ./fixtures/ directory (zero-infra dev mode)
+  # - http: reads via HTTP from data_source_url
+  default: sqlite
+
+  # Default Express bridge URL (used by sqlite and http modes on the client side).
+  url: "http://localhost:3002"
+
+  # Default WebSocket invalidation URL (derived from url when not set explicitly).
+  ws_url: "ws://localhost:3002/ws"
+
+  # Default SQLite DB path (used by server/routes.ts in sqlite mode).
+  # Tilde is expanded to $HOME by the server at runtime.
+  sqlite_db_path: "~/.omninode/delegation/delegation.sqlite"

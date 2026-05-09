@@ -68,13 +68,21 @@ ALLOWLIST_FILES=(
   # Global test setup stubs VITE_WS_URL to a localhost address so integration
   # tests that render Providers (which mounts useWebSocketInvalidation) don't throw.
   'src/tests/setup.ts'
+  # OMN-10756: contract.yaml and its derived files own the canonical localhost
+  # default for the data-source bridge URL. These are defaults, not hardcoded
+  # environment-specific literals.
+  'contract.yaml'
+  'server/data-source-contract.ts'
+  'scripts/generate-data-source-config.ts'
+  'server/__tests__/data-source-contract.test.ts'
 )
 
 # Allowlist directories — every file under here is permitted.
 ALLOWLIST_DIRS=(
   'docs'
   'reference'
-  'src/data-source'   # the documented HTTP/WS carve-out
+  'src/data-source'        # the documented HTTP/WS carve-out
+  'src/config/generated'   # OMN-10756: generated from contract.yaml defaults
 )
 
 is_allowlisted() {

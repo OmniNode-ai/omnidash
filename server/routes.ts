@@ -2,15 +2,19 @@ import { Router } from 'express';
 import { readFile } from 'node:fs/promises';
 import { resolve } from 'node:path';
 import { SqliteProjectionReader } from './sqlite-projection-reader.js';
+import { loadDataSourceConfig } from './data-source-contract.js';
 
 const router = Router();
 
 const FIXTURES_DIR = resolve(process.env.VITE_FIXTURES_DIR ?? process.env.FIXTURES_DIR ?? './fixtures');
 
-const DATA_SOURCE = process.env.OMNIDASH_DATA_SOURCE ?? 'postgres';
+// OMN-10756: data source mode and SQLite DB path now come from contract.yaml
+// defaults via loadDataSourceConfig(). OMNIDASH_DATA_SOURCE and
+// OMNIDASH_SQLITE_DB_PATH are optional env overrides — not required.
+const dsConfig = loadDataSourceConfig();
 
-const sqliteReader = DATA_SOURCE === 'sqlite'
-  ? new SqliteProjectionReader({ dbPath: process.env.OMNIDASH_SQLITE_DB_PATH })
+const sqliteReader = dsConfig.mode === 'sqlite'
+  ? new SqliteProjectionReader({ dbPath: dsConfig.sqliteDbPath })
   : null;
 
 async function readJson(path: string): Promise<unknown> {
@@ -42,7 +46,7 @@ async function readProjection(topic: string): Promise<unknown[]> {
   for (const filename of files) {
     if (typeof filename !== 'string') continue;
     const snapshotPath = resolve(topicDir, filename);
-    if (!snapshotPath.startsWith(`${topicDir}/`)) continue;
+    if (!snapshotPath.startsWith(`${topicDir}/`) ) continue;
     try {
       records.push(await readJson(snapshotPath));
     } catch (error: unknown) {
