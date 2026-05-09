@@ -25,11 +25,16 @@ describe('server projection routes', () => {
   beforeEach(async () => {
     fixturesDir = await mkdtemp(join(tmpdir(), 'omnidash-projections-'));
     process.env.FIXTURES_DIR = fixturesDir;
+    // OMN-10756: force non-sqlite mode so the routes fall through to fixture
+    // file reading; contract.yaml default is sqlite but these tests exercise
+    // the fixture path.
+    process.env.OMNIDASH_DATA_SOURCE = 'postgres';
     delete process.env.OMNIDASH_ANALYTICS_DB_URL;
   });
 
   afterEach(async () => {
     delete process.env.FIXTURES_DIR;
+    delete process.env.OMNIDASH_DATA_SOURCE;
     await rm(fixturesDir, { recursive: true, force: true });
   });
 
@@ -75,10 +80,14 @@ describe('server projection routes — cost-trend cluster (OMN-10305)', () => {
   beforeEach(async () => {
     fixturesDir = await mkdtemp(join(tmpdir(), 'omnidash-cost-projections-'));
     process.env.FIXTURES_DIR = fixturesDir;
+    // OMN-10756: force non-sqlite mode so routes fall through to fixture
+    // file reading; contract.yaml default is sqlite.
+    process.env.OMNIDASH_DATA_SOURCE = 'postgres';
   });
 
   afterEach(async () => {
     delete process.env.FIXTURES_DIR;
+    delete process.env.OMNIDASH_DATA_SOURCE;
     await rm(fixturesDir, { recursive: true, force: true });
   });
 

@@ -6,6 +6,7 @@ import { fileURLToPath } from 'url';
 import { createRequire } from 'node:module';
 import { readdirSync, readFileSync, writeFileSync, mkdirSync, existsSync, statSync } from 'node:fs';
 import type { IncomingMessage, ServerResponse } from 'node:http';
+import { loadDataSourceConfig } from './server/data-source-contract.js';
 
 const _require = createRequire(import.meta.url);
 
@@ -22,14 +23,15 @@ type ConnectNext = (err?: unknown) => void;
 export function fixturesMiddleware(opts: { root: string; dataSource?: string }) {
   const root = opts.root;
 
-  const dataSource = opts.dataSource ?? process.env.OMNIDASH_DATA_SOURCE ?? 'fixtures';
+  // OMN-10756: resolve data source mode from contract.yaml defaults.
+  // opts.dataSource (if provided) and OMNIDASH_DATA_SOURCE env are optional overrides.
+  const dsConfig = loadDataSourceConfig();
+  const dataSource = opts.dataSource ?? dsConfig.mode;
   let sqliteDb: any = null;
   if (dataSource === 'sqlite') {
     try {
       const Database = _require('better-sqlite3');
-      const { homedir } = _require('node:os');
-      const dbPathRaw = process.env.OMNIDASH_SQLITE_DB_PATH ?? path.join(homedir(), '.omninode', 'delegation', 'delegation.sqlite');
-      const dbPath = dbPathRaw.startsWith('~') ? path.join(homedir(), dbPathRaw.slice(2)) : dbPathRaw;
+      const dbPath = dsConfig.sqliteDbPath;
       if (existsSync(dbPath)) {
         sqliteDb = new Database(dbPath, { readonly: true, fileMustExist: true });
       }
@@ -287,9 +289,11 @@ export function layoutsMiddleware(opts: { root: string }) {
 
 export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, process.cwd(), '');
+  // OMN-10756: dataSource defaults come from contract.yaml via loadDataSourceConfig().
+  // OMNIDASH_DATA_SOURCE env is an optional override; pass it only when explicitly set.
   const { plugin: fixturesPlugin } = fixturesMiddleware({
     root: path.resolve(__dirname, 'fixtures'),
-    dataSource: env.OMNIDASH_DATA_SOURCE,
+    dataSource: env.OMNIDASH_DATA_SOURCE || undefined,
   });
   const { plugin: layoutsPlugin } = layoutsMiddleware({
     root: path.resolve(__dirname, 'dashboard-layouts'),
