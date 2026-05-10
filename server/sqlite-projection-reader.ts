@@ -335,6 +335,67 @@ export class SqliteProjectionReader {
           LIMIT 200
         `).all() as Row[];
 
+      case 'onex.snapshot.projection.cost.summary.v1':
+        return db.prepare(`
+          SELECT
+            COUNT(*)                                  AS call_count,
+            COALESCE(SUM(prompt_tokens), 0)           AS total_prompt_tokens,
+            COALESCE(SUM(completion_tokens), 0)       AS total_completion_tokens,
+            COALESCE(SUM(estimated_cost_usd), 0)      AS total_cost_usd,
+            COALESCE(AVG(estimated_cost_usd), 0)      AS avg_cost_usd,
+            COALESCE(MAX(created_at), 0)              AS latest_event_at
+          FROM llm_call_metrics
+        `).all() as Row[];
+
+      case 'onex.snapshot.projection.cost.token_usage.v1':
+        return db.prepare(`
+          SELECT
+            model_id,
+            COUNT(*)                                  AS call_count,
+            COALESCE(SUM(prompt_tokens), 0)           AS total_prompt_tokens,
+            COALESCE(SUM(completion_tokens), 0)       AS total_completion_tokens,
+            COALESCE(SUM(prompt_tokens + completion_tokens), 0) AS total_tokens,
+            usage_source,
+            COALESCE(MAX(created_at), 0)              AS latest_event_at
+          FROM llm_call_metrics
+          GROUP BY model_id, usage_source
+          ORDER BY total_tokens DESC
+        `).all() as Row[];
+
+      case 'onex.snapshot.projection.delegation.token-usage.v1':
+        return db.prepare(`
+          SELECT
+            delegated_to                              AS model_alias,
+            model_name,
+            COUNT(*)                                  AS delegation_count,
+            COALESCE(SUM(tokens_input), 0)            AS total_tokens_input,
+            COALESCE(SUM(tokens_output), 0)           AS total_tokens_output,
+            COALESCE(SUM(tokens_input + tokens_output), 0) AS total_tokens,
+            COALESCE(SUM(tokens_to_compliance), 0)    AS total_tokens_to_compliance,
+            COALESCE(MAX(created_at), 0)              AS latest_event_at
+          FROM delegation_events
+          GROUP BY delegated_to, model_name
+          ORDER BY total_tokens DESC
+        `).all() as Row[];
+
+      case 'onex.snapshot.projection.live-events.v1':
+        return db.prepare(`
+          SELECT
+            id,
+            envelope,
+            created_at
+          FROM delegation_event_log
+          ORDER BY created_at DESC
+          LIMIT 200
+        `).all() as Row[];
+
+      // No backing tables in the delegation SQLite DB for these topics yet.
+      case 'onex.snapshot.projection.baselines.roi.v1':
+      case 'onex.snapshot.projection.baselines.quality.v1':
+      case 'onex.snapshot.projection.overnight.v1':
+      case 'onex.snapshot.projection.registration.v1':
+        return [];
+
       default:
         return [];
     }
