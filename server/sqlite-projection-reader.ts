@@ -276,7 +276,7 @@ export class SqliteProjectionReader {
             envelope,
             created_at
           FROM delegation_event_log
-          ORDER BY created_at DESC
+          ORDER BY created_at DESC, id DESC
           LIMIT 200
         `).all() as Row[];
 
