@@ -64,7 +64,7 @@ export class SqliteProjectionReader {
             latency_ms,
             input_redaction_policy,
             contract_version,
-            created_at,
+            created_at
           FROM delegation_events
           ORDER BY created_at DESC
           LIMIT 500
@@ -77,8 +77,7 @@ export class SqliteProjectionReader {
             COALESCE(SUM(CASE WHEN quality_gate_passed = 1 THEN 1 ELSE 0 END), 0)     AS quality_passed_count,
             COALESCE(SUM(CASE WHEN quality_gate_passed = 0 THEN 1 ELSE 0 END), 0)     AS quality_failed_count,
             COALESCE(AVG(latency_ms), 0)                                               AS avg_latency_ms,
-            COALESCE(MAX(created_at), 0)                                               AS latest_event_at,
-            COALESCE(SUM(cost_savings_usd), 0)                                         AS total_savings_usd
+            COALESCE(MAX(created_at), 0)                                               AS latest_event_at
           FROM delegation_events
         `).get() as Row;
         const byTaskType = db.prepare(`
@@ -92,11 +91,16 @@ export class SqliteProjectionReader {
         const total = (summary.total_events as number) || 0;
         const passed = (summary.quality_passed_count as number) || 0;
         return [{
+          total_events: total,
+          quality_passed_count: passed,
+          quality_failed_count: (summary.quality_failed_count as number) || 0,
+          avg_latency_ms: (summary.avg_latency_ms as number) || 0,
+          latest_event_at: (summary.latest_event_at as number) || 0,
           totalDelegations: total,
           qualityGatePassRate: total > 0 ? passed / total : 0,
           qualityGatePassed: passed,
           qualityGateTotal: total,
-          totalSavingsUsd: (summary.total_savings_usd as number) || 0,
+          totalSavingsUsd: 0,
           avgLatencyMs: (summary.avg_latency_ms as number) || 0,
           latestEventAt: (summary.latest_event_at as number) || 0,
           byTaskType,
