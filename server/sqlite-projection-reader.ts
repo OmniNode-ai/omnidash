@@ -27,6 +27,13 @@ type Row = Record<string, unknown>;
  * Only reads from pre-materialized projection tables — no client-side
  * aggregation or cost computation. All totals come from savings_estimates rows
  * as written by the Python adapter.
+ *
+ * Architecture note: this class IS the server-side data-source implementation,
+ * not a bypass of it. server/routes.ts selects between SqliteProjectionReader
+ * and fixture-file reads based on dsConfig.mode, then exposes both via the
+ * /projection/:topic HTTP endpoint consumed by src/data-source/http-snapshot-source.ts.
+ * All new topic cases must be added here (SQL layer) — not to FileSnapshotSource
+ * or HttpSnapshotSource, which are client-side protocol adapters.
  */
 export class SqliteProjectionReader {
   private readonly dbPath: string;
