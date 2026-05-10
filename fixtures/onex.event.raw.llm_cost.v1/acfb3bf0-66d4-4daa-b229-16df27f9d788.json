@@ -1,0 +1,7 @@
+{
+  "entity_id": "acfb3bf0-66d4-4daa-b229-16df27f9d788",
+  "model_name": "claude-sonnet-4-6",
+  "total_tokens": 68850,
+  "estimated_cost_usd": 6.3064,
+  "observed_at": "2026-04-26T18:51:56.405148+00:00"
+}

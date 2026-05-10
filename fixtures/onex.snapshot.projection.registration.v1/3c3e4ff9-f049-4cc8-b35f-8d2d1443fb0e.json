@@ -1,0 +1,8 @@
+{
+  "entity_id": "3c3e4ff9-f049-4cc8-b35f-8d2d1443fb0e",
+  "id": "3c3e4ff9-f049-4cc8-b35f-8d2d1443fb0e",
+  "event_type": "readiness.check",
+  "source": "qwen3-coder-30b",
+  "correlation_id": "630b7e3c-dd9f-40f0-a0f4-19e8a0701def",
+  "timestamp": "2026-04-26T20:00:56.405011+00:00"
+}

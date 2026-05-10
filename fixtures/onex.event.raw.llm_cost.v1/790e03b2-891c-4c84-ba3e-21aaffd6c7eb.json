@@ -1,0 +1,7 @@
+{
+  "entity_id": "790e03b2-891c-4c84-ba3e-21aaffd6c7eb",
+  "model_name": "claude-opus-4-7",
+  "total_tokens": 55301,
+  "estimated_cost_usd": 9.3296,
+  "observed_at": "2026-04-26T19:51:56.405123+00:00"
+}

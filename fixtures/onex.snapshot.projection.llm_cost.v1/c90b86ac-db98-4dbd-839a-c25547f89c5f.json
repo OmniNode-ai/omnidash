@@ -1,0 +1,10 @@
+{
+  "entity_id": "c90b86ac-db98-4dbd-839a-c25547f89c5f",
+  "bucket_time": "2026-04-26T04:36:56.403884+00:00",
+  "model_name": "claude-opus-4-7",
+  "total_cost_usd": "0.822747",
+  "total_tokens": 52063,
+  "prompt_tokens": 49254,
+  "completion_tokens": 2809,
+  "request_count": 18
+}

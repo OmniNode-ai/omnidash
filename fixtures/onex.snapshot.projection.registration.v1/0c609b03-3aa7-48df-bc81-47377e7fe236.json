@@ -1,0 +1,8 @@
+{
+  "entity_id": "0c609b03-3aa7-48df-bc81-47377e7fe236",
+  "id": "0c609b03-3aa7-48df-bc81-47377e7fe236",
+  "event_type": "agent.heartbeat",
+  "source": "deepseek-r1-32b",
+  "correlation_id": "0fcc2d58-320a-4f15-b854-a9e3146646eb",
+  "timestamp": "2026-04-26T20:24:56.404939+00:00"
+}

@@ -1,0 +1,8 @@
+{
+  "entity_id": "175874b0-ac83-470e-9e59-468d8edb8491",
+  "id": "175874b0-ac83-470e-9e59-468d8edb8491",
+  "event_type": "agent.heartbeat",
+  "source": "claude-sonnet-4-6",
+  "correlation_id": "0a3a8223-7213-4e45-a1b4-d0754c91c284",
+  "timestamp": "2026-04-26T20:18:56.404958+00:00"
+}

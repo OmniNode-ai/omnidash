@@ -1,0 +1,7 @@
+{
+  "entity_id": "0b39b70e-050c-46df-b11d-f7797bb6b334",
+  "model_name": "deepseek-r1-32b",
+  "total_tokens": 218605,
+  "estimated_cost_usd": 11.083,
+  "observed_at": "2026-04-26T20:06:56.405116+00:00"
+}

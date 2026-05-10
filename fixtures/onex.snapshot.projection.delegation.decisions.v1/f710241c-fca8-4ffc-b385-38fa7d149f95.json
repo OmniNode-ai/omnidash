@@ -1,0 +1,11 @@
+{
+  "entity_id": "f710241c-fca8-4ffc-b385-38fa7d149f95",
+  "id": "f710241c-fca8-4ffc-b385-38fa7d149f95",
+  "created_at": "2026-04-26T20:26:56.404732+00:00",
+  "llm_agent": "claude-opus-4-7",
+  "fuzzy_agent": "deepseek-r1-32b",
+  "agreement": true,
+  "llm_confidence": 0.808,
+  "fuzzy_confidence": 0.956,
+  "cost_usd": 0.017274
+}

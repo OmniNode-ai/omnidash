@@ -1,0 +1,15 @@
+{
+  "entity_id": "summary",
+  "snapshotId": "ba130d8f-ca68-48f8-b019-def2d70f695e",
+  "capturedAt": "2026-04-26T19:36:56.404883+00:00",
+  "tokenDelta": 2216,
+  "timeDeltaMs": -383,
+  "retryDelta": -1,
+  "recommendations": {
+    "promote": 0,
+    "shadow": 2,
+    "suppress": 1,
+    "fork": 1
+  },
+  "confidence": 0.613
+}

@@ -1,0 +1,8 @@
+{
+  "entity_id": "483369f6-3cf3-4d6c-9f85-618dab5d7071",
+  "task_id": "task-0004",
+  "routed_to": "claude-opus-4-7",
+  "latency_ms": 1787,
+  "success": true,
+  "decided_at": "2026-04-26T20:16:56.405270+00:00"
+}

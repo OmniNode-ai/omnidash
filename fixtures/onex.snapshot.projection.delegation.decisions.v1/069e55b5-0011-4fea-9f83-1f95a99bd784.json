@@ -1,0 +1,11 @@
+{
+  "entity_id": "069e55b5-0011-4fea-9f83-1f95a99bd784",
+  "id": "069e55b5-0011-4fea-9f83-1f95a99bd784",
+  "created_at": "2026-04-26T20:36:56.404705+00:00",
+  "llm_agent": "qwen3-coder-30b",
+  "fuzzy_agent": "qwen3-coder-30b",
+  "agreement": true,
+  "llm_confidence": 0.957,
+  "fuzzy_confidence": 0.597,
+  "cost_usd": 0.034275
+}

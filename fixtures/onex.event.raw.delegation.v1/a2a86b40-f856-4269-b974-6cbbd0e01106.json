@@ -1,0 +1,8 @@
+{
+  "entity_id": "a2a86b40-f856-4269-b974-6cbbd0e01106",
+  "task_id": "task-0009",
+  "routed_to": "qwen3-coder-30b",
+  "latency_ms": 740,
+  "success": true,
+  "decided_at": "2026-04-26T19:51:56.405303+00:00"
+}

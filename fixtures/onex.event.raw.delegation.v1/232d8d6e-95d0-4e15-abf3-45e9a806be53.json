@@ -1,0 +1,8 @@
+{
+  "entity_id": "232d8d6e-95d0-4e15-abf3-45e9a806be53",
+  "task_id": "task-0008",
+  "routed_to": "claude-sonnet-4-6",
+  "latency_ms": 4048,
+  "success": true,
+  "decided_at": "2026-04-26T19:56:56.405296+00:00"
+}

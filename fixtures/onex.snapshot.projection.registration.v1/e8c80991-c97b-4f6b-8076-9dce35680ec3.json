@@ -1,0 +1,8 @@
+{
+  "entity_id": "e8c80991-c97b-4f6b-8076-9dce35680ec3",
+  "id": "e8c80991-c97b-4f6b-8076-9dce35680ec3",
+  "event_type": "delegation.request",
+  "source": "claude-opus-4-7",
+  "correlation_id": "0825b958-084e-478e-95ee-2499c447f9fa",
+  "timestamp": "2026-04-26T20:12:56.404976+00:00"
+}

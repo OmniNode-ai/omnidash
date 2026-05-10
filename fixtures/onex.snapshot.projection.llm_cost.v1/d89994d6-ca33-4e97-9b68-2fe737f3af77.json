@@ -1,0 +1,10 @@
+{
+  "entity_id": "d89994d6-ca33-4e97-9b68-2fe737f3af77",
+  "bucket_time": "2026-04-25T07:36:56.404416+00:00",
+  "model_name": "qwen3-coder-30b",
+  "total_cost_usd": "0.226635",
+  "total_tokens": 41591,
+  "prompt_tokens": 34275,
+  "completion_tokens": 7316,
+  "request_count": 18
+}

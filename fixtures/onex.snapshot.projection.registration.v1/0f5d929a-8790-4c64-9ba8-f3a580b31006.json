@@ -1,0 +1,8 @@
+{
+  "entity_id": "0f5d929a-8790-4c64-9ba8-f3a580b31006",
+  "id": "0f5d929a-8790-4c64-9ba8-f3a580b31006",
+  "event_type": "baseline.capture",
+  "source": "claude-sonnet-4-6",
+  "correlation_id": "88a33224-0036-4c8d-85e4-92e0f22b726d",
+  "timestamp": "2026-04-26T20:33:56.404911+00:00"
+}

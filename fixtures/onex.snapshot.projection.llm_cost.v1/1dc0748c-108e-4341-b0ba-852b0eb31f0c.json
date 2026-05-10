@@ -1,0 +1,10 @@
+{
+  "entity_id": "1dc0748c-108e-4341-b0ba-852b0eb31f0c",
+  "bucket_time": "2026-04-25T13:36:56.404261+00:00",
+  "model_name": "claude-sonnet-4-6",
+  "total_cost_usd": "0.454216",
+  "total_tokens": 38731,
+  "prompt_tokens": 33048,
+  "completion_tokens": 5683,
+  "request_count": 11
+}

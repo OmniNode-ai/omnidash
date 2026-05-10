@@ -1,0 +1,11 @@
+{
+  "entity_id": "b5eedb9f-b558-4fdc-9b74-706a071a37ba",
+  "id": "b5eedb9f-b558-4fdc-9b74-706a071a37ba",
+  "created_at": "2026-04-26T20:11:56.404783+00:00",
+  "llm_agent": "claude-sonnet-4-6",
+  "fuzzy_agent": "qwen3-coder-30b",
+  "agreement": true,
+  "llm_confidence": 0.738,
+  "fuzzy_confidence": 0.885,
+  "cost_usd": 0.032829
+}

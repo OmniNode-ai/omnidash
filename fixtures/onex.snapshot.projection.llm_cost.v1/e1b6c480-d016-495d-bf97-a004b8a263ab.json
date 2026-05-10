@@ -1,0 +1,10 @@
+{
+  "entity_id": "e1b6c480-d016-495d-bf97-a004b8a263ab",
+  "bucket_time": "2026-04-25T02:36:56.404540+00:00",
+  "model_name": "deepseek-r1-32b",
+  "total_cost_usd": "0.256883",
+  "total_tokens": 45273,
+  "prompt_tokens": 43680,
+  "completion_tokens": 1593,
+  "request_count": 1
+}

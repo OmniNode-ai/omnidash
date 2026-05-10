@@ -1,0 +1,7 @@
+{
+  "entity_id": "46b53520-3919-428d-b08b-77b889a73a20",
+  "metric_name": "ci_green_streak",
+  "quality_score": 0.887,
+  "roi_ratio": 3.163,
+  "observed_at": "2026-04-26T10:36:56.405345+00:00"
+}
