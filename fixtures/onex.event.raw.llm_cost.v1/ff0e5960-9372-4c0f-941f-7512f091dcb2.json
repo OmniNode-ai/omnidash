@@ -1,0 +1,7 @@
+{
+  "entity_id": "ff0e5960-9372-4c0f-941f-7512f091dcb2",
+  "model_name": "qwen3-coder-30b",
+  "total_tokens": 170015,
+  "estimated_cost_usd": 2.0174,
+  "observed_at": "2026-04-26T19:21:56.405136+00:00"
+}

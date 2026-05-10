@@ -1,0 +1,8 @@
+{
+  "entity_id": "2510f3a0-8356-4f99-873d-a6bc1cc6c55f",
+  "task_id": "task-0003",
+  "routed_to": "deepseek-r1-32b",
+  "latency_ms": 1158,
+  "success": false,
+  "decided_at": "2026-04-26T20:21:56.405263+00:00"
+}

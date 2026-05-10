@@ -1,0 +1,42 @@
+{
+  "entity_id": "summary",
+  "dimensions": [
+    {
+      "name": "schema_migrations",
+      "status": "PASS",
+      "detail": "schema_migrations check completed"
+    },
+    {
+      "name": "kafka_connectivity",
+      "status": "FAIL",
+      "detail": "kafka_connectivity check completed"
+    },
+    {
+      "name": "redis_heartbeat",
+      "status": "FAIL",
+      "detail": "redis_heartbeat check completed"
+    },
+    {
+      "name": "agent_registry",
+      "status": "FAIL",
+      "detail": "agent_registry check completed"
+    },
+    {
+      "name": "projection_freshness",
+      "status": "PASS",
+      "detail": "projection_freshness check completed"
+    },
+    {
+      "name": "ci_green_streak",
+      "status": "FAIL",
+      "detail": "ci_green_streak check completed"
+    },
+    {
+      "name": "overnight_verification",
+      "status": "PASS",
+      "detail": "overnight_verification check completed"
+    }
+  ],
+  "overallStatus": "FAIL",
+  "lastCheckedAt": "2026-04-26T20:36:56.404859+00:00"
+}

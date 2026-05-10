@@ -1,4 +1,4 @@
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import { ComponentWrapper } from '../ComponentWrapper';
 import { useProjectionQuery } from '@/hooks/useProjectionQuery';
 import { TOPICS } from '@shared/types/topics';
@@ -26,6 +26,8 @@ export interface DelegationSavingsSession {
   /** Delegation latency in ms (from delegation_events.latency_ms). */
   latency_ms?: number;
   created_at: string;
+  prompt_text?: string | null;
+  response_text?: string | null;
 }
 
 export interface DelegationSavingsProjection {
@@ -92,48 +94,115 @@ function fmtTokens(prompt: number | undefined, completion: number | undefined): 
 // ── Session row ───────────────────────────────────────────────────────
 //
 // Columns: Task | Model | Tokens | Latency | Opus Est. | Local | Saved | Date
-// Proportional grid fills available space.
+// Clicking the row expands a detail panel showing prompt + response.
 
 const GRID_COLS = '2fr 2fr 1fr 1fr 1fr 1fr 1fr 1fr';
 
 function SessionRow({ s }: { s: DelegationSavingsSession }) {
+  const [expanded, setExpanded] = useState(false);
   const rowLabel = s.task_type ?? s.session_id.slice(0, 20);
   const modelShort = s.model_name?.replace('local-', '').replace('-30b', '') ?? '—';
+  const hasDetail = Boolean(s.prompt_text || s.response_text);
+
   return (
-    <div
-      style={{
-        display: 'grid',
-        gridTemplateColumns: GRID_COLS,
-        gap: 6,
-        padding: '5px 0',
-        borderBottom: '1px solid var(--line-2)',
-        alignItems: 'center',
-      }}
-    >
-      <Text as="span" size="sm" family="mono" color="primary" style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-        {rowLabel}
-      </Text>
-      <Text as="span" size="xs" family="mono" color="secondary" title={s.model_name} style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-        {modelShort}
-      </Text>
-      <Text as="span" size="xs" family="mono" tabularNums color="secondary" style={{ textAlign: 'right' }}>
-        {fmtTokens(s.prompt_tokens, s.completion_tokens)}
-      </Text>
-      <Text as="span" size="xs" family="mono" tabularNums color="secondary" style={{ textAlign: 'right' }}>
-        {s.latency_ms != null ? fmtMs(s.latency_ms) : '—'}
-      </Text>
-      <Text as="span" size="sm" family="mono" tabularNums color="tertiary" style={{ textAlign: 'right' }}>
-        {fmtUsd(s.cloud_cost_usd)}
-      </Text>
-      <Text as="span" size="sm" family="mono" tabularNums style={{ textAlign: 'right' }}>
-        {fmtUsd(s.local_cost_usd)}
-      </Text>
-      <Text as="span" size="sm" family="mono" tabularNums weight="semibold" style={{ textAlign: 'right', color: s.savings_usd > 0 ? 'var(--good)' : 'var(--ink-3)' }}>
-        {s.savings_usd > 0 ? `+${fmtUsd(s.savings_usd)}` : '—'}
-      </Text>
-      <Text as="span" size="xs" family="mono" color="tertiary" style={{ textAlign: 'right' }}>
-        {fmtDate(s.created_at)}
-      </Text>
+    <div style={{ borderBottom: '1px solid var(--line-2)' }}>
+      <div
+        role={hasDetail ? 'button' : undefined}
+        tabIndex={hasDetail ? 0 : undefined}
+        onClick={hasDetail ? () => setExpanded((v) => !v) : undefined}
+        onKeyDown={hasDetail ? (e) => { if (e.key === 'Enter' || e.key === ' ') setExpanded((v) => !v); } : undefined}
+        style={{
+          display: 'grid',
+          gridTemplateColumns: GRID_COLS,
+          gap: 6,
+          padding: '5px 0',
+          alignItems: 'center',
+          cursor: hasDetail ? 'pointer' : 'default',
+          userSelect: 'none',
+        }}
+      >
+        <Text as="span" size="sm" family="mono" color="primary" style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+          {hasDetail ? (expanded ? '▾ ' : '▸ ') : ''}{rowLabel}
+        </Text>
+        <Text as="span" size="xs" family="mono" color="secondary" title={s.model_name} style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+          {modelShort}
+        </Text>
+        <Text as="span" size="xs" family="mono" tabularNums color="secondary" style={{ textAlign: 'right' }}>
+          {fmtTokens(s.prompt_tokens, s.completion_tokens)}
+        </Text>
+        <Text as="span" size="xs" family="mono" tabularNums color="secondary" style={{ textAlign: 'right' }}>
+          {s.latency_ms != null ? fmtMs(s.latency_ms) : '—'}
+        </Text>
+        <Text as="span" size="sm" family="mono" tabularNums color="tertiary" style={{ textAlign: 'right' }}>
+          {fmtUsd(s.cloud_cost_usd)}
+        </Text>
+        <Text as="span" size="sm" family="mono" tabularNums style={{ textAlign: 'right' }}>
+          {fmtUsd(s.local_cost_usd)}
+        </Text>
+        <Text as="span" size="sm" family="mono" tabularNums weight="semibold" style={{ textAlign: 'right', color: s.savings_usd > 0 ? 'var(--good)' : 'var(--ink-3)' }}>
+          {s.savings_usd > 0 ? `+${fmtUsd(s.savings_usd)}` : '—'}
+        </Text>
+        <Text as="span" size="xs" family="mono" color="tertiary" style={{ textAlign: 'right' }}>
+          {fmtDate(s.created_at)}
+        </Text>
+      </div>
+
+      {expanded && hasDetail && (
+        <div
+          style={{
+            margin: '0 0 8px 0',
+            padding: '10px 12px',
+            background: 'var(--surface-2, rgba(0,0,0,0.04))',
+            borderRadius: 6,
+            display: 'flex',
+            flexDirection: 'column',
+            gap: 10,
+          }}
+        >
+          {s.prompt_text && (
+            <div>
+              <div style={{ marginBottom: 4 }}>
+                <Text as="span" size="xs" color="tertiary" weight="semibold" transform="uppercase" className="text-tracked">Prompt</Text>
+              </div>
+              <pre
+                style={{
+                  margin: 0,
+                  padding: '8px 10px',
+                  background: 'var(--surface-3, rgba(0,0,0,0.07))',
+                  borderRadius: 4,
+                  overflowX: 'auto',
+                  whiteSpace: 'pre-wrap',
+                  wordBreak: 'break-word',
+                  maxHeight: 200,
+                  overflowY: 'auto',
+                }}
+              >
+                <Text as="span" size="xs" family="mono" color="primary">{s.prompt_text}</Text>
+              </pre>
+            </div>
+          )}
+          {s.response_text && (
+            <div>
+              <div style={{ marginBottom: 4 }}>
+                <Text as="span" size="xs" color="tertiary" weight="semibold" transform="uppercase" className="text-tracked">Response</Text>
+              </div>
+              <div
+                style={{
+                  padding: '8px 10px',
+                  background: 'var(--surface-3, rgba(0,0,0,0.07))',
+                  borderRadius: 4,
+                  maxHeight: 240,
+                  overflowY: 'auto',
+                }}
+              >
+                <Text as="span" size="xs" family="mono" color="secondary" style={{ whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>
+                  {s.response_text}
+                </Text>
+              </div>
+            </div>
+          )}
+        </div>
+      )}
     </div>
   );
 }

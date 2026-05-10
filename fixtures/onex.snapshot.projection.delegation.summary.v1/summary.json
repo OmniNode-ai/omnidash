@@ -1,0 +1,28 @@
+{
+  "entity_id": "summary",
+  "totalDelegations": 314,
+  "qualityGatePassRate": 0.914,
+  "totalSavingsUsd": 25.44,
+  "byTaskType": [
+    {
+      "taskType": "code_review",
+      "count": 33
+    },
+    {
+      "taskType": "test_generation",
+      "count": 22
+    },
+    {
+      "taskType": "refactor",
+      "count": 32
+    },
+    {
+      "taskType": "documentation",
+      "count": 22
+    },
+    {
+      "taskType": "bug_fix",
+      "count": 28
+    }
+  ]
+}

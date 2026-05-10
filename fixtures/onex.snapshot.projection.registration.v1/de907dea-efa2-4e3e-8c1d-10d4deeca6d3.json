@@ -1,0 +1,8 @@
+{
+  "entity_id": "de907dea-efa2-4e3e-8c1d-10d4deeca6d3",
+  "id": "de907dea-efa2-4e3e-8c1d-10d4deeca6d3",
+  "event_type": "projection.update",
+  "source": "qwen3-coder-30b",
+  "correlation_id": "d7ef1823-c5cc-46f6-b399-b3cad171d208",
+  "timestamp": "2026-04-26T20:03:56.405002+00:00"
+}

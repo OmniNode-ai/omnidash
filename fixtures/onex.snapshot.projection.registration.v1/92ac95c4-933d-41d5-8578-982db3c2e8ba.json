@@ -1,0 +1,8 @@
+{
+  "entity_id": "92ac95c4-933d-41d5-8578-982db3c2e8ba",
+  "id": "92ac95c4-933d-41d5-8578-982db3c2e8ba",
+  "event_type": "readiness.check",
+  "source": "qwen3-coder-30b",
+  "correlation_id": "2a271206-939b-4140-869a-52b4deddc950",
+  "timestamp": "2026-04-26T20:21:56.404950+00:00"
+}

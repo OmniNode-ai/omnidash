@@ -1,0 +1,8 @@
+{
+  "entity_id": "0af0d92a-ee7c-4d97-b20e-12216b4eb4e1",
+  "id": "0af0d92a-ee7c-4d97-b20e-12216b4eb4e1",
+  "event_type": "delegation.request",
+  "source": "deepseek-r1-32b",
+  "correlation_id": "364542a5-a3dd-4847-88e7-272b4ceec261",
+  "timestamp": "2026-04-26T20:27:56.404930+00:00"
+}

@@ -1,0 +1,27 @@
+{
+  "entity_id": "summary",
+  "meanScore": 0.405,
+  "distribution": [
+    {
+      "bucket": "0.0-0.2",
+      "count": 29
+    },
+    {
+      "bucket": "0.2-0.4",
+      "count": 33
+    },
+    {
+      "bucket": "0.4-0.6",
+      "count": 30
+    },
+    {
+      "bucket": "0.6-0.8",
+      "count": 17
+    },
+    {
+      "bucket": "0.8-1.0",
+      "count": 9
+    }
+  ],
+  "totalMeasurements": 118
+}
