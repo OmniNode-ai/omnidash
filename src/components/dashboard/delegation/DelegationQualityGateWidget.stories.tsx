@@ -60,3 +60,36 @@ export const HighPassRate: Story = {
     }),
   ],
 };
+
+// OMN-10795: variant verifying tokens-to-compliance KPIs render alongside
+// the per-model breakdown.
+export const PopulatedWithComplianceMetrics: Story = {
+  args: { config: {} },
+  decorators: [
+    makeDashboardDecorator({
+      prefetched: [
+        {
+          queryKey: [...QUERY_KEY],
+          data: [buildDelegationQualityGate({ includeComplianceMetrics: true })],
+        },
+      ],
+    }),
+  ],
+};
+
+// OMN-10795: variant verifying the widget gracefully omits the compliance
+// section when the projection lacks the new fields (back-compat with
+// pre-OMN-10794 projection rows).
+export const PopulatedWithoutComplianceMetrics: Story = {
+  args: { config: {} },
+  decorators: [
+    makeDashboardDecorator({
+      prefetched: [
+        {
+          queryKey: [...QUERY_KEY],
+          data: [buildDelegationQualityGate({ includeComplianceMetrics: false })],
+        },
+      ],
+    }),
+  ],
+};

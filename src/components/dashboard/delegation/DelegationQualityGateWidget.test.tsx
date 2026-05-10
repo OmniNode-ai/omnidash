@@ -122,4 +122,47 @@ describe('DelegationQualityGateWidget', () => {
     await screen.findByText('Pass rate');
     expect(screen.getByText(/upstream-blocked/i)).toBeInTheDocument();
   });
+
+  // OMN-10795: tokens-to-compliance KPIs and per-model breakdown
+  describe('tokens-to-compliance KPIs', () => {
+    it('renders avg-tokens and avg-attempts KPIs when projection carries the fields', async () => {
+      mockFetchWithItems([buildDelegationQualityGate({ includeComplianceMetrics: true })]);
+      render(
+        <DataSourceTestProvider client={qc}>
+          <DelegationQualityGateWidget config={{}} />
+        </DataSourceTestProvider>,
+      );
+      await screen.findByText('Pass rate');
+      expect(screen.getByText('Avg tokens to compliance')).toBeInTheDocument();
+      expect(screen.getByText('Avg attempts')).toBeInTheDocument();
+    });
+
+    it('omits the compliance section when projection lacks the fields', async () => {
+      mockFetchWithItems([buildDelegationQualityGate({ includeComplianceMetrics: false })]);
+      render(
+        <DataSourceTestProvider client={qc}>
+          <DelegationQualityGateWidget config={{}} />
+        </DataSourceTestProvider>,
+      );
+      await screen.findByText('Pass rate');
+      expect(screen.queryByText('Avg tokens to compliance')).not.toBeInTheDocument();
+      expect(screen.queryByText('Tokens-to-compliance by model')).not.toBeInTheDocument();
+    });
+
+    it('renders per-model breakdown sorted by avg_tokens ascending', async () => {
+      mockFetchWithItems([buildDelegationQualityGate({ includeComplianceMetrics: true })]);
+      render(
+        <DataSourceTestProvider client={qc}>
+          <DelegationQualityGateWidget config={{}} />
+        </DataSourceTestProvider>,
+      );
+      await screen.findByText('Pass rate');
+      expect(screen.getByText('Tokens-to-compliance by model')).toBeInTheDocument();
+      // The fixture seeds Qwen3-Coder-30B at 3,120 tokens (lowest, first row).
+      const models = screen.getAllByText(/Qwen3-Coder-30B|glm-4-plus|codex-cli|gemini-cli/);
+      // Sorted ascending → most efficient first.
+      expect(models[0].textContent).toBe('Qwen3-Coder-30B');
+      expect(models[models.length - 1].textContent).toBe('gemini-cli');
+    });
+  });
 });
