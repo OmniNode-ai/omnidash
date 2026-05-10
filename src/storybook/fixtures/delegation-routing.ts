@@ -151,6 +151,12 @@ export interface BuildDelegationQualityGateOptions {
   overallPassRate?: number;
   includeEscalations?: boolean;
   provisioned?: boolean;
+  /**
+   * If true (default), populate tokens-to-compliance KPIs (OMN-10795). When false,
+   * the projection omits compliance fields entirely — useful for testing the
+   * widget's optional-field handling.
+   */
+  includeComplianceMetrics?: boolean;
 }
 
 export function buildDelegationQualityGate(
@@ -160,6 +166,7 @@ export function buildDelegationQualityGate(
     overallPassRate = 0.87,
     includeEscalations = true,
     provisioned = false,
+    includeComplianceMetrics = true,
   } = opts;
 
   const totalChecks = 480;
@@ -205,6 +212,19 @@ export function buildDelegationQualityGate(
       { category: 'hallucinated_identifiers', count: Math.round(totalFailed * 0.20), pct_of_failures: 0.20 },
       { category: 'timeout_exceeded', count: Math.round(totalFailed * 0.15), pct_of_failures: 0.15 },
     ],
+    ...(includeComplianceMetrics
+      ? {
+          avg_tokens_to_compliance: 4_280,
+          median_tokens_to_compliance: 3_950,
+          avg_compliance_attempts: 1.32,
+          tokens_to_compliance_by_model: [
+            { model_name: 'Qwen3-Coder-30B', avg_tokens: 3_120, avg_attempts: 1.18, sample_count: 142 },
+            { model_name: 'glm-4-plus', avg_tokens: 4_640, avg_attempts: 1.34, sample_count: 96 },
+            { model_name: 'codex-cli', avg_tokens: 5_280, avg_attempts: 1.51, sample_count: 64 },
+            { model_name: 'gemini-cli', avg_tokens: 6_910, avg_attempts: 1.78, sample_count: 38 },
+          ],
+        }
+      : {}),
     captured_at: new Date('2026-05-05T12:00:00Z').toISOString(),
     provisioned,
   };

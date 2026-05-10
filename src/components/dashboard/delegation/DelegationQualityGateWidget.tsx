@@ -24,6 +24,13 @@ export interface FailureCategoryRow {
   pct_of_failures: number;
 }
 
+export interface TokensToComplianceByModelRow {
+  model_name: string;
+  avg_tokens: number;
+  avg_attempts: number;
+  sample_count: number;
+}
+
 export interface DelegationQualityGateProjection {
   overall_pass_rate: number;
   total_passed: number;
@@ -33,6 +40,12 @@ export interface DelegationQualityGateProjection {
   escalation_rate: number;
   by_check_type: QualityGateCheckRow[];
   failure_categories: FailureCategoryRow[];
+  // Tokens-to-compliance KPIs (OMN-10795). Optional because older
+  // projection rows pre-compliance-loop omit these fields.
+  avg_tokens_to_compliance?: number;
+  median_tokens_to_compliance?: number;
+  avg_compliance_attempts?: number;
+  tokens_to_compliance_by_model?: TokensToComplianceByModelRow[];
   captured_at: string;
   provisioned: boolean;
 }
@@ -42,6 +55,8 @@ export interface DelegationQualityGateProjection {
 export interface DelegationQualityGateConfig {
   passThreshold?: number;
   showFailureCategories?: boolean;
+  /** Threshold above which avg tokens-to-compliance is shown as warn tone. */
+  tokensToComplianceWarnThreshold?: number;
 }
 
 // ── Check type bar ────────────────────────────────────────────────────
@@ -152,12 +167,81 @@ function FailureCategories({ categories }: { categories: FailureCategoryRow[] })
   );
 }
 
+// ── Tokens-to-compliance per-model breakdown ─────────────────────────
+
+function TokensToComplianceByModel({ rows }: { rows: TokensToComplianceByModelRow[] }) {
+  if (rows.length === 0) return null;
+  // Sort by avg_tokens ascending (most efficient model first).
+  const sorted = [...rows].sort((a, b) => a.avg_tokens - b.avg_tokens);
+  return (
+    <div style={{ marginTop: 12 }}>
+      <Text as="div" size="xs" color="tertiary" weight="semibold" style={{ marginBottom: 6 }}>
+        Tokens-to-compliance by model
+      </Text>
+      <div
+        style={{
+          display: 'grid',
+          gridTemplateColumns: '1fr 80px 80px 60px',
+          gap: 8,
+          paddingBottom: 4,
+          borderBottom: '1px solid var(--line)',
+        }}
+      >
+        {(['Model', 'Avg Tokens', 'Avg Attempts', 'Samples'] as const).map((h, i) => (
+          <Text
+            key={h}
+            as="span"
+            size="xs"
+            color="tertiary"
+            style={{ textAlign: i === 0 ? 'left' : 'right' }}
+          >
+            {h}
+          </Text>
+        ))}
+      </div>
+      {sorted.map((row) => (
+        <div
+          key={row.model_name}
+          style={{
+            display: 'grid',
+            gridTemplateColumns: '1fr 80px 80px 60px',
+            gap: 8,
+            padding: '4px 0',
+            borderBottom: '1px solid var(--line-2)',
+            alignItems: 'center',
+          }}
+        >
+          <Text
+            as="span"
+            size="sm"
+            family="mono"
+            color="primary"
+            style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}
+          >
+            {row.model_name}
+          </Text>
+          <Text as="span" size="sm" family="mono" tabularNums style={{ textAlign: 'right' }}>
+            {Math.round(row.avg_tokens).toLocaleString()}
+          </Text>
+          <Text as="span" size="sm" family="mono" tabularNums style={{ textAlign: 'right' }}>
+            {row.avg_attempts.toFixed(2)}
+          </Text>
+          <Text as="span" size="xs" family="mono" tabularNums color="tertiary" style={{ textAlign: 'right' }}>
+            {row.sample_count}
+          </Text>
+        </div>
+      ))}
+    </div>
+  );
+}
+
 // ── Main widget ───────────────────────────────────────────────────────
 
 export default function DelegationQualityGateWidget(props: { config: DelegationQualityGateConfig }) {
   const { config } = props;
   const passThreshold = config.passThreshold ?? 0.8;
   const showFailureCategories = config.showFailureCategories ?? true;
+  const tokensWarnThreshold = config.tokensToComplianceWarnThreshold ?? 5_000;
 
   const { data, isLoading, error } = useProjectionQuery<DelegationQualityGateProjection>({
     queryKey: ['delegation-quality-gate', TOPICS.delegationQualityGate],
@@ -173,6 +257,19 @@ export default function DelegationQualityGateWidget(props: { config: DelegationQ
     if (!projection) return 'default' as const;
     return projection.overall_pass_rate >= passThreshold ? 'good' as const : 'warn' as const;
   }, [projection, passThreshold]);
+
+  const tokensTone = useMemo(() => {
+    if (!projection?.avg_tokens_to_compliance) return 'default' as const;
+    return projection.avg_tokens_to_compliance <= tokensWarnThreshold
+      ? 'good' as const
+      : 'warn' as const;
+  }, [projection, tokensWarnThreshold]);
+
+  const hasComplianceMetrics =
+    projection != null &&
+    (projection.avg_tokens_to_compliance != null ||
+      projection.avg_compliance_attempts != null ||
+      (projection.tokens_to_compliance_by_model?.length ?? 0) > 0);
 
   const isEmpty = !projection || projection.total_checks === 0;
 
@@ -214,6 +311,43 @@ export default function DelegationQualityGateWidget(props: { config: DelegationQ
               tone={projection.total_failed > 0 ? 'warn' : 'default'}
             />
           </div>
+
+          {/* Tokens-to-compliance KPIs (OMN-10795) — only shown when projection carries the fields */}
+          {hasComplianceMetrics && (
+            <div
+              style={{
+                display: 'grid',
+                gridTemplateColumns: 'repeat(2, 1fr)',
+                gap: 12,
+                paddingBottom: 12,
+                borderBottom: '1px solid var(--line)',
+              }}
+            >
+              <KPI
+                label="Avg tokens to compliance"
+                value={
+                  projection.avg_tokens_to_compliance != null
+                    ? Math.round(projection.avg_tokens_to_compliance)
+                    : 0
+                }
+                tone={tokensTone}
+              />
+              <KPI
+                label="Avg attempts"
+                value={
+                  projection.avg_compliance_attempts != null
+                    ? Number(projection.avg_compliance_attempts.toFixed(2))
+                    : 0
+                }
+                tone={
+                  projection.avg_compliance_attempts != null &&
+                  projection.avg_compliance_attempts > 1.5
+                    ? 'warn'
+                    : 'default'
+                }
+              />
+            </div>
+          )}
 
           {/* Escalation banner — only shown when escalation_count > 0 */}
           {projection.escalation_count > 0 && (
@@ -273,6 +407,11 @@ export default function DelegationQualityGateWidget(props: { config: DelegationQ
           {/* Failure categories */}
           {showFailureCategories && (
             <FailureCategories categories={projection.failure_categories} />
+          )}
+
+          {/* Tokens-to-compliance per-model breakdown (OMN-10795) */}
+          {projection.tokens_to_compliance_by_model && (
+            <TokensToComplianceByModel rows={projection.tokens_to_compliance_by_model} />
           )}
 
           {!projection.provisioned && (
