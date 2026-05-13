@@ -46,39 +46,47 @@ export function fixturesMiddleware(opts: { root: string; dataSource?: string }) 
     if (!sqliteDb) return null;
     try {
       if (topic === 'onex.snapshot.projection.delegation.savings.v1') {
+        const OPUS_INPUT = 15.0 / 1_000_000;
+        const OPUS_OUTPUT = 75.0 / 1_000_000;
         const sessions = sqliteDb.prepare(`
-          SELECT s.session_id, s.local_cost_usd, s.cloud_cost_usd, s.savings_usd,
-                 s.baseline_model, s.pricing_manifest_version, s.savings_method, s.usage_source, s.created_at,
-                 d.task_type, d.model_name, d.latency_ms,
-                 m.prompt_tokens, m.completion_tokens
-          FROM savings_estimates s
-          LEFT JOIN delegation_events d ON d.session_id = s.session_id AND d.id = (
-            SELECT d2.id FROM delegation_events d2 WHERE d2.session_id = s.session_id
-            ORDER BY d2.created_at DESC LIMIT 1
-          )
-          LEFT JOIN llm_call_metrics m ON m.model_id = d.model_name AND m.id = (
-            SELECT m2.id FROM llm_call_metrics m2 WHERE m2.model_id = d.model_name
-            ORDER BY m2.created_at DESC LIMIT 1
-          )
-          ORDER BY s.created_at DESC LIMIT 100
-        `).all();
-        const agg = sqliteDb.prepare('SELECT COALESCE(SUM(savings_usd),0) as total_savings, COALESCE(SUM(local_cost_usd),0) as total_local, COALESCE(SUM(cloud_cost_usd),0) as total_cloud, COUNT(*) as cnt, MAX(baseline_model) as bm, MAX(pricing_manifest_version) as pv FROM savings_estimates').get() as any;
+          SELECT correlation_id as session_id, task_type, model_name,
+                 delegation_latency_ms as latency_ms, tokens_to_compliance,
+                 cost_savings_usd, created_at, prompt_text, response_text
+          FROM delegation_events
+          ORDER BY created_at DESC LIMIT 100
+        `).all().map((r: any) => {
+          const pt = Math.round((r.tokens_to_compliance || 0) * 0.1);
+          const ct = Math.max(0, (r.tokens_to_compliance || 0) - pt);
+          const cloud = pt * OPUS_INPUT + ct * OPUS_OUTPUT;
+          return {
+            session_id: r.session_id,
+            local_cost_usd: 0,
+            cloud_cost_usd: cloud,
+            savings_usd: cloud,
+            baseline_model: 'claude-opus-4-6',
+            pricing_manifest_version: '2026-05-12',
+            savings_method: 'estimated' as const,
+            usage_source: 'measured' as const,
+            created_at: new Date((r.created_at || 0) * 1000).toISOString(),
+            task_type: r.task_type || undefined,
+            model_name: r.model_name || undefined,
+            latency_ms: r.latency_ms || undefined,
+            prompt_tokens: pt || undefined,
+            completion_tokens: ct || undefined,
+            prompt_text: r.prompt_text || undefined,
+            response_text: r.response_text || undefined,
+          };
+        });
+        const total = sessions.reduce((s: number, r: any) => s + r.savings_usd, 0);
+        const totalCloud = sessions.reduce((s: number, r: any) => s + r.cloud_cost_usd, 0);
         return [{
-          cumulative_savings_usd: agg.total_savings,
-          cumulative_local_cost_usd: agg.total_local,
-          cumulative_cloud_cost_usd: agg.total_cloud,
-          baseline_model: agg.bm || 'claude-opus-4-6',
-          pricing_manifest_version: agg.pv || 'unknown',
-          session_count: agg.cnt,
-          sessions: sessions.map((s: any) => ({
-            ...s,
-            savings_method: s.savings_method === 'zero_marginal_api_cost' ? 'measured' : 'estimated',
-            task_type: s.task_type || undefined,
-            model_name: s.model_name || undefined,
-            latency_ms: s.latency_ms || undefined,
-            prompt_tokens: s.prompt_tokens || undefined,
-            completion_tokens: s.completion_tokens || undefined,
-          })),
+          cumulative_savings_usd: total,
+          cumulative_local_cost_usd: 0,
+          cumulative_cloud_cost_usd: totalCloud,
+          baseline_model: 'claude-opus-4-6',
+          pricing_manifest_version: '2026-05-12',
+          session_count: sessions.length,
+          sessions,
           captured_at: new Date().toISOString(),
           provisioned: true,
         }];
@@ -213,10 +221,23 @@ export function fixturesMiddleware(opts: { root: string; dataSource?: string }) 
     return res.end();
   };
 
+  const projectionHandler = (req: IncomingMessage, res: ServerResponse, _next: ConnectNext) => {
+    const topic = decodeURIComponent((req.url ?? '/').replace(/^\//, '').replace(/\/$/, ''));
+    if (!topic) { res.statusCode = 404; return res.end(); }
+    const rows = querySqlite(topic);
+    if (rows !== null) {
+      res.setHeader('Content-Type', 'application/json');
+      return res.end(JSON.stringify(rows));
+    }
+    res.statusCode = 404;
+    return res.end(JSON.stringify({ error: 'topic not found', topic }));
+  };
+
   const plugin = {
     name: 'fixtures-middleware',
     configureServer(server: any) {
       server.middlewares.use('/_fixtures', handler);
+      server.middlewares.use('/projection', projectionHandler);
     },
   };
 
