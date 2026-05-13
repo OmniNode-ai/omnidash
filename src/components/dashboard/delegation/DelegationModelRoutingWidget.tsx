@@ -188,7 +188,7 @@ function DecisionTracePanel({ traces }: { traces: RoutingDecisionTrace[] }) {
         ))}
       </div>
       {visible.map((t) => {
-        const ruleInfo = t.routing_rule ? (RULE_LABELS[t.routing_rule] ?? { label: t.routing_rule, color: 'var(--text-secondary)' }) : null;
+        const ruleInfo = t.routing_rule ? (RULE_LABELS[t.routing_rule] ?? { label: t.routing_rule, color: 'var(--accent)' }) : null;
         const shortModel = t.model_name.split('/').pop() ?? t.model_name;
         return (
           <div
@@ -381,16 +381,16 @@ export default function DelegationModelRoutingWidget(props: { config: Delegation
                     size="sm"
                     family="mono"
                     tabularNums
-                    style={{
-                      textAlign: 'right',
-                      color: s.qg_pass_rate == null
-                        ? 'var(--text-tertiary)'
+                    style={{ textAlign: 'right' }}
+                    color={
+                      s.qg_pass_rate == null
+                        ? 'tertiary'
                         : s.qg_pass_rate >= 0.8
-                          ? 'var(--good)'
-                          : s.qg_pass_rate >= 0.6
-                            ? 'var(--warn)'
-                            : 'var(--error, var(--warn))',
-                    }}
+                        ? 'ok'
+                        : s.qg_pass_rate >= 0.6
+                        ? 'warn'
+                        : 'bad'
+                    }
                   >
                     {s.qg_pass_rate != null ? fmtPct(s.qg_pass_rate) : '—'}
                   </Text>
