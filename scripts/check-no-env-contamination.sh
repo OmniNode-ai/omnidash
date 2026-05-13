@@ -60,14 +60,18 @@ ALLOWLIST_FILES=(
   '.env.example'
   'src/data-source/index.ts'
   'scripts/check-no-env-contamination.sh'
+  # OMN-10946: delegation-specific scanner — contains the patterns it enforces
+  'scripts/check-hardcoded-delegation-refs.sh'
   'README.md'
   'CLAUDE.md'
   # ESLint rule unit tests use localhost:3002 as literal fixture inputs to verify
   # the validator fires correctly — they are testing the detection pattern itself.
   'src/no-env-fallback.test.ts'
+  'src/no-env-fallback.test.js'  # compiled artifact of the above
   # Global test setup stubs VITE_WS_URL to a localhost address so integration
   # tests that render Providers (which mounts useWebSocketInvalidation) don't throw.
   'src/tests/setup.ts'
+  'src/tests/setup.js'  # compiled artifact of the above
   # OMN-10756: contract.yaml and its derived files own the canonical localhost
   # default for the data-source bridge URL. These are defaults, not hardcoded
   # environment-specific literals.
