@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import {
   DELEGATION_ENDPOINTS,
   fetchDelegationSummary,
@@ -22,6 +22,10 @@ describe('DELEGATION_ENDPOINTS', () => {
 describe('delegation-api fetch functions', () => {
   beforeEach(() => {
     vi.restoreAllMocks();
+  });
+
+  afterEach(() => {
+    vi.unstubAllGlobals();
   });
 
   it('fetchDelegationSummary calls /api/delegation/summary and returns array', async () => {
