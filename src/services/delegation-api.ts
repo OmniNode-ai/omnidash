@@ -89,14 +89,13 @@ function resolveBase(opts: DelegationApiOptions | undefined): string {
 
 // ── Fetch helpers ────────────────────────────────────────────────────────────
 
-// JSDoc rationale (OMN-10945): direct fetch is intentional here. The
-// /api/delegation/* routes are served by the Express server (server/routes.ts)
-// which delegates to SqliteProjectionReader — i.e., the data-source layer is
-// on the server side, not the browser. HttpSnapshotSource.readAll() routes to
-// /projection/<topic>, a different endpoint shape designed for the generic
-// topic fan-out. The delegation REST endpoints (/api/delegation/summary etc.)
-// are typed, envelope-aware responses from the same server — using a different
-// URL path does not bypass the src/data-source/ contract.
+// Why direct fetch rather than src/data-source/ abstractions (OMN-10945):
+// The /api/delegation/* routes are typed REST endpoints served by Express
+// (server/routes.ts → SqliteProjectionReader). They are NOT the generic
+// /projection/<topic> fan-out that HttpSnapshotSource.readAll() targets.
+// VITE_DATA_SOURCE controls FileSnapshotSource vs HttpSnapshotSource for
+// the topic fan-out; it does not apply to these typed REST endpoints.
+// The data-source layer is enforced on the server side for these routes.
 async function fetchProjection<T>(path: string): Promise<T[]> {
   const res = await fetch(path);
   if (!res.ok) return [];
