@@ -175,13 +175,13 @@ export default defineConfig(({ mode }) => {
     },
     build: {
       rollupOptions: {
-        // better-sqlite3 is a server-side native N-API module. It must never
-        // be bundled by Vite — only server/routes.ts uses it at runtime.
-        external: ['better-sqlite3'],
+        // better-sqlite3 and pg are server-side modules. They must never
+        // be bundled by Vite — only server/routes.ts uses them at runtime.
+        external: ['better-sqlite3', 'pg'],
       },
     },
     optimizeDeps: {
-      exclude: ['better-sqlite3'],
+      exclude: ['better-sqlite3', 'pg'],
     },
     server: {
       port: Number(env.VITE_DEV_PORT ?? 3001),

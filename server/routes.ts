@@ -2,6 +2,7 @@ import { Router } from 'express';
 import { readFile } from 'node:fs/promises';
 import { resolve } from 'node:path';
 import { SqliteProjectionReader } from './sqlite-projection-reader.js';
+import { PostgresProjectionReader } from './postgres-projection-reader.js';
 import { loadDataSourceConfig } from './data-source-contract.js';
 
 const router = Router();
@@ -17,12 +18,22 @@ const sqliteReader = dsConfig.mode === 'sqlite'
   ? new SqliteProjectionReader({ dbPath: dsConfig.sqliteDbPath })
   : null;
 
+// Only instantiate when mode=postgres AND a connection string is available.
+// When OMNIDASH_ANALYTICS_DB_URL is absent, fall through to fixture files.
+const pgReader = (dsConfig.mode === 'postgres' && process.env.OMNIDASH_ANALYTICS_DB_URL)
+  ? new PostgresProjectionReader({ connectionString: process.env.OMNIDASH_ANALYTICS_DB_URL })
+  : null;
+
 async function readJson(path: string): Promise<unknown> {
   const raw = await readFile(path, 'utf8');
   return JSON.parse(raw) as unknown;
 }
 
-async function readProjection(topic: string): Promise<unknown[]> {
+async function readProjection(topic: string): Promise<unknown> {
+  if (pgReader) {
+    return pgReader.readProjection(topic);
+  }
+
   if (sqliteReader) {
     return sqliteReader.readProjection(topic);
   }
