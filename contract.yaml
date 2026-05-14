@@ -8,18 +8,23 @@
 data_source:
   # Default data source mode.
   # Values: sqlite | postgres | file | http
-  # - sqlite: reads from local delegation.sqlite via the Express bridge
+  # - sqlite: reads from local delegation.sqlite via the Express bridge (standalone installs only)
   # - postgres: reads from Postgres projection API (requires OMNIDASH_ANALYTICS_DB_URL)
   # - file: reads from ./fixtures/ directory (zero-infra dev mode)
   # - http: reads via HTTP from data_source_url
-  default: sqlite
+  #
+  # OMN-10976: default flipped from sqlite to postgres. Normal runtime reads
+  # from Postgres via the event bus projection path. Set OMNIDASH_DATA_SOURCE=sqlite
+  # explicitly for standalone installs without Kafka/Postgres.
+  default: postgres
 
   # Default Express bridge URL (used by sqlite and http modes on the client side).
+  # No private IPs — URL comes from OMNIDASH_ANALYTICS_DB_URL env var in postgres mode.
   url: "http://localhost:3002"
 
   # Default WebSocket invalidation URL (derived from url when not set explicitly).
   ws_url: "ws://localhost:3002/ws"
 
-  # Default SQLite DB path (used by server/routes.ts in sqlite mode).
+  # Default SQLite DB path (used by server/routes.ts in sqlite mode only).
   # Tilde is expanded to $HOME by the server at runtime.
   sqlite_db_path: "~/.omninode/delegation/delegation.sqlite"
