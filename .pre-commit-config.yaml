@@ -44,6 +44,13 @@ repos:
         pass_filenames: false
         always_run: true
 
+      - id: delegation-refs-check
+        name: Block hardcoded delegation refs in browser bundle
+        entry: bash scripts/check-hardcoded-delegation-refs.sh
+        language: system
+        pass_filenames: false
+        always_run: true
+
       - id: eslint
         name: ESLint (changed JS/TS files)
         entry: ./node_modules/.bin/eslint --fix

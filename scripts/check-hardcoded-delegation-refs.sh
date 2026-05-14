@@ -13,6 +13,7 @@
 #   - localhost:300x          (bridge/projection ports — use contract.yaml defaults via src/config/generated/)
 #   - 192.168.*               (private LAN IPs — use env vars)
 #   - *.sqlite                (SQLite file refs in browser code — browser must not access SQLite directly)
+#   - ~/.omninode/            (local home dir paths — browser must not reference local filesystem)
 #
 # Allowlist (src/ paths permitted to reference these patterns):
 #   - src/config/generated/               (generated from contract.yaml — owned by generate:config)
@@ -43,6 +44,8 @@ PATTERNS=(
   'localhost:808[0-9]'
   '192\.168\.[0-9]'
   '\.sqlite\b'
+  '~/\.omninode/'
+  '\.omninode/delegation'
 )
 
 EXCLUDE_DIRS=(
