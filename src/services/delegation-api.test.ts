@@ -89,10 +89,18 @@ describe('delegation-api fetch functions', () => {
     expect(fetch).toHaveBeenCalledWith('http://example.com/api/delegation/model-routing');
   });
 
-  it('does not reference process.env for delegation connection', () => {
-    const src = import.meta.url;
-    expect(src).toBeTruthy();
-    // The module must not rely on process.env for URL resolution —
-    // verified by the fact that fetch was called with a relative path above.
+  it('does not reference process.env for delegation connection', async () => {
+    // Read the compiled module source and assert no process.env reference
+    // appears anywhere in the URL-resolution path. This proves the adapter
+    // is browser-safe and does not depend on Node-only globals.
+    const fs = await import('node:fs/promises');
+    const url = await import('node:url');
+    const path = await import('node:path');
+    const modulePath = path.resolve(
+      path.dirname(url.fileURLToPath(import.meta.url)),
+      'delegation-api.ts',
+    );
+    const source = await fs.readFile(modulePath, 'utf-8');
+    expect(source).not.toMatch(/process\.env/);
   });
 });
