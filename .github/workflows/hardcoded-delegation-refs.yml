@@ -1,0 +1,11 @@
+name: delegation-refs
+on:
+  pull_request:
+    paths: ['src/**', 'shared/**', 'server/**']
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: bash scripts/check-hardcoded-delegation-refs.sh
