@@ -12,6 +12,9 @@ export default defineConfig({
     environment: 'jsdom',
     setupFiles: ['./src/tests/setup.ts'],
     globals: true,
+    env: {
+      VITE_DATA_SOURCE: 'file',
+    },
     css: { modules: { classNameStrategy: 'non-scoped' } },
     // Both compliance scorecards are permanent regression gates that
     // run on every `npm test`:

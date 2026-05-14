@@ -22,7 +22,7 @@ describe('loadDataSourceConfig', () => {
 
   it('returns contract.yaml defaults when no env vars are set', () => {
     const cfg = loadDataSourceConfig();
-    expect(cfg.mode).toBe('sqlite');
+    expect(cfg.mode).toBe('postgres');
     expect(cfg.url).toBe('http://localhost:3002');
     expect(cfg.wsUrl).toBe('ws://localhost:3002/ws');
     expect(cfg.sqliteDbPath).toMatch(/\.omninode[/\\]delegation[/\\]delegation\.sqlite$/);
