@@ -44,9 +44,9 @@ describe('DepHealthWidget', () => {
   });
 
   it('shows empty state when no data', async () => {
-    (
-      fetch as unknown as { mockResolvedValueOnce: (v: unknown) => void }
-    ).mockResolvedValueOnce({ ok: false });
+    // Use a successful empty payload (not ok:false) so the component exercises
+    // the true empty-state path rather than the error path.
+    mockFetchWithItems([]);
     render(
       <DataSourceTestProvider client={qc}>
         <DepHealthWidget config={{}} />

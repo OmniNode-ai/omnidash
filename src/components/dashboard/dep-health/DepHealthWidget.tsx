@@ -3,7 +3,7 @@ import { useMemo } from 'react';
 import { ComponentWrapper } from '../ComponentWrapper';
 import { useProjectionQuery } from '@/hooks/useProjectionQuery';
 import { TOPICS } from '@shared/types/topics';
-import { Text } from '@/components/ui/typography';
+import { Text, type TextColor } from '@/components/ui/typography';
 import { KPI } from '@/components/primitives';
 
 // ── Projection types (from dep_health_findings table, OMN-11042) ──────
@@ -39,11 +39,12 @@ export interface DepHealthWidgetConfig {
 
 // ── Severity colour helper ────────────────────────────────────────────
 
-function severityColor(severity: DepHealthSeverity): string {
-  if (severity === 'CRITICAL') return 'var(--bad, var(--error, #e53e3e))';
-  if (severity === 'MAJOR') return 'var(--warn)';
-  if (severity === 'MINOR') return 'var(--secondary)';
-  return 'var(--tertiary)';
+// Returns a TextColor token so <Text color={…}> can own the colour — no inline style.
+function severityColor(severity: DepHealthSeverity): TextColor {
+  if (severity === 'CRITICAL') return 'bad';
+  if (severity === 'MAJOR') return 'warn';
+  if (severity === 'MINOR') return 'secondary';
+  return 'tertiary';
 }
 
 // ── Finding row ───────────────────────────────────────────────────────
@@ -61,7 +62,7 @@ function FindingRow({ row }: { row: DepHealthFindingRow }) {
         alignItems: 'start',
       }}
     >
-      <Text as="span" size="xs" family="mono" style={{ color }}>
+      <Text as="span" size="xs" family="mono" color={color}>
         {row.severity}
       </Text>
       <Text
@@ -110,7 +111,7 @@ function RepoGroup({ repo, rows }: { repo: string; rows: DepHealthFindingRow[] }
 
 export default function DepHealthWidget(props: { config: DepHealthWidgetConfig }) {
   const { config } = props;
-  const maxRows = config.maxRows ?? 50;
+  const maxRows = Math.max(0, config.maxRows ?? 50);
 
   const { data, isLoading, error } = useProjectionQuery<DepHealthFindingRow>({
     queryKey: ['dep-health-findings', TOPICS.depHealthFindings],
