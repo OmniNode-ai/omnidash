@@ -25,6 +25,7 @@ interface DonutSlice {
 const VIEWBOX = { x: -100, y: -100, w: 200, h: 200 };
 const OUTER_R = 90;
 const INNER_R = 50;
+const DONUT_HEIGHT = 180;
 
 function polar(angle: number, r: number): [number, number] {
   return [r * Math.cos(angle), r * Math.sin(angle)];
@@ -166,9 +167,17 @@ export default function DelegationMetrics2D({ config }: { config: Record<string,
             onPointerLeave={() => setHoverIdx(null)}
           >
             <svg
+              data-testid="delegation-2d-donut-svg"
               viewBox={`${VIEWBOX.x} ${VIEWBOX.y} ${VIEWBOX.w} ${VIEWBOX.h}`}
               preserveAspectRatio="xMidYMid meet"
-              style={{ flex: 1, width: '100%', minHeight: 0, display: 'block' }}
+              style={{
+                flex: '0 0 auto',
+                width: '100%',
+                height: DONUT_HEIGHT,
+                maxHeight: DONUT_HEIGHT,
+                minHeight: 0,
+                display: 'block',
+              }}
             >
               {sliceArcs.map((arc, i) => {
                 const isHover = hoverIdx === i;

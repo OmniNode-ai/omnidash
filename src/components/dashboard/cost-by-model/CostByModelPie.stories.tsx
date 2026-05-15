@@ -17,8 +17,8 @@
 //     cleanly against its narrow wedge angle).
 //
 // Three.js renders with real WebGL inside the Storybook iframe — no
-// canvas mocking. The widget needs ~400×400 to render comfortably
-// (the pie scene targets a 260px canvas height inside a flex row that
+// canvas mocking. The widget needs ~400×360 to render comfortably
+// (the pie scene targets a 200px canvas height inside a flex row that
 // also hosts a 180px legend), so we wrap each story in a sized
 // container at the meta level.
 import type { Meta, StoryObj } from '@storybook/react-vite';

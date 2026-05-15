@@ -147,7 +147,7 @@ interface ThreePieChartProps {
   themeName: 'dark' | 'light';
 }
 
-const CANVAS_HEIGHT = 260;
+const CANVAS_HEIGHT = 200;
 
 export function ThreePieChart({ slices, chartColors, themeName }: ThreePieChartProps) {
   const mountRef = useRef<HTMLDivElement>(null);
@@ -409,6 +409,7 @@ export function ThreePieChart({ slices, chartColors, themeName }: ThreePieChartP
   return (
     <div
       ref={mountRef}
+      data-testid="cost-by-model-pie-canvas"
       data-drag-exclude="true"
       style={{
         position: 'relative',

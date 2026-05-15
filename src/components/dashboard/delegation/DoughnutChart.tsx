@@ -175,7 +175,7 @@ export interface DoughnutChartProps {
   height?: number;
 }
 
-export function DoughnutChart({ slices, height = 260 }: DoughnutChartProps) {
+export function DoughnutChart({ slices, height = 200 }: DoughnutChartProps) {
   const colors = useThemeColors();
   const themeName = useThemeName();
   const theme = themeName === 'dark' ? DARK_DOUGHNUT_THEME : LIGHT_DOUGHNUT_THEME;
@@ -535,6 +535,7 @@ export function DoughnutChart({ slices, height = 260 }: DoughnutChartProps) {
   return (
     <div
       ref={mountRef}
+      data-testid="delegation-3d-doughnut-canvas"
       data-drag-exclude="true"
       style={{
         position: 'relative',
