@@ -100,6 +100,13 @@ export const TOPICS = {
    * SQLite table (OMN-10623).
    */
   delegationTokenUsage: 'onex.snapshot.projection.delegation.token-usage.v1',
+  /**
+   * Dependency health findings widget — findings from dep-health-sweep projected
+   * into dep_health_findings table (OMN-11043). Backed by
+   * onex.evt.omnimarket.dep-health-sweep-completed.v1 events via
+   * node_projection_dep_health reducer.
+   */
+  depHealthFindings: 'onex.snapshot.projection.dep-health.findings.v1',
 } as const;
 
 export type TopicSymbol = (typeof TOPICS)[keyof typeof TOPICS];
