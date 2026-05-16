@@ -63,6 +63,7 @@ describe('DelegationMetrics', () => {
     expect(screen.getByText('85%')).toBeInTheDocument();
     expect(screen.getByText('128 / 150 passed')).toBeInTheDocument();
     expect(screen.getByText('Qwen3-Coder-30B (80)')).toBeInTheDocument();
+    expect(screen.getByTestId('delegation-3d-doughnut-canvas')).toHaveStyle({ height: '200px' });
   });
 
   it('shows empty state when no delegations', async () => {

@@ -74,6 +74,7 @@ describe('CostByModelPie', () => {
     expect(screen.getAllByText('20.0%').length).toBe(2);
     // Total
     expect(screen.getByText('$5.00')).toBeInTheDocument();
+    expect(screen.getByTestId('cost-by-model-pie-canvas')).toHaveStyle({ height: '200px' });
   });
 
   it('shows empty state when no cost data at all', async () => {
