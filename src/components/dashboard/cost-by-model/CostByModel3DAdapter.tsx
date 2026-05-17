@@ -9,11 +9,15 @@ import { DoughnutChartAdapter } from '@/components/charts/threejs/DoughnutChartA
 
 type CostByModel3DConfig = Record<string, never>;
 
+type CostByModel3DAdapterProps = {
+  config: CostByModel3DConfig;
+};
+
 const EMPTY_STATE: EmptyStateConfig = {
   defaultMessage: 'No cost data available',
 };
 
-export default function CostByModel3DAdapter(_config: CostByModel3DConfig) {
+export default function CostByModel3DAdapter({ config: _config }: CostByModel3DAdapterProps) {
   const { data } = useProjectionQuery<Record<string, unknown>>({
     queryKey: ['cost-by-model-3d', TOPICS.llmCost],
     topic: TOPICS.llmCost,
