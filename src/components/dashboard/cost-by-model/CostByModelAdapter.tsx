@@ -11,6 +11,10 @@ import { BarChart } from '@/components/charts/threejs/BarChart';
 
 type CostByModelConfig = Record<string, never>;
 
+type CostByModelAdapterProps = {
+  config: CostByModelConfig;
+};
+
 const EMPTY_STATE: EmptyStateConfig = {
   reasons: {
     'no-data': {
@@ -21,7 +25,7 @@ const EMPTY_STATE: EmptyStateConfig = {
   defaultMessage: 'No cost data available',
 };
 
-export default function CostByModelAdapter(_config: CostByModelConfig) {
+export default function CostByModelAdapter({ config: _config }: CostByModelAdapterProps) {
   const { data, isLoading, error } = useProjectionQuery<Record<string, unknown>>({
     queryKey: ['cost-by-model', TOPICS.llmCost],
     topic: TOPICS.llmCost,
