@@ -1,6 +1,6 @@
 {
   "manifestVersion": "1.0",
-  "generatedAt": "2026-05-09T15:47:38.859Z",
+  "generatedAt": "2026-05-17T21:07:34.973Z",
   "components": {
     "cost-trend-panel": {
       "name": "cost-trend-panel",
@@ -136,7 +136,7 @@
       "description": "LLM cost share per model — horizontal bars sorted by cost descending",
       "category": "cost",
       "version": "3.0.0",
-      "implementationKey": "IBarChartAdapter",
+      "implementationKey": "cost-by-model/CostByModelAdapter",
       "projectionSchema": {
         "type": "object",
         "description": "Row shape from onex.snapshot.projection.llm_cost.v1 (llm_cost_aggregates). Ordering authority: aggregation_key (model_name) for display; no monotonic time ordering required for bar chart.",
@@ -226,7 +226,7 @@
       "description": "LLM cost share per model — tilted 3D pie/doughnut with cost-proportional slice angles",
       "category": "cost",
       "version": "1.0.0",
-      "implementationKey": "IDoughnutChartAdapter",
+      "implementationKey": "cost-by-model/CostByModel3DAdapter",
       "projectionSchema": {
         "type": "object",
         "description": "Row shape from onex.snapshot.projection.llm_cost.v1 (llm_cost_aggregates). Same schema as cost-by-model 2D variant.",

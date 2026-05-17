@@ -4,12 +4,17 @@ export const componentImports: Record<string, ReturnType<typeof lazy>> = {
   'ITrendChartAdapter/threejs': lazy(() => import('./cost-trend/CostTrendAdapter')),
   'IKPITileClusterAdapter/threejs': lazy(() => import('./cost-summary/CostSummaryAdapter')),
   'cost-by-repo/CostByRepoAdapter': lazy(() => import('./cost-by-repo/CostByRepoAdapter')),
+  'cost-by-model/CostByModelAdapter': lazy(() => import('./cost-by-model/CostByModelAdapter')),
+  'cost-by-model/CostByModel3DAdapter': lazy(() => import('./cost-by-model/CostByModel3DAdapter')),
   'token-usage/TokenUsageAdapter': lazy(() => import('./token-usage/TokenUsageAdapter')),
-  // cost-by-model (2D): manifest-dispatched via IBarChartAdapter → BarChartThreeJs (OMN-10291).
+  // OMN-10291 manifest-dispatch interface keys retained for the future manifest-dispatch
+  // architecture. ComponentCell currently passes only { config } and the generic chart
+  // adapters expect { projectionData, fieldMappings, emptyState } — until a manifest-side
+  // fieldMappings declaration exists, the cost-by-model widgets route through the
+  // widget-specific wrappers above (mirroring CostByRepoAdapter / CostTrendAdapter).
   'IBarChartAdapter': lazy(() =>
     import('@/components/charts/threejs/BarChart').then((m) => ({ default: m.BarChart })),
   ),
-  // cost-by-model-3d (3D): manifest-dispatched via IDoughnutChartAdapter → DoughnutChartAdapterThreeJs (OMN-10291).
   'IDoughnutChartAdapter': lazy(() =>
     import('@/components/charts/threejs/DoughnutChartAdapter').then((m) => ({
       default: m.DoughnutChartAdapter,
