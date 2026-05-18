@@ -1245,6 +1245,37 @@ const MVP_COMPONENTS: Record<string, ComponentManifest> = {
     },
     capabilities: { supports_compare: false, supports_export: false, supports_fullscreen: true, supports_time_range: false },
   },
+  'control-plane': {
+    name: 'control-plane',
+    displayName: 'Self-Extending Agent Control Plane',
+    description: 'Hackathon demo surface: prompt input, pipeline event log, status indicators. Composes with MCP tools widget on a demo dashboard layout (OMN-11260).',
+    category: 'activity',
+    version: '1.0.0',
+    implementationKey: 'control-plane/ControlPlanePage',
+    configSchema: { type: 'object', properties: {}, additionalProperties: false },
+    projectionSchema: {
+      type: 'object',
+      required: ['id', 'type', 'timestamp', 'message'],
+      properties: {
+        id: { type: 'string' },
+        type: { type: 'string', enum: ['request', 'validation', 'success', 'error'] },
+        timestamp: { type: 'string', format: 'date-time' },
+        source: { type: 'string' },
+        message: { type: 'string' },
+        correlationId: { type: 'string' },
+      },
+    },
+    dataSources: [projectionSource(TOPICS.hackathonPipelineEvents)],
+    events: { emits: [], consumes: [] },
+    defaultSize: { w: 2, h: 3 },
+    minSize: { w: 1, h: 2 },
+    maxSize: { w: 4, h: 6 },
+    emptyState: {
+      message: 'No pipeline events yet',
+      hint: 'Submit a prompt above to generate a node contract',
+    },
+    capabilities: { supports_compare: false, supports_export: false, supports_fullscreen: true, supports_time_range: false },
+  },
 };
 
 // Scan node_modules/@omninode/* for packages declaring dashboardComponents
