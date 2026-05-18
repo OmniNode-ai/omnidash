@@ -59,7 +59,8 @@ describe('Proof of Life — Part 3 (Full System)', () => {
     // cost-by-repo + token-usage wired (OMN-10305), plus OMN-10509 prototype widgets.
     // + cost-savings-overview (OMN-10346).
     // + delegation-savings, delegation-model-routing, delegation-quality-gate, delegation-token-usage (OMN-10624).
-    expect(available.length).toBe(24);
+    // + mcp-tools (OMN-11258).
+    expect(available.length).toBe(25);
   });
 
   it('both templates pass validation', () => {

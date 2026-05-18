@@ -48,3 +48,6 @@ export type {
   BuildDelegationQualityGateOptions,
   BuildDelegationTokenUsageOptions,
 } from './delegation-routing';
+
+export { buildMcpToolRows } from './mcp-tools';
+export type { BuildMcpToolRowsOptions } from './mcp-tools';

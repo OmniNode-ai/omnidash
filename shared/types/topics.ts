@@ -107,6 +107,8 @@ export const TOPICS = {
    * node_projection_dep_health reducer.
    */
   depHealthFindings: 'onex.snapshot.projection.dep-health.findings.v1',
+  /** MCP tools registry widget — dynamically registered MCP tools (OMN-11258). */
+  mcpTools: 'onex.snapshot.projection.mcp-tools.v1',
 } as const;
 
 export type TopicSymbol = (typeof TOPICS)[keyof typeof TOPICS];

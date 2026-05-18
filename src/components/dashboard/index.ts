@@ -35,4 +35,5 @@ export const componentImports: Record<string, ReturnType<typeof lazy>> = {
   'delegation/DelegationModelRoutingWidget': lazy(() => import('./delegation/DelegationModelRoutingWidget')),
   'delegation/DelegationQualityGateWidget': lazy(() => import('./delegation/DelegationQualityGateWidget')),
   'delegation/DelegationTokenUsageWidget': lazy(() => import('./delegation/DelegationTokenUsageWidget')),
+  'mcp-tools/McpToolsWidget': lazy(() => import('./mcp-tools/McpToolsWidget')),
 };
