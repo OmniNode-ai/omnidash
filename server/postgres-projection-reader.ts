@@ -685,10 +685,13 @@ export class PostgresProjectionReader {
     const totalPromptTokens = byModel.reduce((sum, row) => sum + row.prompt_tokens, 0);
     const totalCompletionTokens = byModel.reduce((sum, row) => sum + row.completion_tokens, 0);
     const provenanceSummary = byModel.reduce(
-      (summary, row) => ({
-        ...summary,
-        [row.token_provenance]: summary[row.token_provenance] + 1,
-      }),
+      (summary, row) => {
+        const provenance = row.token_provenance as keyof typeof summary;
+        return {
+          ...summary,
+          [provenance]: summary[provenance] + 1,
+        };
+      },
       { measured: 0, estimated: 0, unknown: 0 },
     );
 
