@@ -267,6 +267,67 @@ describe('PostgresProjectionReader', () => {
     });
   });
 
+  it('omits zero-token historical rows from recent delegation runs', async () => {
+    const client = {
+      query: vi.fn()
+        .mockResolvedValueOnce({ rows: [] })
+        .mockResolvedValueOnce({
+          rows: [
+            {
+              session_id: 'corr-unmetered',
+              task_type: 'test',
+              model_name: 'qwen3-coder',
+              local_cost_usd: '0',
+              cloud_cost_usd: '0.004122',
+              savings_usd: '0.004122',
+              baseline_model: 'claude-opus-4.1',
+              pricing_manifest_version: 'runtime-delegation-events',
+              savings_method: 'measured',
+              usage_source: 'unknown',
+              prompt_tokens: '0',
+              completion_tokens: '0',
+              tokens_to_compliance: null,
+              latency_ms: '1414',
+              created_at: '2026-05-20T12:01:00.000Z',
+            },
+            {
+              session_id: 'corr-metered',
+              task_type: 'test',
+              model_name: 'qwen3-coder',
+              local_cost_usd: '0',
+              cloud_cost_usd: '0.004122',
+              savings_usd: '0.004122',
+              baseline_model: 'claude-opus-4.1',
+              pricing_manifest_version: 'runtime-delegation-events',
+              savings_method: 'measured',
+              usage_source: 'measured',
+              prompt_tokens: '74',
+              completion_tokens: '260',
+              tokens_to_compliance: null,
+              latency_ms: '1347',
+              created_at: '2026-05-20T12:00:00.000Z',
+            },
+          ],
+        }),
+      release: vi.fn(),
+    };
+    getMockPool().connect.mockResolvedValue(client);
+
+    const result = await reader.readProjection('onex.snapshot.projection.cost.savings-overview.v1');
+
+    expect(result.rows[0]).toMatchObject({
+      measured_run_count: 1,
+      zero_token_run_count: 1,
+    });
+    const recentRuns = result.rows[0]!.recent_runs as Record<string, unknown>[];
+    expect(recentRuns).toHaveLength(1);
+    expect(recentRuns[0]).toMatchObject({
+      session_id: 'corr-metered',
+      total_tokens: 334,
+      token_provenance: 'measured',
+    });
+  });
+
   it('returns delegation token usage as the widget projection shape', async () => {
     const client = {
       query: vi.fn().mockResolvedValueOnce({

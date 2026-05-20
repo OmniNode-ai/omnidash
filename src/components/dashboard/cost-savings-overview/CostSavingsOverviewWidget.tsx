@@ -407,7 +407,7 @@ function RecentRunsSection({ overview }: { overview: CostSavingsOverviewProjecti
       ))}
       {(overview.zero_token_run_count ?? 0) > 0 && (
         <div style={{ marginTop: 6, "fontSize": 10, color: 'var(--ink-4)' }}>
-          {overview.measured_run_count ?? 0} measured runs; {overview.zero_token_run_count} older runs have no token metrics.
+          Showing measured runs only; {overview.zero_token_run_count} older rows have no token metrics.
         </div>
       )}
     </div>

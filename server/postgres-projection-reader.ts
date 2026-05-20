@@ -771,7 +771,11 @@ export class PostgresProjectionReader {
         : sum,
       0,
     );
-    const recentRuns = sessions.slice(0, 20).map((session) => {
+    const measuredSessions = sessions.filter((session) => {
+      const tokens = Number(session.prompt_tokens ?? 0) + Number(session.completion_tokens ?? 0);
+      return tokens > 0;
+    });
+    const recentRuns = measuredSessions.slice(0, 20).map((session) => {
       const promptTokens = Number(session.prompt_tokens ?? 0);
       const completionTokens = Number(session.completion_tokens ?? 0);
       const totalTokens = promptTokens + completionTokens;
@@ -785,7 +789,7 @@ export class PostgresProjectionReader {
         savings_usd: Number(session.savings_usd ?? 0),
         latency_ms: session.latency_ms == null ? null : Number(session.latency_ms),
         created_at: String(session.created_at ?? ''),
-        token_provenance: totalTokens > 0 ? 'measured' : 'unknown',
+        token_provenance: 'measured',
       };
     });
     const zeroTokenRunCount = sessions.reduce((count, session) => {

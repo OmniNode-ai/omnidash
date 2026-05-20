@@ -103,7 +103,7 @@ describe('CostSavingsOverviewWidget', () => {
         token_provenance: 'measured',
       }],
       measured_run_count: 1,
-      zero_token_run_count: 0,
+      zero_token_run_count: 2,
       warnings: [],
       provisioned: true,
     }]);
@@ -121,6 +121,7 @@ describe('CostSavingsOverviewWidget', () => {
     expect(screen.getByText('Recent delegation runs')).toBeInTheDocument();
     expect(screen.getByText('5e12c850')).toBeInTheDocument();
     expect(screen.getByTitle('74 input, 260 output')).toHaveTextContent('334');
+    expect(screen.getByText(/showing measured runs only/i)).toBeInTheDocument();
   });
 
   it('renders per-model table with expected column headers', async () => {
