@@ -23,6 +23,8 @@ export interface DelegationSavingsSession {
   prompt_tokens?: number;
   /** Total completion tokens (from llm_call_metrics.completion_tokens). */
   completion_tokens?: number;
+  /** Total tokens spent until quality-gate compliance. */
+  tokens_to_compliance?: number;
   /** Delegation latency in ms (from delegation_events.latency_ms). */
   latency_ms?: number;
   created_at: string;
@@ -57,6 +59,7 @@ const OPUS_INPUT_PRICE  = 15.0  / 1_000_000;  // $15/M tokens
 const OPUS_OUTPUT_PRICE = 75.0  / 1_000_000;  // $75/M tokens
 const SONNET_INPUT_PRICE  = 3.0  / 1_000_000;
 const SONNET_OUTPUT_PRICE = 15.0 / 1_000_000;
+const SESSION_TRUNCATION_LIMIT = 500;
 
 function computeSessionCosts(s: DelegationSavingsSession): {
   opusCost: number;
@@ -114,6 +117,10 @@ function fmtTokens(prompt: number | undefined, completion: number | undefined): 
   return String(total);
 }
 
+function tokenTotal(s: DelegationSavingsSession): number {
+  return (s.prompt_tokens ?? 0) + (s.completion_tokens ?? 0);
+}
+
 // ── Session row ───────────────────────────────────────────────────────
 //
 // Columns: Task | Model | Tokens | Latency | Opus (est) | Sonnet (est) | Saved | Date
@@ -129,7 +136,10 @@ function SessionRow({ s }: { s: DelegationSavingsSession }) {
   const hasDetail = Boolean(s.prompt_text || s.response_text);
 
   const { opusCost, sonnetCost, marginalSaved } = computeSessionCosts(s);
-  const hasTokens = (s.prompt_tokens ?? 0) + (s.completion_tokens ?? 0) > 0;
+  const hasTokens = tokenTotal(s) > 0;
+  const tokenTitle = hasTokens
+    ? `input ${s.prompt_tokens ?? 0}, output ${s.completion_tokens ?? 0}${s.tokens_to_compliance != null ? `, compliance ${s.tokens_to_compliance}` : ''}`
+    : undefined;
 
   return (
     <div style={{ borderBottom: '1px solid var(--line-2)' }}>
@@ -154,7 +164,7 @@ function SessionRow({ s }: { s: DelegationSavingsSession }) {
         <Text as="span" size="xs" family="mono" color="secondary" title={s.model_name} style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
           {modelShort}
         </Text>
-        <Text as="span" size="xs" family="mono" tabularNums color="secondary" style={{ textAlign: 'right' }}>
+        <Text as="span" size="xs" family="mono" tabularNums color="secondary" title={tokenTitle} style={{ textAlign: 'right' }}>
           {fmtTokens(s.prompt_tokens, s.completion_tokens)}
         </Text>
         <Text as="span" size="xs" family="mono" tabularNums color="secondary" style={{ textAlign: 'right' }}>
@@ -252,32 +262,45 @@ export default function DelegationSavingsWidget(props: { config: DelegationSavin
   }, [data]);
 
   const visibleSessions = useMemo(() => {
-    if (!projection) return [];
+    if (!projection?.sessions) return [];
     return projection.sessions.slice(0, maxSessions);
   }, [projection, maxSessions]);
 
   // When the projection carries zeros, compute cumulative costs from token counts.
   const cumulativeComputed = useMemo(() => {
     if (!projection) return null;
-    const sessions = projection.sessions;
+    const sessions = projection.sessions ?? [];
     let totalOpus = 0;
     let totalSonnet = 0;
     let totalSaved = 0;
+    let totalTokens = 0;
+    let totalComplianceTokens = 0;
+    let hasComplianceTokens = false;
     for (const s of sessions) {
       const { opusCost, sonnetCost, marginalSaved } = computeSessionCosts(s);
       totalOpus += opusCost;
       totalSonnet += sonnetCost;
       totalSaved += marginalSaved;
+      totalTokens += tokenTotal(s);
+      if (s.tokens_to_compliance != null) {
+        totalComplianceTokens += s.tokens_to_compliance;
+        hasComplianceTokens = true;
+      }
     }
-    return { totalOpus, totalSonnet, totalSaved };
+    return { totalOpus, totalSonnet, totalSaved, totalTokens, totalComplianceTokens, hasComplianceTokens };
   }, [projection]);
 
   // Prefer projection values when they carry real data; fall back to computed.
-  const displaySaved = (projection?.cumulative_savings_usd ?? 0) > 0
-    ? projection!.cumulative_savings_usd
-    : (cumulativeComputed?.totalSaved ?? 0);
+  const loadedSessions = projection?.sessions?.length ?? 0;
+  const projectedSessionCount = projection?.session_count ?? loadedSessions;
+  const hasTruncatedSessions =
+    projectedSessionCount > loadedSessions || loadedSessions >= SESSION_TRUNCATION_LIMIT;
+  const displaySaved = loadedSessions > 0 && !hasTruncatedSessions
+    ? (cumulativeComputed?.totalSaved ?? 0)
+    : (projection?.cumulative_savings_usd ?? 0);
 
-  const isEmpty = !projection || projection.session_count === 0;
+  const sessionCount = projectedSessionCount;
+  const isEmpty = !projection || sessionCount === 0;
 
   return (
     <ComponentWrapper
@@ -294,7 +317,7 @@ export default function DelegationSavingsWidget(props: { config: DelegationSavin
           <div
             style={{
               display: 'grid',
-              gridTemplateColumns: 'repeat(4, 1fr)',
+              gridTemplateColumns: 'repeat(5, minmax(0, 1fr))',
               gap: 12,
               paddingBottom: 12,
               borderBottom: '1px solid var(--line)',
@@ -322,8 +345,16 @@ export default function DelegationSavingsWidget(props: { config: DelegationSavin
               tone="default"
             />
             <KPI
+              label="Delegated tokens"
+              value={cumulativeComputed?.totalTokens ?? 0}
+              tone="accent"
+              caption={cumulativeComputed?.hasComplianceTokens
+                ? `${cumulativeComputed.totalComplianceTokens.toLocaleString()} to compliance`
+                : undefined}
+            />
+            <KPI
               label="Sessions"
-              value={projection.session_count}
+              value={sessionCount}
               tone="default"
             />
           </div>
@@ -357,12 +388,12 @@ export default function DelegationSavingsWidget(props: { config: DelegationSavin
                   </Text>
                 ))}
               </div>
-              {visibleSessions.map((s) => (
-                <SessionRow key={s.session_id} s={s} />
+              {visibleSessions.map((s, i) => (
+                <SessionRow key={`${s.session_id}-${i}`} s={s} />
               ))}
-              {projection.sessions.length > maxSessions && (
+              {sessionCount > maxSessions && (
                 <Text as="div" size="xs" color="tertiary" style={{ marginTop: 4, textAlign: 'right' }}>
-                  +{projection.sessions.length - maxSessions} more sessions
+                  +{sessionCount - maxSessions} more sessions
                 </Text>
               )}
             </div>

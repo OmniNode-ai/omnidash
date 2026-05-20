@@ -366,7 +366,7 @@ export function DashboardView() {
               <EmptyState onAdd={editMode ? () => {} : handleEdit} />
             )
           ) : (
-            <div className="dash-grid">
+            <div className={`dash-grid${activeDashboard.layout.length === 1 ? ' single-widget' : ''}`}>
               {activeDashboard.layout.map((item, index) => (
                 // ComponentCell provides widget chrome via ComponentWrapper.
                 // No outer .widget wrapper here — that created a redundant

@@ -51,6 +51,10 @@
   columns: 2;
   column-gap: var(--row-gap);
 }
+
+.dash-grid.single-widget {
+  columns: 1;
+}
 /* Drop to a single column once the dashboard's CONTENT area gets
    too narrow for two widgets side by side. The breakpoint is on the
    viewport, but we have to account for the 240px sidebar — so the

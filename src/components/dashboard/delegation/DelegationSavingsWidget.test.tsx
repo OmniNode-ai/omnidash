@@ -51,6 +51,66 @@ describe('DelegationSavingsWidget', () => {
     expect(screen.getByText('Sessions')).toBeInTheDocument();
   });
 
+  it('renders live runtime token savings and duplicate session ids', async () => {
+    mockFetchWithItems([{
+      cumulative_savings_usd: 0.009327,
+      cumulative_local_cost_usd: 0,
+      cumulative_cloud_cost_usd: 0.009327,
+      baseline_model: 'claude-opus-4.1',
+      pricing_manifest_version: 'runtime-delegation-events',
+      session_count: 2,
+      sessions: [
+        {
+          session_id: 'sess-live',
+          task_type: 'test',
+          model_name: 'qwen3-coder',
+          prompt_tokens: 144,
+          completion_tokens: 593,
+          tokens_to_compliance: 737,
+          latency_ms: 3237,
+          local_cost_usd: 0,
+          cloud_cost_usd: 0.009327,
+          savings_usd: 0.009327,
+          baseline_model: 'claude-opus-4.1',
+          pricing_manifest_version: 'runtime-delegation-events',
+          savings_method: 'measured',
+          usage_source: 'measured',
+          created_at: '2026-05-20T12:00:00Z',
+        },
+        {
+          session_id: 'sess-live',
+          task_type: 'document',
+          model_name: 'qwen3-coder',
+          prompt_tokens: 81,
+          completion_tokens: 384,
+          tokens_to_compliance: 465,
+          latency_ms: 2109,
+          local_cost_usd: 0,
+          cloud_cost_usd: 0.006003,
+          savings_usd: 0.006003,
+          baseline_model: 'claude-opus-4.1',
+          pricing_manifest_version: 'runtime-delegation-events',
+          savings_method: 'measured',
+          usage_source: 'measured',
+          created_at: '2026-05-20T12:01:00Z',
+        },
+      ],
+      captured_at: '2026-05-20T12:01:00Z',
+      provisioned: true,
+    }]);
+    render(
+      <DataSourceTestProvider client={qc}>
+        <DelegationSavingsWidget config={{ showSessions: true }} />
+      </DataSourceTestProvider>,
+    );
+
+    expect(await screen.findByText('Delegated tokens')).toBeInTheDocument();
+    expect(screen.getByText('1,202 to compliance')).toBeInTheDocument();
+    expect(screen.getByTitle('input 144, output 593, compliance 737')).toHaveTextContent('737');
+    expect(screen.getByText('+$0.0093')).toBeInTheDocument();
+    expect(screen.getByText('document')).toBeInTheDocument();
+  });
+
   it('renders pricing manifest version', async () => {
     mockFetchWithItems([buildDelegationSavings({ pricingManifestVersion: 'v2026-05-01' })]);
     render(

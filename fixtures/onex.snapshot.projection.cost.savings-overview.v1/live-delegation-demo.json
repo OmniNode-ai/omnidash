@@ -1,0 +1,28 @@
+{
+  "window": "24h",
+  "total_cost_usd": 0,
+  "total_baseline_cost_usd": 0.01533,
+  "total_savings_usd": 0.01533,
+  "savings_rate": 1,
+  "tokens_total": 1202,
+  "tokens_to_compliance": 1202,
+  "local_token_pct": 1,
+  "captured_at": "2026-05-20T12:03:30Z",
+  "rows": [
+    {
+      "model_id": "qwen3-coder-30b-a3b-instruct-awq-4bit",
+      "display_name": "Qwen3-Coder-30B-A3B-Instruct-AWQ-4bit",
+      "execution_mode": "delegated",
+      "task_count": 2,
+      "tokens_total": 1202,
+      "cost_usd": 0,
+      "baseline_cost_usd": 0.01533,
+      "savings_usd": 0.01533,
+      "savings_pct": 1,
+      "runtime_address": null,
+      "evidence_ref": "OMN-11299/live-demo"
+    }
+  ],
+  "warnings": [],
+  "provisioned": true
+}

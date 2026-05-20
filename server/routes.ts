@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { readFile } from 'node:fs/promises';
+import { readFile, readdir } from 'node:fs/promises';
 import { resolve } from 'node:path';
 import { SqliteProjectionReader } from './sqlite-projection-reader.js';
 import { PostgresProjectionReader } from './postgres-projection-reader.js';
@@ -47,8 +47,15 @@ async function readProjection(topic: string): Promise<unknown> {
   try {
     files = await readJson(resolve(topicDir, 'index.json'));
   } catch (error: unknown) {
-    if ((error as NodeJS.ErrnoException).code === 'ENOENT') return [];
-    throw error;
+    if ((error as NodeJS.ErrnoException).code !== 'ENOENT') throw error;
+    try {
+      files = (await readdir(topicDir))
+        .filter((filename) => filename.endsWith('.json'))
+        .sort((a, b) => a.localeCompare(b));
+    } catch (dirError: unknown) {
+      if ((dirError as NodeJS.ErrnoException).code === 'ENOENT') return [];
+      throw dirError;
+    }
   }
 
   if (!Array.isArray(files)) return [];

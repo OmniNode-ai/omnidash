@@ -5,6 +5,7 @@ export interface PostgresProjectionReaderOptions {
 }
 
 type Row = Record<string, unknown>;
+type PostgresError = Error & { code?: string };
 
 export interface ProjectionEnvelope {
   topic: string;
@@ -147,60 +148,12 @@ export class PostgresProjectionReader {
           return res.rows as Row[];
         }
 
+        case 'onex.snapshot.projection.cost.savings-overview.v1': {
+          return this.readCostSavingsOverviewProjection(client);
+        }
+
         case 'onex.snapshot.projection.delegation.savings.v1': {
-          const savingsRes = await client.query(`
-            SELECT
-              id,
-              session_id,
-              event_timestamp,
-              model_local,
-              model_cloud_baseline,
-              local_cost_usd,
-              cloud_cost_usd,
-              savings_usd,
-              baseline_model,
-              pricing_manifest_version,
-              savings_method,
-              usage_source,
-              created_at
-            FROM savings_estimates
-            ORDER BY created_at DESC
-            LIMIT 500
-          `);
-          const aggRes = await client.query(`
-            SELECT
-              COALESCE(SUM(savings_usd), 0)    AS cumulative_savings_usd,
-              COALESCE(SUM(local_cost_usd), 0) AS cumulative_local_cost_usd,
-              COALESCE(SUM(cloud_cost_usd), 0) AS cumulative_cloud_cost_usd,
-              COUNT(*)                          AS session_count
-            FROM savings_estimates
-          `);
-          const savingsRows = savingsRes.rows as Row[];
-          const savingsAgg = aggRes.rows[0] as Row;
-          const latestSaving = savingsRows[0];
-          return [{
-            cumulative_savings_usd: savingsAgg?.cumulative_savings_usd,
-            cumulative_local_cost_usd: savingsAgg?.cumulative_local_cost_usd,
-            cumulative_cloud_cost_usd: savingsAgg?.cumulative_cloud_cost_usd,
-            baseline_model: (latestSaving?.baseline_model as string) ?? '',
-            pricing_manifest_version: (latestSaving?.pricing_manifest_version as string) ?? '',
-            session_count: savingsAgg?.session_count,
-            sessions: savingsRows.map((r) => ({
-              session_id: r.session_id,
-              task_type: r.model_local,
-              local_cost_usd: r.local_cost_usd,
-              cloud_cost_usd: r.cloud_cost_usd,
-              savings_usd: r.savings_usd,
-              baseline_model: r.baseline_model,
-              pricing_manifest_version: r.pricing_manifest_version,
-              savings_method: r.savings_method,
-              usage_source: r.usage_source,
-              model_name: r.model_local,
-              created_at: r.created_at,
-            })),
-            captured_at: new Date().toISOString(),
-            provisioned: true,
-          }];
+          return this.readDelegationSavingsProjection(client);
         }
 
         case 'onex.snapshot.projection.delegation.model-routing.v1': {
@@ -431,5 +384,227 @@ export class PostgresProjectionReader {
     } finally {
       client.release();
     }
+  }
+
+  private async readDelegationSavingsProjection(
+    client: { query: (sql: string) => Promise<{ rows: Row[] }> },
+  ): Promise<Row[]> {
+    let savingsRows: Row[] = [];
+    let eventRows: Row[] = [];
+
+    try {
+      const savingsRes = await client.query(`
+        SELECT
+          session_id,
+          model_local AS task_type,
+          model_local AS model_name,
+          local_cost_usd,
+          cloud_cost_usd,
+          savings_usd,
+          baseline_model,
+          pricing_manifest_version,
+          savings_method,
+          usage_source,
+          0 AS prompt_tokens,
+          0 AS completion_tokens,
+          NULL AS tokens_to_compliance,
+          NULL AS latency_ms,
+          created_at,
+          NULL AS prompt_text,
+          NULL AS response_text
+        FROM savings_estimates
+        ORDER BY created_at DESC
+        LIMIT 500
+      `);
+      savingsRows = savingsRes.rows;
+    } catch (err) {
+      this.handleProjectionCompatibilityError(err, 'savings_estimates');
+    }
+
+    try {
+      const eventRes = await client.query(`
+        -- JSONB access keeps this projection compatible with older deployments
+        -- where optional runtime metric columns may not exist yet.
+        WITH events AS (
+          SELECT to_jsonb(delegation_events) AS e
+          FROM delegation_events
+        )
+        SELECT
+          COALESCE(NULLIF(e->>'session_id', ''), NULLIF(e->>'correlation_id', ''), e->>'id') AS session_id,
+          COALESCE(e->>'task_type', '') AS task_type,
+          COALESCE(NULLIF(e->>'model_name', ''), NULLIF(e->>'delegated_to', ''), 'local') AS model_name,
+          COALESCE(NULLIF(e->>'cost_usd', '')::numeric, 0) AS local_cost_usd,
+          COALESCE(NULLIF(e->>'cost_usd', '')::numeric, 0) + COALESCE(NULLIF(e->>'cost_savings_usd', '')::numeric, 0) AS cloud_cost_usd,
+          COALESCE(NULLIF(e->>'cost_savings_usd', '')::numeric, 0) AS savings_usd,
+          'claude-opus-4.1' AS baseline_model,
+          'runtime-delegation-events' AS pricing_manifest_version,
+          CASE WHEN COALESCE(NULLIF(e->>'cost_savings_usd', '')::numeric, 0) > 0 THEN 'measured' ELSE 'estimated' END AS savings_method,
+          CASE WHEN COALESCE(NULLIF(e->>'tokens_input', '')::numeric, 0) + COALESCE(NULLIF(e->>'tokens_output', '')::numeric, 0) > 0 THEN 'measured' ELSE 'unknown' END AS usage_source,
+          COALESCE(NULLIF(e->>'tokens_input', '')::numeric, 0) AS prompt_tokens,
+          COALESCE(NULLIF(e->>'tokens_output', '')::numeric, 0) AS completion_tokens,
+          NULLIF(e->>'tokens_to_compliance', '')::numeric AS tokens_to_compliance,
+          COALESCE(NULLIF(e->>'delegation_latency_ms', '')::numeric, NULLIF(e->>'latency_ms', '')::numeric) AS latency_ms,
+          COALESCE(e->>'created_at', e->>'timestamp') AS created_at,
+          e->>'prompt_text' AS prompt_text,
+          e->>'response_text' AS response_text
+        FROM events
+        ORDER BY COALESCE(e->>'created_at', e->>'timestamp') DESC
+        LIMIT 500
+      `);
+      eventRows = eventRes.rows;
+    } catch (err) {
+      this.handleProjectionCompatibilityError(err, 'delegation_events');
+    }
+
+    const sessions = this.mergeDelegationSessions(savingsRows, eventRows);
+    sessions.sort((a, b) => String(b.created_at ?? '').localeCompare(String(a.created_at ?? '')));
+
+    const sum = (key: string): number =>
+      sessions.reduce((total, row) => total + Number(row[key] ?? 0), 0);
+    const latest = sessions[0] ?? {};
+
+    return [{
+      cumulative_savings_usd: sum('savings_usd'),
+      cumulative_local_cost_usd: sum('local_cost_usd'),
+      cumulative_cloud_cost_usd: sum('cloud_cost_usd'),
+      baseline_model: (latest.baseline_model as string | undefined) ?? 'claude-opus-4.1',
+      pricing_manifest_version: (latest.pricing_manifest_version as string | undefined) ?? 'runtime-delegation-events',
+      session_count: sessions.length,
+      sessions: sessions.slice(0, 500),
+      captured_at: new Date().toISOString(),
+      provisioned: true,
+    }];
+  }
+
+  private handleProjectionCompatibilityError(err: unknown, source: string): void {
+    const pgErr = err as PostgresError;
+    const message = String(pgErr?.message ?? '');
+    const isCompatibilityMiss =
+      pgErr?.code === '42P01' ||
+      pgErr?.code === '42703' ||
+      message.includes('does not exist');
+    if (isCompatibilityMiss) return;
+
+    console.error(`[PostgresProjectionReader] failed to read ${source} for delegation savings projection:`, err);
+    throw err;
+  }
+
+  private sessionKey(row: Row, index: number, source: 'postgres-savings' | 'postgres-events'): string {
+    const key = String(row.session_id ?? '').trim();
+    return key || `${source}-row-${index}-${String(row.created_at ?? '')}-${String(row.model_name ?? '')}`;
+  }
+
+  private mergeDelegationSessions(savingsRows: Row[], eventRows: Row[]): Row[] {
+    const merged = new Map<string, Row>();
+    savingsRows.forEach((row, index) => {
+      merged.set(this.sessionKey(row, index, 'postgres-savings'), row);
+    });
+
+    eventRows.forEach((eventRow, index) => {
+      const key = this.sessionKey(eventRow, index, 'postgres-events');
+      const existing = merged.get(key);
+      if (!existing) {
+        merged.set(key, eventRow);
+        return;
+      }
+
+      merged.set(key, {
+        ...existing,
+        prompt_tokens: eventRow.prompt_tokens ?? existing.prompt_tokens,
+        completion_tokens: eventRow.completion_tokens ?? existing.completion_tokens,
+        tokens_to_compliance: eventRow.tokens_to_compliance ?? existing.tokens_to_compliance,
+        latency_ms: eventRow.latency_ms ?? existing.latency_ms,
+        prompt_text: eventRow.prompt_text ?? existing.prompt_text,
+        response_text: eventRow.response_text ?? existing.response_text,
+        created_at: String(eventRow.created_at ?? '').localeCompare(String(existing.created_at ?? '')) > 0
+          ? eventRow.created_at
+          : existing.created_at,
+      });
+    });
+
+    return [...merged.values()];
+  }
+
+  private async readCostSavingsOverviewProjection(
+    client: { query: (sql: string) => Promise<{ rows: Row[] }> },
+  ): Promise<Row[]> {
+    const [delegationSavings] = await this.readDelegationSavingsProjection(client);
+    const sessions = (delegationSavings?.sessions as Row[] | undefined) ?? [];
+    const grouped = new Map<string, {
+      model_id: string;
+      display_name: string;
+      execution_mode: string;
+      task_count: number;
+      tokens_total: number;
+      cost_usd: number;
+      baseline_cost_usd: number;
+      savings_usd: number;
+      evidence_ref: string | null;
+    }>();
+
+    for (const session of sessions) {
+      const displayName = String(session.model_name ?? session.task_type ?? 'delegated-runtime');
+      const modelId = displayName.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') || 'delegated-runtime';
+      const tokens = Number(session.prompt_tokens ?? 0) + Number(session.completion_tokens ?? 0);
+      const cost = Number(session.local_cost_usd ?? 0);
+      const savings = Number(session.savings_usd ?? 0);
+      const baseline = Number(session.cloud_cost_usd ?? 0) || cost + savings;
+      const existing = grouped.get(modelId) ?? {
+        model_id: modelId,
+        display_name: displayName,
+        execution_mode: 'delegated',
+        task_count: 0,
+        tokens_total: 0,
+        cost_usd: 0,
+        baseline_cost_usd: 0,
+        savings_usd: 0,
+        evidence_ref: null,
+      };
+      existing.task_count += 1;
+      existing.tokens_total += tokens;
+      existing.cost_usd += cost;
+      existing.baseline_cost_usd += baseline;
+      existing.savings_usd += savings;
+      existing.evidence_ref = existing.evidence_ref ?? String(session.session_id ?? '');
+      grouped.set(modelId, existing);
+    }
+
+    const rows = [...grouped.values()].map((row) => ({
+      ...row,
+      cost_usd: Number(row.cost_usd.toFixed(6)),
+      baseline_cost_usd: Number(row.baseline_cost_usd.toFixed(6)),
+      savings_usd: Number(row.savings_usd.toFixed(6)),
+      savings_pct: row.baseline_cost_usd > 0
+        ? Number((row.savings_usd / row.baseline_cost_usd).toFixed(6))
+        : 0,
+      runtime_address: null,
+      evidence_ref: row.evidence_ref || null,
+    })).sort((a, b) => b.savings_usd - a.savings_usd);
+
+    const totalCost = rows.reduce((sum, row) => sum + row.cost_usd, 0);
+    const totalBaseline = rows.reduce((sum, row) => sum + row.baseline_cost_usd, 0);
+    const totalSavings = rows.reduce((sum, row) => sum + row.savings_usd, 0);
+    const tokensTotal = rows.reduce((sum, row) => sum + row.tokens_total, 0);
+    const complianceTokensTotal = sessions.reduce(
+      (sum, row) => row.tokens_to_compliance != null
+        ? sum + Number(row.tokens_to_compliance)
+        : sum,
+      0,
+    );
+
+    return [{
+      window: '24h',
+      total_cost_usd: Number(totalCost.toFixed(6)),
+      total_baseline_cost_usd: Number(totalBaseline.toFixed(6)),
+      total_savings_usd: Number(totalSavings.toFixed(6)),
+      savings_rate: totalBaseline > 0 ? Number((totalSavings / totalBaseline).toFixed(6)) : 0,
+      tokens_total: tokensTotal,
+      tokens_to_compliance: complianceTokensTotal > 0 ? complianceTokensTotal : undefined,
+      local_token_pct: tokensTotal > 0 ? 1 : 0,
+      captured_at: new Date().toISOString(),
+      rows,
+      warnings: [],
+      provisioned: sessions.length > 0,
+    }];
   }
 }
