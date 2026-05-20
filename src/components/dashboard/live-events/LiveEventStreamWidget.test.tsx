@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react';
+import { fireEvent, render, screen } from '@testing-library/react';
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { QueryClient } from '@tanstack/react-query';
 import { DataSourceTestProvider } from '@/test-utils/dataSourceTestProvider';
@@ -26,8 +26,8 @@ describe('LiveEventStreamWidget', () => {
 
   it('renders event rows newest first', async () => {
     mockFetchWithItems([
-      { id: 'e1', type: 'ROUTING', timestamp: '2026-05-01T12:00:00Z', source: 'omnimarket', topic: 'onex.cmd.route.v1', summary: 'Routing event', payload: '{}' },
-      { id: 'e2', type: 'ACTION', timestamp: '2026-05-01T13:00:00Z', source: 'omniclaude', topic: 'onex.evt.action.v1', summary: 'Action event', payload: '{}' },
+      { id: 'e1', type: 'ROUTING', timestamp: '2026-05-01T12:00:00Z', source: 'omnimarket', topic: 'onex.cmd.route.v1', summary: 'Routing event', payload: '{}', correlation_id: 'corr-route' },
+      { id: 'e2', type: 'ACTION', timestamp: '2026-05-01T13:00:00Z', source: 'omniclaude', topic: 'onex.evt.action.v1', summary: 'Action event', payload: '{"step":"done"}', correlation_id: 'corr-action' },
     ]);
     render(
       <DataSourceTestProvider client={qc}>
@@ -38,6 +38,33 @@ describe('LiveEventStreamWidget', () => {
     expect(rows.length).toBe(2);
     // Newest first: ACTION event (13:00) should be first
     expect(rows[0]).toHaveTextContent('ACTION');
+    expect(rows[0]).toHaveTextContent('corr-action');
+    expect(rows[0]).toHaveTextContent('"step": "done"');
+  });
+
+  it('filters by correlation and payload text', async () => {
+    mockFetchWithItems([
+      { id: 'e1', type: 'ROUTING', timestamp: '2026-05-01T12:00:00Z', source: 'omnimarket', topic: 'onex.cmd.route.v1', summary: 'Routing event', payload: '{"model":"qwen3"}', correlation_id: 'corr-route' },
+      { id: 'e2', type: 'ACTION', timestamp: '2026-05-01T13:00:00Z', source: 'omniclaude', topic: 'onex.evt.action.v1', summary: 'Action event', payload: '{"model":"deepseek"}', correlation_id: 'corr-action' },
+    ]);
+    render(
+      <DataSourceTestProvider client={qc}>
+        <LiveEventStreamWidget />
+      </DataSourceTestProvider>,
+    );
+    await screen.findAllByTestId('live-event-row');
+
+    const input = screen.getByLabelText('Filter live event messages') as HTMLInputElement;
+    fireEvent.change(input, { target: { value: 'qwen3' } });
+
+    expect(screen.getAllByTestId('live-event-row')).toHaveLength(1);
+    expect(screen.getByText('corr-route')).toBeInTheDocument();
+
+    fireEvent.change(input, { target: { value: 'corr-action' } });
+
+    expect(screen.getAllByTestId('live-event-row')).toHaveLength(1);
+    expect(screen.getByText('corr-action')).toBeInTheDocument();
+    expect(screen.getByText('ACTION')).toBeInTheDocument();
   });
 
   it('shows empty state when no data', async () => {

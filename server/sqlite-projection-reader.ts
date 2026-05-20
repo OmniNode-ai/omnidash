@@ -66,6 +66,7 @@ export class SqliteProjectionReader {
             contract_version,
             created_at
           FROM delegation_events
+          WHERE ${this.delegationRuntimeWhereClause(db)}
           ORDER BY created_at DESC
           LIMIT 500
         `).all() as Row[];
@@ -80,14 +81,19 @@ export class SqliteProjectionReader {
             COALESCE(MAX(created_at), 0)                                               AS latest_event_at,
             0                                                                          AS total_savings_usd
           FROM delegation_events
+          WHERE ${this.delegationRuntimeWhereClause(db)}
         `).get() as Row;
         const byTaskType = db.prepare(`
           SELECT task_type AS taskType, COUNT(*) AS count
-          FROM delegation_events GROUP BY task_type ORDER BY count DESC
+          FROM delegation_events
+          WHERE ${this.delegationRuntimeWhereClause(db)}
+          GROUP BY task_type ORDER BY count DESC
         `).all() as Row[];
         const byModel = db.prepare(`
           SELECT delegated_to AS model, COUNT(*) AS count
-          FROM delegation_events GROUP BY delegated_to ORDER BY count DESC
+          FROM delegation_events
+          WHERE ${this.delegationRuntimeWhereClause(db)}
+          GROUP BY delegated_to ORDER BY count DESC
         `).all() as Row[];
         const total = (summary.total_events as number) || 0;
         const passed = (summary.quality_passed_count as number) || 0;
@@ -191,6 +197,7 @@ export class SqliteProjectionReader {
             COALESCE(SUM(tokens_input + tokens_output), 0) AS total_tokens,
             COALESCE(SUM(tokens_to_compliance), 0)    AS total_tokens_to_compliance
           FROM delegation_events
+          WHERE ${this.delegationRuntimeWhereClause(db)}
           GROUP BY delegated_to, model_name
           ORDER BY total_tokens DESC
         `).all() as Row[];
@@ -210,6 +217,7 @@ export class SqliteProjectionReader {
             COALESCE(SUM(CASE WHEN quality_gate_passed = 1 THEN 1 ELSE 0 END), 0) AS quality_passed,
             COALESCE(AVG(latency_ms), 0)                                       AS avg_latency_ms
           FROM delegation_events
+          WHERE ${this.delegationRuntimeWhereClause(db)}
           GROUP BY delegated_to, task_type
           ORDER BY event_count DESC
         `).all() as Row[];
@@ -225,17 +233,13 @@ export class SqliteProjectionReader {
             COALESCE(AVG(quality_gates_failed), 0)                               AS avg_gates_failed
           FROM delegation_events
           WHERE quality_gate_detail IS NOT NULL
+            AND ${this.delegationRuntimeWhereClause(db)}
           GROUP BY quality_gate_detail
           ORDER BY total_checks DESC
         `).all() as Row[];
 
       case 'onex.snapshot.projection.live-events.v1':
-        return db.prepare(`
-          SELECT envelope, created_at
-          FROM delegation_event_log
-          ORDER BY created_at DESC
-          LIMIT 500
-        `).all() as Row[];
+        return this.readLiveEventsProjection(db);
 
       case 'onex.snapshot.projection.ab-compare.v1':
         return db.prepare(`
@@ -319,6 +323,175 @@ export class SqliteProjectionReader {
     }
   }
 
+  private readLiveEventsProjection(db: Database.Database): Row[] {
+    const events: Row[] = [];
+    const toIso = (value: unknown): string => {
+      if (typeof value === 'string' && Number.isNaN(Number(value))) {
+        const parsed = Date.parse(value);
+        if (!Number.isNaN(parsed)) return new Date(parsed).toISOString();
+      }
+      const numeric = Number(value ?? 0);
+      if (numeric > 0) return new Date(numeric < 10_000_000_000 ? numeric * 1000 : numeric).toISOString();
+      return new Date(0).toISOString();
+    };
+    const textFrom = (...values: unknown[]): string =>
+      values.map((value) => String(value ?? '').trim()).find(Boolean) ?? '';
+
+    if (this.hasTable(db, 'delegation_event_log')) {
+      const logRows = db.prepare(`
+        SELECT id, envelope, created_at
+        FROM delegation_event_log
+        ORDER BY created_at DESC
+        LIMIT 500
+      `).all() as Row[];
+
+      for (const row of logRows) {
+        let envelope: Row = {};
+        try {
+          const parsed: unknown = JSON.parse(String(row.envelope ?? '{}'));
+          envelope = parsed && typeof parsed === 'object' && !Array.isArray(parsed)
+            ? parsed as Row
+            : { message: String(row.envelope ?? '') };
+        } catch {
+          envelope = { message: String(row.envelope ?? '') };
+        }
+        const payloadValue = envelope.payload ?? envelope.data ?? envelope;
+        const type = textFrom(envelope.type, envelope.event_type, envelope.kind, 'BUS_MESSAGE');
+        const correlationId = textFrom(
+          envelope.correlation_id,
+          envelope.correlationId,
+          (payloadValue as Row).correlation_id,
+          (payloadValue as Row).correlationId,
+        );
+        events.push({
+          id: textFrom(envelope.id, correlationId, `bus-log-${row.id}`),
+          type,
+          timestamp: toIso(envelope.timestamp ?? envelope.created_at ?? row.created_at),
+          source: textFrom(envelope.source, envelope.producer, envelope.service, 'event_bus'),
+          topic: textFrom(envelope.topic, envelope.subject, 'delegation_event_log'),
+          summary: textFrom(
+            envelope.summary,
+            envelope.message,
+            envelope.detail,
+            `${type}${correlationId ? ` · ${correlationId}` : ''}`,
+          ),
+          payload: typeof payloadValue === 'string' ? payloadValue : JSON.stringify(payloadValue),
+          correlation_id: correlationId,
+        });
+      }
+    }
+
+    if (this.hasTable(db, 'delegation_events')) {
+      const col = (name: string, fallback: string): string =>
+        this.hasColumn(db, 'delegation_events', name) ? name : fallback;
+      const createdAtExpr = this.hasColumn(db, 'delegation_events', 'timestamp')
+        ? 'COALESCE(timestamp, created_at)'
+        : 'created_at';
+      const latencyExpr = this.hasColumn(db, 'delegation_events', 'delegation_latency_ms')
+        ? 'COALESCE(delegation_latency_ms, latency_ms)'
+        : col('latency_ms', 'NULL');
+      const inputTokensExpr = col('tokens_input', '0');
+      const outputTokensExpr = col('tokens_output', '0');
+
+      const runtimeRows = db.prepare(`
+        SELECT
+          id,
+          correlation_id,
+          session_id,
+          task_type,
+          delegated_to,
+          model_name,
+          quality_gate_passed,
+          quality_gate_detail,
+          ${latencyExpr} AS latency_ms,
+          COALESCE(${inputTokensExpr}, 0) AS tokens_input,
+          COALESCE(${outputTokensExpr}, 0) AS tokens_output,
+          COALESCE(${inputTokensExpr}, 0) + COALESCE(${outputTokensExpr}, 0) AS total_tokens,
+          COALESCE(${col('cost_savings_usd', '0')}, 0) AS cost_savings_usd,
+          ${col('prompt_text', 'NULL')} AS prompt_text,
+          ${col('response_text', 'NULL')} AS response_text,
+          ${col('input_redaction_policy', 'NULL')} AS input_redaction_policy,
+          ${createdAtExpr} AS created_at
+        FROM delegation_events
+        WHERE ${this.delegationRuntimeWhereClause(db)}
+        ORDER BY created_at DESC
+        LIMIT 500
+      `).all() as Row[];
+
+      for (const row of runtimeRows) {
+        const correlationId = textFrom(row.correlation_id, row.session_id, String(row.id));
+        const passed = Number(row.quality_gate_passed ?? 0) === 1;
+        const model = textFrom(row.model_name, row.delegated_to, 'local model');
+        const tokens = Number(row.total_tokens ?? 0);
+        const latency = Number(row.latency_ms ?? 0);
+        events.push({
+          id: `delegation-${correlationId}`,
+          type: passed ? 'DELEGATION_COMPLETED' : 'DELEGATION_FAILED',
+          timestamp: toIso(row.created_at),
+          source: 'delegation_runtime',
+          topic: 'onex.evt.delegation.completed.v1',
+          summary: `${textFrom(row.task_type, 'task')} delegated to ${model} · ${tokens.toLocaleString()} tokens · ${latency}ms`,
+          payload: JSON.stringify({
+            correlation_id: correlationId,
+            session_id: row.session_id,
+            task_type: row.task_type,
+            delegated_to: row.delegated_to,
+            model_name: row.model_name,
+            quality_gate_passed: passed,
+            quality_gate_detail: row.quality_gate_detail,
+            latency_ms: latency,
+            tokens_input: row.tokens_input,
+            tokens_output: row.tokens_output,
+            total_tokens: tokens,
+            cost_savings_usd: row.cost_savings_usd,
+            prompt_text: row.prompt_text,
+            response_text: row.response_text,
+          }),
+          correlation_id: correlationId,
+        });
+      }
+    }
+
+    if (this.hasTable(db, 'generation_events')) {
+      const generationRows = db.prepare(`
+        SELECT
+          id,
+          correlation_id,
+          task_description,
+          provider,
+          model_id,
+          endpoint_class,
+          attempt_count,
+          total_latency_e2e_ms,
+          contract_passed,
+          cost_inference_usd,
+          COALESCE(timestamp, created_at) AS created_at
+        FROM generation_events
+        ORDER BY COALESCE(timestamp, created_at) DESC
+        LIMIT 500
+      `).all() as Row[];
+
+      for (const row of generationRows) {
+        const passed = Number(row.contract_passed ?? 0) === 1;
+        const correlationId = textFrom(row.correlation_id, row.id);
+        events.push({
+          id: `generation-${correlationId}`,
+          type: passed ? 'NODE_GENERATION_COMPLETED' : 'NODE_GENERATION_FAILED',
+          timestamp: toIso(row.created_at),
+          source: 'node_generation_consumer',
+          topic: 'onex.evt.node-generation.completed.v1',
+          summary: `${passed ? 'Completed' : 'Failed'} node generation · ${textFrom(row.task_description, 'untitled task')}`,
+          payload: JSON.stringify(row),
+          correlation_id: correlationId,
+        });
+      }
+    }
+
+    return events
+      .sort((a, b) => this.timestampValue(b.timestamp) - this.timestampValue(a.timestamp))
+      .slice(0, 500);
+  }
+
   private hasTable(db: Database.Database, tableName: string): boolean {
     const row = db.prepare(`
       SELECT name
@@ -334,6 +507,20 @@ export class SqliteProjectionReader {
     // PRAGMA table_info cannot be parameterized; callers pass hardcoded table names.
     const rows = db.prepare(`PRAGMA table_info(${tableName})`).all() as Array<{ name?: string }>;
     return rows.some((row) => row.name === columnName);
+  }
+
+  private delegationRuntimeWhereClause(db: Database.Database): string {
+    const col = (name: string, fallback: string): string =>
+      this.hasColumn(db, 'delegation_events', name) ? name : fallback;
+
+    return `
+      NOT (
+        COALESCE(${col('input_redaction_policy', 'NULL')}, '') = 'synthetic_demo'
+        OR COALESCE(${col('response_text', 'NULL')}, '') LIKE '%dashboard demo%'
+        OR COALESCE(${col('prompt_text', 'NULL')}, '') LIKE '%delegation dashboard semantics%'
+        OR COALESCE(${col('prompt_text', 'NULL')}, '') LIKE '%cost savings projection semantics%'
+      )
+    `;
   }
 
   private sessionKey(row: Row, index: number, source: 'sqlite-savings' | 'sqlite-events'): string {
@@ -446,6 +633,7 @@ export class SqliteProjectionReader {
           ${col('prompt_text', 'NULL')} AS prompt_text,
           ${col('response_text', 'NULL')} AS response_text
         FROM delegation_events
+        WHERE ${this.delegationRuntimeWhereClause(db)}
         ORDER BY ${createdAtExpr} DESC
         LIMIT 500
       `).all() as Row[];

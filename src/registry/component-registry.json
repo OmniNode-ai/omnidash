@@ -1,6 +1,6 @@
 {
   "manifestVersion": "1.0",
-  "generatedAt": "2026-05-18T20:39:24.187Z",
+  "generatedAt": "2026-05-20T17:04:30.743Z",
   "components": {
     "cost-trend-panel": {
       "name": "cost-trend-panel",
@@ -1449,7 +1449,7 @@
     "live-event-stream": {
       "name": "live-event-stream",
       "displayName": "Live Event Stream",
-      "description": "Real-time event feed showing events flowing through the system with type-coded badges and expandable payload details",
+      "description": "Operator event viewer showing live bus and runtime work messages with type-coded rows, correlation IDs, search, and expandable payload details",
       "category": "activity",
       "version": "1.0.0",
       "implementationKey": "live-events/LiveEventStreamWidget",
@@ -1492,6 +1492,10 @@
           "payload": {
             "type": "string",
             "description": "JSON-serialized event payload for detailed inspection."
+          },
+          "correlation_id": {
+            "type": "string",
+            "description": "Correlation identifier linking related work messages."
           }
         }
       },
@@ -1513,7 +1517,7 @@
       },
       "defaultSize": {
         "w": 12,
-        "h": 6
+        "h": 8
       },
       "minSize": {
         "w": 6,

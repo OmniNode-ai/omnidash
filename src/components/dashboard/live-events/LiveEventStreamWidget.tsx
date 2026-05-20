@@ -1,9 +1,10 @@
-/* eslint-disable local/no-typography-inline -- OMN-10509 keeps prototype widget layout while source-level typography compliance is enforced separately. */
-import { useState, useMemo, useEffect } from 'react';
+import { useState, useMemo } from 'react';
+import { Search } from 'lucide-react';
 import { ComponentWrapper } from '../ComponentWrapper';
 import { useProjectionQuery } from '@/hooks/useProjectionQuery';
 import { TOPICS } from '@shared/types/topics';
-import { NodePill, CardHeader } from '@/components/primitives';
+import { NodePill } from '@/components/primitives';
+import { Text } from '@/components/ui/typography';
 import type { NodeKind } from '@/components/primitives';
 
 // ── Data type ───────────────────────────────────────────────────────
@@ -16,33 +17,19 @@ interface LiveEvent {
   topic: string;
   summary: string;
   payload: string;
-}
-
-interface SyntheticEvent {
-  id: string;
-  type: string;
-  node: string;
-  topic: string;
-  text: string;
-  t: string;
+  correlation_id?: string;
 }
 
 // ── Helpers ─────────────────────────────────────────────────────────
 
-function nodeKindForType(node: string): NodeKind {
-  if (node === 'orchestrator') return 'orchestrator';
-  if (node === 'compute') return 'compute';
-  if (node === 'effect') return 'effect';
-  if (node === 'reducer') return 'reducer';
+function nodeKindForEvent(ev: LiveEvent): NodeKind {
+  const value = `${ev.type} ${ev.source} ${ev.topic}`.toLowerCase();
+  if (value.includes('route') || value.includes('delegation')) return 'orchestrator';
+  if (value.includes('generation') || value.includes('transform')) return 'compute';
+  if (value.includes('completed') || value.includes('action')) return 'effect';
+  if (value.includes('failed') || value.includes('error')) return 'cmd';
   return 'cmd';
 }
-
-const TYPE_TO_NODE: Record<string, string> = {
-  ROUTING: 'orchestrator',
-  ACTION: 'effect',
-  TRANSFORMATION: 'compute',
-  ERROR: 'cmd',
-};
 
 function formatTimestamp(iso: string): string {
   const d = new Date(iso);
@@ -53,13 +40,41 @@ function formatTimestamp(iso: string): string {
   return `${h}:${m}:${s}`;
 }
 
+function compactTopic(topic: string): string {
+  return topic.replace(/^onex\./, '').replace(/^snapshot\.projection\./, 'projection.');
+}
+
+function prettyPayload(payload: string): string {
+  if (!payload) return '{}';
+  try {
+    return JSON.stringify(JSON.parse(payload), null, 2);
+  } catch {
+    return payload;
+  }
+}
+
+function matchesEvent(ev: LiveEvent, query: string): boolean {
+  const q = query.trim().toLowerCase();
+  if (!q) return true;
+  return [
+    ev.type,
+    ev.source,
+    ev.topic,
+    ev.summary,
+    ev.correlation_id,
+    ev.payload,
+  ].some((value) => String(value ?? '').toLowerCase().includes(q));
+}
+
 // ── Bus column header ───────────────────────────────────────────────
 
 function BusHeader({ template }: { template: string }) {
   const labels = [
     { text: 'TIME', align: 'left' as const },
-    { text: 'NODE', align: 'left' as const },
+    { text: 'TYPE', align: 'left' as const },
+    { text: 'SOURCE', align: 'left' as const },
     { text: 'TOPIC', align: 'left' as const },
+    { text: 'CORRELATION', align: 'left' as const },
     { text: 'DETAIL', align: 'left' as const },
   ];
 
@@ -76,20 +91,18 @@ function BusHeader({ template }: { template: string }) {
       }}
     >
       {labels.map((col) => (
-        <div
+        <Text
           key={col.text}
-          className="mono"
-          style={{
-            "fontSize": 9,
-            "fontWeight": 700,
-            "color": 'var(--ink-3)',
-            "letterSpacing": '0.16em',
-            "textTransform": 'uppercase',
-            textAlign: col.align,
-          }}
+          as="div"
+          size="xs"
+          weight="bold"
+          color="tertiary"
+          family="mono"
+          transform="uppercase"
+          style={{ textAlign: col.align }}
         >
           {col.text}
-        </div>
+        </Text>
       ))}
     </div>
   );
@@ -103,30 +116,23 @@ export default function LiveEventStreamWidget() {
     queryKey: ['live-event-stream'],
     refetchInterval: 10_000,
   });
+  const [query, setQuery] = useState('');
 
-  // Convert projection data to display format.
-  const projectionEvents: SyntheticEvent[] = useMemo(() => {
+  const events = useMemo(() => {
     if (!data || data.length === 0) return [];
     return [...data]
       .sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime())
-      .slice(0, 12)
-      .map((ev) => ({
-        id: ev.id,
-        type: ev.type,
-        node: TYPE_TO_NODE[ev.type] ?? 'reducer',
-        topic: ev.topic,
-        text: ev.summary,
-        t: formatTimestamp(ev.timestamp),
-      }));
+      .slice(0, 100);
   }, [data]);
 
-  const events = projectionEvents;
-
-  // Heartbeat strip
-  const [pulses, setPulses] = useState<number[]>(() => Array(60).fill(0));
-  useEffect(() => {
-    setPulses((p) => [Math.random() * 0.8 + 0.2, ...p].slice(0, 60));
-  }, [events.length]);
+  const filteredEvents = useMemo(
+    () => events.filter((ev) => matchesEvent(ev, query)),
+    [events, query],
+  );
+  const sourceCount = new Set(events.map((ev) => ev.source)).size;
+  const newest = events[0];
+  const newestLabel = newest ? formatTimestamp(newest.timestamp) : '--:--:--';
+  const ROW_TEMPLATE = '72px 128px 150px minmax(150px, 1fr) 170px minmax(260px, 2fr)';
 
   return (
     <ComponentWrapper
@@ -139,71 +145,145 @@ export default function LiveEventStreamWidget() {
       isLive
       headerExtra={
         <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>
-          <span className="mono" style={{ "fontSize": 10, "color": 'var(--ink-3)' }}>{events.length} evt/min</span>
+          <Text size="xs" color="tertiary" family="mono">
+            {events.length} messages · {sourceCount} sources
+          </Text>
           <span style={{ width: 8, height: 8, borderRadius: '50%', background: 'var(--good)', boxShadow: '0 0 0 3px rgba(21,128,61,.18)' }} />
         </span>
       }
     >
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 0, width: '100%' }}>
-        {/* CardHeader */}
-        <CardHeader
-          eyebrow="Live event bus · bold"
-          title="onex.evt · onex.cmd"
-        />
-
-        {/* Heartbeat strip */}
-        <div style={{ display: 'flex', alignItems: 'flex-end', gap: 2, height: 36, marginBottom: 14, padding: 8, background: 'var(--bg-sunken)', borderRadius: 6 }}>
-          {pulses.map((v, i) => (
-            <div
-              key={i}
-              style={{
-                flex: 1,
-                height: `${Math.max(4, v * 100)}%`,
-                background: i === 0 ? 'var(--accent)' : 'var(--accent-soft)',
-                borderRadius: 1,
-                transition: 'height .2s ease-out',
-              }}
-            />
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 10, width: '100%' }}>
+        <div
+          style={{
+            display: 'grid',
+            gridTemplateColumns: 'repeat(4, minmax(0, 1fr))',
+            gap: 8,
+          }}
+        >
+          {[
+            ['Messages', events.length.toLocaleString()],
+            ['Visible', filteredEvents.length.toLocaleString()],
+            ['Sources', sourceCount.toLocaleString()],
+            ['Newest', newestLabel],
+          ].map(([label, value]) => (
+            <div key={label} style={{ border: '1px solid var(--line)', borderRadius: 6, padding: '8px 10px', background: 'var(--panel-2)' }}>
+              <Text as="div" size="xs" weight="bold" color="tertiary" family="mono" transform="uppercase">{label}</Text>
+              <Text as="div" size="md" weight="bold" color="primary" family="mono" style={{ marginTop: 2 }}>{value}</Text>
+            </div>
           ))}
         </div>
 
-        {/* Column headers */}
-        <BusHeader template="76px 96px 200px 1fr" />
+        <div
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: 8,
+            padding: '7px 10px',
+            border: '1px solid var(--line)',
+            borderRadius: 6,
+            background: 'var(--panel-2)',
+          }}
+        >
+          <Search size={14} style={{ color: 'var(--text-tertiary)', flexShrink: 0 }} />
+          <input
+            type="text"
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            placeholder="Filter by type, source, topic, correlation, payload"
+            aria-label="Filter live event messages"
+            className="text-input-md"
+            style={{
+              flex: 1,
+              border: 0,
+              outline: 0,
+              background: 'transparent',
+            }}
+          />
+        </div>
 
-        {/* Event rows */}
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-          {events.slice(0, 8).map((e, i) => {
-            const kind = nodeKindForType(e.node);
-            const isNewest = i === 0;
-            return (
-              <div
-                key={e.id}
-                data-testid="live-event-row"
+        <div style={{ border: '1px solid var(--line)', borderRadius: 6, overflow: 'hidden', background: 'var(--panel)' }}>
+          <BusHeader template={ROW_TEMPLATE} />
+
+          <div style={{ maxHeight: 520, overflowY: 'auto', display: 'flex', flexDirection: 'column' }}>
+            {filteredEvents.map((e, i) => {
+              const kind = nodeKindForEvent(e);
+              const isNewest = i === 0 && query.trim() === '';
+              const payload = prettyPayload(e.payload);
+              return (
+                <details
+                  key={e.id}
+                  data-testid="live-event-row"
+                  open={i === 0}
+                  style={{
+                    borderBottom: '1px solid var(--line-2)',
+                    borderLeft: `3px solid ${isNewest ? 'var(--accent)' : 'transparent'}`,
+                    background: isNewest ? 'var(--accent-soft)' : 'transparent',
+                  }}
+                >
+                  <summary
+                    style={{
+                      display: 'grid',
+                      gridTemplateColumns: ROW_TEMPLATE,
+                      gap: 12,
+                      alignItems: 'center',
+                      padding: '8px 12px',
+                      cursor: 'pointer',
+                      listStyle: 'none',
+                    }}
+                  >
+                    <Text size="xs" color="tertiary" family="mono">
+                      {formatTimestamp(e.timestamp)}
+                    </Text>
+                    <NodePill kind={kind}>{e.type}</NodePill>
+                    <Text size="xs" color="secondary" family="mono" truncate>
+                      {e.source}
+                    </Text>
+                    <Text size="xs" color="brand" family="mono" title={e.topic} truncate>
+                      {compactTopic(e.topic)}
+                    </Text>
+                    <Text size="xs" color="tertiary" family="mono" title={e.correlation_id ?? ''} truncate>
+                      {e.correlation_id || 'none'}
+                    </Text>
+                    <Text size="xs" color="secondary" truncate>
+                      {e.summary}
+                    </Text>
+                  </summary>
+                  <Text
+                    as="pre"
+                    size="xs"
+                    color="secondary"
+                    family="mono"
+                    style={{
+                      margin: '0 12px 10px 374px',
+                      maxHeight: 220,
+                      overflow: 'auto',
+                      padding: 10,
+                      borderRadius: 6,
+                      border: '1px solid var(--line)',
+                      background: 'var(--bg-sunken)',
+                      whiteSpace: 'pre-wrap',
+                      wordBreak: 'break-word',
+                    }}
+                  >
+                    {payload}
+                  </Text>
+                </details>
+              );
+            })}
+            {filteredEvents.length === 0 && (
+              <Text
+                as="div"
+                size="sm"
+                color="tertiary"
+                align="center"
                 style={{
-                  display: 'grid',
-                  gridTemplateColumns: '76px 96px 200px 1fr',
-                  gap: 12,
-                  alignItems: 'center',
-                  padding: '8px 12px',
-                  borderLeft: `3px solid ${isNewest ? 'var(--accent)' : 'transparent'}`,
-                  background: isNewest ? 'var(--accent-soft)' : 'transparent',
-                  animation: isNewest ? 'od-slidein .3s ease-out' : 'none',
-                  borderRadius: 4,
+                  padding: 18,
                 }}
               >
-                <span className="mono" style={{ "fontSize": 10, "color": 'var(--ink-3)' }}>
-                  {e.t.slice(0, 8)}
-                </span>
-                <NodePill kind={kind}>{e.type}</NodePill>
-                <span className="mono" style={{ "fontSize": 11, color: 'var(--accent-ink)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                  {e.topic}
-                </span>
-                <span style={{ "fontSize": 11, "color": 'var(--ink-2)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                  {e.text}
-                </span>
-              </div>
-            );
-          })}
+                No matching messages
+              </Text>
+            )}
+          </div>
         </div>
       </div>
     </ComponentWrapper>

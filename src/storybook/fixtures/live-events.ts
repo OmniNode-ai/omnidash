@@ -8,6 +8,7 @@ interface LiveEvent {
   topic: string;
   summary: string;
   payload: string;
+  correlation_id: string;
 }
 
 const EVENT_TYPES = ['ROUTING', 'ACTION', 'TRANSFORMATION', 'ERROR'];
@@ -54,6 +55,7 @@ export function buildLiveEvents(n = 25): LiveEvent[] {
       topic: TOPICS_POOL[i % TOPICS_POOL.length],
       summary: SUMMARIES[i % SUMMARIES.length],
       payload,
+      correlation_id: `corr-${String(i).padStart(4, '0')}`,
     };
   });
 }
