@@ -49,3 +49,20 @@ projection_api:
       order_by: "created_at DESC"
       freshness_column: "updated_at"
       limit: 500
+    - topic: "onex.snapshot.projection.hackathon_pipeline_events.v1"
+      table: "generation_events"
+      source_contract: "omnimarket/src/omnimarket/nodes/node_generation_consumer/contract.yaml"
+      description: >
+        Completed hackathon node-generation pipeline events projected from
+        generation_events. Completion rows render as success/error based on
+        contract_passed; request and validation stages are not synthesized.
+      columns:
+        - "correlation_id || '-completed' AS id"
+        - "contract_passed AS type"
+        - "timestamp"
+        - "node_generation_consumer AS source"
+        - "task_description AS message"
+        - "correlation_id AS correlationId"
+      order_by: "timestamp ASC"
+      freshness_column: "timestamp"
+      limit: 500

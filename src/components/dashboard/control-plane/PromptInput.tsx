@@ -39,7 +39,7 @@ export function PromptInput({ onSubmit, disabled }: PromptInputProps) {
       />
       <button
         type="submit"
-        disabled={disabled ?? !value.trim()}
+        disabled={disabled || !value.trim()}
         className="btn primary"
         aria-label="Generate"
       >

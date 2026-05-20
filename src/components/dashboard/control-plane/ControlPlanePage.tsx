@@ -75,24 +75,35 @@ export default function ControlPlanePage({
         import.meta.env.VITE_HTTP_DATA_SOURCE_URL ??
         import.meta.env.VITE_SQLITE_DATA_SOURCE_URL ??
         '';
-      fetch(`${baseUrl}/api/hackathon/generate`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ task_description: prompt }),
-      }).catch((err: unknown) => {
-        console.warn('[ControlPlanePage] POST failed:', err);
-        setLocalEvents((prev) => [
-          ...prev,
-          {
-            id: `err-${Date.now()}`,
-            type: 'error' as const,
-            timestamp: new Date().toISOString(),
-            source: 'control-plane',
-            message: `Failed to submit: ${String(err)}`,
-            correlationId: `err-${Date.now()}`,
-          },
-        ]);
-      });
+      void (async () => {
+        try {
+          if (!baseUrl) throw new Error('Missing data source base URL');
+          const response = await fetch(`${baseUrl}/api/hackathon/generate`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ task_description: prompt }),
+          });
+          if (!response.ok) {
+            const body = await response.text().catch(() => '');
+            const detail = body ? `: ${body}` : '';
+            throw new Error(`HTTP ${response.status} ${response.statusText}${detail}`);
+          }
+        } catch (err: unknown) {
+          console.warn('[ControlPlanePage] POST failed:', err);
+          const now = Date.now();
+          setLocalEvents((prev) => [
+            ...prev,
+            {
+              id: `err-${now}`,
+              type: 'error' as const,
+              timestamp: new Date(now).toISOString(),
+              source: 'control-plane',
+              message: `Failed to submit: ${String(err)}`,
+              correlationId: `err-${now}`,
+            },
+          ]);
+        }
+      })();
     }
   }, []);
 
@@ -124,7 +135,9 @@ export default function ControlPlanePage({
 
         <div>
           <div className="eyebrow" style={{ marginBottom: 6 }}>
-            Pipeline Events
+            <Text as="span" size="xs" weight="bold" color="tertiary" className="text-tracked text-upper">
+              Pipeline Events
+            </Text>
             {allEvents.length > 0 && (
               <Text as="span" size="xs" color="tertiary" className="mono" style={{ marginLeft: 8 }}>
                 {allEvents.length} events

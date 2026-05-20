@@ -405,6 +405,26 @@ export class PostgresProjectionReader {
           return res.rows as Row[];
         }
 
+        case 'onex.snapshot.projection.hackathon_pipeline_events.v1': {
+          const res = await client.query(`
+            SELECT
+              correlation_id || '-completed' AS id,
+              CASE WHEN contract_passed THEN 'success' ELSE 'error' END AS type,
+              COALESCE(timestamp, created_at)::text AS timestamp,
+              'node_generation_consumer' AS source,
+              CASE
+                WHEN contract_passed
+                  THEN 'Node generation completed: ' || task_description
+                ELSE 'Node generation failed validation: ' || task_description
+              END AS message,
+              correlation_id AS "correlationId"
+            FROM generation_events
+            ORDER BY COALESCE(timestamp, created_at) ASC
+            LIMIT 500
+          `);
+          return res.rows as Row[];
+        }
+
         default:
           return [];
       }

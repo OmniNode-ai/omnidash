@@ -74,6 +74,20 @@ function createTestDb(dbPath: string): Database.Database {
       updated_at TEXT,
       projected_at TEXT
     );
+    CREATE TABLE IF NOT EXISTS generation_events (
+      id TEXT PRIMARY KEY,
+      correlation_id TEXT UNIQUE NOT NULL,
+      task_description TEXT NOT NULL DEFAULT '',
+      provider TEXT NOT NULL DEFAULT '',
+      model_id TEXT NOT NULL DEFAULT '',
+      endpoint_class TEXT NOT NULL DEFAULT '',
+      attempt_count INTEGER NOT NULL DEFAULT 0,
+      total_latency_e2e_ms INTEGER NOT NULL DEFAULT 0,
+      contract_passed INTEGER NOT NULL DEFAULT 0,
+      cost_inference_usd REAL NOT NULL DEFAULT 0,
+      timestamp TEXT NOT NULL,
+      created_at TEXT NOT NULL
+    );
   `);
   return db;
 }
@@ -427,6 +441,42 @@ describe('SqliteProjectionReader', () => {
       status: 'active',
       modelId: 'gemini-2.0-flash',
       correlationId: 'corr-mcp-1',
+    });
+  });
+
+  it('reads hackathon pipeline events from generation_events', () => {
+    const db = createTestDb(dbPath);
+    db.prepare(`
+      INSERT INTO generation_events (
+        id,
+        correlation_id,
+        task_description,
+        contract_passed,
+        timestamp,
+        created_at
+      )
+      VALUES (?, ?, ?, ?, ?, ?)
+    `).run(
+      'gen-1',
+      'corr-gen-1',
+      'Build an email validator node',
+      1,
+      '2026-05-20T08:10:00.000Z',
+      '2026-05-20T08:10:00.000Z',
+    );
+    db.close();
+
+    const reader = new SqliteProjectionReader({ dbPath });
+    const rows = reader.readProjection('onex.snapshot.projection.hackathon_pipeline_events.v1');
+
+    expect(rows).toHaveLength(1);
+    expect(rows[0]).toMatchObject({
+      id: 'corr-gen-1-completed',
+      type: 'success',
+      timestamp: '2026-05-20T08:10:00.000Z',
+      source: 'node_generation_consumer',
+      message: 'Node generation completed: Build an email validator node',
+      correlationId: 'corr-gen-1',
     });
   });
 
