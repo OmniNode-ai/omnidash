@@ -730,6 +730,7 @@ export class PostgresProjectionReader {
       const displayName = String(session.model_name ?? session.task_type ?? 'delegated-runtime');
       const modelId = displayName.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') || 'delegated-runtime';
       const tokens = sessionTokens(session);
+      const cost = Number(session.local_cost_usd ?? 0);
       const baselineCandidate = Number(session.cloud_cost_usd ?? 0);
       const measuredSavings = Number(session.savings_usd ?? 0);
       const savings = Math.max(measuredSavings, baselineCandidate);
