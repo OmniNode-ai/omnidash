@@ -25,10 +25,7 @@ describe('server projection routes', () => {
   beforeEach(async () => {
     fixturesDir = await mkdtemp(join(tmpdir(), 'omnidash-projections-'));
     process.env.FIXTURES_DIR = fixturesDir;
-    // OMN-10756: force non-sqlite mode so the routes fall through to fixture
-    // file reading; contract.yaml default is sqlite but these tests exercise
-    // the fixture path.
-    process.env.OMNIDASH_DATA_SOURCE = 'postgres';
+    process.env.OMNIDASH_DATA_SOURCE = 'file';
     delete process.env.OMNIDASH_ANALYTICS_DB_URL;
   });
 
@@ -69,6 +66,28 @@ describe('server projection routes', () => {
 
     await expect(import('./index.js')).resolves.toBeTruthy();
   });
+
+  it('does not fall back to fixtures when postgres mode lacks a connection URL', async () => {
+    process.env.OMNIDASH_DATA_SOURCE = 'postgres';
+    delete process.env.OMNIDASH_ANALYTICS_DB_URL;
+    const consoleError = vi.spyOn(console, 'error').mockImplementation(() => undefined);
+
+    const topic = 'onex.snapshot.projection.llm_cost.v1';
+    const topicDir = join(fixturesDir, encodeURIComponent(topic));
+    await mkdir(topicDir, { recursive: true });
+    await writeFile(join(topicDir, 'index.json'), JSON.stringify(['stub.json']));
+    await writeFile(join(topicDir, 'stub.json'), JSON.stringify({ entity_id: 'stub', total_cost_usd: '99.00' }));
+
+    try {
+      const routes = await loadRoutes();
+      const res = await request(buildApp(routes)).get(`/projection/${encodeURIComponent(topic)}`);
+
+      expect(res.status).toBe(500);
+      expect(res.body).toEqual({ error: 'projection read failed' });
+    } finally {
+      consoleError.mockRestore();
+    }
+  });
 });
 
 // OMN-10305: API surface proof for cost-trend cluster topics.
@@ -80,9 +99,7 @@ describe('server projection routes — cost-trend cluster (OMN-10305)', () => {
   beforeEach(async () => {
     fixturesDir = await mkdtemp(join(tmpdir(), 'omnidash-cost-projections-'));
     process.env.FIXTURES_DIR = fixturesDir;
-    // OMN-10756: force non-sqlite mode so routes fall through to fixture
-    // file reading; contract.yaml default is sqlite.
-    process.env.OMNIDASH_DATA_SOURCE = 'postgres';
+    process.env.OMNIDASH_DATA_SOURCE = 'file';
   });
 
   afterEach(async () => {

@@ -156,6 +156,10 @@ export class PostgresProjectionReader {
           return this.readDelegationSavingsProjection(client);
         }
 
+        case 'onex.snapshot.projection.live-events.v1': {
+          return this.readLiveEventsProjection(client);
+        }
+
         case 'onex.snapshot.projection.delegation.model-routing.v1': {
           const routingRes = await client.query(`
             SELECT
@@ -489,6 +493,128 @@ export class PostgresProjectionReader {
     throw err;
   }
 
+  private async readLiveEventsProjection(
+    client: { query: (sql: string) => Promise<{ rows: Row[] }> },
+  ): Promise<Row[]> {
+    const events: Row[] = [];
+
+    try {
+      const eventLogRes = await client.query(`
+        SELECT
+          COALESCE(
+            NULLIF(envelope->>'id', ''),
+            NULLIF(envelope->>'correlation_id', ''),
+            NULLIF(envelope->>'correlationId', ''),
+            'bus-log-' || id::text
+          ) AS id,
+          COALESCE(
+            NULLIF(envelope->>'type', ''),
+            NULLIF(envelope->>'event_type', ''),
+            NULLIF(envelope->>'kind', ''),
+            'BUS_MESSAGE'
+          ) AS type,
+          COALESCE(
+            NULLIF(envelope->>'timestamp', ''),
+            NULLIF(envelope->>'created_at', ''),
+            created_at::text
+          ) AS timestamp,
+          COALESCE(
+            NULLIF(envelope->>'source', ''),
+            NULLIF(envelope->>'producer', ''),
+            NULLIF(envelope->>'service', ''),
+            'event_bus'
+          ) AS source,
+          COALESCE(
+            NULLIF(envelope->>'topic', ''),
+            NULLIF(envelope->>'subject', ''),
+            'delegation_event_log'
+          ) AS topic,
+          COALESCE(
+            NULLIF(envelope->>'summary', ''),
+            NULLIF(envelope->>'message', ''),
+            NULLIF(envelope->>'detail', ''),
+            COALESCE(NULLIF(envelope->>'type', ''), 'BUS_MESSAGE')
+          ) AS summary,
+          COALESCE(
+            NULLIF(envelope->>'correlation_id', ''),
+            NULLIF(envelope->>'correlationId', ''),
+            NULLIF(envelope->'payload'->>'correlation_id', ''),
+            NULLIF(envelope->'payload'->>'correlationId', ''),
+            ''
+          ) AS correlation_id,
+          COALESCE(envelope->'payload', envelope->'data', envelope)::text AS payload
+        FROM delegation_event_log
+        ORDER BY created_at DESC
+        LIMIT 500
+      `);
+      events.push(...eventLogRes.rows);
+    } catch (err) {
+      this.handleProjectionCompatibilityError(err, 'delegation_event_log');
+    }
+
+    try {
+      const delegationRes = await client.query(`
+        WITH rows AS (
+          SELECT to_jsonb(delegation_events) AS e
+          FROM delegation_events
+          ORDER BY created_at DESC
+          LIMIT 500
+        )
+        SELECT
+          'delegation-' || COALESCE(NULLIF(e->>'correlation_id', ''), e->>'id') AS id,
+          CASE WHEN COALESCE(NULLIF(e->>'quality_gate_passed', '')::boolean, false)
+            THEN 'DELEGATION_COMPLETED'
+            ELSE 'DELEGATION_FAILED'
+          END AS type,
+          COALESCE(e->>'timestamp', e->>'created_at') AS timestamp,
+          'delegation_runtime' AS source,
+          'onex.evt.delegation.completed.v1' AS topic,
+          COALESCE(NULLIF(e->>'task_type', ''), 'task')
+            || ' delegated to '
+            || COALESCE(NULLIF(e->>'model_name', ''), NULLIF(e->>'delegated_to', ''), 'local model')
+            || ' · '
+            || (
+              COALESCE(NULLIF(e->>'tokens_input', '')::numeric, 0)
+              + COALESCE(NULLIF(e->>'tokens_output', '')::numeric, 0)
+            )::text
+            || ' tokens · '
+            || COALESCE(NULLIF(e->>'delegation_latency_ms', ''), NULLIF(e->>'latency_ms', ''), '0')
+            || 'ms' AS summary,
+          COALESCE(NULLIF(e->>'correlation_id', ''), e->>'session_id', e->>'id') AS correlation_id,
+          e::text AS payload
+        FROM rows
+      `);
+      events.push(...delegationRes.rows);
+    } catch (err) {
+      this.handleProjectionCompatibilityError(err, 'delegation_events');
+    }
+
+    try {
+      const generationRes = await client.query(`
+        SELECT
+          'generation-' || correlation_id AS id,
+          CASE WHEN contract_passed THEN 'NODE_GENERATION_COMPLETED' ELSE 'NODE_GENERATION_FAILED' END AS type,
+          COALESCE(timestamp, created_at)::text AS timestamp,
+          'node_generation_consumer' AS source,
+          'onex.evt.node-generation.completed.v1' AS topic,
+          CASE WHEN contract_passed THEN 'Completed node generation · ' ELSE 'Failed node generation · ' END
+            || task_description AS summary,
+          correlation_id,
+          to_jsonb(generation_events)::text AS payload
+        FROM generation_events
+        ORDER BY COALESCE(timestamp, created_at) DESC
+        LIMIT 500
+      `);
+      events.push(...generationRes.rows);
+    } catch (err) {
+      this.handleProjectionCompatibilityError(err, 'generation_events');
+    }
+
+    return events
+      .sort((a, b) => this.timestampValue(b.timestamp) - this.timestampValue(a.timestamp))
+      .slice(0, 500);
+  }
+
   private sessionKey(row: Row, index: number, source: 'postgres-savings' | 'postgres-events'): string {
     const key = String(row.session_id ?? '').trim();
     return key || `${source}-row-${index}-${String(row.created_at ?? '')}-${String(row.model_name ?? '')}`;
@@ -516,13 +642,22 @@ export class PostgresProjectionReader {
         latency_ms: eventRow.latency_ms ?? existing.latency_ms,
         prompt_text: eventRow.prompt_text ?? existing.prompt_text,
         response_text: eventRow.response_text ?? existing.response_text,
-        created_at: String(eventRow.created_at ?? '').localeCompare(String(existing.created_at ?? '')) > 0
+        created_at: this.timestampValue(eventRow.created_at) > this.timestampValue(existing.created_at)
           ? eventRow.created_at
           : existing.created_at,
       });
     });
 
     return [...merged.values()];
+  }
+
+  private timestampValue(value: unknown): number {
+    const raw = String(value ?? '').trim();
+    if (!raw) return 0;
+    const numeric = Number(raw);
+    if (!Number.isNaN(numeric)) return numeric < 10_000_000_000 ? numeric * 1000 : numeric;
+    const parsed = Date.parse(raw);
+    return Number.isNaN(parsed) ? 0 : parsed;
   }
 
   private async readCostSavingsOverviewProjection(

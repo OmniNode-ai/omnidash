@@ -506,17 +506,49 @@ describe('SqliteProjectionReader', () => {
     expect(rows[0]).toMatchObject({ check_detail: 'sql_injection:pass', total_checks: 2, passed_count: 1, failed_count: 1 });
   });
 
-  it('reads live events from delegation_event_log', () => {
+  it('reads live work events from bus envelopes and delegation runtime rows', () => {
     const db = createTestDb(dbPath);
-    db.prepare(`INSERT INTO delegation_event_log (envelope, created_at) VALUES (?, ?)`).run('{"type":"ROUTING","model":"qwen3"}', 1000.0);
-    db.prepare(`INSERT INTO delegation_event_log (envelope, created_at) VALUES (?, ?)`).run('{"type":"DECISION","model":"deepseek"}', 2000.0);
+    db.prepare(`INSERT INTO delegation_event_log (envelope, created_at) VALUES (?, ?)`).run(
+      '{"type":"ROUTING","topic":"onex.cmd.route.v1","source":"omnimarket","summary":"Routing qwen3","correlation_id":"corr-bus","payload":{"model":"qwen3"}}',
+      1000.0,
+    );
+    db.prepare(`
+      INSERT INTO delegation_events (
+        correlation_id, task_type, delegated_to, model_name, quality_gate_passed,
+        latency_ms, tokens_input, tokens_output, cost_savings_usd, created_at
+      )
+      VALUES ('corr-runtime', 'test', 'local', 'qwen3-coder', 1, 505, 60, 98, 0.00165, 2000.0)
+    `).run();
+    db.prepare(`
+      INSERT INTO delegation_events (
+        correlation_id, task_type, delegated_to, model_name, quality_gate_passed,
+        latency_ms, tokens_input, tokens_output, cost_savings_usd, input_redaction_policy, created_at
+      )
+      VALUES ('corr-stub', 'test', 'local', 'qwen3-coder', 1, 100, 1, 1, 0.1, 'synthetic_demo', 3000.0)
+    `).run();
     db.close();
 
     const reader = new SqliteProjectionReader({ dbPath });
     const rows = reader.readProjection('onex.snapshot.projection.live-events.v1');
 
     expect(rows).toHaveLength(2);
-    expect(rows[0]).toMatchObject({ envelope: '{"type":"DECISION","model":"deepseek"}' });
+    expect(rows.find((row) => row.correlation_id === 'corr-stub')).toBeUndefined();
+    expect(rows[0]).toMatchObject({
+      id: 'delegation-corr-runtime',
+      type: 'DELEGATION_COMPLETED',
+      source: 'delegation_runtime',
+      topic: 'onex.evt.delegation.completed.v1',
+      correlation_id: 'corr-runtime',
+    });
+    expect(rows[0]!.summary).toContain('158 tokens');
+    expect(rows[1]).toMatchObject({
+      id: 'corr-bus',
+      type: 'ROUTING',
+      source: 'omnimarket',
+      topic: 'onex.cmd.route.v1',
+      correlation_id: 'corr-bus',
+      summary: 'Routing qwen3',
+    });
   });
 
   it('reads MCP tool rows from active node_service_registry metadata', () => {

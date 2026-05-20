@@ -317,6 +317,55 @@ describe('PostgresProjectionReader', () => {
     expect(client.query).toHaveBeenCalledWith(expect.stringContaining("metadata ? 'mcp_tool_name'"));
   });
 
+  it('returns live event rows from bus and delegation runtime sources', async () => {
+    const client = {
+      query: vi.fn()
+        .mockResolvedValueOnce({
+          rows: [{
+            id: 'corr-bus',
+            type: 'ROUTING',
+            timestamp: '2026-05-20T12:00:00.000Z',
+            source: 'omnimarket',
+            topic: 'onex.cmd.route.v1',
+            summary: 'Routing qwen3',
+            correlation_id: 'corr-bus',
+            payload: '{"model":"qwen3"}',
+          }],
+        })
+        .mockResolvedValueOnce({
+          rows: [{
+            id: 'delegation-corr-runtime',
+            type: 'DELEGATION_COMPLETED',
+            timestamp: '2026-05-20T12:01:00.000Z',
+            source: 'delegation_runtime',
+            topic: 'onex.evt.delegation.completed.v1',
+            summary: 'test delegated to qwen3-coder · 158 tokens · 505ms',
+            correlation_id: 'corr-runtime',
+            payload: '{"correlation_id":"corr-runtime"}',
+          }],
+        })
+        .mockResolvedValueOnce({ rows: [] }),
+      release: vi.fn(),
+    };
+    getMockPool().connect.mockResolvedValue(client);
+
+    const result = await reader.readProjection('onex.snapshot.projection.live-events.v1');
+
+    expect(result.rows).toHaveLength(2);
+    expect(result.rows[0]).toMatchObject({
+      id: 'delegation-corr-runtime',
+      type: 'DELEGATION_COMPLETED',
+      source: 'delegation_runtime',
+      correlation_id: 'corr-runtime',
+    });
+    expect(result.rows[1]).toMatchObject({
+      id: 'corr-bus',
+      type: 'ROUTING',
+      source: 'omnimarket',
+      correlation_id: 'corr-bus',
+    });
+  });
+
   it('returns hackathon pipeline event rows from generation_events', async () => {
     const fakeRow = {
       id: 'corr-gen-1-completed',

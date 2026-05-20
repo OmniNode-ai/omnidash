@@ -19,7 +19,6 @@ const sqliteReader = dsConfig.mode === 'sqlite'
   : null;
 
 // Only instantiate when mode=postgres AND a connection string is available.
-// When OMNIDASH_ANALYTICS_DB_URL is absent, fall through to fixture files.
 const pgReader = (dsConfig.mode === 'postgres' && process.env.OMNIDASH_ANALYTICS_DB_URL)
   ? new PostgresProjectionReader({ connectionString: process.env.OMNIDASH_ANALYTICS_DB_URL })
   : null;
@@ -36,6 +35,14 @@ async function readProjection(topic: string): Promise<unknown> {
 
   if (sqliteReader) {
     return sqliteReader.readProjection(topic);
+  }
+
+  if (dsConfig.mode === 'postgres') {
+    throw new Error('OMNIDASH_ANALYTICS_DB_URL is required for postgres data source; refusing fixture fallback');
+  }
+
+  if (dsConfig.mode !== 'file') {
+    return [];
   }
 
   const topicDir = resolve(FIXTURES_DIR, encodeURIComponent(topic));
