@@ -51,3 +51,6 @@ export type {
 
 export { buildMcpToolRows } from './mcp-tools';
 export type { BuildMcpToolRowsOptions } from './mcp-tools';
+
+export { buildPipelineEvents } from './control-plane';
+export type { BuildPipelineEventsOptions } from './control-plane';

@@ -60,7 +60,8 @@ describe('Proof of Life — Part 3 (Full System)', () => {
     // + cost-savings-overview (OMN-10346).
     // + delegation-savings, delegation-model-routing, delegation-quality-gate, delegation-token-usage (OMN-10624).
     // + mcp-tools (OMN-11258).
-    expect(available.length).toBe(25);
+    // + control-plane (OMN-11260).
+    expect(available.length).toBe(26);
   });
 
   it('both templates pass validation', () => {

@@ -46,10 +46,12 @@ describe('Proof of Life — Part 2', () => {
     // OMN-10346: cost-savings-overview added.
     // OMN-10624: delegation-savings, delegation-model-routing, delegation-quality-gate, delegation-token-usage added.
     // OMN-11258: mcp-tools added.
-    expect(all.length).toBe(25);
+    // OMN-11260: control-plane added.
+    expect(all.length).toBe(26);
     expect(all.map((c) => c.name).sort()).toEqual([
       'ab-compare',
       'baselines-roi-card',
+      'control-plane',
       'cost-by-model',
       'cost-by-model-3d',
       'cost-by-repo',
