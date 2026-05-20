@@ -131,7 +131,8 @@ const GRID_COLS = '2fr 2fr 1fr 1fr 1fr 1fr 1fr 1fr';
 
 function SessionRow({ s }: { s: DelegationSavingsSession }) {
   const [expanded, setExpanded] = useState(false);
-  const rowLabel = s.task_type ?? s.session_id.slice(0, 20);
+  const shortSessionId = s.session_id ? s.session_id.slice(0, 8) : 'unknown';
+  const rowLabel = s.task_type ? `${s.task_type} · ${shortSessionId}` : shortSessionId;
   const modelShort = s.model_name?.replace('local-', '').replace('-30b', '') ?? '—';
   const hasDetail = Boolean(s.prompt_text || s.response_text);
 

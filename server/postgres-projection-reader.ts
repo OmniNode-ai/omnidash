@@ -289,20 +289,7 @@ export class PostgresProjectionReader {
         }
 
         case 'onex.snapshot.projection.delegation.token-usage.v1': {
-          const res = await client.query(`
-            SELECT
-              delegated_to                                  AS model_alias,
-              model_name,
-              COUNT(*)                                      AS delegation_count,
-              COALESCE(SUM(tokens_input), 0)                AS total_tokens_input,
-              COALESCE(SUM(tokens_output), 0)               AS total_tokens_output,
-              COALESCE(SUM(tokens_input + tokens_output), 0) AS total_tokens,
-              COALESCE(SUM(tokens_to_compliance), 0)        AS total_tokens_to_compliance
-            FROM delegation_events
-            GROUP BY delegated_to, model_name
-            ORDER BY total_tokens DESC
-          `);
-          return res.rows as Row[];
+          return this.readDelegationTokenUsageProjection(client);
         }
 
         case 'onex.snapshot.projection.node-registry.v1': {
@@ -660,6 +647,66 @@ export class PostgresProjectionReader {
     return Number.isNaN(parsed) ? 0 : parsed;
   }
 
+  private async readDelegationTokenUsageProjection(
+    client: { query: (sql: string) => Promise<{ rows: Row[] }> },
+  ): Promise<Row[]> {
+    const res = await client.query(`
+      SELECT
+        COALESCE(NULLIF(delegated_to, ''), NULLIF(model_name, ''), 'delegated-runtime') AS model_id,
+        COALESCE(NULLIF(model_name, ''), NULLIF(delegated_to, ''), 'delegated-runtime') AS model_name,
+        COUNT(*) AS delegation_count,
+        COALESCE(SUM(COALESCE(tokens_input, 0)), 0) AS prompt_tokens,
+        COALESCE(SUM(COALESCE(tokens_output, 0)), 0) AS completion_tokens,
+        COALESCE(SUM(COALESCE(tokens_input, 0) + COALESCE(tokens_output, 0)), 0) AS total_tokens,
+        COALESCE(SUM(COALESCE(cost_usd, 0)), 0) AS estimated_cost_usd
+      FROM delegation_events
+      GROUP BY
+        COALESCE(NULLIF(delegated_to, ''), NULLIF(model_name, ''), 'delegated-runtime'),
+        COALESCE(NULLIF(model_name, ''), NULLIF(delegated_to, ''), 'delegated-runtime')
+      ORDER BY total_tokens DESC
+    `);
+
+    const byModel = res.rows.filter((row) => Number(row.total_tokens ?? 0) > 0).map((row) => {
+      const promptTokens = Number(row.prompt_tokens ?? 0);
+      const completionTokens = Number(row.completion_tokens ?? 0);
+      const totalTokens = Number(row.total_tokens ?? 0);
+      return {
+        model_id: String(row.model_id ?? 'delegated-runtime'),
+        model_name: String(row.model_name ?? row.model_id ?? 'delegated-runtime'),
+        prompt_tokens: promptTokens,
+        completion_tokens: completionTokens,
+        total_tokens: totalTokens,
+        estimated_cost_usd: Number(row.estimated_cost_usd ?? 0),
+        usage_source: 'measured',
+        token_provenance: 'measured',
+      };
+    });
+
+    const totalPromptTokens = byModel.reduce((sum, row) => sum + row.prompt_tokens, 0);
+    const totalCompletionTokens = byModel.reduce((sum, row) => sum + row.completion_tokens, 0);
+    const provenanceSummary = byModel.reduce(
+      (summary, row) => {
+        const provenance = row.token_provenance as keyof typeof summary;
+        return {
+          ...summary,
+          [provenance]: summary[provenance] + 1,
+        };
+      },
+      { measured: 0, estimated: 0, unknown: 0 },
+    );
+
+    return [{
+      total_prompt_tokens: totalPromptTokens,
+      total_completion_tokens: totalCompletionTokens,
+      total_tokens: totalPromptTokens + totalCompletionTokens,
+      total_estimated_cost_usd: byModel.reduce((sum, row) => sum + row.estimated_cost_usd, 0),
+      provenance_summary: provenanceSummary,
+      by_model: byModel,
+      captured_at: new Date().toISOString(),
+      provisioned: byModel.length > 0,
+    }];
+  }
+
   private async readCostSavingsOverviewProjection(
     client: { query: (sql: string) => Promise<{ rows: Row[] }> },
   ): Promise<Row[]> {
@@ -679,13 +726,14 @@ export class PostgresProjectionReader {
 
     const sessionTokens = (session: Row): number =>
       Number(session.prompt_tokens ?? 0) + Number(session.completion_tokens ?? 0);
-    const tokenBackedSessions = sessions.filter((session) => sessionTokens(session) > 0);
-    const omittedTelemetryRows = sessions.length - tokenBackedSessions.length;
+    const measuredSessions = sessions.filter((session) => sessionTokens(session) > 0);
+    const omittedTelemetryRows = sessions.length - measuredSessions.length;
 
-    for (const session of tokenBackedSessions) {
+    for (const session of measuredSessions) {
       const displayName = String(session.model_name ?? session.task_type ?? 'delegated-runtime');
       const modelId = displayName.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') || 'delegated-runtime';
       const tokens = sessionTokens(session);
+      const cost = Number(session.local_cost_usd ?? 0);
       const baselineCandidate = Number(session.cloud_cost_usd ?? 0);
       const measuredSavings = Number(session.savings_usd ?? 0);
       const savings = Math.max(measuredSavings, baselineCandidate);
@@ -703,7 +751,7 @@ export class PostgresProjectionReader {
       };
       existing.task_count += 1;
       existing.tokens_total += tokens;
-      existing.cost_usd += 0;
+      existing.cost_usd += cost;
       existing.baseline_cost_usd += baseline;
       existing.savings_usd += savings;
       existing.evidence_ref = existing.evidence_ref ?? String(session.session_id ?? '');
@@ -726,12 +774,29 @@ export class PostgresProjectionReader {
     const totalBaseline = rows.reduce((sum, row) => sum + row.baseline_cost_usd, 0);
     const totalSavings = rows.reduce((sum, row) => sum + row.savings_usd, 0);
     const tokensTotal = rows.reduce((sum, row) => sum + row.tokens_total, 0);
-    const complianceTokensTotal = tokenBackedSessions.reduce(
+    const complianceTokensTotal = measuredSessions.reduce(
       (sum, row) => row.tokens_to_compliance != null
         ? sum + Number(row.tokens_to_compliance)
         : sum,
       0,
     );
+    const recentRuns = measuredSessions.slice(0, 20).map((session) => {
+      const promptTokens = Number(session.prompt_tokens ?? 0);
+      const completionTokens = Number(session.completion_tokens ?? 0);
+      const totalTokens = promptTokens + completionTokens;
+      return {
+        session_id: String(session.session_id ?? ''),
+        task_type: String(session.task_type ?? ''),
+        model_name: String(session.model_name ?? session.task_type ?? 'delegated-runtime'),
+        prompt_tokens: promptTokens,
+        completion_tokens: completionTokens,
+        total_tokens: totalTokens,
+        savings_usd: Number(session.savings_usd ?? 0),
+        latency_ms: session.latency_ms == null ? null : Number(session.latency_ms),
+        created_at: String(session.created_at ?? ''),
+        token_provenance: 'measured',
+      };
+    });
     const warnings = omittedTelemetryRows > 0
       ? [`Omitted ${omittedTelemetryRows} delegation row${omittedTelemetryRows === 1 ? '' : 's'} without token telemetry.`]
       : [];
@@ -747,8 +812,11 @@ export class PostgresProjectionReader {
       local_token_pct: tokensTotal > 0 ? 1 : 0,
       captured_at: new Date().toISOString(),
       rows,
+      recent_runs: recentRuns,
+      measured_run_count: measuredSessions.length,
+      zero_token_run_count: omittedTelemetryRows,
       warnings,
-      provisioned: tokenBackedSessions.length > 0,
+      provisioned: measuredSessions.length > 0,
     }];
   }
 }

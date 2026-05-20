@@ -5,6 +5,7 @@ import { useProjectionQuery } from '@/hooks/useProjectionQuery';
 import { TOPICS } from '@shared/types/topics';
 import { KPI, SortableTable } from '@/components/primitives';
 import type { ColumnDef } from '@/components/primitives';
+import { Heading, Text } from '@/components/ui/typography';
 
 // ── View model types (OMN-10346 dashboard view contract) ─────────────
 
@@ -24,6 +25,19 @@ export interface CostSavingsRow {
   evidence_ref: string | null;
 }
 
+export interface CostSavingsRun {
+  session_id: string;
+  task_type: string;
+  model_name: string;
+  prompt_tokens: number;
+  completion_tokens: number;
+  total_tokens: number;
+  savings_usd: number;
+  latency_ms: number | null;
+  created_at: string;
+  token_provenance: 'measured' | 'unknown';
+}
+
 export interface CostSavingsOverviewProjection {
   /** Aggregation window, e.g. "24h", "7d", "30d". */
   window: string;
@@ -36,6 +50,9 @@ export interface CostSavingsOverviewProjection {
   local_token_pct: number;
   captured_at: string;
   rows: CostSavingsRow[];
+  recent_runs?: CostSavingsRun[];
+  measured_run_count?: number;
+  zero_token_run_count?: number;
   warnings: string[];
   provisioned: boolean;
 }
@@ -77,6 +94,26 @@ function fmtTokens(n: number): string {
   if (n >= 1e6) return `${(n / 1e6).toFixed(1)}M`;
   if (n >= 1e3) return `${(n / 1e3).toFixed(0)}K`;
   return String(n);
+}
+
+function fmtMs(ms: number | null): string {
+  if (ms == null || !Number.isFinite(ms)) return '-';
+  if (ms >= 1000) return `${(ms / 1000).toFixed(1)}s`;
+  return `${Math.round(ms)}ms`;
+}
+
+function fmtRunTime(value: string): string {
+  const parsed = Date.parse(value);
+  if (Number.isNaN(parsed)) return value || '-';
+  return new Date(parsed).toLocaleTimeString(undefined, {
+    hour: '2-digit',
+    minute: '2-digit',
+    second: '2-digit',
+  });
+}
+
+function shortRunId(sessionId: string): string {
+  return sessionId ? sessionId.slice(0, 8) : '-';
 }
 
 // ── KPI bar ───────────────────────────────────────────────────────────
@@ -294,6 +331,100 @@ const COLUMNS: ColumnDef<CostSavingsRow>[] = [
   },
 ];
 
+function RecentRunsSection({ overview }: { overview: CostSavingsOverviewProjection }) {
+  const runs = overview.recent_runs ?? [];
+  if (runs.length === 0) return null;
+
+  return (
+    <div style={{ marginTop: 16 }}>
+      <Heading
+        level={4}
+        size="xs"
+        color="tertiary"
+        weight="semibold"
+        transform="uppercase"
+        className="text-tracked"
+        style={{ margin: '0 0 6px' }}
+      >
+        Recent delegation runs
+      </Heading>
+      <div
+        style={{
+          display: 'grid',
+          gridTemplateColumns: '76px minmax(72px, 1fr) minmax(120px, 2fr) 64px 80px 64px 72px',
+          gap: 8,
+          paddingBottom: 4,
+          borderBottom: '1px solid var(--line)',
+        }}
+      >
+        {(['Run', 'Task', 'Model', 'Tokens', 'Saved', 'Latency', 'Time'] as const).map((h, i) => (
+          <Text
+            key={h}
+            size="xs"
+            color="tertiary"
+            align={i < 3 ? 'start' : 'end'}
+          >
+            {h}
+          </Text>
+        ))}
+      </div>
+      {runs.map((run) => (
+        <div
+          key={run.session_id}
+          style={{
+            display: 'grid',
+            gridTemplateColumns: '76px minmax(72px, 1fr) minmax(120px, 2fr) 64px 80px 64px 72px',
+            gap: 8,
+            padding: '5px 0',
+            borderBottom: '1px solid var(--line-2)',
+            alignItems: 'center',
+          }}
+        >
+          <Text family="mono" size="sm" color="brand" title={run.session_id}>
+            {shortRunId(run.session_id)}
+          </Text>
+          <Text family="mono" size="sm" color="secondary" truncate>
+            {run.task_type || '-'}
+          </Text>
+          <Text family="mono" size="sm" color="secondary" title={run.model_name} truncate>
+            {run.model_name}
+          </Text>
+          <Text
+            family="mono"
+            size="sm"
+            color={run.total_tokens > 0 ? 'primary' : 'tertiary'}
+            title={`${run.prompt_tokens} input, ${run.completion_tokens} output`}
+            align="end"
+            tabularNums
+          >
+            {run.total_tokens > 0 ? fmtTokens(run.total_tokens) : '-'}
+          </Text>
+          <Text
+            family="mono"
+            size="sm"
+            color={run.savings_usd > 0 ? 'ok' : 'tertiary'}
+            align="end"
+            tabularNums
+          >
+            {run.savings_usd > 0 ? `+${fmtUsd(run.savings_usd)}` : '-'}
+          </Text>
+          <Text family="mono" size="sm" color="tertiary" align="end" tabularNums>
+            {fmtMs(run.latency_ms)}
+          </Text>
+          <Text family="mono" size="sm" color="tertiary" align="end" tabularNums>
+            {fmtRunTime(run.created_at)}
+          </Text>
+        </div>
+      ))}
+      {(overview.zero_token_run_count ?? 0) > 0 && (
+        <Text as="div" size="xs" color="tertiary" style={{ marginTop: 6 }}>
+          Showing measured runs only; {overview.zero_token_run_count} older rows have no token metrics.
+        </Text>
+      )}
+    </div>
+  );
+}
+
 // ── Warnings strip ────────────────────────────────────────────────────
 
 function WarningsStrip({ warnings }: { warnings: string[] }) {
@@ -399,6 +530,8 @@ export default function CostSavingsOverviewWidget(props: { config: CostSavingsOv
               dense
             />
           </div>
+
+          <RecentRunsSection overview={overview} />
 
           {showWarnings && <WarningsStrip warnings={overview.warnings} />}
 

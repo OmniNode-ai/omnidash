@@ -90,6 +90,20 @@ describe('CostSavingsOverviewWidget', () => {
         runtime_address: null,
         evidence_ref: 'OMN-11299/live-demo',
       }],
+      recent_runs: [{
+        session_id: '5e12c850-318c-4cd2-99ae-c799c61e094f',
+        task_type: 'document',
+        model_name: 'Qwen3-Coder-30B-A3B-Instruct-AWQ-4bit',
+        prompt_tokens: 74,
+        completion_tokens: 260,
+        total_tokens: 334,
+        savings_usd: 0.004122,
+        latency_ms: 1347,
+        created_at: '2026-05-20T20:31:38.686Z',
+        token_provenance: 'measured',
+      }],
+      measured_run_count: 1,
+      zero_token_run_count: 2,
       warnings: [],
       provisioned: true,
     }]);
@@ -101,9 +115,13 @@ describe('CostSavingsOverviewWidget', () => {
 
     expect(await screen.findByText('Delegated Tokens')).toBeInTheDocument();
     expect(screen.getByText('1,202 to compliance')).toBeInTheDocument();
-    expect(screen.getByText('Qwen3-Coder-30B-A3B-Instruct-AWQ-4bit')).toBeInTheDocument();
+    expect(screen.getAllByText('Qwen3-Coder-30B-A3B-Instruct-AWQ-4bit').length).toBeGreaterThan(0);
     expect(screen.getByText('+$0.0153')).toBeInTheDocument();
     expect(screen.getByText('100.0%')).toBeInTheDocument();
+    expect(screen.getByText('Recent delegation runs')).toBeInTheDocument();
+    expect(screen.getByText('5e12c850')).toBeInTheDocument();
+    expect(screen.getByTitle('74 input, 260 output')).toHaveTextContent('334');
+    expect(screen.getByText(/showing measured runs only/i)).toBeInTheDocument();
   });
 
   it('renders per-model table with expected column headers', async () => {
