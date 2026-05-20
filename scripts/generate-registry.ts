@@ -136,10 +136,11 @@ const MVP_COMPONENTS: Record<string, ComponentManifest> = {
     description: 'LLM cost share per model — horizontal bars sorted by cost descending',
     category: 'cost',
     version: '3.0.0',
-    // Manifest-dispatch via IBarChartAdapter (implementationKey=threejs → BarChartThreeJs).
-    // Bespoke CostByModel.tsx router and CostByModelBars.tsx deleted in OMN-10291.
-    // fieldMappings: { x: 'model_name', y: 'total_cost_usd', format: '$,.4f' }
-    implementationKey: 'IBarChartAdapter',
+    // Routes through cost-by-model/CostByModelAdapter, a widget-specific wrapper that supplies
+    // projection data and fieldMappings to BarChartThreeJs. The earlier IBarChartAdapter
+    // implementationKey relied on a manifest-level fieldMappings declaration that does not
+    // yet exist in the ComponentManifest type. Mirrors the CostByRepoAdapter pattern.
+    implementationKey: 'cost-by-model/CostByModelAdapter',
     projectionSchema: {
       type: 'object',
       description: 'Row shape from onex.snapshot.projection.llm_cost.v1 (llm_cost_aggregates). Ordering authority: aggregation_key (model_name) for display; no monotonic time ordering required for bar chart.',
@@ -184,10 +185,11 @@ const MVP_COMPONENTS: Record<string, ComponentManifest> = {
     description: 'LLM cost share per model — tilted 3D pie/doughnut with cost-proportional slice angles',
     category: 'cost',
     version: '1.0.0',
-    // Manifest-dispatch via IDoughnutChartAdapter (implementationKey=threejs → DoughnutChartAdapterThreeJs).
-    // Wraps ThreePieChart exported from CostByModelPie.tsx.
-    // fieldMappings: { label: 'model_name', value: 'total_cost_usd', format: '$,.4f' }
-    implementationKey: 'IDoughnutChartAdapter',
+    // Routes through cost-by-model/CostByModel3DAdapter, a widget-specific wrapper that
+    // supplies projection data and fieldMappings to DoughnutChartAdapter (which itself
+    // wraps ThreePieChart). Mirrors the CostByRepoAdapter pattern; awaits a manifest-side
+    // fieldMappings declaration to switch back to interface-level dispatch.
+    implementationKey: 'cost-by-model/CostByModel3DAdapter',
     projectionSchema: {
       type: 'object',
       description: 'Row shape from onex.snapshot.projection.llm_cost.v1 (llm_cost_aggregates). Same schema as cost-by-model 2D variant.',
