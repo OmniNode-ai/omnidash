@@ -28,3 +28,24 @@ data_source:
   # Default SQLite DB path (used by server/routes.ts in sqlite mode only).
   # Tilde is expanded to $HOME by the server at runtime.
   sqlite_db_path: "~/.omninode/delegation/delegation.sqlite"
+
+projection_api:
+  snapshots:
+    - topic: "onex.snapshot.projection.mcp-tools.v1"
+      table: "node_service_registry"
+      source_contract: "omnimarket/src/omnimarket/nodes/node_projection_registration/contract.yaml"
+      description: >
+        Active MCP tool registrations projected from node_service_registry metadata.
+      columns:
+        - "service_name AS name"
+        - "metadata.description AS description"
+        - "created_at AS registeredAt"
+        - "health_status AS status"
+        - "metadata.modelId AS modelId"
+        - "metadata.correlationId AS correlationId"
+      filters:
+        - "is_active = true"
+        - "service_type in (mcp, mcp_tool, mcp-tools) OR metadata declares mcp_tool_name/tool_name/kind=mcp_tool"
+      order_by: "created_at DESC"
+      freshness_column: "updated_at"
+      limit: 500

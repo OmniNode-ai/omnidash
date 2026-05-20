@@ -62,6 +62,18 @@ function createTestDb(dbPath: string): Database.Database {
       envelope TEXT NOT NULL,
       created_at REAL NOT NULL
     );
+    CREATE TABLE IF NOT EXISTS node_service_registry (
+      id TEXT PRIMARY KEY,
+      service_name TEXT UNIQUE NOT NULL,
+      service_url TEXT NOT NULL DEFAULT '',
+      service_type TEXT,
+      health_status TEXT DEFAULT 'unknown',
+      metadata TEXT DEFAULT '{}',
+      is_active INTEGER DEFAULT 1,
+      created_at TEXT,
+      updated_at TEXT,
+      projected_at TEXT
+    );
   `);
   return db;
 }
@@ -370,6 +382,52 @@ describe('SqliteProjectionReader', () => {
 
     expect(rows).toHaveLength(2);
     expect(rows[0]).toMatchObject({ envelope: '{"type":"DECISION","model":"deepseek"}' });
+  });
+
+  it('reads MCP tool rows from active node_service_registry metadata', () => {
+    const db = createTestDb(dbPath);
+    db.prepare(`
+      INSERT INTO node_service_registry (
+        id,
+        service_name,
+        service_type,
+        health_status,
+        metadata,
+        is_active,
+        created_at,
+        updated_at,
+        projected_at
+      )
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `).run(
+      'tool-1',
+      'node_sentiment_classifier',
+      'mcp_tool',
+      'active',
+      JSON.stringify({
+        description: 'Classify customer review sentiment.',
+        modelId: 'gemini-2.0-flash',
+        correlationId: 'corr-mcp-1',
+      }),
+      1,
+      '2026-05-20T08:00:00.000Z',
+      '2026-05-20T08:05:00.000Z',
+      '2026-05-20T08:05:00.000Z',
+    );
+    db.close();
+
+    const reader = new SqliteProjectionReader({ dbPath });
+    const rows = reader.readProjection('onex.snapshot.projection.mcp-tools.v1');
+
+    expect(rows).toHaveLength(1);
+    expect(rows[0]).toMatchObject({
+      name: 'node_sentiment_classifier',
+      description: 'Classify customer review sentiment.',
+      registeredAt: '2026-05-20T08:00:00.000Z',
+      status: 'active',
+      modelId: 'gemini-2.0-flash',
+      correlationId: 'corr-mcp-1',
+    });
   });
 
   it('returns [] for topics with no backing table (baselines, overnight, registration)', () => {

@@ -366,6 +366,45 @@ export class PostgresProjectionReader {
           return res.rows as Row[];
         }
 
+        case 'onex.snapshot.projection.mcp-tools.v1': {
+          const res = await client.query(`
+            SELECT
+              service_name AS name,
+              COALESCE(
+                NULLIF(metadata->>'description', ''),
+                NULLIF(metadata->>'tool_description', ''),
+                ''
+              ) AS description,
+              COALESCE(created_at, updated_at, projected_at)::text AS "registeredAt",
+              COALESCE(
+                NULLIF(health_status, ''),
+                CASE WHEN is_active THEN 'active' ELSE 'inactive' END,
+                'unknown'
+              ) AS status,
+              COALESCE(
+                NULLIF(metadata->>'modelId', ''),
+                NULLIF(metadata->>'model_id', ''),
+                ''
+              ) AS "modelId",
+              COALESCE(
+                NULLIF(metadata->>'correlationId', ''),
+                NULLIF(metadata->>'correlation_id', ''),
+                ''
+              ) AS "correlationId"
+            FROM node_service_registry
+            WHERE is_active IS TRUE
+              AND (
+                service_type IN ('mcp', 'mcp_tool', 'mcp-tools')
+                OR metadata ? 'mcp_tool_name'
+                OR metadata ? 'tool_name'
+                OR metadata->>'kind' = 'mcp_tool'
+              )
+            ORDER BY COALESCE(created_at, updated_at, projected_at) DESC
+            LIMIT 500
+          `);
+          return res.rows as Row[];
+        }
+
         default:
           return [];
       }

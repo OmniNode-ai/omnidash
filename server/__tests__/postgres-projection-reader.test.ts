@@ -97,6 +97,26 @@ describe('PostgresProjectionReader', () => {
     expect(Array.isArray(row.byModel)).toBe(true);
   });
 
+  it('returns MCP tools rows from node_service_registry metadata', async () => {
+    const fakeRow = {
+      name: 'node_sentiment_classifier',
+      description: 'Classify customer review sentiment.',
+      registeredAt: '2026-05-20T08:00:00.000Z',
+      status: 'active',
+      modelId: 'gemini-2.0-flash',
+      correlationId: 'corr-mcp-1',
+    };
+    const client = { query: vi.fn().mockResolvedValue({ rows: [fakeRow] }), release: vi.fn() };
+    getMockPool().connect.mockResolvedValue(client);
+
+    const result = await reader.readProjection('onex.snapshot.projection.mcp-tools.v1');
+
+    expect(result.rows).toHaveLength(1);
+    expect(result.rows[0]).toMatchObject(fakeRow);
+    expect(client.query).toHaveBeenCalledWith(expect.stringContaining('FROM node_service_registry'));
+    expect(client.query).toHaveBeenCalledWith(expect.stringContaining("metadata ? 'mcp_tool_name'"));
+  });
+
   it('releases client even on query error', async () => {
     const client = {
       query: vi.fn().mockRejectedValue(new Error('query error')),
