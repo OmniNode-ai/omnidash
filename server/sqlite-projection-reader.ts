@@ -24,9 +24,9 @@ type Row = Record<string, unknown>;
  * omniclaude delegation daemon. Maps omnidash topic names to their backing
  * table queries.
  *
- * Only reads from pre-materialized projection tables — no client-side
- * aggregation or cost computation. All totals come from savings_estimates rows
- * as written by the Python adapter.
+ * Reads pre-materialized projection tables and folds live delegation runtime
+ * metrics into dashboard-ready projection rows where the runtime emits tokens
+ * before a downstream savings_estimates row exists.
  */
 export class SqliteProjectionReader {
   private readonly dbPath: string;
@@ -195,26 +195,11 @@ export class SqliteProjectionReader {
           ORDER BY total_tokens DESC
         `).all() as Row[];
 
+      case 'onex.snapshot.projection.cost.savings-overview.v1':
+        return [this.readCostSavingsOverviewProjection(db)];
+
       case 'onex.snapshot.projection.delegation.savings.v1':
-        return db.prepare(`
-          SELECT
-            id,
-            session_id,
-            event_timestamp,
-            model_local,
-            model_cloud_baseline,
-            local_cost_usd,
-            cloud_cost_usd,
-            savings_usd,
-            baseline_model,
-            pricing_manifest_version,
-            savings_method,
-            usage_source,
-            created_at
-          FROM savings_estimates
-          ORDER BY created_at DESC
-          LIMIT 500
-        `).all() as Row[];
+        return [this.readDelegationSavingsProjection(db)];
 
       case 'onex.snapshot.projection.delegation.model-routing.v1':
         return db.prepare(`
@@ -342,5 +327,228 @@ export class SqliteProjectionReader {
       LIMIT 1
     `).get(tableName) as Row | undefined;
     return row !== undefined;
+  }
+
+  private hasColumn(db: Database.Database, tableName: string, columnName: string): boolean {
+    if (!this.hasTable(db, tableName)) return false;
+    // PRAGMA table_info cannot be parameterized; callers pass hardcoded table names.
+    const rows = db.prepare(`PRAGMA table_info(${tableName})`).all() as Array<{ name?: string }>;
+    return rows.some((row) => row.name === columnName);
+  }
+
+  private sessionKey(row: Row, index: number, source: 'sqlite-savings' | 'sqlite-events'): string {
+    const key = String(row.session_id ?? '').trim();
+    return key || `${source}-row-${index}-${String(row.created_at ?? '')}-${String(row.model_name ?? '')}`;
+  }
+
+  private mergeDelegationSessions(savingsRows: Row[], eventRows: Row[]): Row[] {
+    const merged = new Map<string, Row>();
+    savingsRows.forEach((row, index) => {
+      merged.set(this.sessionKey(row, index, 'sqlite-savings'), row);
+    });
+
+    eventRows.forEach((eventRow, index) => {
+      const key = this.sessionKey(eventRow, index, 'sqlite-events');
+      const existing = merged.get(key);
+      if (!existing) {
+        merged.set(key, eventRow);
+        return;
+      }
+
+      merged.set(key, {
+        ...existing,
+        prompt_tokens: eventRow.prompt_tokens ?? existing.prompt_tokens,
+        completion_tokens: eventRow.completion_tokens ?? existing.completion_tokens,
+        tokens_to_compliance: eventRow.tokens_to_compliance ?? existing.tokens_to_compliance,
+        latency_ms: eventRow.latency_ms ?? existing.latency_ms,
+        prompt_text: eventRow.prompt_text ?? existing.prompt_text,
+        response_text: eventRow.response_text ?? existing.response_text,
+        created_at: this.newerCreatedAt(existing.created_at, eventRow.created_at),
+      });
+    });
+
+    return [...merged.values()];
+  }
+
+  private newerCreatedAt(left: unknown, right: unknown): unknown {
+    return this.timestampValue(right) > this.timestampValue(left) ? right : left;
+  }
+
+  private timestampValue(value: unknown): number {
+    const numeric = Number(value ?? 0);
+    if (!Number.isNaN(numeric)) return numeric;
+    const parsed = Date.parse(String(value));
+    return Number.isNaN(parsed) ? 0 : parsed;
+  }
+
+  private readDelegationSavingsProjection(db: Database.Database): Row {
+    let savingsRows: Row[] = [];
+    let eventRows: Row[] = [];
+
+    if (this.hasTable(db, 'savings_estimates')) {
+      savingsRows = db.prepare(`
+        SELECT
+          session_id,
+          model_local AS task_type,
+          model_local AS model_name,
+          local_cost_usd,
+          cloud_cost_usd,
+          savings_usd,
+          baseline_model,
+          pricing_manifest_version,
+          savings_method,
+          usage_source,
+          0 AS prompt_tokens,
+          0 AS completion_tokens,
+          NULL AS tokens_to_compliance,
+          NULL AS latency_ms,
+          created_at,
+          NULL AS prompt_text,
+          NULL AS response_text
+        FROM savings_estimates
+        ORDER BY created_at DESC
+        LIMIT 500
+      `).all() as Row[];
+    }
+
+    if (this.hasTable(db, 'delegation_events')) {
+      const col = (name: string, fallback: string): string =>
+        this.hasColumn(db, 'delegation_events', name) ? name : fallback;
+      const latencyExpr = this.hasColumn(db, 'delegation_events', 'delegation_latency_ms')
+        ? 'delegation_latency_ms'
+        : col('latency_ms', 'NULL');
+      const createdAtExpr = this.hasColumn(db, 'delegation_events', 'created_at')
+        ? 'created_at'
+        : col('timestamp', 'NULL');
+      const costExpr = col('cost_usd', '0');
+      const savingsExpr = col('cost_savings_usd', '0');
+      const inputTokensExpr = col('tokens_input', '0');
+      const outputTokensExpr = col('tokens_output', '0');
+      const complianceTokensExpr = col('tokens_to_compliance', 'NULL');
+
+      eventRows = db.prepare(`
+        SELECT
+          COALESCE(NULLIF(session_id, ''), NULLIF(correlation_id, ''), CAST(id AS TEXT)) AS session_id,
+          task_type,
+          COALESCE(NULLIF(model_name, ''), NULLIF(delegated_to, ''), 'local') AS model_name,
+          COALESCE(${costExpr}, 0) AS local_cost_usd,
+          COALESCE(${costExpr}, 0) + COALESCE(${savingsExpr}, 0) AS cloud_cost_usd,
+          COALESCE(${savingsExpr}, 0) AS savings_usd,
+          'claude-opus-4.1' AS baseline_model,
+          'runtime-delegation-events' AS pricing_manifest_version,
+          CASE WHEN COALESCE(${savingsExpr}, 0) > 0 THEN 'measured' ELSE 'estimated' END AS savings_method,
+          CASE WHEN COALESCE(${inputTokensExpr}, 0) + COALESCE(${outputTokensExpr}, 0) > 0 THEN 'measured' ELSE 'unknown' END AS usage_source,
+          COALESCE(${inputTokensExpr}, 0) AS prompt_tokens,
+          COALESCE(${outputTokensExpr}, 0) AS completion_tokens,
+          ${complianceTokensExpr} AS tokens_to_compliance,
+          ${latencyExpr} AS latency_ms,
+          ${createdAtExpr} AS created_at,
+          ${col('prompt_text', 'NULL')} AS prompt_text,
+          ${col('response_text', 'NULL')} AS response_text
+        FROM delegation_events
+        ORDER BY ${createdAtExpr} DESC
+        LIMIT 500
+      `).all() as Row[];
+    }
+
+    const sessions = this.mergeDelegationSessions(savingsRows, eventRows);
+    sessions.sort((a, b) => this.timestampValue(b.created_at) - this.timestampValue(a.created_at));
+
+    const sum = (key: string): number =>
+      sessions.reduce((total, row) => total + Number(row[key] ?? 0), 0);
+    const latest = sessions[0] ?? {};
+
+    return {
+      cumulative_savings_usd: sum('savings_usd'),
+      cumulative_local_cost_usd: sum('local_cost_usd'),
+      cumulative_cloud_cost_usd: sum('cloud_cost_usd'),
+      baseline_model: (latest.baseline_model as string | undefined) ?? 'claude-opus-4.1',
+      pricing_manifest_version: (latest.pricing_manifest_version as string | undefined) ?? 'runtime-delegation-events',
+      session_count: sessions.length,
+      sessions: sessions.slice(0, 500),
+      captured_at: new Date().toISOString(),
+      provisioned: true,
+    };
+  }
+
+  private readCostSavingsOverviewProjection(db: Database.Database): Row {
+    const delegationSavings = this.readDelegationSavingsProjection(db);
+    const sessions = (delegationSavings.sessions as Row[] | undefined) ?? [];
+    const grouped = new Map<string, {
+      model_id: string;
+      display_name: string;
+      execution_mode: string;
+      task_count: number;
+      tokens_total: number;
+      cost_usd: number;
+      baseline_cost_usd: number;
+      savings_usd: number;
+      evidence_ref: string | null;
+    }>();
+
+    for (const session of sessions) {
+      const displayName = String(session.model_name ?? session.task_type ?? 'delegated-runtime');
+      const modelId = displayName.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') || 'delegated-runtime';
+      const tokens = Number(session.prompt_tokens ?? 0) + Number(session.completion_tokens ?? 0);
+      const cost = Number(session.local_cost_usd ?? 0);
+      const savings = Number(session.savings_usd ?? 0);
+      const baseline = Number(session.cloud_cost_usd ?? 0) || cost + savings;
+      const existing = grouped.get(modelId) ?? {
+        model_id: modelId,
+        display_name: displayName,
+        execution_mode: 'delegated',
+        task_count: 0,
+        tokens_total: 0,
+        cost_usd: 0,
+        baseline_cost_usd: 0,
+        savings_usd: 0,
+        evidence_ref: null,
+      };
+      existing.task_count += 1;
+      existing.tokens_total += tokens;
+      existing.cost_usd += cost;
+      existing.baseline_cost_usd += baseline;
+      existing.savings_usd += savings;
+      existing.evidence_ref = existing.evidence_ref ?? String(session.session_id ?? '');
+      grouped.set(modelId, existing);
+    }
+
+    const rows = [...grouped.values()].map((row) => ({
+      ...row,
+      cost_usd: Number(row.cost_usd.toFixed(6)),
+      baseline_cost_usd: Number(row.baseline_cost_usd.toFixed(6)),
+      savings_usd: Number(row.savings_usd.toFixed(6)),
+      savings_pct: row.baseline_cost_usd > 0
+        ? Number((row.savings_usd / row.baseline_cost_usd).toFixed(6))
+        : 0,
+      runtime_address: null,
+      evidence_ref: row.evidence_ref || null,
+    })).sort((a, b) => b.savings_usd - a.savings_usd);
+
+    const totalCost = rows.reduce((sum, row) => sum + row.cost_usd, 0);
+    const totalBaseline = rows.reduce((sum, row) => sum + row.baseline_cost_usd, 0);
+    const totalSavings = rows.reduce((sum, row) => sum + row.savings_usd, 0);
+    const tokensTotal = rows.reduce((sum, row) => sum + row.tokens_total, 0);
+    const complianceTokensTotal = sessions.reduce(
+      (sum, row) => row.tokens_to_compliance != null
+        ? sum + Number(row.tokens_to_compliance)
+        : sum,
+      0,
+    );
+
+    return {
+      window: '24h',
+      total_cost_usd: Number(totalCost.toFixed(6)),
+      total_baseline_cost_usd: Number(totalBaseline.toFixed(6)),
+      total_savings_usd: Number(totalSavings.toFixed(6)),
+      savings_rate: totalBaseline > 0 ? Number((totalSavings / totalBaseline).toFixed(6)) : 0,
+      tokens_total: tokensTotal,
+      tokens_to_compliance: complianceTokensTotal > 0 ? complianceTokensTotal : undefined,
+      local_token_pct: tokensTotal > 0 ? 1 : 0,
+      captured_at: new Date().toISOString(),
+      rows,
+      warnings: [],
+      provisioned: sessions.length > 0,
+    };
   }
 }

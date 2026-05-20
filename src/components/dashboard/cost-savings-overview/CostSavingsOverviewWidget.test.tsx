@@ -63,7 +63,47 @@ describe('CostSavingsOverviewWidget', () => {
     expect(await screen.findByText('Cloud Spend')).toBeInTheDocument();
     expect(screen.getByText('Cloud Avoided')).toBeInTheDocument();
     expect(screen.getByText('Savings Rate')).toBeInTheDocument();
-    expect(screen.getByText('Local Tokens')).toBeInTheDocument();
+    expect(screen.getByText('Delegated Tokens')).toBeInTheDocument();
+  });
+
+  it('renders live delegation runtime savings in the product widget', async () => {
+    mockFetchWithItems([{
+      window: '24h',
+      total_cost_usd: 0,
+      total_baseline_cost_usd: 0.01533,
+      total_savings_usd: 0.01533,
+      savings_rate: 1,
+      tokens_total: 1202,
+      tokens_to_compliance: 1202,
+      local_token_pct: 1,
+      captured_at: '2026-05-20T12:03:30Z',
+      rows: [{
+        model_id: 'qwen3-coder-30b-a3b-instruct-awq-4bit',
+        display_name: 'Qwen3-Coder-30B-A3B-Instruct-AWQ-4bit',
+        execution_mode: 'delegated',
+        task_count: 2,
+        tokens_total: 1202,
+        cost_usd: 0,
+        baseline_cost_usd: 0.01533,
+        savings_usd: 0.01533,
+        savings_pct: 1,
+        runtime_address: null,
+        evidence_ref: 'OMN-11299/live-demo',
+      }],
+      warnings: [],
+      provisioned: true,
+    }]);
+    render(
+      <DataSourceTestProvider client={qc}>
+        <CostSavingsOverviewWidget config={{}} />
+      </DataSourceTestProvider>,
+    );
+
+    expect(await screen.findByText('Delegated Tokens')).toBeInTheDocument();
+    expect(screen.getByText('1,202 to compliance')).toBeInTheDocument();
+    expect(screen.getByText('Qwen3-Coder-30B-A3B-Instruct-AWQ-4bit')).toBeInTheDocument();
+    expect(screen.getByText('+$0.0153')).toBeInTheDocument();
+    expect(screen.getByText('100.0%')).toBeInTheDocument();
   });
 
   it('renders per-model table with expected column headers', async () => {
@@ -164,6 +204,6 @@ describe('CostSavingsOverviewWidget', () => {
       </DataSourceTestProvider>,
     );
     await screen.findByText('Cloud Spend');
-    expect(screen.getByText('Token routing split')).toBeInTheDocument();
+    expect(screen.getByText('Delegated token split')).toBeInTheDocument();
   });
 });

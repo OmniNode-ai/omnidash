@@ -97,6 +97,165 @@ describe('PostgresProjectionReader', () => {
     expect(Array.isArray(row.byModel)).toBe(true);
   });
 
+  it('returns delegation savings projection with runtime token metrics', async () => {
+    const client = {
+      query: vi.fn()
+        .mockResolvedValueOnce({ rows: [] })
+        .mockResolvedValueOnce({
+          rows: [{
+            session_id: 'corr-live',
+            task_type: 'test',
+            model_name: 'qwen3-coder',
+            local_cost_usd: '0',
+            cloud_cost_usd: '0.009327',
+            savings_usd: '0.009327',
+            baseline_model: 'claude-opus-4.1',
+            pricing_manifest_version: 'runtime-delegation-events',
+            savings_method: 'measured',
+            usage_source: 'measured',
+            prompt_tokens: '144',
+            completion_tokens: '593',
+            tokens_to_compliance: '737',
+            latency_ms: '3237',
+            created_at: '2026-05-20T12:00:00.000Z',
+          }],
+        }),
+      release: vi.fn(),
+    };
+    getMockPool().connect.mockResolvedValue(client);
+
+    const result = await reader.readProjection('onex.snapshot.projection.delegation.savings.v1');
+
+    expect(result.rows).toHaveLength(1);
+    expect(result.rows[0]).toMatchObject({
+      cumulative_savings_usd: 0.009327,
+      session_count: 1,
+      provisioned: true,
+    });
+    const sessions = result.rows[0]!.sessions as Record<string, unknown>[];
+    expect(sessions[0]).toMatchObject({
+      session_id: 'corr-live',
+      prompt_tokens: '144',
+      completion_tokens: '593',
+      tokens_to_compliance: '737',
+    });
+    expect(client.query).toHaveBeenCalledWith(expect.stringContaining('FROM savings_estimates'));
+    expect(client.query).toHaveBeenCalledWith(expect.stringContaining('to_jsonb(delegation_events)'));
+  });
+
+  it('deduplicates materialized and runtime delegation savings rows by session', async () => {
+    const client = {
+      query: vi.fn()
+        .mockResolvedValueOnce({
+          rows: [{
+            session_id: 'sess-merged',
+            task_type: 'qwen3-coder',
+            model_name: 'qwen3-coder',
+            local_cost_usd: '0.001',
+            cloud_cost_usd: '0.010',
+            savings_usd: '0.009',
+            baseline_model: 'claude-opus-4.1',
+            pricing_manifest_version: 'pricing-v1',
+            savings_method: 'measured',
+            usage_source: 'estimated',
+            prompt_tokens: '0',
+            completion_tokens: '0',
+            tokens_to_compliance: null,
+            latency_ms: null,
+            created_at: '2026-05-20T12:00:00.000Z',
+          }],
+        })
+        .mockResolvedValueOnce({
+          rows: [{
+            session_id: 'sess-merged',
+            task_type: 'test',
+            model_name: 'qwen3-coder',
+            local_cost_usd: '0',
+            cloud_cost_usd: '0.010',
+            savings_usd: '0.010',
+            baseline_model: 'claude-opus-4.1',
+            pricing_manifest_version: 'runtime-delegation-events',
+            savings_method: 'measured',
+            usage_source: 'measured',
+            prompt_tokens: '144',
+            completion_tokens: '593',
+            tokens_to_compliance: '737',
+            latency_ms: '3237',
+            created_at: '2026-05-20T12:01:00.000Z',
+          }],
+        }),
+      release: vi.fn(),
+    };
+    getMockPool().connect.mockResolvedValue(client);
+
+    const result = await reader.readProjection('onex.snapshot.projection.delegation.savings.v1');
+
+    expect(result.rows[0]).toMatchObject({
+      cumulative_savings_usd: 0.009,
+      session_count: 1,
+    });
+    const sessions = result.rows[0]!.sessions as Record<string, unknown>[];
+    expect(sessions).toHaveLength(1);
+    expect(sessions[0]).toMatchObject({
+      session_id: 'sess-merged',
+      savings_usd: '0.009',
+      prompt_tokens: '144',
+      completion_tokens: '593',
+      tokens_to_compliance: '737',
+      latency_ms: '3237',
+      created_at: '2026-05-20T12:01:00.000Z',
+    });
+  });
+
+  it('returns cost savings overview projection from runtime delegation metrics', async () => {
+    const client = {
+      query: vi.fn()
+        .mockResolvedValueOnce({ rows: [] })
+        .mockResolvedValueOnce({
+          rows: [{
+            session_id: 'corr-live',
+            task_type: 'test',
+            model_name: 'qwen3-coder',
+            local_cost_usd: '0',
+            cloud_cost_usd: '0.009327',
+            savings_usd: '0.009327',
+            baseline_model: 'claude-opus-4.1',
+            pricing_manifest_version: 'runtime-delegation-events',
+            savings_method: 'measured',
+            usage_source: 'measured',
+            prompt_tokens: '144',
+            completion_tokens: '593',
+            tokens_to_compliance: '737',
+            latency_ms: '3237',
+            created_at: '2026-05-20T12:00:00.000Z',
+          }],
+        }),
+      release: vi.fn(),
+    };
+    getMockPool().connect.mockResolvedValue(client);
+
+    const result = await reader.readProjection('onex.snapshot.projection.cost.savings-overview.v1');
+
+    expect(result.rows).toHaveLength(1);
+    expect(result.rows[0]).toMatchObject({
+      window: '24h',
+      total_cost_usd: 0,
+      total_baseline_cost_usd: 0.009327,
+      total_savings_usd: 0.009327,
+      savings_rate: 1,
+      tokens_total: 737,
+      local_token_pct: 1,
+      provisioned: true,
+    });
+    const overviewRows = result.rows[0]!.rows as Record<string, unknown>[];
+    expect(overviewRows[0]).toMatchObject({
+      display_name: 'qwen3-coder',
+      execution_mode: 'delegated',
+      task_count: 1,
+      tokens_total: 737,
+    });
+  });
+
   it('returns MCP tools rows from node_service_registry metadata', async () => {
     const fakeRow = {
       name: 'node_sentiment_classifier',

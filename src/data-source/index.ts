@@ -42,6 +42,12 @@ export function createSnapshotSource(): ProtocolSnapshotSource {
     const baseUrl = import.meta.env.VITE_SQLITE_DATA_SOURCE_URL ?? DATA_SOURCE_DEFAULT_URL;
     return new HttpSnapshotSource({ baseUrl });
   }
+  // postgres mode is also served to the browser through the Express projection
+  // endpoint; only the server process talks to Postgres directly.
+  if (mode === 'postgres') {
+    const baseUrl = import.meta.env.VITE_HTTP_DATA_SOURCE_URL ?? DATA_SOURCE_DEFAULT_URL;
+    return new HttpSnapshotSource({ baseUrl });
+  }
   throw new Error(`Unknown data source mode: ${mode}`);
 }
 

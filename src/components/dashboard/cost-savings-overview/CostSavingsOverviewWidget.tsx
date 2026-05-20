@@ -32,6 +32,7 @@ export interface CostSavingsOverviewProjection {
   total_savings_usd: number;
   savings_rate: number;
   tokens_total: number;
+  tokens_to_compliance?: number;
   local_token_pct: number;
   captured_at: string;
   rows: CostSavingsRow[];
@@ -65,7 +66,7 @@ const MODE_COLOR: Record<ExecutionMode, string> = {
 };
 
 function fmtUsd(v: number): string {
-  return v === 0 ? '$0.00' : `$${v.toFixed(v < 0.01 ? 4 : 2)}`;
+  return v === 0 ? '$0.00' : `$${v.toFixed(Math.abs(v) < 1 ? 4 : 2)}`;
 }
 
 function fmtPct(v: number): string {
@@ -83,6 +84,7 @@ function fmtTokens(n: number): string {
 function KPIBar({ overview }: { overview: CostSavingsOverviewProjection }) {
   const savingsTone = overview.total_savings_usd > 0 ? 'good' : 'default';
   const localPct = Math.round(overview.local_token_pct * 100);
+  const complianceTokens = overview.tokens_to_compliance;
 
   return (
     <div
@@ -105,7 +107,7 @@ function KPIBar({ overview }: { overview: CostSavingsOverviewProjection }) {
         label="Cloud Avoided"
         value={overview.total_savings_usd}
         prefix="$"
-        decimals={2}
+        decimals={Math.abs(overview.total_savings_usd) < 1 ? 4 : 2}
         tone={savingsTone}
       />
       <KPI
@@ -115,11 +117,12 @@ function KPIBar({ overview }: { overview: CostSavingsOverviewProjection }) {
         tone={savingsTone}
       />
       <KPI
-        label="Local Tokens"
-        value={localPct}
-        suffix="%"
+        label="Delegated Tokens"
+        value={overview.tokens_total}
         tone={localPct >= 50 ? 'good' : 'warn'}
-        caption={`${fmtTokens(overview.tokens_total)} total`}
+        caption={complianceTokens != null && complianceTokens > 0
+          ? `${complianceTokens.toLocaleString()} to compliance`
+          : undefined}
       />
     </div>
   );
@@ -134,7 +137,7 @@ function SplitBar({ localPct }: { localPct: number }) {
       <div
         style={{ "fontSize": 10, "color": 'var(--ink-3)', "letterSpacing": '0.1em', "textTransform": 'uppercase' as const, marginBottom: 6, "fontWeight": 600 }}
       >
-        Token routing split
+        Delegated token split
       </div>
       <div style={{ display: 'flex', height: 20, borderRadius: 3, overflow: 'hidden', gap: 1 }}>
         <div
