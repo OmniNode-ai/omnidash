@@ -362,7 +362,7 @@ function RecentRunsSection({ overview }: { overview: CostSavingsOverviewProjecti
             key={h}
             style={{
               "fontSize": 10,
-              color: 'var(--ink-3)',
+              "color": 'var(--ink-3)',
               textAlign: i < 3 ? 'left' : 'right',
             }}
           >
@@ -382,31 +382,31 @@ function RecentRunsSection({ overview }: { overview: CostSavingsOverviewProjecti
             alignItems: 'center',
           }}
         >
-          <span className="mono" title={run.session_id} style={{ "fontSize": 11, color: 'var(--accent)' }}>
+          <span className="mono" title={run.session_id} style={{ "fontSize": 11, "color": 'var(--accent)' }}>
             {shortRunId(run.session_id)}
           </span>
-          <span className="mono" style={{ "fontSize": 11, color: 'var(--ink-2)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+          <span className="mono" style={{ "fontSize": 11, "color": 'var(--ink-2)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
             {run.task_type || '-'}
           </span>
-          <span className="mono" title={run.model_name} style={{ "fontSize": 11, color: 'var(--ink-2)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+          <span className="mono" title={run.model_name} style={{ "fontSize": 11, "color": 'var(--ink-2)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
             {run.model_name}
           </span>
-          <span className="mono" title={`${run.prompt_tokens} input, ${run.completion_tokens} output`} style={{ "fontSize": 11, color: run.total_tokens > 0 ? 'var(--ink-1)' : 'var(--ink-4)', textAlign: 'right' }}>
+          <span className="mono" title={`${run.prompt_tokens} input, ${run.completion_tokens} output`} style={{ "fontSize": 11, "color": run.total_tokens > 0 ? 'var(--ink-1)' : 'var(--ink-4)', textAlign: 'right' }}>
             {run.total_tokens > 0 ? fmtTokens(run.total_tokens) : '-'}
           </span>
-          <span className="mono" style={{ "fontSize": 11, color: run.savings_usd > 0 ? 'var(--good)' : 'var(--ink-4)', textAlign: 'right' }}>
+          <span className="mono" style={{ "fontSize": 11, "color": run.savings_usd > 0 ? 'var(--good)' : 'var(--ink-4)', textAlign: 'right' }}>
             {run.savings_usd > 0 ? `+${fmtUsd(run.savings_usd)}` : '-'}
           </span>
-          <span className="mono" style={{ "fontSize": 11, color: 'var(--ink-3)', textAlign: 'right' }}>
+          <span className="mono" style={{ "fontSize": 11, "color": 'var(--ink-3)', textAlign: 'right' }}>
             {fmtMs(run.latency_ms)}
           </span>
-          <span className="mono" style={{ "fontSize": 11, color: 'var(--ink-3)', textAlign: 'right' }}>
+          <span className="mono" style={{ "fontSize": 11, "color": 'var(--ink-3)', textAlign: 'right' }}>
             {fmtRunTime(run.created_at)}
           </span>
         </div>
       ))}
       {(overview.zero_token_run_count ?? 0) > 0 && (
-        <div style={{ marginTop: 6, "fontSize": 10, color: 'var(--ink-4)' }}>
+        <div style={{ marginTop: 6, "fontSize": 10, "color": 'var(--ink-4)' }}>
           Showing measured runs only; {overview.zero_token_run_count} older rows have no token metrics.
         </div>
       )}
