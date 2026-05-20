@@ -674,13 +674,19 @@ export class SqliteProjectionReader {
       evidence_ref: string | null;
     }>();
 
-    for (const session of sessions) {
+    const sessionTokens = (session: Row): number =>
+      Number(session.prompt_tokens ?? 0) + Number(session.completion_tokens ?? 0);
+    const tokenBackedSessions = sessions.filter((session) => sessionTokens(session) > 0);
+    const omittedTelemetryRows = sessions.length - tokenBackedSessions.length;
+
+    for (const session of tokenBackedSessions) {
       const displayName = String(session.model_name ?? session.task_type ?? 'delegated-runtime');
       const modelId = displayName.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') || 'delegated-runtime';
-      const tokens = Number(session.prompt_tokens ?? 0) + Number(session.completion_tokens ?? 0);
-      const cost = Number(session.local_cost_usd ?? 0);
-      const savings = Number(session.savings_usd ?? 0);
-      const baseline = Number(session.cloud_cost_usd ?? 0) || cost + savings;
+      const tokens = sessionTokens(session);
+      const baselineCandidate = Number(session.cloud_cost_usd ?? 0);
+      const measuredSavings = Number(session.savings_usd ?? 0);
+      const savings = Math.max(measuredSavings, baselineCandidate);
+      const baseline = Math.max(baselineCandidate, savings);
       const existing = grouped.get(modelId) ?? {
         model_id: modelId,
         display_name: displayName,
@@ -694,7 +700,7 @@ export class SqliteProjectionReader {
       };
       existing.task_count += 1;
       existing.tokens_total += tokens;
-      existing.cost_usd += cost;
+      existing.cost_usd += 0;
       existing.baseline_cost_usd += baseline;
       existing.savings_usd += savings;
       existing.evidence_ref = existing.evidence_ref ?? String(session.session_id ?? '');
@@ -717,12 +723,15 @@ export class SqliteProjectionReader {
     const totalBaseline = rows.reduce((sum, row) => sum + row.baseline_cost_usd, 0);
     const totalSavings = rows.reduce((sum, row) => sum + row.savings_usd, 0);
     const tokensTotal = rows.reduce((sum, row) => sum + row.tokens_total, 0);
-    const complianceTokensTotal = sessions.reduce(
+    const complianceTokensTotal = tokenBackedSessions.reduce(
       (sum, row) => row.tokens_to_compliance != null
         ? sum + Number(row.tokens_to_compliance)
         : sum,
       0,
     );
+    const warnings = omittedTelemetryRows > 0
+      ? [`Omitted ${omittedTelemetryRows} delegation row${omittedTelemetryRows === 1 ? '' : 's'} without token telemetry.`]
+      : [];
 
     return {
       window: '24h',
@@ -735,8 +744,8 @@ export class SqliteProjectionReader {
       local_token_pct: tokensTotal > 0 ? 1 : 0,
       captured_at: new Date().toISOString(),
       rows,
-      warnings: [],
-      provisioned: sessions.length > 0,
+      warnings,
+      provisioned: tokenBackedSessions.length > 0,
     };
   }
 }

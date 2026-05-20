@@ -721,18 +721,19 @@ export class PostgresProjectionReader {
       evidence_ref: string | null;
     }>();
 
-    const measuredSessions = sessions.filter((session) => {
-      const tokens = Number(session.prompt_tokens ?? 0) + Number(session.completion_tokens ?? 0);
-      return tokens > 0;
-    });
+    const sessionTokens = (session: Row): number =>
+      Number(session.prompt_tokens ?? 0) + Number(session.completion_tokens ?? 0);
+    const measuredSessions = sessions.filter((session) => sessionTokens(session) > 0);
+    const omittedTelemetryRows = sessions.length - measuredSessions.length;
 
     for (const session of measuredSessions) {
       const displayName = String(session.model_name ?? session.task_type ?? 'delegated-runtime');
       const modelId = displayName.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') || 'delegated-runtime';
-      const tokens = Number(session.prompt_tokens ?? 0) + Number(session.completion_tokens ?? 0);
-      const cost = Number(session.local_cost_usd ?? 0);
-      const savings = Number(session.savings_usd ?? 0);
-      const baseline = Number(session.cloud_cost_usd ?? 0) || cost + savings;
+      const tokens = sessionTokens(session);
+      const baselineCandidate = Number(session.cloud_cost_usd ?? 0);
+      const measuredSavings = Number(session.savings_usd ?? 0);
+      const savings = Math.max(measuredSavings, baselineCandidate);
+      const baseline = Math.max(baselineCandidate, savings);
       const existing = grouped.get(modelId) ?? {
         model_id: modelId,
         display_name: displayName,
@@ -792,10 +793,9 @@ export class PostgresProjectionReader {
         token_provenance: 'measured',
       };
     });
-    const zeroTokenRunCount = sessions.reduce((count, session) => {
-      const tokens = Number(session.prompt_tokens ?? 0) + Number(session.completion_tokens ?? 0);
-      return tokens > 0 ? count : count + 1;
-    }, 0);
+    const warnings = omittedTelemetryRows > 0
+      ? [`Omitted ${omittedTelemetryRows} delegation row${omittedTelemetryRows === 1 ? '' : 's'} without token telemetry.`]
+      : [];
 
     return [{
       window: '24h',
@@ -809,10 +809,10 @@ export class PostgresProjectionReader {
       captured_at: new Date().toISOString(),
       rows,
       recent_runs: recentRuns,
-      measured_run_count: sessions.length - zeroTokenRunCount,
-      zero_token_run_count: zeroTokenRunCount,
-      warnings: [],
-      provisioned: sessions.length > 0,
+      measured_run_count: measuredSessions.length,
+      zero_token_run_count: omittedTelemetryRows,
+      warnings,
+      provisioned: measuredSessions.length > 0,
     }];
   }
 }

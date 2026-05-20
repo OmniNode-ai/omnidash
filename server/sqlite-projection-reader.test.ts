@@ -428,6 +428,18 @@ describe('SqliteProjectionReader', () => {
       )
       VALUES ('corr-doc', 'sess-doc', 'document', 'local', 'qwen3-coder', 1, 2109, 81, 384, 465, 0.0, 0.006003, 2100.0)
     `).run();
+    db.prepare(`
+      INSERT INTO savings_estimates (session_id, event_timestamp, model_local, model_cloud_baseline, local_cost_usd, cloud_cost_usd, savings_usd, baseline_model, created_at)
+      VALUES ('sess-stale-estimate', 1000.0, 'qwen3-stale', 'claude-3-5-sonnet', 0.03, 0.25, 0.22, 'claude-3-5-sonnet', 1000.0)
+    `).run();
+    db.prepare(`
+      INSERT INTO delegation_events (
+        correlation_id, session_id, task_type, delegated_to, model_name,
+        quality_gate_passed, latency_ms, tokens_input, tokens_output,
+        tokens_to_compliance, cost_usd, cost_savings_usd, created_at
+      )
+      VALUES ('corr-zero', 'sess-zero', 'test', 'local', 'qwen3-zero', 1, 1000, 0, 0, 999, 0.10, 0.50, 2200.0)
+    `).run();
     db.close();
 
     const reader = new SqliteProjectionReader({ dbPath });
@@ -441,17 +453,21 @@ describe('SqliteProjectionReader', () => {
       total_savings_usd: 0.01533,
       savings_rate: 1,
       tokens_total: 1202,
+      tokens_to_compliance: 1202,
       local_token_pct: 1,
       provisioned: true,
     });
     const overviewRows = rows[0]!.rows as Record<string, unknown>[];
+    expect(overviewRows).toHaveLength(1);
     expect(overviewRows[0]).toMatchObject({
       display_name: 'qwen3-coder',
       execution_mode: 'delegated',
       task_count: 2,
       tokens_total: 1202,
+      cost_usd: 0,
       savings_usd: 0.01533,
     });
+    expect(rows[0]!.warnings).toEqual(['Omitted 2 delegation rows without token telemetry.']);
   });
 
   it('reads delegation model routing grouped by model and task_type', () => {
