@@ -28,6 +28,7 @@ export function useWebSocketInvalidation() {
   const queryClient = useQueryClient();
   const wsRef = useRef<WebSocket | null>(null);
   const retryRef = useRef(0);
+  const reconnectTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const mountedRef = useRef(true);
 
   const connect = useCallback(() => {
@@ -70,7 +71,7 @@ export function useWebSocketInvalidation() {
       if (!mountedRef.current) return;
       const delay = RECONNECT_DELAYS[Math.min(retryRef.current, RECONNECT_DELAYS.length - 1)];
       retryRef.current += 1;
-      setTimeout(connect, delay);
+      reconnectTimerRef.current = setTimeout(connect, delay);
     };
 
     ws.onerror = () => ws.close();
@@ -78,10 +79,17 @@ export function useWebSocketInvalidation() {
 
   useEffect(() => {
     mountedRef.current = true;
-    connect();
+    const connectTimer = setTimeout(connect, 0);
     return () => {
       mountedRef.current = false;
-      wsRef.current?.close();
+      clearTimeout(connectTimer);
+      if (reconnectTimerRef.current) {
+        clearTimeout(reconnectTimerRef.current);
+        reconnectTimerRef.current = null;
+      }
+      const ws = wsRef.current;
+      wsRef.current = null;
+      ws?.close();
     };
   }, [connect]);
 }
