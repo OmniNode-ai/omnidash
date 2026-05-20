@@ -97,6 +97,46 @@ describe('PostgresProjectionReader', () => {
     expect(Array.isArray(row.byModel)).toBe(true);
   });
 
+  it('returns MCP tools rows from node_service_registry metadata', async () => {
+    const fakeRow = {
+      name: 'node_sentiment_classifier',
+      description: 'Classify customer review sentiment.',
+      registeredAt: '2026-05-20T08:00:00.000Z',
+      status: 'active',
+      modelId: 'gemini-2.0-flash',
+      correlationId: 'corr-mcp-1',
+    };
+    const client = { query: vi.fn().mockResolvedValue({ rows: [fakeRow] }), release: vi.fn() };
+    getMockPool().connect.mockResolvedValue(client);
+
+    const result = await reader.readProjection('onex.snapshot.projection.mcp-tools.v1');
+
+    expect(result.rows).toHaveLength(1);
+    expect(result.rows[0]).toMatchObject(fakeRow);
+    expect(client.query).toHaveBeenCalledWith(expect.stringContaining('FROM node_service_registry'));
+    expect(client.query).toHaveBeenCalledWith(expect.stringContaining("metadata ? 'mcp_tool_name'"));
+  });
+
+  it('returns hackathon pipeline event rows from generation_events', async () => {
+    const fakeRow = {
+      id: 'corr-gen-1-completed',
+      type: 'success',
+      timestamp: '2026-05-20T08:10:00.000Z',
+      source: 'node_generation_consumer',
+      message: 'Node generation completed: Build an email validator node',
+      correlationId: 'corr-gen-1',
+    };
+    const client = { query: vi.fn().mockResolvedValue({ rows: [fakeRow] }), release: vi.fn() };
+    getMockPool().connect.mockResolvedValue(client);
+
+    const result = await reader.readProjection('onex.snapshot.projection.hackathon_pipeline_events.v1');
+
+    expect(result.rows).toHaveLength(1);
+    expect(result.rows[0]).toMatchObject(fakeRow);
+    expect(client.query).toHaveBeenCalledWith(expect.stringContaining('FROM generation_events'));
+    expect(client.query).toHaveBeenCalledWith(expect.stringContaining('contract_passed'));
+  });
+
   it('releases client even on query error', async () => {
     const client = {
       query: vi.fn().mockRejectedValue(new Error('query error')),

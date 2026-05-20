@@ -45,10 +45,13 @@ describe('Proof of Life — Part 2', () => {
     // OMN-10509: receipt-gate and routing-decision prototype widgets added.
     // OMN-10346: cost-savings-overview added.
     // OMN-10624: delegation-savings, delegation-model-routing, delegation-quality-gate, delegation-token-usage added.
-    expect(all.length).toBe(24);
+    // OMN-11258: mcp-tools added.
+    // OMN-11260: control-plane added.
+    expect(all.length).toBe(26);
     expect(all.map((c) => c.name).sort()).toEqual([
       'ab-compare',
       'baselines-roi-card',
+      'control-plane',
       'cost-by-model',
       'cost-by-model-3d',
       'cost-by-repo',
@@ -63,6 +66,7 @@ describe('Proof of Life — Part 2', () => {
       'event-stream',
       'intent-distribution',
       'live-event-stream',
+      'mcp-tools',
       'projection-container',
       'quality-score-panel',
       'readiness-gate',

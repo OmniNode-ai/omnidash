@@ -272,8 +272,75 @@ export class SqliteProjectionReader {
           LIMIT 200
         `).all() as Row[];
 
+      case 'onex.snapshot.projection.mcp-tools.v1':
+        if (!this.hasTable(db, 'node_service_registry')) return [];
+        return db.prepare(`
+          SELECT
+            service_name AS name,
+            COALESCE(
+              NULLIF(json_extract(metadata, '$.description'), ''),
+              NULLIF(json_extract(metadata, '$.tool_description'), ''),
+              ''
+            ) AS description,
+            COALESCE(created_at, updated_at, projected_at) AS registeredAt,
+            COALESCE(
+              NULLIF(health_status, ''),
+              CASE WHEN is_active = 1 THEN 'active' ELSE 'inactive' END,
+              'unknown'
+            ) AS status,
+            COALESCE(
+              NULLIF(json_extract(metadata, '$.modelId'), ''),
+              NULLIF(json_extract(metadata, '$.model_id'), ''),
+              ''
+            ) AS modelId,
+            COALESCE(
+              NULLIF(json_extract(metadata, '$.correlationId'), ''),
+              NULLIF(json_extract(metadata, '$.correlation_id'), ''),
+              ''
+            ) AS correlationId
+          FROM node_service_registry
+          WHERE is_active = 1
+            AND (
+              service_type IN ('mcp', 'mcp_tool', 'mcp-tools')
+              OR json_extract(metadata, '$.mcp_tool_name') IS NOT NULL
+              OR json_extract(metadata, '$.tool_name') IS NOT NULL
+              OR json_extract(metadata, '$.kind') = 'mcp_tool'
+            )
+          ORDER BY COALESCE(created_at, updated_at, projected_at) DESC
+          LIMIT 500
+        `).all() as Row[];
+
+      case 'onex.snapshot.projection.hackathon_pipeline_events.v1':
+        if (!this.hasTable(db, 'generation_events')) return [];
+        return db.prepare(`
+          SELECT
+            correlation_id || '-completed' AS id,
+            CASE WHEN contract_passed = 1 THEN 'success' ELSE 'error' END AS type,
+            COALESCE(timestamp, created_at) AS timestamp,
+            'node_generation_consumer' AS source,
+            CASE
+              WHEN contract_passed = 1
+                THEN 'Node generation completed: ' || task_description
+              ELSE 'Node generation failed validation: ' || task_description
+            END AS message,
+            correlation_id AS correlationId
+          FROM generation_events
+          ORDER BY COALESCE(timestamp, created_at) ASC
+          LIMIT 500
+        `).all() as Row[];
+
       default:
         return [];
     }
+  }
+
+  private hasTable(db: Database.Database, tableName: string): boolean {
+    const row = db.prepare(`
+      SELECT name
+      FROM sqlite_master
+      WHERE type = 'table' AND name = ?
+      LIMIT 1
+    `).get(tableName) as Row | undefined;
+    return row !== undefined;
   }
 }
