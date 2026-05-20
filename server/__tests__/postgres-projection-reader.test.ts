@@ -210,25 +210,62 @@ describe('PostgresProjectionReader', () => {
   it('returns cost savings overview projection from runtime delegation metrics', async () => {
     const client = {
       query: vi.fn()
-        .mockResolvedValueOnce({ rows: [] })
         .mockResolvedValueOnce({
           rows: [{
-            session_id: 'corr-live',
-            task_type: 'test',
-            model_name: 'qwen3-coder',
-            local_cost_usd: '0',
-            cloud_cost_usd: '0.009327',
-            savings_usd: '0.009327',
+            session_id: 'sess-stale-estimate',
+            task_type: 'qwen3-stale',
+            model_name: 'qwen3-stale',
+            local_cost_usd: '0.03',
+            cloud_cost_usd: '0.25',
+            savings_usd: '0.22',
             baseline_model: 'claude-opus-4.1',
-            pricing_manifest_version: 'runtime-delegation-events',
-            savings_method: 'measured',
-            usage_source: 'measured',
-            prompt_tokens: '144',
-            completion_tokens: '593',
-            tokens_to_compliance: '737',
-            latency_ms: '3237',
-            created_at: '2026-05-20T12:00:00.000Z',
+            pricing_manifest_version: 'pricing-v1',
+            savings_method: 'estimated',
+            usage_source: 'estimated',
+            prompt_tokens: '0',
+            completion_tokens: '0',
+            tokens_to_compliance: null,
+            latency_ms: null,
+            created_at: '2026-05-20T11:00:00.000Z',
           }],
+        })
+        .mockResolvedValueOnce({
+          rows: [
+            {
+              session_id: 'corr-live',
+              task_type: 'test',
+              model_name: 'qwen3-coder',
+              local_cost_usd: '0',
+              cloud_cost_usd: '0.009327',
+              savings_usd: '0.009327',
+              baseline_model: 'claude-opus-4.1',
+              pricing_manifest_version: 'runtime-delegation-events',
+              savings_method: 'measured',
+              usage_source: 'measured',
+              prompt_tokens: '144',
+              completion_tokens: '593',
+              tokens_to_compliance: '737',
+              latency_ms: '3237',
+              created_at: '2026-05-20T12:00:00.000Z',
+            },
+            {
+              session_id: 'corr-zero',
+              task_type: 'test',
+              model_name: 'qwen3-zero',
+              local_cost_usd: '0.10',
+              cloud_cost_usd: '0.60',
+              savings_usd: '0.50',
+              baseline_model: 'claude-opus-4.1',
+              pricing_manifest_version: 'runtime-delegation-events',
+              savings_method: 'measured',
+              usage_source: 'unknown',
+              prompt_tokens: '0',
+              completion_tokens: '0',
+              tokens_to_compliance: '999',
+              latency_ms: '1000',
+              created_at: '2026-05-20T12:01:00.000Z',
+            },
+          ],
         }),
       release: vi.fn(),
     };
@@ -244,16 +281,20 @@ describe('PostgresProjectionReader', () => {
       total_savings_usd: 0.009327,
       savings_rate: 1,
       tokens_total: 737,
+      tokens_to_compliance: 737,
       local_token_pct: 1,
       provisioned: true,
     });
     const overviewRows = result.rows[0]!.rows as Record<string, unknown>[];
+    expect(overviewRows).toHaveLength(1);
     expect(overviewRows[0]).toMatchObject({
       display_name: 'qwen3-coder',
       execution_mode: 'delegated',
       task_count: 1,
       tokens_total: 737,
+      cost_usd: 0,
     });
+    expect(result.rows[0]!.warnings).toEqual(['Omitted 2 delegation rows without token telemetry.']);
   });
 
   it('returns MCP tools rows from node_service_registry metadata', async () => {
