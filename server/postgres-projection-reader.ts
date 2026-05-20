@@ -666,11 +666,10 @@ export class PostgresProjectionReader {
       ORDER BY total_tokens DESC
     `);
 
-    const byModel = res.rows.map((row) => {
+    const byModel = res.rows.filter((row) => Number(row.total_tokens ?? 0) > 0).map((row) => {
       const promptTokens = Number(row.prompt_tokens ?? 0);
       const completionTokens = Number(row.completion_tokens ?? 0);
       const totalTokens = Number(row.total_tokens ?? 0);
-      const provenance = totalTokens > 0 ? 'measured' : 'unknown';
       return {
         model_id: String(row.model_id ?? 'delegated-runtime'),
         model_name: String(row.model_name ?? row.model_id ?? 'delegated-runtime'),
@@ -678,8 +677,8 @@ export class PostgresProjectionReader {
         completion_tokens: completionTokens,
         total_tokens: totalTokens,
         estimated_cost_usd: Number(row.estimated_cost_usd ?? 0),
-        usage_source: provenance,
-        token_provenance: provenance,
+        usage_source: 'measured',
+        token_provenance: 'measured',
       };
     });
 
@@ -722,7 +721,12 @@ export class PostgresProjectionReader {
       evidence_ref: string | null;
     }>();
 
-    for (const session of sessions) {
+    const measuredSessions = sessions.filter((session) => {
+      const tokens = Number(session.prompt_tokens ?? 0) + Number(session.completion_tokens ?? 0);
+      return tokens > 0;
+    });
+
+    for (const session of measuredSessions) {
       const displayName = String(session.model_name ?? session.task_type ?? 'delegated-runtime');
       const modelId = displayName.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') || 'delegated-runtime';
       const tokens = Number(session.prompt_tokens ?? 0) + Number(session.completion_tokens ?? 0);
@@ -765,16 +769,12 @@ export class PostgresProjectionReader {
     const totalBaseline = rows.reduce((sum, row) => sum + row.baseline_cost_usd, 0);
     const totalSavings = rows.reduce((sum, row) => sum + row.savings_usd, 0);
     const tokensTotal = rows.reduce((sum, row) => sum + row.tokens_total, 0);
-    const complianceTokensTotal = sessions.reduce(
+    const complianceTokensTotal = measuredSessions.reduce(
       (sum, row) => row.tokens_to_compliance != null
         ? sum + Number(row.tokens_to_compliance)
         : sum,
       0,
     );
-    const measuredSessions = sessions.filter((session) => {
-      const tokens = Number(session.prompt_tokens ?? 0) + Number(session.completion_tokens ?? 0);
-      return tokens > 0;
-    });
     const recentRuns = measuredSessions.slice(0, 20).map((session) => {
       const promptTokens = Number(session.prompt_tokens ?? 0);
       const completionTokens = Number(session.completion_tokens ?? 0);

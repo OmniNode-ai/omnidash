@@ -316,8 +316,18 @@ describe('PostgresProjectionReader', () => {
     const result = await reader.readProjection('onex.snapshot.projection.cost.savings-overview.v1');
 
     expect(result.rows[0]).toMatchObject({
+      total_baseline_cost_usd: 0.004122,
+      total_savings_usd: 0.004122,
+      tokens_total: 334,
       measured_run_count: 1,
       zero_token_run_count: 1,
+    });
+    const overviewRows = result.rows[0]!.rows as Record<string, unknown>[];
+    expect(overviewRows).toHaveLength(1);
+    expect(overviewRows[0]).toMatchObject({
+      display_name: 'qwen3-coder',
+      task_count: 1,
+      tokens_total: 334,
     });
     const recentRuns = result.rows[0]!.recent_runs as Record<string, unknown>[];
     expect(recentRuns).toHaveLength(1);
@@ -331,15 +341,26 @@ describe('PostgresProjectionReader', () => {
   it('returns delegation token usage as the widget projection shape', async () => {
     const client = {
       query: vi.fn().mockResolvedValueOnce({
-        rows: [{
-          model_id: 'local-qwen3',
-          model_name: 'qwen3-coder',
-          delegation_count: '4',
-          prompt_tokens: '296',
-          completion_tokens: '1040',
-          total_tokens: '1336',
-          estimated_cost_usd: '0',
-        }],
+        rows: [
+          {
+            model_id: 'local-qwen3',
+            model_name: 'qwen3-coder',
+            delegation_count: '4',
+            prompt_tokens: '296',
+            completion_tokens: '1040',
+            total_tokens: '1336',
+            estimated_cost_usd: '0',
+          },
+          {
+            model_id: 'legacy-distill',
+            model_name: 'distill',
+            delegation_count: '53',
+            prompt_tokens: '0',
+            completion_tokens: '0',
+            total_tokens: '0',
+            estimated_cost_usd: '0',
+          },
+        ],
       }),
       release: vi.fn(),
     };
@@ -357,6 +378,7 @@ describe('PostgresProjectionReader', () => {
       provisioned: true,
     });
     const byModel = result.rows[0]!.by_model as Record<string, unknown>[];
+    expect(byModel).toHaveLength(1);
     expect(byModel[0]).toMatchObject({
       model_id: 'local-qwen3',
       model_name: 'qwen3-coder',
