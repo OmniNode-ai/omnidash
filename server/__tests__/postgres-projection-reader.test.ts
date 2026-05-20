@@ -254,6 +254,59 @@ describe('PostgresProjectionReader', () => {
       task_count: 1,
       tokens_total: 737,
     });
+    const recentRuns = result.rows[0]!.recent_runs as Record<string, unknown>[];
+    expect(recentRuns[0]).toMatchObject({
+      session_id: 'corr-live',
+      task_type: 'test',
+      total_tokens: 737,
+      token_provenance: 'measured',
+    });
+    expect(result.rows[0]).toMatchObject({
+      measured_run_count: 1,
+      zero_token_run_count: 0,
+    });
+  });
+
+  it('returns delegation token usage as the widget projection shape', async () => {
+    const client = {
+      query: vi.fn().mockResolvedValueOnce({
+        rows: [{
+          model_id: 'local-qwen3',
+          model_name: 'qwen3-coder',
+          delegation_count: '4',
+          prompt_tokens: '296',
+          completion_tokens: '1040',
+          total_tokens: '1336',
+          estimated_cost_usd: '0',
+        }],
+      }),
+      release: vi.fn(),
+    };
+    getMockPool().connect.mockResolvedValue(client);
+
+    const result = await reader.readProjection('onex.snapshot.projection.delegation.token-usage.v1');
+
+    expect(result.rows).toHaveLength(1);
+    expect(result.rows[0]).toMatchObject({
+      total_prompt_tokens: 296,
+      total_completion_tokens: 1040,
+      total_tokens: 1336,
+      total_estimated_cost_usd: 0,
+      provenance_summary: { measured: 1, estimated: 0, unknown: 0 },
+      provisioned: true,
+    });
+    const byModel = result.rows[0]!.by_model as Record<string, unknown>[];
+    expect(byModel[0]).toMatchObject({
+      model_id: 'local-qwen3',
+      model_name: 'qwen3-coder',
+      prompt_tokens: 296,
+      completion_tokens: 1040,
+      total_tokens: 1336,
+      estimated_cost_usd: 0,
+      usage_source: 'measured',
+      token_provenance: 'measured',
+    });
+    expect(client.query).toHaveBeenCalledWith(expect.stringContaining('FROM delegation_events'));
   });
 
   it('returns MCP tools rows from node_service_registry metadata', async () => {

@@ -108,7 +108,7 @@ describe('DelegationSavingsWidget', () => {
     expect(screen.getByText('1,202 to compliance')).toBeInTheDocument();
     expect(screen.getByTitle('input 144, output 593, compliance 737')).toHaveTextContent('737');
     expect(screen.getByText('+$0.0093')).toBeInTheDocument();
-    expect(screen.getByText('document')).toBeInTheDocument();
+    expect(screen.getByText(/document .*sess-liv/i)).toBeInTheDocument();
   });
 
   it('renders pricing manifest version', async () => {
@@ -147,7 +147,7 @@ describe('DelegationSavingsWidget', () => {
     );
     await screen.findByText(/est\. savings vs/i);
     // Fixture provides task_type 'code-review' for first session
-    expect(screen.getByText('code-review')).toBeInTheDocument();
+    expect(screen.getByText(/code-review .*sess_a1b/i)).toBeInTheDocument();
   });
 
   it('hides session rows when showSessions is false', async () => {
