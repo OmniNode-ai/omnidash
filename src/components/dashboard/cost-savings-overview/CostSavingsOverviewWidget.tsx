@@ -5,6 +5,7 @@ import { useProjectionQuery } from '@/hooks/useProjectionQuery';
 import { TOPICS } from '@shared/types/topics';
 import { KPI, SortableTable } from '@/components/primitives';
 import type { ColumnDef } from '@/components/primitives';
+import { Heading, Text } from '@/components/ui/typography';
 
 // ── View model types (OMN-10346 dashboard view contract) ─────────────
 
@@ -336,18 +337,17 @@ function RecentRunsSection({ overview }: { overview: CostSavingsOverviewProjecti
 
   return (
     <div style={{ marginTop: 16 }}>
-      <div
-        style={{
-          "fontSize": 10,
-          "color": 'var(--ink-3)',
-          "letterSpacing": '0.1em',
-          "textTransform": 'uppercase' as const,
-          marginBottom: 6,
-          "fontWeight": 600,
-        }}
+      <Heading
+        level={4}
+        size="xs"
+        color="tertiary"
+        weight="semibold"
+        transform="uppercase"
+        className="text-tracked"
+        style={{ margin: '0 0 6px' }}
       >
         Recent delegation runs
-      </div>
+      </Heading>
       <div
         style={{
           display: 'grid',
@@ -358,16 +358,14 @@ function RecentRunsSection({ overview }: { overview: CostSavingsOverviewProjecti
         }}
       >
         {(['Run', 'Task', 'Model', 'Tokens', 'Saved', 'Latency', 'Time'] as const).map((h, i) => (
-          <span
+          <Text
             key={h}
-            style={{
-              "fontSize": 10,
-              "color": 'var(--ink-3)',
-              textAlign: i < 3 ? 'left' : 'right',
-            }}
+            size="xs"
+            color="tertiary"
+            align={i < 3 ? 'start' : 'end'}
           >
             {h}
-          </span>
+          </Text>
         ))}
       </div>
       {runs.map((run) => (
@@ -382,33 +380,46 @@ function RecentRunsSection({ overview }: { overview: CostSavingsOverviewProjecti
             alignItems: 'center',
           }}
         >
-          <span className="mono" title={run.session_id} style={{ "fontSize": 11, "color": 'var(--accent)' }}>
+          <Text family="mono" size="sm" color="brand" title={run.session_id}>
             {shortRunId(run.session_id)}
-          </span>
-          <span className="mono" style={{ "fontSize": 11, "color": 'var(--ink-2)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+          </Text>
+          <Text family="mono" size="sm" color="secondary" truncate>
             {run.task_type || '-'}
-          </span>
-          <span className="mono" title={run.model_name} style={{ "fontSize": 11, "color": 'var(--ink-2)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+          </Text>
+          <Text family="mono" size="sm" color="secondary" title={run.model_name} truncate>
             {run.model_name}
-          </span>
-          <span className="mono" title={`${run.prompt_tokens} input, ${run.completion_tokens} output`} style={{ "fontSize": 11, "color": run.total_tokens > 0 ? 'var(--ink-1)' : 'var(--ink-4)', textAlign: 'right' }}>
+          </Text>
+          <Text
+            family="mono"
+            size="sm"
+            color={run.total_tokens > 0 ? 'primary' : 'tertiary'}
+            title={`${run.prompt_tokens} input, ${run.completion_tokens} output`}
+            align="end"
+            tabularNums
+          >
             {run.total_tokens > 0 ? fmtTokens(run.total_tokens) : '-'}
-          </span>
-          <span className="mono" style={{ "fontSize": 11, "color": run.savings_usd > 0 ? 'var(--good)' : 'var(--ink-4)', textAlign: 'right' }}>
+          </Text>
+          <Text
+            family="mono"
+            size="sm"
+            color={run.savings_usd > 0 ? 'ok' : 'tertiary'}
+            align="end"
+            tabularNums
+          >
             {run.savings_usd > 0 ? `+${fmtUsd(run.savings_usd)}` : '-'}
-          </span>
-          <span className="mono" style={{ "fontSize": 11, "color": 'var(--ink-3)', textAlign: 'right' }}>
+          </Text>
+          <Text family="mono" size="sm" color="tertiary" align="end" tabularNums>
             {fmtMs(run.latency_ms)}
-          </span>
-          <span className="mono" style={{ "fontSize": 11, "color": 'var(--ink-3)', textAlign: 'right' }}>
+          </Text>
+          <Text family="mono" size="sm" color="tertiary" align="end" tabularNums>
             {fmtRunTime(run.created_at)}
-          </span>
+          </Text>
         </div>
       ))}
       {(overview.zero_token_run_count ?? 0) > 0 && (
-        <div style={{ marginTop: 6, "fontSize": 10, "color": 'var(--ink-4)' }}>
+        <Text as="div" size="xs" color="tertiary" style={{ marginTop: 6 }}>
           Showing measured runs only; {overview.zero_token_run_count} older rows have no token metrics.
-        </div>
+        </Text>
       )}
     </div>
   );
