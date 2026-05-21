@@ -7,13 +7,13 @@ import { PromptInput } from './PromptInput';
 import { PipelineLogStream, type PipelineEvent } from './PipelineLogStream';
 import { PipelineStatusBar, type ServiceStatus } from './PipelineStatusBar';
 
-const DEFAULT_DATA_SOURCE = 'file';
+import { DATA_SOURCE_DEFAULT_MODE } from '@/config/generated/data-source-defaults';
 
-function isFixtureMode(): boolean {
+function getDataSourceMode(): string {
   try {
-    return (import.meta.env.VITE_DATA_SOURCE ?? DEFAULT_DATA_SOURCE) === 'file';
+    return import.meta.env.VITE_DATA_SOURCE ?? DATA_SOURCE_DEFAULT_MODE;
   } catch {
-    return true;
+    return 'file';
   }
 }
 
@@ -39,7 +39,8 @@ export default function ControlPlanePage({
   }, [data, localEvents]);
 
   const handlePromptSubmit = useCallback((prompt: string) => {
-    if (isFixtureMode()) {
+    const mode = getDataSourceMode();
+    if (mode === 'file') {
       const now = new Date().toISOString();
       const correlationId = `demo-${Date.now()}`;
       const base = Date.now();
@@ -52,6 +53,7 @@ export default function ControlPlanePage({
           source: 'control-plane',
           message: `Node generation requested: ${prompt}`,
           correlationId,
+          simulated: true,
         },
         {
           id: `local-${base}-val`,
@@ -60,6 +62,7 @@ export default function ControlPlanePage({
           source: 'validator',
           message: 'Contract schema validated: 0 errors',
           correlationId,
+          simulated: true,
         },
         {
           id: `local-${base}-ok`,
@@ -68,6 +71,7 @@ export default function ControlPlanePage({
           source: 'runtime',
           message: 'Contract materialized, MCP tool registered',
           correlationId,
+          simulated: true,
         },
       ]);
     } else {
@@ -107,7 +111,16 @@ export default function ControlPlanePage({
     }
   }, []);
 
-  const serviceStatus: ServiceStatus = isFixtureMode() ? 'demo' : 'up';
+  const mode = getDataSourceMode();
+  const serviceStatus: ServiceStatus =
+    mode === 'file'
+      ? 'demo'
+      : mode === 'sqlite'
+        ? 'sqlite'
+        : mode === 'http' || mode === 'postgres'
+          ? 'up'
+          : 'unknown';
+  const isLive = mode === 'http' || mode === 'postgres';
 
   return (
     <ComponentWrapper
@@ -115,7 +128,7 @@ export default function ControlPlanePage({
       isLoading={isLoading}
       error={error ?? undefined}
       isEmpty={false}
-      isLive={!isFixtureMode()}
+      isLive={isLive}
     >
       <div
         style={{

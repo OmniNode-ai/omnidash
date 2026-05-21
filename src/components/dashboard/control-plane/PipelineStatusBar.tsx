@@ -1,6 +1,6 @@
 import { Text } from '@/components/ui/typography';
 
-export type ServiceStatus = 'up' | 'down' | 'demo';
+export type ServiceStatus = 'up' | 'down' | 'demo' | 'sqlite' | 'unknown';
 
 interface StatusIndicatorProps {
   label: string;
@@ -11,12 +11,16 @@ const STATUS_COLORS: Record<ServiceStatus, string> = {
   up: 'var(--status-ok)',
   down: 'var(--status-bad)',
   demo: 'var(--status-warn)',
+  sqlite: 'var(--status-warn)',
+  unknown: 'var(--status-warn)',
 };
 
 const STATUS_LABELS: Record<ServiceStatus, string> = {
   up: 'Connected',
   down: 'Offline',
   demo: 'Fixture',
+  sqlite: 'Local Data',
+  unknown: 'Not Verified',
 };
 
 function StatusIndicator({ label, status }: StatusIndicatorProps) {
