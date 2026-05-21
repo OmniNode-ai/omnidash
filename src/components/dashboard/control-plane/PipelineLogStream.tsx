@@ -8,6 +8,7 @@ export interface PipelineEvent {
   source: string;
   message: string;
   correlationId: string;
+  simulated?: boolean;
 }
 
 const TYPE_COLORS: Record<PipelineEvent['type'], string> = {
@@ -66,6 +67,7 @@ export function PipelineLogStream({ events }: { events: PipelineEvent[] }) {
               padding: '6px 12px',
               borderLeft: `3px solid ${TYPE_COLORS[evt.type] ?? 'var(--line)'}`,
               borderBottom: '1px solid var(--line-2)',
+              opacity: evt.simulated ? 0.7 : 1,
             }}
           >
             <Text size="xs" color="tertiary" className="mono">
@@ -80,6 +82,23 @@ export function PipelineLogStream({ events }: { events: PipelineEvent[] }) {
               {evt.type}
             </Text>
             <Text size="sm" color="secondary">
+              {evt.simulated && (
+                <Text
+                  as="span"
+                  size="xs"
+                  weight="bold"
+                  className="mono"
+                  style={{
+                    color: 'var(--status-warn)',
+                    marginRight: 6,
+                    border: '1px solid var(--status-warn)',
+                    padding: '0 3px',
+                    borderRadius: 2,
+                  }}
+                >
+                  DEMO
+                </Text>
+              )}
               {evt.message}
             </Text>
           </div>
