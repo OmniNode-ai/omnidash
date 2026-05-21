@@ -1,5 +1,5 @@
 /* eslint-disable local/no-typography-inline -- OMN-10624 prototype widget */
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import { ComponentWrapper } from '../ComponentWrapper';
 import { useProjectionQuery } from '@/hooks/useProjectionQuery';
 import { TOPICS } from '@shared/types/topics';
@@ -167,6 +167,121 @@ function FailureCategories({ categories }: { categories: FailureCategoryRow[] })
   );
 }
 
+// ── Recent delegation checks ─────────────────────────────────────────
+
+interface DelegationDecisionRow {
+  id: string | number;
+  task_type: string;
+  model_name: string | null;
+  delegated_to: string | null;
+  quality_gate_passed: boolean | number;
+  quality_gate_detail: string | null;
+  created_at: string;
+}
+
+const RECENT_CHECKS_PAGE_SIZE = 8;
+
+function RecentChecks({ rows }: { rows: DelegationDecisionRow[] }) {
+  const [showAll, setShowAll] = useState(false);
+  if (rows.length === 0) return null;
+
+  const visible = showAll ? rows : rows.slice(0, RECENT_CHECKS_PAGE_SIZE);
+  const hasMore = rows.length > RECENT_CHECKS_PAGE_SIZE;
+
+  return (
+    <div style={{ marginTop: 12 }}>
+      <Text as="div" size="xs" color="tertiary" weight="semibold" style={{ marginBottom: 6 }}>
+        Recent checks ({rows.length})
+      </Text>
+      <div
+        style={{
+          display: 'grid',
+          gridTemplateColumns: '24px 1fr 1fr 1fr',
+          gap: '4px 8px',
+          paddingBottom: 4,
+          borderBottom: '1px solid var(--line)',
+        }}
+      >
+        <Text as="span" size="xs" color="tertiary">{' '}</Text>
+        <Text as="span" size="xs" color="tertiary">Task</Text>
+        <Text as="span" size="xs" color="tertiary">Model</Text>
+        <Text as="span" size="xs" color="tertiary">Detail</Text>
+      </div>
+      {visible.map((row, i) => {
+        const passed = Number(row.quality_gate_passed) === 1 || row.quality_gate_passed === true;
+        const model = row.model_name || row.delegated_to || 'local';
+        const detail = row.quality_gate_detail || '—';
+        return (
+          <div
+            key={`${row.id}-${i}`}
+            style={{
+              display: 'grid',
+              gridTemplateColumns: '24px 1fr 1fr 1fr',
+              gap: '4px 8px',
+              padding: '4px 0',
+              borderBottom: '1px solid var(--line-2)',
+              alignItems: 'center',
+            }}
+          >
+            <Text
+              as="span"
+              size="sm"
+              style={{ color: passed ? 'var(--good)' : 'var(--error, var(--warn))' }}
+            >
+              {passed ? '✓' : '✗'}
+            </Text>
+            <Text
+              as="span"
+              size="sm"
+              family="mono"
+              color="primary"
+              style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}
+            >
+              {row.task_type || 'unknown'}
+            </Text>
+            <Text
+              as="span"
+              size="sm"
+              family="mono"
+              color="secondary"
+              style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}
+            >
+              {model}
+            </Text>
+            <Text
+              as="span"
+              size="xs"
+              family="mono"
+              color="tertiary"
+              style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}
+            >
+              {detail}
+            </Text>
+          </div>
+        );
+      })}
+      {hasMore && (
+        <button
+          type="button"
+          onClick={() => setShowAll((v) => !v)}
+          style={{
+            marginTop: 6,
+            background: 'none',
+            border: 'none',
+            color: 'var(--text-link, var(--text-secondary))',
+            cursor: 'pointer',
+            padding: '2px 0',
+          }}
+        >
+          <Text as="span" size="xs" color="secondary">
+            {showAll ? 'Show less' : `Show all ${rows.length} checks`}
+          </Text>
+        </button>
+      )}
+    </div>
+  );
+}
+
 // ── Tokens-to-compliance per-model breakdown ─────────────────────────
 
 function TokensToComplianceByModel({ rows }: { rows: TokensToComplianceByModelRow[] }) {
@@ -247,6 +362,13 @@ export default function DelegationQualityGateWidget(props: { config: DelegationQ
     queryKey: ['delegation-quality-gate', TOPICS.delegationQualityGate],
     topic: TOPICS.delegationQualityGate,
     refetchInterval: 5_000,
+  });
+
+  // Fetch recent delegation decisions for the per-row detail table
+  const { data: decisionsData } = useProjectionQuery<DelegationDecisionRow>({
+    queryKey: ['delegation-decisions', TOPICS.delegationDecisions],
+    topic: TOPICS.delegationDecisions,
+    refetchInterval: 10_000,
   });
 
   const projection = useMemo<DelegationQualityGateProjection | null>(() => {
@@ -407,6 +529,11 @@ export default function DelegationQualityGateWidget(props: { config: DelegationQ
           {/* Failure categories */}
           {showFailureCategories && (
             <FailureCategories categories={projection.failure_categories} />
+          )}
+
+          {/* Recent individual delegation checks (OMN-11388) */}
+          {decisionsData && decisionsData.length > 0 && (
+            <RecentChecks rows={decisionsData} />
           )}
 
           {/* Tokens-to-compliance per-model breakdown (OMN-10795) */}

@@ -8,6 +8,53 @@ import { buildDelegationQualityGate } from '@/storybook/fixtures/delegation-rout
 
 const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } });
 
+/**
+ * Mock fetch to serve two topic queries: the quality-gate projection
+ * and the decisions list. Each topic follows the FileSnapshotSource
+ * pattern: first fetch returns index (file list), subsequent fetches
+ * return individual items.
+ */
+function mockFetchForQualityGateWithDecisions(
+  qgItems: unknown[],
+  decisionItems: unknown[],
+): void {
+  const qgFileNames = qgItems.map((_, i) => `${i}.json`);
+  const decFileNames = decisionItems.map((_, i) => `${i}.json`);
+  let callCount = 0;
+
+  (globalThis.fetch as ReturnType<typeof vi.fn>).mockImplementation((url: string) => {
+    const urlStr = String(url);
+
+    // Quality gate topic index
+    if (urlStr.includes('quality-gate') && urlStr.endsWith('index.json')) {
+      return Promise.resolve({ ok: true, json: async () => qgFileNames });
+    }
+    // Decisions topic index
+    if (urlStr.includes('decisions') && urlStr.endsWith('index.json')) {
+      return Promise.resolve({ ok: true, json: async () => decFileNames });
+    }
+
+    // Individual item files: match by position in the call sequence
+    const filename = urlStr.split('/').pop() ?? '';
+    const idx = parseInt(filename, 10);
+    if (!Number.isNaN(idx)) {
+      if (urlStr.includes('quality-gate')) {
+        return Promise.resolve({ ok: true, json: async () => qgItems[idx] ?? null });
+      }
+      if (urlStr.includes('decisions')) {
+        return Promise.resolve({ ok: true, json: async () => decisionItems[idx] ?? null });
+      }
+    }
+
+    // Fallback for the first-call pattern (FileSnapshotSource index.json)
+    callCount++;
+    if (callCount === 1) {
+      return Promise.resolve({ ok: true, json: async () => qgFileNames });
+    }
+    return Promise.resolve({ ok: true, json: async () => null });
+  });
+}
+
 describe('DelegationQualityGateWidget', () => {
   beforeEach(() => {
     qc.clear();
@@ -121,6 +168,44 @@ describe('DelegationQualityGateWidget', () => {
     );
     await screen.findByText('Pass rate');
     expect(screen.getByText(/upstream-blocked/i)).toBeInTheDocument();
+  });
+
+  // OMN-11388: recent individual delegation checks
+  describe('recent checks table', () => {
+    it('renders recent checks table with task type, model, and pass/fail when decisions data is available', async () => {
+      const decisions = [
+        { id: '1', task_type: 'code-review', model_name: 'Qwen3-Coder-30B', delegated_to: null, quality_gate_passed: 1, quality_gate_detail: 'schema_valid', created_at: '2026-05-05T10:00:00Z' },
+        { id: '2', task_type: 'summarization', model_name: 'glm-4-plus', delegated_to: null, quality_gate_passed: 0, quality_gate_detail: 'output_too_short', created_at: '2026-05-05T09:00:00Z' },
+        { id: '3', task_type: 'classification', model_name: null, delegated_to: 'codex-cli', quality_gate_passed: 1, quality_gate_detail: null, created_at: '2026-05-05T08:00:00Z' },
+      ];
+      mockFetchForQualityGateWithDecisions([buildDelegationQualityGate()], decisions);
+      render(
+        <DataSourceTestProvider client={qc}>
+          <DelegationQualityGateWidget config={{}} />
+        </DataSourceTestProvider>,
+      );
+      await screen.findByText('Pass rate');
+      expect(await screen.findByText('Recent checks (3)')).toBeInTheDocument();
+      expect(screen.getByText('code-review')).toBeInTheDocument();
+      expect(screen.getByText('summarization')).toBeInTheDocument();
+      expect(screen.getByText('classification')).toBeInTheDocument();
+      // Model names and failure categories may appear in both the recent
+      // checks table and other sections, so use getAllByText.
+      expect(screen.getAllByText('Qwen3-Coder-30B').length).toBeGreaterThanOrEqual(1);
+      expect(screen.getAllByText('output_too_short').length).toBeGreaterThanOrEqual(1);
+      expect(screen.getByText('schema_valid')).toBeInTheDocument();
+    });
+
+    it('does not render recent checks when no decisions data is available', async () => {
+      mockFetchWithItems([buildDelegationQualityGate()]);
+      render(
+        <DataSourceTestProvider client={qc}>
+          <DelegationQualityGateWidget config={{}} />
+        </DataSourceTestProvider>,
+      );
+      await screen.findByText('Pass rate');
+      expect(screen.queryByText(/Recent checks/)).not.toBeInTheDocument();
+    });
   });
 
   // OMN-10795: tokens-to-compliance KPIs and per-model breakdown
