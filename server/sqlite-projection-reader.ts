@@ -552,7 +552,8 @@ export class SqliteProjectionReader {
         COALESCE(SUM(CASE WHEN quality_gate_passed = 0 THEN 1 ELSE 0 END), 0)       AS total_failed,
         ${hasTokensToCompliance
           ? `COALESCE(AVG(CASE WHEN tokens_to_compliance > 0 THEN tokens_to_compliance END), NULL) AS avg_tokens_to_compliance,
-             COALESCE(AVG(CASE WHEN tokens_to_compliance > 0 AND quality_gates_checked > 1 THEN quality_gates_checked END), NULL) AS avg_compliance_attempts`
+             COALESCE(AVG(CASE WHEN tokens_to_compliance > 0 AND ${hasQualityGatesChecked ? 'quality_gates_checked' : '1'} > 1
+               THEN ${hasQualityGatesChecked ? 'quality_gates_checked' : '1'} END), NULL) AS avg_compliance_attempts`
           : `NULL AS avg_tokens_to_compliance, NULL AS avg_compliance_attempts`}
       FROM delegation_events
       WHERE ${this.delegationRuntimeWhereClause(db)}
