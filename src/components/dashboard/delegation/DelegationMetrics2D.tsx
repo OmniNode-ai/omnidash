@@ -25,7 +25,7 @@ interface DonutSlice {
 const VIEWBOX = { x: -100, y: -100, w: 200, h: 200 };
 const OUTER_R = 90;
 const INNER_R = 50;
-const DONUT_HEIGHT = 180;
+const DONUT_HEIGHT = 160;
 
 function polar(angle: number, r: number): [number, number] {
   return [r * Math.cos(angle), r * Math.sin(angle)];
@@ -126,7 +126,7 @@ export default function DelegationMetrics2D({ config }: { config: Record<string,
       emptyHint="Delegation events appear when tasks are delegated to agents"
     >
       {data && !isEmpty && (
-        <div style={{ display: 'flex', gap: '1rem', height: '100%' }}>
+        <div style={{ display: 'flex', gap: '1rem' }}>
           <div style={{ flex: '0 0 auto', display: 'flex', flexDirection: 'column', gap: '0.75rem', padding: '0.5rem 0' }}>
             <div>
               <Text as="div" size="4xl" weight="bold" color="primary">{data.totalDelegations}</Text>
@@ -153,8 +153,9 @@ export default function DelegationMetrics2D({ config }: { config: Record<string,
           <div
             data-testid="delegation-2d-donut"
             style={{
-              flex: 1,
+              flex: '1 1 0',
               minHeight: '150px',
+              maxHeight: '240px',
               position: 'relative',
               display: 'flex',
               flexDirection: 'column',
@@ -163,6 +164,7 @@ export default function DelegationMetrics2D({ config }: { config: Record<string,
               background: 'var(--panel-2)',
               border: '1px solid var(--line-2)',
               borderRadius: 6,
+              overflow: 'hidden',
             }}
             onPointerLeave={() => setHoverIdx(null)}
           >
