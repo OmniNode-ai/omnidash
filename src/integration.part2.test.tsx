@@ -47,7 +47,8 @@ describe('Proof of Life — Part 2', () => {
     // OMN-10624: delegation-savings, delegation-model-routing, delegation-quality-gate, delegation-token-usage added.
     // OMN-11258: mcp-tools added.
     // OMN-11260: control-plane added.
-    expect(all.length).toBe(26);
+    // OMN-11477: evidence-pipeline-flow added.
+    expect(all.length).toBe(27);
     expect(all.map((c) => c.name).sort()).toEqual([
       'ab-compare',
       'baselines-roi-card',
@@ -64,6 +65,7 @@ describe('Proof of Life — Part 2', () => {
       'delegation-savings',
       'delegation-token-usage',
       'event-stream',
+      'evidence-pipeline-flow',
       'intent-distribution',
       'live-event-stream',
       'mcp-tools',
