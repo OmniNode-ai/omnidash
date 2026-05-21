@@ -187,20 +187,7 @@ export class SqliteProjectionReader {
         `).all() as Row[];
 
       case 'onex.snapshot.projection.delegation.token-usage.v1':
-        return db.prepare(`
-          SELECT
-            delegated_to                              AS model_alias,
-            model_name,
-            COUNT(*)                                  AS delegation_count,
-            COALESCE(SUM(tokens_input), 0)            AS total_tokens_input,
-            COALESCE(SUM(tokens_output), 0)           AS total_tokens_output,
-            COALESCE(SUM(tokens_input + tokens_output), 0) AS total_tokens,
-            COALESCE(SUM(tokens_to_compliance), 0)    AS total_tokens_to_compliance
-          FROM delegation_events
-          WHERE ${this.delegationRuntimeWhereClause(db)}
-          GROUP BY delegated_to, model_name
-          ORDER BY total_tokens DESC
-        `).all() as Row[];
+        return [this.readDelegationTokenUsageProjection(db)];
 
       case 'onex.snapshot.projection.cost.savings-overview.v1':
         return [this.readCostSavingsOverviewProjection(db)];
@@ -209,34 +196,10 @@ export class SqliteProjectionReader {
         return [this.readDelegationSavingsProjection(db)];
 
       case 'onex.snapshot.projection.delegation.model-routing.v1':
-        return db.prepare(`
-          SELECT
-            delegated_to                                                        AS model_alias,
-            task_type,
-            COUNT(*)                                                            AS event_count,
-            COALESCE(SUM(CASE WHEN quality_gate_passed = 1 THEN 1 ELSE 0 END), 0) AS quality_passed,
-            COALESCE(AVG(latency_ms), 0)                                       AS avg_latency_ms
-          FROM delegation_events
-          WHERE ${this.delegationRuntimeWhereClause(db)}
-          GROUP BY delegated_to, task_type
-          ORDER BY event_count DESC
-        `).all() as Row[];
+        return [this.readDelegationModelRoutingProjection(db)];
 
       case 'onex.snapshot.projection.delegation.quality-gate.v1':
-        return db.prepare(`
-          SELECT
-            quality_gate_detail                                                  AS check_detail,
-            COUNT(*)                                                             AS total_checks,
-            COALESCE(SUM(CASE WHEN quality_gate_passed = 1 THEN 1 ELSE 0 END), 0) AS passed_count,
-            COALESCE(SUM(CASE WHEN quality_gate_passed = 0 THEN 1 ELSE 0 END), 0) AS failed_count,
-            COALESCE(AVG(quality_gates_checked), 0)                              AS avg_gates_checked,
-            COALESCE(AVG(quality_gates_failed), 0)                               AS avg_gates_failed
-          FROM delegation_events
-          WHERE quality_gate_detail IS NOT NULL
-            AND ${this.delegationRuntimeWhereClause(db)}
-          GROUP BY quality_gate_detail
-          ORDER BY total_checks DESC
-        `).all() as Row[];
+        return [this.readDelegationQualityGateProjection(db)];
 
       case 'onex.snapshot.projection.live-events.v1':
         return this.readLiveEventsProjection(db);
@@ -566,6 +529,326 @@ export class SqliteProjectionReader {
     if (!Number.isNaN(numeric)) return numeric;
     const parsed = Date.parse(String(value));
     return Number.isNaN(parsed) ? 0 : parsed;
+  }
+
+  private readDelegationQualityGateProjection(db: Database.Database): Row {
+    if (!this.hasTable(db, 'delegation_events')) {
+      return {
+        overall_pass_rate: 0, total_passed: 0, total_failed: 0, total_checks: 0,
+        escalation_count: 0, escalation_rate: 0,
+        by_check_type: [], failure_categories: [],
+        captured_at: new Date().toISOString(), provisioned: false,
+      };
+    }
+
+    const hasTokensToCompliance = this.hasColumn(db, 'delegation_events', 'tokens_to_compliance');
+    const hasQualityGatesChecked = this.hasColumn(db, 'delegation_events', 'quality_gates_checked');
+    const hasQualityGatesFailed = this.hasColumn(db, 'delegation_events', 'quality_gates_failed');
+
+    const totals = db.prepare(`
+      SELECT
+        COUNT(*)                                                                     AS total_checks,
+        COALESCE(SUM(CASE WHEN quality_gate_passed = 1 THEN 1 ELSE 0 END), 0)       AS total_passed,
+        COALESCE(SUM(CASE WHEN quality_gate_passed = 0 THEN 1 ELSE 0 END), 0)       AS total_failed,
+        ${hasTokensToCompliance
+          ? `COALESCE(AVG(CASE WHEN tokens_to_compliance > 0 THEN tokens_to_compliance END), NULL) AS avg_tokens_to_compliance,
+             COALESCE(AVG(CASE WHEN tokens_to_compliance > 0 AND ${hasQualityGatesChecked ? 'quality_gates_checked' : '1'} > 1
+               THEN ${hasQualityGatesChecked ? 'quality_gates_checked' : '1'} END), NULL) AS avg_compliance_attempts`
+          : `NULL AS avg_tokens_to_compliance, NULL AS avg_compliance_attempts`}
+      FROM delegation_events
+      WHERE ${this.delegationRuntimeWhereClause(db)}
+    `).get() as Row;
+
+    const totalChecks = Number(totals.total_checks ?? 0);
+    const totalPassed = Number(totals.total_passed ?? 0);
+    const totalFailed = Number(totals.total_failed ?? 0);
+    const overallPassRate = totalChecks > 0 ? totalPassed / totalChecks : 0;
+
+    // Map quality_gate_detail values to check_type buckets
+    const detailRows = db.prepare(`
+      SELECT
+        quality_gate_detail                                                          AS check_detail,
+        COUNT(*)                                                                     AS total,
+        COALESCE(SUM(CASE WHEN quality_gate_passed = 1 THEN 1 ELSE 0 END), 0)       AS passed_count,
+        COALESCE(SUM(CASE WHEN quality_gate_passed = 0 THEN 1 ELSE 0 END), 0)       AS failed_count
+      FROM delegation_events
+      WHERE quality_gate_detail IS NOT NULL
+        AND ${this.delegationRuntimeWhereClause(db)}
+      GROUP BY quality_gate_detail
+      ORDER BY total DESC
+    `).all() as Row[];
+
+    // Classify each detail into a check_type bucket
+    const checkTypeBuckets = new Map<string, { passed: number; failed: number; total: number }>();
+    const failureCategoryMap = new Map<string, number>();
+
+    for (const row of detailRows) {
+      const detail = String(row.check_detail ?? '').toLowerCase();
+      const checkType = detail.includes('heuristic')
+        ? 'heuristic'
+        : detail.includes('deterministic') || detail.includes('exact') || detail.includes('schema')
+        ? 'deterministic'
+        : 'unknown';
+
+      const existing = checkTypeBuckets.get(checkType) ?? { passed: 0, failed: 0, total: 0 };
+      existing.passed += Number(row.passed_count ?? 0);
+      existing.failed += Number(row.failed_count ?? 0);
+      existing.total += Number(row.total ?? 0);
+      checkTypeBuckets.set(checkType, existing);
+
+      if (Number(row.failed_count ?? 0) > 0) {
+        const failKey = String(row.check_detail ?? 'unknown');
+        failureCategoryMap.set(failKey, (failureCategoryMap.get(failKey) ?? 0) + Number(row.failed_count));
+      }
+    }
+
+    // If no detail rows exist, synthesize a single bucket from totals
+    if (checkTypeBuckets.size === 0 && totalChecks > 0) {
+      checkTypeBuckets.set('unknown', { passed: totalPassed, failed: totalFailed, total: totalChecks });
+    }
+
+    const byCheckType = [...checkTypeBuckets.entries()].map(([check_type, counts]) => ({
+      check_type,
+      passed: counts.passed,
+      failed: counts.failed,
+      total: counts.total,
+      pass_rate: counts.total > 0 ? counts.passed / counts.total : 0,
+    }));
+
+    const totalFailedForPct = [...failureCategoryMap.values()].reduce((s, v) => s + v, 0);
+    const failureCategories = [...failureCategoryMap.entries()]
+      .map(([category, count]) => ({
+        category,
+        count,
+        pct_of_failures: totalFailedForPct > 0 ? count / totalFailedForPct : 0,
+      }))
+      .sort((a, b) => b.count - a.count)
+      .slice(0, 10);
+
+    const tokensToComplianceByModel: Row[] = hasTokensToCompliance
+      ? (db.prepare(`
+          SELECT
+            COALESCE(NULLIF(model_name, ''), NULLIF(delegated_to, ''), 'local') AS model_name,
+            COALESCE(AVG(CASE WHEN tokens_to_compliance > 0 THEN tokens_to_compliance END), 0) AS avg_tokens,
+            COALESCE(AVG(CASE WHEN ${hasQualityGatesChecked ? 'quality_gates_checked' : '1'} > 0
+              THEN ${hasQualityGatesChecked ? 'quality_gates_checked' : '1'} END), 1) AS avg_attempts,
+            COUNT(CASE WHEN tokens_to_compliance > 0 THEN 1 END) AS sample_count
+          FROM delegation_events
+          WHERE ${this.delegationRuntimeWhereClause(db)}
+          GROUP BY COALESCE(NULLIF(model_name, ''), NULLIF(delegated_to, ''), 'local')
+          HAVING sample_count > 0
+          ORDER BY avg_tokens ASC
+        `).all() as Row[])
+      : [];
+
+    const escalationCount = hasQualityGatesFailed
+      ? Number(
+          (db.prepare(`
+            SELECT COUNT(*) AS cnt FROM delegation_events
+            WHERE quality_gates_failed > 1
+              AND ${this.delegationRuntimeWhereClause(db)}
+          `).get() as Row).cnt ?? 0,
+        )
+      : 0;
+
+    return {
+      overall_pass_rate: overallPassRate,
+      total_passed: totalPassed,
+      total_failed: totalFailed,
+      total_checks: totalChecks,
+      escalation_count: escalationCount,
+      escalation_rate: totalChecks > 0 ? escalationCount / totalChecks : 0,
+      by_check_type: byCheckType,
+      failure_categories: failureCategories,
+      avg_tokens_to_compliance: totals.avg_tokens_to_compliance ?? undefined,
+      avg_compliance_attempts: totals.avg_compliance_attempts ?? undefined,
+      tokens_to_compliance_by_model: tokensToComplianceByModel.length > 0 ? tokensToComplianceByModel : undefined,
+      captured_at: new Date().toISOString(),
+      provisioned: totalChecks > 0,
+    };
+  }
+
+  private readDelegationModelRoutingProjection(db: Database.Database): Row {
+    if (!this.hasTable(db, 'delegation_events')) {
+      return {
+        total_delegations: 0, rows: [], by_model: [],
+        captured_at: new Date().toISOString(), provisioned: false,
+      };
+    }
+
+    const hasRoutingRule = this.hasColumn(db, 'delegation_events', 'routing_rule');
+    const hasRoutingConfidence = this.hasColumn(db, 'delegation_events', 'routing_confidence');
+    const hasRoutingCandidates = this.hasColumn(db, 'delegation_events', 'routing_candidates');
+
+    // Per (model, task_type) breakdown rows
+    const rawRows = db.prepare(`
+      SELECT
+        COALESCE(NULLIF(model_name, ''), NULLIF(delegated_to, ''), 'local') AS model_name,
+        COALESCE(NULLIF(task_type, ''), 'unknown')                          AS task_type,
+        COUNT(*)                                                             AS count,
+        COALESCE(AVG(latency_ms), 0)                                        AS avg_latency_ms,
+        COALESCE(SUM(CASE WHEN quality_gate_passed = 1 THEN 1 ELSE 0 END), 0) AS quality_passed,
+        COUNT(*)                                                             AS total_for_rate
+      FROM delegation_events
+      WHERE ${this.delegationRuntimeWhereClause(db)}
+      GROUP BY model_name, task_type
+      ORDER BY count DESC
+    `).all() as Row[];
+
+    const totalDelegations = rawRows.reduce((s, r) => s + Number(r.count ?? 0), 0);
+
+    // Per-model totals
+    const modelMap = new Map<string, {
+      model_name: string;
+      total_count: number;
+      quality_passed: number;
+      latency_sum: number;
+      task_types: Set<string>;
+    }>();
+
+    for (const row of rawRows) {
+      const modelName = String(row.model_name ?? 'local');
+      const existing = modelMap.get(modelName) ?? {
+        model_name: modelName,
+        total_count: 0,
+        quality_passed: 0,
+        latency_sum: 0,
+        task_types: new Set<string>(),
+      };
+      existing.total_count += Number(row.count ?? 0);
+      existing.quality_passed += Number(row.quality_passed ?? 0);
+      existing.latency_sum += Number(row.avg_latency_ms ?? 0) * Number(row.count ?? 0);
+      existing.task_types.add(String(row.task_type ?? 'unknown'));
+      modelMap.set(modelName, existing);
+    }
+
+    const modelSummaries = [...modelMap.values()].map((m) => {
+      const topTaskType = rawRows
+        .filter((r) => String(r.model_name ?? 'local') === m.model_name)
+        .sort((a, b) => Number(b.count ?? 0) - Number(a.count ?? 0))[0];
+      return {
+        model_name: m.model_name,
+        total_count: m.total_count,
+        pct_of_total: totalDelegations > 0 ? m.total_count / totalDelegations : 0,
+        top_task_type: topTaskType ? String(topTaskType.task_type ?? 'unknown') : 'unknown',
+        avg_latency_ms: m.total_count > 0 ? m.latency_sum / m.total_count : undefined,
+        qg_pass_rate: m.total_count > 0 ? m.quality_passed / m.total_count : undefined,
+        task_types: [...m.task_types],
+      };
+    }).sort((a, b) => b.total_count - a.total_count);
+
+    // Compute per-model pct for each row
+    const rows = rawRows.map((r) => {
+      const modelName = String(r.model_name ?? 'local');
+      const modelTotal = modelMap.get(modelName)?.total_count ?? 1;
+      const count = Number(r.count ?? 0);
+      return {
+        model_name: modelName,
+        task_type: String(r.task_type ?? 'unknown'),
+        count,
+        pct_of_model: modelTotal > 0 ? count / modelTotal : 0,
+        pct_of_total: totalDelegations > 0 ? count / totalDelegations : 0,
+      };
+    });
+
+    // Optional decision traces
+    let decisionTraces: Row[] | undefined;
+    if (hasRoutingRule || hasRoutingConfidence) {
+      decisionTraces = db.prepare(`
+        SELECT
+          id,
+          COALESCE(NULLIF(correlation_id, ''), CAST(id AS TEXT)) AS correlation_id,
+          COALESCE(NULLIF(task_type, ''), 'unknown')             AS task_type,
+          COALESCE(NULLIF(model_name, ''), NULLIF(delegated_to, ''), 'local') AS model_name,
+          COALESCE(NULLIF(delegated_to, ''), 'local')            AS delegated_to,
+          ${hasRoutingRule       ? 'routing_rule'       : 'NULL'} AS routing_rule,
+          ${hasRoutingConfidence ? 'routing_confidence' : 'NULL'} AS routing_confidence,
+          ${hasRoutingCandidates ? 'routing_candidates' : 'NULL'} AS routing_candidates,
+          latency_ms,
+          quality_gate_passed,
+          COALESCE(created_at, 0)                                AS created_at
+        FROM delegation_events
+        WHERE ${this.delegationRuntimeWhereClause(db)}
+        ORDER BY created_at DESC
+        LIMIT 100
+      `).all() as Row[];
+    }
+
+    return {
+      total_delegations: totalDelegations,
+      rows,
+      by_model: modelSummaries,
+      ...(decisionTraces && decisionTraces.length > 0 ? { decision_traces: decisionTraces } : {}),
+      captured_at: new Date().toISOString(),
+      provisioned: totalDelegations > 0,
+    };
+  }
+
+  private readDelegationTokenUsageProjection(db: Database.Database): Row {
+    if (!this.hasTable(db, 'delegation_events')) {
+      return {
+        total_prompt_tokens: 0,
+        total_completion_tokens: 0,
+        total_tokens: 0,
+        total_estimated_cost_usd: 0,
+        provenance_summary: { measured: 0, estimated: 0, unknown: 0 },
+        by_model: [],
+        captured_at: new Date().toISOString(),
+        provisioned: false,
+      };
+    }
+
+    const hasTokensInput = this.hasColumn(db, 'delegation_events', 'tokens_input');
+    const hasTokensOutput = this.hasColumn(db, 'delegation_events', 'tokens_output');
+    const hasCostUsd = this.hasColumn(db, 'delegation_events', 'cost_usd');
+    const hasUsageSource = this.hasColumn(db, 'delegation_events', 'usage_source');
+
+    const promptExpr = hasTokensInput ? 'COALESCE(tokens_input, 0)' : '0';
+    const completionExpr = hasTokensOutput ? 'COALESCE(tokens_output, 0)' : '0';
+    const costExpr = hasCostUsd ? 'COALESCE(cost_usd, 0)' : '0';
+    const usageSourceExpr = hasUsageSource
+      ? `CASE WHEN COALESCE(tokens_input, 0) + COALESCE(tokens_output, 0) > 0 THEN
+           COALESCE(NULLIF(usage_source, ''), 'measured')
+         ELSE 'unknown' END`
+      : `CASE WHEN COALESCE(tokens_input, 0) + COALESCE(tokens_output, 0) > 0 THEN 'measured' ELSE 'unknown' END`;
+
+    const modelRows = db.prepare(`
+      SELECT
+        COALESCE(NULLIF(delegated_to, ''), 'local')                              AS model_id,
+        COALESCE(NULLIF(model_name, ''), NULLIF(delegated_to, ''), 'local')      AS model_name,
+        COALESCE(SUM(${promptExpr}), 0)                                          AS prompt_tokens,
+        COALESCE(SUM(${completionExpr}), 0)                                      AS completion_tokens,
+        COALESCE(SUM(${promptExpr} + ${completionExpr}), 0)                      AS total_tokens,
+        COALESCE(SUM(${costExpr}), 0)                                            AS estimated_cost_usd,
+        ${usageSourceExpr}                                                        AS usage_source,
+        ${usageSourceExpr}                                                        AS token_provenance
+      FROM delegation_events
+      WHERE ${this.delegationRuntimeWhereClause(db)}
+      GROUP BY delegated_to, model_name
+      ORDER BY total_tokens DESC
+    `).all() as Row[];
+
+    const totalPrompt = modelRows.reduce((s, r) => s + Number(r.prompt_tokens ?? 0), 0);
+    const totalCompletion = modelRows.reduce((s, r) => s + Number(r.completion_tokens ?? 0), 0);
+    const totalTokens = modelRows.reduce((s, r) => s + Number(r.total_tokens ?? 0), 0);
+    const totalCost = modelRows.reduce((s, r) => s + Number(r.estimated_cost_usd ?? 0), 0);
+
+    const provenanceSummary: Record<string, number> = { measured: 0, estimated: 0, unknown: 0 };
+    for (const row of modelRows) {
+      const p = String(row.token_provenance ?? 'unknown');
+      provenanceSummary[p] = (provenanceSummary[p] ?? 0) + 1;
+    }
+
+    return {
+      total_prompt_tokens: totalPrompt,
+      total_completion_tokens: totalCompletion,
+      total_tokens: totalTokens,
+      total_estimated_cost_usd: totalCost,
+      provenance_summary: provenanceSummary,
+      by_model: modelRows,
+      captured_at: new Date().toISOString(),
+      provisioned: totalTokens > 0,
+    };
   }
 
   private readDelegationSavingsProjection(db: Database.Database): Row {

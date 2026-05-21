@@ -326,13 +326,19 @@ describe('SqliteProjectionReader', () => {
 
     expect(rows).toHaveLength(1);
     expect(rows[0]).toMatchObject({
-      model_alias: 'local',
-      model_name: 'qwen3',
-      delegation_count: 2,
-      total_tokens_input: 300,
-      total_tokens_output: 130,
+      total_prompt_tokens: 300,
+      total_completion_tokens: 130,
       total_tokens: 430,
-      total_tokens_to_compliance: 5,
+      provisioned: true,
+    });
+    const byModel = rows[0]!.by_model as Record<string, unknown>[];
+    expect(byModel).toHaveLength(1);
+    expect(byModel[0]).toMatchObject({
+      model_id: 'local',
+      model_name: 'qwen3',
+      prompt_tokens: 300,
+      completion_tokens: 130,
+      total_tokens: 430,
     });
   });
 
@@ -484,7 +490,13 @@ describe('SqliteProjectionReader', () => {
     const rows = reader.readProjection('onex.snapshot.projection.delegation.model-routing.v1');
 
     expect(rows).toHaveLength(1);
-    expect(rows[0]).toMatchObject({ model_alias: 'local', task_type: 'code_review', event_count: 3, quality_passed: 3 });
+    expect(rows[0]).toMatchObject({ total_delegations: 3, provisioned: true });
+    const byModel = rows[0]!.by_model as Record<string, unknown>[];
+    expect(byModel).toHaveLength(1);
+    expect(byModel[0]).toMatchObject({ model_name: 'qwen3', total_count: 3 });
+    const routingRows = rows[0]!.rows as Record<string, unknown>[];
+    expect(routingRows).toHaveLength(1);
+    expect(routingRows[0]).toMatchObject({ model_name: 'qwen3', task_type: 'code_review', count: 3 });
   });
 
   it('reads delegation quality gate grouped by detail', () => {
@@ -503,7 +515,17 @@ describe('SqliteProjectionReader', () => {
     const rows = reader.readProjection('onex.snapshot.projection.delegation.quality-gate.v1');
 
     expect(rows).toHaveLength(1);
-    expect(rows[0]).toMatchObject({ check_detail: 'sql_injection:pass', total_checks: 2, passed_count: 1, failed_count: 1 });
+    expect(rows[0]).toMatchObject({
+      overall_pass_rate: 0.5,
+      total_passed: 1,
+      total_failed: 1,
+      total_checks: 2,
+      provisioned: true,
+    });
+    const byCheckType = rows[0]!.by_check_type as Record<string, unknown>[];
+    expect(byCheckType.length).toBeGreaterThan(0);
+    const unknownBucket = byCheckType.find((b) => b.check_type === 'unknown');
+    expect(unknownBucket).toMatchObject({ passed: 1, failed: 1, total: 2, pass_rate: 0.5 });
   });
 
   it('reads live work events from bus envelopes and delegation runtime rows', () => {
