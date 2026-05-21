@@ -111,6 +111,14 @@ export const TOPICS = {
   mcpTools: 'onex.snapshot.projection.mcp-tools.v1',
   /** Hackathon control plane pipeline events — request/validation/success/error (OMN-11260). */
   hackathonPipelineEvents: 'onex.snapshot.projection.hackathon_pipeline_events.v1',
+  /** Evidence pipeline stage-flow projection rows (OMN-11478). */
+  evidencePipelineStages: 'onex.snapshot.projection.evidence_pipeline.stages.v1',
+  /** Evidence pipeline correlation trace rows ordered by ingest_sequence (OMN-11479). */
+  evidencePipelineCorrelations: 'onex.snapshot.projection.evidence_pipeline.correlations.v1',
+  /** Deployment readiness aggregate projection rows (OMN-11480). */
+  evidencePipelineReadiness: 'onex.snapshot.projection.evidence_pipeline.readiness.v1',
+  /** Observational evidence event stream projection rows (OMN-11481). */
+  evidencePipelineLiveEvents: 'onex.snapshot.projection.evidence_pipeline.live_events.v1',
 } as const;
 
 export type TopicSymbol = (typeof TOPICS)[keyof typeof TOPICS];

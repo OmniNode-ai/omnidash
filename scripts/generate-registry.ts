@@ -509,6 +509,67 @@ const MVP_COMPONENTS: Record<string, ComponentManifest> = {
     emptyState: { message: 'No readiness data', hint: 'Run the platform readiness gate to see results' },
     capabilities: { supports_compare: false, supports_export: true, supports_fullscreen: false, supports_time_range: false },
   },
+  'evidence-pipeline-flow': {
+    name: 'evidence-pipeline-flow',
+    displayName: 'Evidence Pipeline Flow',
+    description:
+      'Projection-backed evidence pipeline stage flow, correlation trace, deployment readiness, and observational event stream.',
+    category: 'health',
+    version: '1.0.0',
+    implementationKey: 'evidence-pipeline/EvidencePipelineFlow',
+    projectionSchema: {
+      type: 'object',
+      required: [
+        'projection_cursor',
+        'last_event_id',
+        'last_ingest_sequence',
+        'freshness_state',
+        'observed_at',
+        'version',
+      ],
+      properties: {
+        projection_cursor: { type: 'string' },
+        last_event_id: { type: 'string' },
+        last_ingest_sequence: { type: 'number' },
+        freshness_state: { type: 'string', enum: ['CURRENT', 'STALE', 'DEGRADED'] },
+        degraded_reason: { type: 'string' },
+        observed_at: { type: 'string', format: 'date-time' },
+        version: { type: 'string' },
+      },
+      ordering: {
+        authority: 'ingest_sequence',
+        fieldName: 'last_ingest_sequence',
+        direction: 'asc',
+      },
+    },
+    displayContract: {
+      type: 'object',
+      description:
+        'Renders reducer-owned projection state only. SSE is advisory and must not mutate stage, trace, readiness, or event rows.',
+      properties: {
+        stageFlow: { type: 'boolean', const: true },
+        correlationTraceOrdering: { type: 'string', const: 'ingest_sequence asc' },
+        readinessSource: { type: 'string', const: 'reducer_projection' },
+        liveStreamAuthority: { type: 'string', const: 'advisory_only' },
+      },
+    },
+    dataSources: [
+      projectionSource(TOPICS.evidencePipelineStages),
+      projectionSource(TOPICS.evidencePipelineCorrelations),
+      projectionSource(TOPICS.evidencePipelineReadiness),
+      projectionSource(TOPICS.evidencePipelineLiveEvents, false),
+      liveSource(TOPICS.evidencePipelineLiveEvents, false),
+    ],
+    events: { emits: [], consumes: [] },
+    defaultSize: { w: 12, h: 10 },
+    minSize: { w: 8, h: 6 },
+    maxSize: { w: 12, h: 14 },
+    emptyState: {
+      message: 'No evidence pipeline projections',
+      hint: 'Configure EVIDENCE_PROJECTION_API_URL and emit reducer-backed projection snapshots.',
+    },
+    capabilities: { supports_compare: false, supports_export: true, supports_fullscreen: true, supports_time_range: false },
+  },
   'cost-summary': {
     name: 'cost-summary',
     displayName: 'Cost Summary',

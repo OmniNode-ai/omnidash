@@ -165,7 +165,19 @@ export default defineConfig(({ mode }) => {
     };
   }
 
+  if (env.EVIDENCE_PROJECTION_API_URL) {
+    // OMN-11477: evidence pipeline projection API. This variable is the
+    // contract-owned endpoint; when unset, the client renders a degraded
+    // unconfigured projection state instead of silently defaulting.
+    proxyMap['/api/evidence-pipeline'] = {
+      target: env.EVIDENCE_PROJECTION_API_URL,
+      changeOrigin: true,
+      rewrite: (p) => p.replace(/^\/api\/evidence-pipeline/, ''),
+    };
+  }
+
   return {
+    envPrefix: ['VITE_', 'EVIDENCE_'],
     plugins: [react(), vanillaExtractPlugin(), fixturesPlugin, layoutsPlugin],
     resolve: {
       alias: {
