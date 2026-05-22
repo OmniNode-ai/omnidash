@@ -97,4 +97,30 @@ describe('DelegationControlPlane', () => {
     });
     expect(screen.getByText('OCC receipt refs')).toBeInTheDocument();
   });
+
+  it('renders runtime topology panel with instance identity and topic rows', async () => {
+    renderWithSource(populatedSource());
+    await screen.findByText('Delegation evidence control plane');
+
+    await userEvent.click(screen.getByRole('button', { name: /runtime topology/i }));
+    await waitFor(() => {
+      expect(screen.getAllByText('Runtime Topology').length).toBeGreaterThan(0);
+    });
+    expect(screen.getByText('Runtime identity')).toBeInTheDocument();
+    expect(screen.getByText('DelegationMarketOrchestrator')).toBeInTheDocument();
+    expect(screen.getByText('omnimarket')).toBeInTheDocument();
+  });
+
+  it('renders artifacts panel with OCC receipts and manifest slots', async () => {
+    renderWithSource(populatedSource());
+    await screen.findByText('Delegation evidence control plane');
+
+    await userEvent.click(screen.getByRole('button', { name: /^artifacts$/i }));
+    await waitFor(() => {
+      expect(screen.getAllByText('Artifacts').length).toBeGreaterThan(0);
+    });
+    expect(screen.getByText('Delegation OCC receipt')).toBeInTheDocument();
+    expect(screen.getAllByText('Pricing manifest').length).toBeGreaterThan(0);
+    expect(screen.getByText('Savings report')).toBeInTheDocument();
+  });
 });
