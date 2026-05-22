@@ -49,6 +49,9 @@ export type {
   BuildDelegationTokenUsageOptions,
 } from './delegation-routing';
 
+export { buildRoutingDecisionProjection } from './routing-decision';
+export type { BuildRoutingDecisionOptions } from './routing-decision';
+
 export { buildMcpToolRows } from './mcp-tools';
 export type { BuildMcpToolRowsOptions } from './mcp-tools';
 

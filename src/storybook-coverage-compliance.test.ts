@@ -103,6 +103,7 @@ describe('Phase 1: Foundation', () => {
 // shared dashboard chrome) where stories alone are sufficient for now.
 const STORY_FILES: Array<{ rel: string; id: string; widget: boolean }> = [
   { rel: 'src/components/dashboard/routing/RoutingDecisionTable.stories.tsx', id: 'RoutingDecisionTable.stories', widget: true },
+  { rel: 'src/components/dashboard/routing-decision/RoutingDecisionWidget.stories.tsx', id: 'RoutingDecisionWidget.stories', widget: true },
   { rel: 'src/components/dashboard/events/EventStream.stories.tsx', id: 'EventStream.stories', widget: true },
   { rel: 'src/components/dashboard/cost-trend/CostTrend2D.stories.tsx', id: 'CostTrend2D.stories', widget: true },
   { rel: 'src/components/dashboard/cost-trend/CostTrend3DBars.stories.tsx', id: 'CostTrend3DBars.stories', widget: true },

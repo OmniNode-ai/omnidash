@@ -2,10 +2,51 @@
 import { useState, useMemo } from 'react';
 import { ComponentWrapper } from '../ComponentWrapper';
 import { NodePill, CardHeader, Price } from '@/components/primitives';
+import { useProjectionQuery } from '@/hooks/useProjectionQuery';
+import { TOPICS } from '@shared/types/topics';
 
-// ── Synthetic data ──────────────────────────────────────────────────
+// ── Projection types ─────────────────────────────────────────────────
 
-const MODELS = [
+export interface RoutingModel {
+  id: string;
+  name: string;
+  tier: 'local' | 'cloud';
+  cost: number;
+  host: string;
+}
+
+export interface RoutingIntent {
+  id: string;
+  label: string;
+  color: string;
+}
+
+export interface RoutingTaskPreset {
+  id: string;
+  label: string;
+  intent: string;
+  chosen: string;
+}
+
+export interface RoutingRule {
+  type: string;
+  model: string;
+  cost: number;
+  intentId: string;
+}
+
+export interface RoutingDecisionProjection {
+  models: RoutingModel[];
+  intents: RoutingIntent[];
+  task_presets: RoutingTaskPreset[];
+  routing_rules: RoutingRule[];
+  captured_at: string;
+  provisioned: boolean;
+}
+
+// ── Fallback data (shown when projection is upstream-blocked) ────────
+
+const FALLBACK_MODELS: RoutingModel[] = [
   { id: 'qwen3-coder-30b', name: 'Qwen3-Coder-30B-A3B', tier: 'local', cost: 0.000, host: '.200' },
   { id: 'qwen3-next-80b', name: 'Qwen3-Next-80B-A3B', tier: 'local', cost: 0.000, host: '.200' },
   { id: 'deepseek-r1-14b', name: 'DeepSeek-R1-14B', tier: 'local', cost: 0.000, host: '.201' },
@@ -13,7 +54,7 @@ const MODELS = [
   { id: 'claude-sonnet-4-5', name: 'Claude-Sonnet-4-5', tier: 'cloud', cost: 0.118, host: 'cloud' },
 ];
 
-const INTENTS = [
+const FALLBACK_INTENTS: RoutingIntent[] = [
   { id: 'code_generation', label: 'Code generation', color: 'var(--compute)' },
   { id: 'debugging', label: 'Debugging', color: 'var(--reducer)' },
   { id: 'classification', label: 'Classification', color: 'var(--orchestrator)' },
@@ -21,7 +62,7 @@ const INTENTS = [
   { id: 'large_context', label: 'Large context', color: 'var(--effect)' },
 ];
 
-const TASK_PRESETS = [
+const FALLBACK_TASK_PRESETS: RoutingTaskPreset[] = [
   { id: 'palindrome', label: 'Write a palindrome checker (Python)', intent: 'code_generation', chosen: 'qwen3-coder-30b' },
   { id: 'kafka-bug', label: 'Diagnose Kafka consumer-lag in payments-svc', intent: 'debugging', chosen: 'deepseek-r1-32b' },
   { id: 'monorepo', label: 'Refactor 18-file monorepo to ESM', intent: 'large_context', chosen: 'qwen3-next-80b' },
@@ -29,7 +70,7 @@ const TASK_PRESETS = [
   { id: 'sec-review', label: 'Review auth flow for OWASP Top-10', intent: 'complex_reasoning', chosen: 'claude-sonnet-4-5' },
 ];
 
-const ROUTING_RULES = [
+const FALLBACK_ROUTING_RULES: RoutingRule[] = [
   { type: 'Classification', model: 'DeepSeek-R1-14B', cost: 0, intentId: 'classification' },
   { type: 'Code generation', model: 'Qwen3-Coder-30B', cost: 0, intentId: 'code_generation' },
   { type: 'Complex reasoning', model: 'DeepSeek-R1-32B', cost: 0, intentId: 'complex_reasoning' },
@@ -61,7 +102,7 @@ function ConfidenceBar({ value, color }: { value: number; color: string }) {
 // ── Routing rules table ─────────────────────────────────────────────
 
 function RoutingRulesTable({ rules, activeIntent, onSelectIntent }: {
-  rules: typeof ROUTING_RULES;
+  rules: RoutingRule[];
   activeIntent: string;
   onSelectIntent: (intentId: string) => void;
 }) {
@@ -70,7 +111,7 @@ function RoutingRulesTable({ rules, activeIntent, onSelectIntent }: {
   const sorted = useMemo(() => {
     if (!sort) return rules;
     const dir = sort.dir === 'asc' ? 1 : -1;
-    const valueOf = (r: typeof rules[0]) =>
+    const valueOf = (r: RoutingRule) =>
       sort.key === 'type' ? r.type : sort.key === 'model' ? r.model : r.cost;
     return [...rules].sort((a, b) => {
       const av = valueOf(a);
@@ -172,18 +213,38 @@ function RoutingRulesTable({ rules, activeIntent, onSelectIntent }: {
 // ── Main widget ─────────────────────────────────────────────────────
 
 export default function RoutingDecisionWidget() {
-  const [taskIdx, setTaskIdx] = useState(0);
-  const task = TASK_PRESETS[taskIdx];
-  const chosen = MODELS.find((m) => m.id === task.chosen) ?? MODELS[0];
-  const intent = INTENTS.find((i) => i.id === task.intent) ?? INTENTS[0];
+  const { data, isLoading, error } = useProjectionQuery<RoutingDecisionProjection>({
+    queryKey: ['routing-decision-widget', TOPICS.routingDecision],
+    topic: TOPICS.routingDecision,
+    refetchInterval: 30_000,
+  });
 
-  // User-driven task selection (no auto-cycle)
+  const projection = useMemo<RoutingDecisionProjection | null>(() => {
+    return data?.[0] ?? null;
+  }, [data]);
+
+  const models = projection?.models ?? FALLBACK_MODELS;
+  const intents = projection?.intents ?? FALLBACK_INTENTS;
+  const taskPresets = projection?.task_presets ?? FALLBACK_TASK_PRESETS;
+  const routingRules = projection?.routing_rules ?? FALLBACK_ROUTING_RULES;
+  const isUpstreamBlocked = !projection || !projection.provisioned;
+
+  const [taskIdx, setTaskIdx] = useState(0);
+  const safeIdx = Math.min(taskIdx, taskPresets.length - 1);
+  const task = taskPresets[safeIdx];
+  const chosen = models.find((m) => m.id === task.chosen) ?? models[0];
+  const intent = intents.find((i) => i.id === task.intent) ?? intents[0];
+
+  const isEmpty = taskPresets.length === 0;
 
   return (
     <ComponentWrapper
       title="Model Routing"
-      isLoading={false}
-      isEmpty={false}
+      isLoading={isLoading}
+      error={error ?? undefined}
+      isEmpty={isEmpty}
+      emptyMessage="No routing data"
+      emptyHint="Routing decisions appear once delegation events are recorded"
     >
       <div style={{ width: '100%' }}>
         <CardHeader
@@ -203,7 +264,7 @@ export default function RoutingDecisionWidget() {
           </label>
           <select
             id="task-selector"
-            value={taskIdx}
+            value={safeIdx}
             onChange={(e) => setTaskIdx(Number(e.target.value))}
             className="mono"
             style={{
@@ -219,7 +280,7 @@ export default function RoutingDecisionWidget() {
               appearance: 'auto',
             }}
           >
-            {TASK_PRESETS.map((t, i) => (
+            {taskPresets.map((t, i) => (
               <option key={t.id} value={i}>{t.label}</option>
             ))}
           </select>
@@ -244,7 +305,7 @@ export default function RoutingDecisionWidget() {
                 {task.label}
               </div>
               <div className="mono" style={{ "fontSize": 10, "color": 'var(--ink-3)', marginTop: 4 }}>
-                ticket-{4470 + taskIdx} {'·'} 1.2 KB
+                ticket-{4470 + safeIdx} {'·'} 1.2 KB
               </div>
             </div>
 
@@ -283,13 +344,19 @@ export default function RoutingDecisionWidget() {
         {/* Routing rules table */}
         <div className="eyebrow" style={{ marginBottom: 8 }}>routing rules {'·'} learned from cost/quality history</div>
         <RoutingRulesTable
-          rules={ROUTING_RULES}
+          rules={routingRules}
           activeIntent={task.intent}
           onSelectIntent={(intentId) => {
-            const idx = TASK_PRESETS.findIndex((t) => t.intent === intentId);
+            const idx = taskPresets.findIndex((t) => t.intent === intentId);
             if (idx >= 0) setTaskIdx(idx);
           }}
         />
+
+        {isUpstreamBlocked && (
+          <div style={{ marginTop: 10, "fontSize": 11, "color": 'var(--ink-3)', fontStyle: 'italic' }}>
+            Projection upstream-blocked — displaying contract-valid fixtures.
+          </div>
+        )}
 
         <div style={{ marginTop: 14, "fontSize": 11, "color": 'var(--ink-3)', fontStyle: 'italic', textAlign: 'center' }}>
           Every routing decision produces a receipt with <span className="mono">model_chosen</span>, <span className="mono">tokens</span>, <span className="mono">cost</span>.
