@@ -104,7 +104,7 @@ describe('DelegationControlPlane', () => {
 
     await userEvent.click(screen.getByRole('tab', { name: /event chain/i }));
     expect(screen.getAllByText('Event Chain').length).toBeGreaterThan(0);
-    expect(screen.getByText('Command envelope')).toBeInTheDocument();
+    expect(screen.getByText(/Command envelope/)).toBeInTheDocument();
 
     await userEvent.click(screen.getByRole('tab', { name: /evidence bundle/i }));
     await waitFor(() => {
@@ -139,12 +139,47 @@ describe('DelegationControlPlane', () => {
     expect(screen.getByText('Savings report')).toBeInTheDocument();
   });
 
-  it('shows projection status panel on projection tab', async () => {
+  it('shows projection probe panel on projection tab with freshness metadata', async () => {
     renderWithSource(populatedSource());
     await screen.findByText('Delegation evidence control plane');
 
     await userEvent.click(screen.getByRole('tab', { name: /projection/i }));
-    expect(screen.getByText('Projection Status')).toBeInTheDocument();
+    await waitFor(() => {
+      expect(screen.getAllByText('Projection / API').length).toBeGreaterThan(0);
+    });
+    expect(screen.getByText('Ready topics')).toBeInTheDocument();
+    expect(screen.getByText('Degraded')).toBeInTheDocument();
+    expect(screen.getByText('Last captured')).toBeInTheDocument();
+  });
+
+  it('shows event chain with all 6 steps and UNKNOWN fallbacks on event-chain tab', async () => {
+    renderWithSource(populatedSource());
+    await screen.findByText('Delegation evidence control plane');
+
+    await userEvent.click(screen.getByRole('tab', { name: /event chain/i }));
+    await waitFor(() => {
+      expect(screen.getAllByText('Event Chain').length).toBeGreaterThan(0);
+    });
+    expect(screen.getByText(/1\. Command envelope/)).toBeInTheDocument();
+    expect(screen.getByText(/2\. Handler dispatch/)).toBeInTheDocument();
+    expect(screen.getByText(/3\. Terminal event/)).toBeInTheDocument();
+    expect(screen.getByText(/4\. Reducer materialise/)).toBeInTheDocument();
+    expect(screen.getByText(/5\. Projection row/)).toBeInTheDocument();
+    expect(screen.getByText(/6\. API and dashboard render/)).toBeInTheDocument();
+  });
+
+  it('shows inferred status for command stage when run is from projection row', async () => {
+    renderWithSource(sourceFor({
+      [TOPICS.delegationDecisions]: decisions,
+    }));
+    await screen.findByText('Delegation evidence control plane');
+
+    await userEvent.click(screen.getByRole('tab', { name: /event chain/i }));
+    await waitFor(() => {
+      expect(screen.getAllByText('Event Chain').length).toBeGreaterThan(0);
+    });
+    expect(screen.getAllByText('inferred').length).toBeGreaterThanOrEqual(1);
+    expect(screen.getAllByText(/Projection row/).length).toBeGreaterThan(0);
   });
 
   it('shows cost and token data on cost-tokens tab', async () => {

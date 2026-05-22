@@ -2,8 +2,8 @@ import { Activity, Archive, BarChart2, CircleDollarSign, Database, FileCheck2, L
 import { useState, type ComponentType } from 'react';
 import { Text } from '@/components/ui/typography';
 import { DelegationPanelFrame } from './DelegationPanelFrame';
-import { DelegationProjectionStatus } from './DelegationProjectionStatus';
 import { DelegationEventChainPanel } from './DelegationEventChainPanel';
+import { DelegationProjectionProbePanel } from './DelegationProjectionProbePanel';
 import { DelegationRuntimeTopologyPanel } from './DelegationRuntimeTopologyPanel';
 import { DelegationArtifactPanel } from './DelegationArtifactPanel';
 import { DelegationEvidenceBundlePanel } from './DelegationEvidenceBundlePanel';
@@ -61,8 +61,8 @@ export function DelegationEvidenceTabs() {
 
       {activeTab === 'overview' && <OverviewTab />}
       {activeTab === 'runtime-topology' && <DelegationRuntimeTopologyPanel snapshot={snapshot} />}
-      {activeTab === 'event-chain' && <DelegationEventChainPanel snapshot={snapshot} selectedRun={selectedRun} />}
-      {activeTab === 'projection' && <DelegationProjectionStatus probes={snapshot.probes} />}
+      {activeTab === 'event-chain' && <DelegationEventChainPanel />}
+      {activeTab === 'projection' && <DelegationProjectionProbePanel />}
       {activeTab === 'cost-tokens' && <CostTokensTab />}
       {activeTab === 'quality' && <QualityTab />}
       {activeTab === 'artifacts' && <DelegationArtifactPanel snapshot={snapshot} selectedRun={selectedRun} />}
