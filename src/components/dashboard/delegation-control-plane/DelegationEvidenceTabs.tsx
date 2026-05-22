@@ -1,9 +1,10 @@
-import { Activity, Database, FileCheck2, Network } from 'lucide-react';
+import { Activity, Database, FileCheck2, Network, Package } from 'lucide-react';
 import type { ComponentType } from 'react';
 import { Text } from '@/components/ui/typography';
 import { DelegationProjectionStatus } from './DelegationProjectionStatus';
 import { DelegationEventChainPanel } from './DelegationEventChainPanel';
 import { DelegationRuntimeTopologyPanel } from './DelegationRuntimeTopologyPanel';
+import { DelegationArtifactPanel } from './DelegationArtifactPanel';
 import { DelegationEvidenceBundlePanel } from './DelegationEvidenceBundlePanel';
 import type {
   DelegationEvidenceSnapshot,
@@ -15,6 +16,7 @@ const TABS: Array<{ id: DelegationEvidenceTabId; label: string; Icon: ComponentT
   { id: 'projection', label: 'Projection Probe', Icon: Database },
   { id: 'event-chain', label: 'Event Chain', Icon: Activity },
   { id: 'runtime-topology', label: 'Runtime Topology', Icon: Network },
+  { id: 'artifacts', label: 'Artifacts', Icon: Package },
   { id: 'evidence-bundle', label: 'Evidence Bundle', Icon: FileCheck2 },
 ];
 
@@ -58,6 +60,7 @@ export function DelegationEvidenceTabs({
       {activeTab === 'projection' && <DelegationProjectionStatus probes={snapshot.probes} />}
       {activeTab === 'event-chain' && <DelegationEventChainPanel snapshot={snapshot} selectedRun={selectedRun} />}
       {activeTab === 'runtime-topology' && <DelegationRuntimeTopologyPanel snapshot={snapshot} />}
+      {activeTab === 'artifacts' && <DelegationArtifactPanel snapshot={snapshot} selectedRun={selectedRun} />}
       {activeTab === 'evidence-bundle' && <DelegationEvidenceBundlePanel snapshot={snapshot} selectedRun={selectedRun} />}
     </section>
   );

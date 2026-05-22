@@ -8,6 +8,7 @@ export type DelegationEvidenceTabId =
   | 'projection'
   | 'event-chain'
   | 'runtime-topology'
+  | 'artifacts'
   | 'evidence-bundle';
 
 export interface DelegationControlPlaneConfig {
