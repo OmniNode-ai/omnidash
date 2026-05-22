@@ -12,7 +12,7 @@
 //     keeping the menu pattern consistent with the prototype across the whole app.
 
 import { useEffect, useLayoutEffect, useRef, useState } from 'react';
-import { Edit, Copy, Plus, MoreHorizontal, Trash2, ChevronsLeft, ChevronsRight } from 'lucide-react';
+import { Edit, Copy, Plus, MoreHorizontal, Trash2, ChevronsLeft, ChevronsRight, SlidersHorizontal } from 'lucide-react';
 import {
   PositionedMenu,
   MenuItem,
@@ -129,6 +129,8 @@ export function Sidebar() {
   } = useFrameStore();
   const collapsed = useFrameStore((s) => s.sidebarCollapsed);
   const toggleCollapsed = useFrameStore((s) => s.toggleSidebarCollapsed);
+  const activePage = useFrameStore((s) => s.activePage);
+  const setActivePage = useFrameStore((s) => s.setActivePage);
 
   const [renamingId, setRenamingId] = useState<string | null>(null);
   const [pendingDeletionId, setPendingDeletionId] = useState<string | null>(null);
@@ -267,6 +269,35 @@ export function Sidebar() {
             </button>
           </Text>
         )}
+      </div>
+
+      {/* Bottom nav — settings / feature flags */}
+      <div
+        style={{
+          marginTop: 'auto',
+          borderTop: '1px solid var(--sidebar-border, oklch(22% 0.01 260))',
+          paddingTop: 4,
+        }}
+      >
+        <div
+          role="button"
+          tabIndex={0}
+          className={`dash-item${activePage === 'feature-flags' ? ' active' : ''}`}
+          title={collapsed ? 'Feature Flags' : undefined}
+          onClick={() => setActivePage(activePage === 'feature-flags' ? 'dashboard' : 'feature-flags')}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter' || e.key === ' ') {
+              setActivePage(activePage === 'feature-flags' ? 'dashboard' : 'feature-flags');
+            }
+          }}
+        >
+          <span className="dash-marker">
+            <SlidersHorizontal size={13} />
+          </span>
+          {!collapsed && (
+            <span className="dash-name">Feature Flags</span>
+          )}
+        </div>
       </div>
 
       <DeleteDashboardDialog
