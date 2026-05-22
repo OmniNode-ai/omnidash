@@ -1,8 +1,15 @@
 import { Text } from '@/components/ui/typography';
 import { fmtDate, fmtTokens, fmtUsd, shortId } from './format';
-import type { DelegationRun } from './delegation-control-plane.types';
+import { HonestyStateBadge } from './HonestyStateBadge';
+import type { DelegationRun, DelegationRunStatus } from './delegation-control-plane.types';
 
-const GRID = '1.1fr 1fr 1fr 0.8fr 0.8fr 0.8fr 0.9fr';
+const GRID = '1.1fr 1fr 1fr 0.85fr 0.8fr 0.8fr 0.9fr';
+
+function runStatusToHonesty(status: DelegationRunStatus) {
+  if (status === 'failed') return 'failure' as const;
+  if (status === 'projected') return 'fixture' as const;
+  return 'live' as const;
+}
 
 export function DelegationRunTable({
   runs,
@@ -28,7 +35,7 @@ export function DelegationRunTable({
         </Text>
       </div>
       <div style={{ display: 'grid', gridTemplateColumns: GRID, gap: 8, paddingBottom: 5, borderBottom: '1px solid var(--line)' }}>
-        {['Correlation', 'Task', 'Model', 'Status', 'Tokens', 'Savings', 'Created'].map((heading) => (
+        {['Correlation', 'Task', 'Model', 'State', 'Tokens', 'Savings', 'Created'].map((heading) => (
           <Text key={heading} as="span" size="xs" color="tertiary">
             {heading}
           </Text>
@@ -69,9 +76,7 @@ export function DelegationRunTable({
             <Text as="span" size="xs" family="mono" color="secondary" style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
               {run.modelName}
             </Text>
-            <Text as="span" size="xs" family="mono" color={run.status === 'failed' ? 'bad' : run.status === 'passed' ? 'ok' : 'tertiary'}>
-              {run.status}
-            </Text>
+            <HonestyStateBadge state={runStatusToHonesty(run.status)} label={run.status} />
             <Text as="span" size="xs" family="mono" color="secondary">
               {fmtTokens(run.tokenCount)}
             </Text>

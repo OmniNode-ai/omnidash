@@ -1,6 +1,7 @@
 import { Text } from '@/components/ui/typography';
 import { KPI } from '@/components/primitives';
 import { fmtDate, fmtMs, fmtTokens, fmtUsd, shortId } from './format';
+import { HonestyStateBadge, deriveHonestyState } from './HonestyStateBadge';
 import type { DelegationEvidenceSnapshot, DelegationRun } from './delegation-control-plane.types';
 
 export function DelegationRunHeader({
@@ -10,6 +11,7 @@ export function DelegationRunHeader({
   snapshot: DelegationEvidenceSnapshot;
   selectedRun: DelegationRun | null;
 }) {
+  const honestyState = deriveHonestyState(snapshot);
   const passed = snapshot.runs.filter((run) => run.status === 'passed').length;
   const failed = snapshot.runs.filter((run) => run.status === 'failed').length;
   const projected = snapshot.runs.filter((run) => run.status === 'projected').length;
@@ -24,9 +26,12 @@ export function DelegationRunHeader({
     <section style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', gap: 16, alignItems: 'flex-start' }}>
         <div>
-          <Text as="div" size="lg" weight="semibold" color="primary">
-            Delegation evidence control plane
-          </Text>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 2 }}>
+            <Text as="div" size="lg" weight="semibold" color="primary">
+              Delegation evidence control plane
+            </Text>
+            <HonestyStateBadge state={honestyState} />
+          </div>
           <Text as="div" size="sm" color="secondary">
             Selected run {shortId(selectedRun?.correlationId)} - {selectedRun?.taskType ?? 'waiting for projection rows'}
           </Text>
