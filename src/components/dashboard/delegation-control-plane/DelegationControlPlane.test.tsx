@@ -76,22 +76,37 @@ describe('DelegationControlPlane', () => {
     expect(await screen.findByText('Delegation evidence control plane')).toBeInTheDocument();
     expect(screen.getByText('Recent Runs')).toBeInTheDocument();
     expect(screen.getByTitle('corr-omn-11623')).toBeInTheDocument();
-    expect(screen.getByText('Projection Status')).toBeInTheDocument();
+    // default tab is Overview — tab button + panel heading both present
+    expect(screen.getAllByText('Overview').length).toBeGreaterThan(0);
     expect(screen.getAllByText('Savings').length).toBeGreaterThan(0);
     expect(screen.getAllByText('Model Routing').length).toBeGreaterThan(0);
     expect(screen.getAllByText('Quality Gate').length).toBeGreaterThan(0);
     expect(screen.getAllByText('Token Usage').length).toBeGreaterThan(0);
   });
 
+  it('shows all eight evidence tabs in the tab bar', async () => {
+    renderWithSource(populatedSource());
+    await screen.findByText('Delegation evidence control plane');
+
+    expect(screen.getByRole('tab', { name: /overview/i })).toBeInTheDocument();
+    expect(screen.getByRole('tab', { name: /runtime topology/i })).toBeInTheDocument();
+    expect(screen.getByRole('tab', { name: /event chain/i })).toBeInTheDocument();
+    expect(screen.getByRole('tab', { name: /projection/i })).toBeInTheDocument();
+    expect(screen.getByRole('tab', { name: /cost & tokens/i })).toBeInTheDocument();
+    expect(screen.getByRole('tab', { name: /quality/i })).toBeInTheDocument();
+    expect(screen.getByRole('tab', { name: /artifacts/i })).toBeInTheDocument();
+    expect(screen.getByRole('tab', { name: /evidence bundle/i })).toBeInTheDocument();
+  });
+
   it('switches evidence tabs without refetching in child panels', async () => {
     renderWithSource(populatedSource());
     await screen.findByText('Delegation evidence control plane');
 
-    await userEvent.click(screen.getByRole('button', { name: /event chain/i }));
+    await userEvent.click(screen.getByRole('tab', { name: /event chain/i }));
     expect(screen.getAllByText('Event Chain').length).toBeGreaterThan(0);
     expect(screen.getByText('Command envelope')).toBeInTheDocument();
 
-    await userEvent.click(screen.getByRole('button', { name: /evidence bundle/i }));
+    await userEvent.click(screen.getByRole('tab', { name: /evidence bundle/i }));
     await waitFor(() => {
       expect(screen.getAllByText('Evidence Bundle').length).toBeGreaterThan(0);
     });
@@ -102,7 +117,7 @@ describe('DelegationControlPlane', () => {
     renderWithSource(populatedSource());
     await screen.findByText('Delegation evidence control plane');
 
-    await userEvent.click(screen.getByRole('button', { name: /runtime topology/i }));
+    await userEvent.click(screen.getByRole('tab', { name: /runtime topology/i }));
     await waitFor(() => {
       expect(screen.getAllByText('Runtime Topology').length).toBeGreaterThan(0);
     });
@@ -115,12 +130,52 @@ describe('DelegationControlPlane', () => {
     renderWithSource(populatedSource());
     await screen.findByText('Delegation evidence control plane');
 
-    await userEvent.click(screen.getByRole('button', { name: /^artifacts$/i }));
+    await userEvent.click(screen.getByRole('tab', { name: /^artifacts$/i }));
     await waitFor(() => {
       expect(screen.getAllByText('Artifacts').length).toBeGreaterThan(0);
     });
     expect(screen.getByText('Delegation OCC receipt')).toBeInTheDocument();
     expect(screen.getAllByText('Pricing manifest').length).toBeGreaterThan(0);
     expect(screen.getByText('Savings report')).toBeInTheDocument();
+  });
+
+  it('shows projection status panel on projection tab', async () => {
+    renderWithSource(populatedSource());
+    await screen.findByText('Delegation evidence control plane');
+
+    await userEvent.click(screen.getByRole('tab', { name: /projection/i }));
+    expect(screen.getByText('Projection Status')).toBeInTheDocument();
+  });
+
+  it('shows cost and token data on cost-tokens tab', async () => {
+    renderWithSource(populatedSource());
+    await screen.findByText('Delegation evidence control plane');
+
+    await userEvent.click(screen.getByRole('tab', { name: /cost & tokens/i }));
+    await waitFor(() => {
+      expect(screen.getAllByText('Cost & Tokens').length).toBeGreaterThan(0);
+    });
+    expect(screen.getAllByText('Total tokens').length).toBeGreaterThan(0);
+    expect(screen.getAllByText('Cumulative savings').length).toBeGreaterThan(0);
+  });
+
+  it('shows quality pass rate on quality tab', async () => {
+    renderWithSource(populatedSource());
+    await screen.findByText('Delegation evidence control plane');
+
+    await userEvent.click(screen.getByRole('tab', { name: /^quality$/i }));
+    await waitFor(() => {
+      expect(screen.getAllByText('Quality').length).toBeGreaterThan(0);
+    });
+    expect(screen.getByText('Overall pass rate')).toBeInTheDocument();
+  });
+
+  it('shows run header with terminal state and data source fields', async () => {
+    renderWithSource(populatedSource());
+    await screen.findByText('Delegation evidence control plane');
+
+    expect(screen.getAllByText('Terminal state').length).toBeGreaterThan(0);
+    expect(screen.getAllByText('Pricing manifest').length).toBeGreaterThan(0);
+    expect(screen.getAllByText('live projection').length).toBeGreaterThan(0);
   });
 });
