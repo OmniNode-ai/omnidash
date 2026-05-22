@@ -3,8 +3,8 @@ import { DASHBOARD_TEMPLATES } from './index';
 import { validateDashboardDefinition } from '@shared/types/dashboard';
 
 describe('Dashboard Templates', () => {
-  it('has 2 templates', () => {
-    expect(DASHBOARD_TEMPLATES.length).toBe(2);
+  it('has 3 templates', () => {
+    expect(DASHBOARD_TEMPLATES.length).toBe(3);
   });
 
   it('Cost & Delegation template has 3 components', () => {
@@ -28,6 +28,13 @@ describe('Dashboard Templates', () => {
       'quality-score-panel',
       'readiness-gate',
     ]);
+  });
+
+  it('Delegation Evidence template has the composable control plane', () => {
+    const tpl = DASHBOARD_TEMPLATES.find((t) => t.name === 'Delegation Evidence');
+    expect(tpl).toBeDefined();
+    expect(tpl!.layout.length).toBe(1);
+    expect(tpl!.layout[0].componentName).toBe('delegation-control-plane');
   });
 
   it('all templates pass validation', () => {

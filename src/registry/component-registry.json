@@ -1,6 +1,6 @@
 {
   "manifestVersion": "1.0",
-  "generatedAt": "2026-05-21T23:25:52.297Z",
+  "generatedAt": "2026-05-22T15:37:19.129Z",
   "components": {
     "cost-trend-panel": {
       "name": "cost-trend-panel",
@@ -2649,6 +2649,156 @@
       "emptyState": {
         "message": "No token usage data",
         "hint": "Token usage data appears once LLM call metrics are recorded (OMN-10623)."
+      },
+      "capabilities": {
+        "supports_compare": false,
+        "supports_export": true,
+        "supports_fullscreen": true,
+        "supports_time_range": false
+      }
+    },
+    "delegation-control-plane": {
+      "name": "delegation-control-plane",
+      "displayName": "Delegation Control Plane",
+      "description": "Composable SEA-style evidence surface for market delegation: run header, recent runs, projection probe, event-chain view, topology, artifact placeholders, and delegation metric panels.",
+      "category": "activity",
+      "version": "1.0.0",
+      "implementationKey": "delegation-control-plane/DelegationControlPlane",
+      "configSchema": {
+        "type": "object",
+        "properties": {
+          "defaultTab": {
+            "type": "string",
+            "enum": [
+              "projection",
+              "event-chain",
+              "runtime-topology",
+              "evidence-bundle"
+            ],
+            "default": "projection",
+            "title": "Default tab",
+            "description": "Initial evidence tab shown when the control plane loads."
+          },
+          "maxRuns": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 50,
+            "default": 12,
+            "title": "Max runs",
+            "description": "Maximum recent delegation runs to show in the run table."
+          }
+        },
+        "additionalProperties": false
+      },
+      "dataSources": [
+        {
+          "type": "projection",
+          "topic": "onex.snapshot.projection.delegation.summary.v1",
+          "required": false,
+          "purpose": "initial_fetch"
+        },
+        {
+          "type": "projection",
+          "topic": "onex.snapshot.projection.delegation.decisions.v1",
+          "required": false,
+          "purpose": "initial_fetch"
+        },
+        {
+          "type": "projection",
+          "topic": "onex.snapshot.projection.delegation.savings.v1",
+          "required": false,
+          "purpose": "initial_fetch"
+        },
+        {
+          "type": "projection",
+          "topic": "onex.snapshot.projection.delegation.model-routing.v1",
+          "required": false,
+          "purpose": "initial_fetch"
+        },
+        {
+          "type": "projection",
+          "topic": "onex.snapshot.projection.delegation.quality-gate.v1",
+          "required": false,
+          "purpose": "initial_fetch"
+        },
+        {
+          "type": "projection",
+          "topic": "onex.snapshot.projection.delegation.token-usage.v1",
+          "required": false,
+          "purpose": "initial_fetch"
+        },
+        {
+          "type": "websocket",
+          "topic": "onex.snapshot.projection.delegation.summary.v1",
+          "required": false,
+          "purpose": "live_updates"
+        },
+        {
+          "type": "websocket",
+          "topic": "onex.snapshot.projection.delegation.decisions.v1",
+          "required": false,
+          "purpose": "live_updates"
+        },
+        {
+          "type": "websocket",
+          "topic": "onex.snapshot.projection.delegation.savings.v1",
+          "required": false,
+          "purpose": "live_updates"
+        },
+        {
+          "type": "websocket",
+          "topic": "onex.snapshot.projection.delegation.model-routing.v1",
+          "required": false,
+          "purpose": "live_updates"
+        },
+        {
+          "type": "websocket",
+          "topic": "onex.snapshot.projection.delegation.quality-gate.v1",
+          "required": false,
+          "purpose": "live_updates"
+        },
+        {
+          "type": "websocket",
+          "topic": "onex.snapshot.projection.delegation.token-usage.v1",
+          "required": false,
+          "purpose": "live_updates"
+        }
+      ],
+      "events": {
+        "emits": [
+          {
+            "name": "delegation_run_selected",
+            "schema": {
+              "type": "object",
+              "properties": {
+                "correlationId": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        ],
+        "consumes": [
+          {
+            "name": "time_range_changed"
+          }
+        ]
+      },
+      "defaultSize": {
+        "w": 12,
+        "h": 12
+      },
+      "minSize": {
+        "w": 8,
+        "h": 8
+      },
+      "maxSize": {
+        "w": 12,
+        "h": 18
+      },
+      "emptyState": {
+        "message": "No delegation evidence rows",
+        "hint": "Run the market delegation golden chain to populate command, decision, savings, quality, and token projections."
       },
       "capabilities": {
         "supports_compare": false,
