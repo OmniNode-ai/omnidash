@@ -1,10 +1,34 @@
-import { render, screen } from '@testing-library/react';
+import { render, screen, waitFor } from '@testing-library/react';
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import type { ReactNode } from 'react';
 import { QueryClient } from '@tanstack/react-query';
 import { DataSourceTestProvider } from '@/test-utils/dataSourceTestProvider';
 import { mockFetchWithItems } from '@/test-utils/mockFetch';
 import DelegationSavingsWidget from './DelegationSavingsWidget';
 import { buildDelegationSavings } from '@/storybook/fixtures/delegation-routing';
+import type { ProtocolSnapshotSource } from '@/data-source';
+import { TOPICS } from '@shared/types/topics';
+import { DelegationRunProvider } from '@/components/dashboard/delegation-control-plane/DelegationRunContext';
+import {
+  buildDelegationModelRouting,
+  buildDelegationQualityGate,
+  buildDelegationTokenUsage,
+} from '@/storybook/fixtures/delegation-routing';
+
+function sourceFor(rowsByTopic: Record<string, unknown[]>): ProtocolSnapshotSource {
+  return { async *readAll(topic: string) { yield* rowsByTopic[topic] ?? []; } };
+}
+
+function withRunProvider(source: ProtocolSnapshotSource) {
+  const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+  return function ContextWrapper({ children }: { children: ReactNode }) {
+    return (
+      <DataSourceTestProvider client={client} source={source}>
+        <DelegationRunProvider>{children}</DelegationRunProvider>
+      </DataSourceTestProvider>
+    );
+  };
+}
 
 const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } });
 
@@ -201,5 +225,28 @@ describe('DelegationSavingsWidget — OMN-10625 polling cadence', () => {
       'utf8',
     );
     expect(src).toMatch(/useProjectionQuery<DelegationSavingsProjection>\(\{[\s\S]*?refetchInterval:\s*5_000/);
+  });
+});
+
+// OMN-11650: widget reads from shared DelegationRunContext when inside a provider.
+describe('DelegationSavingsWidget — DelegationRunContext integration', () => {
+  afterEach(() => vi.restoreAllMocks());
+
+  it('renders savings data supplied by context without making a projection query', async () => {
+    const savings = buildDelegationSavings({ sessionCount: 2, provisioned: true });
+    const source = sourceFor({
+      [TOPICS.delegationSavings]: [savings],
+      [TOPICS.delegationModelRouting]: [buildDelegationModelRouting({ provisioned: true })],
+      [TOPICS.delegationQualityGate]: [buildDelegationQualityGate({ provisioned: true })],
+      [TOPICS.delegationTokenUsage]: [buildDelegationTokenUsage({ provisioned: true })],
+    });
+
+    render(
+      <DelegationSavingsWidget config={{}} />,
+      { wrapper: withRunProvider(source) },
+    );
+
+    await waitFor(() => expect(screen.queryByText('Loading...')).not.toBeInTheDocument());
+    expect(screen.getByText(/est\. savings vs/i)).toBeInTheDocument();
   });
 });

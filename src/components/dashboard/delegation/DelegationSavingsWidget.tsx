@@ -4,6 +4,7 @@ import { useProjectionQuery } from '@/hooks/useProjectionQuery';
 import { TOPICS } from '@shared/types/topics';
 import { Text } from '@/components/ui/typography';
 import { KPI } from '@/components/primitives';
+import { useDelegationRunContextOptional } from '@/components/dashboard/delegation-control-plane/DelegationRunContext';
 
 // ── Projection types (from savings_estimates SQLite table, OMN-10623) ─
 
@@ -252,20 +253,32 @@ export default function DelegationSavingsWidget(props: { config: DelegationSavin
   const showSessions = config.showSessions ?? true;
   const maxSessions = Math.max(0, Math.trunc(config.maxSessions ?? 10));
 
-  const { data, isLoading, error } = useProjectionQuery<DelegationSavingsProjection>({
+  const runCtx = useDelegationRunContextOptional();
+
+  const { data, isLoading: queryLoading, error: queryError } = useProjectionQuery<DelegationSavingsProjection>({
     queryKey: ['delegation-savings', TOPICS.delegationSavings],
     topic: TOPICS.delegationSavings,
     refetchInterval: 5_000,
+    enabled: !runCtx,
   });
 
+  const isLoading = runCtx ? runCtx.snapshot.isLoading : queryLoading;
+  const error = runCtx ? runCtx.snapshot.primaryError : queryError;
+
   const projection = useMemo<DelegationSavingsProjection | null>(() => {
+    if (runCtx) return runCtx.snapshot.savings;
     return data?.[0] ?? null;
-  }, [data]);
+  }, [runCtx, data]);
+
+  const selectedRun = runCtx?.selectedRun ?? null;
 
   const visibleSessions = useMemo(() => {
     if (!projection?.sessions) return [];
-    return projection.sessions.slice(0, maxSessions);
-  }, [projection, maxSessions]);
+    const sessions = selectedRun?.sessionId
+      ? projection.sessions.filter((s) => s.session_id === selectedRun.sessionId)
+      : projection.sessions;
+    return sessions.slice(0, maxSessions);
+  }, [projection, maxSessions, selectedRun]);
 
   // When the projection carries zeros, compute cumulative costs from token counts.
   const cumulativeComputed = useMemo(() => {

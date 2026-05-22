@@ -4,6 +4,7 @@ import { useProjectionQuery } from '@/hooks/useProjectionQuery';
 import { TOPICS } from '@shared/types/topics';
 import { Text } from '@/components/ui/typography';
 import { DoughnutChart, type DoughnutSlice } from './DoughnutChart';
+import { useDelegationRunContextOptional } from '@/components/dashboard/delegation-control-plane/DelegationRunContext';
 
 const DOUGHNUT_PANEL_MAX_WIDTH = 420;
 const MODEL_LABEL_MAX_WIDTH = 220;
@@ -29,12 +30,18 @@ export default function DelegationMetrics({ config }: { config: Record<string, u
   const qualityGateThreshold =
     typeof config.qualityGateThreshold === 'number' ? config.qualityGateThreshold : 0.8;
 
-  const { data: dataArr, isLoading, error } = useProjectionQuery<DelegationSummary>({
+  const runCtx = useDelegationRunContextOptional();
+
+  const { data: dataArr, isLoading: queryLoading, error: queryError } = useProjectionQuery<DelegationSummary>({
     topic: TOPICS.delegationSummary,
     queryKey: ['delegation-summary'],
     refetchInterval: 60_000,
+    enabled: !runCtx,
   });
-  const data = dataArr?.[0];
+
+  const isLoading = runCtx ? runCtx.snapshot.isLoading : queryLoading;
+  const error = runCtx ? runCtx.snapshot.primaryError : queryError;
+  const data = runCtx ? runCtx.snapshot.summary : (dataArr?.[0] ?? null);
 
   // Pre-compute slice percentages once so DoughnutChart can stay
   // presentational. Sorted descending by count so the largest slice

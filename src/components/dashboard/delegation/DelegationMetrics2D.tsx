@@ -10,6 +10,7 @@ import { TOPICS } from '@shared/types/topics';
 import { Text } from '@/components/ui/typography';
 import { useThemeColors } from '@/theme';
 import type { DelegationSummary } from './DelegationMetrics3D';
+import { useDelegationRunContextOptional } from '@/components/dashboard/delegation-control-plane/DelegationRunContext';
 
 interface DonutSlice {
   label: string;
@@ -70,12 +71,18 @@ export default function DelegationMetrics2D({ config }: { config: Record<string,
   const qualityGateThreshold =
     typeof config.qualityGateThreshold === 'number' ? config.qualityGateThreshold : 0.8;
 
-  const { data: dataArr, isLoading, error } = useProjectionQuery<DelegationSummary>({
+  const runCtx = useDelegationRunContextOptional();
+
+  const { data: dataArr, isLoading: queryLoading, error: queryError } = useProjectionQuery<DelegationSummary>({
     topic: TOPICS.delegationSummary,
     queryKey: ['delegation-summary'],
     refetchInterval: 60_000,
+    enabled: !runCtx,
   });
-  const data = dataArr?.[0];
+
+  const isLoading = runCtx ? runCtx.snapshot.isLoading : queryLoading;
+  const error = runCtx ? runCtx.snapshot.primaryError : queryError;
+  const data = runCtx ? runCtx.snapshot.summary : (dataArr?.[0] ?? null);
 
   const colors = useThemeColors();
   const [hoverIdx, setHoverIdx] = useState<number | null>(null);

@@ -6,6 +6,7 @@ import { TOPICS } from '@shared/types/topics';
 import { Text } from '@/components/ui/typography';
 import { KPI } from '@/components/primitives';
 import { useThemeColors } from '@/theme';
+import { useDelegationRunContextOptional } from '@/components/dashboard/delegation-control-plane/DelegationRunContext';
 
 // ── Projection types (from llm_call_metrics SQLite table, OMN-10623) ─
 
@@ -203,15 +204,22 @@ export default function DelegationTokenUsageWidget(props: { config: DelegationTo
   const showCost = config.showCost ?? true;
   const showProvenance = config.showProvenance ?? true;
 
-  const { data, isLoading, error } = useProjectionQuery<DelegationTokenUsageProjection>({
+  const runCtx = useDelegationRunContextOptional();
+
+  const { data, isLoading: queryLoading, error: queryError } = useProjectionQuery<DelegationTokenUsageProjection>({
     queryKey: ['delegation-token-usage', TOPICS.delegationTokenUsage],
     topic: TOPICS.delegationTokenUsage,
     refetchInterval: 5_000,
+    enabled: !runCtx,
   });
 
+  const isLoading = runCtx ? runCtx.snapshot.isLoading : queryLoading;
+  const error = runCtx ? runCtx.snapshot.primaryError : queryError;
+
   const projection = useMemo<DelegationTokenUsageProjection | null>(() => {
+    if (runCtx) return runCtx.snapshot.tokenUsage;
     return data?.[0] ?? null;
-  }, [data]);
+  }, [runCtx, data]);
 
   const colors = useThemeColors();
 
