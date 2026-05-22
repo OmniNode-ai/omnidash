@@ -12,9 +12,9 @@ name: No Hardcoded Fallbacks
 
 on:
   push:
-    branches: [main]
+    branches: [main, "hotfix/**"]
   pull_request:
-    branches: [main]
+    branches: [main, dev, "hotfix/**"]
 
 jobs:
   check-fallbacks:
