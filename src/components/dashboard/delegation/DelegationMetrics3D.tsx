@@ -5,6 +5,9 @@ import { TOPICS } from '@shared/types/topics';
 import { Text } from '@/components/ui/typography';
 import { DoughnutChart, type DoughnutSlice } from './DoughnutChart';
 
+const DOUGHNUT_PANEL_MAX_WIDTH = 420;
+const MODEL_LABEL_MAX_WIDTH = 220;
+
 export interface DelegationSummary {
   totalDelegations: number;
   qualityGatePassRate: number;
@@ -61,7 +64,7 @@ export default function DelegationMetrics({ config }: { config: Record<string, u
       emptyHint="Delegation events appear when tasks are delegated to agents"
     >
       {data && !isEmpty && (
-        <div style={{ display: 'flex', gap: '1rem', height: '100%' }}>
+        <div style={{ display: 'flex', gap: '1rem', alignItems: 'flex-start', minHeight: 0 }}>
           <div style={{ flex: '0 0 auto', display: 'flex', flexDirection: 'column', gap: '0.75rem', padding: '0.5rem 0' }}>
             <div>
               <Text as="div" size="4xl" weight="bold" color="primary">{data.totalDelegations}</Text>
@@ -85,12 +88,39 @@ export default function DelegationMetrics({ config }: { config: Record<string, u
               </div>
             )}
           </div>
-          <div style={{ flex: 1, minHeight: '150px', display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+          <div
+            data-testid="delegation-3d-doughnut-panel"
+            style={{
+              flex: `0 1 ${DOUGHNUT_PANEL_MAX_WIDTH}px`,
+              width: '100%',
+              maxWidth: DOUGHNUT_PANEL_MAX_WIDTH,
+              minHeight: '150px',
+              maxHeight: '280px',
+              alignSelf: 'flex-start',
+              marginLeft: 'auto',
+              marginRight: 'auto',
+              display: 'flex',
+              flexDirection: 'column',
+              gap: '0.5rem',
+              overflow: 'hidden',
+            }}
+          >
             <DoughnutChart slices={slices} height={200} />
             {data.byModel.length > 0 && (
               <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px 12px', justifyContent: 'center', paddingTop: 4, borderTop: '1px solid var(--line-2)' }}>
                 {data.byModel.map((m) => (
-                  <Text key={m.model} as="span" size="sm" color="secondary">
+                  <Text
+                    key={m.model}
+                    as="span"
+                    size="sm"
+                    color="secondary"
+                    style={{
+                      maxWidth: MODEL_LABEL_MAX_WIDTH,
+                      overflow: 'hidden',
+                      textOverflow: 'ellipsis',
+                      whiteSpace: 'nowrap',
+                    }}
+                  >
                     {m.model} ({m.count})
                   </Text>
                 ))}
