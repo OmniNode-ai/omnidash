@@ -26,6 +26,8 @@ const VIEWBOX = { x: -100, y: -100, w: 200, h: 200 };
 const OUTER_R = 90;
 const INNER_R = 50;
 const DONUT_HEIGHT = 160;
+const DONUT_PANEL_MAX_WIDTH = 420;
+const MODEL_LABEL_MAX_WIDTH = 220;
 
 function polar(angle: number, r: number): [number, number] {
   return [r * Math.cos(angle), r * Math.sin(angle)];
@@ -126,7 +128,7 @@ export default function DelegationMetrics2D({ config }: { config: Record<string,
       emptyHint="Delegation events appear when tasks are delegated to agents"
     >
       {data && !isEmpty && (
-        <div style={{ display: 'flex', gap: '1rem' }}>
+        <div style={{ display: 'flex', gap: '1rem', alignItems: 'flex-start', minHeight: 0 }}>
           <div style={{ flex: '0 0 auto', display: 'flex', flexDirection: 'column', gap: '0.75rem', padding: '0.5rem 0' }}>
             <div>
               <Text as="div" size="4xl" weight="bold" color="primary">{data.totalDelegations}</Text>
@@ -153,9 +155,14 @@ export default function DelegationMetrics2D({ config }: { config: Record<string,
           <div
             data-testid="delegation-2d-donut"
             style={{
-              flex: '1 1 0',
+              flex: `0 1 ${DONUT_PANEL_MAX_WIDTH}px`,
+              width: '100%',
+              maxWidth: DONUT_PANEL_MAX_WIDTH,
               minHeight: '150px',
               maxHeight: '240px',
+              alignSelf: 'flex-start',
+              marginLeft: 'auto',
+              marginRight: 'auto',
               position: 'relative',
               display: 'flex',
               flexDirection: 'column',
@@ -256,7 +263,19 @@ export default function DelegationMetrics2D({ config }: { config: Record<string,
                   <span aria-hidden style={{ display: 'inline-block', width: 10, height: 1, background: 'var(--line-2)', flex: '0 0 auto' }} />
                   <Text as="span" size="sm" color="secondary" weight="semibold">Models:</Text>
                   {data.byModel.map((m) => (
-                    <Text key={m.model} as="span" size="sm" family="mono" color="secondary">
+                    <Text
+                      key={m.model}
+                      as="span"
+                      size="sm"
+                      family="mono"
+                      color="secondary"
+                      style={{
+                        maxWidth: MODEL_LABEL_MAX_WIDTH,
+                        overflow: 'hidden',
+                        textOverflow: 'ellipsis',
+                        whiteSpace: 'nowrap',
+                      }}
+                    >
                       {m.model} ({m.count})
                     </Text>
                   ))}

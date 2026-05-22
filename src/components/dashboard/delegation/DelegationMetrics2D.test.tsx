@@ -41,6 +41,11 @@ describe('DelegationMetrics2D', () => {
     expect(screen.getByText('128 / 150 passed')).toBeInTheDocument();
     expect(screen.getByText('Qwen3-Coder-30B (80)')).toBeInTheDocument();
     expect(screen.getByTestId('delegation-2d-donut')).toBeInTheDocument();
+    expect(screen.getByTestId('delegation-2d-donut')).toHaveStyle({
+      maxWidth: '420px',
+      maxHeight: '240px',
+      overflow: 'hidden',
+    });
     expect(screen.getByTestId('delegation-2d-donut-svg')).toHaveStyle({ height: '160px' });
   });
 
