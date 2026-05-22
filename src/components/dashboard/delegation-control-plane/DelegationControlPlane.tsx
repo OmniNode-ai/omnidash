@@ -1,10 +1,10 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useState } from 'react';
 import { ComponentWrapper } from '../ComponentWrapper';
 import { DelegationRunHeader } from './DelegationRunHeader';
 import { DelegationRunTable } from './DelegationRunTable';
 import { DelegationEvidenceTabs } from './DelegationEvidenceTabs';
 import { DelegationMetricPanels } from './DelegationMetricPanels';
-import { useDelegationEvidenceSnapshot } from './useDelegationEvidenceSnapshot';
+import { DelegationRunProvider, useDelegationRunContext } from './DelegationRunContext';
 import type {
   DelegationControlPlaneConfig,
   DelegationEvidenceTabId,
@@ -13,25 +13,10 @@ import type {
 const DEFAULT_MAX_RUNS = 12;
 const DEFAULT_TAB: DelegationEvidenceTabId = 'projection';
 
-export default function DelegationControlPlane({
-  config,
-}: {
-  config: DelegationControlPlaneConfig;
-}) {
-  const snapshot = useDelegationEvidenceSnapshot();
+function DelegationControlPlaneInner({ config }: { config: DelegationControlPlaneConfig }) {
+  const { snapshot, selectedRun, selectRun, filteredRuns } = useDelegationRunContext();
   const maxRuns = Math.max(1, Math.trunc(config.maxRuns ?? DEFAULT_MAX_RUNS));
-  const [selectedRunId, setSelectedRunId] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<DelegationEvidenceTabId>(config.defaultTab ?? DEFAULT_TAB);
-
-  useEffect(() => {
-    if (!selectedRunId && snapshot.runs[0]) {
-      setSelectedRunId(snapshot.runs[0].id);
-    }
-  }, [selectedRunId, snapshot.runs]);
-
-  const selectedRun = useMemo(() => {
-    return snapshot.runs.find((run) => run.id === selectedRunId) ?? snapshot.runs[0] ?? null;
-  }, [selectedRunId, snapshot.runs]);
 
   const isInitialLoading = snapshot.isLoading && !snapshot.hasAnyData;
 
@@ -48,10 +33,10 @@ export default function DelegationControlPlane({
       <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
         <DelegationRunHeader snapshot={snapshot} selectedRun={selectedRun} />
         <DelegationRunTable
-          runs={snapshot.runs}
+          runs={filteredRuns}
           selectedRunId={selectedRun?.id ?? null}
           maxRuns={maxRuns}
-          onSelectRun={setSelectedRunId}
+          onSelectRun={selectRun}
         />
         <DelegationEvidenceTabs
           activeTab={activeTab}
@@ -62,5 +47,17 @@ export default function DelegationControlPlane({
         <DelegationMetricPanels snapshot={snapshot} />
       </div>
     </ComponentWrapper>
+  );
+}
+
+export default function DelegationControlPlane({
+  config,
+}: {
+  config: DelegationControlPlaneConfig;
+}) {
+  return (
+    <DelegationRunProvider>
+      <DelegationControlPlaneInner config={config} />
+    </DelegationRunProvider>
   );
 }
