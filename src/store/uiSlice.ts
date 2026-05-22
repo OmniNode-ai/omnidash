@@ -1,4 +1,4 @@
-// Lightweight UI-state slice. Currently only `sidebarCollapsed`.
+// Lightweight UI-state slice. Covers `sidebarCollapsed` and `activePage`.
 // Lives separately from `configSlice` (which handles per-placement
 // configuration drafts) and `editModeSlice` (which handles the
 // edit/view mode toggle) so each slice has a single, clear concern.
@@ -14,4 +14,6 @@ export const createUISlice: StateCreator<FrameStore, [], [], UISlice> = (set) =>
   setSidebarCollapsed: (collapsed) => set({ sidebarCollapsed: collapsed }),
   toggleSidebarCollapsed: () =>
     set((state) => ({ sidebarCollapsed: !state.sidebarCollapsed })),
+  activePage: 'dashboard',
+  setActivePage: (page) => set({ activePage: page }),
 });

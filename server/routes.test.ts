@@ -310,3 +310,91 @@ describe('server projection routes — OMNIDASH_DATA_SOURCE=sqlite', () => {
     expect(res.body).toEqual([]);
   });
 });
+
+// OMN-7571: Feature flag dashboard — GET /api/settings/feature-flags
+describe('GET /api/settings/feature-flags', () => {
+  beforeEach(() => {
+    process.env.OMNIDASH_DATA_SOURCE = 'file';
+    delete process.env.ENABLE_KAFKA_LOGGING;
+    delete process.env.ENABLE_REAL_TIME_EVENTS;
+    delete process.env.ARCHON_ENABLE_EXTERNAL_GATEWAY;
+  });
+
+  afterEach(() => {
+    delete process.env.OMNIDASH_DATA_SOURCE;
+    delete process.env.ENABLE_KAFKA_LOGGING;
+    delete process.env.ENABLE_REAL_TIME_EVENTS;
+    delete process.env.ARCHON_ENABLE_EXTERNAL_GATEWAY;
+  });
+
+  it('returns 200 with flags array and fetchedAt', async () => {
+    const routes = await loadRoutes();
+    const res = await request(buildApp(routes)).get('/api/settings/feature-flags');
+
+    expect(res.status).toBe(200);
+    expect(Array.isArray(res.body.flags)).toBe(true);
+    expect(typeof res.body.fetchedAt).toBe('string');
+    expect(new Date(res.body.fetchedAt).getTime()).not.toBeNaN();
+  });
+
+  it('includes both omnidash and omniclaude service entries', async () => {
+    const routes = await loadRoutes();
+    const res = await request(buildApp(routes)).get('/api/settings/feature-flags');
+
+    const services = new Set((res.body.flags as Array<{ service: string }>).map((f) => f.service));
+    expect(services.has('omnidash')).toBe(true);
+    expect(services.has('omniclaude')).toBe(true);
+  });
+
+  it('each flag entry has name, value, state, service, description', async () => {
+    const routes = await loadRoutes();
+    const res = await request(buildApp(routes)).get('/api/settings/feature-flags');
+
+    for (const flag of res.body.flags as Array<Record<string, unknown>>) {
+      expect(typeof flag.name).toBe('string');
+      expect(['on', 'off', 'migration']).toContain(flag.state);
+      expect(['omniclaude', 'omnidash']).toContain(flag.service);
+      expect(typeof flag.description).toBe('string');
+    }
+  });
+
+  it('reflects env var values: set ENABLE_KAFKA_LOGGING=true → state=on', async () => {
+    process.env.ENABLE_KAFKA_LOGGING = 'true';
+
+    const routes = await loadRoutes();
+    const res = await request(buildApp(routes)).get('/api/settings/feature-flags');
+
+    const flag = (res.body.flags as Array<{ name: string; state: string; value: string | null }>).find(
+      (f) => f.name === 'ENABLE_KAFKA_LOGGING',
+    );
+    expect(flag).toBeDefined();
+    expect(flag?.state).toBe('on');
+    expect(flag?.value).toBe('true');
+  });
+
+  it('reflects env var values: unset ENABLE_KAFKA_LOGGING → state=off', async () => {
+    delete process.env.ENABLE_KAFKA_LOGGING;
+
+    const routes = await loadRoutes();
+    const res = await request(buildApp(routes)).get('/api/settings/feature-flags');
+
+    const flag = (res.body.flags as Array<{ name: string; state: string; value: string | null }>).find(
+      (f) => f.name === 'ENABLE_KAFKA_LOGGING',
+    );
+    expect(flag).toBeDefined();
+    expect(flag?.state).toBe('off');
+    expect(flag?.value).toBeNull();
+  });
+
+  it('migration flags always report state=migration regardless of value', async () => {
+    process.env.ARCHON_ENABLE_EXTERNAL_GATEWAY = 'true';
+
+    const routes = await loadRoutes();
+    const res = await request(buildApp(routes)).get('/api/settings/feature-flags');
+
+    const flag = (res.body.flags as Array<{ name: string; state: string }>).find(
+      (f) => f.name === 'ARCHON_ENABLE_EXTERNAL_GATEWAY',
+    );
+    expect(flag?.state).toBe('migration');
+  });
+});

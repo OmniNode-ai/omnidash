@@ -105,11 +105,16 @@ export type { ConversationSlice };
 import type { ConfigSlice } from './configSlice';
 export type { ConfigSlice };
 
+export type AppPage = 'dashboard' | 'feature-flags';
+
 export interface UISlice {
   /** True when the left dashboard sidebar is collapsed to a narrow rail. */
   sidebarCollapsed: boolean;
   setSidebarCollapsed: (collapsed: boolean) => void;
   toggleSidebarCollapsed: () => void;
+  /** The active top-level page being rendered in the main content area. */
+  activePage: AppPage;
+  setActivePage: (page: AppPage) => void;
 }
 
 export type FrameStore = EditModeSlice & FiltersSlice & DashboardSlice & ConversationSlice & ConfigSlice & UISlice;
