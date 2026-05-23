@@ -4,6 +4,7 @@ import { useProjectionQuery } from '@/hooks/useProjectionQuery';
 import { TOPICS } from '@shared/types/topics';
 import { Text } from '@/components/ui/typography';
 import { useThemeColors } from '@/theme';
+import { useDelegationRunContextOptional } from '@/components/dashboard/delegation-control-plane/DelegationRunContext';
 
 // ── Projection types (from delegation_events SQLite table, OMN-10623) ─
 
@@ -243,15 +244,22 @@ export default function DelegationModelRoutingWidget(props: { config: Delegation
   const showTaskBreakdown = config.showTaskBreakdown ?? true;
   const showDecisionTrace = config.showDecisionTrace ?? true;
 
-  const { data, isLoading, error } = useProjectionQuery<DelegationModelRoutingProjection>({
+  const runCtx = useDelegationRunContextOptional();
+
+  const { data, isLoading: queryLoading, error: queryError } = useProjectionQuery<DelegationModelRoutingProjection>({
     queryKey: ['delegation-model-routing', TOPICS.delegationModelRouting],
     topic: TOPICS.delegationModelRouting,
     refetchInterval: 5_000,
+    enabled: !runCtx,
   });
 
+  const isLoading = runCtx ? runCtx.snapshot.isLoading : queryLoading;
+  const error = runCtx ? runCtx.snapshot.primaryError : queryError;
+
   const projection = useMemo<DelegationModelRoutingProjection | null>(() => {
+    if (runCtx) return runCtx.snapshot.modelRouting;
     return data?.[0] ?? null;
-  }, [data]);
+  }, [runCtx, data]);
 
   const colors = useThemeColors();
 

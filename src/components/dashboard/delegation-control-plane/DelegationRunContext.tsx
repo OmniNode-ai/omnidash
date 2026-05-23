@@ -71,3 +71,7 @@ export function useDelegationRunContext(): DelegationRunContextValue {
   if (!ctx) throw new Error('useDelegationRunContext must be used within a DelegationRunProvider');
   return ctx;
 }
+
+export function useDelegationRunContextOptional(): DelegationRunContextValue | null {
+  return useContext(DelegationRunContext);
+}

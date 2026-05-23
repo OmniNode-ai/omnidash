@@ -5,6 +5,8 @@ import { useProjectionQuery } from '@/hooks/useProjectionQuery';
 import { TOPICS } from '@shared/types/topics';
 import { Text } from '@/components/ui/typography';
 import { KPI } from '@/components/primitives';
+import { useDelegationRunContextOptional } from '@/components/dashboard/delegation-control-plane/DelegationRunContext';
+import type { DelegationDecisionProjectionRow } from '@/components/dashboard/delegation-control-plane/delegation-control-plane.types';
 
 // ── Projection types (from delegation_events SQLite table, OMN-10623) ─
 
@@ -358,10 +360,13 @@ export default function DelegationQualityGateWidget(props: { config: DelegationQ
   const showFailureCategories = config.showFailureCategories ?? true;
   const tokensWarnThreshold = config.tokensToComplianceWarnThreshold ?? 5_000;
 
-  const { data, isLoading, error } = useProjectionQuery<DelegationQualityGateProjection>({
+  const runCtx = useDelegationRunContextOptional();
+
+  const { data, isLoading: queryLoading, error: queryError } = useProjectionQuery<DelegationQualityGateProjection>({
     queryKey: ['delegation-quality-gate', TOPICS.delegationQualityGate],
     topic: TOPICS.delegationQualityGate,
     refetchInterval: 5_000,
+    enabled: !runCtx,
   });
 
   // Fetch recent delegation decisions for the per-row detail table
@@ -369,11 +374,31 @@ export default function DelegationQualityGateWidget(props: { config: DelegationQ
     queryKey: ['delegation-decisions', TOPICS.delegationDecisions],
     topic: TOPICS.delegationDecisions,
     refetchInterval: 10_000,
+    enabled: !runCtx,
   });
 
+  const isLoading = runCtx ? runCtx.snapshot.isLoading : queryLoading;
+  const error = runCtx ? runCtx.snapshot.primaryError : queryError;
+
   const projection = useMemo<DelegationQualityGateProjection | null>(() => {
+    if (runCtx) return runCtx.snapshot.qualityGate;
     return data?.[0] ?? null;
-  }, [data]);
+  }, [runCtx, data]);
+
+  const selectedRun = runCtx?.selectedRun ?? null;
+
+  const effectiveDecisionsData = useMemo<DelegationDecisionRow[]>(() => {
+    if (runCtx) {
+      const decisions: DelegationDecisionProjectionRow[] = runCtx.snapshot.decisions;
+      const filtered = selectedRun
+        ? decisions.filter(
+            (d) => d.correlation_id === selectedRun.correlationId || d.session_id === selectedRun.sessionId,
+          )
+        : decisions;
+      return filtered as unknown as DelegationDecisionRow[];
+    }
+    return decisionsData ?? [];
+  }, [runCtx, decisionsData, selectedRun]);
 
   const passRateTone = useMemo(() => {
     if (!projection) return 'default' as const;
@@ -532,8 +557,8 @@ export default function DelegationQualityGateWidget(props: { config: DelegationQ
           )}
 
           {/* Recent individual delegation checks (OMN-11388) */}
-          {decisionsData && decisionsData.length > 0 && (
-            <RecentChecks rows={decisionsData} />
+          {effectiveDecisionsData.length > 0 && (
+            <RecentChecks rows={effectiveDecisionsData} />
           )}
 
           {/* Tokens-to-compliance per-model breakdown (OMN-10795) */}
