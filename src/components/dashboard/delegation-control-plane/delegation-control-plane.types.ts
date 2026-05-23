@@ -5,9 +5,12 @@ import type { DelegationQualityGateProjection } from '@/components/dashboard/del
 import type { DelegationTokenUsageProjection } from '@/components/dashboard/delegation/DelegationTokenUsageWidget';
 
 export type DelegationEvidenceTabId =
-  | 'projection'
-  | 'event-chain'
+  | 'overview'
   | 'runtime-topology'
+  | 'event-chain'
+  | 'projection'
+  | 'cost-tokens'
+  | 'quality'
   | 'artifacts'
   | 'evidence-bundle';
 
