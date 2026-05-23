@@ -1,5 +1,6 @@
 import { Suspense, useMemo, type DragEvent, type LazyExoticComponent, type ComponentType } from 'react';
 import { WidgetChromeContext, type WidgetChromeHandlers } from './WidgetChromeContext';
+import { WidgetErrorBoundary } from './WidgetErrorBoundary';
 import { Text } from '@/components/ui/typography';
 
 interface ComponentCellProps {
@@ -83,9 +84,11 @@ export function ComponentCell({
   return (
     <WidgetChromeContext.Provider value={chrome}>
       <div data-testid="grid-item" style={{ display: 'contents' }}>
-        <Suspense fallback={<Text as="div" color="tertiary" style={{ padding: '1rem' }}>Loading {componentName}…</Text>}>
-          <LazyComponent config={config} />
-        </Suspense>
+        <WidgetErrorBoundary componentName={componentName} onRemove={onDelete}>
+          <Suspense fallback={<Text as="div" color="tertiary" style={{ padding: '1rem' }}>Loading {componentName}…</Text>}>
+            <LazyComponent config={config} />
+          </Suspense>
+        </WidgetErrorBoundary>
       </div>
     </WidgetChromeContext.Provider>
   );

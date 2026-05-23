@@ -7,6 +7,7 @@
 
 import type { ReactNode } from 'react';
 import { Sidebar } from './Sidebar';
+import { DataModeBanner } from './DataModeBanner';
 import { useFrameStore } from '@/store/store';
 
 interface FrameLayoutProps {
@@ -19,6 +20,7 @@ export function FrameLayout({ children }: FrameLayoutProps) {
     <div className={`app${sidebarCollapsed ? ' sidebar-collapsed' : ''}`}>
       <Sidebar />
       <div className="main">
+        <DataModeBanner />
         {children}
       </div>
     </div>

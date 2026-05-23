@@ -4,6 +4,7 @@ import { Text } from '@/components/ui/typography';
 import { useProjectionQuery } from '@/hooks/useProjectionQuery';
 import { TOPICS } from '@shared/types/topics';
 import { useTimezone } from '@/hooks/useTimezone';
+import { useDataSourceMode, isLiveDataSource } from '@/hooks/useDataSourceMode';
 
 // STAY-BESPOKE (OMN-10295): This widget renders a status-pill HTML table with
 // per-dimension tri-state rows plus freshness downgrade semantics. It does not
@@ -87,6 +88,8 @@ export default function ReadinessGate({ config: _config }: { config: Record<stri
   });
   const data = dataArr?.[0];
   const tz = useTimezone();
+  const dataSourceMode = useDataSourceMode();
+  const showCheckedAt = isLiveDataSource(dataSourceMode);
   const effectiveStatus = data
     ? applyFreshnessDowngrade(data.overallStatus, data.lastCheckedAt)
     : undefined;
@@ -105,9 +108,15 @@ export default function ReadinessGate({ config: _config }: { config: Record<stri
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
             <Text size="md" color="secondary">Overall</Text>
             <span data-testid="overall-status-pill"><StatusPill status={effectiveStatus} /></span>
-            <Text size="sm" color="tertiary" style={{ marginLeft: 'auto' }}>
-              Checked {new Date(data.lastCheckedAt).toLocaleTimeString(undefined, { timeZone: tz })}
-            </Text>
+            {showCheckedAt ? (
+              <Text size="sm" color="tertiary" style={{ marginLeft: 'auto' }}>
+                Checked {new Date(data.lastCheckedAt).toLocaleTimeString(undefined, { timeZone: tz })}
+              </Text>
+            ) : (
+              <Text size="sm" color="tertiary" style={{ marginLeft: 'auto' }}>
+                Fixture data
+              </Text>
+            )}
           </div>
 
           <div style={{ border: '1px solid var(--line-2)', borderRadius: 6, overflow: 'hidden' }}>
