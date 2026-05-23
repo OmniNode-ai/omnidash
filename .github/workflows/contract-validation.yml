@@ -21,7 +21,7 @@ name: Contract Validation
 
 on:
   pull_request:
-    branches: [main, develop]
+    branches: [main, develop, dev, "hotfix/**"]
   merge_group:
   workflow_dispatch:
     inputs:

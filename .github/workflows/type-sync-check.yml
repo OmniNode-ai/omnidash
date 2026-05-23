@@ -19,14 +19,14 @@ name: TypeScript Type Sync Check
 
 on:
   push:
-    branches: [main, develop]
+    branches: [main, develop, "hotfix/**"]
     paths:
       - 'shared/**'
       - 'scripts/check_type_sync.py'
       - 'scripts/check-type-sync.sh'
       - '.github/workflows/type-sync-check.yml'
   pull_request:
-    branches: [main, develop]
+    branches: [main, develop, dev, "hotfix/**"]
     paths:
       - 'shared/**'
       - 'scripts/check_type_sync.py'
