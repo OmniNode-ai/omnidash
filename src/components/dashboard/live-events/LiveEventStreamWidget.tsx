@@ -6,6 +6,7 @@ import { TOPICS } from '@shared/types/topics';
 import { NodePill } from '@/components/primitives';
 import { Text } from '@/components/ui/typography';
 import type { NodeKind } from '@/components/primitives';
+import { useDataSourceMode, isLiveDataSource } from '@/hooks/useDataSourceMode';
 
 // ── Data type ───────────────────────────────────────────────────────
 
@@ -117,6 +118,7 @@ export default function LiveEventStreamWidget() {
     refetchInterval: 10_000,
   });
   const [query, setQuery] = useState('');
+  const dataSourceMode = useDataSourceMode();
 
   const events = useMemo(() => {
     if (!data || data.length === 0) return [];
@@ -142,7 +144,7 @@ export default function LiveEventStreamWidget() {
       isEmpty={events.length === 0}
       emptyMessage="No live events"
       emptyHint="Live event rows appear after event bus projections are written"
-      isLive
+      isLive={isLiveDataSource(dataSourceMode)}
       headerExtra={
         <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>
           <Text size="xs" color="tertiary" family="mono">

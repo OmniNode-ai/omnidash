@@ -6,6 +6,7 @@ import { TOPICS } from '@shared/types/topics';
 import { useTimezone } from '@/hooks/useTimezone';
 import { Text } from '@/components/ui/typography';
 import { getWebSocketUrl } from '@/data-source';
+import { useDataSourceMode, isLiveDataSource } from '@/hooks/useDataSourceMode';
 
 export interface StreamEvent {
   id: string;
@@ -125,6 +126,7 @@ export default function EventStream({ config }: { config: EventStreamConfig }) {
   const maxEvents = config.maxEvents ?? 200;
   const autoScroll = config.autoScroll ?? true;
   const tz = useTimezone();
+  const dataSourceMode = useDataSourceMode();
 
   const { data: initialData, isLoading, error } = useProjectionQuery<StreamEvent>({
     topic: TOPICS.registration,
@@ -224,7 +226,7 @@ export default function EventStream({ config }: { config: EventStreamConfig }) {
       isEmpty={isEmpty}
       emptyMessage="No events"
       emptyHint="Events appear as Kafka messages arrive"
-      isLive
+      isLive={isLiveDataSource(dataSourceMode)}
     >
       <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
         {/* Search input — filters event_type, source, correlation_id. */}
