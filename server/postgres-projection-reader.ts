@@ -370,6 +370,34 @@ export class PostgresProjectionReader {
           return res.rows as Row[];
         }
 
+        case 'onex.snapshot.projection.swarm-runs.v1': {
+          const res = await client.query(`
+            SELECT
+              run_id                                           AS "runId",
+              correlation_id                                   AS "correlationId",
+              status,
+              subtask_count                                    AS "subtaskCount",
+              succeeded_count                                  AS "succeededCount",
+              failed_count                                     AS "failedCount",
+              skipped_count                                    AS "skippedCount",
+              models_used                                      AS "modelsUsed",
+              total_cost_usd                                   AS "totalCostUsd",
+              cloud_equivalent_cost_usd                        AS "cloudEquivalentCostUsd",
+              savings_usd                                      AS "savingsUsd",
+              parallelism_speedup_ratio                        AS "parallelismSpeedupRatio",
+              decomposition_latency_ms                         AS "decompositionLatencyMs",
+              dispatch_wall_latency_ms                         AS "dispatchWallLatencyMs",
+              aggregation_latency_ms                           AS "aggregationLatencyMs",
+              total_latency_ms                                 AS "totalLatencyMs",
+              endpoint_registry_hash                           AS "endpointRegistryHash",
+              created_at::text                                 AS "createdAt"
+            FROM swarm_runs
+            ORDER BY created_at DESC
+            LIMIT 100
+          `);
+          return res.rows as Row[];
+        }
+
         default:
           return [];
       }
