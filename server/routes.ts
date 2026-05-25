@@ -5,6 +5,8 @@ import { randomUUID } from 'node:crypto';
 import { SqliteProjectionReader } from './sqlite-projection-reader.js';
 import { PostgresProjectionReader } from './postgres-projection-reader.js';
 import { loadDataSourceConfig } from './data-source-contract.js';
+import { isProducerConnected, publishMessage } from './kafka-producer.js';
+import { COMMAND_TOPICS } from '../shared/types/command-topics.js';
 
 const router = Router();
 
@@ -290,6 +292,53 @@ router.get('/api/projections/traces', async (req, res) => {
   } catch (err) {
     console.error('[routes] /api/projections/traces error:', err);
     res.status(500).json({ error: 'traces query failed' });
+  }
+});
+
+// OMN-12145: Command dispatch bridge — publishes a structured command envelope
+// to Kafka so the React UI can trigger ONEX node commands without a direct
+// Kafka dependency. Authorization is contract-level at the handler node.
+router.post('/api/dispatch', async (req, res) => {
+  const body = req.body as Record<string, unknown>;
+  const { command_type, target_node_id, payload } = body;
+
+  if (typeof command_type !== 'string' || !command_type) {
+    res.status(400).json({ error: 'command_type is required' });
+    return;
+  }
+  if (typeof target_node_id !== 'string' || !target_node_id) {
+    res.status(400).json({ error: 'target_node_id is required' });
+    return;
+  }
+  if (payload === undefined || payload === null || typeof payload !== 'object' || Array.isArray(payload)) {
+    res.status(400).json({ error: 'payload is required and must be an object' });
+    return;
+  }
+
+  if (!isProducerConnected()) {
+    res.status(503).json({ error: 'kafka_unavailable' });
+    return;
+  }
+
+  const request_id = randomUUID();
+  const requested_at = new Date().toISOString();
+  const topic = COMMAND_TOPICS.dispatchRequest;
+
+  const envelope = {
+    request_id,
+    command_type,
+    target_node_id,
+    payload,
+    requested_by: 'omnidash-ui',
+    requested_at,
+  };
+
+  try {
+    await publishMessage(topic, envelope);
+    res.json({ request_id, status: 'published', topic, timestamp: requested_at });
+  } catch (err) {
+    console.error('[routes] /api/dispatch publish error:', err);
+    res.status(503).json({ error: 'kafka_unavailable' });
   }
 });
 
