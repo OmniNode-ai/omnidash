@@ -1,4 +1,4 @@
-import { Activity, Archive, BarChart2, CircleDollarSign, Database, FileCheck2, GitCommitHorizontal, LayoutDashboard, Network } from 'lucide-react';
+import { Activity, Archive, BarChart2, CircleDollarSign, Database, FileCheck2, GitCommitHorizontal, LayoutDashboard, Network, Receipt } from 'lucide-react';
 import { useState, type ComponentType } from 'react';
 import { Text } from '@/components/ui/typography';
 import { DelegationPanelFrame } from './DelegationPanelFrame';
@@ -8,6 +8,7 @@ import { DelegationProjectionProbePanel } from './DelegationProjectionProbePanel
 import { DelegationRuntimeTopologyPanel } from './DelegationRuntimeTopologyPanel';
 import { DelegationArtifactPanel } from './DelegationArtifactPanel';
 import { DelegationEvidenceBundlePanel } from './DelegationEvidenceBundlePanel';
+import { DelegationSavingsProofPackPanel } from './DelegationSavingsProofPackPanel';
 import { useDelegationRunContext } from './DelegationRunContext';
 import type { DelegationEvidenceTabId } from './delegation-control-plane.types';
 import { fmtTokens, fmtUsd } from './format';
@@ -22,6 +23,7 @@ const TABS: Array<{ id: DelegationEvidenceTabId; label: string; Icon: ComponentT
   { id: 'quality', label: 'Quality', Icon: BarChart2 },
   { id: 'artifacts', label: 'Artifacts', Icon: Archive },
   { id: 'evidence-bundle', label: 'Evidence Bundle', Icon: FileCheck2 },
+  { id: 'savings-proof', label: 'Savings Proof Pack', Icon: Receipt },
 ];
 
 const DEFAULT_TAB: DelegationEvidenceTabId = 'overview';
@@ -70,6 +72,7 @@ export function DelegationEvidenceTabs() {
       {activeTab === 'quality' && <QualityTab />}
       {activeTab === 'artifacts' && <DelegationArtifactPanel snapshot={snapshot} selectedRun={selectedRun} />}
       {activeTab === 'evidence-bundle' && <DelegationEvidenceBundlePanel snapshot={snapshot} selectedRun={selectedRun} />}
+      {activeTab === 'savings-proof' && <DelegationSavingsProofPackPanel />}
     </section>
   );
 }

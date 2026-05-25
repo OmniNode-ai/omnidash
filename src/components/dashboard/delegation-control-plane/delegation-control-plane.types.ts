@@ -13,7 +13,8 @@ export type DelegationEvidenceTabId =
   | 'cost-tokens'
   | 'quality'
   | 'artifacts'
-  | 'evidence-bundle';
+  | 'evidence-bundle'
+  | 'savings-proof';
 
 export interface DelegationControlPlaneConfig {
   defaultTab?: DelegationEvidenceTabId;
