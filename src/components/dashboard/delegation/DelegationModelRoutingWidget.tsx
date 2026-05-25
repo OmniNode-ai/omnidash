@@ -301,7 +301,7 @@ export default function DelegationModelRoutingWidget(props: { config: Delegation
               borderBottom: '1px solid var(--line)',
             }}
           >
-            {(['Model', 'N', 'Task Types', 'Latency', 'QG Pass', 'Frequency', '%'] as const).map((h) => (
+            {(['Model', 'N', 'Task Types', 'Latency', 'Local Rate', 'Frequency', '%'] as const).map((h) => (
               <Text key={h} as="span" size="xs" color="tertiary" style={{ textAlign: h === 'Model' || h === 'Task Types' ? 'left' : 'right' }}>
                 {h}
               </Text>
