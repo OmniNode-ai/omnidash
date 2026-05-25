@@ -110,7 +110,7 @@ describe('POST /api/dispatch', () => {
 
     expect(res.status).toBe(200);
     expect(res.body.status).toBe('published');
-    expect(res.body.topic).toBe('onex.cmd.omnidash.dispatch-request.v1');
+    expect(res.body.topic).toBe('onex.cmd.omnimarket.dispatch-request.v1');
     expect(typeof res.body.request_id).toBe('string');
     expect(res.body.request_id).toMatch(
       /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/,
@@ -127,7 +127,7 @@ describe('POST /api/dispatch', () => {
 
     expect(kafkaProducer.publishMessage).toHaveBeenCalledOnce();
     const [topic, envelope] = vi.mocked(kafkaProducer.publishMessage).mock.calls[0] as [string, Record<string, unknown>];
-    expect(topic).toBe('onex.cmd.omnidash.dispatch-request.v1');
+    expect(topic).toBe('onex.cmd.omnimarket.dispatch-request.v1');
     expect(envelope.command_type).toBe('trigger-delegation');
     expect(envelope.target_node_id).toBe('node_delegation');
     expect((envelope.payload as Record<string, unknown>).prompt).toBe('hello');
@@ -141,6 +141,6 @@ describe('POST /api/dispatch', () => {
 describe('COMMAND_TOPICS registry', () => {
   it('dispatchRequest key maps to the correct topic string', async () => {
     const { COMMAND_TOPICS } = await import('../../shared/types/command-topics.js');
-    expect(COMMAND_TOPICS.dispatchRequest).toBe('onex.cmd.omnidash.dispatch-request.v1');
+    expect(COMMAND_TOPICS.dispatchRequest).toBe('onex.cmd.omnimarket.dispatch-request.v1');
   });
 });
