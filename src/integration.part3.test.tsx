@@ -63,7 +63,8 @@ describe('Proof of Life — Part 3 (Full System)', () => {
     // + control-plane (OMN-11260).
     // + evidence-pipeline-flow (OMN-11477).
     // + delegation-control-plane (OMN-11623).
-    expect(available.length).toBe(28);
+    // + trace-explorer (OMN-12135).
+    expect(available.length).toBe(29);
   });
 
   it('both templates pass validation', () => {
