@@ -121,6 +121,12 @@ export const TOPICS = {
   evidencePipelineLiveEvents: 'onex.snapshot.projection.evidence_pipeline.live_events.v1',
   /** Trace explorer — log entries aggregated into correlation traces (OMN-12133). */
   traceExplorer: 'onex.snapshot.projection.traces.v1',
+  /**
+   * Context effectiveness scores — per-experiment rows from A3 context factor
+   * ablation study (OMN-12082). Backed by context_experiment_scores table.
+   * Columns: model_id, pack_id, factors_present, quality_gate_passed, tokens_used.
+   */
+  contextExperimentScores: 'onex.snapshot.projection.context.experiment-scores.v1',
 } as const;
 
 export type TopicSymbol = (typeof TOPICS)[keyof typeof TOPICS];
