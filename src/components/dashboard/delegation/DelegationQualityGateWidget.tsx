@@ -64,10 +64,30 @@ export interface DelegationQualityGateConfig {
 // ── Check type bar ────────────────────────────────────────────────────
 
 const CHECK_TYPE_LABEL: Record<CheckType, string> = {
-  deterministic: 'Deterministic',
-  heuristic: 'Heuristic',
-  unknown: 'Unknown',
+  deterministic: 'Automated checks',
+  heuristic: 'Heuristic checks',
+  unknown: 'Other checks',
 };
+
+// Translate raw failure category strings (which contain internal TASK_MISMATCH codes)
+// into human-readable escalation reasons.
+function humanizeCategory(raw: string): string {
+  // Strip "TASK_MISMATCH: " prefix from individual clauses, then join
+  const clauses = raw.split(/;\s*/).map((c) => {
+    const stripped = c.replace(/^TASK_MISMATCH:\s*/i, '').trim();
+    // Map known patterns to friendly labels
+    if (/missing documentation sections/i.test(stripped)) return 'Missing docs sections';
+    if (/missing @pytest\.mark\./i.test(stripped)) return 'Missing test marker';
+    if (/failed covers_edge_cases/i.test(stripped)) return 'Edge cases not covered';
+    if (/failed covers_error_paths/i.test(stripped)) return 'Error paths not covered';
+    if (/failed accurate/i.test(stripped)) return 'Inaccurate output';
+    if (/timed out/i.test(stripped)) return 'Timed out';
+    return stripped.length > 48 ? `${stripped.slice(0, 47)}…` : stripped;
+  });
+  // Deduplicate and join
+  const unique = [...new Set(clauses)];
+  return unique.join(' · ');
+}
 
 function CheckTypeRow({ row, passThreshold }: { row: QualityGateCheckRow; passThreshold: number }) {
   const passColor = row.pass_rate >= passThreshold ? 'var(--good)' : 'var(--warn)';
@@ -132,7 +152,7 @@ function FailureCategories({ categories }: { categories: FailureCategoryRow[] })
   return (
     <div style={{ marginTop: 12 }}>
       <Text as="div" size="xs" color="tertiary" weight="semibold" style={{ marginBottom: 6 }}>
-        Failure categories
+        Escalation reasons
       </Text>
       {categories.map((c) => (
         <div
@@ -145,8 +165,8 @@ function FailureCategories({ categories }: { categories: FailureCategoryRow[] })
             alignItems: 'center',
           }}
         >
-          <Text as="span" size="sm" family="mono" color="primary" style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-            {c.category}
+          <Text as="span" size="sm" family="mono" color="primary" title={c.category} style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+            {humanizeCategory(c.category)}
           </Text>
           <Text as="span" size="sm" family="mono" tabularNums style={{ textAlign: 'right' }}>
             {c.count}
@@ -193,7 +213,7 @@ function RecentChecks({ rows }: { rows: DelegationDecisionRow[] }) {
   return (
     <div style={{ marginTop: 12 }}>
       <Text as="div" size="xs" color="tertiary" weight="semibold" style={{ marginBottom: 6 }}>
-        Recent checks ({rows.length})
+        Recent delegations ({rows.length})
       </Text>
       <div
         style={{
@@ -276,7 +296,7 @@ function RecentChecks({ rows }: { rows: DelegationDecisionRow[] }) {
           }}
         >
           <Text as="span" size="xs" color="secondary">
-            {showAll ? 'Show less' : `Show all ${rows.length} checks`}
+            {showAll ? 'Show less' : `Show all ${rows.length} delegations`}
           </Text>
         </button>
       )}
@@ -400,11 +420,6 @@ export default function DelegationQualityGateWidget(props: { config: DelegationQ
     return decisionsData ?? [];
   }, [runCtx, decisionsData, selectedRun]);
 
-  const passRateTone = useMemo(() => {
-    if (!projection) return 'default' as const;
-    return projection.overall_pass_rate >= passThreshold ? 'good' as const : 'warn' as const;
-  }, [projection, passThreshold]);
-
   const tokensTone = useMemo(() => {
     if (!projection?.avg_tokens_to_compliance) return 'default' as const;
     return projection.avg_tokens_to_compliance <= tokensWarnThreshold
@@ -422,43 +437,15 @@ export default function DelegationQualityGateWidget(props: { config: DelegationQ
 
   return (
     <ComponentWrapper
-      title="Quality Gate"
+      title="Escalation Detail"
       isLoading={isLoading}
       error={error}
       isEmpty={isEmpty}
-      emptyMessage="No quality gate data"
-      emptyHint="Quality gate data appears once delegation events with gate checks are recorded"
+      emptyMessage="No escalation data"
+      emptyHint="Escalation data appears once delegation events with quality checks are recorded"
     >
       {projection && !isEmpty && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-          {/* KPI row */}
-          <div
-            style={{
-              display: 'grid',
-              gridTemplateColumns: 'repeat(3, 1fr)',
-              gap: 12,
-              paddingBottom: 12,
-              borderBottom: '1px solid var(--line)',
-            }}
-          >
-            <KPI
-              label="Pass rate"
-              value={Math.round(projection.overall_pass_rate * 100)}
-              suffix="%"
-              tone={passRateTone}
-            />
-            <KPI
-              label="Passed"
-              value={projection.total_passed}
-              tone="good"
-            />
-            <KPI
-              label="Failed"
-              value={projection.total_failed}
-              tone={projection.total_failed > 0 ? 'warn' : 'default'}
-            />
-          </div>
-
           {/* Tokens-to-compliance KPIs (OMN-10795) — only shown when projection carries the fields */}
           {hasComplianceMetrics && (
             <div
@@ -534,7 +521,7 @@ export default function DelegationQualityGateWidget(props: { config: DelegationQ
                 borderBottom: '1px solid var(--line)',
               }}
             >
-              {(['Type', 'Pass/Fail bar', 'Rate', 'Pass / Fail', 'Total'] as const).map((h, i) => (
+              {(['Type', 'Local / Escalated', 'Rate', 'Local / Escalated', 'Total'] as const).map((h, i) => (
                 <Text
                   key={h}
                   as="span"
