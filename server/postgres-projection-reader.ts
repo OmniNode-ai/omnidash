@@ -612,6 +612,26 @@ export class PostgresProjectionReader {
           return res.rows as Row[];
         }
 
+        case 'onex.snapshot.projection.context.experiment-scores.v1': {
+          const res = await client.query(`
+            SELECT
+              id,
+              model_id      AS "modelId",
+              pack_id       AS "packId",
+              factors_present AS "factorsPresent",
+              quality_gate_passed AS "qualityGatePassed",
+              tokens_used   AS "tokensUsed",
+              task_type     AS "taskType",
+              experiment_run_id AS "experimentRunId",
+              notes,
+              created_at::text AS "createdAt"
+            FROM context_experiment_scores
+            ORDER BY created_at DESC
+            LIMIT 500
+          `).catch(() => ({ rows: [] as Row[] }));
+          return res.rows as Row[];
+        }
+
         default:
           return [];
       }
