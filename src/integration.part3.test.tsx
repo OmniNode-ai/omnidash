@@ -1,7 +1,5 @@
 import { render, screen } from '@testing-library/react';
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { readFileSync } from 'fs';
-import { resolve } from 'path';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { SnapshotSourceProvider } from './data-source';
 import { ThemeProvider } from './theme';
@@ -12,24 +10,18 @@ import { useFrameStore } from './store/store';
 import { DASHBOARD_TEMPLATES } from './templates';
 import { validateDashboardDefinition } from '@shared/types/dashboard';
 import { validateComponentManifest } from '@shared/types/component-manifest';
-import type { RegistryManifest } from './registry/types';
+import { TEST_MANIFEST as manifest, createTestQueryClient } from './test-utils/integrationHelpers';
 
 // Mock ECharts
 vi.mock('echarts-for-react', () => ({
   default: () => <div data-testid="echarts-mock">chart</div>,
 }));
 
-import { fileURLToPath } from 'url';
-import { dirname } from 'path';
-const __dirname = dirname(fileURLToPath(import.meta.url));
-const manifestJson = readFileSync(resolve(__dirname, './registry/component-registry.json'), 'utf-8');
-const manifest: RegistryManifest = JSON.parse(manifestJson);
-
 describe('Proof of Life — Part 3 (Full System)', () => {
   let qc: QueryClient;
 
   beforeEach(() => {
-    qc = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+    qc = createTestQueryClient();
     useFrameStore.setState({ editMode: false, activeDashboard: null, globalFilters: {} });
     vi.stubGlobal('fetch', vi.fn().mockResolvedValue({
       ok: true,
