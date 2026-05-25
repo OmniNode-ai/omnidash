@@ -1,5 +1,5 @@
 import { useState, type ComponentType } from 'react';
-import { Activity, BarChart2, CircleDollarSign, GitBranch, LayoutDashboard } from 'lucide-react';
+import { Activity, BarChart2, CircleDollarSign, GitBranch, LayoutDashboard, List } from 'lucide-react';
 import { Text } from '@/components/ui/typography';
 import { ComponentWrapper } from '../ComponentWrapper';
 import { useSwarmSnapshot } from './useSwarmSnapshot';
@@ -9,17 +9,19 @@ import { SwarmSubtaskCard } from './SwarmSubtaskCard';
 import { SwarmWaveVisualization } from './SwarmWaveVisualization';
 import { SwarmLiveCounters } from './SwarmLiveCounters';
 import { SwarmSavingsBar } from './SwarmSavingsBar';
+import { SwarmSubtaskDetailPanel } from './SwarmSubtaskDetailPanel';
 import { useDataSourceMode, isLiveDataSource } from '@/hooks/useDataSourceMode';
 import type { SwarmControlPlaneConfig, SwarmRunRow } from './swarm-control-plane.types';
 
 const DEFAULT_MAX_RUNS = 12;
 
-type TabId = 'overview' | 'decomposition' | 'subtask-detail' | 'wave' | 'savings';
+type TabId = 'overview' | 'decomposition' | 'subtask-detail' | 'subtask-rows' | 'wave' | 'savings';
 
 const TABS: Array<{ id: TabId; label: string; Icon: ComponentType<{ size?: number }> }> = [
   { id: 'overview', label: 'Overview', Icon: LayoutDashboard },
   { id: 'decomposition', label: 'Decomposition', Icon: GitBranch },
   { id: 'subtask-detail', label: 'Run Detail', Icon: Activity },
+  { id: 'subtask-rows', label: 'Subtask Detail', Icon: List },
   { id: 'wave', label: 'Wave View', Icon: BarChart2 },
   { id: 'savings', label: 'Savings', Icon: CircleDollarSign },
 ];
@@ -103,6 +105,19 @@ function SwarmEvidenceTabs({ selectedRun, runs }: { selectedRun: SwarmRunRow | n
         >
           {selectedRun
             ? <SwarmSubtaskCard run={selectedRun} />
+            : <Text as="div" size="sm" color="tertiary">No run selected.</Text>}
+        </PanelFrame>
+      )}
+
+      {activeTab === 'subtask-rows' && (
+        <PanelFrame
+          title="Subtask Detail"
+          subtitle={selectedRun
+            ? `Per-subtask rows for run ${selectedRun.run_id.slice(0, 12)}… (derived from aggregates)`
+            : 'Select a run from the table to view per-subtask detail.'}
+        >
+          {selectedRun
+            ? <SwarmSubtaskDetailPanel run={selectedRun} />
             : <Text as="div" size="sm" color="tertiary">No run selected.</Text>}
         </PanelFrame>
       )}
