@@ -7,6 +7,77 @@ export interface PostgresProjectionReaderOptions {
 type Row = Record<string, unknown>;
 type PostgresError = Error & { code?: string };
 
+export interface ModelLogEntry {
+  entry_id: string;
+  timestamp: string;
+  node_name: string;
+  function_name: string;
+  level: string;
+  message: string;
+  correlation_id: string | null;
+  duration_ms: number | null;
+  metadata: Record<string, string>;
+}
+
+export interface TraceGroup {
+  correlation_id: string;
+  nodes_involved: string[];
+  event_count: number;
+  first_event_at: string;
+  last_event_at: string;
+  duration_ms: number;
+  has_error: boolean;
+  is_running: boolean;
+  latest_message: string;
+}
+
+export interface LogEntryQueryParams {
+  correlation_id?: string;
+  node_name?: string;
+  level?: string;
+  since?: string;
+  limit?: number;
+}
+
+export interface TraceQueryParams {
+  since?: string;
+  limit?: number;
+  running_only?: boolean;
+}
+
+function rowToLogEntry(r: Row): ModelLogEntry {
+  return {
+    entry_id: String(r.entry_id ?? ''),
+    timestamp: String(r.timestamp ?? ''),
+    node_name: String(r.node_name ?? ''),
+    function_name: String(r.function_name ?? ''),
+    level: String(r.level ?? ''),
+    message: String(r.message ?? ''),
+    correlation_id: r.correlation_id != null ? String(r.correlation_id) : null,
+    duration_ms: r.duration_ms != null ? Number(r.duration_ms) : null,
+    metadata: (r.metadata as Record<string, string> | null) ?? {},
+  };
+}
+
+function rowToTraceGroup(r: Row, nowMs: number): TraceGroup {
+  const lastEventAt = String(r.last_event_at ?? '');
+  const lastMs = lastEventAt ? Date.parse(lastEventAt) : 0;
+  const is_running = !Number.isNaN(lastMs) && nowMs - lastMs < 60_000;
+  return {
+    correlation_id: String(r.correlation_id ?? ''),
+    nodes_involved: Array.isArray(r.nodes_involved)
+      ? (r.nodes_involved as string[])
+      : String(r.nodes_involved ?? '').split(',').filter(Boolean),
+    event_count: Number(r.event_count ?? 0),
+    first_event_at: String(r.first_event_at ?? ''),
+    last_event_at: lastEventAt,
+    duration_ms: Number(r.duration_ms ?? 0),
+    has_error: Boolean(r.has_error),
+    is_running,
+    latest_message: String(r.latest_message ?? ''),
+  };
+}
+
 export interface ProjectionEnvelope {
   topic: string;
   source: 'postgres';
@@ -86,6 +157,106 @@ export class PostgresProjectionReader {
 
   async close(): Promise<void> {
     await this.pool.end();
+  }
+
+  async queryLogEntries(params: LogEntryQueryParams): Promise<ModelLogEntry[]> {
+    const client = await this.pool.connect();
+    try {
+      const conditions: string[] = [];
+      const values: unknown[] = [];
+      let idx = 1;
+
+      if (params.correlation_id) {
+        conditions.push(`correlation_id = $${idx++}`);
+        values.push(params.correlation_id);
+      }
+      if (params.node_name) {
+        conditions.push(`node_name = $${idx++}`);
+        values.push(params.node_name);
+      }
+      if (params.level) {
+        conditions.push(`level = $${idx++}`);
+        values.push(params.level);
+      }
+      if (params.since) {
+        conditions.push(`timestamp >= $${idx++}`);
+        values.push(params.since);
+      }
+
+      const where = conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : '';
+      const limit = Math.min(params.limit ?? 100, 1000);
+      values.push(limit);
+
+      const res = await client.query(
+        `SELECT
+          entry_id,
+          timestamp,
+          node_name,
+          function_name,
+          level,
+          message,
+          correlation_id,
+          duration_ms,
+          metadata
+        FROM log_entries
+        ${where}
+        ORDER BY timestamp DESC
+        LIMIT $${idx}`,
+        values,
+      );
+      return (res.rows as Row[]).map(rowToLogEntry);
+    } finally {
+      client.release();
+    }
+  }
+
+  async queryTraces(params: TraceQueryParams): Promise<TraceGroup[]> {
+    const client = await this.pool.connect();
+    try {
+      const conditions: string[] = ['correlation_id IS NOT NULL'];
+      const values: unknown[] = [];
+      let idx = 1;
+
+      if (params.since) {
+        conditions.push(`timestamp >= $${idx++}`);
+        values.push(params.since);
+      }
+
+      const where = `WHERE ${conditions.join(' AND ')}`;
+      const limit = Math.min(params.limit ?? 50, 500);
+      values.push(limit);
+
+      const res = await client.query(
+        `SELECT
+          correlation_id,
+          array_agg(DISTINCT node_name ORDER BY node_name) AS nodes_involved,
+          COUNT(*) AS event_count,
+          MIN(timestamp) AS first_event_at,
+          MAX(timestamp) AS last_event_at,
+          EXTRACT(EPOCH FROM (MAX(timestamp) - MIN(timestamp))) * 1000 AS duration_ms,
+          bool_or(level IN ('ERROR', 'CRITICAL')) AS has_error,
+          (SELECT message FROM log_entries le2
+            WHERE le2.correlation_id = le.correlation_id
+            ORDER BY le2.timestamp DESC LIMIT 1) AS latest_message
+        FROM log_entries le
+        ${where}
+        GROUP BY correlation_id
+        ORDER BY MAX(timestamp) DESC
+        LIMIT $${idx}`,
+        values,
+      );
+
+      const now = Date.now();
+      const rows = res.rows as Row[];
+      const traces = rows.map((r) => rowToTraceGroup(r, now));
+
+      if (params.running_only) {
+        return traces.filter((t) => t.is_running);
+      }
+      return traces;
+    } finally {
+      client.release();
+    }
   }
 
   private async query(topic: string): Promise<Row[]> {

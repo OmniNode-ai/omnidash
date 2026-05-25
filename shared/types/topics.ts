@@ -119,6 +119,8 @@ export const TOPICS = {
   evidencePipelineReadiness: 'onex.snapshot.projection.evidence_pipeline.readiness.v1',
   /** Observational evidence event stream projection rows (OMN-11481). */
   evidencePipelineLiveEvents: 'onex.snapshot.projection.evidence_pipeline.live_events.v1',
+  /** Trace explorer — log entries aggregated into correlation traces (OMN-12133). */
+  traceExplorer: 'onex.snapshot.projection.traces.v1',
 } as const;
 
 export type TopicSymbol = (typeof TOPICS)[keyof typeof TOPICS];
