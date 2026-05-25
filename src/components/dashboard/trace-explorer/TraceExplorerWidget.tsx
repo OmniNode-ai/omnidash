@@ -6,6 +6,7 @@ import { TOPICS } from '@shared/types/topics';
 import { NodePill } from '@/components/primitives';
 import { Text } from '@/components/ui/typography';
 import { useDataSourceMode, isLiveDataSource } from '@/hooks/useDataSourceMode';
+import { DispatchButton } from '../command-dispatch/DispatchButton';
 
 // ── Data types ───────────────────────────────────────────────────────
 
@@ -324,18 +325,33 @@ export default function TraceExplorerWidget() {
                     <Text size="xs" weight="bold" color="primary" family="mono" truncate title={trace.correlation_id}>
                       {truncateId(trace.correlation_id)}
                     </Text>
-                    <span
-                      style={{
-                        width: 7,
-                        height: 7,
-                        borderRadius: '50%',
-                        background: statusColor,
-                        flexShrink: 0,
-                        ...(trace.is_running && !trace.has_error
-                          ? { boxShadow: '0 0 0 3px rgba(21,128,61,.18)' }
-                          : {}),
-                      }}
-                    />
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                      {trace.is_running && !trace.has_error && (
+                        <DispatchButton
+                          variant="stop"
+                          targetNodeId={trace.nodes_involved[0] ?? ''}
+                          correlationId={trace.correlation_id}
+                        />
+                      )}
+                      {!trace.is_running && (
+                        <DispatchButton
+                          variant="rerun"
+                          targetNodeId={trace.nodes_involved[0] ?? ''}
+                        />
+                      )}
+                      <span
+                        style={{
+                          width: 7,
+                          height: 7,
+                          borderRadius: '50%',
+                          background: statusColor,
+                          flexShrink: 0,
+                          ...(trace.is_running && !trace.has_error
+                            ? { boxShadow: '0 0 0 3px rgba(21,128,61,.18)' }
+                            : {}),
+                        }}
+                      />
+                    </div>
                   </div>
                   <Text size="xs" color="tertiary" family="mono">
                     {trace.nodes_involved.length} node{trace.nodes_involved.length !== 1 ? 's' : ''} · {trace.event_count} events
