@@ -249,4 +249,48 @@ router.get('/api/settings/feature-flags', (_req, res) => {
   });
 });
 
+// OMN-12133: projection query endpoints for log entries and traces.
+// Both require postgres mode with OMNIDASH_ANALYTICS_DB_URL set.
+
+router.get('/api/projections/log-entries', async (req, res) => {
+  if (!pgReader) {
+    res.status(503).json({ error: 'postgres data source not configured' });
+    return;
+  }
+  try {
+    const limit = req.query.limit !== undefined ? parseInt(String(req.query.limit), 10) : 100;
+    const entries = await pgReader.queryLogEntries({
+      correlation_id: req.query.correlation_id ? String(req.query.correlation_id) : undefined,
+      node_name: req.query.node_name ? String(req.query.node_name) : undefined,
+      level: req.query.level ? String(req.query.level) : undefined,
+      since: req.query.since ? String(req.query.since) : undefined,
+      limit: Number.isFinite(limit) && limit > 0 ? limit : 100,
+    });
+    res.json(entries);
+  } catch (err) {
+    console.error('[routes] /api/projections/log-entries error:', err);
+    res.status(500).json({ error: 'log entries query failed' });
+  }
+});
+
+router.get('/api/projections/traces', async (req, res) => {
+  if (!pgReader) {
+    res.status(503).json({ error: 'postgres data source not configured' });
+    return;
+  }
+  try {
+    const limit = req.query.limit !== undefined ? parseInt(String(req.query.limit), 10) : 50;
+    const running_only = req.query.running_only === 'true' || req.query.running_only === '1';
+    const traces = await pgReader.queryTraces({
+      since: req.query.since ? String(req.query.since) : undefined,
+      limit: Number.isFinite(limit) && limit > 0 ? limit : 50,
+      running_only,
+    });
+    res.json(traces);
+  } catch (err) {
+    console.error('[routes] /api/projections/traces error:', err);
+    res.status(500).json({ error: 'traces query failed' });
+  }
+});
+
 export default router;
