@@ -83,20 +83,19 @@ describe('DelegationQualityGateWidget', () => {
         <DelegationQualityGateWidget config={{}} />
       </DataSourceTestProvider>,
     );
-    expect(await screen.findByText(/no quality gate data/i)).toBeInTheDocument();
+    expect(await screen.findByText(/no escalation data/i)).toBeInTheDocument();
   });
 
-  it('renders KPI tiles when data is present', async () => {
+  it('renders check type breakdown when data is present', async () => {
     mockFetchWithItems([buildDelegationQualityGate()]);
     render(
       <DataSourceTestProvider client={qc}>
         <DelegationQualityGateWidget config={{}} />
       </DataSourceTestProvider>,
     );
-    expect(await screen.findByText('Pass rate')).toBeInTheDocument();
-    expect(screen.getByText('Passed')).toBeInTheDocument();
-    expect(screen.getByText('Failed')).toBeInTheDocument();
-    // Escalations now shown as a banner when count > 0
+    expect(await screen.findByText('Automated checks')).toBeInTheDocument();
+    expect(screen.getByText('Heuristic checks')).toBeInTheDocument();
+    // Escalations shown as a banner when count > 0
     expect(screen.getByText(/Escalations/i)).toBeInTheDocument();
   });
 
@@ -107,7 +106,7 @@ describe('DelegationQualityGateWidget', () => {
         <DelegationQualityGateWidget config={{}} />
       </DataSourceTestProvider>,
     );
-    await screen.findByText('Pass rate');
+    await screen.findByText('Automated checks');
     expect(screen.getByText(/required human escalation/i)).toBeInTheDocument();
     // Escalation rate percentage should appear in the banner
     expect(screen.getByText(/% rate/i)).toBeInTheDocument();
@@ -120,7 +119,7 @@ describe('DelegationQualityGateWidget', () => {
         <DelegationQualityGateWidget config={{}} />
       </DataSourceTestProvider>,
     );
-    await screen.findByText('Pass rate');
+    await screen.findByText('Automated checks');
     expect(screen.queryByText(/required human escalation/i)).not.toBeInTheDocument();
   });
 
@@ -131,9 +130,9 @@ describe('DelegationQualityGateWidget', () => {
         <DelegationQualityGateWidget config={{}} />
       </DataSourceTestProvider>,
     );
-    await screen.findByText('Pass rate');
-    expect(screen.getByText('Deterministic')).toBeInTheDocument();
-    expect(screen.getByText('Heuristic')).toBeInTheDocument();
+    await screen.findByText('Automated checks');
+    expect(screen.getByText('Automated checks')).toBeInTheDocument();
+    expect(screen.getByText('Heuristic checks')).toBeInTheDocument();
   });
 
   it('renders failure categories when showFailureCategories is true', async () => {
@@ -143,8 +142,8 @@ describe('DelegationQualityGateWidget', () => {
         <DelegationQualityGateWidget config={{ showFailureCategories: true }} />
       </DataSourceTestProvider>,
     );
-    await screen.findByText('Pass rate');
-    expect(screen.getByText('Failure categories')).toBeInTheDocument();
+    await screen.findByText('Automated checks');
+    expect(screen.getByText('Escalation reasons')).toBeInTheDocument();
     expect(screen.getByText('output_too_short')).toBeInTheDocument();
   });
 
@@ -155,8 +154,8 @@ describe('DelegationQualityGateWidget', () => {
         <DelegationQualityGateWidget config={{ showFailureCategories: false }} />
       </DataSourceTestProvider>,
     );
-    await screen.findByText('Pass rate');
-    expect(screen.queryByText('Failure categories')).not.toBeInTheDocument();
+    await screen.findByText('Automated checks');
+    expect(screen.queryByText('Escalation reasons')).not.toBeInTheDocument();
   });
 
   it('shows upstream-blocked notice when provisioned is false', async () => {
@@ -166,7 +165,7 @@ describe('DelegationQualityGateWidget', () => {
         <DelegationQualityGateWidget config={{}} />
       </DataSourceTestProvider>,
     );
-    await screen.findByText('Pass rate');
+    await screen.findByText('Automated checks');
     expect(screen.getByText(/upstream-blocked/i)).toBeInTheDocument();
   });
 
@@ -184,8 +183,8 @@ describe('DelegationQualityGateWidget', () => {
           <DelegationQualityGateWidget config={{}} />
         </DataSourceTestProvider>,
       );
-      await screen.findByText('Pass rate');
-      expect(await screen.findByText('Recent checks (3)')).toBeInTheDocument();
+      await screen.findByText('Automated checks');
+      expect(await screen.findByText('Recent delegations (3)')).toBeInTheDocument();
       expect(screen.getByText('code-review')).toBeInTheDocument();
       expect(screen.getByText('summarization')).toBeInTheDocument();
       expect(screen.getByText('classification')).toBeInTheDocument();
@@ -203,8 +202,8 @@ describe('DelegationQualityGateWidget', () => {
           <DelegationQualityGateWidget config={{}} />
         </DataSourceTestProvider>,
       );
-      await screen.findByText('Pass rate');
-      expect(screen.queryByText(/Recent checks/)).not.toBeInTheDocument();
+      await screen.findByText('Automated checks');
+      expect(screen.queryByText(/Recent delegations/)).not.toBeInTheDocument();
     });
   });
 
@@ -217,7 +216,7 @@ describe('DelegationQualityGateWidget', () => {
           <DelegationQualityGateWidget config={{}} />
         </DataSourceTestProvider>,
       );
-      await screen.findByText('Pass rate');
+      await screen.findByText('Automated checks');
       expect(screen.getByText('Avg tokens to compliance')).toBeInTheDocument();
       expect(screen.getByText('Avg attempts')).toBeInTheDocument();
     });
@@ -229,7 +228,7 @@ describe('DelegationQualityGateWidget', () => {
           <DelegationQualityGateWidget config={{}} />
         </DataSourceTestProvider>,
       );
-      await screen.findByText('Pass rate');
+      await screen.findByText('Automated checks');
       expect(screen.queryByText('Avg tokens to compliance')).not.toBeInTheDocument();
       expect(screen.queryByText('Tokens-to-compliance by model')).not.toBeInTheDocument();
     });
@@ -241,7 +240,7 @@ describe('DelegationQualityGateWidget', () => {
           <DelegationQualityGateWidget config={{}} />
         </DataSourceTestProvider>,
       );
-      await screen.findByText('Pass rate');
+      await screen.findByText('Automated checks');
       expect(screen.getByText('Tokens-to-compliance by model')).toBeInTheDocument();
       // The fixture seeds Qwen3-Coder-30B at 3,120 tokens (lowest, first row).
       const models = screen.getAllByText(/Qwen3-Coder-30B|glm-4-plus|codex-cli|gemini-cli/);
