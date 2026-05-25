@@ -1,8 +1,9 @@
-import { Activity, Archive, BarChart2, CircleDollarSign, Database, FileCheck2, LayoutDashboard, Network } from 'lucide-react';
+import { Activity, Archive, BarChart2, CircleDollarSign, Database, FileCheck2, GitCommitHorizontal, LayoutDashboard, Network } from 'lucide-react';
 import { useState, type ComponentType } from 'react';
 import { Text } from '@/components/ui/typography';
 import { DelegationPanelFrame } from './DelegationPanelFrame';
 import { DelegationEventChainPanel } from './DelegationEventChainPanel';
+import { DelegationCorrelationTracePanel } from './DelegationCorrelationTracePanel';
 import { DelegationProjectionProbePanel } from './DelegationProjectionProbePanel';
 import { DelegationRuntimeTopologyPanel } from './DelegationRuntimeTopologyPanel';
 import { DelegationArtifactPanel } from './DelegationArtifactPanel';
@@ -15,6 +16,7 @@ const TABS: Array<{ id: DelegationEvidenceTabId; label: string; Icon: ComponentT
   { id: 'overview', label: 'Overview', Icon: LayoutDashboard },
   { id: 'runtime-topology', label: 'Runtime Topology', Icon: Network },
   { id: 'event-chain', label: 'Event Chain', Icon: Activity },
+  { id: 'correlation-trace', label: 'Correlation Trace', Icon: GitCommitHorizontal },
   { id: 'projection', label: 'Projection / API', Icon: Database },
   { id: 'cost-tokens', label: 'Cost & Tokens', Icon: CircleDollarSign },
   { id: 'quality', label: 'Quality', Icon: BarChart2 },
@@ -62,6 +64,7 @@ export function DelegationEvidenceTabs() {
       {activeTab === 'overview' && <OverviewTab />}
       {activeTab === 'runtime-topology' && <DelegationRuntimeTopologyPanel snapshot={snapshot} />}
       {activeTab === 'event-chain' && <DelegationEventChainPanel />}
+      {activeTab === 'correlation-trace' && <DelegationCorrelationTracePanel />}
       {activeTab === 'projection' && <DelegationProjectionProbePanel />}
       {activeTab === 'cost-tokens' && <CostTokensTab />}
       {activeTab === 'quality' && <QualityTab />}

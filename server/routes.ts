@@ -81,6 +81,23 @@ async function readProjection(topic: string): Promise<unknown> {
   return records;
 }
 
+// Correlation trace: returns all delegation_events rows for a given correlation_id.
+// Used by DelegationCorrelationTracePanel to render the full per-event chain.
+router.get('/api/delegation/correlation-trace/:correlationId', async (req, res) => {
+  const { correlationId } = req.params;
+  if (!pgReader) {
+    res.status(503).json({ error: 'postgres data source not configured' });
+    return;
+  }
+  try {
+    const rows = await pgReader.readCorrelationTrace(correlationId);
+    res.json({ correlation_id: correlationId, rows });
+  } catch (err) {
+    console.error('[routes] /api/delegation/correlation-trace/:correlationId error:', err);
+    res.status(500).json({ error: 'correlation trace read failed' });
+  }
+});
+
 // HTTP adapter for src/data-source/http-snapshot-source.ts. Dashboard-v2 reads
 // projection-topic snapshots; it must not query Postgres directly.
 router.get('/projection/:topic', async (req, res) => {

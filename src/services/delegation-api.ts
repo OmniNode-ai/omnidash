@@ -127,3 +127,52 @@ export function fetchQualityGate(opts?: DelegationApiOptions): Promise<Delegatio
 export function fetchDelegationSavings(opts?: DelegationApiOptions): Promise<DelegationSavingsRow[]> {
   return fetchProjection<DelegationSavingsRow>(`${resolveBase(opts)}/savings`);
 }
+
+// ── Correlation trace ────────────────────────────────────────────────────────
+
+export interface CorrelationTraceEvent {
+  id: string | number;
+  correlation_id: string | null;
+  session_id: string | null;
+  timestamp: string | null;
+  task_type: string | null;
+  delegated_to: string | null;
+  delegated_by: string | null;
+  quality_gate_passed: boolean | null;
+  quality_gates_checked: number | null;
+  quality_gates_failed: number | null;
+  cost_usd: number | null;
+  cost_savings_usd: number | null;
+  delegation_latency_ms: number | null;
+  model_name: string | null;
+  tokens_input: number | null;
+  tokens_output: number | null;
+  routing_rule: string | null;
+  routing_confidence: number | null;
+  created_at: string | null;
+}
+
+export interface CorrelationTraceResponse {
+  correlation_id: string;
+  rows: CorrelationTraceEvent[];
+}
+
+export async function fetchCorrelationTrace(
+  correlationId: string,
+  opts?: DelegationApiOptions,
+): Promise<CorrelationTraceResponse> {
+  const base = resolveBase(opts);
+  const encoded = encodeURIComponent(correlationId);
+  const res = await fetch(`${base}/correlation-trace/${encoded}`);
+  if (!res.ok) return { correlation_id: correlationId, rows: [] };
+  const body = (await res.json()) as unknown;
+  if (
+    typeof body === 'object' &&
+    body !== null &&
+    'rows' in body &&
+    Array.isArray((body as { rows: unknown }).rows)
+  ) {
+    return body as CorrelationTraceResponse;
+  }
+  return { correlation_id: correlationId, rows: [] };
+}
