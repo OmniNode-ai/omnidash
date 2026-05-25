@@ -139,6 +139,7 @@ export interface CorrelationTraceEvent {
   delegated_to: string | null;
   delegated_by: string | null;
   quality_gate_passed: boolean | null;
+  quality_gate_detail: string | null;
   quality_gates_checked: number | null;
   quality_gates_failed: number | null;
   cost_usd: number | null;
@@ -149,6 +150,8 @@ export interface CorrelationTraceEvent {
   tokens_output: number | null;
   routing_rule: string | null;
   routing_confidence: number | null;
+  prompt_text: string | null;
+  response_text: string | null;
   created_at: string | null;
 }
 
@@ -175,4 +178,34 @@ export async function fetchCorrelationTrace(
     return body as CorrelationTraceResponse;
   }
   return { correlation_id: correlationId, rows: [] };
+}
+
+// ── Delegation trigger ───────────────────────────────────────────────────────
+
+export interface DelegationTriggerRequest {
+  prompt: string;
+  task_type: string;
+}
+
+export interface DelegationTriggerResponse {
+  correlation_id: string;
+  accepted: boolean;
+  message?: string;
+}
+
+export async function triggerDelegation(
+  req: DelegationTriggerRequest,
+  opts?: DelegationApiOptions,
+): Promise<DelegationTriggerResponse> {
+  const base = resolveBase(opts);
+  const res = await fetch(`${base}/trigger`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(req),
+  });
+  if (!res.ok) {
+    const text = await res.text().catch(() => '');
+    throw new Error(`Trigger failed (${res.status}): ${text || res.statusText}`);
+  }
+  return (await res.json() as unknown) as DelegationTriggerResponse;
 }

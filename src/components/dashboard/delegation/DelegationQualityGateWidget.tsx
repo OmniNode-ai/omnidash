@@ -523,7 +523,7 @@ export default function DelegationQualityGateWidget(props: { config: DelegationQ
             >
               {(['Type', 'Local / Escalated', 'Rate', 'Local / Escalated', 'Total'] as const).map((h, i) => (
                 <Text
-                  key={h}
+                  key={`${h}-${i}`}
                   as="span"
                   size="xs"
                   color="tertiary"

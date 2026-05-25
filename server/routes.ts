@@ -1,6 +1,7 @@
 import { Router } from 'express';
 import { readFile, readdir } from 'node:fs/promises';
 import { resolve } from 'node:path';
+import { randomUUID } from 'node:crypto';
 import { SqliteProjectionReader } from './sqlite-projection-reader.js';
 import { PostgresProjectionReader } from './postgres-projection-reader.js';
 import { loadDataSourceConfig } from './data-source-contract.js';
@@ -95,6 +96,51 @@ router.get('/api/delegation/correlation-trace/:correlationId', async (req, res) 
   } catch (err) {
     console.error('[routes] /api/delegation/correlation-trace/:correlationId error:', err);
     res.status(500).json({ error: 'correlation trace read failed' });
+  }
+});
+
+// Delegation trigger: publish a delegation command to the ONEX runtime.
+// Forwards to OMNIDASH_RUNTIME_EFFECTS_URL when set; otherwise returns
+// a simulated accepted response so the UI can be tested without infra.
+router.post('/api/delegation/trigger', async (req, res) => {
+  const body = req.body as { prompt?: unknown; task_type?: unknown };
+  const prompt = typeof body.prompt === 'string' ? body.prompt.slice(0, 4096) : '';
+  const taskType = typeof body.task_type === 'string' ? body.task_type.slice(0, 128) : 'general';
+  if (!prompt) {
+    res.status(400).json({ error: 'prompt is required' });
+    return;
+  }
+
+  const correlationId = randomUUID();
+  const runtimeUrl = process.env.OMNIDASH_RUNTIME_EFFECTS_URL;
+
+  if (!runtimeUrl) {
+    // No runtime configured — return an accepted response so the UI works
+    // in dev/file mode. The correlation_id can be searched in the trace view
+    // once real events are materialized.
+    res.json({ correlation_id: correlationId, accepted: true, message: 'simulated (no OMNIDASH_RUNTIME_EFFECTS_URL set)' });
+    return;
+  }
+
+  try {
+    const upstream = await fetch(`${runtimeUrl}/v1/effects`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        topic: 'onex.cmd.omnimarket.delegate-skill.v1',
+        correlation_id: correlationId,
+        payload: { prompt, task_type: taskType, source: 'delegation-dashboard' },
+      }),
+    });
+    if (!upstream.ok) {
+      const text = await upstream.text().catch(() => '');
+      res.status(502).json({ error: `runtime returned ${upstream.status}`, detail: text });
+      return;
+    }
+    res.json({ correlation_id: correlationId, accepted: true });
+  } catch (err) {
+    console.error('[routes] /api/delegation/trigger error:', err);
+    res.status(503).json({ error: 'runtime unreachable', detail: String(err) });
   }
 });
 

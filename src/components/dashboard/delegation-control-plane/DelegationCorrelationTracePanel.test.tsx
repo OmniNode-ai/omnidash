@@ -78,6 +78,7 @@ describe('DelegationCorrelationTracePanel', () => {
           delegated_to: 'qwen3',
           delegated_by: null,
           quality_gate_passed: true,
+          quality_gate_detail: 'all checks passed',
           quality_gates_checked: 3,
           quality_gates_failed: 0,
           cost_usd: 0.002,
@@ -88,6 +89,8 @@ describe('DelegationCorrelationTracePanel', () => {
           tokens_output: 300,
           routing_rule: 'local_first',
           routing_confidence: 0.95,
+          prompt_text: 'Review this function for correctness.',
+          response_text: 'The function looks correct.',
           created_at: '2026-05-25T10:00:00Z',
         },
       ],
@@ -100,7 +103,7 @@ describe('DelegationCorrelationTracePanel', () => {
     });
 
     expect(screen.getByText(/code_review/i)).toBeTruthy();
-    expect(screen.getByText(/passed/i)).toBeTruthy();
+    expect(screen.getAllByText(/passed/i).length).toBeGreaterThan(0);
     expect(screen.getByText(/local_first/i)).toBeTruthy();
   });
 

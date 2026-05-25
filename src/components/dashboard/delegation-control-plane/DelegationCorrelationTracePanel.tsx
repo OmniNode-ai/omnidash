@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { Text } from '@/components/ui/typography';
 import { DelegationPanelFrame } from './DelegationPanelFrame';
 import { useDelegationRunContext } from './DelegationRunContext';
@@ -20,13 +20,66 @@ function latencyBetween(prev: CorrelationTraceEvent | undefined, curr: Correlati
   return `+${fmtMs(delta)}`;
 }
 
+function ExpandableText({ label, text }: { label: string; text: string }) {
+  const [expanded, setExpanded] = useState(false);
+  const toggle = useCallback(() => setExpanded((v) => !v), []);
+  const preview = text.length > 120 ? `${text.slice(0, 120)}…` : text;
+
+  return (
+    <div style={{ marginTop: 4 }}>
+      <button
+        type="button"
+        onClick={toggle}
+        style={{
+          border: 0,
+          background: 'transparent',
+          cursor: 'pointer',
+          padding: 0,
+          textAlign: 'left',
+          display: 'flex',
+          alignItems: 'center',
+          gap: 6,
+        }}
+      >
+        <Text as="span" size="xs" color="tertiary">{expanded ? '▾' : '▸'} {label}</Text>
+      </button>
+      {expanded && (
+        <div
+          style={{
+            marginTop: 4,
+            padding: '8px 10px',
+            background: 'var(--panel-2)',
+            borderRadius: 4,
+            border: '1px solid var(--line-2)',
+            maxHeight: 200,
+            overflow: 'auto',
+          }}
+        >
+          <Text as="pre" size="xs" family="mono" color="secondary" style={{ whiteSpace: 'pre-wrap', wordBreak: 'break-word', margin: 0 }}>
+            {text}
+          </Text>
+        </div>
+      )}
+      {!expanded && (
+        <Text as="div" size="xs" family="mono" color="tertiary" style={{ marginTop: 2 }}>
+          {preview}
+        </Text>
+      )}
+    </div>
+  );
+}
+
 function EventRow({ event, prev, index }: { event: CorrelationTraceEvent; prev: CorrelationTraceEvent | undefined; index: number }) {
   const gate = fmtBool(event.quality_gate_passed);
   const delta = latencyBetween(prev, event);
   const tokens = (event.tokens_input ?? 0) + (event.tokens_output ?? 0);
   const tokenLabel = tokens > 0 ? fmtTokens(tokens) : '-';
   const costLabel = event.cost_usd != null ? fmtUsd(event.cost_usd) : '-';
-  const savingsLabel = event.cost_savings_usd != null ? fmtUsd(event.cost_savings_usd) : '-';
+  const savingsLabel = event.cost_savings_usd != null && event.cost_savings_usd > 0
+    ? fmtUsd(event.cost_savings_usd)
+    : event.cost_savings_usd != null ? fmtUsd(event.cost_savings_usd) : '-';
+  const hasQualityDetail = event.quality_gate_detail != null && event.quality_gate_detail.length > 0;
+  const hasGateCounts = event.quality_gates_checked != null || event.quality_gates_failed != null;
 
   return (
     <div
@@ -47,7 +100,7 @@ function EventRow({ event, prev, index }: { event: CorrelationTraceEvent; prev: 
             background: event.quality_gate_passed === true
               ? 'var(--color-ok, #22c55e)'
               : event.quality_gate_passed === false
-              ? 'var(--color-error, #ef4444)'
+              ? 'var(--color-bad, #ef4444)'
               : 'var(--text-tertiary, #888)',
             flexShrink: 0,
             marginTop: 4,
@@ -70,12 +123,49 @@ function EventRow({ event, prev, index }: { event: CorrelationTraceEvent; prev: 
           </Text>
         </div>
 
+        {/* Quality gate — prominent row */}
+        <div
+          style={{
+            display: 'inline-flex',
+            alignItems: 'center',
+            gap: 8,
+            padding: '3px 8px',
+            borderRadius: 4,
+            background: event.quality_gate_passed === true
+              ? 'color-mix(in srgb, var(--color-ok, #22c55e) 12%, transparent)'
+              : event.quality_gate_passed === false
+              ? 'color-mix(in srgb, var(--color-bad, #ef4444) 12%, transparent)'
+              : 'var(--panel-2)',
+            border: '1px solid',
+            borderColor: event.quality_gate_passed === true
+              ? 'color-mix(in srgb, var(--color-ok, #22c55e) 30%, transparent)'
+              : event.quality_gate_passed === false
+              ? 'color-mix(in srgb, var(--color-bad, #ef4444) 30%, transparent)'
+              : 'var(--line-2)',
+          }}
+        >
+          <Text as="span" size="xs" weight="semibold" color={gate.color}>
+            Quality gate: {gate.label}
+          </Text>
+          {hasQualityDetail && (
+            <Text as="span" size="xs" color="secondary">
+              — {event.quality_gate_detail}
+            </Text>
+          )}
+          {hasGateCounts && (
+            <Text as="span" size="xs" family="mono" color="tertiary">
+              ({event.quality_gates_checked ?? 0} checked, {event.quality_gates_failed ?? 0} failed)
+            </Text>
+          )}
+        </div>
+
         <div style={{ display: 'flex', gap: 14, flexWrap: 'wrap' }}>
-          <LabeledValue label="gate" value={gate.label} valueColor={gate.color} />
           <LabeledValue label="latency" value={event.delegation_latency_ms != null ? fmtMs(event.delegation_latency_ms) : '-'} />
-          <LabeledValue label="tokens" value={tokenLabel} />
+          <LabeledValue label="tokens in" value={event.tokens_input != null ? fmtTokens(event.tokens_input) : '-'} />
+          <LabeledValue label="tokens out" value={event.tokens_output != null ? fmtTokens(event.tokens_output) : '-'} />
+          <LabeledValue label="tokens total" value={tokenLabel} />
           <LabeledValue label="cost" value={costLabel} />
-          <LabeledValue label="savings" value={savingsLabel} />
+          <LabeledValue label="savings" value={savingsLabel} valueColor={event.cost_savings_usd != null && event.cost_savings_usd > 0 ? 'ok' : 'secondary'} />
           {event.routing_rule && (
             <LabeledValue label="rule" value={event.routing_rule} />
           )}
@@ -84,16 +174,18 @@ function EventRow({ event, prev, index }: { event: CorrelationTraceEvent; prev: 
           )}
         </div>
 
-        {(event.quality_gates_checked != null || event.quality_gates_failed != null) && (
-          <Text as="span" size="xs" color="secondary">
-            Quality gates: {event.quality_gates_checked ?? 0} checked, {event.quality_gates_failed ?? 0} failed
-          </Text>
-        )}
-
         {event.session_id && (
           <Text as="span" size="xs" family="mono" color="tertiary">
             session {event.session_id}
           </Text>
+        )}
+
+        {event.prompt_text != null && event.prompt_text.length > 0 && (
+          <ExpandableText label="Prompt" text={event.prompt_text} />
+        )}
+
+        {event.response_text != null && event.response_text.length > 0 && (
+          <ExpandableText label="Response" text={event.response_text} />
         )}
       </div>
     </div>

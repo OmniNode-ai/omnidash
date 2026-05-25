@@ -38,6 +38,7 @@ export class PostgresProjectionReader {
           delegated_to,
           delegated_by,
           quality_gate_passed,
+          quality_gate_detail,
           quality_gates_checked,
           quality_gates_failed,
           cost_usd,
@@ -48,6 +49,8 @@ export class PostgresProjectionReader {
           tokens_output,
           routing_rule,
           routing_confidence,
+          prompt_text,
+          response_text,
           created_at
         FROM delegation_events
         WHERE correlation_id = $1
