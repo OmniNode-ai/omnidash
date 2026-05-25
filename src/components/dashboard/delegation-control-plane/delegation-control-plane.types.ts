@@ -8,6 +8,7 @@ export type DelegationEvidenceTabId =
   | 'overview'
   | 'runtime-topology'
   | 'event-chain'
+  | 'correlation-trace'
   | 'projection'
   | 'cost-tokens'
   | 'quality'

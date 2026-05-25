@@ -135,9 +135,9 @@ describe('PostgresProjectionReader', () => {
     const sessions = result.rows[0]!.sessions as Record<string, unknown>[];
     expect(sessions[0]).toMatchObject({
       session_id: 'corr-live',
-      prompt_tokens: '144',
-      completion_tokens: '593',
-      tokens_to_compliance: '737',
+      prompt_tokens: 144,
+      completion_tokens: 593,
+      tokens_to_compliance: 737,
     });
     expect(client.query).toHaveBeenCalledWith(expect.stringContaining('FROM savings_estimates'));
     expect(client.query).toHaveBeenCalledWith(expect.stringContaining('to_jsonb(delegation_events)'));
@@ -198,11 +198,11 @@ describe('PostgresProjectionReader', () => {
     expect(sessions).toHaveLength(1);
     expect(sessions[0]).toMatchObject({
       session_id: 'sess-merged',
-      savings_usd: '0.009',
-      prompt_tokens: '144',
-      completion_tokens: '593',
-      tokens_to_compliance: '737',
-      latency_ms: '3237',
+      savings_usd: 0.009,
+      prompt_tokens: 144,
+      completion_tokens: 593,
+      tokens_to_compliance: 737,
+      latency_ms: 3237,
       created_at: '2026-05-20T12:01:00.000Z',
     });
   });

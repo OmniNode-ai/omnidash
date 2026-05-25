@@ -75,7 +75,7 @@ describe('DelegationModelRoutingWidget', () => {
     // New columns
     expect(screen.getByText('Task Types')).toBeInTheDocument();
     expect(screen.getByText('Latency')).toBeInTheDocument();
-    expect(screen.getByText('QG Pass')).toBeInTheDocument();
+    expect(screen.getByText('Local Rate')).toBeInTheDocument();
   });
 
   it('renders task type chips from fixture', async () => {

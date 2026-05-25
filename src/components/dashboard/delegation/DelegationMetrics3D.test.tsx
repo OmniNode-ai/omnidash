@@ -64,11 +64,11 @@ describe('DelegationMetrics', () => {
     expect(screen.getByText('128 / 150 passed')).toBeInTheDocument();
     expect(screen.getByText('Qwen3-Coder-30B (80)')).toBeInTheDocument();
     expect(screen.getByTestId('delegation-3d-doughnut-panel')).toHaveStyle({
-      maxWidth: '420px',
+      maxWidth: '240px',
       maxHeight: '280px',
       overflow: 'hidden',
     });
-    expect(screen.getByTestId('delegation-3d-doughnut-canvas')).toHaveStyle({ height: '200px' });
+    expect(screen.getByTestId('delegation-3d-doughnut-canvas')).toHaveStyle({ height: '140px' });
   });
 
   it('shows empty state when no delegations', async () => {
