@@ -1,8 +1,8 @@
-// 2D companion to DelegationMetrics3D. Shares the data hook, stats
-// panel, and the same parts-of-whole framing — but renders the
-// task-type breakdown as a flat SVG donut instead of a tilted three.js
-// scene. No WebGL, no rotation, no leader-line skewers; just labelled
-// arcs with hover tooltips.
+// 2D companion to DelegationMetrics3D. Shares the data hook and the
+// parts-of-whole framing, but renders as a dense terminal-style status
+// panel: a KPI header row, a horizontal stacked model-distribution bar
+// (replacing the old SVG donut), task-type mini-bars, and a quality-gate
+// ratio bar. No WebGL, no donut geometry — every pixel carries data.
 import { useMemo, useState } from 'react';
 import { ComponentWrapper } from '../ComponentWrapper';
 import { useProjectionQuery } from '@/hooks/useProjectionQuery';
@@ -12,57 +12,129 @@ import { useThemeColors } from '@/theme';
 import type { DelegationSummary } from './DelegationMetrics3D';
 import { useDelegationRunContextOptional } from '@/components/dashboard/delegation-control-plane/DelegationRunContext';
 
-interface DonutSlice {
+// avgLatencyMs is not in every projection snapshot (the file-source
+// fixture omits it); treat it and the per-model breakdown as optional so
+// the panel degrades gracefully when a field is absent. The Postgres
+// projection serializes aggregate `count` values as strings ("13"), so
+// counts are read as `string | number` and coerced via Number() before
+// any arithmetic — adding them as-is would concatenate.
+type Count = number | string;
+type Summary = Omit<DelegationSummary, 'byTaskType'> & {
+  avgLatencyMs?: number;
+  byTaskType: Array<{ taskType: string; count: Count }>;
+  byModel?: Array<{ model: string; count: Count }>;
+};
+
+function fmtMs(ms: number): string {
+  if (ms >= 1000) return `${(ms / 1000).toFixed(1)}s`;
+  return `${ms.toFixed(0)}ms`;
+}
+
+// Model IDs arrive fully-qualified (e.g. "cyankiwi/Qwen3-Coder-30B-A3B").
+// Strip the org prefix and any version/quant suffix so the legend reads
+// at small sizes; the full id stays in the title attribute for hover.
+function shortModel(model: string): string {
+  const base = model.includes('/') ? model.slice(model.lastIndexOf('/') + 1) : model;
+  return base.length > 22 ? `${base.slice(0, 21)}…` : base;
+}
+
+interface Segment {
   label: string;
-  value: number;
-  percentage: number;
+  fullLabel: string;
+  count: number;
+  pct: number;
   color: string;
 }
 
-// Donut geometry — viewBox is centred on (0,0) so polar coordinates
-// translate directly. With labels moved out to a legend below the
-// chart, the viewBox can hug the outer radius (plus a small margin
-// for the hover-pop translation).
-const VIEWBOX = { x: -100, y: -100, w: 200, h: 200 };
-const OUTER_R = 90;
-const INNER_R = 50;
-const DONUT_HEIGHT = 160;
-const DONUT_PANEL_MAX_WIDTH = 420;
-const MODEL_LABEL_MAX_WIDTH = 220;
-
-function polar(angle: number, r: number): [number, number] {
-  return [r * Math.cos(angle), r * Math.sin(angle)];
+function StatTile({
+  label,
+  value,
+  valueColor = 'primary',
+  sub,
+}: {
+  label: string;
+  value: string;
+  valueColor?: 'primary' | 'ok' | 'warn' | 'bad';
+  sub?: string;
+}) {
+  return (
+    <div
+      style={{
+        flex: '1 1 0',
+        minWidth: 0,
+        display: 'flex',
+        flexDirection: 'column',
+        gap: 2,
+        padding: '8px 10px',
+        background: 'var(--panel-2)',
+        border: '1px solid var(--line-2)',
+        borderRadius: 6,
+      }}
+    >
+      <Text as="div" size="xs" family="mono" color="tertiary" transform="uppercase" truncate>
+        {label}
+      </Text>
+      <Text as="div" size="2xl" weight="bold" family="mono" color={valueColor} tabularNums truncate>
+        {value}
+      </Text>
+      {sub && (
+        <Text as="div" size="xs" family="mono" color="secondary" tabularNums truncate>
+          {sub}
+        </Text>
+      )}
+    </div>
+  );
 }
 
-/**
- * SVG path "d" attribute for one annular slice. Math angles measured
- * from +X with positive going counterclockwise; the y-flip below maps
- * those onto SVG's y-down screen space so positive angles read as
- * "up". Callers pass `start > end` to sweep clockwise visually
- * (12 o'clock → right → bottom).
- *
- * Arc sweep flags: SVG's "positive angle direction" (flag 1) is the
- * MATHEMATICAL counterclockwise — which, after our y-flip, reads as
- * visually clockwise on screen. So:
- *   - outer arc (sweep direction): flag 1
- *   - inner arc (returns counter-direction): flag 0
- * Reversing these makes the arc bulge to the wrong side of its chord
- * and the slice ends up looking pinched / star-shaped.
- */
-function donutSlicePath(startAngle: number, endAngle: number): string {
-  const [x1, y1] = polar(startAngle, OUTER_R);
-  const [x2, y2] = polar(endAngle, OUTER_R);
-  const [x3, y3] = polar(endAngle, INNER_R);
-  const [x4, y4] = polar(startAngle, INNER_R);
-  const sweep = Math.abs(endAngle - startAngle);
-  const largeArc = sweep > Math.PI ? 1 : 0;
-  return [
-    `M ${x1} ${-y1}`,
-    `A ${OUTER_R} ${OUTER_R} 0 ${largeArc} 1 ${x2} ${-y2}`,
-    `L ${x3} ${-y3}`,
-    `A ${INNER_R} ${INNER_R} 0 ${largeArc} 0 ${x4} ${-y4}`,
-    'Z',
-  ].join(' ');
+// One labelled, percentage-driven horizontal bar — used for the task-type
+// breakdown. The track is the same panel-2 surface as the KPI tiles so the
+// fill reads as data against an inset trough.
+function BreakdownRow({ seg, dimmed, onHover }: { seg: Segment; dimmed: boolean; onHover: () => void }) {
+  return (
+    <div
+      onPointerEnter={onHover}
+      title={`${seg.fullLabel}: ${seg.count} (${seg.pct.toFixed(1)}%)`}
+      style={{
+        display: 'grid',
+        gridTemplateColumns: '1fr 2.5rem 2.75rem',
+        alignItems: 'center',
+        gap: 8,
+        opacity: dimmed ? 0.45 : 1,
+        cursor: 'default',
+        transition: 'opacity 120ms ease-out',
+      }}
+    >
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 3, minWidth: 0 }}>
+        <Text as="div" size="sm" family="mono" color="primary" truncate>
+          {seg.label}
+        </Text>
+        <div
+          style={{
+            height: 4,
+            borderRadius: 2,
+            background: 'var(--panel-2)',
+            overflow: 'hidden',
+          }}
+        >
+          <div
+            style={{
+              height: '100%',
+              width: `${Math.max(2, seg.pct)}%`,
+              background: seg.color,
+              borderRadius: 2,
+              transition: 'width 0.5s ease-out',
+            }}
+          />
+        </div>
+      </div>
+      <Text as="span" size="sm" family="mono" color="secondary" tabularNums style={{ textAlign: 'right' }}>
+        {seg.count}
+      </Text>
+      <Text as="span" size="sm" family="mono" color="secondary" tabularNums style={{ textAlign: 'right' }}>
+        {seg.pct.toFixed(0)}%
+      </Text>
+    </div>
+  );
 }
 
 export default function DelegationMetrics2D({ config }: { config: Record<string, unknown> }) {
@@ -73,7 +145,7 @@ export default function DelegationMetrics2D({ config }: { config: Record<string,
 
   const runCtx = useDelegationRunContextOptional();
 
-  const { data: dataArr, isLoading: queryLoading, error: queryError } = useProjectionQuery<DelegationSummary>({
+  const { data: dataArr, isLoading: queryLoading, error: queryError } = useProjectionQuery<Summary>({
     topic: TOPICS.delegationSummary,
     queryKey: ['delegation-summary'],
     refetchInterval: 60_000,
@@ -82,48 +154,50 @@ export default function DelegationMetrics2D({ config }: { config: Record<string,
 
   const isLoading = runCtx ? runCtx.snapshot.isLoading : queryLoading;
   const error = runCtx ? runCtx.snapshot.primaryError : queryError;
-  const data = runCtx ? runCtx.snapshot.summary : (dataArr?.[0] ?? null);
+  const data = (runCtx ? runCtx.snapshot.summary : (dataArr?.[0] ?? null)) as Summary | null;
 
   const colors = useThemeColors();
-  const [hoverIdx, setHoverIdx] = useState<number | null>(null);
+  const [hoverModel, setHoverModel] = useState<number | null>(null);
+  const [hoverTask, setHoverTask] = useState<string | null>(null);
 
-  // Sorted descending by count so the largest slice starts at 12
-  // o'clock — matches the 3D variant's reading order.
-  const slices = useMemo<DonutSlice[]>(() => {
-    if (!data || data.byTaskType.length === 0) return [];
-    const total = data.byTaskType.reduce((acc, t) => acc + t.count, 0);
+  // Model distribution drives the stacked bar that replaces the donut.
+  const modelSegments = useMemo<Segment[]>(() => {
+    const rows = (data?.byModel ?? []).map((m) => ({ label: m.model, count: Number(m.count) }));
+    const total = rows.reduce((acc, m) => acc + m.count, 0);
     if (total === 0) return [];
-    return data.byTaskType
-      .slice()
+    return rows
       .sort((a, b) => b.count - a.count)
-      .map((t, i) => ({
-        label: t.taskType,
-        value: t.count,
-        percentage: (t.count / total) * 100,
+      .map((m, i) => ({
+        label: shortModel(m.label),
+        fullLabel: m.label,
+        count: m.count,
+        pct: (m.count / total) * 100,
         color: colors.chart[i % colors.chart.length],
       }));
   }, [data, colors.chart]);
 
-  // Pre-compute slice geometry once per slices change. Keeps the JSX
-  // readable and means hover state changes don't re-run the trig.
-  const sliceArcs = useMemo(() => {
-    if (slices.length === 0) return [];
-    const arcs: Array<{ slice: DonutSlice; path: string; midAngle: number }> = [];
-    let angle = Math.PI / 2; // 12 o'clock
-    const totalPct = slices.reduce((a, s) => a + s.percentage, 0) || 100;
-    for (const s of slices) {
-      let sweep = (s.percentage / totalPct) * Math.PI * 2;
-      if (slices.length === 1) sweep = Math.PI * 2 - 0.001;
-      const startAngle = angle;
-      const endAngle = angle - sweep;
-      const midAngle = (startAngle + endAngle) / 2;
-      arcs.push({ slice: s, path: donutSlicePath(startAngle, endAngle), midAngle });
-      angle = endAngle;
-    }
-    return arcs;
-  }, [slices]);
+  const taskSegments = useMemo<Segment[]>(() => {
+    const rows = (data?.byTaskType ?? []).map((t) => ({ label: t.taskType, count: Number(t.count) }));
+    const total = rows.reduce((acc, t) => acc + t.count, 0);
+    if (total === 0) return [];
+    return rows
+      .sort((a, b) => b.count - a.count)
+      .map((t, i) => ({
+        label: t.label,
+        fullLabel: t.label,
+        count: t.count,
+        pct: (t.count / total) * 100,
+        color: colors.chart[i % colors.chart.length],
+      }));
+  }, [data, colors.chart]);
 
   const isEmpty = !data || data.totalDelegations === 0;
+
+  const passRate = data?.qualityGatePassRate ?? 0;
+  const gatePasses = passRate >= qualityGateThreshold;
+  const passed = data?.qualityGatePassed;
+  const gateTotal = data?.qualityGateTotal;
+  const failed = passed != null && gateTotal != null ? Math.max(0, gateTotal - passed) : null;
 
   return (
     <ComponentWrapper
@@ -135,191 +209,153 @@ export default function DelegationMetrics2D({ config }: { config: Record<string,
       emptyHint="Delegation events appear when tasks are delegated to agents"
     >
       {data && !isEmpty && (
-        <div style={{ display: 'flex', gap: '1rem', alignItems: 'flex-start', minHeight: 0 }}>
-          <div style={{ flex: '0 0 auto', display: 'flex', flexDirection: 'column', gap: '0.75rem', padding: '0.5rem 0' }}>
-            <div>
-              <Text as="div" size="4xl" weight="bold" color="primary">{data.totalDelegations}</Text>
-              <Text as="div" size="md" color="primary">Total Delegations</Text>
-            </div>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 12, minWidth: 0 }}>
+          {/* KPI header row */}
+          <div style={{ display: 'flex', gap: 8 }}>
+            <StatTile label="Delegations" value={data.totalDelegations.toLocaleString()} />
             {showQualityGates && (
-              <div>
-                <Text as="div" size="4xl" weight="bold" color={data.qualityGatePassRate >= qualityGateThreshold ? 'ok' : 'warn'}>
-                  {Math.round(data.qualityGatePassRate * 100)}%
-                </Text>
-                <Text as="div" size="md" color="primary">Quality Gate Pass Rate</Text>
-                <Text as="div" size="sm" color="secondary">
-                  {data.qualityGatePassed} / {data.qualityGateTotal} passed
-                </Text>
-              </div>
+              <StatTile
+                label="Local Success"
+                value={`${Math.round(passRate * 100)}%`}
+                valueColor={gatePasses ? 'ok' : 'warn'}
+                sub={passed != null && gateTotal != null ? `${passed}/${gateTotal} local` : undefined}
+              />
             )}
-            {showSavings && (
-              <div>
-                <Text as="div" size="4xl" weight="bold" color="primary">${data.totalSavingsUsd.toFixed(2)}</Text>
-                <Text as="div" size="md" color="primary">Cost Savings</Text>
-              </div>
-            )}
+            {data.avgLatencyMs != null && <StatTile label="Avg Latency" value={fmtMs(data.avgLatencyMs)} />}
+            {showSavings && <StatTile label="Savings" value={`$${data.totalSavingsUsd.toFixed(2)}`} />}
           </div>
-          <div
-            data-testid="delegation-2d-donut"
-            style={{
-              flex: `0 1 ${DONUT_PANEL_MAX_WIDTH}px`,
-              width: '100%',
-              maxWidth: DONUT_PANEL_MAX_WIDTH,
-              minHeight: '150px',
-              maxHeight: '240px',
-              alignSelf: 'flex-start',
-              marginLeft: 'auto',
-              marginRight: 'auto',
-              position: 'relative',
-              display: 'flex',
-              flexDirection: 'column',
-              gap: '0.5rem',
-              padding: '0.5rem',
-              background: 'var(--panel-2)',
-              border: '1px solid var(--line-2)',
-              borderRadius: 6,
-              overflow: 'hidden',
-            }}
-            onPointerLeave={() => setHoverIdx(null)}
-          >
-            <svg
-              data-testid="delegation-2d-donut-svg"
-              viewBox={`${VIEWBOX.x} ${VIEWBOX.y} ${VIEWBOX.w} ${VIEWBOX.h}`}
-              preserveAspectRatio="xMidYMid meet"
-              style={{
-                flex: '0 0 auto',
-                width: '100%',
-                height: DONUT_HEIGHT,
-                maxHeight: DONUT_HEIGHT,
-                minHeight: 0,
-                display: 'block',
-              }}
-            >
-              {sliceArcs.map((arc, i) => {
-                const isHover = hoverIdx === i;
-                // Pop the hovered slice radially outward by translating
-                // along its mid-angle vector — same idea as the 3D
-                // hover-pop, just collapsed onto the XY plane.
-                const popX = isHover ? Math.cos(arc.midAngle) * 5 : 0;
-                const popY = isHover ? -Math.sin(arc.midAngle) * 5 : 0;
-                return (
-                  <path
-                    key={arc.slice.label}
-                    d={arc.path}
-                    fill={arc.slice.color}
-                    stroke="var(--panel-2)"
-                    strokeWidth={1}
-                    transform={`translate(${popX} ${popY})`}
-                    style={{ cursor: 'pointer', transition: 'transform 120ms ease-out' }}
-                    onPointerEnter={() => setHoverIdx(i)}
-                  />
-                );
-              })}
-            </svg>
-            {/*
-              Legend below the donut. Replaces the perimeter `<text>`
-              labels, which clipped on narrow widget cells. Each chip is
-              a clickable hover target that pops the matching slice, so
-              the legend doubles as a slice picker. Wraps onto multiple
-              rows when the cell is narrow.
-            */}
-            <div
-              style={{
-                display: 'flex',
-                flexWrap: 'wrap',
-                gap: '4px 12px',
-                justifyContent: 'center',
-                paddingTop: 4,
-                borderTop: '1px solid var(--line-2)',
-              }}
-            >
-              {sliceArcs.map((arc, i) => (
-                <div
-                  key={`${arc.slice.label}-legend`}
-                  onPointerEnter={() => setHoverIdx(i)}
-                  style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: 6,
-                    cursor: 'pointer',
-                    opacity: hoverIdx === null || hoverIdx === i ? 1 : 0.5,
-                    transition: 'opacity 120ms ease-out',
-                  }}
-                >
-                  <span
-                    aria-hidden
-                    style={{
-                      display: 'inline-block',
-                      width: 10,
-                      height: 10,
-                      borderRadius: 2,
-                      background: arc.slice.color,
-                      flex: '0 0 auto',
-                    }}
-                  />
-                  <Text as="span" size="sm" color="primary">
-                    {arc.slice.label}
-                  </Text>
-                  <Text as="span" size="sm" family="mono" color="secondary" tabularNums>
-                    {arc.slice.percentage.toFixed(0)}%
-                  </Text>
-                </div>
-              ))}
-              {data.byModel.length > 0 && (
-                <>
-                  <span aria-hidden style={{ display: 'inline-block', width: 10, height: 1, background: 'var(--line-2)', flex: '0 0 auto' }} />
-                  <Text as="span" size="sm" color="secondary" weight="semibold">Models:</Text>
-                  {data.byModel.map((m) => (
-                    <Text
-                      key={m.model}
-                      as="span"
-                      size="sm"
-                      family="mono"
-                      color="secondary"
-                      style={{
-                        maxWidth: MODEL_LABEL_MAX_WIDTH,
-                        overflow: 'hidden',
-                        textOverflow: 'ellipsis',
-                        whiteSpace: 'nowrap',
-                      }}
-                    >
-                      {m.model} ({m.count})
-                    </Text>
-                  ))}
-                </>
-              )}
-            </div>
-            {hoverIdx !== null && sliceArcs[hoverIdx] && (
+
+          {/* Model distribution — stacked bar + legend (replaces donut) */}
+          {modelSegments.length > 0 && (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
+                <Text as="span" size="xs" family="mono" color="tertiary" transform="uppercase">
+                  Model Distribution
+                </Text>
+                <Text as="span" size="xs" family="mono" color="tertiary" tabularNums>
+                  {modelSegments.length} {modelSegments.length === 1 ? 'model' : 'models'}
+                </Text>
+              </div>
               <div
+                onPointerLeave={() => setHoverModel(null)}
                 style={{
-                  position: 'absolute',
-                  top: 8,
-                  right: 8,
-                  padding: '6px 10px',
-                  background: 'var(--panel)',
-                  border: '1px solid var(--line)',
-                  borderRadius: 6,
-                  boxShadow: 'var(--shadow-md)',
-                  minWidth: 140,
-                  pointerEvents: 'none',
+                  display: 'flex',
+                  height: 14,
+                  borderRadius: 4,
+                  overflow: 'hidden',
+                  border: '1px solid var(--line-2)',
+                  background: 'var(--panel-2)',
                 }}
               >
-                <Text as="div" size="sm" family="mono" color="secondary" weight="semibold" style={{ marginBottom: 2 }}>
-                  {sliceArcs[hoverIdx].slice.label}
-                </Text>
-                <div style={{ display: 'flex', justifyContent: 'space-between', gap: 10 }}>
-                  <Text as="span" size="sm" family="mono" color="secondary">count</Text>
-                  <Text as="span" size="sm" family="mono" tabularNums>{sliceArcs[hoverIdx].slice.value}</Text>
-                </div>
-                <div style={{ display: 'flex', justifyContent: 'space-between', gap: 10 }}>
-                  <Text as="span" size="sm" family="mono" color="secondary">share</Text>
-                  <Text as="span" size="sm" family="mono" weight="semibold" tabularNums>
-                    {sliceArcs[hoverIdx].slice.percentage.toFixed(1)}%
-                  </Text>
-                </div>
+                {modelSegments.map((seg, i) => (
+                  <div
+                    key={seg.fullLabel}
+                    title={`${seg.fullLabel}: ${seg.count} (${seg.pct.toFixed(1)}%)`}
+                    onPointerEnter={() => setHoverModel(i)}
+                    style={{
+                      width: `${seg.pct}%`,
+                      background: seg.color,
+                      opacity: hoverModel === null || hoverModel === i ? 1 : 0.4,
+                      transition: 'opacity 120ms ease-out, width 0.5s ease-out',
+                      cursor: 'default',
+                    }}
+                  />
+                ))}
               </div>
-            )}
-          </div>
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '2px 14px' }}>
+                {modelSegments.map((seg, i) => (
+                  <div
+                    key={`${seg.fullLabel}-legend`}
+                    onPointerEnter={() => setHoverModel(i)}
+                    onPointerLeave={() => setHoverModel(null)}
+                    title={seg.fullLabel}
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: 6,
+                      minWidth: 0,
+                      opacity: hoverModel === null || hoverModel === i ? 1 : 0.45,
+                      transition: 'opacity 120ms ease-out',
+                      cursor: 'default',
+                    }}
+                  >
+                    <span
+                      aria-hidden
+                      style={{ width: 9, height: 9, borderRadius: 2, background: seg.color, flex: '0 0 auto' }}
+                    />
+                    <Text as="span" size="sm" family="mono" color="primary" truncate style={{ maxWidth: 150 }}>
+                      {seg.label}
+                    </Text>
+                    <Text as="span" size="sm" family="mono" color="secondary" tabularNums>
+                      {seg.pct.toFixed(0)}%
+                    </Text>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Task-type breakdown — labelled mini-bars */}
+          {taskSegments.length > 0 && (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+              <Text as="span" size="xs" family="mono" color="tertiary" transform="uppercase">
+                Task Types
+              </Text>
+              <div onPointerLeave={() => setHoverTask(null)} style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
+                {taskSegments.map((seg) => (
+                  <BreakdownRow
+                    key={seg.fullLabel}
+                    seg={seg}
+                    dimmed={hoverTask !== null && hoverTask !== seg.fullLabel}
+                    onHover={() => setHoverTask(seg.fullLabel)}
+                  />
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Local vs escalated ratio bar */}
+          {showQualityGates && passed != null && gateTotal != null && gateTotal > 0 && (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
+                <Text as="span" size="xs" family="mono" color="tertiary" transform="uppercase">
+                  Local vs Escalated
+                </Text>
+                <Text as="span" size="xs" family="mono" color="secondary" tabularNums>
+                  {passed} local{failed != null ? ` · ${failed} escalated` : ''}
+                </Text>
+              </div>
+              <div
+                style={{
+                  display: 'flex',
+                  height: 10,
+                  borderRadius: 4,
+                  overflow: 'hidden',
+                  border: '1px solid var(--line-2)',
+                  background: 'var(--panel-2)',
+                }}
+              >
+                <div
+                  title={`${passed} handled locally`}
+                  style={{
+                    width: `${(passed / gateTotal) * 100}%`,
+                    background: 'var(--status-ok)',
+                    transition: 'width 0.5s ease-out',
+                  }}
+                />
+                {failed != null && failed > 0 && (
+                  <div
+                    title={`${failed} escalated to cloud`}
+                    style={{
+                      width: `${(failed / gateTotal) * 100}%`,
+                      background: 'var(--status-bad)',
+                      transition: 'width 0.5s ease-out',
+                    }}
+                  />
+                )}
+              </div>
+            </div>
+          )}
         </div>
       )}
     </ComponentWrapper>

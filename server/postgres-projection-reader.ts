@@ -55,16 +55,15 @@ export class PostgresProjectionReader {
               id,
               correlation_id,
               session_id,
-              tool_use_id,
-              hook_name,
               task_type,
               delegated_to,
               model_name,
               quality_gate_passed,
               quality_gate_detail,
               latency_ms,
-              input_redaction_policy,
-              contract_version,
+              tokens_input,
+              tokens_output,
+              tokens_to_compliance,
               created_at
             FROM delegation_events
             ORDER BY created_at DESC
@@ -86,11 +85,13 @@ export class PostgresProjectionReader {
           `);
           const byTaskTypeRes = await client.query(`
             SELECT task_type AS "taskType", COUNT(*) AS count
-            FROM delegation_events GROUP BY task_type ORDER BY count DESC
+            FROM delegation_events
+            GROUP BY task_type ORDER BY count DESC
           `);
           const byModelRes = await client.query(`
             SELECT delegated_to AS model, COUNT(*) AS count
-            FROM delegation_events GROUP BY delegated_to ORDER BY count DESC
+            FROM delegation_events
+            GROUP BY delegated_to ORDER BY count DESC
           `);
           const summary = summaryRes.rows[0] as Row;
           const total = Number(summary?.total_events ?? 0);
@@ -450,9 +451,21 @@ export class PostgresProjectionReader {
     const sessions = this.mergeDelegationSessions(savingsRows, eventRows);
     sessions.sort((a, b) => String(b.created_at ?? '').localeCompare(String(a.created_at ?? '')));
 
+    const numericFields = [
+      'local_cost_usd', 'cloud_cost_usd', 'savings_usd',
+      'prompt_tokens', 'completion_tokens', 'tokens_to_compliance', 'latency_ms',
+    ];
+    const coercedSessions = sessions.map((row) => {
+      const coerced: Row = { ...row };
+      for (const field of numericFields) {
+        if (coerced[field] != null) coerced[field] = Number(coerced[field]);
+      }
+      return coerced;
+    });
+
     const sum = (key: string): number =>
-      sessions.reduce((total, row) => total + Number(row[key] ?? 0), 0);
-    const latest = sessions[0] ?? {};
+      coercedSessions.reduce((total, row) => total + Number(row[key] ?? 0), 0);
+    const latest = coercedSessions[0] ?? {};
 
     return [{
       cumulative_savings_usd: sum('savings_usd'),
@@ -460,8 +473,8 @@ export class PostgresProjectionReader {
       cumulative_cloud_cost_usd: sum('cloud_cost_usd'),
       baseline_model: (latest.baseline_model as string | undefined) ?? 'claude-opus-4.1',
       pricing_manifest_version: (latest.pricing_manifest_version as string | undefined) ?? 'runtime-delegation-events',
-      session_count: sessions.length,
-      sessions: sessions.slice(0, 500),
+      session_count: coercedSessions.length,
+      sessions: coercedSessions.slice(0, 500),
       captured_at: new Date().toISOString(),
       provisioned: true,
     }];

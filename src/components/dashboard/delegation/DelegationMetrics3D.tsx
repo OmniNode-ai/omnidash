@@ -6,7 +6,7 @@ import { Text } from '@/components/ui/typography';
 import { DoughnutChart, type DoughnutSlice } from './DoughnutChart';
 import { useDelegationRunContextOptional } from '@/components/dashboard/delegation-control-plane/DelegationRunContext';
 
-const DOUGHNUT_PANEL_MAX_WIDTH = 420;
+const DOUGHNUT_PANEL_MAX_WIDTH = 240;
 const MODEL_LABEL_MAX_WIDTH = 220;
 
 export interface DelegationSummary {
@@ -112,7 +112,7 @@ export default function DelegationMetrics({ config }: { config: Record<string, u
               overflow: 'hidden',
             }}
           >
-            <DoughnutChart slices={slices} height={200} />
+            <DoughnutChart slices={slices} height={140} />
             {data.byModel.length > 0 && (
               <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px 12px', justifyContent: 'center', paddingTop: 4, borderTop: '1px solid var(--line-2)' }}>
                 {data.byModel.map((m) => (

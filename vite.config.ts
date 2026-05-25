@@ -155,9 +155,14 @@ export default defineConfig(({ mode }) => {
   }
 
   if (env.VITE_PROJECTION_API_URL) {
-    // Routes /api/delegation/* → projection API backend.
-    // Used by src/services/delegation-api.ts in dev when the projection API
-    // is running. VITE_PROJECTION_API_URL holds the base URL of the API server.
+    // Routes /projection/* → projection API backend (HttpSnapshotSource).
+    // Routes /api/delegation/* → projection API backend (delegation-api.ts).
+    // VITE_PROJECTION_API_URL holds the base URL of the API server.
+    proxyMap['/projection'] = {
+      target: env.VITE_PROJECTION_API_URL,
+      changeOrigin: true,
+      rewrite: (p) => p,
+    };
     proxyMap['/api/delegation'] = {
       target: env.VITE_PROJECTION_API_URL,
       changeOrigin: true,
