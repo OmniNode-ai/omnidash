@@ -49,7 +49,8 @@ describe('Proof of Life — Part 2', () => {
     // OMN-11260: control-plane added.
     // OMN-11477: evidence-pipeline-flow added.
     // OMN-11623: delegation-control-plane added.
-    expect(all.length).toBe(28);
+    // OMN-12135: trace-explorer added.
+    expect(all.length).toBe(29);
     expect(all.map((c) => c.name).sort()).toEqual([
       'ab-compare',
       'baselines-roi-card',
@@ -79,6 +80,7 @@ describe('Proof of Life — Part 2', () => {
       'routing-decision-table',
       'session-timeline',
       'token-usage',
+      'trace-explorer',
     ]);
   });
 

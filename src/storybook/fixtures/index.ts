@@ -57,3 +57,6 @@ export type { BuildMcpToolRowsOptions } from './mcp-tools';
 
 export { buildPipelineEvents } from './control-plane';
 export type { BuildPipelineEventsOptions } from './control-plane';
+
+export { buildTraceGroups } from './trace-explorer';
+export type { BuildTraceGroupsOptions } from './trace-explorer';
