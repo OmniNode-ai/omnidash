@@ -127,6 +127,11 @@ export const TOPICS = {
    * Columns: model_id, pack_id, factors_present, quality_gate_passed, tokens_used.
    */
   contextExperimentScores: 'onex.snapshot.projection.context.experiment-scores.v1',
+  /**
+   * Swarm runs projection — aggregate swarm_runs rows from node_projection_swarm.
+   * Backed by swarm_runs table in omnidash_analytics (OMN-12072).
+   */
+  swarmRuns: 'onex.snapshot.projection.swarm.runs.v1',
 } as const;
 
 export type TopicSymbol = (typeof TOPICS)[keyof typeof TOPICS];
