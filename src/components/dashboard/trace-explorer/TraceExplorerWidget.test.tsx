@@ -81,14 +81,18 @@ describe('TraceExplorerWidget', () => {
     expect(screen.getByText(/corr-alpha/)).toBeInTheDocument();
   });
 
-  it('shows prompt to select a trace when none selected', async () => {
+  it('expands the selected trace inline', async () => {
     mockFetchWithItems([makeTrace()]);
     render(
       <DataSourceTestProvider client={qc}>
         <TraceExplorerWidget />
       </DataSourceTestProvider>,
     );
-    await screen.findAllByTestId('trace-card');
-    expect(screen.getByText('Select a trace to view its timeline')).toBeInTheDocument();
+    const cards = await screen.findAllByTestId('trace-card');
+    expect(screen.queryByText('No events for this trace')).not.toBeInTheDocument();
+
+    fireEvent.click(cards[0]);
+
+    expect(await screen.findByText('No events for this trace')).toBeInTheDocument();
   });
 });

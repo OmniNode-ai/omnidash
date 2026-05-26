@@ -105,7 +105,7 @@ export type { ConversationSlice };
 import type { ConfigSlice } from './configSlice';
 export type { ConfigSlice };
 
-export type AppPage = 'dashboard' | 'feature-flags';
+export type AppPage = 'dashboard' | 'feature-flags' | 'eval';
 
 export interface UISlice {
   /** True when the left dashboard sidebar is collapsed to a narrow rail. */
