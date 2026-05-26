@@ -127,6 +127,12 @@ export const TOPICS = {
    * Columns: model_id, pack_id, factors_present, quality_gate_passed, tokens_used.
    */
   contextExperimentScores: 'onex.snapshot.projection.context.experiment-scores.v1',
+  /** Sandbox policy decisions — real-time allow/deny stream (OMN-6877). */
+  sandboxDecisions: 'onex.snapshot.projection.sandbox.decisions.v1',
+  /** Voice session events — audio timeline and transcript turns (OMN-6877). */
+  voiceSessions: 'onex.snapshot.projection.voice.sessions.v1',
+  /** Session replay snapshots — state reconstruction checkpoints (OMN-6877). */
+  sessionReplay: 'onex.snapshot.projection.session.replay.v1',
 } as const;
 
 export type TopicSymbol = (typeof TOPICS)[keyof typeof TOPICS];
