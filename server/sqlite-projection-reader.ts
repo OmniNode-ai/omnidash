@@ -2,6 +2,11 @@ import Database from 'better-sqlite3';
 import { homedir } from 'node:os';
 import { join } from 'node:path';
 import { existsSync } from 'node:fs';
+import {
+  timestampValue,
+  mergeDelegationSessions as sharedMergeDelegationSessions,
+  buildCostSavingsOverviewResult,
+} from './projection-reader-shared.js';
 
 // Default DB path mirrors the Python adapter in omniclaude/delegation/sqlite_adapter.py
 const DEFAULT_DB_PATH = join(homedir(), '.omninode', 'delegation', 'delegation.sqlite');
@@ -486,49 +491,19 @@ export class SqliteProjectionReader {
     `;
   }
 
-  private sessionKey(row: Row, index: number, source: 'sqlite-savings' | 'sqlite-events'): string {
+  private sessionKey(row: Row, index: number, kind: 'savings' | 'events'): string {
     const key = String(row.session_id ?? '').trim();
-    return key || `${source}-row-${index}-${String(row.created_at ?? '')}-${String(row.model_name ?? '')}`;
+    return key || `sqlite-${kind}-row-${index}-${String(row.created_at ?? '')}-${String(row.model_name ?? '')}`;
   }
 
   private mergeDelegationSessions(savingsRows: Row[], eventRows: Row[]): Row[] {
-    const merged = new Map<string, Row>();
-    savingsRows.forEach((row, index) => {
-      merged.set(this.sessionKey(row, index, 'sqlite-savings'), row);
-    });
-
-    eventRows.forEach((eventRow, index) => {
-      const key = this.sessionKey(eventRow, index, 'sqlite-events');
-      const existing = merged.get(key);
-      if (!existing) {
-        merged.set(key, eventRow);
-        return;
-      }
-
-      merged.set(key, {
-        ...existing,
-        prompt_tokens: eventRow.prompt_tokens ?? existing.prompt_tokens,
-        completion_tokens: eventRow.completion_tokens ?? existing.completion_tokens,
-        tokens_to_compliance: eventRow.tokens_to_compliance ?? existing.tokens_to_compliance,
-        latency_ms: eventRow.latency_ms ?? existing.latency_ms,
-        prompt_text: eventRow.prompt_text ?? existing.prompt_text,
-        response_text: eventRow.response_text ?? existing.response_text,
-        created_at: this.newerCreatedAt(existing.created_at, eventRow.created_at),
-      });
-    });
-
-    return [...merged.values()];
-  }
-
-  private newerCreatedAt(left: unknown, right: unknown): unknown {
-    return this.timestampValue(right) > this.timestampValue(left) ? right : left;
+    return sharedMergeDelegationSessions(savingsRows, eventRows, (row, index, kind) =>
+      this.sessionKey(row, index, kind),
+    );
   }
 
   private timestampValue(value: unknown): number {
-    const numeric = Number(value ?? 0);
-    if (!Number.isNaN(numeric)) return numeric;
-    const parsed = Date.parse(String(value));
-    return Number.isNaN(parsed) ? 0 : parsed;
+    return timestampValue(value);
   }
 
   private readDelegationQualityGateProjection(db: Database.Database): Row {
@@ -945,90 +920,10 @@ export class SqliteProjectionReader {
   private readCostSavingsOverviewProjection(db: Database.Database): Row {
     const delegationSavings = this.readDelegationSavingsProjection(db);
     const sessions = (delegationSavings.sessions as Row[] | undefined) ?? [];
-    const grouped = new Map<string, {
-      model_id: string;
-      display_name: string;
-      execution_mode: string;
-      task_count: number;
-      tokens_total: number;
-      cost_usd: number;
-      baseline_cost_usd: number;
-      savings_usd: number;
-      evidence_ref: string | null;
-    }>();
-
     const sessionTokens = (session: Row): number =>
       Number(session.prompt_tokens ?? 0) + Number(session.completion_tokens ?? 0);
-    const tokenBackedSessions = sessions.filter((session) => sessionTokens(session) > 0);
-    const omittedTelemetryRows = sessions.length - tokenBackedSessions.length;
-
-    for (const session of tokenBackedSessions) {
-      const displayName = String(session.model_name ?? session.task_type ?? 'delegated-runtime');
-      const modelId = displayName.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') || 'delegated-runtime';
-      const tokens = sessionTokens(session);
-      const baselineCandidate = Number(session.cloud_cost_usd ?? 0);
-      const measuredSavings = Number(session.savings_usd ?? 0);
-      const savings = Math.max(measuredSavings, baselineCandidate);
-      const baseline = Math.max(baselineCandidate, savings);
-      const existing = grouped.get(modelId) ?? {
-        model_id: modelId,
-        display_name: displayName,
-        execution_mode: 'delegated',
-        task_count: 0,
-        tokens_total: 0,
-        cost_usd: 0,
-        baseline_cost_usd: 0,
-        savings_usd: 0,
-        evidence_ref: null,
-      };
-      existing.task_count += 1;
-      existing.tokens_total += tokens;
-      existing.cost_usd += 0;
-      existing.baseline_cost_usd += baseline;
-      existing.savings_usd += savings;
-      existing.evidence_ref = existing.evidence_ref ?? String(session.session_id ?? '');
-      grouped.set(modelId, existing);
-    }
-
-    const rows = [...grouped.values()].map((row) => ({
-      ...row,
-      cost_usd: Number(row.cost_usd.toFixed(6)),
-      baseline_cost_usd: Number(row.baseline_cost_usd.toFixed(6)),
-      savings_usd: Number(row.savings_usd.toFixed(6)),
-      savings_pct: row.baseline_cost_usd > 0
-        ? Number((row.savings_usd / row.baseline_cost_usd).toFixed(6))
-        : 0,
-      runtime_address: null,
-      evidence_ref: row.evidence_ref || null,
-    })).sort((a, b) => b.savings_usd - a.savings_usd);
-
-    const totalCost = rows.reduce((sum, row) => sum + row.cost_usd, 0);
-    const totalBaseline = rows.reduce((sum, row) => sum + row.baseline_cost_usd, 0);
-    const totalSavings = rows.reduce((sum, row) => sum + row.savings_usd, 0);
-    const tokensTotal = rows.reduce((sum, row) => sum + row.tokens_total, 0);
-    const complianceTokensTotal = tokenBackedSessions.reduce(
-      (sum, row) => row.tokens_to_compliance != null
-        ? sum + Number(row.tokens_to_compliance)
-        : sum,
-      0,
-    );
-    const warnings = omittedTelemetryRows > 0
-      ? [`Omitted ${omittedTelemetryRows} delegation row${omittedTelemetryRows === 1 ? '' : 's'} without token telemetry.`]
-      : [];
-
-    return {
-      window: '24h',
-      total_cost_usd: Number(totalCost.toFixed(6)),
-      total_baseline_cost_usd: Number(totalBaseline.toFixed(6)),
-      total_savings_usd: Number(totalSavings.toFixed(6)),
-      savings_rate: totalBaseline > 0 ? Number((totalSavings / totalBaseline).toFixed(6)) : 0,
-      tokens_total: tokensTotal,
-      tokens_to_compliance: complianceTokensTotal > 0 ? complianceTokensTotal : undefined,
-      local_token_pct: tokensTotal > 0 ? 1 : 0,
-      captured_at: new Date().toISOString(),
-      rows,
-      warnings,
-      provisioned: tokenBackedSessions.length > 0,
-    };
+    const measuredSessions = sessions.filter((session) => sessionTokens(session) > 0);
+    const omittedTelemetryRows = sessions.length - measuredSessions.length;
+    return buildCostSavingsOverviewResult(sessions, measuredSessions, omittedTelemetryRows);
   }
 }
