@@ -15,7 +15,7 @@
 // stats panel instead of per-bucket stats. The cinematic camera swoop is
 // retained but adapted — it pivots toward the focused ribbon's depth row
 // instead of zooming onto a single column.
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import * as THREE from 'three';
 import { ComponentWrapper } from '../ComponentWrapper';
 import { useProjectionQuery } from '@/hooks/useProjectionQuery';
@@ -434,12 +434,189 @@ function disposeRibbons(group: THREE.Group) {
   });
 }
 
-// ---------- ThreeCanvas ----------
+// ---------- ThreeCanvas helpers ----------
 
 interface AxisProjection {
   bucketLabels: Array<{ date: string; time: string; x: number; y: number }>;
   modelLabels: Array<{ text: string; color: string; x: number; y: number }>;
 }
+
+interface TickRefs {
+  cameraXRef: React.MutableRefObject<number>;
+  pitchRef: React.MutableRefObject<number>;
+  ribbonsRef: React.MutableRefObject<RibbonHandle[]>;
+  gridMaterialRef: React.MutableRefObject<THREE.LineBasicMaterial | null>;
+  datasetRef: React.MutableRefObject<GridDataset | null>;
+  disabledModelsRef: React.MutableRefObject<Set<string>>;
+  isolatedModelRef: React.MutableRefObject<string | null>;
+  timeZoneRef: React.MutableRefObject<string>;
+  themeRef: React.MutableRefObject<ThemeConfig>;
+  targetRibbonRef: React.MutableRefObject<RibbonHandle | null>;
+  activeRibbonRef: React.MutableRefObject<RibbonHandle | null>;
+  progressRef: React.MutableRefObject<number>;
+  prevTimeRef: React.MutableRefObject<number>;
+  onAxisProjectionRef: React.MutableRefObject<(p: AxisProjection) => void>;
+}
+
+function advanceFocusProgress(refs: TickRefs, dt: number): number {
+  const target = refs.targetRibbonRef.current;
+  const active = refs.activeRibbonRef.current;
+  let progress = refs.progressRef.current;
+  const step = dt / FOCUS_DURATION_MS;
+
+  if (target !== null && active === target) {
+    progress = Math.min(1, progress + step);
+  } else if (target === null && active !== null) {
+    progress = Math.max(0, progress - step);
+    if (progress === 0) refs.activeRibbonRef.current = null;
+  } else if (target !== null && active !== target) {
+    progress = Math.max(0, progress - step);
+    if (progress === 0) refs.activeRibbonRef.current = target;
+  } else if (target !== null && active === null) {
+    refs.activeRibbonRef.current = target;
+  }
+  refs.progressRef.current = progress;
+  return progress;
+}
+
+function applyFocusedOpacities(
+  refs: TickRefs,
+  currentActive: RibbonHandle,
+  eased: number,
+): void {
+  const dimTarget = FOCUS_DIM_OPACITY;
+  const focusTarget = FOCUS_RIBBON_OPACITY;
+  for (const ribbon of refs.ribbonsRef.current) {
+    const disabled = refs.disabledModelsRef.current.has(ribbon.modelName);
+    const isolated = refs.isolatedModelRef.current !== null
+      && ribbon.modelName !== refs.isolatedModelRef.current && !disabled;
+    let baseRibbon: number, baseEdge: number;
+    if (disabled) {
+      baseRibbon = 0.03; baseEdge = 0.08;
+    } else if (isolated) {
+      baseRibbon = refs.themeRef.current.dimRibbonOpacity;
+      baseEdge = refs.themeRef.current.dimEdgeOpacity;
+    } else {
+      baseRibbon = refs.themeRef.current.ribbonOpacity;
+      baseEdge = refs.themeRef.current.edgeOpacity;
+    }
+    if (ribbon === currentActive) {
+      ribbon.ribbonMat.opacity = THREE.MathUtils.lerp(baseRibbon, focusTarget, eased);
+      ribbon.edgeMat.opacity = THREE.MathUtils.lerp(baseEdge, 1, eased);
+    } else {
+      ribbon.ribbonMat.opacity = THREE.MathUtils.lerp(baseRibbon, dimTarget, eased);
+      ribbon.edgeMat.opacity = THREE.MathUtils.lerp(baseEdge, dimTarget * 1.5, eased);
+    }
+  }
+  if (refs.gridMaterialRef.current) {
+    refs.gridMaterialRef.current.opacity = THREE.MathUtils.lerp(
+      refs.themeRef.current.gridOpacity,
+      refs.themeRef.current.gridOpacity * 0.35,
+      eased,
+    );
+  }
+}
+
+function applyIdleOpacities(
+  refs: TickRefs,
+  raycaster: THREE.Raycaster,
+  pointer: THREE.Vector2,
+  camera: THREE.PerspectiveCamera,
+  dragging: boolean,
+  pointerActive: boolean,
+  domElement: HTMLCanvasElement,
+  tmpDimColor: THREE.Color,
+  HOVER_WHITE: THREE.Color,
+): void {
+  let hoveredRibbon: RibbonHandle | null = null;
+  if (pointerActive && !dragging && refs.ribbonsRef.current.length > 0) {
+    raycaster.setFromCamera(pointer, camera);
+    const testables: THREE.Object3D[] = [];
+    for (const ribbon of refs.ribbonsRef.current) {
+      if (refs.disabledModelsRef.current.has(ribbon.modelName)) continue;
+      testables.push(ribbon.mesh);
+    }
+    const hits = raycaster.intersectObjects(testables, false);
+    if (hits.length > 0) {
+      const hit = hits[0].object;
+      hoveredRibbon = refs.ribbonsRef.current.find((r) => r.mesh === hit) ?? null;
+    }
+  }
+  domElement.style.cursor = hoveredRibbon ? 'pointer' : 'default';
+
+  tmpDimColor.set(refs.themeRef.current.isolatedDimColor);
+  for (const ribbon of refs.ribbonsRef.current) {
+    const disabled = refs.disabledModelsRef.current.has(ribbon.modelName);
+    const isolated = refs.isolatedModelRef.current !== null
+      && ribbon.modelName !== refs.isolatedModelRef.current && !disabled;
+    if (ribbon === hoveredRibbon && !disabled) {
+      ribbon.ribbonMat.opacity = Math.min(1, refs.themeRef.current.ribbonOpacity + 0.3);
+      ribbon.edgeMat.opacity = 1;
+      ribbon.ribbonMat.color.copy(ribbon.originalColor).lerp(HOVER_WHITE, 0.35);
+      ribbon.edgeMat.color.copy(ribbon.originalColor).lerp(HOVER_WHITE, 0.35);
+    } else if (disabled) {
+      ribbon.ribbonMat.opacity = 0.03;
+      ribbon.edgeMat.opacity = 0.08;
+      ribbon.ribbonMat.color.copy(ribbon.originalColor);
+      ribbon.edgeMat.color.copy(ribbon.originalColor);
+    } else if (isolated) {
+      ribbon.ribbonMat.opacity = refs.themeRef.current.dimRibbonOpacity;
+      ribbon.edgeMat.opacity = refs.themeRef.current.dimEdgeOpacity;
+      ribbon.ribbonMat.color.copy(tmpDimColor);
+      ribbon.edgeMat.color.copy(tmpDimColor);
+    } else {
+      ribbon.ribbonMat.opacity = refs.themeRef.current.ribbonOpacity;
+      ribbon.edgeMat.opacity = refs.themeRef.current.edgeOpacity;
+      ribbon.ribbonMat.color.copy(ribbon.originalColor);
+      ribbon.edgeMat.color.copy(ribbon.originalColor);
+    }
+  }
+  if (refs.gridMaterialRef.current) {
+    refs.gridMaterialRef.current.opacity = refs.themeRef.current.gridOpacity;
+  }
+}
+
+function projectAxisLabels(
+  refs: TickRefs,
+  camera: THREE.PerspectiveCamera,
+  domElement: HTMLCanvasElement,
+): void {
+  const ds = refs.datasetRef.current;
+  if (!ds) return;
+  const rect = domElement.getBoundingClientRect();
+  const toScreen = (w: THREE.Vector3) => {
+    const v = w.clone().project(camera);
+    return { x: ((v.x + 1) / 2) * rect.width, y: ((1 - v.y) / 2) * rect.height };
+  };
+  const spanZ = ds.models.length * CELL_SIZE;
+  const spanX = ds.buckets.length * CELL_SIZE;
+  const bucketLabels = ds.buckets.map((bucket, i) => {
+    const x = layoutX(i, ds.buckets.length);
+    const z = spanZ / 2 + 0.45;
+    const s = toScreen(new THREE.Vector3(x, 0, z));
+    const d = new Date(bucket);
+    const c = zonedComponents(d, refs.timeZoneRef.current);
+    const date = `${c.month}/${c.day}`;
+    const time = `${c.hour}:${c.minute}`;
+    let showDate = i === 0;
+    if (!showDate) {
+      const prev = zonedComponents(new Date(ds.buckets[i - 1]), refs.timeZoneRef.current);
+      showDate = prev.day !== c.day || prev.month !== c.month || prev.year !== c.year;
+    }
+    return { date: showDate ? date : '', time, x: s.x, y: s.y };
+  });
+  const activeTheme = refs.themeRef.current;
+  const modelLabels = ds.models.map((model, i) => {
+    const color = hexForModel(activeTheme.modelPalette, i);
+    const x = -spanX / 2 - 0.3;
+    const z = layoutZ(i, ds.models.length);
+    const s = toScreen(new THREE.Vector3(x, 0.1, z));
+    return { text: model, color, x: s.x, y: s.y };
+  });
+  refs.onAxisProjectionRef.current({ bucketLabels, modelLabels });
+}
+
+// ---------- ThreeCanvas ----------
 
 interface ThreeCanvasProps {
   dataset: GridDataset | null;
@@ -520,6 +697,22 @@ function ThreeCanvas({
     scene.add(floor);
 
     scene.add(new THREE.AmbientLight(0xffffff, 0.3));
+
+    const tmpSize = new THREE.Vector2();
+    const applyViewOffset = () => {
+      renderer.getSize(tmpSize);
+      const vw = tmpSize.x;
+      const vh = tmpSize.y;
+      if (vw < 2 || vh < 2) return;
+      const off: number = Y_OFFSET_PX;
+      if (off === 0) {
+        camera.clearViewOffset();
+      } else if (off > 0) {
+        camera.setViewOffset(vw, vh + off, 0, off, vw, vh);
+      } else {
+        camera.setViewOffset(vw, vh - off, 0, 0, vw, vh);
+      }
+    };
 
     const applySize = (w: number, h: number) => {
       if (w < 2 || h < 2) return;
@@ -612,7 +805,6 @@ function ThreeCanvas({
       if (!tapTrack.moved && held <= TAP_HOLD_MAX_MS) {
         const hit = pickRibbonAtPointer();
         if (e.shiftKey) {
-          // Shift-click: toggle model isolation (matches Bars).
           if (hit) {
             const current = isolatedModelRef.current;
             onIsolateRef.current(current === hit.modelName ? null : hit.modelName);
@@ -620,8 +812,6 @@ function ThreeCanvas({
             onIsolateRef.current(null);
           }
         } else {
-          // Plain click on a ribbon: focus its model. Click on empty:
-          // clear focus (mirrors the Bars escape gesture).
           onFocusRef.current(hit ? hit.modelName : null);
         }
       }
@@ -635,7 +825,6 @@ function ThreeCanvas({
 
     // --- Animation loop ---
     let rafId = 0;
-    const tmpSize = new THREE.Vector2();
     const defaultPos = new THREE.Vector3();
     const defaultLookAt = new THREE.Vector3();
     const focusPos = new THREE.Vector3();
@@ -643,22 +832,13 @@ function ThreeCanvas({
     const blendedPos = new THREE.Vector3();
     const blendedLookAt = new THREE.Vector3();
     const HOVER_WHITE = new THREE.Color(1, 1, 1);
-    const HOVER_TINT = 0.35;
     const tmpDimColor = new THREE.Color();
 
-    const applyViewOffset = () => {
-      renderer.getSize(tmpSize);
-      const vw = tmpSize.x;
-      const vh = tmpSize.y;
-      if (vw < 2 || vh < 2) return;
-      const off: number = Y_OFFSET_PX;
-      if (off === 0) {
-        camera.clearViewOffset();
-      } else if (off > 0) {
-        camera.setViewOffset(vw, vh + off, 0, off, vw, vh);
-      } else {
-        camera.setViewOffset(vw, vh - off, 0, 0, vw, vh);
-      }
+    const tickRefs: TickRefs = {
+      cameraXRef, pitchRef, ribbonsRef, gridMaterialRef, datasetRef,
+      disabledModelsRef, isolatedModelRef, timeZoneRef, themeRef,
+      targetRibbonRef, activeRibbonRef, progressRef, prevTimeRef,
+      onAxisProjectionRef,
     };
 
     const tick = () => {
@@ -666,39 +846,15 @@ function ThreeCanvas({
       const dt = Math.max(0, now - prevTimeRef.current);
       prevTimeRef.current = now;
 
-      // --- Advance focus progress ---
-      const target = targetRibbonRef.current;
-      const active = activeRibbonRef.current;
-      let progress = progressRef.current;
-      const step = dt / FOCUS_DURATION_MS;
-
-      if (target !== null && active === target) {
-        progress = Math.min(1, progress + step);
-      } else if (target === null && active !== null) {
-        progress = Math.max(0, progress - step);
-        if (progress === 0) activeRibbonRef.current = null;
-      } else if (target !== null && active !== target) {
-        progress = Math.max(0, progress - step);
-        if (progress === 0) activeRibbonRef.current = target;
-      } else if (target !== null && active === null) {
-        activeRibbonRef.current = target;
-      }
-      progressRef.current = progress;
+      const progress = advanceFocusProgress(tickRefs, dt);
       const eased = easeOutCubic(progress);
 
       // --- Compute default-view pose (strip scrubbing w/ pitch tilt) ---
       const sx = cameraXRef.current;
       defaultLookAt.set(sx, TARGET_Y, 0);
-      const dPos = cameraPositionFor(sx, pitchRef.current);
-      defaultPos.copy(dPos);
+      defaultPos.copy(cameraPositionFor(sx, pitchRef.current));
 
       // --- Compute focus pose ---
-      // For a focused ribbon, swing the camera toward that ribbon's
-      // depth row so it's seen broadside rather than edge-on. The
-      // target X is preserved (so the user keeps the time slice they
-      // were already viewing) but the look-at z and camera z shift to
-      // align with the ribbon. The vertical pose lifts slightly to
-      // give a 3/4 angle on the ribbon's surface.
       const currentActive = activeRibbonRef.current;
       if (currentActive) {
         focusLookAt.set(sx, MAX_BAR_HEIGHT * 0.35, currentActive.z);
@@ -719,134 +875,16 @@ function ThreeCanvas({
       camera.position.copy(blendedPos);
       camera.lookAt(blendedLookAt);
 
-      // --- Drive ribbon opacities from the focus animation ---
-      // Same logic shape as Bars, simplified for ribbons (ribbon mesh +
-      // edges only — no separate "top face").
       if (eased > 0 && currentActive) {
-        const dimTarget = FOCUS_DIM_OPACITY;
-        const focusTarget = FOCUS_RIBBON_OPACITY;
-        for (const ribbon of ribbonsRef.current) {
-          const disabled = disabledModelsRef.current.has(ribbon.modelName);
-          const isolated = isolatedModelRef.current !== null
-            && ribbon.modelName !== isolatedModelRef.current && !disabled;
-          let baseRibbon: number, baseEdge: number;
-          if (disabled) {
-            baseRibbon = 0.03; baseEdge = 0.08;
-          } else if (isolated) {
-            baseRibbon = themeRef.current.dimRibbonOpacity;
-            baseEdge = themeRef.current.dimEdgeOpacity;
-          } else {
-            baseRibbon = themeRef.current.ribbonOpacity;
-            baseEdge = themeRef.current.edgeOpacity;
-          }
-          if (ribbon === currentActive) {
-            ribbon.ribbonMat.opacity = THREE.MathUtils.lerp(baseRibbon, focusTarget, eased);
-            ribbon.edgeMat.opacity = THREE.MathUtils.lerp(baseEdge, 1, eased);
-          } else {
-            ribbon.ribbonMat.opacity = THREE.MathUtils.lerp(baseRibbon, dimTarget, eased);
-            ribbon.edgeMat.opacity = THREE.MathUtils.lerp(baseEdge, dimTarget * 1.5, eased);
-          }
-        }
-        if (gridMaterialRef.current) {
-          gridMaterialRef.current.opacity = THREE.MathUtils.lerp(
-            themeRef.current.gridOpacity,
-            themeRef.current.gridOpacity * 0.35,
-            eased,
-          );
-        }
+        applyFocusedOpacities(tickRefs, currentActive, eased);
       } else if (eased === 0) {
-        // Idle — restore base opacities + apply hover highlight.
-        let hoveredRibbon: RibbonHandle | null = null;
-        if (pointerActive && !dragging && ribbonsRef.current.length > 0) {
-          raycaster.setFromCamera(pointer, camera);
-          const testables: THREE.Object3D[] = [];
-          for (const ribbon of ribbonsRef.current) {
-            if (disabledModelsRef.current.has(ribbon.modelName)) continue;
-            testables.push(ribbon.mesh);
-          }
-          const hits = raycaster.intersectObjects(testables, false);
-          if (hits.length > 0) {
-            const hit = hits[0].object;
-            hoveredRibbon = ribbonsRef.current.find((r) => r.mesh === hit) ?? null;
-          }
-        }
-        // Cursor affordance on the canvas — pointer when over a ribbon.
-        renderer.domElement.style.cursor = hoveredRibbon ? 'pointer' : 'default';
-
-        tmpDimColor.set(themeRef.current.isolatedDimColor);
-        for (const ribbon of ribbonsRef.current) {
-          const disabled = disabledModelsRef.current.has(ribbon.modelName);
-          const isolated = isolatedModelRef.current !== null
-            && ribbon.modelName !== isolatedModelRef.current && !disabled;
-          if (ribbon === hoveredRibbon && !disabled) {
-            // Hover highlight — solid + tint toward white.
-            ribbon.ribbonMat.opacity = Math.min(1, themeRef.current.ribbonOpacity + 0.3);
-            ribbon.edgeMat.opacity = 1;
-            ribbon.ribbonMat.color.copy(ribbon.originalColor).lerp(HOVER_WHITE, HOVER_TINT);
-            ribbon.edgeMat.color.copy(ribbon.originalColor).lerp(HOVER_WHITE, HOVER_TINT);
-          } else if (disabled) {
-            ribbon.ribbonMat.opacity = 0.03;
-            ribbon.edgeMat.opacity = 0.08;
-            ribbon.ribbonMat.color.copy(ribbon.originalColor);
-            ribbon.edgeMat.color.copy(ribbon.originalColor);
-          } else if (isolated) {
-            ribbon.ribbonMat.opacity = themeRef.current.dimRibbonOpacity;
-            ribbon.edgeMat.opacity = themeRef.current.dimEdgeOpacity;
-            ribbon.ribbonMat.color.copy(tmpDimColor);
-            ribbon.edgeMat.color.copy(tmpDimColor);
-          } else {
-            ribbon.ribbonMat.opacity = themeRef.current.ribbonOpacity;
-            ribbon.edgeMat.opacity = themeRef.current.edgeOpacity;
-            ribbon.ribbonMat.color.copy(ribbon.originalColor);
-            ribbon.edgeMat.color.copy(ribbon.originalColor);
-          }
-        }
-        if (gridMaterialRef.current) {
-          gridMaterialRef.current.opacity = themeRef.current.gridOpacity;
-        }
+        applyIdleOpacities(
+          tickRefs, raycaster, pointer, camera, dragging, pointerActive,
+          renderer.domElement, tmpDimColor, HOVER_WHITE,
+        );
       }
 
-      // Project axis labels (world → screen) for the HTML overlay.
-      const ds = datasetRef.current;
-      if (ds) {
-        const rect = renderer.domElement.getBoundingClientRect();
-        const toScreen = (w: THREE.Vector3) => {
-          const v = w.clone().project(camera);
-          return { x: ((v.x + 1) / 2) * rect.width, y: ((1 - v.y) / 2) * rect.height };
-        };
-        // Ridge plot: ribbons spread along Z by model. Bucket labels go in
-        // front of the foremost row; model labels go at the left edge of
-        // each row, projected to screen via the row's own Z position.
-        const spanZ = ds.models.length * CELL_SIZE;
-        const spanX = ds.buckets.length * CELL_SIZE;
-        const bucketLabels = ds.buckets.map((bucket, i) => {
-          const x = layoutX(i, ds.buckets.length);
-          const z = spanZ / 2 + 0.45;
-          const s = toScreen(new THREE.Vector3(x, 0, z));
-          const d = new Date(bucket);
-          const c = zonedComponents(d, timeZoneRef.current);
-          const date = `${c.month}/${c.day}`;
-          const time = `${c.hour}:${c.minute}`;
-          // Print the date only on rollover.
-          let showDate = i === 0;
-          if (!showDate) {
-            const prev = zonedComponents(new Date(ds.buckets[i - 1]), timeZoneRef.current);
-            showDate = prev.day !== c.day
-              || prev.month !== c.month
-              || prev.year !== c.year;
-          }
-          return { date: showDate ? date : '', time, x: s.x, y: s.y };
-        });
-        const activeTheme = themeRef.current;
-        const modelLabels = ds.models.map((model, i) => {
-          const color = hexForModel(activeTheme.modelPalette, i);
-          const x = -spanX / 2 - 0.3;
-          const z = layoutZ(i, ds.models.length);
-          const s = toScreen(new THREE.Vector3(x, 0.1, z));
-          return { text: model, color, x: s.x, y: s.y };
-        });
-        onAxisProjectionRef.current({ bucketLabels, modelLabels });
-      }
+      projectAxisLabels(tickRefs, camera, renderer.domElement);
 
       renderer.render(scene, camera);
       rafId = requestAnimationFrame(tick);
