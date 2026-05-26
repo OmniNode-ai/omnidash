@@ -4,9 +4,11 @@ import { DashboardView } from './pages/DashboardView';
 import { FeatureFlagDashboard } from './pages/FeatureFlagDashboard';
 import { AgentOrchestrator } from './agent/AgentOrchestrator';
 import { useFrameStore } from './store/store';
+import { CommandPalette, useCommandPalette } from './components/dashboard/command-dispatch/CommandPalette';
 
 export function App() {
   const activePage = useFrameStore((s) => s.activePage);
+  const { isOpen, close } = useCommandPalette();
 
   return (
     <>
@@ -15,6 +17,7 @@ export function App() {
         {activePage === 'feature-flags' ? <FeatureFlagDashboard /> : <DashboardView />}
       </FrameLayout>
       <AgentOrchestrator />
+      {isOpen && <CommandPalette onClose={close} />}
     </>
   );
 }

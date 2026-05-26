@@ -3,6 +3,7 @@ import { KPI } from '@/components/primitives';
 import { fmtDate, fmtMs, fmtTokens, fmtUsd, shortId } from './format';
 import { HonestyStateBadge, deriveHonestyState } from './HonestyStateBadge';
 import { useDelegationRunContext } from './DelegationRunContext';
+import { DelegationTriggerPanel } from './DelegationTriggerPanel';
 
 export function DelegationRunHeader() {
   const { snapshot, selectedRun, isFixture } = useDelegationRunContext();
@@ -45,7 +46,7 @@ export function DelegationRunHeader() {
             Selected run {shortId(selectedRun?.correlationId)} - {selectedRun?.taskType ?? 'waiting for projection rows'}
           </Text>
         </div>
-        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 4 }}>
+        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 8 }}>
           <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
             {isDegraded && (
               <Text as="span" size="xs" color="warn">
@@ -56,6 +57,7 @@ export function DelegationRunHeader() {
               {dataSource}
             </Text>
           </div>
+          <DelegationTriggerPanel />
           <div style={{ textAlign: 'right' }}>
             <Text as="div" size="xs" color="tertiary">
               Latest projection

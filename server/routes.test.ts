@@ -398,3 +398,44 @@ describe('GET /api/settings/feature-flags', () => {
     expect(flag?.state).toBe('migration');
   });
 });
+
+// OMN-12133: projection query endpoints — /api/projections/log-entries and /api/projections/traces
+describe('GET /api/projections/log-entries', () => {
+  beforeEach(() => {
+    process.env.OMNIDASH_DATA_SOURCE = 'file';
+    delete process.env.OMNIDASH_ANALYTICS_DB_URL;
+  });
+
+  afterEach(() => {
+    delete process.env.OMNIDASH_DATA_SOURCE;
+    delete process.env.OMNIDASH_ANALYTICS_DB_URL;
+  });
+
+  it('returns 503 when postgres data source is not configured', async () => {
+    const routes = await loadRoutes();
+    const res = await request(buildApp(routes)).get('/api/projections/log-entries');
+
+    expect(res.status).toBe(503);
+    expect(res.body).toEqual({ error: 'postgres data source not configured' });
+  });
+});
+
+describe('GET /api/projections/traces', () => {
+  beforeEach(() => {
+    process.env.OMNIDASH_DATA_SOURCE = 'file';
+    delete process.env.OMNIDASH_ANALYTICS_DB_URL;
+  });
+
+  afterEach(() => {
+    delete process.env.OMNIDASH_DATA_SOURCE;
+    delete process.env.OMNIDASH_ANALYTICS_DB_URL;
+  });
+
+  it('returns 503 when postgres data source is not configured', async () => {
+    const routes = await loadRoutes();
+    const res = await request(buildApp(routes)).get('/api/projections/traces');
+
+    expect(res.status).toBe(503);
+    expect(res.body).toEqual({ error: 'postgres data source not configured' });
+  });
+});

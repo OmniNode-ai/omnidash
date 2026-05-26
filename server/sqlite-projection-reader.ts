@@ -3,11 +3,10 @@ import { homedir } from 'node:os';
 import { join } from 'node:path';
 import { existsSync } from 'node:fs';
 import {
-  type Row,
-  mergeDelegationSessions,
   timestampValue,
-  buildCostSavingsOverview,
-} from './projection-utils.js';
+  mergeDelegationSessions as sharedMergeDelegationSessions,
+  buildCostSavingsOverviewResult,
+} from './projection-reader-shared.js';
 
 // Default DB path mirrors the Python adapter in omniclaude/delegation/sqlite_adapter.py
 const DEFAULT_DB_PATH = join(homedir(), '.omninode', 'delegation', 'delegation.sqlite');
@@ -22,6 +21,8 @@ function expandHomedir(p: string): string {
 export interface SqliteProjectionReaderOptions {
   dbPath?: string;
 }
+
+type Row = Record<string, unknown>;
 
 /**
  * Reads delegation projection rows from the SQLite database written by the
@@ -455,7 +456,7 @@ export class SqliteProjectionReader {
     }
 
     return events
-      .sort((a, b) => timestampValue(b.timestamp) - timestampValue(a.timestamp))
+      .sort((a, b) => this.timestampValue(b.timestamp) - this.timestampValue(a.timestamp))
       .slice(0, 500);
   }
 
@@ -488,6 +489,21 @@ export class SqliteProjectionReader {
         OR COALESCE(${col('prompt_text', 'NULL')}, '') LIKE '%cost savings projection semantics%'
       )
     `;
+  }
+
+  private sessionKey(row: Row, index: number, kind: 'savings' | 'events'): string {
+    const key = String(row.session_id ?? '').trim();
+    return key || `sqlite-${kind}-row-${index}-${String(row.created_at ?? '')}-${String(row.model_name ?? '')}`;
+  }
+
+  private mergeDelegationSessions(savingsRows: Row[], eventRows: Row[]): Row[] {
+    return sharedMergeDelegationSessions(savingsRows, eventRows, (row, index, kind) =>
+      this.sessionKey(row, index, kind),
+    );
+  }
+
+  private timestampValue(value: unknown): number {
+    return timestampValue(value);
   }
 
   private readDelegationQualityGateProjection(db: Database.Database): Row {
@@ -881,8 +897,8 @@ export class SqliteProjectionReader {
       `).all() as Row[];
     }
 
-    const sessions = mergeDelegationSessions(savingsRows, eventRows, 'sqlite-savings', 'sqlite-events');
-    sessions.sort((a, b) => timestampValue(b.created_at) - timestampValue(a.created_at));
+    const sessions = this.mergeDelegationSessions(savingsRows, eventRows);
+    sessions.sort((a, b) => this.timestampValue(b.created_at) - this.timestampValue(a.created_at));
 
     const sum = (key: string): number =>
       sessions.reduce((total, row) => total + Number(row[key] ?? 0), 0);
@@ -904,6 +920,10 @@ export class SqliteProjectionReader {
   private readCostSavingsOverviewProjection(db: Database.Database): Row {
     const delegationSavings = this.readDelegationSavingsProjection(db);
     const sessions = (delegationSavings.sessions as Row[] | undefined) ?? [];
-    return buildCostSavingsOverview(sessions);
+    const sessionTokens = (session: Row): number =>
+      Number(session.prompt_tokens ?? 0) + Number(session.completion_tokens ?? 0);
+    const measuredSessions = sessions.filter((session) => sessionTokens(session) > 0);
+    const omittedTelemetryRows = sessions.length - measuredSessions.length;
+    return buildCostSavingsOverviewResult(measuredSessions, omittedTelemetryRows);
   }
 }

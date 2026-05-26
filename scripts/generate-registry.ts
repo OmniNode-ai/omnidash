@@ -1395,6 +1395,58 @@ const MVP_COMPONENTS: Record<string, ComponentManifest> = {
     },
     capabilities: { supports_compare: false, supports_export: false, supports_fullscreen: true, supports_time_range: false },
   },
+  'trace-explorer': {
+    name: 'trace-explorer',
+    displayName: 'Trace Explorer',
+    description:
+      'Two-panel event bus trace explorer: left panel lists correlation traces with running/error status; right panel shows a chronological timeline of log entries for the selected trace (OMN-12135).',
+    category: 'activity',
+    version: '1.0.0',
+    implementationKey: 'trace-explorer/TraceExplorerWidget',
+    projectionSchema: {
+      type: 'object',
+      required: ['correlation_id', 'nodes_involved', 'event_count', 'first_event_at', 'last_event_at', 'duration_ms', 'has_error', 'is_running', 'latest_message'],
+      description: 'Row shape from onex.snapshot.projection.traces.v1. Ordering authority: last_event_at DESC.',
+      properties: {
+        correlation_id: { type: 'string', description: 'Unique correlation identifier grouping all events in this trace.' },
+        nodes_involved: { type: 'array', items: { type: 'string' }, description: 'Node names that emitted events in this trace.' },
+        event_count: { type: 'number', description: 'Total log entries in this trace.' },
+        first_event_at: { type: 'string', format: 'date-time', description: 'Timestamp of the first event.' },
+        last_event_at: { type: 'string', format: 'date-time', description: 'Timestamp of the most recent event. Ordering authority: monotonic DESC.' },
+        duration_ms: { type: 'number', description: 'Elapsed time from first to last event in ms.' },
+        has_error: { type: 'boolean', description: 'True when any log entry in the trace has level ERROR.' },
+        is_running: { type: 'boolean', description: 'True when the trace has not yet received a terminal event.' },
+        latest_message: { type: 'string', description: 'Message from the most recent log entry.' },
+      },
+      'x-orderingAuthority': {
+        authority: 'monotonic_field',
+        fieldName: 'last_event_at',
+        direction: 'desc',
+        clockSemantics: 'UTC',
+      },
+    },
+    displayContract: {
+      description:
+        'Left panel: trace list sorted by last_event_at DESC with running (green pulse) and error (red) indicators, node count, event count, duration, latest message. ' +
+        'Right panel: chronological timeline of log entries for the selected trace; each row shows timestamp, node (NodePill), level (colour-coded), message; expandable metadata JSON.',
+      type: 'object',
+      properties: {
+        traceList: { type: 'string', const: 'sorted by last_event_at DESC' },
+        timeline: { type: 'string', const: 'sorted by timestamp ASC' },
+        levelColoring: { type: 'string', const: 'ERROR=red, WARNING=amber, DEBUG=dim, INFO=default' },
+      },
+    },
+    dataSources: [projectionSource(TOPICS.traceExplorer)],
+    events: { emits: [{ name: 'trace_selected', schema: { type: 'object', properties: { correlation_id: { type: 'string' } } } }], consumes: [] },
+    defaultSize: { w: 12, h: 8 },
+    minSize: { w: 8, h: 6 },
+    maxSize: { w: 12, h: 14 },
+    emptyState: {
+      message: 'No traces',
+      hint: 'Traces appear after log entries are written with correlation IDs via node_log_persistence_effect',
+    },
+    capabilities: { supports_compare: false, supports_export: false, supports_fullscreen: true, supports_time_range: false },
+  },
 };
 
 // Scan node_modules/@omninode/* for packages declaring dashboardComponents

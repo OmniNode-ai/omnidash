@@ -8,11 +8,13 @@ export type DelegationEvidenceTabId =
   | 'overview'
   | 'runtime-topology'
   | 'event-chain'
+  | 'correlation-trace'
   | 'projection'
   | 'cost-tokens'
   | 'quality'
   | 'artifacts'
-  | 'evidence-bundle';
+  | 'evidence-bundle'
+  | 'savings-proof';
 
 export interface DelegationControlPlaneConfig {
   defaultTab?: DelegationEvidenceTabId;

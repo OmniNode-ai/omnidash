@@ -3,6 +3,7 @@ import http from 'http';
 import { fileURLToPath } from 'node:url';
 import { WebSocketServer, WebSocket } from 'ws';
 import routes from './routes.js';
+import { connectProducer, disconnectProducer } from './kafka-producer.js';
 
 const PORT = parseInt(process.env.PORT ?? '3002', 10);
 
@@ -73,6 +74,16 @@ wss.on('connection', (ws: WebSocket) => {
 // a test or another module must not bind to a port. ESM equivalent of the
 // `require.main === module` idiom.
 if (process.argv[1] === fileURLToPath(import.meta.url)) {
+  connectProducer().catch((err) => {
+    console.warn('[omnidash server] Kafka producer connect failed (dispatch endpoint will return 503):', err);
+  });
+
+  const shutdown = () => {
+    disconnectProducer().finally(() => process.exit(0));
+  };
+  process.once('SIGTERM', shutdown);
+  process.once('SIGINT', shutdown);
+
   httpServer.listen(PORT, () => {
     console.log(`[omnidash server] Listening on port ${PORT}`);
   });

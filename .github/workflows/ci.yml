@@ -31,6 +31,9 @@ jobs:
       - name: Env-contamination gate
         run: bash scripts/check-no-env-contamination.sh
 
+      - name: Orphaned JS gate
+        run: bash scripts/check-no-orphaned-js.sh
+
       - name: TypeScript typecheck (frontend)
         run: npx tsc --noEmit
 

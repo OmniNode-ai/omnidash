@@ -1,9 +1,12 @@
 import { Router } from 'express';
 import { readFile, readdir } from 'node:fs/promises';
 import { resolve } from 'node:path';
+import { randomUUID } from 'node:crypto';
 import { SqliteProjectionReader } from './sqlite-projection-reader.js';
 import { PostgresProjectionReader } from './postgres-projection-reader.js';
 import { loadDataSourceConfig } from './data-source-contract.js';
+import { isProducerConnected, publishMessage } from './kafka-producer.js';
+import { COMMAND_TOPICS } from '../shared/types/command-topics.js';
 
 const router = Router();
 
@@ -80,6 +83,68 @@ async function readProjection(topic: string): Promise<unknown> {
   }
   return records;
 }
+
+// Correlation trace: returns all delegation_events rows for a given correlation_id.
+// Used by DelegationCorrelationTracePanel to render the full per-event chain.
+router.get('/api/delegation/correlation-trace/:correlationId', async (req, res) => {
+  const { correlationId } = req.params;
+  if (!pgReader) {
+    res.status(503).json({ error: 'postgres data source not configured' });
+    return;
+  }
+  try {
+    const rows = await pgReader.readCorrelationTrace(correlationId);
+    res.json({ correlation_id: correlationId, rows });
+  } catch (err) {
+    console.error('[routes] /api/delegation/correlation-trace/:correlationId error:', err);
+    res.status(500).json({ error: 'correlation trace read failed' });
+  }
+});
+
+// Delegation trigger: publish a delegation command to the ONEX runtime.
+// Forwards to OMNIDASH_RUNTIME_EFFECTS_URL when set; otherwise returns
+// a simulated accepted response so the UI can be tested without infra.
+router.post('/api/delegation/trigger', async (req, res) => {
+  const body = req.body as { prompt?: unknown; task_type?: unknown };
+  const prompt = typeof body.prompt === 'string' ? body.prompt.slice(0, 4096) : '';
+  const taskType = typeof body.task_type === 'string' ? body.task_type.slice(0, 128) : 'general';
+  if (!prompt) {
+    res.status(400).json({ error: 'prompt is required' });
+    return;
+  }
+
+  const correlationId = randomUUID();
+  const runtimeUrl = process.env.OMNIDASH_RUNTIME_EFFECTS_URL;
+
+  if (!runtimeUrl) {
+    // No runtime configured — return an accepted response so the UI works
+    // in dev/file mode. The correlation_id can be searched in the trace view
+    // once real events are materialized.
+    res.json({ correlation_id: correlationId, accepted: true, message: 'simulated (no OMNIDASH_RUNTIME_EFFECTS_URL set)' });
+    return;
+  }
+
+  try {
+    const upstream = await fetch(`${runtimeUrl}/v1/effects`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        topic: 'onex.cmd.omnimarket.delegate-skill.v1',
+        correlation_id: correlationId,
+        payload: { prompt, task_type: taskType, source: 'delegation-dashboard' },
+      }),
+    });
+    if (!upstream.ok) {
+      const text = await upstream.text().catch(() => '');
+      res.status(502).json({ error: `runtime returned ${upstream.status}`, detail: text });
+      return;
+    }
+    res.json({ correlation_id: correlationId, accepted: true });
+  } catch (err) {
+    console.error('[routes] /api/delegation/trigger error:', err);
+    res.status(503).json({ error: 'runtime unreachable', detail: String(err) });
+  }
+});
 
 // HTTP adapter for src/data-source/http-snapshot-source.ts. Dashboard-v2 reads
 // projection-topic snapshots; it must not query Postgres directly.
@@ -184,6 +249,97 @@ router.get('/api/settings/feature-flags', (_req, res) => {
     flags: [...omnidashFlags, ...omniclaudeFlags],
     fetchedAt: new Date().toISOString(),
   });
+});
+
+// OMN-12133: projection query endpoints for log entries and traces.
+// Both require postgres mode with OMNIDASH_ANALYTICS_DB_URL set.
+
+router.get('/api/projections/log-entries', async (req, res) => {
+  if (!pgReader) {
+    res.status(503).json({ error: 'postgres data source not configured' });
+    return;
+  }
+  try {
+    const limit = req.query.limit !== undefined ? parseInt(String(req.query.limit), 10) : 100;
+    const entries = await pgReader.queryLogEntries({
+      correlation_id: req.query.correlation_id ? String(req.query.correlation_id) : undefined,
+      node_name: req.query.node_name ? String(req.query.node_name) : undefined,
+      level: req.query.level ? String(req.query.level) : undefined,
+      since: req.query.since ? String(req.query.since) : undefined,
+      limit: Number.isFinite(limit) && limit > 0 ? limit : 100,
+    });
+    res.json(entries);
+  } catch (err) {
+    console.error('[routes] /api/projections/log-entries error:', err);
+    res.status(500).json({ error: 'log entries query failed' });
+  }
+});
+
+router.get('/api/projections/traces', async (req, res) => {
+  if (!pgReader) {
+    res.status(503).json({ error: 'postgres data source not configured' });
+    return;
+  }
+  try {
+    const limit = req.query.limit !== undefined ? parseInt(String(req.query.limit), 10) : 50;
+    const running_only = req.query.running_only === 'true' || req.query.running_only === '1';
+    const traces = await pgReader.queryTraces({
+      since: req.query.since ? String(req.query.since) : undefined,
+      limit: Number.isFinite(limit) && limit > 0 ? limit : 50,
+      running_only,
+    });
+    res.json(traces);
+  } catch (err) {
+    console.error('[routes] /api/projections/traces error:', err);
+    res.status(500).json({ error: 'traces query failed' });
+  }
+});
+
+// OMN-12145: Command dispatch bridge — publishes a structured command envelope
+// to Kafka so the React UI can trigger ONEX node commands without a direct
+// Kafka dependency. Authorization is contract-level at the handler node.
+router.post('/api/dispatch', async (req, res) => {
+  const body = req.body as Record<string, unknown>;
+  const { command_type, target_node_id, payload } = body;
+
+  if (typeof command_type !== 'string' || !command_type) {
+    res.status(400).json({ error: 'command_type is required' });
+    return;
+  }
+  if (typeof target_node_id !== 'string' || !target_node_id) {
+    res.status(400).json({ error: 'target_node_id is required' });
+    return;
+  }
+  if (payload === undefined || payload === null || typeof payload !== 'object' || Array.isArray(payload)) {
+    res.status(400).json({ error: 'payload is required and must be an object' });
+    return;
+  }
+
+  if (!isProducerConnected()) {
+    res.status(503).json({ error: 'kafka_unavailable' });
+    return;
+  }
+
+  const request_id = randomUUID();
+  const requested_at = new Date().toISOString();
+  const topic = COMMAND_TOPICS.dispatchRequest;
+
+  const envelope = {
+    request_id,
+    command_type,
+    target_node_id,
+    payload,
+    requested_by: 'omnidash-ui',
+    requested_at,
+  };
+
+  try {
+    await publishMessage(topic, envelope);
+    res.json({ request_id, status: 'published', topic, timestamp: requested_at });
+  } catch (err) {
+    console.error('[routes] /api/dispatch publish error:', err);
+    res.status(503).json({ error: 'kafka_unavailable' });
+  }
 });
 
 export default router;

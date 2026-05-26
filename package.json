@@ -1,6 +1,6 @@
 {
   "name": "omnidash",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "description": "Composable widget dashboard for real-time observability — Vite + React with per-widget 2D and 3D variants.",
   "main": "index.js",
   "homepage": "https://github.com/OmniNode-ai/omnidash#readme",
@@ -64,6 +64,7 @@
     "echarts": "^6.0.0",
     "echarts-for-react": "^3.0.6",
     "express": "^5.2.1",
+    "kafkajs": "^2.2.4",
     "lucide-react": "^1.8.0",
     "mitt": "^3.0.1",
     "page-agent": "^1.7.1",

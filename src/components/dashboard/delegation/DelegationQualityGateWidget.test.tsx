@@ -86,7 +86,7 @@ describe('DelegationQualityGateWidget', () => {
     expect(await screen.findByText(/no escalation data/i)).toBeInTheDocument();
   });
 
-  it('renders check type breakdown when data is present', async () => {
+  it('renders escalation detail rows when data is present', async () => {
     mockFetchWithItems([buildDelegationQualityGate()]);
     render(
       <DataSourceTestProvider client={qc}>
@@ -95,7 +95,8 @@ describe('DelegationQualityGateWidget', () => {
     );
     expect(await screen.findByText('Automated checks')).toBeInTheDocument();
     expect(screen.getByText('Heuristic checks')).toBeInTheDocument();
-    // Escalations shown as a banner when count > 0
+    expect(screen.getByText('Rate')).toBeInTheDocument();
+    // Escalations now shown as a banner when count > 0
     expect(screen.getByText(/Escalations/i)).toBeInTheDocument();
   });
 
