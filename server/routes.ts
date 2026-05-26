@@ -146,6 +146,21 @@ router.post('/api/delegation/trigger', async (req, res) => {
   }
 });
 
+// Swarm runs: paginated list from swarm_runs table, newest first.
+router.get('/api/swarm-runs', async (req, res) => {
+  if (!pgReader) {
+    res.status(503).json({ error: 'postgres data source not configured' });
+    return;
+  }
+  try {
+    const rows = await pgReader.readProjection('onex.snapshot.projection.swarm.runs.v1');
+    res.json({ rows: rows.rows });
+  } catch (err) {
+    console.error('[routes] /api/swarm-runs error:', err);
+    res.status(500).json({ error: 'swarm runs read failed' });
+  }
+});
+
 // HTTP adapter for src/data-source/http-snapshot-source.ts. Dashboard-v2 reads
 // projection-topic snapshots; it must not query Postgres directly.
 router.get('/projection/:topic', async (req, res) => {
