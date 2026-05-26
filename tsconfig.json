@@ -21,5 +21,6 @@
     }
   },
   "include": ["src", "shared", "src/vite-env.d.ts", ".storybook"],
+  "exclude": ["shared/types/command-topics.ts"],
   "references": [{ "path": "./tsconfig.node.json" }]
 }
