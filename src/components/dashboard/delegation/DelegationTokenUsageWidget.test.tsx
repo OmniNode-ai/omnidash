@@ -75,6 +75,21 @@ describe('DelegationTokenUsageWidget', () => {
     expect(screen.getAllByText('measured').length).toBeGreaterThan(0);
   });
 
+  it('calculates provenance percentages from provenance counts, not model count', async () => {
+    mockFetchWithItems([{
+      ...buildDelegationTokenUsage(),
+      provenance_summary: { measured: 0, estimated: 37, unknown: 0 },
+    }]);
+    render(
+      <DataSourceTestProvider client={qc}>
+        <DelegationTokenUsageWidget config={{ showProvenance: true }} />
+      </DataSourceTestProvider>,
+    );
+    await screen.findByText('Total tokens');
+    expect(screen.getByText('100%')).toBeInTheDocument();
+    expect(screen.queryByText('1850%')).not.toBeInTheDocument();
+  });
+
   it('hides cost column when showCost is false', async () => {
     mockFetchWithItems([buildDelegationTokenUsage()]);
     render(

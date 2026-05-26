@@ -50,6 +50,7 @@
 .sidebar.collapsed .dash-item .dash-marker {
   text-align: center;
 }
+
 .brand-mark { width: 28px; height: 28px; flex-shrink: 0; }
 .brand-name {
   font-weight: 600; font-size: 15px; letter-spacing: -0.005em;
@@ -134,3 +135,34 @@
 }
 .dash-item:hover .dash-kebab, .dash-item.active .dash-kebab { opacity: 1; }
 .dash-item .dash-kebab:hover { background: oklch(36% 0.01 260); }
+
+@media (max-width: 720px) {
+  .sidebar .brand {
+    padding: 18px 6px 14px;
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .sidebar .brand-name,
+  .sidebar .nav-section-title,
+  .sidebar .sidebar-bottom-title,
+  .sidebar .dash-name,
+  .sidebar .dash-kebab {
+    display: none;
+  }
+
+  .sidebar .sidebar-toggle { margin-left: 0; }
+  .sidebar .nav-section {
+    padding: 14px 6px 8px;
+    justify-content: center;
+  }
+  .sidebar .dash-list { padding: 0 4px; }
+  .sidebar .dash-item {
+    grid-template-columns: 1fr;
+    justify-items: center;
+    padding: 8px 0;
+  }
+  .sidebar .dash-item .dash-marker {
+    text-align: center;
+  }
+}

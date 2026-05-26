@@ -281,7 +281,7 @@ export function Sidebar() {
         }}
       >
         {!collapsed && (
-          <div style={{ padding: '4px 12px 2px' }}>
+          <div className="sidebar-bottom-title" style={{ padding: '4px 12px 2px' }}>
             <Text size="xs" color="tertiary" transform="uppercase" weight="semibold">
               Evaluation
             </Text>

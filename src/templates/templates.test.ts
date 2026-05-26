@@ -3,8 +3,8 @@ import { DASHBOARD_TEMPLATES } from './index';
 import { validateDashboardDefinition } from '@shared/types/dashboard';
 
 describe('Dashboard Templates', () => {
-  it('has 3 templates', () => {
-    expect(DASHBOARD_TEMPLATES.length).toBe(3);
+  it('has 4 templates', () => {
+    expect(DASHBOARD_TEMPLATES.length).toBe(4);
   });
 
   it('Cost & Delegation template has 3 components', () => {
@@ -35,6 +35,19 @@ describe('Dashboard Templates', () => {
     expect(tpl).toBeDefined();
     expect(tpl!.layout.length).toBe(1);
     expect(tpl!.layout[0].componentName).toBe('delegation-control-plane');
+  });
+
+  it('SEA Demo template has the live demo widgets in dashboard order', () => {
+    const tpl = DASHBOARD_TEMPLATES.find((t) => t.name === 'SEA Demo');
+    expect(tpl).toBeDefined();
+    expect(tpl!.layout.map((l) => l.componentName)).toEqual([
+      'control-plane',
+      'live-event-stream',
+      'ab-compare',
+      'trace-explorer',
+      'delegation-token-usage',
+      'mcp-tools',
+    ]);
   });
 
   it('all templates pass validation', () => {
