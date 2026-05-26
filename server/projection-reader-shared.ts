@@ -46,7 +46,6 @@ export function mergeDelegationSessions(
 }
 
 export function buildCostSavingsOverviewResult(
-  sessions: Row[],
   measuredSessions: Row[],
   omittedTelemetryRows: number,
   recentRuns?: Row[],

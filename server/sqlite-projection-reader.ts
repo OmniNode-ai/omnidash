@@ -924,6 +924,6 @@ export class SqliteProjectionReader {
       Number(session.prompt_tokens ?? 0) + Number(session.completion_tokens ?? 0);
     const measuredSessions = sessions.filter((session) => sessionTokens(session) > 0);
     const omittedTelemetryRows = sessions.length - measuredSessions.length;
-    return buildCostSavingsOverviewResult(sessions, measuredSessions, omittedTelemetryRows);
+    return buildCostSavingsOverviewResult(measuredSessions, omittedTelemetryRows);
   }
 }

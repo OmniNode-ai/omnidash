@@ -985,6 +985,6 @@ export class PostgresProjectionReader {
       };
     });
 
-    return [buildCostSavingsOverviewResult(sessions, measuredSessions, omittedTelemetryRows, recentRuns)];
+    return [buildCostSavingsOverviewResult(measuredSessions, omittedTelemetryRows, recentRuns)];
   }
 }
