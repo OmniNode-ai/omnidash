@@ -147,7 +147,7 @@ router.post('/api/delegation/trigger', async (req, res) => {
 });
 
 // Swarm runs: paginated list from swarm_runs table, newest first.
-router.get('/api/swarm-runs', async (req, res) => {
+router.get('/api/swarm-runs', async (_req, res) => {
   if (!pgReader) {
     res.status(503).json({ error: 'postgres data source not configured' });
     return;
