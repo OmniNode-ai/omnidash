@@ -1,8 +1,6 @@
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, it, expect, beforeEach } from 'vitest';
-import { readFileSync } from 'fs';
-import { resolve } from 'path';
 import { Providers } from './providers/Providers';
 import { RegistryProvider } from './registry/RegistryProvider';
 import { DashboardView } from './pages/DashboardView';
@@ -10,11 +8,7 @@ import { useFrameStore } from './store/store';
 import { createEmptyDashboard } from '@shared/types/dashboard';
 import { DashboardService } from './services/dashboardService';
 import { ComponentRegistry } from './registry/ComponentRegistry';
-import type { RegistryManifest } from './registry/types';
-
-// Load the generated registry manifest
-const manifestJson = readFileSync(resolve(__dirname, './registry/component-registry.json'), 'utf-8');
-const manifest: RegistryManifest = JSON.parse(manifestJson);
+import { TEST_MANIFEST as manifest } from './test-utils/integrationHelpers';
 
 function renderWithRegistry() {
   return render(
