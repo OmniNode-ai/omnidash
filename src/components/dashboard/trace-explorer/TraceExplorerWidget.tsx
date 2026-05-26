@@ -73,6 +73,10 @@ function matchesTrace(trace: TraceGroup, query: string): boolean {
   ].some((v) => String(v ?? '').toLowerCase().includes(q));
 }
 
+function traceRowKey(trace: TraceGroup, index: number): string {
+  return `${trace.correlation_id}:${trace.first_event_at}:${trace.last_event_at}:${index}`;
+}
+
 // ── Timeline panel ───────────────────────────────────────────────────
 
 function TimelinePanel({ events, isLoading }: { events: TraceEvent[]; isLoading: boolean }) {
@@ -189,8 +193,15 @@ export default function TraceExplorerWidget() {
     [traceList, query],
   );
 
-  const handleSelectTrace = async (trace: TraceGroup) => {
-    setSelectedId(trace.correlation_id);
+  const handleSelectTrace = async (trace: TraceGroup, rowKey: string) => {
+    if (selectedId === rowKey) {
+      setSelectedId(null);
+      setTraceEvents([]);
+      setEventsLoading(false);
+      return;
+    }
+
+    setSelectedId(rowKey);
     setEventsLoading(true);
     setTraceEvents([]);
     try {
@@ -273,8 +284,9 @@ export default function TraceExplorerWidget() {
             </div>
           )}
 
-          {filteredTraces.map((trace) => {
-            const isExpanded = trace.correlation_id === selectedId;
+          {filteredTraces.map((trace, traceIndex) => {
+            const rowKey = traceRowKey(trace, traceIndex);
+            const isExpanded = rowKey === selectedId;
             const statusColor = trace.has_error
               ? 'var(--bad)'
               : trace.is_running
@@ -282,13 +294,13 @@ export default function TraceExplorerWidget() {
                 : 'var(--text-tertiary)';
 
             return (
-              <div key={trace.correlation_id} style={{ borderBottom: '1px solid var(--line-2)' }}>
+              <div key={rowKey} style={{ borderBottom: '1px solid var(--line-2)' }}>
                 <div
                   data-testid="trace-card"
                   role="button"
                   tabIndex={0}
-                  onClick={() => { void handleSelectTrace(trace); }}
-                  onKeyDown={(e) => { if (e.key === 'Enter') void handleSelectTrace(trace); }}
+                  onClick={() => { void handleSelectTrace(trace, rowKey); }}
+                  onKeyDown={(e) => { if (e.key === 'Enter') void handleSelectTrace(trace, rowKey); }}
                   style={{
                     display: 'grid',
                     gridTemplateColumns: '18px 1fr 100px 80px 60px',
