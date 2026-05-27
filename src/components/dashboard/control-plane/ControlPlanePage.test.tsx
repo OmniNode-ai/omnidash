@@ -106,8 +106,65 @@ describe('ControlPlanePage', () => {
     fireEvent.change(input, { target: { value: 'Classify sentiment' } });
     fireEvent.click(screen.getByRole('button', { name: /generate/i }));
     await waitFor(() => {
-      expect(screen.getByText(/classify sentiment/i)).toBeInTheDocument();
+      expect(screen.getAllByText(/classify sentiment/i).length).toBeGreaterThan(0);
     });
+    expect(screen.getByRole('status')).toHaveTextContent(/demo request queued/i);
+  });
+
+  it('shows immediate feedback while a live prompt request is pending', async () => {
+    vi.stubEnv('VITE_DATA_SOURCE', 'http');
+    vi.stubEnv('VITE_HTTP_DATA_SOURCE_URL', 'http://backend.test');
+    const source: ProtocolSnapshotSource = {
+      async *readAll() {
+        yield* [];
+      },
+    };
+    vi.stubGlobal('fetch', vi.fn().mockReturnValue(new Promise(() => undefined)));
+
+    render(
+      <DataSourceTestProvider client={qc} source={source}>
+        <ControlPlanePage config={{}} />
+      </DataSourceTestProvider>,
+    );
+
+    const input = await screen.findByPlaceholderText(/describe the node/i);
+    fireEvent.change(input, { target: { value: 'Classify sentiment' } });
+    fireEvent.click(screen.getByRole('button', { name: /generate/i }));
+
+    expect(screen.getByRole('button', { name: /generate/i })).toHaveTextContent(/submitting/i);
+    expect(screen.getByRole('status')).toHaveTextContent(/submitting generation request/i);
+    expect(screen.getByText(/submitted generation request: classify sentiment/i)).toBeInTheDocument();
+  });
+
+  it('shows accepted feedback when a live prompt request returns a correlation', async () => {
+    vi.stubEnv('VITE_DATA_SOURCE', 'http');
+    vi.stubEnv('VITE_HTTP_DATA_SOURCE_URL', 'http://backend.test');
+    const source: ProtocolSnapshotSource = {
+      async *readAll() {
+        yield* [];
+      },
+    };
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValueOnce({
+      ok: true,
+      status: 200,
+      statusText: 'OK',
+      json: async () => ({ correlation_id: 'corr-live-123' }),
+    }));
+
+    render(
+      <DataSourceTestProvider client={qc} source={source}>
+        <ControlPlanePage config={{}} />
+      </DataSourceTestProvider>,
+    );
+
+    const input = await screen.findByPlaceholderText(/describe the node/i);
+    fireEvent.change(input, { target: { value: 'Classify sentiment' } });
+    fireEvent.click(screen.getByRole('button', { name: /generate/i }));
+
+    await waitFor(() => {
+      expect(screen.getByRole('status')).toHaveTextContent(/corr-live-123/i);
+    });
+    expect(screen.getByText(/generation request accepted by backend: corr-live-123/i)).toBeInTheDocument();
   });
 
   it('renders an error event when submit returns a non-2xx response', async () => {

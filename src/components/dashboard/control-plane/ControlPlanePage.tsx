@@ -10,6 +10,12 @@ import { DelegationTriggerPanel } from '@/components/dashboard/delegation-contro
 
 import { DATA_SOURCE_DEFAULT_MODE } from '@/config/generated/data-source-defaults';
 
+type PromptSubmitState =
+  | { phase: 'idle'; message?: string }
+  | { phase: 'submitting'; message: string }
+  | { phase: 'accepted'; message: string }
+  | { phase: 'error'; message: string };
+
 function getDataSourceMode(): string {
   try {
     return import.meta.env.VITE_DATA_SOURCE ?? DATA_SOURCE_DEFAULT_MODE;
@@ -30,6 +36,7 @@ export default function ControlPlanePage({
   });
 
   const [localEvents, setLocalEvents] = useState<PipelineEvent[]>([]);
+  const [submitState, setSubmitState] = useState<PromptSubmitState>({ phase: 'idle' });
 
   const allEvents = useMemo(() => {
     const projected = data ?? [];
@@ -45,6 +52,7 @@ export default function ControlPlanePage({
       const now = new Date().toISOString();
       const correlationId = `demo-${Date.now()}`;
       const base = Date.now();
+      setSubmitState({ phase: 'accepted', message: `Demo request queued: ${prompt}` });
       setLocalEvents((prev) => [
         ...prev,
         {
@@ -80,6 +88,20 @@ export default function ControlPlanePage({
         import.meta.env.VITE_HTTP_DATA_SOURCE_URL ??
         import.meta.env.VITE_SQLITE_DATA_SOURCE_URL ??
         '';
+      const now = Date.now();
+      const pendingCorrelationId = `pending-${now}`;
+      setSubmitState({ phase: 'submitting', message: `Submitting generation request: ${prompt}` });
+      setLocalEvents((prev) => [
+        ...prev,
+        {
+          id: `submit-${now}`,
+          type: 'request' as const,
+          timestamp: new Date(now).toISOString(),
+          source: 'control-plane',
+          message: `Submitted generation request: ${prompt}`,
+          correlationId: pendingCorrelationId,
+        },
+      ]);
       void (async () => {
         try {
           if (!baseUrl) throw new Error('Missing data source base URL');
@@ -93,9 +115,26 @@ export default function ControlPlanePage({
             const detail = body ? `: ${body}` : '';
             throw new Error(`HTTP ${response.status} ${response.statusText}${detail}`);
           }
+          const body = await response.json().catch(() => ({})) as { correlation_id?: string };
+          const correlationId = body.correlation_id ?? pendingCorrelationId;
+          setSubmitState({
+            phase: 'accepted',
+            message: `Generation request accepted. Correlation: ${correlationId}`,
+          });
+          setLocalEvents((prev) => [
+            ...prev,
+            {
+              id: `accepted-${now}`,
+              type: 'success' as const,
+              timestamp: new Date().toISOString(),
+              source: 'control-plane',
+              message: `Generation request accepted by backend: ${correlationId}`,
+              correlationId,
+            },
+          ]);
         } catch (err: unknown) {
           console.warn('[ControlPlanePage] POST failed:', err);
-          const now = Date.now();
+          setSubmitState({ phase: 'error', message: `Submit failed: ${String(err)}` });
           setLocalEvents((prev) => [
             ...prev,
             {
@@ -145,11 +184,20 @@ export default function ControlPlanePage({
           mcp={serviceStatus}
         />
 
-        <PromptInput onSubmit={handlePromptSubmit} />
+        <PromptInput
+          onSubmit={handlePromptSubmit}
+          status={submitState.phase}
+          feedback={submitState.message}
+        />
         {isLive && <DelegationTriggerPanel />}
 
-        <div>
-          <div className="eyebrow" style={{ marginBottom: 6 }}>
+        <div
+          style={{
+            marginInline: -12,
+            width: 'calc(100% + 24px)',
+          }}
+        >
+          <div className="eyebrow" style={{ marginBottom: 6, paddingInline: 12 }}>
             <Text as="span" size="xs" weight="bold" color="tertiary" className="text-tracked text-upper">
               Pipeline Events
             </Text>
