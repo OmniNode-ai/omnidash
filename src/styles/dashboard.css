@@ -44,9 +44,11 @@
 /* ---------- DASHBOARD GRID ---------- */
 .dash-body {
   flex: 1; overflow-y: auto; overflow-x: hidden;
-  margin: 0 auto 24px;
+  margin: 0 auto;
   padding: 24px 0;
   position: relative;
+  min-height: 0;
+  box-sizing: border-box;
   width: min(
     var(--dashboard-shell-max),
     calc(100% - (var(--dashboard-shell-gutter) * 2))
