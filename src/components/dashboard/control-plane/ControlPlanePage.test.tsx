@@ -166,6 +166,7 @@ describe('ControlPlanePage', () => {
       statusText: 'OK',
       json: async () => ({ correlation_id: 'corr-live-123' }),
     }));
+    const invalidateSpy = vi.spyOn(qc, 'invalidateQueries');
 
     render(
       <DataSourceTestProvider client={qc} source={source}>
@@ -181,6 +182,47 @@ describe('ControlPlanePage', () => {
       expect(screen.getByRole('status')).toHaveTextContent(/corr-live-123/i);
     });
     expect(screen.getByText(/generation request accepted by backend: corr-live-123/i)).toBeInTheDocument();
+    expect(invalidateSpy).toHaveBeenCalledWith({ queryKey: ['hackathon-pipeline-events'] });
+    expect(invalidateSpy).toHaveBeenCalledWith({ queryKey: ['trace-explorer'] });
+  });
+
+  it('renders backend failed status as an error and refreshes SEA projections', async () => {
+    vi.stubEnv('VITE_DATA_SOURCE', 'http');
+    vi.stubEnv('VITE_HTTP_DATA_SOURCE_URL', 'http://backend.test');
+    const source: ProtocolSnapshotSource = {
+      async *readAll() {
+        yield* [];
+      },
+    };
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValueOnce({
+      ok: true,
+      status: 200,
+      statusText: 'OK',
+      json: async () => ({
+        correlation_id: 'corr-failed-123',
+        status: 'failed',
+        error: 'model returned validation errors',
+      }),
+    }));
+    const invalidateSpy = vi.spyOn(qc, 'invalidateQueries');
+
+    render(
+      <DataSourceTestProvider client={qc} source={source}>
+        <ControlPlanePage config={{}} />
+      </DataSourceTestProvider>,
+    );
+
+    const input = await screen.findByPlaceholderText(/describe the node/i);
+    fireEvent.change(input, { target: { value: 'Classify sentiment' } });
+    fireEvent.click(screen.getByRole('button', { name: /generate/i }));
+
+    await waitFor(() => {
+      expect(screen.getByRole('status')).toHaveTextContent(/generation failed/i);
+    });
+    expect(screen.getByRole('status')).toHaveTextContent(/corr-failed-123/i);
+    expect(screen.getByText(/generation failed in backend: corr-failed-123/i)).toBeInTheDocument();
+    expect(invalidateSpy).toHaveBeenCalledWith({ queryKey: ['hackathon-pipeline-events'] });
+    expect(invalidateSpy).toHaveBeenCalledWith({ queryKey: ['trace-explorer'] });
   });
 
   it('renders an error event when submit returns a non-2xx response', async () => {
