@@ -42,7 +42,7 @@ export default function ControlPlanePage({
     const projected = data ?? [];
     return [...projected, ...localEvents].sort(
       (a, b) =>
-        new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime(),
+        new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime(),
     );
   }, [data, localEvents]);
 
