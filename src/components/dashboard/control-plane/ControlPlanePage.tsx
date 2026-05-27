@@ -1,4 +1,5 @@
 import { useState, useCallback, useMemo } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
 import { ComponentWrapper } from '../ComponentWrapper';
 import { useProjectionQuery } from '@/hooks/useProjectionQuery';
 import { TOPICS } from '@shared/types/topics';
@@ -16,6 +17,13 @@ type PromptSubmitState =
   | { phase: 'accepted'; message: string }
   | { phase: 'error'; message: string };
 
+interface LiveGenerateResponse {
+  correlation_id?: string;
+  status?: string;
+  error?: string;
+  message?: string;
+}
+
 function getDataSourceMode(): string {
   try {
     return import.meta.env.VITE_DATA_SOURCE ?? DATA_SOURCE_DEFAULT_MODE;
@@ -29,6 +37,7 @@ export default function ControlPlanePage({
 }: {
   config: Record<string, unknown>;
 }) {
+  const queryClient = useQueryClient();
   const { data, isLoading, error } = useProjectionQuery<PipelineEvent>({
     topic: TOPICS.hackathonPipelineEvents,
     queryKey: ['hackathon-pipeline-events'],
@@ -37,6 +46,16 @@ export default function ControlPlanePage({
 
   const [localEvents, setLocalEvents] = useState<PipelineEvent[]>([]);
   const [submitState, setSubmitState] = useState<PromptSubmitState>({ phase: 'idle' });
+
+  const refreshSeaProjections = useCallback(() => {
+    void queryClient.invalidateQueries({ queryKey: ['hackathon-pipeline-events'] });
+    void queryClient.invalidateQueries({ queryKey: ['trace-explorer'] });
+  }, [queryClient]);
+
+  const refreshSeaProjectionsAfterWrite = useCallback(() => {
+    refreshSeaProjections();
+    window.setTimeout(refreshSeaProjections, 750);
+  }, [refreshSeaProjections]);
 
   const allEvents = useMemo(() => {
     const projected = data ?? [];
@@ -115,8 +134,29 @@ export default function ControlPlanePage({
             const detail = body ? `: ${body}` : '';
             throw new Error(`HTTP ${response.status} ${response.statusText}${detail}`);
           }
-          const body = await response.json().catch(() => ({})) as { correlation_id?: string };
+          const body = await response.json().catch(() => ({})) as LiveGenerateResponse;
           const correlationId = body.correlation_id ?? pendingCorrelationId;
+          const status = typeof body.status === 'string' ? body.status.toLowerCase() : 'success';
+          if (status === 'failed' || status === 'error') {
+            const reason = body.error ?? body.message ?? 'backend returned failed status';
+            setSubmitState({
+              phase: 'error',
+              message: `Generation failed. Correlation: ${correlationId}. ${reason}`,
+            });
+            setLocalEvents((prev) => [
+              ...prev,
+              {
+                id: `failed-${now}`,
+                type: 'error' as const,
+                timestamp: new Date().toISOString(),
+                source: 'control-plane',
+                message: `Generation failed in backend: ${correlationId} · ${reason}`,
+                correlationId,
+              },
+            ]);
+            refreshSeaProjectionsAfterWrite();
+            return;
+          }
           setSubmitState({
             phase: 'accepted',
             message: `Generation request accepted. Correlation: ${correlationId}`,
@@ -132,6 +172,7 @@ export default function ControlPlanePage({
               correlationId,
             },
           ]);
+          refreshSeaProjectionsAfterWrite();
         } catch (err: unknown) {
           console.warn('[ControlPlanePage] POST failed:', err);
           setSubmitState({ phase: 'error', message: `Submit failed: ${String(err)}` });
@@ -146,10 +187,11 @@ export default function ControlPlanePage({
               correlationId: `err-${now}`,
             },
           ]);
+          refreshSeaProjections();
         }
       })();
     }
-  }, []);
+  }, [refreshSeaProjections, refreshSeaProjectionsAfterWrite]);
 
   const mode = getDataSourceMode();
   const serviceStatus: ServiceStatus =

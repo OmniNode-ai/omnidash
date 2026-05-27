@@ -238,7 +238,7 @@ export default function TraceExplorerWidget() {
       emptyHint="Traces appear after log entries are written with correlation IDs"
       isLive={isLiveDataSource(dataSourceMode)}
       headerExtra={
-        <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>
+        <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8, minWidth: 0 }}>
           <Text size="xs" color="tertiary" family="mono">
             {traceList.length} traces · {runningCount} running · {errorCount} errors
           </Text>
@@ -303,7 +303,7 @@ export default function TraceExplorerWidget() {
                   onKeyDown={(e) => { if (e.key === 'Enter') void handleSelectTrace(trace, rowKey); }}
                   style={{
                     display: 'grid',
-                    gridTemplateColumns: '18px 1fr 100px 80px 60px',
+                    gridTemplateColumns: '18px minmax(0, 1fr) 100px 80px 60px',
                     gap: 10,
                     alignItems: 'center',
                     padding: '9px 12px',
@@ -337,13 +337,34 @@ export default function TraceExplorerWidget() {
                       {trace.latest_message}
                     </Text>
                   </div>
-                  <Text size="xs" color="tertiary" family="mono">
+                  <Text
+                    size="xs"
+                    color="tertiary"
+                    family="mono"
+                    truncate
+                    title={`${trace.nodes_involved.length} node${trace.nodes_involved.length !== 1 ? 's' : ''} · ${trace.event_count} evt`}
+                    style={{ minWidth: 0 }}
+                  >
                     {trace.nodes_involved.length} node{trace.nodes_involved.length !== 1 ? 's' : ''} · {trace.event_count} evt
                   </Text>
-                  <Text size="xs" color="tertiary" family="mono">
+                  <Text
+                    size="xs"
+                    color="tertiary"
+                    family="mono"
+                    truncate
+                    title={formatDuration(trace.duration_ms)}
+                    style={{ minWidth: 0 }}
+                  >
                     {formatDuration(trace.duration_ms)}
                   </Text>
-                  <Text size="xs" color="tertiary" family="mono">
+                  <Text
+                    size="xs"
+                    color="tertiary"
+                    family="mono"
+                    truncate
+                    title={trace.is_running ? 'running' : trace.has_error ? 'error' : 'done'}
+                    style={{ minWidth: 0 }}
+                  >
                     {trace.is_running ? 'running' : trace.has_error ? 'error' : 'done'}
                   </Text>
                 </div>

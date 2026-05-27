@@ -35,7 +35,7 @@
 
 /* ---------- DASHBOARD GRID ---------- */
 .dash-body {
-  flex: 1; overflow-y: auto;
+  flex: 1; overflow-y: auto; overflow-x: hidden;
   margin: 0 24px 24px;
   padding: 24px 0;
   position: relative;
@@ -90,6 +90,7 @@
      the former grid gap spacing between column-mates. CSS columns flows
      block children naturally, so no width/display overrides needed. */
   break-inside: avoid;
+  max-width: 100%;
   margin-bottom: var(--row-gap);
   transition: box-shadow 0.2s, border-color 0.15s, transform 0.2s, opacity 0.2s;
   animation: widget-in 0.35s cubic-bezier(.2,.8,.2,1);
@@ -121,11 +122,17 @@
 }
 .widget-head {
   display: flex; align-items: center; justify-content: space-between;
+  gap: 8px;
+  min-width: 0;
   padding: var(--pad-y) var(--pad-x);
   border-bottom: 1px solid var(--line-2);
 }
 .widget-head-left { display: flex; align-items: center; gap: 8px; min-width: 0; }
-.widget-head-right { display: flex; align-items: center; gap: 8px; }
+.widget-head-right {
+  display: flex; align-items: center; justify-content: flex-end; gap: 8px;
+  min-width: 0;
+  flex-shrink: 1;
+}
 .widget-grip {
   color: var(--ink-3); cursor: grab;
   opacity: 0; transition: opacity 0.15s;
@@ -140,6 +147,10 @@
   text-transform: uppercase;
   color: var(--ink-2);
   display: flex; align-items: center; gap: 8px;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 .widget-live {
   display: inline-flex; align-items: center; gap: 5px;
