@@ -6,6 +6,7 @@ import { Text } from '@/components/ui/typography';
 import { PromptInput } from './PromptInput';
 import { PipelineLogStream, type PipelineEvent } from './PipelineLogStream';
 import { PipelineStatusBar, type ServiceStatus } from './PipelineStatusBar';
+import { DelegationTriggerPanel } from '@/components/dashboard/delegation-control-plane/DelegationTriggerPanel';
 
 import { DATA_SOURCE_DEFAULT_MODE } from '@/config/generated/data-source-defaults';
 
@@ -145,6 +146,7 @@ export default function ControlPlanePage({
         />
 
         <PromptInput onSubmit={handlePromptSubmit} />
+        {isLive && <DelegationTriggerPanel />}
 
         <div>
           <div className="eyebrow" style={{ marginBottom: 6 }}>

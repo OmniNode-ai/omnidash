@@ -80,6 +80,21 @@ describe('ControlPlanePage', () => {
     });
   });
 
+  it('shows delegation trigger in live data-source mode', async () => {
+    vi.stubEnv('VITE_DATA_SOURCE', 'http');
+    const source: ProtocolSnapshotSource = {
+      async *readAll() {
+        yield* [];
+      },
+    };
+    render(
+      <DataSourceTestProvider client={qc} source={source}>
+        <ControlPlanePage config={{}} />
+      </DataSourceTestProvider>,
+    );
+    expect(await screen.findByText(/\+ Trigger delegation/i)).toBeInTheDocument();
+  });
+
   it('appends mock event to log on prompt submit in fixture mode', async () => {
     mockFetchWithItems([]);
     render(
