@@ -4,6 +4,7 @@ import { DashboardService } from './dashboardService';
 import type { LayoutPersistence } from '@/layout/layout-persistence';
 import type { DashboardDefinition } from '@shared/types/dashboard';
 import { createEmptyDashboard } from '@shared/types/dashboard';
+import { seaDemoTemplate } from '@/templates/sea-demo';
 
 describe('DashboardService', () => {
   let service: DashboardService;
@@ -110,6 +111,25 @@ describe('DashboardService.save → loadByName round-trip (T14 / OMN-155)', () =
     expect(loaded!.layout).toHaveLength(1);
     expect(loaded!.layout[0].config).toEqual({ granularity: 'day' });
   });
+
+  it('repairs an empty persisted SEA demo layout before returning it', async () => {
+    const emptySeaDemo: DashboardDefinition = {
+      ...seaDemoTemplate,
+      layout: [],
+    };
+    const persistence: LayoutPersistence = {
+      read: vi.fn(async () => emptySeaDemo),
+      write: vi.fn(async () => undefined),
+    };
+    const service = new DashboardService(persistence);
+
+    const loaded = await service.loadByName('default');
+
+    expect(loaded).not.toBeNull();
+    expect(loaded!.layout.map((item) => item.componentName)).toEqual(
+      seaDemoTemplate.layout.map((item) => item.componentName),
+    );
+  });
 });
 
 // T14 acceptance: list/active-id persistence is owned by the service
@@ -152,6 +172,28 @@ describe('DashboardService list persistence (T14 / OMN-155)', () => {
     expect(loaded[0].id).toBe(valid.id);
     expect(warn).toHaveBeenCalled();
     warn.mockRestore();
+  });
+
+  it('hydrateList repairs a persisted SEA demo with an empty layout', () => {
+    const storage = makeMemoryStorage();
+    const emptySeaDemo: DashboardDefinition = {
+      ...seaDemoTemplate,
+      id: 'dash-sea-demo',
+      layout: [],
+    };
+    storage.setItem('omnidash.dashboards.list.v1', JSON.stringify([emptySeaDemo]));
+    const persistence: LayoutPersistence = { read: vi.fn(), write: vi.fn() };
+    const service = new DashboardService(persistence, storage);
+
+    const loaded = service.hydrateList();
+
+    expect(loaded).toHaveLength(1);
+    expect(loaded[0].id).toBe('dash-sea-demo');
+    expect(loaded[0].layout.map((item) => item.componentName)).toEqual(
+      seaDemoTemplate.layout.map((item) => item.componentName),
+    );
+    const persisted = JSON.parse(storage._map.get('omnidash.dashboards.list.v1') ?? '[]') as DashboardDefinition[];
+    expect(persisted[0].layout).toHaveLength(seaDemoTemplate.layout.length);
   });
 
   it('persistActiveId(null) removes the key', () => {
