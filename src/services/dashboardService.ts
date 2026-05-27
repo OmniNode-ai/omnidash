@@ -2,6 +2,7 @@ import type { DashboardDefinition } from '@shared/types/dashboard';
 import { validateDashboardDefinition, parseDashboardDefinition } from '@shared/types/dashboard';
 import type { LayoutPersistence } from '@/layout/layout-persistence';
 import { layoutPersistence } from '@/layout/layout-persistence';
+import { repairSeaDemoDashboard } from '@/templates/sea-demo';
 
 // localStorage keys for the multi-dashboard list. Owned exclusively by this
 // service (T14 / OMN-155) — no other module is permitted to read or write
@@ -47,7 +48,9 @@ export class DashboardService {
   }
 
   async loadByName(name: string): Promise<DashboardDefinition | null> {
-    return this.persistence.read(name).catch((err: unknown) => {
+    return this.persistence.read(name).then((dashboard) => (
+      dashboard ? repairSeaDemoDashboard(dashboard) : null
+    )).catch((err: unknown) => {
       console.warn('[DashboardService] layout persistence read failed:', err);
       return null;
     });
@@ -89,15 +92,21 @@ export class DashboardService {
       if (!Array.isArray(parsed)) return [];
 
       const valid: DashboardDefinition[] = [];
+      let repairedAny = false;
       for (const [idx, entry] of parsed.entries()) {
         const result = parseDashboardDefinition(entry);
         if (result.valid) {
-          valid.push(result.dashboard);
+          const repaired = repairSeaDemoDashboard(result.dashboard);
+          repairedAny = repairedAny || repaired !== result.dashboard;
+          valid.push(repaired);
         } else {
           console.warn(
             `[DashboardService] Dropping corrupted dashboard at index ${idx}: ${result.errors.join('; ')}`,
           );
         }
+      }
+      if (repairedAny) {
+        this.persistList(valid);
       }
       return valid;
     } catch {

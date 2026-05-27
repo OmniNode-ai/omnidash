@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { DASHBOARD_TEMPLATES } from './index';
 import { validateDashboardDefinition } from '@shared/types/dashboard';
+import { repairSeaDemoDashboard, seaDemoTemplate } from './sea-demo';
 
 describe('Dashboard Templates', () => {
   it('has 4 templates', () => {
@@ -41,6 +42,24 @@ describe('Dashboard Templates', () => {
     const tpl = DASHBOARD_TEMPLATES.find((t) => t.name === 'SEA Demo');
     expect(tpl).toBeDefined();
     expect(tpl!.layout.map((l) => l.componentName)).toEqual([
+      'control-plane',
+      'live-event-stream',
+      'ab-compare',
+      'trace-explorer',
+      'delegation-token-usage',
+      'mcp-tools',
+    ]);
+  });
+
+  it('repairs an empty persisted SEA Demo dashboard from the template', () => {
+    const repaired = repairSeaDemoDashboard({
+      ...seaDemoTemplate,
+      id: 'dash-sea-demo',
+      layout: [],
+    });
+
+    expect(repaired.id).toBe('dash-sea-demo');
+    expect(repaired.layout.map((l) => l.componentName)).toEqual([
       'control-plane',
       'live-event-stream',
       'ab-compare',

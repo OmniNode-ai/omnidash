@@ -28,17 +28,7 @@ import { AutoRefreshSelector } from '@/components/dashboard/AutoRefreshSelector'
 import { EmptyState } from '@/components/dashboard/EmptyState';
 import type { DashboardLayoutItem } from '@shared/types/dashboard';
 import { dashboardService } from '@/services/dashboardService';
-import { seaDemoTemplate } from '@/templates/sea-demo';
-
-function cloneSeaDemoTemplate() {
-  return {
-    ...seaDemoTemplate,
-    layout: seaDemoTemplate.layout.map((item) => ({
-      ...item,
-      config: { ...item.config },
-    })),
-  };
-}
+import { cloneSeaDemoTemplate } from '@/templates/sea-demo';
 
 export function DashboardView() {
   const {

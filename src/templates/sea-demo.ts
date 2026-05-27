@@ -18,3 +18,43 @@ export const seaDemoTemplate: DashboardDefinition = {
   author: 'system',
   shared: true,
 };
+
+const SEA_DEMO_REQUIRED_COMPONENTS = new Set(
+  seaDemoTemplate.layout.map((item) => item.componentName),
+);
+
+export function cloneSeaDemoTemplate(): DashboardDefinition {
+  return {
+    ...seaDemoTemplate,
+    layout: seaDemoTemplate.layout.map((item) => ({
+      ...item,
+      config: { ...item.config },
+    })),
+  };
+}
+
+export function isSeaDemoDashboard(dashboard: DashboardDefinition): boolean {
+  return dashboard.name === seaDemoTemplate.name || dashboard.id === seaDemoTemplate.id;
+}
+
+export function repairSeaDemoDashboard(dashboard: DashboardDefinition): DashboardDefinition {
+  if (!isSeaDemoDashboard(dashboard)) return dashboard;
+
+  const present = new Set(dashboard.layout.map((item) => item.componentName));
+  const missing = seaDemoTemplate.layout.filter(
+    (item) => SEA_DEMO_REQUIRED_COMPONENTS.has(item.componentName) && !present.has(item.componentName),
+  );
+
+  if (dashboard.layout.length > 0 && missing.length === 0) return dashboard;
+
+  return {
+    ...dashboard,
+    layout: [
+      ...dashboard.layout,
+      ...missing.map((item) => ({
+        ...item,
+        config: { ...item.config },
+      })),
+    ],
+  };
+}
