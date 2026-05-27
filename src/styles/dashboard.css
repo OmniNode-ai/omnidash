@@ -3,13 +3,21 @@
    Substitutions applied here to preserve visual fidelity. */
 
 /* Dashboard header */
+:root {
+  --dashboard-shell-max: 1740px;
+  --dashboard-shell-gutter: 24px;
+}
+
 .dash-header {
   padding: 20px 0 14px;
-  margin: 0 24px;
+  margin: 0 auto;
   display: flex; align-items: flex-start; justify-content: space-between;
   gap: 16px;
-  width: auto;
-  max-width: none;
+  width: min(
+    var(--dashboard-shell-max),
+    calc(100% - (var(--dashboard-shell-gutter) * 2))
+  );
+  max-width: calc(100% - (var(--dashboard-shell-gutter) * 2));
 }
 .dash-title-wrap { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
 .dash-title {
@@ -36,11 +44,14 @@
 /* ---------- DASHBOARD GRID ---------- */
 .dash-body {
   flex: 1; overflow-y: auto; overflow-x: hidden;
-  margin: 0 24px 24px;
+  margin: 0 auto 24px;
   padding: 24px 0;
   position: relative;
-  width: auto;
-  max-width: none;
+  width: min(
+    var(--dashboard-shell-max),
+    calc(100% - (var(--dashboard-shell-gutter) * 2))
+  );
+  max-width: calc(100% - (var(--dashboard-shell-gutter) * 2));
   scrollbar-gutter: stable both-edges;
 }
 /* Masonry-style reflow via CSS columns. A 2-column grid with varying
