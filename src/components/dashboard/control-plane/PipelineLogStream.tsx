@@ -45,6 +45,8 @@ export function PipelineLogStream({ events }: { events: PipelineEvent[] }) {
         border: '1px solid var(--line)',
         borderRadius: 6,
         padding: 0,
+        width: '100%',
+        minHeight: events.length === 0 ? 112 : 0,
         maxHeight: 320,
         overflowY: 'auto',
       }}
