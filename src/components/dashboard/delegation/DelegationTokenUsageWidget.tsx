@@ -176,7 +176,8 @@ function ModelTokenRow({
 
 // ── Provenance summary ────────────────────────────────────────────────
 
-function ProvenanceSummary({ summary, total }: { summary: Record<TokenProvenance, number>; total: number }) {
+function ProvenanceSummary({ summary }: { summary: Record<TokenProvenance, number> }) {
+  const total = Object.values(summary).reduce((sum, count) => sum + count, 0);
   if (total === 0) return null;
   const provenances: TokenProvenance[] = ['measured', 'estimated', 'unknown'];
   return (
@@ -233,11 +234,6 @@ export default function DelegationTokenUsageWidget(props: { config: DelegationTo
     return Math.max(1, sorted[0].total_tokens);
   }, [sorted]);
 
-  const totalModels = useMemo(() => {
-    if (!projection) return 0;
-    return new Set(projection.by_model.map((r) => r.model_id)).size;
-  }, [projection]);
-
   const isEmpty = !projection || projection.total_tokens === 0;
 
   return (
@@ -292,7 +288,7 @@ export default function DelegationTokenUsageWidget(props: { config: DelegationTo
 
           {/* Provenance summary */}
           {showProvenance && (
-            <ProvenanceSummary summary={projection.provenance_summary} total={totalModels} />
+            <ProvenanceSummary summary={projection.provenance_summary} />
           )}
 
           {/* Column headers */}

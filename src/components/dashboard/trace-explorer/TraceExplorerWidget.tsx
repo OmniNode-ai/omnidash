@@ -6,7 +6,6 @@ import { TOPICS } from '@shared/types/topics';
 import { NodePill } from '@/components/primitives';
 import { Text } from '@/components/ui/typography';
 import { useDataSourceMode, isLiveDataSource } from '@/hooks/useDataSourceMode';
-import { DispatchButton } from '../command-dispatch/DispatchButton';
 
 // ── Data types ───────────────────────────────────────────────────────
 
@@ -72,6 +71,10 @@ function matchesTrace(trace: TraceGroup, query: string): boolean {
     trace.latest_message,
     ...trace.nodes_involved,
   ].some((v) => String(v ?? '').toLowerCase().includes(q));
+}
+
+function traceRowKey(trace: TraceGroup, index: number): string {
+  return `${trace.correlation_id}:${trace.first_event_at}:${trace.last_event_at}:${index}`;
 }
 
 // ── Timeline panel ───────────────────────────────────────────────────
@@ -190,10 +193,15 @@ export default function TraceExplorerWidget() {
     [traceList, query],
   );
 
-  const selectedTrace = traceList.find((t) => t.correlation_id === selectedId) ?? null;
+  const handleSelectTrace = async (trace: TraceGroup, rowKey: string) => {
+    if (selectedId === rowKey) {
+      setSelectedId(null);
+      setTraceEvents([]);
+      setEventsLoading(false);
+      return;
+    }
 
-  const handleSelectTrace = async (trace: TraceGroup) => {
-    setSelectedId(trace.correlation_id);
+    setSelectedId(rowKey);
     setEventsLoading(true);
     setTraceEvents([]);
     try {
@@ -237,8 +245,7 @@ export default function TraceExplorerWidget() {
         </span>
       }
     >
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 10, width: '100%' }}>
-        {/* Search bar */}
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 0, width: '100%' }}>
         <div
           style={{
             display: 'flex',
@@ -246,7 +253,7 @@ export default function TraceExplorerWidget() {
             gap: 8,
             padding: '7px 10px',
             border: '1px solid var(--line)',
-            borderRadius: 6,
+            borderRadius: '6px 6px 0 0',
             background: 'var(--panel-2)',
           }}
         >
@@ -262,132 +269,97 @@ export default function TraceExplorerWidget() {
           />
         </div>
 
-        {/* Two-panel layout */}
         <div
           style={{
-            display: 'grid',
-            gridTemplateColumns: '260px 1fr',
-            gap: 0,
             border: '1px solid var(--line)',
-            borderRadius: 6,
+            borderTop: 0,
+            borderRadius: '0 0 6px 6px',
             overflow: 'hidden',
-            minHeight: 480,
             background: 'var(--panel)',
           }}
         >
-          {/* Left: trace list */}
-          <div
-            style={{
-              borderRight: '1px solid var(--line)',
-              overflowY: 'auto',
-              display: 'flex',
-              flexDirection: 'column',
-            }}
-          >
-            <div style={{ padding: '6px 10px', borderBottom: '1px solid var(--line)', background: 'var(--panel-2)' }}>
-              <Text size="xs" weight="bold" color="tertiary" family="mono" transform="uppercase">
-                Traces
-              </Text>
+          {filteredTraces.length === 0 && (
+            <div style={{ padding: 16 }}>
+              <Text size="sm" color="tertiary" align="center">No matching traces</Text>
             </div>
+          )}
 
-            {filteredTraces.length === 0 && (
-              <div style={{ padding: 16 }}>
-                <Text size="sm" color="tertiary" align="center">No matching traces</Text>
-              </div>
-            )}
+          {filteredTraces.map((trace, traceIndex) => {
+            const rowKey = traceRowKey(trace, traceIndex);
+            const isExpanded = rowKey === selectedId;
+            const statusColor = trace.has_error
+              ? 'var(--bad)'
+              : trace.is_running
+                ? 'var(--good)'
+                : 'var(--text-tertiary)';
 
-            {filteredTraces.map((trace) => {
-              const isSelected = trace.correlation_id === selectedId;
-              const statusColor = trace.has_error
-                ? 'var(--bad)'
-                : trace.is_running
-                  ? 'var(--good)'
-                  : 'var(--text-tertiary)';
-
-              return (
-                <button
-                  key={trace.correlation_id}
+            return (
+              <div key={rowKey} style={{ borderBottom: '1px solid var(--line-2)' }}>
+                <div
                   data-testid="trace-card"
-                  onClick={() => { void handleSelectTrace(trace); }}
+                  role="button"
+                  tabIndex={0}
+                  onClick={() => { void handleSelectTrace(trace, rowKey); }}
+                  onKeyDown={(e) => { if (e.key === 'Enter') void handleSelectTrace(trace, rowKey); }}
                   style={{
-                    all: 'unset',
-                    display: 'flex',
-                    flexDirection: 'column',
-                    gap: 3,
-                    padding: '10px 12px',
+                    display: 'grid',
+                    gridTemplateColumns: '18px 1fr 100px 80px 60px',
+                    gap: 10,
+                    alignItems: 'center',
+                    padding: '9px 12px',
                     cursor: 'pointer',
-                    borderBottom: '1px solid var(--line-2)',
-                    borderLeft: `3px solid ${isSelected ? 'var(--accent)' : 'transparent'}`,
-                    background: isSelected ? 'var(--accent-soft)' : 'transparent',
+                    background: isExpanded ? 'var(--accent-soft)' : 'transparent',
+                    borderLeft: `3px solid ${isExpanded ? 'var(--accent)' : 'transparent'}`,
                   }}
                 >
-                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 6 }}>
+                  <span style={{
+                    display: 'inline-block',
+                    transition: 'transform .15s',
+                    transform: isExpanded ? 'rotate(90deg)' : 'rotate(0deg)',
+                    color: 'var(--text-tertiary)',
+                  }}>
+                    ›
+                  </span>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, minWidth: 0 }}>
+                    <span
+                      style={{
+                        width: 7,
+                        height: 7,
+                        borderRadius: '50%',
+                        background: statusColor,
+                        flexShrink: 0,
+                      }}
+                    />
                     <Text size="xs" weight="bold" color="primary" family="mono" truncate title={trace.correlation_id}>
                       {truncateId(trace.correlation_id)}
                     </Text>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-                      {trace.is_running && !trace.has_error && (
-                        <DispatchButton
-                          variant="stop"
-                          targetNodeId={trace.nodes_involved[0] ?? ''}
-                          correlationId={trace.correlation_id}
-                        />
-                      )}
-                      {!trace.is_running && (
-                        <DispatchButton
-                          variant="rerun"
-                          targetNodeId={trace.nodes_involved[0] ?? ''}
-                        />
-                      )}
-                      <span
-                        style={{
-                          width: 7,
-                          height: 7,
-                          borderRadius: '50%',
-                          background: statusColor,
-                          flexShrink: 0,
-                          ...(trace.is_running && !trace.has_error
-                            ? { boxShadow: '0 0 0 3px rgba(21,128,61,.18)' }
-                            : {}),
-                        }}
-                      />
-                    </div>
+                    <Text size="xs" color="secondary" truncate title={trace.latest_message}>
+                      {trace.latest_message}
+                    </Text>
                   </div>
                   <Text size="xs" color="tertiary" family="mono">
-                    {trace.nodes_involved.length} node{trace.nodes_involved.length !== 1 ? 's' : ''} · {trace.event_count} events
+                    {trace.nodes_involved.length} node{trace.nodes_involved.length !== 1 ? 's' : ''} · {trace.event_count} evt
                   </Text>
                   <Text size="xs" color="tertiary" family="mono">
-                    {formatDuration(trace.duration_ms)} · {trace.is_running ? 'running' : trace.has_error ? 'error' : 'done'}
+                    {formatDuration(trace.duration_ms)}
                   </Text>
-                  <Text size="xs" color="secondary" truncate title={trace.latest_message}>
-                    {trace.latest_message}
+                  <Text size="xs" color="tertiary" family="mono">
+                    {trace.is_running ? 'running' : trace.has_error ? 'error' : 'done'}
                   </Text>
-                </button>
-              );
-            })}
-          </div>
+                </div>
 
-          {/* Right: timeline */}
-          <div style={{ display: 'flex', flexDirection: 'column', minHeight: 0 }}>
-            <div style={{ padding: '6px 12px', borderBottom: '1px solid var(--line)', background: 'var(--panel-2)', display: 'flex', alignItems: 'center', gap: 8 }}>
-              <Text size="xs" weight="bold" color="tertiary" family="mono" transform="uppercase">
-                Timeline
-              </Text>
-              {selectedTrace && (
-                <Text size="xs" color="brand" family="mono" truncate>
-                  {selectedTrace.correlation_id}
-                </Text>
-              )}
-            </div>
-
-            {!selectedTrace ? (
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', flex: 1, padding: 24 }}>
-                <Text size="sm" color="tertiary">Select a trace to view its timeline</Text>
+                {isExpanded && (
+                  <div style={{
+                    borderTop: '1px solid var(--line)',
+                    background: 'var(--bg-sunken)',
+                    padding: '4px 0',
+                  }}>
+                    <TimelinePanel events={traceEvents} isLoading={eventsLoading} />
+                  </div>
+                )}
               </div>
-            ) : (
-              <TimelinePanel events={traceEvents} isLoading={eventsLoading} />
-            )}
-          </div>
+            );
+          })}
         </div>
       </div>
     </ComponentWrapper>

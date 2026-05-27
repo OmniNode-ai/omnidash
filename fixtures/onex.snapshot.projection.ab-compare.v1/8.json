@@ -1,1 +1,12 @@
-{"correlation_id": "run-demo-002", "model_id": "claude-sonnet-4-6", "estimated_cost_usd": 0.118, "total_tokens": 15200, "latency_ms": 19000, "usage_source": "MEASURED", "created_at": "2026-05-02T22:10:00Z", "task_description": "Diagnose Kafka consumer-lag in payments-svc"}
+{
+  "correlation_id": "sea-eval-1779828178-2",
+  "model_id": "anthropic/claude-sonnet-4",
+  "prompt_tokens": 186,
+  "completion_tokens": 990,
+  "total_tokens": 1176,
+  "estimated_cost_usd": 0.0,
+  "latency_ms": 12791,
+  "usage_source": "measured",
+  "created_at": "2026-05-26T20:43:48Z",
+  "task_description": "Generate a URL validator ONEX compute node"
+}

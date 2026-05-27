@@ -121,6 +121,15 @@ describe('AbCompareWidget', () => {
     expect(screen.getByText('MODEL')).toBeInTheDocument();
   });
 
+  it('uses the real correlation id in row details instead of static receipt copy', async () => {
+    mockFetchWithItems([LOCAL_ROW, CLOUD_ROW]);
+    render(<DataSourceTestProvider client={qc}><AbCompareWidget config={{}} /></DataSourceTestProvider>);
+    await userEvent.click(await screen.findByRole('button', { name: /run run-1/i }));
+    expect(screen.getAllByText(/correlation_id: run-1/).length).toBeGreaterThan(0);
+    expect(screen.queryByText(/0xa31f/)).not.toBeInTheDocument();
+    expect(screen.queryByText(/receipt signed by deepseek-r1-32b/)).not.toBeInTheDocument();
+  });
+
   it('renders sortable column headers', async () => {
     mockFetchWithItems([LOCAL_ROW, CLOUD_ROW]);
     render(<DataSourceTestProvider client={qc}><AbCompareWidget config={{}} /></DataSourceTestProvider>);

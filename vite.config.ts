@@ -168,6 +168,21 @@ export default defineConfig(({ mode }) => {
       changeOrigin: true,
       rewrite: (p) => p,
     };
+    proxyMap['/api/projections'] = {
+      target: env.VITE_PROJECTION_API_URL,
+      changeOrigin: true,
+      rewrite: (p) => p,
+    };
+    proxyMap['/api/generate'] = {
+      target: env.VITE_PROJECTION_API_URL,
+      changeOrigin: true,
+      rewrite: (p) => p,
+    };
+    proxyMap['/api/compare'] = {
+      target: env.VITE_PROJECTION_API_URL,
+      changeOrigin: true,
+      rewrite: (p) => p,
+    };
   }
 
   if (env.EVIDENCE_PROJECTION_API_URL) {

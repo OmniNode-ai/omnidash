@@ -81,14 +81,53 @@ describe('TraceExplorerWidget', () => {
     expect(screen.getByText(/corr-alpha/)).toBeInTheDocument();
   });
 
-  it('shows prompt to select a trace when none selected', async () => {
+  it('expands the selected trace inline', async () => {
     mockFetchWithItems([makeTrace()]);
     render(
       <DataSourceTestProvider client={qc}>
         <TraceExplorerWidget />
       </DataSourceTestProvider>,
     );
-    await screen.findAllByTestId('trace-card');
-    expect(screen.getByText('Select a trace to view its timeline')).toBeInTheDocument();
+    const cards = await screen.findAllByTestId('trace-card');
+    expect(screen.queryByText('No events for this trace')).not.toBeInTheDocument();
+
+    fireEvent.click(cards[0]);
+
+    expect(await screen.findByText('No events for this trace')).toBeInTheDocument();
+  });
+
+  it('collapses the selected trace when clicked again', async () => {
+    mockFetchWithItems([makeTrace()]);
+    render(
+      <DataSourceTestProvider client={qc}>
+        <TraceExplorerWidget />
+      </DataSourceTestProvider>,
+    );
+    const cards = await screen.findAllByTestId('trace-card');
+
+    fireEvent.click(cards[0]);
+    expect(await screen.findByText('No events for this trace')).toBeInTheDocument();
+
+    fireEvent.click(cards[0]);
+    expect(screen.queryByText('No events for this trace')).not.toBeInTheDocument();
+  });
+
+  it('keeps duplicate correlation rows independently expandable', async () => {
+    mockFetchWithItems([
+      makeTrace({ first_event_at: '2026-05-25T12:00:00Z', last_event_at: '2026-05-25T12:00:05Z' }),
+      makeTrace({ first_event_at: '2026-05-25T12:01:00Z', last_event_at: '2026-05-25T12:01:05Z' }),
+    ]);
+    render(
+      <DataSourceTestProvider client={qc}>
+        <TraceExplorerWidget />
+      </DataSourceTestProvider>,
+    );
+    const cards = await screen.findAllByTestId('trace-card');
+
+    fireEvent.click(cards[0]);
+    expect(await screen.findAllByText('No events for this trace')).toHaveLength(1);
+
+    fireEvent.click(cards[1]);
+    expect(await screen.findAllByText('No events for this trace')).toHaveLength(1);
   });
 });

@@ -45,4 +45,5 @@ export const componentImports: Record<string, ReturnType<typeof lazy>> = {
   'control-plane/ControlPlanePage': lazy(() => import('./control-plane/ControlPlanePage')),
   'evidence-pipeline/EvidencePipelineFlow': lazy(() => import('./evidence-pipeline/EvidencePipelineFlow')),
   'trace-explorer/TraceExplorerWidget': lazy(() => import('./trace-explorer/TraceExplorerWidget')),
+  'instruction-eval/InstructionEvalHeatmap': lazy(() => import('./instruction-eval/InstructionEvalHeatmap')),
 };

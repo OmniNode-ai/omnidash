@@ -12,7 +12,8 @@
 //     keeping the menu pattern consistent with the prototype across the whole app.
 
 import { useEffect, useLayoutEffect, useRef, useState } from 'react';
-import { Edit, Copy, Plus, MoreHorizontal, Trash2, ChevronsLeft, ChevronsRight, SlidersHorizontal } from 'lucide-react';
+import { Edit, Copy, Plus, MoreHorizontal, Trash2, ChevronsLeft, ChevronsRight, SlidersHorizontal, Grid3x3 } from 'lucide-react';
+import type { AppPage } from '@/store/types';
 import {
   PositionedMenu,
   MenuItem,
@@ -279,6 +280,36 @@ export function Sidebar() {
           paddingTop: 4,
         }}
       >
+        {!collapsed && (
+          <div className="sidebar-bottom-title" style={{ padding: '4px 12px 2px' }}>
+            <Text size="xs" color="tertiary" transform="uppercase" weight="semibold">
+              Evaluation
+            </Text>
+          </div>
+        )}
+        {(
+          [
+            { page: 'eval'    as AppPage, label: 'Instruction Eval', icon: <Grid3x3 size={13} /> },
+          ] as const
+        ).map(({ page, label, icon }) => (
+          <div
+            key={page}
+            role="button"
+            tabIndex={0}
+            className={`dash-item${activePage === page ? ' active' : ''}`}
+            title={collapsed ? label : undefined}
+            onClick={() => setActivePage(activePage === page ? 'dashboard' : page)}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter' || e.key === ' ') {
+                setActivePage(activePage === page ? 'dashboard' : page);
+              }
+            }}
+          >
+            <span className="dash-marker">{icon}</span>
+            {!collapsed && <span className="dash-name">{label}</span>}
+          </div>
+        ))}
+
         <div
           role="button"
           tabIndex={0}

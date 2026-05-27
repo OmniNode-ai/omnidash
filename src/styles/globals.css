@@ -295,6 +295,10 @@
     transition: grid-template-columns 0.2s cubic-bezier(.2,.8,.2,1);
   }
   .app.sidebar-collapsed { --sidebar-w: 56px; }
+
+  @media (max-width: 720px) {
+    .app { --sidebar-w: 56px; }
+  }
 }
 
 /* Shared animation keyframes (referenced by .widget-live::before in dashboard.css) */

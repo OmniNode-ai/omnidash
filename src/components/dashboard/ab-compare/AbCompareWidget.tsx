@@ -308,7 +308,7 @@ function LedgerDetail({
         const free = m.cost === 0;
         return (
           <div
-            key={m.id}
+            key={`${m.id}:${m.host}:${i}`}
             style={{
               display: 'grid',
               gridTemplateColumns: '1fr 90px 90px',
@@ -433,7 +433,7 @@ function TaskListItem({
           <PromptBlock prompt={task.prompt} />
           <LedgerDetail models={task.models} chosenId={chosen.id} dollars={task.savedDollars} />
           <div style={{ "fontSize": 10, "color": 'var(--ink-3)', fontStyle: 'italic' }}>
-            <span className="mono">correlation_id: 0xa31f{'…'}b8c4</span> {'·'} receipt signed by deepseek-r1-32b
+            <span className="mono">correlation_id: {shortCorrelationId(task.id)}</span>
           </div>
         </div>
       )}
@@ -586,7 +586,7 @@ export default function AbCompareWidget({
           <div>
             <div className="eyebrow">A/B model cost compare {'·'} last {totals.count} tasks</div>
             <div style={{ "fontSize": 14, "fontWeight": 600, marginTop: 6, "color": 'var(--ink-2)' }}>
-              Tap any task to see the prompt + receipt.
+              Tap any task to see the prompt and correlation.
             </div>
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>

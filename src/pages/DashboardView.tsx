@@ -28,6 +28,17 @@ import { AutoRefreshSelector } from '@/components/dashboard/AutoRefreshSelector'
 import { EmptyState } from '@/components/dashboard/EmptyState';
 import type { DashboardLayoutItem } from '@shared/types/dashboard';
 import { dashboardService } from '@/services/dashboardService';
+import { seaDemoTemplate } from '@/templates/sea-demo';
+
+function cloneSeaDemoTemplate() {
+  return {
+    ...seaDemoTemplate,
+    layout: seaDemoTemplate.layout.map((item) => ({
+      ...item,
+      config: { ...item.config },
+    })),
+  };
+}
 
 export function DashboardView() {
   const {
@@ -65,13 +76,15 @@ export function DashboardView() {
   // Hydrate the last active dashboard layout from disk on mount.
   useEffect(() => {
     dashboardService.loadByName('default').then((persisted) => {
-      if (!persisted || !Array.isArray(persisted.layout)) return;
       const currentDashboard = useFrameStore.getState().activeDashboard;
       if (!currentDashboard) {
-        setActiveDashboard(persisted);
+        setActiveDashboard(persisted && Array.isArray(persisted.layout) ? persisted : cloneSeaDemoTemplate());
       }
     }).catch((err: unknown) => {
       console.warn('[DashboardView] failed to load persisted layout:', err);
+      if (!useFrameStore.getState().activeDashboard) {
+        setActiveDashboard(cloneSeaDemoTemplate());
+      }
     });
     // Intentional one-shot: this effect should run only on mount.
     // Including `setActiveDashboard` in the deps would re-hydrate every

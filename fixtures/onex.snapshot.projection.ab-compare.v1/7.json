@@ -1,1 +1,12 @@
-{"correlation_id": "run-demo-002", "model_id": "mlx-community/DeepSeek-R1-Distill-Qwen-32B-bf16", "estimated_cost_usd": 0, "total_tokens": 891, "latency_ms": 42000, "usage_source": "MEASURED", "created_at": "2026-05-02T22:10:00Z", "task_description": "Diagnose Kafka consumer-lag in payments-svc"}
+{
+  "correlation_id": "sea-eval-1779828178-2",
+  "model_id": "qwen/qwen3-235b-a22b",
+  "prompt_tokens": 164,
+  "completion_tokens": 1464,
+  "total_tokens": 1628,
+  "estimated_cost_usd": 0.0,
+  "latency_ms": 25922,
+  "usage_source": "measured",
+  "created_at": "2026-05-26T20:43:36Z",
+  "task_description": "Generate a URL validator ONEX compute node"
+}
