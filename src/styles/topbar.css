@@ -8,6 +8,8 @@
    unreachably. Internal scroll lives in .dash-body. */
 .main {
   display: flex; flex-direction: column;
+  width: 100%;
+  max-width: none;
   min-width: 0; min-height: 0;
   height: 100%; overflow: hidden;
   background: var(--bg);

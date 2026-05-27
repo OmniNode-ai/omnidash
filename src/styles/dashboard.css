@@ -7,6 +7,8 @@
   padding: 20px 24px 14px;
   display: flex; align-items: flex-start; justify-content: space-between;
   gap: 16px;
+  width: 100%;
+  max-width: none;
 }
 .dash-title-wrap { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
 .dash-title {
@@ -35,6 +37,8 @@
   flex: 1; overflow-y: auto;
   padding: 6px 24px 40px;
   position: relative;
+  width: 100%;
+  max-width: none;
 }
 /* Masonry-style reflow via CSS columns. A 2-column grid with varying
    widget heights leaves dead vertical space under shorter widgets when
@@ -50,6 +54,8 @@
 .dash-grid {
   columns: 2;
   column-gap: var(--row-gap);
+  width: 100%;
+  max-width: none;
 }
 
 .dash-grid.single-widget {
