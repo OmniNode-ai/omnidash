@@ -80,6 +80,22 @@ describe('ControlPlanePage', () => {
     });
   });
 
+  it('renders the newest pipeline event first without bottom autoscroll behavior', async () => {
+    mockFetchWithItems(PIPELINE_EVENTS);
+    render(
+      <DataSourceTestProvider client={qc}>
+        <ControlPlanePage config={{}} />
+      </DataSourceTestProvider>,
+    );
+
+    await waitFor(() => {
+      expect(screen.getAllByTestId('pipeline-log-entry')).toHaveLength(3);
+    });
+    expect(screen.getAllByTestId('pipeline-log-entry')[0]).toHaveTextContent(
+      /contract materialized/i,
+    );
+  });
+
   it('shows delegation trigger in live data-source mode', async () => {
     vi.stubEnv('VITE_DATA_SOURCE', 'http');
     const source: ProtocolSnapshotSource = {
