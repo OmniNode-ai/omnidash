@@ -53,6 +53,7 @@ export class SqliteProjectionReader {
 
   private query(db: Database.Database, topic: string): Row[] {
     switch (topic) {
+      case 'delegation':
       case 'onex.snapshot.projection.delegation.decisions.v1':
         return db.prepare(`
           SELECT

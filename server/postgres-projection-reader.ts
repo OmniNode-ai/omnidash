@@ -268,6 +268,7 @@ export class PostgresProjectionReader {
     const client = await this.pool.connect();
     try {
       switch (topic) {
+        case 'delegation':
         case 'onex.snapshot.projection.delegation.decisions.v1': {
           const res = await client.query(`
             SELECT

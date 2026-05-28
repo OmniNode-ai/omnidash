@@ -309,6 +309,44 @@ describe('server projection routes — OMNIDASH_DATA_SOURCE=sqlite', () => {
     expect(res.status).toBe(200);
     expect(res.body).toEqual([]);
   });
+
+  it('/projection/delegation short alias returns same rows as decisions.v1 topic', async () => {
+    const db = new Database(dbPath);
+    db.exec(`
+      CREATE TABLE IF NOT EXISTS delegation_events (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        correlation_id TEXT NOT NULL UNIQUE,
+        session_id TEXT,
+        tool_use_id TEXT,
+        hook_name TEXT,
+        task_type TEXT NOT NULL DEFAULT '',
+        delegated_to TEXT NOT NULL DEFAULT '',
+        model_name TEXT NOT NULL DEFAULT '',
+        quality_gate_passed INTEGER NOT NULL DEFAULT 0,
+        quality_gate_detail TEXT,
+        latency_ms INTEGER,
+        input_hash TEXT,
+        input_redaction_policy TEXT NOT NULL DEFAULT 'hash_only',
+        contract_version TEXT NOT NULL DEFAULT 'v1',
+        created_at REAL NOT NULL
+      );
+    `);
+    db.prepare(`
+      INSERT INTO delegation_events (correlation_id, task_type, delegated_to, model_name, quality_gate_passed, created_at)
+      VALUES ('corr-alias-1', 'code', 'local', 'qwen3', 1, 1000.0)
+    `).run();
+    db.close();
+
+    const routes = await loadRoutes();
+    const resAlias = await request(buildApp(routes)).get('/projection/delegation');
+    const resFull = await request(buildApp(routes)).get(
+      '/projection/onex.snapshot.projection.delegation.decisions.v1',
+    );
+    expect(resAlias.status).toBe(200);
+    expect(resAlias.body).toHaveLength(1);
+    expect(resAlias.body[0].correlation_id).toBe('corr-alias-1');
+    expect(resAlias.body).toEqual(resFull.body);
+  });
 });
 
 // OMN-7571: Feature flag dashboard — GET /api/settings/feature-flags
