@@ -113,6 +113,25 @@ class _StreamEvent(BaseModel):
     timestamp: str
 
 
+class _TraceGroup(BaseModel):
+    """TraceExplorer — one record per correlation_id.
+
+    Shape mirrors the widget's `TraceGroup` interface exactly (no
+    `entity_id`); the file sink keys each record by `correlation_id`.
+    """
+
+    model_config = ConfigDict(frozen=True, extra="forbid")
+    correlation_id: str
+    nodes_involved: list[str]
+    event_count: int
+    first_event_at: str
+    last_event_at: str
+    duration_ms: int
+    has_error: bool
+    is_running: bool
+    latest_message: str
+
+
 # ---------------------------------------------------------------------------
 # Raw per-entity records (upstream source material)
 # ---------------------------------------------------------------------------
@@ -187,6 +206,13 @@ _EVENT_TYPES = [
     "baseline.capture",
 ]
 _QUALITY_BUCKETS = ["0.0-0.2", "0.2-0.4", "0.4-0.6", "0.6-0.8", "0.8-1.0"]
+_TRACE_NODES = [
+    "node_build_loop",
+    "node_test_runner",
+    "node_log_persistence_effect",
+    "node_projection_traces",
+    "node_dispatch_worker",
+]
 
 
 def _now_iso(offset_minutes: int = 0) -> str:
@@ -359,6 +385,92 @@ def _stream_events(n: int = 15) -> list[tuple[str, _StreamEvent]]:
     return records
 
 
+def _trace_groups() -> list[tuple[str, _TraceGroup]]:
+    """Representative trace groups covering every TraceExplorer UI state.
+
+    Authored explicitly (not randomly) so the populated/running/error
+    states are guaranteed present on every regeneration:
+      - multi-node completed trace
+      - single-node completed trace
+      - running trace (is_running, open-ended duration)
+      - error trace (has_error)
+      - a longer multi-node completed trace
+    The empty state is exercised by deleting the fixture directory (or
+    via the search filter); no fixture record can represent "empty".
+    """
+    specs: list[dict[str, object]] = [
+        {
+            "nodes": _TRACE_NODES[:4],
+            "event_count": 24,
+            "duration_ms": 8_420,
+            "age_min": 3,
+            "has_error": False,
+            "is_running": False,
+            "latest_message": "Task completed successfully",
+        },
+        {
+            "nodes": _TRACE_NODES[2:3],
+            "event_count": 3,
+            "duration_ms": 612,
+            "age_min": 12,
+            "has_error": False,
+            "is_running": False,
+            "latest_message": "Writing log entry",
+        },
+        {
+            "nodes": _TRACE_NODES[:2],
+            "event_count": 9,
+            "duration_ms": 4_100,
+            "age_min": 0,
+            "has_error": False,
+            "is_running": True,
+            "latest_message": "Running tests",
+        },
+        {
+            "nodes": _TRACE_NODES[:3],
+            "event_count": 15,
+            "duration_ms": 11_730,
+            "age_min": 27,
+            "has_error": True,
+            "is_running": False,
+            "latest_message": "Error: connection timeout",
+        },
+        {
+            "nodes": _TRACE_NODES,
+            "event_count": 41,
+            "duration_ms": 23_900,
+            "age_min": 55,
+            "has_error": False,
+            "is_running": False,
+            "latest_message": "Projection updated",
+        },
+    ]
+    records = []
+    for spec in specs:
+        cid = str(uuid4())
+        age_min = int(spec["age_min"])  # minutes since the trace ended
+        duration_ms = int(spec["duration_ms"])
+        last_event_at = _now_iso(age_min)
+        first_event_at = _now_iso(age_min + (duration_ms // 60_000) + 1)
+        records.append(
+            (
+                cid,
+                _TraceGroup(
+                    correlation_id=cid,
+                    nodes_involved=list(spec["nodes"]),  # type: ignore[arg-type]
+                    event_count=int(spec["event_count"]),
+                    first_event_at=first_event_at,
+                    last_event_at=last_event_at,
+                    duration_ms=duration_ms,
+                    has_error=bool(spec["has_error"]),
+                    is_running=bool(spec["is_running"]),
+                    latest_message=str(spec["latest_message"]),
+                ),
+            )
+        )
+    return records
+
+
 # ---------------------------------------------------------------------------
 # Raw per-entity record factories
 # ---------------------------------------------------------------------------
@@ -503,6 +615,10 @@ def build_projections() -> list[tuple[str, list[tuple[str, object]]]]:
         (
             "onex.snapshot.projection.registration.v1",
             _stream_events(15),
+        ),
+        (
+            "onex.snapshot.projection.traces.v1",
+            _trace_groups(),
         ),
         # --- Raw per-entity topics (upstream source material) ---
         (

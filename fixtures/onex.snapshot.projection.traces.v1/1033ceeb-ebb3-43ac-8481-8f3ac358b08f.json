@@ -1,0 +1,15 @@
+{
+  "correlation_id": "1033ceeb-ebb3-43ac-8481-8f3ac358b08f",
+  "nodes_involved": [
+    "node_build_loop",
+    "node_test_runner",
+    "node_log_persistence_effect"
+  ],
+  "event_count": 15,
+  "first_event_at": "2026-05-28T21:58:08.771080+00:00",
+  "last_event_at": "2026-05-28T21:59:08.771079+00:00",
+  "duration_ms": 11730,
+  "has_error": true,
+  "is_running": false,
+  "latest_message": "Error: connection timeout"
+}

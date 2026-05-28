@@ -1,0 +1,13 @@
+{
+  "correlation_id": "6f34a4bf-3bc8-4dc0-baf0-03300beabf63",
+  "nodes_involved": [
+    "node_log_persistence_effect"
+  ],
+  "event_count": 3,
+  "first_event_at": "2026-05-28T22:13:08.771062+00:00",
+  "last_event_at": "2026-05-28T22:14:08.771060+00:00",
+  "duration_ms": 612,
+  "has_error": false,
+  "is_running": false,
+  "latest_message": "Writing log entry"
+}
