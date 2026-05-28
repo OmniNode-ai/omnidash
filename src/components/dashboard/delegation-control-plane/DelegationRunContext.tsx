@@ -17,6 +17,9 @@ export interface DelegationRunContextValue {
   setFilter: (patch: Partial<DelegationRunFilter>) => void;
   clearFilter: () => void;
   isFixture: boolean;
+  /** correlation_id from the most recent trigger dispatch, before the run materializes in projection rows. */
+  pendingCorrelationId: string | null;
+  setPendingCorrelationId: (id: string) => void;
 }
 
 const DelegationRunContext = createContext<DelegationRunContextValue | null>(null);
@@ -41,6 +44,7 @@ export function DelegationRunProvider({
   const snapshot = useDelegationEvidenceSnapshot();
   const [selectedRunId, setSelectedRunId] = useState<string | null>(null);
   const [filter, setFilterState] = useState<DelegationRunFilter>(EMPTY_FILTER);
+  const [pendingCorrelationId, setPendingCorrelationIdState] = useState<string | null>(null);
 
   const filteredRuns = useMemo(() => applyFilter(snapshot.runs, filter), [snapshot.runs, filter]);
 
@@ -58,9 +62,15 @@ export function DelegationRunProvider({
 
   const clearFilter = useCallback(() => setFilterState(EMPTY_FILTER), []);
 
+  const setPendingCorrelationId = useCallback((id: string) => setPendingCorrelationIdState(id), []);
+
   const value = useMemo<DelegationRunContextValue>(
-    () => ({ snapshot, selectedRunId, selectedRun, filter, filteredRuns, selectRun, setFilter, clearFilter, isFixture }),
-    [snapshot, selectedRunId, selectedRun, filter, filteredRuns, selectRun, setFilter, clearFilter, isFixture],
+    () => ({
+      snapshot, selectedRunId, selectedRun, filter, filteredRuns,
+      selectRun, setFilter, clearFilter, isFixture,
+      pendingCorrelationId, setPendingCorrelationId,
+    }),
+    [snapshot, selectedRunId, selectedRun, filter, filteredRuns, selectRun, setFilter, clearFilter, isFixture, pendingCorrelationId, setPendingCorrelationId],
   );
 
   return <DelegationRunContext.Provider value={value}>{children}</DelegationRunContext.Provider>;

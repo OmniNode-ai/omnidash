@@ -29,6 +29,25 @@ data_source:
   # Tilde is expanded to $HOME by the server at runtime.
   sqlite_db_path: "~/.omninode/delegation/delegation.sqlite"
 
+command_topics:
+  # OMN-12070: Delegation command dispatched via the Express trigger bridge
+  # to the stability-test runtime effects endpoint (OMNIDASH_RUNTIME_EFFECTS_URL).
+  # Topic: onex.cmd.omnimarket.delegate-skill.v1
+  # Payload: { prompt: string, task_type: string, source: "delegation-dashboard" }
+  # Env override: OMNIDASH_RUNTIME_EFFECTS_URL (defaults to simulated response when absent)
+  - topic: "onex.cmd.omnimarket.delegate-skill.v1"
+    handler_node: "node_delegation_orchestrator"
+    source_contract: "omnimarket/src/omnimarket/nodes/node_delegation_orchestrator/contract.yaml"
+    ingress: "/api/delegation/trigger"
+    description: >
+      Initiates a skill delegation run. The Express bridge generates a correlation_id,
+      publishes to the command topic via the ONEX runtime effects endpoint, and returns
+      { correlation_id, accepted: true } to the caller. The correlation_id surfaces in
+      both DelegationControlPlane (pending run indicator) and TraceExplorer.
+    response:
+      correlation_id: string
+      accepted: boolean
+
 projection_api:
   snapshots:
     - topic: "onex.snapshot.projection.mcp-tools.v1"

@@ -26,6 +26,8 @@ const mockContextValue: DelegationRunContextValue = {
   setFilter: vi.fn(),
   clearFilter: vi.fn(),
   isFixture: false,
+  pendingCorrelationId: null,
+  setPendingCorrelationId: vi.fn(),
 };
 
 vi.mock('./DelegationRunContext', () => ({

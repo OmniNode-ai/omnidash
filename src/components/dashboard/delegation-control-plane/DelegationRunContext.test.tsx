@@ -154,4 +154,16 @@ describe('DelegationRunContext', () => {
     expect(result.current).toBeInstanceOf(Error);
     expect((result.current as Error).message).toMatch(/DelegationRunProvider/);
   });
+
+  it('setPendingCorrelationId updates pendingCorrelationId in context', async () => {
+    const { result } = renderHook(() => useDelegationRunContext(), {
+      wrapper: wrapper(populatedSource()),
+    });
+
+    await waitFor(() => expect(result.current.snapshot.isLoading).toBe(false));
+    expect(result.current.pendingCorrelationId).toBeNull();
+
+    act(() => result.current.setPendingCorrelationId('trigger-corr-xyz'));
+    expect(result.current.pendingCorrelationId).toBe('trigger-corr-xyz');
+  });
 });
