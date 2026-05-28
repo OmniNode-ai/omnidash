@@ -51,10 +51,12 @@ describe('Proof of Life — Part 2', () => {
     // OMN-11623: delegation-control-plane added.
     // OMN-12135: trace-explorer added.
     // T22: delegation-cost-comparison added.
-    expect(all.length).toBe(30);
+    // OMN-12399: context-effectiveness-heatmap added.
+    expect(all.length).toBe(31);
     expect(all.map((c) => c.name).sort()).toEqual([
       'ab-compare',
       'baselines-roi-card',
+      'context-effectiveness-heatmap',
       'control-plane',
       'cost-by-model',
       'cost-by-model-3d',
