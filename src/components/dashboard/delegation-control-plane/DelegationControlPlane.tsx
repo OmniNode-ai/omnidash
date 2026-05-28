@@ -23,8 +23,9 @@ function DelegationControlPlaneInner({ config }: { config: DelegationControlPlan
       error={snapshot.primaryError}
       isEmpty={!snapshot.isLoading && !snapshot.hasAnyData}
       emptyMessage="No delegation evidence rows"
-      emptyHint="Run the market delegation golden chain to populate command, decision, savings, quality, and token projections."
+      emptyHint="Run the market delegation golden chain to populate command, decision, savings, quality, and token projections. In file mode, add fixture files under fixtures/onex.snapshot.projection.delegation.*/"
       isLive={isLiveDataSource(dataSourceMode)}
+      fileMode={!isLiveDataSource(dataSourceMode)}
     >
       <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
         <DelegationRunHeader />

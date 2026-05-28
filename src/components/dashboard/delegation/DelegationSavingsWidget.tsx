@@ -5,6 +5,7 @@ import { TOPICS } from '@shared/types/topics';
 import { Text } from '@/components/ui/typography';
 import { KPI } from '@/components/primitives';
 import { useDelegationRunContextOptional } from '@/components/dashboard/delegation-control-plane/DelegationRunContext';
+import { useDataSourceMode, isLiveDataSource } from '@/hooks/useDataSourceMode';
 
 // ── Projection types (from savings_estimates SQLite table, OMN-10623) ─
 
@@ -259,6 +260,7 @@ export default function DelegationSavingsWidget(props: { config: DelegationSavin
   const maxSessions = Math.max(0, Math.trunc(config.maxSessions ?? 10));
 
   const runCtx = useDelegationRunContextOptional();
+  const dataSourceMode = useDataSourceMode();
 
   const { data, isLoading: queryLoading, error: queryError } = useProjectionQuery<DelegationSavingsProjection>({
     queryKey: ['delegation-savings', TOPICS.delegationSavings],
@@ -328,7 +330,8 @@ export default function DelegationSavingsWidget(props: { config: DelegationSavin
       error={error}
       isEmpty={isEmpty}
       emptyMessage="No delegation savings data"
-      emptyHint="Savings data appears once delegation routing is active and savings_estimates are recorded"
+      emptyHint="Savings data appears once delegation routing is active and savings_estimates are recorded. In file mode, add fixture files under fixtures/onex.snapshot.projection.delegation.savings.v1/"
+      fileMode={!isLiveDataSource(dataSourceMode)}
     >
       {projection && !isEmpty && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>

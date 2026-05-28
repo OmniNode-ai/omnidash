@@ -235,8 +235,9 @@ export default function TraceExplorerWidget() {
       error={error ?? undefined}
       isEmpty={traceList.length === 0}
       emptyMessage="No traces"
-      emptyHint="Traces appear after log entries are written with correlation IDs"
+      emptyHint="Traces appear after log entries are written with correlation IDs. In file mode, add fixture files under fixtures/onex.snapshot.projection.traces.v1/"
       isLive={isLiveDataSource(dataSourceMode)}
+      fileMode={!isLiveDataSource(dataSourceMode)}
       headerExtra={
         <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8, minWidth: 0 }}>
           <Text size="xs" color="tertiary" family="mono">
