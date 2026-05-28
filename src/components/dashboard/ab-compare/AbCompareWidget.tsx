@@ -4,6 +4,7 @@ import { ComponentWrapper } from '../ComponentWrapper';
 import { useProjectionQuery } from '@/hooks/useProjectionQuery';
 import { TOPICS } from '@shared/types/topics';
 import { CountUp } from '@/components/primitives';
+import { useDataSourceMode, isLiveDataSource } from '@/hooks/useDataSourceMode';
 
 // ── Data types ──────────────────────────────────────────────────────
 
@@ -507,6 +508,7 @@ export default function AbCompareWidget({
 }) {
   const [openId, setOpenId] = useState<string | null>(null);
   const [sort, setSort] = useState<SortState | null>(null);
+  const dataSourceMode = useDataSourceMode();
 
   const { data, isLoading, error } = useProjectionQuery<AbCompareRow>({
     topic: TOPICS.abCompare,
@@ -578,7 +580,8 @@ export default function AbCompareWidget({
       error={error ?? undefined}
       isEmpty={tasks.length === 0}
       emptyMessage="No comparison data yet"
-      emptyHint="Results appear after the first ab-compare run completes"
+      emptyHint="Results appear after the first ab-compare run completes. In file mode, add fixture files under fixtures/onex.snapshot.projection.ab-compare.v1/"
+      fileMode={!isLiveDataSource(dataSourceMode)}
     >
       <div style={{ display: 'flex', flexDirection: 'column', gap: 0, width: '100%' }}>
         {/* Hero header */}

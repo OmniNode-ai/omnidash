@@ -143,8 +143,9 @@ export default function LiveEventStreamWidget() {
       error={error ?? undefined}
       isEmpty={events.length === 0}
       emptyMessage="No live events"
-      emptyHint="Live event rows appear after event bus projections are written"
+      emptyHint="Live event rows appear after event bus projections are written. In file mode, add fixture files under fixtures/onex.snapshot.projection.live-events.v1/"
       isLive={isLiveDataSource(dataSourceMode)}
+      fileMode={!isLiveDataSource(dataSourceMode)}
       headerExtra={
         <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>
           <Text size="xs" color="tertiary" family="mono">

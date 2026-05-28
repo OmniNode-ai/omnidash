@@ -6,6 +6,7 @@ import { TOPICS } from '@shared/types/topics';
 import { Text } from '@/components/ui/typography';
 import { KPI } from '@/components/primitives';
 import { useDelegationRunContextOptional } from '@/components/dashboard/delegation-control-plane/DelegationRunContext';
+import { useDataSourceMode, isLiveDataSource } from '@/hooks/useDataSourceMode';
 import type { DelegationDecisionProjectionRow } from '@/components/dashboard/delegation-control-plane/delegation-control-plane.types';
 
 // ── Projection types (from delegation_events SQLite table, OMN-10623) ─
@@ -381,6 +382,7 @@ export default function DelegationQualityGateWidget(props: { config: DelegationQ
   const tokensWarnThreshold = config.tokensToComplianceWarnThreshold ?? 5_000;
 
   const runCtx = useDelegationRunContextOptional();
+  const dataSourceMode = useDataSourceMode();
 
   const { data, isLoading: queryLoading, error: queryError } = useProjectionQuery<DelegationQualityGateProjection>({
     queryKey: ['delegation-quality-gate', TOPICS.delegationQualityGate],
@@ -442,7 +444,8 @@ export default function DelegationQualityGateWidget(props: { config: DelegationQ
       error={error}
       isEmpty={isEmpty}
       emptyMessage="No escalation data"
-      emptyHint="Escalation data appears once delegation events with quality checks are recorded"
+      emptyHint="Escalation data appears once delegation events with quality checks are recorded. In file mode, add fixture files under fixtures/onex.snapshot.projection.delegation.quality-gate.v1/"
+      fileMode={!isLiveDataSource(dataSourceMode)}
     >
       {projection && !isEmpty && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>

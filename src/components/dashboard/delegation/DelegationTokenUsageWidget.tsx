@@ -7,6 +7,7 @@ import { Text } from '@/components/ui/typography';
 import { KPI } from '@/components/primitives';
 import { useThemeColors } from '@/theme';
 import { useDelegationRunContextOptional } from '@/components/dashboard/delegation-control-plane/DelegationRunContext';
+import { useDataSourceMode, isLiveDataSource } from '@/hooks/useDataSourceMode';
 
 // ── Projection types (from llm_call_metrics SQLite table, OMN-10623) ─
 
@@ -206,6 +207,7 @@ export default function DelegationTokenUsageWidget(props: { config: DelegationTo
   const showProvenance = config.showProvenance ?? true;
 
   const runCtx = useDelegationRunContextOptional();
+  const dataSourceMode = useDataSourceMode();
 
   const { data, isLoading: queryLoading, error: queryError } = useProjectionQuery<DelegationTokenUsageProjection>({
     queryKey: ['delegation-token-usage', TOPICS.delegationTokenUsage],
@@ -243,7 +245,8 @@ export default function DelegationTokenUsageWidget(props: { config: DelegationTo
       error={error}
       isEmpty={isEmpty}
       emptyMessage="No token usage data"
-      emptyHint="Token usage data appears once LLM call metrics are recorded"
+      emptyHint="Token usage data appears once LLM call metrics are recorded. In file mode, add fixture files under fixtures/onex.snapshot.projection.delegation.token-usage.v1/"
+      fileMode={!isLiveDataSource(dataSourceMode)}
     >
       {projection && !isEmpty && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
