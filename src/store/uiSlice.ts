@@ -16,4 +16,6 @@ export const createUISlice: StateCreator<FrameStore, [], [], UISlice> = (set) =>
     set((state) => ({ sidebarCollapsed: !state.sidebarCollapsed })),
   activePage: 'dashboard',
   setActivePage: (page) => set({ activePage: page }),
+  traceFilter: null,
+  setTraceFilter: (correlationId) => set({ traceFilter: correlationId }),
 });

@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { Search } from 'lucide-react';
 import { ComponentWrapper } from '../ComponentWrapper';
 import { useProjectionQuery } from '@/hooks/useProjectionQuery';
@@ -6,6 +6,7 @@ import { TOPICS } from '@shared/types/topics';
 import { NodePill } from '@/components/primitives';
 import { Text } from '@/components/ui/typography';
 import { useDataSourceMode, isLiveDataSource } from '@/hooks/useDataSourceMode';
+import { useFrameStore } from '@/store/store';
 
 // ── Data types ───────────────────────────────────────────────────────
 
@@ -175,11 +176,26 @@ export default function TraceExplorerWidget() {
     refetchInterval: 15_000,
   });
 
-  const [query, setQuery] = useState('');
+  const traceFilter = useFrameStore((s) => s.traceFilter);
+  const setTraceFilter = useFrameStore((s) => s.setTraceFilter);
+
+  const [query, setQuery] = useState(() => traceFilter ?? '');
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [traceEvents, setTraceEvents] = useState<TraceEvent[]>([]);
   const [eventsLoading, setEventsLoading] = useState(false);
   const dataSourceMode = useDataSourceMode();
+
+  // Consume the deep-link filter set by DelegationRunTable and clear it so
+  // a subsequent navigation to this page starts fresh.
+  useEffect(() => {
+    if (traceFilter) {
+      setQuery(traceFilter);
+      setTraceFilter(null);
+    }
+  // Only run once on mount — intentionally omitting traceFilter/setTraceFilter
+  // from deps so navigating away and back doesn't re-apply a stale filter.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const traceList = useMemo(() => {
     if (!traces || traces.length === 0) return [];

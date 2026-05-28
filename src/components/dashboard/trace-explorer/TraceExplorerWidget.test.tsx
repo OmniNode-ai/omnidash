@@ -5,6 +5,7 @@ import { DataSourceTestProvider } from '@/test-utils/dataSourceTestProvider';
 import { mockFetchWithItems } from '@/test-utils/mockFetch';
 import TraceExplorerWidget from './TraceExplorerWidget';
 import type { TraceGroup } from './TraceExplorerWidget';
+import { useFrameStore } from '@/store/store';
 
 const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } });
 
@@ -129,5 +130,27 @@ describe('TraceExplorerWidget', () => {
 
     fireEvent.click(cards[1]);
     expect(await screen.findAllByText('No events for this trace')).toHaveLength(1);
+  });
+
+  it('pre-fills search from store traceFilter on mount and clears it', async () => {
+    useFrameStore.setState({ traceFilter: 'corr-deep-link' });
+    mockFetchWithItems([
+      makeTrace({ correlation_id: 'corr-deep-link' }),
+      makeTrace({ correlation_id: 'corr-other' }),
+    ]);
+    render(
+      <DataSourceTestProvider client={qc}>
+        <TraceExplorerWidget />
+      </DataSourceTestProvider>,
+    );
+
+    // Wait for the widget body to render (traces loaded)
+    await screen.findAllByTestId('trace-card');
+
+    const input = screen.getByLabelText('Filter traces') as HTMLInputElement;
+    expect(input.value).toBe('corr-deep-link');
+
+    // Store filter is cleared after mount so subsequent navigation starts fresh
+    expect(useFrameStore.getState().traceFilter).toBeNull();
   });
 });
