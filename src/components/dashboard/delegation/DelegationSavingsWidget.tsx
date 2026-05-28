@@ -56,6 +56,11 @@ export interface DelegationSavingsConfig {
 // Used when cost_savings_usd / savings_usd is 0 but token counts are present.
 // Prices in USD per token.
 
+// Client-side estimation fallback — used only when the backend projection
+// returns zero for savings_usd / cloud_cost_usd / local_cost_usd.
+// Authoritative savings are computed server-side via the pricing manifest
+// (omnimarket/src/omnimarket/pricing.py). These constants should NOT be
+// treated as the source of truth for cost calculations.
 const OPUS_INPUT_PRICE  = 15.0  / 1_000_000;  // $15/M tokens
 const OPUS_OUTPUT_PRICE = 75.0  / 1_000_000;  // $75/M tokens
 const SONNET_INPUT_PRICE  = 3.0  / 1_000_000;

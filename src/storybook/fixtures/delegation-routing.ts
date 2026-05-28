@@ -23,7 +23,7 @@ const SESSION_IDS = [
 ];
 
 const SESSION_TASK_TYPES = ['code-review', 'pattern-match', 'document-summarize', 'classification', 'code-review'];
-const SESSION_MODELS = ['Qwen3-Coder-30B', 'glm-4-plus', 'Qwen3-Coder-30B', 'codex-cli', 'claude-sonnet-4-6'];
+const SESSION_MODELS = ['qwen3-coder-30b', 'deepseek-r1-14b', 'qwen3-coder-30b', 'openrouter-glm-flash', 'claude-sonnet-4-6'];
 
 export function buildDelegationSavings(opts: BuildDelegationSavingsOptions = {}): DelegationSavingsProjection {
   const {
@@ -87,7 +87,7 @@ export interface BuildDelegationModelRoutingOptions {
   provisioned?: boolean;
 }
 
-const ROUTING_MODELS = ['Qwen3-Coder-30B', 'claude-sonnet-4-6', 'glm-4-plus', 'codex-cli'];
+const ROUTING_MODELS = ['qwen3-coder-30b', 'deepseek-r1-14b', 'openrouter-glm-flash', 'claude-sonnet-4-6'];
 const TASK_TYPES = ['code-review', 'classification', 'summarization', 'pattern-match'];
 
 export function buildDelegationModelRouting(
@@ -218,10 +218,10 @@ export function buildDelegationQualityGate(
           median_tokens_to_compliance: 3_950,
           avg_compliance_attempts: 1.32,
           tokens_to_compliance_by_model: [
-            { model_name: 'Qwen3-Coder-30B', avg_tokens: 3_120, avg_attempts: 1.18, sample_count: 142 },
-            { model_name: 'glm-4-plus', avg_tokens: 4_640, avg_attempts: 1.34, sample_count: 96 },
-            { model_name: 'codex-cli', avg_tokens: 5_280, avg_attempts: 1.51, sample_count: 64 },
-            { model_name: 'gemini-cli', avg_tokens: 6_910, avg_attempts: 1.78, sample_count: 38 },
+            { model_name: 'qwen3-coder-30b', avg_tokens: 3_120, avg_attempts: 1.18, sample_count: 142 },
+            { model_name: 'deepseek-r1-14b', avg_tokens: 4_640, avg_attempts: 1.34, sample_count: 96 },
+            { model_name: 'openrouter-glm-flash', avg_tokens: 5_280, avg_attempts: 1.51, sample_count: 64 },
+            { model_name: 'claude-sonnet-4-6', avg_tokens: 6_910, avg_attempts: 1.78, sample_count: 38 },
           ],
         }
       : {}),
@@ -237,10 +237,10 @@ export interface BuildDelegationTokenUsageOptions {
 }
 
 const TOKEN_MODELS: Array<{ id: string; name: string; promptRatio: number; costPerToken: number; provenance: TokenProvenance }> = [
-  { id: 'qwen3-coder-30b', name: 'Qwen3-Coder-30B', promptRatio: 0.78, costPerToken: 0, provenance: 'measured' },
-  { id: 'claude-sonnet-4-6', name: 'claude-sonnet-4-6', promptRatio: 0.72, costPerToken: 0.000003, provenance: 'measured' },
-  { id: 'glm-4-plus', name: 'glm-4-plus', promptRatio: 0.68, costPerToken: 0.0000015, provenance: 'estimated' },
-  { id: 'codex-cli', name: 'codex-cli', promptRatio: 0.65, costPerToken: 0.000002, provenance: 'estimated' },
+  { id: 'qwen3-coder-30b', name: 'qwen3-coder-30b', promptRatio: 0.78, costPerToken: 0, provenance: 'measured' },
+  { id: 'deepseek-r1-14b', name: 'deepseek-r1-14b', promptRatio: 0.72, costPerToken: 0.000003, provenance: 'measured' },
+  { id: 'openrouter-glm-flash', name: 'openrouter-glm-flash', promptRatio: 0.68, costPerToken: 0.0000015, provenance: 'estimated' },
+  { id: 'claude-sonnet-4-6', name: 'claude-sonnet-4-6', promptRatio: 0.65, costPerToken: 0.000002, provenance: 'estimated' },
 ];
 
 export function buildDelegationTokenUsage(
