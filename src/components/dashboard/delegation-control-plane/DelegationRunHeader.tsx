@@ -6,7 +6,7 @@ import { useDelegationRunContext } from './DelegationRunContext';
 import { DelegationTriggerPanel } from './DelegationTriggerPanel';
 
 export function DelegationRunHeader() {
-  const { snapshot, selectedRun, isFixture } = useDelegationRunContext();
+  const { snapshot, selectedRun, isFixture, setPendingCorrelationId } = useDelegationRunContext();
   const honestyState = deriveHonestyState(snapshot);
 
   const passed = snapshot.runs.filter((run) => run.status === 'passed').length;
@@ -57,7 +57,7 @@ export function DelegationRunHeader() {
               {dataSource}
             </Text>
           </div>
-          <DelegationTriggerPanel />
+          <DelegationTriggerPanel onCorrelationId={setPendingCorrelationId} />
           <div style={{ textAlign: 'right' }}>
             <Text as="div" size="xs" color="tertiary">
               Latest projection

@@ -1,5 +1,5 @@
 import { Activity, Archive, BarChart2, CircleDollarSign, Database, FileCheck2, GitCommitHorizontal, LayoutDashboard, Network, Receipt } from 'lucide-react';
-import { useState, type ComponentType } from 'react';
+import { useEffect, useState, type ComponentType } from 'react';
 import { Text } from '@/components/ui/typography';
 import { DelegationPanelFrame } from './DelegationPanelFrame';
 import { DelegationEventChainPanel } from './DelegationEventChainPanel';
@@ -29,11 +29,40 @@ const TABS: Array<{ id: DelegationEvidenceTabId; label: string; Icon: ComponentT
 const DEFAULT_TAB: DelegationEvidenceTabId = 'overview';
 
 export function DelegationEvidenceTabs() {
-  const { snapshot, selectedRun } = useDelegationRunContext();
+  const { snapshot, selectedRun, pendingCorrelationId } = useDelegationRunContext();
   const [activeTab, setActiveTab] = useState<DelegationEvidenceTabId>(DEFAULT_TAB);
+
+  // Auto-navigate to Correlation Trace tab when a trigger dispatch lands a new correlation_id.
+  useEffect(() => {
+    if (pendingCorrelationId) {
+      setActiveTab('correlation-trace');
+    }
+  }, [pendingCorrelationId]);
 
   return (
     <section>
+      {pendingCorrelationId && (
+        <div
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: 10,
+            padding: '6px 10px',
+            marginBottom: 8,
+            background: 'color-mix(in srgb, var(--color-ok, #22c55e) 8%, transparent)',
+            border: '1px solid color-mix(in srgb, var(--color-ok, #22c55e) 25%, transparent)',
+            borderRadius: 6,
+          }}
+        >
+          <Text as="span" size="xs" color="ok">Dispatched</Text>
+          <Text as="span" size="xs" family="mono" color="secondary" style={{ overflowWrap: 'break-word', flex: 1 }}>
+            correlation_id: {pendingCorrelationId}
+          </Text>
+          <Text as="span" size="xs" color="tertiary">
+            Waiting for projection rows to materialize.
+          </Text>
+        </div>
+      )}
       <div
         role="tablist"
         style={{ display: 'flex', gap: 6, flexWrap: 'wrap', borderBottom: '1px solid var(--line)', paddingBottom: 8, marginBottom: 12 }}
