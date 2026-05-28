@@ -1,9 +1,29 @@
 import { useCallback, useEffect } from 'react';
 import { Text } from '@/components/ui/typography';
+import { useDataSourceMode } from '@/hooks/useDataSourceMode';
+import type { DataSourceMode } from '@/config/generated/data-source-defaults';
 import { DelegationPanelFrame } from './DelegationPanelFrame';
 import { useDelegationRunContext } from './DelegationRunContext';
 import { fmtDate, fmtMs, fmtTokens, fmtUsd } from './format';
 import type { DelegationRun } from './delegation-control-plane.types';
+
+// OMN-12397: the printable proof pack is exported to PDF and circulated
+// independent of the parent Fixture banner, so its own "Source:" line must
+// state where the data actually came from in the active data-source mode.
+// Keep these strings in sync with the mode descriptions in DataModeBanner.
+const SOURCE_BY_MODE: Record<DataSourceMode, string> = {
+  file: 'Source: Local fixture file (fixtures/onex.snapshot.projection.cost.savings-overview.v1/demo-delegation-snapshot.json)',
+  sqlite: 'Source: Local SQLite projection',
+  http: 'Source: OmniNode projection API via Express bridge',
+  postgres: 'Source: OmniNode delegation_events projection',
+};
+
+// Whether the active mode reads from a live projection (true) or a local
+// development surface (false). Drives the reproducibility sentence: only live
+// data is reproducible by re-querying the projection endpoints.
+function isLiveMode(mode: DataSourceMode): boolean {
+  return mode === 'http' || mode === 'postgres';
+}
 
 // Print stylesheet injected into document head while this panel is mounted.
 const PRINT_CSS = `
@@ -58,6 +78,7 @@ function gateLabel(status: DelegationRun['status']): string {
 
 export function DelegationSavingsProofPackPanel() {
   useProofPackPrintStyle();
+  const mode = useDataSourceMode();
   const { snapshot } = useDelegationRunContext();
   const { runs, savings } = snapshot;
 
@@ -119,6 +140,7 @@ export function DelegationSavingsProofPackPanel() {
           runCount={runs.length}
           cumulativeSavings={cumulativeSavings}
           cumulativeCloudCost={cumulativeCloudCost}
+          mode={mode}
         />
         <RunTable runs={runs} />
       </div>
@@ -133,6 +155,7 @@ function ProofPackHeader({
   runCount,
   cumulativeSavings,
   cumulativeCloudCost,
+  mode,
 }: {
   generatedAt: string;
   capturedAt: string | undefined;
@@ -140,7 +163,12 @@ function ProofPackHeader({
   runCount: number;
   cumulativeSavings: number;
   cumulativeCloudCost: number;
+  mode: DataSourceMode;
 }) {
+  const sourceLine = SOURCE_BY_MODE[mode] ?? SOURCE_BY_MODE.postgres;
+  const reproducibility = isLiveMode(mode)
+    ? 'This report is generated from live projection data and is reproducible by re-querying the same projection endpoints.'
+    : 'This report is generated from a local development data source and is not a live projection.';
   return (
     <div style={{ marginBottom: 16, paddingBottom: 12, borderBottom: '1px solid var(--line)' }}>
       <Text as="div" size="lg" weight="semibold" color="primary" style={{ marginBottom: 6 }}>
@@ -155,8 +183,8 @@ function ProofPackHeader({
         <ProofFact label="Est. cloud cost (baseline)" value={fmtUsd(cumulativeCloudCost)} />
       </div>
       <Text as="div" size="xs" color="tertiary">
-        Source: OmniNode delegation_events projection. Savings calculated against baseline cloud model pricing per pricing manifest version above.
-        This report is generated from live projection data and is reproducible by re-querying the same projection endpoints.
+        {sourceLine}. Savings calculated against baseline cloud model pricing per pricing manifest version above.
+        {' '}{reproducibility}
       </Text>
     </div>
   );
