@@ -50,7 +50,8 @@ describe('Proof of Life — Part 2', () => {
     // OMN-11477: evidence-pipeline-flow added.
     // OMN-11623: delegation-control-plane added.
     // OMN-12135: trace-explorer added.
-    expect(all.length).toBe(29);
+    // T22: delegation-cost-comparison added.
+    expect(all.length).toBe(30);
     expect(all.map((c) => c.name).sort()).toEqual([
       'ab-compare',
       'baselines-roi-card',
@@ -62,6 +63,7 @@ describe('Proof of Life — Part 2', () => {
       'cost-summary',
       'cost-trend-panel',
       'delegation-control-plane',
+      'delegation-cost-comparison',
       'delegation-metrics',
       'delegation-model-routing',
       'delegation-quality-gate',

@@ -1052,6 +1052,33 @@ const MVP_COMPONENTS: Record<string, ComponentManifest> = {
     emptyState: { message: 'No delegation savings data', hint: 'Savings data appears once delegation routing is active (OMN-10623).' },
     capabilities: { supports_compare: false, supports_export: false, supports_fullscreen: true, supports_time_range: false },
   },
+  'delegation-cost-comparison': {
+    name: 'delegation-cost-comparison',
+    displayName: 'Delegation Cost Comparison',
+    description: 'Per-run cost comparison table: local (delegated) vs cloud (baseline) cost, tokens, latency, savings delta, and provenance (measured vs estimated). Backed by savings_estimates projection (OMN-10623).',
+    category: 'cost',
+    version: '1.0.0',
+    implementationKey: 'delegation/DelegationCostComparisonWidget',
+    configSchema: {
+      type: 'object',
+      properties: {
+        maxRows: { type: 'integer', minimum: 1, default: 20, title: 'Max rows', description: 'Maximum sessions to display in the comparison table.' },
+        showProvenance: { type: 'boolean', default: true, title: 'Show provenance', description: 'Show measured/estimated source badge per row.' },
+      },
+      additionalProperties: false,
+    },
+    projectionSchema: {
+      type: 'object',
+      description: 'Same shape as delegation-savings (onex.snapshot.projection.delegation.savings.v1). Widget surfaces the per-session breakdown with cost delta column.',
+    },
+    dataSources: [projectionSource(TOPICS.delegationSavings, false), liveSource(TOPICS.delegationSavings)],
+    events: { emits: [], consumes: [] },
+    defaultSize: { w: 10, h: 7 },
+    minSize: { w: 8, h: 5 },
+    maxSize: { w: 12, h: 16 },
+    emptyState: { message: 'No cost comparison data', hint: 'Appears once delegation sessions with savings_estimates are recorded.' },
+    capabilities: { supports_compare: false, supports_export: false, supports_fullscreen: true, supports_time_range: false },
+  },
   'delegation-model-routing': {
     name: 'delegation-model-routing',
     displayName: 'Model Routing',
