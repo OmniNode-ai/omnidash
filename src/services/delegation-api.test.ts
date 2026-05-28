@@ -6,6 +6,7 @@ import {
   fetchModelRouting,
   fetchQualityGate,
   fetchDelegationSavings,
+  fetchCorrelationTrace,
 } from './delegation-api';
 import { TOPICS } from '@shared/types/topics';
 
@@ -87,6 +88,61 @@ describe('delegation-api fetch functions', () => {
     vi.stubGlobal('fetch', vi.fn().mockResolvedValueOnce({ ok: true, json: async () => [] }));
     await fetchModelRouting({ baseUrl: 'http://example.com/api/delegation/' });
     expect(fetch).toHaveBeenCalledWith('http://example.com/api/delegation/model-routing');
+  });
+
+  // OMN-12367: in live (postgres) mode a non-JSON body (e.g. the SPA index.html
+  // returned when no proxy is configured) must degrade to an empty trace, never
+  // a raw JSON.parse error.
+  it('fetchCorrelationTrace degrades to empty rows when body is not JSON', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockResolvedValueOnce({
+        ok: true,
+        json: async () => {
+          throw new SyntaxError('JSON.parse: unexpected character at line 1 column 1');
+        },
+      }),
+    );
+    const result = await fetchCorrelationTrace('cid-123');
+    expect(result).toEqual({ correlation_id: 'cid-123', rows: [] });
+  });
+
+  it('fetchCorrelationTrace returns empty rows on non-ok response', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValueOnce({ ok: false, status: 404 }));
+    const result = await fetchCorrelationTrace('missing');
+    expect(result).toEqual({ correlation_id: 'missing', rows: [] });
+  });
+
+  describe('file mode', () => {
+    afterEach(() => {
+      vi.unstubAllEnvs();
+    });
+
+    it('reads the per-correlation fixture instead of the REST endpoint', async () => {
+      vi.stubEnv('VITE_DATA_SOURCE', 'file');
+      const fetchMock = vi.fn().mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({ correlation_id: 'cid-file', rows: [{ id: 1, correlation_id: 'cid-file' }] }),
+      });
+      vi.stubGlobal('fetch', fetchMock);
+
+      const result = await fetchCorrelationTrace('cid-file');
+
+      expect(result.rows).toHaveLength(1);
+      const url = fetchMock.mock.calls[0]![0] as string;
+      expect(url).toContain('/_fixtures/');
+      expect(url).toContain(encodeURIComponent(TOPICS.delegationCorrelationTrace));
+      expect(url).toContain('cid-file.json');
+      expect(url).not.toContain('/api/delegation/');
+    });
+
+    it('returns empty rows (no parse error) when the fixture is absent', async () => {
+      vi.stubEnv('VITE_DATA_SOURCE', 'file');
+      vi.stubGlobal('fetch', vi.fn().mockResolvedValueOnce({ ok: false, status: 404 }));
+
+      const result = await fetchCorrelationTrace('cid-absent');
+      expect(result).toEqual({ correlation_id: 'cid-absent', rows: [] });
+    });
   });
 
   it('does not reference process.env for delegation connection', async () => {
