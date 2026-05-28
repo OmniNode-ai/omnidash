@@ -60,8 +60,8 @@ describe('DelegationTokenUsageWidget', () => {
       </DataSourceTestProvider>,
     );
     await screen.findByText('Total tokens');
-    expect(screen.getByText('Qwen3-Coder-30B')).toBeInTheDocument();
-    expect(screen.getByText('claude-sonnet-4-6')).toBeInTheDocument();
+    expect(screen.getByText('qwen3-coder-30b')).toBeInTheDocument();
+    expect(screen.getByText('deepseek-r1-14b')).toBeInTheDocument();
   });
 
   it('renders provenance badges when showProvenance is true', async () => {
