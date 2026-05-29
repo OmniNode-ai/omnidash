@@ -150,6 +150,11 @@ async function seedDashboard(page: Page) {
   }, { dashboard: DELEGATION_DASHBOARD });
 }
 
+async function selectFiveSecondAutoRefresh(page: Page) {
+  await page.getByRole('button', { name: 'Auto-refresh' }).click();
+  await page.getByRole('menuitem', { name: '5s' }).click();
+}
+
 // ── Tests ────────────────────────────────────────────────────────────────────
 
 test.describe('OMN-10947: delegation dashboard live refresh proof', () => {
@@ -178,23 +183,24 @@ test.describe('OMN-10947: delegation dashboard live refresh proof', () => {
 
     await seedDashboard(page);
     await page.goto('/');
+    await selectFiveSecondAutoRefresh(page);
 
     // Wait for the delegation metrics widget to render with baseline data
     await page.waitForSelector('[data-testid="grid-item"]', { timeout: 15000 });
 
     // The delegation-metrics widget renders totalDelegations as a stat.
     // Wait for "314" to appear in the page (from our baseline fixture).
-    await expect(page.locator('text=314')).toBeVisible({ timeout: 10000 });
+    await expect(page.getByText('314', { exact: true })).toBeVisible({ timeout: 10000 });
 
     // -- Trigger: simulate a new delegation event by changing fixture response --
     serveSummary = SUMMARY_AFTER_EVENT;
 
     // Wait for auto-refresh: useProjectionQuery has refetchInterval: 5000ms
     // SLA: 5s poll + 1s buffer = 6s total
-    await expect(page.locator('text=315')).toBeVisible({ timeout: 7000 });
+    await expect(page.getByText('315', { exact: true })).toBeVisible({ timeout: 7000 });
 
     // The old value should no longer be present
-    await expect(page.locator('text=314')).not.toBeVisible({ timeout: 2000 });
+    await expect(page.getByText('314', { exact: true })).not.toBeVisible({ timeout: 2000 });
   });
 
   test('savings widget shows dollar amount and updates after new delegation', async ({ page }) => {
@@ -242,6 +248,7 @@ test.describe('OMN-10947: delegation dashboard live refresh proof', () => {
 
     await seedDashboard(page);
     await page.goto('/');
+    await selectFiveSecondAutoRefresh(page);
 
     // Wait for savings widget to render
     await page.waitForSelector('[data-testid="grid-item"]', { timeout: 15000 });
@@ -305,7 +312,7 @@ test.describe('OMN-10947: delegation dashboard live refresh proof', () => {
     await page.goto('/');
     await page.waitForSelector('[data-testid="grid-item"]', { timeout: 15000 });
     // Wait for data to render
-    await expect(page.locator('text=314')).toBeVisible({ timeout: 10000 });
+    await expect(page.getByText('314', { exact: true })).toBeVisible({ timeout: 10000 });
     await page.waitForTimeout(1000);
     await page.screenshot({
       path: 'tests/e2e/screenshots/delegation-live-refresh-populated.png',
