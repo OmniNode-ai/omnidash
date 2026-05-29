@@ -3,6 +3,8 @@ dist/
 .vite/
 *.local
 .env.local*
+# OMN-12394: .env (not .env.local) holds local DB credentials; must never be committed.
+.env
 fixtures/
 # Storybook fixture builders are part of the source tree (OMN-103).
 !src/storybook/fixtures/
