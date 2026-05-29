@@ -116,7 +116,7 @@ describe('CostSavingsOverviewWidget', () => {
     expect(await screen.findByText('Delegated Tokens')).toBeInTheDocument();
     expect(screen.getByText('1,202 to compliance')).toBeInTheDocument();
     expect(screen.getAllByText('Qwen3-Coder-30B-A3B-Instruct-AWQ-4bit').length).toBeGreaterThan(0);
-    expect(screen.getByText('+$0.0153')).toBeInTheDocument();
+    expect(screen.getByText('+$0.02')).toBeInTheDocument();
     expect(screen.getByText('100.0%')).toBeInTheDocument();
     expect(screen.getByText('Recent delegation runs')).toBeInTheDocument();
     expect(screen.getByText('5e12c850')).toBeInTheDocument();

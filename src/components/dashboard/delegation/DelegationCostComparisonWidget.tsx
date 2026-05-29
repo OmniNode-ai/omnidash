@@ -19,7 +19,7 @@ export interface DelegationCostComparisonConfig {
 
 function fmtUsd(v: number | undefined): string {
   if (v == null || !Number.isFinite(v)) return '—';
-  return v === 0 ? '$0.00' : `$${v.toFixed(v < 0.01 ? 4 : 2)}`;
+  return `$${v.toFixed(2)}`;
 }
 
 function fmtTokens(v: number | undefined): string {
@@ -139,9 +139,9 @@ function SummaryBar({ projection }: { projection: DelegationSavingsProjection })
 
   return (
     <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', marginBottom: 12 }}>
-      <KPI label="Cumulative savings" value={projection.cumulative_savings_usd} prefix="$" decimals={4} tone="good" />
-      <KPI label="Local cost" value={projection.cumulative_local_cost_usd} prefix="$" decimals={4} />
-      <KPI label="Cloud baseline" value={projection.cumulative_cloud_cost_usd} prefix="$" decimals={4} />
+      <KPI label="Cumulative savings" value={projection.cumulative_savings_usd} prefix="$" decimals={2} tone="good" />
+      <KPI label="Local cost" value={projection.cumulative_local_cost_usd} prefix="$" decimals={2} />
+      <KPI label="Cloud baseline" value={projection.cumulative_cloud_cost_usd} prefix="$" decimals={2} />
       <KPI label="Sessions" value={projection.session_count} />
       <KPI label="Total tokens" value={totalTokens} />
       <KPI label="Measured" value={measuredCount} caption={`${estimatedCount} estimated`} tone={measuredCount > 0 ? 'good' : 'warn'} />

@@ -1,7 +1,9 @@
 node_modules/
+node_modules
 dist/
 .vite/
 *.local
+contract.local.yaml
 .env.local*
 # OMN-12394: .env (not .env.local) holds local DB credentials; must never be committed.
 .env
