@@ -155,6 +155,12 @@ async function selectFiveSecondAutoRefresh(page: Page) {
   await page.getByRole('menuitem', { name: '5s' }).click();
 }
 
+function delegationMetricsWidget(page: Page) {
+  return page.locator('[data-testid="grid-item"]').filter({
+    has: page.getByText('Delegation Metrics', { exact: true }),
+  }).first();
+}
+
 // ── Tests ────────────────────────────────────────────────────────────────────
 
 test.describe('OMN-10947: delegation dashboard live refresh proof', () => {
@@ -190,17 +196,18 @@ test.describe('OMN-10947: delegation dashboard live refresh proof', () => {
 
     // The delegation-metrics widget renders totalDelegations as a stat.
     // Wait for "314" to appear in the page (from our baseline fixture).
-    await expect(page.getByText('314', { exact: true })).toBeVisible({ timeout: 10000 });
+    const metricsWidget = delegationMetricsWidget(page);
+    await expect(metricsWidget.getByText('314', { exact: true })).toBeVisible({ timeout: 10000 });
 
     // -- Trigger: simulate a new delegation event by changing fixture response --
     serveSummary = SUMMARY_AFTER_EVENT;
 
     // Wait for auto-refresh: useProjectionQuery has refetchInterval: 5000ms
     // SLA: 5s poll + 1s buffer = 6s total
-    await expect(page.getByText('315', { exact: true })).toBeVisible({ timeout: 7000 });
+    await expect(metricsWidget.getByText('315', { exact: true })).toBeVisible({ timeout: 7000 });
 
     // The old value should no longer be present
-    await expect(page.getByText('314', { exact: true })).not.toBeVisible({ timeout: 2000 });
+    await expect(metricsWidget.getByText('314', { exact: true })).not.toBeVisible({ timeout: 2000 });
   });
 
   test('savings widget shows dollar amount and updates after new delegation', async ({ page }) => {
@@ -312,7 +319,7 @@ test.describe('OMN-10947: delegation dashboard live refresh proof', () => {
     await page.goto('/');
     await page.waitForSelector('[data-testid="grid-item"]', { timeout: 15000 });
     // Wait for data to render
-    await expect(page.getByText('314', { exact: true })).toBeVisible({ timeout: 10000 });
+    await expect(delegationMetricsWidget(page).getByText('314', { exact: true })).toBeVisible({ timeout: 10000 });
     await page.waitForTimeout(1000);
     await page.screenshot({
       path: 'tests/e2e/screenshots/delegation-live-refresh-populated.png',
