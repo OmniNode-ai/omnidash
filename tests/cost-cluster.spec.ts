@@ -60,6 +60,12 @@ async function waitForCostSummary(page: Page) {
   await expect(page.getByText('Cost summary · last 7 days')).toBeVisible({ timeout: 15000 });
 }
 
+function costSummaryWidget(page: Page) {
+  return page.locator('[data-testid="grid-item"]').filter({
+    has: page.getByText('Cost Summary', { exact: true }),
+  }).first();
+}
+
 // ---------------------------------------------------------------------------
 // cost-summary — KPI tile cluster: 3 tiles with formatted values
 // ---------------------------------------------------------------------------
@@ -74,21 +80,22 @@ test.describe('cost-summary widget — populated fixture (R9/R10)', () => {
   });
 
   test('renders compact cost-summary KPI surface', async ({ page }) => {
-    await expect(page.getByText('Cloud spend', { exact: true })).toBeVisible();
-    await expect(page.getByText('Avoided', { exact: true })).toBeVisible();
-    await expect(page.getByText('Tokens', { exact: true })).toBeVisible();
+    const widget = costSummaryWidget(page);
+    await expect(widget.getByText('Cloud spend', { exact: true })).toBeVisible();
+    await expect(widget.getByText('Avoided', { exact: true })).toBeVisible();
+    await expect(widget.getByText('Tokens', { exact: true })).toBeVisible();
   });
 
   test('total-cost tile shows currency-formatted value $12.34', async ({ page }) => {
-    await expect(page.getByText('$12.34')).toBeVisible({ timeout: 10000 });
+    await expect(costSummaryWidget(page).getByText('$12.34')).toBeVisible({ timeout: 10000 });
   });
 
   test('total-savings tile shows currency-formatted value $4.56', async ({ page }) => {
-    await expect(page.getByText('$4.56').first()).toBeVisible({ timeout: 10000 });
+    await expect(costSummaryWidget(page).getByText('$4.56').first()).toBeVisible({ timeout: 10000 });
   });
 
   test('total-tokens tile shows compact formatted count 1.2M', async ({ page }) => {
-    await expect(page.getByText('1.2M')).toBeVisible({ timeout: 10000 });
+    await expect(costSummaryWidget(page).getByText('1.2M')).toBeVisible({ timeout: 10000 });
   });
 });
 
@@ -112,14 +119,15 @@ test.describe('cost-summary widget — empty fixture synthetic fallback', () => 
 
   test('renders synthetic fallback summary when projection empty', async ({ page }) => {
     await waitForCostSummary(page);
-    await expect(page.getByText('75%')).toBeVisible({ timeout: 10000 });
-    await expect(page.getByText('$487.62').first()).toBeVisible({ timeout: 10000 });
-    await expect(page.getByText('38.4M')).toBeVisible({ timeout: 10000 });
+    const widget = costSummaryWidget(page);
+    await expect(widget.getByText('75%')).toBeVisible({ timeout: 10000 });
+    await expect(widget.getByText('$487.62').first()).toBeVisible({ timeout: 10000 });
+    await expect(widget.getByText('38.4M')).toBeVisible({ timeout: 10000 });
   });
 
   test('empty fixture does not render a fetch error', async ({ page }) => {
     await waitForCostSummary(page);
-    await expect(page.getByText(/Failed to fetch|Error:/)).toHaveCount(0);
+    await expect(costSummaryWidget(page).getByText(/Failed to fetch|Error:/)).toHaveCount(0);
   });
 });
 
