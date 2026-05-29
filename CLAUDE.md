@@ -21,7 +21,7 @@ This repo runs in two modes:
 3. **Do NOT hand-edit** `src/registry/component-registry.json`. Run `npm run generate:registry`.
 4. **Do NOT hand-edit** anything under `src/shared/types/generated/`. Run `npm run types:generate`.
 5. **Do NOT edit** any file under `node_modules/`. Components discovered there are read-only.
-6. **Fixtures and layouts are not committed.** They live under `./fixtures/` and `./dashboard-layouts/`, both gitignored.
+6. **Fixtures are committed; dashboard-layouts are not.** `./fixtures/` is tracked via an OMN-10305 carve-out in `.gitignore` (`!fixtures/`, `!fixtures/**`). `./dashboard-layouts/` remains gitignored. See `git ls-files fixtures/` to inspect tracked snapshots.
 
 ### Common tasks
 
@@ -102,3 +102,16 @@ _Track B — external package widget (plugin extension path):_
   `src/storybook-coverage-compliance.test.ts` enforces this contract on
   every `npm test`. See `docs/adr/002-storybook-widget-coverage.md` for
   rationale.
+
+## Dashboard lineage (OMN-12393)
+
+Three local directories exist that reference the omnidash product. Canonical classification
+verified 2026-05-28 (see `docs/evidence/OMN-12368-verification/dashboard.md`):
+
+| Directory | Remote | Classification | Notes |
+|-----------|--------|----------------|-------|
+| `omnidash/` | OmniNode-ai/omnidash.git (`dev`) | **CANONICAL_ACTIVE** | Active development branch; this is the authoritative working repo |
+| `omnidash-v2/` | OmniNode-ai/omnidash-v2.git (`dev`) | **SUPERSEDED** | Stale local clone of a separate GitHub remote; 6+ commits behind `omnidash/` as of 2026-05-28. Not a separate product — same product line, diverged remote |
+| `omnidash-v2-new/` | OmniNode-ai/omnidash.git (`main`) | **TEMP_STAGING** | Temporary staging clone documented in omni_home CLAUDE.md; ~1 month behind omnidash dev; different commit lineage from current dev |
+
+All development work goes to `omnidash/` on `dev`. Do not commit feature work to `omnidash-v2/` or `omnidash-v2-new/`.
