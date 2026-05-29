@@ -85,7 +85,7 @@ function computeSessionCosts(s: DelegationSavingsSession): {
 // ── Formatters ────────────────────────────────────────────────────────
 
 function fmtUsd(v: number): string {
-  return v === 0 ? '$0.00' : `$${v.toFixed(v < 0.01 ? 4 : 2)}`;
+  return `$${v.toFixed(2)}`;
 }
 
 function fmtDate(value: string | number): string {
@@ -349,21 +349,21 @@ export default function DelegationSavingsWidget(props: { config: DelegationSavin
               label="Est. savings vs Opus"
               value={displaySaved}
               prefix="$"
-              decimals={4}
+              decimals={2}
               tone="good"
             />
             <KPI
               label="Local cost"
               value={projection.cumulative_local_cost_usd}
               prefix="$"
-              decimals={4}
+              decimals={2}
               tone="default"
             />
             <KPI
               label="Opus equivalent cost"
               value={cumulativeComputed?.totalOpus ?? projection.cumulative_cloud_cost_usd}
               prefix="$"
-              decimals={4}
+              decimals={2}
               tone="default"
             />
             <KPI

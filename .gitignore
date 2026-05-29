@@ -1,7 +1,9 @@
 node_modules/
+node_modules
 dist/
 .vite/
 *.local
+contract.local.yaml
 .env.local*
 fixtures/
 # Storybook fixture builders are part of the source tree (OMN-103).

@@ -7,12 +7,13 @@
  * remain as optional runtime overrides.
  */
 
-import { readFileSync, mkdirSync, writeFileSync } from 'node:fs';
+import { existsSync, readFileSync, mkdirSync, writeFileSync } from 'node:fs';
 import { resolve, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const contractPath = resolve(__dirname, '..', 'contract.yaml');
+const contractOverlayPath = resolve(__dirname, '..', 'contract.local.yaml');
 const outPath = resolve(__dirname, '..', 'src', 'config', 'generated', 'data-source-defaults.ts');
 
 type DataSourceMode = 'sqlite' | 'postgres' | 'file' | 'http';
@@ -24,13 +25,17 @@ interface Defaults {
   sqliteDbPath: string;
 }
 
-function parseContract(raw: string): Defaults {
-  const defaults: Defaults = {
+function defaultDataSource(): Defaults {
+  return {
     mode: 'sqlite',
     url: 'http://localhost:3002',
     wsUrl: 'ws://localhost:3002/ws',
     sqliteDbPath: '~/.omninode/delegation/delegation.sqlite',
   };
+}
+
+function parseContract(raw: string, initial: Defaults = defaultDataSource()): Defaults {
+  const defaults: Defaults = { ...initial };
 
   let inDataSource = false;
   for (const rawLine of raw.split('\n')) {
@@ -58,8 +63,10 @@ function parseContract(raw: string): Defaults {
   return defaults;
 }
 
-const raw = readFileSync(contractPath, 'utf8');
-const d = parseContract(raw);
+let d = parseContract(readFileSync(contractPath, 'utf8'));
+if (existsSync(contractOverlayPath)) {
+  d = parseContract(readFileSync(contractOverlayPath, 'utf8'), d);
+}
 
 const generated = `// GENERATED — do not edit. Source: contract.yaml
 // Regenerate with: npm run generate:config

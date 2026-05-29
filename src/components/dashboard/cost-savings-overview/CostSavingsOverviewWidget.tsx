@@ -83,7 +83,7 @@ const MODE_COLOR: Record<ExecutionMode, string> = {
 };
 
 function fmtUsd(v: number): string {
-  return v === 0 ? '$0.00' : `$${v.toFixed(Math.abs(v) < 1 ? 4 : 2)}`;
+  return `$${v.toFixed(2)}`;
 }
 
 function fmtPct(v: number): string {
@@ -144,7 +144,7 @@ function KPIBar({ overview }: { overview: CostSavingsOverviewProjection }) {
         label="Cloud Avoided"
         value={overview.total_savings_usd}
         prefix="$"
-        decimals={Math.abs(overview.total_savings_usd) < 1 ? 4 : 2}
+        decimals={2}
         tone={savingsTone}
       />
       <KPI

@@ -29,6 +29,13 @@ data_source:
   # Tilde is expanded to $HOME by the server at runtime.
   sqlite_db_path: "~/.omninode/delegation/delegation.sqlite"
 
+event_bus:
+  # Contract-owned Kafka/Redpanda bootstrap configuration for the Express
+  # dispatch bridge. Keep lane-specific endpoints in contract.local.yaml or
+  # deployment overlays; the base contract intentionally has no network target.
+  bootstrap_servers: ""
+  client_id: "omnidash-server"
+
 command_topics:
   # OMN-12070: Delegation command dispatched via the Express trigger bridge
   # to the stability-test runtime effects endpoint (OMNIDASH_RUNTIME_EFFECTS_URL).
