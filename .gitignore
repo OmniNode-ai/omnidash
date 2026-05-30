@@ -45,3 +45,15 @@ coverage/
 .next/
 .turbo/
 .DS_Store
+
+# === onex-managed: universal ===
+.env
+.env.*
+!.env.example
+.DS_Store
+*.log
+.idea/
+.vscode/
+test-results/
+playwright-report/
+# === end onex-managed: universal ===
