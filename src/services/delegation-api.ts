@@ -3,7 +3,7 @@
  *
  * Typed fetch functions for the 5 delegation projection endpoints.
  * Base URL is configurable (no hardcoded localhost). In Vite dev mode the
- * `/api/delegation/*` path is proxied to the projection API backend; in
+ * `/api/delegation/*` path is proxied to the omnidash API backend; in
  * production the proxy is replaced by the real backend route.
  *
  * All functions use relative paths by default so Vite proxy handles routing
@@ -173,14 +173,14 @@ function asTraceResponse(correlationId: string, body: unknown): CorrelationTrace
   return { correlation_id: correlationId, rows: [] };
 }
 
-// OMN-12367: in file mode the /api/delegation/* proxy is not registered (it is
-// wired only when VITE_PROJECTION_API_URL is set), so a fetch to the typed REST
-// endpoint hits the Vite dev server's SPA fallback and returns index.html. The
-// previous implementation called res.json() on that HTML and surfaced a raw
-// "JSON.parse: unexpected character at line 1 column 1" error. Detect file mode
-// up front and read a per-correlation fixture so the surface renders without
-// postgres; in live mode parse defensively so a non-JSON body degrades to an
-// empty trace rather than a raw parse error.
+// OMN-12367 / OMN-12756: in file mode the /api/delegation/* proxy is not
+// registered, so a fetch to the typed REST endpoint hits the Vite dev server's
+// SPA fallback and returns index.html. The previous implementation called
+// res.json() on that HTML and surfaced a raw "JSON.parse: unexpected character
+// at line 1 column 1" error. Detect file mode up front and read a
+// per-correlation fixture so the surface renders without postgres; in live mode
+// parse defensively so a non-JSON body degrades to an empty trace rather than a
+// raw parse error.
 function dataSourceMode(): string {
   return import.meta.env.VITE_DATA_SOURCE ?? DATA_SOURCE_DEFAULT_MODE;
 }
@@ -235,6 +235,7 @@ export interface DelegationTriggerResponse {
   correlation_id: string;
   accepted: boolean;
   message?: string;
+  topic?: string;
 }
 
 export async function triggerDelegation(

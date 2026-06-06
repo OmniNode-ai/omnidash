@@ -13,7 +13,7 @@
   },
   "scripts": {
     "dev": "vite",
-    "dev:server": "tsx --env-file-if-exists .env watch server/index.ts",
+    "dev:server": "tsx watch --env-file-if-exists .env server/index.ts",
     "build": "tsc --noEmit && vite build",
     "build:server": "tsc --noEmit --project tsconfig.node.json",
     "preview": "vite preview",
