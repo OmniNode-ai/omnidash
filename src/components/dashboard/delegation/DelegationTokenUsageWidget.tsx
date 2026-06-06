@@ -86,7 +86,7 @@ function fmtTokens(n: number): string {
 }
 
 function fmtUsd(v: number): string {
-  return v === 0 ? '$0.00' : `$${v.toFixed(v < 0.01 ? 4 : 2)}`;
+  return `$${v.toFixed(2)}`;
 }
 
 // ── Per-model row ─────────────────────────────────────────────────────

@@ -42,7 +42,7 @@ describe('DelegationMetrics2D', () => {
     expect(await screen.findByText('150')).toBeInTheDocument();
     expect(screen.getByText('85%')).toBeInTheDocument();
     expect(screen.getByText('128/150 local')).toBeInTheDocument();
-    expect(screen.getByText('1.5s')).toBeInTheDocument();
+    expect(screen.getByText('1.50s')).toBeInTheDocument();
     expect(screen.getByText('$42.50')).toBeInTheDocument();
     // Model distribution legend: short name + share. 105/150 = 70%, 45/150 = 30%.
     expect(screen.getByText('Qwen3-Coder-30B')).toBeInTheDocument();

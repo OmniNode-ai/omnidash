@@ -31,7 +31,7 @@ function fmtTokens(v: number | undefined): string {
 
 function fmtMs(v: number | undefined): string {
   if (v == null || !Number.isFinite(v)) return '—';
-  if (v >= 1000) return `${(v / 1000).toFixed(1)}s`;
+  if (v >= 1000) return `${(v / 1000).toFixed(2)}s`;
   return `${Math.round(v)}ms`;
 }
 

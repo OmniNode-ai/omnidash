@@ -63,7 +63,7 @@ export interface DelegationModelRoutingConfig {
 // ── Formatters ────────────────────────────────────────────────────────
 
 function fmtMs(ms: number): string {
-  if (ms >= 1000) return `${(ms / 1000).toFixed(1)}s`;
+  if (ms >= 1000) return `${(ms / 1000).toFixed(2)}s`;
   return `${ms.toFixed(0)}ms`;
 }
 

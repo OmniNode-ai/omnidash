@@ -4,7 +4,6 @@
 
 /* Dashboard header */
 :root {
-  --dashboard-shell-max: 1740px;
   --dashboard-shell-gutter: 24px;
 }
 
@@ -13,11 +12,8 @@
   margin: 0 auto;
   display: flex; align-items: flex-start; justify-content: space-between;
   gap: 16px;
-  width: min(
-    var(--dashboard-shell-max),
-    calc(100% - (var(--dashboard-shell-gutter) * 2))
-  );
-  max-width: calc(100% - (var(--dashboard-shell-gutter) * 2));
+  width: calc(100% - (var(--dashboard-shell-gutter) * 2));
+  max-width: none;
 }
 .dash-title-wrap { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
 .dash-title {
@@ -49,11 +45,8 @@
   position: relative;
   min-height: 0;
   box-sizing: border-box;
-  width: min(
-    var(--dashboard-shell-max),
-    calc(100% - (var(--dashboard-shell-gutter) * 2))
-  );
-  max-width: calc(100% - (var(--dashboard-shell-gutter) * 2));
+  width: calc(100% - (var(--dashboard-shell-gutter) * 2));
+  max-width: none;
   scrollbar-gutter: stable both-edges;
 }
 /* Masonry-style reflow via CSS columns. A 2-column grid with varying
