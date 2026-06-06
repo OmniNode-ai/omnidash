@@ -142,6 +142,13 @@ export const TOPICS = {
    * Backed by swarm_runs table in omnidash_analytics (OMN-12072).
    */
   swarmRuns: 'onex.snapshot.projection.swarm.runs.v1',
+  /**
+   * Inference response text projection — latest ModelLlmInferenceResponse rows
+   * sourced from the bus topic onex.evt.omnibase-infra.inference-response.v1.
+   * Rendered by DelegationModelOutputWidget (OMN-12745). Fixture mode is the
+   * demo-blocking deliverable; live surfacing requires the demo redeploy OMN-12746.
+   */
+  inferenceResponseText: 'onex.snapshot.projection.delegation.inference-response-text.v1',
 } as const;
 
 export type TopicSymbol = (typeof TOPICS)[keyof typeof TOPICS];

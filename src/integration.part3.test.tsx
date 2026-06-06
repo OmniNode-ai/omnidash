@@ -66,7 +66,8 @@ describe('Proof of Life — Part 3 (Full System)', () => {
     // + trace-explorer (OMN-12135).
     // + delegation-cost-comparison (T22).
     // + context-effectiveness-heatmap (OMN-12399).
-    expect(available.length).toBe(31);
+    // + delegation-model-output (OMN-12745).
+    expect(available.length).toBe(32);
   });
 
   it('both templates pass validation', () => {
