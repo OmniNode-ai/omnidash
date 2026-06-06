@@ -1,5 +1,5 @@
 import { Text } from '@/components/ui/typography';
-import { fmtDate, shortId } from './format';
+import { fmtDate, fmtUsd, shortId } from './format';
 import { DelegationPanelFrame, EmptyPanel } from './DelegationPanelFrame';
 import type { DelegationEvidenceSnapshot, DelegationRun } from './delegation-control-plane.types';
 
@@ -47,7 +47,7 @@ function buildArtifacts(snapshot: DelegationEvidenceSnapshot, selectedRun: Deleg
       type: 'Report',
       label: 'Savings report',
       value: snapshot.savings
-        ? `sessions:${snapshot.savings.session_count} savings:$${snapshot.savings.cumulative_savings_usd?.toFixed(4) ?? '0'}`
+        ? `sessions:${snapshot.savings.session_count} savings:${fmtUsd(snapshot.savings.cumulative_savings_usd)}`
         : 'pending savings projection',
       available: Boolean(snapshot.savings),
     },

@@ -1,17 +1,19 @@
 import { Kafka, Producer, logLevel } from 'kafkajs';
-
-const KAFKA_BROKERS = (process.env.KAFKA_BROKERS ?? 'localhost:19092').split(',');
-
-const kafka = new Kafka({
-  clientId: 'omnidash-server',
-  brokers: KAFKA_BROKERS,
-  logLevel: logLevel.WARN,
-});
+import { loadEventBusConfig } from './data-source-contract.js';
 
 let producer: Producer | null = null;
 let connected = false;
 
 export async function connectProducer(): Promise<void> {
+  const config = loadEventBusConfig();
+  if (config.bootstrapServers.length === 0) {
+    throw new Error('event_bus.bootstrap_servers missing; configure contract.local.yaml or a deployment overlay');
+  }
+  const kafka = new Kafka({
+    clientId: config.clientId,
+    brokers: config.bootstrapServers,
+    logLevel: logLevel.WARN,
+  });
   producer = kafka.producer();
   await producer.connect();
   connected = true;

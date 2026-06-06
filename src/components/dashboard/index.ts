@@ -37,6 +37,7 @@ export const componentImports: Record<string, ReturnType<typeof lazy>> = {
     () => import('./cost-savings-overview/CostSavingsOverviewWidget'),
   ),
   'delegation/DelegationSavingsWidget': lazy(() => import('./delegation/DelegationSavingsWidget')),
+  'delegation/DelegationCostComparisonWidget': lazy(() => import('./delegation/DelegationCostComparisonWidget')),
   'delegation/DelegationModelRoutingWidget': lazy(() => import('./delegation/DelegationModelRoutingWidget')),
   'delegation/DelegationQualityGateWidget': lazy(() => import('./delegation/DelegationQualityGateWidget')),
   'delegation/DelegationTokenUsageWidget': lazy(() => import('./delegation/DelegationTokenUsageWidget')),
@@ -45,4 +46,6 @@ export const componentImports: Record<string, ReturnType<typeof lazy>> = {
   'control-plane/ControlPlanePage': lazy(() => import('./control-plane/ControlPlanePage')),
   'evidence-pipeline/EvidencePipelineFlow': lazy(() => import('./evidence-pipeline/EvidencePipelineFlow')),
   'trace-explorer/TraceExplorerWidget': lazy(() => import('./trace-explorer/TraceExplorerWidget')),
+  'instruction-eval/InstructionEvalHeatmap': lazy(() => import('./instruction-eval/InstructionEvalHeatmap')),
+  'context-heatmap/ContextEffectivenessHeatmap': lazy(() => import('./context-heatmap/ContextEffectivenessHeatmap')),
 };

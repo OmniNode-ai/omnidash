@@ -1,6 +1,6 @@
 {
   "manifestVersion": "1.0",
-  "generatedAt": "2026-05-25T21:56:56.866Z",
+  "generatedAt": "2026-05-28T22:26:02.296Z",
   "components": {
     "cost-trend-panel": {
       "name": "cost-trend-panel",
@@ -833,6 +833,118 @@
         "supports_compare": false,
         "supports_export": true,
         "supports_fullscreen": false,
+        "supports_time_range": false
+      }
+    },
+    "context-effectiveness-heatmap": {
+      "name": "context-effectiveness-heatmap",
+      "displayName": "Context Effectiveness Heatmap",
+      "description": "Segment × model matrix of context-pack quality-gate pass rates and token deltas, classifying each context segment (golden_chain, CLAUDE.md, exemplar, etc.) as helpful, neutral, or harmful per model. Backed by the context_experiment_scores ablation projection (OMN-12082); renders the OMN-11241 research fixture until the projection is live.",
+      "category": "quality",
+      "version": "1.0.0",
+      "implementationKey": "context-heatmap/ContextEffectivenessHeatmap",
+      "configSchema": {
+        "type": "object",
+        "properties": {
+          "maxRows": {
+            "type": "integer",
+            "minimum": 1,
+            "title": "Max rows",
+            "description": "Maximum segment rows to render in the matrix."
+          }
+        },
+        "additionalProperties": false
+      },
+      "projectionSchema": {
+        "type": "object",
+        "description": "Row shape from onex.snapshot.projection.context.experiment-scores.v1. Backed by the context_experiment_scores ablation table (OMN-12082).",
+        "required": [
+          "modelId",
+          "packId",
+          "factorsPresent",
+          "qualityGatePassed",
+          "tokensUsed"
+        ],
+        "properties": {
+          "modelId": {
+            "type": "string",
+            "description": "Model identifier used for the experiment run (column key in the matrix)."
+          },
+          "packId": {
+            "type": "string",
+            "description": "Context segment identifier (row key in the matrix, e.g. golden_chain, claude_md)."
+          },
+          "factorsPresent": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "Context factors present in this run."
+          },
+          "qualityGatePassed": {
+            "type": "boolean",
+            "description": "Whether the quality gate passed for this run."
+          },
+          "tokensUsed": {
+            "type": "number",
+            "description": "Tokens consumed by this run; aggregated into per-cell token deltas."
+          },
+          "taskType": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "Optional task type for the experiment run."
+          },
+          "experimentRunId": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "Optional experiment run identifier."
+          },
+          "createdAt": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date-time",
+            "description": "ISO-8601 timestamp when this score was recorded."
+          }
+        }
+      },
+      "dataSources": [
+        {
+          "type": "projection",
+          "topic": "onex.snapshot.projection.context.experiment-scores.v1",
+          "required": false,
+          "purpose": "initial_fetch"
+        }
+      ],
+      "events": {
+        "emits": [],
+        "consumes": []
+      },
+      "defaultSize": {
+        "w": 8,
+        "h": 6
+      },
+      "minSize": {
+        "w": 6,
+        "h": 4
+      },
+      "maxSize": {
+        "w": 12,
+        "h": 12
+      },
+      "emptyState": {
+        "message": "No experiment scores",
+        "hint": "context_experiment_scores requires the A3 delegation-verify-worker projection (OMN-12082). Renders the OMN-11241 research fixture until the projection is live."
+      },
+      "capabilities": {
+        "supports_compare": false,
+        "supports_export": false,
+        "supports_fullscreen": true,
         "supports_time_range": false
       }
     },
@@ -2162,6 +2274,77 @@
       "emptyState": {
         "message": "No delegation savings data",
         "hint": "Savings data appears once delegation routing is active (OMN-10623)."
+      },
+      "capabilities": {
+        "supports_compare": false,
+        "supports_export": false,
+        "supports_fullscreen": true,
+        "supports_time_range": false
+      }
+    },
+    "delegation-cost-comparison": {
+      "name": "delegation-cost-comparison",
+      "displayName": "Delegation Cost Comparison",
+      "description": "Per-run cost comparison table: local (delegated) vs cloud (baseline) cost, tokens, latency, savings delta, and provenance (measured vs estimated). Backed by savings_estimates projection (OMN-10623).",
+      "category": "cost",
+      "version": "1.0.0",
+      "implementationKey": "delegation/DelegationCostComparisonWidget",
+      "configSchema": {
+        "type": "object",
+        "properties": {
+          "maxRows": {
+            "type": "integer",
+            "minimum": 1,
+            "default": 20,
+            "title": "Max rows",
+            "description": "Maximum sessions to display in the comparison table."
+          },
+          "showProvenance": {
+            "type": "boolean",
+            "default": true,
+            "title": "Show provenance",
+            "description": "Show measured/estimated source badge per row."
+          }
+        },
+        "additionalProperties": false
+      },
+      "projectionSchema": {
+        "type": "object",
+        "description": "Same shape as delegation-savings (onex.snapshot.projection.delegation.savings.v1). Widget surfaces the per-session breakdown with cost delta column."
+      },
+      "dataSources": [
+        {
+          "type": "projection",
+          "topic": "onex.snapshot.projection.delegation.savings.v1",
+          "required": false,
+          "purpose": "initial_fetch"
+        },
+        {
+          "type": "websocket",
+          "topic": "onex.snapshot.projection.delegation.savings.v1",
+          "required": false,
+          "purpose": "live_updates"
+        }
+      ],
+      "events": {
+        "emits": [],
+        "consumes": []
+      },
+      "defaultSize": {
+        "w": 10,
+        "h": 7
+      },
+      "minSize": {
+        "w": 8,
+        "h": 5
+      },
+      "maxSize": {
+        "w": 12,
+        "h": 16
+      },
+      "emptyState": {
+        "message": "No cost comparison data",
+        "hint": "Appears once delegation sessions with savings_estimates are recorded."
       },
       "capabilities": {
         "supports_compare": false,

@@ -5,6 +5,7 @@ import { TOPICS } from '@shared/types/topics';
 import { Text } from '@/components/ui/typography';
 import { useThemeColors } from '@/theme';
 import { useDelegationRunContextOptional } from '@/components/dashboard/delegation-control-plane/DelegationRunContext';
+import { useDataSourceMode, isLiveDataSource } from '@/hooks/useDataSourceMode';
 
 // ── Projection types (from delegation_events SQLite table, OMN-10623) ─
 
@@ -62,7 +63,7 @@ export interface DelegationModelRoutingConfig {
 // ── Formatters ────────────────────────────────────────────────────────
 
 function fmtMs(ms: number): string {
-  if (ms >= 1000) return `${(ms / 1000).toFixed(1)}s`;
+  if (ms >= 1000) return `${(ms / 1000).toFixed(2)}s`;
   return `${ms.toFixed(0)}ms`;
 }
 
@@ -245,6 +246,7 @@ export default function DelegationModelRoutingWidget(props: { config: Delegation
   const showDecisionTrace = config.showDecisionTrace ?? true;
 
   const runCtx = useDelegationRunContextOptional();
+  const dataSourceMode = useDataSourceMode();
 
   const { data, isLoading: queryLoading, error: queryError } = useProjectionQuery<DelegationModelRoutingProjection>({
     queryKey: ['delegation-model-routing', TOPICS.delegationModelRouting],
@@ -279,7 +281,8 @@ export default function DelegationModelRoutingWidget(props: { config: Delegation
       error={error}
       isEmpty={isEmpty}
       emptyMessage="No routing data"
-      emptyHint="Routing data appears once delegation events are recorded"
+      emptyHint="Routing data appears once delegation events are recorded. In file mode, add fixture files under fixtures/onex.snapshot.projection.delegation.model-routing.v1/"
+      fileMode={!isLiveDataSource(dataSourceMode)}
     >
       {projection && !isEmpty && (
         <div

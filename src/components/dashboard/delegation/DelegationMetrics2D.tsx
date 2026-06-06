@@ -11,6 +11,7 @@ import { Text } from '@/components/ui/typography';
 import { useThemeColors } from '@/theme';
 import type { DelegationSummary } from './DelegationMetrics3D';
 import { useDelegationRunContextOptional } from '@/components/dashboard/delegation-control-plane/DelegationRunContext';
+import { useDataSourceMode, isLiveDataSource } from '@/hooks/useDataSourceMode';
 
 // avgLatencyMs is not in every projection snapshot (the file-source
 // fixture omits it); treat it and the per-model breakdown as optional so
@@ -26,7 +27,7 @@ type Summary = Omit<DelegationSummary, 'byTaskType'> & {
 };
 
 function fmtMs(ms: number): string {
-  if (ms >= 1000) return `${(ms / 1000).toFixed(1)}s`;
+  if (ms >= 1000) return `${(ms / 1000).toFixed(2)}s`;
   return `${ms.toFixed(0)}ms`;
 }
 
@@ -144,6 +145,7 @@ export default function DelegationMetrics2D({ config }: { config: Record<string,
     typeof config.qualityGateThreshold === 'number' ? config.qualityGateThreshold : 0.8;
 
   const runCtx = useDelegationRunContextOptional();
+  const dataSourceMode = useDataSourceMode();
 
   const { data: dataArr, isLoading: queryLoading, error: queryError } = useProjectionQuery<Summary>({
     topic: TOPICS.delegationSummary,
@@ -206,7 +208,8 @@ export default function DelegationMetrics2D({ config }: { config: Record<string,
       error={error ?? undefined}
       isEmpty={isEmpty}
       emptyMessage="No delegation events"
-      emptyHint="Delegation events appear when tasks are delegated to agents"
+      emptyHint="Delegation events appear when tasks are delegated to agents. In file mode, add fixture files under fixtures/onex.snapshot.projection.delegation.summary.v1/"
+      fileMode={!isLiveDataSource(dataSourceMode)}
     >
       {data && !isEmpty && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 12, minWidth: 0 }}>

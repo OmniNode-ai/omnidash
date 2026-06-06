@@ -1,0 +1,7 @@
+# Copy to contract.local.yaml to select a concrete runtime lane.
+# contract.local.yaml is ignored and may contain LAN or Tailscale endpoints.
+
+event_bus:
+  # Stability-test Redpanda from Jonah's Mac.
+  bootstrap_servers: "192.168.86.201:39092" # onex-allow-internal-ip
+  client_id: "omnidash-server"

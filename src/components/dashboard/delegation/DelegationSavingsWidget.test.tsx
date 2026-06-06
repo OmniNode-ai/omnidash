@@ -131,7 +131,7 @@ describe('DelegationSavingsWidget', () => {
     expect(await screen.findByText('Delegated tokens')).toBeInTheDocument();
     expect(screen.getByText('1,202 to compliance')).toBeInTheDocument();
     expect(screen.getByTitle('input 144, output 593, compliance 737')).toHaveTextContent('737');
-    expect(screen.getByText('+$0.0093')).toBeInTheDocument();
+    expect(screen.getAllByText('+$0.01').length).toBeGreaterThan(0);
     expect(screen.getByText(/document .*sess-liv/i)).toBeInTheDocument();
   });
 

@@ -225,8 +225,9 @@ export default function EventStream({ config }: { config: EventStreamConfig }) {
       error={error ?? undefined}
       isEmpty={isEmpty}
       emptyMessage="No events"
-      emptyHint="Events appear as Kafka messages arrive"
+      emptyHint="Events appear as Kafka messages arrive. In file mode, add fixture files under fixtures/onex.snapshot.projection.registration.v1/"
       isLive={isLiveDataSource(dataSourceMode)}
+      fileMode={!isLiveDataSource(dataSourceMode)}
     >
       <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
         {/* Search input — filters event_type, source, correlation_id. */}

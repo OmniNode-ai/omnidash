@@ -105,7 +105,7 @@ export function DelegationTriggerPanel({
             </Text>
           </div>
           <Text as="div" size="xs" color="secondary">
-            Select the Correlation Trace tab to follow this run once events materialize.
+            Correlation Trace tab now shows this run. Events appear once the runtime processes the command.
           </Text>
           <button
             type="button"
@@ -194,7 +194,7 @@ export function DelegationTriggerPanel({
               </Text>
             </button>
             <Text as="span" size="xs" color="tertiary">
-              Posts to /api/delegation/trigger → ONEX runtime
+              onex.cmd.omnimarket.delegate-skill.v1 → stability-test :18085
             </Text>
           </div>
         </>

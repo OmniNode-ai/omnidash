@@ -4,6 +4,7 @@ import { ComponentWrapper } from '../ComponentWrapper';
 import { useProjectionQuery } from '@/hooks/useProjectionQuery';
 import { TOPICS } from '@shared/types/topics';
 import { CountUp } from '@/components/primitives';
+import { useDataSourceMode, isLiveDataSource } from '@/hooks/useDataSourceMode';
 
 // ── Data types ──────────────────────────────────────────────────────
 
@@ -308,7 +309,7 @@ function LedgerDetail({
         const free = m.cost === 0;
         return (
           <div
-            key={m.id}
+            key={`${m.id}:${m.host}:${i}`}
             style={{
               display: 'grid',
               gridTemplateColumns: '1fr 90px 90px',
@@ -433,7 +434,7 @@ function TaskListItem({
           <PromptBlock prompt={task.prompt} />
           <LedgerDetail models={task.models} chosenId={chosen.id} dollars={task.savedDollars} />
           <div style={{ "fontSize": 10, "color": 'var(--ink-3)', fontStyle: 'italic' }}>
-            <span className="mono">correlation_id: 0xa31f{'…'}b8c4</span> {'·'} receipt signed by deepseek-r1-32b
+            <span className="mono">correlation_id: {shortCorrelationId(task.id)}</span>
           </div>
         </div>
       )}
@@ -507,6 +508,7 @@ export default function AbCompareWidget({
 }) {
   const [openId, setOpenId] = useState<string | null>(null);
   const [sort, setSort] = useState<SortState | null>(null);
+  const dataSourceMode = useDataSourceMode();
 
   const { data, isLoading, error } = useProjectionQuery<AbCompareRow>({
     topic: TOPICS.abCompare,
@@ -578,7 +580,8 @@ export default function AbCompareWidget({
       error={error ?? undefined}
       isEmpty={tasks.length === 0}
       emptyMessage="No comparison data yet"
-      emptyHint="Results appear after the first ab-compare run completes"
+      emptyHint="Results appear after the first ab-compare run completes. In file mode, add fixture files under fixtures/onex.snapshot.projection.ab-compare.v1/"
+      fileMode={!isLiveDataSource(dataSourceMode)}
     >
       <div style={{ display: 'flex', flexDirection: 'column', gap: 0, width: '100%' }}>
         {/* Hero header */}
@@ -586,7 +589,7 @@ export default function AbCompareWidget({
           <div>
             <div className="eyebrow">A/B model cost compare {'·'} last {totals.count} tasks</div>
             <div style={{ "fontSize": 14, "fontWeight": 600, marginTop: 6, "color": 'var(--ink-2)' }}>
-              Tap any task to see the prompt + receipt.
+              Tap any task to see the prompt and correlation.
             </div>
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>

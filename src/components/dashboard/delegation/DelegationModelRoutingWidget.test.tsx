@@ -46,7 +46,7 @@ describe('DelegationModelRoutingWidget', () => {
         <DelegationModelRoutingWidget config={{}} />
       </DataSourceTestProvider>,
     );
-    expect(await screen.findByText('Qwen3-Coder-30B')).toBeInTheDocument();
+    expect(await screen.findByText('qwen3-coder-30b')).toBeInTheDocument();
     expect(screen.getByText('claude-sonnet-4-6')).toBeInTheDocument();
   });
 
@@ -57,7 +57,7 @@ describe('DelegationModelRoutingWidget', () => {
         <DelegationModelRoutingWidget config={{}} />
       </DataSourceTestProvider>,
     );
-    await screen.findByText('Qwen3-Coder-30B');
+    await screen.findByText('qwen3-coder-30b');
     expect(screen.getByText(/312 total delegations/i)).toBeInTheDocument();
   });
 
@@ -68,7 +68,7 @@ describe('DelegationModelRoutingWidget', () => {
         <DelegationModelRoutingWidget config={{}} />
       </DataSourceTestProvider>,
     );
-    await screen.findByText('Qwen3-Coder-30B');
+    await screen.findByText('qwen3-coder-30b');
     expect(screen.getByText('Model')).toBeInTheDocument();
     expect(screen.getByText('N')).toBeInTheDocument();
     expect(screen.getByText('Frequency')).toBeInTheDocument();
@@ -85,7 +85,7 @@ describe('DelegationModelRoutingWidget', () => {
         <DelegationModelRoutingWidget config={{}} />
       </DataSourceTestProvider>,
     );
-    await screen.findByText('Qwen3-Coder-30B');
+    await screen.findByText('qwen3-coder-30b');
     // Fixture provides task_types including 'code-review'
     expect(screen.getAllByText('code-review').length).toBeGreaterThan(0);
   });
@@ -97,7 +97,7 @@ describe('DelegationModelRoutingWidget', () => {
         <DelegationModelRoutingWidget config={{}} />
       </DataSourceTestProvider>,
     );
-    await screen.findByText('Qwen3-Coder-30B');
+    await screen.findByText('qwen3-coder-30b');
     expect(screen.getByText(/upstream-blocked/i)).toBeInTheDocument();
   });
 });

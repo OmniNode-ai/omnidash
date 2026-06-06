@@ -76,6 +76,8 @@ ALLOWLIST_FILES=(
   # default for the data-source bridge URL. These are defaults, not hardcoded
   # environment-specific literals.
   'contract.yaml'
+  'contract.local.yaml'
+  'contract.local.yaml.example'
   'server/data-source-contract.ts'
   'scripts/generate-data-source-config.ts'
   'server/__tests__/data-source-contract.test.ts'

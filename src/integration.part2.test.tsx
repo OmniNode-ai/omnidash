@@ -1,6 +1,8 @@
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, it, expect, beforeEach } from 'vitest';
+import { readFileSync } from 'fs';
+import { resolve } from 'path';
 import { Providers } from './providers/Providers';
 import { RegistryProvider } from './registry/RegistryProvider';
 import { DashboardView } from './pages/DashboardView';
@@ -8,7 +10,11 @@ import { useFrameStore } from './store/store';
 import { createEmptyDashboard } from '@shared/types/dashboard';
 import { DashboardService } from './services/dashboardService';
 import { ComponentRegistry } from './registry/ComponentRegistry';
-import { TEST_MANIFEST as manifest } from './test-utils/integrationHelpers';
+import type { RegistryManifest } from './registry/types';
+
+// Load the generated registry manifest
+const manifestJson = readFileSync(resolve(__dirname, './registry/component-registry.json'), 'utf-8');
+const manifest: RegistryManifest = JSON.parse(manifestJson);
 
 function renderWithRegistry() {
   return render(
@@ -44,10 +50,13 @@ describe('Proof of Life — Part 2', () => {
     // OMN-11477: evidence-pipeline-flow added.
     // OMN-11623: delegation-control-plane added.
     // OMN-12135: trace-explorer added.
-    expect(all.length).toBe(29);
+    // T22: delegation-cost-comparison added.
+    // OMN-12399: context-effectiveness-heatmap added.
+    expect(all.length).toBe(31);
     expect(all.map((c) => c.name).sort()).toEqual([
       'ab-compare',
       'baselines-roi-card',
+      'context-effectiveness-heatmap',
       'control-plane',
       'cost-by-model',
       'cost-by-model-3d',
@@ -56,6 +65,7 @@ describe('Proof of Life — Part 2', () => {
       'cost-summary',
       'cost-trend-panel',
       'delegation-control-plane',
+      'delegation-cost-comparison',
       'delegation-metrics',
       'delegation-model-routing',
       'delegation-quality-gate',

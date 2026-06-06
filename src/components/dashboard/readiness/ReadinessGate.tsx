@@ -101,7 +101,8 @@ export default function ReadinessGate({ config: _config }: { config: Record<stri
       error={error ?? undefined}
       isEmpty={!data}
       emptyMessage="No readiness data"
-      emptyHint="Readiness dimensions appear after checks are registered"
+      emptyHint="Readiness dimensions appear after checks are registered. In file mode, add fixture files under fixtures/onex.snapshot.projection.overnight.v1/"
+      fileMode={!isLiveDataSource(dataSourceMode)}
     >
       {data && effectiveStatus && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>

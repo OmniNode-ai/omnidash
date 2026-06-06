@@ -174,9 +174,9 @@ describe('DelegationQualityGateWidget', () => {
   describe('recent checks table', () => {
     it('renders recent checks table with task type, model, and pass/fail when decisions data is available', async () => {
       const decisions = [
-        { id: '1', task_type: 'code-review', model_name: 'Qwen3-Coder-30B', delegated_to: null, quality_gate_passed: 1, quality_gate_detail: 'schema_valid', created_at: '2026-05-05T10:00:00Z' },
-        { id: '2', task_type: 'summarization', model_name: 'glm-4-plus', delegated_to: null, quality_gate_passed: 0, quality_gate_detail: 'output_too_short', created_at: '2026-05-05T09:00:00Z' },
-        { id: '3', task_type: 'classification', model_name: null, delegated_to: 'codex-cli', quality_gate_passed: 1, quality_gate_detail: null, created_at: '2026-05-05T08:00:00Z' },
+        { id: '1', task_type: 'code-review', model_name: 'qwen3-coder-30b', delegated_to: null, quality_gate_passed: 1, quality_gate_detail: 'schema_valid', created_at: '2026-05-05T10:00:00Z' },
+        { id: '2', task_type: 'summarization', model_name: 'deepseek-r1-14b', delegated_to: null, quality_gate_passed: 0, quality_gate_detail: 'output_too_short', created_at: '2026-05-05T09:00:00Z' },
+        { id: '3', task_type: 'classification', model_name: null, delegated_to: 'openrouter-glm-flash', quality_gate_passed: 1, quality_gate_detail: null, created_at: '2026-05-05T08:00:00Z' },
       ];
       mockFetchForQualityGateWithDecisions([buildDelegationQualityGate()], decisions);
       render(
@@ -191,7 +191,7 @@ describe('DelegationQualityGateWidget', () => {
       expect(screen.getByText('classification')).toBeInTheDocument();
       // Model names and failure categories may appear in both the recent
       // checks table and other sections, so use getAllByText.
-      expect(screen.getAllByText('Qwen3-Coder-30B').length).toBeGreaterThanOrEqual(1);
+      expect(screen.getAllByText('qwen3-coder-30b').length).toBeGreaterThanOrEqual(1);
       expect(screen.getAllByText('output_too_short').length).toBeGreaterThanOrEqual(1);
       expect(screen.getByText('schema_valid')).toBeInTheDocument();
     });
@@ -243,11 +243,11 @@ describe('DelegationQualityGateWidget', () => {
       );
       await screen.findByText('Automated checks');
       expect(screen.getByText('Tokens-to-compliance by model')).toBeInTheDocument();
-      // The fixture seeds Qwen3-Coder-30B at 3,120 tokens (lowest, first row).
-      const models = screen.getAllByText(/Qwen3-Coder-30B|glm-4-plus|codex-cli|gemini-cli/);
+      // The fixture seeds qwen3-coder-30b at 3,120 tokens (lowest, first row).
+      const models = screen.getAllByText(/qwen3-coder-30b|deepseek-r1-14b|openrouter-glm-flash|claude-sonnet-4-6/);
       // Sorted ascending → most efficient first.
-      expect(models[0].textContent).toBe('Qwen3-Coder-30B');
-      expect(models[models.length - 1].textContent).toBe('gemini-cli');
+      expect(models[0].textContent).toBe('qwen3-coder-30b');
+      expect(models[models.length - 1].textContent).toBe('claude-sonnet-4-6');
     });
   });
 });

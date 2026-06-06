@@ -29,6 +29,8 @@ interface ComponentWrapperProps {
   emptyMessage?: string;
   emptyHint?: string;
   isLive?: boolean;
+  /** When true, renders a [File Mode] badge in the header indicating fixture data is active. */
+  fileMode?: boolean;
   /** Optional node rendered in the widget header between the live badge and the kebab menu. */
   headerExtra?: ReactNode;
   children: ReactNode;
@@ -42,6 +44,7 @@ export function ComponentWrapper({
   emptyMessage,
   emptyHint,
   isLive = false,
+  fileMode = false,
   headerExtra,
   children,
 }: ComponentWrapperProps) {
@@ -100,6 +103,22 @@ export function ComponentWrapper({
         </div>
         <div className="widget-head-right">
           {isLive && <span className="widget-live">Live</span>}
+          {fileMode && (
+            <Text
+              as="span"
+              size="xs"
+              family="mono"
+              color="tertiary"
+              style={{
+                padding: '1px 6px',
+                borderRadius: 4,
+                background: 'color-mix(in srgb, var(--text-tertiary) 12%, transparent)',
+                border: '1px solid color-mix(in srgb, var(--text-tertiary) 25%, transparent)',
+              }}
+            >
+              File Mode
+            </Text>
+          )}
           {headerExtra}
           {hasMenu && (
             <>

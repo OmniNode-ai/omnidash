@@ -1,10 +1,15 @@
 #!/usr/bin/env bash
-# omnidash-v2/scripts/run-generate-fixtures.sh
-# Regenerates ./fixtures/ snapshots by running omnibase_infra's generate_fixtures.py.
+# omnidash/scripts/run-generate-fixtures.sh
+# Regenerates ./fixtures/ snapshots by running scripts/generate_fixtures.py.
+#
+# generate_fixtures.py lives in THIS repo (scripts/generate_fixtures.py) and
+# imports from omnibase_infra, so uv must resolve dependencies via the
+# omnibase_infra project.
 #
 # Required env vars:
-#   OMNIBASE_INFRA_PATH  Path to a checkout of omnibase_infra (the directory
-#                        containing scripts/generate_fixtures.py).
+#   OMNIBASE_INFRA_PATH  Path to a checkout of omnibase_infra (used as the uv
+#                        --project root for dependency resolution, not as the
+#                        location of generate_fixtures.py).
 #
 # Usage: npm run generate:fixtures
 set -euo pipefail
@@ -23,7 +28,8 @@ if [[ ! -d "$OMNIBASE_INFRA_PATH" ]]; then
   exit 1
 fi
 
-SCRIPT_PATH="$OMNIBASE_INFRA_PATH/scripts/generate_fixtures.py"
+# The script lives in this repo, not in omnibase_infra.
+SCRIPT_PATH="$REPO/scripts/generate_fixtures.py"
 if [[ ! -f "$SCRIPT_PATH" ]]; then
   echo "ERROR: generate_fixtures.py not found at $SCRIPT_PATH" >&2
   exit 1

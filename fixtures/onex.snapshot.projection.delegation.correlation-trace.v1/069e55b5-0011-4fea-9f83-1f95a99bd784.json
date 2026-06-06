@@ -1,0 +1,53 @@
+{
+  "correlation_id": "069e55b5-0011-4fea-9f83-1f95a99bd784",
+  "rows": [
+    {
+      "id": 1,
+      "correlation_id": "069e55b5-0011-4fea-9f83-1f95a99bd784",
+      "session_id": "sess-069e55b5",
+      "timestamp": "2026-04-26T20:36:56.404705+00:00",
+      "task_type": "code_review",
+      "delegated_to": "qwen3-coder-30b",
+      "delegated_by": "claude-opus-4-8",
+      "quality_gate_passed": true,
+      "quality_gate_detail": "all deterministic checks passed",
+      "quality_gates_checked": 4,
+      "quality_gates_failed": 0,
+      "cost_usd": 0.001125,
+      "cost_savings_usd": 0.03315,
+      "delegation_latency_ms": 842,
+      "model_name": "qwen3-coder-30b",
+      "tokens_input": 1840,
+      "tokens_output": 612,
+      "routing_rule": "local_first",
+      "routing_confidence": 0.957,
+      "prompt_text": "Review the diff for correctness, error handling, and contract drift.",
+      "response_text": "No correctness defects. Handler reads topic from contract; error paths covered.",
+      "created_at": "2026-04-26T20:36:56.404705+00:00"
+    },
+    {
+      "id": 2,
+      "correlation_id": "069e55b5-0011-4fea-9f83-1f95a99bd784",
+      "session_id": "sess-069e55b5",
+      "timestamp": "2026-04-26T20:36:57.118420+00:00",
+      "task_type": "summarize",
+      "delegated_to": "qwen3-coder-30b",
+      "delegated_by": "claude-opus-4-8",
+      "quality_gate_passed": true,
+      "quality_gate_detail": "heuristic gate passed",
+      "quality_gates_checked": 2,
+      "quality_gates_failed": 0,
+      "cost_usd": 0.000420,
+      "cost_savings_usd": 0.01180,
+      "delegation_latency_ms": 314,
+      "model_name": "qwen3-coder-30b",
+      "tokens_input": 612,
+      "tokens_output": 188,
+      "routing_rule": "local_first",
+      "routing_confidence": 0.901,
+      "prompt_text": "Summarize the review findings into a single PR comment.",
+      "response_text": "Review passed: no correctness defects, contract-driven topic resolution confirmed.",
+      "created_at": "2026-04-26T20:36:57.118420+00:00"
+    }
+  ]
+}

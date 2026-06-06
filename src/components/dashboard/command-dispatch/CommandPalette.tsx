@@ -26,18 +26,30 @@ interface CommandPaletteProps {
   onClose: () => void;
 }
 
-function kindColor(kind: string): string {
-  if (kind === 'ORCHESTRATOR') return 'var(--accent)';
-  if (kind === 'EFFECT') return '#d97706';
-  if (kind === 'REDUCER') return '#7c3aed';
-  return 'var(--text-tertiary)';
+// Each node type maps to the design-system node-type role tokens
+// (--<kind>, --<kind>-soft, --<kind>-ink) defined in design-tokens.css for
+// both light and dark themes. Using one token family per type — instead of
+// mixing var(--accent)/var(--text-tertiary) with hardcoded hex — renders all
+// four badges as consistent, theme-aware chips with adequate contrast.
+function kindTokens(kind: string): { border: string; bg: string; ink: string } {
+  const role =
+    kind === 'ORCHESTRATOR' ? 'orchestrator'
+    : kind === 'COMPUTE' ? 'compute'
+    : kind === 'EFFECT' ? 'effect'
+    : kind === 'REDUCER' ? 'reducer'
+    : 'compute';
+  return {
+    border: `var(--${role})`,
+    bg: `var(--${role}-soft)`,
+    ink: `var(--${role}-ink)`,
+  };
 }
 
 function NodeKindBadge({ kind }: { kind: string }) {
-  const color = kindColor(kind);
+  const { border, bg, ink } = kindTokens(kind);
   return (
-    <span style={{ border: `1px solid ${color}`, borderRadius: 3, padding: '1px 4px', flexShrink: 0 }}>
-      <Text size="xs" family="mono" style={{ color }}>{kind}</Text>
+    <span style={{ border: `1px solid ${border}`, background: bg, borderRadius: 3, padding: '1px 4px', flexShrink: 0 }}>
+      <Text size="xs" family="mono" style={{ color: ink }}>{kind}</Text>
     </span>
   );
 }
@@ -246,14 +258,19 @@ export function CommandPalette({ onClose }: CommandPaletteProps) {
                 style={{
                   all: 'unset', display: 'inline-flex', alignItems: 'center', gap: 6,
                   padding: '6px 14px', borderRadius: 6,
-                  background: dispatchState === 'sending' ? 'var(--panel-2)' : 'var(--accent)',
+                  // var(--accent) resolves to --brand-soft (a pale hover tint), not the
+                  // brand color — so it paired badly with literal 'white' text and went
+                  // invisible in light mode. Use the brand fill + its on-brand text token
+                  // (--primary-foreground = --brand-ink) so the CTA stays legible in both themes.
+                  background: dispatchState === 'sending' ? 'var(--panel-2)' : 'var(--brand)',
+                  color: dispatchState === 'sending' ? 'var(--text-tertiary)' : 'var(--primary-foreground)',
                   cursor: dispatchState === 'sending' ? 'not-allowed' : 'pointer',
                 }}
               >
                 {dispatchState === 'sending'
                   ? <Loader size={14} style={{ animation: 'spin 1s linear infinite' }} />
                   : <Send size={14} />}
-                <Text size="sm" weight="medium" style={{ color: 'white' }}>Dispatch</Text>
+                <Text size="sm" weight="medium" style={{ color: 'inherit' }}>Dispatch</Text>
               </button>
             </div>
           </div>

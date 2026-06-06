@@ -12,7 +12,7 @@
 //     keeping the menu pattern consistent with the prototype across the whole app.
 
 import { useEffect, useLayoutEffect, useRef, useState } from 'react';
-import { Edit, Copy, Plus, MoreHorizontal, Trash2, ChevronsLeft, ChevronsRight, SlidersHorizontal, GitBranch, RotateCcw, Shield, Mic } from 'lucide-react';
+import { Edit, Copy, Plus, MoreHorizontal, Trash2, ChevronsLeft, ChevronsRight, SlidersHorizontal, Grid3x3 } from 'lucide-react';
 import type { AppPage } from '@/store/types';
 import {
   PositionedMenu,
@@ -272,7 +272,7 @@ export function Sidebar() {
         )}
       </div>
 
-      {/* Bottom nav — observability + settings */}
+      {/* Bottom nav — settings / feature flags */}
       <div
         style={{
           marginTop: 'auto',
@@ -281,18 +281,15 @@ export function Sidebar() {
         }}
       >
         {!collapsed && (
-          <div style={{ padding: '4px 12px 2px' }}>
+          <div className="sidebar-bottom-title" style={{ padding: '4px 12px 2px' }}>
             <Text size="xs" color="tertiary" transform="uppercase" weight="semibold">
-              Observability
+              Evaluation
             </Text>
           </div>
         )}
         {(
           [
-            { page: 'trace'   as AppPage, label: 'Trace Explorer', icon: <GitBranch size={13} /> },
-            { page: 'replay'  as AppPage, label: 'Session Replay',  icon: <RotateCcw size={13} /> },
-            { page: 'sandbox' as AppPage, label: 'Sandbox Monitor', icon: <Shield size={13} /> },
-            { page: 'voice'   as AppPage, label: 'Voice Sessions',  icon: <Mic size={13} /> },
+            { page: 'eval'    as AppPage, label: 'Instruction Eval', icon: <Grid3x3 size={13} /> },
           ] as const
         ).map(({ page, label, icon }) => (
           <div

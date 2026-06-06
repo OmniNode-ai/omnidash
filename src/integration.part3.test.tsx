@@ -1,5 +1,7 @@
 import { render, screen } from '@testing-library/react';
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import { readFileSync } from 'fs';
+import { resolve } from 'path';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { SnapshotSourceProvider } from './data-source';
 import { ThemeProvider } from './theme';
@@ -10,18 +12,24 @@ import { useFrameStore } from './store/store';
 import { DASHBOARD_TEMPLATES } from './templates';
 import { validateDashboardDefinition } from '@shared/types/dashboard';
 import { validateComponentManifest } from '@shared/types/component-manifest';
-import { TEST_MANIFEST as manifest, createTestQueryClient } from './test-utils/integrationHelpers';
+import type { RegistryManifest } from './registry/types';
 
 // Mock ECharts
 vi.mock('echarts-for-react', () => ({
   default: () => <div data-testid="echarts-mock">chart</div>,
 }));
 
+import { fileURLToPath } from 'url';
+import { dirname } from 'path';
+const __dirname = dirname(fileURLToPath(import.meta.url));
+const manifestJson = readFileSync(resolve(__dirname, './registry/component-registry.json'), 'utf-8');
+const manifest: RegistryManifest = JSON.parse(manifestJson);
+
 describe('Proof of Life — Part 3 (Full System)', () => {
   let qc: QueryClient;
 
   beforeEach(() => {
-    qc = createTestQueryClient();
+    qc = new QueryClient({ defaultOptions: { queries: { retry: false } } });
     useFrameStore.setState({ editMode: false, activeDashboard: null, globalFilters: {} });
     vi.stubGlobal('fetch', vi.fn().mockResolvedValue({
       ok: true,
@@ -56,7 +64,9 @@ describe('Proof of Life — Part 3 (Full System)', () => {
     // + evidence-pipeline-flow (OMN-11477).
     // + delegation-control-plane (OMN-11623).
     // + trace-explorer (OMN-12135).
-    expect(available.length).toBe(29);
+    // + delegation-cost-comparison (T22).
+    // + context-effectiveness-heatmap (OMN-12399).
+    expect(available.length).toBe(31);
   });
 
   it('both templates pass validation', () => {
