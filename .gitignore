@@ -1,8 +1,12 @@
 node_modules/
+node_modules
 dist/
 .vite/
 *.local
+contract.local.yaml
 .env.local*
+# OMN-12394: .env (not .env.local) holds local DB credentials; must never be committed.
+.env
 fixtures/
 # Storybook fixture builders are part of the source tree (OMN-103).
 !src/storybook/fixtures/
@@ -41,3 +45,15 @@ coverage/
 .next/
 .turbo/
 .DS_Store
+
+# === onex-managed: universal ===
+.env
+.env.*
+!.env.example
+.DS_Store
+*.log
+.idea/
+.vscode/
+test-results/
+playwright-report/
+# === end onex-managed: universal ===

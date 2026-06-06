@@ -7,6 +7,7 @@ import { Text } from '@/components/ui/typography';
 import { KPI } from '@/components/primitives';
 import { useThemeColors } from '@/theme';
 import { useDelegationRunContextOptional } from '@/components/dashboard/delegation-control-plane/DelegationRunContext';
+import { useDataSourceMode, isLiveDataSource } from '@/hooks/useDataSourceMode';
 
 // ── Projection types (from llm_call_metrics SQLite table, OMN-10623) ─
 
@@ -85,7 +86,7 @@ function fmtTokens(n: number): string {
 }
 
 function fmtUsd(v: number): string {
-  return v === 0 ? '$0.00' : `$${v.toFixed(v < 0.01 ? 4 : 2)}`;
+  return `$${v.toFixed(2)}`;
 }
 
 // ── Per-model row ─────────────────────────────────────────────────────
@@ -176,7 +177,8 @@ function ModelTokenRow({
 
 // ── Provenance summary ────────────────────────────────────────────────
 
-function ProvenanceSummary({ summary, total }: { summary: Record<TokenProvenance, number>; total: number }) {
+function ProvenanceSummary({ summary }: { summary: Record<TokenProvenance, number> }) {
+  const total = Object.values(summary).reduce((sum, count) => sum + count, 0);
   if (total === 0) return null;
   const provenances: TokenProvenance[] = ['measured', 'estimated', 'unknown'];
   return (
@@ -205,6 +207,7 @@ export default function DelegationTokenUsageWidget(props: { config: DelegationTo
   const showProvenance = config.showProvenance ?? true;
 
   const runCtx = useDelegationRunContextOptional();
+  const dataSourceMode = useDataSourceMode();
 
   const { data, isLoading: queryLoading, error: queryError } = useProjectionQuery<DelegationTokenUsageProjection>({
     queryKey: ['delegation-token-usage', TOPICS.delegationTokenUsage],
@@ -233,11 +236,6 @@ export default function DelegationTokenUsageWidget(props: { config: DelegationTo
     return Math.max(1, sorted[0].total_tokens);
   }, [sorted]);
 
-  const totalModels = useMemo(() => {
-    if (!projection) return 0;
-    return new Set(projection.by_model.map((r) => r.model_id)).size;
-  }, [projection]);
-
   const isEmpty = !projection || projection.total_tokens === 0;
 
   return (
@@ -247,7 +245,8 @@ export default function DelegationTokenUsageWidget(props: { config: DelegationTo
       error={error}
       isEmpty={isEmpty}
       emptyMessage="No token usage data"
-      emptyHint="Token usage data appears once LLM call metrics are recorded"
+      emptyHint="Token usage data appears once LLM call metrics are recorded. In file mode, add fixture files under fixtures/onex.snapshot.projection.delegation.token-usage.v1/"
+      fileMode={!isLiveDataSource(dataSourceMode)}
     >
       {projection && !isEmpty && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
@@ -292,7 +291,7 @@ export default function DelegationTokenUsageWidget(props: { config: DelegationTo
 
           {/* Provenance summary */}
           {showProvenance && (
-            <ProvenanceSummary summary={projection.provenance_summary} total={totalModels} />
+            <ProvenanceSummary summary={projection.provenance_summary} />
           )}
 
           {/* Column headers */}

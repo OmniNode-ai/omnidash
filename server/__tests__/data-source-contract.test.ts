@@ -1,5 +1,8 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
-import { loadDataSourceConfig } from '../data-source-contract.js';
+import { mkdtempSync, rmSync, writeFileSync, readFileSync } from 'node:fs';
+import { join } from 'node:path';
+import { tmpdir } from 'node:os';
+import { loadDataSourceConfig, loadRuntimeContract } from '../data-source-contract.js';
 
 describe('loadDataSourceConfig', () => {
   const savedEnv: Record<string, string | undefined> = {};
@@ -50,5 +53,41 @@ describe('loadDataSourceConfig', () => {
     const cfg = loadDataSourceConfig();
     expect(cfg.sqliteDbPath).not.toMatch(/^~/);
     expect(cfg.sqliteDbPath).toMatch(/\.omninode/);
+  });
+
+  it('deep-merges contract.local.yaml over contract.yaml without resetting unrelated defaults', () => {
+    const dir = mkdtempSync(join(tmpdir(), 'omnidash-contract-'));
+    try {
+      const basePath = join(dir, 'contract.yaml');
+      const overlayPath = join(dir, 'contract.local.yaml');
+      writeFileSync(basePath, `
+data_source:
+  default: postgres
+  url: "http://base:3002"
+  ws_url: "ws://base:3002/ws"
+  sqlite_db_path: "~/.omninode/delegation/delegation.sqlite"
+event_bus:
+  bootstrap_servers: ""
+  client_id: "omnidash-server"
+`);
+      writeFileSync(overlayPath, `
+event_bus:
+  bootstrap_servers: "192.168.86.201:39092"
+`);
+
+      const cfg = loadRuntimeContract(basePath, overlayPath);
+
+      expect(cfg.data_source.default).toBe('postgres');
+      expect(cfg.data_source.url).toBe('http://base:3002');
+      expect(cfg.event_bus.bootstrap_servers).toBe('192.168.86.201:39092');
+      expect(cfg.event_bus.client_id).toBe('omnidash-server');
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
+  });
+
+  it('does not use legacy KAFKA_BROKERS in the producer config path', () => {
+    const source = readFileSync(join(process.cwd(), 'server', 'kafka-producer.ts'), 'utf8');
+    expect(source).not.toContain('KAFKA_BROKERS');
   });
 });

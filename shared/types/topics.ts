@@ -20,6 +20,15 @@ export const TOPICS = {
   delegationSummary: 'onex.snapshot.projection.delegation.summary.v1',
   /** Routing decisions table — per-decision rows. */
   delegationDecisions: 'onex.snapshot.projection.delegation.decisions.v1',
+  /**
+   * Correlation trace — full event chain for a single correlation_id, ordered
+   * by created_at ascending. In live (postgres/http/sqlite) mode this is served
+   * by the typed REST endpoint /api/delegation/correlation-trace/:id; in file
+   * mode the trace is read from a per-correlation fixture under
+   * fixtures/onex.snapshot.projection.delegation.correlation-trace.v1/ so the
+   * surface renders without postgres availability (OMN-12367).
+   */
+  delegationCorrelationTrace: 'onex.snapshot.projection.delegation.correlation-trace.v1',
   /** Baselines ROI card — token/time delta + recommendations. */
   baselinesRoi: 'onex.snapshot.projection.baselines.roi.v1',
   /** Quality score panel — pattern quality buckets. */
@@ -127,6 +136,11 @@ export const TOPICS = {
    * Columns: model_id, pack_id, factors_present, quality_gate_passed, tokens_used.
    */
   contextExperimentScores: 'onex.snapshot.projection.context.experiment-scores.v1',
+  /**
+   * Swarm runs projection — aggregate swarm_runs rows from node_projection_swarm.
+   * Backed by swarm_runs table in omnidash_analytics (OMN-12072).
+   */
+  swarmRuns: 'onex.snapshot.projection.swarm.runs.v1',
   /** Sandbox policy decisions — real-time allow/deny stream (OMN-6877). */
   sandboxDecisions: 'onex.snapshot.projection.sandbox.decisions.v1',
   /** Voice session events — audio timeline and transcript turns (OMN-6877). */

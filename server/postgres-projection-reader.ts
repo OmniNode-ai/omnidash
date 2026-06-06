@@ -268,6 +268,7 @@ export class PostgresProjectionReader {
     const client = await this.pool.connect();
     try {
       switch (topic) {
+        case 'delegation':
         case 'onex.snapshot.projection.delegation.decisions.v1': {
           const res = await client.query(`
             SELECT
@@ -565,6 +566,37 @@ export class PostgresProjectionReader {
               )
             ORDER BY COALESCE(created_at, updated_at, projected_at) DESC
             LIMIT 500
+          `);
+          return res.rows as Row[];
+        }
+
+        case 'onex.snapshot.projection.swarm.runs.v1': {
+          const res = await client.query(`
+            SELECT
+              run_id,
+              correlation_id,
+              status,
+              task_hash,
+              subtask_count,
+              succeeded_count,
+              failed_count,
+              skipped_count,
+              models_used,
+              machines_used,
+              total_cost_usd,
+              cloud_equivalent_cost_usd,
+              savings_usd,
+              parallelism_speedup_ratio,
+              decomposition_latency_ms,
+              dispatch_wall_latency_ms,
+              aggregation_latency_ms,
+              total_latency_ms,
+              endpoint_registry_hash,
+              registry_schema_version,
+              created_at
+            FROM swarm_runs
+            ORDER BY created_at DESC
+            LIMIT 200
           `);
           return res.rows as Row[];
         }

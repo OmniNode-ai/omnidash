@@ -210,8 +210,10 @@ function LabeledValue({
 }
 
 export function DelegationCorrelationTracePanel() {
-  const { selectedRun } = useDelegationRunContext();
-  const correlationId = selectedRun?.correlationId ?? null;
+  const { selectedRun, pendingCorrelationId } = useDelegationRunContext();
+  // Prefer the selected run's correlation_id; fall back to the pending trigger correlation_id
+  // so the trace panel reflects a freshly-dispatched run before it materializes in projection rows.
+  const correlationId = selectedRun?.correlationId ?? pendingCorrelationId;
 
   const [rows, setRows] = useState<CorrelationTraceEvent[]>([]);
   const [loading, setLoading] = useState(false);
@@ -245,17 +247,20 @@ export function DelegationCorrelationTracePanel() {
     return (
       <DelegationPanelFrame
         title="Correlation Trace"
-        subtitle="Select a run from the table above to see its full event chain."
+        subtitle="Select a run from the table above to see its full event chain, or trigger a delegation dispatch."
       >
         <Text as="div" size="sm" color="tertiary">No run selected.</Text>
       </DelegationPanelFrame>
     );
   }
 
+  const isPending = !selectedRun && !!pendingCorrelationId;
   return (
     <DelegationPanelFrame
       title="Correlation Trace"
-      subtitle={`Full event chain for correlation ${correlationId}. Ordered by created_at ascending. Source: delegation_events table.`}
+      subtitle={isPending
+        ? `Awaiting projection rows for dispatched correlation ${correlationId}. Events will appear once the runtime processes the command.`
+        : `Full event chain for correlation ${correlationId}. Ordered by created_at ascending. Source: delegation_events table.`}
     >
       <Text as="div" size="xs" family="mono" color="tertiary" style={{ marginBottom: 10, overflowWrap: 'break-word' }}>
         {correlationId}
@@ -273,8 +278,9 @@ export function DelegationCorrelationTracePanel() {
 
       {!loading && !error && rows.length === 0 && (
         <Text as="div" size="sm" color="tertiary">
-          No events found for this correlation ID. The projection row may have been created from a routing trace
-          rather than a direct delegation_events row.
+          {isPending
+            ? 'Command dispatched — no events yet. The runtime is processing the delegation. Refresh once events materialize.'
+            : 'No events found for this correlation ID. The projection row may have been created from a routing trace rather than a direct delegation_events row.'}
         </Text>
       )}
 

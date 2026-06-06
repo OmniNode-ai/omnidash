@@ -105,7 +105,7 @@ export type { ConversationSlice };
 import type { ConfigSlice } from './configSlice';
 export type { ConfigSlice };
 
-export type AppPage = 'dashboard' | 'feature-flags' | 'trace' | 'replay' | 'sandbox' | 'voice';
+export type AppPage = 'dashboard' | 'feature-flags' | 'eval';
 
 export interface UISlice {
   /** True when the left dashboard sidebar is collapsed to a narrow rail. */
@@ -115,6 +115,13 @@ export interface UISlice {
   /** The active top-level page being rendered in the main content area. */
   activePage: AppPage;
   setActivePage: (page: AppPage) => void;
+  /**
+   * Pre-fill query for TraceExplorer so the widget initializes its search
+   * filter with the given correlation_id when the dashboard renders.
+   * Cleared by TraceExplorerWidget on mount after consuming it.
+   */
+  traceFilter: string | null;
+  setTraceFilter: (correlationId: string | null) => void;
 }
 
 export type FrameStore = EditModeSlice & FiltersSlice & DashboardSlice & ConversationSlice & ConfigSlice & UISlice;

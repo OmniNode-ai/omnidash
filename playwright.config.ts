@@ -1,7 +1,7 @@
 import { defineConfig, devices } from 'playwright/test';
 
 // OMN-10305: Playwright E2E config for cost-trend cluster proof-of-life.
-// Runs against the Vite dev server (npm run dev) on port 5173.
+// Runs against the Vite dev server on port 5174.
 // CI uses fixtures/ directory fixtures served via the Vite /_fixtures middleware.
 export default defineConfig({
   testDir: './tests',
@@ -22,7 +22,7 @@ export default defineConfig({
     },
   ],
   webServer: {
-    command: 'npm run dev -- --port 5174',
+    command: 'VITE_DATA_SOURCE=file npm run dev -- --port 5174',
     url: 'http://localhost:5174',
     reuseExistingServer: !process.env.CI,
     timeout: 30000,

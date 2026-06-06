@@ -1,4 +1,3 @@
-import { useEffect, useRef } from 'react';
 import { Text } from '@/components/ui/typography';
 
 export interface PipelineEvent {
@@ -30,14 +29,6 @@ function formatTime(iso: string): string {
 }
 
 export function PipelineLogStream({ events }: { events: PipelineEvent[] }) {
-  const bottomRef = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    if (bottomRef.current && typeof bottomRef.current.scrollIntoView === 'function') {
-      bottomRef.current.scrollIntoView({ behavior: 'smooth' });
-    }
-  }, [events.length]);
-
   return (
     <div
       style={{
@@ -45,6 +36,8 @@ export function PipelineLogStream({ events }: { events: PipelineEvent[] }) {
         border: '1px solid var(--line)',
         borderRadius: 6,
         padding: 0,
+        width: '100%',
+        minHeight: events.length === 0 ? 112 : 0,
         maxHeight: 320,
         overflowY: 'auto',
       }}
@@ -104,7 +97,6 @@ export function PipelineLogStream({ events }: { events: PipelineEvent[] }) {
           </div>
         ))
       )}
-      <div ref={bottomRef} />
     </div>
   );
 }

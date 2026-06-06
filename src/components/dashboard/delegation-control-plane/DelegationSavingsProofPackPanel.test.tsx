@@ -1,5 +1,5 @@
 import { render, screen, fireEvent } from '@testing-library/react';
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { DelegationSavingsProofPackPanel } from './DelegationSavingsProofPackPanel';
 import type { DelegationRunContextValue } from './DelegationRunContext';
 
@@ -33,6 +33,8 @@ const emptyContextValue: DelegationRunContextValue = {
   setFilter: vi.fn(),
   clearFilter: vi.fn(),
   isFixture: false,
+  pendingCorrelationId: null,
+  setPendingCorrelationId: vi.fn(),
 };
 
 const populatedContextValue: DelegationRunContextValue = {
@@ -99,6 +101,10 @@ describe('DelegationSavingsProofPackPanel', () => {
     vi.clearAllMocks();
   });
 
+  afterEach(() => {
+    vi.unstubAllEnvs();
+  });
+
   it('shows empty state when no runs exist', () => {
     mockUseCtx.mockReturnValue(emptyContextValue);
     render(<DelegationSavingsProofPackPanel />);
@@ -141,6 +147,41 @@ describe('DelegationSavingsProofPackPanel', () => {
     render(<DelegationSavingsProofPackPanel />);
     expect(screen.getByText(/Totals \(2 runs\)/i)).toBeTruthy();
     expect(screen.getByText('50% pass rate')).toBeTruthy();
+  });
+
+  it('shows the fixture file source line in file mode (OMN-12397)', () => {
+    vi.stubEnv('VITE_DATA_SOURCE', 'file');
+    mockUseCtx.mockReturnValue(populatedContextValue);
+    render(<DelegationSavingsProofPackPanel />);
+    expect(
+      screen.getByText(/Source: Local fixture file \(fixtures\/onex\.snapshot\.projection\.cost\.savings-overview\.v1\/demo-delegation-snapshot\.json\)/),
+    ).toBeTruthy();
+    expect(screen.getByText(/not a live projection/)).toBeTruthy();
+    expect(screen.queryByText(/OmniNode delegation_events projection/)).toBeNull();
+  });
+
+  it('shows the SQLite source line in sqlite mode (OMN-12397)', () => {
+    vi.stubEnv('VITE_DATA_SOURCE', 'sqlite');
+    mockUseCtx.mockReturnValue(populatedContextValue);
+    render(<DelegationSavingsProofPackPanel />);
+    expect(screen.getByText(/Source: Local SQLite projection/)).toBeTruthy();
+    expect(screen.getByText(/not a live projection/)).toBeTruthy();
+  });
+
+  it('shows the Express bridge source line in http mode (OMN-12397)', () => {
+    vi.stubEnv('VITE_DATA_SOURCE', 'http');
+    mockUseCtx.mockReturnValue(populatedContextValue);
+    render(<DelegationSavingsProofPackPanel />);
+    expect(screen.getByText(/Source: OmniNode projection API via Express bridge/)).toBeTruthy();
+    expect(screen.getByText(/reproducible by re-querying/)).toBeTruthy();
+  });
+
+  it('shows the delegation_events projection source line in postgres mode (OMN-12397)', () => {
+    vi.stubEnv('VITE_DATA_SOURCE', 'postgres');
+    mockUseCtx.mockReturnValue(populatedContextValue);
+    render(<DelegationSavingsProofPackPanel />);
+    expect(screen.getByText(/Source: OmniNode delegation_events projection/)).toBeTruthy();
+    expect(screen.getByText(/reproducible by re-querying/)).toBeTruthy();
   });
 
   it('calls window.print on Print button click', () => {

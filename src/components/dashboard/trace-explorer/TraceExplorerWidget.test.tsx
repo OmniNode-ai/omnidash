@@ -5,6 +5,7 @@ import { DataSourceTestProvider } from '@/test-utils/dataSourceTestProvider';
 import { mockFetchWithItems } from '@/test-utils/mockFetch';
 import TraceExplorerWidget from './TraceExplorerWidget';
 import type { TraceGroup } from './TraceExplorerWidget';
+import { useFrameStore } from '@/store/store';
 
 const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } });
 
@@ -81,14 +82,75 @@ describe('TraceExplorerWidget', () => {
     expect(screen.getByText(/corr-alpha/)).toBeInTheDocument();
   });
 
-  it('shows prompt to select a trace when none selected', async () => {
+  it('expands the selected trace inline', async () => {
     mockFetchWithItems([makeTrace()]);
     render(
       <DataSourceTestProvider client={qc}>
         <TraceExplorerWidget />
       </DataSourceTestProvider>,
     );
+    const cards = await screen.findAllByTestId('trace-card');
+    expect(screen.queryByText('No events for this trace')).not.toBeInTheDocument();
+
+    fireEvent.click(cards[0]);
+
+    expect(await screen.findByText('No events for this trace')).toBeInTheDocument();
+  });
+
+  it('collapses the selected trace when clicked again', async () => {
+    mockFetchWithItems([makeTrace()]);
+    render(
+      <DataSourceTestProvider client={qc}>
+        <TraceExplorerWidget />
+      </DataSourceTestProvider>,
+    );
+    const cards = await screen.findAllByTestId('trace-card');
+
+    fireEvent.click(cards[0]);
+    expect(await screen.findByText('No events for this trace')).toBeInTheDocument();
+
+    fireEvent.click(cards[0]);
+    expect(screen.queryByText('No events for this trace')).not.toBeInTheDocument();
+  });
+
+  it('keeps duplicate correlation rows independently expandable', async () => {
+    mockFetchWithItems([
+      makeTrace({ first_event_at: '2026-05-25T12:00:00Z', last_event_at: '2026-05-25T12:00:05Z' }),
+      makeTrace({ first_event_at: '2026-05-25T12:01:00Z', last_event_at: '2026-05-25T12:01:05Z' }),
+    ]);
+    render(
+      <DataSourceTestProvider client={qc}>
+        <TraceExplorerWidget />
+      </DataSourceTestProvider>,
+    );
+    const cards = await screen.findAllByTestId('trace-card');
+
+    fireEvent.click(cards[0]);
+    expect(await screen.findAllByText('No events for this trace')).toHaveLength(1);
+
+    fireEvent.click(cards[1]);
+    expect(await screen.findAllByText('No events for this trace')).toHaveLength(1);
+  });
+
+  it('pre-fills search from store traceFilter on mount and clears it', async () => {
+    useFrameStore.setState({ traceFilter: 'corr-deep-link' });
+    mockFetchWithItems([
+      makeTrace({ correlation_id: 'corr-deep-link' }),
+      makeTrace({ correlation_id: 'corr-other' }),
+    ]);
+    render(
+      <DataSourceTestProvider client={qc}>
+        <TraceExplorerWidget />
+      </DataSourceTestProvider>,
+    );
+
+    // Wait for the widget body to render (traces loaded)
     await screen.findAllByTestId('trace-card');
-    expect(screen.getByText('Select a trace to view its timeline')).toBeInTheDocument();
+
+    const input = screen.getByLabelText('Filter traces') as HTMLInputElement;
+    expect(input.value).toBe('corr-deep-link');
+
+    // Store filter is cleared after mount so subsequent navigation starts fresh
+    expect(useFrameStore.getState().traceFilter).toBeNull();
   });
 });

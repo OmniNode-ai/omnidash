@@ -11,6 +11,7 @@
  */
 
 import { TOPICS } from '@shared/types/topics';
+import { DATA_SOURCE_DEFAULT_MODE } from '@/config/generated/data-source-defaults';
 
 // ── Endpoint config ──────────────────────────────────────────────────────────
 
@@ -160,15 +161,7 @@ export interface CorrelationTraceResponse {
   rows: CorrelationTraceEvent[];
 }
 
-export async function fetchCorrelationTrace(
-  correlationId: string,
-  opts?: DelegationApiOptions,
-): Promise<CorrelationTraceResponse> {
-  const base = resolveBase(opts);
-  const encoded = encodeURIComponent(correlationId);
-  const res = await fetch(`${base}/correlation-trace/${encoded}`);
-  if (!res.ok) return { correlation_id: correlationId, rows: [] };
-  const body = (await res.json()) as unknown;
+function asTraceResponse(correlationId: string, body: unknown): CorrelationTraceResponse {
   if (
     typeof body === 'object' &&
     body !== null &&
@@ -178,6 +171,47 @@ export async function fetchCorrelationTrace(
     return body as CorrelationTraceResponse;
   }
   return { correlation_id: correlationId, rows: [] };
+}
+
+// OMN-12367: in file mode the /api/delegation/* proxy is not registered (it is
+// wired only when VITE_PROJECTION_API_URL is set), so a fetch to the typed REST
+// endpoint hits the Vite dev server's SPA fallback and returns index.html. The
+// previous implementation called res.json() on that HTML and surfaced a raw
+// "JSON.parse: unexpected character at line 1 column 1" error. Detect file mode
+// up front and read a per-correlation fixture so the surface renders without
+// postgres; in live mode parse defensively so a non-JSON body degrades to an
+// empty trace rather than a raw parse error.
+function dataSourceMode(): string {
+  return import.meta.env.VITE_DATA_SOURCE ?? DATA_SOURCE_DEFAULT_MODE;
+}
+
+function fixturesBase(): string {
+  // eslint-disable-next-line local/no-env-fallback -- '/_fixtures' is the documented Vite public path default (VITE_FIXTURES_DIR optional)
+  return (import.meta.env.VITE_FIXTURES_DIR ?? '/_fixtures').replace(/\/$/, '');
+}
+
+async function fetchCorrelationTraceFixture(correlationId: string): Promise<CorrelationTraceResponse> {
+  const topic = encodeURIComponent(TOPICS.delegationCorrelationTrace);
+  const file = encodeURIComponent(`${correlationId}.json`);
+  const res = await fetch(`${fixturesBase()}/${topic}/${file}`);
+  if (!res.ok) return { correlation_id: correlationId, rows: [] };
+  const body = (await res.json().catch(() => null)) as unknown;
+  return asTraceResponse(correlationId, body);
+}
+
+export async function fetchCorrelationTrace(
+  correlationId: string,
+  opts?: DelegationApiOptions,
+): Promise<CorrelationTraceResponse> {
+  if (dataSourceMode() === 'file') {
+    return fetchCorrelationTraceFixture(correlationId);
+  }
+  const base = resolveBase(opts);
+  const encoded = encodeURIComponent(correlationId);
+  const res = await fetch(`${base}/correlation-trace/${encoded}`);
+  if (!res.ok) return { correlation_id: correlationId, rows: [] };
+  const body = (await res.json().catch(() => null)) as unknown;
+  return asTraceResponse(correlationId, body);
 }
 
 // ── Delegation trigger ───────────────────────────────────────────────────────

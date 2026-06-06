@@ -254,8 +254,9 @@ export default function ContextEffectivenessHeatmap({ config: _config = {} }: { 
       error={snapshot.error}
       isEmpty={!snapshot.isLoading && !snapshot.hasAnyData}
       emptyMessage="No experiment scores"
-      emptyHint="context_experiment_scores requires the A3 delegation-verify-worker projection (OMN-12082)."
+      emptyHint="context_experiment_scores requires the A3 delegation-verify-worker projection (OMN-12082). In file mode, add fixture files under fixtures/onex.snapshot.projection.context.experiment-scores.v1/"
       isLive={isLiveDataSource(dataSourceMode)}
+      fileMode={!isLiveDataSource(dataSourceMode)}
     >
       <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
 

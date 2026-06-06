@@ -21,7 +21,7 @@ export interface BuildDelegationMetricsOptions {
 }
 
 const TASK_TYPES = ['code-review', 'pattern-match', 'document-summarize', 'classification'];
-const MODELS = ['Qwen3-Coder-30B', 'glm-4-plus', 'codex-cli', 'gemini-cli'];
+const MODELS = ['qwen3-coder-30b', 'deepseek-r1-14b', 'openrouter-glm-flash', 'claude-sonnet-4-6'];
 
 /**
  * Build a single `DelegationSummary` record. Story callers should

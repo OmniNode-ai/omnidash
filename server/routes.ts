@@ -7,6 +7,8 @@ import { PostgresProjectionReader } from './postgres-projection-reader.js';
 import { loadDataSourceConfig } from './data-source-contract.js';
 import { isProducerConnected, publishMessage } from './kafka-producer.js';
 import { COMMAND_TOPICS } from '../shared/types/command-topics.js';
+// OMNIDASH_RUNTIME_EFFECTS_URL points to the stability-test runtime (:18085/v1/effects)
+// when running against live infra. Absent in file/dev mode — returns a simulated accepted response.
 
 const router = Router();
 
@@ -129,7 +131,7 @@ router.post('/api/delegation/trigger', async (req, res) => {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        topic: 'onex.cmd.omnimarket.delegate-skill.v1',
+        topic: COMMAND_TOPICS.delegateSkill,
         correlation_id: correlationId,
         payload: { prompt, task_type: taskType, source: 'delegation-dashboard' },
       }),
@@ -143,6 +145,21 @@ router.post('/api/delegation/trigger', async (req, res) => {
   } catch (err) {
     console.error('[routes] /api/delegation/trigger error:', err);
     res.status(503).json({ error: 'runtime unreachable', detail: String(err) });
+  }
+});
+
+// Swarm runs: paginated list from swarm_runs table, newest first.
+router.get('/api/swarm-runs', async (_req, res) => {
+  if (!pgReader) {
+    res.status(503).json({ error: 'postgres data source not configured' });
+    return;
+  }
+  try {
+    const rows = await pgReader.readProjection('onex.snapshot.projection.swarm.runs.v1');
+    res.json({ rows: rows.rows });
+  } catch (err) {
+    console.error('[routes] /api/swarm-runs error:', err);
+    res.status(500).json({ error: 'swarm runs read failed' });
   }
 });
 

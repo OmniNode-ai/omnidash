@@ -5,6 +5,7 @@ import { TOPICS } from '@shared/types/topics';
 import { Text } from '@/components/ui/typography';
 import { KPI } from '@/components/primitives';
 import { useDelegationRunContextOptional } from '@/components/dashboard/delegation-control-plane/DelegationRunContext';
+import { useDataSourceMode, isLiveDataSource } from '@/hooks/useDataSourceMode';
 
 // ── Projection types (from savings_estimates SQLite table, OMN-10623) ─
 
@@ -56,6 +57,11 @@ export interface DelegationSavingsConfig {
 // Used when cost_savings_usd / savings_usd is 0 but token counts are present.
 // Prices in USD per token.
 
+// Client-side estimation fallback — used only when the backend projection
+// returns zero for savings_usd / cloud_cost_usd / local_cost_usd.
+// Authoritative savings are computed server-side via the pricing manifest
+// (omnimarket/src/omnimarket/pricing.py). These constants should NOT be
+// treated as the source of truth for cost calculations.
 const OPUS_INPUT_PRICE  = 15.0  / 1_000_000;  // $15/M tokens
 const OPUS_OUTPUT_PRICE = 75.0  / 1_000_000;  // $75/M tokens
 const SONNET_INPUT_PRICE  = 3.0  / 1_000_000;
@@ -79,7 +85,7 @@ function computeSessionCosts(s: DelegationSavingsSession): {
 // ── Formatters ────────────────────────────────────────────────────────
 
 function fmtUsd(v: number): string {
-  return v === 0 ? '$0.00' : `$${v.toFixed(v < 0.01 ? 4 : 2)}`;
+  return `$${v.toFixed(2)}`;
 }
 
 function fmtDate(value: string | number): string {
@@ -105,7 +111,7 @@ function fmtDate(value: string | number): string {
 }
 
 function fmtMs(ms: number): string {
-  if (ms >= 1000) return `${(ms / 1000).toFixed(1)}s`;
+  if (ms >= 1000) return `${(ms / 1000).toFixed(2)}s`;
   return `${ms.toFixed(0)}ms`;
 }
 
@@ -254,6 +260,7 @@ export default function DelegationSavingsWidget(props: { config: DelegationSavin
   const maxSessions = Math.max(0, Math.trunc(config.maxSessions ?? 10));
 
   const runCtx = useDelegationRunContextOptional();
+  const dataSourceMode = useDataSourceMode();
 
   const { data, isLoading: queryLoading, error: queryError } = useProjectionQuery<DelegationSavingsProjection>({
     queryKey: ['delegation-savings', TOPICS.delegationSavings],
@@ -323,7 +330,8 @@ export default function DelegationSavingsWidget(props: { config: DelegationSavin
       error={error}
       isEmpty={isEmpty}
       emptyMessage="No delegation savings data"
-      emptyHint="Savings data appears once delegation routing is active and savings_estimates are recorded"
+      emptyHint="Savings data appears once delegation routing is active and savings_estimates are recorded. In file mode, add fixture files under fixtures/onex.snapshot.projection.delegation.savings.v1/"
+      fileMode={!isLiveDataSource(dataSourceMode)}
     >
       {projection && !isEmpty && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
@@ -341,21 +349,21 @@ export default function DelegationSavingsWidget(props: { config: DelegationSavin
               label="Est. savings vs Opus"
               value={displaySaved}
               prefix="$"
-              decimals={4}
+              decimals={2}
               tone="good"
             />
             <KPI
               label="Local cost"
               value={projection.cumulative_local_cost_usd}
               prefix="$"
-              decimals={4}
+              decimals={2}
               tone="default"
             />
             <KPI
               label="Opus equivalent cost"
               value={cumulativeComputed?.totalOpus ?? projection.cumulative_cloud_cost_usd}
               prefix="$"
-              decimals={4}
+              decimals={2}
               tone="default"
             />
             <KPI
