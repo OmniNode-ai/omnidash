@@ -47,6 +47,7 @@ describe('Dashboard Templates', () => {
       'ab-compare',
       'trace-explorer',
       'delegation-token-usage',
+      'delegation-model-output',
       'mcp-tools',
     ]);
   });
@@ -65,6 +66,7 @@ describe('Dashboard Templates', () => {
       'ab-compare',
       'trace-explorer',
       'delegation-token-usage',
+      'delegation-model-output',
       'mcp-tools',
     ]);
   });
