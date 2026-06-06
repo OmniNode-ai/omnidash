@@ -113,6 +113,32 @@ describe('delegation-api fetch functions', () => {
     expect(result).toEqual({ correlation_id: 'missing', rows: [] });
   });
 
+  // OMN-12748: in live mode the per-correlation trace (incl prompt/response) is
+  // read from the contract-declared projection at
+  // /projection/<topic>?correlation_id=<id>, never a bespoke REST route.
+  it('fetchCorrelationTrace reads the contract-declared projection in live mode', async () => {
+    vi.stubEnv('VITE_DATA_SOURCE', 'http');
+    try {
+      const fetchMock = vi.fn().mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({
+          rows: [{ id: 1, correlation_id: 'cid-live', prompt_text: 'p', response_text: 'r' }],
+        }),
+      });
+      vi.stubGlobal('fetch', fetchMock);
+
+      const result = await fetchCorrelationTrace('cid-live');
+
+      expect(result.rows).toHaveLength(1);
+      const url = fetchMock.mock.calls[0]![0] as string;
+      expect(url).toContain(`/projection/${encodeURIComponent(TOPICS.delegationCorrelationTrace)}`);
+      expect(url).toContain('correlation_id=cid-live');
+      expect(url).not.toContain('/api/delegation/');
+    } finally {
+      vi.unstubAllEnvs();
+    }
+  });
+
   describe('file mode', () => {
     afterEach(() => {
       vi.unstubAllEnvs();

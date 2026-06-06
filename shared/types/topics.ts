@@ -22,9 +22,10 @@ export const TOPICS = {
   delegationDecisions: 'onex.snapshot.projection.delegation.decisions.v1',
   /**
    * Correlation trace — full event chain for a single correlation_id, ordered
-   * by created_at ascending. In live (postgres/http/sqlite) mode this is served
-   * by the typed REST endpoint /api/delegation/correlation-trace/:id; in file
-   * mode the trace is read from a per-correlation fixture under
+   * by created_at ascending, including the delegated prompt_text/response_text.
+   * In live mode this is the contract-declared projection served by the
+   * projection API at /projection/<topic>?correlation_id=<id> (OMN-12748); in
+   * file mode the trace is read from a per-correlation fixture under
    * fixtures/onex.snapshot.projection.delegation.correlation-trace.v1/ so the
    * surface renders without postgres availability (OMN-12367).
    */
