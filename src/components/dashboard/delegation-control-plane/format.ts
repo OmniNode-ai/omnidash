@@ -13,7 +13,7 @@ export function fmtDate(value: string | undefined): string {
 export function fmtUsd(value: number | string | undefined): string {
   const numeric = asNumber(value);
   if (numeric == null) return '-';
-  return `$${numeric.toFixed(numeric > 0 && numeric < 0.01 ? 4 : 2)}`;
+  return `$${numeric.toFixed(2)}`;
 }
 
 export function fmtPct(value: number | string | undefined): string {
@@ -33,7 +33,7 @@ export function fmtTokens(value: number | string | undefined): string {
 export function fmtMs(value: number | string | undefined): string {
   const numeric = asNumber(value);
   if (numeric == null) return '-';
-  if (numeric >= 1_000) return `${(numeric / 1_000).toFixed(1)}s`;
+  if (numeric >= 1_000) return `${(numeric / 1_000).toFixed(2)}s`;
   return `${Math.round(numeric)}ms`;
 }
 
