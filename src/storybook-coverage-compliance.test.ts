@@ -116,6 +116,7 @@ const STORY_FILES: Array<{ rel: string; id: string; widget: boolean }> = [
   { rel: 'src/components/dashboard/quality/QualityScoreHistogram.stories.tsx', id: 'QualityScoreHistogram.stories', widget: true },
   { rel: 'src/components/dashboard/delegation/DelegationMetrics2D.stories.tsx', id: 'DelegationMetrics2D.stories', widget: true },
   { rel: 'src/components/dashboard/delegation/DelegationMetrics3D.stories.tsx', id: 'DelegationMetrics3D.stories', widget: true },
+  { rel: 'src/components/dashboard/delegation/DelegationModelOutputWidget.stories.tsx', id: 'DelegationModelOutputWidget.stories', widget: true },
   { rel: 'src/components/dashboard/baselines/BaselinesROICard.stories.tsx', id: 'BaselinesROICard.stories', widget: true },
   { rel: 'src/components/dashboard/readiness/ReadinessGate.stories.tsx', id: 'ReadinessGate.stories', widget: true },
   { rel: 'src/components/dashboard/CustomRangePicker.stories.tsx', id: 'CustomRangePicker.stories', widget: false },
