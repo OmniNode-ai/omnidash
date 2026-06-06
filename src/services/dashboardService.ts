@@ -1,5 +1,6 @@
 import type { DashboardDefinition } from '@shared/types/dashboard';
 import { validateDashboardDefinition, parseDashboardDefinition } from '@shared/types/dashboard';
+import { createId } from '@shared/utils/id';
 import type { LayoutPersistence } from '@/layout/layout-persistence';
 import { layoutPersistence } from '@/layout/layout-persistence';
 import { repairSeaDemoDashboard } from '@/templates/sea-demo';
@@ -144,7 +145,7 @@ export class DashboardService {
     const now = new Date().toISOString();
     const cloned: DashboardDefinition = {
       ...structuredClone(original),
-      id: `dash-${crypto.randomUUID()}-clone`,
+      id: createId('dash-', '-clone'),
       name: newName,
       createdAt: now,
       updatedAt: now,
@@ -176,7 +177,7 @@ export class DashboardService {
     const now = new Date().toISOString();
     const imported: DashboardDefinition = {
       ...parseResult.dashboard,
-      id: `dash-${crypto.randomUUID()}-import`,
+      id: createId('dash-', '-import'),
       createdAt: now,
       updatedAt: now,
     };

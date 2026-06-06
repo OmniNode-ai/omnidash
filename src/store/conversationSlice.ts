@@ -1,4 +1,5 @@
 import type { StateCreator } from 'zustand';
+import { createId } from '@shared/utils/id';
 
 export type AgentStatus = 'idle' | 'thinking' | 'executing' | 'error';
 
@@ -35,7 +36,7 @@ export const createConversationSlice: StateCreator<ConversationSlice> = (set) =>
     set((state) => {
       const newMessage: ConversationMessage = {
         ...msg,
-        id: `msg-${crypto.randomUUID()}`,
+        id: createId('msg-'),
         timestamp: Date.now(),
       };
       const updated = [...state.messages, newMessage];
