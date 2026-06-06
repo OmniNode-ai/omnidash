@@ -9,6 +9,7 @@ import type { FrameStore, DashboardSlice } from './types';
 import type { DashboardDefinition, DashboardLayoutItem } from '@shared/types/dashboard';
 import type { GridSize } from '@shared/types/component-manifest';
 import { createEmptyDashboard } from '@shared/types/dashboard';
+import { createId } from '@shared/utils/id';
 import { dashboardService } from '@/services/dashboardService';
 
 function persistList(dashboards: DashboardDefinition[]): void {
@@ -97,7 +98,7 @@ export const createDashboardSlice: StateCreator<FrameStore, [], [], DashboardSli
       if (!source) return state;
       const copy: DashboardDefinition = {
         ...source,
-        id: `dash-${crypto.randomUUID()}`,
+        id: createId('dash-'),
         name: `${source.name} (copy)`,
         // Deep-copy layout so edits to the duplicate don't mutate the original.
         layout: JSON.parse(JSON.stringify(source.layout)),
@@ -154,7 +155,7 @@ export const createDashboardSlice: StateCreator<FrameStore, [], [], DashboardSli
     set((state) => {
       if (!state.activeDashboard) return state;
       const newItem = {
-        i: `component-${crypto.randomUUID()}`,
+        i: createId('component-'),
         componentName,
         componentVersion,
         x: 0,
@@ -179,7 +180,7 @@ export const createDashboardSlice: StateCreator<FrameStore, [], [], DashboardSli
     set((state) => {
       if (!state.activeDashboard) return state;
       const newItem: DashboardLayoutItem = {
-        i: `component-${crypto.randomUUID()}`,
+        i: createId('component-'),
         componentName,
         componentVersion,
         x: 0,
@@ -250,7 +251,7 @@ export const createDashboardSlice: StateCreator<FrameStore, [], [], DashboardSli
       if (!source) return state;
       const copy: DashboardLayoutItem = {
         ...source,
-        i: `component-${crypto.randomUUID()}`,
+        i: createId('component-'),
         // Deep-copy config so edits to the duplicate don't mutate the original.
         config: JSON.parse(JSON.stringify(source.config)),
       };

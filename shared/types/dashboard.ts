@@ -1,3 +1,5 @@
+import { createId } from '../utils/id';
+
 export interface DashboardLayoutItem {
   i: string;
   componentName: string;
@@ -108,7 +110,7 @@ export function parseDashboardDefinition(value: unknown): ParsedDashboardResult 
 export function createEmptyDashboard(name: string, author: string): DashboardDefinition {
   const now = new Date().toISOString();
   return {
-    id: `dash-${crypto.randomUUID()}`,
+    id: createId('dash-'),
     schemaVersion: '1.0',
     name,
     layout: [],
