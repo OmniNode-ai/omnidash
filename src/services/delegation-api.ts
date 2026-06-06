@@ -199,16 +199,26 @@ async function fetchCorrelationTraceFixture(correlationId: string): Promise<Corr
   return asTraceResponse(correlationId, body);
 }
 
+// OMN-12748: a per-correlation trace is read from the contract-declared
+// `delegation` detail projection — the canonical render surface. The projection
+// API (omnimarket/src/omnimarket/projection/api_server.py) already supports
+// `/projection/{topic}?correlation_id=<id>`, returning the delegation_events
+// rows (including prompt_text/response_text) for that correlation. There is no
+// bespoke `/api/delegation/correlation-trace` backend route — the dashboard
+// renders the projection, it does not call a hand-written endpoint.
+function correlationTraceProjectionPath(correlationId: string): string {
+  const topic = encodeURIComponent(TOPICS.delegationCorrelationTrace);
+  return `/projection/${topic}?correlation_id=${encodeURIComponent(correlationId)}`;
+}
+
 export async function fetchCorrelationTrace(
   correlationId: string,
-  opts?: DelegationApiOptions,
+  _opts?: DelegationApiOptions,
 ): Promise<CorrelationTraceResponse> {
   if (dataSourceMode() === 'file') {
     return fetchCorrelationTraceFixture(correlationId);
   }
-  const base = resolveBase(opts);
-  const encoded = encodeURIComponent(correlationId);
-  const res = await fetch(`${base}/correlation-trace/${encoded}`);
+  const res = await fetch(correlationTraceProjectionPath(correlationId));
   if (!res.ok) return { correlation_id: correlationId, rows: [] };
   const body = (await res.json().catch(() => null)) as unknown;
   return asTraceResponse(correlationId, body);
