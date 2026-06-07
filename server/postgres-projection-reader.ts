@@ -603,19 +603,40 @@ export class PostgresProjectionReader {
 
         case 'onex.snapshot.projection.hackathon_pipeline_events.v1': {
           const res = await client.query(`
+            WITH generation_rows AS (
+              SELECT
+                to_jsonb(generation_events) AS event,
+                COALESCE(timestamp, created_at) AS order_key
+              FROM generation_events
+            )
             SELECT
-              correlation_id || '-completed' AS id,
-              CASE WHEN contract_passed THEN 'success' ELSE 'error' END AS type,
-              COALESCE(timestamp, created_at)::text AS timestamp,
+              event->>'correlation_id' || '-completed' AS id,
+              CASE WHEN COALESCE((event->>'contract_passed')::boolean, false) THEN 'success' ELSE 'error' END AS type,
+              order_key::text AS timestamp,
               'node_generation_consumer' AS source,
               CASE
-                WHEN contract_passed
-                  THEN 'Node generation completed: ' || task_description
-                ELSE 'Node generation failed validation: ' || task_description
+                WHEN COALESCE((event->>'contract_passed')::boolean, false)
+                  THEN 'Node generation completed: ' || COALESCE(event->>'task_description', '')
+                ELSE 'Node generation failed validation: ' || COALESCE(event->>'task_description', '')
               END AS message,
-              correlation_id AS "correlationId"
-            FROM generation_events
-            ORDER BY COALESCE(timestamp, created_at) ASC
+              event->>'correlation_id' AS "correlationId",
+              event->>'task_description' AS "taskDescription",
+              event->>'provider' AS "selectedProvider",
+              event->>'model_id' AS "selectedModel",
+              event->>'endpoint_ref' AS "endpointRef",
+              event->>'resolved_endpoint' AS "resolvedEndpoint",
+              event->>'routing_source' AS "routingSource",
+              COALESCE(event->>'projection_owner', 'omnidash.server.postgres-projection-reader') AS "projectionOwner",
+              COALESCE(event->>'projection_reducer_version', '078') AS "projectionReducerVersion",
+              event->>'contract_yaml' AS "contractYaml",
+              event->>'handler_source' AS "handlerSource",
+              event->>'output_payload_sha256' AS "outputPayloadSha256",
+              event->>'contract_sha256' AS "contractSha256",
+              event->>'handler_sha256' AS "handlerSha256",
+              event->>'contract_passed' AS "contractPassed",
+              event::text AS payload
+            FROM generation_rows
+            ORDER BY order_key ASC
             LIMIT 500
           `);
           return res.rows as Row[];

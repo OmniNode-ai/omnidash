@@ -268,9 +268,11 @@ export class SqliteProjectionReader {
           LIMIT 500
         `).all() as Row[];
 
-      case 'onex.snapshot.projection.hackathon_pipeline_events.v1':
+      case 'onex.snapshot.projection.hackathon_pipeline_events.v1': {
         if (!this.hasTable(db, 'generation_events')) return [];
-        return db.prepare(`
+        const col = (name: string): string =>
+          this.hasColumn(db, 'generation_events', name) ? name : 'NULL';
+        const rows = db.prepare(`
           SELECT
             correlation_id || '-completed' AS id,
             CASE WHEN contract_passed = 1 THEN 'success' ELSE 'error' END AS type,
@@ -281,11 +283,30 @@ export class SqliteProjectionReader {
                 THEN 'Node generation completed: ' || task_description
               ELSE 'Node generation failed validation: ' || task_description
             END AS message,
-            correlation_id AS correlationId
+            correlation_id AS correlationId,
+            task_description AS taskDescription,
+            provider AS selectedProvider,
+            model_id AS selectedModel,
+            ${col('endpoint_ref')} AS endpointRef,
+            ${col('resolved_endpoint')} AS resolvedEndpoint,
+            ${col('routing_source')} AS routingSource,
+            COALESCE(${col('projection_owner')}, 'omnidash.server.sqlite-projection-reader') AS projectionOwner,
+            COALESCE(${col('projection_reducer_version')}, 'sqlite-generation-events') AS projectionReducerVersion,
+            ${col('contract_yaml')} AS contractYaml,
+            ${col('handler_source')} AS handlerSource,
+            ${col('output_payload_sha256')} AS outputPayloadSha256,
+            ${col('contract_sha256')} AS contractSha256,
+            ${col('handler_sha256')} AS handlerSha256,
+            contract_passed AS contractPassed
           FROM generation_events
           ORDER BY COALESCE(timestamp, created_at) ASC
           LIMIT 500
         `).all() as Row[];
+        return rows.map((row) => ({
+          ...row,
+          payload: JSON.stringify(row),
+        }));
+      }
 
       default:
         return [];
