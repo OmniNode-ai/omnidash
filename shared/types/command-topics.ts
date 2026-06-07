@@ -10,6 +10,12 @@ export const COMMAND_TOPICS = {
   dispatchRequest: 'onex.cmd.omnimarket.dispatch-request.v1',
   /** OMN-12070: delegation command dispatched to the omnimarket delegation skill node. */
   delegateSkill: 'onex.cmd.omnimarket.delegate-skill.v1',
+  /**
+   * OMN-12775: SEA node-generation command consumed by node_generation_consumer.
+   * Contract: omnimarket/src/omnimarket/nodes/node_generation_consumer/contract.yaml
+   * subscribe_topics: [onex.cmd.omnimarket.node-generation-requested.v1]
+   */
+  nodeGenerationRequested: 'onex.cmd.omnimarket.node-generation-requested.v1',
 } as const;
 
 export type CommandTopicSymbol = (typeof COMMAND_TOPICS)[keyof typeof COMMAND_TOPICS];

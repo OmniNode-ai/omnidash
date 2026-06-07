@@ -10,6 +10,7 @@ import { COMMAND_TOPICS } from '../shared/types/command-topics.js';
 
 const router = Router();
 
+const SEA_NODE_GENERATION_EVENT_TYPE = 'omnimarket.node-generation-requested';
 const DELEGATE_SKILL_EVENT_TYPE = 'omnimarket.delegate-skill';
 const DELEGATE_SKILL_TASK_TYPES = new Set([
   'test',
@@ -174,6 +175,62 @@ router.post('/api/delegation/trigger', async (req, res) => {
     res.json({ correlation_id: correlationId, accepted: true, topic: COMMAND_TOPICS.delegateSkill });
   } catch (err) {
     console.error('[routes] /api/delegation/trigger error:', err);
+    res.status(503).json({ error: 'kafka_unavailable', detail: String(err) });
+  }
+});
+
+// OMN-12775: SEA generation trigger — thin publisher for node_generation_consumer.
+// Publishes the canonical node-generation-requested command envelope; no business logic.
+// Envelope shape mirrors node_generation_consumer contract.yaml inputs:
+//   payload.task_description (str, required), payload.correlation_id (uuid, required).
+router.post('/api/sea/generate', async (req, res) => {
+  const body = req.body as { task_description?: unknown };
+  const taskDescription =
+    typeof body.task_description === 'string' ? body.task_description.slice(0, 4096) : '';
+  if (!taskDescription) {
+    res.status(400).json({ error: 'task_description is required' });
+    return;
+  }
+
+  const correlationId = randomUUID();
+
+  if (!isProducerConnected()) {
+    if (dsConfig.mode === 'file') {
+      res.json({
+        correlation_id: correlationId,
+        accepted: true,
+        message: 'simulated (file data source)',
+      });
+      return;
+    }
+    res.status(503).json({ error: 'kafka_unavailable' });
+    return;
+  }
+
+  const requestedAt = new Date().toISOString();
+  const envelope = {
+    payload: {
+      task_description: taskDescription,
+      correlation_id: correlationId,
+    },
+    envelope_id: randomUUID(),
+    envelope_timestamp: requestedAt,
+    correlation_id: correlationId,
+    source_tool: 'omnidash-ui',
+    event_type: SEA_NODE_GENERATION_EVENT_TYPE,
+    priority: 5,
+    retry_count: 0,
+  };
+
+  try {
+    await publishMessage(COMMAND_TOPICS.nodeGenerationRequested, envelope);
+    res.json({
+      correlation_id: correlationId,
+      accepted: true,
+      topic: COMMAND_TOPICS.nodeGenerationRequested,
+    });
+  } catch (err) {
+    console.error('[routes] /api/sea/generate error:', err);
     res.status(503).json({ error: 'kafka_unavailable', detail: String(err) });
   }
 });
