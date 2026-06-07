@@ -128,6 +128,7 @@ function OverviewTab() {
   return (
     <DelegationPanelFrame
       title="Overview"
+      authority="projection-backed"
       subtitle="Summary of all delegation runs and snapshot health for the selected control plane."
     >
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, minmax(0, 1fr))', gap: 10 }}>
@@ -160,7 +161,8 @@ function CostTokensTab() {
   return (
     <DelegationPanelFrame
       title="Cost & Tokens"
-      subtitle="Aggregated token consumption and estimated cost savings across all delegation runs."
+      authority="projection-backed"
+      subtitle="Aggregate token and cost summary from projection-API. Per-run tokens in Correlation Trace."
     >
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, minmax(0, 1fr))', gap: 10 }}>
         <OverviewFact label="Total tokens" value={fmtTokens(totalTokens)} />
@@ -200,7 +202,8 @@ function QualityTab() {
   return (
     <DelegationPanelFrame
       title="Quality"
-      subtitle="Quality gate pass rates and per-run quality assessments from projection rows."
+      authority="projection-backed"
+      subtitle="Aggregate quality gate rates from projection-API. Per-run quality gate in Correlation Trace."
     >
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, minmax(0, 1fr))', gap: 10 }}>
         <OverviewFact

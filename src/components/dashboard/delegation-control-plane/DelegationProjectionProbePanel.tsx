@@ -44,6 +44,7 @@ export function DelegationProjectionProbePanel() {
   return (
     <DelegationPanelFrame
       title="Projection / API"
+      authority="projection-backed"
       subtitle="Raw readiness probe for every projection topic. Degraded = data present but freshness &gt; 5 min."
     >
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, minmax(0, 1fr))', gap: 10, marginBottom: 12 }}>

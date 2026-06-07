@@ -16,6 +16,7 @@ export function DelegationRuntimeTopologyPanel({ snapshot }: { snapshot: Delegat
     return (
       <DelegationPanelFrame
         title="Runtime Topology"
+        authority="runtime-observed"
         subtitle="Instance, package identity, owned and subscribed topics, contract hashes."
       >
         <EmptyPanel message="No projection data — run the market delegation golden chain to populate runtime topology." />
@@ -26,6 +27,7 @@ export function DelegationRuntimeTopologyPanel({ snapshot }: { snapshot: Delegat
   return (
     <DelegationPanelFrame
       title="Runtime Topology"
+      authority="runtime-observed"
       subtitle="Instance, package identity, owned and subscribed topics, contract hashes."
     >
       <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>

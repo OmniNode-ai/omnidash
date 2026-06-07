@@ -95,6 +95,7 @@ export function DelegationSavingsProofPackPanel() {
     return (
       <DelegationPanelFrame
         title="Savings Proof Pack"
+        authority="projection-backed"
         subtitle="Exportable audit artifact for procurement review. Requires at least one delegation run."
       >
         <Text as="div" size="sm" color="tertiary">
@@ -107,6 +108,7 @@ export function DelegationSavingsProofPackPanel() {
   return (
     <DelegationPanelFrame
       title="Savings Proof Pack"
+      authority="projection-backed"
       subtitle="Exportable audit artifact. Print this page or Save as PDF to share with procurement."
     >
       <div className="proof-pack-no-print" style={{ marginBottom: 12 }}>

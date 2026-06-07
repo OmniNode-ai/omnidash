@@ -88,6 +88,7 @@ export function DelegationArtifactPanel({
     return (
       <DelegationPanelFrame
         title="Artifacts"
+        authority="projection-backed"
         subtitle="OCC receipts, report links, manifest files, screenshots, and hashes."
       >
         <EmptyPanel message="No projection data — run the market delegation golden chain to populate artifacts." />
@@ -104,6 +105,7 @@ export function DelegationArtifactPanel({
   return (
     <DelegationPanelFrame
       title="Artifacts"
+      authority="projection-backed"
       subtitle="OCC receipts, report links, manifest files, screenshots, and hashes."
     >
       <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>

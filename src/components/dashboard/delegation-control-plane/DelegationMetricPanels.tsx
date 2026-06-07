@@ -3,10 +3,16 @@ import { fmtPct, fmtTokens, fmtUsd } from './format';
 import { DelegationPanelFrame, EmptyPanel } from './DelegationPanelFrame';
 import type { DelegationEvidenceSnapshot } from './delegation-control-plane.types';
 
+// OMN-12785: all four metric panels are aggregate-only summaries materialized from
+// projection-API rows. Per-run prompt+response is visible in the Correlation Trace tab.
 export function DelegationMetricPanels({ snapshot }: { snapshot: DelegationEvidenceSnapshot }) {
   return (
     <section style={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: 12 }}>
-      <DelegationPanelFrame title="Savings" subtitle="Cost impact for completed delegation sessions.">
+      <DelegationPanelFrame
+        title="Savings"
+        authority="projection-backed"
+        subtitle="Aggregate cost-savings summary from node_projection_savings. Per-run detail in Correlation Trace."
+      >
         {snapshot.savings ? (
           <div style={{ display: 'grid', gap: 6 }}>
             <MetricRow label="Cumulative savings" value={fmtUsd(snapshot.savings.cumulative_savings_usd)} tone="ok" />
@@ -19,7 +25,11 @@ export function DelegationMetricPanels({ snapshot }: { snapshot: DelegationEvide
         )}
       </DelegationPanelFrame>
 
-      <DelegationPanelFrame title="Model Routing" subtitle="Delegation volume by selected model.">
+      <DelegationPanelFrame
+        title="Model Routing"
+        authority="projection-backed"
+        subtitle="Aggregate delegation volume by model from projection-API. Per-run routing in Correlation Trace."
+      >
         {snapshot.modelRouting ? (
           <div style={{ display: 'grid', gap: 6 }}>
             <MetricRow label="Total delegations" value={String(snapshot.modelRouting.total_delegations)} />
@@ -36,7 +46,11 @@ export function DelegationMetricPanels({ snapshot }: { snapshot: DelegationEvide
         )}
       </DelegationPanelFrame>
 
-      <DelegationPanelFrame title="Quality Gate" subtitle="Pass, fail, and escalation rates for delegated work.">
+      <DelegationPanelFrame
+        title="Quality Gate"
+        authority="projection-backed"
+        subtitle="Aggregate pass/fail rates from projection-API. Per-run quality gate in Correlation Trace."
+      >
         {snapshot.qualityGate ? (
           <div style={{ display: 'grid', gap: 6 }}>
             <MetricRow label="Pass rate" value={fmtPct(snapshot.qualityGate.overall_pass_rate)} tone={snapshot.qualityGate.overall_pass_rate >= 0.8 ? 'ok' : 'warn'} />
@@ -49,7 +63,11 @@ export function DelegationMetricPanels({ snapshot }: { snapshot: DelegationEvide
         )}
       </DelegationPanelFrame>
 
-      <DelegationPanelFrame title="Token Usage" subtitle="Prompt and completion token totals across delegated runs.">
+      <DelegationPanelFrame
+        title="Token Usage"
+        authority="projection-backed"
+        subtitle="Aggregate token totals from projection-API. Per-run tokens in Correlation Trace."
+      >
         {snapshot.tokenUsage ? (
           <div style={{ display: 'grid', gap: 6 }}>
             <MetricRow label="Total tokens" value={fmtTokens(snapshot.tokenUsage.total_tokens)} />
