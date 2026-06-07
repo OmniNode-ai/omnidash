@@ -20,10 +20,12 @@ function latencyBetween(prev: CorrelationTraceEvent | undefined, curr: Correlati
   return `+${fmtMs(delta)}`;
 }
 
+// OMN-12785: full prompt/response — no preview truncation, no maxHeight clip.
+// The collapsed state shows only the toggle button; the expanded state renders
+// the entire text so it is copyable without truncation.
 function ExpandableText({ label, text }: { label: string; text: string }) {
   const [expanded, setExpanded] = useState(false);
   const toggle = useCallback(() => setExpanded((v) => !v), []);
-  const preview = text.length > 120 ? `${text.slice(0, 120)}…` : text;
 
   return (
     <div style={{ marginTop: 4 }}>
@@ -41,7 +43,7 @@ function ExpandableText({ label, text }: { label: string; text: string }) {
           gap: 6,
         }}
       >
-        <Text as="span" size="xs" color="tertiary">{expanded ? '▾' : '▸'} {label}</Text>
+        <Text as="span" size="xs" color="tertiary">{expanded ? '▾' : '▸'} {label} ({text.length} chars)</Text>
       </button>
       {expanded && (
         <div
@@ -51,7 +53,6 @@ function ExpandableText({ label, text }: { label: string; text: string }) {
             background: 'var(--panel-2)',
             borderRadius: 4,
             border: '1px solid var(--line-2)',
-            maxHeight: 200,
             overflow: 'auto',
           }}
         >
@@ -59,11 +60,6 @@ function ExpandableText({ label, text }: { label: string; text: string }) {
             {text}
           </Text>
         </div>
-      )}
-      {!expanded && (
-        <Text as="div" size="xs" family="mono" color="tertiary" style={{ marginTop: 2 }}>
-          {preview}
-        </Text>
       )}
     </div>
   );
@@ -247,6 +243,7 @@ export function DelegationCorrelationTracePanel() {
     return (
       <DelegationPanelFrame
         title="Correlation Trace"
+        authority="projection-backed"
         subtitle="Select a run from the table above to see its full event chain, or trigger a delegation dispatch."
       >
         <Text as="div" size="sm" color="tertiary">No run selected.</Text>
@@ -258,6 +255,7 @@ export function DelegationCorrelationTracePanel() {
   return (
     <DelegationPanelFrame
       title="Correlation Trace"
+      authority="projection-backed"
       subtitle={isPending
         ? `Awaiting projection rows for dispatched correlation ${correlationId}. Events will appear once the runtime processes the command.`
         : `Full event chain for correlation ${correlationId}. Ordered by created_at ascending. Source: delegation_events table.`}

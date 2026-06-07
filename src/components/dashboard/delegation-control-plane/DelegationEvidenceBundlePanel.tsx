@@ -16,6 +16,7 @@ export function DelegationEvidenceBundlePanel({
   return (
     <DelegationPanelFrame
       title="Evidence Bundle"
+      authority="projection-backed"
       subtitle="Dashboard-side manifest of proof material available for the selected delegation run."
     >
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: 10 }}>

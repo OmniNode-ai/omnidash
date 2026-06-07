@@ -7,6 +7,7 @@ export function DelegationProjectionStatus({ probes }: { probes: DelegationProje
   return (
     <DelegationPanelFrame
       title="Projection Status"
+      authority="projection-backed"
       subtitle="Readiness probe for every projection topic used by this control plane."
     >
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 72px 110px 1fr', gap: 8, paddingBottom: 5, borderBottom: '1px solid var(--line)' }}>

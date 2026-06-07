@@ -98,6 +98,7 @@ export function DelegationEventChainPanel() {
   return (
     <DelegationPanelFrame
       title="Event Chain"
+      authority="projection-backed"
       subtitle="Golden-chain view: command → handler → terminal → reducer → projection → API. UNKNOWN indicates missing evidence, not omission."
     >
       <div style={{ display: 'grid', gap: 8 }}>
