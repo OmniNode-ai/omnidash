@@ -13,5 +13,10 @@
     "noUnusedLocals": true,
     "noUnusedParameters": true
   },
-  "include": ["vite.config.ts", "server", "shared/types/command-topics.ts"]
+  "include": [
+    "vite.config.ts",
+    "vite.proxy-config.ts",
+    "server",
+    "shared/types/command-topics.ts"
+  ]
 }

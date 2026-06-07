@@ -137,10 +137,94 @@ describe('POST /api/dispatch', () => {
   });
 });
 
+describe('POST /api/delegation/trigger', () => {
+  beforeEach(() => {
+    process.env.OMNIDASH_DATA_SOURCE = 'postgres';
+    vi.mocked(kafkaProducer.isProducerConnected).mockReturnValue(true);
+    vi.mocked(kafkaProducer.publishMessage).mockResolvedValue(undefined);
+  });
+
+  afterEach(() => {
+    delete process.env.OMNIDASH_DATA_SOURCE;
+    vi.clearAllMocks();
+  });
+
+  it('returns 400 when prompt is missing', async () => {
+    const routes = await loadRoutes();
+    const res = await request(buildApp(routes))
+      .post('/api/delegation/trigger')
+      .send({ task_type: 'reasoning' });
+
+    expect(res.status).toBe(400);
+    expect(res.body).toEqual({ error: 'prompt is required' });
+  });
+
+  it('returns 400 when task_type is outside the delegate-skill contract taxonomy', async () => {
+    const routes = await loadRoutes();
+    const res = await request(buildApp(routes))
+      .post('/api/delegation/trigger')
+      .send({ prompt: 'do work', task_type: 'general' });
+
+    expect(res.status).toBe(400);
+    expect(res.body.error).toBe('invalid task_type');
+    expect(res.body.allowed_task_types).toContain('reasoning');
+    expect(res.body.allowed_task_types).not.toContain('general');
+  });
+
+  it('returns 503 when Kafka producer is not connected in live data-source mode', async () => {
+    vi.mocked(kafkaProducer.isProducerConnected).mockReturnValue(false);
+
+    const routes = await loadRoutes();
+    const res = await request(buildApp(routes))
+      .post('/api/delegation/trigger')
+      .send({ prompt: 'do work', task_type: 'reasoning' });
+
+    expect(res.status).toBe(503);
+    expect(res.body).toEqual({ error: 'kafka_unavailable' });
+  });
+
+  it('publishes the delegate-skill event envelope to Kafka', async () => {
+    const routes = await loadRoutes();
+    const res = await request(buildApp(routes))
+      .post('/api/delegation/trigger')
+      .send({ prompt: 'Review this PR for correctness', task_type: 'code_review' });
+
+    expect(res.status).toBe(200);
+    expect(res.body.accepted).toBe(true);
+    expect(res.body.topic).toBe('onex.cmd.omnimarket.delegate-skill.v1');
+    expect(typeof res.body.correlation_id).toBe('string');
+    expect(kafkaProducer.publishMessage).toHaveBeenCalledOnce();
+
+    const [topic, envelope] = vi.mocked(kafkaProducer.publishMessage).mock.calls[0] as [string, Record<string, unknown>];
+    expect(topic).toBe('onex.cmd.omnimarket.delegate-skill.v1');
+    expect(envelope.event_type).toBe('omnimarket.delegate-skill');
+    expect(envelope.source_tool).toBe('omnidash-ui');
+    expect(envelope.correlation_id).toBe(res.body.correlation_id);
+    expect(typeof envelope.envelope_id).toBe('string');
+    expect(typeof envelope.envelope_timestamp).toBe('string');
+
+    const payload = envelope.payload as Record<string, unknown>;
+    expect(payload.prompt).toBe('Review this PR for correctness');
+    expect(payload.task_type).toBe('code_review');
+    expect(payload.source).toBe('codex');
+    expect(payload.wait).toBe(true);
+    expect(payload.correlation_id).toBe(res.body.correlation_id);
+    expect(payload.metadata).toEqual({
+      requested_by: 'omnidash-ui',
+      source_surface: 'delegation-control-plane',
+    });
+  });
+});
+
 // OMN-12149: topic registration test
 describe('COMMAND_TOPICS registry', () => {
   it('dispatchRequest key maps to the correct topic string', async () => {
     const { COMMAND_TOPICS } = await import('../../shared/types/command-topics.js');
     expect(COMMAND_TOPICS.dispatchRequest).toBe('onex.cmd.omnimarket.dispatch-request.v1');
+  });
+
+  it('delegateSkill key maps to the contract-declared delegate-skill command topic', async () => {
+    const { COMMAND_TOPICS } = await import('../../shared/types/command-topics.js');
+    expect(COMMAND_TOPICS.delegateSkill).toBe('onex.cmd.omnimarket.delegate-skill.v1');
   });
 });
