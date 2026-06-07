@@ -49,7 +49,7 @@ describe('DelegationTriggerPanel', () => {
 
     expect(mockTrigger).toHaveBeenCalledWith({
       prompt: 'Review this PR for correctness',
-      task_type: 'general',
+      task_type: 'reasoning',
     });
     expect(screen.getByText('test-corr-id')).toBeTruthy();
   });

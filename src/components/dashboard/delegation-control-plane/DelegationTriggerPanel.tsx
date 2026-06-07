@@ -3,14 +3,16 @@ import { Text } from '@/components/ui/typography';
 import { triggerDelegation } from '@/services/delegation-api';
 
 const TASK_TYPES = [
-  'general',
+  'reasoning',
   'code_review',
   'code_generation',
   'summarization',
-  'analysis',
   'refactor',
-  'test_generation',
-  'documentation',
+  'test',
+  'document',
+  'research',
+  'planning',
+  'complex_reasoning',
 ] as const;
 
 type TriggerState =
@@ -26,7 +28,7 @@ export function DelegationTriggerPanel({
 }) {
   const [open, setOpen] = useState(false);
   const [prompt, setPrompt] = useState('');
-  const [taskType, setTaskType] = useState<string>('general');
+  const [taskType, setTaskType] = useState<string>('reasoning');
   const [state, setState] = useState<TriggerState>({ phase: 'idle' });
 
   async function handleSubmit() {
