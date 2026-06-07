@@ -41,12 +41,14 @@ export {
   buildDelegationModelRouting,
   buildDelegationQualityGate,
   buildDelegationTokenUsage,
+  buildInferenceResponseProjection,
 } from './delegation-routing';
 export type {
   BuildDelegationSavingsOptions,
   BuildDelegationModelRoutingOptions,
   BuildDelegationQualityGateOptions,
   BuildDelegationTokenUsageOptions,
+  BuildInferenceResponseOptions,
 } from './delegation-routing';
 
 export { buildRoutingDecisionProjection } from './routing-decision';

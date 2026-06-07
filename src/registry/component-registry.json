@@ -1,6 +1,6 @@
 {
   "manifestVersion": "1.0",
-  "generatedAt": "2026-05-28T22:26:02.296Z",
+  "generatedAt": "2026-06-07T03:44:00.376Z",
   "components": {
     "cost-trend-panel": {
       "name": "cost-trend-panel",
@@ -2836,6 +2836,176 @@
       "capabilities": {
         "supports_compare": false,
         "supports_export": true,
+        "supports_fullscreen": true,
+        "supports_time_range": false
+      }
+    },
+    "delegation-model-output": {
+      "name": "delegation-model-output",
+      "displayName": "Model Output",
+      "description": "Renders ModelLlmInferenceResponse.generated_text sourced from bus topic onex.evt.omnibase-infra.inference-response.v1. Fixture mode is the demo-blocking deliverable (OMN-12745). Live surfacing requires the demo redeploy OMN-12746.",
+      "category": "quality",
+      "version": "1.0.0",
+      "implementationKey": "delegation/DelegationModelOutputWidget",
+      "configSchema": {
+        "type": "object",
+        "properties": {
+          "maxHistory": {
+            "type": "integer",
+            "minimum": 0,
+            "default": 3,
+            "title": "Max history rows",
+            "description": "Number of recent responses to show below the latest output."
+          },
+          "showFullOutput": {
+            "type": "boolean",
+            "default": true,
+            "title": "Show full output",
+            "description": "Show the full generated_text for the latest response (vs truncated preview)."
+          }
+        },
+        "additionalProperties": false
+      },
+      "projectionSchema": {
+        "type": "object",
+        "description": "Row shape from onex.snapshot.projection.delegation.inference-response-text.v1 (OMN-12745). Sources from bus topic onex.evt.omnibase-infra.inference-response.v1.",
+        "required": [
+          "latest_correlation_id",
+          "latest_model_name",
+          "latest_task_type",
+          "latest_generated_text",
+          "latest_prompt_tokens",
+          "latest_completion_tokens",
+          "latest_latency_ms",
+          "source_topic",
+          "recent_responses",
+          "captured_at",
+          "provisioned"
+        ],
+        "properties": {
+          "latest_correlation_id": {
+            "type": "string",
+            "description": "Correlation ID of the most recent inference response."
+          },
+          "latest_model_name": {
+            "type": "string",
+            "description": "Model that produced the most recent generated_text."
+          },
+          "latest_task_type": {
+            "type": "string",
+            "description": "Task type of the most recent inference request."
+          },
+          "latest_generated_text": {
+            "type": "string",
+            "description": "generated_text from ModelLlmInferenceResponse for the most recent response."
+          },
+          "latest_prompt_tokens": {
+            "type": "number",
+            "description": "Prompt token count for the most recent response."
+          },
+          "latest_completion_tokens": {
+            "type": "number",
+            "description": "Completion token count for the most recent response."
+          },
+          "latest_latency_ms": {
+            "type": "number",
+            "description": "Inference latency in ms for the most recent response."
+          },
+          "source_topic": {
+            "type": "string",
+            "description": "Bus topic that feeds this projection."
+          },
+          "recent_responses": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "required": [
+                "correlation_id",
+                "model_name",
+                "task_type",
+                "generated_text",
+                "prompt_tokens",
+                "completion_tokens",
+                "latency_ms",
+                "captured_at"
+              ],
+              "properties": {
+                "correlation_id": {
+                  "type": "string"
+                },
+                "model_name": {
+                  "type": "string"
+                },
+                "task_type": {
+                  "type": "string"
+                },
+                "generated_text": {
+                  "type": "string"
+                },
+                "prompt_tokens": {
+                  "type": "number"
+                },
+                "completion_tokens": {
+                  "type": "number"
+                },
+                "latency_ms": {
+                  "type": "number"
+                },
+                "captured_at": {
+                  "type": "string",
+                  "format": "date-time"
+                }
+              },
+              "additionalProperties": false
+            }
+          },
+          "captured_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "provisioned": {
+            "type": "boolean",
+            "description": "True once the live projection emitter is deployed (OMN-12746)."
+          }
+        }
+      },
+      "dataSources": [
+        {
+          "type": "projection",
+          "topic": "onex.snapshot.projection.delegation.inference-response-text.v1",
+          "required": false,
+          "purpose": "initial_fetch"
+        },
+        {
+          "type": "websocket",
+          "topic": "onex.snapshot.projection.delegation.inference-response-text.v1",
+          "required": false,
+          "purpose": "live_updates"
+        }
+      ],
+      "events": {
+        "emits": [],
+        "consumes": []
+      },
+      "defaultSize": {
+        "w": 6,
+        "h": 7
+      },
+      "minSize": {
+        "w": 4,
+        "h": 5
+      },
+      "maxSize": {
+        "w": 12,
+        "h": 16
+      },
+      "emptyState": {
+        "message": "No inference output",
+        "hint": "Inference output appears once the projection emitter is deployed (OMN-12746). In file mode, add fixture files under fixtures/onex.snapshot.projection.delegation.inference-response-text.v1/"
+      },
+      "capabilities": {
+        "supports_compare": false,
+        "supports_export": false,
         "supports_fullscreen": true,
         "supports_time_range": false
       }

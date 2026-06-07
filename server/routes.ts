@@ -7,10 +7,25 @@ import { PostgresProjectionReader } from './postgres-projection-reader.js';
 import { loadDataSourceConfig } from './data-source-contract.js';
 import { isProducerConnected, publishMessage } from './kafka-producer.js';
 import { COMMAND_TOPICS } from '../shared/types/command-topics.js';
-// OMNIDASH_RUNTIME_EFFECTS_URL points to the stability-test runtime (:18085/v1/effects)
-// when running against live infra. Absent in file/dev mode — returns a simulated accepted response.
 
 const router = Router();
+
+const DELEGATE_SKILL_EVENT_TYPE = 'omnimarket.delegate-skill';
+const DELEGATE_SKILL_TASK_TYPES = new Set([
+  'test',
+  'document',
+  'research',
+  'code_generation',
+  'code_review',
+  'refactor',
+  'reasoning',
+  'complex_reasoning',
+  'planning',
+  'review',
+  'summarization',
+  'agent_delegation',
+  'escalation',
+]);
 
 const FIXTURES_DIR = resolve(process.env.VITE_FIXTURES_DIR ?? process.env.FIXTURES_DIR ?? './fixtures');
 
@@ -103,48 +118,63 @@ router.get('/api/delegation/correlation-trace/:correlationId', async (req, res) 
   }
 });
 
-// Delegation trigger: publish a delegation command to the ONEX runtime.
-// Forwards to OMNIDASH_RUNTIME_EFFECTS_URL when set; otherwise returns
-// a simulated accepted response so the UI can be tested without infra.
+// Delegation trigger: publish the contract-declared delegate-skill command
+// envelope consumed by the ONEX runtime.
 router.post('/api/delegation/trigger', async (req, res) => {
   const body = req.body as { prompt?: unknown; task_type?: unknown };
   const prompt = typeof body.prompt === 'string' ? body.prompt.slice(0, 4096) : '';
-  const taskType = typeof body.task_type === 'string' ? body.task_type.slice(0, 128) : 'general';
+  const taskType = typeof body.task_type === 'string' ? body.task_type.slice(0, 128) : 'reasoning';
   if (!prompt) {
     res.status(400).json({ error: 'prompt is required' });
     return;
   }
-
-  const correlationId = randomUUID();
-  const runtimeUrl = process.env.OMNIDASH_RUNTIME_EFFECTS_URL;
-
-  if (!runtimeUrl) {
-    // No runtime configured — return an accepted response so the UI works
-    // in dev/file mode. The correlation_id can be searched in the trace view
-    // once real events are materialized.
-    res.json({ correlation_id: correlationId, accepted: true, message: 'simulated (no OMNIDASH_RUNTIME_EFFECTS_URL set)' });
+  if (!DELEGATE_SKILL_TASK_TYPES.has(taskType)) {
+    res.status(400).json({
+      error: 'invalid task_type',
+      allowed_task_types: [...DELEGATE_SKILL_TASK_TYPES],
+    });
     return;
   }
 
-  try {
-    const upstream = await fetch(`${runtimeUrl}/v1/effects`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        topic: COMMAND_TOPICS.delegateSkill,
-        correlation_id: correlationId,
-        payload: { prompt, task_type: taskType, source: 'delegation-dashboard' },
-      }),
-    });
-    if (!upstream.ok) {
-      const text = await upstream.text().catch(() => '');
-      res.status(502).json({ error: `runtime returned ${upstream.status}`, detail: text });
+  const correlationId = randomUUID();
+
+  if (!isProducerConnected()) {
+    if (dsConfig.mode === 'file') {
+      res.json({ correlation_id: correlationId, accepted: true, message: 'simulated (file data source)' });
       return;
     }
-    res.json({ correlation_id: correlationId, accepted: true });
+    res.status(503).json({ error: 'kafka_unavailable' });
+    return;
+  }
+
+  const requestedAt = new Date().toISOString();
+  const envelope = {
+    payload: {
+      prompt,
+      task_type: taskType,
+      source: 'codex',
+      wait: true,
+      correlation_id: correlationId,
+      metadata: {
+        requested_by: 'omnidash-ui',
+        source_surface: 'delegation-control-plane',
+      },
+    },
+    envelope_id: randomUUID(),
+    envelope_timestamp: requestedAt,
+    correlation_id: correlationId,
+    source_tool: 'omnidash-ui',
+    event_type: DELEGATE_SKILL_EVENT_TYPE,
+    priority: 5,
+    retry_count: 0,
+  };
+
+  try {
+    await publishMessage(COMMAND_TOPICS.delegateSkill, envelope);
+    res.json({ correlation_id: correlationId, accepted: true, topic: COMMAND_TOPICS.delegateSkill });
   } catch (err) {
     console.error('[routes] /api/delegation/trigger error:', err);
-    res.status(503).json({ error: 'runtime unreachable', detail: String(err) });
+    res.status(503).json({ error: 'kafka_unavailable', detail: String(err) });
   }
 });
 

@@ -2,6 +2,7 @@ import type { DelegationSavingsProjection, DelegationSavingsSession } from '@/co
 import type { DelegationModelRoutingProjection } from '@/components/dashboard/delegation/DelegationModelRoutingWidget';
 import type { DelegationQualityGateProjection } from '@/components/dashboard/delegation/DelegationQualityGateWidget';
 import type { DelegationTokenUsageProjection, TokenProvenance } from '@/components/dashboard/delegation/DelegationTokenUsageWidget';
+import type { InferenceResponseProjection } from '@/components/dashboard/delegation/DelegationModelOutputWidget';
 
 // ── Savings fixtures ──────────────────────────────────────────────────
 
@@ -285,6 +286,71 @@ export function buildDelegationTokenUsage(
     total_estimated_cost_usd: Number(totalCost.toFixed(4)),
     provenance_summary: provenanceSummary,
     by_model,
+    captured_at: new Date('2026-05-05T12:00:00Z').toISOString(),
+    provisioned,
+  };
+}
+
+// ── Inference response fixtures (OMN-12745) ───────────────────────────
+
+export interface BuildInferenceResponseOptions {
+  provisioned?: boolean;
+  responseCount?: number;
+}
+
+export function buildInferenceResponseProjection(
+  opts: BuildInferenceResponseOptions = {},
+): InferenceResponseProjection {
+  const { provisioned = false, responseCount = 3 } = opts;
+
+  const responses = [
+    {
+      correlation_id: 'corr-a1b2c3d4e5f6',
+      model_name: 'qwen3-coder-30b',
+      task_type: 'code-review',
+      generated_text:
+        'The delegation routing logic in node_router_delegation correctly selects the cheapest local model first. The quality-gate threshold of 0.87 is within acceptable bounds. No critical issues found.',
+      prompt_tokens: 144,
+      completion_tokens: 62,
+      latency_ms: 1840,
+      captured_at: new Date('2026-05-05T11:59:30Z').toISOString(),
+    },
+    {
+      correlation_id: 'corr-b2c3d4e5f6a1',
+      model_name: 'deepseek-r1-14b',
+      task_type: 'summarization',
+      generated_text:
+        'Summary: The SEA demo pipeline executed 312 delegations across 4 models with an 87% quality gate pass rate. Local inference handled 75% of requests, saving an estimated $0.43 vs cloud-only routing.',
+      prompt_tokens: 210,
+      completion_tokens: 54,
+      latency_ms: 2310,
+      captured_at: new Date('2026-05-05T11:58:10Z').toISOString(),
+    },
+    {
+      correlation_id: 'corr-c3d4e5f6a1b2',
+      model_name: 'openrouter-glm-flash',
+      task_type: 'classification',
+      generated_text:
+        'Classification result: task_type=code-review, confidence=0.94, routing_rule=exploit:best-latency. Delegated to qwen3-coder-30b.',
+      prompt_tokens: 88,
+      completion_tokens: 28,
+      latency_ms: 920,
+      captured_at: new Date('2026-05-05T11:57:00Z').toISOString(),
+    },
+  ].slice(0, Math.min(responseCount, 3));
+
+  const latest = responses[0];
+
+  return {
+    latest_correlation_id: latest.correlation_id,
+    latest_model_name: latest.model_name,
+    latest_task_type: latest.task_type,
+    latest_generated_text: latest.generated_text,
+    latest_prompt_tokens: latest.prompt_tokens,
+    latest_completion_tokens: latest.completion_tokens,
+    latest_latency_ms: latest.latency_ms,
+    source_topic: 'onex.evt.omnibase-infra.inference-response.v1',
+    recent_responses: responses,
     captured_at: new Date('2026-05-05T12:00:00Z').toISOString(),
     provisioned,
   };

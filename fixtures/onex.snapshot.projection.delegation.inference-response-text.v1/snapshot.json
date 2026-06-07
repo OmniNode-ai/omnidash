@@ -1,0 +1,44 @@
+{
+  "latest_correlation_id": "corr-a1b2c3d4e5f6",
+  "latest_model_name": "qwen3-coder-30b",
+  "latest_task_type": "code-review",
+  "latest_generated_text": "The delegation routing logic in node_router_delegation correctly selects the cheapest local model first. The quality-gate threshold of 0.87 is within acceptable bounds. No critical issues found. The per-task routing weights are deterministic and match the contract spec. Recommendation: promote this routing config to the next production cycle.",
+  "latest_prompt_tokens": 144,
+  "latest_completion_tokens": 62,
+  "latest_latency_ms": 1840,
+  "source_topic": "onex.evt.omnibase-infra.inference-response.v1",
+  "recent_responses": [
+    {
+      "correlation_id": "corr-a1b2c3d4e5f6",
+      "model_name": "qwen3-coder-30b",
+      "task_type": "code-review",
+      "generated_text": "The delegation routing logic in node_router_delegation correctly selects the cheapest local model first. The quality-gate threshold of 0.87 is within acceptable bounds. No critical issues found. The per-task routing weights are deterministic and match the contract spec. Recommendation: promote this routing config to the next production cycle.",
+      "prompt_tokens": 144,
+      "completion_tokens": 62,
+      "latency_ms": 1840,
+      "captured_at": "2026-05-05T11:59:30Z"
+    },
+    {
+      "correlation_id": "corr-b2c3d4e5f6a1",
+      "model_name": "deepseek-r1-14b",
+      "task_type": "summarization",
+      "generated_text": "Summary: The SEA demo pipeline executed 312 delegations across 4 models with an 87% quality gate pass rate. Local inference handled 75% of requests, saving an estimated $0.43 vs cloud-only routing.",
+      "prompt_tokens": 210,
+      "completion_tokens": 54,
+      "latency_ms": 2310,
+      "captured_at": "2026-05-05T11:58:10Z"
+    },
+    {
+      "correlation_id": "corr-c3d4e5f6a1b2",
+      "model_name": "openrouter-glm-flash",
+      "task_type": "classification",
+      "generated_text": "Classification result: task_type=code-review, confidence=0.94, routing_rule=exploit:best-latency. Delegated to qwen3-coder-30b.",
+      "prompt_tokens": 88,
+      "completion_tokens": 28,
+      "latency_ms": 920,
+      "captured_at": "2026-05-05T11:57:00Z"
+    }
+  ],
+  "captured_at": "2026-05-05T12:00:00Z",
+  "provisioned": false
+}

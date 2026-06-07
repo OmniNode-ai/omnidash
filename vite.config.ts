@@ -5,6 +5,7 @@ import path from 'path';
 import { fileURLToPath } from 'url';
 import { readdirSync, readFileSync, writeFileSync, mkdirSync, existsSync, statSync } from 'node:fs';
 import type { IncomingMessage, ServerResponse } from 'node:http';
+import { buildProxyMap } from './vite.proxy-config';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
@@ -137,64 +138,7 @@ export default defineConfig(({ mode }) => {
   const { plugin: layoutsPlugin } = layoutsMiddleware({
     root: path.resolve(__dirname, 'dashboard-layouts'),
   });
-
-  // OMN-10945: build proxy map. Both the LLM proxy and the delegation API
-  // proxy are registered only when their respective env vars are set, so
-  // the dev server does not silently forward to a hardcoded host.
-  type ProxyEntry = { target: string; changeOrigin: boolean; rewrite: (p: string) => string };
-  const proxyMap: Record<string, ProxyEntry> = {};
-
-  if (env.VITE_LLM_BASE_URL) {
-    // Routes /llm-proxy/* → LLM host to avoid CORS in dev.
-    // VITE_LLM_BASE_URL holds host only (no /v1 suffix).
-    proxyMap['/llm-proxy'] = {
-      target: env.VITE_LLM_BASE_URL,
-      changeOrigin: true,
-      rewrite: (p) => p.replace(/^\/llm-proxy/, ''),
-    };
-  }
-
-  if (env.VITE_PROJECTION_API_URL) {
-    // Routes /projection/* → projection API backend (HttpSnapshotSource).
-    // Routes /api/delegation/* → projection API backend (delegation-api.ts).
-    // VITE_PROJECTION_API_URL holds the base URL of the API server.
-    proxyMap['/projection'] = {
-      target: env.VITE_PROJECTION_API_URL,
-      changeOrigin: true,
-      rewrite: (p) => p,
-    };
-    proxyMap['/api/delegation'] = {
-      target: env.VITE_PROJECTION_API_URL,
-      changeOrigin: true,
-      rewrite: (p) => p,
-    };
-    proxyMap['/api/projections'] = {
-      target: env.VITE_PROJECTION_API_URL,
-      changeOrigin: true,
-      rewrite: (p) => p,
-    };
-    proxyMap['/api/generate'] = {
-      target: env.VITE_PROJECTION_API_URL,
-      changeOrigin: true,
-      rewrite: (p) => p,
-    };
-    proxyMap['/api/compare'] = {
-      target: env.VITE_PROJECTION_API_URL,
-      changeOrigin: true,
-      rewrite: (p) => p,
-    };
-  }
-
-  if (env.EVIDENCE_PROJECTION_API_URL) {
-    // OMN-11477: evidence pipeline projection API. This variable is the
-    // contract-owned endpoint; when unset, the client renders a degraded
-    // unconfigured projection state instead of silently defaulting.
-    proxyMap['/api/evidence-pipeline'] = {
-      target: env.EVIDENCE_PROJECTION_API_URL,
-      changeOrigin: true,
-      rewrite: (p) => p.replace(/^\/api\/evidence-pipeline/, ''),
-    };
-  }
+  const proxyMap = buildProxyMap(env);
 
   return {
     envPrefix: ['VITE_', 'EVIDENCE_'],
