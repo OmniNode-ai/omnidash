@@ -133,6 +133,7 @@ describe('PostgresProjectionReader', () => {
       provisioned: true,
     });
     const sessions = result.rows[0]!.sessions as Record<string, unknown>[];
+    // Postgres returns numeric-looking strings; the reader coerces them to numbers.
     expect(sessions[0]).toMatchObject({
       session_id: 'corr-live',
       prompt_tokens: 144,
@@ -196,6 +197,7 @@ describe('PostgresProjectionReader', () => {
     });
     const sessions = result.rows[0]!.sessions as Record<string, unknown>[];
     expect(sessions).toHaveLength(1);
+    // Postgres returns numeric-looking strings; the reader coerces them to numbers.
     expect(sessions[0]).toMatchObject({
       session_id: 'sess-merged',
       savings_usd: 0.009,
