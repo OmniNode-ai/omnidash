@@ -80,6 +80,46 @@ describe('ControlPlanePage', () => {
     });
   });
 
+  it('renders full SEA generation artifact proof from projection rows', async () => {
+    mockFetchWithItems([
+      {
+        id: 'corr-sea-completed',
+        type: 'success',
+        timestamp: '2026-05-17T10:30:05Z',
+        source: 'node_generation_consumer',
+        message: 'Node generation completed: email validator',
+        correlationId: 'corr-sea',
+        selectedProvider: 'openai',
+        selectedModel: 'gpt-5-mini',
+        endpointRef: 'contracts/endpoints/sea-generation.yaml#openai',
+        resolvedEndpoint: 'https://api.openai.example/v1/responses',
+        routingSource: 'runtime-routing-authority',
+        projectionOwner: 'node_projection_generation_events',
+        projectionReducerVersion: '078',
+        outputPayloadSha256: 'sha256-output',
+        contractYaml: 'kind: node\nname: email-validator\nspec:\n  entrypoint: handler.run\n',
+        handlerSource: 'export async function run(input) {\n  return input.email.includes("@");\n}\n',
+      },
+    ]);
+    render(
+      <DataSourceTestProvider client={qc}>
+        <ControlPlanePage config={{}} />
+      </DataSourceTestProvider>,
+    );
+
+    expect(await screen.findByText(/projection-backed artifact proof/i)).toBeInTheDocument();
+    expect(screen.getByText(/kind: node/)).toBeInTheDocument();
+    expect(screen.getByText(/return input.email.includes/)).toBeInTheDocument();
+    expect(screen.getByText('openai')).toBeInTheDocument();
+    expect(screen.getByText('gpt-5-mini')).toBeInTheDocument();
+    expect(screen.getByText('contracts/endpoints/sea-generation.yaml#openai')).toBeInTheDocument();
+    expect(screen.getByText('https://api.openai.example/v1/responses')).toBeInTheDocument();
+    expect(screen.getByText('runtime-routing-authority')).toBeInTheDocument();
+    expect(screen.getByText('node_projection_generation_events')).toBeInTheDocument();
+    expect(screen.getByText('078')).toBeInTheDocument();
+    expect(screen.getByText('sha256-output')).toBeInTheDocument();
+  });
+
   it('renders the newest pipeline event first without bottom autoscroll behavior', async () => {
     mockFetchWithItems(PIPELINE_EVENTS);
     render(
@@ -186,7 +226,11 @@ describe('ControlPlanePage', () => {
     await waitFor(() => {
       expect(screen.getByRole('status')).toHaveTextContent(/corr-live-123/i);
     });
-    expect(screen.getByText(/generation request accepted by backend: corr-live-123/i)).toBeInTheDocument();
+    expect(screen.getByRole('status')).toHaveTextContent(/command accepted/i);
+    expect(screen.getByRole('status')).toHaveTextContent(/awaiting projection proof/i);
+    expect(screen.getByText(/command accepted by backend: corr-live-123/i)).toBeInTheDocument();
+    expect(screen.getByText(/waiting for projection-backed generation_events proof/i)).toBeInTheDocument();
+    expect(screen.queryByText(/node generation completed: corr-live-123/i)).not.toBeInTheDocument();
     expect(invalidateSpy).toHaveBeenCalledWith({ queryKey: ['hackathon-pipeline-events'] });
     expect(invalidateSpy).toHaveBeenCalledWith({ queryKey: ['trace-explorer'] });
   });

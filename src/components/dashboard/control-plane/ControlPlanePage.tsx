@@ -125,16 +125,16 @@ export default function ControlPlanePage({
           }
           setSubmitState({
             phase: 'accepted',
-            message: `Generation request accepted. Correlation: ${correlationId}`,
+            message: `Command accepted. Awaiting projection proof. Correlation: ${correlationId}`,
           });
           setLocalEvents((prev) => [
             ...prev,
             {
               id: `accepted-${now}`,
-              type: 'success' as const,
+              type: 'request' as const,
               timestamp: new Date().toISOString(),
               source: 'control-plane',
-              message: `Generation request accepted by backend: ${correlationId}`,
+              message: `Command accepted by backend: ${correlationId}. Waiting for projection-backed generation_events proof.`,
               correlationId,
             },
           ]);

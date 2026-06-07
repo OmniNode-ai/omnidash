@@ -471,6 +471,18 @@ describe('PostgresProjectionReader', () => {
       source: 'node_generation_consumer',
       message: 'Node generation completed: Build an email validator node',
       correlationId: 'corr-gen-1',
+      taskDescription: 'Build an email validator node',
+      selectedProvider: 'openai',
+      selectedModel: 'gpt-5-mini',
+      endpointRef: 'contracts/endpoints/sea-generation.yaml#openai',
+      resolvedEndpoint: 'https://api.openai.example/v1/responses',
+      routingSource: 'runtime-routing-authority',
+      projectionOwner: 'node_projection_generation_events',
+      projectionReducerVersion: '078',
+      contractYaml: 'kind: node\nname: email-validator\n',
+      handlerSource: 'export async function run() {\n  return true;\n}\n',
+      outputPayloadSha256: 'sha256-output',
+      payload: '{"contract_yaml":"kind: node\\nname: email-validator\\n"}',
     };
     const client = { query: vi.fn().mockResolvedValue({ rows: [fakeRow] }), release: vi.fn() };
     getMockPool().connect.mockResolvedValue(client);
@@ -480,6 +492,9 @@ describe('PostgresProjectionReader', () => {
     expect(result.rows).toHaveLength(1);
     expect(result.rows[0]).toMatchObject(fakeRow);
     expect(client.query).toHaveBeenCalledWith(expect.stringContaining('FROM generation_events'));
+    expect(client.query).toHaveBeenCalledWith(expect.stringContaining('to_jsonb(generation_events)'));
+    expect(client.query).toHaveBeenCalledWith(expect.stringContaining('contract_yaml'));
+    expect(client.query).toHaveBeenCalledWith(expect.stringContaining('handler_source'));
     expect(client.query).toHaveBeenCalledWith(expect.stringContaining('contract_passed'));
   });
 

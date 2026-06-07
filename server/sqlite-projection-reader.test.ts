@@ -87,6 +87,16 @@ function createTestDb(dbPath: string): Database.Database {
       total_latency_e2e_ms INTEGER NOT NULL DEFAULT 0,
       contract_passed INTEGER NOT NULL DEFAULT 0,
       cost_inference_usd REAL NOT NULL DEFAULT 0,
+      endpoint_ref TEXT,
+      resolved_endpoint TEXT,
+      routing_source TEXT,
+      projection_owner TEXT,
+      projection_reducer_version TEXT,
+      contract_yaml TEXT,
+      handler_source TEXT,
+      output_payload_sha256 TEXT,
+      contract_sha256 TEXT,
+      handler_sha256 TEXT,
       timestamp TEXT NOT NULL,
       created_at TEXT NOT NULL
     );
@@ -626,15 +636,35 @@ describe('SqliteProjectionReader', () => {
         id,
         correlation_id,
         task_description,
+        provider,
+        model_id,
+        endpoint_ref,
+        resolved_endpoint,
+        routing_source,
+        projection_owner,
+        projection_reducer_version,
+        contract_yaml,
+        handler_source,
+        output_payload_sha256,
         contract_passed,
         timestamp,
         created_at
       )
-      VALUES (?, ?, ?, ?, ?, ?)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `).run(
       'gen-1',
       'corr-gen-1',
       'Build an email validator node',
+      'openai',
+      'gpt-5-mini',
+      'contracts/endpoints/sea-generation.yaml#openai',
+      'https://api.openai.example/v1/responses',
+      'runtime-routing-authority',
+      'node_projection_generation_events',
+      '078',
+      'kind: node\nname: email-validator\nspec:\n  entrypoint: handler.run\n',
+      'export async function run(input) {\n  return input.email.includes("@");\n}\n',
+      'sha256-output',
       1,
       '2026-05-20T08:10:00.000Z',
       '2026-05-20T08:10:00.000Z',
@@ -652,6 +682,21 @@ describe('SqliteProjectionReader', () => {
       source: 'node_generation_consumer',
       message: 'Node generation completed: Build an email validator node',
       correlationId: 'corr-gen-1',
+      taskDescription: 'Build an email validator node',
+      selectedProvider: 'openai',
+      selectedModel: 'gpt-5-mini',
+      endpointRef: 'contracts/endpoints/sea-generation.yaml#openai',
+      resolvedEndpoint: 'https://api.openai.example/v1/responses',
+      routingSource: 'runtime-routing-authority',
+      projectionOwner: 'node_projection_generation_events',
+      projectionReducerVersion: '078',
+      contractYaml: 'kind: node\nname: email-validator\nspec:\n  entrypoint: handler.run\n',
+      handlerSource: 'export async function run(input) {\n  return input.email.includes("@");\n}\n',
+      outputPayloadSha256: 'sha256-output',
+    });
+    expect(JSON.parse(String(rows[0].payload))).toMatchObject({
+      contractYaml: 'kind: node\nname: email-validator\nspec:\n  entrypoint: handler.run\n',
+      handlerSource: 'export async function run(input) {\n  return input.email.includes("@");\n}\n',
     });
   });
 
