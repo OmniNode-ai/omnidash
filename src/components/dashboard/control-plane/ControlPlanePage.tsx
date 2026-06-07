@@ -66,43 +66,9 @@ export default function ControlPlanePage({
   }, [data, localEvents]);
 
   const handlePromptSubmit = useCallback((prompt: string) => {
-    const mode = getDataSourceMode();
-    if (mode === 'file') {
-      const now = new Date().toISOString();
-      const correlationId = `demo-${Date.now()}`;
-      const base = Date.now();
-      setSubmitState({ phase: 'accepted', message: `Demo request queued: ${prompt}` });
-      setLocalEvents((prev) => [
-        ...prev,
-        {
-          id: `local-${base}`,
-          type: 'request' as const,
-          timestamp: now,
-          source: 'control-plane',
-          message: `Node generation requested: ${prompt}`,
-          correlationId,
-          simulated: true,
-        },
-        {
-          id: `local-${base}-val`,
-          type: 'validation' as const,
-          timestamp: new Date(base + 1200).toISOString(),
-          source: 'validator',
-          message: 'Contract schema validated: 0 errors',
-          correlationId,
-          simulated: true,
-        },
-        {
-          id: `local-${base}-ok`,
-          type: 'success' as const,
-          timestamp: new Date(base + 3500).toISOString(),
-          source: 'runtime',
-          message: 'Contract materialized, MCP tool registered',
-          correlationId,
-          simulated: true,
-        },
-      ]);
-    } else {
+    // OMN-12775: file-mode client-side fabrication disabled — default to bus/projection.
+    // No simulated:true events; projection data comes from the bus on the demo path.
+    {
       const baseUrl =
         import.meta.env.VITE_HTTP_DATA_SOURCE_URL ??
         import.meta.env.VITE_SQLITE_DATA_SOURCE_URL ??
@@ -124,7 +90,7 @@ export default function ControlPlanePage({
       void (async () => {
         try {
           if (!baseUrl) throw new Error('Missing data source base URL');
-          const response = await fetch(`${baseUrl}/api/hackathon/generate`, {
+          const response = await fetch(`${baseUrl}/api/sea/generate`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ task_description: prompt }),

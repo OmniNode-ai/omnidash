@@ -111,7 +111,10 @@ describe('ControlPlanePage', () => {
     expect(await screen.findByText(/\+ Trigger delegation/i)).toBeInTheDocument();
   });
 
-  it('appends mock event to log on prompt submit in fixture mode', async () => {
+  it('submits to bus in fixture mode (no client-side fabrication since OMN-12775)', async () => {
+    // OMN-12775: file-mode simulated events are disabled. The submit path
+    // always tries the /api/sea/generate route. Without VITE_HTTP_DATA_SOURCE_URL
+    // set, it fails-fast with an error rather than fabricating fake events.
     mockFetchWithItems([]);
     render(
       <DataSourceTestProvider client={qc}>
@@ -121,10 +124,12 @@ describe('ControlPlanePage', () => {
     const input = await screen.findByPlaceholderText(/describe the node/i);
     fireEvent.change(input, { target: { value: 'Classify sentiment' } });
     fireEvent.click(screen.getByRole('button', { name: /generate/i }));
+    // No simulated events — the component shows an error from the missing base URL
     await waitFor(() => {
-      expect(screen.getAllByText(/classify sentiment/i).length).toBeGreaterThan(0);
+      expect(screen.getByRole('status')).toHaveTextContent(/submit failed/i);
     });
-    expect(screen.getByRole('status')).toHaveTextContent(/demo request queued/i);
+    // No simulated:true events injected
+    expect(screen.queryByText(/contract materialized, mcp tool registered/i)).not.toBeInTheDocument();
   });
 
   it('shows immediate feedback while a live prompt request is pending', async () => {
@@ -253,8 +258,9 @@ describe('ControlPlanePage', () => {
     await waitFor(() => {
       expect(screen.getByText(/failed to submit: error: http 500 server error: boom/i)).toBeInTheDocument();
     });
+    // OMN-12775: thin publisher uses /api/sea/generate, not the phantom /api/hackathon/generate
     expect(fetch).toHaveBeenCalledWith(
-      'http://backend.test/api/hackathon/generate',
+      'http://backend.test/api/sea/generate',
       expect.objectContaining({ method: 'POST' }),
     );
   });

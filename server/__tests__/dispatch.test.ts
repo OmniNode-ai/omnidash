@@ -216,6 +216,94 @@ describe('POST /api/delegation/trigger', () => {
   });
 });
 
+// OMN-12775: SEA thin publisher — node-generation-requested
+describe('POST /api/sea/generate', () => {
+  beforeEach(() => {
+    process.env.OMNIDASH_DATA_SOURCE = 'postgres';
+    vi.mocked(kafkaProducer.isProducerConnected).mockReturnValue(true);
+    vi.mocked(kafkaProducer.publishMessage).mockResolvedValue(undefined);
+  });
+
+  afterEach(() => {
+    delete process.env.OMNIDASH_DATA_SOURCE;
+    vi.clearAllMocks();
+  });
+
+  it('returns 400 when task_description is missing', async () => {
+    const routes = await loadRoutes();
+    const res = await request(buildApp(routes))
+      .post('/api/sea/generate')
+      .send({});
+
+    expect(res.status).toBe(400);
+    expect(res.body).toEqual({ error: 'task_description is required' });
+  });
+
+  it('returns 503 when Kafka producer is not connected in live data-source mode', async () => {
+    vi.mocked(kafkaProducer.isProducerConnected).mockReturnValue(false);
+
+    const routes = await loadRoutes();
+    const res = await request(buildApp(routes))
+      .post('/api/sea/generate')
+      .send({ task_description: 'Generate a summarizer node' });
+
+    expect(res.status).toBe(503);
+    expect(res.body).toEqual({ error: 'kafka_unavailable' });
+  });
+
+  it('publishes envelope to node-generation-requested.v1 and returns correlation_id', async () => {
+    const routes = await loadRoutes();
+    const res = await request(buildApp(routes))
+      .post('/api/sea/generate')
+      .send({ task_description: 'Generate a summarizer node' });
+
+    expect(res.status).toBe(200);
+    expect(res.body.accepted).toBe(true);
+    expect(res.body.topic).toBe('onex.cmd.omnimarket.node-generation-requested.v1');
+    expect(typeof res.body.correlation_id).toBe('string');
+    expect(kafkaProducer.publishMessage).toHaveBeenCalledOnce();
+
+    const [topic, envelope] = vi.mocked(kafkaProducer.publishMessage).mock.calls[0] as [string, Record<string, unknown>];
+    // Topic must byte-match node_generation_consumer subscribe_topics
+    expect(topic).toBe('onex.cmd.omnimarket.node-generation-requested.v1');
+    // Publisher carries no business-payload truth — only wraps user input
+    expect(envelope.source_tool).toBe('omnidash-ui');
+    expect(envelope.event_type).toBe('omnimarket.node-generation-requested');
+    expect(typeof envelope.envelope_id).toBe('string');
+    expect(typeof envelope.envelope_timestamp).toBe('string');
+    expect(envelope.correlation_id).toBe(res.body.correlation_id);
+
+    const payload = envelope.payload as Record<string, unknown>;
+    // Payload is the user input only — no inferred/computed business truth
+    expect(payload.task_description).toBe('Generate a summarizer node');
+    expect(payload.correlation_id).toBe(res.body.correlation_id);
+    // No business logic: publisher must not add derived fields
+    expect(Object.keys(payload).sort()).toEqual(['correlation_id', 'task_description']);
+  });
+
+  it('returns 503 when publishMessage throws', async () => {
+    vi.mocked(kafkaProducer.publishMessage).mockRejectedValue(new Error('broker gone'));
+
+    const routes = await loadRoutes();
+    const res = await request(buildApp(routes))
+      .post('/api/sea/generate')
+      .send({ task_description: 'Generate a summarizer node' });
+
+    expect(res.status).toBe(503);
+    expect(res.body).toEqual({ error: 'kafka_unavailable', detail: 'Error: broker gone' });
+  });
+
+  it('does not expose a /api/hackathon/generate route', async () => {
+    const routes = await loadRoutes();
+    const res = await request(buildApp(routes))
+      .post('/api/hackathon/generate')
+      .send({ task_description: 'anything' });
+
+    // Route must not exist (Express returns 404 for unregistered POST paths)
+    expect(res.status).toBe(404);
+  });
+});
+
 // OMN-12149: topic registration test
 describe('COMMAND_TOPICS registry', () => {
   it('dispatchRequest key maps to the correct topic string', async () => {
@@ -226,5 +314,11 @@ describe('COMMAND_TOPICS registry', () => {
   it('delegateSkill key maps to the contract-declared delegate-skill command topic', async () => {
     const { COMMAND_TOPICS } = await import('../../shared/types/command-topics.js');
     expect(COMMAND_TOPICS.delegateSkill).toBe('onex.cmd.omnimarket.delegate-skill.v1');
+  });
+
+  // OMN-12775: SEA generation command topic
+  it('nodeGenerationRequested key maps to the node_generation_consumer subscribe topic', async () => {
+    const { COMMAND_TOPICS } = await import('../../shared/types/command-topics.js');
+    expect(COMMAND_TOPICS.nodeGenerationRequested).toBe('onex.cmd.omnimarket.node-generation-requested.v1');
   });
 });
