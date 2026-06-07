@@ -142,6 +142,12 @@ export const TOPICS = {
    * Backed by swarm_runs table in omnidash_analytics (OMN-12072).
    */
   swarmRuns: 'onex.snapshot.projection.swarm.runs.v1',
+  /** Sandbox policy decisions — real-time allow/deny stream (OMN-6877). */
+  sandboxDecisions: 'onex.snapshot.projection.sandbox.decisions.v1',
+  /** Voice session events — audio timeline and transcript turns (OMN-6877). */
+  voiceSessions: 'onex.snapshot.projection.voice.sessions.v1',
+  /** Session replay snapshots — state reconstruction checkpoints (OMN-6877). */
+  sessionReplay: 'onex.snapshot.projection.session.replay.v1',
   /**
    * Inference response text projection — latest ModelLlmInferenceResponse rows
    * sourced from the bus topic onex.evt.omnibase-infra.inference-response.v1.

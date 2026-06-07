@@ -11,14 +11,7 @@ import { AGENT_ACTIONS, validateAgentAction } from './agent/actions';
 import { AgentActionDispatcher } from './agent/AgentActionDispatcher';
 import { buildSystemPrompt } from './agent/buildSystemPrompt';
 import { buildUserContext } from './agent/contextUtils';
-import { readFileSync } from 'fs';
-import { resolve, dirname } from 'path';
-import { fileURLToPath } from 'url';
-import type { RegistryManifest } from './registry/types';
-
-const __dirname = dirname(fileURLToPath(import.meta.url));
-const manifestJson = readFileSync(resolve(__dirname, './registry/component-registry.json'), 'utf-8');
-const manifest: RegistryManifest = JSON.parse(manifestJson);
+import { TEST_MANIFEST as manifest, createTestQueryClient } from './test-utils/integrationHelpers';
 
 vi.mock('page-agent', () => ({
   PageAgent: vi.fn().mockImplementation(() => ({
@@ -45,7 +38,7 @@ describe('Proof of Life — Part 4 (Conversational Layer)', () => {
   let qc: QueryClient;
 
   beforeEach(() => {
-    qc = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+    qc = createTestQueryClient();
     useFrameStore.setState(
       {
         ...INITIAL_CONVERSATION_STATE,
