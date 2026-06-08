@@ -50,24 +50,28 @@ describe('Proof of Life — Part 3 (Full System)', () => {
     }
   });
 
-  it('all components resolve via import map after resolveImplementations', async () => {
+  it('only one-backend-visible components resolve via import map after resolveImplementations', async () => {
     const registry = new ComponentRegistry(manifest);
     await registry.resolveImplementations();
     const available = registry.getAvailableComponents().filter((c) => c.status === 'available');
-    // 13 post-merge: 8 original + cost-summary (OMN-10301) + token-usage (OMN-10303) + cost-by-repo (OMN-10302)
-    // + cost-by-model-3d via IDoughnutChartAdapter (OMN-10291) + ab-compare (OMN-10490).
-    // cost-by-repo + token-usage wired (OMN-10305), plus OMN-10509 prototype widgets.
-    // + cost-savings-overview (OMN-10346).
-    // + delegation-savings, delegation-model-routing, delegation-quality-gate, delegation-token-usage (OMN-10624).
-    // + mcp-tools (OMN-11258).
-    // + control-plane (OMN-11260).
-    // + evidence-pipeline-flow (OMN-11477).
-    // + delegation-control-plane (OMN-11623).
-    // + trace-explorer (OMN-12135).
-    // + delegation-cost-comparison (T22).
-    // + context-effectiveness-heatmap (OMN-12399).
-    // + delegation-model-output (OMN-12745).
-    expect(available.length).toBe(32);
+    // OMN-12833 (A2.5): components classified `hidden` by the single standard
+    // projection backend sweep are forced to `not_implemented` regardless of
+    // whether their implementation code exists, so they never surface in the
+    // palette. Only the one-backend-visible set resolves to `available`.
+    const expectedVisible = Object.entries(manifest.components)
+      .filter(([, m]) => m.paletteVisibility !== 'hidden')
+      .map(([name]) => name);
+    const availableNames = available.map((c) => c.name).sort();
+    // Every visible component must have a resolvable implementation key.
+    expect(availableNames).toEqual([...expectedVisible].sort());
+    // Sanity: no hidden component resolved to `available`.
+    for (const c of available) {
+      expect(c.manifest.paletteVisibility).not.toBe('hidden');
+    }
+    // The visible keep-set (delegation chain + control plane + event-stream +
+    // context/evidence degraded surfaces) is non-empty.
+    expect(available.length).toBeGreaterThan(0);
+    expect(available.length).toBeLessThan(Object.keys(manifest.components).length);
   });
 
   it('both templates pass validation', () => {

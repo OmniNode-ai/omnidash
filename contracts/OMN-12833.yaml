@@ -1,0 +1,70 @@
+schema_version: "1.0.0"
+ticket_id: "OMN-12833"
+title: "A2.5: Dashboard one-backend component correctness sweep — single standard projection backend"
+summary: >-
+  Close-the-loop plan track A2.5 (docs/plans/2026-06-08-close-the-loop-plan.md). Makes EVERY demo-visible
+  dashboard component render through ONE standard projection backend (the stability-test Postgres-backed
+  projection API at 192.168.86.201:13002, reached same-origin via the Vite /projection proxy). Inventoried all
+  32 components in src/registry/component-registry.json, probed each component's topic(s) against the single
+  backend, and classified each as visible/projection-backed, visible/degraded-labeled, or hidden/disabled.
+  Adds manifest fields paletteVisibility + authorityLabel (shared/types/component-manifest.ts), a single
+  classification source of truth (shared/types/palette-visibility.ts) stamped into the generated registry by
+  scripts/generate-registry.ts, and ComponentRegistry.resolveImplementations() forcing hidden components to
+  not_implemented (kept out of the palette) regardless of whether their code exists. Adds a single projection
+  base-url resolver (src/data-source/projection-base-url.ts) so all reads target ONE backend; the correlation
+  trace read and HttpSnapshotSource now resolve through it. Result: 8 visible/projection-backed (delegation
+  chain + control plane incl. SEA artifact), 2 visible/degraded (context experiment keep-set + evidence
+  pipeline), 22 hidden/disabled. event-stream is hidden because registration.v1 (200/100r) does not match its
+  required StreamEvent shape and crashes render — hidden, not back-fed. Playwright network proof: every
+  /projection/{topic} hits the single backend origin; ZERO requests to :8765, :3010, :3002, fixtures, or
+  bespoke routes; zero failed widgets on the populated dashboard.
+is_seam_ticket: true
+interface_change: true
+interfaces_touched:
+  - "public_api"
+emergency_bypass:
+  enabled: false
+  justification: ""
+  follow_up_ticket_id: ""
+evidence_requirements:
+  - kind: "tests"
+    description: >-
+      src/integration.part3.test.tsx asserts only one-backend-visible components resolve to available and no
+      hidden component resolves. src/registry/ComponentRegistry.test.ts asserts a hidden component with a
+      resolvable implementation key is forced to not_implemented. src/data-source/projection-base-url.test.ts
+      asserts single-backend URL resolution (proxy-relative + absolute). Full suite (no -k): npx vitest run.
+    command: "cd omnidash && npx vitest run"
+  - kind: "browser"
+    description: >-
+      Playwright network capture (docs/evidence/dashboard-one-backend-20260608/playwright-network-projection.json)
+      proves every /projection/{topic} request hits the single backend origin and ZERO requests hit :8765,
+      :3010, :3002, fixtures, or bespoke API routes; full-page desktop + mobile + palette screenshots and
+      visible-text capture; component-matrix.json + backend-manifest.json.
+    command: "ls docs/evidence/dashboard-one-backend-20260608/"
+  - kind: "ci"
+    description: >-
+      All required CI checks green on the omnidash PR (Typecheck & Tests, contract-validation, golden-chain,
+      gate/CodeRabbit Thread Check, pr-title/check-title).
+    command: "gh pr checks <pr> --repo OmniNode-ai/omnidash"
+dod_evidence:
+  - id: "dod-omnidash-pr"
+    description: >-
+      omnidash PR classifies all 32 components through the single standard projection backend (8
+      projection-backed / 2 degraded / 22 hidden), adds paletteVisibility + authorityLabel + the one-backend
+      base resolver, and surfaces authority labels in the palette. Full vitest suite passing; tsc --noEmit
+      clean; eslint --max-warnings=0 clean; pre-commit all-files green (OMNIBASE_CORE_PATH set per
+      feedback_omnidash_worktree_precommit_corepath). Playwright network + render evidence packet attached.
+    source: "manual"
+    status: "verified"
+    checks:
+      - check_type: "command"
+        check_value: >-
+          grep -q '^status: PASS$' drift/dod_receipts/OMN-12833/dod-omnidash-pr/command.yaml
+  - id: "dod-occ-evidence"
+    description: "onex_change_control OCC contract + adversarial receipts for OMN-12833 (paired OCC PR)."
+    source: "manual"
+    status: "verified"
+    checks:
+      - check_type: "command"
+        check_value: >-
+          grep -q '^status: PASS$' drift/dod_receipts/OMN-12833/dod-occ-evidence/command.yaml

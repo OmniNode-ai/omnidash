@@ -61,4 +61,32 @@ describe('ComponentRegistry', () => {
     const c = registry.getComponent('test-component');
     expect(c!.status).toBe('not_implemented');
   });
+
+  // OMN-12833 (A2.5): a component with a resolvable implementation key but
+  // classified `hidden` by the one-backend sweep must NOT become `available`.
+  it('forces hidden components to not_implemented even when the implementation resolves', async () => {
+    const hiddenWithImpl: ComponentManifest = {
+      ...mockManifest,
+      name: 'event-stream',
+      // event-stream has a real entry in componentImports (events/EventStream).
+      implementationKey: 'events/EventStream',
+      paletteVisibility: 'hidden',
+      authorityLabel: 'disabled',
+    };
+    const visibleWithImpl: ComponentManifest = {
+      ...mockManifest,
+      name: 'event-stream-visible',
+      implementationKey: 'events/EventStream',
+      paletteVisibility: 'visible',
+      authorityLabel: 'projection-backed',
+    };
+    const r = new ComponentRegistry({
+      manifestVersion: '1.0',
+      generatedAt: '2026-06-08T00:00:00Z',
+      components: { 'event-stream': hiddenWithImpl, 'event-stream-visible': visibleWithImpl },
+    });
+    await r.resolveImplementations();
+    expect(r.getComponent('event-stream')!.status).toBe('not_implemented');
+    expect(r.getComponent('event-stream-visible')!.status).toBe('available');
+  });
 });

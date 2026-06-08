@@ -12,6 +12,7 @@
 
 import { TOPICS } from '@shared/types/topics';
 import { DATA_SOURCE_DEFAULT_MODE } from '@/config/generated/data-source-defaults';
+import { projectionUrl } from '@/data-source/projection-base-url';
 
 // ── Endpoint config ──────────────────────────────────────────────────────────
 
@@ -206,9 +207,15 @@ async function fetchCorrelationTraceFixture(correlationId: string): Promise<Corr
 // rows (including prompt_text/response_text) for that correlation. There is no
 // bespoke `/api/delegation/correlation-trace` backend route — the dashboard
 // renders the projection, it does not call a hand-written endpoint.
+//
+// OMN-12833 (A2.5): the projection read targets the SINGLE standard backend via
+// projectionUrl(), not the page origin. This keeps the correlation trace on the
+// same one-backend origin as every other projection read.
 function correlationTraceProjectionPath(correlationId: string): string {
-  const topic = encodeURIComponent(TOPICS.delegationCorrelationTrace);
-  return `/projection/${topic}?correlation_id=${encodeURIComponent(correlationId)}`;
+  return projectionUrl(
+    TOPICS.delegationCorrelationTrace,
+    `correlation_id=${encodeURIComponent(correlationId)}`,
+  );
 }
 
 export async function fetchCorrelationTrace(

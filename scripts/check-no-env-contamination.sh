@@ -89,6 +89,10 @@ ALLOWLIST_DIRS=(
   'reference'
   'src/data-source'        # the documented HTTP/WS carve-out
   'src/config/generated'   # OMN-10756: generated from contract.yaml defaults
+  # OMN-12833: OCC evidence contracts under contracts/ document the live lane
+  # backend they were verified against (prose evidence, not runtime source) —
+  # same rationale as the contract.yaml allowlist above.
+  'contracts'
 )
 
 is_allowlisted() {

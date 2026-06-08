@@ -23,6 +23,15 @@ export class ComponentRegistry {
    */
   async resolveImplementations(): Promise<void> {
     for (const [, entry] of this.components) {
+      // OMN-12833 (A2.5): components classified `hidden` by the one-backend
+      // palette sweep are kept out of the palette regardless of whether their
+      // implementation code exists — their topic cannot be served by the single
+      // standard projection backend today. The palette greys out any component
+      // whose status !== 'available'.
+      if (entry.manifest.paletteVisibility === 'hidden') {
+        entry.status = 'not_implemented';
+        continue;
+      }
       const key = entry.manifest.implementationKey;
       if (key in componentImports) {
         entry.component = componentImports[key];

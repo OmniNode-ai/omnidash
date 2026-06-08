@@ -42,6 +42,29 @@ export interface ComponentEvent {
   schema?: Record<string, unknown>;
 }
 
+/**
+ * Authority label for a component's rendered data, surfaced in the palette and
+ * widget chrome. Mirrors `PanelAuthority` in the delegation control plane.
+ *
+ * - `projection-backed`: rows come from the standard projection API (`/projection/{topic}`)
+ *   and the backing topic returned at least one row at classification time.
+ * - `degraded`: the standard projection API serves the topic but it is empty
+ *   or the backing table is unavailable (HTTP 200 with zero rows, or HTTP 503).
+ *   The widget renders a truthful degraded/empty state, never synthetic data.
+ * - `disabled`: the standard projection API does not serve the topic today
+ *   (HTTP 404 — no producer / no `projection_api: expose`). The widget is hidden
+ *   from the palette until a real projection backs it.
+ */
+export type ComponentAuthorityLabel = 'projection-backed' | 'degraded' | 'disabled';
+
+/**
+ * Palette visibility classification (OMN-12833 / A2.5). Derived from a live probe
+ * of the single standard projection backend, NOT from whether component code
+ * exists. `hidden` components are removed from the widget palette so the demo
+ * never exposes a widget that cannot be backed by the one authoritative backend.
+ */
+export type ComponentPaletteVisibility = 'visible' | 'hidden';
+
 export interface ComponentManifest {
   name: string;
   displayName: string;
@@ -49,6 +72,19 @@ export interface ComponentManifest {
   category: ComponentCategory;
   version: string;
   implementationKey: string;
+  /**
+   * OMN-12833 (A2.5): palette visibility derived from the single standard
+   * projection backend. `hidden` keeps the component out of the palette when its
+   * topic(s) cannot be served (404) or are degraded and not worth showing.
+   * Optional so manifests that predate the field default to `visible`.
+   */
+  paletteVisibility?: ComponentPaletteVisibility;
+  /**
+   * OMN-12833 (A2.5): authority label for the component's data source. Optional
+   * so manifests that predate the field stay valid; consumers treat `undefined`
+   * as `projection-backed`.
+   */
+  authorityLabel?: ComponentAuthorityLabel;
   /**
    * JSON schema describing the widget's per-instance config. Omit when the
    * widget has nothing to configure — the kebab "Configure Widget" item is
