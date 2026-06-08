@@ -100,48 +100,10 @@ export class PostgresProjectionReader {
     this.pool = new Pool({ connectionString: options.connectionString });
   }
 
-  async readCorrelationTrace(correlationId: string): Promise<Row[]> {
-    if (!correlationId || correlationId.length > 256) return [];
-    const client = await this.pool.connect();
-    try {
-      const res = await client.query(
-        `SELECT
-          id,
-          correlation_id,
-          session_id,
-          timestamp,
-          task_type,
-          delegated_to,
-          delegated_by,
-          quality_gate_passed,
-          quality_gate_detail,
-          quality_gates_checked,
-          quality_gates_failed,
-          cost_usd,
-          cost_savings_usd,
-          delegation_latency_ms,
-          model_name,
-          tokens_input,
-          tokens_output,
-          routing_rule,
-          routing_confidence,
-          prompt_text,
-          response_text,
-          created_at
-        FROM delegation_events
-        WHERE correlation_id = $1
-        ORDER BY created_at ASC, id ASC
-        LIMIT 200`,
-        [correlationId],
-      );
-      return res.rows as Row[];
-    } catch (err) {
-      console.error(`[PostgresProjectionReader] error reading correlation trace ${correlationId}:`, err);
-      return [];
-    } finally {
-      client.release();
-    }
-  }
+  // OMN-12822 (A2): readCorrelationTrace was removed alongside the retired
+  // bespoke `GET /api/delegation/correlation-trace/:id` route. Per-correlation
+  // traces are now read through the canonical projection API
+  // (`/projection/{topic}?correlation_id=<id>`, OMN-12748).
 
   async readProjection(topic: string): Promise<ProjectionEnvelope> {
     let rows: Row[] = [];

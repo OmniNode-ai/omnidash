@@ -477,3 +477,32 @@ describe('GET /api/projections/traces', () => {
     expect(res.body).toEqual({ error: 'postgres data source not configured' });
   });
 });
+
+// OMN-12822 (A2): the bespoke correlation-trace read route is RETIRED.
+// fetchCorrelationTrace (src/services/delegation-api.ts) reads the
+// per-correlation trace via the canonical projection API
+// (`/projection/{topic}?correlation_id=<id>`) per OMN-12748; the dashboard
+// renders the projection, it does not call a hand-written backend endpoint.
+// The dead route must not be mounted — only authoritative read paths remain.
+describe('GET /api/delegation/correlation-trace/:id is retired (OMN-12822)', () => {
+  beforeEach(() => {
+    process.env.OMNIDASH_DATA_SOURCE = 'file';
+    delete process.env.OMNIDASH_ANALYTICS_DB_URL;
+  });
+
+  afterEach(() => {
+    delete process.env.OMNIDASH_DATA_SOURCE;
+    delete process.env.OMNIDASH_ANALYTICS_DB_URL;
+  });
+
+  it('the bespoke correlation-trace route is not mounted (404)', async () => {
+    const routes = await loadRoutes();
+    const res = await request(buildApp(routes)).get(
+      '/api/delegation/correlation-trace/some-correlation-id',
+    );
+
+    // Express returns 404 for an unmounted route. The canonical read path is
+    // `/projection/{topic}?correlation_id=<id>`, exercised elsewhere.
+    expect(res.status).toBe(404);
+  });
+});
