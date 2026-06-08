@@ -34,7 +34,7 @@ evidence_requirements:
       resolvable implementation key is forced to not_implemented. src/data-source/projection-base-url.test.ts
       asserts single-backend URL resolution (proxy-relative + absolute). Full suite (no -k): npx vitest run.
     command: "cd omnidash && npx vitest run"
-  - kind: "browser"
+  - kind: "manual"
     description: >-
       Playwright network capture (docs/evidence/dashboard-one-backend-20260608/playwright-network-projection.txt)
       proves every /projection/{topic} request hits the single backend origin and ZERO requests hit :8765,
