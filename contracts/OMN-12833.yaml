@@ -36,7 +36,7 @@ evidence_requirements:
     command: "cd omnidash && npx vitest run"
   - kind: "browser"
     description: >-
-      Playwright network capture (docs/evidence/dashboard-one-backend-20260608/playwright-network-projection.json)
+      Playwright network capture (docs/evidence/dashboard-one-backend-20260608/playwright-network-projection.txt)
       proves every /projection/{topic} request hits the single backend origin and ZERO requests hit :8765,
       :3010, :3002, fixtures, or bespoke API routes; full-page desktop + mobile + palette screenshots and
       visible-text capture; component-matrix.json + backend-manifest.json.
