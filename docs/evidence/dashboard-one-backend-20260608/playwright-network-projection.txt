@@ -1,0 +1,27 @@
+169. [GET] http://localhost:5174/projection/onex.snapshot.projection.delegation.token-usage.v1 => [200] OK
+170. [GET] http://localhost:5174/projection/onex.snapshot.projection.delegation.summary.v1 => [200] OK
+171. [GET] http://localhost:5174/projection/onex.snapshot.projection.delegation.decisions.v1 => [200] OK
+172. [GET] http://localhost:5174/projection/onex.snapshot.projection.delegation.savings.v1 => [200] OK
+173. [GET] http://localhost:5174/projection/onex.snapshot.projection.delegation.model-routing.v1 => [200] OK
+174. [GET] http://localhost:5174/projection/onex.snapshot.projection.delegation.quality-gate.v1 => [200] OK
+175. [GET] http://localhost:5174/projection/onex.snapshot.projection.delegation.token-usage.v1 => [200] OK
+176. [GET] http://localhost:5174/projection/onex.snapshot.projection.delegation.summary.v1 => [200] OK
+177. [GET] http://localhost:5174/projection/onex.snapshot.projection.delegation.decisions.v1 => [200] OK
+178. [GET] http://localhost:5174/projection/onex.snapshot.projection.context.experiment-scores.v1 => [404] Not Found
+185. [GET] http://localhost:5174/projection/onex.snapshot.projection.delegation.savings.v1 => [200] OK
+186. [GET] http://localhost:5174/projection/onex.snapshot.projection.delegation.quality-gate.v1 => [200] OK
+187. [GET] http://localhost:5174/projection/onex.snapshot.projection.delegation.decisions.v1 => [200] OK
+189. [GET] http://localhost:5174/projection/onex.snapshot.projection.delegation.summary.v1 => [200] OK
+190. [GET] http://localhost:5174/projection/onex.snapshot.projection.delegation.decisions.v1 => [200] OK
+191. [GET] http://localhost:5174/projection/onex.snapshot.projection.delegation.savings.v1 => [200] OK
+192. [GET] http://localhost:5174/projection/onex.snapshot.projection.delegation.model-routing.v1 => [200] OK
+193. [GET] http://localhost:5174/projection/onex.snapshot.projection.delegation.quality-gate.v1 => [200] OK
+194. [GET] http://localhost:5174/projection/onex.snapshot.projection.delegation.token-usage.v1 => [200] OK
+195. [GET] http://localhost:5174/projection/onex.snapshot.projection.delegation.summary.v1 => [200] OK
+196. [GET] http://localhost:5174/projection/onex.snapshot.projection.delegation.decisions.v1 => [200] OK
+197. [GET] http://localhost:5174/projection/onex.snapshot.projection.context.experiment-scores.v1 => [404] Not Found
+198. [GET] http://localhost:5174/projection/onex.snapshot.projection.delegation.quality-gate.v1 => [200] OK
+199. [GET] http://localhost:5174/projection/onex.snapshot.projection.delegation.decisions.v1 => [200] OK
+200. [GET] http://localhost:5174/projection/onex.snapshot.projection.delegation.savings.v1 => [200] OK
+
+Note: 170 static requests not shown, run with "static" option to see them.
