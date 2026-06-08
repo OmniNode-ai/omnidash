@@ -102,22 +102,12 @@ async function readProjection(topic: string): Promise<unknown> {
   return records;
 }
 
-// Correlation trace: returns all delegation_events rows for a given correlation_id.
-// Used by DelegationCorrelationTracePanel to render the full per-event chain.
-router.get('/api/delegation/correlation-trace/:correlationId', async (req, res) => {
-  const { correlationId } = req.params;
-  if (!pgReader) {
-    res.status(503).json({ error: 'postgres data source not configured' });
-    return;
-  }
-  try {
-    const rows = await pgReader.readCorrelationTrace(correlationId);
-    res.json({ correlation_id: correlationId, rows });
-  } catch (err) {
-    console.error('[routes] /api/delegation/correlation-trace/:correlationId error:', err);
-    res.status(500).json({ error: 'correlation trace read failed' });
-  }
-});
+// OMN-12822 (A2): the bespoke `GET /api/delegation/correlation-trace/:id`
+// read route is RETIRED. Per OMN-12748, DelegationCorrelationTracePanel reads
+// the per-correlation trace through the canonical projection API
+// (`/projection/{topic}?correlation_id=<id>`, see fetchCorrelationTrace in
+// src/services/delegation-api.ts). The dashboard renders the projection; it
+// does not call a hand-written backend endpoint. No bespoke read route remains.
 
 // Delegation trigger: publish the contract-declared delegate-skill command
 // envelope consumed by the ONEX runtime.
