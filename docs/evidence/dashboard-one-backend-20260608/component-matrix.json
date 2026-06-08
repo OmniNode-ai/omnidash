@@ -1,0 +1,679 @@
+{
+  "ticket": "OMN-12833",
+  "track": "A2.5",
+  "backend": "http://192.168.86.201:13002",
+  "backend_access": "same-origin /projection/{topic} via Vite proxy -> single stability-test projection API",
+  "probe_date": "2026-06-08",
+  "summary": {
+    "total_components": 32,
+    "visible_projection_backed": 8,
+    "visible_degraded": 2,
+    "hidden_disabled": 22
+  },
+  "components": [
+    {
+      "component_id": "cost-trend-panel",
+      "topics": [
+        "onex.snapshot.projection.llm_cost.v1"
+      ],
+      "backend_url": "http://192.168.86.201:13002 (proxied same-origin /projection/{topic})",
+      "probes": [
+        {
+          "topic": "onex.snapshot.projection.llm_cost.v1",
+          "http_status": 404,
+          "row_count": 0,
+          "freshness": "degraded"
+        }
+      ],
+      "authority_label": "disabled",
+      "palette_visibility": "hidden",
+      "decision": "HIDDEN",
+      "screenshot_locator": "desktop-fullpage.png / palette-authority-labels.png"
+    },
+    {
+      "component_id": "cost-by-model",
+      "topics": [
+        "onex.snapshot.projection.llm_cost.v1"
+      ],
+      "backend_url": "http://192.168.86.201:13002 (proxied same-origin /projection/{topic})",
+      "probes": [
+        {
+          "topic": "onex.snapshot.projection.llm_cost.v1",
+          "http_status": 404,
+          "row_count": 0,
+          "freshness": "degraded"
+        }
+      ],
+      "authority_label": "disabled",
+      "palette_visibility": "hidden",
+      "decision": "HIDDEN",
+      "screenshot_locator": "desktop-fullpage.png / palette-authority-labels.png"
+    },
+    {
+      "component_id": "cost-by-model-3d",
+      "topics": [
+        "onex.snapshot.projection.llm_cost.v1"
+      ],
+      "backend_url": "http://192.168.86.201:13002 (proxied same-origin /projection/{topic})",
+      "probes": [
+        {
+          "topic": "onex.snapshot.projection.llm_cost.v1",
+          "http_status": 404,
+          "row_count": 0,
+          "freshness": "degraded"
+        }
+      ],
+      "authority_label": "disabled",
+      "palette_visibility": "hidden",
+      "decision": "HIDDEN",
+      "screenshot_locator": "desktop-fullpage.png / palette-authority-labels.png"
+    },
+    {
+      "component_id": "cost-by-repo",
+      "topics": [
+        "onex.snapshot.projection.cost.by_repo.v1"
+      ],
+      "backend_url": "http://192.168.86.201:13002 (proxied same-origin /projection/{topic})",
+      "probes": [
+        {
+          "topic": "onex.snapshot.projection.cost.by_repo.v1",
+          "http_status": 404,
+          "row_count": 0,
+          "freshness": "degraded"
+        }
+      ],
+      "authority_label": "disabled",
+      "palette_visibility": "hidden",
+      "decision": "HIDDEN",
+      "screenshot_locator": "desktop-fullpage.png / palette-authority-labels.png"
+    },
+    {
+      "component_id": "delegation-metrics",
+      "topics": [
+        "onex.snapshot.projection.delegation.summary.v1"
+      ],
+      "backend_url": "http://192.168.86.201:13002 (proxied same-origin /projection/{topic})",
+      "probes": [
+        {
+          "topic": "onex.snapshot.projection.delegation.summary.v1",
+          "http_status": 200,
+          "row_count": 1,
+          "freshness": "degraded"
+        }
+      ],
+      "authority_label": "projection-backed",
+      "palette_visibility": "visible",
+      "decision": "VISIBLE",
+      "screenshot_locator": "desktop-fullpage.png / palette-authority-labels.png"
+    },
+    {
+      "component_id": "routing-decision-table",
+      "topics": [
+        "onex.snapshot.projection.delegation.decisions.v1"
+      ],
+      "backend_url": "http://192.168.86.201:13002 (proxied same-origin /projection/{topic})",
+      "probes": [
+        {
+          "topic": "onex.snapshot.projection.delegation.decisions.v1",
+          "http_status": 200,
+          "row_count": 36,
+          "freshness": "degraded"
+        }
+      ],
+      "authority_label": "projection-backed",
+      "palette_visibility": "visible",
+      "decision": "VISIBLE",
+      "screenshot_locator": "desktop-fullpage.png / palette-authority-labels.png"
+    },
+    {
+      "component_id": "baselines-roi-card",
+      "topics": [
+        "onex.snapshot.projection.baselines.roi.v1"
+      ],
+      "backend_url": "http://192.168.86.201:13002 (proxied same-origin /projection/{topic})",
+      "probes": [
+        {
+          "topic": "onex.snapshot.projection.baselines.roi.v1",
+          "http_status": 404,
+          "row_count": 0,
+          "freshness": "degraded"
+        }
+      ],
+      "authority_label": "disabled",
+      "palette_visibility": "hidden",
+      "decision": "HIDDEN",
+      "screenshot_locator": "desktop-fullpage.png / palette-authority-labels.png"
+    },
+    {
+      "component_id": "quality-score-panel",
+      "topics": [
+        "onex.snapshot.projection.baselines.quality.v1"
+      ],
+      "backend_url": "http://192.168.86.201:13002 (proxied same-origin /projection/{topic})",
+      "probes": [
+        {
+          "topic": "onex.snapshot.projection.baselines.quality.v1",
+          "http_status": 404,
+          "row_count": 0,
+          "freshness": "degraded"
+        }
+      ],
+      "authority_label": "disabled",
+      "palette_visibility": "hidden",
+      "decision": "HIDDEN",
+      "screenshot_locator": "desktop-fullpage.png / palette-authority-labels.png"
+    },
+    {
+      "component_id": "context-effectiveness-heatmap",
+      "topics": [
+        "onex.snapshot.projection.context.experiment-scores.v1"
+      ],
+      "backend_url": "http://192.168.86.201:13002 (proxied same-origin /projection/{topic})",
+      "probes": [
+        {
+          "topic": "onex.snapshot.projection.context.experiment-scores.v1",
+          "http_status": 404,
+          "row_count": 0,
+          "freshness": "degraded"
+        }
+      ],
+      "authority_label": "degraded",
+      "palette_visibility": "visible",
+      "decision": "VISIBLE",
+      "screenshot_locator": "desktop-fullpage.png / palette-authority-labels.png"
+    },
+    {
+      "component_id": "readiness-gate",
+      "topics": [
+        "onex.snapshot.projection.overnight.v1"
+      ],
+      "backend_url": "http://192.168.86.201:13002 (proxied same-origin /projection/{topic})",
+      "probes": [
+        {
+          "topic": "onex.snapshot.projection.overnight.v1",
+          "http_status": 404,
+          "row_count": 0,
+          "freshness": "degraded"
+        }
+      ],
+      "authority_label": "disabled",
+      "palette_visibility": "hidden",
+      "decision": "HIDDEN",
+      "screenshot_locator": "desktop-fullpage.png / palette-authority-labels.png"
+    },
+    {
+      "component_id": "evidence-pipeline-flow",
+      "topics": [
+        "onex.snapshot.projection.evidence_pipeline.stages.v1",
+        "onex.snapshot.projection.evidence_pipeline.correlations.v1",
+        "onex.snapshot.projection.evidence_pipeline.readiness.v1",
+        "onex.snapshot.projection.evidence_pipeline.live_events.v1"
+      ],
+      "backend_url": "http://192.168.86.201:13002 (proxied same-origin /projection/{topic})",
+      "probes": [
+        {
+          "topic": "onex.snapshot.projection.evidence_pipeline.stages.v1",
+          "http_status": 200,
+          "row_count": 0,
+          "freshness": "degraded"
+        },
+        {
+          "topic": "onex.snapshot.projection.evidence_pipeline.correlations.v1",
+          "http_status": 200,
+          "row_count": 0,
+          "freshness": "degraded"
+        },
+        {
+          "topic": "onex.snapshot.projection.evidence_pipeline.readiness.v1",
+          "http_status": 200,
+          "row_count": 0,
+          "freshness": "degraded"
+        },
+        {
+          "topic": "onex.snapshot.projection.evidence_pipeline.live_events.v1",
+          "http_status": 200,
+          "row_count": 0,
+          "freshness": "degraded"
+        }
+      ],
+      "authority_label": "degraded",
+      "palette_visibility": "visible",
+      "decision": "VISIBLE",
+      "screenshot_locator": "desktop-fullpage.png / palette-authority-labels.png"
+    },
+    {
+      "component_id": "cost-summary",
+      "topics": [
+        "onex.snapshot.projection.cost.summary.v1"
+      ],
+      "backend_url": "http://192.168.86.201:13002 (proxied same-origin /projection/{topic})",
+      "probes": [
+        {
+          "topic": "onex.snapshot.projection.cost.summary.v1",
+          "http_status": 503,
+          "row_count": 0,
+          "freshness": "degraded"
+        }
+      ],
+      "authority_label": "disabled",
+      "palette_visibility": "hidden",
+      "decision": "HIDDEN",
+      "screenshot_locator": "desktop-fullpage.png / palette-authority-labels.png"
+    },
+    {
+      "component_id": "token-usage",
+      "topics": [
+        "onex.snapshot.projection.cost.token_usage.v1"
+      ],
+      "backend_url": "http://192.168.86.201:13002 (proxied same-origin /projection/{topic})",
+      "probes": [
+        {
+          "topic": "onex.snapshot.projection.cost.token_usage.v1",
+          "http_status": 503,
+          "row_count": 0,
+          "freshness": "degraded"
+        }
+      ],
+      "authority_label": "disabled",
+      "palette_visibility": "hidden",
+      "decision": "HIDDEN",
+      "screenshot_locator": "desktop-fullpage.png / palette-authority-labels.png"
+    },
+    {
+      "component_id": "event-stream",
+      "topics": [
+        "onex.snapshot.projection.registration.v1"
+      ],
+      "backend_url": "http://192.168.86.201:13002 (proxied same-origin /projection/{topic})",
+      "probes": [
+        {
+          "topic": "onex.snapshot.projection.registration.v1",
+          "http_status": 200,
+          "row_count": 100,
+          "freshness": "fresh"
+        }
+      ],
+      "authority_label": "disabled",
+      "palette_visibility": "hidden",
+      "decision": "HIDDEN",
+      "screenshot_locator": "desktop-fullpage.png / palette-authority-labels.png"
+    },
+    {
+      "component_id": "projection-container",
+      "topics": [
+        "onex.snapshot.projection.ab-compare.v1"
+      ],
+      "backend_url": "http://192.168.86.201:13002 (proxied same-origin /projection/{topic})",
+      "probes": [
+        {
+          "topic": "onex.snapshot.projection.ab-compare.v1",
+          "http_status": 503,
+          "row_count": 0,
+          "freshness": "degraded"
+        }
+      ],
+      "authority_label": "disabled",
+      "palette_visibility": "hidden",
+      "decision": "HIDDEN",
+      "screenshot_locator": "desktop-fullpage.png / palette-authority-labels.png"
+    },
+    {
+      "component_id": "intent-distribution",
+      "topics": [
+        "onex.snapshot.projection.intent-classification.v1"
+      ],
+      "backend_url": "http://192.168.86.201:13002 (proxied same-origin /projection/{topic})",
+      "probes": [
+        {
+          "topic": "onex.snapshot.projection.intent-classification.v1",
+          "http_status": 404,
+          "row_count": 0,
+          "freshness": "degraded"
+        }
+      ],
+      "authority_label": "disabled",
+      "palette_visibility": "hidden",
+      "decision": "HIDDEN",
+      "screenshot_locator": "desktop-fullpage.png / palette-authority-labels.png"
+    },
+    {
+      "component_id": "session-timeline",
+      "topics": [
+        "onex.snapshot.projection.intent-classification.v1"
+      ],
+      "backend_url": "http://192.168.86.201:13002 (proxied same-origin /projection/{topic})",
+      "probes": [
+        {
+          "topic": "onex.snapshot.projection.intent-classification.v1",
+          "http_status": 404,
+          "row_count": 0,
+          "freshness": "degraded"
+        }
+      ],
+      "authority_label": "disabled",
+      "palette_visibility": "hidden",
+      "decision": "HIDDEN",
+      "screenshot_locator": "desktop-fullpage.png / palette-authority-labels.png"
+    },
+    {
+      "component_id": "live-event-stream",
+      "topics": [
+        "onex.snapshot.projection.live-events.v1"
+      ],
+      "backend_url": "http://192.168.86.201:13002 (proxied same-origin /projection/{topic})",
+      "probes": [
+        {
+          "topic": "onex.snapshot.projection.live-events.v1",
+          "http_status": 404,
+          "row_count": 0,
+          "freshness": "degraded"
+        }
+      ],
+      "authority_label": "disabled",
+      "palette_visibility": "hidden",
+      "decision": "HIDDEN",
+      "screenshot_locator": "desktop-fullpage.png / palette-authority-labels.png"
+    },
+    {
+      "component_id": "routing-decision",
+      "topics": [
+        "onex.snapshot.projection.routing-decision.v1"
+      ],
+      "backend_url": "http://192.168.86.201:13002 (proxied same-origin /projection/{topic})",
+      "probes": [
+        {
+          "topic": "onex.snapshot.projection.routing-decision.v1",
+          "http_status": 404,
+          "row_count": 0,
+          "freshness": "degraded"
+        }
+      ],
+      "authority_label": "disabled",
+      "palette_visibility": "hidden",
+      "decision": "HIDDEN",
+      "screenshot_locator": "desktop-fullpage.png / palette-authority-labels.png"
+    },
+    {
+      "component_id": "receipt-gate",
+      "topics": [
+        "onex.snapshot.projection.receipt-gate.v1"
+      ],
+      "backend_url": "http://192.168.86.201:13002 (proxied same-origin /projection/{topic})",
+      "probes": [
+        {
+          "topic": "onex.snapshot.projection.receipt-gate.v1",
+          "http_status": 404,
+          "row_count": 0,
+          "freshness": "degraded"
+        }
+      ],
+      "authority_label": "disabled",
+      "palette_visibility": "hidden",
+      "decision": "HIDDEN",
+      "screenshot_locator": "desktop-fullpage.png / palette-authority-labels.png"
+    },
+    {
+      "component_id": "cost-savings-overview",
+      "topics": [
+        "onex.snapshot.projection.cost.savings-overview.v1"
+      ],
+      "backend_url": "http://192.168.86.201:13002 (proxied same-origin /projection/{topic})",
+      "probes": [
+        {
+          "topic": "onex.snapshot.projection.cost.savings-overview.v1",
+          "http_status": 404,
+          "row_count": 0,
+          "freshness": "degraded"
+        }
+      ],
+      "authority_label": "disabled",
+      "palette_visibility": "hidden",
+      "decision": "HIDDEN",
+      "screenshot_locator": "desktop-fullpage.png / palette-authority-labels.png"
+    },
+    {
+      "component_id": "delegation-savings",
+      "topics": [
+        "onex.snapshot.projection.delegation.savings.v1"
+      ],
+      "backend_url": "http://192.168.86.201:13002 (proxied same-origin /projection/{topic})",
+      "probes": [
+        {
+          "topic": "onex.snapshot.projection.delegation.savings.v1",
+          "http_status": 200,
+          "row_count": 1,
+          "freshness": "degraded"
+        }
+      ],
+      "authority_label": "projection-backed",
+      "palette_visibility": "visible",
+      "decision": "VISIBLE",
+      "screenshot_locator": "desktop-fullpage.png / palette-authority-labels.png"
+    },
+    {
+      "component_id": "delegation-cost-comparison",
+      "topics": [
+        "onex.snapshot.projection.delegation.savings.v1"
+      ],
+      "backend_url": "http://192.168.86.201:13002 (proxied same-origin /projection/{topic})",
+      "probes": [
+        {
+          "topic": "onex.snapshot.projection.delegation.savings.v1",
+          "http_status": 200,
+          "row_count": 1,
+          "freshness": "degraded"
+        }
+      ],
+      "authority_label": "projection-backed",
+      "palette_visibility": "visible",
+      "decision": "VISIBLE",
+      "screenshot_locator": "desktop-fullpage.png / palette-authority-labels.png"
+    },
+    {
+      "component_id": "delegation-model-routing",
+      "topics": [
+        "onex.snapshot.projection.delegation.model-routing.v1"
+      ],
+      "backend_url": "http://192.168.86.201:13002 (proxied same-origin /projection/{topic})",
+      "probes": [
+        {
+          "topic": "onex.snapshot.projection.delegation.model-routing.v1",
+          "http_status": 200,
+          "row_count": 1,
+          "freshness": "degraded"
+        }
+      ],
+      "authority_label": "projection-backed",
+      "palette_visibility": "visible",
+      "decision": "VISIBLE",
+      "screenshot_locator": "desktop-fullpage.png / palette-authority-labels.png"
+    },
+    {
+      "component_id": "delegation-quality-gate",
+      "topics": [
+        "onex.snapshot.projection.delegation.quality-gate.v1"
+      ],
+      "backend_url": "http://192.168.86.201:13002 (proxied same-origin /projection/{topic})",
+      "probes": [
+        {
+          "topic": "onex.snapshot.projection.delegation.quality-gate.v1",
+          "http_status": 200,
+          "row_count": 1,
+          "freshness": "degraded"
+        }
+      ],
+      "authority_label": "projection-backed",
+      "palette_visibility": "visible",
+      "decision": "VISIBLE",
+      "screenshot_locator": "desktop-fullpage.png / palette-authority-labels.png"
+    },
+    {
+      "component_id": "delegation-token-usage",
+      "topics": [
+        "onex.snapshot.projection.delegation.token-usage.v1"
+      ],
+      "backend_url": "http://192.168.86.201:13002 (proxied same-origin /projection/{topic})",
+      "probes": [
+        {
+          "topic": "onex.snapshot.projection.delegation.token-usage.v1",
+          "http_status": 200,
+          "row_count": 1,
+          "freshness": "degraded"
+        }
+      ],
+      "authority_label": "projection-backed",
+      "palette_visibility": "visible",
+      "decision": "VISIBLE",
+      "screenshot_locator": "desktop-fullpage.png / palette-authority-labels.png"
+    },
+    {
+      "component_id": "delegation-model-output",
+      "topics": [
+        "onex.snapshot.projection.delegation.inference-response-text.v1"
+      ],
+      "backend_url": "http://192.168.86.201:13002 (proxied same-origin /projection/{topic})",
+      "probes": [
+        {
+          "topic": "onex.snapshot.projection.delegation.inference-response-text.v1",
+          "http_status": 404,
+          "row_count": 0,
+          "freshness": "degraded"
+        }
+      ],
+      "authority_label": "disabled",
+      "palette_visibility": "hidden",
+      "decision": "HIDDEN",
+      "screenshot_locator": "desktop-fullpage.png / palette-authority-labels.png"
+    },
+    {
+      "component_id": "delegation-control-plane",
+      "topics": [
+        "onex.snapshot.projection.delegation.summary.v1",
+        "onex.snapshot.projection.delegation.decisions.v1",
+        "onex.snapshot.projection.delegation.savings.v1",
+        "onex.snapshot.projection.delegation.model-routing.v1",
+        "onex.snapshot.projection.delegation.quality-gate.v1",
+        "onex.snapshot.projection.delegation.token-usage.v1"
+      ],
+      "backend_url": "http://192.168.86.201:13002 (proxied same-origin /projection/{topic})",
+      "probes": [
+        {
+          "topic": "onex.snapshot.projection.delegation.summary.v1",
+          "http_status": 200,
+          "row_count": 1,
+          "freshness": "degraded"
+        },
+        {
+          "topic": "onex.snapshot.projection.delegation.decisions.v1",
+          "http_status": 200,
+          "row_count": 36,
+          "freshness": "degraded"
+        },
+        {
+          "topic": "onex.snapshot.projection.delegation.savings.v1",
+          "http_status": 200,
+          "row_count": 1,
+          "freshness": "degraded"
+        },
+        {
+          "topic": "onex.snapshot.projection.delegation.model-routing.v1",
+          "http_status": 200,
+          "row_count": 1,
+          "freshness": "degraded"
+        },
+        {
+          "topic": "onex.snapshot.projection.delegation.quality-gate.v1",
+          "http_status": 200,
+          "row_count": 1,
+          "freshness": "degraded"
+        },
+        {
+          "topic": "onex.snapshot.projection.delegation.token-usage.v1",
+          "http_status": 200,
+          "row_count": 1,
+          "freshness": "degraded"
+        }
+      ],
+      "authority_label": "projection-backed",
+      "palette_visibility": "visible",
+      "decision": "VISIBLE",
+      "screenshot_locator": "desktop-fullpage.png / palette-authority-labels.png"
+    },
+    {
+      "component_id": "ab-compare",
+      "topics": [
+        "onex.snapshot.projection.ab-compare.v1"
+      ],
+      "backend_url": "http://192.168.86.201:13002 (proxied same-origin /projection/{topic})",
+      "probes": [
+        {
+          "topic": "onex.snapshot.projection.ab-compare.v1",
+          "http_status": 503,
+          "row_count": 0,
+          "freshness": "degraded"
+        }
+      ],
+      "authority_label": "disabled",
+      "palette_visibility": "hidden",
+      "decision": "HIDDEN",
+      "screenshot_locator": "desktop-fullpage.png / palette-authority-labels.png"
+    },
+    {
+      "component_id": "mcp-tools",
+      "topics": [
+        "onex.snapshot.projection.mcp-tools.v1"
+      ],
+      "backend_url": "http://192.168.86.201:13002 (proxied same-origin /projection/{topic})",
+      "probes": [
+        {
+          "topic": "onex.snapshot.projection.mcp-tools.v1",
+          "http_status": 404,
+          "row_count": 0,
+          "freshness": "degraded"
+        }
+      ],
+      "authority_label": "disabled",
+      "palette_visibility": "hidden",
+      "decision": "HIDDEN",
+      "screenshot_locator": "desktop-fullpage.png / palette-authority-labels.png"
+    },
+    {
+      "component_id": "control-plane",
+      "topics": [
+        "onex.snapshot.projection.hackathon_pipeline_events.v1"
+      ],
+      "backend_url": "http://192.168.86.201:13002 (proxied same-origin /projection/{topic})",
+      "probes": [
+        {
+          "topic": "onex.snapshot.projection.hackathon_pipeline_events.v1",
+          "http_status": 404,
+          "row_count": 0,
+          "freshness": "degraded"
+        }
+      ],
+      "authority_label": "disabled",
+      "palette_visibility": "hidden",
+      "decision": "HIDDEN",
+      "screenshot_locator": "desktop-fullpage.png / palette-authority-labels.png"
+    },
+    {
+      "component_id": "trace-explorer",
+      "topics": [
+        "onex.snapshot.projection.traces.v1"
+      ],
+      "backend_url": "http://192.168.86.201:13002 (proxied same-origin /projection/{topic})",
+      "probes": [
+        {
+          "topic": "onex.snapshot.projection.traces.v1",
+          "http_status": 404,
+          "row_count": 0,
+          "freshness": "degraded"
+        }
+      ],
+      "authority_label": "disabled",
+      "palette_visibility": "hidden",
+      "decision": "HIDDEN",
+      "screenshot_locator": "desktop-fullpage.png / palette-authority-labels.png"
+    }
+  ]
+}

@@ -17,6 +17,7 @@ import { fileURLToPath } from 'url';
 import type { ComponentManifest } from '../shared/types/component-manifest.js';
 import { validateComponentManifest } from '../shared/types/component-manifest.js';
 import { TOPICS, type TopicSymbol } from '../shared/types/topics.js';
+import { PALETTE_CLASSIFICATION } from '../shared/types/palette-visibility.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -1589,6 +1590,15 @@ for (const scanned of scannedComponents) {
   } else {
     mergedComponents[scanned.name] = scanned;
   }
+}
+
+// OMN-12833 (A2.5): stamp palette visibility + authority label from the live
+// one-backend classification. Components without an explicit classification
+// default to visible / projection-backed.
+for (const [name, m] of Object.entries(mergedComponents)) {
+  const cls = PALETTE_CLASSIFICATION[name];
+  m.paletteVisibility = cls?.paletteVisibility ?? 'visible';
+  m.authorityLabel = cls?.authorityLabel ?? 'projection-backed';
 }
 
 // T16 (OMN-157): generator-time check that every manifest is structurally

@@ -6,6 +6,7 @@ import {
   DATA_SOURCE_DEFAULT_URL,
   DATA_SOURCE_DEFAULT_WS_URL,
 } from '@/config/generated/data-source-defaults';
+import { resolveProjectionBaseUrl } from './projection-base-url';
 
 // OMN-10756: data-source selection defaults come from contract.yaml (via the
 // generated config at src/config/generated/data-source-defaults.ts).
@@ -22,12 +23,13 @@ export function createSnapshotSource(): ProtocolSnapshotSource {
     });
   }
   if (mode === 'http') {
-    const baseUrl = import.meta.env.VITE_HTTP_DATA_SOURCE_URL;
-    if (!baseUrl) {
-      throw new Error(
-        'VITE_DATA_SOURCE=http requires VITE_HTTP_DATA_SOURCE_URL to be set (e.g. http://localhost:3002)',
-      );
-    }
+    // OMN-12833 (A2.5): all projection reads resolve through resolveProjectionBaseUrl
+    // so there is exactly ONE backend. When VITE_PROJECTION_API_URL is set the base
+    // is '' (relative) and the serving layer proxies same-origin `/projection/*` to
+    // that single backend; otherwise VITE_HTTP_DATA_SOURCE_URL is the absolute base.
+    // resolveProjectionBaseUrl only returns null in file mode; in http mode it
+    // resolves to '' (proxy-relative) or an absolute base, never null.
+    const baseUrl = resolveProjectionBaseUrl() ?? '';
     return new HttpSnapshotSource({ baseUrl });
   }
   // sqlite mode: the Express server reads from the local delegation.sqlite DB.

@@ -1,6 +1,6 @@
 {
   "manifestVersion": "1.0",
-  "generatedAt": "2026-06-07T03:44:00.376Z",
+  "generatedAt": "2026-06-08T19:21:49.020Z",
   "components": {
     "cost-trend-panel": {
       "name": "cost-trend-panel",
@@ -128,7 +128,9 @@
         "supports_export": true,
         "supports_fullscreen": true,
         "supports_time_range": true
-      }
+      },
+      "paletteVisibility": "hidden",
+      "authorityLabel": "disabled"
     },
     "cost-by-model": {
       "name": "cost-by-model",
@@ -218,7 +220,9 @@
         "supports_export": true,
         "supports_fullscreen": true,
         "supports_time_range": true
-      }
+      },
+      "paletteVisibility": "hidden",
+      "authorityLabel": "disabled"
     },
     "cost-by-model-3d": {
       "name": "cost-by-model-3d",
@@ -312,7 +316,9 @@
         "supports_export": true,
         "supports_fullscreen": true,
         "supports_time_range": true
-      }
+      },
+      "paletteVisibility": "hidden",
+      "authorityLabel": "disabled"
     },
     "cost-by-repo": {
       "name": "cost-by-repo",
@@ -440,7 +446,9 @@
         "supports_export": true,
         "supports_fullscreen": true,
         "supports_time_range": true
-      }
+      },
+      "paletteVisibility": "hidden",
+      "authorityLabel": "disabled"
     },
     "delegation-metrics": {
       "name": "delegation-metrics",
@@ -536,7 +544,9 @@
         "supports_export": true,
         "supports_fullscreen": true,
         "supports_time_range": false
-      }
+      },
+      "paletteVisibility": "visible",
+      "authorityLabel": "projection-backed"
     },
     "routing-decision-table": {
       "name": "routing-decision-table",
@@ -716,7 +726,9 @@
         "supports_export": true,
         "supports_fullscreen": true,
         "supports_time_range": true
-      }
+      },
+      "paletteVisibility": "visible",
+      "authorityLabel": "projection-backed"
     },
     "baselines-roi-card": {
       "name": "baselines-roi-card",
@@ -768,7 +780,9 @@
         "supports_export": true,
         "supports_fullscreen": false,
         "supports_time_range": false
-      }
+      },
+      "paletteVisibility": "hidden",
+      "authorityLabel": "disabled"
     },
     "quality-score-panel": {
       "name": "quality-score-panel",
@@ -834,7 +848,9 @@
         "supports_export": true,
         "supports_fullscreen": false,
         "supports_time_range": false
-      }
+      },
+      "paletteVisibility": "hidden",
+      "authorityLabel": "disabled"
     },
     "context-effectiveness-heatmap": {
       "name": "context-effectiveness-heatmap",
@@ -946,7 +962,9 @@
         "supports_export": false,
         "supports_fullscreen": true,
         "supports_time_range": false
-      }
+      },
+      "paletteVisibility": "visible",
+      "authorityLabel": "degraded"
     },
     "readiness-gate": {
       "name": "readiness-gate",
@@ -992,7 +1010,9 @@
         "supports_export": true,
         "supports_fullscreen": false,
         "supports_time_range": false
-      }
+      },
+      "paletteVisibility": "hidden",
+      "authorityLabel": "disabled"
     },
     "evidence-pipeline-flow": {
       "name": "evidence-pipeline-flow",
@@ -1125,7 +1145,9 @@
         "supports_export": true,
         "supports_fullscreen": true,
         "supports_time_range": false
-      }
+      },
+      "paletteVisibility": "visible",
+      "authorityLabel": "degraded"
     },
     "cost-summary": {
       "name": "cost-summary",
@@ -1291,7 +1313,9 @@
         "supports_export": true,
         "supports_fullscreen": false,
         "supports_time_range": false
-      }
+      },
+      "paletteVisibility": "hidden",
+      "authorityLabel": "disabled"
     },
     "token-usage": {
       "name": "token-usage",
@@ -1434,7 +1458,9 @@
         "supports_export": true,
         "supports_fullscreen": true,
         "supports_time_range": true
-      }
+      },
+      "paletteVisibility": "hidden",
+      "authorityLabel": "disabled"
     },
     "event-stream": {
       "name": "event-stream",
@@ -1500,7 +1526,9 @@
         "supports_export": false,
         "supports_fullscreen": true,
         "supports_time_range": false
-      }
+      },
+      "paletteVisibility": "hidden",
+      "authorityLabel": "disabled"
     },
     "projection-container": {
       "name": "projection-container",
@@ -1542,7 +1570,9 @@
         "supports_export": true,
         "supports_fullscreen": true,
         "supports_time_range": false
-      }
+      },
+      "paletteVisibility": "hidden",
+      "authorityLabel": "disabled"
     },
     "intent-distribution": {
       "name": "intent-distribution",
@@ -1606,7 +1636,9 @@
         "supports_export": true,
         "supports_fullscreen": true,
         "supports_time_range": false
-      }
+      },
+      "paletteVisibility": "hidden",
+      "authorityLabel": "disabled"
     },
     "session-timeline": {
       "name": "session-timeline",
@@ -1689,7 +1721,9 @@
         "supports_export": true,
         "supports_fullscreen": true,
         "supports_time_range": true
-      }
+      },
+      "paletteVisibility": "hidden",
+      "authorityLabel": "disabled"
     },
     "live-event-stream": {
       "name": "live-event-stream",
@@ -1781,7 +1815,9 @@
         "supports_export": false,
         "supports_fullscreen": true,
         "supports_time_range": false
-      }
+      },
+      "paletteVisibility": "hidden",
+      "authorityLabel": "disabled"
     },
     "routing-decision": {
       "name": "routing-decision",
@@ -1823,7 +1859,9 @@
         "supports_export": false,
         "supports_fullscreen": true,
         "supports_time_range": false
-      }
+      },
+      "paletteVisibility": "hidden",
+      "authorityLabel": "disabled"
     },
     "receipt-gate": {
       "name": "receipt-gate",
@@ -1865,7 +1903,9 @@
         "supports_export": false,
         "supports_fullscreen": true,
         "supports_time_range": false
-      }
+      },
+      "paletteVisibility": "hidden",
+      "authorityLabel": "disabled"
     },
     "cost-savings-overview": {
       "name": "cost-savings-overview",
@@ -2106,7 +2146,9 @@
         "supports_export": true,
         "supports_fullscreen": true,
         "supports_time_range": true
-      }
+      },
+      "paletteVisibility": "hidden",
+      "authorityLabel": "disabled"
     },
     "delegation-savings": {
       "name": "delegation-savings",
@@ -2280,7 +2322,9 @@
         "supports_export": false,
         "supports_fullscreen": true,
         "supports_time_range": false
-      }
+      },
+      "paletteVisibility": "visible",
+      "authorityLabel": "projection-backed"
     },
     "delegation-cost-comparison": {
       "name": "delegation-cost-comparison",
@@ -2351,7 +2395,9 @@
         "supports_export": false,
         "supports_fullscreen": true,
         "supports_time_range": false
-      }
+      },
+      "paletteVisibility": "visible",
+      "authorityLabel": "projection-backed"
     },
     "delegation-model-routing": {
       "name": "delegation-model-routing",
@@ -2507,7 +2553,9 @@
         "supports_export": false,
         "supports_fullscreen": true,
         "supports_time_range": false
-      }
+      },
+      "paletteVisibility": "visible",
+      "authorityLabel": "projection-backed"
     },
     "delegation-quality-gate": {
       "name": "delegation-quality-gate",
@@ -2678,7 +2726,9 @@
         "supports_export": false,
         "supports_fullscreen": true,
         "supports_time_range": false
-      }
+      },
+      "paletteVisibility": "visible",
+      "authorityLabel": "projection-backed"
     },
     "delegation-token-usage": {
       "name": "delegation-token-usage",
@@ -2838,7 +2888,9 @@
         "supports_export": true,
         "supports_fullscreen": true,
         "supports_time_range": false
-      }
+      },
+      "paletteVisibility": "visible",
+      "authorityLabel": "projection-backed"
     },
     "delegation-model-output": {
       "name": "delegation-model-output",
@@ -3008,7 +3060,9 @@
         "supports_export": false,
         "supports_fullscreen": true,
         "supports_time_range": false
-      }
+      },
+      "paletteVisibility": "hidden",
+      "authorityLabel": "disabled"
     },
     "delegation-control-plane": {
       "name": "delegation-control-plane",
@@ -3158,7 +3212,9 @@
         "supports_export": true,
         "supports_fullscreen": true,
         "supports_time_range": false
-      }
+      },
+      "paletteVisibility": "visible",
+      "authorityLabel": "projection-backed"
     },
     "ab-compare": {
       "name": "ab-compare",
@@ -3311,7 +3367,9 @@
         "supports_export": true,
         "supports_fullscreen": true,
         "supports_time_range": false
-      }
+      },
+      "paletteVisibility": "hidden",
+      "authorityLabel": "disabled"
     },
     "mcp-tools": {
       "name": "mcp-tools",
@@ -3419,7 +3477,9 @@
         "supports_export": false,
         "supports_fullscreen": true,
         "supports_time_range": false
-      }
+      },
+      "paletteVisibility": "hidden",
+      "authorityLabel": "disabled"
     },
     "control-plane": {
       "name": "control-plane",
@@ -3502,7 +3562,9 @@
         "supports_export": false,
         "supports_fullscreen": true,
         "supports_time_range": false
-      }
+      },
+      "paletteVisibility": "hidden",
+      "authorityLabel": "disabled"
     },
     "trace-explorer": {
       "name": "trace-explorer",
@@ -3638,7 +3700,9 @@
         "supports_export": false,
         "supports_fullscreen": true,
         "supports_time_range": false
-      }
+      },
+      "paletteVisibility": "hidden",
+      "authorityLabel": "disabled"
     }
   }
 }
