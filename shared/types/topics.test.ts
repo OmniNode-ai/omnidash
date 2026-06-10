@@ -21,11 +21,9 @@ describe('TOPICS constant', () => {
     expect(_).toBe(TOPICS.costByRepo);
   });
 
-  it('all topic values follow the onex.snapshot.projection naming convention', () => {
+  it('all topic values follow snapshot projection backend topic naming conventions', () => {
     for (const [key, value] of Object.entries(TOPICS)) {
-      expect(value, `TOPICS.${key} must start with onex.snapshot.projection.`).toMatch(
-        /^onex\.snapshot\.projection\./,
-      );
+      expect(value, `TOPICS.${key} must use an allowed projection backend topic prefix.`).toMatch(/^onex\.snapshot\.projection\./);
     }
   });
 

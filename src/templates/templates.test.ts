@@ -43,12 +43,7 @@ describe('Dashboard Templates', () => {
     expect(tpl).toBeDefined();
     expect(tpl!.layout.map((l) => l.componentName)).toEqual([
       'control-plane',
-      'live-event-stream',
-      'ab-compare',
-      'trace-explorer',
       'delegation-token-usage',
-      'delegation-model-output',
-      'mcp-tools',
     ]);
   });
 
@@ -62,12 +57,7 @@ describe('Dashboard Templates', () => {
     expect(repaired.id).toBe('dash-sea-demo');
     expect(repaired.layout.map((l) => l.componentName)).toEqual([
       'control-plane',
-      'live-event-stream',
-      'ab-compare',
-      'trace-explorer',
       'delegation-token-usage',
-      'delegation-model-output',
-      'mcp-tools',
     ]);
   });
 

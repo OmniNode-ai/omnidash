@@ -1,6 +1,6 @@
 {
   "manifestVersion": "1.0",
-  "generatedAt": "2026-06-08T19:21:49.020Z",
+  "generatedAt": "2026-06-10T07:08:06.358Z",
   "components": {
     "cost-trend-panel": {
       "name": "cost-trend-panel",
@@ -3484,7 +3484,7 @@
     "control-plane": {
       "name": "control-plane",
       "displayName": "Self-Extending Agent Control Plane",
-      "description": "Hackathon demo surface: prompt input, pipeline event log, status indicators. Composes with MCP tools widget on a demo dashboard layout (OMN-11260).",
+      "description": "SEA demo surface: prompt input, canonical node-generation completion log, and projection-backed artifact proof from generation_events.",
       "category": "activity",
       "version": "1.0.0",
       "implementationKey": "control-plane/ControlPlanePage",
@@ -3532,7 +3532,7 @@
       "dataSources": [
         {
           "type": "projection",
-          "topic": "onex.snapshot.projection.hackathon_pipeline_events.v1",
+          "topic": "onex.evt.omnimarket.node-generation-completed.v1",
           "required": true,
           "purpose": "initial_fetch"
         }
@@ -3563,8 +3563,8 @@
         "supports_fullscreen": true,
         "supports_time_range": false
       },
-      "paletteVisibility": "hidden",
-      "authorityLabel": "disabled"
+      "paletteVisibility": "visible",
+      "authorityLabel": "projection-backed"
     },
     "trace-explorer": {
       "name": "trace-explorer",

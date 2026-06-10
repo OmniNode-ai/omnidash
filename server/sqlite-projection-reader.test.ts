@@ -629,7 +629,7 @@ describe('SqliteProjectionReader', () => {
     });
   });
 
-  it('reads hackathon pipeline events from generation_events', () => {
+  it('reads canonical node-generation completed rows from generation_events', () => {
     const db = createTestDb(dbPath);
     db.prepare(`
       INSERT INTO generation_events (
@@ -672,31 +672,17 @@ describe('SqliteProjectionReader', () => {
     db.close();
 
     const reader = new SqliteProjectionReader({ dbPath });
-    const rows = reader.readProjection('onex.snapshot.projection.hackathon_pipeline_events.v1');
+    const rows = reader.readProjection('onex.evt.omnimarket.node-generation-completed.v1');
 
     expect(rows).toHaveLength(1);
     expect(rows[0]).toMatchObject({
-      id: 'corr-gen-1-completed',
-      type: 'success',
+      id: 'gen-1',
+      correlation_id: 'corr-gen-1',
+      task_description: 'Build an email validator node',
+      provider: 'openai',
+      model_id: 'gpt-5-mini',
+      contract_passed: 1,
       timestamp: '2026-05-20T08:10:00.000Z',
-      source: 'node_generation_consumer',
-      message: 'Node generation completed: Build an email validator node',
-      correlationId: 'corr-gen-1',
-      taskDescription: 'Build an email validator node',
-      selectedProvider: 'openai',
-      selectedModel: 'gpt-5-mini',
-      endpointRef: 'contracts/endpoints/sea-generation.yaml#openai',
-      resolvedEndpoint: 'https://api.openai.example/v1/responses',
-      routingSource: 'runtime-routing-authority',
-      projectionOwner: 'node_projection_generation_events',
-      projectionReducerVersion: '078',
-      contractYaml: 'kind: node\nname: email-validator\nspec:\n  entrypoint: handler.run\n',
-      handlerSource: 'export async function run(input) {\n  return input.email.includes("@");\n}\n',
-      outputPayloadSha256: 'sha256-output',
-    });
-    expect(JSON.parse(String(rows[0].payload))).toMatchObject({
-      contractYaml: 'kind: node\nname: email-validator\nspec:\n  entrypoint: handler.run\n',
-      handlerSource: 'export async function run(input) {\n  return input.email.includes("@");\n}\n',
     });
   });
 

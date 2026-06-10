@@ -49,6 +49,7 @@ export const PALETTE_CLASSIFICATION: Record<string, PaletteClassification> = {
   'delegation-quality-gate': { paletteVisibility: 'visible', authorityLabel: 'projection-backed', probe: 'delegation.quality-gate.v1=200/1r' },
   'delegation-token-usage': { paletteVisibility: 'visible', authorityLabel: 'projection-backed', probe: 'delegation.token-usage.v1=200/1r' },
   'delegation-control-plane': { paletteVisibility: 'visible', authorityLabel: 'projection-backed', probe: 'delegation.{summary,decisions,savings,model-routing,quality-gate,token-usage}=200; decisions=36r' },
+  'control-plane': { paletteVisibility: 'visible', authorityLabel: 'projection-backed', probe: 'node-generation-completed.v1=200/134r' },
 
   // --- VISIBLE / degraded (200 empty on the single backend — truthful empty state) ---
   'evidence-pipeline-flow': { paletteVisibility: 'visible', authorityLabel: 'degraded', probe: 'evidence_pipeline.{stages,correlations,readiness,live_events}=200/0r' },
@@ -91,6 +92,5 @@ export const PALETTE_CLASSIFICATION: Record<string, PaletteClassification> = {
   'cost-savings-overview': { paletteVisibility: 'hidden', authorityLabel: 'disabled', probe: 'cost.savings-overview.v1=404' },
   'delegation-model-output': { paletteVisibility: 'hidden', authorityLabel: 'disabled', probe: 'delegation.inference-response-text.v1=404' },
   'mcp-tools': { paletteVisibility: 'hidden', authorityLabel: 'disabled', probe: 'mcp-tools.v1=404' },
-  'control-plane': { paletteVisibility: 'hidden', authorityLabel: 'disabled', probe: 'hackathon_pipeline_events.v1=404' },
   'trace-explorer': { paletteVisibility: 'hidden', authorityLabel: 'disabled', probe: 'traces.v1=404' },
 };

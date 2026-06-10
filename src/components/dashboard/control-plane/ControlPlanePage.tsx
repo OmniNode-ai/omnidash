@@ -2,7 +2,6 @@ import { useState, useCallback, useMemo } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { ComponentWrapper } from '../ComponentWrapper';
 import { useProjectionQuery } from '@/hooks/useProjectionQuery';
-import { TOPICS } from '@shared/types/topics';
 import { Text } from '@/components/ui/typography';
 import { PromptInput } from './PromptInput';
 import { PipelineLogStream, type PipelineEvent } from './PipelineLogStream';
@@ -10,6 +9,31 @@ import { PipelineStatusBar, type ServiceStatus } from './PipelineStatusBar';
 import { DelegationTriggerPanel } from '@/components/dashboard/delegation-control-plane/DelegationTriggerPanel';
 
 import { DATA_SOURCE_DEFAULT_MODE } from '@/config/generated/data-source-defaults';
+
+const NODE_GENERATION_COMPLETED_PROJECTION_TOPIC = 'onex.evt.omnimarket.node-generation-completed.v1';
+
+type SeaProjectionRow = Partial<Omit<PipelineEvent, 'type'>> & {
+  id?: unknown;
+  correlation_id?: unknown;
+  task_description?: unknown;
+  provider?: unknown;
+  model_id?: unknown;
+  endpoint_ref?: unknown;
+  resolved_endpoint?: unknown;
+  routing_source?: unknown;
+  projection_owner?: unknown;
+  projection_reducer_version?: unknown;
+  contract_yaml?: unknown;
+  handler_source?: unknown;
+  output_payload_sha256?: unknown;
+  contract_sha256?: unknown;
+  handler_sha256?: unknown;
+  contract_passed?: unknown;
+  contractPassed?: unknown;
+  timestamp?: unknown;
+  created_at?: unknown;
+  type?: unknown;
+};
 
 type PromptSubmitState =
   | { phase: 'idle'; message?: string }
@@ -32,15 +56,91 @@ function getDataSourceMode(): string {
   }
 }
 
+function text(value: unknown): string | null {
+  return typeof value === 'string' && value.trim().length > 0 ? value : null;
+}
+
+function optionalText(value: unknown): string | null {
+  return text(value);
+}
+
+function contractPassed(value: unknown, rowType: unknown): boolean {
+  if (typeof value === 'boolean') return value;
+  if (typeof value === 'number') return value === 1;
+  if (typeof value === 'string') {
+    const normalized = value.trim().toLowerCase();
+    if (['true', '1', 'success', 'passed'].includes(normalized)) return true;
+    if (['false', '0', 'error', 'failed'].includes(normalized)) return false;
+  }
+  return rowType === 'success';
+}
+
+function payloadFor(row: SeaProjectionRow): string | null {
+  if (typeof row.payload === 'string') return row.payload;
+  const isCanonicalGenerationRow =
+    row.correlation_id !== undefined ||
+    row.task_description !== undefined ||
+    row.contract_passed !== undefined ||
+    row.contract_yaml !== undefined ||
+    row.handler_source !== undefined;
+  if (!isCanonicalGenerationRow) return null;
+  try {
+    return JSON.stringify(row);
+  } catch {
+    return null;
+  }
+}
+
+export function normalizeSeaProjectionRow(row: SeaProjectionRow): PipelineEvent | null {
+  const timestamp = text(row.timestamp) ?? text(row.created_at);
+  const correlationId = text(row.correlationId) ?? text(row.correlation_id);
+  if (!timestamp || !correlationId) return null;
+
+  const taskDescription = text(row.taskDescription) ?? text(row.task_description);
+  const passed = contractPassed(row.contractPassed ?? row.contract_passed, row.type);
+  const type = text(row.type);
+  const eventType: PipelineEvent['type'] =
+    type === 'request' || type === 'validation' || type === 'success' || type === 'error'
+      ? type
+      : passed
+        ? 'success'
+        : 'error';
+  const message = text(row.message) ??
+    `${passed ? 'Node generation completed' : 'Node generation failed validation'}${taskDescription ? `: ${taskDescription}` : ''}`;
+
+  return {
+    id: text(row.id) ?? `${correlationId}-completed`,
+    type: eventType,
+    timestamp,
+    source: text(row.source) ?? 'node_generation_consumer',
+    message,
+    correlationId,
+    taskDescription: taskDescription ?? undefined,
+    selectedProvider: optionalText(row.selectedProvider ?? row.provider),
+    selectedModel: optionalText(row.selectedModel ?? row.model_id),
+    endpointRef: optionalText(row.endpointRef ?? row.endpoint_ref),
+    resolvedEndpoint: optionalText(row.resolvedEndpoint ?? row.resolved_endpoint),
+    routingSource: optionalText(row.routingSource ?? row.routing_source),
+    projectionOwner: optionalText(row.projectionOwner ?? row.projection_owner),
+    projectionReducerVersion: optionalText(row.projectionReducerVersion ?? row.projection_reducer_version),
+    contractYaml: optionalText(row.contractYaml ?? row.contract_yaml),
+    handlerSource: optionalText(row.handlerSource ?? row.handler_source),
+    outputPayloadSha256: optionalText(row.outputPayloadSha256 ?? row.output_payload_sha256),
+    contractSha256: optionalText(row.contractSha256 ?? row.contract_sha256),
+    handlerSha256: optionalText(row.handlerSha256 ?? row.handler_sha256),
+    payload: payloadFor(row),
+  };
+}
+
 export default function ControlPlanePage({
   config: _config,
 }: {
   config: Record<string, unknown>;
 }) {
   const queryClient = useQueryClient();
-  const { data, isLoading, error } = useProjectionQuery<PipelineEvent>({
-    topic: TOPICS.hackathonPipelineEvents,
-    queryKey: ['hackathon-pipeline-events'],
+  const { data, isLoading, error } = useProjectionQuery<SeaProjectionRow>({
+    topic: NODE_GENERATION_COMPLETED_PROJECTION_TOPIC,
+    queryKey: ['node-generation-completed'],
     refetchInterval: 5_000,
   });
 
@@ -48,7 +148,7 @@ export default function ControlPlanePage({
   const [submitState, setSubmitState] = useState<PromptSubmitState>({ phase: 'idle' });
 
   const refreshSeaProjections = useCallback(() => {
-    void queryClient.invalidateQueries({ queryKey: ['hackathon-pipeline-events'] });
+    void queryClient.invalidateQueries({ queryKey: ['node-generation-completed'] });
     void queryClient.invalidateQueries({ queryKey: ['trace-explorer'] });
   }, [queryClient]);
 
@@ -58,7 +158,7 @@ export default function ControlPlanePage({
   }, [refreshSeaProjections]);
 
   const allEvents = useMemo(() => {
-    const projected = data ?? [];
+    const projected = (data ?? []).map(normalizeSeaProjectionRow).filter((event): event is PipelineEvent => event !== null);
     return [...projected, ...localEvents].sort(
       (a, b) =>
         new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime(),

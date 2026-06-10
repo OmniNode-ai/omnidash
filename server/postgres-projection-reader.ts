@@ -532,6 +532,30 @@ export class PostgresProjectionReader {
           return res.rows as Row[];
         }
 
+        case 'onex.evt.omnimarket.node-generation-completed.v1': {
+          const res = await client.query(`
+            SELECT
+              id,
+              correlation_id,
+              task_description,
+              provider,
+              model_id,
+              endpoint_class,
+              attempt_count,
+              total_latency_e2e_ms,
+              contract_passed,
+              cost_inference_usd,
+              contract_yaml,
+              handler_source,
+              timestamp,
+              created_at
+            FROM generation_events
+            ORDER BY created_at DESC
+            LIMIT 500
+          `);
+          return res.rows as Row[];
+        }
+
         case 'onex.snapshot.projection.swarm.runs.v1': {
           const res = await client.query(`
             SELECT

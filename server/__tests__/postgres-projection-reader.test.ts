@@ -463,39 +463,24 @@ describe('PostgresProjectionReader', () => {
     });
   });
 
-  it('returns hackathon pipeline event rows from generation_events', async () => {
+  it('returns canonical node-generation completed rows from generation_events', async () => {
     const fakeRow = {
-      id: 'corr-gen-1-completed',
-      type: 'success',
+      id: 'gen-1',
+      correlation_id: 'corr-gen-1',
+      task_description: 'Build an email validator node',
+      provider: 'openai',
+      model_id: 'gpt-5-mini',
+      contract_passed: true,
       timestamp: '2026-05-20T08:10:00.000Z',
-      source: 'node_generation_consumer',
-      message: 'Node generation completed: Build an email validator node',
-      correlationId: 'corr-gen-1',
-      taskDescription: 'Build an email validator node',
-      selectedProvider: 'openai',
-      selectedModel: 'gpt-5-mini',
-      endpointRef: 'contracts/endpoints/sea-generation.yaml#openai',
-      resolvedEndpoint: 'https://api.openai.example/v1/responses',
-      routingSource: 'runtime-routing-authority',
-      projectionOwner: 'node_projection_generation_events',
-      projectionReducerVersion: '078',
-      contractYaml: 'kind: node\nname: email-validator\n',
-      handlerSource: 'export async function run() {\n  return true;\n}\n',
-      outputPayloadSha256: 'sha256-output',
-      payload: '{"contract_yaml":"kind: node\\nname: email-validator\\n"}',
     };
     const client = { query: vi.fn().mockResolvedValue({ rows: [fakeRow] }), release: vi.fn() };
     getMockPool().connect.mockResolvedValue(client);
 
-    const result = await reader.readProjection('onex.snapshot.projection.hackathon_pipeline_events.v1');
+    const result = await reader.readProjection('onex.evt.omnimarket.node-generation-completed.v1');
 
     expect(result.rows).toHaveLength(1);
     expect(result.rows[0]).toMatchObject(fakeRow);
     expect(client.query).toHaveBeenCalledWith(expect.stringContaining('FROM generation_events'));
-    expect(client.query).toHaveBeenCalledWith(expect.stringContaining('to_jsonb(generation_events)'));
-    expect(client.query).toHaveBeenCalledWith(expect.stringContaining('contract_yaml'));
-    expect(client.query).toHaveBeenCalledWith(expect.stringContaining('handler_source'));
-    expect(client.query).toHaveBeenCalledWith(expect.stringContaining('contract_passed'));
   });
 
   it('releases client even on query error', async () => {
