@@ -15,6 +15,7 @@ interface RuntimeContract {
     url: string;
     ws_url: string;
     sqlite_db_path: string;
+    postgres_database_url_secret_ref: string;
   };
   event_bus: {
     bootstrap_servers: string;
@@ -34,6 +35,7 @@ function defaultContract(): RuntimeContract {
       url: 'http://localhost:3002',
       ws_url: 'ws://localhost:3002/ws',
       sqlite_db_path: '~/.omninode/delegation/delegation.sqlite',
+      postgres_database_url_secret_ref: '',
     },
     event_bus: {
       bootstrap_servers: '',
@@ -70,6 +72,9 @@ function parseYamlRuntimeContract(raw: string): RuntimeContractPatch {
       else if (key === 'url') result.data_source.url = value;
       else if (key === 'ws_url') result.data_source.ws_url = value;
       else if (key === 'sqlite_db_path') result.data_source.sqlite_db_path = value;
+      else if (key === 'postgres_database_url_secret_ref') {
+        result.data_source.postgres_database_url_secret_ref = value;
+      }
     } else if (section === 'event_bus') {
       result.event_bus ??= {};
       if (key === 'bootstrap_servers') result.event_bus.bootstrap_servers = value;
@@ -125,10 +130,27 @@ export interface DataSourceConfig {
   wsUrl: string;
   /** Absolute path to the SQLite DB file */
   sqliteDbPath: string;
+  /** Contract-declared secret reference for the Postgres projection DB URL. */
+  postgresDatabaseUrlSecretRef: string | null;
+  /** Resolved Postgres projection DB URL. Null when no contract secret ref is configured. */
+  postgresDatabaseUrl: string | null;
 }
 
-export function loadDataSourceConfig(): DataSourceConfig {
-  const contract = loadContract();
+function resolveSecretRef(secretRef: string): string | null {
+  if (!secretRef) return null;
+  const [scheme, name] = secretRef.split(':', 2);
+  if (scheme !== 'env' || !name) {
+    throw new Error(`Unsupported data_source postgres_database_url_secret_ref: ${secretRef}`);
+  }
+  const value = process.env[name];
+  return value && value.trim() !== '' ? value : null;
+}
+
+export function loadDataSourceConfig(
+  contractPath?: string,
+  overlayPath?: string,
+): DataSourceConfig {
+  const contract = contractPath ? loadRuntimeContract(contractPath, overlayPath) : loadContract();
   const mode = (process.env.OMNIDASH_DATA_SOURCE as DataSourceMode | undefined)
     ?? contract.data_source.default;
   const url = process.env.OMNIDASH_BRIDGE_URL ?? contract.data_source.url;
@@ -139,6 +161,8 @@ export function loadDataSourceConfig(): DataSourceConfig {
     url,
     wsUrl,
     sqliteDbPath: expandTilde(rawDbPath),
+    postgresDatabaseUrlSecretRef: contract.data_source.postgres_database_url_secret_ref || null,
+    postgresDatabaseUrl: resolveSecretRef(contract.data_source.postgres_database_url_secret_ref),
   };
 }
 

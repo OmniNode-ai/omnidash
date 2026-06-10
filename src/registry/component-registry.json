@@ -1,6 +1,6 @@
 {
   "manifestVersion": "1.0",
-  "generatedAt": "2026-06-10T07:08:06.358Z",
+  "generatedAt": "2026-06-10T16:34:25.600Z",
   "components": {
     "cost-trend-panel": {
       "name": "cost-trend-panel",
@@ -1138,7 +1138,7 @@
       },
       "emptyState": {
         "message": "No evidence pipeline projections",
-        "hint": "Configure EVIDENCE_PROJECTION_API_URL and emit reducer-backed projection snapshots."
+        "hint": "Emit reducer-backed projection snapshots for the evidence pipeline topics."
       },
       "capabilities": {
         "supports_compare": false,

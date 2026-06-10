@@ -609,7 +609,7 @@ const MVP_COMPONENTS: Record<string, ComponentManifest> = {
     maxSize: { w: 12, h: 14 },
     emptyState: {
       message: 'No evidence pipeline projections',
-      hint: 'Configure EVIDENCE_PROJECTION_API_URL and emit reducer-backed projection snapshots.',
+      hint: 'Emit reducer-backed projection snapshots for the evidence pipeline topics.',
     },
     capabilities: { supports_compare: false, supports_export: true, supports_fullscreen: true, supports_time_range: false },
   },

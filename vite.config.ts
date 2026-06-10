@@ -141,7 +141,7 @@ export default defineConfig(({ mode }) => {
   const proxyMap = buildProxyMap(env);
 
   return {
-    envPrefix: ['VITE_', 'EVIDENCE_'],
+    envPrefix: ['VITE_'],
     plugins: [react(), vanillaExtractPlugin(), fixturesPlugin, layoutsPlugin],
     resolve: {
       alias: {

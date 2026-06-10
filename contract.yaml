@@ -1,7 +1,7 @@
 # OMN-10756: Canonical data-source contract for omnidash.
 # This file is the source of truth for data-source selection defaults.
-# Env vars (OMNIDASH_DATA_SOURCE, VITE_DATA_SOURCE, VITE_SQLITE_DATA_SOURCE_URL)
-# are optional overrides only — they must not be set for defaults to apply.
+# Env vars are limited to secret values and temporary local mode overrides.
+# Runtime endpoint authority belongs in contract.yaml or contract.local.yaml.
 #
 # Run `npm run generate:config` after editing to regenerate src/config/generated/data-source-defaults.ts.
 
@@ -9,7 +9,7 @@ data_source:
   # Default data source mode.
   # Values: sqlite | postgres | file | http
   # - sqlite: reads from local delegation.sqlite via the Express bridge (standalone installs only)
-  # - postgres: reads from Postgres projection API (requires OMNIDASH_ANALYTICS_DB_URL)
+  # - postgres: reads from Postgres projections through a contract-declared secret ref
   # - file: reads from ./fixtures/ directory (zero-infra dev mode)
   # - http: reads via HTTP from data_source_url
   #
@@ -19,7 +19,6 @@ data_source:
   default: postgres
 
   # Default Express bridge URL (used by sqlite and http modes on the client side).
-  # No private IPs — URL comes from OMNIDASH_ANALYTICS_DB_URL env var in postgres mode.
   url: "http://localhost:3002"
 
   # Default WebSocket invalidation URL (derived from url when not set explicitly).
@@ -28,6 +27,11 @@ data_source:
   # Default SQLite DB path (used by server/routes.ts in sqlite mode only).
   # Tilde is expanded to $HOME by the server at runtime.
   sqlite_db_path: "~/.omninode/delegation/delegation.sqlite"
+
+  # Secret reference for the Postgres projection DB URL in postgres mode.
+  # Set this in contract.local.yaml or a deployment overlay, for example:
+  # postgres_database_url_secret_ref: "env:OMNIDASH_ANALYTICS_DB_URL"
+  postgres_database_url_secret_ref: ""
 
 event_bus:
   # Contract-owned Kafka/Redpanda bootstrap configuration for the Express

@@ -28,6 +28,13 @@ const DELEGATE_SKILL_TASK_TYPES = new Set([
   'escalation',
 ]);
 
+const EVIDENCE_PIPELINE_TOPICS = {
+  stages: 'onex.snapshot.projection.evidence_pipeline.stages.v1',
+  correlations: 'onex.snapshot.projection.evidence_pipeline.correlations.v1',
+  readiness: 'onex.snapshot.projection.evidence_pipeline.readiness.v1',
+  live_events: 'onex.snapshot.projection.evidence_pipeline.live_events.v1',
+} as const;
+
 const FIXTURES_DIR = resolve(process.env.VITE_FIXTURES_DIR ?? process.env.FIXTURES_DIR ?? './fixtures');
 
 // OMN-10756: data source mode and SQLite DB path now come from contract.yaml
@@ -39,9 +46,10 @@ const sqliteReader = dsConfig.mode === 'sqlite'
   ? new SqliteProjectionReader({ dbPath: dsConfig.sqliteDbPath })
   : null;
 
-// Only instantiate when mode=postgres AND a connection string is available.
-const pgReader = (dsConfig.mode === 'postgres' && process.env.OMNIDASH_ANALYTICS_DB_URL)
-  ? new PostgresProjectionReader({ connectionString: process.env.OMNIDASH_ANALYTICS_DB_URL })
+// Only instantiate when mode=postgres AND the contract/overlay resolves the
+// Postgres connection secret. The route layer must not name env vars directly.
+const pgReader = (dsConfig.mode === 'postgres' && dsConfig.postgresDatabaseUrl)
+  ? new PostgresProjectionReader({ connectionString: dsConfig.postgresDatabaseUrl })
   : null;
 
 async function readJson(path: string): Promise<unknown> {
@@ -59,7 +67,9 @@ async function readProjection(topic: string): Promise<unknown> {
   }
 
   if (dsConfig.mode === 'postgres') {
-    throw new Error('OMNIDASH_ANALYTICS_DB_URL is required for postgres data source; refusing fixture fallback');
+    throw new Error(
+      'data_source.postgres_database_url_secret_ref must resolve for postgres mode; refusing fixture fallback',
+    );
   }
 
   if (dsConfig.mode !== 'file') {
@@ -345,8 +355,24 @@ router.get('/api/settings/feature-flags', (_req, res) => {
   });
 });
 
+router.get('/api/runtime-config', (_req, res) => {
+  res.json({
+    data_source: {
+      mode: dsConfig.mode,
+      url: dsConfig.url,
+      ws_url: dsConfig.wsUrl,
+      postgres_database_url_secret_ref: dsConfig.postgresDatabaseUrlSecretRef,
+      postgres_database_url_configured: dsConfig.postgresDatabaseUrl !== null,
+    },
+    projection_api: {
+      base_path: '/projection',
+      evidence_pipeline_topics: EVIDENCE_PIPELINE_TOPICS,
+    },
+  });
+});
+
 // OMN-12133: projection query endpoints for log entries and traces.
-// Both require postgres mode with OMNIDASH_ANALYTICS_DB_URL set.
+// Both require postgres mode with a contract/overlay-resolved database secret.
 
 router.get('/api/projections/log-entries', async (req, res) => {
   if (!pgReader) {
