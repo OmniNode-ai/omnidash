@@ -151,12 +151,15 @@ export interface EventBusConfig {
 
 export function loadEventBusConfig(): EventBusConfig {
   const contract = loadContract();
-  const bootstrapServers = contract.event_bus.bootstrap_servers
+  const rawBootstrapServers =
+    process.env.OMNIDASH_EVENT_BUS_BOOTSTRAP_SERVERS
+    ?? contract.event_bus.bootstrap_servers;
+  const bootstrapServers = rawBootstrapServers
     .split(',')
     .map((value) => value.trim())
     .filter(Boolean);
   return {
     bootstrapServers,
-    clientId: contract.event_bus.client_id,
+    clientId: process.env.OMNIDASH_EVENT_BUS_CLIENT_ID ?? contract.event_bus.client_id,
   };
 }
