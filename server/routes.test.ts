@@ -61,7 +61,7 @@ describe('server projection routes', () => {
     expect(res.body).toEqual([]);
   });
 
-  it('server import does not require OMNIDASH_ANALYTICS_DB_URL', async () => {
+  it('server import does not require a resolved postgres database secret', async () => {
     delete process.env.OMNIDASH_ANALYTICS_DB_URL;
 
     await expect(import('./index.js')).resolves.toBeTruthy();
@@ -87,6 +87,32 @@ describe('server projection routes', () => {
     } finally {
       consoleError.mockRestore();
     }
+  });
+});
+
+describe('GET /api/runtime-config', () => {
+  beforeEach(() => {
+    process.env.OMNIDASH_DATA_SOURCE = 'file';
+    delete process.env.OMNIDASH_ANALYTICS_DB_URL;
+  });
+
+  afterEach(() => {
+    delete process.env.OMNIDASH_DATA_SOURCE;
+    delete process.env.OMNIDASH_ANALYTICS_DB_URL;
+  });
+
+  it('reports projection API authority and DB secret-ref status without leaking secrets', async () => {
+    const routes = await loadRoutes();
+    const res = await request(buildApp(routes)).get('/api/runtime-config');
+
+    expect(res.status).toBe(200);
+    expect(res.body.data_source.mode).toBe('file');
+    expect(res.body.data_source.postgres_database_url_configured).toBe(false);
+    expect(res.body.data_source).not.toHaveProperty('postgres_database_url');
+    expect(res.body.projection_api.base_path).toBe('/projection');
+    expect(res.body.projection_api.evidence_pipeline_topics.stages).toBe(
+      'onex.snapshot.projection.evidence_pipeline.stages.v1',
+    );
   });
 });
 

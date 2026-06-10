@@ -4,6 +4,8 @@ import {
   fetchEvidencePipelineSnapshot,
   openEvidenceLiveEventStream,
 } from './evidence-pipeline-service';
+import { TOPICS } from '@shared/types/topics';
+import { DATA_SOURCE_DEFAULT_URL } from '@/config/generated/data-source-defaults';
 
 function response(body: unknown, ok = true, status = 200): Response {
   return {
@@ -23,8 +25,8 @@ describe('evidence-pipeline-service', () => {
     vi.unstubAllEnvs();
   });
 
-  it('returns a degraded unconfigured envelope when EVIDENCE_PROJECTION_API_URL is unset', async () => {
-    vi.stubEnv('EVIDENCE_PROJECTION_API_URL', '');
+  it('returns a degraded unconfigured envelope when projection reads are in file mode', async () => {
+    vi.stubEnv('VITE_DATA_SOURCE', 'file');
     const fetchImpl = vi.fn();
 
     const result = await fetchEvidenceStages({ fetchImpl });
@@ -33,7 +35,7 @@ describe('evidence-pipeline-service', () => {
     expect(result).toMatchObject({
       rows: [],
       freshness_state: 'DEGRADED',
-      degraded_reason: 'EVIDENCE_PROJECTION_API_URL is not configured',
+      degraded_reason: 'Projection API is not configured for evidence pipeline reads',
       projection_cursor: null,
       last_event_id: null,
       last_ingest_sequence: null,
@@ -42,8 +44,8 @@ describe('evidence-pipeline-service', () => {
     });
   });
 
-  it('uses the Vite proxy route when EVIDENCE_PROJECTION_API_URL is configured in dev', async () => {
-    vi.stubEnv('EVIDENCE_PROJECTION_API_URL', 'https://projection.example/evidence');
+  it('uses the canonical projection topic route by default', async () => {
+    vi.stubEnv('VITE_DATA_SOURCE', 'postgres');
     const fetchImpl = vi.fn().mockResolvedValueOnce(response({
       rows: [{ stage_id: 'ingest' }],
       projection_cursor: 'cursor-1',
@@ -57,7 +59,9 @@ describe('evidence-pipeline-service', () => {
 
     const result = await fetchEvidenceStages({ fetchImpl });
 
-    expect(fetchImpl).toHaveBeenCalledWith('/api/evidence-pipeline/stages');
+    expect(fetchImpl).toHaveBeenCalledWith(
+      `${DATA_SOURCE_DEFAULT_URL}/projection/${TOPICS.evidencePipelineStages}`,
+    );
     expect(result.projection_cursor).toBe('cursor-1');
     expect(result.last_event_id).toBe('evt-1');
     expect(result.last_ingest_sequence).toBe(42);
@@ -107,8 +111,7 @@ describe('evidence-pipeline-service', () => {
     expect(fetchImpl).toHaveBeenCalledWith('https://projection.example/evidence/events');
   });
 
-  it('does not open advisory SSE when the projection API is unconfigured', () => {
-    vi.stubEnv('EVIDENCE_PROJECTION_API_URL', '');
+  it('does not open advisory SSE without an explicit legacy evidence base URL', () => {
     const factory = vi.fn();
 
     const source = openEvidenceLiveEventStream(vi.fn(), { eventSourceFactory: factory });
@@ -117,8 +120,7 @@ describe('evidence-pipeline-service', () => {
     expect(factory).not.toHaveBeenCalled();
   });
 
-  it('opens advisory SSE through the same configured Vite proxy route', () => {
-    vi.stubEnv('EVIDENCE_PROJECTION_API_URL', 'https://projection.example/evidence');
+  it('opens advisory SSE only when an explicit legacy evidence base URL is provided', () => {
     const source = {
       addEventListener: vi.fn(),
       close: vi.fn(),
@@ -126,10 +128,13 @@ describe('evidence-pipeline-service', () => {
     const factory = vi.fn().mockReturnValue(source);
     const onMessage = vi.fn();
 
-    const result = openEvidenceLiveEventStream(onMessage, { eventSourceFactory: factory });
+    const result = openEvidenceLiveEventStream(onMessage, {
+      baseUrl: 'https://projection.example/evidence',
+      eventSourceFactory: factory,
+    });
 
     expect(result).toBe(source);
-    expect(factory).toHaveBeenCalledWith('/api/evidence-pipeline/events/stream');
+    expect(factory).toHaveBeenCalledWith('https://projection.example/evidence/events/stream');
     expect(source.addEventListener).toHaveBeenCalledWith('message', onMessage);
   });
 });

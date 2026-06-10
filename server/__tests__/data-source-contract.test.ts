@@ -11,11 +11,13 @@ describe('loadDataSourceConfig', () => {
     savedEnv.OMNIDASH_DATA_SOURCE = process.env.OMNIDASH_DATA_SOURCE;
     savedEnv.OMNIDASH_BRIDGE_URL = process.env.OMNIDASH_BRIDGE_URL;
     savedEnv.OMNIDASH_SQLITE_DB_PATH = process.env.OMNIDASH_SQLITE_DB_PATH;
+    savedEnv.OMNIDASH_ANALYTICS_DB_URL = process.env.OMNIDASH_ANALYTICS_DB_URL;
     savedEnv.OMNIDASH_EVENT_BUS_BOOTSTRAP_SERVERS = process.env.OMNIDASH_EVENT_BUS_BOOTSTRAP_SERVERS;
     savedEnv.OMNIDASH_EVENT_BUS_CLIENT_ID = process.env.OMNIDASH_EVENT_BUS_CLIENT_ID;
     delete process.env.OMNIDASH_DATA_SOURCE;
     delete process.env.OMNIDASH_BRIDGE_URL;
     delete process.env.OMNIDASH_SQLITE_DB_PATH;
+    delete process.env.OMNIDASH_ANALYTICS_DB_URL;
     delete process.env.OMNIDASH_EVENT_BUS_BOOTSTRAP_SERVERS;
     delete process.env.OMNIDASH_EVENT_BUS_CLIENT_ID;
   });
@@ -33,6 +35,8 @@ describe('loadDataSourceConfig', () => {
     expect(cfg.url).toBe('http://localhost:3002');
     expect(cfg.wsUrl).toBe('ws://localhost:3002/ws');
     expect(cfg.sqliteDbPath).toMatch(/\.omninode[/\\]delegation[/\\]delegation\.sqlite$/);
+    expect(cfg.postgresDatabaseUrlSecretRef).toBeNull();
+    expect(cfg.postgresDatabaseUrl).toBeNull();
   });
 
   it('honors OMNIDASH_DATA_SOURCE env override', () => {
@@ -53,6 +57,13 @@ describe('loadDataSourceConfig', () => {
     expect(cfg.sqliteDbPath).toBe('/tmp/test.sqlite');
   });
 
+  it('does not resolve OMNIDASH_ANALYTICS_DB_URL unless the contract declares the secret ref', () => {
+    process.env.OMNIDASH_ANALYTICS_DB_URL = 'postgresql://projection:secret@db:5432/omnidash_analytics';
+    const cfg = loadDataSourceConfig();
+    expect(cfg.postgresDatabaseUrlSecretRef).toBeNull();
+    expect(cfg.postgresDatabaseUrl).toBeNull();
+  });
+
   it('expands tilde in sqlite_db_path', () => {
     const cfg = loadDataSourceConfig();
     expect(cfg.sqliteDbPath).not.toMatch(/^~/);
@@ -70,19 +81,30 @@ data_source:
   url: "http://base:3002"
   ws_url: "ws://base:3002/ws"
   sqlite_db_path: "~/.omninode/delegation/delegation.sqlite"
+  postgres_database_url_secret_ref: ""
 event_bus:
   bootstrap_servers: ""
   client_id: "omnidash-server"
 `);
       writeFileSync(overlayPath, `
+data_source:
+  postgres_database_url_secret_ref: "env:OMNIDASH_ANALYTICS_DB_URL"
 event_bus:
   bootstrap_servers: "192.168.86.201:39092"
 `);
+      process.env.OMNIDASH_ANALYTICS_DB_URL =
+        'postgresql://projection:secret@db:5432/omnidash_analytics';
 
       const cfg = loadRuntimeContract(basePath, overlayPath);
+      const dsCfg = loadDataSourceConfig(basePath, overlayPath);
 
       expect(cfg.data_source.default).toBe('postgres');
       expect(cfg.data_source.url).toBe('http://base:3002');
+      expect(cfg.data_source.postgres_database_url_secret_ref).toBe('env:OMNIDASH_ANALYTICS_DB_URL');
+      expect(dsCfg.postgresDatabaseUrlSecretRef).toBe('env:OMNIDASH_ANALYTICS_DB_URL');
+      expect(dsCfg.postgresDatabaseUrl).toBe(
+        'postgresql://projection:secret@db:5432/omnidash_analytics',
+      );
       expect(cfg.event_bus.bootstrap_servers).toBe('192.168.86.201:39092');
       expect(cfg.event_bus.client_id).toBe('omnidash-server');
     } finally {

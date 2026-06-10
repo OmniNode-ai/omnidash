@@ -6,6 +6,9 @@
  * authoritative projection rows in this client.
  */
 
+import { TOPICS } from '@shared/types/topics';
+import { projectionUrl } from '@/data-source/projection-base-url';
+
 export type EvidenceSwimlane = 'evidence_pipeline' | 'deployment_readiness';
 export type EvidenceFreshnessState = 'CURRENT' | 'STALE' | 'DEGRADED';
 export type EvidenceAuthority = 'authoritative' | 'supporting' | 'advisory';
@@ -104,14 +107,19 @@ export interface EvidencePipelineServiceOptions {
   eventSourceFactory?: (url: string) => EventSource;
 }
 
-const UNCONFIGURED_REASON = 'EVIDENCE_PROJECTION_API_URL is not configured';
+const UNCONFIGURED_REASON = 'Projection API is not configured for evidence pipeline reads';
 
-function resolveConfiguredBase(opts?: EvidencePipelineServiceOptions): string | null {
-  const envBase = import.meta.env.EVIDENCE_PROJECTION_API_URL as string | undefined;
-  const base = opts?.baseUrl ?? envBase;
-  if (!base || base.trim() === '') return null;
-  if (!opts?.baseUrl && import.meta.env.DEV) return '/api/evidence-pipeline';
-  return base.replace(/\/$/, '');
+function resolveEvidencePath(
+  topic: string,
+  legacyPath: string,
+  opts?: EvidencePipelineServiceOptions,
+): string | null {
+  if (opts?.baseUrl) return `${opts.baseUrl.replace(/\/$/, '')}${legacyPath}`;
+  try {
+    return projectionUrl(topic);
+  } catch (_err) {
+    return null;
+  }
 }
 
 function emptyEnvelope<T>(degradedReason: string | null): ProjectionEnvelope<T> {
@@ -170,13 +178,14 @@ function normalizeEnvelope<T>(body: unknown): ProjectionEnvelope<T> {
 }
 
 async function fetchProjection<T>(
-  path: string,
+  topic: string,
+  legacyPath: string,
   opts?: EvidencePipelineServiceOptions,
 ): Promise<ProjectionEnvelope<T>> {
-  const baseUrl = resolveConfiguredBase(opts);
-  if (!baseUrl) return emptyEnvelope<T>(UNCONFIGURED_REASON);
+  const path = resolveEvidencePath(topic, legacyPath, opts);
+  if (!path) return emptyEnvelope<T>(UNCONFIGURED_REASON);
   const fetchImpl = opts?.fetchImpl ?? fetch;
-  const res = await fetchImpl(`${baseUrl}${path}`);
+  const res = await fetchImpl(path);
   if (!res.ok) return emptyEnvelope<T>(`Projection API request failed with ${res.status}`);
   const body: unknown = await res.json();
   return normalizeEnvelope<T>(body);
@@ -185,25 +194,29 @@ async function fetchProjection<T>(
 export function fetchEvidenceStages(
   opts?: EvidencePipelineServiceOptions,
 ): Promise<ProjectionEnvelope<EvidenceStageRow>> {
-  return fetchProjection<EvidenceStageRow>('/stages', opts);
+  return fetchProjection<EvidenceStageRow>(TOPICS.evidencePipelineStages, '/stages', opts);
 }
 
 export function fetchEvidenceCorrelationTrace(
   opts?: EvidencePipelineServiceOptions,
 ): Promise<ProjectionEnvelope<EvidenceCorrelationTraceRow>> {
-  return fetchProjection<EvidenceCorrelationTraceRow>('/correlations', opts);
+  return fetchProjection<EvidenceCorrelationTraceRow>(
+    TOPICS.evidencePipelineCorrelations,
+    '/correlations',
+    opts,
+  );
 }
 
 export function fetchEvidenceReadiness(
   opts?: EvidencePipelineServiceOptions,
 ): Promise<ProjectionEnvelope<EvidenceReadinessRow>> {
-  return fetchProjection<EvidenceReadinessRow>('/readiness', opts);
+  return fetchProjection<EvidenceReadinessRow>(TOPICS.evidencePipelineReadiness, '/readiness', opts);
 }
 
 export function fetchEvidenceLiveEvents(
   opts?: EvidencePipelineServiceOptions,
 ): Promise<ProjectionEnvelope<EvidenceLiveEventRow>> {
-  return fetchProjection<EvidenceLiveEventRow>('/events', opts);
+  return fetchProjection<EvidenceLiveEventRow>(TOPICS.evidencePipelineLiveEvents, '/events', opts);
 }
 
 export async function fetchEvidencePipelineSnapshot(
@@ -222,8 +235,8 @@ export function openEvidenceLiveEventStream(
   onMessage: (event: MessageEvent) => void,
   opts?: EvidencePipelineServiceOptions,
 ): EventSource | null {
-  const baseUrl = resolveConfiguredBase(opts);
-  if (!baseUrl) return null;
+  if (!opts?.baseUrl) return null;
+  const baseUrl = opts.baseUrl.replace(/\/$/, '');
   const makeEventSource = opts?.eventSourceFactory ?? ((url: string) => new EventSource(url));
   const source = makeEventSource(`${baseUrl}/events/stream`);
   source.addEventListener('message', onMessage);

@@ -1138,7 +1138,7 @@
       },
       "emptyState": {
         "message": "No evidence pipeline projections",
-        "hint": "Configure EVIDENCE_PROJECTION_API_URL and emit reducer-backed projection snapshots."
+        "hint": "Emit reducer-backed projection snapshots for the evidence pipeline topics."
       },
       "capabilities": {
         "supports_compare": false,
