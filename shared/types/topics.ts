@@ -119,8 +119,6 @@ export const TOPICS = {
   depHealthFindings: 'onex.snapshot.projection.dep-health.findings.v1',
   /** MCP tools registry widget — dynamically registered MCP tools (OMN-11258). */
   mcpTools: 'onex.snapshot.projection.mcp-tools.v1',
-  /** Hackathon control plane pipeline events — request/validation/success/error (OMN-11260). */
-  hackathonPipelineEvents: 'onex.snapshot.projection.hackathon_pipeline_events.v1',
   /** Evidence pipeline stage-flow projection rows (OMN-11478). */
   evidencePipelineStages: 'onex.snapshot.projection.evidence_pipeline.stages.v1',
   /** Evidence pipeline correlation trace rows ordered by ingest_sequence (OMN-11479). */

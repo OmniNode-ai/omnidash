@@ -83,22 +83,22 @@ describe('ControlPlanePage', () => {
   it('renders full SEA generation artifact proof from projection rows', async () => {
     mockFetchWithItems([
       {
-        id: 'corr-sea-completed',
-        type: 'success',
+        id: 'gen-sea',
+        correlation_id: 'corr-sea',
+        task_description: 'email validator',
+        provider: 'openai',
+        model_id: 'gpt-5-mini',
+        endpoint_ref: 'contracts/endpoints/sea-generation.yaml#openai',
+        resolved_endpoint: 'https://api.openai.example/v1/responses',
+        routing_source: 'runtime-routing-authority',
+        projection_owner: 'node_projection_generation_events',
+        projection_reducer_version: '078',
+        output_payload_sha256: 'sha256-output',
+        contract_yaml: 'kind: node\nname: email-validator\nspec:\n  entrypoint: handler.run\n',
+        handler_source: 'export async function run(input) {\n  return input.email.includes("@");\n}\n',
+        contract_passed: true,
         timestamp: '2026-05-17T10:30:05Z',
-        source: 'node_generation_consumer',
-        message: 'Node generation completed: email validator',
-        correlationId: 'corr-sea',
-        selectedProvider: 'openai',
-        selectedModel: 'gpt-5-mini',
-        endpointRef: 'contracts/endpoints/sea-generation.yaml#openai',
-        resolvedEndpoint: 'https://api.openai.example/v1/responses',
-        routingSource: 'runtime-routing-authority',
-        projectionOwner: 'node_projection_generation_events',
-        projectionReducerVersion: '078',
-        outputPayloadSha256: 'sha256-output',
-        contractYaml: 'kind: node\nname: email-validator\nspec:\n  entrypoint: handler.run\n',
-        handlerSource: 'export async function run(input) {\n  return input.email.includes("@");\n}\n',
+        created_at: '2026-05-17T10:30:05Z',
       },
     ]);
     render(
@@ -231,7 +231,7 @@ describe('ControlPlanePage', () => {
     expect(screen.getByText(/command accepted by backend: corr-live-123/i)).toBeInTheDocument();
     expect(screen.getByText(/waiting for projection-backed generation_events proof/i)).toBeInTheDocument();
     expect(screen.queryByText(/node generation completed: corr-live-123/i)).not.toBeInTheDocument();
-    expect(invalidateSpy).toHaveBeenCalledWith({ queryKey: ['hackathon-pipeline-events'] });
+    expect(invalidateSpy).toHaveBeenCalledWith({ queryKey: ['node-generation-completed'] });
     expect(invalidateSpy).toHaveBeenCalledWith({ queryKey: ['trace-explorer'] });
   });
 
@@ -270,7 +270,7 @@ describe('ControlPlanePage', () => {
     });
     expect(screen.getByRole('status')).toHaveTextContent(/corr-failed-123/i);
     expect(screen.getByText(/generation failed in backend: corr-failed-123/i)).toBeInTheDocument();
-    expect(invalidateSpy).toHaveBeenCalledWith({ queryKey: ['hackathon-pipeline-events'] });
+    expect(invalidateSpy).toHaveBeenCalledWith({ queryKey: ['node-generation-completed'] });
     expect(invalidateSpy).toHaveBeenCalledWith({ queryKey: ['trace-explorer'] });
   });
 

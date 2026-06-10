@@ -268,6 +268,16 @@ export class SqliteProjectionReader {
           LIMIT 500
         `).all() as Row[];
 
+      case 'onex.evt.omnimarket.node-generation-completed.v1': {
+        if (!this.hasTable(db, 'generation_events')) return [];
+        return db.prepare(`
+          SELECT *
+          FROM generation_events
+          ORDER BY COALESCE(timestamp, created_at) DESC
+          LIMIT 500
+        `).all() as Row[];
+      }
+
       case 'onex.snapshot.projection.hackathon_pipeline_events.v1': {
         if (!this.hasTable(db, 'generation_events')) return [];
         const col = (name: string): string =>

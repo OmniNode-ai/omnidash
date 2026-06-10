@@ -21,6 +21,7 @@ import { PALETTE_CLASSIFICATION } from '../shared/types/palette-visibility.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
+const NODE_GENERATION_COMPLETED_PROJECTION_TOPIC = 'onex.evt.omnimarket.node-generation-completed.v1';
 
 interface PackageJsonWithDashboard {
   name: string;
@@ -28,11 +29,11 @@ interface PackageJsonWithDashboard {
   dashboardComponents?: string; // relative path to a JSON file listing manifests
 }
 
-function projectionSource(topic: TopicSymbol, required = true): ComponentManifest['dataSources'][number] {
+function projectionSource(topic: TopicSymbol | string, required = true): ComponentManifest['dataSources'][number] {
   return { type: 'projection', topic, required, purpose: 'initial_fetch' };
 }
 
-function liveSource(topic: TopicSymbol, required = false): ComponentManifest['dataSources'][number] {
+function liveSource(topic: TopicSymbol | string, required = false): ComponentManifest['dataSources'][number] {
   return { type: 'websocket', topic, required, purpose: 'live_updates' };
 }
 
@@ -1494,7 +1495,7 @@ const MVP_COMPONENTS: Record<string, ComponentManifest> = {
   'control-plane': {
     name: 'control-plane',
     displayName: 'Self-Extending Agent Control Plane',
-    description: 'Hackathon demo surface: prompt input, pipeline event log, status indicators. Composes with MCP tools widget on a demo dashboard layout (OMN-11260).',
+    description: 'SEA demo surface: prompt input, canonical node-generation completion log, and projection-backed artifact proof from generation_events.',
     category: 'activity',
     version: '1.0.0',
     implementationKey: 'control-plane/ControlPlanePage',
@@ -1511,7 +1512,7 @@ const MVP_COMPONENTS: Record<string, ComponentManifest> = {
         correlationId: { type: 'string' },
       },
     },
-    dataSources: [projectionSource(TOPICS.hackathonPipelineEvents)],
+    dataSources: [projectionSource(NODE_GENERATION_COMPLETED_PROJECTION_TOPIC)],
     events: { emits: [], consumes: [] },
     defaultSize: { w: 2, h: 3 },
     minSize: { w: 1, h: 2 },
