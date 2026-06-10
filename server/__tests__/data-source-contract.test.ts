@@ -2,7 +2,7 @@ import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import { mkdtempSync, rmSync, writeFileSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
-import { loadDataSourceConfig, loadRuntimeContract } from '../data-source-contract.js';
+import { loadDataSourceConfig, loadEventBusConfig, loadRuntimeContract } from '../data-source-contract.js';
 
 describe('loadDataSourceConfig', () => {
   const savedEnv: Record<string, string | undefined> = {};
@@ -11,9 +11,13 @@ describe('loadDataSourceConfig', () => {
     savedEnv.OMNIDASH_DATA_SOURCE = process.env.OMNIDASH_DATA_SOURCE;
     savedEnv.OMNIDASH_BRIDGE_URL = process.env.OMNIDASH_BRIDGE_URL;
     savedEnv.OMNIDASH_SQLITE_DB_PATH = process.env.OMNIDASH_SQLITE_DB_PATH;
+    savedEnv.OMNIDASH_EVENT_BUS_BOOTSTRAP_SERVERS = process.env.OMNIDASH_EVENT_BUS_BOOTSTRAP_SERVERS;
+    savedEnv.OMNIDASH_EVENT_BUS_CLIENT_ID = process.env.OMNIDASH_EVENT_BUS_CLIENT_ID;
     delete process.env.OMNIDASH_DATA_SOURCE;
     delete process.env.OMNIDASH_BRIDGE_URL;
     delete process.env.OMNIDASH_SQLITE_DB_PATH;
+    delete process.env.OMNIDASH_EVENT_BUS_BOOTSTRAP_SERVERS;
+    delete process.env.OMNIDASH_EVENT_BUS_CLIENT_ID;
   });
 
   afterEach(() => {
@@ -89,5 +93,16 @@ event_bus:
   it('does not use legacy KAFKA_BROKERS in the producer config path', () => {
     const source = readFileSync(join(process.cwd(), 'server', 'kafka-producer.ts'), 'utf8');
     expect(source).not.toContain('KAFKA_BROKERS');
+  });
+
+  it('honors event bus env overrides without mutating contract.local.yaml', () => {
+    process.env.OMNIDASH_EVENT_BUS_BOOTSTRAP_SERVERS =
+      '100.109.203.94:39092, 192.0.2.10:39092';
+    process.env.OMNIDASH_EVENT_BUS_CLIENT_ID = 'omnidash-stability-proof';
+
+    const cfg = loadEventBusConfig();
+
+    expect(cfg.bootstrapServers).toEqual(['100.109.203.94:39092', '192.0.2.10:39092']);
+    expect(cfg.clientId).toBe('omnidash-stability-proof');
   });
 });
