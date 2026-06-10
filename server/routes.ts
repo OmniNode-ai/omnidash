@@ -7,7 +7,6 @@ import { PostgresProjectionReader } from './postgres-projection-reader.js';
 import { loadDataSourceConfig } from './data-source-contract.js';
 import { isProducerConnected, publishMessage } from './kafka-producer.js';
 import { COMMAND_TOPICS } from '../shared/types/command-topics.js';
-import { TOPICS } from '../shared/types/topics.js';
 
 const router = Router();
 
@@ -28,6 +27,13 @@ const DELEGATE_SKILL_TASK_TYPES = new Set([
   'agent_delegation',
   'escalation',
 ]);
+
+const EVIDENCE_PIPELINE_TOPICS = {
+  stages: 'onex.snapshot.projection.evidence_pipeline.stages.v1',
+  correlations: 'onex.snapshot.projection.evidence_pipeline.correlations.v1',
+  readiness: 'onex.snapshot.projection.evidence_pipeline.readiness.v1',
+  live_events: 'onex.snapshot.projection.evidence_pipeline.live_events.v1',
+} as const;
 
 const FIXTURES_DIR = resolve(process.env.VITE_FIXTURES_DIR ?? process.env.FIXTURES_DIR ?? './fixtures');
 
@@ -360,12 +366,7 @@ router.get('/api/runtime-config', (_req, res) => {
     },
     projection_api: {
       base_path: '/projection',
-      evidence_pipeline_topics: {
-        stages: TOPICS.evidencePipelineStages,
-        correlations: TOPICS.evidencePipelineCorrelations,
-        readiness: TOPICS.evidencePipelineReadiness,
-        live_events: TOPICS.evidencePipelineLiveEvents,
-      },
+      evidence_pipeline_topics: EVIDENCE_PIPELINE_TOPICS,
     },
   });
 });
