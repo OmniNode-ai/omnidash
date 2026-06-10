@@ -55,8 +55,9 @@ export function createSnapshotSource(): ProtocolSnapshotSource {
 
 /**
  * Returns the WebSocket invalidation URL. Reads VITE_WS_URL when set;
- * otherwise derives a ws:// URL from VITE_HTTP_DATA_SOURCE_URL or
- * VITE_SQLITE_DATA_SOURCE_URL. Falls back to contract.yaml default.
+ * otherwise derives a ws:// URL from VITE_PROJECTION_API_URL,
+ * VITE_HTTP_DATA_SOURCE_URL, or VITE_SQLITE_DATA_SOURCE_URL. Falls back to
+ * contract.yaml default.
  *
  * JSDoc rationale (OMN-10756): hardcoded 'ws://localhost:3002/ws' replaced by
  * DATA_SOURCE_DEFAULT_WS_URL from contract.yaml so all defaults are co-located
@@ -65,6 +66,10 @@ export function createSnapshotSource(): ProtocolSnapshotSource {
 export function getWebSocketUrl(): string {
   const explicit = import.meta.env.VITE_WS_URL;
   if (explicit) return explicit;
+  const projectionUrl = import.meta.env.VITE_PROJECTION_API_URL;
+  if (projectionUrl) {
+    return projectionUrl.replace(/^http:/i, 'ws:').replace(/^https:/i, 'wss:').replace(/\/$/, '') + '/ws';
+  }
   // In sqlite mode, use VITE_SQLITE_DATA_SOURCE_URL as the WS base so the
   // WebSocket invalidation channel targets the same server as HTTP projections.
   const mode = import.meta.env.VITE_DATA_SOURCE ?? DATA_SOURCE_DEFAULT_MODE;
