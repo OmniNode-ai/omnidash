@@ -4,7 +4,13 @@ import { resolveProjectionBaseUrl, projectionUrl } from './projection-base-url';
 // Helper to stub import.meta.env values for a single assertion.
 function withEnv(env: Record<string, string | undefined>, fn: () => void) {
   const original = { ...import.meta.env };
-  Object.assign(import.meta.env, env);
+  for (const [key, value] of Object.entries(env)) {
+    if (value === undefined) {
+      delete (import.meta.env as Record<string, unknown>)[key];
+    } else {
+      (import.meta.env as Record<string, unknown>)[key] = value;
+    }
+  }
   try {
     fn();
   } finally {
@@ -44,7 +50,11 @@ describe('resolveProjectionBaseUrl (OMN-12833 A2.5)', () => {
 
   it('falls back to absolute VITE_HTTP_DATA_SOURCE_URL when no projection proxy is configured', () => {
     withEnv(
-      { VITE_DATA_SOURCE: 'http', VITE_HTTP_DATA_SOURCE_URL: 'http://backend-b:3002/' },
+      {
+        VITE_DATA_SOURCE: 'http',
+        VITE_PROJECTION_API_URL: undefined,
+        VITE_HTTP_DATA_SOURCE_URL: 'http://backend-b:3002/',
+      },
       () => {
         expect(resolveProjectionBaseUrl()).toBe('http://backend-b:3002');
       },
@@ -69,7 +79,11 @@ describe('resolveProjectionBaseUrl (OMN-12833 A2.5)', () => {
 
   it('builds an absolute /projection/{topic} URL when using an absolute base', () => {
     withEnv(
-      { VITE_DATA_SOURCE: 'http', VITE_HTTP_DATA_SOURCE_URL: 'http://backend-b:3002' },
+      {
+        VITE_DATA_SOURCE: 'http',
+        VITE_PROJECTION_API_URL: undefined,
+        VITE_HTTP_DATA_SOURCE_URL: 'http://backend-b:3002',
+      },
       () => {
         expect(projectionUrl('onex.snapshot.projection.delegation.summary.v1')).toBe(
           'http://backend-b:3002/projection/onex.snapshot.projection.delegation.summary.v1',
