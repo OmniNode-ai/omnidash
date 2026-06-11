@@ -21,7 +21,10 @@ import {
   Badge,
   EvEmpty,
   Panel,
+  fmtLatency,
+  fmtMoney4,
   fmtPct,
+  fmtTokens,
 } from '@/components/dashboard/event-dash/primitives';
 import {
   useAbCompare,
@@ -30,6 +33,7 @@ import {
   useDelegationQualityGate,
 } from '@/components/dashboard/event-dash/useEventDashData';
 import { aggregateByArm, buildSegmentModelMatrix } from './context-roi-experiment';
+import { aggregateAbCompareByModel } from './ab-compare-aggregate';
 
 // ── quality score distribution (derived from real decisions + quality gate) ──
 
@@ -73,7 +77,13 @@ function QualityDist() {
   );
 }
 
-// ── A/B model compare (degraded — backing table absent) ──────────────────────
+// ── A/B model compare (per-model rollup of per-call rows, OMN-12993) ──────────
+// The ab-compare.v1 projection (llm_call_metrics, OMN-12970) serves ONE row per
+// LLM CALL. This panel renders ONE row per MODEL — run count + latency, plus
+// token/cost ONLY when the emitter captured real usage. exp0-path calls write
+// usage_source='MISSING' / prompt_tokens=0 (upstream gap OMN-12994); those count
+// as runs but render an honest em-dash for tokens/cost, never a measured-looking
+// 0. Aggregation lives in the pure ab-compare-aggregate.ts helper.
 
 function AbCompare() {
   const { data, isLoading } = useAbCompare();
@@ -91,13 +101,19 @@ function AbCompare() {
       </Panel>
     );
   }
-  // (If/when the backing table lands, the rows render here — no mock fallback.)
+
+  const models = aggregateAbCompareByModel(data.rows);
   return (
     <Panel title="A/B MODEL COMPARE" sub="per model · live">
-      {data.rows.map((r) => (
-        <div className="barrow" key={r.model_name}>
-          <div className="lab">{r.model_name}</div>
-          <div className="val">{r.runs} runs · {fmtPct(r.pass_rate)}</div>
+      {models.map((m) => (
+        <div className="barrow" key={m.modelId === '' ? '__blank_model__' : m.modelId}>
+          <div className="lab">{m.label}</div>
+          <div className="val">
+            {m.runs} runs · {fmtLatency(m.avgLatencyMs)} avg
+            {m.hasUsage
+              ? ` · ${fmtTokens(m.avgTokens)} tok · ${fmtMoney4(m.totalCostUsd)}`
+              : ' · — tok · — usage'}
+          </div>
         </div>
       ))}
     </Panel>
