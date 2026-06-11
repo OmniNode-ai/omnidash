@@ -48,14 +48,17 @@ export interface ComponentEvent {
  *
  * - `projection-backed`: rows come from the standard projection API (`/projection/{topic}`)
  *   and the backing topic returned at least one row at classification time.
+ * - `runtime-observed`: data is observed directly from runtime health/topology
+ *   surfaces and is not projection proof by itself.
  * - `degraded`: the standard projection API serves the topic but it is empty
  *   or the backing table is unavailable (HTTP 200 with zero rows, or HTTP 503).
  *   The widget renders a truthful degraded/empty state, never synthetic data.
- * - `disabled`: the standard projection API does not serve the topic today
- *   (HTTP 404 — no producer / no `projection_api: expose`). The widget is hidden
+ * - `hidden`: the standard projection API does not serve the topic today
+ *   (HTTP 404 - no producer / no `projection_api: expose`). The widget is hidden
  *   from the palette until a real projection backs it.
  */
-export type ComponentAuthorityLabel = 'projection-backed' | 'degraded' | 'disabled';
+export const COMPONENT_AUTHORITY_LABELS = ['projection-backed', 'runtime-observed', 'degraded', 'hidden'] as const;
+export type ComponentAuthorityLabel = (typeof COMPONENT_AUTHORITY_LABELS)[number];
 
 /**
  * Palette visibility classification (OMN-12833 / A2.5). Derived from a live probe
@@ -80,11 +83,10 @@ export interface ComponentManifest {
    */
   paletteVisibility?: ComponentPaletteVisibility;
   /**
-   * OMN-12833 (A2.5): authority label for the component's data source. Optional
-   * so manifests that predate the field stay valid; consumers treat `undefined`
-   * as `projection-backed`.
+   * OMN-12981: authority label for the component's data source. Required so
+   * degraded or hidden panels cannot be mistaken for projection-backed proof.
    */
-  authorityLabel?: ComponentAuthorityLabel;
+  authorityLabel: ComponentAuthorityLabel;
   /**
    * JSON schema describing the widget's per-instance config. Omit when the
    * widget has nothing to configure — the kebab "Configure Widget" item is
@@ -169,6 +171,20 @@ export function validateComponentManifest(m: ComponentManifest): ManifestValidat
   if (!m.implementationKey) errors.push('implementationKey is required');
   if (!COMPONENT_CATEGORIES.includes(m.category)) {
     errors.push(`Invalid category "${m.category}". Must be one of: ${COMPONENT_CATEGORIES.join(', ')}`);
+  }
+  if (!m.authorityLabel) {
+    errors.push('authorityLabel is required');
+  } else if (!COMPONENT_AUTHORITY_LABELS.includes(m.authorityLabel)) {
+    errors.push(`Invalid authorityLabel "${m.authorityLabel}". Must be one of: ${COMPONENT_AUTHORITY_LABELS.join(', ')}`);
+  }
+  if (m.paletteVisibility !== undefined && m.paletteVisibility !== 'visible' && m.paletteVisibility !== 'hidden') {
+    errors.push(`Invalid paletteVisibility "${m.paletteVisibility}". Must be one of: visible, hidden`);
+  }
+  if (m.paletteVisibility === 'hidden' && m.authorityLabel !== 'hidden') {
+    errors.push('hidden components must use authorityLabel "hidden"');
+  }
+  if (m.authorityLabel === 'hidden' && m.paletteVisibility !== 'hidden') {
+    errors.push('authorityLabel "hidden" requires paletteVisibility "hidden"');
   }
   if (m.minSize.w > m.maxSize.w || m.minSize.h > m.maxSize.h) {
     errors.push('minSize cannot exceed maxSize');

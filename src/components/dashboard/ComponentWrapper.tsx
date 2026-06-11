@@ -49,7 +49,7 @@ export function ComponentWrapper({
   children,
 }: ComponentWrapperProps) {
   const chrome = useWidgetChrome();
-  const { onConfigure, onDuplicate, onDelete, draggable, isDragging, isDropTarget,
+  const { authorityLabel, onConfigure, onDuplicate, onDelete, draggable, isDragging, isDropTarget,
     onDragStart, onDragEnd, onDragOver, onDragLeave, onDrop } = chrome;
   const hasMenu = Boolean(onConfigure || onDuplicate || onDelete);
   const menu = usePositionedMenu();
@@ -103,6 +103,22 @@ export function ComponentWrapper({
         </div>
         <div className="widget-head-right">
           {isLive && <span className="widget-live">Live</span>}
+          {authorityLabel && (
+            <Text
+              as="span"
+              size="xs"
+              family="mono"
+              color={authorityLabel === 'projection-backed' ? 'ok' : authorityLabel === 'hidden' ? 'bad' : 'tertiary'}
+              style={{
+                padding: '1px 6px',
+                borderRadius: 4,
+                background: 'color-mix(in srgb, currentColor 10%, transparent)',
+                border: '1px solid color-mix(in srgb, currentColor 28%, transparent)',
+              }}
+            >
+              {authorityLabel}
+            </Text>
+          )}
           {fileMode && (
             <Text
               as="span"

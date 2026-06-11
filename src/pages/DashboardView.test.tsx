@@ -24,6 +24,8 @@ const manifest: RegistryManifest = {
       category: 'quality',
       version: '1.0.0',
       implementationKey: 'test/TestWidget',
+      paletteVisibility: 'visible',
+      authorityLabel: 'projection-backed',
       configSchema: {},
       dataSources: [],
       events: { emits: [], consumes: [] },

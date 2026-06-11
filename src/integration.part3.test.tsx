@@ -11,7 +11,7 @@ import { DashboardView } from './pages/DashboardView';
 import { useFrameStore } from './store/store';
 import { DASHBOARD_TEMPLATES } from './templates';
 import { validateDashboardDefinition } from '@shared/types/dashboard';
-import { validateComponentManifest } from '@shared/types/component-manifest';
+import { COMPONENT_AUTHORITY_LABELS, validateComponentManifest } from '@shared/types/component-manifest';
 import type { RegistryManifest } from './registry/types';
 
 // Mock ECharts
@@ -47,6 +47,28 @@ describe('Proof of Life — Part 3 (Full System)', () => {
     for (const [name, m] of Object.entries(manifest.components)) {
       const result = validateComponentManifest(m);
       expect(result.valid, `Manifest "${name}" invalid: ${result.errors.join(', ')}`).toBe(true);
+    }
+  });
+
+  it('all registry components carry explicit authority labels with hidden consistency', () => {
+    for (const [name, m] of Object.entries(manifest.components)) {
+      expect(m.authorityLabel, `Manifest "${name}" missing authorityLabel`).toBeDefined();
+      expect(COMPONENT_AUTHORITY_LABELS).toContain(m.authorityLabel);
+      if (m.paletteVisibility === 'hidden') {
+        expect(m.authorityLabel, `Hidden manifest "${name}" must not look projection-backed`).toBe('hidden');
+      } else {
+        expect(m.authorityLabel, `Visible manifest "${name}" cannot use hidden authority`).not.toBe('hidden');
+      }
+    }
+  });
+
+  it('all template panels have explicit authority labels in the registry', () => {
+    for (const tpl of DASHBOARD_TEMPLATES) {
+      for (const item of tpl.layout) {
+        const entry = manifest.components[item.componentName];
+        expect(entry?.authorityLabel, `${tpl.name}/${item.componentName} missing authorityLabel`).toBeDefined();
+        expect(COMPONENT_AUTHORITY_LABELS).toContain(entry!.authorityLabel);
+      }
     }
   });
 
