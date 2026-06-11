@@ -15,8 +15,8 @@
  * Classification rule:
  *   - any topic returns HTTP 200 with row_count > 0  -> visible / projection-backed
  *   - all topics HTTP 200 but row_count == 0          -> visible / degraded (truthful empty state)
- *   - any topic HTTP 503 (table missing)              -> hidden  / disabled
- *   - all topics HTTP 404 (no producer / no expose)   -> hidden  / disabled
+ *   - any topic HTTP 503 (table missing)              -> hidden  / hidden
+ *   - all topics HTTP 404 (no producer / no expose)   -> hidden  / hidden
  *
  * Components classified `hidden` are removed from the palette so the demo never
  * exposes a widget that cannot be backed by the single authoritative backend.
@@ -36,8 +36,9 @@ export interface PaletteClassification {
 }
 
 /**
- * Component-name -> classification. Component names not listed here default to
- * `visible` / `projection-backed` (the generator emits no override for them).
+ * Component-name -> classification. Local MVP components must be listed here;
+ * otherwise registry generation fails before a demo-visible widget can ship
+ * without an explicit authority label.
  */
 export const PALETTE_CLASSIFICATION: Record<string, PaletteClassification> = {
   // --- VISIBLE / projection-backed (200 with rows on the single backend) ---
@@ -60,13 +61,13 @@ export const PALETTE_CLASSIFICATION: Record<string, PaletteClassification> = {
   // state (no synthetic rows) until OMN-12082 exposes the projection.
   'context-effectiveness-heatmap': { paletteVisibility: 'visible', authorityLabel: 'degraded', probe: 'context.experiment-scores.v1=404 (kept per keep-set; degraded)' },
 
-  // --- HIDDEN / disabled (503 table missing on the single backend) ---
-  'cost-summary': { paletteVisibility: 'hidden', authorityLabel: 'disabled', probe: 'cost.summary.v1=503 (table llm_cost_aggregates missing)' },
-  'token-usage': { paletteVisibility: 'hidden', authorityLabel: 'disabled', probe: 'cost.token_usage.v1=503 (table llm_call_metrics missing)' },
-  'projection-container': { paletteVisibility: 'hidden', authorityLabel: 'disabled', probe: 'ab-compare.v1=503 (table llm_call_metrics missing)' },
-  'ab-compare': { paletteVisibility: 'hidden', authorityLabel: 'disabled', probe: 'ab-compare.v1=503 (table llm_call_metrics missing)' },
+  // --- HIDDEN / hidden (503 table missing on the single backend) ---
+  'cost-summary': { paletteVisibility: 'hidden', authorityLabel: 'hidden', probe: 'cost.summary.v1=503 (table llm_cost_aggregates missing)' },
+  'token-usage': { paletteVisibility: 'hidden', authorityLabel: 'hidden', probe: 'cost.token_usage.v1=503 (table llm_call_metrics missing)' },
+  'projection-container': { paletteVisibility: 'hidden', authorityLabel: 'hidden', probe: 'ab-compare.v1=503 (table llm_call_metrics missing)' },
+  'ab-compare': { paletteVisibility: 'hidden', authorityLabel: 'hidden', probe: 'ab-compare.v1=503 (table llm_call_metrics missing)' },
 
-  // --- HIDDEN / disabled (200 with rows, but the projection row shape does not
+  // --- HIDDEN / hidden (200 with rows, but the projection row shape does not
   //     match the widget's required event-log shape — cannot be truthfully
   //     backed by the single backend today; renders a crash, so hidden) ---
   // event-stream binds registration.v1 (200/100r) but its StreamEvent shape
@@ -74,23 +75,23 @@ export const PALETTE_CLASSIFICATION: Record<string, PaletteClassification> = {
   // serves (service_name/service_type/health_status/...). Feeding it the
   // mismatched shape throws in render, so it is hidden until a real event-log
   // projection backs it.
-  'event-stream': { paletteVisibility: 'hidden', authorityLabel: 'disabled', probe: 'registration.v1=200/100r BUT row shape != StreamEvent (event_type/source missing) -> render crash' },
+  'event-stream': { paletteVisibility: 'hidden', authorityLabel: 'hidden', probe: 'registration.v1=200/100r BUT row shape != StreamEvent (event_type/source missing) -> render crash' },
 
-  // --- HIDDEN / disabled (404 no producer / no projection_api expose) ---
-  'cost-trend-panel': { paletteVisibility: 'hidden', authorityLabel: 'disabled', probe: 'llm_cost.v1=404' },
-  'cost-by-model': { paletteVisibility: 'hidden', authorityLabel: 'disabled', probe: 'llm_cost.v1=404' },
-  'cost-by-model-3d': { paletteVisibility: 'hidden', authorityLabel: 'disabled', probe: 'llm_cost.v1=404' },
-  'cost-by-repo': { paletteVisibility: 'hidden', authorityLabel: 'disabled', probe: 'cost.by_repo.v1=404' },
-  'baselines-roi-card': { paletteVisibility: 'hidden', authorityLabel: 'disabled', probe: 'baselines.roi.v1=404' },
-  'quality-score-panel': { paletteVisibility: 'hidden', authorityLabel: 'disabled', probe: 'baselines.quality.v1=404' },
-  'readiness-gate': { paletteVisibility: 'hidden', authorityLabel: 'disabled', probe: 'overnight.v1=404' },
-  'intent-distribution': { paletteVisibility: 'hidden', authorityLabel: 'disabled', probe: 'intent-classification.v1=404' },
-  'session-timeline': { paletteVisibility: 'hidden', authorityLabel: 'disabled', probe: 'intent-classification.v1=404' },
-  'live-event-stream': { paletteVisibility: 'hidden', authorityLabel: 'disabled', probe: 'live-events.v1=404' },
-  'routing-decision': { paletteVisibility: 'hidden', authorityLabel: 'disabled', probe: 'routing-decision.v1=404' },
-  'receipt-gate': { paletteVisibility: 'hidden', authorityLabel: 'disabled', probe: 'receipt-gate.v1=404' },
-  'cost-savings-overview': { paletteVisibility: 'hidden', authorityLabel: 'disabled', probe: 'cost.savings-overview.v1=404' },
-  'delegation-model-output': { paletteVisibility: 'hidden', authorityLabel: 'disabled', probe: 'delegation.inference-response-text.v1=404' },
-  'mcp-tools': { paletteVisibility: 'hidden', authorityLabel: 'disabled', probe: 'mcp-tools.v1=404' },
-  'trace-explorer': { paletteVisibility: 'hidden', authorityLabel: 'disabled', probe: 'traces.v1=404' },
+  // --- HIDDEN / hidden (404 no producer / no projection_api expose) ---
+  'cost-trend-panel': { paletteVisibility: 'hidden', authorityLabel: 'hidden', probe: 'llm_cost.v1=404' },
+  'cost-by-model': { paletteVisibility: 'hidden', authorityLabel: 'hidden', probe: 'llm_cost.v1=404' },
+  'cost-by-model-3d': { paletteVisibility: 'hidden', authorityLabel: 'hidden', probe: 'llm_cost.v1=404' },
+  'cost-by-repo': { paletteVisibility: 'hidden', authorityLabel: 'hidden', probe: 'cost.by_repo.v1=404' },
+  'baselines-roi-card': { paletteVisibility: 'hidden', authorityLabel: 'hidden', probe: 'baselines.roi.v1=404' },
+  'quality-score-panel': { paletteVisibility: 'hidden', authorityLabel: 'hidden', probe: 'baselines.quality.v1=404' },
+  'readiness-gate': { paletteVisibility: 'hidden', authorityLabel: 'hidden', probe: 'overnight.v1=404' },
+  'intent-distribution': { paletteVisibility: 'hidden', authorityLabel: 'hidden', probe: 'intent-classification.v1=404' },
+  'session-timeline': { paletteVisibility: 'hidden', authorityLabel: 'hidden', probe: 'intent-classification.v1=404' },
+  'live-event-stream': { paletteVisibility: 'hidden', authorityLabel: 'hidden', probe: 'live-events.v1=404' },
+  'routing-decision': { paletteVisibility: 'hidden', authorityLabel: 'hidden', probe: 'routing-decision.v1=404' },
+  'receipt-gate': { paletteVisibility: 'hidden', authorityLabel: 'hidden', probe: 'receipt-gate.v1=404' },
+  'cost-savings-overview': { paletteVisibility: 'hidden', authorityLabel: 'hidden', probe: 'cost.savings-overview.v1=404' },
+  'delegation-model-output': { paletteVisibility: 'hidden', authorityLabel: 'hidden', probe: 'delegation.inference-response-text.v1=404' },
+  'mcp-tools': { paletteVisibility: 'hidden', authorityLabel: 'hidden', probe: 'mcp-tools.v1=404' },
+  'trace-explorer': { paletteVisibility: 'hidden', authorityLabel: 'hidden', probe: 'traces.v1=404' },
 };

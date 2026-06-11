@@ -382,6 +382,7 @@ export function DashboardView() {
                   componentName={item.componentName}
                   config={item.config}
                   component={resolveComponent(item.componentName)}
+                  authorityLabel={registry.getComponent(item.componentName)?.manifest.authorityLabel}
                   // Only surface "Configure Widget" in the kebab when the
                   // widget actually has something to configure — otherwise
                   // the modal opens to an empty form. We treat absent

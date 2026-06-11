@@ -2,11 +2,13 @@ import { Suspense, useMemo, type DragEvent, type LazyExoticComponent, type Compo
 import { WidgetChromeContext, type WidgetChromeHandlers } from './WidgetChromeContext';
 import { WidgetErrorBoundary } from './WidgetErrorBoundary';
 import { Text } from '@/components/ui/typography';
+import type { ComponentAuthorityLabel } from '@shared/types/component-manifest';
 
 interface ComponentCellProps {
   componentName: string;
   config: Record<string, unknown>;
   component?: LazyExoticComponent<ComponentType<any>>;
+  authorityLabel?: ComponentAuthorityLabel;
   /**
    * Override text shown when the lazy component for `componentName` cannot be
    * resolved (e.g. an external plugin widget is in the registry but its
@@ -36,6 +38,7 @@ export function ComponentCell({
   componentName,
   config,
   component: LazyComponent,
+  authorityLabel,
   emptyMessage,
   onConfigure,
   onDuplicate,
@@ -51,6 +54,7 @@ export function ComponentCell({
 }: ComponentCellProps) {
   const chrome = useMemo<WidgetChromeHandlers>(
     () => ({
+      authorityLabel,
       onConfigure,
       onDuplicate,
       onDelete,
@@ -63,7 +67,7 @@ export function ComponentCell({
       onDragLeave,
       onDrop,
     }),
-    [onConfigure, onDuplicate, onDelete, draggable, isDragging, isDropTarget,
+    [authorityLabel, onConfigure, onDuplicate, onDelete, draggable, isDragging, isDropTarget,
       onDragStart, onDragEnd, onDragOver, onDragLeave, onDrop],
   );
 
@@ -73,7 +77,25 @@ export function ComponentCell({
         data-testid="grid-item"
         style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '2rem', opacity: 0.5, border: '1px solid var(--line)', borderRadius: 'var(--radius-lg)' }}
       >
-        <span>{emptyMessage ?? `${componentName} — not available`}</span>
+        <div style={{ display: 'grid', gap: 6, justifyItems: 'center' }}>
+          {authorityLabel && (
+            <Text
+              as="span"
+              size="xs"
+              family="mono"
+              color={authorityLabel === 'hidden' ? 'bad' : 'tertiary'}
+              style={{
+                padding: '1px 6px',
+                borderRadius: 4,
+                background: 'color-mix(in srgb, currentColor 10%, transparent)',
+                border: '1px solid color-mix(in srgb, currentColor 28%, transparent)',
+              }}
+            >
+              {authorityLabel}
+            </Text>
+          )}
+          <span>{emptyMessage ?? `${componentName} — not available`}</span>
+        </div>
       </div>
     );
   }
