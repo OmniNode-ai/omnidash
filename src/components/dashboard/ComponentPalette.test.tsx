@@ -15,6 +15,8 @@ const mockComponents: RegisteredComponent[] = [
       category: 'quality',
       version: '1.0.0',
       implementationKey: 'cost-trend/CostTrendPanel',
+      paletteVisibility: 'visible',
+      authorityLabel: 'projection-backed',
       configSchema: {},
       dataSources: [],
       events: { emits: [], consumes: [] },
@@ -35,6 +37,8 @@ const mockComponents: RegisteredComponent[] = [
       category: 'activity',
       version: '1.0.0',
       implementationKey: 'event-stream/EventStream',
+      paletteVisibility: 'hidden',
+      authorityLabel: 'hidden',
       configSchema: {},
       dataSources: [],
       events: { emits: [], consumes: [] },
@@ -56,6 +60,12 @@ describe('ComponentPalette', () => {
   it('shows not-implemented badge', () => {
     render(<ComponentPalette components={mockComponents} onAddComponent={() => {}} />);
     expect(screen.getByText(/not implemented/i)).toBeInTheDocument();
+  });
+
+  it('renders explicit authority labels without defaulting hidden panels to projection-backed', () => {
+    render(<ComponentPalette components={mockComponents} onAddComponent={() => {}} />);
+    expect(screen.getByText(/projection-backed/i)).toBeInTheDocument();
+    expect(screen.getByText(/hidden/i)).toBeInTheDocument();
   });
 
   it('calls onAddComponent when clicking available component', async () => {

@@ -84,6 +84,11 @@ export default [
       'local/no-cast-on-parsed-json': 'error',
       'local/no-projection-fallback': 'error',
       'local/no-env-fallback': 'error',
+      // OMN-12969: ban raw browser WebSocket in client source. The dead `/ws`
+      // path (403 against the HTTP/SSE-only projection backend) was removed;
+      // this guard prevents reintroducing an unwired socket. Live updates are
+      // poll-driven via useProjectionQuery.
+      'local/no-projection-websocket': 'error',
       'react-hooks/rules-of-hooks': 'error',
       // `exhaustive-deps` is set to `warn` rather than `error` so that
       // genuine one-shot effects (mount-only hydration, resize observer

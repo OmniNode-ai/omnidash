@@ -15,6 +15,8 @@ const VALID_MANIFEST: ComponentManifest = {
   category: 'metrics',
   version: '1.0.0',
   implementationKey: 'test/TestWidget',
+  paletteVisibility: 'visible',
+  authorityLabel: 'projection-backed',
   configSchema: { type: 'object', properties: {}, additionalProperties: false },
   dataSources: [],
   events: { emits: [], consumes: [] },

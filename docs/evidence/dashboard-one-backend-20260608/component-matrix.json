@@ -8,7 +8,7 @@
     "total_components": 32,
     "visible_projection_backed": 8,
     "visible_degraded": 2,
-    "hidden_disabled": 22
+    "hidden": 22
   },
   "components": [
     {
@@ -25,7 +25,7 @@
           "freshness": "degraded"
         }
       ],
-      "authority_label": "disabled",
+      "authority_label": "hidden",
       "palette_visibility": "hidden",
       "decision": "HIDDEN",
       "screenshot_locator": "desktop-fullpage.png / palette-authority-labels.png"
@@ -44,7 +44,7 @@
           "freshness": "degraded"
         }
       ],
-      "authority_label": "disabled",
+      "authority_label": "hidden",
       "palette_visibility": "hidden",
       "decision": "HIDDEN",
       "screenshot_locator": "desktop-fullpage.png / palette-authority-labels.png"
@@ -63,7 +63,7 @@
           "freshness": "degraded"
         }
       ],
-      "authority_label": "disabled",
+      "authority_label": "hidden",
       "palette_visibility": "hidden",
       "decision": "HIDDEN",
       "screenshot_locator": "desktop-fullpage.png / palette-authority-labels.png"
@@ -82,7 +82,7 @@
           "freshness": "degraded"
         }
       ],
-      "authority_label": "disabled",
+      "authority_label": "hidden",
       "palette_visibility": "hidden",
       "decision": "HIDDEN",
       "screenshot_locator": "desktop-fullpage.png / palette-authority-labels.png"
@@ -139,7 +139,7 @@
           "freshness": "degraded"
         }
       ],
-      "authority_label": "disabled",
+      "authority_label": "hidden",
       "palette_visibility": "hidden",
       "decision": "HIDDEN",
       "screenshot_locator": "desktop-fullpage.png / palette-authority-labels.png"
@@ -158,7 +158,7 @@
           "freshness": "degraded"
         }
       ],
-      "authority_label": "disabled",
+      "authority_label": "hidden",
       "palette_visibility": "hidden",
       "decision": "HIDDEN",
       "screenshot_locator": "desktop-fullpage.png / palette-authority-labels.png"
@@ -196,7 +196,7 @@
           "freshness": "degraded"
         }
       ],
-      "authority_label": "disabled",
+      "authority_label": "hidden",
       "palette_visibility": "hidden",
       "decision": "HIDDEN",
       "screenshot_locator": "desktop-fullpage.png / palette-authority-labels.png"
@@ -255,7 +255,7 @@
           "freshness": "degraded"
         }
       ],
-      "authority_label": "disabled",
+      "authority_label": "hidden",
       "palette_visibility": "hidden",
       "decision": "HIDDEN",
       "screenshot_locator": "desktop-fullpage.png / palette-authority-labels.png"
@@ -274,7 +274,7 @@
           "freshness": "degraded"
         }
       ],
-      "authority_label": "disabled",
+      "authority_label": "hidden",
       "palette_visibility": "hidden",
       "decision": "HIDDEN",
       "screenshot_locator": "desktop-fullpage.png / palette-authority-labels.png"
@@ -293,7 +293,7 @@
           "freshness": "fresh"
         }
       ],
-      "authority_label": "disabled",
+      "authority_label": "hidden",
       "palette_visibility": "hidden",
       "decision": "HIDDEN",
       "screenshot_locator": "desktop-fullpage.png / palette-authority-labels.png"
@@ -312,7 +312,7 @@
           "freshness": "degraded"
         }
       ],
-      "authority_label": "disabled",
+      "authority_label": "hidden",
       "palette_visibility": "hidden",
       "decision": "HIDDEN",
       "screenshot_locator": "desktop-fullpage.png / palette-authority-labels.png"
@@ -331,7 +331,7 @@
           "freshness": "degraded"
         }
       ],
-      "authority_label": "disabled",
+      "authority_label": "hidden",
       "palette_visibility": "hidden",
       "decision": "HIDDEN",
       "screenshot_locator": "desktop-fullpage.png / palette-authority-labels.png"
@@ -350,7 +350,7 @@
           "freshness": "degraded"
         }
       ],
-      "authority_label": "disabled",
+      "authority_label": "hidden",
       "palette_visibility": "hidden",
       "decision": "HIDDEN",
       "screenshot_locator": "desktop-fullpage.png / palette-authority-labels.png"
@@ -369,7 +369,7 @@
           "freshness": "degraded"
         }
       ],
-      "authority_label": "disabled",
+      "authority_label": "hidden",
       "palette_visibility": "hidden",
       "decision": "HIDDEN",
       "screenshot_locator": "desktop-fullpage.png / palette-authority-labels.png"
@@ -388,7 +388,7 @@
           "freshness": "degraded"
         }
       ],
-      "authority_label": "disabled",
+      "authority_label": "hidden",
       "palette_visibility": "hidden",
       "decision": "HIDDEN",
       "screenshot_locator": "desktop-fullpage.png / palette-authority-labels.png"
@@ -407,7 +407,7 @@
           "freshness": "degraded"
         }
       ],
-      "authority_label": "disabled",
+      "authority_label": "hidden",
       "palette_visibility": "hidden",
       "decision": "HIDDEN",
       "screenshot_locator": "desktop-fullpage.png / palette-authority-labels.png"
@@ -426,7 +426,7 @@
           "freshness": "degraded"
         }
       ],
-      "authority_label": "disabled",
+      "authority_label": "hidden",
       "palette_visibility": "hidden",
       "decision": "HIDDEN",
       "screenshot_locator": "desktop-fullpage.png / palette-authority-labels.png"
@@ -540,7 +540,7 @@
           "freshness": "degraded"
         }
       ],
-      "authority_label": "disabled",
+      "authority_label": "hidden",
       "palette_visibility": "hidden",
       "decision": "HIDDEN",
       "screenshot_locator": "desktop-fullpage.png / palette-authority-labels.png"
@@ -613,7 +613,7 @@
           "freshness": "degraded"
         }
       ],
-      "authority_label": "disabled",
+      "authority_label": "hidden",
       "palette_visibility": "hidden",
       "decision": "HIDDEN",
       "screenshot_locator": "desktop-fullpage.png / palette-authority-labels.png"
@@ -632,7 +632,7 @@
           "freshness": "degraded"
         }
       ],
-      "authority_label": "disabled",
+      "authority_label": "hidden",
       "palette_visibility": "hidden",
       "decision": "HIDDEN",
       "screenshot_locator": "desktop-fullpage.png / palette-authority-labels.png"
@@ -651,7 +651,7 @@
           "freshness": "degraded"
         }
       ],
-      "authority_label": "disabled",
+      "authority_label": "hidden",
       "palette_visibility": "hidden",
       "decision": "HIDDEN",
       "screenshot_locator": "desktop-fullpage.png / palette-authority-labels.png"
@@ -670,7 +670,7 @@
           "freshness": "degraded"
         }
       ],
-      "authority_label": "disabled",
+      "authority_label": "hidden",
       "palette_visibility": "hidden",
       "decision": "HIDDEN",
       "screenshot_locator": "desktop-fullpage.png / palette-authority-labels.png"

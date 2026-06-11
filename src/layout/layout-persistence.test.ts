@@ -44,7 +44,26 @@ describe('HttpLayoutPersistence', () => {
       expect(fetch).toHaveBeenCalledWith('/_layouts/default');
     });
 
-    it('returns null on 404', async () => {
+    it('returns null on 204 (no saved layout — normal first-load state)', async () => {
+      const jsonSpy = vi.fn(async () => null);
+      vi.stubGlobal(
+        'fetch',
+        vi.fn().mockResolvedValue({
+          ok: true,
+          status: 204,
+          statusText: 'No Content',
+          json: jsonSpy,
+        })
+      );
+
+      const result = await persistence.read('does-not-exist');
+
+      expect(result).toBeNull();
+      // Must not attempt to parse the (empty) 204 body.
+      expect(jsonSpy).not.toHaveBeenCalled();
+    });
+
+    it('returns null on 404 (back-compat with older dev servers)', async () => {
       vi.stubGlobal(
         'fetch',
         vi.fn().mockResolvedValue({

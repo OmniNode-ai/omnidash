@@ -1,11 +1,10 @@
-import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
+import { useState, useEffect, useRef, useMemo } from 'react';
 import { ArrowUp, Search } from 'lucide-react';
 import { ComponentWrapper } from '../ComponentWrapper';
 import { useProjectionQuery } from '@/hooks/useProjectionQuery';
 import { TOPICS } from '@shared/types/topics';
 import { useTimezone } from '@/hooks/useTimezone';
 import { Text } from '@/components/ui/typography';
-import { getWebSocketUrl } from '@/data-source';
 import { useDataSourceMode, isLiveDataSource } from '@/hooks/useDataSourceMode';
 
 export interface StreamEvent {
@@ -21,7 +20,6 @@ interface EventStreamConfig {
   autoScroll?: boolean;
 }
 
-const RECONNECT_DELAYS = [1_000, 2_000, 4_000, 8_000, 16_000];
 const SCROLL_HEIGHT = 320;
 const SCROLL_UP_THRESHOLD_PX = 40;
 
@@ -72,54 +70,6 @@ function hueForSource(s: string): number {
   return Math.abs(hash) % 360;
 }
 
-// ---------- WebSocket hook (unchanged semantics) ----------
-
-function useEventWebSocket(onEvent: (e: StreamEvent) => void) {
-  const wsRef = useRef<WebSocket | null>(null);
-  const retryRef = useRef(0);
-  const mountedRef = useRef(true);
-
-  const connect = useCallback(() => {
-    if (!mountedRef.current) return;
-    const ws = new WebSocket(getWebSocketUrl());
-    wsRef.current = ws;
-
-    ws.onopen = () => {
-      retryRef.current = 0;
-      ws.send(JSON.stringify({ type: 'subscribe', topic: TOPICS.registration }));
-    };
-
-    ws.onmessage = (e) => {
-      try {
-        const msg = JSON.parse(e.data);
-        if (msg.type === 'event' && msg.topic === TOPICS.registration && msg.data) {
-          onEvent(msg.data as StreamEvent);
-        }
-      } catch {
-        /* ignore malformed frames */
-      }
-    };
-
-    ws.onclose = () => {
-      if (!mountedRef.current) return;
-      const delay = RECONNECT_DELAYS[Math.min(retryRef.current, RECONNECT_DELAYS.length - 1)];
-      retryRef.current += 1;
-      setTimeout(connect, delay);
-    };
-
-    ws.onerror = () => ws.close();
-  }, [onEvent]);
-
-  useEffect(() => {
-    mountedRef.current = true;
-    connect();
-    return () => {
-      mountedRef.current = false;
-      wsRef.current?.close();
-    };
-  }, [connect]);
-}
-
 // ---------- Component ----------
 
 export default function EventStream({ config }: { config: EventStreamConfig }) {
@@ -155,19 +105,11 @@ export default function EventStream({ config }: { config: EventStreamConfig }) {
     }
   }, [initialData, maxEvents, seenIds]);
 
-  const handleNewEvent = useCallback(
-    (e: StreamEvent) => {
-      if (seenIds.has(e.id)) return;
-      seenIds.add(e.id);
-      setEvents((prev) => {
-        const next = [e, ...prev];
-        return next.length > maxEvents ? next.slice(0, maxEvents) : next;
-      });
-    },
-    [seenIds, maxEvents],
-  );
-
-  useEventWebSocket(handleNewEvent);
+  // OMN-12969: live event tail previously appended via a `/ws` WebSocket
+  // (useEventWebSocket). The deployed projection backend has no `/ws` route,
+  // so that socket was rejected (403) and never delivered an event. Fresh
+  // events now arrive solely through `useProjectionQuery`'s polling refetch,
+  // which repopulates `events` via the `initialData` effect above.
 
   // Auto-scroll — skip while the user has scrolled up so we don't
   // yank them back to the top mid-read.

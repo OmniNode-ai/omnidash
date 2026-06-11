@@ -109,8 +109,8 @@ lines, 71.82% branches.
 ### H2 — `useWebSocketInvalidation` hardcodes the same URL
 
 **Status:** Fixed in PR 1 (T4 / OMN-146). Closes OMN-37.
-**Where:** [`src/hooks/useWebSocketInvalidation.ts`](../src/hooks/useWebSocketInvalidation.ts).
-**What changed:** Same fix as H1 — calls `getWebSocketUrl()`.
+**Where:** `src/hooks/useWebSocketInvalidation.ts` (subsequently removed in OMN-12969 — the `/ws` invalidation path was dead end-to-end; the projection backend never registered a `/ws` route and the Express bridge never broadcast).
+**What changed:** Same fix as H1 — called `getWebSocketUrl()`.
 **Where the carve-out lives:** [`src/data-source/index.ts`](../src/data-source/index.ts) — `getWebSocketUrl()` reads `VITE_WS_URL` first, derives a `ws://` URL from `VITE_HTTP_DATA_SOURCE_URL` second, and only then falls back to the dev default. The grep gate in 8.D specifically allowlists this file as the carve-out location.
 
 ### H3 — `CostTrend3D` and `CostByModelPie` advertise empty `configSchema`
@@ -163,7 +163,7 @@ lines, 71.82% branches.
 ### H10 — Express server has zero test coverage
 
 **Status:** Fixed in PR 2 (T10 / OMN-151).
-**Where:** [`server/routes.test.ts`](../server/routes.test.ts) (new), [`server/broadcast.test.ts`](../server/broadcast.test.ts) (new), [`server/index.ts`](../server/index.ts).
+**Where:** [`server/routes.test.ts`](../server/routes.test.ts) (new), `server/broadcast.test.ts` (new; subsequently removed in OMN-12969 with the dead `/ws` bridge), [`server/index.ts`](../server/index.ts).
 **What changed:**
 - `routes.test.ts` — supertest smoke coverage for all six REST routes with a mocked `db.query`. Includes the success path, the `defaults granularity to day` branch, the `query failed` 500 branch, and the now-204 baselines empty branch (see M7).
 - `broadcast.test.ts` — channel-filter unit tests for `broadcast()`: exact-channel match, `*` wildcard match, no match, `readyState !== OPEN`.
@@ -319,7 +319,7 @@ lines, 71.82% branches.
 ### M18 — Express WebSocket subscription filter untested
 
 **Status:** Fixed in PR 2 (T10 / OMN-151), as part of the broader server-tests pass.
-**Where:** [`server/broadcast.test.ts`](../server/broadcast.test.ts).
+**Where:** `server/broadcast.test.ts` (subsequently removed in OMN-12969 with the dead `/ws` bridge).
 
 ---
 

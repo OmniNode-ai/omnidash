@@ -56,6 +56,8 @@ function makeManifest(name: string, displayName: string, configSchema: JSONSchem
     category: 'quality',
     version: '1.0.0',
     implementationKey: `fixtures/${name}`,
+    paletteVisibility: 'visible',
+    authorityLabel: 'projection-backed',
     configSchema,
     dataSources: [],
     events: { emits: [], consumes: [] },

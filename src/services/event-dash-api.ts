@@ -33,6 +33,20 @@ import { projectionUrl } from "@/data-source/projection-base-url";
 const NODE_GENERATION_COMPLETED_TOPIC =
   "onex.evt.omnimarket.node-generation-completed.v1";
 
+/**
+ * OMN-12999: latest-N window the SEA / Event-Bus tiles actually render.
+ *
+ * The bus/correlation surfaces show a count plus the newest correlations
+ * (subject/model/latency/state); the full `contract_yaml` / `handler_source`
+ * payload bodies are never displayed (the contract YAML is only regex-scanned
+ * for a node name). The projection contract declares `order_by: created_at DESC`
+ * with a `limit: 500` ceiling, so requesting the newest 50 rows is a
+ * contract-respecting bounded read. Without this bound the panel pulls the full
+ * unbounded payload (~419 KB), whose server-side serialization stalled the tiles
+ * at '—' for ~10-28 s (measured 2026-06-11 against the live :13002 backend).
+ */
+const NODE_GENERATION_WINDOW = 50;
+
 // ── Envelope + result types ──────────────────────────────────────────────────
 
 /** Freshness reported by the projection API envelope. */
@@ -287,14 +301,64 @@ export interface RegistrationRow {
   updated_at?: string;
 }
 
-// ── AB-compare row (experiments — currently degraded) ────────────────────────
+// ── AB-compare row (experiments — PER-CALL projection shape) ─────────────────
 
+/**
+ * One PER-CALL row from `onex.snapshot.projection.ab-compare.v1`, backed by the
+ * `llm_call_metrics` table (created in OMN-12970). Columns are the snake_case
+ * projection-API columns verbatim. Each row is a single LLM call; the panel
+ * aggregates these into per-model rollups (see ab-compare-aggregate.ts).
+ *
+ * Token usage is honest-nullable: the exp0 emitter currently writes
+ * `prompt_tokens=0` / `usage_source='MISSING'` when the provider returned no
+ * usage (tracked upstream by OMN-12994). The aggregation layer treats those as
+ * ABSENT usage — never 0 masquerading as a measured value.
+ */
 export interface AbCompareRow {
-  model_name: string;
-  runs: number;
-  pass_rate: number;
-  avg_latency_ms: number;
-  avg_tokens: number;
+  correlation_id: string;
+  model_id: string;
+  prompt_tokens: number;
+  completion_tokens: number;
+  total_tokens: number;
+  estimated_cost_usd: number | null;
+  latency_ms: number | null;
+  usage_source: string | null;
+  created_at: string;
+  task_description?: string;
+}
+
+// ── Context-ROI experiment score row (OMN-12955) ─────────────────────────────
+
+/**
+ * One projection row from
+ * `onex.snapshot.projection.context.experiment-scores.v1`, backed by the
+ * `context_roi_scores` table (omnimarket node_projection_context_roi). One row
+ * per (run × task × arm × trial) cell captured by the context-ROI runner.
+ * Columns are the snake_case projection-API columns verbatim — normalization
+ * to the heatmap/hero view shapes happens in the panel layer.
+ */
+export interface ContextExperimentScoreRow {
+  id: string;
+  run_id: string;
+  correlation_id: string;
+  task_id: string;
+  run_order: number;
+  context_factor_subset: string;
+  context_pack_hash: string;
+  attempt_count: number;
+  first_pass_success: boolean;
+  final_success: boolean;
+  failure_stage: string;
+  prompt_tokens: number;
+  completion_tokens: number;
+  tokens_used: number;
+  estimated_cost: number;
+  model_id: string;
+  provider: string;
+  endpoint_ref: string;
+  proof_class: string;
+  created_at: string;
+  updated_at: string;
 }
 
 // ── Public fetchers ──────────────────────────────────────────────────────────
@@ -333,7 +397,11 @@ export const fetchCorrelationTrace = (
 
 export const fetchNodeGenerations = (): Promise<
   ProjectionResult<NodeGenerationRow>
-> => readProjection<NodeGenerationRow>(NODE_GENERATION_COMPLETED_TOPIC);
+> =>
+  readProjection<NodeGenerationRow>(
+    NODE_GENERATION_COMPLETED_TOPIC,
+    `limit=${NODE_GENERATION_WINDOW}&order=desc`,
+  );
 
 // ── Generate (thin publisher) — OMN-13004 ────────────────────────────────────
 //
@@ -396,3 +464,7 @@ export const fetchRegistration = (): Promise<
 
 export const fetchAbCompare = (): Promise<ProjectionResult<AbCompareRow>> =>
   readProjection<AbCompareRow>(TOPICS.abCompare);
+
+export const fetchContextExperimentScores = (): Promise<
+  ProjectionResult<ContextExperimentScoreRow>
+> => readProjection<ContextExperimentScoreRow>(TOPICS.contextExperimentScores);

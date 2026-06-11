@@ -18,6 +18,7 @@ import {
   fetchCorrelationTrace,
   fetchNodeGenerations,
   fetchAbCompare,
+  fetchContextExperimentScores,
   type ProjectionResult,
   type DelegationDecisionRow,
   type DelegationSummaryRow,
@@ -28,6 +29,7 @@ import {
   type CorrelationTraceRow,
   type NodeGenerationRow,
   type AbCompareRow,
+  type ContextExperimentScoreRow,
 } from '@/services/event-dash-api';
 
 // Live ticker poll cadence (ms). The bus view polls newest rows so the
@@ -66,3 +68,10 @@ export const useNodeGenerations = (): UseQueryResult<ProjectionResult<NodeGenera
 
 export const useAbCompare = (): UseQueryResult<ProjectionResult<AbCompareRow>> =>
   useQuery({ queryKey: ['ev', 'experiments', 'ab-compare'], queryFn: fetchAbCompare, refetchInterval: POLL_MS });
+
+export const useContextExperimentScores = (): UseQueryResult<ProjectionResult<ContextExperimentScoreRow>> =>
+  useQuery({
+    queryKey: ['ev', 'experiments', 'context-scores'],
+    queryFn: fetchContextExperimentScores,
+    refetchInterval: POLL_MS,
+  });

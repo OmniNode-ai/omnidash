@@ -55,10 +55,11 @@ describe('layoutsMiddleware (handler logic)', () => {
     });
   };
 
-  it('GET returns 404 when layout file is missing', async () => {
+  it('GET returns empty 204 when layout file is missing (no saved layout is normal, not an error)', async () => {
     const { handler } = layoutsMiddleware({ root });
     const r = await call(handler, 'GET', '/default');
-    expect(r.statusCode).toBe(404);
+    expect(r.statusCode).toBe(204);
+    expect(r.body).toBe('');
   });
 
   it('GET returns layout JSON when file exists', async () => {
