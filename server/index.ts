@@ -1,7 +1,6 @@
 import express from 'express';
 import http from 'http';
 import { fileURLToPath } from 'node:url';
-import { WebSocketServer, WebSocket } from 'ws';
 import routes from './routes.js';
 import { connectProducer, disconnectProducer } from './kafka-producer.js';
 
@@ -18,57 +17,14 @@ app.use(routes);
 
 const httpServer = http.createServer(app);
 
-// ── WebSocket bridge (/ws) ────────────────────────────────────────────────────
-// Forwards invalidation signals to the Vite SPA. Components subscribe to a
-// channel (e.g. "cost-trends") and receive INVALIDATE messages so they can
-// call queryClient.invalidateQueries() without polling.
-
-const wss = new WebSocketServer({ noServer: true });
-
-httpServer.on('upgrade', (req, socket, head) => {
-  const url = new URL(req.url ?? '/', `http://localhost`);
-  if (url.pathname === '/ws') {
-    wss.handleUpgrade(req, socket, head, (ws) => wss.emit('connection', ws));
-  }
-});
-
-type Subscription = Set<string>;
-export const clients = new Map<WebSocket, Subscription>();
-
-/**
- * Filtered broadcast helper. Sends an INVALIDATE frame to every client whose
- * subscription set contains either the '*' wildcard or the exact channel.
- * Tested in isolation by stubbing the `clients` map with mock WebSocket
- * instances (server/broadcast.test.ts).
- */
-export function broadcast(channel: string, data: unknown) {
-  const msg = JSON.stringify({ type: 'INVALIDATE', channel, data, ts: Date.now() });
-  for (const [ws, subs] of clients) {
-    if (ws.readyState === WebSocket.OPEN && (subs.has('*') || subs.has(channel))) {
-      ws.send(msg);
-    }
-  }
-}
-
-wss.on('connection', (ws: WebSocket) => {
-  const subs: Subscription = new Set(['*']);
-  clients.set(ws, subs);
-
-  ws.send(JSON.stringify({ type: 'CONNECTED', ts: Date.now() }));
-
-  ws.on('message', (raw) => {
-    try {
-      const msg = JSON.parse(raw.toString());
-      if (msg.action === 'subscribe' && Array.isArray(msg.channels)) {
-        subs.clear();
-        for (const ch of msg.channels) subs.add(String(ch));
-      }
-    } catch { /* ignore malformed frames */ }
-  });
-
-  ws.on('close', () => clients.delete(ws));
-  ws.on('error', () => clients.delete(ws));
-});
+// OMN-12969: the `/ws` WebSocket invalidation bridge was removed. It accepted
+// connections and exposed a `broadcast()` helper, but nothing ever called
+// `broadcast()` (no Kafka consumer was ever wired to it), so it never delivered
+// an INVALIDATE frame. The deployed dashboard targets the FastAPI projection
+// backend for live data, which has no `/ws` route — so the browser's upgrade was
+// rejected (403). Panels are poll-only via useProjectionQuery; this Express
+// process now serves HTTP projection reads and the Kafka dispatch producer only.
+// Reintroducing a client-side socket is guarded by local/no-projection-websocket.
 
 // Only start listening when this file is the entrypoint — importing it from
 // a test or another module must not bind to a port. ESM equivalent of the

@@ -21,7 +21,6 @@ type DataSourceMode = 'sqlite' | 'postgres' | 'file' | 'http';
 interface Defaults {
   mode: DataSourceMode;
   url: string;
-  wsUrl: string;
   sqliteDbPath: string;
 }
 
@@ -29,7 +28,6 @@ function defaultDataSource(): Defaults {
   return {
     mode: 'sqlite',
     url: 'http://localhost:3002',
-    wsUrl: 'ws://localhost:3002/ws',
     sqliteDbPath: '~/.omninode/delegation/delegation.sqlite',
   };
 }
@@ -56,7 +54,9 @@ function parseContract(raw: string, initial: Defaults = defaultDataSource()): De
     const [, key, value] = m;
     if (key === 'default') defaults.mode = value as DataSourceMode;
     else if (key === 'url') defaults.url = value;
-    else if (key === 'ws_url') defaults.wsUrl = value;
+    // OMN-12969: ws_url removed — the `/ws` invalidation path was dead
+    // (no `/ws` route on the deployed projection backend). Live updates are
+    // poll-driven via useProjectionQuery. The key is ignored if still present.
     else if (key === 'sqlite_db_path') defaults.sqliteDbPath = value;
   }
 
@@ -79,7 +79,6 @@ export type DataSourceMode = 'sqlite' | 'postgres' | 'file' | 'http';
 
 export const DATA_SOURCE_DEFAULT_MODE: DataSourceMode = ${JSON.stringify(d.mode)};
 export const DATA_SOURCE_DEFAULT_URL: string = ${JSON.stringify(d.url)};
-export const DATA_SOURCE_DEFAULT_WS_URL: string = ${JSON.stringify(d.wsUrl)};
 export const DATA_SOURCE_DEFAULT_SQLITE_DB_PATH: string = ${JSON.stringify(d.sqliteDbPath)};
 `;
 

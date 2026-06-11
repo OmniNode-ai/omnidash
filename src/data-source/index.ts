@@ -4,7 +4,6 @@ import { HttpSnapshotSource } from './http-snapshot-source';
 import {
   DATA_SOURCE_DEFAULT_MODE,
   DATA_SOURCE_DEFAULT_URL,
-  DATA_SOURCE_DEFAULT_WS_URL,
 } from '@/config/generated/data-source-defaults';
 import { resolveProjectionBaseUrl } from './projection-base-url';
 
@@ -53,36 +52,13 @@ export function createSnapshotSource(): ProtocolSnapshotSource {
   throw new Error(`Unknown data source mode: ${mode}`);
 }
 
-/**
- * Returns the WebSocket invalidation URL. Reads VITE_WS_URL when set;
- * otherwise derives a ws:// URL from VITE_PROJECTION_API_URL,
- * VITE_HTTP_DATA_SOURCE_URL, or VITE_SQLITE_DATA_SOURCE_URL. Falls back to
- * contract.yaml default.
- *
- * JSDoc rationale (OMN-10756): hardcoded 'ws://localhost:3002/ws' replaced by
- * DATA_SOURCE_DEFAULT_WS_URL from contract.yaml so all defaults are co-located
- * in one file and env vars are optional overrides only.
- */
-export function getWebSocketUrl(): string {
-  const explicit = import.meta.env.VITE_WS_URL;
-  if (explicit) return explicit;
-  const projectionUrl = import.meta.env.VITE_PROJECTION_API_URL;
-  if (projectionUrl) {
-    return projectionUrl.replace(/^http:/i, 'ws:').replace(/^https:/i, 'wss:').replace(/\/$/, '') + '/ws';
-  }
-  // In sqlite mode, use VITE_SQLITE_DATA_SOURCE_URL as the WS base so the
-  // WebSocket invalidation channel targets the same server as HTTP projections.
-  const mode = import.meta.env.VITE_DATA_SOURCE ?? DATA_SOURCE_DEFAULT_MODE;
-  if (mode === 'sqlite') {
-    const sqliteUrl = import.meta.env.VITE_SQLITE_DATA_SOURCE_URL ?? DATA_SOURCE_DEFAULT_URL;
-    return sqliteUrl.replace(/^http:/i, 'ws:').replace(/^https:/i, 'wss:').replace(/\/$/, '') + '/ws';
-  }
-  const httpUrl = import.meta.env.VITE_HTTP_DATA_SOURCE_URL;
-  if (httpUrl) {
-    return httpUrl.replace(/^http:/i, 'ws:').replace(/^https:/i, 'wss:').replace(/\/$/, '') + '/ws';
-  }
-  return DATA_SOURCE_DEFAULT_WS_URL;
-}
+// OMN-12969: getWebSocketUrl() and the `/ws` invalidation client were removed.
+// The deployed projection backend (FastAPI projection-api) serves HTTP + an
+// advisory SSE hint only — it never registered a `/ws` route — so the browser's
+// upgrade was rejected (403) and no INVALIDATE/event frame was ever delivered.
+// Live updates are driven by `useProjectionQuery`'s polling refetch against the
+// single projection backend. Reintroducing a raw browser WebSocket here is
+// guarded by the `local/no-projection-websocket` ESLint rule.
 
 export type { ProtocolSnapshotSource };
 export { FileSnapshotSource } from './file-snapshot-source';

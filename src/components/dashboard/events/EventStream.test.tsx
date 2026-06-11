@@ -7,30 +7,14 @@ import EventStream from './EventStream';
 
 const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } });
 
-// WebSocket mock
-class MockWebSocket {
-  static instance: MockWebSocket | null = null;
-  url: string;
-  onopen: (() => void) | null = null;
-  onmessage: ((e: MessageEvent) => void) | null = null;
-  onclose: (() => void) | null = null;
-  onerror: (() => void) | null = null;
-  readyState = 1;
-  send = vi.fn();
-  close = vi.fn();
-  constructor(url: string) {
-    this.url = url;
-    MockWebSocket.instance = this;
-  }
-}
-
+// OMN-12969: EventStream is poll-only. The dead `/ws` live-tail (useEventWebSocket)
+// was removed, so no WebSocket mock is required — events arrive solely through the
+// projection fetch below.
 
 describe('EventStream', () => {
   beforeEach(() => {
     qc.clear();
     vi.stubGlobal('fetch', vi.fn());
-    vi.stubGlobal('WebSocket', MockWebSocket);
-    MockWebSocket.instance = null;
   });
   afterEach(() => vi.restoreAllMocks());
 

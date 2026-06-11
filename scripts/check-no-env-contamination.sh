@@ -68,8 +68,13 @@ ALLOWLIST_FILES=(
   # the validator fires correctly — they are testing the detection pattern itself.
   'src/no-env-fallback.test.ts'
   'src/no-env-fallback.test.js'  # compiled artifact of the above
-  # Global test setup stubs VITE_WS_URL to a localhost address so integration
-  # tests that render Providers (which mounts useWebSocketInvalidation) don't throw.
+  # OMN-12969: no-projection-websocket rule tests use ws://localhost:3002/ws as
+  # literal fixture inputs to verify the detector fires — testing the pattern itself.
+  'src/no-projection-websocket.test.ts'
+  'src/no-projection-websocket.test.js'  # compiled artifact of the above
+  # OMN-12969: global test setup previously stubbed VITE_WS_URL to a localhost
+  # address; the dead `/ws` path was removed so it no longer does. Kept on the
+  # allowlist for any future localhost test stubs.
   'src/tests/setup.ts'
   'src/tests/setup.js'  # compiled artifact of the above
   # OMN-10756: contract.yaml and its derived files own the canonical localhost
