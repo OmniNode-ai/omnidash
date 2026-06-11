@@ -254,14 +254,30 @@ export interface RegistrationRow {
   updated_at?: string;
 }
 
-// ── AB-compare row (experiments — currently degraded) ────────────────────────
+// ── AB-compare row (experiments — PER-CALL projection shape) ─────────────────
 
+/**
+ * One PER-CALL row from `onex.snapshot.projection.ab-compare.v1`, backed by the
+ * `llm_call_metrics` table (created in OMN-12970). Columns are the snake_case
+ * projection-API columns verbatim. Each row is a single LLM call; the panel
+ * aggregates these into per-model rollups (see ab-compare-aggregate.ts).
+ *
+ * Token usage is honest-nullable: the exp0 emitter currently writes
+ * `prompt_tokens=0` / `usage_source='MISSING'` when the provider returned no
+ * usage (tracked upstream by OMN-12994). The aggregation layer treats those as
+ * ABSENT usage — never 0 masquerading as a measured value.
+ */
 export interface AbCompareRow {
-  model_name: string;
-  runs: number;
-  pass_rate: number;
-  avg_latency_ms: number;
-  avg_tokens: number;
+  correlation_id: string;
+  model_id: string;
+  prompt_tokens: number;
+  completion_tokens: number;
+  total_tokens: number;
+  estimated_cost_usd: number | null;
+  latency_ms: number | null;
+  usage_source: string | null;
+  created_at: string;
+  task_description?: string;
 }
 
 // ── Context-ROI experiment score row (OMN-12955) ─────────────────────────────
