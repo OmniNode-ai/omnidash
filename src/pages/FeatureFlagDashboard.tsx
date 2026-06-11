@@ -197,28 +197,43 @@ function FlagTable({ flags, title }: { flags: FeatureFlag[]; title: string }) {
   );
 }
 
+/**
+ * Source of the rendered flags.
+ * - `live`   — the omnidash Express server answered `/api/settings/feature-flags`.
+ * - `config` — the server is not wired into this dev session (plain `npm run dev`
+ *              has no Express process; no `VITE_OMNIDASH_SERVER_URL` proxy). The
+ *              panel falls back to client-side env. This is a normal local-dev
+ *              CONFIG state, not an error.
+ */
+type ServerState = 'live' | 'config';
+
 export function FeatureFlagDashboard() {
   const [serverFlags, setServerFlags] = useState<FeatureFlag[] | null>(null);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const [serverState, setServerState] = useState<ServerState>('config');
   const [fetchedAt, setFetchedAt] = useState<string | null>(null);
 
   useEffect(() => {
     const baseUrl = (import.meta.env.VITE_SERVER_BASE_URL as string | undefined) ?? '';
     fetch(`${baseUrl}/api/settings/feature-flags`)
       .then(async (res) => {
-        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        // A non-OK status, or an HTML body from the SPA history fallback (when
+        // no `/api/settings` proxy is configured), means the server is not wired
+        // into this dev session. Surface the client-env config state — not an
+        // error — so the console and UI stay honest about WHY.
+        if (!res.ok) throw new Error(`server endpoint not wired (HTTP ${res.status})`);
         const body: unknown = await res.json();
-        if (!isFlagsResponse(body)) throw new Error('Unexpected response shape');
+        if (!isFlagsResponse(body)) throw new Error('server endpoint not wired (SPA fallback)');
         const hydrated = body.flags.map((f) => ({
           ...f,
           state: resolveState(f.value),
         }));
         setServerFlags(hydrated);
         setFetchedAt(body.fetchedAt);
+        setServerState('live');
       })
-      .catch((err: unknown) => {
-        setError(err instanceof Error ? err.message : String(err));
+      .catch(() => {
+        setServerState('config');
       })
       .finally(() => setLoading(false));
   }, []);
@@ -244,7 +259,11 @@ export function FeatureFlagDashboard() {
           <div className="dash-title">Feature Flags</div>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 2 }}>
             <Text size="sm" color="secondary">
-              {loading ? 'Loading…' : error ? 'Server unavailable — showing client env' : 'Live from server'}
+              {loading
+                ? 'Loading…'
+                : serverState === 'live'
+                  ? 'Live from server'
+                  : 'Client env (flag server not running in this dev session)'}
             </Text>
             {fetchedAt && (
               <Text size="sm" color="tertiary">
@@ -285,7 +304,12 @@ export function FeatureFlagDashboard() {
             }}
           >
             <Text color="tertiary" size="sm">
-              omniclaude flags not available — server endpoint required to read server-side env vars.
+              Config state, not an error: the omnidash flag server is not running
+              in this dev session, so the table above reflects client-side env
+              only and omniclaude (server-side) flags are unavailable. Start the
+              server with <Text as="span" family="mono" size="sm">npm run dev:server</Text> and
+              point dev at it by setting <Text as="span" family="mono" size="sm">VITE_OMNIDASH_SERVER_URL</Text> to
+              its base URL (see <Text as="span" family="mono" size="sm">.env.example</Text>) to read live flags.
             </Text>
           </div>
         )}
