@@ -1,5 +1,9 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { fetchContextExperimentScores } from './event-dash-api';
+import {
+  fetchContextExperimentScores,
+  fetchDelegationDecisions,
+  fetchNodeGenerations,
+} from './event-dash-api';
 
 // Force a live (http) data source so projectionUrl() resolves a backend origin
 // instead of throwing in file mode.
@@ -82,5 +86,49 @@ describe('fetchContextExperimentScores', () => {
     expect(result.rows).toEqual([]);
     expect(result.isDegraded).toBe(true);
     expect(result.degradedReason).toContain('unknown_topic');
+  });
+});
+
+/**
+ * OMN-12999: the SEA / Event-Bus node-generation fetcher must request a bounded
+ * latest-N window so the projection API does not serialize the full unbounded
+ * heavy payload (contract_yaml / handler_source for every row), which stalled
+ * the tiles at '—' for ~10-28 s against the live backend.
+ */
+describe('fetchNodeGenerations (OMN-12999 bounded read)', () => {
+  beforeEach(() => {
+    vi.restoreAllMocks();
+  });
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
+
+  it('requests a bounded latest-N window (limit + desc order)', async () => {
+    const fetchMock = vi.fn().mockResolvedValueOnce({
+      ok: true,
+      json: async () => ({ rows: [], row_count: 0, data_freshness: 'fresh', latest_event_at: null }),
+    });
+    vi.stubGlobal('fetch', fetchMock);
+
+    await fetchNodeGenerations();
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    const url = String((fetchMock.mock.calls[0] as unknown[])[0]);
+    expect(url).toContain('/projection/');
+    expect(url).toContain('node-generation-completed.v1');
+    expect(url).toContain('limit=50');
+    expect(url).toContain('order=desc');
+  });
+
+  it('does not bound delegation decisions (unrelated fetcher stays param-less)', async () => {
+    const fetchMock = vi.fn().mockResolvedValueOnce({
+      ok: true,
+      json: async () => ({ rows: [], row_count: 0, data_freshness: 'fresh', latest_event_at: null }),
+    });
+    vi.stubGlobal('fetch', fetchMock);
+
+    await fetchDelegationDecisions();
+    const url = String((fetchMock.mock.calls[0] as unknown[])[0]);
+    expect(url).not.toContain('limit=');
+    expect(url).not.toContain('order=');
   });
 });

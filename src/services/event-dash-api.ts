@@ -32,6 +32,20 @@ import { projectionUrl } from '@/data-source/projection-base-url';
  */
 const NODE_GENERATION_COMPLETED_TOPIC = 'onex.evt.omnimarket.node-generation-completed.v1';
 
+/**
+ * OMN-12999: latest-N window the SEA / Event-Bus tiles actually render.
+ *
+ * The bus/correlation surfaces show a count plus the newest correlations
+ * (subject/model/latency/state); the full `contract_yaml` / `handler_source`
+ * payload bodies are never displayed (the contract YAML is only regex-scanned
+ * for a node name). The projection contract declares `order_by: created_at DESC`
+ * with a `limit: 500` ceiling, so requesting the newest 50 rows is a
+ * contract-respecting bounded read. Without this bound the panel pulls the full
+ * unbounded payload (~419 KB), whose server-side serialization stalled the tiles
+ * at '—' for ~10-28 s (measured 2026-06-11 against the live :13002 backend).
+ */
+const NODE_GENERATION_WINDOW = 50;
+
 // ── Envelope + result types ──────────────────────────────────────────────────
 
 /** Freshness reported by the projection API envelope. */
@@ -341,7 +355,10 @@ export const fetchCorrelationTrace = (correlationId: string): Promise<Projection
   );
 
 export const fetchNodeGenerations = (): Promise<ProjectionResult<NodeGenerationRow>> =>
-  readProjection<NodeGenerationRow>(NODE_GENERATION_COMPLETED_TOPIC);
+  readProjection<NodeGenerationRow>(
+    NODE_GENERATION_COMPLETED_TOPIC,
+    `limit=${NODE_GENERATION_WINDOW}&order=desc`,
+  );
 
 export const fetchRegistration = (): Promise<ProjectionResult<RegistrationRow>> =>
   readProjection<RegistrationRow>(TOPICS.registration);
