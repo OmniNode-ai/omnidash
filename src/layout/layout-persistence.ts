@@ -4,7 +4,8 @@
  * Browser-side helpers for reading and writing dashboard layouts via the
  * Vite dev-server /_layouts middleware.
  *
- * GET  /_layouts/<name>  → 200 with JSON body, or 404 if not found.
+ * GET  /_layouts/<name>  → 200 with JSON body, or 204 (no saved layout).
+ *                          404 is also tolerated for back-compat.
  * POST /_layouts/<name>  → 200 with the written JSON body (upsert / idempotent).
  */
 
@@ -26,7 +27,10 @@ export class HttpLayoutPersistence implements LayoutPersistence {
   async read(name: string): Promise<DashboardDefinition | null> {
     const url = `${this.baseUrl}/_layouts/${encodeURIComponent(name)}`;
     const res = await fetch(url);
-    if (res.status === 404) return null;
+    // OMN-12995: 204 (empty, no saved layout) is the normal first-load state.
+    // 404 is tolerated for back-compat with older dev servers. Both mean "no
+    // saved layout" — return null without touching the (empty) response body.
+    if (res.status === 204 || res.status === 404) return null;
     if (!res.ok) throw new Error(`/_layouts read failed: ${res.status} ${res.statusText}`);
     const body: unknown = await res.json();
     const result = parseDashboardDefinition(body);
