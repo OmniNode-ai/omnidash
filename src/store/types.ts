@@ -105,7 +105,15 @@ export type { ConversationSlice };
 import type { ConfigSlice } from './configSlice';
 export type { ConfigSlice };
 
-export type AppPage = 'dashboard' | 'feature-flags' | 'eval';
+export type AppPage =
+  | 'dashboard'
+  | 'feature-flags'
+  | 'eval'
+  // OMN-12943 — ported event-dash views (additive routes). Existing members untouched.
+  | 'delegation-evidence'
+  | 'event-bus'
+  | 'experiments'
+  | 'sea-control';
 
 export interface UISlice {
   /** True when the left dashboard sidebar is collapsed to a narrow rail. */
