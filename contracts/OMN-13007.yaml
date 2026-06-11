@@ -1,0 +1,36 @@
+schema_version: "1.0.0"
+ticket_id: "OMN-13007"
+title: "Dashboard chrome: honest, runtime-switchable DATA SOURCE control replaces the timezone-lookalike dropdown"
+summary: >-
+  The dashboard chrome's left-most filter-cluster dropdown (src/pages/DashboardView.tsx) was a TIMEZONE picker that visually read as a data-source selector, while the dashboard's real data source (file/fixture vs live projection backend) was invisible and unswitchable at runtime — env-only via VITE_DATA_SOURCE / VITE_PROJECTION_API_URL resolved in src/data-source/projection-base-url.ts. This burned the operator: their SEA Demo instance silently ran in file mode, every panel showed fixture empty-states, and the SEA generate widget failed with "Missing data source base URL" while a lookalike dropdown sat in exactly the spot the fix belongs. This change adds an honest DATA SOURCE control to the chrome filter cluster (left-most position): it shows the current mode honestly ("Live - host:port" with the compute/green palette, or "File fixtures" with the warn/amber fixture treatment) and lets the operator switch at runtime (live + an editable backend base URL, or file mode). The choice persists in localStorage and overrides the env-resolved default through a SINGLE seam: src/data-source/data-source-override.ts (resolveEffectiveDataSource) is consulted by projection-base-url.ts (resolveProjectionBaseUrl / new resolveCommandBaseUrl), data-source/index.ts (createSnapshotSource), useDataSourceMode, and delegation-api.ts — no per-widget resolution fork. The SEA generate widget's submit base URL (ControlPlanePage.tsx) now resolves through the same seam, so file mode fails with an honest "switch to Live" message instead of silently posting to the page origin. The SnapshotSourceProvider recreates its source and invalidates the React Query cache on a runtime switch so panels refetch from the new backend. The timezone picker is preserved but relocated to the right of the date-range control, so it no longer occupies — or impersonates — the data-source position. Lineage: audit candidate #7 / OMN-12981 (dashboard authority labels) — same honest-authority-surfacing principle.
+is_seam_ticket: true
+interface_change: true
+interfaces_touched:
+  - "public_api"
+emergency_bypass:
+  enabled: false
+  justification: ""
+  follow_up_ticket_id: ""
+evidence_requirements:
+  - kind: "tests"
+    description: >-
+      src/data-source/data-source-override.test.ts asserts the override seam: persistence, env layering, and that switching the override changes resolveProjectionBaseUrl()/resolveCommandBaseUrl() (live base URL -> file null -> cleared back to env). src/components/dashboard/DataSourceControl.test.tsx asserts the component contract: file mode renders the fixture treatment (data-mode="file"), switching to Live changes the resolved projection base URL, switching to File flips resolution to null and shows the fixture treatment. Full suite (no -k): npx vitest run -> 1291 passed.
+    command: "cd omnidash && npx vitest run"
+  - kind: "manual"
+    description: >-
+      Playwright render proof on an isolated dev server (strict port 3017, operator's :3001 untouched): the left-most chrome control is the green "Live - localhost:3002" DATA SOURCE control with the timezone picker relocated to the right of the cluster; opening it shows the Live/File menu with an editable backend URL; selecting File flips the control to the amber "File fixtures" treatment, raises the "Fixture Mode" banner, and switches panels to fixture rendering. file mode can no longer masquerade as live.
+    command: "npx vitest run src/components/dashboard/DataSourceControl.test.tsx"
+  - kind: "ci"
+    description: >-
+      All required CI checks green on the omnidash PR (Typecheck & Tests, contract-validation, golden-chain, gate/CodeRabbit Thread Check, pr-title/check-title).
+    command: "gh pr checks <pr> --repo OmniNode-ai/omnidash"
+dod_evidence:
+  - id: "dod-omnidash-pr"
+    description: >-
+      omnidash PR adds the honest runtime DATA SOURCE chrome control + the single override seam (data-source-override.ts) consulted by projection-base-url/index/useDataSourceMode/delegation-api and the SEA generate submit; relocates the timezone picker out of the data-source position; renders the fixture treatment in file mode. Full vitest suite (1291) passing; tsc --noEmit clean; eslint --max-warnings=0 clean; pre-commit on changed files green (OMNIBASE_CORE_PATH set per feedback_omnidash_worktree_precommit_corepath). Playwright render evidence captured.
+    source: "manual"
+    status: "verified"
+    checks:
+      - check_type: "command"
+        check_value: >-
+          grep -q '^status: PASS$' drift/dod_receipts/OMN-13007/dod-omnidash-pr/command.yaml

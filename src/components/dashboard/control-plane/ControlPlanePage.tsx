@@ -8,7 +8,8 @@ import { PipelineLogStream, type PipelineEvent } from './PipelineLogStream';
 import { PipelineStatusBar, type ServiceStatus } from './PipelineStatusBar';
 import { DelegationTriggerPanel } from '@/components/dashboard/delegation-control-plane/DelegationTriggerPanel';
 
-import { DATA_SOURCE_DEFAULT_MODE } from '@/config/generated/data-source-defaults';
+import { resolveCommandBaseUrl } from '@/data-source/projection-base-url';
+import { useEffectiveDataSource } from '@/data-source/useDataSourceOverride';
 
 const NODE_GENERATION_COMPLETED_PROJECTION_TOPIC = 'onex.evt.omnimarket.node-generation-completed.v1';
 
@@ -46,14 +47,6 @@ interface LiveGenerateResponse {
   status?: string;
   error?: string;
   message?: string;
-}
-
-function getDataSourceMode(): string {
-  try {
-    return import.meta.env.VITE_DATA_SOURCE ?? DATA_SOURCE_DEFAULT_MODE;
-  } catch {
-    return 'file';
-  }
 }
 
 function text(value: unknown): string | null {
@@ -169,10 +162,13 @@ export default function ControlPlanePage({
     // OMN-12775: file-mode client-side fabrication disabled — default to bus/projection.
     // No simulated:true events; projection data comes from the bus on the demo path.
     {
-      const baseUrl =
-        import.meta.env.VITE_HTTP_DATA_SOURCE_URL ??
-        import.meta.env.VITE_SQLITE_DATA_SOURCE_URL ??
-        '';
+      // OMN-13007: resolve the command origin through the shared seam so the SEA
+      // generate submit follows the runtime data-source override (chrome control)
+      // exactly like every projection read. `null` means file mode — there is no
+      // live backend, so the submit fails with an honest "switch to live" message
+      // instead of silently posting to the page origin. `''` is the valid
+      // same-origin proxy base.
+      const baseUrl = resolveCommandBaseUrl();
       const now = Date.now();
       const pendingCorrelationId = `pending-${now}`;
       setSubmitState({ phase: 'submitting', message: `Submitting generation request: ${prompt}` });
@@ -189,7 +185,11 @@ export default function ControlPlanePage({
       ]);
       void (async () => {
         try {
-          if (!baseUrl) throw new Error('Missing data source base URL');
+          if (baseUrl === null) {
+            throw new Error(
+              'Data source is in File (fixtures) mode — switch the chrome DATA SOURCE control to Live to submit a generation request.',
+            );
+          }
           const response = await fetch(`${baseUrl}/api/sea/generate`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -259,7 +259,9 @@ export default function ControlPlanePage({
     }
   }, [refreshSeaProjections, refreshSeaProjectionsAfterWrite]);
 
-  const mode = getDataSourceMode();
+  // OMN-13007: effective mode honors the runtime chrome override so the SEA
+  // widget's status flips to live the moment the operator switches source.
+  const mode = useEffectiveDataSource().mode;
   const serviceStatus: ServiceStatus =
     mode === 'file'
       ? 'demo'
