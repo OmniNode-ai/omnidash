@@ -1,0 +1,300 @@
+/**
+ * OMN-12943: Contract-backed data adapter for the four ported event-dash views
+ * (delegation-evidence, event-bus, experiments, sea-control).
+ *
+ * Every function reads a REAL projection via `projectionUrl(topic)` → the single
+ * `/projection/{topic}` backend (same-origin proxy in serve mode). There is no
+ * fixture path here: these views ship live-only. A topic that returns no rows,
+ * an `unknown_topic` body, or a `{status:'degraded'}` body resolves to a typed
+ * `ProjectionResult` with `rows: []` plus the freshness/degraded/reason fields,
+ * so each panel renders an explicit honest empty/degraded state — never mock data.
+ *
+ * This is the canonical boundary where raw JSON is normalized into typed rows;
+ * the page components consume the typed result and never cast `res.json()`
+ * themselves (keeps the no-cast-on-parsed-json + no-projection-fallback lint
+ * rules satisfied at the call sites).
+ *
+ * Topic strings live in `shared/types/topics.ts` (TOPICS); never inline a literal.
+ */
+
+import { TOPICS } from '@shared/types/topics';
+import { projectionUrl } from '@/data-source/projection-base-url';
+
+/**
+ * SEA node-generation-completed projection topic. Unlike the entries in
+ * `TOPICS` (which are all `onex.snapshot.projection.*` snapshot projections),
+ * this is a bus EVENT topic that the projection API also serves at
+ * `/projection/<topic>` (verified live on :13002). It deliberately does NOT
+ * live in `shared/types/topics.ts` because that const is contractually
+ * restricted to the `snapshot.projection.*` namespace (enforced by
+ * topics.test.ts + the golden-chain coverage gate). Defined here so the SEA +
+ * event-bus views can read it without violating that convention.
+ */
+const NODE_GENERATION_COMPLETED_TOPIC = 'onex.evt.omnimarket.node-generation-completed.v1';
+
+// ── Envelope + result types ──────────────────────────────────────────────────
+
+/** Freshness reported by the projection API envelope. */
+export type ProjectionFreshness = 'fresh' | 'degraded' | 'unknown';
+
+/** Normalized result of a single projection read. */
+export interface ProjectionResult<T> {
+  rows: T[];
+  rowCount: number;
+  freshness: ProjectionFreshness;
+  latestEventAt: string | null;
+  /** True when the backend reports degraded (missing table / unknown topic / degraded freshness). */
+  isDegraded: boolean;
+  /** Backend-supplied reason when degraded/unknown (verbatim), else null. */
+  degradedReason: string | null;
+}
+
+interface RawEnvelope {
+  rows?: unknown;
+  row_count?: unknown;
+  data_freshness?: unknown;
+  latest_event_at?: unknown;
+  status?: unknown;
+  reason?: unknown;
+  error?: unknown;
+}
+
+function asString(v: unknown): string | null {
+  return typeof v === 'string' ? v : null;
+}
+
+function asFreshness(v: unknown): ProjectionFreshness {
+  return v === 'fresh' || v === 'degraded' ? v : 'unknown';
+}
+
+function isRecord(v: unknown): v is Record<string, unknown> {
+  return typeof v === 'object' && v !== null;
+}
+
+/**
+ * Normalize a raw projection-API body into a typed ProjectionResult. Handles
+ * the three real backend shapes observed on :13002:
+ *   1. `{ rows: [...], row_count, data_freshness, latest_event_at }` (served)
+ *   2. `{ status: 'degraded', reason: "table '...' not found at startup" }`
+ *   3. `{ error: 'unknown_topic', available_topics: [...] }`
+ */
+function normalize<T>(body: unknown): ProjectionResult<T> {
+  if (!isRecord(body)) {
+    return { rows: [], rowCount: 0, freshness: 'unknown', latestEventAt: null, isDegraded: true, degradedReason: 'malformed projection response' };
+  }
+  const env = body as RawEnvelope;
+
+  // Shape 3: unknown topic.
+  const errStr = asString(env.error);
+  if (errStr) {
+    return { rows: [], rowCount: 0, freshness: 'unknown', latestEventAt: null, isDegraded: true, degradedReason: `topic not served (${errStr})` };
+  }
+
+  // Shape 2: degraded status with a reason (no rows array).
+  const statusStr = asString(env.status);
+  if (statusStr === 'degraded' && !Array.isArray(env.rows)) {
+    return { rows: [], rowCount: 0, freshness: 'degraded', latestEventAt: null, isDegraded: true, degradedReason: asString(env.reason) };
+  }
+
+  // Shape 1: served envelope.
+  const rows = Array.isArray(env.rows) ? (env.rows as T[]) : [];
+  const freshness = asFreshness(env.data_freshness);
+  const rowCount = typeof env.row_count === 'number' ? env.row_count : rows.length;
+  return {
+    rows,
+    rowCount,
+    freshness,
+    latestEventAt: asString(env.latest_event_at),
+    isDegraded: freshness !== 'fresh',
+    degradedReason: null,
+  };
+}
+
+async function readProjection<T>(topic: string, query?: string): Promise<ProjectionResult<T>> {
+  const url = projectionUrl(topic, query);
+  const res = await fetch(url);
+  if (!res.ok) {
+    return { rows: [], rowCount: 0, freshness: 'unknown', latestEventAt: null, isDegraded: true, degradedReason: `HTTP ${res.status}` };
+  }
+  const body = (await res.json().catch(() => null)) as unknown;
+  return normalize<T>(body);
+}
+
+// ── Delegation row types (decisions / summary / routing / quality / savings / tokens) ──
+
+export interface DelegationDecisionRow {
+  id: string;
+  correlation_id: string;
+  session_id: string | null;
+  task_type: string;
+  delegated_to: string | null;
+  model_name: string;
+  quality_gate_passed: boolean;
+  quality_gate_detail: string | null;
+  latency_ms: number | null;
+  tokens_input: number | null;
+  tokens_output: number | null;
+  tokens_to_compliance: number | null;
+  created_at: string;
+}
+
+export interface DelegationSummaryRow {
+  totalDelegations: number;
+  qualityGatePassRate: number;
+  qualityGatePassed: number;
+  qualityGateTotal: number;
+  totalSavingsUsd: number;
+  avgLatencyMs: number;
+}
+
+export interface ModelRoutingInnerRow {
+  count: number;
+  task_type: string;
+  model_name: string;
+  pct_of_model: number;
+  pct_of_total: number;
+}
+
+export interface ModelRoutingRow {
+  total_delegations: number;
+  rows: ModelRoutingInnerRow[];
+}
+
+export interface QualityGateFailureCategory {
+  count: number;
+  category: string;
+  pct_of_failures: number;
+}
+
+export interface QualityGateRow {
+  overall_pass_rate: number;
+  total_passed: number;
+  total_failed: number;
+  total_checks: number;
+  escalation_count: number;
+  escalation_rate: number;
+  failure_categories: QualityGateFailureCategory[];
+}
+
+export interface SavingsRow {
+  cumulative_savings_usd: number;
+  cumulative_local_cost_usd: number;
+  cumulative_cloud_cost_usd: number;
+  baseline_model: string;
+  pricing_manifest_version: string;
+  session_count: number;
+}
+
+export interface TokenUsageByModel {
+  model_id: string;
+  model_name: string;
+  total_tokens: number;
+  prompt_tokens: number;
+  completion_tokens: number;
+  estimated_cost_usd: number;
+  token_provenance: string;
+}
+
+export interface TokenUsageRow {
+  total_prompt_tokens: number;
+  total_completion_tokens: number;
+  total_tokens: number;
+  total_estimated_cost_usd: number;
+  by_model: TokenUsageByModel[];
+}
+
+/** Correlation-trace row — carries prompt_text / response_text per correlation_id. */
+export interface CorrelationTraceRow {
+  id: string;
+  correlation_id: string;
+  task_type: string;
+  model_name: string;
+  quality_gate_passed: boolean;
+  quality_gate_detail: string | null;
+  latency_ms: number | null;
+  tokens_input: number | null;
+  tokens_output: number | null;
+  cost_usd: number | null;
+  cost_savings_usd: number | null;
+  routing_rule: string | null;
+  prompt_text: string | null;
+  response_text: string | null;
+  created_at: string;
+}
+
+// ── SEA / node-generation row type ───────────────────────────────────────────
+
+export interface NodeGenerationRow {
+  id: string;
+  correlation_id: string;
+  task_description: string;
+  provider: string;
+  model_id: string;
+  endpoint_class: string;
+  attempt_count: number;
+  total_latency_e2e_ms: number;
+  contract_passed: boolean;
+  cost_inference_usd: string;
+  contract_yaml: string;
+  handler_source: string;
+  output_payload_sha256: string;
+  contract_sha256: string;
+  handler_sha256: string;
+  routing_source: string;
+  resolved_endpoint: string;
+  projection_owner: string;
+  created_at: string;
+}
+
+// ── Registration row (event-bus liveness) ────────────────────────────────────
+
+export interface RegistrationRow {
+  service_name: string;
+  service_type: string | null;
+  updated_at?: string;
+}
+
+// ── AB-compare row (experiments — currently degraded) ────────────────────────
+
+export interface AbCompareRow {
+  model_name: string;
+  runs: number;
+  pass_rate: number;
+  avg_latency_ms: number;
+  avg_tokens: number;
+}
+
+// ── Public fetchers ──────────────────────────────────────────────────────────
+
+export const fetchDelegationDecisions = (): Promise<ProjectionResult<DelegationDecisionRow>> =>
+  readProjection<DelegationDecisionRow>(TOPICS.delegationDecisions);
+
+export const fetchDelegationSummary = (): Promise<ProjectionResult<DelegationSummaryRow>> =>
+  readProjection<DelegationSummaryRow>(TOPICS.delegationSummary);
+
+export const fetchDelegationModelRouting = (): Promise<ProjectionResult<ModelRoutingRow>> =>
+  readProjection<ModelRoutingRow>(TOPICS.delegationModelRouting);
+
+export const fetchDelegationQualityGate = (): Promise<ProjectionResult<QualityGateRow>> =>
+  readProjection<QualityGateRow>(TOPICS.delegationQualityGate);
+
+export const fetchDelegationSavings = (): Promise<ProjectionResult<SavingsRow>> =>
+  readProjection<SavingsRow>(TOPICS.delegationSavings);
+
+export const fetchDelegationTokenUsage = (): Promise<ProjectionResult<TokenUsageRow>> =>
+  readProjection<TokenUsageRow>(TOPICS.delegationTokenUsage);
+
+export const fetchCorrelationTrace = (correlationId: string): Promise<ProjectionResult<CorrelationTraceRow>> =>
+  readProjection<CorrelationTraceRow>(
+    TOPICS.delegationCorrelationTrace,
+    `correlation_id=${encodeURIComponent(correlationId)}`,
+  );
+
+export const fetchNodeGenerations = (): Promise<ProjectionResult<NodeGenerationRow>> =>
+  readProjection<NodeGenerationRow>(NODE_GENERATION_COMPLETED_TOPIC);
+
+export const fetchRegistration = (): Promise<ProjectionResult<RegistrationRow>> =>
+  readProjection<RegistrationRow>(TOPICS.registration);
+
+export const fetchAbCompare = (): Promise<ProjectionResult<AbCompareRow>> =>
+  readProjection<AbCompareRow>(TOPICS.abCompare);

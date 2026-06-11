@@ -12,7 +12,7 @@
 //     keeping the menu pattern consistent with the prototype across the whole app.
 
 import { useEffect, useLayoutEffect, useRef, useState } from 'react';
-import { Edit, Copy, Plus, MoreHorizontal, Trash2, ChevronsLeft, ChevronsRight, SlidersHorizontal, Grid3x3 } from 'lucide-react';
+import { Edit, Copy, Plus, MoreHorizontal, Trash2, ChevronsLeft, ChevronsRight, SlidersHorizontal, Grid3x3, GitBranch, Sparkles, FlaskConical, Radio } from 'lucide-react';
 import type { AppPage } from '@/store/types';
 import {
   PositionedMenu,
@@ -270,6 +270,51 @@ export function Sidebar() {
             </button>
           </Text>
         )}
+      </div>
+
+      {/* OMN-12943 — Event-driven runtime nav group (additive). Reuses the
+          existing dash-item styling + setActivePage toggle pattern; the four
+          ported views (delegation-evidence / event-bus / experiments /
+          sea-control) live behind these entries. Existing nav untouched. */}
+      <div
+        style={{
+          borderTop: '1px solid var(--sidebar-border, oklch(22% 0.01 260))',
+          paddingTop: 4,
+        }}
+      >
+        {!collapsed && (
+          <div className="sidebar-bottom-title" style={{ padding: '4px 12px 2px' }}>
+            <Text size="xs" color="tertiary" transform="uppercase" weight="semibold">
+              Event-driven runtime
+            </Text>
+          </div>
+        )}
+        {(
+          [
+            { page: 'delegation-evidence' as AppPage, label: 'Delegation Evidence', icon: <GitBranch size={13} /> },
+            { page: 'event-bus' as AppPage, label: 'Event Bus', icon: <Radio size={13} /> },
+            { page: 'experiments' as AppPage, label: 'Experimentation', icon: <FlaskConical size={13} /> },
+            { page: 'sea-control' as AppPage, label: 'SEA Control Plane', icon: <Sparkles size={13} /> },
+          ] as const
+        ).map(({ page, label, icon }) => (
+          <div
+            key={page}
+            role="button"
+            tabIndex={0}
+            data-testid={`nav-${page}`}
+            className={`dash-item${activePage === page ? ' active' : ''}`}
+            title={collapsed ? label : undefined}
+            onClick={() => setActivePage(activePage === page ? 'dashboard' : page)}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter' || e.key === ' ') {
+                setActivePage(activePage === page ? 'dashboard' : page);
+              }
+            }}
+          >
+            <span className="dash-marker">{icon}</span>
+            {!collapsed && <span className="dash-name">{label}</span>}
+          </div>
+        ))}
       </div>
 
       {/* Bottom nav — settings / feature flags */}
