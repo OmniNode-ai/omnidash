@@ -7,10 +7,21 @@ import { PromptInput } from './PromptInput';
 import { PipelineLogStream, type PipelineEvent } from './PipelineLogStream';
 import { PipelineStatusBar, type ServiceStatus } from './PipelineStatusBar';
 import { DelegationTriggerPanel } from '@/components/dashboard/delegation-control-plane/DelegationTriggerPanel';
+import { resolveProjectionBaseUrl } from '@/data-source/projection-base-url';
 
 import { DATA_SOURCE_DEFAULT_MODE } from '@/config/generated/data-source-defaults';
 
 const NODE_GENERATION_COMPLETED_PROJECTION_TOPIC = 'onex.evt.omnimarket.node-generation-completed.v1';
+
+// Live thin-publisher route on the projection API (omnimarket OMN-13004).
+// POST {task_description} -> publishes ONE command to
+// onex.cmd.omnimarket.node-generation-requested.v1 and returns {correlation_id, topic}.
+// Reached through the same projection backend the dashboard reads from: the
+// dev/serving layer proxies same-origin /api/generate to VITE_PROJECTION_API_URL
+// (see vite.proxy-config.ts). resolveProjectionBaseUrl() returns '' (relative,
+// same-origin) when that proxy is configured, so the submit and the projection
+// reads always hit the SAME single backend — never /api/sea/generate (no such route).
+const GENERATE_PUBLISHER_PATH = '/api/generate';
 
 type SeaProjectionRow = Partial<Omit<PipelineEvent, 'type'>> & {
   id?: unknown;
@@ -169,10 +180,10 @@ export default function ControlPlanePage({
     // OMN-12775: file-mode client-side fabrication disabled — default to bus/projection.
     // No simulated:true events; projection data comes from the bus on the demo path.
     {
-      const baseUrl =
-        import.meta.env.VITE_HTTP_DATA_SOURCE_URL ??
-        import.meta.env.VITE_SQLITE_DATA_SOURCE_URL ??
-        '';
+      // Single backend, single resolver: the same origin the dashboard reads
+      // projections from. In file mode there is no backend; resolveProjectionBaseUrl
+      // returns null and we fail-fast rather than fabricate events (OMN-12775).
+      const baseUrl = resolveProjectionBaseUrl();
       const now = Date.now();
       const pendingCorrelationId = `pending-${now}`;
       setSubmitState({ phase: 'submitting', message: `Submitting generation request: ${prompt}` });
@@ -189,8 +200,13 @@ export default function ControlPlanePage({
       ]);
       void (async () => {
         try {
-          if (!baseUrl) throw new Error('Missing data source base URL');
-          const response = await fetch(`${baseUrl}/api/sea/generate`, {
+          // null == file mode (no backend). '' is valid (same-origin via proxy).
+          if (baseUrl === null) {
+            throw new Error(
+              'No projection backend configured (file mode); generation requires a live data source',
+            );
+          }
+          const response = await fetch(`${baseUrl}${GENERATE_PUBLISHER_PATH}`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ task_description: prompt }),
