@@ -60,6 +60,15 @@ export const PALETTE_CLASSIFICATION: Record<string, PaletteClassification> = {
   // close-the-loop plan keep-set, labeled degraded; renders its empty/degraded
   // state (no synthetic rows) until OMN-12082 exposes the projection.
   'context-effectiveness-heatmap': { paletteVisibility: 'visible', authorityLabel: 'degraded', probe: 'context.experiment-scores.v1=404 (kept per keep-set; degraded)' },
+  // Instruction Eval (OMN-12997): rendered as a dedicated PAGE (InstructionEvalPage),
+  // not a palette widget — it has no MVP_COMPONENTS manifest, so the registry/chrome
+  // authorityLabel path does not apply and this entry is the single source of truth
+  // for its authority. The view renders a committed fixture (instruction-eval.fixtures.ts,
+  // run 20260526-170241 — 2026-05-26) with ZERO network requests; there is no projection
+  // backing instruction-eval results yet (proper path: OMN-12998). Classified `degraded`
+  // (recorded, not live/projection-backed); the view carries a prominent
+  // "Recorded evaluation — 2026-05-26 (fixture)" badge so it cannot be mistaken for proof.
+  'instruction-eval': { paletteVisibility: 'visible', authorityLabel: 'degraded', probe: 'no projection (page-only fixture view, run 20260526-170241); recorded — see OMN-12998' },
 
   // --- HIDDEN / hidden (503 table missing on the single backend) ---
   'cost-summary': { paletteVisibility: 'hidden', authorityLabel: 'hidden', probe: 'cost.summary.v1=503 (table llm_cost_aggregates missing)' },

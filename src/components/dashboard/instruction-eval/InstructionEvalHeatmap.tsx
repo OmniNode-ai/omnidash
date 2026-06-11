@@ -136,6 +136,54 @@ function DilutionCell({ delta }: { delta: number | null }) {
   );
 }
 
+// ── Recorded-data authority badge ──────────────────────────────────────────────
+
+/**
+ * The instruction-eval view renders a committed fixture (run 20260526-170241),
+ * NOT a live projection — there is no projection backing instruction-eval results
+ * yet (follow-up: OMN-12998). Without a positive indicator the panel reads as a
+ * live, projection-backed surface, which is a quiet authority violation in a demo.
+ *
+ * This badge carries the `degraded`/recorded palette treatment (reducer-blue tint
+ * + ▲ glyph, the same vocabulary HonestyStateBadge uses for non-live provenance)
+ * and is rendered both in the widget header and above the matrix so the recorded
+ * nature is unmissable wherever the data appears.
+ *
+ * RECORDED_RUN_ISO is the calendar date parsed from the fixture's run id
+ * (20260526-170241 → 2026-05-26). Keep in sync with instruction-eval.fixtures.ts.
+ */
+const RECORDED_RUN_DATE = '2026-05-26';
+const RECORDED_BADGE_LABEL = `Recorded evaluation — ${RECORDED_RUN_DATE} (fixture)`;
+
+function RecordedEvaluationBadge() {
+  return (
+    <span
+      role="status"
+      aria-label={`Data authority: recorded evaluation, fixture run ${RECORDED_RUN_DATE}. Not a live projection.`}
+      style={{
+        display: 'inline-flex',
+        alignItems: 'center',
+        gap: 6,
+        height: 22,
+        padding: '0 10px',
+        borderRadius: 999,
+        background: 'var(--reducer-soft)',
+        border: '1px solid var(--reducer)',
+        color: 'var(--reducer-ink)',
+        whiteSpace: 'nowrap',
+        userSelect: 'none',
+      }}
+    >
+      <Text as="span" size="xs" weight="semibold" color="inherit" aria-hidden={true}>
+        ▲
+      </Text>
+      <Text as="span" size="xs" weight="semibold" color="inherit">
+        {RECORDED_BADGE_LABEL}
+      </Text>
+    </span>
+  );
+}
+
 // ── Legend ───────────────────────────────────────────────────────────────────
 
 function Legend() {
@@ -174,8 +222,19 @@ export default function InstructionEvalHeatmap({ config: _config = {} }: { confi
   );
 
   return (
-    <ComponentWrapper title="Instruction Eval — Context Dilution" isLive={false}>
+    <ComponentWrapper
+      title="Instruction Eval — Context Dilution"
+      isLive={false}
+      headerExtra={<RecordedEvaluationBadge />}
+    >
       <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+        {/* Prominent recorded-data banner: this view is a committed fixture, not a
+            live projection. Rendered above the matrix so it is unmissable wherever
+            the data appears (the same badge is also pinned in the widget header). */}
+        <div style={{ display: 'flex' }}>
+          <RecordedEvaluationBadge />
+        </div>
+
         <Text as="div" size="xs" color="tertiary">
           Pass rate per model × task across three context modes. Each cell shows mean pass rate and
           mean output tokens over {EVAL_RESULTS_FIXTURE[0]?.runs ?? 0} runs. The dilution row is the
