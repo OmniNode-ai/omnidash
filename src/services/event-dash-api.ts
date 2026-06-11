@@ -17,8 +17,8 @@
  * Topic strings live in `shared/types/topics.ts` (TOPICS); never inline a literal.
  */
 
-import { TOPICS } from '@shared/types/topics';
-import { projectionUrl } from '@/data-source/projection-base-url';
+import { TOPICS } from "@shared/types/topics";
+import { projectionUrl } from "@/data-source/projection-base-url";
 
 /**
  * SEA node-generation-completed projection topic. Unlike the entries in
@@ -30,12 +30,13 @@ import { projectionUrl } from '@/data-source/projection-base-url';
  * topics.test.ts + the golden-chain coverage gate). Defined here so the SEA +
  * event-bus views can read it without violating that convention.
  */
-const NODE_GENERATION_COMPLETED_TOPIC = 'onex.evt.omnimarket.node-generation-completed.v1';
+const NODE_GENERATION_COMPLETED_TOPIC =
+  "onex.evt.omnimarket.node-generation-completed.v1";
 
 // ── Envelope + result types ──────────────────────────────────────────────────
 
 /** Freshness reported by the projection API envelope. */
-export type ProjectionFreshness = 'fresh' | 'degraded' | 'unknown';
+export type ProjectionFreshness = "fresh" | "degraded" | "unknown";
 
 /** Normalized result of a single projection read. */
 export interface ProjectionResult<T> {
@@ -60,15 +61,15 @@ interface RawEnvelope {
 }
 
 function asString(v: unknown): string | null {
-  return typeof v === 'string' ? v : null;
+  return typeof v === "string" ? v : null;
 }
 
 function asFreshness(v: unknown): ProjectionFreshness {
-  return v === 'fresh' || v === 'degraded' ? v : 'unknown';
+  return v === "fresh" || v === "degraded" ? v : "unknown";
 }
 
 function isRecord(v: unknown): v is Record<string, unknown> {
-  return typeof v === 'object' && v !== null;
+  return typeof v === "object" && v !== null;
 }
 
 /**
@@ -80,41 +81,73 @@ function isRecord(v: unknown): v is Record<string, unknown> {
  */
 function normalize<T>(body: unknown): ProjectionResult<T> {
   if (!isRecord(body)) {
-    return { rows: [], rowCount: 0, freshness: 'unknown', latestEventAt: null, isDegraded: true, degradedReason: 'malformed projection response' };
+    return {
+      rows: [],
+      rowCount: 0,
+      freshness: "unknown",
+      latestEventAt: null,
+      isDegraded: true,
+      degradedReason: "malformed projection response",
+    };
   }
   const env = body as RawEnvelope;
 
   // Shape 3: unknown topic.
   const errStr = asString(env.error);
   if (errStr) {
-    return { rows: [], rowCount: 0, freshness: 'unknown', latestEventAt: null, isDegraded: true, degradedReason: `topic not served (${errStr})` };
+    return {
+      rows: [],
+      rowCount: 0,
+      freshness: "unknown",
+      latestEventAt: null,
+      isDegraded: true,
+      degradedReason: `topic not served (${errStr})`,
+    };
   }
 
   // Shape 2: degraded status with a reason (no rows array).
   const statusStr = asString(env.status);
-  if (statusStr === 'degraded' && !Array.isArray(env.rows)) {
-    return { rows: [], rowCount: 0, freshness: 'degraded', latestEventAt: null, isDegraded: true, degradedReason: asString(env.reason) };
+  if (statusStr === "degraded" && !Array.isArray(env.rows)) {
+    return {
+      rows: [],
+      rowCount: 0,
+      freshness: "degraded",
+      latestEventAt: null,
+      isDegraded: true,
+      degradedReason: asString(env.reason),
+    };
   }
 
   // Shape 1: served envelope.
   const rows = Array.isArray(env.rows) ? (env.rows as T[]) : [];
   const freshness = asFreshness(env.data_freshness);
-  const rowCount = typeof env.row_count === 'number' ? env.row_count : rows.length;
+  const rowCount =
+    typeof env.row_count === "number" ? env.row_count : rows.length;
   return {
     rows,
     rowCount,
     freshness,
     latestEventAt: asString(env.latest_event_at),
-    isDegraded: freshness !== 'fresh',
+    isDegraded: freshness !== "fresh",
     degradedReason: null,
   };
 }
 
-async function readProjection<T>(topic: string, query?: string): Promise<ProjectionResult<T>> {
+async function readProjection<T>(
+  topic: string,
+  query?: string,
+): Promise<ProjectionResult<T>> {
   const url = projectionUrl(topic, query);
   const res = await fetch(url);
   if (!res.ok) {
-    return { rows: [], rowCount: 0, freshness: 'unknown', latestEventAt: null, isDegraded: true, degradedReason: `HTTP ${res.status}` };
+    return {
+      rows: [],
+      rowCount: 0,
+      freshness: "unknown",
+      latestEventAt: null,
+      isDegraded: true,
+      degradedReason: `HTTP ${res.status}`,
+    };
   }
   const body = (await res.json().catch(() => null)) as unknown;
   return normalize<T>(body);
@@ -266,35 +299,100 @@ export interface AbCompareRow {
 
 // ── Public fetchers ──────────────────────────────────────────────────────────
 
-export const fetchDelegationDecisions = (): Promise<ProjectionResult<DelegationDecisionRow>> =>
-  readProjection<DelegationDecisionRow>(TOPICS.delegationDecisions);
+export const fetchDelegationDecisions = (): Promise<
+  ProjectionResult<DelegationDecisionRow>
+> => readProjection<DelegationDecisionRow>(TOPICS.delegationDecisions);
 
-export const fetchDelegationSummary = (): Promise<ProjectionResult<DelegationSummaryRow>> =>
-  readProjection<DelegationSummaryRow>(TOPICS.delegationSummary);
+export const fetchDelegationSummary = (): Promise<
+  ProjectionResult<DelegationSummaryRow>
+> => readProjection<DelegationSummaryRow>(TOPICS.delegationSummary);
 
-export const fetchDelegationModelRouting = (): Promise<ProjectionResult<ModelRoutingRow>> =>
-  readProjection<ModelRoutingRow>(TOPICS.delegationModelRouting);
+export const fetchDelegationModelRouting = (): Promise<
+  ProjectionResult<ModelRoutingRow>
+> => readProjection<ModelRoutingRow>(TOPICS.delegationModelRouting);
 
-export const fetchDelegationQualityGate = (): Promise<ProjectionResult<QualityGateRow>> =>
-  readProjection<QualityGateRow>(TOPICS.delegationQualityGate);
+export const fetchDelegationQualityGate = (): Promise<
+  ProjectionResult<QualityGateRow>
+> => readProjection<QualityGateRow>(TOPICS.delegationQualityGate);
 
-export const fetchDelegationSavings = (): Promise<ProjectionResult<SavingsRow>> =>
-  readProjection<SavingsRow>(TOPICS.delegationSavings);
+export const fetchDelegationSavings = (): Promise<
+  ProjectionResult<SavingsRow>
+> => readProjection<SavingsRow>(TOPICS.delegationSavings);
 
-export const fetchDelegationTokenUsage = (): Promise<ProjectionResult<TokenUsageRow>> =>
-  readProjection<TokenUsageRow>(TOPICS.delegationTokenUsage);
+export const fetchDelegationTokenUsage = (): Promise<
+  ProjectionResult<TokenUsageRow>
+> => readProjection<TokenUsageRow>(TOPICS.delegationTokenUsage);
 
-export const fetchCorrelationTrace = (correlationId: string): Promise<ProjectionResult<CorrelationTraceRow>> =>
+export const fetchCorrelationTrace = (
+  correlationId: string,
+): Promise<ProjectionResult<CorrelationTraceRow>> =>
   readProjection<CorrelationTraceRow>(
     TOPICS.delegationCorrelationTrace,
     `correlation_id=${encodeURIComponent(correlationId)}`,
   );
 
-export const fetchNodeGenerations = (): Promise<ProjectionResult<NodeGenerationRow>> =>
-  readProjection<NodeGenerationRow>(NODE_GENERATION_COMPLETED_TOPIC);
+export const fetchNodeGenerations = (): Promise<
+  ProjectionResult<NodeGenerationRow>
+> => readProjection<NodeGenerationRow>(NODE_GENERATION_COMPLETED_TOPIC);
 
-export const fetchRegistration = (): Promise<ProjectionResult<RegistrationRow>> =>
-  readProjection<RegistrationRow>(TOPICS.registration);
+// ── Generate (thin publisher) — OMN-13004 ────────────────────────────────────
+//
+// The SEA Control Plane generate form POSTs a task description to `/api/generate`
+// (same-origin; the vite proxy forwards it to the single projection backend).
+// That backend is a THIN PUBLISHER: it wraps the request in the canonical
+// ModelEventEnvelope and publishes ONE command to
+// `onex.cmd.omnimarket.node-generation-requested.v1`. The existing
+// node_generation_consumer does the work and emits the terminal
+// node-generation-completed.v1 event the projection panels already render.
+//
+// This function does NOT generate anything client-side; it only kicks the bus
+// and returns the correlation id the UI polls the projection for. There is no
+// fallback path — a non-OK response surfaces a typed Error the form renders
+// honestly.
+
+/** Response of `POST /api/generate` — the minted correlation id and topic. */
+export interface GenerateResponse {
+  correlation_id: string;
+  topic: string;
+}
+
+const GENERATE_ENDPOINT = "/api/generate";
+
+/**
+ * Publish a node-generation request via the thin publisher. Resolves to the
+ * correlation id on success; rejects with a typed Error on any non-OK response
+ * so the caller renders an explicit failure state (never a silent success).
+ */
+export async function submitGeneration(
+  taskDescription: string,
+): Promise<GenerateResponse> {
+  const res = await fetch(GENERATE_ENDPOINT, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ task_description: taskDescription }),
+  });
+  if (!res.ok) {
+    const detail = await res.text().catch(() => "");
+    throw new Error(
+      `Generate request failed (HTTP ${res.status})${detail ? `: ${detail}` : ""}`,
+    );
+  }
+  const body = (await res.json().catch(() => null)) as unknown;
+  if (
+    !isRecord(body) ||
+    typeof body.correlation_id !== "string" ||
+    typeof body.topic !== "string"
+  ) {
+    throw new Error(
+      "Generate request returned a malformed response (missing correlation_id/topic).",
+    );
+  }
+  return { correlation_id: body.correlation_id, topic: body.topic };
+}
+
+export const fetchRegistration = (): Promise<
+  ProjectionResult<RegistrationRow>
+> => readProjection<RegistrationRow>(TOPICS.registration);
 
 export const fetchAbCompare = (): Promise<ProjectionResult<AbCompareRow>> =>
   readProjection<AbCompareRow>(TOPICS.abCompare);
