@@ -52,5 +52,13 @@ export function buildProxyMap(
     };
   }
 
+  if (env.EVIDENCE_PROJECTION_API_URL) {
+    proxyMap['/api/evidence-pipeline'] = {
+      target: env.EVIDENCE_PROJECTION_API_URL,
+      changeOrigin: true,
+      rewrite: (path) => path.replace(/^\/api\/evidence-pipeline/, ''),
+    };
+  }
+
   return proxyMap;
 }
