@@ -35,10 +35,7 @@ describe('Proof of Life — Part 3 (Full System)', () => {
       ok: true,
       json: async () => ([]),
     }));
-    vi.stubGlobal('WebSocket', class {
-      onopen = null; onmessage = null; onclose = null; onerror = null;
-      send = vi.fn(); close = vi.fn();
-    });
+    // OMN-12969: the dead `/ws` invalidation path was removed; no WebSocket stub needed.
   });
 
   afterEach(() => vi.restoreAllMocks());
