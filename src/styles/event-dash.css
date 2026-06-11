@@ -254,6 +254,14 @@
 .ev-root .ev-hist-axis { text-align: center; margin-top: 6px; }
 .ev-root .ev-exp-footer { padding: 2px 4px; line-height: 1.6; }
 
+/* context-effectiveness heatmap (OMN-12955): segment x model pass-rate matrix */
+.ev-root .ev-heatmap { display: flex; flex-direction: column; gap: 6px; overflow-x: auto; padding: 4px 0; }
+.ev-root .ev-heatmap-row { display: flex; align-items: stretch; gap: 6px; }
+.ev-root .ev-heatmap-row .lab { font-family: var(--ev-font-mono); font-size: 11.5px; color: var(--ev-txt); min-width: 140px; display: flex; align-items: center; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ev-root .ev-heatmap-cell { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; min-width: 84px; padding: 7px 8px; border: 1px solid var(--ev-line); border-radius: 6px; background: var(--ev-panel-2, rgba(255, 255, 255, .02)); }
+.ev-root .ev-heatmap-cell .mono { font-family: var(--ev-font-mono); font-size: 12px; color: var(--ev-txt); }
+.ev-root .ev-heatmap-cell .ev-heatmap-model { font-size: 10px; color: var(--ev-txt-3); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 100%; }
+
 /* honest empty / degraded state */
 .ev-root .ev-empty { display: flex; flex-direction: column; gap: 8px; padding: 26px 18px; text-align: center; color: var(--ev-txt-2); }
 .ev-root .ev-empty .ev-empty-title { font-family: var(--ev-font-display); font-size: 14px; font-weight: 600; color: var(--ev-txt); }
