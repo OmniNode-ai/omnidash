@@ -264,6 +264,40 @@ export interface AbCompareRow {
   avg_tokens: number;
 }
 
+// ── Context-ROI experiment score row (OMN-12955) ─────────────────────────────
+
+/**
+ * One projection row from
+ * `onex.snapshot.projection.context.experiment-scores.v1`, backed by the
+ * `context_roi_scores` table (omnimarket node_projection_context_roi). One row
+ * per (run × task × arm × trial) cell captured by the context-ROI runner.
+ * Columns are the snake_case projection-API columns verbatim — normalization
+ * to the heatmap/hero view shapes happens in the panel layer.
+ */
+export interface ContextExperimentScoreRow {
+  id: string;
+  run_id: string;
+  correlation_id: string;
+  task_id: string;
+  run_order: number;
+  context_factor_subset: string;
+  context_pack_hash: string;
+  attempt_count: number;
+  first_pass_success: boolean;
+  final_success: boolean;
+  failure_stage: string;
+  prompt_tokens: number;
+  completion_tokens: number;
+  tokens_used: number;
+  estimated_cost: number;
+  model_id: string;
+  provider: string;
+  endpoint_ref: string;
+  proof_class: string;
+  created_at: string;
+  updated_at: string;
+}
+
 // ── Public fetchers ──────────────────────────────────────────────────────────
 
 export const fetchDelegationDecisions = (): Promise<ProjectionResult<DelegationDecisionRow>> =>
@@ -298,3 +332,6 @@ export const fetchRegistration = (): Promise<ProjectionResult<RegistrationRow>> 
 
 export const fetchAbCompare = (): Promise<ProjectionResult<AbCompareRow>> =>
   readProjection<AbCompareRow>(TOPICS.abCompare);
+
+export const fetchContextExperimentScores = (): Promise<ProjectionResult<ContextExperimentScoreRow>> =>
+  readProjection<ContextExperimentScoreRow>(TOPICS.contextExperimentScores);
