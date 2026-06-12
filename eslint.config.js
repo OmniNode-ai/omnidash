@@ -130,8 +130,11 @@ export default [
   //
   // v1 scope: inline Literal / leading-quasi TemplateLiteral arguments of
   // fetch()/axios()/axios.*() calls, plus VariableDeclarator path consts.
-  // Mid-template `${base}/api/...` segments are NOT yet caught (needs a
-  // custom local rule — tracked on OMN-13019).
+  //
+  // v2 scope (OMN-13065): mid-template `${base}/api/...` segments. Uses
+  // `:has(TemplateElement[value.raw=/...\/api\/.../])` to catch any TemplateLiteral
+  // argument whose quasis contain `/api/` — covers the `${baseUrl}/api/...` pattern
+  // that v1 missed because the leading quasi is empty, not `/api/`.
   {
     files: ['src/**/*.{ts,tsx}', 'shared/**/*.ts', 'server/**/*.ts'],
     ignores: [
@@ -158,6 +161,16 @@ export default [
           message:
             'Template-literal /api/ path in a fetch/axios call outside src/services/ or src/data-source/. Route paths live behind the seam (OMN-13019 / OMN-12803).',
         },
+        // OMN-13065 v2: mid-template `${base}/api/...` — the leading quasi is empty
+        // (before the first interpolation), so the v1 leading-quasi selector misses it.
+        // This selector matches any TemplateLiteral passed directly to fetch/axios that
+        // contains a TemplateElement with `/api/` anywhere in its raw value.
+        {
+          selector:
+            'CallExpression[callee.name=/^(fetch|axios)$/] > TemplateLiteral:has(TemplateElement[value.raw=/\\u002Fapi\\u002F/])',
+          message:
+            'Mid-template /api/ path in a fetch/axios call outside src/services/ or src/data-source/. Route paths live behind the seam (OMN-13065 / OMN-13019 / OMN-12803).',
+        },
         {
           selector:
             'CallExpression[callee.object.name="axios"] > Literal[value=/^\\u002Fapi\\u002F/]',
@@ -170,6 +183,13 @@ export default [
           message:
             'Template-literal /api/ path in an axios.* call outside src/services/ or src/data-source/. Route paths live behind the seam (OMN-13019 / OMN-12803).',
         },
+        // OMN-13065 v2: mid-template for axios.* calls.
+        {
+          selector:
+            'CallExpression[callee.object.name="axios"] > TemplateLiteral:has(TemplateElement[value.raw=/\\u002Fapi\\u002F/])',
+          message:
+            'Mid-template /api/ path in an axios.* call outside src/services/ or src/data-source/. Route paths live behind the seam (OMN-13065 / OMN-13019 / OMN-12803).',
+        },
         {
           selector: 'VariableDeclarator > Literal[value=/^\\u002Fapi\\u002F/]',
           message:
@@ -180,6 +200,13 @@ export default [
             'VariableDeclarator > TemplateLiteral[quasis.0.value.raw=/^\\u002Fapi\\u002F/]',
           message:
             'Template-literal /api/ path const outside src/services/ or src/data-source/. Route paths live behind the seam (OMN-13019 / OMN-12803).',
+        },
+        // OMN-13065 v2: mid-template for variable declarator consts.
+        {
+          selector:
+            'VariableDeclarator > TemplateLiteral:has(TemplateElement[value.raw=/\\u002Fapi\\u002F/])',
+          message:
+            'Mid-template /api/ path const outside src/services/ or src/data-source/. Route paths live behind the seam (OMN-13065 / OMN-13019 / OMN-12803).',
         },
       ],
     },

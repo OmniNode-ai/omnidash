@@ -1,16 +1,12 @@
 import { useState, useEffect, useCallback } from 'react';
+import {
+  probeDispatchAvailability,
+  postDispatch,
+  type DispatchRequest,
+  type DispatchResponse,
+} from '@/services/dispatch-api';
 
-export interface DispatchRequest {
-  command_type: 'run-node' | 'cancel';
-  target_node_id: string;
-  payload: Record<string, unknown>;
-}
-
-export interface DispatchResponse {
-  request_id: string;
-  status: string;
-  message?: string;
-}
+export type { DispatchRequest, DispatchResponse };
 
 export interface UseDispatchResult {
   dispatch: (req: DispatchRequest) => Promise<DispatchResponse>;
@@ -28,14 +24,9 @@ export function useDispatch(): UseDispatchResult {
 
   useEffect(() => {
     let cancelled = false;
-    // eslint-disable-next-line no-restricted-syntax -- OMN-13065 route-seam baseline debt (/api/dispatch hop is itself non-canonical)
-    fetch('/api/dispatch', { method: 'HEAD' })
-      .then((res) => {
-        if (!cancelled) setIsAvailable(res.ok || res.status !== 503);
-      })
-      .catch(() => {
-        if (!cancelled) setIsAvailable(false);
-      });
+    void probeDispatchAvailability().then((available) => {
+      if (!cancelled) setIsAvailable(available);
+    });
     return () => { cancelled = true; };
   }, []);
 
@@ -43,17 +34,7 @@ export function useDispatch(): UseDispatchResult {
     setIsDispatching(true);
     setError(null);
     try {
-      // eslint-disable-next-line no-restricted-syntax -- OMN-13065 route-seam baseline debt (/api/dispatch hop is itself non-canonical)
-      const res = await fetch('/api/dispatch', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(req),
-      });
-      if (!res.ok) {
-        const text = await res.text().catch(() => res.statusText);
-        throw new Error(`Dispatch failed: ${res.status} ${text}`);
-      }
-      const body = (await res.json() as unknown) as DispatchResponse;
+      const body = await postDispatch(req);
       setLastResult(body);
       return body;
     } catch (err) {

@@ -302,7 +302,10 @@ describe('ControlPlanePage', () => {
     fireEvent.click(screen.getByRole('button', { name: /generate/i }));
 
     await waitFor(() => {
-      expect(screen.getByText(/failed to submit: error: http 500 server error: boom/i)).toBeInTheDocument();
+      // OMN-13065: error message now comes from submitGeneration() seam in
+      // src/services/event-dash-api.ts. Format changed from "HTTP 500 Server Error: boom"
+      // to "Generate request failed (HTTP 500): boom" — same information, seam-consistent phrasing.
+      expect(screen.getByText(/failed to submit: error: generate request failed \(http 500\): boom/i)).toBeInTheDocument();
     });
     // OMN-13006: submit targets the live thin-publisher route /api/generate on the
     // single projection backend (resolveProjectionBaseUrl), NOT the phantom

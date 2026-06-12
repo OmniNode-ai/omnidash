@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Text, Heading } from '@/components/ui/typography';
+import { fetchFeatureFlags } from '@/services/feature-flag-service';
 
 export interface FeatureFlag {
   name: string;
@@ -7,22 +8,6 @@ export interface FeatureFlag {
   state: 'on' | 'off' | 'migration';
   service: 'omniclaude' | 'omnidash';
   description: string;
-}
-
-interface FlagsResponse {
-  flags: FeatureFlag[];
-  fetchedAt: string;
-}
-
-function isFlagsResponse(v: unknown): v is FlagsResponse {
-  return (
-    typeof v === 'object' &&
-    v !== null &&
-    'flags' in v &&
-    Array.isArray((v as FlagsResponse).flags) &&
-    'fetchedAt' in v &&
-    typeof (v as FlagsResponse).fetchedAt === 'string'
-  );
 }
 
 const OMNIDASH_FLAGS: FeatureFlag[] = [
@@ -214,22 +199,20 @@ export function FeatureFlagDashboard() {
   const [fetchedAt, setFetchedAt] = useState<string | null>(null);
 
   useEffect(() => {
+    // OMN-13065: fetch migrated behind fetchFeatureFlags() seam in src/services/feature-flag-service.ts.
+    // A non-OK status, or an HTML body from the SPA history fallback (when
+    // no `/api/settings` proxy is configured), means the server is not wired
+    // into this dev session. Surface the client-env config state — not an
+    // error — so the console and UI stay honest about WHY.
     const baseUrl = (import.meta.env.VITE_SERVER_BASE_URL as string | undefined) ?? '';
-    fetch(`${baseUrl}/api/settings/feature-flags`)
-      .then(async (res) => {
-        // A non-OK status, or an HTML body from the SPA history fallback (when
-        // no `/api/settings` proxy is configured), means the server is not wired
-        // into this dev session. Surface the client-env config state — not an
-        // error — so the console and UI stay honest about WHY.
-        if (!res.ok) throw new Error(`server endpoint not wired (HTTP ${res.status})`);
-        const body: unknown = await res.json();
-        if (!isFlagsResponse(body)) throw new Error('server endpoint not wired (SPA fallback)');
-        const hydrated = body.flags.map((f) => ({
+    fetchFeatureFlags(baseUrl)
+      .then(({ flags, fetchedAt }) => {
+        const hydrated = flags.map((f) => ({
           ...f,
           state: resolveState(f.value),
         }));
-        setServerFlags(hydrated);
-        setFetchedAt(body.fetchedAt);
+        setServerFlags(hydrated as FeatureFlag[]);
+        setFetchedAt(fetchedAt);
         setServerState('live');
       })
       .catch(() => {
