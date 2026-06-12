@@ -21,6 +21,7 @@ const NODE_GENERATION_COMPLETED_PROJECTION_TOPIC = 'onex.evt.omnimarket.node-gen
 // (see vite.proxy-config.ts). resolveProjectionBaseUrl() returns '' (relative,
 // same-origin) when that proxy is configured, so the submit and the projection
 // reads always hit the SAME single backend — never /api/sea/generate (no such route).
+// eslint-disable-next-line no-restricted-syntax -- OMN-13065 route-seam baseline debt (demo-critical const; migrate behind src/services/)
 const GENERATE_PUBLISHER_PATH = '/api/generate';
 
 type SeaProjectionRow = Partial<Omit<PipelineEvent, 'type'>> & {

@@ -28,6 +28,7 @@ export function useDispatch(): UseDispatchResult {
 
   useEffect(() => {
     let cancelled = false;
+    // eslint-disable-next-line no-restricted-syntax -- OMN-13065 route-seam baseline debt (/api/dispatch hop is itself non-canonical)
     fetch('/api/dispatch', { method: 'HEAD' })
       .then((res) => {
         if (!cancelled) setIsAvailable(res.ok || res.status !== 503);
@@ -42,6 +43,7 @@ export function useDispatch(): UseDispatchResult {
     setIsDispatching(true);
     setError(null);
     try {
+      // eslint-disable-next-line no-restricted-syntax -- OMN-13065 route-seam baseline debt (/api/dispatch hop is itself non-canonical)
       const res = await fetch('/api/dispatch', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
