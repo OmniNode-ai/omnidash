@@ -119,6 +119,72 @@ export default [
     },
   },
 
+  // OMN-13019 (retro A-1): route-seam lint. String-literal `/api/` paths in
+  // fetch/axios call sites and path-const declarations are banned outside the
+  // route seams (src/services/, src/data-source/). The `/api/sea/generate` →
+  // `/api/generate` rename desynchronized the widget, proxy, demo docs, and a
+  // PR on demo night because the path lived as scattered literals
+  // (PROCESS_FAILURE_RETRO.md #7; feedback_all_urls_from_contracts /
+  // OMN-12803). New route literals belong behind the seam; existing debt is
+  // baselined with eslint-disable comments carrying ticket refs.
+  //
+  // v1 scope: inline Literal / leading-quasi TemplateLiteral arguments of
+  // fetch()/axios()/axios.*() calls, plus VariableDeclarator path consts.
+  // Mid-template `${base}/api/...` segments are NOT yet caught (needs a
+  // custom local rule — tracked on OMN-13019).
+  {
+    files: ['src/**/*.{ts,tsx}', 'shared/**/*.ts', 'server/**/*.ts'],
+    ignores: [
+      'src/services/**',
+      'src/data-source/**',
+      // Tests and stories exercise routes against mocks; the runtime seam
+      // boundary does not apply to them.
+      '**/*.test.{ts,tsx}',
+      '**/*.stories.{ts,tsx}',
+      '**/__tests__/**',
+    ],
+    rules: {
+      'no-restricted-syntax': [
+        'error',
+        {
+          selector:
+            'CallExpression[callee.name=/^(fetch|axios)$/] > Literal[value=/^\\u002Fapi\\u002F/]',
+          message:
+            'String-literal /api/ path in a fetch/axios call outside src/services/ or src/data-source/. Route paths live behind the seam (OMN-13019 / OMN-12803).',
+        },
+        {
+          selector:
+            'CallExpression[callee.name=/^(fetch|axios)$/] > TemplateLiteral[quasis.0.value.raw=/^\\u002Fapi\\u002F/]',
+          message:
+            'Template-literal /api/ path in a fetch/axios call outside src/services/ or src/data-source/. Route paths live behind the seam (OMN-13019 / OMN-12803).',
+        },
+        {
+          selector:
+            'CallExpression[callee.object.name="axios"] > Literal[value=/^\\u002Fapi\\u002F/]',
+          message:
+            'String-literal /api/ path in an axios.* call outside src/services/ or src/data-source/. Route paths live behind the seam (OMN-13019 / OMN-12803).',
+        },
+        {
+          selector:
+            'CallExpression[callee.object.name="axios"] > TemplateLiteral[quasis.0.value.raw=/^\\u002Fapi\\u002F/]',
+          message:
+            'Template-literal /api/ path in an axios.* call outside src/services/ or src/data-source/. Route paths live behind the seam (OMN-13019 / OMN-12803).',
+        },
+        {
+          selector: 'VariableDeclarator > Literal[value=/^\\u002Fapi\\u002F/]',
+          message:
+            'String-literal /api/ path const outside src/services/ or src/data-source/. Route paths live behind the seam (OMN-13019 / OMN-12803).',
+        },
+        {
+          selector:
+            'VariableDeclarator > TemplateLiteral[quasis.0.value.raw=/^\\u002Fapi\\u002F/]',
+          message:
+            'Template-literal /api/ path const outside src/services/ or src/data-source/. Route paths live behind the seam (OMN-13019 / OMN-12803).',
+        },
+      ],
+    },
+  },
+
   // Local rule source files use CommonJS. ESLint's recommended bans
   // require() in ESM-context files; this carve-out keeps eslint-rules/
   // happy without disabling the rule globally.

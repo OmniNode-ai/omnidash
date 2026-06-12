@@ -223,6 +223,7 @@ export default function TraceExplorerWidget() {
     try {
       // Fetch events for this correlation_id from the log-entries projection endpoint.
       // In file-source mode this falls back to empty gracefully.
+      // eslint-disable-next-line no-restricted-syntax -- OMN-13065 route-seam baseline debt (migrate behind src/services/)
       const url = `/api/projections/log-entries?correlation_id=${encodeURIComponent(trace.correlation_id)}`;
       const res = await fetch(url);
       if (res.ok) {
