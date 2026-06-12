@@ -52,8 +52,15 @@
   font-size: 14px;
   line-height: 1.5;
   -webkit-font-smoothing: antialiased;
-  display: block;
-  min-height: 100%;
+  /* OMN-13057 — ev-root must behave as a flex child of .main (flex column,
+     overflow:hidden). display:block + min-height:100% does NOT constrain height
+     inside a flex container — the content grows past the viewport and .main
+     clips it at ~52px. flex:1 + min-height:0 makes ev-root fill the available
+     space without overflowing. ev-scroll below owns the actual scroll. */
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
 }
 
 .ev-root *,
@@ -73,7 +80,11 @@
 .ev-page-head .ev-sub { font-size: 12px; color: var(--ev-txt-2); margin-top: 2px; }
 .ev-page-head .ev-head-right { display: flex; align-items: center; gap: 10px; margin-left: auto; }
 .ev-head-row { display: flex; align-items: flex-start; gap: 18px; }
-.ev-scroll { padding: 22px 26px 40px; overflow-y: auto; }
+/* OMN-13057 — ev-scroll is the inner scroller. flex:1 + min-height:0 lets it
+   fill ev-root's remaining height after ev-page-head; overflow-y:auto enables
+   scroll when content exceeds that height. Without flex:1+min-height:0 the
+   auto overflow never triggers because the container has unconstrained height. */
+.ev-scroll { padding: 22px 26px 40px; overflow-y: auto; flex: 1; min-height: 0; }
 
 /* live status pill + freshness chip */
 .ev-root .live-pill { display: inline-flex; align-items: center; gap: 7px; font-size: 11px; font-weight: 600; letter-spacing: .6px;
