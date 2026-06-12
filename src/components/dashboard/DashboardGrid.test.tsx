@@ -26,9 +26,12 @@ describe('DashboardGrid', () => {
         layout={layout}
         editMode={false}
         resolveComponent={() => undefined}
+        resolveAuthorityLabel={(name) => name === 'cost-trend-panel' ? 'hidden' : 'degraded'}
       />
     );
     const placeholders = screen.getAllByText(/not available/i);
     expect(placeholders.length).toBe(2);
+    expect(screen.getByText('hidden')).toBeInTheDocument();
+    expect(screen.getByText('degraded')).toBeInTheDocument();
   });
 });

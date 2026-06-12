@@ -5,11 +5,13 @@
 import type { LazyExoticComponent, ComponentType } from 'react';
 import { ComponentCell } from './ComponentCell';
 import type { DashboardLayoutItem } from '@shared/types/dashboard';
+import type { ComponentAuthorityLabel } from '@shared/types/component-manifest';
 
 interface DashboardGridProps {
   layout: DashboardLayoutItem[];
   editMode: boolean;
   resolveComponent: (name: string) => LazyExoticComponent<ComponentType<unknown>> | undefined;
+  resolveAuthorityLabel?: (name: string) => ComponentAuthorityLabel | undefined;
   /** Called in edit mode when the user clicks a placed component to select it for config editing. */
   onPlacementClick?: (placementId: string) => void;
 }
@@ -18,6 +20,7 @@ export function DashboardGrid({
   layout,
   editMode,
   resolveComponent,
+  resolveAuthorityLabel,
   onPlacementClick,
 }: DashboardGridProps) {
   return (
@@ -40,6 +43,7 @@ export function DashboardGrid({
               componentName={item.componentName}
               config={item.config}
               component={resolveComponent(item.componentName)}
+              authorityLabel={resolveAuthorityLabel?.(item.componentName)}
             />
           </div>
         </div>

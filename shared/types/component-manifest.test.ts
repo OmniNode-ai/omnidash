@@ -11,6 +11,8 @@ describe('ComponentManifest validation', () => {
     category: 'quality',
     version: '1.0.0',
     implementationKey: 'cost-trend/CostTrendPanel',
+    paletteVisibility: 'visible',
+    authorityLabel: 'projection-backed',
     configSchema: { type: 'object', properties: {}, additionalProperties: false },
     dataSources: [],
     events: { emits: [], consumes: [] },
@@ -34,6 +36,42 @@ describe('ComponentManifest validation', () => {
   it('rejects manifest with invalid category', () => {
     const result = validateComponentManifest({ ...validManifest, category: 'invalid' as any });
     expect(result.valid).toBe(false);
+  });
+
+  it('rejects manifest without an authority label', () => {
+    const { authorityLabel: _, ...manifestWithoutAuthority } = validManifest;
+    const result = validateComponentManifest(manifestWithoutAuthority as ComponentManifest);
+    expect(result.valid).toBe(false);
+    expect(result.errors).toContainEqual(expect.stringMatching(/authorityLabel is required/));
+  });
+
+  it('rejects authority labels outside the accepted proof vocabulary', () => {
+    const result = validateComponentManifest({
+      ...validManifest,
+      authorityLabel: 'bogus' as ComponentManifest['authorityLabel'],
+    });
+    expect(result.valid).toBe(false);
+    expect(result.errors).toContainEqual(expect.stringMatching(/Invalid authorityLabel/));
+  });
+
+  it('rejects hidden palette components that are not authority-labeled hidden', () => {
+    const result = validateComponentManifest({
+      ...validManifest,
+      paletteVisibility: 'hidden',
+      authorityLabel: 'projection-backed',
+    });
+    expect(result.valid).toBe(false);
+    expect(result.errors).toContain('hidden components must use authorityLabel "hidden"');
+  });
+
+  it('rejects hidden authority labels on visible panels', () => {
+    const result = validateComponentManifest({
+      ...validManifest,
+      paletteVisibility: 'visible',
+      authorityLabel: 'hidden',
+    });
+    expect(result.valid).toBe(false);
+    expect(result.errors).toContain('authorityLabel "hidden" requires paletteVisibility "hidden"');
   });
 
   it('rejects manifest where minSize exceeds maxSize', () => {
@@ -301,6 +339,8 @@ describe('ComponentManifest validation', () => {
       category: 'cost',
       version: '1.0.0',
       implementationKey: 'IBarChartAdapter/threejs',
+      paletteVisibility: 'hidden',
+      authorityLabel: 'hidden',
       dataSources: [
         { type: 'projection', topic: TOPICS.costByRepo, required: true, purpose: 'initial_fetch' },
       ],

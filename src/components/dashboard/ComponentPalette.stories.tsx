@@ -37,6 +37,8 @@ import { makeDashboardDecorator } from '@/storybook/decorators/withDashboardCont
 
 const baseManifestExtras = {
   version: '1.0.0',
+  paletteVisibility: 'visible' as const,
+  authorityLabel: 'projection-backed' as const,
   configSchema: { type: 'object' as const, properties: {}, additionalProperties: false },
   dataSources: [],
   events: { emits: [], consumes: [] },

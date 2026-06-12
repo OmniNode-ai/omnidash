@@ -8,7 +8,7 @@
  * playback. data.jsx fixtures do not ship.
  */
 
-import { EvPageShell } from '@/components/dashboard/event-dash/EvPageShell';
+import { EvPageShell } from "@/components/dashboard/event-dash/EvPageShell";
 import {
   Badge,
   CodeBlock,
@@ -22,17 +22,42 @@ import {
   fmtLatency,
   fmtPct,
   type DataColumn,
-} from '@/components/dashboard/event-dash/primitives';
-import { useNodeGenerations } from '@/components/dashboard/event-dash/useEventDashData';
-import type { NodeGenerationRow } from '@/services/event-dash-api';
+} from "@/components/dashboard/event-dash/primitives";
+import { useNodeGenerations } from "@/components/dashboard/event-dash/useEventDashData";
+import type { NodeGenerationRow } from "@/services/event-dash-api";
+import { SeaGeneratePanel } from "./SeaGeneratePanel";
 
 const PIPELINE_STAGES = [
-  { label: 'Generate', sub: 'task → node spec', topic: 'onex.cmd.omnimarket.node-generate.v1' },
-  { label: 'Materialize', sub: 'contract.yaml · handler.py', topic: 'onex.evt.omnimarket.node-materialized.v1' },
-  { label: 'Invoke', sub: 'handle(input_data)', topic: 'onex.evt.omnimarket.generated-node-invoked.v1' },
-  { label: 'Register', sub: 'projection owner', topic: 'onex.snapshot.projection.registration.v1' },
-  { label: 'Projection', sub: 'completed event', topic: 'onex.evt.omnimarket.node-generation-completed.v1' },
-  { label: 'Replay', sub: 'idempotent re-run', topic: 'onex.evt.omnimarket.node-generation-completed.v1' },
+  {
+    label: "Generate",
+    sub: "task → node spec",
+    topic: "onex.cmd.omnimarket.node-generate.v1",
+  },
+  {
+    label: "Materialize",
+    sub: "contract.yaml · handler.py",
+    topic: "onex.evt.omnimarket.node-materialized.v1",
+  },
+  {
+    label: "Invoke",
+    sub: "handle(input_data)",
+    topic: "onex.evt.omnimarket.generated-node-invoked.v1",
+  },
+  {
+    label: "Register",
+    sub: "projection owner",
+    topic: "onex.snapshot.projection.registration.v1",
+  },
+  {
+    label: "Projection",
+    sub: "completed event",
+    topic: "onex.evt.omnimarket.node-generation-completed.v1",
+  },
+  {
+    label: "Replay",
+    sub: "idempotent re-run",
+    topic: "onex.evt.omnimarket.node-generation-completed.v1",
+  },
 ];
 
 function nodeName(r: NodeGenerationRow): string {
@@ -46,13 +71,22 @@ function SeaPipeline({ loopClosed }: { loopClosed: boolean }) {
     <Panel
       title="SELF-EXTENSION PIPELINE"
       sub="generate → materialize → invoke → register → projection → replay"
-      right={loopClosed ? <Badge kind="accent"><Dot kind="ok" />loop closed</Badge> : <Badge kind="muted">no completed rows</Badge>}
+      right={
+        loopClosed ? (
+          <Badge kind="accent">
+            <Dot kind="ok" />
+            loop closed
+          </Badge>
+        ) : (
+          <Badge kind="muted">no completed rows</Badge>
+        )
+      }
     >
       <div className="pipe">
         {PIPELINE_STAGES.map((s, i) => (
           <div className="pstage" key={s.label}>
             <div className="box">
-              <div className="num">{String(i + 1).padStart(2, '0')}</div>
+              <div className="num">{String(i + 1).padStart(2, "0")}</div>
               <div className="nm">{s.label}</div>
               <div className="sb">{s.sub}</div>
               <div className="tp">{s.topic}</div>
@@ -71,7 +105,14 @@ function SeaArtifact({ g }: { g: NodeGenerationRow }) {
       sub={nodeName(g)}
       right={
         <>
-          {g.contract_passed ? <Badge kind="ok"><Dot kind="ok" />contract passed</Badge> : <Badge kind="fail">contract failed</Badge>}
+          {g.contract_passed ? (
+            <Badge kind="ok">
+              <Dot kind="ok" />
+              contract passed
+            </Badge>
+          ) : (
+            <Badge kind="fail">contract failed</Badge>
+          )}
           <Badge kind="muted">{g.endpoint_class}</Badge>
         </>
       }
@@ -83,21 +124,24 @@ function SeaArtifact({ g }: { g: NodeGenerationRow }) {
         </div>
         <KV
           items={[
-            { k: 'Correlation', v: g.correlation_id, accent: true },
-            { k: 'Provider / Model', v: `${g.provider} · ${g.model_id}` },
-            { k: 'Resolved endpoint', v: g.resolved_endpoint },
-            { k: 'Routing source', v: g.routing_source },
-            { k: 'Projection owner', v: g.projection_owner },
-            { k: 'Attempts · Latency', v: `${g.attempt_count} · ${fmtLatency(g.total_latency_e2e_ms)}` },
+            { k: "Correlation", v: g.correlation_id, accent: true },
+            { k: "Provider / Model", v: `${g.provider} · ${g.model_id}` },
+            { k: "Resolved endpoint", v: g.resolved_endpoint },
+            { k: "Routing source", v: g.routing_source },
+            { k: "Projection owner", v: g.projection_owner },
+            {
+              k: "Attempts · Latency",
+              v: `${g.attempt_count} · ${fmtLatency(g.total_latency_e2e_ms)}`,
+            },
           ]}
         />
         <div className="divider" />
         <div className="section-label">Artifact hashes (SHA-256)</div>
         <KV
           items={[
-            { k: 'Output', v: g.output_payload_sha256 },
-            { k: 'Contract', v: g.contract_sha256 },
-            { k: 'Handler', v: g.handler_sha256 },
+            { k: "Output", v: g.output_payload_sha256 },
+            { k: "Contract", v: g.contract_sha256 },
+            { k: "Handler", v: g.handler_sha256 },
           ]}
         />
         <div className="grid cols-2">
@@ -116,21 +160,71 @@ export function SeaControlPage() {
 
   const passed = rows.filter((r) => r.contract_passed).length;
   const passRate = rows.length > 0 ? passed / rows.length : null;
-  const avgLatency = rows.length > 0 ? Math.round(rows.reduce((a, r) => a + r.total_latency_e2e_ms, 0) / rows.length) : null;
+  const avgLatency =
+    rows.length > 0
+      ? Math.round(
+          rows.reduce((a, r) => a + r.total_latency_e2e_ms, 0) / rows.length,
+        )
+      : null;
   const modelCounts = new Map<string, number>();
-  for (const r of rows) modelCounts.set(r.model_id, (modelCounts.get(r.model_id) ?? 0) + 1);
-  const topModel = [...modelCounts.entries()].sort((a, b) => b[1] - a[1])[0]?.[0] ?? '—';
+  for (const r of rows)
+    modelCounts.set(r.model_id, (modelCounts.get(r.model_id) ?? 0) + 1);
+  const topModel =
+    [...modelCounts.entries()].sort((a, b) => b[1] - a[1])[0]?.[0] ?? "—";
 
   const cols: DataColumn<NodeGenerationRow>[] = [
-    { key: 'node', label: 'Generated node', grow: true, truncate: true, render: (r) => <span className="mono">{nodeName(r)}</span> },
-    { key: 'model_id', label: 'Model', render: (r) => <span className="mono c-green">{r.model_id}</span> },
-    { key: 'routing_source', label: 'Route', render: (r) => <Badge kind="muted">{r.routing_source}</Badge> },
-    { key: 'latency', label: 'Latency', num: true, render: (r) => fmtLatency(r.total_latency_e2e_ms) },
-    { key: 'contract', label: 'Contract', num: true, render: (r) => (r.contract_passed ? <Badge kind="ok">pass</Badge> : <Badge kind="fail">fail</Badge>) },
-    { key: 'created_at', label: 'Created', num: true, render: (r) => <span className="mono dim">{r.created_at.replace('T', ' ').slice(0, 19)}</span> },
+    {
+      key: "node",
+      label: "Generated node",
+      grow: true,
+      truncate: true,
+      render: (r) => <span className="mono">{nodeName(r)}</span>,
+    },
+    {
+      key: "model_id",
+      label: "Model",
+      render: (r) => <span className="mono c-green">{r.model_id}</span>,
+    },
+    {
+      key: "routing_source",
+      label: "Route",
+      render: (r) => <Badge kind="muted">{r.routing_source}</Badge>,
+    },
+    {
+      key: "latency",
+      label: "Latency",
+      num: true,
+      render: (r) => fmtLatency(r.total_latency_e2e_ms),
+    },
+    {
+      key: "contract",
+      label: "Contract",
+      num: true,
+      render: (r) =>
+        r.contract_passed ? (
+          <Badge kind="ok">pass</Badge>
+        ) : (
+          <Badge kind="fail">fail</Badge>
+        ),
+    },
+    {
+      key: "created_at",
+      label: "Created",
+      num: true,
+      render: (r) => (
+        <span className="mono dim">
+          {r.created_at.replace("T", " ").slice(0, 19)}
+        </span>
+      ),
+    },
   ];
 
-  const headRight = data ? <FreshnessChip freshness={data.freshness} latestEventAt={data.latestEventAt} /> : null;
+  const headRight = data ? (
+    <FreshnessChip
+      freshness={data.freshness}
+      latestEventAt={data.latestEventAt}
+    />
+  ) : null;
 
   return (
     <EvPageShell
@@ -140,26 +234,56 @@ export function SeaControlPage() {
       headRight={headRight}
     >
       <div className="grid cols-4">
-        <KPI label="Pipeline events" value={data ? data.rowCount : '—'} sub="node-generation-completed.v1" />
-        <KPI label="Active model" value={<span className="ev-kpi-sm">{topModel}</span>} accent sub="most-frequent model" />
-        <KPI label="Contract pass" value={passRate != null ? fmtPct(passRate) : '—'} sub={`${passed} / ${rows.length} rows`} />
-        <KPI label="Avg gen latency" value={avgLatency != null ? avgLatency : '—'} sub="ms · e2e" />
+        <KPI
+          label="Pipeline events"
+          value={data ? data.rowCount : "—"}
+          sub="node-generation-completed.v1"
+        />
+        <KPI
+          label="Active model"
+          value={<span className="ev-kpi-sm">{topModel}</span>}
+          accent
+          sub="most-frequent model"
+        />
+        <KPI
+          label="Contract pass"
+          value={passRate != null ? fmtPct(passRate) : "—"}
+          sub={`${passed} / ${rows.length} rows`}
+        />
+        <KPI
+          label="Avg gen latency"
+          value={avgLatency != null ? avgLatency : "—"}
+          sub="ms · e2e"
+        />
       </div>
+
+      <SeaGeneratePanel />
 
       <SeaPipeline loopClosed={passed > 0} />
 
       {isLoading ? (
-        <Panel title="LATEST GENERATED NODE"><EvEmpty title="Loading…" /></Panel>
+        <Panel title="LATEST GENERATED NODE">
+          <EvEmpty title="Loading…" />
+        </Panel>
       ) : !hero ? (
         <Panel title="LATEST GENERATED NODE">
-          <EvEmpty title="No generated nodes" reason={data?.degradedReason} note="node-generation-completed projection returned no rows." />
+          <EvEmpty
+            title="No generated nodes"
+            reason={data?.degradedReason}
+            note="node-generation-completed projection returned no rows."
+          />
         </Panel>
       ) : (
         <SeaArtifact g={hero} />
       )}
 
       {isLoading ? null : rows.length === 0 ? null : (
-        <Panel title="RECENT GENERATIONS" sub="every row expands to full artifact" pad={false} right={<span className="note">showing {rows.length}</span>}>
+        <Panel
+          title="RECENT GENERATIONS"
+          sub="every row expands to full artifact"
+          pad={false}
+          right={<span className="note">showing {rows.length}</span>}
+        >
           <DataTable
             columns={cols}
             rows={rows}
@@ -168,15 +292,15 @@ export function SeaControlPage() {
               <>
                 <KV
                   items={[
-                    { k: 'Correlation', v: r.correlation_id, accent: true },
-                    { k: 'Endpoint', v: r.resolved_endpoint },
-                    { k: 'Routing source', v: r.routing_source },
-                    { k: 'Projection owner', v: r.projection_owner },
-                    { k: 'Attempts', v: String(r.attempt_count) },
-                    { k: 'Latency', v: fmtLatency(r.total_latency_e2e_ms) },
-                    { k: 'Output SHA', v: r.output_payload_sha256 },
-                    { k: 'Contract SHA', v: r.contract_sha256 },
-                    { k: 'Handler SHA', v: r.handler_sha256 },
+                    { k: "Correlation", v: r.correlation_id, accent: true },
+                    { k: "Endpoint", v: r.resolved_endpoint },
+                    { k: "Routing source", v: r.routing_source },
+                    { k: "Projection owner", v: r.projection_owner },
+                    { k: "Attempts", v: String(r.attempt_count) },
+                    { k: "Latency", v: fmtLatency(r.total_latency_e2e_ms) },
+                    { k: "Output SHA", v: r.output_payload_sha256 },
+                    { k: "Contract SHA", v: r.contract_sha256 },
+                    { k: "Handler SHA", v: r.handler_sha256 },
                   ]}
                 />
                 <div className="ev-task-box">
@@ -184,8 +308,16 @@ export function SeaControlPage() {
                   <div className="mono ev-task-text">{r.task_description}</div>
                 </div>
                 <div className="grid cols-2">
-                  <CodeBlock title="contract.yaml" lang="yaml" code={r.contract_yaml} />
-                  <CodeBlock title="handler.py" lang="python" code={r.handler_source} />
+                  <CodeBlock
+                    title="contract.yaml"
+                    lang="yaml"
+                    code={r.contract_yaml}
+                  />
+                  <CodeBlock
+                    title="handler.py"
+                    lang="python"
+                    code={r.handler_source}
+                  />
                 </div>
               </>
             )}

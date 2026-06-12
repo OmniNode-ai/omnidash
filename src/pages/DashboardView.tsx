@@ -22,6 +22,7 @@ import { useRegistry } from '@/registry/RegistryProvider';
 import { ComponentPalette } from '@/components/dashboard/ComponentPalette';
 import { ComponentConfigPanel } from '@/config/ComponentConfigPanel';
 import { ComponentCell } from '@/components/dashboard/ComponentCell';
+import { DataSourceControl } from '@/components/dashboard/DataSourceControl';
 import { DateRangeSelector } from '@/components/dashboard/DateRangeSelector';
 import { TimezoneSelector } from '@/components/dashboard/TimezoneSelector';
 import { AutoRefreshSelector } from '@/components/dashboard/AutoRefreshSelector';
@@ -272,10 +273,16 @@ export function DashboardView() {
               <ChevronDown size={18} style={{ color: 'var(--text-tertiary)' }} />
             </div>
           )}
-          {/* Filter row — timezone, auto-refresh, and time range as
+          {/* Filter row — data source, auto-refresh, time range, and timezone as
               peer ghost buttons. Sits directly under the title so the
               header-actions cluster on the right is reserved for the
-              mode-dependent primary controls (Add Widget / Save / Discard). */}
+              mode-dependent primary controls (Add Widget / Save / Discard).
+
+              OMN-13007: the LEFT-MOST control is now the honest DATA SOURCE
+              control (was a timezone picker that merely looked like one). The
+              timezone picker is preserved but relocated into the date-range
+              cluster on the right of this row, so it no longer occupies — or
+              impersonates — the data-source position. */}
           <div
             style={{
               display: 'flex',
@@ -285,9 +292,10 @@ export function DashboardView() {
               marginTop: 2,
             }}
           >
-            <TimezoneSelector />
+            <DataSourceControl />
             <AutoRefreshSelector />
             <DateRangeSelector />
+            <TimezoneSelector />
           </div>
         </div>
         <div className="header-actions">
@@ -382,6 +390,7 @@ export function DashboardView() {
                   componentName={item.componentName}
                   config={item.config}
                   component={resolveComponent(item.componentName)}
+                  authorityLabel={registry.getComponent(item.componentName)?.manifest.authorityLabel}
                   // Only surface "Configure Widget" in the kebab when the
                   // widget actually has something to configure — otherwise
                   // the modal opens to an empty form. We treat absent
