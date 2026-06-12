@@ -13,6 +13,16 @@ import { useEffectiveDataSource } from '@/data-source/useDataSourceOverride';
 
 const NODE_GENERATION_COMPLETED_PROJECTION_TOPIC = 'onex.evt.omnimarket.node-generation-completed.v1';
 
+// Live thin-publisher route on the projection API (omnimarket OMN-13004).
+// POST {task_description} -> publishes ONE command to
+// onex.cmd.omnimarket.node-generation-requested.v1 and returns {correlation_id, topic}.
+// Reached through the same projection backend the dashboard reads from: the
+// dev/serving layer proxies same-origin /api/generate to VITE_PROJECTION_API_URL
+// (see vite.proxy-config.ts). resolveProjectionBaseUrl() returns '' (relative,
+// same-origin) when that proxy is configured, so the submit and the projection
+// reads always hit the SAME single backend — never /api/sea/generate (no such route).
+const GENERATE_PUBLISHER_PATH = '/api/generate';
+
 type SeaProjectionRow = Partial<Omit<PipelineEvent, 'type'>> & {
   id?: unknown;
   correlation_id?: unknown;
@@ -190,7 +200,7 @@ export default function ControlPlanePage({
               'Data source is in File (fixtures) mode — switch the chrome DATA SOURCE control to Live to submit a generation request.',
             );
           }
-          const response = await fetch(`${baseUrl}/api/sea/generate`, {
+          const response = await fetch(`${baseUrl}${GENERATE_PUBLISHER_PATH}`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ task_description: prompt }),
