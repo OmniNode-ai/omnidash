@@ -314,7 +314,7 @@ export function FreshnessChip({
   freshness,
   latestEventAt,
 }: {
-  freshness: 'fresh' | 'degraded' | 'unknown';
+  freshness: 'fresh' | 'stale' | 'degraded' | 'unknown';
   latestEventAt: string | null;
 }) {
   if (freshness === 'fresh') {

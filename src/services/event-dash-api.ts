@@ -50,7 +50,7 @@ const NODE_GENERATION_WINDOW = 50;
 // ── Envelope + result types ──────────────────────────────────────────────────
 
 /** Freshness reported by the projection API envelope. */
-export type ProjectionFreshness = "fresh" | "degraded" | "unknown";
+export type ProjectionFreshness = "fresh" | "stale" | "degraded" | "unknown";
 
 /** Normalized result of a single projection read. */
 export interface ProjectionResult<T> {
@@ -79,7 +79,7 @@ function asString(v: unknown): string | null {
 }
 
 function asFreshness(v: unknown): ProjectionFreshness {
-  return v === "fresh" || v === "degraded" ? v : "unknown";
+  return v === "fresh" || v === "stale" || v === "degraded" ? v : "unknown";
 }
 
 function isRecord(v: unknown): v is Record<string, unknown> {

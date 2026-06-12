@@ -132,3 +132,57 @@ describe('fetchNodeGenerations (OMN-12999 bounded read)', () => {
     expect(url).not.toContain('order=');
   });
 });
+
+/**
+ * OMN-13016: the projection API emits data_freshness 'fresh' | 'stale' |
+ * 'degraded' (OMN-10461 tiering: fresh <5m / stale 5-60m / degraded >60m).
+ * Dropping 'stale' from the wire union collapsed populated-but-stale
+ * envelopes to 'unknown', so FreshnessChip rendered "no data" for panels
+ * that DO have data (observed live 2026-06-11 on delegation token-usage).
+ */
+describe('ProjectionFreshness stale handling (OMN-13016)', () => {
+  beforeEach(() => {
+    vi.restoreAllMocks();
+  });
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
+
+  it('preserves stale freshness for populated projection envelopes', async () => {
+    const row = { id: 'd1', correlation_id: 'c-1' };
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({
+          rows: [row],
+          row_count: 1,
+          data_freshness: 'stale',
+          latest_event_at: '2026-06-11T16:42:45.902415+00:00',
+        }),
+      }),
+    );
+
+    const result = await fetchDelegationDecisions();
+    expect(result.freshness).toBe('stale');
+    expect(result.rowCount).toBe(1);
+    expect(result.rows).toEqual([row]);
+    expect(result.latestEventAt).toBe('2026-06-11T16:42:45.902415+00:00');
+    // Stale is still non-fresh: panels keep their degraded affordance.
+    expect(result.isDegraded).toBe(true);
+  });
+
+  it('still maps unrecognized freshness strings to unknown', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({ rows: [], row_count: 0, data_freshness: 'bogus', latest_event_at: null }),
+      }),
+    );
+
+    const result = await fetchDelegationDecisions();
+    expect(result.freshness).toBe('unknown');
+    expect(result.isDegraded).toBe(true);
+  });
+});
