@@ -10,19 +10,9 @@ import { DelegationTriggerPanel } from '@/components/dashboard/delegation-contro
 
 import { resolveCommandBaseUrl } from '@/data-source/projection-base-url';
 import { useEffectiveDataSource } from '@/data-source/useDataSourceOverride';
+import { submitGeneration } from '@/services/event-dash-api';
 
 const NODE_GENERATION_COMPLETED_PROJECTION_TOPIC = 'onex.evt.omnimarket.node-generation-completed.v1';
-
-// Live thin-publisher route on the projection API (omnimarket OMN-13004).
-// POST {task_description} -> publishes ONE command to
-// onex.cmd.omnimarket.node-generation-requested.v1 and returns {correlation_id, topic}.
-// Reached through the same projection backend the dashboard reads from: the
-// dev/serving layer proxies same-origin /api/generate to VITE_PROJECTION_API_URL
-// (see vite.proxy-config.ts). resolveProjectionBaseUrl() returns '' (relative,
-// same-origin) when that proxy is configured, so the submit and the projection
-// reads always hit the SAME single backend — never /api/sea/generate (no such route).
-// eslint-disable-next-line no-restricted-syntax -- OMN-13065 route-seam baseline debt (demo-critical const; migrate behind src/services/)
-const GENERATE_PUBLISHER_PATH = '/api/generate';
 
 type SeaProjectionRow = Partial<Omit<PipelineEvent, 'type'>> & {
   id?: unknown;
@@ -52,13 +42,6 @@ type PromptSubmitState =
   | { phase: 'submitting'; message: string }
   | { phase: 'accepted'; message: string }
   | { phase: 'error'; message: string };
-
-interface LiveGenerateResponse {
-  correlation_id?: string;
-  status?: string;
-  error?: string;
-  message?: string;
-}
 
 function text(value: unknown): string | null {
   return typeof value === 'string' && value.trim().length > 0 ? value : null;
@@ -201,17 +184,8 @@ export default function ControlPlanePage({
               'Data source is in File (fixtures) mode — switch the chrome DATA SOURCE control to Live to submit a generation request.',
             );
           }
-          const response = await fetch(`${baseUrl}${GENERATE_PUBLISHER_PATH}`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ task_description: prompt }),
-          });
-          if (!response.ok) {
-            const body = await response.text().catch(() => '');
-            const detail = body ? `: ${body}` : '';
-            throw new Error(`HTTP ${response.status} ${response.statusText}${detail}`);
-          }
-          const body = await response.json().catch(() => ({})) as LiveGenerateResponse;
+          // OMN-13065: path literal migrated to submitGeneration() in src/services/event-dash-api.ts.
+          const body = await submitGeneration(prompt, baseUrl);
           const correlationId = body.correlation_id ?? pendingCorrelationId;
           const status = typeof body.status === 'string' ? body.status.toLowerCase() : 'success';
           if (status === 'failed' || status === 'error') {

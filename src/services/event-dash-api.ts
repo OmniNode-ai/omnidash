@@ -422,19 +422,38 @@ export const fetchNodeGenerations = (): Promise<
 export interface GenerateResponse {
   correlation_id: string;
   topic: string;
+  /** Backend-reported status — present when the backend signals a failure inline
+   *  (e.g. `status: 'failed'`) rather than via HTTP error code. */
+  status?: string;
+  /** Error detail reported by the backend in an inline failure response. */
+  error?: string;
+  /** Human-readable message reported by the backend. */
+  message?: string;
 }
 
-const GENERATE_ENDPOINT = "/api/generate";
+/** The /api/generate thin-publisher endpoint path. */
+export const GENERATE_ENDPOINT = "/api/generate";
 
 /**
  * Publish a node-generation request via the thin publisher. Resolves to the
  * correlation id on success; rejects with a typed Error on any non-OK response
  * so the caller renders an explicit failure state (never a silent success).
+ *
+ * @param taskDescription The natural-language task to generate a node for.
+ * @param baseUrl Optional backend base URL. When omitted the endpoint path is
+ *   used as-is (relative, same-origin). Pass the result of
+ *   `resolveCommandBaseUrl()` when the caller needs to honour the data-source
+ *   chrome override — the caller must check for `null` (file mode) before
+ *   calling this function.
  */
 export async function submitGeneration(
   taskDescription: string,
+  baseUrl?: string,
 ): Promise<GenerateResponse> {
-  const res = await fetch(GENERATE_ENDPOINT, {
+  const endpoint = baseUrl !== undefined
+    ? `${baseUrl}${GENERATE_ENDPOINT}`
+    : GENERATE_ENDPOINT;
+  const res = await fetch(endpoint, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ task_description: taskDescription }),
@@ -448,14 +467,57 @@ export async function submitGeneration(
   const body = (await res.json().catch(() => null)) as unknown;
   if (
     !isRecord(body) ||
-    typeof body.correlation_id !== "string" ||
-    typeof body.topic !== "string"
+    typeof body.correlation_id !== "string"
   ) {
     throw new Error(
-      "Generate request returned a malformed response (missing correlation_id/topic).",
+      "Generate request returned a malformed response (missing correlation_id).",
     );
   }
-  return { correlation_id: body.correlation_id, topic: body.topic };
+  return {
+    correlation_id: body.correlation_id,
+    topic: typeof body.topic === "string" ? body.topic : "",
+    status: typeof body.status === "string" ? body.status : undefined,
+    error: typeof body.error === "string" ? body.error : undefined,
+    message: typeof body.message === "string" ? body.message : undefined,
+  };
+}
+
+// ── Log-entries (trace-explorer) ─────────────────────────────────────────────
+
+/** One row from `GET /api/projections/log-entries?correlation_id=<id>`. */
+export interface LogEntryRow {
+  entry_id: string;
+  timestamp: string;
+  node_name: string;
+  function_name: string;
+  level: string;
+  message: string;
+  duration_ms: number | null;
+  metadata: Record<string, string>;
+}
+
+/** The /api/projections/log-entries endpoint path. */
+export const LOG_ENTRIES_ENDPOINT = "/api/projections/log-entries";
+
+/**
+ * Fetch log entries for a single correlation_id from the log-entries projection
+ * endpoint. Returns an empty array on any HTTP error or in file-source mode
+ * (where no proxy is registered — the caller may catch the error and surface a
+ * graceful empty state).
+ */
+export async function fetchLogEntries(
+  correlationId: string,
+): Promise<LogEntryRow[]> {
+  const url = `${LOG_ENTRIES_ENDPOINT}?correlation_id=${encodeURIComponent(correlationId)}`;
+  const res = await fetch(url);
+  if (!res.ok) return [];
+  const body = (await res.json()) as unknown;
+  const rows = Array.isArray(body)
+    ? (body as LogEntryRow[])
+    : Array.isArray((body as { rows?: LogEntryRow[] }).rows)
+      ? ((body as { rows: LogEntryRow[] }).rows)
+      : [];
+  return rows;
 }
 
 export const fetchRegistration = (): Promise<
