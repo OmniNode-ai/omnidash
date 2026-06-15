@@ -21,8 +21,11 @@ data_source:
   # Default Express bridge URL (used by sqlite and http modes on the client side).
   url: "http://localhost:3002"
 
-  # Default WebSocket invalidation URL (derived from url when not set explicitly).
-  ws_url: "ws://localhost:3002/ws"
+  # OMN-12969: ws_url removed. The dashboard previously opened a `/ws` invalidation
+  # socket, but the deployed projection backend (FastAPI projection-api) serves
+  # HTTP + an advisory SSE hint only and never registered a `/ws` route, so the
+  # browser upgrade was rejected (403). Live updates are poll-driven via
+  # useProjectionQuery. Reintroduction is guarded by local/no-projection-websocket.
 
   # Default SQLite DB path (used by server/routes.ts in sqlite mode only).
   # Tilde is expanded to $HOME by the server at runtime.

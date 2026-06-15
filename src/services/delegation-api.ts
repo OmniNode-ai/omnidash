@@ -11,8 +11,8 @@
  */
 
 import { TOPICS } from '@shared/types/topics';
-import { DATA_SOURCE_DEFAULT_MODE } from '@/config/generated/data-source-defaults';
 import { projectionUrl } from '@/data-source/projection-base-url';
+import { resolveEffectiveDataSource } from '@/data-source/data-source-override';
 
 // ── Endpoint config ──────────────────────────────────────────────────────────
 
@@ -183,7 +183,10 @@ function asTraceResponse(correlationId: string, body: unknown): CorrelationTrace
 // parse defensively so a non-JSON body degrades to an empty trace rather than a
 // raw parse error.
 function dataSourceMode(): string {
-  return import.meta.env.VITE_DATA_SOURCE ?? DATA_SOURCE_DEFAULT_MODE;
+  // OMN-13007: honor the runtime chrome override so a live switch stops reading
+  // fixtures (and a file switch stops hitting the REST endpoint) for the
+  // correlation trace, exactly like every other consumer of the seam.
+  return resolveEffectiveDataSource().mode;
 }
 
 function fixturesBase(): string {

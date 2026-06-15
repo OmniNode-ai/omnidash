@@ -1,4 +1,5 @@
 import { createContext, useContext, type DragEvent } from 'react';
+import type { ComponentAuthorityLabel } from '@shared/types/component-manifest';
 
 /**
  * Provides placement-level action handlers (Configure, Delete) and drag
@@ -13,6 +14,7 @@ import { createContext, useContext, type DragEvent } from 'react';
  * affected chrome (kebab, drag grip) does not render.
  */
 export interface WidgetChromeHandlers {
+  authorityLabel?: ComponentAuthorityLabel;
   onConfigure?: () => void;
   onDuplicate?: () => void;
   onDelete?: () => void;

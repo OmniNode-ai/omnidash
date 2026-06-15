@@ -1,8 +1,8 @@
 # Reference: ComponentManifest
 
 **Owner:** `omnidash`
-**Last verified:** 2026-04-29
-**Verification:** `npm run check`
+**Last verified:** 2026-06-11
+**Verification:** `npm run generate:registry`; `npm run test:run -- shared/types/component-manifest.test.ts src/integration.part3.test.tsx`
 **Source of truth:** `shared/types/component-manifest.ts`
 
 ---
@@ -14,6 +14,7 @@ A `ComponentManifest` describes a single dashboard widget to the component regis
 - Identity: name, display name, description, category, version.
 - Sizing constraints: default, minimum, and maximum grid sizes.
 - Data sources: what topics or projection endpoints the widget reads.
+- Authority labels: whether the panel is projection-backed, runtime-observed, degraded, or hidden.
 - Events: what the widget emits and consumes on the mitt bus.
 - Config schema: a JSON Schema that governs what per-instance configuration the widget accepts.
 
@@ -34,6 +35,8 @@ interface ComponentManifest {
   category: ComponentCategory; // 'cost' | 'activity' | 'quality' | 'health'
   version: string;       // semver
   implementationKey: string; // path within componentImports map in index.ts
+  paletteVisibility?: 'visible' | 'hidden';
+  authorityLabel: 'projection-backed' | 'runtime-observed' | 'degraded' | 'hidden';
 
   configSchema?: JSONSchema7; // JSON Schema for per-instance config (optional)
                               // omit if the widget has nothing to configure
@@ -53,9 +56,29 @@ interface ComponentManifest {
     hint?: string;    // optional guidance for the user
   };
 
-  status?: 'stable' | 'beta' | 'not_implemented'; // default: 'stable'
+  capabilities: {
+    supports_compare: boolean;
+    supports_export: boolean;
+    supports_fullscreen: boolean;
+    supports_time_range?: boolean;
+  };
 }
 ```
+
+### Authority Labels
+
+`authorityLabel` is required. Missing labels fail `validateComponentManifest`, and registry generation fails when an in-repo MVP component has no `PALETTE_CLASSIFICATION` entry.
+
+Accepted labels:
+
+- `projection-backed`: rows are served by the standard `/projection/{topic}` backend and can be used as proof only when the packet also carries fresh, correlation-linked projection data and browser network evidence.
+- `runtime-observed`: data is observed from runtime health/topology surfaces. It is useful context, not projection proof by itself.
+- `degraded`: the panel is intentionally visible with an honest empty/stale/unavailable state. It cannot be cited as projection-backed proof.
+- `hidden`: the panel is not demo-visible from the palette because the backing projection path is absent, broken, or shape-incompatible.
+
+Hidden panels must use `paletteVisibility: 'hidden'` and `authorityLabel: 'hidden'`. Visible panels must not use `authorityLabel: 'hidden'`.
+
+Proof packets must record the authority label beside the screenshot and browser network trace. Nonblank UI is not proof; fresh projection-backed, correlation-linked data is proof.
 
 ### ComponentCategory
 
@@ -138,6 +161,8 @@ const costTrendManifest: ComponentManifest = {
   category: 'cost',
   version: '1.0.0',
   implementationKey: 'cost-trend/CostTrend',
+  paletteVisibility: 'visible',
+  authorityLabel: 'projection-backed',
   configSchema: {
     type: 'object',
     properties: {

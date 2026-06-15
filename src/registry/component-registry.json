@@ -1,6 +1,6 @@
 {
   "manifestVersion": "1.0",
-  "generatedAt": "2026-06-11T02:40:19.384Z",
+  "generatedAt": "2026-06-12T07:36:53.322Z",
   "components": {
     "cost-trend-panel": {
       "name": "cost-trend-panel",
@@ -130,7 +130,7 @@
         "supports_time_range": true
       },
       "paletteVisibility": "hidden",
-      "authorityLabel": "disabled"
+      "authorityLabel": "hidden"
     },
     "cost-by-model": {
       "name": "cost-by-model",
@@ -222,7 +222,7 @@
         "supports_time_range": true
       },
       "paletteVisibility": "hidden",
-      "authorityLabel": "disabled"
+      "authorityLabel": "hidden"
     },
     "cost-by-model-3d": {
       "name": "cost-by-model-3d",
@@ -318,7 +318,7 @@
         "supports_time_range": true
       },
       "paletteVisibility": "hidden",
-      "authorityLabel": "disabled"
+      "authorityLabel": "hidden"
     },
     "cost-by-repo": {
       "name": "cost-by-repo",
@@ -448,7 +448,7 @@
         "supports_time_range": true
       },
       "paletteVisibility": "hidden",
-      "authorityLabel": "disabled"
+      "authorityLabel": "hidden"
     },
     "delegation-metrics": {
       "name": "delegation-metrics",
@@ -782,7 +782,7 @@
         "supports_time_range": false
       },
       "paletteVisibility": "hidden",
-      "authorityLabel": "disabled"
+      "authorityLabel": "hidden"
     },
     "quality-score-panel": {
       "name": "quality-score-panel",
@@ -850,7 +850,7 @@
         "supports_time_range": false
       },
       "paletteVisibility": "hidden",
-      "authorityLabel": "disabled"
+      "authorityLabel": "hidden"
     },
     "context-effectiveness-heatmap": {
       "name": "context-effectiveness-heatmap",
@@ -1012,7 +1012,7 @@
         "supports_time_range": false
       },
       "paletteVisibility": "hidden",
-      "authorityLabel": "disabled"
+      "authorityLabel": "hidden"
     },
     "evidence-pipeline-flow": {
       "name": "evidence-pipeline-flow",
@@ -1315,7 +1315,7 @@
         "supports_time_range": false
       },
       "paletteVisibility": "hidden",
-      "authorityLabel": "disabled"
+      "authorityLabel": "hidden"
     },
     "token-usage": {
       "name": "token-usage",
@@ -1460,7 +1460,7 @@
         "supports_time_range": true
       },
       "paletteVisibility": "hidden",
-      "authorityLabel": "disabled"
+      "authorityLabel": "hidden"
     },
     "event-stream": {
       "name": "event-stream",
@@ -1528,7 +1528,7 @@
         "supports_time_range": false
       },
       "paletteVisibility": "hidden",
-      "authorityLabel": "disabled"
+      "authorityLabel": "hidden"
     },
     "projection-container": {
       "name": "projection-container",
@@ -1572,7 +1572,7 @@
         "supports_time_range": false
       },
       "paletteVisibility": "hidden",
-      "authorityLabel": "disabled"
+      "authorityLabel": "hidden"
     },
     "intent-distribution": {
       "name": "intent-distribution",
@@ -1638,7 +1638,7 @@
         "supports_time_range": false
       },
       "paletteVisibility": "hidden",
-      "authorityLabel": "disabled"
+      "authorityLabel": "hidden"
     },
     "session-timeline": {
       "name": "session-timeline",
@@ -1723,7 +1723,7 @@
         "supports_time_range": true
       },
       "paletteVisibility": "hidden",
-      "authorityLabel": "disabled"
+      "authorityLabel": "hidden"
     },
     "live-event-stream": {
       "name": "live-event-stream",
@@ -1817,7 +1817,7 @@
         "supports_time_range": false
       },
       "paletteVisibility": "hidden",
-      "authorityLabel": "disabled"
+      "authorityLabel": "hidden"
     },
     "routing-decision": {
       "name": "routing-decision",
@@ -1861,7 +1861,7 @@
         "supports_time_range": false
       },
       "paletteVisibility": "hidden",
-      "authorityLabel": "disabled"
+      "authorityLabel": "hidden"
     },
     "receipt-gate": {
       "name": "receipt-gate",
@@ -1905,7 +1905,7 @@
         "supports_time_range": false
       },
       "paletteVisibility": "hidden",
-      "authorityLabel": "disabled"
+      "authorityLabel": "hidden"
     },
     "cost-savings-overview": {
       "name": "cost-savings-overview",
@@ -2148,7 +2148,7 @@
         "supports_time_range": true
       },
       "paletteVisibility": "hidden",
-      "authorityLabel": "disabled"
+      "authorityLabel": "hidden"
     },
     "delegation-savings": {
       "name": "delegation-savings",
@@ -3062,7 +3062,7 @@
         "supports_time_range": false
       },
       "paletteVisibility": "hidden",
-      "authorityLabel": "disabled"
+      "authorityLabel": "hidden"
     },
     "delegation-control-plane": {
       "name": "delegation-control-plane",
@@ -3369,7 +3369,7 @@
         "supports_time_range": false
       },
       "paletteVisibility": "hidden",
-      "authorityLabel": "disabled"
+      "authorityLabel": "hidden"
     },
     "mcp-tools": {
       "name": "mcp-tools",
@@ -3479,7 +3479,7 @@
         "supports_time_range": false
       },
       "paletteVisibility": "hidden",
-      "authorityLabel": "disabled"
+      "authorityLabel": "hidden"
     },
     "control-plane": {
       "name": "control-plane",
@@ -3702,7 +3702,7 @@
         "supports_time_range": false
       },
       "paletteVisibility": "hidden",
-      "authorityLabel": "disabled"
+      "authorityLabel": "hidden"
     }
   }
 }

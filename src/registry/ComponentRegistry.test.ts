@@ -9,6 +9,8 @@ const mockManifest: ComponentManifest = {
   category: 'quality',
   version: '1.0.0',
   implementationKey: 'test/TestComponent',
+  paletteVisibility: 'visible',
+  authorityLabel: 'projection-backed',
   configSchema: { type: 'object', properties: { title: { type: 'string', default: 'Test' } }, additionalProperties: false },
   dataSources: [],
   events: { emits: [], consumes: [] },
@@ -71,7 +73,7 @@ describe('ComponentRegistry', () => {
       // event-stream has a real entry in componentImports (events/EventStream).
       implementationKey: 'events/EventStream',
       paletteVisibility: 'hidden',
-      authorityLabel: 'disabled',
+      authorityLabel: 'hidden',
     };
     const visibleWithImpl: ComponentManifest = {
       ...mockManifest,

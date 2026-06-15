@@ -22,7 +22,7 @@ VITE_HTTP_DATA_SOURCE_URL=http://192.168.86.201:13002
 |-------|-------|
 | visible / projection-backed | 8 |
 | visible / degraded-labeled | 2 |
-| hidden / disabled | 22 |
+| hidden / hidden | 22 |
 
 - **Visible / projection-backed (8):** delegation-metrics, routing-decision-table,
   delegation-savings, delegation-cost-comparison, delegation-model-routing,
@@ -31,7 +31,7 @@ VITE_HTTP_DATA_SOURCE_URL=http://192.168.86.201:13002
 - **Visible / degraded-labeled (2):** context-effectiveness-heatmap (the 100-run experiment
   keep-set; `context.experiment-scores.v1`=404, renders OMN-11241 research fixture state
   labeled degraded), evidence-pipeline-flow (`evidence_pipeline.*`=200/0 rows, truthful empty).
-- **Hidden / disabled (22):** everything whose single-backend topic returns 404 (no
+- **Hidden / hidden (22):** everything whose single-backend topic returns 404 (no
   producer / no `projection_api: expose`) or 503 (table missing) — plus **event-stream**,
   which returns 200/100 rows on `registration.v1` BUT the row shape
   (`service_name/service_type/health_status/...`) does not match the widget's required
@@ -63,8 +63,19 @@ the visible keep-set widgets, running with ONLY the single backend configured.
   decisions (truthful "No routing decisions" empty state), delegation savings ($1.82 vs Opus).
 - `mobile-fullpage.png` — full-page mobile (390×844).
 - `palette-authority-labels.png` — widget library showing per-card authority labels
-  (`· projection-backed` / `· degraded` / `· disabled`) and hidden/disabled cards greyed out.
+  (`· projection-backed` / `· degraded` / `· hidden`) and hidden cards greyed out.
 - `visible-text-desktop.txt` — full rendered body text.
+
+## Authority-label capture
+
+Accepted dashboard proof packets must record, for every demo-visible panel:
+
+- the manifest `authorityLabel` (`projection-backed`, `runtime-observed`, `degraded`, or `hidden`);
+- the screenshot that shows the panel label;
+- the browser network trace proving `/projection/{topic}` requests use the single intended backend;
+- the projection/API rows used for accepted evidence, including the shared correlation id when a run is being proven.
+
+`degraded` and `hidden` labels are exclusionary for projection proof. A nonblank UI is not proof; fresh projection-backed, correlation-linked data is proof.
 
 ## Backend manifest
 
@@ -75,4 +86,4 @@ topic manifest, and the explicit rejected-origin list.
 
 No visible component is fed from a non-authoritative source. Any component that could not
 be truthfully backed by the single projection API today (404, 503, or 200-with-wrong-shape)
-was **hidden/disabled** — the backend was never swapped or augmented to keep a widget visible.
+was **hidden** — the backend was never swapped or augmented to keep a widget visible.

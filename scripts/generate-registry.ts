@@ -22,6 +22,8 @@ import { PALETTE_CLASSIFICATION } from '../shared/types/palette-visibility.js';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 const NODE_GENERATION_COMPLETED_PROJECTION_TOPIC = 'onex.evt.omnimarket.node-generation-completed.v1';
+type ComponentManifestDraft = Omit<ComponentManifest, 'paletteVisibility' | 'authorityLabel'> &
+  Partial<Pick<ComponentManifest, 'paletteVisibility' | 'authorityLabel'>>;
 
 interface PackageJsonWithDashboard {
   name: string;
@@ -67,7 +69,7 @@ export function scanInstalledPackages(nodeModulesDir: string): ComponentManifest
   return found;
 }
 
-const MVP_COMPONENTS: Record<string, ComponentManifest> = {
+const MVP_COMPONENTS: Record<string, ComponentManifestDraft> = {
   'cost-trend-panel': {
     name: 'cost-trend-panel',
     displayName: 'Cost Trend',
@@ -1582,7 +1584,7 @@ const nodeModulesDir = resolve(__dirname, '../node_modules');
 const scannedComponents = scanInstalledPackages(nodeModulesDir);
 
 // Merge: local wins on name collision
-const mergedComponents: Record<string, ComponentManifest> = { ...MVP_COMPONENTS };
+const mergedComponents: Record<string, ComponentManifestDraft> = { ...MVP_COMPONENTS };
 for (const scanned of scannedComponents) {
   if (mergedComponents[scanned.name]) {
     console.warn(
@@ -1593,13 +1595,32 @@ for (const scanned of scannedComponents) {
   }
 }
 
-// OMN-12833 (A2.5): stamp palette visibility + authority label from the live
-// one-backend classification. Components without an explicit classification
-// default to visible / projection-backed.
+// OMN-12981: stamp palette visibility + authority label from the live
+// one-backend classification. Local MVP components must have an explicit
+// classification; external package manifests may carry their own explicit label.
+const classificationFailures: string[] = [];
 for (const [name, m] of Object.entries(mergedComponents)) {
   const cls = PALETTE_CLASSIFICATION[name];
-  m.paletteVisibility = cls?.paletteVisibility ?? 'visible';
-  m.authorityLabel = cls?.authorityLabel ?? 'projection-backed';
+  if (cls) {
+    m.paletteVisibility = cls.paletteVisibility;
+    m.authorityLabel = cls.authorityLabel;
+    continue;
+  }
+  if (Object.prototype.hasOwnProperty.call(MVP_COMPONENTS, name)) {
+    classificationFailures.push(`  ${name}: missing PALETTE_CLASSIFICATION entry`);
+    continue;
+  }
+  if (!m.authorityLabel) {
+    classificationFailures.push(`  ${name}: external manifest missing authorityLabel`);
+  }
+  if (!m.paletteVisibility) {
+    classificationFailures.push(`  ${name}: external manifest missing paletteVisibility`);
+  }
+}
+if (classificationFailures.length > 0) {
+  console.error('[registry] palette authority classification failed:');
+  for (const line of classificationFailures) console.error(line);
+  process.exit(1);
 }
 
 // T16 (OMN-157): generator-time check that every manifest is structurally
@@ -1607,7 +1628,7 @@ for (const [name, m] of Object.entries(mergedComponents)) {
 // arbitrary REST endpoints are not a valid data path.
 const validationFailures: string[] = [];
 for (const [name, m] of Object.entries(mergedComponents)) {
-  const result = validateComponentManifest(m);
+  const result = validateComponentManifest(m as ComponentManifest);
   if (!result.valid) {
     validationFailures.push(`  ${name}: ${result.errors.join('; ')}`);
   }
@@ -1621,7 +1642,7 @@ if (validationFailures.length > 0) {
 const manifest = {
   manifestVersion: '1.0',
   generatedAt: new Date().toISOString(),
-  components: mergedComponents,
+  components: mergedComponents as Record<string, ComponentManifest>,
 };
 
 // Lives under src/ so Vite can resolve it as a module import without

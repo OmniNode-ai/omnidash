@@ -7,6 +7,7 @@ import { NodePill } from '@/components/primitives';
 import { Text } from '@/components/ui/typography';
 import { useDataSourceMode, isLiveDataSource } from '@/hooks/useDataSourceMode';
 import { useFrameStore } from '@/store/store';
+import { fetchLogEntries } from '@/services/event-dash-api';
 
 // ── Data types ───────────────────────────────────────────────────────
 
@@ -221,19 +222,14 @@ export default function TraceExplorerWidget() {
     setEventsLoading(true);
     setTraceEvents([]);
     try {
-      // Fetch events for this correlation_id from the log-entries projection endpoint.
+      // OMN-13065: fetch migrated behind fetchLogEntries() seam in src/services/event-dash-api.ts.
       // In file-source mode this falls back to empty gracefully.
-      const url = `/api/projections/log-entries?correlation_id=${encodeURIComponent(trace.correlation_id)}`;
-      const res = await fetch(url);
-      if (res.ok) {
-        const body = (await res.json()) as unknown;
-        const rows: TraceEvent[] = Array.isArray(body)
-          ? (body as TraceEvent[])
-          : Array.isArray((body as { rows?: TraceEvent[] }).rows)
-            ? ((body as { rows: TraceEvent[] }).rows)
-            : [];
-        setTraceEvents(rows.sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime()));
-      }
+      const rows = await fetchLogEntries(trace.correlation_id);
+      setTraceEvents(
+        (rows as TraceEvent[]).sort(
+          (a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime(),
+        ),
+      );
     } catch {
       // File-mode: no HTTP endpoint available; show empty timeline
     } finally {

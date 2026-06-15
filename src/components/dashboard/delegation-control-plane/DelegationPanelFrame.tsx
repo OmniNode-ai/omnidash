@@ -5,8 +5,8 @@ import { Text } from '@/components/ui/typography';
 // projection-backed = read from projection-API (/projection/{topic})
 // runtime-observed  = live runtime metric (e.g. consumer-group lag)
 // degraded          = data source is stale / behind SLA
-// disabled          = panel is present but the data path is not wired
-export type PanelAuthority = 'projection-backed' | 'runtime-observed' | 'degraded' | 'disabled';
+// hidden            = panel is hidden because the data path is not wired
+export type PanelAuthority = 'projection-backed' | 'runtime-observed' | 'degraded' | 'hidden';
 
 const AUTHORITY_STYLE: Record<PanelAuthority, { label: string; color: string; bg: string; border: string }> = {
   'projection-backed': {
@@ -27,8 +27,8 @@ const AUTHORITY_STYLE: Record<PanelAuthority, { label: string; color: string; bg
     bg: 'color-mix(in srgb, var(--color-warn, #f59e0b) 10%, transparent)',
     border: 'color-mix(in srgb, var(--color-warn, #f59e0b) 25%, transparent)',
   },
-  disabled: {
-    label: 'disabled',
+  hidden: {
+    label: 'hidden',
     color: 'var(--text-tertiary, #888)',
     bg: 'var(--panel-2)',
     border: 'var(--line-2)',

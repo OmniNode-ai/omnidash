@@ -151,10 +151,12 @@ describe('ControlPlanePage', () => {
     expect(await screen.findByText(/\+ Trigger delegation/i)).toBeInTheDocument();
   });
 
-  it('submits to bus in fixture mode (no client-side fabrication since OMN-12775)', async () => {
-    // OMN-12775: file-mode simulated events are disabled. The submit path
-    // always tries the /api/sea/generate route. Without VITE_HTTP_DATA_SOURCE_URL
-    // set, it fails-fast with an error rather than fabricating fake events.
+  it('fails fast in file mode without fabricating events (OMN-12775 / OMN-13006)', async () => {
+    // OMN-12775: file-mode simulated events are disabled.
+    // OMN-13006: in file mode (the test-env default) resolveProjectionBaseUrl()
+    // returns null — there is no projection backend — so the submit fails-fast
+    // with an error rather than fabricating fake events or POSTing to a
+    // non-existent origin.
     mockFetchWithItems([]);
     render(
       <DataSourceTestProvider client={qc}>
@@ -300,11 +302,56 @@ describe('ControlPlanePage', () => {
     fireEvent.click(screen.getByRole('button', { name: /generate/i }));
 
     await waitFor(() => {
-      expect(screen.getByText(/failed to submit: error: http 500 server error: boom/i)).toBeInTheDocument();
+      // OMN-13065: error message now comes from submitGeneration() seam in
+      // src/services/event-dash-api.ts. Format changed from "HTTP 500 Server Error: boom"
+      // to "Generate request failed (HTTP 500): boom" — same information, seam-consistent phrasing.
+      expect(screen.getByText(/failed to submit: error: generate request failed \(http 500\): boom/i)).toBeInTheDocument();
     });
-    // OMN-12775: thin publisher uses /api/sea/generate, not the phantom /api/hackathon/generate
+    // OMN-13006: submit targets the live thin-publisher route /api/generate on the
+    // single projection backend (resolveProjectionBaseUrl), NOT the phantom
+    // /api/sea/generate (no such route — 404 live).
     expect(fetch).toHaveBeenCalledWith(
-      'http://backend.test/api/sea/generate',
+      'http://backend.test/api/generate',
+      expect.objectContaining({ method: 'POST' }),
+    );
+  });
+
+  it('posts same-origin /api/generate (relative) in proxy mode (OMN-13006 demo config)', async () => {
+    // The demo/serving config sets VITE_PROJECTION_API_URL, so the dev/serving
+    // proxy forwards same-origin /api/generate to the single projection backend
+    // (vite.proxy-config.ts). resolveProjectionBaseUrl() returns '' (relative),
+    // so submit and projection reads hit the SAME backend with no cross-origin
+    // hop and no /api/sea/generate.
+    vi.stubEnv('VITE_DATA_SOURCE', 'http');
+    vi.stubEnv('VITE_PROJECTION_API_URL', 'http://projection-backend:3002');
+    const source: ProtocolSnapshotSource = {
+      async *readAll() {
+        yield* [];
+      },
+    };
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValueOnce({
+      ok: true,
+      status: 200,
+      statusText: 'OK',
+      json: async () => ({ correlation_id: 'corr-proxy-1', topic: 'onex.cmd.omnimarket.node-generation-requested.v1' }),
+    }));
+
+    render(
+      <DataSourceTestProvider client={qc} source={source}>
+        <ControlPlanePage config={{}} />
+      </DataSourceTestProvider>,
+    );
+
+    const input = await screen.findByPlaceholderText(/describe the node/i);
+    fireEvent.change(input, { target: { value: 'Classify sentiment' } });
+    fireEvent.click(screen.getByRole('button', { name: /generate/i }));
+
+    await waitFor(() => {
+      expect(screen.getByRole('status')).toHaveTextContent(/corr-proxy-1/i);
+    });
+    // Relative base => same-origin '/api/generate', proxied to the single backend.
+    expect(fetch).toHaveBeenCalledWith(
+      '/api/generate',
       expect.objectContaining({ method: 'POST' }),
     );
   });

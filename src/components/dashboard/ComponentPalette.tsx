@@ -150,10 +150,10 @@ export function ComponentPalette({
                     <div className="lib-card-info">
                       <div className="lib-card-name">{c.manifest.displayName}</div>
                       <div className="lib-card-desc">{c.manifest.description}</div>
-                      {/* OMN-12833 (A2.5): authority label derived from the
+                      {/* OMN-12981: explicit authority label derived from the
                           single standard projection backend. */}
                       <div className="lib-card-added-badge">
-                        · {c.manifest.authorityLabel ?? 'projection-backed'}
+                        · {c.manifest.authorityLabel}
                       </div>
                       {disabled && <div className="lib-card-added-badge">· not implemented</div>}
                     </div>

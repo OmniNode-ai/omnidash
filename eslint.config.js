@@ -84,6 +84,11 @@ export default [
       'local/no-cast-on-parsed-json': 'error',
       'local/no-projection-fallback': 'error',
       'local/no-env-fallback': 'error',
+      // OMN-12969: ban raw browser WebSocket in client source. The dead `/ws`
+      // path (403 against the HTTP/SSE-only projection backend) was removed;
+      // this guard prevents reintroducing an unwired socket. Live updates are
+      // poll-driven via useProjectionQuery.
+      'local/no-projection-websocket': 'error',
       'react-hooks/rules-of-hooks': 'error',
       // `exhaustive-deps` is set to `warn` rather than `error` so that
       // genuine one-shot effects (mount-only hydration, resize observer
@@ -109,6 +114,99 @@ export default [
           argsIgnorePattern: '^_',
           varsIgnorePattern: '^_',
           caughtErrorsIgnorePattern: '^_',
+        },
+      ],
+    },
+  },
+
+  // OMN-13019 (retro A-1): route-seam lint. String-literal `/api/` paths in
+  // fetch/axios call sites and path-const declarations are banned outside the
+  // route seams (src/services/, src/data-source/). The `/api/sea/generate` →
+  // `/api/generate` rename desynchronized the widget, proxy, demo docs, and a
+  // PR on demo night because the path lived as scattered literals
+  // (PROCESS_FAILURE_RETRO.md #7; feedback_all_urls_from_contracts /
+  // OMN-12803). New route literals belong behind the seam; existing debt is
+  // baselined with eslint-disable comments carrying ticket refs.
+  //
+  // v1 scope: inline Literal / leading-quasi TemplateLiteral arguments of
+  // fetch()/axios()/axios.*() calls, plus VariableDeclarator path consts.
+  //
+  // v2 scope (OMN-13065): mid-template `${base}/api/...` segments. Uses
+  // `:has(TemplateElement[value.raw=/...\/api\/.../])` to catch any TemplateLiteral
+  // argument whose quasis contain `/api/` — covers the `${baseUrl}/api/...` pattern
+  // that v1 missed because the leading quasi is empty, not `/api/`.
+  {
+    files: ['src/**/*.{ts,tsx}', 'shared/**/*.ts', 'server/**/*.ts'],
+    ignores: [
+      'src/services/**',
+      'src/data-source/**',
+      // Tests and stories exercise routes against mocks; the runtime seam
+      // boundary does not apply to them.
+      '**/*.test.{ts,tsx}',
+      '**/*.stories.{ts,tsx}',
+      '**/__tests__/**',
+    ],
+    rules: {
+      'no-restricted-syntax': [
+        'error',
+        {
+          selector:
+            'CallExpression[callee.name=/^(fetch|axios)$/] > Literal[value=/^\\u002Fapi\\u002F/]',
+          message:
+            'String-literal /api/ path in a fetch/axios call outside src/services/ or src/data-source/. Route paths live behind the seam (OMN-13019 / OMN-12803).',
+        },
+        {
+          selector:
+            'CallExpression[callee.name=/^(fetch|axios)$/] > TemplateLiteral[quasis.0.value.raw=/^\\u002Fapi\\u002F/]',
+          message:
+            'Template-literal /api/ path in a fetch/axios call outside src/services/ or src/data-source/. Route paths live behind the seam (OMN-13019 / OMN-12803).',
+        },
+        // OMN-13065 v2: mid-template `${base}/api/...` — the leading quasi is empty
+        // (before the first interpolation), so the v1 leading-quasi selector misses it.
+        // This selector matches any TemplateLiteral passed directly to fetch/axios that
+        // contains a TemplateElement with `/api/` anywhere in its raw value.
+        {
+          selector:
+            'CallExpression[callee.name=/^(fetch|axios)$/] > TemplateLiteral:has(TemplateElement[value.raw=/\\u002Fapi\\u002F/])',
+          message:
+            'Mid-template /api/ path in a fetch/axios call outside src/services/ or src/data-source/. Route paths live behind the seam (OMN-13065 / OMN-13019 / OMN-12803).',
+        },
+        {
+          selector:
+            'CallExpression[callee.object.name="axios"] > Literal[value=/^\\u002Fapi\\u002F/]',
+          message:
+            'String-literal /api/ path in an axios.* call outside src/services/ or src/data-source/. Route paths live behind the seam (OMN-13019 / OMN-12803).',
+        },
+        {
+          selector:
+            'CallExpression[callee.object.name="axios"] > TemplateLiteral[quasis.0.value.raw=/^\\u002Fapi\\u002F/]',
+          message:
+            'Template-literal /api/ path in an axios.* call outside src/services/ or src/data-source/. Route paths live behind the seam (OMN-13019 / OMN-12803).',
+        },
+        // OMN-13065 v2: mid-template for axios.* calls.
+        {
+          selector:
+            'CallExpression[callee.object.name="axios"] > TemplateLiteral:has(TemplateElement[value.raw=/\\u002Fapi\\u002F/])',
+          message:
+            'Mid-template /api/ path in an axios.* call outside src/services/ or src/data-source/. Route paths live behind the seam (OMN-13065 / OMN-13019 / OMN-12803).',
+        },
+        {
+          selector: 'VariableDeclarator > Literal[value=/^\\u002Fapi\\u002F/]',
+          message:
+            'String-literal /api/ path const outside src/services/ or src/data-source/. Route paths live behind the seam (OMN-13019 / OMN-12803).',
+        },
+        {
+          selector:
+            'VariableDeclarator > TemplateLiteral[quasis.0.value.raw=/^\\u002Fapi\\u002F/]',
+          message:
+            'Template-literal /api/ path const outside src/services/ or src/data-source/. Route paths live behind the seam (OMN-13019 / OMN-12803).',
+        },
+        // OMN-13065 v2: mid-template for variable declarator consts.
+        {
+          selector:
+            'VariableDeclarator > TemplateLiteral:has(TemplateElement[value.raw=/\\u002Fapi\\u002F/])',
+          message:
+            'Mid-template /api/ path const outside src/services/ or src/data-source/. Route paths live behind the seam (OMN-13065 / OMN-13019 / OMN-12803).',
         },
       ],
     },

@@ -89,7 +89,11 @@ export function layoutsMiddleware(opts: { root: string }) {
 
     if (req.method === 'GET') {
       if (!existsSync(file)) {
-        res.statusCode = 404;
+        // OMN-12995: absence of a saved layout is a normal state, not an error.
+        // Return an empty 204 instead of 404 so the dev console stays clean on
+        // first load (no saved layout yet). The client treats 204 — and 404 for
+        // back-compat — as "no saved layout".
+        res.statusCode = 204;
         return res.end();
       }
       res.setHeader('Content-Type', 'application/json');

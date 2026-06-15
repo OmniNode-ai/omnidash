@@ -19,7 +19,8 @@
 #   - src/config/generated/               (generated from contract.yaml — owned by generate:config)
 #   - src/data-source/                    (documented HTTP/WS carve-out, OMN-10756)
 #   - src/no-env-fallback.test.ts         (ESLint rule tests validating detection pattern itself)
-#   - src/tests/setup.ts                  (global test env stubs — VITE_WS_URL for provider tests)
+#   - src/no-projection-websocket.test.ts (ESLint rule tests validating detection pattern itself)
+#   - src/tests/setup.ts                  (global test env stubs; VITE_WS_URL stub removed in OMN-12969)
 #   - src/data-source/http-snapshot-source.test.ts  (unit tests for HTTP adapter)
 #   - src/services/delegation-api.test.ts  (unit tests asserting baseUrl option behavior)
 #   - src/layout/layout-persistence.test.ts (unit tests with arbitrary localhost fixture input)
@@ -63,6 +64,9 @@ EXCLUDE_DIRS=(
 
 ALLOWLIST_FILES=(
   'src/no-env-fallback.test.ts'
+  # OMN-12969: no-projection-websocket rule tests use ws://localhost:3002/ws as
+  # literal fixture inputs to verify the detector fires — testing the pattern itself.
+  'src/no-projection-websocket.test.ts'
   'src/tests/setup.ts'
   'src/data-source/index.ts'
   'src/data-source/http-snapshot-source.test.ts'

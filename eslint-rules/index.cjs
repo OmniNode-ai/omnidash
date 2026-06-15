@@ -5,5 +5,6 @@ module.exports = {
     'no-cast-on-parsed-json': require('./no-cast-on-parsed-json.cjs'),
     'no-projection-fallback': require('./no-projection-fallback.cjs'),
     'no-env-fallback': require('./no-env-fallback.cjs'),
+    'no-projection-websocket': require('./no-projection-websocket.cjs'),
   },
 };
