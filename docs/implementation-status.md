@@ -1,7 +1,7 @@
 # OmniDash — Implementation Status
 
 **Owner:** `omnidash`
-**Last verified:** 2026-04-29
+**Last verified:** 2026-06-16
 **Verification:** `npm run check && npm run test:run`
 
 This document summarizes which parts of the OmniDash composable dashboard are implemented. A new developer should be able to start with this page and reach working code without opening the phased plan files.
@@ -26,9 +26,12 @@ All four implementation parts are complete. The application runs, type-checks, a
 **What was built:**
 
 - Vite + React 19 SPA with TypeScript, vanilla-extract, TailwindCSS.
-- Two-mode data source system controlled by `VITE_DATA_SOURCE` env var:
+- Four-mode data source system controlled by `VITE_DATA_SOURCE` env var (defaults generated from `contract.yaml` via `npm run generate:config`):
   - `file` (default): reads JSON snapshots from `./fixtures/`. Zero infra required.
-  - `http`: proxies to Express bridge at `localhost:3002`.
+  - `http`: reads via the projection backend at `localhost:3002`.
+  - `sqlite`: reads via the projection backend (resolves through `HttpSnapshotSource`).
+  - `postgres`: reads via the projection backend (resolves through `HttpSnapshotSource`).
+- Runtime data-source override: the `DataSourceControl` chrome component (OMN-13007) lets an operator switch the active backend at runtime without restarting. `src/data-source/data-source-override.ts` is the single seam — components must never read `VITE_DATA_SOURCE` directly.
 - Zustand store with slices for edit mode, layout state, and global filters.
 - TanStack Query provider for data fetching.
 - Typography token system: all widget text goes through `<Text>` / `<Heading>` from `src/components/ui/typography`. ESLint rule `local/no-typography-inline` enforces this.
@@ -67,18 +70,44 @@ All four implementation parts are complete. The application runs, type-checks, a
 
 ---
 
-## Part 3: MVP Widget Set, Templates, Proof of Life
+## Part 3: Widget Set, Templates, Proof of Life
 
 **What was built:**
 
-- Seven MVP widgets, each following the per-widget directory layout:
+- Approximately 30 widget directories under `src/components/dashboard/`, each following the per-widget directory layout. Current directories include (verified 2026-06-16):
+  - `ab-compare/` — A/B comparison panel
+  - `baselines/` — baselines ROI card (bespoke; see ADR-003)
+  - `command-dispatch/` — command dispatch panel
+  - `context-heatmap/` — context usage heatmap
+  - `control-plane/` — control plane status
+  - `cost-by-model/` — cost breakdown by model
+  - `cost-by-repo/` — cost breakdown by repository
+  - `cost-savings-overview/` — cost savings summary
+  - `cost-summary/` — cost summary view
   - `cost-trend/` — 2D (ECharts) and 3D (three.js) stacked cost chart
-  - `activity-heatmap/` — calendar heatmap of workflow activity
-  - `quality-score-panel/` — aggregated quality score display
-  - `health-monitor/` — real-time service health indicators
-  - `execution-graph/` — interactive node-link execution trace
-  - `delegation-metrics/` — delegation accuracy and distribution
-  - `node-registry/` — registered node listing with status
+  - `delegation/` — delegation metrics
+  - `delegation-control-plane/` — delegation control plane
+  - `dep-health/` — dependency health status
+  - `event-dash/` — event dashboard views (OMN-12943)
+  - `events/` — event list
+  - `evidence-pipeline/` — evidence pipeline status
+  - `instruction-eval/` — instruction evaluation
+  - `intent-distribution/` — intent distribution chart
+  - `live-events/` — live event feed
+  - `mcp-tools/` — MCP tools panel
+  - `projection-container/` — generic projection container
+  - `quality/` — aggregated quality score display
+  - `readiness/` — readiness indicators
+  - `receipt-gate/` — receipt gate status
+  - `routing/` — routing overview
+  - `routing-decision/` — routing decision detail
+  - `session-timeline/` — session timeline
+  - `swarm-control-plane/` — swarm control plane
+  - `token-usage/` — token usage breakdown
+  - `trace-explorer/` — execution trace explorer
+
+  Note: `activity-heatmap/`, `health-monitor/`, `execution-graph/`, and `node-registry/` are **no longer present** in `src/components/dashboard/`.
+
 - Storybook stories for all widgets (at minimum `Empty` and `Populated` exports).
 - Compliance test `src/storybook-coverage-compliance.test.ts` that enforces story coverage on every `npm test`.
 - Dashboard templates for common observability layouts.
@@ -114,7 +143,7 @@ All four implementation parts are complete. The application runs, type-checks, a
 |-----|-------|
 | External package dynamic code loading | External `@omninode/*` widgets surface in palette with `status: 'not_implemented'` unless their `implementationKey` is also in the local `componentImports` map. Full dynamic loading is a future phase. |
 | Auth integration | Auth stubs are present but the frame does not yet connect to the ONEX auth service. |
-| WebSocket live data | Widgets read fixture files in dev mode. Live WebSocket subscriptions are wired but require a running ONEX runtime. |
+| Live data updates | Live updates are poll-driven via `useProjectionQuery`. The `/ws` WebSocket path was permanently removed in OMN-12969 (it was rejected with 403 by the projection backend and never delivered events). Raw browser WebSocket construction is blocked by the `local/no-projection-websocket` ESLint rule. |
 
 ---
 

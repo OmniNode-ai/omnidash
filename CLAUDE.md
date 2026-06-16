@@ -10,18 +10,24 @@ Dashboard v2 follows the [OmniNode deterministic truth doctrine](https://github.
 
 ## Local dev mode (no infra)
 
-This repo runs in two modes:
+This repo runs in four modes controlled by `VITE_DATA_SOURCE`. Default values are generated from `contract.yaml` into `src/config/generated/data-source-defaults.ts` via `npm run generate:config`:
 - `VITE_DATA_SOURCE=file` (default in dev) — reads snapshots from `./fixtures/`, persists layouts to `./dashboard-layouts/`. Zero infra required.
-- `VITE_DATA_SOURCE=http` — reads via `http://localhost:3002` Express bridge. Used only when we have a running Express server.
+- `VITE_DATA_SOURCE=http` — reads via the projection backend at `localhost:3002`.
+- `VITE_DATA_SOURCE=sqlite` — resolves through `HttpSnapshotSource` (same HTTP read path as `http`, distinction is server-side).
+- `VITE_DATA_SOURCE=postgres` — resolves through `HttpSnapshotSource` (same HTTP read path as `http`, distinction is server-side).
+
+A runtime chrome override (`DataSourceControl`, OMN-13007) allows switching the active backend without restarting. See `src/data-source/data-source-override.ts` — the single override seam.
 
 ### Hard rules
 
-1. **Do NOT hardcode** `localhost:3002` anywhere. All data access goes through `src/data-source/` — either `FileSnapshotSource` or `HttpSnapshotSource`, selected by `VITE_DATA_SOURCE`.
-2. **Do NOT let components own truth.** Widgets may render projection/API data and presentation state only. They must not read Postgres, import backend event-bus/database clients, implement reducers, or infer authoritative state. See `src/components/dashboard/README.md`.
-3. **Do NOT hand-edit** `src/registry/component-registry.json`. Run `npm run generate:registry`.
-4. **Do NOT hand-edit** anything under `src/shared/types/generated/`. Run `npm run types:generate`.
-5. **Do NOT edit** any file under `node_modules/`. Components discovered there are read-only.
-6. **Fixtures are committed; dashboard-layouts are not.** `./fixtures/` is tracked via an OMN-10305 carve-out in `.gitignore` (`!fixtures/`, `!fixtures/**`). `./dashboard-layouts/` remains gitignored. See `git ls-files fixtures/` to inspect tracked snapshots.
+1. **Do NOT hardcode** `localhost:3002` anywhere. All data access goes through `src/data-source/` — `FileSnapshotSource` or `HttpSnapshotSource`, selected by the effective mode from `resolveEffectiveDataSource()`.
+2. **Do NOT read `VITE_DATA_SOURCE` directly in components.** Always call `resolveEffectiveDataSource()` from `src/data-source/data-source-override.ts` so the runtime chrome override is honored (OMN-13007).
+3. **Do NOT place `/api/` path literals in fetch or axios calls outside `src/services/` or `src/data-source/`.** The `local/no-api-literal` ESLint rule (OMN-13019/13065) blocks this with error. Route paths belong behind the services seam.
+4. **Do NOT let components own truth.** Widgets may render projection/API data and presentation state only. They must not read Postgres, import backend event-bus/database clients, implement reducers, or infer authoritative state. See `src/components/dashboard/README.md`.
+5. **Do NOT hand-edit** `src/registry/component-registry.json`. Run `npm run generate:registry`.
+6. **Do NOT hand-edit** anything under `src/shared/types/generated/`. Run `npm run types:generate`.
+7. **Do NOT edit** any file under `node_modules/`. Components discovered there are read-only.
+8. **Fixtures are committed; dashboard-layouts are not.** `./fixtures/` is tracked via an OMN-10305 carve-out in `.gitignore` (`!fixtures/`, `!fixtures/**`). `./dashboard-layouts/` remains gitignored. See `git ls-files fixtures/` to inspect tracked snapshots.
 
 ### Common tasks
 
@@ -35,7 +41,7 @@ npm run dev
 
 **Add a new widget (two tracks — pick one):**
 
-_Track A — local MVP widget (the seven current widgets use this path):_
+_Track A — local widget (approximately 30 widget directories currently use this path):_
 1. Create `src/components/dashboard/<name>/<Name>.tsx`. Default-export a React component that accepts a `config` prop shaped per its manifest.
 2. Consume data through `useProjectionQuery(...)` or an approved `src/data-source/` adapter. Add an upstream projection/API surface before adding any component-side reducer or backend client.
 3. Register the lazy import in `src/components/dashboard/index.ts` under its `implementationKey` (e.g. `'<name>/<Name>': lazy(() => import('./<name>/<Name>'))`).
@@ -65,12 +71,14 @@ _Track B — external package widget (plugin extension path):_
 ### Where to look
 
 - Data fetching: `src/data-source/`
+- Runtime data-source override seam: `src/data-source/data-source-override.ts` (OMN-13007)
+- API route seam (`/api/` calls): `src/services/` — all fetch/axios calls with `/api/` paths live here, enforced by `local/no-api-literal` (OMN-13019/13065)
 - Grid behavior: `src/components/dashboard/DashboardGrid.tsx`
 - Palette: `src/components/dashboard/ComponentPalette.tsx`
 - Edit/view toggle: `src/store/editModeSlice.ts`, `src/pages/DashboardBuilder.tsx`
 - Layout persistence: `src/layout/layout-persistence.ts`
 - Widget lazy-import map: `src/components/dashboard/index.ts`
-- Widget MVP manifests: `scripts/generate-registry.ts` (`MVP_COMPONENTS`)
+- Widget manifests: `scripts/generate-registry.ts` (`MVP_COMPONENTS`)
 - External package manifest discovery: `scripts/generate-registry.ts` → `scanInstalledPackages()`
 
 ## Typography

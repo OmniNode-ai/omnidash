@@ -1,7 +1,7 @@
 # OmniDash — Composable Frame Architecture
 
 **Owner:** `omnidash`
-**Last verified:** 2026-04-29
+**Last verified:** 2026-06-16
 **Verification:** `npm run check && npm run test:run`
 **Source plan:** `omni_home/docs/plans/2026-04-10-omnidash-v2-composable-dashboard-design.md`
 
@@ -115,9 +115,13 @@ Components communicate via three channels:
 |---------|---------|-------------|
 | Zustand shared context (`src/store/`) | Frame-level UI state: time range, global filters, edit mode | Lightweight shared state that the frame manages |
 | `mitt` event bus | Component-to-component coordination: selection, drill-down, highlight | Interactions that do not require backend round-trips |
-| Kafka / WebSocket | Domain events with backend significance | Data updates, live metrics, workflow events |
+| HTTP projection polling (`useProjectionQuery`) | Domain events with backend significance | Data updates, live metrics, workflow events — poll-driven, no WebSocket |
 
-The frame does not mediate component-to-component communication. Components subscribe directly to the mitt bus and to WebSocket topics.
+The frame does not mediate component-to-component communication. Components subscribe directly to the mitt bus and poll the projection backend via `useProjectionQuery`.
+
+**WebSocket removed (OMN-12969):** The `/ws` path was permanently deleted. The deployed projection backend never registered a `/ws` route; the browser's upgrade request was rejected with 403 and no events were delivered. Raw browser WebSocket construction is blocked by the `local/no-projection-websocket` ESLint rule.
+
+**Route seam (OMN-13019/13065):** All `/api/` path literals in fetch and axios calls must live in `src/services/` or `src/data-source/`. The `local/no-api-literal` ESLint rule enforces this at error severity — placing an `/api/` literal outside those directories blocks the lint pass.
 
 ---
 
