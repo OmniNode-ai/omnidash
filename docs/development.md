@@ -1,7 +1,7 @@
 # OmniDash — Development Guide
 
 **Owner:** `omnidash`
-**Last verified:** 2026-04-29
+**Last verified:** 2026-06-16
 **Verification:** `npm run check && npm run test:run`
 
 ---
@@ -24,7 +24,7 @@ npm install
 
 ## Data Source Modes
 
-OmniDash runs in two modes selected by the `VITE_DATA_SOURCE` environment variable.
+OmniDash runs in four modes selected by the `VITE_DATA_SOURCE` environment variable. Default values are generated from `contract.yaml` into `src/config/generated/data-source-defaults.ts` — run `npm run generate:config` after editing `contract.yaml`.
 
 ### File mode (default)
 
@@ -36,21 +36,28 @@ VITE_DATA_SOURCE=file npm run dev
 
 Reads data from `./fixtures/<topic>/` JSON files. Persists layouts to `./dashboard-layouts/`. Both directories are gitignored. Zero infrastructure required.
 
-### HTTP bridge mode
+### HTTP mode
 
 ```bash
 VITE_DATA_SOURCE=http npm run dev
 ```
 
-Reads via the Express bridge at `http://localhost:3002`. Requires the bridge server to be running:
+Reads via the projection backend at `http://localhost:3002`. Requires the projection backend to be running.
+
+### SQLite and Postgres modes
 
 ```bash
-npm run dev:server
+VITE_DATA_SOURCE=sqlite npm run dev
+VITE_DATA_SOURCE=postgres npm run dev
 ```
 
-The bridge connects to the running ONEX runtime. Use this mode when you need live data from the event bus.
+Both resolve through `HttpSnapshotSource` pointing at the projection backend. The distinction is server-side; the frontend uses the same HTTP read path as `http` mode.
 
-**Hard rule:** Do NOT hardcode `localhost:3002` in source files. All data access goes through `src/data-source/` adapters.
+**Hard rule:** Do NOT hardcode `localhost:3002` in source files. All data access goes through `src/data-source/` adapters. Do NOT read `VITE_DATA_SOURCE` directly in components — always call `resolveEffectiveDataSource()` from `src/data-source/data-source-override.ts`, which layers the runtime chrome override (OMN-13007) over env defaults.
+
+### Runtime override (OMN-13007)
+
+The `DataSourceControl` chrome component allows switching the active backend at runtime without restarting. It writes a persisted override via `src/data-source/data-source-override.ts`. This is the single seam — there is no per-widget or per-mode env read outside this module.
 
 ---
 
@@ -67,6 +74,7 @@ The bridge connects to the running ONEX runtime. Use this mode when you need liv
 | `npm run lint` | ESLint with zero warnings — must pass before every PR |
 | `npm run build` | Type-check then production build |
 | `npm run generate:registry` | Rewrite `src/registry/component-registry.json` |
+| `npm run generate:config` | Regenerate `src/config/generated/data-source-defaults.ts` from `contract.yaml` — run after editing contract.yaml |
 | `npm run generate:fixtures` | Regenerate fixture snapshots |
 | `npm run types:generate` | Regenerate types under `src/shared/types/generated/` |
 | `npm run storybook` | Storybook on port 6006 |
@@ -191,12 +199,12 @@ The compliance test `src/storybook-coverage-compliance.test.ts` runs as part of 
 
 ---
 
-## V1 Backend Assumptions
+## Backend Assumptions
 
 OmniDash reads data from the ONEX runtime via:
 
-- WebSocket topics for live event streams (Kafka-backed via the ONEX HTTP bridge).
-- HTTP endpoints exposed by the Express bridge at `localhost:3002` in HTTP mode.
+- HTTP polling via `useProjectionQuery` against the projection backend. Live updates are poll-driven — there is no WebSocket connection. The `/ws` path was permanently removed in OMN-12969: it was rejected with a 403 by the projection backend and never delivered events. Raw browser WebSocket construction is blocked by the `local/no-projection-websocket` ESLint rule.
+- HTTP endpoints exposed by the projection backend at `localhost:3002` in http/sqlite/postgres modes.
 
 These endpoints are provided by the ONEX runtime running on `.201` (192.168.86.201). In dev mode, fixture files replace live data entirely and no runtime connection is needed.
 
@@ -222,7 +230,8 @@ The runtime topology is documented in `omni_home/CLAUDE.md` under "Infrastructur
 | `src/components/dashboard/index.ts` | Lazy-import map |
 | `src/components/dashboard/DashboardGrid.tsx` | Grid layout behavior |
 | `src/components/dashboard/ComponentPalette.tsx` | Widget palette |
-| `src/data-source/` | Data source adapters |
+| `src/data-source/` | Data source adapters; `data-source-override.ts` is the single runtime override seam |
+| `src/services/` | Route seam for all `/api/` fetch/axios calls — enforced by `local/no-api-literal` ESLint rule (OMN-13019/13065); do not place `/api/` literals outside this directory or `src/data-source/` |
 | `src/store/` | Zustand state slices |
 | `src/pages/DashboardBuilder.tsx` | Main builder page |
 | `src/layout/layout-persistence.ts` | Layout save/load |

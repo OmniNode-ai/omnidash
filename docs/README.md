@@ -1,7 +1,7 @@
 # OmniDash Documentation Index
 
 **Owner:** `omnidash`
-**Last verified:** 2026-04-29
+**Last verified:** 2026-06-16
 **Verification:** `npm run check && npm run test:run`
 
 This is the canonical documentation map for OmniDash. Start here to find architecture, reference, development, and historical context.
@@ -45,6 +45,7 @@ No active migrations. OmniDash was created as a clean rewrite; it does not share
 
 - [docs/adr/001-typography-system.md](adr/001-typography-system.md) — why all widget text uses `<Text>` and `<Heading>` tokens rather than inline styles.
 - [docs/adr/002-storybook-widget-coverage.md](adr/002-storybook-widget-coverage.md) — why every widget must expose `Empty` and `Populated` stories.
+- [docs/adr/003-baselines-roi-card-stay-bespoke.md](adr/003-baselines-roi-card-stay-bespoke.md) — why `BaselinesROICard` stays bespoke and is exempt from the generic widget primitives migration (OMN-10296).
 
 ---
 
