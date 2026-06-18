@@ -296,6 +296,26 @@ export type Approver = string | null;
  */
 export type DecidedAt = string | null;
 /**
+ * Minimum upstream confidence (0.0-1.0) for the action to proceed without escalation
+ */
+export type ConfidenceThreshold = number;
+/**
+ * Whether explicit user confirmation is required before emit
+ */
+export type RequiresUserConfirmation = boolean;
+/**
+ * Typed user-facing risk of executing the action
+ */
+export type EnumRiskLevel = "low" | "medium" | "high" | "critical";
+/**
+ * Whether the committed effect can be undone
+ */
+export type Reversible = boolean;
+/**
+ * Typed durability of the effect the action commits
+ */
+export type EnumCommitLevel = "read_only" | "reversible" | "irreversible";
+/**
  * Whether every emission must carry a correlation ID
  */
 export type CorrelationRequired = boolean;
@@ -440,6 +460,13 @@ export type EnumDashboardWidgetType1 = "tile" | "chart" | "table" | "list" | "sc
  */
 export type EnumBindingOrderDirection1 = "ascending" | "descending";
 /**
+ * Durability of the effect a UI action commits, lowest to highest.
+ *
+ * This interface was referenced by `HttpsOmninodeAiSchemasOmnidashV2Json`'s JSON-Schema
+ * via the `definition` "EnumCommitLevel".
+ */
+export type EnumCommitLevel1 = "read_only" | "reversible" | "irreversible";
+/**
  * The moment at which an evidence requirement is enforced.
  *
  * This interface was referenced by `HttpsOmninodeAiSchemasOmnidashV2Json`'s JSON-Schema
@@ -467,6 +494,13 @@ export type EnumEvidenceKind1 = "tests" | "docs" | "ci" | "benchmark" | "manual"
  * via the `definition` "EnumGateKind".
  */
 export type EnumGateKind1 = "human_approval" | "policy_check" | "security_check";
+/**
+ * Risk level of executing a UI action, lowest to highest.
+ *
+ * This interface was referenced by `HttpsOmninodeAiSchemasOmnidashV2Json`'s JSON-Schema
+ * via the `definition` "EnumRiskLevel".
+ */
+export type EnumRiskLevel1 = "low" | "medium" | "high" | "critical";
 /**
  * Status values for ticket verification steps and gates.
  *
@@ -1289,6 +1323,10 @@ export interface ModelActionContract {
    * Composed canonical approval gate; None means no approval required
    */
   approval_gate?: ModelGate | null;
+  /**
+   * Composed risk/confidence policy (confidence_threshold, requires_user_confirmation, risk_level, reversible, commit_level); None means no policy-driven gating beyond the approval gate
+   */
+  gate_policy?: ModelActionGatePolicy | null;
   correlation_required?: CorrelationRequired;
 }
 /**
@@ -1313,6 +1351,38 @@ export interface ModelGate {
   status?: EnumTicketStepStatus;
   approver?: Approver;
   decided_at?: DecidedAt;
+}
+/**
+ * Risk/confidence policy a UI action gate enforces before committing.
+ *
+ * A UI action is a declared ``onex.cmd.*`` command emitter (a button). Before
+ * that command is emitted, the action gate consults this policy to decide
+ * whether to require user confirmation, how to render affordances/disabled
+ * states, and what evidence the action must carry. The policy is declarative
+ * and platform-neutral; renderers derive behavior from it rather than encoding
+ * risk semantics in frontend code.
+ *
+ * Attributes:
+ *     confidence_threshold: Minimum upstream confidence (0.0-1.0) required for
+ *         the action to proceed without escalation. Below this, the gate
+ *         escalates (e.g. forces confirmation regardless of other fields).
+ *     requires_user_confirmation: Whether the action gate must obtain explicit
+ *         user confirmation before the command is emitted.
+ *     risk_level: Typed user-facing risk of executing the action.
+ *     reversible: Whether the committed effect can be undone. This is the
+ *         boolean fast-path; ``commit_level`` carries the full typed ordinal.
+ *     commit_level: Typed durability of the effect the action commits
+ *         (read-only, reversible, or irreversible).
+ *
+ * This interface was referenced by `HttpsOmninodeAiSchemasOmnidashV2Json`'s JSON-Schema
+ * via the `definition` "ModelActionGatePolicy".
+ */
+export interface ModelActionGatePolicy {
+  confidence_threshold: ConfidenceThreshold;
+  requires_user_confirmation: RequiresUserConfirmation;
+  risk_level: EnumRiskLevel;
+  reversible: Reversible;
+  commit_level: EnumCommitLevel;
 }
 /**
  * Declares evidence required before an action commits or a panel renders.
