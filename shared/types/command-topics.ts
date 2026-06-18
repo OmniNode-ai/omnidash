@@ -16,6 +16,25 @@ export const COMMAND_TOPICS = {
    * subscribe_topics: [onex.cmd.omnimarket.node-generation-requested.v1]
    */
   nodeGenerationRequested: 'onex.cmd.omnimarket.node-generation-requested.v1',
+  /**
+   * OMN-13131 (W2): the canonical bus-native command emitted by the web
+   * renderer for every UI action. The renderer thin-publishes the action's
+   * command envelope onto this declared topic; a downstream capability-driven
+   * dispatcher (W4) consumes it and routes to the business workflow. The
+   * renderer producer never chooses the workflow itself — it carries only the
+   * action_contract_id + payload it received. Topic suffix follows the
+   * `onex.cmd.{service}.{event}.v{N}` convention.
+   */
+  rendererAction: 'onex.cmd.omnidash.renderer-action.v1',
 } as const;
 
 export type CommandTopicSymbol = (typeof COMMAND_TOPICS)[keyof typeof COMMAND_TOPICS];
+
+/**
+ * OMN-13131 (G-E): the single declared topic the renderer thin-producer is
+ * permitted to publish to. The emitter derives its target topic from this
+ * constant — no `onex.cmd.*` string literal appears in the action path. Any
+ * attempt to publish to a different topic is rejected by the producer-bounds
+ * guard so the renderer cannot fan a command out onto an arbitrary topic.
+ */
+export const RENDERER_ACTION_TOPIC = COMMAND_TOPICS.rendererAction;

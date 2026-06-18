@@ -304,6 +304,169 @@ describe('POST /api/sea/generate', () => {
   });
 });
 
+// OMN-13131 (W2): renderer bus-native command emit path
+describe('POST /api/renderer/emit', () => {
+  beforeEach(() => {
+    process.env.OMNIDASH_DATA_SOURCE = 'postgres';
+    vi.mocked(kafkaProducer.isProducerConnected).mockReturnValue(true);
+    vi.mocked(kafkaProducer.publishMessage).mockResolvedValue(undefined);
+  });
+
+  afterEach(() => {
+    delete process.env.OMNIDASH_DATA_SOURCE;
+    vi.clearAllMocks();
+  });
+
+  const validBody = {
+    renderer_id: 'omnidash-web',
+    action_contract_id: 'delegation.trigger.v1',
+    contract_version: 'v1',
+    payload: { prompt: 'do work', task_type: 'reasoning' },
+  };
+
+  it('returns 400 when renderer_id is missing', async () => {
+    const routes = await loadRoutes();
+    const res = await request(buildApp(routes))
+      .post('/api/renderer/emit')
+      .send({ ...validBody, renderer_id: undefined });
+
+    expect(res.status).toBe(400);
+    expect(res.body).toEqual({ error: 'renderer_id is required' });
+  });
+
+  it('returns 400 when action_contract_id is missing', async () => {
+    const routes = await loadRoutes();
+    const res = await request(buildApp(routes))
+      .post('/api/renderer/emit')
+      .send({ ...validBody, action_contract_id: undefined });
+
+    expect(res.status).toBe(400);
+    expect(res.body).toEqual({ error: 'action_contract_id is required' });
+  });
+
+  it('returns 400 when contract_version is missing', async () => {
+    const routes = await loadRoutes();
+    const res = await request(buildApp(routes))
+      .post('/api/renderer/emit')
+      .send({ ...validBody, contract_version: undefined });
+
+    expect(res.status).toBe(400);
+    expect(res.body).toEqual({ error: 'contract_version is required' });
+  });
+
+  it('returns 400 when payload is missing or not an object', async () => {
+    const routes = await loadRoutes();
+    const res = await request(buildApp(routes))
+      .post('/api/renderer/emit')
+      .send({ ...validBody, payload: undefined });
+
+    expect(res.status).toBe(400);
+    expect(res.body).toEqual({ error: 'payload is required and must be an object' });
+  });
+
+  it('returns 503 when Kafka producer is not connected', async () => {
+    vi.mocked(kafkaProducer.isProducerConnected).mockReturnValue(false);
+
+    const routes = await loadRoutes();
+    const res = await request(buildApp(routes)).post('/api/renderer/emit').send(validBody);
+
+    expect(res.status).toBe(503);
+    expect(res.body).toEqual({ error: 'kafka_unavailable' });
+  });
+
+  it('returns 503 when publishMessage throws', async () => {
+    vi.mocked(kafkaProducer.publishMessage).mockRejectedValue(new Error('broker gone'));
+
+    const routes = await loadRoutes();
+    const res = await request(buildApp(routes)).post('/api/renderer/emit').send(validBody);
+
+    expect(res.status).toBe(503);
+    expect(res.body.error).toBe('kafka_unavailable');
+  });
+
+  it('publishes the renderer command envelope to the declared topic and echoes identity', async () => {
+    const routes = await loadRoutes();
+    const res = await request(buildApp(routes)).post('/api/renderer/emit').send(validBody);
+
+    expect(res.status).toBe(200);
+    expect(res.body.accepted).toBe(true);
+    expect(res.body.topic).toBe('onex.cmd.omnidash.renderer-action.v1');
+    expect(typeof res.body.correlation_id).toBe('string');
+    expect(res.body.causation_id).toBeNull();
+    expect(typeof res.body.envelope_id).toBe('string');
+
+    expect(kafkaProducer.publishMessage).toHaveBeenCalledOnce();
+    const [topic, envelope] = vi.mocked(kafkaProducer.publishMessage).mock.calls[0] as [
+      string,
+      Record<string, unknown>,
+    ];
+    expect(topic).toBe('onex.cmd.omnidash.renderer-action.v1');
+    expect(envelope.renderer_id).toBe('omnidash-web');
+    expect(envelope.action_contract_id).toBe('delegation.trigger.v1');
+    expect(envelope.contract_version).toBe('v1');
+    expect(envelope.correlation_id).toBe(res.body.correlation_id);
+    expect(envelope.causation_id).toBeNull();
+    expect(envelope.source_tool).toBe('omnidash-ui');
+    expect((envelope.transport as Record<string, unknown>).kind).toBe('thin-publish');
+    // Payload carried verbatim — no business-derived keys added.
+    expect(envelope.payload).toEqual({ prompt: 'do work', task_type: 'reasoning' });
+  });
+
+  it('preserves a caller-supplied correlation_id and sets causation_id when the action follows a prior event', async () => {
+    const correlationId = '11111111-2222-3333-4444-555555555555';
+    const causationId = '99999999-8888-7777-6666-555555555555';
+    const routes = await loadRoutes();
+    const res = await request(buildApp(routes))
+      .post('/api/renderer/emit')
+      .send({ ...validBody, correlation_id: correlationId, causation_id: causationId });
+
+    expect(res.status).toBe(200);
+    expect(res.body.correlation_id).toBe(correlationId);
+    expect(res.body.causation_id).toBe(causationId);
+    const [, envelope] = vi.mocked(kafkaProducer.publishMessage).mock.calls[0] as [
+      string,
+      Record<string, unknown>,
+    ];
+    expect(envelope.correlation_id).toBe(correlationId);
+    expect(envelope.causation_id).toBe(causationId);
+  });
+
+  it('returns 400 when a supplied correlation_id is not a UUID', async () => {
+    const routes = await loadRoutes();
+    const res = await request(buildApp(routes))
+      .post('/api/renderer/emit')
+      .send({ ...validBody, correlation_id: 'not-a-uuid' });
+
+    expect(res.status).toBe(400);
+    expect(res.body.error).toMatch(/correlation_id/);
+    expect(kafkaProducer.publishMessage).not.toHaveBeenCalled();
+  });
+
+  it('routes EVERY action contract id to the SAME declared topic (no dispatch on action type)', async () => {
+    const routes = await loadRoutes();
+    const app = buildApp(routes);
+    await request(app).post('/api/renderer/emit').send({ ...validBody, action_contract_id: 'delegation.trigger.v1' });
+    await request(app).post('/api/renderer/emit').send({ ...validBody, action_contract_id: 'sea.generate.v1' });
+
+    const topics = vi.mocked(kafkaProducer.publishMessage).mock.calls.map((c) => c[0]);
+    expect(new Set(topics)).toEqual(new Set(['onex.cmd.omnidash.renderer-action.v1']));
+  });
+
+  // OMN-13131 (W2): the action-specific /api/delegation/trigger path MUST still
+  // exist alongside the bus-native emit path. Its removal is W3 (parked behind
+  // OMN-13105), not this item.
+  it('the existing /api/delegation/trigger route is still mounted (not removed in W2)', async () => {
+    const routes = await loadRoutes();
+    const res = await request(buildApp(routes))
+      .post('/api/delegation/trigger')
+      .send({ prompt: 'do work', task_type: 'reasoning' });
+
+    // 200 (published) — definitively not a 404 unmounted route.
+    expect(res.status).toBe(200);
+    expect(res.body.topic).toBe('onex.cmd.omnimarket.delegate-skill.v1');
+  });
+});
+
 // OMN-12149: topic registration test
 describe('COMMAND_TOPICS registry', () => {
   it('dispatchRequest key maps to the correct topic string', async () => {
@@ -320,5 +483,14 @@ describe('COMMAND_TOPICS registry', () => {
   it('nodeGenerationRequested key maps to the node_generation_consumer subscribe topic', async () => {
     const { COMMAND_TOPICS } = await import('../../shared/types/command-topics.js');
     expect(COMMAND_TOPICS.nodeGenerationRequested).toBe('onex.cmd.omnimarket.node-generation-requested.v1');
+  });
+
+  // OMN-13131 (W2): renderer bus-native command topic
+  it('rendererAction key maps to the declared renderer-action command topic', async () => {
+    const { COMMAND_TOPICS, RENDERER_ACTION_TOPIC } = await import(
+      '../../shared/types/command-topics.js'
+    );
+    expect(COMMAND_TOPICS.rendererAction).toBe('onex.cmd.omnidash.renderer-action.v1');
+    expect(RENDERER_ACTION_TOPIC).toBe(COMMAND_TOPICS.rendererAction);
   });
 });

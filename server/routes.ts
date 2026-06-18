@@ -7,6 +7,11 @@ import { PostgresProjectionReader } from './postgres-projection-reader.js';
 import { loadDataSourceConfig } from './data-source-contract.js';
 import { isProducerConnected, publishMessage } from './kafka-producer.js';
 import { COMMAND_TOPICS } from '../shared/types/command-topics.js';
+import {
+  emitRendererCommand,
+  RendererEmitterError,
+  type RendererCommandInput,
+} from './renderer-command-emitter.js';
 
 const router = Router();
 
@@ -175,6 +180,84 @@ router.post('/api/delegation/trigger', async (req, res) => {
     res.json({ correlation_id: correlationId, accepted: true, topic: COMMAND_TOPICS.delegateSkill });
   } catch (err) {
     console.error('[routes] /api/delegation/trigger error:', err);
+    res.status(503).json({ error: 'kafka_unavailable', detail: String(err) });
+  }
+});
+
+// OMN-13131 (W2): renderer bus-native command emit path. Every UI action is
+// emitted as a canonical onex.cmd.* command envelope onto the bus through the
+// thin producer in renderer-command-emitter.ts. This route is the bus-native
+// emit path that runs ALONGSIDE the action-specific routes (e.g.
+// /api/delegation/trigger). It is transport-only: it builds the identity-bearing
+// envelope and publishes verbatim to the single declared topic. It does NOT
+// choose a workflow, rewrite intent, or dispatch on action type — the
+// capability-driven dispatcher (W4) owns routing.
+router.post('/api/renderer/emit', async (req, res) => {
+  const body = req.body as {
+    renderer_id?: unknown;
+    action_contract_id?: unknown;
+    contract_version?: unknown;
+    correlation_id?: unknown;
+    causation_id?: unknown;
+    payload?: unknown;
+  };
+
+  // Shape validation only — no inspection of payload contents for routing.
+  if (typeof body.renderer_id !== 'string' || !body.renderer_id) {
+    res.status(400).json({ error: 'renderer_id is required' });
+    return;
+  }
+  if (typeof body.action_contract_id !== 'string' || !body.action_contract_id) {
+    res.status(400).json({ error: 'action_contract_id is required' });
+    return;
+  }
+  if (typeof body.contract_version !== 'string' || !body.contract_version) {
+    res.status(400).json({ error: 'contract_version is required' });
+    return;
+  }
+  if (
+    body.payload === undefined ||
+    body.payload === null ||
+    typeof body.payload !== 'object' ||
+    Array.isArray(body.payload)
+  ) {
+    res.status(400).json({ error: 'payload is required and must be an object' });
+    return;
+  }
+
+  const input: RendererCommandInput = {
+    rendererId: body.renderer_id,
+    actionContractId: body.action_contract_id,
+    contractVersion: body.contract_version,
+    payload: body.payload as Record<string, unknown>,
+  };
+  if (typeof body.correlation_id === 'string') {
+    input.correlationId = body.correlation_id;
+  }
+  if (typeof body.causation_id === 'string') {
+    input.causationId = body.causation_id;
+  }
+
+  if (!isProducerConnected()) {
+    res.status(503).json({ error: 'kafka_unavailable' });
+    return;
+  }
+
+  try {
+    const envelope = await emitRendererCommand(input);
+    res.json({
+      accepted: true,
+      correlation_id: envelope.correlation_id,
+      causation_id: envelope.causation_id,
+      envelope_id: envelope.envelope_id,
+      topic: envelope.transport.topic,
+    });
+  } catch (err) {
+    if (err instanceof RendererEmitterError) {
+      res.status(400).json({ error: err.message });
+      return;
+    }
+    console.error('[routes] /api/renderer/emit error:', err);
     res.status(503).json({ error: 'kafka_unavailable', detail: String(err) });
   }
 });
