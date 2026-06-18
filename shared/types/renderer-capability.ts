@@ -37,3 +37,24 @@ export type RendererInteractionModel = EnumRendererInteractionModel;
 
 /** WCAG-aligned accessibility tier a renderer guarantees (mirror of Python enum). */
 export type AccessibilityTier = EnumAccessibilityTier;
+
+/**
+ * Descriptor for the renderer-capability projection (OMN-13131, W5/W6).
+ *
+ * The W5 reducer materializes declared renderer capabilities (heartbeat-TTL
+ * freshness → `is_degraded`) onto this projection topic; omnidash reads it via
+ * the existing `/projection/{topic}` poll path (`useProjectionQuery`). The topic
+ * is a DECLARED field of this descriptor — mirroring the `VisualizationContract`
+ * convention where the projection topic is a contract field, not an inline string
+ * literal scattered through dispatch/handler code paths.
+ */
+export const RENDERER_CAPABILITY_PROJECTION = {
+  /**
+   * Snapshot projection topic the W5 reducer writes renderer-capability rows to.
+   * Suffix mirrors the registered command topic
+   * `onex.cmd.ui.renderer-capability-declared.v1` (validate_topic_suffix-checked
+   * upstream). Declared once here so the read path references a symbol.
+   */
+  topic: 'onex.snapshot.projection.ui.renderer-capability.v1',
+  displayName: 'Renderer Capabilities',
+} as const;
