@@ -3,6 +3,13 @@ node_modules
 dist/
 .vite/
 *.local
+
+# Python (scripts/ci helpers + tests/ci)
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
 contract.local.yaml
 .env.local*
 # OMN-12394: .env (not .env.local) holds local DB credentials; must never be committed.
