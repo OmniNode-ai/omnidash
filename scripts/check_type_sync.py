@@ -39,18 +39,93 @@ from pathlib import Path
 # ---------------------------------------------------------------------------
 #
 # Each entry maps:
-#   python_path  — path relative to the repo root (passed via args)
-#   ts_path      — path relative to omnidash repo root
-#   model_class  — Pydantic class name to extract fields from
-#   ts_name      — human-readable name for error messages
-#   exclude_fields — fields intentionally absent in TS (base-class internals, etc.)
+#   name         — human-readable name for log output
+#   python_repo  — key into repo_roots ("omnibase_core" | "omniintelligence")
+#   python_rel   — path to the Python source, relative to that repo root
+#   model_class  — Pydantic model (or StrEnum) class name to extract from
+#   ts_path      — path to the generated TS file, relative to omnidash root
+#   is_enum      — when True, extract StrEnum member *values* instead of
+#                  Pydantic field names (a StrEnum member is a plain
+#                  `NAME = "value"` assignment, not an annotated field)
+#   required_fields — explicit names/values that MUST appear in the TS file
+#                  (overrides AST extraction; used for enums where the drift
+#                  signal is the wire *value*, not the Python member name)
+#   exclude_fields  — fields intentionally absent in TS (base-class internals)
 
 
-# omnidash-v2 uses a snapshot-projection architecture (shared/types/) rather than
-# the read-model consumer architecture of omnidash v1 (shared/schemas/, shared/intent-types.ts).
-# Concrete TARGETS will be added here as v2 TS boundary types stabilise and are mapped to
-# their corresponding Python Pydantic models (tracked in OMN-9868 follow-up).
-TARGETS: list[dict] = []
+# OMN-13130 (epic OMN-13129, Contract-Driven UI Platform — Phase 0):
+# The six UI contract primitives plus EnumEmptyStateReason were added to
+# omnibase_core dev (merge d215fe1a) and are emitted into
+# src/shared/types/generated/onex-models.ts by scripts/emit_ts_types.py.
+# These descriptors fail the gate if any Python field/enum-value drifts away
+# from its regenerated TS mirror. The generated TS path is the json2ts output
+# (TS_OUT in run-types-generate.sh); regenerate it via `npm run types:generate`
+# rather than hand-editing.
+_GENERATED_TS = "src/shared/types/generated/onex-models.ts"
+_CORE_DASHBOARD = "src/omnibase_core/models/dashboard"
+
+TARGETS: list[dict] = [
+    {
+        "name": "ModelComponentContract (OMN-13130)",
+        "python_repo": "omnibase_core",
+        "python_rel": f"{_CORE_DASHBOARD}/model_component_contract.py",
+        "model_class": "ModelComponentContract",
+        "ts_path": _GENERATED_TS,
+    },
+    {
+        "name": "ModelActionContract (OMN-13130)",
+        "python_repo": "omnibase_core",
+        "python_rel": f"{_CORE_DASHBOARD}/model_action_contract.py",
+        "model_class": "ModelActionContract",
+        "ts_path": _GENERATED_TS,
+    },
+    {
+        "name": "ModelDataBindingContract (OMN-13130)",
+        "python_repo": "omnibase_core",
+        "python_rel": f"{_CORE_DASHBOARD}/model_data_binding_contract.py",
+        "model_class": "ModelDataBindingContract",
+        "ts_path": _GENERATED_TS,
+    },
+    {
+        "name": "ModelPermissionContract (OMN-13130)",
+        "python_repo": "omnibase_core",
+        "python_rel": f"{_CORE_DASHBOARD}/model_permission_contract.py",
+        "model_class": "ModelPermissionContract",
+        "ts_path": _GENERATED_TS,
+    },
+    {
+        "name": "ModelEvidenceRequirementContract (OMN-13130)",
+        "python_repo": "omnibase_core",
+        "python_rel": f"{_CORE_DASHBOARD}/model_evidence_requirement_contract.py",
+        "model_class": "ModelEvidenceRequirementContract",
+        "ts_path": _GENERATED_TS,
+    },
+    {
+        "name": "ModelRendererCapabilityContract (OMN-13130)",
+        "python_repo": "omnibase_core",
+        "python_rel": f"{_CORE_DASHBOARD}/model_renderer_capability_contract.py",
+        "model_class": "ModelRendererCapabilityContract",
+        "ts_path": _GENERATED_TS,
+    },
+    {
+        "name": "EnumEmptyStateReason (OMN-13130)",
+        "python_repo": "omnibase_core",
+        "python_rel": "src/omnibase_core/enums/enum_empty_state_reason.py",
+        "model_class": "EnumEmptyStateReason",
+        "ts_path": _GENERATED_TS,
+        "is_enum": True,
+        # Wire *values* (not Python member names): a rename of any of these
+        # four values without regenerating the TS mirror must fail the gate.
+        # These must stay byte-identical to the EmptyStateReason TS union in
+        # shared/types/chart-config.ts.
+        "required_fields": [
+            "no-data",
+            "missing-field",
+            "upstream-blocked",
+            "schema-invalid",
+        ],
+    },
+]
 
 
 # ---------------------------------------------------------------------------
@@ -115,6 +190,59 @@ def extract_pydantic_fields(path: Path, class_name: str) -> set[str]:
         break
 
     return fields
+
+
+def extract_enum_values(path: Path, class_name: str) -> set[str]:
+    """Parse a Python file with `ast` and extract StrEnum member *values*
+    from the named class.
+
+    A StrEnum member is a plain assignment of the form::
+
+        MEMBER_NAME = "wire-value"
+
+    (an `ast.Assign`, not the `ast.AnnAssign` that Pydantic fields use), so
+    `extract_pydantic_fields` returns nothing for it. This extractor reads the
+    string literal on the right-hand side — the value that actually crosses the
+    Python -> TS boundary — so drift on a wire value is caught.
+
+    Skips dunder/private members and any non-string-literal assignment.
+
+    Returns:
+        Set of enum *value* strings found in the class body.
+    """
+    try:
+        source = path.read_text(encoding="utf-8")
+    except FileNotFoundError:
+        print(f"  ERROR: Python enum file not found: {path}", file=sys.stderr)
+        return set()
+
+    try:
+        tree = ast.parse(source)
+    except SyntaxError as exc:
+        print(f"  ERROR: Cannot parse {path}: {exc}", file=sys.stderr)
+        return set()
+
+    values: set[str] = set()
+
+    for node in ast.walk(tree):
+        if not isinstance(node, ast.ClassDef) or node.name != class_name:
+            continue
+        for item in node.body:
+            if not isinstance(item, ast.Assign):
+                continue
+            # Single simple target: MEMBER = "value"
+            if len(item.targets) != 1 or not isinstance(item.targets[0], ast.Name):
+                continue
+            member = item.targets[0].id
+            if member.startswith("_"):
+                continue
+            if isinstance(item.value, ast.Constant) and isinstance(
+                item.value.value, str
+            ):
+                values.add(item.value.value)
+        break
+
+    return values
 
 
 # ---------------------------------------------------------------------------
@@ -230,17 +358,27 @@ def main() -> int:
         python_path = python_repo_root / target["python_rel"]
         ts_path = omnidash_root / target["ts_path"]
 
-        # --- Step 1: Extract Python fields ---
-        all_fields = extract_pydantic_fields(python_path, target["model_class"])
+        # --- Step 1: Extract Python fields (or enum values) ---
+        if target.get("is_enum"):
+            all_fields = extract_enum_values(python_path, target["model_class"])
+            kind = "enum values"
+        else:
+            all_fields = extract_pydantic_fields(python_path, target["model_class"])
+            kind = "fields"
         if not all_fields:
+            # A target that extracts nothing is a silent pass on a no-op — for
+            # OMN-13130 primitives that means the model/enum vanished or moved.
+            # Fail loudly rather than WARN-skip so the gate stays meaningful.
             print(
-                f"  WARN: No fields extracted from {target['model_class']} — "
-                "skipping (file missing or class not found)"
+                f"  FAIL: No {kind} extracted from {target['model_class']} — "
+                "file missing, class renamed, or moved. The gate cannot verify "
+                "this target; treat as drift."
             )
+            overall_pass = False
             print()
             continue
 
-        print(f"  Python fields extracted: {sorted(all_fields)}")
+        print(f"  Python {kind} extracted: {sorted(all_fields)}")
 
         # --- Step 2: Determine required fields ---
         # Use explicit required_fields list if provided; otherwise use all
