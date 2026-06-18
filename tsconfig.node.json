@@ -17,6 +17,7 @@
     "vite.config.ts",
     "vite.proxy-config.ts",
     "server",
-    "shared/types/command-topics.ts"
+    "shared/types/command-topics.ts",
+    "shared/types/web-renderer-capability.ts"
   ]
 }

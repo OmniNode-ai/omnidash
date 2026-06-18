@@ -43,6 +43,21 @@ event_bus:
   bootstrap_servers: ""
   client_id: "omnidash-server"
 
+renderer_capability:
+  # OMN-13131 (W-cap): the omnidash server declares the WEB renderer's capability
+  # surface onto onex.cmd.ui.renderer-capability-declared.v1 on startup and on
+  # this heartbeat interval. The W5 reducer (node_renderer_capability_projection)
+  # folds each declaration into the heartbeat-backed Renderer Capability Registry
+  # projection; when the heartbeat lapses past the reducer's TTL the row flips to
+  # is_degraded. Keep the interval comfortably under the reducer TTL.
+  #
+  # heartbeat_enabled: when false, the server does not declare capability (e.g.
+  #   standalone installs with no bus). Disabled automatically when event_bus has
+  #   no bootstrap_servers — the producer needs a broker.
+  # heartbeat_interval_ms: re-publish cadence in milliseconds (default 30s).
+  heartbeat_enabled: true
+  heartbeat_interval_ms: "30000"
+
 command_topics:
   # OMN-12070: Delegation command dispatched via the Express trigger bridge
   # to the stability-test runtime effects endpoint (OMNIDASH_RUNTIME_EFFECTS_URL).
