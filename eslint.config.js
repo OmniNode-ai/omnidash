@@ -89,6 +89,12 @@ export default [
       // this guard prevents reintroducing an unwired socket. Live updates are
       // poll-driven via useProjectionQuery.
       'local/no-projection-websocket': 'error',
+      // OMN-13131 (W6, G-I): cross-renderer no-projection gate. Generalizes
+      // no-projection-fallback beyond React/charts — an empty-state reason
+      // literal on any renderer surface must be a canonical
+      // EnumEmptyStateReason VALUE (keyed on values, not the symbol name, per
+      // plan §0b.5). Applied to the cross-renderer file set below.
+      'local/no-untyped-empty-state': 'error',
       'react-hooks/rules-of-hooks': 'error',
       // `exhaustive-deps` is set to `warn` rather than `error` so that
       // genuine one-shot effects (mount-only hydration, resize observer

@@ -112,16 +112,19 @@ describe('ProjectionContainer', () => {
     );
   });
 
-  it('renders VizRenderer error state when no adapter registered for active type', async () => {
-    // No registerViz call — registry is empty.
+  it('renders a TYPED upstream-blocked empty state when no adapter is registered (W6, G-H)', async () => {
+    // No registerViz call — registry is empty, so the capability dispatcher
+    // cannot satisfy the requirement. The miss must surface a TYPED empty state
+    // (EnumEmptyStateReason.UPSTREAM_BLOCKED), never a blank/blind render.
     mockFetchWithItems([mockRow]);
-    render(
+    const { container } = render(
       <DataSourceTestProvider client={qc}>
         <ProjectionContainer contract={testContract} />
       </DataSourceTestProvider>,
     );
-    await waitFor(() =>
-      expect(screen.getByText(/No adapter registered for visualization type: bar_chart/i)).toBeInTheDocument(),
-    );
+    await waitFor(() => {
+      const empty = container.querySelector('[data-empty-state-reason]');
+      expect(empty?.getAttribute('data-empty-state-reason')).toBe('upstream-blocked');
+    });
   });
 });
