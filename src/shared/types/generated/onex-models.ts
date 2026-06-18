@@ -216,10 +216,278 @@ export type WorkflowView = {
   [k: string]: unknown;
 } | null;
 /**
+ * Stable semantic identifier for this component contract
+ */
+export type ComponentId = string;
+/**
+ * Shipped component kind a renderer must support to render this
+ */
+export type EnumWidgetType = "chart" | "table" | "metric_card" | "status_grid" | "event_feed";
+/**
+ * Human-readable component title
+ */
+export type Title = string;
+/**
+ * Stable semantic identifier for this binding within a component
+ */
+export type BindingId = string;
+/**
+ * Canonical projection topic read via /projection/{topic}; no raw DB
+ */
+export type ProjectionTopic = string;
+/**
+ * Column the upstream projection orders by (explicit ordering authority)
+ */
+export type OrderingAuthorityField = string;
+/**
+ * Direction the ordering-authority field is ordered by upstream
+ */
+export type EnumBindingOrderDirection = "ascending" | "descending";
+/**
+ * Projection row fields this component requires to render
+ */
+export type RequiredFields = string[];
+/**
+ * Optional pagination cursor field exposed by the projection
+ */
+export type CursorField = string | null;
+/**
+ * Projection bindings this component reads truth from
+ */
+export type DataBindings = ModelDataBindingContract[];
+/**
+ * Stable semantic identifier for this action within a component
+ */
+export type ActionId = string;
+/**
+ * Canonical onex.cmd.* topic this action emits onto the bus
+ */
+export type CommandTopic = string;
+/**
+ * Human-readable label rendered on the action control
+ */
+export type Label1 = string;
+/**
+ * Unique identifier for the gate
+ */
+export type Id = string;
+/**
+ * Type of gate
+ */
+export type EnumGateKind = "human_approval" | "policy_check" | "security_check";
+/**
+ * Description of what needs approval
+ */
+export type Description = string;
+/**
+ * Whether approval is required
+ */
+export type Required = boolean;
+/**
+ * Current status of the gate
+ */
+export type EnumTicketStepStatus = "pending" | "passed" | "failed" | "skipped" | "approved" | "rejected";
+/**
+ * Who approved/rejected
+ */
+export type Approver = string | null;
+/**
+ * When the decision was made
+ */
+export type DecidedAt = string | null;
+/**
+ * Whether every emission must carry a correlation ID
+ */
+export type CorrelationRequired = boolean;
+/**
+ * Declared command-emitting actions this component exposes
+ */
+export type Actions = ModelActionContract[];
+/**
+ * Stable semantic identifier for this evidence requirement contract
+ */
+export type ContractId = string;
+/**
+ * Type of evidence
+ */
+export type EnumEvidenceKind = "tests" | "docs" | "ci" | "benchmark" | "manual";
+/**
+ * What evidence must exist
+ */
+export type Description1 = string;
+/**
+ * How to reproduce, if applicable
+ */
+export type Command = string | null;
+/**
+ * Whether the evidence gates a panel render or an action commit
+ */
+export type EnumEvidenceGateMoment = "on-render" | "on-commit";
+/**
+ * Operator-facing message shown when the requirement is unmet
+ */
+export type UnmetDisplayMessage = string;
+/**
+ * Evidence required before this component renders or commits
+ */
+export type EvidenceRequirements = ModelEvidenceRequirementContract[];
+/**
+ * Stable semantic identifier for this permission contract
+ */
+export type PermissionId = string;
+/**
+ * Scopes required to see the component; empty means visible to all
+ */
+export type ViewScopes = string[];
+/**
+ * Scopes required to act; empty means no extra scope beyond view
+ */
+export type ActScopes = string[];
+/**
+ * Declared reason shown when the viewer may see but not act
+ */
+export type DisabledReason = string;
+/**
+ * Typed reason a UI component renders an empty/error state.
+ *
+ * Mirrors the ``EmptyStateReason`` TS union exactly (four values, no more).
+ * A renderer MUST NOT collapse ``SCHEMA_INVALID`` into ``NO_DATA`` — each
+ * reason maps to a distinct operator diagnostic.
+ *
+ * This interface was referenced by `HttpsOmninodeAiSchemasOmnidashV2Json`'s JSON-Schema
+ * via the `definition` "EnumEmptyStateReason".
+ */
+export type EnumEmptyStateReason = "no-data" | "missing-field" | "upstream-blocked" | "schema-invalid";
+/**
+ * Typed empty-state reasons this component can surface
+ */
+export type SupportedEmptyStateReasons = EnumEmptyStateReason[];
+/**
+ * Stable renderer identifier (e.g. 'ui.effect.web', 'ui.effect.cli')
+ */
+export type RendererId = string;
+/**
+ * Target platform the renderer runs on (e.g. 'web', 'ios', 'cli')
+ */
+export type Platform = string;
+/**
+ * Dashboard widget type enumeration.
+ *
+ * Defines the types of widgets available for dashboard configuration.
+ * Each type has specific configuration requirements and rendering behavior.
+ * Widget types are categorized as either data-bound (requiring continuous
+ * data updates) or aggregation-based (displaying point-in-time metrics).
+ *
+ * Attributes:
+ *     CHART: Line, bar, area, pie, or scatter chart visualization.
+ *         Config: :class:`~omnibase_core.models.dashboard.ModelWidgetConfigChart`
+ *     TABLE: Paginated, sortable tabular data display.
+ *         Config: :class:`~omnibase_core.models.dashboard.ModelWidgetConfigTable`
+ *     METRIC_CARD: Single KPI display with optional trend and thresholds.
+ *         Config: :class:`~omnibase_core.models.dashboard.ModelWidgetConfigMetricCard`
+ *     STATUS_GRID: Grid of status indicators for system health monitoring.
+ *         Config: :class:`~omnibase_core.models.dashboard.ModelWidgetConfigStatusGrid`
+ *     EVENT_FEED: Real-time event stream with filtering capabilities.
+ *         Config: :class:`~omnibase_core.models.dashboard.ModelWidgetConfigEventFeed`
+ *
+ * Example:
+ *     Use in widget definition::
+ *
+ *         from omnibase_core.enums import EnumWidgetType
+ *
+ *         # Check if widget needs real-time data binding
+ *         if EnumWidgetType.TABLE.is_data_bound:
+ *             setup_data_subscription()
+ *
+ * This interface was referenced by `HttpsOmninodeAiSchemasOmnidashV2Json`'s JSON-Schema
+ * via the `definition` "EnumWidgetType".
+ */
+export type EnumWidgetType1 = "chart" | "table" | "metric_card" | "status_grid" | "event_feed";
+/**
+ * Component kinds this renderer can render (shipped EnumWidgetType)
+ */
+export type SupportedComponentKinds = EnumWidgetType1[];
+/**
+ * Interaction model the renderer advertises
+ */
+export type EnumRendererInteractionModel = "pointer" | "touch" | "keyboard" | "voice";
+/**
+ * WCAG-aligned accessibility tier the renderer guarantees
+ */
+export type EnumAccessibilityTier = "a" | "aa" | "aaa";
+/**
+ * Whether the renderer can emit user-driven command actions
+ */
+export type SupportsInteraction = boolean;
+/**
+ * Whether the renderer can consume streaming projection updates
+ */
+export type SupportsStreaming = boolean;
+/**
+ * Whether the renderer honors a versioned theme contract
+ */
+export type SupportsTheming = boolean;
+/**
  * This interface was referenced by `HttpsOmninodeAiSchemasOmnidashV2Json`'s JSON-Schema
  * via the `definition` "EnumDashboardWidgetType".
  */
 export type EnumDashboardWidgetType1 = "tile" | "chart" | "table" | "list" | "scalar";
+/**
+ * Direction the upstream projection orders its rows by.
+ *
+ * This interface was referenced by `HttpsOmninodeAiSchemasOmnidashV2Json`'s JSON-Schema
+ * via the `definition` "EnumBindingOrderDirection".
+ */
+export type EnumBindingOrderDirection1 = "ascending" | "descending";
+/**
+ * The moment at which an evidence requirement is enforced.
+ *
+ * This interface was referenced by `HttpsOmninodeAiSchemasOmnidashV2Json`'s JSON-Schema
+ * via the `definition` "EnumEvidenceGateMoment".
+ */
+export type EnumEvidenceGateMoment1 = "on-render" | "on-commit";
+/**
+ * Types of evidence required for ticket contract validation.
+ *
+ * Evidence kinds specify what type of proof is required:
+ * - TESTS: Automated test coverage
+ * - DOCS: Documentation updates
+ * - CI: CI/CD pipeline changes
+ * - BENCHMARK: Performance benchmarks
+ * - MANUAL: Manual verification steps
+ *
+ * This interface was referenced by `HttpsOmninodeAiSchemasOmnidashV2Json`'s JSON-Schema
+ * via the `definition` "EnumEvidenceKind".
+ */
+export type EnumEvidenceKind1 = "tests" | "docs" | "ci" | "benchmark" | "manual";
+/**
+ * Types of gates that require approval.
+ *
+ * This interface was referenced by `HttpsOmninodeAiSchemasOmnidashV2Json`'s JSON-Schema
+ * via the `definition` "EnumGateKind".
+ */
+export type EnumGateKind1 = "human_approval" | "policy_check" | "security_check";
+/**
+ * Status values for ticket verification steps and gates.
+ *
+ * This interface was referenced by `HttpsOmninodeAiSchemasOmnidashV2Json`'s JSON-Schema
+ * via the `definition` "EnumTicketStepStatus".
+ */
+export type EnumTicketStepStatus1 = "pending" | "passed" | "failed" | "skipped" | "approved" | "rejected";
+/**
+ * WCAG-aligned accessibility conformance tier.
+ *
+ * This interface was referenced by `HttpsOmninodeAiSchemasOmnidashV2Json`'s JSON-Schema
+ * via the `definition` "EnumAccessibilityTier".
+ */
+export type EnumAccessibilityTier1 = "a" | "aa" | "aaa";
+/**
+ * How a user interacts with a renderer.
+ *
+ * This interface was referenced by `HttpsOmninodeAiSchemasOmnidashV2Json`'s JSON-Schema
+ * via the `definition` "EnumRendererInteractionModel".
+ */
+export type EnumRendererInteractionModel1 = "pointer" | "touch" | "keyboard" | "voice";
 
 export interface HttpsOmninodeAiSchemasOmnidashV2Json {
   [k: string]: unknown;
@@ -914,4 +1182,254 @@ export interface ModelStateTransitionNotification {
    */
   reducer_version?: ModelSemVer | null;
   workflow_view?: WorkflowView;
+}
+/**
+ * A platform-neutral declaration of a UI component.
+ *
+ * ``component_kind`` reuses the shipped ``EnumWidgetType`` so a renderer's
+ * advertised ``supported_component_kinds`` can gate rendering. ``data_bindings``,
+ * ``actions``, ``evidence_requirements``, and ``permission`` compose the other
+ * Phase 0 primitives. ``supported_empty_state_reasons`` declares which typed
+ * reasons this component can surface; the client never blanks silently.
+ *
+ * This interface was referenced by `HttpsOmninodeAiSchemasOmnidashV2Json`'s JSON-Schema
+ * via the `definition` "ModelComponentContract".
+ */
+export interface ModelComponentContract {
+  component_id: ComponentId;
+  component_kind: EnumWidgetType;
+  title: Title;
+  contract_version: ModelSemVer1;
+  data_bindings?: DataBindings;
+  actions?: Actions;
+  evidence_requirements?: EvidenceRequirements;
+  /**
+   * Permission contract gating who may see/act; None means unrestricted
+   */
+  permission?: ModelPermissionContract | null;
+  supported_empty_state_reasons?: SupportedEmptyStateReasons;
+}
+/**
+ * Semantic version model following SemVer 2.0.0 specification.
+ *
+ * Full SemVer format: MAJOR.MINOR.PATCH[-prerelease][+build]
+ *
+ * Preferred usage (structured format):
+ *     >>> version = ModelSemVer(major=0, minor=4, patch=0)
+ *     >>> assert str(version) == "0.4.0"
+ *     >>> assert version.major == 0 and version.minor == 4
+ *
+ * With prerelease and build metadata:
+ *     >>> version = ModelSemVer(major=1, minor=0, patch=0, prerelease=("alpha", 1))
+ *     >>> assert str(version) == "1.0.0-alpha.1"
+ *     >>> assert version.is_prerelease() is True
+ *
+ * For parsing external input, use the parse() class method:
+ *     >>> version = ModelSemVer.parse("1.0.0-alpha.1+build.123")
+ *     >>> assert version.prerelease == ("alpha", 1)
+ *     >>> assert version.build == ("build", "123")
+ *
+ * Precedence rules (per SemVer spec):
+ *     - prerelease < no prerelease (1.0.0-alpha < 1.0.0)
+ *     - Numeric identifiers < alphanumeric (1.0.0-1 < 1.0.0-alpha)
+ *     - Build metadata is IGNORED for precedence
+ *
+ * Note:
+ *     String version literals like "1.0.0" are deprecated.
+ *     Always use structured format: ModelSemVer(major=X, minor=Y, patch=Z)
+ *
+ *     This model is frozen (immutable) and hashable, suitable for use as dict
+ *     keys or in sets. Hash is based on major, minor, patch, and prerelease;
+ *     build metadata is excluded (see __hash__ docstring for details).
+ */
+export interface ModelSemVer1 {
+  major: Major;
+  minor: Minor;
+  patch: Patch;
+  prerelease?: Prerelease;
+  build?: Build;
+  [k: string]: unknown;
+}
+/**
+ * Declares how a component binds to a projection topic.
+ *
+ * The binding names the projection topic, the ordering authority (the column
+ * the projection orders by and the direction), and the required fields the
+ * component consumes. Missing fields surface as a typed empty-state reason at
+ * render time, never a fallback literal.
+ *
+ * This interface was referenced by `HttpsOmninodeAiSchemasOmnidashV2Json`'s JSON-Schema
+ * via the `definition` "ModelDataBindingContract".
+ */
+export interface ModelDataBindingContract {
+  binding_id: BindingId;
+  projection_topic: ProjectionTopic;
+  ordering_authority_field: OrderingAuthorityField;
+  ordering_direction?: EnumBindingOrderDirection;
+  required_fields?: RequiredFields;
+  cursor_field?: CursorField;
+}
+/**
+ * Declares the command a UI action emits and its approval gate.
+ *
+ * The action emits exactly one canonical command topic (a valid ONEX topic
+ * suffix whose kind token is ``cmd``). When ``approval_gate`` is present the
+ * action requires that gate's approval before it commits; ``ModelGate`` owns
+ * the approval semantics. ``correlation_required`` enforces that every emission
+ * carries a correlation ID (Phase 1 bus trace depends on this).
+ *
+ * This interface was referenced by `HttpsOmninodeAiSchemasOmnidashV2Json`'s JSON-Schema
+ * via the `definition` "ModelActionContract".
+ */
+export interface ModelActionContract {
+  action_id: ActionId;
+  command_topic: CommandTopic;
+  label: Label1;
+  /**
+   * Composed canonical approval gate; None means no approval required
+   */
+  approval_gate?: ModelGate | null;
+  correlation_required?: CorrelationRequired;
+}
+/**
+ * A gate that requires approval before proceeding.
+ *
+ * Immutability:
+ *     This model uses frozen=True, making instances immutable after creation.
+ *     This enables safe sharing across threads without synchronization.
+ *
+ * Status Values:
+ *     Valid: PENDING, APPROVED, REJECTED, SKIPPED, FAILED
+ *     Invalid: PASSED (gates use approval semantics, not passed/failed)
+ *
+ * This interface was referenced by `HttpsOmninodeAiSchemasOmnidashV2Json`'s JSON-Schema
+ * via the `definition` "ModelGate".
+ */
+export interface ModelGate {
+  id: Id;
+  kind: EnumGateKind;
+  description: Description;
+  required?: Required;
+  status?: EnumTicketStepStatus;
+  approver?: Approver;
+  decided_at?: DecidedAt;
+}
+/**
+ * Declares evidence required before an action commits or a panel renders.
+ *
+ * Composes the canonical OCC ``ModelEvidenceRequirement`` rather than
+ * redefining its fields. ``gate_moment`` says whether the evidence gates a
+ * render or a commit; ``unmet_display_message`` is the operator-facing message
+ * surfaced when the requirement is not satisfied.
+ *
+ * This interface was referenced by `HttpsOmninodeAiSchemasOmnidashV2Json`'s JSON-Schema
+ * via the `definition` "ModelEvidenceRequirementContract".
+ */
+export interface ModelEvidenceRequirementContract {
+  contract_id: ContractId;
+  requirement: ModelEvidenceRequirement;
+  gate_moment: EnumEvidenceGateMoment;
+  unmet_display_message: UnmetDisplayMessage;
+}
+/**
+ * Canonical OCC evidence requirement composed into this UI contract
+ */
+export interface ModelEvidenceRequirement {
+  kind: EnumEvidenceKind;
+  description: Description1;
+  command?: Command;
+}
+/**
+ * Declares the scopes required to view and to act, plus disabled reasons.
+ *
+ * ``view_scopes`` gate visibility; ``act_scopes`` gate interaction. When a
+ * viewer is permitted to see but not act, the action renders disabled and
+ * ``disabled_reason`` states why — a declared reason is mandatory, never a
+ * silent disable.
+ *
+ * This interface was referenced by `HttpsOmninodeAiSchemasOmnidashV2Json`'s JSON-Schema
+ * via the `definition` "ModelPermissionContract".
+ */
+export interface ModelPermissionContract {
+  permission_id: PermissionId;
+  view_scopes?: ViewScopes;
+  act_scopes?: ActScopes;
+  disabled_reason: DisabledReason;
+}
+/**
+ * A renderer's advertised capability surface.
+ *
+ * ``supported_component_kinds`` reuses the shipped ``EnumWidgetType``
+ * vocabulary so capability negotiation is anchored on the component kinds that
+ * already exist. The ``supports_*`` flags express granular interaction
+ * capabilities a contract may require. ``contract_version`` lets the capability
+ * projection track schema drift per renderer.
+ *
+ * This interface was referenced by `HttpsOmninodeAiSchemasOmnidashV2Json`'s JSON-Schema
+ * via the `definition` "ModelRendererCapabilityContract".
+ */
+export interface ModelRendererCapabilityContract {
+  renderer_id: RendererId;
+  platform: Platform;
+  supported_component_kinds: SupportedComponentKinds;
+  interaction_model: EnumRendererInteractionModel;
+  accessibility_tier: EnumAccessibilityTier;
+  contract_version: ModelSemVer2;
+  supports_interaction?: SupportsInteraction;
+  supports_streaming?: SupportsStreaming;
+  supports_theming?: SupportsTheming;
+}
+/**
+ * Semantic version model following SemVer 2.0.0 specification.
+ *
+ * Full SemVer format: MAJOR.MINOR.PATCH[-prerelease][+build]
+ *
+ * Preferred usage (structured format):
+ *     >>> version = ModelSemVer(major=0, minor=4, patch=0)
+ *     >>> assert str(version) == "0.4.0"
+ *     >>> assert version.major == 0 and version.minor == 4
+ *
+ * With prerelease and build metadata:
+ *     >>> version = ModelSemVer(major=1, minor=0, patch=0, prerelease=("alpha", 1))
+ *     >>> assert str(version) == "1.0.0-alpha.1"
+ *     >>> assert version.is_prerelease() is True
+ *
+ * For parsing external input, use the parse() class method:
+ *     >>> version = ModelSemVer.parse("1.0.0-alpha.1+build.123")
+ *     >>> assert version.prerelease == ("alpha", 1)
+ *     >>> assert version.build == ("build", "123")
+ *
+ * Precedence rules (per SemVer spec):
+ *     - prerelease < no prerelease (1.0.0-alpha < 1.0.0)
+ *     - Numeric identifiers < alphanumeric (1.0.0-1 < 1.0.0-alpha)
+ *     - Build metadata is IGNORED for precedence
+ *
+ * Note:
+ *     String version literals like "1.0.0" are deprecated.
+ *     Always use structured format: ModelSemVer(major=X, minor=Y, patch=Z)
+ *
+ *     This model is frozen (immutable) and hashable, suitable for use as dict
+ *     keys or in sets. Hash is based on major, minor, patch, and prerelease;
+ *     build metadata is excluded (see __hash__ docstring for details).
+ */
+export interface ModelSemVer2 {
+  major: Major;
+  minor: Minor;
+  patch: Patch;
+  prerelease?: Prerelease;
+  build?: Build;
+  [k: string]: unknown;
+}
+/**
+ * Evidence requirement in ticket contract.
+ *
+ * Declares what type of evidence must exist before a ticket can be marked Done.
+ *
+ * This interface was referenced by `HttpsOmninodeAiSchemasOmnidashV2Json`'s JSON-Schema
+ * via the `definition` "ModelEvidenceRequirement".
+ */
+export interface ModelEvidenceRequirement1 {
+  kind: EnumEvidenceKind;
+  description: Description1;
+  command?: Command;
 }

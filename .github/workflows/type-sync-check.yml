@@ -19,18 +19,22 @@ name: TypeScript Type Sync Check
 
 on:
   push:
-    branches: [main, develop, "hotfix/**"]
+    branches: [main, develop, dev, "hotfix/**"]
     paths:
       - 'shared/**'
+      - 'src/shared/types/generated/**'
       - 'scripts/check_type_sync.py'
       - 'scripts/check-type-sync.sh'
+      - 'scripts/run-types-generate.sh'
       - '.github/workflows/type-sync-check.yml'
   pull_request:
     branches: [main, develop, dev, "hotfix/**"]
     paths:
       - 'shared/**'
+      - 'src/shared/types/generated/**'
       - 'scripts/check_type_sync.py'
       - 'scripts/check-type-sync.sh'
+      - 'scripts/run-types-generate.sh'
       - '.github/workflows/type-sync-check.yml'
   # Cross-repo dispatch: triggered by dependency-cascade.yml in omnibase_core
   # and omniintelligence when their Python event models change.
@@ -71,10 +75,17 @@ jobs:
         with:
           persist-credentials: false
           repository: OmniNode-ai/omnibase_core
-          # Pinned to omnibase_core main as of 2026-04-26.
+          # Pinned to omnibase_core dev merge d215fe1a (OMN-13130, 2026-06-17),
+          # the commit that introduced the UI contract primitives
+          # (ModelComponentContract, ModelActionContract, ModelDataBindingContract,
+          # ModelPermissionContract, ModelEvidenceRequirementContract,
+          # ModelRendererCapabilityContract) + EnumEmptyStateReason that the
+          # check_type_sync.py TARGETS list verifies. The previous pin
+          # (9b567f68, 2026-04-26 main) predates these models and would make the
+          # gate fail with "file missing".
           # Update by running:
-          #   gh api repos/OmniNode-ai/omnibase_core/commits/main --jq '.sha'
-          ref: 9b567f689b8010ad1942a4d49d1ded4899588eb6
+          #   gh api repos/OmniNode-ai/omnibase_core/commits/dev --jq '.sha'
+          ref: d215fe1ab9a2fafa9328858aa3ab3c90d5936420
           path: omnibase_core
 
       - name: Checkout omniintelligence
