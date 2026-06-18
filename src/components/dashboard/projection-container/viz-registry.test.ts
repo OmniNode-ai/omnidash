@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach } from 'vitest';
-import { vizRegistry, registerViz } from './viz-registry';
+import { vizRegistry, registerViz, resolveViz } from './viz-registry';
 import type { VisualizationContract } from '../../../../shared/types/visualization-contract';
 
 const stubContract: VisualizationContract = {
@@ -46,5 +46,33 @@ describe('viz-registry', () => {
     expect(received).toHaveLength(1);
     expect(received[0].data).toBe(data);
     expect(received[0].contract).toBe(stubContract);
+  });
+
+  describe('resolveViz — capability-driven selection (OMN-13131, W4)', () => {
+    it('resolves a registered visualization via capability dispatch', () => {
+      const adapter = {
+        render: () => null as unknown as ReturnType<typeof import('react').createElement>,
+      };
+      registerViz('bar_chart', adapter);
+      expect(resolveViz('bar_chart')).toBe(adapter);
+    });
+
+    it('returns null for an unregistered type — absent capability handled, not thrown', () => {
+      let result: ReturnType<typeof resolveViz> | undefined;
+      expect(() => {
+        result = resolveViz('scatter_plot');
+      }).not.toThrow();
+      expect(result).toBeNull();
+    });
+
+    it('selects the renderer for the component kind the visualization advertises', () => {
+      const tableAdapter = {
+        render: () => null as unknown as ReturnType<typeof import('react').createElement>,
+      };
+      registerViz('table', tableAdapter);
+      // 'table' maps to component kind 'table'; the capability dispatcher must
+      // select the registered renderer whose advertised kind satisfies it.
+      expect(resolveViz('table')).toBe(tableAdapter);
+    });
   });
 });

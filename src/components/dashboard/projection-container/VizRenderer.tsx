@@ -1,6 +1,6 @@
 import { Text } from '@/components/ui/typography';
 import type { VisualizationContract, VisualizationType } from '@shared/types/visualization-contract';
-import { vizRegistry } from './viz-registry';
+import { resolveViz } from './viz-registry';
 
 interface VizRendererProps {
   type: VisualizationType;
@@ -9,7 +9,10 @@ interface VizRendererProps {
 }
 
 export function VizRenderer({ type, data, contract }: VizRendererProps) {
-  const adapter = vizRegistry[type];
+  // Capability-driven selection (OMN-13131, W4): resolveViz routes through the
+  // general CapabilityDispatcher. A miss yields null — an absent capability is
+  // handled with a typed empty state, never a crash.
+  const adapter = resolveViz(type);
   if (!adapter) {
     return (
       <Text as="div" size="lg" color="bad">
