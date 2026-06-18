@@ -45,6 +45,9 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6
+        with:
+          # This job only runs pytest on the helper; it needs no git credentials.
+          persist-credentials: false
 
       - name: Set up Python 3.12
         uses: actions/setup-python@v5
@@ -152,13 +155,15 @@ jobs:
               --pr-json "$1" --strict-update "$2"
           }
 
-          # Is the target (default) branch strict-update? On strict repos a BEHIND
-          # PR cannot enqueue until its branch is updated.
-          DEFAULT_BRANCH="$(gh repo view "$GH_REPO" --json defaultBranchRef --jq '.defaultBranchRef.name')"
-          STRICT="$(gh api "repos/${GH_REPO}/branches/${DEFAULT_BRANCH}/protection/required_status_checks" \
+          # Is the PR's actual target branch strict-update? On strict repos a BEHIND
+          # PR cannot enqueue until its branch is updated. Probe the branch the PR
+          # targets (baseRefName), not the repo default — omnidash PRs target both
+          # dev and main, and their protection rules can differ.
+          BASE_BRANCH="$(gh pr view "$PR" --repo "$GH_REPO" --json baseRefName --jq '.baseRefName')"
+          STRICT="$(gh api "repos/${GH_REPO}/branches/${BASE_BRANCH}/protection/required_status_checks" \
             --jq '.strict' 2>/dev/null || echo "false")"
           [ "$STRICT" = "true" ] || STRICT="false"
-          echo "strict-update on '${DEFAULT_BRANCH}': ${STRICT}"
+          echo "strict-update on '${BASE_BRANCH}': ${STRICT}"
 
           fetch_pr() {
             # isInMergeQueue is only on the GraphQL PullRequest object, NOT a
