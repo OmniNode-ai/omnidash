@@ -3,6 +3,12 @@ import http from 'http';
 import { fileURLToPath } from 'node:url';
 import routes from './routes.js';
 import { connectProducer, disconnectProducer } from './kafka-producer.js';
+import { loadCapabilityHeartbeatConfig } from './data-source-contract.js';
+import {
+  startCapabilityHeartbeat,
+  type CapabilityHeartbeatHandle,
+} from './renderer-capability-producer.js';
+import { webRendererCapability } from '../shared/types/web-renderer-capability.js';
 
 const PORT = parseInt(process.env.PORT ?? '3002', 10);
 
@@ -30,11 +36,31 @@ const httpServer = http.createServer(app);
 // a test or another module must not bind to a port. ESM equivalent of the
 // `require.main === module` idiom.
 if (process.argv[1] === fileURLToPath(import.meta.url)) {
-  connectProducer().catch((err) => {
-    console.warn('[omnidash server] Kafka producer connect failed (dispatch endpoint will return 503):', err);
-  });
+  let capabilityHeartbeat: CapabilityHeartbeatHandle | null = null;
+
+  connectProducer()
+    .then(() => {
+      // OMN-13131 (W-cap): once the producer is connected, declare the web
+      // renderer's capability onto the bus and keep the heartbeat fresh so the
+      // W5 Renderer Capability Registry projection does not flag this renderer
+      // is_degraded. Config-driven; auto-disabled when no broker is configured.
+      const heartbeatConfig = loadCapabilityHeartbeatConfig();
+      if (heartbeatConfig.enabled) {
+        capabilityHeartbeat = startCapabilityHeartbeat({
+          intervalMs: heartbeatConfig.intervalMs,
+          input: { capability: webRendererCapability() },
+        });
+        console.log(
+          `[omnidash server] renderer capability heartbeat started (every ${heartbeatConfig.intervalMs}ms)`,
+        );
+      }
+    })
+    .catch((err) => {
+      console.warn('[omnidash server] Kafka producer connect failed (dispatch endpoint will return 503):', err);
+    });
 
   const shutdown = () => {
+    capabilityHeartbeat?.stop();
     disconnectProducer().finally(() => process.exit(0));
   };
   process.once('SIGTERM', shutdown);

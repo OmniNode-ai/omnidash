@@ -21,11 +21,16 @@ interface RuntimeContract {
     bootstrap_servers: string;
     client_id: string;
   };
+  renderer_capability: {
+    heartbeat_enabled: string;
+    heartbeat_interval_ms: string;
+  };
 }
 
 type RuntimeContractPatch = {
   data_source?: Partial<RuntimeContract['data_source']>;
   event_bus?: Partial<RuntimeContract['event_bus']>;
+  renderer_capability?: Partial<RuntimeContract['renderer_capability']>;
 };
 
 function defaultContract(): RuntimeContract {
@@ -40,6 +45,10 @@ function defaultContract(): RuntimeContract {
     event_bus: {
       bootstrap_servers: '',
       client_id: 'omnidash-server',
+    },
+    renderer_capability: {
+      heartbeat_enabled: 'true',
+      heartbeat_interval_ms: '30000',
     },
   };
 }
@@ -58,7 +67,10 @@ function parseYamlRuntimeContract(raw: string): RuntimeContractPatch {
     const sectionMatch = line.match(/^(\w+):\s*$/);
     if (sectionMatch) {
       const name = sectionMatch[1] as keyof RuntimeContract;
-      section = name === 'data_source' || name === 'event_bus' ? name : null;
+      section =
+        name === 'data_source' || name === 'event_bus' || name === 'renderer_capability'
+          ? name
+          : null;
       continue;
     }
     if (!section) continue;
@@ -79,6 +91,12 @@ function parseYamlRuntimeContract(raw: string): RuntimeContractPatch {
       result.event_bus ??= {};
       if (key === 'bootstrap_servers') result.event_bus.bootstrap_servers = value;
       else if (key === 'client_id') result.event_bus.client_id = value;
+    } else if (section === 'renderer_capability') {
+      result.renderer_capability ??= {};
+      if (key === 'heartbeat_enabled') result.renderer_capability.heartbeat_enabled = value;
+      else if (key === 'heartbeat_interval_ms') {
+        result.renderer_capability.heartbeat_interval_ms = value;
+      }
     }
   }
 
@@ -94,6 +112,10 @@ function mergeContract(base: RuntimeContract, overlay: RuntimeContractPatch): Ru
     event_bus: {
       ...base.event_bus,
       ...overlay.event_bus,
+    },
+    renderer_capability: {
+      ...base.renderer_capability,
+      ...overlay.renderer_capability,
     },
   };
 }
@@ -185,5 +207,44 @@ export function loadEventBusConfig(): EventBusConfig {
   return {
     bootstrapServers,
     clientId: process.env.OMNIDASH_EVENT_BUS_CLIENT_ID ?? contract.event_bus.client_id,
+  };
+}
+
+export interface CapabilityHeartbeatConfig {
+  /** Whether the server declares the renderer capability heartbeat on startup. */
+  enabled: boolean;
+  /** Re-publish interval in milliseconds. */
+  intervalMs: number;
+}
+
+function parseBool(value: string): boolean {
+  return value.trim().toLowerCase() === 'true';
+}
+
+/**
+ * OMN-13131 (W-cap): resolve the renderer capability-heartbeat config. The
+ * interval and enabled flag are contract-driven (overridable by env for lane
+ * tuning). The heartbeat is force-disabled when no event_bus bootstrap_servers
+ * are configured — the producer needs a broker, and silently emitting nowhere
+ * would let the W5 row drift to is_degraded with no signal as to why.
+ */
+export function loadCapabilityHeartbeatConfig(): CapabilityHeartbeatConfig {
+  const contract = loadContract();
+  const rawEnabled =
+    process.env.OMNIDASH_RENDERER_CAPABILITY_HEARTBEAT_ENABLED
+    ?? contract.renderer_capability.heartbeat_enabled;
+  const rawIntervalMs =
+    process.env.OMNIDASH_RENDERER_CAPABILITY_HEARTBEAT_INTERVAL_MS
+    ?? contract.renderer_capability.heartbeat_interval_ms;
+  const intervalMs = Number.parseInt(rawIntervalMs, 10);
+  if (!Number.isFinite(intervalMs) || intervalMs <= 0) {
+    throw new Error(
+      `renderer_capability.heartbeat_interval_ms must be a positive integer, got: ${rawIntervalMs}`,
+    );
+  }
+  const hasBroker = loadEventBusConfig().bootstrapServers.length > 0;
+  return {
+    enabled: parseBool(rawEnabled) && hasBroker,
+    intervalMs,
   };
 }
