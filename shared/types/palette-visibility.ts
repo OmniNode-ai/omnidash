@@ -54,6 +54,13 @@ export const PALETTE_CLASSIFICATION: Record<string, PaletteClassification> = {
 
   // --- VISIBLE / degraded (200 empty on the single backend — truthful empty state) ---
   'evidence-pipeline-flow': { paletteVisibility: 'visible', authorityLabel: 'degraded', probe: 'evidence_pipeline.{stages,correlations,readiness,live_events}=200/0r' },
+  // Renderer Capabilities (OMN-13131 W6, G-H): live mount of the renderer-capability
+  // gate. The W5 reducer projection
+  // (onex.evt.omnimarket.renderer-capability-projection-snapshot.v1) is materialized
+  // but absent/empty until a renderer thin-publishes a capability heartbeat; the gate
+  // renders the typed upstream-blocked empty-state for the absent/degraded read, so the
+  // honest classification is degraded (truthful typed empty state, not blank/blind).
+  'renderer-capability-status': { paletteVisibility: 'visible', authorityLabel: 'degraded', probe: 'renderer-capability-projection-snapshot.v1=absent (typed upstream-blocked empty-state)' },
   // Context experiment widget: the 100-run experiment data lives in
   // generation_events (200/134r) but the snapshot projection
   // context.experiment-scores.v1 is not yet exposed (404). Kept visible per the

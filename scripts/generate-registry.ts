@@ -18,6 +18,7 @@ import type { ComponentManifest } from '../shared/types/component-manifest.js';
 import { validateComponentManifest } from '../shared/types/component-manifest.js';
 import { TOPICS, type TopicSymbol } from '../shared/types/topics.js';
 import { PALETTE_CLASSIFICATION } from '../shared/types/palette-visibility.js';
+import { RENDERER_CAPABILITY_PROJECTION } from '../shared/types/renderer-capability.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -614,6 +615,48 @@ const MVP_COMPONENTS: Record<string, ComponentManifestDraft> = {
       hint: 'Emit reducer-backed projection snapshots for the evidence pipeline topics.',
     },
     capabilities: { supports_compare: false, supports_export: true, supports_fullscreen: true, supports_time_range: false },
+  },
+  'renderer-capability-status': {
+    name: 'renderer-capability-status',
+    displayName: 'Renderer Capabilities',
+    description:
+      'Live mount (OMN-13131 W6, G-H) of the renderer-capability gate. Reads the W5 renderer-capability projection and routes it through CapabilityGate; an absent or degraded (stale-heartbeat) projection renders the typed UPSTREAM_BLOCKED empty-state, never a blank/blind render.',
+    category: 'health',
+    version: '1.0.0',
+    implementationKey: 'renderer-capability-status/RendererCapabilityStatusWidget',
+    // No configSchema — the widget has no per-instance options.
+    // Row shape mirrors the W5 reducer projection_api columns
+    // (renderer_capability_projection / omnidash_analytics).
+    projectionSchema: {
+      type: 'object',
+      required: [
+        'renderer_id',
+        'supported_component_kinds',
+        'interaction_model',
+        'accessibility_tier',
+        'is_degraded',
+      ],
+      properties: {
+        renderer_id: { type: 'string' },
+        platform: { type: 'string' },
+        supported_component_kinds: { type: 'array', items: { type: 'string' } },
+        interaction_model: { type: 'string' },
+        accessibility_tier: { type: 'string' },
+        contract_version: { type: 'string' },
+        is_degraded: { type: 'boolean' },
+        empty_state_reason: { type: ['string', 'null'] },
+      },
+    },
+    dataSources: [projectionSource(RENDERER_CAPABILITY_PROJECTION.topic, false)],
+    events: { emits: [], consumes: [] },
+    defaultSize: { w: 6, h: 4 },
+    minSize: { w: 4, h: 3 },
+    maxSize: { w: 12, h: 8 },
+    emptyState: {
+      message: 'No renderer capabilities declared',
+      hint: 'Renderers thin-publish a capability heartbeat to onex.cmd.ui.renderer-capability-declared.v1; the W5 reducer materializes the projection. An absent/stale projection renders the typed upstream-blocked state.',
+    },
+    capabilities: { supports_compare: false, supports_export: false, supports_fullscreen: false, supports_time_range: false },
   },
   'cost-summary': {
     name: 'cost-summary',

@@ -1,6 +1,6 @@
 {
   "manifestVersion": "1.0",
-  "generatedAt": "2026-06-12T07:36:53.322Z",
+  "generatedAt": "2026-06-19T05:41:46.965Z",
   "components": {
     "cost-trend-panel": {
       "name": "cost-trend-panel",
@@ -1144,6 +1144,92 @@
         "supports_compare": false,
         "supports_export": true,
         "supports_fullscreen": true,
+        "supports_time_range": false
+      },
+      "paletteVisibility": "visible",
+      "authorityLabel": "degraded"
+    },
+    "renderer-capability-status": {
+      "name": "renderer-capability-status",
+      "displayName": "Renderer Capabilities",
+      "description": "Live mount (OMN-13131 W6, G-H) of the renderer-capability gate. Reads the W5 renderer-capability projection and routes it through CapabilityGate; an absent or degraded (stale-heartbeat) projection renders the typed UPSTREAM_BLOCKED empty-state, never a blank/blind render.",
+      "category": "health",
+      "version": "1.0.0",
+      "implementationKey": "renderer-capability-status/RendererCapabilityStatusWidget",
+      "projectionSchema": {
+        "type": "object",
+        "required": [
+          "renderer_id",
+          "supported_component_kinds",
+          "interaction_model",
+          "accessibility_tier",
+          "is_degraded"
+        ],
+        "properties": {
+          "renderer_id": {
+            "type": "string"
+          },
+          "platform": {
+            "type": "string"
+          },
+          "supported_component_kinds": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "interaction_model": {
+            "type": "string"
+          },
+          "accessibility_tier": {
+            "type": "string"
+          },
+          "contract_version": {
+            "type": "string"
+          },
+          "is_degraded": {
+            "type": "boolean"
+          },
+          "empty_state_reason": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        }
+      },
+      "dataSources": [
+        {
+          "type": "projection",
+          "topic": "onex.evt.omnimarket.renderer-capability-projection-snapshot.v1",
+          "required": false,
+          "purpose": "initial_fetch"
+        }
+      ],
+      "events": {
+        "emits": [],
+        "consumes": []
+      },
+      "defaultSize": {
+        "w": 6,
+        "h": 4
+      },
+      "minSize": {
+        "w": 4,
+        "h": 3
+      },
+      "maxSize": {
+        "w": 12,
+        "h": 8
+      },
+      "emptyState": {
+        "message": "No renderer capabilities declared",
+        "hint": "Renderers thin-publish a capability heartbeat to onex.cmd.ui.renderer-capability-declared.v1; the W5 reducer materializes the projection. An absent/stale projection renders the typed upstream-blocked state."
+      },
+      "capabilities": {
+        "supports_compare": false,
+        "supports_export": false,
+        "supports_fullscreen": false,
         "supports_time_range": false
       },
       "paletteVisibility": "visible",
