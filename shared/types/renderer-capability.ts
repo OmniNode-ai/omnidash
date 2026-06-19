@@ -51,10 +51,16 @@ export type AccessibilityTier = EnumAccessibilityTier;
 export const RENDERER_CAPABILITY_PROJECTION = {
   /**
    * Snapshot projection topic the W5 reducer writes renderer-capability rows to.
-   * Suffix mirrors the registered command topic
-   * `onex.cmd.ui.renderer-capability-declared.v1` (validate_topic_suffix-checked
-   * upstream). Declared once here so the read path references a symbol.
+   * This MUST be the reducer's DECLARED `publish_topics` / `projection_api`
+   * exposure topic in
+   * `omnimarket/src/omnimarket/nodes/node_renderer_capability_projection/contract.yaml`
+   * (materialized to table `renderer_capability_projection` in
+   * `omnidash_analytics`). The read path
+   * (`useRendererCapabilities` → `useProjectionQuery` → `/projection/{topic}`)
+   * must reference the producer's published topic verbatim, or it polls a topic
+   * no reducer writes and the projection API returns 404. Declared once here so
+   * the read path references a symbol, not an inline literal.
    */
-  topic: 'onex.snapshot.projection.ui.renderer-capability.v1',
+  topic: 'onex.evt.omnimarket.renderer-capability-projection-snapshot.v1',
   displayName: 'Renderer Capabilities',
 } as const;

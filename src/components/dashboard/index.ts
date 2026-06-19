@@ -49,4 +49,5 @@ export const componentImports: Record<string, ReturnType<typeof lazy>> = {
   'trace-explorer/TraceExplorerWidget': lazy(() => import('./trace-explorer/TraceExplorerWidget')),
   'instruction-eval/InstructionEvalHeatmap': lazy(() => import('./instruction-eval/InstructionEvalHeatmap')),
   'context-heatmap/ContextEffectivenessHeatmap': lazy(() => import('./context-heatmap/ContextEffectivenessHeatmap')),
+  'renderer-capability-status/RendererCapabilityStatusWidget': lazy(() => import('./renderer-capability-status/RendererCapabilityStatusWidget')),
 };

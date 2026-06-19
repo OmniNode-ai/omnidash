@@ -53,7 +53,9 @@ describe('Proof of Life — Part 2', () => {
     // T22: delegation-cost-comparison added.
     // OMN-12399: context-effectiveness-heatmap added.
     // OMN-12745: delegation-model-output added.
-    expect(all.length).toBe(32);
+    // OMN-13131 (W6 live wiring, G-H): renderer-capability-status added — live
+    // mount of the renderer-capability gate over the W5 projection.
+    expect(all.length).toBe(33);
     expect(all.map((c) => c.name).sort()).toEqual([
       'ab-compare',
       'baselines-roi-card',
@@ -82,6 +84,7 @@ describe('Proof of Life — Part 2', () => {
       'quality-score-panel',
       'readiness-gate',
       'receipt-gate',
+      'renderer-capability-status',
       'routing-decision',
       'routing-decision-table',
       'session-timeline',
