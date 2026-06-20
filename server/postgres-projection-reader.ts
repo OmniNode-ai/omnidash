@@ -750,7 +750,12 @@ export class PostgresProjectionReader {
           COALESCE(NULLIF(e->>'delegation_latency_ms', '')::numeric, NULLIF(e->>'latency_ms', '')::numeric) AS latency_ms,
           COALESCE(e->>'created_at', e->>'timestamp') AS created_at,
           e->>'prompt_text' AS prompt_text,
-          e->>'response_text' AS response_text
+          e->>'response_text' AS response_text,
+          -- OMN-13355: pinned premium counterfactual {model, price, as_of, tokens,
+          -- counterfactual_cost_usd}. Returned as a JSON object so the saving
+          -- (counterfactual - actual) is auditable in the dashboard, not an opaque
+          -- estimate. NULL on rows persisted before the column existed.
+          e->'premium_counterfactual' AS premium_counterfactual
         FROM events
         ORDER BY COALESCE(e->>'created_at', e->>'timestamp') DESC
         LIMIT 500
