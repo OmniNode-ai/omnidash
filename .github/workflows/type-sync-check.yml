@@ -3,39 +3,51 @@
 ---
 name: TypeScript Type Sync Check
 
-# OMN-3258: Verifies that TypeScript boundary types in omnidash/shared/
-# stay in sync with the corresponding Python Pydantic models in
-# omnibase_core and omniintelligence.
+# OMN-3258 / OMN-13222: Verifies that TypeScript boundary types in
+# omnidash/shared/ stay in sync with the corresponding Python Pydantic
+# models in omnibase_core and omniintelligence.
 #
 # Triggers:
-#   - Push/PR on omnidash when TypeScript boundary types change
-#   - Cross-repo dispatch from dependency-cascade.yml when Python models change
-#     (specifically: omnibase_core/src/omnibase_core/models/events/*.py)
+#   - Every pull_request targeting dev/main/develop/hotfix branches
+#     (no path filter here — the job itself detects whether watched paths
+#     changed and short-circuits to success when they did not)
+#   - Push to protected branches
+#   - Cross-repo dispatch from dependency-cascade.yml in omnibase_core /
+#     omniintelligence when their Python event models change
+#
+# Always-run guard pattern (OMN-13222):
+#   The status check produced by this job ("TypeScript ↔ Python Type Sync")
+#   must always report so it can be promoted to a required branch-protection
+#   check without wedging PRs that don't touch type-sync paths.
+#   A path-filtered required check stays "pending" forever on untouched PRs
+#   and blocks merge. Instead we:
+#     1. Run on every event (no path filter in `on:`)
+#     2. Detect relevant changes in the first step
+#     3. Skip the expensive checkouts+check when no watched paths changed
+#     4. The job always exits 0, always producing a green check for the lead
+#        to mark required
+#
+# Watched paths (trigger the real drift check when changed):
+#   shared/**
+#   src/shared/types/generated/**
+#   scripts/check_type_sync.py
+#   scripts/check-type-sync.sh
+#   scripts/run-types-generate.sh
+#   .github/workflows/type-sync-check.yml
 #
 # Exit conditions:
-#   PASS — all TypeScript boundary types contain the required Python model fields
-#   FAIL — one or more TypeScript types are missing Python model fields
-#          (Python model was renamed/added without updating TS type)
+#   PASS (paths unchanged) — check skipped, job exits 0
+#   PASS (paths changed)   — all TypeScript boundary types contain the
+#                            required Python model fields
+#   FAIL (paths changed)   — one or more TypeScript types are missing
+#                            Python model fields (Python model renamed/added
+#                            without updating TS type)
 
 on:
   push:
     branches: [main, develop, dev, "hotfix/**"]
-    paths:
-      - 'shared/**'
-      - 'src/shared/types/generated/**'
-      - 'scripts/check_type_sync.py'
-      - 'scripts/check-type-sync.sh'
-      - 'scripts/run-types-generate.sh'
-      - '.github/workflows/type-sync-check.yml'
   pull_request:
     branches: [main, develop, dev, "hotfix/**"]
-    paths:
-      - 'shared/**'
-      - 'src/shared/types/generated/**'
-      - 'scripts/check_type_sync.py'
-      - 'scripts/check-type-sync.sh'
-      - 'scripts/run-types-generate.sh'
-      - '.github/workflows/type-sync-check.yml'
   # Cross-repo dispatch: triggered by dependency-cascade.yml in omnibase_core
   # and omniintelligence when their Python event models change.
   workflow_dispatch:
@@ -65,12 +77,67 @@ jobs:
       contents: read
 
     steps:
-      - name: Checkout omnidash
+      # -----------------------------------------------------------------------
+      # Step 1 — always runs: determine whether the drift check is needed.
+      #
+      # For push / merge_group / workflow_dispatch events the full check always
+      # runs (we don't have a PR base SHA to diff against and these events
+      # imply something real landed). For pull_request events we diff against
+      # the PR base and skip when none of the watched paths changed.
+      # -----------------------------------------------------------------------
+      - name: Checkout omnidash (shallow, for path detection)
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v4
         with:
           persist-credentials: false
+          fetch-depth: 0
+
+      - name: Detect type-sync path changes
+        id: changes
+        run: |
+          # workflow_dispatch: the full check is always meaningful because a
+          # cross-repo event (upstream Python model change) triggered it.
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            echo "Triggered by workflow_dispatch — running full drift check"
+            echo "run_check=true" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          # push / merge_group: no PR base SHA available; always run.
+          if [ "${{ github.event_name }}" = "push" ] || \
+             [ "${{ github.event_name }}" = "merge_group" ]; then
+            echo "Event=${{ github.event_name }} — running full drift check"
+            echo "run_check=true" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          # pull_request: diff against the base SHA and check watched paths.
+          BASE_SHA="${{ github.event.pull_request.base.sha }}"
+          HEAD_SHA="${{ github.event.pull_request.head.sha }}"
+
+          CHANGED=$(git diff --name-only "$BASE_SHA" "$HEAD_SHA" -- \
+            'shared/' \
+            'src/shared/types/generated/' \
+            'scripts/check_type_sync.py' \
+            'scripts/check-type-sync.sh' \
+            'scripts/run-types-generate.sh' \
+            '.github/workflows/type-sync-check.yml' \
+          )
+
+          if [ -n "$CHANGED" ]; then
+            echo "Type-sync paths changed — running drift check:"
+            echo "$CHANGED"
+            echo "run_check=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "No type-sync paths changed — skipping drift check (short-circuit to success)"
+            echo "run_check=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      # -----------------------------------------------------------------------
+      # Steps 2-7 — run only when watched paths changed.
+      # -----------------------------------------------------------------------
 
       - name: Checkout omnibase_core
+        if: steps.changes.outputs.run_check == 'true'
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v4
         with:
           persist-credentials: false
@@ -89,6 +156,7 @@ jobs:
           path: omnibase_core
 
       - name: Checkout omniintelligence
+        if: steps.changes.outputs.run_check == 'true'
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v4
         with:
           persist-credentials: false
@@ -100,24 +168,26 @@ jobs:
           path: omniintelligence
 
       - name: Set up Python 3.12
+        if: steps.changes.outputs.run_check == 'true'
         uses: actions/setup-python@a309ff8b426b58ec0e2a45f0f869d46889d02405 # v6.2.0
         with:
           python-version: '3.12'
 
       - name: Show trigger context
-        if: github.event_name == 'workflow_dispatch'
+        if: steps.changes.outputs.run_check == 'true' && github.event_name == 'workflow_dispatch'
         run: |
           echo "Triggered by: ${{ inputs.trigger_repo }}"
           echo "Trigger SHA:  ${{ inputs.trigger_sha }}"
 
       - name: Run TypeScript type sync check
+        if: steps.changes.outputs.run_check == 'true'
         run: |
           bash scripts/check-type-sync.sh \
             --omnibase-core "$GITHUB_WORKSPACE/omnibase_core" \
             --omniintelligence "$GITHUB_WORKSPACE/omniintelligence"
 
       - name: Report result
-        if: failure()
+        if: steps.changes.outputs.run_check == 'true' && failure()
         run: |
           echo "::error::TypeScript boundary types are out of sync with Python models."
           echo "::error::Update the TypeScript types in shared/ to include the missing fields."
