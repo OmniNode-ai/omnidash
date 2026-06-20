@@ -176,6 +176,59 @@ describe('PostgresProjectionReader', () => {
     expect(client.query).toHaveBeenCalledWith(expect.stringContaining('to_jsonb(delegation_events)'));
   });
 
+  it('exposes the pinned premium counterfactual on delegation savings sessions (OMN-13355)', async () => {
+    const counterfactual = {
+      model: 'claude-opus-4-6',
+      price_in_per_1k: '0.015',
+      price_out_per_1k: '0.075',
+      as_of: '2026-02-01',
+      tokens_in: 144,
+      tokens_out: 593,
+      counterfactual_cost_usd: '0.046635',
+      pricing_source: 'pricing_manifest',
+      measured: false,
+    };
+    const client = {
+      query: vi.fn()
+        .mockResolvedValueOnce({ rows: [] })
+        .mockResolvedValueOnce({
+          rows: [{
+            session_id: 'corr-cf',
+            task_type: 'test',
+            model_name: 'qwen3-coder',
+            local_cost_usd: '0',
+            cloud_cost_usd: '0.046635',
+            savings_usd: '0.046635',
+            baseline_model: 'claude-opus-4.1',
+            pricing_manifest_version: 'runtime-delegation-events',
+            savings_method: 'measured',
+            usage_source: 'measured',
+            prompt_tokens: '144',
+            completion_tokens: '593',
+            tokens_to_compliance: '737',
+            latency_ms: '3237',
+            created_at: '2026-05-20T12:00:00.000Z',
+            premium_counterfactual: counterfactual,
+          }],
+        }),
+      release: vi.fn(),
+    };
+    getMockPool().connect.mockResolvedValue(client);
+
+    const result = await reader.readProjection('onex.snapshot.projection.delegation.savings.v1');
+
+    const sessions = result.rows[0]!.sessions as Record<string, unknown>[];
+    expect(sessions[0]!.premium_counterfactual).toMatchObject({
+      model: 'claude-opus-4-6',
+      as_of: '2026-02-01',
+      counterfactual_cost_usd: '0.046635',
+    });
+    // The auditable column is read from the projection row.
+    expect(client.query).toHaveBeenCalledWith(
+      expect.stringContaining("e->'premium_counterfactual'"),
+    );
+  });
+
   it('deduplicates materialized and runtime delegation savings rows by session', async () => {
     const client = {
       query: vi.fn()

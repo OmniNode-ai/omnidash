@@ -926,6 +926,10 @@ export class SqliteProjectionReader {
       const inputTokensExpr = col('tokens_input', '0');
       const outputTokensExpr = col('tokens_output', '0');
       const complianceTokensExpr = col('tokens_to_compliance', 'NULL');
+      // OMN-13355: pinned premium counterfactual {model, price, as_of, tokens,
+      // counterfactual_cost_usd}. Stored as JSONB-as-text in SQLite; guarded so a
+      // backing store predating the column falls back to NULL.
+      const counterfactualExpr = col('premium_counterfactual', 'NULL');
 
       eventRows = db.prepare(`
         SELECT
@@ -945,12 +949,26 @@ export class SqliteProjectionReader {
           ${latencyExpr} AS latency_ms,
           ${createdAtExpr} AS created_at,
           ${col('prompt_text', 'NULL')} AS prompt_text,
-          ${col('response_text', 'NULL')} AS response_text
+          ${col('response_text', 'NULL')} AS response_text,
+          ${counterfactualExpr} AS premium_counterfactual
         FROM delegation_events
         WHERE ${this.delegationRuntimeWhereClause(db)}
         ORDER BY ${createdAtExpr} DESC
         LIMIT 500
       `).all() as Row[];
+
+      // Parse the JSONB-as-text counterfactual into a structured object so the
+      // reader exposes the auditable {model, price, as_of} rather than a raw string.
+      for (const row of eventRows) {
+        const raw = row.premium_counterfactual;
+        if (typeof raw === 'string' && raw.trim() !== '') {
+          try {
+            row.premium_counterfactual = JSON.parse(raw);
+          } catch {
+            row.premium_counterfactual = null;
+          }
+        }
+      }
     }
 
     const sessions = this.mergeDelegationSessions(savingsRows, eventRows);
