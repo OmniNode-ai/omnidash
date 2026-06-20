@@ -261,10 +261,15 @@ export class PostgresProjectionReader {
               COALESCE(SUM(CASE WHEN quality_gate_passed THEN 1 ELSE 0 END), 0)          AS quality_passed_count,
               COALESCE(SUM(CASE WHEN NOT quality_gate_passed THEN 1 ELSE 0 END), 0)      AS quality_failed_count,
               COALESCE(AVG(latency_ms), 0)                                               AS avg_latency_ms,
-              COALESCE(MAX(EXTRACT(EPOCH FROM created_at)), 0)                           AS latest_event_at,
-              0                                                                          AS total_savings_usd
+              COALESCE(MAX(EXTRACT(EPOCH FROM created_at)), 0)                           AS latest_event_at
             FROM delegation_events
           `);
+          // total_savings_usd is sourced from the savings_estimates projection table
+          // (the same source onex.snapshot.projection.savings.summary.v1 reads), NOT a
+          // literal 0. delegation_events carries no savings column, so summing here kept
+          // the headline figure stuck at 0 (OMN-13355 / W13). The query is guarded so a
+          // deployment without savings_estimates yet falls back to 0 rather than erroring.
+          const totalSavingsUsd = await this.readDelegationTotalSavingsUsd(client);
           const byTaskTypeRes = await client.query(`
             SELECT task_type AS "taskType", COUNT(*) AS count
             FROM delegation_events
@@ -283,7 +288,7 @@ export class PostgresProjectionReader {
             qualityGatePassRate: total > 0 ? passed / total : 0,
             qualityGatePassed: passed,
             qualityGateTotal: total,
-            totalSavingsUsd: Number(summary?.total_savings_usd ?? 0),
+            totalSavingsUsd,
             avgLatencyMs: Number(summary?.avg_latency_ms ?? 0),
             latestEventAt: Number(summary?.latest_event_at ?? 0),
             total_events: total,
@@ -291,6 +296,7 @@ export class PostgresProjectionReader {
             quality_failed_count: Number(summary?.quality_failed_count ?? 0),
             avg_latency_ms: Number(summary?.avg_latency_ms ?? 0),
             latest_event_at: Number(summary?.latest_event_at ?? 0),
+            total_savings_usd: totalSavingsUsd,
             byTaskType: byTaskTypeRes.rows as Row[],
             byModel: byModelRes.rows as Row[],
           }];
@@ -797,6 +803,29 @@ export class PostgresProjectionReader {
 
     console.error(`[PostgresProjectionReader] failed to read ${source} for delegation savings projection:`, err);
     throw err;
+  }
+
+  /**
+   * Total delegation savings (USD) for the summary projection, summed from the
+   * savings_estimates projection table — the same authoritative source that backs
+   * onex.snapshot.projection.savings.summary.v1. delegation_events has no savings
+   * column, so the previous `0 AS total_savings_usd` literal left the headline
+   * figure permanently 0 (OMN-13355 / W13). Guarded so a deployment that has not yet
+   * provisioned savings_estimates falls back to 0 instead of failing the projection.
+   */
+  private async readDelegationTotalSavingsUsd(
+    client: { query: (sql: string) => Promise<{ rows: Row[] }> },
+  ): Promise<number> {
+    try {
+      const res = await client.query(`
+        SELECT COALESCE(SUM(savings_usd), 0) AS total_savings_usd
+        FROM savings_estimates
+      `);
+      return Number((res.rows[0] as Row)?.total_savings_usd ?? 0);
+    } catch (err) {
+      this.handleProjectionCompatibilityError(err, 'savings_estimates');
+      return 0;
+    }
   }
 
   private async readLiveEventsProjection(

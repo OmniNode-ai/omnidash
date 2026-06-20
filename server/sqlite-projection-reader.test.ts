@@ -160,6 +160,15 @@ describe('SqliteProjectionReader', () => {
       INSERT INTO delegation_events (correlation_id, task_type, delegated_to, model_name, quality_gate_passed, latency_ms, created_at)
       VALUES ('corr-2', 'task', 'cloud', 'claude', 0, 400, 2000.0)
     `).run();
+    // Savings live in savings_estimates, not delegation_events — the summary must sum them.
+    db.prepare(`
+      INSERT INTO savings_estimates (session_id, event_timestamp, model_local, model_cloud_baseline, local_cost_usd, cloud_cost_usd, savings_usd, baseline_model, created_at)
+      VALUES ('corr-1', 1000.0, 'qwen3', 'gemini-2.5-flash', 0.001, 0.012, 0.011, 'gemini-2.5-flash', 1000.0)
+    `).run();
+    db.prepare(`
+      INSERT INTO savings_estimates (session_id, event_timestamp, model_local, model_cloud_baseline, local_cost_usd, cloud_cost_usd, savings_usd, baseline_model, created_at)
+      VALUES ('corr-2', 2000.0, 'qwen3', 'gemini-2.5-flash', 0.002, 0.009, 0.007, 'gemini-2.5-flash', 2000.0)
+    `).run();
     db.close();
 
     const reader = new SqliteProjectionReader({ dbPath });
@@ -172,6 +181,26 @@ describe('SqliteProjectionReader', () => {
       quality_failed_count: 1,
     });
     expect(Number(rows[0]!.avg_latency_ms)).toBe(300);
+    // total_savings_usd is the sum from savings_estimates, NOT a hardcoded 0 (OMN-13355).
+    expect(Number(rows[0]!.totalSavingsUsd)).toBeCloseTo(0.018);
+    expect(Number(rows[0]!.total_savings_usd)).toBeCloseTo(0.018);
+  });
+
+  it('summary savings falls back to 0 when savings_estimates is absent', () => {
+    const db = createTestDb(dbPath);
+    db.prepare(`
+      INSERT INTO delegation_events (correlation_id, task_type, delegated_to, model_name, quality_gate_passed, latency_ms, created_at)
+      VALUES ('corr-1', 'task', 'local', 'qwen3', 1, 200, 1000.0)
+    `).run();
+    db.exec('DROP TABLE savings_estimates');
+    db.close();
+
+    const reader = new SqliteProjectionReader({ dbPath });
+    const rows = reader.readProjection('onex.snapshot.projection.delegation.summary.v1');
+
+    expect(rows).toHaveLength(1);
+    expect(Number(rows[0]!.totalSavingsUsd)).toBe(0);
+    expect(Number(rows[0]!.total_savings_usd)).toBe(0);
   });
 
   it('reads llm_call_metrics rows for llm_cost topic', () => {

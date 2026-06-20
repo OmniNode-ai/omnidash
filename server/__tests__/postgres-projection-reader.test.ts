@@ -72,14 +72,16 @@ describe('PostgresProjectionReader', () => {
     consoleError.mockRestore();
   });
 
-  it('returns delegation summary with aggregated shape', async () => {
+  it('returns delegation summary with aggregated shape and projection-derived savings', async () => {
     const summaryRow = {
       total_events: '10', quality_passed_count: '8', quality_failed_count: '2',
-      avg_latency_ms: '150', latest_event_at: '1234567890', total_savings_usd: '0',
+      avg_latency_ms: '150', latest_event_at: '1234567890',
     };
     const client = {
+      // Query order: summary aggregate, savings_estimates sum, byTaskType, byModel.
       query: vi.fn()
         .mockResolvedValueOnce({ rows: [summaryRow] })
+        .mockResolvedValueOnce({ rows: [{ total_savings_usd: '0.4242' }] })
         .mockResolvedValueOnce({ rows: [{ taskType: 'code', count: '10' }] })
         .mockResolvedValueOnce({ rows: [{ model: 'local', count: '10' }] }),
       release: vi.fn(),
@@ -93,8 +95,38 @@ describe('PostgresProjectionReader', () => {
     expect(row.totalDelegations).toBe(10);
     expect(row.qualityGatePassed).toBe(8);
     expect(row.qualityGatePassRate).toBeCloseTo(0.8);
+    // total_savings_usd is summed from savings_estimates, NOT a hardcoded 0 (OMN-13355).
+    expect(row.totalSavingsUsd).toBeCloseTo(0.4242);
+    expect(row.total_savings_usd).toBeCloseTo(0.4242);
+    expect(client.query).toHaveBeenCalledWith(expect.stringContaining('SUM(savings_usd)'));
     expect(Array.isArray(row.byTaskType)).toBe(true);
     expect(Array.isArray(row.byModel)).toBe(true);
+  });
+
+  it('falls back to 0 savings when savings_estimates is not provisioned', async () => {
+    const summaryRow = {
+      total_events: '5', quality_passed_count: '5', quality_failed_count: '0',
+      avg_latency_ms: '100', latest_event_at: '1234567890',
+    };
+    const missingTableErr = Object.assign(new Error('relation "savings_estimates" does not exist'), {
+      code: '42P01',
+    });
+    const client = {
+      query: vi.fn()
+        .mockResolvedValueOnce({ rows: [summaryRow] })
+        .mockRejectedValueOnce(missingTableErr)
+        .mockResolvedValueOnce({ rows: [{ taskType: 'code', count: '5' }] })
+        .mockResolvedValueOnce({ rows: [{ model: 'local', count: '5' }] }),
+      release: vi.fn(),
+    };
+    getMockPool().connect.mockResolvedValue(client);
+
+    const result = await reader.readProjection('onex.snapshot.projection.delegation.summary.v1');
+
+    const row = result.rows[0] as Record<string, unknown>;
+    expect(row.totalDelegations).toBe(5);
+    expect(row.totalSavingsUsd).toBe(0);
+    expect(row.total_savings_usd).toBe(0);
   });
 
   it('returns delegation savings projection with runtime token metrics', async () => {
