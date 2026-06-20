@@ -39,6 +39,29 @@ export type RendererInteractionModel = EnumRendererInteractionModel;
 export type AccessibilityTier = EnumAccessibilityTier;
 
 /**
+ * A row from the renderer-capability projection API
+ * (`/projection/onex.evt.omnimarket.renderer-capability-projection-snapshot.v1`).
+ *
+ * The W5 reducer writes `is_degraded` PER ROW based on heartbeat-TTL freshness.
+ * This field is NOT part of the declared `RendererCapabilityContract` (which is the
+ * capability advertisement surface), but IS present on every projection row that the
+ * API returns. Consumers that need to honour freshness MUST use this type rather than
+ * the bare `RendererCapabilityContract` when reading the projection.
+ *
+ * `is_degraded=true` means the reducer determined this renderer's heartbeat is stale.
+ * Callers must NOT dispatch through a degraded row — it is not trustworthy capability
+ * evidence.
+ */
+export interface RendererCapabilityProjectionRow extends RendererCapabilityContract {
+  /**
+   * Per-row heartbeat-TTL freshness from the W5 reducer.
+   * `true`  → stale heartbeat; do NOT use this row to satisfy a dispatch requirement.
+   * `false` | `undefined` → fresh (or freshness unknown — treat as fresh).
+   */
+  is_degraded?: boolean | null;
+}
+
+/**
  * Descriptor for the renderer-capability projection (OMN-13131, W5/W6).
  *
  * The W5 reducer materializes declared renderer capabilities (heartbeat-TTL
