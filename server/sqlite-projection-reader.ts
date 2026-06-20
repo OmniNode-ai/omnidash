@@ -84,11 +84,20 @@ export class SqliteProjectionReader {
             COALESCE(SUM(CASE WHEN quality_gate_passed = 1 THEN 1 ELSE 0 END), 0)     AS quality_passed_count,
             COALESCE(SUM(CASE WHEN quality_gate_passed = 0 THEN 1 ELSE 0 END), 0)     AS quality_failed_count,
             COALESCE(AVG(latency_ms), 0)                                               AS avg_latency_ms,
-            COALESCE(MAX(created_at), 0)                                               AS latest_event_at,
-            0                                                                          AS total_savings_usd
+            COALESCE(MAX(created_at), 0)                                               AS latest_event_at
           FROM delegation_events
           WHERE ${this.delegationRuntimeWhereClause(db)}
         `).get() as Row;
+        // total_savings_usd comes from the savings_estimates projection table (the same
+        // source onex.snapshot.projection.savings.summary.v1 reads), NOT a literal 0.
+        // delegation_events has no savings column, so the old `0 AS total_savings_usd`
+        // pinned the headline figure to 0 (OMN-13355 / W13). Guarded on table presence.
+        const totalSavingsUsd = this.hasTable(db, 'savings_estimates')
+          ? Number((db.prepare(`
+              SELECT COALESCE(SUM(savings_usd), 0) AS total_savings_usd
+              FROM savings_estimates
+            `).get() as Row)?.total_savings_usd ?? 0)
+          : 0;
         const byTaskType = db.prepare(`
           SELECT task_type AS taskType, COUNT(*) AS count
           FROM delegation_events
@@ -108,7 +117,7 @@ export class SqliteProjectionReader {
           qualityGatePassRate: total > 0 ? passed / total : 0,
           qualityGatePassed: passed,
           qualityGateTotal: total,
-          totalSavingsUsd: (summary.total_savings_usd as number) || 0,
+          totalSavingsUsd,
           avgLatencyMs: (summary.avg_latency_ms as number) || 0,
           latestEventAt: (summary.latest_event_at as number) || 0,
           total_events: total,
@@ -116,6 +125,7 @@ export class SqliteProjectionReader {
           quality_failed_count: (summary.quality_failed_count as number) || 0,
           avg_latency_ms: (summary.avg_latency_ms as number) || 0,
           latest_event_at: (summary.latest_event_at as number) || 0,
+          total_savings_usd: totalSavingsUsd,
           byTaskType,
           byModel,
         }];
