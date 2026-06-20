@@ -1,0 +1,820 @@
+{
+  "$defs": {
+    "EnumWidgetType": {
+      "description": "Dashboard widget type enumeration.\n\nDefines the types of widgets available for dashboard configuration.\nEach type has specific configuration requirements and rendering behavior.\nWidget types are categorized as either data-bound (requiring continuous\ndata updates) or aggregation-based (displaying point-in-time metrics).\n\nAttributes:\n    CHART: Line, bar, area, pie, or scatter chart visualization.\n        Config: :class:`~omnibase_core.models.dashboard.ModelWidgetConfigChart`\n    TABLE: Paginated, sortable tabular data display.\n        Config: :class:`~omnibase_core.models.dashboard.ModelWidgetConfigTable`\n    METRIC_CARD: Single KPI display with optional trend and thresholds.\n        Config: :class:`~omnibase_core.models.dashboard.ModelWidgetConfigMetricCard`\n    STATUS_GRID: Grid of status indicators for system health monitoring.\n        Config: :class:`~omnibase_core.models.dashboard.ModelWidgetConfigStatusGrid`\n    EVENT_FEED: Real-time event stream with filtering capabilities.\n        Config: :class:`~omnibase_core.models.dashboard.ModelWidgetConfigEventFeed`\n\nExample:\n    Use in widget definition::\n\n        from omnibase_core.enums import EnumWidgetType\n\n        # Check if widget needs real-time data binding\n        if EnumWidgetType.TABLE.is_data_bound:\n            setup_data_subscription()",
+      "enum": [
+        "chart",
+        "table",
+        "metric_card",
+        "status_grid",
+        "event_feed"
+      ],
+      "title": "EnumWidgetType",
+      "type": "string"
+    },
+    "ModelChartAxisConfig": {
+      "additionalProperties": false,
+      "description": "Configuration for a chart axis in dashboard visualizations.\n\nDefines display properties for X or Y axes in chart widgets,\nincluding labels, value ranges, and grid visibility.\n\nUsed by chart-based dashboard widgets to configure axis rendering.",
+      "properties": {
+        "label": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Axis label",
+          "title": "Label"
+        },
+        "min_value": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Minimum axis value",
+          "title": "Min Value"
+        },
+        "max_value": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Maximum axis value",
+          "title": "Max Value"
+        },
+        "show_grid": {
+          "default": true,
+          "description": "Show grid lines",
+          "title": "Show Grid",
+          "type": "boolean"
+        }
+      },
+      "title": "ModelChartAxisConfig",
+      "type": "object"
+    },
+    "ModelChartSeriesConfig": {
+      "additionalProperties": false,
+      "description": "Configuration for a single data series in dashboard charts.\n\nDefines how a dataset should be rendered within a chart widget,\nincluding the data source key, visual styling, and chart type.\n\nMultiple series configs can be combined to create multi-series\ncharts with different visualization styles (line, bar, area, scatter).",
+      "properties": {
+        "name": {
+          "description": "Series display name",
+          "minLength": 1,
+          "title": "Name",
+          "type": "string"
+        },
+        "data_key": {
+          "description": "Key to extract data from source",
+          "minLength": 1,
+          "title": "Data Key",
+          "type": "string"
+        },
+        "color": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Series color (hex)",
+          "title": "Color"
+        },
+        "series_type": {
+          "default": "line",
+          "description": "How to render this series",
+          "enum": [
+            "line",
+            "bar",
+            "area",
+            "scatter"
+          ],
+          "title": "Series Type",
+          "type": "string"
+        }
+      },
+      "required": [
+        "name",
+        "data_key"
+      ],
+      "title": "ModelChartSeriesConfig",
+      "type": "object"
+    },
+    "ModelEventFilter": {
+      "additionalProperties": false,
+      "description": "Filter configuration for event feed widgets.\n\nDefines criteria for filtering which events appear in an event feed.\nAll filter criteria use allowlist semantics - only events matching\nthe specified values are included. Empty tuples mean \"include all\".\n\nMultiple filter criteria are combined with AND logic - an event must\nmatch all non-empty filter criteria to be displayed.\n\nAttributes:\n    event_types: Tuple of event type strings to include. An empty tuple\n        means all event types are included. Example: (\"error\", \"warning\").\n    severity_levels: Tuple of severity levels to include. An empty tuple\n        means all severity levels are included. Example: (\"critical\", \"error\").\n    sources: Tuple of event source identifiers to include. An empty tuple\n        means all sources are included. Example: (\"api\", \"worker\", \"scheduler\").\n\nExample:\n    Filter to show only error events::\n\n        filter = ModelEventFilter(\n            event_types=(\"error\",),\n        )\n\n    No filtering (show all events)::\n\n        filter = ModelEventFilter()  # All tuples default to empty",
+      "properties": {
+        "event_types": {
+          "default": [],
+          "description": "Event types to include (empty = all)",
+          "items": {
+            "type": "string"
+          },
+          "title": "Event Types",
+          "type": "array"
+        },
+        "severity_levels": {
+          "default": [],
+          "description": "Severity levels to include (empty = all)",
+          "items": {
+            "type": "string"
+          },
+          "title": "Severity Levels",
+          "type": "array"
+        },
+        "sources": {
+          "default": [],
+          "description": "Event sources to include (empty = all)",
+          "items": {
+            "type": "string"
+          },
+          "title": "Sources",
+          "type": "array"
+        }
+      },
+      "title": "ModelEventFilter",
+      "type": "object"
+    },
+    "ModelMetricThreshold": {
+      "additionalProperties": false,
+      "description": "Threshold configuration for conditional metric coloring.\n\nDefines a value threshold that triggers a color change in metric card\nwidgets. Multiple thresholds can be configured to create a color scale\n(e.g., green -> yellow -> red) based on the metric value.\n\nThresholds are typically evaluated in ascending order by value. When\nthe metric exceeds a threshold value, that threshold's color is applied.\n\nAttributes:\n    value: The numeric threshold value. When the metric reaches or\n        exceeds this value, the associated color is applied.\n    color: Hex color code to apply when threshold is reached. Must be\n        a valid hex format (#RGB, #RRGGBB, #RGBA, or #RRGGBBAA).\n    label: Optional human-readable label for the threshold level\n        (e.g., \"Good\", \"Warning\", \"Critical\").\n\nRaises:\n    ValueError: If color is not a valid hex color format.\n\nExample:\n    Single warning threshold::\n\n        threshold = ModelMetricThreshold(\n            value=80.0,\n            color=\"#eab308\",\n            label=\"High Usage\",\n        )",
+      "properties": {
+        "value": {
+          "description": "Threshold value",
+          "title": "Value",
+          "type": "number"
+        },
+        "color": {
+          "description": "Color when threshold is reached (hex)",
+          "title": "Color",
+          "type": "string"
+        },
+        "label": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Threshold label",
+          "title": "Label"
+        }
+      },
+      "required": [
+        "value",
+        "color"
+      ],
+      "title": "ModelMetricThreshold",
+      "type": "object"
+    },
+    "ModelStatusItemConfig": {
+      "additionalProperties": false,
+      "description": "Configuration for a status indicator in dashboard status grids.\n\nDefines display properties for individual status items, including\nthe data key to monitor, display label, and optional icon.\n\nUsed by status grid widgets to render system health indicators,\nmetrics summaries, and key-value status displays.",
+      "properties": {
+        "key": {
+          "description": "Data key for this status item",
+          "minLength": 1,
+          "title": "Key",
+          "type": "string"
+        },
+        "label": {
+          "description": "Display label",
+          "minLength": 1,
+          "title": "Label",
+          "type": "string"
+        },
+        "icon": {
+          "anyOf": [
+            {
+              "minLength": 1,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Icon identifier",
+          "title": "Icon"
+        }
+      },
+      "required": [
+        "key",
+        "label"
+      ],
+      "title": "ModelStatusItemConfig",
+      "type": "object"
+    },
+    "ModelTableColumnConfig": {
+      "additionalProperties": false,
+      "description": "Configuration for a single column in dashboard table widgets.\n\nDefines column display properties including header text, width,\nsorting behavior, alignment, and value formatting.\n\nUsed by table-based dashboard widgets to configure column rendering\nand user interaction capabilities.",
+      "properties": {
+        "key": {
+          "description": "Data key for this column",
+          "minLength": 1,
+          "title": "Key",
+          "type": "string"
+        },
+        "header": {
+          "description": "Column header display text",
+          "minLength": 1,
+          "title": "Header",
+          "type": "string"
+        },
+        "width": {
+          "anyOf": [
+            {
+              "minimum": 1,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Column width in pixels (minimum 1 when set)",
+          "title": "Width"
+        },
+        "sortable": {
+          "default": true,
+          "description": "Allow sorting by this column",
+          "title": "Sortable",
+          "type": "boolean"
+        },
+        "align": {
+          "default": "left",
+          "description": "Text alignment",
+          "enum": [
+            "left",
+            "center",
+            "right"
+          ],
+          "title": "Align",
+          "type": "string"
+        },
+        "format": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Display format (e.g., 'currency', 'percent', 'date')",
+          "title": "Format"
+        }
+      },
+      "required": [
+        "key",
+        "header"
+      ],
+      "title": "ModelTableColumnConfig",
+      "type": "object"
+    },
+    "ModelWidgetConfigChart": {
+      "additionalProperties": false,
+      "description": "Configuration for chart-type dashboard widgets.\n\nDefines how a chart widget renders data with one or more series and\noptional axis configurations. Supports multiple chart types including\nline graphs, bar charts, area charts, pie charts, and scatter plots.\n\nData-driven chart types (line, bar, area, scatter) require at least one\nseries configuration. Pie charts derive their segments from the data\ndirectly without explicit series configuration.\n\nAttributes:\n    config_kind: Literal discriminator value, always \"chart\".\n    widget_type: Widget type enum, always CHART.\n    chart_type: The visualization style - line, bar, area, pie, or scatter.\n    series: Tuple of series configurations defining each data line/bar.\n        Required for line, bar, area, and scatter charts.\n    x_axis: Optional X-axis configuration for labels and ranges.\n    y_axis: Optional Y-axis configuration for labels and ranges.\n    show_legend: Whether to display the legend identifying series.\n    stacked: Whether to stack series values (for bar/area charts).\n\nRaises:\n    ValueError: If a data-driven chart type has no series configured.\n\nExample:\n    Stacked bar chart::\n\n        config = ModelWidgetConfigChart(\n            chart_type=\"bar\",\n            series=(series1, series2),\n            stacked=True,\n        )",
+      "properties": {
+        "config_kind": {
+          "const": "chart",
+          "default": "chart",
+          "description": "Discriminator for widget config union",
+          "title": "Config Kind",
+          "type": "string"
+        },
+        "widget_type": {
+          "$ref": "#/$defs/EnumWidgetType",
+          "default": "chart",
+          "description": "Widget type enum value"
+        },
+        "chart_type": {
+          "default": "line",
+          "description": "Primary chart visualization type",
+          "enum": [
+            "line",
+            "bar",
+            "area",
+            "pie",
+            "scatter"
+          ],
+          "title": "Chart Type",
+          "type": "string"
+        },
+        "series": {
+          "default": [],
+          "description": "Chart series configurations",
+          "items": {
+            "$ref": "#/$defs/ModelChartSeriesConfig"
+          },
+          "title": "Series",
+          "type": "array"
+        },
+        "x_axis": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/ModelChartAxisConfig"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "X-axis configuration"
+        },
+        "y_axis": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/ModelChartAxisConfig"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Y-axis configuration"
+        },
+        "show_legend": {
+          "default": true,
+          "description": "Show chart legend",
+          "title": "Show Legend",
+          "type": "boolean"
+        },
+        "stacked": {
+          "default": false,
+          "description": "Stack series values",
+          "title": "Stacked",
+          "type": "boolean"
+        }
+      },
+      "title": "ModelWidgetConfigChart",
+      "type": "object"
+    },
+    "ModelWidgetConfigEventFeed": {
+      "additionalProperties": false,
+      "description": "Configuration for event feed dashboard widgets.\n\nDisplays a scrolling feed of events in real-time, with optional filtering\nby event type, severity, and source. Events can be displayed with\ntimestamps, source information, and severity indicators.\n\nThe ``event_filter`` field uses the alias \"filter\" for JSON serialization\nto match frontend conventions while avoiding Python keyword conflicts.\n\nAttributes:\n    config_kind: Literal discriminator value, always \"event_feed\".\n    widget_type: Widget type enum, always EVENT_FEED.\n    max_items: Maximum number of events to display in the feed (1-500).\n        Older events are removed when this limit is exceeded.\n    event_filter: Optional filter configuration to limit which events\n        are displayed. Serialized as \"filter\" in JSON.\n    show_timestamp: Whether to display event timestamps.\n    show_source: Whether to display the event source/origin.\n    show_severity: Whether to show severity level indicator.\n    group_by_type: Whether to group events by their type.\n    auto_scroll: Whether to automatically scroll to show new events.\n\nExample:\n    Minimal event feed showing all events::\n\n        config = ModelWidgetConfigEventFeed(max_items=25)",
+      "properties": {
+        "config_kind": {
+          "const": "event_feed",
+          "default": "event_feed",
+          "description": "Discriminator for widget config union",
+          "title": "Config Kind",
+          "type": "string"
+        },
+        "widget_type": {
+          "$ref": "#/$defs/EnumWidgetType",
+          "default": "event_feed",
+          "description": "Widget type enum value"
+        },
+        "max_items": {
+          "default": 50,
+          "description": "Maximum events to display",
+          "maximum": 500,
+          "minimum": 1,
+          "title": "Max Items",
+          "type": "integer"
+        },
+        "filter": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/ModelEventFilter"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Event filtering configuration"
+        },
+        "show_timestamp": {
+          "default": true,
+          "description": "Show event timestamps",
+          "title": "Show Timestamp",
+          "type": "boolean"
+        },
+        "show_source": {
+          "default": true,
+          "description": "Show event source",
+          "title": "Show Source",
+          "type": "boolean"
+        },
+        "show_severity": {
+          "default": true,
+          "description": "Show severity indicator",
+          "title": "Show Severity",
+          "type": "boolean"
+        },
+        "group_by_type": {
+          "default": false,
+          "description": "Group events by type",
+          "title": "Group By Type",
+          "type": "boolean"
+        },
+        "auto_scroll": {
+          "default": true,
+          "description": "Auto-scroll to new events",
+          "title": "Auto Scroll",
+          "type": "boolean"
+        }
+      },
+      "title": "ModelWidgetConfigEventFeed",
+      "type": "object"
+    },
+    "ModelWidgetConfigMetricCard": {
+      "additionalProperties": false,
+      "description": "Configuration for metric card dashboard widgets.\n\nDisplays a single metric value prominently with optional formatting,\ntrend indicator, color thresholds, and icon. Metric cards are ideal\nfor highlighting KPIs like counts, percentages, or durations.\n\nThe threshold system allows dynamic coloring based on the metric value,\nwith thresholds checked in order (first matching threshold wins).\n\nAttributes:\n    config_kind: Literal discriminator value, always \"metric_card\".\n    widget_type: Widget type enum, always METRIC_CARD.\n    metric_key: Data key to extract the metric value from the data source.\n    label: Human-readable label displayed above/below the value.\n    unit: Unit of measurement displayed after the value (e.g., \"%\", \"ms\").\n    value_format: Value formatting mode - number, currency, percent, or duration.\n        Aliased as \"format\" in JSON for API compatibility.\n    precision: Decimal places to show (0-10).\n    show_trend: Whether to show up/down trend indicator.\n    trend_key: Data key for the comparison value when show_trend is True.\n    thresholds: Tuple of threshold configs for conditional coloring.\n    icon: Optional icon identifier to display with the metric.\n\nRaises:\n    ValueError: If show_trend is True but trend_key is not provided.\n\nExample:\n    Simple count metric::\n\n        config = ModelWidgetConfigMetricCard(\n            metric_key=\"active_users\",\n            label=\"Active Users\",\n            value_format=\"number\",\n            precision=0,\n        )",
+      "properties": {
+        "config_kind": {
+          "const": "metric_card",
+          "default": "metric_card",
+          "description": "Discriminator for widget config union",
+          "title": "Config Kind",
+          "type": "string"
+        },
+        "widget_type": {
+          "$ref": "#/$defs/EnumWidgetType",
+          "default": "metric_card",
+          "description": "Widget type enum value"
+        },
+        "metric_key": {
+          "description": "Key to extract metric value from data",
+          "minLength": 1,
+          "title": "Metric Key",
+          "type": "string"
+        },
+        "label": {
+          "description": "Metric display label",
+          "minLength": 1,
+          "title": "Label",
+          "type": "string"
+        },
+        "unit": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Unit of measurement",
+          "title": "Unit"
+        },
+        "format": {
+          "default": "number",
+          "description": "How to format the value",
+          "enum": [
+            "number",
+            "currency",
+            "percent",
+            "duration"
+          ],
+          "title": "Format",
+          "type": "string"
+        },
+        "precision": {
+          "default": 2,
+          "description": "Decimal precision",
+          "maximum": 10,
+          "minimum": 0,
+          "title": "Precision",
+          "type": "integer"
+        },
+        "show_trend": {
+          "default": false,
+          "description": "Show trend indicator",
+          "title": "Show Trend",
+          "type": "boolean"
+        },
+        "trend_key": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Key for trend comparison value",
+          "title": "Trend Key"
+        },
+        "thresholds": {
+          "default": [],
+          "description": "Color thresholds for the metric",
+          "items": {
+            "$ref": "#/$defs/ModelMetricThreshold"
+          },
+          "title": "Thresholds",
+          "type": "array"
+        },
+        "icon": {
+          "anyOf": [
+            {
+              "minLength": 1,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Icon identifier",
+          "title": "Icon"
+        }
+      },
+      "required": [
+        "metric_key",
+        "label"
+      ],
+      "title": "ModelWidgetConfigMetricCard",
+      "type": "object"
+    },
+    "ModelWidgetConfigStatusGrid": {
+      "additionalProperties": false,
+      "description": "Configuration for status grid dashboard widgets.\n\nDisplays a grid of status indicators, ideal for monitoring the health\nof multiple systems, services, or components. Each item shows a status\nvalue with color-coded visualization based on the configured color mapping.\n\nThe status_colors mapping defines how status values are rendered. Any\nstatus value not in the mapping uses the \"unknown\" color (gray by default).\n\nAttributes:\n    config_kind: Literal discriminator value, always \"status_grid\".\n    widget_type: Widget type enum, always STATUS_GRID.\n    items: Tuple of status item configurations to display in the grid.\n    columns: Number of columns in the grid layout (1-12).\n    show_labels: Whether to display text labels under each indicator.\n    compact: Whether to use compact mode with smaller indicators.\n    status_colors: Mapping of status values to hex color codes. Default\n        includes \"healthy\" (green), \"warning\" (yellow), \"error\" (red),\n        and \"unknown\" (gray).\n\nRaises:\n    ValueError: If any color in status_colors is not a valid hex format.\n\nExample:\n    Compact 4-column grid::\n\n        config = ModelWidgetConfigStatusGrid(\n            items=(item1, item2, item3, item4),\n            columns=4,\n            compact=True,\n            show_labels=False,\n        )",
+      "properties": {
+        "config_kind": {
+          "const": "status_grid",
+          "default": "status_grid",
+          "description": "Discriminator for widget config union",
+          "title": "Config Kind",
+          "type": "string"
+        },
+        "widget_type": {
+          "$ref": "#/$defs/EnumWidgetType",
+          "default": "status_grid",
+          "description": "Widget type enum value"
+        },
+        "items": {
+          "default": [],
+          "description": "Status items to display",
+          "items": {
+            "$ref": "#/$defs/ModelStatusItemConfig"
+          },
+          "title": "Items",
+          "type": "array"
+        },
+        "columns": {
+          "default": 3,
+          "description": "Number of grid columns",
+          "maximum": 12,
+          "minimum": 1,
+          "title": "Columns",
+          "type": "integer"
+        },
+        "show_labels": {
+          "default": true,
+          "description": "Show item labels",
+          "title": "Show Labels",
+          "type": "boolean"
+        },
+        "compact": {
+          "default": false,
+          "description": "Use compact display mode",
+          "title": "Compact",
+          "type": "boolean"
+        },
+        "status_colors": {
+          "additionalProperties": {
+            "type": "string"
+          },
+          "description": "Status value to color mapping",
+          "title": "Status Colors",
+          "type": "object"
+        }
+      },
+      "title": "ModelWidgetConfigStatusGrid",
+      "type": "object"
+    },
+    "ModelWidgetConfigTable": {
+      "additionalProperties": false,
+      "description": "Configuration for table-type dashboard widgets.\n\nDefines how a table widget displays tabular data with configurable\ncolumns, pagination, sorting, and visual styling options. Tables\nsupport client-side sorting and pagination with customizable page sizes.\n\nAttributes:\n    config_kind: Literal discriminator value, always \"table\".\n    widget_type: Widget type enum, always TABLE.\n    columns: Tuple of column configurations defining table structure.\n    page_size: Number of rows displayed per page (1-100).\n    show_pagination: Whether to show pagination controls.\n    default_sort_key: Column key to sort by initially, or None.\n    default_sort_direction: Sort direction (\"asc\" or \"desc\"). Only valid\n        when default_sort_key is set.\n    striped: Whether to alternate row background colors.\n    hover_highlight: Whether to highlight rows on mouse hover.\n\nRaises:\n    ValueError: If default_sort_direction is set without default_sort_key.\n\nExample:\n    Compact table without pagination::\n\n        config = ModelWidgetConfigTable(\n            columns=(col1, col2),\n            page_size=100,\n            show_pagination=False,\n            striped=False,\n        )",
+      "properties": {
+        "config_kind": {
+          "const": "table",
+          "default": "table",
+          "description": "Discriminator for widget config union",
+          "title": "Config Kind",
+          "type": "string"
+        },
+        "widget_type": {
+          "$ref": "#/$defs/EnumWidgetType",
+          "default": "table",
+          "description": "Widget type enum value"
+        },
+        "columns": {
+          "default": [],
+          "description": "Table column configurations",
+          "items": {
+            "$ref": "#/$defs/ModelTableColumnConfig"
+          },
+          "title": "Columns",
+          "type": "array"
+        },
+        "page_size": {
+          "default": 10,
+          "description": "Rows per page",
+          "maximum": 100,
+          "minimum": 1,
+          "title": "Page Size",
+          "type": "integer"
+        },
+        "show_pagination": {
+          "default": true,
+          "description": "Show pagination controls",
+          "title": "Show Pagination",
+          "type": "boolean"
+        },
+        "default_sort_key": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Default column key to sort by",
+          "title": "Default Sort Key"
+        },
+        "default_sort_direction": {
+          "anyOf": [
+            {
+              "enum": [
+                "asc",
+                "desc"
+              ],
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Default sort direction (only used when default_sort_key is set)",
+          "title": "Default Sort Direction"
+        },
+        "striped": {
+          "default": true,
+          "description": "Alternate row colors",
+          "title": "Striped",
+          "type": "boolean"
+        },
+        "hover_highlight": {
+          "default": true,
+          "description": "Highlight row on hover",
+          "title": "Hover Highlight",
+          "type": "boolean"
+        }
+      },
+      "title": "ModelWidgetConfigTable",
+      "type": "object"
+    }
+  },
+  "additionalProperties": false,
+  "description": "Complete widget definition with metadata, position, and configuration.\n\nThis model wraps a type-specific widget configuration with the metadata\nand positioning information needed to place it on the dashboard grid.\nEach widget has a unique ID, display title, grid coordinates, and\na configuration object that varies by widget type.\n\nThe ``config`` field accepts any of the widget config types and uses\nthe ``config_kind`` discriminator for efficient deserialization.\n\nAttributes:\n    widget_id: Unique identifier for this widget instance.\n    title: Display title shown in the widget header.\n    config: Type-specific widget configuration (chart, table, etc.).\n        The actual type is determined by the ``config_kind`` field.\n    row: Starting row position in the dashboard grid (0-indexed).\n    col: Starting column position in the dashboard grid (0-indexed).\n    width: Number of grid columns this widget spans (1-12).\n    height: Number of grid rows this widget spans (minimum 1).\n    description: Optional longer description or help text.\n    data_source: Optional identifier for the widget's data source.\n    extra_config: Optional extension configuration as string key-value\n        pairs for custom widget implementations.\n\nExample:\n    Create a metric card at position (0, 0) spanning 3 columns::\n\n        widget = ModelWidgetDefinition(\n            widget_id=uuid4(),\n            title=\"Active Users\",\n            row=0,\n            col=0,\n            width=3,\n            height=1,\n            config=ModelWidgetConfigMetricCard(\n                metric_key=\"active_users\",\n                label=\"Active Users\",\n                format=\"number\",\n            ),\n        )",
+  "properties": {
+    "widget_id": {
+      "description": "Unique widget identifier",
+      "format": "uuid",
+      "title": "Widget Id",
+      "type": "string"
+    },
+    "title": {
+      "description": "Widget display title",
+      "minLength": 1,
+      "title": "Title",
+      "type": "string"
+    },
+    "config": {
+      "description": "Widget-specific configuration",
+      "discriminator": {
+        "mapping": {
+          "chart": "#/$defs/ModelWidgetConfigChart",
+          "event_feed": "#/$defs/ModelWidgetConfigEventFeed",
+          "metric_card": "#/$defs/ModelWidgetConfigMetricCard",
+          "status_grid": "#/$defs/ModelWidgetConfigStatusGrid",
+          "table": "#/$defs/ModelWidgetConfigTable"
+        },
+        "propertyName": "config_kind"
+      },
+      "oneOf": [
+        {
+          "$ref": "#/$defs/ModelWidgetConfigChart"
+        },
+        {
+          "$ref": "#/$defs/ModelWidgetConfigTable"
+        },
+        {
+          "$ref": "#/$defs/ModelWidgetConfigMetricCard"
+        },
+        {
+          "$ref": "#/$defs/ModelWidgetConfigStatusGrid"
+        },
+        {
+          "$ref": "#/$defs/ModelWidgetConfigEventFeed"
+        }
+      ],
+      "title": "Config"
+    },
+    "row": {
+      "default": 0,
+      "description": "Grid row position",
+      "minimum": 0,
+      "title": "Row",
+      "type": "integer"
+    },
+    "col": {
+      "default": 0,
+      "description": "Grid column position",
+      "minimum": 0,
+      "title": "Col",
+      "type": "integer"
+    },
+    "width": {
+      "default": 1,
+      "description": "Grid column span",
+      "maximum": 12,
+      "minimum": 1,
+      "title": "Width",
+      "type": "integer"
+    },
+    "height": {
+      "default": 1,
+      "description": "Grid row span",
+      "minimum": 1,
+      "title": "Height",
+      "type": "integer"
+    },
+    "description": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "description": "Widget description",
+      "title": "Description"
+    },
+    "data_source": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "description": "Data source identifier",
+      "title": "Data Source"
+    },
+    "extra_config": {
+      "anyOf": [
+        {
+          "additionalProperties": {
+            "type": "string"
+          },
+          "type": "object"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "description": "Extension config (string values only)",
+      "title": "Extra Config"
+    }
+  },
+  "required": [
+    "widget_id",
+    "title",
+    "config"
+  ],
+  "title": "ModelWidgetDefinition",
+  "type": "object"
+}
