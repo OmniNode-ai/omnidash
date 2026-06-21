@@ -1,7 +1,7 @@
 # OmniDash — Composable Frame Architecture
 
 **Owner:** `omnidash`
-**Last verified:** 2026-06-16
+**Last verified:** 2026-06-21 (verified against code: `src/data-source/`, `src/config/generated/data-source-defaults.ts`, `contract.yaml`, `src/App.tsx`)
 **Verification:** `npm run check && npm run test:run`
 **Source plan:** `omni_home/docs/plans/2026-04-10-omnidash-v2-composable-dashboard-design.md`
 
@@ -77,9 +77,38 @@ handlers/                          src/components/dashboard/
                                      → own event subscriptions
 ```
 
-In dev mode (`VITE_DATA_SOURCE=file`): components read from `./fixtures/<topic>/` JSON files instead of live Kafka topics or HTTP endpoints. No backend required.
+### Data Source Modes
 
-In bridge mode (`VITE_DATA_SOURCE=http`): components read via the Express bridge at `http://localhost:3002`. The bridge connects to the running ONEX runtime.
+The active data source is selected by `VITE_DATA_SOURCE`, but the canonical defaults are owned by `contract.yaml` and generated into `src/config/generated/data-source-defaults.ts` via `npm run generate:config` (env vars are optional overrides, not the source of truth). The contract default mode is `postgres` (`DATA_SOURCE_DEFAULT_MODE`); local development typically sets `VITE_DATA_SOURCE=file` in `.env` to run without infrastructure.
+
+Four modes are supported (`src/data-source/index.ts`):
+
+| Mode | Adapter | Reads from |
+|------|---------|-----------|
+| `file` | `FileSnapshotSource` | `./fixtures/<topic>/` JSON snapshots — zero infra |
+| `http` | `HttpSnapshotSource` | HTTP projection backend at the contract URL (`http://localhost:3002` Express bridge by default) |
+| `sqlite` | `HttpSnapshotSource` | same HTTP read path as `http`; the sqlite distinction is server-side (`server/routes.ts` reads `delegation.sqlite`) |
+| `postgres` | `HttpSnapshotSource` | same HTTP read path as `http`; the postgres distinction is server-side (Postgres projections) |
+
+All three live modes (`http` / `sqlite` / `postgres`) read through the single `HttpSnapshotSource` HTTP projection path on the client; only `file` reads fixtures directly.
+
+**Runtime override seam (OMN-13007):** `src/data-source/data-source-override.ts` is the single seam that lets an operator switch the effective backend at runtime (persisted to `localStorage`, surfaced via the `DataSourceControl` chrome) without restarting. Resolution code consults `resolveEffectiveDataSource()` rather than reading `import.meta.env.VITE_DATA_SOURCE` directly, so there is exactly one place that decides the effective source.
+
+---
+
+## Application Pages
+
+The composable dashboard builder is the default page, but the app shell (`src/App.tsx`) routes between several top-level pages by `activePage` in the Zustand frame store. Page arms verified in `src/App.tsx`:
+
+- `default` → `DashboardView` (the composable builder)
+- `feature-flags` → `FeatureFlagDashboard`
+- `eval` → `InstructionEvalPage`
+- `delegation-evidence` → `DelegationEvidencePage` (lazy)
+- `event-bus` → `EventBusPage` (lazy)
+- `experiments` → `ExperimentsPage` (lazy)
+- `sea-control` → `SeaControlPage` (lazy)
+
+Additional pages exist under `src/pages/` (e.g. `TraceExplorerPage`, `SessionReplayPage`, `SandboxMonitorPage`, `VoiceSessionPage`). The shell also mounts `AgentOrchestrator` (`src/agent/`), the conversational dashboard-builder agent, and a `CommandPalette`. All page data access flows through the same `src/data-source/` adapters and `src/services/` route seam.
 
 ---
 
