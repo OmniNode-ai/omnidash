@@ -1,7 +1,7 @@
 # OmniDash Documentation Index
 
 **Owner:** `omnidash`
-**Last verified:** 2026-06-16
+**Last verified:** 2026-06-21 (verified against code: `src/App.tsx`, `src/data-source/`, `src/config/generated/data-source-defaults.ts`, `contract.yaml`, `shared/types/`)
 **Verification:** `npm run check && npm run test:run`
 
 This is the canonical documentation map for OmniDash. Start here to find architecture, reference, development, and historical context.
