@@ -1,0 +1,30 @@
+# SPDX-FileCopyrightText: 2025 OmniNode.ai Inc.
+# SPDX-License-Identifier: MIT
+#
+# OMN-13334: Caller workflow invoking the reusable receipt-gate on every PR
+# targeting dev or main. Closes the omnidash receipt-enforcement gap identified
+# in docs/audits/2026-06-19-ratchet-enforcement-audit.md.
+#
+# omnidash is queue-controlled and ships runtime-facing UI; unenforced receipts
+# are a real gap. This wires the same gate all other OmniNode primary repos carry.
+#
+# Required-status-check name (for branch-protection): `verify / verify`.
+# Wire via: Settings → Branches → dev → Require status checks → add `verify / verify`.
+
+name: Receipt Gate
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, edited]
+    branches: [main, dev]
+  merge_group:
+
+permissions:
+  contents: read
+  pull-requests: read
+
+jobs:
+  verify:
+    # self-gating-ok: intentional cross-repo caller — omnidash does not host
+    # receipt-gate.yml itself; the reusable workflow lives in omnibase_core.
+    uses: OmniNode-ai/omnibase_core/.github/workflows/receipt-gate.yml@main
