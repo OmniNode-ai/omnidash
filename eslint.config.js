@@ -95,6 +95,12 @@ export default [
       // EnumEmptyStateReason VALUE (keyed on values, not the symbol name, per
       // plan §0b.5). Applied to the cross-renderer file set below.
       'local/no-untyped-empty-state': 'error',
+      // OMN-12882 (Phase 6 Permanent Guardrails): ban non-authoritative demo
+      // read sources in dashboard source. Rejects banned ports (:8765, :3010,
+      // :3002), direct DB client imports (pg/sqlite3/better-sqlite3), and
+      // second backend authority references (evidence-pipeline-flow).
+      // src/data-source/, server/, and test/spec/story files are exempt.
+      'local/no-non-authoritative-read-source': 'error',
       'react-hooks/rules-of-hooks': 'error',
       // `exhaustive-deps` is set to `warn` rather than `error` so that
       // genuine one-shot effects (mount-only hydration, resize observer

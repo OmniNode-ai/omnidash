@@ -67,6 +67,10 @@ ALLOWLIST_FILES=(
   # OMN-12969: no-projection-websocket rule tests use ws://localhost:3002/ws as
   # literal fixture inputs to verify the detector fires — testing the pattern itself.
   'src/no-projection-websocket.test.ts'
+  # OMN-12882: no-non-authoritative-read-source rule tests use localhost:3002 as
+  # literal fixture inputs to verify the guardrail fires — testing the detection
+  # pattern itself (not runtime source).
+  'src/no-non-authoritative-read-source.test.ts'
   'src/tests/setup.ts'
   'src/data-source/index.ts'
   'src/data-source/http-snapshot-source.test.ts'

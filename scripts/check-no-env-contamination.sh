@@ -72,6 +72,11 @@ ALLOWLIST_FILES=(
   # literal fixture inputs to verify the detector fires — testing the pattern itself.
   'src/no-projection-websocket.test.ts'
   'src/no-projection-websocket.test.js'  # compiled artifact of the above
+  # OMN-12882: no-non-authoritative-read-source rule tests use localhost:3002 as
+  # literal fixture inputs to verify the guardrail fires — testing the detection
+  # pattern itself (not runtime source).
+  'src/no-non-authoritative-read-source.test.ts'
+  'src/no-non-authoritative-read-source.test.js'  # compiled artifact of the above
   # OMN-12969: global test setup previously stubbed VITE_WS_URL to a localhost
   # address; the dead `/ws` path was removed so it no longer does. Kept on the
   # allowlist for any future localhost test stubs.
