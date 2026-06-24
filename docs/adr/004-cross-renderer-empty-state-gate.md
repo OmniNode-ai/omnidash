@@ -1,41 +1,39 @@
-# ADR 004 — Cross-renderer typed empty-state gate (OMN-13131, W6)
+# ADR 004 — Cross-renderer typed empty-state gate
 
 Status: Accepted
 Date: 2026-06-18
-Ticket: OMN-13131 (Phase 1, W6; gates G-H and G-I)
 
 ## Context
 
 Phase 1 of the contract-driven UI platform makes "no blind/blank render" a
-mechanical invariant. When the renderer-capability projection (W5) is stale,
+mechanical invariant. When the renderer-capability projection is stale,
 absent, or unsatisfiable, the dispatch surface must render a **typed**
 `EnumEmptyStateReason` — specifically `UPSTREAM_BLOCKED` — never a blank element
-and never a crash (G-H). The enforcement that backs this (G-I) was previously
-`local/no-projection-fallback`, which keys on React's `useProjectionQuery` hook
-and so was effectively React/chart-only.
+and never a crash. The enforcement that backed an earlier pass keyed on React's
+`useProjectionQuery` hook and so was effectively React/chart-only.
 
 ## Decision
 
-1. **Typed empty state (G-H).** The W4 `CapabilityDispatcher` miss path is wired
+1. **Typed empty state.** The `CapabilityDispatcher` miss path is wired
    to a renderer-agnostic `TypedEmptyState`. `resolveCapabilityEmptyState`
    classifies a degraded (`is_degraded`), absent (no rows), or unsatisfiable
    capability read as `upstream-blocked`. `VizRenderer` renders the typed empty
    state on a dispatcher miss. The typed reason VALUE is exposed on
    `data-empty-state-reason` so the state is machine-verifiable.
 
-2. **Cross-renderer gate (G-I).** A new ESLint rule
+2. **Cross-renderer gate.** A new ESLint rule
    `local/no-untyped-empty-state` generalizes the no-projection enforcement
    beyond React/charts. It applies to the whole cross-renderer file set
    (`src/**/*.{ts,tsx}`, `shared/**/*.ts`, `server/**/*.ts`) and flags any
    empty-state-reason literal that is not one of the four canonical values.
 
-3. **Key on VALUES, not the symbol name (plan §0b.5).** The hand-authored chart
+3. **Key on VALUES, not the symbol name.** The hand-authored chart
    type is `EmptyStateReason`; the generated mirror is `EnumEmptyStateReason`.
    Both carry the same four values. The rule keys on the VALUES
    (`no-data` | `missing-field` | `upstream-blocked` | `schema-invalid`) so it is
    agnostic to which symbol — or no symbol — a given renderer imports.
 
-## Cross-renderer scope (G-I proof)
+## Cross-renderer scope (proof)
 
 The gate is **not** chart-only and **not** React-only:
 

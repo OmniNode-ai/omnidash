@@ -62,7 +62,7 @@ Covers the outer `<aside className="sidebar">` element, the `<div className="bra
 .brand-mark { width: 28px; height: 28px; flex-shrink: 0; }
 ```
 
-Note: prototype uses `var(--accent)` in places; v2 renamed that token to `var(--brand)` during OMN-42. The substitution is not a finding — it's a documented intentional rename.
+Note: prototype uses `var(--accent)` in places; v2 renamed that token to `var(--brand)` during the save-persistence work. The substitution is not a finding — it's a documented intentional rename.
 
 ## Audit checklist
 

@@ -44,7 +44,7 @@ Covers the outer `<aside>` element for the widget library rail, and the `.librar
   .library.open { transform: none; }
 ```
 
-Note: prototype uses `var(--accent)` elsewhere in the library block; v2 renamed that token to `var(--brand)` during OMN-42. The substitution is not a finding — it's a documented intentional rename.
+Note: prototype uses `var(--accent)` elsewhere in the library block; v2 renamed that token to `var(--brand)` during the save-persistence work. The substitution is not a finding — it's a documented intentional rename.
 
 ## Audit checklist
 
@@ -68,7 +68,7 @@ Walk each axis completely. Each ☐ must become either ✅ "no issues" or a popu
 
 **Issue [MAJOR]**: `open` modifier is hardcoded rather than toggled by visibility state.
 - Prototype: JSX renders `<aside className="library open">` (chunk lines 25-26) — and the underlying `.library` vs `.library.open` CSS contract is explicitly a two-state transform (slides off-canvas when `open` is absent, slides in when present). The checklist item for Structure calls this out: rail must carry "an `open` modifier toggled by visibility state".
-- v2: `src/components/dashboard/ComponentPalette.tsx:36` hardcodes `className="library open"` as a string literal. There is no prop, state, or conditional driving the `open` class. The file-level comment at `src/components/dashboard/ComponentPalette.tsx:7` also documents "No … slide-in animation yet — those are OMN-44 scope," confirming this is a deliberate deferral, not an accidental omission.
+- v2: `src/components/dashboard/ComponentPalette.tsx:36` hardcodes `className="library open"` as a string literal. There is no prop, state, or conditional driving the `open` class. The file-level comment at `src/components/dashboard/ComponentPalette.tsx:7` also documents "No … slide-in animation yet — those are a future drag-and-drop scope," confirming this is a deliberate deferral, not an accidental omission.
 - Impact: The rail is stuck permanently open. The slide-in/slide-out transition defined in `library.css` is dead code at runtime — users cannot dismiss or reveal the library via the `open` class toggle that the prototype contract relies on. Any future close affordance will be inert until a visibility prop is wired up.
 
 ### Content
@@ -79,4 +79,4 @@ Walk each axis completely. Each ☐ must become either ✅ "no issues" or a popu
 
 ## Resolution
 
-Accepted v2 architectural deviation — `className="library open"` is hardcoded because v2 conditionally renders the palette (editMode toggles mount/unmount) rather than using the prototype's CSS slide-in transition. Close button now calls onClose (OMN-48 prior commit `4145b96`), so the rail can be dismissed. The `.library` transform rule is unused by design in v2.
+Accepted v2 architectural deviation — `className="library open"` is hardcoded because v2 conditionally renders the palette (editMode toggles mount/unmount) rather than using the prototype's CSS slide-in transition. Close button now calls onClose (the UI audit epic prior commit `4145b96`), so the rail can be dismissed. The `.library` transform rule is unused by design in v2.

@@ -72,7 +72,7 @@ Covers the `<div className="dash-list">` open, the `dashboards.map` loop, the `.
   }
 ```
 
-Note: prototype uses `var(--accent)` in places; v2 renamed that token to `var(--brand)` during OMN-42. The substitution is not a finding — it's a documented intentional rename.
+Note: prototype uses `var(--accent)` in places; v2 renamed that token to `var(--brand)` during the save-persistence work. The substitution is not a finding — it's a documented intentional rename.
 
 ## Audit checklist
 
@@ -90,7 +90,7 @@ Walk each axis completely. Each ☐ must become either ✅ "no issues" or a popu
 
 - No issues found.
 
-All prototype rules for `.dash-list`, `.dash-item` (including `:hover` and `.active`), `.dash-item .dash-marker`, and `.dash-item.active .dash-marker` are present at `src/styles/sidebar.css:70-106` with identical values. The `var(--accent)` → `var(--brand)` substitution at line 104 is the documented OMN-42 rename (called out in the file header at lines 2-3), not a finding.
+All prototype rules for `.dash-list`, `.dash-item` (including `:hover` and `.active`), `.dash-item .dash-marker`, and `.dash-item.active .dash-marker` are present at `src/styles/sidebar.css:70-106` with identical values. The `var(--accent)` → `var(--brand)` substitution at line 104 is the documented the save-persistence work rename (called out in the file header at lines 2-3), not a finding.
 
 ### Structure
 

@@ -12,7 +12,7 @@ v2_targets:
   - src/styles/dashboard.css
 status: blocked
 dependencies: []
-blocked_reason: "Deferred to OMN-44 (drag-and-drop + kebab menu wiring). See DashboardView.tsx:8 and ComponentWrapper.tsx:9 for scope note."
+blocked_reason: "Deferred to the drag-and-drop work (drag-and-drop + kebab menu wiring). See DashboardView.tsx:8 and ComponentWrapper.tsx:9 for scope note."
 ---
 
 # widget-card-01 — Outer `<div className="widget">` wrapper with drag state classes and drag handlers
@@ -56,7 +56,7 @@ Covers the root element of `WidgetCard`: the `<div className="widget">` with the
   }
 ```
 
-Note: prototype uses `var(--accent)` and `var(--accent-soft)` in `.widget.drop-target`; v2 renamed `--accent` to `--brand` during OMN-42. The substitution to `var(--brand)` / `var(--brand-soft)` is not a finding — it's a documented intentional rename.
+Note: prototype uses `var(--accent)` and `var(--accent-soft)` in `.widget.drop-target`; v2 renamed `--accent` to `--brand` during the save-persistence work. The substitution to `var(--brand)` / `var(--brand-soft)` is not a finding — it's a documented intentional rename.
 
 ## Audit checklist
 
@@ -89,7 +89,7 @@ Walk each axis completely. Each ☐ must become either ✅ "no issues" or a popu
 **Issue [CRITICAL]**: All four drag event handlers are missing (`onDragStart`, `onDragEnd`, `onDragOver`, `onDrop`).
 - Prototype: root div wires `onDragStart`, `onDragEnd`, `onDragOver={onSlotDragOver}`, `onDrop={onDrop}` (chunk lines 28-31).
 - v2: `ComponentWrapper.tsx:34` has no drag handlers and no corresponding props in the `ComponentWrapperProps` interface (`ComponentWrapper.tsx:14-22`).
-- Impact: Widget is neither a drag source nor a drop target at this layer; the prototype's drag-to-reorder flow cannot run through this component. (Header comment at `ComponentWrapper.tsx:9` acknowledges "OMN-44 handles drag" in an outer shell, but the prototype places these on this exact element — there is a structural divergence from the prototype here.)
+- Impact: Widget is neither a drag source nor a drop target at this layer; the prototype's drag-to-reorder flow cannot run through this component. (Header comment at `ComponentWrapper.tsx:9` acknowledges "the drag-and-drop work handles drag" in an outer shell, but the prototype places these on this exact element — there is a structural divergence from the prototype here.)
 
 **Issue [MINOR]**: `ComponentWrapperProps` has no `isDragging` prop or drag callback props.
 - Prototype: parent passes `isDragging`, `onDragStart`, `onDragEnd`, `onSlotDragOver`, `onDrop` into the widget.

@@ -16,18 +16,18 @@ This repo runs in four modes controlled by `VITE_DATA_SOURCE`. Default values ar
 - `VITE_DATA_SOURCE=sqlite` — resolves through `HttpSnapshotSource` (same HTTP read path as `http`, distinction is server-side).
 - `VITE_DATA_SOURCE=postgres` — resolves through `HttpSnapshotSource` (same HTTP read path as `http`, distinction is server-side).
 
-A runtime chrome override (`DataSourceControl`, OMN-13007) allows switching the active backend without restarting. See `src/data-source/data-source-override.ts` — the single override seam.
+A runtime chrome override (`DataSourceControl`) allows switching the active backend without restarting. See `src/data-source/data-source-override.ts` — the single override seam.
 
 ### Hard rules
 
 1. **Do NOT hardcode** `localhost:3002` anywhere. All data access goes through `src/data-source/` — `FileSnapshotSource` or `HttpSnapshotSource`, selected by the effective mode from `resolveEffectiveDataSource()`.
-2. **Do NOT read `VITE_DATA_SOURCE` directly in components.** Always call `resolveEffectiveDataSource()` from `src/data-source/data-source-override.ts` so the runtime chrome override is honored (OMN-13007).
-3. **Do NOT place `/api/` path literals in fetch or axios calls outside `src/services/` or `src/data-source/`.** The `local/no-api-literal` ESLint rule (OMN-13019/13065) blocks this with error. Route paths belong behind the services seam.
+2. **Do NOT read `VITE_DATA_SOURCE` directly in components.** Always call `resolveEffectiveDataSource()` from `src/data-source/data-source-override.ts` so the runtime chrome override is honored.
+3. **Do NOT place `/api/` path literals in fetch or axios calls outside `src/services/` or `src/data-source/`.** The `local/no-api-literal` ESLint rule blocks this with error. Route paths belong behind the services seam.
 4. **Do NOT let components own truth.** Widgets may render projection/API data and presentation state only. They must not read Postgres, import backend event-bus/database clients, implement reducers, or infer authoritative state. See `src/components/dashboard/README.md`.
 5. **Do NOT hand-edit** `src/registry/component-registry.json`. Run `npm run generate:registry`.
 6. **Do NOT hand-edit** anything under `src/shared/types/generated/`. Run `npm run types:generate`.
 7. **Do NOT edit** any file under `node_modules/`. Components discovered there are read-only.
-8. **Fixtures are committed; dashboard-layouts are not.** `./fixtures/` is tracked via an OMN-10305 carve-out in `.gitignore` (`!fixtures/`, `!fixtures/**`). `./dashboard-layouts/` remains gitignored. See `git ls-files fixtures/` to inspect tracked snapshots.
+8. **Fixtures are committed; dashboard-layouts are not.** `./fixtures/` is tracked via a carve-out in `.gitignore` (`!fixtures/`, `!fixtures/**`). `./dashboard-layouts/` remains gitignored. See `git ls-files fixtures/` to inspect tracked snapshots.
 
 ### Common tasks
 
@@ -71,8 +71,8 @@ _Track B — external package widget (plugin extension path):_
 ### Where to look
 
 - Data fetching: `src/data-source/`
-- Runtime data-source override seam: `src/data-source/data-source-override.ts` (OMN-13007)
-- API route seam (`/api/` calls): `src/services/` — all fetch/axios calls with `/api/` paths live here, enforced by `local/no-api-literal` (OMN-13019/13065)
+- Runtime data-source override seam: `src/data-source/data-source-override.ts`
+- API route seam (`/api/` calls): `src/services/` — all fetch/axios calls with `/api/` paths live here, enforced by `local/no-api-literal`
 - Grid behavior: `src/components/dashboard/DashboardGrid.tsx`
 - Palette: `src/components/dashboard/ComponentPalette.tsx`
 - Edit/view toggle: `src/store/editModeSlice.ts`, `src/pages/DashboardBuilder.tsx`
@@ -111,10 +111,10 @@ _Track B — external package widget (plugin extension path):_
   every `npm test`. See `docs/adr/002-storybook-widget-coverage.md` for
   rationale.
 
-## Dashboard lineage (OMN-12393)
+## Dashboard lineage
 
 Three local directories exist that reference the omnidash product. Canonical classification
-verified 2026-05-28 (see `docs/evidence/OMN-12368-verification/dashboard.md`):
+verified 2026-05-28:
 
 | Directory | Remote | Classification | Notes |
 |-----------|--------|----------------|-------|

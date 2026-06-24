@@ -67,7 +67,7 @@ Covers the draggable `.lib-card` element and its three child regions: `.lib-card
   .lib-card-desc { font-size: 11.5px; color: var(--ink-3); line-height: 1.4; }
 ```
 
-Note: prototype uses `var(--accent)` in the `.lib-card:hover` rule; v2 renamed that token to `var(--brand)` during OMN-42. The substitution is not a finding — it's a documented intentional rename. `.lib-card-thumb` uses `var(--accent-ink)` which is a separate token — verify v2's rename mapping.
+Note: prototype uses `var(--accent)` in the `.lib-card:hover` rule; v2 renamed that token to `var(--brand)` during the save-persistence work. The substitution is not a finding — it's a documented intentional rename. `.lib-card-thumb` uses `var(--accent-ink)` which is a separate token — verify v2's rename mapping.
 
 ## Audit checklist
 
@@ -83,7 +83,7 @@ Walk each axis completely. Each ☐ must become either ✅ "no issues" or a popu
 
 ### Design
 
-- No issues found. `library.css:47-73` ports every prototype rule verbatim: `.lib-card` (1px `var(--line)` border, 10px radius, 12px padding, `var(--panel)` bg, `grab` cursor, flex `gap: 12px`, `margin-bottom: 8px`, transition covering border-color/box-shadow/transform), `.lib-card:hover` (border to `var(--brand)` per documented `--accent`→`--brand` rename, `var(--shadow-sm)`), `.lib-card:active` (`grabbing` cursor, `scale(0.99)`), `.lib-card-thumb` (56×56, 7px radius, `var(--panel-2)` bg, 1px `var(--line-2)` border, grid-centered, `var(--brand-ink)` per same rename), `.lib-card-info` (`flex: 1; min-width: 0`), `.lib-card-name` (13px/600, 2px bottom margin), `.lib-card-desc` (11.5px, `var(--ink-3)`, `line-height: 1.4`). Token rename `var(--accent-ink)` → `var(--brand-ink)` at `library.css:69` is the expected OMN-42 mapping and not a finding.
+- No issues found. `library.css:47-73` ports every prototype rule verbatim: `.lib-card` (1px `var(--line)` border, 10px radius, 12px padding, `var(--panel)` bg, `grab` cursor, flex `gap: 12px`, `margin-bottom: 8px`, transition covering border-color/box-shadow/transform), `.lib-card:hover` (border to `var(--brand)` per documented `--accent`→`--brand` rename, `var(--shadow-sm)`), `.lib-card:active` (`grabbing` cursor, `scale(0.99)`), `.lib-card-thumb` (56×56, 7px radius, `var(--panel-2)` bg, 1px `var(--line-2)` border, grid-centered, `var(--brand-ink)` per same rename), `.lib-card-info` (`flex: 1; min-width: 0`), `.lib-card-name` (13px/600, 2px bottom margin), `.lib-card-desc` (11.5px, `var(--ink-3)`, `line-height: 1.4`). Token rename `var(--accent-ink)` → `var(--brand-ink)` at `library.css:69` is the expected the save-persistence work mapping and not a finding.
 
 ### Structure
 
@@ -146,4 +146,4 @@ Walk each axis completely. Each ☐ must become either ✅ "no issues" or a popu
 
 ## Resolution
 
-Fixed in commit `4145b96` — feat(ui): port EmptyState + WidgetLibrary missing structure [OMN-48].
+Fixed in commit `4145b96` — feat(ui): port EmptyState + WidgetLibrary missing structure .

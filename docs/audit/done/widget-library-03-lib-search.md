@@ -56,7 +56,7 @@ Also relevant from the component state and filter logic (lines 619, 621-623):
   .lib-search input:focus { border-color: var(--accent); background: var(--panel); }
 ```
 
-Note: prototype uses `var(--accent)` in the `:focus` rule; v2 renamed that token to `var(--brand)` during OMN-42. The substitution is not a finding — it's a documented intentional rename.
+Note: prototype uses `var(--accent)` in the `:focus` rule; v2 renamed that token to `var(--brand)` during the save-persistence work. The substitution is not a finding — it's a documented intentional rename.
 
 ## Audit checklist
 
@@ -78,7 +78,7 @@ Walk each axis completely. Each ☐ must become either ✅ "no issues" or a popu
 
 **Issue [CRITICAL]**: `.lib-search` wrapper and its `<input>` are entirely absent from v2 (user-flagged missing feature).
 - Prototype: `src/app.jsx:638-640` renders `<div className="lib-search"><input placeholder="Search widgets…" value={q} onChange={e => setQ(e.target.value)}/></div>` between `.lib-head` and the card list, with `q`/`setQ` state declared at `src/app.jsx:619` and a substring filter at `src/app.jsx:621-623`.
-- v2: `src/components/dashboard/ComponentPalette.tsx:37-43` jumps straight from the `.lib-head` block to the `.lib-body` group iteration — there is no `lib-search` div, no `<input>`, no `useState` for a query string, and no filter step over `components`. The source comment at `ComponentPalette.tsx:7` ("No search, no drag, no slide-in animation yet — those are OMN-44 scope") acknowledges the gap.
+- v2: `src/components/dashboard/ComponentPalette.tsx:37-43` jumps straight from the `.lib-head` block to the `.lib-body` group iteration — there is no `lib-search` div, no `<input>`, no `useState` for a query string, and no filter step over `components`. The source comment at `ComponentPalette.tsx:7` ("No search, no drag, no slide-in animation yet — those are a future drag-and-drop scope") acknowledges the gap.
 - Impact: Users cannot filter the widget catalog. As the catalog grows, the palette becomes a long scrolling list with no way to narrow to a specific widget by name or description. The `.lib-search` CSS rules in `library.css:26-40` are orphaned (no DOM element consumes them).
 
 ### Content
@@ -87,4 +87,4 @@ Walk each axis completely. Each ☐ must become either ✅ "no issues" or a popu
 
 ## Resolution
 
-Fixed in commit `4145b96` — feat(ui): port EmptyState + WidgetLibrary missing structure [OMN-48].
+Fixed in commit `4145b96` — feat(ui): port EmptyState + WidgetLibrary missing structure .

@@ -55,7 +55,7 @@ Covers the `.user-chip` wrapper inside `.topbar-right`, containing the `.avatar`
   .user-info .org { font-size: 11px; color: var(--ink-3); }
 ```
 
-Note: prototype uses `var(--accent)` (and `var(--accent-h)`) in `.avatar`; v2 renamed that token to `var(--brand)` during OMN-42. The substitution is not a finding — it's a documented intentional rename.
+Note: prototype uses `var(--accent)` (and `var(--accent-h)`) in `.avatar`; v2 renamed that token to `var(--brand)` during the save-persistence work. The substitution is not a finding — it's a documented intentional rename.
 
 ## Audit checklist
 

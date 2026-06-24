@@ -3,11 +3,11 @@
 **Status:** Accepted
 **Date:** 2026-04-24
 **Authors:** OmniNode-ai
-**Related:** OMN-59 (Typography System Refactor epic), `docs/plans/typography-refactor.md`
+**Related:** Typography System Refactor epic, `docs/archive/typography-refactor.md`
 
 ## Context
 
-During the OMN-22 UX polish pass, two dashboard widgets — `EventStream` and `RoutingDecisionTable` — were observed to diverge visually despite being designed to read as a matched pair of "data feed" surfaces. The symptoms were subtle but systematic:
+During the UX polish pass, two dashboard widgets — `EventStream` and `RoutingDecisionTable` — were observed to diverge visually despite being designed to read as a matched pair of "data feed" surfaces. The symptoms were subtle but systematic:
 
 - Data rows: EventStream rendered at `0.75rem` (12 px); RoutingDecisionTable rendered at `0.8125rem` (13 px).
 - Column headers: EventStream at `10 px`; RoutingDecisionTable at `11 px`.
@@ -49,8 +49,8 @@ Adopt a **CSS custom-property tokens + typed React component primitives** typogr
 | `<Text>` / `<Heading>` primitives | Widgets express intent, not implementation | One-off overrides need an escape hatch | `style` prop on Text merges OVER computed style; documented as the escape hatch |
 | ESLint rule blocks inline typography | Regression mechanically impossible | Inputs / textareas cannot style natively via `<Text>` | Exempt `src/components/ui/typography/` from the rule; for native inputs, use a small CSS utility class (e.g. `.text-input-md`) rather than inline style |
 | Two parallel theme systems during migration | Non-breaking — legacy Header/AgentChatPanel keep working | vanilla-extract + globals.css cohabit — confusing to new readers | Comment in `tokens.css.ts` flags the system as legacy for colors only; consolidation deferred (see Phase 7) |
-| Compliance file excluded from default run | Refactor doesn't red the CI while in progress | Easy to forget to re-enable at Task 39 | Task 39's acceptance explicitly checks the `exclude` list; its ticket (OMN-98) is the gate |
-| 39-ticket epic | Broken into waves; multi-agent workflow can parallelize the 17 widget migrations | Each ticket adds Linear noise | Under OMN-59 umbrella; old work tracked without a sprawling sibling-epic set |
+| Compliance file excluded from default run | Refactor doesn't red the CI while in progress | Easy to forget to re-enable at Task 39 | Task 39's acceptance explicitly checks the `exclude` list |
+| 39-ticket epic | Broken into waves; multi-agent workflow can parallelize the 17 widget migrations | Each ticket adds Linear noise | Tracked under a single umbrella epic |
 | Theme-able foundation (for a future "brutalist" mode, etc.) | Rebranding is a token-override exercise, not a widget sweep | None at current scale | — |
 
 ## Alternatives Considered
@@ -77,8 +77,7 @@ Adopt a **CSS custom-property tokens + typed React component primitives** typogr
 
 ## References
 
-- Plan: `docs/plans/typography-refactor.md`
-- Epic: OMN-59
+- Plan: `docs/archive/typography-refactor.md`
 - Compliance scorecard: `src/typography-compliance.test.ts`
 
 ## Status

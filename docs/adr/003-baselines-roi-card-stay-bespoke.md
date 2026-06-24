@@ -2,13 +2,11 @@
 
 - **Status:** Accepted
 - **Date:** 2026-04-29
-- **Ticket:** OMN-10296
-- **Epic:** OMN-10282 — Generic widget primitives (iteration 1)
 
 ## Context
 
-The OMN-10282 epic is introducing generic widget primitives (`<KPITileCluster>`, `<TrendChart>`,
-`<BarChart>`, `<DataTable>`) to replace hand-rolled dashboard layouts. As part of the audit phase,
+The generic widget primitives initiative is introducing `<KPITileCluster>`, `<TrendChart>`,
+`<BarChart>`, and `<DataTable>` to replace hand-rolled dashboard layouts. As part of the audit phase,
 every existing bespoke component is evaluated for migration eligibility.
 
 `BaselinesROICard` (`src/components/dashboard/baselines/BaselinesROICard.tsx`) renders two

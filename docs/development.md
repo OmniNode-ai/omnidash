@@ -53,9 +53,9 @@ VITE_DATA_SOURCE=postgres npm run dev
 
 Both resolve through `HttpSnapshotSource` pointing at the projection backend. The distinction is server-side; the frontend uses the same HTTP read path as `http` mode.
 
-**Hard rule:** Do NOT hardcode `localhost:3002` in source files. All data access goes through `src/data-source/` adapters. Do NOT read `VITE_DATA_SOURCE` directly in components — always call `resolveEffectiveDataSource()` from `src/data-source/data-source-override.ts`, which layers the runtime chrome override (OMN-13007) over env defaults.
+**Hard rule:** Do NOT hardcode `localhost:3002` in source files. All data access goes through `src/data-source/` adapters. Do NOT read `VITE_DATA_SOURCE` directly in components — always call `resolveEffectiveDataSource()` from `src/data-source/data-source-override.ts`, which layers the runtime chrome override over env defaults.
 
-### Runtime override (OMN-13007)
+### Runtime override
 
 The `DataSourceControl` chrome component allows switching the active backend at runtime without restarting. It writes a persisted override via `src/data-source/data-source-override.ts`. This is the single seam — there is no per-widget or per-mode env read outside this module.
 
@@ -203,10 +203,10 @@ The compliance test `src/storybook-coverage-compliance.test.ts` runs as part of 
 
 OmniDash reads data from the ONEX runtime via:
 
-- HTTP polling via `useProjectionQuery` against the projection backend. Live updates are poll-driven — there is no WebSocket connection. The `/ws` path was permanently removed in OMN-12969: it was rejected with a 403 by the projection backend and never delivered events. Raw browser WebSocket construction is blocked by the `local/no-projection-websocket` ESLint rule.
+- HTTP polling via `useProjectionQuery` against the projection backend. Live updates are poll-driven — there is no WebSocket connection. The `/ws` path was permanently removed: it was rejected with a 403 by the projection backend and never delivered events. Raw browser WebSocket construction is blocked by the `local/no-projection-websocket` ESLint rule.
 - HTTP endpoints exposed by the projection backend at `localhost:3002` in http/sqlite/postgres modes.
 
-These endpoints are provided by the ONEX runtime running on `.201` (192.168.86.201). In dev mode, fixture files replace live data entirely and no runtime connection is needed.
+These endpoints are provided by the ONEX runtime running on the runtime host. In dev mode, fixture files replace live data entirely and no runtime connection is needed.
 
 The runtime topology is documented in `omni_home/CLAUDE.md` under "Infrastructure Topology".
 
@@ -231,7 +231,7 @@ The runtime topology is documented in `omni_home/CLAUDE.md` under "Infrastructur
 | `src/components/dashboard/DashboardGrid.tsx` | Grid layout behavior |
 | `src/components/dashboard/ComponentPalette.tsx` | Widget palette |
 | `src/data-source/` | Data source adapters; `data-source-override.ts` is the single runtime override seam |
-| `src/services/` | Route seam for all `/api/` fetch/axios calls — enforced by `local/no-api-literal` ESLint rule (OMN-13019/13065); do not place `/api/` literals outside this directory or `src/data-source/` |
+| `src/services/` | Route seam for all `/api/` fetch/axios calls — enforced by the `local/no-api-literal` ESLint rule; do not place `/api/` literals outside this directory or `src/data-source/` |
 | `src/store/` | Zustand state slices |
 | `src/pages/DashboardBuilder.tsx` | Main builder page |
 | `src/layout/layout-persistence.ts` | Layout save/load |

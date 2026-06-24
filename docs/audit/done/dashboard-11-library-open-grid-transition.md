@@ -68,4 +68,4 @@ Walk each axis completely. Each check must become either "no issues" or a popula
 
 ## Resolution
 
-Resolved by deleting the dead `.library-open .grid .widget` selector from `src/styles/dashboard.css`. v2 uses editMode state (not a `library-open` class) to gate the library panel, so the selector could never fire. No equivalent v2 wiring needed — library panel slide behavior is deferred to OMN-44 and will use a different mechanism.
+Resolved by deleting the dead `.library-open .grid .widget` selector from `src/styles/dashboard.css`. v2 uses editMode state (not a `library-open` class) to gate the library panel, so the selector could never fire. No equivalent v2 wiring needed — library panel slide behavior is deferred to the drag-and-drop work and will use a different mechanism.

@@ -37,13 +37,13 @@ Covers the conditional block rendered when there are no dashboards: an inline-st
 
 No dedicated CSS classes — the empty-state wrapper and its button are styled entirely via inline `style` props. There are no `.sidebar` CSS rules that target this subtree.
 
-Note: prototype uses `var(--accent)` in places; v2 renamed that token to `var(--brand)` during OMN-42. The substitution is not a finding — it's a documented intentional rename.
+Note: prototype uses `var(--accent)` in places; v2 renamed that token to `var(--brand)` during the save-persistence work. The substitution is not a finding — it's a documented intentional rename.
 
 ## Audit checklist
 
 Walk each axis completely. Each ☐ must become either ✅ "no issues" or a populated **Issue:** block below.
 
-- ☐ **Design** — inline style objects match exactly. Wrapper `<div>`: `padding:"20px 12px"`, `fontSize:12`, `color:"var(--sidebar-ink-2)"`, `textAlign:"center"`, `lineHeight:1.5`. Button: `color:"var(--accent)"` (or `"var(--brand)"` per OMN-42), `textDecoration:"underline"`, `marginTop:4`.
+- ☐ **Design** — inline style objects match exactly. Wrapper `<div>`: `padding:"20px 12px"`, `fontSize:12`, `color:"var(--sidebar-ink-2)"`, `textAlign:"center"`, `lineHeight:1.5`. Button: `color:"var(--accent)"` (or `"var(--brand)"` per the save-persistence work), `textDecoration:"underline"`, `marginTop:4`.
 - ☐ **Structure** — v2 `Sidebar.tsx` gates this block on `dashboards.length === 0`, renders the wrapper `<div>`, the literal `<br/>`, and a `<button>` with `onClick={onCreate}` wrapping the CTA text.
 - ☐ **Content** — text matches exactly: wrapper text reads `No dashboards yet.`, button text reads `Create your first one →` (note the right-arrow glyph `→`, not `->`).
 

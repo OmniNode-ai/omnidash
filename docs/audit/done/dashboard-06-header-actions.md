@@ -65,7 +65,7 @@ Covers the right-hand button cluster in `.dash-header`: two ghost buttons (Refre
   .btn.ghost:hover { background: var(--panel-2); border-color: var(--line); }
 ```
 
-Note: prototype uses `var(--accent)` in the `.btn.primary`/`.btn.accent` rules; v2 renamed that token to `var(--brand)` during OMN-42. The substitution is not a finding — it's a documented intentional rename. Same applies to `--accent-h`, `--accent-soft`, `--accent-ink` if those appear in the rules.
+Note: prototype uses `var(--accent)` in the `.btn.primary`/`.btn.accent` rules; v2 renamed that token to `var(--brand)` during the save-persistence work. The substitution is not a finding — it's a documented intentional rename. Same applies to `--accent-h`, `--accent-soft`, `--accent-ink` if those appear in the rules.
 
 ## Audit checklist
 
@@ -99,4 +99,4 @@ Walk each axis completely. Each check must become either "no issues" or a popula
 
 ## Resolution
 
-Fixed in commit `a3668f3` — feat(ui): port dashboard header + meta row per prototype [OMN-48].
+Fixed in commit `a3668f3` — feat(ui): port dashboard header + meta row per prototype .
