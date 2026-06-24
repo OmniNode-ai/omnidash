@@ -91,6 +91,13 @@ ALLOWLIST_FILES=(
   'server/data-source-contract.ts'
   'scripts/generate-data-source-config.ts'
   'server/__tests__/data-source-contract.test.ts'
+  # OMN-12400: projection-env guard. The guard module's error message names the
+  # banned ports (:8765/:3010/:3002) and the authoritative bridge (:3003); its
+  # test feeds those ports plus the live lane backend (.201:13002) as fixture
+  # inputs to verify the guard fires/passes correctly — testing the detection
+  # pattern itself (not runtime source).
+  'vite.env-guard.ts'
+  'tests/vite-middleware/env-guard.test.ts'
 )
 
 # Allowlist directories — every file under here is permitted.

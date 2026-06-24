@@ -6,6 +6,7 @@ import { fileURLToPath } from 'url';
 import { readdirSync, readFileSync, writeFileSync, mkdirSync, existsSync, statSync } from 'node:fs';
 import type { IncomingMessage, ServerResponse } from 'node:http';
 import { buildProxyMap } from './vite.proxy-config';
+import { assertProjectionEnv } from './vite.env-guard';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
@@ -136,6 +137,10 @@ export function layoutsMiddleware(opts: { root: string }) {
 
 export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, process.cwd(), '');
+  // OMN-12400: fail loudly when a stale `.env.local` (which Vite loads over
+  // `.env`) pins the projection backend at a dead / non-authoritative port,
+  // instead of silently bringing the dashboard up against a 404ing backend.
+  assertProjectionEnv(env);
   const { plugin: fixturesPlugin } = fixturesMiddleware({
     root: path.resolve(__dirname, 'fixtures'),
   });
