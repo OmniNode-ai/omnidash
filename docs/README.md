@@ -75,7 +75,6 @@ The dated plan files below are the original design and implementation context. T
 | `omni_home/docs/plans/2026-04-10-omnidash-v2-plan-part-2.md` | Part 2: registry, builder, CRUD |
 | `omni_home/docs/plans/2026-04-10-omnidash-v2-plan-part-3.md` | Part 3: MVP components, templates, proof of life |
 | `omni_home/docs/plans/2026-04-10-omnidash-v2-plan-part-4.md` | Part 4: conversational dashboard builder |
-| `docs/plans/` | Repo-local implementation tracking plans |
 | `docs/audit/` | UI audit evidence |
 
 ### Repo Documentation Standard

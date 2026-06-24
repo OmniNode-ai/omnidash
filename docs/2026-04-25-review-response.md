@@ -11,7 +11,7 @@ fixes, §5 2D companions, and §8 acceptance criteria.
 
 **Implementation shape:** four merged PRs plus five follow-on bundles
 landed directly on `main`. The plan that drove the PR work landed with
-PR 1 at [`docs/plans/2026-04-25-review-remediation.md`](./plans/2026-04-25-review-remediation.md).
+PR 1 (plan: `docs/plans/2026-04-25-review-remediation.md` — removed, lived in omni_home/docs/plans/).
 
 The follow-on bundles closed every MEDIUM and HIGH item that was tagged
 "deferred" in the original PRs, plus seven of the eight LOW items. Only
