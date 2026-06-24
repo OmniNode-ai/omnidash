@@ -111,13 +111,36 @@ describe('evidence-pipeline-service', () => {
     expect(fetchImpl).toHaveBeenCalledWith('https://projection.example/evidence/events');
   });
 
-  it('does not open advisory SSE without an explicit legacy evidence base URL', () => {
+  it('does not open SSE in file mode (no projection backend configured)', () => {
+    vi.stubEnv('VITE_DATA_SOURCE', 'file');
     const factory = vi.fn();
 
     const source = openEvidenceLiveEventStream(vi.fn(), { eventSourceFactory: factory });
 
     expect(source).toBeNull();
     expect(factory).not.toHaveBeenCalled();
+  });
+
+  it('opens SSE against the canonical projection seam when no explicit baseUrl is given (live mode)', () => {
+    // OMN-1279: in a live data source the SSE subscription must resolve its base
+    // URL from the SAME single-backend seam as the snapshot reads
+    // (resolveProjectionBaseUrl), not require a caller-supplied baseUrl. This is
+    // the deployed default path the EvidencePipelineFlow widget uses.
+    vi.stubEnv('VITE_DATA_SOURCE', 'postgres');
+    const source = {
+      addEventListener: vi.fn(),
+      close: vi.fn(),
+    } as unknown as EventSource;
+    const factory = vi.fn().mockReturnValue(source);
+    const onMessage = vi.fn();
+
+    const result = openEvidenceLiveEventStream(onMessage, { eventSourceFactory: factory });
+
+    expect(result).toBe(source);
+    expect(factory).toHaveBeenCalledWith(
+      `${DATA_SOURCE_DEFAULT_URL}/projection/${TOPICS.evidencePipelineLiveEvents}/stream`,
+    );
+    expect(source.addEventListener).toHaveBeenCalledWith('message', onMessage);
   });
 
   it('opens advisory SSE only when an explicit legacy evidence base URL is provided', () => {
