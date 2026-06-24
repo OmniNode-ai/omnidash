@@ -55,13 +55,13 @@ Covers the `.user-chip` wrapper inside `.topbar-right`, containing the `.avatar`
   .user-info .org { font-size: 11px; color: var(--ink-3); }
 ```
 
-Note: prototype uses `var(--accent)` (and `var(--accent-h)`) in `.avatar`; v2 renamed that token to `var(--brand)` during OMN-42. The substitution is not a finding — it's a documented intentional rename.
+Note: prototype uses `var(--accent)` (and `var(--accent-h)`) in `.avatar`; v2 renamed that token to `var(--brand)` as a documented intentional rename. The substitution is not a finding.
 
 ## Audit checklist
 
 Walk each axis completely. Each ☐ must become either ✅ "no issues" or a populated **Issue:** block below.
 
-- ☐ **Design** — every CSS property in the prototype block above has a matching rule in `src/styles/topbar.css` with identical values (including the `.avatar` linear-gradient and oklch color expressions, modulo the `--accent` → `--brand` token rename).
+- ☐ **Design** — every CSS property in the prototype block above has a matching rule in `src/styles/topbar.css` with identical values (including the `.avatar` linear-gradient and oklch color expressions, modulo the documented `--accent` → `--brand` token rename).
 - ☐ **Structure** — v2 `Header.tsx` has every element from the prototype JSX block above, in the same nesting order, with the same class names (`user-chip`, `avatar`, `user-info`, `name`, `org`) and element types (`<div>` wrappers, `<span>` labels).
 - ☐ **Content** — static text matches exactly: avatar initials `JS`, name `Jamie Sun`, org `Platform Eng`.
 

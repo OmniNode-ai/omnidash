@@ -1,4 +1,4 @@
-# OMN-10283: @fontsource/poppins missing from node_modules
+# Diagnosis: @fontsource/poppins missing from node_modules
 
 ## Diagnosis
 

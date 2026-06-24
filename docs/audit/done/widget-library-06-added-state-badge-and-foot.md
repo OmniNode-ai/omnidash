@@ -133,4 +133,4 @@ Walk each axis completely. Each ☐ must become either ✅ "no issues" or a popu
 
 ## Resolution
 
-Fixed in commit `4145b96` — feat(ui): port EmptyState + WidgetLibrary missing structure [OMN-48].
+Fixed in commit `4145b96` — feat(ui): port EmptyState + WidgetLibrary missing structure.
