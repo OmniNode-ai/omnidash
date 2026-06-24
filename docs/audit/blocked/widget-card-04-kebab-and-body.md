@@ -12,7 +12,7 @@ v2_targets:
   - src/styles/dashboard.css
 status: blocked
 dependencies: []
-blocked_reason: "Deferred to OMN-44 (drag-and-drop + kebab menu wiring). See DashboardView.tsx:8 and ComponentWrapper.tsx:9 for scope note."
+blocked_reason: "Deferred to a later drag-and-drop + kebab menu wiring pass. See DashboardView.tsx:8 and ComponentWrapper.tsx:9 for scope note."
 ---
 
 # widget-card-04 — `.widget-kebab` options button and `.widget-body` container
@@ -68,7 +68,7 @@ Walk each axis completely. Each ☐ must become either ✅ "no issues" or a popu
 
 **Issue [CRITICAL]**: `.widget-kebab` button missing entirely from ComponentWrapper
 - Prototype: `src/app.jsx:606-608` — `<button className="widget-kebab" data-menu-trigger onClick={onMenu}><Icon name="kebab" size={16}/></button>` is the last child of `.widget-head`, sibling of `.widget-head-left`.
-- v2: `src/components/dashboard/ComponentWrapper.tsx:35-40` — `.widget-head` contains only `.widget-head-left` and the always-on `.widget-live` span. No kebab button, no `data-menu-trigger`, no onClick. The source comment at line 9 acknowledges the omission ("menu lives in the outer shell (ComponentCell) and will be wired in a later pass").
+- v2: `src/components/dashboard/ComponentWrapper.tsx:35-40` — `.widget-head` contains only `.widget-head-left` and the always-on `.widget-live` span. No kebab button, no `data-menu-trigger`, no onClick. The source comment at line 9 acknowledges the omission: menu wiring is deferred to a later pass in an outer shell component.
 - Impact: The header has no overflow/options affordance at this layer; users cannot open the widget menu from the card chrome that the prototype defines. The CSS for `.widget-kebab` is shipped but unused at this component level, meaning hover affordances and `data-menu-trigger` outside-click detection are non-functional unless a wrapping shell renders the button. The prototype's three-slot header (left / live / kebab) collapses to a two-slot layout.
 
 **Issue [MAJOR]**: `.widget-body` wraps status overlays instead of child content with an "Unknown widget" fallback

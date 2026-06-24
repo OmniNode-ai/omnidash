@@ -90,4 +90,4 @@ Walk each axis completely. Each check must become either "no issues" or a popula
 
 ## Resolution
 
-Fixed in commit `a3668f3` — feat(ui): port dashboard header + meta row per prototype [OMN-48].
+Fixed in commit `a3668f3` — feat(ui): port dashboard header + meta row per prototype.
