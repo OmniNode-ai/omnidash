@@ -1,8 +1,7 @@
-# ADR 004 — Cross-renderer typed empty-state gate (OMN-13131, W6)
+# ADR 004 — Cross-renderer typed empty-state gate
 
 Status: Accepted
 Date: 2026-06-18
-Ticket: OMN-13131 (Phase 1, W6; gates G-H and G-I)
 
 ## Context
 
@@ -10,7 +9,7 @@ Phase 1 of the contract-driven UI platform makes "no blind/blank render" a
 mechanical invariant. When the renderer-capability projection (W5) is stale,
 absent, or unsatisfiable, the dispatch surface must render a **typed**
 `EnumEmptyStateReason` — specifically `UPSTREAM_BLOCKED` — never a blank element
-and never a crash (G-H). The enforcement that backs this (G-I) was previously
+and never a crash. The enforcement backing this was previously
 `local/no-projection-fallback`, which keys on React's `useProjectionQuery` hook
 and so was effectively React/chart-only.
 

@@ -2,12 +2,10 @@
 
 - **Status:** Accepted
 - **Date:** 2026-04-29
-- **Ticket:** OMN-10296
-- **Epic:** OMN-10282 — Generic widget primitives (iteration 1)
 
 ## Context
 
-The OMN-10282 epic is introducing generic widget primitives (`<KPITileCluster>`, `<TrendChart>`,
+The Generic Widget Primitives epic (iteration 1) is introducing generic widget primitives (`<KPITileCluster>`, `<TrendChart>`,
 `<BarChart>`, `<DataTable>`) to replace hand-rolled dashboard layouts. As part of the audit phase,
 every existing bespoke component is evaluated for migration eligibility.
 

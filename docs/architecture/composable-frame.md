@@ -92,7 +92,7 @@ Four modes are supported (`src/data-source/index.ts`):
 
 All three live modes (`http` / `sqlite` / `postgres`) read through the single `HttpSnapshotSource` HTTP projection path on the client; only `file` reads fixtures directly.
 
-**Runtime override seam (OMN-13007):** `src/data-source/data-source-override.ts` is the single seam that lets an operator switch the effective backend at runtime (persisted to `localStorage`, surfaced via the `DataSourceControl` chrome) without restarting. Resolution code consults `resolveEffectiveDataSource()` rather than reading `import.meta.env.VITE_DATA_SOURCE` directly, so there is exactly one place that decides the effective source.
+**Runtime override seam:** `src/data-source/data-source-override.ts` is the single seam that lets an operator switch the effective backend at runtime (persisted to `localStorage`, surfaced via the `DataSourceControl` chrome) without restarting. Resolution code consults `resolveEffectiveDataSource()` rather than reading `import.meta.env.VITE_DATA_SOURCE` directly, so there is exactly one place that decides the effective source.
 
 ---
 
@@ -148,9 +148,9 @@ Components communicate via three channels:
 
 The frame does not mediate component-to-component communication. Components subscribe directly to the mitt bus and poll the projection backend via `useProjectionQuery`.
 
-**WebSocket removed (OMN-12969):** The `/ws` path was permanently deleted. The deployed projection backend never registered a `/ws` route; the browser's upgrade request was rejected with 403 and no events were delivered. Raw browser WebSocket construction is blocked by the `local/no-projection-websocket` ESLint rule.
+**WebSocket removed:** The `/ws` path was permanently deleted. The deployed projection backend never registered a `/ws` route; the browser's upgrade request was rejected with 403 and no events were delivered. Raw browser WebSocket construction is blocked by the `local/no-projection-websocket` ESLint rule.
 
-**Route seam (OMN-13019/13065):** All `/api/` path literals in fetch and axios calls must live in `src/services/` or `src/data-source/`. The `local/no-api-literal` ESLint rule enforces this at error severity — placing an `/api/` literal outside those directories blocks the lint pass.
+**Route seam:** All `/api/` path literals in fetch and axios calls must live in `src/services/` or `src/data-source/`. The `local/no-api-literal` ESLint rule enforces this at error severity — placing an `/api/` literal outside those directories blocks the lint pass.
 
 ---
 

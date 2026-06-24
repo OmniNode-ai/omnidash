@@ -13,7 +13,7 @@ v2_targets:
 status: blocked
 dependencies:
   - dashboard-07
-blocked_reason: "Deferred to OMN-44 (drag-and-drop + kebab menu wiring). See DashboardView.tsx:8 and ComponentWrapper.tsx:9 for scope note."
+blocked_reason: "Deferred pending drag-and-drop and kebab menu wiring. See DashboardView.tsx:8 and ComponentWrapper.tsx:9 for scope note."
 ---
 
 # dashboard-09 — trailing `.drop-slot` "drop to append" + fragment/body close
@@ -59,7 +59,7 @@ Covers the trailing "drop to append" drop slot rendered at the end of `.grid` wh
   }
 ```
 
-Note: prototype uses `var(--accent)`, `var(--accent-soft)`, `var(--accent-ink)` in the `.drop-slot.active` rule; v2 renamed the accent token family to `--brand`/`--brand-soft`/`--brand-ink` during OMN-42. The substitution is not a finding — it's a documented intentional rename.
+Note: prototype uses `var(--accent)`, `var(--accent-soft)`, `var(--accent-ink)` in the `.drop-slot.active` rule; v2 renamed the accent token family to `--brand`/`--brand-soft`/`--brand-ink` in an earlier pass. The substitution is not a finding — it's a documented intentional rename.
 
 ## Audit checklist
 

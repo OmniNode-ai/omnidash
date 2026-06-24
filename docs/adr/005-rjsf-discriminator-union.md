@@ -1,13 +1,11 @@
 # ADR 005 — @rjsf discriminated-union handling for Pydantic-generated JSON Schema
 
-**Ticket:** OMN-13386
 **Status:** Accepted (spike outcome)
 **Date:** 2026-06-20
 
 ## Context
 
-Phase 0 of the contract-driven UI platform (OMN-13129 / OMN-13130) ships six Pydantic
-model primitives:
+Phase 0 of the contract-driven UI platform ships six Pydantic model primitives:
 
 - `ModelComponentContract`
 - `ModelActionContract`
@@ -23,7 +21,7 @@ form where a component contract can be viewed and edited. The Inspector must:
 2. Render a usable form via `@rjsf/core` 6.x.
 3. Validate + round-trip edits without data loss.
 4. Handle the discriminated-union field (`ModelWidgetDefinition.config`,
-   discriminated on `config_kind`) that ships alongside the OMN-13130 primitives.
+   discriminated on `config_kind`) that ships alongside the Phase 0 primitives.
 
 The spike question: does `@rjsf` 6.x consume Pydantic-generated `oneOf` +
 `discriminator` schemas without a custom Field or Widget?
@@ -129,7 +127,7 @@ cleanup ticket in Phase 2.
 
 ### Gap #4 — Frozen Pydantic models are a runtime (not rendering) constraint
 
-All OMN-13130 contracts use `ConfigDict(frozen=True)`. This is transparent to @rjsf,
+All Phase 0 contracts use `ConfigDict(frozen=True)`. This is transparent to @rjsf,
 which emits plain JS objects on change/submit events. The constraint becomes relevant
 at the bus-handler boundary: the handler that consumes edited formData must construct
 a **new** model instance (`ModelComponentContract(**data)`) rather than patching an
@@ -140,7 +138,7 @@ existing frozen instance. This is not a rendering gap.
 The following was verified in this spike:
 
 1. `@rjsf/validator-ajv8` validates the Pydantic-generated schema for all six
-   OMN-13130 primitives without errors (AJV strict: false, allErrors: true).
+   Phase 0 primitives without errors (AJV strict: false, allErrors: true).
 2. The `ModelWidgetDefinition.config` `oneOf` field selects the correct branch when
    `config_kind` is preset in formData (verified by `getOptionMatchingSimpleDiscriminator`
    internal path in @rjsf utils — uses `property.const === formData[discriminatorField]`).
