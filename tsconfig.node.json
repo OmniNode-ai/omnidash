@@ -15,6 +15,7 @@
   },
   "include": [
     "vite.config.ts",
+    "vite.env-guard.ts",
     "vite.proxy-config.ts",
     "server",
     "shared/types/command-topics.ts",
