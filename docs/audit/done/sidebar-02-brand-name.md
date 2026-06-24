@@ -47,7 +47,7 @@ Covers the `<div className="brand-name">` wrapper inside `.brand`, the `<span cl
   }
 ```
 
-Note: prototype uses `var(--accent)` in places; v2 renamed that token to `var(--brand)` during OMN-42. The substitution is not a finding — it's a documented intentional rename.
+Note: prototype uses `var(--accent)` in places; v2 renamed that token to `var(--brand)` as a documented intentional rename. The substitution is not a finding.
 
 ## Audit checklist
 
@@ -68,7 +68,7 @@ Walk each axis completely. Each ☐ must become either ✅ "no issues" or a popu
 All six prototype CSS rules are present in `src/styles/sidebar.css:21-33` with identical values:
 - `.brand-name` block (`font-weight: 600`, `font-size: 15px`, `letter-spacing: -0.005em`, `display: flex`, `flex-direction: column`, `line-height: 1.1`) matches at lines 21-24.
 - `.brand-name .primary { color: var(--sidebar-ink); }` matches at line 25.
-- `.brand-name .primary em { font-style: normal; color: var(--brand); }` at line 26 — token renamed from `--accent` → `--brand` per frontmatter note; not a finding.
+- `.brand-name .primary em { font-style: normal; color: var(--brand); }` at line 26 — token renamed from `--accent` → `--brand` per the documented intentional rename; not a finding.
 - `.brand-name .parent` block (IBM Plex Mono, `9px`, `500`, `0.1em`, uppercase, `--sidebar-ink-2`, `opacity: 0.7`, `margin-top: 2px`) matches at lines 27-33.
 
 ### Structure

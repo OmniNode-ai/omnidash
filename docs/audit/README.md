@@ -31,7 +31,7 @@ For each chunk, the agent:
 
 1. Picks the lowest-numbered file in `todo/` for the active component.
 2. `git mv todo/<id>.md in-progress/<id>.md`.
-3. Commits with message `audit: claim <id> [OMN-48]`.
+3. Commits with message `audit: claim <id>`.
 4. Reads the chunk file completely (prototype JSX + CSS are quoted inline).
 5. Opens each file listed in `v2_targets` and locates the corresponding
    implementation.
@@ -47,7 +47,7 @@ For each chunk, the agent:
 9. Updates `status: audited` in frontmatter.
 10. `git mv in-progress/<id>.md audited/<id>.md`.
 11. Single commit for the findings write + file move:
-    `audit: complete <id> [OMN-48]`.
+    `audit: complete <id>`.
 12. **Agent NEVER applies code fixes.** Only writes findings. Fixes are
     orchestrator's job.
 
@@ -55,7 +55,7 @@ For each chunk, the agent:
 
 - Ambiguous prototype, missing context, dependency on another chunk:
   `git mv in-progress/<id>.md blocked/<id>.md` with a `blocked_reason:` line
-  in frontmatter. Single commit: `audit: block <id>: <short reason> [OMN-48]`.
+  in frontmatter. Single commit: `audit: block <id>: <short reason>`.
 
 ## Orchestrator workflow (after a batch is audited)
 
@@ -118,5 +118,4 @@ echo "blocked:     $(ls docs/audit/blocked/*.md 2>/dev/null | wc -l)"
 
 ## Ticket
 
-All chunk work lives under ticket **OMN-48** "Chunked UI fidelity audit and
-fix pipeline."
+All chunk work lives under the chunked UI fidelity audit and fix pipeline.

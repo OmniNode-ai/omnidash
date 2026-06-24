@@ -66,7 +66,7 @@ Walk each axis completely. Each check must become either "no issues" or a popula
 v2 `src/pages/DashboardView.tsx:177-182` renders an inline `<div>` with inline flex-center styles and a text message ("Add components from the palette" / "Empty dashboard — click Edit to add components") instead of delegating to `<EmptyState onAdd={onAddClick}/>` as the prototype does. This changes the entire empty-state UX (no illustration, no CTA button, no `onAdd` handler wired). Delegation to `empty-state-NN` chunks is not possible because no EmptyState component is mounted.
 
 **Issue: CRITICAL — No `<React.Fragment>` wrapper around each iteration and no `<DropIndicator/>` drop preview.**
-v2 `DashboardView.tsx:185-210` maps directly to `<div className="widget">` without a `React.Fragment key={w.id}` wrapper, and never renders `<DropIndicator/>` before the widget. The `dragging && dragOverSlot === i` guard is absent entirely — drag-and-drop preview is not wired. (Note: file header line 8 acknowledges "Drag-and-drop deferred to OMN-44" so this is a tracked deferral, but from a fidelity standpoint it is still a structural divergence from the prototype.)
+v2 `DashboardView.tsx:185-210` maps directly to `<div className="widget">` without a `React.Fragment key={w.id}` wrapper, and never renders `<DropIndicator/>` before the widget. The `dragging && dragOverSlot === i` guard is absent entirely — drag-and-drop preview is not wired. (Note: file header line 8 acknowledges that drag-and-drop is deferred to a later pass, so this is a tracked deferral, but from a fidelity standpoint it is still a structural divergence from the prototype.)
 
 **Issue: MINOR — Populated branch lacks the outer `<>` fragment.**
 Prototype opens `<>` then `<div className="grid">` (so that sibling elements such as the drop indicator could live alongside). v2 opens `<div className="grid">` directly with no fragment. Harmless given no siblings exist, but diverges from prototype shape.
@@ -77,11 +77,11 @@ Prototype opens `<>` then `<div className="grid">` (so that sibling elements suc
 Prototype checks `dash.widgets.length === 0` and passes `onAdd={onAddClick}`. v2 checks `activeDashboard.layout.length === 0` (data-model rename, acceptable per file header line 6) but the empty branch has no click handler at all — users cannot add from the empty state. Strict equality on the length check is preserved.
 
 **Issue: MINOR — Map iterator signature `(item)` drops the index.**
-Prototype signature is `(w, i) => …` so the index is available for the `dragOverSlot === i` guard. v2 is `(item) => …` with no index. Consistent with the dropped DropIndicator, but worth noting for the OMN-44 restoration.
+Prototype signature is `(w, i) => …` so the index is available for the `dragOverSlot === i` guard. v2 is `(item) => …` with no index. Consistent with the dropped DropIndicator, but worth noting when drag-and-drop is restored.
 
 **Issue: MINOR — `key` is `item.i` rather than `w.id`.**
 v2 keys the map by `item.i` (the layout-item identifier in the v2 data model); prototype keys the `React.Fragment` by `w.id`. Semantically equivalent given the v2 data model, but worth tracking.
 
 ## Resolution
 
-Empty-state branch resolved in commit `4145b96` (`<EmptyState onAdd={handleEdit}/>`); onAdd wired correctly. React.Fragment wrapping + DropIndicator + dragOverSlot guard are OMN-44 scope (drag-and-drop); related blocked chunks: widget-card-01/02/04, dashboard-08/09/10.
+Empty-state branch resolved in commit `4145b96` (`<EmptyState onAdd={handleEdit}/>`); onAdd wired correctly. React.Fragment wrapping + DropIndicator + dragOverSlot guard are deferred to the drag-and-drop wiring pass; related blocked chunks: widget-card-01/02/04, dashboard-08/09/10.

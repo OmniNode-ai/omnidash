@@ -45,7 +45,7 @@ No active migrations. OmniDash was created as a clean rewrite; it does not share
 
 - [docs/adr/001-typography-system.md](adr/001-typography-system.md) — why all widget text uses `<Text>` and `<Heading>` tokens rather than inline styles.
 - [docs/adr/002-storybook-widget-coverage.md](adr/002-storybook-widget-coverage.md) — why every widget must expose `Empty` and `Populated` stories.
-- [docs/adr/003-baselines-roi-card-stay-bespoke.md](adr/003-baselines-roi-card-stay-bespoke.md) — why `BaselinesROICard` stays bespoke and is exempt from the generic widget primitives migration (OMN-10296).
+- [docs/adr/003-baselines-roi-card-stay-bespoke.md](adr/003-baselines-roi-card-stay-bespoke.md) — why `BaselinesROICard` stays bespoke and is exempt from the generic widget primitives migration.
 
 ---
 
@@ -75,7 +75,6 @@ The dated plan files below are the original design and implementation context. T
 | `omni_home/docs/plans/2026-04-10-omnidash-v2-plan-part-2.md` | Part 2: registry, builder, CRUD |
 | `omni_home/docs/plans/2026-04-10-omnidash-v2-plan-part-3.md` | Part 3: MVP components, templates, proof of life |
 | `omni_home/docs/plans/2026-04-10-omnidash-v2-plan-part-4.md` | Part 4: conversational dashboard builder |
-| `docs/plans/` | Repo-local implementation tracking plans |
 | `docs/audit/` | UI audit evidence |
 
 ### Repo Documentation Standard

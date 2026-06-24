@@ -12,7 +12,7 @@ v2_targets:
   - src/styles/dashboard.css
 status: blocked
 dependencies: []
-blocked_reason: "Deferred to OMN-44 (drag-and-drop + kebab menu wiring). See DashboardView.tsx:8 and ComponentWrapper.tsx:9 for scope note."
+blocked_reason: "Deferred to a later drag-and-drop + kebab menu wiring pass. See DashboardView.tsx:8 and ComponentWrapper.tsx:9 for scope note."
 ---
 
 # widget-card-02 — `.widget-head`, `.widget-head-left`, and `.widget-grip` (drag handle)
@@ -68,7 +68,7 @@ All prototype CSS rules for `.widget-head`, `.widget-head-left`, `.widget-grip`,
 
 **Issue [CRITICAL]**: `.widget-grip` `<span>` drag handle element is entirely missing from `.widget-head-left`.
 - Prototype: `<div className="widget-head-left">` contains `<span className="widget-grip"><Icon name="grip" size={14}/></span>` as its first child (chunk lines 26-27).
-- v2: `ComponentWrapper.tsx:36-38` renders `<div className="widget-head-left">` whose only child is `<span className="widget-title">{title}</span>` — no grip span, no Icon. The omission is acknowledged in the file header comment (`ComponentWrapper.tsx:9-10`: "Grip handle and kebab menu omitted at this layer — OMN-44 handles drag").
+- v2: `ComponentWrapper.tsx:36-38` renders `<div className="widget-head-left">` whose only child is `<span className="widget-title">{title}</span>` — no grip span, no Icon. The omission is acknowledged in the file header comment (`ComponentWrapper.tsx:9-10`: "Grip handle and kebab menu omitted at this layer — drag handling deferred to an outer shell").
 - Impact: Users see no drag-handle affordance on hover inside the widget header; the prototype's hover-reveal grab cursor UX (keyed off `.widget-grip`) is unreachable. The CSS rules targeting `.widget-grip` / `.widget:hover .widget-grip` / `.widget-grip:active` at `dashboard.css:71-78` are dead code until the span is rendered.
 
 ### Content

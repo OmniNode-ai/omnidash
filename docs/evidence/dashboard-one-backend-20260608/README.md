@@ -1,8 +1,8 @@
-# Dashboard One-Backend Sweep — OMN-12833 (A2.5)
+# Dashboard One-Backend Sweep — A2.5
 
-**Ticket:** OMN-12833 · **Track:** A2.5 (close-the-loop plan) · **Date:** 2026-06-08
+**Track:** A2.5 (close-the-loop plan) · **Date:** 2026-06-08
 **Gate tier:** Tier-1 HARD demo gate
-**Single backend:** `http://192.168.86.201:13002` (stability-test Postgres-backed projection API)
+**Single backend:** `http://<onex-host>:13002` (stability-test Postgres-backed projection API)
 **Backend access model:** browser issues **same-origin** `/projection/{topic}` requests; the
 Vite serving layer proxies them 1:1 to the single backend (`vite.proxy-config.ts`,
 `VITE_PROJECTION_API_URL`). This is one backend — not a merge proxy fronting two — and it
@@ -12,8 +12,8 @@ avoids cross-origin CORS failures (the projection API serves no `access-control-
 
 ```text
 VITE_DATA_SOURCE=http
-VITE_PROJECTION_API_URL=http://192.168.86.201:13002
-VITE_HTTP_DATA_SOURCE_URL=http://192.168.86.201:13002
+VITE_PROJECTION_API_URL=http://<onex-host>:13002
+VITE_HTTP_DATA_SOURCE_URL=http://<onex-host>:13002
 ```
 
 ## Component matrix summary (32 registry components)
@@ -29,7 +29,7 @@ VITE_HTTP_DATA_SOURCE_URL=http://192.168.86.201:13002
   delegation-quality-gate, delegation-token-usage, delegation-control-plane
   (the delegation chain + the SEA-style control plane incl. the artifact panel).
 - **Visible / degraded-labeled (2):** context-effectiveness-heatmap (the 100-run experiment
-  keep-set; `context.experiment-scores.v1`=404, renders OMN-11241 research fixture state
+  keep-set; `context.experiment-scores.v1`=404, renders the research fixture state
   labeled degraded), evidence-pipeline-flow (`evidence_pipeline.*`=200/0 rows, truthful empty).
 - **Hidden / hidden (22):** everything whose single-backend topic returns 404 (no
   producer / no `projection_api: expose`) or 503 (table missing) — plus **event-stream**,
@@ -48,7 +48,7 @@ Full per-component probe data (HTTP status, row count, freshness, decision) is i
 the visible keep-set widgets, running with ONLY the single backend configured.
 
 - Every `/projection/{topic}` request hits the **same single origin** (`localhost:5174`
-  → proxied to `192.168.86.201:13002`).
+  → proxied to `<onex-host>:13002`).
 - All visible projection-backed topics returned **HTTP 200**.
 - `context.experiment-scores.v1` returned **404** (the degraded-labeled widget; truthful state).
 - **ZERO** requests to `:8765`, `:3010`, `:3002` (the dead dev bridge), committed

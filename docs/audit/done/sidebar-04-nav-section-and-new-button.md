@@ -52,7 +52,7 @@ Covers the `<div className="nav-section">` wrapper, the `<span className="nav-se
   .nav-new:active { transform: scale(0.96); }
 ```
 
-Note: prototype uses `var(--accent)` in places; v2 renamed that token to `var(--brand)` during OMN-42. The substitution is not a finding — it's a documented intentional rename.
+Note: prototype uses `var(--accent)` in places; v2 renamed that token to `var(--brand)` as a documented intentional rename. The substitution is not a finding.
 
 ## Audit checklist
 
@@ -70,7 +70,7 @@ Walk each axis completely. Each ☐ must become either ✅ "no issues" or a popu
 
 - No issues found.
 
-(The prototype `.nav-new:hover` uses `background: var(--accent)` and v2 uses `var(--brand)`; this is the documented OMN-42 token rename called out in the chunk header, not a finding. All other properties on `.nav-section`, `.nav-section-title`, `.nav-new` base, `:hover` (color + transform), and `:active` match exactly — see `src/styles/sidebar.css:52-68`.)
+(The prototype `.nav-new:hover` uses `background: var(--accent)` and v2 uses `var(--brand)`; this is the documented intentional token rename called out in the chunk header, not a finding. All other properties on `.nav-section`, `.nav-section-title`, `.nav-new` base, `:hover` (color + transform), and `:active` match exactly — see `src/styles/sidebar.css:52-68`.)
 
 ### Structure
 

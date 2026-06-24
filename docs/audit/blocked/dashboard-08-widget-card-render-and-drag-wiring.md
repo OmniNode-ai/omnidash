@@ -13,7 +13,7 @@ v2_targets:
 status: blocked
 dependencies:
   - dashboard-07
-blocked_reason: "Deferred to OMN-44 (drag-and-drop + kebab menu wiring). See DashboardView.tsx:8 and ComponentWrapper.tsx:9 for scope note."
+blocked_reason: "Deferred pending drag-and-drop and kebab menu wiring. See DashboardView.tsx:8 and ComponentWrapper.tsx:9 for scope note."
 ---
 
 # dashboard-08 — `<WidgetCard/>` render inside `.grid` + trailing drop indicator
@@ -64,7 +64,7 @@ Walk each axis completely. Each check must become either "no issues" or a popula
 - v2 (`src/pages/DashboardView.tsx:185-210`) inlines a plain `<div className="widget">` with a nested `widget-head` / `widget-body`, wrapping a `<ComponentCell/>`. There is no `WidgetCard` component, no `React.Fragment` wrapper, and no drag-related props or handlers on the widget element (`draggable`, `onDragStart`, `onDragEnd`, `onDragOver`, `onDrop` are all absent).
 - None of the prototype callback props (`onMenu`, `onDragStart`, `onDragEnd`, `onSlotDragOver`, `onDrop`) are wired through; the kebab/menu surface from the prototype is also not rendered here.
 - The `tick` prop (used by prototype widgets for live re-render cadence) is not threaded into the rendered cell.
-- Source comment at line 8 (`// Drag-and-drop deferred to OMN-44; strict 2-column grid is non-draggable for now.`) acknowledges this intentional deferral, but the chunk still needs to be called out as missing against prototype parity.
+- Source comment at line 8 acknowledges this intentional deferral (drag-and-drop deferred; strict 2-column grid is non-draggable for now), but the chunk still needs to be called out as missing against prototype parity.
 
 **Issue: CRITICAL — trailing `<DropIndicator/>` after the map is missing.**
 - Prototype renders `{dragging && dragOverSlot === dash.widgets.length && <DropIndicator/>}` immediately after the `.map(...)` inside `.grid`.
@@ -73,7 +73,7 @@ Walk each axis completely. Each check must become either "no issues" or a popula
 ### Content
 
 **Issue: CRITICAL — prop callback bodies cannot be verified because the callbacks do not exist.**
-- Since `<WidgetCard/>` is not rendered, the exactness checks from the checklist (`onDragStart` closure captures `w.id` not `w`; `onDrop` calls `e.preventDefault()` before `onDropAt(i)`; `onSlotDragOver` forwards `(e, i)` in that order; trailing guard is `dash.widgets.length` not `... - 1`) have no counterpart in v2 to audit. All of these must be introduced when drag wiring lands (OMN-44 per the source comment).
+- Since `<WidgetCard/>` is not rendered, the exactness checks from the checklist (`onDragStart` closure captures `w.id` not `w`; `onDrop` calls `e.preventDefault()` before `onDropAt(i)`; `onSlotDragOver` forwards `(e, i)` in that order; trailing guard is `dash.widgets.length` not `... - 1`) have no counterpart in v2 to audit. All of these must be introduced when drag wiring lands.
 
 ## Resolution
 

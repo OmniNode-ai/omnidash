@@ -1,7 +1,7 @@
-# UX polish checklist (post-OMN-48)
+# UX polish checklist (post-dashboard audit)
 
 Original 28-item list that Bret dictated on 2026-04-21 after reviewing the
-post-OMN-48 dashboard. Preserved as-is here so we can work through them
+post-audit dashboard. Preserved as-is here so we can work through them
 one at a time together. Updated status column as we go.
 
 Legend:
@@ -111,7 +111,7 @@ click-to-sort headers (asc → desc → clear) with `aria-sort`, and
 ### 12. Drag-and-drop for adding widgets
 **Status**: ⬜ pending
 No drag interaction for placing widgets on the dashboard. Prototype has it.
-This is the OMN-44 scope from the audit (6 blocked chunks in `docs/audit/blocked/`).
+This covers the drag-and-drop scope from the audit (6 blocked chunks in `docs/audit/blocked/`).
 
 ### 13. Easier widget removal
 **Status**: ✅ done
@@ -227,7 +227,7 @@ path Radix uses for highlighting.
 **Status**: ✅ done (commit `e32827c`)
 Removed the leading `<Menu size={16}/>` icon from the breadcrumbs nav.
 
-### 31. Typography system refactor (OMN-59)
+### 31. Typography system refactor
 **Status**: 🟡 in progress on branch `jonah/typography-refactor`
 Replaces ad-hoc inline `style={{ fontSize, fontWeight, ... }}` usage across
 widgets with a single typography system: CSS tokens (`--font-size-*`,

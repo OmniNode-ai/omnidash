@@ -60,7 +60,7 @@ Walk each axis completely. Each check must become either "no issues" or a popula
 - Evidence: `grep -rn "library-open\|libOpen\|libraryOpen"` across `/mnt/c/Code/omninode_ai/omnidash-v2/src` returns exactly one hit — the CSS rule itself at `src/styles/dashboard.css:153`. There is no `libOpen` state, no className toggle in `DashboardView.tsx`, and no ancestor wrapper (no `DashboardBuilder.tsx` found; the prototype's `App`/layout-level toggle was not ported).
 - Prototype contract (from `src/app.jsx:463-465` cross-ref in the chunk and the `paddingRight: 380` sibling behavior already audited in dashboard-01): an ancestor of `.dash-body` sets `className="library-open"` when `libOpen === true`. v2's `DashboardView.tsx` renders `.dash-body` and `.grid` (lines 176, 184) but neither it nor any wrapper component sets the flag.
 - Consequence: the CSS rule is inert. When the widget library rail eventually lands in v2, this selector will silently fail to apply the `transform 0.2s` transition unless the ancestor wiring is added alongside it.
-- Note: dashboard-01's `paddingRight: 380` inline style is also absent from v2's `.dash-body` element (line 176 has no `style` prop conditional on `libOpen`), which is consistent with the whole `libOpen` feature being unported — not a regression within this chunk, but confirms the structural gap is systemic.
+- Note: dashboard-01's `paddingRight: 380` inline style is also absent from v2's `.dash-body` element (line 176 has no `style` prop conditional on `libOpen`), which is consistent with the whole `libOpen` feature being unported — not a regression within this chunk, but confirms the structural gap is systemic. (The `libOpen` feature is deferred to the same wiring pass.)
 
 ### Content
 
@@ -68,4 +68,4 @@ Walk each axis completely. Each check must become either "no issues" or a popula
 
 ## Resolution
 
-Resolved by deleting the dead `.library-open .grid .widget` selector from `src/styles/dashboard.css`. v2 uses editMode state (not a `library-open` class) to gate the library panel, so the selector could never fire. No equivalent v2 wiring needed — library panel slide behavior is deferred to OMN-44 and will use a different mechanism.
+Resolved by deleting the dead `.library-open .grid .widget` selector from `src/styles/dashboard.css`. v2 uses editMode state (not a `library-open` class) to gate the library panel, so the selector could never fire. No equivalent v2 wiring needed — library panel slide behavior is deferred to a later wiring pass and will use a different mechanism.

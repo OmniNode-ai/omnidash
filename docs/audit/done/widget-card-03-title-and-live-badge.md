@@ -91,4 +91,4 @@ Walk each axis completely. Each ☐ must become either ✅ "no issues" or a popu
 
 ## Resolution
 
-Fixed in commit `31d988e` — fix(ui): gate widget Live badge on isLive prop [OMN-48]. Badge now renders only when `isLive=true`; EventStream opts in, other widgets stay silent. Structural note about `.widget-live` being sibling of `.widget-head-left` retained as v2 layout choice — prototype placed it inside `.widget-title`, which is cosmetically equivalent here.
+Fixed in commit `31d988e` — fix(ui): gate widget Live badge on isLive prop. Badge now renders only when `isLive=true`; EventStream opts in, other widgets stay silent. Structural note about `.widget-live` being sibling of `.widget-head-left` retained as v2 layout choice — prototype placed it inside `.widget-title`, which is cosmetically equivalent here.
