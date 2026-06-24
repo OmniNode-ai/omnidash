@@ -7,7 +7,7 @@
  */
 
 import { TOPICS } from '@shared/types/topics';
-import { projectionUrl } from '@/data-source/projection-base-url';
+import { projectionUrl, resolveProjectionBaseUrl } from '@/data-source/projection-base-url';
 
 export type EvidenceSwimlane = 'evidence_pipeline' | 'deployment_readiness';
 export type EvidenceFreshnessState = 'CURRENT' | 'STALE' | 'DEGRADED';
@@ -231,14 +231,38 @@ export async function fetchEvidencePipelineSnapshot(
   return { stages, correlations, readiness, liveEvents };
 }
 
+/**
+ * OMN-1279: resolve the live SSE subscription URL for the evidence pipeline.
+ *
+ * Order (most specific wins):
+ *   1. Explicit `opts.baseUrl` — legacy/non-Vite callers and tests. Targets the
+ *      legacy `<base>/events/stream` shape.
+ *   2. Canonical projection seam (`resolveProjectionBaseUrl()`) — the deployed
+ *      default. Subscribes to the SAME single backend the snapshot reads use,
+ *      at `<base>/projection/{liveEvents}/stream`. In proxy-relative mode the
+ *      base is '' so the URL is same-origin and the serving layer forwards it
+ *      to the one backend (no second authority, no banned port).
+ *   3. File mode (`resolveProjectionBaseUrl()` returns null) — no live backend,
+ *      so return null. The caller surfaces an honest "SSE unavailable" state and
+ *      keeps polling snapshots.
+ */
+function resolveEvidenceStreamUrl(opts?: EvidencePipelineServiceOptions): string | null {
+  if (opts?.baseUrl) {
+    return `${opts.baseUrl.replace(/\/$/, '')}/events/stream`;
+  }
+  const base = resolveProjectionBaseUrl();
+  if (base === null) return null;
+  return `${base}/projection/${encodeURIComponent(TOPICS.evidencePipelineLiveEvents)}/stream`;
+}
+
 export function openEvidenceLiveEventStream(
   onMessage: (event: MessageEvent) => void,
   opts?: EvidencePipelineServiceOptions,
 ): EventSource | null {
-  if (!opts?.baseUrl) return null;
-  const baseUrl = opts.baseUrl.replace(/\/$/, '');
-  const makeEventSource = opts?.eventSourceFactory ?? ((url: string) => new EventSource(url));
-  const source = makeEventSource(`${baseUrl}/events/stream`);
+  const url = resolveEvidenceStreamUrl(opts);
+  if (url === null) return null;
+  const makeEventSource = opts?.eventSourceFactory ?? ((streamUrl: string) => new EventSource(streamUrl));
+  const source = makeEventSource(url);
   source.addEventListener('message', onMessage);
   return source;
 }
