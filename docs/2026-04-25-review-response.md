@@ -346,7 +346,7 @@ deferred — see §8 for rationale.
 
 | Cluster | Title | Status | Where |
 |---|---|---|---|
-| A | Environment contamination | **Fixed.** Every external endpoint and every external-repo path is now a required env var that fails fast when unset. Pre-commit grep gate (`scripts/check-no-env-contamination.sh`) blocks 192.168., localhost:300, /Users/, /Volumes/, /mnt/c/ outside an allowlist. CI runs the gate as the first step. | PR 1 |
+| A | Environment contamination | **Fixed.** Every external endpoint and every external-repo path is now a required env var that fails fast when unset. Pre-commit grep gate (`scripts/check-no-env-contamination.sh`) blocks private LAN IPs, localhost:300, /Users/, /Volumes/, /mnt/c/ outside an allowlist. CI runs the gate as the first step. | PR 1 |
 | B | Boundary dishonesty | **Fully fixed.** `parseDashboardDefinition` validates at `dashboardSlice.hydrateList` and `HttpLayoutPersistence.read`. `ComponentRegistry.validateConfig` is now type-safe (no `as any`). `vite.config.ts` middleware properly typed. The cluster-B capstone — a custom local ESLint rule (`local/no-cast-on-parsed-json`) banning `as` casts directly on `JSON.parse()` / `response.json()` — landed in Bundle 4 and immediately surfaced two more real cluster-B violations (in `useWebSocketInvalidation` and `dashboardService.importJson`), both fixed. | PR 1, Bundle 4 |
 | C | Split persistence truth | **Fixed via Option 1.** `DashboardService` is the canonical state read/write path. Zustand and the layout middleware route through it. Round-trip integration test verifies identical state through save → reload. | PR 3a |
 | D | UI capability dishonesty | **Fully fixed.** Empty `configSchema` entries deleted (H3). Cost Trend palette aligned (H4). DelegationMetrics threshold made configurable (M2). The kebab-config gate hides the menu item for widgets without configurable schemas. The "Add Widget = edit-mode toggle" UX issue (H16) was split into separate "Edit Layout" + "Add Widget" header buttons in Bundle 3. | PR 2, PR 3b, Bundle 3 |
@@ -393,7 +393,7 @@ deferred — see §8 for rationale.
 
 ### 8.D — Hygiene gates (continuous)
 
-- [x] No `192.168.86.*` literal in `src/`, `server/`, `vite.config.ts`, `package.json` script — enforced by `scripts/check-no-env-contamination.sh` running in CI.
+- [x] No private LAN IP literal in `src/`, `server/`, `vite.config.ts`, `package.json` script — enforced by `scripts/check-no-env-contamination.sh` running in CI.
 - [x] No `localhost:300X` literal outside the data-source carve-out — enforced by the same gate.
 - [x] No `/Users/`, `/Volumes/`, `/mnt/c/` literal outside the documented allowlist — enforced by the same gate.
 - [x] `.env.example` documents every env var consumed by the app, with placeholder values that are not real endpoints. Verified.

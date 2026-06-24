@@ -206,7 +206,7 @@ OmniDash reads data from the ONEX runtime via:
 - HTTP polling via `useProjectionQuery` against the projection backend. Live updates are poll-driven — there is no WebSocket connection. The `/ws` path was permanently removed in OMN-12969: it was rejected with a 403 by the projection backend and never delivered events. Raw browser WebSocket construction is blocked by the `local/no-projection-websocket` ESLint rule.
 - HTTP endpoints exposed by the projection backend at `localhost:3002` in http/sqlite/postgres modes.
 
-These endpoints are provided by the ONEX runtime running on `.201` (192.168.86.201). In dev mode, fixture files replace live data entirely and no runtime connection is needed.
+These endpoints are provided by the ONEX runtime running on the runtime host (`<onex-host>`). In dev mode, fixture files replace live data entirely and no runtime connection is needed.
 
 The runtime topology is documented in `omni_home/CLAUDE.md` under "Infrastructure Topology".
 
