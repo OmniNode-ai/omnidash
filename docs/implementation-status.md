@@ -31,7 +31,7 @@ All four implementation parts are complete. The application runs, type-checks, a
   - `http`: reads via the projection backend at `localhost:3002`.
   - `sqlite`: reads via the projection backend (resolves through `HttpSnapshotSource`).
   - `postgres`: reads via the projection backend (resolves through `HttpSnapshotSource`).
-- Runtime data-source override: the `DataSourceControl` chrome component (OMN-13007) lets an operator switch the active backend at runtime without restarting. `src/data-source/data-source-override.ts` is the single seam — components must never read `VITE_DATA_SOURCE` directly.
+- Runtime data-source override: the `DataSourceControl` chrome component lets an operator switch the active backend at runtime without restarting. `src/data-source/data-source-override.ts` is the single seam — components must never read `VITE_DATA_SOURCE` directly.
 - Zustand store with slices for edit mode, layout state, and global filters.
 - TanStack Query provider for data fetching.
 - Typography token system: all widget text goes through `<Text>` / `<Heading>` from `src/components/ui/typography`. ESLint rule `local/no-typography-inline` enforces this.
@@ -88,7 +88,7 @@ All four implementation parts are complete. The application runs, type-checks, a
   - `delegation/` — delegation metrics
   - `delegation-control-plane/` — delegation control plane
   - `dep-health/` — dependency health status
-  - `event-dash/` — event dashboard views (OMN-12943)
+  - `event-dash/` — event dashboard views
   - `events/` — event list
   - `evidence-pipeline/` — evidence pipeline status
   - `instruction-eval/` — instruction evaluation
@@ -143,7 +143,7 @@ All four implementation parts are complete. The application runs, type-checks, a
 |-----|-------|
 | External package dynamic code loading | External `@omninode/*` widgets surface in palette with `status: 'not_implemented'` unless their `implementationKey` is also in the local `componentImports` map. Full dynamic loading is a future phase. |
 | Auth integration | Auth stubs are present but the frame does not yet connect to the ONEX auth service. |
-| Live data updates | Live updates are poll-driven via `useProjectionQuery`. The `/ws` WebSocket path was permanently removed in OMN-12969 (it was rejected with 403 by the projection backend and never delivered events). Raw browser WebSocket construction is blocked by the `local/no-projection-websocket` ESLint rule. |
+| Live data updates | Live updates are poll-driven via `useProjectionQuery`. The `/ws` WebSocket path was permanently removed after it was rejected with 403 by the projection backend and never delivered events. Raw browser WebSocket construction is blocked by the `local/no-projection-websocket` ESLint rule. |
 
 ---
 

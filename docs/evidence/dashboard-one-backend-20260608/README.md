@@ -1,6 +1,6 @@
-# Dashboard One-Backend Sweep — OMN-12833 (A2.5)
+# Dashboard One-Backend Sweep — A2.5
 
-**Ticket:** OMN-12833 · **Track:** A2.5 (close-the-loop plan) · **Date:** 2026-06-08
+**Track:** A2.5 (close-the-loop plan) · **Date:** 2026-06-08
 **Gate tier:** Tier-1 HARD demo gate
 **Single backend:** `http://<onex-host>:13002` (stability-test Postgres-backed projection API)
 **Backend access model:** browser issues **same-origin** `/projection/{topic}` requests; the
@@ -29,7 +29,7 @@ VITE_HTTP_DATA_SOURCE_URL=http://<onex-host>:13002
   delegation-quality-gate, delegation-token-usage, delegation-control-plane
   (the delegation chain + the SEA-style control plane incl. the artifact panel).
 - **Visible / degraded-labeled (2):** context-effectiveness-heatmap (the 100-run experiment
-  keep-set; `context.experiment-scores.v1`=404, renders OMN-11241 research fixture state
+  keep-set; `context.experiment-scores.v1`=404, renders the research fixture state
   labeled degraded), evidence-pipeline-flow (`evidence_pipeline.*`=200/0 rows, truthful empty).
 - **Hidden / hidden (22):** everything whose single-backend topic returns 404 (no
   producer / no `projection_api: expose`) or 503 (table missing) — plus **event-stream**,
