@@ -153,6 +153,17 @@ export const TOPICS = {
    * demo-blocking deliverable; live surfacing requires the demo redeploy OMN-12746.
    */
   inferenceResponseText: 'onex.snapshot.projection.delegation.inference-response-text.v1',
+  /**
+   * Instruction-eval aggregate projection — (model, task, context_mode) pass-rate /
+   * output-tokens / runs rows materialised by node_projection_instruction_eval
+   * (OMN-12998), backed by the instruction_eval_aggregate_snapshots table and
+   * served at /projection/{topic}. This is the EXACT projection_api.topic the
+   * omnimarket contract exposes; it follows the canonical
+   * `onex.snapshot.projection.{producer}.{event}.v{N}` convention shared by every
+   * sibling projection node. Renders honest empty/degraded states until the
+   * instruction-eval runner emits events.
+   */
+  instructionEvalAggregate: 'onex.snapshot.projection.omnimarket.instruction-eval-aggregate.v1',
 } as const;
 
 export type TopicSymbol = (typeof TOPICS)[keyof typeof TOPICS];

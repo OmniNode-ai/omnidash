@@ -1,12 +1,17 @@
 export type EvalContextMode = 'baseline' | 'chunk' | 'full-claude-md';
 
-/** One aggregated eval result: a (model, task, context_mode) cell averaged over its runs. */
+/** One aggregated eval result: a (model, task, context_mode) cell averaged over its runs.
+ *
+ * pass_rate is nullable — the projection stores NULL when no pass/fail data is available
+ * for a cell (honest absent-data sentinel, never a fake 0). The panel renders an em-dash
+ * for null cells. (OMN-12998)
+ */
 export interface EvalResult {
   model: string;
   task: string;
   context_mode: EvalContextMode;
-  /** mean pass rate 0–1 across `runs` */
-  pass_rate: number;
+  /** mean pass rate 0–1 across `runs`; null when absent (render em-dash, not 0%) */
+  pass_rate: number | null;
   /** mean output tokens across `runs` */
   output_tokens: number;
   runs: number;
