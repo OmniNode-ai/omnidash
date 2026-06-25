@@ -1,7 +1,8 @@
 import { useMemo } from 'react';
 import { ComponentWrapper } from '../ComponentWrapper';
 import { Text } from '@/components/ui/typography';
-import { EVAL_RESULTS_FIXTURE } from './instruction-eval.fixtures';
+import { useProjectionQuery } from '@/hooks/useProjectionQuery';
+import { TOPICS } from '@shared/types/topics';
 import {
   CONTEXT_MODES,
   CONTEXT_MODE_LABELS,
@@ -84,6 +85,16 @@ function PassRateCell({ result }: { result: EvalResult | undefined }) {
       </td>
     );
   }
+  // pass_rate may be null (absent data from projection) — render em-dash, never fake 0%
+  if (result.pass_rate == null) {
+    return (
+      <td style={cellTd}>
+        <div style={{ ...cellBox, border: '1px solid var(--line-2)', background: 'var(--panel-1)' }}>
+          <Text as="span" size="xs" color="tertiary">—</Text>
+        </div>
+      </td>
+    );
+  }
   const signal = classifyPassRate(result.pass_rate);
   const pct = Math.round(result.pass_rate * 100);
   return (
@@ -136,54 +147,6 @@ function DilutionCell({ delta }: { delta: number | null }) {
   );
 }
 
-// ── Recorded-data authority badge ──────────────────────────────────────────────
-
-/**
- * The instruction-eval view renders a committed fixture (run 20260526-170241),
- * NOT a live projection — there is no projection backing instruction-eval results
- * yet (follow-up: OMN-12998). Without a positive indicator the panel reads as a
- * live, projection-backed surface, which is a quiet authority violation in a demo.
- *
- * This badge carries the `degraded`/recorded palette treatment (reducer-blue tint
- * + ▲ glyph, the same vocabulary HonestyStateBadge uses for non-live provenance)
- * and is rendered both in the widget header and above the matrix so the recorded
- * nature is unmissable wherever the data appears.
- *
- * RECORDED_RUN_ISO is the calendar date parsed from the fixture's run id
- * (20260526-170241 → 2026-05-26). Keep in sync with instruction-eval.fixtures.ts.
- */
-const RECORDED_RUN_DATE = '2026-05-26';
-const RECORDED_BADGE_LABEL = `Recorded evaluation — ${RECORDED_RUN_DATE} (fixture)`;
-
-function RecordedEvaluationBadge() {
-  return (
-    <span
-      role="status"
-      aria-label={`Data authority: recorded evaluation, fixture run ${RECORDED_RUN_DATE}. Not a live projection.`}
-      style={{
-        display: 'inline-flex',
-        alignItems: 'center',
-        gap: 6,
-        height: 22,
-        padding: '0 10px',
-        borderRadius: 999,
-        background: 'var(--reducer-soft)',
-        border: '1px solid var(--reducer)',
-        color: 'var(--reducer-ink)',
-        whiteSpace: 'nowrap',
-        userSelect: 'none',
-      }}
-    >
-      <Text as="span" size="xs" weight="semibold" color="inherit" aria-hidden={true}>
-        ▲
-      </Text>
-      <Text as="span" size="xs" weight="semibold" color="inherit">
-        {RECORDED_BADGE_LABEL}
-      </Text>
-    </span>
-  );
-}
-
 // ── Legend ───────────────────────────────────────────────────────────────────
 
 function Legend() {
@@ -212,106 +175,139 @@ function Legend() {
   );
 }
 
+// ── Empty / loading states ─────────────────────────────────────────────────────
+
+function EmptyState({ isLoading }: { isLoading: boolean }) {
+  if (isLoading) {
+    return (
+      <div style={{ padding: '24px 0', textAlign: 'center' }}>
+        <Text as="div" size="sm" color="tertiary">Loading projection data…</Text>
+      </div>
+    );
+  }
+  return (
+    <div
+      role="status"
+      aria-label="No instruction-eval data. Rows appear once the instruction-eval runner emits results."
+      style={{ padding: '24px 0', textAlign: 'center' }}
+    >
+      <Text as="div" size="sm" color="tertiary">
+        No instruction-eval data yet. Rows appear once the instruction-eval runner emits results.
+      </Text>
+    </div>
+  );
+}
+
 // ── Main widget ────────────────────────────────────────────────────────────────
 
 export default function InstructionEvalHeatmap({ config: _config = {} }: { config?: InstructionEvalConfig }) {
-  const { models, tasks, byCell } = useMemo(() => buildMatrix(EVAL_RESULTS_FIXTURE), []);
+  // Reads the contract-declared projection node_projection_instruction_eval exposes
+  // at /projection/{topic}. No fixture, no fake rows: the panel renders an honest
+  // empty/loading state until the instruction-eval runner emits aggregate events,
+  // and an em-dash for any cell whose pass_rate is absent (NULL from the projection).
+  const { data: rawRows, isLoading } = useProjectionQuery<EvalResult>({
+    queryKey: ['instruction-eval-aggregate'],
+    topic: TOPICS.instructionEvalAggregate,
+  });
+
+  const { models, tasks, byCell } = useMemo(() => buildMatrix(rawRows ?? []), [rawRows]);
   const totalRuns = useMemo(
-    () => EVAL_RESULTS_FIXTURE.reduce((sum, r) => sum + r.runs, 0),
-    [],
+    () => (rawRows ?? []).reduce((sum, r) => sum + r.runs, 0),
+    [rawRows],
   );
+
+  const hasRows = (rawRows ?? []).length > 0;
 
   return (
     <ComponentWrapper
       title="Instruction Eval — Context Dilution"
-      isLive={false}
-      headerExtra={<RecordedEvaluationBadge />}
+      isLive={hasRows}
     >
       <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-        {/* Prominent recorded-data banner: this view is a committed fixture, not a
-            live projection. Rendered above the matrix so it is unmissable wherever
-            the data appears (the same badge is also pinned in the widget header). */}
-        <div style={{ display: 'flex' }}>
-          <RecordedEvaluationBadge />
-        </div>
+        {!hasRows ? (
+          <EmptyState isLoading={isLoading} />
+        ) : (
+          <>
+            <Text as="div" size="xs" color="tertiary">
+              Pass rate per model × task across three context modes. Each cell shows mean pass rate and
+              mean output tokens. The dilution row is the full-CLAUDE.md minus chunk delta — negative means
+              the full file diluted the targeted chunk&apos;s gain.
+            </Text>
 
-        <Text as="div" size="xs" color="tertiary">
-          Pass rate per model × task across three context modes. Each cell shows mean pass rate and
-          mean output tokens over {EVAL_RESULTS_FIXTURE[0]?.runs ?? 0} runs. The dilution row is the
-          full-CLAUDE.md minus chunk delta — negative means the full file diluted the targeted chunk&apos;s gain.
-        </Text>
+            <Legend />
 
-        <Legend />
-
-        <div style={{ overflowX: 'auto' }}>
-          <table style={{ borderCollapse: 'separate', borderSpacing: 3 }}>
-            <thead>
-              <tr>
-                <th style={{ ...headTh, textAlign: 'left', minWidth: 88, position: 'sticky', left: 0, background: 'var(--panel-0, transparent)' }}>
-                  <Text as="span" size="xs" color="tertiary">Model</Text>
-                </th>
-                {tasks.map((task) => (
-                  <th key={task} colSpan={3} style={{ ...headTh, textAlign: 'center', borderBottom: '1px solid var(--line-2)' }}>
-                    <Text as="span" size="xs" weight="semibold" color="primary">{fmtTask(task)}</Text>
-                  </th>
-                ))}
-              </tr>
-              <tr>
-                <th style={{ ...headTh, position: 'sticky', left: 0, background: 'var(--panel-0, transparent)' }} />
-                {tasks.flatMap((task) =>
-                  CONTEXT_MODES.map((mode) => (
-                    <th key={`${task}::${mode}`} style={{ ...headTh, textAlign: 'center', width: CELL_W }}>
-                      <Text as="span" size="xs" color="secondary">
-                        {mode === 'baseline' ? 'base' : mode === 'chunk' ? 'chunk' : 'full'}
-                      </Text>
+            <div style={{ overflowX: 'auto' }}>
+              <table style={{ borderCollapse: 'separate', borderSpacing: 3 }}>
+                <thead>
+                  <tr>
+                    <th style={{ ...headTh, textAlign: 'left', minWidth: 88, position: 'sticky', left: 0, background: 'var(--panel-0, transparent)' }}>
+                      <Text as="span" size="xs" color="tertiary">Model</Text>
                     </th>
-                  )),
-                )}
-              </tr>
-            </thead>
-            <tbody>
-              {models.map((model) => (
-                <tr key={model}>
-                  <td style={{ ...headTh, verticalAlign: 'middle', position: 'sticky', left: 0, background: 'var(--panel-0, transparent)' }}>
-                    <Text as="span" size="xs" weight="semibold" color="primary">{model}</Text>
-                  </td>
-                  {tasks.flatMap((task) =>
-                    CONTEXT_MODES.map((mode: EvalContextMode) => (
-                      <PassRateCell key={`${model}::${task}::${mode}`} result={byCell.get(`${model}::${task}::${mode}`)} />
-                    )),
-                  )}
-                </tr>
-              ))}
+                    {tasks.map((task) => (
+                      <th key={task} colSpan={3} style={{ ...headTh, textAlign: 'center', borderBottom: '1px solid var(--line-2)' }}>
+                        <Text as="span" size="xs" weight="semibold" color="primary">{fmtTask(task)}</Text>
+                      </th>
+                    ))}
+                  </tr>
+                  <tr>
+                    <th style={{ ...headTh, position: 'sticky', left: 0, background: 'var(--panel-0, transparent)' }} />
+                    {tasks.flatMap((task) =>
+                      CONTEXT_MODES.map((mode) => (
+                        <th key={`${task}::${mode}`} style={{ ...headTh, textAlign: 'center', width: CELL_W }}>
+                          <Text as="span" size="xs" color="secondary">
+                            {mode === 'baseline' ? 'base' : mode === 'chunk' ? 'chunk' : 'full'}
+                          </Text>
+                        </th>
+                      )),
+                    )}
+                  </tr>
+                </thead>
+                <tbody>
+                  {models.map((model) => (
+                    <tr key={model}>
+                      <td style={{ ...headTh, verticalAlign: 'middle', position: 'sticky', left: 0, background: 'var(--panel-0, transparent)' }}>
+                        <Text as="span" size="xs" weight="semibold" color="primary">{model}</Text>
+                      </td>
+                      {tasks.flatMap((task) =>
+                        CONTEXT_MODES.map((mode: EvalContextMode) => (
+                          <PassRateCell key={`${model}::${task}::${mode}`} result={byCell.get(`${model}::${task}::${mode}`)} />
+                        )),
+                      )}
+                    </tr>
+                  ))}
 
-              {/* Dilution row: one merged cell per task = mean(full − chunk) across all models */}
-              <tr>
-                <td style={{ ...headTh, verticalAlign: 'middle', position: 'sticky', left: 0, background: 'var(--panel-0, transparent)' }}>
-                  <Text as="span" size="xs" weight="semibold" color="tertiary">dilution</Text>
-                  <Text as="div" size="xs" color="tertiary">full − chunk</Text>
-                </td>
-                {tasks.map((task) => {
-                  // Average the per-model deltas so the row reads as one number per task.
-                  const deltas: number[] = [];
-                  for (const model of models) {
-                    const chunk = byCell.get(`${model}::${task}::chunk`);
-                    const full = byCell.get(`${model}::${task}::full-claude-md`);
-                    if (chunk != null && full != null) deltas.push(full.pass_rate - chunk.pass_rate);
-                  }
-                  const meanDelta = deltas.length > 0
-                    ? deltas.reduce((a, b) => a + b, 0) / deltas.length
-                    : null;
-                  return <DilutionCell key={task} delta={meanDelta} />;
-                })}
-              </tr>
-            </tbody>
-          </table>
-        </div>
+                  {/* Dilution row: one merged cell per task = mean(full − chunk) across all models */}
+                  <tr>
+                    <td style={{ ...headTh, verticalAlign: 'middle', position: 'sticky', left: 0, background: 'var(--panel-0, transparent)' }}>
+                      <Text as="span" size="xs" weight="semibold" color="tertiary">dilution</Text>
+                      <Text as="div" size="xs" color="tertiary">full − chunk</Text>
+                    </td>
+                    {tasks.map((task) => {
+                      // Average the per-model deltas so the row reads as one number per task.
+                      const deltas: number[] = [];
+                      for (const model of models) {
+                        const chunk = byCell.get(`${model}::${task}::chunk`);
+                        const full = byCell.get(`${model}::${task}::full-claude-md`);
+                        if (chunk?.pass_rate != null && full?.pass_rate != null) {
+                          deltas.push(full.pass_rate - chunk.pass_rate);
+                        }
+                      }
+                      const meanDelta = deltas.length > 0
+                        ? deltas.reduce((a, b) => a + b, 0) / deltas.length
+                        : null;
+                      return <DilutionCell key={task} delta={meanDelta} />;
+                    })}
+                  </tr>
+                </tbody>
+              </table>
+            </div>
 
-        <Text as="div" size="xs" color="tertiary">
-          {EVAL_RESULTS_FIXTURE.length} aggregated cells · {totalRuns.toLocaleString()} eval runs ·
-          {' '}{models.length} models × {tasks.length} tasks × {CONTEXT_MODES.length} context modes ·
-          {' '}run 20260526-170241
-        </Text>
+            <Text as="div" size="xs" color="tertiary">
+              {(rawRows ?? []).length} aggregated cells · {totalRuns.toLocaleString()} eval runs ·
+              {' '}{models.length} models × {tasks.length} tasks × {CONTEXT_MODES.length} context modes
+            </Text>
+          </>
+        )}
       </div>
     </ComponentWrapper>
   );
