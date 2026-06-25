@@ -71,6 +71,9 @@ ALLOWLIST_FILES=(
   # literal fixture inputs to verify the guardrail fires — testing the detection
   # pattern itself (not runtime source).
   'src/no-non-authoritative-read-source.test.ts'
+  # OMN-12808: url-carve-out test references 192.168.x / localhost in its detection
+  # regexes + docstring — testing the detection pattern itself (not runtime source).
+  'src/url-carve-out.test.ts'
   'src/tests/setup.ts'
   'src/data-source/index.ts'
   'src/data-source/http-snapshot-source.test.ts'
