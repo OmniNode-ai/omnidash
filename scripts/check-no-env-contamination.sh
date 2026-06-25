@@ -77,6 +77,11 @@ ALLOWLIST_FILES=(
   # pattern itself (not runtime source).
   'src/no-non-authoritative-read-source.test.ts'
   'src/no-non-authoritative-read-source.test.js'  # compiled artifact of the above
+  # OMN-12808: url-carve-out test asserts the single URL carve-out invariant; its
+  # regexes + docstring reference 192.168.x / localhost as the patterns it detects
+  # — testing the detection pattern itself (not runtime source).
+  'src/url-carve-out.test.ts'
+  'src/url-carve-out.test.js'  # compiled artifact of the above
   # OMN-12969: global test setup previously stubbed VITE_WS_URL to a localhost
   # address; the dead `/ws` path was removed so it no longer does. Kept on the
   # allowlist for any future localhost test stubs.

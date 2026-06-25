@@ -52,6 +52,8 @@ export function buildCostSavingsOverview(
       baseline_cost_usd: Number(baselineCostUsd.toFixed(4)),
       savings_usd: Number(savingsUsd.toFixed(4)),
       savings_pct: Number(savingsPct.toFixed(4)),
+      // Synthetic storybook display value for the projection row's
+      // url-authority-ok: `runtime_address` column — never used to open a connection.
       runtime_address: isLocal ? `192.168.86.${200 + (MODELS.indexOf(m) % 3)}` : null,
       evidence_ref: savingsUsd > 0 ? `OMN-10346/evidence/${m.id}` : null,
     };
