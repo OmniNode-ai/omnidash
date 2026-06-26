@@ -19,20 +19,6 @@ vi.mock('@/hooks/useProjectionQuery', () => ({
   useProjectionQuery: () => mockUseProjectionQuery(),
 }));
 
-// ComponentWrapper consumes WidgetChrome context; provide the minimal default so
-// the wrapper renders without a provider.
-vi.mock('@/components/dashboard/WidgetChromeContext', () => ({
-  useWidgetChrome: () => ({
-    authorityLabel: undefined,
-    onConfigure: undefined,
-    onDuplicate: undefined,
-    onDelete: undefined,
-    draggable: false,
-    isDragging: false,
-    isDropTarget: false,
-  }),
-}));
-
 import InstructionEvalHeatmap from './InstructionEvalHeatmap';
 
 const POPULATED_ROWS: EvalResult[] = [

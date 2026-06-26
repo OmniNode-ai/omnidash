@@ -1,0 +1,18 @@
+{
+  "entity_id": "model-routing",
+  "total_delegations": 1284,
+  "provisioned": false,
+  "by_model": [
+    { "model_name": "qwen3-coder-30b", "count": 822, "pct": 0.640 },
+    { "model_name": "claude-haiku-4-5", "count": 360, "pct": 0.280 },
+    { "model_name": "claude-opus-4-6", "count": 102, "pct": 0.080 }
+  ],
+  "rows": [
+    { "model_name": "qwen3-coder-30b", "task_type": "code_review", "count": 250, "pct": 0.195 },
+    { "model_name": "qwen3-coder-30b", "task_type": "refactor", "count": 300, "pct": 0.234 },
+    { "model_name": "qwen3-coder-30b", "task_type": "documentation", "count": 272, "pct": 0.212 },
+    { "model_name": "claude-haiku-4-5", "task_type": "test_generation", "count": 210, "pct": 0.164 },
+    { "model_name": "claude-haiku-4-5", "task_type": "code_review", "count": 150, "pct": 0.117 },
+    { "model_name": "claude-opus-4-6", "task_type": "bug_fix", "count": 102, "pct": 0.080 }
+  ]
+}

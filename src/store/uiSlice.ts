@@ -1,7 +1,4 @@
 // Lightweight UI-state slice. Covers `sidebarCollapsed` and `activePage`.
-// Lives separately from `configSlice` (which handles per-placement
-// configuration drafts) and `editModeSlice` (which handles the
-// edit/view mode toggle) so each slice has a single, clear concern.
 //
 // State here is in-memory only — no localStorage persistence — so
 // each browser session starts with the sidebar expanded. Easy to add
@@ -15,7 +12,11 @@ export const createUISlice: StateCreator<FrameStore, [], [], UISlice> = (set) =>
   toggleSidebarCollapsed: () =>
     set((state) => ({ sidebarCollapsed: !state.sidebarCollapsed })),
   activePage: 'dashboard',
-  setActivePage: (page) => set({ activePage: page }),
-  traceFilter: null,
-  setTraceFilter: (correlationId) => set({ traceFilter: correlationId }),
+  pageParams: {},
+  // Setting a page clears any prior params unless new ones are supplied, so a
+  // plain `setActivePage('tasks')` always lands on the unfiltered view.
+  setActivePage: (page, params = {}) => set({ activePage: page, pageParams: params }),
+  howCalcOpen: false,
+  openHowCalc: () => set({ howCalcOpen: true }),
+  closeHowCalc: () => set({ howCalcOpen: false }),
 });

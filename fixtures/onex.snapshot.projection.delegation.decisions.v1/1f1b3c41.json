@@ -1,0 +1,15 @@
+{
+  "id": "1f1b3c41-dec",
+  "correlation_id": "1f1b3c41",
+  "session_id": "1f1b3c41",
+  "task_type": "refactor",
+  "delegated_to": "claude-haiku-4-5",
+  "model_name": "claude-haiku-4-5",
+  "quality_gate_passed": true,
+  "quality_gate_detail": "deterministic",
+  "latency_ms": 1210,
+  "tokens_input": 20900,
+  "tokens_output": 12700,
+  "tokens_to_compliance": null,
+  "created_at": "2026-06-24T16:47:37Z"
+}

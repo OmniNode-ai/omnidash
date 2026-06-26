@@ -96,12 +96,21 @@
   overflow-y: auto;
   display: flex; flex-direction: column; gap: 1px;
 }
+/* Spacing between the nav groups (Dashboard, Event-driven runtime, Evaluation),
+   replacing per-div inline margins. */
+.nav-group { margin-top: 10px; }
+/* Uppercase group header above a set of nav items. Left inset matches the
+   .dash-item left padding below so labels line up with the items. */
+.sidebar-bottom-title { padding: 4px 20px 2px; }
+
 .dash-item {
   display: grid;
   grid-template-columns: 14px 1fr 20px;
   align-items: center;
   gap: 8px;
-  padding: 7px 10px;
+  /* Left inset (20px) is the single knob for how far the menu items sit from
+     the rail edge; the collapsed state overrides this to center the markers. */
+  padding: 7px 10px 7px 20px;
   color: var(--sidebar-ink-2);
   font-size: 13px;
   cursor: pointer;

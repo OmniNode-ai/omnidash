@@ -70,7 +70,6 @@ describe('Phase 0: ADR', () => {
 
 describe('Phase 1: Foundation', () => {
   const DECORATOR_PATH = 'src/storybook/decorators/withDashboardContext.tsx';
-  const FIXTURES_BARREL = 'src/storybook/fixtures/index.ts';
   const PREVIEW_PATH = '.storybook/preview.tsx';
 
   it('decorator file exists at src/storybook/decorators/withDashboardContext.tsx', () => {
@@ -86,10 +85,6 @@ describe('Phase 1: Foundation', () => {
     expect(content).toMatch(/export\s+(function|const)\s+makeDashboardDecorator\b/);
   });
 
-  it('fixtures barrel exists at src/storybook/fixtures/index.ts', () => {
-    expect(srcExists(FIXTURES_BARREL)).toBe(true);
-  });
-
   it('.storybook/preview.tsx references withDashboardContext', () => {
     expect(srcExists(PREVIEW_PATH)).toBe(true);
     const preview = readSrc(PREVIEW_PATH);
@@ -97,40 +92,16 @@ describe('Phase 1: Foundation', () => {
   });
 });
 
-// `widget: true` flags the dashboard widgets — the canonical things this
-// scorecard polices for full test + story coverage. The remaining entries
-// are infrastructure components (frame, agent shell, config dialog,
-// shared dashboard chrome) where stories alone are sufficient for now.
+// OMN-13602 (green-field strip): the widget catalog, its stories, the agent
+// shell, and the config dialog were removed with the builder. The surviving
+// story coverage is the app-shell frame chrome. `widget: true` would flag a
+// dashboard widget for full test + story coverage; there are none under the
+// strip — the dashboard sections are rebuilt (with their own stories) in a
+// follow-up PR.
 const STORY_FILES: Array<{ rel: string; id: string; widget: boolean }> = [
-  { rel: 'src/components/dashboard/routing/RoutingDecisionTable.stories.tsx', id: 'RoutingDecisionTable.stories', widget: true },
-  { rel: 'src/components/dashboard/routing-decision/RoutingDecisionWidget.stories.tsx', id: 'RoutingDecisionWidget.stories', widget: true },
-  { rel: 'src/components/dashboard/events/EventStream.stories.tsx', id: 'EventStream.stories', widget: true },
-  { rel: 'src/components/dashboard/cost-trend/CostTrend2D.stories.tsx', id: 'CostTrend2D.stories', widget: true },
-  { rel: 'src/components/dashboard/cost-trend/CostTrend3DBars.stories.tsx', id: 'CostTrend3DBars.stories', widget: true },
-  { rel: 'src/components/dashboard/cost-trend/CostTrend3DArea.stories.tsx', id: 'CostTrend3DArea.stories', widget: true },
-  { rel: 'src/components/dashboard/cost-by-model/CostByModelPie.stories.tsx', id: 'CostByModelPie.stories', widget: true },
-  // CostByModelBars.stories.tsx deleted in OMN-10291 — 2D variant now dispatched via IBarChartAdapter manifest entry.
-  // DoughnutChartAdapter stories cover the 3D variant.
-  { rel: 'src/components/charts/threejs/DoughnutChartAdapter.stories.tsx', id: 'DoughnutChartAdapter.stories', widget: true },
-  { rel: 'src/components/dashboard/quality/QualityScoreTilted3D.stories.tsx', id: 'QualityScoreTilted3D.stories', widget: true },
-  { rel: 'src/components/dashboard/quality/QualityScoreHistogram.stories.tsx', id: 'QualityScoreHistogram.stories', widget: true },
-  { rel: 'src/components/dashboard/delegation/DelegationMetrics2D.stories.tsx', id: 'DelegationMetrics2D.stories', widget: true },
-  { rel: 'src/components/dashboard/delegation/DelegationMetrics3D.stories.tsx', id: 'DelegationMetrics3D.stories', widget: true },
-  { rel: 'src/components/dashboard/delegation/DelegationModelOutputWidget.stories.tsx', id: 'DelegationModelOutputWidget.stories', widget: true },
-  { rel: 'src/components/dashboard/baselines/BaselinesROICard.stories.tsx', id: 'BaselinesROICard.stories', widget: true },
-  { rel: 'src/components/dashboard/readiness/ReadinessGate.stories.tsx', id: 'ReadinessGate.stories', widget: true },
-  { rel: 'src/components/dashboard/CustomRangePicker.stories.tsx', id: 'CustomRangePicker.stories', widget: false },
-  { rel: 'src/components/dashboard/DateRangeSelector.stories.tsx', id: 'DateRangeSelector.stories', widget: false },
-  { rel: 'src/components/dashboard/Selectors.stories.tsx', id: 'Selectors.stories', widget: false },
-  { rel: 'src/components/dashboard/ComponentWrapper.stories.tsx', id: 'ComponentWrapper.stories', widget: false },
-  { rel: 'src/components/dashboard/ComponentPalette.stories.tsx', id: 'ComponentPalette.stories', widget: false },
   { rel: 'src/components/frame/Header.stories.tsx', id: 'Header.stories', widget: false },
   { rel: 'src/components/frame/Sidebar.stories.tsx', id: 'Sidebar.stories', widget: false },
   { rel: 'src/components/frame/FrameLayout.stories.tsx', id: 'FrameLayout.stories', widget: false },
-  { rel: 'src/components/frame/DeleteDashboardDialog.stories.tsx', id: 'DeleteDashboardDialog.stories', widget: false },
-  { rel: 'src/components/agent/AgentLauncher.stories.tsx', id: 'AgentLauncher.stories', widget: false },
-  { rel: 'src/components/agent/AgentChatPanel.stories.tsx', id: 'AgentChatPanel.stories', widget: false },
-  { rel: 'src/config/ComponentConfigPanel.stories.tsx', id: 'ComponentConfigPanel.stories', widget: false },
 ];
 
 describe('Phase 2: Widget stories', () => {
@@ -164,8 +135,19 @@ describe('Phase 4: Widget tests (T11 / OMN-152)', () => {
   // contract: every widget that has stories must also have a test. Phase
   // 4 is scoped to entries flagged `widget: true` — infrastructure
   // components are still encouraged to gain tests, but not gated here.
-  for (const { rel, id, widget } of STORY_FILES) {
-    if (!widget) continue;
+  const widgets = STORY_FILES.filter((s) => s.widget);
+
+  // OMN-13602: the widget catalog was stripped out; the dashboard sections
+  // (each with their own story + test) are rebuilt in a follow-up PR. Until
+  // then there are no `widget: true` entries — assert that explicitly so the
+  // suite is never empty (vitest errors on an empty describe block).
+  if (widgets.length === 0) {
+    it('no dashboard widgets under the green-field strip', () => {
+      expect(widgets).toHaveLength(0);
+    });
+  }
+
+  for (const { rel, id } of widgets) {
     const testPath = rel.replace(/\.stories\.tsx$/, '.test.tsx');
     it(`${id}: ${testPath} exists`, () => {
       expect(srcExists(testPath)).toBe(true);

@@ -1,0 +1,15 @@
+{
+  "id": "1f5f8085-dec",
+  "correlation_id": "1f5f8085",
+  "session_id": "1f5f8085",
+  "task_type": "code_review",
+  "delegated_to": "qwen3-coder-30b",
+  "model_name": "qwen3-coder-30b",
+  "quality_gate_passed": true,
+  "quality_gate_detail": "deterministic",
+  "latency_ms": 620,
+  "tokens_input": 24500,
+  "tokens_output": 15500,
+  "tokens_to_compliance": null,
+  "created_at": "2026-06-24T16:11:37Z"
+}

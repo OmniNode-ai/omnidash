@@ -1,0 +1,15 @@
+{
+  "id": "200a2b2f-dec",
+  "correlation_id": "200a2b2f",
+  "session_id": "200a2b2f",
+  "task_type": "code_review",
+  "delegated_to": "claude-opus-4-6",
+  "model_name": "claude-opus-4-6",
+  "quality_gate_passed": true,
+  "quality_gate_detail": "deterministic",
+  "latency_ms": 1900,
+  "tokens_input": 33500,
+  "tokens_output": 22500,
+  "tokens_to_compliance": null,
+  "created_at": "2026-06-24T14:41:37Z"
+}

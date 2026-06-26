@@ -3,7 +3,7 @@ import react from '@vitejs/plugin-react';
 import { vanillaExtractPlugin } from '@vanilla-extract/vite-plugin';
 import path from 'path';
 import { fileURLToPath } from 'url';
-import { readdirSync, readFileSync, writeFileSync, mkdirSync, existsSync, statSync } from 'node:fs';
+import { readdirSync, readFileSync, existsSync, statSync } from 'node:fs';
 import type { IncomingMessage, ServerResponse } from 'node:http';
 import { buildProxyMap } from './vite.proxy-config';
 import { assertProjectionEnv } from './vite.env-guard';
@@ -67,74 +67,6 @@ export function fixturesMiddleware(opts: { root: string }) {
   return { plugin, handler };
 }
 
-export function layoutsMiddleware(opts: { root: string }) {
-  const root = opts.root;
-  const handler = (req: IncomingMessage, res: ServerResponse, _next: ConnectNext) => {
-    // NOTE: req.url arrives WITHOUT the /_layouts prefix (Vite strips it).
-    const urlPath = (req.url ?? '').split('?')[0];
-    const parts = urlPath.split('/').filter(Boolean);
-
-    // Only handle single-segment paths: /<name>
-    if (parts.length !== 1) {
-      res.statusCode = 404;
-      return res.end();
-    }
-
-    const name = parts[0]!;
-    // Guard against path traversal: reject names containing path separators or dot-only segments.
-    if (name.includes('/') || name.includes('\\') || name === '..' || name === '.') {
-      res.statusCode = 400;
-      return res.end();
-    }
-    const file = path.join(root, `${name}.json`);
-
-    if (req.method === 'GET') {
-      if (!existsSync(file)) {
-        // OMN-12995: absence of a saved layout is a normal state, not an error.
-        // Return an empty 204 instead of 404 so the dev console stays clean on
-        // first load (no saved layout yet). The client treats 204 — and 404 for
-        // back-compat — as "no saved layout".
-        res.statusCode = 204;
-        return res.end();
-      }
-      res.setHeader('Content-Type', 'application/json');
-      return res.end(readFileSync(file));
-    }
-
-    if (req.method === 'POST') {
-      let body = '';
-      req.on('data', (chunk: Buffer) => { body += chunk.toString(); });
-      req.on('end', () => {
-        try {
-          // Validate JSON before writing
-          JSON.parse(body);
-          mkdirSync(root, { recursive: true });
-          writeFileSync(file, body, 'utf8');
-          res.setHeader('Content-Type', 'application/json');
-          res.statusCode = 200;
-          return res.end(body);
-        } catch (_err) {
-          res.statusCode = 400;
-          return res.end(JSON.stringify({ error: 'Invalid JSON body' }));
-        }
-      });
-      return;
-    }
-
-    res.statusCode = 404;
-    return res.end();
-  };
-
-  const plugin = {
-    name: 'layouts-middleware',
-    configureServer(server: any) {
-      server.middlewares.use('/_layouts', handler);
-    },
-  };
-
-  return { plugin, handler };
-}
-
 export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, process.cwd(), '');
   // OMN-12400: fail loudly when a stale `.env.local` (which Vite loads over
@@ -144,14 +76,11 @@ export default defineConfig(({ mode }) => {
   const { plugin: fixturesPlugin } = fixturesMiddleware({
     root: path.resolve(__dirname, 'fixtures'),
   });
-  const { plugin: layoutsPlugin } = layoutsMiddleware({
-    root: path.resolve(__dirname, 'dashboard-layouts'),
-  });
   const proxyMap = buildProxyMap(env);
 
   return {
     envPrefix: ['VITE_'],
-    plugins: [react(), vanillaExtractPlugin(), fixturesPlugin, layoutsPlugin],
+    plugins: [react(), vanillaExtractPlugin(), fixturesPlugin],
     resolve: {
       alias: {
         '@': path.resolve(__dirname, 'src'),

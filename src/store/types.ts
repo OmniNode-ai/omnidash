@@ -41,11 +41,6 @@ export interface GlobalFilters {
   timezone?: string;
 }
 
-export interface EditModeSlice {
-  editMode: boolean;
-  setEditMode: (value: boolean) => void;
-}
-
 /**
  * Subset of `GlobalFilters` keys that are simple string values and
  * therefore manipulated through the generic `setFilter(key, value)`
@@ -65,48 +60,12 @@ export interface FiltersSlice {
   clearFilters: () => void;
 }
 
-import type { DashboardDefinition, DashboardLayoutItem } from '@shared/types/dashboard';
-import type { GridSize } from '@shared/types/component-manifest';
-
-export interface DashboardSlice {
-  // Multi-dashboard list (OMN-43)
-  dashboards: DashboardDefinition[];
-  activeDashboardId: string | null;
-  // Derived accessor — reads dashboards.find(d => d.id === activeDashboardId)
-  activeDashboard: DashboardDefinition | null;
-
-  // List-level actions
-  createDashboard: (name: string) => DashboardDefinition;
-  renameDashboard: (id: string, newName: string) => void;
-  deleteDashboard: (id: string) => void;
-  /** Clone a dashboard (all layout items copied, fresh id, "(copy)" name suffix). Returns the copy or null if source is missing. */
-  duplicateDashboard: (id: string) => DashboardDefinition | null;
-  setActiveDashboardById: (id: string) => void;
-
-  // Legacy setter — kept for backward compat with OMN-38/41 tests
-  setActiveDashboard: (dashboard: DashboardDefinition | null) => void;
-
-  // Layout-level actions
-  addComponentToLayout: (componentName: string, componentVersion: string, defaultSize: GridSize) => void;
-  /** Insert a new placement at the given index. Out-of-range `atIndex` is clamped to [0, length]. */
-  insertComponentAt: (componentName: string, componentVersion: string, defaultSize: GridSize, atIndex: number) => void;
-  removeComponentFromLayout: (itemId: string) => void;
-  /** Clone a placement (same component + config, new id). New copy appended to layout. */
-  duplicateLayoutItem: (itemId: string) => void;
-  /** Reorder an existing placement to a new index in the layout. No-op if itemId is not found. */
-  moveLayoutItem: (itemId: string, toIndex: number) => void;
-  updateLayout: (layout: DashboardLayoutItem[]) => void;
-  updateComponentConfig: (itemId: string, config: Record<string, unknown>) => void;
-}
-
-import type { ConversationSlice } from './conversationSlice';
-export type { ConversationSlice };
-
-import type { ConfigSlice } from './configSlice';
-export type { ConfigSlice };
-
 export type AppPage =
   | 'dashboard'
+  // OMN-13602 — savings-dashboard drill-down views (additive routes).
+  | 'tasks'
+  | 'run-detail'
+  | 'savings-over-time'
   | 'feature-flags'
   | 'eval'
   // OMN-12943 — ported event-dash views (additive routes). Existing members untouched.
@@ -115,6 +74,19 @@ export type AppPage =
   | 'experiments'
   | 'sea-control';
 
+/**
+ * Thin params carried alongside `activePage` for drill-down views (OMN-13602):
+ * a tier filter when the tasks list is opened from a tier-scoped dashboard figure,
+ * a run id when a run is opened, etc. Not URL-synced — see the routing note in the
+ * dashboard refactor architecture doc.
+ */
+export interface PageParams {
+  tasksTier?: string;
+  runId?: string;
+  /** Page to return to from a drill-down (e.g. run-detail back link). */
+  from?: AppPage;
+}
+
 export interface UISlice {
   /** True when the left dashboard sidebar is collapsed to a narrow rail. */
   sidebarCollapsed: boolean;
@@ -122,14 +94,13 @@ export interface UISlice {
   toggleSidebarCollapsed: () => void;
   /** The active top-level page being rendered in the main content area. */
   activePage: AppPage;
-  setActivePage: (page: AppPage) => void;
-  /**
-   * Pre-fill query for TraceExplorer so the widget initializes its search
-   * filter with the given correlation_id when the dashboard renders.
-   * Cleared by TraceExplorerWidget on mount after consuming it.
-   */
-  traceFilter: string | null;
-  setTraceFilter: (correlationId: string | null) => void;
+  /** Optional params for the active page (cleared when navigating without any). */
+  pageParams: PageParams;
+  setActivePage: (page: AppPage, params?: PageParams) => void;
+  /** The "how is this calculated?" explainer overlay, opened from any savings figure. */
+  howCalcOpen: boolean;
+  openHowCalc: () => void;
+  closeHowCalc: () => void;
 }
 
-export type FrameStore = EditModeSlice & FiltersSlice & DashboardSlice & ConversationSlice & ConfigSlice & UISlice;
+export type FrameStore = FiltersSlice & UISlice;

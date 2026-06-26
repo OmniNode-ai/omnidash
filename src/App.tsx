@@ -1,13 +1,16 @@
 import { lazy, Suspense } from 'react';
 import { FrameLayout } from './components/frame/FrameLayout';
 import { Header } from './components/frame/Header';
-import { DashboardView } from './pages/DashboardView';
+import { DashboardPage } from './pages/DashboardPage';
+import { TasksListPage } from './pages/TasksListPage';
+import { RunDetailPage } from './pages/RunDetailPage';
+import { SavingsOverTimePage } from './pages/SavingsOverTimePage';
+import { HowCalculatedModal } from './pages/dashboard/HowCalculatedModal';
 import { FeatureFlagDashboard } from './pages/FeatureFlagDashboard';
 import { InstructionEvalPage } from './pages/InstructionEvalPage';
-import { AgentOrchestrator } from './agent/AgentOrchestrator';
 import { useFrameStore } from './store/store';
 import { CommandPalette, useCommandPalette } from './components/dashboard/command-dispatch/CommandPalette';
-import type { AppPage } from './store/types';
+import type { AppPage, PageParams } from './store/types';
 
 // OMN-12943 — ported event-dash views, lazily loaded so they add zero weight to
 // the default dashboard bundle. Existing static page imports above are untouched.
@@ -18,8 +21,11 @@ const EventBusPage = lazy(() => import('./pages/EventBusPage').then((m) => ({ de
 const ExperimentsPage = lazy(() => import('./pages/ExperimentsPage').then((m) => ({ default: m.ExperimentsPage })));
 const SeaControlPage = lazy(() => import('./pages/SeaControlPage').then((m) => ({ default: m.SeaControlPage })));
 
-function PageContent({ page }: { page: AppPage }) {
+function PageContent({ page, params }: { page: AppPage; params: PageParams }) {
   switch (page) {
+    case 'tasks':       return <TasksListPage initialTier={params.tasksTier} />;
+    case 'run-detail':  return <RunDetailPage runId={params.runId} from={params.from} />;
+    case 'savings-over-time': return <SavingsOverTimePage />;
     case 'feature-flags': return <FeatureFlagDashboard />;
     case 'eval':    return <InstructionEvalPage />;
     // OMN-12943 — additive route arms; existing arms + default untouched.
@@ -27,22 +33,24 @@ function PageContent({ page }: { page: AppPage }) {
     case 'event-bus':           return <Suspense fallback={null}><EventBusPage /></Suspense>;
     case 'experiments':         return <Suspense fallback={null}><ExperimentsPage /></Suspense>;
     case 'sea-control':         return <Suspense fallback={null}><SeaControlPage /></Suspense>;
-    default:        return <DashboardView />;
+    default:        return <DashboardPage />;
   }
 }
 
 export function App() {
   const activePage = useFrameStore((s) => s.activePage);
+  const pageParams = useFrameStore((s) => s.pageParams);
+  const howCalcOpen = useFrameStore((s) => s.howCalcOpen);
   const { isOpen, close } = useCommandPalette();
 
   return (
     <>
       <FrameLayout>
         <Header />
-        <PageContent page={activePage} />
+        <PageContent page={activePage} params={pageParams} />
       </FrameLayout>
-      <AgentOrchestrator />
       {isOpen && <CommandPalette onClose={close} />}
+      {howCalcOpen && <HowCalculatedModal />}
     </>
   );
 }

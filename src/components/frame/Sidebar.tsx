@@ -2,158 +2,24 @@
 //   React:   src/app.jsx:339-422
 //   Styling: OmniDash.html:93-240
 // Deviations from source:
-//   - Rename in-place handled via local `renamingId` state rather than lifted to App.
-//   - Wired to Zustand store (dashboards, activeDashboardId, createDashboard, renameDashboard,
-//     deleteDashboard, setActiveDashboardById) instead of receiving all as props.
 //   - OMN-47: CSS ported verbatim to src/styles/sidebar.css; TSX rewritten to use prototype class names.
 //   - Post-OMN-48: "Platform Eng" workspace chip removed — it was static markup with no behavior
 //     wired, and the product has no workspaces concept yet.
-//   - Widget-menu infrastructure (PositionedMenu) is also used here for the dashboard kebab,
-//     keeping the menu pattern consistent with the prototype across the whole app.
+//   - OMN-13602 (green-field strip): the multi-dashboard list manager (create / rename /
+//     duplicate / delete, the kebab menu, the delete dialog) was removed along with the
+//     widget builder. The product now has one fixed dashboard, so the left nav is a single
+//     static "Dashboard" entry above the operator-tool groups.
 
-import { useEffect, useLayoutEffect, useRef, useState } from 'react';
-import { Edit, Copy, Plus, MoreHorizontal, Trash2, ChevronsLeft, ChevronsRight, SlidersHorizontal, Grid3x3, GitBranch, Sparkles, FlaskConical, Radio } from 'lucide-react';
+import { ChevronsLeft, ChevronsRight, SlidersHorizontal, Grid3x3, GitBranch, Sparkles, FlaskConical, Radio, LayoutDashboard } from 'lucide-react';
 import type { AppPage } from '@/store/types';
-import {
-  PositionedMenu,
-  MenuItem,
-  MenuSeparator,
-  usePositionedMenu,
-} from '@/components/ui/positioned-menu';
 import { Text } from '@/components/ui/typography';
 import { useFrameStore } from '@/store/store';
-import { DeleteDashboardDialog } from './DeleteDashboardDialog';
-
-interface RenameInputProps {
-  initialValue: string;
-  onCommit: (value: string) => void;
-  onCancel: () => void;
-}
-
-function RenameInput({ initialValue, onCommit, onCancel }: RenameInputProps) {
-  const inputRef = useRef<HTMLInputElement>(null);
-
-  // Focus + select after React has finished applying defaultValue but before the
-  // browser paints. Doing this in the callback ref raced against React's value
-  // assignment; `useLayoutEffect` guarantees the value string is in place.
-  useLayoutEffect(() => {
-    const input = inputRef.current;
-    if (!input) return;
-    input.focus();
-    input.select();
-  }, []);
-
-  // Commit only on genuine user "click outside" — a real pointerdown whose target
-  // is outside this input. This avoids committing on spurious blur events caused
-  // by Radix's DropdownMenu focus-management teardown.
-  useEffect(() => {
-    const handler = (e: PointerEvent) => {
-      const input = inputRef.current;
-      if (!input) return;
-      if (e.target instanceof Node && input.contains(e.target)) return;
-      onCommit(input.value);
-    };
-    document.addEventListener('pointerdown', handler);
-    return () => document.removeEventListener('pointerdown', handler);
-  }, [onCommit]);
-
-  return (
-    <input
-      ref={inputRef}
-      defaultValue={initialValue}
-      onClick={(e) => e.stopPropagation()}
-      onKeyDown={(e) => {
-        if (e.key === 'Enter') onCommit(e.currentTarget.value);
-        if (e.key === 'Escape') onCancel();
-      }}
-      style={{
-        background: 'oklch(28% 0.01 260)',
-        border: '1px solid var(--brand)',
-        borderRadius: 4,
-        outline: 'none',
-        color: 'var(--sidebar-ink)',
-        font: 'inherit',
-        width: '100%',
-        padding: '2px 6px',
-        margin: '-2px -6px',
-      }}
-    />
-  );
-}
-
-interface DashboardKebabProps {
-  dashboardName: string;
-  onRename: () => void;
-  onDuplicate: () => void;
-  onDelete: () => void;
-}
-
-/** Per-row kebab menu. Hook state must be per-row so each menu positions from its own trigger. */
-function DashboardKebab({ dashboardName, onRename, onDuplicate, onDelete }: DashboardKebabProps) {
-  const menu = usePositionedMenu();
-  return (
-    <>
-      <button
-        aria-label={`Dashboard options for ${dashboardName}`}
-        className="dash-kebab"
-        onClick={menu.open}
-      >
-        <MoreHorizontal size={14} />
-      </button>
-      {menu.isOpen && (
-        <PositionedMenu anchor={menu.anchor} onClose={menu.close} placement="right-start">
-          <MenuItem onSelect={menu.select(onRename)}>
-            <Edit size={14} /> Rename
-          </MenuItem>
-          <MenuItem onSelect={menu.select(onDuplicate)}>
-            <Copy size={14} /> Duplicate
-          </MenuItem>
-          <MenuSeparator />
-          <MenuItem variant="danger" onSelect={menu.select(onDelete)}>
-            <Trash2 size={14} /> Delete
-          </MenuItem>
-        </PositionedMenu>
-      )}
-    </>
-  );
-}
 
 export function Sidebar() {
-  const {
-    dashboards,
-    activeDashboardId,
-    createDashboard,
-    renameDashboard,
-    deleteDashboard,
-    duplicateDashboard,
-    setActiveDashboardById,
-  } = useFrameStore();
   const collapsed = useFrameStore((s) => s.sidebarCollapsed);
   const toggleCollapsed = useFrameStore((s) => s.toggleSidebarCollapsed);
   const activePage = useFrameStore((s) => s.activePage);
   const setActivePage = useFrameStore((s) => s.setActivePage);
-
-  const [renamingId, setRenamingId] = useState<string | null>(null);
-  const [pendingDeletionId, setPendingDeletionId] = useState<string | null>(null);
-
-  const handleCreate = () => {
-    // If the user creates a dashboard while the sidebar is collapsed,
-    // there's no rename input visible to type into. Auto-expand so the
-    // user actually sees the inline rename appear.
-    if (collapsed) toggleCollapsed();
-    const nd = createDashboard('Untitled Dashboard');
-    setRenamingId(nd.id);
-  };
-
-  const handleRenameCommit = (id: string, value: string) => {
-    renameDashboard(id, value);
-    setRenamingId(null);
-  };
-
-  const handleRenameCancel = (id: string) => {
-    setRenamingId(null);
-    void id;
-  };
 
   return (
     <aside className={`sidebar${collapsed ? ' collapsed' : ''}`}>
@@ -186,104 +52,32 @@ export function Sidebar() {
         </button>
       </div>
 
-      {/* Section header */}
-      <div className="nav-section">
-        {!collapsed && <span className="nav-section-title">Dashboards</span>}
-        <button
-          aria-label="New dashboard"
-          title="New dashboard"
-          onClick={handleCreate}
-          className="nav-new"
+      {/* OMN-13602 — single fixed dashboard, the default `dashboard` route.
+          A plain container, NOT the old `.dash-list` (which used flex:1 to fill
+          the rail and pushed the tool groups to the bottom of the column). */}
+      <div className="nav-group">
+        <div
+          role="button"
+          tabIndex={0}
+          data-testid="nav-dashboard"
+          className={`dash-item${activePage === 'dashboard' ? ' active' : ''}`}
+          title={collapsed ? 'Dashboard' : undefined}
+          onClick={() => setActivePage('dashboard')}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter' || e.key === ' ') setActivePage('dashboard');
+          }}
         >
-          <Plus size={14} strokeWidth={2.4} />
-        </button>
+          <span className="dash-marker"><LayoutDashboard size={13} /></span>
+          {!collapsed && <span className="dash-name">Dashboard</span>}
+        </div>
       </div>
 
-      {/* Dashboard list */}
-      <div className="dash-list">
-        {dashboards.map((d, i) => {
-          const isActive = d.id === activeDashboardId;
-          return (
-            <div
-              key={d.id}
-              data-testid={`dash-item-${d.id}`}
-              className={`dash-item${isActive ? ' active' : ''}`}
-              onClick={() => setActiveDashboardById(d.id)}
-              // Show the dashboard name on hover when the sidebar is
-              // collapsed — otherwise users have no way to read it.
-              title={collapsed ? d.name : undefined}
-            >
-              {/* Marker */}
-              <span className="dash-marker">
-                {isActive ? '▸' : String(i + 1).padStart(2, '0')}
-              </span>
-
-              {/* Name or inline rename — hidden when collapsed. */}
-              {!collapsed && (renamingId === d.id ? (
-                <RenameInput
-                  initialValue={d.name}
-                  onCommit={(val) => handleRenameCommit(d.id, val)}
-                  onCancel={() => handleRenameCancel(d.id)}
-                />
-              ) : (
-                <span
-                  className="dash-name"
-                  onDoubleClick={(e) => {
-                    e.stopPropagation();
-                    setRenamingId(d.id);
-                  }}
-                >
-                  {d.name}
-                </span>
-              ))}
-
-              {/* Kebab menu (PositionedMenu — prototype pattern). Hidden
-                  when collapsed; rename / duplicate / delete are still
-                  reachable after expanding. */}
-              {!collapsed && (
-                <DashboardKebab
-                  dashboardName={d.name}
-                  onRename={() => setRenamingId(d.id)}
-                  onDuplicate={() => duplicateDashboard(d.id)}
-                  onDelete={() => setPendingDeletionId(d.id)}
-                />
-              )}
-            </div>
-          );
-        })}
-
-        {dashboards.length === 0 && !collapsed && (
-          <Text
-            as="div"
-            size="md"
-            leading="loose"
-            align="center"
-            style={{ padding: '20px 12px', color: 'var(--sidebar-ink-2)' }}
-          >
-            No dashboards yet.
-            <br />
-            <button
-              onClick={handleCreate}
-              style={{ color: 'var(--brand)', textDecoration: 'underline', marginTop: '4px' }}
-            >
-              Create your first one →
-            </button>
-          </Text>
-        )}
-      </div>
-
-      {/* OMN-12943 — Event-driven runtime nav group (additive). Reuses the
-          existing dash-item styling + setActivePage toggle pattern; the four
-          ported views (delegation-evidence / event-bus / experiments /
-          sea-control) live behind these entries. Existing nav untouched. */}
-      <div
-        style={{
-          borderTop: '1px solid var(--sidebar-border, oklch(22% 0.01 260))',
-          paddingTop: 4,
-        }}
-      >
+      {/* Event-driven runtime nav group — the four ported views
+          (delegation-evidence / event-bus / experiments / sea-control). Stacks
+          directly under Dashboard, per the dashboard-with-tools-nav wireframe. */}
+      <div className="nav-group">
         {!collapsed && (
-          <div className="sidebar-bottom-title" style={{ padding: '4px 12px 2px' }}>
+          <div className="sidebar-bottom-title">
             <Text size="xs" color="tertiary" transform="uppercase" weight="semibold">
               Event-driven runtime
             </Text>
@@ -317,16 +111,11 @@ export function Sidebar() {
         ))}
       </div>
 
-      {/* Bottom nav — settings / feature flags */}
-      <div
-        style={{
-          marginTop: 'auto',
-          borderTop: '1px solid var(--sidebar-border, oklch(22% 0.01 260))',
-          paddingTop: 4,
-        }}
-      >
+      {/* Evaluation tools / feature flags — contiguous with the group above,
+          per the wireframe (no longer pinned to the bottom of the rail). */}
+      <div className="nav-group">
         {!collapsed && (
-          <div className="sidebar-bottom-title" style={{ padding: '4px 12px 2px' }}>
+          <div className="sidebar-bottom-title">
             <Text size="xs" color="tertiary" transform="uppercase" weight="semibold">
               Evaluation
             </Text>
@@ -375,19 +164,6 @@ export function Sidebar() {
           )}
         </div>
       </div>
-
-      <DeleteDashboardDialog
-        dashboardName={
-          pendingDeletionId
-            ? (dashboards.find((d) => d.id === pendingDeletionId)?.name ?? null)
-            : null
-        }
-        onConfirm={() => {
-          if (pendingDeletionId) deleteDashboard(pendingDeletionId);
-          setPendingDeletionId(null);
-        }}
-        onCancel={() => setPendingDeletionId(null)}
-      />
     </aside>
   );
 }

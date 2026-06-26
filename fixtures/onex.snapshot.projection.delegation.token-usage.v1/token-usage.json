@@ -1,0 +1,80 @@
+{
+  "entity_id": "token-usage",
+  "total_prompt_tokens": 28800000,
+  "total_completion_tokens": 18400000,
+  "total_tokens": 46750000,
+  "total_estimated_cost_usd": 18719.61,
+  "provisioned": false,
+  "provenance_summary": {
+    "measured": 1102,
+    "estimated": 182,
+    "unknown": 0
+  },
+  "by_model": [
+    {
+      "model_name": "qwen3-coder-30b",
+      "total_tokens": 29600000
+    },
+    {
+      "model_name": "claude-haiku-4-5",
+      "total_tokens": 12800000
+    },
+    {
+      "model_name": "claude-opus-4-6",
+      "total_tokens": 4800000
+    }
+  ],
+  "total_tokens_saved": 4065000,
+  "series": [
+    {
+      "bucket": "2026-06-15",
+      "tokens_used": 4000000,
+      "tokens_saved": 348000
+    },
+    {
+      "bucket": "2026-06-16",
+      "tokens_used": 4150000,
+      "tokens_saved": 361000
+    },
+    {
+      "bucket": "2026-06-17",
+      "tokens_used": 4300000,
+      "tokens_saved": 374000
+    },
+    {
+      "bucket": "2026-06-18",
+      "tokens_used": 4450000,
+      "tokens_saved": 387000
+    },
+    {
+      "bucket": "2026-06-19",
+      "tokens_used": 4600000,
+      "tokens_saved": 400000
+    },
+    {
+      "bucket": "2026-06-20",
+      "tokens_used": 4750000,
+      "tokens_saved": 413000
+    },
+    {
+      "bucket": "2026-06-21",
+      "tokens_used": 4900000,
+      "tokens_saved": 426000
+    },
+    {
+      "bucket": "2026-06-22",
+      "tokens_used": 5050000,
+      "tokens_saved": 439000
+    },
+    {
+      "bucket": "2026-06-23",
+      "tokens_used": 5200000,
+      "tokens_saved": 452000
+    },
+    {
+      "bucket": "2026-06-24",
+      "tokens_used": 5350000,
+      "tokens_saved": 465000
+    }
+  ]
+}

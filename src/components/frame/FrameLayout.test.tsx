@@ -1,27 +1,14 @@
-// Updated for OMN-43: FrameLayout is now a 2-column grid (240px sidebar, 1fr main).
-// The old tests checked for "omnidash" text in the header (now in Sidebar brand block)
-// and a theme button (now in Header). Tests updated to reflect new structure.
+// OMN-13602: the multi-dashboard list (the "Dashboards" section + "New dashboard"
+// button) was removed with the widget builder. FrameLayout still composes the
+// Sidebar + main content; the sidebar now shows a single fixed "Dashboard" entry.
+import type { ReactNode } from 'react';
 import { render, screen } from '@testing-library/react';
 import { describe, it, expect } from 'vitest';
 import { Providers } from '@/providers/Providers';
-import { RegistryProvider } from '@/registry/RegistryProvider';
 import { FrameLayout } from './FrameLayout';
-import type { RegistryManifest } from '@/registry/types';
 
-const minimalManifest: RegistryManifest = {
-  manifestVersion: '1.0',
-  generatedAt: '2026-04-20T00:00:00Z',
-  components: {},
-};
-
-function Wrapper({ children }: { children: React.ReactNode }) {
-  return (
-    <Providers>
-      <RegistryProvider manifest={minimalManifest}>
-        {children}
-      </RegistryProvider>
-    </Providers>
-  );
+function Wrapper({ children }: { children: ReactNode }) {
+  return <Providers>{children}</Providers>;
 }
 
 describe('FrameLayout', () => {
@@ -46,23 +33,13 @@ describe('FrameLayout', () => {
     expect(screen.getByTestId('dashboard-content')).toBeInTheDocument();
   });
 
-  it('renders the Dashboards section in the sidebar nav', () => {
+  it('renders the single Dashboard nav entry (OMN-13602)', () => {
     render(
       <FrameLayout>
         <div>content</div>
       </FrameLayout>,
       { wrapper: Wrapper },
     );
-    expect(screen.getByText('Dashboards')).toBeInTheDocument();
-  });
-
-  it('has a New dashboard button in the sidebar', () => {
-    render(
-      <FrameLayout>
-        <div>content</div>
-      </FrameLayout>,
-      { wrapper: Wrapper },
-    );
-    expect(screen.getByRole('button', { name: /new dashboard/i })).toBeInTheDocument();
+    expect(screen.getByTestId('nav-dashboard')).toBeInTheDocument();
   });
 });

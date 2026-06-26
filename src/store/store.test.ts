@@ -3,16 +3,7 @@ import { useFrameStore } from './store';
 
 describe('Frame store', () => {
   beforeEach(() => {
-    useFrameStore.setState({ editMode: false, globalFilters: {} });
-  });
-
-  it('defaults to view mode', () => {
-    expect(useFrameStore.getState().editMode).toBe(false);
-  });
-
-  it('toggles edit mode', () => {
-    useFrameStore.getState().setEditMode(true);
-    expect(useFrameStore.getState().editMode).toBe(true);
+    useFrameStore.setState({ globalFilters: {} });
   });
 
   it('has empty global filters by default', () => {

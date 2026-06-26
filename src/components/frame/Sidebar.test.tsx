@@ -1,104 +1,54 @@
-// Tests for the OMN-43 Sidebar component: create / switch / rename / delete dashboard flows.
+// OMN-13602: the multi-dashboard CRUD (create / switch / rename / delete) was
+// removed with the widget builder. The sidebar is now a single fixed "Dashboard"
+// entry plus the operator-tool nav groups. These tests cover the trimmed nav and
+// page navigation. The Sidebar reads only the global Zustand store, so no
+// RegistryProvider wrapper is needed anymore.
 import { describe, it, expect, beforeEach } from 'vitest';
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { Providers } from '@/providers/Providers';
-import { RegistryProvider } from '@/registry/RegistryProvider';
 import { Sidebar } from './Sidebar';
 import { useFrameStore } from '@/store/store';
-import type { RegistryManifest } from '@/registry/types';
 
-const minimalManifest: RegistryManifest = {
-  manifestVersion: '1.0',
-  generatedAt: '2026-04-20T00:00:00Z',
-  components: {},
-};
+beforeEach(() => {
+  useFrameStore.setState({ activePage: 'dashboard', sidebarCollapsed: false });
+});
 
-function Wrapper({ children }: { children: React.ReactNode }) {
-  return (
-    <Providers>
-      <RegistryProvider manifest={minimalManifest}>
-        {children}
-      </RegistryProvider>
-    </Providers>
-  );
-}
-
-function renderSidebar() {
-  return render(<Sidebar />, { wrapper: Wrapper });
-}
-
-describe('Sidebar — dashboard CRUD flows (OMN-43)', () => {
-  beforeEach(() => {
-    // Reset to empty state before each test to avoid list pollution.
-    useFrameStore.setState({
-      editMode: false,
-      activeDashboard: null,
-      activeDashboardId: null,
-      dashboards: [],
-      globalFilters: {},
-    });
+describe('Sidebar — trimmed nav (OMN-13602)', () => {
+  it('renders a single Dashboard entry plus the operator-tool groups', () => {
+    render(<Sidebar />);
+    expect(screen.getByTestId('nav-dashboard')).toBeInTheDocument();
+    expect(screen.getByText('Dashboard')).toBeInTheDocument();
+    expect(screen.getByText('Delegation Evidence')).toBeInTheDocument();
+    expect(screen.getByText('Event Bus')).toBeInTheDocument();
+    expect(screen.getByText('Experimentation')).toBeInTheDocument();
+    expect(screen.getByText('SEA Control Plane')).toBeInTheDocument();
+    expect(screen.getByText('Instruction Eval')).toBeInTheDocument();
+    expect(screen.getByText('Feature Flags')).toBeInTheDocument();
   });
 
-  it('renders an empty state when there are no dashboards', () => {
-    renderSidebar();
-    expect(screen.getByText(/no dashboards yet/i)).toBeInTheDocument();
+  it('does NOT render any dashboard-CRUD affordance', () => {
+    render(<Sidebar />);
+    expect(screen.queryByRole('button', { name: /new dashboard/i })).toBeNull();
+    expect(screen.queryByText(/no dashboards yet/i)).toBeNull();
   });
 
-  it('clicking + creates a new dashboard and puts it in rename mode', async () => {
+  it('clicking an operator tool sets the active page', async () => {
     const user = userEvent.setup();
-    renderSidebar();
-
-    await user.click(screen.getByRole('button', { name: /new dashboard/i }));
-
-    const state = useFrameStore.getState();
-    expect(state.dashboards.length).toBe(1);
-    expect(state.activeDashboard?.name).toBe('Untitled Dashboard');
-
-    // Should show inline rename input
-    expect(screen.getByRole('textbox')).toBeInTheDocument();
+    render(<Sidebar />);
+    await user.click(screen.getByText('Event Bus'));
+    expect(useFrameStore.getState().activePage).toBe('event-bus');
   });
 
-  it('switching between two dashboards changes activeDashboard', async () => {
-    // Pre-seed two dashboards in the store
-    useFrameStore.getState().createDashboard('Board A');
-    useFrameStore.getState().createDashboard('Board B');
-
+  it('clicking the active operator tool toggles back to the dashboard', async () => {
+    useFrameStore.setState({ activePage: 'event-bus' });
     const user = userEvent.setup();
-    renderSidebar();
-
-    // Both dashboard names appear
-    expect(screen.getByText('Board A')).toBeInTheDocument();
-    expect(screen.getByText('Board B')).toBeInTheDocument();
-
-    // Click Board A to switch
-    await user.click(screen.getByText('Board A'));
-    expect(useFrameStore.getState().activeDashboard?.name).toBe('Board A');
-
-    // Click Board B to switch
-    await user.click(screen.getByText('Board B'));
-    expect(useFrameStore.getState().activeDashboard?.name).toBe('Board B');
-  });
-
-  it('active dashboard shows the ▸ marker', async () => {
-    useFrameStore.getState().createDashboard('Active Board');
-    const id = useFrameStore.getState().dashboards[0].id;
-    useFrameStore.getState().setActiveDashboardById(id);
-
-    renderSidebar();
-
-    // The active marker character ▸ should appear for the active dashboard
-    expect(screen.getByText('▸')).toBeInTheDocument();
-  });
-
-  it('does NOT render sidebar-foot (no health monitoring / version source)', () => {
-    renderSidebar();
-    expect(screen.queryByText('All systems normal')).not.toBeInTheDocument();
-    expect(screen.queryByText(/v2\./)).not.toBeInTheDocument();
+    render(<Sidebar />);
+    await user.click(screen.getByText('Event Bus'));
+    expect(useFrameStore.getState().activePage).toBe('dashboard');
   });
 
   it('does NOT render the workspace chip (removed — no workspaces concept)', () => {
-    renderSidebar();
+    render(<Sidebar />);
     expect(screen.queryByText('Platform Eng')).not.toBeInTheDocument();
   });
 });

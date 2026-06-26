@@ -1,5 +1,4 @@
 import { useMemo } from 'react';
-import { ComponentWrapper } from '../ComponentWrapper';
 import { Text } from '@/components/ui/typography';
 import { useProjectionQuery } from '@/hooks/useProjectionQuery';
 import { TOPICS } from '@shared/types/topics';
@@ -219,11 +218,17 @@ export default function InstructionEvalHeatmap({ config: _config = {} }: { confi
   const hasRows = (rawRows ?? []).length > 0;
 
   return (
-    <ComponentWrapper
-      title="Instruction Eval — Context Dilution"
-      isLive={hasRows}
-    >
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+    <div className="widget">
+      <div className="widget-head">
+        <div className="widget-head-left">
+          <span className="widget-title">Instruction Eval — Context Dilution</span>
+        </div>
+        <div className="widget-head-right">
+          {hasRows && <span className="widget-live">Live</span>}
+        </div>
+      </div>
+      <div className="widget-body">
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
         {!hasRows ? (
           <EmptyState isLoading={isLoading} />
         ) : (
@@ -308,8 +313,9 @@ export default function InstructionEvalHeatmap({ config: _config = {} }: { confi
             </Text>
           </>
         )}
+        </div>
       </div>
-    </ComponentWrapper>
+    </div>
   );
 }
 

@@ -1,0 +1,15 @@
+{
+  "id": "1fe8090d-dec",
+  "correlation_id": "1fe8090d",
+  "session_id": "1fe8090d",
+  "task_type": "test_generation",
+  "delegated_to": "claude-haiku-4-5",
+  "model_name": "claude-haiku-4-5",
+  "quality_gate_passed": false,
+  "quality_gate_detail": "heuristic:assertion-failed",
+  "latency_ms": 1210,
+  "tokens_input": 31700,
+  "tokens_output": 21100,
+  "tokens_to_compliance": null,
+  "created_at": "2026-06-24T14:59:37Z"
+}
