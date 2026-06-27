@@ -271,6 +271,20 @@ export interface CorrelationTraceRow {
 
 // ── SEA / node-generation row type ───────────────────────────────────────────
 
+/**
+ * One row from the node-generation-completed.v1 projection, backed by the
+ * `generation_events` table (node_projection_delegation reducer).
+ *
+ * Fields mirror the projection_api.exposures columns in the
+ * node_projection_delegation contract.yaml verbatim — never add a field here
+ * that the projection contract does not expose. Column additions require a
+ * backend migration + contract update first.
+ *
+ * OMN-13166: `semantic_checked` / `semantic_passed` — behavioral verdict (shape
+ * valid ≠ behaviorally correct; gate-zero false-greens are now visible).
+ * OMN-13289: `corpus_checked` / `corpus_passed` / `corpus_errors` — validator
+ * acceptance verdict (a shape-valid generated scanner that fails corpus = false).
+ */
 export interface NodeGenerationRow {
   id: string;
   correlation_id: string;
@@ -281,6 +295,16 @@ export interface NodeGenerationRow {
   attempt_count: number;
   total_latency_e2e_ms: number;
   contract_passed: boolean;
+  /** OMN-13166: true when the behavioral semantic check ran. */
+  semantic_checked: boolean;
+  /** OMN-13166: true when the generated node passed behavioral validation. */
+  semantic_passed: boolean;
+  /** OMN-13289: true when a validator acceptance corpus gate ran. */
+  corpus_checked: boolean;
+  /** OMN-13289: true when the generated scanner passed every corpus fixture. */
+  corpus_passed: boolean;
+  /** OMN-13289: list of corpus fixture errors when corpus_passed is false. */
+  corpus_errors: unknown[];
   cost_inference_usd: string;
   contract_yaml: string;
   handler_source: string;
@@ -290,6 +314,7 @@ export interface NodeGenerationRow {
   routing_source: string;
   resolved_endpoint: string;
   projection_owner: string;
+  timestamp: string;
   created_at: string;
 }
 
