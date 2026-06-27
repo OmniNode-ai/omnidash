@@ -98,6 +98,41 @@ function SeaPipeline({ loopClosed }: { loopClosed: boolean }) {
   );
 }
 
+/**
+ * Render the behavioral + corpus verdict badges for a generation row.
+ *
+ * OMN-13166: semantic_checked / semantic_passed — a shape-valid generated node
+ * that fails semantic validation is gate-zero false-green; render it visibly.
+ * OMN-13289: corpus_checked / corpus_passed — a generated validator that does
+ * not flag every violation fixture is not accepted; render it separately.
+ */
+function GenerationVerdictBadges({ g }: { g: NodeGenerationRow }) {
+  return (
+    <>
+      {g.semantic_checked && (
+        g.semantic_passed ? (
+          <Badge kind="ok">
+            <Dot kind="ok" />
+            semantic pass
+          </Badge>
+        ) : (
+          <Badge kind="fail">semantic fail</Badge>
+        )
+      )}
+      {g.corpus_checked && (
+        g.corpus_passed ? (
+          <Badge kind="ok">
+            <Dot kind="ok" />
+            corpus pass
+          </Badge>
+        ) : (
+          <Badge kind="fail">corpus fail</Badge>
+        )
+      )}
+    </>
+  );
+}
+
 function SeaArtifact({ g }: { g: NodeGenerationRow }) {
   return (
     <Panel
@@ -113,6 +148,7 @@ function SeaArtifact({ g }: { g: NodeGenerationRow }) {
           ) : (
             <Badge kind="fail">contract failed</Badge>
           )}
+          <GenerationVerdictBadges g={g} />
           <Badge kind="muted">{g.endpoint_class}</Badge>
         </>
       }
@@ -133,6 +169,24 @@ function SeaArtifact({ g }: { g: NodeGenerationRow }) {
               k: "Attempts · Latency",
               v: `${g.attempt_count} · ${fmtLatency(g.total_latency_e2e_ms)}`,
             },
+            // OMN-13166: behavioral verdict — visible separately from contract gate
+            ...(g.semantic_checked
+              ? [
+                  {
+                    k: "Semantic",
+                    v: g.semantic_passed ? "passed" : "failed",
+                  },
+                ]
+              : []),
+            // OMN-13289: corpus acceptance verdict
+            ...(g.corpus_checked
+              ? [
+                  {
+                    k: "Corpus",
+                    v: g.corpus_passed ? "passed" : "failed",
+                  },
+                ]
+              : []),
           ]}
         />
         <div className="divider" />
@@ -205,6 +259,42 @@ export function SeaControlPage() {
           <Badge kind="ok">pass</Badge>
         ) : (
           <Badge kind="fail">fail</Badge>
+        ),
+    },
+    // OMN-13166: behavioral verdict column — only populated when semantic gate ran.
+    // Shape-valid but behaviorally wrong nodes show "fail" here while "Contract"
+    // shows "pass", making gate-zero false-greens visible in the table.
+    {
+      key: "semantic",
+      label: "Semantic",
+      num: true,
+      render: (r) =>
+        r.semantic_checked ? (
+          r.semantic_passed ? (
+            <Badge kind="ok">pass</Badge>
+          ) : (
+            <Badge kind="fail">fail</Badge>
+          )
+        ) : (
+          <span className="dim">—</span>
+        ),
+    },
+    // OMN-13289: corpus acceptance column — only populated when corpus gate ran
+    // (validator generation runs). A generated scanner that fails its own corpus
+    // shows "fail" here; ordinary free-text generation shows "—".
+    {
+      key: "corpus",
+      label: "Corpus",
+      num: true,
+      render: (r) =>
+        r.corpus_checked ? (
+          r.corpus_passed ? (
+            <Badge kind="ok">pass</Badge>
+          ) : (
+            <Badge kind="fail">fail</Badge>
+          )
+        ) : (
+          <span className="dim">—</span>
         ),
     },
     {
@@ -298,6 +388,26 @@ export function SeaControlPage() {
                     { k: "Projection owner", v: r.projection_owner },
                     { k: "Attempts", v: String(r.attempt_count) },
                     { k: "Latency", v: fmtLatency(r.total_latency_e2e_ms) },
+                    // OMN-13166: behavioral verdict
+                    ...(r.semantic_checked
+                      ? [
+                          {
+                            k: "Semantic verdict",
+                            v: r.semantic_passed ? "passed" : "failed",
+                          },
+                        ]
+                      : []),
+                    // OMN-13289: corpus acceptance verdict
+                    ...(r.corpus_checked
+                      ? [
+                          {
+                            k: "Corpus verdict",
+                            v: r.corpus_passed
+                              ? "passed"
+                              : `failed (${Array.isArray(r.corpus_errors) ? r.corpus_errors.length : 0} error${Array.isArray(r.corpus_errors) && r.corpus_errors.length !== 1 ? "s" : ""})`,
+                          },
+                        ]
+                      : []),
                     { k: "Output SHA", v: r.output_payload_sha256 },
                     { k: "Contract SHA", v: r.contract_sha256 },
                     { k: "Handler SHA", v: r.handler_sha256 },
