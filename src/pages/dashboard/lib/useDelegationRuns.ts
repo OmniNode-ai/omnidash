@@ -1,7 +1,7 @@
 import { useMemo } from 'react';
 import { useProjectionQuery } from '@/hooks/useProjectionQuery';
 import { TOPICS } from '@shared/types/topics';
-import { tierForModel, type Tier } from './modelTier';
+import { tierFromCostTier, type Tier } from './tier';
 import type { DelegationSavingsProjection, DelegationDecisionRow } from '../types';
 
 /** One delegated run, flattened from the savings session + its decision row. */
@@ -80,7 +80,7 @@ export function useDelegationRuns(): DelegationRuns {
           correlation_id: dec?.correlation_id,
           created_at: s.created_at,
           model_name: s.model_name,
-          tier: tierForModel(s.model_name),
+          tier: tierFromCostTier(dec?.cost_tier_name),
           task_type: s.task_type,
           gate: dec?.quality_gate_passed,
           gate_detail: dec?.quality_gate_detail,

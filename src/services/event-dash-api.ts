@@ -182,6 +182,11 @@ export interface DelegationDecisionRow {
   tokens_input: number | null;
   tokens_output: number | null;
   tokens_to_compliance: number | null;
+  // OMN-13649: authoritative routing/cost tier from the delegation decision
+  // (local | cheap_cloud | cheap_frontier | claude). Null for rows written before
+  // the projection carried it, or by non-tier-routed terminals.
+  cost_tier_name: string | null;
+  cost_tier_type: string | null;
   created_at: string;
 }
 

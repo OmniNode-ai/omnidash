@@ -3,7 +3,7 @@ import { useFrameStore } from '@/store/store';
 import type { AppPage } from '@/store/types';
 import { useDelegationRuns, type RunRow } from './dashboard/lib/useDelegationRuns';
 import { GateBadge } from './dashboard/GateBadge';
-import { TIER_LABEL } from './dashboard/lib/modelTier';
+import { TIER_LABEL } from './dashboard/lib/tier';
 import {
   formatUsdCents,
   formatLatency,

@@ -11,5 +11,7 @@
   "tokens_input": 25100,
   "tokens_output": 19200,
   "tokens_to_compliance": null,
+  "cost_tier_name": "cheap_cloud",
+  "cost_tier_type": "metered",
   "created_at": "2026-06-24T17:22:44Z"
 }

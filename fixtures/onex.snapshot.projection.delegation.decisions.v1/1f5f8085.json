@@ -11,5 +11,7 @@
   "tokens_input": 24500,
   "tokens_output": 15500,
   "tokens_to_compliance": null,
+  "cost_tier_name": "local",
+  "cost_tier_type": "free_local",
   "created_at": "2026-06-24T16:11:37Z"
 }

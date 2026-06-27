@@ -3,7 +3,7 @@ import { Heading, Text } from '@/components/ui/typography';
 import { useFrameStore } from '@/store/store';
 import { resolveEffectiveDataSource } from '@/data-source/data-source-override';
 import { useDelegationRuns } from './dashboard/lib/useDelegationRuns';
-import { TIER_LABEL, TIER_ORDER } from './dashboard/lib/modelTier';
+import { TIER_LABEL, TIER_ORDER } from './dashboard/lib/tier';
 import { formatUsdCents, formatLatency, formatRelativeTime } from './dashboard/lib/format';
 import { GateBadge } from './dashboard/GateBadge';
 import '@/styles/savings-dashboard.css';
