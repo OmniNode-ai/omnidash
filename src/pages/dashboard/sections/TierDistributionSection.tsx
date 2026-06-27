@@ -5,29 +5,38 @@ import { useFrameStore } from '@/store/store';
 import { TOPICS } from '@shared/types/topics';
 import { SectionCard } from '../SectionCard';
 import { formatPct } from '../lib/format';
-import { tierForModel, TIER_LABEL, TIER_ORDER, type Tier } from '../lib/modelTier';
-import type { ModelRoutingProjection } from '../types';
+import { tierFromCostTier, TIER_LABEL, TIER_ORDER, type Tier } from '../lib/tier';
+import type { DelegationDecisionRow, ModelRoutingProjection } from '../types';
 
 /**
  * "Delegation across tiers" — a visual of how much work each tier served, not a
- * second hero number. Tiers are derived from each model name (the projection has
- * no tier field today; see modelTier.ts), so this is an honest approximation.
+ * second hero number. The tier is the AUTHORITATIVE `cost_tier_name` carried on
+ * each delegation decision (decisions.v1, OMN-13649), mapped to a display bucket
+ * by tierFromCostTier — no client-side model-name heuristic.
  */
 export function TierDistributionSection() {
   const setActivePage = useFrameStore((s) => s.setActivePage);
-  const { data, isLoading, error } = useProjectionQuery<ModelRoutingProjection>({
+  const { data, isLoading, error } = useProjectionQuery<DelegationDecisionRow>({
+    queryKey: ['dashboard', 'decisions'],
+    topic: TOPICS.delegationDecisions,
+  });
+  // decisions.v1 is a row list with no `provisioned` flag; source the "sample
+  // data" marker from the model-routing aggregate, which carries it.
+  const { data: routingData } = useProjectionQuery<ModelRoutingProjection>({
     queryKey: ['dashboard', 'model-routing'],
     topic: TOPICS.delegationModelRouting,
   });
-  const p = data?.[0];
+  const rows = data;
+  const provisioned = routingData?.[0]?.provisioned;
 
   const shares = useMemo(() => {
-    if (!p || p.by_model.length === 0) return null;
-    const total = p.by_model.reduce((sum, m) => sum + m.count, 0) || 1;
+    if (!rows || rows.length === 0) return null;
     const counts: Record<Tier, number> = { local: 0, cheap: 0, premium: 0 };
-    for (const m of p.by_model) counts[tierForModel(m.model_name)] += m.count;
+    for (const r of rows) counts[tierFromCostTier(r.cost_tier_name)] += 1;
+    // rows.length > 0 is guaranteed by the guard above (no divide-by-zero).
+    const total = rows.length;
     return TIER_ORDER.map((tier) => ({ tier, fraction: counts[tier] / total }));
-  }, [p]);
+  }, [rows]);
 
   return (
     <SectionCard
@@ -36,7 +45,7 @@ export function TierDistributionSection() {
       isLoading={isLoading}
       error={error}
       isEmpty={!shares}
-      sample={p?.provisioned === false}
+      sample={provisioned === false}
       className="sd-hero-tiers"
     >
       {shares && (

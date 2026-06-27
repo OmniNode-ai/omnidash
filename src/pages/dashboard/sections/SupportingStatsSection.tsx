@@ -4,14 +4,15 @@ import { useProjectionQuery } from '@/hooks/useProjectionQuery';
 import { useFrameStore } from '@/store/store';
 import { TOPICS } from '@shared/types/topics';
 import { formatUsd, formatPct, formatLatency } from '../lib/format';
-import { tierForModel } from '../lib/modelTier';
-import type { DelegationSavingsProjection, ModelRoutingProjection } from '../types';
+import { tierFromCostTier } from '../lib/tier';
+import type { DelegationSavingsProjection, DelegationDecisionRow } from '../types';
 
 /**
  * The supporting stat row beneath the hero: actual spend (savings projection),
- * premium-tier share (model-routing → tier derivation), and mean response latency
- * (savings sessions). No "vs previous period" deltas — the projections take no
- * window/compare params today, so we don't show comparisons we can't compute.
+ * premium-tier share (authoritative cost_tier_name on decisions.v1, OMN-13649),
+ * and mean response latency (savings sessions). No "vs previous period" deltas —
+ * the projections take no window/compare params today, so we don't show
+ * comparisons we can't compute.
  */
 export function SupportingStatsSection() {
   const setActivePage = useFrameStore((s) => s.setActivePage);
@@ -19,29 +20,29 @@ export function SupportingStatsSection() {
     queryKey: ['dashboard', 'savings'],
     topic: TOPICS.delegationSavings,
   });
-  const { data: routingData } = useProjectionQuery<ModelRoutingProjection>({
-    queryKey: ['dashboard', 'model-routing'],
-    topic: TOPICS.delegationModelRouting,
+  const { data: decisionsData } = useProjectionQuery<DelegationDecisionRow>({
+    queryKey: ['dashboard', 'decisions'],
+    topic: TOPICS.delegationDecisions,
   });
   const savings = savingsData?.[0];
-  const routing = routingData?.[0];
+  const decisions = decisionsData;
 
   const stats = useMemo(() => {
-    if (!savings || !routing) return null;
+    if (!savings || !decisions) return null;
     const sessions = savings.sessions;
     const avgLatencyMs = sessions.length
       ? sessions.reduce((sum, s) => sum + s.latency_ms, 0) / sessions.length
       : null;
-    const total = routing.by_model.reduce((sum, m) => sum + m.count, 0);
-    const premiumCount = routing.by_model
-      .filter((m) => tierForModel(m.model_name) === 'premium')
-      .reduce((sum, m) => sum + m.count, 0);
+    const total = decisions.length;
+    const premiumCount = decisions.filter(
+      (d) => tierFromCostTier(d.cost_tier_name) === 'premium',
+    ).length;
     return {
       actualSpend: savings.cumulative_local_cost_usd,
       premiumShare: total > 0 ? premiumCount / total : 0,
       avgLatencyMs,
     };
-  }, [savings, routing]);
+  }, [savings, decisions]);
 
   return (
     <div className="sd-stats-block">

@@ -54,7 +54,7 @@ lines, 71.82% branches.
 ### C2 — `src/agent/llmClient.ts:17` LLM fallback URL hardcoded
 
 **Status:** Fixed in PR 1 (T1).
-**Where:** [`src/agent/llmClient.ts`](../src/agent/llmClient.ts).
+**Where:** `src/agent/llmClient.ts`.
 **What changed:** `FALLBACK_LLM_CONFIG.baseURL` is now a lazy getter that throws when `VITE_LLM_FALLBACK_URL` is unset. Callers that don't opt into the fallback path (`useFallback=false`) never trip it; callers that do get a clear error at access time instead of a silent connect to a stale IP. `DEFAULT_LLM_CONFIG.baseURL` similarly uses `buildBaseURL(VITE_LLM_BASE_URL)` which throws in non-DEV builds.
 
 ### C3 — `vite.config.ts:139` Vite proxy fallback hardcoded
@@ -78,16 +78,16 @@ lines, 71.82% branches.
 ### C6 — `dashboardSlice.hydrateList()` casts unvalidated localStorage
 
 **Status:** Fixed in PR 1 (T2).
-**Where:** [`src/store/dashboardSlice.ts`](../src/store/dashboardSlice.ts), [`shared/types/dashboard.ts`](../shared/types/dashboard.ts) (new `parseDashboardDefinition`).
+**Where:** `src/store/dashboardSlice.ts`, [`shared/types/dashboard.ts`](../shared/types/dashboard.ts) (new `parseDashboardDefinition`).
 **What changed:** A new tolerant validator `parseDashboardDefinition(value: unknown)` was added next to the existing `validateDashboardDefinition`. `hydrateList` now runs it per entry, drops corrupted entries with `console.warn`, and never crashes render on bad localStorage. (Note: in PR 3a / T14 this logic moved into `dashboardService.hydrateList()`; the slice now delegates.)
-**Proof:** [`src/store/dashboardSlice.hydrate.test.ts`](../src/store/dashboardSlice.hydrate.test.ts) seeds a mix of valid + corrupt entries and asserts the valid one survives + the warning fires.
+**Proof:** `src/store/dashboardSlice.hydrate.test.ts` seeds a mix of valid + corrupt entries and asserts the valid one survives + the warning fires.
 
 ### C7 — `HttpLayoutPersistence.read()` casts HTTP response without validation
 
 **Status:** Fixed in PR 1 (T2).
-**Where:** [`src/layout/layout-persistence.ts`](../src/layout/layout-persistence.ts).
+**Where:** `src/layout/layout-persistence.ts`.
 **What changed:** `read()` now runs `parseDashboardDefinition` against the response body and throws a typed error on invalid shape rather than returning a typed-but-corrupt value.
-**Proof:** [`src/layout/layout-persistence.test.ts`](../src/layout/layout-persistence.test.ts) test "throws on malformed dashboard payload (T2 acceptance)" — server returns 200 OK with a missing-field body; assertion expects a thrown `/malformed dashboard/` error.
+**Proof:** `src/layout/layout-persistence.test.ts` test "throws on malformed dashboard payload (T2 acceptance)" — server returns 200 OK with a missing-field body; assertion expects a thrown `/malformed dashboard/` error.
 
 ### C8 — `pg.Pool` has no `'error'` listener
 
@@ -102,7 +102,7 @@ lines, 71.82% branches.
 ### H1 — `EventStream` hardcodes `ws://localhost:3002/ws`
 
 **Status:** Fixed in PR 1 (T4).
-**Where:** [`src/components/dashboard/events/EventStream.tsx`](../src/components/dashboard/events/EventStream.tsx).
+**Where:** `src/components/dashboard/events/EventStream.tsx`.
 **What changed:** The literal is gone. The widget calls `getWebSocketUrl()` from `@/data-source` — symmetric to the existing HTTP carve-out.
 
 ### H2 — `useWebSocketInvalidation` hardcodes the same URL
@@ -115,25 +115,25 @@ lines, 71.82% branches.
 ### H3 — `CostTrend3D` and `CostByModelPie` advertise empty `configSchema`
 
 **Status:** Fixed in PR 2 (T6).
-**Where:** [`scripts/generate-registry.ts`](../scripts/generate-registry.ts), [`shared/types/component-manifest.ts`](../shared/types/component-manifest.ts), [`src/registry/ComponentRegistry.ts`](../src/registry/ComponentRegistry.ts), [`src/pages/DashboardView.tsx`](../src/pages/DashboardView.tsx), [`src/config/ComponentConfigPanel.tsx`](../src/config/ComponentConfigPanel.tsx).
+**Where:** `scripts/generate-registry.ts`, [`shared/types/component-manifest.ts`](../shared/types/component-manifest.ts), `src/registry/ComponentRegistry.ts`, `src/pages/DashboardView.tsx`, `src/config/ComponentConfigPanel.tsx`.
 **What changed:** `configSchema` is now optional in `ComponentManifest`. Four widgets (`cost-trend-3d`, `cost-by-model`, `baselines-roi-card`, `readiness-gate`) that ignored their config now omit `configSchema` entirely. The kebab "Configure Widget" item is gated on `configSchema?.properties` being non-empty. The configure-widget dialog defensively bails if it ever reaches a widget without a schema.
 
 ### H4 — Cost Trend 2D / 3D palette divergence
 
 **Status:** Fixed in PR 2 (T7).
-**Where:** [`src/components/dashboard/cost-trend/CostTrend3DBars.tsx`](../src/components/dashboard/cost-trend/CostTrend3DBars.tsx) (formerly `cost-trend-3d/CostTrend3D.tsx`; component was split and relocated).
+**Where:** `src/components/dashboard/cost-trend/CostTrend3DBars.tsx` (formerly `cost-trend-3d/CostTrend3D.tsx`; component was split and relocated).
 **What changed:** The hardcoded `modelPalette` arrays in `DARK_THEME` / `LIGHT_THEME` are kept as fallbacks but the live `theme.modelPalette` now comes from `useThemeColors().chart` — the same source the 2D widgets read. Same model gets the same color across 2D bars / 3D pie / 2D bars / Cost Trend 3D in both themes.
 
 ### H5 — `DashboardGrid.onLayoutChange` declared but unused
 
 **Status:** Fixed in Bundle 3 (`e0cb96f`).
-**Where:** [`src/components/dashboard/DashboardGrid.tsx`](../src/components/dashboard/DashboardGrid.tsx) + [`src/components/dashboard/DashboardGrid.test.tsx`](../src/components/dashboard/DashboardGrid.test.tsx).
+**Where:** `src/components/dashboard/DashboardGrid.tsx` + `src/components/dashboard/DashboardGrid.test.tsx`.
 **What changed:** Removed (not wired). The component renders a static 2-column grid; drag/drop reordering lives in `DashboardView` (which renders the grid inline), not here, so the prop had nothing to fire. Test file's stub `onLayoutChange={() => {}}` arguments dropped along with the prop.
 
 ### H6 — `ComponentRegistry.validateConfig` uses `(schema as any)` 3 times
 
 **Status:** Fixed in PR 1 (T2 — rolled into the I/O validation cluster).
-**Where:** [`src/registry/ComponentRegistry.ts`](../src/registry/ComponentRegistry.ts).
+**Where:** `src/registry/ComponentRegistry.ts`.
 **What changed:** Imports `JSONSchema7`, `JSONSchema7Definition`, `JSONSchema7TypeName` from `json-schema`. The three `as any` casts are gone. Leaf-type validation pulled into a typed `checkLeafType()` helper that handles all `JSONSchema7TypeName` values (string/number/integer/boolean/array/object/null).
 
 ### H7 — `useProjectionQuery` creates a new `SnapshotSource` per widget instance
@@ -145,18 +145,18 @@ lines, 71.82% branches.
 ### H8 — Three competing persistence stores
 
 **Status:** Fixed in PR 3a (T14). **Architecture decision: Option 1.**
-**Where:** [`src/services/dashboardService.ts`](../src/services/dashboardService.ts), [`src/store/dashboardSlice.ts`](../src/store/dashboardSlice.ts), [`src/pages/DashboardView.tsx`](../src/pages/DashboardView.tsx).
+**Where:** `src/services/dashboardService.ts`, `src/store/dashboardSlice.ts`, `src/pages/DashboardView.tsx`.
 **Decision:** `DashboardService` is the canonical state read/write path. Per Bret's confirmation that Jonah uses services-led architecture in other projects.
 **What changed:**
 - `DashboardService` now owns the localStorage keys (`omnidash.dashboards.list.v1`, `omnidash.lastActiveId.v1`) via `persistList`/`persistActiveId`/`hydrateList`/`hydrateActiveId` methods plus a default singleton export `dashboardService`.
 - Zustand `dashboardSlice` no longer touches localStorage — every persist/hydrate helper delegates to `dashboardService`.
 - `DashboardView.handleSave` calls `dashboardService.save(dashboard)` instead of `layoutPersistence.write` directly. Mount-load uses `dashboardService.loadByName('default')`.
-- Round-trip integration test in [`src/services/dashboardService.test.ts`](../src/services/dashboardService.test.ts) — saves a dashboard, reloads via `loadByName`, asserts identical state.
+- Round-trip integration test in `src/services/dashboardService.test.ts` — saves a dashboard, reloads via `loadByName`, asserts identical state.
 
 ### H9 — `CostTrend3D` has no `.test.tsx`
 
 **Status:** Fixed in PR 2 (T9).
-**Where:** [`src/components/dashboard/cost-trend/CostTrend3DBars.test.tsx`](../src/components/dashboard/cost-trend/CostTrend3DBars.test.tsx) (formerly `cost-trend-3d/CostTrend3D.test.tsx`).
+**Where:** `src/components/dashboard/cost-trend/CostTrend3DBars.test.tsx` (formerly `cost-trend-3d/CostTrend3D.test.tsx`).
 **What changed:** Mirrors the `CostByModelPie` pattern — `vi.mock('three')` with a `FakeWebGLRenderer`, plus a parallel mock for `CSS2DRenderer` since this widget uses DOM-overlay labels. Covers loading, empty, and populated states.
 
 ### H10 — Express server has zero test coverage
@@ -201,7 +201,7 @@ lines, 71.82% branches.
 ### H16 — "Add Widget" is the actual edit-mode toggle
 
 **Status:** Fixed in Bundle 3 (`e0cb96f`).
-**Where:** [`src/pages/DashboardView.tsx`](../src/pages/DashboardView.tsx).
+**Where:** `src/pages/DashboardView.tsx`.
 **What changed:** View-mode header now exposes two buttons — "Edit Layout" (ghost, `Pencil` icon) for users who want to rearrange/configure existing widgets, and "Add Widget" (primary, `Plus` icon) for the common new-widget case. Both call `handleEdit()` since the right-rail palette opens automatically in edit mode either way; the split is purely about affordance honesty.
 
 ---
@@ -211,25 +211,25 @@ lines, 71.82% branches.
 ### M1 — `CostTrendPanel` uses timezone-naive Date getters
 
 **Status:** Fixed in Bundle 2 (`f0260ab`).
-**Where:** [`src/lib/zonedComponents.ts`](../src/lib/zonedComponents.ts) (new), [`src/components/dashboard/cost-trend/CostTrend2D.tsx`](../src/components/dashboard/cost-trend/CostTrend2D.tsx) (formerly `CostTrendPanel.tsx`), [`src/components/dashboard/cost-trend/CostTrend3DBars.tsx`](../src/components/dashboard/cost-trend/CostTrend3DBars.tsx) (formerly `cost-trend-3d/CostTrend3D.tsx`).
+**Where:** [`src/lib/zonedComponents.ts`](../src/lib/zonedComponents.ts) (new), `src/components/dashboard/cost-trend/CostTrend2D.tsx` (formerly `CostTrendPanel.tsx`), `src/components/dashboard/cost-trend/CostTrend3DBars.tsx` (formerly `cost-trend-3d/CostTrend3D.tsx`).
 **What changed:** Extracted `zonedComponents()` from its private home inside `CostTrend3D.tsx` into a shared util at `src/lib/`. Both Cost Trend widgets now route timestamp formatting through it; raw `Date.prototype.getMonth/getDate/getHours` calls in `CostTrendPanel` are gone.
 
 ### M2 — Delegation Metrics hardcodes 0.8 quality gate threshold
 
 **Status:** Fixed in PR 3b (T19).
-**Where:** [`scripts/generate-registry.ts`](../scripts/generate-registry.ts), [`src/components/dashboard/delegation/DelegationMetrics.tsx`](../src/components/dashboard/delegation/DelegationMetrics.tsx).
+**Where:** `scripts/generate-registry.ts`, `src/components/dashboard/delegation/DelegationMetrics.tsx`.
 **What changed:** `qualityGateThreshold` (number, 0..1, default 0.8) added to the `delegation-metrics` configSchema — mirrors the `passThreshold` pattern in `quality-score-panel`. Widget reads `config.qualityGateThreshold` instead of hardcoding 0.8.
 
 ### M3 — `Date.now() + Math.random()` ID generators in 6+ places
 
 **Status:** Fixed in PR 3b (T20).
-**Where:** [`src/store/dashboardSlice.ts`](../src/store/dashboardSlice.ts), [`src/store/conversationSlice.ts`](../src/store/conversationSlice.ts), [`src/services/dashboardService.ts`](../src/services/dashboardService.ts), [`shared/types/dashboard.ts`](../shared/types/dashboard.ts).
+**Where:** `src/store/dashboardSlice.ts`, `src/store/conversationSlice.ts`, `src/services/dashboardService.ts`, [`shared/types/dashboard.ts`](../shared/types/dashboard.ts).
 **What changed:** `crypto.randomUUID()` everywhere. `itemCounter` module variable removed (no longer needed). Acceptance: grep for `Date.now() + Math.random` in `src/` returns zero hits.
 
 ### M4 — `ComponentCell.emptyMessage` declared but never forwarded
 
 **Status:** Fixed in Bundle 1 (`6c2a9c6`).
-**Where:** [`src/components/dashboard/ComponentCell.tsx`](../src/components/dashboard/ComponentCell.tsx).
+**Where:** `src/components/dashboard/ComponentCell.tsx`.
 **What changed:** The previously-dangling `emptyMessage` prop is now consumed by the not-available fallback. Hosts (especially future plugin-extension paths) can pass a friendlier message than `<componentName> — not available` for widgets whose lazy import isn't resolvable.
 
 ### M5 — `vite.config.ts` middleware uses `any` on Connect callbacks
@@ -241,7 +241,7 @@ lines, 71.82% branches.
 ### M6 — Topic strings hardcoded in widget components AND partially in registry
 
 **Status:** Fixed in PR 3a (T16). Drives the §3 cluster F fix.
-**Where:** [`shared/types/topics.ts`](../shared/types/topics.ts) (new), 9 widgets, [`shared/types/component-manifest.ts`](../shared/types/component-manifest.ts), [`scripts/generate-registry.ts`](../scripts/generate-registry.ts).
+**Where:** [`shared/types/topics.ts`](../shared/types/topics.ts) (new), 9 widgets, [`shared/types/component-manifest.ts`](../shared/types/component-manifest.ts), `scripts/generate-registry.ts`.
 **What changed:**
 - New `shared/types/topics.ts` with `TOPICS` const + `TopicSymbol` type. Naming: `onex.snapshot.projection.{producer}.{event}.v{N}`.
 - 9 widgets swap from literal `'onex.snapshot.projection.X.v1'` strings to `TOPICS.X` symbols.
@@ -264,7 +264,7 @@ lines, 71.82% branches.
 ### M9 — `QualityScorePanel.test.tsx` fixture diverges from server output
 
 **Status:** Fixed in Bundle 2 (`f0260ab`).
-**Where:** [`server/routes.ts`](../server/routes.ts), [`server/routes.test.ts`](../server/routes.test.ts), [`src/components/dashboard/quality/QualityScore.test.tsx`](../src/components/dashboard/quality/QualityScore.test.tsx) (formerly `QualityScorePanel.test.tsx`), [`src/components/dashboard/quality/QualityScoreHistogram.test.tsx`](../src/components/dashboard/quality/QualityScoreHistogram.test.tsx) (formerly `quality-score-panel-2d/`; files relocated to `quality/`), [`src/storybook/fixtures/quality.ts`](../src/storybook/fixtures/quality.ts).
+**Where:** [`server/routes.ts`](../server/routes.ts), [`server/routes.test.ts`](../server/routes.test.ts), `src/components/dashboard/quality/QualityScore.test.tsx` (formerly `QualityScorePanel.test.tsx`), `src/components/dashboard/quality/QualityScoreHistogram.test.tsx` (formerly `quality-score-panel-2d/`; files relocated to `quality/`), `src/storybook/fixtures/quality.ts`.
 **What changed:** Discovered the divergence ran deeper than the review described — server emitted 10 buckets (`WIDTH_BUCKET(..., 10)`), widget consumed 5 (BAR_COUNT). The widget would silently undercount any backend distribution past index 4. Aligned the server to the consumer: route now emits 5 buckets (matching the widget's contract), all fixture call-sites updated from range-style labels (`"0.0-0.2"`) to integer-string labels (`"1"`..`"5"`) — what the server actually returns.
 
 ### M10 — `mockFetchWithItems` duplicated across 7 (now 11) test files
@@ -312,7 +312,7 @@ lines, 71.82% branches.
 ### M17 — `proof-of-life.test.tsx` `it.skipIf(inCI)`
 
 **Status:** Fixed in Bundle 5 (`10b699a`).
-**Where:** [`tests/proof-of-life.test.tsx`](../tests/proof-of-life.test.tsx).
+**Where:** `tests/proof-of-life.test.tsx`.
 **What changed:** Removed the fixture-existence test entirely. It only asserted that a contributor had run `generate:fixtures` locally before invoking `npm test` — it never verified the fixture pipeline itself worked, and was permanently `skipIf(inCI)`. Real fixture-rendering coverage lives in widget unit tests (which mock fetch) and in the integration tests; the skip-test was performative coverage, not real coverage. The other two assertions in the file (registry component count, generated enum match) were retained.
 
 ### M18 — Express WebSocket subscription filter untested

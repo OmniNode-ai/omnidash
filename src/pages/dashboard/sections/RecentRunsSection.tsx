@@ -4,7 +4,7 @@ import { useFrameStore } from '@/store/store';
 import { SectionCard } from '../SectionCard';
 import { GateBadge } from '../GateBadge';
 import { formatUsdCents, formatCompact, formatLatency, formatRelativeTime } from '../lib/format';
-import { TIER_LABEL } from '../lib/modelTier';
+import { TIER_LABEL } from '../lib/tier';
 import { useDelegationRuns } from '../lib/useDelegationRuns';
 
 /** How many rows are revealed initially, and per "Show more" click. */
