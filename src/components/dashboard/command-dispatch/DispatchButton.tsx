@@ -16,14 +16,14 @@ type ButtonState = 'idle' | 'loading' | 'success' | 'error';
 const ICON_SIZE = 12;
 
 export function DispatchButton({ variant, targetNodeId, correlationId }: DispatchButtonProps) {
-  const { dispatch, isAvailable } = useDispatch();
+  const { dispatch } = useDispatch();
   const [state, setState] = useState<ButtonState>('idle');
 
   const isStop = variant === 'stop';
 
   const handleClick = async (e: React.MouseEvent) => {
     e.stopPropagation();
-    if (state === 'loading' || !isAvailable) return;
+    if (state === 'loading') return;
     setState('loading');
 
     const req: DispatchRequest = isStop
@@ -50,11 +50,9 @@ export function DispatchButton({ variant, targetNodeId, correlationId }: Dispatc
 
   const baseColor = isStop ? 'var(--bad)' : 'var(--accent)';
   const stateColor = state === 'success' ? 'var(--good)' : state === 'error' ? 'var(--bad)' : baseColor;
-  const isDisabled = !isAvailable || state === 'loading';
+  const isDisabled = state === 'loading';
 
-  const title = isStop
-    ? isAvailable ? 'Stop this trace' : 'Dispatch unavailable'
-    : isAvailable ? 'Re-run this trace' : 'Dispatch unavailable';
+  const title = isStop ? 'Stop this trace' : 'Re-run this trace';
 
   return (
     <button
@@ -75,7 +73,6 @@ export function DispatchButton({ variant, targetNodeId, correlationId }: Dispatc
         color: isDisabled ? 'var(--text-tertiary)' : stateColor,
         cursor: isDisabled ? 'not-allowed' : 'pointer',
         flexShrink: 0,
-        opacity: isDisabled && !isAvailable ? 0.4 : 1,
         transition: 'opacity 0.15s, border-color 0.15s, color 0.15s',
       }}
     >

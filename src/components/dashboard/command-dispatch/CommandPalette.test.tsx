@@ -13,7 +13,7 @@ import { ThemeProvider } from '@/theme';
 import { CommandPalette } from './CommandPalette';
 
 vi.mock('./useDispatch', () => ({
-  useDispatch: () => ({ dispatch: vi.fn(), isAvailable: true }),
+  useDispatch: () => ({ dispatch: vi.fn() }),
 }));
 
 function Wrapper({ children }: { children: React.ReactNode }) {

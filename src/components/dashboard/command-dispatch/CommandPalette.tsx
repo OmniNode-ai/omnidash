@@ -3,10 +3,12 @@ import { Search, X, Send, Loader, Check, AlertCircle } from 'lucide-react';
 import { Text } from '@/components/ui/typography';
 import { useDispatch } from './useDispatch';
 
+// OMN-12809: node_dispatch_request_handler removed — it was the router-hop node
+// that /api/dispatch targeted. All other nodes remain available for dispatch via
+// the /api/renderer/emit thin-publisher (node.run-node.v1 action contract).
 const KNOWN_NODES = [
   { id: 'node_build_loop', kind: 'ORCHESTRATOR' },
   { id: 'node_log_persistence_effect', kind: 'EFFECT' },
-  { id: 'node_dispatch_request_handler', kind: 'ORCHESTRATOR' },
   { id: 'node_test_runner', kind: 'COMPUTE' },
   { id: 'node_projection_traces', kind: 'REDUCER' },
   { id: 'node_dispatch_worker', kind: 'EFFECT' },
@@ -65,7 +67,7 @@ export function CommandPalette({ onClose }: CommandPaletteProps) {
   const [payloadText, setPayloadText] = useState('{}');
   const [payloadError, setPayloadError] = useState<string | null>(null);
   const [dispatchState, setDispatchState] = useState<DispatchState>('idle');
-  const [dispatchResult, setDispatchResult] = useState<{ request_id?: string; status?: string } | null>(null);
+  const [dispatchResult, setDispatchResult] = useState<{ correlation_id?: string; accepted?: boolean } | null>(null);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [activeIndex, setActiveIndex] = useState(0);
 
@@ -283,10 +285,10 @@ export function CommandPalette({ onClose }: CommandPaletteProps) {
               <>
                 <Text size="sm" style={{ color: 'var(--good)' }}>Dispatched successfully</Text>
                 <Text size="xs" color="secondary" family="mono">
-                  {`request_id: ${dispatchResult.request_id ?? '—'}`}
+                  {`correlation_id: ${dispatchResult.correlation_id ?? '—'}`}
                 </Text>
                 <Text size="xs" color="secondary" family="mono">
-                  {`status: ${dispatchResult.status ?? '—'}`}
+                  {`accepted: ${String(dispatchResult.accepted ?? false)}`}
                 </Text>
               </>
             ) : (
