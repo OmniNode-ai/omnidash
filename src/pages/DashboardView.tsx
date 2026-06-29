@@ -66,15 +66,29 @@ export function DashboardView() {
 
   // Hydrate the last active dashboard layout from disk on mount.
   useEffect(() => {
+    // OMN-12833 (A2.5): strip layout items whose component is classified hidden
+    // by the one-backend palette sweep. Runs once at load so stale saved layouts
+    // from before the palette classification landed never render "not available"
+    // placeholders. Unknown component names (external plugins not in the registry)
+    // are kept — absence from the registry is not the same as hidden.
+    const pruneHiddenItems = (dashboard: import('@shared/types/dashboard').DashboardDefinition) => ({
+      ...dashboard,
+      layout: dashboard.layout.filter(
+        (item) => registry.getComponent(item.componentName)?.manifest.paletteVisibility !== 'hidden',
+      ),
+    });
+
     dashboardService.loadByName('default').then((persisted) => {
       const currentDashboard = useFrameStore.getState().activeDashboard;
       if (!currentDashboard) {
-        setActiveDashboard(persisted && Array.isArray(persisted.layout) ? persisted : cloneSeaDemoTemplate());
+        setActiveDashboard(
+          pruneHiddenItems(persisted && Array.isArray(persisted.layout) ? persisted : cloneSeaDemoTemplate()),
+        );
       }
     }).catch((err: unknown) => {
       console.warn('[DashboardView] failed to load persisted layout:', err);
       if (!useFrameStore.getState().activeDashboard) {
-        setActiveDashboard(cloneSeaDemoTemplate());
+        setActiveDashboard(pruneHiddenItems(cloneSeaDemoTemplate()));
       }
     });
     // Intentional one-shot: this effect should run only on mount.
@@ -239,6 +253,15 @@ export function DashboardView() {
   }
 
   const saveBlocked = editMode && anyPlacementHasValidationErrors();
+
+  // OMN-12833 (A2.5): only expose palette-visible components in the widget library.
+  // Hidden components remain in the registry (for layout resolution and tests) but
+  // must not appear as choosable entries — their projection topics are not served by
+  // the single standard backend. getAvailableComponents() is intentionally unfiltered
+  // so other call sites (config panels, layout hydration) are not affected.
+  const paletteComponents = registry.getAvailableComponents().filter(
+    (c) => c.manifest.paletteVisibility !== 'hidden',
+  );
 
   return (
     <>
@@ -448,7 +471,7 @@ export function DashboardView() {
           Close keeps changes (handleSave) rather than reverting, so widgets added
           while the rail is open don't vanish on dismissal. */}
       <ComponentPalette
-        components={registry.getAvailableComponents()}
+        components={paletteComponents}
         onAddComponent={handleAddComponent}
         onClose={handleSave}
         isOpen={editMode}

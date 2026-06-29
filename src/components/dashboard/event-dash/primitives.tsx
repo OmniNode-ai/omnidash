@@ -309,15 +309,61 @@ export function EvEmpty({
   );
 }
 
-/** Freshness chip — honest stale/fresh indicator driven by the projection envelope. */
+// ── page-level badge derivation ──────────────────────────────────────────────
+
+/**
+ * Minimal shape extracted from a settled ProjectionResult for badge derivation.
+ * Keeping it narrow means derivePageBadge() stays testable without coupling to
+ * query internals or the full ProjectionResult type.
+ */
+export interface ProjectionSnapshot {
+  rowCount: number;
+  /** Wire freshness from the projection envelope. */
+  freshness: 'fresh' | 'stale' | 'degraded' | 'unknown';
+}
+
+export type PageBadgeState = 'live' | 'stale' | 'no-data' | 'degraded' | 'loading';
+
+/**
+ * OMN-12943: derive a single page-level badge state from all authoritative
+ * projections for a page, not from any single query's freshness field.
+ *
+ * Rules (in priority order):
+ *   loading  — no settled snapshots yet
+ *   degraded — all rows === 0 AND at least one projection explicitly reported
+ *              freshness 'degraded' (backend signal, not a client parse failure)
+ *   no-data  — all rows === 0 with no explicit degradation
+ *   live     — rows exist and at least one projection is 'fresh'
+ *   stale    — rows exist but none are 'fresh' (includes 'unknown' freshness,
+ *              which is treated conservatively as stale-not-degraded because
+ *              'unknown' can arise from a malformed envelope, not only true
+ *              backend degradation — see normalize() in event-dash-api.ts)
+ */
+export function derivePageBadge(snapshots: ProjectionSnapshot[]): PageBadgeState {
+  if (snapshots.length === 0) return 'loading';
+  const totalRows = snapshots.reduce((sum, s) => sum + s.rowCount, 0);
+  if (totalRows === 0) {
+    return snapshots.some((s) => s.freshness === 'degraded') ? 'degraded' : 'no-data';
+  }
+  return snapshots.some((s) => s.freshness === 'fresh') ? 'live' : 'stale';
+}
+
+// ── freshness chip ────────────────────────────────────────────────────────────
+
+/**
+ * Freshness chip — renders the derived page badge state in the page header.
+ * Accepts the output of derivePageBadge() so the chip is a pure renderer with
+ * no badge-derivation logic of its own.
+ */
 export function FreshnessChip({
-  freshness,
+  state,
   latestEventAt,
 }: {
-  freshness: 'fresh' | 'stale' | 'degraded' | 'unknown';
-  latestEventAt: string | null;
+  state: PageBadgeState;
+  /** Shown as a tooltip on stale to indicate when data was last seen. */
+  latestEventAt?: string | null;
 }) {
-  if (freshness === 'fresh') {
+  if (state === 'live') {
     return (
       <span className="live-pill">
         <span className="pulse" />
@@ -325,11 +371,30 @@ export function FreshnessChip({
       </span>
     );
   }
-  const label = latestEventAt ? `stale · last event ${latestEventAt.replace('T', ' ').slice(0, 19)}` : 'degraded';
+  if (state === 'no-data') {
+    return (
+      <span className="live-pill stale">
+        <span className="pulse" />
+        no data
+      </span>
+    );
+  }
+  if (state === 'degraded') {
+    return (
+      <span className="live-pill stale" title="backend reported degraded">
+        <span className="pulse" />
+        degraded
+      </span>
+    );
+  }
+  // stale (covers 'stale' and 'loading' fallback — loading is resolved at the page level)
+  const label = latestEventAt
+    ? `stale · last event ${latestEventAt.replace('T', ' ').slice(0, 19)}`
+    : 'stale';
   return (
     <span className="live-pill stale" title={label}>
       <span className="pulse" />
-      {freshness === 'unknown' ? 'no data' : 'stale'}
+      stale
     </span>
   );
 }

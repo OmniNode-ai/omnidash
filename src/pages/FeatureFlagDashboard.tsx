@@ -246,7 +246,7 @@ export function FeatureFlagDashboard() {
                 ? 'Loading…'
                 : serverState === 'live'
                   ? 'Live from server'
-                  : 'Client env (flag server not running in this dev session)'}
+                  : 'Client env · flag server not connected'}
             </Text>
             {fetchedAt && (
               <Text size="sm" color="tertiary">
@@ -287,12 +287,8 @@ export function FeatureFlagDashboard() {
             }}
           >
             <Text color="tertiary" size="sm">
-              Config state, not an error: the omnidash flag server is not running
-              in this dev session, so the table above reflects client-side env
-              only and omniclaude (server-side) flags are unavailable. Start the
-              server with <Text as="span" family="mono" size="sm">npm run dev:server</Text> and
-              point dev at it by setting <Text as="span" family="mono" size="sm">VITE_OMNIDASH_SERVER_URL</Text> to
-              its base URL (see <Text as="span" family="mono" size="sm">.env.example</Text>) to read live flags.
+              omniclaude flags unavailable · flag server not connected.
+              The table above reflects client-side env only.
             </Text>
           </div>
         )}

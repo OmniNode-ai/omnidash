@@ -93,19 +93,26 @@ describe('Proof of Life — Part 2', () => {
     ]);
   });
 
-  it('palette shows all components in edit mode', async () => {
+  it('palette shows only beta-visible components in edit mode', async () => {
+    // OMN-12833 (A2.5): palette is filtered to paletteVisibility === 'visible' only.
+    // Hidden components (cost-trend-panel, cost-by-model, baselines-roi-card, etc.)
+    // must not appear — their projection topics are not served by the single backend.
     renderWithRegistry();
     await userEvent.click(screen.getByRole('button', { name: /add widget/i }));
-    expect(screen.getByText('Cost Trend')).toBeInTheDocument();
-    // Cost Trend (3D) tile collapsed into the unified 'Cost Trend' entry
-    // via the `dimension` config option (OMN-22 widget consolidation).
-    expect(screen.getByText('Cost by Model')).toBeInTheDocument();
+
+    // Visible projection-backed widgets must appear.
     expect(screen.getByText('Delegation Metrics')).toBeInTheDocument();
     expect(screen.getByText('Routing Decisions')).toBeInTheDocument();
-    expect(screen.getByText('Baselines ROI')).toBeInTheDocument();
-    expect(screen.getByText('Quality Scores')).toBeInTheDocument();
-    expect(screen.getByText('Readiness Gate')).toBeInTheDocument();
-    expect(screen.getByText('Event Stream')).toBeInTheDocument();
+    expect(screen.getByText('Token Usage')).toBeInTheDocument();
+    expect(screen.getByText('Self-Extending Agent Control Plane')).toBeInTheDocument();
+
+    // Hidden widgets must not appear in the palette.
+    expect(screen.queryByText('Cost Trend')).not.toBeInTheDocument();
+    expect(screen.queryByText('Cost by Model')).not.toBeInTheDocument();
+    expect(screen.queryByText('Baselines ROI')).not.toBeInTheDocument();
+    expect(screen.queryByText('Quality Scores')).not.toBeInTheDocument();
+    expect(screen.queryByText('Readiness Gate')).not.toBeInTheDocument();
+    expect(screen.queryByText('Event Stream')).not.toBeInTheDocument();
   });
 
   it('dashboard CRUD round-trips correctly', async () => {

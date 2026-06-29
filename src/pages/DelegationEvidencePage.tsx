@@ -19,6 +19,7 @@ import {
   KV,
   Panel,
   StateBadge,
+  derivePageBadge,
   fmtLatency,
   fmtMoney,
   fmtMoney4,
@@ -26,6 +27,7 @@ import {
   fmtTokens,
   shortId,
   type DataColumn,
+  type ProjectionSnapshot,
 } from '@/components/dashboard/event-dash/primitives';
 import {
   useCorrelationTrace,
@@ -359,8 +361,16 @@ export function DelegationEvidencePage() {
 
   const kpiTokens: ReactNode = tokens ? fmtTokens(tokens.total_tokens) : '—';
 
-  const headRight = decisionsQ.data ? (
-    <FreshnessChip freshness={decisionsQ.data.freshness} latestEventAt={decisionsQ.data.latestEventAt} />
+  // OMN-12943: derive badge from all three authoritative projections for this page
+  // so the header reflects the composite data state, not a single query's freshness.
+  const snapshots: ProjectionSnapshot[] = [summaryQ.data, tokensQ.data, decisionsQ.data]
+    .filter((d): d is NonNullable<typeof d> => d !== undefined)
+    .map((d) => ({ rowCount: d.rowCount, freshness: d.freshness }));
+  const badgeState = derivePageBadge(snapshots);
+  const latestEventAt = decisionsQ.data?.latestEventAt ?? null;
+
+  const headRight = snapshots.length > 0 ? (
+    <FreshnessChip state={badgeState} latestEventAt={latestEventAt} />
   ) : null;
 
   return (

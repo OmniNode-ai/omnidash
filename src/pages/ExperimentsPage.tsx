@@ -18,22 +18,21 @@
 
 import { EvPageShell } from '@/components/dashboard/event-dash/EvPageShell';
 import {
-  Badge,
   EvEmpty,
   Panel,
-  fmtLatency,
-  fmtMoney4,
   fmtPct,
-  fmtTokens,
 } from '@/components/dashboard/event-dash/primitives';
+// OMN-12833 (A4): Badge, fmtLatency, fmtMoney4, fmtTokens removed while AbCompare is commented out.
+// Restore alongside the AbCompare function and its <AbCompare /> render call below.
 import {
-  useAbCompare,
   useContextExperimentScores,
   useDelegationDecisions,
   useDelegationQualityGate,
 } from '@/components/dashboard/event-dash/useEventDashData';
+// OMN-12833 (A4): useAbCompare removed while AbCompare is commented out. Restore alongside it.
 import { aggregateByArm, buildSegmentModelMatrix } from './context-roi-experiment';
-import { aggregateAbCompareByModel } from './ab-compare-aggregate';
+// OMN-12833 (A4): aggregateAbCompareByModel removed while AbCompare is commented out. Restore alongside it.
+// import { aggregateAbCompareByModel } from './ab-compare-aggregate';
 
 // ── quality score distribution (derived from real decisions + quality gate) ──
 
@@ -77,14 +76,12 @@ function QualityDist() {
   );
 }
 
-// ── A/B model compare (per-model rollup of per-call rows, OMN-12993) ──────────
-// The ab-compare.v1 projection (llm_call_metrics, OMN-12970) serves ONE row per
-// LLM CALL. This panel renders ONE row per MODEL — run count + latency, plus
-// token/cost ONLY when the emitter captured real usage. exp0-path calls write
-// usage_source='MISSING' / prompt_tokens=0 (upstream gap OMN-12994); those count
-// as runs but render an honest em-dash for tokens/cost, never a measured-looking
-// 0. Aggregation lives in the pure ab-compare-aggregate.ts helper.
+/* OMN-12833 (A4): AbCompare commented out — ab-compare.v1 is degraded because
+   public.llm_call_metrics does not exist in the projection DB yet. Restore by
+   uncommenting this function and the <AbCompare /> call below once the AB-compare
+   emitter materialises the backing table.
 
+// ── A/B model compare (per-model rollup of per-call rows, OMN-12993) ──────────
 function AbCompare() {
   const { data, isLoading } = useAbCompare();
   if (isLoading || !data) {
@@ -119,6 +116,7 @@ function AbCompare() {
     </Panel>
   );
 }
+*/
 
 // ── context-ROI experiment closure loop (OMN-12955) ──────────────────────────
 // Reads the live context_roi_scores projection
@@ -229,22 +227,30 @@ function ContextHeatmap() {
 }
 
 export function ExperimentsPage() {
-  const decisionsQ = useDelegationDecisions();
-  const headRight = decisionsQ.data ? <Badge kind="warn">experiment projections partially upstream-blocked</Badge> : null;
+  // OMN-12833 (A4): upstream-blocked badge removed — the two broken panels are
+  // commented out below, so the warning no longer applies to the beta render.
+  // const decisionsQ = useDelegationDecisions();
+  // const headRight = decisionsQ.data ? <Badge kind="warn">experiment projections partially upstream-blocked</Badge> : null;
 
   return (
     <EvPageShell
       crumb="OmniDash · Experimentation"
       title="Experimentation Platform"
-      sub="A/B model compare · context ablation · baseline ROI"
-      headRight={headRight}
+      sub="Context ablation · quality distribution"
     >
       <ContextExperimentHero />
 
       <ContextHeatmap />
 
+      {/* OMN-12833 (A4): A/B compare hidden — ab-compare.v1 is degraded because
+          public.llm_call_metrics does not exist in the projection DB yet.
+          Uncomment once the AB-compare emitter materialises the backing table.
       <AbCompare />
+      */}
 
+      {/* OMN-12833 (A4): Baselines ROI hidden — baselines.roi.v1 is unknown_topic
+          (projection not yet materialised by the backend).
+          Uncomment once the baselines-roi projection is served.
       <Panel title="BASELINES ROI" right={<Badge kind="muted">not wired</Badge>}>
         <EvEmpty
           title="Baselines ROI projection not served"
@@ -252,14 +258,15 @@ export function ExperimentsPage() {
           note="Promotion recommendations render once the baselines-roi projection is materialized."
         />
       </Panel>
+      */}
 
       <QualityDist />
 
       <div className="note ev-exp-footer">
-        Live delegation aggregates (quality gate, per-decision banding) back the QualityDist panel today. The
-        context-ablation projection (context.experiment-scores) is served live via node_projection_context_roi
-        (OMN-12955) and renders an honest empty state until fresh context-ROI runs land. The baselines.roi projection is
-        still reported unknown by the projection backend and renders an explicit not-wired state rather than a fixture.
+        Context-ablation scores (context.experiment-scores.v1) are served live via
+        node_projection_context_roi (OMN-12955) and render an honest empty state
+        until fresh context-ROI runs land. Quality score distribution derives from
+        the live delegation quality-gate and per-decision rows.
       </div>
     </EvPageShell>
   );
