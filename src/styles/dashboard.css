@@ -7,15 +7,33 @@
   --dashboard-shell-gutter: 24px;
 }
 
+/* Filter controls row (DataSource · AutoRefresh · DateRange · Timezone) */
+.dash-filters {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-left: -8px;
+  margin-top: 2px;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.dash-filters-left {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
 .dash-header {
   padding: 20px 0 14px;
   margin: 0 auto;
-  display: flex; align-items: flex-start; justify-content: space-between;
+  display: flex; align-items: flex-start;
   gap: 16px;
   width: calc(100% - (var(--dashboard-shell-gutter) * 2));
   max-width: none;
 }
-.dash-title-wrap { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+.dash-title-wrap { display: flex; flex-direction: column; gap: 4px; min-width: 0; flex: 1; }
 .dash-title {
   display: flex; align-items: center; gap: 8px;
   font-size: 22px; font-weight: 600; letter-spacing: -0.015em;
@@ -40,47 +58,71 @@
 /* ---------- DASHBOARD GRID ---------- */
 .dash-body {
   flex: 1; overflow-y: auto; overflow-x: hidden;
-  margin: 0 auto;
-  padding: 24px 0;
+  padding: 24px var(--dashboard-shell-gutter);
   position: relative;
   min-height: 0;
   box-sizing: border-box;
-  width: calc(100% - (var(--dashboard-shell-gutter) * 2));
+  width: 100%;
   max-width: none;
   scrollbar-gutter: stable both-edges;
 }
-/* Masonry-style reflow via CSS columns. A 2-column grid with varying
-   widget heights leaves dead vertical space under shorter widgets when
-   a row-mate is tall. `columns: 2` flows items top-to-bottom within each
-   column instead, so shorter items stack under each other naturally.
-   `column-gap` matches the previous grid gap; `break-inside: avoid` on
-   `.widget` keeps each card intact within one column.
+/* Two-column layout via explicit flex children (.dash-col left + right).
+   CSS `columns` was replaced because its balance algorithm distributes 3
+   equal-height cards as 1-left / 2-right instead of the expected 2-left / 1-right.
+   Explicit columns give fully predictable top-to-bottom fill order at any width.
 
-   Named .dash-grid (not .grid) because Tailwind generates its own
-   `.grid { display: grid; }` utility in the utilities layer, which
-   loads after this file and would otherwise win on source order —
-   `display: grid` defeats `columns: N`. */
+   Named .dash-grid (not .grid) to avoid Tailwind's `.grid { display: grid; }`
+   utility (utilities layer loads after this file) overriding display. */
 .dash-grid {
-  columns: 2;
-  column-gap: var(--row-gap);
+  display: flex;
+  flex-direction: row;
+  flex-wrap: wrap;
+  gap: var(--row-gap);
+  align-items: flex-start;
   width: 100%;
-  max-width: none;
 }
 
-.dash-grid.single-widget {
-  columns: 1;
+.dash-col {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--row-gap);
 }
-/* Drop to a single column once the dashboard's CONTENT area gets
-   too narrow for two widgets side by side. The breakpoint is on the
-   viewport, but we have to account for the 240px sidebar — so the
-   viewport threshold (960px) leaves the main pane at ~720px, the
-   width below which two columns each squeeze a widget below its
-   useful min-width (~340-360px after gap + chrome). Single column
-   flows all widgets vertically, full-width — no widget-internal
-   responsiveness needed. */
-@media (max-width: 960px) {
+
+/* .dash-col-item is a passthrough (display:contents) on desktop — the .widget
+   becomes a direct flex child of .dash-col so the column gap applies cleanly.
+   On mobile (.dash-col is display:contents) it switches to display:block so
+   that it becomes a real flex item of .dash-grid, and the `order` inline style
+   can sort interleaved items (0,2,4 / 1,3,5) back into linear order (0,1,2…). */
+.dash-col-item {
+  display: contents;
+}
+
+/* Append drop-slot spans both columns when visible. */
+.dash-grid-append {
+  flex-basis: 100%;
+}
+
+.dash-grid.single-widget .dash-col:last-child {
+  display: none;
+}
+
+/* Below 1024px collapse to a single column. .dash-col becomes display:contents
+   so its children (.dash-col-item) become direct flex children of .dash-grid.
+   Each .dash-col-item carries `order:<original-index>` so flex restores the
+   correct linear card sequence despite the left/right DOM split. */
+@media (max-width: 1024px) {
   .dash-grid {
-    columns: 1;
+    flex-direction: column;
+    align-items: stretch;
+  }
+  .dash-col {
+    display: contents;
+  }
+  .dash-col-item {
+    display: block;
+    width: 100%;
   }
 }
 
@@ -91,13 +133,7 @@
   overflow: hidden;
   box-shadow: var(--shadow-sm);
   position: relative;
-  /* `break-inside: avoid` keeps each widget intact within a single column
-     instead of being split at a column boundary. `margin-bottom` reproduces
-     the former grid gap spacing between column-mates. CSS columns flows
-     block children naturally, so no width/display overrides needed. */
-  break-inside: avoid;
   max-width: 100%;
-  margin-bottom: var(--row-gap);
   transition: box-shadow 0.2s, border-color 0.15s, transform 0.2s, opacity 0.2s;
   animation: widget-in 0.35s cubic-bezier(.2,.8,.2,1);
 }
@@ -183,7 +219,7 @@
 
 /* KEBAB MENU */
 .menu {
-  position: absolute; z-index: 100;
+  position: absolute; z-index: 400;
   background: var(--panel);
   border: 1px solid var(--line);
   border-radius: 8px;
@@ -227,4 +263,99 @@
 .drop-zones {
   display: grid; grid-template-columns: 1fr 1fr; gap: var(--row-gap);
   margin-top: var(--row-gap);
+}
+
+/* ── Mobile responsive — dashboard chrome (≤640px) ─────────────────────────
+   Stack the title area above the action buttons so the title never clips.
+   Reduce the shell gutter so widgets get more horizontal room on narrow
+   screens. Drop-zones collapse to a single column. */
+@media (max-width: 640px) {
+  :root {
+    --dashboard-shell-gutter: 12px;
+  }
+
+  .dash-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 10px;
+    padding: 14px 16px 10px;
+    width: 100%;
+    box-sizing: border-box;
+  }
+
+  .dash-body {
+    padding-left: 16px;
+    padding-right: 16px;
+  }
+
+  /* Title + rename input — constrain to container so it never overflows */
+  .dash-title-wrap {
+    width: 100%;
+  }
+  .dash-title {
+    font-size: 18px;
+    max-width: 100%;
+  }
+  .dash-title input {
+    width: 100%;
+    box-sizing: border-box;
+  }
+
+  /* Filter controls row — remove the negative margin that glues it to the
+     left edge on desktop, and shrink the filter buttons */
+  .dash-filters {
+    margin-left: 0;
+  }
+  .dash-filters-left .btn {
+    padding: 5px 8px;
+    font-size: 12px;
+    gap: 5px;
+  }
+
+  /* Edit Layout / Add Widget — smaller on mobile */
+  .header-actions .btn {
+    padding: 6px 10px;
+    font-size: 12px;
+  }
+
+  /* Save / Discard move into the modal footer on narrow screens */
+  .header-edit-actions {
+    display: none;
+  }
+
+  /* Widget head — stack title and badge vertically on mobile so the full
+     title is visible on its own line and the badge drops below it.
+     display: block on .widget-title is required — text-overflow: ellipsis
+     only works on block elements, not flex containers. */
+  .widget-head {
+    flex-wrap: wrap;
+    gap: 4px;
+  }
+  .widget-head-left {
+    flex: 1 1 100%;
+    min-width: 0;
+    overflow: hidden;
+  }
+  .widget-title {
+    display: block;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .widget-head-right {
+    flex: 0 0 auto;
+    justify-content: flex-start;
+  }
+
+  .drop-zones {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* Cap the DataSource menu width on mobile so the 300px min-width menu
+   doesn't overflow a narrow screen. */
+@media (max-width: 640px) {
+  .menu {
+    max-width: calc(100vw - 24px);
+  }
 }

@@ -136,33 +136,48 @@
 .dash-item:hover .dash-kebab, .dash-item.active .dash-kebab { opacity: 1; }
 .dash-item .dash-kebab:hover { background: oklch(36% 0.01 260); }
 
-@media (max-width: 720px) {
-  .sidebar .brand {
-    padding: 18px 6px 14px;
-    flex-direction: column;
-    gap: 8px;
+/* ── Mobile sidebar overlay (≤1024px) ───────────────────────────────────────
+   On mobile the grid column stays at 56px (icon rail by default). When the
+   user expands the sidebar (sidebar-collapsed class absent from .app) it
+   escapes the grid as a fixed overlay so the content column keeps its full
+   width. The backdrop sits behind the sidebar and closes it on outside click.
+   The old 720px rule that forced icon-rail appearance is superseded by
+   initialising sidebarCollapsed = true on mobile (uiSlice.ts). */
+@media (max-width: 1024px) {
+  .app:not(.sidebar-collapsed) .sidebar {
+    position: fixed;
+    top: 0;
+    left: 0;
+    height: 100vh;
+    width: 240px;
+    z-index: 300;
+    box-shadow: 4px 0 32px oklch(0% 0 0 / 0.35);
+    animation: sidebar-slide-in 0.22s cubic-bezier(.2, .8, .2, 1);
   }
+}
 
-  .sidebar .brand-name,
-  .sidebar .nav-section-title,
-  .sidebar .sidebar-bottom-title,
-  .sidebar .dash-name,
-  .sidebar .dash-kebab {
-    display: none;
-  }
+@keyframes sidebar-slide-in {
+  from { transform: translateX(-100%); }
+  to   { transform: translateX(0); }
+}
 
-  .sidebar .sidebar-toggle { margin-left: 0; }
-  .sidebar .nav-section {
-    padding: 14px 6px 8px;
-    justify-content: center;
+/* Backdrop — hidden on desktop, shown only on mobile when sidebar is open */
+.sidebar-backdrop {
+  display: none;
+}
+
+@media (max-width: 1024px) {
+  .sidebar-backdrop {
+    display: block;
+    position: fixed;
+    inset: 0;
+    background: oklch(0% 0 0 / 0.4);
+    z-index: 299;
+    animation: backdrop-fade-in 0.22s ease;
   }
-  .sidebar .dash-list { padding: 0 4px; }
-  .sidebar .dash-item {
-    grid-template-columns: 1fr;
-    justify-items: center;
-    padding: 8px 0;
-  }
-  .sidebar .dash-item .dash-marker {
-    text-align: center;
-  }
+}
+
+@keyframes backdrop-fade-in {
+  from { opacity: 0; }
+  to   { opacity: 1; }
 }

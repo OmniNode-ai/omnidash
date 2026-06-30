@@ -33,11 +33,7 @@ export function PromptInput({
     <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
       <form
         onSubmit={handleSubmit}
-        style={{
-          display: 'flex',
-          gap: 8,
-          padding: '12px 0 4px',
-        }}
+        className="control-plane-prompt-form"
       >
         <input
           type="text"

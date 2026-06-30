@@ -104,13 +104,24 @@
 .ev-root .cols-3 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
 .ev-root .cols-4 { grid-template-columns: repeat(4, minmax(0, 1fr)); }
 @media (max-width: 1180px) { .ev-root .cols-3, .ev-root .cols-4 { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+/* Collapse all multi-column grids to a single column on narrow screens so
+   content panels (chains, bar charts, KV tables) aren't squeezed below useful width. */
+@media (max-width: 640px) { .ev-root .cols-2, .ev-root .cols-3, .ev-root .cols-4 { grid-template-columns: minmax(0, 1fr); } }
 
 /* panel */
-.ev-root .panel { background: var(--ev-bg-1); border: 1px solid var(--ev-line); border-radius: var(--ev-r); }
-.ev-root .panel-h { display: flex; align-items: center; gap: 10px; padding: 14px 16px 0; }
-.ev-root .panel-h .pt { font-family: var(--ev-font-display); font-size: 13.5px; font-weight: 600; letter-spacing: .3px; }
-.ev-root .panel-h .ps { font-size: 11.5px; color: var(--ev-txt-3); }
-.ev-root .panel-h .right { margin-left: auto; display: flex; align-items: center; gap: 8px; }
+/* min-width:0 prevents the panel from exceeding its grid column track when
+   children have white-space:nowrap. overflow:hidden clips content to the
+   rounded border and prevents long mono strings from escaping the card. */
+.ev-root .panel { background: var(--ev-bg-1); border: 1px solid var(--ev-line); border-radius: var(--ev-r); min-width: 0; overflow: hidden; }
+.ev-root .panel-h { display: flex; align-items: center; gap: 10px; padding: 14px 16px 0; flex-wrap: wrap; row-gap: 4px; }
+.ev-root .panel-h .pt { font-family: var(--ev-font-display); font-size: 13.5px; font-weight: 600; letter-spacing: .3px; flex-shrink: 0; }
+.ev-root .panel-h .ps { font-size: 11.5px; color: var(--ev-txt-3); flex: 1; min-width: 0; word-break: break-word; }
+.ev-root .panel-h .right { margin-left: auto; display: flex; align-items: center; gap: 8px; flex-shrink: 0; }
+@media (max-width: 640px) {
+  .ev-root .panel-h { padding: 12px 14px 0; }
+  .ev-root .panel-h .ps { flex-basis: 100%; text-align: center; }
+  .ev-root .panel-h .right { margin-left: 0; flex-basis: 100%; justify-content: center; }
+}
 .ev-root .panel-b { padding: 14px 16px 16px; }
 .ev-root .section-label { font-size: 10.5px; letter-spacing: 1.4px; text-transform: uppercase; color: var(--ev-txt-3); margin: 4px 0 10px; }
 
@@ -183,6 +194,12 @@
 .ev-root .pipe { display: flex; align-items: stretch; gap: 0; overflow-x: auto; padding: 4px 2px 6px; }
 .ev-root .pstage { flex: 1 1 0; min-width: 130px; display: flex; align-items: center; }
 .ev-root .pstage .box { flex: 1; background: var(--ev-bg-2); border: 1px solid var(--ev-line); border-radius: 9px; padding: 12px 13px; position: relative; }
+@media (max-width: 640px) {
+  .ev-root .pipe { flex-direction: column; overflow-x: hidden; gap: 8px; width: 100%; }
+  .ev-root .pstage { flex: none; min-width: 0; width: 100%; box-sizing: border-box; }
+  .ev-root .pstage .box { box-sizing: border-box; min-width: 0; }
+  .ev-root .pstage .tp { white-space: normal; word-break: break-all; }
+}
 .ev-root .pstage.active .box { border-color: var(--ev-accent); box-shadow: 0 0 0 1px var(--ev-accent), 0 0 22px rgba(196, 240, 66, .18); background: #161a13; }
 .ev-root .pstage .num { font-family: var(--ev-font-mono); font-size: 10px; color: var(--ev-txt-3); }
 .ev-root .pstage.active .num { color: var(--ev-accent); }
@@ -232,6 +249,14 @@
 
 /* delegation-evidence layout helpers */
 .ev-root .ev-align-start { align-items: start; }
+/* SelectedRun spans both grid rows so the empty space below it (caused by
+   ModelRouting + SavingsPanel stacking taller than SelectedRun alone) is filled. */
+.ev-root .ev-selected-run-layout { align-items: stretch; }
+.ev-root .ev-selected-run-layout > :first-child { grid-row: span 2; }
+@media (max-width: 640px) {
+  /* Single-column on mobile — span 2 creates an empty phantom row, so reset it. */
+  .ev-root .ev-selected-run-layout > :first-child { grid-row: span 1; }
+}
 .ev-root .ev-qg-stats { display: flex; gap: 18px; align-items: baseline; margin-bottom: 12px; flex-wrap: wrap; }
 .ev-root .ev-qg-stats .stat-inline { flex-direction: column; align-items: flex-start; gap: 2px; }
 .ev-root .ev-qg-bar { height: 11px; display: flex; margin-top: 4px; }

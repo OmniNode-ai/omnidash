@@ -1,8 +1,25 @@
+.control-plane-prompt-form {
+  display: flex;
+  gap: 8px;
+  padding: 12px 0 4px;
+}
+
 .control-plane-prompt-input {
   flex: 1;
+  min-width: 0;
   padding: 10px 14px;
   background: var(--bg-elevated);
   border: 1px solid var(--line);
   border-radius: 6px;
   outline: none;
+}
+
+@media (max-width: 480px) {
+  .control-plane-prompt-form {
+    flex-direction: column;
+  }
+  .control-plane-prompt-form .btn {
+    width: 100%;
+    justify-content: center;
+  }
 }

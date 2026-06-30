@@ -209,7 +209,7 @@ export function Sidebar() {
               key={d.id}
               data-testid={`dash-item-${d.id}`}
               className={`dash-item${isActive ? ' active' : ''}`}
-              onClick={() => setActiveDashboardById(d.id)}
+              onClick={() => { setActiveDashboardById(d.id); setActivePage('dashboard'); }}
               // Show the dashboard name on hover when the sidebar is
               // collapsed — otherwise users have no way to read it.
               title={collapsed ? d.name : undefined}

@@ -310,8 +310,14 @@
   }
   .app.sidebar-collapsed { --sidebar-w: 56px; }
 
-  @media (max-width: 720px) {
-    .app { --sidebar-w: 56px; }
+  @media (max-width: 1024px) {
+    /* On mobile the grid column is always icon-rail width. The expanded
+       sidebar renders as a fixed overlay so the content column keeps its
+       full width. Both states (collapsed + expanded) pin the grid at 56px. */
+    .app,
+    .app.sidebar-collapsed {
+      --sidebar-w: 56px;
+    }
   }
 }
 

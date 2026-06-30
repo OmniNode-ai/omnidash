@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Text, Heading } from '@/components/ui/typography';
 import { fetchFeatureFlags } from '@/services/feature-flag-service';
+import '@/styles/feature-flags.css';
 
 export interface FeatureFlag {
   name: string;
@@ -89,45 +90,36 @@ function ServiceTag({ service }: { service: 'omniclaude' | 'omnidash' }) {
   );
 }
 
-function FlagRow({ flag }: { flag: FeatureFlag }) {
+/* Desktop table row */
+function FlagTableRow({ flag }: { flag: FeatureFlag }) {
   return (
-    <tr
-      style={{
-        borderBottom: '1px solid var(--border, oklch(20% 0.01 260))',
-      }}
-    >
-      <td style={{ padding: '10px 12px' }}>
-        <Text size="sm" family="mono">{flag.name}</Text>
+    <tr className="flag-tr">
+      <td className="flag-td"><Text size="sm" family="mono">{flag.name}</Text></td>
+      <td className="flag-td"><StateBadge state={flag.state} /></td>
+      <td className="flag-td">
+        {flag.value !== null
+          ? <Text size="sm" color="tertiary" family="mono">{flag.value}</Text>
+          : <Text size="sm" color="tertiary" family="mono"><em style={{ opacity: 0.5 }}>unset</em></Text>}
       </td>
-      <td style={{ padding: '10px 12px' }}>
-        <StateBadge state={flag.state} />
-      </td>
-      <td style={{ padding: '10px 12px' }}>
-        {flag.value !== null ? (
-          <Text size="sm" color="tertiary" family="mono">{flag.value}</Text>
-        ) : (
-          <Text size="sm" color="tertiary" family="mono">
-            <em style={{ opacity: 0.5 }}>unset</em>
-          </Text>
-        )}
-      </td>
-      <td style={{ padding: '10px 12px' }}>
-        <ServiceTag service={flag.service} />
-      </td>
-      <td style={{ padding: '10px 12px' }}>
-        <Text size="sm" color="secondary">{flag.description}</Text>
-      </td>
+      <td className="flag-td"><ServiceTag service={flag.service} /></td>
+      <td className="flag-td"><Text size="sm" color="secondary">{flag.description}</Text></td>
     </tr>
   );
 }
 
-function TableHeader({ label }: { label: string }) {
+/* Mobile card row */
+function FlagCard({ flag }: { flag: FeatureFlag }) {
   return (
-    <th style={{ padding: '8px 12px', textAlign: 'left' }}>
-      <Text size="xs" color="tertiary" weight="semibold" transform="uppercase">
-        {label}
-      </Text>
-    </th>
+    <div className="flag-row">
+      <div className="flag-row-main">
+        <Text as="span" size="sm" family="mono" className="flag-name">{flag.name}</Text>
+        <div className="flag-row-badges">
+          <ServiceTag service={flag.service} />
+          <StateBadge state={flag.state} />
+        </div>
+      </div>
+      <Text as="p" size="sm" color="secondary" className="flag-desc">{flag.description}</Text>
+    </div>
   );
 }
 
@@ -137,26 +129,10 @@ function FlagTable({ flags, title }: { flags: FeatureFlag[]; title: string }) {
   const migrationCount = flags.filter((f) => f.state === 'migration').length;
 
   return (
-    <div
-      style={{
-        background: 'var(--surface, oklch(14% 0.01 260))',
-        border: '1px solid var(--border, oklch(20% 0.01 260))',
-        borderRadius: 8,
-        overflow: 'hidden',
-        marginBottom: 24,
-      }}
-    >
-      <div
-        style={{
-          padding: '12px 16px',
-          borderBottom: '1px solid var(--border, oklch(20% 0.01 260))',
-          display: 'flex',
-          alignItems: 'center',
-          gap: 12,
-        }}
-      >
+    <div className="flag-table">
+      <div className="flag-table-head">
         <Heading level={3} size="sm">{title}</Heading>
-        <span style={{ display: 'flex', gap: 8, marginLeft: 'auto' }}>
+        <span className="flag-table-counts">
           <Text size="sm" color="ok">{onCount} on</Text>
           <Text size="sm" color="tertiary">{offCount} off</Text>
           {migrationCount > 0 && (
@@ -164,20 +140,29 @@ function FlagTable({ flags, title }: { flags: FeatureFlag[]; title: string }) {
           )}
         </span>
       </div>
-      <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-        <thead>
-          <tr style={{ borderBottom: '1px solid var(--border, oklch(20% 0.01 260))' }}>
-            {['Flag', 'State', 'Value', 'Service', 'Description'].map((h) => (
-              <TableHeader key={h} label={h} />
-            ))}
-          </tr>
-        </thead>
-        <tbody>
-          {flags.map((flag) => (
-            <FlagRow key={flag.name} flag={flag} />
-          ))}
-        </tbody>
-      </table>
+
+      {/* ≥768px: original table */}
+      <div className="flag-desktop-table">
+        <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+          <thead>
+            <tr style={{ borderBottom: '1px solid var(--border, oklch(20% 0.01 260))' }}>
+              {['Flag', 'State', 'Value', 'Service', 'Description'].map((h) => (
+                <th key={h} className="flag-th">
+                  <Text size="xs" color="tertiary" weight="semibold" transform="uppercase">{h}</Text>
+                </th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            {flags.map((flag) => <FlagTableRow key={flag.name} flag={flag} />)}
+          </tbody>
+        </table>
+      </div>
+
+      {/* <768px: card list */}
+      <div className="flag-mobile-list">
+        {flags.map((flag) => <FlagCard key={flag.name} flag={flag} />)}
+      </div>
     </div>
   );
 }
@@ -263,7 +248,7 @@ export function FeatureFlagDashboard() {
         </div>
       </div>
 
-      <div className="dash-body" style={{ padding: '24px 28px', overflowY: 'auto' }}>
+      <div className="dash-body" style={{ overflowY: 'auto' }}>
         <FlagTable
           flags={omnidashFlags}
           title="omnidash"

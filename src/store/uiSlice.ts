@@ -10,7 +10,10 @@ import type { StateCreator } from 'zustand';
 import type { FrameStore, UISlice } from './types';
 
 export const createUISlice: StateCreator<FrameStore, [], [], UISlice> = (set) => ({
-  sidebarCollapsed: false,
+  // OMN-12833 (WS5): collapse the sidebar by default on mobile so the icon
+  // rail shows but the content column gets full width. Desktop sessions start
+  // expanded (false). window check guards SSR / test environments.
+  sidebarCollapsed: typeof window !== 'undefined' && window.innerWidth <= 1024,
   setSidebarCollapsed: (collapsed) => set({ sidebarCollapsed: collapsed }),
   toggleSidebarCollapsed: () =>
     set((state) => ({ sidebarCollapsed: !state.sidebarCollapsed })),

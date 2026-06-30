@@ -12,7 +12,9 @@
 //   - Thumbnail icon is derived from the manifest's category (visualization → LineChart, etc.)
 //     rather than from an explicit `icon` manifest field, which v2 doesn't have.
 import { useMemo, useState, type ComponentType } from 'react';
+import { createPortal } from 'react-dom';
 import {
+  Check,
   DollarSign,
   Activity,
   BadgeCheck,
@@ -39,6 +41,10 @@ interface ComponentPaletteProps {
   onPaletteDragStart?: (componentName: string) => void;
   /** Called when the palette drag ends (drop, cancel, or leave). */
   onPaletteDragEnd?: () => void;
+  /** Save/Discard handlers — rendered inside the modal footer on narrow screens (<768px). */
+  onSave?: () => void;
+  onDiscard?: () => void;
+  saveBlocked?: boolean;
 }
 
 const CATEGORY_ICONS: Record<ComponentCategory, ComponentType<{ size?: number; strokeWidth?: number }>> = {
@@ -55,6 +61,9 @@ export function ComponentPalette({
   isOpen = true,
   onPaletteDragStart,
   onPaletteDragEnd,
+  onSave,
+  onDiscard,
+  saveBlocked = false,
 }: ComponentPaletteProps) {
   const [q, setQ] = useState('');
 
@@ -80,7 +89,7 @@ export function ComponentPalette({
     return groups;
   }, [filtered]);
 
-  return (
+  return createPortal(
     <aside className={`library${isOpen ? ' open' : ''}`} aria-hidden={!isOpen}>
       <div className="lib-head">
         <div>
@@ -175,10 +184,27 @@ export function ComponentPalette({
           </Text>
         )}
       </div>
+      {/* Save / Discard — only visible below 768px via CSS; on desktop these
+          live in the dash-header toolbar (.header-edit-actions). */}
+      {(onSave || onDiscard) && (
+        <div className="lib-mobile-actions">
+          {onDiscard && (
+            <button className="btn ghost" onClick={onDiscard} type="button">
+              <X size={14} /> Discard
+            </button>
+          )}
+          {onSave && (
+            <button className="btn primary" onClick={onSave} disabled={saveBlocked} type="button">
+              <Check size={14} /> Save
+            </button>
+          )}
+        </div>
+      )}
       <div className="lib-foot">
         <span>{components.length} widgets available</span>
         <span className="hint">drag or click</span>
       </div>
-    </aside>
+    </aside>,
+    document.body,
   );
 }

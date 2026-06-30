@@ -31,12 +31,15 @@ function renderSidebar() {
 describe('Sidebar — dashboard CRUD flows (OMN-43)', () => {
   beforeEach(() => {
     // Reset to empty state before each test to avoid list pollution.
+    // sidebarCollapsed: false because jsdom sets window.innerWidth=0 which
+    // would otherwise initialise the sidebar as collapsed, hiding nav text.
     useFrameStore.setState({
       editMode: false,
       activeDashboard: null,
       activeDashboardId: null,
       dashboards: [],
       globalFilters: {},
+      sidebarCollapsed: false,
     });
   });
 

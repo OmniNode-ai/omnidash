@@ -387,12 +387,10 @@ export function DelegationEvidencePage() {
         <KPI label="Tokens" value={kpiTokens} sub={summary ? `avg ${(summary.avgLatencyMs / 1000).toFixed(2)}s latency` : undefined} />
       </div>
 
-      <div className="grid cols-2 ev-align-start">
+      <div className="grid cols-2 ev-selected-run-layout">
         <SelectedRun correlationId={latestCid} />
-        <div className="grid">
-          <ModelRouting />
-          <SavingsPanel />
-        </div>
+        <ModelRouting />
+        <SavingsPanel />
       </div>
 
       <div className="grid cols-2 ev-align-start">

@@ -248,7 +248,7 @@ export function EventBusPage() {
         <CorrelationTable correlations={correlations} />
       )}
 
-      <div className="grid cols-2 ev-align-start">
+      <div className="grid cols-2">
         {health.length > 0 ? <ProjectionHealth rows={health} /> : <Panel title="PROJECTION / API HEALTH"><EvEmpty title="Loading census…" /></Panel>}
         <Panel title="RUNTIME TOPOLOGY" sub="owned topics · live row counts">
           <KV

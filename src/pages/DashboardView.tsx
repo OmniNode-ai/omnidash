@@ -306,78 +306,70 @@ export function DashboardView() {
               timezone picker is preserved but relocated into the date-range
               cluster on the right of this row, so it no longer occupies — or
               impersonates — the data-source position. */}
-          <div
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: 6,
-              marginLeft: -8,
-              marginTop: 2,
-            }}
-          >
-            <DataSourceControl />
-            <AutoRefreshSelector />
-            <DateRangeSelector />
-            <TimezoneSelector />
+          <div className="dash-filters">
+            <div className="dash-filters-left">
+              <DataSourceControl />
+              <AutoRefreshSelector />
+              <DateRangeSelector />
+              <TimezoneSelector />
+            </div>
+            <div className="header-actions">
+              {editMode ? (
+                <div className="header-edit-actions">
+                  <button
+                    className="btn primary"
+                    onClick={handleSave}
+                    aria-label="Save"
+                    disabled={saveBlocked}
+                  >
+                    <Check size={14} /> Save
+                  </button>
+                  <button
+                    className="btn ghost"
+                    onClick={handleDiscard}
+                    aria-label="Discard"
+                  >
+                    <X size={14} /> Discard
+                  </button>
+                </div>
+              ) : (
+                // H16 (review §4): the header used to expose only "Add Widget"
+                // as a label for what was actually the edit-mode toggle.
+                // Splitting it: "Edit Layout" is the honest label for entering
+                // edit mode (rearrange / configure / remove), and "Add Widget"
+                // remains for the common case of dropping in a new one. Both
+                // call handleEdit() — the palette opens automatically in edit
+                // mode either way — so the split is purely about affordance
+                // honesty.
+                <>
+                  <button
+                    className="btn ghost"
+                    onClick={handleEdit}
+                    aria-label="Edit Layout"
+                  >
+                    <Pencil size={14} /> Edit Layout
+                  </button>
+                  <button
+                    className="btn primary"
+                    onClick={handleEdit}
+                    aria-label="Add Widget"
+                  >
+                    <Plus size={14} /> Add Widget
+                  </button>
+                </>
+              )}
+            </div>
           </div>
-        </div>
-        <div className="header-actions">
-          {editMode ? (
-            <>
-              <button
-                className="btn primary"
-                onClick={handleSave}
-                aria-label="Save"
-                disabled={saveBlocked}
-              >
-                <Check size={14} /> Save
-              </button>
-              <button
-                className="btn ghost"
-                onClick={handleDiscard}
-                aria-label="Discard"
-              >
-                <X size={14} /> Discard
-              </button>
-            </>
-          ) : (
-            // H16 (review §4): the header used to expose only "Add Widget"
-            // as a label for what was actually the edit-mode toggle.
-            // Splitting it: "Edit Layout" is the honest label for entering
-            // edit mode (rearrange / configure / remove), and "Add Widget"
-            // remains for the common case of dropping in a new one. Both
-            // call handleEdit() — the palette opens automatically in edit
-            // mode either way — so the split is purely about affordance
-            // honesty.
-            <>
-              <button
-                className="btn ghost"
-                onClick={handleEdit}
-                aria-label="Edit Layout"
-              >
-                <Pencil size={14} /> Edit Layout
-              </button>
-              <button
-                className="btn primary"
-                onClick={handleEdit}
-                aria-label="Add Widget"
-              >
-                <Plus size={14} /> Add Widget
-              </button>
-            </>
-          )}
         </div>
       </div>
 
-      {/* Main content area. Reserve 360px on the right when editMode is active so
-          the position:fixed widget library rail doesn't overlay the grid. */}
+      {/* Main content area. Library panel is position:fixed and overlays the grid. */}
       <div
         style={{
           display: 'flex',
           flex: 1,
           minHeight: 0,
           overflow: 'hidden',
-          paddingRight: editMode ? 360 : 0,
         }}
       >
         {/* Widget grid */}
@@ -401,47 +393,53 @@ export function DashboardView() {
             )
           ) : (
             <div className={`dash-grid${activeDashboard.layout.length === 1 ? ' single-widget' : ''}`}>
-              {activeDashboard.layout.map((item, index) => (
-                // ComponentCell provides widget chrome via ComponentWrapper.
-                // No outer .widget wrapper here — that created a redundant
-                // double card (#8). Click-to-configure removed too (#14) —
-                // Configure lives in the widget's kebab menu instead.
-                // Drag props are forwarded into WidgetChromeContext and
-                // applied to the `.widget` root by ComponentWrapper.
-                <ComponentCell
-                  key={item.i}
-                  componentName={item.componentName}
-                  config={item.config}
-                  component={resolveComponent(item.componentName)}
-                  authorityLabel={registry.getComponent(item.componentName)?.manifest.authorityLabel}
-                  // Only surface "Configure Widget" in the kebab when the
-                  // widget actually has something to configure — otherwise
-                  // the modal opens to an empty form. We treat absent
-                  // `configSchema` and `configSchema.properties` being {}
-                  // as "no config".
-                  onConfigure={
-                    Object.keys(
-                      registry.getComponent(item.componentName)?.manifest.configSchema?.properties ?? {},
-                    ).length > 0
-                      ? () => setSelectedPlacementId(item.i)
-                      : undefined
-                  }
-                  onDuplicate={() => duplicateLayoutItem(item.i)}
-                  onDelete={() => removeComponentFromLayout(item.i)}
-                  draggable={editMode}
-                  isDragging={draggedWidgetId === item.i}
-                  isDropTarget={isDragging && dropTargetIndex === index && draggedWidgetId !== item.i}
-                  onDragStart={handleWidgetDragStart(item.i)}
-                  onDragEnd={resetDragState}
-                  onDragOver={handleWidgetDragOver(index)}
-                  onDragLeave={handleWidgetDragLeave}
-                  onDrop={handleWidgetDrop(index)}
-                />
+              {/* Two explicit columns — left gets even indices (0,2,4…), right gets
+                  odd indices (1,3,5…). This gives predictable top-to-bottom fill
+                  order regardless of viewport width, unlike CSS `columns` which uses
+                  a balance algorithm that produces inconsistent distributions for
+                  equal-height cards. Original linear indices are preserved so all
+                  drag-and-drop handlers remain correct. */}
+              {(['left', 'right'] as const).map((side) => (
+                <div key={side} className="dash-col">
+                  {activeDashboard.layout.map((item, index) => {
+                    if ((index % 2 === 0) !== (side === 'left')) return null;
+                    return (
+                      /* dash-col-item carries `order` so that when .dash-col becomes
+                         display:contents on narrow screens (single-column), flex
+                         re-sorts these children back into the correct linear sequence. */
+                      <div key={item.i} className="dash-col-item" style={{ order: index }}>
+                        <ComponentCell
+                          componentName={item.componentName}
+                          config={item.config}
+                          component={resolveComponent(item.componentName)}
+                          authorityLabel={registry.getComponent(item.componentName)?.manifest.authorityLabel}
+                          onConfigure={
+                            Object.keys(
+                              registry.getComponent(item.componentName)?.manifest.configSchema?.properties ?? {},
+                            ).length > 0
+                              ? () => setSelectedPlacementId(item.i)
+                              : undefined
+                          }
+                          onDuplicate={() => duplicateLayoutItem(item.i)}
+                          onDelete={() => removeComponentFromLayout(item.i)}
+                          draggable={editMode}
+                          isDragging={draggedWidgetId === item.i}
+                          isDropTarget={isDragging && dropTargetIndex === index && draggedWidgetId !== item.i}
+                          onDragStart={handleWidgetDragStart(item.i)}
+                          onDragEnd={resetDragState}
+                          onDragOver={handleWidgetDragOver(index)}
+                          onDragLeave={handleWidgetDragLeave}
+                          onDrop={handleWidgetDrop(index)}
+                        />
+                      </div>
+                    );
+                  })}
+                </div>
               ))}
               {isDragging && (
                 <div
-                  className={`drop-slot${dropTargetIndex === activeDashboard.layout.length ? ' active' : ''}`}
-                  style={{ columnSpan: 'all', minHeight: 60 } as React.CSSProperties}
+                  className={`drop-slot dash-grid-append${dropTargetIndex === activeDashboard.layout.length ? ' active' : ''}`}
+                  style={{ minHeight: 60 }}
                   onDragOver={handleAppendDragOver}
                   onDrop={handleAppendDrop}
                 >
@@ -477,6 +475,9 @@ export function DashboardView() {
         isOpen={editMode}
         onPaletteDragStart={handlePaletteDragStart}
         onPaletteDragEnd={resetDragState}
+        onSave={handleSave}
+        onDiscard={handleDiscard}
+        saveBlocked={saveBlocked}
       />
     </>
   );
