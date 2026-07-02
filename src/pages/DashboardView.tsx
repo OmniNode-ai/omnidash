@@ -393,47 +393,35 @@ export function DashboardView() {
             )
           ) : (
             <div className={`dash-grid${activeDashboard.layout.length === 1 ? ' single-widget' : ''}`}>
-              {/* Two explicit columns — left gets even indices (0,2,4…), right gets
-                  odd indices (1,3,5…). This gives predictable top-to-bottom fill
-                  order regardless of viewport width, unlike CSS `columns` which uses
-                  a balance algorithm that produces inconsistent distributions for
-                  equal-height cards. Original linear indices are preserved so all
-                  drag-and-drop handlers remain correct. */}
-              {(['left', 'right'] as const).map((side) => (
-                <div key={side} className="dash-col">
-                  {activeDashboard.layout.map((item, index) => {
-                    if ((index % 2 === 0) !== (side === 'left')) return null;
-                    return (
-                      /* dash-col-item carries `order` so that when .dash-col becomes
-                         display:contents on narrow screens (single-column), flex
-                         re-sorts these children back into the correct linear sequence. */
-                      <div key={item.i} className="dash-col-item" style={{ order: index }}>
-                        <ComponentCell
-                          componentName={item.componentName}
-                          config={item.config}
-                          component={resolveComponent(item.componentName)}
-                          authorityLabel={registry.getComponent(item.componentName)?.manifest.authorityLabel}
-                          onConfigure={
-                            Object.keys(
-                              registry.getComponent(item.componentName)?.manifest.configSchema?.properties ?? {},
-                            ).length > 0
-                              ? () => setSelectedPlacementId(item.i)
-                              : undefined
-                          }
-                          onDuplicate={() => duplicateLayoutItem(item.i)}
-                          onDelete={() => removeComponentFromLayout(item.i)}
-                          draggable={editMode}
-                          isDragging={draggedWidgetId === item.i}
-                          isDropTarget={isDragging && dropTargetIndex === index && draggedWidgetId !== item.i}
-                          onDragStart={handleWidgetDragStart(item.i)}
-                          onDragEnd={resetDragState}
-                          onDragOver={handleWidgetDragOver(index)}
-                          onDragLeave={handleWidgetDragLeave}
-                          onDrop={handleWidgetDrop(index)}
-                        />
-                      </div>
-                    );
-                  })}
+              {activeDashboard.layout.map((item, index) => (
+                <div
+                  key={item.i}
+                  className="dash-col-item"
+                  style={{ order: index, gridColumn: (index % 2) + 1 }}
+                >
+                  <ComponentCell
+                    componentName={item.componentName}
+                    config={item.config}
+                    component={resolveComponent(item.componentName)}
+                    authorityLabel={registry.getComponent(item.componentName)?.manifest.authorityLabel}
+                    onConfigure={
+                      Object.keys(
+                        registry.getComponent(item.componentName)?.manifest.configSchema?.properties ?? {},
+                      ).length > 0
+                        ? () => setSelectedPlacementId(item.i)
+                        : undefined
+                    }
+                    onDuplicate={() => duplicateLayoutItem(item.i)}
+                    onDelete={() => removeComponentFromLayout(item.i)}
+                    draggable={editMode}
+                    isDragging={draggedWidgetId === item.i}
+                    isDropTarget={isDragging && dropTargetIndex === index && draggedWidgetId !== item.i}
+                    onDragStart={handleWidgetDragStart(item.i)}
+                    onDragEnd={resetDragState}
+                    onDragOver={handleWidgetDragOver(index)}
+                    onDragLeave={handleWidgetDragLeave}
+                    onDrop={handleWidgetDrop(index)}
+                  />
                 </div>
               ))}
               {isDragging && (

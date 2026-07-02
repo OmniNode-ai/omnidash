@@ -190,19 +190,19 @@ export function ComponentPalette({
         <div className="lib-mobile-actions">
           {onDiscard && (
             <button className="btn ghost" onClick={onDiscard} type="button">
-              <X size={14} /> Discard
+              <X size={14} /> <Text as="span" size="md">Discard</Text>
             </button>
           )}
           {onSave && (
             <button className="btn primary" onClick={onSave} disabled={saveBlocked} type="button">
-              <Check size={14} /> Save
+              <Check size={14} /> <Text as="span" size="md">Save</Text>
             </button>
           )}
         </div>
       )}
       <div className="lib-foot">
-        <span>{components.length} widgets available</span>
-        <span className="hint">drag or click</span>
+        <Text as="span">{components.length} widgets available</Text>
+        <Text as="span" size="xs" color="tertiary">drag or click</Text>
       </div>
     </aside>,
     document.body,

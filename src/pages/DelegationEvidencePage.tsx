@@ -367,7 +367,11 @@ export function DelegationEvidencePage() {
     .filter((d): d is NonNullable<typeof d> => d !== undefined)
     .map((d) => ({ rowCount: d.rowCount, freshness: d.freshness }));
   const badgeState = derivePageBadge(snapshots);
-  const latestEventAt = decisionsQ.data?.latestEventAt ?? null;
+  const latestEventAt =
+    decisionsQ.data?.latestEventAt ??
+    summaryQ.data?.latestEventAt ??
+    tokensQ.data?.latestEventAt ??
+    null;
 
   const headRight = snapshots.length > 0 ? (
     <FreshnessChip state={badgeState} latestEventAt={latestEventAt} />

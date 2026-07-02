@@ -66,63 +66,39 @@
   max-width: none;
   scrollbar-gutter: stable both-edges;
 }
-/* Two-column layout via explicit flex children (.dash-col left + right).
+/* Two-column layout via a single grid parent.
    CSS `columns` was replaced because its balance algorithm distributes 3
    equal-height cards as 1-left / 2-right instead of the expected 2-left / 1-right.
-   Explicit columns give fully predictable top-to-bottom fill order at any width.
+   Grid placement gives predictable top-to-bottom fill order while keeping widget
+   keys under one React parent across reorders.
 
    Named .dash-grid (not .grid) to avoid Tailwind's `.grid { display: grid; }`
    utility (utilities layer loads after this file) overriding display. */
 .dash-grid {
-  display: flex;
-  flex-direction: row;
-  flex-wrap: wrap;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
   gap: var(--row-gap);
   align-items: flex-start;
   width: 100%;
 }
 
-.dash-col {
-  flex: 1;
-  min-width: 0;
-  display: flex;
-  flex-direction: column;
-  gap: var(--row-gap);
-}
-
-/* .dash-col-item is a passthrough (display:contents) on desktop — the .widget
-   becomes a direct flex child of .dash-col so the column gap applies cleanly.
-   On mobile (.dash-col is display:contents) it switches to display:block so
-   that it becomes a real flex item of .dash-grid, and the `order` inline style
-   can sort interleaved items (0,2,4 / 1,3,5) back into linear order (0,1,2…). */
 .dash-col-item {
-  display: contents;
+  min-width: 0;
 }
 
 /* Append drop-slot spans both columns when visible. */
 .dash-grid-append {
-  flex-basis: 100%;
+  grid-column: 1 / -1;
 }
 
-.dash-grid.single-widget .dash-col:last-child {
-  display: none;
-}
-
-/* Below 1024px collapse to a single column. .dash-col becomes display:contents
-   so its children (.dash-col-item) become direct flex children of .dash-grid.
-   Each .dash-col-item carries `order:<original-index>` so flex restores the
-   correct linear card sequence despite the left/right DOM split. */
+/* Below 1024px collapse to a single column and restore linear item order. */
 @media (max-width: 1024px) {
   .dash-grid {
-    flex-direction: column;
-    align-items: stretch;
-  }
-  .dash-col {
-    display: contents;
+    grid-template-columns: minmax(0, 1fr);
   }
   .dash-col-item {
-    display: block;
     width: 100%;
+    grid-column: 1 !important;
   }
 }
 
@@ -265,6 +241,13 @@
   margin-top: var(--row-gap);
 }
 
+/* Save / Discard move into the modal footer on narrow screens. */
+@media (max-width: 767px) {
+  .header-edit-actions {
+    display: none;
+  }
+}
+
 /* ── Mobile responsive — dashboard chrome (≤640px) ─────────────────────────
    Stack the title area above the action buttons so the title never clips.
    Reduce the shell gutter so widgets get more horizontal room on narrow
@@ -316,11 +299,6 @@
   .header-actions .btn {
     padding: 6px 10px;
     font-size: 12px;
-  }
-
-  /* Save / Discard move into the modal footer on narrow screens */
-  .header-edit-actions {
-    display: none;
   }
 
   /* Widget head — stack title and badge vertically on mobile so the full
