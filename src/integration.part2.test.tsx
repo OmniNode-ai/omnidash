@@ -55,7 +55,10 @@ describe('Proof of Life — Part 2', () => {
     // OMN-12745: delegation-model-output added.
     // OMN-13131 (W6 live wiring, G-H): renderer-capability-status added — live
     // mount of the renderer-capability gate over the W5 projection.
-    expect(all.length).toBe(33);
+    // OMN-13832: skill-adoption added — per-skill lifecycle adoption over the
+    // skill_executions projection (classified hidden until the snapshot topic is
+    // verified exposed on the single backend).
+    expect(all.length).toBe(34);
     expect(all.map((c) => c.name).sort()).toEqual([
       'ab-compare',
       'baselines-roi-card',
@@ -88,6 +91,7 @@ describe('Proof of Life — Part 2', () => {
       'routing-decision',
       'routing-decision-table',
       'session-timeline',
+      'skill-adoption',
       'token-usage',
       'trace-explorer',
     ]);

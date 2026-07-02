@@ -111,4 +111,12 @@ export const PALETTE_CLASSIFICATION: Record<string, PaletteClassification> = {
   'delegation-model-output': { paletteVisibility: 'hidden', authorityLabel: 'hidden', probe: 'delegation.inference-response-text.v1=404' },
   'mcp-tools': { paletteVisibility: 'hidden', authorityLabel: 'hidden', probe: 'mcp-tools.v1=404' },
   'trace-explorer': { paletteVisibility: 'hidden', authorityLabel: 'hidden', probe: 'traces.v1=404' },
+  // Skill-adoption (OMN-13832): the skill_executions table is populated on the
+  // .201 stability bus (OMN-13830), but the snapshot projection
+  // onex.snapshot.projection.skill-executions.v1 has not been verified exposed
+  // via the single projection_api backend in this session (no live probe run).
+  // Classified hidden until a probe confirms projection_api expose; the widget,
+  // its data service, and tests are fully wired and flip to projection-backed
+  // once the snapshot topic is verified.
+  'skill-adoption': { paletteVisibility: 'hidden', authorityLabel: 'hidden', probe: 'skill-executions.v1=expose-unverified (table populated per OMN-13830; not probed this session)' },
 };
