@@ -1,0 +1,94 @@
+/* ── Feature Flags — responsive layout ───────────────────────────────────
+   ≥768px: original table unchanged
+   <768px:  table hidden, card list shown instead
+   ──────────────────────────────────────────────────────────────────────── */
+
+.flag-table {
+  background: var(--surface, oklch(14% 0.01 260));
+  border: 1px solid var(--border, oklch(20% 0.01 260));
+  border-radius: 8px;
+  overflow: hidden;
+  margin-bottom: 24px;
+}
+
+.flag-table-head {
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--border, oklch(20% 0.01 260));
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+  row-gap: 6px;
+}
+
+.flag-table-counts {
+  display: flex;
+  gap: 8px;
+  margin-left: auto;
+  flex-wrap: wrap;
+}
+
+/* ── Desktop table (≥768px) ──────────────────────────────────────────── */
+
+.flag-th {
+  padding: 8px 12px;
+  text-align: left;
+  white-space: nowrap;
+}
+
+.flag-tr {
+  border-bottom: 1px solid var(--border, oklch(20% 0.01 260));
+}
+
+.flag-tr:last-child {
+  border-bottom: none;
+}
+
+.flag-td {
+  padding: 10px 12px;
+  vertical-align: middle;
+}
+
+/* mobile list hidden on desktop */
+.flag-mobile-list { display: none; }
+
+/* ── Mobile card list (<768px) ───────────────────────────────────────── */
+
+@media (max-width: 767px) {
+  /* hide the table, show the card list */
+  .flag-desktop-table { display: none; }
+  .flag-mobile-list   { display: flex; flex-direction: column; }
+
+  .flag-row {
+    padding: 12px 16px;
+    border-bottom: 1px solid var(--border, oklch(20% 0.01 260));
+  }
+
+  .flag-row:last-child { border-bottom: none; }
+
+  /* name on left, badges on right */
+  .flag-row-main {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 12px;
+    margin-bottom: 4px;
+  }
+
+  .flag-name {
+    overflow-wrap: break-word;
+    word-break: break-all;
+    min-width: 0;
+    flex: 1;
+    line-height: 1.4;
+  }
+
+  .flag-row-badges {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    flex-shrink: 0;
+  }
+
+  .flag-desc { margin: 0; line-height: 1.45; }
+}

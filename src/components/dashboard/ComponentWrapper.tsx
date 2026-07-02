@@ -94,11 +94,15 @@ export function ComponentWrapper({
     >
       <div className="widget-head">
         <div className="widget-head-left">
-          {draggable && (
-            <span className="widget-grip" aria-hidden="true">
-              <GripVertical size={14} />
-            </span>
-          )}
+          {/* Always in DOM so widget dimensions don't change when editMode toggles.
+              Visibility hidden (not display:none) so it still occupies space. */}
+          <span
+            className="widget-grip"
+            aria-hidden="true"
+            style={draggable ? undefined : { visibility: 'hidden', pointerEvents: 'none' }}
+          >
+            <GripVertical size={14} />
+          </span>
           <span className="widget-title">{title}</span>
         </div>
         <div className="widget-head-right">

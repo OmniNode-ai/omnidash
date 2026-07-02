@@ -2,10 +2,11 @@
 // The old tests checked for "omnidash" text in the header (now in Sidebar brand block)
 // and a theme button (now in Header). Tests updated to reflect new structure.
 import { render, screen } from '@testing-library/react';
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, beforeEach } from 'vitest';
 import { Providers } from '@/providers/Providers';
 import { RegistryProvider } from '@/registry/RegistryProvider';
 import { FrameLayout } from './FrameLayout';
+import { useFrameStore } from '@/store/store';
 import type { RegistryManifest } from '@/registry/types';
 
 const minimalManifest: RegistryManifest = {
@@ -25,6 +26,12 @@ function Wrapper({ children }: { children: React.ReactNode }) {
 }
 
 describe('FrameLayout', () => {
+  beforeEach(() => {
+    // jsdom sets window.innerWidth=0 which initialises sidebarCollapsed:true,
+    // hiding sidebar text. Force it open so text-based assertions pass.
+    useFrameStore.setState({ sidebarCollapsed: false });
+  });
+
   it('renders the OmniDash brand in the sidebar', () => {
     render(
       <FrameLayout>

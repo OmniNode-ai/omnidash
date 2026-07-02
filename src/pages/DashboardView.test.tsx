@@ -74,8 +74,11 @@ describe('DashboardView', () => {
   it('shows Save and Discard buttons in edit mode', async () => {
     renderView();
     await userEvent.click(screen.getByRole('button', { name: /add widget/i }));
-    expect(screen.getByRole('button', { name: /save/i })).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: /discard/i })).toBeInTheDocument();
+    // Two Save buttons exist in the DOM: one in the header toolbar and one in
+    // the mobile library footer (hidden via CSS in real browsers, but jsdom
+    // renders both since it doesn't process media queries).
+    expect(screen.getAllByRole('button', { name: /save/i }).length).toBeGreaterThan(0);
+    expect(screen.getAllByRole('button', { name: /discard/i }).length).toBeGreaterThan(0);
   });
 
   it('[OMN-41] Save persists the active dashboard via layoutPersistence.write', async () => {
@@ -84,7 +87,8 @@ describe('DashboardView', () => {
 
     renderView();
     await userEvent.click(screen.getByRole('button', { name: /add widget/i }));
-    await userEvent.click(screen.getByRole('button', { name: /save/i }));
+    // Click the first Save button (header toolbar); the second is the mobile footer duplicate.
+    await userEvent.click(screen.getAllByRole('button', { name: /save/i })[0]);
 
     expect(writeSpy).toHaveBeenCalledTimes(1);
     expect(writeSpy).toHaveBeenCalledWith(

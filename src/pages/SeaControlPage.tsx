@@ -19,6 +19,7 @@ import {
   KPI,
   KV,
   Panel,
+  derivePageBadge,
   fmtLatency,
   fmtPct,
   type DataColumn,
@@ -309,11 +310,12 @@ export function SeaControlPage() {
     },
   ];
 
+  // OMN-12943: derive badge from the single authoritative projection for this page.
+  const badgeState = derivePageBadge(
+    data ? [{ rowCount: data.rowCount, freshness: data.freshness }] : [],
+  );
   const headRight = data ? (
-    <FreshnessChip
-      freshness={data.freshness}
-      latestEventAt={data.latestEventAt}
-    />
+    <FreshnessChip state={badgeState} latestEventAt={data.latestEventAt} />
   ) : null;
 
   return (

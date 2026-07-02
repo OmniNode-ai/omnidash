@@ -66,15 +66,29 @@ export function DashboardView() {
 
   // Hydrate the last active dashboard layout from disk on mount.
   useEffect(() => {
+    // OMN-12833 (A2.5): strip layout items whose component is classified hidden
+    // by the one-backend palette sweep. Runs once at load so stale saved layouts
+    // from before the palette classification landed never render "not available"
+    // placeholders. Unknown component names (external plugins not in the registry)
+    // are kept — absence from the registry is not the same as hidden.
+    const pruneHiddenItems = (dashboard: import('@shared/types/dashboard').DashboardDefinition) => ({
+      ...dashboard,
+      layout: dashboard.layout.filter(
+        (item) => registry.getComponent(item.componentName)?.manifest.paletteVisibility !== 'hidden',
+      ),
+    });
+
     dashboardService.loadByName('default').then((persisted) => {
       const currentDashboard = useFrameStore.getState().activeDashboard;
       if (!currentDashboard) {
-        setActiveDashboard(persisted && Array.isArray(persisted.layout) ? persisted : cloneSeaDemoTemplate());
+        setActiveDashboard(
+          pruneHiddenItems(persisted && Array.isArray(persisted.layout) ? persisted : cloneSeaDemoTemplate()),
+        );
       }
     }).catch((err: unknown) => {
       console.warn('[DashboardView] failed to load persisted layout:', err);
       if (!useFrameStore.getState().activeDashboard) {
-        setActiveDashboard(cloneSeaDemoTemplate());
+        setActiveDashboard(pruneHiddenItems(cloneSeaDemoTemplate()));
       }
     });
     // Intentional one-shot: this effect should run only on mount.
@@ -240,6 +254,15 @@ export function DashboardView() {
 
   const saveBlocked = editMode && anyPlacementHasValidationErrors();
 
+  // OMN-12833 (A2.5): only expose palette-visible components in the widget library.
+  // Hidden components remain in the registry (for layout resolution and tests) but
+  // must not appear as choosable entries — their projection topics are not served by
+  // the single standard backend. getAvailableComponents() is intentionally unfiltered
+  // so other call sites (config panels, layout hydration) are not affected.
+  const paletteComponents = registry.getAvailableComponents().filter(
+    (c) => c.manifest.paletteVisibility !== 'hidden',
+  );
+
   return (
     <>
       {/* Dashboard header */}
@@ -283,78 +306,70 @@ export function DashboardView() {
               timezone picker is preserved but relocated into the date-range
               cluster on the right of this row, so it no longer occupies — or
               impersonates — the data-source position. */}
-          <div
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: 6,
-              marginLeft: -8,
-              marginTop: 2,
-            }}
-          >
-            <DataSourceControl />
-            <AutoRefreshSelector />
-            <DateRangeSelector />
-            <TimezoneSelector />
+          <div className="dash-filters">
+            <div className="dash-filters-left">
+              <DataSourceControl />
+              <AutoRefreshSelector />
+              <DateRangeSelector />
+              <TimezoneSelector />
+            </div>
+            <div className="header-actions">
+              {editMode ? (
+                <div className="header-edit-actions">
+                  <button
+                    className="btn primary"
+                    onClick={handleSave}
+                    aria-label="Save"
+                    disabled={saveBlocked}
+                  >
+                    <Check size={14} /> Save
+                  </button>
+                  <button
+                    className="btn ghost"
+                    onClick={handleDiscard}
+                    aria-label="Discard"
+                  >
+                    <X size={14} /> Discard
+                  </button>
+                </div>
+              ) : (
+                // H16 (review §4): the header used to expose only "Add Widget"
+                // as a label for what was actually the edit-mode toggle.
+                // Splitting it: "Edit Layout" is the honest label for entering
+                // edit mode (rearrange / configure / remove), and "Add Widget"
+                // remains for the common case of dropping in a new one. Both
+                // call handleEdit() — the palette opens automatically in edit
+                // mode either way — so the split is purely about affordance
+                // honesty.
+                <>
+                  <button
+                    className="btn ghost"
+                    onClick={handleEdit}
+                    aria-label="Edit Layout"
+                  >
+                    <Pencil size={14} /> Edit Layout
+                  </button>
+                  <button
+                    className="btn primary"
+                    onClick={handleEdit}
+                    aria-label="Add Widget"
+                  >
+                    <Plus size={14} /> Add Widget
+                  </button>
+                </>
+              )}
+            </div>
           </div>
-        </div>
-        <div className="header-actions">
-          {editMode ? (
-            <>
-              <button
-                className="btn primary"
-                onClick={handleSave}
-                aria-label="Save"
-                disabled={saveBlocked}
-              >
-                <Check size={14} /> Save
-              </button>
-              <button
-                className="btn ghost"
-                onClick={handleDiscard}
-                aria-label="Discard"
-              >
-                <X size={14} /> Discard
-              </button>
-            </>
-          ) : (
-            // H16 (review §4): the header used to expose only "Add Widget"
-            // as a label for what was actually the edit-mode toggle.
-            // Splitting it: "Edit Layout" is the honest label for entering
-            // edit mode (rearrange / configure / remove), and "Add Widget"
-            // remains for the common case of dropping in a new one. Both
-            // call handleEdit() — the palette opens automatically in edit
-            // mode either way — so the split is purely about affordance
-            // honesty.
-            <>
-              <button
-                className="btn ghost"
-                onClick={handleEdit}
-                aria-label="Edit Layout"
-              >
-                <Pencil size={14} /> Edit Layout
-              </button>
-              <button
-                className="btn primary"
-                onClick={handleEdit}
-                aria-label="Add Widget"
-              >
-                <Plus size={14} /> Add Widget
-              </button>
-            </>
-          )}
         </div>
       </div>
 
-      {/* Main content area. Reserve 360px on the right when editMode is active so
-          the position:fixed widget library rail doesn't overlay the grid. */}
+      {/* Main content area. Library panel is position:fixed and overlays the grid. */}
       <div
         style={{
           display: 'flex',
           flex: 1,
           minHeight: 0,
           overflow: 'hidden',
-          paddingRight: editMode ? 360 : 0,
         }}
       >
         {/* Widget grid */}
@@ -379,46 +394,40 @@ export function DashboardView() {
           ) : (
             <div className={`dash-grid${activeDashboard.layout.length === 1 ? ' single-widget' : ''}`}>
               {activeDashboard.layout.map((item, index) => (
-                // ComponentCell provides widget chrome via ComponentWrapper.
-                // No outer .widget wrapper here — that created a redundant
-                // double card (#8). Click-to-configure removed too (#14) —
-                // Configure lives in the widget's kebab menu instead.
-                // Drag props are forwarded into WidgetChromeContext and
-                // applied to the `.widget` root by ComponentWrapper.
-                <ComponentCell
+                <div
                   key={item.i}
-                  componentName={item.componentName}
-                  config={item.config}
-                  component={resolveComponent(item.componentName)}
-                  authorityLabel={registry.getComponent(item.componentName)?.manifest.authorityLabel}
-                  // Only surface "Configure Widget" in the kebab when the
-                  // widget actually has something to configure — otherwise
-                  // the modal opens to an empty form. We treat absent
-                  // `configSchema` and `configSchema.properties` being {}
-                  // as "no config".
-                  onConfigure={
-                    Object.keys(
-                      registry.getComponent(item.componentName)?.manifest.configSchema?.properties ?? {},
-                    ).length > 0
-                      ? () => setSelectedPlacementId(item.i)
-                      : undefined
-                  }
-                  onDuplicate={() => duplicateLayoutItem(item.i)}
-                  onDelete={() => removeComponentFromLayout(item.i)}
-                  draggable={editMode}
-                  isDragging={draggedWidgetId === item.i}
-                  isDropTarget={isDragging && dropTargetIndex === index && draggedWidgetId !== item.i}
-                  onDragStart={handleWidgetDragStart(item.i)}
-                  onDragEnd={resetDragState}
-                  onDragOver={handleWidgetDragOver(index)}
-                  onDragLeave={handleWidgetDragLeave}
-                  onDrop={handleWidgetDrop(index)}
-                />
+                  className="dash-col-item"
+                  style={{ order: index, gridColumn: (index % 2) + 1 }}
+                >
+                  <ComponentCell
+                    componentName={item.componentName}
+                    config={item.config}
+                    component={resolveComponent(item.componentName)}
+                    authorityLabel={registry.getComponent(item.componentName)?.manifest.authorityLabel}
+                    onConfigure={
+                      Object.keys(
+                        registry.getComponent(item.componentName)?.manifest.configSchema?.properties ?? {},
+                      ).length > 0
+                        ? () => setSelectedPlacementId(item.i)
+                        : undefined
+                    }
+                    onDuplicate={() => duplicateLayoutItem(item.i)}
+                    onDelete={() => removeComponentFromLayout(item.i)}
+                    draggable={editMode}
+                    isDragging={draggedWidgetId === item.i}
+                    isDropTarget={isDragging && dropTargetIndex === index && draggedWidgetId !== item.i}
+                    onDragStart={handleWidgetDragStart(item.i)}
+                    onDragEnd={resetDragState}
+                    onDragOver={handleWidgetDragOver(index)}
+                    onDragLeave={handleWidgetDragLeave}
+                    onDrop={handleWidgetDrop(index)}
+                  />
+                </div>
               ))}
               {isDragging && (
                 <div
-                  className={`drop-slot${dropTargetIndex === activeDashboard.layout.length ? ' active' : ''}`}
-                  style={{ columnSpan: 'all', minHeight: 60 } as React.CSSProperties}
+                  className={`drop-slot dash-grid-append${dropTargetIndex === activeDashboard.layout.length ? ' active' : ''}`}
+                  style={{ minHeight: 60 }}
                   onDragOver={handleAppendDragOver}
                   onDrop={handleAppendDrop}
                 >
@@ -448,12 +457,15 @@ export function DashboardView() {
           Close keeps changes (handleSave) rather than reverting, so widgets added
           while the rail is open don't vanish on dismissal. */}
       <ComponentPalette
-        components={registry.getAvailableComponents()}
+        components={paletteComponents}
         onAddComponent={handleAddComponent}
         onClose={handleSave}
         isOpen={editMode}
         onPaletteDragStart={handlePaletteDragStart}
         onPaletteDragEnd={resetDragState}
+        onSave={handleSave}
+        onDiscard={handleDiscard}
+        saveBlocked={saveBlocked}
       />
     </>
   );

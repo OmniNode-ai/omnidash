@@ -19,9 +19,11 @@ import {
   KV,
   Panel,
   StateBadge,
+  derivePageBadge,
   fmtLatency,
   shortId,
   type DataColumn,
+  type ProjectionSnapshot,
 } from '@/components/dashboard/event-dash/primitives';
 import {
   useDelegationDecisions,
@@ -208,7 +210,17 @@ export function EventBusPage() {
   }
 
   const fresh = decisionsQ.data?.freshness === 'fresh' || genQ.data?.freshness === 'fresh';
-  const headRight = decisionsQ.data ? <FreshnessChip freshness={decisionsQ.data.freshness} latestEventAt={decisionsQ.data.latestEventAt} /> : null;
+
+  // OMN-12943: derive badge from both authoritative projections for this page.
+  const snapshots: ProjectionSnapshot[] = [decisionsQ.data, genQ.data]
+    .filter((d): d is NonNullable<typeof d> => d !== undefined)
+    .map((d) => ({ rowCount: d.rowCount, freshness: d.freshness }));
+  const badgeState = derivePageBadge(snapshots);
+  const latestEventAt = decisionsQ.data?.latestEventAt ?? genQ.data?.latestEventAt ?? null;
+
+  const headRight = snapshots.length > 0
+    ? <FreshnessChip state={badgeState} latestEventAt={latestEventAt} />
+    : null;
 
   return (
     <EvPageShell
@@ -236,7 +248,7 @@ export function EventBusPage() {
         <CorrelationTable correlations={correlations} />
       )}
 
-      <div className="grid cols-2 ev-align-start">
+      <div className="grid cols-2">
         {health.length > 0 ? <ProjectionHealth rows={health} /> : <Panel title="PROJECTION / API HEALTH"><EvEmpty title="Loading census…" /></Panel>}
         <Panel title="RUNTIME TOPOLOGY" sub="owned topics · live row counts">
           <KV

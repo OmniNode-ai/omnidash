@@ -16,9 +16,20 @@ interface FrameLayoutProps {
 
 export function FrameLayout({ children }: FrameLayoutProps) {
   const sidebarCollapsed = useFrameStore((s) => s.sidebarCollapsed);
+  const setSidebarCollapsed = useFrameStore((s) => s.setSidebarCollapsed);
   return (
     <div className={`app${sidebarCollapsed ? ' sidebar-collapsed' : ''}`}>
       <Sidebar />
+      {/* OMN-12833 (WS5): closes the mobile sidebar overlay when the user clicks
+          outside it. CSS hides this element above 1024px so it has no effect
+          on desktop even when the sidebar is expanded there. */}
+      {!sidebarCollapsed && (
+        <div
+          className="sidebar-backdrop"
+          onClick={() => setSidebarCollapsed(true)}
+          aria-hidden="true"
+        />
+      )}
       <div className="main">
         <DataModeBanner />
         {children}

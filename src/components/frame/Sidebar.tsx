@@ -12,7 +12,8 @@
 //     keeping the menu pattern consistent with the prototype across the whole app.
 
 import { useEffect, useLayoutEffect, useRef, useState } from 'react';
-import { Edit, Copy, Plus, MoreHorizontal, Trash2, ChevronsLeft, ChevronsRight, SlidersHorizontal, Grid3x3, GitBranch, Sparkles, FlaskConical, Radio } from 'lucide-react';
+import { Edit, Copy, Plus, MoreHorizontal, Trash2, ChevronsLeft, ChevronsRight, SlidersHorizontal, GitBranch, Sparkles, FlaskConical, Radio } from 'lucide-react';
+// Grid3x3 removed from import while Instruction Eval nav entry is commented out (OMN-12833 A4).
 import type { AppPage } from '@/store/types';
 import {
   PositionedMenu,
@@ -208,7 +209,7 @@ export function Sidebar() {
               key={d.id}
               data-testid={`dash-item-${d.id}`}
               className={`dash-item${isActive ? ' active' : ''}`}
-              onClick={() => setActiveDashboardById(d.id)}
+              onClick={() => { setActiveDashboardById(d.id); setActivePage('dashboard'); }}
               // Show the dashboard name on hover when the sidebar is
               // collapsed — otherwise users have no way to read it.
               title={collapsed ? d.name : undefined}
@@ -325,6 +326,9 @@ export function Sidebar() {
           paddingTop: 4,
         }}
       >
+        {/* OMN-12833 (A4): Instruction Eval hidden from beta nav — the instruction-eval
+            runner has no data yet so the page shows a permanent empty state. Uncomment
+            when node_projection_instruction_eval starts receiving rows.
         {!collapsed && (
           <div className="sidebar-bottom-title" style={{ padding: '4px 12px 2px' }}>
             <Text size="xs" color="tertiary" transform="uppercase" weight="semibold">
@@ -354,6 +358,7 @@ export function Sidebar() {
             {!collapsed && <span className="dash-name">{label}</span>}
           </div>
         ))}
+        */}
 
         <div
           role="button"

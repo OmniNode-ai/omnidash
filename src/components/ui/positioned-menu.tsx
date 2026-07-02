@@ -155,6 +155,12 @@ export function PositionedMenu({
   // Use position: fixed because anchor rect is viewport-relative.
   style.position = 'fixed';
 
+  // Clamp left so the menu never overflows the right edge of the viewport.
+  // Handles cases like right-start placement inside a narrow sidebar on mobile.
+  if (typeof style.left === 'number') {
+    style.left = Math.max(0, Math.min(style.left, window.innerWidth - minWidth - 4));
+  }
+
   return createPortal(
     <div ref={menuRef} className="menu" style={style} role="menu">
       {children}
