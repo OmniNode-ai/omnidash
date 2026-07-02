@@ -50,4 +50,5 @@ export const componentImports: Record<string, ReturnType<typeof lazy>> = {
   'instruction-eval/InstructionEvalHeatmap': lazy(() => import('./instruction-eval/InstructionEvalHeatmap')),
   'context-heatmap/ContextEffectivenessHeatmap': lazy(() => import('./context-heatmap/ContextEffectivenessHeatmap')),
   'renderer-capability-status/RendererCapabilityStatusWidget': lazy(() => import('./renderer-capability-status/RendererCapabilityStatusWidget')),
+  'skill-adoption/SkillAdoptionWidget': lazy(() => import('./skill-adoption/SkillAdoptionWidget')),
 };

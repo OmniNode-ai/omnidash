@@ -164,6 +164,14 @@ export const TOPICS = {
    * instruction-eval runner emits events.
    */
   instructionEvalAggregate: 'onex.snapshot.projection.omnimarket.instruction-eval-aggregate.v1',
+  /**
+   * Skill-adoption widget — per-skill lifecycle rows from the `skill_executions`
+   * table (omnibase_infra migration 048, OMN-2934). One row per skill-started or
+   * skill-completed event; the widget derives invocation counts, status
+   * breakdown, and receipt coverage. Populated on the .201 stability bus as of
+   * OMN-13830; rendered by SkillAdoptionWidget (OMN-13832).
+   */
+  skillExecutions: 'onex.snapshot.projection.skill-executions.v1',
 } as const;
 
 export type TopicSymbol = (typeof TOPICS)[keyof typeof TOPICS];
