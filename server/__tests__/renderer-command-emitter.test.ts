@@ -129,6 +129,36 @@ describe('renderer command thin-publish transport', () => {
   });
 });
 
+// ── Item D: Tenant context propagation ───────────────────────────────────────
+describe('tenant context in command envelope', () => {
+  it('populates tenant fields from tenantContext when provided', () => {
+    const env = buildRendererCommandEnvelope(baseInput({
+      tenantContext: { tenant_id: 'tenant-abc', tenant_slug: 'acme', sub: 'user-42' },
+    }));
+    expect(env.tenant_id).toBe('tenant-abc');
+    expect(env.tenant_slug).toBe('acme');
+    expect(env.tenant_sub).toBe('user-42');
+  });
+
+  it('sets tenant fields to null when tenantContext is absent', () => {
+    const env = buildRendererCommandEnvelope(baseInput());
+    expect(env.tenant_id).toBeNull();
+    expect(env.tenant_slug).toBeNull();
+    expect(env.tenant_sub).toBeNull();
+  });
+
+  it('tenant fields are propagated verbatim to the published envelope', async () => {
+    const publish = vi.fn().mockResolvedValue(undefined);
+    const env = await emitRendererCommand(
+      baseInput({ tenantContext: { tenant_id: 'tenant-abc', tenant_slug: 'acme', sub: 'user-42' } }),
+      { publish },
+    );
+    expect(env.tenant_id).toBe('tenant-abc');
+    const published = publish.mock.calls[0]?.[1] as typeof env;
+    expect(published.tenant_id).toBe('tenant-abc');
+  });
+});
+
 // ── G-D thin-producer MAY / MAY-NOT bounds (mechanically asserted) ─────────────
 describe('thin-producer bounds (G-D)', () => {
   it('publishes EVERY action to the SAME declared topic — no dispatch on action type', async () => {

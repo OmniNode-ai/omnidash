@@ -37,6 +37,13 @@ export class RendererEmitterError extends Error {
   }
 }
 
+/** Tenant identity derived from the verified Keycloak JWT at server ingress. */
+export interface RendererTenantContext {
+  tenant_id: string;
+  tenant_slug: string;
+  sub: string;
+}
+
 /**
  * The renderer-supplied description of a single UI action. The renderer owns
  * the action contract id + payload; identity (correlation/causation) is passed
@@ -55,6 +62,8 @@ export interface RendererCommandInput {
   causationId?: string;
   /** The action payload, carried verbatim. Must be a keyed object. */
   payload: Record<string, unknown>;
+  /** Tenant identity from the verified JWT — attached once at ingress, never from body. */
+  tenantContext?: RendererTenantContext;
 }
 
 /** Transport metadata attached by the thin producer (not business truth). */
@@ -79,6 +88,9 @@ export interface RendererCommandEnvelope {
   action_contract_id: string;
   contract_version: string;
   source_tool: 'omnidash-ui';
+  tenant_id: string | null;
+  tenant_slug: string | null;
+  tenant_sub: string | null;
   payload: Record<string, unknown>;
   transport: RendererCommandTransport;
 }
@@ -139,6 +151,9 @@ export function buildRendererCommandEnvelope(
     action_contract_id: actionContractId,
     contract_version: contractVersion,
     source_tool: 'omnidash-ui',
+    tenant_id: input.tenantContext?.tenant_id ?? null,
+    tenant_slug: input.tenantContext?.tenant_slug ?? null,
+    tenant_sub: input.tenantContext?.sub ?? null,
     payload: input.payload,
     transport: {
       kind: 'thin-publish',

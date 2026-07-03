@@ -35,7 +35,7 @@ describe('PostgresProjectionReader', () => {
     const client = { query: vi.fn().mockResolvedValue({ rows: [] }), release: vi.fn() };
     getMockPool().connect.mockResolvedValue(client);
 
-    const result = await reader.readProjection('onex.snapshot.projection.unknown.v1');
+    const result = await reader.readProjection('onex.snapshot.projection.unknown.v1', 'tenant-a');
 
     expect(result.source).toBe('postgres');
     expect(result.topic).toBe('onex.snapshot.projection.unknown.v1');
@@ -54,7 +54,7 @@ describe('PostgresProjectionReader', () => {
     const client = { query: vi.fn().mockResolvedValue({ rows: [fakeRow] }), release: vi.fn() };
     getMockPool().connect.mockResolvedValue(client);
 
-    const result = await reader.readProjection('onex.snapshot.projection.delegation.decisions.v1');
+    const result = await reader.readProjection('onex.snapshot.projection.delegation.decisions.v1', 'tenant-a');
 
     expect(result.rows).toHaveLength(1);
     expect(result.rows[0]).toMatchObject({ correlation_id: 'corr-1', model_name: 'qwen3' });
@@ -65,7 +65,7 @@ describe('PostgresProjectionReader', () => {
     const consoleError = vi.spyOn(console, 'error').mockImplementation(() => undefined);
     getMockPool().connect.mockRejectedValue(new Error('ECONNREFUSED'));
 
-    const result = await reader.readProjection('onex.snapshot.projection.delegation.decisions.v1');
+    const result = await reader.readProjection('onex.snapshot.projection.delegation.decisions.v1', 'tenant-a');
 
     expect(result.rows).toEqual([]);
     expect(consoleError).toHaveBeenCalled();
@@ -88,7 +88,7 @@ describe('PostgresProjectionReader', () => {
     };
     getMockPool().connect.mockResolvedValue(client);
 
-    const result = await reader.readProjection('onex.snapshot.projection.delegation.summary.v1');
+    const result = await reader.readProjection('onex.snapshot.projection.delegation.summary.v1', 'tenant-a');
 
     expect(result.rows).toHaveLength(1);
     const row = result.rows[0] as Record<string, unknown>;
@@ -98,7 +98,7 @@ describe('PostgresProjectionReader', () => {
     // total_savings_usd is summed from savings_estimates, NOT a hardcoded 0 (OMN-13355).
     expect(row.totalSavingsUsd).toBeCloseTo(0.4242);
     expect(row.total_savings_usd).toBeCloseTo(0.4242);
-    expect(client.query).toHaveBeenCalledWith(expect.stringContaining('SUM(savings_usd)'));
+    expect(client.query).toHaveBeenCalledWith(expect.stringContaining('SUM(savings_usd)'), ['tenant-a']);
     expect(Array.isArray(row.byTaskType)).toBe(true);
     expect(Array.isArray(row.byModel)).toBe(true);
   });
@@ -121,7 +121,7 @@ describe('PostgresProjectionReader', () => {
     };
     getMockPool().connect.mockResolvedValue(client);
 
-    const result = await reader.readProjection('onex.snapshot.projection.delegation.summary.v1');
+    const result = await reader.readProjection('onex.snapshot.projection.delegation.summary.v1', 'tenant-a');
 
     const row = result.rows[0] as Record<string, unknown>;
     expect(row.totalDelegations).toBe(5);
@@ -156,7 +156,7 @@ describe('PostgresProjectionReader', () => {
     };
     getMockPool().connect.mockResolvedValue(client);
 
-    const result = await reader.readProjection('onex.snapshot.projection.delegation.savings.v1');
+    const result = await reader.readProjection('onex.snapshot.projection.delegation.savings.v1', 'tenant-a');
 
     expect(result.rows).toHaveLength(1);
     expect(result.rows[0]).toMatchObject({
@@ -172,8 +172,8 @@ describe('PostgresProjectionReader', () => {
       completion_tokens: 593,
       tokens_to_compliance: 737,
     });
-    expect(client.query).toHaveBeenCalledWith(expect.stringContaining('FROM savings_estimates'));
-    expect(client.query).toHaveBeenCalledWith(expect.stringContaining('to_jsonb(delegation_events)'));
+    expect(client.query).toHaveBeenCalledWith(expect.stringContaining('FROM savings_estimates'), ['tenant-a']);
+    expect(client.query).toHaveBeenCalledWith(expect.stringContaining('to_jsonb(delegation_events)'), ['tenant-a']);
   });
 
   it('exposes the pinned premium counterfactual on delegation savings sessions (OMN-13355)', async () => {
@@ -215,7 +215,7 @@ describe('PostgresProjectionReader', () => {
     };
     getMockPool().connect.mockResolvedValue(client);
 
-    const result = await reader.readProjection('onex.snapshot.projection.delegation.savings.v1');
+    const result = await reader.readProjection('onex.snapshot.projection.delegation.savings.v1', 'tenant-a');
 
     const sessions = result.rows[0]!.sessions as Record<string, unknown>[];
     expect(sessions[0]!.premium_counterfactual).toMatchObject({
@@ -226,6 +226,7 @@ describe('PostgresProjectionReader', () => {
     // The auditable column is read from the projection row.
     expect(client.query).toHaveBeenCalledWith(
       expect.stringContaining("e->'premium_counterfactual'"),
+      ['tenant-a'],
     );
   });
 
@@ -274,7 +275,7 @@ describe('PostgresProjectionReader', () => {
     };
     getMockPool().connect.mockResolvedValue(client);
 
-    const result = await reader.readProjection('onex.snapshot.projection.delegation.savings.v1');
+    const result = await reader.readProjection('onex.snapshot.projection.delegation.savings.v1', 'tenant-a');
 
     expect(result.rows[0]).toMatchObject({
       cumulative_savings_usd: 0.009,
@@ -321,7 +322,7 @@ describe('PostgresProjectionReader', () => {
     };
     getMockPool().connect.mockResolvedValue(client);
 
-    const result = await reader.readProjection('onex.snapshot.projection.cost.savings-overview.v1');
+    const result = await reader.readProjection('onex.snapshot.projection.cost.savings-overview.v1', 'tenant-a');
 
     expect(result.rows).toHaveLength(1);
     expect(result.rows[0]).toMatchObject({
@@ -400,7 +401,7 @@ describe('PostgresProjectionReader', () => {
     };
     getMockPool().connect.mockResolvedValue(client);
 
-    const result = await reader.readProjection('onex.snapshot.projection.cost.savings-overview.v1');
+    const result = await reader.readProjection('onex.snapshot.projection.cost.savings-overview.v1', 'tenant-a');
 
     expect(result.rows[0]).toMatchObject({
       total_baseline_cost_usd: 0.004122,
@@ -453,7 +454,7 @@ describe('PostgresProjectionReader', () => {
     };
     getMockPool().connect.mockResolvedValue(client);
 
-    const result = await reader.readProjection('onex.snapshot.projection.delegation.token-usage.v1');
+    const result = await reader.readProjection('onex.snapshot.projection.delegation.token-usage.v1', 'tenant-a');
 
     expect(result.rows).toHaveLength(1);
     expect(result.rows[0]).toMatchObject({
@@ -476,7 +477,7 @@ describe('PostgresProjectionReader', () => {
       usage_source: 'measured',
       token_provenance: 'measured',
     });
-    expect(client.query).toHaveBeenCalledWith(expect.stringContaining('FROM delegation_events'));
+    expect(client.query).toHaveBeenCalledWith(expect.stringContaining('FROM delegation_events'), ['tenant-a']);
   });
 
   it('returns MCP tools rows from node_service_registry metadata', async () => {
@@ -491,7 +492,7 @@ describe('PostgresProjectionReader', () => {
     const client = { query: vi.fn().mockResolvedValue({ rows: [fakeRow] }), release: vi.fn() };
     getMockPool().connect.mockResolvedValue(client);
 
-    const result = await reader.readProjection('onex.snapshot.projection.mcp-tools.v1');
+    const result = await reader.readProjection('onex.snapshot.projection.mcp-tools.v1', 'tenant-a');
 
     expect(result.rows).toHaveLength(1);
     expect(result.rows[0]).toMatchObject(fakeRow);
@@ -531,7 +532,7 @@ describe('PostgresProjectionReader', () => {
     };
     getMockPool().connect.mockResolvedValue(client);
 
-    const result = await reader.readProjection('onex.snapshot.projection.live-events.v1');
+    const result = await reader.readProjection('onex.snapshot.projection.live-events.v1', 'tenant-a');
 
     expect(result.rows).toHaveLength(2);
     expect(result.rows[0]).toMatchObject({
@@ -561,11 +562,11 @@ describe('PostgresProjectionReader', () => {
     const client = { query: vi.fn().mockResolvedValue({ rows: [fakeRow] }), release: vi.fn() };
     getMockPool().connect.mockResolvedValue(client);
 
-    const result = await reader.readProjection('onex.evt.omnimarket.node-generation-completed.v1');
+    const result = await reader.readProjection('onex.evt.omnimarket.node-generation-completed.v1', 'tenant-a');
 
     expect(result.rows).toHaveLength(1);
     expect(result.rows[0]).toMatchObject(fakeRow);
-    expect(client.query).toHaveBeenCalledWith(expect.stringContaining('FROM generation_events'));
+    expect(client.query).toHaveBeenCalledWith(expect.stringContaining('FROM generation_events'), ['tenant-a']);
   });
 
   it('releases client even on query error', async () => {
@@ -576,8 +577,127 @@ describe('PostgresProjectionReader', () => {
     getMockPool().connect.mockResolvedValue(client);
     vi.spyOn(console, 'error').mockImplementation(() => undefined);
 
-    await reader.readProjection('onex.snapshot.projection.delegation.decisions.v1');
+    await reader.readProjection('onex.snapshot.projection.delegation.decisions.v1', 'tenant-a');
 
     expect(client.release).toHaveBeenCalled();
+  });
+
+  // ── Item C: Tenant isolation ───────────────────────────────────────────────
+  describe('tenant isolation', () => {
+    it('passes tenant_id as a query param on delegation decisions — never unfiltered', async () => {
+      const client = { query: vi.fn().mockResolvedValue({ rows: [] }), release: vi.fn() };
+      getMockPool().connect.mockResolvedValue(client);
+
+      await reader.readProjection('onex.snapshot.projection.delegation.decisions.v1', 'tenant-xyz');
+
+      const [sql, params] = client.query.mock.calls[0] as [string, unknown[]];
+      expect(sql).toContain('WHERE tenant_id = $1');
+      expect(params).toEqual(['tenant-xyz']);
+    });
+
+    it('passes tenant_id on savings estimates — never unfiltered', async () => {
+      const client = { query: vi.fn().mockResolvedValue({ rows: [] }), release: vi.fn() };
+      getMockPool().connect.mockResolvedValue(client);
+
+      await reader.readProjection('onex.snapshot.projection.savings.v1', 'tenant-xyz');
+
+      const [sql, params] = client.query.mock.calls[0] as [string, unknown[]];
+      expect(sql).toContain('WHERE tenant_id = $1');
+      expect(params).toEqual(['tenant-xyz']);
+    });
+
+    it('passes tenant_id on generation events — never unfiltered', async () => {
+      const client = { query: vi.fn().mockResolvedValue({ rows: [] }), release: vi.fn() };
+      getMockPool().connect.mockResolvedValue(client);
+
+      await reader.readProjection('onex.evt.omnimarket.node-generation-completed.v1', 'tenant-xyz');
+
+      const [sql, params] = client.query.mock.calls[0] as [string, unknown[]];
+      expect(sql).toContain('WHERE tenant_id = $1');
+      expect(params).toEqual(['tenant-xyz']);
+    });
+
+    it('passes tenant_id on swarm runs — never unfiltered', async () => {
+      const client = { query: vi.fn().mockResolvedValue({ rows: [] }), release: vi.fn() };
+      getMockPool().connect.mockResolvedValue(client);
+
+      await reader.readProjection('onex.snapshot.projection.swarm.runs.v1', 'tenant-xyz');
+
+      const [sql, params] = client.query.mock.calls[0] as [string, unknown[]];
+      expect(sql).toContain('WHERE tenant_id = $1');
+      expect(params).toEqual(['tenant-xyz']);
+    });
+
+    it('passes tenant_id on live-events delegation_event_log sub-query', async () => {
+      const client = { query: vi.fn().mockResolvedValue({ rows: [] }), release: vi.fn() };
+      getMockPool().connect.mockResolvedValue(client);
+
+      await reader.readProjection('onex.snapshot.projection.live-events.v1', 'tenant-xyz');
+
+      const calls = client.query.mock.calls as [string, unknown[]][];
+      const eventLogCall = calls.find(([sql]) => sql.includes('delegation_event_log'));
+      expect(eventLogCall).toBeDefined();
+      expect(eventLogCall![0]).toContain('WHERE tenant_id = $1');
+      expect(eventLogCall![1]).toEqual(['tenant-xyz']);
+    });
+
+    it('passes tenant_id on live-events delegation_events sub-query', async () => {
+      const client = { query: vi.fn().mockResolvedValue({ rows: [] }), release: vi.fn() };
+      getMockPool().connect.mockResolvedValue(client);
+
+      await reader.readProjection('onex.snapshot.projection.live-events.v1', 'tenant-xyz');
+
+      const calls = client.query.mock.calls as [string, unknown[]][];
+      const delegationCall = calls.find(([sql]) => sql.includes('FROM delegation_events'));
+      expect(delegationCall).toBeDefined();
+      expect(delegationCall![0]).toContain('WHERE tenant_id = $1');
+      expect(delegationCall![1]).toEqual(['tenant-xyz']);
+    });
+
+    it('passes tenant_id on live-events generation_events sub-query', async () => {
+      const client = { query: vi.fn().mockResolvedValue({ rows: [] }), release: vi.fn() };
+      getMockPool().connect.mockResolvedValue(client);
+
+      await reader.readProjection('onex.snapshot.projection.live-events.v1', 'tenant-xyz');
+
+      const calls = client.query.mock.calls as [string, unknown[]][];
+      const genCall = calls.find(([sql]) => sql.includes('FROM generation_events'));
+      expect(genCall).toBeDefined();
+      expect(genCall![0]).toContain('WHERE tenant_id = $1');
+      expect(genCall![1]).toEqual(['tenant-xyz']);
+    });
+
+    it('passes tenant_id on delegation token-usage — never unfiltered', async () => {
+      const client = { query: vi.fn().mockResolvedValue({ rows: [] }), release: vi.fn() };
+      getMockPool().connect.mockResolvedValue(client);
+
+      await reader.readProjection('onex.snapshot.projection.delegation.token-usage.v1', 'tenant-xyz');
+
+      const [sql, params] = client.query.mock.calls[0] as [string, unknown[]];
+      expect(sql).toContain('WHERE tenant_id = $1');
+      expect(params).toEqual(['tenant-xyz']);
+    });
+
+    it('queryLogEntries filters by tenant_id when provided', async () => {
+      const client = { query: vi.fn().mockResolvedValue({ rows: [] }), release: vi.fn() };
+      getMockPool().connect.mockResolvedValue(client);
+
+      await reader.queryLogEntries({}, 'tenant-xyz');
+
+      const [sql, params] = client.query.mock.calls[0] as [string, unknown[]];
+      expect(sql).toContain('tenant_id = $1');
+      expect(params[0]).toBe('tenant-xyz');
+    });
+
+    it('queryTraces filters by tenant_id when provided', async () => {
+      const client = { query: vi.fn().mockResolvedValue({ rows: [] }), release: vi.fn() };
+      getMockPool().connect.mockResolvedValue(client);
+
+      await reader.queryTraces({}, 'tenant-xyz');
+
+      const [sql, params] = client.query.mock.calls[0] as [string, unknown[]];
+      expect(sql).toContain('tenant_id = $1');
+      expect(params[0]).toBe('tenant-xyz');
+    });
   });
 });

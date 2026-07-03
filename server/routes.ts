@@ -62,24 +62,10 @@ async function readJson(path: string): Promise<unknown> {
   return JSON.parse(raw) as unknown;
 }
 
-// OMN-14152: 'http' mode has no local reader (no pgReader/sqliteReader) — it
-// means the projection data lives behind a separate projection-api HTTP
-// service (dsConfig.url). Proxy the read verbatim (GET only) so the bridge
-// stays same-origin from the browser's perspective; nothing here forwards
-// writes/commands to that service.
-async function readProjectionViaHttp(topic: string): Promise<unknown> {
-  const base = dsConfig.url.replace(/\/$/, '');
-  const url = `${base}/projection/${encodeURIComponent(topic)}`;
-  const res = await fetch(url);
-  if (!res.ok) {
-    throw new Error(`http data source GET ${url} failed: ${res.status} ${res.statusText}`);
-  }
-  return res.json();
-}
-
-async function readProjection(topic: string): Promise<unknown> {
+async function readProjection(topic: string, tenantId?: string): Promise<unknown> {
   if (pgReader) {
-    return pgReader.readProjection(topic);
+    if (!tenantId) throw new Error('tenant_id required for postgres reads');
+    return pgReader.readProjection(topic, tenantId);
   }
 
   if (sqliteReader) {
@@ -90,10 +76,6 @@ async function readProjection(topic: string): Promise<unknown> {
     throw new Error(
       'data_source.postgres_database_url_secret_ref must resolve for postgres mode; refusing fixture fallback',
     );
-  }
-
-  if (dsConfig.mode === 'http') {
-    return readProjectionViaHttp(topic);
   }
 
   if (dsConfig.mode !== 'file') {
@@ -173,6 +155,7 @@ router.post('/api/delegation/trigger', async (req, res) => {
   }
 
   const requestedAt = new Date().toISOString();
+  const tenant = req.tenant!;
   const envelope = {
     payload: {
       prompt,
@@ -183,12 +166,18 @@ router.post('/api/delegation/trigger', async (req, res) => {
       metadata: {
         requested_by: 'omnidash-ui',
         source_surface: 'delegation-control-plane',
+        tenant_id: tenant.tenant_id,
+        tenant_slug: tenant.tenant_slug,
+        sub: tenant.sub,
       },
     },
     envelope_id: randomUUID(),
     envelope_timestamp: requestedAt,
     correlation_id: correlationId,
     source_tool: 'omnidash-ui',
+    tenant_id: tenant.tenant_id,
+    tenant_slug: tenant.tenant_slug,
+    tenant_sub: tenant.sub,
     event_type: DELEGATE_SKILL_EVENT_TYPE,
     priority: 5,
     retry_count: 0,
@@ -249,6 +238,9 @@ router.post('/api/renderer/emit', async (req, res) => {
     actionContractId: body.action_contract_id,
     contractVersion: body.contract_version,
     payload: body.payload as Record<string, unknown>,
+    tenantContext: req.tenant
+      ? { tenant_id: req.tenant.tenant_id, tenant_slug: req.tenant.tenant_slug, sub: req.tenant.sub }
+      : undefined,
   };
   if (typeof body.correlation_id === 'string') {
     input.correlationId = body.correlation_id;
@@ -310,6 +302,7 @@ router.post('/api/sea/generate', async (req, res) => {
   }
 
   const requestedAt = new Date().toISOString();
+  const seaTenant = req.tenant!;
   const envelope = {
     payload: {
       task_description: taskDescription,
@@ -319,6 +312,9 @@ router.post('/api/sea/generate', async (req, res) => {
     envelope_timestamp: requestedAt,
     correlation_id: correlationId,
     source_tool: 'omnidash-ui',
+    tenant_id: seaTenant.tenant_id,
+    tenant_slug: seaTenant.tenant_slug,
+    tenant_sub: seaTenant.sub,
     event_type: SEA_NODE_GENERATION_EVENT_TYPE,
     priority: 5,
     retry_count: 0,
@@ -338,13 +334,13 @@ router.post('/api/sea/generate', async (req, res) => {
 });
 
 // Swarm runs: paginated list from swarm_runs table, newest first.
-router.get('/api/swarm-runs', async (_req, res) => {
+router.get('/api/swarm-runs', async (req, res) => {
   if (!pgReader) {
     res.status(503).json({ error: 'postgres data source not configured' });
     return;
   }
   try {
-    const rows = await pgReader.readProjection('onex.snapshot.projection.swarm.runs.v1');
+    const rows = await pgReader.readProjection('onex.snapshot.projection.swarm.runs.v1', req.tenant!.tenant_id);
     res.json({ rows: rows.rows });
   } catch (err) {
     console.error('[routes] /api/swarm-runs error:', err);
@@ -356,7 +352,7 @@ router.get('/api/swarm-runs', async (_req, res) => {
 // projection-topic snapshots; it must not query Postgres directly.
 router.get('/projection/:topic', async (req, res) => {
   try {
-    res.json(await readProjection(req.params.topic));
+    res.json(await readProjection(req.params.topic, req.tenant?.tenant_id));
   } catch (err) {
     console.error('[routes] /projection/:topic error:', err);
     res.status(500).json({ error: 'projection read failed' });
@@ -489,7 +485,7 @@ router.get('/api/projections/log-entries', async (req, res) => {
       level: req.query.level ? String(req.query.level) : undefined,
       since: req.query.since ? String(req.query.since) : undefined,
       limit: Number.isFinite(limit) && limit > 0 ? limit : 100,
-    });
+    }, req.tenant?.tenant_id);
     res.json(entries);
   } catch (err) {
     console.error('[routes] /api/projections/log-entries error:', err);
@@ -509,7 +505,7 @@ router.get('/api/projections/traces', async (req, res) => {
       since: req.query.since ? String(req.query.since) : undefined,
       limit: Number.isFinite(limit) && limit > 0 ? limit : 50,
       running_only,
-    });
+    }, req.tenant?.tenant_id);
     res.json(traces);
   } catch (err) {
     console.error('[routes] /api/projections/traces error:', err);
