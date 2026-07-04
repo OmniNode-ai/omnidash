@@ -9,6 +9,8 @@ const CONTRACT_OVERLAY_PATH = resolve(__dirname, '..', 'contract.local.yaml');
 
 export type DataSourceMode = 'sqlite' | 'postgres' | 'file' | 'http';
 
+export type TenantAuthMode = 'disabled' | 'required';
+
 interface RuntimeContract {
   data_source: {
     default: DataSourceMode;
@@ -25,12 +27,19 @@ interface RuntimeContract {
     heartbeat_enabled: string;
     heartbeat_interval_ms: string;
   };
+  auth: {
+    tenant_mode: string;
+    issuer_url: string;
+    audience: string;
+    tenant_claim: string;
+  };
 }
 
 type RuntimeContractPatch = {
   data_source?: Partial<RuntimeContract['data_source']>;
   event_bus?: Partial<RuntimeContract['event_bus']>;
   renderer_capability?: Partial<RuntimeContract['renderer_capability']>;
+  auth?: Partial<RuntimeContract['auth']>;
 };
 
 function defaultContract(): RuntimeContract {
@@ -50,6 +59,15 @@ function defaultContract(): RuntimeContract {
       heartbeat_enabled: 'true',
       heartbeat_interval_ms: '30000',
     },
+    auth: {
+      // OMN-13824: tenant auth ships disabled until the Keycloak realm carries
+      // the tenant claim (deploy/keycloak/ APPLY PLAN). 'required' enforces a
+      // verified bearer token with a non-empty tenant claim on every request.
+      tenant_mode: 'disabled',
+      issuer_url: '',
+      audience: '',
+      tenant_claim: 'tenant_id',
+    },
   };
 }
 
@@ -68,7 +86,10 @@ function parseYamlRuntimeContract(raw: string): RuntimeContractPatch {
     if (sectionMatch) {
       const name = sectionMatch[1] as keyof RuntimeContract;
       section =
-        name === 'data_source' || name === 'event_bus' || name === 'renderer_capability'
+        name === 'data_source'
+          || name === 'event_bus'
+          || name === 'renderer_capability'
+          || name === 'auth'
           ? name
           : null;
       continue;
@@ -97,6 +118,12 @@ function parseYamlRuntimeContract(raw: string): RuntimeContractPatch {
       else if (key === 'heartbeat_interval_ms') {
         result.renderer_capability.heartbeat_interval_ms = value;
       }
+    } else if (section === 'auth') {
+      result.auth ??= {};
+      if (key === 'tenant_mode') result.auth.tenant_mode = value;
+      else if (key === 'issuer_url') result.auth.issuer_url = value;
+      else if (key === 'audience') result.auth.audience = value;
+      else if (key === 'tenant_claim') result.auth.tenant_claim = value;
     }
   }
 
@@ -116,6 +143,10 @@ function mergeContract(base: RuntimeContract, overlay: RuntimeContractPatch): Ru
     renderer_capability: {
       ...base.renderer_capability,
       ...overlay.renderer_capability,
+    },
+    auth: {
+      ...base.auth,
+      ...overlay.auth,
     },
   };
 }
@@ -208,6 +239,43 @@ export function loadEventBusConfig(): EventBusConfig {
     bootstrapServers,
     clientId: process.env.OMNIDASH_EVENT_BUS_CLIENT_ID ?? contract.event_bus.client_id,
   };
+}
+
+export interface AuthConfig {
+  /** disabled (pass-through, no tenant context) or required (verified bearer token mandatory). */
+  tenantMode: TenantAuthMode;
+  /** OIDC issuer URL, e.g. the Keycloak realm URL. Empty when auth is disabled. */
+  issuerUrl: string;
+  /** Expected `aud` claim; empty string disables audience checking. */
+  audience: string;
+  /** Token claim carrying the tenant id (deploy/keycloak/ mints `tenant_id`). */
+  tenantClaim: string;
+}
+
+/**
+ * OMN-13824 / OMN-1636: resolve the tenant-auth config. Contract-driven with
+ * env overrides for lane tuning (same pattern as the other loaders). Fails
+ * fast on an unknown mode and on `required` without an issuer — a silently
+ * misconfigured auth gate must never boot.
+ */
+export function loadAuthConfig(): AuthConfig {
+  const contract = loadContract();
+  const rawMode = process.env.OMNIDASH_TENANT_AUTH_MODE ?? contract.auth.tenant_mode;
+  if (rawMode !== 'disabled' && rawMode !== 'required') {
+    throw new Error(`auth.tenant_mode must be 'disabled' or 'required', got: ${rawMode}`);
+  }
+  const issuerUrl = process.env.OMNIDASH_OIDC_ISSUER_URL ?? contract.auth.issuer_url;
+  const audience = process.env.OMNIDASH_OIDC_AUDIENCE ?? contract.auth.audience;
+  const tenantClaim = process.env.OMNIDASH_TENANT_CLAIM ?? contract.auth.tenant_claim;
+  if (rawMode === 'required' && !issuerUrl) {
+    throw new Error(
+      "auth.tenant_mode 'required' needs auth.issuer_url (contract.yaml / contract.local.yaml or OMNIDASH_OIDC_ISSUER_URL)",
+    );
+  }
+  if (!tenantClaim || tenantClaim.trim() === '') {
+    throw new Error('auth.tenant_claim must be a non-empty claim name');
+  }
+  return { tenantMode: rawMode, issuerUrl, audience, tenantClaim };
 }
 
 export interface CapabilityHeartbeatConfig {

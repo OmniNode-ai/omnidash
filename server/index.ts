@@ -3,7 +3,8 @@ import http from 'http';
 import { fileURLToPath } from 'node:url';
 import routes from './routes.js';
 import { connectProducer, disconnectProducer } from './kafka-producer.js';
-import { loadCapabilityHeartbeatConfig } from './data-source-contract.js';
+import { loadAuthConfig, loadCapabilityHeartbeatConfig } from './data-source-contract.js';
+import { createTenantMiddleware } from './auth/tenant-middleware.js';
 import {
   startCapabilityHeartbeat,
   type CapabilityHeartbeatHandle,
@@ -15,10 +16,15 @@ const PORT = parseInt(process.env.PORT ?? '3002', 10);
 export const app = express();
 app.use((_req, res, next) => {
   res.header('Access-Control-Allow-Origin', '*');
-  res.header('Access-Control-Allow-Headers', 'Content-Type');
+  res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization');
   next();
 });
 app.use(express.json());
+// OMN-13824 / OMN-1636: tenant auth gate. Contract-driven (auth.tenant_mode);
+// pass-through when disabled. When required, the verified tenant id from the
+// OIDC token is threaded through AsyncLocalStorage into the Postgres reader,
+// which scopes every read with the RLS GUC `app.tenant_id`.
+app.use(createTenantMiddleware({ config: loadAuthConfig() }));
 app.use(routes);
 
 const httpServer = http.createServer(app);

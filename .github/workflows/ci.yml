@@ -60,20 +60,73 @@ jobs:
       - name: Build Storybook
         run: npx storybook build -o storybook-static
 
+  # OMN-13824 / OMN-1636: the beta-gate tenant-isolation invariant, proven
+  # against a real Postgres with the actual RLS migration applied. This is an
+  # enforcement gate, not an advisory sweep — a change that breaks tenant
+  # isolation fails CI here.
+  tenant-rls:
+    name: Tenant RLS Isolation
+    runs-on: ubuntu-latest
+
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: omnidash_rls_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js 20.x
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20.x'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run tenant RLS isolation suite
+        run: npx vitest run server/__tests__/tenant-rls.integration.test.ts server/__tests__/tenant-scoped-reader.test.ts server/auth/
+        env:
+          CI: true
+          # TENANT_RLS_REQUIRED makes the integration suite FAIL (not skip)
+          # when the database URL wiring rots — the gate must never pass
+          # vacuously via describe.skipIf.
+          TENANT_RLS_REQUIRED: '1'
+          TENANT_RLS_TEST_DATABASE_URL: postgres://postgres:postgres@127.0.0.1:5432/omnidash_rls_test
+
   ci-summary:
     name: CI Summary
     runs-on: ubuntu-latest
     needs:
       - test
+      - tenant-rls
     if: always()
 
     steps:
       - name: Verify CI gate results
         run: |
           echo "Typecheck & Tests: ${{ needs.test.result }}"
+          echo "Tenant RLS Isolation: ${{ needs.tenant-rls.result }}"
 
           if [ "${{ needs.test.result }}" != "success" ]; then
             echo "::error::Typecheck & Tests did not pass."
+            exit 1
+          fi
+
+          if [ "${{ needs.tenant-rls.result }}" != "success" ]; then
+            echo "::error::Tenant RLS Isolation did not pass."
             exit 1
           fi
 
