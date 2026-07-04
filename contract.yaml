@@ -58,6 +58,32 @@ renderer_capability:
   heartbeat_enabled: true
   heartbeat_interval_ms: "30000"
 
+auth:
+  # OMN-13824 / OMN-1636: multi-tenant auth gate for the Express bridge.
+  #
+  # tenant_mode:
+  #   - disabled (default): pass-through — preserves single-tenant behavior;
+  #     Postgres reads run unscoped exactly as before.
+  #   - required: every request must carry a Keycloak-issued bearer token whose
+  #     tenant claim is non-empty. The verified tenant id is threaded through
+  #     AsyncLocalStorage into the Postgres reader, which scopes each read with
+  #     `SET LOCAL app.tenant_id` — the GUC the RLS policies key on
+  #     (db/migrations/0001_tenant_rls.sql).
+  #
+  # issuer_url: OIDC issuer (Keycloak realm URL). Keep lane-specific issuers in
+  #   contract.local.yaml or a deployment overlay, e.g.
+  #   issuer_url: "https://auth.omninode.ai/realms/omninode"
+  # audience: expected `aud` claim; empty disables the audience check.
+  # tenant_claim: token claim carrying the tenant id. deploy/keycloak/ defines
+  #   the client scope that mints `tenant_id` from the user attribute.
+  #
+  # Env overrides (lane tuning only): OMNIDASH_TENANT_AUTH_MODE,
+  # OMNIDASH_OIDC_ISSUER_URL, OMNIDASH_OIDC_AUDIENCE, OMNIDASH_TENANT_CLAIM.
+  tenant_mode: "disabled"
+  issuer_url: ""
+  audience: ""
+  tenant_claim: "tenant_id"
+
 command_topics:
   # OMN-12070: Delegation command dispatched via the Express trigger bridge
   # to the stability-test runtime effects endpoint (OMNIDASH_RUNTIME_EFFECTS_URL).

@@ -1,0 +1,39 @@
+{
+  "clientId": "omnidash",
+  "name": "OmniNode Dashboard",
+  "description": "omnidash web dashboard client (OMN-13824). Source-controlled config; apply via kcadm per deploy/keycloak/README.md — never hand-edit the live realm without updating this file.",
+  "protocol": "openid-connect",
+  "enabled": true,
+  "publicClient": false,
+  "standardFlowEnabled": true,
+  "implicitFlowEnabled": false,
+  "directAccessGrantsEnabled": false,
+  "serviceAccountsEnabled": false,
+  "frontchannelLogout": true,
+  "rootUrl": "https://dash.dev.omninode.ai",
+  "baseUrl": "/",
+  "redirectUris": [
+    "https://dash.dev.omninode.ai/*"
+  ],
+  "webOrigins": [
+    "https://dash.dev.omninode.ai"
+  ],
+  "attributes": {
+    "post.logout.redirect.uris": "https://dash.dev.omninode.ai/*",
+    "pkce.code.challenge.method": "S256"
+  },
+  "defaultClientScopes": [
+    "web-origins",
+    "acr",
+    "profile",
+    "roles",
+    "email",
+    "tenant"
+  ],
+  "optionalClientScopes": [
+    "address",
+    "phone",
+    "offline_access",
+    "microprofile-jwt"
+  ]
+}

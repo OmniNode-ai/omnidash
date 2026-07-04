@@ -1,9 +1,10 @@
-import { Pool } from 'pg';
+import { Pool, type PoolClient } from 'pg';
 import {
   timestampValue,
   mergeDelegationSessions as sharedMergeDelegationSessions,
   buildCostSavingsOverviewResult,
 } from './projection-reader-shared.js';
+import { getActiveTenantId } from './auth/tenant-context.js';
 
 export interface PostgresProjectionReaderOptions {
   connectionString: string;
@@ -100,6 +101,51 @@ export class PostgresProjectionReader {
     this.pool = new Pool({ connectionString: options.connectionString });
   }
 
+  // OMN-13824 / OMN-1636: tenant-scoped client checkout. When a tenant context
+  // is active (tenant auth enabled + verified token), the `app.tenant_id` GUC
+  // is set on the session before any read, so the RLS policies
+  // (db/migrations/0001_tenant_rls.sql) scope rows to the tenant. Without a
+  // tenant context the client is returned unscoped — identical to
+  // pre-multitenant behavior (and fail-closed at the DB layer for non-owner
+  // roles, since the policy evaluates NULL -> no rows).
+  //
+  // A session-level GUC (not BEGIN + SET LOCAL) is used deliberately: several
+  // reader paths tolerate missing-table errors on one sub-query and continue
+  // with the next, which an aborted transaction would poison (25P02). The
+  // no-leak guarantee comes from `release`: the GUC is RESET before the
+  // connection returns to the pool, and if the RESET cannot be proven the
+  // connection is destroyed instead of pooled.
+  private async checkoutClient(): Promise<{ client: PoolClient; release: () => Promise<void> }> {
+    const client = await this.pool.connect();
+    const tenantId = getActiveTenantId();
+    if (tenantId === null) {
+      return {
+        client,
+        release: async () => {
+          client.release();
+        },
+      };
+    }
+    try {
+      await client.query("SELECT set_config('app.tenant_id', $1, false)", [tenantId]);
+    } catch (err) {
+      client.release(err as Error);
+      throw err;
+    }
+    return {
+      client,
+      release: async () => {
+        try {
+          await client.query('RESET app.tenant_id');
+          client.release();
+        } catch (err) {
+          // Never return a tenant-tainted connection to the pool.
+          client.release(err as Error);
+        }
+      },
+    };
+  }
+
   // OMN-12822 (A2): readCorrelationTrace was removed alongside the retired
   // bespoke `GET /api/delegation/correlation-trace/:id` route. Per-correlation
   // traces are now read through the canonical projection API
@@ -127,7 +173,7 @@ export class PostgresProjectionReader {
   }
 
   async queryLogEntries(params: LogEntryQueryParams): Promise<ModelLogEntry[]> {
-    const client = await this.pool.connect();
+    const { client, release } = await this.checkoutClient();
     try {
       const conditions: string[] = [];
       const values: unknown[] = [];
@@ -173,12 +219,12 @@ export class PostgresProjectionReader {
       );
       return (res.rows as Row[]).map(rowToLogEntry);
     } finally {
-      client.release();
+      await release();
     }
   }
 
   async queryTraces(params: TraceQueryParams): Promise<TraceGroup[]> {
-    const client = await this.pool.connect();
+    const { client, release } = await this.checkoutClient();
     try {
       const conditions: string[] = ['correlation_id IS NOT NULL'];
       const values: unknown[] = [];
@@ -222,12 +268,12 @@ export class PostgresProjectionReader {
       }
       return traces;
     } finally {
-      client.release();
+      await release();
     }
   }
 
   private async query(topic: string): Promise<Row[]> {
-    const client = await this.pool.connect();
+    const { client, release } = await this.checkoutClient();
     try {
       switch (topic) {
         case 'delegation':
@@ -686,7 +732,7 @@ export class PostgresProjectionReader {
           return [];
       }
     } finally {
-      client.release();
+      await release();
     }
   }
 

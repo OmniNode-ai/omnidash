@@ -1,0 +1,43 @@
+{
+  "name": "tenant",
+  "description": "Tenant claims for the multi-tenant dashboard (OMN-13824 / OMN-1636). Mints tenant_id and org_id claims from user attributes into access/ID/userinfo tokens.",
+  "protocol": "openid-connect",
+  "attributes": {
+    "include.in.token.scope": "true",
+    "display.on.consent.screen": "false"
+  },
+  "protocolMappers": [
+    {
+      "name": "tenant-id",
+      "protocol": "openid-connect",
+      "protocolMapper": "oidc-usermodel-attribute-mapper",
+      "consentRequired": false,
+      "config": {
+        "user.attribute": "tenant_id",
+        "claim.name": "tenant_id",
+        "jsonType.label": "String",
+        "id.token.claim": "true",
+        "access.token.claim": "true",
+        "userinfo.token.claim": "true",
+        "multivalued": "false",
+        "aggregate.attrs": "false"
+      }
+    },
+    {
+      "name": "org-id",
+      "protocol": "openid-connect",
+      "protocolMapper": "oidc-usermodel-attribute-mapper",
+      "consentRequired": false,
+      "config": {
+        "user.attribute": "org_id",
+        "claim.name": "org_id",
+        "jsonType.label": "String",
+        "id.token.claim": "true",
+        "access.token.claim": "true",
+        "userinfo.token.claim": "true",
+        "multivalued": "false",
+        "aggregate.attrs": "false"
+      }
+    }
+  ]
+}
