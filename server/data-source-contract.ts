@@ -33,6 +33,14 @@ interface RuntimeContract {
     audience: string;
     tenant_claim: string;
   };
+  onboarding: {
+    enabled: string;
+    keycloak_apply_mode: string;
+    keycloak_admin_base_url: string;
+    keycloak_admin_client_id: string;
+    keycloak_admin_client_secret_ref: string;
+    postgres_database_url_secret_ref: string;
+  };
 }
 
 type RuntimeContractPatch = {
@@ -40,6 +48,7 @@ type RuntimeContractPatch = {
   event_bus?: Partial<RuntimeContract['event_bus']>;
   renderer_capability?: Partial<RuntimeContract['renderer_capability']>;
   auth?: Partial<RuntimeContract['auth']>;
+  onboarding?: Partial<RuntimeContract['onboarding']>;
 };
 
 function defaultContract(): RuntimeContract {
@@ -68,6 +77,17 @@ function defaultContract(): RuntimeContract {
       audience: '',
       tenant_claim: 'tenant_id',
     },
+    onboarding: {
+      // OMN-10875: self-service onboarding ships disabled; the Keycloak
+      // admin surface defaults to plan mode (live realm applies stay
+      // operator-gated).
+      enabled: 'false',
+      keycloak_apply_mode: 'plan',
+      keycloak_admin_base_url: '',
+      keycloak_admin_client_id: '',
+      keycloak_admin_client_secret_ref: '',
+      postgres_database_url_secret_ref: '',
+    },
   };
 }
 
@@ -90,6 +110,7 @@ function parseYamlRuntimeContract(raw: string): RuntimeContractPatch {
           || name === 'event_bus'
           || name === 'renderer_capability'
           || name === 'auth'
+          || name === 'onboarding'
           ? name
           : null;
       continue;
@@ -124,6 +145,17 @@ function parseYamlRuntimeContract(raw: string): RuntimeContractPatch {
       else if (key === 'issuer_url') result.auth.issuer_url = value;
       else if (key === 'audience') result.auth.audience = value;
       else if (key === 'tenant_claim') result.auth.tenant_claim = value;
+    } else if (section === 'onboarding') {
+      result.onboarding ??= {};
+      if (key === 'enabled') result.onboarding.enabled = value;
+      else if (key === 'keycloak_apply_mode') result.onboarding.keycloak_apply_mode = value;
+      else if (key === 'keycloak_admin_base_url') result.onboarding.keycloak_admin_base_url = value;
+      else if (key === 'keycloak_admin_client_id') result.onboarding.keycloak_admin_client_id = value;
+      else if (key === 'keycloak_admin_client_secret_ref') {
+        result.onboarding.keycloak_admin_client_secret_ref = value;
+      } else if (key === 'postgres_database_url_secret_ref') {
+        result.onboarding.postgres_database_url_secret_ref = value;
+      }
     }
   }
 
@@ -147,6 +179,10 @@ function mergeContract(base: RuntimeContract, overlay: RuntimeContractPatch): Ru
     auth: {
       ...base.auth,
       ...overlay.auth,
+    },
+    onboarding: {
+      ...base.onboarding,
+      ...overlay.onboarding,
     },
   };
 }
@@ -276,6 +312,62 @@ export function loadAuthConfig(): AuthConfig {
     throw new Error('auth.tenant_claim must be a non-empty claim name');
   }
   return { tenantMode: rawMode, issuerUrl, audience, tenantClaim };
+}
+
+export type KeycloakApplyMode = 'plan' | 'execute';
+
+export interface OnboardingConfig {
+  /** Master switch for the self-service onboarding endpoints. */
+  enabled: boolean;
+  /** plan (typed apply-plan, no realm mutation) or execute (live admin calls). */
+  keycloakApplyMode: KeycloakApplyMode;
+  /** Realm admin REST base URL (execute mode only). */
+  keycloakAdminBaseUrl: string;
+  keycloakAdminClientId: string;
+  /** Resolved admin client secret; null when the ref/env is absent. */
+  keycloakAdminClientSecret: string | null;
+  /** Resolved writer-role Postgres URL for the tenants registry. */
+  postgresDatabaseUrl: string | null;
+}
+
+/**
+ * OMN-10875: resolve the self-service onboarding config. Contract-driven with
+ * OMNIDASH_ONBOARDING_* env overrides for lane tuning. Fail-fast contract:
+ * when enabled, the tenants-registry database ref must resolve and the apply
+ * mode must be well-formed — a half-wired onboarding surface must never boot.
+ */
+export function loadOnboardingConfig(): OnboardingConfig {
+  const contract = loadContract();
+  const rawEnabled = process.env.OMNIDASH_ONBOARDING_ENABLED ?? contract.onboarding.enabled;
+  const enabled = rawEnabled.trim().toLowerCase() === 'true';
+  const rawApplyMode =
+    process.env.OMNIDASH_ONBOARDING_KC_APPLY_MODE ?? contract.onboarding.keycloak_apply_mode;
+  if (rawApplyMode !== 'plan' && rawApplyMode !== 'execute') {
+    throw new Error(
+      `onboarding.keycloak_apply_mode must be 'plan' or 'execute', got: ${rawApplyMode}`,
+    );
+  }
+  const secretRef = contract.onboarding.keycloak_admin_client_secret_ref;
+  const dbRef = contract.onboarding.postgres_database_url_secret_ref;
+  const config: OnboardingConfig = {
+    enabled,
+    keycloakApplyMode: rawApplyMode,
+    keycloakAdminBaseUrl:
+      process.env.OMNIDASH_ONBOARDING_KC_ADMIN_BASE_URL
+      ?? contract.onboarding.keycloak_admin_base_url,
+    keycloakAdminClientId:
+      process.env.OMNIDASH_ONBOARDING_KC_ADMIN_CLIENT_ID
+      ?? contract.onboarding.keycloak_admin_client_id,
+    keycloakAdminClientSecret: resolveSecretRef(secretRef),
+    postgresDatabaseUrl: resolveSecretRef(dbRef),
+  };
+  if (enabled && !config.postgresDatabaseUrl) {
+    throw new Error(
+      'onboarding.enabled needs onboarding.postgres_database_url_secret_ref to resolve '
+      + '(writer-role connection for the tenants registry)',
+    );
+  }
+  return config;
 }
 
 export interface CapabilityHeartbeatConfig {

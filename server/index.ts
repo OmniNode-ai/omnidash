@@ -3,8 +3,13 @@ import http from 'http';
 import { fileURLToPath } from 'node:url';
 import routes from './routes.js';
 import { connectProducer, disconnectProducer } from './kafka-producer.js';
-import { loadAuthConfig, loadCapabilityHeartbeatConfig } from './data-source-contract.js';
+import {
+  loadAuthConfig,
+  loadCapabilityHeartbeatConfig,
+  loadOnboardingConfig,
+} from './data-source-contract.js';
 import { createTenantMiddleware } from './auth/tenant-middleware.js';
+import { buildOnboardingRouter } from './onboarding/bootstrap.js';
 import {
   startCapabilityHeartbeat,
   type CapabilityHeartbeatHandle,
@@ -20,11 +25,18 @@ app.use((_req, res, next) => {
   next();
 });
 app.use(express.json());
+const authConfig = loadAuthConfig();
+// OMN-10875: self-service onboarding routes mount BEFORE the tenant gate —
+// a brand-new user's token has no tenant claim yet, and the gate would 403
+// exactly the users onboarding exists for. The routes verify bearer tokens
+// against the realm JWKS themselves and return 503 while onboarding.enabled
+// is false (the shipped default).
+app.use(buildOnboardingRouter(loadOnboardingConfig(), authConfig));
 // OMN-13824 / OMN-1636: tenant auth gate. Contract-driven (auth.tenant_mode);
 // pass-through when disabled. When required, the verified tenant id from the
 // OIDC token is threaded through AsyncLocalStorage into the Postgres reader,
 // which scopes every read with the RLS GUC `app.tenant_id`.
-app.use(createTenantMiddleware({ config: loadAuthConfig() }));
+app.use(createTenantMiddleware({ config: authConfig }));
 app.use(routes);
 
 const httpServer = http.createServer(app);

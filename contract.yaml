@@ -58,6 +58,36 @@ renderer_capability:
   heartbeat_enabled: true
   heartbeat_interval_ms: "30000"
 
+onboarding:
+  # OMN-10875: self-service tenant onboarding surface (server/onboarding/).
+  #
+  # enabled: master switch. Ships "false" — the onboarding endpoints return
+  #   503 and no provisioner/verifier is constructed. Flipping to "true"
+  #   requires auth.issuer_url (the routes verify bearer tokens themselves)
+  #   and postgres_database_url_secret_ref below.
+  # keycloak_apply_mode:
+  #   - plan (default): NEVER mutates the live realm. The provision endpoint
+  #     returns the exact Keycloak admin steps it would run as a typed
+  #     apply-plan — live realm mutation stays operator-gated.
+  #   - execute: performs the admin-API calls with the confidential
+  #     service-account client below. Only for deployments where the operator
+  #     has explicitly enabled live applies.
+  # keycloak_admin_base_url: realm admin REST base, e.g.
+  #   "https://auth.omninode.ai/admin/realms/omninode" (execute mode only).
+  # keycloak_admin_client_id / keycloak_admin_client_secret_ref: confidential
+  #   client with the manage-users service-account role; the secret is an env
+  #   secret ref (e.g. "env:OMNIDASH_ONBOARDING_KC_SECRET"), never a literal.
+  # postgres_database_url_secret_ref: WRITER-role connection for the tenants
+  #   registry (db/migrations/0002_tenant_onboarding.sql), distinct from the
+  #   read-only projection path. Same "env:NAME" secret-ref scheme as
+  #   data_source.postgres_database_url_secret_ref.
+  enabled: "false"
+  keycloak_apply_mode: "plan"
+  keycloak_admin_base_url: ""
+  keycloak_admin_client_id: ""
+  keycloak_admin_client_secret_ref: ""
+  postgres_database_url_secret_ref: ""
+
 auth:
   # OMN-13824 / OMN-1636: multi-tenant auth gate for the Express bridge.
   #
