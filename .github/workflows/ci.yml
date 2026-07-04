@@ -97,7 +97,10 @@ jobs:
         run: npm ci
 
       - name: Run tenant RLS isolation suite
-        run: npx vitest run server/__tests__/tenant-rls.integration.test.ts server/__tests__/tenant-scoped-reader.test.ts server/auth/
+        # OMN-10875: the onboarding integration proof (tenants registry +
+        # provisioning idempotency + registry RLS) rides the same postgres:16
+        # service and TENANT_RLS_REQUIRED fail-closed contract.
+        run: npx vitest run server/__tests__/tenant-rls.integration.test.ts server/__tests__/tenant-onboarding.integration.test.ts server/__tests__/tenant-scoped-reader.test.ts server/auth/ server/onboarding/
         env:
           CI: true
           # TENANT_RLS_REQUIRED makes the integration suite FAIL (not skip)
