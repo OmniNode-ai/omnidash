@@ -100,7 +100,21 @@ jobs:
         # OMN-10875: the onboarding integration proof (tenants registry +
         # provisioning idempotency + registry RLS) rides the same postgres:16
         # service and TENANT_RLS_REQUIRED fail-closed contract.
-        run: npx vitest run server/__tests__/tenant-rls.integration.test.ts server/__tests__/tenant-onboarding.integration.test.ts server/__tests__/tenant-scoped-reader.test.ts server/auth/ server/onboarding/
+        #
+        # --no-file-parallelism: tenant-rls.integration.test.ts and
+        # tenant-onboarding.integration.test.ts each apply a full migration
+        # (0001/0002) against the SAME live Postgres cluster in their
+        # beforeAll. Postgres roles (omnidash_app) and role-membership grants
+        # are cluster-wide catalog rows (pg_authid / pg_auth_members), not
+        # per-database — running the two files as parallel vitest workers
+        # races on those shared catalog rows and intermittently fails with
+        # "duplicate key value violates unique constraint
+        # pg_authid_rolname_index" or "tuple concurrently updated" (confirmed
+        # locally: 5/12 parallel runs failed vs. 0/18 sequential runs).
+        # Forcing sequential file execution for this job removes the race;
+        # the main test:coverage job keeps full file parallelism since it
+        # doesn't touch a shared live database.
+        run: npx vitest run --no-file-parallelism server/__tests__/tenant-rls.integration.test.ts server/__tests__/tenant-onboarding.integration.test.ts server/__tests__/tenant-scoped-reader.test.ts server/auth/ server/onboarding/
         env:
           CI: true
           # TENANT_RLS_REQUIRED makes the integration suite FAIL (not skip)

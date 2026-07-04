@@ -26,9 +26,24 @@
 DO $migration$
 BEGIN
   -- Read role shared with 0001; create if this migration runs first.
-  IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'omnidash_app') THEN
+  --
+  -- OMN-10875: roles are cluster-wide (not per-database) in Postgres. An
+  -- IF NOT EXISTS-then-CREATE check is NOT atomic — when 0001 and 0002 run
+  -- concurrently (e.g. parallel integration-test workers against the same
+  -- Postgres cluster), both can observe "absent" before either commits, and
+  -- the loser hits "duplicate key value violates unique constraint
+  -- pg_authid_rolname_index". That low-level catalog conflict surfaces as
+  -- unique_violation (23505), not the friendlier duplicate_object
+  -- (42710) Postgres raises for a clean pre-existing-role check — the race
+  -- is between the two migrations' existence checks themselves, so the
+  -- loser hits the raw index conflict. Catch both so concurrent creation is
+  -- safely idempotent either way (mirrors the 0001 fix).
+  BEGIN
     CREATE ROLE omnidash_app NOLOGIN;
-  END IF;
+  EXCEPTION
+    WHEN duplicate_object OR unique_violation THEN
+      NULL; -- role already created by a concurrent migration run
+  END;
 
   EXECUTE 'GRANT USAGE ON SCHEMA public TO omnidash_app';
 
