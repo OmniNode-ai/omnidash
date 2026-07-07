@@ -1,5 +1,6 @@
 import { jwtVerify, createRemoteJWKSet } from 'jose';
 import type { Request, Response, NextFunction } from 'express';
+import { tenantFromSession } from './keycloak.js';
 
 export interface TenantContext {
   tenant_id: string;
@@ -39,9 +40,18 @@ function extractRoles(payload: Record<string, unknown>): string[] {
 }
 
 export async function authMiddleware(req: Request, res: Response, next: NextFunction): Promise<void> {
+  // Path 1: Browser session (cookie-based, set by keycloak-connect after login).
+  // Primary path for human users visiting dash.omninode.ai.
+  const sessionTenant = tenantFromSession(req);
+  if (sessionTenant) {
+    req.tenant = sessionTenant;
+    return next();
+  }
+
+  // Path 2: Bearer token — for API clients / machine-to-machine calls.
   const header = req.headers.authorization;
   if (!header?.startsWith('Bearer ')) {
-    res.status(401).json({ error: 'unauthorized', detail: 'Bearer token required' });
+    res.status(401).json({ error: 'unauthorized', detail: 'Session or Bearer token required' });
     return;
   }
 

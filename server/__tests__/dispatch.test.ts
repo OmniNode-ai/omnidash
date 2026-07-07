@@ -11,6 +11,14 @@ vi.mock('../kafka-producer.js', () => ({
 }));
 
 import * as kafkaProducer from '../kafka-producer.js';
+import type { TenantContext } from '../auth-middleware.js';
+
+const MOCK_TENANT: TenantContext = {
+  tenant_id: 'test-tenant-id',
+  tenant_slug: 'test-tenant',
+  sub: 'user-test',
+  roles: [],
+};
 
 async function loadRoutes() {
   vi.resetModules();
@@ -19,9 +27,11 @@ async function loadRoutes() {
   return mod.default;
 }
 
-function buildApp(routes: express.Router) {
+function buildApp(routes: express.Router, tenant: TenantContext = MOCK_TENANT) {
   const app = express();
   app.use(express.json());
+  // Inject tenant context — mirrors what authMiddleware does in production.
+  app.use((req, _res, next) => { req.tenant = tenant; next(); });
   app.use(routes);
   return app;
 }
@@ -104,6 +114,9 @@ describe('POST /api/delegation/trigger', () => {
     expect(payload.metadata).toEqual({
       requested_by: 'omnidash-ui',
       source_surface: 'delegation-control-plane',
+      tenant_id: MOCK_TENANT.tenant_id,
+      tenant_slug: MOCK_TENANT.tenant_slug,
+      sub: MOCK_TENANT.sub,
     });
   });
 });

@@ -5,6 +5,8 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import routes from './routes.js';
 import { authMiddleware } from './auth-middleware.js';
+import { getSessionMiddleware } from './session.js';
+import { getKeycloak } from './keycloak.js';
 import { connectProducer, disconnectProducer } from './kafka-producer.js';
 import {
   loadAuthConfig,
@@ -58,6 +60,24 @@ app.use((req, res, next) => {
 });
 app.use(express.json());
 
+// Session middleware — must run before keycloak and auth so req.session is
+// populated when authMiddleware checks for a session-stored Keycloak grant.
+const sessionMiddleware = getSessionMiddleware();
+app.use(sessionMiddleware);
+
+// Keycloak middleware — handles OAuth callback, /logout, and backchannel
+// /k_logout. Must run after session middleware.
+const keycloak = getKeycloak();
+app.use(keycloak.middleware({ logout: '/logout' }));
+
+// For browser (non-API) routes, redirect unauthenticated users to Keycloak
+// login instead of returning 401. API paths always get 401 from authMiddleware.
+keycloak.redirectToLogin = (req) => !req.path.startsWith('/api/');
+app.use((req, res, next) => {
+  if (req.path.startsWith('/api/') || PUBLIC_PATHS.has(req.path)) return next();
+  return keycloak.protect()(req, res, next);
+});
+
 const authConfig = loadAuthConfig();
 // OMN-10875: self-service onboarding routes mount BEFORE the tenant gate —
 // a brand-new user's token has no tenant claim yet, and the gate would 403
@@ -68,8 +88,8 @@ app.use(buildOnboardingRouter(loadOnboardingConfig(), authConfig));
 // OIDC token is threaded through AsyncLocalStorage into the Postgres reader.
 app.use(createTenantMiddleware({ config: authConfig }));
 
-// JWT auth — skips public paths; all other routes require a valid Keycloak token
-// with a tenant_id claim.
+// Auth — skips public paths; checks session first (browser), then Bearer
+// token (API clients). Attaches req.tenant for all downstream handlers.
 app.use((req, res, next) => {
   if (PUBLIC_PATHS.has(req.path)) return next();
   return authMiddleware(req, res, next);
