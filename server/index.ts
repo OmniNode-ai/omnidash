@@ -1,5 +1,6 @@
 import express from 'express';
 import http from 'http';
+import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import routes from './routes.js';
 import { connectProducer, disconnectProducer } from './kafka-producer.js';
@@ -17,6 +18,7 @@ import {
 import { webRendererCapability } from '../shared/types/web-renderer-capability.js';
 
 const PORT = parseInt(process.env.PORT ?? '3002', 10);
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 export const app = express();
 app.use((_req, res, next) => {
@@ -38,6 +40,27 @@ app.use(buildOnboardingRouter(loadOnboardingConfig(), authConfig));
 // which scopes every read with the RLS GUC `app.tenant_id`.
 app.use(createTenantMiddleware({ config: authConfig }));
 app.use(routes);
+
+// OMN-14152: co-locate the built SPA on this server so one process serves the
+// dashboard HTML, the /api/* routes, and /projection/* reads — same-origin, no
+// CORS, no second static host to deploy. `dist/` is produced by `npm run build`
+// and is gitignored; in a checkout without a build it is simply empty and this
+// middleware serves nothing (routes above still work).
+const distDir = path.resolve(__dirname, '..', 'dist');
+app.use(express.static(distDir));
+// SPA history-fallback: any GET that isn't an API/projection read and didn't
+// match a static asset above falls through to index.html so client-side
+// routing (wouter) can resolve the path. API/projection misses must still 404
+// normally rather than being masked by the app shell.
+app.use((req, res, next) => {
+  if (req.method !== 'GET' || req.path.startsWith('/api/') || req.path.startsWith('/projection/')) {
+    next();
+    return;
+  }
+  res.sendFile(path.join(distDir, 'index.html'), (err) => {
+    if (err) next(err);
+  });
+});
 
 const httpServer = http.createServer(app);
 
