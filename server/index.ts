@@ -1,4 +1,5 @@
 import express from 'express';
+import compression from 'compression';
 import http from 'http';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -21,6 +22,13 @@ const PORT = parseInt(process.env.PORT ?? '3002', 10);
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 export const app = express();
+// OMN-14152: gzip/deflate every response (JSON reads + the static SPA bundle
+// alike). express.static() does NOT compress by default — the ~900KB main JS
+// chunk was going out uncompressed, which is brutal over a lossy/relayed
+// link (a Tailscale DERP hop, for example): more bytes means more packets
+// means more chances to hit the loss rate before the transfer completes.
+// gzip drops it to roughly Vite's reported gzip size (~270KB), a ~3.3x cut.
+app.use(compression());
 app.use((_req, res, next) => {
   res.header('Access-Control-Allow-Origin', '*');
   res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization');
@@ -63,6 +71,15 @@ app.use((req, res, next) => {
 });
 
 const httpServer = http.createServer(app);
+// OMN-14152: explicit, generous socket timeouts. Traffic to this box can ride
+// a lossy/relayed network path (e.g. a Tailscale DERP hop with real packet
+// loss), so a slow-but-progressing download must not be cut mid-transfer.
+// Node's own default `server.timeout` is already 0 (no timeout) as of
+// Node 13+, but stating it here removes any doubt and documents intent —
+// this is not an accident of the runtime default. keepAliveTimeout only
+// bounds IDLE time between requests on a persistent connection (unrelated to
+// an in-flight response), left at Node's default.
+httpServer.timeout = 0;
 
 // OMN-12969: the `/ws` WebSocket invalidation bridge was removed. It accepted
 // connections and exposed a `broadcast()` helper, but nothing ever called
