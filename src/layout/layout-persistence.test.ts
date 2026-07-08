@@ -41,7 +41,8 @@ describe('HttpLayoutPersistence', () => {
       const result = await persistence.read('default');
 
       expect(result).toEqual(MOCK_DASHBOARD);
-      expect(fetch).toHaveBeenCalledWith('/_layouts/default');
+      // OMN-14152: fetchWithTimeout passes an AbortSignal as a second arg.
+      expect(fetch).toHaveBeenCalledWith('/_layouts/default', expect.any(Object));
     });
 
     it('returns null on 204 (no saved layout — normal first-load state)', async () => {
@@ -105,7 +106,7 @@ describe('HttpLayoutPersistence', () => {
 
       await persistence.read('my layout/with spaces');
 
-      expect(fetch).toHaveBeenCalledWith('/_layouts/my%20layout%2Fwith%20spaces');
+      expect(fetch).toHaveBeenCalledWith('/_layouts/my%20layout%2Fwith%20spaces', expect.any(Object));
     });
 
     it('throws on malformed dashboard payload (T2 acceptance)', async () => {
@@ -142,6 +143,7 @@ describe('HttpLayoutPersistence', () => {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(MOCK_DASHBOARD),
+        signal: expect.any(AbortSignal),
       });
     });
 
