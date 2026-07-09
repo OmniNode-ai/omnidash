@@ -62,6 +62,21 @@ async function readJson(path: string): Promise<unknown> {
   return JSON.parse(raw) as unknown;
 }
 
+// OMN-14152: 'http' mode has no local reader (no pgReader/sqliteReader) — it
+// means the projection data lives behind a separate projection-api HTTP
+// service (dsConfig.url). Proxy the read verbatim (GET only) so the bridge
+// stays same-origin from the browser's perspective; nothing here forwards
+// writes/commands to that service.
+async function readProjectionViaHttp(topic: string): Promise<unknown> {
+  const base = dsConfig.url.replace(/\/$/, '');
+  const url = `${base}/projection/${encodeURIComponent(topic)}`;
+  const res = await fetch(url);
+  if (!res.ok) {
+    throw new Error(`http data source GET ${url} failed: ${res.status} ${res.statusText}`);
+  }
+  return res.json();
+}
+
 async function readProjection(topic: string): Promise<unknown> {
   if (pgReader) {
     return pgReader.readProjection(topic);
@@ -75,6 +90,10 @@ async function readProjection(topic: string): Promise<unknown> {
     throw new Error(
       'data_source.postgres_database_url_secret_ref must resolve for postgres mode; refusing fixture fallback',
     );
+  }
+
+  if (dsConfig.mode === 'http') {
+    return readProjectionViaHttp(topic);
   }
 
   if (dsConfig.mode !== 'file') {

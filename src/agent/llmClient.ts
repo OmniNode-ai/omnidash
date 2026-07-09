@@ -25,11 +25,27 @@ function buildBaseURL(host: string | undefined): string {
   return `${host}/v1`;
 }
 
-// Lazy-throw getters for model names: callers that never read the model
-// (e.g. dev mode using the proxy) don't trip this. Anyone using the config
-// object without VITE_LLM_MODEL set gets a clear error at access time.
+// Lazy-throw getters for both baseURL and model: callers that never
+// initialize the agent (e.g. the chat panel is never opened) don't trip
+// this. Anyone who DOES initialize it without VITE_LLM_BASE_URL/
+// VITE_LLM_MODEL set gets a clear error at access time.
+//
+// OMN-14152: baseURL was previously a plain (eagerly-evaluated) property —
+// `buildBaseURL(LLM_HOST)` ran the moment this module was imported, which
+// happens unconditionally via App.tsx -> AgentOrchestrator -> usePageAgent
+// -> llmClient, regardless of whether the chat panel is ever opened. In a
+// production build without VITE_LLM_BASE_URL set, that threw synchronously
+// during the bundle's top-level evaluation — before React ever mounted —
+// leaving a permanently blank page with no error boundary to catch it.
+// Reproduced directly: a headless Chromium hit against the built app
+// showed an empty document body and a single uncaught `pageerror` for this
+// exact message. Making it a getter (matching `model` below and
+// `FALLBACK_LLM_CONFIG.baseURL`) defers the throw to first access, which
+// only happens inside `usePageAgent().initialize()` on user interaction.
 export const DEFAULT_LLM_CONFIG: LLMConfig = {
-  baseURL: buildBaseURL(LLM_HOST),
+  get baseURL(): string {
+    return buildBaseURL(LLM_HOST);
+  },
   get model(): string {
     const m = import.meta.env.VITE_LLM_MODEL;
     if (!m) {

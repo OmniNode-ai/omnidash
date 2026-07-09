@@ -11,6 +11,7 @@
 
 import type { DashboardDefinition } from '@shared/types/dashboard';
 import { parseDashboardDefinition } from '@shared/types/dashboard';
+import { fetchWithTimeout } from '@/data-source/fetch-with-timeout';
 
 export interface LayoutPersistence {
   read(name: string): Promise<DashboardDefinition | null>;
@@ -26,7 +27,12 @@ export class HttpLayoutPersistence implements LayoutPersistence {
 
   async read(name: string): Promise<DashboardDefinition | null> {
     const url = `${this.baseUrl}/_layouts/${encodeURIComponent(name)}`;
-    const res = await fetch(url);
+    // OMN-14152: bounded fetch. This read runs on every dashboard mount
+    // (DashboardView's hydrate effect) — an unbounded hang here previously
+    // meant dashboardService.loadByName()'s .catch() never fired (a pending
+    // promise never rejects), so the mount-time fallback to the demo
+    // template never ran either. Now it times out and falls back cleanly.
+    const res = await fetchWithTimeout(url);
     // OMN-12995: 204 (empty, no saved layout) is the normal first-load state.
     // 404 is tolerated for back-compat with older dev servers. Both mean "no
     // saved layout" — return null without touching the (empty) response body.
@@ -44,7 +50,7 @@ export class HttpLayoutPersistence implements LayoutPersistence {
 
   async write(name: string, layout: DashboardDefinition): Promise<void> {
     const url = `${this.baseUrl}/_layouts/${encodeURIComponent(name)}`;
-    const res = await fetch(url, {
+    const res = await fetchWithTimeout(url, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(layout),

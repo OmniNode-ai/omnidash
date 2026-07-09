@@ -1,5 +1,6 @@
 import { useQuery } from '@tanstack/react-query';
 import { useSnapshotSource } from '../data-source';
+import { fetchWithTimeout } from '../data-source/fetch-with-timeout';
 import { useFrameStore } from '../store/store';
 import type { VisualizationContract } from '../../shared/types/visualization-contract';
 
@@ -97,7 +98,11 @@ export function useProjectionQueryWithContract<T>(
       if (baseUrl && opts.params && Object.keys(opts.params).length > 0) {
         const qs = new URLSearchParams(opts.params as Record<string, string>).toString();
         const url = `${baseUrl}/projection/${encodeURIComponent(opts.topic)}?${qs}`;
-        const res = await fetch(url);
+        // OMN-14152: bounded fetch — see fetch-with-timeout.ts. A stalled
+        // response here previously left isLoading=true forever; react-query's
+        // configured retry (1, see lib/queryClient.ts) then surfaces the
+        // existing InlineErrorState instead of an indefinite "Loading...".
+        const res = await fetchWithTimeout(url);
         if (!res.ok) return { rows: [], cursor: null, is_degraded: false, freshness: null };
         const body = (await res.json()) as unknown;
         return body as ProjectionApiEnvelope | T[];

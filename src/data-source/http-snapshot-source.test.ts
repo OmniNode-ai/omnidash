@@ -20,8 +20,10 @@ describe('HttpSnapshotSource', () => {
     expect(results).toHaveLength(2);
     expect(results[0]).toEqual({ id: 'a', value: 1 });
     expect(results[1]).toEqual({ id: 'b', value: 2 });
+    // OMN-14152: fetchWithTimeout passes an AbortSignal as a second arg.
     expect(fetch).toHaveBeenCalledWith(
       'http://localhost:3002/projection/onex.snapshot.test.v1',
+      expect.any(Object),
     );
   });
 
@@ -83,6 +85,7 @@ describe('HttpSnapshotSource', () => {
     expect(results).toHaveLength(1);
     expect(fetch).toHaveBeenCalledWith(
       'http://localhost:3002/projection/onex.snapshot.projection%2Fspecial.v1',
+      expect.any(Object),
     );
   });
 

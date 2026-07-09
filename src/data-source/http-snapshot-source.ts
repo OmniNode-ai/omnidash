@@ -1,4 +1,5 @@
 import type { ProtocolSnapshotSource } from './protocol-snapshot-source';
+import { fetchWithTimeout } from './fetch-with-timeout';
 
 export interface HttpSnapshotSourceOptions { baseUrl: string; }
 
@@ -14,7 +15,10 @@ export class HttpSnapshotSource implements ProtocolSnapshotSource {
   constructor(private readonly options: HttpSnapshotSourceOptions) {}
 
   async *readAll(topic: string): AsyncIterable<unknown> {
-    const res = await fetch(`${this.options.baseUrl}/projection/${encodeURIComponent(topic)}`);
+    // OMN-14152: bounded fetch — a stalled connection must reject (and let
+    // the caller's error state render) rather than hang this generator
+    // forever. See fetch-with-timeout.ts.
+    const res = await fetchWithTimeout(`${this.options.baseUrl}/projection/${encodeURIComponent(topic)}`);
     if (!res.ok) return;
     const body = await res.json();
     // Projection API returns { rows: [...], ...envelope } — unwrap if present.

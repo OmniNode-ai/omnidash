@@ -527,19 +527,33 @@ export class PostgresProjectionReader {
           return this.readDelegationTokenUsageProjection(client);
         }
 
+        // OMN-14154: this query previously selected node_id/node_name/node_type/
+        // version/status/registered_at/last_seen_at — none of which exist on the
+        // live node_service_registry table (id/service_name/service_type/
+        // health_status/created_at/last_heartbeat_at/metadata). It errored on
+        // every call; readProjection()'s catch swallowed the error and the
+        // panel silently rendered empty. Rewritten against the live schema.
+        // Only ~9% of rows (heartbeats that report full capability metadata)
+        // carry node_id/node_name/node_version in `metadata`; the remaining
+        // rows are heartbeat-only registrations with a bare-UUID service_name
+        // and no service_type — those fields come back NULL here rather than
+        // being fabricated.
         case 'onex.snapshot.projection.node-registry.v1': {
           const res = await client.query(`
             SELECT
-              node_id,
-              node_name,
-              node_type,
+              id,
               service_name,
-              version,
-              status,
-              registered_at,
-              last_seen_at
+              NULLIF(metadata->>'node_id', '') AS node_id,
+              COALESCE(NULLIF(metadata->>'node_name', ''), service_name) AS node_name,
+              NULLIF(service_type, '') AS node_type,
+              service_url,
+              metadata->'node_version' AS node_version,
+              health_status AS status,
+              is_active,
+              created_at AS registered_at,
+              COALESCE(last_heartbeat_at, last_health_check, updated_at) AS last_seen_at
             FROM node_service_registry
-            ORDER BY registered_at DESC
+            ORDER BY created_at DESC
             LIMIT 500
           `);
           return res.rows as Row[];
