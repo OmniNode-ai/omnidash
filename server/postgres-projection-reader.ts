@@ -151,10 +151,10 @@ export class PostgresProjectionReader {
   // traces are now read through the canonical projection API
   // (`/projection/{topic}?correlation_id=<id>`, OMN-12748).
 
-  async readProjection(topic: string, tenantId: string): Promise<ProjectionEnvelope> {
+  async readProjection(topic: string): Promise<ProjectionEnvelope> {
     let rows: Row[] = [];
     try {
-      rows = await this.query(topic, tenantId);
+      rows = await this.query(topic);
     } catch (err) {
       console.error(`[PostgresProjectionReader] error reading topic ${topic}:`, err);
     }
@@ -172,17 +172,13 @@ export class PostgresProjectionReader {
     await this.pool.end();
   }
 
-  async queryLogEntries(params: LogEntryQueryParams, tenantId?: string): Promise<ModelLogEntry[]> {
-    const client = await this.pool.connect();
+  async queryLogEntries(params: LogEntryQueryParams): Promise<ModelLogEntry[]> {
+    const { client, release } = await this.checkoutClient();
     try {
       const conditions: string[] = [];
       const values: unknown[] = [];
       let idx = 1;
 
-      if (tenantId) {
-        conditions.push(`tenant_id = $${idx++}`);
-        values.push(tenantId);
-      }
       if (params.correlation_id) {
         conditions.push(`correlation_id = $${idx++}`);
         values.push(params.correlation_id);
@@ -227,17 +223,13 @@ export class PostgresProjectionReader {
     }
   }
 
-  async queryTraces(params: TraceQueryParams, tenantId?: string): Promise<TraceGroup[]> {
-    const client = await this.pool.connect();
+  async queryTraces(params: TraceQueryParams): Promise<TraceGroup[]> {
+    const { client, release } = await this.checkoutClient();
     try {
       const conditions: string[] = ['correlation_id IS NOT NULL'];
       const values: unknown[] = [];
       let idx = 1;
 
-      if (tenantId) {
-        conditions.push(`tenant_id = $${idx++}`);
-        values.push(tenantId);
-      }
       if (params.since) {
         conditions.push(`timestamp >= $${idx++}`);
         values.push(params.since);
@@ -280,8 +272,8 @@ export class PostgresProjectionReader {
     }
   }
 
-  private async query(topic: string, tenantId: string): Promise<Row[]> {
-    const client = await this.pool.connect();
+  private async query(topic: string): Promise<Row[]> {
+    const { client, release } = await this.checkoutClient();
     try {
       switch (topic) {
         case 'delegation':
@@ -302,10 +294,9 @@ export class PostgresProjectionReader {
               tokens_to_compliance,
               created_at
             FROM delegation_events
-            WHERE tenant_id = $1
             ORDER BY created_at DESC
             LIMIT 500
-          `, [tenantId]);
+          `);
           return res.rows as Row[];
         }
 
@@ -318,26 +309,23 @@ export class PostgresProjectionReader {
               COALESCE(AVG(latency_ms), 0)                                               AS avg_latency_ms,
               COALESCE(MAX(EXTRACT(EPOCH FROM created_at)), 0)                           AS latest_event_at
             FROM delegation_events
-            WHERE tenant_id = $1
-          `, [tenantId]);
+          `);
           // total_savings_usd is sourced from the savings_estimates projection table
           // (the same source onex.snapshot.projection.savings.summary.v1 reads), NOT a
           // literal 0. delegation_events carries no savings column, so summing here kept
           // the headline figure stuck at 0 (OMN-13355 / W13). The query is guarded so a
           // deployment without savings_estimates yet falls back to 0 rather than erroring.
-          const totalSavingsUsd = await this.readDelegationTotalSavingsUsd(client, tenantId);
+          const totalSavingsUsd = await this.readDelegationTotalSavingsUsd(client);
           const byTaskTypeRes = await client.query(`
             SELECT task_type AS "taskType", COUNT(*) AS count
             FROM delegation_events
-            WHERE tenant_id = $1
             GROUP BY task_type ORDER BY count DESC
-          `, [tenantId]);
+          `);
           const byModelRes = await client.query(`
             SELECT delegated_to AS model, COUNT(*) AS count
             FROM delegation_events
-            WHERE tenant_id = $1
             GROUP BY delegated_to ORDER BY count DESC
-          `, [tenantId]);
+          `);
           const summary = summaryRes.rows[0] as Row;
           const total = Number(summary?.total_events ?? 0);
           const passed = Number(summary?.quality_passed_count ?? 0);
@@ -377,10 +365,9 @@ export class PostgresProjectionReader {
               usage_source,
               created_at
             FROM savings_estimates
-            WHERE tenant_id = $1
             ORDER BY created_at DESC
             LIMIT 500
-          `, [tenantId]);
+          `);
           return res.rows as Row[];
         }
 
@@ -392,21 +379,20 @@ export class PostgresProjectionReader {
               COALESCE(SUM(cloud_cost_usd), 0)  AS total_cloud_cost_usd,
               COALESCE(SUM(savings_usd), 0)     AS total_savings_usd
             FROM savings_estimates
-            WHERE tenant_id = $1
-          `, [tenantId]);
+          `);
           return res.rows as Row[];
         }
 
         case 'onex.snapshot.projection.cost.savings-overview.v1': {
-          return this.readCostSavingsOverviewProjection(client, tenantId);
+          return this.readCostSavingsOverviewProjection(client);
         }
 
         case 'onex.snapshot.projection.delegation.savings.v1': {
-          return this.readDelegationSavingsProjection(client, tenantId);
+          return this.readDelegationSavingsProjection(client);
         }
 
         case 'onex.snapshot.projection.live-events.v1': {
-          return this.readLiveEventsProjection(client, tenantId);
+          return this.readLiveEventsProjection(client);
         }
 
         case 'onex.snapshot.projection.delegation.model-routing.v1': {
@@ -419,20 +405,18 @@ export class PostgresProjectionReader {
               COALESCE(SUM(CASE WHEN quality_gate_passed THEN 1 ELSE 0 END), 0)      AS quality_passed,
               COALESCE(AVG(latency_ms), 0)                                           AS avg_latency_ms
             FROM delegation_events
-            WHERE tenant_id = $1
             GROUP BY delegated_to, model_name, task_type
             ORDER BY event_count DESC
-          `, [tenantId]);
-          const totalRes = await client.query(`SELECT COUNT(*) AS total FROM delegation_events WHERE tenant_id = $1`, [tenantId]);
+          `);
+          const totalRes = await client.query(`SELECT COUNT(*) AS total FROM delegation_events`);
           const tracesRes = await client.query(`
             SELECT id, correlation_id, task_type, model_name, delegated_to,
                    routing_rule, routing_confidence, routing_candidates,
                    latency_ms, quality_gate_passed, created_at
             FROM delegation_events
-            WHERE tenant_id = $1
             ORDER BY created_at DESC
             LIMIT 20
-          `, [tenantId]);
+          `);
           const routingRows = routingRes.rows as Row[];
           const totalDelegations = Number((totalRes.rows[0] as Row)?.total ?? 0);
 
@@ -494,8 +478,7 @@ export class PostgresProjectionReader {
               COALESCE(SUM(CASE WHEN quality_gate_passed THEN 1 ELSE 0 END), 0)       AS total_passed,
               COALESCE(SUM(CASE WHEN NOT quality_gate_passed THEN 1 ELSE 0 END), 0)   AS total_failed
             FROM delegation_events
-            WHERE tenant_id = $1
-          `, [tenantId]);
+          `);
           const byDetailRes = await client.query(`
             SELECT
               quality_gate_detail                                                      AS check_detail,
@@ -505,10 +488,10 @@ export class PostgresProjectionReader {
               COALESCE(AVG(quality_gates_checked), 0)                                 AS avg_gates_checked,
               COALESCE(AVG(quality_gates_failed), 0)                                  AS avg_gates_failed
             FROM delegation_events
-            WHERE tenant_id = $1 AND quality_gate_detail IS NOT NULL
+            WHERE quality_gate_detail IS NOT NULL
             GROUP BY quality_gate_detail
             ORDER BY total_checks DESC
-          `, [tenantId]);
+          `);
           const qgTotals = totalsRes.rows[0] as Row;
           const qgByDetail = byDetailRes.rows as Row[];
           const totalChecks = Number(qgTotals?.total_checks ?? 0);
@@ -541,7 +524,7 @@ export class PostgresProjectionReader {
         }
 
         case 'onex.snapshot.projection.delegation.token-usage.v1': {
-          return this.readDelegationTokenUsageProjection(client, tenantId);
+          return this.readDelegationTokenUsageProjection(client);
         }
 
         // OMN-14154: this query previously selected node_id/node_name/node_type/
@@ -633,10 +616,9 @@ export class PostgresProjectionReader {
               timestamp,
               created_at
             FROM generation_events
-            WHERE tenant_id = $1
             ORDER BY created_at DESC
             LIMIT 500
-          `, [tenantId]);
+          `);
           return res.rows as Row[];
         }
 
@@ -665,10 +647,9 @@ export class PostgresProjectionReader {
               registry_schema_version,
               created_at
             FROM swarm_runs
-            WHERE tenant_id = $1
             ORDER BY created_at DESC
             LIMIT 200
-          `, [tenantId]);
+          `);
           return res.rows as Row[];
         }
 
@@ -679,7 +660,6 @@ export class PostgresProjectionReader {
                 to_jsonb(generation_events) AS event,
                 COALESCE(timestamp, created_at) AS order_key
               FROM generation_events
-              WHERE tenant_id = $1
             )
             SELECT
               event->>'correlation_id' || '-completed' AS id,
@@ -710,7 +690,7 @@ export class PostgresProjectionReader {
             FROM generation_rows
             ORDER BY order_key ASC
             LIMIT 500
-          `, [tenantId]);
+          `);
           return res.rows as Row[];
         }
 
@@ -736,10 +716,9 @@ export class PostgresProjectionReader {
               endpoint_registry_hash                           AS "endpointRegistryHash",
               created_at::text                                 AS "createdAt"
             FROM swarm_runs
-            WHERE tenant_id = $1
             ORDER BY created_at DESC
             LIMIT 100
-          `, [tenantId]);
+          `);
           return res.rows as Row[];
         }
 
@@ -773,7 +752,6 @@ export class PostgresProjectionReader {
 
   private async readDelegationSavingsProjection(
     client: { query: (sql: string, params?: unknown[]) => Promise<{ rows: Row[] }> },
-    tenantId: string,
   ): Promise<Row[]> {
     let savingsRows: Row[] = [];
     let eventRows: Row[] = [];
@@ -799,10 +777,9 @@ export class PostgresProjectionReader {
           NULL AS prompt_text,
           NULL AS response_text
         FROM savings_estimates
-        WHERE tenant_id = $1
         ORDER BY created_at DESC
         LIMIT 500
-      `, [tenantId]);
+      `);
       savingsRows = savingsRes.rows;
     } catch (err) {
       this.handleProjectionCompatibilityError(err, 'savings_estimates');
@@ -815,7 +792,6 @@ export class PostgresProjectionReader {
         WITH events AS (
           SELECT to_jsonb(delegation_events) AS e
           FROM delegation_events
-          WHERE tenant_id = $1
         )
         SELECT
           COALESCE(NULLIF(e->>'session_id', ''), NULLIF(e->>'correlation_id', ''), e->>'id') AS session_id,
@@ -843,7 +819,7 @@ export class PostgresProjectionReader {
         FROM events
         ORDER BY COALESCE(e->>'created_at', e->>'timestamp') DESC
         LIMIT 500
-      `, [tenantId]);
+      `);
       eventRows = eventRes.rows;
     } catch (err) {
       this.handleProjectionCompatibilityError(err, 'delegation_events');
@@ -904,14 +880,12 @@ export class PostgresProjectionReader {
    */
   private async readDelegationTotalSavingsUsd(
     client: { query: (sql: string, params?: unknown[]) => Promise<{ rows: Row[] }> },
-    tenantId: string,
   ): Promise<number> {
     try {
       const res = await client.query(`
         SELECT COALESCE(SUM(savings_usd), 0) AS total_savings_usd
         FROM savings_estimates
-        WHERE tenant_id = $1
-      `, [tenantId]);
+      `);
       return Number((res.rows[0] as Row)?.total_savings_usd ?? 0);
     } catch (err) {
       this.handleProjectionCompatibilityError(err, 'savings_estimates');
@@ -921,7 +895,6 @@ export class PostgresProjectionReader {
 
   private async readLiveEventsProjection(
     client: { query: (sql: string, params?: unknown[]) => Promise<{ rows: Row[] }> },
-    tenantId: string,
   ): Promise<Row[]> {
     const events: Row[] = [];
 
@@ -971,10 +944,9 @@ export class PostgresProjectionReader {
           ) AS correlation_id,
           COALESCE(envelope->'payload', envelope->'data', envelope)::text AS payload
         FROM delegation_event_log
-        WHERE tenant_id = $1
         ORDER BY created_at DESC
         LIMIT 500
-      `, [tenantId]);
+      `);
       events.push(...eventLogRes.rows);
     } catch (err) {
       this.handleProjectionCompatibilityError(err, 'delegation_event_log');
@@ -985,7 +957,6 @@ export class PostgresProjectionReader {
         WITH rows AS (
           SELECT to_jsonb(delegation_events) AS e
           FROM delegation_events
-          WHERE tenant_id = $1
           ORDER BY created_at DESC
           LIMIT 500
         )
@@ -1012,7 +983,7 @@ export class PostgresProjectionReader {
           COALESCE(NULLIF(e->>'correlation_id', ''), e->>'session_id', e->>'id') AS correlation_id,
           e::text AS payload
         FROM rows
-      `, [tenantId]);
+      `);
       events.push(...delegationRes.rows);
     } catch (err) {
       this.handleProjectionCompatibilityError(err, 'delegation_events');
@@ -1031,10 +1002,9 @@ export class PostgresProjectionReader {
           correlation_id,
           to_jsonb(generation_events)::text AS payload
         FROM generation_events
-        WHERE tenant_id = $1
         ORDER BY COALESCE(timestamp, created_at) DESC
         LIMIT 500
-      `, [tenantId]);
+      `);
       events.push(...generationRes.rows);
     } catch (err) {
       this.handleProjectionCompatibilityError(err, 'generation_events');
@@ -1062,7 +1032,6 @@ export class PostgresProjectionReader {
 
   private async readDelegationTokenUsageProjection(
     client: { query: (sql: string, params?: unknown[]) => Promise<{ rows: Row[] }> },
-    tenantId: string,
   ): Promise<Row[]> {
     const res = await client.query(`
       SELECT
@@ -1074,12 +1043,11 @@ export class PostgresProjectionReader {
         COALESCE(SUM(COALESCE(tokens_input, 0) + COALESCE(tokens_output, 0)), 0) AS total_tokens,
         COALESCE(SUM(COALESCE(cost_usd, 0)), 0) AS estimated_cost_usd
       FROM delegation_events
-      WHERE tenant_id = $1
       GROUP BY
         COALESCE(NULLIF(delegated_to, ''), NULLIF(model_name, ''), 'delegated-runtime'),
         COALESCE(NULLIF(model_name, ''), NULLIF(delegated_to, ''), 'delegated-runtime')
       ORDER BY total_tokens DESC
-    `, [tenantId]);
+    `);
 
     const byModel = res.rows.filter((row) => Number(row.total_tokens ?? 0) > 0).map((row) => {
       const promptTokens = Number(row.prompt_tokens ?? 0);
@@ -1124,9 +1092,8 @@ export class PostgresProjectionReader {
 
   private async readCostSavingsOverviewProjection(
     client: { query: (sql: string, params?: unknown[]) => Promise<{ rows: Row[] }> },
-    tenantId: string,
   ): Promise<Row[]> {
-    const [delegationSavings] = await this.readDelegationSavingsProjection(client, tenantId);
+    const [delegationSavings] = await this.readDelegationSavingsProjection(client);
     const sessions = (delegationSavings?.sessions as Row[] | undefined) ?? [];
     const sessionTokens = (session: Row): number =>
       Number(session.prompt_tokens ?? 0) + Number(session.completion_tokens ?? 0);

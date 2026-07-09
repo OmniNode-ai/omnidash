@@ -62,10 +62,9 @@ async function readJson(path: string): Promise<unknown> {
   return JSON.parse(raw) as unknown;
 }
 
-async function readProjection(topic: string, tenantId?: string): Promise<unknown> {
+async function readProjection(topic: string): Promise<unknown> {
   if (pgReader) {
-    if (!tenantId) throw new Error('tenant_id required for postgres reads');
-    return pgReader.readProjection(topic, tenantId);
+    return pgReader.readProjection(topic);
   }
 
   if (sqliteReader) {
@@ -340,7 +339,7 @@ router.get('/api/swarm-runs', async (req, res) => {
     return;
   }
   try {
-    const rows = await pgReader.readProjection('onex.snapshot.projection.swarm.runs.v1', req.tenant!.tenant_id);
+    const rows = await pgReader.readProjection('onex.snapshot.projection.swarm.runs.v1');
     res.json({ rows: rows.rows });
   } catch (err) {
     console.error('[routes] /api/swarm-runs error:', err);
@@ -352,7 +351,7 @@ router.get('/api/swarm-runs', async (req, res) => {
 // projection-topic snapshots; it must not query Postgres directly.
 router.get('/projection/:topic', async (req, res) => {
   try {
-    res.json(await readProjection(req.params.topic, req.tenant?.tenant_id));
+    res.json(await readProjection(req.params.topic));
   } catch (err) {
     console.error('[routes] /projection/:topic error:', err);
     res.status(500).json({ error: 'projection read failed' });
@@ -485,7 +484,7 @@ router.get('/api/projections/log-entries', async (req, res) => {
       level: req.query.level ? String(req.query.level) : undefined,
       since: req.query.since ? String(req.query.since) : undefined,
       limit: Number.isFinite(limit) && limit > 0 ? limit : 100,
-    }, req.tenant?.tenant_id);
+    });
     res.json(entries);
   } catch (err) {
     console.error('[routes] /api/projections/log-entries error:', err);
@@ -505,7 +504,7 @@ router.get('/api/projections/traces', async (req, res) => {
       since: req.query.since ? String(req.query.since) : undefined,
       limit: Number.isFinite(limit) && limit > 0 ? limit : 50,
       running_only,
-    }, req.tenant?.tenant_id);
+    });
     res.json(traces);
   } catch (err) {
     console.error('[routes] /api/projections/traces error:', err);

@@ -63,12 +63,31 @@ describe('tenantFromSession', () => {
     expect(tenantFromSession(req)).toBeNull();
   });
 
+  it('returns null when exp claim is absent', () => {
+    mockDecodeJwt.mockReturnValue({ sub: 'user-1', tenant_id: 'tenant-abc' });
+    const req = makeReq({ 'keycloak-token': validGrant() });
+    expect(tenantFromSession(req)).toBeNull();
+  });
+
+  it('returns null when exp claim is non-numeric', () => {
+    mockDecodeJwt.mockReturnValue({ sub: 'user-1', tenant_id: 'tenant-abc', exp: 'never' });
+    const req = makeReq({ 'keycloak-token': validGrant() });
+    expect(tenantFromSession(req)).toBeNull();
+  });
+
+  it('returns null when token is expired', () => {
+    mockDecodeJwt.mockReturnValue({ sub: 'user-1', tenant_id: 'tenant-abc', exp: Math.floor(Date.now() / 1000) - 60 });
+    const req = makeReq({ 'keycloak-token': validGrant() });
+    expect(tenantFromSession(req)).toBeNull();
+  });
+
   it('returns TenantContext when session has a valid grant with tenant_id', () => {
     mockDecodeJwt.mockReturnValue({
       sub: 'user-1',
       tenant_id: 'tenant-abc',
       tenant_slug: 'acme',
       realm_access: { roles: ['user'] },
+      exp: Math.floor(Date.now() / 1000) + 3600,
     });
     const req = makeReq({ 'keycloak-token': validGrant() });
 
@@ -90,6 +109,7 @@ describe('tenantFromSession', () => {
       tenant_slug: 'acme',
       realm_access: { roles: ['user', 'admin'] },
       resource_access: { omnidash: { roles: ['dashboard-admin'] } },
+      exp: Math.floor(Date.now() / 1000) + 3600,
     });
     const req = makeReq({ 'keycloak-token': validGrant() });
 
@@ -99,7 +119,7 @@ describe('tenantFromSession', () => {
   });
 
   it('defaults tenant_slug to empty string when claim is absent', () => {
-    mockDecodeJwt.mockReturnValue({ sub: 'user-1', tenant_id: 'tenant-abc' });
+    mockDecodeJwt.mockReturnValue({ sub: 'user-1', tenant_id: 'tenant-abc', exp: Math.floor(Date.now() / 1000) + 3600 });
     const req = makeReq({ 'keycloak-token': validGrant() });
 
     const result = tenantFromSession(req);
@@ -131,6 +151,7 @@ describe('authMiddleware — session path', () => {
       tenant_id: 'tenant-session',
       tenant_slug: 'session-slug',
       realm_access: { roles: ['user'] },
+      exp: Math.floor(Date.now() / 1000) + 3600,
     });
 
     const { authMiddleware } = await import('../auth-middleware.js');

@@ -58,6 +58,14 @@ export function tenantFromSession(req: Request): TenantContext | null {
     if (!jwt) return null;
 
     const payload = decodeJwt(jwt);
+
+    // Fail-closed on exp: reject if exp is missing, non-numeric, or in the past.
+    // decodeJwt() does not verify signature (token obtained server-side via
+    // confidential client back-channel; Keycloak verified at issuance; stored in
+    // a SESSION_SECRET-signed Redis session). Expiry must be enforced locally;
+    // a token with no numeric exp claim is not trusted.
+    if (typeof payload.exp !== 'number' || payload.exp * 1000 < Date.now()) return null;
+
     const tenant_id = payload['tenant_id'] as string | undefined;
     if (!tenant_id) return null;
 

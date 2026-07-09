@@ -1,6 +1,6 @@
 import session from 'express-session';
 import { createClient } from 'redis';
-import RedisStore from 'connect-redis';
+import { RedisStore } from 'connect-redis';
 
 let _store: RedisStore | null = null;
 

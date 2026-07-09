@@ -1,6 +1,7 @@
 import { jwtVerify, createRemoteJWKSet } from 'jose';
 import type { Request, Response, NextFunction } from 'express';
 import { tenantFromSession } from './keycloak.js';
+import { runWithTenantContext } from './auth/tenant-context.js';
 
 export interface TenantContext {
   tenant_id: string;
@@ -45,7 +46,7 @@ export async function authMiddleware(req: Request, res: Response, next: NextFunc
   const sessionTenant = tenantFromSession(req);
   if (sessionTenant) {
     req.tenant = sessionTenant;
-    return next();
+    return runWithTenantContext({ tenantId: sessionTenant.tenant_id, subject: sessionTenant.sub }, () => next());
   }
 
   // Path 2: Bearer token — for API clients / machine-to-machine calls.
@@ -58,7 +59,7 @@ export async function authMiddleware(req: Request, res: Response, next: NextFunc
   const token = header.slice(7);
 
   try {
-    const { payload } = await jwtVerify(token, jwks(), { issuer: issuer() });
+    const { payload } = await jwtVerify(token, jwks(), { issuer: issuer(), audience: clientId() });
 
     const tenant_id = payload['tenant_id'] as string | undefined;
     if (!tenant_id) {
@@ -73,7 +74,7 @@ export async function authMiddleware(req: Request, res: Response, next: NextFunc
       roles: extractRoles(payload as Record<string, unknown>),
     };
 
-    next();
+    runWithTenantContext({ tenantId: tenant_id, subject: payload.sub ?? null }, () => next());
   } catch {
     res.status(401).json({ error: 'unauthorized', detail: 'Invalid or expired token' });
   }
