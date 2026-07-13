@@ -31,6 +31,7 @@ export function getKeycloak(store?: Parameters<typeof KeycloakConnect>[0]['store
         realm: realm(),
         'auth-server-url': authServerUrl(),
         resource: clientId(),
+        credentials: { secret: process.env.KEYCLOAK_CLIENT_SECRET ?? '' },
         'ssl-required': 'external',
         'confidential-port': 0,
       },

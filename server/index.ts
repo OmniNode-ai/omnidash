@@ -5,7 +5,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import routes from './routes.js';
 import { authMiddleware } from './auth-middleware.js';
-import { getSessionMiddleware } from './session.js';
+import { getSessionMiddleware, getStore } from './session.js';
 import { getKeycloak } from './keycloak.js';
 import { connectProducer, disconnectProducer } from './kafka-producer.js';
 import {
@@ -67,7 +67,7 @@ app.use(sessionMiddleware);
 
 // Keycloak middleware — handles OAuth callback, /logout, and backchannel
 // /k_logout. Must run after session middleware.
-const keycloak = getKeycloak();
+const keycloak = getKeycloak(getStore());
 app.use(keycloak.middleware({ logout: '/logout' }));
 
 // For browser (non-API) routes, redirect unauthenticated users to Keycloak
