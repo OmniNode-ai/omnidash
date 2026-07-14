@@ -35,8 +35,8 @@ describe('loadDataSourceConfig', () => {
     expect(cfg.url).toBe('http://localhost:3002');
     expect(cfg.wsUrl).toBe('ws://localhost:3002/ws');
     expect(cfg.sqliteDbPath).toMatch(/\.omninode[/\\]delegation[/\\]delegation\.sqlite$/);
-    expect(cfg.postgresDatabaseUrlSecretRef).toBeNull();
-    expect(cfg.postgresDatabaseUrl).toBeNull();
+    expect(cfg.postgresDatabaseUrlSecretRef).toBe('env:DATABASE_URL');
+    expect(cfg.postgresDatabaseUrl).toBeNull(); // DATABASE_URL not set in test env
   });
 
   it('honors OMNIDASH_DATA_SOURCE env override', () => {
@@ -57,10 +57,12 @@ describe('loadDataSourceConfig', () => {
     expect(cfg.sqliteDbPath).toBe('/tmp/test.sqlite');
   });
 
-  it('does not resolve OMNIDASH_ANALYTICS_DB_URL unless the contract declares the secret ref', () => {
+  it('does not resolve OMNIDASH_ANALYTICS_DB_URL unless the contract declares that specific ref', () => {
     process.env.OMNIDASH_ANALYTICS_DB_URL = 'postgresql://projection:secret@db:5432/omnidash_analytics';
     const cfg = loadDataSourceConfig();
-    expect(cfg.postgresDatabaseUrlSecretRef).toBeNull();
+    // Contract declares "env:DATABASE_URL", not OMNIDASH_ANALYTICS_DB_URL — so
+    // OMNIDASH_ANALYTICS_DB_URL is irrelevant and postgresDatabaseUrl stays null.
+    expect(cfg.postgresDatabaseUrlSecretRef).toBe('env:DATABASE_URL');
     expect(cfg.postgresDatabaseUrl).toBeNull();
   });
 

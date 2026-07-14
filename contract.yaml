@@ -34,7 +34,7 @@ data_source:
   # Secret reference for the Postgres projection DB URL in postgres mode.
   # Set this in contract.local.yaml or a deployment overlay, for example:
   # postgres_database_url_secret_ref: "env:OMNIDASH_ANALYTICS_DB_URL"
-  postgres_database_url_secret_ref: ""
+  postgres_database_url_secret_ref: "env:DATABASE_URL"
 
 event_bus:
   # Contract-owned Kafka/Redpanda bootstrap configuration for the Express
