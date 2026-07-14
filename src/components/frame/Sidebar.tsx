@@ -12,7 +12,8 @@
 //     keeping the menu pattern consistent with the prototype across the whole app.
 
 import { useEffect, useLayoutEffect, useRef, useState } from 'react';
-import { Edit, Copy, Plus, MoreHorizontal, Trash2, ChevronsLeft, ChevronsRight, SlidersHorizontal, GitBranch, Sparkles, FlaskConical, Radio } from 'lucide-react';
+import { Edit, Copy, Plus, MoreHorizontal, Trash2, ChevronsLeft, ChevronsRight, GitBranch, Sparkles, FlaskConical, Radio } from 'lucide-react';
+// SlidersHorizontal removed — Feature Flags nav hidden for beta (OMN-14058-beta). Re-add when wired.
 // Grid3x3 removed from import while Instruction Eval nav entry is commented out (OMN-12833 A4).
 import type { AppPage } from '@/store/types';
 import {
@@ -360,6 +361,8 @@ export function Sidebar() {
         ))}
         */}
 
+        {/* OMN-14058-beta: Feature Flags hidden from beta nav — flag server not wired in beta.
+            Uncomment when wired to the live flag server for post-beta release.
         <div
           role="button"
           tabIndex={0}
@@ -379,6 +382,7 @@ export function Sidebar() {
             <span className="dash-name">Feature Flags</span>
           )}
         </div>
+        */}
       </div>
 
       <DeleteDashboardDialog

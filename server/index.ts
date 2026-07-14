@@ -4,6 +4,9 @@ import http from 'http';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import routes from './routes.js';
+import { authMiddleware } from './auth-middleware.js';
+import { getSessionMiddleware, getStore } from './session.js';
+import { getKeycloak } from './keycloak.js';
 import { connectProducer, disconnectProducer } from './kafka-producer.js';
 import {
   loadAuthConfig,
@@ -21,32 +24,83 @@ import { webRendererCapability } from '../shared/types/web-renderer-capability.j
 const PORT = parseInt(process.env.PORT ?? '3002', 10);
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
+const ALLOWED_ORIGINS: ReadonlySet<string> = (() => {
+  const origins = new Set<string>(['http://localhost:3000', 'http://localhost:5173', 'http://localhost:4173']);
+  const base = process.env.OMNIDASH_BASE_URL;
+  if (base) origins.add(base.replace(/\/$/, ''));
+  return origins;
+})();
+
+// Public paths that bypass JWT auth.
+const PUBLIC_PATHS = new Set(['/api/health-probe', '/api/runtime-config']);
+
 export const app = express();
-// OMN-14152: gzip/deflate every response (JSON reads + the static SPA bundle
-// alike). express.static() does NOT compress by default — the ~900KB main JS
-// chunk was going out uncompressed, which is brutal over a lossy/relayed
-// link (a Tailscale DERP hop, for example): more bytes means more packets
-// means more chances to hit the loss rate before the transfer completes.
-// gzip drops it to roughly Vite's reported gzip size (~270KB), a ~3.3x cut.
+
+// Health probe — registered before auth so k8s liveness/readiness checks never require a token.
+app.get('/api/health-probe', (_req, res) => {
+  res.json({ status: 'ok' });
+});
+
+// OMN-14152: gzip/deflate every response (JSON reads + the static SPA bundle alike).
 app.use(compression());
-app.use((_req, res, next) => {
-  res.header('Access-Control-Allow-Origin', '*');
+
+app.use((req, res, next) => {
+  const origin = req.headers.origin;
+  if (origin && ALLOWED_ORIGINS.has(origin)) {
+    res.header('Access-Control-Allow-Origin', origin);
+    res.header('Vary', 'Origin');
+  }
   res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+  res.header('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
+  if (req.method === 'OPTIONS') {
+    res.sendStatus(204);
+    return;
+  }
   next();
 });
 app.use(express.json());
+
+// Session middleware — must run before keycloak and auth so req.session is
+// populated when authMiddleware checks for a session-stored Keycloak grant.
+const sessionMiddleware = getSessionMiddleware();
+app.use(sessionMiddleware);
+
+// Keycloak middleware — handles OAuth callback, /logout, and backchannel
+// /k_logout. Must run after session middleware.
+const keycloak = getKeycloak(getStore());
+app.use(keycloak.middleware({ logout: '/logout' }));
+
+// For browser (non-API) routes, redirect unauthenticated users to Keycloak
+// login instead of returning 401. API paths always get 401 from authMiddleware.
+keycloak.redirectToLogin = (req) => !req.path.startsWith('/api/');
+app.use((req, res, next) => {
+  if (req.path.startsWith('/api/') || PUBLIC_PATHS.has(req.path)) return next();
+  return keycloak.protect()(req, res, next);
+});
+
 const authConfig = loadAuthConfig();
 // OMN-10875: self-service onboarding routes mount BEFORE the tenant gate —
 // a brand-new user's token has no tenant claim yet, and the gate would 403
-// exactly the users onboarding exists for. The routes verify bearer tokens
-// against the realm JWKS themselves and return 503 while onboarding.enabled
-// is false (the shipped default).
+// exactly the users onboarding exists for.
 app.use(buildOnboardingRouter(loadOnboardingConfig(), authConfig));
 // OMN-13824 / OMN-1636: tenant auth gate. Contract-driven (auth.tenant_mode);
 // pass-through when disabled. When required, the verified tenant id from the
-// OIDC token is threaded through AsyncLocalStorage into the Postgres reader,
-// which scopes every read with the RLS GUC `app.tenant_id`.
-app.use(createTenantMiddleware({ config: authConfig }));
+// OIDC token is threaded through AsyncLocalStorage into the Postgres reader.
+// PUBLIC_PATHS bypass the gate so health-probe and runtime-config are never
+// blocked by the tenant check, even when tenant_mode is required.
+const tenantMiddleware = createTenantMiddleware({ config: authConfig });
+app.use((req, res, next) => {
+  if (PUBLIC_PATHS.has(req.path)) return next();
+  return tenantMiddleware(req, res, next);
+});
+
+// Auth — skips public paths; checks session first (browser), then Bearer
+// token (API clients). Attaches req.tenant for all downstream handlers.
+app.use((req, res, next) => {
+  if (PUBLIC_PATHS.has(req.path)) return next();
+  return authMiddleware(req, res, next);
+});
+
 app.use(routes);
 
 // OMN-14152: co-locate the built SPA on this server so one process serves the

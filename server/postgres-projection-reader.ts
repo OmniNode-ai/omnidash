@@ -751,7 +751,7 @@ export class PostgresProjectionReader {
   }
 
   private async readDelegationSavingsProjection(
-    client: { query: (sql: string) => Promise<{ rows: Row[] }> },
+    client: { query: (sql: string, params?: unknown[]) => Promise<{ rows: Row[] }> },
   ): Promise<Row[]> {
     let savingsRows: Row[] = [];
     let eventRows: Row[] = [];
@@ -879,7 +879,7 @@ export class PostgresProjectionReader {
    * provisioned savings_estimates falls back to 0 instead of failing the projection.
    */
   private async readDelegationTotalSavingsUsd(
-    client: { query: (sql: string) => Promise<{ rows: Row[] }> },
+    client: { query: (sql: string, params?: unknown[]) => Promise<{ rows: Row[] }> },
   ): Promise<number> {
     try {
       const res = await client.query(`
@@ -894,7 +894,7 @@ export class PostgresProjectionReader {
   }
 
   private async readLiveEventsProjection(
-    client: { query: (sql: string) => Promise<{ rows: Row[] }> },
+    client: { query: (sql: string, params?: unknown[]) => Promise<{ rows: Row[] }> },
   ): Promise<Row[]> {
     const events: Row[] = [];
 
@@ -1031,7 +1031,7 @@ export class PostgresProjectionReader {
   }
 
   private async readDelegationTokenUsageProjection(
-    client: { query: (sql: string) => Promise<{ rows: Row[] }> },
+    client: { query: (sql: string, params?: unknown[]) => Promise<{ rows: Row[] }> },
   ): Promise<Row[]> {
     const res = await client.query(`
       SELECT
@@ -1091,7 +1091,7 @@ export class PostgresProjectionReader {
   }
 
   private async readCostSavingsOverviewProjection(
-    client: { query: (sql: string) => Promise<{ rows: Row[] }> },
+    client: { query: (sql: string, params?: unknown[]) => Promise<{ rows: Row[] }> },
   ): Promise<Row[]> {
     const [delegationSavings] = await this.readDelegationSavingsProjection(client);
     const sessions = (delegationSavings?.sessions as Row[] | undefined) ?? [];

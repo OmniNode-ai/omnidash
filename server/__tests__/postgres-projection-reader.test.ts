@@ -15,6 +15,7 @@ vi.mock('pg', () => {
 
 import { Pool } from 'pg';
 import { PostgresProjectionReader } from '../postgres-projection-reader.js';
+import { runWithTenantContext } from '../auth/tenant-context.js';
 
 type MockFn = ReturnType<typeof vi.fn>;
 interface MockPool { connect: MockFn }
@@ -579,5 +580,150 @@ describe('PostgresProjectionReader', () => {
     await reader.readProjection('onex.snapshot.projection.delegation.decisions.v1');
 
     expect(client.release).toHaveBeenCalled();
+  });
+
+  // ── OMN-13824: Tenant isolation via GUC + RLS ─────────────────────────────
+  // Isolation is enforced by setting `app.tenant_id` on the Postgres connection
+  // via `SELECT set_config(...)` (OMN-13824 / OMN-1636). RLS policies then filter
+  // all rows automatically — no WHERE clauses in application code.
+  describe('tenant isolation (GUC approach)', () => {
+    it('sets app.tenant_id GUC on the connection for delegation decisions', async () => {
+      const client = { query: vi.fn().mockResolvedValue({ rows: [] }), release: vi.fn() };
+      getMockPool().connect.mockResolvedValue(client);
+
+      await runWithTenantContext({ tenantId: 'tenant-xyz', subject: null }, () =>
+        reader.readProjection('onex.snapshot.projection.delegation.decisions.v1'),
+      );
+
+      expect(client.query).toHaveBeenCalledWith(
+        "SELECT set_config('app.tenant_id', $1, false)",
+        ['tenant-xyz'],
+      );
+    });
+
+    it('sets app.tenant_id GUC for savings estimates', async () => {
+      const client = { query: vi.fn().mockResolvedValue({ rows: [] }), release: vi.fn() };
+      getMockPool().connect.mockResolvedValue(client);
+
+      await runWithTenantContext({ tenantId: 'tenant-xyz', subject: null }, () =>
+        reader.readProjection('onex.snapshot.projection.savings.v1'),
+      );
+
+      expect(client.query).toHaveBeenCalledWith(
+        "SELECT set_config('app.tenant_id', $1, false)",
+        ['tenant-xyz'],
+      );
+    });
+
+    it('sets app.tenant_id GUC for generation events', async () => {
+      const client = { query: vi.fn().mockResolvedValue({ rows: [] }), release: vi.fn() };
+      getMockPool().connect.mockResolvedValue(client);
+
+      await runWithTenantContext({ tenantId: 'tenant-xyz', subject: null }, () =>
+        reader.readProjection('onex.evt.omnimarket.node-generation-completed.v1'),
+      );
+
+      expect(client.query).toHaveBeenCalledWith(
+        "SELECT set_config('app.tenant_id', $1, false)",
+        ['tenant-xyz'],
+      );
+    });
+
+    it('sets app.tenant_id GUC for swarm runs', async () => {
+      const client = { query: vi.fn().mockResolvedValue({ rows: [] }), release: vi.fn() };
+      getMockPool().connect.mockResolvedValue(client);
+
+      await runWithTenantContext({ tenantId: 'tenant-xyz', subject: null }, () =>
+        reader.readProjection('onex.snapshot.projection.swarm.runs.v1'),
+      );
+
+      expect(client.query).toHaveBeenCalledWith(
+        "SELECT set_config('app.tenant_id', $1, false)",
+        ['tenant-xyz'],
+      );
+    });
+
+    it('sets app.tenant_id GUC for live-events (covers all three sub-queries)', async () => {
+      const client = { query: vi.fn().mockResolvedValue({ rows: [] }), release: vi.fn() };
+      getMockPool().connect.mockResolvedValue(client);
+
+      await runWithTenantContext({ tenantId: 'tenant-xyz', subject: null }, () =>
+        reader.readProjection('onex.snapshot.projection.live-events.v1'),
+      );
+
+      expect(client.query).toHaveBeenCalledWith(
+        "SELECT set_config('app.tenant_id', $1, false)",
+        ['tenant-xyz'],
+      );
+      // GUC set once at checkout — all sub-queries (event_log, delegation, generation) are covered
+      const calls = client.query.mock.calls as [string, unknown[]][];
+      const setConfigCount = calls.filter(([sql]) => sql.includes('set_config')).length;
+      expect(setConfigCount).toBe(1);
+    });
+
+    it('sets app.tenant_id GUC for delegation token-usage', async () => {
+      const client = { query: vi.fn().mockResolvedValue({ rows: [] }), release: vi.fn() };
+      getMockPool().connect.mockResolvedValue(client);
+
+      await runWithTenantContext({ tenantId: 'tenant-xyz', subject: null }, () =>
+        reader.readProjection('onex.snapshot.projection.delegation.token-usage.v1'),
+      );
+
+      expect(client.query).toHaveBeenCalledWith(
+        "SELECT set_config('app.tenant_id', $1, false)",
+        ['tenant-xyz'],
+      );
+    });
+
+    it('sets app.tenant_id GUC for queryLogEntries', async () => {
+      const client = { query: vi.fn().mockResolvedValue({ rows: [] }), release: vi.fn() };
+      getMockPool().connect.mockResolvedValue(client);
+
+      await runWithTenantContext({ tenantId: 'tenant-xyz', subject: null }, () =>
+        reader.queryLogEntries({}),
+      );
+
+      expect(client.query).toHaveBeenCalledWith(
+        "SELECT set_config('app.tenant_id', $1, false)",
+        ['tenant-xyz'],
+      );
+    });
+
+    it('sets app.tenant_id GUC for queryTraces', async () => {
+      const client = { query: vi.fn().mockResolvedValue({ rows: [] }), release: vi.fn() };
+      getMockPool().connect.mockResolvedValue(client);
+
+      await runWithTenantContext({ tenantId: 'tenant-xyz', subject: null }, () =>
+        reader.queryTraces({}),
+      );
+
+      expect(client.query).toHaveBeenCalledWith(
+        "SELECT set_config('app.tenant_id', $1, false)",
+        ['tenant-xyz'],
+      );
+    });
+
+    it('does NOT set GUC when no tenant context is active — fail-closed at DB layer', async () => {
+      const client = { query: vi.fn().mockResolvedValue({ rows: [] }), release: vi.fn() };
+      getMockPool().connect.mockResolvedValue(client);
+
+      // No runWithTenantContext wrapper — simulates an unprotected path
+      await reader.readProjection('onex.snapshot.projection.delegation.decisions.v1');
+
+      const calls = client.query.mock.calls as [string, unknown[]][];
+      const setConfigCall = calls.find(([sql]) => sql.includes('set_config'));
+      expect(setConfigCall).toBeUndefined();
+    });
+
+    it('resets app.tenant_id on the connection after query completes', async () => {
+      const client = { query: vi.fn().mockResolvedValue({ rows: [] }), release: vi.fn() };
+      getMockPool().connect.mockResolvedValue(client);
+
+      await runWithTenantContext({ tenantId: 'tenant-xyz', subject: null }, () =>
+        reader.readProjection('onex.snapshot.projection.delegation.decisions.v1'),
+      );
+
+      expect(client.query).toHaveBeenCalledWith('RESET app.tenant_id');
+    });
   });
 });

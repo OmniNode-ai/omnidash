@@ -94,6 +94,10 @@ ALLOWLIST_FILES=(
   'contract.local.yaml'
   'contract.local.yaml.example'
   'server/data-source-contract.ts'
+  # OMN-13824: the Express bridge intentionally permits the three loopback
+  # origins used by the local Vite dev/preview servers. Production additionally
+  # permits only the contract-supplied OMNIDASH_BASE_URL.
+  'server/index.ts'
   'scripts/generate-data-source-config.ts'
   'server/__tests__/data-source-contract.test.ts'
   # OMN-12400: projection-env guard. The guard module's error message names the
