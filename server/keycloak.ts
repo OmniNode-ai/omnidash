@@ -23,7 +23,7 @@ function clientId(): string {
 
 let _keycloak: InstanceType<typeof KeycloakConnect> | null = null;
 
-export function getKeycloak(store?: Parameters<typeof KeycloakConnect>[0]['store']) {
+export function getKeycloak(store?: KeycloakConnect.KeycloakOptions['store']) {
   if (!_keycloak) {
     _keycloak = new KeycloakConnect(
       { store },
@@ -31,10 +31,12 @@ export function getKeycloak(store?: Parameters<typeof KeycloakConnect>[0]['store
         realm: realm(),
         'auth-server-url': authServerUrl(),
         resource: clientId(),
-        credentials: { secret: process.env.KEYCLOAK_CLIENT_SECRET ?? '' },
+        // keycloak-connect's KeycloakConfig type omits credentials; cast to satisfy
+        // the confidential-client secret requirement at runtime.
+        ...({ credentials: { secret: process.env.KEYCLOAK_CLIENT_SECRET ?? '' } } as object),
         'ssl-required': 'external',
         'confidential-port': 0,
-      },
+      } as KeycloakConnect.KeycloakConfig,
     );
   }
   return _keycloak;

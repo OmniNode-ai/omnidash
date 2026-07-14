@@ -10,12 +10,20 @@ function buildStore(): SessionStore {
   const url = process.env.SESSION_STORE_URL;
   if (url) {
     const client = createClient({ url });
+    // Attach error listener before connect() so unhandled 'error' events
+    // (e.g. reconnect failures after initial success) don't crash the process.
+    client.on('error', (err) => {
+      console.error('[omnidash session] Redis error:', err);
+    });
     client.connect().catch((err) => {
       console.error('[omnidash session] Redis connect failed:', err);
     });
     return new RedisStore({ client });
   }
-  // No Redis configured — use in-memory store (dev only).
+  if (process.env.NODE_ENV === 'production') {
+    throw new Error('[omnidash session] SESSION_STORE_URL is required in production; set it to a Redis URL.');
+  }
+  // No Redis configured — in-memory store for local dev only.
   return new session.MemoryStore();
 }
 
@@ -29,7 +37,13 @@ export function getSessionMiddleware() {
 
   return session({
     store,
-    secret: process.env.SESSION_SECRET ?? 'dev-secret-change-me',
+    secret: (() => {
+      const s = process.env.SESSION_SECRET;
+      if (!s && process.env.NODE_ENV === 'production') {
+        throw new Error('[omnidash session] SESSION_SECRET is required in production.');
+      }
+      return s ?? 'dev-secret-change-me';
+    })(),
     resave: false,
     saveUninitialized: false,
     cookie: {

@@ -86,7 +86,13 @@ app.use(buildOnboardingRouter(loadOnboardingConfig(), authConfig));
 // OMN-13824 / OMN-1636: tenant auth gate. Contract-driven (auth.tenant_mode);
 // pass-through when disabled. When required, the verified tenant id from the
 // OIDC token is threaded through AsyncLocalStorage into the Postgres reader.
-app.use(createTenantMiddleware({ config: authConfig }));
+// PUBLIC_PATHS bypass the gate so health-probe and runtime-config are never
+// blocked by the tenant check, even when tenant_mode is required.
+const tenantMiddleware = createTenantMiddleware({ config: authConfig });
+app.use((req, res, next) => {
+  if (PUBLIC_PATHS.has(req.path)) return next();
+  return tenantMiddleware(req, res, next);
+});
 
 // Auth — skips public paths; checks session first (browser), then Bearer
 // token (API clients). Attaches req.tenant for all downstream handlers.

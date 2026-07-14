@@ -58,6 +58,7 @@ export async function authMiddleware(req: Request, res: Response, next: NextFunc
 
   const token = header.slice(7);
 
+  let tenantCtx: TenantContext;
   try {
     const { payload } = await jwtVerify(token, jwks(), { issuer: issuer(), audience: clientId() });
 
@@ -67,17 +68,21 @@ export async function authMiddleware(req: Request, res: Response, next: NextFunc
       return;
     }
 
-    req.tenant = {
+    tenantCtx = {
       tenant_id,
       tenant_slug: (payload['tenant_slug'] as string | undefined) ?? '',
       sub: payload.sub ?? '',
       roles: extractRoles(payload as Record<string, unknown>),
     };
-
-    runWithTenantContext({ tenantId: tenant_id, subject: payload.sub ?? null }, () => next());
   } catch {
     res.status(401).json({ error: 'unauthorized', detail: 'Invalid or expired token' });
+    return;
   }
+
+  // Assign tenant and call next() outside the try block so downstream handler
+  // errors propagate normally and aren't swallowed as 401s.
+  req.tenant = tenantCtx;
+  runWithTenantContext({ tenantId: tenantCtx.tenant_id, subject: tenantCtx.sub }, () => next());
 }
 
 export function requireAdmin(req: Request, res: Response, next: NextFunction): void {
