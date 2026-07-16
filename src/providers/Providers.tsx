@@ -16,17 +16,17 @@ import type { ReactNode } from 'react';
 // authoritative live-update path. See docs and `local/no-projection-websocket`.
 
 function TokenSync() {
-  const auth = useAuth();
+  const { error, isAuthenticated, isLoading, signinRedirect, user } = useAuth();
 
   useEffect(() => {
-    setToken(auth.user?.access_token ?? null);
-  }, [auth.user?.access_token]);
+    setToken(user?.access_token ?? null);
+  }, [user?.access_token]);
 
   useEffect(() => {
-    if (!auth.isLoading && !auth.isAuthenticated && !auth.error) {
-      void auth.signinRedirect();
+    if (!isLoading && !isAuthenticated && !error) {
+      void signinRedirect();
     }
-  }, [auth.isLoading, auth.isAuthenticated, auth.error]);
+  }, [error, isAuthenticated, isLoading, signinRedirect]);
 
   return null;
 }
