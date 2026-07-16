@@ -49,8 +49,10 @@ function resolveBase(opts: SwarmApiOptions | undefined): string {
 
 // ── Fetch helpers ────────────────────────────────────────────────────────────
 
+import { authedFetch } from '@/data-source/authed-fetch';
+
 async function fetchJson<T>(path: string): Promise<T> {
-  const res = await fetch(path);
+  const res = await authedFetch(path);
   if (!res.ok) return { rows: [] } as T;
   const body = (await res.json()) as unknown;
   return body as T;

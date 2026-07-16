@@ -8,5 +8,5 @@
 export type DataSourceMode = 'sqlite' | 'postgres' | 'file' | 'http';
 
 export const DATA_SOURCE_DEFAULT_MODE: DataSourceMode = "postgres";
-export const DATA_SOURCE_DEFAULT_URL: string = "http://localhost:3002";
+export const DATA_SOURCE_DEFAULT_URL: string = "";
 export const DATA_SOURCE_DEFAULT_SQLITE_DB_PATH: string = "~/.omninode/delegation/delegation.sqlite";

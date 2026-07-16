@@ -13,6 +13,8 @@
  * — the capability-driven dispatcher (W4) owns routing downstream.
  */
 
+import { authedFetch } from '@/data-source/authed-fetch';
+
 /** The renderer command emit endpoint (W2). */
 const RENDERER_EMIT_ENDPOINT = '/api/renderer/emit';
 
@@ -62,7 +64,7 @@ export async function emitRendererAction(
     body.causation_id = req.causationId;
   }
 
-  const res = await fetch(RENDERER_EMIT_ENDPOINT, {
+  const res = await authedFetch(RENDERER_EMIT_ENDPOINT, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(body),
