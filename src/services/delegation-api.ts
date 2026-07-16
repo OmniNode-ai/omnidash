@@ -13,6 +13,7 @@
 import { TOPICS } from '@shared/types/topics';
 import { projectionUrl } from '@/data-source/projection-base-url';
 import { resolveEffectiveDataSource } from '@/data-source/data-source-override';
+import { authedFetch } from '@/data-source/authed-fetch';
 
 // ── Endpoint config ──────────────────────────────────────────────────────────
 
@@ -99,7 +100,7 @@ function resolveBase(opts: DelegationApiOptions | undefined): string {
 // the topic fan-out; it does not apply to these typed REST endpoints.
 // The data-source layer is enforced on the server side for these routes.
 async function fetchProjection<T>(path: string): Promise<T[]> {
-  const res = await fetch(path);
+  const res = await authedFetch(path);
   if (!res.ok) return [];
   const body = (await res.json()) as unknown;
   if (Array.isArray(body)) return body as T[];

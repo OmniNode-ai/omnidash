@@ -19,6 +19,7 @@
 
 import { TOPICS } from "@shared/types/topics";
 import { projectionUrl } from "@/data-source/projection-base-url";
+import { authedFetch } from "@/data-source/authed-fetch";
 
 /**
  * SEA node-generation-completed projection topic. Unlike the entries in
@@ -152,7 +153,7 @@ async function readProjection<T>(
   query?: string,
 ): Promise<ProjectionResult<T>> {
   const url = projectionUrl(topic, query);
-  const res = await fetch(url);
+  const res = await authedFetch(url);
   if (!res.ok) {
     return {
       rows: [],
@@ -478,7 +479,7 @@ export async function submitGeneration(
   const endpoint = baseUrl !== undefined
     ? `${baseUrl}${GENERATE_ENDPOINT}`
     : GENERATE_ENDPOINT;
-  const res = await fetch(endpoint, {
+  const res = await authedFetch(endpoint, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ task_description: taskDescription }),
@@ -534,7 +535,7 @@ export async function fetchLogEntries(
   correlationId: string,
 ): Promise<LogEntryRow[]> {
   const url = `${LOG_ENTRIES_ENDPOINT}?correlation_id=${encodeURIComponent(correlationId)}`;
-  const res = await fetch(url);
+  const res = await authedFetch(url);
   if (!res.ok) return [];
   const body = (await res.json()) as unknown;
   const rows = Array.isArray(body)

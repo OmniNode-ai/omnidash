@@ -10,6 +10,13 @@ import {
 } from './delegation-api';
 import { TOPICS } from '@shared/types/topics';
 
+function expectFetchUrl(url: string): void {
+  expect(fetch).toHaveBeenCalledWith(
+    url,
+    expect.objectContaining({ signal: expect.any(AbortSignal) }),
+  );
+}
+
 describe('DELEGATION_ENDPOINTS', () => {
   it('maps all 5 endpoints to canonical topic strings from TOPICS', () => {
     expect(DELEGATION_ENDPOINTS.summary).toBe(TOPICS.delegationSummary);
@@ -36,7 +43,7 @@ describe('delegation-api fetch functions', () => {
     const result = await fetchDelegationSummary();
     expect(result).toHaveLength(1);
     expect(result[0]).toEqual(row);
-    expect(fetch).toHaveBeenCalledWith('/api/delegation/summary');
+    expectFetchUrl('/api/delegation/summary');
   });
 
   it('fetchDelegationSummary unwraps envelope with rows field', async () => {
@@ -51,25 +58,25 @@ describe('delegation-api fetch functions', () => {
   it('fetchRecentDelegations calls /api/delegation/recent-delegations', async () => {
     vi.stubGlobal('fetch', vi.fn().mockResolvedValueOnce({ ok: true, json: async () => [] }));
     await fetchRecentDelegations();
-    expect(fetch).toHaveBeenCalledWith('/api/delegation/recent-delegations');
+    expectFetchUrl('/api/delegation/recent-delegations');
   });
 
   it('fetchModelRouting calls /api/delegation/model-routing', async () => {
     vi.stubGlobal('fetch', vi.fn().mockResolvedValueOnce({ ok: true, json: async () => [] }));
     await fetchModelRouting();
-    expect(fetch).toHaveBeenCalledWith('/api/delegation/model-routing');
+    expectFetchUrl('/api/delegation/model-routing');
   });
 
   it('fetchQualityGate calls /api/delegation/quality-gate', async () => {
     vi.stubGlobal('fetch', vi.fn().mockResolvedValueOnce({ ok: true, json: async () => [] }));
     await fetchQualityGate();
-    expect(fetch).toHaveBeenCalledWith('/api/delegation/quality-gate');
+    expectFetchUrl('/api/delegation/quality-gate');
   });
 
   it('fetchDelegationSavings calls /api/delegation/savings', async () => {
     vi.stubGlobal('fetch', vi.fn().mockResolvedValueOnce({ ok: true, json: async () => [] }));
     await fetchDelegationSavings();
-    expect(fetch).toHaveBeenCalledWith('/api/delegation/savings');
+    expectFetchUrl('/api/delegation/savings');
   });
 
   it('returns empty array on non-ok response', async () => {
@@ -81,13 +88,13 @@ describe('delegation-api fetch functions', () => {
   it('accepts a custom baseUrl option', async () => {
     vi.stubGlobal('fetch', vi.fn().mockResolvedValueOnce({ ok: true, json: async () => [] }));
     await fetchDelegationSummary({ baseUrl: 'http://localhost:8085' });
-    expect(fetch).toHaveBeenCalledWith('http://localhost:8085/summary');
+    expectFetchUrl('http://localhost:8085/summary');
   });
 
   it('strips trailing slash from baseUrl', async () => {
     vi.stubGlobal('fetch', vi.fn().mockResolvedValueOnce({ ok: true, json: async () => [] }));
     await fetchModelRouting({ baseUrl: 'http://example.com/api/delegation/' });
-    expect(fetch).toHaveBeenCalledWith('http://example.com/api/delegation/model-routing');
+    expectFetchUrl('http://example.com/api/delegation/model-routing');
   });
 
   // OMN-12367: in live (postgres) mode a non-JSON body (e.g. the SPA index.html

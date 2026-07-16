@@ -19,7 +19,7 @@ data_source:
   default: postgres
 
   # Default Express bridge URL (used by sqlite and http modes on the client side).
-  url: "http://localhost:3002"
+  url: ""
 
   # OMN-12969: ws_url removed. The dashboard previously opened a `/ws` invalidation
   # socket, but the deployed projection backend (FastAPI projection-api) serves
