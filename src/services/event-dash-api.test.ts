@@ -31,6 +31,7 @@ describe('fetchContextExperimentScores', () => {
     await fetchContextExperimentScores();
     expect(fetchMock).toHaveBeenCalledWith(
       '/projection/onex.snapshot.projection.context.experiment-scores.v1',
+      expect.objectContaining({ signal: expect.any(AbortSignal) }),
     );
   });
 
