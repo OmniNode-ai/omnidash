@@ -15,12 +15,19 @@ import type { ReactNode } from 'react';
 // are poll-only via `useProjectionQuery`'s refetchInterval; that is the
 // authoritative live-update path. See docs and `local/no-projection-websocket`.
 
-function TokenSync() {
+// OMN-14153: gate the data-fetching tree on a token being in the store.
+//
+// This must wrap the children rather than sit beside them. `setToken` in a
+// useEffect runs after commit, so a sibling component leaves a window where the
+// panels have already mounted and issued their first `authedFetch` with a null
+// token — those requests go out unauthenticated and 401 once the server runs in
+// `required` mode. Writing the store during render (idempotent module-scope
+// write) and withholding children until a token exists closes that window.
+function AuthGate({ children }: { children: ReactNode }) {
   const { error, isAuthenticated, isLoading, signinRedirect, user } = useAuth();
+  const token = user?.access_token ?? null;
 
-  useEffect(() => {
-    setToken(user?.access_token ?? null);
-  }, [user?.access_token]);
+  setToken(token);
 
   useEffect(() => {
     if (!isLoading && !isAuthenticated && !error) {
@@ -28,7 +35,16 @@ function TokenSync() {
     }
   }, [error, isAuthenticated, isLoading, signinRedirect]);
 
-  return null;
+  if (error) {
+    return <div role="alert">Sign-in failed: {error.message}</div>;
+  }
+
+  // Loading, or the redirect to Keycloak is in flight.
+  if (isLoading || !isAuthenticated || !token) {
+    return null;
+  }
+
+  return <>{children}</>;
 }
 
 function InnerProviders({ children }: { children: ReactNode }) {
@@ -54,8 +70,9 @@ export function Providers({ children }: { children: ReactNode }) {
           window.history.replaceState({}, document.title, window.location.pathname);
         }}
       >
-        <TokenSync />
-        <InnerProviders>{children}</InnerProviders>
+        <AuthGate>
+          <InnerProviders>{children}</InnerProviders>
+        </AuthGate>
       </AuthProvider>
     );
   }

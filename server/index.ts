@@ -36,6 +36,15 @@ const PUBLIC_PATHS = new Set(['/api/health-probe', '/api/runtime-config']);
 
 export const app = express();
 
+// The cluster ingress terminates TLS and forwards plain HTTP to this pod, so
+// req.protocol reports "http" unless the X-Forwarded-* headers are trusted.
+// keycloak-connect builds its OAuth redirect_uri from req.protocol, so without
+// this it sends Keycloak an http:// callback, which is not a registered redirect
+// URI on the omnidash client, and login fails with 400 before the SPA ever loads.
+// 1 = trust exactly one hop (the ingress); do not widen this without a reason,
+// since a blanket trust lets clients spoof X-Forwarded-For.
+app.set('trust proxy', 1);
+
 // Health probe — registered before auth so k8s liveness/readiness checks never require a token.
 app.get('/api/health-probe', (_req, res) => {
   res.json({ status: 'ok' });
