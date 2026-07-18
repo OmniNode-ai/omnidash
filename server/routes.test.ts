@@ -612,3 +612,154 @@ describe('server projection routes — OMNIDASH_DATA_SOURCE=http (bridge -> adap
     }
   });
 });
+
+// OMN-14754: the three specialized read routes (swarm-runs, log-entries,
+// traces) previously gated on the (http-mode-null) pgReader and 503'd in the
+// deployed http default — a functional regression after OMN-14642 (PR #261)
+// flipped the bridge default from postgres to http. They must now resolve
+// through the projection-api over the SAME real http seam the primary
+// /projection/:topic read uses. These tests drive that ACTUAL seam (bridge ->
+// http adapter -> stand-in projection-api over real HTTP), not a mock of the
+// adapter, and prove each route returns the projection-api's data (not 503)
+// when data_source.url is set.
+describe('specialized read routes route through projection-api in http mode (OMN-14754)', () => {
+  let projectionApi: http.Server;
+  let received: Array<{ method: string; url: string }>;
+  let handler: () => { status: number; body: unknown };
+
+  beforeEach(async () => {
+    received = [];
+    handler = () => ({ status: 200, body: { rows: [] } });
+    projectionApi = http.createServer((req, res) => {
+      received.push({ method: req.method ?? '', url: req.url ?? '' });
+      const { status, body } = handler();
+      res.statusCode = status;
+      res.setHeader('content-type', 'application/json');
+      res.end(JSON.stringify(body));
+    });
+    await new Promise<void>((resolve) => projectionApi.listen(0, '127.0.0.1', () => resolve()));
+    const addr = projectionApi.address() as AddressInfo;
+    // OMNIDASH_BRIDGE_URL feeds dsConfig.url — the projection-api base the bridge
+    // proxies to in http mode. No DATABASE_URL / RDS credential is set.
+    process.env.OMNIDASH_DATA_SOURCE = 'http';
+    process.env.OMNIDASH_BRIDGE_URL = `http://127.0.0.1:${addr.port}`;
+  });
+
+  afterEach(async () => {
+    delete process.env.OMNIDASH_DATA_SOURCE;
+    delete process.env.OMNIDASH_BRIDGE_URL;
+    await new Promise<void>((resolve, reject) =>
+      projectionApi.close((err) => (err ? reject(err) : resolve())),
+    );
+  });
+
+  it('GET /api/swarm-runs returns projection-api rows (not 503) via /projection/<topic>', async () => {
+    handler = () => ({
+      status: 200,
+      body: {
+        topic: 'onex.snapshot.projection.swarm.runs.v1',
+        source: 'postgres',
+        rows: [{ run_id: 'swarm-http-1', status: 'complete' }],
+      },
+    });
+    const routes = await loadRoutes();
+    const res = await request(buildApp(routes)).get('/api/swarm-runs');
+
+    // Data, not 503: the envelope's rows are unwrapped and returned as { rows }.
+    expect(res.status).toBe(200);
+    expect(res.body).toEqual({ rows: [{ run_id: 'swarm-http-1', status: 'complete' }] });
+    // The read flowed to the projection-api's canonical topic endpoint.
+    expect(received).toHaveLength(1);
+    expect(received[0].method).toBe('GET');
+    expect(received[0].url).toBe('/projection/onex.snapshot.projection.swarm.runs.v1');
+  });
+
+  it('GET /api/projections/log-entries proxies the query to the projection-api (not 503)', async () => {
+    const entries = [
+      {
+        entry_id: 'e1',
+        timestamp: '2026-07-18T00:00:00Z',
+        node_name: 'n1',
+        function_name: 'f',
+        level: 'INFO',
+        message: 'hi',
+        correlation_id: 'c1',
+        duration_ms: null,
+        metadata: {},
+      },
+    ];
+    handler = () => ({ status: 200, body: entries });
+    const routes = await loadRoutes();
+    const res = await request(buildApp(routes)).get(
+      '/api/projections/log-entries?correlation_id=c1&limit=25',
+    );
+
+    expect(res.status).toBe(200);
+    expect(res.body).toEqual(entries);
+    // The bridge proxied the same path + query verbatim to the projection-api.
+    expect(received).toHaveLength(1);
+    expect(received[0].method).toBe('GET');
+    expect(received[0].url).toBe('/api/projections/log-entries?correlation_id=c1&limit=25');
+  });
+
+  it('GET /api/projections/traces proxies the query to the projection-api (not 503)', async () => {
+    const traces = [
+      {
+        correlation_id: 'c1',
+        nodes_involved: ['n1'],
+        event_count: 3,
+        first_event_at: '2026-07-18T00:00:00Z',
+        last_event_at: '2026-07-18T00:00:05Z',
+        duration_ms: 5000,
+        has_error: false,
+        is_running: false,
+        latest_message: 'done',
+      },
+    ];
+    handler = () => ({ status: 200, body: traces });
+    const routes = await loadRoutes();
+    const res = await request(buildApp(routes)).get(
+      '/api/projections/traces?running_only=1&limit=10',
+    );
+
+    expect(res.status).toBe(200);
+    expect(res.body).toEqual(traces);
+    expect(received).toHaveLength(1);
+    expect(received[0].method).toBe('GET');
+    expect(received[0].url).toBe('/api/projections/traces?running_only=1&limit=10');
+  });
+});
+
+// OMN-14754: http mode fails CLOSED when data_source.url is unset (the base
+// contract carries data_source.url=''; the deploy overlay must set it). Each
+// specialized route must surface a clean 500 (no crash, no 503-that-hides-the-
+// misconfig) rather than throwing an unhandled error.
+describe('specialized read routes fail closed (no crash) when data_source.url is unset (OMN-14754)', () => {
+  beforeEach(() => {
+    process.env.OMNIDASH_DATA_SOURCE = 'http';
+    // Empty string (not unset) so the resolved url is '' regardless of any local
+    // contract overlay — the http adapter must refuse rather than read nowhere.
+    process.env.OMNIDASH_BRIDGE_URL = '';
+  });
+
+  afterEach(() => {
+    delete process.env.OMNIDASH_DATA_SOURCE;
+    delete process.env.OMNIDASH_BRIDGE_URL;
+  });
+
+  it.each([
+    ['/api/swarm-runs', 'swarm runs read failed'],
+    ['/api/projections/log-entries', 'log entries query failed'],
+    ['/api/projections/traces', 'traces query failed'],
+  ])('%s returns a clean 500 (not a crash) when data_source.url is empty', async (path, error) => {
+    const consoleError = vi.spyOn(console, 'error').mockImplementation(() => undefined);
+    try {
+      const routes = await loadRoutes();
+      const res = await request(buildApp(routes)).get(path);
+      expect(res.status).toBe(500);
+      expect(res.body).toEqual({ error });
+    } finally {
+      consoleError.mockRestore();
+    }
+  });
+});
