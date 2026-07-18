@@ -101,15 +101,21 @@ export default [
       // second backend authority references (evidence-pipeline-flow).
       // src/data-source/, server/, and test/spec/story files are exempt.
       'local/no-non-authoritative-read-source': 'error',
+      // OMN-14764 (F-19-D): a fetch() that spreads caller options and then
+      // overwrites `headers` with a fresh object literal drops caller-supplied
+      // headers (the HeadersInit-preservation review defect CodeRabbit caught
+      // late on omnidash#258). Enforced locally so it fails before review.
+      'local/no-fetch-header-overwrite': 'error',
       'react-hooks/rules-of-hooks': 'error',
-      // `exhaustive-deps` is set to `warn` rather than `error` so that
-      // genuine one-shot effects (mount-only hydration, resize observer
-      // setup, etc.) can carry an inline `// eslint-disable-next-line
-      // react-hooks/exhaustive-deps -- <reason>` comment instead of
-      // breaking the build. The lint surface is "max-warnings=0" so
-      // unaddressed warnings still fail; a real warning is just an
-      // un-justified deps mismatch.
-      'react-hooks/exhaustive-deps': 'warn',
+      // OMN-14764 (F-19-C): `exhaustive-deps` is now `error`. It was `warn`
+      // relying on the "max-warnings=0" lint surface, but a `warn` stops
+      // blocking the moment anyone runs eslint without that flag (editor,
+      // ad-hoc `eslint src`) or changes the threshold — so a hook-deps defect
+      // could pass local proof and only surface in CodeRabbit. The tree is at
+      // zero exhaustive-deps violations today, so this is a clean escalation.
+      // Genuine one-shot effects still carry an inline
+      // `// eslint-disable-next-line react-hooks/exhaustive-deps -- <reason>`.
+      'react-hooks/exhaustive-deps': 'error',
       // Conservative pragma: the codebase has many intentional
       // narrowing casts (`as const`, `as Foo` for narrowing in test
       // fixtures, etc.) and turning on no-explicit-any across the
