@@ -31,12 +31,16 @@ describe('loadDataSourceConfig', () => {
 
   it('returns contract.yaml defaults when no env vars are set', () => {
     const cfg = loadDataSourceConfig();
-    expect(cfg.mode).toBe('postgres');
+    // OMN-14642: deployed default is http (projection-api proxy), NOT direct
+    // postgres — the bridge must not hold a direct RDS connection.
+    expect(cfg.mode).toBe('http');
     expect(cfg.url).toBe('');
     expect(cfg.wsUrl).toBe('ws://localhost:3002/ws');
     expect(cfg.sqliteDbPath).toMatch(/\.omninode[/\\]delegation[/\\]delegation\.sqlite$/);
-    expect(cfg.postgresDatabaseUrlSecretRef).toBe('env:DATABASE_URL');
-    expect(cfg.postgresDatabaseUrl).toBeNull(); // DATABASE_URL not set in test env
+    // OMN-14642: RDS/Postgres credential removed from the bridge default; the
+    // base contract declares no secret ref, so both resolve to null.
+    expect(cfg.postgresDatabaseUrlSecretRef).toBeNull();
+    expect(cfg.postgresDatabaseUrl).toBeNull();
   });
 
   it('honors OMNIDASH_DATA_SOURCE env override', () => {
@@ -60,9 +64,10 @@ describe('loadDataSourceConfig', () => {
   it('does not resolve OMNIDASH_ANALYTICS_DB_URL unless the contract declares that specific ref', () => {
     process.env.OMNIDASH_ANALYTICS_DB_URL = 'postgresql://projection:secret@db:5432/omnidash_analytics';
     const cfg = loadDataSourceConfig();
-    // Contract declares "env:DATABASE_URL", not OMNIDASH_ANALYTICS_DB_URL — so
-    // OMNIDASH_ANALYTICS_DB_URL is irrelevant and postgresDatabaseUrl stays null.
-    expect(cfg.postgresDatabaseUrlSecretRef).toBe('env:DATABASE_URL');
+    // OMN-14642: the base contract declares NO secret ref (emptied so the bridge
+    // holds no RDS credential by default), so OMNIDASH_ANALYTICS_DB_URL is
+    // irrelevant and postgresDatabaseUrl stays null.
+    expect(cfg.postgresDatabaseUrlSecretRef).toBeNull();
     expect(cfg.postgresDatabaseUrl).toBeNull();
   });
 

@@ -13,12 +13,25 @@ data_source:
   # - file: reads from ./fixtures/ directory (zero-infra dev mode)
   # - http: reads via HTTP from data_source_url
   #
-  # OMN-10976: default flipped from sqlite to postgres. Normal runtime reads
-  # from Postgres via the event bus projection path. Set OMNIDASH_DATA_SOURCE=sqlite
-  # explicitly for standalone installs without Kafka/Postgres.
-  default: postgres
+  # OMN-10976: default flipped from sqlite to postgres.
+  # OMN-14642: default flipped from postgres to http. The Express bridge must
+  # NOT hold a direct RDS/Postgres connection (operator position 2026-07-15) —
+  # projection reads route through the projection-api HTTP service (which owns
+  # the DB) via `url` below / OMNIDASH_BRIDGE_URL. Set OMNIDASH_DATA_SOURCE=postgres
+  # (with a contract.local.yaml postgres_database_url_secret_ref) to restore the
+  # reversible direct-DB path, or =sqlite for standalone installs without
+  # Kafka/Postgres.
+  # DEPLOY-TIME DEPENDENCY: http mode requires the projection-api base URL set in
+  # a deployment overlay (contract.local.yaml data_source.url or
+  # OMNIDASH_BRIDGE_URL); the base contract intentionally carries no network
+  # target, so an unconfigured http mode fails loudly rather than reading nowhere.
+  default: http
 
-  # Default Express bridge URL (used by sqlite and http modes on the client side).
+  # Projection-api base URL. Server-side (http mode) the Express bridge proxies
+  # GET /projection/:topic to `<url>/projection/:topic`; client-side sqlite/http
+  # modes also read from here. Empty in the base contract — a deployment overlay
+  # (contract.local.yaml) or OMNIDASH_BRIDGE_URL must set the in-cluster
+  # projection-api origin before http mode can serve reads.
   url: ""
 
   # OMN-12969: ws_url removed. The dashboard previously opened a `/ws` invalidation
@@ -31,10 +44,13 @@ data_source:
   # Tilde is expanded to $HOME by the server at runtime.
   sqlite_db_path: "~/.omninode/delegation/delegation.sqlite"
 
-  # Secret reference for the Postgres projection DB URL in postgres mode.
-  # Set this in contract.local.yaml or a deployment overlay, for example:
+  # Secret reference for the Postgres projection DB URL. OMN-14642: emptied so
+  # the deployed default (http mode) carries NO RDS/Postgres credential in the
+  # Express bridge. Only the reversible `postgres` mode reads it; set it in
+  # contract.local.yaml or a deployment overlay to re-enable the direct-DB path,
+  # for example:
   # postgres_database_url_secret_ref: "env:OMNIDASH_ANALYTICS_DB_URL"
-  postgres_database_url_secret_ref: "env:DATABASE_URL"
+  postgres_database_url_secret_ref: ""
 
 event_bus:
   # Contract-owned Kafka/Redpanda bootstrap configuration for the Express

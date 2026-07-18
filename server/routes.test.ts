@@ -4,6 +4,8 @@ import request from 'supertest';
 import { mkdtemp, rm, mkdir, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
+import http from 'node:http';
+import type { AddressInfo } from 'node:net';
 import Database from 'better-sqlite3';
 
 async function loadRoutes() {
@@ -530,5 +532,83 @@ describe('GET /api/delegation/correlation-trace/:id is retired (OMN-12822)', () 
     // Express returns 404 for an unmounted route. The canonical read path is
     // `/projection/{topic}?correlation_id=<id>`, exercised elsewhere.
     expect(res.status).toBe(404);
+  });
+});
+
+// OMN-14642: the deployed default is now `http` mode — the Express bridge must
+// NOT hold a direct RDS/Postgres connection. Projection reads route through the
+// projection-api HTTP service (which owns the DB). These tests drive the ACTUAL
+// read seam bridge -> http adapter -> projection-api over real HTTP against a
+// stand-in projection-api server. There is deliberately NO pg mock here: the
+// point is to prove the bridge reaches a projection-api service, not a database.
+describe('server projection routes — OMNIDASH_DATA_SOURCE=http (bridge -> adapter -> projection-api)', () => {
+  let projectionApi: http.Server;
+  let received: Array<{ method: string; url: string }>;
+  let respondWith: { status: number; body: unknown };
+
+  beforeEach(async () => {
+    received = [];
+    respondWith = { status: 200, body: { rows: [] } };
+    projectionApi = http.createServer((req, res) => {
+      received.push({ method: req.method ?? '', url: req.url ?? '' });
+      res.statusCode = respondWith.status;
+      res.setHeader('content-type', 'application/json');
+      res.end(JSON.stringify(respondWith.body));
+    });
+    await new Promise<void>((resolve) => projectionApi.listen(0, '127.0.0.1', () => resolve()));
+    const addr = projectionApi.address() as AddressInfo;
+    // OMNIDASH_BRIDGE_URL feeds dsConfig.url — the projection-api base the bridge
+    // proxies to in http mode. No DATABASE_URL / RDS credential is set.
+    process.env.OMNIDASH_DATA_SOURCE = 'http';
+    process.env.OMNIDASH_BRIDGE_URL = `http://127.0.0.1:${addr.port}`;
+  });
+
+  afterEach(async () => {
+    delete process.env.OMNIDASH_DATA_SOURCE;
+    delete process.env.OMNIDASH_BRIDGE_URL;
+    await new Promise<void>((resolve, reject) =>
+      projectionApi.close((err) => (err ? reject(err) : resolve())),
+    );
+  });
+
+  it('proxies GET /projection/:topic through the http adapter to the projection-api (no pg)', async () => {
+    const topic = 'onex.snapshot.projection.swarm.runs.v1';
+    respondWith = {
+      status: 200,
+      body: { rows: [{ run_id: 'run-http-1', status: 'complete' }] },
+    };
+
+    const routes = await loadRoutes();
+    const res = await request(buildApp(routes)).get(`/projection/${encodeURIComponent(topic)}`);
+
+    // The bridge returned exactly what the projection-api served — the read
+    // flowed bridge -> http adapter -> projection-api over real HTTP.
+    expect(res.status).toBe(200);
+    expect(res.body).toEqual({ rows: [{ run_id: 'run-http-1', status: 'complete' }] });
+
+    // The seam actually hit the projection-api service (not a DB): the stand-in
+    // projection-api received exactly one GET /projection/<topic>.
+    expect(received).toHaveLength(1);
+    expect(received[0].method).toBe('GET');
+    expect(received[0].url).toBe(`/projection/${encodeURIComponent(topic)}`);
+  });
+
+  it('surfaces a projection-api upstream error as HTTP 500 (upstream read, not a local DB read)', async () => {
+    respondWith = { status: 503, body: { error: 'projection-api down' } };
+    const consoleError = vi.spyOn(console, 'error').mockImplementation(() => undefined);
+    try {
+      const routes = await loadRoutes();
+      const res = await request(buildApp(routes)).get(
+        '/projection/onex.snapshot.projection.swarm.runs.v1',
+      );
+
+      expect(res.status).toBe(500);
+      expect(res.body).toEqual({ error: 'projection read failed' });
+      // The adapter still reached the projection-api (proving the failure came
+      // from the upstream read seam, not from a direct DB connection).
+      expect(received).toHaveLength(1);
+    } finally {
+      consoleError.mockRestore();
+    }
   });
 });

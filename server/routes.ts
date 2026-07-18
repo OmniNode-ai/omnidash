@@ -62,6 +62,30 @@ async function readJson(path: string): Promise<unknown> {
   return JSON.parse(raw) as unknown;
 }
 
+// OMN-14152 / OMN-14642: 'http' mode holds no local reader (no pgReader, no
+// sqliteReader) — the projection data lives behind a separate projection-api
+// HTTP service that OWNS the database (dsConfig.url). The bridge proxies the
+// read verbatim (GET only) so the browser stays same-origin; it forwards NO
+// writes/commands and holds NO direct DB connection or credential. This is the
+// canonical re-route that keeps a pg.Pool and raw SQL out of the serving path
+// (operator position 2026-07-15). Restored here after PR #255 (multitenant
+// auth) dropped the OMN-14152 http-proxy path.
+async function readProjectionViaHttp(topic: string): Promise<unknown> {
+  const base = dsConfig.url.replace(/\/$/, '');
+  if (!base) {
+    throw new Error(
+      'http data source requires data_source.url (the projection-api base URL); '
+      + 'set it in contract.local.yaml (data_source.url) or OMNIDASH_BRIDGE_URL',
+    );
+  }
+  const url = `${base}/projection/${encodeURIComponent(topic)}`;
+  const res = await fetch(url);
+  if (!res.ok) {
+    throw new Error(`http data source GET ${url} failed: ${res.status} ${res.statusText}`);
+  }
+  return res.json();
+}
+
 async function readProjection(topic: string): Promise<unknown> {
   if (pgReader) {
     return pgReader.readProjection(topic);
@@ -75,6 +99,10 @@ async function readProjection(topic: string): Promise<unknown> {
     throw new Error(
       'data_source.postgres_database_url_secret_ref must resolve for postgres mode; refusing fixture fallback',
     );
+  }
+
+  if (dsConfig.mode === 'http') {
+    return readProjectionViaHttp(topic);
   }
 
   if (dsConfig.mode !== 'file') {
