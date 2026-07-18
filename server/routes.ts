@@ -62,15 +62,15 @@ async function readJson(path: string): Promise<unknown> {
   return JSON.parse(raw) as unknown;
 }
 
-// OMN-14152 / OMN-14642: 'http' mode holds no local reader (no pgReader, no
-// sqliteReader) — the projection data lives behind a separate projection-api
-// HTTP service that OWNS the database (dsConfig.url). The bridge proxies the
-// read verbatim (GET only) so the browser stays same-origin; it forwards NO
-// writes/commands and holds NO direct DB connection or credential. This is the
-// canonical re-route that keeps a pg.Pool and raw SQL out of the serving path
-// (operator position 2026-07-15). Restored here after PR #255 (multitenant
-// auth) dropped the OMN-14152 http-proxy path.
-async function readProjectionViaHttp(topic: string): Promise<unknown> {
+// OMN-14152 / OMN-14642 / OMN-14754: 'http' mode holds no local reader (no
+// pgReader, no sqliteReader) — the projection data lives behind a separate
+// projection-api HTTP service that OWNS the database (dsConfig.url). The bridge
+// proxies the read verbatim (GET only) so the browser stays same-origin; it
+// forwards NO writes/commands and holds NO direct DB connection or credential.
+// This is the canonical re-route that keeps a pg.Pool and raw SQL out of the
+// serving path (operator position 2026-07-15). Restored here after PR #255
+// (multitenant auth) dropped the OMN-14152 http-proxy path.
+function projectionApiBase(): string {
   const base = dsConfig.url.replace(/\/$/, '');
   if (!base) {
     throw new Error(
@@ -78,12 +78,54 @@ async function readProjectionViaHttp(topic: string): Promise<unknown> {
       + 'set it in contract.local.yaml (data_source.url) or OMNIDASH_BRIDGE_URL',
     );
   }
-  const url = `${base}/projection/${encodeURIComponent(topic)}`;
+  return base;
+}
+
+// Forward only scalar (string / string[]) query params to the projection-api.
+// Express parses repeated keys into arrays; nested/object params are dropped —
+// these read endpoints take flat scalar filters only.
+function buildQueryString(query: Record<string, unknown>): string {
+  const params = new URLSearchParams();
+  for (const [key, value] of Object.entries(query)) {
+    if (typeof value === 'string') {
+      params.append(key, value);
+    } else if (Array.isArray(value)) {
+      for (const item of value) {
+        if (typeof item === 'string') params.append(key, item);
+      }
+    }
+  }
+  const encoded = params.toString();
+  return encoded ? `?${encoded}` : '';
+}
+
+// Generic GET proxy to the projection-api (http mode). `path` is an absolute
+// path on the projection-api origin (e.g. '/projection/<topic>' or
+// '/api/projections/log-entries'); `query` is forwarded verbatim as the query
+// string. GET only — the bridge never forwards writes/commands.
+async function readViaHttp(path: string, query?: Record<string, unknown>): Promise<unknown> {
+  const qs = query ? buildQueryString(query) : '';
+  const url = `${projectionApiBase()}${path}${qs}`;
   const res = await fetch(url);
   if (!res.ok) {
     throw new Error(`http data source GET ${url} failed: ${res.status} ${res.statusText}`);
   }
   return res.json();
+}
+
+async function readProjectionViaHttp(topic: string): Promise<unknown> {
+  return readViaHttp(`/projection/${encodeURIComponent(topic)}`);
+}
+
+// Normalize a projection read result to a plain row array. The projection-api
+// returns a projection envelope ({ topic, source, ..., rows: [...] }) in
+// postgres mode; file mode returns a bare array. Either is accepted.
+function extractRows(result: unknown): unknown[] {
+  if (Array.isArray(result)) return result;
+  if (result && typeof result === 'object' && Array.isArray((result as { rows?: unknown }).rows)) {
+    return (result as { rows: unknown[] }).rows;
+  }
+  return [];
 }
 
 async function readProjection(topic: string): Promise<unknown> {
@@ -360,15 +402,16 @@ router.post('/api/sea/generate', async (req, res) => {
   }
 });
 
-// Swarm runs: paginated list from swarm_runs table, newest first.
+// Swarm runs: newest-first list from the swarm_runs projection topic.
+// OMN-14754: routed through the mode-agnostic readProjection() — the SAME
+// pg/sqlite/http/file seam the primary /projection/:topic read uses — so the
+// deployed http default proxies to the projection-api instead of 503-ing on the
+// null pgReader. extractRows() unwraps the projection envelope ({...,rows}) that
+// postgres/http modes return and the bare array that file mode returns.
 router.get('/api/swarm-runs', async (_req, res) => {
-  if (!pgReader) {
-    res.status(503).json({ error: 'postgres data source not configured' });
-    return;
-  }
   try {
-    const rows = await pgReader.readProjection('onex.snapshot.projection.swarm.runs.v1');
-    res.json({ rows: rows.rows });
+    const result = await readProjection('onex.snapshot.projection.swarm.runs.v1');
+    res.json({ rows: extractRows(result) });
   } catch (err) {
     console.error('[routes] /api/swarm-runs error:', err);
     res.status(500).json({ error: 'swarm runs read failed' });
@@ -496,48 +539,72 @@ router.get('/api/runtime-config', (_req, res) => {
   });
 });
 
-// OMN-12133: projection query endpoints for log entries and traces.
-// Both require postgres mode with a contract/overlay-resolved database secret.
+// OMN-12133: projection query endpoints for log entries and traces — these are
+// parametrized queries (filters + aggregation), not plain topic snapshots, so
+// they have no /projection/:topic equivalent.
+// OMN-14754: in postgres mode the local pgReader answers them (this is what the
+// projection-api service itself runs). In the deployed http default the bridge
+// holds no pgReader, so it proxies the read verbatim to the projection-api's
+// same query endpoints (GET only). file/sqlite modes have no query backend and
+// still 503.
 
 router.get('/api/projections/log-entries', async (req, res) => {
-  if (!pgReader) {
-    res.status(503).json({ error: 'postgres data source not configured' });
+  if (pgReader) {
+    try {
+      const limit = req.query.limit !== undefined ? parseInt(String(req.query.limit), 10) : 100;
+      const entries = await pgReader.queryLogEntries({
+        correlation_id: req.query.correlation_id ? String(req.query.correlation_id) : undefined,
+        node_name: req.query.node_name ? String(req.query.node_name) : undefined,
+        level: req.query.level ? String(req.query.level) : undefined,
+        since: req.query.since ? String(req.query.since) : undefined,
+        limit: Number.isFinite(limit) && limit > 0 ? limit : 100,
+      });
+      res.json(entries);
+    } catch (err) {
+      console.error('[routes] /api/projections/log-entries error:', err);
+      res.status(500).json({ error: 'log entries query failed' });
+    }
     return;
   }
-  try {
-    const limit = req.query.limit !== undefined ? parseInt(String(req.query.limit), 10) : 100;
-    const entries = await pgReader.queryLogEntries({
-      correlation_id: req.query.correlation_id ? String(req.query.correlation_id) : undefined,
-      node_name: req.query.node_name ? String(req.query.node_name) : undefined,
-      level: req.query.level ? String(req.query.level) : undefined,
-      since: req.query.since ? String(req.query.since) : undefined,
-      limit: Number.isFinite(limit) && limit > 0 ? limit : 100,
-    });
-    res.json(entries);
-  } catch (err) {
-    console.error('[routes] /api/projections/log-entries error:', err);
-    res.status(500).json({ error: 'log entries query failed' });
+  if (dsConfig.mode === 'http') {
+    try {
+      res.json(await readViaHttp('/api/projections/log-entries', req.query));
+    } catch (err) {
+      console.error('[routes] /api/projections/log-entries error:', err);
+      res.status(500).json({ error: 'log entries query failed' });
+    }
+    return;
   }
+  res.status(503).json({ error: 'postgres data source not configured' });
 });
 
 router.get('/api/projections/traces', async (req, res) => {
-  if (!pgReader) {
-    res.status(503).json({ error: 'postgres data source not configured' });
+  if (pgReader) {
+    try {
+      const limit = req.query.limit !== undefined ? parseInt(String(req.query.limit), 10) : 50;
+      const running_only = req.query.running_only === 'true' || req.query.running_only === '1';
+      const traces = await pgReader.queryTraces({
+        since: req.query.since ? String(req.query.since) : undefined,
+        limit: Number.isFinite(limit) && limit > 0 ? limit : 50,
+        running_only,
+      });
+      res.json(traces);
+    } catch (err) {
+      console.error('[routes] /api/projections/traces error:', err);
+      res.status(500).json({ error: 'traces query failed' });
+    }
     return;
   }
-  try {
-    const limit = req.query.limit !== undefined ? parseInt(String(req.query.limit), 10) : 50;
-    const running_only = req.query.running_only === 'true' || req.query.running_only === '1';
-    const traces = await pgReader.queryTraces({
-      since: req.query.since ? String(req.query.since) : undefined,
-      limit: Number.isFinite(limit) && limit > 0 ? limit : 50,
-      running_only,
-    });
-    res.json(traces);
-  } catch (err) {
-    console.error('[routes] /api/projections/traces error:', err);
-    res.status(500).json({ error: 'traces query failed' });
+  if (dsConfig.mode === 'http') {
+    try {
+      res.json(await readViaHttp('/api/projections/traces', req.query));
+    } catch (err) {
+      console.error('[routes] /api/projections/traces error:', err);
+      res.status(500).json({ error: 'traces query failed' });
+    }
+    return;
   }
+  res.status(503).json({ error: 'postgres data source not configured' });
 });
 
 // OMN-12809: /api/dispatch removed — was the generic router-hop anti-pattern.
