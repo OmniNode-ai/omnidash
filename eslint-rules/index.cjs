@@ -8,5 +8,6 @@ module.exports = {
     'no-projection-websocket': require('./no-projection-websocket.cjs'),
     'no-untyped-empty-state': require('./no-untyped-empty-state.cjs'),
     'no-non-authoritative-read-source': require('./no-non-authoritative-read-source.cjs'),
+    'no-fetch-header-overwrite': require('./no-fetch-header-overwrite.cjs'),
   },
 };
