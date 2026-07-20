@@ -279,22 +279,26 @@ export class PostgresProjectionReader {
         case 'delegation':
         case 'onex.snapshot.projection.delegation.decisions.v1': {
           const res = await client.query(`
+            WITH events AS (
+              SELECT to_jsonb(delegation_events) AS e
+              FROM delegation_events
+            )
             SELECT
-              id,
-              correlation_id,
-              session_id,
-              task_type,
-              delegated_to,
-              model_name,
-              quality_gate_passed,
-              quality_gate_detail,
-              latency_ms,
-              tokens_input,
-              tokens_output,
-              tokens_to_compliance,
-              created_at
-            FROM delegation_events
-            ORDER BY created_at DESC
+              NULLIF(e->>'id', '')::bigint AS id,
+              e->>'correlation_id' AS correlation_id,
+              e->>'session_id' AS session_id,
+              e->>'task_type' AS task_type,
+              COALESCE(NULLIF(e->>'delegated_to', ''), NULLIF(e->>'model_name', '')) AS delegated_to,
+              COALESCE(NULLIF(e->>'model_name', ''), NULLIF(e->>'delegated_to', '')) AS model_name,
+              COALESCE(NULLIF(e->>'quality_gate_passed', '')::boolean, false) AS quality_gate_passed,
+              NULL::text AS quality_gate_detail,
+              COALESCE(NULLIF(e->>'delegation_latency_ms', '')::numeric, NULLIF(e->>'latency_ms', '')::numeric) AS latency_ms,
+              NULL::integer AS tokens_input,
+              NULL::integer AS tokens_output,
+              NULL::integer AS tokens_to_compliance,
+              COALESCE(NULLIF(e->>'timestamp', ''), NULLIF(e->>'created_at', '')) AS created_at
+            FROM events
+            ORDER BY COALESCE(NULLIF(e->>'timestamp', '')::timestamptz, NULLIF(e->>'created_at', '')::timestamptz) DESC
             LIMIT 500
           `);
           return res.rows as Row[];
@@ -302,13 +306,17 @@ export class PostgresProjectionReader {
 
         case 'onex.snapshot.projection.delegation.summary.v1': {
           const summaryRes = await client.query(`
+            WITH events AS (
+              SELECT to_jsonb(delegation_events) AS e
+              FROM delegation_events
+            )
             SELECT
               COUNT(*)                                                                    AS total_events,
-              COALESCE(SUM(CASE WHEN quality_gate_passed THEN 1 ELSE 0 END), 0)          AS quality_passed_count,
-              COALESCE(SUM(CASE WHEN NOT quality_gate_passed THEN 1 ELSE 0 END), 0)      AS quality_failed_count,
-              COALESCE(AVG(latency_ms), 0)                                               AS avg_latency_ms,
-              COALESCE(MAX(EXTRACT(EPOCH FROM created_at)), 0)                           AS latest_event_at
-            FROM delegation_events
+              COALESCE(SUM(CASE WHEN COALESCE(NULLIF(e->>'quality_gate_passed', '')::boolean, false) THEN 1 ELSE 0 END), 0) AS quality_passed_count,
+              COALESCE(SUM(CASE WHEN NOT COALESCE(NULLIF(e->>'quality_gate_passed', '')::boolean, false) THEN 1 ELSE 0 END), 0) AS quality_failed_count,
+              COALESCE(AVG(COALESCE(NULLIF(e->>'delegation_latency_ms', '')::numeric, NULLIF(e->>'latency_ms', '')::numeric)), 0) AS avg_latency_ms,
+              COALESCE(MAX(EXTRACT(EPOCH FROM COALESCE(NULLIF(e->>'timestamp', '')::timestamptz, NULLIF(e->>'created_at', '')::timestamptz))), 0) AS latest_event_at
+            FROM events
           `);
           // total_savings_usd is sourced from the savings_estimates projection table
           // (the same source onex.snapshot.projection.savings.summary.v1 reads), NOT a
@@ -397,24 +405,37 @@ export class PostgresProjectionReader {
 
         case 'onex.snapshot.projection.delegation.model-routing.v1': {
           const routingRes = await client.query(`
+            WITH events AS (
+              SELECT to_jsonb(delegation_events) AS e
+              FROM delegation_events
+            )
             SELECT
-              delegated_to                                                            AS model_alias,
-              model_name,
-              task_type,
-              COUNT(*)                                                                AS event_count,
-              COALESCE(SUM(CASE WHEN quality_gate_passed THEN 1 ELSE 0 END), 0)      AS quality_passed,
-              COALESCE(AVG(latency_ms), 0)                                           AS avg_latency_ms
-            FROM delegation_events
-            GROUP BY delegated_to, model_name, task_type
+              COALESCE(NULLIF(e->>'delegated_to', ''), NULLIF(e->>'model_name', '')) AS model_alias,
+              COALESCE(NULLIF(e->>'model_name', ''), NULLIF(e->>'delegated_to', '')) AS model_name,
+              e->>'task_type' AS task_type,
+              COUNT(*) AS event_count,
+              COALESCE(SUM(CASE WHEN COALESCE(NULLIF(e->>'quality_gate_passed', '')::boolean, false) THEN 1 ELSE 0 END), 0) AS quality_passed,
+              COALESCE(AVG(COALESCE(NULLIF(e->>'delegation_latency_ms', '')::numeric, NULLIF(e->>'latency_ms', '')::numeric)), 0) AS avg_latency_ms
+            FROM events
+            GROUP BY model_alias, model_name, task_type
             ORDER BY event_count DESC
           `);
           const totalRes = await client.query(`SELECT COUNT(*) AS total FROM delegation_events`);
           const tracesRes = await client.query(`
-            SELECT id, correlation_id, task_type, model_name, delegated_to,
-                   routing_rule, routing_confidence, routing_candidates,
-                   latency_ms, quality_gate_passed, created_at
-            FROM delegation_events
-            ORDER BY created_at DESC
+            WITH events AS (
+              SELECT to_jsonb(delegation_events) AS e
+              FROM delegation_events
+            )
+            SELECT NULLIF(e->>'id', '')::bigint AS id, e->>'correlation_id' AS correlation_id, e->>'task_type' AS task_type,
+                   COALESCE(NULLIF(e->>'model_name', ''), NULLIF(e->>'delegated_to', '')) AS model_name,
+                   COALESCE(NULLIF(e->>'delegated_to', ''), NULLIF(e->>'model_name', '')) AS delegated_to,
+                   NULL::text AS routing_rule, NULL::numeric AS routing_confidence,
+                   NULL::jsonb AS routing_candidates,
+                   COALESCE(NULLIF(e->>'delegation_latency_ms', '')::numeric, NULLIF(e->>'latency_ms', '')::numeric) AS latency_ms,
+                   COALESCE(NULLIF(e->>'quality_gate_passed', '')::boolean, false) AS quality_gate_passed,
+                   COALESCE(NULLIF(e->>'timestamp', ''), NULLIF(e->>'created_at', '')) AS created_at
+            FROM events
+            ORDER BY COALESCE(NULLIF(e->>'timestamp', '')::timestamptz, NULLIF(e->>'created_at', '')::timestamptz) DESC
             LIMIT 20
           `);
           const routingRows = routingRes.rows as Row[];
@@ -480,16 +501,19 @@ export class PostgresProjectionReader {
             FROM delegation_events
           `);
           const byDetailRes = await client.query(`
+            WITH events AS (
+              SELECT to_jsonb(delegation_events) AS e
+              FROM delegation_events
+            )
             SELECT
-              quality_gate_detail                                                      AS check_detail,
-              COUNT(*)                                                                 AS total_checks,
-              COALESCE(SUM(CASE WHEN quality_gate_passed THEN 1 ELSE 0 END), 0)       AS passed_count,
-              COALESCE(SUM(CASE WHEN NOT quality_gate_passed THEN 1 ELSE 0 END), 0)   AS failed_count,
-              COALESCE(AVG(quality_gates_checked), 0)                                 AS avg_gates_checked,
-              COALESCE(AVG(quality_gates_failed), 0)                                  AS avg_gates_failed
-            FROM delegation_events
-            WHERE quality_gate_detail IS NOT NULL
-            GROUP BY quality_gate_detail
+              COALESCE(NULLIF(e->>'quality_gate_detail', ''), NULLIF(e->>'failure_detail', ''), 'unknown') AS check_detail,
+              COUNT(*) AS total_checks,
+              COALESCE(SUM(CASE WHEN COALESCE(NULLIF(e->>'quality_gate_passed', '')::boolean, false) THEN 1 ELSE 0 END), 0) AS passed_count,
+              COALESCE(SUM(CASE WHEN NOT COALESCE(NULLIF(e->>'quality_gate_passed', '')::boolean, false) THEN 1 ELSE 0 END), 0) AS failed_count,
+              COALESCE(AVG(CASE WHEN jsonb_typeof(e->'quality_gates_checked') = 'array' THEN jsonb_array_length(e->'quality_gates_checked') ELSE 0 END), 0) AS avg_gates_checked,
+              COALESCE(AVG(CASE WHEN jsonb_typeof(e->'quality_gates_failed') = 'array' THEN jsonb_array_length(e->'quality_gates_failed') ELSE 0 END), 0) AS avg_gates_failed
+            FROM events
+            GROUP BY check_detail
             ORDER BY total_checks DESC
           `);
           const qgTotals = totalsRes.rows[0] as Row;
@@ -546,12 +570,12 @@ export class PostgresProjectionReader {
               NULLIF(metadata->>'node_id', '') AS node_id,
               COALESCE(NULLIF(metadata->>'node_name', ''), service_name) AS node_name,
               NULLIF(service_type, '') AS node_type,
-              service_url,
+              NULL::text AS service_url,
               metadata->'node_version' AS node_version,
               health_status AS status,
               is_active,
               created_at AS registered_at,
-              COALESCE(last_heartbeat_at, last_health_check, updated_at) AS last_seen_at
+              COALESCE(last_health_check, updated_at) AS last_seen_at
             FROM node_service_registry
             ORDER BY created_at DESC
             LIMIT 500
@@ -901,55 +925,21 @@ export class PostgresProjectionReader {
     try {
       const eventLogRes = await client.query(`
         SELECT
-          COALESCE(
-            NULLIF(envelope->>'id', ''),
-            NULLIF(envelope->>'correlation_id', ''),
-            NULLIF(envelope->>'correlationId', ''),
-            'bus-log-' || id::text
-          ) AS id,
-          COALESCE(
-            NULLIF(envelope->>'type', ''),
-            NULLIF(envelope->>'event_type', ''),
-            NULLIF(envelope->>'kind', ''),
-            'BUS_MESSAGE'
-          ) AS type,
-          COALESCE(
-            NULLIF(envelope->>'timestamp', ''),
-            NULLIF(envelope->>'created_at', ''),
-            created_at::text
-          ) AS timestamp,
-          COALESCE(
-            NULLIF(envelope->>'source', ''),
-            NULLIF(envelope->>'producer', ''),
-            NULLIF(envelope->>'service', ''),
-            'event_bus'
-          ) AS source,
-          COALESCE(
-            NULLIF(envelope->>'topic', ''),
-            NULLIF(envelope->>'subject', ''),
-            'delegation_event_log'
-          ) AS topic,
-          COALESCE(
-            NULLIF(envelope->>'summary', ''),
-            NULLIF(envelope->>'message', ''),
-            NULLIF(envelope->>'detail', ''),
-            COALESCE(NULLIF(envelope->>'type', ''), 'BUS_MESSAGE')
-          ) AS summary,
-          COALESCE(
-            NULLIF(envelope->>'correlation_id', ''),
-            NULLIF(envelope->>'correlationId', ''),
-            NULLIF(envelope->'payload'->>'correlation_id', ''),
-            NULLIF(envelope->'payload'->>'correlationId', ''),
-            ''
-          ) AS correlation_id,
-          COALESCE(envelope->'payload', envelope->'data', envelope)::text AS payload
-        FROM delegation_event_log
-        ORDER BY created_at DESC
+          COALESCE(NULLIF(correlation_id, ''), event_id, 'bus-' || id::text) AS id,
+          COALESCE(NULLIF(event_type, ''), 'BUS_MESSAGE')                     AS type,
+          timestamp::text                                                      AS timestamp,
+          COALESCE(NULLIF(source, ''), 'event_bus')                           AS source,
+          COALESCE(NULLIF(topic, ''), 'event_bus_events')                     AS topic,
+          COALESCE(NULLIF(event_type, ''), 'BUS_MESSAGE')                     AS summary,
+          COALESCE(correlation_id, '')                                         AS correlation_id,
+          payload::text                                                        AS payload
+        FROM event_bus_events
+        ORDER BY timestamp DESC
         LIMIT 500
       `);
       events.push(...eventLogRes.rows);
     } catch (err) {
-      this.handleProjectionCompatibilityError(err, 'delegation_event_log');
+      this.handleProjectionCompatibilityError(err, 'event_bus_events');
     }
 
     try {
@@ -957,7 +947,7 @@ export class PostgresProjectionReader {
         WITH rows AS (
           SELECT to_jsonb(delegation_events) AS e
           FROM delegation_events
-          ORDER BY created_at DESC
+          ORDER BY timestamp DESC
           LIMIT 500
         )
         SELECT
@@ -1033,23 +1023,25 @@ export class PostgresProjectionReader {
   private async readDelegationTokenUsageProjection(
     client: { query: (sql: string, params?: unknown[]) => Promise<{ rows: Row[] }> },
   ): Promise<Row[]> {
+    // Live schema (omnidash_analytics) has no token columns — model_name,
+    // tokens_input, tokens_output absent from delegation_events. Use only
+    // existing columns; token fields zeroed until a schema migration adds them.
+    // .catch() is required: an unhandled rejection here crashes the Node process.
     const res = await client.query(`
       SELECT
-        COALESCE(NULLIF(delegated_to, ''), NULLIF(model_name, ''), 'delegated-runtime') AS model_id,
-        COALESCE(NULLIF(model_name, ''), NULLIF(delegated_to, ''), 'delegated-runtime') AS model_name,
-        COUNT(*) AS delegation_count,
-        COALESCE(SUM(COALESCE(tokens_input, 0)), 0) AS prompt_tokens,
-        COALESCE(SUM(COALESCE(tokens_output, 0)), 0) AS completion_tokens,
-        COALESCE(SUM(COALESCE(tokens_input, 0) + COALESCE(tokens_output, 0)), 0) AS total_tokens,
-        COALESCE(SUM(COALESCE(cost_usd, 0)), 0) AS estimated_cost_usd
+        COALESCE(NULLIF(delegated_to, ''), 'delegated-runtime') AS model_id,
+        COALESCE(NULLIF(delegated_to, ''), 'delegated-runtime') AS model_name,
+        COUNT(*)                                                 AS delegation_count,
+        0                                                        AS prompt_tokens,
+        0                                                        AS completion_tokens,
+        0                                                        AS total_tokens,
+        COALESCE(SUM(COALESCE(cost_usd, 0)), 0)                 AS estimated_cost_usd
       FROM delegation_events
-      GROUP BY
-        COALESCE(NULLIF(delegated_to, ''), NULLIF(model_name, ''), 'delegated-runtime'),
-        COALESCE(NULLIF(model_name, ''), NULLIF(delegated_to, ''), 'delegated-runtime')
-      ORDER BY total_tokens DESC
-    `);
+      GROUP BY COALESCE(NULLIF(delegated_to, ''), 'delegated-runtime')
+      ORDER BY delegation_count DESC
+    `).catch(() => ({ rows: [] as Row[] }));
 
-    const byModel = res.rows.filter((row) => Number(row.total_tokens ?? 0) > 0).map((row) => {
+    const byModel = res.rows.filter((row) => Number(row.delegation_count ?? 0) > 0).map((row) => {
       const promptTokens = Number(row.prompt_tokens ?? 0);
       const completionTokens = Number(row.completion_tokens ?? 0);
       const totalTokens = Number(row.total_tokens ?? 0);
@@ -1060,8 +1052,8 @@ export class PostgresProjectionReader {
         completion_tokens: completionTokens,
         total_tokens: totalTokens,
         estimated_cost_usd: Number(row.estimated_cost_usd ?? 0),
-        usage_source: 'measured',
-        token_provenance: 'measured',
+        usage_source: 'unknown',
+        token_provenance: 'unknown',
       };
     });
 
