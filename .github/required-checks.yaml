@@ -245,6 +245,6 @@ gates:
     producer_kind: cross_repo
     caller_workflow: required-check-skip-guard-caller.yml
     caller_job: required-check-skip-guard
-    cross_repo_ref: "OmniNode-ai/omniclaude/.github/workflows/required-check-skip-guard-reusable.yml@main"
+    cross_repo_ref: "OmniNode-ai/omniclaude/.github/workflows/required-check-skip-guard-reusable.yml@dev"
     skip_semantics: never
-    rationale: "OMN-14860: this guard's own required check, fanned out from the omniclaude canary (OMN-14854). Runs on every PR but is NOT YET in required_status_checks — per the canary's design-spec ordering (section 5), the branch-protection flip happens only after 2 independent green runs on dev, tracked as a follow-up ticket. mode stays ADVISORY until that flip lands (same PR as the flip, per schema-v3 convention)."
+    rationale: "OMN-14860: this guard's own required check, fanned out from the omniclaude canary (OMN-14854). Runs on every PR but is NOT YET in required_status_checks — per the canary's design-spec ordering (section 5), the branch-protection flip happens only after 2 independent green runs on dev, tracked as a follow-up ticket. mode stays ADVISORY until that flip lands (same PR as the flip, per schema-v3 convention). Pinned to @dev (not @main) because omniclaude has not yet promoted required-check-skip-guard-reusable.yml from dev to main as of 2026-07-20 — re-pin to @main is a tracked follow-up, not this ticket's scope."
