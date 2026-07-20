@@ -1,0 +1,250 @@
+# SPDX-FileCopyrightText: 2026 OmniNode.ai Inc.
+# SPDX-License-Identifier: MIT
+
+# required-checks.yaml v3 (OMN-14860, fan-out from the omniclaude canary
+# OMN-14854)
+# Location: .github/required-checks.yaml
+# This file is the OPERATIONAL input to the Required-Check Skip-Vector Guard
+# (validate_no_required_check_skip_vectors.py, canonical source in
+# OmniNode-ai/omniclaude), invoked here via
+# required-check-skip-guard-reusable.yml@main.
+#
+# Exhaustive: every context in required_status_checks.contexts for omnidash's
+# `dev` branch has a `mode: REQUIRED` row below (fetched via
+# `gh api repos/OmniNode-ai/omnidash/branches/dev/protection/required_status_checks`,
+# 22 contexts, verified 2026-07-20), plus one `mode: ADVISORY` row for this
+# guard's own composed context (see rationale on that row for why it is not
+# yet REQUIRED).
+#
+# Do NOT rename/remove a REQUIRED row without following the Branch Protection
+# Migration Safety procedure — flip branch protection first (or same PR), then
+# update this file, so a privileged reconcile job (not yet wired for
+# omnidash — see follow-up note below) never observes a divergence window.
+#
+# Field shapes:
+#   producer_kind: local      + workflow + job_path            -> Shape A
+#                                                                  (direct job
+#                                                                  in this
+#                                                                  repo)
+#   producer_kind: local      + caller_workflow/caller_job +
+#                               reusable_workflow/reusable_job  -> Shape B
+#                                                                  (local
+#                                                                  caller ->
+#                                                                  local
+#                                                                  reusable)
+#   producer_kind: cross_repo + caller_workflow/caller_job +
+#                               cross_repo_ref                  -> Shape C
+#                                                                  (local
+#                                                                  caller ->
+#                                                                  reusable
+#                                                                  workflow
+#                                                                  hosted in
+#                                                                  another
+#                                                                  repo; only
+#                                                                  the caller
+#                                                                  side is
+#                                                                  checkable
+#                                                                  from this
+#                                                                  repo)
+#
+# Open follow-up (not resolved in this PR): `required-check-manifest-reconcile.yml`
+# (the privileged push/schedule job that diffs this manifest against LIVE
+# branch protection) has not been ported to omnidash yet — it needs its own
+# `administration:read`-scoped PAT provisioned as a repo secret first, exactly
+# as noted in the omniclaude canary. Tracked as a follow-up, not this ticket's
+# scope (OMN-14860).
+
+schema_version: 3
+classification: dashboard
+repo: omnidash
+
+gates:
+  - name: "Typecheck & Tests"
+    mode: REQUIRED
+    producer_kind: local
+    workflow: ci.yml
+    job_path: ["test"]
+    skip_semantics: never
+    rationale: "Live required status check on omnidash dev branch protection."
+
+  - name: "golden-chain"
+    mode: REQUIRED
+    producer_kind: local
+    workflow: golden-chain-coverage.yml
+    job_path: ["golden-chain"]
+    skip_semantics: never
+    rationale: "Live required status check on omnidash dev branch protection."
+
+  - name: "CI Summary"
+    mode: REQUIRED
+    producer_kind: local
+    workflow: ci.yml
+    job_path: ["ci-summary"]
+    skip_semantics: never
+    rationale: "Fail-closed no-needs poller aggregating all ci.yml job conclusions (if: always())."
+
+  - name: "call-reject-skip-token / scan / reject-skip-gate-token"
+    mode: REQUIRED
+    producer_kind: cross_repo
+    caller_workflow: call-reject-skip.yml
+    caller_job: call-reject-skip-token
+    cross_repo_ref: "OmniNode-ai/omniclaude/.github/workflows/reject-deploy-gate-skip.yml@main"
+    skip_semantics: never
+    rationale: "Skip-token bypass scanner (OMN-10347/10422/10971), canonical source hosted in omniclaude."
+
+  - name: "TypeScript ↔ Python Type Sync"
+    mode: REQUIRED
+    producer_kind: local
+    workflow: type-sync-check.yml
+    job_path: ["type-sync-check"]
+    skip_semantics: never
+    rationale: "Live required status check on omnidash dev branch protection."
+
+  - name: "CI Naming Convention"
+    mode: REQUIRED
+    producer_kind: local
+    workflow: omni-standards-compliance.yml
+    job_path: ["ci-naming-convention"]
+    skip_semantics: never
+    rationale: "Live required status check on omnidash dev branch protection."
+
+  - name: "Check architecture handshake"
+    mode: REQUIRED
+    producer_kind: local
+    workflow: check-handshake.yml
+    job_path: ["check-handshake"]
+    skip_semantics: never
+    rationale: "Architecture handshake vs omnibase_core."
+
+  - name: "Ecosystem Integration Validation"
+    mode: REQUIRED
+    producer_kind: local
+    workflow: omni-standards-compliance.yml
+    job_path: ["ecosystem-validation"]
+    skip_semantics: never
+    rationale: "Live required status check on omnidash dev branch protection."
+
+  - name: "Legacy Compatibility Check"
+    mode: REQUIRED
+    producer_kind: local
+    workflow: omni-standards-compliance.yml
+    job_path: ["legacy-compatibility-check"]
+    skip_semantics: never
+    rationale: "Live required status check on omnidash dev branch protection."
+
+  - name: "Omni Standards Gate"
+    mode: REQUIRED
+    producer_kind: local
+    workflow: omni-standards-compliance.yml
+    job_path: ["omni-standards-gate"]
+    skip_semantics: never
+    rationale: "Fail-closed no-needs poller aggregating omni-standards-compliance.yml job conclusions (if: always())."
+
+  - name: "Repository Structure Validation"
+    mode: REQUIRED
+    producer_kind: local
+    workflow: omni-standards-compliance.yml
+    job_path: ["structure-validation"]
+    skip_semantics: never
+    rationale: "Live required status check on omnidash dev branch protection."
+
+  - name: "Scan for hardcoded numeric fallbacks"
+    mode: REQUIRED
+    producer_kind: local
+    workflow: no-hardcoded-fallbacks.yml
+    job_path: ["check-fallbacks"]
+    skip_semantics: never
+    rationale: "Live required status check on omnidash dev branch protection."
+
+  - name: "Stale TODO Gate"
+    mode: REQUIRED
+    producer_kind: local
+    workflow: stale-todo-gate.yml
+    job_path: ["stale-todo-gate"]
+    skip_semantics: never
+    rationale: "Live required status check on omnidash dev branch protection."
+
+  - name: "Tenant RLS Isolation"
+    mode: REQUIRED
+    producer_kind: local
+    workflow: ci.yml
+    job_path: ["tenant-rls"]
+    skip_semantics: never
+    rationale: "Live required status check on omnidash dev branch protection."
+
+  - name: "TypeScript Configuration Compliance"
+    mode: REQUIRED
+    producer_kind: local
+    workflow: omni-standards-compliance.yml
+    job_path: ["typescript-compliance"]
+    skip_semantics: never
+    rationale: "Live required status check on omnidash dev branch protection."
+
+  - name: "call / validate-docs"
+    mode: REQUIRED
+    producer_kind: cross_repo
+    caller_workflow: docs-validate.yml
+    caller_job: call
+    cross_repo_ref: "OmniNode-ai/omnibase_core/.github/workflows/validate-docs.yml@main"
+    skip_semantics: never
+    rationale: "Docs validation, canonical source hosted in omnibase_core."
+
+  - name: "contract-validation"
+    mode: REQUIRED
+    producer_kind: local
+    workflow: contract-validation.yml
+    job_path: ["contract-validation"]
+    skip_semantics: never
+    rationale: "Live required status check on omnidash dev branch protection."
+
+  - name: "gate / CodeRabbit Thread Check"
+    mode: REQUIRED
+    producer_kind: cross_repo
+    caller_workflow: cr-thread-gate.yml
+    caller_job: gate
+    cross_repo_ref: "OmniNode-ai/omniclaude/.github/workflows/cr-thread-gate.yml@main"
+    skip_semantics: neutral_ok
+    rationale: "CodeRabbit thread resolution gate, canonical source hosted in omniclaude. KNOWN FINDING (same shape identified in the omniclaude canary, OMN-14854/OMN-14856): caller job 'gate' has an ungated `if:` (`github.actor != 'dependabot[bot]'` combined with an issue_comment PR-scoping check on `github.event.issue.pull_request`) — vector-3 per the validator, since it references github.actor/github.event.* rather than only github.event_name. Believed to be an intentional dependabot exemption (github.actor is not spoofable), not an attacker-controlled bypass, matching the omniclaude precedent; not yet human-ratified for omnidash specifically. skip_semantics: neutral_ok pending triage alongside OMN-14856."
+
+  - name: "main-target-guard"
+    mode: REQUIRED
+    producer_kind: local
+    workflow: main-target-guard.yml
+    job_path: ["main-target-guard"]
+    skip_semantics: never
+    rationale: "Live required status check on omnidash dev branch protection."
+
+  - name: "occ-preflight / eligibility"
+    mode: REQUIRED
+    producer_kind: cross_repo
+    caller_workflow: call-occ-preflight.yml
+    caller_job: occ-preflight
+    cross_repo_ref: "OmniNode-ai/omnibase_core/.github/workflows/occ-preflight.yml@main"
+    skip_semantics: never
+    rationale: "Central OCC eligibility gate (cross-repo reusable hosted in omnibase_core)."
+
+  - name: "receipt-honesty"
+    mode: REQUIRED
+    producer_kind: local
+    workflow: receipt-honesty.yml
+    job_path: ["receipt-honesty"]
+    skip_semantics: never
+    rationale: "Live required status check on omnidash dev branch protection."
+
+  - name: "verify / verify"
+    mode: REQUIRED
+    producer_kind: cross_repo
+    caller_workflow: call-receipt-gate.yml
+    caller_job: verify
+    cross_repo_ref: "OmniNode-ai/omnibase_core/.github/workflows/receipt-gate.yml@main"
+    skip_semantics: never
+    rationale: "Central Receipt Gate (cross-repo reusable hosted in omnibase_core)."
+
+  - name: "required-check-skip-guard / check-skip-vectors"
+    mode: ADVISORY
+    producer_kind: cross_repo
+    caller_workflow: required-check-skip-guard-caller.yml
+    caller_job: required-check-skip-guard
+    cross_repo_ref: "OmniNode-ai/omniclaude/.github/workflows/required-check-skip-guard-reusable.yml@main"
+    skip_semantics: never
+    rationale: "OMN-14860: this guard's own required check, fanned out from the omniclaude canary (OMN-14854). Runs on every PR but is NOT YET in required_status_checks — per the canary's design-spec ordering (section 5), the branch-protection flip happens only after 2 independent green runs on dev, tracked as a follow-up ticket. mode stays ADVISORY until that flip lands (same PR as the flip, per schema-v3 convention)."
