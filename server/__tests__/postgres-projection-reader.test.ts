@@ -434,9 +434,9 @@ describe('PostgresProjectionReader', () => {
             model_id: 'local-qwen3',
             model_name: 'qwen3-coder',
             delegation_count: '4',
-            prompt_tokens: '296',
-            completion_tokens: '1040',
-            total_tokens: '1336',
+            prompt_tokens: '0',
+            completion_tokens: '0',
+            total_tokens: '0',
             estimated_cost_usd: '0',
           },
           {
@@ -458,11 +458,11 @@ describe('PostgresProjectionReader', () => {
 
     expect(result.rows).toHaveLength(1);
     expect(result.rows[0]).toMatchObject({
-      total_prompt_tokens: 296,
-      total_completion_tokens: 1040,
-      total_tokens: 1336,
+      total_prompt_tokens: 0,
+      total_completion_tokens: 0,
+      total_tokens: 0,
       total_estimated_cost_usd: 0,
-      provenance_summary: { measured: 2, estimated: 0, unknown: 0 },
+      provenance_summary: { measured: 0, estimated: 0, unknown: 2 },
       provisioned: true,
     });
     const byModel = result.rows[0]!.by_model as Record<string, unknown>[];
@@ -470,12 +470,12 @@ describe('PostgresProjectionReader', () => {
     expect(byModel[0]).toMatchObject({
       model_id: 'local-qwen3',
       model_name: 'qwen3-coder',
-      prompt_tokens: 296,
-      completion_tokens: 1040,
-      total_tokens: 1336,
+      prompt_tokens: 0,
+      completion_tokens: 0,
+      total_tokens: 0,
       estimated_cost_usd: 0,
-      usage_source: 'measured',
-      token_provenance: 'measured',
+      usage_source: 'unknown',
+      token_provenance: 'unknown',
     });
     expect(byModel[1]).toMatchObject({
       model_id: 'legacy-distill',
@@ -484,8 +484,8 @@ describe('PostgresProjectionReader', () => {
       completion_tokens: 0,
       total_tokens: 0,
       estimated_cost_usd: 0,
-      usage_source: 'measured',
-      token_provenance: 'measured',
+      usage_source: 'unknown',
+      token_provenance: 'unknown',
     });
     expect(client.query).toHaveBeenCalledWith(expect.stringContaining('FROM delegation_events'));
   });

@@ -35,15 +35,29 @@ import { cloneSeaDemoTemplate } from '@/templates/sea-demo';
 
 function LogoutButton() {
   const { signoutRedirect } = useAuth();
+  const [logoutError, setLogoutError] = useState<string | null>(null);
+  const handleLogout = useCallback(() => {
+    setLogoutError(null);
+    void signoutRedirect().catch((err: unknown) => {
+      console.error('[DashboardView] sign out failed:', err);
+      setLogoutError('Sign out failed');
+    });
+  }, [signoutRedirect]);
+
   return (
-    <button
-      className="btn ghost"
-      onClick={() => void signoutRedirect()}
-      aria-label="Sign out"
-      title="Sign out"
-    >
-      <LogOut size={14} /> Sign out
-    </button>
+    <>
+      <button
+        className="btn ghost"
+        onClick={handleLogout}
+        aria-label="Sign out"
+        title={logoutError ?? 'Sign out'}
+      >
+        <LogOut size={14} /> Sign out
+      </button>
+      {logoutError ? (
+        <Text as="span" size="xs" color="bad" role="status">{logoutError}</Text>
+      ) : null}
+    </>
   );
 }
 

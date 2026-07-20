@@ -501,15 +501,19 @@ export class PostgresProjectionReader {
             FROM delegation_events
           `);
           const byDetailRes = await client.query(`
+            WITH events AS (
+              SELECT to_jsonb(delegation_events) AS e
+              FROM delegation_events
+            )
             SELECT
-              delegated_to                                                             AS check_detail,
-              COUNT(*)                                                                 AS total_checks,
-              COALESCE(SUM(CASE WHEN quality_gate_passed THEN 1 ELSE 0 END), 0)       AS passed_count,
-              COALESCE(SUM(CASE WHEN NOT quality_gate_passed THEN 1 ELSE 0 END), 0)   AS failed_count,
-              COALESCE(AVG(jsonb_array_length(quality_gates_checked)), 0)              AS avg_gates_checked,
-              COALESCE(AVG(jsonb_array_length(quality_gates_failed)), 0)               AS avg_gates_failed
-            FROM delegation_events
-            GROUP BY delegated_to
+              COALESCE(NULLIF(e->>'quality_gate_detail', ''), NULLIF(e->>'failure_detail', ''), 'unknown') AS check_detail,
+              COUNT(*) AS total_checks,
+              COALESCE(SUM(CASE WHEN COALESCE(NULLIF(e->>'quality_gate_passed', '')::boolean, false) THEN 1 ELSE 0 END), 0) AS passed_count,
+              COALESCE(SUM(CASE WHEN NOT COALESCE(NULLIF(e->>'quality_gate_passed', '')::boolean, false) THEN 1 ELSE 0 END), 0) AS failed_count,
+              COALESCE(AVG(CASE WHEN jsonb_typeof(e->'quality_gates_checked') = 'array' THEN jsonb_array_length(e->'quality_gates_checked') ELSE 0 END), 0) AS avg_gates_checked,
+              COALESCE(AVG(CASE WHEN jsonb_typeof(e->'quality_gates_failed') = 'array' THEN jsonb_array_length(e->'quality_gates_failed') ELSE 0 END), 0) AS avg_gates_failed
+            FROM events
+            GROUP BY check_detail
             ORDER BY total_checks DESC
           `);
           const qgTotals = totalsRes.rows[0] as Row;
@@ -566,7 +570,7 @@ export class PostgresProjectionReader {
               NULLIF(metadata->>'node_id', '') AS node_id,
               COALESCE(NULLIF(metadata->>'node_name', ''), service_name) AS node_name,
               NULLIF(service_type, '') AS node_type,
-              service_url,
+              NULL::text AS service_url,
               metadata->'node_version' AS node_version,
               health_status AS status,
               is_active,
@@ -943,7 +947,7 @@ export class PostgresProjectionReader {
         WITH rows AS (
           SELECT to_jsonb(delegation_events) AS e
           FROM delegation_events
-          ORDER BY created_at DESC
+          ORDER BY timestamp DESC
           LIMIT 500
         )
         SELECT
@@ -1048,8 +1052,8 @@ export class PostgresProjectionReader {
         completion_tokens: completionTokens,
         total_tokens: totalTokens,
         estimated_cost_usd: Number(row.estimated_cost_usd ?? 0),
-        usage_source: 'measured',
-        token_provenance: 'measured',
+        usage_source: 'unknown',
+        token_provenance: 'unknown',
       };
     });
 
