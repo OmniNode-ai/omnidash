@@ -441,7 +441,7 @@ describe('PostgresProjectionReader', () => {
           },
           {
             model_id: 'legacy-distill',
-            model_name: 'distill',
+            model_name: 'legacy-distill',
             delegation_count: '53',
             prompt_tokens: '0',
             completion_tokens: '0',
@@ -479,7 +479,7 @@ describe('PostgresProjectionReader', () => {
     });
     expect(byModel[1]).toMatchObject({
       model_id: 'legacy-distill',
-      model_name: 'distill',
+      model_name: 'legacy-distill',
       prompt_tokens: 0,
       completion_tokens: 0,
       total_tokens: 0,
