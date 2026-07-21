@@ -395,6 +395,25 @@ export class PostgresProjectionReader {
           return this.readCostSavingsOverviewProjection(client);
         }
 
+        case 'onex.snapshot.projection.cost.summary.v1': {
+          // Replaces savings_estimates (missing table) with actual cost breakdown.
+          // Cast to float8: pg driver returns NUMERIC as string; downstream adapters
+          // expect JS number. COALESCE before cast so NULL SUM (empty table) → 0.
+          try {
+            const res = await client.query(`
+              SELECT
+                COALESCE(SUM(total_cost_usd), 0)::float8   AS total_cost_usd,
+                COALESCE(SUM(request_count), 0)::bigint     AS total_requests,
+                COUNT(DISTINCT model_name)::bigint           AS model_count
+              FROM llm_cost_aggregates
+            `);
+            return res.rows as Row[];
+          } catch (err) {
+            this.handleProjectionCompatibilityError(err, 'llm_cost_aggregates');
+            return [];
+          }
+        }
+
         case 'onex.snapshot.projection.delegation.savings.v1': {
           return this.readDelegationSavingsProjection(client);
         }

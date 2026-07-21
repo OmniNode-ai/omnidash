@@ -44,13 +44,13 @@ export const PALETTE_CLASSIFICATION: Record<string, PaletteClassification> = {
   // --- VISIBLE / projection-backed (200 with rows on the single backend) ---
   'delegation-metrics': { paletteVisibility: 'visible', authorityLabel: 'projection-backed', probe: 'delegation.summary.v1=200/1r' },
   'routing-decision-table': { paletteVisibility: 'visible', authorityLabel: 'projection-backed', probe: 'delegation.decisions.v1=200/36r' },
-  'delegation-savings': { paletteVisibility: 'visible', authorityLabel: 'projection-backed', probe: 'delegation.savings.v1=200/1r' },
-  'delegation-cost-comparison': { paletteVisibility: 'visible', authorityLabel: 'projection-backed', probe: 'delegation.savings.v1=200/1r' },
+  'delegation-savings': { paletteVisibility: 'hidden', authorityLabel: 'hidden', probe: 'delegation.savings.v1=503 (table savings_estimates missing in omnidash_analytics — retired 2026-07-22, replaced by cost-summary)' },
+  'delegation-cost-comparison': { paletteVisibility: 'hidden', authorityLabel: 'hidden', probe: 'delegation.savings.v1=503 (table savings_estimates missing — retired 2026-07-22)' },
   'delegation-model-routing': { paletteVisibility: 'visible', authorityLabel: 'projection-backed', probe: 'delegation.model-routing.v1=200/1r' },
   'delegation-quality-gate': { paletteVisibility: 'visible', authorityLabel: 'projection-backed', probe: 'delegation.quality-gate.v1=200/1r' },
   'delegation-token-usage': { paletteVisibility: 'visible', authorityLabel: 'projection-backed', probe: 'delegation.token-usage.v1=200/1r' },
   'delegation-control-plane': { paletteVisibility: 'visible', authorityLabel: 'projection-backed', probe: 'delegation.{summary,decisions,savings,model-routing,quality-gate,token-usage}=200; decisions=36r' },
-  'control-plane': { paletteVisibility: 'visible', authorityLabel: 'projection-backed', probe: 'node-generation-completed.v1=200/134r' },
+  'control-plane': { paletteVisibility: 'hidden', authorityLabel: 'hidden', probe: 'node-generation-completed.v1=503 (table generation_events missing in omnidash_analytics — retired 2026-07-22)' },
 
   // --- VISIBLE / degraded (200 empty on the single backend — truthful empty state) ---
   'evidence-pipeline-flow': { paletteVisibility: 'visible', authorityLabel: 'degraded', probe: 'evidence_pipeline.{stages,correlations,readiness,live_events}=200/0r' },
@@ -61,12 +61,9 @@ export const PALETTE_CLASSIFICATION: Record<string, PaletteClassification> = {
   // renders the typed upstream-blocked empty-state for the absent/degraded read, so the
   // honest classification is degraded (truthful typed empty state, not blank/blind).
   'renderer-capability-status': { paletteVisibility: 'visible', authorityLabel: 'degraded', probe: 'renderer-capability-projection-snapshot.v1=absent (typed upstream-blocked empty-state)' },
-  // Context experiment widget: the 100-run experiment data lives in
-  // generation_events (200/134r) but the snapshot projection
-  // context.experiment-scores.v1 is not yet exposed (404). Kept visible per the
-  // close-the-loop plan keep-set, labeled degraded; renders its empty/degraded
-  // state (no synthetic rows) until OMN-12082 exposes the projection.
-  'context-effectiveness-heatmap': { paletteVisibility: 'visible', authorityLabel: 'degraded', probe: 'context.experiment-scores.v1=404 (kept per keep-set; degraded)' },
+  // Context experiment widget: context_experiment_scores table is absent from
+  // omnidash_analytics. Retired 2026-07-22 per Jonah Option A decision.
+  'context-effectiveness-heatmap': { paletteVisibility: 'hidden', authorityLabel: 'hidden', probe: 'context.experiment-scores.v1=503 (table context_experiment_scores missing in omnidash_analytics — retired 2026-07-22)' },
   // Instruction Eval (OMN-12998): rendered as a dedicated PAGE (InstructionEvalPage),
   // not a palette widget — it has no MVP_COMPONENTS manifest, so the registry/chrome
   // authorityLabel path does not apply and this entry is the single source of truth
@@ -79,7 +76,11 @@ export const PALETTE_CLASSIFICATION: Record<string, PaletteClassification> = {
   'instruction-eval': { paletteVisibility: 'visible', authorityLabel: 'degraded', probe: 'onex.snapshot.projection.omnimarket.instruction-eval-aggregate.v1=empty (projection wired; no runner events yet — OMN-12998)' },
 
   // --- HIDDEN / hidden (503 table missing on the single backend) ---
-  'cost-summary': { paletteVisibility: 'hidden', authorityLabel: 'hidden', probe: 'cost.summary.v1=503 (table llm_cost_aggregates missing)' },
+  // cost-summary deferred: pg returns NUMERIC as string; CostSummaryAdapter falls
+  // back to synthetic KPIs ($487 cloudAvoided, 38.4M tokens) alongside real total_cost_usd.
+  // Showing fabricated data is worse than hiding the widget — reverted to hidden until
+  // the adapter is rewritten to consume real llm_cost_aggregates values only.
+  'cost-summary': { paletteVisibility: 'hidden', authorityLabel: 'hidden', probe: 'cost.summary.v1=deferred (CostSummaryAdapter shows fabricated synthetic KPIs — reverted 2026-07-22)' },
   'token-usage': { paletteVisibility: 'hidden', authorityLabel: 'hidden', probe: 'cost.token_usage.v1=503 (table llm_call_metrics missing)' },
   'projection-container': { paletteVisibility: 'hidden', authorityLabel: 'hidden', probe: 'ab-compare.v1=503 (table llm_call_metrics missing)' },
   'ab-compare': { paletteVisibility: 'hidden', authorityLabel: 'hidden', probe: 'ab-compare.v1=503 (table llm_call_metrics missing)' },
