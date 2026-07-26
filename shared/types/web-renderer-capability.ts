@@ -4,8 +4,8 @@
  * This is the single declared source of truth for *what the omnidash web
  * renderer can render*, expressed as a `RendererCapabilityContract`. The
  * server-side capability-heartbeat producer (server/renderer-capability-producer.ts)
- * publishes this surface (wrapped in a declaration envelope) onto
- * `RENDERER_CAPABILITY_DECLARED_TOPIC` on startup and on a periodic heartbeat;
+ * sends this surface through the generic runtime edge on startup and on a
+ * periodic heartbeat;
  * the W5 reducer (`node_renderer_capability_projection`) folds it into the
  * Renderer Capability Registry projection.
  *

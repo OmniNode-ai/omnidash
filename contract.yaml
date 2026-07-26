@@ -52,12 +52,12 @@ data_source:
   # postgres_database_url_secret_ref: "env:OMNIDASH_ANALYTICS_DB_URL"
   postgres_database_url_secret_ref: ""
 
-event_bus:
-  # Contract-owned Kafka/Redpanda bootstrap configuration for the Express
-  # dispatch bridge. Keep lane-specific endpoints in contract.local.yaml or
-  # deployment overlays; the base contract intentionally has no network target.
-  bootstrap_servers: ""
-  client_id: "omnidash-server"
+runtime_edge:
+  # Generic contract-driven runtime HTTP edge. OmniDash never owns broker
+  # credentials, IAM signing, topic resolution, correlation, or consumers.
+  # A deployment overlay or OMNIDASH_RUNTIME_EDGE_URL supplies the lane target.
+  url: ""
+  timeout_ms: "300000"
 
 renderer_capability:
   # OMN-13131 (W-cap): the omnidash server declares the WEB renderer's capability
@@ -68,8 +68,8 @@ renderer_capability:
   # is_degraded. Keep the interval comfortably under the reducer TTL.
   #
   # heartbeat_enabled: when false, the server does not declare capability (e.g.
-  #   standalone installs with no bus). Disabled automatically when event_bus has
-  #   no bootstrap_servers — the producer needs a broker.
+  #   standalone installs with no runtime edge). Disabled automatically when
+  #   runtime_edge.url is empty.
   # heartbeat_interval_ms: re-publish cadence in milliseconds (default 30s).
   heartbeat_enabled: true
   heartbeat_interval_ms: "30000"
@@ -131,23 +131,34 @@ auth:
   tenant_claim: "tenant_id"
 
 command_topics:
-  # OMN-12070: Delegation command dispatched via the Express trigger bridge
-  # to the stability-test runtime effects endpoint (OMNIDASH_RUNTIME_EFFECTS_URL).
+  # OMN-14974: action-specific commands go through the generic runtime edge.
   # Topic: onex.cmd.omnimarket.delegate-skill.v1
-  # Payload: { prompt: string, task_type: string, source: "delegation-dashboard" }
-  # Env override: OMNIDASH_RUNTIME_EFFECTS_URL (defaults to simulated response when absent)
+  # Payload: ModelDelegateSkillRequest
+  # Env override: OMNIDASH_RUNTIME_EDGE_URL
   - topic: "onex.cmd.omnimarket.delegate-skill.v1"
-    handler_node: "node_delegation_orchestrator"
-    source_contract: "omnimarket/src/omnimarket/nodes/node_delegation_orchestrator/contract.yaml"
+    handler_node: "node_delegate_skill_orchestrator"
+    source_contract: "omnimarket/src/omnimarket/nodes/node_delegate_skill_orchestrator/contract.yaml"
     ingress: "/api/delegation/trigger"
     description: >
       Initiates a skill delegation run. The Express bridge generates a correlation_id,
-      publishes to the command topic via the ONEX runtime effects endpoint, and returns
-      { correlation_id, accepted: true } to the caller. The correlation_id surfaces in
+      invokes the typed command through the runtime edge, and returns the terminal
+      result with the correlation_id. The correlation_id surfaces in
       both DelegationControlPlane (pending run indicator) and TraceExplorer.
     response:
       correlation_id: string
       accepted: boolean
+      completed: boolean
+  - topic: "onex.cmd.omnimarket.node-generation-requested.v1"
+    handler_node: "node_generation_consumer"
+    source_contract: "omnimarket/src/omnimarket/nodes/node_generation_consumer/contract.yaml"
+    ingress: "/api/sea/generate"
+    description: >
+      Starts node generation through the same generic runtime edge. The runtime
+      owns the managed-MSK transport and returns the contract terminal result.
+    response:
+      correlation_id: string
+      accepted: boolean
+      completed: boolean
 
 projection_api:
   snapshots:

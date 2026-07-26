@@ -2,10 +2,9 @@
  * OMN-13131 (W-cap): renderer capability-heartbeat producer (the PRODUCER half
  * of the Renderer Capability Registry loop).
  *
- * The browser cannot speak Kafka, so the omnidash Express SERVER declares the
- * web renderer's capability surface ONTO THE BUS through this thin producer —
- * the same pattern as the W2 renderer-command-emitter + kafka-producer. On
- * startup and on a configurable heartbeat interval, the server publishes a
+ * The omnidash Express server declares the web renderer's capability surface
+ * through the generic runtime edge. On startup and on a configurable heartbeat
+ * interval, the server dispatches a
  * `ModelRendererCapabilityDeclaration`-shaped payload ({ capability, declared_at })
  * onto `RENDERER_CAPABILITY_DECLARED_TOPIC`. The W5 reducer
  * (node_renderer_capability_projection) folds each declaration into the
@@ -25,7 +24,6 @@
 import { randomUUID } from 'node:crypto';
 import { RENDERER_CAPABILITY_DECLARED_TOPIC } from '../shared/types/command-topics.js';
 import type { WebRendererCapability } from '../shared/types/web-renderer-capability.js';
-import { publishMessage } from './kafka-producer.js';
 
 /** RFC-4122 UUID matcher used to validate a caller-supplied correlation id. */
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
@@ -144,21 +142,23 @@ export function buildCapabilityDeclarationEnvelope(
   };
 }
 
-/** Producer seam — injectable so tests never need a real broker. */
+/** Runtime-dispatch seam — injectable so tests never need a live runtime. */
 export interface CapabilityProducerDeps {
   publish?: (topic: string, value: unknown) => Promise<void>;
 }
 
 /**
- * Emit one capability declaration onto the bus: build the envelope, then publish
- * it VERBATIM to the single declared capability topic via the thin producer.
+ * Build one capability declaration, then hand it to the runtime-dispatch seam.
  * Returns the emitted envelope.
  */
 export async function emitCapabilityDeclaration(
   input: CapabilityDeclarationInput,
   deps: CapabilityProducerDeps = {},
 ): Promise<CapabilityDeclarationEnvelope> {
-  const publish = deps.publish ?? publishMessage;
+  const publish = deps.publish;
+  if (!publish) {
+    throw new CapabilityProducerError('runtime edge publisher is required');
+  }
   const envelope = buildCapabilityDeclarationEnvelope(input);
   await publish(RENDERER_CAPABILITY_DECLARED_TOPIC, envelope);
   return envelope;
@@ -179,7 +179,7 @@ export interface CapabilityHeartbeatOptions {
   deps?: CapabilityProducerDeps;
   /**
    * Called when a heartbeat publish rejects. The scheduler keeps running so a
-   * transient broker blip does not permanently silence the heartbeat (which
+   * transient runtime-edge failure does not permanently silence the heartbeat (which
    * would otherwise let the W5 row drift to is_degraded). Defaults to a warn log.
    */
   onError?: (err: unknown) => void;

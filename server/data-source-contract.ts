@@ -19,9 +19,9 @@ interface RuntimeContract {
     sqlite_db_path: string;
     postgres_database_url_secret_ref: string;
   };
-  event_bus: {
-    bootstrap_servers: string;
-    client_id: string;
+  runtime_edge: {
+    url: string;
+    timeout_ms: string;
   };
   renderer_capability: {
     heartbeat_enabled: string;
@@ -45,7 +45,7 @@ interface RuntimeContract {
 
 type RuntimeContractPatch = {
   data_source?: Partial<RuntimeContract['data_source']>;
-  event_bus?: Partial<RuntimeContract['event_bus']>;
+  runtime_edge?: Partial<RuntimeContract['runtime_edge']>;
   renderer_capability?: Partial<RuntimeContract['renderer_capability']>;
   auth?: Partial<RuntimeContract['auth']>;
   onboarding?: Partial<RuntimeContract['onboarding']>;
@@ -60,9 +60,9 @@ function defaultContract(): RuntimeContract {
       sqlite_db_path: '~/.omninode/delegation/delegation.sqlite',
       postgres_database_url_secret_ref: '',
     },
-    event_bus: {
-      bootstrap_servers: '',
-      client_id: 'omnidash-server',
+    runtime_edge: {
+      url: '',
+      timeout_ms: '300000',
     },
     renderer_capability: {
       heartbeat_enabled: 'true',
@@ -107,7 +107,7 @@ function parseYamlRuntimeContract(raw: string): RuntimeContractPatch {
       const name = sectionMatch[1] as keyof RuntimeContract;
       section =
         name === 'data_source'
-          || name === 'event_bus'
+          || name === 'runtime_edge'
           || name === 'renderer_capability'
           || name === 'auth'
           || name === 'onboarding'
@@ -129,10 +129,10 @@ function parseYamlRuntimeContract(raw: string): RuntimeContractPatch {
       else if (key === 'postgres_database_url_secret_ref') {
         result.data_source.postgres_database_url_secret_ref = value;
       }
-    } else if (section === 'event_bus') {
-      result.event_bus ??= {};
-      if (key === 'bootstrap_servers') result.event_bus.bootstrap_servers = value;
-      else if (key === 'client_id') result.event_bus.client_id = value;
+    } else if (section === 'runtime_edge') {
+      result.runtime_edge ??= {};
+      if (key === 'url') result.runtime_edge.url = value;
+      else if (key === 'timeout_ms') result.runtime_edge.timeout_ms = value;
     } else if (section === 'renderer_capability') {
       result.renderer_capability ??= {};
       if (key === 'heartbeat_enabled') result.renderer_capability.heartbeat_enabled = value;
@@ -168,9 +168,9 @@ function mergeContract(base: RuntimeContract, overlay: RuntimeContractPatch): Ru
       ...base.data_source,
       ...overlay.data_source,
     },
-    event_bus: {
-      ...base.event_bus,
-      ...overlay.event_bus,
+    runtime_edge: {
+      ...base.runtime_edge,
+      ...overlay.runtime_edge,
     },
     renderer_capability: {
       ...base.renderer_capability,
@@ -255,26 +255,27 @@ export function loadDataSourceConfig(
   };
 }
 
-export interface EventBusConfig {
-  /** Contract-resolved Kafka/Redpanda broker list for dispatch publishing. */
-  bootstrapServers: string[];
-  /** Kafka client id for the omnidash bridge producer. */
-  clientId: string;
+export interface RuntimeEdgeConfig {
+  /** Generic runtime HTTP origin. The runtime owns all broker interaction. */
+  url: string;
+  /** Maximum time to await the contract-declared terminal event. */
+  timeoutMs: number;
 }
 
-export function loadEventBusConfig(): EventBusConfig {
+export function loadRuntimeEdgeConfig(): RuntimeEdgeConfig {
   const contract = loadContract();
-  const rawBootstrapServers =
-    process.env.OMNIDASH_EVENT_BUS_BOOTSTRAP_SERVERS
-    ?? contract.event_bus.bootstrap_servers;
-  const bootstrapServers = rawBootstrapServers
-    .split(',')
-    .map((value) => value.trim())
-    .filter(Boolean);
-  return {
-    bootstrapServers,
-    clientId: process.env.OMNIDASH_EVENT_BUS_CLIENT_ID ?? contract.event_bus.client_id,
-  };
+  const url = (process.env.OMNIDASH_RUNTIME_EDGE_URL ?? contract.runtime_edge.url)
+    .trim()
+    .replace(/\/$/, '');
+  const rawTimeoutMs = process.env.OMNIDASH_RUNTIME_EDGE_TIMEOUT_MS
+    ?? contract.runtime_edge.timeout_ms;
+  const timeoutMs = Number.parseInt(rawTimeoutMs, 10);
+  if (!Number.isFinite(timeoutMs) || timeoutMs <= 0 || timeoutMs > 600_000) {
+    throw new Error(
+      `runtime_edge.timeout_ms must be an integer from 1 to 600000, got: ${rawTimeoutMs}`,
+    );
+  }
+  return { url, timeoutMs };
 }
 
 export interface AuthConfig {
@@ -384,9 +385,8 @@ function parseBool(value: string): boolean {
 /**
  * OMN-13131 (W-cap): resolve the renderer capability-heartbeat config. The
  * interval and enabled flag are contract-driven (overridable by env for lane
- * tuning). The heartbeat is force-disabled when no event_bus bootstrap_servers
- * are configured — the producer needs a broker, and silently emitting nowhere
- * would let the W5 row drift to is_degraded with no signal as to why.
+ * tuning). The heartbeat is force-disabled when no runtime edge is configured;
+ * OmniDash never owns a broker client or broker lifecycle.
  */
 export function loadCapabilityHeartbeatConfig(): CapabilityHeartbeatConfig {
   const contract = loadContract();
@@ -402,9 +402,9 @@ export function loadCapabilityHeartbeatConfig(): CapabilityHeartbeatConfig {
       `renderer_capability.heartbeat_interval_ms must be a positive integer, got: ${rawIntervalMs}`,
     );
   }
-  const hasBroker = loadEventBusConfig().bootstrapServers.length > 0;
+  const hasRuntimeEdge = loadRuntimeEdgeConfig().url.length > 0;
   return {
-    enabled: parseBool(rawEnabled) && hasBroker,
+    enabled: parseBool(rawEnabled) && hasRuntimeEdge,
     intervalMs,
   };
 }

@@ -1,9 +1,8 @@
 /**
- * OMN-13131 (W2): client seam for the renderer bus-native command emit path.
+ * OMN-13131 / OMN-14974: client seam for generic renderer actions.
  *
- * Every UI action the renderer takes is emitted as a canonical onex.cmd.*
- * command envelope onto the bus via the server thin producer at
- * /api/renderer/emit (server/renderer-command-emitter.ts). This module is the
+ * The endpoint currently fails closed until a contract-declared runtime
+ * dispatcher exists. This module is the
  * single seam that owns the `/api/renderer/emit` path literal — the
  * `local/no-api-literal` ESLint rule (OMN-13019/13065) requires it to live in
  * src/services/, not at component call sites.
@@ -45,8 +44,8 @@ export interface RendererEmitResponse {
 }
 
 /**
- * Emit a UI action onto the bus through the server thin producer. Throws on a
- * non-OK HTTP status so the caller can surface the failure to the user.
+ * Submit a UI action to the server ingress. Throws on a non-OK HTTP status so
+ * the caller surfaces the missing runtime dispatcher instead of false success.
  */
 export async function emitRendererAction(
   req: RendererEmitRequest,
