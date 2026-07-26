@@ -5,18 +5,13 @@ import { randomUUID } from 'node:crypto';
 import { SqliteProjectionReader } from './sqlite-projection-reader.js';
 import { PostgresProjectionReader } from './postgres-projection-reader.js';
 import { loadDataSourceConfig } from './data-source-contract.js';
-import { isProducerConnected, publishMessage } from './kafka-producer.js';
-import { COMMAND_TOPICS } from '../shared/types/command-topics.js';
 import {
-  emitRendererCommand,
-  RendererEmitterError,
-  type RendererCommandInput,
-} from './renderer-command-emitter.js';
+  invokeRuntimeCommand,
+  RuntimeEdgeError,
+} from './runtime-skill-client.js';
 
 const router = Router();
 
-const SEA_NODE_GENERATION_EVENT_TYPE = 'omnimarket.node-generation-requested';
-const DELEGATE_SKILL_EVENT_TYPE = 'omnimarket.delegate-skill';
 const DELEGATE_SKILL_TASK_TYPES = new Set([
   'test',
   'document',
@@ -214,61 +209,58 @@ router.post('/api/delegation/trigger', async (req, res) => {
 
   const correlationId = randomUUID();
 
-  if (!isProducerConnected()) {
-    if (dsConfig.mode === 'file') {
-      res.json({ correlation_id: correlationId, accepted: true, message: 'simulated (file data source)' });
-      return;
-    }
-    res.status(503).json({ error: 'kafka_unavailable' });
+  if (dsConfig.mode === 'file') {
+    res.json({ correlation_id: correlationId, accepted: true, message: 'simulated (file data source)' });
     return;
   }
 
-  const requestedAt = new Date().toISOString();
-  const tenant = req.tenant!;
-  const envelope = {
-    payload: {
-      prompt,
-      task_type: taskType,
-      source: 'codex',
-      wait: true,
-      correlation_id: correlationId,
-      metadata: {
-        requested_by: 'omnidash-ui',
-        source_surface: 'delegation-control-plane',
-        tenant_id: tenant.tenant_id,
-        tenant_slug: tenant.tenant_slug,
-        sub: tenant.sub,
-      },
-    },
-    envelope_id: randomUUID(),
-    envelope_timestamp: requestedAt,
-    correlation_id: correlationId,
-    source_tool: 'omnidash-ui',
-    tenant_id: tenant.tenant_id,
-    tenant_slug: tenant.tenant_slug,
-    tenant_sub: tenant.sub,
-    event_type: DELEGATE_SKILL_EVENT_TYPE,
-    priority: 5,
-    retry_count: 0,
+  const metadata: Record<string, string> = {
+    requested_by: 'omnidash-ui',
+    source_surface: 'delegation-control-plane',
   };
+  if (req.tenant) {
+    metadata.tenant_id = req.tenant.tenant_id;
+    metadata.tenant_slug = req.tenant.tenant_slug;
+    metadata.sub = req.tenant.sub;
+  }
+  const payload: Record<string, unknown> = {
+    prompt,
+    task_type: taskType,
+    source: 'external-client',
+    wait: true,
+    correlation_id: correlationId,
+    metadata,
+  };
+  if (req.tenant) payload.tenant_id = req.tenant.tenant_id;
 
   try {
-    await publishMessage(COMMAND_TOPICS.delegateSkill, envelope);
-    res.json({ correlation_id: correlationId, accepted: true, topic: COMMAND_TOPICS.delegateSkill });
+    const result = await invokeRuntimeCommand({
+      commandName: 'node_delegate_skill_orchestrator',
+      payload,
+      correlationId,
+    });
+    res.json({
+      correlation_id: result.correlation_id ?? correlationId,
+      accepted: true,
+      completed: true,
+      topic: result.command_topic,
+      terminal_event: result.terminal_event,
+      output_payloads: result.output_payloads ?? [],
+    });
   } catch (err) {
     console.error('[routes] /api/delegation/trigger error:', err);
-    res.status(503).json({ error: 'kafka_unavailable', detail: String(err) });
+    const runtimeError = err instanceof RuntimeEdgeError ? err : null;
+    res.status(runtimeError?.status ?? 503).json({
+      error: runtimeError?.code ?? 'runtime_unavailable',
+      detail: runtimeError?.message ?? String(err),
+      retryable: runtimeError?.retryable ?? false,
+    });
   }
 });
 
-// OMN-13131 (W2): renderer bus-native command emit path. Every UI action is
-// emitted as a canonical onex.cmd.* command envelope onto the bus through the
-// thin producer in renderer-command-emitter.ts. This route is the bus-native
-// emit path that runs ALONGSIDE the action-specific routes (e.g.
-// /api/delegation/trigger). It is transport-only: it builds the identity-bearing
-// envelope and publishes verbatim to the single declared topic. It does NOT
-// choose a workflow, rewrite intent, or dispatch on action type — the
-// capability-driven dispatcher (W4) owns routing.
+// OMN-13131 / OMN-14974: generic renderer action ingress. The declared topic has
+// no runtime consumer today, so this endpoint validates shape and fails closed.
+// Action-specific routes use the contract-driven /skill runtime edge above.
 router.post('/api/renderer/emit', async (req, res) => {
   const body = req.body as {
     renderer_id?: unknown;
@@ -302,44 +294,13 @@ router.post('/api/renderer/emit', async (req, res) => {
     return;
   }
 
-  const input: RendererCommandInput = {
-    rendererId: body.renderer_id,
-    actionContractId: body.action_contract_id,
-    contractVersion: body.contract_version,
-    payload: body.payload as Record<string, unknown>,
-    tenantContext: req.tenant
-      ? { tenant_id: req.tenant.tenant_id, tenant_slug: req.tenant.tenant_slug, sub: req.tenant.sub }
-      : undefined,
-  };
-  if (typeof body.correlation_id === 'string') {
-    input.correlationId = body.correlation_id;
-  }
-  if (typeof body.causation_id === 'string') {
-    input.causationId = body.causation_id;
-  }
-
-  if (!isProducerConnected()) {
-    res.status(503).json({ error: 'kafka_unavailable' });
-    return;
-  }
-
-  try {
-    const envelope = await emitRendererCommand(input);
-    res.json({
-      accepted: true,
-      correlation_id: envelope.correlation_id,
-      causation_id: envelope.causation_id,
-      envelope_id: envelope.envelope_id,
-      topic: envelope.transport.topic,
-    });
-  } catch (err) {
-    if (err instanceof RendererEmitterError) {
-      res.status(400).json({ error: err.message });
-      return;
-    }
-    console.error('[routes] /api/renderer/emit error:', err);
-    res.status(503).json({ error: 'kafka_unavailable', detail: String(err) });
-  }
+  // The renderer-action topic has no contract-declared consumer in the current
+  // runtime package set. Refuse the request instead of false-accepting a record
+  // that no workflow can process. Action-specific routes below use /skill.
+  res.status(503).json({
+    error: 'renderer_action_dispatcher_unavailable',
+    detail: 'No contract-declared runtime handler consumes renderer actions',
+  });
 });
 
 // OMN-12775: SEA generation trigger — thin publisher for node_generation_consumer.
@@ -357,48 +318,40 @@ router.post('/api/sea/generate', async (req, res) => {
 
   const correlationId = randomUUID();
 
-  if (!isProducerConnected()) {
-    if (dsConfig.mode === 'file') {
-      res.json({
-        correlation_id: correlationId,
-        accepted: true,
-        message: 'simulated (file data source)',
-      });
-      return;
-    }
-    res.status(503).json({ error: 'kafka_unavailable' });
-    return;
-  }
-
-  const requestedAt = new Date().toISOString();
-  const seaTenant = req.tenant!;
-  const envelope = {
-    payload: {
-      task_description: taskDescription,
-      correlation_id: correlationId,
-    },
-    envelope_id: randomUUID(),
-    envelope_timestamp: requestedAt,
-    correlation_id: correlationId,
-    source_tool: 'omnidash-ui',
-    tenant_id: seaTenant.tenant_id,
-    tenant_slug: seaTenant.tenant_slug,
-    tenant_sub: seaTenant.sub,
-    event_type: SEA_NODE_GENERATION_EVENT_TYPE,
-    priority: 5,
-    retry_count: 0,
-  };
-
-  try {
-    await publishMessage(COMMAND_TOPICS.nodeGenerationRequested, envelope);
+  if (dsConfig.mode === 'file') {
     res.json({
       correlation_id: correlationId,
       accepted: true,
-      topic: COMMAND_TOPICS.nodeGenerationRequested,
+      message: 'simulated (file data source)',
+    });
+    return;
+  }
+
+  try {
+    const result = await invokeRuntimeCommand({
+      commandName: 'node_generation_consumer',
+      payload: {
+        task_description: taskDescription,
+        correlation_id: correlationId,
+      },
+      correlationId,
+    });
+    res.json({
+      correlation_id: result.correlation_id ?? correlationId,
+      accepted: true,
+      completed: true,
+      topic: result.command_topic,
+      terminal_event: result.terminal_event,
+      output_payloads: result.output_payloads ?? [],
     });
   } catch (err) {
     console.error('[routes] /api/sea/generate error:', err);
-    res.status(503).json({ error: 'kafka_unavailable', detail: String(err) });
+    const runtimeError = err instanceof RuntimeEdgeError ? err : null;
+    res.status(runtimeError?.status ?? 503).json({
+      error: runtimeError?.code ?? 'runtime_unavailable',
+      detail: runtimeError?.message ?? String(err),
+      retryable: runtimeError?.retryable ?? false,
+    });
   }
 });
 

@@ -1,12 +1,10 @@
 /**
- * OMN-13131 (W2): renderer bus-native command emitter + thin-publish transport.
+ * OMN-13131 (W2): renderer command envelope builder.
  *
- * Every UI action in the web renderer is emitted as a canonical onex.cmd.*
- * command envelope ONTO THE BUS through this thin producer. The producer
- * generalizes the proven OMN-12756 path (server/kafka-producer.ts, PR #179):
- * the renderer hands over the action's contract id + payload, and the producer
- * wraps it in an identity-bearing envelope and publishes it verbatim to the one
- * declared topic.
+ * The renderer hands over the action's contract id + payload and this module
+ * builds the identity-bearing envelope. OmniDash has no production broker
+ * client; a contract-declared runtime dispatcher must provide the transport
+ * seam before an action may be accepted.
  *
  * G-D thin-producer bounds (mechanically tested in
  * server/__tests__/renderer-command-emitter.test.ts):
@@ -21,7 +19,6 @@
  */
 import { randomUUID } from 'node:crypto';
 import { RENDERER_ACTION_TOPIC } from '../shared/types/command-topics.js';
-import { publishMessage } from './kafka-producer.js';
 
 /** RFC-4122 UUID matcher used to validate caller-supplied identity fields. */
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
@@ -163,21 +160,25 @@ export function buildRendererCommandEnvelope(
   };
 }
 
-/** Producer seam — injectable so tests never need a real broker. */
+/** Dispatcher seam. Production must provide it through the runtime edge. */
 export interface RendererEmitterDeps {
   publish?: (topic: string, value: unknown) => Promise<void>;
 }
 
 /**
- * Emit a renderer UI action onto the bus: build the envelope, then publish it
- * VERBATIM to the single declared topic via the thin producer. Returns the
- * emitted envelope so the route layer can echo identity to the client.
+ * Build a renderer UI action and hand it to a configured runtime dispatcher.
+ * Returns the emitted envelope so the route layer can echo identity.
  */
 export async function emitRendererCommand(
   input: RendererCommandInput,
   deps: RendererEmitterDeps = {},
 ): Promise<RendererCommandEnvelope> {
-  const publish = deps.publish ?? publishMessage;
+  const publish = deps.publish;
+  if (!publish) {
+    throw new RendererEmitterError(
+      'renderer action dispatcher is not configured on the runtime edge',
+    );
+  }
   const envelope = buildRendererCommandEnvelope(input);
   await publish(RENDERER_ACTION_TOPIC, envelope);
   return envelope;
