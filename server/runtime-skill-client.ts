@@ -2,7 +2,7 @@ import { loadRuntimeEdgeConfig } from './data-source-contract.js';
 
 export interface RuntimeCommandRequest {
   commandName: string;
-  payload: Record<string, unknown>;
+  payload: object;
   correlationId?: string;
   timeoutMs?: number;
 }
