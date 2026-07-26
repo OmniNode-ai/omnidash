@@ -1,7 +1,7 @@
 # OmniDash — Development Guide
 
 **Owner:** `omnidash`
-**Last verified:** 2026-06-16
+**Last verified:** 2026-07-26
 **Verification:** `npm run check && npm run test:run`
 
 ---
@@ -26,23 +26,23 @@ npm install
 
 OmniDash runs in four modes selected by the `VITE_DATA_SOURCE` environment variable. Default values are generated from `contract.yaml` into `src/config/generated/data-source-defaults.ts` — run `npm run generate:config` after editing `contract.yaml`.
 
-### File mode (default)
+The contract default is `http` (flipped from `postgres` in OMN-14642). `file` is the zero-infra dev mode you opt into explicitly.
+
+### File mode (zero-infra dev)
 
 ```bash
-npm run dev
-# or explicitly:
 VITE_DATA_SOURCE=file npm run dev
 ```
 
-Reads data from `./fixtures/<topic>/` JSON files. Persists layouts to `./dashboard-layouts/`. Both directories are gitignored. Zero infrastructure required.
+Reads data from `./fixtures/<topic>/` JSON files. Persists layouts to `./dashboard-layouts/` (gitignored). `./fixtures/` itself is committed via a `.gitignore` carve-out (`!fixtures/**`). Zero infrastructure required.
 
-### HTTP mode
+### HTTP mode (default)
 
 ```bash
 VITE_DATA_SOURCE=http npm run dev
 ```
 
-Reads via the projection backend at `http://localhost:3002`. Requires the projection backend to be running.
+Reads via the projection backend. The base contract deliberately carries no backend URL — unconfigured `http` mode fails loudly. Set the URL via a `contract.local.yaml` overlay or `OMNIDASH_BRIDGE_URL`. The local Express bridge (`npm run dev:server`) defaults to port 3002.
 
 ### SQLite and Postgres modes
 
@@ -53,7 +53,7 @@ VITE_DATA_SOURCE=postgres npm run dev
 
 Both resolve through `HttpSnapshotSource` pointing at the projection backend. The distinction is server-side; the frontend uses the same HTTP read path as `http` mode.
 
-**Hard rule:** Do NOT hardcode `localhost:3002` in source files. All data access goes through `src/data-source/` adapters. Do NOT read `VITE_DATA_SOURCE` directly in components — always call `resolveEffectiveDataSource()` from `src/data-source/data-source-override.ts`, which layers the runtime chrome override over env defaults.
+**Hard rule:** Do NOT hardcode backend URLs or ports in source files. All data access goes through `src/data-source/` adapters. Do NOT read `VITE_DATA_SOURCE` directly in components — always call `resolveEffectiveDataSource()` from `src/data-source/data-source-override.ts`, which layers the runtime chrome override over env defaults.
 
 ### Runtime override
 
@@ -65,7 +65,7 @@ The `DataSourceControl` chrome component allows switching the active backend at 
 
 | Command | Purpose |
 |---------|---------|
-| `npm run dev` | Vite dev server with HMR (file mode by default) |
+| `npm run dev` | Vite dev server with HMR (contract-default mode: `http`) |
 | `npm run dev:server` | Express bridge server (watch mode) |
 | `npm run check` | TypeScript-only check (`tsc --noEmit`) — must pass before every PR |
 | `npm run test:run` | Vitest single run — must pass before every PR |
@@ -204,7 +204,7 @@ The compliance test `src/storybook-coverage-compliance.test.ts` runs as part of 
 OmniDash reads data from the ONEX runtime via:
 
 - HTTP polling via `useProjectionQuery` against the projection backend. Live updates are poll-driven — there is no WebSocket connection. The `/ws` path was permanently removed: it was rejected with a 403 by the projection backend and never delivered events. Raw browser WebSocket construction is blocked by the `local/no-projection-websocket` ESLint rule.
-- HTTP endpoints exposed by the projection backend at `localhost:3002` in http/sqlite/postgres modes.
+- HTTP endpoints exposed by the projection backend (URL from `contract.local.yaml` / `OMNIDASH_BRIDGE_URL`; local bridge defaults to port 3002) in http/sqlite/postgres modes.
 
 These endpoints are provided by the ONEX runtime running on the runtime host (`<onex-host>`). In dev mode, fixture files replace live data entirely and no runtime connection is needed.
 
@@ -215,7 +215,7 @@ The runtime topology is documented in `omni_home/CLAUDE.md` under "Infrastructur
 ## Gotchas
 
 - **Palette is empty:** `src/registry/component-registry.json` is stale. Run `npm run generate:registry`.
-- **Widgets show "no data":** `./fixtures/<topic>/` is missing JSON files or `./fixtures/registry.json` does not list the topic. Run `npm run generate:fixtures`.
+- **Widgets show "no data":** `./fixtures/<topic>/` is missing JSON files. Run `npm run generate:fixtures`. (No `fixtures/registry.json` is required — the `/_fixtures` Vite middleware auto-generates each topic's `index.json` by listing the directory; see `vite.config.ts`.)
 - **Edit mode drag/resize not working:** Edit mode is toggled via the `editModeSlice` in Zustand. It must be active. Check `src/store/editModeSlice.ts`.
 - **Layout changes not persisting:** Layout does not auto-save on drag. Use the explicit Save button. Layouts write to `./dashboard-layouts/` (gitignored).
 - **Types under `src/shared/types/generated/` are wrong:** Run `npm run types:generate` to regenerate from the JSON schema sources.
@@ -231,9 +231,9 @@ The runtime topology is documented in `omni_home/CLAUDE.md` under "Infrastructur
 | `src/components/dashboard/DashboardGrid.tsx` | Grid layout behavior |
 | `src/components/dashboard/ComponentPalette.tsx` | Widget palette |
 | `src/data-source/` | Data source adapters; `data-source-override.ts` is the single runtime override seam |
-| `src/services/` | Route seam for all `/api/` fetch/axios calls — enforced by the `local/no-api-literal` ESLint rule; do not place `/api/` literals outside this directory or `src/data-source/` |
+| `src/services/` | Route seam for all `/api/` fetch/axios calls — do not place `/api/` literals outside this directory or `src/data-source/` (seam convention; the `local/no-api-literal` rule cited in old comments does not exist at HEAD) |
 | `src/store/` | Zustand state slices |
-| `src/pages/DashboardBuilder.tsx` | Main builder page |
+| `src/pages/DashboardView.tsx` | Main dashboard page (edit/view toggle, Save/Discard) |
 | `src/layout/layout-persistence.ts` | Layout save/load |
 | `scripts/generate-registry.ts` | Registry source of truth |
 | `src/registry/component-registry.json` | Generated registry |
