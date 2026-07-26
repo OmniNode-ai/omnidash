@@ -76,7 +76,6 @@
     "express": "^5.2.1",
     "express-session": "^1.19.0",
     "jose": "^6.2.3",
-    "kafkajs": "^2.2.4",
     "keycloak-connect": "^26.1.1",
     "lucide-react": "^1.8.0",
     "mitt": "^3.0.1",

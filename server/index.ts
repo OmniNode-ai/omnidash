@@ -7,7 +7,6 @@ import routes from './routes.js';
 import { authMiddleware } from './auth-middleware.js';
 import { getSessionMiddleware, getStore } from './session.js';
 import { getKeycloak } from './keycloak.js';
-import { connectProducer, disconnectProducer } from './kafka-producer.js';
 import {
   loadAuthConfig,
   loadCapabilityHeartbeatConfig,
@@ -18,8 +17,10 @@ import { buildOnboardingRouter } from './onboarding/bootstrap.js';
 import {
   startCapabilityHeartbeat,
   type CapabilityHeartbeatHandle,
+  type CapabilityDeclarationEnvelope,
 } from './renderer-capability-producer.js';
 import { webRendererCapability } from '../shared/types/web-renderer-capability.js';
+import { invokeRuntimeCommand } from './runtime-skill-client.js';
 
 const PORT = parseInt(process.env.PORT ?? '3002', 10);
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -150,7 +151,7 @@ httpServer.timeout = 0;
 // an INVALIDATE frame. The deployed dashboard targets the FastAPI projection
 // backend for live data, which has no `/ws` route — so the browser's upgrade was
 // rejected (403). Panels are poll-only via useProjectionQuery; this Express
-// process now serves HTTP projection reads and the Kafka dispatch producer only.
+// process now serves HTTP projection reads and the generic runtime HTTP edge only.
 // Reintroducing a client-side socket is guarded by local/no-projection-websocket.
 
 // Only start listening when this file is the entrypoint — importing it from
@@ -159,30 +160,33 @@ httpServer.timeout = 0;
 if (process.argv[1] === fileURLToPath(import.meta.url)) {
   let capabilityHeartbeat: CapabilityHeartbeatHandle | null = null;
 
-  connectProducer()
-    .then(() => {
-      // OMN-13131 (W-cap): once the producer is connected, declare the web
-      // renderer's capability onto the bus and keep the heartbeat fresh so the
-      // W5 Renderer Capability Registry projection does not flag this renderer
-      // is_degraded. Config-driven; auto-disabled when no broker is configured.
-      const heartbeatConfig = loadCapabilityHeartbeatConfig();
-      if (heartbeatConfig.enabled) {
-        capabilityHeartbeat = startCapabilityHeartbeat({
-          intervalMs: heartbeatConfig.intervalMs,
-          input: { capability: webRendererCapability() },
-        });
-        console.log(
-          `[omnidash server] renderer capability heartbeat started (every ${heartbeatConfig.intervalMs}ms)`,
-        );
-      }
-    })
-    .catch((err) => {
-      console.warn('[omnidash server] Kafka producer connect failed (dispatch endpoint will return 503):', err);
+  // OMN-14974: capability declarations use the generic runtime edge. The
+  // runtime resolves the contract topic and owns the broker/IAM lifecycle.
+  const heartbeatConfig = loadCapabilityHeartbeatConfig();
+  if (heartbeatConfig.enabled) {
+    capabilityHeartbeat = startCapabilityHeartbeat({
+      intervalMs: heartbeatConfig.intervalMs,
+      input: { capability: webRendererCapability() },
+      deps: {
+        publish: async (_topic, value) => {
+          const envelope = value as CapabilityDeclarationEnvelope;
+          await invokeRuntimeCommand({
+            commandName: 'node_renderer_capability_projection',
+            payload: envelope.payload,
+            correlationId: envelope.correlation_id,
+            timeoutMs: 10_000,
+          });
+        },
+      },
     });
+    console.log(
+      `[omnidash server] renderer capability heartbeat started through runtime edge (every ${heartbeatConfig.intervalMs}ms)`,
+    );
+  }
 
   const shutdown = () => {
     capabilityHeartbeat?.stop();
-    disconnectProducer().finally(() => process.exit(0));
+    process.exit(0);
   };
   process.once('SIGTERM', shutdown);
   process.once('SIGINT', shutdown);

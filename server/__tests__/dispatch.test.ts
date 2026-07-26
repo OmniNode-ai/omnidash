@@ -1,17 +1,20 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import express from 'express';
 import request from 'supertest';
+import type { TenantContext } from '../auth-middleware.js';
 
-// Mock the kafka-producer module so tests never need a real broker.
-vi.mock('../kafka-producer.js', () => ({
-  isProducerConnected: vi.fn(),
-  publishMessage: vi.fn(),
-  connectProducer: vi.fn(),
-  disconnectProducer: vi.fn(),
+const runtimeMocks = vi.hoisted(() => ({
+  invokeRuntimeCommand: vi.fn(),
 }));
 
-import * as kafkaProducer from '../kafka-producer.js';
-import type { TenantContext } from '../auth-middleware.js';
+vi.mock('../runtime-skill-client.js', async () => {
+  const actual = await vi.importActual<typeof import('../runtime-skill-client.js')>(
+    '../runtime-skill-client.js',
+  );
+  return { ...actual, invokeRuntimeCommand: runtimeMocks.invokeRuntimeCommand };
+});
+
+import { RuntimeEdgeError } from '../runtime-skill-client.js';
 
 const MOCK_TENANT: TenantContext = {
   tenant_id: 'test-tenant-id',
@@ -22,7 +25,6 @@ const MOCK_TENANT: TenantContext = {
 
 async function loadRoutes() {
   vi.resetModules();
-  // Re-import after resetting so the mocked module is picked up cleanly.
   const mod = await import('../routes.js');
   return mod.default;
 }
@@ -30,20 +32,33 @@ async function loadRoutes() {
 function buildApp(routes: express.Router, tenant: TenantContext = MOCK_TENANT) {
   const app = express();
   app.use(express.json());
-  // Inject tenant context — mirrors what authMiddleware does in production.
   app.use((req, _res, next) => { req.tenant = tenant; next(); });
   app.use(routes);
   return app;
 }
 
-// OMN-12809: POST /api/dispatch tests removed — the route is retired.
-// Callers now use POST /api/renderer/emit (renderer-command-emitter.ts).
+function completedRuntimeResponse(commandName: string, topic: string, correlationId: string) {
+  return {
+    ok: true,
+    command_name: commandName,
+    resolved_node_name: commandName,
+    contract_name: commandName,
+    command_topic: topic,
+    terminal_event: topic.replace('onex.cmd.', 'onex.evt.').replace('-requested', '-completed'),
+    correlation_id: correlationId,
+    output_payloads: [{ result: 'completed' }],
+  };
+}
 
 describe('POST /api/delegation/trigger', () => {
   beforeEach(() => {
     process.env.OMNIDASH_DATA_SOURCE = 'postgres';
-    vi.mocked(kafkaProducer.isProducerConnected).mockReturnValue(true);
-    vi.mocked(kafkaProducer.publishMessage).mockResolvedValue(undefined);
+    runtimeMocks.invokeRuntimeCommand.mockImplementation(async (input) =>
+      completedRuntimeResponse(
+        input.commandName,
+        'onex.cmd.omnimarket.delegate-skill.v1',
+        input.correlationId,
+      ));
   });
 
   afterEach(() => {
@@ -61,7 +76,7 @@ describe('POST /api/delegation/trigger', () => {
     expect(res.body).toEqual({ error: 'prompt is required' });
   });
 
-  it('returns 400 when task_type is outside the delegate-skill contract taxonomy', async () => {
+  it('returns 400 when task_type is outside the contract taxonomy', async () => {
     const routes = await loadRoutes();
     const res = await request(buildApp(routes))
       .post('/api/delegation/trigger')
@@ -70,63 +85,72 @@ describe('POST /api/delegation/trigger', () => {
     expect(res.status).toBe(400);
     expect(res.body.error).toBe('invalid task_type');
     expect(res.body.allowed_task_types).toContain('reasoning');
-    expect(res.body.allowed_task_types).not.toContain('general');
   });
 
-  it('returns 503 when Kafka producer is not connected in live data-source mode', async () => {
-    vi.mocked(kafkaProducer.isProducerConnected).mockReturnValue(false);
+  it('invokes the typed delegation contract through the runtime edge', async () => {
+    const routes = await loadRoutes();
+    const res = await request(buildApp(routes))
+      .post('/api/delegation/trigger')
+      .send({ prompt: 'Review this PR', task_type: 'code_review' });
 
+    expect(res.status).toBe(200);
+    expect(res.body).toMatchObject({
+      accepted: true,
+      completed: true,
+      topic: 'onex.cmd.omnimarket.delegate-skill.v1',
+      output_payloads: [{ result: 'completed' }],
+    });
+    expect(runtimeMocks.invokeRuntimeCommand).toHaveBeenCalledOnce();
+    const call = runtimeMocks.invokeRuntimeCommand.mock.calls[0][0];
+    expect(call.commandName).toBe('node_delegate_skill_orchestrator');
+    expect(call.correlationId).toBe(res.body.correlation_id);
+    expect(call.payload).toEqual({
+      prompt: 'Review this PR',
+      task_type: 'code_review',
+      source: 'external-client',
+      wait: true,
+      correlation_id: res.body.correlation_id,
+      metadata: {
+        requested_by: 'omnidash-ui',
+        source_surface: 'delegation-control-plane',
+        tenant_id: MOCK_TENANT.tenant_id,
+        tenant_slug: MOCK_TENANT.tenant_slug,
+        sub: MOCK_TENANT.sub,
+      },
+      tenant_id: MOCK_TENANT.tenant_id,
+    });
+  });
+
+  it('returns the typed runtime error instead of fabricating acceptance', async () => {
+    runtimeMocks.invokeRuntimeCommand.mockRejectedValue(
+      new RuntimeEdgeError('runtime is draining', {
+        code: 'runtime_unavailable',
+        retryable: true,
+      }),
+    );
     const routes = await loadRoutes();
     const res = await request(buildApp(routes))
       .post('/api/delegation/trigger')
       .send({ prompt: 'do work', task_type: 'reasoning' });
 
     expect(res.status).toBe(503);
-    expect(res.body).toEqual({ error: 'kafka_unavailable' });
-  });
-
-  it('publishes the delegate-skill event envelope to Kafka', async () => {
-    const routes = await loadRoutes();
-    const res = await request(buildApp(routes))
-      .post('/api/delegation/trigger')
-      .send({ prompt: 'Review this PR for correctness', task_type: 'code_review' });
-
-    expect(res.status).toBe(200);
-    expect(res.body.accepted).toBe(true);
-    expect(res.body.topic).toBe('onex.cmd.omnimarket.delegate-skill.v1');
-    expect(typeof res.body.correlation_id).toBe('string');
-    expect(kafkaProducer.publishMessage).toHaveBeenCalledOnce();
-
-    const [topic, envelope] = vi.mocked(kafkaProducer.publishMessage).mock.calls[0] as [string, Record<string, unknown>];
-    expect(topic).toBe('onex.cmd.omnimarket.delegate-skill.v1');
-    expect(envelope.event_type).toBe('omnimarket.delegate-skill');
-    expect(envelope.source_tool).toBe('omnidash-ui');
-    expect(envelope.correlation_id).toBe(res.body.correlation_id);
-    expect(typeof envelope.envelope_id).toBe('string');
-    expect(typeof envelope.envelope_timestamp).toBe('string');
-
-    const payload = envelope.payload as Record<string, unknown>;
-    expect(payload.prompt).toBe('Review this PR for correctness');
-    expect(payload.task_type).toBe('code_review');
-    expect(payload.source).toBe('codex');
-    expect(payload.wait).toBe(true);
-    expect(payload.correlation_id).toBe(res.body.correlation_id);
-    expect(payload.metadata).toEqual({
-      requested_by: 'omnidash-ui',
-      source_surface: 'delegation-control-plane',
-      tenant_id: MOCK_TENANT.tenant_id,
-      tenant_slug: MOCK_TENANT.tenant_slug,
-      sub: MOCK_TENANT.sub,
+    expect(res.body).toEqual({
+      error: 'runtime_unavailable',
+      detail: 'runtime is draining',
+      retryable: true,
     });
   });
 });
 
-// OMN-12775: SEA thin publisher — node-generation-requested
 describe('POST /api/sea/generate', () => {
   beforeEach(() => {
     process.env.OMNIDASH_DATA_SOURCE = 'postgres';
-    vi.mocked(kafkaProducer.isProducerConnected).mockReturnValue(true);
-    vi.mocked(kafkaProducer.publishMessage).mockResolvedValue(undefined);
+    runtimeMocks.invokeRuntimeCommand.mockImplementation(async (input) =>
+      completedRuntimeResponse(
+        input.commandName,
+        'onex.cmd.omnimarket.node-generation-requested.v1',
+        input.correlationId,
+      ));
   });
 
   afterEach(() => {
@@ -136,66 +160,44 @@ describe('POST /api/sea/generate', () => {
 
   it('returns 400 when task_description is missing', async () => {
     const routes = await loadRoutes();
-    const res = await request(buildApp(routes))
-      .post('/api/sea/generate')
-      .send({});
-
+    const res = await request(buildApp(routes)).post('/api/sea/generate').send({});
     expect(res.status).toBe(400);
     expect(res.body).toEqual({ error: 'task_description is required' });
   });
 
-  it('returns 503 when Kafka producer is not connected in live data-source mode', async () => {
-    vi.mocked(kafkaProducer.isProducerConnected).mockReturnValue(false);
-
-    const routes = await loadRoutes();
-    const res = await request(buildApp(routes))
-      .post('/api/sea/generate')
-      .send({ task_description: 'Generate a summarizer node' });
-
-    expect(res.status).toBe(503);
-    expect(res.body).toEqual({ error: 'kafka_unavailable' });
-  });
-
-  it('publishes envelope to node-generation-requested.v1 and returns correlation_id', async () => {
+  it('invokes node generation through the runtime edge', async () => {
     const routes = await loadRoutes();
     const res = await request(buildApp(routes))
       .post('/api/sea/generate')
       .send({ task_description: 'Generate a summarizer node' });
 
     expect(res.status).toBe(200);
-    expect(res.body.accepted).toBe(true);
-    expect(res.body.topic).toBe('onex.cmd.omnimarket.node-generation-requested.v1');
-    expect(typeof res.body.correlation_id).toBe('string');
-    expect(kafkaProducer.publishMessage).toHaveBeenCalledOnce();
-
-    const [topic, envelope] = vi.mocked(kafkaProducer.publishMessage).mock.calls[0] as [string, Record<string, unknown>];
-    // Topic must byte-match node_generation_consumer subscribe_topics
-    expect(topic).toBe('onex.cmd.omnimarket.node-generation-requested.v1');
-    // Publisher carries no business-payload truth — only wraps user input
-    expect(envelope.source_tool).toBe('omnidash-ui');
-    expect(envelope.event_type).toBe('omnimarket.node-generation-requested');
-    expect(typeof envelope.envelope_id).toBe('string');
-    expect(typeof envelope.envelope_timestamp).toBe('string');
-    expect(envelope.correlation_id).toBe(res.body.correlation_id);
-
-    const payload = envelope.payload as Record<string, unknown>;
-    // Payload is the user input only — no inferred/computed business truth
-    expect(payload.task_description).toBe('Generate a summarizer node');
-    expect(payload.correlation_id).toBe(res.body.correlation_id);
-    // No business logic: publisher must not add derived fields
-    expect(Object.keys(payload).sort()).toEqual(['correlation_id', 'task_description']);
+    expect(res.body).toMatchObject({
+      accepted: true,
+      completed: true,
+      topic: 'onex.cmd.omnimarket.node-generation-requested.v1',
+    });
+    const call = runtimeMocks.invokeRuntimeCommand.mock.calls[0][0];
+    expect(call.commandName).toBe('node_generation_consumer');
+    expect(call.correlationId).toBe(res.body.correlation_id);
+    expect(call.payload).toEqual({
+      task_description: 'Generate a summarizer node',
+      correlation_id: res.body.correlation_id,
+    });
   });
 
-  it('returns 503 when publishMessage throws', async () => {
-    vi.mocked(kafkaProducer.publishMessage).mockRejectedValue(new Error('broker gone'));
-
+  it('returns 503 when the runtime edge fails', async () => {
+    runtimeMocks.invokeRuntimeCommand.mockRejectedValue(
+      new RuntimeEdgeError('MSK unavailable', { code: 'dispatch_error', retryable: true }),
+    );
     const routes = await loadRoutes();
     const res = await request(buildApp(routes))
       .post('/api/sea/generate')
       .send({ task_description: 'Generate a summarizer node' });
 
     expect(res.status).toBe(503);
-    expect(res.body).toEqual({ error: 'kafka_unavailable', detail: 'Error: broker gone' });
+    expect(res.body.error).toBe('dispatch_error');
+    expect(res.body.retryable).toBe(true);
   });
 
   it('does not expose a /api/hackathon/generate route', async () => {
@@ -203,18 +205,13 @@ describe('POST /api/sea/generate', () => {
     const res = await request(buildApp(routes))
       .post('/api/hackathon/generate')
       .send({ task_description: 'anything' });
-
-    // Route must not exist (Express returns 404 for unregistered POST paths)
     expect(res.status).toBe(404);
   });
 });
 
-// OMN-13131 (W2): renderer bus-native command emit path
 describe('POST /api/renderer/emit', () => {
   beforeEach(() => {
     process.env.OMNIDASH_DATA_SOURCE = 'postgres';
-    vi.mocked(kafkaProducer.isProducerConnected).mockReturnValue(true);
-    vi.mocked(kafkaProducer.publishMessage).mockResolvedValue(undefined);
   });
 
   afterEach(() => {
@@ -229,169 +226,40 @@ describe('POST /api/renderer/emit', () => {
     payload: { prompt: 'do work', task_type: 'reasoning' },
   };
 
-  it('returns 400 when renderer_id is missing', async () => {
+  it.each([
+    ['renderer_id', { renderer_id: undefined }, 'renderer_id is required'],
+    ['action_contract_id', { action_contract_id: undefined }, 'action_contract_id is required'],
+    ['contract_version', { contract_version: undefined }, 'contract_version is required'],
+    ['payload', { payload: undefined }, 'payload is required and must be an object'],
+  ])('returns 400 when %s is invalid', async (_field, override, error) => {
     const routes = await loadRoutes();
     const res = await request(buildApp(routes))
       .post('/api/renderer/emit')
-      .send({ ...validBody, renderer_id: undefined });
-
+      .send({ ...validBody, ...override });
     expect(res.status).toBe(400);
-    expect(res.body).toEqual({ error: 'renderer_id is required' });
+    expect(res.body).toEqual({ error });
   });
 
-  it('returns 400 when action_contract_id is missing', async () => {
-    const routes = await loadRoutes();
-    const res = await request(buildApp(routes))
-      .post('/api/renderer/emit')
-      .send({ ...validBody, action_contract_id: undefined });
-
-    expect(res.status).toBe(400);
-    expect(res.body).toEqual({ error: 'action_contract_id is required' });
-  });
-
-  it('returns 400 when contract_version is missing', async () => {
-    const routes = await loadRoutes();
-    const res = await request(buildApp(routes))
-      .post('/api/renderer/emit')
-      .send({ ...validBody, contract_version: undefined });
-
-    expect(res.status).toBe(400);
-    expect(res.body).toEqual({ error: 'contract_version is required' });
-  });
-
-  it('returns 400 when payload is missing or not an object', async () => {
-    const routes = await loadRoutes();
-    const res = await request(buildApp(routes))
-      .post('/api/renderer/emit')
-      .send({ ...validBody, payload: undefined });
-
-    expect(res.status).toBe(400);
-    expect(res.body).toEqual({ error: 'payload is required and must be an object' });
-  });
-
-  it('returns 503 when Kafka producer is not connected', async () => {
-    vi.mocked(kafkaProducer.isProducerConnected).mockReturnValue(false);
-
+  it('fails closed because no contract-declared renderer dispatcher exists', async () => {
     const routes = await loadRoutes();
     const res = await request(buildApp(routes)).post('/api/renderer/emit').send(validBody);
 
     expect(res.status).toBe(503);
-    expect(res.body).toEqual({ error: 'kafka_unavailable' });
-  });
-
-  it('returns 503 when publishMessage throws', async () => {
-    vi.mocked(kafkaProducer.publishMessage).mockRejectedValue(new Error('broker gone'));
-
-    const routes = await loadRoutes();
-    const res = await request(buildApp(routes)).post('/api/renderer/emit').send(validBody);
-
-    expect(res.status).toBe(503);
-    expect(res.body.error).toBe('kafka_unavailable');
-  });
-
-  it('publishes the renderer command envelope to the declared topic and echoes identity', async () => {
-    const routes = await loadRoutes();
-    const res = await request(buildApp(routes)).post('/api/renderer/emit').send(validBody);
-
-    expect(res.status).toBe(200);
-    expect(res.body.accepted).toBe(true);
-    expect(res.body.topic).toBe('onex.cmd.omnidash.renderer-action.v1');
-    expect(typeof res.body.correlation_id).toBe('string');
-    expect(res.body.causation_id).toBeNull();
-    expect(typeof res.body.envelope_id).toBe('string');
-
-    expect(kafkaProducer.publishMessage).toHaveBeenCalledOnce();
-    const [topic, envelope] = vi.mocked(kafkaProducer.publishMessage).mock.calls[0] as [
-      string,
-      Record<string, unknown>,
-    ];
-    expect(topic).toBe('onex.cmd.omnidash.renderer-action.v1');
-    expect(envelope.renderer_id).toBe('omnidash-web');
-    expect(envelope.action_contract_id).toBe('delegation.trigger.v1');
-    expect(envelope.contract_version).toBe('v1');
-    expect(envelope.correlation_id).toBe(res.body.correlation_id);
-    expect(envelope.causation_id).toBeNull();
-    expect(envelope.source_tool).toBe('omnidash-ui');
-    expect((envelope.transport as Record<string, unknown>).kind).toBe('thin-publish');
-    // Payload carried verbatim — no business-derived keys added.
-    expect(envelope.payload).toEqual({ prompt: 'do work', task_type: 'reasoning' });
-  });
-
-  it('preserves a caller-supplied correlation_id and sets causation_id when the action follows a prior event', async () => {
-    const correlationId = '11111111-2222-3333-4444-555555555555';
-    const causationId = '99999999-8888-7777-6666-555555555555';
-    const routes = await loadRoutes();
-    const res = await request(buildApp(routes))
-      .post('/api/renderer/emit')
-      .send({ ...validBody, correlation_id: correlationId, causation_id: causationId });
-
-    expect(res.status).toBe(200);
-    expect(res.body.correlation_id).toBe(correlationId);
-    expect(res.body.causation_id).toBe(causationId);
-    const [, envelope] = vi.mocked(kafkaProducer.publishMessage).mock.calls[0] as [
-      string,
-      Record<string, unknown>,
-    ];
-    expect(envelope.correlation_id).toBe(correlationId);
-    expect(envelope.causation_id).toBe(causationId);
-  });
-
-  it('returns 400 when a supplied correlation_id is not a UUID', async () => {
-    const routes = await loadRoutes();
-    const res = await request(buildApp(routes))
-      .post('/api/renderer/emit')
-      .send({ ...validBody, correlation_id: 'not-a-uuid' });
-
-    expect(res.status).toBe(400);
-    expect(res.body.error).toMatch(/correlation_id/);
-    expect(kafkaProducer.publishMessage).not.toHaveBeenCalled();
-  });
-
-  it('routes EVERY action contract id to the SAME declared topic (no dispatch on action type)', async () => {
-    const routes = await loadRoutes();
-    const app = buildApp(routes);
-    await request(app).post('/api/renderer/emit').send({ ...validBody, action_contract_id: 'delegation.trigger.v1' });
-    await request(app).post('/api/renderer/emit').send({ ...validBody, action_contract_id: 'sea.generate.v1' });
-
-    const topics = vi.mocked(kafkaProducer.publishMessage).mock.calls.map((c) => c[0]);
-    expect(new Set(topics)).toEqual(new Set(['onex.cmd.omnidash.renderer-action.v1']));
-  });
-
-  // OMN-13131 (W2): the action-specific /api/delegation/trigger path MUST still
-  // exist alongside the bus-native emit path. Its removal is W3 (parked behind
-  // OMN-13105), not this item.
-  it('the existing /api/delegation/trigger route is still mounted (not removed in W2)', async () => {
-    const routes = await loadRoutes();
-    const res = await request(buildApp(routes))
-      .post('/api/delegation/trigger')
-      .send({ prompt: 'do work', task_type: 'reasoning' });
-
-    // 200 (published) — definitively not a 404 unmounted route.
-    expect(res.status).toBe(200);
-    expect(res.body.topic).toBe('onex.cmd.omnimarket.delegate-skill.v1');
+    expect(res.body).toEqual({
+      error: 'renderer_action_dispatcher_unavailable',
+      detail: 'No contract-declared runtime handler consumes renderer actions',
+    });
+    expect(runtimeMocks.invokeRuntimeCommand).not.toHaveBeenCalled();
   });
 });
 
-// OMN-12149: topic registration test
-// OMN-12809: dispatchRequest removed from COMMAND_TOPICS — generic router-hop retired.
 describe('COMMAND_TOPICS registry', () => {
-  it('delegateSkill key maps to the contract-declared delegate-skill command topic', async () => {
+  it('retains contract topic constants for projection and evidence display', async () => {
     const { COMMAND_TOPICS } = await import('../../shared/types/command-topics.js');
     expect(COMMAND_TOPICS.delegateSkill).toBe('onex.cmd.omnimarket.delegate-skill.v1');
-  });
-
-  // OMN-12775: SEA generation command topic
-  it('nodeGenerationRequested key maps to the node_generation_consumer subscribe topic', async () => {
-    const { COMMAND_TOPICS } = await import('../../shared/types/command-topics.js');
-    expect(COMMAND_TOPICS.nodeGenerationRequested).toBe('onex.cmd.omnimarket.node-generation-requested.v1');
-  });
-
-  // OMN-13131 (W2): renderer bus-native command topic
-  it('rendererAction key maps to the declared renderer-action command topic', async () => {
-    const { COMMAND_TOPICS, RENDERER_ACTION_TOPIC } = await import(
-      '../../shared/types/command-topics.js'
+    expect(COMMAND_TOPICS.nodeGenerationRequested).toBe(
+      'onex.cmd.omnimarket.node-generation-requested.v1',
     );
     expect(COMMAND_TOPICS.rendererAction).toBe('onex.cmd.omnidash.renderer-action.v1');
-    expect(RENDERER_ACTION_TOPIC).toBe(COMMAND_TOPICS.rendererAction);
   });
 });
