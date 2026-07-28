@@ -16,6 +16,7 @@ describe("submitGeneration (thin-publisher client)", () => {
     vi.stubGlobal("fetch", vi.fn());
   });
   afterEach(() => {
+    vi.useRealTimers();
     vi.restoreAllMocks();
   });
 
@@ -41,6 +42,35 @@ describe("submitGeneration (thin-publisher client)", () => {
     expect(JSON.parse(init.body)).toEqual({
       task_description: "Generate a node that adds two ints",
     });
+  });
+
+  it("does not apply the 20-second projection timeout to node generation", async () => {
+    vi.useFakeTimers();
+    const fetchMock = globalThis.fetch as unknown as ReturnType<typeof vi.fn>;
+    fetchMock.mockImplementationOnce((_url: string, init: RequestInit) =>
+      new Promise((resolve, reject) => {
+        const timer = window.setTimeout(
+          () => resolve({
+            ok: true,
+            json: async () => ({
+              correlation_id: "ui-slow-success",
+              topic: "onex.cmd.omnimarket.node-generation-requested.v1",
+            }),
+          }),
+          25_000,
+        );
+        init.signal?.addEventListener("abort", () => {
+          window.clearTimeout(timer);
+          reject(new DOMException("Aborted", "AbortError"));
+        });
+      }),
+    );
+
+    const assertion = expect(submitGeneration("Generate a slower node")).resolves.toMatchObject({
+      correlation_id: "ui-slow-success",
+    });
+    await vi.advanceTimersByTimeAsync(25_000);
+    await assertion;
   });
 
   it("throws a typed Error on a non-OK response", async () => {

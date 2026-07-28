@@ -461,6 +461,14 @@ export interface GenerateResponse {
 export const GENERATE_ENDPOINT = "/api/sea/generate";
 
 /**
+ * The runtime edge accepts a terminal-wait timeout up to 600 seconds and adds
+ * five seconds of transport grace. Generation must not inherit the 20-second
+ * projection-read timeout or the browser reports failure while the accepted
+ * workflow is still completing and projecting its result.
+ */
+export const GENERATE_REQUEST_TIMEOUT_MS = 610_000;
+
+/**
  * Publish a node-generation request via the thin publisher. Resolves to the
  * correlation id on success; rejects with a typed Error on any non-OK response
  * so the caller renders an explicit failure state (never a silent success).
@@ -479,11 +487,15 @@ export async function submitGeneration(
   const endpoint = baseUrl !== undefined
     ? `${baseUrl}${GENERATE_ENDPOINT}`
     : GENERATE_ENDPOINT;
-  const res = await authedFetch(endpoint, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ task_description: taskDescription }),
-  });
+  const res = await authedFetch(
+    endpoint,
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ task_description: taskDescription }),
+    },
+    GENERATE_REQUEST_TIMEOUT_MS,
+  );
   if (!res.ok) {
     const detail = await res.text().catch(() => "");
     throw new Error(
