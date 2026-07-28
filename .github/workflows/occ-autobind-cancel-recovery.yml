@@ -1,0 +1,102 @@
+# SPDX-FileCopyrightText: 2026 OmniNode.ai Inc.
+# SPDX-License-Identifier: MIT
+#
+# occ-autobind-cancel-recovery.yml
+#
+# OMN-15261 defect #3: `occ-autobind` (and `occ-companion-effect`) reporting
+# CANCELLED silently left a PR unbound with nothing retried. Live evidence
+# (omnidash#273, OMN-15241 fan-out, 2026-07-27):
+#
+#   gh api repos/OmniNode-ai/omnidash/actions/runs/30289171901/attempts/1/jobs
+#   -> {"conclusion":"cancelled", "started_at":"...17:25:33Z", "completed_at":"...17:32:16Z"}
+#   gh run view 30289171901 --attempt 1 --log
+#   -> "Published onex.cmd.omnimarket.occ-autobind.v1 event_id=518f...318e" at
+#      17:30:27Z, THEN cancelled at 17:32:16Z -- the publish step itself
+#      completed before something (external cancel; no second `pull_request`
+#      event exists on this PR's timeline -- confirmed via
+#      `gh api .../pulls/273/commits` = 1 commit, `.../issues/273/events` = no
+#      reopened/synchronize) marked the whole run CANCELLED. Same shape hit
+#      `occ-companion-effect` on the same PR (run 30289172565, cancelled
+#      17:31:21Z, also after its own "Published ..." log line at 17:27:34Z).
+#      Both runs sat CANCELLED, unretried, for ~2.5 hours until an operator
+#      manually re-ran them (attempt 2, 20:04-20:10Z) -- there was no
+#      automatic path back from CANCELLED to a mint attempt.
+#
+# This workflow closes that gap: it watches the two born-path callers for a
+# CANCELLED conclusion and automatically re-dispatches the SAME
+# workflow_dispatch manual-replay entrypoint those callers already carry
+# (OMN-14993), rather than requiring a human to notice a silently unbound PR.
+#
+# `workflow_run` events on GHA use the workflow definition on the repo's
+# DEFAULT branch, not the triggering PR's branch, and this file's own
+# `if:` guard prevents it from recursing into itself: it only reacts to a
+# CANCELLED run whose ORIGINAL trigger was `pull_request` (the born path).
+# A manually-replayed run is `workflow_dispatch`-triggered, so if THAT retry
+# is also cancelled, this workflow does not fire again for it -- bounded to
+# exactly one automatic retry per born-path cancellation, matching the
+# existing manual-replay entrypoint's own open/non-draft-only scope. A second
+# cancellation on the SAME PR is a real signal (root-cause it, do not loop
+# retries), so it is left for a human/operator to notice via the still-red
+# `occ-preflight` check on the PR -- this workflow does not silently retry
+# forever.
+#
+# Scope: reacts only to CANCELLED. A FAILED conclusion is a different,
+# already-visible signal (the job's own error is in the log); this workflow
+# does not touch that path.
+#
+# Ticket: OMN-15261
+
+name: OCC Autobind Cancel Recovery
+
+on:
+  workflow_run:
+    workflows:
+      - "OCC Autobind Publisher"
+      - "OCC Companion Effect Publisher"
+    types: [completed]
+
+permissions:
+  contents: read
+  actions: write
+  pull-requests: read
+
+jobs:
+  retry-on-cancel:
+    if: >-
+      github.event.workflow_run.conclusion == 'cancelled' &&
+      github.event.workflow_run.event == 'pull_request'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    env:
+      GH_TOKEN: ${{ github.token }}
+      RUN_ID: ${{ github.event.workflow_run.id }}
+      WORKFLOW_NAME: ${{ github.event.workflow_run.name }}
+    steps:
+      - name: Resolve the PR number the cancelled run was for
+        id: pr
+        run: |
+          # workflow_run's own `pull_requests` array is populated only when
+          # GitHub can resolve the same-repo head/base pair; that is exactly
+          # this shape (born-path callers trigger on same-repo pull_request).
+          number="$(gh api "repos/${{ github.repository }}/actions/runs/${RUN_ID}" --jq '.pull_requests[0].number // empty')"
+          if [ -z "${number}" ]; then
+            echo "no associated PR number found on run ${RUN_ID} (${WORKFLOW_NAME}); nothing to retry." >&2
+            echo "number=" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          echo "resolved PR #${number} for cancelled run ${RUN_ID} (${WORKFLOW_NAME})"
+          echo "number=${number}" >> "$GITHUB_OUTPUT"
+
+      - name: Re-dispatch the manual-replay entrypoint (OMN-14993 path)
+        if: steps.pr.outputs.number != ''
+        run: |
+          gh workflow run "${WORKFLOW_NAME}" \
+            --repo "${{ github.repository }}" \
+            -f pr_number="${{ steps.pr.outputs.number }}"
+          echo "re-dispatched ${WORKFLOW_NAME} workflow_dispatch for PR #${{ steps.pr.outputs.number }} after a cancelled born-path run (OMN-15261)."
+
+      - name: Comment on the PR so the retry is visible, not silent
+        if: steps.pr.outputs.number != ''
+        run: |
+          gh pr comment "${{ steps.pr.outputs.number }}" --repo "${{ github.repository }}" --body \
+            "OCC autobind note (OMN-15261): the born-path \`${WORKFLOW_NAME}\` run for this PR was CANCELLED (run ${RUN_ID}). Auto-retried once via the OMN-14993 manual-replay entrypoint. If \`occ-preflight\` is still red after this retry completes, the cancellation is a repeat signal -- flag it rather than re-running by hand."
