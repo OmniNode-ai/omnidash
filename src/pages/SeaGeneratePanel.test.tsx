@@ -2,7 +2,7 @@
  * OMN-13004 — tests for the SEA Control Plane generate affordance.
  *
  * Covers the thin-publisher client (`submitGeneration`) and the panel's honest
- * states: it posts the typed command to `/api/generate`, surfaces the returned
+ * states: it posts the typed command to `/api/sea/generate`, surfaces the returned
  * correlation id, and renders an explicit failure (never a silent success).
  */
 
@@ -19,7 +19,7 @@ describe("submitGeneration (thin-publisher client)", () => {
     vi.restoreAllMocks();
   });
 
-  it("POSTs the typed command to /api/generate and returns the correlation id", async () => {
+  it("POSTs the typed command to /api/sea/generate and returns the correlation id", async () => {
     const fetchMock = globalThis.fetch as unknown as ReturnType<typeof vi.fn>;
     fetchMock.mockResolvedValueOnce({
       ok: true,
@@ -36,7 +36,7 @@ describe("submitGeneration (thin-publisher client)", () => {
 
     expect(fetchMock).toHaveBeenCalledTimes(1);
     const [url, init] = fetchMock.mock.calls[0];
-    expect(url).toBe("/api/generate");
+    expect(url).toBe("/api/sea/generate");
     expect(init.method).toBe("POST");
     expect(JSON.parse(init.body)).toEqual({
       task_description: "Generate a node that adds two ints",

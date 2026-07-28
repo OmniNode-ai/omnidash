@@ -431,7 +431,7 @@ export const fetchNodeGenerations = (): Promise<
 
 // ── Generate (thin publisher) — OMN-13004 ────────────────────────────────────
 //
-// The SEA Control Plane generate form POSTs a task description to `/api/generate`
+// The SEA Control Plane generate form POSTs a task description to `/api/sea/generate`
 // (same-origin; the vite proxy forwards it to the single projection backend).
 // That backend is a THIN PUBLISHER: it wraps the request in the canonical
 // ModelEventEnvelope and publishes ONE command to
@@ -444,7 +444,7 @@ export const fetchNodeGenerations = (): Promise<
 // fallback path — a non-OK response surfaces a typed Error the form renders
 // honestly.
 
-/** Response of `POST /api/generate` — the minted correlation id and topic. */
+/** Response of `POST /api/sea/generate` — the minted correlation id and topic. */
 export interface GenerateResponse {
   correlation_id: string;
   topic: string;
@@ -457,8 +457,8 @@ export interface GenerateResponse {
   message?: string;
 }
 
-/** The /api/generate thin-publisher endpoint path. */
-export const GENERATE_ENDPOINT = "/api/generate";
+/** The contract-declared SEA generation endpoint path. */
+export const GENERATE_ENDPOINT = "/api/sea/generate";
 
 /**
  * Publish a node-generation request via the thin publisher. Resolves to the
