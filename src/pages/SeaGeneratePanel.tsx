@@ -2,7 +2,7 @@
  * OMN-13004 — SEA Control Plane generate affordance.
  *
  * A minimal, demo-clean generation form: task description in, submit, watch the
- * node get generated. On submit it POSTs the typed command to `/api/generate`
+ * node get generated. On submit it POSTs the typed command to `/api/sea/generate`
  * (the THIN PUBLISHER on the projection backend), which wraps it in the
  * canonical ModelEventEnvelope and publishes ONE command to
  * `onex.cmd.omnimarket.node-generation-requested.v1`. The existing

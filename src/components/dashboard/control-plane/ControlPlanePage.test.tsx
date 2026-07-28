@@ -307,21 +307,21 @@ describe('ControlPlanePage', () => {
       // to "Generate request failed (HTTP 500): boom" — same information, seam-consistent phrasing.
       expect(screen.getByText(/failed to submit: error: generate request failed \(http 500\): boom/i)).toBeInTheDocument();
     });
-    // OMN-13006: submit targets the live thin-publisher route /api/generate on the
-    // single projection backend (resolveProjectionBaseUrl), NOT the phantom
-    // /api/sea/generate (no such route — 404 live).
+    // OMN-13006: submit targets the live thin-publisher route /api/sea/generate on the
+    // single projection backend (resolveProjectionBaseUrl), matching the
+    // contract-declared server route.
     expect(fetch).toHaveBeenCalledWith(
-      'http://backend.test/api/generate',
+      'http://backend.test/api/sea/generate',
       expect.objectContaining({ method: 'POST' }),
     );
   });
 
-  it('posts same-origin /api/generate (relative) in proxy mode (OMN-13006 demo config)', async () => {
+  it('posts same-origin /api/sea/generate (relative) in proxy mode (OMN-13006 demo config)', async () => {
     // The demo/serving config sets VITE_PROJECTION_API_URL, so the dev/serving
-    // proxy forwards same-origin /api/generate to the single projection backend
+    // proxy forwards same-origin /api/sea/generate to the single projection backend
     // (vite.proxy-config.ts). resolveProjectionBaseUrl() returns '' (relative),
     // so submit and projection reads hit the SAME backend with no cross-origin
-    // hop and no /api/sea/generate.
+    // hop.
     vi.stubEnv('VITE_DATA_SOURCE', 'http');
     vi.stubEnv('VITE_PROJECTION_API_URL', 'http://projection-backend:3002');
     const source: ProtocolSnapshotSource = {
@@ -349,9 +349,9 @@ describe('ControlPlanePage', () => {
     await waitFor(() => {
       expect(screen.getByRole('status')).toHaveTextContent(/corr-proxy-1/i);
     });
-    // Relative base => same-origin '/api/generate', proxied to the single backend.
+    // Relative base => same-origin '/api/sea/generate', proxied to the single backend.
     expect(fetch).toHaveBeenCalledWith(
-      '/api/generate',
+      '/api/sea/generate',
       expect.objectContaining({ method: 'POST' }),
     );
   });
