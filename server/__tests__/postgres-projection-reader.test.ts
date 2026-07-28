@@ -426,7 +426,7 @@ describe('PostgresProjectionReader', () => {
     });
   });
 
-  it('returns delegation token usage as the widget projection shape', async () => {
+  it('returns metered delegation token usage as the widget projection shape', async () => {
     const client = {
       query: vi.fn().mockResolvedValueOnce({
         rows: [
@@ -434,10 +434,12 @@ describe('PostgresProjectionReader', () => {
             model_id: 'local-qwen3',
             model_name: 'qwen3-coder',
             delegation_count: '4',
-            prompt_tokens: '0',
-            completion_tokens: '0',
-            total_tokens: '0',
-            estimated_cost_usd: '0',
+            prompt_tokens: '88',
+            completion_tokens: '20',
+            total_tokens: '108',
+            estimated_cost_usd: '0.0002',
+            usage_source: 'measured',
+            token_provenance: 'measured',
           },
           {
             model_id: 'legacy-distill',
@@ -458,11 +460,11 @@ describe('PostgresProjectionReader', () => {
 
     expect(result.rows).toHaveLength(1);
     expect(result.rows[0]).toMatchObject({
-      total_prompt_tokens: 0,
-      total_completion_tokens: 0,
-      total_tokens: 0,
-      total_estimated_cost_usd: 0,
-      provenance_summary: { measured: 0, estimated: 0, unknown: 2 },
+      total_prompt_tokens: 88,
+      total_completion_tokens: 20,
+      total_tokens: 108,
+      total_estimated_cost_usd: 0.0002,
+      provenance_summary: { measured: 1, estimated: 0, unknown: 1 },
       provisioned: true,
     });
     const byModel = result.rows[0]!.by_model as Record<string, unknown>[];
@@ -470,12 +472,12 @@ describe('PostgresProjectionReader', () => {
     expect(byModel[0]).toMatchObject({
       model_id: 'local-qwen3',
       model_name: 'qwen3-coder',
-      prompt_tokens: 0,
-      completion_tokens: 0,
-      total_tokens: 0,
-      estimated_cost_usd: 0,
-      usage_source: 'unknown',
-      token_provenance: 'unknown',
+      prompt_tokens: 88,
+      completion_tokens: 20,
+      total_tokens: 108,
+      estimated_cost_usd: 0.0002,
+      usage_source: 'measured',
+      token_provenance: 'measured',
     });
     expect(byModel[1]).toMatchObject({
       model_id: 'legacy-distill',
@@ -488,6 +490,8 @@ describe('PostgresProjectionReader', () => {
       token_provenance: 'unknown',
     });
     expect(client.query).toHaveBeenCalledWith(expect.stringContaining('FROM delegation_events'));
+    expect(client.query).toHaveBeenCalledWith(expect.stringContaining("e->>'tokens_input'"));
+    expect(client.query).toHaveBeenCalledWith(expect.stringContaining("e->>'tokens_output'"));
   });
 
   it('returns MCP tools rows from node_service_registry metadata', async () => {

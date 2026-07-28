@@ -1023,23 +1023,38 @@ export class PostgresProjectionReader {
   private async readDelegationTokenUsageProjection(
     client: { query: (sql: string, params?: unknown[]) => Promise<{ rows: Row[] }> },
   ): Promise<Row[]> {
-    // Live schema (omnidash_analytics) has no token columns — model_name,
-    // tokens_input, tokens_output absent from delegation_events. Use only
-    // existing columns; token fields zeroed until a schema migration adds them.
-    // .catch() is required: an unhandled rejection here crashes the Node process.
+    // Read optional runtime metrics through JSONB so older deployments that do
+    // not yet carry the token columns remain compatible. Current staging rows
+    // contain metered tokens; replacing them with literal zero makes a healthy
+    // projection indistinguishable from an empty one in the dashboard.
     const res = await client.query(`
+      WITH events AS (
+        SELECT to_jsonb(delegation_events) AS e
+        FROM delegation_events
+      )
       SELECT
-        COALESCE(NULLIF(delegated_to, ''), 'delegated-runtime') AS model_id,
-        COALESCE(NULLIF(delegated_to, ''), 'delegated-runtime') AS model_name,
-        COUNT(*)                                                 AS delegation_count,
-        0                                                        AS prompt_tokens,
-        0                                                        AS completion_tokens,
-        0                                                        AS total_tokens,
-        COALESCE(SUM(COALESCE(cost_usd, 0)), 0)                 AS estimated_cost_usd
-      FROM delegation_events
-      GROUP BY COALESCE(NULLIF(delegated_to, ''), 'delegated-runtime')
-      ORDER BY delegation_count DESC
-    `).catch(() => ({ rows: [] as Row[] }));
+        COALESCE(NULLIF(e->>'delegated_to', ''), NULLIF(e->>'model_name', ''), 'delegated-runtime') AS model_id,
+        COALESCE(NULLIF(e->>'model_name', ''), NULLIF(e->>'delegated_to', ''), 'delegated-runtime') AS model_name,
+        COUNT(*) AS delegation_count,
+        COALESCE(SUM(COALESCE(NULLIF(e->>'tokens_input', '')::numeric, 0)), 0) AS prompt_tokens,
+        COALESCE(SUM(COALESCE(NULLIF(e->>'tokens_output', '')::numeric, 0)), 0) AS completion_tokens,
+        COALESCE(SUM(
+          COALESCE(NULLIF(e->>'tokens_input', '')::numeric, 0)
+          + COALESCE(NULLIF(e->>'tokens_output', '')::numeric, 0)
+        ), 0) AS total_tokens,
+        COALESCE(SUM(COALESCE(NULLIF(e->>'cost_usd', '')::numeric, 0)), 0) AS estimated_cost_usd,
+        CASE WHEN COALESCE(SUM(
+          COALESCE(NULLIF(e->>'tokens_input', '')::numeric, 0)
+          + COALESCE(NULLIF(e->>'tokens_output', '')::numeric, 0)
+        ), 0) > 0 THEN 'measured' ELSE 'unknown' END AS usage_source,
+        CASE WHEN COALESCE(SUM(
+          COALESCE(NULLIF(e->>'tokens_input', '')::numeric, 0)
+          + COALESCE(NULLIF(e->>'tokens_output', '')::numeric, 0)
+        ), 0) > 0 THEN 'measured' ELSE 'unknown' END AS token_provenance
+      FROM events
+      GROUP BY model_id, model_name
+      ORDER BY total_tokens DESC, delegation_count DESC
+    `);
 
     const byModel = res.rows.filter((row) => Number(row.delegation_count ?? 0) > 0).map((row) => {
       const promptTokens = Number(row.prompt_tokens ?? 0);
@@ -1052,8 +1067,8 @@ export class PostgresProjectionReader {
         completion_tokens: completionTokens,
         total_tokens: totalTokens,
         estimated_cost_usd: Number(row.estimated_cost_usd ?? 0),
-        usage_source: 'unknown',
-        token_provenance: 'unknown',
+        usage_source: String(row.usage_source ?? 'unknown'),
+        token_provenance: String(row.token_provenance ?? 'unknown'),
       };
     });
 
