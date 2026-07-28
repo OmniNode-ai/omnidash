@@ -7,6 +7,7 @@ import routes from './routes.js';
 import { authMiddleware } from './auth-middleware.js';
 import { getSessionMiddleware, getStore } from './session.js';
 import { getKeycloak } from './keycloak.js';
+import { shouldProtectBrowserNavigation } from './auth-navigation.js';
 import {
   loadAuthConfig,
   loadCapabilityHeartbeatConfig,
@@ -80,12 +81,15 @@ app.use(sessionMiddleware);
 const keycloak = getKeycloak(getStore());
 app.use(keycloak.middleware({ logout: '/logout' }));
 
-// For browser (non-API) routes, redirect unauthenticated users to Keycloak
-// login instead of returning 401. API paths always get 401 from authMiddleware.
-keycloak.redirectToLogin = (req) => !req.path.startsWith('/api/');
+// Only top-level SPA document navigations may initiate Keycloak login. Protecting
+// projection reads, favicon requests, or static subresources creates competing
+// authorization-code flows in the same session and overwrites the saved callback
+// URI. Non-document requests fall through to the normal 401/403 auth boundary.
+keycloak.redirectToLogin = shouldProtectBrowserNavigation;
+const protectBrowserNavigation = keycloak.protect();
 app.use((req, res, next) => {
-  if (req.path.startsWith('/api/') || PUBLIC_PATHS.has(req.path)) return next();
-  return keycloak.protect()(req, res, next);
+  if (PUBLIC_PATHS.has(req.path) || !shouldProtectBrowserNavigation(req)) return next();
+  return protectBrowserNavigation(req, res, next);
 });
 
 const authConfig = loadAuthConfig();
