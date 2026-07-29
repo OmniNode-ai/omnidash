@@ -103,7 +103,11 @@ export function useProjectionQueryWithContract<T>(
         // configured retry (1, see lib/queryClient.ts) then surfaces the
         // existing InlineErrorState instead of an indefinite "Loading...".
         const res = await fetchWithTimeout(url);
-        if (!res.ok) return { rows: [], cursor: null, is_degraded: false, freshness: null };
+        if (!res.ok) {
+          throw new Error(
+            `Projection ${opts.topic} failed: HTTP ${res.status} ${res.statusText}`.trim(),
+          );
+        }
         const body = (await res.json()) as unknown;
         return body as ProjectionApiEnvelope | T[];
       }

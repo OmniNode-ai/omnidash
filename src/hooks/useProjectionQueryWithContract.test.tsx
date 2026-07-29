@@ -2,6 +2,7 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { renderHook, waitFor } from '@testing-library/react';
 import { QueryClient } from '@tanstack/react-query';
 import { DataSourceTestProvider } from '@/test-utils/dataSourceTestProvider';
+import { HttpSnapshotSource, type ProtocolSnapshotSource } from '@/data-source';
 import { useProjectionQueryWithContract, validateContractParams } from './useProjectionQuery';
 import type { VisualizationContract } from '../../shared/types/visualization-contract';
 import type { ReactNode } from 'react';
@@ -52,9 +53,9 @@ describe('useProjectionQueryWithContract', () => {
     vi.restoreAllMocks();
   });
 
-  const makeWrapper = () =>
+  const makeWrapper = (source?: ProtocolSnapshotSource) =>
     ({ children }: { children: ReactNode }) => (
-      <DataSourceTestProvider client={queryClient}>{children}</DataSourceTestProvider>
+      <DataSourceTestProvider client={queryClient} source={source}>{children}</DataSourceTestProvider>
     );
 
   it('returns data with cursor, is_degraded, freshness from envelope', async () => {
@@ -117,5 +118,28 @@ describe('useProjectionQueryWithContract', () => {
         { wrapper: makeWrapper() },
       );
     }).toThrow('Undeclared query param: bad_param');
+  });
+
+  it('surfaces a failed filtered projection read instead of returning empty data', async () => {
+    (fetch as any).mockResolvedValueOnce({
+      ok: false,
+      status: 503,
+      statusText: 'Service Unavailable',
+    });
+    const source = new HttpSnapshotSource({ baseUrl: 'http://projection.test' });
+
+    const { result } = renderHook(
+      () =>
+        useProjectionQueryWithContract({
+          topic: testContract.topic,
+          contract: testContract,
+          params: { run_id: 'abc123' },
+        }),
+      { wrapper: makeWrapper(source) },
+    );
+
+    await waitFor(() => expect(result.current.error).not.toBeNull());
+    expect(result.current.data).toEqual([]);
+    expect(result.current.error?.message).toMatch(/HTTP 503 Service Unavailable/);
   });
 });

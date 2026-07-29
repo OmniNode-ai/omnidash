@@ -19,7 +19,11 @@ export class HttpSnapshotSource implements ProtocolSnapshotSource {
     // the caller's error state render) rather than hang this generator
     // forever. See fetch-with-timeout.ts.
     const res = await authedFetch(`${this.options.baseUrl}/projection/${encodeURIComponent(topic)}`);
-    if (!res.ok) return;
+    if (!res.ok) {
+      throw new Error(
+        `Projection ${topic} failed: HTTP ${res.status} ${res.statusText}`.trim(),
+      );
+    }
     const body = await res.json();
     // Projection API returns { rows: [...], ...envelope } — unwrap if present.
     // Plain array responses (file-based fixtures, legacy) are yielded directly.
