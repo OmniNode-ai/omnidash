@@ -184,10 +184,8 @@ projection_api:
       table: "generation_events"
       source_contract: "omnimarket/src/omnimarket/nodes/node_generation_consumer/contract.yaml"
       description: >
-        Canonical SEA node-generation completion artifact rows projected from
-        generation_events. The dashboard normalizes completion rows into its
-        pipeline log and renders contract/handler evidence only from these
-        projection-backed rows.
+        Canonical node-generation completion artifacts projected from
+        generation_events for correlated workflow inspection.
       columns:
         - "id"
         - "correlation_id"
@@ -203,6 +201,24 @@ projection_api:
         - "handler_source"
         - "timestamp"
         - "created_at"
+      order_by: "created_at DESC"
+      freshness_column: "created_at"
+      limit: 500
+    - topic: "onex.snapshot.projection.live-events.v1"
+      table: "live_events"
+      source_contract: "omnimarket/src/omnimarket/nodes/node_projection_live_events/contract.yaml"
+      description: >
+        Unified operator event stream projected from platform lifecycle,
+        delegation, and node-generation commands and outcomes.
+      columns:
+        - "event_id AS id"
+        - "type"
+        - "timestamp"
+        - "source"
+        - "topic"
+        - "summary"
+        - "payload"
+        - "correlation_id"
       order_by: "created_at DESC"
       freshness_column: "created_at"
       limit: 500
