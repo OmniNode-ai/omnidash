@@ -890,7 +890,7 @@ export class PostgresProjectionReader {
       message.includes('does not exist');
     if (isCompatibilityMiss) return;
 
-    console.error(`[PostgresProjectionReader] failed to read ${source} for delegation savings projection:`, err);
+    console.error(`[PostgresProjectionReader] failed to read optional projection source ${source}:`, err);
     throw err;
   }
 
@@ -923,23 +923,49 @@ export class PostgresProjectionReader {
     const events: Row[] = [];
 
     try {
-      const eventLogRes = await client.query(`
+      const liveEventsRes = await client.query(`
         SELECT
-          COALESCE(NULLIF(correlation_id, ''), event_id, 'bus-' || id::text) AS id,
-          COALESCE(NULLIF(event_type, ''), 'BUS_MESSAGE')                     AS type,
-          timestamp::text                                                      AS timestamp,
-          COALESCE(NULLIF(source, ''), 'event_bus')                           AS source,
-          COALESCE(NULLIF(topic, ''), 'event_bus_events')                     AS topic,
-          COALESCE(NULLIF(event_type, ''), 'BUS_MESSAGE')                     AS summary,
-          COALESCE(correlation_id, '')                                         AS correlation_id,
-          payload::text                                                        AS payload
-        FROM event_bus_events
+          COALESCE(NULLIF(event_id, ''), id::text) AS id,
+          COALESCE(NULLIF(type, ''), 'ACTION') AS type,
+          timestamp::text AS timestamp,
+          COALESCE(NULLIF(source, ''), 'platform') AS source,
+          COALESCE(NULLIF(topic, ''), 'unknown') AS topic,
+          COALESCE(NULLIF(summary, ''), topic, 'System event') AS summary,
+          COALESCE(correlation_id, '') AS correlation_id,
+          COALESCE(payload, '{}')::text AS payload
+        FROM live_events
+        ORDER BY created_at DESC
+        LIMIT 500
+      `);
+      events.push(...liveEventsRes.rows);
+    } catch (err) {
+      this.handleProjectionCompatibilityError(err, 'live_events');
+    }
+
+    try {
+      const logEntriesRes = await client.query(`
+        SELECT
+          'log-' || entry_id::text AS id,
+          CASE WHEN level IN ('ERROR', 'CRITICAL') THEN 'ERROR' ELSE 'LOG' END AS type,
+          timestamp::text AS timestamp,
+          COALESCE(NULLIF(node_name, ''), 'runtime') AS source,
+          'onex.snapshot.projection.log-entries.v1' AS topic,
+          COALESCE(NULLIF(message, ''), level, 'Runtime log') AS summary,
+          COALESCE(correlation_id, '') AS correlation_id,
+          jsonb_build_object(
+            'entry_id', entry_id,
+            'level', level,
+            'function_name', function_name,
+            'duration_ms', duration_ms,
+            'metadata', metadata
+          )::text AS payload
+        FROM log_entries
         ORDER BY timestamp DESC
         LIMIT 500
       `);
-      events.push(...eventLogRes.rows);
+      events.push(...logEntriesRes.rows);
     } catch (err) {
-      this.handleProjectionCompatibilityError(err, 'event_bus_events');
+      this.handleProjectionCompatibilityError(err, 'log_entries');
     }
 
     try {

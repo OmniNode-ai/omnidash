@@ -1,19 +1,9 @@
 import { useState } from 'react';
 import { Text } from '@/components/ui/typography';
 import { triggerDelegation } from '@/services/delegation-api';
+import delegateSkillTaskTypes from '@shared/contracts/delegation-task-types.json';
 
-const TASK_TYPES = [
-  'reasoning',
-  'code_review',
-  'code_generation',
-  'summarization',
-  'refactor',
-  'test',
-  'document',
-  'research',
-  'planning',
-  'complex_reasoning',
-] as const;
+const DELEGATE_SKILL_TASK_TYPES = Object.freeze([...delegateSkillTaskTypes]);
 
 type TriggerState =
   | { phase: 'idle' }
@@ -23,12 +13,14 @@ type TriggerState =
 
 export function DelegationTriggerPanel({
   onCorrelationId,
+  collapsible = true,
 }: {
   onCorrelationId?: (id: string) => void;
+  collapsible?: boolean;
 }) {
-  const [open, setOpen] = useState(false);
+  const [open, setOpen] = useState(!collapsible);
   const [prompt, setPrompt] = useState('');
-  const [taskType, setTaskType] = useState<string>('reasoning');
+  const [taskType, setTaskType] = useState('reasoning');
   const [state, setState] = useState<TriggerState>({ phase: 'idle' });
 
   async function handleSubmit() {
@@ -49,7 +41,7 @@ export function DelegationTriggerPanel({
     setPrompt('');
   }
 
-  if (!open) {
+  if (collapsible && !open) {
     return (
       <button
         type="button"
@@ -83,16 +75,18 @@ export function DelegationTriggerPanel({
         background: 'var(--panel-1)',
       }}
     >
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-        <Text as="span" size="sm" weight="semibold" color="primary">Trigger delegation</Text>
-        <button
-          type="button"
-          onClick={() => { setOpen(false); handleReset(); }}
-          style={{ border: 0, background: 'transparent', cursor: 'pointer', color: 'inherit' }}
-        >
-          <Text as="span" size="xs" color="tertiary">✕</Text>
-        </button>
-      </div>
+      {collapsible && (
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <Text as="span" size="sm" weight="semibold" color="primary">Trigger delegation</Text>
+          <button
+            type="button"
+            onClick={() => { setOpen(false); handleReset(); }}
+            style={{ border: 0, background: 'transparent', cursor: 'pointer', color: 'inherit' }}
+          >
+            <Text as="span" size="xs" color="tertiary">✕</Text>
+          </button>
+        </div>
+      )}
 
       {state.phase === 'accepted' ? (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
@@ -143,8 +137,10 @@ export function DelegationTriggerPanel({
                   cursor: 'pointer',
                 }}
               >
-                {TASK_TYPES.map((t) => (
-                  <option key={t} value={t}>{t}</option>
+                {DELEGATE_SKILL_TASK_TYPES.map((taskTypeOption) => (
+                  <option key={taskTypeOption} value={taskTypeOption}>
+                    {taskTypeOption.replaceAll('_', ' ')}
+                  </option>
                 ))}
               </select>
             </div>
@@ -196,7 +192,7 @@ export function DelegationTriggerPanel({
               </Text>
             </button>
             <Text as="span" size="xs" color="tertiary">
-              onex.cmd.omnimarket.delegate-skill.v1 → stability-test :18085
+              Results and failures appear in the System Event Stream.
             </Text>
           </div>
         </>

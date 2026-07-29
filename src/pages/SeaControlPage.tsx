@@ -320,8 +320,8 @@ export function SeaControlPage() {
 
   return (
     <EvPageShell
-      crumb="OmniDash · SEA Control Plane"
-      title="Self-Extending Agent"
+      crumb="OmniDash · Agent Operations"
+      title="Agent Workbench"
       sub="Node generation · materialize → invoke → register → replay — live projections"
       headRight={headRight}
     >

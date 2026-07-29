@@ -514,7 +514,7 @@ describe('PostgresProjectionReader', () => {
     expect(client.query).toHaveBeenCalledWith(expect.stringContaining("metadata ? 'mcp_tool_name'"));
   });
 
-  it('returns live event rows from bus and delegation runtime sources', async () => {
+  it('returns one system event stream across live events, logs, delegation, and generation', async () => {
     const client = {
       query: vi.fn()
         .mockResolvedValueOnce({
@@ -531,6 +531,18 @@ describe('PostgresProjectionReader', () => {
         })
         .mockResolvedValueOnce({
           rows: [{
+            id: 'log-runtime-1',
+            type: 'LOG',
+            timestamp: '2026-05-20T12:00:30.000Z',
+            source: 'node_delegate_skill_orchestrator',
+            topic: 'onex.snapshot.projection.log-entries.v1',
+            summary: 'Dispatch started',
+            correlation_id: 'corr-runtime',
+            payload: '{"level":"INFO"}',
+          }],
+        })
+        .mockResolvedValueOnce({
+          rows: [{
             id: 'delegation-corr-runtime',
             type: 'DELEGATION_COMPLETED',
             timestamp: '2026-05-20T12:01:00.000Z',
@@ -541,26 +553,52 @@ describe('PostgresProjectionReader', () => {
             payload: '{"correlation_id":"corr-runtime"}',
           }],
         })
-        .mockResolvedValueOnce({ rows: [] }),
+        .mockResolvedValueOnce({
+          rows: [{
+            id: 'generation-corr-gen',
+            type: 'NODE_GENERATION_COMPLETED',
+            timestamp: '2026-05-20T12:02:00.000Z',
+            source: 'node_generation_consumer',
+            topic: 'onex.evt.node-generation.completed.v1',
+            summary: 'Completed node generation · validator',
+            correlation_id: 'corr-gen',
+            payload: '{"contract_passed":true}',
+          }],
+        }),
       release: vi.fn(),
     };
     getMockPool().connect.mockResolvedValue(client);
 
     const result = await reader.readProjection('onex.snapshot.projection.live-events.v1');
 
-    expect(result.rows).toHaveLength(2);
+    expect(result.rows).toHaveLength(4);
     expect(result.rows[0]).toMatchObject({
+      id: 'generation-corr-gen',
+      type: 'NODE_GENERATION_COMPLETED',
+      source: 'node_generation_consumer',
+      correlation_id: 'corr-gen',
+    });
+    expect(result.rows[1]).toMatchObject({
       id: 'delegation-corr-runtime',
       type: 'DELEGATION_COMPLETED',
       source: 'delegation_runtime',
       correlation_id: 'corr-runtime',
     });
-    expect(result.rows[1]).toMatchObject({
+    expect(result.rows[2]).toMatchObject({
+      id: 'log-runtime-1',
+      type: 'LOG',
+      source: 'node_delegate_skill_orchestrator',
+      correlation_id: 'corr-runtime',
+    });
+    expect(result.rows[3]).toMatchObject({
       id: 'corr-bus',
       type: 'ROUTING',
       source: 'omnimarket',
       correlation_id: 'corr-bus',
     });
+    expect(client.query).toHaveBeenCalledWith(expect.stringContaining('FROM live_events'));
+    expect(client.query).toHaveBeenCalledWith(expect.stringContaining('FROM log_entries'));
+    expect(client.query).not.toHaveBeenCalledWith(expect.stringContaining('FROM event_bus_events'));
   });
 
   it('returns canonical node-generation completed rows from generation_events', async () => {
@@ -669,7 +707,7 @@ describe('PostgresProjectionReader', () => {
         "SELECT set_config('app.tenant_id', $1, false)",
         ['tenant-xyz'],
       );
-      // GUC set once at checkout — all sub-queries (event_log, delegation, generation) are covered
+      // GUC set once at checkout — all sub-queries (live events, logs, delegation, generation) are covered
       const calls = client.query.mock.calls as [string, unknown[]][];
       const setConfigCount = calls.filter(([sql]) => sql.includes('set_config')).length;
       expect(setConfigCount).toBe(1);

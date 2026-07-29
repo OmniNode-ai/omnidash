@@ -87,7 +87,7 @@ function NowOnBus({ latest, fresh }: { latest: BusCorrelation | null; fresh: boo
     <div className="ev-nowbus">
       <span className={`live-pill${fresh ? '' : ' stale'}`}><span className="pulse" />{fresh ? 'Live' : 'Stale'}</span>
       <span className={`dot ${latest.passed ? 'ok' : 'fail'}`} />
-      <span className="ev-nowbus-title">{latest.source === 'sea' ? 'SEA generation' : 'Delegation decision'} · {latest.subject}</span>
+      <span className="ev-nowbus-title">{latest.source === 'sea' ? 'Node generation' : 'Delegation decision'} · {latest.subject}</span>
       <span className="mono dim3">{latest.source === 'sea' ? 'node-generation-completed.v1' : 'delegation.decisions.v1'}</span>
       <span className="mono dim3 ev-nowbus-cid">{shortId(latest.id)}</span>
     </div>
@@ -108,7 +108,7 @@ interface HealthRow {
 function CorrelationTable({ correlations }: { correlations: BusCorrelation[] }) {
   const cols: DataColumn<BusCorrelation>[] = [
     { key: 'id', label: 'Correlation', width: 'minmax(0,1.5fr)', render: (r) => <span className={`mono ${r.source === 'sea' ? 'c-amber' : 'c-blue'}`}>{shortId(r.id)}</span> },
-    { key: 'source', label: 'Source', width: 'minmax(0,0.9fr)', render: (r) => <span className={`lane-tag ${r.source}`}>{r.source === 'sea' ? 'SEA' : 'delegation'}</span> },
+    { key: 'source', label: 'Source', width: 'minmax(0,0.9fr)', render: (r) => <span className={`lane-tag ${r.source}`}>{r.source === 'sea' ? 'node generation' : 'delegation'}</span> },
     { key: 'subject', label: 'Subject', grow: true, truncate: true, render: (r) => <span className="mono">{r.subject}</span> },
     { key: 'model', label: 'Model', truncate: true, width: 'minmax(0,1.6fr)', render: (r) => <span className="mono dim">{r.model.length > 20 ? `${r.model.slice(0, 18)}…` : r.model}</span> },
     { key: 'state', label: 'State', width: 'minmax(0,0.9fr)', render: (r) => <StateBadge passed={r.passed} /> },
@@ -119,7 +119,7 @@ function CorrelationTable({ correlations }: { correlations: BusCorrelation[] }) 
   return (
     <Panel
       title="CORRELATIONS ON THE BUS"
-      sub="every correlation_id · SEA + delegation lifecycles"
+      sub="every correlation_id · node generation + delegation lifecycles"
       pad={false}
       right={<span className="note">{correlations.length} correlations · newest tracks the bus</span>}
     >
@@ -200,7 +200,7 @@ export function EventBusPage() {
   }
   if (genQ.data) {
     health.push({
-      name: 'SEA node generations',
+      name: 'Node generations',
       topic: 'onex.evt.omnimarket.node-generation-completed.v1',
       rowCount: genQ.data.rowCount,
       freshness: genQ.data.freshness,
@@ -230,9 +230,9 @@ export function EventBusPage() {
       headRight={headRight}
     >
       <div className="grid cols-4">
-        <KPI label="Correlations" value={correlations.length} accent sub="SEA + delegation lifecycles" />
+        <KPI label="Correlations" value={correlations.length} accent sub="node generation + delegation lifecycles" />
         <KPI label="Delegation rows" value={decisionsQ.data ? decisionsQ.data.rowCount : '—'} sub="delegation.decisions.v1" />
-        <KPI label="SEA rows" value={genQ.data ? genQ.data.rowCount : '—'} sub="node-generation-completed.v1" />
+        <KPI label="Generation rows" value={genQ.data ? genQ.data.rowCount : '—'} sub="node-generation-completed.v1" />
         <KPI label="WS invalidation" value={<span className="ev-kpi-sm c-amber">HTTP</span>} sub="state flows over the bus" />
       </div>
 
@@ -242,7 +242,7 @@ export function EventBusPage() {
         <Panel title="CORRELATIONS ON THE BUS"><EvEmpty title="Loading…" /></Panel>
       ) : correlations.length === 0 ? (
         <Panel title="CORRELATIONS ON THE BUS">
-          <EvEmpty title="No correlations on the bus" reason={decisionsQ.data?.degradedReason ?? genQ.data?.degradedReason} note="Neither delegation nor SEA projections returned rows." />
+          <EvEmpty title="No correlations on the bus" reason={decisionsQ.data?.degradedReason ?? genQ.data?.degradedReason} note="Neither delegation nor node-generation projections returned rows." />
         </Panel>
       ) : (
         <CorrelationTable correlations={correlations} />

@@ -4,7 +4,7 @@ export const delegationEvidenceTemplate: DashboardDefinition = {
   id: 'template-delegation-evidence',
   schemaVersion: '1.0',
   name: 'Delegation Evidence',
-  description: 'SEA-style market delegation proof surface organized by run, projection status, event chain, topology, artifacts, and metric panels.',
+  description: 'Market delegation proof surface organized by run, projection status, event chain, topology, artifacts, and metric panels.',
   layout: [
     {
       i: 'tpl-delegation-control-plane',

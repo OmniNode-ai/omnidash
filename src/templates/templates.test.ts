@@ -38,16 +38,19 @@ describe('Dashboard Templates', () => {
     expect(tpl!.layout[0].componentName).toBe('delegation-control-plane');
   });
 
-  it('SEA Demo template has the live demo widgets in dashboard order', () => {
-    const tpl = DASHBOARD_TEMPLATES.find((t) => t.name === 'SEA Demo');
+  it('Agent Workbench keeps actions separate and has one shared event stream', () => {
+    const tpl = DASHBOARD_TEMPLATES.find((t) => t.name === 'Agent Workbench');
     expect(tpl).toBeDefined();
     expect(tpl!.layout.map((l) => l.componentName)).toEqual([
       'control-plane',
+      'delegate-task',
+      'live-event-stream',
       'delegation-token-usage',
     ]);
+    expect(tpl!.layout.filter((item) => item.componentName === 'live-event-stream')).toHaveLength(1);
   });
 
-  it('repairs an empty persisted SEA Demo dashboard from the template', () => {
+  it('repairs an empty persisted workbench from the template', () => {
     const repaired = repairSeaDemoDashboard({
       ...seaDemoTemplate,
       id: 'dash-sea-demo',
@@ -57,8 +60,25 @@ describe('Dashboard Templates', () => {
     expect(repaired.id).toBe('dash-sea-demo');
     expect(repaired.layout.map((l) => l.componentName)).toEqual([
       'control-plane',
+      'delegate-task',
+      'live-event-stream',
       'delegation-token-usage',
     ]);
+  });
+
+  it('migrates the legacy SEA Demo name and layout to Agent Workbench', () => {
+    const repaired = repairSeaDemoDashboard({
+      ...seaDemoTemplate,
+      id: 'legacy-sea-demo',
+      name: 'SEA Demo',
+      layout: [
+        { i: 'legacy-control', componentName: 'control-plane', componentVersion: '1.0.0', x: 0, y: 0, w: 6, h: 8, config: {} },
+        { i: 'legacy-tokens', componentName: 'delegation-token-usage', componentVersion: '1.0.0', x: 6, y: 0, w: 6, h: 8, config: {} },
+      ],
+    });
+
+    expect(repaired.name).toBe('Agent Workbench');
+    expect(repaired.layout).toEqual(seaDemoTemplate.layout);
   });
 
   it('all templates pass validation', () => {

@@ -3,7 +3,7 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { QueryClient } from '@tanstack/react-query';
 import { DataSourceTestProvider } from '@/test-utils/dataSourceTestProvider';
 import { mockFetchWithItems } from '@/test-utils/mockFetch';
-import LiveEventStreamWidget from './LiveEventStreamWidget';
+import LiveEventStreamWidget, { SYSTEM_EVENT_REFRESH_INTERVAL_MS } from './LiveEventStreamWidget';
 
 const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } });
 
@@ -13,6 +13,10 @@ describe('LiveEventStreamWidget', () => {
     vi.stubGlobal('fetch', vi.fn());
   });
   afterEach(() => vi.restoreAllMocks());
+
+  it('uses a continuous two-second projection refresh cadence', () => {
+    expect(SYSTEM_EVENT_REFRESH_INTERVAL_MS).toBe(2_000);
+  });
 
   it('shows loading state initially', () => {
     (fetch as ReturnType<typeof vi.fn>).mockReturnValue(new Promise(() => {}));
@@ -74,7 +78,7 @@ describe('LiveEventStreamWidget', () => {
         <LiveEventStreamWidget />
       </DataSourceTestProvider>,
     );
-    expect(await screen.findByText('No live events')).toBeInTheDocument();
+    expect(await screen.findByText('No system events')).toBeInTheDocument();
   });
 
   it('caps displayed events at 100', async () => {

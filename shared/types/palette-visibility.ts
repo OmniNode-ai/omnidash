@@ -50,7 +50,9 @@ export const PALETTE_CLASSIFICATION: Record<string, PaletteClassification> = {
   'delegation-quality-gate': { paletteVisibility: 'visible', authorityLabel: 'projection-backed', probe: 'delegation.quality-gate.v1=200/1r' },
   'delegation-token-usage': { paletteVisibility: 'visible', authorityLabel: 'projection-backed', probe: 'delegation.token-usage.v1=200/1r' },
   'delegation-control-plane': { paletteVisibility: 'visible', authorityLabel: 'projection-backed', probe: 'delegation.{summary,decisions,savings,model-routing,quality-gate,token-usage}=200; decisions=36r' },
-  'control-plane': { paletteVisibility: 'visible', authorityLabel: 'projection-backed', probe: 'node-generation-completed.v1=200/134r' },
+  'delegate-task': { paletteVisibility: 'visible', authorityLabel: 'projection-backed', probe: 'typed delegate-skill command; lifecycle truth rendered by live-events.v1' },
+  'control-plane': { paletteVisibility: 'visible', authorityLabel: 'projection-backed', probe: 'typed node-generation command; lifecycle truth rendered by live-events.v1' },
+  'live-event-stream': { paletteVisibility: 'visible', authorityLabel: 'projection-backed', probe: 'live-events.v1 contract exposure over authoritative live_events projection' },
 
   // --- VISIBLE / degraded (200 empty on the single backend — truthful empty state) ---
   'evidence-pipeline-flow': { paletteVisibility: 'visible', authorityLabel: 'degraded', probe: 'evidence_pipeline.{stages,correlations,readiness,live_events}=200/0r' },
@@ -104,7 +106,6 @@ export const PALETTE_CLASSIFICATION: Record<string, PaletteClassification> = {
   'readiness-gate': { paletteVisibility: 'hidden', authorityLabel: 'hidden', probe: 'overnight.v1=404' },
   'intent-distribution': { paletteVisibility: 'hidden', authorityLabel: 'hidden', probe: 'intent-classification.v1=404' },
   'session-timeline': { paletteVisibility: 'hidden', authorityLabel: 'hidden', probe: 'intent-classification.v1=404' },
-  'live-event-stream': { paletteVisibility: 'hidden', authorityLabel: 'hidden', probe: 'live-events.v1=404' },
   'routing-decision': { paletteVisibility: 'hidden', authorityLabel: 'hidden', probe: 'routing-decision.v1=404' },
   'receipt-gate': { paletteVisibility: 'hidden', authorityLabel: 'hidden', probe: 'receipt-gate.v1=404' },
   'cost-savings-overview': { paletteVisibility: 'hidden', authorityLabel: 'hidden', probe: 'cost.savings-overview.v1=404' },

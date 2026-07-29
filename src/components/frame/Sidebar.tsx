@@ -296,7 +296,7 @@ export function Sidebar() {
             { page: 'delegation-evidence' as AppPage, label: 'Delegation Evidence', icon: <GitBranch size={13} /> },
             { page: 'event-bus' as AppPage, label: 'Event Bus', icon: <Radio size={13} /> },
             { page: 'experiments' as AppPage, label: 'Experimentation', icon: <FlaskConical size={13} /> },
-            { page: 'sea-control' as AppPage, label: 'SEA Control Plane', icon: <Sparkles size={13} /> },
+            { page: 'sea-control' as AppPage, label: 'Agent Workbench', icon: <Sparkles size={13} /> },
           ] as const
         ).map(({ page, label, icon }) => (
           <div
