@@ -148,5 +148,6 @@ describe('PromptInput', () => {
   it('keeps submit disabled for empty input when disabled is explicitly false', () => {
     render(<PromptInput onSubmit={vi.fn()} disabled={false} />);
     expect(screen.getByRole('button', { name: /generate/i })).toBeDisabled();
+    expect(screen.getByRole('button', { name: /generate/i })).toHaveClass('btn', 'primary');
   });
 });

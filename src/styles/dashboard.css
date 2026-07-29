@@ -78,12 +78,21 @@
   display: grid;
   grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
   gap: var(--row-gap);
-  align-items: flex-start;
+  align-items: stretch;
   width: 100%;
 }
 
 .dash-col-item {
   min-width: 0;
+  height: 100%;
+}
+
+/* Paired dashboard widgets share a grid row. Stretch both cards to the row's
+   tallest content so a compact action never leaves a false empty hole beside
+   a richer action or telemetry panel. */
+.dash-col-item .widget {
+  box-sizing: border-box;
+  height: 100%;
 }
 
 /* Append drop-slot spans both columns when visible. */

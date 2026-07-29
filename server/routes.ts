@@ -9,11 +9,13 @@ import {
   invokeRuntimeCommand,
   RuntimeEdgeError,
 } from './runtime-skill-client.js';
-import delegateSkillTaskTypes from '../shared/contracts/delegation-task-types.json';
+import delegateSkillTaskTypeContract from '../shared/contracts/delegation-task-types.json';
 
 const router = Router();
 
-const DELEGATE_SKILL_TASK_TYPES = Object.freeze([...delegateSkillTaskTypes]);
+const DELEGATE_SKILL_TASK_TYPES = Object.freeze(
+  delegateSkillTaskTypeContract.task_types.map((taskType) => taskType.id),
+);
 const DELEGATE_SKILL_TASK_TYPE_SET = new Set<string>(DELEGATE_SKILL_TASK_TYPES);
 
 const EVIDENCE_PIPELINE_TOPICS = {

@@ -1,0 +1,24 @@
+.workbench-action-button {
+  box-sizing: border-box;
+  justify-content: center;
+  min-width: 96px;
+  height: 42px;
+  font-family: var(--font-sans);
+}
+
+.workbench-action-button:disabled {
+  cursor: not-allowed;
+  opacity: 0.45;
+  transform: none;
+}
+
+.workbench-delegation-fields {
+  display: flex;
+  gap: 8px;
+}
+
+@media (max-width: 640px) {
+  .workbench-delegation-fields {
+    flex-direction: column;
+  }
+}

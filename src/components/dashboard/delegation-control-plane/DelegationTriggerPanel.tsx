@@ -1,9 +1,20 @@
 import { useState } from 'react';
 import { Text } from '@/components/ui/typography';
 import { triggerDelegation } from '@/services/delegation-api';
-import delegateSkillTaskTypes from '@shared/contracts/delegation-task-types.json';
+import delegateSkillTaskTypeContract from '@shared/contracts/delegation-task-types.json';
+import '../workbench-actions.css';
 
-const DELEGATE_SKILL_TASK_TYPES = Object.freeze([...delegateSkillTaskTypes]);
+const DELEGATE_SKILL_TASK_TYPES = Object.freeze([...delegateSkillTaskTypeContract.task_types]);
+
+function taskTypeDefinition(taskType: string) {
+  const definition = DELEGATE_SKILL_TASK_TYPES.find((candidate) => candidate.id === taskType);
+  if (!definition) {
+    throw new Error(`Delegation task type "${taskType}" is missing from the shared task-type contract.`);
+  }
+  return definition;
+}
+
+const DEFAULT_TASK_TYPE = taskTypeDefinition('reasoning');
 
 type TriggerState =
   | { phase: 'idle' }
@@ -22,8 +33,9 @@ export function DelegationTriggerPanel({
 }) {
   const [open, setOpen] = useState(!collapsible);
   const [prompt, setPrompt] = useState(initialPrompt);
-  const [taskType, setTaskType] = useState('reasoning');
+  const [taskType, setTaskType] = useState(DEFAULT_TASK_TYPE.id);
   const [state, setState] = useState<TriggerState>({ phase: 'idle' });
+  const selectedTaskType = taskTypeDefinition(taskType);
 
   async function handleSubmit() {
     const trimmed = prompt.trim();
@@ -131,13 +143,17 @@ export function DelegationTriggerPanel({
         </div>
       ) : (
         <>
-          <div style={{ display: 'flex', gap: 8 }}>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 4, flex: '0 0 140px' }}>
-              <Text as="label" size="xs" color="tertiary">Task type</Text>
+          <div className="workbench-delegation-fields">
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 4, flex: '0 0 180px' }}>
+              <label htmlFor="delegate-task-type">
+                <Text as="span" size="xs" color="tertiary">Task type</Text>
+              </label>
               <select
+                id="delegate-task-type"
                 value={taskType}
                 onChange={(e) => setTaskType(e.target.value)}
                 disabled={state.phase === 'submitting'}
+                aria-describedby="delegate-task-type-description"
                 style={{
                   border: '1px solid var(--line)',
                   borderRadius: 6,
@@ -148,18 +164,21 @@ export function DelegationTriggerPanel({
                 }}
               >
                 {DELEGATE_SKILL_TASK_TYPES.map((taskTypeOption) => (
-                  <option key={taskTypeOption} value={taskTypeOption}>
-                    {taskTypeOption.replaceAll('_', ' ')}
+                  <option key={taskTypeOption.id} value={taskTypeOption.id}>
+                    {taskTypeOption.label}
                   </option>
                 ))}
               </select>
             </div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 4, flex: 1 }}>
-              <Text as="label" size="xs" color="tertiary">Prompt</Text>
+              <label htmlFor="delegate-task-prompt">
+                <Text as="span" size="xs" color="tertiary">Prompt</Text>
+              </label>
               <textarea
+                id="delegate-task-prompt"
                 value={prompt}
                 onChange={(e) => setPrompt(e.target.value)}
-                placeholder="Describe the task to delegate…"
+                placeholder={selectedTaskType.prompt_placeholder}
                 disabled={state.phase === 'submitting'}
                 rows={3}
                 style={{
@@ -176,6 +195,16 @@ export function DelegationTriggerPanel({
             </div>
           </div>
 
+          <Text
+            id="delegate-task-type-description"
+            as="div"
+            size="xs"
+            color="secondary"
+            aria-live="polite"
+          >
+            {selectedTaskType.description}
+          </Text>
+
           {state.phase === 'error' && (
             <Text as="div" size="xs" color="bad">
               {state.message}
@@ -187,19 +216,10 @@ export function DelegationTriggerPanel({
               type="button"
               onClick={() => void handleSubmit()}
               disabled={state.phase === 'submitting' || !prompt.trim()}
-              style={{
-                border: '1px solid var(--line)',
-                borderRadius: 6,
-                padding: '5px 14px',
-                background: state.phase === 'submitting' ? 'var(--panel-2)' : 'var(--panel-3)',
-                color: 'inherit',
-                cursor: state.phase === 'submitting' || !prompt.trim() ? 'not-allowed' : 'pointer',
-                opacity: !prompt.trim() ? 0.5 : 1,
-              }}
+              className="btn primary workbench-action-button"
+              aria-label="Delegate"
             >
-              <Text as="span" size="xs" color="primary">
-                {state.phase === 'submitting' ? 'Dispatching…' : 'Dispatch'}
-              </Text>
+              {state.phase === 'submitting' ? 'Delegating…' : 'Delegate'}
             </button>
             <Text as="span" size="xs" color="tertiary">
               Results and failures appear in the System Event Stream.

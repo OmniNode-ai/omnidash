@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useEffect, useState, useMemo } from 'react';
 import { Search } from 'lucide-react';
 import { ComponentWrapper } from '../ComponentWrapper';
 import { useProjectionQuery } from '@/hooks/useProjectionQuery';
@@ -22,6 +22,19 @@ interface LiveEvent {
 }
 
 export const SYSTEM_EVENT_REFRESH_INTERVAL_MS = 2_000;
+export const LIVE_EVENT_FILTERS_STORAGE_KEY = 'omnidash:system-event-stream:filters:v1';
+
+interface LiveEventFilters {
+  query: string;
+  eventType: string;
+  includeHeartbeats: boolean;
+}
+
+const DEFAULT_FILTERS: LiveEventFilters = {
+  query: '',
+  eventType: 'all',
+  includeHeartbeats: false,
+};
 
 // ── Helpers ─────────────────────────────────────────────────────────
 
@@ -67,6 +80,50 @@ function matchesEvent(ev: LiveEvent, query: string): boolean {
     ev.correlation_id,
     ev.payload,
   ].some((value) => String(value ?? '').toLowerCase().includes(q));
+}
+
+function isHeartbeatEvent(ev: LiveEvent): boolean {
+  return [ev.type, ev.source, ev.topic, ev.summary]
+    .some((value) => String(value ?? '').toLowerCase().includes('heartbeat'));
+}
+
+function browserStorage(): Storage | null {
+  try {
+    if (typeof window === 'undefined' || typeof window.localStorage?.getItem !== 'function') {
+      return null;
+    }
+    return window.localStorage;
+  } catch {
+    return null;
+  }
+}
+
+function loadFilters(): LiveEventFilters {
+  const storage = browserStorage();
+  if (!storage) return DEFAULT_FILTERS;
+  try {
+    const parsed: unknown = JSON.parse(storage.getItem(LIVE_EVENT_FILTERS_STORAGE_KEY) ?? 'null');
+    if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) return DEFAULT_FILTERS;
+    const record = parsed as Record<string, unknown>;
+    return {
+      query: typeof record.query === 'string' ? record.query : DEFAULT_FILTERS.query,
+      eventType: typeof record.eventType === 'string' ? record.eventType : DEFAULT_FILTERS.eventType,
+      includeHeartbeats: typeof record.includeHeartbeats === 'boolean'
+        ? record.includeHeartbeats
+        : DEFAULT_FILTERS.includeHeartbeats,
+    };
+  } catch {
+    return DEFAULT_FILTERS;
+  }
+}
+
+function saveFilters(filters: LiveEventFilters): void {
+  try {
+    browserStorage()?.setItem(LIVE_EVENT_FILTERS_STORAGE_KEY, JSON.stringify(filters));
+  } catch {
+    // Persistence is a convenience. The live stream remains usable when storage
+    // is unavailable (private mode, policy restrictions, or exhausted quota).
+  }
 }
 
 // ── Bus column header ───────────────────────────────────────────────
@@ -119,8 +176,12 @@ export default function LiveEventStreamWidget() {
     queryKey: ['live-event-stream'],
     refetchInterval: SYSTEM_EVENT_REFRESH_INTERVAL_MS,
   });
-  const [query, setQuery] = useState('');
+  const [filters, setFilters] = useState<LiveEventFilters>(loadFilters);
   const dataSourceMode = useDataSourceMode();
+
+  useEffect(() => {
+    saveFilters(filters);
+  }, [filters]);
 
   const events = useMemo(() => {
     if (!data || data.length === 0) return [];
@@ -129,12 +190,22 @@ export default function LiveEventStreamWidget() {
       .slice(0, 100);
   }, [data]);
 
-  const filteredEvents = useMemo(
-    () => events.filter((ev) => matchesEvent(ev, query)),
-    [events, query],
+  const eventTypes = useMemo(() => {
+    const types = new Set(events.map((event) => event.type).filter(Boolean));
+    if (filters.eventType !== 'all') types.add(filters.eventType);
+    return [...types].sort((left, right) => left.localeCompare(right));
+  }, [events, filters.eventType]);
+  const heartbeatCount = useMemo(
+    () => events.filter(isHeartbeatEvent).length,
+    [events],
   );
-  const sourceCount = new Set(events.map((ev) => ev.source)).size;
-  const newest = events[0];
+  const filteredEvents = useMemo(() => events.filter((event) => {
+    if (!filters.includeHeartbeats && isHeartbeatEvent(event)) return false;
+    if (filters.eventType !== 'all' && event.type !== filters.eventType) return false;
+    return matchesEvent(event, filters.query);
+  }), [events, filters]);
+  const sourceCount = new Set(filteredEvents.map((ev) => ev.source)).size;
+  const newest = filteredEvents[0];
   const newestLabel = newest ? formatTimestamp(newest.timestamp) : '--:--:--';
   const ROW_TEMPLATE = '72px 128px 150px minmax(150px, 1fr) 170px minmax(260px, 2fr)';
 
@@ -151,7 +222,7 @@ export default function LiveEventStreamWidget() {
       headerExtra={
         <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>
           <Text size="xs" color="tertiary" family="mono">
-            {events.length} events · {sourceCount} sources · auto-updating
+            {filteredEvents.length} visible · {sourceCount} sources · auto-updating
           </Text>
           <span style={{ width: 8, height: 8, borderRadius: '50%', background: 'var(--good)', boxShadow: '0 0 0 3px rgba(21,128,61,.18)' }} />
         </span>
@@ -178,32 +249,80 @@ export default function LiveEventStreamWidget() {
           ))}
         </div>
 
-        <div
-          style={{
-            display: 'flex',
-            alignItems: 'center',
-            gap: 8,
-            padding: '7px 10px',
-            border: '1px solid var(--line)',
-            borderRadius: 6,
-            background: 'var(--panel-2)',
-          }}
-        >
-          <Search size={14} style={{ color: 'var(--text-tertiary)', flexShrink: 0 }} />
-          <input
-            type="text"
-            value={query}
-            onChange={(e) => setQuery(e.target.value)}
-            placeholder="Filter by type, source, topic, correlation, payload"
-            aria-label="Filter live event messages"
-            className="text-input-md"
+        <div style={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: 8 }}>
+          <div
             style={{
               flex: 1,
-              border: 0,
-              outline: 0,
-              background: 'transparent',
+              minWidth: 280,
+              display: 'flex',
+              alignItems: 'center',
+              gap: 8,
+              padding: '7px 10px',
+              border: '1px solid var(--line)',
+              borderRadius: 6,
+              background: 'var(--panel-2)',
             }}
-          />
+          >
+            <Search size={14} style={{ color: 'var(--text-tertiary)', flexShrink: 0 }} />
+            <input
+              type="text"
+              value={filters.query}
+              onChange={(e) => setFilters((current) => ({ ...current, query: e.target.value }))}
+              placeholder="Filter source, topic, correlation, or payload"
+              aria-label="Filter live event messages"
+              className="text-input-md"
+              style={{
+                flex: 1,
+                border: 0,
+                outline: 0,
+                background: 'transparent',
+              }}
+            />
+          </div>
+          <select
+            value={filters.eventType}
+            onChange={(e) => setFilters((current) => ({ ...current, eventType: e.target.value }))}
+            aria-label="Filter by event type"
+            className="text-input-md"
+            style={{
+              minHeight: 34,
+              padding: '6px 10px',
+              border: '1px solid var(--line)',
+              borderRadius: 6,
+              background: 'var(--panel-2)',
+              color: 'inherit',
+            }}
+          >
+            <option value="all">All event types</option>
+            {eventTypes.map((eventType) => (
+              <option key={eventType} value={eventType}>{eventType}</option>
+            ))}
+          </select>
+          <label
+            style={{
+              minHeight: 34,
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: 7,
+              padding: '6px 10px',
+              border: '1px solid var(--line)',
+              borderRadius: 6,
+              background: 'var(--panel-2)',
+              cursor: 'pointer',
+            }}
+          >
+            <input
+              type="checkbox"
+              checked={filters.includeHeartbeats}
+              onChange={(e) => setFilters((current) => ({ ...current, includeHeartbeats: e.target.checked }))}
+            />
+            <Text as="span" size="xs" color="secondary">Include heartbeats</Text>
+          </label>
+          {!filters.includeHeartbeats && heartbeatCount > 0 && (
+            <Text as="span" size="xs" color="tertiary" family="mono">
+              {heartbeatCount.toLocaleString()} {heartbeatCount === 1 ? 'heartbeat' : 'heartbeats'} hidden
+            </Text>
+          )}
         </div>
 
         <div style={{ border: '1px solid var(--line)', borderRadius: 6, overflow: 'hidden', background: 'var(--panel)' }}>
@@ -212,7 +331,7 @@ export default function LiveEventStreamWidget() {
           <div style={{ maxHeight: 520, overflowY: 'auto', display: 'flex', flexDirection: 'column' }}>
             {filteredEvents.map((e, i) => {
               const kind = nodeKindForEvent(e);
-              const isNewest = i === 0 && query.trim() === '';
+              const isNewest = i === 0;
               const payload = prettyPayload(e.payload);
               return (
                 <details
