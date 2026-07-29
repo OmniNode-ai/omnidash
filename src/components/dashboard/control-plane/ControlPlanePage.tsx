@@ -4,6 +4,7 @@ import { ComponentWrapper } from '../ComponentWrapper';
 import { PromptInput } from './PromptInput';
 import { resolveCommandBaseUrl } from '@/data-source/projection-base-url';
 import { useEffectiveDataSource } from '@/data-source/useDataSourceOverride';
+import { isLiveDataSource } from '@/hooks/useDataSourceMode';
 import { submitGeneration } from '@/services/event-dash-api';
 
 type PromptSubmitState =
@@ -20,7 +21,7 @@ export default function ControlPlanePage({
   const queryClient = useQueryClient();
   const [submitState, setSubmitState] = useState<PromptSubmitState>({ phase: 'idle' });
   const mode = useEffectiveDataSource().mode;
-  const isLive = mode === 'http' || mode === 'postgres';
+  const isLive = isLiveDataSource(mode);
 
   const refreshSystemEventStream = useCallback(() => {
     void queryClient.invalidateQueries({ queryKey: ['live-event-stream'] });

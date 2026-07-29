@@ -14,12 +14,14 @@ type TriggerState =
 export function DelegationTriggerPanel({
   onCorrelationId,
   collapsible = true,
+  initialPrompt = '',
 }: {
   onCorrelationId?: (id: string) => void;
   collapsible?: boolean;
+  initialPrompt?: string;
 }) {
   const [open, setOpen] = useState(!collapsible);
-  const [prompt, setPrompt] = useState('');
+  const [prompt, setPrompt] = useState(initialPrompt);
   const [taskType, setTaskType] = useState('reasoning');
   const [state, setState] = useState<TriggerState>({ phase: 'idle' });
 
@@ -80,8 +82,16 @@ export function DelegationTriggerPanel({
           <Text as="span" size="sm" weight="semibold" color="primary">Trigger delegation</Text>
           <button
             type="button"
+            aria-label="Close delegation form"
+            disabled={state.phase === 'submitting'}
             onClick={() => { setOpen(false); handleReset(); }}
-            style={{ border: 0, background: 'transparent', cursor: 'pointer', color: 'inherit' }}
+            style={{
+              border: 0,
+              background: 'transparent',
+              cursor: state.phase === 'submitting' ? 'not-allowed' : 'pointer',
+              color: 'inherit',
+              opacity: state.phase === 'submitting' ? 0.5 : 1,
+            }}
           >
             <Text as="span" size="xs" color="tertiary">✕</Text>
           </button>

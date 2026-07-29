@@ -9,4 +9,16 @@ const meta = {
 export default meta;
 type Story = StoryObj<typeof meta>;
 
-export const Default: Story = {};
+export const Empty: Story = {
+  args: { config: {} },
+};
+
+export const Populated: Story = {
+  args: {
+    config: {
+      initialPrompt: 'Review the payment workflow and return its failing correlation IDs.',
+    },
+  },
+};
+
+export const Default: Story = Empty;

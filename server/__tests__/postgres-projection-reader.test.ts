@@ -601,6 +601,25 @@ describe('PostgresProjectionReader', () => {
     expect(client.query).not.toHaveBeenCalledWith(expect.stringContaining('FROM event_bus_events'));
   });
 
+  it('starts every system event source read without waiting for another source', async () => {
+    const resolvers: Array<(value: { rows: Record<string, unknown>[] }) => void> = [];
+    const client = {
+      query: vi.fn(() => new Promise<{ rows: Record<string, unknown>[] }>((resolve) => {
+        resolvers.push(resolve);
+      })),
+      release: vi.fn(),
+    };
+    getMockPool().connect.mockResolvedValue(client);
+
+    const read = reader.readProjection('onex.snapshot.projection.live-events.v1');
+    await vi.waitFor(() => expect(client.query).toHaveBeenCalledTimes(4));
+
+    for (const resolve of resolvers) resolve({ rows: [] });
+    const result = await read;
+
+    expect(result.rows).toEqual([]);
+  });
+
   it('returns canonical node-generation completed rows from generation_events', async () => {
     const fakeRow = {
       id: 'gen-1',
