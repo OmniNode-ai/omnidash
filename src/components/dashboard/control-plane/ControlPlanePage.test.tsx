@@ -109,7 +109,10 @@ describe('ControlPlanePage', () => {
     });
     fireEvent.click(screen.getByRole('button', { name: /generate/i }));
 
-    expect(await screen.findByRole('status')).toHaveTextContent(/model returned validation errors/i);
+    expect(await screen.findByText(/model returned validation errors/i)).toHaveAttribute(
+      'role',
+      'status',
+    );
     expect(invalidateSpy).toHaveBeenCalledWith({ queryKey: ['live-event-stream'] });
   });
 
