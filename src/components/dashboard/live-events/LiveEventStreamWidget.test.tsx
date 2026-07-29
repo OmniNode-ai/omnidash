@@ -1,18 +1,40 @@
-import { fireEvent, render, screen } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { QueryClient } from '@tanstack/react-query';
 import { DataSourceTestProvider } from '@/test-utils/dataSourceTestProvider';
 import { mockFetchWithItems } from '@/test-utils/mockFetch';
-import LiveEventStreamWidget, { SYSTEM_EVENT_REFRESH_INTERVAL_MS } from './LiveEventStreamWidget';
+import LiveEventStreamWidget, {
+  LIVE_EVENT_FILTERS_STORAGE_KEY,
+  SYSTEM_EVENT_REFRESH_INTERVAL_MS,
+} from './LiveEventStreamWidget';
 
 const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+
+function memoryStorage(): Storage {
+  const values = new Map<string, string>();
+  return {
+    get length() { return values.size; },
+    clear: () => values.clear(),
+    getItem: (key) => values.get(key) ?? null,
+    key: (index) => [...values.keys()][index] ?? null,
+    removeItem: (key) => { values.delete(key); },
+    setItem: (key, value) => { values.set(key, value); },
+  };
+}
 
 describe('LiveEventStreamWidget', () => {
   beforeEach(() => {
     qc.clear();
+    Object.defineProperty(window, 'localStorage', {
+      value: memoryStorage(),
+      configurable: true,
+    });
     vi.stubGlobal('fetch', vi.fn());
   });
-  afterEach(() => vi.restoreAllMocks());
+  afterEach(() => {
+    vi.unstubAllGlobals();
+    vi.restoreAllMocks();
+  });
 
   it('uses a continuous two-second projection refresh cadence', () => {
     expect(SYSTEM_EVENT_REFRESH_INTERVAL_MS).toBe(2_000);
@@ -68,7 +90,91 @@ describe('LiveEventStreamWidget', () => {
 
     expect(screen.getAllByTestId('live-event-row')).toHaveLength(1);
     expect(screen.getByText('corr-action')).toBeInTheDocument();
-    expect(screen.getByText('ACTION')).toBeInTheDocument();
+    expect(screen.getByTestId('live-event-row')).toHaveTextContent('ACTION');
+  });
+
+  it('hides heartbeat noise by default and lets the operator opt in', async () => {
+    mockFetchWithItems([
+      { id: 'e1', type: 'ACTION', timestamp: '2026-05-01T12:00:00Z', source: 'platform', topic: 'onex.evt.platform.node-heartbeat.v1', summary: 'Worker heartbeat received', payload: '{}' },
+      { id: 'e2', type: 'ROUTING', timestamp: '2026-05-01T13:00:00Z', source: 'omnimarket', topic: 'onex.evt.routing-decision.v1', summary: 'Routing decided', payload: '{}' },
+    ]);
+    render(
+      <DataSourceTestProvider client={qc}>
+        <LiveEventStreamWidget />
+      </DataSourceTestProvider>,
+    );
+
+    expect(await screen.findAllByTestId('live-event-row')).toHaveLength(1);
+    expect(screen.queryByText('Worker heartbeat received')).not.toBeInTheDocument();
+    expect(screen.getByText(/1 heartbeat hidden/i)).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('checkbox', { name: /include heartbeats/i }));
+    expect(screen.getAllByTestId('live-event-row')).toHaveLength(2);
+  });
+
+  it('filters by event type', async () => {
+    mockFetchWithItems([
+      { id: 'e1', type: 'ROUTING', timestamp: '2026-05-01T12:00:00Z', source: 'omnimarket', topic: 'onex.cmd.route.v1', summary: 'Routing event', payload: '{}' },
+      { id: 'e2', type: 'ERROR', timestamp: '2026-05-01T13:00:00Z', source: 'runtime', topic: 'onex.evt.error.v1', summary: 'Runtime error', payload: '{}' },
+    ]);
+    render(
+      <DataSourceTestProvider client={qc}>
+        <LiveEventStreamWidget />
+      </DataSourceTestProvider>,
+    );
+    await screen.findAllByTestId('live-event-row');
+
+    fireEvent.change(screen.getByLabelText('Filter by event type'), { target: { value: 'ERROR' } });
+
+    expect(screen.getAllByTestId('live-event-row')).toHaveLength(1);
+    expect(screen.getByTestId('live-event-row')).toHaveTextContent('ERROR');
+    expect(screen.getByTestId('live-event-row')).not.toHaveTextContent('ROUTING');
+  });
+
+  it('persists text, type, and heartbeat filter preferences', async () => {
+    mockFetchWithItems([
+      { id: 'e1', type: 'ERROR', timestamp: '2026-05-01T13:00:00Z', source: 'runtime', topic: 'onex.evt.error.v1', summary: 'Runtime error', payload: '{}' },
+    ]);
+    render(
+      <DataSourceTestProvider client={qc}>
+        <LiveEventStreamWidget />
+      </DataSourceTestProvider>,
+    );
+    await screen.findByTestId('live-event-row');
+
+    fireEvent.change(screen.getByLabelText('Filter live event messages'), { target: { value: 'runtime' } });
+    fireEvent.change(screen.getByLabelText('Filter by event type'), { target: { value: 'ERROR' } });
+    fireEvent.click(screen.getByRole('checkbox', { name: /include heartbeats/i }));
+
+    await waitFor(() => {
+      expect(JSON.parse(window.localStorage.getItem(LIVE_EVENT_FILTERS_STORAGE_KEY) ?? '{}')).toEqual({
+        query: 'runtime',
+        eventType: 'ERROR',
+        includeHeartbeats: true,
+      });
+    });
+  });
+
+  it('restores persistent filters on the next mount', async () => {
+    window.localStorage.setItem(LIVE_EVENT_FILTERS_STORAGE_KEY, JSON.stringify({
+      query: 'runtime',
+      eventType: 'ERROR',
+      includeHeartbeats: true,
+    }));
+    mockFetchWithItems([
+      { id: 'e1', type: 'ERROR', timestamp: '2026-05-01T13:00:00Z', source: 'runtime', topic: 'onex.evt.error.v1', summary: 'Runtime error', payload: '{}' },
+    ]);
+
+    render(
+      <DataSourceTestProvider client={qc}>
+        <LiveEventStreamWidget />
+      </DataSourceTestProvider>,
+    );
+    await screen.findByTestId('live-event-row');
+
+    expect(screen.getByLabelText('Filter live event messages')).toHaveValue('runtime');
+    expect(screen.getByLabelText('Filter by event type')).toHaveValue('ERROR');
+    expect(screen.getByRole('checkbox', { name: /include heartbeats/i })).toBeChecked();
   });
 
   it('shows empty state when no data', async () => {

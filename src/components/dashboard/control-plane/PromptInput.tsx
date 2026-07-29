@@ -1,6 +1,7 @@
 import { useState, useCallback, type FormEvent } from 'react';
 import { Text } from '@/components/ui/typography';
 import './control-plane.css';
+import '../workbench-actions.css';
 
 interface PromptInputProps {
   onSubmit: (prompt: string) => void;
@@ -46,7 +47,7 @@ export function PromptInput({
         <button
           type="submit"
           disabled={disabled || isSubmitting || !value.trim()}
-          className="btn primary"
+          className="btn primary workbench-action-button"
           aria-label="Generate"
         >
           {isSubmitting ? 'Submitting...' : 'Generate'}

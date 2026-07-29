@@ -1,15 +1,83 @@
-[
-  "test",
-  "document",
-  "research",
-  "code_generation",
-  "code_review",
-  "refactor",
-  "reasoning",
-  "complex_reasoning",
-  "planning",
-  "review",
-  "summarization",
-  "agent_delegation",
-  "escalation"
-]
+{
+  "version": "1.0",
+  "task_types": [
+    {
+      "id": "test",
+      "label": "Write tests",
+      "description": "Write or improve automated tests, including important edge cases and failure paths.",
+      "prompt_placeholder": "Describe the behavior to test, expected outcomes, and important edge cases…"
+    },
+    {
+      "id": "document",
+      "label": "Write documentation",
+      "description": "Create or revise clear prose documentation for a product, process, or technical concept.",
+      "prompt_placeholder": "Describe the audience, subject, required sections, and desired tone…"
+    },
+    {
+      "id": "research",
+      "label": "Research",
+      "description": "Investigate a question and return methodical analysis supported by sources.",
+      "prompt_placeholder": "State the research question, scope, source requirements, and desired output…"
+    },
+    {
+      "id": "code_generation",
+      "label": "Generate code",
+      "description": "Produce working code that follows the codebase conventions and passes existing tests.",
+      "prompt_placeholder": "Describe the code to build, interfaces, constraints, and acceptance tests…"
+    },
+    {
+      "id": "code_review",
+      "label": "Review code",
+      "description": "Review code for correctness and actionable defects, citing specific files or lines.",
+      "prompt_placeholder": "Provide the code or PR context and the risks or requirements to review…"
+    },
+    {
+      "id": "refactor",
+      "label": "Refactor code",
+      "description": "Restructure existing code while preserving its behavior and avoiding regressions.",
+      "prompt_placeholder": "Describe the code to refactor, behavior to preserve, and target structure…"
+    },
+    {
+      "id": "reasoning",
+      "label": "Reasoning",
+      "description": "Analyze a bounded question and explain the conclusion step by step.",
+      "prompt_placeholder": "Describe the question, constraints, and desired conclusion…"
+    },
+    {
+      "id": "complex_reasoning",
+      "label": "Complex reasoning",
+      "description": "Solve a multi-step or high-context problem that requires deeper, methodical analysis.",
+      "prompt_placeholder": "Provide the full context, dependencies, constraints, and the decision or solution you need…"
+    },
+    {
+      "id": "planning",
+      "label": "Create a plan",
+      "description": "Create an ordered execution plan that covers dependencies, risks, and completion criteria.",
+      "prompt_placeholder": "Describe the objective, current state, constraints, dependencies, and deadline…"
+    },
+    {
+      "id": "review",
+      "label": "Review an artifact",
+      "description": "Evaluate a non-code artifact against stated criteria and identify specific issues.",
+      "prompt_placeholder": "Provide the artifact, review criteria, and the decisions the review should support…"
+    },
+    {
+      "id": "summarization",
+      "label": "Summarize",
+      "description": "Condense supplied material into a concise, accurate summary.",
+      "prompt_placeholder": "Provide the material and specify the audience, length, and facts to preserve…"
+    },
+    {
+      "id": "agent_delegation",
+      "label": "Delegate to agents",
+      "description": "Break a larger objective into executable subtasks and return a structured dispatch report.",
+      "prompt_placeholder": "Describe the objective, available agents or capabilities, constraints, and done criteria…"
+    },
+    {
+      "id": "escalation",
+      "label": "Escalate a problem",
+      "description": "Route a difficult unresolved problem directly to the escalation tier for deeper analysis.",
+      "prompt_placeholder": "Describe what has already been tried, why it failed, and the unresolved decision…"
+    }
+  ]
+}

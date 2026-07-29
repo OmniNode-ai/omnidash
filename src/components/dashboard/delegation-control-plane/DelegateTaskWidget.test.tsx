@@ -16,8 +16,8 @@ describe('DelegateTaskWidget', () => {
 
     expect(screen.getByText('Delegate Task')).toBeInTheDocument();
     expect(screen.getByText('Task type')).toBeInTheDocument();
-    expect(screen.getByPlaceholderText(/describe the task to delegate/i)).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: /dispatch/i })).toBeInTheDocument();
+    expect(screen.getByPlaceholderText(/question, constraints, and desired conclusion/i)).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /^delegate$/i })).toHaveClass('btn', 'primary');
     expect(screen.queryByText(/\+ Trigger delegation/i)).not.toBeInTheDocument();
   });
 });

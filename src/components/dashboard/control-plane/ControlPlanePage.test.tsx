@@ -109,7 +109,10 @@ describe('ControlPlanePage', () => {
     });
     fireEvent.click(screen.getByRole('button', { name: /generate/i }));
 
-    expect(await screen.findByRole('status')).toHaveTextContent(/model returned validation errors/i);
+    expect(await screen.findByText(/model returned validation errors/i)).toHaveAttribute(
+      'role',
+      'status',
+    );
     expect(invalidateSpy).toHaveBeenCalledWith({ queryKey: ['live-event-stream'] });
   });
 
@@ -148,5 +151,6 @@ describe('PromptInput', () => {
   it('keeps submit disabled for empty input when disabled is explicitly false', () => {
     render(<PromptInput onSubmit={vi.fn()} disabled={false} />);
     expect(screen.getByRole('button', { name: /generate/i })).toBeDisabled();
+    expect(screen.getByRole('button', { name: /generate/i })).toHaveClass('btn', 'primary');
   });
 });
