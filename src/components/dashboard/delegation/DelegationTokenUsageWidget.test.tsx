@@ -52,6 +52,30 @@ describe('DelegationTokenUsageWidget', () => {
     expect(screen.getByText('Est. cost')).toBeInTheDocument();
   });
 
+  it('does not round a small nonzero live cost to zero', async () => {
+    const projection = buildDelegationTokenUsage({ provisioned: true });
+    projection.total_estimated_cost_usd = 0.000216;
+    projection.by_model = [{
+      model_id: 'gemini-2.5-flash',
+      model_name: 'gemini-2.5-flash',
+      prompt_tokens: 88,
+      completion_tokens: 20,
+      total_tokens: 108,
+      estimated_cost_usd: 0.000216,
+      usage_source: 'measured',
+      token_provenance: 'measured',
+    }];
+
+    mockFetchWithItems([projection]);
+    render(
+      <DataSourceTestProvider client={qc}>
+        <DelegationTokenUsageWidget config={{}} />
+      </DataSourceTestProvider>,
+    );
+
+    expect(await screen.findByText('$0.000216')).toBeInTheDocument();
+  });
+
   it('renders model names from fixture', async () => {
     mockFetchWithItems([buildDelegationTokenUsage()]);
     render(
