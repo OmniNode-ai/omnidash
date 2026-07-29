@@ -8,6 +8,7 @@ import { KPI } from '@/components/primitives';
 import { useThemeColors } from '@/theme';
 import { useDelegationRunContextOptional } from '@/components/dashboard/delegation-control-plane/DelegationRunContext';
 import { useDataSourceMode, isLiveDataSource } from '@/hooks/useDataSourceMode';
+import { formatUsd, usdFractionDigits } from '@/lib/currency';
 
 // ── Projection types (from llm_call_metrics SQLite table, OMN-10623) ─
 
@@ -86,7 +87,7 @@ function fmtTokens(n: number): string {
 }
 
 function fmtUsd(v: number): string {
-  return `$${v.toFixed(2)}`;
+  return formatUsd(v);
 }
 
 // ── Per-model row ─────────────────────────────────────────────────────
@@ -283,7 +284,7 @@ export default function DelegationTokenUsageWidget(props: { config: DelegationTo
                 label="Est. cost"
                 value={projection.total_estimated_cost_usd}
                 prefix="$"
-                decimals={2}
+                decimals={usdFractionDigits(projection.total_estimated_cost_usd)}
                 tone="default"
               />
             )}

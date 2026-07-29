@@ -1,3 +1,5 @@
+import { formatUsd } from '@/lib/currency';
+
 export function fmtDate(value: string | undefined): string {
   if (!value) return 'pending';
   const ts = Date.parse(value);
@@ -13,7 +15,7 @@ export function fmtDate(value: string | undefined): string {
 export function fmtUsd(value: number | string | undefined): string {
   const numeric = asNumber(value);
   if (numeric == null) return '-';
-  return `$${numeric.toFixed(2)}`;
+  return formatUsd(numeric);
 }
 
 export function fmtPct(value: number | string | undefined): string {
