@@ -9,24 +9,12 @@ import {
   invokeRuntimeCommand,
   RuntimeEdgeError,
 } from './runtime-skill-client.js';
+import delegateSkillTaskTypes from '../shared/contracts/delegation-task-types.json';
 
 const router = Router();
 
-const DELEGATE_SKILL_TASK_TYPES = new Set([
-  'test',
-  'document',
-  'research',
-  'code_generation',
-  'code_review',
-  'refactor',
-  'reasoning',
-  'complex_reasoning',
-  'planning',
-  'review',
-  'summarization',
-  'agent_delegation',
-  'escalation',
-]);
+const DELEGATE_SKILL_TASK_TYPES = Object.freeze([...delegateSkillTaskTypes]);
+const DELEGATE_SKILL_TASK_TYPE_SET = new Set<string>(DELEGATE_SKILL_TASK_TYPES);
 
 const EVIDENCE_PIPELINE_TOPICS = {
   stages: 'onex.snapshot.projection.evidence_pipeline.stages.v1',
@@ -199,7 +187,7 @@ router.post('/api/delegation/trigger', async (req, res) => {
     res.status(400).json({ error: 'prompt is required' });
     return;
   }
-  if (!DELEGATE_SKILL_TASK_TYPES.has(taskType)) {
+  if (!DELEGATE_SKILL_TASK_TYPE_SET.has(taskType)) {
     res.status(400).json({
       error: 'invalid task_type',
       allowed_task_types: [...DELEGATE_SKILL_TASK_TYPES],

@@ -43,6 +43,7 @@ export const componentImports: Record<string, ReturnType<typeof lazy>> = {
   'delegation/DelegationQualityGateWidget': lazy(() => import('./delegation/DelegationQualityGateWidget')),
   'delegation/DelegationTokenUsageWidget': lazy(() => import('./delegation/DelegationTokenUsageWidget')),
   'delegation-control-plane/DelegationControlPlane': lazy(() => import('./delegation-control-plane/DelegationControlPlane')),
+  'delegation-control-plane/DelegateTaskWidget': lazy(() => import('./delegation-control-plane/DelegateTaskWidget')),
   'mcp-tools/McpToolsWidget': lazy(() => import('./mcp-tools/McpToolsWidget')),
   'control-plane/ControlPlanePage': lazy(() => import('./control-plane/ControlPlanePage')),
   'evidence-pipeline/EvidencePipelineFlow': lazy(() => import('./evidence-pipeline/EvidencePipelineFlow')),

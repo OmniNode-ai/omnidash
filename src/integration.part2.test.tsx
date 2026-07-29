@@ -58,7 +58,7 @@ describe('Proof of Life — Part 2', () => {
     // OMN-13832: skill-adoption added — per-skill lifecycle adoption over the
     // skill_executions projection (classified hidden until the snapshot topic is
     // verified exposed on the single backend).
-    expect(all.length).toBe(34);
+    expect(all.length).toBe(35);
     expect(all.map((c) => c.name).sort()).toEqual([
       'ab-compare',
       'baselines-roi-card',
@@ -70,6 +70,7 @@ describe('Proof of Life — Part 2', () => {
       'cost-savings-overview',
       'cost-summary',
       'cost-trend-panel',
+      'delegate-task',
       'delegation-control-plane',
       'delegation-cost-comparison',
       'delegation-metrics',
@@ -108,7 +109,9 @@ describe('Proof of Life — Part 2', () => {
     expect(screen.getByText('Delegation Metrics')).toBeInTheDocument();
     expect(screen.getByText('Routing Decisions')).toBeInTheDocument();
     expect(screen.getByText('Token Usage')).toBeInTheDocument();
-    expect(screen.getByText('Self-Extending Agent Control Plane')).toBeInTheDocument();
+    expect(screen.getByText('Create Node')).toBeInTheDocument();
+    expect(screen.getByText('Delegate Task')).toBeInTheDocument();
+    expect(screen.getByText('System Event Stream')).toBeInTheDocument();
 
     // Hidden widgets must not appear in the palette.
     expect(screen.queryByText('Cost Trend')).not.toBeInTheDocument();

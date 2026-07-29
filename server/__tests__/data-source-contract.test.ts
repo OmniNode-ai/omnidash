@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
-import { mkdtempSync, rmSync, writeFileSync, existsSync } from 'node:fs';
+import { mkdtempSync, rmSync, writeFileSync, existsSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
 import { loadDataSourceConfig, loadRuntimeContract, loadRuntimeEdgeConfig } from '../data-source-contract.js';
@@ -121,6 +121,16 @@ runtime_edge:
 
   it('has no dashboard-owned Kafka producer module', () => {
     expect(existsSync(join(process.cwd(), 'server', 'kafka-producer.ts'))).toBe(false);
+  });
+
+  it('declares the unified live-events projection used by the System Event Stream', () => {
+    const contract = readFileSync(join(process.cwd(), 'contract.yaml'), 'utf8');
+
+    expect(contract).toContain('topic: "onex.snapshot.projection.live-events.v1"');
+    expect(contract).toContain('table: "live_events"');
+    expect(contract).toContain(
+      'source_contract: "omnimarket/src/omnimarket/nodes/node_projection_live_events/contract.yaml"',
+    );
   });
 
   it('honors runtime edge env overrides', () => {

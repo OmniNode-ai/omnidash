@@ -21,6 +21,8 @@ interface LiveEvent {
   correlation_id?: string;
 }
 
+export const SYSTEM_EVENT_REFRESH_INTERVAL_MS = 2_000;
+
 // ── Helpers ─────────────────────────────────────────────────────────
 
 function nodeKindForEvent(ev: LiveEvent): NodeKind {
@@ -115,7 +117,7 @@ export default function LiveEventStreamWidget() {
   const { data, isLoading, error } = useProjectionQuery<LiveEvent>({
     topic: TOPICS.liveEvents,
     queryKey: ['live-event-stream'],
-    refetchInterval: 10_000,
+    refetchInterval: SYSTEM_EVENT_REFRESH_INTERVAL_MS,
   });
   const [query, setQuery] = useState('');
   const dataSourceMode = useDataSourceMode();
@@ -138,24 +140,24 @@ export default function LiveEventStreamWidget() {
 
   return (
     <ComponentWrapper
-      title="Live Event Stream"
+      title="System Event Stream"
       isLoading={isLoading}
       error={error ?? undefined}
       isEmpty={events.length === 0}
-      emptyMessage="No live events"
-      emptyHint="Live event rows appear after event bus projections are written. In file mode, add fixture files under fixtures/onex.snapshot.projection.live-events.v1/"
+      emptyMessage="No system events"
+      emptyHint="Projected bus, runtime, delegation, and node-generation activity appears here as it is observed."
       isLive={isLiveDataSource(dataSourceMode)}
       fileMode={!isLiveDataSource(dataSourceMode)}
       headerExtra={
         <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>
           <Text size="xs" color="tertiary" family="mono">
-            {events.length} messages · {sourceCount} sources
+            {events.length} events · {sourceCount} sources · auto-updating
           </Text>
           <span style={{ width: 8, height: 8, borderRadius: '50%', background: 'var(--good)', boxShadow: '0 0 0 3px rgba(21,128,61,.18)' }} />
         </span>
       }
     >
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 10, width: '100%' }}>
+      <div aria-live="polite" style={{ display: 'flex', flexDirection: 'column', gap: 10, width: '100%' }}>
         <div
           style={{
             display: 'grid',

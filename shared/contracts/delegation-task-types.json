@@ -1,0 +1,15 @@
+[
+  "test",
+  "document",
+  "research",
+  "code_generation",
+  "code_review",
+  "refactor",
+  "reasoning",
+  "complex_reasoning",
+  "planning",
+  "review",
+  "summarization",
+  "agent_delegation",
+  "escalation"
+]

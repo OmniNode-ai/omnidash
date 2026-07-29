@@ -41,7 +41,7 @@ describe('DelegationTriggerPanel', () => {
     const textarea = screen.getByPlaceholderText(/Describe the task/i);
     fireEvent.change(textarea, { target: { value: 'Review this PR for correctness' } });
 
-    fireEvent.click(screen.getByText(/Dispatch/i));
+    fireEvent.click(screen.getByRole('button', { name: /^Dispatch$/i }));
 
     await waitFor(() => {
       expect(screen.getByText(/Accepted/i)).toBeTruthy();
@@ -89,5 +89,30 @@ describe('DelegationTriggerPanel', () => {
     await waitFor(() => {
       expect(onCorrelationId).toHaveBeenCalledWith('corr-abc-123');
     });
+  });
+
+  it('keeps an in-flight dispatch open until the request settles', async () => {
+    let resolveDispatch!: (value: { correlation_id: string; accepted: boolean }) => void;
+    vi.spyOn(delegationApi, 'triggerDelegation').mockReturnValue(
+      new Promise((resolve) => {
+        resolveDispatch = resolve;
+      }),
+    );
+
+    render(<DelegationTriggerPanel />);
+    fireEvent.click(screen.getByText(/Trigger delegation/i));
+    fireEvent.change(screen.getByPlaceholderText(/Describe the task/i), {
+      target: { value: 'hold this dispatch open' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: /^Dispatch$/i }));
+
+    const closeButton = screen.getByRole('button', { name: /close delegation form/i });
+    expect(closeButton).toBeDisabled();
+    fireEvent.click(closeButton);
+    expect(screen.getByPlaceholderText(/Describe the task/i)).toHaveValue('hold this dispatch open');
+
+    resolveDispatch({ correlation_id: 'corr-pending-1', accepted: true });
+    expect(await screen.findByText('corr-pending-1')).toBeInTheDocument();
+    expect(closeButton).not.toBeDisabled();
   });
 });

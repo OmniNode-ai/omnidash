@@ -890,7 +890,7 @@ export class PostgresProjectionReader {
       message.includes('does not exist');
     if (isCompatibilityMiss) return;
 
-    console.error(`[PostgresProjectionReader] failed to read ${source} for delegation savings projection:`, err);
+    console.error(`[PostgresProjectionReader] failed to read optional projection source ${source}:`, err);
     throw err;
   }
 
@@ -921,29 +921,50 @@ export class PostgresProjectionReader {
     client: { query: (sql: string, params?: unknown[]) => Promise<{ rows: Row[] }> },
   ): Promise<Row[]> {
     const events: Row[] = [];
-
-    try {
-      const eventLogRes = await client.query(`
+    const sources = [
+      {
+        name: 'live_events',
+        query: () => client.query(`
         SELECT
-          COALESCE(NULLIF(correlation_id, ''), event_id, 'bus-' || id::text) AS id,
-          COALESCE(NULLIF(event_type, ''), 'BUS_MESSAGE')                     AS type,
-          timestamp::text                                                      AS timestamp,
-          COALESCE(NULLIF(source, ''), 'event_bus')                           AS source,
-          COALESCE(NULLIF(topic, ''), 'event_bus_events')                     AS topic,
-          COALESCE(NULLIF(event_type, ''), 'BUS_MESSAGE')                     AS summary,
-          COALESCE(correlation_id, '')                                         AS correlation_id,
-          payload::text                                                        AS payload
-        FROM event_bus_events
+          COALESCE(NULLIF(event_id, ''), id::text) AS id,
+          COALESCE(NULLIF(type, ''), 'ACTION') AS type,
+          timestamp::text AS timestamp,
+          COALESCE(NULLIF(source, ''), 'platform') AS source,
+          COALESCE(NULLIF(topic, ''), 'unknown') AS topic,
+          COALESCE(NULLIF(summary, ''), topic, 'System event') AS summary,
+          COALESCE(correlation_id, '') AS correlation_id,
+          COALESCE(payload, '{}')::text AS payload
+        FROM live_events
+        ORDER BY created_at DESC
+        LIMIT 500
+      `),
+      },
+      {
+        name: 'log_entries',
+        query: () => client.query(`
+        SELECT
+          'log-' || entry_id::text AS id,
+          CASE WHEN level IN ('ERROR', 'CRITICAL') THEN 'ERROR' ELSE 'LOG' END AS type,
+          timestamp::text AS timestamp,
+          COALESCE(NULLIF(node_name, ''), 'runtime') AS source,
+          'onex.snapshot.projection.log-entries.v1' AS topic,
+          COALESCE(NULLIF(message, ''), level, 'Runtime log') AS summary,
+          COALESCE(correlation_id, '') AS correlation_id,
+          jsonb_build_object(
+            'entry_id', entry_id,
+            'level', level,
+            'function_name', function_name,
+            'duration_ms', duration_ms,
+            'metadata', metadata
+          )::text AS payload
+        FROM log_entries
         ORDER BY timestamp DESC
         LIMIT 500
-      `);
-      events.push(...eventLogRes.rows);
-    } catch (err) {
-      this.handleProjectionCompatibilityError(err, 'event_bus_events');
-    }
-
-    try {
-      const delegationRes = await client.query(`
+      `),
+      },
+      {
+        name: 'delegation_events',
+        query: () => client.query(`
         WITH rows AS (
           SELECT to_jsonb(delegation_events) AS e
           FROM delegation_events
@@ -973,14 +994,11 @@ export class PostgresProjectionReader {
           COALESCE(NULLIF(e->>'correlation_id', ''), e->>'session_id', e->>'id') AS correlation_id,
           e::text AS payload
         FROM rows
-      `);
-      events.push(...delegationRes.rows);
-    } catch (err) {
-      this.handleProjectionCompatibilityError(err, 'delegation_events');
-    }
-
-    try {
-      const generationRes = await client.query(`
+      `),
+      },
+      {
+        name: 'generation_events',
+        query: () => client.query(`
         SELECT
           'generation-' || correlation_id AS id,
           CASE WHEN contract_passed THEN 'NODE_GENERATION_COMPLETED' ELSE 'NODE_GENERATION_FAILED' END AS type,
@@ -994,10 +1012,17 @@ export class PostgresProjectionReader {
         FROM generation_events
         ORDER BY COALESCE(timestamp, created_at) DESC
         LIMIT 500
-      `);
-      events.push(...generationRes.rows);
-    } catch (err) {
-      this.handleProjectionCompatibilityError(err, 'generation_events');
+      `),
+      },
+    ];
+
+    const results = await Promise.allSettled(sources.map((source) => source.query()));
+    for (const [index, result] of results.entries()) {
+      if (result.status === 'fulfilled') {
+        events.push(...result.value.rows);
+        continue;
+      }
+      this.handleProjectionCompatibilityError(result.reason, sources[index].name);
     }
 
     return events

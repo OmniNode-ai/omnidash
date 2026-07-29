@@ -22,7 +22,6 @@ import { RENDERER_CAPABILITY_PROJECTION } from '../shared/types/renderer-capabil
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
-const NODE_GENERATION_COMPLETED_PROJECTION_TOPIC = 'onex.evt.omnimarket.node-generation-completed.v1';
 type ComponentManifestDraft = Omit<ComponentManifest, 'paletteVisibility' | 'authorityLabel'> &
   Partial<Pick<ComponentManifest, 'paletteVisibility' | 'authorityLabel'>>;
 
@@ -958,8 +957,8 @@ const MVP_COMPONENTS: Record<string, ComponentManifestDraft> = {
   },
   'live-event-stream': {
     name: 'live-event-stream',
-    displayName: 'Live Event Stream',
-    description: 'Operator event viewer showing live bus and runtime work messages with type-coded rows, correlation IDs, search, and expandable payload details',
+    displayName: 'System Event Stream',
+    description: 'Continuously refreshed operator view of projected bus, runtime, delegation, and node-generation activity with correlation IDs, search, and expandable payloads',
     category: 'activity',
     version: '1.0.0',
     implementationKey: 'live-events/LiveEventStreamWidget',
@@ -1400,7 +1399,7 @@ const MVP_COMPONENTS: Record<string, ComponentManifestDraft> = {
   'delegation-control-plane': {
     name: 'delegation-control-plane',
     displayName: 'Delegation Control Plane',
-    description: 'Composable SEA-style evidence surface for market delegation: run header, recent runs, projection probe, event-chain view, topology, artifact placeholders, and delegation metric panels.',
+    description: 'Composable market-delegation evidence surface: run header, recent runs, projection probe, event-chain view, topology, artifacts, and metric panels.',
     category: 'activity',
     version: '1.0.0',
     implementationKey: 'delegation-control-plane/DelegationControlPlane',
@@ -1451,6 +1450,28 @@ const MVP_COMPONENTS: Record<string, ComponentManifestDraft> = {
       hint: 'Run the market delegation golden chain to populate command, decision, savings, quality, and token projections.',
     },
     capabilities: { supports_compare: false, supports_export: true, supports_fullscreen: true, supports_time_range: false },
+  },
+  'delegate-task': {
+    name: 'delegate-task',
+    displayName: 'Delegate Task',
+    description: 'Standalone task delegation action with an explicit contract-valid task type and prompt.',
+    category: 'activity',
+    version: '1.0.0',
+    implementationKey: 'delegation-control-plane/DelegateTaskWidget',
+    configSchema: { type: 'object', properties: {}, additionalProperties: false },
+    projectionSchema: {
+      type: 'object',
+      required: [],
+      properties: {},
+      additionalProperties: false,
+    },
+    dataSources: [],
+    events: { emits: [], consumes: [] },
+    defaultSize: { w: 6, h: 6 },
+    minSize: { w: 4, h: 5 },
+    maxSize: { w: 12, h: 10 },
+    emptyState: { message: 'Delegation unavailable', hint: 'Switch the dashboard data source to Live to delegate work.' },
+    capabilities: { supports_compare: false, supports_export: false, supports_fullscreen: true, supports_time_range: false },
   },
   'ab-compare': {
     name: 'ab-compare',
@@ -1569,32 +1590,21 @@ const MVP_COMPONENTS: Record<string, ComponentManifestDraft> = {
   },
   'control-plane': {
     name: 'control-plane',
-    displayName: 'Self-Extending Agent Control Plane',
-    description: 'SEA demo surface: prompt input, canonical node-generation completion log, and projection-backed artifact proof from generation_events.',
+    displayName: 'Create Node',
+    description: 'Standalone node-generation action. Lifecycle events and artifact outcomes are observed in the shared System Event Stream.',
     category: 'activity',
     version: '1.0.0',
     implementationKey: 'control-plane/ControlPlanePage',
     configSchema: { type: 'object', properties: {}, additionalProperties: false },
-    projectionSchema: {
-      type: 'object',
-      required: ['id', 'type', 'timestamp', 'message'],
-      properties: {
-        id: { type: 'string' },
-        type: { type: 'string', enum: ['request', 'validation', 'success', 'error'] },
-        timestamp: { type: 'string', format: 'date-time' },
-        source: { type: 'string' },
-        message: { type: 'string' },
-        correlationId: { type: 'string' },
-      },
-    },
-    dataSources: [projectionSource(NODE_GENERATION_COMPLETED_PROJECTION_TOPIC)],
+    projectionSchema: { type: 'object', required: [], properties: {}, additionalProperties: false },
+    dataSources: [],
     events: { emits: [], consumes: [] },
-    defaultSize: { w: 2, h: 3 },
-    minSize: { w: 1, h: 2 },
-    maxSize: { w: 4, h: 6 },
+    defaultSize: { w: 6, h: 6 },
+    minSize: { w: 4, h: 4 },
+    maxSize: { w: 12, h: 10 },
     emptyState: {
-      message: 'No pipeline events yet',
-      hint: 'Submit a prompt above to generate a node contract',
+      message: 'Node generation unavailable',
+      hint: 'Switch the dashboard data source to Live to create a node.',
     },
     capabilities: { supports_compare: false, supports_export: false, supports_fullscreen: true, supports_time_range: false },
   },

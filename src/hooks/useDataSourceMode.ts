@@ -9,5 +9,5 @@ export function useDataSourceMode(): DataSourceMode {
 }
 
 export function isLiveDataSource(mode: DataSourceMode): boolean {
-  return mode === 'http' || mode === 'postgres';
+  return mode !== 'file';
 }

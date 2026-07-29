@@ -9,6 +9,7 @@ import {
   resolveEffectiveDataSource,
 } from './data-source-override';
 import { resolveProjectionBaseUrl, resolveCommandBaseUrl } from './projection-base-url';
+import { isLiveDataSource } from '@/hooks/useDataSourceMode';
 
 // This jsdom config does not provide a functioning localStorage, so install a
 // minimal in-memory one (matching src/store/dashboardSlice.hydrate.test.ts).
@@ -57,6 +58,13 @@ describe('data-source-override (OMN-13007)', () => {
   it('defaults to no override (env applies)', () => {
     expect(getDataSourceOverride()).toBeNull();
     expect(resolveEffectiveDataSource().isOverridden).toBe(false);
+  });
+
+  it('classifies every backend mode as live and only fixture mode as offline', () => {
+    expect(isLiveDataSource('http')).toBe(true);
+    expect(isLiveDataSource('postgres')).toBe(true);
+    expect(isLiveDataSource('sqlite')).toBe(true);
+    expect(isLiveDataSource('file')).toBe(false);
   });
 
   it('persists a live override with a normalized (no trailing slash) base URL', () => {
