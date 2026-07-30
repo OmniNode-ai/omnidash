@@ -16,8 +16,6 @@
 
 import { useCallback, useEffect, useRef, useState, type DragEvent } from 'react';
 import { Check, ChevronDown, LogOut, Pencil, Plus, X } from 'lucide-react';
-import { useAuth } from 'react-oidc-context';
-import { getOidcConfig } from '@/auth/oidc-config';
 import { Text } from '@/components/ui/typography';
 import { useFrameStore } from '@/store/store';
 import { useRegistry } from '@/registry/RegistryProvider';
@@ -34,30 +32,10 @@ import { dashboardService } from '@/services/dashboardService';
 import { cloneSeaDemoTemplate } from '@/templates/sea-demo';
 
 function LogoutButton() {
-  const { signoutRedirect } = useAuth();
-  const [logoutError, setLogoutError] = useState<string | null>(null);
-  const handleLogout = useCallback(() => {
-    setLogoutError(null);
-    void signoutRedirect().catch((err: unknown) => {
-      console.error('[DashboardView] sign out failed:', err);
-      setLogoutError('Sign out failed');
-    });
-  }, [signoutRedirect]);
-
   return (
-    <>
-      <button
-        className="btn ghost"
-        onClick={handleLogout}
-        aria-label="Sign out"
-        title={logoutError ?? 'Sign out'}
-      >
-        <LogOut size={14} /> Sign out
-      </button>
-      {logoutError ? (
-        <Text as="span" size="xs" color="bad" role="status">{logoutError}</Text>
-      ) : null}
-    </>
+    <a className="btn ghost" href="/logout" aria-label="Sign out" title="Sign out">
+      <LogOut size={14} /> Sign out
+    </a>
   );
 }
 
@@ -386,7 +364,7 @@ export function DashboardView() {
                   >
                     <Plus size={14} /> Add Widget
                   </button>
-                  {getOidcConfig() && <LogoutButton />}
+                  <LogoutButton />
                 </>
               )}
             </div>
