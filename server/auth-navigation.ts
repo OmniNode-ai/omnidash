@@ -6,6 +6,14 @@ export interface AuthNavigationRequest {
   readonly headers: IncomingHttpHeaders;
 }
 
+export type OidcIssuerQueryNormalization =
+  | { readonly kind: 'unchanged'; readonly url: string }
+  | { readonly kind: 'normalized'; readonly url: string }
+  | {
+      readonly kind: 'rejected';
+      readonly rejection: 'missing_expected_issuer' | 'issuer_mismatch';
+    };
+
 function headerValue(value: string | string[] | undefined): string {
   return Array.isArray(value) ? (value[0] ?? '') : (value ?? '');
 }
@@ -15,6 +23,39 @@ function isDataPath(path: string): boolean {
     || path.startsWith('/api/')
     || path === '/projection'
     || path.startsWith('/projection/');
+}
+
+/**
+ * Validate and remove Keycloak's RFC 9207 `iss` response parameter.
+ *
+ * keycloak-connect 26.1.1 does not remove `iss` after it exchanges an
+ * authorization code. The stale parameter consequently becomes part of the
+ * next redirect URI, and repeated logins accumulate duplicate `iss` values.
+ * Validate every supplied value before removing it so callback cleanup does
+ * not discard the issuer binding that RFC 9207 provides.
+ */
+export function normalizeOidcIssuerQuery(
+  rawUrl: string,
+  expectedIssuer: string,
+): OidcIssuerQueryNormalization {
+  const parsed = new URL(rawUrl, 'http://omnidash.internal');
+  const issuers = parsed.searchParams.getAll('iss');
+
+  if (issuers.length === 0) {
+    return { kind: 'unchanged', url: rawUrl };
+  }
+  if (!expectedIssuer) {
+    return { kind: 'rejected', rejection: 'missing_expected_issuer' };
+  }
+  if (issuers.some((issuer) => issuer !== expectedIssuer)) {
+    return { kind: 'rejected', rejection: 'issuer_mismatch' };
+  }
+
+  parsed.searchParams.delete('iss');
+  return {
+    kind: 'normalized',
+    url: `${parsed.pathname}${parsed.search}${parsed.hash}`,
+  };
 }
 
 /**
