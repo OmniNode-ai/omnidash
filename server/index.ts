@@ -7,7 +7,10 @@ import routes from './routes.js';
 import { authMiddleware } from './auth-middleware.js';
 import { getSessionMiddleware, getStore } from './session.js';
 import { getKeycloak } from './keycloak.js';
-import { shouldProtectBrowserNavigation } from './auth-navigation.js';
+import {
+  normalizeOidcIssuerQuery,
+  shouldProtectBrowserNavigation,
+} from './auth-navigation.js';
 import {
   loadAuthConfig,
   loadCapabilityHeartbeatConfig,
@@ -46,6 +49,26 @@ export const app = express();
 // 1 = trust exactly one hop (the ingress); do not widen this without a reason,
 // since a blanket trust lets clients spoof X-Forwarded-For.
 app.set('trust proxy', 1);
+
+// Keycloak adds an RFC 9207 `iss` query parameter to authorization responses,
+// but keycloak-connect 26.1.1 leaves it in the browser URL. Validate the issuer
+// before removing it so the adapter receives a canonical callback and expired
+// sessions cannot accumulate duplicate issuer parameters across login retries.
+app.use((req, res, next) => {
+  const normalization = normalizeOidcIssuerQuery(
+    req.originalUrl || req.url,
+    process.env.KEYCLOAK_ISSUER ?? '',
+  );
+  if (normalization.kind === 'rejected') {
+    res.status(400).json({ error: 'invalid_oidc_issuer' });
+    return;
+  }
+  if (normalization.kind === 'normalized') {
+    req.url = normalization.url;
+    req.originalUrl = normalization.url;
+  }
+  next();
+});
 
 // Health probe — registered before auth so k8s liveness/readiness checks never require a token.
 app.get('/api/health-probe', (_req, res) => {
