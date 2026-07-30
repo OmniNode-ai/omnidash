@@ -65,6 +65,11 @@ describe('DashboardView', () => {
     expect(screen.getByRole('button', { name: /add widget/i })).toBeInTheDocument();
   });
 
+  it('signs out through the server-owned session route', () => {
+    renderView();
+    expect(screen.getByRole('link', { name: /sign out/i })).toHaveAttribute('href', '/logout');
+  });
+
   it('shows palette in edit mode', async () => {
     renderView();
     await userEvent.click(screen.getByRole('button', { name: /add widget/i }));

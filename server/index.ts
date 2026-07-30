@@ -16,7 +16,6 @@ import {
   loadCapabilityHeartbeatConfig,
   loadOnboardingConfig,
 } from './data-source-contract.js';
-import { createTenantMiddleware } from './auth/tenant-middleware.js';
 import { buildOnboardingRouter } from './onboarding/bootstrap.js';
 import {
   startCapabilityHeartbeat,
@@ -116,23 +115,15 @@ app.use((req, res, next) => {
 });
 
 const authConfig = loadAuthConfig();
-// OMN-10875: self-service onboarding routes mount BEFORE the tenant gate —
-// a brand-new user's token has no tenant claim yet, and the gate would 403
+// OMN-10875: self-service onboarding routes mount BEFORE the auth boundary —
+// a brand-new user's session has no tenant claim yet, and the boundary would 403
 // exactly the users onboarding exists for.
 app.use(buildOnboardingRouter(loadOnboardingConfig(), authConfig));
-// OMN-13824 / OMN-1636: tenant auth gate. Contract-driven (auth.tenant_mode);
-// pass-through when disabled. When required, the verified tenant id from the
-// OIDC token is threaded through AsyncLocalStorage into the Postgres reader.
-// PUBLIC_PATHS bypass the gate so health-probe and runtime-config are never
-// blocked by the tenant check, even when tenant_mode is required.
-const tenantMiddleware = createTenantMiddleware({ config: authConfig });
-app.use((req, res, next) => {
-  if (PUBLIC_PATHS.has(req.path)) return next();
-  return tenantMiddleware(req, res, next);
-});
-
-// Auth — skips public paths; checks session first (browser), then Bearer
-// token (API clients). Attaches req.tenant for all downstream handlers.
+// Single authoritative auth/tenant boundary: checks the confidential
+// server-side session first (browser), then Bearer token (API clients), attaches
+// req.tenant, and threads that verified identity through AsyncLocalStorage.
+// Keeping this as one boundary avoids requiring a browser session to also carry
+// a Bearer token before its session can be evaluated.
 app.use((req, res, next) => {
   if (PUBLIC_PATHS.has(req.path)) return next();
   return authMiddleware(req, res, next);
