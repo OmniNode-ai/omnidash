@@ -185,9 +185,9 @@ export default function LiveEventStreamWidget() {
 
   const events = useMemo(() => {
     if (!data || data.length === 0) return [];
-    return [...data]
-      .sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime())
-      .slice(0, 100);
+    return [...data].sort(
+      (a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime(),
+    );
   }, [data]);
 
   const eventTypes = useMemo(() => {
@@ -199,11 +199,17 @@ export default function LiveEventStreamWidget() {
     () => events.filter(isHeartbeatEvent).length,
     [events],
   );
-  const filteredEvents = useMemo(() => events.filter((event) => {
-    if (!filters.includeHeartbeats && isHeartbeatEvent(event)) return false;
-    if (filters.eventType !== 'all' && event.type !== filters.eventType) return false;
-    return matchesEvent(event, filters.query);
-  }), [events, filters]);
+  const filteredEvents = useMemo(
+    () =>
+      events
+        .filter((event) => {
+          if (!filters.includeHeartbeats && isHeartbeatEvent(event)) return false;
+          if (filters.eventType !== 'all' && event.type !== filters.eventType) return false;
+          return matchesEvent(event, filters.query);
+        })
+        .slice(0, 100),
+    [events, filters],
+  );
   const sourceCount = new Set(filteredEvents.map((ev) => ev.source)).size;
   const newest = filteredEvents[0];
   const newestLabel = newest ? formatTimestamp(newest.timestamp) : '--:--:--';

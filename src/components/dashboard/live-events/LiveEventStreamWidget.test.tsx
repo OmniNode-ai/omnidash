@@ -112,6 +112,39 @@ describe('LiveEventStreamWidget', () => {
     expect(screen.getAllByTestId('live-event-row')).toHaveLength(2);
   });
 
+  it('filters heartbeat noise before applying the visible-event cap', async () => {
+    const baseTime = Date.parse('2026-05-01T13:00:00Z');
+    const heartbeats = Array.from({ length: 100 }, (_, index) => ({
+      id: `heartbeat-${index}`,
+      type: 'ACTION',
+      timestamp: new Date(baseTime - index * 1_000).toISOString(),
+      source: 'platform',
+      topic: 'onex.evt.platform.node-heartbeat.v1',
+      summary: 'Worker heartbeat received',
+      payload: '{}',
+    }));
+    const realEvents = Array.from({ length: 5 }, (_, index) => ({
+      id: `routing-${index}`,
+      type: 'ROUTING',
+      timestamp: new Date(baseTime - (100 + index) * 1_000).toISOString(),
+      source: 'omnimarket',
+      topic: 'onex.evt.routing-decision.v1',
+      summary: `Routing decision ${index}`,
+      payload: '{}',
+    }));
+    mockFetchWithItems([...heartbeats, ...realEvents]);
+
+    render(
+      <DataSourceTestProvider client={qc}>
+        <LiveEventStreamWidget />
+      </DataSourceTestProvider>,
+    );
+
+    expect(await screen.findAllByTestId('live-event-row')).toHaveLength(5);
+    expect(screen.getByText('Routing decision 0')).toBeInTheDocument();
+    expect(screen.queryByText('Worker heartbeat received')).not.toBeInTheDocument();
+  });
+
   it('filters by event type', async () => {
     mockFetchWithItems([
       { id: 'e1', type: 'ROUTING', timestamp: '2026-05-01T12:00:00Z', source: 'omnimarket', topic: 'onex.cmd.route.v1', summary: 'Routing event', payload: '{}' },
