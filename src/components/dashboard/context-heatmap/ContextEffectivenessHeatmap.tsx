@@ -1,8 +1,7 @@
 import { useState } from 'react';
 import { ComponentWrapper } from '../ComponentWrapper';
 import { Text } from '@/components/ui/typography';
-import { useDataSourceMode, isLiveDataSource } from '@/hooks/useDataSourceMode';
-import { useContextHeatmap, KNOWN_SEGMENTS } from './useContextHeatmap';
+import { useContextHeatmap } from './useContextHeatmap';
 import { classifyCell } from './context-heatmap.types';
 import type { HeatmapCell, ContextHeatmapConfig, HeatmapSignal } from './context-heatmap.types';
 
@@ -234,7 +233,6 @@ function Legend() {
 
 export default function ContextEffectivenessHeatmap({ config: _config = {} }: { config: ContextHeatmapConfig }) {
   const snapshot = useContextHeatmap();
-  const dataSourceMode = useDataSourceMode();
   const [selectedCellKey, setSelectedCellKey] = useState<string | null>(null);
 
   const selectedCell = selectedCellKey != null
@@ -242,43 +240,40 @@ export default function ContextEffectivenessHeatmap({ config: _config = {} }: { 
     : null;
 
   const selectedSegmentLabel = selectedCell != null
-    ? (KNOWN_SEGMENTS.find((s) => s.id === selectedCell.segmentId)?.label ?? selectedCell.segmentId)
+    ? (snapshot.segments.find((s) => s.id === selectedCell.segmentId)?.label ?? selectedCell.segmentId)
     : '';
 
   const isInitialLoading = snapshot.isLoading && !snapshot.hasAnyData;
+  // Empty state keys on renderable segments, not raw row count (OMN-14895
+  // D2): segments are now derived directly from the live rows (D1), so a
+  // nonzero score count always yields at least one renderable segment —
+  // this stays keyed on `segments.length` rather than `hasAnyData` so a
+  // future re-introduction of a fixed/allow-listed segment set fails safe
+  // (empty grid) instead of rendering a blank table with a nonzero footer.
+  const isEmpty = !snapshot.isLoading && snapshot.segments.length === 0;
 
   return (
     <ComponentWrapper
       title="Context Effectiveness"
       isLoading={isInitialLoading}
       error={snapshot.error}
-      isEmpty={!snapshot.isLoading && !snapshot.hasAnyData}
+      isEmpty={isEmpty}
       emptyMessage="No experiment scores"
-      emptyHint="context_experiment_scores requires the A3 delegation-verify-worker projection (OMN-12082). In file mode, add fixture files under fixtures/onex.snapshot.projection.context.experiment-scores.v1/"
-      isLive={isLiveDataSource(dataSourceMode)}
-      fileMode={!isLiveDataSource(dataSourceMode)}
+      emptyHint={
+        snapshot.degradedReason ??
+        'context_roi_scores projection is served but has no rows yet. Renders once a context-ROI run completes and node_projection_context_roi materializes its rows (OMN-12955).'
+      }
+      // This widget reads context_roi_scores exclusively via the live
+      // projection HTTP path (event-dash-api.ts is architected live-only,
+      // no fixture path) — it never honors file-mode data-source overrides,
+      // so it always reports isLive and never claims a "File Mode" badge it
+      // cannot back (OMN-14895 D3: the removed useProjectionQuery path
+      // genuinely read through the active source; this one does not, so the
+      // badge must not imply it does). In file mode the query surfaces an
+      // honest error (`projectionUrl()` throws) rather than fabricated data.
+      isLive
     >
       <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-
-        {/* Fixture badge */}
-        {snapshot.isFixture && (
-          <div
-            style={{
-              display: 'inline-flex',
-              alignItems: 'center',
-              gap: 6,
-              padding: '4px 10px',
-              borderRadius: 6,
-              background: 'color-mix(in srgb, var(--color-warn, #f59e0b) 12%, transparent)',
-              border: '1px solid color-mix(in srgb, var(--color-warn, #f59e0b) 30%, transparent)',
-              alignSelf: 'flex-start',
-            }}
-          >
-            <Text as="span" size="xs" color="warn">
-              Showing OMN-11241 research fixture — no live data yet
-            </Text>
-          </div>
-        )}
 
         {/* Legend */}
         <Legend />
@@ -299,9 +294,7 @@ export default function ContextEffectivenessHeatmap({ config: _config = {} }: { 
               </tr>
             </thead>
             <tbody>
-              {KNOWN_SEGMENTS.filter((seg) =>
-                snapshot.cells.some((c) => c.segmentId === seg.id)
-              ).map((seg) => (
+              {snapshot.segments.map((seg) => (
                 <tr key={seg.id}>
                   <td style={{ padding: '4px 8px', verticalAlign: 'middle' }}>
                     <div>
@@ -350,7 +343,7 @@ export default function ContextEffectivenessHeatmap({ config: _config = {} }: { 
 
         {/* Run count footer */}
         <Text as="div" size="xs" color="tertiary">
-          {snapshot.scores.length} experiment score{snapshot.scores.length !== 1 ? 's' : ''} across {snapshot.models.length} model{snapshot.models.length !== 1 ? 's' : ''} and {KNOWN_SEGMENTS.filter((s) => snapshot.cells.some((c) => c.segmentId === s.id)).length} segment{KNOWN_SEGMENTS.filter((s) => snapshot.cells.some((c) => c.segmentId === s.id)).length !== 1 ? 's' : ''}
+          {snapshot.scores.length} experiment score{snapshot.scores.length !== 1 ? 's' : ''} across {snapshot.models.length} model{snapshot.models.length !== 1 ? 's' : ''} and {snapshot.segments.length} segment{snapshot.segments.length !== 1 ? 's' : ''}
         </Text>
       </div>
     </ComponentWrapper>

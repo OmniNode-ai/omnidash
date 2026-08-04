@@ -501,7 +501,7 @@ const MVP_COMPONENTS: Record<string, ComponentManifestDraft> = {
     name: 'context-effectiveness-heatmap',
     displayName: 'Context Effectiveness Heatmap',
     description:
-      'Segment × model matrix of context-pack quality-gate pass rates and token deltas, classifying each context segment (golden_chain, CLAUDE.md, exemplar, etc.) as helpful, neutral, or harmful per model. Backed by the context_experiment_scores ablation projection (OMN-12082); renders the OMN-11241 research fixture until the projection is live.',
+      'Segment × model matrix of context-pack quality-gate pass rates and token deltas, classifying each context segment (golden_chain, CLAUDE.md, exemplar, etc.) as helpful, neutral, or harmful per model. Backed by the live onex.snapshot.projection.context.experiment-scores.v1 projection (context_roi_scores, OMN-12955); renders an honest empty/degraded state when the projection has zero rows (OMN-14895).',
     category: 'quality',
     version: '1.0.0',
     implementationKey: 'context-heatmap/ContextEffectivenessHeatmap',
@@ -514,17 +514,15 @@ const MVP_COMPONENTS: Record<string, ComponentManifestDraft> = {
     },
     projectionSchema: {
       type: 'object',
-      description: 'Row shape from onex.snapshot.projection.context.experiment-scores.v1. Backed by the context_experiment_scores ablation table (OMN-12082).',
-      required: ['modelId', 'packId', 'factorsPresent', 'qualityGatePassed', 'tokensUsed'],
+      description: 'Row shape from onex.snapshot.projection.context.experiment-scores.v1 (context_roi_scores, OMN-12955).',
+      required: ['context_factor_subset', 'model_id', 'final_success', 'tokens_used'],
       properties: {
-        modelId: { type: 'string', description: 'Model identifier used for the experiment run (column key in the matrix).' },
-        packId: { type: 'string', description: 'Context segment identifier (row key in the matrix, e.g. golden_chain, claude_md).' },
-        factorsPresent: { type: 'array', items: { type: 'string' }, description: 'Context factors present in this run.' },
-        qualityGatePassed: { type: 'boolean', description: 'Whether the quality gate passed for this run.' },
-        tokensUsed: { type: 'number', description: 'Tokens consumed by this run; aggregated into per-cell token deltas.' },
-        taskType: { type: ['string', 'null'], description: 'Optional task type for the experiment run.' },
-        experimentRunId: { type: ['string', 'null'], description: 'Optional experiment run identifier.' },
-        createdAt: { type: ['string', 'null'], format: 'date-time', description: 'ISO-8601 timestamp when this score was recorded.' },
+        model_id: { type: 'string', description: 'Model identifier used for the experiment run (column key in the matrix).' },
+        context_factor_subset: { type: 'string', description: 'Context segment identifier (row key in the matrix), derived from the live data — not a fixed enum.' },
+        final_success: { type: 'boolean', description: 'Whether the run passed the quality gate.' },
+        tokens_used: { type: 'number', description: 'Tokens consumed by this run; aggregated into per-cell token deltas.' },
+        run_id: { type: 'string', description: 'Identifier of the experiment run.' },
+        task_id: { type: 'string', description: 'Identifier of the task under evaluation.' },
       },
     },
     dataSources: [projectionSource(TOPICS.contextExperimentScores, false)],
@@ -534,7 +532,7 @@ const MVP_COMPONENTS: Record<string, ComponentManifestDraft> = {
     maxSize: { w: 12, h: 12 },
     emptyState: {
       message: 'No experiment scores',
-      hint: 'context_experiment_scores requires the A3 delegation-verify-worker projection (OMN-12082). Renders the OMN-11241 research fixture until the projection is live.',
+      hint: 'context_roi_scores requires the OMN-12955 live experiment harness projection to have written rows.',
     },
     capabilities: { supports_compare: false, supports_export: false, supports_fullscreen: true, supports_time_range: false },
   },
@@ -1130,43 +1128,50 @@ const MVP_COMPONENTS: Record<string, ComponentManifestDraft> = {
       supports_time_range: true,
     },
   },
-  'delegation-savings': {
-    name: 'delegation-savings',
-    displayName: 'Delegation Savings',
-    description: 'Estimated savings vs baseline model per session and cumulative, with pricing manifest version. Backed by savings_estimates SQLite table (OMN-10623).',
+  'delegation-cost-breakdown': {
+    name: 'delegation-cost-breakdown',
+    displayName: 'Delegation Cost Breakdown',
+    description: 'Actual LLM spend broken down by aggregation key (model/repo/session) and rolling window (24h/7d/30d). Backed directly by llm_cost_aggregates (OMN-14896) — no savings calculation. Replaces the retired Delegation Savings widget, which read the deprecated savings_estimates model.',
     category: 'cost',
     version: '1.0.0',
-    implementationKey: 'delegation/DelegationSavingsWidget',
+    implementationKey: 'delegation/DelegationCostBreakdownWidget',
     configSchema: {
       type: 'object',
       properties: {
-        showSessions: { type: 'boolean', default: true, title: 'Show sessions', description: 'Show per-session savings table.' },
-        maxSessions: { type: 'integer', minimum: 1, default: 10, title: 'Max sessions', description: 'Maximum sessions to display in the table.' },
+        defaultWindow: { type: 'string', enum: ['24h', '7d', '30d'], default: '24h', title: 'Default window', description: 'Rolling aggregation window selected on load.' },
       },
       additionalProperties: false,
     },
     projectionSchema: {
       type: 'object',
-      description: 'Row shape from onex.snapshot.projection.delegation.savings.v1. Backed by savings_estimates SQLite table (OMN-10623).',
-      required: ['cumulative_savings_usd', 'cumulative_local_cost_usd', 'cumulative_cloud_cost_usd', 'baseline_model', 'pricing_manifest_version', 'session_count', 'sessions', 'captured_at', 'provisioned'],
+      description:
+        'Row shape from onex.snapshot.projection.cost.summary.v1 — a direct passthrough of llm_cost_aggregates ' +
+        '(omnimarket node_projection_cost_summary projection_api.columns). No discrete model_name/bucket_time/ ' +
+        'request_count columns exist; aggregation_key is an opaque composite string and window is the only time ' +
+        'dimension (rolling 24h/7d/30d snapshot, not a per-request timestamp).',
+      required: ['aggregation_key', 'window', 'total_cost_usd', 'total_tokens', 'call_count'],
       properties: {
-        cumulative_savings_usd: { type: 'number', description: 'Total estimated savings across all sessions in USD.' },
-        cumulative_local_cost_usd: { type: 'number', description: 'Total local model cost across all sessions in USD.' },
-        cumulative_cloud_cost_usd: { type: 'number', description: 'Total cloud baseline cost across all sessions in USD.' },
-        baseline_model: { type: 'string', description: 'Baseline model name for savings comparison (e.g. claude-sonnet-4-6).' },
-        pricing_manifest_version: { type: 'string', description: 'Version of the pricing manifest used for cost estimates.' },
-        session_count: { type: 'number', description: 'Number of sessions with savings data.' },
-        sessions: { type: 'array', description: 'Per-session savings breakdown.', items: { type: 'object', required: ['session_id', 'local_cost_usd', 'cloud_cost_usd', 'savings_usd', 'baseline_model', 'pricing_manifest_version', 'savings_method', 'usage_source', 'created_at'], properties: { session_id: { type: 'string' }, local_cost_usd: { type: 'number' }, cloud_cost_usd: { type: 'number' }, savings_usd: { type: 'number' }, baseline_model: { type: 'string' }, pricing_manifest_version: { type: 'string' }, savings_method: { type: 'string', enum: ['measured', 'estimated'] }, usage_source: { type: 'string', enum: ['measured', 'estimated', 'unknown'] }, created_at: { type: 'string', format: 'date-time' } } } },
-        captured_at: { type: 'string', format: 'date-time', description: 'Projection materialization timestamp.' },
-        provisioned: { type: 'boolean', description: 'True when backed by live projection data.' },
+        aggregation_key: { type: 'string', description: 'Opaque composite dimension key (e.g. model:<name>, repo:<name>).' },
+        window: { type: 'string', enum: ['24h', '7d', '30d'], description: 'Rolling aggregation window for this row.' },
+        total_cost_usd: { type: 'string', description: 'Total USD cost for this key+window.' },
+        total_tokens: { type: 'number', description: 'Total tokens for this key+window.' },
+        call_count: { type: 'number', description: 'Total LLM call count for this key+window.' },
+        updated_at: { type: 'string', format: 'date-time', description: 'Row last-updated timestamp.' },
       },
     },
-    dataSources: [projectionSource(TOPICS.delegationSavings, false), liveSource(TOPICS.delegationSavings)],
+    dataSources: [projectionSource(TOPICS.costSummary)],
     events: { emits: [], consumes: [] },
     defaultSize: { w: 8, h: 6 },
     minSize: { w: 6, h: 4 },
     maxSize: { w: 12, h: 12 },
-    emptyState: { message: 'No delegation savings data', hint: 'Savings data appears once delegation routing is active (OMN-10623).' },
+    emptyState: { message: 'No cost data for this window', hint: 'Cost breakdown appears once llm_cost_aggregates is populated for the selected window (OMN-14896).' },
+    // supports_time_range MUST stay false: llm_cost_aggregates carries no per-row
+    // event timestamp (only `updated_at`, a write-time marker) and this widget's
+    // only time dimension is the row-level `window` enum ('24h'|'7d'|'30d'), which
+    // it filters on internally via its own selector. It does not read
+    // globalFilters.timeRange / useTimeRange, so declaring true here would silently
+    // disconnect the widget from the dashboard-level DateRangeSelector (OMN-14896
+    // remediation round 1, defect 1).
     capabilities: { supports_compare: false, supports_export: false, supports_fullscreen: true, supports_time_range: false },
   },
   'delegation-cost-comparison': {

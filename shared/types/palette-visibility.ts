@@ -44,7 +44,6 @@ export const PALETTE_CLASSIFICATION: Record<string, PaletteClassification> = {
   // --- VISIBLE / projection-backed (200 with rows on the single backend) ---
   'delegation-metrics': { paletteVisibility: 'visible', authorityLabel: 'projection-backed', probe: 'delegation.summary.v1=200/1r' },
   'routing-decision-table': { paletteVisibility: 'visible', authorityLabel: 'projection-backed', probe: 'delegation.decisions.v1=200/36r' },
-  'delegation-savings': { paletteVisibility: 'visible', authorityLabel: 'projection-backed', probe: 'delegation.savings.v1=200/1r' },
   'delegation-cost-comparison': { paletteVisibility: 'visible', authorityLabel: 'projection-backed', probe: 'delegation.savings.v1=200/1r' },
   'delegation-model-routing': { paletteVisibility: 'visible', authorityLabel: 'projection-backed', probe: 'delegation.model-routing.v1=200/1r' },
   'delegation-quality-gate': { paletteVisibility: 'visible', authorityLabel: 'projection-backed', probe: 'delegation.quality-gate.v1=200/1r' },
@@ -85,6 +84,14 @@ export const PALETTE_CLASSIFICATION: Record<string, PaletteClassification> = {
   // Classified `degraded` (empty until the instruction-eval runner emits events to
   // node_projection_instruction_eval); once rows materialise the panel is projection-backed.
   'instruction-eval': { paletteVisibility: 'visible', authorityLabel: 'degraded', probe: 'onex.snapshot.projection.omnimarket.instruction-eval-aggregate.v1=empty (projection wired; no runner events yet — OMN-12998)' },
+  // OMN-14896: replaces the retired delegation-savings widget. cost.summary.v1
+  // is a direct passthrough of llm_cost_aggregates (node_projection_cost_summary,
+  // OMN-12970/OMN-15376) and now resolves 200 on both dev and stability-test
+  // (re-probed live 2026-08-04 — supersedes the stale 2026-06-08 503 recorded
+  // below on the 'cost-summary'/'token-usage' entries, which this PR does not
+  // touch). row_count=0 on both lanes: no aggregation pipeline has written a row
+  // yet, so the widget renders its honest empty state until it does.
+  'delegation-cost-breakdown': { paletteVisibility: 'visible', authorityLabel: 'degraded', probe: 'cost.summary.v1=200/0r dev+stability (2026-08-04)' },
 
   // --- HIDDEN / hidden (503 table missing on the single backend) ---
   'cost-summary': { paletteVisibility: 'hidden', authorityLabel: 'hidden', probe: 'cost.summary.v1=503 (table llm_cost_aggregates missing)' },

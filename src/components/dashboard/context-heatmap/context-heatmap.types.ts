@@ -1,16 +1,3 @@
-export interface ContextExperimentScore {
-  id?: string | number;
-  modelId: string;
-  packId: string;
-  factorsPresent: string[];
-  qualityGatePassed: boolean;
-  tokensUsed: number;
-  taskType?: string | null;
-  experimentRunId?: string | null;
-  notes?: string | null;
-  createdAt?: string | null;
-}
-
 export interface ContextHeatmapConfig {
   maxRows?: number;
 }

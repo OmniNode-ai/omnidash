@@ -119,8 +119,10 @@ To verify the Postgres reader is working and the GUC is set correctly:
 ```bash
 # Check server logs for projection read activity
 # Expected: no errors, rows returned for delegation/event bus panels
-# Expected: empty-state (not error) for delegation-savings and delegation-decisions panels
+# Expected: empty-state (not error) for delegation-cost-comparison and delegation-decisions panels
 #           if OMN-14058 has not yet landed (see caveats below)
+#           (the retired delegation-savings widget was replaced by delegation-cost-breakdown,
+#           which reads llm_cost_aggregates directly and is unaffected by OMN-14058 — OMN-14896)
 ```
 
 ### 4. Logout clears session

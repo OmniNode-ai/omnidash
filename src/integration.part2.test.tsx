@@ -45,6 +45,8 @@ describe('Proof of Life — Part 2', () => {
     // OMN-10509: receipt-gate and routing-decision prototype widgets added.
     // OMN-10346: cost-savings-overview added.
     // OMN-10624: delegation-savings, delegation-model-routing, delegation-quality-gate, delegation-token-usage added.
+    // OMN-14896: delegation-savings retired (savings_estimates was the deprecated model); replaced by
+    // delegation-cost-breakdown (llm_cost_aggregates via cost.summary.v1, no savings calculation).
     // OMN-11258: mcp-tools added.
     // OMN-11260: control-plane added.
     // OMN-11477: evidence-pipeline-flow added.
@@ -74,12 +76,12 @@ describe('Proof of Life — Part 2', () => {
       'cost-trend-panel',
       'delegate-task',
       'delegation-control-plane',
+      'delegation-cost-breakdown',
       'delegation-cost-comparison',
       'delegation-metrics',
       'delegation-model-output',
       'delegation-model-routing',
       'delegation-quality-gate',
-      'delegation-savings',
       'delegation-token-usage',
       'event-stream',
       'evidence-pipeline-flow',
