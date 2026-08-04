@@ -1,4 +1,4 @@
-import type { DelegationSavingsProjection, DelegationSavingsSession } from '@/components/dashboard/delegation/DelegationSavingsWidget';
+import type { DelegationSavingsProjection, DelegationSavingsSession } from '@/components/dashboard/delegation/delegation-savings.types';
 import type { DelegationModelRoutingProjection } from '@/components/dashboard/delegation/DelegationModelRoutingWidget';
 import type { DelegationQualityGateProjection } from '@/components/dashboard/delegation/DelegationQualityGateWidget';
 import type { DelegationTokenUsageProjection, TokenProvenance } from '@/components/dashboard/delegation/DelegationTokenUsageWidget';

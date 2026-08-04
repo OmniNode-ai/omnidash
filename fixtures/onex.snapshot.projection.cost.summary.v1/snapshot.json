@@ -1,7 +1,8 @@
 {
+  "aggregation_key": "model:qwen3-coder-30b",
   "window": "24h",
-  "total_cost_usd": 12.34,
-  "total_savings_usd": 4.56,
+  "total_cost_usd": "12.34",
   "total_tokens": 1234567,
-  "captured_at": "2026-04-29T00:00:00Z"
+  "call_count": 214,
+  "updated_at": "2026-04-29T00:00:00Z"
 }

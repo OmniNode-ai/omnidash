@@ -4,7 +4,7 @@ import { QueryClient } from '@tanstack/react-query';
 import { DataSourceTestProvider } from '@/test-utils/dataSourceTestProvider';
 import type { ProtocolSnapshotSource } from '@/data-source';
 import DelegationCostComparisonWidget from './DelegationCostComparisonWidget';
-import type { DelegationSavingsProjection } from './DelegationSavingsWidget';
+import type { DelegationSavingsProjection } from './delegation-savings.types';
 
 function makeSource(rows: DelegationSavingsProjection[]): ProtocolSnapshotSource {
   return {

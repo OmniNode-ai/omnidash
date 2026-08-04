@@ -2,7 +2,7 @@ import { useMemo } from 'react';
 import { useProjectionQuery } from '@/hooks/useProjectionQuery';
 import { TOPICS } from '@shared/types/topics';
 import type { DelegationSummary } from '@/components/dashboard/delegation/DelegationMetrics';
-import type { DelegationSavingsProjection, DelegationSavingsSession } from '@/components/dashboard/delegation/DelegationSavingsWidget';
+import type { DelegationSavingsProjection, DelegationSavingsSession } from '@/components/dashboard/delegation/delegation-savings.types';
 import type {
   DelegationModelRoutingProjection,
   RoutingDecisionTrace,
