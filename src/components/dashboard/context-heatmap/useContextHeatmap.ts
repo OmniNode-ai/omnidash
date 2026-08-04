@@ -76,7 +76,12 @@ export function useContextHeatmap(): ContextHeatmapSnapshot {
   const refetchInterval = globalInterval === null ? false : (globalInterval ?? DEFAULT_POLL_MS);
 
   const query = useQuery({
-    queryKey: ['ev', 'experiments', 'context-scores'],
+    // Distinct from useContextExperimentScores' ['ev','experiments','context-scores']
+    // key (OMN-14895 D4/obs-A): React Query shares cache entries by key, and the
+    // wrapper's hardcoded 15s poll would otherwise be the last-observer-wins
+    // refetchInterval if this widget and ExperimentsPage were ever mounted
+    // concurrently, silently defeating this widget's own auto-refresh setting.
+    queryKey: ['ev', 'experiments', 'context-scores', 'grid'],
     queryFn: fetchContextExperimentScores,
     refetchInterval,
   });

@@ -1,6 +1,6 @@
 {
   "manifestVersion": "1.0",
-  "generatedAt": "2026-07-29T04:11:23.014Z",
+  "generatedAt": "2026-08-04T18:20:11.193Z",
   "components": {
     "cost-trend-panel": {
       "name": "cost-trend-panel",
@@ -855,7 +855,7 @@
     "context-effectiveness-heatmap": {
       "name": "context-effectiveness-heatmap",
       "displayName": "Context Effectiveness Heatmap",
-      "description": "Segment × model matrix of context-pack quality-gate pass rates and token deltas, classifying each context segment (golden_chain, CLAUDE.md, exemplar, etc.) as helpful, neutral, or harmful per model. Backed by the context_experiment_scores ablation projection (OMN-12082); renders the OMN-11241 research fixture until the projection is live.",
+      "description": "Segment × model matrix of context-pack quality-gate pass rates and token deltas, classifying each context segment (golden_chain, CLAUDE.md, exemplar, etc.) as helpful, neutral, or harmful per model. Backed by the live onex.snapshot.projection.context.experiment-scores.v1 projection (context_roi_scores, OMN-12955); renders an honest empty/degraded state when the projection has zero rows (OMN-14895).",
       "category": "quality",
       "version": "1.0.0",
       "implementationKey": "context-heatmap/ContextEffectivenessHeatmap",
@@ -873,59 +873,37 @@
       },
       "projectionSchema": {
         "type": "object",
-        "description": "Row shape from onex.snapshot.projection.context.experiment-scores.v1. Backed by the context_experiment_scores ablation table (OMN-12082).",
+        "description": "Row shape from onex.snapshot.projection.context.experiment-scores.v1 (context_roi_scores, OMN-12955).",
         "required": [
-          "modelId",
-          "packId",
-          "factorsPresent",
-          "qualityGatePassed",
-          "tokensUsed"
+          "context_factor_subset",
+          "model_id",
+          "final_success",
+          "tokens_used"
         ],
         "properties": {
-          "modelId": {
+          "model_id": {
             "type": "string",
             "description": "Model identifier used for the experiment run (column key in the matrix)."
           },
-          "packId": {
+          "context_factor_subset": {
             "type": "string",
-            "description": "Context segment identifier (row key in the matrix, e.g. golden_chain, claude_md)."
+            "description": "Context segment identifier (row key in the matrix), derived from the live data — not a fixed enum."
           },
-          "factorsPresent": {
-            "type": "array",
-            "items": {
-              "type": "string"
-            },
-            "description": "Context factors present in this run."
-          },
-          "qualityGatePassed": {
+          "final_success": {
             "type": "boolean",
-            "description": "Whether the quality gate passed for this run."
+            "description": "Whether the run passed the quality gate."
           },
-          "tokensUsed": {
+          "tokens_used": {
             "type": "number",
             "description": "Tokens consumed by this run; aggregated into per-cell token deltas."
           },
-          "taskType": {
-            "type": [
-              "string",
-              "null"
-            ],
-            "description": "Optional task type for the experiment run."
+          "run_id": {
+            "type": "string",
+            "description": "Identifier of the experiment run."
           },
-          "experimentRunId": {
-            "type": [
-              "string",
-              "null"
-            ],
-            "description": "Optional experiment run identifier."
-          },
-          "createdAt": {
-            "type": [
-              "string",
-              "null"
-            ],
-            "format": "date-time",
-            "description": "ISO-8601 timestamp when this score was recorded."
+          "task_id": {
+            "type": "string",
+            "description": "Identifier of the task under evaluation."
           }
         }
       },
@@ -955,7 +933,7 @@
       },
       "emptyState": {
         "message": "No experiment scores",
-        "hint": "context_experiment_scores requires the A3 delegation-verify-worker projection (OMN-12082). Renders the OMN-11241 research fixture until the projection is live."
+        "hint": "context_roi_scores requires the OMN-12955 live experiment harness projection to have written rows."
       },
       "capabilities": {
         "supports_compare": false,

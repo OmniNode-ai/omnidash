@@ -116,7 +116,7 @@ describe('useContextHeatmap', () => {
     });
     await waitFor(() => expect(result.current.isLoading).toBe(false));
 
-    const query = client.getQueryCache().find({ queryKey: ['ev', 'experiments', 'context-scores'] });
+    const query = client.getQueryCache().find({ queryKey: ['ev', 'experiments', 'context-scores', 'grid'] });
     const options = query?.options as { refetchInterval?: unknown } | undefined;
     expect(options?.refetchInterval).toBe(false);
   });
