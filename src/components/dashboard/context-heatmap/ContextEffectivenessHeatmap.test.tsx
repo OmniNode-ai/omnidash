@@ -28,7 +28,8 @@ const EMPTY_SNAPSHOT = {
   scores: [],
   isLoading: false,
   hasAnyData: false,
-  isFixture: false,
+  isDegraded: false,
+  degradedReason: null,
   error: null,
 };
 
@@ -61,20 +62,32 @@ const POPULATED_SNAPSHOT = {
   segments: [],
   models: ['qwen3-35b', 'qwen3-27b'],
   scores: Array.from({ length: 48 }, (_, i) => ({
-    id: i,
-    modelId: 'qwen3-35b',
-    packId: 'golden_chain',
-    factorsPresent: ['golden_chain'],
-    qualityGatePassed: true,
-    tokensUsed: 1200,
-    taskType: 'code-generation',
-    experimentRunId: 'run-1',
-    notes: null,
-    createdAt: '2026-05-10T10:00:00Z',
+    id: String(i),
+    run_id: 'run-1',
+    correlation_id: `corr-${i}`,
+    task_id: `task-${i}`,
+    run_order: i,
+    context_factor_subset: 'golden_chain',
+    context_pack_hash: 'hash-1',
+    attempt_count: 1,
+    first_pass_success: true,
+    final_success: true,
+    failure_stage: '',
+    prompt_tokens: 900,
+    completion_tokens: 300,
+    tokens_used: 1200,
+    estimated_cost: 0.01,
+    model_id: 'qwen3-35b',
+    provider: 'local',
+    endpoint_ref: 'local-endpoint',
+    proof_class: 'live-readback',
+    created_at: '2026-05-10T10:00:00Z',
+    updated_at: '2026-05-10T10:00:00Z',
   })),
   isLoading: false,
   hasAnyData: true,
-  isFixture: false,
+  isDegraded: false,
+  degradedReason: null,
   error: null,
 };
 
@@ -134,16 +147,23 @@ describe('ContextEffectivenessHeatmap', () => {
     expect(screen.getAllByText(/Pass rate/i).length).toBeGreaterThan(0);
   });
 
-  it('shows fixture badge when isFixture is true', () => {
-    mockUseContextHeatmap.mockReturnValue({ ...POPULATED_SNAPSHOT, isFixture: true });
+  it('never renders fabricated data when the live query returns zero rows (OMN-14895)', () => {
+    mockUseContextHeatmap.mockReturnValue(EMPTY_SNAPSHOT);
     render(<ContextEffectivenessHeatmap config={{}} />);
-    expect(screen.getByText(/OMN-11241 research fixture/i)).toBeTruthy();
+    // The widget must show the honest empty state, not a substituted fixture
+    // matrix — no segment/model labels or pass-rate cells should render.
+    expect(screen.queryByText('Golden Chain')).toBeNull();
+    expect(screen.queryByText(/research fixture/i)).toBeNull();
   });
 
-  it('does not show fixture badge when isFixture is false', () => {
-    mockUseContextHeatmap.mockReturnValue({ ...POPULATED_SNAPSHOT, isFixture: false });
+  it('surfaces the backend degradedReason in the empty-state hint when degraded', () => {
+    mockUseContextHeatmap.mockReturnValue({
+      ...EMPTY_SNAPSHOT,
+      isDegraded: true,
+      degradedReason: "table 'context_roi_scores' not found at startup",
+    });
     render(<ContextEffectivenessHeatmap config={{}} />);
-    expect(screen.queryByText(/OMN-11241 research fixture/i)).toBeNull();
+    expect(screen.getByText(/table 'context_roi_scores' not found at startup/i)).toBeTruthy();
   });
 
   it('shows experiment score count footer', () => {

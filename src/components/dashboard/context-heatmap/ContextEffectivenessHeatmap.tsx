@@ -254,31 +254,14 @@ export default function ContextEffectivenessHeatmap({ config: _config = {} }: { 
       error={snapshot.error}
       isEmpty={!snapshot.isLoading && !snapshot.hasAnyData}
       emptyMessage="No experiment scores"
-      emptyHint="context_experiment_scores requires the A3 delegation-verify-worker projection (OMN-12082). In file mode, add fixture files under fixtures/onex.snapshot.projection.context.experiment-scores.v1/"
+      emptyHint={
+        snapshot.degradedReason ??
+        'context_roi_scores projection is served but has no rows yet. Renders once a context-ROI run completes and node_projection_context_roi materializes its rows (OMN-12955).'
+      }
       isLive={isLiveDataSource(dataSourceMode)}
       fileMode={!isLiveDataSource(dataSourceMode)}
     >
       <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-
-        {/* Fixture badge */}
-        {snapshot.isFixture && (
-          <div
-            style={{
-              display: 'inline-flex',
-              alignItems: 'center',
-              gap: 6,
-              padding: '4px 10px',
-              borderRadius: 6,
-              background: 'color-mix(in srgb, var(--color-warn, #f59e0b) 12%, transparent)',
-              border: '1px solid color-mix(in srgb, var(--color-warn, #f59e0b) 30%, transparent)',
-              alignSelf: 'flex-start',
-            }}
-          >
-            <Text as="span" size="xs" color="warn">
-              Showing OMN-11241 research fixture — no live data yet
-            </Text>
-          </div>
-        )}
 
         {/* Legend */}
         <Legend />
