@@ -36,7 +36,7 @@ export const componentImports: Record<string, ReturnType<typeof lazy>> = {
   'cost-savings-overview/CostSavingsOverviewWidget': lazy(
     () => import('./cost-savings-overview/CostSavingsOverviewWidget'),
   ),
-  'delegation/DelegationSavingsWidget': lazy(() => import('./delegation/DelegationSavingsWidget')),
+  'delegation/DelegationCostBreakdownWidget': lazy(() => import('./delegation/DelegationCostBreakdownWidget')),
   'delegation/DelegationCostComparisonWidget': lazy(() => import('./delegation/DelegationCostComparisonWidget')),
   'delegation/DelegationModelRoutingWidget': lazy(() => import('./delegation/DelegationModelRoutingWidget')),
   'delegation/DelegationModelOutputWidget': lazy(() => import('./delegation/DelegationModelOutputWidget')),

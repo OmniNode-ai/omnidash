@@ -5,15 +5,20 @@
  * delegation dashboard refreshes within the 5s SLA when new data arrives.
  *
  * Strategy:
- * 1. Seed a dashboard with delegation-metrics + delegation-savings widgets.
+ * 1. Seed a dashboard with delegation-metrics + delegation-cost-breakdown widgets.
  * 2. Intercept the delegation summary fixture to return baseline data (314 delegations).
  * 3. Navigate and verify the baseline renders.
- * 4. Update the intercepted fixture to return incremented data (315 delegations, higher savings).
+ * 4. Update the intercepted fixture to return incremented data (315 delegations, higher cost).
  * 5. Wait for the auto-refresh cycle (5s refetchInterval + 1s buffer = 6s).
- * 6. Assert the delegation count and savings updated in the DOM.
+ * 6. Assert the delegation count and cost breakdown updated in the DOM.
  *
  * Fixtures are served via the Vite /_fixtures middleware (FileSnapshotSource).
  * useProjectionQuery polls at refetchInterval: 5000ms.
+ *
+ * OMN-14896: the delegation-savings widget (savings_estimates) was retired and
+ * replaced by delegation-cost-breakdown (llm_cost_aggregates via
+ * cost.summary.v1) — this spec's cost-breakdown coverage was updated in the
+ * same change to exercise the new widget/topic instead of the deleted one.
  */
 import { test, expect, type Page, type Route } from 'playwright/test';
 
@@ -33,11 +38,11 @@ const DELEGATION_DASHBOARD = {
       config: {},
     },
     {
-      i: 'pol-delegation-savings',
-      componentName: 'delegation-savings',
+      i: 'pol-delegation-cost-breakdown',
+      componentName: 'delegation-cost-breakdown',
       componentVersion: '1.0.0',
       x: 0, y: 4, w: 12, h: 5,
-      config: { showSessions: true, maxSessions: 5 },
+      config: {},
     },
   ],
   createdAt: '2026-05-17T00:00:00Z',
@@ -83,62 +88,28 @@ const SUMMARY_AFTER_EVENT = {
   ],
 };
 
-const SAVINGS_BASELINE = {
-  entity_id: 'savings',
-  cumulative_savings_usd: 25.44,
-  cumulative_local_cost_usd: 3.21,
-  cumulative_cloud_cost_usd: 28.65,
-  baseline_model: 'claude-opus-4-20250514',
-  pricing_manifest_version: '1',
-  session_count: 12,
-  sessions: [
-    {
-      session_id: 'sess-001',
-      task_type: 'code_review',
-      local_cost_usd: 0.28,
-      cloud_cost_usd: 2.41,
-      savings_usd: 2.13,
-      baseline_model: 'claude-opus-4-20250514',
-      pricing_manifest_version: '1',
-      savings_method: 'measured',
-      usage_source: 'measured',
-      model_name: 'local-qwen3-coder-30b',
-      prompt_tokens: 1200,
-      completion_tokens: 800,
-      latency_ms: 3400,
-      created_at: '2026-05-17T08:00:00Z',
-    },
-  ],
-  captured_at: '2026-05-17T10:00:00Z',
-  provisioned: true,
-};
+// Row shape from onex.snapshot.projection.cost.summary.v1 — a direct
+// passthrough of llm_cost_aggregates (see DelegationCostBreakdownWidget.tsx).
+const COST_BREAKDOWN_BASELINE = [
+  {
+    aggregation_key: 'model:qwen3-coder-30b',
+    window: '24h',
+    total_cost_usd: '25.44',
+    total_tokens: 1_204_000,
+    call_count: 12,
+    updated_at: '2026-05-17T10:00:00Z',
+  },
+];
 
-const SAVINGS_AFTER_EVENT = {
-  ...SAVINGS_BASELINE,
-  cumulative_savings_usd: 27.57,
-  cumulative_cloud_cost_usd: 30.78,
-  session_count: 13,
-  sessions: [
-    {
-      session_id: 'sess-002',
-      task_type: 'refactor',
-      local_cost_usd: 0.31,
-      cloud_cost_usd: 2.44,
-      savings_usd: 2.13,
-      baseline_model: 'claude-opus-4-20250514',
-      pricing_manifest_version: '1',
-      savings_method: 'measured',
-      usage_source: 'measured',
-      model_name: 'local-qwen3-coder-30b',
-      prompt_tokens: 1400,
-      completion_tokens: 900,
-      latency_ms: 3800,
-      created_at: '2026-05-17T10:05:00Z',
-    },
-    ...SAVINGS_BASELINE.sessions,
-  ],
-  captured_at: '2026-05-17T10:05:00Z',
-};
+const COST_BREAKDOWN_AFTER_EVENT = [
+  {
+    ...COST_BREAKDOWN_BASELINE[0],
+    total_cost_usd: '27.57',
+    total_tokens: 1_318_000,
+    call_count: 13,
+    updated_at: '2026-05-17T10:05:00Z',
+  },
+];
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -210,12 +181,12 @@ test.describe('OMN-10947: delegation dashboard live refresh proof', () => {
     await expect(metricsWidget.getByText('314', { exact: true })).not.toBeVisible({ timeout: 2000 });
   });
 
-  test('savings widget shows dollar amount and updates after new delegation', async ({ page }) => {
-    let serveSavings = SAVINGS_BASELINE;
+  test('cost breakdown widget shows dollar amount and updates after new delegation', async ({ page }) => {
+    let serveCostBreakdown = COST_BREAKDOWN_BASELINE;
     let serveSummary = SUMMARY_BASELINE;
 
     const summaryTopic = encodeURIComponent('onex.snapshot.projection.delegation.summary.v1');
-    const savingsTopic = encodeURIComponent('onex.snapshot.projection.delegation.savings.v1');
+    const costSummaryTopic = encodeURIComponent('onex.snapshot.projection.cost.summary.v1');
 
     // Intercept delegation summary
     await page.route(`**/_fixtures/${summaryTopic}/**`, async (route: Route) => {
@@ -235,20 +206,20 @@ test.describe('OMN-10947: delegation dashboard live refresh proof', () => {
       }
     });
 
-    // Intercept delegation savings
-    await page.route(`**/_fixtures/${savingsTopic}/**`, async (route: Route) => {
+    // Intercept cost summary (llm_cost_aggregates passthrough — OMN-14896)
+    await page.route(`**/_fixtures/${costSummaryTopic}/**`, async (route: Route) => {
       const url = route.request().url();
       if (url.endsWith('index.json')) {
         await route.fulfill({
           status: 200,
           contentType: 'application/json',
-          body: JSON.stringify(['savings.json']),
+          body: JSON.stringify(['cost-summary.json']),
         });
       } else {
         await route.fulfill({
           status: 200,
           contentType: 'application/json',
-          body: JSON.stringify(serveSavings),
+          body: JSON.stringify(serveCostBreakdown),
         });
       }
     });
@@ -257,29 +228,29 @@ test.describe('OMN-10947: delegation dashboard live refresh proof', () => {
     await page.goto('/');
     await selectFiveSecondAutoRefresh(page);
 
-    // Wait for savings widget to render
+    // Wait for cost breakdown widget to render
     await page.waitForSelector('[data-testid="grid-item"]', { timeout: 15000 });
 
-    // Savings widget displays cumulative_savings_usd as a dollar amount via KPI.
-    // The KPI uses CountUp animation. The value 25.44 should render as "$25.44" or
-    // have "25.44" visible. We check for the prefix "$" appearing alongside a number.
-    const savingsKpi = page.locator('.kpi:has(.kpi-label:text("Est. savings vs Opus"))');
-    await expect(savingsKpi).toBeVisible({ timeout: 10000 });
+    // Cost breakdown widget displays the sum of total_cost_usd for the selected
+    // window ('24h' by default) as a dollar amount via KPI. The KPI uses CountUp
+    // animation. The value 25.44 should render as "$25.44".
+    const costKpi = page.locator('.kpi:has(.kpi-label:text("Total cost"))');
+    await expect(costKpi).toBeVisible({ timeout: 10000 });
     // Verify it shows a dollar sign (confirming currency formatting)
-    await expect(savingsKpi.locator('.kpi-num')).toContainText('$', { timeout: 10000 });
+    await expect(costKpi.locator('.kpi-num')).toContainText('$', { timeout: 10000 });
 
-    // -- Trigger: new delegation event updates savings --
-    serveSavings = SAVINGS_AFTER_EVENT;
+    // -- Trigger: new delegation event updates the cost aggregate --
+    serveCostBreakdown = COST_BREAKDOWN_AFTER_EVENT;
     serveSummary = SUMMARY_AFTER_EVENT;
 
     // Wait for refresh cycle (5s + 1s buffer)
-    // The new savings value is 27.57 — wait for "27.57" to appear
-    await expect(savingsKpi.locator('.kpi-num')).toContainText('27.57', { timeout: 7000 });
+    // The new total cost value is 27.57 — wait for "27.57" to appear
+    await expect(costKpi.locator('.kpi-num')).toContainText('27.57', { timeout: 7000 });
   });
 
   test('screenshot: delegation dashboard populated state (OMN-7093)', async ({ page }) => {
     const summaryTopic = encodeURIComponent('onex.snapshot.projection.delegation.summary.v1');
-    const savingsTopic = encodeURIComponent('onex.snapshot.projection.delegation.savings.v1');
+    const costSummaryTopic = encodeURIComponent('onex.snapshot.projection.cost.summary.v1');
 
     await page.route(`**/_fixtures/${summaryTopic}/**`, async (route: Route) => {
       const url = route.request().url();
@@ -298,19 +269,19 @@ test.describe('OMN-10947: delegation dashboard live refresh proof', () => {
       }
     });
 
-    await page.route(`**/_fixtures/${savingsTopic}/**`, async (route: Route) => {
+    await page.route(`**/_fixtures/${costSummaryTopic}/**`, async (route: Route) => {
       const url = route.request().url();
       if (url.endsWith('index.json')) {
         await route.fulfill({
           status: 200,
           contentType: 'application/json',
-          body: JSON.stringify(['savings.json']),
+          body: JSON.stringify(['cost-summary.json']),
         });
       } else {
         await route.fulfill({
           status: 200,
           contentType: 'application/json',
-          body: JSON.stringify(SAVINGS_BASELINE),
+          body: JSON.stringify(COST_BREAKDOWN_BASELINE),
         });
       }
     });

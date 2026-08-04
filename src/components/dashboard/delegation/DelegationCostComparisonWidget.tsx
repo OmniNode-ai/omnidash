@@ -6,7 +6,7 @@ import { Text } from '@/components/ui/typography';
 import { KPI } from '@/components/primitives';
 import { useDelegationRunContextOptional } from '@/components/dashboard/delegation-control-plane/DelegationRunContext';
 import { useDataSourceMode, isLiveDataSource } from '@/hooks/useDataSourceMode';
-import type { DelegationSavingsProjection, DelegationSavingsSession } from './DelegationSavingsWidget';
+import type { DelegationSavingsProjection, DelegationSavingsSession } from './delegation-savings.types';
 
 // ── Config ────────────────────────────────────────────────────────────
 
