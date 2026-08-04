@@ -2,21 +2,9 @@ import { render, screen, fireEvent } from '@testing-library/react';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 
 const mockUseContextHeatmap = vi.fn();
-const mockUseDataSourceMode = vi.fn();
 
 vi.mock('./useContextHeatmap', () => ({
   useContextHeatmap: () => mockUseContextHeatmap(),
-  KNOWN_SEGMENTS: [
-    { id: 'golden_chain', label: 'Golden Chain', description: 'Exemplar chain with passing test evidence' },
-    { id: 'claude_md', label: 'CLAUDE.md', description: 'Full CLAUDE.md contents injected into context' },
-    { id: 'exemplar', label: 'Exemplar', description: 'Single passing example for exact-interface tasks' },
-    { id: 'local_failures', label: 'Local Failures', description: 'Recent failure examples from this repo' },
-  ],
-}));
-
-vi.mock('@/hooks/useDataSourceMode', () => ({
-  useDataSourceMode: () => mockUseDataSourceMode(),
-  isLiveDataSource: (mode: string) => mode === 'http' || mode === 'postgres',
 }));
 
 import ContextEffectivenessHeatmap from './ContextEffectivenessHeatmap';
@@ -59,7 +47,12 @@ const POPULATED_SNAPSHOT = {
     makeCell('local_failures', 'qwen3-35b', 4, 8),
     makeCell('local_failures', 'qwen3-27b', 4, 8),
   ],
-  segments: [],
+  segments: [
+    { id: 'golden_chain', label: 'Golden Chain', description: 'Exemplar chain with passing test evidence' },
+    { id: 'claude_md', label: 'CLAUDE.md', description: 'Full CLAUDE.md contents injected into context' },
+    { id: 'exemplar', label: 'Exemplar', description: 'Single passing example for exact-interface tasks' },
+    { id: 'local_failures', label: 'Local Failures', description: 'Recent failure examples from this repo' },
+  ],
   models: ['qwen3-35b', 'qwen3-27b'],
   scores: Array.from({ length: 48 }, (_, i) => ({
     id: String(i),
@@ -91,10 +84,31 @@ const POPULATED_SNAPSHOT = {
   error: null,
 };
 
+// A live-shaped snapshot using the ACTUAL live vocabulary observed on
+// stability-test (`golden_exemplar`, `off`) rather than the retired
+// OMN-11241 research vocabulary — regression guard for OMN-14895 D1
+// (hardcoded KNOWN_SEGMENTS had zero intersection with this vocabulary).
+const LIVE_VOCAB_SNAPSHOT = {
+  cells: [
+    makeCell('golden_exemplar', 'qwen3-35b', 6, 8),
+    makeCell('off', 'qwen3-35b', 3, 8),
+  ],
+  segments: [
+    { id: 'golden_exemplar', label: 'Golden Exemplar', description: 'Golden-chain exemplar context injected into the run' },
+    { id: 'off', label: 'Off', description: 'No supplemental context injected' },
+  ],
+  models: ['qwen3-35b'],
+  scores: Array.from({ length: 16 }, (_, i) => ({ id: String(i), context_factor_subset: i < 8 ? 'golden_exemplar' : 'off', model_id: 'qwen3-35b' })),
+  isLoading: false,
+  hasAnyData: true,
+  isDegraded: false,
+  degradedReason: null,
+  error: null,
+};
+
 describe('ContextEffectivenessHeatmap', () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    mockUseDataSourceMode.mockReturnValue('file');
   });
 
   it('shows empty state when no data', () => {
@@ -110,6 +124,18 @@ describe('ContextEffectivenessHeatmap', () => {
     expect(screen.getByText('CLAUDE.md')).toBeTruthy();
     expect(screen.getAllByText('qwen3-35b').length).toBeGreaterThan(0);
     expect(screen.getAllByText('qwen3-27b').length).toBeGreaterThan(0);
+  });
+
+  it('renders a matrix row per live segment, including unrecognized/live-only ids (OMN-14895 D1)', () => {
+    mockUseContextHeatmap.mockReturnValue(LIVE_VOCAB_SNAPSHOT);
+    render(<ContextEffectivenessHeatmap config={{}} />);
+    expect(screen.getByText('Golden Exemplar')).toBeTruthy();
+    expect(screen.getByText('Off')).toBeTruthy();
+    // The empty state must NOT show — real rows with real (if unrecognized)
+    // segment ids must render a populated matrix, not a blank grid gated on
+    // a fixed allow-list.
+    expect(screen.queryByText(/No experiment scores/i)).toBeNull();
+    expect(screen.getByText(/16 experiment scores? across 1 model and 2 segments/i)).toBeTruthy();
   });
 
   it('renders percentage values in cells', () => {
@@ -156,6 +182,20 @@ describe('ContextEffectivenessHeatmap', () => {
     expect(screen.queryByText(/research fixture/i)).toBeNull();
   });
 
+  it('shows the empty state when scores exist but resolve to zero renderable segments (OMN-14895 D2)', () => {
+    // Defends the D2 gate: isEmpty keys on `segments.length`, not raw score
+    // count, so a hook regression that produces rows with no mapped segment
+    // cannot silently bypass the empty state again.
+    mockUseContextHeatmap.mockReturnValue({
+      ...EMPTY_SNAPSHOT,
+      scores: [{ id: '1' }],
+      hasAnyData: true,
+      segments: [],
+    });
+    render(<ContextEffectivenessHeatmap config={{}} />);
+    expect(screen.getByText(/No experiment scores/i)).toBeTruthy();
+  });
+
   it('surfaces the backend degradedReason in the empty-state hint when degraded', () => {
     mockUseContextHeatmap.mockReturnValue({
       ...EMPTY_SNAPSHOT,
@@ -171,6 +211,13 @@ describe('ContextEffectivenessHeatmap', () => {
     render(<ContextEffectivenessHeatmap config={{}} />);
     expect(screen.getByText(/experiment score/i)).toBeTruthy();
     expect(screen.getByText(/2 model/i)).toBeTruthy();
+  });
+
+  it('always shows Live, never a File Mode badge (OMN-14895 D3 — this widget has no fixture path)', () => {
+    mockUseContextHeatmap.mockReturnValue(POPULATED_SNAPSHOT);
+    render(<ContextEffectivenessHeatmap config={{}} />);
+    expect(screen.getByText('Live')).toBeTruthy();
+    expect(screen.queryByText('File Mode')).toBeNull();
   });
 
   it('toggles cell selection off when same cell clicked again', () => {
