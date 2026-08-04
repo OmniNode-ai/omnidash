@@ -1,6 +1,6 @@
 {
   "manifestVersion": "1.0",
-  "generatedAt": "2026-08-04T17:50:00.590Z",
+  "generatedAt": "2026-08-04T18:20:00.726Z",
   "components": {
     "cost-trend-panel": {
       "name": "cost-trend-panel",
@@ -2435,7 +2435,7 @@
         "supports_compare": false,
         "supports_export": false,
         "supports_fullscreen": true,
-        "supports_time_range": true
+        "supports_time_range": false
       },
       "paletteVisibility": "visible",
       "authorityLabel": "degraded"

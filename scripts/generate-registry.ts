@@ -1167,7 +1167,14 @@ const MVP_COMPONENTS: Record<string, ComponentManifestDraft> = {
     minSize: { w: 6, h: 4 },
     maxSize: { w: 12, h: 12 },
     emptyState: { message: 'No cost data for this window', hint: 'Cost breakdown appears once llm_cost_aggregates is populated for the selected window (OMN-14896).' },
-    capabilities: { supports_compare: false, supports_export: false, supports_fullscreen: true, supports_time_range: true },
+    // supports_time_range MUST stay false: llm_cost_aggregates carries no per-row
+    // event timestamp (only `updated_at`, a write-time marker) and this widget's
+    // only time dimension is the row-level `window` enum ('24h'|'7d'|'30d'), which
+    // it filters on internally via its own selector. It does not read
+    // globalFilters.timeRange / useTimeRange, so declaring true here would silently
+    // disconnect the widget from the dashboard-level DateRangeSelector (OMN-14896
+    // remediation round 1, defect 1).
+    capabilities: { supports_compare: false, supports_export: false, supports_fullscreen: true, supports_time_range: false },
   },
   'delegation-cost-comparison': {
     name: 'delegation-cost-comparison',
