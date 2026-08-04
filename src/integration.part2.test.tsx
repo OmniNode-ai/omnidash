@@ -60,7 +60,9 @@ describe('Proof of Life — Part 2', () => {
     // OMN-13832: skill-adoption added — per-skill lifecycle adoption over the
     // skill_executions projection (classified hidden until the snapshot topic is
     // verified exposed on the single backend).
-    expect(all.length).toBe(35);
+    // OMN-15704: swarm-control-plane added — OMN-12072's widget tree (shipped
+    // 2026-05-26, omnidash#125) had never been registered until now.
+    expect(all.length).toBe(36);
     expect(all.map((c) => c.name).sort()).toEqual([
       'ab-compare',
       'baselines-roi-card',
@@ -95,6 +97,7 @@ describe('Proof of Life — Part 2', () => {
       'routing-decision-table',
       'session-timeline',
       'skill-adoption',
+      'swarm-control-plane',
       'token-usage',
       'trace-explorer',
     ]);

@@ -1665,6 +1665,69 @@ const MVP_COMPONENTS: Record<string, ComponentManifestDraft> = {
     },
     capabilities: { supports_compare: false, supports_export: false, supports_fullscreen: true, supports_time_range: false },
   },
+  'swarm-control-plane': {
+    name: 'swarm-control-plane',
+    displayName: 'Swarm Control Plane',
+    description:
+      'Composable swarm-dispatch evidence surface: run table, live counters, decomposition tree, per-run detail, wave visualization, and aggregate savings (OMN-12072, wired OMN-15704).',
+    category: 'activity',
+    version: '1.0.0',
+    implementationKey: 'swarm-control-plane/SwarmControlPlane',
+    configSchema: {
+      type: 'object',
+      properties: {
+        maxRuns: {
+          type: 'integer',
+          minimum: 1,
+          maximum: 50,
+          default: 12,
+          title: 'Max runs',
+          description: 'Maximum recent swarm runs to show in the run table.',
+        },
+      },
+      additionalProperties: false,
+    },
+    // Row shape from onex.snapshot.projection.swarm.runs.v1, backed by the
+    // swarm_runs table (node_projection_swarm). Ordering authority: created_at DESC.
+    projectionSchema: {
+      type: 'object',
+      required: ['run_id', 'correlation_id', 'status', 'subtask_count', 'succeeded_count', 'failed_count', 'total_cost_usd', 'cloud_equivalent_cost_usd', 'savings_usd', 'parallelism_speedup_ratio', 'total_latency_ms', 'created_at'],
+      properties: {
+        run_id: { type: 'string', description: 'Unique swarm dispatch run identifier.' },
+        correlation_id: { type: 'string', description: 'Correlation identifier for the originating dispatch command.' },
+        status: { type: 'string', description: 'Run status: succeeded, failed, running, pending, or unknown.' },
+        task_hash: { type: 'string', description: 'Hash of the decomposed task tree.' },
+        subtask_count: { type: 'number', description: 'Total subtasks in the run.' },
+        succeeded_count: { type: 'number', description: 'Subtasks that completed successfully.' },
+        failed_count: { type: 'number', description: 'Subtasks that failed.' },
+        skipped_count: { type: 'number', description: 'Subtasks skipped.' },
+        models_used: { type: 'array', items: { type: 'string' }, description: 'Model identifiers dispatched to across the run.' },
+        machines_used: { type: 'array', items: { type: 'string' }, description: 'Machine identifiers that executed subtasks.' },
+        total_cost_usd: { type: 'number', description: 'Actual total cost in USD for the run.' },
+        cloud_equivalent_cost_usd: { type: 'number', description: 'Estimated cost had the run used a cloud-frontier baseline.' },
+        savings_usd: { type: 'number', description: 'cloud_equivalent_cost_usd minus total_cost_usd.' },
+        parallelism_speedup_ratio: { type: 'number', description: 'Wall-clock speedup from parallel subtask dispatch vs serial execution.' },
+        total_latency_ms: { type: 'number', description: 'End-to-end run latency in milliseconds.' },
+        created_at: { type: 'string', format: 'date-time', description: 'Run creation timestamp. Ordering authority: monotonic descending.' },
+      },
+      'x-orderingAuthority': {
+        authority: 'monotonic_field',
+        fieldName: 'created_at',
+        direction: 'desc',
+        clockSemantics: 'UTC',
+      },
+    },
+    dataSources: [projectionSource(TOPICS.swarmRuns), liveSource(TOPICS.swarmRuns)],
+    events: { emits: [{ name: 'swarm_run_selected', schema: { type: 'object', properties: { run_id: { type: 'string' } } } }], consumes: [] },
+    defaultSize: { w: 12, h: 12 },
+    minSize: { w: 8, h: 8 },
+    maxSize: { w: 12, h: 18 },
+    emptyState: {
+      message: 'No swarm runs',
+      hint: 'Trigger a swarm dispatch via onex.cmd.omnimarket.swarm-dispatch.v1 to populate the swarm_runs projection.',
+    },
+    capabilities: { supports_compare: false, supports_export: false, supports_fullscreen: true, supports_time_range: false },
+  },
 };
 
 // Scan node_modules/@omninode/* for packages declaring dashboardComponents

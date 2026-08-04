@@ -52,6 +52,12 @@ export const PALETTE_CLASSIFICATION: Record<string, PaletteClassification> = {
   'delegate-task': { paletteVisibility: 'visible', authorityLabel: 'projection-backed', probe: 'typed delegate-skill command; lifecycle truth rendered by live-events.v1' },
   'control-plane': { paletteVisibility: 'visible', authorityLabel: 'projection-backed', probe: 'typed node-generation command; lifecycle truth rendered by live-events.v1' },
   'live-event-stream': { paletteVisibility: 'visible', authorityLabel: 'projection-backed', probe: 'live-events.v1 contract exposure over authoritative live_events projection' },
+  // Swarm Control Plane (OMN-12072 widget tree, wired OMN-15704): component shipped
+  // in omnidash#125 but was never registered — dead code, not missing backend. Live
+  // probe against the stability-test projection-api 2026-08-04 confirms real rows;
+  // dev lane legitimately reads 0 (no swarm-dispatch traffic there), rendered honestly
+  // via the widget's existing isEmpty path — not a degraded classification.
+  'swarm-control-plane': { paletteVisibility: 'visible', authorityLabel: 'projection-backed', probe: 'swarm.runs.v1=200/18r (stability-test, 2026-08-04)' },
 
   // --- VISIBLE / degraded (200 empty on the single backend — truthful empty state) ---
   'evidence-pipeline-flow': { paletteVisibility: 'visible', authorityLabel: 'degraded', probe: 'evidence_pipeline.{stages,correlations,readiness,live_events}=200/0r' },
