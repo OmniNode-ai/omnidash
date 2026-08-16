@@ -910,12 +910,17 @@ const MVP_COMPONENTS: Record<string, ComponentManifestDraft> = {
     version: '1.0.0',
     implementationKey: 'intent-distribution/IntentDistributionWidget',
     projectionSchema: {
+      // OMN-14751: raw event rows; the widget groups client-side per the
+      // node_projection_intent_classification contract exposure.
       type: 'object',
-      required: ['intent_category', 'count', 'percentage'],
+      required: ['intent_id', 'session_ref', 'intent_category', 'confidence', 'created_at'],
       properties: {
+        intent_id: { type: 'string', description: 'Unique identifier for this intent event.' },
+        session_ref: { type: 'string', description: 'Session reference identifier.' },
         intent_category: { type: 'string', description: 'Intent category label (e.g. debugging, code_generation).' },
-        count: { type: 'number', description: 'Number of intents in this category.' },
-        percentage: { type: 'number', description: 'Percentage share of this category (0-100).' },
+        confidence: { type: 'number', description: 'Classification confidence score (0-1).' },
+        agent_source: { type: ['string', 'null'], enum: ['claude', 'cursor', null], description: 'Dispatcher frontend that produced the event; null for legacy rows.' },
+        created_at: { type: 'string', format: 'date-time', description: 'ISO-8601 timestamp when this intent was classified.' },
       },
     },
     dataSources: [projectionSource(TOPICS.intentClassification)],
@@ -942,6 +947,7 @@ const MVP_COMPONENTS: Record<string, ComponentManifestDraft> = {
         intent_category: { type: 'string', description: 'Intent category label.' },
         confidence: { type: 'number', description: 'Classification confidence score (0-1).' },
         keywords: { type: 'array', items: { type: 'string' }, description: 'Extracted keywords from the intent.' },
+        agent_source: { type: ['string', 'null'], enum: ['claude', 'cursor', null], description: 'Dispatcher frontend that produced the event; null for legacy rows. (OMN-14751)' },
         created_at: { type: 'string', format: 'date-time', description: 'ISO-8601 timestamp when this intent was classified.' },
       },
     },

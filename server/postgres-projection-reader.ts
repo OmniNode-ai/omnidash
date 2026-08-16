@@ -766,6 +766,28 @@ export class PostgresProjectionReader {
           return res.rows as Row[];
         }
 
+        case 'onex.snapshot.projection.intent-classification.v1': {
+          // OMN-14751 (B3): intent events with agent_source provenance.
+          // Raw rows; the distribution widget groups client-side per the
+          // node_projection_intent_classification contract. .catch guard:
+          // table is created by the omnimarket projection migration, which
+          // may not have run against a local DB yet.
+          const res = await client.query(`
+            SELECT
+              correlation_id AS intent_id,
+              session_id     AS session_ref,
+              intent_class   AS intent_category,
+              confidence,
+              keywords,
+              agent_source,
+              emitted_at::text AS created_at
+            FROM intent_classification_events
+            ORDER BY emitted_at DESC
+            LIMIT 500
+          `).catch(() => ({ rows: [] as Row[] }));
+          return res.rows as Row[];
+        }
+
         default:
           return [];
       }

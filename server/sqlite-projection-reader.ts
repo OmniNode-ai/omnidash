@@ -342,6 +342,27 @@ export class SqliteProjectionReader {
         }));
       }
 
+      case 'onex.snapshot.projection.intent-classification.v1': {
+        // OMN-14751 (B3): mirror of the postgres reader case; agent_source
+        // may predate the column in standalone DBs, hence hasColumn guard.
+        if (!this.hasTable(db, 'intent_classification_events')) return [];
+        const col = (name: string): string =>
+          this.hasColumn(db, 'intent_classification_events', name) ? name : 'NULL';
+        return db.prepare(`
+          SELECT
+            correlation_id AS intent_id,
+            session_id     AS session_ref,
+            intent_class   AS intent_category,
+            confidence,
+            keywords,
+            ${col('agent_source')} AS agent_source,
+            emitted_at     AS created_at
+          FROM intent_classification_events
+          ORDER BY emitted_at DESC
+          LIMIT 500
+        `).all() as Row[];
+      }
+
       default:
         return [];
     }

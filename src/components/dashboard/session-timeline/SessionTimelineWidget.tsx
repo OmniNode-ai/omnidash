@@ -11,6 +11,8 @@ interface TimelineEvent {
   intent_category: string;
   confidence: number;
   keywords: string[];
+  // OMN-14751: dispatcher provenance; null for rows predating the column.
+  agent_source: 'claude' | 'cursor' | null;
   created_at: string;
 }
 
@@ -185,6 +187,11 @@ function TimelineList({ events }: { events: TimelineEvent[] }) {
                 <span className="chip">
                   {formatCategory(ev.intent_category)}
                 </span>
+                {ev.agent_source && (
+                  <span className={`chip ${ev.agent_source === 'cursor' ? 'accent' : 'good'}`}>
+                    {ev.agent_source}
+                  </span>
+                )}
                 <span className="mono tnum" style={{ color: confColor, "fontWeight": 600 }}>
                   {(ev.confidence * 100).toFixed(0)}%
                 </span>
