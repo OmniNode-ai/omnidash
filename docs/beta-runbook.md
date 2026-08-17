@@ -2,7 +2,7 @@
 
 **Last updated:** 2026-07-09
 **Branch:** `feat/multitenant-auth-tenant-isolation`
-**Cluster:** `onex-dev` (`18.209.126.195`), namespace `onex-dev`
+**Cluster:** `onex-dev` (`<cluster-external-ip>`), namespace `onex-dev`
 
 This runbook covers canonical start, required env vars, verification steps, and known caveats for the OmniDash beta deployment. A fresh operator should be able to start, verify, and restart the dashboard using this document alone.
 
@@ -13,7 +13,7 @@ This runbook covers canonical start, required env vars, verification steps, and 
 - Node.js (version pinned in `.nvmrc` or `package.json` `engines` field)
 - A Keycloak realm account for `https://auth.omninode.ai/realms/omninode`
 - Access to the Postgres analytics DB (`omnidash_analytics`)
-- Access to the Redis/Valkey session store (`omninode-valkey.data-plane.svc.cluster.local:6379` in cluster)
+- Access to the Redis/Valkey session store (`<valkey-internal-host>:6379` in cluster)
 - A `.env` file populated from the env vars listed below (never committed — in `.gitignore`)
 
 ### Critical: RLS migration must be applied before deploying this branch
@@ -45,7 +45,7 @@ All variables must be set for beta. Missing any of these causes auth or data rea
 | Variable | Required | Description |
 |----------|----------|-------------|
 | `SESSION_SECRET` | **Required** | Random secret used to sign session cookies. Minimum 32 chars. Generate with `openssl rand -hex 32`. **Must not be `dev-secret-change-me` in production.** |
-| `SESSION_STORE_URL` | **Required** | Redis/Valkey connection URL for server-side session storage. In-cluster: `redis://omninode-valkey.data-plane.svc.cluster.local:6379`. Without this, sessions are in-memory (lost on restart). |
+| `SESSION_STORE_URL` | **Required** | Redis/Valkey connection URL for server-side session storage. In-cluster: `redis://<valkey-internal-host>:6379`. Without this, sessions are in-memory (lost on restart). |
 | `KEYCLOAK_ISSUER` | **Required** | Keycloak realm URL. Beta value: `https://auth.omninode.ai/realms/omninode` |
 | `KEYCLOAK_CLIENT_ID` | **Required** | Keycloak client ID. Beta value: `omnidash` |
 | `KEYCLOAK_CLIENT_SECRET` | **Required** | Client secret from Keycloak for the `omnidash` confidential client. Obtain from Keycloak admin console → Clients → omnidash → Credentials. |
