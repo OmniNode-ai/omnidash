@@ -6,6 +6,8 @@ interface TimelineEvent {
   intent_category: string;
   confidence: number;
   keywords: string[];
+  // OMN-14751: dispatcher provenance; null for legacy rows.
+  agent_source: 'claude' | 'cursor' | null;
   created_at: string;
 }
 
@@ -46,6 +48,7 @@ export function buildSessionTimeline(n = 30): TimelineEvent[] {
       intent_category: CATEGORIES[catIdx],
       confidence: 0.4 + (((i * 17) % 60) / 100), // 0.40..0.99
       keywords,
+      agent_source: (['claude', 'cursor', null] as const)[i % 3],
       created_at: new Date(now - span + (i / n) * span).toISOString(),
     };
   });

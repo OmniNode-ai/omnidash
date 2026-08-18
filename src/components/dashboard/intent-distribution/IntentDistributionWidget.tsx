@@ -4,10 +4,23 @@ import { useProjectionQuery } from '@/hooks/useProjectionQuery';
 import { TOPICS } from '@shared/types/topics';
 import { Text } from '@/components/ui/typography';
 
-interface IntentRow {
+// Raw projection row (onex.snapshot.projection.intent-classification.v1);
+// grouping happens client-side per the node_projection_intent_classification
+// contract ("filtered/grouped client-side"). OMN-14751.
+interface IntentEventRow {
+  intent_id: string;
+  session_ref: string;
+  intent_category: string;
+  confidence: number;
+  agent_source: 'claude' | 'cursor' | null;
+  created_at: string;
+}
+
+interface IntentBucket {
   intent_category: string;
   count: number;
   percentage: number;
+  bySource: Record<string, number>;
 }
 
 const CATEGORY_COLORS: Record<string, string> = {
@@ -31,15 +44,32 @@ function formatCategory(category: string): string {
 }
 
 export default function IntentDistributionWidget() {
-  const { data, isLoading, error } = useProjectionQuery<IntentRow>({
+  const { data, isLoading, error } = useProjectionQuery<IntentEventRow>({
     topic: TOPICS.intentClassification,
     queryKey: ['intent-distribution'],
     refetchInterval: 30_000,
   });
 
-  const sorted = useMemo(() => {
-    if (!data) return [];
-    return [...data].sort((a, b) => b.count - a.count);
+  const sorted = useMemo<IntentBucket[]>(() => {
+    if (!data || data.length === 0) return [];
+    const buckets = new Map<string, IntentBucket>();
+    for (const row of data) {
+      const key = row.intent_category || 'unknown';
+      const bucket = buckets.get(key) ?? {
+        intent_category: key,
+        count: 0,
+        percentage: 0,
+        bySource: {},
+      };
+      bucket.count += 1;
+      const source = row.agent_source ?? 'unknown';
+      bucket.bySource[source] = (bucket.bySource[source] ?? 0) + 1;
+      buckets.set(key, bucket);
+    }
+    const total = data.length;
+    return [...buckets.values()]
+      .map((b) => ({ ...b, percentage: (b.count / total) * 100 }))
+      .sort((a, b) => b.count - a.count);
   }, [data]);
 
   const maxCount = useMemo(() => {
@@ -111,7 +141,13 @@ export default function IntentDistributionWidget() {
                 </div>
               </div>
               <div style={{ width: 48, textAlign: 'right', flexShrink: 0 }}>
-                <span className="mono tnum" style={{ "color": 'var(--ink-2)' }}>
+                <span
+                  className="mono tnum"
+                  style={{ "color": 'var(--ink-2)' }}
+                  title={Object.entries(row.bySource)
+                    .map(([source, n]) => `${source}: ${n}`)
+                    .join(', ')}
+                >
                   {row.count}
                 </span>
               </div>

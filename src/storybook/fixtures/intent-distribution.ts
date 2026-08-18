@@ -1,9 +1,13 @@
 /** Fixture factory for IntentDistributionWidget stories. */
 
-interface IntentRow {
+// Raw projection rows (OMN-14751): the widget groups client-side.
+interface IntentEventRow {
+  intent_id: string;
+  session_ref: string;
   intent_category: string;
-  count: number;
-  percentage: number;
+  confidence: number;
+  agent_source: 'claude' | 'cursor' | null;
+  created_at: string;
 }
 
 const CATEGORIES = [
@@ -18,18 +22,22 @@ const CATEGORIES = [
   'unknown',
 ];
 
+const SOURCES: Array<'claude' | 'cursor' | null> = ['claude', 'cursor', null];
+
 /**
- * Build N intent distribution rows with plausible counts.
- * Percentages are computed from counts so they always sum to ~100%.
+ * Build N raw intent event rows with a plausible category skew.
+ * The widget computes counts/percentages itself.
  */
-export function buildIntentDistribution(n = CATEGORIES.length): IntentRow[] {
-  const cats = CATEGORIES.slice(0, Math.min(n, CATEGORIES.length));
-  // Descending counts: first category gets the most
-  const counts = cats.map((_, i) => Math.max(1, 50 - i * 5 + Math.round(Math.sin(i) * 8)));
-  const total = counts.reduce((a, b) => a + b, 0);
-  return cats.map((cat, i) => ({
-    intent_category: cat,
-    count: counts[i],
-    percentage: Number(((counts[i] / total) * 100).toFixed(1)),
+export function buildIntentDistribution(n = 120): IntentEventRow[] {
+  const now = Date.now();
+  return Array.from({ length: n }, (_, i) => ({
+    // Quadratic skew: earlier categories appear more often.
+    intent_category:
+      CATEGORIES[Math.floor(((i * i) % (CATEGORIES.length * 7)) / 7) % CATEGORIES.length],
+    intent_id: `intent-${String(i).padStart(4, '0')}`,
+    session_ref: `session-${String(Math.floor(i / 6)).padStart(3, '0')}`,
+    confidence: 0.4 + (((i * 13) % 60) / 100),
+    agent_source: SOURCES[i % SOURCES.length],
+    created_at: new Date(now - i * 60_000).toISOString(),
   }));
 }

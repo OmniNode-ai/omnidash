@@ -1,6 +1,6 @@
 {
   "manifestVersion": "1.0",
-  "generatedAt": "2026-08-04T20:00:38.298Z",
+  "generatedAt": "2026-08-18T01:33:26.600Z",
   "components": {
     "cost-trend-panel": {
       "name": "cost-trend-panel",
@@ -1748,22 +1748,45 @@
       "projectionSchema": {
         "type": "object",
         "required": [
+          "intent_id",
+          "session_ref",
           "intent_category",
-          "count",
-          "percentage"
+          "confidence",
+          "created_at"
         ],
         "properties": {
+          "intent_id": {
+            "type": "string",
+            "description": "Unique identifier for this intent event."
+          },
+          "session_ref": {
+            "type": "string",
+            "description": "Session reference identifier."
+          },
           "intent_category": {
             "type": "string",
             "description": "Intent category label (e.g. debugging, code_generation)."
           },
-          "count": {
+          "confidence": {
             "type": "number",
-            "description": "Number of intents in this category."
+            "description": "Classification confidence score (0-1)."
           },
-          "percentage": {
-            "type": "number",
-            "description": "Percentage share of this category (0-100)."
+          "agent_source": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "enum": [
+              "claude",
+              "cursor",
+              null
+            ],
+            "description": "Dispatcher frontend that produced the event; null for legacy rows."
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "description": "ISO-8601 timestamp when this intent was classified."
           }
         }
       },
@@ -1844,6 +1867,18 @@
               "type": "string"
             },
             "description": "Extracted keywords from the intent."
+          },
+          "agent_source": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "enum": [
+              "claude",
+              "cursor",
+              null
+            ],
+            "description": "Dispatcher frontend that produced the event; null for legacy rows. (OMN-14751)"
           },
           "created_at": {
             "type": "string",
