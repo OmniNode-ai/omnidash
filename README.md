@@ -1,5 +1,9 @@
 # OmniDash
 
+[![CI](https://github.com/OmniNode-ai/omnidash/actions/workflows/ci.yml/badge.svg)](https://github.com/OmniNode-ai/omnidash/actions/workflows/ci.yml)
+[![TypeScript](https://img.shields.io/badge/TypeScript-5.6-blue.svg)](https://www.typescriptlang.org/)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+
 **OmniDash** is the composable widget dashboard for the OmniNode platform. It is a Vite + React 19 single-page application that discovers, mounts, and arranges per-widget components in a drag-and-drop grid.
 
 OmniDash is the successor to the archived Next.js analytics dashboard (`omnidash-archived`). Each widget lives in its own self-contained directory, lazy-loads heavy 3D bundles only when selected, and runs against local fixtures by default so developers can work without any backing infrastructure.
