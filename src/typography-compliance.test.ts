@@ -35,15 +35,23 @@ function listTsxRecursively(dir: string, opts: { excludeTests: boolean }): strin
   return out;
 }
 
+// The ADR body now lives in the knowledge base; the in-repo path is a pointer
+// stub. These assertions therefore check that the decision is still reachable
+// from this repo — the stub exists, carries the verbatim pointer line the KB
+// drift guard matches, and names its canonical page — rather than re-checking
+// section headings that moved with the content.
+const ADR_STUB = 'docs/adr/001-typography-system.md';
+const KB_POINTER = 'Full documentation → https://github.com/OmniNode-ai/knowledge-base';
+const KB_PAGE = 'adrs/ADR-0039-omnidash-typography-system.md';
+
 describe('Phase 0: ADR', () => {
-  it('ADR file exists at docs/adr/001-typography-system.md', () => {
-    expect(srcExists('docs/adr/001-typography-system.md')).toBe(true);
+  it('ADR pointer stub exists at docs/adr/001-typography-system.md', () => {
+    expect(srcExists(ADR_STUB)).toBe(true);
   });
-  it('ADR contains required sections', () => {
-    const adr = readSrc('docs/adr/001-typography-system.md');
-    for (const section of ['Context', 'Decision', 'Consequences', 'Alternatives', 'Status']) {
-      expect(adr, `ADR missing "${section}" heading`).toMatch(new RegExp(`^##?\\s+${section}`, 'm'));
-    }
+  it('ADR pointer stub carries the verbatim pointer and names its canonical page', () => {
+    const stub = readSrc(ADR_STUB);
+    expect(stub, 'stub missing the verbatim knowledge-base pointer line').toContain(KB_POINTER);
+    expect(stub, 'stub does not name its canonical knowledge-base page').toContain(KB_PAGE);
   });
   it('CLAUDE.md links to the ADR and contains the Typography section', () => {
     const claude = readSrc('CLAUDE.md');
@@ -280,8 +288,13 @@ describe('Phase 5: ESLint rule', () => {
 });
 
 describe('Phase 6: Docs + cleanup', () => {
-  it('typography README exists', () => {
+  it('typography README pointer stub exists and names its canonical page', () => {
     expect(srcExists('src/components/ui/typography/README.md')).toBe(true);
+    const stub = readSrc('src/components/ui/typography/README.md');
+    expect(stub, 'stub missing the verbatim knowledge-base pointer line').toContain(KB_POINTER);
+    expect(stub, 'stub does not name its canonical knowledge-base page').toContain(
+      'reference/omnidash-typography-primitives.md'
+    );
   });
   it('ux-polish-checklist references typography', () => {
     expect(srcExists('docs/ux-polish-checklist.md'), 'ux-polish-checklist.md missing').toBe(true);
