@@ -1,59 +1,9 @@
-# ADR 004 — Cross-renderer typed empty-state gate
+# ADR 004 — Cross-Renderer Typed Empty-State Gate
 
-Status: Accepted
-Date: 2026-06-18
+The decision behind `local/no-untyped-empty-state` and the typed empty-state vocabulary.
 
-## Context
+This document now lives in the OmniNode knowledge base.
 
-Phase 1 of the contract-driven UI platform makes "no blind/blank render" a
-mechanical invariant. When the renderer-capability projection (W5) is stale,
-absent, or unsatisfiable, the dispatch surface must render a **typed**
-`EnumEmptyStateReason` — specifically `UPSTREAM_BLOCKED` — never a blank element
-and never a crash. The enforcement backing this was previously
-`local/no-projection-fallback`, which keys on React's `useProjectionQuery` hook
-and so was effectively React/chart-only.
+Full documentation → https://github.com/OmniNode-ai/knowledge-base
 
-## Decision
-
-1. **Typed empty state (G-H).** The W4 `CapabilityDispatcher` miss path is wired
-   to a renderer-agnostic `TypedEmptyState`. `resolveCapabilityEmptyState`
-   classifies a degraded (`is_degraded`), absent (no rows), or unsatisfiable
-   capability read as `upstream-blocked`. `VizRenderer` renders the typed empty
-   state on a dispatcher miss. The typed reason VALUE is exposed on
-   `data-empty-state-reason` so the state is machine-verifiable.
-
-2. **Cross-renderer gate (G-I).** A new ESLint rule
-   `local/no-untyped-empty-state` generalizes the no-projection enforcement
-   beyond React/charts. It applies to the whole cross-renderer file set
-   (`src/**/*.{ts,tsx}`, `shared/**/*.ts`, `server/**/*.ts`) and flags any
-   empty-state-reason literal that is not one of the four canonical values.
-
-3. **Key on VALUES, not the symbol name (plan §0b.5).** The hand-authored chart
-   type is `EmptyStateReason`; the generated mirror is `EnumEmptyStateReason`.
-   Both carry the same four values. The rule keys on the VALUES
-   (`no-data` | `missing-field` | `upstream-blocked` | `schema-invalid`) so it is
-   agnostic to which symbol — or no symbol — a given renderer imports.
-
-## Cross-renderer scope (G-I proof)
-
-The gate is **not** chart-only and **not** React-only:
-
-- Rule scope spans plain `.ts` modules and `server/**` (Node, non-React) in
-  addition to React `.tsx`.
-- `src/no-untyped-empty-state.test.ts` exercises the rule against a **plain,
-  non-React, non-chart `.ts` surface** (`src/__lint_fixture_empty_state.ts`),
-  proving it fires and stays silent independent of React/JSX/chart context.
-
-The canonical reason vocabulary lives once in
-`shared/types/empty-state-reason.ts` (`EMPTY_STATE_REASONS`,
-`EmptyStateReasonValue`), re-exporting the generated mirror's
-`EnumEmptyStateReason` type so every renderer and the gate share one value set.
-
-## Consequences
-
-- Adding a new empty-state reason requires editing the canonical Python enum,
-  regenerating the TS mirror, and updating `EMPTY_STATE_REASONS` +
-  `CANONICAL_REASON_VALUES` in the rule in lockstep. There is intentionally no
-  inline-disable escape hatch — a new reason is a platform-vocabulary change.
-- A renderer that invents a reason synonym (`'error'`, `'not-found'`, `'blank'`)
-  fails lint regardless of platform.
+Canonical page: [ADR-0042 — Cross-Renderer Typed Empty-State Gate](https://github.com/OmniNode-ai/knowledge-base/blob/main/adrs/ADR-0042-omnidash-cross-renderer-typed-empty-state-gate.md)

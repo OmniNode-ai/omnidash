@@ -177,25 +177,40 @@ The dispatcher (`CostTrend.tsx`) reads `config.dimension` (`'2d'` or `'3d'`) and
 
 ## Documentation Map
 
-- [`docs/README.md`](docs/README.md) — canonical docs index (alias: [`docs/INDEX.md`](docs/INDEX.md))
-- [`docs/architecture/composable-frame.md`](docs/architecture/composable-frame.md) — three-layer architecture
-- [`docs/implementation-status.md`](docs/implementation-status.md) — Parts 1–4 status
-- [`docs/development.md`](docs/development.md) — commands, registry generation, data source modes
-- [`docs/reference/dashboard-definition.md`](docs/reference/dashboard-definition.md) — `DashboardDefinition` schema reference
-- [`docs/reference/component-manifest.md`](docs/reference/component-manifest.md) — `ComponentManifest` schema reference
-- [`docs/adr/001-typography-system.md`](docs/adr/001-typography-system.md) — typography rules
-- [`docs/adr/002-storybook-widget-coverage.md`](docs/adr/002-storybook-widget-coverage.md) — Storybook coverage rules
-- [`src/components/dashboard/README.md`](src/components/dashboard/README.md) — dashboard component truth contract
+The platform documentation lives in the OmniNode knowledge base. Every path below is a pointer stub in this repo whose full content is a knowledge-base page.
+
+Full documentation → https://github.com/OmniNode-ai/knowledge-base
+
+| In-repo pointer | Canonical page |
+|---|---|
+| [`docs/architecture/composable-frame.md`](docs/architecture/composable-frame.md) | [OmniDash Composable Frame Architecture](https://github.com/OmniNode-ai/knowledge-base/blob/main/architecture/omnidash-composable-frame.md) — three-layer frame, registry and widgets |
+| [`src/components/dashboard/README.md`](src/components/dashboard/README.md) | [Dashboard Component Truth Boundary](https://github.com/OmniNode-ai/knowledge-base/blob/main/architecture/omnidash-component-truth-boundary.md) — read before adding or modifying a widget |
+| [`docs/development.md`](docs/development.md) | [OmniDash Development Guide](https://github.com/OmniNode-ai/knowledge-base/blob/main/guides/omnidash-development.md) — commands, data-source modes, registry generation, Storybook |
+| [`docs/reference/dashboard-definition.md`](docs/reference/dashboard-definition.md) | [DashboardDefinition Schema](https://github.com/OmniNode-ai/knowledge-base/blob/main/reference/omnidash-dashboard-definition.md) |
+| [`docs/reference/component-manifest.md`](docs/reference/component-manifest.md) | [ComponentManifest Schema](https://github.com/OmniNode-ai/knowledge-base/blob/main/reference/omnidash-component-manifest.md) |
+| [`src/components/ui/typography/README.md`](src/components/ui/typography/README.md) | [Typography Primitives — Text and Heading](https://github.com/OmniNode-ai/knowledge-base/blob/main/reference/omnidash-typography-primitives.md) |
+
+### Decision records
+
+The five decision records below were renumbered into the knowledge base's platform-wide decision ledger; the in-repo paths keep their original names as pointer stubs.
+
+| In-repo pointer | Canonical page |
+|---|---|
+| [`docs/adr/001-typography-system.md`](docs/adr/001-typography-system.md) | [ADR-0039 — Dashboard Typography System](https://github.com/OmniNode-ai/knowledge-base/blob/main/adrs/ADR-0039-omnidash-typography-system.md) |
+| [`docs/adr/002-storybook-widget-coverage.md`](docs/adr/002-storybook-widget-coverage.md) | [ADR-0040 — Storybook Coverage for Every Dashboard Widget](https://github.com/OmniNode-ai/knowledge-base/blob/main/adrs/ADR-0040-omnidash-storybook-widget-coverage.md) |
+| [`docs/adr/003-baselines-roi-card-stay-bespoke.md`](docs/adr/003-baselines-roi-card-stay-bespoke.md) | [ADR-0041 — BaselinesROICard Stays Bespoke](https://github.com/OmniNode-ai/knowledge-base/blob/main/adrs/ADR-0041-omnidash-baselines-roi-card-stays-bespoke.md) |
+| [`docs/adr/004-cross-renderer-empty-state-gate.md`](docs/adr/004-cross-renderer-empty-state-gate.md) | [ADR-0042 — Cross-Renderer Typed Empty-State Gate](https://github.com/OmniNode-ai/knowledge-base/blob/main/adrs/ADR-0042-omnidash-cross-renderer-typed-empty-state-gate.md) |
+| [`docs/adr/005-rjsf-discriminator-union.md`](docs/adr/005-rjsf-discriminator-union.md) | [ADR-0043 — Stock @rjsf for Pydantic-Generated JSON Schema](https://github.com/OmniNode-ai/knowledge-base/blob/main/adrs/ADR-0043-omnidash-rjsf-discriminated-union-handling.md) |
+
+### Stays in this repo
+
+These are not knowledge-base content and have no pointer:
+
+- [`docs/implementation-status.md`](docs/implementation-status.md) — Parts 1–4 implementation status
+- [`db/README.md`](db/README.md), [`deploy/keycloak/README.md`](deploy/keycloak/README.md), [`server/onboarding/README.md`](server/onboarding/README.md), [`docs/beta-runbook.md`](docs/beta-runbook.md) — this deployment's own database, auth-realm and onboarding procedures
+- `docs/requirements-audit.md`, `docs/ui-rebuild-traceability.md`, `docs/ux-polish-checklist.md`, `docs/widget-config-audit.md` — dated audit records, kept as snapshots
 - [CONTRIBUTING.md](CONTRIBUTING.md) — branch, commit, and review conventions
 - [CLAUDE.md](CLAUDE.md) — agent and developer context
-
-### Design Plans (context, not current architecture)
-
-The following dated plans are the original design context for OmniDash. They are linked as background; the stable docs above are the primary reference.
-
-- `omni_home/docs/plans/2026-04-10-omnidash-v2-composable-dashboard-design.md` — composable frame architecture design
-- `omni_home/docs/plans/2026-04-10-omnidash-v2-implementation-plan.md` — full implementation plan
-- `omni_home/docs/plans/2026-04-10-omnidash-v2-plan-part-1.md` through `part-4.md` — phased implementation plans
 
 ---
 
