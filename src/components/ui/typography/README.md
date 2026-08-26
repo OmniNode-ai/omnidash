@@ -91,8 +91,8 @@ or adding a prop if the override recurs.
 
 ## Storybook
 
-Showcase: `npm run storybook` → Typography pages. (Deferred; will be added in
-a later ticket.)
+Showcase: `npm run storybook` → Typography pages (`Heading.stories.tsx`,
+`Typography.stories.tsx` in this directory).
 
 ## See also
 

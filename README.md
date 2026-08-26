@@ -59,12 +59,12 @@ npm install
 npm run dev
 ```
 
-The dev server starts in `VITE_DATA_SOURCE=file` mode and reads data from `./fixtures/`. No database, message bus, or external services are required.
+The dev server starts in the contract default mode, `http` (`contract.yaml`, flipped from `postgres` in OMN-14642), which proxies projection reads through the Express bridge to the projection-api. The base contract deliberately carries no backend URL, so an unconfigured `http` mode fails loudly rather than reading nowhere — set `contract.local.yaml`'s `data_source.url` or `OMNIDASH_BRIDGE_URL` to a running projection-api instance before `npm run dev`.
 
-To use the HTTP bridge instead:
+To run with zero external services instead, override to `file` mode, which reads static JSON from `./fixtures/`:
 
 ```bash
-VITE_DATA_SOURCE=http npm run dev
+VITE_DATA_SOURCE=file npm run dev
 ```
 
 ---
