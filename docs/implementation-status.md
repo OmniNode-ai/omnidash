@@ -1,7 +1,7 @@
 # OmniDash — Implementation Status
 
 **Owner:** `omnidash`
-**Last verified:** 2026-06-16
+**Last verified:** 2026-08-26 (OMN-16548 — default-mode + dead DashboardBuilder.tsx reference corrected against live `contract.yaml`/`src/App.tsx`/`src/pages/`)
 **Verification:** `npm run check && npm run test:run`
 
 This document summarizes which parts of the OmniDash composable dashboard are implemented. A new developer should be able to start with this page and reach working code without opening the phased plan files.
@@ -27,8 +27,8 @@ All four implementation parts are complete. The application runs, type-checks, a
 
 - Vite + React 19 SPA with TypeScript, vanilla-extract, TailwindCSS.
 - Four-mode data source system controlled by `VITE_DATA_SOURCE` env var (defaults generated from `contract.yaml` via `npm run generate:config`):
-  - `file` (default): reads JSON snapshots from `./fixtures/`. Zero infra required.
-  - `http`: reads via the projection backend at `localhost:3002`.
+  - `http` (default, `contract.yaml`, flipped from `postgres` in OMN-14642): reads via the projection backend at `localhost:3002`.
+  - `file`: reads JSON snapshots from `./fixtures/`. Zero infra required — the override to use for local dev without a running backend.
   - `sqlite`: reads via the projection backend (resolves through `HttpSnapshotSource`).
   - `postgres`: reads via the projection backend (resolves through `HttpSnapshotSource`).
 - Runtime data-source override: the `DataSourceControl` chrome component lets an operator switch the active backend at runtime without restarting. `src/data-source/data-source-override.ts` is the single seam — components must never read `VITE_DATA_SOURCE` directly.
@@ -132,7 +132,8 @@ All four implementation parts are complete. The application runs, type-checks, a
 
 **Key files:**
 
-- `src/pages/DashboardBuilder.tsx` — main builder page
+- `src/pages/DashboardView.tsx` — the composable builder page (`activePage` default arm in `src/App.tsx`); there is no separate `DashboardBuilder.tsx`
+- `src/agent/AgentOrchestrator.tsx`, `src/agent/usePageAgent.ts` — conversational agent orchestration, mounted from `src/App.tsx`
 - `@xyflow/react` — canvas for layout visualization
 
 ---

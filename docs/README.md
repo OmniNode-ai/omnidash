@@ -1,7 +1,7 @@
 # OmniDash Documentation Index
 
 **Owner:** `omnidash`
-**Last verified:** 2026-06-21 (verified against code: `src/App.tsx`, `src/data-source/`, `src/config/generated/data-source-defaults.ts`, `contract.yaml`, `shared/types/`)
+**Last verified:** 2026-08-26 (OMN-16548 — Migrations section corrected; verified against code: `src/App.tsx`, `src/data-source/`, `src/config/generated/data-source-defaults.ts`, `contract.yaml`, `shared/types/`, `db/migrations/`)
 **Verification:** `npm run check && npm run test:run`
 
 This is the canonical documentation map for OmniDash. Start here to find architecture, reference, development, and historical context.
@@ -37,7 +37,12 @@ Not yet extracted. The development guide in [`docs/development.md`](development.
 
 ## Migrations
 
-No active migrations. OmniDash was created as a clean rewrite; it does not share code with `omnidash-archived`.
+Two migrations exist under `db/migrations/` (not run automatically — see `db/README.md` for the apply plan):
+
+- `0001_tenant_rls.sql` (OMN-13824 / OMN-1636) — tenant Row-Level Security on dashboard projection tables.
+- `0002_tenant_onboarding.sql` (OMN-10875) — the `tenants` registry table for self-service onboarding.
+
+OmniDash was created as a clean rewrite; it does not share code with `omnidash-archived`.
 
 ---
 

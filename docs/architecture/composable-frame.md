@@ -1,7 +1,7 @@
 # OmniDash — Composable Frame Architecture
 
 **Owner:** `omnidash`
-**Last verified:** 2026-06-21 (verified against code: `src/data-source/`, `src/config/generated/data-source-defaults.ts`, `contract.yaml`, `src/App.tsx`)
+**Last verified:** 2026-08-26 (OMN-16548 — default-mode claim corrected; verified against code: `src/data-source/`, `src/config/generated/data-source-defaults.ts`, `contract.yaml`, `src/App.tsx`)
 **Verification:** `npm run check && npm run test:run`
 **Source plan:** `omni_home/docs/plans/2026-04-10-omnidash-v2-composable-dashboard-design.md`
 
@@ -79,7 +79,7 @@ handlers/                          src/components/dashboard/
 
 ### Data Source Modes
 
-The active data source is selected by `VITE_DATA_SOURCE`, but the canonical defaults are owned by `contract.yaml` and generated into `src/config/generated/data-source-defaults.ts` via `npm run generate:config` (env vars are optional overrides, not the source of truth). The contract default mode is `postgres` (`DATA_SOURCE_DEFAULT_MODE`); local development typically sets `VITE_DATA_SOURCE=file` in `.env` to run without infrastructure.
+The active data source is selected by `VITE_DATA_SOURCE`, but the canonical defaults are owned by `contract.yaml` and generated into `src/config/generated/data-source-defaults.ts` via `npm run generate:config` (env vars are optional overrides, not the source of truth). The contract default mode is `http` (`DATA_SOURCE_DEFAULT_MODE`, flipped from `postgres` in OMN-14642 — the Express bridge must not hold a direct RDS/Postgres connection; reads route through the projection-api instead); local development typically sets `VITE_DATA_SOURCE=file` in `.env` to run without infrastructure.
 
 Four modes are supported (`src/data-source/index.ts`):
 
