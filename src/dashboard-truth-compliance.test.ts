@@ -79,14 +79,20 @@ const FORBIDDEN_IMPORT_PATTERNS = FORBIDDEN_IMPORTS.map((packageName) => ({
 }));
 
 describe('dashboard component truth contract', () => {
+  // The truth-contract prose now lives in the knowledge base; the in-repo
+  // README is a pointer stub. This assertion therefore checks that the
+  // contract stays reachable from the component directory — the stub exists,
+  // states the boundary in one line, carries the verbatim pointer line the KB
+  // drift guard matches, and names its canonical page. The prohibitions the
+  // old assertions grepped for ("read Postgres", "must not") are enforced
+  // below by the forbidden-import scan, which is the mechanical gate; the
+  // README was only ever the documentation of it.
   it('documents the component-level truth boundary', () => {
     expect(existsSync(COMPONENT_README)).toBe(true);
     const readme = readFileSync(COMPONENT_README, 'utf8');
-    expect(readme).toContain('OmniNode deterministic truth doctrine');
     expect(readme).toContain('Dashboard components are presentation surfaces');
-    expect(readme).toContain('must not');
-    expect(readme).toContain('read Postgres');
-    expect(readme).toContain('React state must not become the source of truth');
+    expect(readme).toContain('Full documentation → https://github.com/OmniNode-ai/knowledge-base');
+    expect(readme).toContain('architecture/omnidash-component-truth-boundary.md');
   });
 
   it('detects forbidden import forms used to bypass static scans', () => {

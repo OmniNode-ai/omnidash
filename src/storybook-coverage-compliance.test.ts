@@ -50,21 +50,27 @@ function listTsxRecursively(dir: string, opts: { excludeTests: boolean }): strin
 // future expansion (per OMN-59 pattern).
 void listTsxRecursively;
 
+// The ADR body now lives in the knowledge base; the in-repo path is a pointer
+// stub. These assertions therefore check that the decision is still reachable
+// from this repo — the stub exists, carries the verbatim pointer line the KB
+// drift guard matches, and names its canonical page — rather than re-checking
+// section headings that moved with the content.
 describe('Phase 0: ADR', () => {
   const ADR_PATH = 'docs/adr/002-storybook-widget-coverage.md';
+  const KB_POINTER = 'Full documentation → https://github.com/OmniNode-ai/knowledge-base';
+  const KB_PAGE = 'adrs/ADR-0040-omnidash-storybook-widget-coverage.md';
 
-  it('ADR file exists at docs/adr/002-storybook-widget-coverage.md', () => {
+  it('ADR pointer stub exists at docs/adr/002-storybook-widget-coverage.md', () => {
     expect(srcExists(ADR_PATH)).toBe(true);
   });
 
-  it('ADR contains required sections', () => {
+  it('ADR pointer stub carries the verbatim pointer and names its canonical page', () => {
     if (!srcExists(ADR_PATH)) {
-      throw new Error(`ADR file missing: ${ADR_PATH}`);
+      throw new Error(`ADR pointer stub missing: ${ADR_PATH}`);
     }
-    const adr = readSrc(ADR_PATH);
-    for (const section of ['Context', 'Decision', 'Consequences', 'Alternatives', 'Status']) {
-      expect(adr, `ADR missing "${section}" heading`).toMatch(new RegExp(`^##?\\s+${section}`, 'm'));
-    }
+    const stub = readSrc(ADR_PATH);
+    expect(stub, 'stub missing the verbatim knowledge-base pointer line').toContain(KB_POINTER);
+    expect(stub, 'stub does not name its canonical knowledge-base page').toContain(KB_PAGE);
   });
 });
 
