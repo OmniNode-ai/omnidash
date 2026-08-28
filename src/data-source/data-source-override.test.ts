@@ -87,7 +87,16 @@ describe('data-source-override (OMN-13007)', () => {
   });
 
   it('SWITCH override changes the resolved projection base URL (core acceptance)', () => {
-    withEnv({ VITE_DATA_SOURCE: 'http', VITE_HTTP_DATA_SOURCE_URL: 'http://env-default:3002' }, () => {
+    // `VITE_PROJECTION_API_URL: undefined` is load-bearing, not noise: it is
+    // step 1 of resolveProjectionBaseUrl()'s precedence order and it returns
+    // '' (relative) when set, which would shadow the VITE_HTTP_DATA_SOURCE_URL
+    // branch this test exercises. Declaring "no projection proxy configured"
+    // is what makes the env-default assertions below mean anything.
+    withEnv({
+      VITE_DATA_SOURCE: 'http',
+      VITE_PROJECTION_API_URL: undefined,
+      VITE_HTTP_DATA_SOURCE_URL: 'http://env-default:3002',
+    }, () => {
       // Env default first.
       expect(resolveProjectionBaseUrl()).toBe('http://env-default:3002');
       // Switch to a live override with an explicit backend.

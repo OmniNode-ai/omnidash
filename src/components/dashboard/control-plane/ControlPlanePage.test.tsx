@@ -118,6 +118,12 @@ describe('ControlPlanePage', () => {
 
   it('posts the generation command to the configured live backend', async () => {
     vi.stubEnv('VITE_DATA_SOURCE', 'http');
+    // Step 1 of resolveProjectionBaseUrl()'s precedence order returns ''
+    // (proxy-relative) when VITE_PROJECTION_API_URL is set, which would send
+    // the POST below to the page origin instead. This test is about the
+    // absolute backend origin, so declare that no projection proxy is
+    // configured rather than inheriting whatever ambient env supplies.
+    vi.stubEnv('VITE_PROJECTION_API_URL', '');
     vi.stubEnv('VITE_HTTP_DATA_SOURCE_URL', 'http://backend.test');
     vi.stubGlobal('fetch', vi.fn().mockResolvedValueOnce({
       ok: true,

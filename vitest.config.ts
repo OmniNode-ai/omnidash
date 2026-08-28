@@ -12,8 +12,19 @@ export default defineConfig({
     environment: 'jsdom',
     setupFiles: ['./src/tests/setup.ts'],
     globals: true,
+    // The suite's env baseline. Vite loads `.env` / `.env.local` (both
+    // gitignored, both machine-local) into `import.meta.env` for the test
+    // run too, so ANY resolver-visible VITE_* var left unpinned here is
+    // whatever the developer happens to have in their local dotfiles. That
+    // made `resolveProjectionBaseUrl()`'s precedence-order tests pass in CI
+    // and fail on a workstation with a dev backend configured. Pin every
+    // var the data-source resolver reads (`src/data-source/
+    // projection-base-url.ts`) to a neutral value so the suite is hermetic;
+    // a test that needs one of them sets it explicitly via `vi.stubEnv`.
     env: {
       VITE_DATA_SOURCE: 'file',
+      VITE_PROJECTION_API_URL: '',
+      VITE_HTTP_DATA_SOURCE_URL: '',
     },
     css: { modules: { classNameStrategy: 'non-scoped' } },
     // Both compliance scorecards are permanent regression gates that
