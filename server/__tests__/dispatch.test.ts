@@ -87,6 +87,35 @@ describe('POST /api/delegation/trigger', () => {
     expect(res.body.allowed_task_types).toContain('reasoning');
   });
 
+  // OMN-16840: the shared task-type contract now carries the routing
+  // authority's routing_availability declaration. A class declared
+  // pending_capability has no tier that can execute it — publishing the
+  // envelope only buys a dispatch_timeout, so the route refuses up front.
+  it('refuses a task_type the contract declares routing-unavailable', async () => {
+    const routes = await loadRoutes();
+    const res = await request(buildApp(routes))
+      .post('/api/delegation/trigger')
+      .send({ prompt: 'break this objective into subtasks', task_type: 'agent_delegation' });
+
+    expect(res.status).toBe(409);
+    expect(res.body.error).toBe('task_type_unavailable');
+    expect(res.body.missing_capability).toBe('agent_orchestration');
+    expect(res.body.reason).toMatch(/No routing tier can execute agentic/i);
+    expect(res.body.retryable).toBe(false);
+    expect(runtimeMocks.invokeRuntimeCommand).not.toHaveBeenCalled();
+  });
+
+  it('still dispatches a task_type with no routing_availability declaration', async () => {
+    const routes = await loadRoutes();
+    const res = await request(buildApp(routes))
+      .post('/api/delegation/trigger')
+      .send({ prompt: 'escalate this', task_type: 'escalation' });
+
+    expect(res.status).toBe(200);
+    expect(runtimeMocks.invokeRuntimeCommand).toHaveBeenCalledOnce();
+    expect(runtimeMocks.invokeRuntimeCommand.mock.calls[0][0].payload.task_type).toBe('escalation');
+  });
+
   it('invokes the typed delegation contract through the runtime edge', async () => {
     const routes = await loadRoutes();
     const res = await request(buildApp(routes))
