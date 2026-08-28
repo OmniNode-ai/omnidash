@@ -18,6 +18,37 @@ const DELEGATE_SKILL_TASK_TYPES = Object.freeze(
 );
 const DELEGATE_SKILL_TASK_TYPE_SET = new Set<string>(DELEGATE_SKILL_TASK_TYPES);
 
+// OMN-16840: the routing authority declares which task classes it cannot
+// serve — `routing_availability` in omnimarket's task_class_contracts.v1.yaml,
+// mirrored into the shared task-type contract this file already reads. Admit
+// on that declaration: publishing an envelope for a class no tier can execute
+// only buys the caller a dispatch_timeout at the end of the full ingress
+// budget, for an ONEX_CORE_041 that was knowable before dispatch.
+//
+// Undeclared availability is availability — the authority writes this block
+// only when it knows a class is unserved, so the other classes are untouched.
+// The browser half of this same reading lives in
+// `shared/types/delegation-task-availability.ts`. The two cannot be one module:
+// `shared/types/*` files consumed by the server belong to the composite
+// `tsconfig.node.json` project and are excluded from the root project, so a
+// single module cannot be typechecked by both. The contract JSON above is the
+// shared authority, and `refuses exactly the classes the contract declares
+// unavailable` in server/__tests__/dispatch.test.ts pins this half to it.
+type RoutingAvailability = {
+  status: string;
+  missing_capability?: string;
+  tracking?: string;
+  reason?: string;
+};
+const DELEGATE_SKILL_UNROUTABLE_TASK_TYPES = new Map<string, RoutingAvailability>(
+  delegateSkillTaskTypeContract.task_types
+    .flatMap((taskType) => {
+      const declared = (taskType as { routing_availability?: RoutingAvailability }).routing_availability;
+      if (!declared || declared.status === 'available') return [];
+      return [[taskType.id, declared] as const];
+    }),
+);
+
 const EVIDENCE_PIPELINE_TOPICS = {
   stages: 'onex.snapshot.projection.evidence_pipeline.stages.v1',
   correlations: 'onex.snapshot.projection.evidence_pipeline.correlations.v1',
@@ -193,6 +224,19 @@ router.post('/api/delegation/trigger', async (req, res) => {
     res.status(400).json({
       error: 'invalid task_type',
       allowed_task_types: [...DELEGATE_SKILL_TASK_TYPES],
+    });
+    return;
+  }
+  const unroutable = DELEGATE_SKILL_UNROUTABLE_TASK_TYPES.get(taskType);
+  if (unroutable) {
+    res.status(409).json({
+      error: 'task_type_unavailable',
+      task_type: taskType,
+      status: unroutable.status,
+      missing_capability: unroutable.missing_capability,
+      tracking: unroutable.tracking,
+      reason: unroutable.reason,
+      retryable: false,
     });
     return;
   }

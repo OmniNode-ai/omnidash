@@ -71,7 +71,13 @@
       "id": "agent_delegation",
       "label": "Delegate to agents",
       "description": "Break a larger objective into executable subtasks and return a structured dispatch report.",
-      "prompt_placeholder": "Describe the objective, available agents or capabilities, constraints, and done criteria…"
+      "prompt_placeholder": "Describe the objective, available agents or capabilities, constraints, and done criteria…",
+      "routing_availability": {
+        "status": "pending_capability",
+        "missing_capability": "agent_orchestration",
+        "tracking": "OMN-15961 WS-4/C6",
+        "reason": "No routing tier can execute agentic/tool-using work; every tier is an HTTP chat-completion backend. A text completion returned for this class would be a dispatch report nobody executed."
+      }
     },
     {
       "id": "escalation",

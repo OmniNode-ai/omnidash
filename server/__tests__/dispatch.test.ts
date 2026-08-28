@@ -15,6 +15,7 @@ vi.mock('../runtime-skill-client.js', async () => {
 });
 
 import { RuntimeEdgeError } from '../runtime-skill-client.js';
+import contract from '../../shared/contracts/delegation-task-types.json';
 
 const MOCK_TENANT: TenantContext = {
   tenant_id: 'test-tenant-id',
@@ -114,6 +115,38 @@ describe('POST /api/delegation/trigger', () => {
     expect(res.status).toBe(200);
     expect(runtimeMocks.invokeRuntimeCommand).toHaveBeenCalledOnce();
     expect(runtimeMocks.invokeRuntimeCommand.mock.calls[0][0].payload.task_type).toBe('escalation');
+  });
+
+  // OMN-16840: pin the route's refusal set to the contract, not to a literal.
+  // The browser half reads the same block through
+  // shared/types/delegation-task-availability.ts; the contract JSON is the one
+  // authority both halves answer to, so a class added to or removed from the
+  // declaration changes this route without anyone editing this file.
+  it('refuses exactly the classes the contract declares unavailable', async () => {
+    const declaredUnavailable = contract.task_types
+      .filter((taskType) => {
+        const declared = (taskType as { routing_availability?: { status: string } }).routing_availability;
+        return declared !== undefined && declared.status !== 'available';
+      })
+      .map((taskType) => taskType.id);
+
+    expect(declaredUnavailable).toContain('agent_delegation');
+
+    const routes = await loadRoutes();
+    for (const taskType of contract.task_types) {
+      runtimeMocks.invokeRuntimeCommand.mockClear();
+      const res = await request(buildApp(routes))
+        .post('/api/delegation/trigger')
+        .send({ prompt: 'probe this class', task_type: taskType.id });
+
+      if (declaredUnavailable.includes(taskType.id)) {
+        expect(res.status, `${taskType.id} should be refused`).toBe(409);
+        expect(runtimeMocks.invokeRuntimeCommand).not.toHaveBeenCalled();
+      } else {
+        expect(res.status, `${taskType.id} should dispatch`).toBe(200);
+        expect(runtimeMocks.invokeRuntimeCommand).toHaveBeenCalledOnce();
+      }
+    }
   });
 
   it('invokes the typed delegation contract through the runtime edge', async () => {

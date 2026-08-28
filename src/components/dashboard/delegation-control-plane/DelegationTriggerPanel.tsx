@@ -2,9 +2,23 @@ import { useState } from 'react';
 import { Text } from '@/components/ui/typography';
 import { triggerDelegation } from '@/services/delegation-api';
 import delegateSkillTaskTypeContract from '@shared/contracts/delegation-task-types.json';
+import {
+  isTaskTypeRoutable,
+  unavailableReason,
+  type DelegationTaskTypeDefinition,
+} from '@shared/types/delegation-task-availability';
 import '../workbench-actions.css';
 
-const DELEGATE_SKILL_TASK_TYPES = Object.freeze([...delegateSkillTaskTypeContract.task_types]);
+const DELEGATE_SKILL_TASK_TYPES: readonly DelegationTaskTypeDefinition[] = Object.freeze([
+  ...delegateSkillTaskTypeContract.task_types,
+]);
+
+// OMN-16840: classes the routing authority has declared it cannot serve. They
+// stay visible (the taxonomy is the taxonomy) but are not submittable, and the
+// contract's own reason is shown rather than a reason this component invents.
+const UNROUTABLE_TASK_TYPES = DELEGATE_SKILL_TASK_TYPES.filter(
+  (taskType) => !isTaskTypeRoutable(taskType),
+);
 
 function taskTypeDefinition(taskType: string) {
   const definition = DELEGATE_SKILL_TASK_TYPES.find((candidate) => candidate.id === taskType);
@@ -164,7 +178,11 @@ export function DelegationTriggerPanel({
                 }}
               >
                 {DELEGATE_SKILL_TASK_TYPES.map((taskTypeOption) => (
-                  <option key={taskTypeOption.id} value={taskTypeOption.id}>
+                  <option
+                    key={taskTypeOption.id}
+                    value={taskTypeOption.id}
+                    disabled={!isTaskTypeRoutable(taskTypeOption)}
+                  >
                     {taskTypeOption.label}
                   </option>
                 ))}
@@ -204,6 +222,18 @@ export function DelegationTriggerPanel({
           >
             {selectedTaskType.description}
           </Text>
+
+          {UNROUTABLE_TASK_TYPES.map((taskTypeOption) => (
+            <Text
+              key={taskTypeOption.id}
+              as="div"
+              size="xs"
+              color="tertiary"
+              data-testid={`task-type-unavailable-${taskTypeOption.id}`}
+            >
+              {taskTypeOption.label} is unavailable: {unavailableReason(taskTypeOption)}
+            </Text>
+          ))}
 
           {state.phase === 'error' && (
             <Text as="div" size="xs" color="bad">
