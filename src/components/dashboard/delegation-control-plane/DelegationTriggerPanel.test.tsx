@@ -128,6 +128,30 @@ describe('DelegationTriggerPanel', () => {
     expect(screen.getByPlaceholderText(/context, dependencies, constraints, and the decision/i)).toBeInTheDocument();
   });
 
+
+  // OMN-16840: the routing authority declares agent_delegation
+  // routing_availability.status=pending_capability (omnimarket
+  // task_class_contracts.v1.yaml, landed in omnimarket#2179). The menu must
+  // refuse the class up front instead of offering it and letting the
+  // delegation wait out the full ingress budget on ONEX_CORE_041.
+  it('renders a routing-unavailable task type as disabled and shows its declared reason', () => {
+    render(<DelegationTriggerPanel collapsible={false} />);
+
+    const unavailable = screen.getByRole('option', { name: /Delegate to agents/i }) as HTMLOptionElement;
+    expect(unavailable.disabled).toBe(true);
+    expect(screen.getByText(/No routing tier can execute agentic\/tool-using work/i)).toBeInTheDocument();
+  });
+
+  it('leaves a routable task type selectable', () => {
+    render(<DelegationTriggerPanel collapsible={false} />);
+
+    const escalation = screen.getByRole('option', { name: /Escalate a problem/i }) as HTMLOptionElement;
+    expect(escalation.disabled).toBe(false);
+
+    fireEvent.change(screen.getByLabelText('Task type'), { target: { value: 'escalation' } });
+    expect(screen.getByText(/difficult unresolved problem directly to the escalation tier/i)).toBeInTheDocument();
+  });
+
   it('uses the shared primary CTA styling', () => {
     render(<DelegationTriggerPanel collapsible={false} />);
     expect(screen.getByRole('button', { name: /^Delegate$/i })).toHaveClass('btn', 'primary');
