@@ -212,15 +212,6 @@ gates:
     skip_semantics: never
     rationale: "Live required status check on omnidash dev branch protection."
 
-  - name: "gate / CodeRabbit Thread Check"
-    mode: REQUIRED
-    producer_kind: cross_repo
-    caller_workflow: cr-thread-gate.yml
-    caller_job: gate
-    cross_repo_ref: "OmniNode-ai/omniclaude/.github/workflows/cr-thread-gate.yml@main"
-    skip_semantics: neutral_ok
-    rationale: "CodeRabbit thread resolution gate, canonical source hosted in omniclaude. KNOWN FINDING (same shape identified in the omniclaude canary, OMN-14854/OMN-14856): caller job 'gate' has an ungated `if:` (`github.actor != 'dependabot[bot]'` combined with an issue_comment PR-scoping check on `github.event.issue.pull_request`) — vector-3 per the validator, since it references github.actor/github.event.* rather than only github.event_name. Believed to be an intentional dependabot exemption (github.actor is not spoofable), not an attacker-controlled bypass, matching the omniclaude precedent; not yet human-ratified for omnidash specifically. skip_semantics: neutral_ok pending triage alongside OMN-14856."
-
   - name: "main-target-guard"
     mode: REQUIRED
     producer_kind: local
