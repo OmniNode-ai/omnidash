@@ -63,9 +63,8 @@ If you added a widget, also run `npm run generate:registry` and commit the regen
 
 1. Push your branch and open a PR against `dev`. **Do not target `main` directly** — the `main-target-guard` CI check blocks any PR targeting `main` from a branch other than `dev`, emitting: "Retarget this PR to dev; main accepts only promotion PRs." Only the promotion PR from `dev` → `main` is exempt.
 2. CI runs lint, type-check, tests, and a production build. All must be green.
-3. CodeRabbit auto-reviews the diff and posts comments. Address every comment — either fix the code or reply with reasoning before resolving the thread. Unresolved CodeRabbit threads block merge.
-4. Once CI is green and CodeRabbit threads are resolved, request review from a human maintainer.
-5. PRs are merged using squash-merge. The PR title becomes the squash commit subject — keep it conventional-commit-formatted.
+3. Once CI is green, request review from a human maintainer.
+4. PRs are merged using squash-merge. The PR title becomes the squash commit subject — keep it conventional-commit-formatted.
 
 ## What Belongs in a PR
 
