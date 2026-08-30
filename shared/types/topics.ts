@@ -172,6 +172,21 @@ export const TOPICS = {
    * OMN-13830; rendered by SkillAdoptionWidget (OMN-13832).
    */
   skillExecutions: 'onex.snapshot.projection.skill-executions.v1',
+  /**
+   * Consumer-flow widget (OMN-17197) — per-(consumer_group, topic) throughput
+   * windows materialised by `node_projection_consumer_flow` (OMN-16777, epic
+   * OMN-16776 Phase 1) from the counters the runtime heartbeat already carries.
+   * Each row carries the DERIVED verdict `flow_state`
+   * (FLOWING / STALLED / STARVED / IDLE / UNKNOWN) alongside messages_in,
+   * messages_out, messages_dlq and handler_errors. The verdict is computed in
+   * the reducer and never on the client: a node that grades its own health can
+   * be wrong about itself in exactly the way that hides an outage.
+   *
+   * The exposure is `bus_backed: true` with its writer deployed and producing
+   * (contract `node_projection_consumer_flow/contract.yaml`), so this widget
+   * does not ride on any bus_backed flip (OMN-15864 / OMN-17197 AC5).
+   */
+  consumerFlow: 'onex.snapshot.projection.consumer-flow.v1',
 } as const;
 
 export type TopicSymbol = (typeof TOPICS)[keyof typeof TOPICS];

@@ -46,6 +46,9 @@ describe('Dashboard Templates', () => {
       'delegate-task',
       'live-event-stream',
       'delegation-token-usage',
+      // OMN-17197 (GOAL row 0): consumer-flow lands in the ARRIVAL layout, not the
+      // palette — a projection nobody opens is the OMN-14440 failure mode.
+      'consumer-flow',
     ]);
     expect(tpl!.layout.filter((item) => item.componentName === 'live-event-stream')).toHaveLength(1);
   });
@@ -63,6 +66,9 @@ describe('Dashboard Templates', () => {
       'delegate-task',
       'live-event-stream',
       'delegation-token-usage',
+      // OMN-17197 (GOAL row 0): consumer-flow lands in the ARRIVAL layout, not the
+      // palette — a projection nobody opens is the OMN-14440 failure mode.
+      'consumer-flow',
     ]);
   });
 
