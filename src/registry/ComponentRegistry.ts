@@ -2,6 +2,30 @@ import type { JSONSchema7, JSONSchema7Definition, JSONSchema7TypeName } from 'js
 import type { ComponentCategory } from '@shared/types/component-manifest';
 import type { RegisteredComponent, RegistryManifest, ValidationResult } from './types';
 import { componentImports } from '@/components/dashboard';
+import { TOPICS } from '@shared/types/topics';
+import { RENDERER_CAPABILITY_PROJECTION } from '@shared/types/renderer-capability';
+
+/**
+ * Every projection topic this app can actually serve, as runtime values.
+ *
+ * OMN-17199. A manifest `dataSources[].topic` is not decoration and not a CI-only
+ * field: it is emitted by `scripts/generate-registry.ts` from these very symbols, and
+ * the widgets pass the same symbols to `useProjectionQuery`. Resolving the declaration
+ * here — at boot, in the registry the app runs on — is what makes it one field rather
+ * than two, so the omnibase_infra `exposure-reader-coverage` gate and the render layer
+ * can never disagree about who reads what.
+ *
+ * The failure this closes is not hypothetical: three widgets in this registry still
+ * declare `onex.snapshot.projection.llm_cost.v1`, which no omnimarket contract has
+ * exposed since OMN-14896. A declaration nothing resolves rots silently.
+ */
+const SERVEABLE_PROJECTION_TOPICS: ReadonlySet<string> = new Set<string>([
+  ...Object.values(TOPICS),
+  // The renderer-capability read path declares its topic on the generated contract
+  // mirror rather than in TOPICS; it is a runtime symbol all the same
+  // (useRendererCapabilities passes it straight to useProjectionQuery).
+  RENDERER_CAPABILITY_PROJECTION.topic,
+]);
 
 export class ComponentRegistry {
   private components = new Map<string, RegisteredComponent>();
@@ -23,6 +47,22 @@ export class ComponentRegistry {
    */
   async resolveImplementations(): Promise<void> {
     for (const [, entry] of this.components) {
+      // OMN-17199: a component whose declared projection topic resolves to no runtime
+      // topic symbol cannot be served — `useProjectionQuery` would fetch
+      // /projection/<topic> for a topic this app has no symbol for. Surfacing that as
+      // an error at boot is what makes `dataSources[].topic` a live declaration the
+      // render layer resolves, not a string only CI reads.
+      //
+      // Checked BEFORE the paletteVisibility branch on purpose: a component hidden from
+      // the palette is still wired into layouts, and a broken declaration hidden behind
+      // `not_implemented` is exactly the silent rot this ticket exists to stop.
+      const unresolved = this.unresolvedProjectionTopics(entry.manifest.dataSources);
+      if (unresolved.length > 0) {
+        entry.status = 'error';
+        entry.error =
+          `declares projection topic(s) with no runtime symbol: ${unresolved.join(', ')}`;
+        continue;
+      }
       // OMN-12833 (A2.5): components classified `hidden` by the one-backend
       // palette sweep are kept out of the palette regardless of whether their
       // implementation code exists — their topic cannot be served by the single
@@ -40,6 +80,44 @@ export class ComponentRegistry {
         entry.status = 'not_implemented';
       }
     }
+  }
+
+  /**
+   * Projection topics one component declares it reads (OMN-17199).
+   *
+   * This is the reader declaration the `exposure-reader-coverage` gate resolves from
+   * the generated manifest. Exposed here so the render layer resolves the SAME field,
+   * by name, at runtime.
+   */
+  getProjectionTopics(name: string): string[] {
+    const entry = this.components.get(name);
+    if (!entry) return [];
+    return entry.manifest.dataSources
+      .filter((ds) => ds.type === 'projection' || ds.type === 'websocket')
+      .map((ds) => ds.topic)
+      .filter((topic): topic is string => typeof topic === 'string' && topic.length > 0);
+  }
+
+  /** Every registered component declaring `topic` in its `dataSources` (OMN-17199). */
+  getComponentsForProjectionTopic(topic: string): RegisteredComponent[] {
+    return Array.from(this.components.values()).filter((c) =>
+      this.getProjectionTopics(c.name).includes(topic)
+    );
+  }
+
+  private unresolvedProjectionTopics(
+    dataSources: RegisteredComponent['manifest']['dataSources']
+  ): string[] {
+    const unresolved: string[] = [];
+    for (const ds of dataSources) {
+      if (ds.type !== 'projection' && ds.type !== 'websocket') continue;
+      const topic = ds.topic;
+      if (typeof topic !== 'string' || topic.length === 0) continue;
+      if (!SERVEABLE_PROJECTION_TOPICS.has(topic) && !unresolved.includes(topic)) {
+        unresolved.push(topic);
+      }
+    }
+    return unresolved;
   }
 
   getComponent(name: string): RegisteredComponent | undefined {
