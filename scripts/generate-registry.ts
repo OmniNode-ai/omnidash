@@ -902,6 +902,61 @@ const MVP_COMPONENTS: Record<string, ComponentManifestDraft> = {
     emptyState: { message: 'No skill executions', hint: 'Rows appear once skills emit started/completed lifecycle events to the bus' },
     capabilities: { supports_compare: false, supports_export: true, supports_fullscreen: true, supports_time_range: false },
   },
+  // OMN-17197 (GOAL row 0, epic OMN-16776 Phase 1). The render end of
+  // `node_projection_consumer_flow`. The projectionSchema below is copied from the
+  // contract's own `projection_api.columns` block, in order, so a column rename
+  // upstream surfaces here rather than as a silently blank cell.
+  'consumer-flow': {
+    name: 'consumer-flow',
+    displayName: 'Consumer Flow',
+    description:
+      'Per-consumer throughput truth: messages in / out / DLQ per (consumer_group, topic) window with the projection-derived flow verdict FLOWING / STALLED / STARVED / IDLE / UNKNOWN. This is the widget that separates a dead consumer from a quiet one — group membership, container health and LAG 0 all report green on a consumer that has consumed 15,750 messages and produced nothing (OMN-16755).',
+    category: 'health',
+    version: '1.0.0',
+    implementationKey: 'consumer-flow/ConsumerFlowWidget',
+    configSchema: {
+      type: 'object',
+      properties: {
+        maxRows: { type: 'number', description: 'Max consumer-group rows rendered after ordering.', default: 25 },
+        hideIdle: { type: 'boolean', description: 'Collapse IDLE consumers behind the summary line.', default: true },
+      },
+    },
+    projectionSchema: {
+      type: 'object',
+      required: ['consumer_group', 'topic', 'window_start', 'window_end', 'flow_state'],
+      properties: {
+        consumer_group: { type: 'string', description: 'Kafka consumer group the window was measured for.' },
+        topic: { type: 'string', description: 'Topic leg. The two legs of a bridge are separate rows, never averaged.' },
+        window_start: { type: 'string', format: 'date-time', description: 'Producer-assigned event-time start of the window.' },
+        window_end: { type: 'string', format: 'date-time', description: 'Producer-assigned event-time end of the window.' },
+        node_id: { type: 'string', description: 'Runtime node that reported the window.' },
+        ingest_sequence: { type: 'number', description: "Producer's monotonic per-process window counter; the ordering tie-breaker." },
+        messages_in: { type: ['number', 'null'], description: 'Messages consumed in the window. NULL on an UNKNOWN window — unobserved, not zero.' },
+        messages_out: { type: ['number', 'null'], description: 'Messages produced in the window. NULL on an UNKNOWN window.' },
+        messages_dlq: { type: ['number', 'null'], description: 'Messages routed to the DLQ in the window.' },
+        handler_errors: { type: ['number', 'null'], description: 'Handler failures counted in the window.' },
+        upstream_produced: { type: ['boolean', 'null'], description: 'Whether upstream produced during the window — the evidence STARVED requires.' },
+        upstream_evidence: { type: 'string', description: 'How upstream production was established (NONE when unestablished).' },
+        flow_state: {
+          type: 'string',
+          enum: ['FLOWING', 'STALLED', 'STARVED', 'IDLE', 'UNKNOWN'],
+          description:
+            'The verdict, DERIVED IN THE REDUCER and rendered verbatim. The client must never recompute it from the counters.',
+        },
+        evaluated_at: { type: 'string', format: 'date-time', description: 'When the verdict was derived.' },
+      },
+    },
+    dataSources: [projectionSource(TOPICS.consumerFlow)],
+    events: { emits: [], consumes: [] },
+    defaultSize: { w: 12, h: 7 },
+    minSize: { w: 6, h: 4 },
+    maxSize: { w: 12, h: 12 },
+    emptyState: {
+      message: 'No consumer-flow windows',
+      hint: 'Rows appear once the runtime heartbeat carries per-consumer flow windows and node_projection_consumer_flow materializes them (epic OMN-16776 Phase 1).',
+    },
+    capabilities: { supports_compare: false, supports_export: true, supports_fullscreen: true, supports_time_range: false },
+  },
   'intent-distribution': {
     name: 'intent-distribution',
     displayName: 'Intent Distribution',

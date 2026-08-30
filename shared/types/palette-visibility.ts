@@ -133,4 +133,14 @@ export const PALETTE_CLASSIFICATION: Record<string, PaletteClassification> = {
   // its data service, and tests are fully wired and flip to projection-backed
   // once the snapshot topic is verified.
   'skill-adoption': { paletteVisibility: 'hidden', authorityLabel: 'hidden', probe: 'skill-executions.v1=expose-unverified (table populated per OMN-13830; not probed this session)' },
+  // OMN-17197 / epic OMN-16776 Phase 1. Classified from a LIVE read of the
+  // projection API through the exact route omnidash's bridge uses
+  // (GET /projection/onex.snapshot.projection.consumer-flow.v1), not from a
+  // fixture and not from the table underneath it: 2026-08-30T15:19:18Z returned
+  // HTTP 200, row_count 500, data_freshness "fresh", latest_event_at equal to the
+  // request second, carrying IDLE 494 / STALLED 4 / FLOWING 2 concurrently.
+  // Visible + projection-backed by the classification rule at the top of this
+  // file (200 with rows). The exposure is already bus_backed with its writer
+  // deployed and producing, so nothing here flips a gate ahead of a writer.
+  'consumer-flow': { paletteVisibility: 'visible', authorityLabel: 'projection-backed', probe: 'consumer-flow.v1=200/500r fresh (dev lane projection-api, 2026-08-30T15:19:18Z)' },
 };
