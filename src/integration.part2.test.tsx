@@ -62,10 +62,13 @@ describe('Proof of Life — Part 2', () => {
     // verified exposed on the single backend).
     // OMN-15704: swarm-control-plane added — OMN-12072's widget tree (shipped
     // 2026-05-26, omnidash#125) had never been registered until now.
-    expect(all.length).toBe(36);
+    // OMN-17197: consumer-flow added — the render end of the epic OMN-16776
+    // Phase 1 projection, which was live and rendered by nothing.
+    expect(all.length).toBe(37);
     expect(all.map((c) => c.name).sort()).toEqual([
       'ab-compare',
       'baselines-roi-card',
+      'consumer-flow',
       'context-effectiveness-heatmap',
       'control-plane',
       'cost-by-model',
