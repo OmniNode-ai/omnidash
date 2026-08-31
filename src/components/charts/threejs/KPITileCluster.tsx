@@ -38,8 +38,15 @@ function slugify(label: string): string {
   return label.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
 }
 
-function formatValue(raw: unknown, format?: string): string {
-  if (raw === null || raw === undefined) return '';
+// OMN-17188 (CodeQL #11/#12 js/unneeded-defensive-code): the null/undefined
+// guard that used to open this function was genuinely unreachable. The sole
+// caller (`resolveTileState`) already returns an empty tile for null/undefined
+// and for anything that is not a number or string, so `raw` is narrowed to
+// `string | number` before it ever arrives. The parameter type now states that
+// invariant instead of restating it as a runtime check the compiler can prove
+// dead -- if a future caller widens it, this is a type error rather than a
+// silently-swallowed empty string.
+function formatValue(raw: string | number, format?: string): string {
   if (typeof raw === 'number') {
     if (format) {
       // Attempt d3-style format heuristics for common patterns.

@@ -200,3 +200,48 @@ export function buildCostSavingsOverview(sessions: Row[]): Row {
     provisioned: tokenBackedSessions.length > 0,
   };
 }
+
+// -- Log safety (OMN-17188) --------------------------------------------------
+
+/**
+ * Neutralize a caller-supplied string before it reaches a log sink.
+ *
+ * `GET /projection/:topic` puts an attacker-chosen path segment into `topic`,
+ * and Express percent-decodes path params -- so `%0A` / `%0D` arrive as real
+ * CR/LF bytes. Interpolated straight into a log line, that lets a caller forge
+ * additional log entries (CodeQL js/log-injection, alerts #9/#10).
+ *
+ * Two separate neutralizations, in order:
+ *  1. CR/LF -> a single space, so one logged value can never become two lines.
+ *  2. Remaining C0/DEL control characters stripped, so terminal escape
+ *     sequences cannot rewrite what an operator reads in a log tail.
+ *
+ * The value is also length-capped: a log sink is not a data channel, and an
+ * unbounded topic would let a caller flood it.
+ */
+export function sanitizeForLog(value: string, maxLength = 200): string {
+  const flattened = value
+    .replace(/[\r\n]/g, ' ')
+    // Matching control characters is the entire purpose of this sanitizer:
+    // `no-control-regex` exists to catch them appearing in a pattern by
+    // accident, but here the class IS the payload being neutralized, so the
+    // rule is inverted and is waived deliberately.
+    // eslint-disable-next-line no-control-regex
+    .replace(/[\u0000-\u001f\u007f]/g, '');
+  return flattened.length > maxLength ? `${flattened.slice(0, maxLength)}...` : flattened;
+}
+
+/**
+ * Render an unknown caught value as a single-line, log-safe string.
+ *
+ * Errors thrown below this layer can embed caller-supplied text in their
+ * message (e.g. a rejected projection topic), so the message is a taint
+ * carrier even when the log call's own format string is constant
+ * (CodeQL js/log-injection, alert #10). Keep the error name and message; drop
+ * the stack, which is multi-line by construction and would defeat the
+ * one-value-one-line property this function exists to guarantee.
+ */
+export function describeError(err: unknown): string {
+  if (err instanceof Error) return sanitizeForLog(`${err.name}: ${err.message}`);
+  return sanitizeForLog(String(err));
+}

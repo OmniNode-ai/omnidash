@@ -39,8 +39,12 @@ const PRESETS: IntervalPreset[] = [
   { label: '5m', value: 5 * 60_000 },
 ];
 
-function formatLabel(interval: number | null | undefined): string {
-  if (interval === null) return 'Off';
+// OMN-17188 (CodeQL #13 js/unneeded-defensive-code): the `interval === null`
+// guard here was unreachable -- the sole caller, `formatCountdown`, returns
+// 'Off' for null on the line above its call, so null never reaches this
+// function. The null case remains handled, once, where it is actually live;
+// the parameter type now matches what can genuinely arrive.
+function formatLabel(interval: number | undefined): string {
   if (interval === undefined) return '30s'; // pre-OMN-126 visual default
   const match = PRESETS.find((p) => p.value === interval);
   if (match) return match.label;

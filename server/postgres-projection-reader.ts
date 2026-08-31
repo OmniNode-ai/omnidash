@@ -5,6 +5,7 @@ import {
   buildCostSavingsOverviewResult,
 } from './projection-reader-shared.js';
 import { getActiveTenantId } from './auth/tenant-context.js';
+import { sanitizeForLog } from './projection-utils.js';
 
 export interface PostgresProjectionReaderOptions {
   connectionString: string;
@@ -156,7 +157,14 @@ export class PostgresProjectionReader {
     try {
       rows = await this.query(topic);
     } catch (err) {
-      console.error(`[PostgresProjectionReader] error reading topic ${topic}:`, err);
+      // OMN-17188 (CodeQL #4 js/tainted-format-string, #9 js/log-injection):
+      // `topic` is `req.params.topic` from `GET /projection/:topic`, which
+      // Express percent-decodes -- so it can carry CR/LF and `%s`-style format
+      // specifiers. Interpolating it into the template literal made it BOTH a
+      // log-forging vector and a format string that could swallow `err` into
+      // the topic position, hiding the very error being reported. The format
+      // string is now a constant and the topic is a sanitized argument.
+      console.error('[PostgresProjectionReader] error reading topic:', sanitizeForLog(topic), err);
     }
     return {
       topic,

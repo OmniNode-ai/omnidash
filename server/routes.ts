@@ -9,6 +9,7 @@ import {
   invokeRuntimeCommand,
   RuntimeEdgeError,
 } from './runtime-skill-client.js';
+import { sanitizeForLog, describeError } from './projection-utils.js';
 import delegateSkillTaskTypeContract from '../shared/contracts/delegation-task-types.json';
 
 const router = Router();
@@ -169,7 +170,10 @@ async function readProjection(topic: string): Promise<unknown> {
 
   const topicDir = resolve(FIXTURES_DIR, encodeURIComponent(topic));
   if (!topicDir.startsWith(`${FIXTURES_DIR}/`) && topicDir !== FIXTURES_DIR) {
-    throw new Error(`Invalid projection topic path: ${topic}`);
+    // OMN-17188: sanitize at the throw site too. This message is the one place
+    // a raw caller-supplied topic entered an Error, making `err` itself a taint
+    // carrier for every downstream `console.error(..., err)` (CodeQL #10).
+    throw new Error(`Invalid projection topic path: ${sanitizeForLog(topic)}`);
   }
 
   let files: unknown;
@@ -411,7 +415,12 @@ router.get('/projection/:topic', async (req, res) => {
   try {
     res.json(await readProjection(req.params.topic));
   } catch (err) {
-    console.error('[routes] /projection/:topic error:', err);
+    // OMN-17188 (CodeQL #10 js/log-injection): the format string here was
+    // already constant, but `err` is the taint carrier -- errors raised below
+    // this layer can embed the caller-supplied topic in their message. Render
+    // the error through a single-line, control-character-stripped projection
+    // rather than handing the raw object to console.error.
+    console.error('[routes] /projection/:topic error:', describeError(err));
     res.status(500).json({ error: 'projection read failed' });
   }
 });
