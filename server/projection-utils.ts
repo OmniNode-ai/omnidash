@@ -221,16 +221,20 @@ export function buildCostSavingsOverview(sessions: Row[]): Row {
  */
 export function sanitizeForLog(value: string, maxLength = 200): string {
   const flattened = value
-    // The alternation form (not a `[\r\n]` character class) is deliberate: CodeQL's
-    // js/log-injection sanitizer is recognized via StringReplaceCall.replaces, which
-    // resolves a constant pattern per branch and does NOT see inside a character
-    // class. The class form left alerts #14/#15 open on dev even though the runtime
-    // behaviour was already correct -- same neutralization, recognized shape.
-    .replace(/\n|\r/g, ' ')
-    // Matching control characters is the entire purpose of this sanitizer:
-    // `no-control-regex` exists to catch them appearing in a pattern by
-    // accident, but here the class IS the payload being neutralized, so the
-    // rule is inverted and is waived deliberately.
+    // These two strips are deliberately separate calls with an EMPTY replacement,
+    // and that exact shape is load-bearing. CodeQL's js/log-injection sanitizer is
+    //   exists(string s | this.(StringReplaceCall).replaces(s, "") and s.regexpMatch("\\n"))
+    // and `replaces(old, new)` resolves `new` via getRawReplacement().mayHaveStringValue.
+    // A replacement of ' ' therefore does NOT match (new = " ", not "") -- which is why
+    // the earlier `.replace(/\n|\r/g, ' ')` neutralized CR/LF correctly at runtime yet
+    // left alerts #14/#15 open: the query could not see the sanitizer. Empty replacement,
+    // one character class per call, is the shape the query actually matches.
+    .replace(/\n/g, '')
+    .replace(/\r/g, '')
+    // Belt: strips every remaining C0 control character and DEL, so terminal escape
+    // sequences cannot rewrite what an operator reads in a log tail. This alone would
+    // also remove CR/LF, but it is not a shape CodeQL recognizes, so it does not replace
+    // the two explicit strips above.
     // eslint-disable-next-line no-control-regex
     .replace(/[\u0000-\u001f\u007f]/g, '');
   return flattened.length > maxLength ? `${flattened.slice(0, maxLength)}...` : flattened;

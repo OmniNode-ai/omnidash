@@ -153,7 +153,7 @@ describe('sanitizeForLog (OMN-17188)', () => {
     expect(out).not.toContain('\n');
     expect(out).not.toContain('\r');
     expect(out.split('\n')).toHaveLength(1);
-    expect(out).toBe('real.topic  FATAL operator-facing lie: cluster compromised');
+    expect(out).toBe('real.topicFATAL operator-facing lie: cluster compromised');
   });
 
   it('strips C0 control characters and DEL', () => {
@@ -179,11 +179,11 @@ describe('describeError (OMN-17188)', () => {
     const err = new Error('boom\r\nINFO forged-entry');
     const out = describeError(err);
     expect(out.split('\n')).toHaveLength(1);
-    expect(out).toBe('Error: boom  INFO forged-entry');
+    expect(out).toBe('Error: boomINFO forged-entry');
   });
 
   it('sanitizes non-Error thrown values', () => {
-    expect(describeError('raw\nthrow')).toBe('raw throw');
+    expect(describeError('raw\nthrow')).toBe('rawthrow');
   });
 });
 
