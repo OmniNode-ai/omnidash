@@ -1,5 +1,6 @@
 import express from 'express';
 import compression from 'compression';
+import rateLimit from 'express-rate-limit';
 import http from 'http';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -74,6 +75,29 @@ app.get('/api/health-probe', (_req, res) => {
   res.json({ status: 'ok' });
 });
 
+// OMN-17188 (CodeQL #8 js/missing-rate-limiting): broad flood control for every
+// handler below, including the static `dist/` middleware and the SPA
+// history-fallback `sendFile`. Deliberately generous -- the dashboard is a
+// polling SPA (many panels, auto-refresh down to 5s, plus static subresources),
+// so this is a ceiling on abuse, not a per-user quota. It is mounted AFTER the
+// `/api/health-probe` route above so k8s liveness/readiness probes can never be
+// throttled into restarting a healthy pod.
+//
+// `trust proxy` is already 1 (the ingress), so `req.ip` is the real client
+// address and each client gets its own bucket rather than all traffic
+// collapsing into the ingress IP.
+const GENERAL_WINDOW_MS = 60_000;
+const GENERAL_MAX_REQUESTS = 1_200;
+app.use(
+  rateLimit({
+    windowMs: GENERAL_WINDOW_MS,
+    limit: GENERAL_MAX_REQUESTS,
+    standardHeaders: 'draft-7',
+    legacyHeaders: false,
+    message: { error: 'too_many_requests' },
+  }),
+);
+
 // OMN-14152: gzip/deflate every response (JSON reads + the static SPA bundle alike).
 app.use(compression());
 
@@ -124,6 +148,28 @@ app.use(buildOnboardingRouter(loadOnboardingConfig(), authConfig));
 // req.tenant, and threads that verified identity through AsyncLocalStorage.
 // Keeping this as one boundary avoids requiring a browser session to also carry
 // a Bearer token before its session can be evaluated.
+// OMN-17188 (CodeQL #7 js/missing-rate-limiting): the auth boundary below runs
+// session lookup and `jose` JWT verification on every non-public request, on a
+// public-facing host. Unthrottled, that is a credential-stuffing and
+// session-probing oracle -- and it sits in front of the session store tracked
+// by OMN-16702.
+//
+// `skipSuccessfulRequests` is the important part: only requests that end 4xx/5xx
+// count against the bucket, so a legitimately authenticated user polling
+// projections is never throttled no matter how many panels are open, while an
+// attacker replaying credentials burns the budget on their own failures.
+const AUTH_FAILURE_WINDOW_MS = 15 * 60_000;
+const AUTH_FAILURE_MAX = 100;
+app.use(
+  rateLimit({
+    windowMs: AUTH_FAILURE_WINDOW_MS,
+    limit: AUTH_FAILURE_MAX,
+    skipSuccessfulRequests: true,
+    standardHeaders: 'draft-7',
+    legacyHeaders: false,
+    message: { error: 'too_many_failed_auth_attempts' },
+  }),
+);
 app.use((req, res, next) => {
   if (PUBLIC_PATHS.has(req.path)) return next();
   return authMiddleware(req, res, next);

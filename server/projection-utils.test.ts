@@ -1,10 +1,12 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, vi } from 'vitest';
 import {
   timestampValue,
   sessionKey,
   mergeDelegationSessions,
   buildCostSavingsOverview,
   sessionTokens,
+  sanitizeForLog,
+  describeError,
   type Row,
 } from './projection-utils.js';
 
@@ -134,5 +136,76 @@ describe('buildCostSavingsOverview', () => {
     ];
     const result = buildCostSavingsOverview(sessions);
     expect(result.tokens_to_compliance).toBe(737);
+  });
+});
+
+// OMN-17188: regression tests for the CodeQL log-injection / tainted-format-string
+// fixes. Each case is written as the injection ATTEMPT that the flagged code
+// used to permit, asserting it is now refused.
+describe('sanitizeForLog (OMN-17188)', () => {
+  it('refuses a CRLF-forged second log entry', () => {
+    // The live vector: `GET /projection/:topic` with a percent-encoded newline.
+    // Express decodes %0A/%0D into real bytes before the value reaches the log,
+    // so an unsanitized interpolation would emit two lines and let the caller
+    // author the second one.
+    const forged = 'real.topic\r\nFATAL operator-facing lie: cluster compromised';
+    const out = sanitizeForLog(forged);
+    expect(out).not.toContain('\n');
+    expect(out).not.toContain('\r');
+    expect(out.split('\n')).toHaveLength(1);
+    expect(out).toBe('real.topic  FATAL operator-facing lie: cluster compromised');
+  });
+
+  it('strips C0 control characters and DEL', () => {
+    // Terminal escape sequences would otherwise let a caller rewrite what an
+    // operator sees when tailing logs.
+    expect(sanitizeForLog('a\u001b[2Kb\u0000c\u007fd')).toBe('a[2Kbcd');
+  });
+
+  it('caps length so a log sink cannot be used as a data channel', () => {
+    const out = sanitizeForLog('x'.repeat(5_000));
+    expect(out).toHaveLength(203);
+    expect(out.endsWith('...')).toBe(true);
+  });
+
+  it('leaves a legitimate projection topic untouched', () => {
+    const topic = 'onex.snapshot.projection.swarm.runs.v1';
+    expect(sanitizeForLog(topic)).toBe(topic);
+  });
+});
+
+describe('describeError (OMN-17188)', () => {
+  it('flattens a multi-line error message to a single line', () => {
+    const err = new Error('boom\r\nINFO forged-entry');
+    const out = describeError(err);
+    expect(out.split('\n')).toHaveLength(1);
+    expect(out).toBe('Error: boom  INFO forged-entry');
+  });
+
+  it('sanitizes non-Error thrown values', () => {
+    expect(describeError('raw\nthrow')).toBe('raw throw');
+  });
+});
+
+describe('format-string neutralization (OMN-17188 CodeQL #4)', () => {
+  it('does not let a topic consume a following console.error argument', () => {
+    // The old call was console.error(`...topic ${topic}:`, err) -- Node applies
+    // util.format, so a topic of "%s" consumed `err` into the topic position and
+    // the actual error never reached the log. The format string is now a
+    // constant, so the topic can no longer address the argument list.
+    const seen: unknown[][] = [];
+    const spy = vi.spyOn(console, 'error').mockImplementation((...args: unknown[]) => {
+      seen.push(args);
+    });
+
+    const hostileTopic = '%s%s%s';
+    const err = new Error('the-real-error');
+    console.error('[PostgresProjectionReader] error reading topic:', sanitizeForLog(hostileTopic), err);
+
+    spy.mockRestore();
+    expect(seen).toHaveLength(1);
+    // The error object is still its own argument -- not swallowed by the topic.
+    expect(seen[0][2]).toBe(err);
+    expect(seen[0][1]).toBe('%s%s%s');
   });
 });
