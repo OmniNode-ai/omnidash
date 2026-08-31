@@ -221,7 +221,12 @@ export function buildCostSavingsOverview(sessions: Row[]): Row {
  */
 export function sanitizeForLog(value: string, maxLength = 200): string {
   const flattened = value
-    .replace(/[\r\n]/g, ' ')
+    // The alternation form (not a `[\r\n]` character class) is deliberate: CodeQL's
+    // js/log-injection sanitizer is recognized via StringReplaceCall.replaces, which
+    // resolves a constant pattern per branch and does NOT see inside a character
+    // class. The class form left alerts #14/#15 open on dev even though the runtime
+    // behaviour was already correct -- same neutralization, recognized shape.
+    .replace(/\n|\r/g, ' ')
     // Matching control characters is the entire purpose of this sanitizer:
     // `no-control-regex` exists to catch them appearing in a pattern by
     // accident, but here the class IS the payload being neutralized, so the
