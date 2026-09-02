@@ -2,7 +2,8 @@
 --
 -- The onboarding backend (server/onboarding/tenant-provisioning.ts) records
 -- one tenant row per self-service signup. Identity triple per the OMN-12911
--- design (docs/design/2026-06-10-hybrid-gateway-local-runtime-design.md §P0B):
+-- hybrid gateway / local runtime design §P0B (2026-06-10, OmniNode planning
+-- workspace — not a file in this repo):
 --   * tenant_id     — immutable primary key, minted once at provisioning
 --   * tenant_slug   — human-facing, renameable, UNIQUE
 --   * principal_id  — immutable, DERIVED from tenant_id (never from the slug),
