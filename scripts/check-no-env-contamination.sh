@@ -112,7 +112,6 @@ ALLOWLIST_FILES=(
 # Allowlist directories — every file under here is permitted.
 ALLOWLIST_DIRS=(
   'docs'
-  'reference'
   'src/data-source'        # the documented HTTP/WS carve-out
   'src/config/generated'   # OMN-10756: generated from contract.yaml defaults
   # OMN-12833: OCC evidence contracts under contracts/ document the live lane
