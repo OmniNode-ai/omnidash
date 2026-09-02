@@ -19,7 +19,7 @@
 --   * Non-owner readers (omnidash_app) are scoped by the same fail-closed
 --     `app.tenant_id` GUC policy: no context => zero rows.
 --
--- Apply plan (NOT run automatically): see db/README.md — same operator-gated
+-- Apply plan (NOT run automatically): see https://github.com/OmniNode-ai/knowledge-base-internal/blob/main/runbooks/omnidash-database-rls-migrations.md — same operator-gated
 -- procedure as 0001. Verified locally against a throwaway postgres:16 by
 -- server/__tests__/tenant-onboarding.integration.test.ts, which runs this file.
 

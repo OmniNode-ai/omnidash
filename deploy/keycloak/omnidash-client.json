@@ -1,7 +1,7 @@
 {
   "clientId": "omnidash",
   "name": "OmniNode Dashboard",
-  "description": "omnidash web dashboard client (OMN-13824). Source-controlled config; apply via kcadm per deploy/keycloak/README.md — never hand-edit the live realm without updating this file.",
+  "description": "omnidash web dashboard client (OMN-13824). Source-controlled config; apply via kcadm per https://github.com/OmniNode-ai/knowledge-base-internal/blob/main/runbooks/omnidash-keycloak-realm-config.md — never hand-edit the live realm without updating this file.",
   "protocol": "openid-connect",
   "enabled": true,
   "publicClient": false,
