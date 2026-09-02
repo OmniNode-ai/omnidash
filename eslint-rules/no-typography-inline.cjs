@@ -12,7 +12,7 @@ module.exports = {
     type: 'problem',
     docs: { description: 'Disallow typographic CSS in JSX style props' },
     messages: {
-      banned: 'Use <Text>/<Heading> instead of inline `style.{{ key }}`. See docs/adr/001-typography-system.md.',
+      banned: 'Use <Text>/<Heading> instead of inline `style.{{ key }}`. See https://github.com/OmniNode-ai/knowledge-base/blob/main/adrs/ADR-0039-omnidash-typography-system.md.',
     },
     schema: [],
   },

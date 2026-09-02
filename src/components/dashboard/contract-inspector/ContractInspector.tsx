@@ -15,7 +15,7 @@
 //     branch. @rjsf 6.x reads discriminator.propertyName and uses const-matching
 //     to select the active branch without a custom widget.
 //
-// Findings documented in: docs/adr/005-rjsf-discriminator-union.md
+// Findings documented in: https://github.com/OmniNode-ai/knowledge-base/blob/main/adrs/ADR-0043-omnidash-rjsf-discriminated-union-handling.md
 
 import { useState, useCallback, type ChangeEvent } from 'react';
 import Form, { type IChangeEvent } from '@rjsf/core';

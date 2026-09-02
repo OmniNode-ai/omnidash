@@ -50,27 +50,19 @@ function listTsxRecursively(dir: string, opts: { excludeTests: boolean }): strin
 // future expansion (per OMN-59 pattern).
 void listTsxRecursively;
 
-// The ADR body now lives in the knowledge base; the in-repo path is a pointer
-// stub. These assertions therefore check that the decision is still reachable
-// from this repo — the stub exists, carries the verbatim pointer line the KB
-// drift guard matches, and names its canonical page — rather than re-checking
-// section headings that moved with the content.
+// The ADR body lives entirely in the knowledge base now (OMN-16602 doc scrub
+// removed the in-repo pointer stub, since a stub that only says "moved" does
+// not count as removed). These assertions check that the code that used to
+// cite the stub now cites the canonical page directly.
 describe('Phase 0: ADR', () => {
-  const ADR_PATH = 'docs/adr/002-storybook-widget-coverage.md';
-  const KB_POINTER = 'Full documentation → https://github.com/OmniNode-ai/knowledge-base';
   const KB_PAGE = 'adrs/ADR-0040-omnidash-storybook-widget-coverage.md';
+  const CITING_FILES = ['.storybook/preview.tsx', 'src/storybook/decorators/withDashboardContext.tsx'];
 
-  it('ADR pointer stub exists at docs/adr/002-storybook-widget-coverage.md', () => {
-    expect(srcExists(ADR_PATH)).toBe(true);
-  });
-
-  it('ADR pointer stub carries the verbatim pointer and names its canonical page', () => {
-    if (!srcExists(ADR_PATH)) {
-      throw new Error(`ADR pointer stub missing: ${ADR_PATH}`);
+  it('code comments cite the canonical ADR page, not the removed in-repo stub', () => {
+    for (const f of CITING_FILES) {
+      expect(srcExists(f), `${f} missing`).toBe(true);
+      expect(readSrc(f), `${f} does not cite the canonical ADR page`).toContain(KB_PAGE);
     }
-    const stub = readSrc(ADR_PATH);
-    expect(stub, 'stub missing the verbatim knowledge-base pointer line').toContain(KB_POINTER);
-    expect(stub, 'stub does not name its canonical knowledge-base page').toContain(KB_PAGE);
   });
 });
 

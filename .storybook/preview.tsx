@@ -9,7 +9,7 @@ import '../src/styles/globals.css';
 // `decorators` array. Storybook composes (does not replace) decorator
 // stacks, so a global default would double the QueryClient + ThemeProvider
 // context for every widget story that supplies its own. See ADR
-// `docs/adr/002-storybook-widget-coverage.md` for context.
+// https://github.com/OmniNode-ai/knowledge-base/blob/main/adrs/ADR-0040-omnidash-storybook-widget-coverage.md for context.
 
 const preview: Preview = {
   parameters: {
