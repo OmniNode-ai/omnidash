@@ -15,9 +15,10 @@
 # merge queue. omnidash carries no committed receipt YAMLs of its own, so the
 # gate is a no-op (PASS) unless a PR introduces receipt files.
 #
-# Closes the omnidash receipt-enforcement gap identified in
-# docs/audits/2026-06-19-ratchet-enforcement-audit.md: omnidash previously had
-# neither a call-receipt-gate nor receipt-honesty, unlike all other primary repos.
+# Closes the omnidash receipt-enforcement gap identified in the 2026-06-19
+# ratchet-enforcement audit (OmniNode planning workspace): omnidash previously
+# had neither a call-receipt-gate nor receipt-honesty, unlike all other primary
+# repos.
 #
 # Required-status-check name (when later flipped): `receipt-honesty / receipt-honesty`
 

@@ -1,0 +1,36 @@
+# SPDX-FileCopyrightText: 2026 OmniNode.ai Inc.
+# SPDX-License-Identifier: MIT
+#
+# KB doc gate configuration — consumed by omniclaude scripts/kb_doc_gate.py via
+# .github/workflows/kb-doc-gate.yml. See OMN-16589 (gate) and OMN-17172 (fleet
+# rollout).
+#
+# mode: strict — this repo's Wave-4 documentation migration (OMN-16602) has
+# landed and its residual doc count is zero, so the gate scans the WHOLE tree
+# rather than only the PR diff. That is what keeps a scrubbed repo scrubbed: a
+# doc outside the allowed set cannot reappear, whether or not the PR that adds
+# it touches markdown elsewhere. A `mode:` here wins over the caller workflow's
+# `with: mode:` input; both are set to strict so the two never disagree.
+mode: strict
+
+# No `allowed:` key is set. The validator's `allowed:` list is ADDITIVE on top
+# of its DEFAULT_ALLOWED (root README.md, root CLAUDE.md and anything under
+# .claude/, CHANGELOG*.md, LICENSE*, root SECURITY.md, .github/**,
+# skills|commands|agents/**, and the tests/**/{fixtures,data,golden}/**
+# subtrees), and this repo relies on no repo-specific additions — every
+# markdown file that remains is already covered by that default set:
+#
+#   README.md                        root README (links to the knowledge base)
+#   CLAUDE.md                        root agent context
+#   CHANGELOG.md                     CHANGELOG*.md
+#   SECURITY.md                      root SECURITY.md (GitHub reads it there)
+#   .claude/architecture-handshake.md  under .claude/ — installed agent
+#                                    constraint map, verified byte-wise by
+#                                    .github/workflows/check-handshake.yml
+#   .github/CONTRIBUTING.md          under .github/ — GitHub also reads
+#                                    contributor guidelines from there; moved
+#                                    out of the repo root by OMN-16602
+#
+# Deliberately absent: any `docs/**` escape hatch. Platform documentation for
+# this repo lives in OmniNode-ai/knowledge-base (public) and
+# OmniNode-ai/knowledge-base-internal (operational runbooks).

@@ -12,19 +12,55 @@
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.6-blue.svg)](https://www.typescriptlang.org/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
-**OmniDash** is the composable widget dashboard for the OmniNode platform. It is a Vite + React 19 single-page application that discovers, mounts, and arranges per-widget components in a drag-and-drop grid.
-
-OmniDash is the successor to the archived Next.js analytics dashboard (`omnidash-archived`). Each widget lives in its own self-contained directory, lazy-loads heavy 3D bundles only when selected, and runs against local fixtures by default so developers can work without any backing infrastructure.
+**OmniDash** is the composable widget dashboard for the OmniNode platform — a Vite + React 19 single-page application that discovers, mounts, and arranges per-widget components in a drag-and-drop grid. Each widget lives in its own self-contained directory, lazy-loads heavy 3D bundles only when selected, and runs against local fixtures by default so developers can work without any backing infrastructure.
 
 OmniDash follows the [OmniNode deterministic truth doctrine](https://github.com/OmniNode-ai/omni_home/blob/main/docs/standards/OMNINODE_DETERMINISTIC_TRUTH_DOCTRINE.md): widgets render authoritative projection/API data and presentation-only state. They must not read backend databases directly or recreate projection truth in React.
 
 ---
 
-## Who Uses This
+## Documentation
 
-- Platform developers building or extending dashboard widgets.
-- OmniMarket package authors declaring dashboard component contracts.
-- Platform operators monitoring real-time ONEX (OmniNode eXecution) runtime events through deployed dashboards.
+**Documentation for this repo lives in the OmniNode knowledge base, not in this repo.** There are no in-repo docs and no pointer stubs — each topic below links straight to its canonical page.
+
+| Knowledge base | Scope |
+|---|---|
+| **https://github.com/OmniNode-ai/knowledge-base** | Public — architecture, decision records, guides, schema references |
+| **https://github.com/OmniNode-ai/knowledge-base-internal** | Internal — operational runbooks with real (non-parameterized) deployment detail |
+
+### Architecture and reference (public knowledge base)
+
+| Topic | Canonical page |
+|---|---|
+| Architecture | [OmniDash Composable Frame Architecture](https://github.com/OmniNode-ai/knowledge-base/blob/main/architecture/omnidash-composable-frame.md) — the three-layer frame (frame / component registry / widgets) |
+| Component truth boundary | [Dashboard Component Truth Boundary](https://github.com/OmniNode-ai/knowledge-base/blob/main/architecture/omnidash-component-truth-boundary.md) — read before adding or modifying a widget |
+| Development guide | [OmniDash Development Guide](https://github.com/OmniNode-ai/knowledge-base/blob/main/guides/omnidash-development.md) — commands, data-source modes, registry generation, Storybook, widget directory layout |
+| DashboardDefinition schema | [DashboardDefinition Schema](https://github.com/OmniNode-ai/knowledge-base/blob/main/reference/omnidash-dashboard-definition.md) |
+| ComponentManifest schema | [ComponentManifest Schema](https://github.com/OmniNode-ai/knowledge-base/blob/main/reference/omnidash-component-manifest.md) |
+| Typography primitives | [Typography Primitives — Text and Heading](https://github.com/OmniNode-ai/knowledge-base/blob/main/reference/omnidash-typography-primitives.md) |
+| Implementation status | [OmniDash Implementation Status](https://github.com/OmniNode-ai/knowledge-base/blob/main/reference/omnidash-implementation-status.md) — Parts 1–4 breakdown |
+
+### Decision records (public knowledge base)
+
+| Decision | Canonical page |
+|---|---|
+| Dashboard typography system | [ADR-0039](https://github.com/OmniNode-ai/knowledge-base/blob/main/adrs/ADR-0039-omnidash-typography-system.md) |
+| Storybook coverage for every dashboard widget | [ADR-0040](https://github.com/OmniNode-ai/knowledge-base/blob/main/adrs/ADR-0040-omnidash-storybook-widget-coverage.md) |
+| BaselinesROICard stays bespoke | [ADR-0041](https://github.com/OmniNode-ai/knowledge-base/blob/main/adrs/ADR-0041-omnidash-baselines-roi-card-stays-bespoke.md) |
+| Cross-renderer typed empty-state gate | [ADR-0042](https://github.com/OmniNode-ai/knowledge-base/blob/main/adrs/ADR-0042-omnidash-cross-renderer-typed-empty-state-gate.md) |
+| Stock @rjsf for Pydantic-generated JSON schema | [ADR-0043](https://github.com/OmniNode-ai/knowledge-base/blob/main/adrs/ADR-0043-omnidash-rjsf-discriminated-union-handling.md) |
+
+### Operational runbooks (internal knowledge base)
+
+The source these describe still lives here — [`db/` migrations](db/), [`deploy/keycloak/`](deploy/keycloak/), [`server/onboarding/`](server/onboarding/) — but the procedures do not.
+
+| Runbook | Canonical page |
+|---|---|
+| Beta deployment | [OmniDash Beta Runbook](https://github.com/OmniNode-ai/knowledge-base-internal/blob/main/runbooks/omnidash-beta-runbook.md) |
+| Tenant RLS migrations | [OmniDash Database RLS Migrations](https://github.com/OmniNode-ai/knowledge-base-internal/blob/main/runbooks/omnidash-database-rls-migrations.md) |
+| Keycloak realm config | [OmniDash Keycloak Realm Config](https://github.com/OmniNode-ai/knowledge-base-internal/blob/main/runbooks/omnidash-keycloak-realm-config.md) |
+| Self-service onboarding | [OmniDash Self-Service Onboarding](https://github.com/OmniNode-ai/knowledge-base-internal/blob/main/runbooks/omnidash-self-service-onboarding.md) |
+
+Markdown that stays in this repo is limited to the GitHub-surface and agent-configuration set — this `README.md`, `CLAUDE.md`, `.claude/`, `CHANGELOG.md`, `SECURITY.md`, `LICENSE`, and `.github/` — enforced on every PR by the `kb-doc-gate` check in `strict` mode (see [`.kb-doc-gate.yaml`](.kb-doc-gate.yaml)).
 
 ---
 
@@ -34,8 +70,7 @@ OmniDash follows the [OmniNode deterministic truth doctrine](https://github.com/
 - The component registry: discovers manifests declared by `@omninode/*` npm packages and in-repo MVP manifests.
 - Per-widget component implementations under `src/components/dashboard/<widget-name>/`.
 - Data source adapters: `FileSnapshotSource` (dev default), `HttpSnapshotSource` (Express bridge).
-- The dashboard definition schema: `shared/types/dashboard.ts` (`DashboardDefinition`, `DashboardLayoutItem`).
-- The component manifest schema: `shared/types/component-manifest.ts` (`ComponentManifest`).
+- The schemas: `shared/types/dashboard.ts` (`DashboardDefinition`) and `shared/types/component-manifest.ts` (`ComponentManifest`).
 - The Express bridge server under `server/` for HTTP data source mode.
 - Storybook configuration and widget stories for visual testing.
 
@@ -46,21 +81,7 @@ OmniDash follows the [OmniNode deterministic truth doctrine](https://github.com/
 - Node execution contracts and validation → `omnibase_core`
 - Intelligence nodes (intent, drift, review) → `omniintelligence`
 - Legacy v1 Next.js analytics dashboard → `omnidash-archived` (archived, read-only)
-
----
-
-## Current Status
-
-Parts 1 through 4 of the composable dashboard implementation are complete:
-
-| Part | Description | Status |
-|------|-------------|--------|
-| 1 | Frame, theme system, Zustand store, query provider | Done |
-| 2 | Component registry, dashboard builder, CRUD service | Done |
-| 3 | MVP widget set, templates, proof of life | Done |
-| 4 | Conversational dashboard builder | Done |
-
-See [OmniDash Implementation Status](https://github.com/OmniNode-ai/knowledge-base/blob/main/reference/omnidash-implementation-status.md) for a detailed breakdown.
+- Platform documentation → the two knowledge bases above
 
 ---
 
@@ -81,93 +102,25 @@ VITE_DATA_SOURCE=file npm run dev
 
 ---
 
-## Common Workflows
+## Commands
 
-### Run type checking
+| Command | Purpose |
+|---------|---------|
+| `npm run dev` | Vite dev server with HMR |
+| `npm run check` | TypeScript-only check (`tsc --noEmit`) |
+| `npm run test:run` | Vitest single run (CI mode) |
+| `npm run test` | Vitest watch mode |
+| `npm run test:coverage` | Coverage report |
+| `npm run lint` | ESLint with zero warnings |
+| `npm run build` | Type-check then production build |
+| `npm run generate:registry` | Rewrite `src/registry/component-registry.json` |
+| `npm run generate:fixtures` | Regenerate fixture snapshots |
+| `npm run types:generate` | Regenerate types under `src/shared/types/generated/` |
+| `npm run storybook` | Storybook on port 6006 |
 
-```bash
-npm run check
-```
+Adding a widget, the data-source modes, and the registry-generation workflow are covered in the [OmniDash Development Guide](https://github.com/OmniNode-ai/knowledge-base/blob/main/guides/omnidash-development.md).
 
-### Run tests (CI mode)
-
-```bash
-npm run test:run
-```
-
-### Run tests in watch mode
-
-```bash
-npm run test
-```
-
-### Run linting
-
-```bash
-npm run lint
-```
-
-### Add a new widget
-
-After creating the component under `src/components/dashboard/<name>/` and adding its manifest entry in `scripts/generate-registry.ts`:
-
-```bash
-npm run generate:registry
-```
-
-### Regenerate all generated artifacts
-
-```bash
-npm run types:generate
-npm run generate:fixtures
-npm run generate:registry
-```
-
-### Run Storybook
-
-```bash
-npm run storybook
-```
-
----
-
-## Architecture Summary
-
-OmniDash has three layers:
-
-**Frame** — the shell. Owns auth, navigation, theme switching, grid layout, and dashboard CRUD. Has no knowledge of specific domains or data.
-
-**Component Registry** — discovers component manifests from `@omninode/*` npm packages and in-repo MVP declarations. Resolves manifest entries to lazy-loaded React implementations.
-
-**Widgets** — self-contained React components. Each widget owns its own data fetching, fixtures, Storybook stories, and tests. 2D and 3D variants live in the same directory.
-
-See [OmniDash Composable Frame Architecture](https://github.com/OmniNode-ai/knowledge-base/blob/main/architecture/omnidash-composable-frame.md) for the full architecture.
-
-### Widget Directory Layout
-
-The component truth boundary is documented in [Dashboard Component Truth Boundary](https://github.com/OmniNode-ai/knowledge-base/blob/main/architecture/omnidash-component-truth-boundary.md). Read it before adding or modifying any widget.
-
-Canonical example: `src/components/dashboard/cost-trend/`
-
-```
-cost-trend/
-  CostTrend.tsx              # dispatcher — picks 2D or 3D variant
-  CostTrend2D.tsx            # flat ECharts implementation
-  CostTrend3DArea.tsx        # three.js stacked-area scene
-  CostTrend3DBars.tsx        # three.js stacked-bar scene
-  StackedChart.tsx           # shared internal helper
-  CostTrend2D.stories.tsx
-  CostTrend3DArea.stories.tsx
-  CostTrend3DBars.stories.tsx
-  CostTrend.test.tsx
-  CostTrend2D.test.tsx
-  CostTrend3DArea.test.tsx
-  CostTrend3DBars.test.tsx
-```
-
-The dispatcher (`CostTrend.tsx`) reads `config.dimension` (`'2d'` or `'3d'`) and `config.style` (`'area'` or `'bar'`) and lazy-imports the matching variant. A consumer that selects 2D never pays the cost of loading three.js.
-
-### Key Source Locations
+## Key Source Locations
 
 | Path | Purpose |
 |------|---------|
@@ -182,64 +135,9 @@ The dispatcher (`CostTrend.tsx`) reads `config.dimension` (`'2d'` or `'3d'`) and
 
 ---
 
-## Documentation Map
-
-Platform documentation for this repo lives entirely in the OmniNode knowledge base — there are no in-repo pointer stubs; each topic below links straight to its canonical page.
-
-Full documentation → https://github.com/OmniNode-ai/knowledge-base
-
-| Topic | Canonical page |
-|---|---|
-| Architecture | [OmniDash Composable Frame Architecture](https://github.com/OmniNode-ai/knowledge-base/blob/main/architecture/omnidash-composable-frame.md) — three-layer frame, registry and widgets |
-| Component truth boundary | [Dashboard Component Truth Boundary](https://github.com/OmniNode-ai/knowledge-base/blob/main/architecture/omnidash-component-truth-boundary.md) — read before adding or modifying a widget |
-| Development guide | [OmniDash Development Guide](https://github.com/OmniNode-ai/knowledge-base/blob/main/guides/omnidash-development.md) — commands, data-source modes, registry generation, Storybook |
-| DashboardDefinition schema | [DashboardDefinition Schema](https://github.com/OmniNode-ai/knowledge-base/blob/main/reference/omnidash-dashboard-definition.md) |
-| ComponentManifest schema | [ComponentManifest Schema](https://github.com/OmniNode-ai/knowledge-base/blob/main/reference/omnidash-component-manifest.md) |
-| Typography primitives | [Typography Primitives — Text and Heading](https://github.com/OmniNode-ai/knowledge-base/blob/main/reference/omnidash-typography-primitives.md) |
-| Implementation status | [OmniDash Implementation Status](https://github.com/OmniNode-ai/knowledge-base/blob/main/reference/omnidash-implementation-status.md) — Parts 1–4 implementation breakdown |
-
-### Decision records
-
-| Decision | Canonical page |
-|---|---|
-| Dashboard typography system | [ADR-0039](https://github.com/OmniNode-ai/knowledge-base/blob/main/adrs/ADR-0039-omnidash-typography-system.md) |
-| Storybook coverage for every dashboard widget | [ADR-0040](https://github.com/OmniNode-ai/knowledge-base/blob/main/adrs/ADR-0040-omnidash-storybook-widget-coverage.md) |
-| BaselinesROICard stays bespoke | [ADR-0041](https://github.com/OmniNode-ai/knowledge-base/blob/main/adrs/ADR-0041-omnidash-baselines-roi-card-stays-bespoke.md) |
-| Cross-renderer typed empty-state gate | [ADR-0042](https://github.com/OmniNode-ai/knowledge-base/blob/main/adrs/ADR-0042-omnidash-cross-renderer-typed-empty-state-gate.md) |
-| Stock @rjsf for Pydantic-generated JSON schema | [ADR-0043](https://github.com/OmniNode-ai/knowledge-base/blob/main/adrs/ADR-0043-omnidash-rjsf-discriminated-union-handling.md) |
-
-### Stays in this repo
-
-These are operational runbooks with real (non-parameterized) deployment detail, or non-knowledge-base repo content:
-
-- [`db` migrations](db/), [`deploy/keycloak`](deploy/keycloak/), [`server/onboarding`](server/onboarding/) source, and the beta deployment procedure — see [OmniDash Database RLS Migrations](https://github.com/OmniNode-ai/knowledge-base-internal/blob/main/runbooks/omnidash-database-rls-migrations.md), [OmniDash Keycloak Realm Config](https://github.com/OmniNode-ai/knowledge-base-internal/blob/main/runbooks/omnidash-keycloak-realm-config.md), [OmniDash Self-Service Onboarding](https://github.com/OmniNode-ai/knowledge-base-internal/blob/main/runbooks/omnidash-self-service-onboarding.md), and [OmniDash Beta Runbook](https://github.com/OmniNode-ai/knowledge-base-internal/blob/main/runbooks/omnidash-beta-runbook.md) in the internal knowledge base
-- [CONTRIBUTING.md](CONTRIBUTING.md) — branch, commit, and review conventions
-- [CLAUDE.md](CLAUDE.md) — agent and developer context
-
----
-
-## Development and Test Commands
-
-| Command | Purpose |
-|---------|---------|
-| `npm run dev` | Vite dev server with HMR (file mode by default) |
-| `npm run check` | TypeScript-only check (`tsc --noEmit`) |
-| `npm run test:run` | Vitest single run (CI mode) |
-| `npm run test` | Vitest watch mode |
-| `npm run test:coverage` | Coverage report |
-| `npm run lint` | ESLint with zero warnings |
-| `npm run build` | Type-check then production build |
-| `npm run generate:registry` | Rewrite `src/registry/component-registry.json` |
-| `npm run generate:fixtures` | Regenerate fixture snapshots |
-| `npm run types:generate` | Regenerate types under `src/shared/types/generated/` |
-| `npm run storybook` | Storybook on port 6006 |
-
-See the [OmniDash Development Guide](https://github.com/OmniNode-ai/knowledge-base/blob/main/guides/omnidash-development.md) for a complete development guide.
-
----
-
 ## Security, Contributing, and License
 
 - [SECURITY.md](SECURITY.md) — security policy and vulnerability reporting
-- [CONTRIBUTING.md](CONTRIBUTING.md) — branch, commit, and review conventions
+- [.github/CONTRIBUTING.md](.github/CONTRIBUTING.md) — branch, commit, and review conventions
+- [CLAUDE.md](CLAUDE.md) — agent and developer context
 - [LICENSE](LICENSE) — MIT

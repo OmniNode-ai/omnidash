@@ -2,7 +2,7 @@ schema_version: "1.0.0"
 ticket_id: "OMN-12833"
 title: "A2.5: Dashboard one-backend component correctness sweep — single standard projection backend"
 summary: >-
-  Close-the-loop plan track A2.5 (docs/plans/2026-06-08-close-the-loop-plan.md). Makes EVERY demo-visible
+  Close-the-loop plan track A2.5 (2026-06-08 close-the-loop plan, OmniNode planning workspace). Makes EVERY demo-visible
   dashboard component render through ONE standard projection backend (the stability-test Postgres-backed
   projection API at 192.168.86.201:13002, reached same-origin via the Vite /projection proxy). Inventoried all
   32 components in src/registry/component-registry.json, probed each component's topic(s) against the single
