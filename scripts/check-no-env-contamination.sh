@@ -14,7 +14,7 @@
 # Allowlist (paths that are permitted to mention them):
 #   - .env.example                        (documents the env vars)
 #   - src/data-source/index.ts            (HTTP + WS data-source carve-out)
-#   - docs/, README.md, CLAUDE.md         (documentation, prose, examples)
+#   - docs/evidence/, README.md, CLAUDE.md (captured run evidence, prose, examples)
 #   - scripts/check-no-env-contamination.sh (the gate itself)
 #   - dashboard-layouts/, fixtures/        (gitignored runtime artifacts)
 #   - node_modules/, .git/                 (third-party / git internals)
@@ -111,8 +111,11 @@ ALLOWLIST_FILES=(
 
 # Allowlist directories — every file under here is permitted.
 ALLOWLIST_DIRS=(
-  'docs'
-  'reference'
+  # OMN-16602: was a blanket 'docs' when this repo still carried prose
+  # documentation. That prose now lives in the knowledge base; the only thing
+  # left under docs/ is captured run evidence (probe logs and manifests that
+  # record the live lane backend they were taken against) plus brand images.
+  'docs/evidence'
   'src/data-source'        # the documented HTTP/WS carve-out
   'src/config/generated'   # OMN-10756: generated from contract.yaml defaults
   # OMN-12833: OCC evidence contracts under contracts/ document the live lane

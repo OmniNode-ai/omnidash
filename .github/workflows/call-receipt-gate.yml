@@ -3,7 +3,7 @@
 #
 # OMN-13334: Caller workflow invoking the reusable receipt-gate on every PR
 # targeting dev or main. Closes the omnidash receipt-enforcement gap identified
-# in docs/audits/2026-06-19-ratchet-enforcement-audit.md.
+# in the 2026-06-19 ratchet-enforcement audit (OmniNode planning workspace).
 #
 # omnidash is queue-controlled and ships runtime-facing UI; unenforced receipts
 # are a real gap. This wires the same gate all other OmniNode primary repos carry.

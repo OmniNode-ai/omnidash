@@ -3,7 +3,7 @@
 // The data-source client is created once at app root and shared by all
 // widgets via context. Tests can wrap their tree in a different provider
 // with a mock source — no env-var dance, no rebuild. See
-// docs/plans/2026-04-25-review-remediation.md Task 15.
+// 2026-04-25 review-remediation plan, Task 15 (OmniNode planning workspace, not this repo).
 //
 // OMN-13007: when the chrome DATA SOURCE control switches mode/backend at
 // runtime, the memoized source is recreated against the new effective source

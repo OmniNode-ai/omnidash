@@ -34,7 +34,7 @@ revert this fix; the template needs its own correction (flagged, not done here
 - Express bridge (`server/`) used only in `http`/`sqlite`/`postgres` data-source modes — a thin HTTP proxy to the projection-api and the onboarding routes, not a general backend.
 - TanStack Query (`@tanstack/react-query`) for server state, alongside Zustand (`zustand`) for client/UI state (edit mode, layout, filters). Both are live core deps used together, not alternatives.
 - shadcn/ui primitives (`components.json`: `style: "default"`, base color `slate`) in `src/components/ui/` — a handful of primitives (`button`, `input`, `tooltip`, `separator`, `positioned-menu`, `typography`), not the "New York" variant and not a full component library.
-- Dashboard widgets under `src/components/dashboard/` — count drifts, verify live with `ls src/components/dashboard | wc -l` rather than trusting a stamped number here; see `docs/implementation-status.md`.
+- Dashboard widgets under `src/components/dashboard/` — count drifts, verify live with `ls src/components/dashboard | wc -l` rather than trusting a stamped number here; see [OmniDash Implementation Status](https://github.com/OmniNode-ai/knowledge-base/blob/main/reference/omnidash-implementation-status.md).
 
 ## Rules the Agent Must Obey
 

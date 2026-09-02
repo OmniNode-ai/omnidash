@@ -3,7 +3,7 @@
  *
  * These types represent the manifest-declared field-mapping specs, not runtime data rows.
  * Each type has an explicit non-reuse justification documented in the Known Types Inventory
- * of docs/plans/2026-04-29-omnidash-generic-widgets.md.
+ * of the 2026-04-29 omnidash generic-widgets plan (OmniNode planning workspace, not this repo).
  *
  * Design Decision 2: field-mapping types live here (not inside component-manifest.ts) to
  * keep the envelope file focused and avoid bloat.

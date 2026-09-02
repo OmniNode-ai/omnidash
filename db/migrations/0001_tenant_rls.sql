@@ -15,7 +15,7 @@
 --   * Idempotent: safe to re-run; tables absent in a given database (dev vs
 --     analytics schema drift) are skipped with a NOTICE.
 --
--- Apply plan (NOT run automatically): see db/README.md. Verified locally
+-- Apply plan (NOT run automatically): see https://github.com/OmniNode-ai/knowledge-base-internal/blob/main/runbooks/omnidash-database-rls-migrations.md. Verified locally
 -- against a throwaway postgres:16 container by
 -- server/__tests__/tenant-rls.integration.test.ts, which runs this exact file.
 
@@ -39,7 +39,7 @@ DECLARE
   ];
 BEGIN
   -- App read role for the dashboard bridge. NOLOGIN group role; deployments
-  -- attach a LOGIN role to it out-of-band (see db/README.md APPLY PLAN) so no
+  -- attach a LOGIN role to it out-of-band (see https://github.com/OmniNode-ai/knowledge-base-internal/blob/main/runbooks/omnidash-database-rls-migrations.md APPLY PLAN) so no
   -- credential material ever lives in a migration.
   --
   -- OMN-10875: roles are cluster-wide (not per-database) in Postgres, and this

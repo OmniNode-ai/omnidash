@@ -2,6 +2,11 @@
 
 Thanks for your interest in contributing. This guide covers the workflow for landing a change.
 
+> Lives under `.github/` because that is one of the locations GitHub reads
+> contributor guidelines from, and because every other in-repo prose document
+> moved to the knowledge base under epic OMN-16602. See the root `README.md`
+> **Documentation** section for where the platform documentation now lives.
+
 ## Getting Started
 
 ```bash
@@ -95,4 +100,4 @@ File issues at https://github.com/OmniNode-ai/omnidash/issues. Include:
 
 ## License
 
-By contributing, you agree that your contributions will be licensed under the [MIT License](LICENSE).
+By contributing, you agree that your contributions will be licensed under the [MIT License](../LICENSE).

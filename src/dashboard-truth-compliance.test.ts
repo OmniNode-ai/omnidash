@@ -1,4 +1,4 @@
-import { existsSync, readdirSync, readFileSync } from 'node:fs';
+import { readdirSync, readFileSync } from 'node:fs';
 import { dirname, join, relative, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
@@ -6,7 +6,6 @@ import { describe, expect, it } from 'vitest';
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const ROOT = resolve(__dirname, '..');
 const DASHBOARD_DIR = resolve(ROOT, 'src/components/dashboard');
-const COMPONENT_README = resolve(DASHBOARD_DIR, 'README.md');
 
 const SOURCE_EXTENSIONS = ['.ts', '.tsx'];
 const SOURCE_EXCLUDES = ['.test.ts', '.test.tsx', '.stories.ts', '.stories.tsx'];
@@ -79,20 +78,16 @@ const FORBIDDEN_IMPORT_PATTERNS = FORBIDDEN_IMPORTS.map((packageName) => ({
 }));
 
 describe('dashboard component truth contract', () => {
-  // The truth-contract prose now lives in the knowledge base; the in-repo
-  // README is a pointer stub. This assertion therefore checks that the
-  // contract stays reachable from the component directory — the stub exists,
-  // states the boundary in one line, carries the verbatim pointer line the KB
-  // drift guard matches, and names its canonical page. The prohibitions the
-  // old assertions grepped for ("read Postgres", "must not") are enforced
-  // below by the forbidden-import scan, which is the mechanical gate; the
-  // README was only ever the documentation of it.
-  it('documents the component-level truth boundary', () => {
-    expect(existsSync(COMPONENT_README)).toBe(true);
-    const readme = readFileSync(COMPONENT_README, 'utf8');
-    expect(readme).toContain('Dashboard components are presentation surfaces');
-    expect(readme).toContain('Full documentation → https://github.com/OmniNode-ai/knowledge-base');
-    expect(readme).toContain('architecture/omnidash-component-truth-boundary.md');
+  // The truth-contract prose lives entirely in the knowledge base now
+  // (OMN-16602 doc scrub removed the in-repo pointer stub, since a stub that
+  // only says "moved" does not count as removed). This assertion checks that
+  // the root README still names the canonical page. The prohibitions the old
+  // assertions grepped for ("read Postgres", "must not") are enforced below
+  // by the forbidden-import scan, which is the mechanical gate; the README
+  // was only ever the documentation of it.
+  it('root README names the canonical component-level truth boundary page', () => {
+    const rootReadme = readFileSync(resolve(ROOT, 'README.md'), 'utf8');
+    expect(rootReadme).toContain('architecture/omnidash-component-truth-boundary.md');
   });
 
   it('detects forbidden import forms used to bypass static scans', () => {

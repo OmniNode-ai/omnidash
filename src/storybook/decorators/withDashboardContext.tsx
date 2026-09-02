@@ -45,7 +45,7 @@ export interface DashboardContextOptions {
  * composes (does not replace) — wiring a default decorator globally
  * would double the QueryClient + ThemeProvider context for every
  * widget story that supplies its own. See ADR
- * `docs/adr/002-storybook-widget-coverage.md` for context.
+ * https://github.com/OmniNode-ai/knowledge-base/blob/main/adrs/ADR-0040-omnidash-storybook-widget-coverage.md for context.
  */
 export function makeDashboardDecorator(opts: DashboardContextOptions = {}): Decorator {
   return (Story, context) => {
