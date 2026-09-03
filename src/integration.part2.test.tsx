@@ -64,7 +64,10 @@ describe('Proof of Life — Part 2', () => {
     // 2026-05-26, omnidash#125) had never been registered until now.
     // OMN-17197: consumer-flow added — the render end of the epic OMN-16776
     // Phase 1 projection, which was live and rendered by nothing.
-    expect(all.length).toBe(37);
+    // OMN-17775: session-replay added — the DECLARED READER the OMN-17199 gate
+    // requires before OMN-17774 may flip onex.snapshot.projection.session.replay.v1
+    // to bus_backed. Classified hidden until a live 200-with-rows probe.
+    expect(all.length).toBe(38);
     expect(all.map((c) => c.name).sort()).toEqual([
       'ab-compare',
       'baselines-roi-card',
@@ -98,6 +101,7 @@ describe('Proof of Life — Part 2', () => {
       'renderer-capability-status',
       'routing-decision',
       'routing-decision-table',
+      'session-replay',
       'session-timeline',
       'skill-adoption',
       'swarm-control-plane',

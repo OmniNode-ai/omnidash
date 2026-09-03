@@ -54,4 +54,5 @@ export const componentImports: Record<string, ReturnType<typeof lazy>> = {
   'skill-adoption/SkillAdoptionWidget': lazy(() => import('./skill-adoption/SkillAdoptionWidget')),
   'swarm-control-plane/SwarmControlPlane': lazy(() => import('./swarm-control-plane/SwarmControlPlane')),
   'consumer-flow/ConsumerFlowWidget': lazy(() => import('./consumer-flow/ConsumerFlowWidget')),
+  'session-replay/SessionReplayWidget': lazy(() => import('./session-replay/SessionReplayWidget')),
 };

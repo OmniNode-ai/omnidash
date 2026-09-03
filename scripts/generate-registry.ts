@@ -957,6 +957,69 @@ const MVP_COMPONENTS: Record<string, ComponentManifestDraft> = {
     },
     capabilities: { supports_compare: false, supports_export: true, supports_fullscreen: true, supports_time_range: false },
   },
+  // OMN-17775 (GOAL row 0 leg (b)/(c), epic OMN-16776). The DECLARED READER for
+  // `onex.snapshot.projection.session.replay.v1`, which OMN-17774 flips to
+  // `bus_backed: true`. The OMN-17199 gate counts a registry component, a shipped
+  // layout or a reasoned `consumers: none` -- a page (SessionReplayPage) and
+  // omnimarket's server-rendered `/morning` are none of the three. The
+  // projectionSchema below is copied from the contract's own
+  // `projection_api.columns` block, in order, so a column rename upstream
+  // surfaces here rather than as a silently blank cell.
+  'session-replay': {
+    name: 'session-replay',
+    displayName: 'Session Replay',
+    description:
+      'The platform\'s own session lifecycle as the reducer recorded it: one row per session event with the projection-derived event_type, per-session sequence ordinal, cumulative token total and checkpoint flag. Every value is authored by node_projection_session_replay; the widget orders and formats, and recomputes nothing.',
+    category: 'activity',
+    version: '1.0.0',
+    implementationKey: 'session-replay/SessionReplayWidget',
+    configSchema: {
+      type: 'object',
+      properties: {
+        maxRows: { type: 'number', description: 'Max snapshot rows rendered after ordering.', default: 25 },
+      },
+    },
+    projectionSchema: {
+      type: 'object',
+      required: ['snapshot_id', 'session_id', 'sequence', 'timestamp', 'event_type'],
+      properties: {
+        snapshot_id: {
+          type: 'string',
+          description:
+            "Durable row identity, content-addressed per source event (the envelope UUID when the runtime injected one). Also the exposure's key_column, so one source event owns exactly one compacted-topic key.",
+        },
+        session_id: { type: 'string', description: 'Session the snapshot belongs to.' },
+        sequence: {
+          type: 'number',
+          description:
+            'Zero-based ordinal within the session, rehydrated by the reducer from the session\'s already-materialized rows. Rendered verbatim; the client never renumbers it.',
+        },
+        timestamp: { type: 'string', format: 'date-time', description: 'Event time carried by the source event.' },
+        event_type: {
+          type: 'string',
+          description:
+            'Classification DERIVED IN THE REDUCER from the source topic (session_start | user_input | tool_call | checkpoint | session_end) and rendered verbatim. A type this client has no presentation for renders under its own name, never folded into a bucket.',
+        },
+        node_name: { type: 'string', description: "Actor that produced the event; the tool's own name on a tool_call." },
+        state_delta: { type: 'object', description: 'Minimal state change the event introduced.' },
+        cumulative_tokens: {
+          type: ['number', 'null'],
+          description: 'Running token total up to this event. NULL means the column was absent from the served row -- unrecorded, not zero.',
+        },
+        is_checkpoint: { type: ['boolean', 'null'], description: 'True for session_start, session_end and outcome events.' },
+      },
+    },
+    dataSources: [projectionSource(TOPICS.sessionReplay)],
+    events: { emits: [], consumes: [] },
+    defaultSize: { w: 10, h: 6 },
+    minSize: { w: 6, h: 4 },
+    maxSize: { w: 12, h: 12 },
+    emptyState: {
+      message: 'No session replay snapshots',
+      hint: 'Rows appear once session lifecycle events reach node_projection_session_replay and it republishes each materialized row onto the snapshot topic (OMN-17774).',
+    },
+    capabilities: { supports_compare: false, supports_export: true, supports_fullscreen: true, supports_time_range: true },
+  },
   'intent-distribution': {
     name: 'intent-distribution',
     displayName: 'Intent Distribution',

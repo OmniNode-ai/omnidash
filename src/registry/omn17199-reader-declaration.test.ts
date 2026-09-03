@@ -73,6 +73,19 @@ describe('OMN-17199 reader declarations resolve at runtime', () => {
     );
   });
 
+  // OMN-17775 / epic OMN-16776 group G3. Named rather than left to the generic
+  // scan above: `onex.snapshot.projection.session.replay.v1` is declared
+  // `bus_backed: true` by omnimarket's node_projection_session_replay contract
+  // (OMN-17774), so a regeneration that silently dropped this component would
+  // not fail here — it would fail in omnibase_infra's required
+  // `exposure-reader-coverage` context, in a repo that did not cause it.
+  it('session-replay is the declared reader of the bus-backed session-replay exposure', () => {
+    const registry = new ComponentRegistry(manifest);
+    expect(registry.getComponentsForProjectionTopic(TOPICS.sessionReplay).map((c) => c.name)).toContain(
+      'session-replay'
+    );
+  });
+
   it('a topic no component declares has no readers', () => {
     const registry = new ComponentRegistry(manifest);
     expect(
