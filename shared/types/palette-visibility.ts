@@ -143,4 +143,19 @@ export const PALETTE_CLASSIFICATION: Record<string, PaletteClassification> = {
   // file (200 with rows). The exposure is already bus_backed with its writer
   // deployed and producing, so nothing here flips a gate ahead of a writer.
   'consumer-flow': { paletteVisibility: 'visible', authorityLabel: 'projection-backed', probe: 'consumer-flow.v1=200/500r fresh (dev lane projection-api, 2026-08-30T15:19:18Z)' },
+  // OMN-17775 / epic OMN-16776, group G3. Classified from a LIVE probe through
+  // the exact route omnidash's bridge uses, run 2026-09-03T15:56:27Z against the
+  // .201 dev-lane projection API:
+  //   GET /projection/onex.snapshot.projection.session.replay.v1
+  //   -> HTTP 503 {"status":"degraded","error":"not_yet_bus_backed",...}
+  // The classification rule at the top of this file makes that hidden/hidden,
+  // and it stays hidden here deliberately. This entry exists because the
+  // OMN-17199 exposure-reader gate requires a DECLARED READER before OMN-17774
+  // may flip the exposure to bus_backed -- and declaring the reader is not the
+  // same claim as declaring the data present. Flipping this to
+  // visible/projection-backed ahead of a 200-with-rows probe would be the same
+  // error in the palette that flipping bus_backed ahead of its writer is on the
+  // contract: a surface asserting data it has not observed. It flips under
+  // OMN-17774's own rendered proof, with that probe quoted here, and not before.
+  'session-replay': { paletteVisibility: 'hidden', authorityLabel: 'hidden', probe: 'session.replay.v1=503 not_yet_bus_backed (dev lane projection-api, 2026-09-03T15:56:27Z)' },
 };
