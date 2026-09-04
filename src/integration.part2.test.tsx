@@ -67,7 +67,12 @@ describe('Proof of Life — Part 2', () => {
     // OMN-17775: session-replay added — the DECLARED READER the OMN-17199 gate
     // requires before OMN-17774 may flip onex.snapshot.projection.session.replay.v1
     // to bus_backed. Classified hidden until a live 200-with-rows probe.
-    expect(all.length).toBe(38);
+    // OMN-17874: work-events added — the same reader shape for
+    // onex.snapshot.projection.work.events.v1, which OMN-17772 flipped to
+    // bus_backed with no omnidash reader, so the gate had only the
+    // `consumers: none` hatch left to resolve. Classified visible on a live
+    // 200/1r probe.
+    expect(all.length).toBe(39);
     expect(all.map((c) => c.name).sort()).toEqual([
       'ab-compare',
       'baselines-roi-card',
@@ -107,6 +112,7 @@ describe('Proof of Life — Part 2', () => {
       'swarm-control-plane',
       'token-usage',
       'trace-explorer',
+      'work-events',
     ]);
   });
 

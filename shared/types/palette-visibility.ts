@@ -158,4 +158,20 @@ export const PALETTE_CLASSIFICATION: Record<string, PaletteClassification> = {
   // contract: a surface asserting data it has not observed. It flips under
   // OMN-17774's own rendered proof, with that probe quoted here, and not before.
   'session-replay': { paletteVisibility: 'hidden', authorityLabel: 'hidden', probe: 'session.replay.v1=503 not_yet_bus_backed (dev lane projection-api, 2026-09-03T15:56:27Z)' },
+  // OMN-17874 / epic OMN-16776, group G2. Classified from a LIVE probe through
+  // the exact route omnidash's bridge uses, run 2026-09-04T13:32:17Z against the
+  // .201 dev-lane projection API:
+  //   GET /projection/onex.snapshot.projection.work.events.v1
+  //   -> HTTP 200, row_count 1, backing "bus", latest_event_at
+  //      2026-09-04T09:45:47.801259+00:00
+  // The classification rule at the top of this file is "200 with row_count > 0
+  // -> visible / projection-backed", and this is that case, so the entry follows
+  // the rule rather than the author's taste. Stated plainly so the label is not
+  // read as more than it is: the one row is the OMN-17772 chain probe
+  // (actor_id `omn17772-work-events-chain-probe`), not organic hook traffic --
+  // hook events publish on the stability lane while this consumer runs on dev,
+  // which OMN-17034 tracks. One measured row is a thin panel, and a thin panel
+  // rendering a real row is the honest answer; the widget's own empty state
+  // carries the same caveat for anyone who sees zero.
+  'work-events': { paletteVisibility: 'visible', authorityLabel: 'projection-backed', probe: 'work.events.v1=200/1r backing=bus (dev lane projection-api, 2026-09-04T13:32:17Z)' },
 };

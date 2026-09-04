@@ -147,6 +147,15 @@ export const TOPICS = {
   /** Session replay snapshots — state reconstruction checkpoints (OMN-6877). */
   sessionReplay: 'onex.snapshot.projection.session.replay.v1',
   /**
+   * Work events projection — the L1 work-ledger rung of OMN-16176: one
+   * content-addressed row per session event (event_kind, actor, ticket,
+   * summary), materialized by node_projection_work_events into
+   * omninode_internal.work_events and republished onto this snapshot topic.
+   * Declared `bus_backed: true` by OMN-17772; OMN-17874 declares its omnidash
+   * reader so the OMN-17199 exposure-reader gate resolves one.
+   */
+  workEvents: 'onex.snapshot.projection.work.events.v1',
+  /**
    * Inference response text projection — latest ModelLlmInferenceResponse rows
    * sourced from the bus topic onex.evt.omnibase-infra.inference-response.v1.
    * Rendered by DelegationModelOutputWidget (OMN-12745). Fixture mode is the
