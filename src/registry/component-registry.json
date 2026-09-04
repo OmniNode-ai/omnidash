@@ -1,6 +1,6 @@
 {
   "manifestVersion": "1.0",
-  "generatedAt": "2026-09-03T16:00:39.936Z",
+  "generatedAt": "2026-09-04T13:38:16.887Z",
   "components": {
     "cost-trend-panel": {
       "name": "cost-trend-panel",
@@ -1998,6 +1998,122 @@
       },
       "paletteVisibility": "hidden",
       "authorityLabel": "hidden"
+    },
+    "work-events": {
+      "name": "work-events",
+      "displayName": "Work Events",
+      "description": "What actors actually did, as the reducer recorded it: one content-addressed row per session event with its projection-authored event_kind, actor, ticket attribution and summary. Every value is authored by node_projection_work_events; the widget orders and formats, and recomputes nothing.",
+      "category": "activity",
+      "version": "1.0.0",
+      "implementationKey": "work-events/WorkEventsWidget",
+      "configSchema": {
+        "type": "object",
+        "properties": {
+          "maxRows": {
+            "type": "number",
+            "description": "Max work-event rows rendered after ordering.",
+            "default": 25
+          }
+        }
+      },
+      "projectionSchema": {
+        "type": "object",
+        "required": [
+          "event_id",
+          "emitted_at",
+          "event_kind"
+        ],
+        "properties": {
+          "event_id": {
+            "type": "string",
+            "description": "The row's own content address, derived by derive_event_id from (source_topic, actor_id, emitted_at, payload). Also the exposure's key_column, so a repeated key is by construction a byte-identical replay of the same event."
+          },
+          "emitted_at": {
+            "type": "string",
+            "format": "date-time",
+            "description": "Event time carried by the source event; the exposure's order_by and freshness_column."
+          },
+          "event_kind": {
+            "type": "string",
+            "description": "Classification DERIVED IN THE REDUCER from the source topic and rendered verbatim. A kind this client has no presentation for renders under its own name, never folded into a bucket."
+          },
+          "actor_kind": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "What kind of actor produced the event (session, node, operator)."
+          },
+          "actor_id": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "Identity of the actor that produced the event."
+          },
+          "ticket_id": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "Ticket the work was attributed to. NULL means no attribution was recorded -- it does not mean the work touched no ticket, so it renders as a word rather than a blank cell."
+          },
+          "summary": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "One-line description the reducer wrote. NULL renders as a stated absence; the client never assembles a sentence from the payload."
+          },
+          "source_topic": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "Bus topic the source event arrived on."
+          },
+          "payload": {
+            "type": "object",
+            "description": "The source event body the reducer retained, verbatim."
+          }
+        }
+      },
+      "dataSources": [
+        {
+          "type": "projection",
+          "topic": "onex.snapshot.projection.work.events.v1",
+          "required": true,
+          "purpose": "initial_fetch"
+        }
+      ],
+      "events": {
+        "emits": [],
+        "consumes": []
+      },
+      "defaultSize": {
+        "w": 10,
+        "h": 6
+      },
+      "minSize": {
+        "w": 6,
+        "h": 4
+      },
+      "maxSize": {
+        "w": 12,
+        "h": 12
+      },
+      "emptyState": {
+        "message": "No work events",
+        "hint": "Rows appear once session lifecycle events reach node_projection_work_events and it republishes each materialized row onto the snapshot topic (OMN-17772)."
+      },
+      "capabilities": {
+        "supports_compare": false,
+        "supports_export": true,
+        "supports_fullscreen": true,
+        "supports_time_range": true
+      },
+      "paletteVisibility": "visible",
+      "authorityLabel": "projection-backed"
     },
     "intent-distribution": {
       "name": "intent-distribution",

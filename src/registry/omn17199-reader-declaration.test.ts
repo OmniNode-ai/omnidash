@@ -86,6 +86,20 @@ describe('OMN-17199 reader declarations resolve at runtime', () => {
     );
   });
 
+  // OMN-17874 / epic OMN-16776 group G2. Named rather than left to the generic
+  // scan above: `onex.snapshot.projection.work.events.v1` is declared
+  // `bus_backed: true` by omnimarket's node_projection_work_events contract
+  // (OMN-17772), so a regeneration that silently dropped this component would
+  // not fail here — it would fail in omnibase_infra's required
+  // `exposure-reader-coverage` context, in a repo that did not cause it. That
+  // is exactly what happened once already, on three unrelated PRs.
+  it('work-events is the declared reader of the bus-backed work-events exposure', () => {
+    const registry = new ComponentRegistry(manifest);
+    expect(registry.getComponentsForProjectionTopic(TOPICS.workEvents).map((c) => c.name)).toContain(
+      'work-events'
+    );
+  });
+
   it('a topic no component declares has no readers', () => {
     const registry = new ComponentRegistry(manifest);
     expect(
