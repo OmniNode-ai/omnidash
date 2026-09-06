@@ -25,7 +25,6 @@ OmniDash follows the [OmniNode deterministic truth doctrine](https://github.com/
 | Knowledge base | Scope |
 |---|---|
 | **https://github.com/OmniNode-ai/knowledge-base** | Public — architecture, decision records, guides, schema references |
-| **https://github.com/OmniNode-ai/knowledge-base-internal** | Internal — operational runbooks with real (non-parameterized) deployment detail |
 
 ### Architecture and reference (public knowledge base)
 
@@ -48,17 +47,6 @@ OmniDash follows the [OmniNode deterministic truth doctrine](https://github.com/
 | BaselinesROICard stays bespoke | [ADR-0041](https://github.com/OmniNode-ai/knowledge-base/blob/main/adrs/ADR-0041-omnidash-baselines-roi-card-stays-bespoke.md) |
 | Cross-renderer typed empty-state gate | [ADR-0042](https://github.com/OmniNode-ai/knowledge-base/blob/main/adrs/ADR-0042-omnidash-cross-renderer-typed-empty-state-gate.md) |
 | Stock @rjsf for Pydantic-generated JSON schema | [ADR-0043](https://github.com/OmniNode-ai/knowledge-base/blob/main/adrs/ADR-0043-omnidash-rjsf-discriminated-union-handling.md) |
-
-### Operational runbooks (internal knowledge base)
-
-The source these describe still lives here — [`db/` migrations](db/), [`deploy/keycloak/`](deploy/keycloak/), [`server/onboarding/`](server/onboarding/) — but the procedures do not.
-
-| Runbook | Canonical page |
-|---|---|
-| Beta deployment | [OmniDash Beta Runbook](https://github.com/OmniNode-ai/knowledge-base-internal/blob/main/runbooks/omnidash-beta-runbook.md) |
-| Tenant RLS migrations | [OmniDash Database RLS Migrations](https://github.com/OmniNode-ai/knowledge-base-internal/blob/main/runbooks/omnidash-database-rls-migrations.md) |
-| Keycloak realm config | [OmniDash Keycloak Realm Config](https://github.com/OmniNode-ai/knowledge-base-internal/blob/main/runbooks/omnidash-keycloak-realm-config.md) |
-| Self-service onboarding | [OmniDash Self-Service Onboarding](https://github.com/OmniNode-ai/knowledge-base-internal/blob/main/runbooks/omnidash-self-service-onboarding.md) |
 
 Markdown that stays in this repo is limited to the GitHub-surface and agent-configuration set — this `README.md`, `CLAUDE.md`, `.claude/`, `CHANGELOG.md`, `SECURITY.md`, `LICENSE`, and `.github/` — enforced on every PR by the `kb-doc-gate` check in `strict` mode (see [`.kb-doc-gate.yaml`](.kb-doc-gate.yaml)).
 
