@@ -4,7 +4,7 @@ title: "A2.5: Dashboard one-backend component correctness sweep — single stand
 summary: >-
   Close-the-loop plan track A2.5 (2026-06-08 close-the-loop plan, OmniNode planning workspace). Makes EVERY demo-visible
   dashboard component render through ONE standard projection backend (the stability-test Postgres-backed
-  projection API at 192.168.86.201:13002, reached same-origin via the Vite /projection proxy). Inventoried all
+  projection API, reached same-origin via the Vite /projection proxy). Inventoried all
   32 components in src/registry/component-registry.json, probed each component's topic(s) against the single
   backend, and classified each as visible/projection-backed, visible/degraded-labeled, or hidden/disabled.
   Adds manifest fields paletteVisibility + authorityLabel (shared/types/component-manifest.ts), a single
@@ -35,12 +35,27 @@ evidence_requirements:
       asserts single-backend URL resolution (proxy-relative + absolute). Full suite (no -k): npx vitest run.
     command: "cd omnidash && npx vitest run"
   - kind: "manual"
-    description: >-
-      Playwright network capture (docs/evidence/dashboard-one-backend-20260608/playwright-network-projection.txt)
-      proves every /projection/{topic} request hits the single backend origin and ZERO requests hit :8765,
-      :3010, :3002, fixtures, or bespoke API routes; full-page desktop + mobile + palette screenshots and
-      visible-text capture; component-matrix.json + backend-manifest.json.
-    command: "ls docs/evidence/dashboard-one-backend-20260608/"
+    description: |-
+      Playwright network capture proves every /projection/{topic} request hits the single backend origin and
+      ZERO requests hit :8765, :3010, :3002, fixtures, or bespoke API routes; full-page desktop + mobile +
+      palette screenshots and visible-text capture; component-matrix.json + backend-manifest.json.
+
+      The seven-file packet is no longer in this repository. Two of its files recorded the internal projection
+      host and port, so OMN-18021 (epic OMN-17992, public-repo hygiene) archived the packet byte-identical
+      into the private shared-artifact repository, under
+      reports/evidence-archive/omnidash/docs/evidence/dashboard-one-backend-20260608/, and then deleted it
+      here. The archive PR merged before the deletion PR; nothing was only-deleted. The sha256 values below
+      were taken on both sides at omnidash 5f286619b4fe3478f92b704da3fd3e7c7534778d and pin the archive, so
+      this citation stays verifiable without this public repository holding the files:
+
+        backend-manifest.json            fd978b9f88b3b6f59ceef74054ac522e0d3324f434f8bd420788332699696356
+        component-matrix.json            46fd083705b51a830c35da728c9d779e53234f3f121dcfb1c66a34ecd9bd7a2e
+        playwright-network-projection.txt e412d6ccc6e00858bf2a22fdea06f935d65df9dfe33774c139df37eb21adb6c7
+        visible-text-desktop.txt         db9c5496218259732b4bc58f475a7287f4e30dc3a8ff8b17a48e24b46cb22a9f
+        desktop-fullpage.png             ffdbaafeffd44c4337b494a7b483e3c231dd2a6a856df71c9a474dbefb86901d
+        mobile-fullpage.png              206b1e270e50759674b4ec13c96bb2ddea506347ce5b76f8fb6da7ac1ae868e4
+        palette-authority-labels.png     0d321496cdac15e797c66c55ccde05f9ffddd9cbdc860ff9b41efa7ecbf83366
+    command: "test ! -e docs/evidence/dashboard-one-backend-20260608 && echo 'evidence packet archived out of tree under OMN-18021'"
   - kind: "ci"
     description: >-
       All required CI checks green on the omnidash PR (Typecheck & Tests, contract-validation, golden-chain,
