@@ -6,11 +6,13 @@
  * derived from a LIVE probe of the ONE standard projection backend
  * (the stability-test Postgres-backed projection API), NOT from committed
  * fixtures, the `:8765` SEA server, the `:3010` proxy, or any bespoke SQL/REST
- * route. See `docs/evidence/dashboard-one-backend-20260608/` for the probe log.
+ * route.
  *
- * Backend probed: the stability-test projection API (configured via
- *   VITE_PROJECTION_API_URL; see docs/evidence/dashboard-one-backend-20260608/).
+ * Backend probed: the stability-test projection API, configured via
+ *   VITE_PROJECTION_API_URL.
  * Probe date: 2026-06-08
+ * Probe log: archived out of this repository under OMN-18021; the citation and
+ *   the per-file sha256 that pin it are in `contracts/OMN-12833.yaml`.
  *
  * Classification rule:
  *   - any topic returns HTTP 200 with row_count > 0  -> visible / projection-backed
