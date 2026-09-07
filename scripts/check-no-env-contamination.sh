@@ -112,9 +112,11 @@ ALLOWLIST_FILES=(
 # Allowlist directories — every file under here is permitted.
 ALLOWLIST_DIRS=(
   # OMN-16602: was a blanket 'docs' when this repo still carried prose
-  # documentation. That prose now lives in the knowledge base; the only thing
-  # left under docs/ is captured run evidence (probe logs and manifests that
-  # record the live lane backend they were taken against) plus brand images.
+  # documentation. That prose now lives in the knowledge base.
+  # OMN-18021: the probe logs and manifests that recorded the live lane backend
+  # were archived out of this public tree and deleted; what remains under
+  # docs/evidence/ is ten screenshots. The entry stays because those screenshots
+  # are still captured run evidence, not runtime source.
   'docs/evidence'
   'src/data-source'        # the documented HTTP/WS carve-out
   'src/config/generated'   # OMN-10756: generated from contract.yaml defaults
