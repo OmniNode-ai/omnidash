@@ -52,6 +52,23 @@ data_source:
   # postgres_database_url_secret_ref: "env:OMNIDASH_ANALYTICS_DB_URL"
   postgres_database_url_secret_ref: ""
 
+  # OMN-18159: the tenant this dashboard reads TENANT-SCOPED exposures as.
+  #
+  # Operator ruling, 2026-09-11: the delegation widgets read as an explicitly
+  # configured tenant -- the same house-tenant shape the projection API own
+  # operator status page takes -- sent as a tenant query parameter and gated on
+  # the server GET /projections metadata, never on a topic list copied into
+  # omnidash. The signed-in-viewer shape is deferred until the dashboard carries
+  # identity.
+  #
+  # DELIBERATELY EMPTY in the base contract, and it must stay empty. There is no
+  # correct default tenant: a value here would answer 200 with somebody rows to
+  # a dashboard nobody configured, which is indistinguishable from a correctly
+  # scoped answer. Unset means every tenant-scoped exposure refuses with
+  # tenant_context_unresolved and says which configuration is missing. Set it in
+  # a deployment overlay (contract.local.yaml) or VITE_PROJECTION_TENANT_ID.
+  projection_tenant_id: ""
+
 runtime_edge:
   # Generic contract-driven runtime HTTP edge. OmniDash never owns broker
   # credentials, IAM signing, topic resolution, correlation, or consumers.

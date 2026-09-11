@@ -22,6 +22,7 @@ interface Defaults {
   mode: DataSourceMode;
   url: string;
   sqliteDbPath: string;
+  projectionTenantId: string;
 }
 
 function defaultDataSource(): Defaults {
@@ -29,6 +30,8 @@ function defaultDataSource(): Defaults {
     mode: 'sqlite',
     url: 'http://localhost:3002',
     sqliteDbPath: '~/.omninode/delegation/delegation.sqlite',
+    // OMN-18159: no default tenant, ever. See contract.yaml.
+    projectionTenantId: '',
   };
 }
 
@@ -58,6 +61,7 @@ function parseContract(raw: string, initial: Defaults = defaultDataSource()): De
     // (no `/ws` route on the deployed projection backend). Live updates are
     // poll-driven via useProjectionQuery. The key is ignored if still present.
     else if (key === 'sqlite_db_path') defaults.sqliteDbPath = value;
+    else if (key === 'projection_tenant_id') defaults.projectionTenantId = value;
   }
 
   return defaults;
@@ -80,6 +84,11 @@ export type DataSourceMode = 'sqlite' | 'postgres' | 'file' | 'http';
 export const DATA_SOURCE_DEFAULT_MODE: DataSourceMode = ${JSON.stringify(d.mode)};
 export const DATA_SOURCE_DEFAULT_URL: string = ${JSON.stringify(d.url)};
 export const DATA_SOURCE_DEFAULT_SQLITE_DB_PATH: string = ${JSON.stringify(d.sqliteDbPath)};
+
+// OMN-18159: the tenant tenant-scoped exposures are read as. Empty means none
+// is configured, and every tenant-scoped exposure then refuses rather than
+// being read unscoped.
+export const PROJECTION_TENANT_ID_DEFAULT: string = ${JSON.stringify(d.projectionTenantId)};
 `;
 
 mkdirSync(dirname(outPath), { recursive: true });

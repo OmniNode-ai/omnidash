@@ -45,10 +45,26 @@ describe('shouldProtectBrowserNavigation', () => {
     ['/favicon.ico', 'image/avif,image/webp,image/png,*/*', 'image'],
     ['/assets/index.js', '*/*', 'script'],
     ['/api/sea/generate', 'text/html', 'document'],
+    // OMN-18159: the exposure catalogue. It does NOT match the '/projection/'
+    // prefix -- no trailing slash -- and it is declared with an HTML Accept and
+    // a document fetch-dest here deliberately, so the assertion rests on the
+    // path list rather than on a header the caller controls.
+    ['/projections', 'text/html', 'document'],
   ])('does not start login for subresource/data request %s', (path, accept, fetchDest) => {
     expect(
       shouldProtectBrowserNavigation(request(path, { accept, fetchDest })),
     ).toBe(false);
+  });
+
+  it('still protects a navigation whose path merely starts with the same letters', () => {
+    // Positive control for the case above: '/projections-overview' is a client
+    // route, not the catalogue, and naming '/projections' exactly must not
+    // exempt it.
+    expect(
+      shouldProtectBrowserNavigation(
+        request('/projections-overview', { accept: 'text/html', fetchDest: 'document' }),
+      ),
+    ).toBe(true);
   });
 
   it('does not redirect a non-GET request even when it accepts HTML', () => {
