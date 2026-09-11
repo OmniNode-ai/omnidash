@@ -19,6 +19,7 @@
 
 import { TOPICS } from "@shared/types/topics";
 import { projectionUrl } from "@/data-source/projection-base-url";
+import { resolveTenantFor } from '@/data-source/projection-tenant';
 import { authedFetch } from "@/data-source/authed-fetch";
 
 /**
@@ -152,7 +153,31 @@ async function readProjection<T>(
   topic: string,
   query?: string,
 ): Promise<ProjectionResult<T>> {
-  const url = projectionUrl(topic, query);
+  // OMN-18159. The ONE place a projection read decides its tenant, so a widget
+  // cannot forget to scope and no widget carries a copy of which exposures are
+  // scoped -- `resolveTenantFor` asks the server. A refusal is returned as a
+  // degraded result rather than an unscoped request: the browser does not issue
+  // a read it already knows the server will refuse, and the reason an operator
+  // sees names the missing configuration instead of a bare status code.
+  const tenant = await resolveTenantFor(topic);
+  if (tenant.kind === 'refused') {
+    return {
+      rows: [],
+      rowCount: 0,
+      freshness: 'unknown',
+      latestEventAt: null,
+      isDegraded: true,
+      degradedReason: tenant.reason,
+    };
+  }
+  const scopedQuery =
+    tenant.kind === 'scoped'
+      ? query
+        ? `${query}&${tenant.query}`
+        : tenant.query
+      : query;
+
+  const url = projectionUrl(topic, scopedQuery);
   const res = await authedFetch(url);
   if (!res.ok) {
     return {
