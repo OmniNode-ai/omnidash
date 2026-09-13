@@ -79,3 +79,19 @@ jobs:
         run: >-
           python -m pytest tests/ci/test_workflow_script_refs_exist.py
           -q --noconftest -p no:cacheprovider -c /dev/null
+
+      # OMN-18334. A SECOND step rather than a second workflow, because this
+      # job is already the repo's unconditional, bare-environment home for
+      # assertions over .github/workflows/ and it already installs pyyaml. A
+      # new workflow would duplicate that plumbing to assert one list.
+      #
+      # What it asserts: this repo's companion-effect caller listens for a
+      # pull-request DESCRIPTION EDIT. Without that activity type the OCC
+      # companion effect never runs on the event that drops the change-control
+      # evidence line from a description, so the OMN-18334 repair is
+      # unreachable here.
+      - name: Assert the companion-effect caller listens for a description edit
+        run: >-
+          python -m pytest
+          tests/ci/test_occ_companion_effect_edited_trigger_omn_18334.py
+          -q --noconftest -p no:cacheprovider -c /dev/null
