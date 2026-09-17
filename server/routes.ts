@@ -409,6 +409,27 @@ router.get('/api/swarm-runs', async (_req, res) => {
   }
 });
 
+// OMN-18159: the exposure catalogue, forwarded verbatim.
+//
+// The browser needs `tenant_scoped`/`tenant_column` per exposure to know which
+// reads must carry a tenant, and the projection API publishes exactly that at
+// `GET /projections`. Without this passthrough the dashboard's same-origin
+// request 404s at the bridge and the client can only learn an exposure is
+// scoped from a 422 in production -- the discovery gap OMN-15797 added that
+// route to close.
+//
+// Forwarded, never synthesised: the bridge holds no opinion about which
+// exposures are scoped. A second copy of that fact here is the duplication the
+// client-side gate deliberately refuses to carry.
+router.get('/projections', async (_req, res) => {
+  try {
+    res.json(await readViaHttp('/projections'));
+  } catch (err) {
+    console.error('[routes] /projections error:', describeError(err));
+    res.status(502).json({ error: 'exposure catalogue read failed' });
+  }
+});
+
 // HTTP adapter for src/data-source/http-snapshot-source.ts. Dashboard-v2 reads
 // projection-topic snapshots; it must not query Postgres directly.
 router.get('/projection/:topic', async (req, res) => {

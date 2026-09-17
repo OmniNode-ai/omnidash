@@ -10,3 +10,8 @@ export type DataSourceMode = 'sqlite' | 'postgres' | 'file' | 'http';
 export const DATA_SOURCE_DEFAULT_MODE: DataSourceMode = "http";
 export const DATA_SOURCE_DEFAULT_URL: string = "";
 export const DATA_SOURCE_DEFAULT_SQLITE_DB_PATH: string = "~/.omninode/delegation/delegation.sqlite";
+
+// OMN-18159: the tenant tenant-scoped exposures are read as. Empty means none
+// is configured, and every tenant-scoped exposure then refuses rather than
+// being read unscoped.
+export const PROJECTION_TENANT_ID_DEFAULT: string = "";

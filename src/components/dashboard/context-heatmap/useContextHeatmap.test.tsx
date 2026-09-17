@@ -13,6 +13,16 @@ vi.mock('@/data-source/projection-base-url', () => ({
     query ? `/projection/${encodeURIComponent(topic)}?${query}` : `/projection/${encodeURIComponent(topic)}`,
 }));
 
+// OMN-18159: a projection read now asks the server which exposures are scoped
+// before it fetches rows. This hook's tests stub `fetch` once per case, so the
+// catalogue request would consume the stub the row assertion depends on. The
+// resolver is stubbed unscoped here -- this file is about the heatmap's
+// vocabulary mapping, and the tenant behaviour has its own tests in
+// src/data-source/projection-tenant.test.ts and src/services/event-dash-api.test.ts.
+vi.mock('@/data-source/projection-tenant', () => ({
+  resolveTenantFor: async () => ({ kind: 'unscoped' }),
+}));
+
 const mockAutoRefreshInterval = vi.fn<() => number | null | undefined>(() => 15_000);
 
 vi.mock('@/store/store', () => ({

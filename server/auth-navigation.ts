@@ -22,7 +22,12 @@ function isDataPath(path: string): boolean {
   return path === '/api'
     || path.startsWith('/api/')
     || path === '/projection'
-    || path.startsWith('/projection/');
+    || path.startsWith('/projection/')
+    // OMN-18159: the exposure catalogue is a data read like any other. It does
+    // not match the '/projection/' prefix above -- no trailing slash -- so it
+    // has to be named, or a browser fetch of it starts an OIDC flow that
+    // overwrites the document callback.
+    || path === '/projections';
 }
 
 /**

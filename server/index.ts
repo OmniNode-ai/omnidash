@@ -189,7 +189,16 @@ app.use(express.static(distDir));
 // routing (wouter) can resolve the path. API/projection misses must still 404
 // normally rather than being masked by the app shell.
 app.use((req, res, next) => {
-  if (req.method !== 'GET' || req.path.startsWith('/api/') || req.path.startsWith('/projection/')) {
+  // OMN-18159: '/projections' is named explicitly -- it does not match the
+  // '/projection/' prefix -- so a miss 404s like every other data read instead
+  // of being masked by the app shell, which would hand the client HTML where it
+  // expects the exposure catalogue.
+  if (
+    req.method !== 'GET'
+    || req.path.startsWith('/api/')
+    || req.path.startsWith('/projection/')
+    || req.path === '/projections'
+  ) {
     next();
     return;
   }
