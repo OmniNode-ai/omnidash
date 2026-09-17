@@ -1,0 +1,160 @@
+---
+# SPDX-FileCopyrightText: 2025 OmniNode.ai Inc.
+# SPDX-License-Identifier: MIT
+#
+# release.yml (OMN-16396)
+#
+# WHY THIS FILE EXISTS
+#   omni_home's Release-Synced `main` policy lists omnidash with an active
+#   ruleset (21865239, `update` + `non_fast_forward`, bypass
+#   `Integration:4361937`) as though the pair were complete. It is not. The
+#   policy's premise is that once a release publishes, `release.yml`
+#   fast-forwards `main` to the released tag's commit -- and omnidash had no
+#   `release.yml`, on either branch.
+#
+#   So the ruleset restricted pushes to a release automation that did not
+#   exist, which does not protect the release boundary, it FREEZES it. Measured
+#   2026-09-17: `main` sat at 2026-08-18, thirty commits behind `dev`, while
+#   `omninode_infra`'s image build scans `main` -- so the fast-uri CVE fix that
+#   landed on `dev` on 2026-08-31 was invisible to the scanner and OMN-13811 sat
+#   open waiting for exactly this gap.
+#
+# WHAT THIS DOES, AND ONLY THIS
+#   On a `v*` tag, fast-forward `main` to that tag's commit. It builds nothing,
+#   publishes nothing, deploys nothing and opens no pull request. omnidash is an
+#   application rather than a package: there is no registry to publish to, so a
+#   release here IS the pointer move.
+#
+# STAGING ONLY, BY CONSTRUCTION
+#   This workflow performs exactly one mutation: a REST PATCH of
+#   `refs/heads/main` in this repository. It dispatches no other workflow, and a
+#   test asserts that -- `main` carries no job that can reach a cluster, and
+#   nothing here changes that.
+#
+# THE FAST-FORWARD IS GUARDED THREE WAYS
+#   1. An explicit ancestry precondition: the job refuses unless `main` is an
+#      ancestor of the tag commit. GitHub's own guard would also refuse, but
+#      failing here names WHY in one line instead of leaving a REST error.
+#   2. `"force": false` on the PATCH, so the server-side guard stands even if
+#      the precondition above were ever wrong.
+#   3. The ref is moved over REST with the App token rather than through git's
+#      credential layer (OMN-16289/OMN-17272). `actions/checkout` may keep the
+#      workflow token in an included credential file, and a token-in-URL push
+#      can therefore authenticate as `github-actions[bot]` -- which is not an
+#      authorizable identity for a restricted ref, so the push would be declined
+#      and `main` would silently desync.
+
+name: Release
+
+on:
+  push:
+    tags:
+      - "v[0-9]*.[0-9]*.[0-9]*"
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: >-
+          Existing tag to sync `main` to. Recovery path for a tag whose sync
+          step failed: it re-runs the pointer move and nothing else.
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: omnidash-release-main-sync
+  cancel-in-progress: false
+
+jobs:
+  sync-main:
+    name: Sync main to release tag
+    runs-on: >-
+      ${{
+        fromJSON(vars.OMNI_TRUSTED_CI_RUNS_ON_JSON || '["self-hosted","omnibase-ci"]')
+      }}
+    timeout-minutes: 15
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Mint onexbot-occ-writer app token
+        id: app-token
+        uses: actions/create-github-app-token@bcd2ba49218906704ab6c1aa796996da409d3eb1 # v3.2.0
+        with:
+          app-id: ${{ secrets.ONEXBOT_OCC_APP_ID }}
+          private-key: ${{ secrets.ONEXBOT_OCC_PRIVATE_KEY }}
+          owner: OmniNode-ai
+          repositories: omnidash
+          permission-contents: write
+
+      - name: Resolve the tag and assert it fast-forwards main
+        id: resolve
+        env:
+          RELEASE_TAG: ${{ inputs.tag || github.ref_name }}
+        run: |
+          set -euo pipefail
+          TAG="${RELEASE_TAG}"
+          if ! git rev-parse -q --verify "refs/tags/${TAG}" >/dev/null; then
+            echo "::error::tag '${TAG}' does not exist in this repository"
+            exit 1
+          fi
+          TAG_SHA="$(git rev-list -n 1 "${TAG}")"
+          git fetch --quiet origin main
+          MAIN_SHA="$(git rev-parse origin/main)"
+
+          # The precondition, stated rather than left to the server. A tag that
+          # does not descend from main is a release cut from a diverged history,
+          # and moving the pointer to it would DISCARD commits that are on main
+          # and nowhere else -- which is what `force: false` refuses but does not
+          # explain.
+          if [ "${TAG_SHA}" = "${MAIN_SHA}" ]; then
+            echo "::notice::main is already at ${TAG_SHA} (${TAG}); nothing to do"
+            echo "already=true" >>"${GITHUB_OUTPUT}"
+            exit 0
+          fi
+          if ! git merge-base --is-ancestor "${MAIN_SHA}" "${TAG_SHA}"; then
+            echo "::error::refusing to sync: main (${MAIN_SHA}) is NOT an ancestor of ${TAG} (${TAG_SHA}), so this is not a fast-forward. Reconcile the histories deliberately; this workflow never forces."
+            exit 1
+          fi
+          echo "already=false" >>"${GITHUB_OUTPUT}"
+          echo "tag_sha=${TAG_SHA}" >>"${GITHUB_OUTPUT}"
+          echo "::notice::${TAG} (${TAG_SHA}) fast-forwards main from ${MAIN_SHA}"
+
+      - name: Sync main to release tag
+        if: steps.resolve.outputs.already == 'false'
+        env:
+          APP_TOKEN: ${{ steps.app-token.outputs.token }}
+          TAG_SHA: ${{ steps.resolve.outputs.tag_sha }}
+        run: |
+          set -euo pipefail
+          curl --fail-with-body --silent --show-error \
+            -X PATCH \
+            -H "Authorization: Bearer ${APP_TOKEN}" \
+            -H "Accept: application/vnd.github+json" \
+            -H "X-GitHub-Api-Version: 2022-11-28" \
+            "${GITHUB_API_URL}/repos/${GITHUB_REPOSITORY}/git/refs/heads/main" \
+            --data "{\"sha\":\"${TAG_SHA}\",\"force\":false}"
+          echo "main fast-forwarded to ${TAG_SHA}"
+
+      - name: Read the pointer back
+        env:
+          GH_TOKEN: ${{ steps.app-token.outputs.token }}
+          TAG_SHA: ${{ steps.resolve.outputs.tag_sha }}
+        run: |
+          set -euo pipefail
+          # A sync that reports success without a readback cannot tell a moved
+          # pointer from an accepted request, which is the distinction the
+          # OMN-16343 GH006 incident turned on: the ref read back correctly
+          # while the protected-branch hook had declined the push.
+          expected="${TAG_SHA:-$(git rev-parse origin/main)}"
+          actual="$(gh api "repos/${GITHUB_REPOSITORY}/git/ref/heads/main" --jq '.object.sha')"
+          if [ "${actual}" != "${expected}" ]; then
+            echo "::error::main reads back as ${actual}, not ${expected}. The sync did not land."
+            exit 1
+          fi
+          echo "::notice::readback confirms main == ${actual}"
