@@ -17,6 +17,8 @@ const DelegationEvidencePage = lazy(() =>
 const EventBusPage = lazy(() => import('./pages/EventBusPage').then((m) => ({ default: m.EventBusPage })));
 const ExperimentsPage = lazy(() => import('./pages/ExperimentsPage').then((m) => ({ default: m.ExperimentsPage })));
 const SeaControlPage = lazy(() => import('./pages/SeaControlPage').then((m) => ({ default: m.SeaControlPage })));
+// OMN-18771 — Lab observability tab (C4), lazily loaded on the same seam.
+const LabPage = lazy(() => import('./pages/LabPage').then((m) => ({ default: m.LabPage })));
 
 function PageContent({ page }: { page: AppPage }) {
   switch (page) {
@@ -27,6 +29,7 @@ function PageContent({ page }: { page: AppPage }) {
     case 'event-bus':           return <Suspense fallback={null}><EventBusPage /></Suspense>;
     case 'experiments':         return <Suspense fallback={null}><ExperimentsPage /></Suspense>;
     case 'sea-control':         return <Suspense fallback={null}><SeaControlPage /></Suspense>;
+    case 'lab':                 return <Suspense fallback={null}><LabPage /></Suspense>;
     default:        return <DashboardView />;
   }
 }

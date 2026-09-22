@@ -12,7 +12,7 @@
 //     keeping the menu pattern consistent with the prototype across the whole app.
 
 import { useEffect, useLayoutEffect, useRef, useState } from 'react';
-import { Edit, Copy, Plus, MoreHorizontal, Trash2, ChevronsLeft, ChevronsRight, GitBranch, Sparkles, FlaskConical, Radio } from 'lucide-react';
+import { Activity, ChevronsLeft, ChevronsRight, Copy, Edit, FlaskConical, GitBranch, MoreHorizontal, Plus, Radio, Sparkles, Trash2 } from 'lucide-react';
 // SlidersHorizontal removed — Feature Flags nav hidden for beta (OMN-14058-beta). Re-add when wired.
 // Grid3x3 removed from import while Instruction Eval nav entry is commented out (OMN-12833 A4).
 import type { AppPage } from '@/store/types';
@@ -297,6 +297,7 @@ export function Sidebar() {
             { page: 'event-bus' as AppPage, label: 'Event Bus', icon: <Radio size={13} /> },
             { page: 'experiments' as AppPage, label: 'Experimentation', icon: <FlaskConical size={13} /> },
             { page: 'sea-control' as AppPage, label: 'Agent Workbench', icon: <Sparkles size={13} /> },
+            { page: 'lab' as AppPage, label: 'Lab', icon: <Activity size={13} /> },
           ] as const
         ).map(({ page, label, icon }) => (
           <div

@@ -243,6 +243,42 @@ const MVP_COMPONENTS: Record<string, ComponentManifestDraft> = {
    * @see OMN-10302 — https://linear.app/omninode/issue/OMN-10302
    * @see omnibase_infra migration 031:142 for the `aggregation_key`-only schema
    */
+  // OMN-18771 — C4. Reads the exposure catalogue and reports what it could NOT
+  // read, by name. dataSources names the catalogue endpoint it actually calls
+  // rather than a snapshot topic, because it consumes neither.
+  'lab-system-status': {
+    name: 'lab-system-status',
+    displayName: 'Lab System Status',
+    description:
+      'Reachability census over every declared exposure. Classifies on backing, never on status: the .201 lane reports status "ok" on all 65 exposures while only 17 are bus-backed, so a census keyed on status would draw 48 healthy rows over surfaces that do not serve.',
+    category: 'health',
+    version: '1.0.0',
+    implementationKey: 'lab-system-status/LabSystemStatus',
+    projectionSchema: {
+      type: 'object',
+      required: ['topic', 'backing'],
+      properties: {
+        topic: { type: 'string', description: 'The exposure topic the catalogue declares.' },
+        status: { type: 'string', description: "The backend's own status field. Recorded, never used to decide reachability." },
+        backing: { type: 'string', description: "How the exposure is served: 'bus', 'not_yet_bus_backed', or another value the backend names." },
+        bus_backed: { type: 'boolean', description: 'Boolean mirror of backing; used only when backing is absent.' },
+        degraded_reason: { type: 'string', description: "The backend's own reason, preferred over the backing value when present." },
+      },
+    },
+    dataSources: [{ type: 'projection', topic: '/projections', required: true, purpose: 'initial_fetch' }],
+    // No time range: the census is a point-in-time read of what the catalogue
+    // declares right now, and there is no historical series to window over.
+    // Claiming supports_time_range would offer a control that changes nothing.
+    capabilities: { supports_compare: false, supports_export: true, supports_fullscreen: true, supports_time_range: false },
+    events: { emits: [], consumes: [] },
+    defaultSize: { w: 6, h: 6 },
+    minSize: { w: 3, h: 4 },
+    maxSize: { w: 12, h: 12 },
+    emptyState: {
+      message: 'The catalogue was read and declares no exposures.',
+      hint: 'A read that succeeded and returned nothing. A catalogue that could not be read surfaces as an error instead, because those are different facts.',
+    },
+  },
   'cost-by-repo': {
     name: 'cost-by-repo',
     displayName: 'Cost by Repo',

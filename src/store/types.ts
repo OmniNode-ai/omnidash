@@ -113,7 +113,9 @@ export type AppPage =
   | 'delegation-evidence'
   | 'event-bus'
   | 'experiments'
-  | 'sea-control';
+  | 'sea-control'
+  // OMN-18771 — Lab observability tab (C4). Additive; existing members untouched.
+  | 'lab';
 
 export interface UISlice {
   /** True when the left dashboard sidebar is collapsed to a narrow rail. */

@@ -117,6 +117,10 @@ const STORY_FILES: Array<{ rel: string; id: string; widget: boolean }> = [
   { rel: 'src/components/dashboard/delegation/DelegationModelOutputWidget.stories.tsx', id: 'DelegationModelOutputWidget.stories', widget: true },
   { rel: 'src/components/dashboard/baselines/BaselinesROICard.stories.tsx', id: 'BaselinesROICard.stories', widget: true },
   { rel: 'src/components/dashboard/readiness/ReadinessGate.stories.tsx', id: 'ReadinessGate.stories', widget: true },
+  // OMN-18771 — C4 Lab System Status. Registered here deliberately: this list is
+  // hand-maintained, so a new widget is invisible to this gate until it is added
+  // and the suite stays green while asserting nothing about it.
+  { rel: 'src/components/dashboard/lab-system-status/LabSystemStatus.stories.tsx', id: 'LabSystemStatus.stories', widget: true },
   { rel: 'src/components/dashboard/CustomRangePicker.stories.tsx', id: 'CustomRangePicker.stories', widget: false },
   { rel: 'src/components/dashboard/DateRangeSelector.stories.tsx', id: 'DateRangeSelector.stories', widget: false },
   { rel: 'src/components/dashboard/Selectors.stories.tsx', id: 'Selectors.stories', widget: false },
