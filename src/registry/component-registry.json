@@ -1,6 +1,6 @@
 {
   "manifestVersion": "1.0",
-  "generatedAt": "2026-09-22T10:54:18.698Z",
+  "generatedAt": "2026-09-22T15:57:10.424Z",
   "components": {
     "cost-trend-panel": {
       "name": "cost-trend-panel",
@@ -356,14 +356,7 @@
           }
         }
       },
-      "dataSources": [
-        {
-          "type": "projection",
-          "topic": "/projections",
-          "required": true,
-          "purpose": "initial_fetch"
-        }
-      ],
+      "dataSources": [],
       "capabilities": {
         "supports_compare": false,
         "supports_export": true,

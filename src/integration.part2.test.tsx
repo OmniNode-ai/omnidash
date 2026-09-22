@@ -72,7 +72,12 @@ describe('Proof of Life — Part 2', () => {
     // bus_backed with no omnidash reader, so the gate had only the
     // `consumers: none` hatch left to resolve. Classified visible on a live
     // 200/1r probe.
-    expect(all.length).toBe(39);
+    // OMN-18771: lab-system-status added — the C4 reachability census. It
+    // declares NO dataSources, deliberately: it reads the catalogue at
+    // `GET /projections` over HTTP, which is not a projection or event-bus
+    // topic, and the OMN-17199 gate rightly refuses a manifest topic with no
+    // runtime symbol.
+    expect(all.length).toBe(40);
     expect(all.map((c) => c.name).sort()).toEqual([
       'ab-compare',
       'baselines-roi-card',
@@ -97,6 +102,7 @@ describe('Proof of Life — Part 2', () => {
       'event-stream',
       'evidence-pipeline-flow',
       'intent-distribution',
+      'lab-system-status',
       'live-event-stream',
       'mcp-tools',
       'projection-container',

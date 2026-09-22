@@ -265,7 +265,18 @@ const MVP_COMPONENTS: Record<string, ComponentManifestDraft> = {
         degraded_reason: { type: 'string', description: "The backend's own reason, preferred over the backing value when present." },
       },
     },
-    dataSources: [{ type: 'projection', topic: '/projections', required: true, purpose: 'initial_fetch' }],
+    // OMN-18771. Deliberately EMPTY, and that is the honest declaration.
+    // This widget reads the catalogue at `GET /projections` through
+    // src/data-source/, which is an HTTP endpoint and not a projection or
+    // event-bus topic. `DataSourceDeclaration` admits only 'projection' and
+    // 'websocket' precisely because "Dashboard-v2 data comes from
+    // projection/event-bus topics, not arbitrary REST APIs" (component-manifest.ts
+    // T16). Declaring `/projections` here made the OMN-17199 reader gate red:
+    // a manifest topic with no runtime symbol is a declaration the render layer
+    // cannot serve. Inventing a topic symbol to satisfy the field would be the
+    // exact rot that gate exists to catch, so the field stays empty and the
+    // widget's authorityLabel remains `runtime-observed`.
+    dataSources: [],
     // No time range: the census is a point-in-time read of what the catalogue
     // declares right now, and there is no historical series to window over.
     // Claiming supports_time_range would offer a control that changes nothing.
