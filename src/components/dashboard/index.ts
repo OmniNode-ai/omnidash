@@ -3,6 +3,7 @@ import { lazy } from 'react';
 export const componentImports: Record<string, ReturnType<typeof lazy>> = {
   'ITrendChartAdapter/threejs': lazy(() => import('./cost-trend/CostTrendAdapter')),
   'IKPITileClusterAdapter/threejs': lazy(() => import('./cost-summary/CostSummaryAdapter')),
+  'lab-system-status/LabSystemStatus': lazy(() => import('./lab-system-status/LabSystemStatus')),
   'cost-by-repo/CostByRepoAdapter': lazy(() => import('./cost-by-repo/CostByRepoAdapter')),
   'cost-by-model/CostByModelAdapter': lazy(() => import('./cost-by-model/CostByModelAdapter')),
   'cost-by-model/CostByModel3DAdapter': lazy(() => import('./cost-by-model/CostByModel3DAdapter')),
