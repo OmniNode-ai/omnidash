@@ -34,6 +34,10 @@ on:
   pull_request:
     branches: [dev]
 
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.sha }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
 jobs:
   kb-doc-gate:
     uses: OmniNode-ai/omniclaude/.github/workflows/kb-doc-gate-reusable.yml@a78b103e55f1ad595572ecde6ea818c2c585f025
