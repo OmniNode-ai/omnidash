@@ -21,7 +21,7 @@
 #   - storybook-static/, dist/, build/, .vite/ (build outputs)
 #
 # Usage:
-#   scripts/check-no-env-contamination.sh
+#   scripts/check-no-env-contamination.sh [files ...]
 # Exit codes:
 #   0 — clean
 #   1 — at least one violation found
@@ -52,6 +52,8 @@ EXCLUDE_DIRS=(
   'dashboard-layouts'
   'fixtures'
   '.onex_state'
+  '.ruff_cache'
+  '__pycache__'
   'coverage'
 )
 
@@ -139,6 +141,14 @@ is_allowlisted() {
   return 1
 }
 
+is_excluded() {
+  local path="/${1#./}/"
+  for dir in "${EXCLUDE_DIRS[@]}"; do
+    if [[ "$path" == *"/$dir/"* ]]; then return 0; fi
+  done
+  return 1
+}
+
 EXCLUDE_ARGS=()
 for d in "${EXCLUDE_DIRS[@]}"; do
   EXCLUDE_ARGS+=("--exclude-dir=$d")
@@ -150,11 +160,25 @@ done
 EXCLUDE_ARGS+=("--exclude=.git")
 
 violations=0
+if [[ $# -gt 0 ]]; then
+  TARGETS=("$@")
+else
+  TARGETS=(.)
+fi
+for target in "${TARGETS[@]}"; do
+  if [[ "$target" == "scripts/check-no-env-contamination.sh" || "$target" == ".pre-commit-config.yaml" ]]; then
+    TARGETS=(.)
+    break
+  fi
+done
 for pattern in "${PATTERNS[@]}"; do
   # Use grep -rn with extended regex; capture file:line:match.
   while IFS= read -r line; do
     [[ -z "$line" ]] && continue
     file="${line%%:*}"
+    if is_excluded "$file"; then
+      continue
+    fi
     if is_allowlisted "$file"; then
       continue
     fi
@@ -163,7 +187,7 @@ for pattern in "${PATTERNS[@]}"; do
     fi
     echo "  $line" >&2
     violations=$((violations + 1))
-  done < <(grep -rEn "${EXCLUDE_ARGS[@]}" "$pattern" . 2>/dev/null || true)
+  done < <(grep -rHEn "${EXCLUDE_ARGS[@]}" "$pattern" "${TARGETS[@]}" 2>/dev/null || true)
 done
 
 if [[ $violations -gt 0 ]]; then

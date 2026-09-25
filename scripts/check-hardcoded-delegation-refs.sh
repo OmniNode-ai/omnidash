@@ -26,7 +26,7 @@
 #   - src/layout/layout-persistence.test.ts (unit tests with arbitrary localhost fixture input)
 #
 # Usage:
-#   bash scripts/check-hardcoded-delegation-refs.sh
+#   bash scripts/check-hardcoded-delegation-refs.sh [files ...]
 # Exit codes:
 #   0 — clean
 #   1 — at least one violation found
@@ -45,7 +45,7 @@ PATTERNS=(
   'localhost:808[0-9]'
   '192\.168\.[0-9]'
   '\.sqlite\b'
-  '~/\.omninode/'
+  '[~]/\.omninode/'
   '\.omninode/delegation'
 )
 
@@ -98,6 +98,14 @@ is_allowlisted() {
   return 1
 }
 
+is_excluded() {
+  local path="/${1#./}/"
+  for dir in "${EXCLUDE_DIRS[@]}"; do
+    if [[ "$path" == *"/$dir/"* ]]; then return 0; fi
+  done
+  return 1
+}
+
 EXCLUDE_ARGS=()
 for d in "${EXCLUDE_DIRS[@]}"; do
   EXCLUDE_ARGS+=("--exclude-dir=$d")
@@ -105,10 +113,24 @@ done
 EXCLUDE_ARGS+=("--exclude=.git")
 
 violations=0
+if [[ $# -gt 0 ]]; then
+  TARGETS=("$@")
+else
+  TARGETS=("$SCAN_DIR")
+fi
+for target in "${TARGETS[@]}"; do
+  if [[ "$target" == "scripts/check-hardcoded-delegation-refs.sh" || "$target" == ".pre-commit-config.yaml" ]]; then
+    TARGETS=("$SCAN_DIR")
+    break
+  fi
+done
 for pattern in "${PATTERNS[@]}"; do
   while IFS= read -r line; do
     [[ -z "$line" ]] && continue
     file="${line%%:*}"
+    if is_excluded "$file"; then
+      continue
+    fi
     if is_allowlisted "$file"; then
       continue
     fi
@@ -117,7 +139,7 @@ for pattern in "${PATTERNS[@]}"; do
     fi
     echo "  $line" >&2
     violations=$((violations + 1))
-  done < <(grep -rEn "${EXCLUDE_ARGS[@]}" "$pattern" "$SCAN_DIR" 2>/dev/null || true)
+  done < <(grep -rHEn "${EXCLUDE_ARGS[@]}" "$pattern" "${TARGETS[@]}" 2>/dev/null || true)
 done
 
 if [[ $violations -gt 0 ]]; then
