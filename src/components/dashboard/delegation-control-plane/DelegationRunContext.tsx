@@ -76,6 +76,17 @@ export function DelegationRunProvider({
   return <DelegationRunContext.Provider value={value}>{children}</DelegationRunContext.Provider>;
 }
 
+/** Explicit value seam for deterministic Storybook and component-test composition. */
+export function DelegationRunContextValueProvider({
+  children,
+  value,
+}: {
+  children: ReactNode;
+  value: DelegationRunContextValue;
+}) {
+  return <DelegationRunContext.Provider value={value}>{children}</DelegationRunContext.Provider>;
+}
+
 export function useDelegationRunContext(): DelegationRunContextValue {
   const ctx = useContext(DelegationRunContext);
   if (!ctx) throw new Error('useDelegationRunContext must be used within a DelegationRunProvider');

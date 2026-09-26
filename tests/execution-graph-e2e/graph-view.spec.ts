@@ -69,3 +69,34 @@ test('typed fixture transport proves backward/forward UI states and mixed replay
   await expect(page.getByText('Replay grade')).toBeVisible();
   await page.screenshot({ path: 'tests/screenshots/execution-graph-status-and-playback-fixture.png', fullPage: true });
 });
+
+test('correlation panel toggles Events to the exact five-hop fixture and back', async ({ page }) => {
+  await page.setViewportSize({ width: 1600, height: 1100 });
+  await page.route('**/_fixtures/**', (route) => route.fulfill({ json: { rows: [] } }));
+  await page.route('**/projection/**', (route) => route.fulfill({ json: { rows: [] } }));
+  await page.goto('/iframe.html?id=delegation-correlation-trace-panel--real-five-hop-fixture&viewMode=story');
+
+  const view = page.getByRole('group', { name: 'Correlation trace view' });
+  await expect(view).toBeVisible();
+  await expect(view.getByRole('button', { name: 'Events' })).toHaveAttribute('aria-pressed', 'true');
+  await expect(page.getByText(/No events found/i)).toBeVisible();
+
+  await view.getByRole('button', { name: 'Execution graph' }).click();
+  const graph = page.getByRole('group', { name: 'Recorded delegation execution graph' });
+  await expect(graph).toBeVisible();
+  await expect(page.getByText('5 recorded nodes, 4 recorded edges')).toBeVisible();
+  await expect(graph.locator('.execution-graph-node')).toHaveCount(5);
+  await expect(graph.locator('path[data-edge-kind]')).toHaveCount(4);
+
+  await graph.getByRole('button', { name: /delegation-request\.v1\. Replay passed/ }).click();
+  await expect(page.getByText('Selected evidence')).toBeVisible();
+  await expect(page.getByText('d88c5031-0da9-462a-80ef-8cc817934cc6')).toBeVisible();
+  await expect(page.getByText('onex.cmd.omnibase-infra.delegation-request.v1')).toBeVisible();
+  await expect(page.getByText('partition 0, offset 2174')).toBeVisible();
+  await page.screenshot({ path: 'tests/screenshots/execution-graph-panel-integration.png', fullPage: true });
+
+  await view.getByRole('button', { name: 'Events' }).click();
+  await expect(view.getByRole('button', { name: 'Events' })).toHaveAttribute('aria-pressed', 'true');
+  await expect(page.getByText(/No events found/i)).toBeVisible();
+  await expect(graph).not.toBeVisible();
+});

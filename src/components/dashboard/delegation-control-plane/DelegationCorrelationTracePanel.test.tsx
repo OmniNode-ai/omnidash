@@ -3,6 +3,11 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { DelegationCorrelationTracePanel } from './DelegationCorrelationTracePanel';
 import * as delegationApi from '@/services/delegation-api';
 import type { DelegationRunContextValue } from './DelegationRunContext';
+import { ExecutionGraphTransportProvider, type ExecutionGraphTransport } from './execution-graph-spike/ExecutionGraphTransport';
+import type { ModelExecutionGraph } from './execution-graph-spike/render-model';
+import realFiveHopGraphJson from './execution-graph-spike/__fixtures__/realFiveHopGraph.json';
+
+const realFiveHopGraph = realFiveHopGraphJson as unknown as ModelExecutionGraph;
 
 const mockContextValue: DelegationRunContextValue = {
   snapshot: {
@@ -75,6 +80,46 @@ describe('DelegationCorrelationTracePanel', () => {
 
     expect(await screen.findByText('Graph read is not connected.')).toBeTruthy();
     expect(screen.getByText(/does not accept tenant overrides/i)).toBeTruthy();
+  });
+
+  it('switches between Events and the injected five-hop graph without live transport', async () => {
+    mockUseDelegationRunContext.mockReturnValue({
+      ...mockContextValue,
+      selectedRun: {
+        id: realFiveHopGraph.replay.correlation_id,
+        correlationId: realFiveHopGraph.replay.correlation_id,
+        taskType: 'code_review',
+        modelName: 'qwen3',
+        status: 'passed',
+        source: 'decision_projection',
+      },
+    });
+    vi.spyOn(delegationApi, 'fetchCorrelationTrace').mockResolvedValue({
+      correlation_id: realFiveHopGraph.replay.correlation_id,
+      rows: [],
+    });
+    const transport: ExecutionGraphTransport = {
+      readLatest: vi.fn().mockResolvedValue(realFiveHopGraph),
+      step: vi.fn().mockResolvedValue(null),
+    };
+
+    render(
+      <ExecutionGraphTransportProvider transport={transport}>
+        <DelegationCorrelationTracePanel />
+      </ExecutionGraphTransportProvider>,
+    );
+
+    fireEvent.click(screen.getByRole('button', { name: 'Execution graph' }));
+    expect(await screen.findByText('5 recorded nodes, 4 recorded edges')).toBeTruthy();
+    expect(screen.getAllByRole('button', { name: /Replay passed/ })).toHaveLength(5);
+    fireEvent.click(screen.getByRole('button', { name: /delegation-request\.v1\. Replay passed/ }));
+    expect(screen.getByText('Selected evidence')).toBeTruthy();
+    expect(screen.getByText('partition 0, offset 2174')).toBeTruthy();
+    expect(screen.getByText('onex.cmd.omnibase-infra.delegation-request.v1')).toBeTruthy();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Events' }));
+    expect(await screen.findByText(/No events found/i)).toBeTruthy();
+    expect(transport.readLatest).toHaveBeenCalledWith(realFiveHopGraph.replay.correlation_id);
   });
 
   it('fetches and renders trace rows when a run is selected', async () => {
