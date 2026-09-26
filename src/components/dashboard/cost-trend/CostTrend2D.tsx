@@ -100,10 +100,15 @@ export default function CostTrendPanel({ config }: { config: CostTrendConfig }) 
   // in its manifest and participates here; queryKey intentionally ignores
   // the range so the cache stays keyed on topic — we filter client-side.
   const timeRange = useFrameStore((s) => s.globalFilters.timeRange);
-  const resolved = useMemo(() => resolveTimeRange(timeRange), [timeRange]);
-  const filteredData = useMemo(
-    () => applyTimeRange(data, (d) => d.bucket_time, resolved),
-    [data, resolved],
+  const { filteredData, rangeActive } = useMemo(
+    () => {
+      const resolved = resolveTimeRange(timeRange);
+      return {
+        filteredData: applyTimeRange(data, (d) => d.bucket_time, resolved),
+        rangeActive: Boolean(resolved),
+      };
+    },
+    [data, timeRange],
   );
 
   const colors = useThemeColors();
@@ -170,7 +175,6 @@ export default function CostTrendPanel({ config }: { config: CostTrendConfig }) 
   // all. A range filter that clips away everything reads more clearly as
   // "no results for the selected window" than as a blank empty state.
   const hasAnyData = Boolean(data && data.length > 0);
-  const rangeActive = Boolean(resolved);
   const showNoDataInRange = hasAnyData && stacked === null;
 
   return (

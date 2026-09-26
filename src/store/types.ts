@@ -2,6 +2,11 @@ export interface TimeRange {
   start: string;
   end: string;
   /**
+   * Window width for preset ranges. When present, consumers resolve the
+   * range relative to the current time instead of using the stored snapshot.
+   */
+  relativeMs?: number;
+  /**
    * Optional human-readable label set when the range came from a preset
    * (e.g. "Last 24h"). Used by the UI selector for a compact display
    * instead of formatting the absolute timestamps. Absent for ranges
