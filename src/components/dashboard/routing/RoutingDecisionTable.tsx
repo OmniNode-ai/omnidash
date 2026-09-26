@@ -1,12 +1,14 @@
 import { useMemo } from 'react';
 import { ComponentWrapper } from '../ComponentWrapper';
-import { useProjectionQuery } from '@/hooks/useProjectionQuery';
+import { useProjectionSnapshotQuery } from '@/hooks/useProjectionSnapshotQuery';
 import { TOPICS } from '@shared/types/topics';
 import { applyTimeRange, resolveTimeRange } from '@/hooks/useTimeRange';
 import { useTimezone } from '@/hooks/useTimezone';
 import { useFrameStore } from '@/store/store';
 import { DataTableThreeJs } from '@/components/charts/threejs/DataTable';
 import type { DataTableColumnConfig } from '@shared/types/chart-config';
+import { Text } from '@/components/ui/typography';
+import { FreshnessLine } from '@/components/dashboard/lab/FreshnessLine';
 
 /**
  * RoutingDecision row shape from the `delegationDecisions` projection.
@@ -39,6 +41,12 @@ export interface RoutingDecision {
   selection_mode?: string;
   /** SOW G2 — upstream-blocked: not yet emitted by omnimarket. */
   fallback?: string;
+  correlation_id?: string;
+  session_id?: string | null;
+  delegated_to?: string | null;
+  model_name?: string | null;
+  outcome?: string | null;
+  quality_gate_passed?: boolean | null;
 }
 
 const DEFAULT_PAGE_SIZE = 25;
@@ -83,14 +91,23 @@ function formatTimestamp(iso: string, timeZone: string): string {
   return `${get('month')}/${get('day')} ${time}`;
 }
 
+/**
+ * delegation.decisions rows on the lab carry no routing confidences or cost, so a
+ * missing number renders as "not emitted" rather than throwing on `.toFixed`
+ * (which took the whole Lab page down).
+ */
+function formatPercent(value: unknown): string {
+  return typeof value === 'number' ? `${(value * 100).toFixed(0)}%` : 'not emitted';
+}
+
 function toDisplayRow(row: RoutingDecision, tz: string): Record<string, unknown> {
   return {
     ...row,
     created_at: formatTimestamp(row.created_at, tz),
     agreement: row.agreement ? 'Agree' : 'Disagree',
-    llm_confidence: `${(row.llm_confidence * 100).toFixed(0)}%`,
-    fuzzy_confidence: `${(row.fuzzy_confidence * 100).toFixed(0)}%`,
-    cost_usd: `$${row.cost_usd.toFixed(4)}`,
+    llm_confidence: formatPercent(row.llm_confidence),
+    fuzzy_confidence: formatPercent(row.fuzzy_confidence),
+    cost_usd: typeof row.cost_usd === 'number' ? `$${row.cost_usd.toFixed(4)}` : 'not emitted',
   };
 }
 
@@ -105,14 +122,16 @@ export default function RoutingDecisionTable({ config }: { config: Record<string
   const pageSize =
     Number.isFinite(parsedPageSize) && parsedPageSize > 0 ? parsedPageSize : DEFAULT_PAGE_SIZE;
 
-  const { data, isLoading, error } = useProjectionQuery<RoutingDecision>({
+  const query = useProjectionSnapshotQuery<RoutingDecision>({
     topic: TOPICS.delegationDecisions,
     queryKey: ['routing-decisions'],
     refetchInterval: 60_000,
   });
+  const data = useMemo(() => query.data?.rows ?? [], [query.data]);
 
   const tz = useTimezone();
   const timeRange = useFrameStore((s) => s.globalFilters.timeRange);
+  const setTraceFilter = useFrameStore((s) => s.setTraceFilter);
   const resolved = useMemo(() => resolveTimeRange(timeRange), [timeRange]);
   const inRange = useMemo(
     () => applyTimeRange(data, (d) => d.created_at, resolved),
@@ -121,18 +140,69 @@ export default function RoutingDecisionTable({ config }: { config: Record<string
 
   const displayRows = useMemo(() => inRange.map((row) => toDisplayRow(row, tz)), [inRange, tz]);
 
-  const isEmpty = !data || data.length === 0;
+  const isEmpty = data.length === 0;
+
+  if (config.variant === 'lab-runs') {
+    return (
+      <ComponentWrapper
+        title="Delegation Runs"
+        isLoading={query.isLoading}
+        error={query.error}
+        isEmpty={isEmpty}
+        emptyMessage="No delegation decisions"
+        emptyHint="The tenant-scoped delegation.decisions projection returned no rows. Configure the lab tenant if the backend refuses this read."
+        isLive
+        headerExtra={query.data ? (
+          <FreshnessLine
+            freshness={query.data.dataFreshness}
+            latestEventAt={query.data.latestEventAt}
+            readAt={query.data.readAt}
+          />
+        ) : null}
+      >
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 0 }}>
+          <div style={{ display: 'grid', gridTemplateColumns: '150px 130px minmax(150px, 1fr) 110px minmax(160px, 1fr)', gap: 8, padding: '5px 0', borderBottom: '1px solid var(--line)' }}>
+            {['Timestamp', 'Provider / delegate', 'Model', 'Outcome', 'Correlation'].map((label) => (
+              <Text key={label} as="span" size="xs" weight="semibold" color="tertiary">{label}</Text>
+            ))}
+          </div>
+          {inRange.slice(0, pageSize).map((row) => {
+            const provider = row.provider || row.delegated_to || 'not emitted';
+            const model = row.model || row.model_name || 'not emitted';
+            const outcome = row.outcome || (row.quality_gate_passed === true
+              ? 'passed'
+              : row.quality_gate_passed === false ? 'failed' : 'not emitted');
+            return (
+              <div key={row.id} data-testid="delegation-run-row" style={{ display: 'grid', gridTemplateColumns: '150px 130px minmax(150px, 1fr) 110px minmax(160px, 1fr)', gap: 8, padding: '7px 0', borderBottom: '1px solid var(--line-2)', alignItems: 'center' }}>
+                <Text as="span" size="xs" family="mono" color="tertiary">{formatTimestamp(row.created_at, tz)}</Text>
+                <Text as="span" size="xs" family="mono" color="secondary">{provider}</Text>
+                <Text as="span" size="xs" family="mono" color="primary" truncate title={model}>{model}</Text>
+                <Text as="span" size="xs" family="mono" color={outcome === 'failed' ? 'bad' : outcome === 'passed' ? 'ok' : 'tertiary'}>{outcome}</Text>
+                {row.correlation_id ? (
+                  <button type="button" className="chip" onClick={() => setTraceFilter(row.correlation_id || null)}>
+                    <Text as="span" size="xs" family="mono" color="primary">{row.correlation_id}</Text>
+                  </button>
+                ) : (
+                  <Text as="span" size="xs" color="tertiary">not emitted</Text>
+                )}
+              </div>
+            );
+          })}
+        </div>
+      </ComponentWrapper>
+    );
+  }
 
   return (
     <ComponentWrapper
       title="Routing Decisions"
-      isLoading={isLoading}
-      error={error ?? undefined}
+      isLoading={query.isLoading}
+      error={query.error ?? undefined}
       isEmpty={isEmpty}
       emptyMessage="No routing decisions"
       emptyHint="Decisions appear after LLM routing events are recorded"
     >
-      {data && !isEmpty && (
+      {!isEmpty && (
         <DataTableThreeJs
           projectionData={displayRows}
           columns={COLUMNS}

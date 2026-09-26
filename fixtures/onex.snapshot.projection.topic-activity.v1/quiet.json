@@ -1,0 +1,17 @@
+{
+  "topic": "onex.evt.omniclaude.session-ended.v1",
+  "sampled_at": "2026-09-26T11:10:00Z",
+  "high_watermark_total": 612,
+  "low_watermark_total": 100,
+  "retained_messages": 512,
+  "messages_since_previous_sample": 0,
+  "rate_per_second": 0,
+  "messages_last_hour": 2,
+  "messages_last_24h": 29,
+  "rate_last_hour_per_second": 0.0006,
+  "retention_truncated": false,
+  "newest_message_at": "2026-09-26T10:42:00Z",
+  "newest_message_age_seconds_at_sample": 1680,
+  "activity_state": "QUIET",
+  "projection_cursor": "612"
+}

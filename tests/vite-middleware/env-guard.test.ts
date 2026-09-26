@@ -36,6 +36,31 @@ describe('projection env guard (OMN-12400)', () => {
     ).toHaveLength(1);
   });
 
+  it.each([
+    'http://localhost:3002',
+    'http://127.0.0.1:3002',
+    'http://0.0.0.0:3002',
+    'http://[::1]:3002',
+  ])('flags loopback :3002 origin %s', (value) => {
+    expect(findProjectionEnvViolations({ VITE_PROJECTION_API_URL: value })).toHaveLength(1);
+  });
+
+  it('allows the lab projection API on non-loopback :3002', () => {
+    expect(
+      findProjectionEnvViolations({
+        VITE_PROJECTION_API_URL: 'http://192.168.86.201:3002',
+        VITE_HTTP_DATA_SOURCE_URL: 'http://projection-api:3002',
+      }),
+    ).toHaveLength(0);
+  });
+
+  it.each([
+    'http://192.168.86.201:8765',
+    'http://projection-api:3010',
+  ])('keeps globally retired port banned on non-loopback origin %s', (value) => {
+    expect(findProjectionEnvViolations({ VITE_PROJECTION_API_URL: value })).toHaveLength(1);
+  });
+
   it('reports every offending key when several are stale at once', () => {
     const violations = findProjectionEnvViolations({
       VITE_PROJECTION_API_URL: 'http://localhost:8765',

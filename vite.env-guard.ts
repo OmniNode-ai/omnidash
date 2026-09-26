@@ -9,15 +9,17 @@
  * which is exactly why the breakage is invisible until someone debugs it.
  *
  * This guard runs at config-load time (see vite.config.ts). When the resolved
- * `VITE_PROJECTION_API_URL` points at a known non-authoritative port it throws a
+ * `VITE_PROJECTION_API_URL` points at a known non-authoritative origin it throws a
  * loud, explanatory error naming the offending value and the fix, instead of
  * letting the dashboard come up against a dead backend.
  *
- * The banned-port set mirrors the source-code guard
- * `eslint-rules/no-non-authoritative-read-source.cjs` (`/:(8765|3010|3002)\b/`):
+ * The source-code guard remains intentionally broader because source files must
+ * never name backend ports at all. This env-only guard distinguishes origins:
  *   :8765 — SEA demo server (not the canonical projection backend)
  *   :3010 — merge proxy / demo composite server
- *   :3002 — retired alt-backend (canonical Express bridge is :3003)
+ *   loopback :3002 — retired alt-backend / local Express bridge collision
+ *
+ * A non-loopback :3002 is valid: the .201 lab projection API is served there.
  *
  * CORS note (OMN-12400 acceptance part 1): the dashboard never hits the
  * projection API cross-origin. `resolveProjectionBaseUrl()` returns a relative
@@ -27,8 +29,21 @@
  * the projection API are not required for the dashboard read path.
  */
 
-/** Ports that identify non-authoritative / dead projection origins. */
-const BANNED_PROJECTION_PORT_RE = /:(8765|3010|3002)\b/;
+/** Ports that identify non-authoritative / dead projection origins on any host. */
+const BANNED_PROJECTION_PORT_RE = /:(8765|3010)\b/;
+
+/** Loopback hosts where :3002 is the retired alt-backend / bridge collision. */
+const LOOPBACK_HOSTS = new Set(['localhost', '127.0.0.1', '0.0.0.0', '::1', '[::1]']);
+
+function isBannedProjectionOrigin(value: string): boolean {
+  if (BANNED_PROJECTION_PORT_RE.test(value)) return true;
+  try {
+    const url = new URL(value);
+    return url.port === '3002' && LOOPBACK_HOSTS.has(url.hostname);
+  } catch {
+    return false;
+  }
+}
 
 /** Env keys whose value must point at the authoritative projection backend. */
 const GUARDED_PROJECTION_ENV_KEYS = [
@@ -51,7 +66,7 @@ export function findProjectionEnvViolations(
   const violations: EnvGuardViolation[] = [];
   for (const key of GUARDED_PROJECTION_ENV_KEYS) {
     const value = env[key];
-    if (typeof value === 'string' && BANNED_PROJECTION_PORT_RE.test(value)) {
+    if (typeof value === 'string' && isBannedProjectionOrigin(value)) {
       violations.push({ key, value });
     }
   }
@@ -71,8 +86,9 @@ export function formatProjectionEnvError(violations: EnvGuardViolation[]): strin
     '`.env.local` over `.env`, so the bad value silently wins and every',
     'projection read 404s. Fix it by removing the offending key from',
     '`.env.local` (or setting it to the authoritative Express bridge, e.g.',
-    'http://localhost:3003). Banned ports: :8765 (SEA demo), :3010 (merge',
-    'proxy), :3002 (retired alt-backend).',
+    'http://localhost:3003). Banned on every host: :8765 (SEA demo) and',
+    ':3010 (merge proxy). Loopback :3002 is also banned because it is the',
+    'retired alt-backend / local bridge collision; non-loopback :3002 is valid.',
   ].join('\n');
 }
 

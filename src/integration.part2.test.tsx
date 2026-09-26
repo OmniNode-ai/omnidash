@@ -77,7 +77,10 @@ describe('Proof of Life — Part 2', () => {
     // `GET /projections` over HTTP, which is not a projection or event-bus
     // topic, and the OMN-17199 gate rightly refuses a manifest topic with no
     // runtime symbol.
-    expect(all.length).toBe(40);
+    // OMN-18772: lab-errors and topic-activity added (C5). Topic Activity reads
+    // topic-activity.v1, which OMN-19716 makes bus-backed, and renders a typed
+    // empty state naming that producer until the census lists it.
+    expect(all.length).toBe(42);
     expect(all.map((c) => c.name).sort()).toEqual([
       'ab-compare',
       'baselines-roi-card',
@@ -99,6 +102,7 @@ describe('Proof of Life — Part 2', () => {
       'delegation-model-routing',
       'delegation-quality-gate',
       'delegation-token-usage',
+      'errors',
       'event-stream',
       'evidence-pipeline-flow',
       'intent-distribution',
@@ -117,6 +121,7 @@ describe('Proof of Life — Part 2', () => {
       'skill-adoption',
       'swarm-control-plane',
       'token-usage',
+      'topic-activity',
       'trace-explorer',
       'work-events',
     ]);
