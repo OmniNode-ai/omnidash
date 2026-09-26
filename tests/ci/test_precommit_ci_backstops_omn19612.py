@@ -103,17 +103,28 @@ def test_job_is_unconditional_and_not_advisory() -> None:
     assert "needs" not in job, f"`{JOB_ID}` acquired a needs: edge"
     assert job.get("continue-on-error") is not True
     for step in job["steps"]:
+        command = str(step.get("run", ""))
+        if any(fragment in command for fragment in BACKSTOPS.values()):
+            assert "if" not in step, (
+                f"a backstop step of `{JOB_ID}` acquired an if: condition: "
+                f"{step.get('name')}"
+            )
         assert step.get("continue-on-error") is not True, (
             f"a step of `{JOB_ID}` is continue-on-error: {step.get('name')}"
         )
 
 
-def test_workflow_has_no_pull_request_paths_filter() -> None:
+def test_workflow_has_an_unfiltered_pull_request_trigger() -> None:
     workflow = _workflow()
     triggers = workflow[True] if True in workflow else workflow["on"]
-    pull_request = triggers.get("pull_request") or {}
+    assert "pull_request" in triggers
+    pull_request = triggers["pull_request"] or {}
     assert "paths" not in pull_request
     assert "paths-ignore" not in pull_request
+    assert "branches-ignore" not in pull_request
+    if "branches" in pull_request:
+        branches = set(pull_request["branches"])
+        assert {"dev", "main"} <= branches
 
 
 def test_job_is_a_required_check() -> None:
