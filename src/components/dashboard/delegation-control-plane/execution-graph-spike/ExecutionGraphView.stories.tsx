@@ -1,11 +1,63 @@
 import type { Meta, StoryObj } from '@storybook/react';
 import { ExecutionGraphView } from './ExecutionGraphView';
-import { ExecutionGraphTransportProvider } from './ExecutionGraphTransport';
+import {
+  ExecutionGraphTransportProvider,
+  type ExecutionGraphTransport,
+} from './ExecutionGraphTransport';
 import type { ModelExecutionGraph } from './render-model';
+import { endpointNodeId } from './render-model';
 import { provisionalExecutionGraph } from './__fixtures__/provisionalGraph';
 import realFiveHopGraphJson from './__fixtures__/realFiveHopGraph.json';
 
 const realFiveHopGraph = realFiveHopGraphJson as unknown as ModelExecutionGraph;
+
+const mixedStatusFixture: ModelExecutionGraph = {
+  ...realFiveHopGraph,
+  replay: {
+    ...realFiveHopGraph.replay,
+    nodes: realFiveHopGraph.replay.nodes.map((node, index) =>
+      index === 1
+        ? { ...node, replay_green: false, verifier_verdict: 'fail' }
+        : index === 2
+          ? { ...node, replay_green: null, verifier_verdict: null }
+          : node,
+    ),
+  },
+};
+
+// Explicit Storybook-only earlier-bound fixture, derived from the same fold
+// nodes. These records exercise rendering transitions, not cursor semantics.
+const earlierNodeIds = new Set(mixedStatusFixture.replay.order.slice(0, 3));
+const earlierNodes = mixedStatusFixture.replay.nodes.filter((node) => earlierNodeIds.has(node.id));
+const earlierBounds = new Map<string, number>();
+for (const node of earlierNodes) {
+  const key = `${node.topic}\u0000${node.partition}`;
+  earlierBounds.set(key, Math.max(earlierBounds.get(key) ?? -1, node.kafka_offset));
+}
+const earlierBoundFixture: ModelExecutionGraph = {
+  ...mixedStatusFixture,
+  replay: {
+    ...mixedStatusFixture.replay,
+    nodes: earlierNodes,
+    edges: mixedStatusFixture.replay.edges.filter((edge) => {
+      const from = endpointNodeId(edge.from_id);
+      const to = endpointNodeId(edge.to_id);
+      return from !== null && to !== null && earlierNodeIds.has(from) && earlierNodeIds.has(to);
+    }),
+    order: mixedStatusFixture.replay.order.filter((id) => earlierNodeIds.has(id)),
+    source_cursors: [...earlierBounds.entries()].map(([key, max_kafka_offset]) => {
+      const [topic, partition] = key.split('\u0000');
+      return { topic, partition: Number(partition), max_kafka_offset };
+    }),
+  },
+  labels: mixedStatusFixture.labels.filter((label) => earlierNodeIds.has(label.node_id)),
+};
+
+const fixturePlaybackTransport: ExecutionGraphTransport = {
+  readLatest: async () => mixedStatusFixture,
+  step: async (_correlationId, _currentCursors, direction) =>
+    direction === 'previous' ? earlierBoundFixture : mixedStatusFixture,
+};
 
 const laterGraph = {
   ...provisionalExecutionGraph,
@@ -45,6 +97,18 @@ export const RealFiveHopFixture: Story = {
         readLatest: async () => realFiveHopGraph,
         step: async () => null,
       }}>
+        <div style={{ margin: 24, maxWidth: 1400 }}><Story /></div>
+      </ExecutionGraphTransportProvider>
+    ),
+  ],
+};
+
+/** Mixed statuses and adjacent bounds are deterministic browser-test fixtures only. */
+export const StatusAndPlaybackFixture: Story = {
+  args: { correlationId: mixedStatusFixture.replay.correlation_id },
+  decorators: [
+    (Story) => (
+      <ExecutionGraphTransportProvider transport={fixturePlaybackTransport}>
         <div style={{ margin: 24, maxWidth: 1400 }}><Story /></div>
       </ExecutionGraphTransportProvider>
     ),

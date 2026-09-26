@@ -44,3 +44,28 @@ test('real five-hop fixture renders interactive graph, status counts, and select
   await expect(page.getByText('Recorded edge', { exact: true })).toBeVisible();
   await page.screenshot({ path: 'tests/screenshots/execution-graph-real-five-hop-view.png', fullPage: true });
 });
+
+test('typed fixture transport proves backward/forward UI states and mixed replay badges', async ({ page }) => {
+  await page.setViewportSize({ width: 1600, height: 1100 });
+  await page.goto('/iframe.html?id=delegation-execution-graph-view--status-and-playback-fixture&viewMode=story');
+
+  await expect(page.getByText('5 recorded nodes, 4 recorded edges')).toBeVisible();
+  await expect(page.getByText('Replay passed (3)')).toBeVisible();
+  await expect(page.getByText('Replay failed (1)')).toBeVisible();
+  await expect(page.getByText('Unknown (1)')).toBeVisible();
+
+  await page.getByRole('button', { name: 'Earlier bound' }).click();
+  await expect(page.getByText('3 recorded nodes, 2 recorded edges')).toBeVisible();
+  await expect(page.getByText('Replay passed (1)')).toBeVisible();
+  await expect(page.getByText('Replay failed (1)')).toBeVisible();
+  await expect(page.getByText('Unknown (1)')).toBeVisible();
+
+  await page.getByRole('button', { name: 'Later bound' }).click();
+  await expect(page.getByText('5 recorded nodes, 4 recorded edges')).toBeVisible();
+  await expect(page.getByText('Replay passed (3)')).toBeVisible();
+  await expect(page.getByText('Replay failed (1)')).toBeVisible();
+  await expect(page.getByText('Unknown (1)')).toBeVisible();
+  await page.getByRole('button', { name: /delegation-request\.v1\. Replay failed/ }).click();
+  await expect(page.getByText('Replay grade')).toBeVisible();
+  await page.screenshot({ path: 'tests/screenshots/execution-graph-status-and-playback-fixture.png', fullPage: true });
+});
