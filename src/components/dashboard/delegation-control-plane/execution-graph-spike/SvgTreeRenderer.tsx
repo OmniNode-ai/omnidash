@@ -5,10 +5,10 @@ import type {
 } from './render-model';
 import { endpointNodeId, replayLabel } from './render-model';
 
-const NODE_WIDTH = 214;
+const NODE_WIDTH = 190;
 const NODE_HEIGHT = 78;
-const H_GAP = 70;
-const V_GAP = 38;
+const H_GAP = 32;
+const V_GAP = 30;
 
 interface Position {
   x: number;

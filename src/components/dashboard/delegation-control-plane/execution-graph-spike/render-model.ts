@@ -11,8 +11,6 @@ export interface ModelExecutionGraphSourceRef {
   topic: string;
   partition: number;
   kafka_offset: number;
-  ingest_epoch: 1 | null;
-  ingest_seq: number | null;
 }
 
 export interface ModelExecutionGraphNode {
@@ -67,8 +65,8 @@ export interface ModelExecutionGraphReplayPolicy {
 export interface ModelExecutionGraphSourceCursor {
   topic: string;
   partition: number;
-  ingest_epoch: 1;
-  max_ingest_seq: number;
+  /** Core first-slice inclusive offset bound; not an ingestion-order watermark. */
+  max_kafka_offset: number;
 }
 
 export interface ModelExecutionGraphAnchor {

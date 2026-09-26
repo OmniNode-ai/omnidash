@@ -21,14 +21,13 @@ function NodeDetails({ graph, node }: { graph: ModelExecutionGraph; node: ModelE
       <div><dt>Recomputed replay</dt><dd>{replayLabel(node)}</dd></div>
       <div><dt>Recomputed verifier</dt><dd>{node.verifier_verdict ?? 'not recorded'}</dd></div>
       <div><dt>Stored row annotation</dt><dd>{stored ? `hop ${stored.hop_index}: ${stored.replay_green == null ? 'unknown' : stored.replay_green ? 'passed' : 'failed'} / ${stored.verifier_verdict ?? 'unknown'}` : 'no stored hop annotation'}</dd></div>
-      <div><dt>Ingest bound</dt><dd>{node.source_ref.ingest_seq == null ? 'legacy; no historical watermark' : `epoch ${node.source_ref.ingest_epoch}, seq ${node.source_ref.ingest_seq}`}</dd></div>
       <div><dt>Event time label</dt><dd>{label?.event_timestamp ?? 'not recorded'}</dd></div>
     </dl>
   );
 }
 
 export function ExecutionGraphRendererComparison({ graph }: { graph: ModelExecutionGraph }) {
-  const [selectedNode, setSelectedNode] = useState<ModelExecutionGraphNode | null>(null);
+  const [selectedNode, setSelectedNode] = useState<ModelExecutionGraphNode | null>(() => graph.replay.nodes[0] ?? null);
   const graphHasRefusal = Boolean(graph.replay.refusal);
 
   return (

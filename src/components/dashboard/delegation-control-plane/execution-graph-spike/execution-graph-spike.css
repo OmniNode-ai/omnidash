@@ -104,8 +104,16 @@
 }
 
 .execution-graph-gitgraph {
+  height: 220px;
   min-width: 470px;
   min-height: 220px;
+  padding-bottom: 0 !important;
+}
+
+.execution-graph-gitgraph > svg {
+  height: 220px !important;
+  padding-bottom: 0 !important;
+  width: 100% !important;
 }
 
 .execution-graph-gitgraph-key {
@@ -199,8 +207,6 @@
 
 .execution-graph-legend__mark--passed { border-color: var(--color-ok, #26784b); }
 .execution-graph-legend__mark--failed { border-color: var(--color-bad, #b54842); }
-.execution-graph-legend__mark--evidence { border-style: dashed; border-radius: 2px; }
-
 .execution-graph-cursor {
   border-bottom: 1px solid var(--line-2);
   border-top: 1px solid var(--line-2);

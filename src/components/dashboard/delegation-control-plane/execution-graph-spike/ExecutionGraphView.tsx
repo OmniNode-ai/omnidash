@@ -34,14 +34,7 @@ function NodeInspector({
             : 'no stored hop annotation'}
         </dd>
       </div>
-      <div>
-        <dt>Ingest watermark</dt>
-        <dd>
-          {node.source_ref.ingest_seq == null
-            ? 'legacy row; no historical watermark'
-            : `epoch ${node.source_ref.ingest_epoch}, sequence ${node.source_ref.ingest_seq}`}
-        </dd>
-      </div>
+      <div><dt>Kafka source offset</dt><dd>{node.source_ref.kafka_offset}</dd></div>
       <div><dt>Event timestamp label</dt><dd>{label?.event_timestamp ?? 'not recorded'}</dd></div>
     </dl>
   );
@@ -173,7 +166,6 @@ export function ExecutionGraphView({ correlationId }: { correlationId: string })
         <span><i className="execution-graph-legend__mark execution-graph-legend__mark--passed" /> Replay passed</span>
         <span><i className="execution-graph-legend__mark execution-graph-legend__mark--failed" /> Replay failed</span>
         <span><i className="execution-graph-legend__mark execution-graph-legend__mark--unknown" /> Unknown</span>
-        <span><i className="execution-graph-legend__mark execution-graph-legend__mark--evidence" /> Ungraded re-route evidence</span>
       </div>
 
       <div className="execution-graph-cursor" aria-label="Replay cursor controls">
@@ -187,7 +179,7 @@ export function ExecutionGraphView({ correlationId }: { correlationId: string })
           Later bound
         </button>
         <Text as="span" size="xs" color="tertiary">
-          Each step is resolved by the trusted read transport.
+          Offset-bounded playback is provisional; append-invariant history is not claimed.
         </Text>
       </div>
 

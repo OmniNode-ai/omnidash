@@ -1,0 +1,291 @@
+{
+  "annotations": {
+    "authorization_checked_over": "full_correlation",
+    "authorization_ownership_source": "delegation_events",
+    "authorization_tenant_id": "820272f9-4aaf-5add-a2df-0af942852ab2",
+    "read_at": "2026-09-26T00:00:00Z",
+    "stored_chain": [],
+    "stored_verdicts": []
+  },
+  "labels": [
+    {
+      "event_timestamp": null,
+      "ledger_written_at": null,
+      "node_id": "97767c23-a7e5-485f-b747-0e0bf6ee24e7"
+    },
+    {
+      "event_timestamp": null,
+      "ledger_written_at": null,
+      "node_id": "d88c5031-0da9-462a-80ef-8cc817934cc6"
+    },
+    {
+      "event_timestamp": null,
+      "ledger_written_at": null,
+      "node_id": "03a706bd-fc2d-5908-8f0c-7db1805ff538"
+    },
+    {
+      "event_timestamp": null,
+      "ledger_written_at": null,
+      "node_id": "abcc31e1-c2b1-50bf-8707-1ca185798a20"
+    },
+    {
+      "event_timestamp": null,
+      "ledger_written_at": null,
+      "node_id": "3bd23897-9700-595e-bf1f-a0920479b238"
+    }
+  ],
+  "replay": {
+    "anchor": {
+      "evidence_ref": null,
+      "kind": "none",
+      "session_id": null,
+      "state": "unresolved"
+    },
+    "correlation_id": "057d45de-f73c-4005-9127-c7e786f7efa4",
+    "edges": [
+      {
+        "evidence_ref": {
+          "kafka_offset": 2174,
+          "partition": 0,
+          "topic": "onex.cmd.omnibase-infra.delegation-request.v1"
+        },
+        "from_id": {
+          "kind": "node",
+          "node_id": "97767c23-a7e5-485f-b747-0e0bf6ee24e7",
+          "session_id": null,
+          "verdict_id": null
+        },
+        "id": "parent:d88c5031-0da9-462a-80ef-8cc817934cc6",
+        "kind": "caused",
+        "to_id": {
+          "kind": "node",
+          "node_id": "d88c5031-0da9-462a-80ef-8cc817934cc6",
+          "session_id": null,
+          "verdict_id": null
+        }
+      },
+      {
+        "evidence_ref": {
+          "kafka_offset": 4248,
+          "partition": 0,
+          "topic": "onex.cmd.omnibase-infra.delegation-routing-request.v1"
+        },
+        "from_id": {
+          "kind": "node",
+          "node_id": "d88c5031-0da9-462a-80ef-8cc817934cc6",
+          "session_id": null,
+          "verdict_id": null
+        },
+        "id": "parent:03a706bd-fc2d-5908-8f0c-7db1805ff538",
+        "kind": "caused",
+        "to_id": {
+          "kind": "node",
+          "node_id": "03a706bd-fc2d-5908-8f0c-7db1805ff538",
+          "session_id": null,
+          "verdict_id": null
+        }
+      },
+      {
+        "evidence_ref": {
+          "kafka_offset": 4201,
+          "partition": 0,
+          "topic": "onex.evt.omnibase-infra.routing-decision.v1"
+        },
+        "from_id": {
+          "kind": "node",
+          "node_id": "03a706bd-fc2d-5908-8f0c-7db1805ff538",
+          "session_id": null,
+          "verdict_id": null
+        },
+        "id": "parent:abcc31e1-c2b1-50bf-8707-1ca185798a20",
+        "kind": "caused",
+        "to_id": {
+          "kind": "node",
+          "node_id": "abcc31e1-c2b1-50bf-8707-1ca185798a20",
+          "session_id": null,
+          "verdict_id": null
+        }
+      },
+      {
+        "evidence_ref": {
+          "kafka_offset": 1831,
+          "partition": 0,
+          "topic": "onex.evt.omnimarket.delegate-skill-completed.v1"
+        },
+        "from_id": {
+          "kind": "node",
+          "node_id": "97767c23-a7e5-485f-b747-0e0bf6ee24e7",
+          "session_id": null,
+          "verdict_id": null
+        },
+        "id": "parent:3bd23897-9700-595e-bf1f-a0920479b238",
+        "kind": "caused",
+        "to_id": {
+          "kind": "node",
+          "node_id": "3bd23897-9700-595e-bf1f-a0920479b238",
+          "session_id": null,
+          "verdict_id": null
+        }
+      }
+    ],
+    "fold_version": {
+      "build": null,
+      "major": 1,
+      "minor": 0,
+      "patch": 0,
+      "prerelease": null
+    },
+    "grader_version": {
+      "build": null,
+      "major": 1,
+      "minor": 0,
+      "patch": 0,
+      "prerelease": null
+    },
+    "nodes": [
+      {
+        "id": "97767c23-a7e5-485f-b747-0e0bf6ee24e7",
+        "kafka_offset": 2553,
+        "kind": "hop",
+        "parent_envelope_id": null,
+        "partition": 0,
+        "replay_green": true,
+        "source_ref": {
+          "kafka_offset": 2553,
+          "partition": 0,
+          "topic": "onex.cmd.omnimarket.delegate-skill.v1"
+        },
+        "topic": "onex.cmd.omnimarket.delegate-skill.v1",
+        "verifier_verdict": "pass"
+      },
+      {
+        "id": "d88c5031-0da9-462a-80ef-8cc817934cc6",
+        "kafka_offset": 2174,
+        "kind": "hop",
+        "parent_envelope_id": "97767c23-a7e5-485f-b747-0e0bf6ee24e7",
+        "partition": 0,
+        "replay_green": true,
+        "source_ref": {
+          "kafka_offset": 2174,
+          "partition": 0,
+          "topic": "onex.cmd.omnibase-infra.delegation-request.v1"
+        },
+        "topic": "onex.cmd.omnibase-infra.delegation-request.v1",
+        "verifier_verdict": "pass"
+      },
+      {
+        "id": "03a706bd-fc2d-5908-8f0c-7db1805ff538",
+        "kafka_offset": 4248,
+        "kind": "hop",
+        "parent_envelope_id": "d88c5031-0da9-462a-80ef-8cc817934cc6",
+        "partition": 0,
+        "replay_green": true,
+        "source_ref": {
+          "kafka_offset": 4248,
+          "partition": 0,
+          "topic": "onex.cmd.omnibase-infra.delegation-routing-request.v1"
+        },
+        "topic": "onex.cmd.omnibase-infra.delegation-routing-request.v1",
+        "verifier_verdict": "pass"
+      },
+      {
+        "id": "abcc31e1-c2b1-50bf-8707-1ca185798a20",
+        "kafka_offset": 4201,
+        "kind": "hop",
+        "parent_envelope_id": "03a706bd-fc2d-5908-8f0c-7db1805ff538",
+        "partition": 0,
+        "replay_green": true,
+        "source_ref": {
+          "kafka_offset": 4201,
+          "partition": 0,
+          "topic": "onex.evt.omnibase-infra.routing-decision.v1"
+        },
+        "topic": "onex.evt.omnibase-infra.routing-decision.v1",
+        "verifier_verdict": "pass"
+      },
+      {
+        "id": "3bd23897-9700-595e-bf1f-a0920479b238",
+        "kafka_offset": 1831,
+        "kind": "hop",
+        "parent_envelope_id": "97767c23-a7e5-485f-b747-0e0bf6ee24e7",
+        "partition": 0,
+        "replay_green": true,
+        "source_ref": {
+          "kafka_offset": 1831,
+          "partition": 0,
+          "topic": "onex.evt.omnimarket.delegate-skill-completed.v1"
+        },
+        "topic": "onex.evt.omnimarket.delegate-skill-completed.v1",
+        "verifier_verdict": "pass"
+      }
+    ],
+    "order": [
+      "97767c23-a7e5-485f-b747-0e0bf6ee24e7",
+      "d88c5031-0da9-462a-80ef-8cc817934cc6",
+      "03a706bd-fc2d-5908-8f0c-7db1805ff538",
+      "abcc31e1-c2b1-50bf-8707-1ca185798a20",
+      "3bd23897-9700-595e-bf1f-a0920479b238"
+    ],
+    "policy": {
+      "conflicting_identity": "same_id_conflicting_parent_or_semantic_body_refuse",
+      "cross_topic_duplicate": "same_id_across_topics_refuse",
+      "node_identity": "envelope_id",
+      "redelivery": "same_id_exact_redelivery_lowest_source_position",
+      "tie_break": [
+        "declared_hop_position",
+        "topic_partition_kafka_offset",
+        "envelope_id"
+      ],
+      "traversal": "parent_topological"
+    },
+    "refusal": null,
+    "source_cursors": [
+      {
+        "max_kafka_offset": 2174,
+        "partition": 0,
+        "topic": "onex.cmd.omnibase-infra.delegation-request.v1"
+      },
+      {
+        "max_kafka_offset": 4248,
+        "partition": 0,
+        "topic": "onex.cmd.omnibase-infra.delegation-routing-request.v1"
+      },
+      {
+        "max_kafka_offset": 2553,
+        "partition": 0,
+        "topic": "onex.cmd.omnimarket.delegate-skill.v1"
+      },
+      {
+        "max_kafka_offset": 4201,
+        "partition": 0,
+        "topic": "onex.evt.omnibase-infra.routing-decision.v1"
+      },
+      {
+        "max_kafka_offset": 1831,
+        "partition": 0,
+        "topic": "onex.evt.omnimarket.delegate-skill-completed.v1"
+      }
+    ],
+    "topology_version": {
+      "contract_version": {
+        "build": null,
+        "major": 1,
+        "minor": 3,
+        "patch": 0,
+        "prerelease": null
+      },
+      "topology_sha256": "0505ab0b163492380739a15646c0442a3ecfb54efb0acb53bc23d232640fbfd3"
+    },
+    "unresolved": [],
+    "verdict_reducer_version": {
+      "build": null,
+      "major": 1,
+      "minor": 0,
+      "patch": 0,
+      "prerelease": null
+    },
+    "verdicts": [],
+    "withheld_count": 0
+  },
+  "schema_version": 1
+}

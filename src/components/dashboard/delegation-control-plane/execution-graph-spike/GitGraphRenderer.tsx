@@ -24,7 +24,7 @@ export function GitGraphRenderer({
     host.replaceChildren();
 
     const graphApi = createGitgraph(host, {
-      orientation: Orientation.Horizontal,
+      orientation: Orientation.VerticalReverse,
       responsive: true,
       template: templateExtend(TemplateName.Metro, {
         colors: ['#477f9f', '#b66e3c', '#5f916f', '#866e9d', '#aa665f'],
@@ -73,11 +73,22 @@ export function GitGraphRenderer({
           : parentBranch
         : graphApi.branch(`lane-${graph.replay.order.indexOf(id) + 1}`);
       const outcome = node.replay_green === true ? '✓' : node.replay_green === false ? '×' : '?';
+      const dotColor = node.replay_green === true
+        ? '#26784b'
+        : node.replay_green === false
+          ? '#b54842'
+          : '#707b83';
       branch.commit({
         subject: `${outcome} ${topicLabel(node)}`,
-        dotText: node.kind === 'reroute_evidence' ? '↻' : undefined,
+        // Keep replay status visible in the commit dot and share the inspector below.
+        dotText: node.kind === 'reroute_evidence' ? `↻${outcome}` : outcome,
         style: {
-          dot: { size: node.kind === 'reroute_evidence' ? 7 : 9 },
+          dot: {
+            size: node.kind === 'reroute_evidence' ? 11 : 10,
+            color: dotColor,
+            strokeColor: '#ffffff',
+            strokeWidth: 1,
+          },
         },
         onClick: () => onSelect(node),
         onMessageClick: () => onSelect(node),
@@ -93,7 +104,6 @@ export function GitGraphRenderer({
         <li>✓ Replay passed</li>
         <li>× Replay failed</li>
         <li>? unknown</li>
-        <li>↻ re-route evidence</li>
       </ul>
     </div>
   );

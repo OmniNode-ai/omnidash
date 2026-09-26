@@ -8,7 +8,7 @@ describe('ExecutionGraphView', () => {
   it('renders the transport projection and requests adjacent bounds through the transport', async () => {
     const laterGraph = {
       ...provisionalExecutionGraph,
-      replay: { ...provisionalExecutionGraph.replay, source_cursors: [{ ...provisionalExecutionGraph.replay.source_cursors[0], max_ingest_seq: 3 }] },
+      replay: { ...provisionalExecutionGraph.replay, source_cursors: [{ ...provisionalExecutionGraph.replay.source_cursors[0], max_kafka_offset: 43 }] },
     };
     const transport = {
       readLatest: vi.fn().mockResolvedValue(provisionalExecutionGraph),

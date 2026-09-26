@@ -7,7 +7,7 @@ const laterGraph = {
   ...provisionalExecutionGraph,
   replay: {
     ...provisionalExecutionGraph.replay,
-    source_cursors: [{ ...provisionalExecutionGraph.replay.source_cursors[0], max_ingest_seq: 3 }],
+    source_cursors: [{ ...provisionalExecutionGraph.replay.source_cursors[0], max_kafka_offset: 43 }],
   },
 };
 
