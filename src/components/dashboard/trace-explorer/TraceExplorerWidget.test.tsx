@@ -1,156 +1,122 @@
-import { fireEvent, render, screen } from '@testing-library/react';
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { QueryClient } from '@tanstack/react-query';
-import { DataSourceTestProvider } from '@/test-utils/dataSourceTestProvider';
-import { mockFetchWithItems } from '@/test-utils/mockFetch';
-import TraceExplorerWidget from './TraceExplorerWidget';
-import type { TraceGroup } from './TraceExplorerWidget';
+import { fireEvent, render, screen, within } from '@testing-library/react';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
+import type { ProjectionSnapshot } from '@/data-source';
 import { useFrameStore } from '@/store/store';
+import {
+  DEFAULT_TRACE_FILTERS,
+  filterTraceEvents,
+  TraceExplorerView,
+  type DelegationDecisionRow,
+  type LiveEventRow,
+} from './TraceExplorerWidget';
+import type { WorkEventRow } from '@/components/dashboard/work-events/WorkEventsWidget';
 
-const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+const READ_AT = '2026-09-26T12:00:00Z';
 
-const makeTrace = (overrides: Partial<TraceGroup> = {}): TraceGroup => ({
-  correlation_id: 'corr-0001',
-  nodes_involved: ['node_build_loop'],
-  event_count: 5,
-  first_event_at: '2026-05-25T12:00:00Z',
-  last_event_at: '2026-05-25T12:00:05Z',
-  duration_ms: 5000,
-  has_error: false,
-  is_running: false,
-  latest_message: 'Phase complete',
-  ...overrides,
+function snapshot<T>(rows: T[]): ProjectionSnapshot<T> {
+  return {
+    rows,
+    rowCount: rows.length,
+    dataFreshness: 'fresh',
+    latestEventAt: rows.length > 0 ? '2026-09-26T11:59:00Z' : null,
+    readAt: READ_AT,
+  };
+}
+
+function event(overrides: Partial<LiveEventRow> = {}): LiveEventRow {
+  return {
+    id: 'event-1',
+    event_id: 'event-1',
+    type: 'TOOL_EXECUTED',
+    timestamp: '2026-09-26T11:55:00Z',
+    source: 'omniclaude',
+    topic: 'dev.onex.evt.omniclaude.tool-executed.v1',
+    summary: 'Bash completed',
+    payload: { command: 'npm test', api_key: 'must-not-render' },
+    correlation_id: 'corr-alpha',
+    ...overrides,
+  };
+}
+
+const EVENTS = [
+  event(),
+  event({ id: 'event-2', event_id: 'event-2', type: 'ERROR', source: 'runtime', topic: 'prod.onex.evt.runtime.failed.v1', summary: 'Beta failed', correlation_id: 'corr-beta', timestamp: '2026-09-26T11:57:00Z' }),
+  event({ id: 'event-3', event_id: 'event-3', type: 'PROMPT', source: 'omniclaude', topic: 'onex.evt.omniclaude.prompt-submitted.v1', summary: 'Prompt submitted', correlation_id: 'corr-gamma', timestamp: '2026-09-26T11:58:00Z' }),
+];
+
+function renderView(events = EVENTS) {
+  return render(
+    <TraceExplorerView
+      eventSnapshot={snapshot(events)}
+      decisionSnapshot={snapshot<DelegationDecisionRow>([])}
+      workSnapshot={snapshot<WorkEventRow>([])}
+      paused={false}
+      onPausedChange={vi.fn()}
+    />,
+  );
+}
+
+describe('Event Trace filters — AC1', () => {
+  it.each([
+    ['correlation id', { correlationId: 'corr-alpha' }, 1],
+    ['event type', { eventType: 'ERROR' }, 1],
+    ['topic suffix', { topic: 'runtime.failed.v1' }, 1],
+    ['start time', { start: '2026-09-26T11:56:00Z' }, 2],
+    ['end time', { end: '2026-09-26T11:56:00Z' }, 1],
+    ['multi-field search', { query: 'beta' }, 1],
+  ])('narrows by %s', (_name, override, expected) => {
+    expect(filterTraceEvents(EVENTS, { ...DEFAULT_TRACE_FILTERS, ...override })).toHaveLength(expected);
+  });
+
+  it('renders removable chips for active filters', () => {
+    renderView();
+    fireEvent.change(screen.getByLabelText('Search events'), { target: { value: 'runtime' } });
+    fireEvent.change(screen.getByLabelText('Filter correlation id'), { target: { value: 'corr-beta' } });
+    fireEvent.change(screen.getByLabelText('Filter event type'), { target: { value: 'ERROR' } });
+    fireEvent.change(screen.getByLabelText('Filter topic suffix'), { target: { value: 'failed.v1' } });
+    fireEvent.change(screen.getByLabelText('Filter start time'), { target: { value: '2026-09-26T11:56' } });
+    fireEvent.change(screen.getByLabelText('Filter end time'), { target: { value: '2026-09-26T12:00' } });
+    expect(within(screen.getByTestId('active-filter-chips')).getAllByRole('button')).toHaveLength(6);
+  });
 });
 
-describe('TraceExplorerWidget', () => {
+describe('Event Trace correlation pivot — AC2', () => {
   beforeEach(() => {
-    qc.clear();
-    vi.stubGlobal('fetch', vi.fn());
-  });
-  afterEach(() => vi.restoreAllMocks());
-
-  it('shows loading state initially', () => {
-    (fetch as ReturnType<typeof vi.fn>).mockReturnValue(new Promise(() => {}));
-    render(
-      <DataSourceTestProvider client={qc}>
-        <TraceExplorerWidget />
-      </DataSourceTestProvider>,
-    );
-    expect(screen.getByText('Loading...')).toBeInTheDocument();
+    useFrameStore.setState({ traceFilter: null });
   });
 
-  it('shows empty state when no traces', async () => {
-    mockFetchWithItems([]);
-    render(
-      <DataSourceTestProvider client={qc}>
-        <TraceExplorerWidget />
-      </DataSourceTestProvider>,
-    );
-    expect(await screen.findByText('No traces')).toBeInTheDocument();
+  it('calls setTraceFilter with a clicked correlation id', () => {
+    const setTraceFilter = vi.fn();
+    useFrameStore.setState({ setTraceFilter });
+    renderView([EVENTS[0]]);
+    fireEvent.click(screen.getByRole('button', { name: /correlation: corr-alpha/i }));
+    expect(setTraceFilter).toHaveBeenCalledWith('corr-alpha');
   });
 
-  it('renders trace cards', async () => {
-    mockFetchWithItems([
-      makeTrace({ correlation_id: 'corr-a', nodes_involved: ['node_build_loop', 'node_test_runner'], event_count: 12 }),
-      makeTrace({ correlation_id: 'corr-b', is_running: true, latest_message: 'Running tests' }),
-    ]);
-    render(
-      <DataSourceTestProvider client={qc}>
-        <TraceExplorerWidget />
-      </DataSourceTestProvider>,
-    );
-    const cards = await screen.findAllByTestId('trace-card');
-    expect(cards.length).toBe(2);
-  });
-
-  it('filters traces by query', async () => {
-    mockFetchWithItems([
-      makeTrace({ correlation_id: 'corr-alpha', latest_message: 'Alpha complete' }),
-      makeTrace({ correlation_id: 'corr-beta', latest_message: 'Beta complete' }),
-    ]);
-    render(
-      <DataSourceTestProvider client={qc}>
-        <TraceExplorerWidget />
-      </DataSourceTestProvider>,
-    );
-    await screen.findAllByTestId('trace-card');
-
-    const input = screen.getByLabelText('Filter traces') as HTMLInputElement;
-    fireEvent.change(input, { target: { value: 'alpha' } });
-
-    expect(screen.getAllByTestId('trace-card')).toHaveLength(1);
-    expect(screen.getByText(/corr-alpha/)).toBeInTheDocument();
-  });
-
-  it('expands the selected trace inline', async () => {
-    mockFetchWithItems([makeTrace()]);
-    render(
-      <DataSourceTestProvider client={qc}>
-        <TraceExplorerWidget />
-      </DataSourceTestProvider>,
-    );
-    const cards = await screen.findAllByTestId('trace-card');
-    expect(screen.queryByText('No events for this trace')).not.toBeInTheDocument();
-
-    fireEvent.click(cards[0]);
-
-    expect(await screen.findByText('No events for this trace')).toBeInTheDocument();
-  });
-
-  it('collapses the selected trace when clicked again', async () => {
-    mockFetchWithItems([makeTrace()]);
-    render(
-      <DataSourceTestProvider client={qc}>
-        <TraceExplorerWidget />
-      </DataSourceTestProvider>,
-    );
-    const cards = await screen.findAllByTestId('trace-card');
-
-    fireEvent.click(cards[0]);
-    expect(await screen.findByText('No events for this trace')).toBeInTheDocument();
-
-    fireEvent.click(cards[0]);
-    expect(screen.queryByText('No events for this trace')).not.toBeInTheDocument();
-  });
-
-  it('keeps duplicate correlation rows independently expandable', async () => {
-    mockFetchWithItems([
-      makeTrace({ first_event_at: '2026-05-25T12:00:00Z', last_event_at: '2026-05-25T12:00:05Z' }),
-      makeTrace({ first_event_at: '2026-05-25T12:01:00Z', last_event_at: '2026-05-25T12:01:05Z' }),
-    ]);
-    render(
-      <DataSourceTestProvider client={qc}>
-        <TraceExplorerWidget />
-      </DataSourceTestProvider>,
-    );
-    const cards = await screen.findAllByTestId('trace-card');
-
-    fireEvent.click(cards[0]);
-    expect(await screen.findAllByText('No events for this trace')).toHaveLength(1);
-
-    fireEvent.click(cards[1]);
-    expect(await screen.findAllByText('No events for this trace')).toHaveLength(1);
-  });
-
-  it('pre-fills search from store traceFilter on mount and clears it', async () => {
-    useFrameStore.setState({ traceFilter: 'corr-deep-link' });
-    mockFetchWithItems([
-      makeTrace({ correlation_id: 'corr-deep-link' }),
-      makeTrace({ correlation_id: 'corr-other' }),
-    ]);
-    render(
-      <DataSourceTestProvider client={qc}>
-        <TraceExplorerWidget />
-      </DataSourceTestProvider>,
-    );
-
-    // Wait for the widget body to render (traces loaded)
-    await screen.findAllByTestId('trace-card');
-
-    const input = screen.getByLabelText('Filter traces') as HTMLInputElement;
-    expect(input.value).toBe('corr-deep-link');
-
-    // Store filter is cleared after mount so subsequent navigation starts fresh
+  it('consumes and clears traceFilter on mount', () => {
+    const setTraceFilter = vi.fn((value: string | null) => useFrameStore.setState({ traceFilter: value }));
+    useFrameStore.setState({ traceFilter: 'corr-beta', setTraceFilter });
+    renderView();
+    expect(screen.getByLabelText('Filter correlation id')).toHaveValue('corr-beta');
+    expect(setTraceFilter).toHaveBeenCalledWith(null);
     expect(useFrameStore.getState().traceFilter).toBeNull();
+  });
+});
+
+describe('Event Trace heartbeat default — AC3', () => {
+  it('excludes a row set that is 88 percent heartbeat, then includes it when toggled', () => {
+    const rows = [
+      event({ id: 'normal', event_id: 'normal' }),
+      ...Array.from({ length: 7 }, (_, index) => event({
+        id: `heartbeat-${index}`,
+        event_id: `heartbeat-${index}`,
+        type: 'onex.evt.platform.node-heartbeat.v1',
+        topic: `env-${index}.node-heartbeat.v1`,
+      })),
+    ];
+    renderView(rows);
+    expect(screen.getAllByTestId('trace-event-row')).toHaveLength(1);
+    fireEvent.click(screen.getByLabelText('Include heartbeats'));
+    expect(screen.getAllByTestId('trace-event-row')).toHaveLength(8);
   });
 });

@@ -1,4 +1,4 @@
-import type { ProtocolSnapshotSource } from './protocol-snapshot-source';
+import type { ProjectionSnapshot, ProtocolSnapshotSource } from './protocol-snapshot-source';
 
 export interface FileSnapshotSourceOptions {
   baseUrl: string;
@@ -20,5 +20,17 @@ export class FileSnapshotSource implements ProtocolSnapshotSource {
       const r = await fetch(`${this.baseUrl}/${encoded}/${encodeURIComponent(f)}`);
       if (r.ok) yield await r.json();
     }
+  }
+
+  async readSnapshot(topic: string): Promise<ProjectionSnapshot> {
+    const rows: unknown[] = [];
+    for await (const row of this.readAll(topic)) rows.push(row);
+    return {
+      rows,
+      rowCount: rows.length,
+      dataFreshness: 'unknown',
+      latestEventAt: null,
+      readAt: new Date().toISOString(),
+    };
   }
 }

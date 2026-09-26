@@ -23,15 +23,20 @@
  * catalog gains tomorrow appears here with no edit to this file, which is what
  * AC3's falsifier asserts.
  *
- * SCOPE AS SHIPPED. This is the tab shell plus the census section. The flow
- * triage and node-roster sections, and the lane / lab-pass dimensions that come
- * from C2 (OMN-18769), are not here yet; the ticket says C4 "ships honestly
- * partial" without C2, so their absence is stated rather than mocked.
+ * SCOPE AS SHIPPED. OMN-18772 (C5) adds, above the census: hook capture over
+ * work.events, per-topic activity over topic-activity (OMN-19716; a typed empty
+ * state until that exposure is bus-backed), the event trace over live-events,
+ * delegation runs over delegation.decisions, and errors. The lane / lab-pass
+ * dimensions from C2 (OMN-18769) and the runners view (C6) are not here yet.
  */
 
 import { EvPageShell } from '@/components/dashboard/event-dash/EvPageShell';
-import { EvEmpty, Panel } from '@/components/dashboard/event-dash/primitives';
 import { LabSystemStatus } from '@/components/dashboard/lab-system-status/LabSystemStatus';
+import TopicActivityWidget from '@/components/dashboard/topic-activity/TopicActivityWidget';
+import WorkEventsWidget from '@/components/dashboard/work-events/WorkEventsWidget';
+import TraceExplorerWidget from '@/components/dashboard/trace-explorer/TraceExplorerWidget';
+import ErrorsWidget from '@/components/dashboard/errors/ErrorsWidget';
+import RoutingDecisionTable from '@/components/dashboard/routing/RoutingDecisionTable';
 
 export function LabPage() {
   return (
@@ -40,26 +45,16 @@ export function LabPage() {
       title="Lab"
       sub="What is working in the lab — every panel over a projection, and anything unread named as unread"
     >
+      {/* Ordered by the operator's question, "what is the lab generating right
+          now": capture health first, then per-topic volume, the live tail,
+          delegation runs and errors. The 65-row exposure census is last, because
+          it is reference, not a live signal. */}
+      <WorkEventsWidget config={{ view: 'hook-capture' }} />
+      <TopicActivityWidget />
+      <TraceExplorerWidget />
+      <RoutingDecisionTable config={{ variant: 'lab-runs', pageSize: 25 }} />
+      <ErrorsWidget config={{ window: '24h' }} />
       <LabSystemStatus />
-
-      {/*
-        C2 (OMN-18769) supplies the lane-census, runtime-health and lab-pass
-        dimensions. It is not landed, so the section is declared and empty
-        rather than absent: a reader should be able to tell that a dimension
-        exists and has no producer yet, which is the distinction the archived
-        dashboard's stub list lost.
-      */}
-      <Panel
-        title="LANE HEALTH"
-        sub="awaiting its producer — OMN-18769 (C2)"
-        pad={false}
-      >
-        <EvEmpty
-          title="No producer yet"
-          reason="Lane census drift, runtime health dimensions and lab-pass verdicts arrive with OMN-18769 (C2)."
-          note="Declared so its absence is visible. This is not zero rows reported as a healthy result."
-        />
-      </Panel>
     </EvPageShell>
   );
 }

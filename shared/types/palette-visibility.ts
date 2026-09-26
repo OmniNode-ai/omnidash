@@ -48,6 +48,8 @@ export const PALETTE_CLASSIFICATION: Record<string, PaletteClassification> = {
   // topology surface, rather than rows from /projection/{topic}. Calling it
   // projection-backed would claim a proof it does not have.
   'lab-system-status': { paletteVisibility: 'visible', authorityLabel: 'runtime-observed', probe: 'GET /projections on .201 2026-09-22 = 65 exposures, status:ok on all 65, backing:bus on 17, not_yet_bus_backed on 48' },
+  'topic-activity': { paletteVisibility: 'visible', authorityLabel: 'degraded', probe: 'OMN-19716 topic-activity projection is census-gated until the lane reports backing:bus' },
+  'errors': { paletteVisibility: 'visible', authorityLabel: 'projection-backed', probe: 'consumer-flow.v1, live-events.v1, runtime-error-fingerprints.v1 all declared backing:bus on .201 2026-09-26' },
   // --- VISIBLE / projection-backed (200 with rows on the single backend) ---
   'delegation-metrics': { paletteVisibility: 'visible', authorityLabel: 'projection-backed', probe: 'delegation.summary.v1=200/1r' },
   'routing-decision-table': { paletteVisibility: 'visible', authorityLabel: 'projection-backed', probe: 'delegation.decisions.v1=200/36r' },
@@ -131,7 +133,7 @@ export const PALETTE_CLASSIFICATION: Record<string, PaletteClassification> = {
   'cost-savings-overview': { paletteVisibility: 'hidden', authorityLabel: 'hidden', probe: 'cost.savings-overview.v1=404' },
   'delegation-model-output': { paletteVisibility: 'hidden', authorityLabel: 'hidden', probe: 'delegation.inference-response-text.v1=404' },
   'mcp-tools': { paletteVisibility: 'hidden', authorityLabel: 'hidden', probe: 'mcp-tools.v1=404' },
-  'trace-explorer': { paletteVisibility: 'hidden', authorityLabel: 'hidden', probe: 'traces.v1=404' },
+  'trace-explorer': { paletteVisibility: 'visible', authorityLabel: 'projection-backed', probe: 'live-events.v1 + delegation.decisions.v1 + work.events.v1 declared backing:bus on .201 2026-09-26; refused traces.v1 removed' },
   // Skill-adoption (OMN-13832): the skill_executions table is populated on the
   // .201 stability bus (OMN-13830), but the snapshot projection
   // onex.snapshot.projection.skill-executions.v1 has not been verified exposed

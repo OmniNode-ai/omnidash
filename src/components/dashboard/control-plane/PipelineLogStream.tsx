@@ -1,4 +1,5 @@
 import { Text } from '@/components/ui/typography';
+import { formatRedactedEventPayload } from '@/utils/redact-event-payload';
 
 export interface PipelineEvent {
   id: string;
@@ -46,14 +47,6 @@ function hasText(value: string | null | undefined): value is string {
   return typeof value === 'string' && value.trim().length > 0;
 }
 
-function prettyPayload(payload: string): string {
-  try {
-    return JSON.stringify(JSON.parse(payload), null, 2);
-  } catch {
-    return payload;
-  }
-}
-
 function ProofFact({ label, value }: { label: string; value: string | null | undefined }) {
   if (!hasText(value)) return null;
   return (
@@ -97,7 +90,7 @@ function ArtifactBlock({ label, value }: { label: string; value: string | null |
 }
 
 function ArtifactProof({ event }: { event: PipelineEvent }) {
-  const payload = hasText(event.payload) ? prettyPayload(event.payload) : null;
+  const payload = hasText(event.payload) ? formatRedactedEventPayload(event.payload) : null;
   const hasProof =
     hasText(event.contractYaml) ||
     hasText(event.handlerSource) ||

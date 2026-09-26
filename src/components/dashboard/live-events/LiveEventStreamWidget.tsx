@@ -7,6 +7,7 @@ import { NodePill } from '@/components/primitives';
 import { Text } from '@/components/ui/typography';
 import type { NodeKind } from '@/components/primitives';
 import { useDataSourceMode, isLiveDataSource } from '@/hooks/useDataSourceMode';
+import { formatRedactedEventPayload } from '@/utils/redact-event-payload';
 
 // ── Data type ───────────────────────────────────────────────────────
 
@@ -58,15 +59,6 @@ function formatTimestamp(iso: string): string {
 
 function compactTopic(topic: string): string {
   return topic.replace(/^onex\./, '').replace(/^snapshot\.projection\./, 'projection.');
-}
-
-function prettyPayload(payload: string): string {
-  if (!payload) return '{}';
-  try {
-    return JSON.stringify(JSON.parse(payload), null, 2);
-  } catch {
-    return payload;
-  }
 }
 
 function matchesEvent(ev: LiveEvent, query: string): boolean {
@@ -338,7 +330,7 @@ export default function LiveEventStreamWidget() {
             {filteredEvents.map((e, i) => {
               const kind = nodeKindForEvent(e);
               const isNewest = i === 0;
-              const payload = prettyPayload(e.payload);
+              const payload = e.payload ? formatRedactedEventPayload(e.payload) : '{}';
               return (
                 <details
                   key={e.id}

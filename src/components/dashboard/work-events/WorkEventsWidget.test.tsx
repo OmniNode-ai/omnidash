@@ -14,12 +14,14 @@ import { QueryClient } from '@tanstack/react-query';
 import { DataSourceTestProvider } from '@/test-utils/dataSourceTestProvider';
 import { mockFetchWithItems } from '@/test-utils/mockFetch';
 import WorkEventsWidget, {
+  HookCaptureView,
   newestFirst,
   formatTicket,
   formatSummary,
   eventKindColor,
   type WorkEventRow,
 } from './WorkEventsWidget';
+import type { ProjectionSnapshot } from '@/data-source';
 
 const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } });
 
@@ -167,5 +169,32 @@ describe('WorkEventsWidget', () => {
     const rows = screen.getAllByTestId('work-events-row');
     expect(rows[0]).toHaveAttribute('data-actor-kind', 'session');
     expect(rows[0]).toHaveAttribute('data-event-id', LIVE_ROW.event_id);
+  });
+});
+
+describe('HookCaptureView', () => {
+  function hookSnapshot(rows: WorkEventRow[], readAt: string): ProjectionSnapshot<WorkEventRow> {
+    return { rows, rowCount: rows.length, dataFreshness: 'fresh', latestEventAt: rows[0]?.emitted_at ?? null, readAt };
+  }
+
+  it('shows CAPTURING and counts every hook event type when the newest row is recent', () => {
+    const readAt = '2026-09-26T12:00:00Z';
+    render(<HookCaptureView snapshot={hookSnapshot([
+      row({ event_id: 'a', event_kind: 'session.tool', emitted_at: '2026-09-26T11:59:00Z' }),
+      row({ event_id: 'b', event_kind: 'session.tool', emitted_at: '2026-09-26T11:58:00Z' }),
+      row({ event_id: 'c', event_kind: 'custom-hook', emitted_at: '2026-09-26T11:57:00Z' }),
+    ], readAt)} />);
+    expect(screen.getByTestId('hook-capture-state')).toHaveTextContent('CAPTURING');
+    expect(screen.getByText('tool-executed').closest('[data-testid="hook-capture-row"]')).toHaveTextContent('2 read');
+    expect(screen.getByText('custom-hook')).toBeInTheDocument();
+  });
+
+  it('distinguishes QUIET from unreadable UNKNOWN', () => {
+    const quiet = hookSnapshot([row({ emitted_at: '2026-09-26T11:00:00Z' })], '2026-09-26T12:00:00Z');
+    const { rerender } = render(<HookCaptureView snapshot={quiet} />);
+    expect(screen.getByTestId('hook-capture-state')).toHaveTextContent('QUIET');
+    expect(screen.getByText(/no Claude Code session may be active/i)).toBeInTheDocument();
+    rerender(<HookCaptureView snapshot={quiet} error={new Error('HTTP 503')} />);
+    expect(screen.getByTestId('hook-capture-state')).toHaveTextContent('UNKNOWN');
   });
 });

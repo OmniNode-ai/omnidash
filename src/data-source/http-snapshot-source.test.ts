@@ -1,8 +1,57 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { HttpSnapshotSource } from './http-snapshot-source';
+import { resetExposureMetadataCache } from './projection-tenant';
 
 describe('HttpSnapshotSource', () => {
-  beforeEach(() => { vi.restoreAllMocks(); });
+  beforeEach(() => {
+    vi.restoreAllMocks();
+    resetExposureMetadataCache();
+  });
+
+  it('readAll carries the configured tenant to a tenant-scoped exposure', async () => {
+    vi.stubEnv('VITE_PROJECTION_TENANT_ID', '820272f9-4aaf-5add-a2df-0af942852ab2');
+    const topic = 'onex.snapshot.projection.delegation.decisions.v1';
+    // A same-origin proxy base, so the catalogue read resolves to `/projections`.
+    vi.stubEnv('VITE_DATA_SOURCE', 'http');
+    vi.stubEnv('VITE_PROJECTION_API_URL', 'http://lab-projection-api');
+    const fetchMock = vi.fn(async (url: string) =>
+      String(url).endsWith('/projections')
+        ? { ok: true, json: async () => ({ topics: [{ topic, tenant_scoped: true, tenant_column: 'tenant_id' }] }) }
+        : { ok: true, json: async () => ({ rows: [{ id: 'd1' }] }) },
+    );
+    vi.stubGlobal('fetch', fetchMock);
+
+    const source = new HttpSnapshotSource({ baseUrl: 'http://projection-api' });
+    const rows: unknown[] = [];
+    for await (const row of source.readAll(topic)) rows.push(row);
+
+    expect(rows).toEqual([{ id: 'd1' }]);
+    const urls = fetchMock.mock.calls.map((c) => String(c[0]));
+    expect(urls.some((u) => u.includes(`/projection/${encodeURIComponent(topic)}?tenant=820272f9`))).toBe(true);
+    vi.unstubAllEnvs();
+  });
+
+  it('preserves projection freshness metadata in readSnapshot', async () => {
+    vi.stubGlobal('fetch', vi.fn()
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({
+          rows: [{ id: 'row-1' }],
+          row_count: 1,
+          data_freshness: 'stale',
+          latest_event_at: '2026-09-26T11:59:00Z',
+        }),
+      }));
+
+    const source = new HttpSnapshotSource({ baseUrl: 'http://projection-api' });
+    const result = await source.readSnapshot('onex.snapshot.test.v1');
+
+    expect(result.rows).toEqual([{ id: 'row-1' }]);
+    expect(result.rowCount).toBe(1);
+    expect(result.dataFreshness).toBe('stale');
+    expect(result.latestEventAt).toBe('2026-09-26T11:59:00Z');
+    expect(result.readAt).toEqual(expect.any(String));
+  });
 
   it('yields each item from a 200 response returning an array', async () => {
     const items = [{ id: 'a', value: 1 }, { id: 'b', value: 2 }];

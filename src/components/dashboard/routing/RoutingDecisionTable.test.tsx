@@ -27,6 +27,18 @@ describe('RoutingDecisionTable', () => {
     expect(screen.getByText('Agree')).toBeInTheDocument();
   });
 
+  it('renders a lab delegation.decisions row that carries no confidences or cost', async () => {
+    // The .201 lab rows have delegated_to / model_name / quality_gate_passed and no
+    // llm_confidence, fuzzy_confidence or cost_usd; `.toFixed` on undefined used to
+    // throw and blank the whole Lab page.
+    mockFetchWithItems([
+      { id: 'lab-1', created_at: '2026-09-26T09:45:18Z', correlation_id: '95b0942b-3e4b-4ff3-82ca-9690f7056d77', delegated_to: 'Qwen3.8-27B', model_name: 'Qwen3.8-27B', quality_gate_passed: true },
+    ]);
+    render(<DataSourceTestProvider client={qc}><RoutingDecisionTable config={{ variant: 'lab-runs' }} /></DataSourceTestProvider>);
+    expect(await screen.findByText('95b0942b-3e4b-4ff3-82ca-9690f7056d77')).toBeInTheDocument();
+    expect(screen.getByText('passed')).toBeInTheDocument();
+  });
+
   it('shows empty state when no decisions', async () => {
     (fetch as any).mockResolvedValueOnce({ ok: false });
     render(<DataSourceTestProvider client={qc}><RoutingDecisionTable config={{}} /></DataSourceTestProvider>);

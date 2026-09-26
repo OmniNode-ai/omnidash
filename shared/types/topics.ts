@@ -75,6 +75,10 @@ export const TOPICS = {
   intentClassification: 'onex.snapshot.projection.intent-classification.v1',
   /** Live event stream widget — real-time system event feed. */
   liveEvents: 'onex.snapshot.projection.live-events.v1',
+  /** Per-topic bus activity projection produced by OMN-19716. */
+  topicActivity: 'onex.snapshot.projection.topic-activity.v1',
+  /** Runtime error fingerprints materialized from emitted runtime error events. */
+  runtimeErrorFingerprints: 'onex.snapshot.projection.runtime-error-fingerprints.v1',
   /** Routing decision widget — model routing traces and rules. */
   routingDecision: 'onex.snapshot.projection.routing-decision.v1',
   /** Receipt gate widget — verification gate status per PR. */

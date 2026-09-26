@@ -28,9 +28,12 @@
 
 import { useMemo } from 'react';
 import { ComponentWrapper } from '../ComponentWrapper';
-import { useProjectionQuery } from '@/hooks/useProjectionQuery';
+import { useProjectionSnapshotQuery } from '@/hooks/useProjectionSnapshotQuery';
 import { TOPICS } from '@shared/types/topics';
 import { Text, type TextColor } from '@/components/ui/typography';
+import { FreshnessLine } from '@/components/dashboard/lab/FreshnessLine';
+import { formatAge } from '@/utils/time-format';
+import type { ProjectionSnapshot } from '@/data-source';
 
 // Row shape mirrors the contract's projection_api.columns for
 // onex.snapshot.projection.work.events.v1, in declaration order.
@@ -49,6 +52,8 @@ export interface WorkEventRow {
 export interface WorkEventsWidgetConfig {
   /** Max work-event rows to render after ordering. Default 25. */
   maxRows?: number;
+  /** Compact hook-capture health view used on the Lab page. */
+  view?: 'table' | 'hook-capture';
 }
 
 // Presentation only. An event_kind the projection emits that this client has no
@@ -193,17 +198,96 @@ function EventRow({ row }: { row: WorkEventRow }) {
   );
 }
 
+function hookEventType(eventKind: string): string {
+  const normalized = eventKind.toLowerCase();
+  if (normalized === 'session.tool' || normalized.includes('tool-executed')) return 'tool-executed';
+  if (normalized === 'session.prompt' || normalized.includes('prompt-submitted')) return 'prompt-submitted';
+  if (normalized === 'session.start' || normalized.includes('session-started')) return 'session-started';
+  if (normalized === 'session.end' || normalized.includes('session-ended')) return 'session-ended';
+  return eventKind;
+}
+
+export function HookCaptureView({
+  snapshot,
+  error = null,
+  isLoading = false,
+}: {
+  snapshot: ProjectionSnapshot<WorkEventRow>;
+  error?: Error | null;
+  isLoading?: boolean;
+}) {
+  const grouped = useMemo(() => {
+    const map = new Map<string, { count: number; newest: string }>();
+    for (const row of snapshot.rows) {
+      const type = hookEventType(row.event_kind);
+      const seen = map.get(type);
+      if (!seen) map.set(type, { count: 1, newest: row.emitted_at });
+      else {
+        seen.count += 1;
+        if (row.emitted_at > seen.newest) seen.newest = row.emitted_at;
+      }
+    }
+    return [...map.entries()].sort((left, right) => left[0].localeCompare(right[0]));
+  }, [snapshot.rows]);
+  const newest = newestFirst(snapshot.rows)[0];
+  const newestAgeMs = newest ? new Date(snapshot.readAt).getTime() - new Date(newest.emitted_at).getTime() : null;
+  const state = error ? 'UNKNOWN' : newestAgeMs !== null && newestAgeMs < 5 * 60 * 1_000 ? 'CAPTURING' : 'QUIET';
+
+  return (
+    <ComponentWrapper
+      title="Hook Capture"
+      isLoading={isLoading}
+      isEmpty={false}
+      isLive={state === 'CAPTURING'}
+      headerExtra={(
+        <FreshnessLine
+          freshness={snapshot.dataFreshness}
+          latestEventAt={snapshot.latestEventAt}
+          readAt={snapshot.readAt}
+        />
+      )}
+    >
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+        <Text as="div" size="sm" weight="semibold" color={state === 'CAPTURING' ? 'ok' : state === 'QUIET' ? 'tertiary' : 'warn'} data-testid="hook-capture-state">
+          {state}
+        </Text>
+        <Text as="div" size="xs" color="tertiary">
+          {state === 'CAPTURING'
+            ? 'Newest hook row is under five minutes old.'
+            : state === 'QUIET'
+              ? 'No recent hook row; no Claude Code session may be active.'
+              : `work.events is unreadable: ${error?.message || 'unknown read failure'}`}
+        </Text>
+        {grouped.map(([type, value]) => (
+          <div key={type} data-testid="hook-capture-row" style={{ display: 'grid', gridTemplateColumns: 'minmax(180px, 1fr) 80px 120px', gap: 8, padding: '6px 0', borderBottom: '1px solid var(--line-2)' }}>
+            <Text as="span" size="xs" family="mono" color="primary">{type}</Text>
+            <Text as="span" size="xs" family="mono" color="secondary">{value.count} read</Text>
+            <Text as="span" size="xs" family="mono" color="tertiary">newest {formatAge(value.newest, new Date(snapshot.readAt).getTime())} old</Text>
+          </div>
+        ))}
+      </div>
+    </ComponentWrapper>
+  );
+}
+
 export default function WorkEventsWidget(props: { config?: WorkEventsWidgetConfig }) {
   const config = props.config ?? {};
   const maxRows = Math.max(0, config.maxRows ?? 25);
 
-  const { data, isLoading, error } = useProjectionQuery<WorkEventRow>({
+  const query = useProjectionSnapshotQuery<WorkEventRow>({
     queryKey: ['work-events-widget', TOPICS.workEvents],
     topic: TOPICS.workEvents,
     refetchInterval: 30_000,
   });
 
-  const ordered = useMemo(() => newestFirst(data ?? []), [data]);
+  const snapshot = query.data ?? {
+    rows: [],
+    rowCount: 0,
+    dataFreshness: 'unknown' as const,
+    latestEventAt: null,
+    readAt: new Date().toISOString(),
+  };
+  const ordered = useMemo(() => newestFirst(snapshot.rows), [snapshot.rows]);
   const actorCount = useMemo(
     () => new Set(ordered.map((r) => r.actor_id ?? '')).size,
     [ordered],
@@ -211,13 +295,24 @@ export default function WorkEventsWidget(props: { config?: WorkEventsWidgetConfi
   const shown = useMemo(() => ordered.slice(0, maxRows), [ordered, maxRows]);
   const isEmpty = ordered.length === 0;
 
+  if (config.view === 'hook-capture') {
+    return <HookCaptureView snapshot={snapshot} error={query.error} isLoading={query.isLoading} />;
+  }
+
   return (
     <ComponentWrapper
       title="Work Events"
-      isLoading={isLoading}
-      error={error}
+      isLoading={query.isLoading}
+      error={query.error}
       isEmpty={isEmpty}
       isLive
+      headerExtra={(
+        <FreshnessLine
+          freshness={snapshot.dataFreshness}
+          latestEventAt={snapshot.latestEventAt}
+          readAt={snapshot.readAt}
+        />
+      )}
       emptyMessage="No work events"
       emptyHint="Rows appear once session lifecycle events reach node_projection_work_events and it republishes each materialized row onto the snapshot topic (OMN-17772). Hook traffic publishes on the stability lane while this consumer runs on dev, which OMN-17034 tracks."
     >

@@ -3,6 +3,7 @@ import { useQuery } from '@tanstack/react-query';
 import { Activity, GitBranch, Radio, ShieldCheck } from 'lucide-react';
 import { ComponentWrapper } from '../ComponentWrapper';
 import { Text } from '@/components/ui/typography';
+import { formatRedactedEventPayload } from '@/utils/redact-event-payload';
 import {
   fetchEvidencePipelineSnapshot,
   openEvidenceLiveEventStream,
@@ -47,9 +48,7 @@ function formatDateTime(value: string | null): string {
 }
 
 function redactPayloadSummary(value: string): string {
-  const redacted = value
-    .replace(/(api[_-]?key|token|secret|password)=([^,\s]+)/gi, '$1=[redacted]')
-    .replace(/("(?:api[_-]?key|token|secret|password)"\s*:\s*)"[^"]+"/gi, '$1"[redacted]"');
+  const redacted = formatRedactedEventPayload(value);
   return redacted.length > 180 ? `${redacted.slice(0, 177)}...` : redacted;
 }
 

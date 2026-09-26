@@ -42,7 +42,11 @@ export function createSnapshotSource(): ProtocolSnapshotSource {
 // single projection backend. Reintroducing a raw browser WebSocket here is
 // guarded by the `local/no-projection-websocket` ESLint rule.
 
-export type { ProtocolSnapshotSource };
+export type {
+  ProjectionDataFreshness,
+  ProjectionSnapshot,
+  ProtocolSnapshotSource,
+} from './protocol-snapshot-source';
 export { FileSnapshotSource } from './file-snapshot-source';
 export { HttpSnapshotSource } from './http-snapshot-source';
 export { SnapshotSourceProvider, useSnapshotSource } from './SnapshotSourceProvider';
