@@ -1807,7 +1807,7 @@
     "consumer-flow": {
       "name": "consumer-flow",
       "displayName": "Consumer Flow",
-      "description": "Per-consumer throughput truth: messages in / out / DLQ per (consumer_group, topic) window with the projection-derived flow verdict FLOWING / STALLED / STARVED / IDLE / UNKNOWN. This is the widget that separates a dead consumer from a quiet one — group membership, container health and LAG 0 all report green on a consumer that has consumed 15,750 messages and produced nothing (OMN-16755).",
+      "description": "Per-consumer throughput truth: messages in / out / DLQ per (consumer_group, topic) window with the projection-derived flow verdict FLOWING / CONSUMING / STALLED / STARVED / IDLE / UNKNOWN. This is the widget that separates a dead consumer from a quiet one — group membership, container health and LAG 0 all report green on a consumer that has consumed 15,750 messages and produced nothing (OMN-16755).",
       "category": "health",
       "version": "1.0.0",
       "implementationKey": "consumer-flow/ConsumerFlowWidget",
@@ -1905,6 +1905,7 @@
             "type": "string",
             "enum": [
               "FLOWING",
+              "CONSUMING",
               "STALLED",
               "STARVED",
               "IDLE",

@@ -190,7 +190,7 @@ export const TOPICS = {
    * windows materialised by `node_projection_consumer_flow` (OMN-16777, epic
    * OMN-16776 Phase 1) from the counters the runtime heartbeat already carries.
    * Each row carries the DERIVED verdict `flow_state`
-   * (FLOWING / STALLED / STARVED / IDLE / UNKNOWN) alongside messages_in,
+   * (FLOWING / CONSUMING / STALLED / STARVED / IDLE / UNKNOWN) alongside messages_in,
    * messages_out, messages_dlq and handler_errors. The verdict is computed in
    * the reducer and never on the client: a node that grades its own health can
    * be wrong about itself in exactly the way that hides an outage.

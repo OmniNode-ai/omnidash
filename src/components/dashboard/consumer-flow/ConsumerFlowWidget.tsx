@@ -8,12 +8,11 @@
 // what the projection already decided. A client that grades flow itself can be
 // wrong about the platform in exactly the way that hides an outage (OMN-16755).
 //
-// The four-state distinction is the whole point of OMN-16777, so it must survive
-// the render boundary: STALLED, STARVED, IDLE and FLOWING each carry their own
-// label, their own glyph, and their own `data-flow-state` attribute. UNKNOWN -- a
-// missed heartbeat window -- arrives with NULL counters and renders as "no
-// reading", never `0`, because an unobserved zero and an observed zero are
-// different facts.
+// The verdict distinction is the whole point of OMN-16777, so it must survive
+// the render boundary: STALLED, STARVED, IDLE, FLOWING and CONSUMING each carry
+// their own label, glyph, and `data-flow-state` attribute. UNKNOWN -- a missed
+// heartbeat window -- arrives with NULL counters and renders as "no reading",
+// never `0`, because an unobserved zero and an observed zero are different facts.
 
 import { useMemo } from 'react';
 import { ComponentWrapper } from '../ComponentWrapper';
@@ -23,6 +22,14 @@ import { Text, type TextColor } from '@/components/ui/typography';
 
 // Row shape mirrors the contract's projection_api.columns for
 // onex.snapshot.projection.consumer-flow.v1.
+export type ConsumerFlowState =
+  | 'FLOWING'
+  | 'CONSUMING'
+  | 'STALLED'
+  | 'STARVED'
+  | 'IDLE'
+  | 'UNKNOWN';
+
 export interface ConsumerFlowRow {
   consumer_group: string;
   topic: string;
@@ -36,7 +43,7 @@ export interface ConsumerFlowRow {
   handler_errors?: number | null;
   upstream_produced?: boolean | null;
   upstream_evidence?: string | null;
-  flow_state: string;
+  flow_state: ConsumerFlowState;
   evaluated_at?: string | null;
 }
 
@@ -47,7 +54,7 @@ export interface ConsumerFlowWidgetConfig {
   hideIdle?: boolean;
 }
 
-// Presentation of the four states (plus UNKNOWN).
+// Presentation of the five verdict states (plus UNKNOWN).
 //
 // Severity ordering is a PRESENTATION concern -- which row an operator reads
 // first. It is not a verdict: nothing here can turn a projection's IDLE into a
@@ -60,11 +67,12 @@ interface StatePresentation {
   rank: number;
 }
 
-const STATE_PRESENTATION: Record<string, StatePresentation> = {
+const STATE_PRESENTATION: Record<ConsumerFlowState, StatePresentation> = {
   STALLED: { label: 'STALLED', glyph: 'X', color: 'bad', rank: 0 },
   STARVED: { label: 'STARVED', glyph: '!', color: 'bad', rank: 1 },
   UNKNOWN: { label: 'UNKNOWN', glyph: '?', color: 'warn', rank: 2 },
   FLOWING: { label: 'FLOWING', glyph: '>', color: 'ok', rank: 3 },
+  CONSUMING: { label: 'CONSUMING', glyph: '>', color: 'ok', rank: 3 },
   IDLE: { label: 'IDLE', glyph: '.', color: 'tertiary', rank: 4 },
 };
 
@@ -72,7 +80,8 @@ const STATE_PRESENTATION: Record<string, StatePresentation> = {
 // under its own name and ranks ahead of the healthy states -- never silently
 // folded into IDLE, never dropped from the table.
 function presentationFor(state: string): StatePresentation {
-  return STATE_PRESENTATION[state] ?? { label: state, glyph: '?', color: 'warn', rank: 2 };
+  return STATE_PRESENTATION[state as ConsumerFlowState]
+    ?? { label: state, glyph: '?', color: 'warn', rank: 2 };
 }
 
 /**
