@@ -1,8 +1,5 @@
 import { useMemo } from 'react';
-import type {
-  ModelExecutionGraph,
-  ModelExecutionGraphNode,
-} from './render-model';
+import type { ModelExecutionGraphEdge, ModelExecutionGraph, ModelExecutionGraphNode } from './render-model';
 import { endpointNodeId, replayLabel } from './render-model';
 
 const NODE_WIDTH = 190;
@@ -37,7 +34,7 @@ function layoutNodes(graph: ModelExecutionGraph): Map<string, Position> {
     if (!byId.has(id)) continue;
     const parentId = parentById.get(id);
     const parent = parentId ? positions.get(parentId) : undefined;
-    const siblings = parentId ? childIdsByParent.get(parentId) ?? [] : [];
+    const siblings = parentId ? (childIdsByParent.get(parentId) ?? []) : [];
     const lane = parent && siblings.length === 1 ? parent.y / (NODE_HEIGHT + V_GAP) : nextLane++;
     positions.set(id, {
       x: parent ? parent.x + NODE_WIDTH + H_GAP : 24,
@@ -55,15 +52,22 @@ function nodeTitle(node: ModelExecutionGraphNode): string {
 export function SvgTreeRenderer({
   graph,
   selectedNodeId,
+  selectedEdgeId = null,
   onSelect,
+  onSelectEdge,
 }: {
   graph: ModelExecutionGraph;
   selectedNodeId: string | null;
+  selectedEdgeId?: string | null;
   onSelect: (node: ModelExecutionGraphNode) => void;
+  onSelectEdge?: (edge: ModelExecutionGraphEdge) => void;
 }) {
   const positions = useMemo(() => layoutNodes(graph), [graph]);
   const extent = [...positions.values()].reduce(
-    (acc, point) => ({ width: Math.max(acc.width, point.x + NODE_WIDTH + 24), height: Math.max(acc.height, point.y + NODE_HEIGHT + 24) }),
+    (acc, point) => ({
+      width: Math.max(acc.width, point.x + NODE_WIDTH + 24),
+      height: Math.max(acc.height, point.y + NODE_HEIGHT + 24),
+    }),
     { width: 640, height: 210 },
   );
 
@@ -99,9 +103,24 @@ export function SvgTreeRenderer({
               d={`M ${x1} ${y1} C ${mid} ${y1}, ${mid} ${y2}, ${x2} ${y2}`}
               fill="none"
               markerEnd="url(#execution-graph-arrow)"
-              stroke="var(--line-strong, #8a8d91)"
-              strokeWidth="1.5"
+              stroke={edge.id === selectedEdgeId ? 'var(--accent, #7c9)' : 'var(--line-strong, #8a8d91)'}
+              strokeWidth={edge.id === selectedEdgeId ? 3 : 1.5}
               data-edge-kind={edge.kind}
+              role={onSelectEdge ? 'button' : undefined}
+              tabIndex={onSelectEdge ? 0 : undefined}
+              aria-label={onSelectEdge ? `${edge.kind} edge. ${from} to ${to}. Select edge evidence.` : undefined}
+              aria-pressed={onSelectEdge ? edge.id === selectedEdgeId : undefined}
+              onClick={onSelectEdge ? () => onSelectEdge(edge) : undefined}
+              onKeyDown={
+                onSelectEdge
+                  ? (event) => {
+                      if (event.key === 'Enter' || event.key === ' ') {
+                        event.preventDefault();
+                        onSelectEdge(edge);
+                      }
+                    }
+                  : undefined
+              }
             />
           );
         })}

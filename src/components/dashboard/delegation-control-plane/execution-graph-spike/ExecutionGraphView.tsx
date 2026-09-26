@@ -2,30 +2,48 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { Text } from '@/components/ui/typography';
 import { SvgTreeRenderer } from './SvgTreeRenderer';
 import { useExecutionGraphTransport } from './ExecutionGraphTransport';
-import type { ModelExecutionGraph, ModelExecutionGraphNode } from './render-model';
+import type { ModelExecutionGraph, ModelExecutionGraphEdge, ModelExecutionGraphNode } from './render-model';
 import { replayLabel } from './render-model';
 import './execution-graph-spike.css';
 
-function NodeInspector({
-  graph,
-  node,
-}: {
-  graph: ModelExecutionGraph;
-  node: ModelExecutionGraphNode | null;
-}) {
+function NodeInspector({ graph, node }: { graph: ModelExecutionGraph; node: ModelExecutionGraphNode | null }) {
   if (!node) {
-    return <Text as="p" size="xs" color="tertiary">Select a node to inspect its recorded evidence.</Text>;
+    return (
+      <Text as="p" size="xs" color="tertiary">
+        Select a node to inspect its recorded evidence.
+      </Text>
+    );
   }
   const stored = graph.annotations.stored_chain.find((grade) => grade.node_id === node.id);
   const label = graph.labels.find((value) => value.node_id === node.id);
   return (
     <dl className="execution-graph-details">
-      <div><dt>Envelope</dt><dd>{node.id}</dd></div>
-      <div><dt>Topic</dt><dd>{node.topic}</dd></div>
-      <div><dt>Source</dt><dd>partition {node.partition}, offset {node.kafka_offset}</dd></div>
-      <div><dt>Recorded parent</dt><dd>{node.parent_envelope_id ?? 'none'}</dd></div>
-      <div><dt>Replay grade</dt><dd>{replayLabel(node)}</dd></div>
-      <div><dt>Verifier</dt><dd>{node.verifier_verdict ?? 'not recorded'}</dd></div>
+      <div>
+        <dt>Envelope</dt>
+        <dd>{node.id}</dd>
+      </div>
+      <div>
+        <dt>Topic</dt>
+        <dd>{node.topic}</dd>
+      </div>
+      <div>
+        <dt>Source</dt>
+        <dd>
+          partition {node.partition}, offset {node.kafka_offset}
+        </dd>
+      </div>
+      <div>
+        <dt>Recorded parent</dt>
+        <dd>{node.parent_envelope_id ?? 'none'}</dd>
+      </div>
+      <div>
+        <dt>Replay grade</dt>
+        <dd>{replayLabel(node)}</dd>
+      </div>
+      <div>
+        <dt>Verifier</dt>
+        <dd>{node.verifier_verdict ?? 'not recorded'}</dd>
+      </div>
       <div>
         <dt>Stored chain annotation</dt>
         <dd>
@@ -34,8 +52,52 @@ function NodeInspector({
             : 'no stored hop annotation'}
         </dd>
       </div>
-      <div><dt>Kafka source offset</dt><dd>{node.source_ref.kafka_offset}</dd></div>
-      <div><dt>Event timestamp label</dt><dd>{label?.event_timestamp ?? 'not recorded'}</dd></div>
+      <div>
+        <dt>Kafka source offset</dt>
+        <dd>{node.source_ref.kafka_offset}</dd>
+      </div>
+      <div>
+        <dt>Event timestamp label</dt>
+        <dd>{label?.event_timestamp ?? 'not recorded'}</dd>
+      </div>
+    </dl>
+  );
+}
+
+function EdgeInspector({ edge }: { edge: ModelExecutionGraphEdge }) {
+  const endpointLabel = (endpoint: ModelExecutionGraphEdge['from_id']) => {
+    if (endpoint.kind === 'node') return endpoint.node_id ?? 'unknown node';
+    if (endpoint.kind === 'verdict') return endpoint.verdict_id ?? 'unknown verdict';
+    return endpoint.session_id ?? 'unknown session';
+  };
+  return (
+    <dl className="execution-graph-details">
+      <div>
+        <dt>Recorded edge</dt>
+        <dd>{edge.id}</dd>
+      </div>
+      <div>
+        <dt>Relationship</dt>
+        <dd>{edge.kind}</dd>
+      </div>
+      <div>
+        <dt>From</dt>
+        <dd>{endpointLabel(edge.from_id)}</dd>
+      </div>
+      <div>
+        <dt>To</dt>
+        <dd>{endpointLabel(edge.to_id)}</dd>
+      </div>
+      <div>
+        <dt>Evidence source</dt>
+        <dd>{edge.evidence_ref.topic}</dd>
+      </div>
+      <div>
+        <dt>Evidence position</dt>
+        <dd>
+          partition {edge.evidence_ref.partition}, offset {edge.evidence_ref.kafka_offset}
+        </dd>
+      </div>
     </dl>
   );
 }
@@ -48,6 +110,7 @@ export function ExecutionGraphView({ correlationId }: { correlationId: string })
   const [playing, setPlaying] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null);
+  const [selectedEdgeId, setSelectedEdgeId] = useState<string | null>(null);
   const graphRef = useRef<ModelExecutionGraph | null>(null);
   const stepInFlight = useRef(false);
 
@@ -60,12 +123,14 @@ export function ExecutionGraphView({ correlationId }: { correlationId: string })
     setGraph(null);
     setError(null);
     setSelectedNodeId(null);
+    setSelectedEdgeId(null);
     graphRef.current = null;
     if (!transport) return;
 
     let cancelled = false;
     setLoading(true);
-    transport.readLatest(correlationId)
+    transport
+      .readLatest(correlationId)
       .then((result) => {
         if (cancelled) return;
         graphRef.current = result;
@@ -77,73 +142,125 @@ export function ExecutionGraphView({ correlationId }: { correlationId: string })
       .finally(() => {
         if (!cancelled) setLoading(false);
       });
-    return () => { cancelled = true; };
+    return () => {
+      cancelled = true;
+    };
   }, [correlationId, transport]);
 
-  const advance = useCallback(async (direction: 'previous' | 'next'): Promise<boolean> => {
-    const current = graphRef.current;
-    if (!transport || !current || stepInFlight.current) return false;
-    stepInFlight.current = true;
-    setBusy(true);
-    try {
-      const next = await transport.step(correlationId, current.replay.source_cursors, direction);
-      if (!next) return false;
-      graphRef.current = next;
-      setGraph(next);
-      setSelectedNodeId(null);
-      return true;
-    } catch (cause: unknown) {
-      setError(cause instanceof Error ? cause.message : 'Replay step failed.');
-      setPlaying(false);
-      return false;
-    } finally {
-      stepInFlight.current = false;
-      setBusy(false);
-    }
-  }, [correlationId, transport]);
+  const advance = useCallback(
+    async (direction: 'previous' | 'next'): Promise<boolean> => {
+      const current = graphRef.current;
+      if (!transport || !current || stepInFlight.current) return false;
+      stepInFlight.current = true;
+      setBusy(true);
+      try {
+        const next = await transport.step(correlationId, current.replay.source_cursors, direction);
+        if (!next) return false;
+        graphRef.current = next;
+        setGraph(next);
+        setSelectedNodeId(null);
+        setSelectedEdgeId(null);
+        return true;
+      } catch (cause: unknown) {
+        setError(cause instanceof Error ? cause.message : 'Replay step failed.');
+        setPlaying(false);
+        return false;
+      } finally {
+        stepInFlight.current = false;
+        setBusy(false);
+      }
+    },
+    [correlationId, transport],
+  );
 
   useEffect(() => {
     if (!playing) return;
-    const timer = window.setInterval(() => {
-      void advance('next').then((moved) => {
-        if (!moved) setPlaying(false);
-      });
+    let cancelled = false;
+    let timer: number;
+    const tick = async () => {
+      const moved = await advance('next');
+      if (cancelled) return;
+      if (!moved) {
+        setPlaying(false);
+        return;
+      }
+      timer = window.setTimeout(() => {
+        void tick();
+      }, 900);
+    };
+    timer = window.setTimeout(() => {
+      void tick();
     }, 900);
-    return () => window.clearInterval(timer);
+    return () => {
+      cancelled = true;
+      window.clearTimeout(timer);
+    };
   }, [advance, playing]);
 
   if (!transport) {
     return (
       <div className="execution-graph-state" role="status">
-        <Text as="span" size="sm" weight="semibold" color="secondary">Graph read is not connected.</Text>
+        <Text as="span" size="sm" weight="semibold" color="secondary">
+          Graph read is not connected.
+        </Text>
         <Text as="span" size="xs" color="tertiary">
           Connect the trusted workflow transport. This view does not accept tenant overrides or read directly from a database.
         </Text>
       </div>
     );
   }
-  if (loading) return <Text as="div" size="sm" color="tertiary">Loading recorded graph…</Text>;
+  if (loading)
+    return (
+      <Text as="div" size="sm" color="tertiary">
+        Loading recorded graph…
+      </Text>
+    );
   if (error) {
     return (
       <div className="execution-graph-state" role="alert">
-        <Text as="span" size="sm" weight="semibold" color="bad">Graph read failed.</Text>
-        <Text as="span" size="xs" color="secondary">{error}</Text>
+        <Text as="span" size="sm" weight="semibold" color="bad">
+          Graph read failed.
+        </Text>
+        <Text as="span" size="xs" color="secondary">
+          {error}
+        </Text>
       </div>
     );
   }
-  if (!graph) return <Text as="div" size="sm" color="tertiary">No replay is available for this correlation.</Text>;
+  if (!graph)
+    return (
+      <Text as="div" size="sm" color="tertiary">
+        No replay is available for this correlation.
+      </Text>
+    );
 
   if (graph.replay.refusal) {
     return (
       <div className="execution-graph-refusal" role="status">
-        <Text as="span" size="sm" weight="semibold" color="bad">This replay was refused.</Text>
-        <Text as="span" size="xs" family="mono" color="secondary">{graph.replay.refusal}</Text>
-        <Text as="span" size="xs" color="tertiary">No graph is drawn from conflicting or invalid evidence.</Text>
+        <Text as="span" size="sm" weight="semibold" color="bad">
+          This replay was refused.
+        </Text>
+        <Text as="span" size="xs" family="mono" color="secondary">
+          {graph.replay.refusal}
+        </Text>
+        <Text as="span" size="xs" color="tertiary">
+          No graph is drawn from conflicting or invalid evidence.
+        </Text>
       </div>
     );
   }
 
   const selectedNode = graph.replay.nodes.find((node) => node.id === selectedNodeId) ?? null;
+  const selectedEdge = graph.replay.edges.find((edge) => edge.id === selectedEdgeId) ?? null;
+  const statusCounts = graph.replay.nodes.reduce(
+    (counts, node) => {
+      if (node.replay_green === true) counts.passed += 1;
+      else if (node.replay_green === false) counts.failed += 1;
+      else counts.unknown += 1;
+      return counts;
+    },
+    { passed: 0, failed: 0, unknown: 0 },
+  );
   return (
     <div className="execution-graph-view">
       <div className="execution-graph-view__meta">
@@ -159,13 +276,27 @@ export function ExecutionGraphView({ correlationId }: { correlationId: string })
       <SvgTreeRenderer
         graph={graph}
         selectedNodeId={selectedNodeId}
-        onSelect={(node) => setSelectedNodeId(node.id)}
+        selectedEdgeId={selectedEdgeId}
+        onSelect={(node) => {
+          setSelectedNodeId(node.id);
+          setSelectedEdgeId(null);
+        }}
+        onSelectEdge={(edge) => {
+          setSelectedEdgeId(edge.id);
+          setSelectedNodeId(null);
+        }}
       />
 
       <div className="execution-graph-legend" aria-label="Replay legend">
-        <span><i className="execution-graph-legend__mark execution-graph-legend__mark--passed" /> Replay passed</span>
-        <span><i className="execution-graph-legend__mark execution-graph-legend__mark--failed" /> Replay failed</span>
-        <span><i className="execution-graph-legend__mark execution-graph-legend__mark--unknown" /> Unknown</span>
+        <span>
+          <i className="execution-graph-legend__mark execution-graph-legend__mark--passed" /> Replay passed ({statusCounts.passed})
+        </span>
+        <span>
+          <i className="execution-graph-legend__mark execution-graph-legend__mark--failed" /> Replay failed ({statusCounts.failed})
+        </span>
+        <span>
+          <i className="execution-graph-legend__mark execution-graph-legend__mark--unknown" /> Unknown ({statusCounts.unknown})
+        </span>
       </div>
 
       <div className="execution-graph-cursor" aria-label="Replay cursor controls">
@@ -184,8 +315,10 @@ export function ExecutionGraphView({ correlationId }: { correlationId: string })
       </div>
 
       <section className="execution-graph-inspector" aria-label="Selected graph evidence">
-        <Text as="h3" size="xs" weight="semibold" color="secondary">Selected evidence</Text>
-        <NodeInspector graph={graph} node={selectedNode} />
+        <Text as="h3" size="xs" weight="semibold" color="secondary">
+          Selected evidence
+        </Text>
+        {selectedEdge ? <EdgeInspector edge={selectedEdge} /> : <NodeInspector graph={graph} node={selectedNode} />}
       </section>
     </div>
   );
