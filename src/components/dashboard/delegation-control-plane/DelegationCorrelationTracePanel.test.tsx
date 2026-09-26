@@ -1,4 +1,4 @@
-import { render, screen, waitFor } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { DelegationCorrelationTracePanel } from './DelegationCorrelationTracePanel';
 import * as delegationApi from '@/services/delegation-api';
@@ -49,6 +49,32 @@ describe('DelegationCorrelationTracePanel', () => {
     render(<DelegationCorrelationTracePanel />);
 
     expect(screen.getByText(/No run selected/i)).toBeTruthy();
+  });
+
+  it('opens graph mode in-place and fails closed until a trusted graph transport is injected', async () => {
+    mockUseDelegationRunContext.mockReturnValue({
+      ...mockContextValue,
+      selectedRun: {
+        id: 'test-correlation-id',
+        correlationId: 'test-correlation-id',
+        taskType: 'code_review',
+        modelName: 'qwen3',
+        status: 'passed',
+        source: 'decision_projection',
+        latencyMs: 1200,
+        createdAt: '2026-05-25T10:00:00Z',
+      },
+    });
+    vi.spyOn(delegationApi, 'fetchCorrelationTrace').mockResolvedValue({
+      correlation_id: 'test-correlation-id',
+      rows: [],
+    });
+
+    render(<DelegationCorrelationTracePanel />);
+    fireEvent.click(screen.getByRole('button', { name: 'Execution graph' }));
+
+    expect(await screen.findByText('Graph read is not connected.')).toBeTruthy();
+    expect(screen.getByText(/does not accept tenant overrides/i)).toBeTruthy();
   });
 
   it('fetches and renders trace rows when a run is selected', async () => {

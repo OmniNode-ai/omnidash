@@ -4,6 +4,7 @@ import { DelegationPanelFrame } from './DelegationPanelFrame';
 import { useDelegationRunContext } from './DelegationRunContext';
 import { fetchCorrelationTrace, type CorrelationTraceEvent } from '@/services/delegation-api';
 import { fmtDate, fmtMs, fmtTokens, fmtUsd } from './format';
+import { ExecutionGraphView } from './execution-graph-spike/ExecutionGraphView';
 
 function fmtBool(value: boolean | null | undefined): { label: string; color: 'ok' | 'bad' | 'tertiary' } {
   if (value === true) return { label: 'passed', color: 'ok' };
@@ -211,12 +212,14 @@ export function DelegationCorrelationTracePanel() {
   // so the trace panel reflects a freshly-dispatched run before it materializes in projection rows.
   const correlationId = selectedRun?.correlationId ?? pendingCorrelationId;
 
+  const [viewMode, setViewMode] = useState<'events' | 'graph'>('events');
+
   const [rows, setRows] = useState<CorrelationTraceEvent[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    if (!correlationId) {
+    if (!correlationId || viewMode !== 'events') {
       setRows([]);
       return;
     }
@@ -237,7 +240,7 @@ export function DelegationCorrelationTracePanel() {
       });
 
     return () => { cancelled = true; };
-  }, [correlationId]);
+  }, [correlationId, viewMode]);
 
   if (!correlationId) {
     return (
@@ -263,6 +266,15 @@ export function DelegationCorrelationTracePanel() {
       <Text as="div" size="xs" family="mono" color="tertiary" style={{ marginBottom: 10, overflowWrap: 'break-word' }}>
         {correlationId}
       </Text>
+
+      <div role="group" aria-label="Correlation trace view" style={{ display: 'flex', gap: 6, marginBottom: 12 }}>
+        <button type="button" aria-pressed={viewMode === 'events'} onClick={() => setViewMode('events')}>Events</button>
+        <button type="button" aria-pressed={viewMode === 'graph'} onClick={() => setViewMode('graph')}>Execution graph</button>
+      </div>
+
+      {viewMode === 'graph' ? (
+        <ExecutionGraphView correlationId={correlationId} />
+      ) : <>
 
       {loading && (
         <Text as="div" size="sm" color="tertiary">Loading trace…</Text>
@@ -301,6 +313,7 @@ export function DelegationCorrelationTracePanel() {
           ))}
         </div>
       )}
+      </>}
     </DelegationPanelFrame>
   );
 }
