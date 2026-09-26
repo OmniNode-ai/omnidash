@@ -61,6 +61,29 @@ export interface KeycloakAdminClient {
   applyTenantAttributes(subject: string, attrs: TenantAttributes): Promise<ApplyResult>;
 }
 
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null && !Array.isArray(value);
+}
+
+function parseAccessToken(value: unknown): string | null {
+  if (!isRecord(value) || typeof value.access_token !== 'string') return null;
+  return value.access_token;
+}
+
+function parseUserAttributes(value: unknown): Record<string, string[]> {
+  if (value === undefined) return {};
+  if (!isRecord(value)) throw new Error('keycloak admin GET user returned invalid attributes');
+
+  const attributes: Record<string, string[]> = {};
+  for (const [key, entry] of Object.entries(value)) {
+    if (!Array.isArray(entry) || !entry.every((item): item is string => typeof item === 'string')) {
+      throw new Error('keycloak admin GET user returned invalid attributes');
+    }
+    attributes[key] = entry;
+  }
+  return attributes;
+}
+
 /** The exact admin-API steps needed to bind a user to a tenant. Pure. */
 export function planTenantAttributeSteps(
   subject: string,
@@ -123,11 +146,12 @@ export function createKeycloakAdminClient(options: KeycloakAdminOptions): Keyclo
     if (!res.ok) {
       throw new Error(`keycloak admin token request failed: HTTP ${res.status}`);
     }
-    const body = (await res.json()) as { access_token?: string };
-    if (!body.access_token) {
+    const body: unknown = await res.json();
+    const accessToken = parseAccessToken(body);
+    if (!accessToken) {
       throw new Error('keycloak admin token response missing access_token');
     }
-    return body.access_token;
+    return accessToken;
   }
 
   return {
@@ -143,7 +167,11 @@ export function createKeycloakAdminClient(options: KeycloakAdminOptions): Keyclo
       if (!getRes.ok) {
         throw new Error(`keycloak admin GET user failed: HTTP ${getRes.status}`);
       }
-      const user = (await getRes.json()) as { attributes?: Record<string, string[]> };
+      const rawUser: unknown = await getRes.json();
+      if (!isRecord(rawUser)) {
+        throw new Error('keycloak admin GET user response must be an object');
+      }
+      const existingAttributes = parseUserAttributes(rawUser.attributes);
 
       const putRes = await fetchImpl(userUrl, {
         method: 'PUT',
@@ -152,9 +180,9 @@ export function createKeycloakAdminClient(options: KeycloakAdminOptions): Keyclo
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          ...user,
+          ...rawUser,
           attributes: {
-            ...(user.attributes ?? {}),
+            ...existingAttributes,
             tenant_id: [attrs.tenantId],
             tenant_slug: [attrs.tenantSlug],
           },

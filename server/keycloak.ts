@@ -56,9 +56,14 @@ export function tenantFromSession(req: Request): TenantContext | null {
 
   try {
     // The grant is stored as JSON: { access_token: '<jwt>', ... }
-    const grant = JSON.parse(raw) as { access_token?: string };
-    const jwt = grant.access_token;
-    if (!jwt) return null;
+    const parsedGrant: unknown = JSON.parse(raw);
+    if (
+      typeof parsedGrant !== 'object'
+      || parsedGrant === null
+      || !('access_token' in parsedGrant)
+      || typeof parsedGrant.access_token !== 'string'
+    ) return null;
+    const jwt = parsedGrant.access_token;
 
     const payload = decodeJwt(jwt);
 
