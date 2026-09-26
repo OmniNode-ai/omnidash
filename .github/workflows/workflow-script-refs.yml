@@ -99,3 +99,13 @@ jobs:
           python -m pytest
           tests/ci/test_occ_companion_effect_edited_trigger_omn_18334.py
           -q --noconftest -p no:cacheprovider -c /dev/null
+
+      # OMN-19612: this is the required, unconditional, unfiltered bare-env
+      # Python job, so PRs changing .pre-commit-config.yaml or ci.yml always
+      # run the pins.
+      - name: Assert OMN-19612 staged-hook backstops and their CI wiring
+        run: >-
+          python -m pytest tests/ci/test_precommit_ci_backstops_omn19612.py
+          tests/ci/test_precommit_staged_scope_omn19612.py
+          tests/ci/test_precommit_pin_tests_run_in_ci_omn19612.py
+          -q --noconftest -p no:cacheprovider -c /dev/null

@@ -40,15 +40,15 @@ repos:
         name: Block hardcoded URLs/IPs/paths
         entry: bash scripts/check-no-env-contamination.sh
         language: system
-        pass_filenames: false
-        always_run: true
+        pass_filenames: true
+        files: ^((src|server|scripts|tests|\.github)/.*\.(js|jsx|ts|tsx|sh|ya?ml)|\.pre-commit-config\.yaml)$
 
       - id: delegation-refs-check
         name: Block hardcoded delegation refs in browser bundle
         entry: bash scripts/check-hardcoded-delegation-refs.sh
         language: system
-        pass_filenames: false
-        always_run: true
+        pass_filenames: true
+        files: ^(src/.*\.(js|jsx|ts|tsx)|scripts/check-hardcoded-delegation-refs\.sh|\.pre-commit-config\.yaml)$
 
       - id: eslint
         name: ESLint (changed JS/TS files)

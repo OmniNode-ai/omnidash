@@ -31,6 +31,16 @@ jobs:
       - name: Env-contamination gate
         run: bash scripts/check-no-env-contamination.sh
 
+      # OMN-19612: delegation-refs-check runs staged-file-scoped in
+      # .pre-commit-config.yaml (pass_filenames: true). Its only prior
+      # whole-tree run was a path-filtered, non-required job
+      # (hardcoded-delegation-refs.yml, paths: src/**|shared/**|server/**),
+      # so a violation outside that filter, or on a PR this job's own trigger
+      # excluded, was never caught. This step is the required, unconditional,
+      # unfiltered counterpart.
+      - name: Delegation-refs gate
+        run: bash scripts/check-hardcoded-delegation-refs.sh
+
       - name: Orphaned JS gate
         run: bash scripts/check-no-orphaned-js.sh
 

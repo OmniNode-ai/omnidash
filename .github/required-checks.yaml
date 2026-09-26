@@ -80,6 +80,14 @@ gates:
     skip_semantics: never
     rationale: "Live required status check on omnidash dev branch protection."
 
+  - name: "Workflow Script Reference Gate"
+    mode: REQUIRED
+    producer_kind: local
+    workflow: workflow-script-refs.yml
+    job_path: ["workflow-script-refs"]
+    skip_semantics: never
+    rationale: "Live-required on dev (gh api readback 2026-09-26) and the CI runner of the OMN-19612 pin tests."
+
   - name: "golden-chain"
     mode: REQUIRED
     producer_kind: local
