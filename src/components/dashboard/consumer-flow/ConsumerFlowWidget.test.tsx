@@ -50,6 +50,13 @@ const FLOWING = row({
   messages_out: 3,
   flow_state: 'FLOWING',
 });
+const CONSUMING = row({
+  consumer_group: 'local.omnimarket.projection_work_events_writer.consume.1.0.0',
+  topic: 'onex.evt.omnimarket.work-event-recorded.v1',
+  messages_in: 3,
+  messages_out: 0,
+  flow_state: 'CONSUMING',
+});
 const STARVED = row({
   consumer_group: 'local.omnibase_infra.node_registration_orchestrator.consume.1.1.1',
   messages_in: 0,
@@ -113,12 +120,21 @@ describe('ConsumerFlowWidget', () => {
     );
   });
 
-  it('gives all four states plus UNKNOWN a distinct label and glyph', async () => {
-    await renderWith([STALLED, STARVED, IDLE, FLOWING, UNKNOWN], { hideIdle: false });
+  it('gives every state a distinct label and glyph', async () => {
+    await renderWith([STALLED, STARVED, IDLE, FLOWING, CONSUMING, UNKNOWN], { hideIdle: false });
     const labels = screen
       .getAllByTestId('consumer-flow-state')
       .map((el) => el.textContent?.trim());
-    expect(new Set(labels).size).toBe(5);
+    expect(new Set(labels).size).toBe(6);
+  });
+
+  it('renders CONSUMING as the projection-provided healthy sink verdict', async () => {
+    await renderWith([CONSUMING]);
+    const consuming = screen
+      .getByText(CONSUMING.consumer_group)
+      .closest('[data-testid="consumer-flow-row"]') as HTMLElement;
+    expect(consuming).toHaveAttribute('data-flow-state', 'CONSUMING');
+    expect(within(consuming).getByTestId('consumer-flow-state')).toHaveTextContent('CONSUMING');
   });
 
   // The verdict is the projection's, never the client's.

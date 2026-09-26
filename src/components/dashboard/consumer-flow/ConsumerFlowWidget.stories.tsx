@@ -4,7 +4,7 @@
 // projection API at 2026-08-30T15:19:18Z
 // (`GET /projection/onex.snapshot.projection.consumer-flow.v1`). Storybook is the
 // render-time gate for this widget, and a gate fed invented data proves the
-// widget renders invented data. `FourStates` is the story that shows the epic's
+// widget renders invented data. `AllStates` is the story that shows the epic's
 // load-bearing distinction surviving the render boundary.
 import type { Meta, StoryObj } from '@storybook/react-vite';
 import ConsumerFlowWidget, { type ConsumerFlowRow } from './ConsumerFlowWidget';
@@ -52,6 +52,14 @@ const FLOWING = row({
   flow_state: 'FLOWING',
 });
 
+const CONSUMING = row({
+  consumer_group: 'local.omnimarket.projection_work_events_writer.consume.1.0.0',
+  topic: 'onex.evt.omnimarket.work-event-recorded.v1',
+  messages_in: 3,
+  messages_out: 0,
+  flow_state: 'CONSUMING',
+});
+
 const IDLE = row({
   consumer_group: 'local.omnimarket.volume_config_drift_sweep.consume.1.0.0',
   topic: 'onex.cmd.omnimarket.volume-config-drift-sweep-start.v1',
@@ -90,13 +98,13 @@ export const Loading: Story = {
 
 export const Populated: Story = {
   args: { config: { hideIdle: false } },
-  decorators: [withRows([STALLED, STARVED, FLOWING, IDLE])],
+  decorators: [withRows([STALLED, STARVED, FLOWING, CONSUMING, IDLE])],
 };
 
-/** The four-state distinction plus UNKNOWN, which is the deliverable. */
-export const FourStates: Story = {
+/** Every verdict plus UNKNOWN, which is the render-boundary deliverable. */
+export const AllStates: Story = {
   args: { config: { hideIdle: false } },
-  decorators: [withRows([STALLED, STARVED, UNKNOWN, FLOWING, IDLE])],
+  decorators: [withRows([STALLED, STARVED, UNKNOWN, FLOWING, CONSUMING, IDLE])],
 };
 
 /** Everything quiet — stated explicitly, never rendered as an empty table. */
@@ -108,5 +116,5 @@ export const AllIdle: Story = {
 /** The default palette drop: IDLE collapsed behind the summary line. */
 export const IdleCollapsed: Story = {
   args: { config: {} },
-  decorators: [withRows([STALLED, FLOWING, IDLE])],
+  decorators: [withRows([STALLED, FLOWING, CONSUMING, IDLE])],
 };
