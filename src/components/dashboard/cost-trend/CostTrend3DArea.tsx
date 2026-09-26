@@ -1058,10 +1058,9 @@ export default function CostTrend3DArea({ config: _config }: { config: Record<st
 
   // Apply dashboard-level time range before reshaping.
   const timeRange = useFrameStore((s) => s.globalFilters.timeRange);
-  const resolvedRange = useMemo(() => resolveTimeRange(timeRange), [timeRange]);
   const filteredData = useMemo(
-    () => applyTimeRange(data, (d) => d.bucket_time, resolvedRange),
-    [data, resolvedRange],
+    () => applyTimeRange(data, (d) => d.bucket_time, resolveTimeRange(timeRange)),
+    [data, timeRange],
   );
   const dataset = useMemo(
     () => (filteredData.length > 0 ? reshapeToGrid(filteredData) : null),

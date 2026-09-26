@@ -1104,10 +1104,9 @@ export default function CostTrend3D({ config: _config }: { config: Record<string
   // built from whatever falls inside the window. Widget declares
   // supports_time_range: true in its manifest.
   const timeRange = useFrameStore((s) => s.globalFilters.timeRange);
-  const resolvedRange = useMemo(() => resolveTimeRange(timeRange), [timeRange]);
   const filteredData = useMemo(
-    () => applyTimeRange(data, (d) => d.bucket_time, resolvedRange),
-    [data, resolvedRange],
+    () => applyTimeRange(data, (d) => d.bucket_time, resolveTimeRange(timeRange)),
+    [data, timeRange],
   );
   const dataset = useMemo(
     () => (filteredData.length > 0 ? reshapeToGrid(filteredData) : null),

@@ -477,10 +477,15 @@ export default function CostByModelPie({ config: _config }: { config: Record<str
 
   // Dashboard-level time range (supports_time_range: true).
   const timeRange = useFrameStore((s) => s.globalFilters.timeRange);
-  const resolved = useMemo(() => resolveTimeRange(timeRange), [timeRange]);
-  const filteredData = useMemo(
-    () => applyTimeRange(data, (d) => d.bucket_time, resolved),
-    [data, resolved],
+  const { filteredData, rangeActive } = useMemo(
+    () => {
+      const resolved = resolveTimeRange(timeRange);
+      return {
+        filteredData: applyTimeRange(data, (d) => d.bucket_time, resolved),
+        rangeActive: Boolean(resolved),
+      };
+    },
+    [data, timeRange],
   );
 
   const colors = useThemeColors();
@@ -502,7 +507,6 @@ export default function CostByModelPie({ config: _config }: { config: Record<str
   );
 
   const hasAnyData = Boolean(data && data.length > 0);
-  const rangeActive = Boolean(resolved);
   const inRangeEmpty = hasAnyData && slices.length === 0;
 
   return (

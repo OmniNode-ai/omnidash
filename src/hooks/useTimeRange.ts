@@ -14,9 +14,19 @@ export interface ResolvedRange {
   end: Date;
 }
 
-/** Turns the store's string ISO range into Date objects. null = no filter. */
+/** Resolves rolling presets or turns an absolute ISO range into Date objects. */
 export function resolveTimeRange(range: TimeRange | undefined): ResolvedRange | null {
   if (!range) return null;
+
+  const relativeMs =
+    typeof range.relativeMs === 'number' && Number.isFinite(range.relativeMs) && range.relativeMs > 0
+      ? range.relativeMs
+      : TIME_RANGE_PRESETS.find((preset) => preset.label === range.label)?.ms;
+  if (relativeMs !== undefined) {
+    const now = Date.now();
+    return { start: new Date(now - relativeMs), end: new Date(now) };
+  }
+
   const start = new Date(range.start);
   const end = new Date(range.end);
   if (Number.isNaN(start.getTime()) || Number.isNaN(end.getTime())) return null;
@@ -63,12 +73,13 @@ export const TIME_RANGE_PRESETS: TimeRangePreset[] = [
   { label: 'Last 30d', ms: 30 * 24 * 60 * 60 * 1000 },
 ];
 
-/** Turn a preset into a concrete range pinned to now. */
+/** Store a preset snapshot plus its rolling-window width. */
 export function rangeFromPreset(preset: TimeRangePreset): TimeRange {
   const now = Date.now();
   return {
     start: new Date(now - preset.ms).toISOString(),
     end: new Date(now).toISOString(),
+    relativeMs: preset.ms,
     label: preset.label,
   };
 }
