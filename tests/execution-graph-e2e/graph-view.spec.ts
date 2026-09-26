@@ -78,12 +78,16 @@ test('correlation panel toggles Events to the exact five-hop fixture and back', 
 
   const view = page.getByRole('group', { name: 'Correlation trace view' });
   await expect(view).toBeVisible();
+  await expect(page.getByText('projection-backed')).toHaveCount(0);
+  await expect(page.getByText(/Fixture event chain.*No live projection is connected/i)).toBeVisible();
+  await expect(page.getByText(/Source: delegation_events table/i)).toHaveCount(0);
   await expect(view.getByRole('button', { name: 'Events' })).toHaveAttribute('aria-pressed', 'true');
   await expect(page.getByText(/No events found/i)).toBeVisible();
 
   await view.getByRole('button', { name: 'Execution graph' }).click();
   const graph = page.getByRole('group', { name: 'Recorded delegation execution graph' });
   await expect(graph).toBeVisible();
+  await expect(page.getByText('Fixture graph — no live projection.')).toBeVisible();
   await expect(page.getByText('5 recorded nodes, 4 recorded edges')).toBeVisible();
   await expect(graph.locator('.execution-graph-node')).toHaveCount(5);
   await expect(graph.locator('path[data-edge-kind]')).toHaveCount(4);

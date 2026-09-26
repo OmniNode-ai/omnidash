@@ -207,7 +207,7 @@ function LabeledValue({
 }
 
 export function DelegationCorrelationTracePanel() {
-  const { selectedRun, pendingCorrelationId } = useDelegationRunContext();
+  const { selectedRun, pendingCorrelationId, isFixture } = useDelegationRunContext();
   // Prefer the selected run's correlation_id; fall back to the pending trigger correlation_id
   // so the trace panel reflects a freshly-dispatched run before it materializes in projection rows.
   const correlationId = selectedRun?.correlationId ?? pendingCorrelationId;
@@ -246,7 +246,7 @@ export function DelegationCorrelationTracePanel() {
     return (
       <DelegationPanelFrame
         title="Correlation Trace"
-        authority="projection-backed"
+        authority={isFixture ? undefined : 'projection-backed'}
         subtitle="Select a run from the table above to see its full event chain, or trigger a delegation dispatch."
       >
         <Text as="div" size="sm" color="tertiary">No run selected.</Text>
@@ -258,10 +258,12 @@ export function DelegationCorrelationTracePanel() {
   return (
     <DelegationPanelFrame
       title="Correlation Trace"
-      authority="projection-backed"
+      authority={isFixture ? undefined : 'projection-backed'}
       subtitle={isPending
         ? `Awaiting projection rows for dispatched correlation ${correlationId}. Events will appear once the runtime processes the command.`
-        : `Full event chain for correlation ${correlationId}. Ordered by created_at ascending. Source: delegation_events table.`}
+        : isFixture
+          ? `Fixture event chain for correlation ${correlationId}. No live projection is connected.`
+          : `Full event chain for correlation ${correlationId}. Ordered by created_at ascending. Source: delegation_events table.`}
     >
       <Text as="div" size="xs" family="mono" color="tertiary" style={{ marginBottom: 10, overflowWrap: 'break-word' }}>
         {correlationId}
@@ -273,7 +275,14 @@ export function DelegationCorrelationTracePanel() {
       </div>
 
       {viewMode === 'graph' ? (
-        <ExecutionGraphView correlationId={correlationId} />
+        <>
+          {isFixture && (
+            <Text as="div" size="xs" color="tertiary" style={{ marginBottom: 8 }}>
+              Fixture graph — no live projection.
+            </Text>
+          )}
+          <ExecutionGraphView correlationId={correlationId} />
+        </>
       ) : <>
 
       {loading && (

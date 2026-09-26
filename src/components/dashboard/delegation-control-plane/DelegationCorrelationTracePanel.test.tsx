@@ -85,6 +85,7 @@ describe('DelegationCorrelationTracePanel', () => {
   it('switches between Events and the injected five-hop graph without live transport', async () => {
     mockUseDelegationRunContext.mockReturnValue({
       ...mockContextValue,
+      isFixture: true,
       selectedRun: {
         id: realFiveHopGraph.replay.correlation_id,
         correlationId: realFiveHopGraph.replay.correlation_id,
@@ -109,8 +110,12 @@ describe('DelegationCorrelationTracePanel', () => {
       </ExecutionGraphTransportProvider>,
     );
 
+    expect(screen.queryByText('projection-backed')).toBeNull();
+    expect(screen.getByText(/Fixture event chain.*No live projection is connected/i)).toBeTruthy();
+    expect(screen.queryByText(/Source: delegation_events table/i)).toBeNull();
     fireEvent.click(screen.getByRole('button', { name: 'Execution graph' }));
     expect(await screen.findByText('5 recorded nodes, 4 recorded edges')).toBeTruthy();
+    expect(screen.getByText('Fixture graph — no live projection.')).toBeTruthy();
     expect(screen.getAllByRole('button', { name: /Replay passed/ })).toHaveLength(5);
     fireEvent.click(screen.getByRole('button', { name: /delegation-request\.v1\. Replay passed/ }));
     expect(screen.getByText('Selected evidence')).toBeTruthy();
@@ -119,6 +124,8 @@ describe('DelegationCorrelationTracePanel', () => {
 
     fireEvent.click(screen.getByRole('button', { name: 'Events' }));
     expect(await screen.findByText(/No events found/i)).toBeTruthy();
+    expect(screen.queryByText('projection-backed')).toBeNull();
+    expect(screen.queryByText(/Source: delegation_events table/i)).toBeNull();
     expect(transport.readLatest).toHaveBeenCalledWith(realFiveHopGraph.replay.correlation_id);
   });
 
