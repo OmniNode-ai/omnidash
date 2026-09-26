@@ -132,10 +132,9 @@ export default function RoutingDecisionTable({ config }: { config: Record<string
   const tz = useTimezone();
   const timeRange = useFrameStore((s) => s.globalFilters.timeRange);
   const setTraceFilter = useFrameStore((s) => s.setTraceFilter);
-  const resolved = useMemo(() => resolveTimeRange(timeRange), [timeRange]);
   const inRange = useMemo(
-    () => applyTimeRange(data, (d) => d.created_at, resolved),
-    [data, resolved],
+    () => applyTimeRange(data, (d) => d.created_at, resolveTimeRange(timeRange)),
+    [data, timeRange],
   );
 
   const displayRows = useMemo(() => inRange.map((row) => toDisplayRow(row, tz)), [inRange, tz]);

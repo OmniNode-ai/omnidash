@@ -9,11 +9,9 @@
 //     start/end range picker (calendar + time inputs). The popover
 //     stays open when switching between them; Apply commits + closes,
 //     Cancel returns to the preset list.
-//   - Preset selection resolves to absolute ISO timestamps at click-time
-//     and stores those in the range. The window doesn't auto-advance
-//     with auto-refresh — the user re-picks to refresh. This keeps the
-//     model simple and avoids per-frame re-resolution churn on widgets
-//     whose useMemo deps would otherwise invalidate every tick.
+//   - Preset selection stores its width alongside an ISO snapshot. Widgets
+//     resolve that width against the current time whenever refreshed data
+//     arrives, so presets remain rolling windows. Custom ranges stay fixed.
 //   - On first mount, if the store has no time range yet, we seed the
 //     default preset (Last 24h). Makes fresh dashboards land on a
 //     sensible window rather than "show me 48h of synthetic fixtures".
