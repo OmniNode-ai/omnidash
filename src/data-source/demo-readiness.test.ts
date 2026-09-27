@@ -27,6 +27,7 @@ describe('parseDemoReadinessRow', () => {
     expect(parseDemoReadinessRow({ ...valid, status: 'GREEN', dashboard_configuration: undefined })).toBeNull();
     expect(parseDemoReadinessRow({ ...valid, status: 'GREEN' })).toBeNull();
     expect(parseDemoReadinessRow({ ...valid, status: 'UNCONFIGURED', dashboard_configuration: 'CONFIGURED' })).toBeNull();
+    expect(parseDemoReadinessRow({ ...valid, status: 'GREEN', dashboard_configuration: 'UNCONFIGURED' })).toBeNull();
   });
 
   it('refuses unknown nodes and invalid timestamps', () => {

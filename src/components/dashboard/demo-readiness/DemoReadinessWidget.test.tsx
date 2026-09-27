@@ -40,7 +40,8 @@ describe('DemoReadinessView', () => {
     const rows = screen.getAllByTestId('demo-readiness-row');
     expect(rows[0]).toHaveAttribute('data-status', 'GREEN');
     expect(rows[1]).toHaveAttribute('data-status', 'UNCONFIGURED');
-    expect(rows[1]).toHaveTextContent('Dashboard URL: UNCONFIGURED');
+    expect(rows[0]).toHaveTextContent('Dashboard URL set');
+    expect(rows[1]).toHaveTextContent('Dashboard URL missing');
     expect(rows[1]).toHaveTextContent('Set DEMO_DASHBOARD_URL');
     expect(rows[1]).toHaveTextContent('1m old at read');
     expect(screen.getByText(/no expected run cadence is declared/i)).toBeInTheDocument();
@@ -51,6 +52,13 @@ describe('DemoReadinessView', () => {
     render(<DemoReadinessView snapshot={snapshot([{ ...configured, dashboard_configuration: undefined }])} />);
     expect(screen.getByTestId('demo-readiness-invalid')).toHaveTextContent('1 malformed');
     expect(screen.getAllByText('NOT OBSERVED')).toHaveLength(2);
+  });
+
+  it('refuses a GREEN verdict paired with an UNCONFIGURED dashboard URL', () => {
+    render(<DemoReadinessView snapshot={snapshot([{ ...configured, dashboard_configuration: 'UNCONFIGURED' }])} />);
+    expect(screen.getByTestId('demo-readiness-invalid')).toHaveTextContent('1 malformed');
+    expect(screen.getAllByTestId('demo-readiness-row')[0]).toHaveAttribute('data-status', 'NOT_OBSERVED');
+    expect(screen.queryByText('GREEN')).not.toBeInTheDocument();
   });
 
   it('renders dry runs as non-green without durable evidence', () => {

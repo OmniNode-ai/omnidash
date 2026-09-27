@@ -66,7 +66,7 @@ export function DemoReadinessView({
               {row ? (
                 <>
                   <Text as="div" size="md" color="secondary">
-                    Dashboard URL: {row.dashboard_configuration} · observed {row.observed_at} · {formatAge(row.observed_at, readAtMs)} old at read
+                    Dashboard URL {row.dashboard_configuration === 'CONFIGURED' ? 'set' : 'missing'} · observed {row.observed_at} · {formatAge(row.observed_at, readAtMs)} old at read
                   </Text>
                   <Text as="div" size="md" color="secondary">Run {row.run_id} · cursor {row.projection_cursor}</Text>
                   {row.dry_run && <Text as="div" size="md" style={{ color: 'var(--warn)' }}>Dry run: no durable evidence artifact.</Text>}

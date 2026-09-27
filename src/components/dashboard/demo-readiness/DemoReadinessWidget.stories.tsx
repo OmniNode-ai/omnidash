@@ -29,7 +29,25 @@ const baseRow = {
 export const Unconfigured: Story = {
   args: {
     snapshot: {
-      rows: [baseRow, { ...baseRow, node_id: 'demo_drift_detector', run_id: 'drift-1', status: 'UNCONFIGURED', dashboard_configuration: 'UNCONFIGURED', failure_count: null, demo_blocker_count: 0, demo_degraded_count: 0, total_finding_count: 0, projection_cursor: 2 }],
+      rows: [
+        { ...baseRow, status: 'UNCONFIGURED', dashboard_configuration: 'UNCONFIGURED' },
+        { ...baseRow, node_id: 'demo_drift_detector', run_id: 'drift-1', status: 'UNCONFIGURED', dashboard_configuration: 'UNCONFIGURED', failure_count: null, demo_blocker_count: 0, demo_degraded_count: 0, total_finding_count: 0, projection_cursor: 2 },
+      ],
+      rowCount: 2,
+      dataFreshness: 'unknown',
+      latestEventAt: null,
+      readAt,
+    },
+  },
+};
+
+export const MixedNodeStatuses: Story = {
+  args: {
+    snapshot: {
+      rows: [
+        baseRow,
+        { ...baseRow, node_id: 'demo_drift_detector', run_id: 'drift-1', status: 'UNCONFIGURED', dashboard_configuration: 'UNCONFIGURED', failure_count: null, demo_blocker_count: 0, demo_degraded_count: 0, total_finding_count: 0, projection_cursor: 2 },
+      ],
       rowCount: 2,
       dataFreshness: 'unknown',
       latestEventAt: null,
