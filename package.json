@@ -20,6 +20,7 @@
     "test": "vitest",
     "test:run": "vitest run",
     "test:coverage": "vitest run --coverage",
+    "test:execution-graph-core-dto": "bash scripts/check-execution-graph-fixture-core-parity.sh",
     "check": "tsc --noEmit",
     "lint": "eslint \"src/**/*.{ts,tsx}\" \"eslint-rules/**/*.cjs\" --max-warnings=0",
     "generate:config": "tsx scripts/generate-data-source-config.ts",

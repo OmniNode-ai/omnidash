@@ -63,6 +63,17 @@ repos:
         pass_filenames: false
         always_run: true
 
+      # Local-only Core DTO gate: pinned Core a437c66c is not yet published,
+      # so the GitHub type-sync workflow cannot safely fetch it. Before PR,
+      # wire this fixture path into CI against a published graph-capable Core
+      # pin. This validates JSON/Core compatibility, not the TS mirror.
+      - id: execution-graph-fixture-core-dto
+        name: Graph fixture validates against pinned Core DTO (not TypeScript mirror)
+        entry: bash scripts/check-execution-graph-fixture-core-parity.sh
+        language: system
+        pass_filenames: false
+        files: ^(src/components/dashboard/delegation-control-plane/execution-graph-spike/(render-model\.ts|__fixtures__/realFiveHopGraph\.json)|tests/ci/test_execution_graph_fixture_core_parity\.py|scripts/check-execution-graph-fixture-core-parity\.sh|\.pre-commit-config\.yaml|package\.json)$
+
   - repo: local
     hooks:
       - id: strip-ai-coauthor-trailer
