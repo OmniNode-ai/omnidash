@@ -200,6 +200,15 @@ export const TOPICS = {
    * does not ride on any bus_backed flip (OMN-15864 / OMN-17197 AC5).
    */
   consumerFlow: 'onex.snapshot.projection.consumer-flow.v1',
+  /**
+   * Runner fleet widget (OMN-18773, C6) — per-runner liveness for the
+   * self-hosted CI fleet, materialised by node_projection_runner_fleet
+   * (OMN-18768, C1) into omninode_internal.runner_fleet_liveness, keyed on
+   * runner_name (one row per runner, replaced on every observation — not a
+   * time series). Carries label_class and host so the widget can answer
+   * "which class/host is degraded" without a second round trip.
+   */
+  runnerFleet: 'onex.snapshot.projection.runner-fleet.v1',
 } as const;
 
 export type TopicSymbol = (typeof TOPICS)[keyof typeof TOPICS];

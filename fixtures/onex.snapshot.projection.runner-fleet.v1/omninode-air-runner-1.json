@@ -1,0 +1,12 @@
+{
+  "runner_name": "omninode-air-runner-1",
+  "runner_id": 105,
+  "label_class": "omnibase-verify",
+  "labels": ["self-hosted", "Linux", "ARM64", "omnibase-verify", "host-105"],
+  "host": "host-105",
+  "observing_host": "omninode-pc.tail75df5e.ts.net",
+  "status": "offline",
+  "current_job_id": null,
+  "observed_at": "2026-09-27T02:29:55Z",
+  "projection_cursor": "18002"
+}
