@@ -117,4 +117,35 @@ describe('execute mode', () => {
     });
     await expect(client.applyTenantAttributes('sub-1', ATTRS)).rejects.toThrow(/HTTP 401/);
   });
+
+  it('refuses a malformed token response before requesting the user', async () => {
+    const fetchImpl = vi.fn(async () => new Response(JSON.stringify({ access_token: 42 }), { status: 200 }));
+    const client = createKeycloakAdminClient({
+      applyMode: 'execute',
+      adminBaseUrl: 'https://auth.example.com/admin/realms/r',
+      tokenUrl: 'https://auth.example.com/token',
+      clientId: 'onboarding',
+      clientSecret: 's3cr3t',
+      fetchImpl: fetchImpl as unknown as typeof fetch,
+    });
+    await expect(client.applyTenantAttributes('sub-1', ATTRS)).rejects.toThrow(/missing access_token/);
+    expect(fetchImpl).toHaveBeenCalledOnce();
+  });
+
+  it('refuses malformed existing attributes without issuing a PUT', async () => {
+    const fetchImpl = vi.fn(async (_url: string | URL, init?: RequestInit) => {
+      if (init?.method === 'POST') return new Response(JSON.stringify({ access_token: 'admin-token' }));
+      return new Response(JSON.stringify({ username: 'alice', attributes: { locale: 'en' } }));
+    });
+    const client = createKeycloakAdminClient({
+      applyMode: 'execute',
+      adminBaseUrl: 'https://auth.example.com/admin/realms/r',
+      tokenUrl: 'https://auth.example.com/token',
+      clientId: 'onboarding',
+      clientSecret: 's3cr3t',
+      fetchImpl: fetchImpl as unknown as typeof fetch,
+    });
+    await expect(client.applyTenantAttributes('sub-1', ATTRS)).rejects.toThrow(/malformed attributes/);
+    expect(fetchImpl).toHaveBeenCalledTimes(2);
+  });
 });
