@@ -76,6 +76,9 @@ test('fixture details distinguish recomputed and stored grades and resolve the s
 
   const graph = page.getByRole('group', { name: 'Recorded delegation execution graph' });
   await expect(graph).toBeVisible();
+  await expect(page.getByRole('note')).toHaveText(
+    'Synthetic UI fixture only — this stored-grade disagreement is not captured run evidence.',
+  );
   const node = graph.getByRole('button', { name: /delegation-request\.v1\. Replay passed/ });
   await node.click();
 

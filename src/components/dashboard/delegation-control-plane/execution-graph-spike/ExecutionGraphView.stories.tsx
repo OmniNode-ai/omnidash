@@ -129,7 +129,10 @@ export const StoredGradeDisagreementFixture: Story = {
         readLatest: async () => storedGradeDisagreementFixture,
         step: async () => null,
       }}>
-        <div style={{ margin: 24, maxWidth: 1400 }}><Story /></div>
+        <div style={{ margin: 24, maxWidth: 1400 }}>
+          <p role="note">Synthetic UI fixture only — this stored-grade disagreement is not captured run evidence.</p>
+          <Story />
+        </div>
       </ExecutionGraphTransportProvider>
     ),
   ],
