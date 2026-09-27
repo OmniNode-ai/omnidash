@@ -49,6 +49,7 @@ export const PALETTE_CLASSIFICATION: Record<string, PaletteClassification> = {
   // projection-backed would claim a proof it does not have.
   'lab-system-status': { paletteVisibility: 'visible', authorityLabel: 'runtime-observed', probe: 'GET /projections on .201 2026-09-22 = 65 exposures, status:ok on all 65, backing:bus on 17, not_yet_bus_backed on 48' },
   'topic-activity': { paletteVisibility: 'visible', authorityLabel: 'degraded', probe: 'OMN-19716 topic-activity projection is census-gated until the lane reports backing:bus' },
+  'lab-runners': { paletteVisibility: 'visible', authorityLabel: 'degraded', probe: 'OMN-18768 runner-fleet projection is census-gated until the lane reports backing:bus' },
   'errors': { paletteVisibility: 'visible', authorityLabel: 'projection-backed', probe: 'consumer-flow.v1, live-events.v1, runtime-error-fingerprints.v1 all declared backing:bus on .201 2026-09-26' },
   // --- VISIBLE / projection-backed (200 with rows on the single backend) ---
   'delegation-metrics': { paletteVisibility: 'visible', authorityLabel: 'projection-backed', probe: 'delegation.summary.v1=200/1r' },

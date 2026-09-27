@@ -14,7 +14,7 @@ export const LAB_BUS_BACKED_TOPICS = new Set<string>([
   TOPICS.liveEvents,
   'onex.snapshot.projection.prod-promotion-gate.v1',
   TOPICS.registration,
-  'onex.snapshot.projection.runner-fleet.v1',
+  TOPICS.runnerFleet,
   TOPICS.runtimeErrorFingerprints,
   TOPICS.sessionReplay,
   'onex.snapshot.projection.tenant-credentials.v1',

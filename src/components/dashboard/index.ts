@@ -5,6 +5,7 @@ export const componentImports: Record<string, ReturnType<typeof lazy>> = {
   'IKPITileClusterAdapter/threejs': lazy(() => import('./cost-summary/CostSummaryAdapter')),
   'lab-system-status/LabSystemStatus': lazy(() => import('./lab-system-status/LabSystemStatus')),
   'topic-activity/TopicActivityWidget': lazy(() => import('./topic-activity/TopicActivityWidget')),
+  'lab-runners/LabRunnersWidget': lazy(() => import('./lab-runners/LabRunnersWidget')),
   'errors/ErrorsWidget': lazy(() => import('./errors/ErrorsWidget')),
   'cost-by-repo/CostByRepoAdapter': lazy(() => import('./cost-by-repo/CostByRepoAdapter')),
   'cost-by-model/CostByModelAdapter': lazy(() => import('./cost-by-model/CostByModelAdapter')),
