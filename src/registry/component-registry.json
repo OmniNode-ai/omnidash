@@ -1,6 +1,6 @@
 {
   "manifestVersion": "1.0",
-  "generatedAt": "2026-09-26T11:36:18.395Z",
+  "generatedAt": "2026-09-27T03:12:26.011Z",
   "components": {
     "cost-trend-panel": {
       "name": "cost-trend-panel",
@@ -1807,7 +1807,7 @@
     "consumer-flow": {
       "name": "consumer-flow",
       "displayName": "Consumer Flow",
-      "description": "Per-consumer throughput truth: messages in / out / DLQ per (consumer_group, topic) window with the projection-derived flow verdict FLOWING / CONSUMING / STALLED / STARVED / IDLE / UNKNOWN. This is the widget that separates a dead consumer from a quiet one — group membership, container health and LAG 0 all report green on a consumer that has consumed 15,750 messages and produced nothing (OMN-16755).",
+      "description": "Per-consumer throughput truth: messages in / out / DLQ per (consumer_group, topic) window with the projection-derived flow verdict FLOWING / STALLED / STARVED / IDLE / UNKNOWN. This is the widget that separates a dead consumer from a quiet one — group membership, container health and LAG 0 all report green on a consumer that has consumed 15,750 messages and produced nothing (OMN-16755).",
       "category": "health",
       "version": "1.0.0",
       "implementationKey": "consumer-flow/ConsumerFlowWidget",
@@ -1905,7 +1905,6 @@
             "type": "string",
             "enum": [
               "FLOWING",
-              "CONSUMING",
               "STALLED",
               "STARVED",
               "IDLE",
@@ -4489,6 +4488,114 @@
       "emptyState": {
         "message": "Topic activity producer missing",
         "hint": "OMN-19716 topic-activity projection not yet bus-backed on this lane."
+      },
+      "capabilities": {
+        "supports_compare": false,
+        "supports_export": true,
+        "supports_fullscreen": true,
+        "supports_time_range": false
+      },
+      "paletteVisibility": "visible",
+      "authorityLabel": "degraded"
+    },
+    "lab-runners": {
+      "name": "lab-runners",
+      "displayName": "Runners",
+      "description": "Self-hosted CI fleet liveness per class and host, rendered from the OMN-18768 runner-fleet projection. An offline runner is rendered, never omitted.",
+      "category": "activity",
+      "version": "1.0.0",
+      "implementationKey": "lab-runners/LabRunnersWidget",
+      "configSchema": {
+        "type": "object",
+        "properties": {},
+        "additionalProperties": false
+      },
+      "projectionSchema": {
+        "type": "object",
+        "required": [
+          "runner_name",
+          "label_class",
+          "host",
+          "observing_host",
+          "status",
+          "observed_at",
+          "projection_cursor"
+        ],
+        "properties": {
+          "runner_name": {
+            "type": "string"
+          },
+          "runner_id": {
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "label_class": {
+            "type": "string"
+          },
+          "labels": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "host": {
+            "type": "string"
+          },
+          "observing_host": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "online",
+              "busy",
+              "offline"
+            ]
+          },
+          "current_job_id": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "observed_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "projection_cursor": {
+            "type": "string"
+          }
+        }
+      },
+      "dataSources": [
+        {
+          "type": "projection",
+          "topic": "onex.snapshot.projection.runner-fleet.v1",
+          "required": true,
+          "purpose": "initial_fetch"
+        }
+      ],
+      "events": {
+        "emits": [],
+        "consumes": []
+      },
+      "defaultSize": {
+        "w": 12,
+        "h": 8
+      },
+      "minSize": {
+        "w": 8,
+        "h": 5
+      },
+      "maxSize": {
+        "w": 12,
+        "h": 14
+      },
+      "emptyState": {
+        "message": "Runner fleet producer missing",
+        "hint": "OMN-18768 runner-fleet projection not yet bus-backed on this lane."
       },
       "capabilities": {
         "supports_compare": false,

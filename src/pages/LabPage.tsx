@@ -26,8 +26,9 @@
  * SCOPE AS SHIPPED. OMN-18772 (C5) adds, above the census: hook capture over
  * work.events, per-topic activity over topic-activity (OMN-19716; a typed empty
  * state until that exposure is bus-backed), the event trace over live-events,
- * delegation runs over delegation.decisions, and errors. The lane / lab-pass
- * dimensions from C2 (OMN-18769) and the runners view (C6) are not here yet.
+ * delegation runs over delegation.decisions, and errors. OMN-18773 (C6) adds
+ * the runners view over runner-fleet (OMN-18768). The lane / lab-pass
+ * dimensions from C2 (OMN-18769) are not here yet.
  */
 
 import { EvPageShell } from '@/components/dashboard/event-dash/EvPageShell';
@@ -35,6 +36,7 @@ import { LabSystemStatus } from '@/components/dashboard/lab-system-status/LabSys
 import TopicActivityWidget from '@/components/dashboard/topic-activity/TopicActivityWidget';
 import WorkEventsWidget from '@/components/dashboard/work-events/WorkEventsWidget';
 import TraceExplorerWidget from '@/components/dashboard/trace-explorer/TraceExplorerWidget';
+import LabRunnersWidget from '@/components/dashboard/lab-runners/LabRunnersWidget';
 import ErrorsWidget from '@/components/dashboard/errors/ErrorsWidget';
 import RoutingDecisionTable from '@/components/dashboard/routing/RoutingDecisionTable';
 
@@ -47,11 +49,12 @@ export function LabPage() {
     >
       {/* Ordered by the operator's question, "what is the lab generating right
           now": capture health first, then per-topic volume, the live tail,
-          delegation runs and errors. The 65-row exposure census is last, because
-          it is reference, not a live signal. */}
+          runner fleet, delegation runs and errors. The 65-row exposure census
+          is last, because it is reference, not a live signal. */}
       <WorkEventsWidget config={{ view: 'hook-capture' }} />
       <TopicActivityWidget />
       <TraceExplorerWidget />
+      <LabRunnersWidget />
       <RoutingDecisionTable config={{ variant: 'lab-runs', pageSize: 25 }} />
       <ErrorsWidget config={{ window: '24h' }} />
       <LabSystemStatus />
