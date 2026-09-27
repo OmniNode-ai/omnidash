@@ -96,6 +96,34 @@ test('fixture details distinguish recomputed and stored grades and resolve the s
   await page.screenshot({ path: 'tests/screenshots/execution-graph-stored-grade-disagreement-fixture.png', fullPage: true });
 });
 
+test('selected detail exposes projected labels, pinned versions, and source cursor bounds', async ({ page }) => {
+  await page.setViewportSize({ width: 1600, height: 1100 });
+  await page.goto('/iframe.html?id=delegation-execution-graph-view--projection-detail-fields-fixture&viewMode=story');
+
+  await expect(page.getByRole('note')).toHaveText(
+    'Synthetic timestamp labels only — version and cursor values are from the product-fold fixture.',
+  );
+  const graph = page.getByRole('group', { name: 'Recorded delegation execution graph' });
+  await graph.getByRole('button', { name: /delegation-request\.v1\. Replay passed/ }).click();
+
+  const details = page.getByRole('region', { name: 'Selected graph evidence' });
+  await expect(details.getByText('Event timestamp label', { exact: true })).toBeVisible();
+  await expect(details.getByText('2026-09-26T12:00:00Z', { exact: true })).toBeVisible();
+  await expect(details.getByText('Ledger written at', { exact: true })).toBeVisible();
+  await expect(details.getByText('2026-09-26T12:00:01Z', { exact: true })).toBeVisible();
+  await expect(details.getByText('Pinned topology version', { exact: true })).toBeVisible();
+  await expect(details.getByText(/1\.3\.0 · SHA-256 0505ab0b163492380739a15646c0442a3ecfb54efb0acb53bc23d232640fbfd3/)).toBeVisible();
+  await expect(details.getByText('Pinned grader version', { exact: true })).toBeVisible();
+  await expect(details.getByText('1.0.0', { exact: true })).toBeVisible();
+  await expect(details.getByText('Source cursor bounds (5)', { exact: true })).toBeVisible();
+  await expect(details.getByText('onex.cmd.omnibase-infra.delegation-request.v1 — partition 0, through offset 2174', { exact: true })).toBeVisible();
+  await expect(details.getByText('onex.cmd.omnibase-infra.delegation-routing-request.v1 — partition 0, through offset 4248', { exact: true })).toBeVisible();
+  await expect(details.getByText('onex.cmd.omnimarket.delegate-skill.v1 — partition 0, through offset 2553', { exact: true })).toBeVisible();
+  await expect(details.getByText('onex.evt.omnibase-infra.routing-decision.v1 — partition 0, through offset 4201', { exact: true })).toBeVisible();
+  await expect(details.getByText('onex.evt.omnimarket.delegate-skill-completed.v1 — partition 0, through offset 1831', { exact: true })).toBeVisible();
+  await page.screenshot({ path: 'tests/screenshots/execution-graph-projection-detail-fields-fixture.png', fullPage: true });
+});
+
 test('fixture status lists unresolved and withheld evidence without adding edges', async ({ page }) => {
   await page.setViewportSize({ width: 1600, height: 1100 });
   await page.goto('/iframe.html?id=delegation-execution-graph-view--unresolved-and-withheld-fixture&viewMode=story');

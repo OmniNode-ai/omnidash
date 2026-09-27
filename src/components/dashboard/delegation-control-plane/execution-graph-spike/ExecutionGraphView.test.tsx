@@ -3,10 +3,23 @@ import { describe, expect, it, vi } from 'vitest';
 import { ExecutionGraphView } from './ExecutionGraphView';
 import { ExecutionGraphTransportProvider, type ExecutionGraphTransport } from './ExecutionGraphTransport';
 import type { ModelExecutionGraph } from './render-model';
+import { formatModelSemVer } from './render-model';
 import { provisionalExecutionGraph } from './__fixtures__/provisionalGraph';
 import realFiveHopGraph from './__fixtures__/realFiveHopGraph.json';
 
 describe('ExecutionGraphView', () => {
+  it('preserves prerelease and build identifiers in pinned version labels', () => {
+    expect(
+      formatModelSemVer({
+        major: 2,
+        minor: 1,
+        patch: 0,
+        prerelease: ['rc', 2],
+        build: ['fixture', '7'],
+      }),
+    ).toBe('2.1.0-rc.2+fixture.7');
+  });
+
   it('renders the transport projection and requests adjacent bounds through the transport', async () => {
     const laterGraph = {
       ...provisionalExecutionGraph,

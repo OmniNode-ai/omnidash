@@ -43,6 +43,21 @@ const unresolvedAndWithheldFixture: ModelExecutionGraph = {
   },
 };
 
+// Synthetic labels exercise timestamp presentation. Versions and source bounds
+// remain exactly those emitted by the product-fold fixture.
+const projectionDetailFieldsFixture: ModelExecutionGraph = {
+  ...realFiveHopGraph,
+  labels: realFiveHopGraph.labels.map((label) =>
+    label.node_id === realFiveHopGraph.replay.nodes[1].id
+      ? {
+          ...label,
+          event_timestamp: '2026-09-26T12:00:00Z',
+          ledger_written_at: '2026-09-26T12:00:01Z',
+        }
+      : label,
+  ),
+};
+
 const mixedStatusFixture: ModelExecutionGraph = {
   ...realFiveHopGraph,
   replay: {
@@ -164,6 +179,24 @@ export const UnresolvedAndWithheldFixture: Story = {
       }}>
         <div style={{ margin: 24, maxWidth: 1400 }}>
           <p role="note">Synthetic status fixture only — unresolved and withheld values are test-only, not captured run evidence.</p>
+          <Story />
+        </div>
+      </ExecutionGraphTransportProvider>
+    ),
+  ],
+};
+
+/** Synthetic timestamp labels over unchanged product-fold version/cursor metadata. */
+export const ProjectionDetailFieldsFixture: Story = {
+  args: { correlationId: projectionDetailFieldsFixture.replay.correlation_id },
+  decorators: [
+    (Story) => (
+      <ExecutionGraphTransportProvider transport={{
+        readLatest: async () => projectionDetailFieldsFixture,
+        step: async () => null,
+      }}>
+        <div style={{ margin: 24, maxWidth: 1400 }}>
+          <p role="note">Synthetic timestamp labels only — version and cursor values are from the product-fold fixture.</p>
           <Story />
         </div>
       </ExecutionGraphTransportProvider>

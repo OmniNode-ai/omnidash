@@ -7,6 +7,13 @@ export interface ModelSemVer {
   build: readonly string[] | null;
 }
 
+export function formatModelSemVer(version: ModelSemVer): string {
+  const base = `${version.major}.${version.minor}.${version.patch}`;
+  const prerelease = version.prerelease?.length ? `-${version.prerelease.join('.')}` : '';
+  const build = version.build?.length ? `+${version.build.join('.')}` : '';
+  return `${base}${prerelease}${build}`;
+}
+
 export interface ModelExecutionGraphSourceRef {
   topic: string;
   partition: number;

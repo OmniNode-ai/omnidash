@@ -3,7 +3,7 @@ import { Text } from '@/components/ui/typography';
 import { SvgTreeRenderer } from './SvgTreeRenderer';
 import { useExecutionGraphTransport } from './ExecutionGraphTransport';
 import type { ModelExecutionGraph, ModelExecutionGraphEdge, ModelExecutionGraphNode } from './render-model';
-import { replayLabel } from './render-model';
+import { formatModelSemVer, replayLabel } from './render-model';
 import './execution-graph-spike.css';
 
 function NodeInspector({ graph, node }: { graph: ModelExecutionGraph; node: ModelExecutionGraphNode | null }) {
@@ -59,6 +59,32 @@ function NodeInspector({ graph, node }: { graph: ModelExecutionGraph; node: Mode
       <div>
         <dt>Event timestamp label</dt>
         <dd>{label?.event_timestamp ?? 'not recorded'}</dd>
+      </div>
+      <div>
+        <dt>Ledger written at</dt>
+        <dd>{label?.ledger_written_at ?? 'not recorded'}</dd>
+      </div>
+      <div>
+        <dt>Pinned topology version</dt>
+        <dd>
+          {formatModelSemVer(graph.replay.topology_version.contract_version)} · SHA-256 {graph.replay.topology_version.topology_sha256}
+        </dd>
+      </div>
+      <div>
+        <dt>Pinned grader version</dt>
+        <dd>{formatModelSemVer(graph.replay.grader_version)}</dd>
+      </div>
+      <div>
+        <dt>Source cursor bounds ({graph.replay.source_cursors.length})</dt>
+        <dd>
+          <ul>
+            {graph.replay.source_cursors.map((cursor) => (
+              <li key={`${cursor.topic}:${cursor.partition}`}>
+                {cursor.topic} — partition {cursor.partition}, through offset {cursor.max_kafka_offset}
+              </li>
+            ))}
+          </ul>
+        </dd>
       </div>
     </dl>
   );
