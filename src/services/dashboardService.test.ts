@@ -5,6 +5,7 @@ import type { LayoutPersistence } from '@/layout/layout-persistence';
 import type { DashboardDefinition } from '@shared/types/dashboard';
 import { createEmptyDashboard } from '@shared/types/dashboard';
 import { seaDemoTemplate } from '@/templates/sea-demo';
+import { platformHealthTemplate } from '@/templates/platform-health';
 
 describe('DashboardService', () => {
   let service: DashboardService;
@@ -129,6 +130,23 @@ describe('DashboardService.save → loadByName round-trip (T14 / OMN-155)', () =
     expect(loaded!.layout.map((item) => item.componentName)).toEqual(
       seaDemoTemplate.layout.map((item) => item.componentName),
     );
+  });
+
+  it('repairs a saved Platform Health layout so demo readiness is visible', async () => {
+    const oldHealth = {
+      ...platformHealthTemplate,
+      layout: platformHealthTemplate.layout.filter((item) => item.componentName !== 'demo-readiness'),
+    };
+    const persistence: LayoutPersistence = {
+      read: vi.fn(async () => oldHealth),
+      write: vi.fn(async () => undefined),
+    };
+    const service = new DashboardService(persistence);
+
+    const loaded = await service.loadByName('Platform Health');
+
+    expect(loaded?.layout.some((item) => item.componentName === 'demo-readiness')).toBe(true);
+    expect(loaded?.layout).toHaveLength(oldHealth.layout.length + 1);
   });
 });
 

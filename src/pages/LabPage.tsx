@@ -39,6 +39,7 @@ import TraceExplorerWidget from '@/components/dashboard/trace-explorer/TraceExpl
 import LabRunnersWidget from '@/components/dashboard/lab-runners/LabRunnersWidget';
 import ErrorsWidget from '@/components/dashboard/errors/ErrorsWidget';
 import RoutingDecisionTable from '@/components/dashboard/routing/RoutingDecisionTable';
+import DemoReadinessWidget from '@/components/dashboard/demo-readiness/DemoReadinessWidget';
 
 export function LabPage() {
   return (
@@ -52,6 +53,7 @@ export function LabPage() {
           runner fleet, delegation runs and errors. The 65-row exposure census
           is last, because it is reference, not a live signal. */}
       <WorkEventsWidget config={{ view: 'hook-capture' }} />
+      <DemoReadinessWidget />
       <TopicActivityWidget />
       <TraceExplorerWidget />
       <LabRunnersWidget />

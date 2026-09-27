@@ -145,7 +145,7 @@ describe('Proof of Life — Part 3 (Full System)', () => {
 
     expect(screen.getByText('Platform Health')).toBeInTheDocument();
     const cells = screen.getAllByTestId('grid-item');
-    expect(cells.length).toBe(4);
+    expect(cells.length).toBe(5);
   });
 
   it('registry categories span all 4 domain types', () => {

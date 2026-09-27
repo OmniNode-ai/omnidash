@@ -2,6 +2,7 @@ import { describe, it, expect } from 'vitest';
 import { DASHBOARD_TEMPLATES } from './index';
 import { validateDashboardDefinition } from '@shared/types/dashboard';
 import { repairSeaDemoDashboard, seaDemoTemplate } from './sea-demo';
+import { platformHealthTemplate, repairPlatformHealthDashboard } from './platform-health';
 
 describe('Dashboard Templates', () => {
   it('has 4 templates', () => {
@@ -19,16 +20,26 @@ describe('Dashboard Templates', () => {
     ]);
   });
 
-  it('Platform Health template has 4 components', () => {
+  it('Platform Health template keeps overnight and demo readiness separate', () => {
     const tpl = DASHBOARD_TEMPLATES.find((t) => t.name === 'Platform Health');
     expect(tpl).toBeDefined();
-    expect(tpl!.layout.length).toBe(4);
+    expect(tpl!.layout.length).toBe(5);
     expect(tpl!.layout.map((l) => l.componentName).sort()).toEqual([
       'baselines-roi-card',
+      'demo-readiness',
       'event-stream',
       'quality-score-panel',
       'readiness-gate',
     ]);
+  });
+
+  it('adds demo readiness to saved Platform Health layouts without replacing user placements', () => {
+    const oldLayout = platformHealthTemplate.layout.filter((item) => item.componentName !== 'demo-readiness');
+    const saved = { ...platformHealthTemplate, id: 'saved-health', layout: oldLayout };
+    const repaired = repairPlatformHealthDashboard(saved);
+    expect(repaired.layout.slice(0, oldLayout.length)).toEqual(oldLayout);
+    expect(repaired.layout.at(-1)?.componentName).toBe('demo-readiness');
+    expect(repairPlatformHealthDashboard(repaired)).toBe(repaired);
   });
 
   it('Delegation Evidence template has the composable control plane', () => {

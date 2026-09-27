@@ -4,6 +4,11 @@ import { createId } from '@shared/utils/id';
 import type { LayoutPersistence } from '@/layout/layout-persistence';
 import { layoutPersistence } from '@/layout/layout-persistence';
 import { repairSeaDemoDashboard } from '@/templates/sea-demo';
+import { repairPlatformHealthDashboard } from '@/templates/platform-health';
+
+function repairRequiredDashboards(dashboard: DashboardDefinition): DashboardDefinition {
+  return repairPlatformHealthDashboard(repairSeaDemoDashboard(dashboard));
+}
 
 // localStorage keys for the multi-dashboard list. Owned exclusively by this
 // service (T14 / OMN-155) — no other module is permitted to read or write
@@ -50,7 +55,7 @@ export class DashboardService {
 
   async loadByName(name: string): Promise<DashboardDefinition | null> {
     return this.persistence.read(name).then((dashboard) => (
-      dashboard ? repairSeaDemoDashboard(dashboard) : null
+      dashboard ? repairRequiredDashboards(dashboard) : null
     )).catch((err: unknown) => {
       console.warn('[DashboardService] layout persistence read failed:', err);
       return null;
@@ -97,7 +102,7 @@ export class DashboardService {
       for (const [idx, entry] of parsed.entries()) {
         const result = parseDashboardDefinition(entry);
         if (result.valid) {
-          const repaired = repairSeaDemoDashboard(result.dashboard);
+          const repaired = repairRequiredDashboards(result.dashboard);
           repairedAny = repairedAny || repaired !== result.dashboard;
           valid.push(repaired);
         } else {

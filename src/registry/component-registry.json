@@ -1,6 +1,6 @@
 {
   "manifestVersion": "1.0",
-  "generatedAt": "2026-09-27T03:12:26.011Z",
+  "generatedAt": "2026-09-27T12:17:27.303Z",
   "components": {
     "cost-trend-panel": {
       "name": "cost-trend-panel",
@@ -4493,6 +4493,146 @@
         "supports_compare": false,
         "supports_export": true,
         "supports_fullscreen": true,
+        "supports_time_range": false
+      },
+      "paletteVisibility": "visible",
+      "authorityLabel": "degraded"
+    },
+    "demo-readiness": {
+      "name": "demo-readiness",
+      "displayName": "Demo Readiness",
+      "description": "Latest terminal result per demo node, including missing dashboard URL and elapsed age with no invented cadence.",
+      "category": "health",
+      "version": "1.0.0",
+      "implementationKey": "demo-readiness/DemoReadinessWidget",
+      "configSchema": {
+        "type": "object",
+        "properties": {},
+        "additionalProperties": false
+      },
+      "projectionSchema": {
+        "type": "object",
+        "required": [
+          "node_id",
+          "run_id",
+          "status",
+          "dashboard_configuration",
+          "dry_run",
+          "observed_at",
+          "evidence_path",
+          "failure_count",
+          "demo_blocker_count",
+          "demo_degraded_count",
+          "total_finding_count",
+          "source_event_id",
+          "projection_cursor"
+        ],
+        "properties": {
+          "node_id": {
+            "type": "string",
+            "enum": [
+              "demo_rehearsal",
+              "demo_drift_detector"
+            ]
+          },
+          "run_id": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "GREEN",
+              "DEGRADED",
+              "BROKEN",
+              "UNCONFIGURED",
+              "DRY_RUN"
+            ]
+          },
+          "dashboard_configuration": {
+            "type": "string",
+            "enum": [
+              "CONFIGURED",
+              "UNCONFIGURED"
+            ]
+          },
+          "dry_run": {
+            "type": "boolean"
+          },
+          "observed_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "evidence_path": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "failure_count": {
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "demo_blocker_count": {
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "demo_degraded_count": {
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "total_finding_count": {
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "source_event_id": {
+            "type": "string"
+          },
+          "projection_cursor": {
+            "type": "integer",
+            "minimum": 0
+          }
+        }
+      },
+      "dataSources": [
+        {
+          "type": "projection",
+          "topic": "onex.snapshot.projection.demo-readiness.v1",
+          "required": true,
+          "purpose": "initial_fetch"
+        }
+      ],
+      "events": {
+        "emits": [],
+        "consumes": []
+      },
+      "defaultSize": {
+        "w": 12,
+        "h": 4
+      },
+      "minSize": {
+        "w": 6,
+        "h": 4
+      },
+      "maxSize": {
+        "w": 12,
+        "h": 8
+      },
+      "emptyState": {
+        "message": "No demo terminal events observed",
+        "hint": "Both demo nodes remain not observed until the projection contains a terminal result."
+      },
+      "capabilities": {
+        "supports_compare": false,
+        "supports_export": false,
+        "supports_fullscreen": false,
         "supports_time_range": false
       },
       "paletteVisibility": "visible",

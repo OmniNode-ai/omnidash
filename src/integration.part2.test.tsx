@@ -82,7 +82,7 @@ describe('Proof of Life — Part 2', () => {
     // empty state naming that producer until the census lists it.
     // OMN-18773: lab-runners added (C6) — reads runner-fleet.v1 via the C1
     // runner-fleet-liveness projection.
-    expect(all.length).toBe(43);
+    expect(all.length).toBe(44);
     expect(all.map((c) => c.name).sort()).toEqual([
       'ab-compare',
       'baselines-roi-card',
@@ -104,6 +104,7 @@ describe('Proof of Life — Part 2', () => {
       'delegation-model-routing',
       'delegation-quality-gate',
       'delegation-token-usage',
+      'demo-readiness',
       'errors',
       'event-stream',
       'evidence-pipeline-flow',

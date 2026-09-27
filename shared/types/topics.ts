@@ -77,6 +77,8 @@ export const TOPICS = {
   liveEvents: 'onex.snapshot.projection.live-events.v1',
   /** Per-topic bus activity projection produced by OMN-19716. */
   topicActivity: 'onex.snapshot.projection.topic-activity.v1',
+  /** Latest terminal status per demo node, sourced from the two demo terminal events. */
+  demoReadiness: 'onex.snapshot.projection.demo-readiness.v1',
   /** Runtime error fingerprints materialized from emitted runtime error events. */
   runtimeErrorFingerprints: 'onex.snapshot.projection.runtime-error-fingerprints.v1',
   /** Routing decision widget — model routing traces and rules. */
