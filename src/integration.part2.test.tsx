@@ -80,7 +80,9 @@ describe('Proof of Life — Part 2', () => {
     // OMN-18772: lab-errors and topic-activity added (C5). Topic Activity reads
     // topic-activity.v1, which OMN-19716 makes bus-backed, and renders a typed
     // empty state naming that producer until the census lists it.
-    expect(all.length).toBe(42);
+    // OMN-18773: lab-runners added (C6) — reads runner-fleet.v1 via the C1
+    // runner-fleet-liveness projection.
+    expect(all.length).toBe(43);
     expect(all.map((c) => c.name).sort()).toEqual([
       'ab-compare',
       'baselines-roi-card',
@@ -106,6 +108,7 @@ describe('Proof of Life — Part 2', () => {
       'event-stream',
       'evidence-pipeline-flow',
       'intent-distribution',
+      'lab-runners',
       'lab-system-status',
       'live-event-stream',
       'mcp-tools',
