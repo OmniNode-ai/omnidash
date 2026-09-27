@@ -7,9 +7,9 @@ import {
 import type { ModelExecutionGraph } from './render-model';
 import { endpointNodeId } from './render-model';
 import { provisionalExecutionGraph } from './__fixtures__/provisionalGraph';
-import realFiveHopGraphJson from './__fixtures__/realFiveHopGraph.json';
+import { historicalTopologyWithSyntheticWatermarks } from './__fixtures__/historicalTopologyWithSyntheticWatermarks';
 
-const realFiveHopGraph = realFiveHopGraphJson as unknown as ModelExecutionGraph;
+const realFiveHopGraph = historicalTopologyWithSyntheticWatermarks;
 
 // UI assertion fixture only: preserve the real fold output and attach one
 // deliberately conflicting current stored annotation to exercise comparison.
@@ -43,8 +43,8 @@ const unresolvedAndWithheldFixture: ModelExecutionGraph = {
   },
 };
 
-// Synthetic labels exercise timestamp presentation. Versions and source bounds
-// remain exactly those emitted by the product-fold fixture.
+// Synthetic labels exercise timestamp presentation. Historical versions are
+// preserved, but the watermark bounds are synthetic.
 const projectionDetailFieldsFixture: ModelExecutionGraph = {
   ...realFiveHopGraph,
   labels: realFiveHopGraph.labels.map((label) =>
@@ -76,11 +76,7 @@ const mixedStatusFixture: ModelExecutionGraph = {
 // nodes. These records exercise rendering transitions, not cursor semantics.
 const earlierNodeIds = new Set(mixedStatusFixture.replay.order.slice(0, 3));
 const earlierNodes = mixedStatusFixture.replay.nodes.filter((node) => earlierNodeIds.has(node.id));
-const earlierBounds = new Map<string, number>();
-for (const node of earlierNodes) {
-  const key = `${node.topic}\u0000${node.partition}`;
-  earlierBounds.set(key, Math.max(earlierBounds.get(key) ?? -1, node.kafka_offset));
-}
+const earlierKeys = new Set(earlierNodes.map((node) => `${node.topic}\u0000${node.partition}`));
 const earlierBoundFixture: ModelExecutionGraph = {
   ...mixedStatusFixture,
   replay: {
@@ -92,10 +88,8 @@ const earlierBoundFixture: ModelExecutionGraph = {
       return from !== null && to !== null && earlierNodeIds.has(from) && earlierNodeIds.has(to);
     }),
     order: mixedStatusFixture.replay.order.filter((id) => earlierNodeIds.has(id)),
-    source_cursors: [...earlierBounds.entries()].map(([key, max_kafka_offset]) => {
-      const [topic, partition] = key.split('\u0000');
-      return { topic, partition: Number(partition), max_kafka_offset };
-    }),
+    source_cursors: mixedStatusFixture.replay.source_cursors.filter((cursor) =>
+      earlierKeys.has(`${cursor.topic}\u0000${cursor.partition}`)),
   },
   labels: mixedStatusFixture.labels.filter((label) => earlierNodeIds.has(label.node_id)),
 };
@@ -110,7 +104,7 @@ const laterGraph = {
   ...provisionalExecutionGraph,
   replay: {
     ...provisionalExecutionGraph.replay,
-    source_cursors: [{ ...provisionalExecutionGraph.replay.source_cursors[0], max_kafka_offset: 43 }],
+    source_cursors: [{ ...provisionalExecutionGraph.replay.source_cursors[0], max_ingest_watermark: 2 }],
   },
 };
 
@@ -135,7 +129,7 @@ type Story = StoryObj<typeof meta>;
 /** Test/story input only; replace with a real core-fold fixture before visual sign-off. */
 export const Provisional: Story = { args: { correlationId: 'corr-provisional-001' } };
 
-/** Render the exact Core fold fixture; this transport exposes no adjacent bounds. */
+/** Historical five-hop topology with synthetic watermarks; no adjacent bounds. */
 export const RealFiveHopFixture: Story = {
   args: { correlationId: realFiveHopGraph.replay.correlation_id },
   decorators: [
@@ -144,7 +138,10 @@ export const RealFiveHopFixture: Story = {
         readLatest: async () => realFiveHopGraph,
         step: async () => null,
       }}>
-        <div style={{ margin: 24, maxWidth: 1400 }}><Story /></div>
+        <div style={{ margin: 24, maxWidth: 1400 }}>
+          <p role="note">Historical five-hop topology; ingest watermarks are synthetic fixture values, not captured run evidence.</p>
+          <Story />
+        </div>
       </ExecutionGraphTransportProvider>
     ),
   ],
@@ -160,7 +157,7 @@ export const StoredGradeDisagreementFixture: Story = {
         step: async () => null,
       }}>
         <div style={{ margin: 24, maxWidth: 1400 }}>
-          <p role="note">Synthetic UI fixture only — this stored-grade disagreement is not captured run evidence.</p>
+          <p role="note">Synthetic UI fixture only — stored-grade disagreement and ingest watermarks are not captured run evidence.</p>
           <Story />
         </div>
       </ExecutionGraphTransportProvider>
@@ -178,7 +175,7 @@ export const UnresolvedAndWithheldFixture: Story = {
         step: async () => null,
       }}>
         <div style={{ margin: 24, maxWidth: 1400 }}>
-          <p role="note">Synthetic status fixture only — unresolved and withheld values are test-only, not captured run evidence.</p>
+          <p role="note">Synthetic status fixture only — unresolved, withheld, and ingest watermark values are test-only, not captured run evidence.</p>
           <Story />
         </div>
       </ExecutionGraphTransportProvider>
@@ -186,7 +183,7 @@ export const UnresolvedAndWithheldFixture: Story = {
   ],
 };
 
-/** Synthetic timestamp labels over unchanged product-fold version/cursor metadata. */
+/** Synthetic timestamp labels and watermarks over historical topology. */
 export const ProjectionDetailFieldsFixture: Story = {
   args: { correlationId: projectionDetailFieldsFixture.replay.correlation_id },
   decorators: [
@@ -196,7 +193,7 @@ export const ProjectionDetailFieldsFixture: Story = {
         step: async () => null,
       }}>
         <div style={{ margin: 24, maxWidth: 1400 }}>
-          <p role="note">Synthetic timestamp labels only — version and cursor values are from the product-fold fixture.</p>
+          <p role="note">Historical topology; timestamps and ingest watermarks are synthetic fixture values, not captured run evidence.</p>
           <Story />
         </div>
       </ExecutionGraphTransportProvider>
@@ -210,7 +207,10 @@ export const StatusAndPlaybackFixture: Story = {
   decorators: [
     (Story) => (
       <ExecutionGraphTransportProvider transport={fixturePlaybackTransport}>
-        <div style={{ margin: 24, maxWidth: 1400 }}><Story /></div>
+        <div style={{ margin: 24, maxWidth: 1400 }}>
+          <p role="note">Synthetic playback and ingest watermark bounds; not captured run evidence.</p>
+          <Story />
+        </div>
       </ExecutionGraphTransportProvider>
     ),
   ],

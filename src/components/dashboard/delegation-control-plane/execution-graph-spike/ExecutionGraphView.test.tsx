@@ -5,7 +5,7 @@ import { ExecutionGraphTransportProvider, type ExecutionGraphTransport } from '.
 import type { ModelExecutionGraph } from './render-model';
 import { formatModelSemVer } from './render-model';
 import { provisionalExecutionGraph } from './__fixtures__/provisionalGraph';
-import realFiveHopGraph from './__fixtures__/realFiveHopGraph.json';
+import { historicalTopologyWithSyntheticWatermarks as realFiveHopGraph } from './__fixtures__/historicalTopologyWithSyntheticWatermarks';
 
 describe('ExecutionGraphView', () => {
   it('preserves prerelease and build identifiers in pinned version labels', () => {
@@ -28,7 +28,7 @@ describe('ExecutionGraphView', () => {
         source_cursors: [
           {
             ...provisionalExecutionGraph.replay.source_cursors[0],
-            max_kafka_offset: 43,
+            max_ingest_watermark: 2,
           },
         ],
       },

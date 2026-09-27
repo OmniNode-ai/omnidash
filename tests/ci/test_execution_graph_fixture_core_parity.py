@@ -14,7 +14,7 @@ from pydantic import ValidationError
 import pytest
 
 
-CORE_SHA = "a437c66cbf98f815b19f2cd0350b300899dd0a3a"
+CORE_SHA = "c7e7914e5da4990316c0bda23d355e2102f6c7e8"
 CORE_PATH = os.environ.get("OMNIBASE_CORE_PATH")
 if not CORE_PATH:
     raise RuntimeError("OMNIBASE_CORE_PATH is required for graph fixture parity")
@@ -84,7 +84,28 @@ FIXTURE_PATH = (
 )
 
 
-FIXTURE = json.loads(FIXTURE_PATH.read_text(encoding="utf-8"))
+HISTORICAL_FIXTURE = json.loads(FIXTURE_PATH.read_text(encoding="utf-8"))
+
+
+def synthetic_watermark_projection() -> dict[str, Any]:
+    """Adapt historical topology for a one-row-per-partition fixture ledger.
+
+    Historical Kafka offsets remain source evidence. They are not watermark
+    values, and this derived projection does not claim captured-run provenance.
+    """
+    graph: dict[str, Any] = copy.deepcopy(HISTORICAL_FIXTURE)
+    graph["replay"]["source_cursors"] = [
+        {
+            "topic": cursor["topic"],
+            "partition": cursor["partition"],
+            "max_ingest_watermark": 1,
+        }
+        for cursor in graph["replay"]["source_cursors"]
+    ]
+    return graph
+
+
+FIXTURE = synthetic_watermark_projection()
 
 
 def assert_rejected(mutated: dict[str, Any]) -> None:
@@ -92,7 +113,7 @@ def assert_rejected(mutated: dict[str, Any]) -> None:
         ModelExecutionGraph.model_validate(mutated)
 
 
-def test_real_fold_fixture_validates_and_round_trips_losslessly() -> None:
+def test_historical_topology_with_synthetic_watermarks_round_trips_losslessly() -> None:
     graph = ModelExecutionGraph.model_validate(FIXTURE)
     assert graph.model_dump(mode="json") == FIXTURE
     assert len(graph.replay.nodes) == 5
@@ -103,13 +124,31 @@ def test_real_fold_fixture_validates_and_round_trips_losslessly() -> None:
     assert len(graph.annotations.stored_verdicts) == 0
 
 
+def test_historical_offset_cursor_is_not_accepted_as_watermark_cursor() -> None:
+    assert_rejected(HISTORICAL_FIXTURE)
+    assert [
+        cursor["max_kafka_offset"]
+        for cursor in HISTORICAL_FIXTURE["replay"]["source_cursors"]
+    ] == [
+        2174,
+        4248,
+        2553,
+        4201,
+        1831,
+    ]
+    assert all(
+        cursor.max_ingest_watermark == 1
+        for cursor in ModelExecutionGraph.model_validate(FIXTURE).replay.source_cursors
+    )
+
+
 def test_missing_required_top_level_and_nested_fields_are_rejected() -> None:
     top_level = copy.deepcopy(FIXTURE)
     del top_level["labels"]
     assert_rejected(top_level)
 
     nested = copy.deepcopy(FIXTURE)
-    del nested["replay"]["source_cursors"][0]["max_kafka_offset"]
+    del nested["replay"]["source_cursors"][0]["max_ingest_watermark"]
     assert_rejected(nested)
 
 

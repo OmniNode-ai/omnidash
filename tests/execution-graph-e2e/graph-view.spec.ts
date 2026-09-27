@@ -26,7 +26,7 @@ test('real five-hop fixture renders interactive graph, status counts, and select
 
   await graph.getByRole('button', { name: /delegation-request\.v1\. Replay passed/ }).click();
   await expect(page.getByText('d88c5031-0da9-462a-80ef-8cc817934cc6')).toBeVisible();
-  await expect(page.getByText('onex.cmd.omnibase-infra.delegation-request.v1')).toBeVisible();
+  await expect(page.getByText('onex.cmd.omnibase-infra.delegation-request.v1', { exact: true })).toBeVisible();
   await expect(page.getByText('partition 0, offset 2174')).toBeVisible();
 
   await graph.getByRole('button', {
@@ -34,7 +34,7 @@ test('real five-hop fixture renders interactive graph, status counts, and select
   }).click();
   await expect(page.getByText('Recorded edge', { exact: true })).toBeVisible();
   await expect(page.getByText('parent:d88c5031-0da9-462a-80ef-8cc817934cc6')).toBeVisible();
-  await expect(page.getByText('onex.cmd.omnibase-infra.delegation-request.v1')).toBeVisible();
+  await expect(page.getByText('onex.cmd.omnibase-infra.delegation-request.v1', { exact: true })).toBeVisible();
   await expect(page.getByText('partition 0, offset 2174')).toBeVisible();
 
   await expect(page.getByRole('button', { name: 'Earlier bound' })).toBeEnabled();
@@ -77,7 +77,7 @@ test('fixture details distinguish recomputed and stored grades and resolve the s
   const graph = page.getByRole('group', { name: 'Recorded delegation execution graph' });
   await expect(graph).toBeVisible();
   await expect(page.getByRole('note')).toHaveText(
-    'Synthetic UI fixture only — this stored-grade disagreement is not captured run evidence.',
+    'Synthetic UI fixture only — stored-grade disagreement and ingest watermarks are not captured run evidence.',
   );
   const node = graph.getByRole('button', { name: /delegation-request\.v1\. Replay passed/ });
   await node.click();
@@ -101,7 +101,7 @@ test('selected detail exposes projected labels, pinned versions, and source curs
   await page.goto('/iframe.html?id=delegation-execution-graph-view--projection-detail-fields-fixture&viewMode=story');
 
   await expect(page.getByRole('note')).toHaveText(
-    'Synthetic timestamp labels only — version and cursor values are from the product-fold fixture.',
+    'Historical topology; timestamps and ingest watermarks are synthetic fixture values, not captured run evidence.',
   );
   const graph = page.getByRole('group', { name: 'Recorded delegation execution graph' });
   await graph.getByRole('button', { name: /delegation-request\.v1\. Replay passed/ }).click();
@@ -116,11 +116,11 @@ test('selected detail exposes projected labels, pinned versions, and source curs
   await expect(details.getByText('Pinned grader version', { exact: true })).toBeVisible();
   await expect(details.getByText('1.0.0', { exact: true })).toBeVisible();
   await expect(details.getByText('Source cursor bounds (5)', { exact: true })).toBeVisible();
-  await expect(details.getByText('onex.cmd.omnibase-infra.delegation-request.v1 — partition 0, through offset 2174', { exact: true })).toBeVisible();
-  await expect(details.getByText('onex.cmd.omnibase-infra.delegation-routing-request.v1 — partition 0, through offset 4248', { exact: true })).toBeVisible();
-  await expect(details.getByText('onex.cmd.omnimarket.delegate-skill.v1 — partition 0, through offset 2553', { exact: true })).toBeVisible();
-  await expect(details.getByText('onex.evt.omnibase-infra.routing-decision.v1 — partition 0, through offset 4201', { exact: true })).toBeVisible();
-  await expect(details.getByText('onex.evt.omnimarket.delegate-skill-completed.v1 — partition 0, through offset 1831', { exact: true })).toBeVisible();
+  await expect(details.getByText('onex.cmd.omnibase-infra.delegation-request.v1 — partition 0, through ingest watermark 1', { exact: true })).toBeVisible();
+  await expect(details.getByText('onex.cmd.omnibase-infra.delegation-routing-request.v1 — partition 0, through ingest watermark 1', { exact: true })).toBeVisible();
+  await expect(details.getByText('onex.cmd.omnimarket.delegate-skill.v1 — partition 0, through ingest watermark 1', { exact: true })).toBeVisible();
+  await expect(details.getByText('onex.evt.omnibase-infra.routing-decision.v1 — partition 0, through ingest watermark 1', { exact: true })).toBeVisible();
+  await expect(details.getByText('onex.evt.omnimarket.delegate-skill-completed.v1 — partition 0, through ingest watermark 1', { exact: true })).toBeVisible();
   await page.screenshot({ path: 'tests/screenshots/execution-graph-projection-detail-fields-fixture.png', fullPage: true });
 });
 
@@ -131,7 +131,7 @@ test('fixture status lists unresolved and withheld evidence without adding edges
   const graph = page.getByRole('group', { name: 'Recorded delegation execution graph' });
   await expect(graph).toBeVisible();
   await expect(page.getByRole('note')).toHaveText(
-    'Synthetic status fixture only — unresolved and withheld values are test-only, not captured run evidence.',
+    'Synthetic status fixture only — unresolved, withheld, and ingest watermark values are test-only, not captured run evidence.',
   );
   await expect(page.getByText('5 recorded nodes, 4 recorded edges')).toBeVisible();
   await expect(graph.locator('path[data-edge-kind]')).toHaveCount(4);
@@ -172,7 +172,7 @@ test('correlation panel toggles Events to the exact five-hop fixture and back', 
   await graph.getByRole('button', { name: /delegation-request\.v1\. Replay passed/ }).click();
   await expect(page.getByText('Selected evidence')).toBeVisible();
   await expect(page.getByText('d88c5031-0da9-462a-80ef-8cc817934cc6')).toBeVisible();
-  await expect(page.getByText('onex.cmd.omnibase-infra.delegation-request.v1')).toBeVisible();
+  await expect(page.getByText('onex.cmd.omnibase-infra.delegation-request.v1', { exact: true })).toBeVisible();
   await expect(page.getByText('partition 0, offset 2174')).toBeVisible();
   await page.screenshot({ path: 'tests/screenshots/execution-graph-panel-integration.png', fullPage: true });
 

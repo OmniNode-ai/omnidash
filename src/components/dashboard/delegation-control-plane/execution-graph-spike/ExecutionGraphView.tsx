@@ -80,7 +80,7 @@ function NodeInspector({ graph, node }: { graph: ModelExecutionGraph; node: Mode
           <ul>
             {graph.replay.source_cursors.map((cursor) => (
               <li key={`${cursor.topic}:${cursor.partition}`}>
-                {cursor.topic} — partition {cursor.partition}, through offset {cursor.max_kafka_offset}
+                {cursor.topic} — partition {cursor.partition}, through ingest watermark {cursor.max_ingest_watermark}
               </li>
             ))}
           </ul>
@@ -356,7 +356,7 @@ export function ExecutionGraphView({ correlationId }: { correlationId: string })
           Later bound
         </button>
         <Text as="span" size="xs" color="tertiary">
-          Offset-bounded playback is provisional; append-invariant history is not claimed.
+          Watermark-bound stepping is fixture-only; live adjacent-bound navigation is not yet available.
         </Text>
       </div>
 

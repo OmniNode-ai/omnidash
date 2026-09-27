@@ -14,6 +14,6 @@ Visual proof: [`execution-graph-renderer-comparison-real-five-hop.png`](../../..
 
 ## Fixture and scope
 
-`__fixtures__/realFiveHopGraph.json` is a byte-for-byte copy of the serialized Core fold fixture. It contains five `hop` nodes, four recorded edges, zero unresolved references, and topology SHA-256 `0505ab0b163492380739a15646c0442a3ecfb54efb0acb53bc23d232640fbfd3`. Both renderers consume the same `ModelExecutionGraph` instance. The separate reroute-collision input is refusal evidence and is not drawn in this first slice.
+`__fixtures__/realFiveHopGraph.json` preserves the historical serialized Core fold fixture. It contains five `hop` nodes, four recorded edges, zero unresolved references, and topology SHA-256 `0505ab0b163492380739a15646c0442a3ecfb54efb0acb53bc23d232640fbfd3`. That capture predates ledger ingest watermarks. The renderers consume the same historical topology with explicitly synthetic, one-row-per-partition watermark bounds; those bounds are not captured-run evidence. The separate reroute-collision input is refusal evidence and is not drawn in this first slice.
 
-`ExecutionGraphView` uses only the SVG adapter. GitGraph remains in the comparison harness as evidence only; its dependency is pinned as a dev dependency. Cursor controls are explicitly provisional because the current Core request is Kafka-offset-bounded and does not claim append-invariant history.
+`ExecutionGraphView` uses only the SVG adapter. GitGraph remains in the comparison harness as evidence only; its dependency is pinned as a dev dependency. Cursor controls remain fixture-only until the writer-assigned watermark path and adjacent-bound navigation are proven end to end.

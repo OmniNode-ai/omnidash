@@ -1,6 +1,6 @@
 import { expect, test } from 'playwright/test';
 
-test('compares GitGraph and SVG against the same real five-hop fold projection', async ({ page }) => {
+test('compares GitGraph and SVG against the same historical topology with synthetic watermarks', async ({ page }) => {
   await page.setViewportSize({ width: 2480, height: 900 });
   await page.goto('/iframe.html?id=delegation-execution-graph-renderer-comparison--real-five-hop&viewMode=story');
 

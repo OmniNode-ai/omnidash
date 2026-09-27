@@ -19,7 +19,7 @@ export const provisionalExecutionGraph: ModelExecutionGraph = {
       conflicting_identity: 'same_id_conflicting_parent_or_semantic_body_refuse',
       cross_topic_duplicate: 'same_id_across_topics_refuse',
     },
-    source_cursors: [{ topic: 'onex.evt.sample.v1', partition: 0, max_kafka_offset: 42 }],
+    source_cursors: [{ topic: 'onex.evt.sample.v1', partition: 0, max_ingest_watermark: 1 }],
     correlation_id: 'corr-provisional-001',
     anchor: { kind: 'session', session_id: 'session-provisional', evidence_ref: null, state: 'resolved' },
     nodes: [

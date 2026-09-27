@@ -72,8 +72,8 @@ export interface ModelExecutionGraphReplayPolicy {
 export interface ModelExecutionGraphSourceCursor {
   topic: string;
   partition: number;
-  /** Core first-slice inclusive offset bound; not an ingestion-order watermark. */
-  max_kafka_offset: number;
+  /** Core-owned inclusive writer-assigned ledger ingest watermark. */
+  max_ingest_watermark: number;
 }
 
 export interface ModelExecutionGraphAnchor {
