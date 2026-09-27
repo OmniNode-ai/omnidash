@@ -61,6 +61,19 @@ export interface KeycloakAdminClient {
   applyTenantAttributes(subject: string, attrs: TenantAttributes): Promise<ApplyResult>;
 }
 
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null && !Array.isArray(value);
+}
+
+function parseUserAttributes(value: unknown): Record<string, string[]> {
+  if (!isRecord(value) || !Object.values(value).every(
+    (entry) => Array.isArray(entry) && entry.every((item) => typeof item === 'string'),
+  )) {
+    throw new Error('keycloak admin GET user returned malformed attributes');
+  }
+  return value as Record<string, string[]>;
+}
+
 /** The exact admin-API steps needed to bind a user to a tenant. Pure. */
 export function planTenantAttributeSteps(
   subject: string,
@@ -123,8 +136,8 @@ export function createKeycloakAdminClient(options: KeycloakAdminOptions): Keyclo
     if (!res.ok) {
       throw new Error(`keycloak admin token request failed: HTTP ${res.status}`);
     }
-    const body = (await res.json()) as { access_token?: string };
-    if (!body.access_token) {
+    const body: unknown = await res.json();
+    if (!isRecord(body) || typeof body.access_token !== 'string' || !body.access_token) {
       throw new Error('keycloak admin token response missing access_token');
     }
     return body.access_token;
@@ -143,7 +156,11 @@ export function createKeycloakAdminClient(options: KeycloakAdminOptions): Keyclo
       if (!getRes.ok) {
         throw new Error(`keycloak admin GET user failed: HTTP ${getRes.status}`);
       }
-      const user = (await getRes.json()) as { attributes?: Record<string, string[]> };
+      const user: unknown = await getRes.json();
+      if (!isRecord(user)) {
+        throw new Error('keycloak admin GET user returned a non-object response');
+      }
+      const attributes = user.attributes === undefined ? {} : parseUserAttributes(user.attributes);
 
       const putRes = await fetchImpl(userUrl, {
         method: 'PUT',
@@ -154,7 +171,7 @@ export function createKeycloakAdminClient(options: KeycloakAdminOptions): Keyclo
         body: JSON.stringify({
           ...user,
           attributes: {
-            ...(user.attributes ?? {}),
+            ...attributes,
             tenant_id: [attrs.tenantId],
             tenant_slug: [attrs.tenantSlug],
           },

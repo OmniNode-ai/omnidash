@@ -10,11 +10,9 @@ export interface TenantContext {
   roles: string[];
 }
 
-declare global {
-  namespace Express {
-    interface Request {
-      tenant?: TenantContext;
-    }
+declare module 'express-serve-static-core' {
+  interface Request {
+    tenant?: TenantContext;
   }
 }
 

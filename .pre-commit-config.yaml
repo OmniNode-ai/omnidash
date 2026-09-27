@@ -55,6 +55,7 @@ repos:
         entry: ./node_modules/.bin/eslint --fix
         language: system
         files: \.(js|jsx|ts|tsx)$
+        exclude: (^\.storybook/|^src/shared/types/generated/|\.d\.ts$)
 
       - id: tsc-typecheck
         name: TypeScript typecheck
