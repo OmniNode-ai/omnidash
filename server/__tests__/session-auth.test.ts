@@ -57,6 +57,12 @@ describe('tenantFromSession', () => {
     expect(tenantFromSession(req)).toBeNull();
   });
 
+  it('returns null for non-object grants and non-string access tokens', () => {
+    expect(tenantFromSession(makeReq({ 'keycloak-token': '[]' }))).toBeNull();
+    expect(tenantFromSession(makeReq({ 'keycloak-token': JSON.stringify({ access_token: 42 }) }))).toBeNull();
+    expect(mockDecodeJwt).not.toHaveBeenCalled();
+  });
+
   it('returns null when the decoded token is missing tenant_id', () => {
     mockDecodeJwt.mockReturnValue({ sub: 'user-1' });
     const req = makeReq({ 'keycloak-token': validGrant() });
