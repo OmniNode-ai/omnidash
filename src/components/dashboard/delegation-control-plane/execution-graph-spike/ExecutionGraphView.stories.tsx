@@ -11,6 +11,23 @@ import realFiveHopGraphJson from './__fixtures__/realFiveHopGraph.json';
 
 const realFiveHopGraph = realFiveHopGraphJson as unknown as ModelExecutionGraph;
 
+// UI assertion fixture only: preserve the real fold output and attach one
+// deliberately conflicting current stored annotation to exercise comparison.
+const storedGradeDisagreementFixture: ModelExecutionGraph = {
+  ...realFiveHopGraph,
+  annotations: {
+    ...realFiveHopGraph.annotations,
+    stored_chain: [
+      {
+        node_id: 'd88c5031-0da9-462a-80ef-8cc817934cc6',
+        hop_index: 1,
+        replay_green: false,
+        verifier_verdict: 'fail',
+      },
+    ],
+  },
+};
+
 const mixedStatusFixture: ModelExecutionGraph = {
   ...realFiveHopGraph,
   replay: {
@@ -95,6 +112,21 @@ export const RealFiveHopFixture: Story = {
     (Story) => (
       <ExecutionGraphTransportProvider transport={{
         readLatest: async () => realFiveHopGraph,
+        step: async () => null,
+      }}>
+        <div style={{ margin: 24, maxWidth: 1400 }}><Story /></div>
+      </ExecutionGraphTransportProvider>
+    ),
+  ],
+};
+
+/** Synthetic stored-grade annotation against unchanged fold output; not lab evidence. */
+export const StoredGradeDisagreementFixture: Story = {
+  args: { correlationId: storedGradeDisagreementFixture.replay.correlation_id },
+  decorators: [
+    (Story) => (
+      <ExecutionGraphTransportProvider transport={{
+        readLatest: async () => storedGradeDisagreementFixture,
         step: async () => null,
       }}>
         <div style={{ margin: 24, maxWidth: 1400 }}><Story /></div>

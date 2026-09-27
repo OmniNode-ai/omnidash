@@ -70,6 +70,29 @@ test('typed fixture transport proves backward/forward UI states and mixed replay
   await page.screenshot({ path: 'tests/screenshots/execution-graph-status-and-playback-fixture.png', fullPage: true });
 });
 
+test('fixture details distinguish recomputed and stored grades and resolve the source row', async ({ page }) => {
+  await page.setViewportSize({ width: 1600, height: 1100 });
+  await page.goto('/iframe.html?id=delegation-execution-graph-view--stored-grade-disagreement-fixture&viewMode=story');
+
+  const graph = page.getByRole('group', { name: 'Recorded delegation execution graph' });
+  await expect(graph).toBeVisible();
+  const node = graph.getByRole('button', { name: /delegation-request\.v1\. Replay passed/ });
+  await node.click();
+
+  const details = page.getByRole('region', { name: 'Selected graph evidence' });
+  await expect(details.getByText('Replay grade', { exact: true })).toBeVisible();
+  await expect(details.getByText('Replay passed', { exact: true })).toBeVisible();
+  await expect(details.getByText('Stored chain annotation', { exact: true })).toBeVisible();
+  await expect(details.getByText('hop 1: failed / fail', { exact: true })).toBeVisible();
+
+  await expect(details.getByText('Envelope', { exact: true })).toBeVisible();
+  await expect(details.getByText('d88c5031-0da9-462a-80ef-8cc817934cc6', { exact: true })).toBeVisible();
+  await expect(details.getByText('Topic', { exact: true })).toBeVisible();
+  await expect(details.getByText('onex.cmd.omnibase-infra.delegation-request.v1', { exact: true })).toBeVisible();
+  await expect(details.getByText('partition 0, offset 2174', { exact: true })).toBeVisible();
+  await page.screenshot({ path: 'tests/screenshots/execution-graph-stored-grade-disagreement-fixture.png', fullPage: true });
+});
+
 test('correlation panel toggles Events to the exact five-hop fixture and back', async ({ page }) => {
   await page.setViewportSize({ width: 1600, height: 1100 });
   await page.route('**/_fixtures/**', (route) => route.fulfill({ json: { rows: [] } }));
