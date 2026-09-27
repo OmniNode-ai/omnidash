@@ -76,6 +76,17 @@ runtime_edge:
   url: ""
   timeout_ms: "300000"
 
+workflow_reads:
+  # OMN-19728: server-held user token -> generic authenticated onex-api
+  # workflow ingress. Disabled until the test realm proves audience and
+  # tenant authorization (positive and negative cases). No browser token or
+  # service credential is accepted by this bridge.
+  enabled: "false"
+  gateway_url: ""
+  issuer_url: ""
+  audience: "onex-api"
+  workflow_type: "delegation-execution-graph-read"
+
 renderer_capability:
   # OMN-13131 (W-cap): the omnidash server declares the WEB renderer's capability
   # surface onto onex.cmd.ui.renderer-capability-declared.v1 on startup and on

@@ -2,7 +2,7 @@ import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import { mkdtempSync, rmSync, writeFileSync, existsSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
-import { loadDataSourceConfig, loadRuntimeContract, loadRuntimeEdgeConfig } from '../data-source-contract.js';
+import { loadDataSourceConfig, loadRuntimeContract, loadRuntimeEdgeConfig, loadWorkflowReadConfig } from '../data-source-contract.js';
 
 describe('loadDataSourceConfig', () => {
   const savedEnv: Record<string, string | undefined> = {};
@@ -141,5 +141,29 @@ runtime_edge:
 
     expect(cfg.url).toBe('http://runtime-edge:8085');
     expect(cfg.timeoutMs).toBe(120000);
+  });
+
+  it('keeps authenticated workflow reads disabled in the base contract', () => {
+    expect(loadWorkflowReadConfig()).toEqual({
+      enabled: false,
+      gatewayUrl: '',
+      issuerUrl: '',
+      audience: 'onex-api',
+      workflowType: 'delegation-execution-graph-read',
+    });
+  });
+
+  it('fails closed when an enabled workflow read lacks gateway or issuer authority', () => {
+    const dir = mkdtempSync(join(tmpdir(), 'omnidash-workflow-reads-'));
+    try {
+      const contractPath = join(dir, 'contract.yaml');
+      writeFileSync(contractPath, 'workflow_reads:\n  enabled: "true"\n  gateway_url: ""\n  issuer_url: ""\n');
+      expect(() => loadWorkflowReadConfig(contractPath)).toThrow(/gateway_url/);
+      writeFileSync(contractPath,
+        'workflow_reads:\n  enabled: "true"\n  gateway_url: "https://gateway.example.test"\n  issuer_url: ""\n');
+      expect(() => loadWorkflowReadConfig(contractPath)).toThrow(/issuer_url/);
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
   });
 });

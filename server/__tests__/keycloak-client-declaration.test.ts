@@ -56,6 +56,8 @@ interface KeycloakClient {
   redirectUris: string[];
   webOrigins: string[];
   attributes: Record<string, string>;
+  publicClient: boolean;
+  protocolMappers: Array<{ name: string; protocolMapper: string; config: Record<string, string> }>;
 }
 
 function readClient(): KeycloakClient {
@@ -106,5 +108,30 @@ describe('omnidash Keycloak client declaration (OMN-18080)', () => {
 
   it('keeps PKCE declared alongside the logout attribute', () => {
     expect(readClient().attributes['pkce.code.challenge.method']).toBe('S256');
+  });
+
+  it('mints onex-api audience only into the confidential client access token', () => {
+    const client = readClient();
+    expect(client.clientId).toBe('omnidash');
+    expect(client.publicClient).toBe(false);
+    const audience = client.protocolMappers.filter((mapper) => mapper.protocolMapper === 'oidc-audience-mapper');
+    expect(audience).toHaveLength(1);
+    expect(audience[0].config).toMatchObject({
+      'included.client.audience': 'onex-api',
+      'access.token.claim': 'true',
+      'id.token.claim': 'false',
+    });
+  });
+
+  it('mints tenant slug but never treats a user attribute as the gateway principal', () => {
+    const mappers = readClient().protocolMappers;
+    expect(mappers).toContainEqual(expect.objectContaining({
+      name: 'tenant-slug',
+      config: expect.objectContaining({
+        'claim.name': 'tenant_slug',
+        'access.token.claim': 'true',
+      }),
+    }));
+    expect(mappers.some((mapper) => mapper.config['claim.name'] === 'principal_id')).toBe(false);
   });
 });

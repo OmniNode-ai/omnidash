@@ -16,7 +16,9 @@ import {
   loadAuthConfig,
   loadCapabilityHeartbeatConfig,
   loadOnboardingConfig,
+  loadWorkflowReadConfig,
 } from './data-source-contract.js';
+import { createWorkflowReadRouter } from './workflow-read-router.js';
 import { buildOnboardingRouter } from './onboarding/bootstrap.js';
 import {
   startCapabilityHeartbeat,
@@ -175,6 +177,7 @@ app.use((req, res, next) => {
   return authMiddleware(req, res, next);
 });
 
+app.use(createWorkflowReadRouter(loadWorkflowReadConfig()));
 app.use(routes);
 
 // OMN-14152: co-locate the built SPA on this server so one process serves the

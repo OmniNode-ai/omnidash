@@ -23,6 +23,13 @@ interface RuntimeContract {
     url: string;
     timeout_ms: string;
   };
+  workflow_reads: {
+    enabled: string;
+    gateway_url: string;
+    issuer_url: string;
+    audience: string;
+    workflow_type: string;
+  };
   renderer_capability: {
     heartbeat_enabled: string;
     heartbeat_interval_ms: string;
@@ -46,6 +53,7 @@ interface RuntimeContract {
 type RuntimeContractPatch = {
   data_source?: Partial<RuntimeContract['data_source']>;
   runtime_edge?: Partial<RuntimeContract['runtime_edge']>;
+  workflow_reads?: Partial<RuntimeContract['workflow_reads']>;
   renderer_capability?: Partial<RuntimeContract['renderer_capability']>;
   auth?: Partial<RuntimeContract['auth']>;
   onboarding?: Partial<RuntimeContract['onboarding']>;
@@ -63,6 +71,13 @@ function defaultContract(): RuntimeContract {
     runtime_edge: {
       url: '',
       timeout_ms: '300000',
+    },
+    workflow_reads: {
+      enabled: 'false',
+      gateway_url: '',
+      issuer_url: '',
+      audience: 'onex-api',
+      workflow_type: 'delegation-execution-graph-read',
     },
     renderer_capability: {
       heartbeat_enabled: 'true',
@@ -108,6 +123,7 @@ function parseYamlRuntimeContract(raw: string): RuntimeContractPatch {
       section =
         name === 'data_source'
           || name === 'runtime_edge'
+          || name === 'workflow_reads'
           || name === 'renderer_capability'
           || name === 'auth'
           || name === 'onboarding'
@@ -133,6 +149,13 @@ function parseYamlRuntimeContract(raw: string): RuntimeContractPatch {
       result.runtime_edge ??= {};
       if (key === 'url') result.runtime_edge.url = value;
       else if (key === 'timeout_ms') result.runtime_edge.timeout_ms = value;
+    } else if (section === 'workflow_reads') {
+      result.workflow_reads ??= {};
+      if (key === 'enabled') result.workflow_reads.enabled = value;
+      else if (key === 'gateway_url') result.workflow_reads.gateway_url = value;
+      else if (key === 'issuer_url') result.workflow_reads.issuer_url = value;
+      else if (key === 'audience') result.workflow_reads.audience = value;
+      else if (key === 'workflow_type') result.workflow_reads.workflow_type = value;
     } else if (section === 'renderer_capability') {
       result.renderer_capability ??= {};
       if (key === 'heartbeat_enabled') result.renderer_capability.heartbeat_enabled = value;
@@ -171,6 +194,10 @@ function mergeContract(base: RuntimeContract, overlay: RuntimeContractPatch): Ru
     runtime_edge: {
       ...base.runtime_edge,
       ...overlay.runtime_edge,
+    },
+    workflow_reads: {
+      ...base.workflow_reads,
+      ...overlay.workflow_reads,
     },
     renderer_capability: {
       ...base.renderer_capability,
@@ -260,6 +287,39 @@ export interface RuntimeEdgeConfig {
   url: string;
   /** Maximum time to await the contract-declared terminal event. */
   timeoutMs: number;
+}
+
+export interface WorkflowReadConfig {
+  enabled: boolean;
+  gatewayUrl: string;
+  issuerUrl: string;
+  audience: string;
+  workflowType: string;
+}
+
+export function loadWorkflowReadConfig(
+  contractPath?: string,
+  overlayPath?: string,
+): WorkflowReadConfig {
+  const declared = contractPath ? loadRuntimeContract(contractPath, overlayPath) : loadContract();
+  const raw = declared.workflow_reads;
+  if (raw.enabled !== 'true' && raw.enabled !== 'false') {
+    throw new Error('workflow_reads.enabled must be true or false');
+  }
+  const enabled = raw.enabled === 'true';
+  const gatewayUrl = raw.gateway_url.trim().replace(/\/$/, '');
+  const issuerUrl = raw.issuer_url.trim().replace(/\/$/, '');
+  if (enabled) {
+    for (const [name, value] of Object.entries({ gateway_url: gatewayUrl, issuer_url: issuerUrl })) {
+      if (!value || !/^https?:\/\/[^/]+/.test(value)) {
+        throw new Error(`workflow_reads.${name} must be an absolute HTTP URL when enabled`);
+      }
+    }
+    if (raw.audience !== 'onex-api' || raw.workflow_type !== 'delegation-execution-graph-read') {
+      throw new Error('workflow_reads must name the onex-api audience and declared graph workflow');
+    }
+  }
+  return { enabled, gatewayUrl, issuerUrl, audience: raw.audience, workflowType: raw.workflow_type };
 }
 
 export function loadRuntimeEdgeConfig(): RuntimeEdgeConfig {
