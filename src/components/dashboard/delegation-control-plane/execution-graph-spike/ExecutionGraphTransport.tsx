@@ -4,8 +4,8 @@ import type { ModelExecutionGraph, ModelExecutionGraphSourceCursor } from './ren
 export interface ExecutionGraphTransport {
   /** Submit the generic authorized read workflow; auth/tenant come from gateway context. */
   readLatest: (correlationId: string) => Promise<ModelExecutionGraph>;
-  /** Ask the trusted read transport for an adjacent replay bound; null means the bound. */
-  step: (
+  /** Fixture-only until an adjacent-bound workflow contract exists. */
+  step?: (
     correlationId: string,
     currentCursors: readonly ModelExecutionGraphSourceCursor[],
     direction: 'previous' | 'next',

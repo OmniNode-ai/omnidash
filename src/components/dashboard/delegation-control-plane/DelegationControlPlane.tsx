@@ -5,9 +5,12 @@ import { DelegationEvidenceTabs } from './DelegationEvidenceTabs';
 import { DelegationMetricPanels } from './DelegationMetricPanels';
 import { DelegationRunProvider, useDelegationRunContext } from './DelegationRunContext';
 import { useDataSourceMode, isLiveDataSource } from '@/hooks/useDataSourceMode';
+import { ExecutionGraphTransportProvider } from './execution-graph-spike/ExecutionGraphTransport';
+import { createLiveExecutionGraphTransport } from '@/services/execution-graph-workflow';
 import type { DelegationControlPlaneConfig } from './delegation-control-plane.types';
 
 const DEFAULT_MAX_RUNS = 12;
+const liveExecutionGraphTransport = createLiveExecutionGraphTransport();
 
 function DelegationControlPlaneInner({ config }: { config: DelegationControlPlaneConfig }) {
   const { snapshot, selectedRun, selectRun, filteredRuns } = useDelegationRunContext();
@@ -35,7 +38,11 @@ function DelegationControlPlaneInner({ config }: { config: DelegationControlPlan
           maxRuns={maxRuns}
           onSelectRun={selectRun}
         />
-        <DelegationEvidenceTabs />
+        {isLiveDataSource(dataSourceMode) ? (
+          <ExecutionGraphTransportProvider transport={liveExecutionGraphTransport}>
+            <DelegationEvidenceTabs />
+          </ExecutionGraphTransportProvider>
+        ) : <DelegationEvidenceTabs />}
         <DelegationMetricPanels snapshot={snapshot} />
       </div>
     </ComponentWrapper>

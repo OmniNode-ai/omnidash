@@ -147,6 +147,21 @@ export const RealFiveHopFixture: Story = {
   ],
 };
 
+/** Live transport presentation using the real topology fixture; no adjacent-bound capability. */
+export const LiveReadOnlyFixture: Story = {
+  args: { correlationId: realFiveHopGraph.replay.correlation_id },
+  decorators: [
+    (Story) => (
+      <ExecutionGraphTransportProvider transport={{ readLatest: async () => realFiveHopGraph }}>
+        <div style={{ margin: 24, maxWidth: 1400 }}>
+          <p role="note">Presentation fixture only — live reads require the enabled signed workflow and test-realm authorization.</p>
+          <Story />
+        </div>
+      </ExecutionGraphTransportProvider>
+    ),
+  ],
+};
+
 /** Synthetic stored-grade annotation against unchanged fold output; not lab evidence. */
 export const StoredGradeDisagreementFixture: Story = {
   args: { correlationId: storedGradeDisagreementFixture.replay.correlation_id },

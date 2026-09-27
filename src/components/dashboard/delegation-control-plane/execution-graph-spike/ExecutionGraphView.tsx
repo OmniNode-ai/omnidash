@@ -176,7 +176,7 @@ export function ExecutionGraphView({ correlationId }: { correlationId: string })
   const advance = useCallback(
     async (direction: 'previous' | 'next'): Promise<boolean> => {
       const current = graphRef.current;
-      if (!transport || !current || stepInFlight.current) return false;
+      if (!transport?.step || !current || stepInFlight.current) return false;
       stepInFlight.current = true;
       setBusy(true);
       try {
@@ -345,20 +345,24 @@ export function ExecutionGraphView({ correlationId }: { correlationId: string })
         )}
       </section>
 
-      <div className="execution-graph-cursor" aria-label="Replay cursor controls">
-        <button type="button" onClick={() => void advance('previous')} disabled={busy}>
-          Earlier bound
-        </button>
-        <button type="button" onClick={() => setPlaying((value) => !value)} disabled={busy} aria-pressed={playing}>
-          {playing ? 'Pause' : 'Play'}
-        </button>
-        <button type="button" onClick={() => void advance('next')} disabled={busy}>
-          Later bound
-        </button>
-        <Text as="span" size="xs" color="tertiary">
-          Watermark-bound stepping is fixture-only; live adjacent-bound navigation is not yet available.
-        </Text>
-      </div>
+      {transport.step ? (
+        <div className="execution-graph-cursor" aria-label="Replay cursor controls">
+          <button type="button" onClick={() => void advance('previous')} disabled={busy}>
+            Earlier bound
+          </button>
+          <button type="button" onClick={() => setPlaying((value) => !value)} disabled={busy} aria-pressed={playing}>
+            {playing ? 'Pause' : 'Play'}
+          </button>
+          <button type="button" onClick={() => void advance('next')} disabled={busy}>
+            Later bound
+          </button>
+          <Text as="span" size="xs" color="tertiary">
+            Watermark-bound stepping is fixture-only; live adjacent-bound navigation is not yet available.
+          </Text>
+        </div>
+      ) : (
+        <Text as="div" size="xs" color="tertiary">Replay stepping is unavailable in live mode.</Text>
+      )}
 
       <section className="execution-graph-inspector" aria-label="Selected graph evidence">
         <Text as="h3" size="xs" weight="semibold" color="secondary">

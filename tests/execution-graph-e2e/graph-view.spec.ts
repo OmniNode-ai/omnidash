@@ -45,6 +45,19 @@ test('real five-hop fixture renders interactive graph, status counts, and select
   await page.screenshot({ path: 'tests/screenshots/execution-graph-real-five-hop-view.png', fullPage: true });
 });
 
+test('live read-only presentation draws the graph without playback controls', async ({ page }) => {
+  await page.setViewportSize({ width: 1600, height: 1100 });
+  await page.goto('/iframe.html?id=delegation-execution-graph-view--live-read-only-fixture&viewMode=story');
+  const graph = page.getByRole('group', { name: 'Recorded delegation execution graph' });
+  await expect(graph).toBeVisible();
+  await expect(page.getByText('5 recorded nodes, 4 recorded edges')).toBeVisible();
+  await expect(page.getByText('Replay stepping is unavailable in live mode.')).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Earlier bound' })).toHaveCount(0);
+  await expect(page.getByRole('button', { name: 'Play', exact: true })).toHaveCount(0);
+  await expect(page.getByRole('button', { name: 'Later bound' })).toHaveCount(0);
+  await page.screenshot({ path: 'tests/screenshots/execution-graph-live-read-only-fixture.png', fullPage: true });
+});
+
 test('typed fixture transport proves backward/forward UI states and mixed replay badges', async ({ page }) => {
   await page.setViewportSize({ width: 1600, height: 1100 });
   await page.goto('/iframe.html?id=delegation-execution-graph-view--status-and-playback-fixture&viewMode=story');

@@ -130,7 +130,7 @@ describe('ExecutionGraphView', () => {
     let resolveStep: ((value: ModelExecutionGraph | null) => void) | undefined;
     const transport = {
       readLatest: vi.fn().mockResolvedValue(provisionalExecutionGraph),
-      step: vi.fn<ExecutionGraphTransport['step']>(
+      step: vi.fn<NonNullable<ExecutionGraphTransport['step']>>(
         () =>
           new Promise<ModelExecutionGraph | null>((resolve) => {
             resolveStep = resolve;
@@ -170,6 +170,22 @@ describe('ExecutionGraphView', () => {
     render(<ExecutionGraphView correlationId="corr-provisional-001" />);
     expect(screen.getByText('Graph read is not connected.')).toBeTruthy();
     expect(screen.getByText(/does not accept tenant overrides/i)).toBeTruthy();
+  });
+
+  it('renders live read data without fixture-only stepping controls', async () => {
+    const transport: ExecutionGraphTransport = {
+      readLatest: vi.fn().mockResolvedValue(realFiveHopGraph),
+    };
+    render(
+      <ExecutionGraphTransportProvider transport={transport}>
+        <ExecutionGraphView correlationId={realFiveHopGraph.replay.correlation_id} />
+      </ExecutionGraphTransportProvider>,
+    );
+    expect(await screen.findByText('5 recorded nodes, 4 recorded edges')).toBeTruthy();
+    expect(screen.getByText('Replay stepping is unavailable in live mode.')).toBeTruthy();
+    expect(screen.queryByRole('button', { name: 'Earlier bound' })).toBeNull();
+    expect(screen.queryByRole('button', { name: 'Play' })).toBeNull();
+    expect(screen.queryByRole('button', { name: 'Later bound' })).toBeNull();
   });
 
   it('shows refusal without drawing a graph', async () => {
