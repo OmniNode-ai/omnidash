@@ -299,6 +299,26 @@ export function ExecutionGraphView({ correlationId }: { correlationId: string })
         </span>
       </div>
 
+      <section className="execution-graph-evidence-status" aria-label="Graph evidence status">
+        <div className="execution-graph-evidence-status__summary">
+          <span>Session anchor: {graph.replay.anchor.state}</span>
+          <span>Unresolved records ({graph.replay.unresolved.length})</span>
+          <span>Withheld evidence: {graph.replay.withheld_count}</span>
+        </div>
+        {graph.replay.unresolved.length > 0 && (
+          <ul aria-label="Unresolved graph evidence">
+            {graph.replay.unresolved.map((item) => (
+              <li key={`${item.subject_id}:${item.reason}:${item.source_ref.topic}:${item.source_ref.partition}:${item.source_ref.kafka_offset}`}>
+                <span>{item.subject_id}</span>
+                <span>{item.reason}</span>
+                <span>{item.source_ref.topic}</span>
+                <span>partition {item.source_ref.partition}, offset {item.source_ref.kafka_offset}</span>
+              </li>
+            ))}
+          </ul>
+        )}
+      </section>
+
       <div className="execution-graph-cursor" aria-label="Replay cursor controls">
         <button type="button" onClick={() => void advance('previous')} disabled={busy}>
           Earlier bound

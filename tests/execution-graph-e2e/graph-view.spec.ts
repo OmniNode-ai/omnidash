@@ -96,6 +96,29 @@ test('fixture details distinguish recomputed and stored grades and resolve the s
   await page.screenshot({ path: 'tests/screenshots/execution-graph-stored-grade-disagreement-fixture.png', fullPage: true });
 });
 
+test('fixture status lists unresolved and withheld evidence without adding edges', async ({ page }) => {
+  await page.setViewportSize({ width: 1600, height: 1100 });
+  await page.goto('/iframe.html?id=delegation-execution-graph-view--unresolved-and-withheld-fixture&viewMode=story');
+
+  const graph = page.getByRole('group', { name: 'Recorded delegation execution graph' });
+  await expect(graph).toBeVisible();
+  await expect(page.getByRole('note')).toHaveText(
+    'Synthetic status fixture only — unresolved and withheld values are test-only, not captured run evidence.',
+  );
+  await expect(page.getByText('5 recorded nodes, 4 recorded edges')).toBeVisible();
+  await expect(graph.locator('path[data-edge-kind]')).toHaveCount(4);
+
+  const status = page.getByRole('region', { name: 'Graph evidence status' });
+  await expect(status.getByText('Session anchor: unresolved')).toBeVisible();
+  await expect(status.getByText('Unresolved records (1)')).toBeVisible();
+  await expect(status.getByText('missing_parent')).toBeVisible();
+  await expect(status.getByText('00000000-0000-4000-8000-000000000001')).toBeVisible();
+  await expect(status.getByText('onex.cmd.omnibase-infra.delegation-request.v1')).toBeVisible();
+  await expect(status.getByText('partition 0, offset 2174')).toBeVisible();
+  await expect(status.getByText('Withheld evidence: 2')).toBeVisible();
+  await page.screenshot({ path: 'tests/screenshots/execution-graph-unresolved-withheld-fixture.png', fullPage: true });
+});
+
 test('correlation panel toggles Events to the exact five-hop fixture and back', async ({ page }) => {
   await page.setViewportSize({ width: 1600, height: 1100 });
   await page.route('**/_fixtures/**', (route) => route.fulfill({ json: { rows: [] } }));

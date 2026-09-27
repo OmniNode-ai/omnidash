@@ -207,6 +207,32 @@
 
 .execution-graph-legend__mark--passed { border-color: var(--color-ok, #26784b); }
 .execution-graph-legend__mark--failed { border-color: var(--color-bad, #b54842); }
+.execution-graph-evidence-status {
+  border-bottom: 1px solid var(--line-2);
+  color: var(--text-secondary);
+  font: 11px var(--font-sans);
+  padding: 8px 0;
+}
+
+.execution-graph-evidence-status__summary,
+.execution-graph-evidence-status li {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 16px;
+}
+
+.execution-graph-evidence-status ul {
+  display: grid;
+  gap: 4px;
+  list-style: none;
+  margin: 6px 0 0;
+  padding: 0;
+}
+
+.execution-graph-evidence-status li span:not(:first-child) {
+  color: var(--text-tertiary);
+}
+
 .execution-graph-cursor {
   border-bottom: 1px solid var(--line-2);
   border-top: 1px solid var(--line-2);

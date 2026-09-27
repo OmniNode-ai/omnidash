@@ -28,6 +28,21 @@ const storedGradeDisagreementFixture: ModelExecutionGraph = {
   },
 };
 
+const unresolvedAndWithheldFixture: ModelExecutionGraph = {
+  ...realFiveHopGraph,
+  replay: {
+    ...realFiveHopGraph.replay,
+    unresolved: [
+      {
+        subject_id: '00000000-0000-4000-8000-000000000001',
+        reason: 'missing_parent',
+        source_ref: realFiveHopGraph.replay.nodes[1].source_ref,
+      },
+    ],
+    withheld_count: 2,
+  },
+};
+
 const mixedStatusFixture: ModelExecutionGraph = {
   ...realFiveHopGraph,
   replay: {
@@ -131,6 +146,24 @@ export const StoredGradeDisagreementFixture: Story = {
       }}>
         <div style={{ margin: 24, maxWidth: 1400 }}>
           <p role="note">Synthetic UI fixture only — this stored-grade disagreement is not captured run evidence.</p>
+          <Story />
+        </div>
+      </ExecutionGraphTransportProvider>
+    ),
+  ],
+};
+
+/** Synthetic incomplete-evidence status variant; it adds no graph edge. */
+export const UnresolvedAndWithheldFixture: Story = {
+  args: { correlationId: unresolvedAndWithheldFixture.replay.correlation_id },
+  decorators: [
+    (Story) => (
+      <ExecutionGraphTransportProvider transport={{
+        readLatest: async () => unresolvedAndWithheldFixture,
+        step: async () => null,
+      }}>
+        <div style={{ margin: 24, maxWidth: 1400 }}>
+          <p role="note">Synthetic status fixture only — unresolved and withheld values are test-only, not captured run evidence.</p>
           <Story />
         </div>
       </ExecutionGraphTransportProvider>

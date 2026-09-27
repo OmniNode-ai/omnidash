@@ -1,4 +1,4 @@
-import { act, fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 import { ExecutionGraphView } from './ExecutionGraphView';
 import { ExecutionGraphTransportProvider, type ExecutionGraphTransport } from './ExecutionGraphTransport';
@@ -72,6 +72,44 @@ describe('ExecutionGraphView', () => {
     expect(screen.getByText('parent:d88c5031-0da9-462a-80ef-8cc817934cc6')).toBeTruthy();
     expect(screen.getByText('onex.cmd.omnibase-infra.delegation-request.v1')).toBeTruthy();
     expect(screen.getByText('partition 0, offset 2174')).toBeTruthy();
+  });
+
+  it('shows only read-model anchor, unresolved, and withheld status without fabricating graph edges', async () => {
+    const source = realFiveHopGraph.replay.nodes[1].source_ref;
+    const graphWithIncompleteEvidence = {
+      ...realFiveHopGraph,
+      replay: {
+        ...realFiveHopGraph.replay,
+        unresolved: [
+          {
+            subject_id: '00000000-0000-4000-8000-000000000001',
+            reason: 'missing_parent',
+            source_ref: source,
+          },
+        ],
+        withheld_count: 2,
+      },
+    } as unknown as ModelExecutionGraph;
+    const transport = {
+      readLatest: vi.fn().mockResolvedValue(graphWithIncompleteEvidence),
+      step: vi.fn(),
+    };
+
+    render(
+      <ExecutionGraphTransportProvider transport={transport}>
+        <ExecutionGraphView correlationId={graphWithIncompleteEvidence.replay.correlation_id} />
+      </ExecutionGraphTransportProvider>,
+    );
+
+    const evidenceStatus = await screen.findByRole('region', { name: 'Graph evidence status' });
+    expect(within(evidenceStatus).getByText('Session anchor: unresolved')).toBeTruthy();
+    expect(within(evidenceStatus).getByText('Unresolved records (1)')).toBeTruthy();
+    expect(within(evidenceStatus).getByText('missing_parent')).toBeTruthy();
+    expect(within(evidenceStatus).getByText('00000000-0000-4000-8000-000000000001')).toBeTruthy();
+    expect(within(evidenceStatus).getByText('onex.cmd.omnibase-infra.delegation-request.v1')).toBeTruthy();
+    expect(within(evidenceStatus).getByText('partition 0, offset 2174')).toBeTruthy();
+    expect(within(evidenceStatus).getByText('Withheld evidence: 2')).toBeTruthy();
+    expect(document.querySelectorAll('path[data-edge-kind]')).toHaveLength(4);
   });
 
   it('does not stop playback when a step takes longer than its interval', async () => {
