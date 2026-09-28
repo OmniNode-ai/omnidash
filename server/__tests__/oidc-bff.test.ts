@@ -1,5 +1,5 @@
 // @vitest-environment node
-import { describe, expect, it, vi } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import type { Request, Response } from 'express';
 import { createLocalJWKSet, exportJWK, generateKeyPair, SignJWT } from 'jose';
 import { createOidcBff, OIDC_CALLBACK_PATH, pkceChallenge, safeReturnPath, verifyReturnedTokens } from '../oidc-bff.js';
@@ -47,7 +47,42 @@ function response(): Response & { redirect: ReturnType<typeof vi.fn>; status: Re
   return result as unknown as Response & typeof result;
 }
 
+async function signedTokenFixture() {
+  const realmIssuer = 'https://auth.omninode.ai/realms/omninode';
+  vi.stubEnv('KEYCLOAK_ISSUER', realmIssuer);
+  vi.stubEnv('KEYCLOAK_CLIENT_ID', 'omnidash');
+  const trusted = await generateKeyPair('RS256');
+  const untrusted = await generateKeyPair('RS256');
+  const publicJwk = await exportJWK(trusted.publicKey);
+  publicJwk.kid = 'test-key';
+  const sign = (
+    privateKey: typeof trusted.privateKey,
+    claims: Record<string, unknown>,
+    audience: string,
+    { issuer = realmIssuer, expiration = '1h', subject = 'user-1' }: { issuer?: string; expiration?: string; subject?: string } = {},
+  ) => new SignJWT(claims)
+    .setProtectedHeader({ alg: 'RS256', typ: 'JWT', kid: 'test-key' })
+    .setIssuer(issuer)
+    .setAudience(audience)
+    .setSubject(subject)
+    .setIssuedAt()
+    .setExpirationTime(expiration)
+    .sign(privateKey);
+  return {
+    realmIssuer,
+    trusted,
+    untrusted,
+    sign,
+    jwks: createLocalJWKSet({ keys: [publicJwk] }),
+    pending: { state: 'state', nonce: 'nonce', verifier: 'verifier', returnPath: '/', expiresAt: Date.now() + 1_000 },
+  };
+}
+
 describe('OIDC BFF PKCE compatibility layer', () => {
+  afterEach(() => {
+    vi.unstubAllEnvs();
+  });
+
   it('uses a SHA-256 base64url PKCE challenge', () => {
     expect(pkceChallenge('dBjftJeZ4CVP-mB92K27uhbUJU1p1r_wW1gFWFOEjXk')).toBe(
       'E9Melhoa2OwvFrEMTJguCHaoeK1t8URWbuGJSstw-cM',
@@ -254,5 +289,88 @@ describe('OIDC BFF PKCE compatibility layer', () => {
       access_token: await sign({ typ: 'Bearer', azp: 'wrong-client' }, 'onex-api'),
       id_token: await sign({ typ: 'ID', azp: 'omnidash', nonce: 'nonce' }, 'omnidash'),
     }, pending, createLocalJWKSet({ keys: [publicJwk] }))).rejects.toThrow('invalid_oidc_binding');
+  });
+
+  it.each(['access', 'ID'] as const)('rejects a real %s token with an invalid signature', async (kind) => {
+    const fixture = await signedTokenFixture();
+    const accessToken = await fixture.sign(
+      kind === 'access' ? fixture.untrusted.privateKey : fixture.trusted.privateKey,
+      { typ: 'Bearer', azp: 'omnidash' }, 'onex-api',
+    );
+    const idToken = await fixture.sign(
+      kind === 'ID' ? fixture.untrusted.privateKey : fixture.trusted.privateKey,
+      { typ: 'ID', azp: 'omnidash', nonce: 'nonce' }, 'omnidash',
+    );
+    await expect(verifyReturnedTokens({
+      access_token: accessToken,
+      id_token: idToken,
+    }, fixture.pending, fixture.jwks)).rejects.toThrow();
+  });
+
+  it.each(['access', 'ID'] as const)('rejects a real %s token from a different issuer', async (kind) => {
+    const fixture = await signedTokenFixture();
+    const accessToken = await fixture.sign(
+      fixture.trusted.privateKey, { typ: 'Bearer', azp: 'omnidash' }, 'onex-api',
+      kind === 'access' ? { issuer: `${fixture.realmIssuer}-other` } : {},
+    );
+    const idToken = await fixture.sign(
+      fixture.trusted.privateKey, { typ: 'ID', azp: 'omnidash', nonce: 'nonce' }, 'omnidash',
+      kind === 'ID' ? { issuer: `${fixture.realmIssuer}-other` } : {},
+    );
+    await expect(verifyReturnedTokens({
+      access_token: accessToken,
+      id_token: idToken,
+    }, fixture.pending, fixture.jwks)).rejects.toThrow();
+  });
+
+  it.each(['access', 'ID'] as const)('rejects a real expired %s token', async (kind) => {
+    const fixture = await signedTokenFixture();
+    const accessToken = await fixture.sign(
+      fixture.trusted.privateKey, { typ: 'Bearer', azp: 'omnidash' }, 'onex-api',
+      kind === 'access' ? { expiration: '-1h' } : {},
+    );
+    const idToken = await fixture.sign(
+      fixture.trusted.privateKey, { typ: 'ID', azp: 'omnidash', nonce: 'nonce' }, 'omnidash',
+      kind === 'ID' ? { expiration: '-1h' } : {},
+    );
+    await expect(verifyReturnedTokens({
+      access_token: accessToken,
+      id_token: idToken,
+    }, fixture.pending, fixture.jwks)).rejects.toThrow();
+  });
+
+  it.each(['access', 'ID'] as const)('rejects a real %s token for a different audience', async (kind) => {
+    const fixture = await signedTokenFixture();
+    const accessToken = await fixture.sign(
+      fixture.trusted.privateKey, { typ: 'Bearer', azp: 'omnidash' }, kind === 'access' ? 'another-api' : 'onex-api',
+    );
+    const idToken = await fixture.sign(
+      fixture.trusted.privateKey, { typ: 'ID', azp: 'omnidash', nonce: 'nonce' }, kind === 'ID' ? 'another-client' : 'omnidash',
+    );
+    await expect(verifyReturnedTokens({
+      access_token: accessToken,
+      id_token: idToken,
+    }, fixture.pending, fixture.jwks)).rejects.toThrow();
+  });
+
+  it('rejects real signed tokens with a mismatched ID nonce', async () => {
+    const fixture = await signedTokenFixture();
+    await expect(verifyReturnedTokens({
+      access_token: await fixture.sign(fixture.trusted.privateKey, { typ: 'Bearer', azp: 'omnidash' }, 'onex-api'),
+      id_token: await fixture.sign(fixture.trusted.privateKey, { typ: 'ID', azp: 'omnidash', nonce: 'other-nonce' }, 'omnidash'),
+    }, fixture.pending, fixture.jwks)).rejects.toThrow('invalid_oidc_binding');
+  });
+
+  it('rejects real signed tokens with mismatched access and ID subjects', async () => {
+    const fixture = await signedTokenFixture();
+    await expect(verifyReturnedTokens({
+      access_token: await fixture.sign(fixture.trusted.privateKey, { typ: 'Bearer', azp: 'omnidash' }, 'onex-api'),
+      id_token: await fixture.sign(
+        fixture.trusted.privateKey,
+        { typ: 'ID', azp: 'omnidash', nonce: 'nonce' },
+        'omnidash',
+        { subject: 'other-user' },
+      ),
+    }, fixture.pending, fixture.jwks)).rejects.toThrow('invalid_oidc_binding');
   });
 });
