@@ -128,7 +128,8 @@ function EdgeInspector({ edge }: { edge: ModelExecutionGraphEdge }) {
   );
 }
 
-export function ExecutionGraphView({ correlationId }: { correlationId: string }) {
+export function ExecutionGraphView({ correlationId, fullScreen = false }: { correlationId: string; fullScreen?: boolean }) {
+  const [zoom, setZoom] = useState<number | null>(1);
   const transport = useExecutionGraphTransport();
   const [graph, setGraph] = useState<ModelExecutionGraph | null>(null);
   const [loading, setLoading] = useState(false);
@@ -293,6 +294,13 @@ export function ExecutionGraphView({ correlationId }: { correlationId: string })
         <Text as="span" size="xs" color="tertiary">
           {graph.replay.nodes.length} recorded nodes, {graph.replay.edges.length} recorded edges
         </Text>
+        {fullScreen && <div className="execution-graph-zoom" aria-label="Graph zoom">
+          <button type="button" onClick={() => setZoom(null)}>Fit graph</button>
+          <button type="button" onClick={() => setZoom((value) => Math.max(0.25, (value ?? 1) - 0.25))} aria-label="Zoom out">−</button>
+          <button type="button" onClick={() => setZoom(1)}>100%</button>
+          <button type="button" onClick={() => setZoom((value) => Math.min(3, (value ?? 1) + 0.25))} aria-label="Zoom in">+</button>
+          <span>{zoom === null ? 'Fit' : `${Math.round(zoom * 100)}%`}</span>
+        </div>}
         <Text as="span" size="xs" family="mono" color="tertiary">
           fold {graph.replay.fold_version.major}.{graph.replay.fold_version.minor}.{graph.replay.fold_version.patch}
         </Text>
@@ -301,6 +309,8 @@ export function ExecutionGraphView({ correlationId }: { correlationId: string })
       {/* Provisional SVG candidate; the renderer remains a replaceable drawing adapter. */}
       <SvgTreeRenderer
         graph={graph}
+        fit={fullScreen && zoom === null}
+        zoom={zoom ?? 1}
         selectedNodeId={selectedNodeId}
         selectedEdgeId={selectedEdgeId}
         onSelect={(node) => {
@@ -364,7 +374,7 @@ export function ExecutionGraphView({ correlationId }: { correlationId: string })
         <Text as="div" size="xs" color="tertiary">Replay stepping is unavailable in live mode.</Text>
       )}
 
-      <section className="execution-graph-inspector" aria-label="Selected graph evidence">
+      <section className="execution-graph-inspector" aria-label="Selected graph evidence" hidden={fullScreen && !selectedNode && !selectedEdge}>
         <Text as="h3" size="xs" weight="semibold" color="secondary">
           Selected evidence
         </Text>

@@ -4,6 +4,63 @@
   min-width: 0;
 }
 
+.execution-graph-workspace {
+  position: fixed;
+  inset: 0;
+  width: 100vw;
+  height: 100dvh;
+  max-width: none;
+  max-height: none;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  background: var(--panel);
+  color: var(--text-primary);
+  font-family: var(--font-sans);
+}
+.execution-graph-workspace[open] { display: flex; flex-direction: column; }
+.execution-graph-workspace__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 14px 24px;
+  border-bottom: 1px solid var(--line-2);
+}
+.execution-graph-workspace__header h1 { margin: 0; font-size: 20px; }
+.execution-graph-workspace__header label { display: grid; gap: 4px; color: var(--text-secondary); font-size: 12px; }
+.execution-graph-workspace__header select { max-width: 40vw; background: var(--panel-2); color: var(--text-primary); border: 1px solid var(--line-2); padding: 8px; border-radius: 5px; }
+.execution-graph-workspace__header p { margin: 4px 0 0; font-size: 12px; color: var(--text-secondary); overflow-wrap: anywhere; }
+.execution-graph-workspace button, .execution-graph-open {
+  background: var(--panel-2);
+  color: var(--text-primary);
+  border: 1px solid var(--line-2);
+  border-radius: 5px;
+  padding: 8px 12px;
+  cursor: pointer;
+  font: inherit;
+}
+.execution-graph-workspace button:focus-visible { outline: 2px solid var(--color-brand); outline-offset: 2px; }
+.execution-graph-workspace > .execution-graph-view {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  padding: 12px 24px;
+}
+.execution-graph-workspace .execution-graph-svg-scroll {
+  flex: 1;
+  min-height: 120px;
+  padding: 12px 0;
+}
+.execution-graph-zoom { display: flex; align-items: center; gap: 8px; font-size: 12px; }
+.execution-graph-workspace .execution-graph-inspector { max-height: 24vh; overflow: auto; flex-shrink: 0; }
+.execution-graph-workspace .execution-graph-inspector[hidden] { display: none; }
+@media (max-width: 760px) {
+  .execution-graph-workspace__header { padding: 12px; flex-wrap: wrap; }
+  .execution-graph-workspace > .execution-graph-view { padding: 8px 12px; }
+}
+
 .execution-graph-spike__header,
 .execution-graph-option__heading {
   align-items: baseline;

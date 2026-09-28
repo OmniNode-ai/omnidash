@@ -4,7 +4,7 @@ import { DelegationPanelFrame } from './DelegationPanelFrame';
 import { useDelegationRunContext } from './DelegationRunContext';
 import { fetchCorrelationTrace, type CorrelationTraceEvent } from '@/services/delegation-api';
 import { fmtDate, fmtMs, fmtTokens, fmtUsd } from './format';
-import { ExecutionGraphView } from './execution-graph-spike/ExecutionGraphView';
+import { ExecutionGraphWorkspace } from './execution-graph-spike/ExecutionGraphWorkspace';
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
@@ -209,7 +209,7 @@ function LabeledValue({
 }
 
 export function DelegationCorrelationTracePanel() {
-  const { selectedRun, pendingCorrelationId, isFixture } = useDelegationRunContext();
+  const { selectedRun, pendingCorrelationId, isFixture, snapshot } = useDelegationRunContext();
   const [historicalDraft, setHistoricalDraft] = useState('');
   const [historicalCorrelationId, setHistoricalCorrelationId] = useState<string | null>(null);
   const [historicalError, setHistoricalError] = useState<string | null>(null);
@@ -341,7 +341,7 @@ export function DelegationCorrelationTracePanel() {
               Fixture graph — no live projection.
             </Text>
           )}
-          <ExecutionGraphView correlationId={correlationId} />
+          <ExecutionGraphWorkspace key={correlationId} correlationId={correlationId} isFixture={isFixture} runs={snapshot.runs} />
         </>
       ) : <>
 

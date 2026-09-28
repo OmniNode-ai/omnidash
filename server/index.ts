@@ -6,6 +6,10 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import routes from './routes.js';
 import { authMiddleware } from './auth-middleware.js';
+import {
+  createAuthFailureRateLimiter,
+  markAuthBoundaryPassed,
+} from './auth-failure-rate-limiter.js';
 import { getSessionMiddleware, getStore } from './session.js';
 import { getKeycloak } from './keycloak.js';
 import { createOidcBff } from './oidc-bff.js';
@@ -173,25 +177,24 @@ app.use(buildOnboardingRouter(loadOnboardingConfig(), authConfig));
 // session-probing oracle -- and it sits in front of the session store tracked
 // by OMN-16702.
 //
-// `skipSuccessfulRequests` is the important part: only requests that end 4xx/5xx
-// count against the bucket, so a legitimately authenticated user polling
-// projections is never throttled no matter how many panels are open, while an
-// attacker replaying credentials burns the budget on their own failures.
+// The limiter provisionally counts before verification, then retains a hit only
+// when the auth boundary itself denies access. Downstream workflow failures do
+// not poison a browser's authentication bucket.
 const AUTH_FAILURE_WINDOW_MS = 15 * 60_000;
 const AUTH_FAILURE_MAX = 100;
 app.use(
-  rateLimit({
-    windowMs: AUTH_FAILURE_WINDOW_MS,
-    limit: AUTH_FAILURE_MAX,
-    skipSuccessfulRequests: true,
-    standardHeaders: 'draft-7',
-    legacyHeaders: false,
-    message: { error: 'too_many_failed_auth_attempts' },
-  }),
+  createAuthFailureRateLimiter(
+    AUTH_FAILURE_WINDOW_MS,
+    AUTH_FAILURE_MAX,
+    (path) => PUBLIC_PATHS.has(path),
+  ),
 );
 app.use((req, res, next) => {
   if (PUBLIC_PATHS.has(req.path)) return next();
-  return authMiddleware(req, res, next);
+  return authMiddleware(req, res, () => {
+    markAuthBoundaryPassed(res);
+    next();
+  });
 });
 
 app.use(createWorkflowReadRouter(loadWorkflowReadConfig()));

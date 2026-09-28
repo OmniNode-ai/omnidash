@@ -4,6 +4,10 @@ import { describe, expect, it } from 'vitest';
 import express from 'express';
 import request from 'supertest';
 import rateLimit from 'express-rate-limit';
+import {
+  createAuthFailureRateLimiter,
+  markAuthBoundaryPassed,
+} from '../auth-failure-rate-limiter.js';
 
 // OMN-17188 / CodeQL js/missing-rate-limiting alerts #7 and #8.
 //
@@ -16,8 +20,8 @@ import rateLimit from 'express-rate-limit';
 //
 // Two tiers of proof: the source-level assertions pin the mount ORDER (a limiter
 // mounted after the boundary would protect nothing), and the behavioural tests
-// prove the `skipSuccessfulRequests` semantics the auth-boundary fix depends on
-// are real rather than assumed.
+// prove the auth-boundary-specific accounting semantics are real rather than
+// assumed.
 
 const serverEntry = readFileSync(resolve(process.cwd(), 'server/index.ts'), 'utf8');
 
@@ -27,13 +31,16 @@ describe('rate limiting is mounted on the served Express app (OMN-17188)', () =>
   });
 
   it('mounts a limiter BEFORE the auth boundary, not after it', () => {
-    const firstLimiter = serverEntry.indexOf('rateLimit({');
-    const authBoundary = serverEntry.indexOf('return authMiddleware(req, res, next);');
-    expect(firstLimiter).toBeGreaterThan(-1);
+    const generalLimiter = serverEntry.indexOf('rateLimit({');
+    const authFailureLimiter = serverEntry.indexOf('createAuthFailureRateLimiter(');
+    const authBoundary = serverEntry.indexOf('return authMiddleware(req, res, () => {');
+    expect(generalLimiter).toBeGreaterThan(-1);
+    expect(authFailureLimiter).toBeGreaterThan(-1);
     expect(authBoundary).toBeGreaterThan(-1);
     // A limiter mounted downstream of the boundary would let every
     // credential-stuffing attempt reach JWT verification first.
-    expect(firstLimiter).toBeLessThan(authBoundary);
+    expect(generalLimiter).toBeLessThan(authBoundary);
+    expect(authFailureLimiter).toBeLessThan(authBoundary);
   });
 
   it('mounts the general limiter AFTER the health probe so k8s probes are never throttled', () => {
@@ -44,10 +51,9 @@ describe('rate limiting is mounted on the served Express app (OMN-17188)', () =>
     expect(healthProbe).toBeLessThan(firstLimiter);
   });
 
-  it('counts only failed requests against the auth-boundary budget', () => {
-    // Without this, a legitimate user with many open polling panels would be
-    // throttled out of their own dashboard.
-    expect(serverEntry).toContain('skipSuccessfulRequests: true');
+  it('uses auth-boundary completion rather than downstream HTTP status', () => {
+    expect(serverEntry).toContain('createAuthFailureRateLimiter(');
+    expect(serverEntry).toContain('markAuthBoundaryPassed(res)');
   });
 
   it('keeps trust proxy narrow so each client gets its own bucket', () => {
@@ -72,32 +78,41 @@ describe('rate limiter behaviour (OMN-17188)', () => {
     expect(refused.status).toBe(429);
   });
 
-  it('does not spend the budget on successful auth, only on failures', async () => {
-    // This is the exact configuration guarding the auth boundary: an
-    // authenticated user polling projections must never exhaust the bucket,
-    // while an attacker replaying bad credentials must.
+  it('counts only auth-boundary failures, not authorized downstream errors', async () => {
     const app = express();
     app.use(
-      rateLimit({
-        windowMs: 60_000,
-        limit: 2,
-        skipSuccessfulRequests: true,
-        standardHeaders: 'draft-7',
-        legacyHeaders: false,
-      }),
+      createAuthFailureRateLimiter(60_000, 2, (path) => path === '/public'),
     );
-    app.get('/authed', (_req, res) => res.json({ ok: true }));
-    app.get('/denied', (_req, res) => res.status(401).json({ error: 'unauthorized' }));
+    app.use((req, res, next) => {
+      if (req.path === '/auth-failure') {
+        res.status(401).json({ error: 'unauthorized' });
+        return;
+      }
+      markAuthBoundaryPassed(res);
+      next();
+    });
+    app.get('/workflow-error', (_req, res) =>
+      res.status(500).json({ error: 'workflow_failed' }),
+    );
+    app.get('/workflow-denied', (_req, res) =>
+      res.status(403).json({ error: 'workflow_forbidden' }),
+    );
+    app.get('/public', (_req, res) =>
+      res.status(500).json({ error: 'public_failure' }),
+    );
 
-    // Ten successful requests: the legitimate-user path stays open.
+    // Authorized failures, including a downstream 403, must not look like
+    // bad credentials merely because their final HTTP status is non-2xx.
     for (let i = 0; i < 10; i += 1) {
-      expect((await request(app).get('/authed')).status).toBe(200);
+      expect((await request(app).get('/workflow-error')).status).toBe(500);
+      expect((await request(app).get('/workflow-denied')).status).toBe(403);
     }
-    expect((await request(app).get('/authed')).status).toBe(200);
+    expect((await request(app).get('/public')).status).toBe(500);
 
-    // Failures do accumulate, and the third is refused rather than evaluated.
-    expect((await request(app).get('/denied')).status).toBe(401);
-    expect((await request(app).get('/denied')).status).toBe(401);
-    expect((await request(app).get('/denied')).status).toBe(429);
+    // Only a request rejected by the auth boundary accumulates and the third
+    // is refused before it reaches the boundary.
+    expect((await request(app).get('/auth-failure')).status).toBe(401);
+    expect((await request(app).get('/auth-failure')).status).toBe(401);
+    expect((await request(app).get('/auth-failure')).status).toBe(429);
   });
 });

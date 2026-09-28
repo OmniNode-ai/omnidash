@@ -69,5 +69,5 @@ playwright-report/
 .repowise-workspace.yaml
 .evidence/
 docs/evidence/
-merge-sweep/
+/merge-sweep/
 # === end onex-managed: public_repo_hygiene ===

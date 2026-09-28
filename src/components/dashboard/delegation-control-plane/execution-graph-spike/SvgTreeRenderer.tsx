@@ -55,12 +55,16 @@ export function SvgTreeRenderer({
   selectedEdgeId = null,
   onSelect,
   onSelectEdge,
+  fit = false,
+  zoom = 1,
 }: {
   graph: ModelExecutionGraph;
   selectedNodeId: string | null;
   selectedEdgeId?: string | null;
   onSelect: (node: ModelExecutionGraphNode) => void;
   onSelectEdge?: (edge: ModelExecutionGraphEdge) => void;
+  fit?: boolean;
+  zoom?: number;
 }) {
   const positions = useMemo(() => layoutNodes(graph), [graph]);
   const extent = [...positions.values()].reduce(
@@ -78,8 +82,8 @@ export function SvgTreeRenderer({
         className="execution-graph-svg"
         role="group"
         viewBox={`0 0 ${extent.width} ${extent.height}`}
-        width={extent.width}
-        height={extent.height}
+        width={fit ? '100%' : extent.width * zoom}
+        height={fit ? '100%' : extent.height * zoom}
       >
         <defs>
           <marker id="execution-graph-arrow" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto">

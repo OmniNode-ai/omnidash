@@ -19,6 +19,7 @@ const ExperimentsPage = lazy(() => import('./pages/ExperimentsPage').then((m) =>
 const SeaControlPage = lazy(() => import('./pages/SeaControlPage').then((m) => ({ default: m.SeaControlPage })));
 // OMN-18771 — Lab observability tab (C4), lazily loaded on the same seam.
 const LabPage = lazy(() => import('./pages/LabPage').then((m) => ({ default: m.LabPage })));
+const ExecutionGraphPage = lazy(() => import('./pages/ExecutionGraphPage').then((m) => ({ default: m.ExecutionGraphPage })));
 
 function PageContent({ page }: { page: AppPage }) {
   switch (page) {
@@ -37,6 +38,10 @@ function PageContent({ page }: { page: AppPage }) {
 export function App() {
   const activePage = useFrameStore((s) => s.activePage);
   const { isOpen, close } = useCommandPalette();
+
+  if (new URLSearchParams(window.location.search).get('view') === 'execution-graph') {
+    return <Suspense fallback={<p role="status">Loading execution graph…</p>}><ExecutionGraphPage /></Suspense>;
+  }
 
   return (
     <>
