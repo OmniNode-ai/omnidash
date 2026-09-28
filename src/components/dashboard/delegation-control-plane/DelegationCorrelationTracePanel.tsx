@@ -6,6 +6,8 @@ import { fetchCorrelationTrace, type CorrelationTraceEvent } from '@/services/de
 import { fmtDate, fmtMs, fmtTokens, fmtUsd } from './format';
 import { ExecutionGraphView } from './execution-graph-spike/ExecutionGraphView';
 
+const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
 function fmtBool(value: boolean | null | undefined): { label: string; color: 'ok' | 'bad' | 'tertiary' } {
   if (value === true) return { label: 'passed', color: 'ok' };
   if (value === false) return { label: 'failed', color: 'bad' };
@@ -208,15 +210,37 @@ function LabeledValue({
 
 export function DelegationCorrelationTracePanel() {
   const { selectedRun, pendingCorrelationId, isFixture } = useDelegationRunContext();
+  const [historicalDraft, setHistoricalDraft] = useState('');
+  const [historicalCorrelationId, setHistoricalCorrelationId] = useState<string | null>(null);
+  const [historicalError, setHistoricalError] = useState<string | null>(null);
   // Prefer the selected run's correlation_id; fall back to the pending trigger correlation_id
   // so the trace panel reflects a freshly-dispatched run before it materializes in projection rows.
-  const correlationId = selectedRun?.correlationId ?? pendingCorrelationId;
+  const selectedCorrelationId = selectedRun?.correlationId ?? pendingCorrelationId;
+  const correlationId = historicalCorrelationId ?? selectedCorrelationId;
+  const isHistorical = historicalCorrelationId !== null;
 
   const [viewMode, setViewMode] = useState<'events' | 'graph'>('events');
 
   const [rows, setRows] = useState<CorrelationTraceEvent[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  const openHistoricalGraph = useCallback(() => {
+    const value = historicalDraft.trim();
+    if (!UUID.test(value)) {
+      setHistoricalError('Enter a canonical correlation UUID.');
+      return;
+    }
+    setHistoricalError(null);
+    setHistoricalCorrelationId(value);
+    setViewMode('graph');
+  }, [historicalDraft]);
+
+  const returnToSelectedRun = useCallback(() => {
+    setHistoricalCorrelationId(null);
+    setHistoricalError(null);
+    setViewMode('events');
+  }, []);
 
   useEffect(() => {
     if (!correlationId || viewMode !== 'events') {
@@ -250,6 +274,19 @@ export function DelegationCorrelationTracePanel() {
         subtitle="Select a run from the table above to see its full event chain, or trigger a delegation dispatch."
       >
         <Text as="div" size="sm" color="tertiary">No run selected.</Text>
+        <label style={{ display: 'flex', flexDirection: 'column', gap: 4, marginTop: 10 }}>
+          <Text as="span" size="xs" color="tertiary">Historical correlation ID</Text>
+          <input
+            aria-label="Historical correlation ID"
+            value={historicalDraft}
+            onChange={(event) => setHistoricalDraft(event.target.value)}
+            placeholder="Canonical correlation UUID"
+          />
+        </label>
+        {historicalError && <Text as="div" size="xs" color="bad" style={{ marginTop: 4 }}>{historicalError}</Text>}
+        <button type="button" onClick={openHistoricalGraph} style={{ marginTop: 8 }}>
+          Open historical graph
+        </button>
       </DelegationPanelFrame>
     );
   }
@@ -259,18 +296,41 @@ export function DelegationCorrelationTracePanel() {
     <DelegationPanelFrame
       title="Correlation Trace"
       authority={isFixture ? undefined : 'projection-backed'}
-      subtitle={isPending
-        ? `Awaiting projection rows for dispatched correlation ${correlationId}. Events will appear once the runtime processes the command.`
-        : isFixture
-          ? `Fixture event chain for correlation ${correlationId}. No live projection is connected.`
-          : `Full event chain for correlation ${correlationId}. Ordered by created_at ascending. Source: delegation_events table.`}
+      subtitle={isFixture
+        ? `Fixture event chain for correlation ${correlationId}. No live projection is connected.`
+        : viewMode === 'graph'
+          ? `Recorded causal graph for correlation ${correlationId} via authorized workflow read. Ownership checked at request time.`
+          : isPending
+            ? `Awaiting projection rows for dispatched correlation ${correlationId}. Events will appear once the runtime processes the command.`
+            : `Full event chain for correlation ${correlationId}. Ordered by created_at ascending. Source: delegation_events table.`}
     >
       <Text as="div" size="xs" family="mono" color="tertiary" style={{ marginBottom: 10, overflowWrap: 'break-word' }}>
         {correlationId}
       </Text>
 
+      {!isHistorical && (
+        <label style={{ display: 'flex', flexDirection: 'column', gap: 4, marginBottom: 10 }}>
+          <Text as="span" size="xs" color="tertiary">Historical correlation ID</Text>
+          <input
+            aria-label="Historical correlation ID"
+            value={historicalDraft}
+            onChange={(event) => setHistoricalDraft(event.target.value)}
+            placeholder="Canonical correlation UUID"
+          />
+          {historicalError && <Text as="span" size="xs" color="bad">{historicalError}</Text>}
+          <button type="button" onClick={openHistoricalGraph} style={{ marginTop: 4, alignSelf: 'flex-start' }}>
+            Open historical graph
+          </button>
+        </label>
+      )}
+      {isHistorical && selectedCorrelationId && (
+        <button type="button" onClick={returnToSelectedRun} style={{ marginBottom: 10 }}>
+          Return to selected run
+        </button>
+      )}
+
       <div role="group" aria-label="Correlation trace view" style={{ display: 'flex', gap: 6, marginBottom: 12 }}>
-        <button type="button" aria-pressed={viewMode === 'events'} onClick={() => setViewMode('events')}>Events</button>
+        {!isHistorical && <button type="button" aria-pressed={viewMode === 'events'} onClick={() => setViewMode('events')}>Events</button>}
         <button type="button" aria-pressed={viewMode === 'graph'} onClick={() => setViewMode('graph')}>Execution graph</button>
       </div>
 

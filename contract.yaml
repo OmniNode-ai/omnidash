@@ -5,6 +5,12 @@
 #
 # Run `npm run generate:config` after editing to regenerate src/config/generated/data-source-defaults.ts.
 
+server:
+  # Empty preserves the normal server bind default. Disposable local demos
+  # explicitly select 127.0.0.1 or ::1; no external host is accepted here.
+  # OMNIDASH_BIND_HOST may override this lane-specific declaration.
+  bind_host: ""
+
 data_source:
   # Default data source mode.
   # Values: sqlite | postgres | file | http
@@ -150,6 +156,9 @@ auth:
   # audience: expected `aud` claim; empty disables the audience check.
   # tenant_claim: token claim carrying the tenant id. deploy/keycloak/ defines
   #   the client scope that mints `tenant_id` from the user attribute.
+  # external_origin: canonical public dashboard origin for the confidential
+  #   browser OIDC BFF callback. It must be an origin only (HTTPS, or loopback
+  #   HTTP for local use); login never derives redirect URIs from Host headers.
   #
   # Env overrides (lane tuning only): OMNIDASH_TENANT_AUTH_MODE,
   # OMNIDASH_OIDC_ISSUER_URL, OMNIDASH_OIDC_AUDIENCE, OMNIDASH_TENANT_CLAIM.
@@ -157,6 +166,7 @@ auth:
   issuer_url: ""
   audience: ""
   tenant_claim: "tenant_id"
+  external_origin: ""
 
 command_topics:
   # OMN-14974: action-specific commands go through the generic runtime edge.

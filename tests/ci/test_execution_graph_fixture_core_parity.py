@@ -14,7 +14,7 @@ from pydantic import ValidationError
 import pytest
 
 
-CORE_SHA = "c7e7914e5da4990316c0bda23d355e2102f6c7e8"
+CORE_SHA = "1afbad2135ae5ed2c26d36864ec1a15de99b46d5"
 CORE_PATH = os.environ.get("OMNIBASE_CORE_PATH")
 if not CORE_PATH:
     raise RuntimeError("OMNIBASE_CORE_PATH is required for graph fixture parity")

@@ -102,6 +102,17 @@ ALLOWLIST_FILES=(
   'server/index.ts'
   'scripts/generate-data-source-config.ts'
   'server/__tests__/data-source-contract.test.ts'
+  # OMN-19726: fixed disposable-lane proof targets, not product defaults.
+  # These helpers deliberately refuse arbitrary targets; configurable endpoints
+  # would weaken their isolation assertions. Do not allowlist all scripts.
+  'scripts/prepare-sim-preflight-launch.ts'
+  'scripts/prepare-sim-preflight-launch.test.ts'
+  'scripts/prove-sim-preflight-browser-login.ts'
+  'scripts/prove-sim-preflight-historical-graph.ts'
+  'scripts/prove-sim-preflight-bounded-graph-read.ts'
+  # Local-origin acceptance and non-loopback rejection fixture inputs.
+  'server/__tests__/browser-login-config.test.ts'
+  'server/__tests__/server-bind-config.test.ts'
   # OMN-12400: projection-env guard. The guard module's error message names the
   # banned ports (:8765/:3010/:3002) and the authoritative bridge (:3003); its
   # test feeds those ports plus the live lane backend (.201:13002) as fixture

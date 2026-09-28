@@ -12,6 +12,9 @@ export type DataSourceMode = 'sqlite' | 'postgres' | 'file' | 'http';
 export type TenantAuthMode = 'disabled' | 'required';
 
 interface RuntimeContract {
+  server: {
+    bind_host: string;
+  };
   data_source: {
     default: DataSourceMode;
     url: string;
@@ -39,6 +42,7 @@ interface RuntimeContract {
     issuer_url: string;
     audience: string;
     tenant_claim: string;
+    external_origin: string;
   };
   onboarding: {
     enabled: string;
@@ -51,6 +55,7 @@ interface RuntimeContract {
 }
 
 type RuntimeContractPatch = {
+  server?: Partial<RuntimeContract['server']>;
   data_source?: Partial<RuntimeContract['data_source']>;
   runtime_edge?: Partial<RuntimeContract['runtime_edge']>;
   workflow_reads?: Partial<RuntimeContract['workflow_reads']>;
@@ -61,6 +66,7 @@ type RuntimeContractPatch = {
 
 function defaultContract(): RuntimeContract {
   return {
+    server: { bind_host: '' },
     data_source: {
       default: 'sqlite',
       url: 'http://localhost:3002',
@@ -91,6 +97,7 @@ function defaultContract(): RuntimeContract {
       issuer_url: '',
       audience: '',
       tenant_claim: 'tenant_id',
+      external_origin: '',
     },
     onboarding: {
       // OMN-10875: self-service onboarding ships disabled; the Keycloak
@@ -121,7 +128,8 @@ function parseYamlRuntimeContract(raw: string): RuntimeContractPatch {
     if (sectionMatch) {
       const name = sectionMatch[1] as keyof RuntimeContract;
       section =
-        name === 'data_source'
+        name === 'server'
+          || name === 'data_source'
           || name === 'runtime_edge'
           || name === 'workflow_reads'
           || name === 'renderer_capability'
@@ -136,7 +144,10 @@ function parseYamlRuntimeContract(raw: string): RuntimeContractPatch {
     const m = line.match(/^\s+(\w+):\s+"?([^"]*)"?\s*$/);
     if (!m) continue;
     const [, key, value] = m;
-    if (section === 'data_source') {
+    if (section === 'server') {
+      result.server ??= {};
+      if (key === 'bind_host') result.server.bind_host = value;
+    } else if (section === 'data_source') {
       result.data_source ??= {};
       if (key === 'default') result.data_source.default = value as DataSourceMode;
       else if (key === 'url') result.data_source.url = value;
@@ -168,6 +179,7 @@ function parseYamlRuntimeContract(raw: string): RuntimeContractPatch {
       else if (key === 'issuer_url') result.auth.issuer_url = value;
       else if (key === 'audience') result.auth.audience = value;
       else if (key === 'tenant_claim') result.auth.tenant_claim = value;
+      else if (key === 'external_origin') result.auth.external_origin = value;
     } else if (section === 'onboarding') {
       result.onboarding ??= {};
       if (key === 'enabled') result.onboarding.enabled = value;
@@ -187,6 +199,7 @@ function parseYamlRuntimeContract(raw: string): RuntimeContractPatch {
 
 function mergeContract(base: RuntimeContract, overlay: RuntimeContractPatch): RuntimeContract {
   return {
+    server: { ...base.server, ...overlay.server },
     data_source: {
       ...base.data_source,
       ...overlay.data_source,
@@ -235,6 +248,26 @@ function loadContract(): RuntimeContract {
   if (_contract) return _contract;
   _contract = loadRuntimeContract();
   return _contract;
+}
+
+export interface ServerBindConfig {
+  readonly host: '127.0.0.1' | '::1' | undefined;
+}
+
+/** Empty base declaration preserves normal binding; explicit binds are loopback only. */
+export function loadServerBindConfig(
+  contractPath?: string,
+  overlayPath?: string,
+  environ: Readonly<Record<string, string | undefined>> = process.env,
+): ServerBindConfig {
+  const contract = contractPath ? loadRuntimeContract(contractPath, overlayPath) : loadContract();
+  const override = environ.OMNIDASH_BIND_HOST;
+  const declared = override ?? contract.server.bind_host;
+  if (declared === '' && override === undefined) return { host: undefined };
+  if (declared !== '127.0.0.1' && declared !== '::1') {
+    throw new Error('server.bind_host must be an explicit loopback address');
+  }
+  return { host: declared };
 }
 
 export interface DataSourceConfig {
@@ -347,6 +380,33 @@ export interface AuthConfig {
   audience: string;
   /** Token claim carrying the tenant id (deploy/keycloak/ mints `tenant_id`). */
   tenantClaim: string;
+}
+
+/** Browser-login settings are separate from the bearer-token boundary. */
+export interface BrowserLoginConfig {
+  /** Canonical public dashboard origin used for every OAuth redirect URI. */
+  externalOrigin: string;
+}
+
+export function parseBrowserLoginOrigin(rawValue: string): string {
+  const value = rawValue.trim().replace(/\/$/, '');
+  if (!value) throw new Error('auth.external_origin is required for browser OIDC login');
+  let url: URL;
+  try {
+    url = new URL(value);
+  } catch {
+    throw new Error('auth.external_origin must be an origin-only HTTPS URL or loopback HTTP URL');
+  }
+  const isLoopback = url.hostname === 'localhost' || url.hostname === '127.0.0.1' || url.hostname === '[::1]';
+  if (url.origin !== value || url.username || url.password || url.pathname !== '/' || url.search || url.hash
+    || (url.protocol !== 'https:' && !(url.protocol === 'http:' && isLoopback))) {
+    throw new Error('auth.external_origin must be an origin-only HTTPS URL or loopback HTTP URL');
+  }
+  return url.origin;
+}
+
+export function loadBrowserLoginConfig(): BrowserLoginConfig {
+  return { externalOrigin: parseBrowserLoginOrigin(loadContract().auth.external_origin) };
 }
 
 /**

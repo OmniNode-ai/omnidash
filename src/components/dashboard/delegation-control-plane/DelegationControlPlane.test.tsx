@@ -69,13 +69,38 @@ function populatedSource() {
   });
 }
 
+function failingSource(): ProtocolSnapshotSource {
+  return {
+    async *readAll() {
+      yield await Promise.reject(new Error('projection unavailable'));
+    },
+  };
+}
+
 describe('DelegationControlPlane', () => {
+  it('keeps historical graph entry available when unrelated live projections are empty', async () => {
+    renderWithSource(sourceFor({}));
+
+    expect(await screen.findByText('No delegation evidence rows')).toBeInTheDocument();
+    await userEvent.click(screen.getByRole('tab', { name: /correlation trace/i }));
+    expect(screen.getByLabelText('Historical correlation ID')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Open historical graph' })).toBeInTheDocument();
+  });
+
+  it('keeps historical graph entry available when unrelated live projections fail', async () => {
+    renderWithSource(failingSource());
+
+    expect(await screen.findByText('Error: projection unavailable')).toBeInTheDocument();
+    await userEvent.click(screen.getByRole('tab', { name: /correlation trace/i }));
+    expect(screen.getByLabelText('Historical correlation ID')).toBeInTheDocument();
+  });
+
   it('renders the composable SEA-style control plane from shared projection data', async () => {
     renderWithSource(populatedSource());
 
     expect(await screen.findByText('Delegation evidence control plane')).toBeInTheDocument();
     expect(screen.getByText('Recent Runs')).toBeInTheDocument();
-    expect(screen.getByTitle('corr-omn-11623')).toBeInTheDocument();
+    expect(await screen.findByTitle('corr-omn-11623')).toBeInTheDocument();
     // default tab is Overview — tab button + panel heading both present
     expect(screen.getAllByText('Overview').length).toBeGreaterThan(0);
     expect(screen.getAllByText('Savings').length).toBeGreaterThan(0);

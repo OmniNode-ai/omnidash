@@ -8,14 +8,17 @@ import routes from './routes.js';
 import { authMiddleware } from './auth-middleware.js';
 import { getSessionMiddleware, getStore } from './session.js';
 import { getKeycloak } from './keycloak.js';
+import { createOidcBff } from './oidc-bff.js';
 import {
   normalizeOidcIssuerQuery,
   shouldProtectBrowserNavigation,
 } from './auth-navigation.js';
 import {
   loadAuthConfig,
+  loadBrowserLoginConfig,
   loadCapabilityHeartbeatConfig,
   loadOnboardingConfig,
+  loadServerBindConfig,
   loadWorkflowReadConfig,
 } from './data-source-contract.js';
 import { createWorkflowReadRouter } from './workflow-read-router.js';
@@ -29,6 +32,7 @@ import { webRendererCapability } from '../shared/types/web-renderer-capability.j
 import { invokeRuntimeCommand } from './runtime-skill-client.js';
 
 const PORT = parseInt(process.env.PORT ?? '3002', 10);
+const serverBind = loadServerBindConfig();
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 const ALLOWED_ORIGINS: ReadonlySet<string> = (() => {
@@ -124,6 +128,16 @@ app.use(express.json());
 const sessionMiddleware = getSessionMiddleware();
 app.use(sessionMiddleware);
 
+// keycloak-connect 26.1.1 cannot generate or redeem PKCE verifiers. Keep the
+// adapter for validated grant attachment, refresh, logout, and backchannel
+// logout, but handle browser authorization-code login with our strict PKCE BFF.
+// A configured confidential secret enables browser login. Require the
+// contract-owned callback origin then, but keep bearer-only/non-auth processes
+// bootable without a browser-login declaration.
+const browserLoginConfig = process.env.KEYCLOAK_CLIENT_SECRET ? loadBrowserLoginConfig() : null;
+const oidcBff = createOidcBff({ externalOrigin: browserLoginConfig?.externalOrigin });
+app.use((req, res, next) => void oidcBff.callback(req, res, next));
+
 // Keycloak middleware — handles OAuth callback, /logout, and backchannel
 // /k_logout. Must run after session middleware.
 const keycloak = getKeycloak(getStore());
@@ -134,10 +148,13 @@ app.use(keycloak.middleware({ logout: '/logout' }));
 // authorization-code flows in the same session and overwrites the saved callback
 // URI. Non-document requests fall through to the normal 401/403 auth boundary.
 keycloak.redirectToLogin = shouldProtectBrowserNavigation;
-const protectBrowserNavigation = keycloak.protect();
 app.use((req, res, next) => {
   if (PUBLIC_PATHS.has(req.path) || !shouldProtectBrowserNavigation(req)) return next();
-  return protectBrowserNavigation(req, res, next);
+  // GrantAttacher above has validated any persisted session grant. Only an
+  // unauthenticated document navigation may create a new PKCE flow.
+  const kauth = (req as typeof req & { kauth?: { grant?: unknown } }).kauth;
+  if (kauth?.grant) return next();
+  return void oidcBff.begin(req, res);
 });
 
 const authConfig = loadAuthConfig();
@@ -267,7 +284,7 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
   process.once('SIGTERM', shutdown);
   process.once('SIGINT', shutdown);
 
-  httpServer.listen(PORT, () => {
+  httpServer.listen(PORT, serverBind.host, () => {
     console.log(`[omnidash server] Listening on port ${PORT}`);
   });
 }
