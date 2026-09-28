@@ -1,8 +1,66 @@
+/** The slice of http-proxy's server this module listens on. */
+type ProxyServerLike = {
+  on(
+    event: 'error',
+    listener: (err: NodeJS.ErrnoException, req: unknown, res: unknown) => void,
+  ): unknown;
+};
+
+/** The slice of a Node ServerResponse the unreachable-backend answer writes to. */
+type ResponseLike = {
+  headersSent: boolean;
+  writableEnded: boolean;
+  writeHead(status: number, statusMessage: string, headers: Record<string, string>): unknown;
+  end(body: string): unknown;
+};
+
 export type ProxyEntry = {
   target: string;
   changeOrigin: boolean;
   rewrite: (path: string) => string;
+  configure?: (proxy: ProxyServerLike, options: unknown) => void;
 };
+
+/**
+ * OMN-19915 — a dead projection backend names itself.
+ *
+ * Vite's built-in proxy error handler answers a bare `500` with an empty body,
+ * and every widget renders that as `HTTP 500 Internal Server Error`: the same
+ * words a real projection-API failure produces. On 2026-09-28 a stale
+ * machine-local `.env.local` pointed this proxy at a port nothing listened on,
+ * and the whole dashboard read as "the projection API is broken" while the API
+ * was healthy and serving rows.
+ *
+ * Listeners registered by `configure` run before Vite's own, so this answer
+ * wins and Vite's handler sees `headersSent` and stands down. 502 is the honest
+ * status: the dev server is a gateway that could not reach its upstream. The
+ * reason travels in the status line, which the widgets already print, and in a
+ * typed JSON body for anything that reads it.
+ */
+function answerUnreachableBackend(target: string): ProxyEntry['configure'] {
+  return (proxy) => {
+    proxy.on('error', (err, _req, rawRes) => {
+      const res = rawRes as ResponseLike | undefined;
+      if (!res || typeof res.writeHead !== 'function') return;
+      if (res.headersSent || res.writableEnded) return;
+      const cause = err.code ?? err.message;
+      res.writeHead(502, `Projection backend unreachable: ${target} (${cause})`, {
+        'Content-Type': 'application/json',
+      });
+      res.end(
+        JSON.stringify({
+          status: 'degraded',
+          error: 'projection_backend_unreachable',
+          target,
+          cause,
+          remedy:
+            'VITE_PROJECTION_API_URL names a backend that is not answering; ' +
+            'check .env.local, which Vite loads over .env',
+        }),
+      );
+    });
+  };
+}
 
 export function buildProxyMap(
   env: Record<string, string | undefined>,
@@ -25,30 +83,36 @@ export function buildProxyMap(
   }
 
   if (env.VITE_PROJECTION_API_URL) {
+    const configure = answerUnreachableBackend(env.VITE_PROJECTION_API_URL);
     proxyMap['/projection'] = {
       target: env.VITE_PROJECTION_API_URL,
       changeOrigin: true,
       rewrite: (path) => path,
+      configure,
     };
     proxyMap['/api/projections'] = {
       target: env.VITE_PROJECTION_API_URL,
       changeOrigin: true,
       rewrite: (path) => path,
+      configure,
     };
     proxyMap['/api/delegation'] = {
       target: env.VITE_PROJECTION_API_URL,
       changeOrigin: true,
       rewrite: (path) => path,
+      configure,
     };
     proxyMap['/api/generate'] = {
       target: env.VITE_PROJECTION_API_URL,
       changeOrigin: true,
       rewrite: (path) => path,
+      configure,
     };
     proxyMap['/api/compare'] = {
       target: env.VITE_PROJECTION_API_URL,
       changeOrigin: true,
       rewrite: (path) => path,
+      configure,
     };
   }
 
