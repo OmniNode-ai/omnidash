@@ -1,32 +1,21 @@
 <!-- HANDSHAKE_METADATA
 source: omnibase_core/architecture-handshakes/repos/omnidash.md
-source_version: 0.40.0
-source_sha256: 9fb590d29ea451b326b18ed62559213def133ee29889c12fcf6f6658d4e6f250
-installed_at: 2026-04-26T18:33:49Z
+source_version: 0.47.25
+source_sha256: 77989ce8eff2a4d3253ea396facb00e99eb3a397bcefe84ee8236372e3729a06
+installed_at: 2026-09-29T20:23:49Z
 installed_by: jonah
 -->
-
-<!-- CONTENT CORRECTED 2026-08-26 (OMN-16548): the omnibase_core source template
-above (architecture-handshakes/repos/omnidash.md) still describes a pre-rewrite
-app and has not been regenerated since 2026-04-26. The HANDSHAKE_METADATA block
-is left byte-identical so `check-handshake.sh` — which only diffs the embedded
-source_sha256 against the omnibase_core template's current hash, never against
-this file's body — keeps passing. Everything below is corrected to match this
-repo's live code as of the omnidash `dev` commit at correction time. A future
-`install.sh` re-run from the still-stale omnibase_core template would silently
-revert this fix; the template needs its own correction (flagged, not done here
-— out of this ticket's single-repo scope). -->
 
 # OmniNode Architecture – Constraint Map (omnidash)
 
 > **Role**: Composable widget dashboard — Vite + React frontend, services-led
-> **Handshake Version**: 0.1.0 (content corrected 2026-08-26, see note above)
+> **Handshake Version**: 0.2.0
 
 ## Core Principles
 
 - Widgets render authoritative projection/API data and presentation-only state; they never create truth ([OmniNode deterministic truth doctrine](https://github.com/OmniNode-ai/omni_home/blob/main/docs/standards/OMNINODE_DETERMINISTIC_TRUTH_DOCTRINE.md)).
 - Information density over white space; IBM Plex Sans/Mono typography (`src/styles/globals.css`).
-- Live updates are HTTP polling (`useProjectionQuery`) only. The `/ws` WebSocket path was permanently removed (OMN-12969) after the projection backend rejected the upgrade (403) and never delivered an event; raw WebSocket construction is blocked by the `local/no-projection-websocket` ESLint rule.
+- Live updates are HTTP polling (`useProjectionQuery`) only. The `/ws` WebSocket path was permanently removed (OMN-12969) after the projection backend rejected the upgrade (403) and never delivered an event; raw WebSocket construction is blocked by the `local/no-projection-websocket` ESLint rule. <!-- doc-content-ok: OMN-12969 substantiates why this constraint exists, not a stale/dangling reference -->
 
 ## This Repo Contains
 
@@ -34,7 +23,7 @@ revert this fix; the template needs its own correction (flagged, not done here
 - Express bridge (`server/`) used only in `http`/`sqlite`/`postgres` data-source modes — a thin HTTP proxy to the projection-api and the onboarding routes, not a general backend.
 - TanStack Query (`@tanstack/react-query`) for server state, alongside Zustand (`zustand`) for client/UI state (edit mode, layout, filters). Both are live core deps used together, not alternatives.
 - shadcn/ui primitives (`components.json`: `style: "default"`, base color `slate`) in `src/components/ui/` — a handful of primitives (`button`, `input`, `tooltip`, `separator`, `positioned-menu`, `typography`), not the "New York" variant and not a full component library.
-- Dashboard widgets under `src/components/dashboard/` — count drifts, verify live with `ls src/components/dashboard | wc -l` rather than trusting a stamped number here; see [OmniDash Implementation Status](https://github.com/OmniNode-ai/knowledge-base/blob/main/reference/omnidash-implementation-status.md).
+- Dashboard widgets under `src/components/dashboard/` — count drifts, verify live with `ls src/components/dashboard | wc -l` rather than trusting a stamped number here; see `docs/implementation-status.md`.
 
 ## Rules the Agent Must Obey
 
@@ -54,8 +43,8 @@ revert this fix; the template needs its own correction (flagged, not done here
 5. **Frozen event schemas** - All models crossing boundaries (events, intents, actions, envelopes, projections) must use `frozen=True`. Internal mutable state is fine.
 6. **Explicit timestamps** - Never use `datetime.now()` defaults. Inject timestamps explicitly.
 7. **No hardcoded configuration** - All config via `.env` or Pydantic Settings. No localhost defaults.
-8. **No direct Kafka/backend-DB access from this repo** - omnidash reads via the HTTP projection-api only (`src/data-source/`); Kafka event-bus infrastructure is owned by `omnibase_infra`, out of this repo's scope. (Corrected from the stale org-wide "Kafka is required infrastructure" line, which does not describe omnidash.)
-9. **No unexplained type-suppression** - `@ts-expect-error` / ESLint-disable comments require an explanation and ticket reference. (Corrected from the Python-syntax `# type: ignore` reference — this repo is 100% TypeScript.)
+8. **No direct Kafka/backend-DB access from this repo** - omnidash reads via the HTTP projection-api only (`src/data-source/`); Kafka event-bus infrastructure is owned by `omnibase_infra`, out of this repo's scope.
+9. **No unexplained type-suppression** - `@ts-expect-error` / ESLint-disable comments require an explanation and ticket reference.
 
 ## Non-Goals (DO NOT)
 
@@ -85,4 +74,4 @@ GET  /projection/:topic          (proxied to the projection-api base URL in http
 
 - **Typography**: IBM Plex Sans/Mono (`src/styles/globals.css` `:root` tokens), rendered only through `<Text>`/`<Heading>` (`src/components/ui/typography`) — enforced by the `local/no-typography-inline` ESLint rule.
 - **Density**: High information density for monitoring.
-- **Data-source mode banner**: `src/components/frame/DataModeBanner.tsx` — visible in `file`/`sqlite` modes, hidden in `http`/`postgres`. Live default mode is `http` (`contract.yaml`, OMN-14642) — do not assume a zero-infra default.
+- **Data-source mode banner**: `src/components/frame/DataModeBanner.tsx` — visible in `file`/`sqlite` modes, hidden in `http`/`postgres`. Live default mode is `http` (`contract.yaml`, OMN-14642) — do not assume a zero-infra default. <!-- doc-content-ok: OMN-14642 substantiates why the default mode is http, not a stale/dangling reference -->
