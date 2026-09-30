@@ -39,7 +39,7 @@ jobs:
         uses: actions/checkout@v4
         with:
           repository: OmniNode-ai/omnibase_core
-                    # Auto-bumped by omnibase_core publish-downstream-pin-bump.yml to ad62c0b92876.
+          # Auto-bumped by omnibase_core publish-downstream-pin-bump.yml to ad62c0b92876.
           ref: ad62c0b928760958fb073a9e32621de53c4a9a1a
           path: omnibase_core
 
