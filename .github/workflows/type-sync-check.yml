@@ -142,7 +142,7 @@ jobs:
         with:
           persist-credentials: false
           repository: OmniNode-ai/omnibase_core
-          # Auto-bumped by omnibase_core publish-downstream-pin-bump.yml to ca5df31cec2f.
+                    # Auto-bumped by omnibase_core publish-downstream-pin-bump.yml to ad62c0b92876.
           # the commit that introduced the UI contract primitives
           # (ModelComponentContract, ModelActionContract, ModelDataBindingContract,
           # ModelPermissionContract, ModelEvidenceRequirementContract,
@@ -152,7 +152,7 @@ jobs:
           # gate fail with "file missing".
           # Update by running:
           #   gh api repos/OmniNode-ai/omnibase_core/commits/dev --jq '.sha'
-          ref: ca5df31cec2fce49d2a276528c9cc1816f2c27e9
+          ref: ad62c0b928760958fb073a9e32621de53c4a9a1a
           path: omnibase_core
 
       - name: Checkout omniintelligence
