@@ -142,7 +142,7 @@ jobs:
         with:
           persist-credentials: false
           repository: OmniNode-ai/omnibase_core
-                    # Auto-bumped by omnibase_core publish-downstream-pin-bump.yml to 645ebea04116.
+          # Auto-bumped by omnibase_core publish-downstream-pin-bump.yml to 645ebea04116.
           # the commit that introduced the UI contract primitives
           # (ModelComponentContract, ModelActionContract, ModelDataBindingContract,
           # ModelPermissionContract, ModelEvidenceRequirementContract,

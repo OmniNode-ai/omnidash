@@ -56,7 +56,7 @@ jobs:
           # To find the latest SHA: gh api repos/OmniNode-ai/onex_change_control/commits/main --jq '.sha'
           # Suggested cadence: check monthly, or whenever upstream validator changes
           # are announced (e.g., release notes, changelog, or team communication).
-          ref: 645ebea04116d45540ab3bff8ac0661ce08ad016
+          ref: 3c8fa62f138f632157218df58e215d654004d1c2
           path: onex_change_control
 
       - name: Verify onex_change_control checkout
