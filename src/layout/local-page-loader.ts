@@ -30,6 +30,8 @@ export interface BoundProjectionSnapshot extends ProjectionSnapshot {
   topic: string;
 }
 
+export const DELEGATION_SAVINGS_TOPIC = 'onex.snapshot.projection.delegation.savings.v1';
+
 const pageFiles = import.meta.glob('../pages/local/*.page.yaml', {
   eager: true,
   query: '?raw',
@@ -117,16 +119,35 @@ export async function loadLocalPageSnapshots(
   })));
 }
 
+/** Return display rows for a component, unpacking known projection envelopes. */
+export function rowsForLocalComponent(
+  component: LocalPageDocument['components'][number],
+  snapshots: readonly BoundProjectionSnapshot[],
+): unknown[] {
+  const topic = component.data_bindings?.[0]?.projection_topic;
+  if (topic === undefined) return [];
+  const rows = snapshots.find((snapshot) => snapshot.topic === topic)?.rows ?? [];
+  if (topic !== DELEGATION_SAVINGS_TOPIC) return [...rows];
+  return rows.flatMap((value) => {
+    if (!isRecord(value) || !Array.isArray(value.sessions)) return [];
+    return value.sessions.filter(isRecord);
+  });
+}
+
 /** Keep the two domain-specific empty states explicit instead of substituting zero. */
 export function resolveLocalPageEmptyState(
   page: LocalPageDocument,
   snapshots: readonly BoundProjectionSnapshot[],
 ): LocalPageEmptyState | null {
-  const rows = snapshots.flatMap((snapshot) => snapshot.rows);
-  if (rows.some((value) => {
-    if (typeof value !== 'object' || value === null) return false;
-    const row = value as Record<string, unknown>;
-    return row.baseline_state === 'BASELINE_UNRESOLVED' || row.savings_usd === null;
+  const rows = page.components.flatMap((component) => rowsForLocalComponent(component, snapshots));
+  const rendersSessionRows = page.components.some((component) =>
+    component.data_bindings?.some((binding) => binding.projection_topic === DELEGATION_SAVINGS_TOPIC),
+  );
+  if (!rendersSessionRows && rows.some((value) => {
+    if (!isRecord(value)) return false;
+    return value.baseline_state === 'BASELINE_UNRESOLVED'
+      || value.savings_usd === null
+      || (value.baseline_model === null && value.savings_usd === 0);
   }) && page.empty_state_reasons.includes('BASELINE_UNRESOLVED')) {
     return 'BASELINE_UNRESOLVED';
   }

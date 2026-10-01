@@ -8,10 +8,27 @@
       "data_bindings": [
         {
           "binding_id": "runs-snapshot",
-          "projection_topic": "onex.snapshot.projection.swarm.runs.v1",
-          "ordering_authority_field": "started_at",
+          "projection_topic": "onex.snapshot.projection.delegation.savings.v1",
+          "ordering_authority_field": "created_at",
           "ordering_direction": "descending",
-          "required_fields": ["run_id", "status", "started_at", "savings_usd"]
+          "required_fields": [
+            "sessions",
+            "session_id",
+            "created_at",
+            "model_name",
+            "prompt_tokens",
+            "completion_tokens",
+            "local_cost_usd",
+            "cloud_cost_usd",
+            "counterfactual_baseline_usd",
+            "baseline_model",
+            "savings_usd",
+            "usage_source",
+            "savings_method",
+            "task_type",
+            "latency_ms",
+            "tokens_to_compliance"
+          ]
         }
       ],
       "supported_empty_state_reasons": ["missing-field", "no-data"]

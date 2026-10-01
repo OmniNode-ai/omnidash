@@ -6,6 +6,7 @@ import '@/styles/local-dashboard.css';
 import {
   loadLocalPageConfig,
   loadLocalPageSnapshots,
+  rowsForLocalComponent,
   resolveLocalPageEmptyState,
   type BoundProjectionSnapshot,
   type LocalPageDocument,
@@ -22,9 +23,45 @@ function valueOrUnmeasured(value: unknown): string {
   return String(value);
 }
 
-function rowsFor(component: LocalPageDocument['components'][number], snapshots: BoundProjectionSnapshot[]) {
-  const topic = component.data_bindings?.[0]?.projection_topic;
-  return topic === undefined ? [] : snapshots.find((snapshot) => snapshot.topic === topic)?.rows ?? [];
+interface RunsTableProps {
+  rows: readonly unknown[];
+}
+
+export function RunsTable({ rows }: RunsTableProps) {
+  return (
+    <div className="local-dashboard-table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>Session</th><th>Created</th><th>Model</th><th>Prompt tokens</th>
+            <th>Completion tokens</th><th>Local cost</th><th>Baseline cost</th>
+            <th>Baseline model</th><th>Savings</th><th>Usage source</th>
+            <th>Task type</th><th>Latency (ms)</th><th>Tokens to compliance</th>
+          </tr>
+        </thead>
+        <tbody>{rows.map((row, index) => {
+          const record = row as Record<string, unknown>;
+          const unresolved = record.baseline_model === null && record.savings_usd === 0;
+          const baselineCost = record.counterfactual_baseline_usd ?? record.cloud_cost_usd;
+          return <tr key={String(record.session_id ?? index)}>
+            <td>{valueOrUnmeasured(record.session_id)}</td>
+            <td>{valueOrUnmeasured(record.created_at)}</td>
+            <td>{valueOrUnmeasured(record.model_name)}</td>
+            <td>{valueOrUnmeasured(record.prompt_tokens)}</td>
+            <td>{valueOrUnmeasured(record.completion_tokens)}</td>
+            <td>{valueOrUnmeasured(record.local_cost_usd)}</td>
+            <td>{unresolved ? 'Baseline unresolved' : valueOrUnmeasured(baselineCost)}</td>
+            <td>{unresolved ? 'Baseline unresolved' : valueOrUnmeasured(record.baseline_model)}</td>
+            <td>{unresolved ? 'Baseline unresolved' : valueOrUnmeasured(record.savings_usd)}</td>
+            <td>{valueOrUnmeasured(record.usage_source ?? record.savings_method)}</td>
+            <td>{valueOrUnmeasured(record.task_type)}</td>
+            <td>{valueOrUnmeasured(record.latency_ms)}</td>
+            <td>{valueOrUnmeasured(record.tokens_to_compliance)}</td>
+          </tr>;
+        })}</tbody>
+      </table>
+    </div>
+  );
 }
 
 export function LocalDashboardPage({ pageName }: LocalDashboardPageProps) {
@@ -80,7 +117,7 @@ export function LocalDashboardPage({ pageName }: LocalDashboardPageProps) {
       {!loading && !error && page && (
         <section className="local-dashboard-grid" aria-label="Dashboard components">
           {page.components.map((component) => {
-            const rows = rowsFor(component, snapshots);
+            const rows = rowsForLocalComponent(component, snapshots);
             const first = (rows[0] ?? {}) as Record<string, unknown>;
             return (
               <article className="local-dashboard-panel" key={component.component_id}>
@@ -90,22 +127,7 @@ export function LocalDashboardPage({ pageName }: LocalDashboardPageProps) {
                     {emptyState === 'BASELINE_UNRESOLVED' ? 'Baseline unresolved' : 'No runs yet'}
                   </p>
                 ) : component.component_kind === 'table' ? (
-                  rows.length === 0 ? <p className="local-dashboard-empty">No runs yet</p> : (
-                    <div className="local-dashboard-table-wrap">
-                      <table>
-                        <thead><tr><th>Run</th><th>Status</th><th>Started</th><th>Savings</th></tr></thead>
-                        <tbody>{rows.map((row, index) => {
-                          const record = row as Record<string, unknown>;
-                          return <tr key={String(record.run_id ?? index)}>
-                            <td>{valueOrUnmeasured(record.run_id)}</td>
-                            <td>{valueOrUnmeasured(record.status)}</td>
-                            <td>{valueOrUnmeasured(record.started_at)}</td>
-                            <td>{valueOrUnmeasured(record.savings_usd)}</td>
-                          </tr>;
-                        })}</tbody>
-                      </table>
-                    </div>
-                  )
+                  rows.length === 0 ? <p className="local-dashboard-empty">No runs yet</p> : <RunsTable rows={rows} />
                 ) : (
                   <p className="local-dashboard-metric">
                     {valueOrUnmeasured(first.roi_percent)}{first.roi_percent == null ? '' : '%'}
