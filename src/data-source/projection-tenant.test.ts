@@ -6,6 +6,10 @@ import {
   fetchExposureTenantColumns,
 } from './projection-tenant';
 
+const localConfig = vi.hoisted(() => ({ PROJECTION_TENANT_ID_DEFAULT: '' }));
+
+vi.mock('@/config/generated/data-source-defaults', () => localConfig);
+
 vi.mock('./projection-base-url', () => ({
   resolveProjectionBaseUrl: () => '',
 }));
@@ -31,6 +35,8 @@ describe('resolveConfiguredTenant', () => {
   beforeEach(() => {
     resetExposureMetadataCache();
     vi.unstubAllEnvs();
+    localConfig.PROJECTION_TENANT_ID_DEFAULT = '';
+    localConfig.PROJECTION_TENANT_ID_DEFAULT = '';
   });
   afterEach(() => {
     vi.unstubAllEnvs();
@@ -43,9 +49,9 @@ describe('resolveConfiguredTenant', () => {
     expect(resolveConfiguredTenant()).toBeNull();
   });
 
-  it('reads the env override', () => {
+  it('ignores the env override when local config is empty', () => {
     vi.stubEnv('VITE_PROJECTION_TENANT_ID', HOUSE);
-    expect(resolveConfiguredTenant()).toBe(HOUSE);
+    expect(resolveConfiguredTenant()).toBeNull();
   });
 
   it('treats whitespace as unset rather than as a tenant', () => {
@@ -58,6 +64,7 @@ describe('resolveTenantFor', () => {
   beforeEach(() => {
     resetExposureMetadataCache();
     vi.unstubAllEnvs();
+    localConfig.PROJECTION_TENANT_ID_DEFAULT = '';
   });
   afterEach(() => {
     vi.unstubAllEnvs();
@@ -65,7 +72,7 @@ describe('resolveTenantFor', () => {
   });
 
   it('scopes an exposure the SERVER says is scoped', async () => {
-    vi.stubEnv('VITE_PROJECTION_TENANT_ID', HOUSE);
+    localConfig.PROJECTION_TENANT_ID_DEFAULT = HOUSE;
     vi.stubGlobal('fetch', catalogue());
     expect(await resolveTenantFor(SCOPED)).toEqual({
       kind: 'scoped',
@@ -78,7 +85,7 @@ describe('resolveTenantFor', () => {
     // a different exposure. Attaching a tenant here is refused by the server as
     // an unsupported filter, so a blanket "always send it" would break every
     // unscoped widget.
-    vi.stubEnv('VITE_PROJECTION_TENANT_ID', HOUSE);
+    localConfig.PROJECTION_TENANT_ID_DEFAULT = HOUSE;
     vi.stubGlobal('fetch', catalogue());
     expect(await resolveTenantFor(UNSCOPED)).toEqual({ kind: 'unscoped' });
   });
@@ -96,7 +103,7 @@ describe('resolveTenantFor', () => {
     // Positive control on the mechanism: the catalogue, not the string, decides.
     // With the SAME topic name declared unscoped by the server, a configured
     // tenant is not attached.
-    vi.stubEnv('VITE_PROJECTION_TENANT_ID', HOUSE);
+    localConfig.PROJECTION_TENANT_ID_DEFAULT = HOUSE;
     vi.stubGlobal(
       'fetch',
       vi.fn().mockResolvedValue({
@@ -115,13 +122,13 @@ describe('resolveTenantFor', () => {
     // refuses a scoped exposure on its own. Guessing scoped would attach a
     // tenant to exposures that refuse one, taking the whole dashboard down on a
     // metadata blip.
-    vi.stubEnv('VITE_PROJECTION_TENANT_ID', HOUSE);
+    localConfig.PROJECTION_TENANT_ID_DEFAULT = HOUSE;
     vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ ok: false, status: 503 }));
     expect(await resolveTenantFor(SCOPED)).toEqual({ kind: 'unscoped' });
   });
 
   it('memoizes the catalogue across reads but not across failures', async () => {
-    vi.stubEnv('VITE_PROJECTION_TENANT_ID', HOUSE);
+    localConfig.PROJECTION_TENANT_ID_DEFAULT = HOUSE;
     const ok = catalogue();
     vi.stubGlobal('fetch', ok);
     await resolveTenantFor(SCOPED);

@@ -1,24 +1,34 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { HttpSnapshotSource } from './http-snapshot-source';
-import { resetExposureMetadataCache } from './projection-tenant';
+
+const tenantResolver = vi.hoisted(() => ({ resolveTenantFor: vi.fn() }));
+
+vi.mock('./projection-tenant', () => ({
+  resolveTenantFor: tenantResolver.resolveTenantFor,
+  TenantNotConfiguredError: class TenantNotConfiguredError extends Error {
+    constructor(topic: string, detail: string) {
+      super(`Tenant not configured for ${topic}: ${detail}`);
+      this.name = 'TenantNotConfiguredError';
+    }
+  },
+}));
 
 describe('HttpSnapshotSource', () => {
   beforeEach(() => {
     vi.restoreAllMocks();
-    resetExposureMetadataCache();
+    tenantResolver.resolveTenantFor.mockResolvedValue({ kind: 'unscoped' });
   });
 
-  it('readAll carries the configured tenant to a tenant-scoped exposure', async () => {
-    vi.stubEnv('VITE_PROJECTION_TENANT_ID', '820272f9-4aaf-5add-a2df-0af942852ab2');
+  it('readAll carries a tenant from the overlay resolver to a scoped exposure', async () => {
+    tenantResolver.resolveTenantFor.mockResolvedValue({
+      kind: 'scoped',
+      query: 'tenant=820272f9-4aaf-5add-a2df-0af942852ab2',
+    });
     const topic = 'onex.snapshot.projection.delegation.decisions.v1';
     // A same-origin proxy base, so the catalogue read resolves to `/projections`.
     vi.stubEnv('VITE_DATA_SOURCE', 'http');
     vi.stubEnv('VITE_PROJECTION_API_URL', 'http://lab-projection-api');
-    const fetchMock = vi.fn(async (url: string) =>
-      String(url).endsWith('/projections')
-        ? { ok: true, json: async () => ({ topics: [{ topic, tenant_scoped: true, tenant_column: 'tenant_id' }] }) }
-        : { ok: true, json: async () => ({ rows: [{ id: 'd1' }] }) },
-    );
+    const fetchMock = vi.fn(async (_url: string) => ({ ok: true, json: async () => ({ rows: [{ id: 'd1' }] }) }));
     vi.stubGlobal('fetch', fetchMock);
 
     const source = new HttpSnapshotSource({ baseUrl: 'http://projection-api' });

@@ -5,6 +5,7 @@ import { useProjectionQueryWithContract } from '@/hooks/useProjectionQuery';
 import { ComponentWrapper } from '../ComponentWrapper';
 import { VizRenderer } from './VizRenderer';
 import { Text } from '@/components/ui/typography';
+import { TenantNotConfiguredError } from '@/data-source/projection-tenant';
 
 const SUPPORTED_CONTRACT_VERSIONS = ['1.0.0'];
 
@@ -156,6 +157,16 @@ function ProjectionContainerInner({ contract }: { contract: VisualizationContrac
   }
 
   if (error) {
+    if (error instanceof TenantNotConfiguredError) {
+      return (
+        <ComponentWrapper title={contract.display_name}>
+          <div data-tenant-state="not-configured" role="status">
+            <Text as="div" size="lg" color="tertiary">Tenant not configured</Text>
+            <Text as="div" size="sm" color="tertiary">Configure the tenant in contract.local.yaml.</Text>
+          </div>
+        </ComponentWrapper>
+      );
+    }
     return (
       <ComponentWrapper title={contract.display_name}>
         <InlineErrorState message={error.message} />

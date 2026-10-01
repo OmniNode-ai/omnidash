@@ -11,17 +11,12 @@ import { resolveEffectiveDataSource } from './data-source-override';
  * no `:3010` merge proxy, and no implicit page-origin fetch.
  *
  * Resolution order (most specific wins):
- *   0. Runtime override (OMN-13007) — when the chrome DATA SOURCE control pins a
- *      mode/base URL it wins over env. File override -> null; live override with
- *      an explicit base URL -> that absolute base.
- *   1. VITE_PROJECTION_API_URL set -> '' (relative). The dev/serving layer proxies
- *      same-origin `/projection/*` to that ONE backend (see vite.proxy-config.ts).
- *      Using a relative base keeps every browser request same-origin (one origin,
- *      transparently forwarded to the single backend) and avoids cross-origin CORS
- *      failures, while still guaranteeing there is exactly one backend.
- *   2. VITE_HTTP_DATA_SOURCE_URL — the HttpSnapshotSource base (absolute), used when
- *      no projection proxy is configured.
- *   3. DATA_SOURCE_DEFAULT_URL   — contract.yaml default (local Express bridge).
+ *   0. Runtime override (OMN-13007) — an explicit choice in the DATA SOURCE
+ *      control wins. File override -> null; live override with a base URL -> that
+ *      absolute base.
+ *   1. DATA_SOURCE_DEFAULT_URL — generated from contract.yaml plus the local
+ *      contract.local.yaml overlay. An empty value means same-origin `/projection/*`
+ *      through the local runtime. Browser env files are not endpoint authority.
  *
  * In `file` mode there is no projection backend; callers must take their own
  * fixture path and never call this. `resolveProjectionBaseUrl` returns `null`
@@ -30,13 +25,11 @@ import { resolveEffectiveDataSource } from './data-source-override';
 export function resolveProjectionBaseUrl(): string | null {
   const effective = resolveEffectiveDataSource();
   if (effective.mode === 'file') return null;
-  // A live override that pins an explicit absolute base wins over env. The
-  // chrome control supplies an absolute URL the browser hits directly.
+  // A live override that pins an explicit absolute base remains an intentional
+  // operator choice. The chrome control supplies an absolute URL the browser hits.
   if (effective.baseUrl !== null) return effective.baseUrl.replace(/\/$/, '');
-  // No override base — fall back to the env-resolved single backend.
-  if (import.meta.env.VITE_PROJECTION_API_URL) return '';
-  const httpUrl = import.meta.env.VITE_HTTP_DATA_SOURCE_URL;
-  if (httpUrl) return httpUrl.replace(/\/$/, '');
+  // The generated value is read from contract.yaml + contract.local.yaml by
+  // scripts/generate-data-source-config.ts. Empty deliberately means same-origin.
   return DATA_SOURCE_DEFAULT_URL.replace(/\/$/, '');
 }
 

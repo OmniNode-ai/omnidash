@@ -4,6 +4,8 @@ import { render, screen, waitFor } from '@testing-library/react';
 import { QueryClient } from '@tanstack/react-query';
 import { DataSourceTestProvider } from '@/test-utils/dataSourceTestProvider';
 import { mockFetchWithItems } from '@/test-utils/mockFetch';
+import { HttpSnapshotSource } from '@/data-source';
+import { resetExposureMetadataCache } from '@/data-source/projection-tenant';
 import { registerViz, vizRegistry } from './viz-registry';
 import ProjectionContainer from './ProjectionContainer';
 import type { VisualizationContract } from '../../../../shared/types/visualization-contract';
@@ -25,6 +27,15 @@ const testContract: VisualizationContract = {
   },
 };
 
+const tenantResolver = vi.hoisted(() => ({
+  resolveTenantFor: vi.fn(),
+}));
+
+vi.mock('@/data-source/projection-tenant', async (importOriginal) => ({
+  ...await importOriginal<typeof import('@/data-source/projection-tenant')>(),
+  resolveTenantFor: tenantResolver.resolveTenantFor,
+}));
+
 const mockRow = {
   display_name: 'Qwen3-Local',
   cost_usd: 0.001,
@@ -44,7 +55,11 @@ describe('ProjectionContainer', () => {
     }
   });
 
-  afterEach(() => vi.restoreAllMocks());
+  afterEach(() => {
+    resetExposureMetadataCache();
+    vi.unstubAllEnvs();
+    vi.restoreAllMocks();
+  });
 
   it('renders loading skeleton while data is pending', () => {
     (fetch as ReturnType<typeof vi.fn>).mockReturnValue(new Promise(() => {}));
@@ -126,5 +141,29 @@ describe('ProjectionContainer', () => {
       const empty = container.querySelector('[data-empty-state-reason]');
       expect(empty?.getAttribute('data-empty-state-reason')).toBe('upstream-blocked');
     });
+  });
+
+  it('renders typed tenant-not-configured state without requesting a scoped projection', async () => {
+    const scopedContract = {
+      ...testContract,
+      topic: 'onex.snapshot.projection.ab-compare.v1',
+    };
+    tenantResolver.resolveTenantFor.mockResolvedValue({
+      kind: 'refused',
+      reason: 'tenant_context_unresolved: no tenant is configured',
+    });
+
+    const { container } = render(
+      <DataSourceTestProvider client={qc} source={new HttpSnapshotSource({ baseUrl: '' })}>
+        <ProjectionContainer contract={scopedContract} />
+      </DataSourceTestProvider>,
+    );
+
+    await waitFor(() => {
+      expect(container.querySelector('[data-tenant-state="not-configured"]')).toBeInTheDocument();
+    });
+    expect(screen.getByText(/Tenant not configured/i)).toBeInTheDocument();
+    expect(screen.queryByText(/HTTP \d+/i)).not.toBeInTheDocument();
+    expect(fetch).not.toHaveBeenCalled();
   });
 });

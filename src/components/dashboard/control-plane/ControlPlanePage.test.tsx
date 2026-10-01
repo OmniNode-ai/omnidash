@@ -116,14 +116,10 @@ describe('ControlPlanePage', () => {
     expect(invalidateSpy).toHaveBeenCalledWith({ queryKey: ['live-event-stream'] });
   });
 
-  it('posts the generation command to the configured live backend', async () => {
+  it('keeps the local same-origin URL when browser env files specify a backend', async () => {
     vi.stubEnv('VITE_DATA_SOURCE', 'http');
-    // Step 1 of resolveProjectionBaseUrl()'s precedence order returns ''
-    // (proxy-relative) when VITE_PROJECTION_API_URL is set, which would send
-    // the POST below to the page origin instead. This test is about the
-    // absolute backend origin, so declare that no projection proxy is
-    // configured rather than inheriting whatever ambient env supplies.
-    vi.stubEnv('VITE_PROJECTION_API_URL', '');
+    // A stale HTTP data-source env value must not take over the local binding.
+    vi.stubEnv('VITE_PROJECTION_API_URL', undefined);
     vi.stubEnv('VITE_HTTP_DATA_SOURCE_URL', 'http://backend.test');
     vi.stubGlobal('fetch', vi.fn().mockResolvedValueOnce({
       ok: true,
@@ -145,7 +141,7 @@ describe('ControlPlanePage', () => {
 
     await screen.findByText(/corr-proxy-1/i);
     expect(fetch).toHaveBeenCalledWith(
-      'http://backend.test/api/sea/generate',
+      '/api/sea/generate',
       expect.objectContaining({ method: 'POST' }),
     );
   });

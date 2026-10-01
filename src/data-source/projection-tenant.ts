@@ -42,18 +42,29 @@ interface ExposureMetadata {
 /**
  * The configured tenant, or `null` when none is configured.
  *
- * Resolution order: the `VITE_PROJECTION_TENANT_ID` override, then the
- * contract default. There is deliberately NO third step and no built-in
+ * The tenant comes from the generated contract plus contract.local.yaml
+ * overlay. Browser env files are not tenant authority. There is deliberately
+ * no built-in
  * fallback value. A default tenant here would answer `200` with somebody's
  * rows to a dashboard nobody configured — a result indistinguishable from a
  * correctly scoped one, which is the silent-answer property this whole change
  * exists to make unrepresentable.
  */
 export function resolveConfiguredTenant(): string | null {
-  const override = import.meta.env.VITE_PROJECTION_TENANT_ID;
-  if (typeof override === 'string' && override.trim()) return override.trim();
   if (PROJECTION_TENANT_ID_DEFAULT.trim()) return PROJECTION_TENANT_ID_DEFAULT.trim();
   return null;
+}
+
+export class TenantNotConfiguredError extends Error {
+  readonly code = 'TENANT_NOT_CONFIGURED';
+
+  constructor(
+    readonly topic: string,
+    detail: string,
+  ) {
+    super(`Tenant not configured. ${detail}`);
+    this.name = 'TenantNotConfiguredError';
+  }
 }
 
 let exposureCache: Promise<Map<string, string | null>> | null = null;

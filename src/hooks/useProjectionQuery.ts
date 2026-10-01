@@ -2,6 +2,7 @@ import { useQuery } from '@tanstack/react-query';
 import { useSnapshotSource } from '../data-source';
 import { fetchWithTimeout } from '../data-source/fetch-with-timeout';
 import { useFrameStore } from '../store/store';
+import { resolveTenantFor, TenantNotConfiguredError } from '../data-source/projection-tenant';
 import type { VisualizationContract } from '../../shared/types/visualization-contract';
 
 // ── Legacy call signature ────────────────────────────────────────────────────
@@ -96,7 +97,16 @@ export function useProjectionQueryWithContract<T>(
       const baseUrl = anySource.options?.baseUrl;
 
       if (baseUrl && opts.params && Object.keys(opts.params).length > 0) {
-        const qs = new URLSearchParams(opts.params as Record<string, string>).toString();
+        const tenant = await resolveTenantFor(opts.topic);
+        if (tenant.kind === 'refused') {
+          throw new TenantNotConfiguredError(opts.topic, tenant.reason);
+        }
+        const query = new URLSearchParams(opts.params as Record<string, string>);
+        if (tenant.kind === 'scoped') {
+          const tenantValue = new URLSearchParams(tenant.query).get('tenant');
+          if (tenantValue !== null) query.set('tenant', tenantValue);
+        }
+        const qs = query.toString();
         const url = `${baseUrl}/projection/${encodeURIComponent(opts.topic)}?${qs}`;
         // OMN-14152: bounded fetch — see fetch-with-timeout.ts. A stalled
         // response here previously left isLoading=true forever; react-query's
