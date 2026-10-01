@@ -8,6 +8,7 @@ import { AgentOrchestrator } from './agent/AgentOrchestrator';
 import { useFrameStore } from './store/store';
 import { CommandPalette, useCommandPalette } from './components/dashboard/command-dispatch/CommandPalette';
 import type { AppPage } from './store/types';
+import { LocalDashboardPage } from './pages/LocalDashboardPage';
 
 // OMN-12943 — ported event-dash views, lazily loaded so they add zero weight to
 // the default dashboard bundle. Existing static page imports above are untouched.
@@ -30,6 +31,8 @@ function PageContent({ page }: { page: AppPage }) {
     case 'experiments':         return <Suspense fallback={null}><ExperimentsPage /></Suspense>;
     case 'sea-control':         return <Suspense fallback={null}><SeaControlPage /></Suspense>;
     case 'lab':                 return <Suspense fallback={null}><LabPage /></Suspense>;
+    case 'local-overview':      return <LocalDashboardPage pageName="overview" />;
+    case 'local-runs':          return <LocalDashboardPage pageName="runs" />;
     default:        return <DashboardView />;
   }
 }

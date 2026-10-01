@@ -1,0 +1,28 @@
+{
+  "dashboard_id": "b37a0892-e2bc-4d67-91e4-bf2d55b48eef",
+  "name": "Overview",
+  "description": "Developer overview backed by local runtime projection exposures.",
+  "layout": { "columns": 12, "row_height": 100, "gap": 16, "responsive": true },
+  "refresh_interval_seconds": 30,
+  "theme": "system",
+  "widgets": [
+    {
+      "widget_id": "2157c330-49a4-4d41-a61f-cc0c8c4a0ddb",
+      "title": "Return on investment",
+      "row": 0,
+      "col": 0,
+      "width": 4,
+      "height": 2,
+      "data_source": "overview-roi",
+      "config": {
+        "config_kind": "metric_card",
+        "widget_type": "metric_card",
+        "metric_key": "roi_percent",
+        "label": "ROI",
+        "unit": "%",
+        "format": "percent",
+        "precision": 1
+      }
+    }
+  ]
+}
