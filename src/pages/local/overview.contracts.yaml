@@ -1,0 +1,21 @@
+{
+  "components": [
+    {
+      "component_id": "overview-roi",
+      "component_kind": "metric_card",
+      "title": "Return on investment",
+      "contract_version": { "major": 1, "minor": 0, "patch": 0 },
+      "data_bindings": [
+        {
+          "binding_id": "roi-snapshot",
+          "projection_topic": "onex.snapshot.projection.baselines.roi.v1",
+          "ordering_authority_field": "computed_at",
+          "ordering_direction": "descending",
+          "required_fields": ["roi_percent", "baseline_state"]
+        }
+      ],
+      "supported_empty_state_reasons": ["missing-field", "no-data"]
+    }
+  ],
+  "page_empty_state_reasons": ["NO_RUNS_YET", "BASELINE_UNRESOLVED"]
+}

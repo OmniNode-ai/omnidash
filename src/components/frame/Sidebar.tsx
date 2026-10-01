@@ -287,7 +287,7 @@ export function Sidebar() {
         {!collapsed && (
           <div className="sidebar-bottom-title" style={{ padding: '4px 12px 2px' }}>
             <Text size="xs" color="tertiary" transform="uppercase" weight="semibold">
-              Event-driven runtime
+              Developer workspace
             </Text>
           </div>
         )}
@@ -298,6 +298,8 @@ export function Sidebar() {
             { page: 'experiments' as AppPage, label: 'Experimentation', icon: <FlaskConical size={13} /> },
             { page: 'sea-control' as AppPage, label: 'Agent Workbench', icon: <Sparkles size={13} /> },
             { page: 'lab' as AppPage, label: 'Lab', icon: <Activity size={13} /> },
+            { page: 'local-overview' as AppPage, label: 'Overview', icon: <Activity size={13} /> },
+            { page: 'local-runs' as AppPage, label: 'Runs', icon: <GitBranch size={13} /> },
           ] as const
         ).map(({ page, label, icon }) => (
           <div
