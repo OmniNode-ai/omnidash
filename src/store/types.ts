@@ -119,6 +119,8 @@ export type AppPage =
   | 'event-bus'
   | 'experiments'
   | 'sea-control'
+  | 'local-overview'
+  | 'local-runs'
   // OMN-18771 — Lab observability tab (C4). Additive; existing members untouched.
   | 'lab';
 

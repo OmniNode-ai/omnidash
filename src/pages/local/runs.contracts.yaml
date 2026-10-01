@@ -1,0 +1,21 @@
+{
+  "components": [
+    {
+      "component_id": "recent-runs",
+      "component_kind": "table",
+      "title": "Recent runs",
+      "contract_version": { "major": 1, "minor": 0, "patch": 0 },
+      "data_bindings": [
+        {
+          "binding_id": "runs-snapshot",
+          "projection_topic": "onex.snapshot.projection.swarm.runs.v1",
+          "ordering_authority_field": "started_at",
+          "ordering_direction": "descending",
+          "required_fields": ["run_id", "status", "started_at", "savings_usd"]
+        }
+      ],
+      "supported_empty_state_reasons": ["missing-field", "no-data"]
+    }
+  ],
+  "page_empty_state_reasons": ["NO_RUNS_YET", "BASELINE_UNRESOLVED"]
+}
