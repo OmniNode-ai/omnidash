@@ -48,7 +48,7 @@ describe('resolveProjectionBaseUrl (OMN-12833 A2.5)', () => {
     );
   });
 
-  it('falls back to absolute VITE_HTTP_DATA_SOURCE_URL when no projection proxy is configured', () => {
+  it('ignores VITE_HTTP_DATA_SOURCE_URL when no local projection URL is configured', () => {
     withEnv(
       {
         VITE_DATA_SOURCE: 'http',
@@ -56,7 +56,7 @@ describe('resolveProjectionBaseUrl (OMN-12833 A2.5)', () => {
         VITE_HTTP_DATA_SOURCE_URL: 'http://backend-b:3002/',
       },
       () => {
-        expect(resolveProjectionBaseUrl()).toBe('http://backend-b:3002');
+        expect(resolveProjectionBaseUrl()).toBe('');
       },
     );
   });
@@ -77,7 +77,7 @@ describe('resolveProjectionBaseUrl (OMN-12833 A2.5)', () => {
     );
   });
 
-  it('builds an absolute /projection/{topic} URL when using an absolute base', () => {
+  it('uses the local same-origin projection path when env files provide an absolute base', () => {
     withEnv(
       {
         VITE_DATA_SOURCE: 'http',
@@ -86,7 +86,7 @@ describe('resolveProjectionBaseUrl (OMN-12833 A2.5)', () => {
       },
       () => {
         expect(projectionUrl('onex.snapshot.projection.delegation.summary.v1')).toBe(
-          'http://backend-b:3002/projection/onex.snapshot.projection.delegation.summary.v1',
+          '/projection/onex.snapshot.projection.delegation.summary.v1',
         );
       },
     );

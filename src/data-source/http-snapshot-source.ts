@@ -4,7 +4,7 @@ import type {
   ProtocolSnapshotSource,
 } from './protocol-snapshot-source';
 import { authedFetch } from './authed-fetch';
-import { resolveTenantFor } from './projection-tenant';
+import { resolveTenantFor, TenantNotConfiguredError } from './projection-tenant';
 
 export interface HttpSnapshotSourceOptions { baseUrl: string; }
 
@@ -68,7 +68,9 @@ export class HttpSnapshotSource implements ProtocolSnapshotSource {
     params: Readonly<Record<string, string>> = {},
   ): Promise<string> {
     const tenant = await resolveTenantFor(topic);
-    if (tenant.kind === 'refused') throw new Error(tenant.reason);
+    if (tenant.kind === 'refused') {
+      throw new TenantNotConfiguredError(topic, tenant.reason);
+    }
     const search = new URLSearchParams(params);
     if (tenant.kind === 'scoped') {
       const tenantValue = new URLSearchParams(tenant.query).get('tenant');
