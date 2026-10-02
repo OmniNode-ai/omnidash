@@ -1,7 +1,7 @@
 {
   "dashboard_id": "b37a0892-e2bc-4d67-91e4-bf2d55b48eef",
   "name": "Overview",
-  "description": "Spend, savings and tokens from the runtime's served cost savings overview.",
+  "description": "Spend, savings and measured runs from the runtime's served cost savings overview.",
   "layout": {
     "columns": 12,
     "row_height": 100,
@@ -48,18 +48,36 @@
       }
     },
     {
-      "widget_id": "869ee6a5-22b1-5225-9975-81de4d5a5fcc",
-      "title": "Tokens",
+      "widget_id": "b13119df-d621-5b7d-b199-8162fed59c5c",
+      "title": "Measured runs",
       "row": 0,
       "col": 8,
+      "width": 4,
+      "height": 2,
+      "data_source": "overview-measured",
+      "config": {
+        "config_kind": "metric_card",
+        "widget_type": "metric_card",
+        "metric_key": "measured_run_count",
+        "label": "Measured runs",
+        "unit": "runs",
+        "format": "number",
+        "precision": 0
+      }
+    },
+    {
+      "widget_id": "869ee6a5-22b1-5225-9975-81de4d5a5fcc",
+      "title": "Tokens in and out",
+      "row": 2,
+      "col": 0,
       "width": 4,
       "height": 2,
       "data_source": "overview-tokens",
       "config": {
         "config_kind": "metric_card",
         "widget_type": "metric_card",
-        "metric_key": "tokens_total",
-        "label": "Tokens",
+        "metric_key": "tokens_in_and_out",
+        "label": "Tokens in and out",
         "unit": "tokens",
         "format": "number",
         "precision": 0

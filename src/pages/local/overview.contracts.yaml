@@ -44,6 +44,50 @@
             "total_savings_usd",
             "total_baseline_cost_usd"
           ]
+        },
+        {
+          "binding_id": "overview-savings-baseline",
+          "projection_topic": "onex.snapshot.projection.delegation.savings.v1",
+          "ordering_authority_field": "latest_projection_updated_at",
+          "ordering_direction": "descending",
+          "required_fields": [
+            "baseline_model",
+            "pricing_manifest_version"
+          ]
+        }
+      ],
+      "supported_empty_state_reasons": [
+        "missing-field",
+        "no-data"
+      ]
+    },
+    {
+      "component_id": "overview-measured",
+      "component_kind": "metric_card",
+      "title": "Measured runs",
+      "contract_version": {
+        "major": 1,
+        "minor": 0,
+        "patch": 0
+      },
+      "data_bindings": [
+        {
+          "binding_id": "overview-measured-snapshot",
+          "projection_topic": "onex.snapshot.projection.cost.savings-overview.v1",
+          "ordering_authority_field": "captured_at",
+          "ordering_direction": "descending",
+          "required_fields": [
+            "measured_run_count"
+          ]
+        },
+        {
+          "binding_id": "overview-measured-zero-token",
+          "projection_topic": "onex.snapshot.projection.cost.savings-overview.v1",
+          "ordering_authority_field": "captured_at",
+          "ordering_direction": "descending",
+          "required_fields": [
+            "zero_token_run_count"
+          ]
         }
       ],
       "supported_empty_state_reasons": [
@@ -54,26 +98,15 @@
     {
       "component_id": "overview-tokens",
       "component_kind": "metric_card",
-      "title": "Tokens",
+      "title": "Tokens in and out",
       "contract_version": {
         "major": 1,
         "minor": 0,
         "patch": 0
       },
-      "data_bindings": [
-        {
-          "binding_id": "overview-tokens-snapshot",
-          "projection_topic": "onex.snapshot.projection.cost.savings-overview.v1",
-          "ordering_authority_field": "captured_at",
-          "ordering_direction": "descending",
-          "required_fields": [
-            "tokens_total"
-          ]
-        }
-      ],
+      "data_bindings": [],
       "supported_empty_state_reasons": [
-        "missing-field",
-        "no-data"
+        "upstream-blocked"
       ]
     }
   ],

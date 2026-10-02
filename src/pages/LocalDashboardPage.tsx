@@ -51,6 +51,32 @@ interface MetricCardProps {
   component: LocalPageDocument['components'][number];
   config: MetricCardConfig;
   row: Record<string, unknown>;
+  /** The served row of the component's second binding, rendered as a line under the figure. */
+  caption?: Record<string, unknown> | null;
+}
+
+/**
+ * The exposure a card without a served binding waits for. A page contract cannot carry free text, so the name a
+ * typed "not served yet" state shows lives here, one entry per such card (requirements: an empty state names
+ * what it waits on).
+ */
+const PENDING_SOURCES: Record<string, string> = {
+  'overview-tokens': 'metering-summary.v1',
+};
+
+function captionText(caption: Record<string, unknown> | null | undefined): string | null {
+  if (!caption) return null;
+  const parts: string[] = [];
+  if ('baseline_model' in caption) {
+    parts.push(isMissing(caption.baseline_model) ? 'Baseline unresolved' : `Baseline ${String(caption.baseline_model)}`);
+  }
+  if ('pricing_manifest_version' in caption && !isMissing(caption.pricing_manifest_version)) {
+    parts.push(`pricing manifest v${String(caption.pricing_manifest_version)}`);
+  }
+  if ('zero_token_run_count' in caption && !isMissing(caption.zero_token_run_count)) {
+    parts.push(`Zero-token runs: ${String(caption.zero_token_run_count)}`);
+  }
+  return parts.length > 0 ? parts.join(' · ') : null;
 }
 
 /**
@@ -59,14 +85,41 @@ interface MetricCardProps {
  * field is a baseline, the figure is a savings figure with no priced baseline,
  * which is BASELINE_UNRESOLVED and never a zero.
  */
-export function MetricCard({ component, config, row }: MetricCardProps) {
+export function MetricCard({ component, config, row, caption }: MetricCardProps) {
+  if ((component.data_bindings ?? []).length === 0) {
+    const source = PENDING_SOURCES[component.component_id] ?? 'its exposure';
+    return <p className="local-dashboard-empty" role="status">{`Not served yet: waits on ${source}`}</p>;
+  }
   const required = component.data_bindings?.[0]?.required_fields ?? [config.metric_key];
   const missing = [...new Set([config.metric_key, ...required])].filter((field) => isMissing(row[field]));
   let text: string;
   if (missing.some((field) => field.includes('baseline'))) text = 'Baseline unresolved';
   else if (missing.length > 0) text = 'Not measured';
   else text = formatMetric(Number(row[config.metric_key]), config);
-  return <p className="local-dashboard-metric">{text}</p>;
+  const line = captionText(caption);
+  return (
+    <>
+      <p className="local-dashboard-metric">{text}</p>
+      {line && <p className="local-dashboard-caption">{line}</p>}
+    </>
+  );
+}
+
+/** The raw served row (not the Runs session flattening) of a component's second binding. */
+function captionRowFor(
+  component: LocalPageDocument['components'][number],
+  snapshots: readonly BoundProjectionSnapshot[],
+): Record<string, unknown> | null {
+  const topic = component.data_bindings?.[1]?.projection_topic;
+  if (topic === undefined) return null;
+  const first = snapshots.find((snapshot) => snapshot.topic === topic)?.rows?.[0];
+  return first && typeof first === 'object' ? (first as Record<string, unknown>) : null;
+}
+
+/** A placeholder or empty model is not a model: Jonah's handoff (OMN-19981, aac9032d) says render it as unknown. */
+function modelOrUnknown(value: unknown): string {
+  if (value === null || value === undefined || value === '' || value === 'delegate-skill') return 'unknown';
+  return String(value);
 }
 
 function metricConfigFor(page: LocalPageDocument, componentId: string): MetricCardConfig | null {
@@ -99,7 +152,7 @@ export function RunsTable({ rows }: RunsTableProps) {
           return <tr key={String(record.session_id ?? index)}>
             <td>{valueOrUnmeasured(record.session_id)}</td>
             <td>{valueOrUnmeasured(record.created_at)}</td>
-            <td>{valueOrUnmeasured(record.model_name)}</td>
+            <td>{modelOrUnknown(record.model_name)}</td>
             <td>{valueOrUnmeasured(record.prompt_tokens)}</td>
             <td>{valueOrUnmeasured(record.completion_tokens)}</td>
             <td>{valueOrUnmeasured(record.local_cost_usd)}</td>
@@ -189,7 +242,7 @@ export function LocalDashboardPage({ pageName }: LocalDashboardPageProps) {
                 ) : (() => {
                   const config = metricConfigFor(page, component.component_id);
                   return config
-                    ? <MetricCard component={component} config={config} row={first} />
+                    ? <MetricCard component={component} config={config} row={first} caption={captionRowFor(component, snapshots)} />
                     : <p className="local-dashboard-empty">Not measured</p>;
                 })()}
               </article>

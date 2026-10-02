@@ -281,14 +281,33 @@ describe('local pages against the captured lab catalogue', () => {
     }
   });
 
-  it('Overview shows spend, savings and tokens from cost.savings-overview.v1', () => {
+  it('Overview shows spend, savings, measured runs and a typed tokens state (requirements OV-3, SV-2, SV-3)', () => {
     const page = readPage('overview');
     const topics = page.components.flatMap((c) => (c.data_bindings ?? []).map((b) => b.projection_topic));
-    expect(new Set(topics)).toEqual(new Set(['onex.snapshot.projection.cost.savings-overview.v1']));
+    expect(new Set(topics)).toEqual(new Set([
+      'onex.snapshot.projection.cost.savings-overview.v1',
+      'onex.snapshot.projection.delegation.savings.v1',
+    ]));
     const keys = page.dashboard.widgets.map((w) => (w.config as Record<string, unknown>).metric_key);
-    expect(keys).toEqual(['total_cost_usd', 'total_savings_usd', 'tokens_total']);
+    expect(keys).toEqual(['total_cost_usd', 'total_savings_usd', 'measured_run_count', 'tokens_in_and_out']);
     const savings = page.components.find((c) => c.component_id === 'overview-savings');
     expect(savings?.data_bindings?.[0]?.required_fields).toEqual(['total_savings_usd', 'total_baseline_cost_usd']);
+    // SV-2 / OV-3: the baseline model and the pricing manifest version, from the served delegation-savings row.
+    expect(savings?.data_bindings?.[1]?.projection_topic).toBe('onex.snapshot.projection.delegation.savings.v1');
+    expect(savings?.data_bindings?.[1]?.required_fields).toEqual(['baseline_model', 'pricing_manifest_version']);
+    const measured = page.components.find((c) => c.component_id === 'overview-measured');
+    expect(measured?.data_bindings?.[1]?.required_fields).toEqual(['zero_token_run_count']);
+  });
+
+  it('Overview shows no combined token total, and tokens in and out wait for their exposure (SV-3)', () => {
+    const page = readPage('overview');
+    for (const widget of page.dashboard.widgets) {
+      const key = String((widget.config as Record<string, unknown>).metric_key);
+      expect(key, 'a combined token total').not.toBe('tokens_total');
+    }
+    const tokens = page.components.find((c) => c.component_id === 'overview-tokens');
+    expect(tokens?.data_bindings ?? []).toEqual([]);
+    expect(tokens?.supported_empty_state_reasons).toEqual(['upstream-blocked']);
   });
 
   it('Overview never reads local_token_pct, a literal 0 the view does not measure', () => {

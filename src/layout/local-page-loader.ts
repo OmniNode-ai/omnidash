@@ -140,8 +140,10 @@ export function resolveLocalPageEmptyState(
   snapshots: readonly BoundProjectionSnapshot[],
 ): LocalPageEmptyState | null {
   const rows = page.components.flatMap((component) => rowsForLocalComponent(component, snapshots));
+  // Only a component's first binding supplies its rows; a second binding is a caption (the savings card's baseline
+  // line), so it must not switch a page into the Runs session-row rules.
   const rendersSessionRows = page.components.some((component) =>
-    component.data_bindings?.some((binding) => binding.projection_topic === DELEGATION_SAVINGS_TOPIC),
+    component.data_bindings?.[0]?.projection_topic === DELEGATION_SAVINGS_TOPIC,
   );
   if (!rendersSessionRows && rows.some((value) => {
     if (!isRecord(value)) return false;

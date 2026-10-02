@@ -94,6 +94,50 @@ describe('MetricCard', () => {
   });
 });
 
+describe('MetricCard captions and pending sources (Amendment 4)', () => {
+  it('names the baseline model and pricing manifest version under the savings figure (OV-3, SV-2)', () => {
+    render(<MetricCard
+      component={component('overview-savings', ['total_savings_usd', 'total_baseline_cost_usd'])}
+      config={{ metric_key: 'total_savings_usd', label: 'Savings', format: 'currency', precision: 4 }}
+      row={{ total_savings_usd: 1.22354, total_baseline_cost_usd: 1.2304 }}
+      caption={{ baseline_model: 'claude-sonnet-5-5', pricing_manifest_version: 1 }}
+    />);
+    expect(screen.getByText('$1.2235')).toBeInTheDocument();
+    expect(screen.getByText('Baseline claude-sonnet-5-5 · pricing manifest v1')).toBeInTheDocument();
+  });
+
+  it('says the baseline is unresolved in the caption when the served row has none', () => {
+    render(<MetricCard
+      component={component('overview-savings', ['total_savings_usd', 'total_baseline_cost_usd'])}
+      config={{ metric_key: 'total_savings_usd', label: 'Savings', format: 'currency', precision: 4 }}
+      row={{ total_savings_usd: 1.22354, total_baseline_cost_usd: 1.2304 }}
+      caption={{ baseline_model: null, pricing_manifest_version: 1 }}
+    />);
+    expect(screen.getByText('Baseline unresolved · pricing manifest v1')).toBeInTheDocument();
+  });
+
+  it('shows the zero-token run count beside the measured runs (OMN-20008 AC4)', () => {
+    render(<MetricCard
+      component={component('overview-measured', ['measured_run_count'])}
+      config={{ metric_key: 'measured_run_count', label: 'Measured runs', format: 'number', precision: 0 }}
+      row={{ measured_run_count: 41 }}
+      caption={{ zero_token_run_count: 0 }}
+    />);
+    expect(screen.getByText('41')).toBeInTheDocument();
+    expect(screen.getByText('Zero-token runs: 0')).toBeInTheDocument();
+  });
+
+  it('renders a card with no served exposure as not served yet, naming what it waits for (SV-3)', () => {
+    render(<MetricCard
+      component={{ ...component('overview-tokens', []), data_bindings: [], supported_empty_state_reasons: ['upstream-blocked'] } as ModelComponentContract}
+      config={{ metric_key: 'tokens_in_and_out', label: 'Tokens in and out', format: 'number', precision: 0 }}
+      row={{ tokens_total: 56800 }}
+    />);
+    expect(screen.getByText('Not served yet: waits on metering-summary.v1')).toBeInTheDocument();
+    expect(screen.queryByText(/56,800/)).not.toBeInTheDocument();
+  });
+});
+
 describe('LocalDashboardPage', () => {
   beforeEach(() => { census.next = []; });
 

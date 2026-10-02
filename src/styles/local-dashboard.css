@@ -61,6 +61,12 @@
   font-variant-numeric: tabular-nums;
 }
 
+.local-dashboard-caption {
+  margin: 0.25rem 0 0;
+  font-size: 0.875rem;
+  color: var(--text-secondary, #a1a1aa);
+}
+
 .local-dashboard-empty,
 .local-dashboard-error {
   color: var(--text-secondary, #a1a1aa);

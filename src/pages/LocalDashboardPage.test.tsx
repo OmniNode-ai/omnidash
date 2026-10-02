@@ -43,4 +43,15 @@ describe('RunsTable', () => {
     expect(within(row).getAllByText('Baseline unresolved')).toHaveLength(3);
     expect(within(row).queryByText(/^\$?0(?:\.0+)?$/)).not.toBeInTheDocument();
   });
+  it('renders the delegate-skill placeholder and an empty model as unknown, not a model name', () => {
+    render(<RunsTable rows={[
+      { session_id: 'session-placeholder', created_at: '2026-10-02T10:00:00Z', model_name: 'delegate-skill' },
+      { session_id: 'session-empty', created_at: '2026-10-02T10:01:00Z', model_name: '' },
+    ]} />);
+    for (const name of [/session-placeholder/, /session-empty/]) {
+      const row = screen.getByRole('row', { name });
+      expect(within(row).getByText('unknown')).toBeInTheDocument();
+      expect(within(row).queryByText('delegate-skill')).not.toBeInTheDocument();
+    }
+  });
 });
