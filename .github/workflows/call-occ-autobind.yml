@@ -113,7 +113,7 @@ jobs:
     # ("workflow was not found") and the autobind publisher never runs.
     # Re-pin to `@main` or a main SHA once the reusable promotes to
     # omniclaude main (OMN-14812).
-    uses: OmniNode-ai/omniclaude/.github/workflows/call-occ-autobind-reusable.yml@dev
+    uses: OmniNode-ai/omniclaude/.github/workflows/call-occ-autobind-reusable.yml@4ddbc8085aa3dbc4dd7bcb83ad13a1e2e5162161  # omniclaude dev as of 2026-10-02 (OMN-20332)
     secrets: inherit
     with:
       lane: dev
@@ -168,7 +168,7 @@ jobs:
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           repository: OmniNode-ai/omnimarket
-          ref: dev
+          ref: d471dcb96d054e85089a63437aa05c1ef68bfee5  # omnimarket dev as of 2026-10-02 (OMN-20332)
           path: .occ-autobind-src
           persist-credentials: false
           sparse-checkout: |
