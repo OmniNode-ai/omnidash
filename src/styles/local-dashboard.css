@@ -143,3 +143,33 @@
 @media (max-width: 600px) {
   .local-dashboard-header { flex-direction: column; gap: 12px; }
 }
+
+/* OMN-19981 Amendment 6: data age, fixture rows and the Runs pager. */
+.local-dashboard-asof {
+  margin: 12px 0 0;
+  font-size: 0.75rem;
+  color: var(--text-tertiary, #71717a);
+}
+
+.local-dashboard-asof--stale {
+  color: var(--status-warning, #fbbf24);
+}
+
+.local-dashboard-badge {
+  margin-left: 6px;
+  border: 1px solid var(--status-warning, #fbbf24);
+  border-radius: 999px;
+  padding: 0 6px;
+  font-size: 0.6875rem;
+  color: var(--status-warning, #fbbf24);
+}
+
+.local-dashboard-pager {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 10px;
+  font-size: 0.8125rem;
+  color: var(--text-secondary, #a1a1aa);
+}

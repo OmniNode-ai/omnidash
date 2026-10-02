@@ -4,32 +4,12 @@
       "component_id": "recent-runs",
       "component_kind": "table",
       "title": "Recent runs",
-      "contract_version": { "major": 1, "minor": 0, "patch": 0 },
+      "contract_version": {
+        "major": 1,
+        "minor": 0,
+        "patch": 0
+      },
       "data_bindings": [
-        {
-          "binding_id": "runs-snapshot",
-          "projection_topic": "onex.snapshot.projection.delegation.savings.v1",
-          "ordering_authority_field": "created_at",
-          "ordering_direction": "descending",
-          "required_fields": [
-            "sessions",
-            "session_id",
-            "created_at",
-            "model_name",
-            "prompt_tokens",
-            "completion_tokens",
-            "local_cost_usd",
-            "cloud_cost_usd",
-            "counterfactual_baseline_usd",
-            "baseline_model",
-            "savings_usd",
-            "usage_source",
-            "savings_method",
-            "task_type",
-            "latency_ms",
-            "tokens_to_compliance"
-          ]
-        },
         {
           "binding_id": "runs-decisions",
           "projection_topic": "onex.snapshot.projection.delegation.decisions.v1",
@@ -37,15 +17,47 @@
           "ordering_direction": "descending",
           "required_fields": [
             "correlation_id",
+            "created_at",
+            "written_at",
             "quality_gate_passed",
             "quality_gate_detail",
+            "model_name",
+            "tokens_input",
+            "tokens_output",
+            "task_type",
+            "latency_ms",
+            "tokens_to_compliance",
             "cost_tier_name",
-            "actual_score"
+            "actual_score",
+            "data_source"
+          ]
+        },
+        {
+          "binding_id": "runs-savings-lookup",
+          "projection_topic": "onex.snapshot.projection.delegation.savings.v1",
+          "ordering_authority_field": "created_at",
+          "ordering_direction": "descending",
+          "required_fields": [
+            "sessions",
+            "session_id",
+            "local_cost_usd",
+            "cloud_cost_usd",
+            "counterfactual_baseline_usd",
+            "baseline_model",
+            "savings_usd",
+            "usage_source",
+            "savings_method"
           ]
         }
       ],
-      "supported_empty_state_reasons": ["missing-field", "no-data"]
+      "supported_empty_state_reasons": [
+        "missing-field",
+        "no-data"
+      ]
     }
   ],
-  "page_empty_state_reasons": ["NO_RUNS_YET", "BASELINE_UNRESOLVED"]
+  "page_empty_state_reasons": [
+    "NO_RUNS_YET",
+    "BASELINE_UNRESOLVED"
+  ]
 }

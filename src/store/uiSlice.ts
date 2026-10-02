@@ -17,7 +17,8 @@ export const createUISlice: StateCreator<FrameStore, [], [], UISlice> = (set) =>
   setSidebarCollapsed: (collapsed) => set({ sidebarCollapsed: collapsed }),
   toggleSidebarCollapsed: () =>
     set((state) => ({ sidebarCollapsed: !state.sidebarCollapsed })),
-  activePage: 'dashboard',
+  // OMN-19981 Amendment 6 (FR-3): the dashboard opens on the local Overview page.
+  activePage: 'local-overview',
   setActivePage: (page) => set({ activePage: page }),
   traceFilter: null,
   setTraceFilter: (correlationId) => set({ traceFilter: correlationId }),

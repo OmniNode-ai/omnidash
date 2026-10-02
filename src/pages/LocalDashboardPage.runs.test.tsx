@@ -20,6 +20,7 @@ function decision(id: string, writtenAt: string, extra: Record<string, unknown> 
     task_type: 'summarization',
     cost_tier_name: 'local',
     actual_score: '1.000',
+    tokens_to_compliance: 214,
     ...extra,
   };
 }
@@ -150,13 +151,7 @@ describe('RecentRunsTable savings without a baseline (AC4, found on the lakshman
   });
 });
 
-describe('RunsTable status, cause and filters (RU-1, F18)', () => {
-  const sessions = [
-    session('run-a', '2026-10-02T10:07:00Z'),
-    session('run-b', '2026-10-02T09:00:00Z', { model_name: 'deepseek/deepseek-chat-v3' }),
-    session('run-c', '2026-10-01T22:00:00Z'),
-    session('run-d', '2026-10-02T08:00:00Z'),
-  ];
+describe('RunsTable rows, status, cause and filters (RU-1, F18, F28)', () => {
   const decisions = [
     decision('run-a', '2026-10-02T10:07:00Z'),
     decision('run-b', '2026-10-02T09:00:00Z', {
@@ -165,32 +160,48 @@ describe('RunsTable status, cause and filters (RU-1, F18)', () => {
       model_name: 'deepseek/deepseek-chat-v3',
     }),
     decision('run-c', '2026-10-01T22:00:00Z'),
+    decision('run-d', '2026-10-02T08:00:00Z', { quality_gate_passed: false, quality_gate_detail: 'provider timeout after 30s' }),
+  ];
+  const sessions = [
+    session('run-a', '2026-10-02T10:07:00Z', { local_cost_usd: 0.0011 }),
+    session('run-b', '2026-10-02T09:00:00Z', { model_name: 'deepseek/deepseek-chat-v3' }),
+    session('run-c', '2026-10-01T22:00:00Z'),
   ];
 
-  it('shows each row its own decision status and cause, and Not recorded without one', () => {
-    render(<RunsTable now={NOW} rows={sessions} decisions={decisions} />);
-    expect(within(screen.getByRole('row', { name: /run-a/ })).getByText('passed')).toBeInTheDocument();
-    const failed = screen.getByRole('row', { name: /run-b/ });
-    expect(within(failed).getByText('failed')).toBeInTheDocument();
-    expect(within(failed).getByText('answer did not cite the requested source')).toBeInTheDocument();
-    expect(within(screen.getByRole('row', { name: /run-d/ })).getAllByText('Not recorded').length).toBeGreaterThan(0);
-  });
-
-  it('keeps every served row when no filter is set', () => {
-    render(<RunsTable now={NOW} rows={sessions} decisions={decisions} />);
+  it('lists every decision, a failed run with no savings session included (F28)', () => {
+    render(<RunsTable now={NOW} decisions={decisions} sessions={sessions} />);
+    const row = screen.getByRole('row', { name: /run-d/ });
+    expect(within(row).getByText('failed')).toBeInTheDocument();
+    expect(within(row).getByText('provider timeout after 30s')).toBeInTheDocument();
+    expect(within(row).getAllByText('Not recorded').length).toBeGreaterThan(0);
     expect(screen.getAllByRole('row').slice(1)).toHaveLength(4);
   });
 
+  it('takes cost and savings from the session with the same id', () => {
+    render(<RunsTable now={NOW} decisions={decisions} sessions={sessions} />);
+    const row = screen.getByRole('row', { name: /run-a/ });
+    expect(within(row).getByText('0.0011')).toBeInTheDocument();
+    expect(within(row).getByText('passed')).toBeInTheDocument();
+  });
+
   it('filters by status', () => {
-    render(<RunsTable now={NOW} rows={sessions} decisions={decisions} />);
+    render(<RunsTable now={NOW} decisions={decisions} sessions={sessions} />);
     fireEvent.change(screen.getByLabelText('Status'), { target: { value: 'failed' } });
+    const rows = screen.getAllByRole('row').slice(1).map((row) => row.textContent ?? '');
+    expect(rows).toHaveLength(2);
+    expect(rows.every((text) => text.includes('run-b') || text.includes('run-d'))).toBe(true);
+  });
+
+  it('filters by cause', () => {
+    render(<RunsTable now={NOW} decisions={decisions} sessions={sessions} />);
+    fireEvent.change(screen.getByLabelText('Cause'), { target: { value: 'provider timeout after 30s' } });
     const rows = screen.getAllByRole('row').slice(1);
     expect(rows).toHaveLength(1);
-    expect(within(rows[0]!).getByText('run-b')).toBeInTheDocument();
+    expect(within(rows[0]!).getByText('run-d')).toBeInTheDocument();
   });
 
   it('filters by model', () => {
-    render(<RunsTable now={NOW} rows={sessions} decisions={decisions} />);
+    render(<RunsTable now={NOW} decisions={decisions} sessions={sessions} />);
     fireEvent.change(screen.getByLabelText('Model'), { target: { value: 'Qwen3.8-27B' } });
     const ids = screen.getAllByRole('row').slice(1).map((row) => row.textContent ?? '');
     expect(ids).toHaveLength(3);
@@ -198,7 +209,7 @@ describe('RunsTable status, cause and filters (RU-1, F18)', () => {
   });
 
   it('filters to runs from today (UTC)', () => {
-    render(<RunsTable now={NOW} rows={sessions} decisions={decisions} />);
+    render(<RunsTable now={NOW} decisions={decisions} sessions={sessions} />);
     fireEvent.change(screen.getByLabelText('Window'), { target: { value: 'today' } });
     const rows = screen.getAllByRole('row').slice(1).map((row) => row.textContent ?? '');
     expect(rows).toHaveLength(3);
@@ -206,9 +217,46 @@ describe('RunsTable status, cause and filters (RU-1, F18)', () => {
   });
 
   it('says so when a filter leaves no rows, instead of an empty table', () => {
-    render(<RunsTable now={NOW} rows={[sessions[2]!]} decisions={decisions} />);
+    render(<RunsTable now={NOW} decisions={[decisions[2]!]} sessions={sessions} />);
     fireEvent.change(screen.getByLabelText('Window'), { target: { value: 'today' } });
     expect(screen.getByText('No runs match these filters')).toBeInTheDocument();
+  });
+});
+
+describe('RunsTable pagination (RU-1, F29)', () => {
+  const many = Array.from({ length: 30 }, (_, index) =>
+    decision(`run-${String(index).padStart(2, '0')}`, `2026-10-02T09:${String(index).padStart(2, '0')}:00Z`));
+
+  it('shows the declared page size, newest first, and every row exactly once across pages', () => {
+    render(<RunsTable now={NOW} decisions={many} sessions={[]} pageSize={25} />);
+    const firstPage = (screen.getAllByRole('row').slice(1) as HTMLTableRowElement[]).map((row) => row.cells[0]!.textContent);
+    expect(firstPage).toHaveLength(25);
+    expect(firstPage[0]).toBe('run-29');
+    expect(screen.getByText('Runs 1–25 of 30')).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'Next page' }));
+    const secondPage = (screen.getAllByRole('row').slice(1) as HTMLTableRowElement[]).map((row) => row.cells[0]!.textContent);
+    expect(secondPage).toHaveLength(5);
+    expect(new Set([...firstPage, ...secondPage]).size).toBe(30);
+    expect(screen.getByText('Runs 26–30 of 30')).toBeInTheDocument();
+  });
+
+  it('goes back to the first page when a filter changes', () => {
+    render(<RunsTable now={NOW} decisions={many} sessions={[]} pageSize={25} />);
+    fireEvent.click(screen.getByRole('button', { name: 'Next page' }));
+    fireEvent.change(screen.getByLabelText('Status'), { target: { value: 'passed' } });
+    expect(screen.getByText('Runs 1–25 of 30')).toBeInTheDocument();
+  });
+});
+
+describe('Fixture rows (FR-2, F30)', () => {
+  it('badges a row whose served data_source is not real, and not a real one', () => {
+    render(<RunsTable
+      now={NOW}
+      decisions={[decision('seeded', '2026-10-02T10:00:00Z', { data_source: 'fixture' }), decision('measured', '2026-10-02T10:01:00Z', { data_source: 'real' })]}
+      sessions={[]}
+    />);
+    expect(within(screen.getByRole('row', { name: /seeded/ })).getByText('fixture')).toBeInTheDocument();
+    expect(within(screen.getByRole('row', { name: /measured/ })).queryByText('fixture')).not.toBeInTheDocument();
   });
 });
 
@@ -224,8 +272,8 @@ describe('Baseline model label (F20)', () => {
   it('reads Not recorded for a measured saving whose baseline model is null', () => {
     render(<RunsTable
       now={NOW}
-      rows={[session('no-baseline-name', '2026-10-02T10:07:00Z', { baseline_model: null })]}
       decisions={[decision('no-baseline-name', '2026-10-02T10:07:00Z')]}
+      sessions={[session('no-baseline-name', '2026-10-02T10:07:00Z', { baseline_model: null })]}
     />);
     const row = screen.getByRole('row', { name: /no-baseline-name/ });
     expect(within(row).queryByText('Not measured')).not.toBeInTheDocument();

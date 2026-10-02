@@ -1,0 +1,61 @@
+{
+  "dashboard_id": "a288098b-c702-5148-9efd-02b0a6b596da",
+  "name": "API Keys",
+  "description": "The local identity and the dashboard's own access, from the local identity exposure once it is served.",
+  "layout": {
+    "columns": 12,
+    "row_height": 100,
+    "gap": 16,
+    "responsive": true
+  },
+  "refresh_interval_seconds": 30,
+  "theme": "system",
+  "widgets": [
+    {
+      "widget_id": "75726438-74c3-53e1-8b25-eea798a51c61",
+      "title": "Local identity",
+      "row": 0,
+      "col": 0,
+      "width": 12,
+      "height": 4,
+      "data_source": "api-keys-local-identity",
+      "config": {
+        "config_kind": "table",
+        "widget_type": "table",
+        "columns": [
+          {
+            "key": "tenant_id",
+            "header": "Tenant"
+          },
+          {
+            "key": "minted_at",
+            "header": "Minted"
+          }
+        ],
+        "page_size": 1,
+        "show_pagination": false
+      }
+    },
+    {
+      "widget_id": "bb436336-66c6-522d-aaf9-ee020be4646d",
+      "title": "Cloud keys",
+      "row": 4,
+      "col": 0,
+      "width": 12,
+      "height": 4,
+      "data_source": "api-keys-cloud",
+      "config": {
+        "config_kind": "table",
+        "widget_type": "table",
+        "columns": [
+          {
+            "key": "state",
+            "header": "State"
+          }
+        ],
+        "page_size": 1,
+        "show_pagination": false
+      }
+    }
+  ]
+}

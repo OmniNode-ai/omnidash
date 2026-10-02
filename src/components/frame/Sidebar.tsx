@@ -12,7 +12,7 @@
 //     keeping the menu pattern consistent with the prototype across the whole app.
 
 import { useEffect, useLayoutEffect, useRef, useState } from 'react';
-import { Activity, ChevronsLeft, ChevronsRight, Copy, Edit, FlaskConical, GitBranch, MoreHorizontal, Plus, Radio, Sparkles, Trash2 } from 'lucide-react';
+import { Activity, ChevronsLeft, ChevronsRight, Copy, Edit, FlaskConical, GitBranch, KeyRound, ListTree, MoreHorizontal, Plus, Radio, Sparkles, Trash2, Wallet } from 'lucide-react';
 // SlidersHorizontal removed — Feature Flags nav hidden for beta (OMN-14058-beta). Re-add when wired.
 // Grid3x3 removed from import while Instruction Eval nav entry is commented out (OMN-12833 A4).
 import type { AppPage } from '@/store/types';
@@ -25,6 +25,16 @@ import {
 import { Text } from '@/components/ui/typography';
 import { useFrameStore } from '@/store/store';
 import { DeleteDashboardDialog } from './DeleteDashboardDialog';
+
+/** The six local pages (requirements FR-3), in the required order. `partial`: its exposure is not served yet. */
+const LOCAL_PAGES: ReadonlyArray<{ page: AppPage; label: string; icon: React.ReactNode; partial: boolean }> = [
+  { page: 'local-overview', label: 'Overview', icon: <Activity size={13} />, partial: false },
+  { page: 'local-runs', label: 'Runs', icon: <GitBranch size={13} />, partial: false },
+  { page: 'local-workflow', label: 'Workflow', icon: <ListTree size={13} />, partial: true },
+  { page: 'local-usage', label: 'Usage', icon: <Wallet size={13} />, partial: true },
+  { page: 'local-credentials', label: 'Credentials', icon: <KeyRound size={13} />, partial: true },
+  { page: 'local-api-keys', label: 'API Keys', icon: <KeyRound size={13} />, partial: true },
+];
 
 interface RenameInputProps {
   initialValue: string;
@@ -188,6 +198,37 @@ export function Sidebar() {
         </button>
       </div>
 
+      {/* OMN-19981 Amendment 6 (requirements FR-3): the six local pages, in the required order, first in the
+          sidebar. A page whose exposure is not served yet carries a "partial" chip; clicking an open page keeps it. */}
+      <nav aria-label="Local" className="local-nav">
+        {!collapsed && (
+          <div className="sidebar-bottom-title" style={{ padding: '4px 12px 2px' }}>
+            <Text size="xs" color="tertiary" transform="uppercase" weight="semibold">
+              Local
+            </Text>
+          </div>
+        )}
+        {LOCAL_PAGES.map(({ page, label, icon, partial }) => (
+          <div
+            key={page}
+            role="button"
+            tabIndex={0}
+            data-testid={`nav-${page}`}
+            className={`dash-item${activePage === page ? ' active' : ''}`}
+            title={collapsed ? label : undefined}
+            aria-current={activePage === page ? 'page' : undefined}
+            onClick={() => setActivePage(page)}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter' || e.key === ' ') setActivePage(page);
+            }}
+          >
+            <span className="dash-marker">{icon}</span>
+            {!collapsed && <span className="dash-name">{label}</span>}
+            {!collapsed && partial && <span className="local-nav-chip">partial</span>}
+          </div>
+        ))}
+      </nav>
+
       {/* Section header */}
       <div className="nav-section">
         {!collapsed && <span className="nav-section-title">Dashboards</span>}
@@ -298,8 +339,6 @@ export function Sidebar() {
             { page: 'experiments' as AppPage, label: 'Experimentation', icon: <FlaskConical size={13} /> },
             { page: 'sea-control' as AppPage, label: 'Agent Workbench', icon: <Sparkles size={13} /> },
             { page: 'lab' as AppPage, label: 'Lab', icon: <Activity size={13} /> },
-            { page: 'local-overview' as AppPage, label: 'Overview', icon: <Activity size={13} /> },
-            { page: 'local-runs' as AppPage, label: 'Runs', icon: <GitBranch size={13} /> },
           ] as const
         ).map(({ page, label, icon }) => (
           <div

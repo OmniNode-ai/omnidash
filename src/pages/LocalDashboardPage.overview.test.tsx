@@ -151,7 +151,7 @@ describe('LocalDashboardPage', () => {
     const view = render(<LocalDashboardPage pageName="runs" />);
     await act(async () => {});
     // Runs loaded its own document (not the name fallback), so a stale header is possible next.
-    expect(screen.getByText('Recent local runs from the runtime\'s served projection.')).toBeInTheDocument();
+    expect(screen.getByText('Every delegation run from the runtime\'s served decisions, with its savings.')).toBeInTheDocument();
     expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent('Runs');
 
     // The next census never answers, so Overview stays in its loading state.

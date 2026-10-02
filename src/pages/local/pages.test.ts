@@ -11,12 +11,16 @@ import type {
 import {
   loadLocalPageSnapshots,
   loadLocalPageConfig,
+  rowsForLocalBinding,
   rowsForLocalComponent,
   resolveLocalPageEmptyState,
   type LocalPageDocument,
 } from '../../layout/local-page-loader';
 
-const pages = ['overview', 'runs'] as const;
+const pages = ['overview', 'runs', 'workflow', 'usage', 'credentials', 'api-keys'] as const;
+// Pages that read a served exposure today; the other three wait on exposures no writer serves yet (FR-3 partial).
+const servedPages = ['overview', 'runs', 'credentials'] as const;
+const partialPages = ['workflow', 'usage', 'api-keys'] as const;
 // The exposures the lab projection API answers `ok`, captured read-only from
 // GET /projections. A hand-written list here once called a degraded exposure
 // served, so the Overview it backed rendered nothing on the lab.
@@ -34,7 +38,7 @@ const dashboardConfigValidator = new Ajv({ allErrors: true, validateFormats: fal
 const readPage = (page: (typeof pages)[number]): LocalPageDocument => loadLocalPageConfig(page);
 
 describe('local dashboard page contracts', () => {
-  it.each(pages)('%s names only served projection exposures', async (pageName) => {
+  it.each(servedPages)('%s names only served projection exposures', async (pageName) => {
     const page = await readPage(pageName);
     const bindings = page.components.flatMap((component) => component.data_bindings ?? []);
 
@@ -140,34 +144,26 @@ describe('local dashboard page contracts', () => {
     expect(resolveLocalPageEmptyState(page, snapshots)).toBe('BASELINE_UNRESOLVED');
   });
 
-  it('binds Runs to the delegation-savings envelope and declares every displayed session field', () => {
+  it('binds Runs to delegation decisions, with the savings session as its lookup (RU-1, Amendment 6)', () => {
     const runs = readPage('runs');
-    const binding = runs.components[0]?.data_bindings?.[0];
+    const [rowsBinding, lookup] = runs.components[0]?.data_bindings ?? [];
 
-    expect(binding?.projection_topic).toBe('onex.snapshot.projection.delegation.savings.v1');
-    expect(binding?.ordering_authority_field).toBe('created_at');
-    expect(binding?.required_fields).toEqual(expect.arrayContaining([
-      'sessions',
-      'session_id',
-      'created_at',
-      'model_name',
-      'prompt_tokens',
-      'completion_tokens',
-      'local_cost_usd',
-      'cloud_cost_usd',
-      'counterfactual_baseline_usd',
-      'baseline_model',
-      'savings_usd',
-      'usage_source',
-      'savings_method',
-      'task_type',
-      'latency_ms',
-      'tokens_to_compliance',
+    expect(rowsBinding?.projection_topic).toBe('onex.snapshot.projection.delegation.decisions.v1');
+    expect(rowsBinding?.ordering_authority_field).toBe('written_at');
+    expect(rowsBinding?.required_fields).toEqual(expect.arrayContaining([
+      'correlation_id', 'created_at', 'written_at', 'quality_gate_passed', 'quality_gate_detail', 'model_name',
+      'tokens_input', 'tokens_output', 'task_type', 'latency_ms', 'tokens_to_compliance', 'cost_tier_name',
+      'actual_score', 'data_source',
     ]));
-    expect(JSON.stringify(binding)).not.toMatch(/swarm\.runs|run_id|status|started_at/);
+    expect(lookup?.projection_topic).toBe('onex.snapshot.projection.delegation.savings.v1');
+    expect(lookup?.required_fields).toEqual(expect.arrayContaining([
+      'sessions', 'session_id', 'local_cost_usd', 'cloud_cost_usd', 'counterfactual_baseline_usd', 'baseline_model',
+      'savings_usd', 'usage_source', 'savings_method',
+    ]));
+    expect(JSON.stringify(runs.components[0])).not.toMatch(/swarm\.runs|run_id|started_at/);
   });
 
-  it('flattens delegation-savings sessions into Runs rows without losing fields', () => {
+  it('flattens the delegation-savings sessions of the Runs lookup without losing fields', () => {
     const runs = readPage('runs');
     const snapshots = [{
       topic: 'onex.snapshot.projection.delegation.savings.v1',
@@ -175,19 +171,9 @@ describe('local dashboard page contracts', () => {
         tenant_id: 'tenant-a',
         sessions: [{
           session_id: 'session-42',
-          created_at: '2026-10-01T13:40:00Z',
           model_name: 'local-model',
-          prompt_tokens: 120,
-          completion_tokens: 45,
-          local_cost_usd: 0.01,
-          cloud_cost_usd: 0.09,
           counterfactual_baseline_usd: 0.1,
-          baseline_model: 'cloud-model',
-          savings_usd: 0.09,
           usage_source: 'measured',
-          savings_method: 'measured',
-          task_type: 'delegation',
-          latency_ms: 250,
           tokens_to_compliance: 165,
         }],
       }],
@@ -197,7 +183,7 @@ describe('local dashboard page contracts', () => {
       readAt: '2026-10-01T13:41:00Z',
     }];
 
-    expect(rowsForLocalComponent(runs.components[0]!, snapshots)).toEqual([
+    expect(rowsForLocalBinding(runs.components[0]!, snapshots, 1)).toEqual([
       expect.objectContaining({
         session_id: 'session-42',
         model_name: 'local-model',
@@ -206,37 +192,39 @@ describe('local dashboard page contracts', () => {
         tokens_to_compliance: 165,
       }),
     ]);
-    expect(resolveLocalPageEmptyState(runs, snapshots)).toBeNull();
   });
 
-  it('maps an empty delegation-savings sessions envelope to NO_RUNS_YET', () => {
+  it('maps no served decisions to NO_RUNS_YET', () => {
     const runs = readPage('runs');
-    const snapshots = [{
-      topic: 'onex.snapshot.projection.delegation.savings.v1',
-      rows: [{ tenant_id: 'tenant-a', sessions: [] }],
-      rowCount: 1,
-      dataFreshness: 'fresh' as const,
-      latestEventAt: null,
-      readAt: '2026-10-01T13:41:00Z',
-    }];
+    const snapshots = [
+      { topic: 'onex.snapshot.projection.delegation.decisions.v1', rows: [] },
+      { topic: 'onex.snapshot.projection.delegation.savings.v1', rows: [{ tenant_id: 'tenant-a', sessions: [] }] },
+    ].map((snapshot) => ({ ...snapshot, rowCount: snapshot.rows.length, dataFreshness: 'fresh' as const, latestEventAt: null, readAt: '2026-10-01T13:41:00Z' }));
 
     expect(rowsForLocalComponent(runs.components[0]!, snapshots)).toEqual([]);
     expect(resolveLocalPageEmptyState(runs, snapshots)).toBe('NO_RUNS_YET');
   });
 
-  it('keeps unresolved sessions as Runs rows so the row can show the typed state', () => {
+  it('does not call a page NO_RUNS_YET when one of its reads failed (F26)', () => {
     const runs = readPage('runs');
-    const snapshots = [{
-      topic: 'onex.snapshot.projection.delegation.savings.v1',
-      rows: [{ sessions: [{ session_id: 'unresolved', baseline_model: null, savings_usd: 0 }] }],
-      rowCount: 1,
-      dataFreshness: 'fresh' as const,
-      latestEventAt: null,
-      readAt: '2026-10-01T13:41:00Z',
-    }];
+    const snapshots = [
+      { topic: 'onex.snapshot.projection.delegation.decisions.v1', rows: [], failure: { kind: 'error' as const, message: 'HTTP 503' } },
+      { topic: 'onex.snapshot.projection.delegation.savings.v1', rows: [] },
+    ].map((snapshot) => ({ ...snapshot, rowCount: 0, dataFreshness: 'fresh' as const, latestEventAt: null, readAt: '2026-10-01T13:41:00Z' }));
 
     expect(resolveLocalPageEmptyState(runs, snapshots)).toBeNull();
   });
+
+  it('keeps a run with an unresolved session as a Runs row so the row can show the typed state', () => {
+    const runs = readPage('runs');
+    const snapshots = [
+      { topic: 'onex.snapshot.projection.delegation.decisions.v1', rows: [{ correlation_id: 'unresolved' }] },
+      { topic: 'onex.snapshot.projection.delegation.savings.v1', rows: [{ sessions: [{ session_id: 'unresolved', baseline_model: null, savings_usd: 0 }] }] },
+    ].map((snapshot) => ({ ...snapshot, rowCount: 1, dataFreshness: 'fresh' as const, latestEventAt: null, readAt: '2026-10-01T13:41:00Z' }));
+
+    expect(resolveLocalPageEmptyState(runs, snapshots)).toBeNull();
+  });
+
 
   it('reads Runs through ProtocolSnapshotSource using the delegation-savings and decisions topics only', async () => {
     const runs = readPage('runs');
@@ -317,6 +305,7 @@ describe('local pages against the captured lab catalogue', () => {
     expect(tokens?.supported_empty_state_reasons).toEqual(['upstream-blocked']);
   });
 
+
   it('Overview never reads local_token_pct, a literal 0 the view does not measure', () => {
     for (const file of ['overview.page.yaml', 'overview.contracts.yaml']) {
       const raw = readFileSync(resolve(process.cwd(), `src/pages/local/${file}`), 'utf8');
@@ -350,20 +339,11 @@ describe('Amendment 5: last run, recent runs and run status from delegation deci
     },
   );
 
-  it('Runs looks each session up in decisions for its status, cause, route tier and quality score (RU-1)', () => {
-    const runs = readPage('runs');
-    const lookup = runs.components[0]?.data_bindings?.[1];
-    expect(lookup?.projection_topic).toBe(DECISIONS);
-    expect(lookup?.required_fields).toEqual(expect.arrayContaining([
-      'correlation_id', 'quality_gate_passed', 'quality_gate_detail', 'cost_tier_name', 'actual_score',
-    ]));
-  });
-
-  it('Runs rows still come from the savings sessions, not from the decisions lookup', () => {
+  it('Runs rows come from decisions, not from the savings lookup (Amendment 6, F28)', () => {
     const runs = readPage('runs');
     const snapshots = [
       { topic: SAVINGS, rows: [{ sessions: [{ session_id: 'session-1' }] }] },
-      { topic: DECISIONS, rows: [{ correlation_id: 'session-1' }, { correlation_id: 'other' }] },
+      { topic: DECISIONS, rows: [{ correlation_id: 'session-1' }, { correlation_id: 'failed-no-session' }] },
     ].map((snapshot) => ({
       ...snapshot,
       rowCount: snapshot.rows.length,
@@ -371,8 +351,11 @@ describe('Amendment 5: last run, recent runs and run status from delegation deci
       latestEventAt: null,
       readAt: '2026-10-02T10:12:00Z',
     }));
-    expect(rowsForLocalComponent(runs.components[0]!, snapshots)).toEqual([{ session_id: 'session-1' }]);
+    expect(rowsForLocalComponent(runs.components[0]!, snapshots)).toEqual([
+      { correlation_id: 'session-1' }, { correlation_id: 'failed-no-session' },
+    ]);
   });
+
 
   it('Overview with served decisions but no savings rows is not NO_RUNS_YET', () => {
     const page = readPage('overview');
@@ -385,5 +368,40 @@ describe('Amendment 5: last run, recent runs and run status from delegation deci
       readAt: '2026-10-02T10:12:00Z',
     }];
     expect(resolveLocalPageEmptyState(page, snapshots)).toBeNull();
+  });
+});
+
+describe('Amendment 6: the six local pages and the loader', () => {
+  it.each(partialPages)('%s declares only components that wait on an unserved exposure (FR-3 partial)', (pageName) => {
+    const page = readPage(pageName);
+    expect(page.components.length).toBeGreaterThan(0);
+    for (const component of page.components) {
+      expect(component.data_bindings, component.component_id).toEqual([]);
+      expect(component.supported_empty_state_reasons, component.component_id).toEqual(['upstream-blocked']);
+    }
+  });
+
+  it('Credentials reads the tenant credentials exposure and declares no value field (CR-1, CR-3)', () => {
+    const page = readPage('credentials');
+    const binding = page.components[0]?.data_bindings?.[0];
+    expect(binding?.projection_topic).toBe('onex.snapshot.projection.tenant-credentials.v1');
+    expect(binding?.required_fields).toEqual(['provider', 'name', 'created_at', 'revoked_at']);
+    expect(JSON.stringify(page)).not.toMatch(/value|secret_value|api_key_value/);
+  });
+
+  it('a topic the census does not serve fails only its own reads, and the page still loads (F26)', async () => {
+    const page = readPage('overview');
+    const source = {
+      async *readAll() { yield []; },
+      readSnapshot: vi.fn(async () => ({ rows: [{ correlation_id: 'run-1' }], rowCount: 1, dataFreshness: 'fresh' as const, latestEventAt: null, readAt: '2026-10-02T10:12:00Z' })),
+    };
+    const snapshots = await loadLocalPageSnapshots(page, source, {
+      mode: 'http',
+      availableTopics: new Set(['onex.snapshot.projection.delegation.decisions.v1', 'onex.snapshot.projection.delegation.savings.v1']),
+    });
+    const overview = snapshots.find((s) => s.topic === 'onex.snapshot.projection.cost.savings-overview.v1');
+    expect(overview?.failure).toEqual({ kind: 'not-served', message: 'Not served: onex.snapshot.projection.cost.savings-overview.v1' });
+    expect(snapshots.find((s) => s.topic === 'onex.snapshot.projection.delegation.decisions.v1')?.failure).toBeUndefined();
+    expect(source.readSnapshot).not.toHaveBeenCalledWith('onex.snapshot.projection.cost.savings-overview.v1');
   });
 });

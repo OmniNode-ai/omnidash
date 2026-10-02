@@ -1,7 +1,7 @@
 import type { ProjectionSnapshot, ProtocolSnapshotSource } from '../data-source/protocol-snapshot-source';
 import type { ModelComponentContract } from '../shared/types/generated/onex-models';
 
-export type LocalPageName = 'overview' | 'runs';
+export type LocalPageName = 'overview' | 'runs' | 'workflow' | 'usage' | 'credentials' | 'api-keys';
 export type LocalPageEmptyState = 'NO_RUNS_YET' | 'BASELINE_UNRESOLVED';
 
 /** Narrow dashboard fields consumed by this renderer; the YAML itself is a core config. */
@@ -26,9 +26,22 @@ export interface LocalPageLoadOptions {
   availableTopics: ReadonlySet<string>;
 }
 
+/** Why one exposure's read gave no rows: the census does not serve it, it answered an error, or it never answered. */
+export interface ProjectionReadFailure {
+  kind: 'not-served' | 'error' | 'timeout';
+  message: string;
+}
+
 export interface BoundProjectionSnapshot extends ProjectionSnapshot {
   topic: string;
+  /** Set when this read failed; its rows are then the last good rows, or none. */
+  failure?: ProjectionReadFailure;
+  /** When the rows shown were read, if a later read failed. */
+  lastGoodAt?: string | null;
 }
+
+/** A read with no answer in this long is a typed timeout (requirements: loading turns into an error after 5 s). */
+export const LOCAL_READ_TIMEOUT_MS = 5000;
 
 export const DELEGATION_SAVINGS_TOPIC = 'onex.snapshot.projection.delegation.savings.v1';
 
@@ -93,7 +106,10 @@ export function loadLocalPageConfig(page: LocalPageName): LocalPageDocument {
   };
 }
 
-/** Read the declared exposures through the HTTP projection source only. */
+/**
+ * Read the declared exposures through the HTTP projection source only. One exposure that is not served, answers an
+ * error or never answers fails only its own snapshot (the widgets bound to it say why); the page still loads.
+ */
 export async function loadLocalPageSnapshots(
   page: LocalPageDocument,
   source: ProtocolSnapshotSource,
@@ -103,20 +119,55 @@ export async function loadLocalPageSnapshots(
     throw new Error('Local dashboard pages require HTTP mode for runtime exposures');
   }
   if (!source.readSnapshot) throw new Error('HTTP snapshot source does not support snapshots');
+  const read = source.readSnapshot.bind(source);
   const topics = new Set(
     page.components.flatMap((component) =>
       (component.data_bindings ?? []).map((binding) => binding.projection_topic),
     ),
   );
-  for (const topic of topics) {
+  return Promise.all([...topics].map(async (topic): Promise<BoundProjectionSnapshot> => {
     if (!options.availableTopics.has(topic)) {
-      throw new Error(`Projection exposure is not served: ${topic}`);
+      return failedSnapshot(topic, { kind: 'not-served', message: `Not served: ${topic}` });
     }
-  }
-  return Promise.all([...topics].map(async (topic) => ({
-    topic,
-    ...await source.readSnapshot!(topic),
-  })));
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    const timeout = new Promise<'timeout'>((resolve) => { timer = setTimeout(() => resolve('timeout'), LOCAL_READ_TIMEOUT_MS); });
+    try {
+      const answer = await Promise.race([read(topic), timeout]);
+      if (answer === 'timeout') return failedSnapshot(topic, { kind: 'timeout', message: `${topic}: no answer in 5 s` });
+      return { topic, ...answer };
+    } catch (cause) {
+      return failedSnapshot(topic, { kind: 'error', message: readErrorMessage(topic, cause) });
+    } finally {
+      clearTimeout(timer);
+    }
+  }));
+}
+
+function failedSnapshot(topic: string, failure: ProjectionReadFailure): BoundProjectionSnapshot {
+  return { topic, rows: [], rowCount: 0, dataFreshness: 'unknown', latestEventAt: null, readAt: new Date().toISOString(), failure };
+}
+
+/** "<exposure>: HTTP 503 ..." from the source's "Projection <exposure> failed: HTTP 503 ..." (never a bare message). */
+function readErrorMessage(topic: string, cause: unknown): string {
+  const text = cause instanceof Error ? cause.message : String(cause);
+  const status = /HTTP \d{3}.*$/.exec(text)?.[0];
+  return `${topic}: ${status ?? text}`;
+}
+
+/**
+ * The next snapshots, keeping a topic's last good rows on screen when its new read failed; the failure and the
+ * time those rows were read stay on the snapshot so the widget can say so.
+ */
+export function withLastGood(
+  previous: readonly BoundProjectionSnapshot[],
+  next: readonly BoundProjectionSnapshot[],
+): BoundProjectionSnapshot[] {
+  return next.map((snapshot) => {
+    if (!snapshot.failure) return snapshot;
+    const prior = previous.find((candidate) => candidate.topic === snapshot.topic);
+    if (!prior || (prior.failure && prior.lastGoodAt === undefined)) return snapshot;
+    return { ...prior, failure: snapshot.failure, lastGoodAt: prior.failure ? prior.lastGoodAt : prior.readAt };
+  });
 }
 
 /** Return display rows for a component, unpacking known projection envelopes. */
@@ -165,6 +216,8 @@ export function resolveLocalPageEmptyState(
   }) && page.empty_state_reasons.includes('BASELINE_UNRESOLVED')) {
     return 'BASELINE_UNRESOLVED';
   }
+  // A failed read is not an empty store: the widgets bound to it say why, and the page is not NO_RUNS_YET.
+  if (snapshots.some((snapshot) => snapshot.failure)) return null;
   if (rows.length === 0 && page.empty_state_reasons.includes('NO_RUNS_YET')) {
     return 'NO_RUNS_YET';
   }

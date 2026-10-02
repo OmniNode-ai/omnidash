@@ -1,0 +1,19 @@
+{
+  "components": [
+    {
+      "component_id": "workflow-run-path",
+      "component_kind": "table",
+      "title": "Run path",
+      "contract_version": {
+        "major": 1,
+        "minor": 0,
+        "patch": 0
+      },
+      "data_bindings": [],
+      "supported_empty_state_reasons": [
+        "upstream-blocked"
+      ]
+    }
+  ],
+  "page_empty_state_reasons": []
+}

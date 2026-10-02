@@ -1,0 +1,19 @@
+{
+  "components": [
+    {
+      "component_id": "usage-by-model-day",
+      "component_kind": "table",
+      "title": "Usage by model and day",
+      "contract_version": {
+        "major": 1,
+        "minor": 0,
+        "patch": 0
+      },
+      "data_bindings": [],
+      "supported_empty_state_reasons": [
+        "upstream-blocked"
+      ]
+    }
+  ],
+  "page_empty_state_reasons": []
+}

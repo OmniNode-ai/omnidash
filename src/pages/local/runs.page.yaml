@@ -1,8 +1,13 @@
 {
   "dashboard_id": "34451f75-38aa-4634-9397-dad632a5d876",
   "name": "Runs",
-  "description": "Recent local runs from the runtime's served projection.",
-  "layout": { "columns": 12, "row_height": 100, "gap": 16, "responsive": true },
+  "description": "Every delegation run from the runtime's served decisions, with its savings.",
+  "layout": {
+    "columns": 12,
+    "row_height": 100,
+    "gap": 16,
+    "responsive": true
+  },
   "refresh_interval_seconds": 30,
   "theme": "system",
   "widgets": [
@@ -18,14 +23,82 @@
         "config_kind": "table",
         "widget_type": "table",
         "columns": [
-          { "key": "run_id", "header": "Run" },
-          { "key": "status", "header": "Status" },
-          { "key": "started_at", "header": "Started" },
-          { "key": "savings_usd", "header": "Savings", "align": "right" }
+          {
+            "key": "correlation_id",
+            "header": "Run"
+          },
+          {
+            "key": "created_at",
+            "header": "Created"
+          },
+          {
+            "key": "status",
+            "header": "Status"
+          },
+          {
+            "key": "cause",
+            "header": "Cause"
+          },
+          {
+            "key": "model_name",
+            "header": "Model"
+          },
+          {
+            "key": "backend",
+            "header": "Backend"
+          },
+          {
+            "key": "tokens_input",
+            "header": "Tokens in"
+          },
+          {
+            "key": "tokens_output",
+            "header": "Tokens out"
+          },
+          {
+            "key": "local_cost_usd",
+            "header": "Local cost"
+          },
+          {
+            "key": "counterfactual_baseline_usd",
+            "header": "Baseline cost"
+          },
+          {
+            "key": "baseline_model",
+            "header": "Baseline model"
+          },
+          {
+            "key": "savings_usd",
+            "header": "Savings"
+          },
+          {
+            "key": "usage_source",
+            "header": "Usage source"
+          },
+          {
+            "key": "task_type",
+            "header": "Task type"
+          },
+          {
+            "key": "latency_ms",
+            "header": "Duration"
+          },
+          {
+            "key": "tokens_to_compliance",
+            "header": "Tokens to compliance"
+          },
+          {
+            "key": "cost_tier_name",
+            "header": "Route tier"
+          },
+          {
+            "key": "actual_score",
+            "header": "Quality score"
+          }
         ],
         "page_size": 25,
         "show_pagination": true,
-        "default_sort_key": "started_at",
+        "default_sort_key": "created_at",
         "default_sort_direction": "desc"
       }
     }

@@ -1,4 +1,4 @@
-import { useEffect, useId, useState } from 'react';
+import { useEffect, useId, useRef, useState } from 'react';
 import { createSnapshotSource } from '@/data-source';
 import { fetchExposureCensus } from '@/data-source/exposure-census';
 import { resolveEffectiveDataSource } from '@/data-source/data-source-override';
@@ -9,6 +9,7 @@ import {
   rowsForLocalBinding,
   rowsForLocalComponent,
   resolveLocalPageEmptyState,
+  withLastGood,
   type BoundProjectionSnapshot,
   type LocalPageDocument,
   type LocalPageName,
@@ -16,12 +17,6 @@ import {
 
 interface LocalDashboardPageProps {
   pageName: LocalPageName;
-}
-
-function valueOrUnmeasured(value: unknown): string {
-  if (value === null || value === undefined || value === '') return 'Not measured';
-  if (typeof value === 'number' && !Number.isFinite(value)) return 'Not measured';
-  return String(value);
 }
 
 function isMissing(value: unknown): boolean {
@@ -63,7 +58,23 @@ interface MetricCardProps {
  */
 const PENDING_SOURCES: Record<string, string> = {
   'overview-tokens': 'metering-summary.v1',
+  'workflow-run-path': 'run-trace.v1 (OMN-19987)',
+  'usage-by-model-day': 'usage-by-model-day.v1 (OMN-20006)',
+  'api-keys-local-identity': 'local-identity.v1 (OMN-19986)',
 };
+
+/** AK-3: cloud keys are not linked in the local MVP; one line, no form. */
+const CLOUD_NOT_LINKED = 'CLOUD_NOT_LINKED: cloud keys are not linked in the local runtime. There is nothing to set here.';
+
+/** A component bound to no served exposure: what it waits on, never a blank panel (FR-3 partial pages, SV-3). */
+function PendingState({ componentId }: { componentId: string }) {
+  if (componentId === 'api-keys-cloud') return <p className="local-dashboard-empty" role="status">{CLOUD_NOT_LINKED}</p>;
+  return (
+    <p className="local-dashboard-empty" role="status">
+      {`Not served yet: waits on ${PENDING_SOURCES[componentId] ?? 'its exposure'}`}
+    </p>
+  );
+}
 
 function captionText(caption: Record<string, unknown> | null | undefined): string | null {
   if (!caption) return null;
@@ -295,97 +306,154 @@ export function NoRunsYet() {
 }
 
 interface RunsTableProps {
-  rows: readonly unknown[];
-  /** delegation.decisions.v1 rows, looked up by session_id = correlation_id for each run's status and cause. */
-  decisions?: readonly unknown[];
+  /** delegation.decisions.v1 rows: every run, failed ones included (RU-1's source). */
+  decisions: readonly unknown[];
+  /** delegation.savings.v1 sessions, looked up by session_id = correlation_id for the savings columns. */
+  sessions: readonly unknown[];
   now?: number;
+  /** The widget's declared page_size. */
+  pageSize?: number;
 }
 
-/** RU-1: every served session with its decision's status and cause, filtered by status, model and window. */
-export function RunsTable({ rows, decisions = [], now = Date.now() }: RunsTableProps) {
+/** A row whose served data_source names anything but real data is fixture data (FR-2). */
+function isFixture(decision: Row): boolean {
+  return typeof decision.data_source === 'string' && decision.data_source !== '' && decision.data_source !== 'real';
+}
+
+/** RU-1: every served run with its status, cause and savings, filtered by status, cause, model and window, paged. */
+export function RunsTable({ decisions, sessions, now = Date.now(), pageSize = 25 }: RunsTableProps) {
   const id = useId();
   const [status, setStatus] = useState('all');
+  const [cause, setCause] = useState('all');
   const [model, setModel] = useState('all');
   const [span, setSpan] = useState('all');
-  const byCorrelation = indexBy(decisions, 'correlation_id');
-  const records = asRecords(rows);
-  const models = [...new Set(records.map((record) => modelOrUnknown(record.model_name)))].sort();
+  const [pageIndex, setPageIndex] = useState(0);
+  const bySession = indexBy(sessions, 'session_id');
+  const runs = newestFirst(decisions);
+  const models = [...new Set(runs.map((run) => modelOrUnknown(run.model_name)))].sort();
+  const causes = [...new Set(runs.filter((run) => statusOf(run) === 'failed').map((run) => causeOf(run)))].sort();
   const today = utcDay(now);
-  const shown = records.filter((record) => {
-    const decision = byCorrelation.get(String(record.session_id));
-    return (status === 'all' || statusOf(decision) === status)
-      && (model === 'all' || modelOrUnknown(record.model_name) === model)
-      && (span === 'all' || utcDay(timeOf(record.created_at)) === today);
-  });
+  const shown = runs.filter((run) => (status === 'all' || statusOf(run) === status)
+    && (cause === 'all' || causeOf(run) === cause)
+    && (model === 'all' || modelOrUnknown(run.model_name) === model)
+    && (span === 'all' || utcDay(timeOf(run.created_at)) === today));
+  const pages = Math.max(1, Math.ceil(shown.length / pageSize));
+  const current = Math.min(pageIndex, pages - 1);
+  const page = shown.slice(current * pageSize, (current + 1) * pageSize);
+  const filter = (setter: (value: string) => void) => (event: { target: { value: string } }) => {
+    setter(event.target.value);
+    setPageIndex(0);
+  };
   return (
     <>
       <div className="local-dashboard-filters">
         <label htmlFor={`${id}-status`}>Status</label>
-        <select id={`${id}-status`} value={status} onChange={(event) => setStatus(event.target.value)}>
+        <select id={`${id}-status`} value={status} onChange={filter(setStatus)}>
           <option value="all">All</option>
           <option value="passed">passed</option>
           <option value="failed">failed</option>
           <option value="Not recorded">Not recorded</option>
         </select>
+        <label htmlFor={`${id}-cause`}>Cause</label>
+        <select id={`${id}-cause`} value={cause} onChange={filter(setCause)}>
+          <option value="all">All</option>
+          {causes.map((name) => <option key={name} value={name}>{name}</option>)}
+        </select>
         <label htmlFor={`${id}-model`}>Model</label>
-        <select id={`${id}-model`} value={model} onChange={(event) => setModel(event.target.value)}>
+        <select id={`${id}-model`} value={model} onChange={filter(setModel)}>
           <option value="all">All</option>
           {models.map((name) => <option key={name} value={name}>{name}</option>)}
         </select>
         <label htmlFor={`${id}-window`}>Window</label>
-        <select id={`${id}-window`} value={span} onChange={(event) => setSpan(event.target.value)}>
+        <select id={`${id}-window`} value={span} onChange={filter(setSpan)}>
           <option value="all">All time</option>
           <option value="today">Today (UTC)</option>
         </select>
       </div>
       {shown.length === 0 ? <p className="local-dashboard-empty" role="status">No runs match these filters</p> : (
-        <div className="local-dashboard-table-wrap">
-          <table>
-            <thead>
-              <tr>
-                <th>Session</th><th>Created</th><th>Status</th><th>Cause</th><th>Model</th><th>Backend</th>
-                <th>Prompt tokens</th><th>Completion tokens</th><th>Local cost</th><th>Baseline cost</th>
-                <th>Baseline model</th><th>Savings</th><th>Usage source</th>
-                <th>Task type</th><th>Latency (ms)</th><th>Tokens to compliance</th><th>Route tier</th><th>Quality score</th>
-              </tr>
-            </thead>
-            <tbody>{shown.map((record, index) => {
-              const decision = byCorrelation.get(String(record.session_id));
-              const unresolved = record.baseline_model === null && record.savings_usd === 0;
-              const baselineCost = record.counterfactual_baseline_usd ?? record.cloud_cost_usd;
-              return <tr key={String(record.session_id ?? index)}>
-                <td>{valueOrUnmeasured(record.session_id)}</td>
-                <td>{valueOrUnmeasured(record.created_at)}</td>
-                <td>{statusOf(decision)}</td>
-                <td>{causeOf(decision)}</td>
-                <td>{modelOrUnknown(record.model_name)}</td>
-                <td>{BACKEND_NOT_SERVED}</td>
-                <td>{valueOrUnmeasured(record.prompt_tokens)}</td>
-                <td>{valueOrUnmeasured(record.completion_tokens)}</td>
-                <td>{valueOrUnmeasured(record.local_cost_usd)}</td>
-                <td>{unresolved ? 'Baseline unresolved' : valueOrUnmeasured(baselineCost)}</td>
-                {/* A measured saving whose baseline model was not written is not "not measured" (Codex, 2026-10-02). */}
-                <td>{unresolved ? 'Baseline unresolved' : recorded(record.baseline_model)}</td>
-                <td>{unresolved ? 'Baseline unresolved' : valueOrUnmeasured(record.savings_usd)}</td>
-                <td>{valueOrUnmeasured(record.usage_source ?? record.savings_method)}</td>
-                <td>{valueOrUnmeasured(record.task_type)}</td>
-                <td>{valueOrUnmeasured(record.latency_ms)}</td>
-                <td>{valueOrUnmeasured(record.tokens_to_compliance)}</td>
-                <td>{recorded(decision?.cost_tier_name)}</td>
-                <td>{recorded(decision?.actual_score)}</td>
-              </tr>;
-            })}</tbody>
-          </table>
-        </div>
+        <>
+          <div className="local-dashboard-table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>Run</th><th>Created</th><th>Status</th><th>Cause</th><th>Model</th><th>Backend</th>
+                  <th>Tokens in</th><th>Tokens out</th><th>Local cost</th><th>Baseline cost</th>
+                  <th>Baseline model</th><th>Savings</th><th>Usage source</th>
+                  <th>Task type</th><th>Duration</th><th>Tokens to compliance</th><th>Route tier</th><th>Quality score</th>
+                </tr>
+              </thead>
+              <tbody>{page.map((run, index) => {
+                const session = bySession.get(String(run.correlation_id));
+                const unresolved = session !== undefined && session.baseline_model === null && session.savings_usd === 0;
+                const baselineCost = session?.counterfactual_baseline_usd ?? session?.cloud_cost_usd;
+                return <tr key={String(run.correlation_id ?? index)}>
+                  <td>{recorded(run.correlation_id)}{isFixture(run) && <span className="local-dashboard-badge">fixture</span>}</td>
+                  <td>{recorded(run.created_at)}</td>
+                  <td>{statusOf(run)}</td>
+                  <td>{causeOf(run)}</td>
+                  <td>{modelOrUnknown(run.model_name)}</td>
+                  <td>{BACKEND_NOT_SERVED}</td>
+                  <td>{recorded(run.tokens_input)}</td>
+                  <td>{recorded(run.tokens_output)}</td>
+                  <td>{recorded(session?.local_cost_usd)}</td>
+                  <td>{unresolved ? 'Baseline unresolved' : recorded(baselineCost)}</td>
+                  {/* A measured saving whose baseline model was not written is not "not measured" (Codex, 2026-10-02). */}
+                  <td>{unresolved ? 'Baseline unresolved' : recorded(session?.baseline_model)}</td>
+                  <td>{unresolved ? 'Baseline unresolved' : recorded(session?.savings_usd)}</td>
+                  <td>{recorded(session?.usage_source ?? session?.savings_method)}</td>
+                  <td>{recorded(run.task_type)}</td>
+                  <td>{recorded(run.latency_ms)}</td>
+                  <td>{recorded(run.tokens_to_compliance)}</td>
+                  <td>{recorded(run.cost_tier_name)}</td>
+                  <td>{recorded(run.actual_score)}</td>
+                </tr>;
+              })}</tbody>
+            </table>
+          </div>
+          <div className="local-dashboard-pager">
+            <span>{`Runs ${current * pageSize + 1}–${current * pageSize + page.length} of ${shown.length}`}</span>
+            <button type="button" aria-label="Previous page" disabled={current === 0} onClick={() => setPageIndex(current - 1)}>Previous</button>
+            <button type="button" aria-label="Next page" disabled={current >= pages - 1} onClick={() => setPageIndex(current + 1)}>Next</button>
+          </div>
+        </>
       )}
     </>
   );
 }
 
+/** CR-1 to CR-3: provider key references only (never a value), or the command that sets the first one. */
+export function CredentialsTable({ rows }: { rows: readonly unknown[] }) {
+  const keys = asRecords(rows);
+  if (keys.length === 0) {
+    return (
+      <div className="local-dashboard-empty" role="status">
+        <p>No provider key set</p>
+        <p>Set one with <code>onex secret set</code></p>
+      </div>
+    );
+  }
+  return (
+    <div className="local-dashboard-table-wrap">
+      <table>
+        <thead><tr><th>Provider</th><th>Key ref</th><th>Set</th><th>Revoked</th></tr></thead>
+        <tbody>{keys.map((key, index) => (
+          <tr key={`${String(key.provider)}-${String(key.name)}-${index}`}>
+            <td>{recorded(key.provider)}</td>
+            <td>{recorded(key.name)}</td>
+            <td>{recorded(key.created_at)}</td>
+            <td>{isMissing(key.revoked_at) ? 'Not revoked' : String(key.revoked_at)}</td>
+          </tr>
+        ))}</tbody>
+      </table>
+    </div>
+  );
+}
+
 /** The renderer for a table component: its first binding's rows, joined to its second binding by a served id. */
-function TableComponent({ component, snapshots }: {
+function TableComponent({ component, snapshots, pageSize }: {
   component: LocalPageDocument['components'][number];
   snapshots: readonly BoundProjectionSnapshot[];
+  pageSize: number;
 }) {
   const rows = rowsForLocalComponent(component, snapshots);
   const lookup = rowsForLocalBinding(component, snapshots, 1);
@@ -393,25 +461,96 @@ function TableComponent({ component, snapshots }: {
   if (component.component_id === 'overview-recent-runs') {
     return rows.length === 0 ? <NoRunsYet /> : <RecentRunsTable decisions={rows} sessions={lookup} />;
   }
-  return rows.length === 0 ? <NoRunsYet /> : <RunsTable rows={rows} decisions={lookup} />;
+  if (component.component_id === 'credentials-keys') return <CredentialsTable rows={rows} />;
+  return rows.length === 0 ? <NoRunsYet /> : <RunsTable decisions={rows} sessions={lookup} pageSize={pageSize} />;
 }
+
+/** One widget's read state: the failure of any binding it reads, and how old its data is (requirements, section 2). */
+function WidgetReadState({ component, snapshots, now, interval }: {
+  component: LocalPageDocument['components'][number];
+  snapshots: readonly BoundProjectionSnapshot[];
+  now: number;
+  interval: number;
+}) {
+  const bound = (component.data_bindings ?? [])
+    .map((binding) => snapshots.find((snapshot) => snapshot.topic === binding.projection_topic))
+    .filter((snapshot): snapshot is BoundProjectionSnapshot => snapshot !== undefined);
+  const primary = bound[0];
+  if (!primary) return null;
+  const failures = bound.filter((snapshot) => snapshot.failure && snapshot.failure.kind !== 'not-served');
+  const readAt = primary.failure ? primary.lastGoodAt ?? null : primary.readAt;
+  const stale = readAt !== null && now - timeOf(readAt) > 2 * interval * 1000;
+  return (
+    <>
+      {failures.map((snapshot) => (
+        <p className="local-dashboard-error" role="alert" key={snapshot.topic}>
+          {snapshot.failure!.message}
+          {snapshot.lastGoodAt ? `; last good ${age(snapshot.lastGoodAt, now)}` : ''}
+        </p>
+      ))}
+      {readAt !== null && (
+        <p className={`local-dashboard-asof${stale ? ' local-dashboard-asof--stale' : ''}`}>{`As of ${age(readAt, now)}`}</p>
+      )}
+    </>
+  );
+}
+
+/** A component whose first binding is not served (and has no last good rows) says which exposure, nothing else. */
+function notServedTopic(
+  component: LocalPageDocument['components'][number],
+  snapshots: readonly BoundProjectionSnapshot[],
+): string | null {
+  const topic = component.data_bindings?.[0]?.projection_topic;
+  const snapshot = snapshots.find((candidate) => candidate.topic === topic);
+  if (!snapshot?.failure || snapshot.lastGoodAt) return null;
+  return snapshot.failure.kind === 'not-served' ? snapshot.failure.message : null;
+}
+
+/** A component whose first binding failed with no last good rows renders only its read state. */
+function firstBindingFailedEmpty(
+  component: LocalPageDocument['components'][number],
+  snapshots: readonly BoundProjectionSnapshot[],
+): boolean {
+  const topic = component.data_bindings?.[0]?.projection_topic;
+  const snapshot = snapshots.find((candidate) => candidate.topic === topic);
+  return Boolean(snapshot?.failure) && !snapshot?.lastGoodAt;
+}
+
+const PAGE_TITLES: Record<LocalPageName, string> = {
+  overview: 'Overview',
+  runs: 'Runs',
+  workflow: 'Workflow',
+  usage: 'Usage',
+  credentials: 'Credentials',
+  'api-keys': 'API Keys',
+};
 
 export function LocalDashboardPage({ pageName }: LocalDashboardPageProps) {
   const [page, setPage] = useState<LocalPageDocument | null>(null);
   const [snapshots, setSnapshots] = useState<BoundProjectionSnapshot[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
+  const latest = useRef<BoundProjectionSnapshot[]>([]);
 
   useEffect(() => {
     let active = true;
     // A page switch must not show the previous page's document while this one loads.
     setPage(null);
     setSnapshots([]);
+    latest.current = [];
     setError(null);
     setLoading(true);
+    let document: LocalPageDocument;
+    try {
+      document = loadLocalPageConfig(pageName);
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : String(cause));
+      setLoading(false);
+      return () => { active = false; };
+    }
+    // Every read after the first keeps the last good rows on screen while it runs, and when it fails (F25).
     async function load() {
       try {
-        const document = loadLocalPageConfig(pageName);
         const { mode } = resolveEffectiveDataSource();
         if (mode !== 'http') {
           throw new Error('Local pages require HTTP mode to read runtime exposures.');
@@ -425,26 +564,35 @@ export function LocalDashboardPage({ pageName }: LocalDashboardPageProps) {
           availableTopics,
         });
         if (active) {
+          const merged = withLastGood(latest.current, data);
+          latest.current = merged;
           setPage(document);
-          setSnapshots(data);
+          setSnapshots(merged);
           setError(null);
         }
       } catch (cause) {
-        if (active) setError(cause instanceof Error ? cause.message : String(cause));
+        if (active && latest.current.length === 0) setError(cause instanceof Error ? cause.message : String(cause));
       } finally {
         if (active) setLoading(false);
       }
     }
     void load();
-    return () => { active = false; };
+    // The page's declared refresh interval (requirements: the dashboard shows the runtime's data as it changes).
+    const timer = setInterval(() => { void load(); }, (document.dashboard.refresh_interval_seconds ?? 30) * 1000);
+    return () => {
+      active = false;
+      clearInterval(timer);
+    };
   }, [pageName]);
 
   const emptyState = page ? resolveLocalPageEmptyState(page, snapshots) : null;
+  const now = Date.now();
+  const interval = page?.dashboard.refresh_interval_seconds ?? 30;
   return (
     <main aria-label={`${page?.dashboard.name ?? 'Local dashboard'} page`} className="local-dashboard-page">
       <header className="local-dashboard-header">
         <div>
-          <h1>{page?.dashboard.name ?? (pageName === 'overview' ? 'Overview' : 'Runs')}</h1>
+          <h1>{page?.dashboard.name ?? PAGE_TITLES[pageName]}</h1>
           <p>{page?.dashboard.description}</p>
         </div>
         <span className="local-dashboard-mode">Local runtime · HTTP</span>
@@ -456,20 +604,27 @@ export function LocalDashboardPage({ pageName }: LocalDashboardPageProps) {
           {page.components.map((component) => {
             const rows = rowsForLocalComponent(component, snapshots);
             const first = (rows[0] ?? {}) as Record<string, unknown>;
-            const width = page.dashboard.widgets.find((widget) => widget.data_source === component.component_id)?.width;
+            const widget = page.dashboard.widgets.find((candidate) => candidate.data_source === component.component_id);
+            const pageSize = Number((widget?.config as Record<string, unknown> | undefined)?.page_size ?? 25);
+            const notServed = notServedTopic(component, snapshots);
+            const unbound = (component.data_bindings ?? []).length === 0;
             return (
-              <article className="local-dashboard-panel" data-width={String(width ?? 12)} key={component.component_id}>
+              <article className="local-dashboard-panel" data-width={String(widget?.width ?? 12)} key={component.component_id}>
                 <h2>{component.title}</h2>
-                {emptyState === 'NO_RUNS_YET' ? <NoRunsYet /> : emptyState ? (
-                  <p className="local-dashboard-empty" role="status">Baseline unresolved</p>
-                ) : component.component_kind === 'table' ? (
-                  <TableComponent component={component} snapshots={snapshots} />
-                ) : (() => {
-                  const config = metricConfigFor(page, component.component_id);
-                  return config
-                    ? <MetricCard component={component} config={config} row={first} caption={captionRowFor(component, snapshots)} />
-                    : <p className="local-dashboard-empty">Not measured</p>;
-                })()}
+                {unbound && component.component_kind !== 'metric_card' ? <PendingState componentId={component.component_id} />
+                  : notServed ? <p className="local-dashboard-empty" role="status">{notServed}</p>
+                  : firstBindingFailedEmpty(component, snapshots) ? null
+                  : emptyState === 'NO_RUNS_YET' ? <NoRunsYet />
+                  : emptyState ? <p className="local-dashboard-empty" role="status">Baseline unresolved</p>
+                  : component.component_kind === 'table' ? (
+                    <TableComponent component={component} snapshots={snapshots} pageSize={pageSize} />
+                  ) : (() => {
+                    const config = metricConfigFor(page, component.component_id);
+                    return config
+                      ? <MetricCard component={component} config={config} row={first} caption={captionRowFor(component, snapshots)} />
+                      : <p className="local-dashboard-empty">Not measured</p>;
+                  })()}
+                <WidgetReadState component={component} snapshots={snapshots} now={now} interval={interval} />
               </article>
             );
           })}
