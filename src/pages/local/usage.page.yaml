@@ -1,7 +1,7 @@
 {
   "dashboard_id": "fd556d39-e92a-54cc-94f2-0cedb669b7ee",
   "name": "Usage",
-  "description": "Tokens in, tokens out and cost per model per day, from the usage-by-model-day exposure once it is scoped to a tenant.",
+  "description": "Tokens in, tokens out and cost per model per UTC day, from the usage-by-model-day exposure.",
   "layout": {
     "columns": 12,
     "row_height": 100,
@@ -24,24 +24,28 @@
         "widget_type": "table",
         "columns": [
           {
-            "key": "day",
+            "key": "usage_day",
             "header": "Day"
           },
           {
-            "key": "model",
+            "key": "model_id",
             "header": "Model"
           },
           {
-            "key": "tokens_in",
+            "key": "input_tokens",
             "header": "Tokens in"
           },
           {
-            "key": "tokens_out",
+            "key": "output_tokens",
             "header": "Tokens out"
           },
           {
             "key": "cost_usd",
             "header": "Cost"
+          },
+          {
+            "key": "call_count",
+            "header": "Calls"
           }
         ],
         "page_size": 25,

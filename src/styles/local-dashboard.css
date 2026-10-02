@@ -173,3 +173,24 @@
   font-size: 0.8125rem;
   color: var(--text-secondary, #a1a1aa);
 }
+
+/* OMN-19981 Amendment 7: the Workflow page's recorded steps. */
+.local-dashboard-subtitle {
+  margin: 0 0 8px;
+  font-size: 0.8125rem;
+  color: var(--text-secondary, #a1a1aa);
+  overflow-wrap: anywhere;
+}
+
+.local-dashboard-steps {
+  display: grid;
+  gap: 8px;
+  margin: 0 0 12px;
+  padding-left: 20px;
+}
+
+.local-dashboard-steps li strong {
+  display: inline-block;
+  min-width: 110px;
+  margin-right: 8px;
+}

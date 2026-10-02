@@ -1,7 +1,7 @@
 {
   "dashboard_id": "f03e9a51-7076-55d3-829d-ed29aceaeecf",
   "name": "Workflow",
-  "description": "One run's ordered path, from the run-trace exposure once it is served.",
+  "description": "The newest run's recorded steps from the delegation decisions exposure. The full ordered path waits on run-trace.v1.",
   "layout": {
     "columns": 12,
     "row_height": 100,
@@ -28,16 +28,8 @@
             "header": "Step"
           },
           {
-            "key": "at",
-            "header": "Time"
-          },
-          {
-            "key": "duration_ms",
-            "header": "Duration"
-          },
-          {
-            "key": "outcome",
-            "header": "Outcome"
+            "key": "value",
+            "header": "Recorded"
           }
         ],
         "page_size": 25,

@@ -104,6 +104,30 @@ describe('PostgresProjectionReader', () => {
     expect(Array.isArray(row.byModel)).toBe(true);
   });
 
+  // Jonah's handoff on OMN-19981 (3376eac0): savings_estimates has no baseline_model column (it is
+  // model_cloud_baseline), and summing raw rows double counts runs written twice before omnimarket#3189.
+  it('reads the baseline from model_cloud_baseline, the column savings_estimates has', async () => {
+    const client = { query: vi.fn().mockResolvedValue({ rows: [{ session_id: 's-1', baseline_model: 'claude-opus-4-6' }] }), release: vi.fn() };
+    getMockPool().connect.mockResolvedValue(client);
+    const result = await reader.readProjection('onex.snapshot.projection.savings.v1');
+    const sql = String(client.query.mock.calls[0]?.[0]);
+    expect(sql).toMatch(/model_cloud_baseline\s+AS\s+baseline_model/);
+    expect(sql).not.toMatch(/^\s*baseline_model,\s*$/m);
+    expect(result.rows).toEqual([{ session_id: 's-1', baseline_model: 'claude-opus-4-6' }]);
+  });
+
+  it.each([
+    ['savings summary', 'onex.snapshot.projection.savings.summary.v1', 0],
+    ['delegation summary total', 'onex.snapshot.projection.delegation.summary.v1', 1],
+  ] as const)('sums savings once per run in the %s (newest row per session_id)', async (_name, topic, call) => {
+    const client = { query: vi.fn().mockResolvedValue({ rows: [{}] }), release: vi.fn() };
+    getMockPool().connect.mockResolvedValue(client);
+    await reader.readProjection(topic);
+    const sql = String(client.query.mock.calls[call]?.[0]);
+    expect(sql).toContain('SUM(savings_usd)');
+    expect(sql).toMatch(/DISTINCT ON \(session_id\)[\s\S]*FROM savings_estimates[\s\S]*ORDER BY session_id, created_at DESC/);
+  });
+
   it('falls back to 0 savings when savings_estimates is not provisioned', async () => {
     const summaryRow = {
       total_events: '5', quality_passed_count: '5', quality_failed_count: '0',

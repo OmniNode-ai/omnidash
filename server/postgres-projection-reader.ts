@@ -92,7 +92,7 @@ export interface ProjectionEnvelope {
   rows: Row[];
 }
 
-// TODO(OMN-10976): consolidate topic-to-query mappings with sqlite-projection-reader.ts
+// OMN-10976's consolidation partner, sqlite-projection-reader.ts, was deleted by OMN-19981 AC3.
 export class PostgresProjectionReader {
   private readonly pool: Pool;
 
@@ -374,7 +374,7 @@ export class PostgresProjectionReader {
               local_cost_usd,
               cloud_cost_usd,
               savings_usd,
-              baseline_model,
+              model_cloud_baseline AS baseline_model,
               pricing_manifest_version,
               savings_method,
               usage_source,
@@ -393,7 +393,12 @@ export class PostgresProjectionReader {
               COALESCE(SUM(local_cost_usd), 0)  AS total_local_cost_usd,
               COALESCE(SUM(cloud_cost_usd), 0)  AS total_cloud_cost_usd,
               COALESCE(SUM(savings_usd), 0)     AS total_savings_usd
-            FROM savings_estimates
+            FROM (
+              -- One row per run: runs written twice before omnimarket#3189 would double count (OMN-19981, 3376eac0).
+              SELECT DISTINCT ON (session_id) local_cost_usd, cloud_cost_usd, savings_usd
+              FROM savings_estimates
+              ORDER BY session_id, created_at DESC
+            ) per_run
           `);
           return res.rows as Row[];
         }
@@ -822,7 +827,12 @@ export class PostgresProjectionReader {
     try {
       const res = await client.query(`
         SELECT COALESCE(SUM(savings_usd), 0) AS total_savings_usd
-        FROM savings_estimates
+        FROM (
+          -- One row per run (OMN-19981, 3376eac0): see the savings summary.
+          SELECT DISTINCT ON (session_id) savings_usd
+          FROM savings_estimates
+          ORDER BY session_id, created_at DESC
+        ) per_run
       `);
       return Number((res.rows[0] as Row)?.total_savings_usd ?? 0);
     } catch (err) {

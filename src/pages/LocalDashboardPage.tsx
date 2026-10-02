@@ -2,6 +2,7 @@ import { useEffect, useId, useRef, useState } from 'react';
 import { createSnapshotSource } from '@/data-source';
 import { fetchExposureCensus } from '@/data-source/exposure-census';
 import { resolveEffectiveDataSource } from '@/data-source/data-source-override';
+import { resolveConfiguredTenant } from '@/data-source/projection-tenant';
 import '@/styles/local-dashboard.css';
 import {
   loadLocalPageConfig,
@@ -58,9 +59,6 @@ interface MetricCardProps {
  */
 const PENDING_SOURCES: Record<string, string> = {
   'overview-tokens': 'metering-summary.v1',
-  'workflow-run-path': 'run-trace.v1 (OMN-19987)',
-  'usage-by-model-day': 'usage-by-model-day.v1 (OMN-20006)',
-  'api-keys-local-identity': 'local-identity.v1 (OMN-19986)',
 };
 
 /** AK-3: cloud keys are not linked in the local MVP; one line, no form. */
@@ -75,6 +73,8 @@ function PendingState({ componentId }: { componentId: string }) {
     </p>
   );
 }
+
+const SAVINGS_MODELLED = "Modelled: the runs' tokens priced at the baseline model's list price. The baseline never ran.";
 
 function captionText(caption: Record<string, unknown> | null | undefined): string | null {
   if (!caption) return null;
@@ -109,10 +109,14 @@ export function MetricCard({ component, config, row, caption }: MetricCardProps)
   else if (missing.length > 0) text = 'Not measured';
   else text = formatMetric(Number(row[config.metric_key]), config);
   const line = captionText(caption);
+  // A savings figure is a modelled counterfactual: served tokens priced at the baseline's list price, with no
+  // baseline run behind it (Jonah's savings handoff on OMN-19981, aac9032d, item 5).
+  const modelled = caption !== null && caption !== undefined && 'baseline_model' in caption;
   return (
     <>
       <p className="local-dashboard-metric">{text}</p>
       {line && <p className="local-dashboard-caption">{line}</p>}
+      {modelled && <p className="local-dashboard-caption">{SAVINGS_MODELLED}</p>}
     </>
   );
 }
@@ -449,6 +453,84 @@ export function CredentialsTable({ rows }: { rows: readonly unknown[] }) {
   );
 }
 
+/** WF-1 waits on run-trace.v1; until then the page shows the steps one served decision records. */
+const RUN_TRACE_PENDING = 'Full path not served yet: waits on run-trace.v1 (OMN-19987)';
+
+/**
+ * WF-3: the newest run's recorded steps, in a fixed order, each from one served field of its decision row. The
+ * browser orders nothing but the declared newest-first authority (written_at); the per-step path is run-trace.v1's.
+ */
+export function WorkflowPath({ decisions }: { decisions: readonly unknown[] }) {
+  const run = newestFirst(decisions)[0];
+  if (!run) return <NoRunsYet />;
+  const status = statusOf(run);
+  const steps: Array<[string, string]> = [
+    ['Request', `${recorded(run.created_at)} · ${recorded(run.task_type)}`],
+    ['Routing', `tier ${recorded(run.cost_tier_name)} · model ${modelOrUnknown(run.model_name)} · backend ${BACKEND_NOT_SERVED}`],
+    ['Quality gate', status === 'failed'
+      ? `failed: ${causeOf(run)}`
+      : `${status} · score ${recorded(run.actual_score)}`],
+    ['Terminal', `${recorded(run.written_at)} · ${duration(run.latency_ms)}`],
+  ];
+  return (
+    <div>
+      <p className="local-dashboard-subtitle">Run <code>{recorded(run.correlation_id)}</code></p>
+      <ol className="local-dashboard-steps">
+        {steps.map(([name, value]) => <li key={name}><strong>{name}</strong><span>{value}</span></li>)}
+      </ol>
+      <p className="local-dashboard-empty" role="status">{RUN_TRACE_PENDING}</p>
+    </div>
+  );
+}
+
+/**
+ * US-1/US-2: tokens in, tokens out and cost per model per UTC day. The exposure declares no tenant column, so only
+ * rows of the configured tenant are shown (another tenant's rows never render). Unmeasured cost reads Not recorded.
+ */
+export function UsageTable({ rows, tenant }: { rows: readonly unknown[]; tenant: string | null }) {
+  const usage = asRecords(rows).filter((row) => tenant !== null && row.tenant_id === tenant);
+  if (usage.length === 0) {
+    return <p className="local-dashboard-empty" role="status">No usage rows yet: waits on llm-call-completed events (OMN-20006)</p>;
+  }
+  return (
+    <div className="local-dashboard-table-wrap">
+      <table>
+        <thead><tr><th>Day</th><th>Model</th><th>Tokens in</th><th>Tokens out</th><th>Cost</th><th>Calls</th></tr></thead>
+        <tbody>{usage.map((row, index) => (
+          <tr key={`${String(row.usage_day)}-${String(row.model_id)}-${index}`}>
+            <td>{recorded(row.usage_day)}</td>
+            <td>{modelOrUnknown(row.model_id)}</td>
+            <td>{recorded(row.input_tokens)}</td>
+            <td>{recorded(row.output_tokens)}</td>
+            <td>{recorded(row.cost_usd)}</td>
+            <td>{recorded(row.call_count)}</td>
+          </tr>
+        ))}</tbody>
+      </table>
+    </div>
+  );
+}
+
+/** AK-1: the tenant id from a served row; minted-at waits on local-identity.v1. */
+export function LocalIdentity({ row }: { row: Record<string, unknown> | null }) {
+  return (
+    <dl className="local-dashboard-fields">
+      <div><dt>Tenant</dt><dd>{recorded(row?.tenant_id)}</dd></div>
+      <div><dt>Minted</dt><dd>Not served yet: waits on local-identity.v1 (OMN-19986)</dd></div>
+    </dl>
+  );
+}
+
+/** The raw served rows of a component's binding, before any envelope unpacking. */
+function rawRowsFor(
+  component: LocalPageDocument['components'][number],
+  snapshots: readonly BoundProjectionSnapshot[],
+  index: number,
+): unknown[] {
+  const topic = component.data_bindings?.[index]?.projection_topic;
+  return snapshots.find((snapshot) => snapshot.topic === topic)?.rows ?? [];
+}
+
 /** The renderer for a table component: its first binding's rows, joined to its second binding by a served id. */
 function TableComponent({ component, snapshots, pageSize }: {
   component: LocalPageDocument['components'][number];
@@ -462,6 +544,12 @@ function TableComponent({ component, snapshots, pageSize }: {
     return rows.length === 0 ? <NoRunsYet /> : <RecentRunsTable decisions={rows} sessions={lookup} />;
   }
   if (component.component_id === 'credentials-keys') return <CredentialsTable rows={rows} />;
+  if (component.component_id === 'workflow-run-path') return <WorkflowPath decisions={rows} />;
+  if (component.component_id === 'usage-by-model-day') return <UsageTable rows={rows} tenant={resolveConfiguredTenant()} />;
+  if (component.component_id === 'api-keys-local-identity') {
+    const first = rawRowsFor(component, snapshots, 0)[0];
+    return <LocalIdentity row={first && typeof first === 'object' ? (first as Record<string, unknown>) : null} />;
+  }
   return rows.length === 0 ? <NoRunsYet /> : <RunsTable decisions={rows} sessions={lookup} pageSize={pageSize} />;
 }
 
@@ -531,6 +619,8 @@ export function LocalDashboardPage({ pageName }: LocalDashboardPageProps) {
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const latest = useRef<BoundProjectionSnapshot[]>([]);
+  // One source per mounted page, so a double mount (React's development mode) shares its reads in flight.
+  const source = useRef<ReturnType<typeof createSnapshotSource> | null>(null);
 
   useEffect(() => {
     let active = true;
@@ -559,7 +649,8 @@ export function LocalDashboardPage({ pageName }: LocalDashboardPageProps) {
         const availableTopics = new Set(
           census.rows.filter((row) => row.reachability === 'reachable').map((row) => row.topic),
         );
-        const data = await loadLocalPageSnapshots(document, createSnapshotSource(), {
+        source.current ??= createSnapshotSource();
+        const data = await loadLocalPageSnapshots(document, source.current, {
           mode,
           availableTopics,
         });

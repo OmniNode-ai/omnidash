@@ -116,6 +116,27 @@ describe('MetricCard captions and pending sources (Amendment 4)', () => {
     expect(screen.getByText('Baseline unresolved · pricing manifest v1')).toBeInTheDocument();
   });
 
+  it('labels the savings figure as a modelled counterfactual, not a measured bill (Jonah aac9032d item 5)', () => {
+    render(<MetricCard
+      component={component('overview-savings', ['total_savings_usd', 'total_baseline_cost_usd'])}
+      config={{ metric_key: 'total_savings_usd', label: 'Savings', format: 'currency', precision: 4 }}
+      row={{ total_savings_usd: 1.22354, total_baseline_cost_usd: 1.2304 }}
+      caption={{ baseline_model: 'claude-opus-4-6', pricing_manifest_version: 1 }}
+    />);
+    expect(screen.getByText('Modelled: the runs\' tokens priced at the baseline model\'s list price. The baseline never ran.')).toBeInTheDocument();
+    expect(screen.queryByText(/verified/i)).not.toBeInTheDocument();
+  });
+
+  it('does not put the modelled label on a card with no baseline caption', () => {
+    render(<MetricCard
+      component={component('overview-measured', ['measured_run_count'])}
+      config={{ metric_key: 'measured_run_count', label: 'Measured runs', format: 'number', precision: 0 }}
+      row={{ measured_run_count: 41 }}
+      caption={{ zero_token_run_count: 0 }}
+    />);
+    expect(screen.queryByText(/^Modelled:/)).not.toBeInTheDocument();
+  });
+
   it('shows the zero-token run count beside the measured runs (OMN-20008 AC4)', () => {
     render(<MetricCard
       component={component('overview-measured', ['measured_run_count'])}

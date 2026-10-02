@@ -1,4 +1,4 @@
-import { readFileSync } from 'node:fs';
+import { existsSync, readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import Ajv from 'ajv';
 import { describe, expect, it, vi } from 'vitest';
@@ -18,9 +18,8 @@ import {
 } from '../../layout/local-page-loader';
 
 const pages = ['overview', 'runs', 'workflow', 'usage', 'credentials', 'api-keys'] as const;
-// Pages that read a served exposure today; the other three wait on exposures no writer serves yet (FR-3 partial).
-const servedPages = ['overview', 'runs', 'credentials'] as const;
-const partialPages = ['workflow', 'usage', 'api-keys'] as const;
+// Amendment 7 (AC1): every page names at least one served exposure.
+const servedPages = pages;
 // The exposures the lab projection API answers `ok`, captured read-only from
 // GET /projections. A hand-written list here once called a degraded exposure
 // served, so the Overview it backed rendered nothing on the lab.
@@ -61,22 +60,26 @@ describe('local dashboard page contracts', () => {
     expect(dashboardConfigValidator({ ...page, components: [] })).toBe(false);
   });
 
-  // Ticket AC2: no widget on a local page names a topic either server reader
-  // answers by hand-written SQL. Both readers are read, every local page is checked.
+  // Ticket AC2: no widget on a local page names a topic a server reader answers by hand-written SQL. The SQLite reader
+  // is deleted (AC3), so the Postgres reader is the one left to read; every local page is checked.
   const sqlFoldTopics = (file: string): Set<string> => {
     const source = readFileSync(resolve(process.cwd(), file), 'utf8');
     return new Set([...source.matchAll(/case\s+'(onex\.snapshot\.projection\.[^']+)'\s*:/g)].map((match) => match[1]));
   };
 
-  it('reads both readers\' hand-written SQL topics (positive control)', () => {
-    for (const file of ['server/sqlite-projection-reader.ts', 'server/postgres-projection-reader.ts']) {
+  it('AC3: the hand-written SQLite reader is deleted', () => {
+    expect(existsSync(resolve(process.cwd(), 'server/sqlite-projection-reader.ts'))).toBe(false);
+  });
+
+  it('reads the Postgres reader\'s hand-written SQL topics (positive control)', () => {
+    for (const file of ['server/postgres-projection-reader.ts']) {
       expect(sqlFoldTopics(file).has('onex.snapshot.projection.delegation.summary.v1'), file).toBe(true);
     }
   });
 
-  it.each(pages)('%s does not name a topic either reader answers by hand-written SQL', (pageName) => {
+  it.each(pages)('%s does not name a topic the reader answers by hand-written SQL', (pageName) => {
     const page = readPage(pageName);
-    for (const file of ['server/sqlite-projection-reader.ts', 'server/postgres-projection-reader.ts']) {
+    for (const file of ['server/postgres-projection-reader.ts']) {
       const sqlTopics = sqlFoldTopics(file);
       for (const binding of page.components.flatMap((component) => component.data_bindings ?? [])) {
         expect(sqlTopics.has(binding.projection_topic), `${file} answers ${binding.projection_topic}`).toBe(false);
@@ -372,13 +375,38 @@ describe('Amendment 5: last run, recent runs and run status from delegation deci
 });
 
 describe('Amendment 6: the six local pages and the loader', () => {
-  it.each(partialPages)('%s declares only components that wait on an unserved exposure (FR-3 partial)', (pageName) => {
+  it.each(pages)('%s names at least one exposure, and only served ones (AC1)', (pageName) => {
     const page = readPage(pageName);
-    expect(page.components.length).toBeGreaterThan(0);
-    for (const component of page.components) {
-      expect(component.data_bindings, component.component_id).toEqual([]);
-      expect(component.supported_empty_state_reasons, component.component_id).toEqual(['upstream-blocked']);
-    }
+    const topics = page.components.flatMap((c) => (c.data_bindings ?? []).map((b) => b.projection_topic));
+    expect(topics.length, pageName).toBeGreaterThan(0);
+  });
+
+  it('Usage reads usage-by-model-day with tokens in and out apart (US-1, SV-3)', () => {
+    const binding = readPage('usage').components[0]?.data_bindings?.[0];
+    expect(binding?.projection_topic).toBe('onex.snapshot.projection.usage-by-model-day.v1');
+    expect(binding?.ordering_authority_field).toBe('usage_day');
+    expect(binding?.required_fields).toEqual(expect.arrayContaining([
+      'tenant_id', 'usage_day', 'model_id', 'input_tokens', 'output_tokens', 'cost_usd', 'call_count',
+    ]));
+  });
+
+  it('Workflow reads the newest run from delegation decisions until run-trace is served (WF-3)', () => {
+    const binding = readPage('workflow').components[0]?.data_bindings?.[0];
+    expect(binding?.projection_topic).toBe('onex.snapshot.projection.delegation.decisions.v1');
+    expect(binding?.ordering_authority_field).toBe('written_at');
+    expect(binding?.ordering_direction).toBe('descending');
+    expect(binding?.required_fields).toEqual(expect.arrayContaining([
+      'correlation_id', 'created_at', 'written_at', 'cost_tier_name', 'model_name', 'quality_gate_passed',
+      'quality_gate_detail', 'actual_score', 'latency_ms',
+    ]));
+  });
+
+  it('API Keys reads the tenant id from a served exposure and binds nothing for cloud keys (AK-1, AK-3)', () => {
+    const page = readPage('api-keys');
+    const identity = page.components.find((c) => c.component_id === 'api-keys-local-identity');
+    expect(identity?.data_bindings?.[0]?.projection_topic).toBe('onex.snapshot.projection.delegation.savings.v1');
+    expect(identity?.data_bindings?.[0]?.required_fields).toContain('tenant_id');
+    expect(page.components.find((c) => c.component_id === 'api-keys-cloud')?.data_bindings).toEqual([]);
   });
 
   it('Credentials reads the tenant credentials exposure and declares no value field (CR-1, CR-3)', () => {
@@ -387,6 +415,31 @@ describe('Amendment 6: the six local pages and the loader', () => {
     expect(binding?.projection_topic).toBe('onex.snapshot.projection.tenant-credentials.v1');
     expect(binding?.required_fields).toEqual(['provider', 'name', 'created_at', 'revoked_at']);
     expect(JSON.stringify(page)).not.toMatch(/value|secret_value|api_key_value/);
+  });
+
+  it('two loads of a page at once share one read per exposure (first-load double read, Amendment 7)', async () => {
+    const page = readPage('runs');
+    let release: () => void = () => {};
+    const gate = new Promise<void>((resolve) => { release = resolve; });
+    const source = {
+      async *readAll() { yield []; },
+      readSnapshot: vi.fn(async () => {
+        await gate;
+        return { rows: [{ correlation_id: 'run-1' }], rowCount: 1, dataFreshness: 'fresh' as const, latestEventAt: null, readAt: '2026-10-02T10:12:00Z' };
+      }),
+    };
+    const options = {
+      mode: 'http' as const,
+      availableTopics: new Set(['onex.snapshot.projection.delegation.decisions.v1', 'onex.snapshot.projection.delegation.savings.v1']),
+    };
+    const both = Promise.all([loadLocalPageSnapshots(page, source, options), loadLocalPageSnapshots(page, source, options)]);
+    release();
+    const [first, second] = await both;
+    expect(source.readSnapshot).toHaveBeenCalledTimes(2);
+    expect(first.map((s) => s.rows)).toEqual(second.map((s) => s.rows));
+    // A later load reads again: sharing covers only reads still in flight.
+    await loadLocalPageSnapshots(page, source, options);
+    expect(source.readSnapshot).toHaveBeenCalledTimes(4);
   });
 
   it('a topic the census does not serve fails only its own reads, and the page still loads (F26)', async () => {

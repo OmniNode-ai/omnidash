@@ -1,74 +1,61 @@
 import { mkdirSync } from 'node:fs';
 import { dirname, resolve } from 'node:path';
-import { expect, test } from 'playwright/test';
+import { expect, test, type Page } from 'playwright/test';
 
-const overviewTopic = 'onex.snapshot.projection.baselines.roi.v1';
-const runsTopic = 'onex.snapshot.projection.delegation.savings.v1';
-const screenshotPath = resolve(
-  process.cwd(),
-  'tests/e2e/screenshots/local-dashboard-overview-1440x900.png',
-);
+// OMN-19981 AC4: no page renders 0 for an unmeasured figure, and the default page renders at 1440x900 with no panel
+// cut off. The fixtures are the served shapes read from the lakshman lane on 2026-10-02, including one unmeasured run
+// (no baseline, 0 savings, no latency) next to a measured one.
+const DECISIONS = 'onex.snapshot.projection.delegation.decisions.v1';
+const SAVINGS = 'onex.snapshot.projection.delegation.savings.v1';
+const OVERVIEW = 'onex.snapshot.projection.cost.savings-overview.v1';
+const CREDENTIALS = 'onex.snapshot.projection.tenant-credentials.v1';
+const USAGE = 'onex.snapshot.projection.usage-by-model-day.v1';
 
-test('Overview shows typed unresolved state at 1440x900 with no clipped panel or zero', async ({ page }) => {
-  await page.setViewportSize({ width: 1440, height: 900 });
+const decisions = [
+  {
+    correlation_id: 'corr-19981-measured', written_at: '2026-10-02T10:07:00Z', created_at: '2026-10-02T10:07:00Z',
+    model_name: 'Qwen3.8-27B', quality_gate_passed: true, quality_gate_detail: 'completed', latency_ms: 813,
+    tokens_input: 162, tokens_output: 52, task_type: 'summarization', cost_tier_name: 'local', actual_score: '1.000',
+    tokens_to_compliance: 214, data_source: 'real',
+  },
+  {
+    correlation_id: 'corr-19981-unmeasured', written_at: '2026-10-02T10:01:00Z', created_at: '2026-10-02T10:01:00Z',
+    model_name: 'Qwen3.8-27B', quality_gate_passed: true, quality_gate_detail: 'completed', latency_ms: null,
+    tokens_input: 161, tokens_output: 36, task_type: 'summarization', cost_tier_name: 'local', actual_score: null,
+    tokens_to_compliance: null, data_source: 'real',
+  },
+];
+
+const fixtures: Record<string, unknown[]> = {
+  [DECISIONS]: decisions,
+  [SAVINGS]: [{
+    tenant_id: 'tenant-fresh-store',
+    baseline_model: null,
+    pricing_manifest_version: '1',
+    sessions: [
+      {
+        session_id: 'corr-19981-measured', created_at: '2026-10-02T10:07:00Z', model_name: 'Qwen3.8-27B',
+        prompt_tokens: 162, completion_tokens: 52, local_cost_usd: 0.0011, cloud_cost_usd: 0.000844,
+        counterfactual_baseline_usd: 0.000844, baseline_model: 'claude-opus-4-6', savings_usd: 0.000844,
+        usage_source: 'measured',
+      },
+      {
+        session_id: 'corr-19981-unmeasured', created_at: '2026-10-02T10:01:00Z', model_name: 'Qwen3.8-27B',
+        prompt_tokens: 161, completion_tokens: 36, local_cost_usd: 0.0004, cloud_cost_usd: null,
+        counterfactual_baseline_usd: null, baseline_model: null, savings_usd: 0, usage_source: 'measured',
+      },
+    ],
+  }],
+  [OVERVIEW]: [{
+    total_cost_usd: 0.00686, total_savings_usd: 1.2252, total_baseline_cost_usd: 1.2321,
+    measured_run_count: 46, zero_token_run_count: 0,
+  }],
+  [CREDENTIALS]: [],
+  [USAGE]: [],
+};
+
+async function serveFixtures(page: Page) {
   await page.addInitScript(() => {
-    localStorage.setItem(
-      'omnidash.dataSourceOverride.v1',
-      JSON.stringify({ mode: 'live', baseUrl: window.location.origin }),
-    );
-  });
-  await page.route('**/projections', async (route) => {
-    await route.fulfill({
-      status: 200,
-      contentType: 'application/json',
-      body: JSON.stringify({
-        topics: [overviewTopic, runsTopic].map((topic) => ({
-          topic,
-          status: 'ok',
-          backing: 'bus',
-          tenant_scoped: false,
-          tenant_column: null,
-        })),
-      }),
-    });
-  });
-  await page.route('**/projection/**', async (route) => {
-    const topic = decodeURIComponent(new URL(route.request().url()).pathname.split('/').at(-1) ?? '');
-    const rows = topic === overviewTopic
-      ? [{ roi_percent: null, baseline_state: 'BASELINE_UNRESOLVED', savings_usd: null }]
-      : [{ run_id: 'run-unmeasured', status: 'RUNNING', started_at: '2026-10-01T00:00:00Z', savings_usd: null }];
-    await route.fulfill({
-      status: 200,
-      contentType: 'application/json',
-      body: JSON.stringify({ rows, row_count: rows.length, data_freshness: 'fresh' }),
-    });
-  });
-
-  await page.goto('/');
-  await page.getByTestId('nav-local-overview').click();
-  const panel = page.locator('.local-dashboard-panel').filter({ hasText: 'Return on investment' });
-  await expect(panel).toBeVisible();
-  await expect(panel.getByText('Baseline unresolved')).toBeVisible();
-  await expect(page.getByText('0', { exact: true })).toHaveCount(0);
-
-  const bounds = await panel.boundingBox();
-  expect(bounds).not.toBeNull();
-  expect(bounds!.x + bounds!.width).toBeLessThanOrEqual(1440);
-  expect(bounds!.y + bounds!.height).toBeLessThanOrEqual(900);
-
-  mkdirSync(dirname(screenshotPath), { recursive: true });
-  await page.screenshot({ path: screenshotPath, fullPage: false });
-});
-
-test('Runs renders delegation sessions at 1440x900 from a fresh store without measured zero', async ({ page }) => {
-  const runsScreenshotPath = resolve(
-    process.cwd(),
-    'tests/e2e/screenshots/local-dashboard-runs-1440x900.png',
-  );
-  await page.setViewportSize({ width: 1440, height: 900 });
-  await page.addInitScript(() => {
-    // Start from a clean browser store so persisted dashboard state cannot hide a
-    // missing current Runs contract or manufacture a numeric fallback.
     localStorage.clear();
     localStorage.setItem(
       'omnidash.dataSourceOverride.v1',
@@ -80,82 +67,109 @@ test('Runs renders delegation sessions at 1440x900 from a fresh store without me
       status: 200,
       contentType: 'application/json',
       body: JSON.stringify({
-        topics: [{
-          topic: runsTopic,
-          status: 'ok',
-          backing: 'bus',
-          // Tenant resolution is covered by the focused projection-tenant
-          // suite; this browser proof isolates current Runs rendering.
-          tenant_scoped: false,
-          tenant_column: null,
-        }],
+        topics: Object.keys(fixtures).map((topic) => ({
+          topic, status: 'ok', backing: 'bus', bus_backed: true, tenant_scoped: false, tenant_column: null,
+        })),
       }),
     });
   });
   await page.route('**/projection/**', async (route) => {
-    await route.fulfill({
-      status: 200,
-      contentType: 'application/json',
-      body: JSON.stringify({
-        rows: [{
-          tenant_id: 'tenant-fresh-store',
-          sessions: [
-            {
-              session_id: 'corr-19981-01',
-              created_at: '2026-10-01T00:00:00Z',
-              model_name: 'qwen3-coder',
-              prompt_tokens: 120,
-              completion_tokens: 80,
-              local_cost_usd: 0.12,
-              counterfactual_baseline_usd: 0.48,
-              baseline_model: 'claude-opus-4.1',
-              savings_usd: 0.36,
-              usage_source: 'projection',
-              task_type: 'coding',
-              latency_ms: 420,
-              tokens_to_compliance: 200,
-            },
-            {
-              session_id: 'corr-19981-unmeasured',
-              created_at: '2026-10-01T00:01:00Z',
-              model_name: 'qwen3-coder',
-              prompt_tokens: 100,
-              completion_tokens: 50,
-              local_cost_usd: 0.1,
-              counterfactual_baseline_usd: null,
-              baseline_model: null,
-              savings_usd: 0,
-              usage_source: 'projection',
-              task_type: 'coding',
-              latency_ms: 390,
-              tokens_to_compliance: 150,
-            },
-          ],
-        }],
-        row_count: 1,
-        data_freshness: 'fresh',
-      }),
-    });
+    const topic = decodeURIComponent(new URL(route.request().url()).pathname.split('/').at(-1) ?? '');
+    const rows = fixtures[topic];
+    await route.fulfill(rows === undefined
+      ? { status: 404, contentType: 'application/json', body: JSON.stringify({ detail: `unknown topic ${topic}` }) }
+      : { status: 200, contentType: 'application/json', body: JSON.stringify({ rows, row_count: rows.length, data_freshness: 'fresh' }) });
   });
+}
 
+/** Every panel's content fits its width, and the page itself never scrolls sideways. */
+async function expectNoPanelCutOff(page: Page) {
+  const layout = await page.evaluate(() => ({
+    documentWidth: document.documentElement.scrollWidth,
+    panels: [...document.querySelectorAll<HTMLElement>('.local-dashboard-panel')].map((panel) => ({
+      title: panel.querySelector('h2')?.textContent ?? '',
+      right: panel.getBoundingClientRect().right,
+      overflow: panel.scrollWidth - panel.clientWidth,
+    })),
+  }));
+  expect(layout.panels.length).toBeGreaterThan(0);
+  expect(layout.documentWidth).toBeLessThanOrEqual(1440);
+  for (const panel of layout.panels) {
+    expect(panel.right, panel.title).toBeLessThanOrEqual(1440);
+    expect(panel.overflow, panel.title).toBeLessThanOrEqual(0);
+  }
+}
+
+function screenshotPath(name: string) {
+  const path = resolve(process.cwd(), `tests/e2e/screenshots/${name}`);
+  mkdirSync(dirname(path), { recursive: true });
+  return path;
+}
+
+test('Overview is the default page and fits 1440x900 with no unmeasured 0 (AC4)', async ({ page }) => {
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await serveFixtures(page);
+  await page.goto('/');
+
+  await expect(page.getByRole('heading', { level: 1, name: 'Overview' })).toBeVisible();
+  const recent = page.locator('.local-dashboard-panel').filter({ has: page.getByRole('heading', { name: 'Recent runs' }) });
+  const unmeasured = recent.getByRole('row').filter({ hasText: 'corr-19981-unmeasured' });
+  await expect(unmeasured).toBeVisible();
+  await expect(unmeasured.getByText('Baseline unresolved')).toBeVisible();
+  await expect(unmeasured.getByText('Not recorded').first()).toBeVisible();
+  await expect(page.getByText('0', { exact: true })).toHaveCount(0);
+  await expect(page.getByText('$0', { exact: true })).toHaveCount(0);
+
+  // The headline panels sit above the fold; Recent runs starts above it.
+  for (const title of ['Spend', 'Savings', 'Measured runs', 'Last run']) {
+    const bounds = await page.locator('.local-dashboard-panel').filter({ has: page.getByRole('heading', { name: title, exact: true }) }).boundingBox();
+    expect(bounds, title).not.toBeNull();
+    expect(bounds!.y + bounds!.height, title).toBeLessThanOrEqual(900);
+  }
+  expect((await recent.boundingBox())!.y).toBeLessThan(900);
+  await expectNoPanelCutOff(page);
+
+  await page.screenshot({ path: screenshotPath('local-dashboard-overview-1440x900.png'), fullPage: false });
+});
+
+test('Runs lists every decision with typed unmeasured values at 1440x900 (AC4)', async ({ page }) => {
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await serveFixtures(page);
   await page.goto('/');
   await page.getByTestId('nav-local-runs').click();
-  await expect(page.getByRole('heading', { name: 'Runs' })).toBeVisible();
-  await expect(page.getByText('corr-19981-01')).toBeVisible();
-  await expect(page.getByText('corr-19981-unmeasured')).toBeVisible();
-  await expect(page.getByText('Baseline unresolved')).toHaveCount(3);
-  await expect(page.getByText('$0', { exact: false })).toHaveCount(0);
 
-  const panels = page.locator('.local-dashboard-panel');
-  const panelCount = await panels.count();
-  expect(panelCount).toBeGreaterThan(0);
-  for (let index = 0; index < panelCount; index += 1) {
-    const bounds = await panels.nth(index).boundingBox();
-    expect(bounds).not.toBeNull();
-    expect(bounds!.x + bounds!.width).toBeLessThanOrEqual(1440);
-    expect(bounds!.y + bounds!.height).toBeLessThanOrEqual(900);
+  await expect(page.getByRole('heading', { level: 1, name: 'Runs' })).toBeVisible();
+  const unmeasured = page.getByRole('row').filter({ hasText: 'corr-19981-unmeasured' });
+  await expect(unmeasured).toBeVisible();
+  await expect(unmeasured.getByText('Baseline unresolved')).toHaveCount(3);
+  await expect(page.getByText('Runs 1–2 of 2')).toBeVisible();
+  await expect(page.getByText('0', { exact: true })).toHaveCount(0);
+  await expectNoPanelCutOff(page);
+
+  await page.screenshot({ path: screenshotPath('local-dashboard-runs-1440x900.png'), fullPage: false });
+});
+
+test('every local page opens in order, names a served exposure, and fits 1440x900', async ({ page }) => {
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await serveFixtures(page);
+  await page.goto('/');
+
+  const nav = page.getByRole('navigation', { name: 'Local' });
+  await expect(nav.getByRole('button')).toHaveText([
+    'Overview', 'Runs', 'Workflow partial', 'Usage partial', 'Credentials partial', 'API Keys partial',
+  ].map((label) => new RegExp(`^${label.replace(' partial', '\\s*partial')}$`)));
+
+  for (const [testId, title] of [
+    ['nav-local-workflow', 'Workflow'],
+    ['nav-local-usage', 'Usage'],
+    ['nav-local-credentials', 'Credentials'],
+    ['nav-local-api-keys', 'API Keys'],
+  ] as const) {
+    await page.getByTestId(testId).click();
+    await expect(page.getByRole('heading', { level: 1, name: title })).toBeVisible();
+    await expect(page.getByRole('alert')).toHaveCount(0);
+    await expect(page.getByText(/As of \d+s ago/).first()).toBeVisible();
+    await expect(page.getByText('0', { exact: true })).toHaveCount(0);
+    await expectNoPanelCutOff(page);
   }
-
-  mkdirSync(dirname(runsScreenshotPath), { recursive: true });
-  await page.screenshot({ path: runsScreenshotPath, fullPage: false });
 });

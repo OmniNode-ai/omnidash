@@ -1,7 +1,7 @@
 {
   "dashboard_id": "a288098b-c702-5148-9efd-02b0a6b596da",
   "name": "API Keys",
-  "description": "The local identity and the dashboard's own access, from the local identity exposure once it is served.",
+  "description": "The local tenant, from the served delegation savings exposure, and the cloud key state. Minted-at waits on local-identity.v1.",
   "layout": {
     "columns": 12,
     "row_height": 100,

@@ -43,6 +43,26 @@ export interface BoundProjectionSnapshot extends ProjectionSnapshot {
 /** A read with no answer in this long is a typed timeout (requirements: loading turns into an error after 5 s). */
 export const LOCAL_READ_TIMEOUT_MS = 5000;
 
+/**
+ * Reads still in flight, by source and exposure. A page that loads twice at once (React's development mode mounts
+ * every effect twice) shares one request per exposure instead of sending a second copy that queues behind the first
+ * and outruns the 5 s limit (seen on localhost 2026-10-02: 0.9 s for the first copy, 5.8 s for the second).
+ */
+const inFlightReads = new WeakMap<object, Map<string, Promise<ProjectionSnapshot>>>();
+
+function sharedRead(source: ProtocolSnapshotSource, topic: string): Promise<ProjectionSnapshot> {
+  let reads = inFlightReads.get(source);
+  if (!reads) {
+    reads = new Map();
+    inFlightReads.set(source, reads);
+  }
+  const pending = reads.get(topic);
+  if (pending) return pending;
+  const read = source.readSnapshot!(topic).finally(() => reads!.delete(topic));
+  reads.set(topic, read);
+  return read;
+}
+
 export const DELEGATION_SAVINGS_TOPIC = 'onex.snapshot.projection.delegation.savings.v1';
 
 const pageFiles = import.meta.glob('../pages/local/*.page.yaml', {
@@ -119,7 +139,6 @@ export async function loadLocalPageSnapshots(
     throw new Error('Local dashboard pages require HTTP mode for runtime exposures');
   }
   if (!source.readSnapshot) throw new Error('HTTP snapshot source does not support snapshots');
-  const read = source.readSnapshot.bind(source);
   const topics = new Set(
     page.components.flatMap((component) =>
       (component.data_bindings ?? []).map((binding) => binding.projection_topic),
@@ -132,7 +151,7 @@ export async function loadLocalPageSnapshots(
     let timer: ReturnType<typeof setTimeout> | undefined;
     const timeout = new Promise<'timeout'>((resolve) => { timer = setTimeout(() => resolve('timeout'), LOCAL_READ_TIMEOUT_MS); });
     try {
-      const answer = await Promise.race([read(topic), timeout]);
+      const answer = await Promise.race([sharedRead(source, topic), timeout]);
       if (answer === 'timeout') return failedSnapshot(topic, { kind: 'timeout', message: `${topic}: no answer in 5 s` });
       return { topic, ...answer };
     } catch (cause) {

@@ -1,5 +1,6 @@
 // @vitest-environment jsdom
 // OMN-19981 Amendment 6: live re-reads, per-widget states, the partial pages and no edit affordance.
+import { StrictMode } from 'react';
 import { act, render, screen, within } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
@@ -7,6 +8,7 @@ const DECISIONS = 'onex.snapshot.projection.delegation.decisions.v1';
 const SAVINGS = 'onex.snapshot.projection.delegation.savings.v1';
 const OVERVIEW = 'onex.snapshot.projection.cost.savings-overview.v1';
 const CREDENTIALS = 'onex.snapshot.projection.tenant-credentials.v1';
+const USAGE = 'onex.snapshot.projection.usage-by-model-day.v1';
 
 const harness = vi.hoisted(() => ({
   reads: [] as string[],
@@ -16,6 +18,7 @@ const harness = vi.hoisted(() => ({
 
 vi.mock('@/data-source', () => ({
   createSnapshotSource: () => ({
+    // A fresh object per call, as the real factory returns.
     async *readAll() { yield []; },
     readSnapshot: async (topic: string) => {
       harness.reads.push(topic);
@@ -25,6 +28,10 @@ vi.mock('@/data-source', () => ({
   }),
 }));
 vi.mock('@/data-source/data-source-override', () => ({ resolveEffectiveDataSource: () => ({ mode: 'http' }) }));
+vi.mock('@/data-source/projection-tenant', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/data-source/projection-tenant')>()),
+  resolveConfiguredTenant: () => 'tenant-a',
+}));
 vi.mock('@/data-source/exposure-census', () => ({
   fetchExposureCensus: async () => ({
     rows: [...harness.reachable].map((topic) => ({ topic, reachability: 'reachable' })),
@@ -62,6 +69,14 @@ describe('LocalDashboardPage live data (F25)', () => {
     await act(async () => { await vi.advanceTimersByTimeAsync(30_000); });
     expect(harness.reads.length).toBeGreaterThan(first);
     expect(screen.getByText('run-2')).toBeInTheDocument();
+  });
+
+  it('reads each exposure once on a first load under StrictMode (the dev server\'s double mount)', async () => {
+    render(<StrictMode><LocalDashboardPage pageName="runs" /></StrictMode>);
+    await settle();
+    expect(harness.reads.filter((topic) => topic === DECISIONS)).toHaveLength(1);
+    expect(harness.reads.filter((topic) => topic === SAVINGS)).toHaveLength(1);
+    expect(screen.getByText('run-1')).toBeInTheDocument();
   });
 
   it('keeps the last good rows on screen while a re-read is in flight', async () => {
@@ -143,20 +158,60 @@ describe('Partial pages (FR-3, CR-2, CR-3, AK-3, F24)', () => {
   });
   afterEach(() => { vi.useRealTimers(); });
 
-  it.each([
-    ['workflow', 'Workflow', 'run-trace.v1 (OMN-19987)'],
-    ['usage', 'Usage', 'usage-by-model-day.v1 (OMN-20006)'],
-    ['api-keys', 'API Keys', 'local-identity.v1 (OMN-19986)'],
-  ] as const)('%s names what it waits on instead of rendering blank', async (pageName, title, waitsOn) => {
-    render(<LocalDashboardPage pageName={pageName} />);
+  it('Workflow shows the newest run\'s recorded steps and names what the full path waits on (WF-3)', async () => {
+    harness.reachable = new Set([DECISIONS]);
+    harness.answer = () => Promise.resolve([
+      decisionRow('older-run'),
+      { ...decisionRow('newest-run'), written_at: '2026-10-02T10:09:00Z', quality_gate_passed: false, quality_gate_detail: 'provider timeout after 30s' },
+    ]);
+    render(<LocalDashboardPage pageName="workflow" />);
     await settle();
-    expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent(title);
-    expect(screen.getByText(`Not served yet: waits on ${waitsOn}`)).toBeInTheDocument();
+    const panel = screen.getByRole('heading', { name: 'Run path' }).closest('article')!;
+    expect(within(panel).getByText('newest-run')).toBeInTheDocument();
+    expect(within(panel).queryByText('older-run')).not.toBeInTheDocument();
+    const steps = within(panel).getAllByRole('listitem').map((item) => item.querySelector('strong')?.textContent);
+    expect(steps).toEqual(['Request', 'Routing', 'Quality gate', 'Terminal']);
+    expect(within(panel).getByText(/failed: provider timeout after 30s/)).toBeInTheDocument();
+    expect(within(panel).getByText('Full path not served yet: waits on run-trace.v1 (OMN-19987)')).toBeInTheDocument();
   });
 
-  it('API Keys shows CLOUD_NOT_LINKED for cloud keys, with no form', async () => {
+  it('Workflow with no runs shows NO_RUNS_YET', async () => {
+    harness.reachable = new Set([DECISIONS]);
+    render(<LocalDashboardPage pageName="workflow" />);
+    await settle();
+    expect(screen.getByText('No runs yet')).toBeInTheDocument();
+  });
+
+  it('Usage with no rows names the event it waits on, never 0 (US-4)', async () => {
+    harness.reachable = new Set([USAGE]);
+    render(<LocalDashboardPage pageName="usage" />);
+    await settle();
+    expect(screen.getByText('No usage rows yet: waits on llm-call-completed events (OMN-20006)')).toBeInTheDocument();
+    expect(screen.queryByText(/^\$?0(?:\.0+)?$/)).not.toBeInTheDocument();
+  });
+
+  it('Usage shows this tenant\'s rows only, with tokens in and out apart (US-1, SV-3)', async () => {
+    harness.reachable = new Set([USAGE]);
+    harness.answer = () => Promise.resolve([
+      { tenant_id: 'tenant-a', usage_day: '2026-10-02', model_id: 'Qwen3.8-27B', input_tokens: 1620, output_tokens: 520, cost_usd: 0, call_count: 10 },
+      { tenant_id: 'tenant-b', usage_day: '2026-10-02', model_id: 'other-tenant-model', input_tokens: 1, output_tokens: 1, cost_usd: 1, call_count: 1 },
+    ]);
+    render(<LocalDashboardPage pageName="usage" />);
+    await settle();
+    const row = screen.getByRole('row', { name: /Qwen3.8-27B/ });
+    for (const value of ['2026-10-02', '1620', '520', '10']) expect(within(row).getByText(value)).toBeInTheDocument();
+    expect(screen.queryByText('other-tenant-model')).not.toBeInTheDocument();
+  });
+
+  it('API Keys shows the served tenant id, typed minted-at, and CLOUD_NOT_LINKED with no form (AK-1, AK-3)', async () => {
+    harness.reachable = new Set([SAVINGS]);
+    harness.answer = () => Promise.resolve([{ tenant_id: '820272f9-4aaf-5add-a2df-0af942852ab2', sessions: [] }]);
     render(<LocalDashboardPage pageName="api-keys" />);
     await settle();
+    expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent('API Keys');
+    const identity = screen.getByRole('heading', { name: 'Local identity' }).closest('article')!;
+    expect(within(identity).getByText('820272f9-4aaf-5add-a2df-0af942852ab2')).toBeInTheDocument();
+    expect(within(identity).getByText('Not served yet: waits on local-identity.v1 (OMN-19986)')).toBeInTheDocument();
     expect(screen.getByText(/CLOUD_NOT_LINKED/)).toBeInTheDocument();
     expect(document.querySelector('input, textarea, select, form')).toBeNull();
   });
