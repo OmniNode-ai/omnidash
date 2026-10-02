@@ -282,8 +282,9 @@ export class PostgresProjectionReader {
     const { client, release } = await this.checkoutClient();
     try {
       switch (topic) {
-        case 'delegation':
-        case 'onex.snapshot.projection.delegation.decisions.v1': {
+        // OMN-19981 strangler: the local pages read onex.snapshot.projection.delegation.decisions.v1 from the served
+        // exposure, so this fold answers only the legacy 'delegation' name; the full topic takes the unknown-topic path.
+        case 'delegation': {
           const res = await client.query(`
             WITH events AS (
               SELECT to_jsonb(delegation_events) AS e

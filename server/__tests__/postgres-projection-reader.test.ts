@@ -46,7 +46,7 @@ describe('PostgresProjectionReader', () => {
     expect(typeof result.generated_at).toBe('string');
   });
 
-  it('returns delegation decisions rows', async () => {
+  it('returns delegation decisions rows for the delegation alias', async () => {
     const fakeRow = {
       id: 1, correlation_id: 'corr-1', session_id: 'sess-1', task_type: 'code',
       delegated_to: 'local', model_name: 'qwen3', quality_gate_passed: true,
@@ -55,7 +55,7 @@ describe('PostgresProjectionReader', () => {
     const client = { query: vi.fn().mockResolvedValue({ rows: [fakeRow] }), release: vi.fn() };
     getMockPool().connect.mockResolvedValue(client);
 
-    const result = await reader.readProjection('onex.snapshot.projection.delegation.decisions.v1');
+    const result = await reader.readProjection('delegation');
 
     expect(result.rows).toHaveLength(1);
     expect(result.rows[0]).toMatchObject({ correlation_id: 'corr-1', model_name: 'qwen3' });
@@ -66,7 +66,7 @@ describe('PostgresProjectionReader', () => {
     const consoleError = vi.spyOn(console, 'error').mockImplementation(() => undefined);
     getMockPool().connect.mockRejectedValue(new Error('ECONNREFUSED'));
 
-    const result = await reader.readProjection('onex.snapshot.projection.delegation.decisions.v1');
+    const result = await reader.readProjection('delegation');
 
     expect(result.rows).toEqual([]);
     expect(consoleError).toHaveBeenCalled();
@@ -130,7 +130,7 @@ describe('PostgresProjectionReader', () => {
     expect(row.total_savings_usd).toBe(0);
   });
 
-  it('no longer answers the two topics local pages read from served exposures (OMN-19981)', async () => {
+  it('no longer answers the three topics local pages read from served exposures (OMN-19981)', async () => {
     const client = {
       query: vi.fn().mockResolvedValue({ rows: [{ session_id: 'corr-live', savings_usd: '0.009327' }] }),
       release: vi.fn(),
@@ -140,12 +140,14 @@ describe('PostgresProjectionReader', () => {
     for (const topic of [
       'onex.snapshot.projection.delegation.savings.v1',
       'onex.snapshot.projection.cost.savings-overview.v1',
+      'onex.snapshot.projection.delegation.decisions.v1',
     ]) {
       const result = await reader.readProjection(topic);
       expect(result.rows, topic).toEqual([]);
     }
-    // No SQL ran for either topic: the folds are gone, not returning nothing.
+    // No SQL ran for any of them: the folds are gone, not returning nothing.
     expect(client.query).not.toHaveBeenCalledWith(expect.stringContaining('FROM savings_estimates'));
+    expect(client.query).not.toHaveBeenCalledWith(expect.stringContaining('FROM delegation_events'));
   });
 
   it('returns metered delegation token usage as the widget projection shape', async () => {
@@ -370,7 +372,7 @@ describe('PostgresProjectionReader', () => {
     getMockPool().connect.mockResolvedValue(client);
     vi.spyOn(console, 'error').mockImplementation(() => undefined);
 
-    await reader.readProjection('onex.snapshot.projection.delegation.decisions.v1');
+    await reader.readProjection('delegation');
 
     expect(client.release).toHaveBeenCalled();
   });
@@ -385,7 +387,7 @@ describe('PostgresProjectionReader', () => {
       getMockPool().connect.mockResolvedValue(client);
 
       await runWithTenantContext({ tenantId: 'tenant-xyz', subject: null }, () =>
-        reader.readProjection('onex.snapshot.projection.delegation.decisions.v1'),
+        reader.readProjection('delegation'),
       );
 
       expect(client.query).toHaveBeenCalledWith(
@@ -501,7 +503,7 @@ describe('PostgresProjectionReader', () => {
       getMockPool().connect.mockResolvedValue(client);
 
       // No runWithTenantContext wrapper — simulates an unprotected path
-      await reader.readProjection('onex.snapshot.projection.delegation.decisions.v1');
+      await reader.readProjection('delegation');
 
       const calls = client.query.mock.calls as [string, unknown[]][];
       const setConfigCall = calls.find(([sql]) => sql.includes('set_config'));
@@ -513,7 +515,7 @@ describe('PostgresProjectionReader', () => {
       getMockPool().connect.mockResolvedValue(client);
 
       await runWithTenantContext({ tenantId: 'tenant-xyz', subject: null }, () =>
-        reader.readProjection('onex.snapshot.projection.delegation.decisions.v1'),
+        reader.readProjection('delegation'),
       );
 
       expect(client.query).toHaveBeenCalledWith('RESET app.tenant_id');

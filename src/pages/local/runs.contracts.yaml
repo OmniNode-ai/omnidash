@@ -29,6 +29,19 @@
             "latency_ms",
             "tokens_to_compliance"
           ]
+        },
+        {
+          "binding_id": "runs-decisions",
+          "projection_topic": "onex.snapshot.projection.delegation.decisions.v1",
+          "ordering_authority_field": "written_at",
+          "ordering_direction": "descending",
+          "required_fields": [
+            "correlation_id",
+            "quality_gate_passed",
+            "quality_gate_detail",
+            "cost_tier_name",
+            "actual_score"
+          ]
         }
       ],
       "supported_empty_state_reasons": ["missing-field", "no-data"]

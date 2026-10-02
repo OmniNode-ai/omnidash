@@ -143,7 +143,10 @@ describe('LocalDashboardPage', () => {
 
   it('shows the new page header while the next page loads, not the previous page', async () => {
     census.next.push(async () => ({
-      rows: [{ topic: 'onex.snapshot.projection.delegation.savings.v1', reachability: 'reachable' }],
+      rows: [
+        { topic: 'onex.snapshot.projection.delegation.savings.v1', reachability: 'reachable' },
+        { topic: 'onex.snapshot.projection.delegation.decisions.v1', reachability: 'reachable' },
+      ],
     }));
     const view = render(<LocalDashboardPage pageName="runs" />);
     await act(async () => {});

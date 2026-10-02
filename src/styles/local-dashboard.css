@@ -67,6 +67,32 @@
   color: var(--text-secondary, #a1a1aa);
 }
 
+.local-dashboard-fields {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+  gap: 12px 16px;
+  margin: 0;
+}
+
+.local-dashboard-fields dt {
+  font-size: 0.75rem;
+  color: var(--text-secondary, #a1a1aa);
+}
+
+.local-dashboard-fields dd {
+  margin: 2px 0 0;
+  overflow-wrap: anywhere;
+  font-variant-numeric: tabular-nums;
+}
+
+.local-dashboard-filters {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 12px;
+  margin-bottom: 12px;
+}
+
 .local-dashboard-empty,
 .local-dashboard-error {
   color: var(--text-secondary, #a1a1aa);
@@ -94,8 +120,24 @@
   white-space: nowrap;
 }
 
+/* Overview's Recent runs carries the Runs columns in a third of the width, so its cells wrap instead of scrolling
+   (ticket AC4: no panel cut off at 1440x900). */
+.local-dashboard-table-wrap--fit th,
+.local-dashboard-table-wrap--fit td {
+  padding: 8px 6px;
+  white-space: normal;
+  font-size: 0.8125rem;
+}
+
+/* Only a long token (a timestamp, a run id) may break inside itself; every other cell wraps at spaces. */
+.local-dashboard-table-wrap--fit .local-dashboard-cell-token {
+  overflow-wrap: anywhere;
+  min-width: 9ch;
+}
+
 @media (min-width: 720px) {
   .local-dashboard-panel[data-width='4'] { grid-column: span 4; }
+  .local-dashboard-panel[data-width='8'] { grid-column: span 8; }
 }
 
 @media (max-width: 600px) {

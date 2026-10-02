@@ -124,7 +124,19 @@ export function rowsForLocalComponent(
   component: LocalPageDocument['components'][number],
   snapshots: readonly BoundProjectionSnapshot[],
 ): unknown[] {
-  const topic = component.data_bindings?.[0]?.projection_topic;
+  return rowsForLocalBinding(component, snapshots, 0);
+}
+
+/**
+ * Rows of one of a component's bindings, unpacking known projection envelopes. Binding 0 supplies the component's
+ * rows; a later binding is a lookup the component joins by a served id (a run's cost, a session's decision).
+ */
+export function rowsForLocalBinding(
+  component: LocalPageDocument['components'][number],
+  snapshots: readonly BoundProjectionSnapshot[],
+  index: number,
+): unknown[] {
+  const topic = component.data_bindings?.[index]?.projection_topic;
   if (topic === undefined) return [];
   const rows = snapshots.find((snapshot) => snapshot.topic === topic)?.rows ?? [];
   if (topic !== DELEGATION_SAVINGS_TOPIC) return [...rows];

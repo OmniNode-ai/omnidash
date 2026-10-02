@@ -1,7 +1,7 @@
 {
   "dashboard_id": "b37a0892-e2bc-4d67-91e4-bf2d55b48eef",
   "name": "Overview",
-  "description": "Spend, savings and measured runs from the runtime's served cost savings overview.",
+  "description": "Spend, savings, measured runs, the last run and the ten most recent runs from the runtime's served exposures.",
   "layout": {
     "columns": 12,
     "row_height": 100,
@@ -81,6 +81,148 @@
         "unit": "tokens",
         "format": "number",
         "precision": 0
+      }
+    },
+    {
+      "widget_id": "5d0c2a51-6a4e-5b8a-9f1e-3c7b2e0a9d41",
+      "title": "Last run",
+      "row": 2,
+      "col": 4,
+      "width": 8,
+      "height": 2,
+      "data_source": "overview-last-run",
+      "config": {
+        "config_kind": "table",
+        "widget_type": "table",
+        "columns": [
+          {
+            "key": "status",
+            "header": "Status"
+          },
+          {
+            "key": "cause",
+            "header": "Cause"
+          },
+          {
+            "key": "correlation_id",
+            "header": "Run"
+          },
+          {
+            "key": "model_name",
+            "header": "Model"
+          },
+          {
+            "key": "backend",
+            "header": "Backend"
+          },
+          {
+            "key": "latency_ms",
+            "header": "Duration"
+          },
+          {
+            "key": "tokens_input",
+            "header": "Tokens in"
+          },
+          {
+            "key": "tokens_output",
+            "header": "Tokens out"
+          },
+          {
+            "key": "cost",
+            "header": "Cost"
+          },
+          {
+            "key": "task_type",
+            "header": "Task type"
+          },
+          {
+            "key": "cost_tier_name",
+            "header": "Route tier"
+          },
+          {
+            "key": "written_at",
+            "header": "Age"
+          }
+        ],
+        "page_size": 1,
+        "show_pagination": false,
+        "default_sort_key": "written_at",
+        "default_sort_direction": "desc"
+      }
+    },
+    {
+      "widget_id": "8e4f1b77-2c39-5d06-a8b2-6f0d4c9e1a53",
+      "title": "Recent runs",
+      "row": 4,
+      "col": 0,
+      "width": 12,
+      "height": 4,
+      "data_source": "overview-recent-runs",
+      "config": {
+        "config_kind": "table",
+        "widget_type": "table",
+        "columns": [
+          {
+            "key": "written_at",
+            "header": "Time"
+          },
+          {
+            "key": "status",
+            "header": "Status"
+          },
+          {
+            "key": "cause",
+            "header": "Cause"
+          },
+          {
+            "key": "task_type",
+            "header": "Task type"
+          },
+          {
+            "key": "model_name",
+            "header": "Model"
+          },
+          {
+            "key": "backend",
+            "header": "Backend"
+          },
+          {
+            "key": "tokens_input",
+            "header": "Tokens in"
+          },
+          {
+            "key": "tokens_output",
+            "header": "Tokens out"
+          },
+          {
+            "key": "cost",
+            "header": "Cost"
+          },
+          {
+            "key": "savings_usd",
+            "header": "Savings"
+          },
+          {
+            "key": "latency_ms",
+            "header": "Duration"
+          },
+          {
+            "key": "cost_tier_name",
+            "header": "Route tier"
+          },
+          {
+            "key": "actual_score",
+            "header": "Quality score"
+          },
+          {
+            "key": "correlation_id",
+            "header": "Run"
+          }
+        ],
+        "page_size": 10,
+        "show_pagination": false,
+        "default_sort_key": "written_at",
+        "default_sort_direction": "desc"
       }
     }
   ]

@@ -51,8 +51,9 @@ export class SqliteProjectionReader {
 
   private query(db: Database.Database, topic: string): Row[] {
     switch (topic) {
+      // OMN-19981 strangler: the local pages read onex.snapshot.projection.delegation.decisions.v1 from the served
+      // exposure, so this fold answers only the legacy 'delegation' name; the full topic takes the unknown-topic path.
       case 'delegation':
-      case 'onex.snapshot.projection.delegation.decisions.v1':
         return db.prepare(`
           SELECT
             id,

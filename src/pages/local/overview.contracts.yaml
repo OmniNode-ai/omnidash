@@ -108,6 +108,101 @@
       "supported_empty_state_reasons": [
         "upstream-blocked"
       ]
+    },
+    {
+      "component_id": "overview-last-run",
+      "component_kind": "table",
+      "title": "Last run",
+      "contract_version": {
+        "major": 1,
+        "minor": 0,
+        "patch": 0
+      },
+      "data_bindings": [
+        {
+          "binding_id": "overview-last-run-decisions",
+          "projection_topic": "onex.snapshot.projection.delegation.decisions.v1",
+          "ordering_authority_field": "written_at",
+          "ordering_direction": "descending",
+          "required_fields": [
+            "correlation_id",
+            "written_at",
+            "created_at",
+            "quality_gate_passed",
+            "quality_gate_detail",
+            "model_name",
+            "latency_ms",
+            "tokens_input",
+            "tokens_output",
+            "task_type",
+            "cost_tier_name"
+          ]
+        },
+        {
+          "binding_id": "overview-last-run-cost",
+          "projection_topic": "onex.snapshot.projection.delegation.savings.v1",
+          "ordering_authority_field": "created_at",
+          "ordering_direction": "descending",
+          "required_fields": [
+            "sessions",
+            "session_id",
+            "local_cost_usd",
+            "savings_usd"
+          ]
+        }
+      ],
+      "supported_empty_state_reasons": [
+        "missing-field",
+        "no-data"
+      ]
+    },
+    {
+      "component_id": "overview-recent-runs",
+      "component_kind": "table",
+      "title": "Recent runs",
+      "contract_version": {
+        "major": 1,
+        "minor": 0,
+        "patch": 0
+      },
+      "data_bindings": [
+        {
+          "binding_id": "overview-recent-runs-decisions",
+          "projection_topic": "onex.snapshot.projection.delegation.decisions.v1",
+          "ordering_authority_field": "written_at",
+          "ordering_direction": "descending",
+          "required_fields": [
+            "correlation_id",
+            "written_at",
+            "created_at",
+            "quality_gate_passed",
+            "quality_gate_detail",
+            "model_name",
+            "latency_ms",
+            "tokens_input",
+            "tokens_output",
+            "task_type",
+            "cost_tier_name",
+            "actual_score"
+          ]
+        },
+        {
+          "binding_id": "overview-recent-runs-cost",
+          "projection_topic": "onex.snapshot.projection.delegation.savings.v1",
+          "ordering_authority_field": "created_at",
+          "ordering_direction": "descending",
+          "required_fields": [
+            "sessions",
+            "session_id",
+            "local_cost_usd",
+            "savings_usd"
+          ]
+        }
+      ],
+      "supported_empty_state_reasons": [
+        "missing-field",
+        "no-data"
+      ]
     }
   ],
   "page_empty_state_reasons": [

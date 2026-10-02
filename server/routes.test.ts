@@ -260,7 +260,7 @@ describe('server projection routes — OMNIDASH_DATA_SOURCE=sqlite', () => {
     await rm(tmpDir, { recursive: true, force: true });
   });
 
-  it('returns [] for delegation.decisions topic when DB has no rows', async () => {
+  it('returns [] for the delegation alias when DB has no rows', async () => {
     const db = new Database(dbPath);
     db.exec(`
       CREATE TABLE IF NOT EXISTS delegation_events (
@@ -284,14 +284,12 @@ describe('server projection routes — OMNIDASH_DATA_SOURCE=sqlite', () => {
     db.close();
 
     const routes = await loadRoutes();
-    const res = await request(buildApp(routes)).get(
-      '/projection/onex.snapshot.projection.delegation.decisions.v1',
-    );
+    const res = await request(buildApp(routes)).get('/projection/delegation');
     expect(res.status).toBe(200);
     expect(res.body).toEqual([]);
   });
 
-  it('returns delegation_events rows for decisions topic', async () => {
+  it('returns delegation_events rows for the delegation alias', async () => {
     const db = new Database(dbPath);
     db.exec(`
       CREATE TABLE IF NOT EXISTS delegation_events (
@@ -319,9 +317,7 @@ describe('server projection routes — OMNIDASH_DATA_SOURCE=sqlite', () => {
     db.close();
 
     const routes = await loadRoutes();
-    const res = await request(buildApp(routes)).get(
-      '/projection/onex.snapshot.projection.delegation.decisions.v1',
-    );
+    const res = await request(buildApp(routes)).get('/projection/delegation');
     expect(res.status).toBe(200);
     expect(res.body).toHaveLength(1);
     expect(res.body[0].correlation_id).toBe('corr-sqlite-1');
@@ -338,7 +334,7 @@ describe('server projection routes — OMNIDASH_DATA_SOURCE=sqlite', () => {
     expect(res.body).toEqual([]);
   });
 
-  it('/projection/delegation short alias returns same rows as decisions.v1 topic', async () => {
+  it('/projection/delegation short alias answers, and the decisions.v1 topic no longer does (OMN-19981)', async () => {
     const db = new Database(dbPath);
     db.exec(`
       CREATE TABLE IF NOT EXISTS delegation_events (
@@ -373,7 +369,9 @@ describe('server projection routes — OMNIDASH_DATA_SOURCE=sqlite', () => {
     expect(resAlias.status).toBe(200);
     expect(resAlias.body).toHaveLength(1);
     expect(resAlias.body[0].correlation_id).toBe('corr-alias-1');
-    expect(resAlias.body).toEqual(resFull.body);
+    // OMN-19981 strangler: the local pages read the full topic from the served exposure; the reader no longer folds it.
+    expect(resFull.status).toBe(200);
+    expect(resFull.body).toEqual([]);
   });
 });
 

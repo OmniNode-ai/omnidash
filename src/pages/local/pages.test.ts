@@ -66,7 +66,7 @@ describe('local dashboard page contracts', () => {
 
   it('reads both readers\' hand-written SQL topics (positive control)', () => {
     for (const file of ['server/sqlite-projection-reader.ts', 'server/postgres-projection-reader.ts']) {
-      expect(sqlFoldTopics(file).has('onex.snapshot.projection.delegation.decisions.v1'), file).toBe(true);
+      expect(sqlFoldTopics(file).has('onex.snapshot.projection.delegation.summary.v1'), file).toBe(true);
     }
   });
 
@@ -238,7 +238,7 @@ describe('local dashboard page contracts', () => {
     expect(resolveLocalPageEmptyState(runs, snapshots)).toBeNull();
   });
 
-  it('reads Runs through ProtocolSnapshotSource using only the delegation-savings topic', async () => {
+  it('reads Runs through ProtocolSnapshotSource using the delegation-savings and decisions topics only', async () => {
     const runs = readPage('runs');
     const source = {
       async *readAll() { yield []; },
@@ -256,8 +256,9 @@ describe('local dashboard page contracts', () => {
       availableTopics: servedExposureCatalogue,
     });
 
-    expect(source.readSnapshot).toHaveBeenCalledOnce();
+    expect(source.readSnapshot).toHaveBeenCalledTimes(2);
     expect(source.readSnapshot).toHaveBeenCalledWith('onex.snapshot.projection.delegation.savings.v1');
+    expect(source.readSnapshot).toHaveBeenCalledWith('onex.snapshot.projection.delegation.decisions.v1');
   });
 });
 
@@ -287,8 +288,11 @@ describe('local pages against the captured lab catalogue', () => {
     expect(new Set(topics)).toEqual(new Set([
       'onex.snapshot.projection.cost.savings-overview.v1',
       'onex.snapshot.projection.delegation.savings.v1',
+      'onex.snapshot.projection.delegation.decisions.v1',
     ]));
-    const keys = page.dashboard.widgets.map((w) => (w.config as Record<string, unknown>).metric_key);
+    const keys = page.dashboard.widgets
+      .filter((w) => (w.config as Record<string, unknown>).config_kind === 'metric_card')
+      .map((w) => (w.config as Record<string, unknown>).metric_key);
     expect(keys).toEqual(['total_cost_usd', 'total_savings_usd', 'measured_run_count', 'tokens_in_and_out']);
     const savings = page.components.find((c) => c.component_id === 'overview-savings');
     expect(savings?.data_bindings?.[0]?.required_fields).toEqual(['total_savings_usd', 'total_baseline_cost_usd']);
@@ -304,6 +308,9 @@ describe('local pages against the captured lab catalogue', () => {
     for (const widget of page.dashboard.widgets) {
       const key = String((widget.config as Record<string, unknown>).metric_key);
       expect(key, 'a combined token total').not.toBe('tokens_total');
+      for (const column of ((widget.config as { columns?: Array<{ key: string }> }).columns ?? [])) {
+        expect(column.key, 'a combined token column').not.toBe('tokens_total');
+      }
     }
     const tokens = page.components.find((c) => c.component_id === 'overview-tokens');
     expect(tokens?.data_bindings ?? []).toEqual([]);
@@ -315,5 +322,68 @@ describe('local pages against the captured lab catalogue', () => {
       const raw = readFileSync(resolve(process.cwd(), `src/pages/local/${file}`), 'utf8');
       expect(raw.includes('local_token_pct'), file).toBe(false);
     }
+  });
+});
+
+describe('Amendment 5: last run, recent runs and run status from delegation decisions', () => {
+  const DECISIONS = 'onex.snapshot.projection.delegation.decisions.v1';
+  const SAVINGS = 'onex.snapshot.projection.delegation.savings.v1';
+  const decisionFields = [
+    'correlation_id', 'written_at', 'quality_gate_passed', 'quality_gate_detail', 'model_name',
+    'latency_ms', 'tokens_input', 'tokens_output', 'task_type', 'cost_tier_name',
+  ];
+
+  it.each([['overview-last-run', 1], ['overview-recent-runs', 10]] as const)(
+    'Overview %s reads decisions, newest first by written_at, with its cost from the savings session (OV-4, OV-5)',
+    (componentId, pageSize) => {
+      const page = readPage('overview');
+      const component = page.components.find((c) => c.component_id === componentId);
+      const [first, second] = component?.data_bindings ?? [];
+      expect(first?.projection_topic).toBe(DECISIONS);
+      expect(first?.ordering_authority_field).toBe('written_at');
+      expect(first?.ordering_direction).toBe('descending');
+      expect(first?.required_fields).toEqual(expect.arrayContaining(decisionFields));
+      expect(second?.projection_topic).toBe(SAVINGS);
+      expect(second?.required_fields).toEqual(expect.arrayContaining(['sessions', 'session_id', 'local_cost_usd']));
+      const widget = page.dashboard.widgets.find((w) => w.data_source === componentId);
+      expect((widget?.config as Record<string, unknown>).page_size).toBe(pageSize);
+    },
+  );
+
+  it('Runs looks each session up in decisions for its status, cause, route tier and quality score (RU-1)', () => {
+    const runs = readPage('runs');
+    const lookup = runs.components[0]?.data_bindings?.[1];
+    expect(lookup?.projection_topic).toBe(DECISIONS);
+    expect(lookup?.required_fields).toEqual(expect.arrayContaining([
+      'correlation_id', 'quality_gate_passed', 'quality_gate_detail', 'cost_tier_name', 'actual_score',
+    ]));
+  });
+
+  it('Runs rows still come from the savings sessions, not from the decisions lookup', () => {
+    const runs = readPage('runs');
+    const snapshots = [
+      { topic: SAVINGS, rows: [{ sessions: [{ session_id: 'session-1' }] }] },
+      { topic: DECISIONS, rows: [{ correlation_id: 'session-1' }, { correlation_id: 'other' }] },
+    ].map((snapshot) => ({
+      ...snapshot,
+      rowCount: snapshot.rows.length,
+      dataFreshness: 'fresh' as const,
+      latestEventAt: null,
+      readAt: '2026-10-02T10:12:00Z',
+    }));
+    expect(rowsForLocalComponent(runs.components[0]!, snapshots)).toEqual([{ session_id: 'session-1' }]);
+  });
+
+  it('Overview with served decisions but no savings rows is not NO_RUNS_YET', () => {
+    const page = readPage('overview');
+    const snapshots = [{
+      topic: DECISIONS,
+      rows: [{ correlation_id: 'run-1', written_at: '2026-10-02T10:07:00Z' }],
+      rowCount: 1,
+      dataFreshness: 'fresh' as const,
+      latestEventAt: null,
+      readAt: '2026-10-02T10:12:00Z',
+    }];
+    expect(resolveLocalPageEmptyState(page, snapshots)).toBeNull();
   });
 });

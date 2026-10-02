@@ -119,7 +119,7 @@ describe('SqliteProjectionReader', () => {
 
   it('returns [] when the DB file does not exist', () => {
     const reader = new SqliteProjectionReader({ dbPath: join(tmpDir, 'nonexistent.sqlite') });
-    expect(reader.readProjection('onex.snapshot.projection.delegation.decisions.v1')).toEqual([]);
+    expect(reader.readProjection('delegation')).toEqual([]);
   });
 
   it('returns [] for an unknown topic', () => {
@@ -129,7 +129,7 @@ describe('SqliteProjectionReader', () => {
     expect(reader.readProjection('onex.snapshot.projection.unknown.v1')).toEqual([]);
   });
 
-  it('reads delegation_events rows for decisions topic', () => {
+  it('reads delegation_events rows for the delegation alias', () => {
     const db = createTestDb(dbPath);
     db.prepare(`
       INSERT INTO delegation_events (correlation_id, task_type, delegated_to, model_name, quality_gate_passed, created_at)
@@ -138,7 +138,7 @@ describe('SqliteProjectionReader', () => {
     db.close();
 
     const reader = new SqliteProjectionReader({ dbPath });
-    const rows = reader.readProjection('onex.snapshot.projection.delegation.decisions.v1');
+    const rows = reader.readProjection('delegation');
 
     expect(rows).toHaveLength(1);
     expect(rows[0]).toMatchObject({
@@ -381,7 +381,7 @@ describe('SqliteProjectionReader', () => {
     });
   });
 
-  it('no longer answers the two topics local pages read from served exposures (OMN-19981)', () => {
+  it('no longer answers the three topics local pages read from served exposures (OMN-19981)', () => {
     const db = createTestDb(dbPath);
     db.prepare(`
       INSERT INTO savings_estimates (session_id, event_timestamp, model_local, model_cloud_baseline, local_cost_usd, cloud_cost_usd, savings_usd, baseline_model, created_at)
@@ -394,8 +394,9 @@ describe('SqliteProjectionReader', () => {
     db.close();
 
     const reader = new SqliteProjectionReader({ dbPath });
-    // Control: a fold that stays still reads the same store, so an empty answer below is the removal.
-    expect(reader.readProjection('onex.snapshot.projection.delegation.decisions.v1')).toHaveLength(1);
+    // Control: the legacy 'delegation' fold still reads the same store, so an empty answer below is the removal.
+    expect(reader.readProjection('delegation')).toHaveLength(1);
+    expect(reader.readProjection('onex.snapshot.projection.delegation.decisions.v1')).toEqual([]);
     expect(reader.readProjection('onex.snapshot.projection.delegation.savings.v1')).toEqual([]);
     expect(reader.readProjection('onex.snapshot.projection.cost.savings-overview.v1')).toEqual([]);
   });
