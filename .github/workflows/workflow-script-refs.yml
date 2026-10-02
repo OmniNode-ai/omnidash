@@ -109,3 +109,12 @@ jobs:
           tests/ci/test_precommit_staged_scope_omn19612.py
           tests/ci/test_precommit_pin_tests_run_in_ci_omn19612.py
           -q --noconftest -p no:cacheprovider -c /dev/null
+
+      # OMN-20332: every sibling repo (omnibase_core, omniclaude,
+      # onex_change_control, omnimarket) is read at a pinned sha, never a live
+      # dev/main or no ref, so a sibling's merge cannot turn this repo red.
+      # Here because this job is unconditional and already carries pyyaml.
+      - name: Assert every sibling repo is read at a pinned sha
+        run: >-
+          python -m pytest tests/ci/test_sibling_reads_pinned.py
+          -q --noconftest -p no:cacheprovider -c /dev/null

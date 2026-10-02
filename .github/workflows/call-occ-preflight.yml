@@ -34,7 +34,7 @@ permissions:
 
 jobs:
   occ-preflight:
-    uses: OmniNode-ai/omnibase_core/.github/workflows/occ-preflight.yml@main
+    uses: OmniNode-ai/omnibase_core/.github/workflows/occ-preflight.yml@1e69bec909f245be511803191554e5b340def0b7  # omnibase_core main as of 2026-10-02 (OMN-20332)
     with:
       contracts-dir: contracts
       receipts-dir: drift/dod_receipts
