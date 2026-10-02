@@ -17,10 +17,14 @@ import {
 } from '../../layout/local-page-loader';
 
 const pages = ['overview', 'runs'] as const;
-const servedExposureCatalogue = new Set([
-  'onex.snapshot.projection.baselines.roi.v1',
-  'onex.snapshot.projection.delegation.savings.v1',
-]);
+// The exposures the lab projection API answers `ok`, captured read-only from
+// GET /projections. A hand-written list here once called a degraded exposure
+// served, so the Overview it backed rendered nothing on the lab.
+const servedExposureCatalogue = new Set(
+  (JSON.parse(readFileSync(resolve(process.cwd(), 'src/pages/local/served-catalogue.lab.json'), 'utf8')) as {
+    exposures: Array<{ topic: string; status: string }>;
+  }).exposures.filter((exposure) => exposure.status === 'ok').map((exposure) => exposure.topic),
+);
 const componentValidator = new Ajv({ allErrors: true, validateFormats: false }).compile(componentContractSchema);
 // Generated from omnibase_core.ModelDashboardConfig.model_json_schema() at
 // core worktree 47187e6a3513733e135dc5f3b0d290ca4956c0c6; this is schema-only,
@@ -53,16 +57,25 @@ describe('local dashboard page contracts', () => {
     expect(dashboardConfigValidator({ ...page, components: [] })).toBe(false);
   });
 
-  it('Overview does not name a topic served by hand-written SQL', async () => {
-    const page = await readPage('overview');
-    const sqlReader = readFileSync(resolve(process.cwd(), 'server/sqlite-projection-reader.ts'), 'utf8');
-    const sqlTopics = new Set(
-      [...sqlReader.matchAll(/case\s+'(onex\.snapshot\.projection\.[^']+)'\s*:/g)].map((match) => match[1]),
-    );
+  // Ticket AC2: no widget on a local page names a topic either server reader
+  // answers by hand-written SQL. Both readers are read, every local page is checked.
+  const sqlFoldTopics = (file: string): Set<string> => {
+    const source = readFileSync(resolve(process.cwd(), file), 'utf8');
+    return new Set([...source.matchAll(/case\s+'(onex\.snapshot\.projection\.[^']+)'\s*:/g)].map((match) => match[1]));
+  };
 
-    for (const component of page.components) {
-      for (const binding of component.data_bindings ?? []) {
-        expect(sqlTopics.has(binding.projection_topic)).toBe(false);
+  it('reads both readers\' hand-written SQL topics (positive control)', () => {
+    for (const file of ['server/sqlite-projection-reader.ts', 'server/postgres-projection-reader.ts']) {
+      expect(sqlFoldTopics(file).has('onex.snapshot.projection.delegation.decisions.v1'), file).toBe(true);
+    }
+  });
+
+  it.each(pages)('%s does not name a topic either reader answers by hand-written SQL', (pageName) => {
+    const page = readPage(pageName);
+    for (const file of ['server/sqlite-projection-reader.ts', 'server/postgres-projection-reader.ts']) {
+      const sqlTopics = sqlFoldTopics(file);
+      for (const binding of page.components.flatMap((component) => component.data_bindings ?? [])) {
+        expect(sqlTopics.has(binding.projection_topic), `${file} answers ${binding.projection_topic}`).toBe(false);
       }
     }
   });
@@ -245,5 +258,43 @@ describe('local dashboard page contracts', () => {
 
     expect(source.readSnapshot).toHaveBeenCalledOnce();
     expect(source.readSnapshot).toHaveBeenCalledWith('onex.snapshot.projection.delegation.savings.v1');
+  });
+});
+
+describe('local pages against the captured lab catalogue', () => {
+  // GET /projections on the lab projection API, captured read-only. A degraded
+  // exposure answers 503 on every read, so a page bound to one renders nothing.
+  const labCatalogue = JSON.parse(
+    readFileSync(resolve(process.cwd(), 'src/pages/local/served-catalogue.lab.json'), 'utf8'),
+  ) as { exposures: Array<{ topic: string; status: string }> };
+  const okTopics = new Set(labCatalogue.exposures.filter((e) => e.status === 'ok').map((e) => e.topic));
+
+  it('the captured catalogue can tell ok from degraded', () => {
+    expect(okTopics.has('onex.snapshot.projection.delegation.savings.v1')).toBe(true);
+    expect(okTopics.has('onex.snapshot.projection.baselines.roi.v1')).toBe(false);
+  });
+
+  it.each(pages)('%s binds only exposures the lab catalogue marks ok', (pageName) => {
+    const page = readPage(pageName);
+    for (const binding of page.components.flatMap((component) => component.data_bindings ?? [])) {
+      expect(okTopics.has(binding.projection_topic), binding.projection_topic).toBe(true);
+    }
+  });
+
+  it('Overview shows spend, savings and tokens from cost.savings-overview.v1', () => {
+    const page = readPage('overview');
+    const topics = page.components.flatMap((c) => (c.data_bindings ?? []).map((b) => b.projection_topic));
+    expect(new Set(topics)).toEqual(new Set(['onex.snapshot.projection.cost.savings-overview.v1']));
+    const keys = page.dashboard.widgets.map((w) => (w.config as Record<string, unknown>).metric_key);
+    expect(keys).toEqual(['total_cost_usd', 'total_savings_usd', 'tokens_total']);
+    const savings = page.components.find((c) => c.component_id === 'overview-savings');
+    expect(savings?.data_bindings?.[0]?.required_fields).toEqual(['total_savings_usd', 'total_baseline_cost_usd']);
+  });
+
+  it('Overview never reads local_token_pct, a literal 0 the view does not measure', () => {
+    for (const file of ['overview.page.yaml', 'overview.contracts.yaml']) {
+      const raw = readFileSync(resolve(process.cwd(), `src/pages/local/${file}`), 'utf8');
+      expect(raw.includes('local_token_pct'), file).toBe(false);
+    }
   });
 });

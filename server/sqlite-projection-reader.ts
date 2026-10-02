@@ -4,8 +4,6 @@ import { join } from 'node:path';
 import { existsSync } from 'node:fs';
 import {
   timestampValue,
-  mergeDelegationSessions as sharedMergeDelegationSessions,
-  buildCostSavingsOverviewResult,
 } from './projection-reader-shared.js';
 
 // Default DB path mirrors the Python adapter in omniclaude/delegation/sqlite_adapter.py
@@ -204,12 +202,6 @@ export class SqliteProjectionReader {
 
       case 'onex.snapshot.projection.delegation.token-usage.v1':
         return [this.readDelegationTokenUsageProjection(db)];
-
-      case 'onex.snapshot.projection.cost.savings-overview.v1':
-        return [this.readCostSavingsOverviewProjection(db)];
-
-      case 'onex.snapshot.projection.delegation.savings.v1':
-        return [this.readDelegationSavingsProjection(db)];
 
       case 'onex.snapshot.projection.delegation.model-routing.v1':
         return [this.readDelegationModelRoutingProjection(db)];
@@ -568,17 +560,6 @@ export class SqliteProjectionReader {
     `;
   }
 
-  private sessionKey(row: Row, index: number, kind: 'savings' | 'events'): string {
-    const key = String(row.session_id ?? '').trim();
-    return key || `sqlite-${kind}-row-${index}-${String(row.created_at ?? '')}-${String(row.model_name ?? '')}`;
-  }
-
-  private mergeDelegationSessions(savingsRows: Row[], eventRows: Row[]): Row[] {
-    return sharedMergeDelegationSessions(savingsRows, eventRows, (row, index, kind) =>
-      this.sessionKey(row, index, kind),
-    );
-  }
-
   private timestampValue(value: unknown): number {
     return timestampValue(value);
   }
@@ -901,124 +882,5 @@ export class SqliteProjectionReader {
       captured_at: new Date().toISOString(),
       provisioned: totalTokens > 0,
     };
-  }
-
-  private readDelegationSavingsProjection(db: Database.Database): Row {
-    let savingsRows: Row[] = [];
-    let eventRows: Row[] = [];
-
-    if (this.hasTable(db, 'savings_estimates')) {
-      savingsRows = db.prepare(`
-        SELECT
-          session_id,
-          model_local AS task_type,
-          model_local AS model_name,
-          local_cost_usd,
-          cloud_cost_usd,
-          savings_usd,
-          baseline_model,
-          pricing_manifest_version,
-          savings_method,
-          usage_source,
-          0 AS prompt_tokens,
-          0 AS completion_tokens,
-          NULL AS tokens_to_compliance,
-          NULL AS latency_ms,
-          created_at,
-          NULL AS prompt_text,
-          NULL AS response_text
-        FROM savings_estimates
-        ORDER BY created_at DESC
-        LIMIT 500
-      `).all() as Row[];
-    }
-
-    if (this.hasTable(db, 'delegation_events')) {
-      const col = (name: string, fallback: string): string =>
-        this.hasColumn(db, 'delegation_events', name) ? name : fallback;
-      const latencyExpr = this.hasColumn(db, 'delegation_events', 'delegation_latency_ms')
-        ? 'delegation_latency_ms'
-        : col('latency_ms', 'NULL');
-      const createdAtExpr = this.hasColumn(db, 'delegation_events', 'created_at')
-        ? 'created_at'
-        : col('timestamp', 'NULL');
-      const costExpr = col('cost_usd', '0');
-      const savingsExpr = col('cost_savings_usd', '0');
-      const inputTokensExpr = col('tokens_input', '0');
-      const outputTokensExpr = col('tokens_output', '0');
-      const complianceTokensExpr = col('tokens_to_compliance', 'NULL');
-      // OMN-13355: pinned premium counterfactual {model, price, as_of, tokens,
-      // counterfactual_cost_usd}. Stored as JSONB-as-text in SQLite; guarded so a
-      // backing store predating the column falls back to NULL.
-      const counterfactualExpr = col('premium_counterfactual', 'NULL');
-
-      eventRows = db.prepare(`
-        SELECT
-          COALESCE(NULLIF(session_id, ''), NULLIF(correlation_id, ''), CAST(id AS TEXT)) AS session_id,
-          task_type,
-          COALESCE(NULLIF(model_name, ''), NULLIF(delegated_to, ''), 'local') AS model_name,
-          COALESCE(${costExpr}, 0) AS local_cost_usd,
-          COALESCE(${costExpr}, 0) + COALESCE(${savingsExpr}, 0) AS cloud_cost_usd,
-          COALESCE(${savingsExpr}, 0) AS savings_usd,
-          'claude-opus-4.1' AS baseline_model,
-          'runtime-delegation-events' AS pricing_manifest_version,
-          CASE WHEN COALESCE(${savingsExpr}, 0) > 0 THEN 'measured' ELSE 'estimated' END AS savings_method,
-          CASE WHEN COALESCE(${inputTokensExpr}, 0) + COALESCE(${outputTokensExpr}, 0) > 0 THEN 'measured' ELSE 'unknown' END AS usage_source,
-          COALESCE(${inputTokensExpr}, 0) AS prompt_tokens,
-          COALESCE(${outputTokensExpr}, 0) AS completion_tokens,
-          ${complianceTokensExpr} AS tokens_to_compliance,
-          ${latencyExpr} AS latency_ms,
-          ${createdAtExpr} AS created_at,
-          ${col('prompt_text', 'NULL')} AS prompt_text,
-          ${col('response_text', 'NULL')} AS response_text,
-          ${counterfactualExpr} AS premium_counterfactual
-        FROM delegation_events
-        WHERE ${this.delegationRuntimeWhereClause(db)}
-        ORDER BY ${createdAtExpr} DESC
-        LIMIT 500
-      `).all() as Row[];
-
-      // Parse the JSONB-as-text counterfactual into a structured object so the
-      // reader exposes the auditable {model, price, as_of} rather than a raw string.
-      for (const row of eventRows) {
-        const raw = row.premium_counterfactual;
-        if (typeof raw === 'string' && raw.trim() !== '') {
-          try {
-            row.premium_counterfactual = JSON.parse(raw);
-          } catch {
-            row.premium_counterfactual = null;
-          }
-        }
-      }
-    }
-
-    const sessions = this.mergeDelegationSessions(savingsRows, eventRows);
-    sessions.sort((a, b) => this.timestampValue(b.created_at) - this.timestampValue(a.created_at));
-
-    const sum = (key: string): number =>
-      sessions.reduce((total, row) => total + Number(row[key] ?? 0), 0);
-    const latest = sessions[0] ?? {};
-
-    return {
-      cumulative_savings_usd: sum('savings_usd'),
-      cumulative_local_cost_usd: sum('local_cost_usd'),
-      cumulative_cloud_cost_usd: sum('cloud_cost_usd'),
-      baseline_model: (latest.baseline_model as string | undefined) ?? 'claude-opus-4.1',
-      pricing_manifest_version: (latest.pricing_manifest_version as string | undefined) ?? 'runtime-delegation-events',
-      session_count: sessions.length,
-      sessions: sessions.slice(0, 500),
-      captured_at: new Date().toISOString(),
-      provisioned: true,
-    };
-  }
-
-  private readCostSavingsOverviewProjection(db: Database.Database): Row {
-    const delegationSavings = this.readDelegationSavingsProjection(db);
-    const sessions = (delegationSavings.sessions as Row[] | undefined) ?? [];
-    const sessionTokens = (session: Row): number =>
-      Number(session.prompt_tokens ?? 0) + Number(session.completion_tokens ?? 0);
-    const measuredSessions = sessions.filter((session) => sessionTokens(session) > 0);
-    const omittedTelemetryRows = sessions.length - measuredSessions.length;
-    return buildCostSavingsOverviewResult(measuredSessions, omittedTelemetryRows);
   }
 }

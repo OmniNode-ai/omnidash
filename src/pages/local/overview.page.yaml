@@ -1,27 +1,68 @@
 {
   "dashboard_id": "b37a0892-e2bc-4d67-91e4-bf2d55b48eef",
   "name": "Overview",
-  "description": "Developer overview backed by local runtime projection exposures.",
-  "layout": { "columns": 12, "row_height": 100, "gap": 16, "responsive": true },
+  "description": "Spend, savings and tokens from the runtime's served cost savings overview.",
+  "layout": {
+    "columns": 12,
+    "row_height": 100,
+    "gap": 16,
+    "responsive": true
+  },
   "refresh_interval_seconds": 30,
   "theme": "system",
   "widgets": [
     {
       "widget_id": "2157c330-49a4-4d41-a61f-cc0c8c4a0ddb",
-      "title": "Return on investment",
+      "title": "Spend",
       "row": 0,
       "col": 0,
       "width": 4,
       "height": 2,
-      "data_source": "overview-roi",
+      "data_source": "overview-spend",
       "config": {
         "config_kind": "metric_card",
         "widget_type": "metric_card",
-        "metric_key": "roi_percent",
-        "label": "ROI",
-        "unit": "%",
-        "format": "percent",
-        "precision": 1
+        "metric_key": "total_cost_usd",
+        "label": "Spend",
+        "unit": "USD",
+        "format": "currency",
+        "precision": 4
+      }
+    },
+    {
+      "widget_id": "1f0a0b2c-b7d7-568a-9596-a679c1af00c0",
+      "title": "Savings",
+      "row": 0,
+      "col": 4,
+      "width": 4,
+      "height": 2,
+      "data_source": "overview-savings",
+      "config": {
+        "config_kind": "metric_card",
+        "widget_type": "metric_card",
+        "metric_key": "total_savings_usd",
+        "label": "Savings",
+        "unit": "USD",
+        "format": "currency",
+        "precision": 4
+      }
+    },
+    {
+      "widget_id": "869ee6a5-22b1-5225-9975-81de4d5a5fcc",
+      "title": "Tokens",
+      "row": 0,
+      "col": 8,
+      "width": 4,
+      "height": 2,
+      "data_source": "overview-tokens",
+      "config": {
+        "config_kind": "metric_card",
+        "widget_type": "metric_card",
+        "metric_key": "tokens_total",
+        "label": "Tokens",
+        "unit": "tokens",
+        "format": "number",
+        "precision": 0
       }
     }
   ]

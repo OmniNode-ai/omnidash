@@ -1,21 +1,84 @@
 {
   "components": [
     {
-      "component_id": "overview-roi",
+      "component_id": "overview-spend",
       "component_kind": "metric_card",
-      "title": "Return on investment",
-      "contract_version": { "major": 1, "minor": 0, "patch": 0 },
+      "title": "Spend",
+      "contract_version": {
+        "major": 1,
+        "minor": 0,
+        "patch": 0
+      },
       "data_bindings": [
         {
-          "binding_id": "roi-snapshot",
-          "projection_topic": "onex.snapshot.projection.baselines.roi.v1",
-          "ordering_authority_field": "computed_at",
+          "binding_id": "overview-spend-snapshot",
+          "projection_topic": "onex.snapshot.projection.cost.savings-overview.v1",
+          "ordering_authority_field": "captured_at",
           "ordering_direction": "descending",
-          "required_fields": ["roi_percent", "baseline_state"]
+          "required_fields": [
+            "total_cost_usd"
+          ]
         }
       ],
-      "supported_empty_state_reasons": ["missing-field", "no-data"]
+      "supported_empty_state_reasons": [
+        "missing-field",
+        "no-data"
+      ]
+    },
+    {
+      "component_id": "overview-savings",
+      "component_kind": "metric_card",
+      "title": "Savings",
+      "contract_version": {
+        "major": 1,
+        "minor": 0,
+        "patch": 0
+      },
+      "data_bindings": [
+        {
+          "binding_id": "overview-savings-snapshot",
+          "projection_topic": "onex.snapshot.projection.cost.savings-overview.v1",
+          "ordering_authority_field": "captured_at",
+          "ordering_direction": "descending",
+          "required_fields": [
+            "total_savings_usd",
+            "total_baseline_cost_usd"
+          ]
+        }
+      ],
+      "supported_empty_state_reasons": [
+        "missing-field",
+        "no-data"
+      ]
+    },
+    {
+      "component_id": "overview-tokens",
+      "component_kind": "metric_card",
+      "title": "Tokens",
+      "contract_version": {
+        "major": 1,
+        "minor": 0,
+        "patch": 0
+      },
+      "data_bindings": [
+        {
+          "binding_id": "overview-tokens-snapshot",
+          "projection_topic": "onex.snapshot.projection.cost.savings-overview.v1",
+          "ordering_authority_field": "captured_at",
+          "ordering_direction": "descending",
+          "required_fields": [
+            "tokens_total"
+          ]
+        }
+      ],
+      "supported_empty_state_reasons": [
+        "missing-field",
+        "no-data"
+      ]
     }
   ],
-  "page_empty_state_reasons": ["NO_RUNS_YET", "BASELINE_UNRESOLVED"]
+  "page_empty_state_reasons": [
+    "NO_RUNS_YET",
+    "BASELINE_UNRESOLVED"
+  ]
 }

@@ -381,138 +381,23 @@ describe('SqliteProjectionReader', () => {
     });
   });
 
-  it('reads delegation savings as a dashboard projection with live runtime tokens', () => {
+  it('no longer answers the two topics local pages read from served exposures (OMN-19981)', () => {
     const db = createTestDb(dbPath);
     db.prepare(`
       INSERT INTO savings_estimates (session_id, event_timestamp, model_local, model_cloud_baseline, local_cost_usd, cloud_cost_usd, savings_usd, baseline_model, created_at)
       VALUES ('sess-1', 1000.0, 'qwen3', 'claude-3-5-sonnet', 0.02, 0.10, 0.08, 'claude-3-5-sonnet', 1000.0)
     `).run();
     db.prepare(`
-      INSERT INTO delegation_events (
-        correlation_id, session_id, task_type, delegated_to, model_name,
-        quality_gate_passed, latency_ms, tokens_input, tokens_output,
-        tokens_to_compliance, cost_usd, cost_savings_usd, created_at
-      )
-      VALUES ('corr-live', 'sess-live', 'test', 'local', 'qwen3-coder', 1, 3237, 144, 593, 737, 0.0, 0.009327, 2000.0)
+      INSERT INTO delegation_events (correlation_id, task_type, delegated_to, model_name, quality_gate_passed, created_at)
+      VALUES ('corr-1', 'code_review', 'local', 'qwen3', 1, 1000.0)
     `).run();
     db.close();
 
     const reader = new SqliteProjectionReader({ dbPath });
-    const rows = reader.readProjection('onex.snapshot.projection.delegation.savings.v1');
-
-    expect(rows).toHaveLength(1);
-    expect(rows[0]).toMatchObject({
-      cumulative_savings_usd: 0.089327,
-      session_count: 2,
-      provisioned: true,
-    });
-    const sessions = rows[0]!.sessions as Record<string, unknown>[];
-    const live = sessions.find((s) => s.session_id === 'sess-live');
-    expect(live).toMatchObject({
-      task_type: 'test',
-      model_name: 'qwen3-coder',
-      prompt_tokens: 144,
-      completion_tokens: 593,
-      tokens_to_compliance: 737,
-      savings_usd: 0.009327,
-      latency_ms: 3237,
-    });
-  });
-
-  it('deduplicates materialized and runtime savings rows by session', () => {
-    const db = createTestDb(dbPath);
-    db.prepare(`
-      INSERT INTO savings_estimates (session_id, event_timestamp, model_local, model_cloud_baseline, local_cost_usd, cloud_cost_usd, savings_usd, baseline_model, created_at)
-      VALUES ('sess-merged', 1000.0, 'qwen3-coder', 'claude-opus-4.1', 0.001, 0.010, 0.009, 'claude-opus-4.1', 1000.0)
-    `).run();
-    db.prepare(`
-      INSERT INTO delegation_events (
-        correlation_id, session_id, task_type, delegated_to, model_name,
-        quality_gate_passed, latency_ms, tokens_input, tokens_output,
-        tokens_to_compliance, cost_usd, cost_savings_usd, created_at
-      )
-      VALUES ('corr-merged', 'sess-merged', 'test', 'local', 'qwen3-coder', 1, 3237, 144, 593, 737, 0.0, 0.010, 2000.0)
-    `).run();
-    db.close();
-
-    const reader = new SqliteProjectionReader({ dbPath });
-    const rows = reader.readProjection('onex.snapshot.projection.delegation.savings.v1');
-
-    expect(rows[0]).toMatchObject({
-      cumulative_savings_usd: 0.009,
-      session_count: 1,
-    });
-    const sessions = rows[0]!.sessions as Record<string, unknown>[];
-    expect(sessions).toHaveLength(1);
-    expect(sessions[0]).toMatchObject({
-      session_id: 'sess-merged',
-      savings_usd: 0.009,
-      prompt_tokens: 144,
-      completion_tokens: 593,
-      tokens_to_compliance: 737,
-      latency_ms: 3237,
-      created_at: 2000,
-    });
-  });
-
-  it('composes cost savings overview from live delegation runtime tokens', () => {
-    const db = createTestDb(dbPath);
-    db.prepare(`
-      INSERT INTO delegation_events (
-        correlation_id, session_id, task_type, delegated_to, model_name,
-        quality_gate_passed, latency_ms, tokens_input, tokens_output,
-        tokens_to_compliance, cost_usd, cost_savings_usd, created_at
-      )
-      VALUES ('corr-live', 'sess-live', 'test', 'local', 'qwen3-coder', 1, 3237, 144, 593, 737, 0.0, 0.009327, 2000.0)
-    `).run();
-    db.prepare(`
-      INSERT INTO delegation_events (
-        correlation_id, session_id, task_type, delegated_to, model_name,
-        quality_gate_passed, latency_ms, tokens_input, tokens_output,
-        tokens_to_compliance, cost_usd, cost_savings_usd, created_at
-      )
-      VALUES ('corr-doc', 'sess-doc', 'document', 'local', 'qwen3-coder', 1, 2109, 81, 384, 465, 0.0, 0.006003, 2100.0)
-    `).run();
-    db.prepare(`
-      INSERT INTO savings_estimates (session_id, event_timestamp, model_local, model_cloud_baseline, local_cost_usd, cloud_cost_usd, savings_usd, baseline_model, created_at)
-      VALUES ('sess-stale-estimate', 1000.0, 'qwen3-stale', 'claude-3-5-sonnet', 0.03, 0.25, 0.22, 'claude-3-5-sonnet', 1000.0)
-    `).run();
-    db.prepare(`
-      INSERT INTO delegation_events (
-        correlation_id, session_id, task_type, delegated_to, model_name,
-        quality_gate_passed, latency_ms, tokens_input, tokens_output,
-        tokens_to_compliance, cost_usd, cost_savings_usd, created_at
-      )
-      VALUES ('corr-zero', 'sess-zero', 'test', 'local', 'qwen3-zero', 1, 1000, 0, 0, 999, 0.10, 0.50, 2200.0)
-    `).run();
-    db.close();
-
-    const reader = new SqliteProjectionReader({ dbPath });
-    const rows = reader.readProjection('onex.snapshot.projection.cost.savings-overview.v1');
-
-    expect(rows).toHaveLength(1);
-    expect(rows[0]).toMatchObject({
-      window: '24h',
-      total_cost_usd: 0,
-      total_baseline_cost_usd: 0.01533,
-      total_savings_usd: 0.01533,
-      savings_rate: 1,
-      tokens_total: 1202,
-      tokens_to_compliance: 1202,
-      local_token_pct: 1,
-      provisioned: true,
-    });
-    const overviewRows = rows[0]!.rows as Record<string, unknown>[];
-    expect(overviewRows).toHaveLength(1);
-    expect(overviewRows[0]).toMatchObject({
-      display_name: 'qwen3-coder',
-      execution_mode: 'delegated',
-      task_count: 2,
-      tokens_total: 1202,
-      cost_usd: 0,
-      savings_usd: 0.01533,
-    });
-    expect(rows[0]!.warnings).toEqual(['Omitted 2 delegation rows without token telemetry.']);
+    // Control: a fold that stays still reads the same store, so an empty answer below is the removal.
+    expect(reader.readProjection('onex.snapshot.projection.delegation.decisions.v1')).toHaveLength(1);
+    expect(reader.readProjection('onex.snapshot.projection.delegation.savings.v1')).toEqual([]);
+    expect(reader.readProjection('onex.snapshot.projection.cost.savings-overview.v1')).toEqual([]);
   });
 
   it('reads delegation model routing grouped by model and task_type', () => {

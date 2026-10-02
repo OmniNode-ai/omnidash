@@ -23,6 +23,59 @@ function valueOrUnmeasured(value: unknown): string {
   return String(value);
 }
 
+function isMissing(value: unknown): boolean {
+  return value === null || value === undefined || value === ''
+    || (typeof value === 'number' && !Number.isFinite(value));
+}
+
+export interface MetricCardConfig {
+  metric_key: string;
+  label: string;
+  format?: 'number' | 'currency' | 'percent' | 'duration';
+  precision?: number;
+  unit?: string | null;
+}
+
+function formatMetric(value: number, config: MetricCardConfig): string {
+  const digits = config.precision ?? 0;
+  const grouped = value.toLocaleString('en-US', {
+    minimumFractionDigits: digits,
+    maximumFractionDigits: digits,
+  });
+  if (config.format === 'currency') return `$${grouped}`;
+  if (config.format === 'percent') return `${grouped}%`;
+  return grouped;
+}
+
+interface MetricCardProps {
+  component: LocalPageDocument['components'][number];
+  config: MetricCardConfig;
+  row: Record<string, unknown>;
+}
+
+/**
+ * One figure from one served exposure row: the field the widget names. A
+ * required field that is absent means the figure is not measured; when that
+ * field is a baseline, the figure is a savings figure with no priced baseline,
+ * which is BASELINE_UNRESOLVED and never a zero.
+ */
+export function MetricCard({ component, config, row }: MetricCardProps) {
+  const required = component.data_bindings?.[0]?.required_fields ?? [config.metric_key];
+  const missing = [...new Set([config.metric_key, ...required])].filter((field) => isMissing(row[field]));
+  let text: string;
+  if (missing.some((field) => field.includes('baseline'))) text = 'Baseline unresolved';
+  else if (missing.length > 0) text = 'Not measured';
+  else text = formatMetric(Number(row[config.metric_key]), config);
+  return <p className="local-dashboard-metric">{text}</p>;
+}
+
+function metricConfigFor(page: LocalPageDocument, componentId: string): MetricCardConfig | null {
+  const widget = page.dashboard.widgets.find((candidate) => candidate.data_source === componentId);
+  const config = widget?.config as Record<string, unknown> | undefined;
+  if (!config || typeof config.metric_key !== 'string') return null;
+  return config as unknown as MetricCardConfig;
+}
+
 interface RunsTableProps {
   rows: readonly unknown[];
 }
@@ -72,6 +125,11 @@ export function LocalDashboardPage({ pageName }: LocalDashboardPageProps) {
 
   useEffect(() => {
     let active = true;
+    // A page switch must not show the previous page's document while this one loads.
+    setPage(null);
+    setSnapshots([]);
+    setError(null);
+    setLoading(true);
     async function load() {
       try {
         const document = loadLocalPageConfig(pageName);
@@ -128,11 +186,12 @@ export function LocalDashboardPage({ pageName }: LocalDashboardPageProps) {
                   </p>
                 ) : component.component_kind === 'table' ? (
                   rows.length === 0 ? <p className="local-dashboard-empty">No runs yet</p> : <RunsTable rows={rows} />
-                ) : (
-                  <p className="local-dashboard-metric">
-                    {valueOrUnmeasured(first.roi_percent)}{first.roi_percent == null ? '' : '%'}
-                  </p>
-                )}
+                ) : (() => {
+                  const config = metricConfigFor(page, component.component_id);
+                  return config
+                    ? <MetricCard component={component} config={config} row={first} />
+                    : <p className="local-dashboard-empty">Not measured</p>;
+                })()}
               </article>
             );
           })}
