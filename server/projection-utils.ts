@@ -1,9 +1,8 @@
 /**
  * Shared utilities for projection readers.
  *
- * Both SqliteProjectionReader and PostgresProjectionReader share identical
- * session-merge logic and timestamp parsing. Extracted here per OMN-11614
- * to eliminate the duplication flagged in the TODO on postgres-projection-reader.ts.
+ * Session-merge logic and timestamp parsing for PostgresProjectionReader, extracted per OMN-11614. The
+ * SqliteProjectionReader that shared them was deleted by OMN-19981 AC3.
  */
 
 export type Row = Record<string, unknown>;

@@ -1,21 +1,212 @@
 {
   "components": [
     {
-      "component_id": "overview-roi",
+      "component_id": "overview-spend",
       "component_kind": "metric_card",
-      "title": "Return on investment",
-      "contract_version": { "major": 1, "minor": 0, "patch": 0 },
+      "title": "Spend",
+      "contract_version": {
+        "major": 1,
+        "minor": 0,
+        "patch": 0
+      },
       "data_bindings": [
         {
-          "binding_id": "roi-snapshot",
-          "projection_topic": "onex.snapshot.projection.baselines.roi.v1",
-          "ordering_authority_field": "computed_at",
+          "binding_id": "overview-spend-snapshot",
+          "projection_topic": "onex.snapshot.projection.cost.savings-overview.v1",
+          "ordering_authority_field": "captured_at",
           "ordering_direction": "descending",
-          "required_fields": ["roi_percent", "baseline_state"]
+          "required_fields": [
+            "total_cost_usd"
+          ]
         }
       ],
-      "supported_empty_state_reasons": ["missing-field", "no-data"]
+      "supported_empty_state_reasons": [
+        "missing-field",
+        "no-data"
+      ]
+    },
+    {
+      "component_id": "overview-savings",
+      "component_kind": "metric_card",
+      "title": "Savings",
+      "contract_version": {
+        "major": 1,
+        "minor": 0,
+        "patch": 0
+      },
+      "data_bindings": [
+        {
+          "binding_id": "overview-savings-snapshot",
+          "projection_topic": "onex.snapshot.projection.cost.savings-overview.v1",
+          "ordering_authority_field": "captured_at",
+          "ordering_direction": "descending",
+          "required_fields": [
+            "total_savings_usd",
+            "total_baseline_cost_usd"
+          ]
+        },
+        {
+          "binding_id": "overview-savings-baseline",
+          "projection_topic": "onex.snapshot.projection.delegation.savings.v1",
+          "ordering_authority_field": "latest_projection_updated_at",
+          "ordering_direction": "descending",
+          "required_fields": [
+            "baseline_model",
+            "pricing_manifest_version"
+          ]
+        }
+      ],
+      "supported_empty_state_reasons": [
+        "missing-field",
+        "no-data"
+      ]
+    },
+    {
+      "component_id": "overview-measured",
+      "component_kind": "metric_card",
+      "title": "Measured runs",
+      "contract_version": {
+        "major": 1,
+        "minor": 0,
+        "patch": 0
+      },
+      "data_bindings": [
+        {
+          "binding_id": "overview-measured-snapshot",
+          "projection_topic": "onex.snapshot.projection.cost.savings-overview.v1",
+          "ordering_authority_field": "captured_at",
+          "ordering_direction": "descending",
+          "required_fields": [
+            "measured_run_count"
+          ]
+        },
+        {
+          "binding_id": "overview-measured-zero-token",
+          "projection_topic": "onex.snapshot.projection.cost.savings-overview.v1",
+          "ordering_authority_field": "captured_at",
+          "ordering_direction": "descending",
+          "required_fields": [
+            "zero_token_run_count"
+          ]
+        }
+      ],
+      "supported_empty_state_reasons": [
+        "missing-field",
+        "no-data"
+      ]
+    },
+    {
+      "component_id": "overview-tokens",
+      "component_kind": "metric_card",
+      "title": "Tokens in and out",
+      "contract_version": {
+        "major": 1,
+        "minor": 0,
+        "patch": 0
+      },
+      "data_bindings": [],
+      "supported_empty_state_reasons": [
+        "upstream-blocked"
+      ]
+    },
+    {
+      "component_id": "overview-last-run",
+      "component_kind": "table",
+      "title": "Last run",
+      "contract_version": {
+        "major": 1,
+        "minor": 0,
+        "patch": 0
+      },
+      "data_bindings": [
+        {
+          "binding_id": "overview-last-run-decisions",
+          "projection_topic": "onex.snapshot.projection.delegation.decisions.v1",
+          "ordering_authority_field": "written_at",
+          "ordering_direction": "descending",
+          "required_fields": [
+            "correlation_id",
+            "written_at",
+            "created_at",
+            "quality_gate_passed",
+            "quality_gate_detail",
+            "model_name",
+            "latency_ms",
+            "tokens_input",
+            "tokens_output",
+            "task_type",
+            "cost_tier_name"
+          ]
+        },
+        {
+          "binding_id": "overview-last-run-cost",
+          "projection_topic": "onex.snapshot.projection.delegation.savings.v1",
+          "ordering_authority_field": "created_at",
+          "ordering_direction": "descending",
+          "required_fields": [
+            "sessions",
+            "session_id",
+            "local_cost_usd",
+            "savings_usd"
+          ]
+        }
+      ],
+      "supported_empty_state_reasons": [
+        "missing-field",
+        "no-data"
+      ]
+    },
+    {
+      "component_id": "overview-recent-runs",
+      "component_kind": "table",
+      "title": "Recent runs",
+      "contract_version": {
+        "major": 1,
+        "minor": 0,
+        "patch": 0
+      },
+      "data_bindings": [
+        {
+          "binding_id": "overview-recent-runs-decisions",
+          "projection_topic": "onex.snapshot.projection.delegation.decisions.v1",
+          "ordering_authority_field": "written_at",
+          "ordering_direction": "descending",
+          "required_fields": [
+            "correlation_id",
+            "written_at",
+            "created_at",
+            "quality_gate_passed",
+            "quality_gate_detail",
+            "model_name",
+            "latency_ms",
+            "tokens_input",
+            "tokens_output",
+            "task_type",
+            "cost_tier_name",
+            "actual_score"
+          ]
+        },
+        {
+          "binding_id": "overview-recent-runs-cost",
+          "projection_topic": "onex.snapshot.projection.delegation.savings.v1",
+          "ordering_authority_field": "created_at",
+          "ordering_direction": "descending",
+          "required_fields": [
+            "sessions",
+            "session_id",
+            "local_cost_usd",
+            "savings_usd"
+          ]
+        }
+      ],
+      "supported_empty_state_reasons": [
+        "missing-field",
+        "no-data"
+      ]
     }
   ],
-  "page_empty_state_reasons": ["NO_RUNS_YET", "BASELINE_UNRESOLVED"]
+  "page_empty_state_reasons": [
+    "NO_RUNS_YET",
+    "BASELINE_UNRESOLVED"
+  ]
 }
