@@ -1,0 +1,35 @@
+{
+  "components": [
+    {
+      "component_id": "usage-by-model-day",
+      "component_kind": "table",
+      "title": "Usage by model and day",
+      "contract_version": {
+        "major": 1,
+        "minor": 0,
+        "patch": 0
+      },
+      "data_bindings": [
+        {
+          "binding_id": "usage-by-model-day-snapshot",
+          "projection_topic": "onex.snapshot.projection.usage-by-model-day.v1",
+          "ordering_authority_field": "usage_day",
+          "ordering_direction": "descending",
+          "required_fields": [
+            "tenant_id",
+            "usage_day",
+            "model_id",
+            "input_tokens",
+            "output_tokens",
+            "cost_usd",
+            "call_count"
+          ]
+        }
+      ],
+      "supported_empty_state_reasons": [
+        "no-data"
+      ]
+    }
+  ],
+  "page_empty_state_reasons": []
+}

@@ -1,0 +1,40 @@
+{
+  "components": [
+    {
+      "component_id": "workflow-run-path",
+      "component_kind": "table",
+      "title": "Run path",
+      "contract_version": {
+        "major": 1,
+        "minor": 0,
+        "patch": 0
+      },
+      "data_bindings": [
+        {
+          "binding_id": "workflow-run-path-decisions",
+          "projection_topic": "onex.snapshot.projection.delegation.decisions.v1",
+          "ordering_authority_field": "written_at",
+          "ordering_direction": "descending",
+          "required_fields": [
+            "correlation_id",
+            "created_at",
+            "written_at",
+            "cost_tier_name",
+            "model_name",
+            "quality_gate_passed",
+            "quality_gate_detail",
+            "actual_score",
+            "latency_ms",
+            "task_type"
+          ]
+        }
+      ],
+      "supported_empty_state_reasons": [
+        "no-data"
+      ]
+    }
+  ],
+  "page_empty_state_reasons": [
+    "NO_RUNS_YET"
+  ]
+}

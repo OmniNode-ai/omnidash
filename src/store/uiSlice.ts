@@ -8,6 +8,8 @@
 // persistence later if users complain.
 import type { StateCreator } from 'zustand';
 import type { FrameStore, UISlice } from './types';
+import { navigate } from 'wouter/use-browser-location';
+import { PAGE_PATHS } from '@/navigation/page-routes';
 
 export const createUISlice: StateCreator<FrameStore, [], [], UISlice> = (set) => ({
   // OMN-12833 (WS5): collapse the sidebar by default on mobile so the icon
@@ -17,8 +19,14 @@ export const createUISlice: StateCreator<FrameStore, [], [], UISlice> = (set) =>
   setSidebarCollapsed: (collapsed) => set({ sidebarCollapsed: collapsed }),
   toggleSidebarCollapsed: () =>
     set((state) => ({ sidebarCollapsed: !state.sidebarCollapsed })),
-  activePage: 'dashboard',
-  setActivePage: (page) => set({ activePage: page }),
+  // OMN-19981 Amendment 6 (FR-3): the dashboard opens on the local Overview page.
+  activePage: 'local-overview',
+  setActivePage: (page) => {
+    set({ activePage: page });
+    if (typeof window !== 'undefined' && window.location.pathname !== PAGE_PATHS[page]) {
+      navigate(PAGE_PATHS[page]);
+    }
+  },
   traceFilter: null,
   setTraceFilter: (correlationId) => set({ traceFilter: correlationId }),
 });

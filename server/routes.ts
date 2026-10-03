@@ -2,7 +2,6 @@ import { Router } from 'express';
 import { readFile, readdir } from 'node:fs/promises';
 import { resolve } from 'node:path';
 import { randomUUID } from 'node:crypto';
-import { SqliteProjectionReader } from './sqlite-projection-reader.js';
 import { PostgresProjectionReader } from './postgres-projection-reader.js';
 import { loadDataSourceConfig } from './data-source-contract.js';
 import {
@@ -64,9 +63,17 @@ const FIXTURES_DIR = resolve(process.env.VITE_FIXTURES_DIR ?? process.env.FIXTUR
 // OMNIDASH_SQLITE_DB_PATH are optional env overrides — not required.
 const dsConfig = loadDataSourceConfig();
 
-const sqliteReader = dsConfig.mode === 'sqlite'
-  ? new SqliteProjectionReader({ dbPath: dsConfig.sqliteDbPath })
-  : null;
+/**
+ * OMN-19981 AC3: the hand-written SQLite reader is deleted. sqlite mode answers this typed refusal instead; the local
+ * store's exposures are served by `onex dashboard` (OMN-19976) and OmniDash reads them in http mode.
+ */
+class SqliteReaderRetiredError extends Error {
+  readonly code = 'sqlite_reader_retired';
+  constructor() {
+    super('sqlite mode no longer reads the store by hand-written SQL; serve its exposures with onex dashboard (OMN-19976) and run OmniDash in http mode');
+    this.name = 'SqliteReaderRetiredError';
+  }
+}
 
 // Only instantiate when mode=postgres AND the contract/overlay resolves the
 // Postgres connection secret. The route layer must not name env vars directly.
@@ -80,7 +87,7 @@ async function readJson(path: string): Promise<unknown> {
 }
 
 // OMN-14152 / OMN-14642 / OMN-14754: 'http' mode holds no local reader (no
-// pgReader, no sqliteReader) — the projection data lives behind a separate
+// pgReader) — the projection data lives behind a separate
 // projection-api HTTP service that OWNS the database (dsConfig.url). The bridge
 // proxies the read verbatim (GET only) so the browser stays same-origin; it
 // forwards NO writes/commands and holds NO direct DB connection or credential.
@@ -150,8 +157,8 @@ async function readProjection(topic: string): Promise<unknown> {
     return pgReader.readProjection(topic);
   }
 
-  if (sqliteReader) {
-    return sqliteReader.readProjection(topic);
+  if (dsConfig.mode === 'sqlite') {
+    throw new SqliteReaderRetiredError();
   }
 
   if (dsConfig.mode === 'postgres') {
@@ -441,6 +448,10 @@ router.get('/projection/:topic', async (req, res) => {
     // this layer can embed the caller-supplied topic in their message. Render
     // the error through a single-line, control-character-stripped projection
     // rather than handing the raw object to console.error.
+    if (err instanceof SqliteReaderRetiredError) {
+      res.status(503).json({ error: err.code, detail: err.message });
+      return;
+    }
     console.error('[routes] /projection/:topic error:', describeError(err));
     res.status(500).json({ error: 'projection read failed' });
   }

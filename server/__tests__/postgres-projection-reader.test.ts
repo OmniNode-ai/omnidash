@@ -46,7 +46,7 @@ describe('PostgresProjectionReader', () => {
     expect(typeof result.generated_at).toBe('string');
   });
 
-  it('returns delegation decisions rows', async () => {
+  it('returns delegation decisions rows for the delegation alias', async () => {
     const fakeRow = {
       id: 1, correlation_id: 'corr-1', session_id: 'sess-1', task_type: 'code',
       delegated_to: 'local', model_name: 'qwen3', quality_gate_passed: true,
@@ -55,7 +55,7 @@ describe('PostgresProjectionReader', () => {
     const client = { query: vi.fn().mockResolvedValue({ rows: [fakeRow] }), release: vi.fn() };
     getMockPool().connect.mockResolvedValue(client);
 
-    const result = await reader.readProjection('onex.snapshot.projection.delegation.decisions.v1');
+    const result = await reader.readProjection('delegation');
 
     expect(result.rows).toHaveLength(1);
     expect(result.rows[0]).toMatchObject({ correlation_id: 'corr-1', model_name: 'qwen3' });
@@ -66,7 +66,7 @@ describe('PostgresProjectionReader', () => {
     const consoleError = vi.spyOn(console, 'error').mockImplementation(() => undefined);
     getMockPool().connect.mockRejectedValue(new Error('ECONNREFUSED'));
 
-    const result = await reader.readProjection('onex.snapshot.projection.delegation.decisions.v1');
+    const result = await reader.readProjection('delegation');
 
     expect(result.rows).toEqual([]);
     expect(consoleError).toHaveBeenCalled();
@@ -104,6 +104,30 @@ describe('PostgresProjectionReader', () => {
     expect(Array.isArray(row.byModel)).toBe(true);
   });
 
+  // Jonah's handoff on OMN-19981 (3376eac0): savings_estimates has no baseline_model column (it is
+  // model_cloud_baseline), and summing raw rows double counts runs written twice before omnimarket#3189.
+  it('reads the baseline from model_cloud_baseline, the column savings_estimates has', async () => {
+    const client = { query: vi.fn().mockResolvedValue({ rows: [{ session_id: 's-1', baseline_model: 'claude-opus-4-6' }] }), release: vi.fn() };
+    getMockPool().connect.mockResolvedValue(client);
+    const result = await reader.readProjection('onex.snapshot.projection.savings.v1');
+    const sql = String(client.query.mock.calls[0]?.[0]);
+    expect(sql).toMatch(/model_cloud_baseline\s+AS\s+baseline_model/);
+    expect(sql).not.toMatch(/^\s*baseline_model,\s*$/m);
+    expect(result.rows).toEqual([{ session_id: 's-1', baseline_model: 'claude-opus-4-6' }]);
+  });
+
+  it.each([
+    ['savings summary', 'onex.snapshot.projection.savings.summary.v1', 0],
+    ['delegation summary total', 'onex.snapshot.projection.delegation.summary.v1', 1],
+  ] as const)('sums savings once per run in the %s (newest row per session_id)', async (_name, topic, call) => {
+    const client = { query: vi.fn().mockResolvedValue({ rows: [{}] }), release: vi.fn() };
+    getMockPool().connect.mockResolvedValue(client);
+    await reader.readProjection(topic);
+    const sql = String(client.query.mock.calls[call]?.[0]);
+    expect(sql).toContain('SUM(savings_usd)');
+    expect(sql).toMatch(/DISTINCT ON \(session_id\)[\s\S]*FROM savings_estimates[\s\S]*ORDER BY session_id, created_at DESC/);
+  });
+
   it('falls back to 0 savings when savings_estimates is not provisioned', async () => {
     const summaryRow = {
       total_events: '5', quality_passed_count: '5', quality_failed_count: '0',
@@ -130,300 +154,24 @@ describe('PostgresProjectionReader', () => {
     expect(row.total_savings_usd).toBe(0);
   });
 
-  it('returns delegation savings projection with runtime token metrics', async () => {
+  it('no longer answers the three topics local pages read from served exposures (OMN-19981)', async () => {
     const client = {
-      query: vi.fn()
-        .mockResolvedValueOnce({ rows: [] })
-        .mockResolvedValueOnce({
-          rows: [{
-            session_id: 'corr-live',
-            task_type: 'test',
-            model_name: 'qwen3-coder',
-            local_cost_usd: '0',
-            cloud_cost_usd: '0.009327',
-            savings_usd: '0.009327',
-            baseline_model: 'claude-opus-4.1',
-            pricing_manifest_version: 'runtime-delegation-events',
-            savings_method: 'measured',
-            usage_source: 'measured',
-            prompt_tokens: '144',
-            completion_tokens: '593',
-            tokens_to_compliance: '737',
-            latency_ms: '3237',
-            created_at: '2026-05-20T12:00:00.000Z',
-          }],
-        }),
+      query: vi.fn().mockResolvedValue({ rows: [{ session_id: 'corr-live', savings_usd: '0.009327' }] }),
       release: vi.fn(),
     };
     getMockPool().connect.mockResolvedValue(client);
 
-    const result = await reader.readProjection('onex.snapshot.projection.delegation.savings.v1');
-
-    expect(result.rows).toHaveLength(1);
-    expect(result.rows[0]).toMatchObject({
-      cumulative_savings_usd: 0.009327,
-      session_count: 1,
-      provisioned: true,
-    });
-    const sessions = result.rows[0]!.sessions as Record<string, unknown>[];
-    // Postgres returns numeric-looking strings; the reader coerces them to numbers.
-    expect(sessions[0]).toMatchObject({
-      session_id: 'corr-live',
-      prompt_tokens: 144,
-      completion_tokens: 593,
-      tokens_to_compliance: 737,
-    });
-    expect(client.query).toHaveBeenCalledWith(expect.stringContaining('FROM savings_estimates'));
-    expect(client.query).toHaveBeenCalledWith(expect.stringContaining('to_jsonb(delegation_events)'));
-  });
-
-  it('exposes the pinned premium counterfactual on delegation savings sessions (OMN-13355)', async () => {
-    const counterfactual = {
-      model: 'claude-opus-4-6',
-      price_in_per_1k: '0.015',
-      price_out_per_1k: '0.075',
-      as_of: '2026-02-01',
-      tokens_in: 144,
-      tokens_out: 593,
-      counterfactual_cost_usd: '0.046635',
-      pricing_source: 'pricing_manifest',
-      measured: false,
-    };
-    const client = {
-      query: vi.fn()
-        .mockResolvedValueOnce({ rows: [] })
-        .mockResolvedValueOnce({
-          rows: [{
-            session_id: 'corr-cf',
-            task_type: 'test',
-            model_name: 'qwen3-coder',
-            local_cost_usd: '0',
-            cloud_cost_usd: '0.046635',
-            savings_usd: '0.046635',
-            baseline_model: 'claude-opus-4.1',
-            pricing_manifest_version: 'runtime-delegation-events',
-            savings_method: 'measured',
-            usage_source: 'measured',
-            prompt_tokens: '144',
-            completion_tokens: '593',
-            tokens_to_compliance: '737',
-            latency_ms: '3237',
-            created_at: '2026-05-20T12:00:00.000Z',
-            premium_counterfactual: counterfactual,
-          }],
-        }),
-      release: vi.fn(),
-    };
-    getMockPool().connect.mockResolvedValue(client);
-
-    const result = await reader.readProjection('onex.snapshot.projection.delegation.savings.v1');
-
-    const sessions = result.rows[0]!.sessions as Record<string, unknown>[];
-    expect(sessions[0]!.premium_counterfactual).toMatchObject({
-      model: 'claude-opus-4-6',
-      as_of: '2026-02-01',
-      counterfactual_cost_usd: '0.046635',
-    });
-    // The auditable column is read from the projection row.
-    expect(client.query).toHaveBeenCalledWith(
-      expect.stringContaining("e->'premium_counterfactual'"),
-    );
-  });
-
-  it('deduplicates materialized and runtime delegation savings rows by session', async () => {
-    const client = {
-      query: vi.fn()
-        .mockResolvedValueOnce({
-          rows: [{
-            session_id: 'sess-merged',
-            task_type: 'qwen3-coder',
-            model_name: 'qwen3-coder',
-            local_cost_usd: '0.001',
-            cloud_cost_usd: '0.010',
-            savings_usd: '0.009',
-            baseline_model: 'claude-opus-4.1',
-            pricing_manifest_version: 'pricing-v1',
-            savings_method: 'measured',
-            usage_source: 'estimated',
-            prompt_tokens: '0',
-            completion_tokens: '0',
-            tokens_to_compliance: null,
-            latency_ms: null,
-            created_at: '2026-05-20T12:00:00.000Z',
-          }],
-        })
-        .mockResolvedValueOnce({
-          rows: [{
-            session_id: 'sess-merged',
-            task_type: 'test',
-            model_name: 'qwen3-coder',
-            local_cost_usd: '0',
-            cloud_cost_usd: '0.010',
-            savings_usd: '0.010',
-            baseline_model: 'claude-opus-4.1',
-            pricing_manifest_version: 'runtime-delegation-events',
-            savings_method: 'measured',
-            usage_source: 'measured',
-            prompt_tokens: '144',
-            completion_tokens: '593',
-            tokens_to_compliance: '737',
-            latency_ms: '3237',
-            created_at: '2026-05-20T12:01:00.000Z',
-          }],
-        }),
-      release: vi.fn(),
-    };
-    getMockPool().connect.mockResolvedValue(client);
-
-    const result = await reader.readProjection('onex.snapshot.projection.delegation.savings.v1');
-
-    expect(result.rows[0]).toMatchObject({
-      cumulative_savings_usd: 0.009,
-      session_count: 1,
-    });
-    const sessions = result.rows[0]!.sessions as Record<string, unknown>[];
-    expect(sessions).toHaveLength(1);
-    // Postgres returns numeric-looking strings; the reader coerces them to numbers.
-    expect(sessions[0]).toMatchObject({
-      session_id: 'sess-merged',
-      savings_usd: 0.009,
-      prompt_tokens: 144,
-      completion_tokens: 593,
-      tokens_to_compliance: 737,
-      latency_ms: 3237,
-      created_at: '2026-05-20T12:01:00.000Z',
-    });
-  });
-
-  it('returns cost savings overview projection from runtime delegation metrics', async () => {
-    const client = {
-      query: vi.fn()
-        .mockResolvedValueOnce({ rows: [] })
-        .mockResolvedValueOnce({
-          rows: [{
-            session_id: 'corr-live',
-            task_type: 'test',
-            model_name: 'qwen3-coder',
-            local_cost_usd: '0',
-            cloud_cost_usd: '0.009327',
-            savings_usd: '0.009327',
-            baseline_model: 'claude-opus-4.1',
-            pricing_manifest_version: 'runtime-delegation-events',
-            savings_method: 'measured',
-            usage_source: 'measured',
-            prompt_tokens: '144',
-            completion_tokens: '593',
-            tokens_to_compliance: '737',
-            latency_ms: '3237',
-            created_at: '2026-05-20T12:00:00.000Z',
-          }],
-        }),
-      release: vi.fn(),
-    };
-    getMockPool().connect.mockResolvedValue(client);
-
-    const result = await reader.readProjection('onex.snapshot.projection.cost.savings-overview.v1');
-
-    expect(result.rows).toHaveLength(1);
-    expect(result.rows[0]).toMatchObject({
-      window: '24h',
-      total_cost_usd: 0,
-      total_baseline_cost_usd: 0.009327,
-      total_savings_usd: 0.009327,
-      savings_rate: 1,
-      tokens_total: 737,
-      local_token_pct: 1,
-      provisioned: true,
-    });
-    const overviewRows = result.rows[0]!.rows as Record<string, unknown>[];
-    expect(overviewRows[0]).toMatchObject({
-      display_name: 'qwen3-coder',
-      execution_mode: 'delegated',
-      task_count: 1,
-      tokens_total: 737,
-    });
-    const recentRuns = result.rows[0]!.recent_runs as Record<string, unknown>[];
-    expect(recentRuns[0]).toMatchObject({
-      session_id: 'corr-live',
-      task_type: 'test',
-      total_tokens: 737,
-      token_provenance: 'measured',
-    });
-    expect(result.rows[0]).toMatchObject({
-      measured_run_count: 1,
-      zero_token_run_count: 0,
-    });
-  });
-
-  it('omits zero-token historical rows from recent delegation runs', async () => {
-    const client = {
-      query: vi.fn()
-        .mockResolvedValueOnce({ rows: [] })
-        .mockResolvedValueOnce({
-          rows: [
-            {
-              session_id: 'corr-unmetered',
-              task_type: 'test',
-              model_name: 'qwen3-coder',
-              local_cost_usd: '0',
-              cloud_cost_usd: '0.004122',
-              savings_usd: '0.004122',
-              baseline_model: 'claude-opus-4.1',
-              pricing_manifest_version: 'runtime-delegation-events',
-              savings_method: 'measured',
-              usage_source: 'unknown',
-              prompt_tokens: '0',
-              completion_tokens: '0',
-              tokens_to_compliance: null,
-              latency_ms: '1414',
-              created_at: '2026-05-20T12:01:00.000Z',
-            },
-            {
-              session_id: 'corr-metered',
-              task_type: 'test',
-              model_name: 'qwen3-coder',
-              local_cost_usd: '0',
-              cloud_cost_usd: '0.004122',
-              savings_usd: '0.004122',
-              baseline_model: 'claude-opus-4.1',
-              pricing_manifest_version: 'runtime-delegation-events',
-              savings_method: 'measured',
-              usage_source: 'measured',
-              prompt_tokens: '74',
-              completion_tokens: '260',
-              tokens_to_compliance: null,
-              latency_ms: '1347',
-              created_at: '2026-05-20T12:00:00.000Z',
-            },
-          ],
-        }),
-      release: vi.fn(),
-    };
-    getMockPool().connect.mockResolvedValue(client);
-
-    const result = await reader.readProjection('onex.snapshot.projection.cost.savings-overview.v1');
-
-    expect(result.rows[0]).toMatchObject({
-      total_baseline_cost_usd: 0.004122,
-      total_savings_usd: 0.004122,
-      tokens_total: 334,
-      measured_run_count: 1,
-      zero_token_run_count: 1,
-    });
-    const overviewRows = result.rows[0]!.rows as Record<string, unknown>[];
-    expect(overviewRows).toHaveLength(1);
-    expect(overviewRows[0]).toMatchObject({
-      display_name: 'qwen3-coder',
-      task_count: 1,
-      tokens_total: 334,
-    });
-    const recentRuns = result.rows[0]!.recent_runs as Record<string, unknown>[];
-    expect(recentRuns).toHaveLength(1);
-    expect(recentRuns[0]).toMatchObject({
-      session_id: 'corr-metered',
-      total_tokens: 334,
-      token_provenance: 'measured',
-    });
+    for (const topic of [
+      'onex.snapshot.projection.delegation.savings.v1',
+      'onex.snapshot.projection.cost.savings-overview.v1',
+      'onex.snapshot.projection.delegation.decisions.v1',
+    ]) {
+      const result = await reader.readProjection(topic);
+      expect(result.rows, topic).toEqual([]);
+    }
+    // No SQL ran for any of them: the folds are gone, not returning nothing.
+    expect(client.query).not.toHaveBeenCalledWith(expect.stringContaining('FROM savings_estimates'));
+    expect(client.query).not.toHaveBeenCalledWith(expect.stringContaining('FROM delegation_events'));
   });
 
   it('returns metered delegation token usage as the widget projection shape', async () => {
@@ -648,7 +396,7 @@ describe('PostgresProjectionReader', () => {
     getMockPool().connect.mockResolvedValue(client);
     vi.spyOn(console, 'error').mockImplementation(() => undefined);
 
-    await reader.readProjection('onex.snapshot.projection.delegation.decisions.v1');
+    await reader.readProjection('delegation');
 
     expect(client.release).toHaveBeenCalled();
   });
@@ -663,7 +411,7 @@ describe('PostgresProjectionReader', () => {
       getMockPool().connect.mockResolvedValue(client);
 
       await runWithTenantContext({ tenantId: 'tenant-xyz', subject: null }, () =>
-        reader.readProjection('onex.snapshot.projection.delegation.decisions.v1'),
+        reader.readProjection('delegation'),
       );
 
       expect(client.query).toHaveBeenCalledWith(
@@ -779,7 +527,7 @@ describe('PostgresProjectionReader', () => {
       getMockPool().connect.mockResolvedValue(client);
 
       // No runWithTenantContext wrapper — simulates an unprotected path
-      await reader.readProjection('onex.snapshot.projection.delegation.decisions.v1');
+      await reader.readProjection('delegation');
 
       const calls = client.query.mock.calls as [string, unknown[]][];
       const setConfigCall = calls.find(([sql]) => sql.includes('set_config'));
@@ -791,7 +539,7 @@ describe('PostgresProjectionReader', () => {
       getMockPool().connect.mockResolvedValue(client);
 
       await runWithTenantContext({ tenantId: 'tenant-xyz', subject: null }, () =>
-        reader.readProjection('onex.snapshot.projection.delegation.decisions.v1'),
+        reader.readProjection('delegation'),
       );
 
       expect(client.query).toHaveBeenCalledWith('RESET app.tenant_id');

@@ -1,0 +1,351 @@
+{
+  "source": "GET /projections on the .201 lab projection API (lakshman lane), read-only",
+  "captured_at": "2026-10-02T08:43:29Z",
+  "exposures": [
+    {
+      "topic": "delegation",
+      "status": "degraded",
+      "degraded_reason": "not_yet_bus_backed"
+    },
+    {
+      "topic": "onex.evt.github.pr-merged.v1",
+      "status": "degraded",
+      "degraded_reason": "not_yet_bus_backed"
+    },
+    {
+      "topic": "onex.evt.omnimarket.merge-state-transition.v1",
+      "status": "degraded",
+      "degraded_reason": "not_yet_bus_backed"
+    },
+    {
+      "topic": "onex.evt.omnimarket.node-generation-completed.v1",
+      "status": "degraded",
+      "degraded_reason": "not_yet_bus_backed"
+    },
+    {
+      "topic": "onex.evt.omnimarket.node-generation-failed.v1",
+      "status": "degraded",
+      "degraded_reason": "not_yet_bus_backed"
+    },
+    {
+      "topic": "onex.evt.omnimarket.projection-delegation-events.v1",
+      "status": "degraded",
+      "degraded_reason": "not_yet_bus_backed"
+    },
+    {
+      "topic": "onex.evt.omnimarket.renderer-capability-projection-snapshot.v1",
+      "status": "degraded",
+      "degraded_reason": "not_yet_bus_backed"
+    },
+    {
+      "topic": "onex.snapshot.projection.ab-compare.v1",
+      "status": "degraded",
+      "degraded_reason": "not_yet_bus_backed"
+    },
+    {
+      "topic": "onex.snapshot.projection.agent-routing-decision.v1",
+      "status": "degraded",
+      "degraded_reason": "not_yet_bus_backed"
+    },
+    {
+      "topic": "onex.snapshot.projection.baselines.quality.v1",
+      "status": "degraded",
+      "degraded_reason": "not_yet_bus_backed"
+    },
+    {
+      "topic": "onex.snapshot.projection.baselines.roi.v1",
+      "status": "degraded",
+      "degraded_reason": "not_yet_bus_backed"
+    },
+    {
+      "topic": "onex.snapshot.projection.board-probe-results.v1",
+      "status": "ok",
+      "degraded_reason": null
+    },
+    {
+      "topic": "onex.snapshot.projection.capability-scores.v1",
+      "status": "degraded",
+      "degraded_reason": "not_yet_bus_backed"
+    },
+    {
+      "topic": "onex.snapshot.projection.capsules.v1",
+      "status": "degraded",
+      "degraded_reason": "not_yet_bus_backed"
+    },
+    {
+      "topic": "onex.snapshot.projection.consumer-flow.v1",
+      "status": "ok",
+      "degraded_reason": null
+    },
+    {
+      "topic": "onex.snapshot.projection.context.experiment-scores.v1",
+      "status": "degraded",
+      "degraded_reason": "not_yet_bus_backed"
+    },
+    {
+      "topic": "onex.snapshot.projection.cost.by_repo.v1",
+      "status": "degraded",
+      "degraded_reason": "not_yet_bus_backed"
+    },
+    {
+      "topic": "onex.snapshot.projection.cost.savings-overview.v1",
+      "status": "ok",
+      "degraded_reason": null
+    },
+    {
+      "topic": "onex.snapshot.projection.cost.summary.v1",
+      "status": "degraded",
+      "degraded_reason": "not_yet_bus_backed"
+    },
+    {
+      "topic": "onex.snapshot.projection.cost.token_usage.v1",
+      "status": "degraded",
+      "degraded_reason": "not_yet_bus_backed"
+    },
+    {
+      "topic": "onex.snapshot.projection.delegation.acceptance-eval.v1",
+      "status": "ok",
+      "degraded_reason": null
+    },
+    {
+      "topic": "onex.snapshot.projection.delegation.budget-state.v1",
+      "status": "degraded",
+      "degraded_reason": "not_yet_bus_backed"
+    },
+    {
+      "topic": "onex.snapshot.projection.delegation.correlation-trace.v1",
+      "status": "degraded",
+      "degraded_reason": "not_yet_bus_backed"
+    },
+    {
+      "topic": "onex.snapshot.projection.delegation.decisions.v1",
+      "status": "ok",
+      "degraded_reason": null
+    },
+    {
+      "topic": "onex.snapshot.projection.delegation.inference-response-text.v1",
+      "status": "degraded",
+      "degraded_reason": "not_yet_bus_backed"
+    },
+    {
+      "topic": "onex.snapshot.projection.delegation.judge-verdicts.v1",
+      "status": "degraded",
+      "degraded_reason": "not_yet_bus_backed"
+    },
+    {
+      "topic": "onex.snapshot.projection.delegation.model-routing.v1",
+      "status": "ok",
+      "degraded_reason": null
+    },
+    {
+      "topic": "onex.snapshot.projection.delegation.quality-gate.v1",
+      "status": "ok",
+      "degraded_reason": null
+    },
+    {
+      "topic": "onex.snapshot.projection.delegation.savings-series.v1",
+      "status": "degraded",
+      "degraded_reason": "not_yet_bus_backed"
+    },
+    {
+      "topic": "onex.snapshot.projection.delegation.savings.v1",
+      "status": "ok",
+      "degraded_reason": null
+    },
+    {
+      "topic": "onex.snapshot.projection.delegation.summary.v1",
+      "status": "ok",
+      "degraded_reason": null
+    },
+    {
+      "topic": "onex.snapshot.projection.delegation.token-usage.v1",
+      "status": "ok",
+      "degraded_reason": null
+    },
+    {
+      "topic": "onex.snapshot.projection.dep-health.findings.v1",
+      "status": "degraded",
+      "degraded_reason": "not_yet_bus_backed"
+    },
+    {
+      "topic": "onex.snapshot.projection.deployment-evidence.v1",
+      "status": "degraded",
+      "degraded_reason": "not_yet_bus_backed"
+    },
+    {
+      "topic": "onex.snapshot.projection.deployment-readiness.v1",
+      "status": "degraded",
+      "degraded_reason": "not_yet_bus_backed"
+    },
+    {
+      "topic": "onex.snapshot.projection.event_chain.v1",
+      "status": "degraded",
+      "degraded_reason": "not_yet_bus_backed"
+    },
+    {
+      "topic": "onex.snapshot.projection.evidence_pipeline.correlations.v1",
+      "status": "degraded",
+      "degraded_reason": "not_yet_bus_backed"
+    },
+    {
+      "topic": "onex.snapshot.projection.evidence_pipeline.live_events.v1",
+      "status": "degraded",
+      "degraded_reason": "not_yet_bus_backed"
+    },
+    {
+      "topic": "onex.snapshot.projection.evidence_pipeline.readiness.v1",
+      "status": "degraded",
+      "degraded_reason": "not_yet_bus_backed"
+    },
+    {
+      "topic": "onex.snapshot.projection.evidence_pipeline.stages.v1",
+      "status": "degraded",
+      "degraded_reason": "not_yet_bus_backed"
+    },
+    {
+      "topic": "onex.snapshot.projection.gate.activity.v1",
+      "status": "degraded",
+      "degraded_reason": "not_yet_bus_backed"
+    },
+    {
+      "topic": "onex.snapshot.projection.gate.metrics.v1",
+      "status": "degraded",
+      "degraded_reason": "not_yet_bus_backed"
+    },
+    {
+      "topic": "onex.snapshot.projection.hook.ledger.v1",
+      "status": "degraded",
+      "degraded_reason": "not_yet_bus_backed"
+    },
+    {
+      "topic": "onex.snapshot.projection.intent-classification.distribution.v1",
+      "status": "degraded",
+      "degraded_reason": "not_yet_bus_backed"
+    },
+    {
+      "topic": "onex.snapshot.projection.intent-classification.v1",
+      "status": "degraded",
+      "degraded_reason": "not_yet_bus_backed"
+    },
+    {
+      "topic": "onex.snapshot.projection.lab.lane-health.v1",
+      "status": "ok",
+      "degraded_reason": null
+    },
+    {
+      "topic": "onex.snapshot.projection.live-events.v1",
+      "status": "ok",
+      "degraded_reason": null
+    },
+    {
+      "topic": "onex.snapshot.projection.mcp-tools.v1",
+      "status": "degraded",
+      "degraded_reason": "not_yet_bus_backed"
+    },
+    {
+      "topic": "onex.snapshot.projection.omnimarket.instruction-eval-aggregate.v1",
+      "status": "degraded",
+      "degraded_reason": "not_yet_bus_backed"
+    },
+    {
+      "topic": "onex.snapshot.projection.overnight.v1",
+      "status": "degraded",
+      "degraded_reason": "not_yet_bus_backed"
+    },
+    {
+      "topic": "onex.snapshot.projection.pattern-learning.v1",
+      "status": "degraded",
+      "degraded_reason": "not_yet_bus_backed"
+    },
+    {
+      "topic": "onex.snapshot.projection.pr-lifecycle-ledger.v1",
+      "status": "degraded",
+      "degraded_reason": "not_yet_bus_backed"
+    },
+    {
+      "topic": "onex.snapshot.projection.prod-promotion-gate.v1",
+      "status": "ok",
+      "degraded_reason": null
+    },
+    {
+      "topic": "onex.snapshot.projection.receipt-gate.v1",
+      "status": "degraded",
+      "degraded_reason": "not_yet_bus_backed"
+    },
+    {
+      "topic": "onex.snapshot.projection.registration.v1",
+      "status": "ok",
+      "degraded_reason": null
+    },
+    {
+      "topic": "onex.snapshot.projection.routing-decision.v1",
+      "status": "degraded",
+      "degraded_reason": "not_yet_bus_backed"
+    },
+    {
+      "topic": "onex.snapshot.projection.runner-fleet.v1",
+      "status": "ok",
+      "degraded_reason": null
+    },
+    {
+      "topic": "onex.snapshot.projection.runtime-error-fingerprints.v1",
+      "status": "ok",
+      "degraded_reason": null
+    },
+    {
+      "topic": "onex.snapshot.projection.sandbox.decisions.v1",
+      "status": "degraded",
+      "degraded_reason": "not_yet_bus_backed"
+    },
+    {
+      "topic": "onex.snapshot.projection.savings.v1",
+      "status": "degraded",
+      "degraded_reason": "not_yet_bus_backed"
+    },
+    {
+      "topic": "onex.snapshot.projection.session.replay.v1",
+      "status": "ok",
+      "degraded_reason": null
+    },
+    {
+      "topic": "onex.snapshot.projection.skill-executions.v1",
+      "status": "degraded",
+      "degraded_reason": "not_yet_bus_backed"
+    },
+    {
+      "topic": "onex.snapshot.projection.swarm.runs.v1",
+      "status": "degraded",
+      "degraded_reason": "not_yet_bus_backed"
+    },
+    {
+      "topic": "onex.snapshot.projection.tenant-credentials.v1",
+      "status": "ok",
+      "degraded_reason": null
+    },
+    {
+      "topic": "onex.snapshot.projection.topic-activity.v1",
+      "status": "ok",
+      "degraded_reason": null
+    },
+    {
+      "topic": "onex.snapshot.projection.traces.v1",
+      "status": "degraded",
+      "degraded_reason": "not_yet_bus_backed"
+    },
+    {
+      "topic": "onex.snapshot.projection.usage-by-model-day.v1",
+      "status": "ok",
+      "degraded_reason": null
+    },
+    {
+      "topic": "onex.snapshot.projection.voice.sessions.v1",
+      "status": "degraded",
+      "degraded_reason": "not_yet_bus_backed"
+    },
+    {
+      "topic": "onex.snapshot.projection.work.events.v1",
+      "status": "ok",
+      "degraded_reason": null
+    }
+  ]
+}

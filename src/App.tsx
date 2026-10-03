@@ -1,4 +1,5 @@
-import { lazy, Suspense } from 'react';
+import { lazy, Suspense, useEffect } from 'react';
+import { Link, useLocation } from 'wouter';
 import { FrameLayout } from './components/frame/FrameLayout';
 import { Header } from './components/frame/Header';
 import { DashboardView } from './pages/DashboardView';
@@ -9,6 +10,7 @@ import { useFrameStore } from './store/store';
 import { CommandPalette, useCommandPalette } from './components/dashboard/command-dispatch/CommandPalette';
 import type { AppPage } from './store/types';
 import { LocalDashboardPage } from './pages/LocalDashboardPage';
+import { PAGE_PATHS, pageForPath } from './navigation/page-routes';
 
 // OMN-12943 — ported event-dash views, lazily loaded so they add zero weight to
 // the default dashboard bundle. Existing static page imports above are untouched.
@@ -32,20 +34,40 @@ function PageContent({ page }: { page: AppPage }) {
     case 'sea-control':         return <Suspense fallback={null}><SeaControlPage /></Suspense>;
     case 'lab':                 return <Suspense fallback={null}><LabPage /></Suspense>;
     case 'local-overview':      return <LocalDashboardPage pageName="overview" />;
-    case 'local-runs':          return <LocalDashboardPage pageName="runs" />;
+    case 'local-runs':          return <LocalDashboardPage pageName="runs" syncUrl />;
+    case 'local-workflow':      return <LocalDashboardPage pageName="workflow" />;
+    case 'local-usage':         return <LocalDashboardPage pageName="usage" />;
+    case 'local-credentials':   return <LocalDashboardPage pageName="credentials" />;
+    case 'local-api-keys':      return <LocalDashboardPage pageName="api-keys" />;
     default:        return <DashboardView />;
   }
 }
 
 export function App() {
-  const activePage = useFrameStore((s) => s.activePage);
+  const [location, navigate] = useLocation();
+  const page = pageForPath(location);
   const { isOpen, close } = useCommandPalette();
+
+  useEffect(() => {
+    if (page === null) return;
+    // URL owns navigation; the store mirrors it for existing command/workbench consumers.
+    useFrameStore.setState({ activePage: page });
+    if (location !== PAGE_PATHS[page]) {
+      navigate(`${PAGE_PATHS[page]}${window.location.search}${window.location.hash}`, { replace: true });
+    }
+  }, [location, navigate, page]);
 
   return (
     <>
       <FrameLayout>
         <Header />
-        <PageContent page={activePage} />
+        {page === null ? (
+          <main className="local-dashboard-page">
+            <h1>Page not found</h1>
+            <p>This URL does not match a dashboard page.</p>
+            <Link href="/overview">Go to Overview</Link>
+          </main>
+        ) : <PageContent page={page} />}
       </FrameLayout>
       <AgentOrchestrator />
       {isOpen && <CommandPalette onClose={close} />}
