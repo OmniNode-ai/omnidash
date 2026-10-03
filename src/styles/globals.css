@@ -124,10 +124,14 @@
     --ink-3: oklch(62% 0.01 260);
     --line: oklch(90% 0.005 260);
     --line-2: oklch(94% 0.004 260);
-    --sidebar: oklch(18% 0.008 260);
-    --sidebar-ink: oklch(92% 0.005 260);
-    --sidebar-ink-2: oklch(65% 0.01 260);
-    --sidebar-line: oklch(28% 0.01 260);
+    --sidebar: var(--panel-2);
+    --sidebar-ink: var(--ink);
+    --sidebar-ink-2: var(--ink-2);
+    --sidebar-line: var(--line);
+    --sidebar-border: var(--sidebar-line);
+    --sidebar-hover: var(--line-2);
+    --sidebar-hover-strong: var(--line);
+    --sidebar-input: var(--panel);
 
     --status-ok: oklch(70% 0.15 145);
     --status-warn: oklch(78% 0.15 75);
@@ -211,6 +215,9 @@
     --sidebar-ink: oklch(94% 0.005 260);
     --sidebar-ink-2: oklch(62% 0.01 260);
     --sidebar-line: oklch(22% 0.01 260);
+    --sidebar-hover: oklch(22% 0.01 260);
+    --sidebar-hover-strong: oklch(36% 0.01 260);
+    --sidebar-input: oklch(28% 0.01 260);
 
     --brand-soft: oklch(32% 0.10 var(--accent-h));
     --brand-ink: oklch(85% 0.14 var(--accent-h));

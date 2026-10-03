@@ -31,13 +31,14 @@ const SIX = [
 
 describe('Sidebar local pages (FR-3, F23)', () => {
   beforeEach(() => {
+    window.history.replaceState(null, '', '/');
     useFrameStore.setState({ dashboards: [], activeDashboardId: null, activeDashboard: null, sidebarCollapsed: false, activePage: 'local-overview' });
   });
 
   it('lists the six local pages first, in the required order', () => {
     render(<Sidebar />, { wrapper: Wrapper });
     const group = screen.getByRole('navigation', { name: 'Local' });
-    const items = within(group).getAllByRole('button');
+    const items = within(group).getAllByRole('link');
     expect(items.map((item) => item.getAttribute('data-testid'))).toEqual(SIX.map(([page]) => `nav-${page}`));
     expect(items.map((item) => item.querySelector('.dash-name')?.textContent)).toEqual(SIX.map(([, label]) => label));
     // First in the sidebar: the Local group precedes the dashboards list.

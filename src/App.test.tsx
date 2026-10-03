@@ -15,6 +15,7 @@ const manifest: RegistryManifest = {
 
 describe('App', () => {
   beforeEach(() => {
+    window.history.replaceState(null, '', '/dashboard');
     // These cases render the dashboard canvas; since OMN-19981 Amendment 6 the app opens on the local Overview.
     useFrameStore.setState({ editMode: false, activeDashboard: null, globalFilters: {}, activePage: 'dashboard' });
     const dash = createEmptyDashboard('My Dashboard', 'jonah');

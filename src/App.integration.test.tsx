@@ -27,6 +27,7 @@ function renderApp() {
 
 describe('Part 1 smoke proof — frame liveness, provider wiring, theme switching, local state/event behavior', () => {
   beforeEach(() => {
+    window.history.replaceState(null, '', '/dashboard');
     // These cases render the dashboard canvas; since OMN-19981 Amendment 6 the app opens on the local Overview.
     useFrameStore.setState({ editMode: false, activeDashboard: null, globalFilters: {}, activePage: 'dashboard' });
     const dash = createEmptyDashboard('Integration Test Dashboard', 'jonah');
@@ -46,14 +47,14 @@ describe('Part 1 smoke proof — frame liveness, provider wiring, theme switchin
   it('theme toggle switches between dark and light', async () => {
     renderApp();
     const themeBtn = screen.getByRole('button', { name: /theme/i });
-    expect(themeBtn.textContent).toBe('dark');
+    expect(themeBtn).toHaveAttribute('title', 'Switch to light theme');
 
     await userEvent.click(themeBtn);
-    expect(themeBtn.textContent).toBe('light');
+    expect(themeBtn).toHaveAttribute('title', 'Switch to dark theme');
     expect(document.body.classList.contains('theme-light')).toBe(true);
 
     await userEvent.click(themeBtn);
-    expect(themeBtn.textContent).toBe('dark');
+    expect(themeBtn).toHaveAttribute('title', 'Switch to light theme');
     expect(document.body.classList.contains('theme-dark')).toBe(true);
   });
 

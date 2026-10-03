@@ -116,6 +116,35 @@ describe('LocalDashboardPage widget states (F26, F27)', () => {
     expect(screen.queryByRole('alert', { name: /page/i })).not.toBeInTheDocument();
   });
 
+  it('an unserved secondary binding blanks the widget and names that exposure', async () => {
+    harness.reachable = new Set([DECISIONS]);
+    render(<LocalDashboardPage pageName="runs" />);
+    await settle();
+
+    const runs = screen.getByRole('heading', { name: 'Recent runs' }).closest('article')!;
+    expect(within(runs).getByRole('status')).toHaveTextContent(`Not served: ${SAVINGS}`);
+    expect(within(runs).queryByRole('table')).not.toBeInTheDocument();
+    expect(within(runs).queryByText('run-1')).not.toBeInTheDocument();
+  });
+
+  it('a repeated topic binding renders one failure status with no duplicate React key', async () => {
+    harness.reachable = new Set([DECISIONS, SAVINGS, OVERVIEW]);
+    harness.answer = (topic) => topic === OVERVIEW
+      ? Promise.reject(new Error(`Projection ${OVERVIEW} failed: HTTP 503 Service Unavailable`))
+      : Promise.resolve(topic === DECISIONS ? [decisionRow('run-1')] : [{ sessions: [] }]);
+    const consoleError = vi.spyOn(console, 'error').mockImplementation(() => {});
+    try {
+      render(<LocalDashboardPage pageName="overview" />);
+      await settle();
+
+      const measured = screen.getByRole('heading', { name: 'Measured runs' }).closest('article')!;
+      expect(within(measured).getAllByRole('alert')).toHaveLength(1);
+      expect(consoleError).not.toHaveBeenCalledWith(expect.stringContaining('same key'));
+    } finally {
+      consoleError.mockRestore();
+    }
+  });
+
   it('a read error shows the exposure and the HTTP status, not a bare message', async () => {
     harness.reachable = new Set([DECISIONS, SAVINGS, OVERVIEW]);
     harness.answer = (topic) => topic === OVERVIEW

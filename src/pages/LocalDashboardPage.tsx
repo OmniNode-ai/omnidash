@@ -1,8 +1,11 @@
 import { useEffect, useId, useRef, useState } from 'react';
+import { useLocation, useSearch } from 'wouter';
 import { createSnapshotSource } from '@/data-source';
 import { fetchExposureCensus } from '@/data-source/exposure-census';
 import { resolveEffectiveDataSource } from '@/data-source/data-source-override';
 import { resolveConfiguredTenant } from '@/data-source/projection-tenant';
+import { subscribeLocalPageRefresh } from '@/services/local-page-refresh';
+import { DEFAULT_RUNS_VIEW, readRunsSearch, writeRunsSearch, type RunsViewState } from '@/navigation/runs-url-state';
 import '@/styles/local-dashboard.css';
 import {
   loadLocalPageConfig,
@@ -18,6 +21,7 @@ import {
 
 interface LocalDashboardPageProps {
   pageName: LocalPageName;
+  syncUrl?: boolean;
 }
 
 function isMissing(value: unknown): boolean {
@@ -317,6 +321,7 @@ interface RunsTableProps {
   now?: number;
   /** The widget's declared page_size. */
   pageSize?: number;
+  syncUrl?: boolean;
 }
 
 /** A row whose served data_source names anything but real data is fixture data (FR-2). */
@@ -325,13 +330,14 @@ function isFixture(decision: Row): boolean {
 }
 
 /** RU-1: every served run with its status, cause and savings, filtered by status, cause, model and window, paged. */
-export function RunsTable({ decisions, sessions, now = Date.now(), pageSize = 25 }: RunsTableProps) {
+export function RunsTable({ decisions, sessions, now = Date.now(), pageSize = 25, syncUrl = false }: RunsTableProps) {
   const id = useId();
-  const [status, setStatus] = useState('all');
-  const [cause, setCause] = useState('all');
-  const [model, setModel] = useState('all');
-  const [span, setSpan] = useState('all');
-  const [pageIndex, setPageIndex] = useState(0);
+  const search = useSearch();
+  const [, navigate] = useLocation();
+  const [localView, setLocalView] = useState<RunsViewState>(DEFAULT_RUNS_VIEW);
+  const view = syncUrl ? readRunsSearch(search) : localView;
+  const { status, cause, model, span } = view;
+  const pageIndex = view.page - 1;
   const bySession = indexBy(sessions, 'session_id');
   const runs = newestFirst(decisions);
   const models = [...new Set(runs.map((run) => modelOrUnknown(run.model_name)))].sort();
@@ -344,32 +350,45 @@ export function RunsTable({ decisions, sessions, now = Date.now(), pageSize = 25
   const pages = Math.max(1, Math.ceil(shown.length / pageSize));
   const current = Math.min(pageIndex, pages - 1);
   const page = shown.slice(current * pageSize, (current + 1) * pageSize);
-  const filter = (setter: (value: string) => void) => (event: { target: { value: string } }) => {
-    setter(event.target.value);
-    setPageIndex(0);
+  const canonicalSearch = writeRunsSearch(search, { ...view, page: current + 1 });
+  useEffect(() => {
+    if (syncUrl && canonicalSearch !== search.replace(/^\?/, '')) {
+      navigate(`/runs${canonicalSearch ? `?${canonicalSearch}` : ''}`, { replace: true });
+    }
+  }, [canonicalSearch, navigate, search, syncUrl]);
+  const updateView = (change: Partial<RunsViewState>) => {
+    const next = { ...view, ...change };
+    if (syncUrl) {
+      const query = writeRunsSearch(search, next);
+      navigate(`/runs${query ? `?${query}` : ''}`);
+    } else setLocalView(next);
   };
+  const filter = (key: 'status' | 'cause' | 'model' | 'span') => (event: { target: { value: string } }) =>
+    updateView({ [key]: event.target.value, page: 1 });
   return (
     <>
       <div className="local-dashboard-filters">
         <label htmlFor={`${id}-status`}>Status</label>
-        <select id={`${id}-status`} value={status} onChange={filter(setStatus)}>
+        <select id={`${id}-status`} value={status} onChange={filter('status')}>
           <option value="all">All</option>
           <option value="passed">passed</option>
           <option value="failed">failed</option>
           <option value="Not recorded">Not recorded</option>
         </select>
         <label htmlFor={`${id}-cause`}>Cause</label>
-        <select id={`${id}-cause`} value={cause} onChange={filter(setCause)}>
+        <select id={`${id}-cause`} value={cause} onChange={filter('cause')}>
           <option value="all">All</option>
+          {cause !== 'all' && !causes.includes(cause) && <option value={cause}>{cause} (not in current data)</option>}
           {causes.map((name) => <option key={name} value={name}>{name}</option>)}
         </select>
         <label htmlFor={`${id}-model`}>Model</label>
-        <select id={`${id}-model`} value={model} onChange={filter(setModel)}>
+        <select id={`${id}-model`} value={model} onChange={filter('model')}>
           <option value="all">All</option>
+          {model !== 'all' && !models.includes(model) && <option value={model}>{model} (not in current data)</option>}
           {models.map((name) => <option key={name} value={name}>{name}</option>)}
         </select>
         <label htmlFor={`${id}-window`}>Window</label>
-        <select id={`${id}-window`} value={span} onChange={filter(setSpan)}>
+        <select id={`${id}-window`} value={span} onChange={filter('span')}>
           <option value="all">All time</option>
           <option value="today">Today (UTC)</option>
         </select>
@@ -416,8 +435,8 @@ export function RunsTable({ decisions, sessions, now = Date.now(), pageSize = 25
           </div>
           <div className="local-dashboard-pager">
             <span>{`Runs ${current * pageSize + 1}–${current * pageSize + page.length} of ${shown.length}`}</span>
-            <button type="button" aria-label="Previous page" disabled={current === 0} onClick={() => setPageIndex(current - 1)}>Previous</button>
-            <button type="button" aria-label="Next page" disabled={current >= pages - 1} onClick={() => setPageIndex(current + 1)}>Next</button>
+            <button type="button" aria-label="Previous page" disabled={current === 0} onClick={() => updateView({ page: current })}>Previous</button>
+            <button type="button" aria-label="Next page" disabled={current >= pages - 1} onClick={() => updateView({ page: current + 2 })}>Next</button>
           </div>
         </>
       )}
@@ -532,10 +551,11 @@ function rawRowsFor(
 }
 
 /** The renderer for a table component: its first binding's rows, joined to its second binding by a served id. */
-function TableComponent({ component, snapshots, pageSize }: {
+function TableComponent({ component, snapshots, pageSize, syncUrl }: {
   component: LocalPageDocument['components'][number];
   snapshots: readonly BoundProjectionSnapshot[];
   pageSize: number;
+  syncUrl: boolean;
 }) {
   const rows = rowsForLocalComponent(component, snapshots);
   const lookup = rowsForLocalBinding(component, snapshots, 1);
@@ -550,7 +570,26 @@ function TableComponent({ component, snapshots, pageSize }: {
     const first = rawRowsFor(component, snapshots, 0)[0];
     return <LocalIdentity row={first && typeof first === 'object' ? (first as Record<string, unknown>) : null} />;
   }
-  return rows.length === 0 ? <NoRunsYet /> : <RunsTable decisions={rows} sessions={lookup} pageSize={pageSize} />;
+  return rows.length === 0 ? <NoRunsYet /> : <RunsTable decisions={rows} sessions={lookup} pageSize={pageSize} syncUrl={syncUrl} />;
+}
+
+/** Resolve a widget's bindings once per exposure; contracts can request several fields from one topic. */
+function boundSnapshotsFor(
+  component: LocalPageDocument['components'][number],
+  snapshots: readonly BoundProjectionSnapshot[],
+): BoundProjectionSnapshot[] {
+  const seen = new Set<string>();
+  const bound: BoundProjectionSnapshot[] = [];
+  for (const binding of component.data_bindings ?? []) {
+    const topic = binding.projection_topic;
+    if (seen.has(topic)) continue;
+    const snapshot = snapshots.find((candidate) => candidate.topic === topic);
+    if (snapshot) {
+      seen.add(topic);
+      bound.push(snapshot);
+    }
+  }
+  return bound;
 }
 
 /** One widget's read state: the failure of any binding it reads, and how old its data is (requirements, section 2). */
@@ -560,12 +599,11 @@ function WidgetReadState({ component, snapshots, now, interval }: {
   now: number;
   interval: number;
 }) {
-  const bound = (component.data_bindings ?? [])
-    .map((binding) => snapshots.find((snapshot) => snapshot.topic === binding.projection_topic))
-    .filter((snapshot): snapshot is BoundProjectionSnapshot => snapshot !== undefined);
+  const bound = boundSnapshotsFor(component, snapshots);
   const primary = bound[0];
   if (!primary) return null;
-  const failures = bound.filter((snapshot) => snapshot.failure && snapshot.failure.kind !== 'not-served');
+  const failures = bound.filter((snapshot) => snapshot.failure
+    && (snapshot.failure.kind !== 'not-served' || snapshot.lastGoodAt));
   const readAt = primary.failure ? primary.lastGoodAt ?? null : primary.readAt;
   const stale = readAt !== null && now - timeOf(readAt) > 2 * interval * 1000;
   return (
@@ -583,25 +621,23 @@ function WidgetReadState({ component, snapshots, now, interval }: {
   );
 }
 
-/** A component whose first binding is not served (and has no last good rows) says which exposure, nothing else. */
+/** A component with any unavailable binding and no last good read names the unavailable exposure. */
 function notServedTopic(
   component: LocalPageDocument['components'][number],
   snapshots: readonly BoundProjectionSnapshot[],
 ): string | null {
-  const topic = component.data_bindings?.[0]?.projection_topic;
-  const snapshot = snapshots.find((candidate) => candidate.topic === topic);
-  if (!snapshot?.failure || snapshot.lastGoodAt) return null;
-  return snapshot.failure.kind === 'not-served' ? snapshot.failure.message : null;
+  const snapshot = boundSnapshotsFor(component, snapshots)
+    .find((candidate) => candidate.failure?.kind === 'not-served' && !candidate.lastGoodAt);
+  return snapshot?.failure?.message ?? null;
 }
 
-/** A component whose first binding failed with no last good rows renders only its read state. */
-function firstBindingFailedEmpty(
+/** A component whose binding failed with no last good rows renders only its read state. */
+function bindingFailedEmpty(
   component: LocalPageDocument['components'][number],
   snapshots: readonly BoundProjectionSnapshot[],
 ): boolean {
-  const topic = component.data_bindings?.[0]?.projection_topic;
-  const snapshot = snapshots.find((candidate) => candidate.topic === topic);
-  return Boolean(snapshot?.failure) && !snapshot?.lastGoodAt;
+  return boundSnapshotsFor(component, snapshots)
+    .some((snapshot) => Boolean(snapshot.failure) && !snapshot.lastGoodAt);
 }
 
 const PAGE_TITLES: Record<LocalPageName, string> = {
@@ -613,7 +649,7 @@ const PAGE_TITLES: Record<LocalPageName, string> = {
   'api-keys': 'API Keys',
 };
 
-export function LocalDashboardPage({ pageName }: LocalDashboardPageProps) {
+export function LocalDashboardPage({ pageName, syncUrl = false }: LocalDashboardPageProps) {
   const [page, setPage] = useState<LocalPageDocument | null>(null);
   const [snapshots, setSnapshots] = useState<BoundProjectionSnapshot[]>([]);
   const [error, setError] = useState<string | null>(null);
@@ -667,12 +703,14 @@ export function LocalDashboardPage({ pageName }: LocalDashboardPageProps) {
         if (active) setLoading(false);
       }
     }
+    const unsubscribeRefresh = subscribeLocalPageRefresh(() => { void load(); });
     void load();
     // The page's declared refresh interval (requirements: the dashboard shows the runtime's data as it changes).
     const timer = setInterval(() => { void load(); }, (document.dashboard.refresh_interval_seconds ?? 30) * 1000);
     return () => {
       active = false;
       clearInterval(timer);
+      unsubscribeRefresh();
     };
   }, [pageName]);
 
@@ -704,11 +742,11 @@ export function LocalDashboardPage({ pageName }: LocalDashboardPageProps) {
                 <h2>{component.title}</h2>
                 {unbound && component.component_kind !== 'metric_card' ? <PendingState componentId={component.component_id} />
                   : notServed ? <p className="local-dashboard-empty" role="status">{notServed}</p>
-                  : firstBindingFailedEmpty(component, snapshots) ? null
+                  : bindingFailedEmpty(component, snapshots) ? null
                   : emptyState === 'NO_RUNS_YET' ? <NoRunsYet />
                   : emptyState ? <p className="local-dashboard-empty" role="status">Baseline unresolved</p>
                   : component.component_kind === 'table' ? (
-                    <TableComponent component={component} snapshots={snapshots} pageSize={pageSize} />
+                    <TableComponent component={component} snapshots={snapshots} pageSize={pageSize} syncUrl={syncUrl} />
                   ) : (() => {
                     const config = metricConfigFor(page, component.component_id);
                     return config
