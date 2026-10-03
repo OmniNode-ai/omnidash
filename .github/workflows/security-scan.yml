@@ -31,7 +31,7 @@ concurrency:
 jobs:
   codeql:
     name: CodeQL
-    uses: OmniNode-ai/onex_change_control/.github/workflows/codeql-reusable.yml@main
+    uses: OmniNode-ai/onex_change_control/.github/workflows/codeql-reusable.yml@a89a6f30fabf74189195f57b57fcc5d4751f4c48  # onex_change_control main as of 2026-10-02 (OMN-20332)
     with:
       language: javascript-typescript
       query_suite: security-and-quality
