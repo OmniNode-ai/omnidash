@@ -67,6 +67,19 @@ export class TenantNotConfiguredError extends Error {
   }
 }
 
+/**
+ * Recognize the typed refusal across query boundaries and test doubles.
+ * The stable code keeps the UI state intact when an error is reconstructed
+ * by a data-source adapter or a React Query cache.
+ */
+export function isTenantNotConfiguredError(error: unknown): error is TenantNotConfiguredError {
+  return (
+    error instanceof TenantNotConfiguredError ||
+    (typeof error === 'object' && error !== null &&
+      (error as { code?: unknown }).code === 'TENANT_NOT_CONFIGURED')
+  );
+}
+
 let exposureCache: Promise<Map<string, string | null>> | null = null;
 
 /** Drop the memoized exposure map. Exported for tests and for a data-source flip. */

@@ -3,7 +3,15 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { QueryClient } from '@tanstack/react-query';
 import { DataSourceTestProvider } from '@/test-utils/dataSourceTestProvider';
 import { mockFetchWithItems } from '@/test-utils/mockFetch';
+import { HttpSnapshotSource } from '@/data-source';
 import DelegationMetrics2D from './DelegationMetrics2D';
+
+const tenantResolver = vi.hoisted(() => ({ resolveTenantFor: vi.fn() }));
+
+vi.mock('@/data-source/projection-tenant', async (importOriginal) => ({
+  ...await importOriginal<typeof import('@/data-source/projection-tenant')>(),
+  resolveTenantFor: tenantResolver.resolveTenantFor,
+}));
 
 const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } });
 
@@ -99,6 +107,26 @@ describe('DelegationMetrics2D', () => {
       </DataSourceTestProvider>
     );
     expect(await screen.findByText(/no delegation events/i)).toBeInTheDocument();
+  });
+
+  it('renders the typed tenant state and makes no refused projection request', async () => {
+    tenantResolver.resolveTenantFor.mockResolvedValue({
+      kind: 'refused',
+      reason: 'tenant_context_unresolved: no tenant is configured',
+    });
+    const fetchMock = vi.fn();
+    vi.stubGlobal('fetch', fetchMock);
+
+    const { container } = render(
+      <DataSourceTestProvider client={qc} source={new HttpSnapshotSource({ baseUrl: 'http://projection.test' })}>
+        <DelegationMetrics2D config={{}} />
+      </DataSourceTestProvider>,
+    );
+
+    expect(await screen.findByText('Tenant not configured')).toBeInTheDocument();
+    expect(container.querySelector('[data-tenant-state="not-configured"]')).toBeInTheDocument();
+    expect(screen.queryByText(/Error:/i)).not.toBeInTheDocument();
+    expect(fetchMock).not.toHaveBeenCalled();
   });
 
   it('hides the Savings tile when config.showSavings is false', async () => {
