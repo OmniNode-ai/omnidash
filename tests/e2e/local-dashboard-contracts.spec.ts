@@ -21,7 +21,7 @@ const decisions = [
     tokens_input: 162, tokens_output: 52, task_type: 'summarization', cost_tier_name: 'local', actual_score: '1.000',
     tokens_to_compliance: 214, data_source: 'real',
     // OMN-20225: the accepting attempt's backend and host (OMN-20162 columns) and the tier's cost regime.
-    backend_id: 'local-heavy-reasoning', host: '192.168.86.202', cost_tier_type: 'free_local',
+    backend_id: 'local-heavy-reasoning', host: 'gpu-host-b', cost_tier_type: 'free_local',
   },
   {
     correlation_id: 'corr-19981-unmeasured', written_at: '2026-10-02T10:01:00Z', created_at: '2026-10-02T10:01:00Z',
@@ -178,7 +178,7 @@ test('Overview and Runs show each run\'s backend, host, tier and score, typed wh
   await expect(page.getByText('Not served (OMN-20162)')).toHaveCount(0);
   const recent = page.locator('.local-dashboard-panel').filter({ has: page.getByRole('heading', { name: 'Recent runs' }) });
   const measured = recent.getByRole('row').filter({ hasText: 'corr-19981-measured' });
-  for (const value of ['local-heavy-reasoning', '192.168.86.202', 'local (free_local)', 'passed', '1.000']) {
+  for (const value of ['local-heavy-reasoning', 'gpu-host-b', 'local (free_local)', 'passed', '1.000']) {
     await expect(measured.getByText(value, { exact: true }), value).toBeVisible();
   }
   // The second run carries no backend or host: typed, never blank.
@@ -192,7 +192,7 @@ test('Overview and Runs show each run\'s backend, host, tier and score, typed wh
   await page.getByTestId('nav-local-runs').click();
   await expect(page.getByRole('heading', { level: 1, name: 'Runs' })).toBeVisible();
   const run = page.getByRole('row').filter({ hasText: 'corr-19981-measured' });
-  for (const value of ['local-heavy-reasoning', '192.168.86.202', 'local (free_local)']) {
+  for (const value of ['local-heavy-reasoning', 'gpu-host-b', 'local (free_local)']) {
     await expect(run.getByText(value, { exact: true }), value).toBeVisible();
   }
   await expect(page.getByText('Not served (OMN-20162)')).toHaveCount(0);
