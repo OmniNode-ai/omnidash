@@ -159,79 +159,9 @@
       }
     },
     {
-      "widget_id": "d4da9a48-f797-4b1d-b622-41f028a67e04",
-      "title": "Quality",
-      "row": 4,
-      "col": 0,
-      "width": 6,
-      "height": 4,
-      "data_source": "overview-quality",
-      "config": {
-        "config_kind": "table",
-        "widget_type": "table",
-        "columns": [
-          {
-            "key": "overall_pass_rate",
-            "header": "Pass rate"
-          },
-          {
-            "key": "total_passed",
-            "header": "Passed"
-          },
-          {
-            "key": "total_failed",
-            "header": "Failed"
-          },
-          {
-            "key": "total_checks",
-            "header": "Checks"
-          },
-          {
-            "key": "avg_actual_score",
-            "header": "Average score"
-          },
-          {
-            "key": "avg_required_bar",
-            "header": "Average required bar"
-          }
-        ],
-        "page_size": 10,
-        "show_pagination": false
-      }
-    },
-    {
-      "widget_id": "92d0d8ce-8d52-447e-8511-8cb1269c0112",
-      "title": "Tier mix",
-      "row": 4,
-      "col": 6,
-      "width": 6,
-      "height": 4,
-      "data_source": "overview-tier-mix",
-      "config": {
-        "config_kind": "table",
-        "widget_type": "table",
-        "columns": [
-          {
-            "key": "cost_tier_name",
-            "header": "Tier"
-          },
-          {
-            "key": "count",
-            "header": "Runs"
-          },
-          {
-            "key": "pct_of_tier_routed",
-            "header": "Share of tier-routed"
-          }
-        ],
-        "page_size": 10,
-        "show_pagination": false
-      }
-    },
-    {
       "widget_id": "8e4f1b77-2c39-5d06-a8b2-6f0d4c9e1a53",
       "title": "Recent runs",
-      "row": 8,
+      "row": 4,
       "col": 0,
       "width": 12,
       "height": 4,
@@ -305,6 +235,76 @@
         "show_pagination": false,
         "default_sort_key": "written_at",
         "default_sort_direction": "desc"
+      }
+    },
+    {
+      "widget_id": "d4da9a48-f797-4b1d-b622-41f028a67e04",
+      "title": "Quality",
+      "row": 8,
+      "col": 0,
+      "width": 6,
+      "height": 4,
+      "data_source": "overview-quality",
+      "config": {
+        "config_kind": "table",
+        "widget_type": "table",
+        "columns": [
+          {
+            "key": "overall_pass_rate",
+            "header": "Pass rate"
+          },
+          {
+            "key": "total_passed",
+            "header": "Passed"
+          },
+          {
+            "key": "total_failed",
+            "header": "Failed"
+          },
+          {
+            "key": "total_checks",
+            "header": "Checks"
+          },
+          {
+            "key": "avg_actual_score",
+            "header": "Average score"
+          },
+          {
+            "key": "avg_required_bar",
+            "header": "Average required bar"
+          }
+        ],
+        "page_size": 10,
+        "show_pagination": false
+      }
+    },
+    {
+      "widget_id": "92d0d8ce-8d52-447e-8511-8cb1269c0112",
+      "title": "Tier mix",
+      "row": 8,
+      "col": 6,
+      "width": 6,
+      "height": 4,
+      "data_source": "overview-tier-mix",
+      "config": {
+        "config_kind": "table",
+        "widget_type": "table",
+        "columns": [
+          {
+            "key": "cost_tier_name",
+            "header": "Tier"
+          },
+          {
+            "key": "count",
+            "header": "Runs"
+          },
+          {
+            "key": "pct_of_tier_routed",
+            "header": "Share of tier-routed"
+          }
+        ],
+        "page_size": 10,
+        "show_pagination": false
       }
     }
   ]
