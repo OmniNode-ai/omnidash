@@ -382,6 +382,7 @@ describe('OMN-20225: run rows carry verdict, backend, host and tier; Overview ga
     ['runs', 'recent-runs', 'runs-decisions'],
     ['overview', 'overview-last-run', 'overview-last-run-decisions'],
     ['overview', 'overview-recent-runs', 'overview-recent-runs-decisions'],
+    ['workflow', 'workflow-run-path', 'workflow-run-path-decisions'],
   ] as const;
 
   it.each(runBindings)('%s %s requests the served verdict, score, backend, host and tier (AC1, AC2)', (pageName, componentId, bindingId) => {

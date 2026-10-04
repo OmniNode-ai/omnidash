@@ -157,7 +157,6 @@ type Row = Record<string, unknown>;
  */
 export const FIRST_RUN_COMMAND = 'onex delegate "ping"';
 
-
 function asRecords(rows: readonly unknown[]): Row[] {
   return rows.filter((row): row is Row => typeof row === 'object' && row !== null && !Array.isArray(row));
 }

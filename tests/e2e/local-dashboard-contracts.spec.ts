@@ -183,7 +183,11 @@ test('Overview and Runs show each run\'s backend, host, tier and score, typed wh
   }
   // The second run carries no backend or host: typed, never blank.
   const unmeasured = recent.getByRole('row').filter({ hasText: 'corr-19981-unmeasured' });
-  await expect(unmeasured.getByText('Not recorded')).not.toHaveCount(0);
+  const headers = await recent.getByRole('columnheader').allTextContents();
+  const cells = unmeasured.getByRole('cell');
+  for (const header of ['Backend', 'Host']) {
+    await expect(cells.nth(headers.map((h) => h.trim()).indexOf(header)), header).toHaveText('Not recorded');
+  }
 
   await page.getByTestId('nav-local-runs').click();
   await expect(page.getByRole('heading', { level: 1, name: 'Runs' })).toBeVisible();

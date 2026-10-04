@@ -99,7 +99,10 @@ describe('OMN-20225 AC1, AC2: the served verdict, score, backend, host and tier 
     const routing = screen.getByText('Routing').nextElementSibling?.textContent ?? '';
     expect(routing).toContain('backend local-heavy-reasoning');
     expect(routing).toContain('host 192.168.86.202');
+    expect(routing).toContain('tier local (free_local)');
     expect(routing).not.toContain('OMN-20162');
+    const gate = screen.getByText('Quality gate').nextElementSibling?.textContent ?? '';
+    expect(gate).toBe('passed · score 0.92');
   });
 });
 
