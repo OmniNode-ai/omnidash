@@ -1,7 +1,7 @@
 {
   "dashboard_id": "fd556d39-e92a-54cc-94f2-0cedb669b7ee",
   "name": "Usage",
-  "description": "Tokens in, tokens out and cost per model per UTC day, from the usage-by-model-day exposure.",
+  "description": "Tokens in, tokens out, measured cost and unmeasured runs per model per UTC day from the usage-by-model-day exposure, and savings per day from metering-summary.",
   "layout": {
     "columns": 12,
     "row_height": 100,
@@ -40,12 +40,45 @@
             "header": "Tokens out"
           },
           {
-            "key": "cost_usd",
-            "header": "Cost"
+            "key": "measured_cost_usd",
+            "header": "Cost (measured)"
+          },
+          {
+            "key": "unmeasured_call_count",
+            "header": "Unmeasured"
           },
           {
             "key": "call_count",
             "header": "Calls"
+          }
+        ],
+        "page_size": 25,
+        "show_pagination": false
+      }
+    },
+    {
+      "widget_id": "f846ae85-b016-506e-9bd1-cf7273d5983a",
+      "title": "Savings per day",
+      "row": 4,
+      "col": 0,
+      "width": 12,
+      "height": 3,
+      "data_source": "usage-savings-series",
+      "config": {
+        "config_kind": "table",
+        "widget_type": "table",
+        "columns": [
+          {
+            "key": "window_start",
+            "header": "Day"
+          },
+          {
+            "key": "savings_usd",
+            "header": "Savings"
+          },
+          {
+            "key": "runs_total",
+            "header": "Runs"
           }
         ],
         "page_size": 25,

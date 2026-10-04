@@ -3,7 +3,7 @@ import { useLocation, useSearch } from 'wouter';
 import { createSnapshotSource } from '@/data-source';
 import { fetchExposureCensus } from '@/data-source/exposure-census';
 import { resolveEffectiveDataSource } from '@/data-source/data-source-override';
-import { resolveConfiguredTenant } from '@/data-source/projection-tenant';
+import { UsageByModelDayTable } from '@/components/dashboard/usage/UsageByModelDayWidget';
 import { subscribeLocalPageRefresh } from '@/services/local-page-refresh';
 import { DEFAULT_RUNS_VIEW, readRunsSearch, writeRunsSearch, type RunsViewState } from '@/navigation/runs-url-state';
 import '@/styles/local-dashboard.css';
@@ -63,6 +63,8 @@ interface MetricCardProps {
  */
 const PENDING_SOURCES: Record<string, string> = {
   'overview-tokens': 'metering-summary.v1',
+  // US-3: bound once metering-summary.v1 is served (omnimarket#3368); its renderer is SavingsSeries.
+  'usage-savings-series': 'metering-summary.v1',
 };
 
 /** AK-3: cloud keys are not linked in the local MVP; one line, no form. */
@@ -502,34 +504,6 @@ export function WorkflowPath({ decisions }: { decisions: readonly unknown[] }) {
   );
 }
 
-/**
- * US-1/US-2: tokens in, tokens out and cost per model per UTC day. The exposure declares no tenant column, so only
- * rows of the configured tenant are shown (another tenant's rows never render). Unmeasured cost reads Not recorded.
- */
-export function UsageTable({ rows, tenant }: { rows: readonly unknown[]; tenant: string | null }) {
-  const usage = asRecords(rows).filter((row) => tenant !== null && row.tenant_id === tenant);
-  if (usage.length === 0) {
-    return <p className="local-dashboard-empty" role="status">No usage rows yet: waits on llm-call-completed events (OMN-20006)</p>;
-  }
-  return (
-    <div className="local-dashboard-table-wrap">
-      <table>
-        <thead><tr><th>Day</th><th>Model</th><th>Tokens in</th><th>Tokens out</th><th>Cost</th><th>Calls</th></tr></thead>
-        <tbody>{usage.map((row, index) => (
-          <tr key={`${String(row.usage_day)}-${String(row.model_id)}-${index}`}>
-            <td>{recorded(row.usage_day)}</td>
-            <td>{modelOrUnknown(row.model_id)}</td>
-            <td>{recorded(row.input_tokens)}</td>
-            <td>{recorded(row.output_tokens)}</td>
-            <td>{recorded(row.cost_usd)}</td>
-            <td>{recorded(row.call_count)}</td>
-          </tr>
-        ))}</tbody>
-      </table>
-    </div>
-  );
-}
-
 /** AK-1: the tenant id from a served row; minted-at waits on local-identity.v1. */
 export function LocalIdentity({ row }: { row: Record<string, unknown> | null }) {
   return (
@@ -565,7 +539,8 @@ function TableComponent({ component, snapshots, pageSize, syncUrl }: {
   }
   if (component.component_id === 'credentials-keys') return <CredentialsTable rows={rows} />;
   if (component.component_id === 'workflow-run-path') return <WorkflowPath decisions={rows} />;
-  if (component.component_id === 'usage-by-model-day') return <UsageTable rows={rows} tenant={resolveConfiguredTenant()} />;
+  // US-1, US-2, US-4: served rows as served. The exposure is tenant-scoped, so the server filters, not the browser.
+  if (component.component_id === 'usage-by-model-day') return <UsageByModelDayTable rows={rows} />;
   if (component.component_id === 'api-keys-local-identity') {
     const first = rawRowsFor(component, snapshots, 0)[0];
     return <LocalIdentity row={first && typeof first === 'object' ? (first as Record<string, unknown>) : null} />;

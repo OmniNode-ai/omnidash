@@ -82,7 +82,9 @@ describe('Proof of Life — Part 2', () => {
     // empty state naming that producer until the census lists it.
     // OMN-18773: lab-runners added (C6) — reads runner-fleet.v1 via the C1
     // runner-fleet-liveness projection.
-    expect(all.length).toBe(43);
+    // OMN-20006: usage-by-model-day and usage-savings-series added -- the Usage
+    // page's readers of usage-by-model-day.v1 and metering-summary.v1.
+    expect(all.length).toBe(45);
     expect(all.map((c) => c.name).sort()).toEqual([
       'ab-compare',
       'baselines-roi-card',
@@ -126,6 +128,8 @@ describe('Proof of Life — Part 2', () => {
       'token-usage',
       'topic-activity',
       'trace-explorer',
+      'usage-by-model-day',
+      'usage-savings-series',
       'work-events',
     ]);
   });

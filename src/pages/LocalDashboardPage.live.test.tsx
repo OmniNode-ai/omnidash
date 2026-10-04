@@ -219,17 +219,30 @@ describe('Partial pages (FR-3, CR-2, CR-3, AK-3, F24)', () => {
     expect(screen.queryByText(/^\$?0(?:\.0+)?$/)).not.toBeInTheDocument();
   });
 
-  it('Usage shows this tenant\'s rows only, with tokens in and out apart (US-1, SV-3)', async () => {
+  it('Usage renders every served row as served: the server scopes the read, the browser filters nothing (US-1, AC-T)', async () => {
     harness.reachable = new Set([USAGE]);
+    // A tenant-scoped exposure answers the reading tenant only. A row naming another tenant can reach the page
+    // only if the server sent it, and the page must not hide a served row: a browser filter is a computation.
     harness.answer = () => Promise.resolve([
-      { tenant_id: 'tenant-a', usage_day: '2026-10-02', model_id: 'Qwen3.8-27B', input_tokens: 1620, output_tokens: 520, cost_usd: 0, call_count: 10 },
-      { tenant_id: 'tenant-b', usage_day: '2026-10-02', model_id: 'other-tenant-model', input_tokens: 1, output_tokens: 1, cost_usd: 1, call_count: 1 },
+      { tenant_id: 'tenant-a', usage_day: '2026-10-02', model_id: 'Qwen3.8-27B', input_tokens: 1620, output_tokens: 520, cost_usd: 0, measured_cost_usd: 0, unmeasured_call_count: 0, call_count: 10 },
+      { tenant_id: 'tenant-b', usage_day: '2026-10-02', model_id: 'served-model', input_tokens: 1, output_tokens: 1, cost_usd: 1, measured_cost_usd: null, unmeasured_call_count: 1, call_count: 1 },
     ]);
     render(<LocalDashboardPage pageName="usage" />);
     await settle();
     const row = screen.getByRole('row', { name: /Qwen3.8-27B/ });
-    for (const value of ['2026-10-02', '1620', '520', '10']) expect(within(row).getByText(value)).toBeInTheDocument();
-    expect(screen.queryByText('other-tenant-model')).not.toBeInTheDocument();
+    for (const value of ['2026-10-02', '1620', '520', '$0.00', 'none', '10']) expect(within(row).getByText(value)).toBeInTheDocument();
+    const unmeasured = screen.getByRole('row', { name: /served-model/ });
+    expect(within(unmeasured).getByText('Not measured')).toBeInTheDocument();
+    expect(within(unmeasured).getByText('1 unmeasured')).toBeInTheDocument();
+  });
+
+  it('Usage names what the savings series waits on while metering-summary.v1 is not served (US-3, AC-US3)', async () => {
+    harness.reachable = new Set([USAGE]);
+    render(<LocalDashboardPage pageName="usage" />);
+    await settle();
+    const panel = screen.getByRole('heading', { name: 'Savings per day' }).closest('article')!;
+    expect(within(panel).getByRole('status')).toHaveTextContent('Not served yet: waits on metering-summary.v1');
+    expect(within(panel).queryByText(/^\$?0(?:\.0+)?$/)).not.toBeInTheDocument();
   });
 
   it('API Keys shows the served tenant id, typed minted-at, and CLOUD_NOT_LINKED with no form (AK-1, AK-3)', async () => {

@@ -381,13 +381,26 @@ describe('Amendment 6: the six local pages and the loader', () => {
     expect(topics.length, pageName).toBeGreaterThan(0);
   });
 
-  it('Usage reads usage-by-model-day with tokens in and out apart (US-1, SV-3)', () => {
+  it('Usage reads usage-by-model-day with tokens in and out apart and measured cost (US-1, US-2, US-4, SV-3)', () => {
     const binding = readPage('usage').components[0]?.data_bindings?.[0];
     expect(binding?.projection_topic).toBe('onex.snapshot.projection.usage-by-model-day.v1');
     expect(binding?.ordering_authority_field).toBe('usage_day');
     expect(binding?.required_fields).toEqual(expect.arrayContaining([
-      'tenant_id', 'usage_day', 'model_id', 'input_tokens', 'output_tokens', 'cost_usd', 'call_count',
+      'tenant_id', 'usage_day', 'model_id', 'input_tokens', 'output_tokens', 'measured_cost_usd',
+      'unmeasured_call_count', 'call_count',
     ]));
+    // cost_usd sums estimated cost too; the page shows the measured cost only (AC3).
+    expect(binding?.required_fields).not.toContain('cost_usd');
+  });
+
+  it('Usage declares the savings series, unbound until metering-summary.v1 is served (US-3, AC-US3)', () => {
+    const page = readPage('usage');
+    const series = page.components.find((c) => c.component_id === 'usage-savings-series');
+    expect(series?.component_kind).toBe('table');
+    // Bound only once the lab serves it; a binding here before then would name an unserved exposure.
+    expect(servedExposureCatalogue.has('onex.snapshot.projection.metering-summary.v1')).toBe(false);
+    expect(series?.data_bindings).toEqual([]);
+    expect(page.dashboard.widgets.some((w) => w.data_source === 'usage-savings-series')).toBe(true);
   });
 
   it('Workflow reads the newest run from delegation decisions until run-trace is served (WF-3)', () => {

@@ -17,6 +17,7 @@ import { readFileSync } from 'node:fs';
 import { resolve, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { ComponentRegistry } from './ComponentRegistry';
+import { componentImports } from '@/components/dashboard';
 import type { RegistryManifest } from './types';
 import { TOPICS } from '@shared/types/topics';
 import { RENDERER_CAPABILITY_PROJECTION } from '@shared/types/renderer-capability';
@@ -98,6 +99,21 @@ describe('OMN-17199 reader declarations resolve at runtime', () => {
     expect(registry.getComponentsForProjectionTopic(TOPICS.workEvents).map((c) => c.name)).toContain(
       'work-events'
     );
+  });
+
+  // OMN-20006. Named rather than left to the generic scan: usage-by-model-day.v1 is
+  // declared `bus_backed: true` by omnimarket's node_projection_usage_by_model_day,
+  // whose `consumers: none` opt-out is deleted because this component reads it, and
+  // metering-summary.v1 is declared bus-backed with no opt-out by omnimarket#3368.
+  // A regeneration that dropped either would fail in omnibase_infra's required
+  // `exposure-reader-coverage` context, in a repo that did not cause it.
+  it.each([
+    ['usage-by-model-day', TOPICS.usageByModelDay],
+    ['usage-savings-series', TOPICS.meteringSummary],
+  ])('%s is the declared reader of %s, backed by a real implementation', (name, topic) => {
+    const registry = new ComponentRegistry(manifest);
+    expect(registry.getComponentsForProjectionTopic(topic).map((c) => c.name)).toContain(name);
+    expect(Object.keys(componentImports)).toContain(manifest.components[name]?.implementationKey);
   });
 
   it('a topic no component declares has no readers', () => {
