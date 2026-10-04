@@ -212,6 +212,45 @@
       ]
     },
     {
+      "component_id": "overview-run-locally",
+      "component_kind": "metric_card",
+      "title": "Run locally",
+      "contract_version": {
+        "major": 1,
+        "minor": 0,
+        "patch": 0
+      },
+      "data_bindings": [
+        {
+          "binding_id": "overview-run-locally-routing",
+          "projection_topic": "onex.snapshot.projection.delegation.model-routing.v1",
+          "ordering_authority_field": "captured_at",
+          "ordering_direction": "descending",
+          "required_fields": [
+            "by_tier"
+          ]
+        }
+      ],
+      "supported_empty_state_reasons": [
+        "missing-field",
+        "no-data"
+      ]
+    },
+    {
+      "component_id": "overview-avg-saving-per-call",
+      "component_kind": "metric_card",
+      "title": "Avg saving / call",
+      "contract_version": {
+        "major": 1,
+        "minor": 0,
+        "patch": 0
+      },
+      "data_bindings": [],
+      "supported_empty_state_reasons": [
+        "upstream-blocked"
+      ]
+    },
+    {
       "component_id": "overview-quality",
       "component_kind": "table",
       "title": "Quality",

@@ -238,9 +238,45 @@
       }
     },
     {
+      "widget_id": "6f1d2c8e-4b7a-5e39-9c0d-20009a1c0c01",
+      "title": "Run locally",
+      "row": 8,
+      "col": 0,
+      "width": 4,
+      "height": 2,
+      "data_source": "overview-run-locally",
+      "config": {
+        "config_kind": "metric_card",
+        "widget_type": "metric_card",
+        "metric_key": "by_tier.local_call_share",
+        "label": "Run locally",
+        "unit": "share of runs",
+        "format": "percent",
+        "precision": 1
+      }
+    },
+    {
+      "widget_id": "6f1d2c8e-4b7a-5e39-9c0d-20009a1c0c02",
+      "title": "Avg saving / call",
+      "row": 8,
+      "col": 4,
+      "width": 4,
+      "height": 2,
+      "data_source": "overview-avg-saving-per-call",
+      "config": {
+        "config_kind": "metric_card",
+        "widget_type": "metric_card",
+        "metric_key": "savings_per_measured_run_usd",
+        "label": "Avg saving / call",
+        "unit": "USD",
+        "format": "currency",
+        "precision": 6
+      }
+    },
+    {
       "widget_id": "d4da9a48-f797-4b1d-b622-41f028a67e04",
       "title": "Quality",
-      "row": 8,
+      "row": 10,
       "col": 0,
       "width": 6,
       "height": 4,
@@ -281,7 +317,7 @@
     {
       "widget_id": "92d0d8ce-8d52-447e-8511-8cb1269c0112",
       "title": "Tier mix",
-      "row": 8,
+      "row": 10,
       "col": 6,
       "width": 6,
       "height": 4,

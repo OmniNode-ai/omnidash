@@ -287,7 +287,11 @@ describe('local pages against the captured lab catalogue', () => {
     const keys = page.dashboard.widgets
       .filter((w) => (w.config as Record<string, unknown>).config_kind === 'metric_card')
       .map((w) => (w.config as Record<string, unknown>).metric_key);
-    expect(keys).toEqual(['total_cost_usd', 'total_savings_usd', 'measured_run_count', 'tokens_in_and_out']);
+    expect(keys).toEqual([
+      'total_cost_usd', 'total_savings_usd', 'measured_run_count', 'tokens_in_and_out',
+      // OMN-20009: the served run-locally share and the served saving per measured run.
+      'by_tier.local_call_share', 'savings_per_measured_run_usd',
+    ]);
     const savings = page.components.find((c) => c.component_id === 'overview-savings');
     expect(savings?.data_bindings?.[0]?.required_fields).toEqual(['total_savings_usd', 'total_baseline_cost_usd']);
     // SV-2 / OV-3: the baseline model and the pricing manifest version, from the served delegation-savings row.

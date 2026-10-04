@@ -63,6 +63,8 @@ interface MetricCardProps {
  */
 const PENDING_SOURCES: Record<string, string> = {
   'overview-tokens': 'metering-summary.v1',
+  // OMN-20009: the per-run saving is a metering-summary.v1 column; the lab catalogue does not serve that exposure yet.
+  'overview-avg-saving-per-call': 'metering-summary.v1',
 };
 
 /** AK-3: cloud keys are not linked in the local MVP; one line, no form. */
@@ -121,6 +123,68 @@ export function MetricCard({ component, config, row, caption }: MetricCardProps)
       <p className="local-dashboard-metric">{text}</p>
       {line && <p className="local-dashboard-caption">{line}</p>}
       {modelled && <p className="local-dashboard-caption">{SAVINGS_MODELLED}</p>}
+    </>
+  );
+}
+
+const ROUTING_SHARE_PENDING = 'Not served yet: waits on local_call_share in delegation.model-routing.v1';
+
+function asRecord(value: unknown): Record<string, unknown> | null {
+  return typeof value === 'object' && value !== null && !Array.isArray(value) ? (value as Record<string, unknown>) : null;
+}
+
+/**
+ * OMN-20009: the share of ALL runs whose tier is local, as the model-routing view serves it (local_call_share, over
+ * every run, not-tier-routed ones included). The browser formats the served fraction as a percent and divides
+ * nothing; the served counts are shown beside it so the not-tier-routed gap stays visible.
+ */
+export function RunLocallyCard({ row }: { row: Record<string, unknown> | null }) {
+  if (row === null) return <NoRunsYet />;
+  const byTier = asRecord(row.by_tier);
+  if (byTier === null || !('local_call_share' in byTier)) {
+    return <p className="local-dashboard-empty" role="status">{ROUTING_SHARE_PENDING}</p>;
+  }
+  const share = byTier.local_call_share;
+  if (typeof share !== 'number' || !Number.isFinite(share)) return <p className="local-dashboard-metric">Not measured</p>;
+  const text = share.toLocaleString('en-US', { style: 'percent', minimumFractionDigits: 1, maximumFractionDigits: 1 });
+  return (
+    <>
+      <p className="local-dashboard-metric">{text}</p>
+      <p className="local-dashboard-caption">
+        {`${recorded(byTier.local_call_count)} of ${recorded(byTier.total_call_count)} runs local · `
+          + `${recorded(byTier.not_tier_routed_count)} not tier-routed`}
+      </p>
+    </>
+  );
+}
+
+const SAVING_PER_RUN_PENDING = 'Not served yet: waits on savings_per_measured_run_usd in metering-summary.v1';
+
+/**
+ * OMN-20009: the average saving of a measured run, from metering-summary.v1's all-time row, shown as the served
+ * decimal text. Only measured runs are in the served quotient. A null value says why; it is never $0.
+ */
+export function SavingsPerRunCard({ rows }: { rows: readonly unknown[] }) {
+  const all = asRecords(rows).filter((row) => row.window_kind === 'all');
+  if (all.length === 0) return <p className="local-dashboard-metric">Not measured: no all-time row</p>;
+  if (all.length > 1) return <p className="local-dashboard-metric">{`Not measured: ${all.length} baseline models`}</p>;
+  const row = all[0];
+  if (!('savings_per_measured_run_usd' in row)) {
+    return <p className="local-dashboard-empty" role="status">{SAVING_PER_RUN_PENDING}</p>;
+  }
+  const value = row.savings_per_measured_run_usd;
+  if (typeof value !== 'string' || value === '') {
+    const why = row.baseline_state === 'unresolved' ? 'Baseline unresolved'
+      : row.runs_measured === 0 ? 'Not measured: no measured runs' : 'Not measured';
+    return <p className="local-dashboard-metric">{why}</p>;
+  }
+  const text = value.startsWith('-') ? `-$${value.slice(1)}` : `$${value}`;
+  return (
+    <>
+      <p className="local-dashboard-metric">{text}</p>
+      <p className="local-dashboard-caption">
+        {`Over ${recorded(row.runs_measured)} measured runs · baseline ${recorded(row.baseline_model)}`}
+      </p>
     </>
   );
 }
@@ -820,6 +884,10 @@ export function LocalDashboardPage({ pageName, syncUrl = false }: LocalDashboard
                   : emptyState ? <p className="local-dashboard-empty" role="status">Baseline unresolved</p>
                   : component.component_kind === 'table' ? (
                     <TableComponent component={component} snapshots={snapshots} pageSize={pageSize} syncUrl={syncUrl} />
+                  ) : component.component_id === 'overview-run-locally' ? (
+                    <RunLocallyCard row={asRecord(rows[0])} />
+                  ) : component.component_id === 'overview-avg-saving-per-call' && !unbound ? (
+                    <SavingsPerRunCard rows={rows} />
                   ) : (() => {
                     const config = metricConfigFor(page, component.component_id);
                     return config
