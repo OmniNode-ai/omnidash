@@ -33,4 +33,4 @@ jobs:
   verify:
     # self-gating-ok: intentional cross-repo caller — omnidash does not host
     # receipt-gate.yml itself; the reusable workflow lives in omnibase_core.
-    uses: OmniNode-ai/omnibase_core/.github/workflows/receipt-gate.yml@1e69bec909f245be511803191554e5b340def0b7  # omnibase_core main as of 2026-10-02 (OMN-20332)
+    uses: OmniNode-ai/omnibase_core/.github/workflows/receipt-gate.yml@fad21c40911b356c30f3e38c9075332f11524617  # omnibase_core#1853: nested validator 50f790aacb51 accepts artifact_sha256 (OMN-19994)
