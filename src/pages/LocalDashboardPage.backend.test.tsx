@@ -30,7 +30,7 @@ function decision(id: string, extra: Record<string, unknown> = {}): Record<strin
     cost_tier_type: 'free_local',
     actual_score: 0.92,
     backend_id: 'local-heavy-reasoning',
-    host: '192.168.86.202',
+    host: 'gpu-host-b',
     ...extra,
   };
 }
@@ -58,7 +58,7 @@ describe('OMN-20225 AC1, AC2: the served verdict, score, backend, host and tier 
     expect(lastRunValue('Status')).toBe('passed');
     expect(lastRunValue('Quality score')).toBe('0.92');
     expect(lastRunValue('Backend')).toBe('local-heavy-reasoning');
-    expect(lastRunValue('Host')).toBe('192.168.86.202');
+    expect(lastRunValue('Host')).toBe('gpu-host-b');
     expect(lastRunValue('Route tier')).toBe('local (free_local)');
     expect(screen.queryByText(/Not served \(OMN-20162\)/)).not.toBeInTheDocument();
   });
@@ -69,7 +69,7 @@ describe('OMN-20225 AC1, AC2: the served verdict, score, backend, host and tier 
     expect(cellUnder(row, 'Status')).toHaveTextContent('failed');
     expect(cellUnder(row, 'Quality score')).toHaveTextContent('0.41');
     expect(cellUnder(row, 'Backend')).toHaveTextContent('local-heavy-reasoning');
-    expect(cellUnder(row, 'Host')).toHaveTextContent('192.168.86.202');
+    expect(cellUnder(row, 'Host')).toHaveTextContent('gpu-host-b');
     expect(cellUnder(row, 'Route tier')).toHaveTextContent('local (free_local)');
     expect(screen.queryByText(/Not served \(OMN-20162\)/)).not.toBeInTheDocument();
   });
@@ -78,14 +78,14 @@ describe('OMN-20225 AC1, AC2: the served verdict, score, backend, host and tier 
     render(<RunsTable
       now={NOW}
       decisions={[
-        decision('run-201', { host: '192.168.86.201', written_at: '2026-10-04T06:59:00Z' }),
-        decision('run-202', { host: '192.168.86.202' }),
+        decision('run-host-a', { host: 'gpu-host-a', written_at: '2026-10-04T06:59:00Z' }),
+        decision('run-host-b', { host: 'gpu-host-b' }),
       ]}
       sessions={[]}
     />);
-    expect(cellUnder(screen.getByRole('row', { name: /run-201/ }), 'Host')).toHaveTextContent('192.168.86.201');
-    expect(cellUnder(screen.getByRole('row', { name: /run-202/ }), 'Host')).toHaveTextContent('192.168.86.202');
-    for (const id of ['run-201', 'run-202']) {
+    expect(cellUnder(screen.getByRole('row', { name: /run-host-a/ }), 'Host')).toHaveTextContent('gpu-host-a');
+    expect(cellUnder(screen.getByRole('row', { name: /run-host-b/ }), 'Host')).toHaveTextContent('gpu-host-b');
+    for (const id of ['run-host-a', 'run-host-b']) {
       const row = screen.getByRole('row', { name: new RegExp(id) });
       expect(cellUnder(row, 'Backend')).toHaveTextContent('local-heavy-reasoning');
       expect(cellUnder(row, 'Route tier')).toHaveTextContent('local (free_local)');
@@ -98,7 +98,7 @@ describe('OMN-20225 AC1, AC2: the served verdict, score, backend, host and tier 
     render(<WorkflowPath decisions={[decision('run-c')]} />);
     const routing = screen.getByText('Routing').nextElementSibling?.textContent ?? '';
     expect(routing).toContain('backend local-heavy-reasoning');
-    expect(routing).toContain('host 192.168.86.202');
+    expect(routing).toContain('host gpu-host-b');
     expect(routing).toContain('tier local (free_local)');
     expect(routing).not.toContain('OMN-20162');
     const gate = screen.getByText('Quality gate').nextElementSibling?.textContent ?? '';
