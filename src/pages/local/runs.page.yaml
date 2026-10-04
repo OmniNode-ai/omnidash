@@ -48,6 +48,10 @@
             "header": "Backend"
           },
           {
+            "key": "host",
+            "header": "Host"
+          },
+          {
             "key": "tokens_input",
             "header": "Tokens in"
           },

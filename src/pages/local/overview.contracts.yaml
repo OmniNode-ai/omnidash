@@ -135,7 +135,11 @@
             "tokens_input",
             "tokens_output",
             "task_type",
-            "cost_tier_name"
+            "cost_tier_name",
+            "actual_score",
+            "backend_id",
+            "host",
+            "cost_tier_type"
           ]
         },
         {
@@ -183,7 +187,10 @@
             "tokens_output",
             "task_type",
             "cost_tier_name",
-            "actual_score"
+            "actual_score",
+            "backend_id",
+            "host",
+            "cost_tier_type"
           ]
         },
         {
@@ -196,6 +203,61 @@
             "session_id",
             "local_cost_usd",
             "savings_usd"
+          ]
+        }
+      ],
+      "supported_empty_state_reasons": [
+        "missing-field",
+        "no-data"
+      ]
+    },
+    {
+      "component_id": "overview-quality",
+      "component_kind": "table",
+      "title": "Quality",
+      "contract_version": {
+        "major": 1,
+        "minor": 0,
+        "patch": 0
+      },
+      "data_bindings": [
+        {
+          "binding_id": "overview-quality-gate",
+          "projection_topic": "onex.snapshot.projection.delegation.quality-gate.v1",
+          "ordering_authority_field": "captured_at",
+          "ordering_direction": "descending",
+          "required_fields": [
+            "overall_pass_rate",
+            "total_passed",
+            "total_failed",
+            "total_checks",
+            "avg_actual_score",
+            "avg_required_bar"
+          ]
+        }
+      ],
+      "supported_empty_state_reasons": [
+        "missing-field",
+        "no-data"
+      ]
+    },
+    {
+      "component_id": "overview-tier-mix",
+      "component_kind": "table",
+      "title": "Tier mix",
+      "contract_version": {
+        "major": 1,
+        "minor": 0,
+        "patch": 0
+      },
+      "data_bindings": [
+        {
+          "binding_id": "overview-tier-mix-routing",
+          "projection_topic": "onex.snapshot.projection.delegation.model-routing.v1",
+          "ordering_authority_field": "captured_at",
+          "ordering_direction": "descending",
+          "required_fields": [
+            "by_tier"
           ]
         }
       ],
