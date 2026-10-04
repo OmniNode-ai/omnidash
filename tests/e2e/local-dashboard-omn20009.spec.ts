@@ -114,7 +114,7 @@ test('OMN-20009: Run locally shows the served share and Avg saving / call waits 
 
 test('OMN-20009: with neither exposure served, both cards say why and neither shows 0', async ({ page }) => {
   await page.setViewportSize({ width: 1440, height: 900 });
-  const { [ROUTING]: _routing, ...withoutRouting } = served;
+  const withoutRouting = Object.fromEntries(Object.entries(served).filter(([topic]) => topic !== ROUTING));
   await serve(page, withoutRouting);
   await page.goto('/');
   await expect(page.getByRole('heading', { level: 1, name: 'Overview' })).toBeVisible();
