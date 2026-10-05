@@ -140,17 +140,17 @@ describe('RecentRunsTable (OV-5, F17)', () => {
   });
 });
 
-describe('RecentRunsTable savings without a baseline (AC4, found on the lakshman lane 2026-10-02)', () => {
-  it('renders Baseline unresolved, not 0, for a run whose session has no baseline and 0 savings', () => {
+describe('RecentRunsTable shows no per-run saving (OMN-19980 AC2b)', () => {
+  it('shows the run\'s cost and no Savings column, so an unpriced run has no saving to type', () => {
     render(<RecentRunsTable
       now={NOW}
       decisions={[decision('unpriced-run', '2026-10-02T10:01:20Z')]}
-      sessions={[session('unpriced-run', '2026-10-02T10:01:20Z', { baseline_model: null, savings_usd: 0 })]}
+      sessions={[session('unpriced-run', '2026-10-02T10:01:20Z', { local_cost_usd: 0.0004, baseline_model: null, savings_usd: 0 })]}
     />);
+    expect(screen.getAllByRole('columnheader').map((header) => header.textContent)).not.toContain('Savings');
     const row = screen.getByRole('row', { name: /unpriced-run/ });
-    const cells = within(row).getAllByRole('cell').map((cell) => cell.textContent);
-    const savings = screen.getAllByRole('columnheader').findIndex((header) => header.textContent === 'Savings');
-    expect(cells[savings]).toBe('Baseline unresolved');
+    expect(within(row).getByText('0.0004')).toBeInTheDocument();
+    expect(within(row).queryByText('Baseline unresolved')).not.toBeInTheDocument();
   });
 });
 
@@ -180,7 +180,7 @@ describe('RunsTable rows, status, cause and filters (RU-1, F18, F28)', () => {
     expect(screen.getAllByRole('row').slice(1)).toHaveLength(4);
   });
 
-  it('takes cost and savings from the session with the same id', () => {
+  it('takes cost from the session with the same id', () => {
     render(<RunsTable now={NOW} decisions={decisions} sessions={sessions} />);
     const row = screen.getByRole('row', { name: /run-a/ });
     expect(within(row).getByText('0.0011')).toBeInTheDocument();
@@ -271,8 +271,8 @@ describe('NO_RUNS_YET (RU-4, F19)', () => {
   });
 });
 
-describe('Baseline model label (F20)', () => {
-  it('reads Not recorded for a measured saving whose baseline model is null', () => {
+describe('Baseline model label (F20, OMN-19980 AC2b)', () => {
+  it('reads Not recorded for a null baseline model, with no per-run baseline price or saving beside it', () => {
     render(<RunsTable
       now={NOW}
       decisions={[decision('no-baseline-name', '2026-10-02T10:07:00Z')]}
@@ -280,15 +280,12 @@ describe('Baseline model label (F20)', () => {
     />);
     const row = screen.getByRole('row', { name: /no-baseline-name/ });
     expect(within(row).queryByText('Not measured')).not.toBeInTheDocument();
-    // The baseline model cell is the one typed Not recorded among the savings columns (backend and host are typed on
-    // their own: this fixture predates OMN-20162's columns).
+    // The label stays (ruling 2026-10-05: keep labels); the dollars beside it came off.
     const headers = screen.getAllByRole('columnheader').map((cell) => cell.textContent?.trim());
     const cells = within(row).getAllByRole('cell');
     expect(cells[headers.indexOf('Baseline model')]?.textContent).toBe('Not recorded');
-    for (const header of ['Baseline cost', 'Savings']) {
-      expect(cells[headers.indexOf(header)]?.textContent, header).toBe('0.000844');
-    }
-    // The saving still shows (the baseline cost cell carries the same figure).
-    expect(within(row).getAllByText('0.000844').length).toBeGreaterThan(0);
+    expect(headers).not.toContain('Baseline cost');
+    expect(headers).not.toContain('Savings');
+    expect(within(row).queryByText('0.000844')).not.toBeInTheDocument();
   });
 });

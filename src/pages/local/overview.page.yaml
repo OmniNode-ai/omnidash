@@ -211,10 +211,6 @@
             "header": "Cost"
           },
           {
-            "key": "savings_usd",
-            "header": "Savings"
-          },
-          {
             "key": "latency_ms",
             "header": "Duration"
           },

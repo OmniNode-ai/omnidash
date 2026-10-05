@@ -150,8 +150,7 @@
           "required_fields": [
             "sessions",
             "session_id",
-            "local_cost_usd",
-            "savings_usd"
+            "local_cost_usd"
           ]
         }
       ],
@@ -201,8 +200,7 @@
           "required_fields": [
             "sessions",
             "session_id",
-            "local_cost_usd",
-            "savings_usd"
+            "local_cost_usd"
           ]
         }
       ],
