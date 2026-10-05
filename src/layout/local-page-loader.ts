@@ -1,4 +1,5 @@
 import type { ProjectionSnapshot, ProtocolSnapshotSource } from '../data-source/protocol-snapshot-source';
+import { ProjectionReadRefusedError } from '../data-source/http-snapshot-source';
 import type { ModelComponentContract } from '../shared/types/generated/onex-models';
 
 export type LocalPageName = 'overview' | 'runs' | 'workflow' | 'usage' | 'credentials' | 'api-keys';
@@ -155,6 +156,11 @@ export async function loadLocalPageSnapshots(
       if (answer === 'timeout') return failedSnapshot(topic, { kind: 'timeout', message: `${topic}: no answer in 5 s` });
       return { topic, ...answer };
     } catch (cause) {
+      // OMN-19994: the read node's declared refusal for a store that has no table for this exposure is a typed
+      // not-served state (a fresh local store has no savings table), not an HTTP error.
+      if (cause instanceof ProjectionReadRefusedError && cause.code === 'projection_table_missing') {
+        return failedSnapshot(topic, { kind: 'not-served', message: `Not served: ${topic} (this store has no table for it)` });
+      }
       return failedSnapshot(topic, { kind: 'error', message: readErrorMessage(topic, cause) });
     } finally {
       clearTimeout(timer);
