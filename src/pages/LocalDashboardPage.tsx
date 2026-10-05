@@ -82,17 +82,22 @@ export function PendingState({ componentId }: { componentId: string }) {
 
 const SAVINGS_MODELLED = "Modelled: the runs' tokens priced at the baseline model's list price. The baseline never ran.";
 
-function captionText(caption: Record<string, unknown> | null | undefined): string | null {
-  if (!caption) return null;
+function captionText(caption: Record<string, unknown> | null | undefined, showExcluded: boolean): string | null {
+  if (!caption && !showExcluded) return null;
+  const fields = caption ?? {};
   const parts: string[] = [];
-  if ('baseline_model' in caption) {
-    parts.push(isMissing(caption.baseline_model) ? 'Baseline unresolved' : `Baseline ${String(caption.baseline_model)}`);
+  if ('baseline_model' in fields) {
+    parts.push(isMissing(fields.baseline_model) ? 'Baseline unresolved' : `Baseline ${String(fields.baseline_model)}`);
   }
-  if ('pricing_manifest_version' in caption && !isMissing(caption.pricing_manifest_version)) {
-    parts.push(`pricing manifest v${String(caption.pricing_manifest_version)}`);
+  if ('pricing_manifest_version' in fields && !isMissing(fields.pricing_manifest_version)) {
+    parts.push(`pricing manifest v${String(fields.pricing_manifest_version)}`);
   }
-  if ('zero_token_run_count' in caption && !isMissing(caption.zero_token_run_count)) {
-    parts.push(`Zero-token runs: ${String(caption.zero_token_run_count)}`);
+  if ('zero_token_run_count' in fields && !isMissing(fields.zero_token_run_count)) {
+    parts.push(`Zero-token runs: ${String(fields.zero_token_run_count)}`);
+  }
+  if (showExcluded) {
+    parts.push(`Estimated runs excluded: ${recorded(fields.estimated_run_count)}`);
+    parts.push(`Unknown runs excluded: ${recorded(fields.unknown_run_count)}`);
   }
   return parts.length > 0 ? parts.join(' · ') : null;
 }
@@ -116,7 +121,7 @@ export function MetricCard({ component, config, row, caption }: MetricCardProps)
   else if (missing.some((field) => field.includes('baseline'))) text = 'Baseline unresolved';
   else if (missing.length > 0) text = 'Not measured';
   else text = formatMetric(Number(row[config.metric_key]), config);
-  const line = captionText(caption);
+  const line = captionText(caption, config.metric_key === 'measured_run_count');
   // A savings figure is a modelled counterfactual: served tokens priced at the baseline's list price, with no
   // baseline run behind it (Jonah's savings handoff on OMN-19981, aac9032d, item 5).
   const modelled = caption !== null && caption !== undefined && 'baseline_model' in caption;
@@ -318,6 +323,7 @@ export function LastRunCard({ decisions, sessions, now = Date.now() }: RunViewPr
     ['Tokens in', recorded(last.tokens_input)],
     ['Tokens out', recorded(last.tokens_output)],
     ['Cost', recorded(session?.local_cost_usd)],
+    ['Basis', recorded(session?.usage_source)],
     ['Task type', recorded(last.task_type)],
     ['Route tier', tierOf(last)],
     ['Age', age(last.written_at, now)],
@@ -344,7 +350,7 @@ export function RecentRunsTable({ decisions, sessions, now = Date.now() }: RunVi
         <thead>
           <tr>
             <th>Time</th><th>Age</th><th>Status</th><th>Cause</th><th>Task type</th><th>Model</th><th>Backend</th>
-            <th>Host</th><th>Tokens in</th><th>Tokens out</th><th>Cost</th><th>Duration</th>
+            <th>Host</th><th>Tokens in</th><th>Tokens out</th><th>Cost</th><th>Basis</th><th>Duration</th>
             <th>Route tier</th><th>Quality score</th><th>Run</th>
           </tr>
         </thead>
@@ -362,6 +368,7 @@ export function RecentRunsTable({ decisions, sessions, now = Date.now() }: RunVi
             <td>{recorded(decision.tokens_input)}</td>
             <td>{recorded(decision.tokens_output)}</td>
             <td>{recorded(session?.local_cost_usd)}</td>
+            <td>{recorded(session?.usage_source)}</td>
             <td>{duration(decision.latency_ms)}</td>
             <td>{tierOf(decision)}</td>
             <td>{recorded(decision.actual_score)}</td>
@@ -473,7 +480,7 @@ export function RunsTable({ decisions, sessions, now = Date.now(), pageSize = 25
               <thead>
                 <tr>
                   <th>Run</th><th>Created</th><th>Status</th><th>Cause</th><th>Model</th><th>Backend</th><th>Host</th>
-                  <th>Tokens in</th><th>Tokens out</th><th>Local cost</th><th>Baseline model</th><th>Usage source</th>
+                  <th>Tokens in</th><th>Tokens out</th><th>Local cost</th><th>Baseline model</th><th>Basis</th>
                   <th>Task type</th><th>Duration</th><th>Tokens to compliance</th><th>Route tier</th><th>Quality score</th>
                 </tr>
               </thead>
@@ -491,7 +498,7 @@ export function RunsTable({ decisions, sessions, now = Date.now(), pageSize = 25
                   <td>{recorded(run.tokens_output)}</td>
                   <td>{recorded(session?.local_cost_usd)}</td>
                   <td>{recorded(session?.baseline_model)}</td>
-                  <td>{recorded(session?.usage_source ?? session?.savings_method)}</td>
+                  <td>{recorded(session?.usage_source)}</td>
                   <td>{recorded(run.task_type)}</td>
                   <td>{recorded(run.latency_ms)}</td>
                   <td>{recorded(run.tokens_to_compliance)}</td>

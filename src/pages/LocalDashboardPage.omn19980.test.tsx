@@ -128,7 +128,7 @@ describe('OMN-19980 AC2b: a run shows its cost, never a per-run saving', () => {
   it('B2: Runs shows local cost and the baseline labels, never a baseline price or a saving', async () => {
     await open('runs');
     const runs = panel('Recent runs');
-    expect(headers(runs)).toEqual(expect.arrayContaining(['Local cost', 'Baseline model', 'Usage source']));
+    expect(headers(runs)).toEqual(expect.arrayContaining(['Local cost', 'Baseline model', 'Basis']));
     expect(headers(runs)).not.toContain('Baseline cost');
     expect(headers(runs)).not.toContain('Savings');
     const row = within(runs).getByRole('row', { name: /corr-19980/ });

@@ -126,6 +126,54 @@ function screenshotPath(name: string) {
   return path;
 }
 
+test('stored basis, excluded counts and modelled baseline survive native Overview and Runs', async ({ page }) => {
+  await page.setViewportSize({ width: 1440, height: 900 });
+  const bases = ['measured', 'estimated', 'unknown', undefined];
+  const provenanceDecisions = bases.map((basis, index) => ({
+    ...decisions[0], correlation_id: `provenance-${index}`,
+    written_at: new Date(Date.UTC(2026, 9, 3, 12, 4 - index)).toISOString(),
+  }));
+  const provenanceSessions = bases.map((basis, index) => ({
+    session_id: `provenance-${index}`, usage_source: basis,
+    savings_method: 'must-not-substitute', local_cost_usd: 0.0011,
+    cloud_cost_usd: 0.002, savings_usd: 0.0009, baseline_model: 'served-baseline-model',
+  }));
+  await serveFixtures(page, {
+    ...fixtures, [DECISIONS]: provenanceDecisions,
+    [SAVINGS]: [{ baseline_model: 'served-baseline-model', pricing_manifest_version: 1, sessions: provenanceSessions }],
+    [OVERVIEW]: [{ total_cost_usd: 0.0011, total_savings_usd: 0.0009, total_baseline_cost_usd: 0.002,
+      measured_run_count: 1, estimated_run_count: 1, unknown_run_count: 2, zero_token_run_count: 0 }],
+  });
+  await page.goto('/');
+  await expect(page.getByText('Baseline served-baseline-model · pricing manifest v1')).toBeVisible();
+  await expect(page.getByText(/The baseline never ran\./)).toBeVisible();
+  await expect(page.getByText(/Estimated runs excluded: 1/)).toBeVisible();
+  await expect(page.getByText(/Unknown runs excluded: 2/)).toBeVisible();
+  const last = page.getByRole('region', { name: 'Last run' });
+  await expect(last.locator('dt').filter({ hasText: /^Basis$/ })).toBeVisible();
+  await expect(last.getByText('measured', { exact: true })).toBeVisible();
+  for (const route of ['overview', 'runs']) {
+    if (route === 'runs') {
+      await page.getByTestId('nav-local-runs').click();
+      await expect(page.getByRole('heading', { name: 'Runs', exact: true })).toBeVisible();
+      await expect(page.locator('table thead th').filter({ hasText: 'Basis' })).toHaveCount(1);
+    }
+    // Runs is intentionally horizontally scrollable at 1440px; role locators
+    // omit clipped headers even though the semantic table cells are rendered.
+    const headers = await page.locator('table thead th').allTextContents();
+    const basisColumn = headers.indexOf('Basis');
+    expect(basisColumn).toBeGreaterThanOrEqual(0);
+    for (const [index, basis] of bases.entries()) {
+      const row = page.locator('table tbody tr').filter({ hasText: `provenance-${index}` });
+      await expect(row.locator('td').nth(basisColumn)).toHaveText(basis ?? 'Not recorded');
+    }
+    await expect(page.getByText('must-not-substitute', { exact: true })).toHaveCount(0);
+    await expect(page.getByText(/verified/i)).toHaveCount(0);
+    await expectNoPanelCutOff(page);
+    await page.screenshot({ path: screenshotPath(`local-dashboard-provenance-${route}-1440x900.png`), fullPage: false });
+  }
+});
+
 test('Overview is the default page and fits 1440x900 with no unmeasured 0 (AC4)', async ({ page }) => {
   await page.setViewportSize({ width: 1440, height: 900 });
   await serveFixtures(page);

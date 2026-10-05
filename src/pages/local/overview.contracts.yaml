@@ -86,7 +86,9 @@
           "ordering_authority_field": "captured_at",
           "ordering_direction": "descending",
           "required_fields": [
-            "zero_token_run_count"
+            "zero_token_run_count",
+            "estimated_run_count",
+            "unknown_run_count"
           ]
         }
       ],
@@ -150,7 +152,8 @@
           "required_fields": [
             "sessions",
             "session_id",
-            "local_cost_usd"
+            "local_cost_usd",
+            "usage_source"
           ]
         }
       ],
@@ -200,7 +203,8 @@
           "required_fields": [
             "sessions",
             "session_id",
-            "local_cost_usd"
+            "local_cost_usd",
+            "usage_source"
           ]
         }
       ],
