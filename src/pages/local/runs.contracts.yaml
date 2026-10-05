@@ -29,7 +29,10 @@
             "tokens_to_compliance",
             "cost_tier_name",
             "actual_score",
-            "data_source"
+            "data_source",
+            "backend_id",
+            "host",
+            "cost_tier_type"
           ]
         },
         {
