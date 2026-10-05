@@ -298,7 +298,7 @@ describe('local pages against the captured lab catalogue', () => {
     expect(savings?.data_bindings?.[1]?.projection_topic).toBe('onex.snapshot.projection.delegation.savings.v1');
     expect(savings?.data_bindings?.[1]?.required_fields).toEqual(['baseline_model', 'pricing_manifest_version']);
     const measured = page.components.find((c) => c.component_id === 'overview-measured');
-    expect(measured?.data_bindings?.[1]?.required_fields).toEqual(['zero_token_run_count']);
+    expect(measured?.data_bindings?.[1]?.required_fields).toEqual(['zero_token_run_count', 'estimated_run_count', 'unknown_run_count']);
   });
 
   it('Overview shows no combined token total, and tokens in and out wait for their exposure (SV-3)', () => {
