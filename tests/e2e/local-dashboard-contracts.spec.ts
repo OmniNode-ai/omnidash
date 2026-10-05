@@ -183,7 +183,9 @@ test('Overview is the default page and fits 1440x900 with no unmeasured 0 (AC4)'
   const recent = page.locator('.local-dashboard-panel').filter({ has: page.getByRole('heading', { name: 'Recent runs' }) });
   const unmeasured = recent.getByRole('row').filter({ hasText: 'corr-19981-unmeasured' });
   await expect(unmeasured).toBeVisible();
-  await expect(unmeasured.getByText('Baseline unresolved')).toBeVisible();
+  // OMN-19980 AC2b: a run shows its cost and never a per-run saving, so the unpriced run has no saving to type.
+  await expect(recent.getByRole('columnheader', { name: 'Savings', exact: true })).toHaveCount(0);
+  await expect(unmeasured.getByText('0.0004', { exact: true })).toBeVisible();
   await expect(unmeasured.getByText('Not recorded').first()).toBeVisible();
   await expect(page.getByText('0', { exact: true })).toHaveCount(0);
   await expect(page.getByText('$0', { exact: true })).toHaveCount(0);
@@ -209,7 +211,12 @@ test('Runs lists every decision with typed unmeasured values at 1440x900 (AC4)',
   await expect(page.getByRole('heading', { level: 1, name: 'Runs' })).toBeVisible();
   const unmeasured = page.getByRole('row').filter({ hasText: 'corr-19981-unmeasured' });
   await expect(unmeasured).toBeVisible();
-  await expect(unmeasured.getByText('Baseline unresolved')).toHaveCount(3);
+  // OMN-19980 AC2b: local cost and the baseline label stay; no per-run baseline price or saving is shown.
+  for (const header of ['Baseline cost', 'Savings']) {
+    await expect(page.getByRole('columnheader', { name: header, exact: true }), header).toHaveCount(0);
+  }
+  await expect(unmeasured.getByText('0.0004', { exact: true })).toBeVisible();
+  await expect(unmeasured.getByText('Baseline unresolved')).toHaveCount(0);
   await expect(page.getByText('Runs 1–2 of 2')).toBeVisible();
   await expect(page.getByText('0', { exact: true })).toHaveCount(0);
   await expectNoPanelCutOff(page);

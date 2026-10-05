@@ -153,7 +153,6 @@
             "sessions",
             "session_id",
             "local_cost_usd",
-            "savings_usd",
             "usage_source"
           ]
         }
@@ -205,7 +204,6 @@
             "sessions",
             "session_id",
             "local_cost_usd",
-            "savings_usd",
             "usage_source"
           ]
         }

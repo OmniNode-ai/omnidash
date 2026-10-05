@@ -215,10 +215,6 @@
             "header": "Cost"
           },
           {
-            "key": "savings_usd",
-            "header": "Savings"
-          },
-          {
             "key": "usage_source",
             "header": "Basis"
           },

@@ -159,10 +159,11 @@ describe('local dashboard page contracts', () => {
       'actual_score', 'data_source',
     ]));
     expect(lookup?.projection_topic).toBe('onex.snapshot.projection.delegation.savings.v1');
-    expect(lookup?.required_fields).toEqual(expect.arrayContaining([
-      'sessions', 'session_id', 'local_cost_usd', 'cloud_cost_usd', 'counterfactual_baseline_usd', 'baseline_model',
-      'savings_usd', 'usage_source', 'savings_method',
-    ]));
+    // OMN-19980 AC2b: the lookup carries the run's cost and the baseline labels only; per-run savings, baseline and
+    // counterfactual dollars come off (savings are window totals from metering-summary.v1).
+    expect(lookup?.required_fields).toEqual([
+      'sessions', 'session_id', 'local_cost_usd', 'baseline_model', 'usage_source', 'savings_method',
+    ]);
     expect(JSON.stringify(runs.components[0])).not.toMatch(/swarm\.runs|run_id|started_at/);
   });
 
