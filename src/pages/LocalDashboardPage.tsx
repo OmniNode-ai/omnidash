@@ -162,9 +162,6 @@ type Row = Record<string, unknown>;
  */
 export const FIRST_RUN_COMMAND = 'onex delegate "ping"';
 
-/** No served exposure carries the serving backend yet: OMN-20162 adds it to delegation events. */
-const BACKEND_NOT_SERVED = 'Not served (OMN-20162)';
-
 function asRecords(rows: readonly unknown[]): Row[] {
   return rows.filter((row): row is Row => typeof row === 'object' && row !== null && !Array.isArray(row));
 }
@@ -209,6 +206,13 @@ function recorded(value: unknown): string {
   return isMissing(value) ? 'Not recorded' : String(value);
 }
 
+/** The route tier as served, with its cost regime beside it when the row carries one (OMN-13649, OMN-20225). */
+function tierOf(decision: Row): string {
+  if (isMissing(decision.cost_tier_name)) return 'Not recorded';
+  const name = String(decision.cost_tier_name);
+  return isMissing(decision.cost_tier_type) ? name : `${name} (${String(decision.cost_tier_type)})`;
+}
+
 function duration(value: unknown): string {
   return isMissing(value) ? 'Not recorded' : `${String(value)} ms`;
 }
@@ -249,16 +253,19 @@ export function LastRunCard({ decisions, sessions, now = Date.now() }: RunViewPr
   const fields: Array<[string, string]> = [
     ['Status', status],
     ...(status === 'failed' ? [['Cause', causeOf(last)] as [string, string]] : []),
+    ['Quality score', recorded(last.actual_score)],
     ['Run', recorded(last.correlation_id)],
     ['Model', modelOrUnknown(last.model_name)],
-    ['Backend', BACKEND_NOT_SERVED],
+    // OMN-20162's columns: the backend and host of the attempt that accepted the run.
+    ['Backend', recorded(last.backend_id)],
+    ['Host', recorded(last.host)],
     ['Duration', duration(last.latency_ms)],
     ['Tokens in', recorded(last.tokens_input)],
     ['Tokens out', recorded(last.tokens_output)],
     ['Cost', recorded(session?.local_cost_usd)],
     ['Basis', recorded(session?.usage_source)],
     ['Task type', recorded(last.task_type)],
-    ['Route tier', recorded(last.cost_tier_name)],
+    ['Route tier', tierOf(last)],
     ['Age', age(last.written_at, now)],
   ];
   return (
@@ -280,7 +287,7 @@ export function RecentRunsTable({ decisions, sessions, now = Date.now() }: RunVi
         <thead>
           <tr>
             <th>Time</th><th>Age</th><th>Status</th><th>Cause</th><th>Task type</th><th>Model</th><th>Backend</th>
-            <th>Tokens in</th><th>Tokens out</th><th>Cost</th><th>Savings</th><th>Basis</th><th>Duration</th>
+            <th>Host</th><th>Tokens in</th><th>Tokens out</th><th>Cost</th><th>Savings</th><th>Basis</th><th>Duration</th>
             <th>Route tier</th><th>Quality score</th><th>Run</th>
           </tr>
         </thead>
@@ -293,14 +300,15 @@ export function RecentRunsTable({ decisions, sessions, now = Date.now() }: RunVi
             <td>{causeOf(decision)}</td>
             <td>{recorded(decision.task_type)}</td>
             <td>{modelOrUnknown(decision.model_name)}</td>
-            <td>{BACKEND_NOT_SERVED}</td>
+            <td>{recorded(decision.backend_id)}</td>
+            <td>{recorded(decision.host)}</td>
             <td>{recorded(decision.tokens_input)}</td>
             <td>{recorded(decision.tokens_output)}</td>
             <td>{recorded(session?.local_cost_usd)}</td>
             <td>{savingsOf(session)}</td>
             <td>{recorded(session?.usage_source)}</td>
             <td>{duration(decision.latency_ms)}</td>
-            <td>{recorded(decision.cost_tier_name)}</td>
+            <td>{tierOf(decision)}</td>
             <td>{recorded(decision.actual_score)}</td>
             <td className="local-dashboard-cell-token">{recorded(decision.correlation_id)}</td>
           </tr>;
@@ -406,7 +414,7 @@ export function RunsTable({ decisions, sessions, now = Date.now(), pageSize = 25
             <table>
               <thead>
                 <tr>
-                  <th>Run</th><th>Created</th><th>Status</th><th>Cause</th><th>Model</th><th>Backend</th>
+                  <th>Run</th><th>Created</th><th>Status</th><th>Cause</th><th>Model</th><th>Backend</th><th>Host</th>
                   <th>Tokens in</th><th>Tokens out</th><th>Local cost</th><th>Baseline cost</th>
                   <th>Baseline model</th><th>Savings</th><th>Basis</th>
                   <th>Task type</th><th>Duration</th><th>Tokens to compliance</th><th>Route tier</th><th>Quality score</th>
@@ -422,7 +430,8 @@ export function RunsTable({ decisions, sessions, now = Date.now(), pageSize = 25
                   <td>{statusOf(run)}</td>
                   <td>{causeOf(run)}</td>
                   <td>{modelOrUnknown(run.model_name)}</td>
-                  <td>{BACKEND_NOT_SERVED}</td>
+                  <td>{recorded(run.backend_id)}</td>
+                  <td>{recorded(run.host)}</td>
                   <td>{recorded(run.tokens_input)}</td>
                   <td>{recorded(run.tokens_output)}</td>
                   <td>{recorded(session?.local_cost_usd)}</td>
@@ -434,7 +443,7 @@ export function RunsTable({ decisions, sessions, now = Date.now(), pageSize = 25
                   <td>{recorded(run.task_type)}</td>
                   <td>{recorded(run.latency_ms)}</td>
                   <td>{recorded(run.tokens_to_compliance)}</td>
-                  <td>{recorded(run.cost_tier_name)}</td>
+                  <td>{tierOf(run)}</td>
                   <td>{recorded(run.actual_score)}</td>
                 </tr>;
               })}</tbody>
@@ -448,6 +457,65 @@ export function RunsTable({ decisions, sessions, now = Date.now(), pageSize = 25
         </>
       )}
     </>
+  );
+}
+
+/** The quality-gate exposure's fields the quality panel shows, each as served. */
+const QUALITY_FIELDS: ReadonlyArray<[string, string]> = [
+  ['Pass rate', 'overall_pass_rate'],
+  ['Passed', 'total_passed'],
+  ['Failed', 'total_failed'],
+  ['Checks', 'total_checks'],
+  ['Average score', 'avg_actual_score'],
+  ['Average required bar', 'avg_required_bar'],
+];
+
+/**
+ * OMN-20225 AC3: the quality panel, one row of delegation.quality-gate.v1. Every figure is a served field; the
+ * browser divides, sums and rounds nothing, so a pass rate here is the view's and never recomputed from the counts.
+ */
+export function QualityPanel({ row }: { row: Row | null }) {
+  if (!row) return <p className="local-dashboard-empty" role="status">No quality checks served yet</p>;
+  return (
+    <section aria-label="Quality">
+      <dl className="local-dashboard-fields">
+        {QUALITY_FIELDS.map(([label, field]) => <div key={field}><dt>{label}</dt><dd>{recorded(row[field])}</dd></div>)}
+      </dl>
+    </section>
+  );
+}
+
+/**
+ * OMN-20225 AC3: the tier mix, from delegation.model-routing.v1's served by_tier (view migration 0045). Each tier's
+ * count and share are the view's; runs with no tier are the served not_tier_routed_count, never folded into a tier.
+ */
+export function TierMixPanel({ row }: { row: Row | null }) {
+  const byTier = row && typeof row.by_tier === 'object' && row.by_tier !== null && !Array.isArray(row.by_tier)
+    ? (row.by_tier as Row) : null;
+  const tiers = byTier && Array.isArray(byTier.tiers) ? asRecords(byTier.tiers) : [];
+  if (!byTier || tiers.length === 0) {
+    return <p className="local-dashboard-empty" role="status">No tier mix served yet</p>;
+  }
+  return (
+    <section aria-label="Tier mix">
+      <div className="local-dashboard-table-wrap local-dashboard-table-wrap--fit">
+        <table>
+          <thead><tr><th>Tier</th><th>Runs</th><th>Share of tier-routed</th></tr></thead>
+          <tbody>{tiers.map((tier, index) => (
+            <tr key={`${String(tier.cost_tier_name)}-${index}`}>
+              <td>{recorded(tier.cost_tier_name)}</td>
+              <td>{recorded(tier.count)}</td>
+              <td>{recorded(tier.pct_of_tier_routed)}</td>
+            </tr>
+          ))}</tbody>
+        </table>
+      </div>
+      <dl className="local-dashboard-fields">
+        <div><dt>Tier-routed</dt><dd>{recorded(byTier.tier_routed_total)}</dd></div>
+        <div><dt>Not tier-routed</dt><dd>{recorded(byTier.not_tier_routed_count)}</dd></div>
+        <div><dt>All runs</dt><dd>{recorded(byTier.total_tasks)}</dd></div>
+      </dl>
+    </section>
   );
 }
 
@@ -492,7 +560,7 @@ export function WorkflowPath({ decisions }: { decisions: readonly unknown[] }) {
   const status = statusOf(run);
   const steps: Array<[string, string]> = [
     ['Request', `${recorded(run.created_at)} · ${recorded(run.task_type)}`],
-    ['Routing', `tier ${recorded(run.cost_tier_name)} · model ${modelOrUnknown(run.model_name)} · backend ${BACKEND_NOT_SERVED}`],
+    ['Routing', `tier ${tierOf(run)} · model ${modelOrUnknown(run.model_name)} · backend ${recorded(run.backend_id)} · host ${recorded(run.host)}`],
     ['Quality gate', status === 'failed'
       ? `failed: ${causeOf(run)}`
       : `${status} · score ${recorded(run.actual_score)}`],
@@ -569,6 +637,11 @@ function TableComponent({ component, snapshots, pageSize, syncUrl }: {
   if (component.component_id === 'overview-last-run') return <LastRunCard decisions={rows} sessions={lookup} />;
   if (component.component_id === 'overview-recent-runs') {
     return rows.length === 0 ? <NoRunsYet /> : <RecentRunsTable decisions={rows} sessions={lookup} />;
+  }
+  if (component.component_id === 'overview-quality' || component.component_id === 'overview-tier-mix') {
+    const first = rawRowsFor(component, snapshots, 0)[0];
+    const row = first && typeof first === 'object' && !Array.isArray(first) ? (first as Row) : null;
+    return component.component_id === 'overview-quality' ? <QualityPanel row={row} /> : <TierMixPanel row={row} />;
   }
   if (component.component_id === 'credentials-keys') return <CredentialsTable rows={rows} />;
   if (component.component_id === 'workflow-run-path') return <WorkflowPath decisions={rows} />;

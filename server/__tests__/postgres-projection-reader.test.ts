@@ -546,3 +546,31 @@ describe('PostgresProjectionReader', () => {
     });
   });
 });
+
+// OMN-20225 (Amendment 1): the reader's own model-routing and quality-gate folds were a second, drifted copy of
+// omnimarket's projection_delegation_model_routing and projection_delegation_quality_gate views (migration 0045):
+// no by_tier, escalations hard-coded to 0, a 0 pass rate with no runs. The projection API serves both topics; this
+// direct-Postgres reader no longer answers them, and runs no SQL for them.
+describe('PostgresProjectionReader no longer folds model-routing or quality-gate (OMN-20225)', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it.each([
+    'onex.snapshot.projection.delegation.model-routing.v1',
+    'onex.snapshot.projection.delegation.quality-gate.v1',
+  ])('%s answers no rows and runs no query', async (topic) => {
+    const reader = new PostgresProjectionReader({ connectionString: 'postgresql://test:test@localhost:5432/test' });
+    // A client that would hand back rows to any query, so a fold that still ran would produce some.
+    const client = {
+      query: vi.fn().mockResolvedValue({ rows: [{ total: '5', total_checks: '5', total_passed: '4', total_failed: '1' }] }),
+      release: vi.fn(),
+    };
+    getMockPool().connect.mockResolvedValue(client);
+
+    const result = await reader.readProjection(topic);
+
+    expect(result.rows).toEqual([]);
+    expect(client.query.mock.calls.filter(([sql]) => !/set_config|SET LOCAL|app\.tenant/i.test(String(sql)))).toEqual([]);
+  });
+});

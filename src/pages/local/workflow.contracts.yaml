@@ -25,7 +25,10 @@
             "quality_gate_detail",
             "actual_score",
             "latency_ms",
-            "task_type"
+            "task_type",
+            "backend_id",
+            "host",
+            "cost_tier_type"
           ]
         }
       ],

@@ -10,6 +10,9 @@ const SAVINGS = 'onex.snapshot.projection.delegation.savings.v1';
 const OVERVIEW = 'onex.snapshot.projection.cost.savings-overview.v1';
 const CREDENTIALS = 'onex.snapshot.projection.tenant-credentials.v1';
 const USAGE = 'onex.snapshot.projection.usage-by-model-day.v1';
+// OMN-20225: the quality and tier-mix panels' served exposures.
+const QUALITY = 'onex.snapshot.projection.delegation.quality-gate.v1';
+const ROUTING = 'onex.snapshot.projection.delegation.model-routing.v1';
 
 const decisions = [
   {
@@ -17,6 +20,8 @@ const decisions = [
     model_name: 'Qwen3.8-27B', quality_gate_passed: true, quality_gate_detail: 'completed', latency_ms: 813,
     tokens_input: 162, tokens_output: 52, task_type: 'summarization', cost_tier_name: 'local', actual_score: '1.000',
     tokens_to_compliance: 214, data_source: 'real',
+    // OMN-20225: the accepting attempt's backend and host (OMN-20162 columns) and the tier's cost regime.
+    backend_id: 'local-heavy-reasoning', host: 'gpu-host-b', cost_tier_type: 'free_local',
   },
   {
     correlation_id: 'corr-19981-unmeasured', written_at: '2026-10-02T10:01:00Z', created_at: '2026-10-02T10:01:00Z',
@@ -52,6 +57,21 @@ const fixtures: Record<string, unknown[]> = {
   }],
   [CREDENTIALS]: [],
   [USAGE]: [],
+  // Served values chosen so a figure the browser recomputed from the counts would differ (pass rate 0.875 of 7/8).
+  [QUALITY]: [{
+    tenant_id: 'tenant-fresh-store', overall_pass_rate: 0.875, total_passed: 7, total_failed: 1, total_checks: 8,
+    avg_actual_score: 0.81, avg_required_bar: 0.7,
+  }],
+  [ROUTING]: [{
+    tenant_id: 'tenant-fresh-store',
+    by_tier: {
+      total_tasks: 9, tier_routed_total: 7, not_tier_routed_count: 2,
+      tiers: [
+        { cost_tier_name: 'local', count: 5, tier_routed: true, pct_of_tier_routed: 71.43 },
+        { cost_tier_name: 'cheap_cloud', count: 2, tier_routed: true, pct_of_tier_routed: 28.57 },
+      ],
+    },
+  }],
 };
 
 async function serveFixtures(page: Page, servedRows: Record<string, unknown[]> = fixtures) {
@@ -197,6 +217,62 @@ test('Runs lists every decision with typed unmeasured values at 1440x900 (AC4)',
   await page.screenshot({ path: screenshotPath('local-dashboard-runs-1440x900.png'), fullPage: false });
 });
 
+test('Overview and Runs show each run\'s backend, host, tier and score, typed when not recorded (OMN-20225)', async ({ page }) => {
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await serveFixtures(page);
+  await page.goto('/');
+
+  await expect(page.getByRole('heading', { level: 1, name: 'Overview' })).toBeVisible();
+  await expect(page.getByText('Not served (OMN-20162)')).toHaveCount(0);
+  const recent = page.locator('.local-dashboard-panel').filter({ has: page.getByRole('heading', { name: 'Recent runs' }) });
+  const measured = recent.getByRole('row').filter({ hasText: 'corr-19981-measured' });
+  for (const value of ['local-heavy-reasoning', 'gpu-host-b', 'local (free_local)', 'passed', '1.000']) {
+    await expect(measured.getByText(value, { exact: true }), value).toBeVisible();
+  }
+  // The second run carries no backend or host: typed, never blank.
+  const unmeasured = recent.getByRole('row').filter({ hasText: 'corr-19981-unmeasured' });
+  const headers = await recent.getByRole('columnheader').allTextContents();
+  const cells = unmeasured.getByRole('cell');
+  for (const header of ['Backend', 'Host']) {
+    await expect(cells.nth(headers.map((h) => h.trim()).indexOf(header)), header).toHaveText('Not recorded');
+  }
+
+  await page.getByTestId('nav-local-runs').click();
+  await expect(page.getByRole('heading', { level: 1, name: 'Runs' })).toBeVisible();
+  const run = page.getByRole('row').filter({ hasText: 'corr-19981-measured' });
+  for (const value of ['local-heavy-reasoning', 'gpu-host-b', 'local (free_local)']) {
+    await expect(run.getByText(value, { exact: true }), value).toBeVisible();
+  }
+  await expect(page.getByText('Not served (OMN-20162)')).toHaveCount(0);
+  await expectNoPanelCutOff(page);
+  await page.screenshot({ path: screenshotPath('local-dashboard-runs-backend-1440x900.png'), fullPage: false });
+});
+
+test('Overview quality and tier-mix panels show served fields only, below Recent runs (OMN-20225 AC3)', async ({ page }) => {
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await serveFixtures(page);
+  await page.goto('/');
+
+  const quality = page.locator('.local-dashboard-panel').filter({ has: page.getByRole('heading', { name: 'Quality', exact: true }) });
+  await quality.scrollIntoViewIfNeeded();
+  for (const value of ['0.875', '7', '1', '8', '0.81', '0.7']) {
+    await expect(quality.getByText(value, { exact: true }), value).toBeVisible();
+  }
+  const tierMix = page.locator('.local-dashboard-panel').filter({ has: page.getByRole('heading', { name: 'Tier mix', exact: true }) });
+  for (const value of ['cheap_cloud', '71.43', '28.57']) {
+    await expect(tierMix.getByText(value, { exact: true }), value).toBeVisible();
+  }
+  await expect(tierMix.getByText('Not tier-routed', { exact: true })).toBeVisible();
+  // Recent runs still starts above the fold (OMN-19981 AC4): the new panels sit below it.
+  const recent = page.locator('.local-dashboard-panel').filter({ has: page.getByRole('heading', { name: 'Recent runs' }) });
+  await page.evaluate(() => window.scrollTo(0, 0));
+  expect((await recent.boundingBox())!.y).toBeLessThan(900);
+  expect((await quality.boundingBox())!.y).toBeGreaterThan((await recent.boundingBox())!.y);
+  await expectNoPanelCutOff(page);
+  await quality.scrollIntoViewIfNeeded();
+  await page.screenshot({ path: screenshotPath('local-dashboard-overview-panels-1440x900.png'), fullPage: false });
+});
+
 test('every local page opens in order, names a served exposure, and fits 1440x900', async ({ page }) => {
   await page.setViewportSize({ width: 1440, height: 900 });
   await serveFixtures(page);
@@ -267,12 +343,16 @@ test('Overview and Runs scroll to their last row while the header stays reachabl
   await page.goto('/');
   await expect(page.getByRole('heading', { level: 1, name: 'Overview' })).toBeVisible();
   const scrollPage = page.locator('.local-dashboard-page');
-  await expect(page.locator('.local-dashboard-table-wrap tbody tr')).toHaveCount(10);
+  // Recent runs' rows; the tier-mix panel below it is a table too (OMN-20225).
+  const recentRows = page.locator('.local-dashboard-panel')
+    .filter({ has: page.getByRole('heading', { name: 'Recent runs' }) })
+    .locator('.local-dashboard-table-wrap tbody tr');
+  await expect(recentRows).toHaveCount(10);
   await expect.poll(() => scrollPage.evaluate(el => el.scrollHeight > el.clientHeight)).toBe(true);
   await page.mouse.move(1100, 650);
   await page.mouse.wheel(0, 4000);
   await expect.poll(() => scrollPage.evaluate((element) => element.scrollTop)).toBeGreaterThan(0);
-  const lastOverviewRow = page.locator('.local-dashboard-table-wrap tbody tr').last();
+  const lastOverviewRow = recentRows.last();
   expect((await lastOverviewRow.boundingBox())!.y + (await lastOverviewRow.boundingBox())!.height).toBeLessThanOrEqual(900);
   expect((await page.getByRole('button', { name: 'Toggle theme', exact: true }).boundingBox())!.y).toBeGreaterThanOrEqual(0);
 

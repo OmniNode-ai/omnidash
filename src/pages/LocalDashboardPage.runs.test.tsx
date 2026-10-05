@@ -89,11 +89,14 @@ describe('LastRunCard (OV-4, F16)', () => {
     expect(within(card).getByText('provider timeout after 30s')).toBeInTheDocument();
   });
 
-  it('types a cost with no matching savings session and the unserved backend, never a blank or 0', () => {
+  it('types a cost with no matching savings session and a run with no served backend, never a blank or 0', () => {
     render(<LastRunCard now={NOW} decisions={[decision('run', '2026-10-02T10:07:00Z')]} sessions={[]} />);
     const card = screen.getByRole('region', { name: 'Last run' });
-    expect(within(card).getAllByText('Not recorded').length).toBeGreaterThan(0);
-    expect(within(card).getByText('Not served (OMN-20162)')).toBeInTheDocument();
+    // This 2026-10-02 row predates OMN-20162's backend_id and host columns, so cost, backend and host are not recorded.
+    for (const label of ['Cost', 'Backend', 'Host']) {
+      expect(within(card).getByText(label, { selector: 'dt' }).nextElementSibling?.textContent, label).toBe('Not recorded');
+    }
+    expect(within(card).queryByText(/Not served \(OMN-20162\)/)).not.toBeInTheDocument();
     expect(within(card).queryByText(/^\$?0(?:\.0+)?$/)).not.toBeInTheDocument();
     for (const value of within(card).getAllByRole('definition')) {
       expect(value.textContent?.trim()).not.toBe('');
@@ -277,8 +280,14 @@ describe('Baseline model label (F20)', () => {
     />);
     const row = screen.getByRole('row', { name: /no-baseline-name/ });
     expect(within(row).queryByText('Not measured')).not.toBeInTheDocument();
-    // The run has its decision, so the one Not recorded is the baseline model cell.
-    expect(within(row).getAllByText('Not recorded')).toHaveLength(1);
+    // The baseline model cell is the one typed Not recorded among the savings columns (backend and host are typed on
+    // their own: this fixture predates OMN-20162's columns).
+    const headers = screen.getAllByRole('columnheader').map((cell) => cell.textContent?.trim());
+    const cells = within(row).getAllByRole('cell');
+    expect(cells[headers.indexOf('Baseline model')]?.textContent).toBe('Not recorded');
+    for (const header of ['Baseline cost', 'Savings']) {
+      expect(cells[headers.indexOf(header)]?.textContent, header).toBe('0.000844');
+    }
     // The saving still shows (the baseline cost cell carries the same figure).
     expect(within(row).getAllByText('0.000844').length).toBeGreaterThan(0);
   });
