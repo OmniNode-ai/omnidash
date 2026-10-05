@@ -67,6 +67,31 @@ export class TenantNotConfiguredError extends Error {
   }
 }
 
+/**
+ * Recognize the typed refusal across query boundaries and test doubles.
+ * The stable code keeps the UI state intact when an error is reconstructed
+ * by a data-source adapter or a React Query cache.
+ */
+export function isTenantNotConfiguredError(error: unknown): error is TenantNotConfiguredError {
+  return (
+    error instanceof TenantNotConfiguredError ||
+    (typeof error === 'object' && error !== null &&
+      (error as { code?: unknown }).code === 'TENANT_NOT_CONFIGURED')
+  );
+}
+
+/** The code a refused tenant-scoped read carries, the projection server's own 422 code. */
+export const TENANT_CONTEXT_UNRESOLVED = 'tenant_context_unresolved';
+
+/**
+ * Recognize the refusal when it travels as a degraded reason string rather than
+ * an error (the event-dash readers return a degraded result instead of
+ * throwing). The prefix is the code `resolveTenantFor` writes below.
+ */
+export function isTenantNotConfiguredReason(reason: string | null | undefined): boolean {
+  return typeof reason === 'string' && reason.startsWith(`${TENANT_CONTEXT_UNRESOLVED}:`);
+}
+
 let exposureCache: Promise<Map<string, string | null>> | null = null;
 
 /** Drop the memoized exposure map. Exported for tests and for a data-source flip. */
@@ -131,7 +156,7 @@ export async function resolveTenantFor(topic: string): Promise<TenantResolution>
     return {
       kind: 'refused',
       reason:
-        `tenant_context_unresolved: '${topic}' is scoped by '${tenantColumn}' and no ` +
+        `${TENANT_CONTEXT_UNRESOLVED}: '${topic}' is scoped by '${tenantColumn}' and no ` +
         'tenant is configured for this dashboard (set data_source.projection_tenant_id ' +
         'in contract.yaml, or VITE_PROJECTION_TENANT_ID)',
     };
