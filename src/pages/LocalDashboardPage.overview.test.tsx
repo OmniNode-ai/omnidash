@@ -137,7 +137,7 @@ describe('MetricCard captions and pending sources (Amendment 4)', () => {
     expect(screen.queryByText(/^Modelled:/)).not.toBeInTheDocument();
   });
 
-  it('shows the zero-token run count beside the measured runs (OMN-20008 AC4)', () => {
+  it('shows the served zero-token diagnostic beside the measured runs', () => {
     render(<MetricCard
       component={component('overview-measured', ['measured_run_count'])}
       config={{ metric_key: 'measured_run_count', label: 'Measured runs', format: 'number', precision: 0 }}
@@ -145,7 +145,7 @@ describe('MetricCard captions and pending sources (Amendment 4)', () => {
       caption={{ zero_token_run_count: 0 }}
     />);
     expect(screen.getByText('41')).toBeInTheDocument();
-    expect(screen.getByText('Zero-token runs: 0')).toBeInTheDocument();
+    expect(screen.getByText(/Zero-token runs: 0/)).toBeInTheDocument();
   });
 
   it('renders a card with no served exposure as not served yet, naming what it waits for (SV-3)', () => {
