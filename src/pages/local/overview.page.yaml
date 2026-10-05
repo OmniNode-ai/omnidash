@@ -132,6 +132,10 @@
             "header": "Cost"
           },
           {
+            "key": "usage_source",
+            "header": "Basis"
+          },
+          {
             "key": "task_type",
             "header": "Task type"
           },
@@ -201,6 +205,10 @@
           {
             "key": "savings_usd",
             "header": "Savings"
+          },
+          {
+            "key": "usage_source",
+            "header": "Basis"
           },
           {
             "key": "latency_ms",

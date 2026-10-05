@@ -92,7 +92,7 @@ describe('LastRunCard (OV-4, F16)', () => {
   it('types a cost with no matching savings session and the unserved backend, never a blank or 0', () => {
     render(<LastRunCard now={NOW} decisions={[decision('run', '2026-10-02T10:07:00Z')]} sessions={[]} />);
     const card = screen.getByRole('region', { name: 'Last run' });
-    expect(within(card).getByText('Not recorded')).toBeInTheDocument();
+    expect(within(card).getAllByText('Not recorded').length).toBeGreaterThan(0);
     expect(within(card).getByText('Not served (OMN-20162)')).toBeInTheDocument();
     expect(within(card).queryByText(/^\$?0(?:\.0+)?$/)).not.toBeInTheDocument();
     for (const value of within(card).getAllByRole('definition')) {
