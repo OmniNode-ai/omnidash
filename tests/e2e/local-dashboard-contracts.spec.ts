@@ -262,7 +262,8 @@ test('Runs lists every decision with typed unmeasured values at 1440x900 (AC4)',
 
 // OMN-20006: the Usage page at 1440x900. One day and model mixes a measured run (0.25) with an estimated one, so the
 // served measured cost is 0.25 beside "1 unmeasured" while cost_usd (9.25) is never shown; another has only an
-// unmeasured run, so its cost is Not measured, never $0. The savings series names the exposure it waits on.
+// unmeasured run, so its cost is Not measured, never $0. The savings series shows metering-summary.v1's day row, never
+// the all row (the Overview headline).
 test('Usage shows measured cost beside unmeasured runs, never 0 for unmeasured, at 1440x900 (AC1, AC3, AC4, AC-US3)', async ({ page }) => {
   await page.setViewportSize({ width: 1440, height: 900 });
   await serveFixtures(page, {
@@ -292,7 +293,12 @@ test('Usage shows measured cost beside unmeasured runs, never 0 for unmeasured, 
   await expect(page.getByText('$0', { exact: true })).toHaveCount(0);
   await expect(page.getByText('0', { exact: true })).toHaveCount(0);
   const savings = page.locator('.local-dashboard-panel').filter({ has: page.getByRole('heading', { name: 'Savings per day' }) });
-  await expect(savings.getByText('Not served yet: waits on metering-summary.v1')).toBeVisible();
+  const series = savings.getByRole('table', { name: 'Savings per day vs claude-sonnet-5-5' });
+  const day = series.getByRole('row').filter({ hasText: '2026-10-02' });
+  for (const value of ['2026-10-02', '$0.40', '46']) await expect(day.getByText(value, { exact: true })).toBeVisible();
+  await expect(series.getByRole('row')).toHaveCount(2);
+  await expect(savings.getByText('$1.2184')).toHaveCount(0);
+  await expect(savings.getByText(/Not served yet/)).toHaveCount(0);
   await expectNoPanelCutOff(page);
 
   await page.screenshot({ path: screenshotPath('local-dashboard-usage-1440x900.png'), fullPage: false });
