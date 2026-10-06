@@ -281,6 +281,8 @@ describe('local pages against the captured lab catalogue', () => {
       'onex.snapshot.projection.cost.savings-overview.v1',
       'onex.snapshot.projection.delegation.savings.v1',
       'onex.snapshot.projection.delegation.decisions.v1',
+      // OMN-19980 Step B: the Savings total and its caption, from the all-time row.
+      'onex.snapshot.projection.metering-summary.v1',
       // OMN-20225 AC3: the quality panel and the tier-mix panel.
       'onex.snapshot.projection.delegation.quality-gate.v1',
       'onex.snapshot.projection.delegation.model-routing.v1',
@@ -289,15 +291,17 @@ describe('local pages against the captured lab catalogue', () => {
       .filter((w) => (w.config as Record<string, unknown>).config_kind === 'metric_card')
       .map((w) => (w.config as Record<string, unknown>).metric_key);
     expect(keys).toEqual([
-      'total_cost_usd', 'total_savings_usd', 'measured_run_count', 'tokens_in_and_out',
+      'total_cost_usd', 'savings_usd', 'measured_run_count', 'tokens_in_and_out',
       // OMN-20009: the served run-locally share and the served saving per measured run.
       'by_tier.local_call_share', 'savings_per_measured_run_usd',
     ]);
     const savings = page.components.find((c) => c.component_id === 'overview-savings');
-    expect(savings?.data_bindings?.[0]?.required_fields).toEqual(['total_savings_usd', 'total_baseline_cost_usd']);
-    // SV-2 / OV-3: the baseline model and the pricing manifest version, from the served delegation-savings row.
-    expect(savings?.data_bindings?.[1]?.projection_topic).toBe('onex.snapshot.projection.delegation.savings.v1');
-    expect(savings?.data_bindings?.[1]?.required_fields).toEqual(['baseline_model', 'pricing_manifest_version']);
+    // SV-2 / OV-3 and OMN-19980 Step B: the figure, its baseline model and its pricing manifest version all come from
+    // the one metering-summary.v1 all-time row, so there is no second (caption) binding.
+    expect(savings?.data_bindings?.map((b) => b.projection_topic)).toEqual(['onex.snapshot.projection.metering-summary.v1']);
+    expect(savings?.data_bindings?.[0]?.required_fields).toEqual(
+      ['window_kind', 'as_of', 'baseline_model', 'pricing_manifest_version', 'baseline_state', 'savings_usd'],
+    );
     const measured = page.components.find((c) => c.component_id === 'overview-measured');
     expect(measured?.data_bindings?.[1]?.required_fields).toEqual(['zero_token_run_count', 'estimated_run_count', 'unknown_run_count']);
   });

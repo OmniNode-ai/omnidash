@@ -62,15 +62,13 @@ function isSavingsField(name: string): boolean {
   return SAVINGS_FIELDS.has(name) || (SAVINGS_NAME.test(name) && !SAVINGS_LABELS.has(name));
 }
 
-// ---- Step A allowlist -------------------------------------------------------------------------------------------
+// ---- Step A allowlist, emptied by Step B -------------------------------------------------------------------------
 /**
- * Time-boxed for Step A (Amendment 1, ruling 1 and open question 2): the Overview Savings total still reads
- * cost.savings-overview.v1 until Step B rebinds it to metering-summary.v1. Step B empties this list; until then
- * AC2 stays open. Asserted by name below, and an entry the tree no longer needs fails as stale.
+ * Step A (Amendment 1, ruling 1 and open question 2) let the Overview Savings total read cost.savings-overview.v1
+ * through one named entry here. Step B rebinds it to metering-summary.v1's all-time row, so the list is empty and
+ * asserted empty below: no savings figure on the six pages is exempt from R1 and R2 any more.
  */
-const STEP_A_ALLOWLIST: ReadonlyArray<{ binding_id: string; projection_topic: string; fields: readonly string[] }> = [
-  { binding_id: 'overview-savings-snapshot', projection_topic: SAVINGS_OVERVIEW, fields: ['total_savings_usd', 'total_baseline_cost_usd'] },
-];
+const STEP_A_ALLOWLIST: ReadonlyArray<{ binding_id: string; projection_topic: string; fields: readonly string[] }> = [];
 
 type Binding = NonNullable<ModelComponentContract['data_bindings']>[number];
 
@@ -357,16 +355,18 @@ describe('OMN-19980 AC2d: planted controls (each rule catches its violation)', (
     ]);
   });
 
-  it('R1: the Step A allowlist exempts only its own binding id on its own exposure', () => {
+  it('R1 and R2 catch the old Step A Overview Savings binding: nothing is exempt after Step B', () => {
     const pages = plant([
-      plantedComponent('planted-r1-allow', [
-        binding('overview-savings-snapshot', DELEGATION_SAVINGS, ['total_savings_usd']),
-        binding('planted-other-id', SAVINGS_OVERVIEW, ['total_baseline_cost_usd']),
-      ]),
-    ], []);
+      plantedComponent('planted-step-a', [
+        binding('overview-savings-snapshot', SAVINGS_OVERVIEW, ['total_savings_usd', 'total_baseline_cost_usd']),
+      ], ['missing-field', 'no-data'], 'metric_card'),
+    ], [{ data_source: 'planted-step-a', config: metric('total_savings_usd') }]);
     expect(plantedOnly(ruleR1Binding(pages))).toEqual([
-      `R1 planted/overview-savings-snapshot: total_savings_usd from ${DELEGATION_SAVINGS}`,
-      `R1 planted/planted-other-id: total_baseline_cost_usd from ${SAVINGS_OVERVIEW}`,
+      `R1 planted/overview-savings-snapshot: total_savings_usd from ${SAVINGS_OVERVIEW}`,
+      `R1 planted/overview-savings-snapshot: total_baseline_cost_usd from ${SAVINGS_OVERVIEW}`,
+    ]);
+    expect(plantedOnly(ruleR2Widget(pages))).toEqual([
+      `R2 planted/planted-step-a: shows total_savings_usd from ${SAVINGS_OVERVIEW}`,
     ]);
   });
 
@@ -426,21 +426,39 @@ describe('OMN-19980 AC2d: planted controls (each rule catches its violation)', (
   });
 });
 
-describe('OMN-19980 Step A allowlist (time-boxed; Step B empties it)', () => {
-  it('names exactly the Overview Savings total binding and its two fields', () => {
-    expect(STEP_A_ALLOWLIST).toEqual([
-      { binding_id: 'overview-savings-snapshot', projection_topic: SAVINGS_OVERVIEW, fields: ['total_savings_usd', 'total_baseline_cost_usd'] },
-    ]);
+describe('OMN-19980 Step B: the allowlist is empty and every savings figure binds metering-summary.v1', () => {
+  it('the Step A allowlist is empty, and R4 still allows only SavingsPerRunCard', () => {
+    expect(STEP_A_ALLOWLIST).toEqual([]);
     expect([...R4_ALLOWED_OWNERS]).toEqual(['SavingsPerRunCard']);
   });
 
-  it('every allowlisted field is still bound where the entry says (a stale entry fails)', () => {
-    const bound = loadPages().flatMap(bindingsOf).map(({ binding: b }) => b);
-    for (const entry of STEP_A_ALLOWLIST) {
-      const match = bound.find((b) => b.binding_id === entry.binding_id && b.projection_topic === entry.projection_topic);
-      expect(match, entry.binding_id).toBeDefined();
-      for (const field of entry.fields) expect(match?.required_fields, `${entry.binding_id} ${field}`).toContain(field);
-    }
+  it('every bound savings figure on the six pages reads metering-summary.v1, and there is at least one', () => {
+    const pages = loadPages();
+    const bound = pages.flatMap((page) => bindingsOf(page)
+      .filter(({ binding: b }) => (b.required_fields ?? []).some(isSavingsField))
+      .map(({ binding: b }) => ({ id: `${page.name}/${b.binding_id}`, topic: b.projection_topic })));
+    const shown = pages.flatMap((page) => widgetKeys(page).filter((entry) => isSavingsField(entry.key)).flatMap((entry) => {
+      const first = page.doc.components.find((candidate) => candidate.component_id === entry.componentId)?.data_bindings?.[0];
+      return first === undefined ? [] : [{ id: `${page.name}/${entry.componentId}:${entry.key}`, topic: first.projection_topic }];
+    }));
+    // The instrument: the Overview Savings total is a bound savings figure, so a vacuous pass is impossible.
+    expect(bound.map((entry) => entry.id)).toContain('overview/overview-savings-metering');
+    expect(shown.map((entry) => entry.id)).toContain('overview/overview-savings:savings_usd');
+    for (const entry of [...bound, ...shown]) expect(entry.topic, entry.id).toBe(ALLOWED_TOPIC);
+  });
+
+  it('the Overview Savings total reads the all-time row of metering-summary.v1, its caption from the same row', () => {
+    const overview = loadPages().find((page) => page.name === 'overview')!;
+    const savings = overview.doc.components.find((component) => component.component_id === 'overview-savings');
+    expect(savings?.data_bindings).toEqual([{
+      binding_id: 'overview-savings-metering',
+      projection_topic: ALLOWED_TOPIC,
+      ordering_authority_field: 'as_of',
+      ordering_direction: 'descending',
+      required_fields: ['window_kind', 'as_of', 'baseline_model', 'pricing_manifest_version', 'baseline_state', 'savings_usd'],
+    }]);
+    const widget = overview.doc.dashboard.widgets.find((candidate) => candidate.data_source === 'overview-savings');
+    expect((widget?.config as { metric_key?: string } | undefined)?.metric_key).toBe('savings_usd');
   });
 });
 

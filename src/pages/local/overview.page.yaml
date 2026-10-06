@@ -40,7 +40,7 @@
       "config": {
         "config_kind": "metric_card",
         "widget_type": "metric_card",
-        "metric_key": "total_savings_usd",
+        "metric_key": "savings_usd",
         "label": "Savings",
         "unit": "USD",
         "format": "currency",

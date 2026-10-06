@@ -15,6 +15,7 @@ import {
   rowsForLocalComponent,
   resolveLocalPageEmptyState,
   withLastGood,
+  METERING_SUMMARY_TOPIC,
   type BoundProjectionSnapshot,
   type LocalPageDocument,
   type LocalPageName,
@@ -119,6 +120,8 @@ export function MetricCard({ component, config, row, caption }: MetricCardProps)
   let text: string;
   // No served row is not an unresolved baseline: nothing was measured (OMN-19980 AC2c).
   if (Object.keys(row).length === 0) text = 'Not measured';
+  // A metering-summary.v1 row says so itself: an unpriced baseline leaves its saving null (OMN-19977 AC7).
+  else if (row.baseline_state === 'unresolved') text = 'Baseline unresolved';
   else if (missing.some((field) => field.includes('baseline'))) text = 'Baseline unresolved';
   else if (missing.length > 0) text = 'Not measured';
   else text = formatMetric(Number(row[config.metric_key]), config);
@@ -195,6 +198,28 @@ export function SavingsPerRunCard({ rows }: { rows: readonly unknown[] }) {
       </p>
     </>
   );
+}
+
+/**
+ * OMN-19980 Step B: a window total from metering-summary.v1's all-time row, the row `onex metering` renders, with the
+ * baseline model and pricing manifest version of that same row under it. The fold keys rows by baseline model and
+ * keeps an older baseline's rows, so after a baseline change there are two all rows; the one refreshed last is the
+ * baseline the runtime resolves now, because every refresh runs under the resolved baseline. Two refreshed at the same
+ * moment cannot be told apart and are refused by name, never one picked silently.
+ */
+export function MeteringTotalCard({ component, config, rows }: {
+  component: LocalPageDocument['components'][number];
+  config: MetricCardConfig;
+  rows: readonly unknown[];
+}) {
+  const all = asRecords(rows).filter((row) => row.window_kind === 'all');
+  if (all.length === 0) return <p className="local-dashboard-metric">Not measured: no all-time row</p>;
+  const newest = Math.max(...all.map((row) => timeOf(row.as_of)));
+  const latest = all.filter((row) => timeOf(row.as_of) === newest);
+  if (latest.length > 1) return <p className="local-dashboard-metric">{`Not measured: ${latest.length} baseline models`}</p>;
+  const row = latest[0];
+  const caption = { baseline_model: row.baseline_model, pricing_manifest_version: row.pricing_manifest_version };
+  return <MetricCard component={component} config={config} row={row} caption={caption} />;
 }
 
 /** The raw served row (not the Runs session flattening) of a component's second binding. */
@@ -896,7 +921,12 @@ export function LocalDashboardPage({ pageName, syncUrl = false }: LocalDashboard
                     <RunLocallyCard row={asRecord(rows[0])} />
                   ) : component.component_id === 'overview-avg-saving-per-call' && !unbound ? (
                     <SavingsPerRunCard rows={rows} />
-                  ) : (() => {
+                  ) : component.data_bindings?.[0]?.projection_topic === METERING_SUMMARY_TOPIC ? (() => {
+                    const config = metricConfigFor(page, component.component_id);
+                    return config
+                      ? <MeteringTotalCard component={component} config={config} rows={rows} />
+                      : <p className="local-dashboard-empty">Not measured</p>;
+                  })() : (() => {
                     const config = metricConfigFor(page, component.component_id);
                     return config
                       ? <MetricCard component={component} config={config} row={first} caption={captionRowFor(component, snapshots)} />

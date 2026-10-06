@@ -36,23 +36,17 @@
       },
       "data_bindings": [
         {
-          "binding_id": "overview-savings-snapshot",
-          "projection_topic": "onex.snapshot.projection.cost.savings-overview.v1",
-          "ordering_authority_field": "captured_at",
+          "binding_id": "overview-savings-metering",
+          "projection_topic": "onex.snapshot.projection.metering-summary.v1",
+          "ordering_authority_field": "as_of",
           "ordering_direction": "descending",
           "required_fields": [
-            "total_savings_usd",
-            "total_baseline_cost_usd"
-          ]
-        },
-        {
-          "binding_id": "overview-savings-baseline",
-          "projection_topic": "onex.snapshot.projection.delegation.savings.v1",
-          "ordering_authority_field": "latest_projection_updated_at",
-          "ordering_direction": "descending",
-          "required_fields": [
+            "window_kind",
+            "as_of",
             "baseline_model",
-            "pricing_manifest_version"
+            "pricing_manifest_version",
+            "baseline_state",
+            "savings_usd"
           ]
         }
       ],

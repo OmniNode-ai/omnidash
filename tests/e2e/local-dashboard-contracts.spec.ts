@@ -13,6 +13,19 @@ const USAGE = 'onex.snapshot.projection.usage-by-model-day.v1';
 // OMN-20225: the quality and tier-mix panels' served exposures.
 const QUALITY = 'onex.snapshot.projection.delegation.quality-gate.v1';
 const ROUTING = 'onex.snapshot.projection.delegation.model-routing.v1';
+// OMN-19980 Step B: the Overview Savings total's one source.
+const METERING = 'onex.snapshot.projection.metering-summary.v1';
+
+/** A metering-summary.v1 row in omnimarket#3368's served shape: money as decimal text, null when unmeasured. */
+function meteringRow(overrides: Record<string, unknown> = {}): Record<string, unknown> {
+  return {
+    tenant_id: 'tenant-fresh-store', window_kind: 'all', window_start: '', window_end: '2026-10-02T10:07:00+00:00',
+    as_of: '2026-10-02T10:07:00+00:00', baseline_model: 'claude-sonnet-5-5', pricing_manifest_version: '3',
+    baseline_state: 'resolved', runs_total: 46, runs_measured: 45, runs_unknown_tokens: 1, runs_unknown_spend: 1,
+    tokens_in: 7452, tokens_out: 2392, spend_usd: '0.006860', counterfactual_usd: '1.225260', savings_usd: '1.218400',
+    ...overrides,
+  };
+}
 
 const decisions = [
   {
@@ -55,6 +68,8 @@ const fixtures: Record<string, unknown[]> = {
     total_cost_usd: 0.00686, total_savings_usd: 1.2252, total_baseline_cost_usd: 1.2321,
     measured_run_count: 46, zero_token_run_count: 0,
   }],
+  // The all row is the Savings total; the day row is the daily series and must not reach the card.
+  [METERING]: [meteringRow({ window_kind: 'day', window_start: '2026-10-02', savings_usd: '0.400000' }), meteringRow()],
   [CREDENTIALS]: [],
   [USAGE]: [],
   // Served values chosen so a figure the browser recomputed from the counts would differ (pass rate 0.875 of 7/8).
@@ -143,6 +158,8 @@ test('stored basis, excluded counts and modelled baseline survive native Overvie
     [SAVINGS]: [{ baseline_model: 'served-baseline-model', pricing_manifest_version: 1, sessions: provenanceSessions }],
     [OVERVIEW]: [{ total_cost_usd: 0.0011, total_savings_usd: 0.0009, total_baseline_cost_usd: 0.002,
       measured_run_count: 1, estimated_run_count: 1, unknown_run_count: 2, zero_token_run_count: 0 }],
+    // OMN-19980 Step B: the savings caption is the metering all row's own baseline and manifest.
+    [METERING]: [meteringRow({ baseline_model: 'served-baseline-model', pricing_manifest_version: '1', savings_usd: '0.000900' })],
   });
   await page.goto('/');
   await expect(page.getByText('Baseline served-baseline-model · pricing manifest v1')).toBeVisible();
@@ -189,6 +206,15 @@ test('Overview is the default page and fits 1440x900 with no unmeasured 0 (AC4)'
   await expect(unmeasured.getByText('Not recorded').first()).toBeVisible();
   await expect(page.getByText('0', { exact: true })).toHaveCount(0);
   await expect(page.getByText('$0', { exact: true })).toHaveCount(0);
+
+  // OMN-19980 Step B: the Savings total is metering-summary.v1's all-time row, with that row's baseline and manifest;
+  // neither cost.savings-overview.v1's total nor the day row reaches it.
+  const savings = page.locator('.local-dashboard-panel').filter({ has: page.getByRole('heading', { name: 'Savings', exact: true }) });
+  // 1.2184, not cost.savings-overview.v1's 1.2252.
+  await expect(savings.getByText('$1.2184', { exact: true })).toBeVisible();
+  await expect(savings.getByText('$1.2252', { exact: true })).toHaveCount(0);
+  await expect(savings.getByText('Baseline claude-sonnet-5-5 · pricing manifest v3', { exact: true })).toBeVisible();
+  await expect(savings.getByText('$0.4000', { exact: true })).toHaveCount(0);
 
   // The headline panels sit above the fold; Recent runs starts above it.
   for (const title of ['Spend', 'Savings', 'Measured runs', 'Last run']) {
@@ -390,7 +416,8 @@ test('manual Refresh rereads local exposures and preserves the Runs filter', asy
   });
   await serveFixtures(page);
   await page.goto('/');
-  await expect(page.getByText('$1.2252', { exact: true })).toBeVisible();
+  // The Overview Savings total, served from metering-summary.v1's all-time row (OMN-19980 Step B).
+  await expect(page.getByText('$1.2184', { exact: true })).toBeVisible();
   await page.getByTestId('nav-local-runs').click();
   await expect(page.getByText('Runs 1–2 of 2')).toBeVisible();
   await page.getByLabel('Status', { exact: true }).selectOption('passed');
