@@ -179,6 +179,18 @@ const R4_ALLOWED_OWNERS: ReadonlySet<string> = new Set<string>();
 const SOURCE_FILES = ['src/pages/LocalDashboardPage.tsx', 'src/layout/local-page-loader.ts'] as const;
 /** A data field name: lower snake case with at least one underscore (savings_usd), never prose or a constant. */
 const FIELD_TOKEN = /^[a-z][a-z0-9]*(?:_[a-z0-9]+)+$/;
+/** The same name in camelCase or PascalCase, two words at least (savingsUsd, SavingsPerRunUsd); never one word. */
+const CAMEL_TOKEN = /^[A-Za-z][a-z0-9]*(?:[A-Z][a-z0-9]*)+$/;
+
+/**
+ * The field name a code token spells, or null: lower snake as is, camelCase and PascalCase folded to lower snake
+ * (savingsUsd and SavingsUsd are savings_usd). SCREAMING_SNAKE constants, single words and prose stay out.
+ */
+function fieldNameOf(token: string): string | null {
+  if (FIELD_TOKEN.test(token)) return token;
+  if (CAMEL_TOKEN.test(token)) return token.replace(/[A-Z]/g, (c, i: number) => `${i === 0 ? '' : '_'}${c.toLowerCase()}`);
+  return null;
+}
 
 function ownerOf(node: ts.Node): string {
   let statement = node;
@@ -192,6 +204,13 @@ function ownerOf(node: ts.Node): string {
   return ts.SyntaxKind[statement.kind];
 }
 
+/** A function, class, interface or type's own name: it names code, it reads no field (SavingsPerRunCard). */
+function isDeclarationName(node: ts.Node): boolean {
+  const parent = node.parent;
+  return parent !== undefined && (ts.isFunctionDeclaration(parent) || ts.isClassDeclaration(parent)
+    || ts.isInterfaceDeclaration(parent) || ts.isTypeAliasDeclaration(parent)) && parent.name === node;
+}
+
 /** R4 source scan: savings field names in code (identifiers and whole-name strings; comments and prose are not code). */
 function ruleR4Source(files: ReadonlyArray<{ file: string; source: string }>): string[] {
   const findings: string[] = [];
@@ -199,11 +218,12 @@ function ruleR4Source(files: ReadonlyArray<{ file: string; source: string }>): s
     const tree = ts.createSourceFile(file, source, ts.ScriptTarget.Latest, true, file.endsWith('.tsx') ? ts.ScriptKind.TSX : ts.ScriptKind.TS);
     const visit = (node: ts.Node) => {
       const token = ts.isIdentifier(node) || ts.isStringLiteralLike(node) ? node.text : null;
-      if (token !== null && FIELD_TOKEN.test(token) && isSavingsField(token)) {
+      const field = token === null || isDeclarationName(node) ? null : fieldNameOf(token);
+      if (field !== null && isSavingsField(field)) {
         const owner = ownerOf(node);
         if (!R4_ALLOWED_OWNERS.has(owner)) {
           const line = tree.getLineAndCharacterOfPosition(node.getStart(tree)).line + 1;
-          findings.push(`R4 ${file}:${line} ${owner}: ${token}`);
+          findings.push(`R4 ${file}:${line} ${owner}: ${token}${field === token ? '' : ` (${field})`}`);
         }
       }
       ts.forEachChild(node, visit);
@@ -419,6 +439,36 @@ describe('OMN-19980 AC2d: planted controls (each rule catches its violation)', (
       'R4 planted.tsx:3 RecentRunsTable: savings_usd',
       'R4 planted.tsx:4 baselineOf: counterfactual_baseline_usd',
     ]);
+  });
+
+  // Codex's #361 review: R4 matched only lower_snake tokens, so a camelCase or PascalCase alias of a savings field, as
+  // a property or as a string key, walked past it.
+  it('R4 catches a camelCase or PascalCase alias of every savings field, as a property or a string key', () => {
+    const camel = (field: string) => field.replace(/_([a-z0-9])/g, (_, c: string) => c.toUpperCase());
+    const pascal = (field: string) => camel(field).replace(/^[a-z]/, (c) => c.toUpperCase());
+    const aliases = [...SAVINGS_FIELDS].flatMap((field) => [camel(field), pascal(field)]);
+    // Spellings no contract uses, named in the review: still savings-shaped, so still caught.
+    aliases.push('savingsPerRunUsd', 'baselineCostUsd');
+    const source = aliases.flatMap((alias) => [
+      `function Dot${alias}(row: Record<string, unknown>) { return row.${alias}; }`,
+      `function Key${alias}(row: Record<string, unknown>) { return row['${alias}']; }`,
+    ]).join('\n');
+    const findings = ruleR4Source([{ file: 'planted.tsx', source }]);
+    for (const alias of aliases) {
+      expect(findings.some((finding) => finding.includes(` Dot${alias}: ${alias}`)), `row.${alias}`).toBe(true);
+      expect(findings.some((finding) => finding.includes(` Key${alias}: ${alias}`)), `row['${alias}']`).toBe(true);
+    }
+  });
+
+  it('R4 normalising does not turn cost, constants or prose into savings', () => {
+    const source = [
+      "function SpendCard(row: Record<string, unknown>) { return [row.totalCostUsd, row['localCostUsd'], row.costUsd, row.MeasuredCostUsd]; }",
+      "const DELEGATION_SAVINGS_TOPIC = 'onex.snapshot.projection.delegation.savings.v1';",
+      "const title = 'Savings';",
+      "const line = 'Baseline cost is the savings input';",
+      'export function SavingsBadge() { return null; }',
+    ].join('\n');
+    expect(ruleR4Source([{ file: 'planted.tsx', source }])).toEqual([]);
   });
 
   it('R4 reads both source files, and the scan can see a savings name in them (positive control)', () => {
