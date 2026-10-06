@@ -14,12 +14,64 @@ type ResponseLike = {
   end(body: string): unknown;
 };
 
+/** The slice of an incoming request the client check reads. */
+type ClientRequestLike = { socket?: { remoteAddress?: string } };
+
 export type ProxyEntry = {
   target: string;
   changeOrigin: boolean;
   rewrite: (path: string) => string;
   configure?: (proxy: ProxyServerLike, options: unknown) => void;
+  /** Vite answers 404 when this returns false, and forwards when it returns undefined. */
+  bypass?: (req: ClientRequestLike) => false | undefined;
 };
+
+export interface ProxyMapOptions {
+  /**
+   * The projection backend the local overlay names: `contract.local.yaml` `data_source.url`, generated into
+   * `DATA_SOURCE_DEFAULT_URL`. The dev server forwards `/projection*` to it so the browser never reads it
+   * cross-origin. It wins over `VITE_PROJECTION_API_URL` for that route, as it does in the browser (OMN-19994).
+   */
+  overlayProjectionUrl?: string;
+}
+
+const LOOPBACK_HOSTNAMES = new Set(['localhost', '127.0.0.1', '::1', '[::1]']);
+
+function isLoopbackUrl(value: string): boolean {
+  try {
+    const { hostname } = new URL(value);
+    return LOOPBACK_HOSTNAMES.has(hostname) || /^127\./.test(hostname);
+  } catch {
+    return false;
+  }
+}
+
+function isLoopbackClient(address: string | undefined): boolean {
+  if (!address) return false;
+  const v4 = address.startsWith('::ffff:') ? address.slice('::ffff:'.length) : address;
+  return v4 === '::1' || /^127\./.test(v4);
+}
+
+/**
+ * OMN-19994 / D2: `onex dashboard` serves this install's projections on loopback only. A dev server started with
+ * `--host` must not hand that loopback backend to the LAN, so a non-loopback client gets Vite's 404.
+ */
+function loopbackClientsOnly(req: ClientRequestLike): false | undefined {
+  return isLoopbackClient(req.socket?.remoteAddress) ? undefined : false;
+}
+
+/**
+ * OMN-19994 AC1: the dev server tells the browser it serves the overlay's projection backend same-origin, so
+ * `resolveProjectionBaseUrl()` returns a relative base instead of the overlay URL. Only `vite` (serve) proxies;
+ * a built bundle keeps the generated URL. The key is not `VITE_`-prefixed, so no env file can set it.
+ */
+export function sameOriginProjectionDefine(
+  command: 'serve' | 'build',
+  overlayProjectionUrl: string,
+): Record<string, string> {
+  if (command !== 'serve' || overlayProjectionUrl.trim() === '') return {};
+  return { 'import.meta.env.OMNIDASH_SAME_ORIGIN_PROJECTION': JSON.stringify('1') };
+}
 
 /**
  * OMN-19915 — a dead projection backend names itself.
@@ -37,7 +89,14 @@ export type ProxyEntry = {
  * reason travels in the status line, which the widgets already print, and in a
  * typed JSON body for anything that reads it.
  */
-function answerUnreachableBackend(target: string): ProxyEntry['configure'] {
+const ENV_REMEDY =
+  'VITE_PROJECTION_API_URL names a backend that is not answering; ' +
+  'check .env.local, which Vite loads over .env';
+const OVERLAY_REMEDY =
+  'contract.local.yaml data_source.url names a backend that is not answering; ' +
+  'start it (onex dashboard), or fix the URL and run npm run generate:config';
+
+function answerUnreachableBackend(target: string, remedy = ENV_REMEDY): ProxyEntry['configure'] {
   return (proxy) => {
     proxy.on('error', (err, _req, rawRes) => {
       const res = rawRes as ResponseLike | undefined;
@@ -53,9 +112,7 @@ function answerUnreachableBackend(target: string): ProxyEntry['configure'] {
           error: 'projection_backend_unreachable',
           target,
           cause,
-          remedy:
-            'VITE_PROJECTION_API_URL names a backend that is not answering; ' +
-            'check .env.local, which Vite loads over .env',
+          remedy,
         }),
       );
     });
@@ -64,8 +121,10 @@ function answerUnreachableBackend(target: string): ProxyEntry['configure'] {
 
 export function buildProxyMap(
   env: Record<string, string | undefined>,
+  options: ProxyMapOptions = {},
 ): Record<string, ProxyEntry> {
   const proxyMap: Record<string, ProxyEntry> = {};
+  const overlayProjectionUrl = options.overlayProjectionUrl?.trim().replace(/\/$/, '') ?? '';
   if (env.VITE_LLM_BASE_URL) {
     proxyMap['/llm-proxy'] = {
       target: env.VITE_LLM_BASE_URL,
@@ -113,6 +172,17 @@ export function buildProxyMap(
       changeOrigin: true,
       rewrite: (path) => path,
       configure,
+    };
+  }
+
+  // OMN-19994 AC1: `/projection` (which also matches the `/projections` catalogue) goes to the overlay's backend.
+  if (overlayProjectionUrl !== '') {
+    proxyMap['/projection'] = {
+      target: overlayProjectionUrl,
+      changeOrigin: true,
+      rewrite: (path) => path,
+      configure: answerUnreachableBackend(overlayProjectionUrl, OVERLAY_REMEDY),
+      ...(isLoopbackUrl(overlayProjectionUrl) ? { bypass: loopbackClientsOnly } : {}),
     };
   }
 
