@@ -138,6 +138,26 @@ describe('OMN-19980 AC2b: a run shows its cost, never a per-run saving', () => {
     expect(resolveLocalPageEmptyState(page, snapshot({ total_cost_usd: 0.01, savings_usd: null }))).toBeNull();
     expect(resolveLocalPageEmptyState(page, snapshot({ total_cost_usd: 0.01, baseline_state: 'BASELINE_UNRESOLVED' }))).toBe('BASELINE_UNRESOLVED');
   });
+
+  // A metering-summary.v1 card says why its own figure is missing, so its rows never decide the page (the rule
+  // OMN-20009 C3 states on its branch; Step B binds four Overview cards to metering-summary.v1).
+  const read = (topic: string, rows: Record<string, unknown>[]) => ({
+    topic, rows, rowCount: rows.length, dataFreshness: 'fresh' as const, latestEventAt: null, readAt: '2026-10-05T12:00:00Z',
+  });
+
+  it('B4: metering rows with no decisions still leave Overview NO_RUNS_YET', () => {
+    const page = loadLocalPageConfig('overview');
+    expect(resolveLocalPageEmptyState(page, [read(DECISIONS, []), read(METERING, [meteringRow({})])])).toBe('NO_RUNS_YET');
+  });
+
+  it('B5: a metering row with a null saving and an unresolved baseline never flips the whole page', () => {
+    const page = loadLocalPageConfig('overview');
+    const decision = { correlation_id: 'corr-19980', created_at: '2026-10-05T12:00:00Z' };
+    for (const baselineState of ['unresolved', 'BASELINE_UNRESOLVED']) {
+      const metering = meteringRow({ savings_usd: null, baseline_state: baselineState });
+      expect(resolveLocalPageEmptyState(page, [read(DECISIONS, [decision]), read(METERING, [metering])]), baselineState).toBeNull();
+    }
+  });
 });
 
 describe('OMN-19980 AC2c: a savings card with nothing measured or served says so, never a number', () => {

@@ -236,7 +236,11 @@ export function resolveLocalPageEmptyState(
   page: LocalPageDocument,
   snapshots: readonly BoundProjectionSnapshot[],
 ): LocalPageEmptyState | null {
-  const rows = page.components.flatMap((component) => rowsForLocalComponent(component, snapshots));
+  // A metering-summary card says why its own figure is missing (a day with no measured run has a null saving), so
+  // its rows never switch the whole page to Baseline unresolved or hide a NO_RUNS_YET page (OMN-20009 C3).
+  const rows = page.components
+    .filter((component) => component.data_bindings?.[0]?.projection_topic !== METERING_SUMMARY_TOPIC)
+    .flatMap((component) => rowsForLocalComponent(component, snapshots));
   // Only a component's first binding supplies its rows; a second binding is a caption (the savings card's baseline
   // line), so it must not switch a page into the Runs session-row rules.
   const rendersSessionRows = page.components.some((component) =>
