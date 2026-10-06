@@ -63,9 +63,7 @@ interface MetricCardProps {
  * typed "not served yet" state shows lives here, one entry per such card (requirements: an empty state names
  * what it waits on).
  */
-const PENDING_SOURCES: Record<string, string> = {
-  'overview-tokens': 'metering-summary.v1',
-};
+const PENDING_SOURCES: Record<string, string> = {};
 
 /** AK-3: cloud keys are not linked in the local MVP; one line, no form. */
 const CLOUD_NOT_LINKED = 'CLOUD_NOT_LINKED: cloud keys are not linked in the local runtime. There is nothing to set here.';
@@ -82,9 +80,9 @@ export function PendingState({ componentId }: { componentId: string }) {
 
 const SAVINGS_MODELLED = "Modelled: the runs' tokens priced at the baseline model's list price. The baseline never ran.";
 
-function captionText(caption: Record<string, unknown> | null | undefined, showExcluded: boolean): string | null {
-  if (!caption && !showExcluded) return null;
-  const fields = caption ?? {};
+function captionText(caption: Record<string, unknown> | null | undefined): string | null {
+  if (!caption) return null;
+  const fields = caption;
   const parts: string[] = [];
   if ('baseline_model' in fields) {
     parts.push(isMissing(fields.baseline_model) ? 'Baseline unresolved' : `Baseline ${String(fields.baseline_model)}`);
@@ -95,9 +93,12 @@ function captionText(caption: Record<string, unknown> | null | undefined, showEx
   if ('zero_token_run_count' in fields && !isMissing(fields.zero_token_run_count)) {
     parts.push(`Zero-token runs: ${String(fields.zero_token_run_count)}`);
   }
-  if (showExcluded) {
-    parts.push(`Estimated runs excluded: ${recorded(fields.estimated_run_count)}`);
-    parts.push(`Unknown runs excluded: ${recorded(fields.unknown_run_count)}`);
+  // OMN-19980 Amendment 2: metering-summary.v1's run classes beside Measured runs, from the same all row. Every run is
+  // in exactly one class (measured, no token counts, no spend), so the excluded counts are served, never derived.
+  if ('runs_total' in fields) {
+    parts.push(`Of ${recorded(fields.runs_total)} runs`);
+    parts.push(`Unknown-token runs excluded: ${recorded(fields.runs_unknown_tokens)}`);
+    parts.push(`Unknown-spend runs excluded: ${recorded(fields.runs_unknown_spend)}`);
   }
   return parts.length > 0 ? parts.join(' · ') : null;
 }
@@ -118,12 +119,13 @@ export function MetricCard({ component, config, row, caption }: MetricCardProps)
   let text: string;
   // No served row is not an unresolved baseline: nothing was measured (OMN-19980 AC2c).
   if (Object.keys(row).length === 0) text = 'Not measured';
-  // A metering-summary.v1 row says so itself: an unpriced baseline leaves its saving null (OMN-19977 AC7).
-  else if (row.baseline_state === 'unresolved') text = 'Baseline unresolved';
+  // A metering-summary.v1 row says so itself: an unpriced baseline leaves its saving null (OMN-19977 AC7). Only a
+  // card that asks for baseline_state is priced at the baseline; spend, run counts and tokens are not (Amendment 2).
+  else if (row.baseline_state === 'unresolved' && required.includes('baseline_state')) text = 'Baseline unresolved';
   else if (missing.some((field) => field.includes('baseline'))) text = 'Baseline unresolved';
   else if (missing.length > 0) text = 'Not measured';
   else text = formatMetric(Number(row[config.metric_key]), config);
-  const line = captionText(caption, config.metric_key === 'measured_run_count');
+  const line = captionText(caption);
   // A savings figure is a modelled counterfactual: served tokens priced at the baseline's list price, with no
   // baseline run behind it (Jonah's savings handoff on OMN-19981, aac9032d, item 5).
   const modelled = caption !== null && caption !== undefined && 'baseline_model' in caption;
@@ -136,12 +138,35 @@ export function MetricCard({ component, config, row, caption }: MetricCardProps)
   );
 }
 
+/** The Tokens card's widget key: two served columns shown side by side, never summed (SV-3: no combined total). */
+const TOKENS_IN_AND_OUT = 'tokens_in_and_out';
+
 /**
- * OMN-19980 Step B: a window total from metering-summary.v1's all-time row, the row `onex metering` renders, with the
- * baseline model and pricing manifest version of that same row under it. The fold keys rows by baseline model and
- * keeps an older baseline's rows, so after a baseline change there are two all rows; the one refreshed last is the
- * baseline the runtime resolves now, because every refresh runs under the resolved baseline. Two refreshed at the same
- * moment cannot be told apart and are refused by name, never one picked silently.
+ * Tokens in and out from one metering-summary.v1 row. The fold sums tokens only over runs that recorded them, so when
+ * every run is an unknown-token run the served 0 is not a measurement and reads Not measured, never 0.
+ */
+function tokensText(row: Record<string, unknown>): string {
+  const tokensIn = Number(row.tokens_in);
+  const tokensOut = Number(row.tokens_out);
+  if (isMissing(row.tokens_in) || isMissing(row.tokens_out) || !Number.isFinite(tokensIn) || !Number.isFinite(tokensOut)) {
+    return 'Not measured';
+  }
+  const withTokens = Number(row.runs_total) - Number(row.runs_unknown_tokens);
+  if (!isMissing(row.runs_total) && !isMissing(row.runs_unknown_tokens) && Number.isFinite(withTokens) && withTokens <= 0) {
+    return 'Not measured';
+  }
+  const grouped = (value: number) => value.toLocaleString('en-US', { maximumFractionDigits: 0 });
+  return `${grouped(tokensIn)} in · ${grouped(tokensOut)} out`;
+}
+
+/**
+ * OMN-19980 Step B: an Overview headline figure (Spend, Savings, Measured runs, Tokens in and out) from
+ * metering-summary.v1's all-time row, the row `onex metering` renders. Every card picks the same row, so the four
+ * figures cannot disagree (Amendment 2). The fold keys rows by baseline model and keeps an older baseline's rows, so
+ * after a baseline change there are two all rows; the one refreshed last is the baseline the runtime resolves now,
+ * because every refresh runs under the resolved baseline. Two refreshed at the same moment cannot be told apart and
+ * are refused by name, never one picked silently. The Savings card's caption is that row's baseline model and pricing
+ * manifest version; Measured runs' caption is that row's run classes.
  */
 export function MeteringTotalCard({ component, config, rows }: {
   component: LocalPageDocument['components'][number];
@@ -154,7 +179,13 @@ export function MeteringTotalCard({ component, config, rows }: {
   const latest = all.filter((row) => timeOf(row.as_of) === newest);
   if (latest.length > 1) return <p className="local-dashboard-metric">{`Not measured: ${latest.length} baseline models`}</p>;
   const row = latest[0];
-  const caption = { baseline_model: row.baseline_model, pricing_manifest_version: row.pricing_manifest_version };
+  if (config.metric_key === TOKENS_IN_AND_OUT) return <p className="local-dashboard-metric">{tokensText(row)}</p>;
+  const required = component.data_bindings?.[0]?.required_fields ?? [];
+  const caption = required.includes('baseline_model')
+    ? { baseline_model: row.baseline_model, pricing_manifest_version: row.pricing_manifest_version }
+    : required.includes('runs_total')
+      ? { runs_total: row.runs_total, runs_unknown_tokens: row.runs_unknown_tokens, runs_unknown_spend: row.runs_unknown_spend }
+      : null;
   return <MetricCard component={component} config={config} row={row} caption={caption} />;
 }
 

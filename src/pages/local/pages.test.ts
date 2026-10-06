@@ -133,7 +133,10 @@ describe('local dashboard page contracts', () => {
 
   it('surfaces unresolved baseline instead of a savings number', async () => {
     const page = await readPage('overview');
-    const overviewBinding = page.components[0]?.data_bindings?.[0];
+    // OMN-19980 Amendment 2: the headline cards read metering-summary.v1, whose rows never decide the page state
+    // (each card says why its own figure is missing), so the page state is read off the first other binding.
+    const overviewBinding = page.components.map((c) => c.data_bindings?.[0])
+      .find((b) => b !== undefined && b.projection_topic !== 'onex.snapshot.projection.metering-summary.v1');
     expect(overviewBinding).toBeDefined();
     const snapshots = [{
       topic: overviewBinding?.projection_topic ?? '',
@@ -278,10 +281,11 @@ describe('local pages against the captured lab catalogue', () => {
     const page = readPage('overview');
     const topics = page.components.flatMap((c) => (c.data_bindings ?? []).map((b) => b.projection_topic));
     expect(new Set(topics)).toEqual(new Set([
-      'onex.snapshot.projection.cost.savings-overview.v1',
+      // Per-run cost lookups for Last run and Recent runs (ruling 2: every per-run cost figure stays).
       'onex.snapshot.projection.delegation.savings.v1',
       'onex.snapshot.projection.delegation.decisions.v1',
-      // OMN-19980 Step B: the Savings total and its caption, from the all-time row.
+      // OMN-19980 Step B and Amendment 2: Spend, Savings, Measured runs and Tokens, all from the one all-time row;
+      // cost.savings-overview.v1 is no longer read by Overview.
       'onex.snapshot.projection.metering-summary.v1',
       // OMN-20225 AC3: the quality panel and the tier-mix panel.
       'onex.snapshot.projection.delegation.quality-gate.v1',
@@ -290,7 +294,7 @@ describe('local pages against the captured lab catalogue', () => {
     const keys = page.dashboard.widgets
       .filter((w) => (w.config as Record<string, unknown>).config_kind === 'metric_card')
       .map((w) => (w.config as Record<string, unknown>).metric_key);
-    expect(keys).toEqual(['total_cost_usd', 'savings_usd', 'measured_run_count', 'tokens_in_and_out']);
+    expect(keys).toEqual(['spend_usd', 'savings_usd', 'runs_measured', 'tokens_in_and_out']);
     const savings = page.components.find((c) => c.component_id === 'overview-savings');
     // SV-2 / OV-3 and OMN-19980 Step B: the figure, its baseline model and its pricing manifest version all come from
     // the one metering-summary.v1 all-time row, so there is no second (caption) binding.
@@ -298,11 +302,15 @@ describe('local pages against the captured lab catalogue', () => {
     expect(savings?.data_bindings?.[0]?.required_fields).toEqual(
       ['window_kind', 'as_of', 'baseline_model', 'pricing_manifest_version', 'baseline_state', 'savings_usd'],
     );
+    // Measured runs' excluded counts are the same row's run classes, not a second exposure's (Amendment 2).
     const measured = page.components.find((c) => c.component_id === 'overview-measured');
-    expect(measured?.data_bindings?.[1]?.required_fields).toEqual(['zero_token_run_count', 'estimated_run_count', 'unknown_run_count']);
+    expect(measured?.data_bindings?.map((b) => b.projection_topic)).toEqual(['onex.snapshot.projection.metering-summary.v1']);
+    expect(measured?.data_bindings?.[0]?.required_fields).toEqual(
+      ['window_kind', 'as_of', 'runs_measured', 'runs_total', 'runs_unknown_tokens', 'runs_unknown_spend'],
+    );
   });
 
-  it('Overview shows no combined token total, and tokens in and out wait for their exposure (SV-3)', () => {
+  it('Overview shows no combined token total, and tokens in and out are read from metering-summary.v1 (SV-3)', () => {
     const page = readPage('overview');
     for (const widget of page.dashboard.widgets) {
       const key = String((widget.config as Record<string, unknown>).metric_key);
@@ -311,9 +319,11 @@ describe('local pages against the captured lab catalogue', () => {
         expect(column.key, 'a combined token column').not.toBe('tokens_total');
       }
     }
+    // OMN-19980 Amendment 2: the two served columns, from the all-time row; not a combined total.
     const tokens = page.components.find((c) => c.component_id === 'overview-tokens');
-    expect(tokens?.data_bindings ?? []).toEqual([]);
-    expect(tokens?.supported_empty_state_reasons).toEqual(['upstream-blocked']);
+    expect(tokens?.data_bindings?.map((b) => b.projection_topic)).toEqual(['onex.snapshot.projection.metering-summary.v1']);
+    expect(tokens?.data_bindings?.[0]?.required_fields).toEqual(expect.arrayContaining(['tokens_in', 'tokens_out']));
+    expect(tokens?.data_bindings?.[0]?.required_fields).not.toContain('tokens_total');
   });
 
 
@@ -517,9 +527,10 @@ describe('Amendment 6: the six local pages and the loader', () => {
       mode: 'http',
       availableTopics: new Set(['onex.snapshot.projection.delegation.decisions.v1', 'onex.snapshot.projection.delegation.savings.v1']),
     });
-    const overview = snapshots.find((s) => s.topic === 'onex.snapshot.projection.cost.savings-overview.v1');
-    expect(overview?.failure).toEqual({ kind: 'not-served', message: 'Not served: onex.snapshot.projection.cost.savings-overview.v1' });
+    // OMN-19980 Amendment 2: the headline cards' exposure is the one Overview topic this census leaves out.
+    const metering = snapshots.find((s) => s.topic === 'onex.snapshot.projection.metering-summary.v1');
+    expect(metering?.failure).toEqual({ kind: 'not-served', message: 'Not served: onex.snapshot.projection.metering-summary.v1' });
     expect(snapshots.find((s) => s.topic === 'onex.snapshot.projection.delegation.decisions.v1')?.failure).toBeUndefined();
-    expect(source.readSnapshot).not.toHaveBeenCalledWith('onex.snapshot.projection.cost.savings-overview.v1');
+    expect(source.readSnapshot).not.toHaveBeenCalledWith('onex.snapshot.projection.metering-summary.v1');
   });
 });
