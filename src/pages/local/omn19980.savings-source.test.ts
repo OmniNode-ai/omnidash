@@ -15,7 +15,7 @@
 //  10  the API Keys tenant id read from delegation.savings.v1 is not a savings figure (field-level, not topic)  false positives
 // (8, binding an exposure the lab does not serve, is pages.test.ts "names only served projection exposures".)
 import { existsSync, readdirSync, readFileSync } from 'node:fs';
-import { resolve } from 'node:path';
+import { posix, resolve } from 'node:path';
 import { render } from '@testing-library/react';
 import { createElement } from 'react';
 import ts from 'typescript';
@@ -174,48 +174,71 @@ function ruleR3PerRun(pages: readonly LoadedPage[]): string[] {
 
 /**
  * R4: the only code that may read a savings field by name; nothing else computes or shows one. It scans the page, the
- * loader and every dashboard module the page imports: a component the page mounts is page code too (Codex's #358
- * review, 2026-10-06). An allowed read names its file, its owner and the component whose bound rows it reads, and
- * Step B below proves that component binds metering-summary.v1 and nothing else.
+ * loader and every dashboard module reachable from the page's imports, transitively: a component the page mounts, and
+ * any helper it imports, is page code too (Codex's #358 reviews, 2026-10-06). An allowed read names its file, its owner,
+ * the exact fields it may read and the component whose bound rows it reads. Step B proves each allowed field is a
+ * required field of that component's binding and the component binds metering-summary.v1 and nothing else.
  */
-type R4Allowance = { file: string; owner: string; componentId: string };
+type R4Allowance = { file: string; owner: string; fields: readonly string[]; componentId: string };
 const R4_ALLOWED: readonly R4Allowance[] = [
   // US-3 (OMN-20006): the Usage savings series renders the day rows of its one binding, metering-summary.v1, as
   // served: the row type names savings_usd, and savings() formats it or says why there is none. It sums nothing.
-  { file: 'src/components/dashboard/usage/SavingsSeriesWidget.tsx', owner: 'MeteringSummaryRow', componentId: 'usage-savings-series' },
-  { file: 'src/components/dashboard/usage/SavingsSeriesWidget.tsx', owner: 'savings', componentId: 'usage-savings-series' },
+  { file: 'src/components/dashboard/usage/SavingsSeriesWidget.tsx', owner: 'MeteringSummaryRow', fields: ['savings_usd'], componentId: 'usage-savings-series' },
+  { file: 'src/components/dashboard/usage/SavingsSeriesWidget.tsx', owner: 'savings', fields: ['savings_usd'], componentId: 'usage-savings-series' },
 ];
 const PAGE_FILE = 'src/pages/LocalDashboardPage.tsx';
-/** The dashboard modules the page imports, read from its own import declarations so a new one is scanned too. */
-function pageDashboardModules(): string[] {
-  const source = readFileSync(resolve(process.cwd(), PAGE_FILE), 'utf8');
-  const tree = ts.createSourceFile(PAGE_FILE, source, ts.ScriptTarget.Latest, true, ts.ScriptKind.TSX);
-  const files: string[] = [];
-  for (const statement of tree.statements) {
-    if (!ts.isImportDeclaration(statement) || !ts.isStringLiteral(statement.moduleSpecifier)) continue;
-    const spec = statement.moduleSpecifier.text;
-    if (!spec.startsWith('@/components/dashboard/')) continue;
-    const base = `src/${spec.slice(2)}`;
-    // An import that resolves to no file is kept as written, so reading it fails and the scan cannot skip it.
-    files.push(['.tsx', '.ts', '/index.tsx', '/index.ts'].map((ext) => `${base}${ext}`)
-      .find((file) => existsSync(resolve(process.cwd(), file))) ?? base);
-  }
-  return files;
+const DASHBOARD_DIR = 'src/components/dashboard/';
+
+/** A module specifier as a repo-relative file: `@/x` is `src/x`, `./x` is beside the importer; null when outside src. */
+function resolveImport(importer: string, spec: string, exists: (file: string) => boolean): string | null {
+  let base: string;
+  if (spec.startsWith('@/')) base = `src/${spec.slice(2)}`;
+  else if (spec.startsWith('./') || spec.startsWith('../')) base = posix.normalize(posix.join(posix.dirname(importer), spec));
+  else return null;
+  // A specifier that resolves to no file is kept as written, so reading it fails and the scan cannot skip it.
+  return ['', '.tsx', '.ts', '/index.tsx', '/index.ts'].map((ext) => `${base}${ext}`).find((file) => /\.tsx?$/.test(file) && exists(file)) ?? base;
 }
-const SOURCE_FILES: readonly string[] = [PAGE_FILE, 'src/layout/local-page-loader.ts', ...pageDashboardModules()];
+
+/** Every dashboard module reachable from `root` through import or re-export declarations, in discovery order. */
+function dashboardModuleClosure(root: string, read: (file: string) => string, exists: (file: string) => boolean): string[] {
+  const seen: string[] = [];
+  const queue = [root];
+  while (queue.length > 0) {
+    const file = queue.shift()!;
+    const tree = ts.createSourceFile(file, read(file), ts.ScriptTarget.Latest, true, file.endsWith('.tsx') ? ts.ScriptKind.TSX : ts.ScriptKind.TS);
+    for (const statement of tree.statements) {
+      const spec = (ts.isImportDeclaration(statement) || ts.isExportDeclaration(statement)) && statement.moduleSpecifier
+        && ts.isStringLiteral(statement.moduleSpecifier) ? statement.moduleSpecifier.text : null;
+      const target = spec === null ? null : resolveImport(file, spec, exists);
+      if (target === null || !target.startsWith(DASHBOARD_DIR) || seen.includes(target)) continue;
+      seen.push(target);
+      queue.push(target);
+    }
+  }
+  return seen;
+}
+const readRepoFile = (file: string) => readFileSync(resolve(process.cwd(), file), 'utf8');
+const repoFileExists = (file: string) => existsSync(resolve(process.cwd(), file));
+const SOURCE_FILES: readonly string[] = [PAGE_FILE, 'src/layout/local-page-loader.ts', ...dashboardModuleClosure(PAGE_FILE, readRepoFile, repoFileExists)];
 
 /**
- * Why an R4 allowance would be wrong, or nothing: stale (no read by that owner in that file when unallowed), a
- * component that is missing or duplicated, binds nothing, or binds any exposure other than metering-summary.v1.
+ * Why an R4 allowance would be wrong, or nothing: a field it allows that is stale (no read of that field by that owner
+ * in that file when unallowed) or is not a required field of the component's binding; a component that is missing or
+ * duplicated, binds nothing, or binds any exposure other than metering-summary.v1.
  */
 function r4AllowanceProblems(pages: readonly LoadedPage[], unallowedFindings: readonly string[], allowed: readonly R4Allowance[]): string[] {
   const problems: string[] = [];
   for (const entry of allowed) {
     const id = `${entry.file} ${entry.owner}`;
-    if (!unallowedFindings.some((finding) => finding.startsWith(`R4 ${entry.file}:`) && finding.includes(` ${entry.owner}: `))) {
-      problems.push(`${id}: stale, no savings read by this owner`);
-    }
+    if (entry.fields.length === 0) problems.push(`${id}: allows no field`);
     const components = pages.flatMap((page) => page.doc.components).filter((c) => c.component_id === entry.componentId);
+    const required = new Set(components.flatMap((c) => (c.data_bindings ?? []).flatMap((b) => b.required_fields ?? [])));
+    for (const field of entry.fields) {
+      const read = unallowedFindings.some((finding) => finding.startsWith(`R4 ${entry.file}:`) && finding.includes(` ${entry.owner}: `)
+        && (finding.endsWith(`: ${field}`) || finding.endsWith(`(${field})`)));
+      if (!read) problems.push(`${id}: stale, no read of ${field} by this owner`);
+      if (components.length === 1 && !required.has(field)) problems.push(`${id}: ${field} is not a required field of ${entry.componentId}'s binding`);
+    }
     if (components.length !== 1) { problems.push(`${id}: component ${entry.componentId} found ${components.length} times`); continue; }
     const topics = (components[0]!.data_bindings ?? []).map((b) => b.projection_topic);
     if (topics.length === 0) problems.push(`${id}: ${entry.componentId} binds nothing`);
@@ -267,7 +290,7 @@ function ruleR4Source(files: ReadonlyArray<{ file: string; source: string }>, al
       const field = token === null || isDeclarationName(node) ? null : fieldNameOf(token);
       if (field !== null && isSavingsField(field)) {
         const owner = ownerOf(node);
-        if (!allowed.some((entry) => entry.file === file && entry.owner === owner)) {
+        if (!allowed.some((entry) => entry.file === file && entry.owner === owner && entry.fields.includes(field))) {
           const line = tree.getLineAndCharacterOfPosition(node.getStart(tree)).line + 1;
           findings.push(`R4 ${file}:${line} ${owner}: ${token}${field === token ? '' : ` (${field})`}`);
         }
@@ -543,15 +566,54 @@ describe('OMN-19980 Step B: the allowlist is empty and every savings figure bind
     expect(r4AllowanceProblems(loadPages(), ruleR4Source(readSources(), []), R4_ALLOWED)).toEqual([]);
   });
 
-  it('planted: an R4 allowance that is stale, or reads a component bound to another exposure, is reported', () => {
+  it('planted: an R4 allowance that is stale, allows an unbound field, or reads a component bound to another exposure, is reported', () => {
     const pages = plant([plantedComponent('planted-savings-reader', [binding('b', DELEGATION_SAVINGS, ['savings_usd'])])], []);
+    const entry = (fields: string[], componentId = 'planted-savings-reader'): R4Allowance =>
+      ({ file: 'planted.tsx', owner: 'readSavings', fields, componentId });
     const findings = ['R4 planted.tsx:3 readSavings: savings_usd'];
-    expect(r4AllowanceProblems(pages, findings, [{ file: 'planted.tsx', owner: 'readSavings', componentId: 'planted-savings-reader' }]))
+    expect(r4AllowanceProblems(pages, findings, [entry(['savings_usd'])]))
       .toEqual([`planted.tsx readSavings: planted-savings-reader binds ${DELEGATION_SAVINGS}`]);
-    expect(r4AllowanceProblems(pages, [], [{ file: 'planted.tsx', owner: 'readSavings', componentId: 'planted-savings-reader' }]))
-      .toContain('planted.tsx readSavings: stale, no savings read by this owner');
-    expect(r4AllowanceProblems(pages, findings, [{ file: 'planted.tsx', owner: 'readSavings', componentId: 'no-such-component' }]))
-      .toEqual(['planted.tsx readSavings: component no-such-component found 0 times']);
+    expect(r4AllowanceProblems(pages, [], [entry(['savings_usd'])]))
+      .toContain('planted.tsx readSavings: stale, no read of savings_usd by this owner');
+    expect(r4AllowanceProblems(pages, findings, [entry(['savings_usd', 'counterfactual_usd'])]))
+      .toEqual(expect.arrayContaining([
+        'planted.tsx readSavings: stale, no read of counterfactual_usd by this owner',
+        "planted.tsx readSavings: counterfactual_usd is not a required field of planted-savings-reader's binding",
+      ]));
+    expect(r4AllowanceProblems(pages, findings, [entry([])])).toContain('planted.tsx readSavings: allows no field');
+    expect(r4AllowanceProblems(pages, findings, [entry(['savings_usd'], 'no-such-component')]))
+      .toContain('planted.tsx readSavings: component no-such-component found 0 times');
+  });
+
+  it('planted: an allowance covers only its own fields; another savings field in the same owner, nested or by string key, is caught', () => {
+    const source = [
+      'export function readSavings(row: Record<string, unknown>) {',
+      '  const nested = () => row["counterfactual_baseline_usd"];',
+      '  return [row.savings_usd, nested(), row["baseline_cost_usd"]];',
+      '}',
+    ].join('\n');
+    const allowed: R4Allowance[] = [{ file: 'planted.tsx', owner: 'readSavings', fields: ['savings_usd'], componentId: 'x' }];
+    expect(ruleR4Source([{ file: 'planted.tsx', source }], allowed)).toEqual([
+      'R4 planted.tsx:2 readSavings: counterfactual_baseline_usd',
+      'R4 planted.tsx:3 readSavings: baseline_cost_usd',
+    ]);
+  });
+
+  it('planted: discovery follows a dashboard helper imported only by a dashboard module, and keeps an unresolvable import', () => {
+    const files: Record<string, string> = {
+      'src/pages/P.tsx': "import { A } from '@/components/dashboard/a/A';\nimport { x } from '@/lib/x';",
+      'src/components/dashboard/a/A.tsx': "import { h } from './helper';\nexport { B } from '../b/B';\nimport { m } from '@/components/dashboard/missing/M';",
+      'src/components/dashboard/a/helper.ts': 'export const h = 1;',
+      'src/components/dashboard/b/B.tsx': 'export const B = 1;',
+    };
+    const read = (file: string) => { if (!(file in files)) throw new Error(`not found: ${file}`); return files[file]!; };
+    const exists = (file: string) => file in files;
+    expect(() => dashboardModuleClosure('src/pages/P.tsx', read, exists)).toThrow('not found: src/components/dashboard/missing/M');
+    delete files['src/components/dashboard/a/A.tsx'];
+    files['src/components/dashboard/a/A.tsx'] = "import { h } from './helper';\nexport { B } from '../b/B';";
+    expect(dashboardModuleClosure('src/pages/P.tsx', read, exists)).toEqual([
+      'src/components/dashboard/a/A.tsx', 'src/components/dashboard/a/helper.ts', 'src/components/dashboard/b/B.tsx',
+    ]);
   });
 
   it('every bound savings figure on the six pages reads metering-summary.v1, and there is at least one', () => {
