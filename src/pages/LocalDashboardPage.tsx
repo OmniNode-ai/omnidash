@@ -4,6 +4,7 @@ import { createSnapshotSource } from '@/data-source';
 import { fetchExposureCensus } from '@/data-source/exposure-census';
 import { resolveEffectiveDataSource } from '@/data-source/data-source-override';
 import { resolveConfiguredTenant } from '@/data-source/projection-tenant';
+import { TenantNotConfiguredState } from '@/components/dashboard/TenantNotConfiguredState';
 import { subscribeLocalPageRefresh } from '@/services/local-page-refresh';
 import { DEFAULT_RUNS_VIEW, readRunsSearch, writeRunsSearch, type RunsViewState } from '@/navigation/runs-url-state';
 import '@/styles/local-dashboard.css';
@@ -746,12 +747,17 @@ function WidgetReadState({ component, snapshots, now, interval }: {
   const bound = boundSnapshotsFor(component, snapshots);
   const primary = bound[0];
   if (!primary) return null;
+  // A tenant-scoped binding with no tenant configured is a typed state, not a read error (OMN-19994), and a panel
+  // that binds several such exposures says so once.
+  const tenantNotConfigured = bound.some((snapshot) => snapshot.failure?.kind === 'tenant-not-configured');
   const failures = bound.filter((snapshot) => snapshot.failure
+    && snapshot.failure.kind !== 'tenant-not-configured'
     && (snapshot.failure.kind !== 'not-served' || snapshot.lastGoodAt));
   const readAt = primary.failure ? primary.lastGoodAt ?? null : primary.readAt;
   const stale = readAt !== null && now - timeOf(readAt) > 2 * interval * 1000;
   return (
     <>
+      {tenantNotConfigured && <TenantNotConfiguredState />}
       {failures.map((snapshot) => (
         <p className="local-dashboard-error" role="alert" key={snapshot.topic}>
           {snapshot.failure!.message}

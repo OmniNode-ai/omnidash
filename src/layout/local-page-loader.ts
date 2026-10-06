@@ -1,5 +1,6 @@
 import type { ProjectionSnapshot, ProtocolSnapshotSource } from '../data-source/protocol-snapshot-source';
 import type { ModelComponentContract } from '../shared/types/generated/onex-models';
+import { isTenantNotConfiguredError } from '../data-source/projection-tenant';
 
 export type LocalPageName = 'overview' | 'runs' | 'workflow' | 'usage' | 'credentials' | 'api-keys';
 export type LocalPageEmptyState = 'NO_RUNS_YET' | 'BASELINE_UNRESOLVED';
@@ -26,9 +27,12 @@ export interface LocalPageLoadOptions {
   availableTopics: ReadonlySet<string>;
 }
 
-/** Why one exposure's read gave no rows: the census does not serve it, it answered an error, or it never answered. */
+/**
+ * Why one exposure's read gave no rows: the census does not serve it, it is tenant-scoped and no tenant is configured
+ * (the read is never sent; OMN-19994), it answered an error, or it never answered.
+ */
 export interface ProjectionReadFailure {
-  kind: 'not-served' | 'error' | 'timeout';
+  kind: 'not-served' | 'tenant-not-configured' | 'error' | 'timeout';
   message: string;
 }
 
@@ -157,6 +161,9 @@ export async function loadLocalPageSnapshots(
       if (answer === 'timeout') return failedSnapshot(topic, { kind: 'timeout', message: `${topic}: no answer in 5 s` });
       return { topic, ...answer };
     } catch (cause) {
+      if (isTenantNotConfiguredError(cause)) {
+        return failedSnapshot(topic, { kind: 'tenant-not-configured', message: cause.message });
+      }
       return failedSnapshot(topic, { kind: 'error', message: readErrorMessage(topic, cause) });
     } finally {
       clearTimeout(timer);
