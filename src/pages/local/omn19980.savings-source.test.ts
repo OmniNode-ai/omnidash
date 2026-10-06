@@ -7,13 +7,14 @@
 //   3  a widget shows a savings key its component does not read from metering-summary.v1, or reads nothing    R2
 //   4  a per-run savings figure: a savings column on a decisions-row table, or any savings field asked of
 //      the per-run delegation.savings.v1 sessions                                                              R3
-//   5  savings read in page or loader code rather than through a contract (session.savings_usd, a sum)       R4
+//   5  savings read in page, loader or page-mounted dashboard module code rather than through a contract     R4
+//      (session.savings_usd, a sum); an allowed read names its file, owner and metering-bound component
 //   6  the instrument itself is broken: no pages, no bindings, no savings field seen in a known-bad page        instrument
 //   7  cost mistaken for savings (total_cost_usd, local_cost_usd, cost_usd, measured_cost_usd)                false positives
 //   9  a savings field read off the degraded savings-series.v1 or savings.v1 exposures                         R1
 //  10  the API Keys tenant id read from delegation.savings.v1 is not a savings figure (field-level, not topic)  false positives
 // (8, binding an exposure the lab does not serve, is pages.test.ts "names only served projection exposures".)
-import { readdirSync, readFileSync } from 'node:fs';
+import { existsSync, readdirSync, readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { render } from '@testing-library/react';
 import { createElement } from 'react';
@@ -172,11 +173,56 @@ function ruleR3PerRun(pages: readonly LoadedPage[]): string[] {
 }
 
 /**
- * R4: the only code that may read a savings field by name; nothing else computes or shows one. Empty on dev: every
- * savings figure there is a metering-summary.v1 binding read through its metric key, never a field named in code.
+ * R4: the only code that may read a savings field by name; nothing else computes or shows one. It scans the page, the
+ * loader and every dashboard module the page imports: a component the page mounts is page code too (Codex's #358
+ * review, 2026-10-06). An allowed read names its file, its owner and the component whose bound rows it reads, and
+ * Step B below proves that component binds metering-summary.v1 and nothing else.
  */
-const R4_ALLOWED_OWNERS: ReadonlySet<string> = new Set<string>();
-const SOURCE_FILES = ['src/pages/LocalDashboardPage.tsx', 'src/layout/local-page-loader.ts'] as const;
+type R4Allowance = { file: string; owner: string; componentId: string };
+const R4_ALLOWED: readonly R4Allowance[] = [
+  // US-3 (OMN-20006): the Usage savings series renders the day rows of its one binding, metering-summary.v1, as
+  // served: the row type names savings_usd, and savings() formats it or says why there is none. It sums nothing.
+  { file: 'src/components/dashboard/usage/SavingsSeriesWidget.tsx', owner: 'MeteringSummaryRow', componentId: 'usage-savings-series' },
+  { file: 'src/components/dashboard/usage/SavingsSeriesWidget.tsx', owner: 'savings', componentId: 'usage-savings-series' },
+];
+const PAGE_FILE = 'src/pages/LocalDashboardPage.tsx';
+/** The dashboard modules the page imports, read from its own import declarations so a new one is scanned too. */
+function pageDashboardModules(): string[] {
+  const source = readFileSync(resolve(process.cwd(), PAGE_FILE), 'utf8');
+  const tree = ts.createSourceFile(PAGE_FILE, source, ts.ScriptTarget.Latest, true, ts.ScriptKind.TSX);
+  const files: string[] = [];
+  for (const statement of tree.statements) {
+    if (!ts.isImportDeclaration(statement) || !ts.isStringLiteral(statement.moduleSpecifier)) continue;
+    const spec = statement.moduleSpecifier.text;
+    if (!spec.startsWith('@/components/dashboard/')) continue;
+    const base = `src/${spec.slice(2)}`;
+    // An import that resolves to no file is kept as written, so reading it fails and the scan cannot skip it.
+    files.push(['.tsx', '.ts', '/index.tsx', '/index.ts'].map((ext) => `${base}${ext}`)
+      .find((file) => existsSync(resolve(process.cwd(), file))) ?? base);
+  }
+  return files;
+}
+const SOURCE_FILES: readonly string[] = [PAGE_FILE, 'src/layout/local-page-loader.ts', ...pageDashboardModules()];
+
+/**
+ * Why an R4 allowance would be wrong, or nothing: stale (no read by that owner in that file when unallowed), a
+ * component that is missing or duplicated, binds nothing, or binds any exposure other than metering-summary.v1.
+ */
+function r4AllowanceProblems(pages: readonly LoadedPage[], unallowedFindings: readonly string[], allowed: readonly R4Allowance[]): string[] {
+  const problems: string[] = [];
+  for (const entry of allowed) {
+    const id = `${entry.file} ${entry.owner}`;
+    if (!unallowedFindings.some((finding) => finding.startsWith(`R4 ${entry.file}:`) && finding.includes(` ${entry.owner}: `))) {
+      problems.push(`${id}: stale, no savings read by this owner`);
+    }
+    const components = pages.flatMap((page) => page.doc.components).filter((c) => c.component_id === entry.componentId);
+    if (components.length !== 1) { problems.push(`${id}: component ${entry.componentId} found ${components.length} times`); continue; }
+    const topics = (components[0]!.data_bindings ?? []).map((b) => b.projection_topic);
+    if (topics.length === 0) problems.push(`${id}: ${entry.componentId} binds nothing`);
+    for (const topic of topics) if (topic !== ALLOWED_TOPIC) problems.push(`${id}: ${entry.componentId} binds ${topic}`);
+  }
+  return problems;
+}
 /** A data field name: lower snake case with at least one underscore (savings_usd), never prose or a constant. */
 const FIELD_TOKEN = /^[a-z][a-z0-9]*(?:_[a-z0-9]+)+$/;
 /** The same name in camelCase or PascalCase, two words at least (savingsUsd, SavingsPerRunUsd); never one word. */
@@ -212,7 +258,7 @@ function isDeclarationName(node: ts.Node): boolean {
 }
 
 /** R4 source scan: savings field names in code (identifiers and whole-name strings; comments and prose are not code). */
-function ruleR4Source(files: ReadonlyArray<{ file: string; source: string }>): string[] {
+function ruleR4Source(files: ReadonlyArray<{ file: string; source: string }>, allowed: readonly R4Allowance[] = R4_ALLOWED): string[] {
   const findings: string[] = [];
   for (const { file, source } of files) {
     const tree = ts.createSourceFile(file, source, ts.ScriptTarget.Latest, true, file.endsWith('.tsx') ? ts.ScriptKind.TSX : ts.ScriptKind.TS);
@@ -221,7 +267,7 @@ function ruleR4Source(files: ReadonlyArray<{ file: string; source: string }>): s
       const field = token === null || isDeclarationName(node) ? null : fieldNameOf(token);
       if (field !== null && isSavingsField(field)) {
         const owner = ownerOf(node);
-        if (!R4_ALLOWED_OWNERS.has(owner)) {
+        if (!allowed.some((entry) => entry.file === file && entry.owner === owner)) {
           const line = tree.getLineAndCharacterOfPosition(node.getStart(tree)).line + 1;
           findings.push(`R4 ${file}:${line} ${owner}: ${token}${field === token ? '' : ` (${field})`}`);
         }
@@ -471,11 +517,15 @@ describe('OMN-19980 AC2d: planted controls (each rule catches its violation)', (
     expect(ruleR4Source([{ file: 'planted.tsx', source }])).toEqual([]);
   });
 
-  it('R4 reads both source files, and the scan can see a savings name in them (positive control)', () => {
+  it('R4 reads the page, the loader and every dashboard module the page imports, and sees a savings name in each (positive control)', () => {
     const sources = readSources();
     expect(sources.map(({ file }) => file)).toEqual([...SOURCE_FILES]);
-    // Dev's sources name no savings field, so a read planted at the end of each real file proves the scan parses that
-    // file's real text and sees a savings name in it.
+    // The modules come from the page's own imports; the two Usage renderers are among them, so a read there is scanned.
+    expect(SOURCE_FILES).toEqual(expect.arrayContaining([
+      'src/components/dashboard/usage/SavingsSeriesWidget.tsx', 'src/components/dashboard/usage/UsageByModelDayWidget.tsx',
+    ]));
+    // A read planted at the end of each real file proves the scan parses that file's real text and sees a savings name
+    // in it; PlantedCard is allowed nowhere.
     const planted = sources.map(({ file, source }) => ({
       file, source: `${source}\nexport function PlantedCard(row: Record<string, unknown>) { return row.savings_usd; }\n`,
     }));
@@ -487,9 +537,21 @@ describe('OMN-19980 AC2d: planted controls (each rule catches its violation)', (
 });
 
 describe('OMN-19980 Step B: the allowlist is empty and every savings figure binds metering-summary.v1', () => {
-  it('the Step A allowlist is empty, and R4 allows no owner', () => {
+  it('the Step A allowlist is empty, and every R4 allowance is a live read in a component bound to metering-summary.v1 alone', () => {
     expect(STEP_A_ALLOWLIST).toEqual([]);
-    expect([...R4_ALLOWED_OWNERS]).toEqual([]);
+    expect(R4_ALLOWED.length).toBeGreaterThan(0);
+    expect(r4AllowanceProblems(loadPages(), ruleR4Source(readSources(), []), R4_ALLOWED)).toEqual([]);
+  });
+
+  it('planted: an R4 allowance that is stale, or reads a component bound to another exposure, is reported', () => {
+    const pages = plant([plantedComponent('planted-savings-reader', [binding('b', DELEGATION_SAVINGS, ['savings_usd'])])], []);
+    const findings = ['R4 planted.tsx:3 readSavings: savings_usd'];
+    expect(r4AllowanceProblems(pages, findings, [{ file: 'planted.tsx', owner: 'readSavings', componentId: 'planted-savings-reader' }]))
+      .toEqual([`planted.tsx readSavings: planted-savings-reader binds ${DELEGATION_SAVINGS}`]);
+    expect(r4AllowanceProblems(pages, [], [{ file: 'planted.tsx', owner: 'readSavings', componentId: 'planted-savings-reader' }]))
+      .toContain('planted.tsx readSavings: stale, no savings read by this owner');
+    expect(r4AllowanceProblems(pages, findings, [{ file: 'planted.tsx', owner: 'readSavings', componentId: 'no-such-component' }]))
+      .toEqual(['planted.tsx readSavings: component no-such-component found 0 times']);
   });
 
   it('every bound savings figure on the six pages reads metering-summary.v1, and there is at least one', () => {
