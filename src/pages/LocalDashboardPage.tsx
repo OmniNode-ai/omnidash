@@ -15,6 +15,7 @@ import {
   rowsForLocalComponent,
   resolveLocalPageEmptyState,
   withLastGood,
+  METERING_SUMMARY_TOPIC,
   type BoundProjectionSnapshot,
   type LocalPageDocument,
   type LocalPageName,
@@ -63,7 +64,6 @@ interface MetricCardProps {
  * what it waits on).
  */
 const PENDING_SOURCES: Record<string, string> = {
-  'overview-tokens': 'metering-summary.v1',
   // OMN-20009: the per-run saving is a metering-summary.v1 column; the lab catalogue does not serve that exposure yet.
   'overview-avg-saving-per-call': 'metering-summary.v1',
 };
@@ -72,7 +72,7 @@ const PENDING_SOURCES: Record<string, string> = {
 const CLOUD_NOT_LINKED = 'CLOUD_NOT_LINKED: cloud keys are not linked in the local runtime. There is nothing to set here.';
 
 /** A component bound to no served exposure: what it waits on, never a blank panel (FR-3 partial pages, SV-3). */
-function PendingState({ componentId }: { componentId: string }) {
+export function PendingState({ componentId }: { componentId: string }) {
   if (componentId === 'api-keys-cloud') return <p className="local-dashboard-empty" role="status">{CLOUD_NOT_LINKED}</p>;
   return (
     <p className="local-dashboard-empty" role="status">
@@ -83,9 +83,9 @@ function PendingState({ componentId }: { componentId: string }) {
 
 const SAVINGS_MODELLED = "Modelled: the runs' tokens priced at the baseline model's list price. The baseline never ran.";
 
-function captionText(caption: Record<string, unknown> | null | undefined, showExcluded: boolean): string | null {
-  if (!caption && !showExcluded) return null;
-  const fields = caption ?? {};
+function captionText(caption: Record<string, unknown> | null | undefined): string | null {
+  if (!caption) return null;
+  const fields = caption;
   const parts: string[] = [];
   if ('baseline_model' in fields) {
     parts.push(isMissing(fields.baseline_model) ? 'Baseline unresolved' : `Baseline ${String(fields.baseline_model)}`);
@@ -96,9 +96,12 @@ function captionText(caption: Record<string, unknown> | null | undefined, showEx
   if ('zero_token_run_count' in fields && !isMissing(fields.zero_token_run_count)) {
     parts.push(`Zero-token runs: ${String(fields.zero_token_run_count)}`);
   }
-  if (showExcluded) {
-    parts.push(`Estimated runs excluded: ${recorded(fields.estimated_run_count)}`);
-    parts.push(`Unknown runs excluded: ${recorded(fields.unknown_run_count)}`);
+  // OMN-19980 Amendment 2: metering-summary.v1's run classes beside Measured runs, from the same all row. Every run is
+  // in exactly one class (measured, no token counts, no spend), so the excluded counts are served, never derived.
+  if ('runs_total' in fields) {
+    parts.push(`Of ${recorded(fields.runs_total)} runs`);
+    parts.push(`Unknown-token runs excluded: ${recorded(fields.runs_unknown_tokens)}`);
+    parts.push(`Unknown-spend runs excluded: ${recorded(fields.runs_unknown_spend)}`);
   }
   return parts.length > 0 ? parts.join(' · ') : null;
 }
@@ -107,7 +110,7 @@ function captionText(caption: Record<string, unknown> | null | undefined, showEx
  * One figure from one served exposure row: the field the widget names. A
  * required field that is absent means the figure is not measured; when that
  * field is a baseline, the figure is a savings figure with no priced baseline,
- * which is BASELINE_UNRESOLVED and never a zero.
+ * which is BASELINE_UNRESOLVED and never a zero. No row at all is Not measured.
  */
 export function MetricCard({ component, config, row, caption }: MetricCardProps) {
   if ((component.data_bindings ?? []).length === 0) {
@@ -117,10 +120,15 @@ export function MetricCard({ component, config, row, caption }: MetricCardProps)
   const required = component.data_bindings?.[0]?.required_fields ?? [config.metric_key];
   const missing = [...new Set([config.metric_key, ...required])].filter((field) => isMissing(row[field]));
   let text: string;
-  if (missing.some((field) => field.includes('baseline'))) text = 'Baseline unresolved';
+  // No served row is not an unresolved baseline: nothing was measured (OMN-19980 AC2c).
+  if (Object.keys(row).length === 0) text = 'Not measured';
+  // A metering-summary.v1 row says so itself: an unpriced baseline leaves its saving null (OMN-19977 AC7). Only a
+  // card that asks for baseline_state is priced at the baseline; spend, run counts and tokens are not (Amendment 2).
+  else if (row.baseline_state === 'unresolved' && required.includes('baseline_state')) text = 'Baseline unresolved';
+  else if (missing.some((field) => field.includes('baseline'))) text = 'Baseline unresolved';
   else if (missing.length > 0) text = 'Not measured';
   else text = formatMetric(Number(row[config.metric_key]), config);
-  const line = captionText(caption, config.metric_key === 'measured_run_count');
+  const line = captionText(caption);
   // A savings figure is a modelled counterfactual: served tokens priced at the baseline's list price, with no
   // baseline run behind it (Jonah's savings handoff on OMN-19981, aac9032d, item 5).
   const modelled = caption !== null && caption !== undefined && 'baseline_model' in caption;
@@ -164,6 +172,69 @@ export function RunLocallyCard({ row }: { row: Record<string, unknown> | null })
   );
 }
 
+/** The Tokens card's widget key: two served columns shown side by side, never summed (SV-3: no combined total). */
+const TOKENS_IN_AND_OUT = 'tokens_in_and_out';
+
+/**
+ * Tokens in and out from one metering-summary.v1 row. The fold sums tokens only over runs that recorded them, so when
+ * every run is an unknown-token run the served 0 is not a measurement and reads Not measured, never 0.
+ */
+function tokensText(row: Record<string, unknown>): string {
+  const tokensIn = Number(row.tokens_in);
+  const tokensOut = Number(row.tokens_out);
+  if (isMissing(row.tokens_in) || isMissing(row.tokens_out) || !Number.isFinite(tokensIn) || !Number.isFinite(tokensOut)) {
+    return 'Not measured';
+  }
+  const withTokens = Number(row.runs_total) - Number(row.runs_unknown_tokens);
+  if (!isMissing(row.runs_total) && !isMissing(row.runs_unknown_tokens) && Number.isFinite(withTokens) && withTokens <= 0) {
+    return 'Not measured';
+  }
+  const grouped = (value: number) => value.toLocaleString('en-US', { maximumFractionDigits: 0 });
+  return `${grouped(tokensIn)} in · ${grouped(tokensOut)} out`;
+}
+
+/**
+ * The one all-time metering-summary.v1 row every Overview metering card reads, or the card text that says why none can
+ * be picked. The fold keys rows by baseline model and keeps an older baseline's all row, so after a baseline change
+ * there are two. The one refreshed last (newest as_of) is the baseline the runtime resolves now; two refreshed at the
+ * same moment cannot be told apart and are refused by name, never one picked silently.
+ */
+function pickAllTimeRow(rows: readonly unknown[]): { row: Record<string, unknown> } | { message: string } {
+  const all = asRecords(rows).filter((r) => r.window_kind === 'all');
+  if (all.length === 0) return { message: 'Not measured: no all-time row' };
+  const newest = Math.max(...all.map((r) => timeOf(r.as_of)));
+  const latest = all.filter((r) => timeOf(r.as_of) === newest);
+  if (latest.length > 1) return { message: `Not measured: ${latest.length} baseline models` };
+  return { row: latest[0] };
+}
+
+/**
+ * OMN-19980 Step B: an Overview headline figure (Spend, Savings, Measured runs, Tokens in and out) from
+ * metering-summary.v1's all-time row, the row `onex metering` renders. Every card picks the same row, so the four
+ * figures cannot disagree (Amendment 2). The fold keys rows by baseline model and keeps an older baseline's rows, so
+ * after a baseline change there are two all rows; the one refreshed last is the baseline the runtime resolves now,
+ * because every refresh runs under the resolved baseline. Two refreshed at the same moment cannot be told apart and
+ * are refused by name, never one picked silently. The Savings card's caption is that row's baseline model and pricing
+ * manifest version; Measured runs' caption is that row's run classes.
+ */
+export function MeteringTotalCard({ component, config, rows }: {
+  component: LocalPageDocument['components'][number];
+  config: MetricCardConfig;
+  rows: readonly unknown[];
+}) {
+  const picked = pickAllTimeRow(rows);
+  if ('message' in picked) return <p className="local-dashboard-metric">{picked.message}</p>;
+  const row = picked.row;
+  if (config.metric_key === TOKENS_IN_AND_OUT) return <p className="local-dashboard-metric">{tokensText(row)}</p>;
+  const required = component.data_bindings?.[0]?.required_fields ?? [];
+  const caption = required.includes('baseline_model')
+    ? { baseline_model: row.baseline_model, pricing_manifest_version: row.pricing_manifest_version }
+    : required.includes('runs_total')
+      ? { runs_total: row.runs_total, runs_unknown_tokens: row.runs_unknown_tokens, runs_unknown_spend: row.runs_unknown_spend }
+      : null;
+  return <MetricCard component={component} config={config} row={row} caption={caption} />;
+}
+
 const SAVING_PER_RUN_PENDING = 'Not served yet: waits on savings_per_measured_run_usd in metering-summary.v1';
 
 /**
@@ -171,15 +242,9 @@ const SAVING_PER_RUN_PENDING = 'Not served yet: waits on savings_per_measured_ru
  * decimal text. Only measured runs are in the served quotient. A null value says why; it is never $0.
  */
 export function SavingsPerRunCard({ rows }: { rows: readonly unknown[] }) {
-  const all = asRecords(rows).filter((row) => row.window_kind === 'all');
-  if (all.length === 0) return <p className="local-dashboard-metric">Not measured: no all-time row</p>;
-  // The fold keys rows by baseline model and keeps an older baseline's all row, so after a baseline change there are
-  // two. The one refreshed last (newest as_of) is the baseline the runtime resolves now; two refreshed at the same
-  // moment cannot be told apart and are refused by name. Same rule as the Step B metering cards (omnidash#364).
-  const newest = Math.max(...all.map((row) => timeOf(row.as_of)));
-  const latest = all.filter((row) => timeOf(row.as_of) === newest);
-  if (latest.length > 1) return <p className="local-dashboard-metric">{`Not measured: ${latest.length} baseline models`}</p>;
-  const row = latest[0];
+  const picked = pickAllTimeRow(rows);
+  if ('message' in picked) return <p className="local-dashboard-metric">{picked.message}</p>;
+  const row = picked.row;
   if (!('savings_per_measured_run_usd' in row)) {
     return <p className="local-dashboard-empty" role="status">{SAVING_PER_RUN_PENDING}</p>;
   }
@@ -302,12 +367,6 @@ function utcDay(time: number): string {
   return Number.isFinite(time) ? new Date(time).toISOString().slice(0, 10) : '';
 }
 
-/** A run's saving from its session: 0 with no baseline is BASELINE_UNRESOLVED, never $0 (aac9032d, ticket AC4). */
-function savingsOf(session: Row | undefined): string {
-  if (session && session.baseline_model === null && session.savings_usd === 0) return 'Baseline unresolved';
-  return recorded(session?.savings_usd);
-}
-
 interface RunViewProps {
   decisions: readonly unknown[];
   sessions: readonly unknown[];
@@ -347,7 +406,10 @@ export function LastRunCard({ decisions, sessions, now = Date.now() }: RunViewPr
   );
 }
 
-/** OV-5: the ten newest runs, newest first, with the Runs page's run columns. */
+/**
+ * OV-5: the ten newest runs, newest first, with the Runs page's run columns. A run shows its cost, never a per-run
+ * saving: savings are window totals from metering-summary.v1 only (OMN-19980 AC2).
+ */
 export function RecentRunsTable({ decisions, sessions, now = Date.now() }: RunViewProps) {
   const bySession = indexBy(sessions, 'session_id');
   const recent = newestFirst(decisions).slice(0, 10);
@@ -357,7 +419,7 @@ export function RecentRunsTable({ decisions, sessions, now = Date.now() }: RunVi
         <thead>
           <tr>
             <th>Time</th><th>Age</th><th>Status</th><th>Cause</th><th>Task type</th><th>Model</th><th>Backend</th>
-            <th>Host</th><th>Tokens in</th><th>Tokens out</th><th>Cost</th><th>Savings</th><th>Basis</th><th>Duration</th>
+            <th>Host</th><th>Tokens in</th><th>Tokens out</th><th>Cost</th><th>Basis</th><th>Duration</th>
             <th>Route tier</th><th>Quality score</th><th>Run</th>
           </tr>
         </thead>
@@ -375,7 +437,6 @@ export function RecentRunsTable({ decisions, sessions, now = Date.now() }: RunVi
             <td>{recorded(decision.tokens_input)}</td>
             <td>{recorded(decision.tokens_output)}</td>
             <td>{recorded(session?.local_cost_usd)}</td>
-            <td>{savingsOf(session)}</td>
             <td>{recorded(session?.usage_source)}</td>
             <td>{duration(decision.latency_ms)}</td>
             <td>{tierOf(decision)}</td>
@@ -401,7 +462,7 @@ export function NoRunsYet() {
 interface RunsTableProps {
   /** delegation.decisions.v1 rows: every run, failed ones included (RU-1's source). */
   decisions: readonly unknown[];
-  /** delegation.savings.v1 sessions, looked up by session_id = correlation_id for the savings columns. */
+  /** delegation.savings.v1 sessions, looked up by session_id = correlation_id for the cost and baseline-label columns. */
   sessions: readonly unknown[];
   now?: number;
   /** The widget's declared page_size. */
@@ -414,7 +475,10 @@ function isFixture(decision: Row): boolean {
   return typeof decision.data_source === 'string' && decision.data_source !== '' && decision.data_source !== 'real';
 }
 
-/** RU-1: every served run with its status, cause and savings, filtered by status, cause, model and window, paged. */
+/**
+ * RU-1: every served run with its status, cause and cost, filtered by status, cause, model and window, paged. No
+ * per-run saving or baseline price: savings are window totals from metering-summary.v1 only (OMN-19980 AC2).
+ */
 export function RunsTable({ decisions, sessions, now = Date.now(), pageSize = 25, syncUrl = false }: RunsTableProps) {
   const id = useId();
   const search = useSearch();
@@ -485,15 +549,12 @@ export function RunsTable({ decisions, sessions, now = Date.now(), pageSize = 25
               <thead>
                 <tr>
                   <th>Run</th><th>Created</th><th>Status</th><th>Cause</th><th>Model</th><th>Backend</th><th>Host</th>
-                  <th>Tokens in</th><th>Tokens out</th><th>Local cost</th><th>Baseline cost</th>
-                  <th>Baseline model</th><th>Savings</th><th>Basis</th>
+                  <th>Tokens in</th><th>Tokens out</th><th>Local cost</th><th>Baseline model</th><th>Basis</th>
                   <th>Task type</th><th>Duration</th><th>Tokens to compliance</th><th>Route tier</th><th>Quality score</th>
                 </tr>
               </thead>
               <tbody>{page.map((run, index) => {
                 const session = bySession.get(String(run.correlation_id));
-                const unresolved = session !== undefined && session.baseline_model === null && session.savings_usd === 0;
-                const baselineCost = session?.counterfactual_baseline_usd ?? session?.cloud_cost_usd;
                 return <tr key={String(run.correlation_id ?? index)}>
                   <td>{recorded(run.correlation_id)}{isFixture(run) && <span className="local-dashboard-badge">fixture</span>}</td>
                   <td>{recorded(run.created_at)}</td>
@@ -505,10 +566,7 @@ export function RunsTable({ decisions, sessions, now = Date.now(), pageSize = 25
                   <td>{recorded(run.tokens_input)}</td>
                   <td>{recorded(run.tokens_output)}</td>
                   <td>{recorded(session?.local_cost_usd)}</td>
-                  <td>{unresolved ? 'Baseline unresolved' : recorded(baselineCost)}</td>
-                  {/* A measured saving whose baseline model was not written is not "not measured" (Codex, 2026-10-02). */}
-                  <td>{unresolved ? 'Baseline unresolved' : recorded(session?.baseline_model)}</td>
-                  <td>{unresolved ? 'Baseline unresolved' : recorded(session?.savings_usd)}</td>
+                  <td>{recorded(session?.baseline_model)}</td>
                   <td>{recorded(session?.usage_source)}</td>
                   <td>{recorded(run.task_type)}</td>
                   <td>{recorded(run.latency_ms)}</td>
@@ -929,7 +987,12 @@ export function LocalDashboardPage({ pageName, syncUrl = false }: LocalDashboard
                     <RunLocallyCard row={asRecord(rows[0])} />
                   ) : component.component_id === 'overview-avg-saving-per-call' && !unbound ? (
                     <SavingsPerRunCard rows={rows} />
-                  ) : (() => {
+                  ) : component.data_bindings?.[0]?.projection_topic === METERING_SUMMARY_TOPIC ? (() => {
+                    const config = metricConfigFor(page, component.component_id);
+                    return config
+                      ? <MeteringTotalCard component={component} config={config} rows={rows} />
+                      : <p className="local-dashboard-empty">Not measured</p>;
+                  })() : (() => {
                     const config = metricConfigFor(page, component.component_id);
                     return config
                       ? <MetricCard component={component} config={config} row={first} caption={captionRowFor(component, snapshots)} />

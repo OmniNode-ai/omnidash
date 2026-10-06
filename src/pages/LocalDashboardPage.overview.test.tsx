@@ -148,13 +148,15 @@ describe('MetricCard captions and pending sources (Amendment 4)', () => {
     expect(screen.getByText(/Zero-token runs: 0/)).toBeInTheDocument();
   });
 
+  // OMN-19980 Amendment 2 binds Tokens in and out to metering-summary.v1, so on dev no Overview card is left unbound
+  // and none names a pending source; an unbound card still says it is not served and shows no figure.
   it('renders a card with no served exposure as not served yet, naming what it waits for (SV-3)', () => {
     render(<MetricCard
-      component={{ ...component('overview-tokens', []), data_bindings: [], supported_empty_state_reasons: ['upstream-blocked'] } as ModelComponentContract}
+      component={{ ...component('overview-unbound-card', []), data_bindings: [], supported_empty_state_reasons: ['upstream-blocked'] } as ModelComponentContract}
       config={{ metric_key: 'tokens_in_and_out', label: 'Tokens in and out', format: 'number', precision: 0 }}
       row={{ tokens_total: 56800 }}
     />);
-    expect(screen.getByText('Not served yet: waits on metering-summary.v1')).toBeInTheDocument();
+    expect(screen.getByText('Not served yet: waits on its exposure')).toBeInTheDocument();
     expect(screen.queryByText(/56,800/)).not.toBeInTheDocument();
   });
 });
@@ -172,7 +174,7 @@ describe('LocalDashboardPage', () => {
     const view = render(<LocalDashboardPage pageName="runs" />);
     await act(async () => {});
     // Runs loaded its own document (not the name fallback), so a stale header is possible next.
-    expect(screen.getByText('Every delegation run from the runtime\'s served decisions, with its savings.')).toBeInTheDocument();
+    expect(screen.getByText('Every delegation run from the runtime\'s served decisions, with its cost.')).toBeInTheDocument();
     expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent('Runs');
 
     // The next census never answers, so Overview stays in its loading state.

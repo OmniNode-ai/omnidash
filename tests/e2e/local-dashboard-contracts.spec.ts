@@ -13,6 +13,19 @@ const USAGE = 'onex.snapshot.projection.usage-by-model-day.v1';
 // OMN-20225: the quality and tier-mix panels' served exposures.
 const QUALITY = 'onex.snapshot.projection.delegation.quality-gate.v1';
 const ROUTING = 'onex.snapshot.projection.delegation.model-routing.v1';
+// OMN-19980 Step B: the Overview Savings total's one source.
+const METERING = 'onex.snapshot.projection.metering-summary.v1';
+
+/** A metering-summary.v1 row in omnimarket#3368's served shape: money as decimal text, null when unmeasured. */
+function meteringRow(overrides: Record<string, unknown> = {}): Record<string, unknown> {
+  return {
+    tenant_id: 'tenant-fresh-store', window_kind: 'all', window_start: '', window_end: '2026-10-02T10:07:00+00:00',
+    as_of: '2026-10-02T10:07:00+00:00', baseline_model: 'claude-sonnet-5-5', pricing_manifest_version: '3',
+    baseline_state: 'resolved', runs_total: 46, runs_measured: 45, runs_unknown_tokens: 1, runs_unknown_spend: 0,
+    tokens_in: 7452, tokens_out: 2392, spend_usd: '0.006860', counterfactual_usd: '1.225260', savings_usd: '1.218400',
+    ...overrides,
+  };
+}
 
 const decisions = [
   {
@@ -51,10 +64,14 @@ const fixtures: Record<string, unknown[]> = {
       },
     ],
   }],
+  // OMN-19980 Amendment 2: Overview no longer reads cost.savings-overview.v1; it stays served with figures that differ
+  // from the metering all row's, so a headline card that read it again would show 1.2252 or 46 and be caught.
   [OVERVIEW]: [{
     total_cost_usd: 0.00686, total_savings_usd: 1.2252, total_baseline_cost_usd: 1.2321,
     measured_run_count: 46, zero_token_run_count: 0,
   }],
+  // The all row is the Savings total; the day row is the daily series and must not reach the card.
+  [METERING]: [meteringRow({ window_kind: 'day', window_start: '2026-10-02', savings_usd: '0.400000' }), meteringRow()],
   [CREDENTIALS]: [],
   [USAGE]: [],
   // Served values chosen so a figure the browser recomputed from the counts would differ (pass rate 0.875 of 7/8).
@@ -141,14 +158,15 @@ test('stored basis, excluded counts and modelled baseline survive native Overvie
   await serveFixtures(page, {
     ...fixtures, [DECISIONS]: provenanceDecisions,
     [SAVINGS]: [{ baseline_model: 'served-baseline-model', pricing_manifest_version: 1, sessions: provenanceSessions }],
-    [OVERVIEW]: [{ total_cost_usd: 0.0011, total_savings_usd: 0.0009, total_baseline_cost_usd: 0.002,
-      measured_run_count: 1, estimated_run_count: 1, unknown_run_count: 2, zero_token_run_count: 0 }],
+    // OMN-19980 Step B: the savings caption is the metering all row's own baseline and manifest; Amendment 2: the
+    // excluded counts beside Measured runs are the same row's run classes (no token counts, no spend).
+    [METERING]: [meteringRow({ baseline_model: 'served-baseline-model', pricing_manifest_version: '1', savings_usd: '0.000900',
+      runs_total: 4, runs_measured: 1, runs_unknown_tokens: 1, runs_unknown_spend: 2 })],
   });
   await page.goto('/');
   await expect(page.getByText('Baseline served-baseline-model · pricing manifest v1')).toBeVisible();
   await expect(page.getByText(/The baseline never ran\./)).toBeVisible();
-  await expect(page.getByText(/Estimated runs excluded: 1/)).toBeVisible();
-  await expect(page.getByText(/Unknown runs excluded: 2/)).toBeVisible();
+  await expect(page.getByText('Of 4 runs · Unknown-token runs excluded: 1 · Unknown-spend runs excluded: 2', { exact: true })).toBeVisible();
   const last = page.getByRole('region', { name: 'Last run' });
   await expect(last.locator('dt').filter({ hasText: /^Basis$/ })).toBeVisible();
   await expect(last.getByText('measured', { exact: true })).toBeVisible();
@@ -183,10 +201,30 @@ test('Overview is the default page and fits 1440x900 with no unmeasured 0 (AC4)'
   const recent = page.locator('.local-dashboard-panel').filter({ has: page.getByRole('heading', { name: 'Recent runs' }) });
   const unmeasured = recent.getByRole('row').filter({ hasText: 'corr-19981-unmeasured' });
   await expect(unmeasured).toBeVisible();
-  await expect(unmeasured.getByText('Baseline unresolved')).toBeVisible();
+  // OMN-19980 AC2b: a run shows its cost and never a per-run saving, so the unpriced run has no saving to type.
+  await expect(recent.getByRole('columnheader', { name: 'Savings', exact: true })).toHaveCount(0);
+  await expect(unmeasured.getByText('0.0004', { exact: true })).toBeVisible();
   await expect(unmeasured.getByText('Not recorded').first()).toBeVisible();
   await expect(page.getByText('0', { exact: true })).toHaveCount(0);
   await expect(page.getByText('$0', { exact: true })).toHaveCount(0);
+
+  // OMN-19980 Step B: the Savings total is metering-summary.v1's all-time row, with that row's baseline and manifest;
+  // neither cost.savings-overview.v1's total nor the day row reaches it.
+  const savings = page.locator('.local-dashboard-panel').filter({ has: page.getByRole('heading', { name: 'Savings', exact: true }) });
+  // 1.2184, not cost.savings-overview.v1's 1.2252.
+  await expect(savings.getByText('$1.2184', { exact: true })).toBeVisible();
+  await expect(savings.getByText('$1.2252', { exact: true })).toHaveCount(0);
+  await expect(savings.getByText('Baseline claude-sonnet-5-5 · pricing manifest v3', { exact: true })).toBeVisible();
+  await expect(savings.getByText('$0.4000', { exact: true })).toHaveCount(0);
+  // Amendment 2: Spend, Measured runs and Tokens read the same all row (45 measured of 46, not
+  // cost.savings-overview.v1's 46; the two token columns side by side, never a combined total).
+  const headline = (title: string) => page.locator('.local-dashboard-panel').filter({ has: page.getByRole('heading', { name: title, exact: true }) });
+  await expect(headline('Spend').getByText('$0.0069', { exact: true })).toBeVisible();
+  await expect(headline('Measured runs').getByText('45', { exact: true })).toBeVisible();
+  await expect(headline('Measured runs').getByText('46', { exact: true })).toHaveCount(0);
+  await expect(headline('Measured runs').getByText('Of 46 runs · Unknown-token runs excluded: 1 · Unknown-spend runs excluded: 0', { exact: true })).toBeVisible();
+  await expect(headline('Tokens in and out').getByText('7,452 in · 2,392 out', { exact: true })).toBeVisible();
+  await expect(headline('Tokens in and out').getByText(/Not served yet/)).toHaveCount(0);
 
   // The headline panels sit above the fold; Recent runs starts above it.
   for (const title of ['Spend', 'Savings', 'Measured runs', 'Last run']) {
@@ -209,7 +247,12 @@ test('Runs lists every decision with typed unmeasured values at 1440x900 (AC4)',
   await expect(page.getByRole('heading', { level: 1, name: 'Runs' })).toBeVisible();
   const unmeasured = page.getByRole('row').filter({ hasText: 'corr-19981-unmeasured' });
   await expect(unmeasured).toBeVisible();
-  await expect(unmeasured.getByText('Baseline unresolved')).toHaveCount(3);
+  // OMN-19980 AC2b: local cost and the baseline label stay; no per-run baseline price or saving is shown.
+  for (const header of ['Baseline cost', 'Savings']) {
+    await expect(page.getByRole('columnheader', { name: header, exact: true }), header).toHaveCount(0);
+  }
+  await expect(unmeasured.getByText('0.0004', { exact: true })).toBeVisible();
+  await expect(unmeasured.getByText('Baseline unresolved')).toHaveCount(0);
   await expect(page.getByText('Runs 1–2 of 2')).toBeVisible();
   await expect(page.getByText('0', { exact: true })).toHaveCount(0);
   await expectNoPanelCutOff(page);
@@ -383,7 +426,8 @@ test('manual Refresh rereads local exposures and preserves the Runs filter', asy
   });
   await serveFixtures(page);
   await page.goto('/');
-  await expect(page.getByText('$1.2252', { exact: true })).toBeVisible();
+  // The Overview Savings total, served from metering-summary.v1's all-time row (OMN-19980 Step B).
+  await expect(page.getByText('$1.2184', { exact: true })).toBeVisible();
   await page.getByTestId('nav-local-runs').click();
   await expect(page.getByText('Runs 1–2 of 2')).toBeVisible();
   await page.getByLabel('Status', { exact: true }).selectOption('passed');

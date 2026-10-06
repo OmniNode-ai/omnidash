@@ -44,10 +44,7 @@
             "sessions",
             "session_id",
             "local_cost_usd",
-            "cloud_cost_usd",
-            "counterfactual_baseline_usd",
             "baseline_model",
-            "savings_usd",
             "usage_source",
             "savings_method"
           ]
