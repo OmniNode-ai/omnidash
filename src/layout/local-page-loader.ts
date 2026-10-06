@@ -1,4 +1,5 @@
 import type { ProjectionSnapshot, ProtocolSnapshotSource } from '../data-source/protocol-snapshot-source';
+import { ProjectionReadRefusedError } from '../data-source/http-snapshot-source';
 import type { ModelComponentContract } from '../shared/types/generated/onex-models';
 import { isTenantNotConfiguredError } from '../data-source/projection-tenant';
 
@@ -163,6 +164,11 @@ export async function loadLocalPageSnapshots(
     } catch (cause) {
       if (isTenantNotConfiguredError(cause)) {
         return failedSnapshot(topic, { kind: 'tenant-not-configured', message: cause.message });
+      }
+      // OMN-19994: the read node's declared refusal for a store that has no table for this exposure is a typed
+      // not-served state (a fresh local store has no savings table), not an HTTP error.
+      if (cause instanceof ProjectionReadRefusedError && cause.code === 'projection_table_missing') {
+        return failedSnapshot(topic, { kind: 'not-served', message: `Not served: ${topic} (this store has no table for it)` });
       }
       return failedSnapshot(topic, { kind: 'error', message: readErrorMessage(topic, cause) });
     } finally {
