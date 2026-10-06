@@ -69,6 +69,8 @@ function sharedRead(source: ProtocolSnapshotSource, topic: string): Promise<Proj
 }
 
 export const DELEGATION_SAVINGS_TOPIC = 'onex.snapshot.projection.delegation.savings.v1';
+/** One row per window and baseline model; Overview's headline cards read its all-time row (OMN-19980 Step B). */
+export const METERING_SUMMARY_TOPIC = 'onex.snapshot.projection.metering-summary.v1';
 
 const pageFiles = import.meta.glob('../pages/local/*.page.yaml', {
   eager: true,

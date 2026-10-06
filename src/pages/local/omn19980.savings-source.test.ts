@@ -171,8 +171,11 @@ function ruleR3PerRun(pages: readonly LoadedPage[]): string[] {
   return findings;
 }
 
-/** R4: the only code that may read a savings field by name; nothing else computes or shows one. */
-const R4_ALLOWED_OWNERS: ReadonlySet<string> = new Set(['SavingsPerRunCard']);
+/**
+ * R4: the only code that may read a savings field by name; nothing else computes or shows one. Empty on dev: every
+ * savings figure there is a metering-summary.v1 binding read through its metric key, never a field named in code.
+ */
+const R4_ALLOWED_OWNERS: ReadonlySet<string> = new Set<string>();
 const SOURCE_FILES = ['src/pages/LocalDashboardPage.tsx', 'src/layout/local-page-loader.ts'] as const;
 /** A data field name: lower snake case with at least one underscore (savings_usd), never prose or a constant. */
 const FIELD_TOKEN = /^[a-z][a-z0-9]*(?:_[a-z0-9]+)+$/;
@@ -257,7 +260,7 @@ describe('OMN-19980 AC2d: savings figures come from metering-summary.v1 only', (
     const pages = loadPages();
     expect(pageNames).toEqual(['api-keys', 'credentials', 'overview', 'runs', 'usage', 'workflow']);
     expect(instrumentProblems(pages)).toEqual([]);
-    // The allowed topic is the loader's metering-summary topic, the one OMN-20009's card waits on.
+    // The allowed topic is the loader's metering-summary topic, the one Overview's headline cards read.
     expect(ALLOWED_TOPIC).toBe(METERING_SUMMARY_TOPIC);
   });
 
@@ -282,7 +285,7 @@ describe('OMN-19980 AC2d: savings figures come from metering-summary.v1 only', (
     expect(findings, findings.join('\n')).toEqual([]);
   });
 
-  it('R4: page and loader code read no savings field outside SavingsPerRunCard', () => {
+  it('R4: page and loader code read no savings field by name', () => {
     const findings = ruleR4Source(readSources());
     expect(findings, findings.join('\n')).toEqual([]);
   });
@@ -403,7 +406,7 @@ describe('OMN-19980 AC2d: planted controls (each rule catches its violation)', (
     ]);
   });
 
-  it('R4 catches savings read in code outside SavingsPerRunCard, and ignores comments and prose', () => {
+  it('R4 catches savings read in code, and ignores comments and prose', () => {
     const source = [
       '// session.savings_usd in a comment is not a read',
       'export function SavingsPerRunCard({ row }: { row: Record<string, unknown> }) { return row.savings_per_measured_run_usd; }',
@@ -412,6 +415,7 @@ describe('OMN-19980 AC2d: planted controls (each rule catches its violation)', (
       "const PENDING = 'Not served yet: waits on savings_per_measured_run_usd in metering-summary.v1';",
     ].join('\n');
     expect(ruleR4Source([{ file: 'planted.tsx', source }])).toEqual([
+      'R4 planted.tsx:2 SavingsPerRunCard: savings_per_measured_run_usd',
       'R4 planted.tsx:3 RecentRunsTable: savings_usd',
       'R4 planted.tsx:4 baselineOf: counterfactual_baseline_usd',
     ]);
@@ -420,16 +424,22 @@ describe('OMN-19980 AC2d: planted controls (each rule catches its violation)', (
   it('R4 reads both source files, and the scan can see a savings name in them (positive control)', () => {
     const sources = readSources();
     expect(sources.map(({ file }) => file)).toEqual([...SOURCE_FILES]);
-    // SavingsPerRunCard reads savings_per_measured_run_usd: allowed, but proof the scanner finds real tokens.
-    const withoutAllowance = sources.map(({ file, source }) => ({ file, source: source.replace(/function SavingsPerRunCard\b/, 'function PlantedCard') }));
-    expect(ruleR4Source(withoutAllowance).some((finding) => finding.endsWith('PlantedCard: savings_per_measured_run_usd'))).toBe(true);
+    // Dev's sources name no savings field, so a read planted at the end of each real file proves the scan parses that
+    // file's real text and sees a savings name in it.
+    const planted = sources.map(({ file, source }) => ({
+      file, source: `${source}\nexport function PlantedCard(row: Record<string, unknown>) { return row.savings_usd; }\n`,
+    }));
+    const findings = ruleR4Source(planted);
+    for (const file of SOURCE_FILES) {
+      expect(findings.some((finding) => finding.startsWith(`R4 ${file}:`) && finding.endsWith('PlantedCard: savings_usd')), file).toBe(true);
+    }
   });
 });
 
 describe('OMN-19980 Step B: the allowlist is empty and every savings figure binds metering-summary.v1', () => {
-  it('the Step A allowlist is empty, and R4 still allows only SavingsPerRunCard', () => {
+  it('the Step A allowlist is empty, and R4 allows no owner', () => {
     expect(STEP_A_ALLOWLIST).toEqual([]);
-    expect([...R4_ALLOWED_OWNERS]).toEqual(['SavingsPerRunCard']);
+    expect([...R4_ALLOWED_OWNERS]).toEqual([]);
   });
 
   it('every bound savings figure on the six pages reads metering-summary.v1, and there is at least one', () => {
@@ -626,7 +636,9 @@ describe('OMN-19980 AC2c: a savings card with no served source says what it wait
 
   it('every unbound savings card names metering-summary.v1 and shows no figure', () => {
     const texts = unboundSavingsTexts(loadPages());
-    expect(texts.length).toBeGreaterThan(0);
+    // On dev every savings card is bound (Savings reads metering-summary.v1), so the population is empty; the planted
+    // case below is the control that proves an unbound one is found. OMN-20009's Avg saving / call joins it when it lands.
+    expect(texts.map(({ id }) => id)).toEqual([]);
     for (const { id, text } of texts) {
       expect(text, id).toBe(`Not served yet: waits on ${ALLOWED_SAVINGS_SOURCE}`);
     }

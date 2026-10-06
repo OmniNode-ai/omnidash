@@ -30,11 +30,10 @@
 //   M5  after a baseline change: a card shows the older row's figure, or the cards read different rows;
 //   M6  two all rows refreshed at the same moment: a card picks one silently;
 //   M7  only day rows: a card shows a day's figure, or 0, instead of saying there is no all-time row.
-// The unbound card (Avg saving / call waits on metering-summary.v1) is OMN-20009's P2 and the AC2c population check
-// in local/omn19980.savings-source.test.ts.
+// C2-C5 exercise the Savings card, the Overview savings card dev binds to metering-summary.v1. (On the stack with
+// OMN-20009 they exercised its Avg saving / call card; that card is not on dev.)
 import { act, render, screen, within } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import type { LocalPageDocument } from '@/layout/local-page-loader';
 
 const DECISIONS = 'onex.snapshot.projection.delegation.decisions.v1';
 const SAVINGS = 'onex.snapshot.projection.delegation.savings.v1';
@@ -45,8 +44,6 @@ const METERING = 'onex.snapshot.projection.metering-summary.v1';
 const harness = vi.hoisted(() => ({
   reachable: new Set<string>(),
   rows: {} as Record<string, unknown[] | Error>,
-  /** Step B's shape for the Avg saving / call card (OMN-20009 C2, served branch): bound to metering-summary.v1. */
-  bindMetering: false,
 }));
 
 vi.mock('@/data-source', () => ({
@@ -63,29 +60,6 @@ vi.mock('@/data-source/data-source-override', () => ({ resolveEffectiveDataSourc
 vi.mock('@/data-source/exposure-census', () => ({
   fetchExposureCensus: async () => ({ rows: [...harness.reachable].map((topic) => ({ topic, reachability: 'reachable' })) }),
 }));
-vi.mock('@/layout/local-page-loader', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('@/layout/local-page-loader')>();
-  return {
-    ...actual,
-    loadLocalPageConfig: (name: Parameters<typeof actual.loadLocalPageConfig>[0]): LocalPageDocument => {
-      const page = actual.loadLocalPageConfig(name);
-      if (name !== 'overview' || !harness.bindMetering) return page;
-      return {
-        ...page,
-        components: page.components.map((component) => component.component_id !== 'overview-avg-saving-per-call' ? component : {
-          ...component,
-          data_bindings: [{
-            binding_id: 'overview-avg-saving-per-call-metering', projection_topic: METERING,
-            ordering_authority_field: 'as_of', ordering_direction: 'descending',
-            required_fields: ['window_kind', 'baseline_model', 'baseline_state', 'runs_measured', 'savings_per_measured_run_usd'],
-          }],
-          supported_empty_state_reasons: ['missing-field', 'no-data'],
-        }),
-      } as LocalPageDocument;
-    },
-  };
-});
-
 import { LocalDashboardPage } from './LocalDashboardPage';
 import { loadLocalPageConfig, resolveLocalPageEmptyState } from '@/layout/local-page-loader';
 
@@ -124,7 +98,6 @@ const headers = (scope: HTMLElement) => within(scope).getAllByRole('columnheader
 beforeEach(() => {
   vi.useFakeTimers({ toFake: ['setInterval', 'clearInterval', 'setTimeout', 'clearTimeout', 'Date'] });
   vi.setSystemTime(new Date('2026-10-05T12:05:00Z'));
-  harness.bindMetering = false;
   served();
 });
 afterEach(() => { vi.useRealTimers(); });
@@ -180,40 +153,36 @@ describe('OMN-19980 AC2c: a savings card with nothing measured or served says so
   });
 
   it('C2: bound to metering-summary.v1 that the census does not serve, the card names it and shows no figure', async () => {
-    harness.bindMetering = true;
     served();
     await open('overview');
-    const card = panel('Avg saving / call');
+    const card = panel('Savings');
     expect(within(card).getByText(`Not served: ${METERING}`)).toBeInTheDocument();
     noFigure(card);
   });
 
   it('C3: served with no rows, the card is Not measured, never $0', async () => {
-    harness.bindMetering = true;
     served({ [METERING]: [] });
     await open('overview');
-    const card = panel('Avg saving / call');
+    const card = panel('Savings');
     expect(within(card).getByText('Not measured: no all-time row')).toBeInTheDocument();
     noFigure(card);
   });
 
   it('C4: a 503 names metering-summary.v1 and is not read as a measurement', async () => {
-    harness.bindMetering = true;
     served({ [METERING]: new Error(`Projection ${METERING} failed: HTTP 503 Service Unavailable`) });
     await open('overview');
-    const card = panel('Avg saving / call');
+    const card = panel('Savings');
     expect(within(card).getByRole('alert')).toHaveTextContent(`${METERING}: HTTP 503 Service Unavailable`);
     expect(within(card).queryByText(/^Not measured/)).toBeNull();
     noFigure(card);
   });
 
   it('C5: a null saving with an unresolved baseline is that card\'s state, not the page\'s', async () => {
-    harness.bindMetering = true;
-    served({ [METERING]: [{ window_kind: 'all', baseline_model: 'claude-opus-4-6', baseline_state: 'unresolved', runs_measured: 3, savings_usd: null, savings_per_measured_run_usd: null,
+    served({ [METERING]: [{ window_kind: 'all', baseline_model: 'claude-opus-4-6', baseline_state: 'unresolved', runs_measured: 3, savings_usd: null,
       // Amendment 2: Spend reads this same row, and is not priced at the baseline.
       as_of: '2026-10-05T12:00:00+00:00', spend_usd: '0.010000' }] });
     await open('overview');
-    const card = panel('Avg saving / call');
+    const card = panel('Savings');
     expect(within(card).getByText('Baseline unresolved')).toBeInTheDocument();
     noFigure(card);
     expect(within(panel('Spend')).getByText('$0.0100')).toBeInTheDocument();
