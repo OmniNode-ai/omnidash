@@ -173,8 +173,13 @@ const SAVING_PER_RUN_PENDING = 'Not served yet: waits on savings_per_measured_ru
 export function SavingsPerRunCard({ rows }: { rows: readonly unknown[] }) {
   const all = asRecords(rows).filter((row) => row.window_kind === 'all');
   if (all.length === 0) return <p className="local-dashboard-metric">Not measured: no all-time row</p>;
-  if (all.length > 1) return <p className="local-dashboard-metric">{`Not measured: ${all.length} baseline models`}</p>;
-  const row = all[0];
+  // The fold keys rows by baseline model and keeps an older baseline's all row, so after a baseline change there are
+  // two. The one refreshed last (newest as_of) is the baseline the runtime resolves now; two refreshed at the same
+  // moment cannot be told apart and are refused by name. Same rule as the Step B metering cards (omnidash#364).
+  const newest = Math.max(...all.map((row) => timeOf(row.as_of)));
+  const latest = all.filter((row) => timeOf(row.as_of) === newest);
+  if (latest.length > 1) return <p className="local-dashboard-metric">{`Not measured: ${latest.length} baseline models`}</p>;
+  const row = latest[0];
   if (!('savings_per_measured_run_usd' in row)) {
     return <p className="local-dashboard-empty" role="status">{SAVING_PER_RUN_PENDING}</p>;
   }

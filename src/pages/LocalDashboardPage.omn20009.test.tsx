@@ -149,10 +149,41 @@ describe('SavingsPerRunCard (OMN-20009 AC1, AC2, AC3)', () => {
     expect(screen.getByText('Not measured: no all-time row')).toBeInTheDocument();
   });
 
-  it('S4: one all-time row per baseline model is not guessed between', () => {
-    render(<SavingsPerRunCard rows={[allRow(), allRow({ baseline_model: 'gpt-5', savings_per_measured_run_usd: '0.1' })]} />);
+  it('S4: two all-time rows refreshed at the same moment are not guessed between', () => {
+    render(<SavingsPerRunCard rows={[
+      allRow({ as_of: '2026-10-04T14:00:00Z' }),
+      allRow({ as_of: '2026-10-04T14:00:00Z', baseline_model: 'gpt-5', savings_per_measured_run_usd: '0.1' }),
+    ]} />);
     expect(screen.getByText('Not measured: 2 baseline models')).toBeInTheDocument();
     expect(screen.queryByText(/\$/)).toBeNull();
+  });
+
+  it('S4b: after a baseline change the newest as_of all-time row is shown with its baseline', () => {
+    render(<SavingsPerRunCard rows={[
+      allRow({ as_of: '2026-10-04T14:00:00Z', baseline_model: 'claude-opus-4-6', savings_per_measured_run_usd: '0.1' }),
+      allRow({ as_of: '2026-10-05T09:30:00Z', baseline_model: 'gpt-5', savings_per_measured_run_usd: '0.250000' }),
+    ]} />);
+    expect(screen.getByText('$0.250000')).toBeInTheDocument();
+    expect(screen.getByText('Over 3 measured runs · baseline gpt-5')).toBeInTheDocument();
+    expect(screen.queryByText(/baseline models/)).toBeNull();
+    expect(screen.queryByText('$0.1')).toBeNull();
+  });
+
+  it('S4b: the newest row wins whichever order the rows are served in', () => {
+    render(<SavingsPerRunCard rows={[
+      allRow({ as_of: '2026-10-05T09:30:00Z', baseline_model: 'gpt-5', savings_per_measured_run_usd: '0.250000' }),
+      allRow({ as_of: '2026-10-04T14:00:00Z', savings_per_measured_run_usd: '0.1' }),
+    ]} />);
+    expect(screen.getByText('$0.250000')).toBeInTheDocument();
+  });
+
+  it('S4c: a day row newer than the all-time row is ignored', () => {
+    render(<SavingsPerRunCard rows={[
+      allRow({ as_of: '2026-10-04T14:00:00Z', savings_per_measured_run_usd: '0.500000' }),
+      { ...allRow({ as_of: '2026-10-06T01:00:00Z', savings_per_measured_run_usd: '9.000000' }), window_kind: 'day', window_start: '2026-10-06' },
+    ]} />);
+    expect(screen.getByText('$0.500000')).toBeInTheDocument();
+    expect(screen.queryByText('$9.000000')).toBeNull();
   });
 
   it('S5: a negative saving keeps its sign', () => {
