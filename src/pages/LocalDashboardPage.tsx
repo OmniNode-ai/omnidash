@@ -689,6 +689,10 @@ function WidgetReadState({ component, snapshots, now, interval }: {
   const failures = bound.filter((snapshot) => snapshot.failure
     && snapshot.failure.kind !== 'tenant-not-configured'
     && (snapshot.failure.kind !== 'not-served' || snapshot.lastGoodAt));
+  // A table's unserved lookup does not hide its rows (rowGatingSnapshots), so it is named here instead.
+  const gating = rowGatingSnapshots(component, snapshots);
+  const unservedLookups = bound.filter((snapshot) => snapshot.failure?.kind === 'not-served'
+    && !snapshot.lastGoodAt && !gating.includes(snapshot));
   const readAt = primary.failure ? primary.lastGoodAt ?? null : primary.readAt;
   const stale = readAt !== null && now - timeOf(readAt) > 2 * interval * 1000;
   return (
@@ -700,6 +704,9 @@ function WidgetReadState({ component, snapshots, now, interval }: {
           {snapshot.lastGoodAt ? `; last good ${age(snapshot.lastGoodAt, now)}` : ''}
         </p>
       ))}
+      {unservedLookups.map((snapshot) => (
+        <p className="local-dashboard-empty" role="status" key={snapshot.topic}>{snapshot.failure!.message}</p>
+      ))}
       {readAt !== null && (
         <p className={`local-dashboard-asof${stale ? ' local-dashboard-asof--stale' : ''}`}>{`As of ${age(readAt, now)}`}</p>
       )}
@@ -707,22 +714,38 @@ function WidgetReadState({ component, snapshots, now, interval }: {
   );
 }
 
-/** A component with any unavailable binding and no last good read names the unavailable exposure. */
+/**
+ * The bindings whose read decides whether a component's rows can render. A table's first binding supplies its rows
+ * and a later one is a lookup joined by a served id (a run's cost and basis), so an unserved or failed lookup leaves
+ * the served rows on screen and is named under them (OMN-19994 AC1: a fresh store serves decisions but has no
+ * savings table). Every other component needs all of its bindings.
+ */
+function rowGatingSnapshots(
+  component: LocalPageDocument['components'][number],
+  snapshots: readonly BoundProjectionSnapshot[],
+): BoundProjectionSnapshot[] {
+  const bound = boundSnapshotsFor(component, snapshots);
+  if (component.component_kind !== 'table') return bound;
+  const rowsTopic = component.data_bindings?.[0]?.projection_topic;
+  return bound.filter((snapshot) => snapshot.topic === rowsTopic);
+}
+
+/** A component with any unavailable row-gating binding and no last good read names the unavailable exposure. */
 function notServedTopic(
   component: LocalPageDocument['components'][number],
   snapshots: readonly BoundProjectionSnapshot[],
 ): string | null {
-  const snapshot = boundSnapshotsFor(component, snapshots)
+  const snapshot = rowGatingSnapshots(component, snapshots)
     .find((candidate) => candidate.failure?.kind === 'not-served' && !candidate.lastGoodAt);
   return snapshot?.failure?.message ?? null;
 }
 
-/** A component whose binding failed with no last good rows renders only its read state. */
+/** A component whose row-gating binding failed with no last good rows renders only its read state. */
 function bindingFailedEmpty(
   component: LocalPageDocument['components'][number],
   snapshots: readonly BoundProjectionSnapshot[],
 ): boolean {
-  return boundSnapshotsFor(component, snapshots)
+  return rowGatingSnapshots(component, snapshots)
     .some((snapshot) => Boolean(snapshot.failure) && !snapshot.lastGoodAt);
 }
 

@@ -116,15 +116,19 @@ describe('LocalDashboardPage widget states (F26, F27)', () => {
     expect(screen.queryByRole('alert', { name: /page/i })).not.toBeInTheDocument();
   });
 
-  it('an unserved secondary binding blanks the widget and names that exposure', async () => {
+  // OMN-19994 AC1 changed this case: a table's second binding is a lookup (a run's cost and basis), and RU-1's
+  // exposure is delegation.decisions.v1 alone. A fresh store serves decisions but has no savings table, so blanking
+  // the table here left a fresh install with no Runs rows. The lookup is still named, as a typed status.
+  it('an unserved lookup binding keeps the table\'s rows and names that exposure', async () => {
     harness.reachable = new Set([DECISIONS]);
     render(<LocalDashboardPage pageName="runs" />);
     await settle();
 
     const runs = screen.getByRole('heading', { name: 'Recent runs' }).closest('article')!;
     expect(within(runs).getByRole('status')).toHaveTextContent(`Not served: ${SAVINGS}`);
-    expect(within(runs).queryByRole('table')).not.toBeInTheDocument();
-    expect(within(runs).queryByText('run-1')).not.toBeInTheDocument();
+    expect(within(runs).getByRole('table')).toBeInTheDocument();
+    expect(within(runs).getByText('run-1')).toBeInTheDocument();
+    expect(within(runs).queryByRole('alert')).not.toBeInTheDocument();
   });
 
   it('a repeated topic binding renders one failure status with no duplicate React key', async () => {
