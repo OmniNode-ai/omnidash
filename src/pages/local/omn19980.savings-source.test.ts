@@ -172,10 +172,14 @@ function ruleR3PerRun(pages: readonly LoadedPage[]): string[] {
 }
 
 /**
- * R4: the only code that may read a savings field by name; nothing else computes or shows one. Empty on dev: every
- * savings figure there is a metering-summary.v1 binding read through its metric key, never a field named in code.
+ * R4: the only code that may read a savings field by name; nothing else computes or shows one. Every Step B savings
+ * figure is a metering-summary.v1 binding read through its metric key, never a field named in code, with one exception
+ * (OMN-20009): the Avg saving / call card shows the served per-run quotient, which is a column rather than a metric
+ * key. That owner may read that one field and no other; any other component, or any other savings field, still fails.
  */
-const R4_ALLOWED_OWNERS: ReadonlySet<string> = new Set<string>();
+const R4_ALLOWED_READS: ReadonlyMap<string, ReadonlySet<string>> = new Map([
+  ['SavingsPerRunCard', new Set(['savings_per_measured_run_usd'])],
+]);
 const SOURCE_FILES = ['src/pages/LocalDashboardPage.tsx', 'src/layout/local-page-loader.ts'] as const;
 /** A data field name: lower snake case with at least one underscore (savings_usd), never prose or a constant. */
 const FIELD_TOKEN = /^[a-z][a-z0-9]*(?:_[a-z0-9]+)+$/;
@@ -211,6 +215,13 @@ function isDeclarationName(node: ts.Node): boolean {
     || ts.isInterfaceDeclaration(parent) || ts.isTypeAliasDeclaration(parent)) && parent.name === node;
 }
 
+/** A JSX tag's name (<SavingsPerRunCard />) refers to a component, it reads no field. */
+function isJsxTagName(node: ts.Node): boolean {
+  const parent = node.parent;
+  return parent !== undefined && (ts.isJsxOpeningElement(parent) || ts.isJsxSelfClosingElement(parent) || ts.isJsxClosingElement(parent))
+    && parent.tagName === node;
+}
+
 /** R4 source scan: savings field names in code (identifiers and whole-name strings; comments and prose are not code). */
 function ruleR4Source(files: ReadonlyArray<{ file: string; source: string }>): string[] {
   const findings: string[] = [];
@@ -218,10 +229,10 @@ function ruleR4Source(files: ReadonlyArray<{ file: string; source: string }>): s
     const tree = ts.createSourceFile(file, source, ts.ScriptTarget.Latest, true, file.endsWith('.tsx') ? ts.ScriptKind.TSX : ts.ScriptKind.TS);
     const visit = (node: ts.Node) => {
       const token = ts.isIdentifier(node) || ts.isStringLiteralLike(node) ? node.text : null;
-      const field = token === null || isDeclarationName(node) ? null : fieldNameOf(token);
+      const field = token === null || isDeclarationName(node) || isJsxTagName(node) ? null : fieldNameOf(token);
       if (field !== null && isSavingsField(field)) {
         const owner = ownerOf(node);
-        if (!R4_ALLOWED_OWNERS.has(owner)) {
+        if (!R4_ALLOWED_READS.get(owner)?.has(field)) {
           const line = tree.getLineAndCharacterOfPosition(node.getStart(tree)).line + 1;
           findings.push(`R4 ${file}:${line} ${owner}: ${token}${field === token ? '' : ` (${field})`}`);
         }
@@ -429,13 +440,13 @@ describe('OMN-19980 AC2d: planted controls (each rule catches its violation)', (
   it('R4 catches savings read in code, and ignores comments and prose', () => {
     const source = [
       '// session.savings_usd in a comment is not a read',
-      'export function SavingsPerRunCard({ row }: { row: Record<string, unknown> }) { return row.savings_per_measured_run_usd; }',
+      'export function AvgSavingCard({ row }: { row: Record<string, unknown> }) { return row.savings_per_measured_run_usd; }',
       'function RecentRunsTable({ session }: { session: Record<string, number> }) { return session.savings_usd; }',
       "const baselineOf = (session: Record<string, number>) => session['counterfactual_baseline_usd'] - session.local_cost_usd;",
       "const PENDING = 'Not served yet: waits on savings_per_measured_run_usd in metering-summary.v1';",
     ].join('\n');
     expect(ruleR4Source([{ file: 'planted.tsx', source }])).toEqual([
-      'R4 planted.tsx:2 SavingsPerRunCard: savings_per_measured_run_usd',
+      'R4 planted.tsx:2 AvgSavingCard: savings_per_measured_run_usd',
       'R4 planted.tsx:3 RecentRunsTable: savings_usd',
       'R4 planted.tsx:4 baselineOf: counterfactual_baseline_usd',
     ]);
@@ -458,6 +469,30 @@ describe('OMN-19980 AC2d: planted controls (each rule catches its violation)', (
       expect(findings.some((finding) => finding.includes(` Dot${alias}: ${alias}`)), `row.${alias}`).toBe(true);
       expect(findings.some((finding) => finding.includes(` Key${alias}: ${alias}`)), `row['${alias}']`).toBe(true);
     }
+  });
+
+  // OMN-20009: the Avg saving / call card is the one legitimate per-run savings reader. The control is that the
+  // exemption is the card's name AND its one field, not a blanket pass.
+  it('R4 allows SavingsPerRunCard to read savings_per_measured_run_usd only; any other reader or field still fails', () => {
+    const source = [
+      'export function SavingsPerRunCard({ row }: { row: Record<string, unknown> }) { return row.savings_per_measured_run_usd; }',
+      'export function SavingsPerRunCardTwin({ row }: { row: Record<string, unknown> }) { return row.savings_per_measured_run_usd; }',
+      'export function RecentRunsTable({ row }: { row: Record<string, unknown> }) { return row.savings_per_measured_run_usd; }',
+      'export function SavingsPerRunCard2({ row }: { row: Record<string, unknown> }) { return row.savings_usd; }',
+    ].join('\n');
+    expect(ruleR4Source([{ file: 'planted.tsx', source }])).toEqual([
+      'R4 planted.tsx:2 SavingsPerRunCardTwin: savings_per_measured_run_usd',
+      'R4 planted.tsx:3 RecentRunsTable: savings_per_measured_run_usd',
+      'R4 planted.tsx:4 SavingsPerRunCard2: savings_usd',
+    ]);
+    // A JSX reference to the card is a component use, not a read; a prop or key named like a savings field still is one.
+    const jsx = 'const a = () => <SavingsPerRunCard rows={rows} />;\nconst b = () => <Card savingsUsd={1} />;';
+    expect(ruleR4Source([{ file: 'planted.tsx', source: jsx }])).toEqual(['R4 planted.tsx:2 b: savingsUsd (savings_usd)']);
+    // The same name with a second savings field inside the allowed owner: the field is not exempt.
+    const wider = 'export function SavingsPerRunCard(row: Record<string, unknown>) { return [row.savings_per_measured_run_usd, row.savings_usd]; }';
+    expect(ruleR4Source([{ file: 'planted.tsx', source: wider }])).toEqual([
+      'R4 planted.tsx:1 SavingsPerRunCard: savings_usd',
+    ]);
   });
 
   it('R4 normalising does not turn cost, constants or prose into savings', () => {
@@ -487,9 +522,11 @@ describe('OMN-19980 AC2d: planted controls (each rule catches its violation)', (
 });
 
 describe('OMN-19980 Step B: the allowlist is empty and every savings figure binds metering-summary.v1', () => {
-  it('the Step A allowlist is empty, and R4 allows no owner', () => {
+  it('the Step A allowlist is empty, and R4 allows exactly one owner reading exactly one field', () => {
     expect(STEP_A_ALLOWLIST).toEqual([]);
-    expect([...R4_ALLOWED_OWNERS]).toEqual([]);
+    expect([...R4_ALLOWED_READS].map(([owner, fields]) => [owner, [...fields]])).toEqual([
+      ['SavingsPerRunCard', ['savings_per_measured_run_usd']],
+    ]);
   });
 
   it('every bound savings figure on the six pages reads metering-summary.v1, and there is at least one', () => {
@@ -686,9 +723,10 @@ describe('OMN-19980 AC2c: a savings card with no served source says what it wait
 
   it('every unbound savings card names metering-summary.v1 and shows no figure', () => {
     const texts = unboundSavingsTexts(loadPages());
-    // On dev every savings card is bound (Savings reads metering-summary.v1), so the population is empty; the planted
-    // case below is the control that proves an unbound one is found. OMN-20009's Avg saving / call joins it when it lands.
-    expect(texts.map(({ id }) => id)).toEqual([]);
+    // Savings and the other headline cards are bound to metering-summary.v1. The one unbound savings card is OMN-20009's
+    // Avg saving / call: the topic is served but its per-run column is not in the captured catalogue yet, so it waits,
+    // typed, on that exposure. The planted case below is the control that proves an unbound one is found.
+    expect(texts.map(({ id }) => id)).toEqual(['overview-avg-saving-per-call']);
     for (const { id, text } of texts) {
       expect(text, id).toBe(`Not served yet: waits on ${ALLOWED_SAVINGS_SOURCE}`);
     }
