@@ -148,10 +148,11 @@ describe('MetricCard captions and pending sources (Amendment 4)', () => {
     expect(screen.getByText(/Zero-token runs: 0/)).toBeInTheDocument();
   });
 
+  // OMN-19980 Amendment 2 binds Tokens in and out to metering-summary.v1; Avg saving / call is the card still unbound.
   it('renders a card with no served exposure as not served yet, naming what it waits for (SV-3)', () => {
     render(<MetricCard
-      component={{ ...component('overview-tokens', []), data_bindings: [], supported_empty_state_reasons: ['upstream-blocked'] } as ModelComponentContract}
-      config={{ metric_key: 'tokens_in_and_out', label: 'Tokens in and out', format: 'number', precision: 0 }}
+      component={{ ...component('overview-avg-saving-per-call', []), data_bindings: [], supported_empty_state_reasons: ['upstream-blocked'] } as ModelComponentContract}
+      config={{ metric_key: 'savings_per_measured_run_usd', label: 'Avg saving / call', format: 'currency', precision: 4 }}
       row={{ tokens_total: 56800 }}
     />);
     expect(screen.getByText('Not served yet: waits on metering-summary.v1')).toBeInTheDocument();

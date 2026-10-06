@@ -22,7 +22,7 @@
       "config": {
         "config_kind": "metric_card",
         "widget_type": "metric_card",
-        "metric_key": "total_cost_usd",
+        "metric_key": "spend_usd",
         "label": "Spend",
         "unit": "USD",
         "format": "currency",
@@ -58,7 +58,7 @@
       "config": {
         "config_kind": "metric_card",
         "widget_type": "metric_card",
-        "metric_key": "measured_run_count",
+        "metric_key": "runs_measured",
         "label": "Measured runs",
         "unit": "runs",
         "format": "number",

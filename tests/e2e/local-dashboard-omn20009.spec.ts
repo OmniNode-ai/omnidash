@@ -8,7 +8,8 @@ import { expect, test, type Page } from 'playwright/test';
 // per-run saving card waits on it.
 const DECISIONS = 'onex.snapshot.projection.delegation.decisions.v1';
 const SAVINGS = 'onex.snapshot.projection.delegation.savings.v1';
-const OVERVIEW = 'onex.snapshot.projection.cost.savings-overview.v1';
+// OMN-19980 Amendment 2: Overview's Spend, Savings, Measured runs and Tokens read this exposure's all-time row.
+const METERING = 'onex.snapshot.projection.metering-summary.v1';
 const ROUTING = 'onex.snapshot.projection.delegation.model-routing.v1';
 
 const byTier = {
@@ -39,9 +40,11 @@ const served: Record<string, unknown[]> = {
       baseline_model: 'claude-opus-4-6', savings_usd: 0.000844, usage_source: 'measured',
     }],
   }],
-  [OVERVIEW]: [{
-    total_cost_usd: 0.00686, total_savings_usd: 1.289686, total_baseline_cost_usd: 1.296546,
-    measured_run_count: 124, zero_token_run_count: 0,
+  [METERING]: [{
+    tenant_id: 'tenant-a', window_kind: 'all', window_start: '', window_end: '2026-10-04T14:26:13+00:00',
+    as_of: '2026-10-04T14:26:13+00:00', baseline_model: 'claude-sonnet-5-5', pricing_manifest_version: '3',
+    baseline_state: 'resolved', runs_total: 124, runs_measured: 124, runs_unknown_tokens: 0, runs_unknown_spend: 0,
+    tokens_in: 20088, tokens_out: 6448, spend_usd: '0.006860', counterfactual_usd: '1.296546', savings_usd: '1.289686',
   }],
   [ROUTING]: [{ tenant_id: 'tenant-a', total_delegations: 124, captured_at: '2026-10-04T14:26:13Z', by_tier: byTier }],
 };

@@ -2,7 +2,7 @@
 import { readFileSync } from 'node:fs';
 import { render, screen, within } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
-import { LastRunCard, MetricCard, RecentRunsTable, RunsTable } from './LocalDashboardPage';
+import { LastRunCard, MeteringTotalCard, MetricCard, RecentRunsTable, RunsTable } from './LocalDashboardPage';
 import type { LocalPageDocument } from '@/layout/local-page-loader';
 
 const now = Date.parse('2026-10-03T12:00:00Z');
@@ -49,24 +49,27 @@ describe('stored run basis', () => {
 describe('excluded counts beside measured figures', () => {
   const document = JSON.parse(readFileSync('src/pages/local/overview.contracts.yaml', 'utf8')) as Pick<LocalPageDocument, 'components'>;
   const measured = document.components.find(component => component.component_id === 'overview-measured')!;
+  // OMN-19980 Amendment 2: Measured runs and its excluded counts come from one metering-summary.v1 all row, whose run
+  // classes are measured, unknown tokens and unknown spend (every run in exactly one); no second exposure.
+  const config = { metric_key: 'runs_measured', label: 'Measured runs' };
+  const allRow = (counts: Record<string, unknown>) => [{ window_kind: 'all', as_of: '2026-10-03T12:00:00Z', ...counts }];
 
   it('renders the served counts, not the size or token content of any run list', () => {
-    render(<MetricCard component={measured} config={{ metric_key: 'measured_run_count', label: 'Measured runs' }}
-      row={{ measured_run_count: 7 }} caption={{ estimated_run_count: 23, unknown_run_count: 9, zero_token_run_count: 0 }} />);
+    render(<MeteringTotalCard component={measured} config={config}
+      rows={allRow({ runs_measured: 7, runs_total: 39, runs_unknown_tokens: 23, runs_unknown_spend: 9 })} />);
     expect(screen.getByText('7')).toBeInTheDocument();
-    expect(screen.getByText(/Estimated runs excluded: 23/)).toBeInTheDocument();
-    expect(screen.getByText(/Unknown runs excluded: 9/)).toBeInTheDocument();
+    expect(screen.getByText(/Unknown-token runs excluded: 23/)).toBeInTheDocument();
+    expect(screen.getByText(/Unknown-spend runs excluded: 9/)).toBeInTheDocument();
   });
 
   it('makes unavailable excluded counts explicit, never inventing zero', () => {
-    render(<MetricCard component={measured} config={{ metric_key: 'measured_run_count', label: 'Measured runs' }}
-      row={{ measured_run_count: 7 }} caption={{ zero_token_run_count: 0 }} />);
-    expect(screen.getByText(/Estimated runs excluded: Not recorded/)).toBeInTheDocument();
-    expect(screen.getByText(/Unknown runs excluded: Not recorded/)).toBeInTheDocument();
+    render(<MeteringTotalCard component={measured} config={config} rows={allRow({ runs_measured: 7, runs_total: 7 })} />);
+    expect(screen.getByText(/Unknown-token runs excluded: Not recorded/)).toBeInTheDocument();
+    expect(screen.getByText(/Unknown-spend runs excluded: Not recorded/)).toBeInTheDocument();
   });
 
   it('declares excluded counts and basis in every consuming binding', () => {
-    expect(measured.data_bindings?.[1]?.required_fields).toEqual(expect.arrayContaining(['estimated_run_count', 'unknown_run_count']));
+    expect(measured.data_bindings?.[0]?.required_fields).toEqual(expect.arrayContaining(['runs_unknown_tokens', 'runs_unknown_spend']));
     for (const id of ['overview-last-run', 'overview-recent-runs']) {
       const component = document.components.find(candidate => candidate.component_id === id)!;
       expect(component.data_bindings?.[1]?.required_fields, id).toContain('usage_source');
