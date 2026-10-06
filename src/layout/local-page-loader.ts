@@ -69,6 +69,8 @@ function sharedRead(source: ProtocolSnapshotSource, topic: string): Promise<Proj
 }
 
 export const DELEGATION_SAVINGS_TOPIC = 'onex.snapshot.projection.delegation.savings.v1';
+/** One row per window and baseline model; Overview's headline cards read its all-time row (OMN-19980 Step B). */
+export const METERING_SUMMARY_TOPIC = 'onex.snapshot.projection.metering-summary.v1';
 
 const pageFiles = import.meta.glob('../pages/local/*.page.yaml', {
   eager: true,
@@ -234,18 +236,20 @@ export function resolveLocalPageEmptyState(
   page: LocalPageDocument,
   snapshots: readonly BoundProjectionSnapshot[],
 ): LocalPageEmptyState | null {
-  const rows = page.components.flatMap((component) => rowsForLocalComponent(component, snapshots));
+  // A metering-summary card says why its own figure is missing (a day with no measured run has a null saving), so
+  // its rows never switch the whole page to Baseline unresolved or hide a NO_RUNS_YET page (OMN-20009 C3).
+  const rows = page.components
+    .filter((component) => component.data_bindings?.[0]?.projection_topic !== METERING_SUMMARY_TOPIC)
+    .flatMap((component) => rowsForLocalComponent(component, snapshots));
   // Only a component's first binding supplies its rows; a second binding is a caption (the savings card's baseline
   // line), so it must not switch a page into the Runs session-row rules.
   const rendersSessionRows = page.components.some((component) =>
     component.data_bindings?.[0]?.projection_topic === DELEGATION_SAVINGS_TOPIC,
   );
-  if (!rendersSessionRows && rows.some((value) => {
-    if (!isRecord(value)) return false;
-    return value.baseline_state === 'BASELINE_UNRESOLVED'
-      || value.savings_usd === null
-      || (value.baseline_model === null && value.savings_usd === 0);
-  }) && page.empty_state_reasons.includes('BASELINE_UNRESOLVED')) {
+  // Only the served typed state decides it: a row's own savings figure is read nowhere outside metering-summary.v1
+  // (OMN-19980 AC2b), so a null or zero saving no longer switches the page.
+  if (!rendersSessionRows && rows.some((value) => isRecord(value) && value.baseline_state === 'BASELINE_UNRESOLVED')
+    && page.empty_state_reasons.includes('BASELINE_UNRESOLVED')) {
     return 'BASELINE_UNRESOLVED';
   }
   // A failed read is not an empty store: the widgets bound to it say why, and the page is not NO_RUNS_YET.

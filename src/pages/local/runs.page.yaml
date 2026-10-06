@@ -1,7 +1,7 @@
 {
   "dashboard_id": "34451f75-38aa-4634-9397-dad632a5d876",
   "name": "Runs",
-  "description": "Every delegation run from the runtime's served decisions, with its savings.",
+  "description": "Every delegation run from the runtime's served decisions, with its cost.",
   "layout": {
     "columns": 12,
     "row_height": 100,
@@ -64,16 +64,8 @@
             "header": "Local cost"
           },
           {
-            "key": "counterfactual_baseline_usd",
-            "header": "Baseline cost"
-          },
-          {
             "key": "baseline_model",
             "header": "Baseline model"
-          },
-          {
-            "key": "savings_usd",
-            "header": "Savings"
           },
           {
             "key": "usage_source",
