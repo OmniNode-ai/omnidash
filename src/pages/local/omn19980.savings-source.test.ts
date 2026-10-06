@@ -205,17 +205,43 @@ function resolveImport(importer: string, spec: string, exists: (file: string) =>
   return ['', '.tsx', '.ts', '/index.tsx', '/index.ts'].map((ext) => `${base}${ext}`).find((file) => /\.tsx?$/.test(file) && exists(file)) ?? base;
 }
 
-/** Every repository source file reachable from `root` through import or re-export declarations, in discovery order. */
+/**
+ * Every module a file names: import and re-export declarations, `import x = require('y')`, and anywhere in the file a
+ * dynamic `import('y')` or `require('y')`. A dynamic import or require whose argument is not a string literal cannot be
+ * followed, so it throws: the scan fails rather than miss what it loads (Codex's fourth #358 review).
+ */
+function moduleSpecifiers(file: string, tree: ts.SourceFile): string[] {
+  const specs: string[] = [];
+  const visit = (node: ts.Node) => {
+    if ((ts.isImportDeclaration(node) || ts.isExportDeclaration(node)) && node.moduleSpecifier && ts.isStringLiteral(node.moduleSpecifier)) {
+      specs.push(node.moduleSpecifier.text);
+    } else if (ts.isImportEqualsDeclaration(node) && ts.isExternalModuleReference(node.moduleReference)
+      && ts.isStringLiteral(node.moduleReference.expression)) {
+      specs.push(node.moduleReference.expression.text);
+    } else if (ts.isCallExpression(node)
+      && (node.expression.kind === ts.SyntaxKind.ImportKeyword || (ts.isIdentifier(node.expression) && node.expression.text === 'require'))) {
+      const arg = node.arguments[0];
+      if (arg === undefined || !ts.isStringLiteralLike(arg)) {
+        const line = tree.getLineAndCharacterOfPosition(node.getStart(tree)).line + 1;
+        throw new Error(`${file}:${line}: a dynamic import or require with a non-literal argument cannot be scanned`);
+      }
+      specs.push(arg.text);
+    }
+    ts.forEachChild(node, visit);
+  };
+  visit(tree);
+  return specs;
+}
+
+/** Every repository source file reachable from `root` through any module reference, in discovery order. */
 function dashboardModuleClosure(root: string, read: (file: string) => string, exists: (file: string) => boolean): string[] {
   const seen: string[] = [];
   const queue = [root];
   while (queue.length > 0) {
     const file = queue.shift()!;
     const tree = ts.createSourceFile(file, read(file), ts.ScriptTarget.Latest, true, file.endsWith('.tsx') ? ts.ScriptKind.TSX : ts.ScriptKind.TS);
-    for (const statement of tree.statements) {
-      const spec = (ts.isImportDeclaration(statement) || ts.isExportDeclaration(statement)) && statement.moduleSpecifier
-        && ts.isStringLiteral(statement.moduleSpecifier) ? statement.moduleSpecifier.text : null;
-      const target = spec === null ? null : resolveImport(file, spec, exists);
+    for (const spec of moduleSpecifiers(file, tree)) {
+      const target = resolveImport(file, spec, exists);
       if (target === null || target === root || seen.includes(target)) continue;
       seen.push(target);
       queue.push(target);
@@ -634,6 +660,24 @@ describe('OMN-19980 Step B: the allowlist is empty and every savings figure bind
     // A code import that resolves to no file is kept, so reading it fails and the scan cannot skip it.
     files['src/components/dashboard/b/B.tsx'] = "import { m } from './missing';";
     expect(() => dashboardModuleClosure('src/pages/P.tsx', read, exists)).toThrow('not found: src/components/dashboard/b/missing');
+  });
+
+  it('planted: discovery follows dynamic import() and require() of a literal, and refuses one it cannot resolve', () => {
+    const files: Record<string, string> = {
+      'src/pages/P.tsx': "import { A } from '@/components/dashboard/a/A';",
+      'src/components/dashboard/a/A.tsx': "export const load = () => import('./lazyHelper');\nconst legacy = require('@/lib/legacy');",
+      'src/components/dashboard/a/lazyHelper.ts': "export const pick = (row: Record<string, unknown>) => row['counterfactual_baseline_usd'];",
+      'src/lib/legacy.ts': 'export const L = 1;',
+    };
+    const read = (file: string) => { if (!(file in files)) throw new Error(`not found: ${file}`); return files[file]!; };
+    const exists = (file: string) => file in files;
+    const reached = dashboardModuleClosure('src/pages/P.tsx', read, exists);
+    expect(reached).toEqual(['src/components/dashboard/a/A.tsx', 'src/components/dashboard/a/lazyHelper.ts', 'src/lib/legacy.ts']);
+    expect(ruleR4Source(reached.map((file) => ({ file, source: files[file]! })), []))
+      .toEqual(['R4 src/components/dashboard/a/lazyHelper.ts:1 pick: counterfactual_baseline_usd']);
+    files['src/components/dashboard/a/A.tsx'] = "const name = './lazyHelper';\nexport const load = () => import(name);";
+    expect(() => dashboardModuleClosure('src/pages/P.tsx', read, exists))
+      .toThrow('src/components/dashboard/a/A.tsx:2: a dynamic import or require with a non-literal argument cannot be scanned');
   });
 
   it('planted: a property naming an exposure is not a savings read, and a savings field beside it still is', () => {
