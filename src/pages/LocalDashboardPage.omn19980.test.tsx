@@ -6,12 +6,21 @@
 //   B1  Overview Recent runs or Last run shows a run's saving next to its cost;
 //   B2  Runs shows a per-run baseline price (counterfactual or cloud cost) or saving next to its local cost;
 //   B3  a row's null saving still switches the whole page to Baseline unresolved (the loader read savings_usd);
-//   C1  the Overview Savings total with no served row reads Baseline unresolved, a baseline it never priced;
+//   C1  the Overview Savings total with no all-time metering row reads Baseline unresolved or $0, not Not measured;
 //   C2  a savings card bound to metering-summary.v1 that the census does not serve shows a figure, or no reason;
 //   C3  served with zero rows: a figure or $0 instead of Not measured;
 //   C4  the read answers 503: Not measured (a failed read is not a measurement) or a figure;
 //   C5  a metering row with a null saving and an unresolved baseline: the whole page goes Baseline unresolved,
 //       instead of that one card.
+// Step B (the Overview Savings total rebound to metering-summary.v1's all-time row):
+//   T1  the card shows another exposure's total (cost.savings-overview.v1), a day row, or a caption from
+//       delegation.savings.v1 instead of the all row's own baseline and pricing manifest;
+//   T2  metering-summary.v1 not in the census: a figure or a blank, instead of naming the exposure;
+//   T3  the all row's baseline is unresolved: a figure or $0, or the whole page switches state;
+//   T4  a resolved all row with a null saving (nothing measured yet) shows $0;
+//   T5  after a baseline change two all rows exist: the card shows the older baseline's figure, or the two mixed;
+//   T6  two all rows refreshed at the same moment cannot be told apart: the card picks one silently;
+//   T7  the read answers 503: Not measured or a figure.
 // The unbound card (Avg saving / call waits on metering-summary.v1) is OMN-20009's P2 and the AC2c population check
 // in local/omn19980.savings-source.test.ts.
 import { act, render, screen, within } from '@testing-library/react';
@@ -150,11 +159,11 @@ describe('OMN-19980 AC2b: a run shows its cost, never a per-run saving', () => {
 describe('OMN-19980 AC2c: a savings card with nothing measured or served says so, never a number', () => {
   const noFigure = (scope: HTMLElement) => expect(within(scope).queryByText(/\$\s*-?\d/)).toBeNull();
 
-  it('C1: the Overview Savings total with no served row is Not measured, never Baseline unresolved', async () => {
-    served({ [OVERVIEW]: [] });
+  it('C1: the Overview Savings total with no all-time metering row is Not measured, never Baseline unresolved', async () => {
+    served({ [METERING]: [] });
     await open('overview');
     const savings = panel('Savings');
-    expect(within(savings).getByText('Not measured')).toBeInTheDocument();
+    expect(within(savings).getByText('Not measured: no all-time row')).toBeInTheDocument();
     expect(within(savings).queryByText('Baseline unresolved')).toBeNull();
     noFigure(savings);
   });
@@ -196,5 +205,97 @@ describe('OMN-19980 AC2c: a savings card with nothing measured or served says so
     noFigure(card);
     expect(within(panel('Spend')).getByText('$0.0100')).toBeInTheDocument();
     expect(within(panel('Recent runs')).getByText(LOCAL_COST)).toBeInTheDocument();
+  });
+});
+
+/** A metering-summary.v1 row as #3368 serves it: money as decimal text, null when unmeasured. */
+function meteringRow(overrides: Record<string, unknown>): Record<string, unknown> {
+  return {
+    tenant_id: 'tenant-a', window_kind: 'all', window_start: '', window_end: '2026-10-05T12:00:00+00:00',
+    as_of: '2026-10-05T12:00:00+00:00', baseline_model: 'claude-sonnet-5-5', pricing_manifest_version: '3',
+    baseline_state: 'resolved', runs_total: 9, runs_measured: 7, runs_unknown_tokens: 1, runs_unknown_spend: 1,
+    tokens_in: 1620, tokens_out: 520, spend_usd: '0.007100', counterfactual_usd: '1.232300', savings_usd: '1.225200',
+    ...overrides,
+  };
+}
+
+describe('OMN-19980 Step B: the Overview Savings total is metering-summary.v1\'s all-time row', () => {
+  const noFigure = (scope: HTMLElement) => expect(within(scope).queryByText(/\$\s*-?\d/)).toBeNull();
+
+  it('T1: shows the all row\'s savings_usd with that row\'s baseline and manifest, not another exposure\'s total', async () => {
+    served({ [METERING]: [
+      meteringRow({ window_kind: 'day', window_start: '2026-10-05', savings_usd: '0.500000' }),
+      meteringRow({}),
+    ] });
+    await open('overview');
+    const savings = panel('Savings');
+    expect(within(savings).getByText('$1.2252')).toBeInTheDocument();
+    expect(within(savings).getByText('Baseline claude-sonnet-5-5 · pricing manifest v3')).toBeInTheDocument();
+    expect(within(savings).getByText(/The baseline never ran\./)).toBeInTheDocument();
+    // cost.savings-overview.v1 serves 1.29 and delegation.savings.v1 names claude-opus-4-6: neither reaches the card.
+    expect(within(savings).queryByText('$1.2900')).toBeNull();
+    expect(within(savings).queryByText(/claude-opus-4-6/)).toBeNull();
+    expect(within(savings).queryByText('$0.5000')).toBeNull();
+    // Spend and Measured runs stay where they are (ruling 2: AC2 covers savings only).
+    expect(within(panel('Spend')).getByText('$0.0100')).toBeInTheDocument();
+    expect(within(panel('Measured runs')).getByText('4')).toBeInTheDocument();
+  });
+
+  it('T2: metering-summary.v1 not in the census: the card names it and shows no figure', async () => {
+    served();
+    await open('overview');
+    const savings = panel('Savings');
+    expect(within(savings).getByText(`Not served: ${METERING}`)).toBeInTheDocument();
+    noFigure(savings);
+  });
+
+  it('T3: an unresolved baseline is Baseline unresolved on this card only, never a figure', async () => {
+    served({ [METERING]: [meteringRow({ baseline_state: 'unresolved', pricing_manifest_version: null, counterfactual_usd: null, savings_usd: null })] });
+    await open('overview');
+    const savings = panel('Savings');
+    expect(within(savings).getByText('Baseline unresolved')).toBeInTheDocument();
+    noFigure(savings);
+    expect(within(panel('Spend')).getByText('$0.0100')).toBeInTheDocument();
+    expect(within(panel('Recent runs')).getByText(LOCAL_COST)).toBeInTheDocument();
+  });
+
+  it('T4: a resolved all row with a null saving is Not measured, never $0', async () => {
+    served({ [METERING]: [meteringRow({ runs_measured: 0, counterfactual_usd: null, savings_usd: null })] });
+    await open('overview');
+    const savings = panel('Savings');
+    expect(within(savings).getByText('Not measured')).toBeInTheDocument();
+    noFigure(savings);
+  });
+
+  it('T5: after a baseline change, the all row refreshed last (the baseline the runtime resolves now) is shown', async () => {
+    served({ [METERING]: [
+      meteringRow({ baseline_model: 'claude-opus-4-6', as_of: '2026-10-04T08:00:00+00:00', savings_usd: '9.990000' }),
+      meteringRow({ baseline_model: 'claude-sonnet-5-5', as_of: '2026-10-05T12:00:00+00:00', savings_usd: '1.225200' }),
+    ] });
+    await open('overview');
+    const savings = panel('Savings');
+    expect(within(savings).getByText('$1.2252')).toBeInTheDocument();
+    expect(within(savings).getByText('Baseline claude-sonnet-5-5 · pricing manifest v3')).toBeInTheDocument();
+    expect(within(savings).queryByText('$9.9900')).toBeNull();
+  });
+
+  it('T6: two all rows refreshed at the same moment are refused by name, never one picked silently', async () => {
+    served({ [METERING]: [
+      meteringRow({ baseline_model: 'claude-opus-4-6', savings_usd: '9.990000' }),
+      meteringRow({ baseline_model: 'claude-sonnet-5-5' }),
+    ] });
+    await open('overview');
+    const savings = panel('Savings');
+    expect(within(savings).getByText('Not measured: 2 baseline models')).toBeInTheDocument();
+    noFigure(savings);
+  });
+
+  it('T7: a 503 names metering-summary.v1 and is not read as a measurement', async () => {
+    served({ [METERING]: new Error(`Projection ${METERING} failed: HTTP 503 Service Unavailable`) });
+    await open('overview');
+    const savings = panel('Savings');
+    expect(within(savings).getByRole('alert')).toHaveTextContent(`${METERING}: HTTP 503 Service Unavailable`);
+    expect(within(savings).queryByText(/^Not measured/)).toBeNull();
+    noFigure(savings);
   });
 });
