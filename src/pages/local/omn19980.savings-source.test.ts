@@ -174,8 +174,8 @@ function ruleR3PerRun(pages: readonly LoadedPage[]): string[] {
 
 /**
  * R4: the only code that may read a savings field by name; nothing else computes or shows one. It scans the page, the
- * loader and every dashboard module reachable from the page's imports, transitively: a component the page mounts, and
- * any helper it imports, is page code too (Codex's #358 reviews, 2026-10-06). An allowed read names its file, its owner,
+ * loader and every repository source file reachable from the page's imports, transitively: a component the page
+ * mounts, and any helper it imports from anywhere in src/ or shared/, is page code too (Codex's #358 reviews, 2026-10-06). An allowed read names its file, its owner,
  * the exact fields it may read and the component whose bound rows it reads. Step B proves each allowed field is a
  * required field of that component's binding and the component binds metering-summary.v1 and nothing else.
  */
@@ -187,19 +187,25 @@ const R4_ALLOWED: readonly R4Allowance[] = [
   { file: 'src/components/dashboard/usage/SavingsSeriesWidget.tsx', owner: 'savings', fields: ['savings_usd'], componentId: 'usage-savings-series' },
 ];
 const PAGE_FILE = 'src/pages/LocalDashboardPage.tsx';
-const DASHBOARD_DIR = 'src/components/dashboard/';
+/** Imports of these assets carry no code, so they are not scanned (the page imports its stylesheet). */
+const ASSET_IMPORT = /\.(css|svg|png|json)$/;
 
-/** A module specifier as a repo-relative file: `@/x` is `src/x`, `./x` is beside the importer; null when outside src. */
+/**
+ * A module specifier as a repo-relative file: `@/x` is `src/x`, `@shared/x` is `shared/x`, `./x` is beside the
+ * importer; null for a package (react, vitest) or an asset import.
+ */
 function resolveImport(importer: string, spec: string, exists: (file: string) => boolean): string | null {
   let base: string;
   if (spec.startsWith('@/')) base = `src/${spec.slice(2)}`;
+  else if (spec.startsWith('@shared/')) base = `shared/${spec.slice('@shared/'.length)}`;
   else if (spec.startsWith('./') || spec.startsWith('../')) base = posix.normalize(posix.join(posix.dirname(importer), spec));
   else return null;
+  if (ASSET_IMPORT.test(base)) return null;
   // A specifier that resolves to no file is kept as written, so reading it fails and the scan cannot skip it.
   return ['', '.tsx', '.ts', '/index.tsx', '/index.ts'].map((ext) => `${base}${ext}`).find((file) => /\.tsx?$/.test(file) && exists(file)) ?? base;
 }
 
-/** Every dashboard module reachable from `root` through import or re-export declarations, in discovery order. */
+/** Every repository source file reachable from `root` through import or re-export declarations, in discovery order. */
 function dashboardModuleClosure(root: string, read: (file: string) => string, exists: (file: string) => boolean): string[] {
   const seen: string[] = [];
   const queue = [root];
@@ -210,7 +216,7 @@ function dashboardModuleClosure(root: string, read: (file: string) => string, ex
       const spec = (ts.isImportDeclaration(statement) || ts.isExportDeclaration(statement)) && statement.moduleSpecifier
         && ts.isStringLiteral(statement.moduleSpecifier) ? statement.moduleSpecifier.text : null;
       const target = spec === null ? null : resolveImport(file, spec, exists);
-      if (target === null || !target.startsWith(DASHBOARD_DIR) || seen.includes(target)) continue;
+      if (target === null || target === root || seen.includes(target)) continue;
       seen.push(target);
       queue.push(target);
     }
@@ -219,7 +225,7 @@ function dashboardModuleClosure(root: string, read: (file: string) => string, ex
 }
 const readRepoFile = (file: string) => readFileSync(resolve(process.cwd(), file), 'utf8');
 const repoFileExists = (file: string) => existsSync(resolve(process.cwd(), file));
-const SOURCE_FILES: readonly string[] = [PAGE_FILE, 'src/layout/local-page-loader.ts', ...dashboardModuleClosure(PAGE_FILE, readRepoFile, repoFileExists)];
+const SOURCE_FILES: readonly string[] = [PAGE_FILE, ...dashboardModuleClosure(PAGE_FILE, readRepoFile, repoFileExists)];
 
 /**
  * Why an R4 allowance would be wrong, or nothing: a field it allows that is stale (no read of that field by that owner
@@ -280,6 +286,17 @@ function isDeclarationName(node: ts.Node): boolean {
     || ts.isInterfaceDeclaration(parent) || ts.isTypeAliasDeclaration(parent)) && parent.name === node;
 }
 
+/**
+ * The key of a property whose value is an ONEX topic string names that exposure (`delegationSavings:
+ * 'onex.snapshot.projection.delegation.savings.v1'` in shared/types/topics.ts); it reads no figure. Reading the key
+ * elsewhere (TOPICS.delegationSavings) is still a property access and is still reported.
+ */
+function namesAnExposure(node: ts.Node): boolean {
+  const parent = node.parent;
+  return parent !== undefined && ts.isPropertyAssignment(parent) && parent.name === node
+    && ts.isStringLiteralLike(parent.initializer) && /^onex\.(snapshot|evt|cmd)\./.test(parent.initializer.text);
+}
+
 /** R4 source scan: savings field names in code (identifiers and whole-name strings; comments and prose are not code). */
 function ruleR4Source(files: ReadonlyArray<{ file: string; source: string }>, allowed: readonly R4Allowance[] = R4_ALLOWED): string[] {
   const findings: string[] = [];
@@ -287,7 +304,7 @@ function ruleR4Source(files: ReadonlyArray<{ file: string; source: string }>, al
     const tree = ts.createSourceFile(file, source, ts.ScriptTarget.Latest, true, file.endsWith('.tsx') ? ts.ScriptKind.TSX : ts.ScriptKind.TS);
     const visit = (node: ts.Node) => {
       const token = ts.isIdentifier(node) || ts.isStringLiteralLike(node) ? node.text : null;
-      const field = token === null || isDeclarationName(node) ? null : fieldNameOf(token);
+      const field = token === null || isDeclarationName(node) || namesAnExposure(node) ? null : fieldNameOf(token);
       if (field !== null && isSavingsField(field)) {
         const owner = ownerOf(node);
         if (!allowed.some((entry) => entry.file === file && entry.owner === owner && entry.fields.includes(field))) {
@@ -599,20 +616,35 @@ describe('OMN-19980 Step B: the allowlist is empty and every savings figure bind
     ]);
   });
 
-  it('planted: discovery follows a dashboard helper imported only by a dashboard module, and keeps an unresolvable import', () => {
+  it('planted: discovery follows every in-repo import, outside the dashboard directory too, skips assets and packages, and keeps an unresolvable import', () => {
     const files: Record<string, string> = {
-      'src/pages/P.tsx': "import { A } from '@/components/dashboard/a/A';\nimport { x } from '@/lib/x';",
-      'src/components/dashboard/a/A.tsx': "import { h } from './helper';\nexport { B } from '../b/B';\nimport { m } from '@/components/dashboard/missing/M';",
-      'src/components/dashboard/a/helper.ts': 'export const h = 1;',
+      'src/pages/P.tsx': "import { A } from '@/components/dashboard/a/A';\nimport './p.css';\nimport { useState } from 'react';",
+      'src/components/dashboard/a/A.tsx': "import { pick } from '@/lib/pick';\nexport { B } from '../b/B';",
+      'src/lib/pick.ts': "import { T } from '@shared/t';\nexport const pick = (row: Record<string, unknown>) => row['counterfactual_baseline_usd'];",
+      'shared/t.ts': 'export const T = 1;',
       'src/components/dashboard/b/B.tsx': 'export const B = 1;',
     };
     const read = (file: string) => { if (!(file in files)) throw new Error(`not found: ${file}`); return files[file]!; };
     const exists = (file: string) => file in files;
-    expect(() => dashboardModuleClosure('src/pages/P.tsx', read, exists)).toThrow('not found: src/components/dashboard/missing/M');
-    delete files['src/components/dashboard/a/A.tsx'];
-    files['src/components/dashboard/a/A.tsx'] = "import { h } from './helper';\nexport { B } from '../b/B';";
-    expect(dashboardModuleClosure('src/pages/P.tsx', read, exists)).toEqual([
-      'src/components/dashboard/a/A.tsx', 'src/components/dashboard/a/helper.ts', 'src/components/dashboard/b/B.tsx',
+    const reached = dashboardModuleClosure('src/pages/P.tsx', read, exists);
+    expect(reached).toEqual(['src/components/dashboard/a/A.tsx', 'src/lib/pick.ts', 'src/components/dashboard/b/B.tsx', 'shared/t.ts']);
+    // The helper outside the dashboard directory is scanned, so its savings read is reported.
+    expect(ruleR4Source(reached.map((file) => ({ file, source: files[file]! })), []))
+      .toEqual(['R4 src/lib/pick.ts:2 pick: counterfactual_baseline_usd']);
+    // A code import that resolves to no file is kept, so reading it fails and the scan cannot skip it.
+    files['src/components/dashboard/b/B.tsx'] = "import { m } from './missing';";
+    expect(() => dashboardModuleClosure('src/pages/P.tsx', read, exists)).toThrow('not found: src/components/dashboard/b/missing');
+  });
+
+  it('planted: a property naming an exposure is not a savings read, and a savings field beside it still is', () => {
+    const source = [
+      "export const T = { costSavingsOverview: 'onex.snapshot.projection.cost.savings-overview.v1', savingsUsd: 1 };",
+      'export const read = (row: Record<string, unknown>) => [row.savingsUsd, T.costSavingsOverview];',
+    ].join('\n');
+    expect(ruleR4Source([{ file: 'planted.ts', source }], [])).toEqual([
+      'R4 planted.ts:1 T: savingsUsd (savings_usd)',
+      'R4 planted.ts:2 read: savingsUsd (savings_usd)',
+      'R4 planted.ts:2 read: costSavingsOverview (cost_savings_overview)',
     ]);
   });
 
