@@ -1,4 +1,6 @@
 import { Text } from '@/components/ui/typography';
+import { isTenantNotConfiguredError } from '@/data-source/projection-tenant';
+import { TenantNotConfiguredState } from '../TenantNotConfiguredState';
 import { fmtDate } from './format';
 import { DelegationPanelFrame } from './DelegationPanelFrame';
 import { useDelegationRunContext } from './DelegationRunContext';
@@ -55,9 +57,13 @@ export function DelegationProjectionProbePanel() {
       </div>
 
       {primaryError && (
-        <Text as="div" size="xs" family="mono" color="bad" style={{ marginBottom: 10, padding: '6px 8px', border: '1px solid var(--line)', borderRadius: 4 }}>
-          Primary error: {primaryError.message}
-        </Text>
+        isTenantNotConfiguredError(primaryError)
+          ? <div style={{ marginBottom: 10 }}><TenantNotConfiguredState /></div>
+          : (
+            <Text as="div" size="xs" family="mono" color="bad" style={{ marginBottom: 10, padding: '6px 8px', border: '1px solid var(--line)', borderRadius: 4 }}>
+              Primary error: {primaryError.message}
+            </Text>
+          )
       )}
 
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 72px 110px 90px', gap: 8, paddingBottom: 5, borderBottom: '1px solid var(--line)' }}>
@@ -88,9 +94,13 @@ export function DelegationProjectionProbePanel() {
                 {probe.topic}
               </Text>
               {probe.error && (
-                <Text as="div" size="xs" family="mono" color="bad">
-                  {probe.error.message}
-                </Text>
+                isTenantNotConfiguredError(probe.error)
+                  ? <TenantNotConfiguredState />
+                  : (
+                    <Text as="div" size="xs" family="mono" color="bad">
+                      {probe.error.message}
+                    </Text>
+                  )
               )}
             </div>
             <Text as="span" size="sm" family="mono" color="secondary">

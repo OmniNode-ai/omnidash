@@ -280,6 +280,9 @@ describe('local pages against the captured lab catalogue', () => {
       'onex.snapshot.projection.cost.savings-overview.v1',
       'onex.snapshot.projection.delegation.savings.v1',
       'onex.snapshot.projection.delegation.decisions.v1',
+      // OMN-20225 AC3: the quality panel and the tier-mix panel.
+      'onex.snapshot.projection.delegation.quality-gate.v1',
+      'onex.snapshot.projection.delegation.model-routing.v1',
     ]));
     const keys = page.dashboard.widgets
       .filter((w) => (w.config as Record<string, unknown>).config_kind === 'metric_card')
@@ -371,6 +374,63 @@ describe('Amendment 5: last run, recent runs and run status from delegation deci
       readAt: '2026-10-02T10:12:00Z',
     }];
     expect(resolveLocalPageEmptyState(page, snapshots)).toBeNull();
+  });
+});
+
+describe('OMN-20225: run rows carry verdict, backend, host and tier; Overview gains quality and tier-mix panels', () => {
+  const runBindings = [
+    ['runs', 'recent-runs', 'runs-decisions'],
+    ['overview', 'overview-last-run', 'overview-last-run-decisions'],
+    ['overview', 'overview-recent-runs', 'overview-recent-runs-decisions'],
+    ['workflow', 'workflow-run-path', 'workflow-run-path-decisions'],
+  ] as const;
+
+  it.each(runBindings)('%s %s requests the served verdict, score, backend, host and tier (AC1, AC2)', (pageName, componentId, bindingId) => {
+    const component = readPage(pageName).components.find((c) => c.component_id === componentId);
+    const binding = component?.data_bindings?.find((b) => b.binding_id === bindingId);
+    expect(binding?.projection_topic).toBe('onex.snapshot.projection.delegation.decisions.v1');
+    for (const field of ['quality_gate_passed', 'actual_score', 'backend_id', 'host', 'cost_tier_name', 'cost_tier_type']) {
+      expect(binding?.required_fields, `${componentId} ${field}`).toContain(field);
+    }
+  });
+
+  it('Runs and Overview recent runs show a Host column beside Backend (AC2)', () => {
+    for (const [pageName, componentId] of [['runs', 'recent-runs'], ['overview', 'overview-recent-runs']] as const) {
+      const widget = readPage(pageName).dashboard.widgets.find((w) => w.data_source === componentId);
+      const keys = ((widget?.config as { columns?: Array<{ key: string }> }).columns ?? []).map((c) => c.key);
+      expect(keys.indexOf('host'), componentId).toBe(keys.indexOf('backend') + 1);
+    }
+  });
+
+  it('Overview binds the quality panel to quality-gate.v1 and the tier mix to model-routing.v1 by_tier (AC3)', () => {
+    const page = readPage('overview');
+    const quality = page.components.find((c) => c.component_id === 'overview-quality');
+    expect(quality?.data_bindings?.map((b) => b.projection_topic)).toEqual(['onex.snapshot.projection.delegation.quality-gate.v1']);
+    expect(quality?.data_bindings?.[0]?.required_fields).toEqual([
+      'overall_pass_rate', 'total_passed', 'total_failed', 'total_checks', 'avg_actual_score', 'avg_required_bar',
+    ]);
+    const tierMix = page.components.find((c) => c.component_id === 'overview-tier-mix');
+    expect(tierMix?.data_bindings?.map((b) => b.projection_topic)).toEqual(['onex.snapshot.projection.delegation.model-routing.v1']);
+    expect(tierMix?.data_bindings?.[0]?.required_fields).toEqual(['by_tier']);
+    for (const id of ['overview-quality', 'overview-tier-mix']) {
+      expect(page.dashboard.widgets.some((w) => w.data_source === id), id).toBe(true);
+    }
+  });
+
+  // The served-catalogue check the two panels rely on, as a function, so a planted binding can prove it goes red.
+  const unservedTopics = (page: LocalPageDocument): string[] => page.components
+    .flatMap((c) => c.data_bindings ?? [])
+    .map((b) => b.projection_topic)
+    .filter((topic) => !servedExposureCatalogue.has(topic));
+
+  it('the panels bind only served exposures, and a tier mix bound to the degraded savings-series is caught (AC3)', () => {
+    const page = readPage('overview');
+    expect(unservedTopics(page)).toEqual([]);
+    // Positive control: the savings-series tier mix (local_pct, cheap_pct, prem_pct) answers not_yet_bus_backed.
+    const planted = structuredClone(page);
+    const tierMix = planted.components.find((c) => c.component_id === 'overview-tier-mix');
+    tierMix!.data_bindings![0]!.projection_topic = 'onex.snapshot.projection.delegation.savings-series.v1';
+    expect(unservedTopics(planted)).toEqual(['onex.snapshot.projection.delegation.savings-series.v1']);
   });
 });
 
