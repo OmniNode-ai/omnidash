@@ -1,13 +1,13 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
-import { SavingsSeries } from './SavingsSeriesWidget';
+import { MeteringDaySeries } from './SavingsSeriesWidget';
 
-const meta: Meta<typeof SavingsSeries> = {
-  title: 'Dashboard / SavingsSeries',
-  component: SavingsSeries,
+const meta: Meta<typeof MeteringDaySeries> = {
+  title: 'Dashboard / MeteringDaySeries',
+  component: MeteringDaySeries,
   parameters: { layout: 'padded' },
 };
 export default meta;
-type Story = StoryObj<typeof SavingsSeries>;
+type Story = StoryObj<typeof MeteringDaySeries>;
 
 const day = (window_start: string, savings_usd: string | null, runs_total: number) => ({
   tenant_id: 'tenant-a', window_kind: 'day', window_start, baseline_model: 'claude-sonnet-5-5',

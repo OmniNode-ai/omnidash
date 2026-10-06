@@ -40,7 +40,22 @@
         "minor": 0,
         "patch": 0
       },
-      "data_bindings": [],
+      "data_bindings": [
+        {
+          "binding_id": "usage-savings-series-metering",
+          "projection_topic": "onex.snapshot.projection.metering-summary.v1",
+          "ordering_authority_field": "window_start",
+          "ordering_direction": "ascending",
+          "required_fields": [
+            "window_kind",
+            "window_start",
+            "baseline_model",
+            "baseline_state",
+            "savings_usd",
+            "runs_total"
+          ]
+        }
+      ],
       "supported_empty_state_reasons": [
         "no-data"
       ]

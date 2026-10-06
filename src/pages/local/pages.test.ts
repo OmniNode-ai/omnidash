@@ -468,13 +468,17 @@ describe('Amendment 6: the six local pages and the loader', () => {
     expect(binding?.required_fields).not.toContain('cost_usd');
   });
 
-  it('Usage declares the savings series, unbound until metering-summary.v1 is served (US-3, AC-US3)', () => {
+  it('Usage binds the savings series to metering-summary.v1 now that it is served (US-3, AC-US3)', () => {
     const page = readPage('usage');
     const series = page.components.find((c) => c.component_id === 'usage-savings-series');
     expect(series?.component_kind).toBe('table');
-    // Bound only once the lab serves it; a binding here before then would name an unserved exposure.
-    expect(servedExposureCatalogue.has('onex.snapshot.projection.metering-summary.v1')).toBe(false);
-    expect(series?.data_bindings).toEqual([]);
+    // Bound once the lab serves it (omnimarket#3368, catalogued on dev by omnidash#365); never to an unserved exposure.
+    expect(servedExposureCatalogue.has('onex.snapshot.projection.metering-summary.v1')).toBe(true);
+    expect(series?.data_bindings?.map((b) => b.projection_topic)).toEqual(['onex.snapshot.projection.metering-summary.v1']);
+    // The fields MeteringDaySeries reads: day rows grouped by baseline, each day's savings and runs.
+    expect(series?.data_bindings?.[0]?.required_fields).toEqual(expect.arrayContaining([
+      'window_kind', 'window_start', 'baseline_model', 'baseline_state', 'savings_usd', 'runs_total',
+    ]));
     expect(page.dashboard.widgets.some((w) => w.data_source === 'usage-savings-series')).toBe(true);
   });
 

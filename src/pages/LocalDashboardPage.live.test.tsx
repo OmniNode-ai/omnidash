@@ -252,12 +252,34 @@ describe('Partial pages (FR-3, CR-2, CR-3, AK-3, F24)', () => {
     expect(within(unmeasured).getByText('1 unmeasured')).toBeInTheDocument();
   });
 
-  it('Usage names what the savings series waits on while metering-summary.v1 is not served (US-3, AC-US3)', async () => {
+  it('Usage shows the served day rows of metering-summary.v1 as the savings series, never the all row (US-3, AC-US3)', async () => {
+    harness.reachable = new Set([USAGE, METERING]);
+    const day = (start: string, savings: string, runs: number) => ({
+      ...METERING_ALL_ROW, window_kind: 'day', window_start: start, savings_usd: savings, runs_total: runs,
+    });
+    harness.answer = (topic) => Promise.resolve(topic === METERING
+      ? [METERING_ALL_ROW, day('2026-10-01', '0.500000', 20), day('2026-10-02', '0.718400', 26)]
+      : []);
+    render(<LocalDashboardPage pageName="usage" />);
+    await settle();
+    const panel = screen.getByRole('heading', { name: 'Savings per day' }).closest('article')!;
+    const table = within(panel).getByRole('table', { name: 'Savings per day vs claude-sonnet-5-5' });
+    for (const [start, savings, runs] of [['2026-10-01', '$0.50', '20'], ['2026-10-02', '$0.7184', '26']]) {
+      const row = within(table).getByRole('row', { name: new RegExp(start) });
+      for (const value of [start, savings, runs]) expect(within(row).getByText(value)).toBeInTheDocument();
+    }
+    // The all row is the Overview headline (OV-3): served to this panel too, but never rendered as a day.
+    expect(within(table).getAllByRole('row')).toHaveLength(3);
+    expect(within(panel).queryByText('$1.2184')).not.toBeInTheDocument();
+    expect(within(panel).queryByText(/Not served yet/)).not.toBeInTheDocument();
+  });
+
+  it('Usage names metering-summary.v1 on the savings series while that exposure is not served (US-3)', async () => {
     harness.reachable = new Set([USAGE]);
     render(<LocalDashboardPage pageName="usage" />);
     await settle();
     const panel = screen.getByRole('heading', { name: 'Savings per day' }).closest('article')!;
-    expect(within(panel).getByRole('status')).toHaveTextContent('Not served yet: waits on metering-summary.v1');
+    expect(within(panel).getByRole('status')).toHaveTextContent('metering-summary.v1');
     expect(within(panel).queryByText(/^\$?0(?:\.0+)?$/)).not.toBeInTheDocument();
   });
 

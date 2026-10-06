@@ -49,8 +49,11 @@ function byBaseline(rows: readonly unknown[]): Array<[string, MeteringSummaryRow
   return [...groups.entries()];
 }
 
-/** US-3: savings per day, the baseline named in each series' title. */
-export function SavingsSeries({ rows }: { rows: readonly unknown[] }) {
+/**
+ * US-3: savings per day, the baseline named in each series' title. Named for the exposure it renders (as the Overview's
+ * MeteringTotalCard is), so a page that mounts it names no savings field (OMN-19980 R4).
+ */
+export function MeteringDaySeries({ rows }: { rows: readonly unknown[] }) {
   const series = byBaseline(rows);
   if (series.length === 0) {
     return <p className="local-dashboard-empty" role="status">{NO_SAVINGS_ROWS}</p>;
@@ -93,7 +96,7 @@ export default function SavingsSeriesWidget() {
       emptyMessage="No savings rows yet"
       emptyHint="Rows appear once node_projection_metering_summary serves its day rows."
     >
-      <SavingsSeries rows={rows} />
+      <MeteringDaySeries rows={rows} />
     </ComponentWrapper>
   );
 }

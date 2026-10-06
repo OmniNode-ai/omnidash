@@ -9,7 +9,7 @@
 //   * rows stated against two baselines are mixed under one title.
 import { render, screen, within } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
-import { SavingsSeries } from './SavingsSeriesWidget';
+import { MeteringDaySeries } from './SavingsSeriesWidget';
 
 const day = (overrides: Record<string, unknown>) => ({
   tenant_id: 'tenant-a',
@@ -25,9 +25,9 @@ const day = (overrides: Record<string, unknown>) => ({
   ...overrides,
 });
 
-describe('SavingsSeries', () => {
+describe('MeteringDaySeries', () => {
   it('renders each served day\'s savings as served, with the baseline named in the series title (AC-US3)', () => {
-    render(<SavingsSeries rows={[
+    render(<MeteringDaySeries rows={[
       day({ window_kind: 'all', window_start: '', savings_usd: '9.99', runs_total: 7 }),
       day({}),
       day({ window_start: '2026-10-02', savings_usd: '0.40', runs_total: 2 }),
@@ -42,29 +42,29 @@ describe('SavingsSeries', () => {
   });
 
   it('renders Not measured for a day with no measured run, never 0 (AC-US3)', () => {
-    render(<SavingsSeries rows={[day({ savings_usd: null, runs_total: 1 })]} />);
+    render(<MeteringDaySeries rows={[day({ savings_usd: null, runs_total: 1 })]} />);
     expect(screen.getByText('Not measured')).toBeInTheDocument();
     expect(screen.queryByText(/^\$?0(?:\.0+)?$/)).not.toBeInTheDocument();
   });
 
   it('renders Baseline unresolved when the day has no priced baseline', () => {
-    render(<SavingsSeries rows={[day({ baseline_state: 'unresolved', savings_usd: null })]} />);
+    render(<MeteringDaySeries rows={[day({ baseline_state: 'unresolved', savings_usd: null })]} />);
     expect(screen.getByText('Baseline unresolved')).toBeInTheDocument();
   });
 
   it('keeps each baseline\'s days under its own title', () => {
-    render(<SavingsSeries rows={[day({}), day({ baseline_model: 'gpt-6', savings_usd: '2.00' })]} />);
+    render(<MeteringDaySeries rows={[day({}), day({ baseline_model: 'gpt-6', savings_usd: '2.00' })]} />);
     expect(within(screen.getByRole('table', { name: 'Savings per day vs gpt-6' })).getByText('$2.00')).toBeInTheDocument();
     expect(within(screen.getByRole('table', { name: 'Savings per day vs claude-sonnet-5-5' })).getByText('$1.20')).toBeInTheDocument();
   });
 
   it('says the figure is modelled, not a baseline run', () => {
-    render(<SavingsSeries rows={[day({})]} />);
+    render(<MeteringDaySeries rows={[day({})]} />);
     expect(screen.getByText(/Modelled/)).toBeInTheDocument();
   });
 
   it('renders a typed state when no day row is served yet', () => {
-    render(<SavingsSeries rows={[day({ window_kind: 'all', window_start: '' })]} />);
+    render(<MeteringDaySeries rows={[day({ window_kind: 'all', window_start: '' })]} />);
     expect(screen.getByRole('status')).toHaveTextContent('No savings rows yet');
     expect(screen.queryByRole('table')).not.toBeInTheDocument();
   });

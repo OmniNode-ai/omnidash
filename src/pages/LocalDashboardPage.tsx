@@ -4,6 +4,7 @@ import { createSnapshotSource } from '@/data-source';
 import { fetchExposureCensus } from '@/data-source/exposure-census';
 import { resolveEffectiveDataSource } from '@/data-source/data-source-override';
 import { UsageByModelDayTable } from '@/components/dashboard/usage/UsageByModelDayWidget';
+import { MeteringDaySeries } from '@/components/dashboard/usage/SavingsSeriesWidget';
 import { TenantNotConfiguredState } from '@/components/dashboard/TenantNotConfiguredState';
 import { subscribeLocalPageRefresh } from '@/services/local-page-refresh';
 import { DEFAULT_RUNS_VIEW, readRunsSearch, writeRunsSearch, type RunsViewState } from '@/navigation/runs-url-state';
@@ -63,10 +64,7 @@ interface MetricCardProps {
  * typed "not served yet" state shows lives here, one entry per such card (requirements: an empty state names
  * what it waits on).
  */
-const PENDING_SOURCES: Record<string, string> = {
-  // US-3: bound once metering-summary.v1 is served (omnimarket#3368); its renderer is SavingsSeries.
-  'usage-savings-series': 'metering-summary.v1',
-};
+const PENDING_SOURCES: Record<string, string> = {};
 
 /** AK-3: cloud keys are not linked in the local MVP; one line, no form. */
 const CLOUD_NOT_LINKED = 'CLOUD_NOT_LINKED: cloud keys are not linked in the local runtime. There is nothing to set here.';
@@ -674,6 +672,8 @@ function TableComponent({ component, snapshots, pageSize, syncUrl }: {
   if (component.component_id === 'workflow-run-path') return <WorkflowPath decisions={rows} />;
   // US-1, US-2, US-4: served rows as served. The exposure is tenant-scoped, so the server filters, not the browser.
   if (component.component_id === 'usage-by-model-day') return <UsageByModelDayTable rows={rows} />;
+  // US-3: metering-summary.v1's day rows, as served; the series renders no all row and sums nothing.
+  if (component.component_id === 'usage-savings-series') return <MeteringDaySeries rows={rows} />;
   if (component.component_id === 'api-keys-local-identity') {
     const first = rawRowsFor(component, snapshots, 0)[0];
     return <LocalIdentity row={first && typeof first === 'object' ? (first as Record<string, unknown>) : null} />;
