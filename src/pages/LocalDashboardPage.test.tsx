@@ -3,7 +3,8 @@ import { render, screen, within } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 import { RunsTable } from './LocalDashboardPage';
 
-// Amendment 6: Runs rows are delegation decisions; the savings session with the same id supplies the savings columns.
+// Amendment 6: Runs rows are delegation decisions; the savings session with the same id supplies the cost and the
+// baseline labels. OMN-19980 AC2b: no per-run baseline price or saving.
 describe('RunsTable', () => {
   it('renders one row per delegation run with every declared value', () => {
     render(<RunsTable
@@ -34,20 +35,23 @@ describe('RunsTable', () => {
     const row = screen.getByRole('row', { name: /session-42/ });
     for (const value of [
       'session-42', '2026-10-01T13:40:00Z', 'local-model', '120', '45',
-      '0.01', '0.1', 'cloud-model', '0.09', 'measured', 'delegation', '250', '165',
+      '0.01', 'cloud-model', 'measured', 'delegation', '250', '165',
     ]) {
       expect(within(row).getByText(value)).toBeInTheDocument();
     }
+    // The counterfactual (0.1) and the cloud cost and saving (0.09) are served but not shown.
+    for (const value of ['0.1', '0.09']) expect(within(row).queryByText(value), value).not.toBeInTheDocument();
   });
 
-  it('renders BASELINE_UNRESOLVED and suppresses zero savings without a baseline', () => {
+  it('shows no zero saving for a session without a baseline, and types its missing baseline model', () => {
     render(<RunsTable
       decisions={[{ correlation_id: 'session-unresolved', created_at: '2026-10-02T10:00:00Z', quality_gate_passed: true }]}
       sessions={[{ session_id: 'session-unresolved', baseline_model: null, savings_usd: 0 }]}
     />);
 
     const row = screen.getByRole('row', { name: /session-unresolved/ });
-    expect(within(row).getAllByText('Baseline unresolved')).toHaveLength(3);
+    const headers = screen.getAllByRole('columnheader').map((cell) => cell.textContent?.trim());
+    expect(within(row).getAllByRole('cell')[headers.indexOf('Baseline model')]?.textContent).toBe('Not recorded');
     expect(within(row).queryByText(/^\$?0(?:\.0+)?$/)).not.toBeInTheDocument();
   });
 
