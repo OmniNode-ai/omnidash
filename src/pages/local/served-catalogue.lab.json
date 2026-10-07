@@ -1,6 +1,6 @@
 {
   "source": "GET /projections on the .201 lab projection API (lakshman lane), read-only",
-  "captured_at": "2026-10-06T07:34:32Z",
+  "captured_at": "2026-10-07T06:34:14Z",
   "exposures": [
     {
       "topic": "delegation",
@@ -1046,6 +1046,10 @@
         "spend_usd",
         "counterfactual_usd",
         "savings_usd",
+        "savings_per_measured_run_usd",
+        "compression_ratio",
+        "cache_hit_rate",
+        "runs_cache_answered",
         "summary_json"
       ]
     },
