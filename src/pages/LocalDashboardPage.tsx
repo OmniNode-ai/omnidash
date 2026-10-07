@@ -65,7 +65,8 @@ interface MetricCardProps {
  * what it waits on).
  */
 const PENDING_SOURCES: Record<string, string> = {
-  // OMN-20009: the per-run saving is a metering-summary.v1 column; the lab catalogue does not serve that exposure yet.
+  // OMN-20009: the per-run saving is a metering-summary.v1 column (migration 0002); shown while a page contract leaves
+  // the card unbound.
   'overview-avg-saving-per-call': 'metering-summary.v1',
 };
 

@@ -253,9 +253,22 @@
         "minor": 0,
         "patch": 0
       },
-      "data_bindings": [],
+      "data_bindings": [
+        {
+          "binding_id": "overview-avg-saving-per-call-metering",
+          "projection_topic": "onex.snapshot.projection.metering-summary.v1",
+          "ordering_authority_field": "as_of",
+          "ordering_direction": "descending",
+          "required_fields": [
+            "window_kind",
+            "as_of",
+            "savings_per_measured_run_usd"
+          ]
+        }
+      ],
       "supported_empty_state_reasons": [
-        "upstream-blocked"
+        "missing-field",
+        "no-data"
       ]
     },
     {
