@@ -33,12 +33,10 @@
 # test and tenant-rls jobs of its own run, so these external check-runs never
 # reach it (tests/ci/test_repo_evidence_caller_omn20073.py).
 #
-# PLACEHOLDER PIN (omnibase_core#1901): the shadow input exists only on the head
-# of omnibase_core#1901, which is not merged. The pin below is that head and MUST
-# be re-pinned to the squash commit of omnibase_core#1901 on that repository's
-# dev branch before this file lands. The full-SHA pin makes the reusable
-# immutable. S6 (a separate ruling) sets shadow "false" and compare-with-occ
-# "false", and makes repo-evidence / dod-verify required.
+# The reusable is pinned by full SHA to the squash commit of omnibase_core#1901
+# on dev, which carries the `shadow` input. S6 (a separate ruling) sets shadow
+# "false" and compare-with-occ "false", and makes repo-evidence / dod-verify
+# required.
 
 name: Repo Evidence Gate
 
@@ -57,7 +55,7 @@ permissions:
 
 jobs:
   repo-evidence:
-    uses: OmniNode-ai/omnibase_core/.github/workflows/receipt-gate.yml@6d791925396535b44a5e72de2c3d4718a9ca72ed # PLACEHOLDER: head of omnibase_core#1901 (receipt-gate shadow input, OMN-20073); re-pin to its squash commit on dev once merged
+    uses: OmniNode-ai/omnibase_core/.github/workflows/receipt-gate.yml@033db282217c224f8063b94966a7f3fdd26b7894 # OMN-20073: the squash commit of omnibase_core#1901 on dev (receipt-gate shadow input)
     with:
       evidence-source: caller
       verifier-version: 0.4.294
