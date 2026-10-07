@@ -7,14 +7,15 @@
 //   3  a widget shows a savings key its component does not read from metering-summary.v1, or reads nothing    R2
 //   4  a per-run savings figure: a savings column on a decisions-row table, or any savings field asked of
 //      the per-run delegation.savings.v1 sessions                                                              R3
-//   5  savings read in page or loader code rather than through a contract (session.savings_usd, a sum)       R4
+//   5  savings read in page, loader or page-mounted dashboard module code rather than through a contract     R4
+//      (session.savings_usd, a sum); an allowed read names its file, owner and metering-bound component
 //   6  the instrument itself is broken: no pages, no bindings, no savings field seen in a known-bad page        instrument
 //   7  cost mistaken for savings (total_cost_usd, local_cost_usd, cost_usd, measured_cost_usd)                false positives
 //   9  a savings field read off the degraded savings-series.v1 or savings.v1 exposures                         R1
 //  10  the API Keys tenant id read from delegation.savings.v1 is not a savings figure (field-level, not topic)  false positives
 // (8, binding an exposure the lab does not serve, is pages.test.ts "names only served projection exposures".)
-import { readdirSync, readFileSync } from 'node:fs';
-import { resolve } from 'node:path';
+import { existsSync, readdirSync, readFileSync } from 'node:fs';
+import { posix, resolve } from 'node:path';
 import { render } from '@testing-library/react';
 import { createElement } from 'react';
 import ts from 'typescript';
@@ -172,15 +173,125 @@ function ruleR3PerRun(pages: readonly LoadedPage[]): string[] {
 }
 
 /**
- * R4: the only code that may read a savings field by name; nothing else computes or shows one. Every Step B savings
- * figure is a metering-summary.v1 binding read through its metric key, never a field named in code, with one exception
- * (OMN-20009): the Avg saving / call card shows the served per-run quotient, which is a column rather than a metric
- * key. That owner may read that one field and no other; any other component, or any other savings field, still fails.
+ * R4: the only code that may read a savings field by name; nothing else computes or shows one. It scans the page, the
+ * loader and every repository source file reachable from the page's imports, transitively: a component the page
+ * mounts, and any helper it imports from anywhere in src/ or shared/, is page code too (Codex's #358 reviews, 2026-10-06). An allowed read names its file, its owner,
+ * the exact fields it may read and the component whose bound rows it reads. Step B proves each allowed field is a
+ * required field of that component's binding and the component binds metering-summary.v1 and nothing else.
+ * A 'pending' allowance (OMN-20009's Avg saving / call card, omnidash#359) is a read whose exposure is not served
+ * yet: it is valid only while its component binds nothing, and it fails the moment a binding appears, so the entry
+ * must then become 'bound' and pass the binding check above.
  */
-const R4_ALLOWED_READS: ReadonlyMap<string, ReadonlySet<string>> = new Map([
-  ['SavingsPerRunCard', new Set(['savings_per_measured_run_usd'])],
-]);
-const SOURCE_FILES = ['src/pages/LocalDashboardPage.tsx', 'src/layout/local-page-loader.ts'] as const;
+type R4Allowance = {
+  file: string; owner: string; fields: readonly string[]; componentId: string; state: 'bound' | 'pending';
+};
+const R4_ALLOWED: readonly R4Allowance[] = [
+  // US-3 (OMN-20006): the Usage savings series renders the day rows of its one binding, metering-summary.v1, as
+  // served: the row type names savings_usd, and savings() formats it or says why there is none. It sums nothing.
+  { file: 'src/components/dashboard/usage/SavingsSeriesWidget.tsx', owner: 'MeteringSummaryRow', fields: ['savings_usd'], componentId: 'usage-savings-series', state: 'bound' },
+  { file: 'src/components/dashboard/usage/SavingsSeriesWidget.tsx', owner: 'savings', fields: ['savings_usd'], componentId: 'usage-savings-series', state: 'bound' },
+  // OMN-20009 (omnidash#359): the Avg saving / call card reads the served per-run quotient, a column rather than a
+  // metric key. Its exposure field is not served until omnimarket#3406 lands, so the component binds nothing yet.
+  { file: 'src/pages/LocalDashboardPage.tsx', owner: 'SavingsPerRunCard', fields: ['savings_per_measured_run_usd'], componentId: 'overview-avg-saving-per-call', state: 'pending' },
+];
+const PAGE_FILE = 'src/pages/LocalDashboardPage.tsx';
+/** Imports of these assets carry no code, so they are not scanned (the page imports its stylesheet). */
+const ASSET_IMPORT = /\.(css|svg|png|json)$/;
+
+/**
+ * A module specifier as a repo-relative file: `@/x` is `src/x`, `@shared/x` is `shared/x`, `./x` is beside the
+ * importer; null for a package (react, vitest) or an asset import.
+ */
+function resolveImport(importer: string, spec: string, exists: (file: string) => boolean): string | null {
+  let base: string;
+  if (spec.startsWith('@/')) base = `src/${spec.slice(2)}`;
+  else if (spec.startsWith('@shared/')) base = `shared/${spec.slice('@shared/'.length)}`;
+  else if (spec.startsWith('./') || spec.startsWith('../')) base = posix.normalize(posix.join(posix.dirname(importer), spec));
+  else return null;
+  if (ASSET_IMPORT.test(base)) return null;
+  // A specifier that resolves to no file is kept as written, so reading it fails and the scan cannot skip it.
+  return ['', '.tsx', '.ts', '/index.tsx', '/index.ts'].map((ext) => `${base}${ext}`).find((file) => /\.tsx?$/.test(file) && exists(file)) ?? base;
+}
+
+/**
+ * Every module a file names: import and re-export declarations, `import x = require('y')`, and anywhere in the file a
+ * dynamic `import('y')` or `require('y')`. A dynamic import or require whose argument is not a string literal cannot be
+ * followed, so it throws: the scan fails rather than miss what it loads (Codex's fourth #358 review).
+ */
+function moduleSpecifiers(file: string, tree: ts.SourceFile): string[] {
+  const specs: string[] = [];
+  const visit = (node: ts.Node) => {
+    if ((ts.isImportDeclaration(node) || ts.isExportDeclaration(node)) && node.moduleSpecifier && ts.isStringLiteral(node.moduleSpecifier)) {
+      specs.push(node.moduleSpecifier.text);
+    } else if (ts.isImportEqualsDeclaration(node) && ts.isExternalModuleReference(node.moduleReference)
+      && ts.isStringLiteral(node.moduleReference.expression)) {
+      specs.push(node.moduleReference.expression.text);
+    } else if (ts.isCallExpression(node)
+      && (node.expression.kind === ts.SyntaxKind.ImportKeyword || (ts.isIdentifier(node.expression) && node.expression.text === 'require'))) {
+      const arg = node.arguments[0];
+      if (arg === undefined || !ts.isStringLiteralLike(arg)) {
+        const line = tree.getLineAndCharacterOfPosition(node.getStart(tree)).line + 1;
+        throw new Error(`${file}:${line}: a dynamic import or require with a non-literal argument cannot be scanned`);
+      }
+      specs.push(arg.text);
+    }
+    ts.forEachChild(node, visit);
+  };
+  visit(tree);
+  return specs;
+}
+
+/** Every repository source file reachable from `root` through any module reference, in discovery order. */
+function dashboardModuleClosure(root: string, read: (file: string) => string, exists: (file: string) => boolean): string[] {
+  const seen: string[] = [];
+  const queue = [root];
+  while (queue.length > 0) {
+    const file = queue.shift()!;
+    const tree = ts.createSourceFile(file, read(file), ts.ScriptTarget.Latest, true, file.endsWith('.tsx') ? ts.ScriptKind.TSX : ts.ScriptKind.TS);
+    for (const spec of moduleSpecifiers(file, tree)) {
+      const target = resolveImport(file, spec, exists);
+      if (target === null || target === root || seen.includes(target)) continue;
+      seen.push(target);
+      queue.push(target);
+    }
+  }
+  return seen;
+}
+const readRepoFile = (file: string) => readFileSync(resolve(process.cwd(), file), 'utf8');
+const repoFileExists = (file: string) => existsSync(resolve(process.cwd(), file));
+const SOURCE_FILES: readonly string[] = [PAGE_FILE, ...dashboardModuleClosure(PAGE_FILE, readRepoFile, repoFileExists)];
+
+/**
+ * Why an R4 allowance would be wrong, or nothing: a field it allows that is stale (no read of that field by that owner
+ * in that file when unallowed) or is not a required field of the component's binding; a component that is missing or
+ * duplicated, binds nothing, or binds any exposure other than metering-summary.v1.
+ */
+function r4AllowanceProblems(pages: readonly LoadedPage[], unallowedFindings: readonly string[], allowed: readonly R4Allowance[]): string[] {
+  const problems: string[] = [];
+  for (const entry of allowed) {
+    const id = `${entry.file} ${entry.owner}`;
+    if (entry.fields.length === 0) problems.push(`${id}: allows no field`);
+    const components = pages.flatMap((page) => page.doc.components).filter((c) => c.component_id === entry.componentId);
+    const required = new Set(components.flatMap((c) => (c.data_bindings ?? []).flatMap((b) => b.required_fields ?? [])));
+    for (const field of entry.fields) {
+      const read = unallowedFindings.some((finding) => finding.startsWith(`R4 ${entry.file}:`) && finding.includes(` ${entry.owner}: `)
+        && (finding.endsWith(`: ${field}`) || finding.endsWith(`(${field})`)));
+      if (!read) problems.push(`${id}: stale, no read of ${field} by this owner`);
+      if (entry.state === 'bound' && components.length === 1 && !required.has(field)) {
+        problems.push(`${id}: ${field} is not a required field of ${entry.componentId}'s binding`);
+      }
+    }
+    if (components.length !== 1) { problems.push(`${id}: component ${entry.componentId} found ${components.length} times`); continue; }
+    const topics = (components[0]!.data_bindings ?? []).map((b) => b.projection_topic);
+    if (entry.state === 'pending') {
+      if (topics.length > 0) problems.push(`${id}: pending, but ${entry.componentId} now binds ${topics.join(', ')}; make it bound`);
+      continue;
+    }
+    if (topics.length === 0) problems.push(`${id}: ${entry.componentId} binds nothing`);
+    for (const topic of topics) if (topic !== ALLOWED_TOPIC) problems.push(`${id}: ${entry.componentId} binds ${topic}`);
+  }
+  return problems;
+}
 /** A data field name: lower snake case with at least one underscore (savings_usd), never prose or a constant. */
 const FIELD_TOKEN = /^[a-z][a-z0-9]*(?:_[a-z0-9]+)+$/;
 /** The same name in camelCase or PascalCase, two words at least (savingsUsd, SavingsPerRunUsd); never one word. */
@@ -215,6 +326,17 @@ function isDeclarationName(node: ts.Node): boolean {
     || ts.isInterfaceDeclaration(parent) || ts.isTypeAliasDeclaration(parent)) && parent.name === node;
 }
 
+/**
+ * The key of a property whose value is an ONEX topic string names that exposure (`delegationSavings:
+ * 'onex.snapshot.projection.delegation.savings.v1'` in shared/types/topics.ts); it reads no figure. Reading the key
+ * elsewhere (TOPICS.delegationSavings) is still a property access and is still reported.
+ */
+function namesAnExposure(node: ts.Node): boolean {
+  const parent = node.parent;
+  return parent !== undefined && ts.isPropertyAssignment(parent) && parent.name === node
+    && ts.isStringLiteralLike(parent.initializer) && /^onex\.(snapshot|evt|cmd)\./.test(parent.initializer.text);
+}
+
 /** A JSX tag's name (<SavingsPerRunCard />) refers to a component, it reads no field. */
 function isJsxTagName(node: ts.Node): boolean {
   const parent = node.parent;
@@ -223,16 +345,16 @@ function isJsxTagName(node: ts.Node): boolean {
 }
 
 /** R4 source scan: savings field names in code (identifiers and whole-name strings; comments and prose are not code). */
-function ruleR4Source(files: ReadonlyArray<{ file: string; source: string }>): string[] {
+function ruleR4Source(files: ReadonlyArray<{ file: string; source: string }>, allowed: readonly R4Allowance[] = R4_ALLOWED): string[] {
   const findings: string[] = [];
   for (const { file, source } of files) {
     const tree = ts.createSourceFile(file, source, ts.ScriptTarget.Latest, true, file.endsWith('.tsx') ? ts.ScriptKind.TSX : ts.ScriptKind.TS);
     const visit = (node: ts.Node) => {
       const token = ts.isIdentifier(node) || ts.isStringLiteralLike(node) ? node.text : null;
-      const field = token === null || isDeclarationName(node) || isJsxTagName(node) ? null : fieldNameOf(token);
+      const field = token === null || isDeclarationName(node) || namesAnExposure(node) || isJsxTagName(node) ? null : fieldNameOf(token);
       if (field !== null && isSavingsField(field)) {
         const owner = ownerOf(node);
-        if (!R4_ALLOWED_READS.get(owner)?.has(field)) {
+        if (!allowed.some((entry) => entry.file === file && entry.owner === owner && entry.fields.includes(field))) {
           const line = tree.getLineAndCharacterOfPosition(node.getStart(tree)).line + 1;
           findings.push(`R4 ${file}:${line} ${owner}: ${token}${field === token ? '' : ` (${field})`}`);
         }
@@ -480,7 +602,12 @@ describe('OMN-19980 AC2d: planted controls (each rule catches its violation)', (
       'export function RecentRunsTable({ row }: { row: Record<string, unknown> }) { return row.savings_per_measured_run_usd; }',
       'export function SavingsPerRunCard2({ row }: { row: Record<string, unknown> }) { return row.savings_usd; }',
     ].join('\n');
-    expect(ruleR4Source([{ file: 'planted.tsx', source }])).toEqual([
+    // The real allowance names the page file; this planted copy names the planted file, so only the owner and field are tested.
+    const card: R4Allowance = {
+      file: 'planted.tsx', owner: 'SavingsPerRunCard', fields: ['savings_per_measured_run_usd'],
+      componentId: 'overview-avg-saving-per-call', state: 'pending',
+    };
+    expect(ruleR4Source([{ file: 'planted.tsx', source }], [card])).toEqual([
       'R4 planted.tsx:2 SavingsPerRunCardTwin: savings_per_measured_run_usd',
       'R4 planted.tsx:3 RecentRunsTable: savings_per_measured_run_usd',
       'R4 planted.tsx:4 SavingsPerRunCard2: savings_usd',
@@ -490,7 +617,7 @@ describe('OMN-19980 AC2d: planted controls (each rule catches its violation)', (
     expect(ruleR4Source([{ file: 'planted.tsx', source: jsx }])).toEqual(['R4 planted.tsx:2 b: savingsUsd (savings_usd)']);
     // The same name with a second savings field inside the allowed owner: the field is not exempt.
     const wider = 'export function SavingsPerRunCard(row: Record<string, unknown>) { return [row.savings_per_measured_run_usd, row.savings_usd]; }';
-    expect(ruleR4Source([{ file: 'planted.tsx', source: wider }])).toEqual([
+    expect(ruleR4Source([{ file: 'planted.tsx', source: wider }], [card])).toEqual([
       'R4 planted.tsx:1 SavingsPerRunCard: savings_usd',
     ]);
   });
@@ -506,11 +633,15 @@ describe('OMN-19980 AC2d: planted controls (each rule catches its violation)', (
     expect(ruleR4Source([{ file: 'planted.tsx', source }])).toEqual([]);
   });
 
-  it('R4 reads both source files, and the scan can see a savings name in them (positive control)', () => {
+  it('R4 reads the page, the loader and every dashboard module the page imports, and sees a savings name in each (positive control)', () => {
     const sources = readSources();
     expect(sources.map(({ file }) => file)).toEqual([...SOURCE_FILES]);
-    // Dev's sources name no savings field, so a read planted at the end of each real file proves the scan parses that
-    // file's real text and sees a savings name in it.
+    // The modules come from the page's own imports; the two Usage renderers are among them, so a read there is scanned.
+    expect(SOURCE_FILES).toEqual(expect.arrayContaining([
+      'src/components/dashboard/usage/SavingsSeriesWidget.tsx', 'src/components/dashboard/usage/UsageByModelDayWidget.tsx',
+    ]));
+    // A read planted at the end of each real file proves the scan parses that file's real text and sees a savings name
+    // in it; PlantedCard is allowed nowhere.
     const planted = sources.map(({ file, source }) => ({
       file, source: `${source}\nexport function PlantedCard(row: Record<string, unknown>) { return row.savings_usd; }\n`,
     }));
@@ -522,10 +653,111 @@ describe('OMN-19980 AC2d: planted controls (each rule catches its violation)', (
 });
 
 describe('OMN-19980 Step B: the allowlist is empty and every savings figure binds metering-summary.v1', () => {
-  it('the Step A allowlist is empty, and R4 allows exactly one owner reading exactly one field', () => {
+  it('the Step A allowlist is empty, and every R4 allowance is a live read in a component bound to metering-summary.v1 alone', () => {
     expect(STEP_A_ALLOWLIST).toEqual([]);
-    expect([...R4_ALLOWED_READS].map(([owner, fields]) => [owner, [...fields]])).toEqual([
-      ['SavingsPerRunCard', ['savings_per_measured_run_usd']],
+    expect(R4_ALLOWED.length).toBeGreaterThan(0);
+    expect(r4AllowanceProblems(loadPages(), ruleR4Source(readSources(), []), R4_ALLOWED)).toEqual([]);
+  });
+
+  it('the one pending allowance is OMN-20009\'s Avg saving / call read, and its card binds nothing while it waits', () => {
+    expect(R4_ALLOWED.filter((entry) => entry.state === 'pending').map(({ owner, fields, componentId }) => [owner, fields, componentId]))
+      .toEqual([['SavingsPerRunCard', ['savings_per_measured_run_usd'], 'overview-avg-saving-per-call']]);
+  });
+
+  it('planted: a pending allowance whose component gains a binding is reported, and must become bound', () => {
+    const pages = plant([plantedComponent('planted-pending', [binding('b', ALLOWED_TOPIC, ['savings_per_measured_run_usd'])])], []);
+    const entry: R4Allowance = { file: 'planted.tsx', owner: 'Card', fields: ['savings_per_measured_run_usd'], componentId: 'planted-pending', state: 'pending' };
+    const findings = ['R4 planted.tsx:3 Card: savings_per_measured_run_usd'];
+    expect(r4AllowanceProblems(pages, findings, [entry]))
+      .toEqual([`planted.tsx Card: pending, but planted-pending now binds ${ALLOWED_TOPIC}; make it bound`]);
+    expect(r4AllowanceProblems(pages, findings, [{ ...entry, state: 'bound' }])).toEqual([]);
+  });
+
+  it('planted: a JSX tag name reads no field, and a savings read inside that component still does', () => {
+    const source = 'export const Page = () => <SavingsPerRunCard rows={[]} />;\nexport function Other(row: Record<string, unknown>) { return row.savings_usd; }\n';
+    expect(ruleR4Source([{ file: 'planted.tsx', source }], [])).toEqual(['R4 planted.tsx:2 Other: savings_usd']);
+  });
+
+  it('planted: an R4 allowance that is stale, allows an unbound field, or reads a component bound to another exposure, is reported', () => {
+    const pages = plant([plantedComponent('planted-savings-reader', [binding('b', DELEGATION_SAVINGS, ['savings_usd'])])], []);
+    const entry = (fields: string[], componentId = 'planted-savings-reader'): R4Allowance =>
+      ({ file: 'planted.tsx', owner: 'readSavings', fields, componentId, state: 'bound' });
+    const findings = ['R4 planted.tsx:3 readSavings: savings_usd'];
+    expect(r4AllowanceProblems(pages, findings, [entry(['savings_usd'])]))
+      .toEqual([`planted.tsx readSavings: planted-savings-reader binds ${DELEGATION_SAVINGS}`]);
+    expect(r4AllowanceProblems(pages, [], [entry(['savings_usd'])]))
+      .toContain('planted.tsx readSavings: stale, no read of savings_usd by this owner');
+    expect(r4AllowanceProblems(pages, findings, [entry(['savings_usd', 'counterfactual_usd'])]))
+      .toEqual(expect.arrayContaining([
+        'planted.tsx readSavings: stale, no read of counterfactual_usd by this owner',
+        "planted.tsx readSavings: counterfactual_usd is not a required field of planted-savings-reader's binding",
+      ]));
+    expect(r4AllowanceProblems(pages, findings, [entry([])])).toContain('planted.tsx readSavings: allows no field');
+    expect(r4AllowanceProblems(pages, findings, [entry(['savings_usd'], 'no-such-component')]))
+      .toContain('planted.tsx readSavings: component no-such-component found 0 times');
+  });
+
+  it('planted: an allowance covers only its own fields; another savings field in the same owner, nested or by string key, is caught', () => {
+    const source = [
+      'export function readSavings(row: Record<string, unknown>) {',
+      '  const nested = () => row["counterfactual_baseline_usd"];',
+      '  return [row.savings_usd, nested(), row["baseline_cost_usd"]];',
+      '}',
+    ].join('\n');
+    const allowed: R4Allowance[] = [{ file: 'planted.tsx', owner: 'readSavings', fields: ['savings_usd'], componentId: 'x', state: 'bound' }];
+    expect(ruleR4Source([{ file: 'planted.tsx', source }], allowed)).toEqual([
+      'R4 planted.tsx:2 readSavings: counterfactual_baseline_usd',
+      'R4 planted.tsx:3 readSavings: baseline_cost_usd',
+    ]);
+  });
+
+  it('planted: discovery follows every in-repo import, outside the dashboard directory too, skips assets and packages, and keeps an unresolvable import', () => {
+    const files: Record<string, string> = {
+      'src/pages/P.tsx': "import { A } from '@/components/dashboard/a/A';\nimport './p.css';\nimport { useState } from 'react';",
+      'src/components/dashboard/a/A.tsx': "import { pick } from '@/lib/pick';\nexport { B } from '../b/B';",
+      'src/lib/pick.ts': "import { T } from '@shared/t';\nexport const pick = (row: Record<string, unknown>) => row['counterfactual_baseline_usd'];",
+      'shared/t.ts': 'export const T = 1;',
+      'src/components/dashboard/b/B.tsx': 'export const B = 1;',
+    };
+    const read = (file: string) => { if (!(file in files)) throw new Error(`not found: ${file}`); return files[file]!; };
+    const exists = (file: string) => file in files;
+    const reached = dashboardModuleClosure('src/pages/P.tsx', read, exists);
+    expect(reached).toEqual(['src/components/dashboard/a/A.tsx', 'src/lib/pick.ts', 'src/components/dashboard/b/B.tsx', 'shared/t.ts']);
+    // The helper outside the dashboard directory is scanned, so its savings read is reported.
+    expect(ruleR4Source(reached.map((file) => ({ file, source: files[file]! })), []))
+      .toEqual(['R4 src/lib/pick.ts:2 pick: counterfactual_baseline_usd']);
+    // A code import that resolves to no file is kept, so reading it fails and the scan cannot skip it.
+    files['src/components/dashboard/b/B.tsx'] = "import { m } from './missing';";
+    expect(() => dashboardModuleClosure('src/pages/P.tsx', read, exists)).toThrow('not found: src/components/dashboard/b/missing');
+  });
+
+  it('planted: discovery follows dynamic import() and require() of a literal, and refuses one it cannot resolve', () => {
+    const files: Record<string, string> = {
+      'src/pages/P.tsx': "import { A } from '@/components/dashboard/a/A';",
+      'src/components/dashboard/a/A.tsx': "export const load = () => import('./lazyHelper');\nconst legacy = require('@/lib/legacy');",
+      'src/components/dashboard/a/lazyHelper.ts': "export const pick = (row: Record<string, unknown>) => row['counterfactual_baseline_usd'];",
+      'src/lib/legacy.ts': 'export const L = 1;',
+    };
+    const read = (file: string) => { if (!(file in files)) throw new Error(`not found: ${file}`); return files[file]!; };
+    const exists = (file: string) => file in files;
+    const reached = dashboardModuleClosure('src/pages/P.tsx', read, exists);
+    expect(reached).toEqual(['src/components/dashboard/a/A.tsx', 'src/components/dashboard/a/lazyHelper.ts', 'src/lib/legacy.ts']);
+    expect(ruleR4Source(reached.map((file) => ({ file, source: files[file]! })), []))
+      .toEqual(['R4 src/components/dashboard/a/lazyHelper.ts:1 pick: counterfactual_baseline_usd']);
+    files['src/components/dashboard/a/A.tsx'] = "const name = './lazyHelper';\nexport const load = () => import(name);";
+    expect(() => dashboardModuleClosure('src/pages/P.tsx', read, exists))
+      .toThrow('src/components/dashboard/a/A.tsx:2: a dynamic import or require with a non-literal argument cannot be scanned');
+  });
+
+  it('planted: a property naming an exposure is not a savings read, and a savings field beside it still is', () => {
+    const source = [
+      "export const T = { costSavingsOverview: 'onex.snapshot.projection.cost.savings-overview.v1', savingsUsd: 1 };",
+      'export const read = (row: Record<string, unknown>) => [row.savingsUsd, T.costSavingsOverview];',
+    ].join('\n');
+    expect(ruleR4Source([{ file: 'planted.ts', source }], [])).toEqual([
+      'R4 planted.ts:1 T: savingsUsd (savings_usd)',
+      'R4 planted.ts:2 read: savingsUsd (savings_usd)',
+      'R4 planted.ts:2 read: costSavingsOverview (cost_savings_overview)',
     ]);
   });
 

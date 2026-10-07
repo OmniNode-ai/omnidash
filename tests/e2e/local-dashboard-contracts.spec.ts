@@ -260,6 +260,50 @@ test('Runs lists every decision with typed unmeasured values at 1440x900 (AC4)',
   await page.screenshot({ path: screenshotPath('local-dashboard-runs-1440x900.png'), fullPage: false });
 });
 
+// OMN-20006: the Usage page at 1440x900. One day and model mixes a measured run (0.25) with an estimated one, so the
+// served measured cost is 0.25 beside "1 unmeasured" while cost_usd (9.25) is never shown; another has only an
+// unmeasured run, so its cost is Not measured, never $0. The savings series shows metering-summary.v1's day row, never
+// the all row (the Overview headline).
+test('Usage shows measured cost beside unmeasured runs, never 0 for unmeasured, at 1440x900 (AC1, AC3, AC4, AC-US3)', async ({ page }) => {
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await serveFixtures(page, {
+    ...fixtures,
+    [USAGE]: [
+      {
+        tenant_id: 'tenant-fresh-store', usage_day: '2026-10-02', model_id: 'Qwen3.8-27B', input_tokens: 162,
+        output_tokens: 52, cost_usd: 9.25, measured_cost_usd: 0.25, unmeasured_call_count: 1, call_count: 2,
+      },
+      {
+        tenant_id: 'tenant-fresh-store', usage_day: '2026-10-01', model_id: 'glm-4.6', input_tokens: 161,
+        output_tokens: 36, cost_usd: 4, measured_cost_usd: null, unmeasured_call_count: 1, call_count: 1,
+      },
+    ],
+  });
+  await page.goto('/');
+  await page.getByTestId('nav-local-usage').click();
+
+  await expect(page.getByRole('heading', { level: 1, name: 'Usage' })).toBeVisible();
+  const mixed = page.getByRole('row').filter({ hasText: 'Qwen3.8-27B' });
+  for (const value of ['2026-10-02', '162', '52', '$0.25', '1 unmeasured', '2']) {
+    await expect(mixed.getByText(value, { exact: true })).toBeVisible();
+  }
+  const unmeasured = page.getByRole('row').filter({ hasText: 'glm-4.6' });
+  await expect(unmeasured.getByText('Not measured', { exact: true })).toBeVisible();
+  await expect(page.getByText(/9\.25/)).toHaveCount(0);
+  await expect(page.getByText('$0', { exact: true })).toHaveCount(0);
+  await expect(page.getByText('0', { exact: true })).toHaveCount(0);
+  const savings = page.locator('.local-dashboard-panel').filter({ has: page.getByRole('heading', { name: 'Savings per day' }) });
+  const series = savings.getByRole('table', { name: 'Savings per day vs claude-sonnet-5-5' });
+  const day = series.getByRole('row').filter({ hasText: '2026-10-02' });
+  for (const value of ['2026-10-02', '$0.40', '46']) await expect(day.getByText(value, { exact: true })).toBeVisible();
+  await expect(series.getByRole('row')).toHaveCount(2);
+  await expect(savings.getByText('$1.2184')).toHaveCount(0);
+  await expect(savings.getByText(/Not served yet/)).toHaveCount(0);
+  await expectNoPanelCutOff(page);
+
+  await page.screenshot({ path: screenshotPath('local-dashboard-usage-1440x900.png'), fullPage: false });
+});
+
 test('Overview and Runs show each run\'s backend, host, tier and score, typed when not recorded (OMN-20225)', async ({ page }) => {
   await page.setViewportSize({ width: 1440, height: 900 });
   await serveFixtures(page);

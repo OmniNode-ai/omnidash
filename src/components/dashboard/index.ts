@@ -60,4 +60,6 @@ export const componentImports: Record<string, ReturnType<typeof lazy>> = {
   'consumer-flow/ConsumerFlowWidget': lazy(() => import('./consumer-flow/ConsumerFlowWidget')),
   'session-replay/SessionReplayWidget': lazy(() => import('./session-replay/SessionReplayWidget')),
   'work-events/WorkEventsWidget': lazy(() => import('./work-events/WorkEventsWidget')),
+  'usage/UsageByModelDayWidget': lazy(() => import('./usage/UsageByModelDayWidget')),
+  'usage/SavingsSeriesWidget': lazy(() => import('./usage/SavingsSeriesWidget')),
 };

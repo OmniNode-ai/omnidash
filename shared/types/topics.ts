@@ -160,6 +160,20 @@ export const TOPICS = {
    */
   workEvents: 'onex.snapshot.projection.work.events.v1',
   /**
+   * Usage by model and day -- tokens in and out, measured cost and the count of
+   * calls whose cost was not measured, per tenant, UTC day and model, folded by
+   * omnimarket's node_projection_usage_by_model_day (OMN-19978). Tenant-scoped
+   * and `bus_backed: true`; rendered by the local Usage page and declared as read
+   * by the usage-by-model-day component (OMN-20006).
+   */
+  usageByModelDay: 'onex.snapshot.projection.usage-by-model-day.v1',
+  /**
+   * Metering summary -- one `day` row per UTC day and one `all` row per baseline
+   * model from node_projection_metering_summary, the one savings definition.
+   * The Usage page's daily savings series reads the day rows (OMN-20006, US-3).
+   */
+  meteringSummary: 'onex.snapshot.projection.metering-summary.v1',
+  /**
    * Inference response text projection — latest ModelLlmInferenceResponse rows
    * sourced from the bus topic onex.evt.omnibase-infra.inference-response.v1.
    * Rendered by DelegationModelOutputWidget (OMN-12745). Fixture mode is the

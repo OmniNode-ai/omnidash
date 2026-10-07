@@ -1136,6 +1136,77 @@ const MVP_COMPONENTS: Record<string, ComponentManifestDraft> = {
     },
     capabilities: { supports_compare: false, supports_export: true, supports_fullscreen: true, supports_time_range: true },
   },
+  // OMN-20006: the Usage page's readers. Each renders its exposure's rows as
+  // served (the same renderer the local Usage page uses), and declaring the
+  // topic here is what the omnibase_infra exposure-reader-coverage gate
+  // (OMN-17199) resolves, so the projections need no `consumers: none` opt-out.
+  'usage-by-model-day': {
+    name: 'usage-by-model-day',
+    displayName: 'Usage by Model and Day',
+    description:
+      'Tokens in, tokens out and measured cost per model per UTC day, with the count of calls whose cost was not measured. Every value is served by node_projection_usage_by_model_day; the widget sums nothing and shows Not measured, never 0, for a cost nobody measured.',
+    category: 'cost',
+    version: '1.0.0',
+    implementationKey: 'usage/UsageByModelDayWidget',
+    projectionSchema: {
+      type: 'object',
+      required: ['tenant_id', 'usage_day', 'model_id', 'input_tokens', 'output_tokens', 'call_count'],
+      properties: {
+        tenant_id: { type: 'string', description: "The reading tenant; the exposure's tenant_column, so the server scopes the read." },
+        usage_day: { type: 'string', format: 'date', description: 'UTC day of the calls.' },
+        model_id: { type: 'string', description: 'Model the calls ran on.' },
+        input_tokens: { type: 'integer', description: 'Tokens in, summed by the projection over every call.' },
+        output_tokens: { type: 'integer', description: 'Tokens out, summed by the projection over every call.' },
+        cost_usd: { type: ['number', 'string'], description: 'Cost of every call, estimates included. Not rendered.' },
+        measured_cost_usd: { type: ['number', 'string', 'null'], description: 'Cost of the calls whose cost was measured; NULL when none was.' },
+        unmeasured_call_count: { type: 'integer', description: 'Calls whose cost was estimated or not recorded.' },
+        call_count: { type: 'integer', description: 'Every call for the day and model.' },
+      },
+    },
+    dataSources: [projectionSource(TOPICS.usageByModelDay)],
+    events: { emits: [], consumes: [] },
+    defaultSize: { w: 12, h: 4 },
+    minSize: { w: 6, h: 3 },
+    maxSize: { w: 12, h: 10 },
+    emptyState: {
+      message: 'No usage rows yet',
+      hint: 'Rows appear once llm-call-completed events reach node_projection_usage_by_model_day.',
+    },
+    capabilities: { supports_compare: false, supports_export: true, supports_fullscreen: true, supports_time_range: false },
+  },
+  'usage-savings-series': {
+    name: 'usage-savings-series',
+    displayName: 'Savings per Day',
+    description:
+      "Savings per UTC day against the one baseline, named in the series title, from node_projection_metering_summary's day rows. A modelled counterfactual: the runs' tokens priced at the baseline's list price. Null savings render Not measured, never 0.",
+    category: 'cost',
+    version: '1.0.0',
+    implementationKey: 'usage/SavingsSeriesWidget',
+    projectionSchema: {
+      type: 'object',
+      required: ['tenant_id', 'window_kind', 'window_start', 'baseline_model'],
+      properties: {
+        tenant_id: { type: 'string', description: "The reading tenant; the exposure's tenant_column." },
+        window_kind: { type: 'string', enum: ['day', 'all'], description: 'Only day rows are drawn; the all row is the Overview headline.' },
+        window_start: { type: 'string', description: 'UTC day of a day row; empty on the all row.' },
+        baseline_model: { type: 'string', description: 'The baseline the savings are stated against.' },
+        baseline_state: { type: 'string', enum: ['resolved', 'unresolved'] },
+        runs_total: { type: 'integer' },
+        savings_usd: { type: ['number', 'string', 'null'], description: 'NULL when no run of the day was measured.' },
+        as_of: { type: 'string', format: 'date-time' },
+      },
+    },
+    dataSources: [projectionSource(TOPICS.meteringSummary)],
+    events: { emits: [], consumes: [] },
+    defaultSize: { w: 6, h: 4 },
+    minSize: { w: 4, h: 3 },
+    maxSize: { w: 12, h: 10 },
+    emptyState: {
+      message: 'No savings rows yet',
+      hint: 'Rows appear once node_projection_metering_summary serves its day rows.',
+    },
+    capabilities: { supports_compare: false, supports_export: true, supports_fullscreen: true, supports_time_range: false },
+  },
   'intent-distribution': {
     name: 'intent-distribution',
     displayName: 'Intent Distribution',
