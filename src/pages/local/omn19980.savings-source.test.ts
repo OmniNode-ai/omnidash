@@ -191,7 +191,7 @@ const R4_ALLOWED: readonly R4Allowance[] = [
   { file: 'src/components/dashboard/usage/SavingsSeriesWidget.tsx', owner: 'MeteringSummaryRow', fields: ['savings_usd'], componentId: 'usage-savings-series', state: 'bound' },
   { file: 'src/components/dashboard/usage/SavingsSeriesWidget.tsx', owner: 'savings', fields: ['savings_usd'], componentId: 'usage-savings-series', state: 'bound' },
   // OMN-20009 (omnidash#359): the Avg saving / call card reads the served per-run quotient, a column rather than a
-  // metric key. Pending until the captured lab catalogue served the column (OMN-20226's recapture, after
+  // metric key. Pending until the captured lab catalogue served the column (the lab recapture of 2026-10-07, after
   // metering_summary 0002 reached the lab); its card now binds metering-summary.v1 with the field required.
   { file: 'src/pages/LocalDashboardPage.tsx', owner: 'SavingsPerRunCard', fields: ['savings_per_measured_run_usd'], componentId: 'overview-avg-saving-per-call', state: 'bound' },
 ];
@@ -958,7 +958,7 @@ describe('OMN-19980 AC2c: a savings card with no served source says what it wait
   it('every unbound savings card names metering-summary.v1 and shows no figure', () => {
     const texts = unboundSavingsTexts(loadPages());
     // Every savings card is bound to metering-summary.v1: OMN-20009's Avg saving / call bound once the captured
-    // catalogue served its per-run column (OMN-20226). The planted case below is the control that proves an unbound
+    // catalogue served its per-run column (lab recapture 2026-10-07). The planted case below is the control that proves an unbound
     // one is found.
     expect(texts.map(({ id }) => id)).toEqual([]);
     for (const { id, text } of texts) {

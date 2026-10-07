@@ -5,7 +5,7 @@ import { expect, test, type Page } from 'playwright/test';
 // OMN-20009: the Overview's Run locally share and Avg saving / call at 1440x900, from served exposures only, never 0
 // when unmeasured. The model-routing row is the lakshman lane's by_tier on 2026-10-04 14:26Z (104 local of 124 runs,
 // 20 not tier-routed) with the keys the OMN-20009 view adds. The per-run saving card binds metering-summary.v1 since the
-// lab catalogue serves its column (OMN-20226's recapture): served, it shows the served value; not served, it says so.
+// lab catalogue serves its column (lab recapture 2026-10-07): served, it shows the served value; not served, it says so.
 const DECISIONS = 'onex.snapshot.projection.delegation.decisions.v1';
 const SAVINGS = 'onex.snapshot.projection.delegation.savings.v1';
 const OVERVIEW = 'onex.snapshot.projection.cost.savings-overview.v1';

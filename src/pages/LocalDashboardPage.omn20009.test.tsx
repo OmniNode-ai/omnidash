@@ -233,7 +233,7 @@ describe('Overview page (OMN-20009 P1, P2)', () => {
 
   it('P2: the Avg saving / call panel shows the served per-run saving once the lab serves it, and waits on it until then, never $0', async () => {
     if (perRunColumnServed) {
-      // OMN-20226 recaptured the lab catalogue after metering_summary 0002 reached the lane: the card is bound.
+      // The lab catalogue was recaptured (2026-10-07) after metering_summary 0002 reached the lane: the card is bound.
       harness.reachable = new Set([ROUTING, OVERVIEW, METERING]);
       const answer = harness.answer;
       harness.answer = (topic) => (topic === METERING
