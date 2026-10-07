@@ -1,6 +1,6 @@
 {
   "manifestVersion": "1.0",
-  "generatedAt": "2026-10-07T12:04:19.203Z",
+  "generatedAt": "2026-10-09T07:41:03.252Z",
   "components": {
     "cost-trend-panel": {
       "name": "cost-trend-panel",
@@ -4006,6 +4006,12 @@
         {
           "type": "projection",
           "topic": "onex.snapshot.projection.delegation.token-usage.v1",
+          "required": false,
+          "purpose": "initial_fetch"
+        },
+        {
+          "type": "projection",
+          "topic": "onex.snapshot.projection.delegation.correlation-trace.v1",
           "required": false,
           "purpose": "initial_fetch"
         },

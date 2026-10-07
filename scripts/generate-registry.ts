@@ -1760,6 +1760,7 @@ const MVP_COMPONENTS: Record<string, ComponentManifestDraft> = {
       projectionSource(TOPICS.delegationModelRouting, false),
       projectionSource(TOPICS.delegationQualityGate, false),
       projectionSource(TOPICS.delegationTokenUsage, false),
+      projectionSource(TOPICS.delegationCorrelationTrace, false),
       liveSource(TOPICS.delegationSummary),
       liveSource(TOPICS.delegationDecisions),
       liveSource(TOPICS.delegationSavings),
