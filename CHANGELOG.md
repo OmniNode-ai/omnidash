@@ -4,6 +4,20 @@ All notable changes to `omnidash` are documented here.
 
 This project follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) and [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## v1.1.4 (2026-10-06)
+
+Cuts a release so the static bundle has a versioned artifact to be published against. The
+local-mode pages (Overview, Workflow, Runs, Usage, Credentials, API Keys) have only ever existed on
+`dev`: v1.1.3 predates `src/pages/local` entirely, so no existing release could carry them and
+`onex dashboard` had nothing it could pull.
+
+### Features
+- Publish the static build as a release asset with its sha256, so `onex dashboard` can download and
+  verify it on a machine with no Node and no checkout (#366)
+
+### Notes
+- v1.1.1 through v1.1.3 were tagged without changelog entries and are not backfilled here.
+
 ## v1.0.0 (2026-05-21)
 
 First GitHub Release artifact for omnidash. The composable widget dashboard has been on `package.json` v1.0.0 for the active feature wave; this release tags the current main state as the canonical v1.0.0 reference point.
