@@ -65,8 +65,12 @@ interface MetricCardProps {
  * what it waits on).
  */
 const PENDING_SOURCES: Record<string, string> = {
-  // OMN-20009: the per-run saving is a metering-summary.v1 column; the lab catalogue does not serve that exposure yet.
+  // OMN-20009: the per-run saving is a metering-summary.v1 column (migration 0002); shown while a page contract leaves
+  // the card unbound.
   'overview-avg-saving-per-call': 'metering-summary.v1',
+  // OMN-20226: compression_ratio and cache_hit_rate are metering-summary.v1 columns (migration 0003).
+  'overview-compression': 'metering-summary.v1',
+  'overview-cache-hit-rate': 'metering-summary.v1',
 };
 
 /** AK-3: cloud keys are not linked in the local MVP; one line, no form. */

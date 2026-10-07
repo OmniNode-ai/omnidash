@@ -253,9 +253,22 @@
         "minor": 0,
         "patch": 0
       },
-      "data_bindings": [],
+      "data_bindings": [
+        {
+          "binding_id": "overview-avg-saving-per-call-metering",
+          "projection_topic": "onex.snapshot.projection.metering-summary.v1",
+          "ordering_authority_field": "as_of",
+          "ordering_direction": "descending",
+          "required_fields": [
+            "window_kind",
+            "as_of",
+            "savings_per_measured_run_usd"
+          ]
+        }
+      ],
       "supported_empty_state_reasons": [
-        "upstream-blocked"
+        "missing-field",
+        "no-data"
       ]
     },
     {
@@ -305,6 +318,60 @@
           "ordering_direction": "descending",
           "required_fields": [
             "by_tier"
+          ]
+        }
+      ],
+      "supported_empty_state_reasons": [
+        "missing-field",
+        "no-data"
+      ]
+    },
+    {
+      "component_id": "overview-compression",
+      "component_kind": "metric_card",
+      "title": "Compression",
+      "contract_version": {
+        "major": 1,
+        "minor": 0,
+        "patch": 0
+      },
+      "data_bindings": [
+        {
+          "binding_id": "overview-compression-metering",
+          "projection_topic": "onex.snapshot.projection.metering-summary.v1",
+          "ordering_authority_field": "as_of",
+          "ordering_direction": "descending",
+          "required_fields": [
+            "window_kind",
+            "as_of",
+            "compression_ratio"
+          ]
+        }
+      ],
+      "supported_empty_state_reasons": [
+        "missing-field",
+        "no-data"
+      ]
+    },
+    {
+      "component_id": "overview-cache-hit-rate",
+      "component_kind": "metric_card",
+      "title": "Cache hit rate",
+      "contract_version": {
+        "major": 1,
+        "minor": 0,
+        "patch": 0
+      },
+      "data_bindings": [
+        {
+          "binding_id": "overview-cache-hit-rate-metering",
+          "projection_topic": "onex.snapshot.projection.metering-summary.v1",
+          "ordering_authority_field": "as_of",
+          "ordering_direction": "descending",
+          "required_fields": [
+            "window_kind",
+            "as_of",
+            "cache_hit_rate"
           ]
         }
       ],

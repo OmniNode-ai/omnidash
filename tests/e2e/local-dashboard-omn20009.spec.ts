@@ -4,12 +4,13 @@ import { expect, test, type Page } from 'playwright/test';
 
 // OMN-20009: the Overview's Run locally share and Avg saving / call at 1440x900, from served exposures only, never 0
 // when unmeasured. The model-routing row is the lakshman lane's by_tier on 2026-10-04 14:26Z (104 local of 124 runs,
-// 20 not tier-routed) with the keys the OMN-20009 view adds. metering-summary.v1 is not served on the lab yet, so the
-// per-run saving card waits on it.
+// 20 not tier-routed) with the keys the OMN-20009 view adds. The per-run saving card binds metering-summary.v1 since the
+// lab catalogue serves its column (OMN-20226's recapture): served, it shows the served value; not served, it says so.
 const DECISIONS = 'onex.snapshot.projection.delegation.decisions.v1';
 const SAVINGS = 'onex.snapshot.projection.delegation.savings.v1';
 const OVERVIEW = 'onex.snapshot.projection.cost.savings-overview.v1';
 const ROUTING = 'onex.snapshot.projection.delegation.model-routing.v1';
+const METERING = 'onex.snapshot.projection.metering-summary.v1';
 
 const byTier = {
   tiers: [
@@ -44,6 +45,12 @@ const served: Record<string, unknown[]> = {
     measured_run_count: 124, zero_token_run_count: 0,
   }],
   [ROUTING]: [{ tenant_id: 'tenant-a', total_delegations: 124, captured_at: '2026-10-04T14:26:13Z', by_tier: byTier }],
+  // The served per-run saving is deliberately not savings over runs (2.9 / 3 = 0.966667): the card shows it unchanged.
+  [METERING]: [{
+    window_kind: 'all', window_start: '', as_of: '2026-10-04T14:26:13Z', baseline_model: 'claude-opus-4-6',
+    pricing_manifest_version: '1', baseline_state: 'resolved', runs_total: 4, runs_measured: 3, savings_usd: '2.9',
+    savings_per_measured_run_usd: '0.500000',
+  }],
 };
 
 async function serve(page: Page, rows: Record<string, unknown[]>) {
@@ -80,7 +87,7 @@ function screenshotPath(name: string) {
   return path;
 }
 
-test('OMN-20009: Run locally shows the served share and Avg saving / call waits on its exposure, at 1440x900', async ({ page }) => {
+test('OMN-20009: Run locally shows the served share and Avg saving / call the served per-run saving, at 1440x900', async ({ page }) => {
   await page.setViewportSize({ width: 1440, height: 900 });
   await serve(page, served);
   await page.goto('/');
@@ -93,8 +100,8 @@ test('OMN-20009: Run locally shows the served share and Avg saving / call waits 
   await expect(share.getByText('100.0%')).toHaveCount(0);
 
   const saving = panel(page, 'Avg saving / call');
-  await expect(saving.getByText('Not served yet: waits on metering-summary.v1')).toBeVisible();
-  await expect(saving.getByText(/\$0/)).toHaveCount(0);
+  await expect(saving.getByText('$0.500000', { exact: true })).toBeVisible();
+  await expect(saving.getByText(/0\.9666/)).toHaveCount(0);
 
   // The two cards sit in the row under Last run: each fits one 1440x900 screen whole once scrolled to, and nothing
   // is cut off sideways. (Above the fold stay Spend, Savings, Measured runs and Last run, the existing AC4 check.)
@@ -114,7 +121,7 @@ test('OMN-20009: Run locally shows the served share and Avg saving / call waits 
 
 test('OMN-20009: with neither exposure served, both cards say why and neither shows 0', async ({ page }) => {
   await page.setViewportSize({ width: 1440, height: 900 });
-  const withoutRouting = Object.fromEntries(Object.entries(served).filter(([topic]) => topic !== ROUTING));
+  const withoutRouting = Object.fromEntries(Object.entries(served).filter(([topic]) => topic !== ROUTING && topic !== METERING));
   await serve(page, withoutRouting);
   await page.goto('/');
   await expect(page.getByRole('heading', { level: 1, name: 'Overview' })).toBeVisible();
@@ -123,7 +130,7 @@ test('OMN-20009: with neither exposure served, both cards say why and neither sh
   await expect(share.getByText(`Not served: ${ROUTING}`)).toBeVisible();
   await expect(share.getByText(/%/)).toHaveCount(0);
   const saving = panel(page, 'Avg saving / call');
-  await expect(saving.getByText('Not served yet: waits on metering-summary.v1')).toBeVisible();
+  await expect(saving.getByText(`Not served: ${METERING}`)).toBeVisible();
   await expect(page.getByText('0%', { exact: true })).toHaveCount(0);
   await expect(page.getByText('$0', { exact: true })).toHaveCount(0);
   await share.evaluate((element) => element.scrollIntoView({ block: 'center' }));

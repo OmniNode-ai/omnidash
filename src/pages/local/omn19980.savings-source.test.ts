@@ -178,7 +178,7 @@ function ruleR3PerRun(pages: readonly LoadedPage[]): string[] {
  * mounts, and any helper it imports from anywhere in src/ or shared/, is page code too (Codex's #358 reviews, 2026-10-06). An allowed read names its file, its owner,
  * the exact fields it may read and the component whose bound rows it reads. Step B proves each allowed field is a
  * required field of that component's binding and the component binds metering-summary.v1 and nothing else.
- * A 'pending' allowance (OMN-20009's Avg saving / call card, omnidash#359) is a read whose exposure is not served
+ * A 'pending' allowance (OMN-20009's Avg saving / call card was one, omnidash#359) is a read whose exposure is not served
  * yet: it is valid only while its component binds nothing, and it fails the moment a binding appears, so the entry
  * must then become 'bound' and pass the binding check above.
  */
@@ -191,8 +191,9 @@ const R4_ALLOWED: readonly R4Allowance[] = [
   { file: 'src/components/dashboard/usage/SavingsSeriesWidget.tsx', owner: 'MeteringSummaryRow', fields: ['savings_usd'], componentId: 'usage-savings-series', state: 'bound' },
   { file: 'src/components/dashboard/usage/SavingsSeriesWidget.tsx', owner: 'savings', fields: ['savings_usd'], componentId: 'usage-savings-series', state: 'bound' },
   // OMN-20009 (omnidash#359): the Avg saving / call card reads the served per-run quotient, a column rather than a
-  // metric key. Its exposure field is not served until omnimarket#3406 lands, so the component binds nothing yet.
-  { file: 'src/pages/LocalDashboardPage.tsx', owner: 'SavingsPerRunCard', fields: ['savings_per_measured_run_usd'], componentId: 'overview-avg-saving-per-call', state: 'pending' },
+  // metric key. Pending until the captured lab catalogue served the column (OMN-20226's recapture, after
+  // metering_summary 0002 reached the lab); its card now binds metering-summary.v1 with the field required.
+  { file: 'src/pages/LocalDashboardPage.tsx', owner: 'SavingsPerRunCard', fields: ['savings_per_measured_run_usd'], componentId: 'overview-avg-saving-per-call', state: 'bound' },
 ];
 const PAGE_FILE = 'src/pages/LocalDashboardPage.tsx';
 /** Imports of these assets carry no code, so they are not scanned (the page imports its stylesheet). */
@@ -659,9 +660,10 @@ describe('OMN-19980 Step B: the allowlist is empty and every savings figure bind
     expect(r4AllowanceProblems(loadPages(), ruleR4Source(readSources(), []), R4_ALLOWED)).toEqual([]);
   });
 
-  it('the one pending allowance is OMN-20009\'s Avg saving / call read, and its card binds nothing while it waits', () => {
+  it('no allowance is pending: OMN-20009\'s Avg saving / call read is bound now that the lab serves its column', () => {
+    // The planted case below is the control that proves a pending allowance whose card gains a binding is caught.
     expect(R4_ALLOWED.filter((entry) => entry.state === 'pending').map(({ owner, fields, componentId }) => [owner, fields, componentId]))
-      .toEqual([['SavingsPerRunCard', ['savings_per_measured_run_usd'], 'overview-avg-saving-per-call']]);
+      .toEqual([]);
   });
 
   it('planted: a pending allowance whose component gains a binding is reported, and must become bound', () => {
@@ -955,10 +957,10 @@ describe('OMN-19980 AC2c: a savings card with no served source says what it wait
 
   it('every unbound savings card names metering-summary.v1 and shows no figure', () => {
     const texts = unboundSavingsTexts(loadPages());
-    // Savings and the other headline cards are bound to metering-summary.v1. The one unbound savings card is OMN-20009's
-    // Avg saving / call: the topic is served but its per-run column is not in the captured catalogue yet, so it waits,
-    // typed, on that exposure. The planted case below is the control that proves an unbound one is found.
-    expect(texts.map(({ id }) => id)).toEqual(['overview-avg-saving-per-call']);
+    // Every savings card is bound to metering-summary.v1: OMN-20009's Avg saving / call bound once the captured
+    // catalogue served its per-run column (OMN-20226). The planted case below is the control that proves an unbound
+    // one is found.
+    expect(texts.map(({ id }) => id)).toEqual([]);
     for (const { id, text } of texts) {
       expect(text, id).toBe(`Not served yet: waits on ${ALLOWED_SAVINGS_SOURCE}`);
     }

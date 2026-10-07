@@ -14,12 +14,21 @@
 //   S4  only the all-time row is read; no all-time row, or one per baseline model, is a typed state, not a guess;
 //   S5  a negative saving keeps its sign;
 //   P1  on the page, the Run locally card reads delegation.model-routing.v1 and shows its served share;
-//   P2  on the page, the per-run saving card waits on metering-summary.v1 while the lab does not serve it.
+//   P2  on the page, the per-run saving card waits on metering-summary.v1 while the lab does not serve it, and shows
+//       the served value once it does.
+import { readFileSync } from 'node:fs';
+import { resolve } from 'node:path';
 import { act, render, screen, within } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 const ROUTING = 'onex.snapshot.projection.delegation.model-routing.v1';
 const OVERVIEW = 'onex.snapshot.projection.cost.savings-overview.v1';
+const METERING = 'onex.snapshot.projection.metering-summary.v1';
+
+// The per-run card binds once the captured lab catalogue lists its column (omn20009.contracts.test.ts C2).
+const perRunColumnServed = (JSON.parse(readFileSync(resolve(process.cwd(), 'src/pages/local/served-catalogue.lab.json'), 'utf8')) as {
+  exposures: Array<{ topic: string; columns?: string[] }>;
+}).exposures.find((exposure) => exposure.topic === METERING)?.columns?.includes('savings_per_measured_run_usd') ?? false;
 
 const harness = vi.hoisted(() => ({
   reachable: new Set<string>(),
@@ -222,9 +231,21 @@ describe('Overview page (OMN-20009 P1, P2)', () => {
     expect(within(card).queryByText(/%/)).toBeNull();
   });
 
-  it('P2: the Avg saving / call panel waits on metering-summary.v1, never $0', async () => {
-    const card = await panel('Avg saving / call');
-    expect(within(card).getByText('Not served yet: waits on metering-summary.v1')).toBeInTheDocument();
-    expect(within(card).queryByText(/\$0/)).toBeNull();
+  it('P2: the Avg saving / call panel shows the served per-run saving once the lab serves it, and waits on it until then, never $0', async () => {
+    if (perRunColumnServed) {
+      // OMN-20226 recaptured the lab catalogue after metering_summary 0002 reached the lane: the card is bound.
+      harness.reachable = new Set([ROUTING, OVERVIEW, METERING]);
+      const answer = harness.answer;
+      harness.answer = (topic) => (topic === METERING
+        ? Promise.resolve([allRow({ as_of: '2026-10-04T14:26:13Z', savings_per_measured_run_usd: '0.500000' })])
+        : answer(topic));
+      const card = await panel('Avg saving / call');
+      expect(within(card).getByText('$0.500000')).toBeInTheDocument();
+      expect(within(card).queryByText(/Not served/)).toBeNull();
+    } else {
+      const card = await panel('Avg saving / call');
+      expect(within(card).getByText('Not served yet: waits on metering-summary.v1')).toBeInTheDocument();
+      expect(within(card).queryByText(/\$0/)).toBeNull();
+    }
   });
 });
