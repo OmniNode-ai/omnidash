@@ -294,7 +294,11 @@ describe('local pages against the captured lab catalogue', () => {
     const keys = page.dashboard.widgets
       .filter((w) => (w.config as Record<string, unknown>).config_kind === 'metric_card')
       .map((w) => (w.config as Record<string, unknown>).metric_key);
-    expect(keys).toEqual(['spend_usd', 'savings_usd', 'runs_measured', 'tokens_in_and_out']);
+    expect(keys).toEqual([
+      'spend_usd', 'savings_usd', 'runs_measured', 'tokens_in_and_out',
+      // OMN-20009: the served run-locally share and the served saving per measured run.
+      'by_tier.local_call_share', 'savings_per_measured_run_usd',
+    ]);
     const savings = page.components.find((c) => c.component_id === 'overview-savings');
     // SV-2 / OV-3 and OMN-19980 Step B: the figure, its baseline model and its pricing manifest version all come from
     // the one metering-summary.v1 all-time row, so there is no second (caption) binding.

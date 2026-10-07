@@ -178,13 +178,21 @@ function ruleR3PerRun(pages: readonly LoadedPage[]): string[] {
  * mounts, and any helper it imports from anywhere in src/ or shared/, is page code too (Codex's #358 reviews, 2026-10-06). An allowed read names its file, its owner,
  * the exact fields it may read and the component whose bound rows it reads. Step B proves each allowed field is a
  * required field of that component's binding and the component binds metering-summary.v1 and nothing else.
+ * A 'pending' allowance (OMN-20009's Avg saving / call card, omnidash#359) is a read whose exposure is not served
+ * yet: it is valid only while its component binds nothing, and it fails the moment a binding appears, so the entry
+ * must then become 'bound' and pass the binding check above.
  */
-type R4Allowance = { file: string; owner: string; fields: readonly string[]; componentId: string };
+type R4Allowance = {
+  file: string; owner: string; fields: readonly string[]; componentId: string; state: 'bound' | 'pending';
+};
 const R4_ALLOWED: readonly R4Allowance[] = [
   // US-3 (OMN-20006): the Usage savings series renders the day rows of its one binding, metering-summary.v1, as
   // served: the row type names savings_usd, and savings() formats it or says why there is none. It sums nothing.
-  { file: 'src/components/dashboard/usage/SavingsSeriesWidget.tsx', owner: 'MeteringSummaryRow', fields: ['savings_usd'], componentId: 'usage-savings-series' },
-  { file: 'src/components/dashboard/usage/SavingsSeriesWidget.tsx', owner: 'savings', fields: ['savings_usd'], componentId: 'usage-savings-series' },
+  { file: 'src/components/dashboard/usage/SavingsSeriesWidget.tsx', owner: 'MeteringSummaryRow', fields: ['savings_usd'], componentId: 'usage-savings-series', state: 'bound' },
+  { file: 'src/components/dashboard/usage/SavingsSeriesWidget.tsx', owner: 'savings', fields: ['savings_usd'], componentId: 'usage-savings-series', state: 'bound' },
+  // OMN-20009 (omnidash#359): the Avg saving / call card reads the served per-run quotient, a column rather than a
+  // metric key. Its exposure field is not served until omnimarket#3406 lands, so the component binds nothing yet.
+  { file: 'src/pages/LocalDashboardPage.tsx', owner: 'SavingsPerRunCard', fields: ['savings_per_measured_run_usd'], componentId: 'overview-avg-saving-per-call', state: 'pending' },
 ];
 const PAGE_FILE = 'src/pages/LocalDashboardPage.tsx';
 /** Imports of these assets carry no code, so they are not scanned (the page imports its stylesheet). */
@@ -269,10 +277,16 @@ function r4AllowanceProblems(pages: readonly LoadedPage[], unallowedFindings: re
       const read = unallowedFindings.some((finding) => finding.startsWith(`R4 ${entry.file}:`) && finding.includes(` ${entry.owner}: `)
         && (finding.endsWith(`: ${field}`) || finding.endsWith(`(${field})`)));
       if (!read) problems.push(`${id}: stale, no read of ${field} by this owner`);
-      if (components.length === 1 && !required.has(field)) problems.push(`${id}: ${field} is not a required field of ${entry.componentId}'s binding`);
+      if (entry.state === 'bound' && components.length === 1 && !required.has(field)) {
+        problems.push(`${id}: ${field} is not a required field of ${entry.componentId}'s binding`);
+      }
     }
     if (components.length !== 1) { problems.push(`${id}: component ${entry.componentId} found ${components.length} times`); continue; }
     const topics = (components[0]!.data_bindings ?? []).map((b) => b.projection_topic);
+    if (entry.state === 'pending') {
+      if (topics.length > 0) problems.push(`${id}: pending, but ${entry.componentId} now binds ${topics.join(', ')}; make it bound`);
+      continue;
+    }
     if (topics.length === 0) problems.push(`${id}: ${entry.componentId} binds nothing`);
     for (const topic of topics) if (topic !== ALLOWED_TOPIC) problems.push(`${id}: ${entry.componentId} binds ${topic}`);
   }
@@ -323,6 +337,13 @@ function namesAnExposure(node: ts.Node): boolean {
     && ts.isStringLiteralLike(parent.initializer) && /^onex\.(snapshot|evt|cmd)\./.test(parent.initializer.text);
 }
 
+/** A JSX tag's name (<SavingsPerRunCard />) refers to a component, it reads no field. */
+function isJsxTagName(node: ts.Node): boolean {
+  const parent = node.parent;
+  return parent !== undefined && (ts.isJsxOpeningElement(parent) || ts.isJsxSelfClosingElement(parent) || ts.isJsxClosingElement(parent))
+    && parent.tagName === node;
+}
+
 /** R4 source scan: savings field names in code (identifiers and whole-name strings; comments and prose are not code). */
 function ruleR4Source(files: ReadonlyArray<{ file: string; source: string }>, allowed: readonly R4Allowance[] = R4_ALLOWED): string[] {
   const findings: string[] = [];
@@ -330,7 +351,7 @@ function ruleR4Source(files: ReadonlyArray<{ file: string; source: string }>, al
     const tree = ts.createSourceFile(file, source, ts.ScriptTarget.Latest, true, file.endsWith('.tsx') ? ts.ScriptKind.TSX : ts.ScriptKind.TS);
     const visit = (node: ts.Node) => {
       const token = ts.isIdentifier(node) || ts.isStringLiteralLike(node) ? node.text : null;
-      const field = token === null || isDeclarationName(node) || namesAnExposure(node) ? null : fieldNameOf(token);
+      const field = token === null || isDeclarationName(node) || namesAnExposure(node) || isJsxTagName(node) ? null : fieldNameOf(token);
       if (field !== null && isSavingsField(field)) {
         const owner = ownerOf(node);
         if (!allowed.some((entry) => entry.file === file && entry.owner === owner && entry.fields.includes(field))) {
@@ -541,13 +562,13 @@ describe('OMN-19980 AC2d: planted controls (each rule catches its violation)', (
   it('R4 catches savings read in code, and ignores comments and prose', () => {
     const source = [
       '// session.savings_usd in a comment is not a read',
-      'export function SavingsPerRunCard({ row }: { row: Record<string, unknown> }) { return row.savings_per_measured_run_usd; }',
+      'export function AvgSavingCard({ row }: { row: Record<string, unknown> }) { return row.savings_per_measured_run_usd; }',
       'function RecentRunsTable({ session }: { session: Record<string, number> }) { return session.savings_usd; }',
       "const baselineOf = (session: Record<string, number>) => session['counterfactual_baseline_usd'] - session.local_cost_usd;",
       "const PENDING = 'Not served yet: waits on savings_per_measured_run_usd in metering-summary.v1';",
     ].join('\n');
     expect(ruleR4Source([{ file: 'planted.tsx', source }])).toEqual([
-      'R4 planted.tsx:2 SavingsPerRunCard: savings_per_measured_run_usd',
+      'R4 planted.tsx:2 AvgSavingCard: savings_per_measured_run_usd',
       'R4 planted.tsx:3 RecentRunsTable: savings_usd',
       'R4 planted.tsx:4 baselineOf: counterfactual_baseline_usd',
     ]);
@@ -570,6 +591,35 @@ describe('OMN-19980 AC2d: planted controls (each rule catches its violation)', (
       expect(findings.some((finding) => finding.includes(` Dot${alias}: ${alias}`)), `row.${alias}`).toBe(true);
       expect(findings.some((finding) => finding.includes(` Key${alias}: ${alias}`)), `row['${alias}']`).toBe(true);
     }
+  });
+
+  // OMN-20009: the Avg saving / call card is the one legitimate per-run savings reader. The control is that the
+  // exemption is the card's name AND its one field, not a blanket pass.
+  it('R4 allows SavingsPerRunCard to read savings_per_measured_run_usd only; any other reader or field still fails', () => {
+    const source = [
+      'export function SavingsPerRunCard({ row }: { row: Record<string, unknown> }) { return row.savings_per_measured_run_usd; }',
+      'export function SavingsPerRunCardTwin({ row }: { row: Record<string, unknown> }) { return row.savings_per_measured_run_usd; }',
+      'export function RecentRunsTable({ row }: { row: Record<string, unknown> }) { return row.savings_per_measured_run_usd; }',
+      'export function SavingsPerRunCard2({ row }: { row: Record<string, unknown> }) { return row.savings_usd; }',
+    ].join('\n');
+    // The real allowance names the page file; this planted copy names the planted file, so only the owner and field are tested.
+    const card: R4Allowance = {
+      file: 'planted.tsx', owner: 'SavingsPerRunCard', fields: ['savings_per_measured_run_usd'],
+      componentId: 'overview-avg-saving-per-call', state: 'pending',
+    };
+    expect(ruleR4Source([{ file: 'planted.tsx', source }], [card])).toEqual([
+      'R4 planted.tsx:2 SavingsPerRunCardTwin: savings_per_measured_run_usd',
+      'R4 planted.tsx:3 RecentRunsTable: savings_per_measured_run_usd',
+      'R4 planted.tsx:4 SavingsPerRunCard2: savings_usd',
+    ]);
+    // A JSX reference to the card is a component use, not a read; a prop or key named like a savings field still is one.
+    const jsx = 'const a = () => <SavingsPerRunCard rows={rows} />;\nconst b = () => <Card savingsUsd={1} />;';
+    expect(ruleR4Source([{ file: 'planted.tsx', source: jsx }])).toEqual(['R4 planted.tsx:2 b: savingsUsd (savings_usd)']);
+    // The same name with a second savings field inside the allowed owner: the field is not exempt.
+    const wider = 'export function SavingsPerRunCard(row: Record<string, unknown>) { return [row.savings_per_measured_run_usd, row.savings_usd]; }';
+    expect(ruleR4Source([{ file: 'planted.tsx', source: wider }], [card])).toEqual([
+      'R4 planted.tsx:1 SavingsPerRunCard: savings_usd',
+    ]);
   });
 
   it('R4 normalising does not turn cost, constants or prose into savings', () => {
@@ -609,10 +659,29 @@ describe('OMN-19980 Step B: the allowlist is empty and every savings figure bind
     expect(r4AllowanceProblems(loadPages(), ruleR4Source(readSources(), []), R4_ALLOWED)).toEqual([]);
   });
 
+  it('the one pending allowance is OMN-20009\'s Avg saving / call read, and its card binds nothing while it waits', () => {
+    expect(R4_ALLOWED.filter((entry) => entry.state === 'pending').map(({ owner, fields, componentId }) => [owner, fields, componentId]))
+      .toEqual([['SavingsPerRunCard', ['savings_per_measured_run_usd'], 'overview-avg-saving-per-call']]);
+  });
+
+  it('planted: a pending allowance whose component gains a binding is reported, and must become bound', () => {
+    const pages = plant([plantedComponent('planted-pending', [binding('b', ALLOWED_TOPIC, ['savings_per_measured_run_usd'])])], []);
+    const entry: R4Allowance = { file: 'planted.tsx', owner: 'Card', fields: ['savings_per_measured_run_usd'], componentId: 'planted-pending', state: 'pending' };
+    const findings = ['R4 planted.tsx:3 Card: savings_per_measured_run_usd'];
+    expect(r4AllowanceProblems(pages, findings, [entry]))
+      .toEqual([`planted.tsx Card: pending, but planted-pending now binds ${ALLOWED_TOPIC}; make it bound`]);
+    expect(r4AllowanceProblems(pages, findings, [{ ...entry, state: 'bound' }])).toEqual([]);
+  });
+
+  it('planted: a JSX tag name reads no field, and a savings read inside that component still does', () => {
+    const source = 'export const Page = () => <SavingsPerRunCard rows={[]} />;\nexport function Other(row: Record<string, unknown>) { return row.savings_usd; }\n';
+    expect(ruleR4Source([{ file: 'planted.tsx', source }], [])).toEqual(['R4 planted.tsx:2 Other: savings_usd']);
+  });
+
   it('planted: an R4 allowance that is stale, allows an unbound field, or reads a component bound to another exposure, is reported', () => {
     const pages = plant([plantedComponent('planted-savings-reader', [binding('b', DELEGATION_SAVINGS, ['savings_usd'])])], []);
     const entry = (fields: string[], componentId = 'planted-savings-reader'): R4Allowance =>
-      ({ file: 'planted.tsx', owner: 'readSavings', fields, componentId });
+      ({ file: 'planted.tsx', owner: 'readSavings', fields, componentId, state: 'bound' });
     const findings = ['R4 planted.tsx:3 readSavings: savings_usd'];
     expect(r4AllowanceProblems(pages, findings, [entry(['savings_usd'])]))
       .toEqual([`planted.tsx readSavings: planted-savings-reader binds ${DELEGATION_SAVINGS}`]);
@@ -635,7 +704,7 @@ describe('OMN-19980 Step B: the allowlist is empty and every savings figure bind
       '  return [row.savings_usd, nested(), row["baseline_cost_usd"]];',
       '}',
     ].join('\n');
-    const allowed: R4Allowance[] = [{ file: 'planted.tsx', owner: 'readSavings', fields: ['savings_usd'], componentId: 'x' }];
+    const allowed: R4Allowance[] = [{ file: 'planted.tsx', owner: 'readSavings', fields: ['savings_usd'], componentId: 'x', state: 'bound' }];
     expect(ruleR4Source([{ file: 'planted.tsx', source }], allowed)).toEqual([
       'R4 planted.tsx:2 readSavings: counterfactual_baseline_usd',
       'R4 planted.tsx:3 readSavings: baseline_cost_usd',
@@ -886,9 +955,10 @@ describe('OMN-19980 AC2c: a savings card with no served source says what it wait
 
   it('every unbound savings card names metering-summary.v1 and shows no figure', () => {
     const texts = unboundSavingsTexts(loadPages());
-    // On dev every savings card is bound (Savings reads metering-summary.v1), so the population is empty; the planted
-    // case below is the control that proves an unbound one is found. OMN-20009's Avg saving / call joins it when it lands.
-    expect(texts.map(({ id }) => id)).toEqual([]);
+    // Savings and the other headline cards are bound to metering-summary.v1. The one unbound savings card is OMN-20009's
+    // Avg saving / call: the topic is served but its per-run column is not in the captured catalogue yet, so it waits,
+    // typed, on that exposure. The planted case below is the control that proves an unbound one is found.
+    expect(texts.map(({ id }) => id)).toEqual(['overview-avg-saving-per-call']);
     for (const { id, text } of texts) {
       expect(text, id).toBe(`Not served yet: waits on ${ALLOWED_SAVINGS_SOURCE}`);
     }
