@@ -17,6 +17,7 @@ import { fileURLToPath } from 'url';
 import type { ComponentManifest } from '../shared/types/component-manifest.js';
 import { validateComponentManifest } from '../shared/types/component-manifest.js';
 import { TOPICS, type TopicSymbol } from '../shared/types/topics.js';
+import { COMMAND_TOPICS } from '../shared/types/command-topics.js';
 import { PALETTE_CLASSIFICATION } from '../shared/types/palette-visibility.js';
 import { RENDERER_CAPABILITY_PROJECTION } from '../shared/types/renderer-capability.js';
 
@@ -131,7 +132,7 @@ const MVP_COMPONENTS: Record<string, ComponentManifestDraft> = {
     defaultSize: { w: 8, h: 5 },
     minSize: { w: 4, h: 3 },
     maxSize: { w: 12, h: 10 },
-    emptyState: { message: 'No cost data available', hint: 'Cost data appears after LLM calls are tracked' },
+    emptyState: { waits_on: [TOPICS.llmCost], message: 'No cost data available', hint: 'Cost data appears after LLM calls are tracked' },
     capabilities: { supports_compare: false, supports_export: true, supports_fullscreen: true, supports_time_range: true },
   },
   'cost-by-model': {
@@ -180,7 +181,7 @@ const MVP_COMPONENTS: Record<string, ComponentManifestDraft> = {
     defaultSize: { w: 6, h: 4 },
     minSize: { w: 3, h: 3 },
     maxSize: { w: 12, h: 8 },
-    emptyState: { message: 'No cost data available', hint: 'Cost data appears after LLM calls are tracked' },
+    emptyState: { waits_on: [TOPICS.llmCost], message: 'No cost data available', hint: 'Cost data appears after LLM calls are tracked' },
     capabilities: { supports_compare: false, supports_export: true, supports_fullscreen: true, supports_time_range: true },
   },
   'cost-by-model-3d': {
@@ -227,7 +228,7 @@ const MVP_COMPONENTS: Record<string, ComponentManifestDraft> = {
     defaultSize: { w: 6, h: 5 },
     minSize: { w: 4, h: 4 },
     maxSize: { w: 12, h: 9 },
-    emptyState: { message: 'No cost data available', hint: 'Cost data appears after LLM calls are tracked' },
+    emptyState: { waits_on: [TOPICS.llmCost], message: 'No cost data available', hint: 'Cost data appears after LLM calls are tracked' },
     capabilities: { supports_compare: false, supports_export: true, supports_fullscreen: true, supports_time_range: true },
   },
   /**
@@ -286,6 +287,7 @@ const MVP_COMPONENTS: Record<string, ComponentManifestDraft> = {
     minSize: { w: 3, h: 4 },
     maxSize: { w: 12, h: 12 },
     emptyState: {
+      waits_on: ['projection exposure catalogue (GET /projections)'],
       message: 'The catalogue was read and declares no exposures.',
       hint: 'A read that succeeded and returned nothing. A catalogue that could not be read surfaces as an error instead, because those are different facts.',
     },
@@ -362,6 +364,7 @@ const MVP_COMPONENTS: Record<string, ComponentManifestDraft> = {
     minSize: { w: 3, h: 3 },
     maxSize: { w: 12, h: 8 },
     emptyState: {
+      waits_on: [TOPICS.costByRepo],
       message: 'No cost-by-repo data available',
       hint: 'Cost by repository appears after repo_name is populated upstream',
       reasons: {
@@ -422,7 +425,7 @@ const MVP_COMPONENTS: Record<string, ComponentManifestDraft> = {
     defaultSize: { w: 6, h: 5 },
     minSize: { w: 4, h: 3 },
     maxSize: { w: 12, h: 8 },
-    emptyState: { message: 'No delegation events', hint: 'Delegation events appear when tasks are delegated to agents' },
+    emptyState: { waits_on: [TOPICS.delegationSummary], message: 'No delegation events', hint: 'Delegation events appear when tasks are delegated to agents' },
     capabilities: { supports_compare: false, supports_export: true, supports_fullscreen: true, supports_time_range: false },
   },
   'routing-decision-table': {
@@ -484,7 +487,7 @@ const MVP_COMPONENTS: Record<string, ComponentManifestDraft> = {
     defaultSize: { w: 12, h: 6 },
     minSize: { w: 6, h: 4 },
     maxSize: { w: 12, h: 12 },
-    emptyState: { message: 'No routing decisions', hint: 'Routing decisions appear when LLM routing is active' },
+    emptyState: { waits_on: [TOPICS.delegationDecisions], message: 'No routing decisions', hint: 'Routing decisions appear when LLM routing is active' },
     capabilities: { supports_compare: false, supports_export: true, supports_fullscreen: true, supports_time_range: true },
   },
   'baselines-roi-card': {
@@ -503,7 +506,7 @@ const MVP_COMPONENTS: Record<string, ComponentManifestDraft> = {
     defaultSize: { w: 6, h: 4 },
     minSize: { w: 3, h: 3 },
     maxSize: { w: 12, h: 6 },
-    emptyState: { message: 'No baselines data', hint: 'Baselines data appears after A/B pattern evaluation' },
+    emptyState: { waits_on: [TOPICS.baselinesRoi], message: 'No baselines data', hint: 'Baselines data appears after A/B pattern evaluation' },
     capabilities: { supports_compare: false, supports_export: true, supports_fullscreen: false, supports_time_range: false },
   },
   'quality-score-panel': {
@@ -541,7 +544,7 @@ const MVP_COMPONENTS: Record<string, ComponentManifestDraft> = {
     defaultSize: { w: 6, h: 4 },
     minSize: { w: 4, h: 3 },
     maxSize: { w: 12, h: 6 },
-    emptyState: { message: 'No quality scores', hint: 'Quality scores appear after patterns are evaluated' },
+    emptyState: { waits_on: [TOPICS.baselinesQuality], message: 'No quality scores', hint: 'Quality scores appear after patterns are evaluated' },
     capabilities: { supports_compare: false, supports_export: true, supports_fullscreen: false, supports_time_range: false },
   },
   'context-effectiveness-heatmap': {
@@ -578,6 +581,7 @@ const MVP_COMPONENTS: Record<string, ComponentManifestDraft> = {
     minSize: { w: 6, h: 4 },
     maxSize: { w: 12, h: 12 },
     emptyState: {
+      waits_on: [TOPICS.contextExperimentScores],
       message: 'No experiment scores',
       hint: 'context_roi_scores requires the OMN-12955 live experiment harness projection to have written rows.',
     },
@@ -596,7 +600,7 @@ const MVP_COMPONENTS: Record<string, ComponentManifestDraft> = {
     defaultSize: { w: 12, h: 4 },
     minSize: { w: 6, h: 3 },
     maxSize: { w: 12, h: 6 },
-    emptyState: { message: 'No readiness data', hint: 'Run the platform readiness gate to see results' },
+    emptyState: { waits_on: [TOPICS.overnightReadiness], message: 'No readiness data', hint: 'Run the platform readiness gate to see results' },
     capabilities: { supports_compare: false, supports_export: true, supports_fullscreen: false, supports_time_range: false },
   },
   'evidence-pipeline-flow': {
@@ -655,6 +659,7 @@ const MVP_COMPONENTS: Record<string, ComponentManifestDraft> = {
     minSize: { w: 8, h: 6 },
     maxSize: { w: 12, h: 14 },
     emptyState: {
+      waits_on: [TOPICS.evidencePipelineStages, TOPICS.evidencePipelineCorrelations, TOPICS.evidencePipelineReadiness],
       message: 'No evidence pipeline projections',
       hint: 'Emit reducer-backed projection snapshots for the evidence pipeline topics.',
     },
@@ -697,6 +702,7 @@ const MVP_COMPONENTS: Record<string, ComponentManifestDraft> = {
     minSize: { w: 4, h: 3 },
     maxSize: { w: 12, h: 8 },
     emptyState: {
+      waits_on: [RENDERER_CAPABILITY_PROJECTION.topic],
       message: 'No renderer capabilities declared',
       hint: 'Renderers thin-publish a capability heartbeat to onex.cmd.ui.renderer-capability-declared.v1; the W5 reducer materializes the projection. An absent/stale projection renders the typed upstream-blocked state.',
     },
@@ -796,7 +802,7 @@ const MVP_COMPONENTS: Record<string, ComponentManifestDraft> = {
     maxSize: { w: 12, h: 4 },
     // ComponentManifest.emptyState is the widget palette display message.
     // Detailed per-reason empty states are in the adapter (CostSummaryAdapter.tsx).
-    emptyState: { message: 'No cost summary data', hint: 'Cost summary appears after LLM calls are tracked. Projection is upstream-blocked until omnimarket emitter lands.' },
+    emptyState: { waits_on: [TOPICS.costSummary], message: 'No cost summary data', hint: 'Cost summary appears after LLM calls are tracked. Projection is upstream-blocked until omnimarket emitter lands.' },
     capabilities: { supports_compare: false, supports_export: true, supports_fullscreen: false, supports_time_range: false },
   },
   'token-usage': {
@@ -867,6 +873,7 @@ const MVP_COMPONENTS: Record<string, ComponentManifestDraft> = {
     minSize: { w: 4, h: 3 },
     maxSize: { w: 12, h: 10 },
     emptyState: {
+      waits_on: [TOPICS.costTokenUsage],
       message: 'No token usage data available',
       hint: 'Token usage data appears after LLM calls are tracked.',
       reasons: {
@@ -899,7 +906,7 @@ const MVP_COMPONENTS: Record<string, ComponentManifestDraft> = {
     defaultSize: { w: 12, h: 6 },
     minSize: { w: 6, h: 4 },
     maxSize: { w: 12, h: 12 },
-    emptyState: { message: 'No events streaming', hint: 'Events appear when the Kafka bus is connected' },
+    emptyState: { waits_on: [TOPICS.registration], message: 'No events streaming', hint: 'Events appear when the Kafka bus is connected' },
     // EventStream is a live tail, not a windowed query — the range
     // selector doesn't map onto its behavior, so it opts out.
     capabilities: { supports_compare: false, supports_export: false, supports_fullscreen: true, supports_time_range: false },
@@ -916,7 +923,7 @@ const MVP_COMPONENTS: Record<string, ComponentManifestDraft> = {
     defaultSize: { w: 8, h: 5 },
     minSize: { w: 4, h: 3 },
     maxSize: { w: 12, h: 10 },
-    emptyState: { message: 'No projection data', hint: 'Projection data appears when a VisualizationContract is configured' },
+    emptyState: { waits_on: [TOPICS.abCompare], message: 'No projection data', hint: 'Projection data appears when a VisualizationContract is configured' },
     capabilities: { supports_compare: false, supports_export: true, supports_fullscreen: true, supports_time_range: false },
   },
   'skill-adoption': {
@@ -946,7 +953,7 @@ const MVP_COMPONENTS: Record<string, ComponentManifestDraft> = {
     defaultSize: { w: 8, h: 5 },
     minSize: { w: 4, h: 3 },
     maxSize: { w: 12, h: 10 },
-    emptyState: { message: 'No skill executions', hint: 'Rows appear once skills emit started/completed lifecycle events to the bus' },
+    emptyState: { waits_on: [TOPICS.skillExecutions], message: 'No skill executions', hint: 'Rows appear once skills emit started/completed lifecycle events to the bus' },
     capabilities: { supports_compare: false, supports_export: true, supports_fullscreen: true, supports_time_range: false },
   },
   // OMN-17197 (GOAL row 0, epic OMN-16776 Phase 1). The render end of
@@ -999,6 +1006,7 @@ const MVP_COMPONENTS: Record<string, ComponentManifestDraft> = {
     minSize: { w: 6, h: 4 },
     maxSize: { w: 12, h: 12 },
     emptyState: {
+      waits_on: [TOPICS.consumerFlow],
       message: 'No consumer-flow windows',
       hint: 'Rows appear once the runtime heartbeat carries per-consumer flow windows and node_projection_consumer_flow materializes them (epic OMN-16776 Phase 1).',
     },
@@ -1062,6 +1070,7 @@ const MVP_COMPONENTS: Record<string, ComponentManifestDraft> = {
     minSize: { w: 6, h: 4 },
     maxSize: { w: 12, h: 12 },
     emptyState: {
+      waits_on: [TOPICS.sessionReplay],
       message: 'No session replay snapshots',
       hint: 'Rows appear once session lifecycle events reach node_projection_session_replay and it republishes each materialized row onto the snapshot topic (OMN-17774).',
     },
@@ -1131,6 +1140,7 @@ const MVP_COMPONENTS: Record<string, ComponentManifestDraft> = {
     minSize: { w: 6, h: 4 },
     maxSize: { w: 12, h: 12 },
     emptyState: {
+      waits_on: [TOPICS.workEvents],
       message: 'No work events',
       hint: 'Rows appear once session lifecycle events reach node_projection_work_events and it republishes each materialized row onto the snapshot topic (OMN-17772).',
     },
@@ -1169,6 +1179,7 @@ const MVP_COMPONENTS: Record<string, ComponentManifestDraft> = {
     minSize: { w: 6, h: 3 },
     maxSize: { w: 12, h: 10 },
     emptyState: {
+      waits_on: [TOPICS.usageByModelDay],
       message: 'No usage rows yet',
       hint: 'Rows appear once llm-call-completed events reach node_projection_usage_by_model_day.',
     },
@@ -1202,6 +1213,7 @@ const MVP_COMPONENTS: Record<string, ComponentManifestDraft> = {
     minSize: { w: 4, h: 3 },
     maxSize: { w: 12, h: 10 },
     emptyState: {
+      waits_on: [TOPICS.meteringSummary],
       message: 'No savings rows yet',
       hint: 'Rows appear once node_projection_metering_summary serves its day rows.',
     },
@@ -1233,7 +1245,7 @@ const MVP_COMPONENTS: Record<string, ComponentManifestDraft> = {
     defaultSize: { w: 6, h: 5 },
     minSize: { w: 4, h: 3 },
     maxSize: { w: 12, h: 8 },
-    emptyState: { message: 'No intent data', hint: 'Intent classification data appears after session analysis runs' },
+    emptyState: { waits_on: [TOPICS.intentClassification], message: 'No intent data', hint: 'Intent classification data appears after session analysis runs' },
     capabilities: { supports_compare: false, supports_export: true, supports_fullscreen: true, supports_time_range: false },
   },
   'session-timeline': {
@@ -1261,7 +1273,7 @@ const MVP_COMPONENTS: Record<string, ComponentManifestDraft> = {
     defaultSize: { w: 10, h: 6 },
     minSize: { w: 6, h: 4 },
     maxSize: { w: 12, h: 10 },
-    emptyState: { message: 'No session timeline data', hint: 'Timeline data appears after intent classification runs' },
+    emptyState: { waits_on: [TOPICS.intentClassification], message: 'No session timeline data', hint: 'Timeline data appears after intent classification runs' },
     capabilities: { supports_compare: false, supports_export: true, supports_fullscreen: true, supports_time_range: true },
   },
   'live-event-stream': {
@@ -1290,7 +1302,7 @@ const MVP_COMPONENTS: Record<string, ComponentManifestDraft> = {
     defaultSize: { w: 12, h: 8 },
     minSize: { w: 6, h: 4 },
     maxSize: { w: 12, h: 12 },
-    emptyState: { message: 'No live events', hint: 'Events appear when the system is actively processing' },
+    emptyState: { waits_on: [TOPICS.liveEvents], message: 'No live events', hint: 'Events appear when the system is actively processing' },
     capabilities: { supports_compare: false, supports_export: false, supports_fullscreen: true, supports_time_range: false },
   },
   'routing-decision': {
@@ -1305,7 +1317,7 @@ const MVP_COMPONENTS: Record<string, ComponentManifestDraft> = {
     defaultSize: { w: 8, h: 6 },
     minSize: { w: 6, h: 4 },
     maxSize: { w: 12, h: 10 },
-    emptyState: { message: 'No routing data', hint: 'Routing decisions appear when model routing is active' },
+    emptyState: { waits_on: [TOPICS.routingDecision], message: 'No routing data', hint: 'Routing decisions appear when model routing is active' },
     capabilities: { supports_compare: false, supports_export: false, supports_fullscreen: true, supports_time_range: false },
   },
   'receipt-gate': {
@@ -1320,7 +1332,7 @@ const MVP_COMPONENTS: Record<string, ComponentManifestDraft> = {
     defaultSize: { w: 6, h: 6 },
     minSize: { w: 4, h: 4 },
     maxSize: { w: 12, h: 10 },
-    emptyState: { message: 'No receipt data', hint: 'Receipt gate appears when PRs have verification receipts' },
+    emptyState: { waits_on: [TOPICS.receiptGate], message: 'No receipt data', hint: 'Receipt gate appears when PRs have verification receipts' },
     capabilities: { supports_compare: false, supports_export: false, supports_fullscreen: true, supports_time_range: false },
   },
   'cost-savings-overview': {
@@ -1421,6 +1433,7 @@ const MVP_COMPONENTS: Record<string, ComponentManifestDraft> = {
     minSize: { w: 8, h: 5 },
     maxSize: { w: 12, h: 14 },
     emptyState: {
+      waits_on: [TOPICS.costSavingsOverview],
       message: 'No cost savings data available',
       hint: 'Cost savings overview appears after node_dashboard_view_composer is deployed (OMN-10346).',
       reasons: {
@@ -1475,7 +1488,7 @@ const MVP_COMPONENTS: Record<string, ComponentManifestDraft> = {
     defaultSize: { w: 8, h: 6 },
     minSize: { w: 6, h: 4 },
     maxSize: { w: 12, h: 12 },
-    emptyState: { message: 'No cost data for this window', hint: 'Cost breakdown appears once llm_cost_aggregates is populated for the selected window (OMN-14896).' },
+    emptyState: { waits_on: [TOPICS.costSummary], message: 'No cost data for this window', hint: 'Cost breakdown appears once llm_cost_aggregates is populated for the selected window (OMN-14896).' },
     // supports_time_range MUST stay false: llm_cost_aggregates carries no per-row
     // event timestamp (only `updated_at`, a write-time marker) and this widget's
     // only time dimension is the row-level `window` enum ('24h'|'7d'|'30d'), which
@@ -1509,7 +1522,7 @@ const MVP_COMPONENTS: Record<string, ComponentManifestDraft> = {
     defaultSize: { w: 10, h: 7 },
     minSize: { w: 8, h: 5 },
     maxSize: { w: 12, h: 16 },
-    emptyState: { message: 'No cost comparison data', hint: 'Appears once delegation sessions with savings_estimates are recorded.' },
+    emptyState: { waits_on: [TOPICS.delegationSavings], message: 'No cost comparison data', hint: 'Appears once delegation sessions with savings_estimates are recorded.' },
     capabilities: { supports_compare: false, supports_export: false, supports_fullscreen: true, supports_time_range: false },
   },
   'delegation-model-routing': {
@@ -1573,7 +1586,7 @@ const MVP_COMPONENTS: Record<string, ComponentManifestDraft> = {
     defaultSize: { w: 6, h: 6 },
     minSize: { w: 4, h: 4 },
     maxSize: { w: 12, h: 12 },
-    emptyState: { message: 'No routing data', hint: 'Routing data appears once delegation events are recorded (OMN-10623).' },
+    emptyState: { waits_on: [TOPICS.delegationModelRouting], message: 'No routing data', hint: 'Routing data appears once delegation events are recorded (OMN-10623).' },
     capabilities: { supports_compare: false, supports_export: false, supports_fullscreen: true, supports_time_range: false },
   },
   'delegation-quality-gate': {
@@ -1613,7 +1626,7 @@ const MVP_COMPONENTS: Record<string, ComponentManifestDraft> = {
     defaultSize: { w: 6, h: 7 },
     minSize: { w: 4, h: 5 },
     maxSize: { w: 12, h: 14 },
-    emptyState: { message: 'No quality gate data', hint: 'Quality gate data appears once delegation events with gate checks are recorded (OMN-10623).' },
+    emptyState: { waits_on: [TOPICS.delegationQualityGate], message: 'No quality gate data', hint: 'Quality gate data appears once delegation events with gate checks are recorded (OMN-10623).' },
     capabilities: { supports_compare: false, supports_export: false, supports_fullscreen: true, supports_time_range: false },
   },
   'delegation-token-usage': {
@@ -1651,7 +1664,7 @@ const MVP_COMPONENTS: Record<string, ComponentManifestDraft> = {
     defaultSize: { w: 6, h: 6 },
     minSize: { w: 4, h: 4 },
     maxSize: { w: 12, h: 12 },
-    emptyState: { message: 'No token usage data', hint: 'Token usage data appears once LLM call metrics are recorded (OMN-10623).' },
+    emptyState: { waits_on: [TOPICS.delegationTokenUsage], message: 'No token usage data', hint: 'Token usage data appears once LLM call metrics are recorded (OMN-10623).' },
     capabilities: { supports_compare: false, supports_export: true, supports_fullscreen: true, supports_time_range: false },
   },
   'delegation-model-output': {
@@ -1709,7 +1722,7 @@ const MVP_COMPONENTS: Record<string, ComponentManifestDraft> = {
     defaultSize: { w: 6, h: 7 },
     minSize: { w: 4, h: 5 },
     maxSize: { w: 12, h: 16 },
-    emptyState: { message: 'No inference output', hint: 'Inference output appears once the projection emitter is deployed (OMN-12746). In file mode, add fixture files under fixtures/onex.snapshot.projection.delegation.inference-response-text.v1/' },
+    emptyState: { waits_on: [TOPICS.inferenceResponseText], message: 'No inference output', hint: 'Inference output appears once the projection emitter is deployed (OMN-12746). In file mode, add fixture files under fixtures/onex.snapshot.projection.delegation.inference-response-text.v1/' },
     capabilities: { supports_compare: false, supports_export: false, supports_fullscreen: true, supports_time_range: false },
   },
   'delegation-control-plane': {
@@ -1762,6 +1775,7 @@ const MVP_COMPONENTS: Record<string, ComponentManifestDraft> = {
     minSize: { w: 8, h: 8 },
     maxSize: { w: 12, h: 18 },
     emptyState: {
+      waits_on: [TOPICS.delegationSummary, TOPICS.delegationDecisions, TOPICS.delegationSavings, TOPICS.delegationModelRouting, TOPICS.delegationQualityGate, TOPICS.delegationTokenUsage],
       message: 'No delegation evidence rows',
       hint: 'Run the market delegation golden chain to populate command, decision, savings, quality, and token projections.',
     },
@@ -1786,7 +1800,7 @@ const MVP_COMPONENTS: Record<string, ComponentManifestDraft> = {
     defaultSize: { w: 6, h: 6 },
     minSize: { w: 4, h: 5 },
     maxSize: { w: 12, h: 10 },
-    emptyState: { message: 'Delegation unavailable', hint: 'Switch the dashboard data source to Live to delegate work.' },
+    emptyState: { waits_on: [COMMAND_TOPICS.delegateSkill], message: 'Delegation unavailable', hint: 'Switch the dashboard data source to Live to delegate work.' },
     capabilities: { supports_compare: false, supports_export: false, supports_fullscreen: true, supports_time_range: false },
   },
   'ab-compare': {
@@ -1855,6 +1869,7 @@ const MVP_COMPONENTS: Record<string, ComponentManifestDraft> = {
     minSize: { w: 6, h: 4 },
     maxSize: { w: 12, h: 10 },
     emptyState: {
+      waits_on: [TOPICS.abCompare],
       message: 'No comparison data yet — run `ab-compare` CLI',
       hint: 'Results appear after the first ab-compare run completes',
     },
@@ -1899,6 +1914,7 @@ const MVP_COMPONENTS: Record<string, ComponentManifestDraft> = {
     minSize: { w: 6, h: 3 },
     maxSize: { w: 12, h: 10 },
     emptyState: {
+      waits_on: [TOPICS.mcpTools],
       message: 'No MCP tools registered',
       hint: 'Tools appear after a successful generation + registration pipeline run',
     },
@@ -1919,6 +1935,7 @@ const MVP_COMPONENTS: Record<string, ComponentManifestDraft> = {
     minSize: { w: 4, h: 4 },
     maxSize: { w: 12, h: 10 },
     emptyState: {
+      waits_on: [COMMAND_TOPICS.nodeGenerationRequested],
       message: 'Node generation unavailable',
       hint: 'Switch the dashboard data source to Live to create a node.',
     },
@@ -1973,6 +1990,7 @@ const MVP_COMPONENTS: Record<string, ComponentManifestDraft> = {
     minSize: { w: 8, h: 6 },
     maxSize: { w: 12, h: 14 },
     emptyState: {
+      waits_on: [TOPICS.liveEvents],
       message: 'No live events',
       hint: 'The live-events projection returned zero rows; refused trace projections are never used as a fallback.',
     },
@@ -2005,6 +2023,7 @@ const MVP_COMPONENTS: Record<string, ComponentManifestDraft> = {
     minSize: { w: 6, h: 5 },
     maxSize: { w: 12, h: 14 },
     emptyState: {
+      waits_on: [TOPICS.consumerFlow, TOPICS.liveEvents, TOPICS.runtimeErrorFingerprints],
       message: 'No error findings',
       hint: 'Each source renders its own honest empty state; zero fingerprint rows name the missing runtime error event producer.',
     },
@@ -2045,6 +2064,7 @@ const MVP_COMPONENTS: Record<string, ComponentManifestDraft> = {
     minSize: { w: 8, h: 5 },
     maxSize: { w: 12, h: 14 },
     emptyState: {
+      waits_on: [TOPICS.topicActivity],
       message: 'Topic activity producer missing',
       hint: 'OMN-19716 topic-activity projection not yet bus-backed on this lane.',
     },
@@ -2080,6 +2100,7 @@ const MVP_COMPONENTS: Record<string, ComponentManifestDraft> = {
     minSize: { w: 8, h: 5 },
     maxSize: { w: 12, h: 14 },
     emptyState: {
+      waits_on: [TOPICS.runnerFleet],
       message: 'Runner fleet producer missing',
       hint: 'OMN-18768 runner-fleet projection not yet bus-backed on this lane.',
     },
@@ -2143,6 +2164,7 @@ const MVP_COMPONENTS: Record<string, ComponentManifestDraft> = {
     minSize: { w: 8, h: 8 },
     maxSize: { w: 12, h: 18 },
     emptyState: {
+      waits_on: [TOPICS.swarmRuns],
       message: 'No swarm runs',
       hint: 'Trigger a swarm dispatch via onex.cmd.omnimarket.swarm-dispatch.v1 to populate the swarm_runs projection.',
     },
