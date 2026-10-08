@@ -1,5 +1,16 @@
 import { describe, it, expect } from 'vitest';
-import { validateComponentManifest, type ComponentManifest, type ProjectionOrderingAuthority } from './component-manifest';
+import {
+  COMPONENT_WIDGET_KINDS,
+  STATUS_GRID_SEVERITIES,
+  validateAlertBannerRow,
+  validateComponentManifest,
+  validateStatusGridRow,
+  type AlertBannerRow,
+  type ComponentManifest,
+  type ProjectionOrderingAuthority,
+  type StatusGridRow,
+} from './component-manifest';
+import dashboardConfigSchema from '../../src/pages/local/model-dashboard-config.schema.json';
 import type { BarChartFieldMapping, TrendChartFieldMapping, EmptyStateConfig, EmptyStateReason } from './chart-config';
 import { TOPICS } from './topics';
 
@@ -19,7 +30,7 @@ describe('ComponentManifest validation', () => {
     defaultSize: { w: 6, h: 4 },
     minSize: { w: 3, h: 2 },
     maxSize: { w: 12, h: 8 },
-    emptyState: { message: 'No cost data', hint: 'Check data pipeline' },
+    emptyState: { message: 'No cost data', hint: 'Check data pipeline', waits_on: ['onex.snapshot.projection.llm-cost.v1'] },
     capabilities: { supports_compare: false, supports_export: true, supports_fullscreen: true },
   };
 
@@ -124,6 +135,7 @@ describe('ComponentManifest validation', () => {
         { type: 'projection', topic: 'onex.snapshot.projection.test.v1', required: true, purpose: 'initial_fetch' },
         { type: 'websocket', topic: 'onex.snapshot.projection.test.v1', required: false, purpose: 'live_updates' },
       ],
+      emptyState: { ...validManifest.emptyState, waits_on: ['onex.snapshot.projection.test.v1'] },
     });
     expect(result.valid).toBe(true);
   });
@@ -349,6 +361,7 @@ describe('ComponentManifest validation', () => {
       minSize: { w: 3, h: 3 },
       maxSize: { w: 12, h: 8 },
       emptyState: {
+        waits_on: [TOPICS.costByRepo],
         message: 'No cost-by-repo data available',
         hint: 'Cost by repository appears after repo_name is populated upstream',
         reasons: {
@@ -437,6 +450,136 @@ describe('ComponentManifest validation', () => {
     it('accepts emptyState with reasons (backward-compatible reasons field)', () => {
       const result = validateComponentManifest(costByRepoManifest);
       expect(result.valid).toBe(true);
+    });
+  });
+
+  // OMN-19993 AC1 + AC2: the two widget kinds the archived dashboard had, an empty state that
+  // names the topic it waits on, and a status-grid row that must say why it is in its state.
+  describe('OMN-19993 widget kinds, waits_on and status-grid rows', () => {
+    const ENV_TOPIC = 'onex.snapshot.projection.local-environment.v1';
+    const withSource: ComponentManifest = {
+      ...validManifest,
+      dataSources: [{ type: 'projection', topic: ENV_TOPIC, required: true, purpose: 'initial_fetch' }],
+      emptyState: { message: 'No services reported yet', waits_on: [ENV_TOPIC] },
+    };
+
+    it('accepts a manifest of kind status_grid', () => {
+      const result = validateComponentManifest({ ...withSource, kind: 'status_grid' });
+      expect(result.errors).toEqual([]);
+      expect(result.valid).toBe(true);
+    });
+
+    it('accepts a manifest of kind alert_banner', () => {
+      const result = validateComponentManifest({ ...withSource, kind: 'alert_banner' });
+      expect(result.errors).toEqual([]);
+      expect(result.valid).toBe(true);
+    });
+
+    it('rejects a kind outside the vocabulary', () => {
+      const result = validateComponentManifest({ ...withSource, kind: 'pie_chart' as ComponentManifest['kind'] });
+      expect(result.valid).toBe(false);
+      expect(result.errors).toContainEqual(expect.stringMatching(/Invalid kind "pie_chart"/));
+    });
+
+    it('extends the shipped EnumWidgetType vocabulary by alert_banner only', () => {
+      // The core enum, as emitted into the page-config schema. A kind added to core and not here (or the
+      // reverse) is drift, and fails this test rather than a manifest at runtime.
+      const coreKinds = (dashboardConfigSchema as { $defs: { EnumWidgetType: { enum: string[] } } }).$defs.EnumWidgetType.enum;
+      expect(coreKinds.length).toBeGreaterThan(0);
+      expect([...COMPONENT_WIDGET_KINDS].sort()).toEqual([...coreKinds, 'alert_banner'].sort());
+    });
+
+    it('rejects an emptyState without waits_on', () => {
+      const { waits_on: _omit, ...noWaitsOn } = withSource.emptyState;
+      const result = validateComponentManifest({ ...withSource, emptyState: noWaitsOn as ComponentManifest['emptyState'] });
+      expect(result.valid).toBe(false);
+      expect(result.errors).toContainEqual(expect.stringMatching(/emptyState\.waits_on is required/));
+    });
+
+    it('rejects an empty waits_on list', () => {
+      const result = validateComponentManifest({ ...withSource, emptyState: { ...withSource.emptyState, waits_on: [] } });
+      expect(result.valid).toBe(false);
+      expect(result.errors).toContainEqual(expect.stringMatching(/emptyState\.waits_on is required/));
+    });
+
+    it('rejects a waits_on that is a bare string instead of a list', () => {
+      const result = validateComponentManifest({
+        ...withSource,
+        emptyState: { ...withSource.emptyState, waits_on: ENV_TOPIC as unknown as string[] },
+      });
+      expect(result.valid).toBe(false);
+      expect(result.errors).toContainEqual(expect.stringMatching(/emptyState\.waits_on is required/));
+    });
+
+    it('rejects a blank waits_on entry', () => {
+      const result = validateComponentManifest({ ...withSource, emptyState: { ...withSource.emptyState, waits_on: ['  '] } });
+      expect(result.valid).toBe(false);
+      expect(result.errors).toContainEqual(expect.stringMatching(/emptyState\.waits_on\[0\] must be a non-empty/));
+    });
+
+    it('rejects a waits_on topic the widget does not read', () => {
+      const result = validateComponentManifest({
+        ...withSource,
+        emptyState: { ...withSource.emptyState, waits_on: ['onex.snapshot.projection.local-alerts.v1'] },
+      });
+      expect(result.valid).toBe(false);
+      expect(result.errors).toContainEqual(expect.stringMatching(/waits_on names "onex\.snapshot\.projection\.local-alerts\.v1".*not one of its dataSources/));
+    });
+
+    const row: StatusGridRow = {
+      key: 'postgres',
+      label: 'postgres',
+      status: 'DOWN',
+      severity: 'critical',
+      status_reason: 'container exited (code 137) 2 min ago',
+      last_seen: '2026-10-07T11:00:00Z',
+    };
+
+    it('accepts a status-grid row with a reason', () => {
+      expect(validateStatusGridRow(row)).toEqual({ valid: true, errors: [] });
+    });
+
+    it('rejects a status-grid row with no reason', () => {
+      const { status_reason: _omit, ...noReason } = row;
+      const result = validateStatusGridRow(noReason as StatusGridRow);
+      expect(result.valid).toBe(false);
+      expect(result.errors).toContainEqual(expect.stringMatching(/status_reason is required/));
+    });
+
+    it('rejects a status-grid row whose reason is blank or null', () => {
+      expect(validateStatusGridRow({ ...row, status_reason: '   ' }).valid).toBe(false);
+      expect(validateStatusGridRow({ ...row, status_reason: null as unknown as string }).valid).toBe(false);
+    });
+
+    it('rejects a status-grid row with no status word or an unknown severity', () => {
+      expect(validateStatusGridRow({ ...row, status: '' }).errors).toContainEqual(expect.stringMatching(/status is required/));
+      const bad = validateStatusGridRow({ ...row, severity: 'red' as StatusGridRow['severity'] });
+      expect(bad.errors).toContainEqual(expect.stringMatching(/Invalid severity "red"/));
+    });
+
+    it('mirrors the shipped EnumStatusSeverity vocabulary', () => {
+      const core = (dashboardConfigSchema as { $defs: { EnumStatusSeverity: { enum: string[] } } }).$defs.EnumStatusSeverity.enum;
+      expect([...STATUS_GRID_SEVERITIES].sort()).toEqual([...core].sort());
+    });
+
+    const alert: AlertBannerRow = {
+      alert_id: 'alert-1',
+      code: 'SERVICE_DOWN',
+      severity: 'critical',
+      subject: 'postgres',
+      since: '2026-10-07T10:58:00Z',
+    };
+
+    it('accepts an alert row with code, subject and since', () => {
+      expect(validateAlertBannerRow(alert)).toEqual({ valid: true, errors: [] });
+    });
+
+    it('rejects an alert row missing code, subject or since', () => {
+      for (const field of ['code', 'subject', 'since', 'alert_id'] as const) {
+        const result = validateAlertBannerRow({ ...alert, [field]: '' });
+        expect(result.valid, field).toBe(false);
+        expect(result.errors).toContainEqual(expect.stringContaining(field));
+      }
     });
   });
 });

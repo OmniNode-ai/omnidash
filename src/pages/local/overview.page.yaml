@@ -346,6 +346,40 @@
         "page_size": 10,
         "show_pagination": false
       }
+    },
+    {
+      "widget_id": "6f1d2c8e-4b7a-5e39-9c0d-20226a1c0c01",
+      "title": "Compression",
+      "row": 14,
+      "col": 0,
+      "width": 4,
+      "height": 2,
+      "data_source": "overview-compression",
+      "config": {
+        "config_kind": "metric_card",
+        "widget_type": "metric_card",
+        "metric_key": "compression_ratio",
+        "label": "Compression",
+        "format": "number",
+        "precision": 2
+      }
+    },
+    {
+      "widget_id": "6f1d2c8e-4b7a-5e39-9c0d-20226a1c0c02",
+      "title": "Cache hit rate",
+      "row": 14,
+      "col": 4,
+      "width": 4,
+      "height": 2,
+      "data_source": "overview-cache-hit-rate",
+      "config": {
+        "config_kind": "metric_card",
+        "widget_type": "metric_card",
+        "metric_key": "cache_hit_rate",
+        "label": "Cache hit rate",
+        "format": "number",
+        "precision": 3
+      }
     }
   ]
 }
