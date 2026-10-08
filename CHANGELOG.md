@@ -4,6 +4,14 @@ All notable changes to `omnidash` are documented here.
 
 This project follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) and [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## v1.1.5 (2026-10-08)
+
+### Fixes
+- The local dashboard reads tenant-scoped exposures as the tenant its server declares in
+  `GET /projections`, so the released bundle served by `onex dashboard` no longer shows every scoped
+  panel as Tenant not configured. A build-time tenant still wins where one is set, and with neither
+  the read is still refused before it is sent (OMN-20728)
+
 ## v1.1.4 (2026-10-06)
 
 Cuts a release so the static bundle has a versioned artifact to be published against. The
