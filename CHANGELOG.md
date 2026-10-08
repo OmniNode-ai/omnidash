@@ -4,6 +4,13 @@ All notable changes to `omnidash` are documented here.
 
 This project follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) and [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## v1.1.6 (2026-10-08)
+
+### Features
+- The Overview shows Baseline spend: the served `counterfactual_usd` of metering-summary.v1's all-time
+  row, the figure `onex metering --json` reports, beside the baseline model and pricing manifest it is
+  priced at. With no baseline resolved it shows Baseline unresolved, never $0 (OMN-20752)
+
 ## v1.1.5 (2026-10-08)
 
 ### Fixes

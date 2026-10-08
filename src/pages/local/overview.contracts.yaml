@@ -272,6 +272,36 @@
       ]
     },
     {
+      "component_id": "overview-baseline-spend",
+      "component_kind": "metric_card",
+      "title": "Baseline spend",
+      "contract_version": {
+        "major": 1,
+        "minor": 0,
+        "patch": 0
+      },
+      "data_bindings": [
+        {
+          "binding_id": "overview-baseline-spend-metering",
+          "projection_topic": "onex.snapshot.projection.metering-summary.v1",
+          "ordering_authority_field": "as_of",
+          "ordering_direction": "descending",
+          "required_fields": [
+            "window_kind",
+            "as_of",
+            "baseline_model",
+            "pricing_manifest_version",
+            "baseline_state",
+            "counterfactual_usd"
+          ]
+        }
+      ],
+      "supported_empty_state_reasons": [
+        "missing-field",
+        "no-data"
+      ]
+    },
+    {
       "component_id": "overview-quality",
       "component_kind": "table",
       "title": "Quality",

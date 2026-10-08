@@ -298,6 +298,8 @@ describe('local pages against the captured lab catalogue', () => {
       'spend_usd', 'savings_usd', 'runs_measured', 'tokens_in_and_out',
       // OMN-20009: the served run-locally share and the served saving per measured run.
       'by_tier.local_call_share', 'savings_per_measured_run_usd',
+      // OMN-20752: Baseline spend, the same all-time row's served counterfactual_usd.
+      'counterfactual_usd',
       // OMN-20226: compression and cache hit rate, each a served metering-summary.v1 column, Not measured until produced.
       'compression_ratio', 'cache_hit_rate',
     ]);
