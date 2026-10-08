@@ -278,6 +278,24 @@
       }
     },
     {
+      "widget_id": "6f1d2c8e-4b7a-5e39-9c0d-20752a1c0c01",
+      "title": "Baseline spend",
+      "row": 8,
+      "col": 8,
+      "width": 4,
+      "height": 2,
+      "data_source": "overview-baseline-spend",
+      "config": {
+        "config_kind": "metric_card",
+        "widget_type": "metric_card",
+        "metric_key": "counterfactual_usd",
+        "label": "Baseline spend",
+        "unit": "USD",
+        "format": "currency",
+        "precision": 4
+      }
+    },
+    {
       "widget_id": "d4da9a48-f797-4b1d-b622-41f028a67e04",
       "title": "Quality",
       "row": 10,
