@@ -1,18 +1,19 @@
 # SPDX-FileCopyrightText: 2026 OmniNode.ai Inc.
 # SPDX-License-Identifier: MIT
-"""OMN-20073: omnidash's repo-evidence caller runs in S5 shadow mode.
+"""OMN-20073/OMN-20074: omnidash's repo-evidence caller enforces after S6.
 
-The caller records the new-path verdict beside OCC's on the same head and must
-block nothing: the reusable's ``shadow`` input makes ``repo-evidence / verify``
-and ``repo-evidence / dod-verify`` conclude success, neither context may be a
-required check, and omnidash's ``CI Summary`` must not read external check-runs
-(so a non-success row from this caller cannot redden it).
+The caller's ``shadow`` and ``compare-with-occ`` inputs are ``"false"``: the
+verdict is real, and the difference step must not wait for an OCC verdict after
+dev branch protection drops the OCC contexts. ``repo-evidence / dod-verify`` is
+required by a repository ruleset on refs/heads/dev, so it has no required-checks
+manifest row. The verifier retains the classifier for a comparison rollback.
+Omnidash's ``CI Summary`` must not read external check-runs.
 
-Failure modes this catches: the caller dropped ``shadow`` or ``compare-with-occ``
-(the check-run would carry a real refusal); the pin moved to a branch name; the
+Failure modes this catches: the caller re-enabled shadow or OCC comparison after
+the S6 cut-over; the verifier lost the classifier; the pin moved to a branch name; the
 caller moved to ``pull_request`` (a PR could then edit what judges it); a job
 name was added (the context prefix would change); a repo-evidence context was
-added to the required-check manifest before the S6 ruling; CI Summary began to
+added to the branch-protection manifest despite its ruleset requirement; CI Summary began to
 sweep external check-runs.
 """
 
@@ -73,25 +74,27 @@ def test_caller_pins_the_reusable_by_full_sha() -> None:
     )
 
 
-def test_caller_is_in_shadow_mode_and_compares_with_occ() -> None:
+def test_caller_enforces_and_stops_comparing_with_occ_after_the_s6_cutover() -> None:
     inputs = _job()["with"]
     assert inputs["evidence-source"] == "caller"
     # Quoted strings: the reusable's boolean-like inputs are string inputs.
-    assert inputs["shadow"] == "true"
-    assert inputs["compare-with-occ"] == "true"
+    assert inputs["shadow"] == "false"
+    assert inputs["compare-with-occ"] == "false"
     version = tuple(int(part) for part in inputs["verifier-version"].split("."))
     assert version >= DIFFERENCE_CLASSIFIER_FLOOR
 
 
 def test_no_repo_evidence_context_is_a_required_check() -> None:
     gates = _load(MANIFEST)["gates"]
-    assert not [g["name"] for g in gates if g["name"].startswith("repo-evidence")]
+    assert not [g["name"] for g in gates if g["name"].startswith("repo-evidence")], (
+        "repo-evidence is ruleset-required on dev, never a branch-protection manifest row"
+    )
     producers = [
         g
         for g in gates
         if g.get("workflow") == CALLER.name or g.get("caller_workflow") == CALLER.name
     ]
-    assert not producers, "shadow caller must not produce a required context"
+    assert not producers, "ruleset-required caller must not have a branch-protection manifest row"
 
 
 def test_occ_preflight_context_keeps_its_own_producer() -> None:

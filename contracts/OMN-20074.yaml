@@ -1,0 +1,69 @@
+---
+schema_version: "1.0.0"
+ticket_id: OMN-20074
+title: Prepare omnidash's skip-token and repo-evidence callers for the S6 cut-over
+summary: >-
+  Pin the skip-token reusable without its nested change-control preflight, drop the OCC
+  contexts from the required-checks manifest, and enforce repo-evidence without OCC comparison.
+  This lands with the S6 dev branch-protection change and not before (plan S6, OMN-20068).
+is_seam_ticket: false
+interface_change: false
+interfaces_touched: []
+requirements:
+  - id: req-omn20074
+    statement: >-
+      Prepare the callers and declared checks for the S6 cut-over while preserving the required
+      skip-token scan and a verifier release that supports comparison rollback.
+    acceptance:
+      - id: AC1
+        statement: >-
+          AC1: the skip-token caller and manifest scan row pin the preflight-free reusable
+          from omniclaude#2540, the manifest drops occ-preflight / eligibility, verify / verify,
+          and call-reject-skip-token / occ-preflight / eligibility, and the scan stays REQUIRED
+          -- falsifier: python -m pytest tests/ci/test_reject_skip_caller_without_preflight_omn20074.py
+          -q --noconftest -p no:cacheprovider -c /dev/null
+      - id: AC2
+        statement: >-
+          AC2: the repo-evidence caller uses evidence-source caller, shadow "false", and
+          compare-with-occ "false" after the S6 cut-over, while verifier-version retains
+          the node_dod_verify occ-difference classifier for rollback (omnimarket#3277)
+          -- falsifier: python -m pytest tests/ci/test_repo_evidence_caller_omn20073.py
+          -q --noconftest -p no:cacheprovider -c /dev/null -k s6_cutover
+evidence_requirements:
+  - kind: tests
+    description: >-
+      The caller and scan manifest row pin the preflight-free reusable, the manifest drops
+      the OCC contexts, and the scan remains REQUIRED.
+    command: python -m pytest tests/ci/test_reject_skip_caller_without_preflight_omn20074.py -q --noconftest -p no:cacheprovider -c /dev/null
+  - kind: tests
+    description: >-
+      The repo-evidence caller enforces its verdict without OCC comparison and retains
+      the classifier for rollback.
+    command: python -m pytest tests/ci/test_repo_evidence_caller_omn20073.py -q --noconftest -p no:cacheprovider -c /dev/null -k s6_cutover
+emergency_bypass:
+  enabled: false
+  justification: ''
+  follow_up_ticket_id: ''
+dod_evidence:
+  - id: dod-omn-20074-ac1
+    description: >-
+      The caller pin and manifest tests pass with the S6 preparation, preserving the scan
+      and dropping the OCC contexts.
+    source: manual
+    checks:
+      - check_type: test_passes
+        check_value: python -m pytest tests/ci/test_reject_skip_caller_without_preflight_omn20074.py -q --noconftest -p no:cacheprovider -c /dev/null
+        cwd: ${OMNI_HOME}/omnidash
+    binds_ac:
+      - AC1
+  - id: dod-omn-20074-ac2
+    description: >-
+      The S6 cut-over test passes with shadow and compare-with-occ "false" while
+      verifier-version retains the classifier.
+    source: manual
+    checks:
+      - check_type: test_passes
+        check_value: python -m pytest tests/ci/test_repo_evidence_caller_omn20073.py -q --noconftest -p no:cacheprovider -c /dev/null -k s6_cutover
+        cwd: ${OMNI_HOME}/omnidash
+    binds_ac:
+      - AC2

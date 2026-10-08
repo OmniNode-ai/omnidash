@@ -1,6 +1,10 @@
 # SPDX-FileCopyrightText: 2026 OmniNode.ai Inc.
 # SPDX-License-Identifier: MIT
 
+# OMN-20074 S6 cut-over: dev drops `occ-preflight / eligibility` and
+# `verify / verify`; `repo-evidence / dod-verify` is required by a repository
+# ruleset on refs/heads/dev, not branch protection, so it has no row here.
+#
 # required-checks.yaml v3 (OMN-14860, fan-out from the omniclaude canary
 # OMN-14854; branch-scoped coverage added OMN-15120, per-branch `branch:`
 # field schema OMN-15117)
@@ -109,7 +113,7 @@ gates:
     producer_kind: cross_repo
     caller_workflow: call-reject-skip.yml
     caller_job: call-reject-skip-token
-    cross_repo_ref: "OmniNode-ai/omniclaude/.github/workflows/reject-deploy-gate-skip.yml@61761f04a8c8edfb810bd261bb82ed60b8bcad2d"
+    cross_repo_ref: "OmniNode-ai/omniclaude/.github/workflows/reject-deploy-gate-skip.yml@4358450ccbba0cee11e390208dd0b8b1728e94ab"
     skip_semantics: never
     rationale: "Skip-token bypass scanner (OMN-10347/10422/10971), canonical source hosted in omniclaude."
 
@@ -228,16 +232,6 @@ gates:
     skip_semantics: never
     rationale: "Live required status check on omnidash dev branch protection."
 
-  - name: "occ-preflight / eligibility"
-    mode: REQUIRED
-    branch: dev
-    producer_kind: cross_repo
-    caller_workflow: call-occ-preflight.yml
-    caller_job: occ-preflight
-    cross_repo_ref: "OmniNode-ai/omnibase_core/.github/workflows/occ-preflight.yml@1e69bec909f245be511803191554e5b340def0b7"
-    skip_semantics: never
-    rationale: "Central OCC eligibility gate (cross-repo reusable hosted in omnibase_core)."
-
   - name: "receipt-honesty"
     mode: REQUIRED
     branch: dev
@@ -246,16 +240,6 @@ gates:
     job_path: ["receipt-honesty"]
     skip_semantics: never
     rationale: "Live required status check on omnidash dev branch protection."
-
-  - name: "verify / verify"
-    mode: REQUIRED
-    branch: dev
-    producer_kind: cross_repo
-    caller_workflow: call-receipt-gate.yml
-    caller_job: verify
-    cross_repo_ref: "OmniNode-ai/omnibase_core/.github/workflows/receipt-gate.yml@1e69bec909f245be511803191554e5b340def0b7"
-    skip_semantics: never
-    rationale: "Central Receipt Gate (cross-repo reusable hosted in omnibase_core)."
 
   - name: "required-check-skip-guard / check-skip-vectors"
     mode: ADVISORY
