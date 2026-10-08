@@ -64,7 +64,7 @@ import { LocalDashboardPage } from './LocalDashboardPage';
 import { loadLocalPageConfig, resolveLocalPageEmptyState } from '@/layout/local-page-loader';
 
 // Distinct figures, so a per-run saving or baseline price that reached the screen is found by its value.
-const LOCAL_COST = '0.0011';
+const LOCAL_COST = '$0.0011';
 const SESSION = {
   session_id: 'corr-19980', created_at: '2026-10-05T12:00:00Z', model_name: 'Qwen3.8-27B', local_cost_usd: 0.0011,
   cloud_cost_usd: 0.000901, counterfactual_baseline_usd: 0.000902, savings_usd: 0.000844,
