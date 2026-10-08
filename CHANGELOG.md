@@ -4,6 +4,12 @@ All notable changes to `omnidash` are documented here.
 
 This project follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) and [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## v1.1.7 (2026-10-08)
+
+### Fixed
+
+- Runs, Recent runs and Last run show a run's status and cost on `onex dashboard`. The local store serves a gate verdict as 1/0, which now reads as passed/failed, and a run's cost falls back to the decision row's own `cost_usd` when no savings session is served. A cost never measured stays Not recorded. Every per-run cost prints in dollars with at least two decimals, unrounded (OMN-20753).
+
 ## v1.1.6 (2026-10-08)
 
 ### Features
