@@ -62,6 +62,14 @@ describe('AlertBanner', () => {
     expect(screen.getByTestId('alert-banner-refused').textContent).toMatch(/1 alert refused: broken: code is required/);
   });
 
+  it('never says "All clear" when every row it was given was refused', () => {
+    const broken = { ...critical[0]!, alert_id: 'broken', code: '' };
+    render(<AlertBanner alerts={[broken]} waitsOn={[SEED_ALERTS_TOPIC]} />);
+    expect(screen.queryByTestId('alert-banner-clear')).toBeNull();
+    expect(screen.queryByText(/All clear/)).toBeNull();
+    expect(screen.getByTestId('alert-banner-refused').textContent).toMatch(/1 alert refused: broken: code is required/);
+  });
+
   it('links an alert to where to look next when it carries a link', () => {
     render(<AlertBanner alerts={SEED_ALERT_ROWS} waitsOn={[SEED_ALERTS_TOPIC]} />);
     const withLink = critical.find((a) => a.link);

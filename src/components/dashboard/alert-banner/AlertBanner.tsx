@@ -101,6 +101,10 @@ export function AlertBanner({ alerts, waitsOn }: AlertBannerProps) {
       </div>
     ) : null;
 
+  // "All clear" is a health claim, so it needs an empty input. When every row was refused, the rows
+  // still say something is open; show only the refusal rather than claiming there is nothing.
+  if (valid.length === 0 && refused.length > 0) return refusedNote;
+
   if (valid.length === 0) {
     return (
       <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
