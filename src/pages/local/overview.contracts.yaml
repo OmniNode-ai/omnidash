@@ -3,7 +3,7 @@
     {
       "component_id": "overview-spend",
       "component_kind": "metric_card",
-      "title": "Spend",
+      "title": "Actual spend",
       "contract_version": {
         "major": 1,
         "minor": 0,
@@ -60,7 +60,7 @@
     {
       "component_id": "overview-measured",
       "component_kind": "metric_card",
-      "title": "Measured runs",
+      "title": "Agent calls",
       "contract_version": {
         "major": 1,
         "minor": 0,
@@ -90,7 +90,7 @@
     {
       "component_id": "overview-tokens",
       "component_kind": "metric_card",
-      "title": "Tokens in and out",
+      "title": "Tokens processed",
       "contract_version": {
         "major": 1,
         "minor": 0,

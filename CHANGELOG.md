@@ -4,6 +4,13 @@ All notable changes to `omnidash` are documented here.
 
 This project follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) and [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## v1.1.8 (2026-10-09)
+
+### Changes
+- The Overview titles three cards as the demo mockup does: Actual spend (was Spend), Agent calls (was
+  Measured runs) and Tokens processed (was Tokens in and out). The figures behind them are unchanged
+  (OMN-20758)
+
 ## v1.1.7 (2026-10-08)
 
 ### Fixed
