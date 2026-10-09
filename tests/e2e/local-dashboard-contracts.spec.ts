@@ -164,8 +164,9 @@ test('stored basis, excluded counts and modelled baseline survive native Overvie
       runs_total: 4, runs_measured: 1, runs_unknown_tokens: 1, runs_unknown_spend: 2 })],
   });
   await page.goto('/');
-  await expect(page.getByText('Baseline served-baseline-model · pricing manifest v1')).toBeVisible();
-  await expect(page.getByText(/The baseline never ran\./)).toBeVisible();
+  // Savings and, since OMN-20752, Baseline spend both carry the metering row's baseline caption and modelled note.
+  await expect(page.getByText('Baseline served-baseline-model · pricing manifest v1')).toHaveCount(2);
+  await expect(page.getByText(/The baseline never ran\./)).toHaveCount(2);
   await expect(page.getByText('Of 4 runs · Unknown-token runs excluded: 1 · Unknown-spend runs excluded: 2', { exact: true })).toBeVisible();
   const last = page.getByRole('region', { name: 'Last run' });
   await expect(last.locator('dt').filter({ hasText: /^Basis$/ })).toBeVisible();
@@ -203,7 +204,7 @@ test('Overview is the default page and fits 1440x900 with no unmeasured 0 (AC4)'
   await expect(unmeasured).toBeVisible();
   // OMN-19980 AC2b: a run shows its cost and never a per-run saving, so the unpriced run has no saving to type.
   await expect(recent.getByRole('columnheader', { name: 'Savings', exact: true })).toHaveCount(0);
-  await expect(unmeasured.getByText('0.0004', { exact: true })).toBeVisible();
+  await expect(unmeasured.getByText('$0.0004', { exact: true })).toBeVisible();
   await expect(unmeasured.getByText('Not recorded').first()).toBeVisible();
   await expect(page.getByText('0', { exact: true })).toHaveCount(0);
   await expect(page.getByText('$0', { exact: true })).toHaveCount(0);
@@ -251,7 +252,7 @@ test('Runs lists every decision with typed unmeasured values at 1440x900 (AC4)',
   for (const header of ['Baseline cost', 'Savings']) {
     await expect(page.getByRole('columnheader', { name: header, exact: true }), header).toHaveCount(0);
   }
-  await expect(unmeasured.getByText('0.0004', { exact: true })).toBeVisible();
+  await expect(unmeasured.getByText('$0.0004', { exact: true })).toBeVisible();
   await expect(unmeasured.getByText('Baseline unresolved')).toHaveCount(0);
   await expect(page.getByText('Runs 1–2 of 2')).toBeVisible();
   await expect(page.getByText('0', { exact: true })).toHaveCount(0);
@@ -449,11 +450,9 @@ test('Overview and Runs scroll to their last row while the header stays reachabl
   await page.mouse.wheel(0, 5000);
   await expect.poll(() => scrollPage.evaluate((element) => element.scrollTop)).toBeGreaterThan(0);
   await expect(page.getByRole('button', { name: 'Next page', exact: true })).toBeInViewport();
+  // OMN-20759: the Runs table fits its panel at 1440, so there is nothing to scroll sideways to.
   const table = page.locator('.local-dashboard-table-wrap');
-  const bounds = (await table.boundingBox())!;
-  await page.mouse.move(bounds.x + bounds.width / 2, Math.max(100, bounds.y + bounds.height - 20));
-  await page.mouse.wheel(5000, 0);
-  await expect.poll(() => table.evaluate((element) => element.scrollLeft)).toBeGreaterThan(0);
+  expect(await table.evaluate((element) => element.scrollWidth - element.clientWidth)).toBeLessThanOrEqual(0);
   expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(1440);
   await page.getByRole('button', { name: 'Next page', exact: true }).click();
   await expect(page.getByText('Runs 26–26 of 26')).toBeVisible();
