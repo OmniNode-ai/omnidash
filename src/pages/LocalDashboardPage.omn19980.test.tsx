@@ -205,7 +205,7 @@ describe('OMN-19980 AC2c: a savings card with nothing measured or served says so
     const card = panel('Savings');
     expect(within(card).getByText('Baseline unresolved')).toBeInTheDocument();
     noFigure(card);
-    expect(within(panel('Spend')).getByText('$0.0100')).toBeInTheDocument();
+    expect(within(panel('Actual spend')).getByText('$0.0100')).toBeInTheDocument();
     expect(within(panel('Recent runs')).getByText(LOCAL_COST)).toBeInTheDocument();
   });
 });
@@ -239,8 +239,8 @@ describe('OMN-19980 Step B: the Overview Savings total is metering-summary.v1\'s
     expect(within(savings).queryByText(/claude-opus-4-6/)).toBeNull();
     expect(within(savings).queryByText('$0.5000')).toBeNull();
     // Amendment 2: Spend and Measured runs read the same all row now, not cost.savings-overview.v1 (0.01 and 4).
-    expect(within(panel('Spend')).getByText('$0.0071')).toBeInTheDocument();
-    expect(within(panel('Measured runs')).getByText('7')).toBeInTheDocument();
+    expect(within(panel('Actual spend')).getByText('$0.0071')).toBeInTheDocument();
+    expect(within(panel('Agent calls')).getByText('7')).toBeInTheDocument();
   });
 
   it('T2: metering-summary.v1 not in the census: the card names it and shows no figure', async () => {
@@ -257,7 +257,7 @@ describe('OMN-19980 Step B: the Overview Savings total is metering-summary.v1\'s
     const savings = panel('Savings');
     expect(within(savings).getByText('Baseline unresolved')).toBeInTheDocument();
     noFigure(savings);
-    expect(within(panel('Spend')).getByText('$0.0071')).toBeInTheDocument();
+    expect(within(panel('Actual spend')).getByText('$0.0071')).toBeInTheDocument();
     expect(within(panel('Recent runs')).getByText(LOCAL_COST)).toBeInTheDocument();
   });
 
@@ -303,7 +303,7 @@ describe('OMN-19980 Step B: the Overview Savings total is metering-summary.v1\'s
 });
 
 describe('OMN-19980 Step B (Amendment 2): Spend, Measured runs and Tokens read the same all row as Savings', () => {
-  const HEADLINES = ['Spend', 'Measured runs', 'Tokens in and out'] as const;
+  const HEADLINES = ['Actual spend', 'Agent calls', 'Tokens processed'] as const;
   /** The card's figure and caption lines, exactly (the panel's read-state line is not the card's figure). */
   const figure = (title: string) => [...panel(title).querySelectorAll('.local-dashboard-metric')].map((node) => node.textContent);
   const captions = (title: string) => [...panel(title).querySelectorAll('.local-dashboard-caption')].map((node) => node.textContent);
@@ -314,16 +314,16 @@ describe('OMN-19980 Step B (Amendment 2): Spend, Measured runs and Tokens read t
       meteringRow({}),
     ] });
     await open('overview');
-    const spend = panel('Spend');
+    const spend = panel('Actual spend');
     expect(within(spend).getByText('$0.0071')).toBeInTheDocument();
     expect(within(spend).queryByText('$0.0100')).toBeNull();
     expect(within(spend).queryByText('$0.0022')).toBeNull();
-    const measured = panel('Measured runs');
+    const measured = panel('Agent calls');
     expect(within(measured).getByText('7')).toBeInTheDocument();
     expect(within(measured).getByText('Of 9 runs · Unknown-token runs excluded: 1 · Unknown-spend runs excluded: 1')).toBeInTheDocument();
     expect(within(measured).queryByText('4')).toBeNull();
     expect(within(measured).queryByText(/Estimated runs excluded/)).toBeNull();
-    const tokens = panel('Tokens in and out');
+    const tokens = panel('Tokens processed');
     expect(within(tokens).getByText('1,620 in · 520 out')).toBeInTheDocument();
     expect(within(tokens).queryByText(/Not served yet/)).toBeNull();
     expect(within(tokens).queryByText(/111/)).toBeNull();
@@ -343,9 +343,9 @@ describe('OMN-19980 Step B (Amendment 2): Spend, Measured runs and Tokens read t
     served({ [METERING]: [meteringRow({ baseline_state: 'unresolved', pricing_manifest_version: null, counterfactual_usd: null, savings_usd: null })] });
     await open('overview');
     expect(within(panel('Savings')).getByText('Baseline unresolved')).toBeInTheDocument();
-    expect(within(panel('Spend')).getByText('$0.0071')).toBeInTheDocument();
-    expect(within(panel('Measured runs')).getByText('7')).toBeInTheDocument();
-    expect(within(panel('Tokens in and out')).getByText('1,620 in · 520 out')).toBeInTheDocument();
+    expect(within(panel('Actual spend')).getByText('$0.0071')).toBeInTheDocument();
+    expect(within(panel('Agent calls')).getByText('7')).toBeInTheDocument();
+    expect(within(panel('Tokens processed')).getByText('1,620 in · 520 out')).toBeInTheDocument();
     for (const title of HEADLINES) expect(within(panel(title)).queryByText('Baseline unresolved'), title).toBeNull();
   });
 
@@ -357,7 +357,7 @@ describe('OMN-19980 Step B (Amendment 2): Spend, Measured runs and Tokens read t
     await open('overview');
     for (const title of HEADLINES) expect(figure(title), title).toEqual(['Not measured']);
     // The run counts that are served still say why nothing was measured; they are counts, not the figure.
-    expect(captions('Measured runs')).toEqual(['Of 4 runs · Unknown-token runs excluded: 4 · Unknown-spend runs excluded: 0']);
+    expect(captions('Agent calls')).toEqual(['Of 4 runs · Unknown-token runs excluded: 4 · Unknown-spend runs excluded: 0']);
   });
 
   it('M5: after a baseline change every card reads the all row refreshed last, the same row as Savings', async () => {
@@ -368,11 +368,11 @@ describe('OMN-19980 Step B (Amendment 2): Spend, Measured runs and Tokens read t
     ] });
     await open('overview');
     expect(within(panel('Savings')).getByText('$1.2252')).toBeInTheDocument();
-    expect(within(panel('Spend')).getByText('$0.0071')).toBeInTheDocument();
-    expect(within(panel('Measured runs')).getByText('7')).toBeInTheDocument();
-    expect(within(panel('Tokens in and out')).getByText('1,620 in · 520 out')).toBeInTheDocument();
+    expect(within(panel('Actual spend')).getByText('$0.0071')).toBeInTheDocument();
+    expect(within(panel('Agent calls')).getByText('7')).toBeInTheDocument();
+    expect(within(panel('Tokens processed')).getByText('1,620 in · 520 out')).toBeInTheDocument();
     expect([...HEADLINES].map(figure)).toEqual([['$0.0071'], ['7'], ['1,620 in · 520 out']]);
-    expect(captions('Measured runs')).toEqual(['Of 9 runs · Unknown-token runs excluded: 1 · Unknown-spend runs excluded: 1']);
+    expect(captions('Agent calls')).toEqual(['Of 9 runs · Unknown-token runs excluded: 1 · Unknown-spend runs excluded: 1']);
   });
 
   it('M6: two all rows refreshed at the same moment are refused by name on every card, never one picked', async () => {

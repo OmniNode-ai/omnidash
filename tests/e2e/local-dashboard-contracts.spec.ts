@@ -216,18 +216,18 @@ test('Overview is the default page and fits 1440x900 with no unmeasured 0 (AC4)'
   await expect(savings.getByText('$1.2252', { exact: true })).toHaveCount(0);
   await expect(savings.getByText('Baseline claude-sonnet-5-5 · pricing manifest v3', { exact: true })).toBeVisible();
   await expect(savings.getByText('$0.4000', { exact: true })).toHaveCount(0);
-  // Amendment 2: Spend, Measured runs and Tokens read the same all row (45 measured of 46, not
+  // Amendment 2: Actual spend, Agent calls and Tokens processed (OMN-20758 titles) read the same all row (45 measured of 46, not
   // cost.savings-overview.v1's 46; the two token columns side by side, never a combined total).
   const headline = (title: string) => page.locator('.local-dashboard-panel').filter({ has: page.getByRole('heading', { name: title, exact: true }) });
-  await expect(headline('Spend').getByText('$0.0069', { exact: true })).toBeVisible();
-  await expect(headline('Measured runs').getByText('45', { exact: true })).toBeVisible();
-  await expect(headline('Measured runs').getByText('46', { exact: true })).toHaveCount(0);
-  await expect(headline('Measured runs').getByText('Of 46 runs · Unknown-token runs excluded: 1 · Unknown-spend runs excluded: 0', { exact: true })).toBeVisible();
-  await expect(headline('Tokens in and out').getByText('7,452 in · 2,392 out', { exact: true })).toBeVisible();
-  await expect(headline('Tokens in and out').getByText(/Not served yet/)).toHaveCount(0);
+  await expect(headline('Actual spend').getByText('$0.0069', { exact: true })).toBeVisible();
+  await expect(headline('Agent calls').getByText('45', { exact: true })).toBeVisible();
+  await expect(headline('Agent calls').getByText('46', { exact: true })).toHaveCount(0);
+  await expect(headline('Agent calls').getByText('Of 46 runs · Unknown-token runs excluded: 1 · Unknown-spend runs excluded: 0', { exact: true })).toBeVisible();
+  await expect(headline('Tokens processed').getByText('7,452 in · 2,392 out', { exact: true })).toBeVisible();
+  await expect(headline('Tokens processed').getByText(/Not served yet/)).toHaveCount(0);
 
   // The headline panels sit above the fold; Recent runs starts above it.
-  for (const title of ['Spend', 'Savings', 'Measured runs', 'Last run']) {
+  for (const title of ['Actual spend', 'Savings', 'Agent calls', 'Last run']) {
     const bounds = await page.locator('.local-dashboard-panel').filter({ has: page.getByRole('heading', { name: title, exact: true }) }).boundingBox();
     expect(bounds, title).not.toBeNull();
     expect(bounds!.y + bounds!.height, title).toBeLessThanOrEqual(900);
