@@ -462,9 +462,9 @@ export function RecentRunsTable({ decisions, sessions, now = Date.now() }: RunVi
             <td>{statusOf(decision)}</td>
             <td>{causeOf(decision)}</td>
             <td>{recorded(decision.task_type)}</td>
-            <td>{modelOrUnknown(decision.model_name)}</td>
-            <td>{recorded(decision.backend_id)}</td>
-            <td>{recorded(decision.host)}</td>
+            <td className="local-dashboard-cell-token">{modelOrUnknown(decision.model_name)}</td>
+            <td className="local-dashboard-cell-token">{recorded(decision.backend_id)}</td>
+            <td className="local-dashboard-cell-token">{recorded(decision.host)}</td>
             <td>{recorded(decision.tokens_input)}</td>
             <td>{recorded(decision.tokens_output)}</td>
             <td>{costOf(session, decision)}</td>
@@ -575,7 +575,7 @@ export function RunsTable({ decisions, sessions, now = Date.now(), pageSize = 25
       </div>
       {shown.length === 0 ? <p className="local-dashboard-empty" role="status">No runs match these filters</p> : (
         <>
-          <div className="local-dashboard-table-wrap">
+          <div className="local-dashboard-table-wrap local-dashboard-table-wrap--fit">
             <table>
               <thead>
                 <tr>
@@ -587,13 +587,13 @@ export function RunsTable({ decisions, sessions, now = Date.now(), pageSize = 25
               <tbody>{page.map((run, index) => {
                 const session = bySession.get(String(run.correlation_id));
                 return <tr key={String(run.correlation_id ?? index)}>
-                  <td>{recorded(run.correlation_id)}{isFixture(run) && <span className="local-dashboard-badge">fixture</span>}</td>
-                  <td>{recorded(run.created_at)}</td>
+                  <td className="local-dashboard-cell-token">{recorded(run.correlation_id)}{isFixture(run) && <span className="local-dashboard-badge">fixture</span>}</td>
+                  <td className="local-dashboard-cell-token">{recorded(run.created_at)}</td>
                   <td>{statusOf(run)}</td>
                   <td>{causeOf(run)}</td>
-                  <td>{modelOrUnknown(run.model_name)}</td>
-                  <td>{recorded(run.backend_id)}</td>
-                  <td>{recorded(run.host)}</td>
+                  <td className="local-dashboard-cell-token">{modelOrUnknown(run.model_name)}</td>
+                  <td className="local-dashboard-cell-token">{recorded(run.backend_id)}</td>
+                  <td className="local-dashboard-cell-token">{recorded(run.host)}</td>
                   <td>{recorded(run.tokens_input)}</td>
                   <td>{recorded(run.tokens_output)}</td>
                   <td>{costOf(session, run)}</td>
