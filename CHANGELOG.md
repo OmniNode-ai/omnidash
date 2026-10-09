@@ -4,6 +4,34 @@ All notable changes to `omnidash` are documented here.
 
 This project follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) and [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## v1.1.8 (2026-10-09)
+
+### Changes
+- The Overview titles three cards as the demo mockup does: Actual spend (was Spend), Agent calls (was
+  Measured runs) and Tokens processed (was Tokens in and out). The figures behind them are unchanged
+  (OMN-20758)
+
+## v1.1.7 (2026-10-08)
+
+### Fixed
+
+- Runs, Recent runs and Last run show a run's status and cost on `onex dashboard`. The local store serves a gate verdict as 1/0, which now reads as passed/failed, and a run's cost falls back to the decision row's own `cost_usd` when no savings session is served. A cost never measured stays Not recorded. Every per-run cost prints in dollars with at least two decimals, unrounded (OMN-20753).
+
+## v1.1.6 (2026-10-08)
+
+### Features
+- The Overview shows Baseline spend: the served `counterfactual_usd` of metering-summary.v1's all-time
+  row, the figure `onex metering --json` reports, beside the baseline model and pricing manifest it is
+  priced at. With no baseline resolved it shows Baseline unresolved, never $0 (OMN-20752)
+
+## v1.1.5 (2026-10-08)
+
+### Fixes
+- The local dashboard reads tenant-scoped exposures as the tenant its server declares in
+  `GET /projections`, so the released bundle served by `onex dashboard` no longer shows every scoped
+  panel as Tenant not configured. A build-time tenant still wins where one is set, and with neither
+  the read is still refused before it is sent (OMN-20728)
+
 ## v1.1.4 (2026-10-06)
 
 Cuts a release so the static bundle has a versioned artifact to be published against. The

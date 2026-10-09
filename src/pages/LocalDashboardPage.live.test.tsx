@@ -117,7 +117,7 @@ describe('LocalDashboardPage widget states (F26, F27)', () => {
     harness.reachable = new Set([DECISIONS, SAVINGS]);
     render(<LocalDashboardPage pageName="overview" />);
     await settle();
-    const spend = screen.getByRole('heading', { name: 'Spend' }).closest('article')!;
+    const spend = screen.getByRole('heading', { name: 'Actual spend' }).closest('article')!;
     expect(within(spend).getByText(`Not served: ${METERING}`)).toBeInTheDocument();
     const lastRun = screen.getByRole('heading', { name: 'Last run' }).closest('article')!;
     expect(within(lastRun).getByText('run-1')).toBeInTheDocument();
@@ -151,7 +151,7 @@ describe('LocalDashboardPage widget states (F26, F27)', () => {
       render(<LocalDashboardPage pageName="overview" />);
       await settle();
 
-      for (const title of ['Spend', 'Savings', 'Measured runs', 'Tokens in and out']) {
+      for (const title of ['Actual spend', 'Savings', 'Agent calls', 'Tokens processed']) {
         const panel = screen.getByRole('heading', { name: title }).closest('article')!;
         expect(within(panel).getAllByRole('alert'), title).toHaveLength(1);
       }
@@ -168,7 +168,7 @@ describe('LocalDashboardPage widget states (F26, F27)', () => {
       : Promise.resolve(topic === DECISIONS ? [decisionRow('run-1')] : [{ sessions: [] }]);
     render(<LocalDashboardPage pageName="overview" />);
     await settle();
-    const spend = screen.getByRole('heading', { name: 'Spend' }).closest('article')!;
+    const spend = screen.getByRole('heading', { name: 'Actual spend' }).closest('article')!;
     expect(within(spend).getByRole('alert')).toHaveTextContent(`${METERING}: HTTP 503`);
   });
 
@@ -177,7 +177,7 @@ describe('LocalDashboardPage widget states (F26, F27)', () => {
     harness.answer = (topic) => topic === METERING ? new Promise(() => {}) : Promise.resolve(topic === DECISIONS ? [decisionRow('run-1')] : [{ sessions: [] }]);
     render(<LocalDashboardPage pageName="overview" />);
     await act(async () => { await vi.advanceTimersByTimeAsync(5_000); });
-    const spend = screen.getByRole('heading', { name: 'Spend' }).closest('article')!;
+    const spend = screen.getByRole('heading', { name: 'Actual spend' }).closest('article')!;
     expect(within(spend).getByRole('alert')).toHaveTextContent(`${METERING}: no answer in 5 s`);
   });
 
@@ -189,7 +189,7 @@ describe('LocalDashboardPage widget states (F26, F27)', () => {
       ? Promise.reject(new Error(`Projection ${METERING} failed: HTTP 503 Service Unavailable`))
       : Promise.resolve(topic === DECISIONS ? [decisionRow('run-1')] : [{ sessions: [] }]);
     await act(async () => { await vi.advanceTimersByTimeAsync(30_000); });
-    const spend = screen.getByRole('heading', { name: 'Spend' }).closest('article')!;
+    const spend = screen.getByRole('heading', { name: 'Actual spend' }).closest('article')!;
     expect(within(spend).getByText('$0.0069')).toBeInTheDocument();
     expect(within(spend).getByRole('alert')).toHaveTextContent(/HTTP 503 Service Unavailable; last good 30s ago/);
   });

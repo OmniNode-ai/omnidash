@@ -18,11 +18,12 @@ const SCOPED = 'onex.snapshot.projection.delegation.summary.v1';
 const UNSCOPED = 'onex.snapshot.projection.consumer-flow.v1';
 const HOUSE = '820272f9-4aaf-5add-a2df-0af942852ab2';
 
-function catalogue(ok = true) {
+function catalogue(ok = true, tenant?: unknown) {
   return vi.fn().mockResolvedValue({
     ok,
     status: ok ? 200 : 503,
     json: async () => ({
+      ...(tenant === undefined ? {} : { tenant }),
       topics: [
         { topic: SCOPED, tenant_column: 'tenant_id', tenant_scoped: true },
         { topic: UNSCOPED, tenant_column: null, tenant_scoped: false },
@@ -141,5 +142,40 @@ describe('resolveTenantFor', () => {
     await expect(fetchExposureTenantColumns()).rejects.toThrow();
     await expect(fetchExposureTenantColumns()).rejects.toThrow();
     expect(bad).toHaveBeenCalledTimes(2);
+  });
+
+  // OMN-20728: the released bundle carries no build-time tenant, so on
+  // `onex dashboard` the tenant comes from the server's own catalogue.
+  const INSTALL = 'c94fa3c5-ea87-4dbb-a4fc-424343bac7a0';
+
+  it('scopes with the catalogue tenant when no build-time tenant is set', async () => {
+    vi.stubGlobal('fetch', catalogue(true, INSTALL));
+    expect(await resolveTenantFor(SCOPED)).toEqual({
+      kind: 'scoped',
+      query: `tenant=${encodeURIComponent(INSTALL)}`,
+    });
+  });
+
+  it('prefers the build-time tenant over the catalogue tenant', async () => {
+    localConfig.PROJECTION_TENANT_ID_DEFAULT = HOUSE;
+    vi.stubGlobal('fetch', catalogue(true, INSTALL));
+    expect(await resolveTenantFor(SCOPED)).toEqual({
+      kind: 'scoped',
+      query: `tenant=${encodeURIComponent(HOUSE)}`,
+    });
+  });
+
+  it('still refuses when neither the build nor the catalogue names a tenant', async () => {
+    for (const declared of [undefined, null, '', '   ', 42]) {
+      resetExposureMetadataCache();
+      vi.stubGlobal('fetch', catalogue(true, declared));
+      const result = await resolveTenantFor(SCOPED);
+      expect(result.kind).toBe('refused');
+    }
+  });
+
+  it('does not attach the catalogue tenant to an unscoped exposure', async () => {
+    vi.stubGlobal('fetch', catalogue(true, INSTALL));
+    expect(await resolveTenantFor(UNSCOPED)).toEqual({ kind: 'unscoped' });
   });
 });
