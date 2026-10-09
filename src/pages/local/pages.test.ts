@@ -307,8 +307,10 @@ describe('local pages against the captured lab catalogue', () => {
     // SV-2 / OV-3 and OMN-19980 Step B: the figure, its baseline model and its pricing manifest version all come from
     // the one metering-summary.v1 all-time row, so there is no second (caption) binding.
     expect(savings?.data_bindings?.map((b) => b.projection_topic)).toEqual(['onex.snapshot.projection.metering-summary.v1']);
+    // OMN-20008 AC5: savings_pct_of_counterfactual is the same row's served ratio behind the percentage line.
     expect(savings?.data_bindings?.[0]?.required_fields).toEqual(
-      ['window_kind', 'as_of', 'baseline_model', 'pricing_manifest_version', 'baseline_state', 'savings_usd'],
+      ['window_kind', 'as_of', 'baseline_model', 'pricing_manifest_version', 'baseline_state', 'savings_usd',
+        'savings_pct_of_counterfactual'],
     );
     // Measured runs' excluded counts are the same row's run classes, not a second exposure's (Amendment 2).
     const measured = page.components.find((c) => c.component_id === 'overview-measured');
