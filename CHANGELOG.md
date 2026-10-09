@@ -4,6 +4,12 @@ All notable changes to `omnidash` are documented here.
 
 This project follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) and [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## v1.1.9 (2026-10-09)
+
+### Fixed
+
+- The Runs table and the Overview's Recent runs table fit their panels at 1440x900 with every column: run id, time, model, backend and host wrap inside their own columns instead of clipping or scrolling sideways (OMN-20759).
+
 ## v1.1.8 (2026-10-09)
 
 ### Changes
