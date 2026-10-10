@@ -33,4 +33,3 @@ dod_evidence:
       - check_type: "test_passes"
         check_value: "uv run --no-project --python 3.12 --with omnibase-core==0.47.38 --with omnibase-spi==0.23.5 --with pyyaml --with pytest python -m pytest tests/ci/test_schema_compat_core_owner_omn20885.py -q --noconftest -p no:cacheprovider -c /dev/null"
         cwd: "${OMNI_HOME}/omnidash"
-    binds_ac: ["AC3"]
