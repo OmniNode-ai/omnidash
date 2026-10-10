@@ -33,8 +33,9 @@
 # test and tenant-rls jobs of its own run, so these external check-runs never
 # reach it (tests/ci/test_repo_evidence_caller_omn20073.py).
 #
-# The reusable is pinned by full SHA to the squash commit of omnibase_core#1901
-# on dev, which carries the `shadow` input. S6 (a separate ruling) sets shadow
+# The reusable is pinned by full SHA to the squash commit of omnibase_core#1914
+# on dev, the pin omnibase_core's own caller and omnibase_infra's caller use; it
+# descends from #1901 (the `shadow` input). S6 (a separate ruling) sets shadow
 # "false" and compare-with-occ "false", and makes repo-evidence / dod-verify
 # required.
 
@@ -55,9 +56,9 @@ permissions:
 
 jobs:
   repo-evidence:
-    uses: OmniNode-ai/omnibase_core/.github/workflows/receipt-gate.yml@033db282217c224f8063b94966a7f3fdd26b7894 # OMN-20073: the squash commit of omnibase_core#1901 on dev (receipt-gate shadow input)
+    uses: OmniNode-ai/omnibase_core/.github/workflows/receipt-gate.yml@fb0c6c2117d5868a398b0920cd0048d0824415b1 # OMN-20073: immutable full-SHA pin, the squash commit of omnibase_core#1914 on that repo's dev branch (descends from #1901's shadow input)
     with:
       evidence-source: caller
-      verifier-version: 0.4.294
+      verifier-version: 0.4.305
       compare-with-occ: "true"
       shadow: "true"

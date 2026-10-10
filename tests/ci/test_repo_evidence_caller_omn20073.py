@@ -32,6 +32,13 @@ MANIFEST = REPO_ROOT / ".github" / "required-checks.yaml"
 # First release whose wheel ships node_dod_verify occ-difference (omnimarket#3277).
 DIFFERENCE_CLASSIFIER_FLOOR = (0, 4, 294)
 
+# Squash commit of omnibase_core#1914 on that repository's dev branch: the receipt-gate
+# pin omnibase_core's own caller and omnibase_infra's caller use. 0.4.305 is the first
+# omnimarket release carrying omnimarket#3563, the verifier half of the contract-home marker.
+RECEIPT_GATE_PIN = "fb0c6c2117d5868a398b0920cd0048d0824415b1"
+VERIFIER_FLOOR = (0, 4, 305)
+CONTRACT = REPO_ROOT / "contracts" / "OMN-20073.yaml"
+
 
 def _load(path: Path) -> dict[Any, Any]:
     assert path.is_file(), f"missing {path}"
@@ -112,3 +119,32 @@ def test_ci_summary_judges_only_its_own_needs_never_external_check_runs() -> Non
     for token in ("check-runs", "check_runs", "statuses", "gh api", "gh pr checks"):
         assert token not in script, f"CI Summary must not sweep external checks: {token}"
     assert "repo-evidence" not in script
+
+
+def test_caller_pins_the_current_receipt_gate_and_verifier() -> None:
+    inputs = _job()["with"]
+    assert _job()["uses"].endswith(f"receipt-gate.yml@{RECEIPT_GATE_PIN}")
+    version = tuple(int(part) for part in inputs["verifier-version"].split("."))
+    assert version >= VERIFIER_FLOOR
+
+
+def test_repo_contract_for_the_pr_ticket_names_a_falsifier_per_criterion() -> None:
+    contract = _load(CONTRACT)
+    assert contract["ticket_id"] == "OMN-20073"
+    criteria = [
+        ac
+        for req in contract["requirements"]
+        for ac in req["acceptance"]
+    ]
+    assert criteria, "contract must declare acceptance criteria"
+    checks = [
+        check["check_value"]
+        for item in contract["dod_evidence"]
+        for check in item["checks"]
+    ]
+    for criterion in criteria:
+        assert "falsifier:" in criterion["statement"]
+        falsifier = criterion["statement"].split("falsifier:", 1)[1].strip()
+        assert falsifier in checks, f"{criterion['id']} falsifier has no dod check"
+        test_file = falsifier.split()[3]
+        assert (REPO_ROOT / test_file).is_file(), f"{test_file} does not exist"
