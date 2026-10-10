@@ -1,0 +1,46 @@
+schema_version: "1.0.0"
+ticket_id: "OMN-20074"
+title: "omnidash contract-validation validates with omnibase_core, not onex_change_control"
+summary: "omnidash's contract-validation workflow validates the branch ticket's repo-local contract with omnibase_core's ModelTicketContract, installed at an exact pinned version, instead of checking out onex_change_control and running its composite validate-contract action. The workflow, job and context names are unchanged. A focused test runs the step's own run block over planted contracts and this repository's contracts."
+is_seam_ticket: false
+interface_change: false
+interfaces_touched: []
+requirements:
+  - id: "req-contract-validation-core-validator"
+    statement: |-
+      omnidash's contract-validation workflow validates the branch ticket's contract with omnibase_core's ModelTicketContract at an exact pinned version, reads nothing from onex_change_control, and keeps its workflow, job and context names.
+    acceptance:
+      - id: "AC9"
+        statement: |-
+          AC9: .github/workflows/contract-validation.yml names no onex_change_control (no checkout, no composite action, no validate-yaml), installs omnibase_core at one exact version no older than 0.47.39 for both the validation step and its test, and keeps its workflow name Contract Validation, its job name contract-validation and its required-checks row -- falsifier: uv run --no-project --python 3.12 --with omnibase-core==0.47.39 --with pyyaml --with pytest python -m pytest tests/ci/test_contract_validation_core_validator_omn20074.py -q --noconftest -p no:cacheprovider -c /dev/null -k "test_workflow_ or test_required_check or test_omnibase_core_is_installed"
+      - id: "AC10"
+        statement: |-
+          AC10: the contract-validation step's own run block, run over this repository's contracts, passes the branch ticket's contract and every contracts/OMN-*.yaml, skips a branch with no ticket or no contract, and fails a planted binds_ac entry that is not a criterion label, a planted binds_ac item of check_type command_exit_0, a contract missing a required field and an unparseable contract, each naming the file and the reason -- falsifier: uv run --no-project --python 3.12 --with omnibase-core==0.47.39 --with pyyaml --with pytest python -m pytest tests/ci/test_contract_validation_core_validator_omn20074.py -q --noconftest -p no:cacheprovider -c /dev/null
+evidence_requirements:
+  - kind: "tests"
+    description: "The contract-validation workflow reads no onex_change_control, pins omnibase_core exactly and keeps its names."
+    command: "uv run --no-project --python 3.12 --with omnibase-core==0.47.39 --with pyyaml --with pytest python -m pytest tests/ci/test_contract_validation_core_validator_omn20074.py -q --noconftest -p no:cacheprovider -c /dev/null -k \"test_workflow_ or test_required_check or test_omnibase_core_is_installed\""
+  - kind: "tests"
+    description: "The contract-validation step admits the repo contracts and refuses the planted contracts."
+    command: "uv run --no-project --python 3.12 --with omnibase-core==0.47.39 --with pyyaml --with pytest python -m pytest tests/ci/test_contract_validation_core_validator_omn20074.py -q --noconftest -p no:cacheprovider -c /dev/null"
+emergency_bypass:
+  enabled: false
+  justification: ""
+  follow_up_ticket_id: ""
+dod_evidence:
+  - id: "dod-contract-validation-core-ac9"
+    description: "The contract-validation workflow reads no onex_change_control, pins omnibase_core exactly and keeps its names."
+    source: "manual"
+    checks:
+      - check_type: "test_passes"
+        check_value: "uv run --no-project --python 3.12 --with omnibase-core==0.47.39 --with pyyaml --with pytest python -m pytest tests/ci/test_contract_validation_core_validator_omn20074.py -q --noconftest -p no:cacheprovider -c /dev/null -k \"test_workflow_ or test_required_check or test_omnibase_core_is_installed\""
+        cwd: "${OMNI_HOME}/omnidash"
+    binds_ac: ["AC9"]
+  - id: "dod-contract-validation-core-ac10"
+    description: "The contract-validation step admits the repo contracts and refuses the planted contracts."
+    source: "manual"
+    checks:
+      - check_type: "test_passes"
+        check_value: "uv run --no-project --python 3.12 --with omnibase-core==0.47.39 --with pyyaml --with pytest python -m pytest tests/ci/test_contract_validation_core_validator_omn20074.py -q --noconftest -p no:cacheprovider -c /dev/null"
+        cwd: "${OMNI_HOME}/omnidash"
+    binds_ac: ["AC10"]
