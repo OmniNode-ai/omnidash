@@ -710,7 +710,8 @@ export function TierMixPanel({ row }: { row: Row | null }) {
   );
 }
 
-/** CR-1 to CR-3: provider key references only (never a value), or the command that sets the first one. */
+/** CR-1 to CR-3: provider key references only (never a value), with their fingerprint prefix and set time, or the
+ * command that sets the first one. */
 export function CredentialsTable({ rows }: { rows: readonly unknown[] }) {
   const keys = asRecords(rows);
   if (keys.length === 0) {
@@ -724,12 +725,15 @@ export function CredentialsTable({ rows }: { rows: readonly unknown[] }) {
   return (
     <div className="local-dashboard-table-wrap">
       <table>
-        <thead><tr><th>Provider</th><th>Key ref</th><th>Set</th><th>Revoked</th></tr></thead>
+        <thead><tr><th>Provider</th><th>Key ref</th><th>Fingerprint</th><th>Set</th><th>Revoked</th></tr></thead>
         <tbody>{keys.map((key, index) => (
           <tr key={`${String(key.provider)}-${String(key.name)}-${index}`}>
             <td>{recorded(key.provider)}</td>
             <td>{recorded(key.name)}</td>
-            <td>{recorded(key.created_at)}</td>
+            {/* OMN-19985: the served fingerprint prefix (8 hex of sha256) and the time the key was set; a row its
+                producer sent without them says so. created_at is when the projection first saw the row, not this. */}
+            <td>{recorded(key.fingerprint)}</td>
+            <td>{recorded(key.set_at)}</td>
             <td>{isMissing(key.revoked_at) ? 'Not revoked' : String(key.revoked_at)}</td>
           </tr>
         ))}</tbody>
