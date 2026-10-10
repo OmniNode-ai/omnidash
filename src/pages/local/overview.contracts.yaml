@@ -48,7 +48,8 @@
             "baseline_model",
             "pricing_manifest_version",
             "baseline_state",
-            "savings_usd"
+            "savings_usd",
+            "savings_pct_of_counterfactual"
           ]
         }
       ],
