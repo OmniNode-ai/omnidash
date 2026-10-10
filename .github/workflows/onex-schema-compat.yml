@@ -2,17 +2,39 @@
 # SPDX-License-Identifier: MIT
 name: ONEX Schema Compatibility
 
+# Validates omnidash's ONEX contract files against the schema owner.
+#
+# OMN-20885: the ticket-contract model is omnibase_core's ModelTicketContract and
+# the day-close model is omnibase_core's ModelDayClose; the change-control
+# repository re-exports them and is no longer checked out or installed.
+#
+# This gate:
+#   1. Checks out omnibase_core at the commit check-handshake.yml already pins
+#   2. Validates every YAML file under contracts/ (the root contract.yaml is an ONEX
+#      Service Contract, a different schema, and is excluded) against ModelTicketContract,
+#      or ModelDayClose for a path containing day_close, as the old validator step did
+#   3. Fails a ticket contract whose schema_version major differs from
+#      ModelTicketContract's, through omnibase_spi is_compatible
+#   4. Runs tests/ci/test_schema_compat_core_owner_omn20885.py, which drives step 2 and 3
+#      against planted contracts; it needs omnibase_core, so it runs here and not in
+#      the bare-environment workflow-script-refs job
+#
+# A contracts/ directory with no YAML file to validate fails. A repository with no
+# contracts/ directory reads no contract, so there is nothing to check.
+
 on:
   push:
     branches: [main, develop, "hotfix/**"]
     paths:
       - 'contracts/**'
       - '.github/workflows/onex-schema-compat.yml'
+      - 'tests/ci/test_schema_compat_core_owner_omn20885.py'
   pull_request:
     branches: [main, develop, dev, "hotfix/**"]
     paths:
       - 'contracts/**'
       - '.github/workflows/onex-schema-compat.yml'
+      - 'tests/ci/test_schema_compat_core_owner_omn20885.py'
   merge_group:
   workflow_dispatch:
 
@@ -36,36 +58,27 @@ jobs:
         with:
           persist-credentials: false
 
-      - name: Checkout onex_change_control
-        # No token needed — OmniNode-ai/onex_change_control is a public repo.
-        # Consistent with check-handshake.yml which uses the same pattern for
-        # OmniNode-ai/omnibase_core without a token.
+      - name: Checkout omnibase_core
+        # No token needed -- OmniNode-ai/omnibase_core is read the same way by
+        # check-handshake.yml.
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v4
         with:
           persist-credentials: false
-          repository: OmniNode-ai/onex_change_control
-          # Pinned to onex_change_control main as of 2026-04-26.
-          # Update by running:
-          #   gh api repos/OmniNode-ai/onex_change_control/commits/main --jq '.sha'
-          # SHA verified against OmniNode-ai/onex_change_control main HEAD on 2026-04-26.
-          #
-          # MAINTENANCE: This pin must be kept current with upstream releases.
-          # If onex_change_control introduces breaking API changes (new required CLI
-          # flags, changed exit codes, updated schema expectations), this workflow
-          # will silently break or produce incorrect results until the pin is updated.
-          # To find the latest SHA: gh api repos/OmniNode-ai/onex_change_control/commits/main --jq '.sha'
-          # Suggested cadence: check monthly, or whenever upstream validator changes
-          # are announced (e.g., release notes, changelog, or team communication).
-          ref: 3c8fa62f138f632157218df58e215d654004d1c2
-          path: onex_change_control
+          repository: OmniNode-ai/omnibase_core
+          # The commit check-handshake.yml pins (omnibase_core 0.47.38). Move it only in a
+          # PR that tests the new version here (ruling 2026-10-01).
+          ref: 16ee7c5585523d8f9e26285a5e6b4ee8cb5c0bab
+          path: omnibase_core
 
-      - name: Verify onex_change_control checkout
+      - name: Verify omnibase_core checkout
         run: |
           set -eo pipefail
-          if [ ! -f onex_change_control/src/onex_change_control/scripts/validate_yaml.py ]; then
-            echo "::error::Failed to checkout onex_change_control or validate_yaml.py not found."
-            exit 1
-          fi
+          for model in models/ticket/model_ticket_contract.py models/governance/model_day_close.py; do
+            if [ ! -f "omnibase_core/src/omnibase_core/${model}" ]; then
+              echo "::error::Failed to checkout omnibase_core or ${model} not found."
+              exit 1
+            fi
+          done
 
       - name: Set up Python 3.12
         uses: actions/setup-python@a309ff8b426b58ec0e2a45f0f869d46889d02405 # v6.2.0
@@ -78,76 +91,83 @@ jobs:
         # then resolve annotated tag: gh api repos/astral-sh/setup-uv/git/tags/<sha> --jq '.object.sha'
         uses: astral-sh/setup-uv@37802adc94f370d6bfd71619e3f0bf239e1f3b78 # v7
 
-      - name: Cache uv virtualenv
-        uses: actions/cache@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5.0.5
-        with:
-          path: onex_change_control/.venv
-          key: venv-${{ runner.os }}-py3.12-${{ hashFiles('onex_change_control/uv.lock') }}
-          restore-keys: |
-            venv-${{ runner.os }}-py3.12-
-
-      - name: Install onex-change-control
-        working-directory: onex_change_control
-        # uv sync --no-dev installs main deps only and registers console_scripts entrypoints.
-        run: uv sync --no-dev
-
-      - name: Verify validate-yaml entrypoint resolves
-        working-directory: onex_change_control
-        run: uv run validate-yaml --help
-
-      - name: Validate ONEX contract files
+      - name: Validate ONEX contract files against omnibase_core
         run: |
-          set -eo pipefail
-          # Find YAML/YML files in contracts/ (ticket contracts, day_close records).
-          # Root contract.yaml is an ONEX Service Contract (different schema) — excluded.
-          #
-          # DELIBERATE CHOICE: -path vs -name for the exclusion
-          #   -not -name "contract.yaml"  would exclude ANY file named contract.yaml in
-          #     ANY subdirectory of contracts/, which is too broad. A future file at
-          #     contracts/subdir/contract.yaml would be wrongly skipped.
-          #   -not -path "$GITHUB_WORKSPACE/contracts/contract.yaml"  limits exclusion to
-          #     exactly the root-level file, so contracts/subdir/contract.yaml files ARE
-          #     still validated.
-          # The -path form is therefore intentionally more precise. If the root exclusion
-          # location ever changes (e.g., the file moves or is renamed), update the -path
-          # argument in the find invocation below to match.
-          #
-          # The file list is captured once into a NUL-delimited temp file so the
-          # early-exit guard and the validator xargs both operate on exactly the
-          # same set. This eliminates the structural drift risk that existed when
-          # two independent find commands had to be kept in sync manually.
-          # If you add further exclusions or additional glob patterns, change only
-          # the single find invocation below.
-          #
-          # The contracts/ directory is checked for existence before running find so
-          # that permission errors on subdirectories are not silently suppressed.
-          # "No such file or directory" (i.e., contracts/ missing entirely) is the
-          # only case that should be treated as an empty result rather than an error.
-          YAML_LIST_FILE=$(mktemp)
-          trap 'rm -f "$YAML_LIST_FILE"' EXIT
-          if [ -d "$GITHUB_WORKSPACE/contracts" ]; then
-            find "$GITHUB_WORKSPACE/contracts" \( -name "*.yaml" -o -name "*.yml" \) -not -path "${GITHUB_WORKSPACE}/contracts/contract.yaml" -print0 \
-              | sort -z \
-              > "$YAML_LIST_FILE"
-          fi
+          uv run --no-project --python 3.12 \
+            --with ./omnibase_core --with omnibase-spi==0.23.5 --with pyyaml \
+            python - <<'PY'
+          import sys
+          from pathlib import Path
 
-          if [ ! -s "$YAML_LIST_FILE" ]; then
-            echo "No ONEX contract YAML files found in contracts/ — gate passes (nothing to validate)"
-            exit 0
-          fi
+          import yaml
+          from omnibase_core.models.governance.model_day_close import ModelDayClose
+          from omnibase_core.models.ticket.model_ticket_contract import ModelTicketContract
+          from omnibase_spi.contracts.pipeline.contract_schema_compat import is_compatible
+          from pydantic import ValidationError
 
-          echo "Found ONEX contract files to validate:"
-          # Display the NUL-delimited list in human-readable form.
-          tr '\0' '\n' < "$YAML_LIST_FILE"
-          echo ""
+          reader_version = str(ModelTicketContract.model_fields["schema_version"].default)
+          contracts_dir = Path("contracts")
+          if not contracts_dir.is_dir():
+              print("No contracts/ directory: this repository reads no ONEX contract.")
+              sys.exit(0)
+          # contracts/contract.yaml is an ONEX Service Contract (a different schema).
+          # Only that exact root-level file is excluded; contracts/<dir>/contract.yaml
+          # is still validated.
+          service_contract = contracts_dir / "contract.yaml"
+          paths = sorted(
+              path
+              for path in contracts_dir.rglob("*")
+              if path.is_file() and path.suffix in {".yaml", ".yml"} and path != service_contract
+          )
+          if not paths:
+              print("::error::contracts/ holds no YAML file to validate")
+              sys.exit(1)
 
-          # Run the validator from the onex_change_control virtualenv.
-          # validate-yaml exits 0 on all-valid, 1 on any invalid file.
-          # Use xargs -0 so filenames with spaces are passed safely.
-          #
-          # NOTE: validate-yaml must accept absolute paths. YAML_LIST_FILE contains
-          # absolute paths (produced by find with $GITHUB_WORKSPACE prefix above).
-          # If validate-yaml is changed to require relative paths, the find invocation
-          # above must be updated accordingly.
-          cd "$GITHUB_WORKSPACE/onex_change_control"
-          xargs -r -0 uv run validate-yaml < "$YAML_LIST_FILE"
+          print(f"omnibase_core ModelTicketContract schema_version (reader): {reader_version}")
+          broken = []
+          for path in paths:
+              try:
+                  data = yaml.safe_load(path.read_text(encoding="utf-8"))
+              except yaml.YAMLError as exc:
+                  broken.append((path, f"YAML parse error: {exc}"))
+                  continue
+              if not isinstance(data, dict):
+                  broken.append((path, "not a mapping"))
+                  continue
+              day_close = "day_close" in path.as_posix().lower()
+              if not day_close:
+                  wire_version = str(data.get("schema_version", reader_version))
+                  try:
+                      compatible = is_compatible(wire_version=wire_version, reader_version=reader_version)
+                  except ValueError as exc:
+                      broken.append((path, str(exc)))
+                      continue
+                  if not compatible:
+                      broken.append((path, f"schema_version {wire_version} vs reader {reader_version}"))
+                      continue
+              model = ModelDayClose if day_close else ModelTicketContract
+              try:
+                  model.model_validate(data)
+              except ValidationError as exc:
+                  detail = "; ".join(
+                      f"{'.'.join(str(part) for part in err['loc']) or '(root)'}: {err['msg']}"
+                      for err in exc.errors()
+                  )
+                  broken.append((path, f"{model.__name__}: {detail}"))
+
+          for path, reason in broken:
+              print(f"::error file={path.as_posix()}::{path.as_posix()}: {reason}")
+          if broken:
+              print(f"ERROR: {len(broken)} of {len(paths)} ONEX contract file(s) are invalid or incompatible with omnibase_core.")
+              print("  A major mismatch means omnibase_core released a breaking ticket-contract")
+              print("  schema change, or a contract declares a major this core cannot read.")
+              sys.exit(1)
+          print(f"OK: {len(paths)} ONEX contract file(s) valid and compatible with omnibase_core schema_version {reader_version}")
+          PY
+
+      - name: Run the compatibility-step tests against planted contracts
+        run: |
+          uv run --no-project --python 3.12 \
+            --with ./omnibase_core --with omnibase-spi==0.23.5 --with pyyaml --with pytest \
+            python -m pytest tests/ci/test_schema_compat_core_owner_omn20885.py \
+            -q --noconftest -p no:cacheprovider -c /dev/null
