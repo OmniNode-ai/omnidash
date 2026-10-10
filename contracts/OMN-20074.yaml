@@ -35,7 +35,6 @@ dod_evidence:
       - check_type: "test_passes"
         check_value: "uv run --no-project --python 3.12 --with omnibase-core==0.47.39 --with pyyaml --with pytest python -m pytest tests/ci/test_contract_validation_core_validator_omn20074.py -q --noconftest -p no:cacheprovider -c /dev/null -k \"test_workflow_ or test_required_check or test_omnibase_core_is_installed\""
         cwd: "${OMNI_HOME}/omnidash"
-    binds_ac: ["AC9"]
   - id: "dod-contract-validation-core-ac10"
     description: "The contract-validation step admits the repo contracts and refuses the planted contracts."
     source: "manual"
@@ -43,4 +42,3 @@ dod_evidence:
       - check_type: "test_passes"
         check_value: "uv run --no-project --python 3.12 --with omnibase-core==0.47.39 --with pyyaml --with pytest python -m pytest tests/ci/test_contract_validation_core_validator_omn20074.py -q --noconftest -p no:cacheprovider -c /dev/null"
         cwd: "${OMNI_HOME}/omnidash"
-    binds_ac: ["AC10"]
