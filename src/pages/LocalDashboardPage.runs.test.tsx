@@ -64,7 +64,7 @@ describe('LastRunCard (OV-4, F16)', () => {
     expect(within(card).getByText('summarization')).toBeInTheDocument();
     expect(within(card).getByText('local')).toBeInTheDocument();
     expect(within(card).getByText('5m ago')).toBeInTheDocument();
-    expect(within(card).getByText('0.0021')).toBeInTheDocument();
+    expect(within(card).getByText('$0.0021')).toBeInTheDocument();
   });
 
   it('shows tokens in and tokens out apart, never one combined figure (SV-3)', () => {
@@ -134,7 +134,7 @@ describe('RecentRunsTable (OV-5, F17)', () => {
       sessions={[session('quota-run', '2026-10-02T10:00:00Z', { local_cost_usd: 0.0004 })]}
     />);
     const row = screen.getByRole('row', { name: /quota-run/ });
-    for (const value of ['failed', 'provider returned 429 (quota exhausted)', '162', '52', '0.0004', 'local']) {
+    for (const value of ['failed', 'provider returned 429 (quota exhausted)', '162', '52', '$0.0004', 'local']) {
       expect(within(row).getByText(value)).toBeInTheDocument();
     }
   });
@@ -149,7 +149,7 @@ describe('RecentRunsTable shows no per-run saving (OMN-19980 AC2b)', () => {
     />);
     expect(screen.getAllByRole('columnheader').map((header) => header.textContent)).not.toContain('Savings');
     const row = screen.getByRole('row', { name: /unpriced-run/ });
-    expect(within(row).getByText('0.0004')).toBeInTheDocument();
+    expect(within(row).getByText('$0.0004')).toBeInTheDocument();
     expect(within(row).queryByText('Baseline unresolved')).not.toBeInTheDocument();
   });
 });
@@ -183,7 +183,7 @@ describe('RunsTable rows, status, cause and filters (RU-1, F18, F28)', () => {
   it('takes cost from the session with the same id', () => {
     render(<RunsTable now={NOW} decisions={decisions} sessions={sessions} />);
     const row = screen.getByRole('row', { name: /run-a/ });
-    expect(within(row).getByText('0.0011')).toBeInTheDocument();
+    expect(within(row).getByText('$0.0011')).toBeInTheDocument();
     expect(within(row).getByText('passed')).toBeInTheDocument();
   });
 

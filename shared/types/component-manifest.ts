@@ -24,6 +24,66 @@ export interface ProjectionOrderingAuthority {
   clockSemantics?: string;
 }
 
+/**
+ * OMN-19993: the widget kinds a manifest may declare. The shipped `EnumWidgetType`
+ * vocabulary (`chart`, `table`, `metric_card`, `status_grid`, `event_feed`) plus
+ * `alert_banner`, which the archived dashboard had and omnibase_core's enum does
+ * not yet carry. One vocabulary, extended by one value: the manifest test anchors
+ * this list to the core enum emitted into the page-config schema, so either side
+ * moving without the other fails. Kept literal (not imported) because this file is
+ * shared by the browser, server and generator projects.
+ */
+export const COMPONENT_WIDGET_KINDS = [
+  'chart',
+  'table',
+  'metric_card',
+  'status_grid',
+  'event_feed',
+  'alert_banner',
+] as const;
+export type ComponentWidgetKind = (typeof COMPONENT_WIDGET_KINDS)[number];
+
+/**
+ * OMN-19993: the severity a status-grid row renders. Mirrors omnibase_core's
+ * `EnumStatusSeverity`; the row also carries the upstream word (`status`), because
+ * a status is shown as a colored edge plus that word, never color alone.
+ */
+export const STATUS_GRID_SEVERITIES = ['nominal', 'unknown', 'attention', 'critical'] as const;
+export type StatusGridSeverity = (typeof STATUS_GRID_SEVERITIES)[number];
+
+/** One row of a `status_grid` widget (e.g. one service in the Services grid, OV-2). */
+export interface StatusGridRow {
+  /** Stable key, e.g. the service name. */
+  key: string;
+  label: string;
+  /** The upstream verdict in its own vocabulary: RUNNING, DEGRADED, DOWN, UNKNOWN. */
+  status: string;
+  severity: StatusGridSeverity;
+  /**
+   * Why the row is in this state, in one line. Required: a status without a
+   * reason is not shown. Named `status_reason`, not `reason`, because `reason`
+   * is the typed empty-state vocabulary (EnumEmptyStateReason) everywhere else.
+   */
+  status_reason: string;
+  /** ISO-8601 time the subject was last observed; null when never observed. */
+  last_seen?: string | null;
+}
+
+/** One open alert for an `alert_banner` widget (OV-6). */
+export interface AlertBannerRow {
+  alert_id: string;
+  /** Typed alert code, e.g. SERVICE_DOWN. */
+  code: string;
+  /** critical alerts get a banner each; the rest collapse into one line. */
+  severity: StatusGridSeverity;
+  /** What the alert concerns, e.g. the service name. */
+  subject: string;
+  /** ISO-8601 time the alert opened. */
+  since: string;
+  /** Where to look next (runs or service view). */
+  link?: string | null;
+}
+
 export interface GridSize {
   w: number;
   h: number;
@@ -76,6 +136,11 @@ export interface ComponentManifest {
   version: string;
   implementationKey: string;
   /**
+   * OMN-19993: the widget kind this component renders as. Optional so manifests
+   * that predate the field stay valid; validated against COMPONENT_WIDGET_KINDS.
+   */
+  kind?: ComponentWidgetKind;
+  /**
    * OMN-12833 (A2.5): palette visibility derived from the single standard
    * projection backend. `hidden` keeps the component out of the palette when its
    * topic(s) cannot be served (404) or are degraded and not worth showing.
@@ -121,6 +186,13 @@ export interface ComponentManifest {
   emptyState: {
     message: string;
     hint?: string;
+    /**
+     * OMN-19993: the topic(s) this widget's empty state waits on, rendered as
+     * "Waiting for <topic>". Required and non-empty. When the manifest declares
+     * topic data sources, every entry must be one of them, so the empty state
+     * can never name a topic the widget does not read.
+     */
+    waits_on: string[];
     /**
      * Per-reason messages for widgets that distinguish between empty-state causes.
      * When provided, the adapter renders the matching per-reason message in preference
@@ -216,5 +288,61 @@ export function validateComponentManifest(m: ComponentManifest): ManifestValidat
     }
   }
 
+  if (m.kind !== undefined && !(COMPONENT_WIDGET_KINDS as readonly string[]).includes(m.kind)) {
+    errors.push(`Invalid kind "${String(m.kind)}". Must be one of: ${COMPONENT_WIDGET_KINDS.join(', ')}`);
+  }
+
+  errors.push(...validateWaitsOn(m));
+
+  return { valid: errors.length === 0, errors };
+}
+
+function isNonEmptyString(value: unknown): value is string {
+  return typeof value === 'string' && value.trim().length > 0;
+}
+
+function validateWaitsOn(m: ComponentManifest): string[] {
+  const waitsOn: unknown = (m.emptyState as { waits_on?: unknown } | undefined)?.waits_on;
+  if (!Array.isArray(waitsOn) || waitsOn.length === 0) {
+    return ['emptyState.waits_on is required: a non-empty list naming the topic(s) the empty state waits on'];
+  }
+  const errors: string[] = [];
+  const declared = new Set(
+    (m.dataSources ?? []).map((ds) => ds.topic).filter((t): t is string => isNonEmptyString(t)),
+  );
+  waitsOn.forEach((entry: unknown, idx: number) => {
+    if (!isNonEmptyString(entry)) {
+      errors.push(`emptyState.waits_on[${idx}] must be a non-empty string`);
+    } else if (declared.size > 0 && !declared.has(entry)) {
+      errors.push(`emptyState.waits_on names "${entry}", which is not one of its dataSources topics`);
+    }
+  });
+  return errors;
+}
+
+/** OMN-19993 AC2: a status-grid row must carry a status word, a known severity and a reason (`status_reason`). */
+export function validateStatusGridRow(row: StatusGridRow): ManifestValidationResult {
+  const errors: string[] = [];
+  const r = row as Partial<Record<keyof StatusGridRow, unknown>>;
+  if (!isNonEmptyString(r.key)) errors.push('key is required');
+  if (!isNonEmptyString(r.label)) errors.push('label is required');
+  if (!isNonEmptyString(r.status)) errors.push('status is required (the upstream word, e.g. RUNNING or DOWN)');
+  if (!(STATUS_GRID_SEVERITIES as readonly unknown[]).includes(r.severity)) {
+    errors.push(`Invalid severity "${String(r.severity)}". Must be one of: ${STATUS_GRID_SEVERITIES.join(', ')}`);
+  }
+  if (!isNonEmptyString(r.status_reason)) errors.push('status_reason is required: a status row must say why it is in its state');
+  return { valid: errors.length === 0, errors };
+}
+
+/** OMN-19993: an open alert must name its code, subject and since-when (OV-6). */
+export function validateAlertBannerRow(row: AlertBannerRow): ManifestValidationResult {
+  const errors: string[] = [];
+  const r = row as Partial<Record<keyof AlertBannerRow, unknown>>;
+  for (const field of ['alert_id', 'code', 'subject', 'since'] as const) {
+    if (!isNonEmptyString(r[field])) errors.push(`${field} is required`);
+  }
+  if (!(STATUS_GRID_SEVERITIES as readonly unknown[]).includes(r.severity)) {
+    errors.push(`Invalid severity "${String(r.severity)}". Must be one of: ${STATUS_GRID_SEVERITIES.join(', ')}`);
+  }
   return { valid: errors.length === 0, errors };
 }

@@ -151,8 +151,8 @@
   white-space: nowrap;
 }
 
-/* Overview's Recent runs carries the Runs columns in a third of the width, so its cells wrap instead of scrolling
-   (ticket AC4: no panel cut off at 1440x900). */
+/* Overview's Recent runs and the Runs page carry 16 and 17 columns, so their cells wrap instead of scrolling: no
+   panel is cut off at 1440x900 (OMN-20223 AC2, OMN-20759). */
 .local-dashboard-table-wrap--fit th,
 .local-dashboard-table-wrap--fit td {
   padding: 8px 6px;
@@ -160,10 +160,11 @@
   font-size: 0.8125rem;
 }
 
-/* Only a long token (a timestamp, a run id) may break inside itself; every other cell wraps at spaces. */
+/* Only a long token (a timestamp, a run id, a model, a backend, a host) may break inside itself; every other cell
+   wraps at spaces. No minimum width: a 9ch floor on the run id and timestamp alone pushed Recent runs past its panel
+   at 1440 (OMN-20759), and the host, which has no break opportunity, clipped the Runs table. */
 .local-dashboard-table-wrap--fit .local-dashboard-cell-token {
   overflow-wrap: anywhere;
-  min-width: 9ch;
 }
 
 @media (min-width: 720px) {

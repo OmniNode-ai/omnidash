@@ -68,6 +68,9 @@ const PENDING_SOURCES: Record<string, string> = {
   // OMN-20009: the per-run saving is a metering-summary.v1 column (migration 0002); shown while a page contract leaves
   // the card unbound.
   'overview-avg-saving-per-call': 'metering-summary.v1',
+  // OMN-20226: compression_ratio and cache_hit_rate are metering-summary.v1 columns (migration 0003).
+  'overview-compression': 'metering-summary.v1',
+  'overview-cache-hit-rate': 'metering-summary.v1',
 };
 
 /** AK-3: cloud keys are not linked in the local MVP; one line, no form. */
@@ -325,10 +328,21 @@ function indexBy(rows: readonly unknown[], key: string): Map<string, Row> {
 
 type RunStatus = 'passed' | 'failed' | 'Not recorded';
 
+/**
+ * A served boolean, read as Postgres sends it (true/false) or as the local SQLite store does (1/0), which has no
+ * boolean type (OMN-20753). Anything else, null included, is not recorded.
+ */
+function servedBoolean(value: unknown): boolean | null {
+  if (typeof value === 'boolean') return value;
+  if (value === 1 || value === 0) return value === 1;
+  return null;
+}
+
 /** A run's status is its served quality-gate verdict; a run with no served decision has none recorded. */
 function statusOf(decision: Row | undefined): RunStatus {
-  if (!decision || typeof decision.quality_gate_passed !== 'boolean') return 'Not recorded';
-  return decision.quality_gate_passed ? 'passed' : 'failed';
+  const passed = servedBoolean(decision?.quality_gate_passed);
+  if (passed === null) return 'Not recorded';
+  return passed ? 'passed' : 'failed';
 }
 
 /** A failed run's typed cause is the served quality_gate_detail (a provider 429, a timeout, a refused answer). */
@@ -341,6 +355,21 @@ function causeOf(decision: Row | undefined): string {
 
 function recorded(value: unknown): string {
   return isMissing(value) ? 'Not recorded' : String(value);
+}
+
+/**
+ * A run's cost in dollars, from its delegation.savings.v1 session when one is served, else from the decision row's
+ * own measured cost_usd (OMN-20753). Never fewer than two decimals and never rounded, so 0 reads $0.00 and 0.0021
+ * keeps its digits. A cost never measured is served null and reads Not recorded, never $0.00.
+ */
+function costOf(session: Row | undefined, decision: Row): string {
+  const value = isMissing(session?.local_cost_usd) ? decision.cost_usd : session?.local_cost_usd;
+  if (isMissing(value)) return 'Not recorded';
+  const amount = Number(value);
+  if (!Number.isFinite(amount)) return 'Not recorded';
+  const text = String(amount);
+  const decimals = text.includes('.') ? text.split('.')[1].length : 0;
+  return `$${decimals >= 2 ? text : amount.toFixed(2)}`;
 }
 
 /** The route tier as served, with its cost regime beside it when the row carries one (OMN-13649, OMN-20225). */
@@ -393,7 +422,7 @@ export function LastRunCard({ decisions, sessions, now = Date.now() }: RunViewPr
     ['Duration', duration(last.latency_ms)],
     ['Tokens in', recorded(last.tokens_input)],
     ['Tokens out', recorded(last.tokens_output)],
-    ['Cost', recorded(session?.local_cost_usd)],
+    ['Cost', costOf(session, last)],
     ['Basis', recorded(session?.usage_source)],
     ['Task type', recorded(last.task_type)],
     ['Route tier', tierOf(last)],
@@ -433,12 +462,12 @@ export function RecentRunsTable({ decisions, sessions, now = Date.now() }: RunVi
             <td>{statusOf(decision)}</td>
             <td>{causeOf(decision)}</td>
             <td>{recorded(decision.task_type)}</td>
-            <td>{modelOrUnknown(decision.model_name)}</td>
-            <td>{recorded(decision.backend_id)}</td>
-            <td>{recorded(decision.host)}</td>
+            <td className="local-dashboard-cell-token">{modelOrUnknown(decision.model_name)}</td>
+            <td className="local-dashboard-cell-token">{recorded(decision.backend_id)}</td>
+            <td className="local-dashboard-cell-token">{recorded(decision.host)}</td>
             <td>{recorded(decision.tokens_input)}</td>
             <td>{recorded(decision.tokens_output)}</td>
-            <td>{recorded(session?.local_cost_usd)}</td>
+            <td>{costOf(session, decision)}</td>
             <td>{recorded(session?.usage_source)}</td>
             <td>{duration(decision.latency_ms)}</td>
             <td>{tierOf(decision)}</td>
@@ -546,7 +575,7 @@ export function RunsTable({ decisions, sessions, now = Date.now(), pageSize = 25
       </div>
       {shown.length === 0 ? <p className="local-dashboard-empty" role="status">No runs match these filters</p> : (
         <>
-          <div className="local-dashboard-table-wrap">
+          <div className="local-dashboard-table-wrap local-dashboard-table-wrap--fit">
             <table>
               <thead>
                 <tr>
@@ -558,16 +587,16 @@ export function RunsTable({ decisions, sessions, now = Date.now(), pageSize = 25
               <tbody>{page.map((run, index) => {
                 const session = bySession.get(String(run.correlation_id));
                 return <tr key={String(run.correlation_id ?? index)}>
-                  <td>{recorded(run.correlation_id)}{isFixture(run) && <span className="local-dashboard-badge">fixture</span>}</td>
-                  <td>{recorded(run.created_at)}</td>
+                  <td className="local-dashboard-cell-token">{recorded(run.correlation_id)}{isFixture(run) && <span className="local-dashboard-badge">fixture</span>}</td>
+                  <td className="local-dashboard-cell-token">{recorded(run.created_at)}</td>
                   <td>{statusOf(run)}</td>
                   <td>{causeOf(run)}</td>
-                  <td>{modelOrUnknown(run.model_name)}</td>
-                  <td>{recorded(run.backend_id)}</td>
-                  <td>{recorded(run.host)}</td>
+                  <td className="local-dashboard-cell-token">{modelOrUnknown(run.model_name)}</td>
+                  <td className="local-dashboard-cell-token">{recorded(run.backend_id)}</td>
+                  <td className="local-dashboard-cell-token">{recorded(run.host)}</td>
                   <td>{recorded(run.tokens_input)}</td>
                   <td>{recorded(run.tokens_output)}</td>
-                  <td>{recorded(session?.local_cost_usd)}</td>
+                  <td>{costOf(session, run)}</td>
                   <td>{recorded(session?.baseline_model)}</td>
                   <td>{recorded(session?.usage_source)}</td>
                   <td>{recorded(run.task_type)}</td>
@@ -649,7 +678,8 @@ export function TierMixPanel({ row }: { row: Row | null }) {
   );
 }
 
-/** CR-1 to CR-3: provider key references only (never a value), or the command that sets the first one. */
+/** CR-1 to CR-3: provider key references only (never a value), with their fingerprint prefix and set time, or the
+ * command that sets the first one. */
 export function CredentialsTable({ rows }: { rows: readonly unknown[] }) {
   const keys = asRecords(rows);
   if (keys.length === 0) {
@@ -663,12 +693,15 @@ export function CredentialsTable({ rows }: { rows: readonly unknown[] }) {
   return (
     <div className="local-dashboard-table-wrap">
       <table>
-        <thead><tr><th>Provider</th><th>Key ref</th><th>Set</th><th>Revoked</th></tr></thead>
+        <thead><tr><th>Provider</th><th>Key ref</th><th>Fingerprint</th><th>Set</th><th>Revoked</th></tr></thead>
         <tbody>{keys.map((key, index) => (
           <tr key={`${String(key.provider)}-${String(key.name)}-${index}`}>
             <td>{recorded(key.provider)}</td>
             <td>{recorded(key.name)}</td>
-            <td>{recorded(key.created_at)}</td>
+            {/* OMN-19985: the served fingerprint prefix (8 hex of sha256) and the time the key was set; a row its
+                producer sent without them says so. created_at is when the projection first saw the row, not this. */}
+            <td>{recorded(key.fingerprint)}</td>
+            <td>{recorded(key.set_at)}</td>
             <td>{isMissing(key.revoked_at) ? 'Not revoked' : String(key.revoked_at)}</td>
           </tr>
         ))}</tbody>
