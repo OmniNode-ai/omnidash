@@ -1,0 +1,40 @@
+{
+  "dashboard_id": "f03e9a51-7076-55d3-829d-ed29aceaeecf",
+  "name": "Workflow",
+  "description": "The newest run's recorded steps from the delegation decisions exposure. The full ordered path waits on run-trace.v1.",
+  "layout": {
+    "columns": 12,
+    "row_height": 100,
+    "gap": 16,
+    "responsive": true
+  },
+  "refresh_interval_seconds": 30,
+  "theme": "system",
+  "widgets": [
+    {
+      "widget_id": "6a0413c4-70db-5ab5-86a0-73359625a395",
+      "title": "Run path",
+      "row": 0,
+      "col": 0,
+      "width": 12,
+      "height": 4,
+      "data_source": "workflow-run-path",
+      "config": {
+        "config_kind": "table",
+        "widget_type": "table",
+        "columns": [
+          {
+            "key": "step",
+            "header": "Step"
+          },
+          {
+            "key": "value",
+            "header": "Recorded"
+          }
+        ],
+        "page_size": 25,
+        "show_pagination": false
+      }
+    }
+  ]
+}

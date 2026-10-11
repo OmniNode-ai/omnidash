@@ -4,7 +4,7 @@ import type { RegisteredComponent } from '@/registry/types';
 
 const STUB_SIZE = { w: 6, h: 4 };
 const STUB_CAPABILITIES = { supports_compare: false, supports_export: false, supports_fullscreen: false };
-const STUB_EMPTY_STATE = { message: 'No data' };
+const STUB_EMPTY_STATE = { message: 'No data', waits_on: ['onex.snapshot.projection.test.v1'] };
 
 const mockComponents: RegisteredComponent[] = [
   {

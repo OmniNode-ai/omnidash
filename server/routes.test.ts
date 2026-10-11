@@ -6,7 +6,6 @@ import { join } from 'node:path';
 import { tmpdir } from 'node:os';
 import http from 'node:http';
 import type { AddressInfo } from 'node:net';
-import Database from 'better-sqlite3';
 
 async function loadRoutes() {
   vi.resetModules();
@@ -243,137 +242,31 @@ describe('server projection routes — cost-trend cluster (OMN-10305)', () => {
 });
 
 // OMN-10623: SQLite data source mode
-describe('server projection routes — OMNIDASH_DATA_SOURCE=sqlite', () => {
-  let tmpDir: string;
-  let dbPath: string;
-
-  beforeEach(async () => {
-    tmpDir = await mkdtemp(join(tmpdir(), 'omnidash-sqlite-routes-'));
-    dbPath = join(tmpDir, 'delegation.sqlite');
+// OMN-19981 AC3: the hand-written SQLite reader is deleted. sqlite mode no longer folds topics in the bridge; it
+// answers a typed refusal naming the served path (onex dashboard, OMN-19976) instead of a bare 500 or an empty list.
+describe('server projection routes — OMNIDASH_DATA_SOURCE=sqlite (reader retired, OMN-19981 AC3)', () => {
+  beforeEach(() => {
     process.env.OMNIDASH_DATA_SOURCE = 'sqlite';
-    process.env.OMNIDASH_SQLITE_DB_PATH = dbPath;
+    process.env.OMNIDASH_SQLITE_DB_PATH = join(tmpdir(), 'omnidash-sqlite-retired.sqlite');
   });
 
-  afterEach(async () => {
+  afterEach(() => {
     delete process.env.OMNIDASH_DATA_SOURCE;
     delete process.env.OMNIDASH_SQLITE_DB_PATH;
-    await rm(tmpDir, { recursive: true, force: true });
   });
 
-  it('returns [] for delegation.decisions topic when DB has no rows', async () => {
-    const db = new Database(dbPath);
-    db.exec(`
-      CREATE TABLE IF NOT EXISTS delegation_events (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        correlation_id TEXT NOT NULL UNIQUE,
-        session_id TEXT,
-        tool_use_id TEXT,
-        hook_name TEXT,
-        task_type TEXT NOT NULL DEFAULT '',
-        delegated_to TEXT NOT NULL DEFAULT '',
-        model_name TEXT NOT NULL DEFAULT '',
-        quality_gate_passed INTEGER NOT NULL DEFAULT 0,
-        quality_gate_detail TEXT,
-        latency_ms INTEGER,
-        input_hash TEXT,
-        input_redaction_policy TEXT NOT NULL DEFAULT 'hash_only',
-        contract_version TEXT NOT NULL DEFAULT 'v1',
-        created_at REAL NOT NULL
-      );
-    `);
-    db.close();
-
+  it.each([
+    'onex.snapshot.projection.delegation.decisions.v1',
+    'delegation',
+    'onex.snapshot.projection.unknown.v1',
+  ])('refuses %s with a typed reason naming onex dashboard', async (topic) => {
     const routes = await loadRoutes();
-    const res = await request(buildApp(routes)).get(
-      '/projection/onex.snapshot.projection.delegation.decisions.v1',
-    );
-    expect(res.status).toBe(200);
-    expect(res.body).toEqual([]);
-  });
-
-  it('returns delegation_events rows for decisions topic', async () => {
-    const db = new Database(dbPath);
-    db.exec(`
-      CREATE TABLE IF NOT EXISTS delegation_events (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        correlation_id TEXT NOT NULL UNIQUE,
-        session_id TEXT,
-        tool_use_id TEXT,
-        hook_name TEXT,
-        task_type TEXT NOT NULL DEFAULT '',
-        delegated_to TEXT NOT NULL DEFAULT '',
-        model_name TEXT NOT NULL DEFAULT '',
-        quality_gate_passed INTEGER NOT NULL DEFAULT 0,
-        quality_gate_detail TEXT,
-        latency_ms INTEGER,
-        input_hash TEXT,
-        input_redaction_policy TEXT NOT NULL DEFAULT 'hash_only',
-        contract_version TEXT NOT NULL DEFAULT 'v1',
-        created_at REAL NOT NULL
-      );
-    `);
-    db.prepare(`
-      INSERT INTO delegation_events (correlation_id, task_type, delegated_to, model_name, quality_gate_passed, created_at)
-      VALUES ('corr-sqlite-1', 'code', 'local', 'qwen3', 1, 1000.0)
-    `).run();
-    db.close();
-
-    const routes = await loadRoutes();
-    const res = await request(buildApp(routes)).get(
-      '/projection/onex.snapshot.projection.delegation.decisions.v1',
-    );
-    expect(res.status).toBe(200);
-    expect(res.body).toHaveLength(1);
-    expect(res.body[0].correlation_id).toBe('corr-sqlite-1');
-    expect(res.body[0].model_name).toBe('qwen3');
-  });
-
-  it('returns [] for unknown topic in sqlite mode', async () => {
-    // DB file does not need to exist for unknown topics
-    const routes = await loadRoutes();
-    const res = await request(buildApp(routes)).get(
-      '/projection/onex.snapshot.projection.unknown.v1',
-    );
-    expect(res.status).toBe(200);
-    expect(res.body).toEqual([]);
-  });
-
-  it('/projection/delegation short alias returns same rows as decisions.v1 topic', async () => {
-    const db = new Database(dbPath);
-    db.exec(`
-      CREATE TABLE IF NOT EXISTS delegation_events (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        correlation_id TEXT NOT NULL UNIQUE,
-        session_id TEXT,
-        tool_use_id TEXT,
-        hook_name TEXT,
-        task_type TEXT NOT NULL DEFAULT '',
-        delegated_to TEXT NOT NULL DEFAULT '',
-        model_name TEXT NOT NULL DEFAULT '',
-        quality_gate_passed INTEGER NOT NULL DEFAULT 0,
-        quality_gate_detail TEXT,
-        latency_ms INTEGER,
-        input_hash TEXT,
-        input_redaction_policy TEXT NOT NULL DEFAULT 'hash_only',
-        contract_version TEXT NOT NULL DEFAULT 'v1',
-        created_at REAL NOT NULL
-      );
-    `);
-    db.prepare(`
-      INSERT INTO delegation_events (correlation_id, task_type, delegated_to, model_name, quality_gate_passed, created_at)
-      VALUES ('corr-alias-1', 'code', 'local', 'qwen3', 1, 1000.0)
-    `).run();
-    db.close();
-
-    const routes = await loadRoutes();
-    const resAlias = await request(buildApp(routes)).get('/projection/delegation');
-    const resFull = await request(buildApp(routes)).get(
-      '/projection/onex.snapshot.projection.delegation.decisions.v1',
-    );
-    expect(resAlias.status).toBe(200);
-    expect(resAlias.body).toHaveLength(1);
-    expect(resAlias.body[0].correlation_id).toBe('corr-alias-1');
-    expect(resAlias.body).toEqual(resFull.body);
+    const res = await request(buildApp(routes)).get(`/projection/${topic}`);
+    expect(res.status).toBe(503);
+    expect(res.body).toEqual({
+      error: 'sqlite_reader_retired',
+      detail: 'sqlite mode no longer reads the store by hand-written SQL; serve its exposures with onex dashboard (OMN-19976) and run OmniDash in http mode',
+    });
   });
 });
 

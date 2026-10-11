@@ -1,21 +1,418 @@
 {
   "components": [
     {
-      "component_id": "overview-roi",
+      "component_id": "overview-spend",
       "component_kind": "metric_card",
-      "title": "Return on investment",
-      "contract_version": { "major": 1, "minor": 0, "patch": 0 },
+      "title": "Actual spend",
+      "contract_version": {
+        "major": 1,
+        "minor": 0,
+        "patch": 0
+      },
       "data_bindings": [
         {
-          "binding_id": "roi-snapshot",
-          "projection_topic": "onex.snapshot.projection.baselines.roi.v1",
-          "ordering_authority_field": "computed_at",
+          "binding_id": "overview-spend-metering",
+          "projection_topic": "onex.snapshot.projection.metering-summary.v1",
+          "ordering_authority_field": "as_of",
           "ordering_direction": "descending",
-          "required_fields": ["roi_percent", "baseline_state"]
+          "required_fields": [
+            "window_kind",
+            "as_of",
+            "spend_usd"
+          ]
         }
       ],
-      "supported_empty_state_reasons": ["missing-field", "no-data"]
+      "supported_empty_state_reasons": [
+        "missing-field",
+        "no-data"
+      ]
+    },
+    {
+      "component_id": "overview-savings",
+      "component_kind": "metric_card",
+      "title": "Savings",
+      "contract_version": {
+        "major": 1,
+        "minor": 0,
+        "patch": 0
+      },
+      "data_bindings": [
+        {
+          "binding_id": "overview-savings-metering",
+          "projection_topic": "onex.snapshot.projection.metering-summary.v1",
+          "ordering_authority_field": "as_of",
+          "ordering_direction": "descending",
+          "required_fields": [
+            "window_kind",
+            "as_of",
+            "baseline_model",
+            "pricing_manifest_version",
+            "baseline_state",
+            "savings_usd"
+          ]
+        }
+      ],
+      "supported_empty_state_reasons": [
+        "missing-field",
+        "no-data"
+      ]
+    },
+    {
+      "component_id": "overview-measured",
+      "component_kind": "metric_card",
+      "title": "Agent calls",
+      "contract_version": {
+        "major": 1,
+        "minor": 0,
+        "patch": 0
+      },
+      "data_bindings": [
+        {
+          "binding_id": "overview-measured-metering",
+          "projection_topic": "onex.snapshot.projection.metering-summary.v1",
+          "ordering_authority_field": "as_of",
+          "ordering_direction": "descending",
+          "required_fields": [
+            "window_kind",
+            "as_of",
+            "runs_measured",
+            "runs_total",
+            "runs_unknown_tokens",
+            "runs_unknown_spend"
+          ]
+        }
+      ],
+      "supported_empty_state_reasons": [
+        "missing-field",
+        "no-data"
+      ]
+    },
+    {
+      "component_id": "overview-tokens",
+      "component_kind": "metric_card",
+      "title": "Tokens processed",
+      "contract_version": {
+        "major": 1,
+        "minor": 0,
+        "patch": 0
+      },
+      "data_bindings": [
+        {
+          "binding_id": "overview-tokens-metering",
+          "projection_topic": "onex.snapshot.projection.metering-summary.v1",
+          "ordering_authority_field": "as_of",
+          "ordering_direction": "descending",
+          "required_fields": [
+            "window_kind",
+            "as_of",
+            "tokens_in",
+            "tokens_out",
+            "runs_total",
+            "runs_unknown_tokens"
+          ]
+        }
+      ],
+      "supported_empty_state_reasons": [
+        "missing-field",
+        "no-data"
+      ]
+    },
+    {
+      "component_id": "overview-last-run",
+      "component_kind": "table",
+      "title": "Last run",
+      "contract_version": {
+        "major": 1,
+        "minor": 0,
+        "patch": 0
+      },
+      "data_bindings": [
+        {
+          "binding_id": "overview-last-run-decisions",
+          "projection_topic": "onex.snapshot.projection.delegation.decisions.v1",
+          "ordering_authority_field": "written_at",
+          "ordering_direction": "descending",
+          "required_fields": [
+            "correlation_id",
+            "written_at",
+            "created_at",
+            "quality_gate_passed",
+            "quality_gate_detail",
+            "model_name",
+            "latency_ms",
+            "tokens_input",
+            "tokens_output",
+            "task_type",
+            "cost_tier_name",
+            "actual_score",
+            "backend_id",
+            "host",
+            "cost_tier_type"
+          ]
+        },
+        {
+          "binding_id": "overview-last-run-cost",
+          "projection_topic": "onex.snapshot.projection.delegation.savings.v1",
+          "ordering_authority_field": "created_at",
+          "ordering_direction": "descending",
+          "required_fields": [
+            "sessions",
+            "session_id",
+            "local_cost_usd",
+            "usage_source"
+          ]
+        }
+      ],
+      "supported_empty_state_reasons": [
+        "missing-field",
+        "no-data"
+      ]
+    },
+    {
+      "component_id": "overview-recent-runs",
+      "component_kind": "table",
+      "title": "Recent runs",
+      "contract_version": {
+        "major": 1,
+        "minor": 0,
+        "patch": 0
+      },
+      "data_bindings": [
+        {
+          "binding_id": "overview-recent-runs-decisions",
+          "projection_topic": "onex.snapshot.projection.delegation.decisions.v1",
+          "ordering_authority_field": "written_at",
+          "ordering_direction": "descending",
+          "required_fields": [
+            "correlation_id",
+            "written_at",
+            "created_at",
+            "quality_gate_passed",
+            "quality_gate_detail",
+            "model_name",
+            "latency_ms",
+            "tokens_input",
+            "tokens_output",
+            "task_type",
+            "cost_tier_name",
+            "actual_score",
+            "backend_id",
+            "host",
+            "cost_tier_type"
+          ]
+        },
+        {
+          "binding_id": "overview-recent-runs-cost",
+          "projection_topic": "onex.snapshot.projection.delegation.savings.v1",
+          "ordering_authority_field": "created_at",
+          "ordering_direction": "descending",
+          "required_fields": [
+            "sessions",
+            "session_id",
+            "local_cost_usd",
+            "usage_source"
+          ]
+        }
+      ],
+      "supported_empty_state_reasons": [
+        "missing-field",
+        "no-data"
+      ]
+    },
+    {
+      "component_id": "overview-run-locally",
+      "component_kind": "metric_card",
+      "title": "Run locally",
+      "contract_version": {
+        "major": 1,
+        "minor": 0,
+        "patch": 0
+      },
+      "data_bindings": [
+        {
+          "binding_id": "overview-run-locally-routing",
+          "projection_topic": "onex.snapshot.projection.delegation.model-routing.v1",
+          "ordering_authority_field": "captured_at",
+          "ordering_direction": "descending",
+          "required_fields": [
+            "by_tier"
+          ]
+        }
+      ],
+      "supported_empty_state_reasons": [
+        "missing-field",
+        "no-data"
+      ]
+    },
+    {
+      "component_id": "overview-avg-saving-per-call",
+      "component_kind": "metric_card",
+      "title": "Avg saving / call",
+      "contract_version": {
+        "major": 1,
+        "minor": 0,
+        "patch": 0
+      },
+      "data_bindings": [
+        {
+          "binding_id": "overview-avg-saving-per-call-metering",
+          "projection_topic": "onex.snapshot.projection.metering-summary.v1",
+          "ordering_authority_field": "as_of",
+          "ordering_direction": "descending",
+          "required_fields": [
+            "window_kind",
+            "as_of",
+            "savings_per_measured_run_usd"
+          ]
+        }
+      ],
+      "supported_empty_state_reasons": [
+        "missing-field",
+        "no-data"
+      ]
+    },
+    {
+      "component_id": "overview-baseline-spend",
+      "component_kind": "metric_card",
+      "title": "Baseline spend",
+      "contract_version": {
+        "major": 1,
+        "minor": 0,
+        "patch": 0
+      },
+      "data_bindings": [
+        {
+          "binding_id": "overview-baseline-spend-metering",
+          "projection_topic": "onex.snapshot.projection.metering-summary.v1",
+          "ordering_authority_field": "as_of",
+          "ordering_direction": "descending",
+          "required_fields": [
+            "window_kind",
+            "as_of",
+            "baseline_model",
+            "pricing_manifest_version",
+            "baseline_state",
+            "counterfactual_usd"
+          ]
+        }
+      ],
+      "supported_empty_state_reasons": [
+        "missing-field",
+        "no-data"
+      ]
+    },
+    {
+      "component_id": "overview-quality",
+      "component_kind": "table",
+      "title": "Quality",
+      "contract_version": {
+        "major": 1,
+        "minor": 0,
+        "patch": 0
+      },
+      "data_bindings": [
+        {
+          "binding_id": "overview-quality-gate",
+          "projection_topic": "onex.snapshot.projection.delegation.quality-gate.v1",
+          "ordering_authority_field": "captured_at",
+          "ordering_direction": "descending",
+          "required_fields": [
+            "overall_pass_rate",
+            "total_passed",
+            "total_failed",
+            "total_checks",
+            "avg_actual_score",
+            "avg_required_bar"
+          ]
+        }
+      ],
+      "supported_empty_state_reasons": [
+        "missing-field",
+        "no-data"
+      ]
+    },
+    {
+      "component_id": "overview-tier-mix",
+      "component_kind": "table",
+      "title": "Tier mix",
+      "contract_version": {
+        "major": 1,
+        "minor": 0,
+        "patch": 0
+      },
+      "data_bindings": [
+        {
+          "binding_id": "overview-tier-mix-routing",
+          "projection_topic": "onex.snapshot.projection.delegation.model-routing.v1",
+          "ordering_authority_field": "captured_at",
+          "ordering_direction": "descending",
+          "required_fields": [
+            "by_tier"
+          ]
+        }
+      ],
+      "supported_empty_state_reasons": [
+        "missing-field",
+        "no-data"
+      ]
+    },
+    {
+      "component_id": "overview-compression",
+      "component_kind": "metric_card",
+      "title": "Compression",
+      "contract_version": {
+        "major": 1,
+        "minor": 0,
+        "patch": 0
+      },
+      "data_bindings": [
+        {
+          "binding_id": "overview-compression-metering",
+          "projection_topic": "onex.snapshot.projection.metering-summary.v1",
+          "ordering_authority_field": "as_of",
+          "ordering_direction": "descending",
+          "required_fields": [
+            "window_kind",
+            "as_of",
+            "compression_ratio"
+          ]
+        }
+      ],
+      "supported_empty_state_reasons": [
+        "missing-field",
+        "no-data"
+      ]
+    },
+    {
+      "component_id": "overview-cache-hit-rate",
+      "component_kind": "metric_card",
+      "title": "Cache hit rate",
+      "contract_version": {
+        "major": 1,
+        "minor": 0,
+        "patch": 0
+      },
+      "data_bindings": [
+        {
+          "binding_id": "overview-cache-hit-rate-metering",
+          "projection_topic": "onex.snapshot.projection.metering-summary.v1",
+          "ordering_authority_field": "as_of",
+          "ordering_direction": "descending",
+          "required_fields": [
+            "window_kind",
+            "as_of",
+            "cache_hit_rate"
+          ]
+        }
+      ],
+      "supported_empty_state_reasons": [
+        "missing-field",
+        "no-data"
+      ]
     }
   ],
-  "page_empty_state_reasons": ["NO_RUNS_YET", "BASELINE_UNRESOLVED"]
+  "page_empty_state_reasons": [
+    "NO_RUNS_YET",
+    "BASELINE_UNRESOLVED"
+  ]
 }

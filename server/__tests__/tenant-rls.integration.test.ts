@@ -213,7 +213,7 @@ describe.skipIf(!ADMIN_URL)('tenant RLS isolation (real Postgres)', () => {
     });
     try {
       const tenantA = await runWithTenantContext({ tenantId: 'tenant-a', subject: null }, () =>
-        reader.readProjection('onex.snapshot.projection.delegation.decisions.v1'),
+        reader.readProjection('delegation'),
       );
       const corrs = tenantA.rows.map((r) => r.correlation_id).sort();
       expect(corrs).toContain('corr-a1');
@@ -221,14 +221,12 @@ describe.skipIf(!ADMIN_URL)('tenant RLS isolation (real Postgres)', () => {
       expect(corrs).not.toContain('corr-b1');
 
       const tenantB = await runWithTenantContext({ tenantId: 'tenant-b', subject: null }, () =>
-        reader.readProjection('onex.snapshot.projection.delegation.decisions.v1'),
+        reader.readProjection('delegation'),
       );
       expect(tenantB.rows.map((r) => r.correlation_id)).toEqual(['corr-b1']);
 
       // Unauthenticated app path: no context, no rows.
-      const anonymous = await reader.readProjection(
-        'onex.snapshot.projection.delegation.decisions.v1',
-      );
+      const anonymous = await reader.readProjection('delegation');
       expect(anonymous.rows).toHaveLength(0);
 
       // queryLogEntries path.

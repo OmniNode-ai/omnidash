@@ -20,6 +20,8 @@ import {
 } from '@/components/ui/positioned-menu';
 import { useWidgetChrome } from './WidgetChromeContext';
 import { Text } from '@/components/ui/typography';
+import { isTenantNotConfiguredError } from '@/data-source/projection-tenant';
+import { TenantNotConfiguredState } from './TenantNotConfiguredState';
 
 interface ComponentWrapperProps {
   title: string;
@@ -177,7 +179,9 @@ export function ComponentWrapper({
       <div className="widget-body">
         {isLoading && <Text as="div" size="lg" color="tertiary">Loading...</Text>}
         {error && !isLoading && (
-          <Text as="div" size="lg" color="bad">Error: {error.message}</Text>
+          isTenantNotConfiguredError(error)
+            ? <TenantNotConfiguredState />
+            : <Text as="div" size="lg" color="bad">Error: {error.message}</Text>
         )}
         {!isLoading && !error && isEmpty && (
           <Text as="div" size="lg" color="tertiary">

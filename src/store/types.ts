@@ -121,6 +121,11 @@ export type AppPage =
   | 'sea-control'
   | 'local-overview'
   | 'local-runs'
+  // OMN-19981 Amendment 6 (FR-3): the other four local pages, partial until their exposures are served.
+  | 'local-workflow'
+  | 'local-usage'
+  | 'local-credentials'
+  | 'local-api-keys'
   // OMN-18771 — Lab observability tab (C4). Additive; existing members untouched.
   | 'lab';
 

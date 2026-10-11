@@ -4,7 +4,7 @@
 // Deviations from source:
 //   - Theme toggle retained from OMN-38 (toggling `data-theme` attribute on <html>).
 //   - "+ New dashboard" inline form removed — new-dashboard flow moved to Sidebar (OMN-43).
-//   - Real breadcrumb navigation deferred; static "Home / Dashboards" for now.
+//   - OMN-19981: current breadcrumb follows the canonical page URL.
 //   - OMN-47: CSS ported verbatim to src/styles/topbar.css; TSX rewritten to use prototype class names.
 //   - Post-OMN-48: removed the user chip (#23), Bell + HelpCircle buttons (#24), and the
 //     breadcrumb Menu icon (#28). None of them had a real system behind them — no users,
@@ -13,10 +13,12 @@
 //     nothing.
 
 import { useState } from 'react';
+import { useLocation } from 'wouter';
+import { PAGE_LABELS, pageForPath } from '@/navigation/page-routes';
 import { useQueryClient } from '@tanstack/react-query';
 import { useTheme } from '@/theme';
-import { Text } from '@/components/ui/typography';
-import { RefreshCw } from 'lucide-react';
+import { Moon, RefreshCw, Sun } from 'lucide-react';
+import { requestLocalPageRefresh } from '@/services/local-page-refresh';
 
 // Length of the visual spin after a manual refresh. Long enough to
 // register as deliberate feedback, short enough that a chain of
@@ -25,15 +27,15 @@ import { RefreshCw } from 'lucide-react';
 const SPIN_DURATION_MS = 700;
 
 export function Header() {
+  const [location] = useLocation();
+  const page = pageForPath(location);
+  const pageLabel = page ? PAGE_LABELS[page] : 'Page not found';
   const { theme, setTheme, availableThemes } = useTheme();
   const queryClient = useQueryClient();
   const [isRefreshing, setIsRefreshing] = useState(false);
 
-  const nextTheme = () => {
-    const idx = availableThemes.indexOf(theme);
-    const next = availableThemes[(idx + 1) % availableThemes.length];
-    setTheme(next);
-  };
+  const nextThemeName = availableThemes[(availableThemes.indexOf(theme) + 1) % availableThemes.length];
+  const nextTheme = () => setTheme(nextThemeName);
 
   // Manual refresh: invalidate every cached query so React Query
   // refetches the active ones in place. No page reload, same hard
@@ -41,6 +43,7 @@ export function Header() {
   // drag-in-progress, and modal state.
   const handleRefresh = () => {
     void queryClient.invalidateQueries();
+    requestLocalPageRefresh();
     setIsRefreshing(true);
     window.setTimeout(() => setIsRefreshing(false), SPIN_DURATION_MS);
   };
@@ -48,10 +51,10 @@ export function Header() {
   return (
     <header className="topbar">
       {/* Left — breadcrumbs */}
-      <nav className="breadcrumbs">
+      <nav className="breadcrumbs" aria-label="Breadcrumb">
         <span>Home</span>
         <span className="sep">/</span>
-        <span className="cur">Dashboards</span>
+        <span className="cur" aria-current="page">{pageLabel}</span>
       </nav>
 
       {/* Right — action cluster */}
@@ -68,12 +71,13 @@ export function Header() {
         {/* Theme toggle (retained from OMN-38) */}
         <button
           className="icon-btn"
-          style={{ width: 'auto', padding: '0 10px' }}
           onClick={nextTheme}
           aria-label="Toggle theme"
-          title="Toggle theme"
+          title={`Switch to ${nextThemeName} theme`}
         >
-          <Text size="md" weight="medium" color="inherit">{theme}</Text>
+          {nextThemeName === 'light'
+            ? <Sun size={16} aria-hidden="true" />
+            : <Moon size={16} aria-hidden="true" />}
         </button>
       </div>
     </header>

@@ -1,4 +1,5 @@
-/* SOURCE: OmniDash.html:95-217 — verbatim port. Do not hand-edit; re-port if the prototype updates. */
+/* SOURCE: OmniDash.html:95-217 — prototype port.
+   OMN-19981 deviation: sidebar interaction colors use theme tokens in both light and dark modes. */
 /* NOTE: var(--accent) in prototype = var(--brand) in v2 (globals.css renamed --accent* → --brand* to free
    the --accent namespace for shadcn. Substitutions applied here to preserve visual fidelity.) */
 
@@ -9,9 +10,15 @@
   display: flex;
   flex-direction: column;
   border-right: 1px solid var(--sidebar-line);
-  overflow: hidden; /* keep collapsed-state truncation clean during the width transition */
+  overflow-x: hidden;
+  overflow-y: auto;
 }
+.sidebar > * { flex-shrink: 0; }
 .brand {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  background: var(--sidebar);
   padding: 18px 16px 14px;
   border-bottom: 1px solid var(--sidebar-line);
   display: flex;
@@ -25,7 +32,7 @@
   color: var(--sidebar-ink-2);
   transition: background 0.15s, color 0.15s;
 }
-.sidebar-toggle:hover { background: oklch(22% 0.01 260); color: var(--sidebar-ink); }
+.sidebar-toggle:hover { background: var(--sidebar-hover); color: var(--sidebar-ink); }
 
 /* ---------- Collapsed state ---------- */
 .sidebar.collapsed .brand {
@@ -46,6 +53,23 @@
   grid-template-columns: 1fr;
   justify-items: center;
   padding: 8px 0;
+}
+.dash-item.active:hover {
+  background: color-mix(in oklch, var(--brand-soft), var(--brand-ink) 12%);
+}
+.dash-item.active::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 9px;
+  bottom: 9px;
+  width: 3px;
+  border-radius: 3px;
+  background: var(--brand-ink);
+}
+.sidebar :is(a, button, [role="button"], input):focus-visible {
+  outline: 2px solid var(--brand-ink);
+  outline-offset: 2px;
 }
 .sidebar.collapsed .dash-item .dash-marker {
   text-align: center;
@@ -92,8 +116,8 @@
 
 .dash-list {
   padding: 0 8px;
-  flex: 1;
-  overflow-y: auto;
+  flex: 1 0 auto;
+  overflow-y: visible;
   display: flex; flex-direction: column; gap: 1px;
 }
 .dash-item {
@@ -105,15 +129,17 @@
   color: var(--sidebar-ink-2);
   font-size: 13px;
   cursor: pointer;
+  text-decoration: none;
   position: relative;
-  border-radius: 0;
-  transition: color 0.12s, background 0.12s;
+  border-radius: 8px;
+  min-height: 36px;
+  transition: color 0.15s, background 0.15s;
 }
-.dash-item:hover { color: var(--sidebar-ink); background: oklch(22% 0.01 260); }
+.dash-item:hover { color: var(--sidebar-ink); background: var(--sidebar-hover); }
 .dash-item.active {
-  color: var(--sidebar-ink);
-  background: transparent;
-  font-weight: 500;
+  color: var(--brand-ink);
+  background: var(--brand-soft);
+  font-weight: 600;
 }
 .dash-item .dash-marker {
   font-family: var(--font-mono);
@@ -124,7 +150,7 @@
   line-height: 1;
 }
 .dash-item.active .dash-marker {
-  color: var(--brand);
+  color: var(--brand-ink);
   opacity: 1;
 }
 .dash-item .dash-name { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
@@ -134,7 +160,7 @@
   transition: opacity 0.15s, background 0.15s;
 }
 .dash-item:hover .dash-kebab, .dash-item.active .dash-kebab { opacity: 1; }
-.dash-item .dash-kebab:hover { background: oklch(36% 0.01 260); }
+.dash-item .dash-kebab:hover { background: var(--sidebar-hover-strong); }
 
 /* ── Mobile sidebar overlay (≤1024px) ───────────────────────────────────────
    On mobile the grid column stays at 56px (icon rail by default). When the
@@ -180,4 +206,21 @@
 @keyframes backdrop-fade-in {
   from { opacity: 0; }
   to   { opacity: 1; }
+}
+
+/* OMN-19981 Amendment 6 (FR-3): local items have no kebab, so their third column fits the partial chip. */
+.local-nav { padding: 4px 8px; }
+.sidebar.collapsed .local-nav { padding-inline: 4px; }
+.local-nav .dash-item { grid-template-columns: 14px 1fr auto; }
+
+/* OMN-19981 Amendment 6 (FR-3): a local page whose exposure is not served yet. */
+.local-nav-chip {
+  flex: 0 0 auto;
+  border: 1px solid var(--sidebar-line);
+  border-radius: 999px;
+  padding: 0 6px;
+  font-size: 0.625rem;
+  line-height: 1.5;
+  text-transform: uppercase;
+  color: var(--sidebar-ink-2);
 }

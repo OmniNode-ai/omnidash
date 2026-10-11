@@ -94,7 +94,7 @@ function resolveBase(opts: DelegationApiOptions | undefined): string {
 
 // Why direct fetch rather than src/data-source/ abstractions (OMN-10945):
 // The /api/delegation/* routes are typed REST endpoints served by Express
-// (server/routes.ts → SqliteProjectionReader). They are NOT the generic
+// (server/routes.ts). They are NOT the generic
 // /projection/<topic> fan-out that HttpSnapshotSource.readAll() targets.
 // VITE_DATA_SOURCE controls FileSnapshotSource vs HttpSnapshotSource for
 // the topic fan-out; it does not apply to these typed REST endpoints.

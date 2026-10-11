@@ -184,4 +184,11 @@ export const PALETTE_CLASSIFICATION: Record<string, PaletteClassification> = {
   // rendering a real row is the honest answer; the widget's own empty state
   // carries the same caveat for anyone who sees zero.
   'work-events': { paletteVisibility: 'visible', authorityLabel: 'projection-backed', probe: 'work.events.v1=200/1r backing=bus (dev lane projection-api, 2026-09-04T13:32:17Z)' },
+  // OMN-20006: the Usage page's two readers, probed read-only on the dev lane
+  // projection API. usage-by-model-day answers 200 with no rows yet (no usage
+  // writer runs there), so it is visible with a truthful empty state;
+  // metering-summary is not exposed until omnimarket#3368 lands, so its series
+  // is hidden until a re-probe answers 200.
+  'usage-by-model-day': { paletteVisibility: 'visible', authorityLabel: 'degraded', probe: 'usage-by-model-day.v1=200/0r (dev lane projection-api, 2026-10-04T15:21:46Z)' },
+  'usage-savings-series': { paletteVisibility: 'hidden', authorityLabel: 'hidden', probe: 'metering-summary.v1=404 unknown_topic (dev lane projection-api, 2026-10-04T15:21:46Z)' },
 };

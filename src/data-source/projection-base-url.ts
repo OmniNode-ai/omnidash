@@ -14,7 +14,10 @@ import { resolveEffectiveDataSource } from './data-source-override';
  *   0. Runtime override (OMN-13007) — an explicit choice in the DATA SOURCE
  *      control wins. File override -> null; live override with a base URL -> that
  *      absolute base.
- *   1. DATA_SOURCE_DEFAULT_URL — generated from contract.yaml plus the local
+ *   1. The dev server proxies the overlay URL (OMN-19994): `vite` serves
+ *      `/projection*` same-origin from it and sets OMNIDASH_SAME_ORIGIN_PROJECTION,
+ *      so the base is '' (relative).
+ *   2. DATA_SOURCE_DEFAULT_URL — generated from contract.yaml plus the local
  *      contract.local.yaml overlay. An empty value means same-origin `/projection/*`
  *      through the local runtime. Browser env files are not endpoint authority.
  *
@@ -28,6 +31,9 @@ export function resolveProjectionBaseUrl(): string | null {
   // A live override that pins an explicit absolute base remains an intentional
   // operator choice. The chrome control supplies an absolute URL the browser hits.
   if (effective.baseUrl !== null) return effective.baseUrl.replace(/\/$/, '');
+  // OMN-19994 AC1: the dev server (vite.config.ts) proxies the overlay's URL same-origin and says so here. The
+  // local runtime sends no CORS headers, so reading it cross-origin fails in the browser.
+  if (import.meta.env.OMNIDASH_SAME_ORIGIN_PROJECTION === '1') return '';
   // The generated value is read from contract.yaml + contract.local.yaml by
   // scripts/generate-data-source-config.ts. Empty deliberately means same-origin.
   return DATA_SOURCE_DEFAULT_URL.replace(/\/$/, '');

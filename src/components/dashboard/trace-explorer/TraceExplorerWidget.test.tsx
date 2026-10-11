@@ -10,6 +10,7 @@ import {
   type LiveEventRow,
 } from './TraceExplorerWidget';
 import type { WorkEventRow } from '@/components/dashboard/work-events/WorkEventsWidget';
+import { TenantNotConfiguredError } from '@/data-source/projection-tenant';
 
 const READ_AT = '2026-09-26T12:00:00Z';
 
@@ -118,5 +119,34 @@ describe('Event Trace heartbeat default — AC3', () => {
     expect(screen.getAllByTestId('trace-event-row')).toHaveLength(1);
     fireEvent.click(screen.getByLabelText('Include heartbeats'));
     expect(screen.getAllByTestId('trace-event-row')).toHaveLength(8);
+  });
+});
+
+describe('Event Trace tenant refusal on the decisions join (OMN-19994 AC2)', () => {
+  function renderWithDecisionError(error: Error) {
+    return render(
+      <TraceExplorerView
+        eventSnapshot={snapshot(EVENTS)}
+        decisionSnapshot={snapshot<DelegationDecisionRow>([])}
+        workSnapshot={snapshot<WorkEventRow>([])}
+        decisionError={error}
+        paused={false}
+        onPausedChange={vi.fn()}
+      />,
+    );
+  }
+
+  it('renders the typed tenant state, not the refusal message, when the decisions read is refused', () => {
+    const { container } = renderWithDecisionError(
+      new TenantNotConfiguredError('onex.snapshot.projection.delegation.decisions.v1', 'tenant_context_unresolved: none'),
+    );
+    expect(container.querySelectorAll('[data-tenant-state="not-configured"]')).toHaveLength(1);
+    expect(screen.queryByText(/Delegation correlation join unavailable/)).toBeNull();
+  });
+
+  it('keeps the warning line for a non-tenant decisions failure', () => {
+    const { container } = renderWithDecisionError(new Error('HTTP 500'));
+    expect(container.querySelector('[data-tenant-state]')).toBeNull();
+    expect(screen.getByText(/Delegation correlation join unavailable: HTTP 500/)).toBeTruthy();
   });
 });

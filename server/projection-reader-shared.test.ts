@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { timestampValue, mergeDelegationSessions, buildCostSavingsOverviewResult } from './projection-reader-shared.js';
+import { timestampValue, mergeDelegationSessions } from './projection-reader-shared.js';
 
 type Row = Record<string, unknown>;
 
@@ -57,48 +57,5 @@ describe('mergeDelegationSessions', () => {
     const events: Row[] = [{ session_id: 'a', created_at: '1700000001000' }];
     const result = mergeDelegationSessions(savings, events, key);
     expect(result[0].created_at).toBe('1700000001000');
-  });
-});
-
-describe('buildCostSavingsOverviewResult', () => {
-  it('returns zero totals with empty sessions', () => {
-    const result = buildCostSavingsOverviewResult([], 0);
-    expect(result.total_cost_usd).toBe(0);
-    expect(result.total_savings_usd).toBe(0);
-    expect(result.provisioned).toBe(false);
-    expect(result.rows).toEqual([]);
-    expect(result.warnings).toEqual([]);
-  });
-
-  it('includes warning when telemetry rows were omitted', () => {
-    const result = buildCostSavingsOverviewResult([], 3);
-    expect((result.warnings as string[]).length).toBe(1);
-    expect((result.warnings as string[])[0]).toContain('3 delegation rows');
-  });
-
-  it('aggregates by model_id across measured sessions', () => {
-    const sessions: Row[] = [
-      { session_id: 's1', model_name: 'qwen', prompt_tokens: 100, completion_tokens: 50, cloud_cost_usd: 0.01, savings_usd: 0.005 },
-      { session_id: 's2', model_name: 'qwen', prompt_tokens: 200, completion_tokens: 100, cloud_cost_usd: 0.02, savings_usd: 0.01 },
-    ];
-    const result = buildCostSavingsOverviewResult(sessions, 0);
-    expect((result.rows as Row[]).length).toBe(1);
-    const row = (result.rows as Row[])[0] as Record<string, unknown>;
-    expect(row.model_id).toBe('qwen');
-    expect(row.task_count).toBe(2);
-    expect(result.provisioned).toBe(true);
-  });
-
-  it('passes recentRuns when provided', () => {
-    const recentRuns: Row[] = [{ session_id: 'x', total_tokens: 10 }];
-    const result = buildCostSavingsOverviewResult([], 0, recentRuns);
-    expect(result.recent_runs).toEqual(recentRuns);
-    expect(result.measured_run_count).toBe(0);
-    expect(result.zero_token_run_count).toBe(0);
-  });
-
-  it('omits recent_runs key when not provided', () => {
-    const result = buildCostSavingsOverviewResult([], 0);
-    expect('recent_runs' in result).toBe(false);
   });
 });

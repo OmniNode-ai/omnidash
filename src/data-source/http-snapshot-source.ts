@@ -8,6 +8,35 @@ import { resolveTenantFor, TenantNotConfiguredError } from './projection-tenant'
 
 export interface HttpSnapshotSourceOptions { baseUrl: string; }
 
+/**
+ * A projection read the backend answered with a non-2xx status. `code` is the backend's named refusal (the
+ * read node's contract declares them: `projection_table_missing`, `tenant_conflict`, ...) when its body carries one.
+ */
+export class ProjectionReadRefusedError extends Error {
+  constructor(
+    readonly topic: string,
+    readonly status: number,
+    statusText: string,
+    readonly code: string | null,
+  ) {
+    super(`Projection ${topic} failed: HTTP ${status} ${statusText}`.trim());
+    this.name = 'ProjectionReadRefusedError';
+  }
+}
+
+async function refusalOf(topic: string, res: Response): Promise<ProjectionReadRefusedError> {
+  let code: string | null = null;
+  try {
+    const body: unknown = await res.json();
+    if (typeof body === 'object' && body !== null && typeof (body as { error?: unknown }).error === 'string') {
+      code = (body as { error: string }).error;
+    }
+  } catch {
+    // A body that is not JSON names no refusal; the status still does.
+  }
+  return new ProjectionReadRefusedError(topic, res.status, res.statusText, code);
+}
+
 interface ProjectionEnvelope {
   rows: unknown[];
   row_count?: unknown;
@@ -27,11 +56,7 @@ export class HttpSnapshotSource implements ProtocolSnapshotSource {
     params: Readonly<Record<string, string>> = {},
   ): Promise<ProjectionSnapshot> {
     const res = await authedFetch(await this.projectionUrl(topic, params));
-    if (!res.ok) {
-      throw new Error(
-        `Projection ${topic} failed: HTTP ${res.status} ${res.statusText}`.trim(),
-      );
-    }
+    if (!res.ok) throw await refusalOf(topic, res);
     const body: unknown = await res.json();
     const readAt = new Date().toISOString();
     if (!isProjectionEnvelope(body)) {
@@ -85,11 +110,7 @@ export class HttpSnapshotSource implements ProtocolSnapshotSource {
     // the caller's error state render) rather than hang this generator
     // forever. See fetch-with-timeout.ts.
     const res = await authedFetch(await this.projectionUrl(topic));
-    if (!res.ok) {
-      throw new Error(
-        `Projection ${topic} failed: HTTP ${res.status} ${res.statusText}`.trim(),
-      );
-    }
+    if (!res.ok) throw await refusalOf(topic, res);
     const body = await res.json();
     // Projection API returns { rows: [...], ...envelope } — unwrap if present.
     // Plain array responses (file-based fixtures, legacy) are yielded directly.

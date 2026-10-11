@@ -1,0 +1,159 @@
+---
+# SPDX-FileCopyrightText: 2025 OmniNode.ai Inc.
+# SPDX-License-Identifier: MIT
+#
+# publish-dashboard-bundle.yml (OMN-19917, plan task T2.9, decision D8 ruled (a))
+#
+# WHY THIS FILE EXISTS
+#   `onex dashboard` must serve the six local pages on a developer machine with
+#   no clone and no Node. D8 was ruled (a) on 2026-09-30, firm: the static build
+#   is published once, and the CLI downloads a prebuilt copy and verifies it.
+#   Nothing published the build, so there was nothing to download.
+#
+# WHY IT IS NOT IN release.yml
+#   `release.yml` moves exactly one pointer -- it fast-forwards `main` to the
+#   released tag -- and says so of itself: "It builds nothing, publishes
+#   nothing, deploys nothing." That property is worth keeping true by
+#   construction, and the ref move runs over REST with an App token precisely
+#   because the credential path is delicate (OMN-16289/OMN-17272). A build and
+#   an upload do not belong in the same job as a restricted-ref mutation.
+#
+# THE ARCHIVE IS DETERMINISTIC, BECAUSE THE CHECKSUM IS THE CONTRACT
+#   omnimarket pins this bundle's sha256 in its `pyproject.toml`, so the digest
+#   has to depend on the build output and nothing else. `tar` is therefore given
+#   a fixed member order, a fixed mtime, fixed ownership and numeric owners; its
+#   defaults otherwise record the runner's clock and uid and two identical
+#   builds would publish two different digests. Pinning a digest that moves on
+#   its own would teach everyone to ignore a mismatch, which is the one thing
+#   the pin exists to prevent.
+#
+# WHAT IT PUBLISHES
+#   `omnidash-bundle-<tag>.tar.gz`, the contents of `dist/`, and
+#   `omnidash-bundle-<tag>.tar.gz.sha256` beside it. The checksum file is for a
+#   human and for `shasum -c`; the value omnimarket trusts is the one pinned in
+#   its own tree, never one fetched next to the artifact, because an attacker
+#   who can replace the bundle can replace the file next to it.
+
+name: Publish dashboard bundle
+
+"on":
+  push:
+    tags:
+      - "v[0-9]*.[0-9]*.[0-9]*"
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: >-
+          Existing tag to build and attach the bundle to. Recovery path for a
+          tag whose publish failed; it rebuilds and re-uploads, nothing else.
+        required: true
+        type: string
+
+permissions:
+  contents: write
+
+concurrency:
+  group: publish-dashboard-bundle-${{ inputs.tag || github.ref_name }}
+  cancel-in-progress: false
+
+jobs:
+  publish:
+    name: Build the static bundle and attach it to the release
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Resolve the tag
+        id: tag
+        run: |
+          set -euo pipefail
+          TAG="${{ inputs.tag || github.ref_name }}"
+          case "$TAG" in
+            v[0-9]*.[0-9]*.[0-9]*) : ;;
+            *) echo "::error::REFUSED: '$TAG' is not a vX.Y.Z tag"; exit 1 ;;
+          esac
+          echo "tag=$TAG" >> "$GITHUB_OUTPUT"
+
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ steps.tag.outputs.tag }}
+          persist-credentials: false
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20.x'
+          cache: 'npm'
+
+      - name: Install locked dependencies
+        run: npm ci
+
+      - name: Build the static pages
+        run: npm run build
+
+      - name: Refuse an empty or index-less build
+        run: |
+          set -euo pipefail
+          test -f dist/index.html || {
+            echo "::error::REFUSED: dist/index.html is absent, so there is no page to serve"
+            exit 1
+          }
+          # A bundle with no JavaScript would serve a blank shell and still pass
+          # a naive 200 check, which is the failure T2.9's browser step exists to
+          # catch. Fail here instead, where the cause is one line.
+          find dist -name '*.js' -type f | head -1 | grep -q . || {
+            echo "::error::REFUSED: dist carries no JavaScript asset"
+            exit 1
+          }
+          echo "dist: $(find dist -type f | wc -l) files"
+
+      - name: Archive it deterministically and checksum it
+        id: pack
+        env:
+          TAG: ${{ steps.tag.outputs.tag }}
+        run: |
+          set -euo pipefail
+          NAME="omnidash-bundle-${TAG}.tar.gz"
+          # Fixed order, fixed mtime, fixed ownership: the digest must depend on
+          # the build output and nothing about the machine that packed it.
+          tar --sort=name \
+              --mtime='UTC 2020-01-01' \
+              --owner=0 --group=0 --numeric-owner \
+              --format=gnu \
+              -czf "$NAME" -C dist .
+          SHA="$(sha256sum "$NAME" | cut -d' ' -f1)"
+          printf '%s  %s\n' "$SHA" "$NAME" > "${NAME}.sha256"
+          echo "name=$NAME" >> "$GITHUB_OUTPUT"
+          echo "sha256=$SHA" >> "$GITHUB_OUTPUT"
+          echo "bundle $NAME sha256=$SHA"
+
+      - name: Attach both to the release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAG: ${{ steps.tag.outputs.tag }}
+          NAME: ${{ steps.pack.outputs.name }}
+        run: |
+          set -euo pipefail
+          # The release may not exist yet when a tag is pushed without one.
+          gh release view "$TAG" >/dev/null 2>&1 \
+            || gh release create "$TAG" --title "$TAG" --notes "omnidash $TAG"
+          gh release upload "$TAG" "$NAME" "${NAME}.sha256" --clobber
+
+      - name: Say what omnimarket must pin
+        env:
+          TAG: ${{ steps.tag.outputs.tag }}
+          NAME: ${{ steps.pack.outputs.name }}
+          SHA: ${{ steps.pack.outputs.sha256 }}
+        run: |
+          {
+            echo "### omnidash bundle published"
+            echo ""
+            echo "| field | value |"
+            echo "| -- | -- |"
+            echo "| asset | \`$NAME\` |"
+            echo "| sha256 | \`$SHA\` |"
+            echo "| tag | \`$TAG\` |"
+            echo ""
+            echo "omnimarket pins the sha256 above in its own \`pyproject.toml\`."
+            echo "The \`.sha256\` file beside the asset is for \`shasum -c\` and for"
+            echo "a human: anyone who can replace the bundle can replace that file,"
+            echo "so it is never the value the CLI trusts."
+          } >> "$GITHUB_STEP_SUMMARY"

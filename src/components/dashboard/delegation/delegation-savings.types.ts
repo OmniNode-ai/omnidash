@@ -15,8 +15,9 @@ export interface DelegationSavingsSession {
   task_type?: string;
   local_cost_usd: number;
   cloud_cost_usd: number;
+  counterfactual_baseline_usd?: number;
   savings_usd: number;
-  baseline_model: string;
+  baseline_model: string | null;
   pricing_manifest_version: string;
   savings_method: 'measured' | 'estimated';
   usage_source: 'measured' | 'estimated' | 'unknown';

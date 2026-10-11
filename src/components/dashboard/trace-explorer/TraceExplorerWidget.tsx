@@ -13,6 +13,8 @@ import {
   type WorkEventRow,
 } from '@/components/dashboard/work-events/WorkEventsWidget';
 import type { ProjectionSnapshot } from '@/data-source';
+import { isTenantNotConfiguredError } from '@/data-source/projection-tenant';
+import { TenantNotConfiguredState } from '../TenantNotConfiguredState';
 
 export const EVENT_TRACE_REFRESH_INTERVAL_MS = 2_000;
 
@@ -392,9 +394,13 @@ export function TraceExplorerView({
               <button type="button" className="btn" disabled={offset + displayCap >= filtered.length} onClick={() => setOffset(offset + displayCap)}>Next</button>
             </div>
             {decisionError && (
-              <Text as="div" size="xs" color="warn" style={{ padding: '0 8px 8px' }}>
-                Delegation correlation join unavailable: {decisionError.message}
-              </Text>
+              isTenantNotConfiguredError(decisionError)
+                ? <div style={{ padding: '0 8px 8px' }}><TenantNotConfiguredState /></div>
+                : (
+                  <Text as="div" size="xs" color="warn" style={{ padding: '0 8px 8px' }}>
+                    Delegation correlation join unavailable: {decisionError.message}
+                  </Text>
+                )
             )}
           </section>
           <LaneActivityPane

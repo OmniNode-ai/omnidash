@@ -36,18 +36,6 @@ entries:
   - path: scripts/generate_fixtures.py
     family: M
     content_sha1: 54ba71d92c6a0c6e823e76514be9385914001320
-  - path: server/postgres-projection-reader.ts
-    family: M
-    content_sha1: 153ad730917e92ec0ef34d26c1212d19f13d4567
-  - path: server/postgres-projection-reader.ts
-    family: M
-    content_sha1: a83dfe90d190c0665f4c7ca5210ad66f6a378d34
-  - path: server/sqlite-projection-reader.ts
-    family: M
-    content_sha1: 153ad730917e92ec0ef34d26c1212d19f13d4567
-  - path: server/sqlite-projection-reader.ts
-    family: M
-    content_sha1: a83dfe90d190c0665f4c7ca5210ad66f6a378d34
   - path: src/components/dashboard/cost-summary/CostSummaryAdapter.tsx
     family: M
     content_sha1: 14665d81fc0908adb49b3b12825ba297be07af50

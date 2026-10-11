@@ -1,8 +1,6 @@
 import { Pool, type PoolClient } from 'pg';
 import {
   timestampValue,
-  mergeDelegationSessions as sharedMergeDelegationSessions,
-  buildCostSavingsOverviewResult,
 } from './projection-reader-shared.js';
 import { getActiveTenantId } from './auth/tenant-context.js';
 import { sanitizeForLog } from './projection-utils.js';
@@ -94,7 +92,7 @@ export interface ProjectionEnvelope {
   rows: Row[];
 }
 
-// TODO(OMN-10976): consolidate topic-to-query mappings with sqlite-projection-reader.ts
+// OMN-10976's consolidation partner, sqlite-projection-reader.ts, was deleted by OMN-19981 AC3.
 export class PostgresProjectionReader {
   private readonly pool: Pool;
 
@@ -284,8 +282,9 @@ export class PostgresProjectionReader {
     const { client, release } = await this.checkoutClient();
     try {
       switch (topic) {
-        case 'delegation':
-        case 'onex.snapshot.projection.delegation.decisions.v1': {
+        // OMN-19981 strangler: the local pages read onex.snapshot.projection.delegation.decisions.v1 from the served
+        // exposure, so this fold answers only the legacy 'delegation' name; the full topic takes the unknown-topic path.
+        case 'delegation': {
           const res = await client.query(`
             WITH events AS (
               SELECT to_jsonb(delegation_events) AS e
@@ -375,7 +374,7 @@ export class PostgresProjectionReader {
               local_cost_usd,
               cloud_cost_usd,
               savings_usd,
-              baseline_model,
+              model_cloud_baseline AS baseline_model,
               pricing_manifest_version,
               savings_method,
               usage_source,
@@ -394,165 +393,18 @@ export class PostgresProjectionReader {
               COALESCE(SUM(local_cost_usd), 0)  AS total_local_cost_usd,
               COALESCE(SUM(cloud_cost_usd), 0)  AS total_cloud_cost_usd,
               COALESCE(SUM(savings_usd), 0)     AS total_savings_usd
-            FROM savings_estimates
+            FROM (
+              -- One row per run: runs written twice before omnimarket#3189 would double count (OMN-19981, 3376eac0).
+              SELECT DISTINCT ON (session_id) local_cost_usd, cloud_cost_usd, savings_usd
+              FROM savings_estimates
+              ORDER BY session_id, created_at DESC
+            ) per_run
           `);
           return res.rows as Row[];
         }
 
-        case 'onex.snapshot.projection.cost.savings-overview.v1': {
-          return this.readCostSavingsOverviewProjection(client);
-        }
-
-        case 'onex.snapshot.projection.delegation.savings.v1': {
-          return this.readDelegationSavingsProjection(client);
-        }
-
         case 'onex.snapshot.projection.live-events.v1': {
           return this.readLiveEventsProjection(client);
-        }
-
-        case 'onex.snapshot.projection.delegation.model-routing.v1': {
-          const routingRes = await client.query(`
-            WITH events AS (
-              SELECT to_jsonb(delegation_events) AS e
-              FROM delegation_events
-            )
-            SELECT
-              COALESCE(NULLIF(e->>'delegated_to', ''), NULLIF(e->>'model_name', '')) AS model_alias,
-              COALESCE(NULLIF(e->>'model_name', ''), NULLIF(e->>'delegated_to', '')) AS model_name,
-              e->>'task_type' AS task_type,
-              COUNT(*) AS event_count,
-              COALESCE(SUM(CASE WHEN COALESCE(NULLIF(e->>'quality_gate_passed', '')::boolean, false) THEN 1 ELSE 0 END), 0) AS quality_passed,
-              COALESCE(AVG(COALESCE(NULLIF(e->>'delegation_latency_ms', '')::numeric, NULLIF(e->>'latency_ms', '')::numeric)), 0) AS avg_latency_ms
-            FROM events
-            GROUP BY model_alias, model_name, task_type
-            ORDER BY event_count DESC
-          `);
-          const totalRes = await client.query(`SELECT COUNT(*) AS total FROM delegation_events`);
-          const tracesRes = await client.query(`
-            WITH events AS (
-              SELECT to_jsonb(delegation_events) AS e
-              FROM delegation_events
-            )
-            SELECT NULLIF(e->>'id', '')::bigint AS id, e->>'correlation_id' AS correlation_id, e->>'task_type' AS task_type,
-                   COALESCE(NULLIF(e->>'model_name', ''), NULLIF(e->>'delegated_to', '')) AS model_name,
-                   COALESCE(NULLIF(e->>'delegated_to', ''), NULLIF(e->>'model_name', '')) AS delegated_to,
-                   NULL::text AS routing_rule, NULL::numeric AS routing_confidence,
-                   NULL::jsonb AS routing_candidates,
-                   COALESCE(NULLIF(e->>'delegation_latency_ms', '')::numeric, NULLIF(e->>'latency_ms', '')::numeric) AS latency_ms,
-                   COALESCE(NULLIF(e->>'quality_gate_passed', '')::boolean, false) AS quality_gate_passed,
-                   COALESCE(NULLIF(e->>'timestamp', ''), NULLIF(e->>'created_at', '')) AS created_at
-            FROM events
-            ORDER BY COALESCE(NULLIF(e->>'timestamp', '')::timestamptz, NULLIF(e->>'created_at', '')::timestamptz) DESC
-            LIMIT 20
-          `);
-          const routingRows = routingRes.rows as Row[];
-          const totalDelegations = Number((totalRes.rows[0] as Row)?.total ?? 0);
-
-          const modelMap = new Map<string, { total_count: number; quality_passed: number; latency_sum: number; latency_count: number; task_types: Set<string>; top_task: string; top_count: number; model_name: string }>();
-          for (const r of routingRows) {
-            const alias = r.model_alias as string;
-            const count = Number(r.event_count);
-            let entry = modelMap.get(alias);
-            if (!entry) {
-              entry = { total_count: 0, quality_passed: 0, latency_sum: 0, latency_count: 0, task_types: new Set(), top_task: '', top_count: 0, model_name: (r.model_name as string) ?? alias };
-              modelMap.set(alias, entry);
-            }
-            entry.total_count += count;
-            entry.quality_passed += Number(r.quality_passed) || 0;
-            entry.latency_sum += (Number(r.avg_latency_ms) || 0) * count;
-            entry.latency_count += count;
-            entry.task_types.add(r.task_type as string);
-            if (count > entry.top_count) { entry.top_task = r.task_type as string; entry.top_count = count; }
-          }
-
-          const byModel = [...modelMap.entries()].map(([alias, m]) => ({
-            model_name: alias,
-            total_count: m.total_count,
-            pct_of_total: totalDelegations > 0 ? m.total_count / totalDelegations : 0,
-            top_task_type: m.top_task,
-            avg_latency_ms: m.latency_count > 0 ? m.latency_sum / m.latency_count : undefined,
-            qg_pass_rate: m.total_count > 0 ? m.quality_passed / m.total_count : undefined,
-            task_types: [...m.task_types],
-          })).sort((a, b) => b.total_count - a.total_count);
-
-          const rows = routingRows.map((r) => {
-            const alias = r.model_alias as string;
-            const modelEntry = modelMap.get(alias);
-            const modelTotal = modelEntry?.total_count ?? 1;
-            const eventCount = Number(r.event_count);
-            return {
-              model_name: alias,
-              task_type: r.task_type,
-              count: eventCount,
-              pct_of_model: modelTotal > 0 ? eventCount / modelTotal : 0,
-              pct_of_total: totalDelegations > 0 ? eventCount / totalDelegations : 0,
-            };
-          });
-
-          return [{
-            total_delegations: totalDelegations,
-            rows,
-            by_model: byModel,
-            decision_traces: tracesRes.rows as Row[],
-            captured_at: new Date().toISOString(),
-            provisioned: true,
-          }];
-        }
-
-        case 'onex.snapshot.projection.delegation.quality-gate.v1': {
-          const totalsRes = await client.query(`
-            SELECT
-              COUNT(*)                                                                 AS total_checks,
-              COALESCE(SUM(CASE WHEN quality_gate_passed THEN 1 ELSE 0 END), 0)       AS total_passed,
-              COALESCE(SUM(CASE WHEN NOT quality_gate_passed THEN 1 ELSE 0 END), 0)   AS total_failed
-            FROM delegation_events
-          `);
-          const byDetailRes = await client.query(`
-            WITH events AS (
-              SELECT to_jsonb(delegation_events) AS e
-              FROM delegation_events
-            )
-            SELECT
-              COALESCE(NULLIF(e->>'quality_gate_detail', ''), NULLIF(e->>'failure_detail', ''), 'unknown') AS check_detail,
-              COUNT(*) AS total_checks,
-              COALESCE(SUM(CASE WHEN COALESCE(NULLIF(e->>'quality_gate_passed', '')::boolean, false) THEN 1 ELSE 0 END), 0) AS passed_count,
-              COALESCE(SUM(CASE WHEN NOT COALESCE(NULLIF(e->>'quality_gate_passed', '')::boolean, false) THEN 1 ELSE 0 END), 0) AS failed_count,
-              COALESCE(AVG(CASE WHEN jsonb_typeof(e->'quality_gates_checked') = 'array' THEN jsonb_array_length(e->'quality_gates_checked') ELSE 0 END), 0) AS avg_gates_checked,
-              COALESCE(AVG(CASE WHEN jsonb_typeof(e->'quality_gates_failed') = 'array' THEN jsonb_array_length(e->'quality_gates_failed') ELSE 0 END), 0) AS avg_gates_failed
-            FROM events
-            GROUP BY check_detail
-            ORDER BY total_checks DESC
-          `);
-          const qgTotals = totalsRes.rows[0] as Row;
-          const qgByDetail = byDetailRes.rows as Row[];
-          const totalChecks = Number(qgTotals?.total_checks ?? 0);
-          const totalPassed = Number(qgTotals?.total_passed ?? 0);
-          const totalFailed = Number(qgTotals?.total_failed ?? 0);
-
-          const byCheckType = [
-            { check_type: 'deterministic' as const, passed: totalPassed, failed: totalFailed, total: totalChecks, pass_rate: totalChecks > 0 ? totalPassed / totalChecks : 0 },
-          ];
-          const failureCategories = qgByDetail
-            .filter((r) => Number(r.failed_count) > 0)
-            .map((r) => ({
-              category: (r.check_detail as string) ?? 'unknown',
-              count: Number(r.failed_count),
-              pct_of_failures: totalFailed > 0 ? Number(r.failed_count) / totalFailed : 0,
-            }));
-
-          return [{
-            overall_pass_rate: totalChecks > 0 ? totalPassed / totalChecks : 0,
-            total_passed: totalPassed,
-            total_failed: totalFailed,
-            total_checks: totalChecks,
-            escalation_count: 0,
-            escalation_rate: 0,
-            by_check_type: byCheckType,
-            failure_categories: failureCategories,
-            captured_at: new Date().toISOString(),
-            provisioned: true,
-          }];
         }
 
         case 'onex.snapshot.projection.delegation.token-usage.v1': {
@@ -804,113 +656,6 @@ export class PostgresProjectionReader {
     }
   }
 
-  private async readDelegationSavingsProjection(
-    client: { query: (sql: string, params?: unknown[]) => Promise<{ rows: Row[] }> },
-  ): Promise<Row[]> {
-    let savingsRows: Row[] = [];
-    let eventRows: Row[] = [];
-
-    try {
-      const savingsRes = await client.query(`
-        SELECT
-          session_id,
-          model_local AS task_type,
-          model_local AS model_name,
-          local_cost_usd,
-          cloud_cost_usd,
-          savings_usd,
-          baseline_model,
-          pricing_manifest_version,
-          savings_method,
-          usage_source,
-          0 AS prompt_tokens,
-          0 AS completion_tokens,
-          NULL AS tokens_to_compliance,
-          NULL AS latency_ms,
-          created_at,
-          NULL AS prompt_text,
-          NULL AS response_text
-        FROM savings_estimates
-        ORDER BY created_at DESC
-        LIMIT 500
-      `);
-      savingsRows = savingsRes.rows;
-    } catch (err) {
-      this.handleProjectionCompatibilityError(err, 'savings_estimates');
-    }
-
-    try {
-      const eventRes = await client.query(`
-        -- JSONB access keeps this projection compatible with older deployments
-        -- where optional runtime metric columns may not exist yet.
-        WITH events AS (
-          SELECT to_jsonb(delegation_events) AS e
-          FROM delegation_events
-        )
-        SELECT
-          COALESCE(NULLIF(e->>'session_id', ''), NULLIF(e->>'correlation_id', ''), e->>'id') AS session_id,
-          COALESCE(e->>'task_type', '') AS task_type,
-          COALESCE(NULLIF(e->>'model_name', ''), NULLIF(e->>'delegated_to', ''), 'local') AS model_name,
-          COALESCE(NULLIF(e->>'cost_usd', '')::numeric, 0) AS local_cost_usd,
-          COALESCE(NULLIF(e->>'cost_usd', '')::numeric, 0) + COALESCE(NULLIF(e->>'cost_savings_usd', '')::numeric, 0) AS cloud_cost_usd,
-          COALESCE(NULLIF(e->>'cost_savings_usd', '')::numeric, 0) AS savings_usd,
-          'claude-opus-4.1' AS baseline_model,
-          'runtime-delegation-events' AS pricing_manifest_version,
-          CASE WHEN COALESCE(NULLIF(e->>'cost_savings_usd', '')::numeric, 0) > 0 THEN 'measured' ELSE 'estimated' END AS savings_method,
-          CASE WHEN COALESCE(NULLIF(e->>'tokens_input', '')::numeric, 0) + COALESCE(NULLIF(e->>'tokens_output', '')::numeric, 0) > 0 THEN 'measured' ELSE 'unknown' END AS usage_source,
-          COALESCE(NULLIF(e->>'tokens_input', '')::numeric, 0) AS prompt_tokens,
-          COALESCE(NULLIF(e->>'tokens_output', '')::numeric, 0) AS completion_tokens,
-          NULLIF(e->>'tokens_to_compliance', '')::numeric AS tokens_to_compliance,
-          COALESCE(NULLIF(e->>'delegation_latency_ms', '')::numeric, NULLIF(e->>'latency_ms', '')::numeric) AS latency_ms,
-          COALESCE(e->>'created_at', e->>'timestamp') AS created_at,
-          e->>'prompt_text' AS prompt_text,
-          e->>'response_text' AS response_text,
-          -- OMN-13355: pinned premium counterfactual {model, price, as_of, tokens,
-          -- counterfactual_cost_usd}. Returned as a JSON object so the saving
-          -- (counterfactual - actual) is auditable in the dashboard, not an opaque
-          -- estimate. NULL on rows persisted before the column existed.
-          e->'premium_counterfactual' AS premium_counterfactual
-        FROM events
-        ORDER BY COALESCE(e->>'created_at', e->>'timestamp') DESC
-        LIMIT 500
-      `);
-      eventRows = eventRes.rows;
-    } catch (err) {
-      this.handleProjectionCompatibilityError(err, 'delegation_events');
-    }
-
-    const sessions = this.mergeDelegationSessions(savingsRows, eventRows);
-    sessions.sort((a, b) => String(b.created_at ?? '').localeCompare(String(a.created_at ?? '')));
-
-    const numericFields = [
-      'local_cost_usd', 'cloud_cost_usd', 'savings_usd',
-      'prompt_tokens', 'completion_tokens', 'tokens_to_compliance', 'latency_ms',
-    ];
-    const coercedSessions = sessions.map((row) => {
-      const coerced: Row = { ...row };
-      for (const field of numericFields) {
-        if (coerced[field] != null) coerced[field] = Number(coerced[field]);
-      }
-      return coerced;
-    });
-
-    const sum = (key: string): number =>
-      coercedSessions.reduce((total, row) => total + Number(row[key] ?? 0), 0);
-    const latest = coercedSessions[0] ?? {};
-
-    return [{
-      cumulative_savings_usd: sum('savings_usd'),
-      cumulative_local_cost_usd: sum('local_cost_usd'),
-      cumulative_cloud_cost_usd: sum('cloud_cost_usd'),
-      baseline_model: (latest.baseline_model as string | undefined) ?? 'claude-opus-4.1',
-      pricing_manifest_version: (latest.pricing_manifest_version as string | undefined) ?? 'runtime-delegation-events',
-      session_count: coercedSessions.length,
-      sessions: coercedSessions.slice(0, 500),
-      captured_at: new Date().toISOString(),
-      provisioned: true,
-    }];
-  }
-
   private handleProjectionCompatibilityError(err: unknown, source: string): void {
     const pgErr = err as PostgresError;
     const message = String(pgErr?.message ?? '');
@@ -938,7 +683,12 @@ export class PostgresProjectionReader {
     try {
       const res = await client.query(`
         SELECT COALESCE(SUM(savings_usd), 0) AS total_savings_usd
-        FROM savings_estimates
+        FROM (
+          -- One row per run (OMN-19981, 3376eac0): see the savings summary.
+          SELECT DISTINCT ON (session_id) savings_usd
+          FROM savings_estimates
+          ORDER BY session_id, created_at DESC
+        ) per_run
       `);
       return Number((res.rows[0] as Row)?.total_savings_usd ?? 0);
     } catch (err) {
@@ -1060,17 +810,6 @@ export class PostgresProjectionReader {
       .slice(0, 500);
   }
 
-  private sessionKey(row: Row, index: number, kind: 'savings' | 'events'): string {
-    const key = String(row.session_id ?? '').trim();
-    return key || `postgres-${kind}-row-${index}-${String(row.created_at ?? '')}-${String(row.model_name ?? '')}`;
-  }
-
-  private mergeDelegationSessions(savingsRows: Row[], eventRows: Row[]): Row[] {
-    return sharedMergeDelegationSessions(savingsRows, eventRows, (row, index, kind) =>
-      this.sessionKey(row, index, kind),
-    );
-  }
-
   private timestampValue(value: unknown): number {
     return timestampValue(value);
   }
@@ -1150,36 +889,5 @@ export class PostgresProjectionReader {
       captured_at: new Date().toISOString(),
       provisioned: byModel.length > 0,
     }];
-  }
-
-  private async readCostSavingsOverviewProjection(
-    client: { query: (sql: string, params?: unknown[]) => Promise<{ rows: Row[] }> },
-  ): Promise<Row[]> {
-    const [delegationSavings] = await this.readDelegationSavingsProjection(client);
-    const sessions = (delegationSavings?.sessions as Row[] | undefined) ?? [];
-    const sessionTokens = (session: Row): number =>
-      Number(session.prompt_tokens ?? 0) + Number(session.completion_tokens ?? 0);
-    const measuredSessions = sessions.filter((session) => sessionTokens(session) > 0);
-    const omittedTelemetryRows = sessions.length - measuredSessions.length;
-
-    const recentRuns = measuredSessions.slice(0, 20).map((session) => {
-      const promptTokens = Number(session.prompt_tokens ?? 0);
-      const completionTokens = Number(session.completion_tokens ?? 0);
-      const totalTokens = promptTokens + completionTokens;
-      return {
-        session_id: String(session.session_id ?? ''),
-        task_type: String(session.task_type ?? ''),
-        model_name: String(session.model_name ?? session.task_type ?? 'delegated-runtime'),
-        prompt_tokens: promptTokens,
-        completion_tokens: completionTokens,
-        total_tokens: totalTokens,
-        savings_usd: Number(session.savings_usd ?? 0),
-        latency_ms: session.latency_ms == null ? null : Number(session.latency_ms),
-        created_at: String(session.created_at ?? ''),
-        token_provenance: 'measured',
-      };
-    });
-
-    return [buildCostSavingsOverviewResult(measuredSessions, omittedTelemetryRows, recentRuns)];
   }
 }

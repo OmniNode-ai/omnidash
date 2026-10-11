@@ -1,27 +1,402 @@
 {
   "dashboard_id": "b37a0892-e2bc-4d67-91e4-bf2d55b48eef",
   "name": "Overview",
-  "description": "Developer overview backed by local runtime projection exposures.",
-  "layout": { "columns": 12, "row_height": 100, "gap": 16, "responsive": true },
+  "description": "Spend, savings, measured runs, the last run and the ten most recent runs from the runtime's served exposures.",
+  "layout": {
+    "columns": 12,
+    "row_height": 100,
+    "gap": 16,
+    "responsive": true
+  },
   "refresh_interval_seconds": 30,
   "theme": "system",
   "widgets": [
     {
       "widget_id": "2157c330-49a4-4d41-a61f-cc0c8c4a0ddb",
-      "title": "Return on investment",
+      "title": "Actual spend",
       "row": 0,
       "col": 0,
       "width": 4,
       "height": 2,
-      "data_source": "overview-roi",
+      "data_source": "overview-spend",
       "config": {
         "config_kind": "metric_card",
         "widget_type": "metric_card",
-        "metric_key": "roi_percent",
-        "label": "ROI",
-        "unit": "%",
+        "metric_key": "spend_usd",
+        "label": "Actual spend",
+        "unit": "USD",
+        "format": "currency",
+        "precision": 4
+      }
+    },
+    {
+      "widget_id": "1f0a0b2c-b7d7-568a-9596-a679c1af00c0",
+      "title": "Savings",
+      "row": 0,
+      "col": 4,
+      "width": 4,
+      "height": 2,
+      "data_source": "overview-savings",
+      "config": {
+        "config_kind": "metric_card",
+        "widget_type": "metric_card",
+        "metric_key": "savings_usd",
+        "label": "Savings",
+        "unit": "USD",
+        "format": "currency",
+        "precision": 4
+      }
+    },
+    {
+      "widget_id": "b13119df-d621-5b7d-b199-8162fed59c5c",
+      "title": "Agent calls",
+      "row": 0,
+      "col": 8,
+      "width": 4,
+      "height": 2,
+      "data_source": "overview-measured",
+      "config": {
+        "config_kind": "metric_card",
+        "widget_type": "metric_card",
+        "metric_key": "runs_measured",
+        "label": "Agent calls",
+        "unit": "runs",
+        "format": "number",
+        "precision": 0
+      }
+    },
+    {
+      "widget_id": "869ee6a5-22b1-5225-9975-81de4d5a5fcc",
+      "title": "Tokens processed",
+      "row": 2,
+      "col": 0,
+      "width": 4,
+      "height": 2,
+      "data_source": "overview-tokens",
+      "config": {
+        "config_kind": "metric_card",
+        "widget_type": "metric_card",
+        "metric_key": "tokens_in_and_out",
+        "label": "Tokens processed",
+        "unit": "tokens",
+        "format": "number",
+        "precision": 0
+      }
+    },
+    {
+      "widget_id": "5d0c2a51-6a4e-5b8a-9f1e-3c7b2e0a9d41",
+      "title": "Last run",
+      "row": 2,
+      "col": 4,
+      "width": 8,
+      "height": 2,
+      "data_source": "overview-last-run",
+      "config": {
+        "config_kind": "table",
+        "widget_type": "table",
+        "columns": [
+          {
+            "key": "status",
+            "header": "Status"
+          },
+          {
+            "key": "cause",
+            "header": "Cause"
+          },
+          {
+            "key": "actual_score",
+            "header": "Quality score"
+          },
+          {
+            "key": "correlation_id",
+            "header": "Run"
+          },
+          {
+            "key": "model_name",
+            "header": "Model"
+          },
+          {
+            "key": "backend",
+            "header": "Backend"
+          },
+          {
+            "key": "host",
+            "header": "Host"
+          },
+          {
+            "key": "latency_ms",
+            "header": "Duration"
+          },
+          {
+            "key": "tokens_input",
+            "header": "Tokens in"
+          },
+          {
+            "key": "tokens_output",
+            "header": "Tokens out"
+          },
+          {
+            "key": "cost",
+            "header": "Cost"
+          },
+          {
+            "key": "usage_source",
+            "header": "Basis"
+          },
+          {
+            "key": "task_type",
+            "header": "Task type"
+          },
+          {
+            "key": "cost_tier_name",
+            "header": "Route tier"
+          },
+          {
+            "key": "written_at",
+            "header": "Age"
+          }
+        ],
+        "page_size": 1,
+        "show_pagination": false,
+        "default_sort_key": "written_at",
+        "default_sort_direction": "desc"
+      }
+    },
+    {
+      "widget_id": "8e4f1b77-2c39-5d06-a8b2-6f0d4c9e1a53",
+      "title": "Recent runs",
+      "row": 4,
+      "col": 0,
+      "width": 12,
+      "height": 4,
+      "data_source": "overview-recent-runs",
+      "config": {
+        "config_kind": "table",
+        "widget_type": "table",
+        "columns": [
+          {
+            "key": "written_at",
+            "header": "Time"
+          },
+          {
+            "key": "status",
+            "header": "Status"
+          },
+          {
+            "key": "cause",
+            "header": "Cause"
+          },
+          {
+            "key": "task_type",
+            "header": "Task type"
+          },
+          {
+            "key": "model_name",
+            "header": "Model"
+          },
+          {
+            "key": "backend",
+            "header": "Backend"
+          },
+          {
+            "key": "host",
+            "header": "Host"
+          },
+          {
+            "key": "tokens_input",
+            "header": "Tokens in"
+          },
+          {
+            "key": "tokens_output",
+            "header": "Tokens out"
+          },
+          {
+            "key": "cost",
+            "header": "Cost"
+          },
+          {
+            "key": "usage_source",
+            "header": "Basis"
+          },
+          {
+            "key": "latency_ms",
+            "header": "Duration"
+          },
+          {
+            "key": "cost_tier_name",
+            "header": "Route tier"
+          },
+          {
+            "key": "actual_score",
+            "header": "Quality score"
+          },
+          {
+            "key": "correlation_id",
+            "header": "Run"
+          }
+        ],
+        "page_size": 10,
+        "show_pagination": false,
+        "default_sort_key": "written_at",
+        "default_sort_direction": "desc"
+      }
+    },
+    {
+      "widget_id": "6f1d2c8e-4b7a-5e39-9c0d-20009a1c0c01",
+      "title": "Run locally",
+      "row": 8,
+      "col": 0,
+      "width": 4,
+      "height": 2,
+      "data_source": "overview-run-locally",
+      "config": {
+        "config_kind": "metric_card",
+        "widget_type": "metric_card",
+        "metric_key": "by_tier.local_call_share",
+        "label": "Run locally",
+        "unit": "share of runs",
         "format": "percent",
         "precision": 1
+      }
+    },
+    {
+      "widget_id": "6f1d2c8e-4b7a-5e39-9c0d-20009a1c0c02",
+      "title": "Avg saving / call",
+      "row": 8,
+      "col": 4,
+      "width": 4,
+      "height": 2,
+      "data_source": "overview-avg-saving-per-call",
+      "config": {
+        "config_kind": "metric_card",
+        "widget_type": "metric_card",
+        "metric_key": "savings_per_measured_run_usd",
+        "label": "Avg saving / call",
+        "unit": "USD",
+        "format": "currency",
+        "precision": 6
+      }
+    },
+    {
+      "widget_id": "6f1d2c8e-4b7a-5e39-9c0d-20752a1c0c01",
+      "title": "Baseline spend",
+      "row": 8,
+      "col": 8,
+      "width": 4,
+      "height": 2,
+      "data_source": "overview-baseline-spend",
+      "config": {
+        "config_kind": "metric_card",
+        "widget_type": "metric_card",
+        "metric_key": "counterfactual_usd",
+        "label": "Baseline spend",
+        "unit": "USD",
+        "format": "currency",
+        "precision": 4
+      }
+    },
+    {
+      "widget_id": "d4da9a48-f797-4b1d-b622-41f028a67e04",
+      "title": "Quality",
+      "row": 10,
+      "col": 0,
+      "width": 6,
+      "height": 4,
+      "data_source": "overview-quality",
+      "config": {
+        "config_kind": "table",
+        "widget_type": "table",
+        "columns": [
+          {
+            "key": "overall_pass_rate",
+            "header": "Pass rate"
+          },
+          {
+            "key": "total_passed",
+            "header": "Passed"
+          },
+          {
+            "key": "total_failed",
+            "header": "Failed"
+          },
+          {
+            "key": "total_checks",
+            "header": "Checks"
+          },
+          {
+            "key": "avg_actual_score",
+            "header": "Average score"
+          },
+          {
+            "key": "avg_required_bar",
+            "header": "Average required bar"
+          }
+        ],
+        "page_size": 10,
+        "show_pagination": false
+      }
+    },
+    {
+      "widget_id": "92d0d8ce-8d52-447e-8511-8cb1269c0112",
+      "title": "Tier mix",
+      "row": 10,
+      "col": 6,
+      "width": 6,
+      "height": 4,
+      "data_source": "overview-tier-mix",
+      "config": {
+        "config_kind": "table",
+        "widget_type": "table",
+        "columns": [
+          {
+            "key": "cost_tier_name",
+            "header": "Tier"
+          },
+          {
+            "key": "count",
+            "header": "Runs"
+          },
+          {
+            "key": "pct_of_tier_routed",
+            "header": "Share of tier-routed"
+          }
+        ],
+        "page_size": 10,
+        "show_pagination": false
+      }
+    },
+    {
+      "widget_id": "6f1d2c8e-4b7a-5e39-9c0d-20226a1c0c01",
+      "title": "Compression",
+      "row": 14,
+      "col": 0,
+      "width": 4,
+      "height": 2,
+      "data_source": "overview-compression",
+      "config": {
+        "config_kind": "metric_card",
+        "widget_type": "metric_card",
+        "metric_key": "compression_ratio",
+        "label": "Compression",
+        "format": "number",
+        "precision": 2
+      }
+    },
+    {
+      "widget_id": "6f1d2c8e-4b7a-5e39-9c0d-20226a1c0c02",
+      "title": "Cache hit rate",
+      "row": 14,
+      "col": 4,
+      "width": 4,
+      "height": 2,
+      "data_source": "overview-cache-hit-rate",
+      "config": {
+        "config_kind": "metric_card",
+        "widget_type": "metric_card",
+        "metric_key": "cache_hit_rate",
+        "label": "Cache hit rate",
+        "format": "number",
+        "precision": 3
       }
     }
   ]

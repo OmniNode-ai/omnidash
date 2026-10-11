@@ -5,7 +5,8 @@ import path from 'path';
 import { fileURLToPath } from 'url';
 import { readdirSync, readFileSync, writeFileSync, mkdirSync, existsSync, statSync } from 'node:fs';
 import type { IncomingMessage, ServerResponse } from 'node:http';
-import { buildProxyMap } from './vite.proxy-config';
+import { buildProxyMap, sameOriginProjectionDefine } from './vite.proxy-config';
+import { loadRuntimeContract } from './server/data-source-contract';
 import { assertProjectionEnv } from './vite.env-guard';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -135,7 +136,7 @@ export function layoutsMiddleware(opts: { root: string }) {
   return { plugin, handler };
 }
 
-export default defineConfig(({ mode }) => {
+export default defineConfig(({ command, mode }) => {
   const env = loadEnv(mode, process.cwd(), '');
   // OMN-12400: fail loudly when a stale `.env.local` (which Vite loads over
   // `.env`) pins the projection backend at a dead / non-authoritative port,
@@ -147,10 +148,16 @@ export default defineConfig(({ mode }) => {
   const { plugin: layoutsPlugin } = layoutsMiddleware({
     root: path.resolve(__dirname, 'dashboard-layouts'),
   });
-  const proxyMap = buildProxyMap(env);
+  // OMN-19994 AC1: the overlay's projection URL (contract.yaml merged with contract.local.yaml, read by the same
+  // parser the Express bridge uses) is served same-origin by this dev server. `onex dashboard` sends no CORS
+  // headers, so the browser must never read it cross-origin; the define below tells resolveProjectionBaseUrl()
+  // to use the relative path.
+  const overlayProjectionUrl = command === 'serve' ? loadRuntimeContract().data_source.url : '';
+  const proxyMap = buildProxyMap(env, { overlayProjectionUrl });
 
   return {
     envPrefix: ['VITE_'],
+    define: sameOriginProjectionDefine(command, overlayProjectionUrl),
     plugins: [react(), vanillaExtractPlugin(), fixturesPlugin, layoutsPlugin],
     resolve: {
       alias: {

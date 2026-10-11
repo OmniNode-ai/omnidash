@@ -3,8 +3,9 @@
 //
 // OMN-131: the Refresh button now calls `useQueryClient()`, so the test
 // wrapper needs a QueryClientProvider in addition to ThemeProvider.
-import { describe, it, expect } from 'vitest';
+import { beforeEach, describe, it, expect } from 'vitest';
 import { render, screen } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { Header } from './Header';
 import { ThemeProvider } from '@/theme';
@@ -19,6 +20,7 @@ function Wrapper({ children }: { children: React.ReactNode }) {
 }
 
 describe('Header — topbar chrome', () => {
+  beforeEach(() => window.history.replaceState(null, '', '/dashboard'));
   it('renders breadcrumbs with "Dashboards" as current page', () => {
     render(<Header />, { wrapper: Wrapper });
     expect(screen.getByText('Dashboards')).toBeInTheDocument();
@@ -28,6 +30,23 @@ describe('Header — topbar chrome', () => {
   it('has a theme toggle button', () => {
     render(<Header />, { wrapper: Wrapper });
     expect(screen.getByRole('button', { name: /toggle theme/i })).toBeInTheDocument();
+  });
+
+  // Catch leftover theme text, a missing/stale icon, and loss of keyboard access.
+  it('uses Lucide icons for theme actions and still toggles with click and keyboard', async () => {
+    const user = userEvent.setup();
+    render(<Header />, { wrapper: Wrapper });
+    const toggle = screen.getByRole('button', { name: /toggle theme/i });
+    expect(toggle.textContent).toBe('');
+    expect(toggle.querySelector('svg.lucide-sun')).toHaveAttribute('aria-hidden', 'true');
+    expect(toggle).toHaveAttribute('title', 'Switch to light theme');
+    await user.click(toggle);
+    expect(document.body).toHaveClass('theme-light');
+    expect(toggle.querySelector('svg.lucide-moon')).toHaveAttribute('aria-hidden', 'true');
+    expect(toggle).toHaveAttribute('title', 'Switch to dark theme');
+    await user.keyboard('{Enter}');
+    expect(document.body).toHaveClass('theme-dark');
+    expect(toggle.querySelector('svg.lucide-sun')).toBeInTheDocument();
   });
 
   it('renders the Refresh icon button', () => {

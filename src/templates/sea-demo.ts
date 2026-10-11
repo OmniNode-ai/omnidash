@@ -4,12 +4,10 @@ export const seaDemoTemplate: DashboardDefinition = {
   id: 'template-sea-demo',
   schemaVersion: '1.0',
   name: 'Agent Workbench',
-  description: 'Create nodes, delegate tasks, and follow all projected system activity in one continuously refreshed event stream.',
+  description: 'Follow delegation traces, token savings, and projected system activity in one continuously refreshed event stream.',
   layout: [
-    { i: 'workbench-create-node', componentName: 'control-plane', componentVersion: '1.0.0', x: 0, y: 0, w: 6, h: 6, config: {} },
-    { i: 'workbench-delegate-task', componentName: 'delegate-task', componentVersion: '1.0.0', x: 6, y: 0, w: 6, h: 6, config: {} },
-    { i: 'workbench-system-events', componentName: 'live-event-stream', componentVersion: '1.0.0', x: 0, y: 6, w: 12, h: 10, config: {} },
-    { i: 'workbench-token-usage', componentName: 'delegation-token-usage', componentVersion: '1.0.0', x: 0, y: 16, w: 12, h: 7, config: {} },
+    { i: 'workbench-system-events', componentName: 'live-event-stream', componentVersion: '1.0.0', x: 0, y: 0, w: 12, h: 10, config: {} },
+    { i: 'workbench-token-usage', componentName: 'delegation-token-usage', componentVersion: '1.0.0', x: 0, y: 10, w: 12, h: 7, config: {} },
     // OMN-17197 (GOAL row 0). The consumer-flow view belongs in the layout a
     // signed-in user ARRIVES at, not in the palette: a projection nobody opens is
     // the OMN-14440 failure mode, and it had already reproduced inside this epic's
@@ -21,7 +19,7 @@ export const seaDemoTemplate: DashboardDefinition = {
     // summary line, and the four-state distinction is the entire deliverable of
     // epic OMN-16776 Phase 1. Rows are severity-ranked, so STALLED and STARVED
     // still read first and IDLE fills the tail rather than burying them.
-    { i: 'workbench-consumer-flow', componentName: 'consumer-flow', componentVersion: '1.0.0', x: 0, y: 23, w: 12, h: 7, config: { hideIdle: false } },
+    { i: 'workbench-consumer-flow', componentName: 'consumer-flow', componentVersion: '1.0.0', x: 0, y: 17, w: 12, h: 7, config: { hideIdle: false } },
   ],
   createdAt: '2026-05-26T00:00:00Z',
   updatedAt: '2026-07-29T00:00:00Z',
@@ -32,6 +30,8 @@ export const seaDemoTemplate: DashboardDefinition = {
 const SEA_DEMO_REQUIRED_COMPONENTS = new Set(
   seaDemoTemplate.layout.map((item) => item.componentName),
 );
+
+const SEA_DEMO_REMOVED_COMPONENTS = new Set(['control-plane', 'delegate-task']);
 
 export function cloneSeaDemoTemplate(): DashboardDefinition {
   return {
@@ -63,12 +63,15 @@ export function repairSeaDemoDashboard(dashboard: DashboardDefinition): Dashboar
     };
   }
 
-  const present = new Set(dashboard.layout.map((item) => item.componentName));
+  const retained = dashboard.layout.filter(
+    (item) => !SEA_DEMO_REMOVED_COMPONENTS.has(item.componentName),
+  );
+  const present = new Set(retained.map((item) => item.componentName));
   const missing = seaDemoTemplate.layout.filter(
     (item) => SEA_DEMO_REQUIRED_COMPONENTS.has(item.componentName) && !present.has(item.componentName),
   );
 
-  if (dashboard.layout.length > 0 && missing.length === 0 && dashboard.name === seaDemoTemplate.name) return dashboard;
+  if (retained.length === dashboard.layout.length && retained.length > 0 && missing.length === 0 && dashboard.name === seaDemoTemplate.name) return dashboard;
 
   return {
     ...dashboard,
@@ -76,7 +79,7 @@ export function repairSeaDemoDashboard(dashboard: DashboardDefinition): Dashboar
     description: seaDemoTemplate.description,
     updatedAt: seaDemoTemplate.updatedAt,
     layout: [
-      ...dashboard.layout,
+      ...retained,
       ...missing.map((item) => ({
         ...item,
         config: { ...item.config },

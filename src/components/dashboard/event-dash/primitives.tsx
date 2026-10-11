@@ -14,6 +14,8 @@
 
 import { Fragment, useState, type CSSProperties, type ReactNode } from 'react';
 import { ChevronRight } from 'lucide-react';
+import { isTenantNotConfiguredReason } from '@/data-source/projection-tenant';
+import { TenantNotConfiguredState } from '../TenantNotConfiguredState';
 
 // ── formatting helpers ───────────────────────────────────────────────────────
 
@@ -300,6 +302,14 @@ export function EvEmpty({
   reason?: string | null;
   note?: string;
 }) {
+  // OMN-19994: a tenant-scoped read refused for want of a tenant is the typed state, not an empty panel.
+  if (isTenantNotConfiguredReason(reason)) {
+    return (
+      <div className="ev-empty">
+        <TenantNotConfiguredState />
+      </div>
+    );
+  }
   return (
     <div className="ev-empty">
       <div className="ev-empty-title">{title}</div>

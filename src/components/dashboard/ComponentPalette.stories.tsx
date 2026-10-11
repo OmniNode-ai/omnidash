@@ -45,7 +45,7 @@ const baseManifestExtras = {
   defaultSize: { w: 6, h: 4 },
   minSize: { w: 4, h: 3 },
   maxSize: { w: 12, h: 8 },
-  emptyState: { message: 'No data' },
+  emptyState: { message: 'No data', waits_on: ['onex.snapshot.projection.test.v1'] },
   capabilities: {
     supports_compare: false,
     supports_export: false,

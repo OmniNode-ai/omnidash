@@ -38,12 +38,10 @@ describe('Dashboard Templates', () => {
     expect(tpl!.layout[0].componentName).toBe('delegation-control-plane');
   });
 
-  it('Agent Workbench keeps actions separate and has one shared event stream', () => {
+  it('Agent Workbench focuses on token savings, delegation traces, and event-bus traces', () => {
     const tpl = DASHBOARD_TEMPLATES.find((t) => t.name === 'Agent Workbench');
     expect(tpl).toBeDefined();
     expect(tpl!.layout.map((l) => l.componentName)).toEqual([
-      'control-plane',
-      'delegate-task',
       'live-event-stream',
       'delegation-token-usage',
       // OMN-17197 (GOAL row 0): consumer-flow lands in the ARRIVAL layout, not the
@@ -62,12 +60,30 @@ describe('Dashboard Templates', () => {
 
     expect(repaired.id).toBe('dash-sea-demo');
     expect(repaired.layout.map((l) => l.componentName)).toEqual([
-      'control-plane',
-      'delegate-task',
       'live-event-stream',
       'delegation-token-usage',
       // OMN-17197 (GOAL row 0): consumer-flow lands in the ARRIVAL layout, not the
       // palette — a projection nobody opens is the OMN-14440 failure mode.
+      'consumer-flow',
+    ]);
+  });
+
+  it('removes action panels from a persisted Agent Workbench while preserving evidence panels', () => {
+    const repaired = repairSeaDemoDashboard({
+      ...seaDemoTemplate,
+      id: 'persisted-agent-workbench',
+      layout: [
+        { i: 'legacy-control', componentName: 'control-plane', componentVersion: '1.0.0', x: 0, y: 0, w: 6, h: 6, config: {} },
+        { i: 'legacy-delegate', componentName: 'delegate-task', componentVersion: '1.0.0', x: 6, y: 0, w: 6, h: 6, config: {} },
+        { i: 'legacy-events', componentName: 'live-event-stream', componentVersion: '1.0.0', x: 0, y: 6, w: 12, h: 10, config: {} },
+        { i: 'legacy-tokens', componentName: 'delegation-token-usage', componentVersion: '1.0.0', x: 0, y: 16, w: 12, h: 7, config: {} },
+        { i: 'legacy-flow', componentName: 'consumer-flow', componentVersion: '1.0.0', x: 0, y: 23, w: 12, h: 7, config: { hideIdle: false } },
+      ],
+    });
+
+    expect(repaired.layout.map((l) => l.componentName)).toEqual([
+      'live-event-stream',
+      'delegation-token-usage',
       'consumer-flow',
     ]);
   });
