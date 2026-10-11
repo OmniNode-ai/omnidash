@@ -1,0 +1,28 @@
+schema_version: "1.0.0"
+ticket_id: "OMN-20937"
+title: "omnidash contract.local.yaml.example carries a broker placeholder, not a lab host"
+summary: >-
+  contract.local.yaml.example held a lab broker address and a person's name in its comment.
+  The example now carries a host:port placeholder; the operator's own contract.local.yaml
+  (ignored by git) supplies the real broker.
+is_seam_ticket: false
+interface_change: false
+interfaces_touched: []
+emergency_bypass:
+  enabled: false
+  justification: ""
+  follow_up_ticket_id: ""
+evidence_requirements:
+  - kind: "tests"
+    description: >-
+      contract.local.yaml.example holds no 192.168 address and no tailnet name.
+    command: "! grep -nE '192\\.168\\.|\\.ts\\.net' contract.local.yaml.example"
+dod_evidence:
+  - id: "dod-omnidash-omn-20937"
+    description: >-
+      The example file carries the broker placeholder <broker-host>:<port> and no lab host.
+    source: "manual"
+    checks:
+      - check_type: "command"
+        check_value: "! grep -nE '192\\.168\\.|\\.ts\\.net' contract.local.yaml.example"
+        cwd: "${OMNI_HOME}/omnidash"

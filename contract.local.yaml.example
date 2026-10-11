@@ -1,7 +1,7 @@
 # Copy to contract.local.yaml to select a concrete runtime lane.
-# contract.local.yaml is ignored and may contain LAN or Tailscale endpoints.
+# contract.local.yaml is ignored and holds your own deployment's endpoints.
 
 event_bus:
-  # Stability-test Redpanda from Jonah's Mac.
-  bootstrap_servers: "192.168.86.201:39092" # onex-allow-internal-ip
+  # The Kafka-compatible broker of the lane you run against, as host:port.
+  bootstrap_servers: "<broker-host>:<port>"
   client_id: "omnidash-server"
