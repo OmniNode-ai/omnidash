@@ -24,29 +24,29 @@ OmniDash follows the [OmniNode deterministic truth doctrine](https://github.com/
 
 | Knowledge base | Scope |
 |---|---|
-| **https://github.com/OmniNode-ai/knowledge-base** | Public — architecture, decision records, guides, schema references |
+| **https://github.com/OmniNode-ai/knowledge_base** | Public — architecture, decision records, guides, schema references |
 
 ### Architecture and reference (public knowledge base)
 
 | Topic | Canonical page |
 |---|---|
-| Architecture | [OmniDash Composable Frame Architecture](https://github.com/OmniNode-ai/knowledge-base/blob/main/architecture/omnidash-composable-frame.md) — the three-layer frame (frame / component registry / widgets) |
-| Component truth boundary | [Dashboard Component Truth Boundary](https://github.com/OmniNode-ai/knowledge-base/blob/main/architecture/omnidash-component-truth-boundary.md) — read before adding or modifying a widget |
-| Development guide | [OmniDash Development Guide](https://github.com/OmniNode-ai/knowledge-base/blob/main/guides/omnidash-development.md) — commands, data-source modes, registry generation, Storybook, widget directory layout |
-| DashboardDefinition schema | [DashboardDefinition Schema](https://github.com/OmniNode-ai/knowledge-base/blob/main/reference/omnidash-dashboard-definition.md) |
-| ComponentManifest schema | [ComponentManifest Schema](https://github.com/OmniNode-ai/knowledge-base/blob/main/reference/omnidash-component-manifest.md) |
-| Typography primitives | [Typography Primitives — Text and Heading](https://github.com/OmniNode-ai/knowledge-base/blob/main/reference/omnidash-typography-primitives.md) |
-| Implementation status | [OmniDash Implementation Status](https://github.com/OmniNode-ai/knowledge-base/blob/main/reference/omnidash-implementation-status.md) — Parts 1–4 breakdown |
+| Architecture | [OmniDash Composable Frame Architecture](https://github.com/OmniNode-ai/knowledge_base/blob/main/architecture/omnidash-composable-frame.md) — the three-layer frame (frame / component registry / widgets) |
+| Component truth boundary | [Dashboard Component Truth Boundary](https://github.com/OmniNode-ai/knowledge_base/blob/main/architecture/omnidash-component-truth-boundary.md) — read before adding or modifying a widget |
+| Development guide | [OmniDash Development Guide](https://github.com/OmniNode-ai/knowledge_base/blob/main/guides/omnidash-development.md) — commands, data-source modes, registry generation, Storybook, widget directory layout |
+| DashboardDefinition schema | [DashboardDefinition Schema](https://github.com/OmniNode-ai/knowledge_base/blob/main/reference/omnidash-dashboard-definition.md) |
+| ComponentManifest schema | [ComponentManifest Schema](https://github.com/OmniNode-ai/knowledge_base/blob/main/reference/omnidash-component-manifest.md) |
+| Typography primitives | [Typography Primitives — Text and Heading](https://github.com/OmniNode-ai/knowledge_base/blob/main/reference/omnidash-typography-primitives.md) |
+| Implementation status | [OmniDash Implementation Status](https://github.com/OmniNode-ai/knowledge_base/blob/main/reference/omnidash-implementation-status.md) — Parts 1–4 breakdown |
 
 ### Decision records (public knowledge base)
 
 | Decision | Canonical page |
 |---|---|
-| Dashboard typography system | [ADR-0039](https://github.com/OmniNode-ai/knowledge-base/blob/main/adrs/ADR-0039-omnidash-typography-system.md) |
-| Storybook coverage for every dashboard widget | [ADR-0040](https://github.com/OmniNode-ai/knowledge-base/blob/main/adrs/ADR-0040-omnidash-storybook-widget-coverage.md) |
-| BaselinesROICard stays bespoke | [ADR-0041](https://github.com/OmniNode-ai/knowledge-base/blob/main/adrs/ADR-0041-omnidash-baselines-roi-card-stays-bespoke.md) |
-| Cross-renderer typed empty-state gate | [ADR-0042](https://github.com/OmniNode-ai/knowledge-base/blob/main/adrs/ADR-0042-omnidash-cross-renderer-typed-empty-state-gate.md) |
-| Stock @rjsf for Pydantic-generated JSON schema | [ADR-0043](https://github.com/OmniNode-ai/knowledge-base/blob/main/adrs/ADR-0043-omnidash-rjsf-discriminated-union-handling.md) |
+| Dashboard typography system | [ADR-0039](https://github.com/OmniNode-ai/knowledge_base/blob/main/adrs/ADR-0039-omnidash-typography-system.md) |
+| Storybook coverage for every dashboard widget | [ADR-0040](https://github.com/OmniNode-ai/knowledge_base/blob/main/adrs/ADR-0040-omnidash-storybook-widget-coverage.md) |
+| BaselinesROICard stays bespoke | [ADR-0041](https://github.com/OmniNode-ai/knowledge_base/blob/main/adrs/ADR-0041-omnidash-baselines-roi-card-stays-bespoke.md) |
+| Cross-renderer typed empty-state gate | [ADR-0042](https://github.com/OmniNode-ai/knowledge_base/blob/main/adrs/ADR-0042-omnidash-cross-renderer-typed-empty-state-gate.md) |
+| Stock @rjsf for Pydantic-generated JSON schema | [ADR-0043](https://github.com/OmniNode-ai/knowledge_base/blob/main/adrs/ADR-0043-omnidash-rjsf-discriminated-union-handling.md) |
 
 Markdown that stays in this repo is limited to the GitHub-surface and agent-configuration set — this `README.md`, `CLAUDE.md`, `.claude/`, `CHANGELOG.md`, `SECURITY.md`, `LICENSE`, and `.github/` — enforced on every PR by the `kb-doc-gate` check in `strict` mode (see [`.kb-doc-gate.yaml`](.kb-doc-gate.yaml)).
 
@@ -106,7 +106,7 @@ VITE_DATA_SOURCE=file npm run dev
 | `npm run types:generate` | Regenerate types under `src/shared/types/generated/` |
 | `npm run storybook` | Storybook on port 6006 |
 
-Adding a widget, the data-source modes, and the registry-generation workflow are covered in the [OmniDash Development Guide](https://github.com/OmniNode-ai/knowledge-base/blob/main/guides/omnidash-development.md).
+Adding a widget, the data-source modes, and the registry-generation workflow are covered in the [OmniDash Development Guide](https://github.com/OmniNode-ai/knowledge_base/blob/main/guides/omnidash-development.md).
 
 ## Key Source Locations
 
