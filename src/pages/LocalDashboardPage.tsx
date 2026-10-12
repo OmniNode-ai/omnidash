@@ -740,6 +740,55 @@ export function WorkflowPath({ decisions }: { decisions: readonly unknown[] }) {
   );
 }
 
+/** The step kinds run-trace.v1 serves today; any other kind is shown as served, never dropped. */
+const RUN_STEP_LABELS: Record<string, string> = {
+  request: 'Request',
+  routing_decision: 'Routing decision',
+  provider_call: 'Provider call',
+  quality_gate: 'Quality gate',
+  terminal: 'Terminal',
+};
+
+/**
+ * WF-1 and WF-2: one run's steps, exactly as run-trace.v1 serves them (OMN-19987). The order is the exposure's, the
+ * step sequence the delegate orchestrator assigned, so this renders rows in the order given and sorts nothing. The
+ * step that failed a run is the one the terminal row names in failing_step_sequence; it is looked up, never inferred.
+ */
+export function RunTimeline({ steps }: { steps: readonly unknown[] }) {
+  const rows = asRecords(steps);
+  if (rows.length === 0) {
+    return <p className="local-dashboard-empty" role="status">No steps recorded for this run</p>;
+  }
+  const named = rows.find((row) => !isMissing(row.failing_step_sequence))?.failing_step_sequence;
+  return (
+    <ol className="local-dashboard-steps">
+      {rows.map((row, index) => {
+        const kind = String(row.step_kind ?? '');
+        const failing = !isMissing(named) && row.step_sequence === named;
+        const candidates = Array.isArray(row.candidates) ? row.candidates.map(String) : [];
+        const facts = [
+          recorded(row.started_at),
+          duration(row.duration_ms),
+          recorded(row.outcome),
+          ...(isMissing(row.failure_cause) ? [] : [`cause ${String(row.failure_cause)}`]),
+          ...(isMissing(row.backend_id) ? [] : [`backend ${String(row.backend_id)}`]),
+          ...(isMissing(row.model_id) ? [] : [`model ${String(row.model_id)}`]),
+          ...(isMissing(row.attempt_number) ? [] : [`attempt ${String(row.attempt_number)}`]),
+          ...(candidates.length === 0 ? [] : [`candidates ${candidates.join(', ')}`]),
+          ...(isMissing(row.reason) ? [] : [String(row.reason)]),
+        ];
+        return (
+          <li key={`${String(row.step_sequence)}-${index}`} data-failing-step={failing ? 'true' : undefined}>
+            <strong>{RUN_STEP_LABELS[kind] ?? recorded(row.step_kind)}</strong>
+            <span>{facts.join(' · ')}</span>
+            {failing && <span className="local-dashboard-badge">Failed here</span>}
+          </li>
+        );
+      })}
+    </ol>
+  );
+}
+
 /** AK-1: the tenant id from a served row; minted-at waits on local-identity.v1. */
 export function LocalIdentity({ row }: { row: Record<string, unknown> | null }) {
   return (
