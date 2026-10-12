@@ -16,7 +16,8 @@ import { describe, expect, it } from 'vitest';
 import { RunTimeline } from './LocalDashboardPage';
 import recordedChain from './local/omn19987.run-trace.recorded.json';
 
-// The step events one real delegation emitted on a lab host on 2026-10-11 (run eb99e731), as published.
+// The step events one real delegation emitted on a lab host on 2026-10-11 (run eb99e731), as published, except that
+// the model id is replaced by a neutral name: lab model ids do not belong in this repository.
 const recorded = recordedChain as Array<Record<string, unknown>>;
 
 const base = { tenant_id: 't', correlation_id: 'r' };
