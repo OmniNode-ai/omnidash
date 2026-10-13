@@ -1108,7 +1108,7 @@ function TableComponent({ component, snapshots, pageSize, syncUrl, columns }: {
     return (
       <>
         {/* The chart and the table under it show the same served day rows; the chart adds no figure of its own. */}
-        <SpendByDayChart title={component.title} rows={dayRows} />
+        <SpendByDayChart title={component.title} rows={dayRows} columns={columns} />
         <MeteringDayTable title={component.title} rows={dayRows} columns={columns} />
       </>
     );

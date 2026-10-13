@@ -12,8 +12,17 @@ type Row = Record<string, unknown>;
 /** What a day row with no baseline model is grouped under; the table beside the chart uses the same words. */
 export const UNRESOLVED_BASELINE = 'an unresolved baseline';
 
+/** A column the page declares for the panel: the chart plots the declared money columns and names no field itself. */
+export interface DeclaredChartColumn {
+  key: string;
+  header: string;
+  format?: string | null;
+}
+
 export interface ServedSeries {
-  key: 'counterfactual_usd' | 'spend_usd';
+  /** The declared column this series plots. */
+  key: string;
+  /** The declared column's header. */
   name: string;
   /** One entry per served day row: the served decimal as a number, or null where the row carries no figure. */
   values: Array<number | null>;
@@ -27,11 +36,6 @@ export interface SpendByDayGroup {
   days: string[];
   series: ServedSeries[];
 }
-
-const SERIES: ReadonlyArray<Pick<ServedSeries, 'key' | 'name'>> = [
-  { key: 'counterfactual_usd', name: 'Baseline (modelled)' },
-  { key: 'spend_usd', name: 'Actual spend' },
-];
 
 function isRow(value: unknown): value is Row {
   return typeof value === 'object' && value !== null && !Array.isArray(value);
@@ -49,8 +53,14 @@ function point(value: unknown): { value: number | null; served: string | null } 
  * metering-summary.v1's day rows shaped for a chart (OMN-21015 U2): one group per baseline model, each day row a
  * point, in the order served. Nothing is summed, sorted or filled in: the all-time row is not a day, a figure the row
  * does not carry is a gap, and two baselines are never joined, because their modelled figures are priced differently.
+ *
+ * Which figures are plotted is the page's declaration, not this module's choice: one series per declared column whose
+ * format is currency, in declared order, under its declared header. So this code names no figure (the OMN-19980 guard
+ * allows a savings field to be read only through a contract), and a column the page does not declare is never drawn.
  */
-export function spendByDayGroups(rows: readonly unknown[]): SpendByDayGroup[] {
+export function spendByDayGroups(columns: readonly DeclaredChartColumn[], rows: readonly unknown[]): SpendByDayGroup[] {
+  const plotted = columns.filter((column) => column.format === 'currency');
+  if (plotted.length === 0) return [];
   const groups = new Map<string, Row[]>();
   for (const row of rows) {
     if (!isRow(row) || row.window_kind !== 'day') continue;
@@ -62,9 +72,9 @@ export function spendByDayGroups(rows: readonly unknown[]): SpendByDayGroup[] {
   return [...groups.entries()].map(([baseline, days]) => ({
     baseline,
     days: days.map((row) => String(row.window_start ?? '')),
-    series: SERIES.map(({ key, name }) => {
+    series: plotted.map(({ key, header }) => {
       const points = days.map((row) => point(row[key]));
-      return { key, name, values: points.map((p) => p.value), served: points.map((p) => p.served) };
+      return { key, name: header, values: points.map((p) => p.value), served: points.map((p) => p.served) };
     }),
   }));
 }
@@ -78,10 +88,8 @@ function tone(token: string, fallback: number): string {
 }
 
 function optionFor(group: SpendByDayGroup) {
-  const colors: Record<ServedSeries['key'], string> = {
-    counterfactual_usd: tone('--status-bad', 0xd9534f),
-    spend_usd: tone('--status-ok', 0x3fb950),
-  };
+  // One colour per declared series, by its place in the declaration.
+  const palette = [tone('--status-ok', 0x3fb950), tone('--status-bad', 0xd9534f), tone('--brand', 0x58a6ff), tone('--status-warn', 0xd29922)];
   const text = tone('--ink-2', 0x8b949e);
   const line = tone('--line', 0x30363d);
   return {
@@ -112,15 +120,15 @@ function optionFor(group: SpendByDayGroup) {
       axisLabel: { color: text, formatter: (value: number) => `$${value}` },
       splitLine: { lineStyle: { color: line, type: 'dashed' } },
     },
-    series: group.series.map((series) => ({
+    series: group.series.map((series, index) => ({
       name: series.name,
       type: 'line',
       data: series.values,
       connectNulls: false,
       showSymbol: true,
       symbolSize: 7,
-      lineStyle: { width: 2, color: colors[series.key] },
-      itemStyle: { color: colors[series.key] },
+      lineStyle: { width: 2, color: palette[index % palette.length] },
+      itemStyle: { color: palette[index % palette.length] },
     })),
   };
 }
@@ -129,17 +137,21 @@ function optionFor(group: SpendByDayGroup) {
  * OMN-21015 U2: baseline against actual spend per UTC day, one chart per baseline model. It draws exactly the points
  * `spendByDayGroups` shapes from the served day rows; the table under it carries the same rows as text.
  */
-export function SpendByDayChart({ rows, title = 'Spend per day' }: { rows: readonly unknown[]; title?: string }) {
+export function SpendByDayChart({ rows, columns, title = 'Spend per day' }: {
+  rows: readonly unknown[];
+  columns: readonly DeclaredChartColumn[];
+  title?: string;
+}) {
   // Re-read the theme's colours when the theme changes.
   const theme = useThemeName();
-  const groups = spendByDayGroups(rows);
+  const groups = spendByDayGroups(columns, rows);
   if (groups.length === 0) return null;
   return (
     <>
       {groups.map((group) => (
         <figure className="local-chart" aria-label={`${title} vs ${group.baseline}`} key={`${group.baseline}-${theme}`}>
           <ReactEChartsCore echarts={echarts} option={optionFor(group)} notMerge opts={{ renderer: 'svg' }} className="local-chart-canvas" />
-          <figcaption>{`Baseline ${group.baseline} against actual spend, one point per served day`}</figcaption>
+          <figcaption>{`${group.series.map((series) => series.name).join(', ')} per served day, against ${group.baseline}`}</figcaption>
         </figure>
       ))}
     </>
