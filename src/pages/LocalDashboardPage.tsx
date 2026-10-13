@@ -1184,7 +1184,15 @@ function TableComponent({ component, snapshots, pageSize, syncUrl, columns }: {
   // US-1 (OMN-21015 AC4): the same served rows as a stacked series, tokens in and out apart, split by model.
   if (component.component_id === 'usage-tokens-by-day') return <UsageTokensByDay rows={rows} />;
   // US-3: metering-summary.v1's day rows, as served; the series renders no all row and sums nothing.
-  if (component.component_id === 'usage-savings-series') return <MeteringDaySeries rows={rows} />;
+  if (component.component_id === 'usage-savings-series') {
+    return (
+      <>
+        {/* OMN-21015 U2: the same served day rows as bars; the chart plots the money columns this panel declares. */}
+        <SpendByDayChart title={component.title} rows={rows} columns={columns} />
+        <MeteringDaySeries rows={rows} />
+      </>
+    );
+  }
   // OV: baseline against actual spend per UTC day, the declared columns of the served rows (OMN-21015 AC1).
   if (component.component_id === 'overview-spend-by-day') {
     const dayRows = rawRowsFor(component, snapshots, 0);

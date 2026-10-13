@@ -74,7 +74,8 @@
           },
           {
             "key": "savings_usd",
-            "header": "Savings"
+            "header": "Savings",
+            "format": "currency"
           },
           {
             "key": "runs_total",
