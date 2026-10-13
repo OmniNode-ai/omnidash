@@ -800,10 +800,27 @@ const NO_DAY_ROWS = 'No day rows yet: waits on metering-summary day rows';
 const DAY_FIGURES_MODELLED = "Baseline figures are modelled: the runs' tokens priced at the baseline model's list price. The baseline never ran.";
 const UNRESOLVED_BASELINE = 'an unresolved baseline';
 
-/** One declared cell of a metering-summary.v1 row, as served. A missing figure says why; it is never written as 0. */
+/**
+ * The metering-summary.v1 figures measured from the runs themselves: actual spend, run counts, tokens and the
+ * compression and cache figures. None of them is priced at the baseline model, so none waits on a baseline. This page
+ * names no baseline-priced figure (the OMN-19980 guard, rule R4): what is not listed here is one of those when the
+ * row's baseline is unresolved.
+ */
+export const RUN_MEASURED_FIELDS: ReadonlySet<string> = new Set([
+  'spend_usd', 'runs_total', 'runs_measured', 'runs_unknown_tokens', 'runs_unknown_spend', 'tokens_in', 'tokens_out',
+  'compression_ratio', 'cache_hit_rate', 'runs_cache_answered',
+]);
+
+/**
+ * One declared cell of a metering-summary.v1 row, as served. A missing figure says why; it is never written as 0.
+ * A run-measured figure that is missing was not measured, whatever the baseline. Any other missing figure on an
+ * unresolved-baseline row is missing because of the baseline.
+ */
 function declaredCell(row: Row, column: DeclaredColumn): string {
   const value = row[column.key];
-  if (isMissing(value)) return row.baseline_state === 'unresolved' ? 'Baseline unresolved' : 'Not measured';
+  if (isMissing(value)) {
+    return row.baseline_state === 'unresolved' && !RUN_MEASURED_FIELDS.has(column.key) ? 'Baseline unresolved' : 'Not measured';
+  }
   return column.format === 'currency' ? formatUsd(value) : String(value);
 }
 

@@ -12,6 +12,8 @@
 //   S2  the panel's all-time line differs from the headline, because it was summed here instead of read as served
 //   S3  a day whose spend was not measured shows 0
 //   S4  a day whose baseline is unresolved shows a baseline figure, or 0
+//   S9  a figure that does not depend on the baseline (actual spend, runs) is missing on an unresolved-baseline day and
+//       the cell blames the baseline, hiding that the spend itself was not measured
 //   S5  after a baseline change the two baselines' days are merged into one series
 //   S6  no day rows renders an empty table instead of saying why
 //   S7  the days are re-sorted in the browser instead of rendered in the order served
@@ -42,7 +44,8 @@ vi.mock('@/data-source/exposure-census', () => ({
   }),
 }));
 
-import { LocalDashboardPage } from './LocalDashboardPage';
+import { LocalDashboardPage, MeteringDayTable, RUN_MEASURED_FIELDS } from './LocalDashboardPage';
+import servedCatalogue from './local/served-catalogue.lab.json';
 
 const RECORDED_ALL = {
   window_kind: 'all', window_start: '', window_end: '2026-10-12T18:08:18.852476+00:00',
@@ -144,6 +147,47 @@ describe('OMN-21015 AC1: Overview shows baseline against actual spend per UTC da
     expect(series('an unresolved baseline').rows).toEqual([
       ['2026-09-29', '$0.00', 'Baseline unresolved', 'Baseline unresolved', '2'],
     ]);
+  });
+
+  it('S9: on an unresolved-baseline day, missing actual spend is Not measured; only baseline figures blame the baseline', async () => {
+    // Constructed: the S4 row with its actual spend and run count removed too. The fold serves spend_usd null when no run
+    // was measured, whatever the baseline state; spend and runs are not priced at the baseline.
+    const unresolved = {
+      ...RECORDED_DAY_1, baseline_model: null, baseline_state: 'unresolved', counterfactual_usd: null, savings_usd: null,
+      spend_usd: null, runs_total: null,
+    };
+    await overview([RECORDED_ALL, unresolved, RECORDED_DAY_2]);
+    expect(series('an unresolved baseline').rows).toEqual([
+      ['2026-09-29', 'Not measured', 'Baseline unresolved', 'Baseline unresolved', 'Not measured'],
+    ]);
+  });
+
+  it('S9: on a resolved-baseline day a missing baseline figure is Not measured, never Baseline unresolved', async () => {
+    // Constructed: the second recorded day with its baseline spend removed; its baseline is resolved.
+    await overview([RECORDED_ALL, RECORDED_DAY_1, { ...RECORDED_DAY_2, counterfactual_usd: null }]);
+    expect(series('claude-sonnet-5-5').rows[1]).toEqual(['2026-10-12', '$0.149422', 'Not measured', '$0.670048', '131']);
+  });
+
+  it('S9: every column the lab serves on metering-summary.v1 has a decided reason for being missing', () => {
+    // The captured lab catalogue's column list. A column served later fails here until it is placed in one group.
+    const servedColumns = (servedCatalogue as { exposures: Array<{ topic: string; columns: string[] }> }).exposures
+      .find((exposure) => exposure.topic === METERING)?.columns ?? [];
+    const windowAndState = ['tenant_id', 'window_kind', 'window_start', 'window_end', 'as_of', 'baseline_state', 'pricing_manifest_version', 'summary_json'];
+    const baselinePriced = ['baseline_model', 'counterfactual_usd', 'savings_usd', 'savings_per_measured_run_usd'];
+    expect([...servedColumns].sort()).toEqual([...windowAndState, ...baselinePriced, ...RUN_MEASURED_FIELDS].sort());
+
+    // Constructed: an unresolved-baseline day with every figure missing, shown with every figure as a column.
+    const figures = [...baselinePriced, ...RUN_MEASURED_FIELDS];
+    const row = {
+      window_kind: 'day', window_start: '2026-09-29', baseline_state: 'unresolved',
+      ...Object.fromEntries(figures.map((field) => [field, null])),
+    };
+    render(<MeteringDayTable title="Reasons" rows={[row]} columns={figures.map((key) => ({ key, header: key }))} />);
+    const cells = within(screen.getByRole('table', { name: 'Reasons vs an unresolved baseline' })).getAllByRole('cell');
+    expect(Object.fromEntries(cells.map((cell, index) => [figures[index], cell.textContent]))).toEqual({
+      ...Object.fromEntries(baselinePriced.map((field) => [field, 'Baseline unresolved'])),
+      ...Object.fromEntries([...RUN_MEASURED_FIELDS].map((field) => [field, 'Not measured'])),
+    });
   });
 
   it('S5: after a baseline change each baseline keeps its own series and its own all-time line', async () => {
