@@ -253,7 +253,7 @@ gates:
     producer_kind: cross_repo
     caller_workflow: call-receipt-gate.yml
     caller_job: verify
-    cross_repo_ref: "OmniNode-ai/omnibase_core/.github/workflows/receipt-gate.yml@1e69bec909f245be511803191554e5b340def0b7"
+    cross_repo_ref: "OmniNode-ai/omnibase_core/.github/workflows/receipt-gate.yml@fad21c40911b356c30f3e38c9075332f11524617"
     skip_semantics: never
     rationale: "Central Receipt Gate (cross-repo reusable hosted in omnibase_core)."
 
