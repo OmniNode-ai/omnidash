@@ -683,3 +683,25 @@
 }
 .local-meter-fill { display: block; height: 100%; border-radius: 999px; background: var(--status-ok); }
 .local-meter-value { font-family: var(--font-mono); font-size: 1.125rem; font-weight: 500; }
+
+/* No title block at the top of a page (Lakshman, 2026-10-13): the sidebar entry and the breadcrumb already name the
+ * page, so repeating its name and a sentence about it only pushed the figures down. The heading and the description
+ * stay in the page for a screen reader and for anything that looks a page up by its heading; they take no space. */
+.local-dashboard-title {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+.local-dashboard-header {
+  justify-content: flex-start;
+  min-height: 34px;
+  margin-bottom: 10px;
+}
+.local-dashboard-header .local-dashboard-filters { margin: 0; }
+.local-dashboard-header .local-dashboard-mode { margin-left: auto; }

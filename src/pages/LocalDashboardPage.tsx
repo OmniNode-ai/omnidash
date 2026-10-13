@@ -1356,21 +1356,22 @@ export function LocalDashboardPage({ pageName, syncUrl = false }: LocalDashboard
             <p>{page?.dashboard.description}</p>
           </div>
         </div>
+        {/* One toolbar row: the page's own control when it has one, and the runtime mode at the right. */}
+        {pageName === 'overview' && !loading && !error && page && (
+          <div className="local-dashboard-filters">
+            <label htmlFor={windowId}>Figures for</label>
+            <select
+              id={windowId}
+              value={overviewWindow}
+              onChange={(event) => setOverviewWindow(event.target.value === 'today' ? 'today' : 'all')}
+            >
+              <option value="all">All time</option>
+              <option value="today">Today (UTC)</option>
+            </select>
+          </div>
+        )}
         <span className="local-dashboard-mode">Local runtime · HTTP</span>
       </header>
-      {pageName === 'overview' && !loading && !error && page && (
-        <div className="local-dashboard-filters">
-          <label htmlFor={windowId}>Figures for</label>
-          <select
-            id={windowId}
-            value={overviewWindow}
-            onChange={(event) => setOverviewWindow(event.target.value === 'today' ? 'today' : 'all')}
-          >
-            <option value="all">All time</option>
-            <option value="today">Today (UTC)</option>
-          </select>
-        </div>
-      )}
       {loading && <p role="status">Loading runtime exposures…</p>}
       {error && <p className="local-dashboard-error" role="alert">{error}</p>}
       {!loading && !error && page && (
