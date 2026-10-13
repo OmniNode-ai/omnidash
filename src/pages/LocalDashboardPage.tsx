@@ -57,6 +57,10 @@ interface MetricCardProps {
   row: Record<string, unknown>;
   /** The served row of the component's second binding, rendered as a line under the figure. */
   caption?: Record<string, unknown> | null;
+  /** A line shown directly under the figure, and only when there is a figure. */
+  figureLine?: string | null;
+  /** Required fields read only for `figureLine`: when one is absent or null the line goes, never the figure. */
+  figureLineFields?: readonly string[];
 }
 
 /**
@@ -117,13 +121,15 @@ function captionText(caption: Record<string, unknown> | null | undefined): strin
  * field is a baseline, the figure is a savings figure with no priced baseline,
  * which is BASELINE_UNRESOLVED and never a zero. No row at all is Not measured.
  */
-export function MetricCard({ component, config, row, caption }: MetricCardProps) {
+export function MetricCard({ component, config, row, caption, figureLine, figureLineFields = [] }: MetricCardProps) {
   if ((component.data_bindings ?? []).length === 0) {
     const source = PENDING_SOURCES[component.component_id] ?? 'its exposure';
     return <p className="local-dashboard-empty" role="status">{`Not served yet: waits on ${source}`}</p>;
   }
-  const required = component.data_bindings?.[0]?.required_fields ?? [config.metric_key];
+  const required = (component.data_bindings?.[0]?.required_fields ?? [config.metric_key])
+    .filter((field) => !figureLineFields.includes(field));
   const missing = [...new Set([config.metric_key, ...required])].filter((field) => isMissing(row[field]));
+  let figure = false;
   let text: string;
   // No served row is not an unresolved baseline: nothing was measured (OMN-19980 AC2c).
   if (Object.keys(row).length === 0) text = 'Not measured';
@@ -132,7 +138,10 @@ export function MetricCard({ component, config, row, caption }: MetricCardProps)
   else if (row.baseline_state === 'unresolved' && required.includes('baseline_state')) text = 'Baseline unresolved';
   else if (missing.some((field) => field.includes('baseline'))) text = 'Baseline unresolved';
   else if (missing.length > 0) text = 'Not measured';
-  else text = formatMetric(Number(row[config.metric_key]), config);
+  else {
+    text = formatMetric(Number(row[config.metric_key]), config);
+    figure = true;
+  }
   const line = captionText(caption);
   // A savings figure is a modelled counterfactual: served tokens priced at the baseline's list price, with no
   // baseline run behind it (Jonah's savings handoff on OMN-19981, aac9032d, item 5).
@@ -140,6 +149,7 @@ export function MetricCard({ component, config, row, caption }: MetricCardProps)
   return (
     <>
       <p className="local-dashboard-metric">{text}</p>
+      {figure && figureLine && <p className="local-dashboard-caption">{figureLine}</p>}
       {line && <p className="local-dashboard-caption">{line}</p>}
       {modelled && <p className="local-dashboard-caption">{SAVINGS_MODELLED}</p>}
     </>
@@ -237,7 +247,29 @@ export function MeteringTotalCard({ component, config, rows }: {
     : required.includes('runs_total')
       ? { runs_total: row.runs_total, runs_unknown_tokens: row.runs_unknown_tokens, runs_unknown_spend: row.runs_unknown_spend }
       : null;
-  return <MetricCard component={component} config={config} row={row} caption={caption} />;
+  // OMN-20008 AC5: the Savings card's percentage line, from the same all-time row. A row that does not serve the
+  // ratio yet (or serves null) loses only this line; the figure and its captions stay as they were.
+  const pctField = 'savings_pct_of_counterfactual';
+  const pct = required.includes(pctField) ? pctAgainstBaseline(row[pctField], row.baseline_model) : null;
+  return (
+    <MetricCard component={component} config={config} row={row} caption={caption}
+      figureLine={pct} figureLineFields={[pctField]} />
+  );
+}
+
+/**
+ * OMN-20008 AC5 (Jonah's decision on the ticket, 4f0e618d): the served ratio of the modelled saving to the baseline's
+ * price, as a whole percent, naming the baseline and labelled modelled, e.g. "42% below the claude-sonnet-5-5 baseline
+ * (modelled)". metering-summary.v1 serves the ratio; the browser only formats it, as RunLocallyCard formats its served
+ * share, and divides nothing. A negative ratio (spend above the baseline's price) reads "above". No line when the
+ * ratio is not a number. MetricCard shows the line only beside a figure, and the figure needs the baseline's name.
+ */
+function pctAgainstBaseline(ratio: unknown, baselineModel: unknown): string | null {
+  if (typeof ratio !== 'number' && (typeof ratio !== 'string' || ratio.trim() === '')) return null;
+  const value = Number(ratio);
+  if (!Number.isFinite(value)) return null;
+  const pct = value.toLocaleString('en-US', { style: 'percent', maximumFractionDigits: 0, signDisplay: 'never' });
+  return `${pct} ${value < 0 ? 'above' : 'below'} the ${String(baselineModel)} baseline (modelled)`;
 }
 
 const SAVING_PER_RUN_PENDING = 'Not served yet: waits on savings_per_measured_run_usd in metering-summary.v1';
