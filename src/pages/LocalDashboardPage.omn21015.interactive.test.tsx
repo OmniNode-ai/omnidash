@@ -9,7 +9,13 @@
 //   I4  the diagram re-orders the served steps, drops one, or drops a kind it does not know;
 //   I5  the diagram marks a step other than the one the terminal names as failing, or marks one when none is named;
 //   I6  a diagram node leads to another step of the timeline than its own;
-//   I7  a run with no steps draws an empty diagram.
+//   I7  a run with no steps draws an empty diagram;
+//   I9  after a copy the text beside the button changes (Workflow moves to a newer run) and the button still says
+//       Copied, although the clipboard holds the earlier text;
+//   I10 a copy still unanswered when the text changes marks the new text Copied, or Copy failed, when it answers;
+//   I11 dropping stale feedback also drops it for the text that was copied: a re-render with the same text, or a
+//       copy of the new text, no longer says Copied;
+//   I12 two copies overlap and the older one answers last, and its answer replaces the newer one's.
 import { act, cleanup, fireEvent, render, screen, within } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { CopyButton, LastRunCard, RecentRunsTable, RunDiagram, RunTimeline } from './LocalDashboardPage';
@@ -92,6 +98,84 @@ describe('OMN-21015 U4: copy', () => {
     render(<CopyButton text="abc" label="Copy the run id" />);
     await act(async () => { fireEvent.click(screen.getByRole('button', { name: 'Copy the run id' })); });
     expect(screen.getByRole('button', { name: 'Copy the run id' }).textContent).toContain('Copy failed');
+  });
+
+  /** A clipboard whose writes stay unanswered until the test answers them, in any order. */
+  function heldClipboard() {
+    const writes: Array<{ text: string; resolve: () => void; reject: (cause: Error) => void }> = [];
+    const writeText = vi.fn((text: string) => new Promise<void>((resolve, reject) => { writes.push({ text, resolve, reject }); }));
+    vi.stubGlobal('navigator', { ...navigator, clipboard: { writeText } });
+    return writes;
+  }
+  const copyButton = () => screen.getByRole('button', { name: 'Copy the run id' });
+  const click = async () => { await act(async () => { fireEvent.click(copyButton()); }); };
+
+  it('I9: when the text beside the button changes, a finished copy of the earlier text is no longer announced', async () => {
+    vi.stubGlobal('navigator', { ...navigator, clipboard: { writeText: vi.fn(async () => {}) } });
+    const { rerender } = render(<CopyButton text="run-a" label="Copy the run id" />);
+    await click();
+    expect(copyButton().textContent).toContain('Copied');
+    rerender(<CopyButton text="run-b" label="Copy the run id" />);
+    expect(copyButton().textContent).not.toContain('Copied');
+    expect(copyButton().getAttribute('data-state')).toBe('idle');
+  });
+
+  it('I9: a failed copy of the earlier text is not announced beside the new text either', async () => {
+    vi.stubGlobal('navigator', { ...navigator, clipboard: undefined });
+    const { rerender } = render(<CopyButton text="run-a" label="Copy the run id" />);
+    await click();
+    expect(copyButton().textContent).toContain('Copy failed');
+    rerender(<CopyButton text="run-b" label="Copy the run id" />);
+    expect(copyButton().textContent).not.toContain('Copy failed');
+    expect(copyButton().getAttribute('data-state')).toBe('idle');
+  });
+
+  it.each([
+    ['succeeds', 'Copied'],
+    ['fails', 'Copy failed'],
+  ])('I10: a copy that %s after the text changed says nothing about the new text', async (how, announced) => {
+    const writes = heldClipboard();
+    const { rerender } = render(<CopyButton text="run-a" label="Copy the run id" />);
+    await click();
+    rerender(<CopyButton text="run-b" label="Copy the run id" />);
+    await act(async () => { if (how === 'succeeds') writes[0]!.resolve(); else writes[0]!.reject(new Error('denied')); });
+    expect(writes.map((write) => write.text)).toEqual(['run-a']);
+    expect(copyButton().textContent).not.toContain(announced);
+    expect(copyButton().getAttribute('data-state')).toBe('idle');
+  });
+
+  it('I11: the same text rendered again keeps saying Copied', async () => {
+    vi.stubGlobal('navigator', { ...navigator, clipboard: { writeText: vi.fn(async () => {}) } });
+    const { rerender } = render(<CopyButton text="run-a" label="Copy the run id" />);
+    await click();
+    rerender(<CopyButton text="run-a" label="Copy the run id" />);
+    expect(copyButton().textContent).toContain('Copied');
+  });
+
+  it('I11: after the text changed, a copy of the new text copies it and says so', async () => {
+    const writeText = vi.fn(async (_text: string) => {});
+    vi.stubGlobal('navigator', { ...navigator, clipboard: { writeText } });
+    const { rerender } = render(<CopyButton text="run-a" label="Copy the run id" />);
+    await click();
+    rerender(<CopyButton text="run-b" label="Copy the run id" />);
+    await click();
+    expect(writeText.mock.calls.map((call) => call[0])).toEqual(['run-a', 'run-b']);
+    expect(copyButton().textContent).toContain('Copied');
+  });
+
+  it('I12: of two overlapping copies, the one started last decides what the button says', async () => {
+    const writes = heldClipboard();
+    const { rerender } = render(<CopyButton text="run-a" label="Copy the run id" />);
+    await click();
+    rerender(<CopyButton text="run-b" label="Copy the run id" />);
+    await click();
+    expect(writes.map((write) => write.text)).toEqual(['run-a', 'run-b']);
+    // The newer copy is answered first; the older one then fails late.
+    await act(async () => { writes[1]!.resolve(); });
+    expect(copyButton().textContent).toContain('Copied');
+    await act(async () => { writes[0]!.reject(new Error('denied')); });
+    expect(copyButton().textContent).toContain('Copied');
+    expect(copyButton().textContent).not.toContain('Copy failed');
   });
 });
 

@@ -11,9 +11,16 @@ function fraction(value: unknown): number | null | 'out-of-range' {
   return value < 0 || value > 1 ? 'out-of-range' : value;
 }
 
-/** A fraction as a percentage with one decimal, the way Run locally already shows its served share. */
+/**
+ * A fraction as a percentage with one decimal, the way Run locally already shows its served share. A share above zero
+ * is never written as 0.0%, and one below the whole never as 100.0%: where rounding would say so, it reads <0.1% or
+ * >99.9% instead. Exactly 0 and exactly 1 are written as they are.
+ */
 function percent(share: number): string {
-  return share.toLocaleString('en-US', { style: 'percent', minimumFractionDigits: 1, maximumFractionDigits: 1 });
+  const written = share.toLocaleString('en-US', { style: 'percent', minimumFractionDigits: 1, maximumFractionDigits: 1 });
+  if (share > 0 && written === '0.0%') return '<0.1%';
+  if (share < 1 && written === '100.0%') return '>99.9%';
+  return written;
 }
 
 export interface TierSegment {

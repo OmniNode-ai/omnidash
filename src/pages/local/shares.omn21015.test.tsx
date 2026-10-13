@@ -12,7 +12,12 @@
 //   H5  a tier with no served share is drawn as an empty segment, as if it were 0;
 //   H6  no tiers draws an empty bar;
 //   H7  the pass rate shown is recomputed from passed and total instead of read as served;
-//   H8  a pass rate that is not served, or is off the 0 to 1 scale, is drawn as 0% or 100%.
+//   H8  a pass rate that is not served, or is off the 0 to 1 scale, is drawn as 0% or 100%;
+//   H9  a small served share is drawn wider than its share because the stylesheet gives a segment a floor, padding or
+//       a border of its own (jsdom lays nothing out, so the drawn widths are measured in a real browser by
+//       tests/e2e/local-dashboard-omn21015.spec.ts; this file holds the stylesheet to the rule);
+//   H10 a served share above zero is written as 0.0%, or one below the whole as 100.0%: with no floor on a segment
+//       the written figure is the only place a sliver of a tier can be read, and rounding says it is none (or all).
 import { render, screen, within } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 import { PassRateMeter, TierShareBar, tierShares } from './shares';
@@ -105,5 +110,44 @@ describe('OMN-21015 U2: the tier bar and the pass-rate meter on the page', () =>
     const { container } = render(<PassRateMeter row={{ overall_pass_rate: rate, total_passed: 2, total_checks: 10 }} />);
     expect(screen.queryByRole('meter')).toBeNull();
     expect(container.textContent).not.toContain('%');
+  });
+
+  it('H9: the stylesheet gives a tier segment no floor, padding, border, margin or flex of its own', async () => {
+    const { readFileSync } = await import('node:fs');
+    const css = readFileSync('src/styles/local-dashboard.css', 'utf8');
+    const rules = [...css.matchAll(/([^{}]*\.local-share-segment[^{}]*)\{([^}]*)\}/g)];
+    expect(rules.length).toBeGreaterThan(0);
+    for (const [, selector, body] of rules) {
+      for (const property of ['padding', 'border', 'margin', 'width', 'flex', 'box-sizing']) {
+        expect(`${selector!.trim()} declares ${property}: ${new RegExp(`(^|[;\\s])(min-|max-)?${property}[a-z-]*\\s*:`).test(body!)}`)
+          .toBe(`${selector!.trim()} declares ${property}: false`);
+      }
+    }
+  });
+
+  it('H10: a share above zero is never written as 0.0%, and one below the whole never as 100.0%', () => {
+    render(<TierShareBar byTier={{ tiers: [tier('local', 9999, 0.9999), tier('claude', 1, 0.0001), tier('cheap_cloud', 0, 0)] }} />);
+    const written = within(screen.getByRole('list')).getAllByRole('listitem').map((item) => item.textContent);
+    expect(written).toEqual(['local>99.9%', 'claude<0.1%', 'cheap_cloud0.0%']);
+    expect(screen.getByRole('img', { name: /Tier mix/ }).getAttribute('aria-label')).toBe('Tier mix: local >99.9%, claude <0.1%, cheap_cloud 0.0%');
+    expect(segments().map((segment) => segment.getAttribute('title'))).toEqual([
+      'local: >99.9% of tier-routed runs', 'claude: <0.1% of tier-routed runs', 'cheap_cloud: 0.0% of tier-routed runs',
+    ]);
+    // The widths stay the served shares, exactly.
+    expect(segments().map((segment) => segment.style.width)).toEqual(['99.99%', '0.01%', '0%']);
+  });
+
+  it('H10: a whole share is 100.0%, and one that rounds inside the scale is written as rounded', () => {
+    render(<TierShareBar byTier={{ tiers: [tier('local', 5, 1), tier('claude', 1, 0.0006), tier('cheap_cloud', 1, 0.9994)] }} />);
+    const written = within(screen.getByRole('list')).getAllByRole('listitem').map((item) => item.textContent);
+    expect(written).toEqual(['local100.0%', 'claude0.1%', 'cheap_cloud99.9%']);
+  });
+
+  it('H10: the pass-rate meter follows the same rule', () => {
+    const { unmount } = render(<PassRateMeter row={{ overall_pass_rate: 0.9999 }} />);
+    expect(screen.getByRole('meter').textContent).toBe('>99.9%');
+    unmount();
+    render(<PassRateMeter row={{ overall_pass_rate: 0.0001 }} />);
+    expect(screen.getByRole('meter').textContent).toBe('<0.1%');
   });
 });

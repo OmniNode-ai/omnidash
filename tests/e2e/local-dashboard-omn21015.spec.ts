@@ -13,7 +13,7 @@ const usage = [
   { usage_day: '2026-10-12', model_id: 'qwen3-coder', call_count: 4, input_tokens: 1000, output_tokens: 1200 },
 ];
 
-async function serve(page: Page) {
+async function serve(page: Page, served: Record<string, unknown[]> = { [USAGE]: usage }) {
   await page.addInitScript(() => {
     localStorage.clear();
     localStorage.setItem('omnidash.dataSourceOverride.v1', JSON.stringify({ mode: 'live', baseUrl: window.location.origin }));
@@ -23,14 +23,15 @@ async function serve(page: Page) {
       status: 200,
       contentType: 'application/json',
       body: JSON.stringify({
-        topics: [{ topic: USAGE, status: 'ok', backing: 'bus', bus_backed: true, tenant_scoped: false, tenant_column: null }],
+        topics: Object.keys(served).map((topic) => ({ topic, status: 'ok', backing: 'bus', bus_backed: true, tenant_scoped: false, tenant_column: null })),
       }),
     });
   });
   await page.route('**/projection/**', async (route) => {
     const topic = decodeURIComponent(new URL(route.request().url()).pathname.split('/').at(-1) ?? '');
-    await route.fulfill(topic === USAGE
-      ? { status: 200, contentType: 'application/json', body: JSON.stringify({ rows: usage, row_count: usage.length, data_freshness: 'fresh' }) }
+    const rows = served[topic];
+    await route.fulfill(rows !== undefined
+      ? { status: 200, contentType: 'application/json', body: JSON.stringify({ rows, row_count: rows.length, data_freshness: 'fresh' }) }
       : { status: 404, contentType: 'application/json', body: JSON.stringify({ detail: `unknown topic ${topic}` }) });
   });
 }
@@ -74,4 +75,44 @@ test('OMN-21015: on Usage a segment is as wide as its share of the served tokens
 
   await page.getByRole('heading', { name: 'Tokens per day' }).scrollIntoViewIfNeeded();
   await page.screenshot({ path: screenshotPath('local-dashboard-omn21015-usage-tokens-1440x900.png'), fullPage: false });
+});
+
+// OMN-21015 stage 5, U2: on Overview a tier's segment is as wide as its served share of the tier-routed runs. The
+// shares are constructed at the extreme (1 run in 10,000 against the rest) because that is where a floor on a
+// segment's width shows: a 2px minimum drew this pair as 2px against 1,096px, eighteen times the served share.
+const ROUTING = 'onex.snapshot.projection.delegation.model-routing.v1';
+const routing = [{
+  captured_at: '2026-10-13T10:00:00+00:00',
+  by_tier: {
+    tiers: [
+      { cost_tier_name: 'claude', count: 1, tier_routed: true, pct_of_tier_routed: 0.0001 },
+      { cost_tier_name: 'local', count: 9999, tier_routed: true, pct_of_tier_routed: 0.9999 },
+    ],
+  },
+}];
+
+test('OMN-21015: on Overview a tier segment is as wide as its served share', async ({ page }) => {
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await serve(page, { [ROUTING]: routing });
+  await page.goto('/');
+
+  const bar = page.getByRole('img', { name: /^Tier mix:/ });
+  await expect(bar).toBeVisible();
+  const drawn = await bar.evaluate((element) => ({
+    bar: element.getBoundingClientRect().width,
+    segments: [...element.children].map((child) => child.getBoundingClientRect().width),
+  }));
+  expect(drawn.segments).toHaveLength(2);
+  // A bar wide enough that the comparison means something.
+  expect(drawn.bar).toBeGreaterThan(300);
+  // 1 : 9,999, as served, and each segment its own share of the whole bar.
+  expect(drawn.segments[0]! / drawn.segments[1]!).toBeCloseTo(0.0001 / 0.9999, 4);
+  expect(drawn.segments[0]! / drawn.bar).toBeCloseTo(0.0001, 4);
+  expect(drawn.segments[1]! / drawn.bar).toBeCloseTo(0.9999, 4);
+
+  // The sliver cannot be seen at that width, so the figure beside it must not read as none.
+  await expect(bar.locator('xpath=following-sibling::ul[1]').getByRole('listitem')).toHaveText(['claude<0.1%', 'local>99.9%']);
+
+  await bar.scrollIntoViewIfNeeded();
+  await page.screenshot({ path: screenshotPath('local-dashboard-omn21015-overview-tier-mix-1440x900.png'), fullPage: false });
 });

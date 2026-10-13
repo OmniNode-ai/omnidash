@@ -448,14 +448,21 @@ function RunRef({ id }: { id: unknown }) {
  * Copied only after the clipboard took it, Copy failed when there is no clipboard or it refused.
  */
 export function CopyButton({ text, label }: { text: string; label: string }) {
-  const [state, setState] = useState<'idle' | 'copied' | 'failed'>('idle');
+  // What the last copy did, kept with the text it copied: the button says so only while that text is still the one
+  // beside it. On Workflow the run id changes under a mounted button when a newer run arrives.
+  const [result, setResult] = useState<{ text: string; state: 'copied' | 'failed' } | null>(null);
+  const started = useRef(0);
+  const state = result !== null && result.text === text ? result.state : 'idle';
   const copy = async () => {
+    const mine = ++started.current;
+    // Of overlapping copies only the one started last reports: it is the one the reader asked for last.
+    const report = (outcome: 'copied' | 'failed') => { if (mine === started.current) setResult({ text, state: outcome }); };
     try {
       if (!navigator.clipboard) throw new Error('no clipboard');
       await navigator.clipboard.writeText(text);
-      setState('copied');
+      report('copied');
     } catch {
-      setState('failed');
+      report('failed');
     }
   };
   return (

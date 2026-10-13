@@ -645,7 +645,9 @@
   border-radius: 999px;
   background: var(--panel-2);
 }
-.local-share-segment { display: block; height: 100%; min-width: 2px; transition: filter 0.15s; }
+/* No floor, padding or border on a segment: its drawn width is its served share and nothing else. A tier too small
+   to see is read from the figure written under the bar. */
+.local-share-segment { display: block; height: 100%; transition: filter 0.15s; }
 .local-share-segment:hover { filter: brightness(1.15); }
 .local-share-segment + .local-share-segment { box-shadow: -1px 0 0 var(--panel); }
 .local-share-legend {
