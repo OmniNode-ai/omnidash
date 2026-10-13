@@ -528,3 +528,20 @@ test('OMN-21015: on Workflow the older and newer run links walk the served runs'
   await expect(shown).toHaveText('bbbbbbbb-0000-4000-8000-000000000002');
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
 });
+
+test('OMN-21015: a tooltip shows markup in a served model name as text, in the real tooltip element', async ({ page }) => {
+  await page.setViewportSize({ width: 1440, height: 900 });
+  const planted = 'qwen<b class="planted-model">bold</b>&co';
+  await serve(page, { [DECISIONS]: [{ ...listedRuns[0]!, model_name: planted }, listedRuns[2]!] });
+  await page.goto('/runs');
+  const bars = await settledBars(page, 'Duration per run');
+  expect(bars).toHaveLength(2);
+  await page.mouse.move(bars[0]!.x, bars[0]!.y);
+  const figure = page.getByRole('figure', { name: 'Duration per run' });
+  // The library's tooltip element, found by the text only it carries (the run's full id and its duration line).
+  const tooltip = figure.locator('div', { hasText: 'Duration: 1200 ms' }).last();
+  await expect(tooltip).toBeVisible();
+  await expect(tooltip).toContainText(`passed · ${planted}`);
+  await expect(page.locator('.planted-model')).toHaveCount(0);
+  await expect(figure.locator('b')).toHaveCount(0);
+});

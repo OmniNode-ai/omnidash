@@ -43,6 +43,20 @@ function isRow(value: unknown): value is Row {
 }
 
 /**
+ * Text for a tooltip. The chart library puts a tooltip formatter's result into the page as HTML, so every piece of
+ * text a formatter writes goes through here first: a served run id, model, day or figure, and a declared header, are
+ * shown as the text they are and never become elements. The library's own series marker is HTML and is not passed in.
+ */
+function asText(value: unknown): string {
+  return String(value)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+
+/**
  * A served decimal as a point: its number and its served text. Anything that is not a finite number is a gap. Only a
  * number or a decimal written as text is read: a list or an object is not a figure, even though a list holding one
  * number turns into that number's text.
@@ -135,9 +149,9 @@ function optionFor(group: SpendByDayGroup, shown: ReadonlyArray<{ series: Served
         const index = params[0]?.dataIndex ?? 0;
         const lines = params.map((p) => {
           const served = shown[p.seriesIndex]?.series.served[index];
-          return `${p.marker}${p.seriesName}: ${served === null || served === undefined ? 'Not measured' : `$${served}`}`;
+          return `${p.marker}${asText(p.seriesName)}: ${served === null || served === undefined ? 'Not measured' : `$${asText(served)}`}`;
         });
-        return [group.days[index], ...lines].join('<br/>');
+        return [asText(group.days[index] ?? ''), ...lines].join('<br/>');
       },
     },
     xAxis: {
@@ -278,7 +292,7 @@ function timingOption(bars: readonly RunTimingBar[], colours: readonly string[])
     grid: { left: 96, right: 84, top: 6, bottom: 24 },
     tooltip: {
       trigger: 'item',
-      formatter: (param: { dataIndex: number; name: string; marker: string }) => `${param.marker}${param.name}: ${servedText(param.dataIndex)}`,
+      formatter: (param: { dataIndex: number; name: string; marker: string }) => `${param.marker}${asText(param.name)}: ${asText(servedText(param.dataIndex))}`,
     },
     xAxis: {
       type: 'value',
@@ -380,10 +394,10 @@ function runChartFrame(runs: readonly ListedRun[], axisLabel: (value: number) =>
   };
 }
 
-/** The first lines of a run's tooltip: which run it is, in full, then its status and model. */
+/** The first lines of a run's tooltip: which run it is, in full, then its status and model, each as text. */
 function runTooltipHead(run: ListedRun | undefined): string[] {
   if (run === undefined) return [];
-  return [run.id ?? 'Not recorded', `${run.status} · ${run.model}`];
+  return [asText(run.id ?? 'Not recorded'), `${asText(run.status)} · ${asText(run.model)}`];
 }
 
 /** A bar opens its own run on Workflow, as the run id in its row does; a run with no recorded id opens nothing. */
@@ -421,7 +435,7 @@ export function RunDurationChart({ runs, onOpen, title = 'Duration per run' }: {
       formatter: (params: Array<{ dataIndex: number; marker: string }>) => {
         const index = params[0]?.dataIndex ?? 0;
         const served = points[index]?.served;
-        return [...runTooltipHead(runs[index]), `${params[0]?.marker ?? ''}Duration: ${served === null || served === undefined ? 'Not recorded' : `${served} ms`}`].join('<br/>');
+        return [...runTooltipHead(runs[index]), `${params[0]?.marker ?? ''}Duration: ${served === null || served === undefined ? 'Not recorded' : `${asText(served)} ms`}`].join('<br/>');
       },
     },
     series: [{
@@ -482,7 +496,7 @@ export function RunTokensChart({ runs, onOpen, title = 'Tokens per run' }: { run
         const index = params[0]?.dataIndex ?? 0;
         const lines = params.map((param) => {
           const served = shown[param.seriesIndex]?.points[index]?.served;
-          return `${param.marker}${param.seriesName}: ${served === null || served === undefined ? 'Not recorded' : served}`;
+          return `${param.marker}${asText(param.seriesName)}: ${served === null || served === undefined ? 'Not recorded' : asText(served)}`;
         });
         return [...runTooltipHead(runs[index]), ...lines].join('<br/>');
       },
