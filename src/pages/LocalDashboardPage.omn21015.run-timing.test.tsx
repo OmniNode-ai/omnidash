@@ -16,6 +16,7 @@
 //   T8  a timing changes colour when another is not measured;
 //   T9  the requested model is not shown as served, or a missing one reads as something else;
 //   T10 the page reads a field its contract does not declare, or one nothing shows is served.
+//   T12 a timing served as something other than one number (a list, an object) is read as a number and drawn;
 //   T11 the chart's caption speaks of several bars "side by side" when one is drawn, or drops the warning when several are.
 import { readFileSync } from 'node:fs';
 import { render, screen, within } from '@testing-library/react';
@@ -53,10 +54,12 @@ function drawn(): Array<[string, number]> {
 beforeEach(() => { harness.handed.length = 0; });
 
 describe('OMN-21015: where a run\'s time went', () => {
-  it('T1, T2: each served timing has a tile and a bar of its served value, in the order the tiles are in', () => {
+  it('T1, T2: each served timing has a tile and a bar of its served value, tiles and bars in one order', () => {
     render(<RunSummary decision={run()} />);
     const shown = fields();
     expect([shown['Queue wait'], shown.Execution, shown.Duration]).toEqual(['12 ms', '4788 ms', '743 ms']);
+    // The three timing tiles stand together, last in the summary, in the order the bars are drawn in.
+    expect(Object.keys(shown).slice(-3)).toEqual(['Queue wait', 'Execution', 'Duration']);
     expect(within(summary()).getByRole('figure', { name: 'Run timing' })).toBeTruthy();
     expect(harness.handed).toHaveLength(1);
     expect(drawn()).toEqual([['Queue wait', 12], ['Execution', 4788], ['Duration', 743]]);
@@ -85,6 +88,19 @@ describe('OMN-21015: where a run\'s time went', () => {
   it('T3: a timing that is not a number is not drawn', () => {
     render(<RunSummary decision={run({ queue_wait_ms: 'soon', execution_ms: -5 })} />);
     expect(drawn()).toEqual([['Duration', 743]]);
+  });
+
+  it.each([
+    ['a number', 12, [['Queue wait', 12], ['Execution', 4788], ['Duration', 743]]],
+    ['a decimal as text', '12', [['Queue wait', 12], ['Execution', 4788], ['Duration', 743]]],
+    ['a list holding a number', [12], [['Execution', 4788], ['Duration', 743]]],
+    ['a list holding text', ['12'], [['Execution', 4788], ['Duration', 743]]],
+    ['an object', { ms: 12 }, [['Execution', 4788], ['Duration', 743]]],
+    ['a boolean', true, [['Execution', 4788], ['Duration', 743]]],
+    ['an empty text', '', [['Execution', 4788], ['Duration', 743]]],
+  ])('T12: a queue wait served as %s is drawn only when it is one number', (_, served, bars) => {
+    render(<RunSummary decision={run({ queue_wait_ms: served })} />);
+    expect(drawn()).toEqual(bars);
   });
 
   it('T4: a served zero is a figure: it keeps its tile, its place in the chart and its label', () => {

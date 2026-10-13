@@ -67,6 +67,19 @@ describe('OMN-21015 U2: spend per day, shaped for a chart', () => {
     expect(groups[0].series.every((series) => series.values.length === 2)).toBe(true);
   });
 
+  it.each([
+    ['a list holding a number', [0.25]],
+    ['a list holding text', ['0.250000']],
+    ['an object', { usd: 0.25 }],
+    ['a boolean', true],
+  ])('G15: a figure served as %s is a gap, not a number read out of it', (_, served) => {
+    const groups = spendByDayGroups(COLUMNS, [day('2026-09-29', { spend_usd: served }), day('2026-10-12')]);
+    const actual = groups[0].series.find((series) => series.key === 'spend_usd')!;
+    expect([actual.values[0], actual.served[0]]).toEqual([null, null]);
+    // The day beside it, served as a decimal, is still a point.
+    expect(actual.values[1]).not.toBeNull();
+  });
+
   it('G3: a day whose spend was not measured is a gap, never 0', () => {
     const groups = spendByDayGroups(COLUMNS, [day('2026-09-29', { spend_usd: null }), day('2026-10-12')]);
     const actual = groups[0].series.find((series) => series.key === 'spend_usd')!;

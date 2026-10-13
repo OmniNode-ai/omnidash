@@ -42,9 +42,13 @@ function isRow(value: unknown): value is Row {
   return typeof value === 'object' && value !== null && !Array.isArray(value);
 }
 
-/** A served decimal as a point: its number and its served text. Anything that is not a finite number is a gap. */
+/**
+ * A served decimal as a point: its number and its served text. Anything that is not a finite number is a gap. Only a
+ * number or a decimal written as text is read: a list or an object is not a figure, even though a list holding one
+ * number turns into that number's text.
+ */
 function point(value: unknown): { value: number | null; served: string | null } {
-  if (value === null || value === undefined) return { value: null, served: null };
+  if (typeof value !== 'number' && typeof value !== 'string') return { value: null, served: null };
   const served = String(value).trim();
   const number = served === '' ? Number.NaN : Number(served);
   return Number.isFinite(number) ? { value: number, served } : { value: null, served: null };

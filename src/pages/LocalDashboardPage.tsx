@@ -831,7 +831,6 @@ export function RunSummary({ decision }: { decision: Row | undefined }) {
     ['Backend', recorded(decision.backend_id)],
     ['Host', recorded(decision.host)],
     ['Route tier', tierOf(decision)],
-    ['Duration', duration(decision.latency_ms)],
     // OMN-21015: more of what the run's own row serves, each as served. A served zero is a figure and is shown; a
     // fact the row does not carry says Not recorded.
     ['Required bar', recorded(decision.required_bar)],
@@ -841,10 +840,12 @@ export function RunSummary({ decision }: { decision: Row | undefined }) {
     ['Truncated', yesOrNo(decision.truncated)],
     ['Escalations', recorded(decision.escalation_count)],
     // The model the caller asked for, beside the model that answered; and the two timings the row serves beside its
-    // duration. Each is the served column (omnimarket v0.4.309, OMN-19448): missing is Not recorded, never zero.
+    // duration. Each new one is the served column (omnimarket v0.4.309, OMN-19448): missing is Not recorded, never zero.
     ['Requested model', recorded(decision.requested_model)],
+    // The three timings stand together and last, in the order their bars are drawn in under the tiles.
     ['Queue wait', duration(decision.queue_wait_ms)],
     ['Execution', duration(decision.execution_ms)],
+    ['Duration', duration(decision.latency_ms)],
   ];
   return (
     <section aria-label="Run summary" className="local-dashboard-run-summary">
