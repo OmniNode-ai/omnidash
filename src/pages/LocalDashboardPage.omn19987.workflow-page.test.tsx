@@ -23,6 +23,13 @@
 //   W14  a Runs row with no correlation id links somewhere;
 //   W15  the run's backend, host and tier (OMN-20225) vanish from the page, or come from another run's decision;
 //   W16  the page without address sync (a story, a test) cannot open a run by id.
+//   W17  a refresh is asked while an earlier read of the page is unanswered, the newest run changed in between, and
+//        the earlier read's late answer replaces the newer run already on screen (Codex's review of efcf5e83);
+//   W18  once a superseded read has been dropped, later refreshes are dropped too and the page stops updating;
+//   W19  a superseded read that fails late shows its failure, or ends the loading state, while the newer read is
+//        still unanswered;
+//   W20  a superseded read that fails outright (the catalogue itself, not one exposure) shows a page error while the
+//        newer read is still unanswered.
 import { act, cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { useLocation } from 'wouter';
@@ -47,6 +54,7 @@ const RUN_TRACE = 'onex.snapshot.projection.run-trace.v1';
 const OLDER = '11111111-1111-4111-8111-111111111111';
 const NEWEST = '22222222-2222-4222-8222-222222222222';
 const UNKNOWN = '99999999-9999-4999-8999-999999999999';
+const THIRD = '33333333-3333-4333-8333-333333333333';
 
 type Row = Record<string, unknown>;
 type Answer = { status: number; body: unknown };
@@ -78,6 +86,8 @@ const lab = {
   /** run-trace.v1's answer for the correlation id asked for (null when the request named none). */
   trace: ((_id: string | null) => served([])) as (id: string | null) => Answer | Promise<Answer>,
   requests: [] as URL[],
+  /** When set, the next catalogue request waits for this answer instead of the catalogue above (taken once). */
+  heldCatalogue: null as Promise<Answer> | null,
 };
 
 function respond({ status, body }: Answer): Response {
@@ -92,6 +102,11 @@ function stubFetch() {
   vi.stubGlobal('fetch', vi.fn(async (input: RequestInfo | URL) => {
     const url = new URL(String(input), 'http://127.0.0.1:47695');
     if (url.pathname === '/projections') {
+      if (lab.heldCatalogue) {
+        const answer = lab.heldCatalogue;
+        lab.heldCatalogue = null;
+        return respond(await answer);
+      }
       return respond({
         status: 200,
         body: {
@@ -140,6 +155,7 @@ beforeEach(() => {
   lab.decisions = served([decision(OLDER, '2026-10-11T15:00:00Z'), decision(NEWEST, '2026-10-11T15:05:00Z')]);
   lab.trace = (id) => served(id === OLDER || id === NEWEST ? stepsOf(id) : []);
   lab.requests = [];
+  lab.heldCatalogue = null;
   stubFetch();
 });
 
@@ -254,6 +270,92 @@ describe('OMN-19987 / OMN-21015 AC9: the Workflow page shows one run, asked for 
     expect(panel().textContent).toContain(`Run ${NEWEST}`);
     expect(panel().textContent).not.toContain('task of');
     expect(within(panel()).queryAllByRole('listitem')).toHaveLength(0);
+  });
+
+  /** A run-trace.v1 answer the test releases when it chooses, and a wait long enough for a wrong write to land. */
+  function held(): { answer: Promise<Answer>; release: (answer: Answer) => void } {
+    let release: (answer: Answer) => void = () => {};
+    const answer = new Promise<Answer>((resolve) => { release = resolve; });
+    return { answer, release };
+  }
+  const settle = () => act(async () => { await new Promise((resolve) => setTimeout(resolve, 60)); });
+
+  it('W17: an earlier read\'s late answer does not replace the newer run a refresh already showed', async () => {
+    const first = held();
+    lab.decisions = served([decision(OLDER, '2026-10-11T15:00:00Z')]);
+    lab.trace = (id) => (id === OLDER ? first.answer : served(id === NEWEST ? stepsOf(NEWEST) : []));
+    open('/workflow');
+    await waitFor(() => expect(traceAsks()).toEqual([OLDER]));
+    // A newer run lands and the reader refreshes before the first read is answered.
+    lab.decisions = served([decision(OLDER, '2026-10-11T15:00:00Z'), decision(NEWEST, '2026-10-11T15:05:00Z')]);
+    act(() => { requestLocalPageRefresh(); });
+    await shows(`task of ${NEWEST}`);
+    await act(async () => { first.release(served(stepsOf(OLDER))); await first.answer; });
+    await settle();
+    expect(panel().textContent).toContain(`Run ${NEWEST}`);
+    expect(panel().textContent).toContain(`task of ${NEWEST}`);
+    expect(panel().textContent).not.toContain(`task of ${OLDER}`);
+  });
+
+  it('W18: after a superseded read is dropped, the next refresh is still shown', async () => {
+    const first = held();
+    lab.decisions = served([decision(OLDER, '2026-10-11T15:00:00Z')]);
+    lab.trace = (id) => (id === OLDER ? first.answer : served(stepsOf(String(id))));
+    open('/workflow');
+    await waitFor(() => expect(traceAsks()).toEqual([OLDER]));
+    lab.decisions = served([decision(OLDER, '2026-10-11T15:00:00Z'), decision(NEWEST, '2026-10-11T15:05:00Z')]);
+    act(() => { requestLocalPageRefresh(); });
+    await shows(`task of ${NEWEST}`);
+    await act(async () => { first.release(served(stepsOf(OLDER))); await first.answer; });
+    await settle();
+    lab.decisions = served([decision(NEWEST, '2026-10-11T15:05:00Z'), decision(THIRD, '2026-10-11T15:10:00Z')]);
+    act(() => { requestLocalPageRefresh(); });
+    await shows(`task of ${THIRD}`);
+    expect(panel().textContent).toContain(`Run ${THIRD}`);
+    expect(panel().textContent).not.toContain(`task of ${NEWEST}`);
+  });
+
+  it('W19: a superseded read that fails late shows nothing while the newer read is unanswered', async () => {
+    const first = held();
+    const second = held();
+    lab.decisions = served([decision(OLDER, '2026-10-11T15:00:00Z')]);
+    lab.trace = (id) => (id === OLDER ? first.answer : id === NEWEST ? second.answer : served([]));
+    open('/workflow');
+    await waitFor(() => expect(traceAsks()).toEqual([OLDER]));
+    lab.decisions = served([decision(OLDER, '2026-10-11T15:00:00Z'), decision(NEWEST, '2026-10-11T15:05:00Z')]);
+    act(() => { requestLocalPageRefresh(); });
+    await waitFor(() => expect(traceAsks()).toEqual([OLDER, NEWEST]));
+    await act(async () => {
+      first.release({ status: 500, body: { error: 'projection_database_unavailable', topic: RUN_TRACE } });
+      await first.answer;
+    });
+    await settle();
+    // The newer read is still out: the older read's failure is not the page's answer, and the page is still loading.
+    expect(screen.queryByRole('alert')).toBeNull();
+    expect(screen.queryByRole('heading', { name: 'Run path' })).toBeNull();
+    expect(screen.getByRole('status').textContent).toContain('Loading runtime exposures');
+    await act(async () => { second.release(served(stepsOf(NEWEST))); await second.answer; });
+    await shows(`task of ${NEWEST}`);
+    expect(panel().textContent).toContain(`Run ${NEWEST}`);
+    expect(within(panel()).queryByRole('alert')).toBeNull();
+  });
+
+  it('W20: a superseded read whose catalogue fails late shows no page error while the newer read is unanswered', async () => {
+    const catalogue = held();
+    const second = held();
+    lab.heldCatalogue = catalogue.answer;
+    lab.trace = (id) => (id === NEWEST ? second.answer : served([]));
+    open('/workflow');
+    // The first read is waiting on the catalogue. A refresh starts a second read, which gets as far as its run's steps.
+    act(() => { requestLocalPageRefresh(); });
+    await waitFor(() => expect(traceAsks()).toEqual([NEWEST]));
+    await act(async () => { catalogue.release({ status: 500, body: { error: 'unavailable' } }); await catalogue.answer; });
+    await settle();
+    expect(screen.queryByRole('alert')).toBeNull();
+    expect(screen.getByRole('status').textContent).toContain('Loading runtime exposures');
+    await act(async () => { second.release(served(stepsOf(NEWEST))); await second.answer; });
+    await shows(`task of ${NEWEST}`);
+    expect(screen.queryByRole('alert')).toBeNull();
   });
 
   it('W8: run-trace.v1 not served is a typed state, and the run is not said to have no steps', async () => {

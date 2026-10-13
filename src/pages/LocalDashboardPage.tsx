@@ -1377,8 +1377,15 @@ export function LocalDashboardPage({ pageName, syncUrl = false }: LocalDashboard
       setLoading(false);
       return () => { active = false; };
     }
+    // Reads of one page can overlap: the interval and the refresh button each start one while an earlier one is still
+    // unanswered. Only the read started last may write. A read that was overtaken answers a question the page has
+    // already asked again (the newest run may have changed since), so its rows, its failure and its end of loading
+    // are all dropped, however late it answers.
+    let started = 0;
     // Every read after the first keeps the last good rows on screen while it runs, and when it fails (F25).
     async function load() {
+      const mine = ++started;
+      const current = () => active && mine === started;
       try {
         const { mode } = resolveEffectiveDataSource();
         if (mode !== 'http') {
@@ -1394,7 +1401,7 @@ export function LocalDashboardPage({ pageName, syncUrl = false }: LocalDashboard
           availableTopics,
           runId: requestedRunId,
         });
-        if (active) {
+        if (current()) {
           const merged = withLastGood(latest.current, data);
           latest.current = merged;
           setPage(document);
@@ -1402,9 +1409,9 @@ export function LocalDashboardPage({ pageName, syncUrl = false }: LocalDashboard
           setError(null);
         }
       } catch (cause) {
-        if (active && latest.current.length === 0) setError(cause instanceof Error ? cause.message : String(cause));
+        if (current() && latest.current.length === 0) setError(cause instanceof Error ? cause.message : String(cause));
       } finally {
-        if (active) setLoading(false);
+        if (current()) setLoading(false);
       }
     }
     const unsubscribeRefresh = subscribeLocalPageRefresh(() => { void load(); });
