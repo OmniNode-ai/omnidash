@@ -89,13 +89,19 @@ function tone(token: string, fallback: number): string {
 }
 
 /**
- * One colour per declared series, by its place in the page's declaration; hiding a series moves no other's colour.
- * They are the theme's chart colours (blue, orange-red, teal, yellow), which differ in hue: the status green and the
- * brand lime used before were too alike to tell two lines apart.
+ * One colour per plotted series, by its place among the plotted columns, unless the panel says which of the four
+ * colours each takes (`places`, 1 to 4). A panel says so when it plots a figure another panel also plots, so the
+ * figure is one colour on every page: Savings is the third colour on Overview and is given the third on Usage, where
+ * it is the only series. Hiding a series moves no other's colour. The colours are the theme's chart colours (blue,
+ * orange-red, teal, yellow), which differ in hue.
  */
-function seriesColours(count: number): string[] {
+function seriesColours(count: number, places: readonly number[] | undefined): string[] {
   const palette = [tone('--chart-1', 0x58a6ff), tone('--chart-4', 0xf0703c), tone('--chart-2', 0x3fb9a0), tone('--chart-3', 0xd9b530)];
-  return Array.from({ length: count }, (_, index) => palette[index % palette.length]!);
+  return Array.from({ length: count }, (_, index) => {
+    const place = places?.[index];
+    const chosen = typeof place === 'number' && Number.isInteger(place) && place >= 1 && place <= palette.length ? place - 1 : index % palette.length;
+    return palette[chosen]!;
+  });
 }
 
 /** The option for the series that are shown. The chart draws no legend: the legend is the row of buttons above it. */
@@ -156,9 +162,9 @@ export const EVERY_SERIES_HIDDEN = 'Every series is hidden. Turn one on to draw 
  * is reached with Tab and worked with Enter or Space; each says whether its series is shown. What is hidden is kept
  * by the series' declared column, so a refresh of the served rows changes the points and not the reader's choice.
  */
-function SpendChartFigure({ group, title }: { group: SpendByDayGroup; title: string }) {
+function SpendChartFigure({ group, title, colourPlaces }: { group: SpendByDayGroup; title: string; colourPlaces?: readonly number[] }) {
   const [hidden, setHidden] = useState<ReadonlySet<string>>(() => new Set());
-  const colours = seriesColours(group.series.length);
+  const colours = seriesColours(group.series.length, colourPlaces);
   const all = group.series.map((series, index) => ({ series, colour: colours[index]! }));
   const shown = all.filter(({ series }) => !hidden.has(series.key));
   const toggle = (key: string) => setHidden((current) => {
@@ -194,10 +200,12 @@ function SpendChartFigure({ group, title }: { group: SpendByDayGroup; title: str
  * OMN-21015 U2: baseline against actual spend per UTC day, as bars, one chart per baseline model. It draws exactly the points
  * `spendByDayGroups` shapes from the served day rows; the table under it carries the same rows as text.
  */
-export function SpendByDayChart({ rows, columns, title = 'Spend per day' }: {
+export function SpendByDayChart({ rows, columns, title = 'Spend per day', colourPlaces }: {
   rows: readonly unknown[];
   columns: readonly DeclaredChartColumn[];
   title?: string;
+  /** Which of the four chart colours each plotted column takes, in plotted order (1 to 4); by place when left out. */
+  colourPlaces?: readonly number[];
 }) {
   // Re-read the theme's colours when the theme changes.
   useThemeName();
@@ -205,7 +213,7 @@ export function SpendByDayChart({ rows, columns, title = 'Spend per day' }: {
   if (groups.length === 0) return null;
   return (
     <>
-      {groups.map((group) => <SpendChartFigure group={group} title={title} key={group.baseline} />)}
+      {groups.map((group) => <SpendChartFigure group={group} title={title} colourPlaces={colourPlaces} key={group.baseline} />)}
     </>
   );
 }

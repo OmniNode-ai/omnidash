@@ -1187,8 +1187,9 @@ function TableComponent({ component, snapshots, pageSize, syncUrl, columns }: {
   if (component.component_id === 'usage-savings-series') {
     return (
       <>
-        {/* OMN-21015 U2: the same served day rows as bars; the chart plots the money columns this panel declares. */}
-        <SpendByDayChart title={component.title} rows={rows} columns={columns} />
+        {/* OMN-21015 U2: the same served day rows as bars; the chart plots the money columns this panel declares.
+            Its one series takes the chart's third colour, the colour the same figure has on Overview. */}
+        <SpendByDayChart title={component.title} rows={rows} columns={columns} colourPlaces={[3]} />
         <MeteringDaySeries rows={rows} />
       </>
     );

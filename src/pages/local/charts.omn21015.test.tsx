@@ -16,6 +16,8 @@
 //   G11 the days are drawn as a line: with one served day a line is three loose dots, and a line between two days
 //       suggests values in between that nothing served. Each day is a bar per series;
 //   G12 the bars of a day are stacked, which draws a total (actual + baseline + savings) that means nothing.
+//   G13 the same figure is one colour on one page and another on the next, because a colour followed a column's
+//       place among the plotted ones (Savings was third on Overview and first on Usage);
 //   G10 the chart decides for itself which figures to plot: it names a savings field in page code (the OMN-19980
 //       guard forbids that), plots a column the page does not declare, or plots a declared count as money.
 import { render, screen } from '@testing-library/react';
@@ -145,6 +147,30 @@ describe('OMN-21015 U2: the spend chart on the page', () => {
     expect(option.series.map((series: any) => series.data)).toEqual([[0.1], [0.4], [0.3]]);
     expect(option.xAxis.type).toBe('category');
     expect(option.yAxis.min).toBeUndefined();
+  });
+
+  it('G13: a panel can say which colour each plotted column takes, so a figure is one colour on every page', () => {
+    const colours = (columns: typeof COLUMNS, places?: number[]) => {
+      const { unmount } = render(<SpendByDayChart columns={columns} rows={[day('2026-10-12')]} colourPlaces={places} />);
+      const found = Object.fromEntries(options().at(-1)!.series.map((series: any) => [series.name, series.itemStyle.color]));
+      unmount();
+      return found;
+    };
+    const overview = colours(COLUMNS);
+    expect(new Set(Object.values(overview)).size).toBe(3);
+    // A panel that plots Savings alone, told to give it the third colour, matches Overview's Savings.
+    const alone = COLUMNS.filter((column) => column.key === 'window_start' || column.key === 'savings_usd');
+    expect(colours(alone).Savings).toBe(overview['Actual spend']);
+    expect(colours(alone, [3]).Savings).toBe(overview.Savings);
+  });
+
+  it('G13: a place off the palette, or none, leaves a series the colour of its own place', () => {
+    render(<SpendByDayChart columns={COLUMNS} rows={[day('2026-10-12')]} />);
+    const byPlace = options().at(-1)!.series.map((series: any) => series.itemStyle.color);
+    for (const odd of [[0, 5, 2.5], ['3' as unknown as number], []]) {
+      render(<SpendByDayChart columns={COLUMNS} rows={[day('2026-10-12')]} colourPlaces={odd} />);
+      expect(options().at(-1)!.series.map((series: any) => series.itemStyle.color)).toEqual(byPlace);
+    }
   });
 
   it('G5: two baselines are two charts, each named for its baseline', () => {

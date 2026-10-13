@@ -89,4 +89,19 @@ describe('OMN-21015 U2: savings per day on Usage, as bars', () => {
     await open([row('day', '2026-10-12', null), row('day', '2026-10-13', '0.412500')]);
     expect(harness.handed[0]!.series[0].data).toEqual([null, 0.4125]);
   });
+
+  it('V7: Savings is the same colour here as on Overview', async () => {
+    harness.rows = [row('day', '2026-10-12', '0.300000')];
+    harness.handed.length = 0;
+    render(<LocalDashboardPage pageName="overview" />);
+    await act(async () => { await vi.advanceTimersByTimeAsync(0); });
+    await act(async () => { await vi.advanceTimersByTimeAsync(0); });
+    const onOverview = harness.handed.at(-1)!.series.find((series: Option) => series.name === 'Savings').itemStyle.color;
+    const others = harness.handed.at(-1)!.series.filter((series: Option) => series.name !== 'Savings').map((series: Option) => series.itemStyle.color);
+    cleanup();
+    await open([row('day', '2026-10-12', '0.300000')]);
+    const onUsage = harness.handed.at(-1)!.series[0].itemStyle.color;
+    expect(onUsage).toBe(onOverview);
+    expect(others).not.toContain(onUsage);
+  });
 });
