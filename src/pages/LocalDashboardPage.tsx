@@ -728,7 +728,6 @@ export function RunSummary({ decision }: { decision: Row | undefined }) {
   if (!decision) return <p className="local-dashboard-empty" role="status">No decision is served for this run</p>;
   const status = statusOf(decision);
   const fields: Array<[string, string]> = [
-    ['Status', status],
     ...(status === 'failed' ? [['Cause', causeOf(decision)] as [string, string]] : []),
     ['Quality score', recorded(decision.actual_score)],
     ['Task type', recorded(decision.task_type)],
@@ -741,6 +740,7 @@ export function RunSummary({ decision }: { decision: Row | undefined }) {
   return (
     <section aria-label="Run summary" className="local-dashboard-run-summary">
       <dl className="local-dashboard-fields">
+        <div><dt>Status</dt><dd><OutcomePill value={status} /></dd></div>
         {fields.map(([label, value]) => <div key={label}><dt>{label}</dt><dd>{value}</dd></div>)}
       </dl>
     </section>
@@ -773,26 +773,63 @@ export function RunTimeline({ steps }: { steps: readonly unknown[] }) {
         const kind = String(row.step_kind ?? '');
         const failing = !isMissing(named) && row.step_sequence === named;
         const candidates = Array.isArray(row.candidates) ? row.candidates.map(String) : [];
-        const facts = [
-          recorded(row.started_at),
-          duration(row.duration_ms),
-          recorded(row.outcome),
-          ...(isMissing(row.failure_cause) ? [] : [`cause ${String(row.failure_cause)}`]),
-          ...(isMissing(row.backend_id) ? [] : [`backend ${String(row.backend_id)}`]),
-          ...(isMissing(row.model_id) ? [] : [`model ${String(row.model_id)}`]),
-          ...(isMissing(row.attempt_number) ? [] : [`attempt ${String(row.attempt_number)}`]),
-          ...(candidates.length === 0 ? [] : [`candidates ${candidates.join(', ')}`]),
-          ...(isMissing(row.reason) ? [] : [String(row.reason)]),
+        // Each served detail under its own name; a detail the row does not carry is left out, never shown empty.
+        const details: Array<[string, string]> = [
+          ...(isMissing(row.failure_cause) ? [] : [['cause', String(row.failure_cause)] as [string, string]]),
+          ...(isMissing(row.backend_id) ? [] : [['backend', String(row.backend_id)] as [string, string]]),
+          ...(isMissing(row.model_id) ? [] : [['model', String(row.model_id)] as [string, string]]),
+          ...(isMissing(row.attempt_number) ? [] : [['attempt', String(row.attempt_number)] as [string, string]]),
+          ...(candidates.length === 0 ? [] : [['candidates', candidates.join(', ')] as [string, string]]),
         ];
         return (
-          <li key={`${String(row.step_sequence)}-${index}`} data-failing-step={failing ? 'true' : undefined}>
-            <strong>{RUN_STEP_LABELS[kind] ?? recorded(row.step_kind)}</strong>
-            <span>{facts.join(' · ')}</span>
-            {failing && <span className="local-dashboard-badge">Failed here</span>}
+          <li
+            key={`${String(row.step_sequence)}-${index}`}
+            data-failing-step={failing ? 'true' : undefined}
+            data-outcome={isMissing(row.outcome) ? undefined : String(row.outcome)}
+          >
+            <div className="local-run-step-head">
+              <strong>{RUN_STEP_LABELS[kind] ?? recorded(row.step_kind)}</strong>
+              <OutcomePill value={row.outcome} />
+              {failing && <span className="local-dashboard-badge">Failed here</span>}
+              <span className="local-run-step-duration" data-measured={isMissing(row.duration_ms) ? 'false' : 'true'}>
+                <span>Duration</span> {duration(row.duration_ms)}
+              </span>
+            </div>
+            <ServedTime value={row.started_at} />
+            {details.length > 0 && (
+              <div className="local-run-chips">
+                {details.map(([name, value]) => (
+                  <span className="local-run-chip" key={name}><span>{name}:</span> {value}</span>
+                ))}
+              </div>
+            )}
+            {!isMissing(row.reason) && <p className="local-run-step-reason">{String(row.reason)}</p>}
           </li>
         );
       })}
     </ol>
+  );
+}
+
+/** A served outcome or verdict as a pill, coloured by its own value; a value never served reads Not recorded. */
+function OutcomePill({ value }: { value: unknown }) {
+  return (
+    <span className="local-run-pill" data-outcome={isMissing(value) ? undefined : String(value)}>{recorded(value)}</span>
+  );
+}
+
+/**
+ * A served timestamp, shown as served. The clock part is only set apart for the eye: the text is the served string,
+ * character for character, and nothing is parsed into a date or moved to another zone.
+ */
+function ServedTime({ value }: { value: unknown }) {
+  if (isMissing(value)) return <span className="local-run-step-time">{recorded(value)}</span>;
+  const text = String(value);
+  const parts = /^(\d{4}-\d{2}-\d{2}T)(\d{2}:\d{2}:\d{2})(.*)$/.exec(text);
+  return (
+    <time className="local-run-step-time" dateTime={text}>
+      {parts ? <>{parts[1]}<b>{parts[2]}</b>{parts[3]}</> : text}
+    </time>
   );
 }
 
@@ -814,6 +851,7 @@ function RunPicker({ requested, onOpen }: { requested: string | null; onOpen: (r
         id={`${id}-run`}
         type="text"
         value={draft}
+        placeholder="Paste a correlation id to open that run"
         spellCheck={false}
         autoComplete="off"
         onChange={(event) => setDraft(event.target.value)}
@@ -868,7 +906,10 @@ export function WorkflowRun({ component, snapshots, requested, onOpen }: Workflo
   return (
     <div>
       <RunPicker requested={requested} onOpen={onOpen} />
-      <p className="local-dashboard-subtitle">Run <code>{runId}</code>{requested === null ? ' · newest run' : ''}</p>
+      <p className="local-dashboard-subtitle local-run-title">
+        Run <code>{runId}</code>
+        {requested === null && <span className="local-run-tag">newest run</span>}
+      </p>
       {decisionsNotServed}
       {!decisionsNotServed && <RunSummary decision={decisions.find((row) => row.correlation_id === runId)} />}
       {stepsUnread ? null : foreign ? (
