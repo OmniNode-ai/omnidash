@@ -1,5 +1,10 @@
 import { useEffect, useId, useRef, useState } from 'react';
 import { Link, useLocation, useSearch } from 'wouter';
+import {
+  Activity, BadgeCheck, Bot, CalendarDays, ChartColumn, ChartLine, CircleDollarSign, CloudOff, Coins, DatabaseZap, Fingerprint,
+  GitBranch, History, IdCard, KeyRound, Layers, ListTree, PiggyBank, Route, Server, Shrink, Table2, TrendingDown, Wallet,
+  type LucideIcon,
+} from 'lucide-react';
 import { createSnapshotSource } from '@/data-source';
 import { fetchExposureCensus } from '@/data-source/exposure-census';
 import { resolveEffectiveDataSource } from '@/data-source/data-source-override';
@@ -483,7 +488,7 @@ export function RecentRunsTable({ decisions, sessions, now = Date.now() }: RunVi
           return <tr key={String(decision.correlation_id ?? index)}>
             <td className="local-dashboard-cell-token">{recorded(decision.written_at)}</td>
             <td>{age(decision.written_at, now)}</td>
-            <td>{statusOf(decision)}</td>
+            <td><OutcomePill value={statusOf(decision)} /></td>
             <td>{causeOf(decision)}</td>
             <td>{recorded(decision.task_type)}</td>
             <td className="local-dashboard-cell-token">{modelOrUnknown(decision.model_name)}</td>
@@ -628,7 +633,7 @@ export function RunsTable({ decisions, sessions, now = Date.now(), pageSize = 25
                     {isFixture(run) && <span className="local-dashboard-badge">fixture</span>}
                   </td>
                   <td className="local-dashboard-cell-token">{recorded(run.created_at)}</td>
-                  <td>{statusOf(run)}</td>
+                  <td><OutcomePill value={statusOf(run)} /></td>
                   <td>{causeOf(run)}</td>
                   <td className="local-dashboard-cell-token">{modelOrUnknown(run.model_name)}</td>
                   <td className="local-dashboard-cell-token">{recorded(run.backend_id)}</td>
@@ -1199,6 +1204,42 @@ function bindingFailedEmpty(
     .some((snapshot) => Boolean(snapshot.failure) && !snapshot.lastGoodAt);
 }
 
+/** The icon each local page carries in its header: the one its sidebar entry uses, so a page is recognised in both. */
+const PAGE_ICONS: Record<LocalPageName, LucideIcon> = {
+  overview: Activity,
+  runs: GitBranch,
+  workflow: ListTree,
+  usage: Wallet,
+  credentials: KeyRound,
+  'api-keys': Fingerprint,
+};
+
+/** The icon beside a panel's title, by component. A component not listed here gets none; nothing depends on it. */
+const PANEL_ICONS: Record<string, LucideIcon> = {
+  'overview-spend': CircleDollarSign,
+  'overview-savings': PiggyBank,
+  'overview-measured': Bot,
+  'overview-tokens': Coins,
+  'overview-last-run': History,
+  'overview-recent-runs': Table2,
+  'overview-run-locally': Server,
+  'overview-avg-saving-per-call': TrendingDown,
+  'overview-baseline-spend': CircleDollarSign,
+  'overview-quality': BadgeCheck,
+  'overview-tier-mix': Layers,
+  'overview-compression': Shrink,
+  'overview-cache-hit-rate': DatabaseZap,
+  'overview-spend-by-day': ChartLine,
+  'recent-runs': Table2,
+  'workflow-run-path': Route,
+  'usage-by-model-day': ChartColumn,
+  'usage-tokens-by-day': ChartColumn,
+  'usage-savings-series': CalendarDays,
+  'credentials-keys': KeyRound,
+  'api-keys-local-identity': IdCard,
+  'api-keys-cloud': CloudOff,
+};
+
 const PAGE_TITLES: Record<LocalPageName, string> = {
   overview: 'Overview',
   runs: 'Runs',
@@ -1290,15 +1331,19 @@ export function LocalDashboardPage({ pageName, syncUrl = false }: LocalDashboard
     };
   }, [pageName, requestedRunId]);
 
+  const PageIcon = PAGE_ICONS[pageName];
   const emptyState = page ? resolveLocalPageEmptyState(page, snapshots) : null;
   const now = Date.now();
   const interval = page?.dashboard.refresh_interval_seconds ?? 30;
   return (
     <main aria-label={`${page?.dashboard.name ?? 'Local dashboard'} page`} className="local-dashboard-page">
       <header className="local-dashboard-header">
-        <div>
-          <h1>{page?.dashboard.name ?? PAGE_TITLES[pageName]}</h1>
-          <p>{page?.dashboard.description}</p>
+        <div className="local-dashboard-title">
+          <span className="local-dashboard-page-icon" aria-hidden="true"><PageIcon size={20} /></span>
+          <div>
+            <h1>{page?.dashboard.name ?? PAGE_TITLES[pageName]}</h1>
+            <p>{page?.dashboard.description}</p>
+          </div>
         </div>
         <span className="local-dashboard-mode">Local runtime · HTTP</span>
       </header>
@@ -1326,9 +1371,16 @@ export function LocalDashboardPage({ pageName, syncUrl = false }: LocalDashboard
             const pageSize = Number((widget?.config as Record<string, unknown> | undefined)?.page_size ?? 25);
             const notServed = notServedTopic(component, snapshots);
             const unbound = (component.data_bindings ?? []).length === 0;
+            const PanelIcon = PANEL_ICONS[component.component_id];
             return (
-              <article className="local-dashboard-panel" data-width={String(widget?.width ?? 12)} key={component.component_id}>
-                <h2>{component.title}</h2>
+              <article
+                className="local-dashboard-panel"
+                data-width={String(widget?.width ?? 12)}
+                data-component={component.component_id}
+                data-kind={component.component_kind}
+                key={component.component_id}
+              >
+                <h2>{PanelIcon && <PanelIcon size={14} aria-hidden="true" />}{component.title}</h2>
                 {unbound && component.component_kind !== 'metric_card' ? <PendingState componentId={component.component_id} />
                   : component.component_id === 'workflow-run-path' ? (
                     <WorkflowRun component={component} snapshots={snapshots} requested={requestedRunId} onOpen={openRun} />

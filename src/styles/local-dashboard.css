@@ -466,3 +466,126 @@
 .usage-tokens-legend li[data-series='5']::before {
   background: var(--line);
 }
+
+/* ---------------------------------------------------------------------------------------------------------------
+ * One look for the six local pages (OMN-21015 stage 5). Everything below restyles what the pages already render:
+ * no rule here adds, hides or reorders a figure.
+ * ------------------------------------------------------------------------------------------------------------- */
+
+/* The page header: the page's icon (the one its sidebar entry carries), its title and what it shows. */
+.local-dashboard-title {
+  display: flex;
+  align-items: flex-start;
+  gap: 14px;
+  min-width: 0;
+}
+.local-dashboard-page-icon {
+  flex: 0 0 auto;
+  display: grid;
+  place-items: center;
+  width: 40px;
+  height: 40px;
+  border: 1px solid color-mix(in oklch, var(--brand) 35%, transparent);
+  border-radius: 10px;
+  background: color-mix(in oklch, var(--brand) 14%, transparent);
+  color: var(--brand);
+}
+.local-dashboard-header h1 {
+  font-family: var(--font-brand);
+  font-size: 1.5rem;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  line-height: 1.2;
+}
+.local-dashboard-header p { max-width: 72ch; font-size: 0.875rem; }
+
+/* A panel: a small upper-case label with its icon, then the content. */
+.local-dashboard-panel {
+  box-shadow: var(--shadow-sm);
+  transition: border-color 0.15s;
+}
+.local-dashboard-panel:hover { border-color: color-mix(in oklch, var(--ink-3) 45%, var(--line)); }
+.local-dashboard-panel h2 {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0 0 14px;
+  font-size: 0.6875rem;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text-secondary);
+}
+.local-dashboard-panel h2 svg { flex: 0 0 auto; color: var(--text-tertiary); }
+
+/* A headline figure: set in the mono face so digits line up from card to card. Savings figures are green. */
+.local-dashboard-metric {
+  font-family: var(--font-mono);
+  font-size: clamp(1.5rem, 2.4vw, 2.1rem);
+  font-weight: 500;
+  letter-spacing: -0.02em;
+  line-height: 1.15;
+  overflow-wrap: anywhere;
+}
+.local-dashboard-panel[data-component="overview-savings"] .local-dashboard-metric,
+.local-dashboard-panel[data-component="overview-avg-saving-per-call"] .local-dashboard-metric { color: var(--status-ok); }
+.local-dashboard-panel[data-component="overview-savings"] h2 svg,
+.local-dashboard-panel[data-component="overview-avg-saving-per-call"] h2 svg { color: var(--status-ok); }
+.local-dashboard-caption { font-size: 0.8125rem; line-height: 1.45; }
+
+/* Field lists (Last run, Quality, Local identity): a quiet label over its value. */
+.local-dashboard-fields dt {
+  font-size: 0.6875rem;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--text-tertiary);
+}
+.local-dashboard-fields dd { font-size: 0.875rem; }
+
+/* Tables: a framed table with a quiet upper-case header row; ids and times in the mono face. */
+.local-dashboard-table-wrap {
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+}
+.local-dashboard-table-wrap th {
+  background: var(--panel-2);
+  font-size: 0.6875rem;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-align: left;
+  text-transform: uppercase;
+  color: var(--text-secondary);
+}
+.local-dashboard-table-wrap td { font-size: 0.8125rem; }
+.local-dashboard-table-wrap tbody tr:last-child td { border-bottom: 0; }
+.local-dashboard-cell-token { font-family: var(--font-mono); font-size: 0.75rem; }
+
+/* A state that is not a figure (nothing served yet, not measured, no rows): one quiet framed line, never a blank. */
+.local-dashboard-empty {
+  margin: 0;
+  padding: 10px 12px;
+  border: 1px dashed var(--line);
+  border-radius: var(--radius);
+  background: var(--panel-2);
+  font-size: 0.8125rem;
+  line-height: 1.45;
+}
+.local-dashboard-empty p { margin: 0; }
+.local-dashboard-empty p + p { margin-top: 4px; }
+.local-dashboard-empty code {
+  padding: 1px 6px;
+  border-radius: 4px;
+  background: var(--panel);
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+  color: var(--text-primary);
+}
+.local-dashboard-error {
+  margin: 8px 0 0;
+  padding: 10px 12px;
+  border: 1px solid color-mix(in oklch, var(--status-bad) 45%, transparent);
+  border-radius: var(--radius);
+  background: color-mix(in oklch, var(--status-bad) 10%, transparent);
+  font-size: 0.8125rem;
+}
+.local-dashboard-mode { background: var(--panel); }
