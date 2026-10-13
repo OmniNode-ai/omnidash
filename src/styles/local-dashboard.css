@@ -589,3 +589,12 @@
   font-size: 0.8125rem;
 }
 .local-dashboard-mode { background: var(--panel); }
+
+/* A chart of served rows: the figure, its plot area and a quiet caption. The table of the same rows follows it. */
+.local-chart { margin: 0 0 14px; }
+.local-chart-canvas { width: 100%; height: 260px; }
+.local-chart figcaption {
+  margin-top: 4px;
+  font-size: 0.75rem;
+  color: var(--text-tertiary);
+}

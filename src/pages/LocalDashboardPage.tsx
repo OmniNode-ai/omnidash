@@ -15,6 +15,7 @@ import { subscribeLocalPageRefresh } from '@/services/local-page-refresh';
 import { DEFAULT_RUNS_VIEW, readRunsSearch, writeRunsSearch, type RunsViewState } from '@/navigation/runs-url-state';
 import { PAGE_PATHS } from '@/navigation/page-routes';
 import { normaliseRunId, readWorkflowRunId, workflowHref, writeWorkflowRunId } from '@/navigation/workflow-url-state';
+import { SpendByDayChart, UNRESOLVED_BASELINE } from '@/pages/local/charts';
 import '@/styles/local-dashboard.css';
 import {
   loadLocalPageConfig,
@@ -991,7 +992,6 @@ interface DeclaredColumn {
 
 const NO_DAY_ROWS = 'No day rows yet: waits on metering-summary day rows';
 const DAY_FIGURES_MODELLED = "Baseline figures are modelled: the runs' tokens priced at the baseline model's list price. The baseline never ran.";
-const UNRESOLVED_BASELINE = 'an unresolved baseline';
 
 /**
  * The metering-summary.v1 figures measured from the runs themselves: actual spend, run counts, tokens and the
@@ -1100,7 +1100,14 @@ function TableComponent({ component, snapshots, pageSize, syncUrl, columns }: {
   if (component.component_id === 'usage-savings-series') return <MeteringDaySeries rows={rows} />;
   // OV: baseline against actual spend per UTC day, the declared columns of the served rows (OMN-21015 AC1).
   if (component.component_id === 'overview-spend-by-day') {
-    return <MeteringDayTable title={component.title} rows={rawRowsFor(component, snapshots, 0)} columns={columns} />;
+    const dayRows = rawRowsFor(component, snapshots, 0);
+    return (
+      <>
+        {/* The chart and the table under it show the same served day rows; the chart adds no figure of its own. */}
+        <SpendByDayChart title={component.title} rows={dayRows} />
+        <MeteringDayTable title={component.title} rows={dayRows} columns={columns} />
+      </>
+    );
   }
   if (component.component_id === 'api-keys-local-identity') {
     const first = rawRowsFor(component, snapshots, 0)[0];
