@@ -409,6 +409,38 @@
         "missing-field",
         "no-data"
       ]
+    },
+    {
+      "component_id": "overview-spend-by-day",
+      "component_kind": "table",
+      "title": "Spend per day",
+      "contract_version": {
+        "major": 1,
+        "minor": 0,
+        "patch": 0
+      },
+      "data_bindings": [
+        {
+          "binding_id": "overview-spend-by-day-metering",
+          "projection_topic": "onex.snapshot.projection.metering-summary.v1",
+          "ordering_authority_field": "window_start",
+          "ordering_direction": "ascending",
+          "required_fields": [
+            "window_kind",
+            "window_start",
+            "as_of",
+            "baseline_model",
+            "baseline_state",
+            "spend_usd",
+            "counterfactual_usd",
+            "savings_usd",
+            "runs_total"
+          ]
+        }
+      ],
+      "supported_empty_state_reasons": [
+        "no-data"
+      ]
     }
   ],
   "page_empty_state_reasons": [

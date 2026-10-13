@@ -3,7 +3,7 @@ import { useLocation, useSearch } from 'wouter';
 import { createSnapshotSource } from '@/data-source';
 import { fetchExposureCensus } from '@/data-source/exposure-census';
 import { resolveEffectiveDataSource } from '@/data-source/data-source-override';
-import { UsageByModelDayTable } from '@/components/dashboard/usage/UsageByModelDayWidget';
+import { UsageByModelDayTable, formatUsd } from '@/components/dashboard/usage/UsageByModelDayWidget';
 import { MeteringDaySeries } from '@/components/dashboard/usage/SavingsSeriesWidget';
 import { TenantNotConfiguredState } from '@/components/dashboard/TenantNotConfiguredState';
 import { subscribeLocalPageRefresh } from '@/services/local-page-refresh';
@@ -789,12 +789,86 @@ function rawRowsFor(
   return snapshots.find((snapshot) => snapshot.topic === topic)?.rows ?? [];
 }
 
+/** A table column as the page declares it: the served field it shows, its header, and how the value is written. */
+interface DeclaredColumn {
+  key: string;
+  header: string;
+  format?: string | null;
+}
+
+const NO_DAY_ROWS = 'No day rows yet: waits on metering-summary day rows';
+const DAY_FIGURES_MODELLED = "Baseline figures are modelled: the runs' tokens priced at the baseline model's list price. The baseline never ran.";
+const UNRESOLVED_BASELINE = 'an unresolved baseline';
+
+/** One declared cell of a metering-summary.v1 row, as served. A missing figure says why; it is never written as 0. */
+function declaredCell(row: Row, column: DeclaredColumn): string {
+  const value = row[column.key];
+  if (isMissing(value)) return row.baseline_state === 'unresolved' ? 'Baseline unresolved' : 'Not measured';
+  return column.format === 'currency' ? formatUsd(value) : String(value);
+}
+
+/**
+ * OMN-21015 AC1: metering-summary.v1's day rows, one table per baseline, in the order served, showing the columns the
+ * page declares. The last line of each table is that baseline's served `all` row, the row the headline cards read, so
+ * this sums nothing. When a baseline has no single newest all row the line is left out rather than guessed.
+ */
+export function MeteringDayTable({ title, rows, columns }: {
+  title: string;
+  rows: readonly unknown[];
+  columns: readonly DeclaredColumn[];
+}) {
+  const served = asRecords(rows);
+  const baselineOf = (row: Row) => (isMissing(row.baseline_model) ? UNRESOLVED_BASELINE : String(row.baseline_model));
+  const groups = new Map<string, Row[]>();
+  for (const row of served) {
+    if (row.window_kind !== 'day') continue;
+    groups.set(baselineOf(row), [...(groups.get(baselineOf(row)) ?? []), row]);
+  }
+  if (groups.size === 0) return <p className="local-dashboard-empty" role="status">{NO_DAY_ROWS}</p>;
+  const allTimeFor = (baseline: string): Row | null => {
+    const all = served.filter((row) => row.window_kind === 'all' && baselineOf(row) === baseline);
+    const newest = Math.max(...all.map((row) => timeOf(row.as_of)));
+    const latest = all.filter((row) => timeOf(row.as_of) === newest);
+    return latest.length === 1 ? latest[0]! : null;
+  };
+  return (
+    <>
+      {[...groups.entries()].map(([baseline, days]) => {
+        const allTime = allTimeFor(baseline);
+        return (
+          <div className="local-dashboard-table-wrap" key={baseline}>
+            <table aria-label={`${title} vs ${baseline}`}>
+              <thead><tr>{columns.map((column) => <th key={column.key}>{column.header}</th>)}</tr></thead>
+              <tbody>
+                {days.map((row, index) => (
+                  <tr key={`${String(row.window_start)}-${index}`}>
+                    {columns.map((column) => <td key={column.key}>{declaredCell(row, column)}</td>)}
+                  </tr>
+                ))}
+                {allTime && (
+                  <tr>
+                    {columns.map((column) => (
+                      <td key={column.key}>{column.key === 'window_start' ? 'All time' : declaredCell(allTime, column)}</td>
+                    ))}
+                  </tr>
+                )}
+              </tbody>
+            </table>
+          </div>
+        );
+      })}
+      <p className="local-dashboard-caption">{DAY_FIGURES_MODELLED}</p>
+    </>
+  );
+}
+
 /** The renderer for a table component: its first binding's rows, joined to its second binding by a served id. */
-function TableComponent({ component, snapshots, pageSize, syncUrl }: {
+function TableComponent({ component, snapshots, pageSize, syncUrl, columns }: {
   component: LocalPageDocument['components'][number];
   snapshots: readonly BoundProjectionSnapshot[];
   pageSize: number;
   syncUrl: boolean;
+  columns: readonly DeclaredColumn[];
 }) {
   const rows = rowsForLocalComponent(component, snapshots);
   const lookup = rowsForLocalBinding(component, snapshots, 1);
@@ -813,6 +887,10 @@ function TableComponent({ component, snapshots, pageSize, syncUrl }: {
   if (component.component_id === 'usage-by-model-day') return <UsageByModelDayTable rows={rows} />;
   // US-3: metering-summary.v1's day rows, as served; the series renders no all row and sums nothing.
   if (component.component_id === 'usage-savings-series') return <MeteringDaySeries rows={rows} />;
+  // OV: baseline against actual spend per UTC day, the declared columns of the served rows (OMN-21015 AC1).
+  if (component.component_id === 'overview-spend-by-day') {
+    return <MeteringDayTable title={component.title} rows={rawRowsFor(component, snapshots, 0)} columns={columns} />;
+  }
   if (component.component_id === 'api-keys-local-identity') {
     const first = rawRowsFor(component, snapshots, 0)[0];
     return <LocalIdentity row={first && typeof first === 'object' ? (first as Record<string, unknown>) : null} />;
@@ -1037,7 +1115,13 @@ export function LocalDashboardPage({ pageName, syncUrl = false }: LocalDashboard
                   : emptyState === 'NO_RUNS_YET' ? <NoRunsYet />
                   : emptyState ? <p className="local-dashboard-empty" role="status">Baseline unresolved</p>
                   : component.component_kind === 'table' ? (
-                    <TableComponent component={component} snapshots={snapshots} pageSize={pageSize} syncUrl={syncUrl} />
+                    <TableComponent
+                      component={component}
+                      snapshots={snapshots}
+                      pageSize={pageSize}
+                      syncUrl={syncUrl}
+                      columns={((widget?.config as { columns?: DeclaredColumn[] } | undefined)?.columns) ?? []}
+                    />
                   ) : component.component_id === 'overview-run-locally' ? (
                     <RunLocallyCard row={asRecord(rows[0])} />
                   ) : component.component_id === 'overview-avg-saving-per-call' && !unbound ? (
