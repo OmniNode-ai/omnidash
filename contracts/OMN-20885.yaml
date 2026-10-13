@@ -1,0 +1,35 @@
+schema_version: "1.0.0"
+ticket_id: "OMN-20885"
+title: "OCC retirement: rehome omnidash's change-control verification checks into the product repositories"
+summary: >-
+  omnidash's ONEX Schema Compatibility Check job checked out onex_change_control and ran its validate-yaml
+  over every YAML file in contracts/ except the root service contract. The models that validator applied
+  are omnibase_core's ModelTicketContract and ModelDayClose. The job now installs omnibase_core from the
+  commit check-handshake.yml already pins, validates the same files with those models, and also fails a
+  ticket contract whose schema_version major differs from ModelTicketContract's through omnibase_spi's
+  is_compatible, with no change-control checkout, under the same job id and context name.
+is_seam_ticket: false
+interface_change: false
+interfaces_touched: []
+requirements:
+  - id: "req-schema-compat-core-owner"
+    statement: "The ONEX Schema Compatibility Check job validates contracts/ against the models of their owner, omnibase_core, with no onex_change_control checkout, and fails on a major schema_version mismatch."
+    acceptance:
+      - id: "AC3"
+        statement: "AC3: .github/workflows/onex-schema-compat.yml checks out no onex_change_control, reads omnibase_core at a full commit sha that check-handshake.yml also pins, and its validation step passes on this repository's contracts, fails on a planted contract whose schema_version major differs from ModelTicketContract's, fails on an unparseable version, on a contract that fails the model, on a day_close file that fails ModelDayClose and on a contracts directory with no YAML file -- falsifier: uv run --no-project --python 3.12 --with omnibase-core==0.47.38 --with omnibase-spi==0.23.5 --with pyyaml --with pytest python -m pytest tests/ci/test_schema_compat_core_owner_omn20885.py -q --noconftest -c /dev/null fails"
+evidence_requirements:
+  - kind: "tests"
+    description: "AC3: the workflow's own validation step, run against the repo contracts and planted ones, admits the repo and refuses a major mismatch, a model failure and an empty contracts directory."
+    command: "uv run --no-project --python 3.12 --with omnibase-core==0.47.38 --with omnibase-spi==0.23.5 --with pyyaml --with pytest python -m pytest tests/ci/test_schema_compat_core_owner_omn20885.py -q --noconftest -p no:cacheprovider -c /dev/null"
+emergency_bypass:
+  enabled: false
+  justification: ""
+  follow_up_ticket_id: ""
+dod_evidence:
+  - id: "dod-omn20885-ac3-schema-compat-core-owner"
+    description: "AC3: the schema-compatibility step reads omnibase_core and fails on a planted major mismatch."
+    source: "manual"
+    checks:
+      - check_type: "test_passes"
+        check_value: "uv run --no-project --python 3.12 --with omnibase-core==0.47.38 --with omnibase-spi==0.23.5 --with pyyaml --with pytest python -m pytest tests/ci/test_schema_compat_core_owner_omn20885.py -q --noconftest -p no:cacheprovider -c /dev/null"
+        cwd: "${OMNI_HOME}/omnidash"
