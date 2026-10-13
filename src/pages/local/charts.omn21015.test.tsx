@@ -13,6 +13,9 @@
 //   G7  no day rows draws an empty chart;
 //   G8  the option handed to the chart library differs from the shaped rows (wrong axis, wrong series, gaps bridged);
 //   G9  a value that is not a number is plotted as NaN or 0;
+//   G11 the days are drawn as a line: with one served day a line is three loose dots, and a line between two days
+//       suggests values in between that nothing served. Each day is a bar per series;
+//   G12 the bars of a day are stacked, which draws a total (actual + baseline + savings) that means nothing.
 //   G10 the chart decides for itself which figures to plot: it names a savings field in page code (the OMN-19980
 //       guard forbids that), plots a column the page does not declare, or plots a declared count as money.
 import { render, screen } from '@testing-library/react';
@@ -131,7 +134,17 @@ describe('OMN-21015 U2: the spend chart on the page', () => {
     expect(option.series[0].data).toEqual([null, 0.149422]);
     expect(option.series[1].data).toEqual([0.4, 0.820098]);
     expect(option.series[2].data).toEqual([0.3, 0.3]);
-    expect(option.series.every((series: any) => series.connectNulls === false)).toBe(true);
+  });
+
+  it('G11, G12: each series is a set of bars, side by side and never stacked', () => {
+    render(<SpendByDayChart columns={COLUMNS} rows={[day('2026-10-12')]} />);
+    const [option] = options();
+    expect(option.series.map((series: any) => series.type)).toEqual(['bar', 'bar', 'bar']);
+    expect(option.series.map((series: any) => series.stack)).toEqual([undefined, undefined, undefined]);
+    // One served day is one group of three bars, and a missing figure is no bar, not a bar of zero height.
+    expect(option.series.map((series: any) => series.data)).toEqual([[0.1], [0.4], [0.3]]);
+    expect(option.xAxis.type).toBe('category');
+    expect(option.yAxis.min).toBeUndefined();
   });
 
   it('G5: two baselines are two charts, each named for its baseline', () => {

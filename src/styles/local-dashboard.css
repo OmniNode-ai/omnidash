@@ -657,38 +657,51 @@
 }
 .local-dashboard-mode { padding: 4px 10px; }
 
-/* A bar of served shares (Overview's tier mix): one segment per served tier, as wide as its served share. */
+/* A donut of served shares (Overview's tier mix): one slice per served tier, as long as its served share of the
+   ring. The ring is 100 units round, so the markup's dash lengths are the shares; nothing here may change them. */
 .local-share { margin: 0 0 14px; }
-.local-share-bar {
-  display: flex;
-  height: 14px;
-  overflow: hidden;
-  border-radius: 999px;
-  background: var(--panel-2);
-}
-/* No floor, padding or border on a segment: its drawn width is its served share and nothing else. A tier too small
-   to see is read from the figure written under the bar. */
-.local-share-segment { display: block; height: 100%; transition: filter 0.15s; }
-.local-share-segment:hover { filter: brightness(1.15); }
-.local-share-segment + .local-share-segment { box-shadow: -1px 0 0 var(--panel); }
+.local-donut-row { display: flex; flex-wrap: wrap; align-items: center; gap: 12px 28px; }
+.local-donut { width: 168px; height: 168px; flex: none; }
+.local-donut-track { stroke: var(--panel-2); stroke-width: 5; }
+/* No dash, offset, round cap or scaling on a slice: its drawn length is its served share and nothing else. A tier
+   too small to see is read from the figure written beside the ring. */
+.local-donut-slice { stroke-width: 5; cursor: pointer; transition: stroke-width 0.15s, opacity 0.15s; }
+.local-donut-slice[data-active="true"] { stroke-width: 6.5; }
+.local-donut:has(.local-donut-slice[data-active="true"]) .local-donut-slice[data-active="false"] { opacity: 0.45; }
+.local-donut-focus { fill: var(--text-secondary); font-size: 2.6px; }
+.local-donut-focus-value { fill: var(--text-primary); font-size: 4.2px; font-weight: 600; font-family: var(--font-mono); }
 .local-share-legend {
   display: flex;
-  flex-wrap: wrap;
-  gap: 6px 18px;
-  margin: 10px 0 0;
+  flex-direction: column;
+  gap: 4px;
+  margin: 0;
   padding: 0;
   list-style: none;
   font-size: 0.8125rem;
 }
-.local-share-legend li { display: flex; align-items: center; gap: 6px; }
+.local-share-legend li {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 3px 8px;
+  border-radius: 6px;
+  cursor: default;
+}
+.local-share-legend li[data-active="true"] { background: var(--panel-2); }
+.local-share-legend li:focus-visible { outline: 2px solid var(--brand); outline-offset: 1px; }
 .local-share-swatch { width: 10px; height: 10px; border-radius: 3px; }
 .local-share-value { font-family: var(--font-mono); color: var(--text-secondary); }
 /* Tier colours: local is the cool one, the paid tiers warm up as they cost more. */
-.local-share-segment[data-tone="local"], .local-share-swatch[data-tone="local"] { background: oklch(78% 0.13 210); }
-.local-share-segment[data-tone="economy"], .local-share-swatch[data-tone="economy"] { background: var(--status-ok); }
-.local-share-segment[data-tone="balanced"], .local-share-swatch[data-tone="balanced"] { background: oklch(66% 0.16 255); }
-.local-share-segment[data-tone="frontier"], .local-share-swatch[data-tone="frontier"] { background: var(--status-bad); }
-.local-share-segment[data-tone="other"], .local-share-swatch[data-tone="other"] { background: var(--ink-3); }
+.local-share-swatch[data-tone="local"] { background: oklch(78% 0.13 210); }
+.local-donut-slice[data-tone="local"] { stroke: oklch(78% 0.13 210); }
+.local-share-swatch[data-tone="economy"] { background: var(--status-ok); }
+.local-donut-slice[data-tone="economy"] { stroke: var(--status-ok); }
+.local-share-swatch[data-tone="balanced"] { background: oklch(66% 0.16 255); }
+.local-donut-slice[data-tone="balanced"] { stroke: oklch(66% 0.16 255); }
+.local-share-swatch[data-tone="frontier"] { background: var(--status-bad); }
+.local-donut-slice[data-tone="frontier"] { stroke: var(--status-bad); }
+.local-share-swatch[data-tone="other"] { background: var(--ink-3); }
+.local-donut-slice[data-tone="other"] { stroke: var(--ink-3); }
 
 /* A meter of one served fraction (the quality pass rate). */
 .local-meter {

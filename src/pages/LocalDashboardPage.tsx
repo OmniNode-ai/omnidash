@@ -16,7 +16,7 @@ import { DEFAULT_RUNS_VIEW, readRunsSearch, writeRunsSearch, type RunsViewState 
 import { PAGE_PATHS } from '@/navigation/page-routes';
 import { normaliseRunId, readWorkflowRunId, workflowHref, writeWorkflowRunId } from '@/navigation/workflow-url-state';
 import { SpendByDayChart, UNRESOLVED_BASELINE } from '@/pages/local/charts';
-import { PassRateMeter, TierShareBar } from '@/pages/local/shares';
+import { PassRateMeter, TierShareChart } from '@/pages/local/shares';
 import '@/styles/local-dashboard.css';
 import {
   loadLocalPageConfig,
@@ -752,7 +752,7 @@ export function TierMixPanel({ row }: { row: Row | null }) {
   return (
     <section aria-label="Tier mix">
       {/* The bar and the table show the same served tiers; the bar's widths are the served shares. */}
-      <TierShareBar byTier={byTier} />
+      <TierShareChart byTier={byTier} />
       <div className="local-dashboard-table-wrap local-dashboard-table-wrap--fit">
         <table>
           <thead><tr><th>Tier</th><th>Runs</th><th>Share of tier-routed</th></tr></thead>

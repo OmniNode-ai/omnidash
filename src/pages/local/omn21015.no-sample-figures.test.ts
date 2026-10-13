@@ -5,7 +5,7 @@
 //   S1  a figure typed into the markup:                       <p>42</p>, <td>$0.00</td>
 //   S2  a figure kept as text the page can show:              return '0%', const fallback = '$0.00'
 //   S3  a value that was not served turned into a number:     row.spend_usd ?? 0, count || 0
-//   S4  a number put straight into the markup:                <dd>{0}</dd>
+//   S4  a number put straight into the markup:                <dd>{0}</dd>, also signed, bracketed or cast: {-42}, {(42)}
 //   S5  the instrument is blind: a page file is missing, is not read as markup, or a planted fault is not seen
 //   S6  honest code is refused: a comparison with '0', a padded digit, an icon size, a data attribute, an index
 // What it cannot see: a number computed at run time from served values. That is the per-figure comparison's job
@@ -46,6 +46,21 @@ const NUMBER_FALLBACKS_READ: ReadonlyArray<{ file: string; code: string; why: st
 
 export interface Finding { rule: 'S1' | 'S2' | 'S3' | 'S4'; file: string; line: number; code: string }
 
+/**
+ * The expression under any wrapping that does not change its value: brackets, a cast, a non-null mark, a leading
+ * sign. `(0)`, `0 as number`, `-1` and `+(42)` are all the number a reader would see.
+ */
+function bare(node: ts.Expression): ts.Expression {
+  let current = node;
+  for (;;) {
+    if (ts.isParenthesizedExpression(current) || ts.isAsExpression(current) || ts.isNonNullExpression(current)
+      || ts.isSatisfiesExpression(current) || ts.isTypeAssertionExpression(current)) current = current.expression;
+    else if (ts.isPrefixUnaryExpression(current)
+      && (current.operator === ts.SyntaxKind.MinusToken || current.operator === ts.SyntaxKind.PlusToken)) current = current.operand;
+    else return current;
+  }
+}
+
 export function scan(file: string, source: string): Finding[] {
   const tree = ts.createSourceFile(file, source, ts.ScriptTarget.Latest, true, ts.ScriptKind.TSX);
   const findings: Finding[] = [];
@@ -58,7 +73,10 @@ export function scan(file: string, source: string): Finding[] {
     // OMN-19986.
     if (ts.isJsxText(node) && node.text.split(/\s+/).some((word) => FIGURE_WORD.test(word.replace(/^[([{"'“]+|[)\]}"'”.,;:!?]+$/g, '')))) add('S1', node);
     if ((ts.isStringLiteral(node) || ts.isNoSubstitutionTemplateLiteral(node)) && FIGURE.test(node.text)) {
-      const parent = node.parent;
+      // The first ancestor that is not a bracket or a cast around this text.
+      let parent: ts.Node = node.parent;
+      while (ts.isParenthesizedExpression(parent) || ts.isAsExpression(parent) || ts.isNonNullExpression(parent)
+        || ts.isSatisfiesExpression(parent)) parent = parent.parent;
       const compared = ts.isBinaryExpression(parent) && [
         ts.SyntaxKind.EqualsEqualsEqualsToken, ts.SyntaxKind.ExclamationEqualsEqualsToken,
         ts.SyntaxKind.EqualsEqualsToken, ts.SyntaxKind.ExclamationEqualsToken,
@@ -70,11 +88,11 @@ export function scan(file: string, source: string): Finding[] {
         || ts.isCaseClause(parent) || ts.isImportDeclaration(parent) || ts.isElementAccessExpression(parent);
       if (!compared && !padding && !unread && !naming) add('S2', node);
     }
-    if (ts.isBinaryExpression(node) && ts.isNumericLiteral(node.right)
+    if (ts.isBinaryExpression(node) && ts.isNumericLiteral(bare(node.right))
       && (node.operatorToken.kind === ts.SyntaxKind.QuestionQuestionToken || node.operatorToken.kind === ts.SyntaxKind.BarBarToken)) {
       add('S3', node);
     }
-    if (ts.isJsxExpression(node) && node.expression && ts.isNumericLiteral(node.expression)
+    if (ts.isJsxExpression(node) && node.expression && ts.isNumericLiteral(bare(node.expression))
       && (ts.isJsxElement(node.parent) || ts.isJsxFragment(node.parent))) {
       add('S4', node);
     }
@@ -125,6 +143,14 @@ describe('OMN-21015 U6: no figure on a local page that the runtime did not serve
     ['S3', 'a missing value read as 0', 'const spend = row.spend_usd ?? 0;'],
     ['S3', 'a falsy value read as 0', 'const count = row.count || 0;'],
     ['S4', 'a number straight into the markup', 'const A = () => <dd>{0}</dd>;'],
+    // Found in review of 2dc622da: the same faults written with a sign, in brackets, or through a cast were missed.
+    ['S4', 'a signed number into the markup', 'const A = () => <span>{-42}</span>;'],
+    ['S4', 'a bracketed number into the markup', 'const A = () => <span>{(42)}</span>;'],
+    ['S4', 'a cast number into the markup', 'const A = () => <span>{42 as number}</span>;'],
+    ['S3', 'a missing value read as a bracketed 0', 'const A = ({ page }) => <span>{page?.missingValue ?? (0)}</span>;'],
+    ['S3', 'a missing value read as a signed number', 'const count = row.count ?? -1;'],
+    ['S3', 'a missing value read as a cast 0', 'const count = row.count || (0 as number);'],
+    ['S2', 'a figure text behind brackets and a cast', "const A = () => <span>{('0%' as string)}</span>;"],
   ])('%s control: %s is refused', (rule, _name, source) => {
     expect(rules(source)).toContain(rule);
   });
@@ -138,6 +164,9 @@ describe('OMN-21015 U6: no figure on a local page that the runtime did not serve
     ['a digit inside a name', 'const A = () => <p>Not served yet: waits on local-identity.v1 (OMN-19986)</p>;'],
     ['a served value put into the markup', 'const A = ({ row }) => <dd>{row.tokens_input}</dd>;'],
     ['a case label', "function f(k: string) { switch (k) { case '1': return 'one'; default: return k; } }"],
+    ['a comparison behind brackets', "const zero = value === ('0');"],
+    ['a signed number that is arithmetic, not a fallback', 'const start = 25 - offset * 100;'],
+    ['a negative index', 'const last = list.at(-1);'],
   ])('S6: %s is not refused', (_name, source) => {
     expect(scan('honest.tsx', source)).toEqual([]);
   });

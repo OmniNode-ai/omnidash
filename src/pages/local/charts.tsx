@@ -1,12 +1,12 @@
 import { useState } from 'react';
 import ReactEChartsCore from 'echarts-for-react/lib/core';
 import * as echarts from 'echarts/core';
-import { LineChart } from 'echarts/charts';
+import { BarChart } from 'echarts/charts';
 import { GridComponent, TooltipComponent } from 'echarts/components';
 import { SVGRenderer } from 'echarts/renderers';
 import { cssColorToHex, useThemeName } from '@/theme';
 
-echarts.use([LineChart, GridComponent, TooltipComponent, SVGRenderer]);
+echarts.use([BarChart, GridComponent, TooltipComponent, SVGRenderer]);
 
 type Row = Record<string, unknown>;
 
@@ -110,6 +110,7 @@ function optionFor(group: SpendByDayGroup, shown: ReadonlyArray<{ series: Served
     grid: { left: 64, right: 20, top: 16, bottom: 28 },
     tooltip: {
       trigger: 'axis',
+      axisPointer: { type: 'shadow' },
       // The tooltip shows the served text of each figure, not the number the axis needed. The chart numbers the
       // series it was handed, so the index is looked up among the shown series, not among all of them.
       formatter: (params: Array<{ seriesIndex: number; dataIndex: number; marker: string; seriesName: string }>) => {
@@ -128,20 +129,22 @@ function optionFor(group: SpendByDayGroup, shown: ReadonlyArray<{ series: Served
       axisTick: { show: false },
       axisLabel: { color: text },
     },
+    // (The value axis starts at the library's own zero for bars; no minimum is set here.)
     yAxis: {
       type: 'value',
       axisLabel: { color: text, formatter: (value: number) => `$${value}` },
       splitLine: { lineStyle: { color: line, type: 'dashed' } },
     },
+    // A bar per served day and series, side by side. A day is one figure, not a point on a slope, so nothing is drawn
+    // between two days; and the series are never stacked, because their sum is no figure the runtime serves. A day
+    // with no figure has no bar.
     series: shown.map(({ series, colour }) => ({
       name: series.name,
-      type: 'line',
+      type: 'bar',
       data: series.values,
-      connectNulls: false,
-      showSymbol: true,
-      symbolSize: 7,
-      lineStyle: { width: 2, color: colour },
-      itemStyle: { color: colour },
+      barMaxWidth: 36,
+      itemStyle: { color: colour, borderRadius: [3, 3, 0, 0] },
+      emphasis: { focus: 'series' },
     })),
   };
 }
@@ -188,7 +191,7 @@ function SpendChartFigure({ group, title }: { group: SpendByDayGroup; title: str
 }
 
 /**
- * OMN-21015 U2: baseline against actual spend per UTC day, one chart per baseline model. It draws exactly the points
+ * OMN-21015 U2: baseline against actual spend per UTC day, as bars, one chart per baseline model. It draws exactly the points
  * `spendByDayGroups` shapes from the served day rows; the table under it carries the same rows as text.
  */
 export function SpendByDayChart({ rows, columns, title = 'Spend per day' }: {
