@@ -2,11 +2,12 @@ export interface RunsViewState {
   status: string;
   cause: string;
   model: string;
+  backend: string;
   span: string;
   page: number;
 }
 
-export const DEFAULT_RUNS_VIEW: RunsViewState = { status: 'all', cause: 'all', model: 'all', span: 'all', page: 1 };
+export const DEFAULT_RUNS_VIEW: RunsViewState = { status: 'all', cause: 'all', model: 'all', backend: 'all', span: 'all', page: 1 };
 
 export function readRunsSearch(search: string): RunsViewState {
   const params = new URLSearchParams(search);
@@ -17,6 +18,7 @@ export function readRunsSearch(search: string): RunsViewState {
     status: ['all', 'passed', 'failed', 'Not recorded'].includes(status) ? status : 'all',
     cause: params.get('cause') || 'all',
     model: params.get('model') || 'all',
+    backend: params.get('backend') || 'all',
     span: params.get('window') === 'today' ? 'today' : 'all',
     page: Number.isSafeInteger(page) ? page : 1,
   };
@@ -25,7 +27,7 @@ export function readRunsSearch(search: string): RunsViewState {
 /** Keep unrelated query parameters and omit defaults, producing shareable URLs. */
 export function writeRunsSearch(search: string, view: RunsViewState): string {
   const params = new URLSearchParams(search);
-  for (const [key, value] of Object.entries({ status: view.status, cause: view.cause, model: view.model, window: view.span })) {
+  for (const [key, value] of Object.entries({ status: view.status, cause: view.cause, model: view.model, backend: view.backend, window: view.span })) {
     if (value === 'all') params.delete(key);
     else params.set(key, value);
   }

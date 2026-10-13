@@ -507,7 +507,8 @@ function isFixture(decision: Row): boolean {
 }
 
 /**
- * RU-1: every served run with its status, cause and cost, filtered by status, cause, model and window, paged. No
+ * RU-1: every served run with its status, cause and cost, filtered by status, cause, model, backend and window,
+ * paged. The backend is the served backend_id; a run served without one is filtered as Not recorded. No
  * per-run saving or baseline price: savings are window totals from metering-summary.v1 only (OMN-19980 AC2).
  */
 export function RunsTable({ decisions, sessions, now = Date.now(), pageSize = 25, syncUrl = false }: RunsTableProps) {
@@ -516,16 +517,18 @@ export function RunsTable({ decisions, sessions, now = Date.now(), pageSize = 25
   const [, navigate] = useLocation();
   const [localView, setLocalView] = useState<RunsViewState>(DEFAULT_RUNS_VIEW);
   const view = syncUrl ? readRunsSearch(search) : localView;
-  const { status, cause, model, span } = view;
+  const { status, cause, model, backend, span } = view;
   const pageIndex = view.page - 1;
   const bySession = indexBy(sessions, 'session_id');
   const runs = newestFirst(decisions);
   const models = [...new Set(runs.map((run) => modelOrUnknown(run.model_name)))].sort();
   const causes = [...new Set(runs.filter((run) => statusOf(run) === 'failed').map((run) => causeOf(run)))].sort();
+  const backends = [...new Set(runs.map((run) => recorded(run.backend_id)))].sort();
   const today = utcDay(now);
   const shown = runs.filter((run) => (status === 'all' || statusOf(run) === status)
     && (cause === 'all' || causeOf(run) === cause)
     && (model === 'all' || modelOrUnknown(run.model_name) === model)
+    && (backend === 'all' || recorded(run.backend_id) === backend)
     && (span === 'all' || utcDay(timeOf(run.created_at)) === today));
   const pages = Math.max(1, Math.ceil(shown.length / pageSize));
   const current = Math.min(pageIndex, pages - 1);
@@ -543,7 +546,7 @@ export function RunsTable({ decisions, sessions, now = Date.now(), pageSize = 25
       navigate(`/runs${query ? `?${query}` : ''}`);
     } else setLocalView(next);
   };
-  const filter = (key: 'status' | 'cause' | 'model' | 'span') => (event: { target: { value: string } }) =>
+  const filter = (key: 'status' | 'cause' | 'model' | 'backend' | 'span') => (event: { target: { value: string } }) =>
     updateView({ [key]: event.target.value, page: 1 });
   return (
     <>
@@ -566,6 +569,12 @@ export function RunsTable({ decisions, sessions, now = Date.now(), pageSize = 25
           <option value="all">All</option>
           {model !== 'all' && !models.includes(model) && <option value={model}>{model} (not in current data)</option>}
           {models.map((name) => <option key={name} value={name}>{name}</option>)}
+        </select>
+        <label htmlFor={`${id}-backend`}>Backend</label>
+        <select id={`${id}-backend`} value={backend} onChange={filter('backend')}>
+          <option value="all">All</option>
+          {backend !== 'all' && !backends.includes(backend) && <option value={backend}>{backend} (not in current data)</option>}
+          {backends.map((name) => <option key={name} value={name}>{name}</option>)}
         </select>
         <label htmlFor={`${id}-window`}>Window</label>
         <select id={`${id}-window`} value={span} onChange={filter('span')}>
