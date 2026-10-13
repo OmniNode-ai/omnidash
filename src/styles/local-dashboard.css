@@ -593,6 +593,27 @@
 /* A chart of served rows: the figure, its plot area and a quiet caption. The table of the same rows follows it. */
 .local-chart { margin: 0 0 14px; }
 .local-chart-canvas { width: 100%; height: 260px; }
+/* The chart's legend: real buttons, so a series is shown or hidden from the keyboard. A hidden series' button is
+   dimmed and struck through; its pressed state says the same to a screen reader. */
+.local-chart-legend { display: flex; flex-wrap: wrap; gap: 6px 8px; margin: 0 0 8px; }
+.local-chart-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 3px 10px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: var(--panel-2);
+  color: var(--text-secondary);
+  font: inherit;
+  font-size: 0.75rem;
+  cursor: pointer;
+}
+.local-chart-toggle:hover { border-color: var(--ink-3); color: var(--text-primary); }
+.local-chart-toggle:focus-visible { outline: 2px solid var(--brand); outline-offset: 2px; }
+.local-chart-toggle[aria-pressed="false"] { background: transparent; color: var(--text-tertiary); text-decoration: line-through; }
+.local-chart-toggle[aria-pressed="false"] .local-chart-swatch { opacity: 0.3; }
+.local-chart-swatch { width: 14px; height: 4px; border-radius: 2px; }
 .local-chart figcaption {
   margin-top: 4px;
   font-size: 0.75rem;

@@ -116,3 +116,57 @@ test('OMN-21015: on Overview a tier segment is as wide as its served share', asy
   await bar.scrollIntoViewIfNeeded();
   await page.screenshot({ path: screenshotPath('local-dashboard-omn21015-overview-tier-mix-1440x900.png'), fullPage: false });
 });
+
+// OMN-21015 stage 5, U4: the spend chart's legend is worked from the keyboard. The chart library draws into SVG, so
+// whether a series is really gone is read from the drawing: the lines stroked in that series' colour. The rows are
+// constructed: two days, so each series is a line.
+const METERING = 'onex.snapshot.projection.metering-summary.v1';
+const meteringDay = (start: string, spend: string, baseline: string, savings: string) => ({
+  window_kind: 'day', window_start: start, as_of: `${start}T23:00:00+00:00`, baseline_model: 'claude-sonnet-5-5',
+  baseline_state: 'resolved', spend_usd: spend, counterfactual_usd: baseline, savings_usd: savings, runs_total: 3,
+});
+const metering = [
+  meteringDay('2026-10-11', '0.110000', '0.410000', '0.300000'),
+  meteringDay('2026-10-12', '0.120000', '0.520000', '0.400000'),
+];
+
+test('OMN-21015: the spend chart legend hides and shows a series from the keyboard', async ({ page }) => {
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await serve(page, { [METERING]: metering });
+  await page.goto('/');
+
+  const figure = page.getByRole('figure', { name: /^Spend per day vs claude-sonnet-5-5$/ });
+  await expect(figure).toBeVisible();
+  await expect(figure.locator('svg')).toBeVisible();
+  const toggles = figure.getByRole('group', { name: 'Series shown' }).getByRole('button');
+  await expect(toggles).toHaveText(['Actual spend', 'Baseline spend', 'Savings']);
+
+  /** How many lines the drawing holds in each legend swatch's colour, in legend order. */
+  const drawn = () => figure.evaluate((element) => {
+    const hex = (rgb: string) => `#${(rgb.match(/\d+/g) ?? []).slice(0, 3).map((part) => Number(part).toString(16).padStart(2, '0')).join('')}`;
+    const colours = [...element.querySelectorAll<HTMLElement>('[data-swatch]')].map((swatch) => hex(getComputedStyle(swatch).backgroundColor));
+    const strokes = [...element.querySelectorAll('svg path')]
+      .filter((path) => (path.getAttribute('fill') ?? 'none') === 'none')
+      .map((path) => (path.getAttribute('stroke') ?? '').toLowerCase());
+    return colours.map((colour) => strokes.filter((stroke) => stroke === colour).length);
+  });
+
+  const before = await drawn();
+  expect(before.every((count) => count >= 1)).toBe(true);
+
+  // Reach the second toggle with Tab from the first, then press Enter.
+  await toggles.nth(0).focus();
+  await page.keyboard.press('Tab');
+  await expect(toggles.nth(1)).toBeFocused();
+  await page.keyboard.press('Enter');
+  await expect(toggles.nth(1)).toHaveAttribute('aria-pressed', 'false');
+  await expect.poll(drawn).toEqual([before[0], 0, before[2]]);
+  // Let the chart finish moving before it is photographed (its animation is 250 ms).
+  await page.waitForTimeout(600);
+  await page.screenshot({ path: screenshotPath('local-dashboard-omn21015-spend-legend-hidden-1440x900.png'), fullPage: false });
+
+  // Space brings it back.
+  await page.keyboard.press('Space');
+  await expect(toggles.nth(1)).toHaveAttribute('aria-pressed', 'true');
+  await expect.poll(drawn).toEqual(before);
+});

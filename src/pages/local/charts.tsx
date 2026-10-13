@@ -1,11 +1,12 @@
+import { useState } from 'react';
 import ReactEChartsCore from 'echarts-for-react/lib/core';
 import * as echarts from 'echarts/core';
 import { LineChart } from 'echarts/charts';
-import { GridComponent, LegendComponent, TooltipComponent } from 'echarts/components';
+import { GridComponent, TooltipComponent } from 'echarts/components';
 import { SVGRenderer } from 'echarts/renderers';
 import { cssColorToHex, useThemeName } from '@/theme';
 
-echarts.use([LineChart, GridComponent, LegendComponent, TooltipComponent, SVGRenderer]);
+echarts.use([LineChart, GridComponent, TooltipComponent, SVGRenderer]);
 
 type Row = Record<string, unknown>;
 
@@ -87,22 +88,34 @@ function tone(token: string, fallback: number): string {
   return `#${cssColorToHex(value || undefined, fallback).toString(16).padStart(6, '0')}`;
 }
 
-function optionFor(group: SpendByDayGroup) {
-  // One colour per declared series, by its place in the declaration.
-  const palette = [tone('--status-ok', 0x3fb950), tone('--status-bad', 0xd9534f), tone('--brand', 0x58a6ff), tone('--status-warn', 0xd29922)];
+/**
+ * One colour per declared series, by its place in the page's declaration; hiding a series moves no other's colour.
+ * They are the theme's chart colours (blue, orange-red, teal, yellow), which differ in hue: the status green and the
+ * brand lime used before were too alike to tell two lines apart.
+ */
+function seriesColours(count: number): string[] {
+  const palette = [tone('--chart-1', 0x58a6ff), tone('--chart-4', 0xf0703c), tone('--chart-2', 0x3fb9a0), tone('--chart-3', 0xd9b530)];
+  return Array.from({ length: count }, (_, index) => palette[index % palette.length]!);
+}
+
+/** The option for the series that are shown. The chart draws no legend: the legend is the row of buttons above it. */
+function optionFor(group: SpendByDayGroup, shown: ReadonlyArray<{ series: ServedSeries; colour: string }>) {
   const text = tone('--ink-2', 0x8b949e);
   const line = tone('--line', 0x30363d);
+  // The chart draws its own text; without the page's font it falls back to the browser's serif.
+  const fontFamily = typeof document === 'undefined' ? '' : getComputedStyle(document.body).fontFamily;
   return {
     animationDuration: 250,
-    grid: { left: 64, right: 20, top: 16, bottom: 56 },
-    legend: { bottom: 0, icon: 'roundRect', itemWidth: 14, itemHeight: 4, textStyle: { color: text } },
+    ...(fontFamily ? { textStyle: { fontFamily } } : {}),
+    grid: { left: 64, right: 20, top: 16, bottom: 28 },
     tooltip: {
       trigger: 'axis',
-      // The tooltip shows the served text of each figure, not the number the axis needed.
+      // The tooltip shows the served text of each figure, not the number the axis needed. The chart numbers the
+      // series it was handed, so the index is looked up among the shown series, not among all of them.
       formatter: (params: Array<{ seriesIndex: number; dataIndex: number; marker: string; seriesName: string }>) => {
         const index = params[0]?.dataIndex ?? 0;
         const lines = params.map((p) => {
-          const served = group.series[p.seriesIndex]?.served[index];
+          const served = shown[p.seriesIndex]?.series.served[index];
           return `${p.marker}${p.seriesName}: ${served === null || served === undefined ? 'Not measured' : `$${served}`}`;
         });
         return [group.days[index], ...lines].join('<br/>');
@@ -120,17 +133,58 @@ function optionFor(group: SpendByDayGroup) {
       axisLabel: { color: text, formatter: (value: number) => `$${value}` },
       splitLine: { lineStyle: { color: line, type: 'dashed' } },
     },
-    series: group.series.map((series, index) => ({
+    series: shown.map(({ series, colour }) => ({
       name: series.name,
       type: 'line',
       data: series.values,
       connectNulls: false,
       showSymbol: true,
       symbolSize: 7,
-      lineStyle: { width: 2, color: palette[index % palette.length] },
-      itemStyle: { color: palette[index % palette.length] },
+      lineStyle: { width: 2, color: colour },
+      itemStyle: { color: colour },
     })),
   };
+}
+
+export const EVERY_SERIES_HIDDEN = 'Every series is hidden. Turn one on to draw the chart.';
+
+/**
+ * One baseline's chart with its legend (OMN-21015 U4). The legend is a row of buttons, one per plotted series, so it
+ * is reached with Tab and worked with Enter or Space; each says whether its series is shown. What is hidden is kept
+ * by the series' declared column, so a refresh of the served rows changes the points and not the reader's choice.
+ */
+function SpendChartFigure({ group, title }: { group: SpendByDayGroup; title: string }) {
+  const [hidden, setHidden] = useState<ReadonlySet<string>>(() => new Set());
+  const colours = seriesColours(group.series.length);
+  const all = group.series.map((series, index) => ({ series, colour: colours[index]! }));
+  const shown = all.filter(({ series }) => !hidden.has(series.key));
+  const toggle = (key: string) => setHidden((current) => {
+    const next = new Set(current);
+    if (!next.delete(key)) next.add(key);
+    return next;
+  });
+  return (
+    <figure className="local-chart" aria-label={`${title} vs ${group.baseline}`}>
+      <div className="local-chart-legend" role="group" aria-label="Series shown">
+        {all.map(({ series, colour }) => (
+          <button
+            type="button"
+            className="local-chart-toggle"
+            aria-pressed={!hidden.has(series.key)}
+            key={series.key}
+            onClick={() => toggle(series.key)}
+          >
+            <span className="local-chart-swatch" data-swatch aria-hidden="true" style={{ backgroundColor: colour }} />
+            {series.name}
+          </button>
+        ))}
+      </div>
+      {shown.length === 0
+        ? <p className="local-dashboard-empty" role="status">{EVERY_SERIES_HIDDEN}</p>
+        : <ReactEChartsCore echarts={echarts} option={optionFor(group, shown)} notMerge opts={{ renderer: 'svg' }} className="local-chart-canvas" />}
+      <figcaption>{`${group.series.map((series) => series.name).join(', ')} per served day, against ${group.baseline}`}</figcaption>
+    </figure>
+  );
 }
 
 /**
@@ -143,17 +197,12 @@ export function SpendByDayChart({ rows, columns, title = 'Spend per day' }: {
   title?: string;
 }) {
   // Re-read the theme's colours when the theme changes.
-  const theme = useThemeName();
+  useThemeName();
   const groups = spendByDayGroups(columns, rows);
   if (groups.length === 0) return null;
   return (
     <>
-      {groups.map((group) => (
-        <figure className="local-chart" aria-label={`${title} vs ${group.baseline}`} key={`${group.baseline}-${theme}`}>
-          <ReactEChartsCore echarts={echarts} option={optionFor(group)} notMerge opts={{ renderer: 'svg' }} className="local-chart-canvas" />
-          <figcaption>{`${group.series.map((series) => series.name).join(', ')} per served day, against ${group.baseline}`}</figcaption>
-        </figure>
-      ))}
+      {groups.map((group) => <SpendChartFigure group={group} title={title} key={group.baseline} />)}
     </>
   );
 }
