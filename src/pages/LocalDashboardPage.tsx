@@ -15,7 +15,7 @@ import { subscribeLocalPageRefresh } from '@/services/local-page-refresh';
 import { DEFAULT_RUNS_VIEW, readRunsSearch, writeRunsSearch, type RunsViewState } from '@/navigation/runs-url-state';
 import { PAGE_PATHS } from '@/navigation/page-routes';
 import { normaliseRunId, readWorkflowRunId, workflowHref, writeWorkflowRunId } from '@/navigation/workflow-url-state';
-import { SpendByDayChart, UNRESOLVED_BASELINE } from '@/pages/local/charts';
+import { RunTimingChart, SpendByDayChart, UNRESOLVED_BASELINE } from '@/pages/local/charts';
 import { PassRateMeter, TierShareChart } from '@/pages/local/shares';
 import '@/styles/local-dashboard.css';
 import {
@@ -840,6 +840,11 @@ export function RunSummary({ decision }: { decision: Row | undefined }) {
     ['Finish reason', recorded(decision.finish_reason)],
     ['Truncated', yesOrNo(decision.truncated)],
     ['Escalations', recorded(decision.escalation_count)],
+    // The model the caller asked for, beside the model that answered; and the two timings the row serves beside its
+    // duration. Each is the served column (omnimarket v0.4.309, OMN-19448): missing is Not recorded, never zero.
+    ['Requested model', recorded(decision.requested_model)],
+    ['Queue wait', duration(decision.queue_wait_ms)],
+    ['Execution', duration(decision.execution_ms)],
   ];
   return (
     <section aria-label="Run summary" className="local-dashboard-run-summary">
@@ -847,6 +852,14 @@ export function RunSummary({ decision }: { decision: Row | undefined }) {
         <div><dt>Status</dt><dd><OutcomePill value={status} /></dd></div>
         {fields.map(([label, value]) => <div key={label}><dt>{label}</dt><dd>{value}</dd></div>)}
       </dl>
+      {/* The same three timings as bars, under the labels their tiles carry. */}
+      <RunTimingChart
+        timings={[
+          { key: 'queue_wait_ms', label: 'Queue wait', value: decision.queue_wait_ms },
+          { key: 'execution_ms', label: 'Execution', value: decision.execution_ms },
+          { key: 'latency_ms', label: 'Duration', value: decision.latency_ms },
+        ]}
+      />
     </section>
   );
 }

@@ -225,3 +225,99 @@ export function SpendByDayChart({ rows, columns, title = 'Spend per day', colour
     </>
   );
 }
+
+/** One of a run's timings, as the page hands it over: the label its tile carries and the value the run's row serves. */
+export interface RunTiming {
+  key: string;
+  label: string;
+  value: unknown;
+}
+
+export interface RunTimingBar {
+  label: string;
+  value: number;
+  served: string;
+  /** The timing's place among the timings handed over, so it keeps its colour when another is not measured. */
+  place: number;
+}
+
+/**
+ * A run's served timings shaped for bars (OMN-21015): one bar per timing whose served value is a duration, in the
+ * order handed over. A timing the row does not carry, or one that is no duration, gets no bar and is named instead;
+ * a served zero is a figure and keeps its place. Nothing is added up: the runtime serves no sum of these.
+ */
+export function runTimingBars(timings: readonly RunTiming[]): { bars: RunTimingBar[]; unmeasured: string[] } {
+  const bars: RunTimingBar[] = [];
+  const unmeasured: string[] = [];
+  timings.forEach((timing, index) => {
+    const { value, served } = point(timing.value);
+    if (value === null || served === null || value < 0) unmeasured.push(timing.label);
+    else bars.push({ label: timing.label, value, served, place: index + 1 });
+  });
+  return { bars, unmeasured };
+}
+
+/** A tick of the milliseconds axis; the origin carries no label, as on the money axis. */
+export function millisecondsAxisLabel(value: number): string {
+  return value === 0 ? '' : `${value} ms`;
+}
+
+function timingOption(bars: readonly RunTimingBar[], colours: readonly string[]) {
+  const text = tone('--ink-2', 0x8b949e);
+  const line = tone('--line', 0x30363d);
+  const fontFamily = typeof document === 'undefined' ? '' : getComputedStyle(document.body).fontFamily;
+  // The label at a bar's end and the tooltip both write the served text, not the number the axis needed.
+  const servedText = (index: number) => `${bars[index]?.served ?? ''} ms`;
+  return {
+    animationDuration: 250,
+    ...(fontFamily ? { textStyle: { fontFamily } } : {}),
+    grid: { left: 96, right: 84, top: 6, bottom: 24 },
+    tooltip: {
+      trigger: 'item',
+      formatter: (param: { dataIndex: number; name: string; marker: string }) => `${param.marker}${param.name}: ${servedText(param.dataIndex)}`,
+    },
+    xAxis: {
+      type: 'value',
+      axisLabel: { color: text, formatter: millisecondsAxisLabel },
+      splitLine: { lineStyle: { color: line, type: 'dashed' } },
+    },
+    // The first timing is the top row, as the tiles above read left to right.
+    yAxis: {
+      type: 'category',
+      inverse: true,
+      data: bars.map((bar) => bar.label),
+      axisLine: { lineStyle: { color: line } },
+      axisTick: { show: false },
+      axisLabel: { color: text },
+    },
+    // One bar per measured timing, side by side and never stacked: the runtime serves no sum of them.
+    series: [{
+      type: 'bar',
+      barMaxWidth: 18,
+      data: bars.map((bar, index) => ({ value: bar.value, itemStyle: { color: colours[index]!, borderRadius: [0, 3, 3, 0] } })),
+      label: { show: true, position: 'right', color: text, formatter: (param: { dataIndex: number }) => servedText(param.dataIndex) },
+    }],
+  };
+}
+
+/**
+ * OMN-21015: where one run's time went, as bars. A second way of showing the timings the run summary's tiles carry as
+ * text; it draws exactly the bars `runTimingBars` shapes, and nothing when no timing is measured.
+ */
+export function RunTimingChart({ timings, title = 'Run timing' }: { timings: readonly RunTiming[]; title?: string }) {
+  // Re-read the theme's colours when the theme changes.
+  useThemeName();
+  const { bars, unmeasured } = runTimingBars(timings);
+  if (bars.length === 0) return null;
+  const palette = seriesColours(timings.length, undefined);
+  const colours = bars.map((bar) => palette[bar.place - 1]!);
+  return (
+    <figure className="local-chart local-chart--timing" aria-label={title}>
+      <ReactEChartsCore echarts={echarts} option={timingOption(bars, colours)} notMerge opts={{ renderer: 'svg' }} className="local-chart-canvas" />
+      <figcaption>
+        {`${bars.map((bar) => bar.label).join(', ')} of this run in milliseconds, each as served, side by side and not added together.`}
+        {unmeasured.length > 0 && ` No measured value to draw for: ${unmeasured.join(', ')}.`}
+      </figcaption>
+    </figure>
+  );
+}

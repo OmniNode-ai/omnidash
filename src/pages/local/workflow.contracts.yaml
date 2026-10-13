@@ -34,7 +34,10 @@
             "tokens_output",
             "finish_reason",
             "truncated",
-            "escalation_count"
+            "escalation_count",
+            "requested_model",
+            "queue_wait_ms",
+            "execution_ms"
           ]
         },
         {

@@ -320,3 +320,85 @@ test('OMN-21015: on Usage both charts are on the first screen at 1440x900', asyn
   await page.waitForTimeout(600);
   await page.screenshot({ path: screenshotPath('local-dashboard-omn21015-usage-first-screen-1440x900.png'), fullPage: false });
 });
+
+// OMN-21015: where a run's time went, on Workflow. jsdom draws no chart, so the bars are measured in a real browser:
+// one bar per served timing, as long as its served value against the others, with the served text at its end. The
+// timings are chosen far apart (12, 4,788 and 743 ms) so a bar drawn from the wrong column would be seen.
+const RUN_TRACE = 'onex.snapshot.projection.run-trace.v1';
+const TIMED_RUN = 'a66aca8a-dd42-4ffa-9f68-89c1dba7e400';
+const timedRun = {
+  correlation_id: TIMED_RUN, written_at: '2026-10-11T02:00:26+00:00', created_at: '2026-10-11T02:00:26+00:00', model_name: 'qwen3-coder',
+  backend_id: 'local-coder', host: 'lab-host', quality_gate_passed: 1, quality_gate_detail: 'completed', terminal_ok: 1, task_type: 'document',
+  cost_tier_name: 'local', actual_score: 1, required_bar: 0.8, tokens_input: 262, tokens_output: 7, finish_reason: 'stop', truncated: 0,
+  escalation_count: 0, data_source: 'real', requested_model: 'asked-model', queue_wait_ms: 12, execution_ms: 4788, latency_ms: 743,
+};
+const timedSteps = ['request', 'routing_decision', 'provider_call', 'quality_gate', 'terminal'].map((step_kind, index) => ({
+  correlation_id: TIMED_RUN, step_sequence: index + 1, step_kind, started_at: `2026-10-11T02:00:2${index}+00:00`, duration_ms: null,
+  outcome: 'succeeded', reason: null,
+}));
+
+test('OMN-21015: on Workflow a run\'s timings are drawn as bars of their served lengths, above the run\'s steps', async ({ page }) => {
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await serve(page, { [DECISIONS]: [timedRun], [RUN_TRACE]: timedSteps });
+  await page.goto('/workflow');
+
+  const figure = page.getByRole('figure', { name: 'Run timing' });
+  await expect(figure).toBeVisible();
+  // The served text is written at each bar's end and on its row.
+  for (const text of ['Queue wait', 'Execution', 'Duration', '12 ms', '4788 ms', '743 ms']) {
+    await expect(figure.locator('svg').getByText(text, { exact: true })).toBeVisible();
+  }
+  // The three bars: the drawn paths that carry one of the three series colours, top row first. The chart grows its
+  // bars in over a quarter second, so they are read once two reads in a row agree.
+  const read = () => figure.locator('svg').evaluate((svg) => {
+    const drawn = [...svg.querySelectorAll('path')]
+      .map((path) => ({ fill: path.getAttribute('fill') ?? '', rect: path.getBoundingClientRect() }))
+      .filter(({ fill, rect }) => /^(#|rgb)/.test(fill) && rect.height > 4 && rect.height < 30 && rect.width > 0.5);
+    return drawn.sort((a, b) => a.rect.top - b.rect.top).map(({ fill, rect }) => ({ fill, width: rect.width, left: rect.left }));
+  });
+  let previous = '';
+  await expect.poll(async () => {
+    const now = JSON.stringify(await read());
+    const settled = now === previous;
+    previous = now;
+    return settled;
+  }, { intervals: [200] }).toBe(true);
+  const bars = await read();
+  expect(bars).toHaveLength(3);
+  expect(new Set(bars.map((bar) => bar.fill)).size).toBe(3);
+  // All start at the same origin, and each is as long as its served value against the longest.
+  expect(Math.abs(bars[0]!.left - bars[1]!.left)).toBeLessThan(1);
+  expect(Math.abs(bars[2]!.left - bars[1]!.left)).toBeLessThan(1);
+  expect(bars[0]!.width / bars[1]!.width).toBeCloseTo(12 / 4788, 2);
+  expect(bars[2]!.width / bars[1]!.width).toBeCloseTo(743 / 4788, 2);
+
+  // The tiles carry the same three as text, and the requested model beside the answering one.
+  const summary = page.getByRole('region', { name: 'Run summary' });
+  for (const [label, value] of [['Queue wait', '12 ms'], ['Execution', '4788 ms'], ['Duration', '743 ms'], ['Requested model', 'asked-model'], ['Model', 'qwen3-coder']]) {
+    await expect(summary.locator('dt', { hasText: new RegExp(`^${label}$`) }).locator('xpath=following-sibling::dd[1]')).toHaveText(value!);
+  }
+
+  // The run's steps still start on the first screen, under the chart, and nothing scrolls sideways.
+  const chart = await placed(page, 'figure.local-chart--timing');
+  const steps = await placed(page, 'nav.local-run-diagram');
+  expect(chart.scrolled).toBe(0);
+  expect(steps.top).toBeGreaterThanOrEqual(chart.bottom);
+  expect(steps.bottom).toBeLessThanOrEqual(900);
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
+
+  await page.screenshot({ path: screenshotPath('local-dashboard-omn21015-workflow-run-timing-1440x900.png') });
+});
+
+test('OMN-21015: on Workflow a timing the run does not carry has no bar, and a served zero keeps its row', async ({ page }) => {
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await serve(page, { [DECISIONS]: [{ ...timedRun, queue_wait_ms: 0, execution_ms: null }], [RUN_TRACE]: timedSteps });
+  await page.goto('/workflow');
+  const figure = page.getByRole('figure', { name: 'Run timing' });
+  await expect(figure).toBeVisible();
+  await expect(figure.locator('svg').getByText('0 ms', { exact: true })).toBeVisible();
+  await expect(figure.locator('svg').getByText('Execution', { exact: true })).toHaveCount(0);
+  await expect(figure).toContainText('No measured value to draw for: Execution');
+  const summary = page.getByRole('region', { name: 'Run summary' });
+  await expect(summary.locator('dt', { hasText: /^Execution$/ }).locator('xpath=following-sibling::dd[1]')).toHaveText('Not recorded');
+  await expect(summary.locator('dt', { hasText: /^Queue wait$/ }).locator('xpath=following-sibling::dd[1]')).toHaveText('0 ms');
+});

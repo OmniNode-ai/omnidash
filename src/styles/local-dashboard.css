@@ -596,6 +596,10 @@
 /* A chart of served rows: the figure, its plot area and a quiet caption. The table of the same rows follows it. */
 .local-chart { margin: 0 0 14px; }
 .local-chart-canvas { width: 100%; height: 260px; }
+/* A run's timings: three thin bars under the run summary's tiles, so the run's steps stay near the top. */
+.local-chart--timing { margin: 10px 0 0; }
+/* The chart library writes its own default height on the element, so this one has to outrank an inline style. */
+.local-chart--timing .local-chart-canvas { height: 118px !important; }
 /* The chart's legend: real buttons, so a series is shown or hidden from the keyboard. A hidden series' button is
    dimmed and struck through; its pressed state says the same to a screen reader. */
 .local-chart-legend { display: flex; flex-wrap: wrap; gap: 6px 8px; margin: 0 0 8px; }
