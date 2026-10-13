@@ -469,7 +469,7 @@ test('OMN-21015: on Runs the listed runs are drawn above the list, and a bar ope
   // A click on the failed run's bar opens that run, the address its row's link carries.
   const href = await page.getByRole('link', { name: /^bbbbbbbb/ }).getAttribute('href');
   await page.mouse.click(durations[1]!.x, durations[1]!.y);
-  await expect(page).toHaveURL(new RegExp(`${href!.replace(/[?]/g, '\\?')}$`));
+  await expect(page).toHaveURL(new URL(href!, page.url()).href);
   await expect(page.locator('.local-run-title code')).toHaveText('bbbbbbbb-0000-4000-8000-000000000002');
 });
 
