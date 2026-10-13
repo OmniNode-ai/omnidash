@@ -737,10 +737,9 @@ export function RunSummary({ decision }: { decision: Row | undefined }) {
     ['Host', recorded(decision.host)],
     ['Route tier', tierOf(decision)],
     ['Duration', duration(decision.latency_ms)],
-    ['Finished', recorded(decision.written_at)],
   ];
   return (
-    <section aria-label="Run summary">
+    <section aria-label="Run summary" className="local-dashboard-run-summary">
       <dl className="local-dashboard-fields">
         {fields.map(([label, value]) => <div key={label}><dt>{label}</dt><dd>{value}</dd></div>)}
       </dl>

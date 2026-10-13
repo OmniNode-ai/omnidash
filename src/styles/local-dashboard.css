@@ -121,6 +121,19 @@
   outline-offset: 2px;
 }
 .local-dashboard-pager button:disabled { opacity: 0.45; cursor: not-allowed; }
+/* The run's decision fields sit above its steps on Workflow; without a gap the last field ran into the first step. */
+.local-dashboard-run-summary { margin-bottom: 16px; }
+/* A run id in the Runs list opens that run on Workflow (WF-3): it has to read as a link. */
+.local-dashboard-table-wrap a {
+  color: var(--brand);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+.local-dashboard-table-wrap a:hover { text-decoration-thickness: 2px; }
+.local-dashboard-table-wrap a:focus-visible {
+  outline: 2px solid var(--brand-ink);
+  outline-offset: 2px;
+}
 /* The Workflow run picker (WF-3): a correlation id field and its buttons, styled as the Runs filters are. */
 .local-dashboard-filters input[type="text"],
 .local-dashboard-filters button {
