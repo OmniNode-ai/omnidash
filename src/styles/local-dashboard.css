@@ -635,3 +635,51 @@
   white-space: nowrap;
 }
 .local-dashboard-mode { padding: 4px 10px; }
+
+/* A bar of served shares (Overview's tier mix): one segment per served tier, as wide as its served share. */
+.local-share { margin: 0 0 14px; }
+.local-share-bar {
+  display: flex;
+  height: 14px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: var(--panel-2);
+}
+.local-share-segment { display: block; height: 100%; min-width: 2px; transition: filter 0.15s; }
+.local-share-segment:hover { filter: brightness(1.15); }
+.local-share-segment + .local-share-segment { box-shadow: -1px 0 0 var(--panel); }
+.local-share-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 18px;
+  margin: 10px 0 0;
+  padding: 0;
+  list-style: none;
+  font-size: 0.8125rem;
+}
+.local-share-legend li { display: flex; align-items: center; gap: 6px; }
+.local-share-swatch { width: 10px; height: 10px; border-radius: 3px; }
+.local-share-value { font-family: var(--font-mono); color: var(--text-secondary); }
+/* Tier colours: local is the cool one, the paid tiers warm up as they cost more. */
+.local-share-segment[data-tone="local"], .local-share-swatch[data-tone="local"] { background: oklch(78% 0.13 210); }
+.local-share-segment[data-tone="economy"], .local-share-swatch[data-tone="economy"] { background: var(--status-ok); }
+.local-share-segment[data-tone="balanced"], .local-share-swatch[data-tone="balanced"] { background: oklch(66% 0.16 255); }
+.local-share-segment[data-tone="frontier"], .local-share-swatch[data-tone="frontier"] { background: var(--status-bad); }
+.local-share-segment[data-tone="other"], .local-share-swatch[data-tone="other"] { background: var(--ink-3); }
+
+/* A meter of one served fraction (the quality pass rate). */
+.local-meter {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin: 0 0 14px;
+}
+.local-meter-track {
+  flex: 1 1 auto;
+  height: 10px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: var(--panel-2);
+}
+.local-meter-fill { display: block; height: 100%; border-radius: 999px; background: var(--status-ok); }
+.local-meter-value { font-family: var(--font-mono); font-size: 1.125rem; font-weight: 500; }
