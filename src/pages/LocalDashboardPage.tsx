@@ -15,7 +15,7 @@ import { subscribeLocalPageRefresh } from '@/services/local-page-refresh';
 import { DEFAULT_RUNS_VIEW, readRunsSearch, writeRunsSearch, type RunsViewState } from '@/navigation/runs-url-state';
 import { PAGE_PATHS } from '@/navigation/page-routes';
 import { normaliseRunId, readWorkflowRunId, workflowHref, writeWorkflowRunId } from '@/navigation/workflow-url-state';
-import { RunTimingChart, SpendByDayChart, UNRESOLVED_BASELINE } from '@/pages/local/charts';
+import { RunDurationChart, RunTimingChart, RunTokensChart, SpendByDayChart, UNRESOLVED_BASELINE, type ListedRun } from '@/pages/local/charts';
 import { PassRateMeter, TierShareChart } from '@/pages/local/shares';
 import '@/styles/local-dashboard.css';
 import {
@@ -630,6 +630,15 @@ export function RunsTable({ decisions, sessions, now = Date.now(), pageSize = 25
   };
   const filter = (key: 'status' | 'cause' | 'model' | 'backend' | 'span') => (event: { target: { value: string } }) =>
     updateView({ [key]: event.target.value, page: 1 });
+  const listed: ListedRun[] = page.map((run) => ({
+    id: typeof run.correlation_id === 'string' && run.correlation_id !== '' ? run.correlation_id : null,
+    status: statusOf(run),
+    model: modelOrUnknown(run.model_name),
+    duration: run.latency_ms,
+    tokensIn: run.tokens_input,
+    tokensOut: run.tokens_output,
+  }));
+  const openRun = (runId: string) => navigate(workflowHref(runId));
   return (
     <>
       <div className="local-dashboard-filters">
@@ -666,6 +675,11 @@ export function RunsTable({ decisions, sessions, now = Date.now(), pageSize = 25
       </div>
       {shown.length === 0 ? <p className="local-dashboard-empty" role="status">No runs match these filters</p> : (
         <>
+          {/* The same rows as bars: the runs on this page of the list, in its order, each value as its row serves it. */}
+          <div className="local-run-charts">
+            <RunDurationChart runs={listed} onOpen={openRun} />
+            <RunTokensChart runs={listed} onOpen={openRun} />
+          </div>
           <div className="local-dashboard-table-wrap local-dashboard-table-wrap--fit">
             <table>
               <thead>

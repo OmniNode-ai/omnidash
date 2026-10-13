@@ -402,3 +402,88 @@ test('OMN-21015: on Workflow a timing the run does not carry has no bar, and a s
   await expect(summary.locator('dt', { hasText: /^Execution$/ }).locator('xpath=following-sibling::dd[1]')).toHaveText('Not recorded');
   await expect(summary.locator('dt', { hasText: /^Queue wait$/ }).locator('xpath=following-sibling::dd[1]')).toHaveText('0 ms');
 });
+
+// OMN-21015: the Runs page draws the runs it lists. In a real browser: both charts are on the first screen above the
+// list, a bar is as tall as its run's served duration against the others, a failed run's bar is another colour than
+// a passed run's, and a click on a bar opens that run on Workflow.
+const listedRuns = [
+  { ...timedRun, correlation_id: 'cccccccc-0000-4000-8000-000000000003', written_at: '2026-10-11T02:30:00+00:00', created_at: '2026-10-11T02:30:00+00:00', latency_ms: 1200, tokens_input: 90, tokens_output: 400 },
+  { ...timedRun, correlation_id: 'bbbbbbbb-0000-4000-8000-000000000002', written_at: '2026-10-11T02:20:00+00:00', created_at: '2026-10-11T02:20:00+00:00', latency_ms: 4800, tokens_input: 262, tokens_output: 7,
+    quality_gate_passed: 0, quality_gate_detail: 'quality_gate_failed', terminal_ok: 0 },
+  { ...timedRun, correlation_id: 'aaaaaaaa-0000-4000-8000-000000000001', written_at: '2026-10-11T02:10:00+00:00', created_at: '2026-10-11T02:10:00+00:00', latency_ms: 600, tokens_input: 250, tokens_output: 13 },
+];
+
+/** The bars of one figure, left to right, once two reads in a row agree (the chart grows its bars in). */
+async function settledBars(page: Page, name: string) {
+  const figure = page.getByRole('figure', { name });
+  await expect(figure).toBeVisible();
+  const read = () => figure.locator('svg').evaluate((svg) => [...svg.querySelectorAll('path')]
+    .map((path) => ({ fill: path.getAttribute('fill') ?? '', rect: path.getBoundingClientRect() }))
+    .filter(({ fill, rect }) => /^(#|rgb)/.test(fill) && rect.width > 6 && rect.width < 40 && rect.height > 0.5)
+    .sort((a, b) => a.rect.left - b.rect.left)
+    .map(({ fill, rect }) => ({ fill, height: rect.height, bottom: rect.bottom, x: rect.left + rect.width / 2, y: rect.top + rect.height / 2 })));
+  let previous = '';
+  await expect.poll(async () => {
+    const now = JSON.stringify(await read());
+    const settled = now === previous;
+    previous = now;
+    return settled;
+  }, { intervals: [200] }).toBe(true);
+  return read();
+}
+
+test('OMN-21015: on Runs the listed runs are drawn above the list, and a bar opens its run', async ({ page }) => {
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await serve(page, { [DECISIONS]: listedRuns, [RUN_TRACE]: timedSteps });
+  await page.goto('/runs');
+
+  const durations = await settledBars(page, 'Duration per run');
+  expect(durations).toHaveLength(3);
+  // Heights in the ratio of the served durations (1200, 4800, 600), all standing on one baseline.
+  expect(durations[0]!.height / durations[1]!.height).toBeCloseTo(1200 / 4800, 2);
+  expect(durations[2]!.height / durations[1]!.height).toBeCloseTo(600 / 4800, 2);
+  expect(Math.abs(durations[0]!.bottom - durations[1]!.bottom)).toBeLessThan(1);
+  // Passed, failed, passed.
+  expect(durations[0]!.fill).toBe(durations[2]!.fill);
+  expect(durations[1]!.fill).not.toBe(durations[0]!.fill);
+
+  const tokens = await settledBars(page, 'Tokens per run');
+  expect(tokens).toHaveLength(6);
+  // In and out of the first listed run (90, 400), side by side on one baseline, not one on top of the other.
+  expect(tokens[0]!.height / tokens[1]!.height).toBeCloseTo(90 / 400, 2);
+  expect(Math.abs(tokens[0]!.bottom - tokens[1]!.bottom)).toBeLessThan(1);
+  expect(tokens[0]!.fill).not.toBe(tokens[1]!.fill);
+
+  // Both charts and the head of the list are on the first screen, and nothing scrolls sideways.
+  const left = await placed(page, 'figure[aria-label="Duration per run"]');
+  const right = await placed(page, 'figure[aria-label="Tokens per run"]');
+  const list = await placed(page, '.local-dashboard-table-wrap thead');
+  expect(left.scrolled).toBe(0);
+  expect(Math.abs(left.top - right.top)).toBeLessThan(2);
+  expect(right.left).toBeGreaterThan(left.right);
+  expect(list.top).toBeGreaterThanOrEqual(left.bottom);
+  expect(list.bottom).toBeLessThanOrEqual(900);
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
+  await page.screenshot({ path: screenshotPath('local-dashboard-omn21015-runs-charts-1440x900.png') });
+
+  // A click on the failed run's bar opens that run, the address its row's link carries.
+  const href = await page.getByRole('link', { name: /^bbbbbbbb/ }).getAttribute('href');
+  await page.mouse.click(durations[1]!.x, durations[1]!.y);
+  await expect(page).toHaveURL(new RegExp(`${href!.replace(/[?]/g, '\\?')}$`));
+  await expect(page.locator('.local-run-title code')).toHaveText('bbbbbbbb-0000-4000-8000-000000000002');
+});
+
+test('OMN-21015: on Runs the status key hides a status from the drawing and not from the list', async ({ page }) => {
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await serve(page, { [DECISIONS]: listedRuns });
+  await page.goto('/runs');
+  expect(await settledBars(page, 'Duration per run')).toHaveLength(3);
+  const key = page.getByRole('figure', { name: 'Duration per run' }).getByRole('group', { name: 'Statuses shown' });
+  await key.getByRole('button', { name: 'failed' }).focus();
+  await page.keyboard.press('Enter');
+  await expect(key.getByRole('button', { name: 'failed' })).toHaveAttribute('aria-pressed', 'false');
+  const fewer = await settledBars(page, 'Duration per run');
+  expect(fewer).toHaveLength(2);
+  expect(new Set(fewer.map((bar) => bar.fill)).size).toBe(1);
+  await expect(page.locator('.local-dashboard-table-wrap tbody tr')).toHaveCount(3);
+});

@@ -325,3 +325,191 @@ export function RunTimingChart({ timings, title = 'Run timing' }: { timings: rea
     </figure>
   );
 }
+
+/** One listed run, as the Runs page hands it over: who it is and the values its row serves. */
+export interface ListedRun {
+  /** The run's id, or null when its row records none; such a run has a bar and opens nothing. */
+  id: string | null;
+  status: string;
+  model: string;
+  duration: unknown;
+  tokensIn: unknown;
+  tokensOut: unknown;
+}
+
+const RUN_ID_SHOWN = 8;
+
+/** A run's name under its bar: the start of its id, as its row in the table shows it cut. */
+function runLabel(run: ListedRun): string {
+  return run.id === null ? 'Not recorded' : run.id.slice(0, RUN_ID_SHOWN);
+}
+
+/** The colour of a run's status, the same the status pill in its row carries. */
+function statusColour(status: string): string {
+  if (status === 'passed') return tone('--status-ok', 0x3fb950);
+  if (status === 'failed') return tone('--status-bad', 0xf85149);
+  return tone('--ink-3', 0x6e7681);
+}
+
+/** A tick of a count axis; the origin carries no label, as on the money axis. */
+export function countAxisLabel(value: number): string {
+  return value === 0 ? '' : String(value);
+}
+
+/** What both run charts share: the page's text colours and font, the runs along the bottom, the value axis. */
+function runChartFrame(runs: readonly ListedRun[], axisLabel: (value: number) => string) {
+  const text = tone('--ink-2', 0x8b949e);
+  const line = tone('--line', 0x30363d);
+  const fontFamily = typeof document === 'undefined' ? '' : getComputedStyle(document.body).fontFamily;
+  return {
+    animationDuration: 250,
+    ...(fontFamily ? { textStyle: { fontFamily } } : {}),
+    grid: { left: 64, right: 16, top: 12, bottom: 28 },
+    xAxis: {
+      type: 'category',
+      data: runs.map(runLabel),
+      axisLine: { lineStyle: { color: line } },
+      axisTick: { show: false },
+      axisLabel: { color: text },
+    },
+    yAxis: {
+      type: 'value',
+      axisLabel: { color: text, formatter: axisLabel },
+      splitLine: { lineStyle: { color: line, type: 'dashed' } },
+    },
+  };
+}
+
+/** The first lines of a run's tooltip: which run it is, in full, then its status and model. */
+function runTooltipHead(run: ListedRun | undefined): string[] {
+  if (run === undefined) return [];
+  return [run.id ?? 'Not recorded', `${run.status} · ${run.model}`];
+}
+
+/** A bar opens its own run on Workflow, as the run id in its row does; a run with no recorded id opens nothing. */
+function openOnClick(runs: readonly ListedRun[], onOpen: (id: string) => void) {
+  return {
+    click: (param: { dataIndex?: number }) => {
+      const id = typeof param.dataIndex === 'number' ? runs[param.dataIndex]?.id : null;
+      if (typeof id === 'string') onOpen(id);
+    },
+  };
+}
+
+/**
+ * OMN-21015: the listed runs' durations as bars, one per run in the order handed over, coloured by the run's status.
+ * A run whose row carries no duration has no bar. The key above the chart is a row of buttons, one per status among
+ * the listed runs; turning one off takes that status's bars out of the drawing and nothing else: the other bars keep
+ * their place and colour, and the table under the chart is not filtered by it.
+ */
+export function RunDurationChart({ runs, onOpen, title = 'Duration per run' }: { runs: readonly ListedRun[]; onOpen: (id: string) => void; title?: string }) {
+  useThemeName();
+  const [hidden, setHidden] = useState<ReadonlySet<string>>(() => new Set());
+  const points = runs.map((run) => point(run.duration));
+  if (points.every(({ value }) => value === null)) return null;
+  const statuses = [...new Set(runs.map((run) => run.status))];
+  const toggle = (status: string) => setHidden((current) => {
+    const next = new Set(current);
+    if (!next.delete(status)) next.add(status);
+    return next;
+  });
+  const option = {
+    ...runChartFrame(runs, millisecondsAxisLabel),
+    tooltip: {
+      trigger: 'axis',
+      axisPointer: { type: 'shadow' },
+      formatter: (params: Array<{ dataIndex: number; marker: string }>) => {
+        const index = params[0]?.dataIndex ?? 0;
+        const served = points[index]?.served;
+        return [...runTooltipHead(runs[index]), `${params[0]?.marker ?? ''}Duration: ${served === null || served === undefined ? 'Not recorded' : `${served} ms`}`].join('<br/>');
+      },
+    },
+    series: [{
+      name: 'Duration',
+      type: 'bar',
+      barMaxWidth: 28,
+      data: runs.map((run, index) => ({
+        value: hidden.has(run.status) ? null : points[index]!.value,
+        itemStyle: { color: statusColour(run.status), borderRadius: [3, 3, 0, 0] },
+      })),
+    }],
+  };
+  return (
+    <figure className="local-chart local-chart--runs" aria-label={title}>
+      <div className="local-chart-legend" role="group" aria-label="Statuses shown">
+        {statuses.map((status) => (
+          <button type="button" className="local-chart-toggle" aria-pressed={!hidden.has(status)} key={status} onClick={() => toggle(status)}>
+            <span className="local-chart-swatch" data-swatch aria-hidden="true" style={{ backgroundColor: statusColour(status) }} />
+            {status}
+          </button>
+        ))}
+      </div>
+      {statuses.every((status) => hidden.has(status))
+        ? <p className="local-dashboard-empty" role="status">{EVERY_SERIES_HIDDEN}</p>
+        : <ReactEChartsCore echarts={echarts} option={option} notMerge opts={{ renderer: 'svg' }} className="local-chart-canvas" onEvents={openOnClick(runs, onOpen)} />}
+      <figcaption>Duration of each run listed below, in the list&apos;s order, in milliseconds as served. A bar opens its run.</figcaption>
+    </figure>
+  );
+}
+
+const RUN_TOKEN_SERIES: ReadonlyArray<{ key: 'tokensIn' | 'tokensOut'; name: string }> = [
+  { key: 'tokensIn', name: 'Tokens in' },
+  { key: 'tokensOut', name: 'Tokens out' },
+];
+
+/**
+ * OMN-21015: the listed runs' tokens in and out as bars, side by side per run and never stacked: a run's row serves
+ * the two counts and no sum of them. The legend works as the spend chart's does.
+ */
+export function RunTokensChart({ runs, onOpen, title = 'Tokens per run' }: { runs: readonly ListedRun[]; onOpen: (id: string) => void; title?: string }) {
+  useThemeName();
+  const [hidden, setHidden] = useState<ReadonlySet<string>>(() => new Set());
+  const colours = seriesColours(RUN_TOKEN_SERIES.length, undefined);
+  const all = RUN_TOKEN_SERIES.map((series, index) => ({ ...series, colour: colours[index]!, points: runs.map((run) => point(run[series.key])) }));
+  if (all.every((series) => series.points.every(({ value }) => value === null))) return null;
+  const shown = all.filter((series) => !hidden.has(series.key));
+  const toggle = (key: string) => setHidden((current) => {
+    const next = new Set(current);
+    if (!next.delete(key)) next.add(key);
+    return next;
+  });
+  const option = {
+    ...runChartFrame(runs, countAxisLabel),
+    tooltip: {
+      trigger: 'axis',
+      axisPointer: { type: 'shadow' },
+      formatter: (params: Array<{ dataIndex: number; seriesIndex: number; marker: string; seriesName: string }>) => {
+        const index = params[0]?.dataIndex ?? 0;
+        const lines = params.map((param) => {
+          const served = shown[param.seriesIndex]?.points[index]?.served;
+          return `${param.marker}${param.seriesName}: ${served === null || served === undefined ? 'Not recorded' : served}`;
+        });
+        return [...runTooltipHead(runs[index]), ...lines].join('<br/>');
+      },
+    },
+    series: shown.map((series) => ({
+      name: series.name,
+      type: 'bar',
+      barMaxWidth: 18,
+      data: series.points.map(({ value }) => value),
+      itemStyle: { color: series.colour, borderRadius: [3, 3, 0, 0] },
+      emphasis: { focus: 'series' },
+    })),
+  };
+  return (
+    <figure className="local-chart local-chart--runs" aria-label={title}>
+      <div className="local-chart-legend" role="group" aria-label="Series shown">
+        {all.map((series) => (
+          <button type="button" className="local-chart-toggle" aria-pressed={!hidden.has(series.key)} key={series.key} onClick={() => toggle(series.key)}>
+            <span className="local-chart-swatch" data-swatch aria-hidden="true" style={{ backgroundColor: series.colour }} />
+            {series.name}
+          </button>
+        ))}
+      </div>
+      {shown.length === 0
+        ? <p className="local-dashboard-empty" role="status">{EVERY_SERIES_HIDDEN}</p>
+        : <ReactEChartsCore echarts={echarts} option={option} notMerge opts={{ renderer: 'svg' }} className="local-chart-canvas" onEvents={openOnClick(runs, onOpen)} />}
+      <figcaption>Tokens in and out of each run listed below, in the list&apos;s order, as served. A bar opens its run.</figcaption>
+    </figure>
+  );
+}

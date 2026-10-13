@@ -596,6 +596,12 @@
 /* A chart of served rows: the figure, its plot area and a quiet caption. The table of the same rows follows it. */
 .local-chart { margin: 0 0 14px; }
 .local-chart-canvas { width: 100%; height: 260px; }
+/* The Runs page's two charts stand side by side above the list, and one under the other on a narrow window. */
+.local-run-charts { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px 24px; margin: 0 0 12px; }
+.local-run-charts:empty { display: none; }
+.local-chart--runs { margin: 0; min-width: 0; }
+.local-chart--runs .local-chart-canvas { height: 190px !important; }
+@media (max-width: 900px) { .local-run-charts { grid-template-columns: minmax(0, 1fr); } }
 /* A run's timings: three thin bars under the run summary's tiles, so the run's steps stay near the top. */
 .local-chart--timing { margin: 10px 0 0; }
 /* The chart library writes its own default height on the element, so this one has to outrank an inline style. */
