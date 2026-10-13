@@ -59,6 +59,33 @@
       "supported_empty_state_reasons": [
         "no-data"
       ]
+    },
+    {
+      "component_id": "usage-tokens-by-day",
+      "component_kind": "table",
+      "title": "Tokens per day",
+      "contract_version": {
+        "major": 1,
+        "minor": 0,
+        "patch": 0
+      },
+      "data_bindings": [
+        {
+          "binding_id": "usage-tokens-by-day-snapshot",
+          "projection_topic": "onex.snapshot.projection.usage-by-model-day.v1",
+          "ordering_authority_field": "usage_day",
+          "ordering_direction": "ascending",
+          "required_fields": [
+            "usage_day",
+            "model_id",
+            "input_tokens",
+            "output_tokens"
+          ]
+        }
+      ],
+      "supported_empty_state_reasons": [
+        "no-data"
+      ]
     }
   ],
   "page_empty_state_reasons": []

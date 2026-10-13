@@ -40,6 +40,8 @@ export function formatUsd(value: unknown): string {
 }
 
 export const NO_USAGE_ROWS = 'No usage rows yet: waits on llm-call-completed events (OMN-20006)';
+/** The series' own empty text, so a page that mounts the table and the series does not say one sentence twice. */
+export const NO_TOKEN_ROWS = 'No tokens per day yet: waits on llm-call-completed events (OMN-20006)';
 
 function isMissing(value: unknown): boolean {
   return value === null || value === undefined || value === '';
@@ -95,6 +97,72 @@ export function UsageByModelDayTable({ rows }: { rows: readonly unknown[] }) {
         ))}</tbody>
       </table>
     </div>
+  );
+}
+
+const TOKEN_DIRECTIONS = [
+  { direction: 'in', field: 'input_tokens' },
+  { direction: 'out', field: 'output_tokens' },
+] as const;
+
+/** A served token count, grouped for reading. Formatting only: the number is the one the row carries. */
+function groupedCount(value: unknown): string {
+  return Number(value).toLocaleString('en-US', { maximumFractionDigits: 0 });
+}
+
+/**
+ * OMN-21015 AC4 (US-1): tokens in and tokens out per UTC day as a stacked series split by model, in the order the
+ * exposure serves its rows. Each segment is one served row's count, and the stacking is the layout's: a segment's
+ * flex-grow is that count, so nothing is added up here and no total is written (SV-3: tokens in and out stay apart).
+ * A model whose count was not recorded is named under the bar; it is never drawn as zero. A served zero is drawn.
+ */
+export function UsageTokensByDay({ rows }: { rows: readonly unknown[] }) {
+  const usage = asRows(rows);
+  if (usage.length === 0) {
+    return <p className="local-dashboard-empty" role="status">{NO_TOKEN_ROWS}</p>;
+  }
+  const days = new Map<string, UsageByModelDayRow[]>();
+  for (const row of usage) {
+    const day = recorded(row.usage_day);
+    days.set(day, [...(days.get(day) ?? []), row]);
+  }
+  return (
+    <>
+      {[...days.entries()].map(([day, dayRows]) => (
+        <section className="usage-tokens-day" key={day}>
+          <h3>{day}</h3>
+          {TOKEN_DIRECTIONS.map(({ direction, field }) => {
+            const counted = dayRows.filter((row) => !isMissing(row[field]));
+            const uncounted = dayRows.filter((row) => isMissing(row[field]));
+            return (
+              <div className="usage-tokens-direction" key={direction}>
+                <span className="usage-tokens-label">{`Tokens ${direction}`}</span>
+                {counted.length > 0 && (
+                  <div className="usage-tokens-bar" role="list" aria-label={`Tokens ${direction} on ${day}, by model`}>
+                    {counted.map((row, index) => (
+                      <span
+                        className="usage-tokens-segment"
+                        data-series={index % 6}
+                        key={`${String(row.model_id)}-${index}`}
+                        role="listitem"
+                        style={{ flexGrow: Number(row[field]) }}
+                      >
+                        {`${model(row.model_id)}: ${groupedCount(row[field])}`}
+                      </span>
+                    ))}
+                  </div>
+                )}
+                {uncounted.length > 0 && (
+                  <p className="local-dashboard-caption">
+                    {`Tokens ${direction} not recorded: ${uncounted.map((row) => model(row.model_id)).join(', ')}`}
+                  </p>
+                )}
+              </div>
+            );
+          })}
+        </section>
+      ))}
+    </>
   );
 }
 

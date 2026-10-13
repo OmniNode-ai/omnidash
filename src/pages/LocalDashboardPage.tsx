@@ -3,7 +3,7 @@ import { useLocation, useSearch } from 'wouter';
 import { createSnapshotSource } from '@/data-source';
 import { fetchExposureCensus } from '@/data-source/exposure-census';
 import { resolveEffectiveDataSource } from '@/data-source/data-source-override';
-import { UsageByModelDayTable, formatUsd } from '@/components/dashboard/usage/UsageByModelDayWidget';
+import { UsageByModelDayTable, UsageTokensByDay, formatUsd } from '@/components/dashboard/usage/UsageByModelDayWidget';
 import { MeteringDaySeries } from '@/components/dashboard/usage/SavingsSeriesWidget';
 import { TenantNotConfiguredState } from '@/components/dashboard/TenantNotConfiguredState';
 import { subscribeLocalPageRefresh } from '@/services/local-page-refresh';
@@ -885,6 +885,8 @@ function TableComponent({ component, snapshots, pageSize, syncUrl, columns }: {
   if (component.component_id === 'workflow-run-path') return <WorkflowPath decisions={rows} />;
   // US-1, US-2, US-4: served rows as served. The exposure is tenant-scoped, so the server filters, not the browser.
   if (component.component_id === 'usage-by-model-day') return <UsageByModelDayTable rows={rows} />;
+  // US-1 (OMN-21015 AC4): the same served rows as a stacked series, tokens in and out apart, split by model.
+  if (component.component_id === 'usage-tokens-by-day') return <UsageTokensByDay rows={rows} />;
   // US-3: metering-summary.v1's day rows, as served; the series renders no all row and sums nothing.
   if (component.component_id === 'usage-savings-series') return <MeteringDaySeries rows={rows} />;
   // OV: baseline against actual spend per UTC day, the declared columns of the served rows (OMN-21015 AC1).

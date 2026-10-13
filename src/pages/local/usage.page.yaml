@@ -84,6 +84,39 @@
         "page_size": 25,
         "show_pagination": false
       }
+    },
+    {
+      "widget_id": "3b1f6a52-7d0e-4c1a-9a53-21015ac40001",
+      "title": "Tokens per day",
+      "row": 7,
+      "col": 0,
+      "width": 12,
+      "height": 4,
+      "data_source": "usage-tokens-by-day",
+      "config": {
+        "config_kind": "table",
+        "widget_type": "table",
+        "columns": [
+          {
+            "key": "usage_day",
+            "header": "Day"
+          },
+          {
+            "key": "model_id",
+            "header": "Model"
+          },
+          {
+            "key": "input_tokens",
+            "header": "Tokens in"
+          },
+          {
+            "key": "output_tokens",
+            "header": "Tokens out"
+          }
+        ],
+        "page_size": 25,
+        "show_pagination": false
+      }
     }
   ]
 }

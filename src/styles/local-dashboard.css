@@ -226,3 +226,56 @@
   min-width: 110px;
   margin-right: 8px;
 }
+
+/* OMN-21015 AC4: tokens per day, stacked by model. Each segment grows by its served count; the layout does the stacking. */
+.usage-tokens-day {
+  margin: 0 0 1rem;
+}
+
+.usage-tokens-day h3 {
+  margin: 0 0 0.25rem;
+  font-size: 0.875rem;
+  color: var(--text-secondary);
+}
+
+.usage-tokens-direction {
+  display: grid;
+  grid-template-columns: 6rem 1fr;
+  align-items: center;
+  gap: 0.25rem 0.5rem;
+  margin: 0 0 0.25rem;
+}
+
+.usage-tokens-direction .local-dashboard-caption {
+  grid-column: 2;
+}
+
+.usage-tokens-label {
+  font-size: 0.8125rem;
+  color: var(--text-secondary);
+}
+
+.usage-tokens-bar {
+  display: flex;
+  gap: 2px;
+  min-width: 0;
+}
+
+.usage-tokens-segment {
+  flex-basis: auto;
+  min-width: 0;
+  overflow: hidden;
+  padding: 2px 6px;
+  border: 1px solid var(--line);
+  background: var(--panel-2);
+  font-size: 0.75rem;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.usage-tokens-segment[data-series='1'],
+.usage-tokens-segment[data-series='3'],
+.usage-tokens-segment[data-series='5'] {
+  background: var(--panel);
+}
