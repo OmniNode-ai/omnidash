@@ -490,12 +490,15 @@ export function LastRunCard({ decisions, sessions, now = Date.now() }: RunViewPr
   if (!last) return <NoRunsYet />;
   const session = indexBy(sessions, 'session_id').get(String(last.correlation_id));
   const status = statusOf(last);
+  // The order answers the Overview's second question first (requirement Q2: is delegation working?): the newest run's
+  // status, its typed cause when it failed, its model and its age, then the rest of what its row serves.
   const fields: Array<[string, ReactNode]> = [
     ['Status', <OutcomePill value={status} key="status" />],
     ...(status === 'failed' ? [['Cause', causeOf(last)] as [string, ReactNode]] : []),
+    ['Model', modelOrUnknown(last.model_name)],
+    ['Age', age(last.written_at, now)],
     ['Quality score', recorded(last.actual_score)],
     ['Run', <RunRef id={last.correlation_id} key="run" />],
-    ['Model', modelOrUnknown(last.model_name)],
     // OMN-20162's columns: the backend and host of the attempt that accepted the run.
     ['Backend', recorded(last.backend_id)],
     ['Host', recorded(last.host)],
@@ -506,7 +509,6 @@ export function LastRunCard({ decisions, sessions, now = Date.now() }: RunViewPr
     ['Basis', recorded(session?.usage_source)],
     ['Task type', recorded(last.task_type)],
     ['Route tier', tierOf(last)],
-    ['Age', age(last.written_at, now)],
   ];
   return (
     <section aria-label="Last run">
@@ -806,6 +808,14 @@ export function CredentialsTable({ rows }: { rows: readonly unknown[] }) {
   );
 }
 
+/** A served flag as a word. The stores serve it as 1 and 0 or as true and false; anything else is shown as served. */
+function yesOrNo(value: unknown): string {
+  if (isMissing(value)) return recorded(value);
+  if (value === true || value === 1) return 'yes';
+  if (value === false || value === 0) return 'no';
+  return String(value);
+}
+
 /**
  * The decision row of the run shown: its verdict, and the backend, host and tier that accepted it (OMN-20225). Every
  * value is one served field of that run's own row; a run with no served decision says so and borrows no other run's.
@@ -822,6 +832,14 @@ export function RunSummary({ decision }: { decision: Row | undefined }) {
     ['Host', recorded(decision.host)],
     ['Route tier', tierOf(decision)],
     ['Duration', duration(decision.latency_ms)],
+    // OMN-21015: more of what the run's own row serves, each as served. A served zero is a figure and is shown; a
+    // fact the row does not carry says Not recorded.
+    ['Required bar', recorded(decision.required_bar)],
+    ['Tokens in', recorded(decision.tokens_input)],
+    ['Tokens out', recorded(decision.tokens_output)],
+    ['Finish reason', recorded(decision.finish_reason)],
+    ['Truncated', yesOrNo(decision.truncated)],
+    ['Escalations', recorded(decision.escalation_count)],
   ];
   return (
     <section aria-label="Run summary" className="local-dashboard-run-summary">
@@ -1133,7 +1151,7 @@ export function MeteringDayTable({ title, rows, columns }: {
       {[...groups.entries()].map(([baseline, days]) => {
         const allTime = allTimeFor(baseline);
         return (
-          <div className="local-dashboard-table-wrap" key={baseline}>
+          <div className="local-dashboard-table-wrap local-dashboard-table-wrap--fit" key={baseline}>
             <table aria-label={`${title} vs ${baseline}`}>
               <thead><tr>{columns.map((column) => <th key={column.key}>{column.header}</th>)}</tr></thead>
               <tbody>

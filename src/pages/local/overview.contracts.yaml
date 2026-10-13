@@ -88,6 +88,36 @@
       ]
     },
     {
+      "component_id": "overview-tokens",
+      "component_kind": "metric_card",
+      "title": "Tokens processed",
+      "contract_version": {
+        "major": 1,
+        "minor": 0,
+        "patch": 0
+      },
+      "data_bindings": [
+        {
+          "binding_id": "overview-tokens-metering",
+          "projection_topic": "onex.snapshot.projection.metering-summary.v1",
+          "ordering_authority_field": "as_of",
+          "ordering_direction": "descending",
+          "required_fields": [
+            "window_kind",
+            "as_of",
+            "tokens_in",
+            "tokens_out",
+            "runs_total",
+            "runs_unknown_tokens"
+          ]
+        }
+      ],
+      "supported_empty_state_reasons": [
+        "missing-field",
+        "no-data"
+      ]
+    },
+    {
       "component_id": "overview-spend-by-day",
       "component_kind": "table",
       "title": "Spend per day",
@@ -145,9 +175,9 @@
       ]
     },
     {
-      "component_id": "overview-tokens",
-      "component_kind": "metric_card",
-      "title": "Tokens processed",
+      "component_id": "overview-last-run",
+      "component_kind": "table",
+      "title": "Last run",
       "contract_version": {
         "major": 1,
         "minor": 0,
@@ -155,17 +185,38 @@
       },
       "data_bindings": [
         {
-          "binding_id": "overview-tokens-metering",
-          "projection_topic": "onex.snapshot.projection.metering-summary.v1",
-          "ordering_authority_field": "as_of",
+          "binding_id": "overview-last-run-decisions",
+          "projection_topic": "onex.snapshot.projection.delegation.decisions.v1",
+          "ordering_authority_field": "written_at",
           "ordering_direction": "descending",
           "required_fields": [
-            "window_kind",
-            "as_of",
-            "tokens_in",
-            "tokens_out",
-            "runs_total",
-            "runs_unknown_tokens"
+            "correlation_id",
+            "written_at",
+            "created_at",
+            "quality_gate_passed",
+            "quality_gate_detail",
+            "model_name",
+            "latency_ms",
+            "tokens_input",
+            "tokens_output",
+            "task_type",
+            "cost_tier_name",
+            "actual_score",
+            "backend_id",
+            "host",
+            "cost_tier_type"
+          ]
+        },
+        {
+          "binding_id": "overview-last-run-cost",
+          "projection_topic": "onex.snapshot.projection.delegation.savings.v1",
+          "ordering_authority_field": "created_at",
+          "ordering_direction": "descending",
+          "required_fields": [
+            "sessions",
+            "session_id",
+            "local_cost_usd",
+            "usage_source"
           ]
         }
       ],
@@ -257,6 +308,36 @@
       ]
     },
     {
+      "component_id": "overview-quality",
+      "component_kind": "table",
+      "title": "Quality",
+      "contract_version": {
+        "major": 1,
+        "minor": 0,
+        "patch": 0
+      },
+      "data_bindings": [
+        {
+          "binding_id": "overview-quality-gate",
+          "projection_topic": "onex.snapshot.projection.delegation.quality-gate.v1",
+          "ordering_authority_field": "captured_at",
+          "ordering_direction": "descending",
+          "required_fields": [
+            "overall_pass_rate",
+            "total_passed",
+            "total_failed",
+            "total_checks",
+            "avg_actual_score",
+            "avg_required_bar"
+          ]
+        }
+      ],
+      "supported_empty_state_reasons": [
+        "missing-field",
+        "no-data"
+      ]
+    },
+    {
       "component_id": "overview-compression",
       "component_kind": "metric_card",
       "title": "Compression",
@@ -302,87 +383,6 @@
             "window_kind",
             "as_of",
             "cache_hit_rate"
-          ]
-        }
-      ],
-      "supported_empty_state_reasons": [
-        "missing-field",
-        "no-data"
-      ]
-    },
-    {
-      "component_id": "overview-quality",
-      "component_kind": "table",
-      "title": "Quality",
-      "contract_version": {
-        "major": 1,
-        "minor": 0,
-        "patch": 0
-      },
-      "data_bindings": [
-        {
-          "binding_id": "overview-quality-gate",
-          "projection_topic": "onex.snapshot.projection.delegation.quality-gate.v1",
-          "ordering_authority_field": "captured_at",
-          "ordering_direction": "descending",
-          "required_fields": [
-            "overall_pass_rate",
-            "total_passed",
-            "total_failed",
-            "total_checks",
-            "avg_actual_score",
-            "avg_required_bar"
-          ]
-        }
-      ],
-      "supported_empty_state_reasons": [
-        "missing-field",
-        "no-data"
-      ]
-    },
-    {
-      "component_id": "overview-last-run",
-      "component_kind": "table",
-      "title": "Last run",
-      "contract_version": {
-        "major": 1,
-        "minor": 0,
-        "patch": 0
-      },
-      "data_bindings": [
-        {
-          "binding_id": "overview-last-run-decisions",
-          "projection_topic": "onex.snapshot.projection.delegation.decisions.v1",
-          "ordering_authority_field": "written_at",
-          "ordering_direction": "descending",
-          "required_fields": [
-            "correlation_id",
-            "written_at",
-            "created_at",
-            "quality_gate_passed",
-            "quality_gate_detail",
-            "model_name",
-            "latency_ms",
-            "tokens_input",
-            "tokens_output",
-            "task_type",
-            "cost_tier_name",
-            "actual_score",
-            "backend_id",
-            "host",
-            "cost_tier_type"
-          ]
-        },
-        {
-          "binding_id": "overview-last-run-cost",
-          "projection_topic": "onex.snapshot.projection.delegation.savings.v1",
-          "ordering_authority_field": "created_at",
-          "ordering_direction": "descending",
-          "required_fields": [
-            "sessions",
-            "session_id",
-            "local_cost_usd",
-            "usage_source"
           ]
         }
       ],

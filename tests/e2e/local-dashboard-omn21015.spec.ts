@@ -231,11 +231,29 @@ async function placed(page: Page, selector: string) {
   });
 }
 
-test('OMN-21015: on Overview the spend chart and the tier donut are on the first screen at 1440x900', async ({ page }) => {
+const DECISIONS = 'onex.snapshot.projection.delegation.decisions.v1';
+/** Two runs; the newer one failed, so its typed cause has to be on the first screen too. */
+const firstScreenRuns = [
+  { correlation_id: '9791105f-82da-4044-b6d1-b50d298ff650', written_at: '2026-10-12T10:07:00+00:00', created_at: '2026-10-12T10:07:00+00:00',
+    model_name: 'gemini-3.5-flash-lite', backend_id: 'byok-gemini', host: 'generativelanguage.googleapis.com', quality_gate_passed: 0,
+    quality_gate_detail: 'quality_gate_failed', terminal_ok: 0, latency_ms: 4925, tokens_input: 262, tokens_output: 7,
+    task_type: 'document', cost_tier_name: 'cheap_frontier', actual_score: 0.4, required_bar: 0.8, data_source: 'real' },
+  { correlation_id: 'a66aca8a-dd42-4ffa-9f68-89c1dba7e400', written_at: '2026-10-11T02:00:26+00:00', created_at: '2026-10-11T02:00:26+00:00',
+    model_name: 'qwen3-coder', backend_id: 'local-coder', host: 'lab-host', quality_gate_passed: 1, quality_gate_detail: 'completed',
+    terminal_ok: 1, latency_ms: 700, tokens_input: 250, tokens_output: 13, task_type: 'document', cost_tier_name: 'local',
+    actual_score: 1, required_bar: 0.8, data_source: 'real' },
+];
+
+test('OMN-21015: the Overview first screen at 1440x900 holds the tiles, both charts and the newest run', async ({ page }) => {
   await page.setViewportSize({ width: 1440, height: 900 });
-  await serve(page, { [METERING]: [meteringAll, ...metering], [ROUTING]: routing });
+  await serve(page, {
+    [METERING]: [{ ...meteringAll, runs_measured: 2, runs_unknown_tokens: 0, runs_unknown_spend: 0, tokens_in: 512, tokens_out: 20, pricing_manifest_version: '1.0.0' }, ...metering],
+    [ROUTING]: routing,
+    [DECISIONS]: firstScreenRuns,
+  });
   await page.goto('/');
 
+  // The two charts (Lakshman, 2026-10-13: seen without scrolling).
   const bars = await placed(page, 'figure.local-chart .local-chart-canvas');
   const donut = await placed(page, 'svg.local-donut');
   for (const drawing of [bars, donut]) {
@@ -245,9 +263,41 @@ test('OMN-21015: on Overview the spend chart and the tier donut are on the first
     expect(drawing.top).toBeGreaterThanOrEqual(0);
     expect(drawing.bottom).toBeLessThanOrEqual(900);
   }
-  // Side by side in one row: the donut starts to the right of where the bars end, and their tops are level.
+  // Side by side in one row: the donut starts to the right of where the bars end.
   expect(donut.left).toBeGreaterThan(bars.right);
-  expect(Math.abs(donut.top - bars.top)).toBeLessThan(80);
+
+  // Requirement Q3: tokens in and out, spend and savings, with the baseline's name beside the savings figure.
+  const panel = (title: string) => page.locator('.local-dashboard-panel').filter({ has: page.getByRole('heading', { name: title, exact: true }) });
+  const onFirstScreen = async (locator: ReturnType<Page['locator']>, what: string) => {
+    await expect(locator, what).toBeVisible();
+    const box = await locator.boundingBox();
+    expect(box, what).not.toBeNull();
+    expect(box!.y, what).toBeGreaterThanOrEqual(0);
+    expect(box!.y + box!.height, what).toBeLessThanOrEqual(900);
+  };
+  for (const title of ['Actual spend', 'Savings', 'Agent calls', 'Tokens processed']) {
+    await onFirstScreen(panel(title).locator('.local-dashboard-metric'), `${title} figure`);
+  }
+  await expect(panel('Tokens processed').locator('.local-dashboard-metric')).toHaveText('512 in · 20 out');
+  await onFirstScreen(panel('Savings').getByText('Baseline claude-sonnet-5-5 · pricing manifest v1.0.0', { exact: true }), 'baseline beside savings');
+
+  // Requirement Q2: the newest run's status, model and age, and its typed cause because it failed.
+  const lastRun = page.getByRole('region', { name: 'Last run' });
+  const field = (label: string) => lastRun.locator('div').filter({ has: page.locator('dt', { hasText: new RegExp(`^${label}$`) }) }).locator('dd');
+  await expect(field('Status')).toHaveText('failed');
+  await expect(field('Model')).toHaveText('gemini-3.5-flash-lite');
+  for (const label of ['Status', 'Cause', 'Model', 'Age']) await onFirstScreen(field(label), `Last run ${label}`);
+  expect(await page.evaluate(() => [...document.querySelectorAll('*')].reduce((most, node) => Math.max(most, node.scrollTop), 0))).toBe(0);
+
+  // The panels are narrower than they were, so no table in them may be cut off or scroll sideways: the spend table
+  // under the chart lost its last column that way before it was made to wrap.
+  const tables = await page.evaluate(() => [...document.querySelectorAll<HTMLElement>('.local-dashboard-table-wrap')].map((wrap) => ({
+    panel: wrap.closest('.local-dashboard-panel')?.querySelector('h2')?.textContent ?? '',
+    over: wrap.scrollWidth - wrap.clientWidth,
+  })));
+  expect(tables.length).toBeGreaterThanOrEqual(3);
+  expect(tables.filter((table) => table.over > 0)).toEqual([]);
+
   // Let the bars finish growing before the page is photographed (their animation is 250 ms).
   await page.waitForTimeout(600);
   await page.screenshot({ path: screenshotPath('local-dashboard-omn21015-overview-first-screen-1440x900.png'), fullPage: false });

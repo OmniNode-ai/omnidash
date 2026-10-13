@@ -1,7 +1,9 @@
 // @vitest-environment jsdom
 // OMN-21015 stage 5: the charts are at the top of a page, where a reader sees them without scrolling. On Overview the
-// three headline tiles come first, then the two charts side by side (spend per day, tier mix), then the rest; on
-// Usage the two charts come first, side by side, and the table after them. The order drawn is the order the page's
+// four headline tiles come first, then one row of the two charts (spend per day, tier mix) and the newest run, then
+// the rest: the dashboard requirements ask that the tiles (Q3) and the newest run's status, model and age (Q2) be
+// read without scrolling at 1440x900, and Lakshman asked the same of the charts. On Usage the two charts come first,
+// side by side, and the table after them. The order drawn is the order the page's
 // component contracts list, and a panel's width is the width the page file declares for it.
 //
 // Failure modes, each with a test below:
@@ -13,6 +15,8 @@
 //   Y6  the two wide run tables are given a floor again that their panel cannot hold: a longer one-line cut of the
 //       run id, letter-spaced headers or a padded pill. At 9ch, with both, the Runs table scrolled sideways by 29px
 //       at 1440 on rows with a long host and model (measured by tests/e2e/local-dashboard-omn20759.spec.ts).
+//   Y7  the newest run's status, cause, model and age are no longer the first things its card says, so in the narrow
+//       panel beside the charts they slide under the fold (requirement Q2 asks for them without scrolling).
 // Whether the charts really are inside the first screen is measured in a real browser at 1440x900 by
 // tests/e2e/local-dashboard-omn21015.spec.ts; jsdom lays nothing out.
 import { readFileSync } from 'node:fs';
@@ -29,16 +33,16 @@ vi.mock('@/data-source', () => ({
 vi.mock('@/data-source/data-source-override', () => ({ resolveEffectiveDataSource: () => ({ mode: 'http' }) }));
 vi.mock('@/data-source/exposure-census', () => ({ fetchExposureCensus: async () => ({ rows: [] }) }));
 
-import { LocalDashboardPage } from './LocalDashboardPage';
+import { LastRunCard, LocalDashboardPage } from './LocalDashboardPage';
 
 type PageName = 'overview' | 'usage';
 const ORDER: Record<PageName, Array<[title: string, width: number]>> = {
   overview: [
-    ['Actual spend', 4], ['Savings', 4], ['Agent calls', 4],
-    ['Spend per day', 8], ['Tier mix', 4],
-    ['Tokens processed', 4], ['Run locally', 4], ['Avg saving / call', 4],
-    ['Baseline spend', 4], ['Compression', 4], ['Cache hit rate', 4],
-    ['Quality', 4], ['Last run', 8],
+    // The first screen: the four headline tiles (requirement Q3), then the two charts and the newest run (Q2).
+    ['Actual spend', 3], ['Savings', 3], ['Agent calls', 3], ['Tokens processed', 3],
+    ['Spend per day', 5], ['Tier mix', 3], ['Last run', 4],
+    ['Run locally', 4], ['Avg saving / call', 4], ['Baseline spend', 4],
+    ['Quality', 4], ['Compression', 4], ['Cache hit rate', 4],
     ['Recent runs', 12],
   ],
   usage: [
@@ -128,5 +132,27 @@ describe('OMN-21015: the wide run tables keep to what their panel holds', () => 
     const padding = /padding:\s*[\d.]+px\s+([\d.]+)px/.exec(rule('.local-dashboard-table-wrap--fit .local-run-pill'));
     expect(padding).not.toBeNull();
     expect(Number(padding![1])).toBeLessThanOrEqual(6);
+  });
+});
+
+describe('OMN-21015: the newest run answers "is delegation working?" first', () => {
+  const run = (passed: boolean) => ({
+    correlation_id: 'run-a', written_at: '2026-10-13T10:00:00Z', created_at: '2026-10-13T10:00:00Z', model_name: 'local-model',
+    quality_gate_passed: passed, quality_gate_detail: passed ? 'completed' : 'quality_gate_failed', terminal_ok: passed,
+    latency_ms: 700, tokens_input: 250, tokens_output: 13, task_type: 'document', cost_tier_name: 'local', actual_score: 1,
+    backend_id: 'local-coder', host: 'lab-host',
+  });
+  const labels = (container: HTMLElement) => [...container.querySelectorAll('dt')].map((term) => term.textContent);
+
+  it('Y7: a passed run leads with Status, Model, Age', () => {
+    const { container } = render(<LastRunCard decisions={[run(true)]} sessions={[]} now={Date.parse('2026-10-13T12:00:00Z')} />);
+    expect(labels(container).slice(0, 3)).toEqual(['Status', 'Model', 'Age']);
+    expect(labels(container)).toHaveLength(14);
+  });
+
+  it('Y7: a failed run leads with Status, Cause, Model, Age', () => {
+    const { container } = render(<LastRunCard decisions={[run(false)]} sessions={[]} now={Date.parse('2026-10-13T12:00:00Z')} />);
+    expect(labels(container).slice(0, 4)).toEqual(['Status', 'Cause', 'Model', 'Age']);
+    expect(labels(container)).toHaveLength(15);
   });
 });

@@ -231,16 +231,25 @@ test('Overview is the default page and fits 1440x900 with no unmeasured 0 (AC4)'
   await expect(headline('Tokens processed').getByText('7,452 in · 2,392 out', { exact: true })).toBeVisible();
   await expect(headline('Tokens processed').getByText(/Not served yet/)).toHaveCount(0);
 
-  // The headline tiles sit above the fold. OMN-21015 (Lakshman, 2026-10-13: the charts are moved up so a reader sees
-  // them without scrolling): the row under the tiles is now the two charts, so Last run and Recent runs, which this
-  // test used to hold on the first screen, start below it. That the charts are on the first screen is measured in
-  // local-dashboard-omn21015.spec.ts. Last run and Recent runs are still on the page, and no panel is cut off.
-  for (const title of ['Actual spend', 'Savings', 'Agent calls']) {
+  // The headline tiles sit above the fold, Tokens processed among them (requirement Q3), and so do the newest run's
+  // status, model and age (requirement Q2). OMN-21015 (Lakshman, 2026-10-13: the charts are moved up so a reader sees
+  // them without scrolling): Last run now shares the second row with the two charts, so this test holds the facts
+  // Q2 names inside the window rather than the whole Last run panel, and Recent runs, which it used to hold starting
+  // on the first screen, starts below it. Q2's pass condition is met by the Last run card. The charts' own place is
+  // measured in local-dashboard-omn21015.spec.ts.
+  for (const title of ['Actual spend', 'Savings', 'Agent calls', 'Tokens processed']) {
     const bounds = await page.locator('.local-dashboard-panel').filter({ has: page.getByRole('heading', { name: title, exact: true }) }).boundingBox();
     expect(bounds, title).not.toBeNull();
     expect(bounds!.y + bounds!.height, title).toBeLessThanOrEqual(900);
   }
-  await expect(page.locator('.local-dashboard-panel').filter({ has: page.getByRole('heading', { name: 'Last run', exact: true }) })).toHaveCount(1);
+  const lastRun = page.getByRole('region', { name: 'Last run' });
+  for (const label of ['Status', 'Model', 'Age']) {
+    const value = lastRun.locator('div').filter({ has: page.locator('dt', { hasText: new RegExp(`^${label}$`) }) }).locator('dd');
+    await expect(value, label).toBeVisible();
+    const bounds = await value.boundingBox();
+    expect(bounds!.y, label).toBeGreaterThanOrEqual(0);
+    expect(bounds!.y + bounds!.height, label).toBeLessThanOrEqual(900);
+  }
   await expect(recent).toHaveCount(1);
   await expectNoPanelCutOff(page);
 
@@ -361,8 +370,9 @@ test('Overview quality and tier-mix panels show served fields only (OMN-20225 AC
   await expect(tierMix.getByText('Not tier-routed', { exact: true })).toBeVisible();
   // OMN-21015 (Lakshman, 2026-10-13): the charts are at the top of the page, so Tier mix now sits above Recent runs
   // and Recent runs starts below the first screen. This test used to hold both panels under Recent runs and Recent
-  // runs above the fold; neither is a criterion of OMN-20225 or OMN-19981, whose 1440x900 rule is that no panel is
-  // cut off, which is still held here. Recent runs is still on the page.
+  // runs starting above the fold. The requirement behind that (Q2: the newest run's status, model and age without
+  // scrolling) is met by the Last run card, which is held on the first screen in the Overview test above; that no
+  // panel is cut off is still held here. Recent runs is still on the page.
   const recent = page.locator('.local-dashboard-panel').filter({ has: page.getByRole('heading', { name: 'Recent runs' }) });
   await expect(recent).toHaveCount(1);
   await expectNoPanelCutOff(page);

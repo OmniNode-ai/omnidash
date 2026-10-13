@@ -205,7 +205,9 @@
 }
 
 @media (min-width: 720px) {
+  .local-dashboard-panel[data-width='3'] { grid-column: span 3; }
   .local-dashboard-panel[data-width='4'] { grid-column: span 4; }
+  .local-dashboard-panel[data-width='5'] { grid-column: span 5; }
   .local-dashboard-panel[data-width='6'] { grid-column: span 6; }
   .local-dashboard-panel[data-width='8'] { grid-column: span 8; }
 }
