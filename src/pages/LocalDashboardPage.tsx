@@ -440,7 +440,7 @@ interface RunViewProps {
  * nothing to open, so it reads Not recorded and is not a link.
  */
 function RunRef({ id }: { id: unknown }) {
-  return typeof id === 'string' && id !== '' ? <Link href={workflowHref(id)}>{id}</Link> : <>{recorded(id)}</>;
+  return typeof id === 'string' && id !== '' ? <Link href={workflowHref(id)} title={id}>{id}</Link> : <>{recorded(id)}</>;
 }
 
 /**
@@ -464,6 +464,17 @@ export function CopyButton({ text, label }: { text: string; label: string }) {
       <span aria-live="polite">{state === 'copied' ? 'Copied' : state === 'failed' ? 'Copy failed' : 'Copy'}</span>
     </button>
   );
+}
+
+/**
+ * A served timestamp in a narrow table cell: the same text, character for character, with two places it may break
+ * (before the time and before the fraction), so it reads as date / time / fraction instead of breaking mid-number.
+ */
+function CellTime({ value }: { value: unknown }) {
+  if (isMissing(value)) return <>{recorded(value)}</>;
+  const text = String(value);
+  const parts = /^(\d{4}-\d{2}-\d{2}T)(\d{2}:\d{2}:\d{2})(.*)$/.exec(text);
+  return parts ? <>{parts[1]}<wbr />{parts[2]}<wbr />{parts[3]}</> : <>{text}</>;
 }
 
 /** OV-4: the newest run, its typed cause when it failed, and every figure typed when it is not served. */
@@ -519,7 +530,7 @@ export function RecentRunsTable({ decisions, sessions, now = Date.now() }: RunVi
         <tbody>{recent.map((decision, index) => {
           const session = bySession.get(String(decision.correlation_id));
           return <tr key={String(decision.correlation_id ?? index)}>
-            <td className="local-dashboard-cell-token">{recorded(decision.written_at)}</td>
+            <td className="local-dashboard-cell-token local-dashboard-cell-time"><CellTime value={decision.written_at} /></td>
             <td>{age(decision.written_at, now)}</td>
             <td><OutcomePill value={statusOf(decision)} /></td>
             <td>{causeOf(decision)}</td>
@@ -663,7 +674,7 @@ export function RunsTable({ decisions, sessions, now = Date.now(), pageSize = 25
                     <RunRef id={run.correlation_id} />
                     {isFixture(run) && <span className="local-dashboard-badge">fixture</span>}
                   </td>
-                  <td className="local-dashboard-cell-token">{recorded(run.created_at)}</td>
+                  <td className="local-dashboard-cell-token local-dashboard-cell-time"><CellTime value={run.created_at} /></td>
                   <td><OutcomePill value={statusOf(run)} /></td>
                   <td>{causeOf(run)}</td>
                   <td className="local-dashboard-cell-token">{modelOrUnknown(run.model_name)}</td>

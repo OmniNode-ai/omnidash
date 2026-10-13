@@ -47,6 +47,26 @@ describe('OMN-21015 U4: a run opens from where it is named', () => {
   });
 });
 
+describe('OMN-21015 U1: a timestamp in a run table', () => {
+  // I8: the cell lets a timestamp break in two places; the text it shows must still be the served text, whole.
+  const timeCell = (runId: string) => screen.getByRole('link', { name: runId }).closest('tr')?.querySelector('td')?.textContent;
+
+  it('I8: an ISO time is shown whole, a time in another form is shown as served, a missing one says Not recorded', () => {
+    render(<RecentRunsTable
+      decisions={[
+        decision('run-iso', '2026-10-13T10:52:43.446325+00:00'),
+        decision('run-odd', 'yesterday at noon'),
+        { ...decision('run-none', '2026-10-13T09:00:00Z'), written_at: null },
+      ]}
+      sessions={[]}
+      now={NOW}
+    />);
+    expect(timeCell('run-iso')).toBe('2026-10-13T10:52:43.446325+00:00');
+    expect(timeCell('run-odd')).toBe('yesterday at noon');
+    expect(timeCell('run-none')).toBe('Not recorded');
+  });
+});
+
 describe('OMN-21015 U4: copy', () => {
   it('I2: the button copies exactly the text it is given, and says so', async () => {
     const writeText = vi.fn(async () => {});
