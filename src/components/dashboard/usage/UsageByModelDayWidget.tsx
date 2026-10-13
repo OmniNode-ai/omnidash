@@ -114,7 +114,9 @@ function groupedCount(value: unknown): string {
  * OMN-21015 AC4 (US-1): tokens in and tokens out per UTC day as a stacked series split by model, in the order the
  * exposure serves its rows. Each segment is one served row's count, and the stacking is the layout's: a segment's
  * flex-grow is that count, so nothing is added up here and no total is written (SV-3: tokens in and out stay apart).
- * A model whose count was not recorded is named under the bar; it is never drawn as zero. A served zero is drawn.
+ * A drawn segment starts from a zero basis and holds no text, padding or border, so its width is its count's share of
+ * the bar and nothing else; the figures are written in the list beside the bar, where a very small count still reads.
+ * A model whose count was not recorded is named under the bar; it is never drawn as zero. A served zero is written.
  */
 export function UsageTokensByDay({ rows }: { rows: readonly unknown[] }) {
   const usage = asRows(rows);
@@ -138,18 +140,24 @@ export function UsageTokensByDay({ rows }: { rows: readonly unknown[] }) {
               <div className="usage-tokens-direction" key={direction}>
                 <span className="usage-tokens-label">{`Tokens ${direction}`}</span>
                 {counted.length > 0 && (
-                  <div className="usage-tokens-bar" role="list" aria-label={`Tokens ${direction} on ${day}, by model`}>
-                    {counted.map((row, index) => (
-                      <span
-                        className="usage-tokens-segment"
-                        data-series={index % 6}
-                        key={`${String(row.model_id)}-${index}`}
-                        role="listitem"
-                        style={{ flexGrow: Number(row[field]) }}
-                      >
-                        {`${model(row.model_id)}: ${groupedCount(row[field])}`}
-                      </span>
-                    ))}
+                  <div className="usage-tokens-series">
+                    <div className="usage-tokens-bar" aria-hidden="true">
+                      {counted.map((row, index) => (
+                        <span
+                          className="usage-tokens-fill"
+                          data-series={index % 6}
+                          key={`${String(row.model_id)}-${index}`}
+                          style={{ flexGrow: Number(row[field]), flexShrink: 1, flexBasis: '0px', minWidth: '0px' }}
+                        />
+                      ))}
+                    </div>
+                    <ul className="usage-tokens-legend" aria-label={`Tokens ${direction} on ${day}, by model`}>
+                      {counted.map((row, index) => (
+                        <li data-series={index % 6} key={`${String(row.model_id)}-${index}`}>
+                          {`${model(row.model_id)}: ${groupedCount(row[field])}`}
+                        </li>
+                      ))}
+                    </ul>
                   </div>
                 )}
                 {uncounted.length > 0 && (

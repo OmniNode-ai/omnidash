@@ -1,7 +1,10 @@
 // @vitest-environment jsdom
 // OMN-21015 AC4, series half (requirement US-1): tokens in and tokens out per UTC day as a stacked series split by
 // model, from usage-by-model-day.v1. Each segment is one served row's count; the stacking is done by the layout
-// (each segment's flex-grow is the served number), so the browser adds nothing up and writes no total.
+// (each segment's flex-grow is the served number), so the browser adds nothing up and writes no total. The drawn
+// segments carry no text, padding or border and start from a zero basis, so their widths are the counts' proportions;
+// every figure is written in the list beside the bar. jsdom does not lay anything out, so the measured widths are
+// asserted in a real browser by tests/e2e/local-dashboard-omn21015.spec.ts.
 //
 // Failure modes, each with a test below:
 //   U1  tokens in and tokens out are drawn as one bar, or one of the two is missing (SV-3: never a combined figure)
@@ -12,6 +15,7 @@
 //   U6  no rows renders an empty chart instead of saying why
 //   U7  a placeholder model id is shown as if it were a model
 //   U8  a served zero is confused with "not recorded"
+//   U9  a segment's width does not track its count: its label, padding or border adds width the count did not
 import { render, screen, within } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 import { NO_TOKEN_ROWS, UsageTokensByDay } from './UsageByModelDayWidget';
@@ -31,11 +35,19 @@ function bar(direction: 'in' | 'out', day: string): HTMLElement {
   return screen.getByRole('list', { name: `Tokens ${direction} on ${day}, by model` });
 }
 
+/** The drawn segments of the bar that belongs to a direction's list: the element just before it. */
+function fills(direction: 'in' | 'out', day: string): HTMLElement[] {
+  const drawn = bar(direction, day).previousElementSibling;
+  if (drawn === null || !drawn.classList.contains('usage-tokens-bar')) throw new Error(`no drawn bar for tokens ${direction} on ${day}`);
+  return [...drawn.children] as HTMLElement[];
+}
+
+/** Each model's written figure with the flex-grow of its drawn segment, in the order rendered. */
 function segments(direction: 'in' | 'out', day: string): Array<{ text: string; grow: string }> {
-  return within(bar(direction, day)).getAllByRole('listitem').map((item) => ({
-    text: item.textContent ?? '',
-    grow: (item as HTMLElement).style.flexGrow,
-  }));
+  const drawn = fills(direction, day);
+  const written = within(bar(direction, day)).getAllByRole('listitem');
+  expect(drawn).toHaveLength(written.length);
+  return written.map((item, index) => ({ text: item.textContent ?? '', grow: drawn[index]!.style.flexGrow }));
 }
 
 describe('OMN-21015 AC4: tokens in and out per day, stacked by model', () => {
@@ -87,6 +99,34 @@ describe('OMN-21015 AC4: tokens in and out per day, stacked by model', () => {
     render(<UsageTokensByDay rows={[row('2026-10-12', 'qwen3-coder', 0, 12)]} />);
     expect(segments('in', '2026-10-12')).toEqual([{ text: 'qwen3-coder: 0', grow: '0' }]);
     expect(screen.queryByText(/not recorded/)).toBeNull();
+  });
+
+  it('U9: a drawn segment gets its width from its count alone: zero basis, no text, and nothing else in the bar', () => {
+    render(<UsageTokensByDay rows={ROWS} />);
+    for (const direction of ['in', 'out'] as const) {
+      for (const fill of fills(direction, '2026-10-11')) {
+        expect(fill.style.flexBasis).toBe('0px');
+        expect(fill.style.flexShrink).toBe('1');
+        expect(fill.style.minWidth).toBe('0px');
+        expect(fill.textContent).toBe('');
+        expect(fill.children).toHaveLength(0);
+      }
+      // The bar is decoration for the list next to it, which carries every figure as text.
+      expect(bar(direction, '2026-10-11').previousElementSibling?.getAttribute('aria-hidden')).toBe('true');
+    }
+  });
+
+  it('U9: the stylesheet gives a drawn segment no padding, border, margin or width of its own', async () => {
+    const { readFileSync } = await import('node:fs');
+    const css = readFileSync('src/styles/local-dashboard.css', 'utf8');
+    const rules = [...css.matchAll(/([^{}]*\.usage-tokens-fill[^{}]*)\{([^}]*)\}/g)];
+    expect(rules.length).toBeGreaterThan(0);
+    for (const [, selector, body] of rules) {
+      for (const property of ['padding', 'border', 'margin', 'width', 'flex', 'box-sizing']) {
+        expect(`${selector!.trim()} declares ${property}: ${new RegExp(`(^|[;\\s])(min-|max-)?${property}[a-z-]*\\s*:`).test(body!)}`)
+          .toBe(`${selector!.trim()} declares ${property}: false`);
+      }
+    }
   });
 
   it('U7: a missing or placeholder model id reads Unknown model', () => {

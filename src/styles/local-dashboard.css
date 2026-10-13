@@ -255,27 +255,52 @@
   color: var(--text-secondary);
 }
 
+.usage-tokens-series {
+  min-width: 0;
+}
+
+/* The bar is drawn only: each child is one served count, sized by its inline flex-grow from a zero basis. */
 .usage-tokens-bar {
   display: flex;
   gap: 2px;
+  height: 0.75rem;
   min-width: 0;
 }
 
-.usage-tokens-segment {
-  flex-basis: auto;
-  min-width: 0;
-  overflow: hidden;
-  padding: 2px 6px;
-  border: 1px solid var(--line);
-  background: var(--panel-2);
+/* Nothing here may add to a segment's size: the count's share is the whole of it (OMN-21015 AC4). */
+.usage-tokens-fill {
+  background: var(--text-secondary);
+}
+
+.usage-tokens-fill[data-series='1'],
+.usage-tokens-fill[data-series='3'],
+.usage-tokens-fill[data-series='5'] {
+  background: var(--line);
+}
+
+.usage-tokens-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.125rem 0.75rem;
+  margin: 0.125rem 0 0;
+  padding: 0;
+  list-style: none;
   font-size: 0.75rem;
   font-variant-numeric: tabular-nums;
-  white-space: nowrap;
-  text-overflow: ellipsis;
 }
 
-.usage-tokens-segment[data-series='1'],
-.usage-tokens-segment[data-series='3'],
-.usage-tokens-segment[data-series='5'] {
-  background: var(--panel);
+/* The swatch ties a written figure to its drawn segment: same order, same alternation. */
+.usage-tokens-legend li::before {
+  content: '';
+  display: inline-block;
+  width: 0.5rem;
+  height: 0.5rem;
+  margin-right: 0.25rem;
+  background: var(--text-secondary);
+}
+
+.usage-tokens-legend li[data-series='1']::before,
+.usage-tokens-legend li[data-series='3']::before,
+.usage-tokens-legend li[data-series='5']::before {
+  background: var(--line);
 }
