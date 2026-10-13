@@ -16,6 +16,7 @@
 //   T8  a timing changes colour when another is not measured;
 //   T9  the requested model is not shown as served, or a missing one reads as something else;
 //   T10 the page reads a field its contract does not declare, or one nothing shows is served.
+//   T11 the chart's caption speaks of several bars "side by side" when one is drawn, or drops the warning when several are.
 import { readFileSync } from 'node:fs';
 import { render, screen, within } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
@@ -67,6 +68,18 @@ describe('OMN-21015: where a run\'s time went', () => {
     expect([shown['Queue wait'], shown.Execution]).toEqual(['Not recorded', 'Not recorded']);
     expect(drawn()).toEqual([['Duration', 743]]);
     expect(within(summary()).getByRole('figure', { name: 'Run timing' }).textContent).toContain('No measured value to draw for: Queue wait, Execution');
+  });
+
+  it('T11: with one timing measured the caption does not speak of several', () => {
+    render(<RunSummary decision={run({ queue_wait_ms: null, execution_ms: null })} />);
+    const caption = within(summary()).getByRole('figure', { name: 'Run timing' }).querySelector('figcaption')?.textContent;
+    expect(caption).toBe('Duration of this run in milliseconds, as served. No measured value to draw for: Queue wait, Execution.');
+  });
+
+  it('T11: with several measured the caption says they are not added together', () => {
+    render(<RunSummary decision={run()} />);
+    const caption = within(summary()).getByRole('figure', { name: 'Run timing' }).querySelector('figcaption')?.textContent;
+    expect(caption).toBe('Queue wait, Execution, Duration of this run in milliseconds, each as served, side by side and not added together.');
   });
 
   it('T3: a timing that is not a number is not drawn', () => {
