@@ -198,15 +198,29 @@ function tokensText(row: Record<string, unknown>): string {
   return `${grouped(tokensIn)} in · ${grouped(tokensOut)} out`;
 }
 
+/** OV-3: the window the Overview's metering cards show. The fold serves fixed windows only: all time, and UTC days. */
+export type OverviewWindow = 'all' | 'today';
+
 /**
- * The one all-time metering-summary.v1 row every Overview metering card reads, or the card text that says why none can
- * be picked. The fold keys rows by baseline model and keeps an older baseline's all row, so after a baseline change
- * there are two. The one refreshed last (newest as_of) is the baseline the runtime resolves now; two refreshed at the
- * same moment cannot be told apart and are refused by name, never one picked silently.
+ * The one metering-summary.v1 row every Overview metering card reads for the chosen window, or the card text that says
+ * why none can be picked. All time is the fold's `all` row. Today is the fold's `day` row whose window_start is today's
+ * UTC date: a row the runtime served, never a sum made here. A UTC day with no runs has no row, and says so; it is not
+ * 0 and it is not another day's row. The fold keys rows by baseline model and keeps an older baseline's rows, so after
+ * a baseline change a window has two. The one refreshed last (newest as_of) is the baseline the runtime resolves now;
+ * two refreshed at the same moment cannot be told apart and are refused by name, never one picked silently.
  */
-function pickAllTimeRow(rows: readonly unknown[]): { row: Record<string, unknown> } | { message: string } {
-  const all = asRecords(rows).filter((r) => r.window_kind === 'all');
-  if (all.length === 0) return { message: 'Not measured: no all-time row' };
+function pickMeteringRow(
+  rows: readonly unknown[],
+  window: OverviewWindow = 'all',
+  now: number = Date.now(),
+): { row: Record<string, unknown> } | { message: string } {
+  const today = utcDay(now);
+  const all = asRecords(rows).filter((r) => (window === 'all'
+    ? r.window_kind === 'all'
+    : r.window_kind === 'day' && r.window_start === today));
+  if (all.length === 0) {
+    return { message: window === 'all' ? 'Not measured: no all-time row' : 'Not measured: no runs today (UTC)' };
+  }
   const newest = Math.max(...all.map((r) => timeOf(r.as_of)));
   const latest = all.filter((r) => timeOf(r.as_of) === newest);
   if (latest.length > 1) return { message: `Not measured: ${latest.length} baseline models` };
@@ -215,19 +229,21 @@ function pickAllTimeRow(rows: readonly unknown[]): { row: Record<string, unknown
 
 /**
  * OMN-19980 Step B: an Overview headline figure (Spend, Savings, Measured runs, Tokens in and out) from
- * metering-summary.v1's all-time row, the row `onex metering` renders. Every card picks the same row, so the four
- * figures cannot disagree (Amendment 2). The fold keys rows by baseline model and keeps an older baseline's rows, so
+ * metering-summary.v1's row for the chosen window (OV-3; all time by default, the row `onex metering` renders). Every
+ * card picks the same row, so the four figures cannot disagree (Amendment 2). The fold keys rows by baseline model and keeps an older baseline's rows, so
  * after a baseline change there are two all rows; the one refreshed last is the baseline the runtime resolves now,
  * because every refresh runs under the resolved baseline. Two refreshed at the same moment cannot be told apart and
  * are refused by name, never one picked silently. The Savings card's caption is that row's baseline model and pricing
  * manifest version; Measured runs' caption is that row's run classes.
  */
-export function MeteringTotalCard({ component, config, rows }: {
+export function MeteringTotalCard({ component, config, rows, window = 'all', now }: {
   component: LocalPageDocument['components'][number];
   config: MetricCardConfig;
   rows: readonly unknown[];
+  window?: OverviewWindow;
+  now?: number;
 }) {
-  const picked = pickAllTimeRow(rows);
+  const picked = pickMeteringRow(rows, window, now);
   if ('message' in picked) return <p className="local-dashboard-metric">{picked.message}</p>;
   const row = picked.row;
   if (config.metric_key === TOKENS_IN_AND_OUT) return <p className="local-dashboard-metric">{tokensText(row)}</p>;
@@ -243,11 +259,15 @@ export function MeteringTotalCard({ component, config, rows }: {
 const SAVING_PER_RUN_PENDING = 'Not served yet: waits on savings_per_measured_run_usd in metering-summary.v1';
 
 /**
- * OMN-20009: the average saving of a measured run, from metering-summary.v1's all-time row, shown as the served
- * decimal text. Only measured runs are in the served quotient. A null value says why; it is never $0.
+ * OMN-20009: the average saving of a measured run, from metering-summary.v1's row for the chosen window (all time by
+ * default), shown as the served decimal text. Only measured runs are in the served quotient. A null value says why; it is never $0.
  */
-export function SavingsPerRunCard({ rows }: { rows: readonly unknown[] }) {
-  const picked = pickAllTimeRow(rows);
+export function SavingsPerRunCard({ rows, window = 'all', now }: {
+  rows: readonly unknown[];
+  window?: OverviewWindow;
+  now?: number;
+}) {
+  const picked = pickMeteringRow(rows, window, now);
   if ('message' in picked) return <p className="local-dashboard-metric">{picked.message}</p>;
   const row = picked.row;
   if (!('savings_per_measured_run_usd' in row)) {
@@ -909,6 +929,9 @@ export function LocalDashboardPage({ pageName, syncUrl = false }: LocalDashboard
   const [snapshots, setSnapshots] = useState<BoundProjectionSnapshot[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
+  // OV-3: which fixed window the Overview's metering cards read. Kept by the page so every card moves together.
+  const [overviewWindow, setOverviewWindow] = useState<OverviewWindow>('all');
+  const windowId = useId();
   const latest = useRef<BoundProjectionSnapshot[]>([]);
   // One source per mounted page, so a double mount (React's development mode) shares its reads in flight.
   const source = useRef<ReturnType<typeof createSnapshotSource> | null>(null);
@@ -981,6 +1004,19 @@ export function LocalDashboardPage({ pageName, syncUrl = false }: LocalDashboard
         </div>
         <span className="local-dashboard-mode">Local runtime · HTTP</span>
       </header>
+      {pageName === 'overview' && !loading && !error && page && (
+        <div className="local-dashboard-filters">
+          <label htmlFor={windowId}>Figures for</label>
+          <select
+            id={windowId}
+            value={overviewWindow}
+            onChange={(event) => setOverviewWindow(event.target.value === 'today' ? 'today' : 'all')}
+          >
+            <option value="all">All time</option>
+            <option value="today">Today (UTC)</option>
+          </select>
+        </div>
+      )}
       {loading && <p role="status">Loading runtime exposures…</p>}
       {error && <p className="local-dashboard-error" role="alert">{error}</p>}
       {!loading && !error && page && (
@@ -1005,11 +1041,11 @@ export function LocalDashboardPage({ pageName, syncUrl = false }: LocalDashboard
                   ) : component.component_id === 'overview-run-locally' ? (
                     <RunLocallyCard row={asRecord(rows[0])} />
                   ) : component.component_id === 'overview-avg-saving-per-call' && !unbound ? (
-                    <SavingsPerRunCard rows={rows} />
+                    <SavingsPerRunCard rows={rows} window={overviewWindow} now={now} />
                   ) : component.data_bindings?.[0]?.projection_topic === METERING_SUMMARY_TOPIC ? (() => {
                     const config = metricConfigFor(page, component.component_id);
                     return config
-                      ? <MeteringTotalCard component={component} config={config} rows={rows} />
+                      ? <MeteringTotalCard component={component} config={config} rows={rows} window={overviewWindow} now={now} />
                       : <p className="local-dashboard-empty">Not measured</p>;
                   })() : (() => {
                     const config = metricConfigFor(page, component.component_id);
