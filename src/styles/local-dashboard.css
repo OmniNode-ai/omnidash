@@ -598,3 +598,40 @@
   font-size: 0.75rem;
   color: var(--text-tertiary);
 }
+
+/* The page header on one line: the page is already named in the sidebar and the breadcrumb, so the header keeps its
+ * icon, title and what the page shows in a single compact row and gives the space back to the figures. */
+.local-dashboard-header {
+  align-items: center;
+  margin-bottom: 14px;
+}
+.local-dashboard-title {
+  flex: 1 1 auto;
+  align-items: center;
+  gap: 10px;
+}
+.local-dashboard-title > div {
+  display: flex;
+  align-items: baseline;
+  gap: 12px;
+  min-width: 0;
+}
+.local-dashboard-page-icon {
+  width: 28px;
+  height: 28px;
+  border-radius: 8px;
+}
+.local-dashboard-page-icon svg { width: 16px; height: 16px; }
+.local-dashboard-header h1 {
+  flex: 0 0 auto;
+  font-size: 1.125rem;
+}
+.local-dashboard-header p {
+  min-width: 0;
+  margin: 0;
+  overflow: hidden;
+  font-size: 0.8125rem;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.local-dashboard-mode { padding: 4px 10px; }
