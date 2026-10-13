@@ -20,11 +20,11 @@ function row(day: string, model: string | null, tokensIn: number | null, tokensO
   return { usage_day: day, model_id: model, input_tokens: tokensIn, output_tokens: tokensOut, call_count: 1 };
 }
 
-// Constructed rows in the exposure's served order (usage_day, then model_id).
+// Constructed rows in the exposure's served order: usage_day newest first, then model_id ascending.
 const ROWS = [
+  row('2026-10-12', 'qwen3-coder', 34475, 75052),
   row('2026-10-11', 'gemini-3.5-flash-lite', 300, 40),
   row('2026-10-11', 'qwen3-coder', 1200, 150),
-  row('2026-10-12', 'qwen3-coder', 34475, 75052),
 ];
 
 function bar(direction: 'in' | 'out', day: string): HTMLElement {
@@ -63,9 +63,15 @@ describe('OMN-21015 AC4: tokens in and out per day, stacked by model', () => {
   });
 
   it('U5: days and models keep the order served', () => {
+    render(<UsageTokensByDay rows={ROWS} />);
+    expect(screen.getAllByRole('heading', { level: 3 }).map((heading) => heading.textContent)).toEqual(['2026-10-12', '2026-10-11']);
+  });
+
+  it('U5: rows served in another order are rendered in that order, never re-sorted', () => {
+    // Oldest day first and models descending, as a differently ordered exposure would serve them.
     const served = [ROWS[2]!, ROWS[1]!, ROWS[0]!];
     render(<UsageTokensByDay rows={served} />);
-    expect(screen.getAllByRole('heading', { level: 3 }).map((heading) => heading.textContent)).toEqual(['2026-10-12', '2026-10-11']);
+    expect(screen.getAllByRole('heading', { level: 3 }).map((heading) => heading.textContent)).toEqual(['2026-10-11', '2026-10-12']);
     expect(segments('in', '2026-10-11').map((segment) => segment.text)).toEqual(['qwen3-coder: 1,200', 'gemini-3.5-flash-lite: 300']);
   });
 
