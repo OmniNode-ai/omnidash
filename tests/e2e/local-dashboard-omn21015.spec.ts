@@ -215,3 +215,58 @@ test('OMN-21015: the spend chart legend hides and shows a series from the keyboa
   await expect(toggles.nth(1)).toHaveAttribute('aria-pressed', 'true');
   await expect.poll(drawn).toEqual(before);
 });
+
+// OMN-21015 stage 5: the charts are on the first screen. At 1440x900, with the page as it opens and nothing scrolled,
+// each chart's drawing lies wholly inside the window. The rows are constructed.
+const meteringAll = { ...meteringDay('', '0.230000', '0.930000', '0.700000'), window_kind: 'all' };
+
+/** Where a drawing lies in the window, and how far the page has been scrolled (it must not have been). */
+async function placed(page: Page, selector: string) {
+  const target = page.locator(selector).first();
+  await expect(target).toBeVisible();
+  return target.evaluate((element) => {
+    const rect = element.getBoundingClientRect();
+    const scrolled = [...document.querySelectorAll('*')].reduce((most, node) => Math.max(most, node.scrollTop), 0);
+    return { top: rect.top, bottom: rect.bottom, left: rect.left, right: rect.right, height: rect.height, scrolled, window: [window.innerWidth, window.innerHeight] };
+  });
+}
+
+test('OMN-21015: on Overview the spend chart and the tier donut are on the first screen at 1440x900', async ({ page }) => {
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await serve(page, { [METERING]: [meteringAll, ...metering], [ROUTING]: routing });
+  await page.goto('/');
+
+  const bars = await placed(page, 'figure.local-chart .local-chart-canvas');
+  const donut = await placed(page, 'svg.local-donut');
+  for (const drawing of [bars, donut]) {
+    expect(drawing.window).toEqual([1440, 900]);
+    expect(drawing.scrolled).toBe(0);
+    expect(drawing.height).toBeGreaterThan(120);
+    expect(drawing.top).toBeGreaterThanOrEqual(0);
+    expect(drawing.bottom).toBeLessThanOrEqual(900);
+  }
+  // Side by side in one row: the donut starts to the right of where the bars end, and their tops are level.
+  expect(donut.left).toBeGreaterThan(bars.right);
+  expect(Math.abs(donut.top - bars.top)).toBeLessThan(80);
+  // Let the bars finish growing before the page is photographed (their animation is 250 ms).
+  await page.waitForTimeout(600);
+  await page.screenshot({ path: screenshotPath('local-dashboard-omn21015-overview-first-screen-1440x900.png'), fullPage: false });
+});
+
+test('OMN-21015: on Usage both charts are on the first screen at 1440x900', async ({ page }) => {
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await serve(page, { [METERING]: [meteringAll, ...metering], [USAGE]: usage });
+  await page.goto('/usage');
+
+  const savings = await placed(page, 'figure.local-chart .local-chart-canvas');
+  const tokens = await placed(page, '.usage-tokens-day');
+  for (const drawing of [savings, tokens]) {
+    expect(drawing.scrolled).toBe(0);
+    expect(drawing.top).toBeGreaterThanOrEqual(0);
+    expect(drawing.bottom).toBeLessThanOrEqual(900);
+  }
+  expect(tokens.left).toBeGreaterThan(savings.right);
+  // Let the bars finish growing before the page is photographed (their animation is 250 ms).
+  await page.waitForTimeout(600);
+  await page.screenshot({ path: screenshotPath('local-dashboard-omn21015-usage-first-screen-1440x900.png'), fullPage: false });
+});

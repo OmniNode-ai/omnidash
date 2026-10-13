@@ -179,11 +179,15 @@ test('stored basis, excluded counts and modelled baseline survive native Overvie
     }
     // Runs is intentionally horizontally scrollable at 1440px; role locators
     // omit clipped headers even though the semantic table cells are rendered.
-    const headers = await page.locator('table thead th').allTextContents();
+    // OMN-21015: the Overview now has tables above Recent runs (spend per day, tier mix), so the Basis column is
+    // looked up in the table that holds these runs, not across every table on the page.
+    const runTable = page.locator('table').filter({ hasText: 'provenance-0' });
+    await expect(runTable).toHaveCount(1);
+    const headers = await runTable.locator('thead th').allTextContents();
     const basisColumn = headers.indexOf('Basis');
     expect(basisColumn).toBeGreaterThanOrEqual(0);
     for (const [index, basis] of bases.entries()) {
-      const row = page.locator('table tbody tr').filter({ hasText: `provenance-${index}` });
+      const row = runTable.locator('tbody tr').filter({ hasText: `provenance-${index}` });
       await expect(row.locator('td').nth(basisColumn)).toHaveText(basis ?? 'Not recorded');
     }
     await expect(page.getByText('must-not-substitute', { exact: true })).toHaveCount(0);
@@ -227,13 +231,17 @@ test('Overview is the default page and fits 1440x900 with no unmeasured 0 (AC4)'
   await expect(headline('Tokens processed').getByText('7,452 in · 2,392 out', { exact: true })).toBeVisible();
   await expect(headline('Tokens processed').getByText(/Not served yet/)).toHaveCount(0);
 
-  // The headline panels sit above the fold; Recent runs starts above it.
-  for (const title of ['Actual spend', 'Savings', 'Agent calls', 'Last run']) {
+  // The headline tiles sit above the fold. OMN-21015 (Lakshman, 2026-10-13: the charts are moved up so a reader sees
+  // them without scrolling): the row under the tiles is now the two charts, so Last run and Recent runs, which this
+  // test used to hold on the first screen, start below it. That the charts are on the first screen is measured in
+  // local-dashboard-omn21015.spec.ts. Last run and Recent runs are still on the page, and no panel is cut off.
+  for (const title of ['Actual spend', 'Savings', 'Agent calls']) {
     const bounds = await page.locator('.local-dashboard-panel').filter({ has: page.getByRole('heading', { name: title, exact: true }) }).boundingBox();
     expect(bounds, title).not.toBeNull();
     expect(bounds!.y + bounds!.height, title).toBeLessThanOrEqual(900);
   }
-  expect((await recent.boundingBox())!.y).toBeLessThan(900);
+  await expect(page.locator('.local-dashboard-panel').filter({ has: page.getByRole('heading', { name: 'Last run', exact: true }) })).toHaveCount(1);
+  await expect(recent).toHaveCount(1);
   await expectNoPanelCutOff(page);
 
   await page.screenshot({ path: screenshotPath('local-dashboard-overview-1440x900.png'), fullPage: false });
@@ -336,7 +344,7 @@ test('Overview and Runs show each run\'s backend, host, tier and score, typed wh
   await page.screenshot({ path: screenshotPath('local-dashboard-runs-backend-1440x900.png'), fullPage: false });
 });
 
-test('Overview quality and tier-mix panels show served fields only, below Recent runs (OMN-20225 AC3)', async ({ page }) => {
+test('Overview quality and tier-mix panels show served fields only (OMN-20225 AC3)', async ({ page }) => {
   await page.setViewportSize({ width: 1440, height: 900 });
   await serveFixtures(page);
   await page.goto('/');
@@ -351,11 +359,12 @@ test('Overview quality and tier-mix panels show served fields only, below Recent
     await expect(tierMix.getByText(value, { exact: true }), value).toBeVisible();
   }
   await expect(tierMix.getByText('Not tier-routed', { exact: true })).toBeVisible();
-  // Recent runs still starts above the fold (OMN-19981 AC4): the new panels sit below it.
+  // OMN-21015 (Lakshman, 2026-10-13): the charts are at the top of the page, so Tier mix now sits above Recent runs
+  // and Recent runs starts below the first screen. This test used to hold both panels under Recent runs and Recent
+  // runs above the fold; neither is a criterion of OMN-20225 or OMN-19981, whose 1440x900 rule is that no panel is
+  // cut off, which is still held here. Recent runs is still on the page.
   const recent = page.locator('.local-dashboard-panel').filter({ has: page.getByRole('heading', { name: 'Recent runs' }) });
-  await page.evaluate(() => window.scrollTo(0, 0));
-  expect((await recent.boundingBox())!.y).toBeLessThan(900);
-  expect((await quality.boundingBox())!.y).toBeGreaterThan((await recent.boundingBox())!.y);
+  await expect(recent).toHaveCount(1);
   await expectNoPanelCutOff(page);
   await quality.scrollIntoViewIfNeeded();
   await page.screenshot({ path: screenshotPath('local-dashboard-overview-panels-1440x900.png'), fullPage: false });
@@ -368,7 +377,8 @@ test('every local page opens in order, names a served exposure, and fits 1440x90
 
   const nav = page.getByRole('navigation', { name: 'Local' });
   await expect(nav.getByRole('link')).toHaveText([
-    'Overview', 'Runs', 'Workflow partial', 'Usage partial', 'Credentials partial', 'API Keys partial',
+    // OMN-19987: Workflow reads a served exposure now and carries no "partial" chip.
+    'Overview', 'Runs', 'Workflow', 'Usage partial', 'Credentials partial', 'API Keys partial',
   ].map((label) => new RegExp(`^${label.replace(' partial', '\\s*partial')}$`)));
 
   for (const [testId, title] of [
@@ -469,8 +479,10 @@ test('manual Refresh rereads local exposures and preserves the Runs filter', asy
   });
   await serveFixtures(page);
   await page.goto('/');
-  // The Overview Savings total, served from metering-summary.v1's all-time row (OMN-19980 Step B).
-  await expect(page.getByText('$1.2184', { exact: true })).toBeVisible();
+  // The Overview Savings total, served from metering-summary.v1's all-time row (OMN-19980 Step B). Since OMN-21015
+  // AC1 the same served figure is also the all-time line of the spend-per-day table, so it is read in its own card.
+  const savingsCard = page.locator('.local-dashboard-panel').filter({ has: page.getByRole('heading', { name: 'Savings', exact: true }) });
+  await expect(savingsCard.getByText('$1.2184', { exact: true })).toBeVisible();
   await page.getByTestId('nav-local-runs').click();
   await expect(page.getByText('Runs 1–2 of 2')).toBeVisible();
   await page.getByLabel('Status', { exact: true }).selectOption('passed');
@@ -681,7 +693,8 @@ test('Runs filters, pagination and table hover use readable themed controls', as
     if (theme === 'light') await page.getByRole('button', { name: 'Toggle theme' }).click();
     await expect(page.locator('body')).toHaveClass(`theme-${theme}`);
     const selects = page.locator('.local-dashboard-filters select');
-    await expect(selects).toHaveCount(4);
+    // Status, Cause, Model, Window, and since OMN-21015 AC8 Backend.
+    await expect(selects).toHaveCount(5);
     for (const select of await selects.all()) {
       await expect(select).toHaveCSS('border-radius', '6px');
       await expect(select).toHaveCSS('min-height', '34px');

@@ -465,7 +465,8 @@ describe('Amendment 6: the six local pages and the loader', () => {
   });
 
   it('Usage reads usage-by-model-day with tokens in and out apart and measured cost (US-1, US-2, US-4, SV-3)', () => {
-    const binding = readPage('usage').components[0]?.data_bindings?.[0];
+    // By its id, not its place: since OMN-21015 the page's charts come first and this table after them.
+    const binding = readPage('usage').components.find((c) => c.component_id === 'usage-by-model-day')?.data_bindings?.[0];
     expect(binding?.projection_topic).toBe('onex.snapshot.projection.usage-by-model-day.v1');
     expect(binding?.ordering_authority_field).toBe('usage_day');
     expect(binding?.required_fields).toEqual(expect.arrayContaining([

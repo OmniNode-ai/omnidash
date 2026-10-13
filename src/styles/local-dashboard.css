@@ -206,6 +206,7 @@
 
 @media (min-width: 720px) {
   .local-dashboard-panel[data-width='4'] { grid-column: span 4; }
+  .local-dashboard-panel[data-width='6'] { grid-column: span 6; }
   .local-dashboard-panel[data-width='8'] { grid-column: span 8; }
 }
 
@@ -809,14 +810,22 @@
 
 /* In the two wide run tables a run id is a link shown on one line and cut with an ellipsis: the whole id is still the
  * link's text and its title, and Workflow shows it in full with a Copy button. Uncut, it broke over eight lines and
- * made every row eight lines tall. The cut adds no floor to the column (OMN-20759): the link may shrink with it. */
+ * made every row eight lines tall.
+ *
+ * A one-line link IS a floor on its column: the column cannot be narrower than the cut. At 9ch that floor, the
+ * letter-spaced headers and the padded status pill together asked for 29px more than the panel has at 1440 once a
+ * row carried a long host and model (the OMN-20759 fixture), and the Runs table scrolled sideways. So the cut is
+ * 7ch, and in these two tables the headers carry no letter spacing and the pill less padding. Measured with that
+ * fixture at 1440x900: no sideways scroll, and a row as tall as before the redesign (149px). */
 .local-dashboard-table-wrap--fit .local-dashboard-cell-token a {
   display: block;
-  max-width: 9ch;
+  max-width: 7ch;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
+.local-dashboard-table-wrap--fit th { letter-spacing: 0; }
+.local-dashboard-table-wrap--fit .local-run-pill { padding: 1px 6px; }
 
 /* Usage's token bars: one colour per series, the same on the segment and on its legend swatch, so a figure can be
  * tied to its segment by colour as well as by order. Nothing here changes a segment's size (OMN-21015 AC4). */

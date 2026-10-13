@@ -104,6 +104,14 @@ function seriesColours(count: number, places: readonly number[] | undefined): st
   });
 }
 
+/**
+ * A tick of the value axis. The origin carries no label: on these pages a zero is something a reader must be able to
+ * trust as measured, and an axis origin is not a figure. The baseline the bars stand on is still drawn.
+ */
+export function valueAxisLabel(value: number): string {
+  return value === 0 ? '' : `$${value}`;
+}
+
 /** The option for the series that are shown. The chart draws no legend: the legend is the row of buttons above it. */
 function optionFor(group: SpendByDayGroup, shown: ReadonlyArray<{ series: ServedSeries; colour: string }>) {
   const text = tone('--ink-2', 0x8b949e);
@@ -138,7 +146,7 @@ function optionFor(group: SpendByDayGroup, shown: ReadonlyArray<{ series: Served
     // (The value axis starts at the library's own zero for bars; no minimum is set here.)
     yAxis: {
       type: 'value',
-      axisLabel: { color: text, formatter: (value: number) => `$${value}` },
+      axisLabel: { color: text, formatter: valueAxisLabel },
       splitLine: { lineStyle: { color: line, type: 'dashed' } },
     },
     // A bar per served day and series, side by side. A day is one figure, not a point on a slope, so nothing is drawn
