@@ -892,6 +892,30 @@ export function RunSummary({ decision }: { decision: Row | undefined }) {
   );
 }
 
+/**
+ * OMN-21015: from one run to the next. A run that is among the served runs links to the run before it and the run
+ * after it in the list's newest-first order, so the runs are walked without going back to the list. Only a run with a
+ * recorded id is a neighbour, since only it has a path to open; a run that is not among the served runs (a pasted id)
+ * has no place between them and gets no links.
+ */
+export function RunNeighbours({ decisions, runId }: { decisions: readonly unknown[]; runId: string }) {
+  const ids = newestFirst(decisions)
+    .map((run) => run.correlation_id)
+    .filter((id): id is string => typeof id === 'string' && id !== '');
+  const at = ids.indexOf(runId);
+  if (at < 0) return null;
+  const newer = ids[at - 1];
+  const older = ids[at + 1];
+  if (newer === undefined && older === undefined) return null;
+  return (
+    // It stands in the run's title line, beside the id it leads away from, so it is a span with the navigation role.
+    <span className="local-run-neighbours" role="navigation" aria-label="Neighbouring runs">
+      {newer !== undefined && <Link href={workflowHref(newer)} title={newer}>Newer run</Link>}
+      {older !== undefined && <Link href={workflowHref(older)} title={older}>Older run</Link>}
+    </span>
+  );
+}
+
 /** The step kinds run-trace.v1 serves today; any other kind is shown as served, never dropped. */
 const RUN_STEP_LABELS: Record<string, string> = {
   request: 'Request',
@@ -1089,6 +1113,7 @@ export function WorkflowRun({ component, snapshots, requested, onOpen }: Workflo
         Run <code>{runId}</code>
         {requested === null && <span className="local-run-tag">newest run</span>}
         <CopyButton text={runId} label="Copy the run id" />
+        <RunNeighbours decisions={decisions} runId={runId} />
       </p>
       {decisionsNotServed}
       {!decisionsNotServed && <RunSummary decision={decisions.find((row) => row.correlation_id === runId)} />}

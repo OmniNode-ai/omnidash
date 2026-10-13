@@ -509,3 +509,22 @@ test('OMN-21015: on Runs a backend in a row filters the list, the charts and the
   await expect(page).not.toHaveURL(/backend=/);
   expect(await settledBars(page, 'Duration per run')).toHaveLength(3);
 });
+
+test('OMN-21015: on Workflow the older and newer run links walk the served runs', async ({ page }) => {
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await serve(page, { [DECISIONS]: listedRuns, [RUN_TRACE]: [] });
+  await page.goto('/workflow');
+  const shown = page.locator('.local-run-title code');
+  const nav = page.getByRole('navigation', { name: 'Neighbouring runs' });
+  // The newest run opens first: it has an older run and no newer one.
+  await expect(shown).toHaveText('cccccccc-0000-4000-8000-000000000003');
+  await expect(nav.getByRole('link', { name: 'Newer run' })).toHaveCount(0);
+  await nav.getByRole('link', { name: 'Older run' }).click();
+  await expect(shown).toHaveText('bbbbbbbb-0000-4000-8000-000000000002');
+  await nav.getByRole('link', { name: 'Older run' }).click();
+  await expect(shown).toHaveText('aaaaaaaa-0000-4000-8000-000000000001');
+  await expect(nav.getByRole('link', { name: 'Older run' })).toHaveCount(0);
+  await nav.getByRole('link', { name: 'Newer run' }).click();
+  await expect(shown).toHaveText('bbbbbbbb-0000-4000-8000-000000000002');
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
+});

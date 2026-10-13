@@ -596,6 +596,19 @@
 /* A chart of served rows: the figure, its plot area and a quiet caption. The table of the same rows follows it. */
 .local-chart { margin: 0 0 14px; }
 .local-chart-canvas { width: 100%; height: 260px; }
+/* Workflow: the links to the newer and the older run, in the run's title line after its id. */
+.local-run-neighbours { display: inline-flex; gap: 8px; margin-left: 12px; vertical-align: middle; }
+.local-run-neighbours a {
+  padding: 4px 10px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--panel-2);
+  color: inherit;
+  font-size: 0.8125rem;
+  text-decoration: none;
+}
+.local-run-neighbours a:hover { border-color: var(--brand); color: var(--brand); }
+.local-run-neighbours a:focus-visible { outline: 2px solid var(--brand); outline-offset: 2px; }
 /* A value in a run's row that sets its filter: it reads as the text it is, with a dotted line to say it can be pressed. */
 .local-cell-filter {
   padding: 0;
