@@ -121,6 +121,30 @@
   outline-offset: 2px;
 }
 .local-dashboard-pager button:disabled { opacity: 0.45; cursor: not-allowed; }
+/* The Workflow run picker (WF-3): a correlation id field and its buttons, styled as the Runs filters are. */
+.local-dashboard-filters input[type="text"],
+.local-dashboard-filters button {
+  min-height: 34px;
+  padding: 6px 10px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: var(--panel);
+  color: var(--ink);
+  font: inherit;
+  transition: background 0.15s, border-color 0.15s;
+}
+.local-dashboard-filters input[type="text"] { flex: 1 1 22rem; min-width: 0; max-width: 34rem; font-variant-numeric: tabular-nums; }
+.local-dashboard-filters button { cursor: pointer; }
+.local-dashboard-filters input[type="text"]:hover,
+.local-dashboard-filters button:hover {
+  border-color: var(--ink-3);
+  background: var(--panel-2);
+}
+.local-dashboard-filters input[type="text"]:focus-visible,
+.local-dashboard-filters button:focus-visible {
+  outline: 2px solid var(--brand-ink);
+  outline-offset: 2px;
+}
 .local-dashboard-table-wrap tbody tr { transition: background 0.15s; }
 .local-dashboard-table-wrap tbody tr:hover { background: var(--panel-2); }
 
