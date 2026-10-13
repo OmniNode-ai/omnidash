@@ -32,5 +32,5 @@ mode: strict
 #                                    out of the repo root by OMN-16602
 #
 # Deliberately absent: any `docs/**` escape hatch. Platform documentation for
-# this repo lives in OmniNode-ai/knowledge-base (public) and
+# this repo lives in OmniNode-ai/knowledge_base (public) and
 # OmniNode-ai/knowledge-base-internal (operational runbooks).
