@@ -639,6 +639,7 @@ export function RunsTable({ decisions, sessions, now = Date.now(), pageSize = 25
     tokensOut: run.tokens_output,
   }));
   const openRun = (runId: string) => navigate(workflowHref(runId));
+  const filtered = status !== 'all' || cause !== 'all' || model !== 'all' || backend !== 'all' || span !== 'all';
   return (
     <>
       <div className="local-dashboard-filters">
@@ -672,6 +673,9 @@ export function RunsTable({ decisions, sessions, now = Date.now(), pageSize = 25
           <option value="all">All time</option>
           <option value="today">Today (UTC)</option>
         </select>
+        {filtered && (
+          <button type="button" className="local-filter-clear" onClick={() => updateView({ ...DEFAULT_RUNS_VIEW })}>Clear filters</button>
+        )}
       </div>
       {shown.length === 0 ? <p className="local-dashboard-empty" role="status">No runs match these filters</p> : (
         <>
@@ -700,8 +704,17 @@ export function RunsTable({ decisions, sessions, now = Date.now(), pageSize = 25
                   <td className="local-dashboard-cell-token local-dashboard-cell-time"><CellTime value={run.created_at} /></td>
                   <td><OutcomePill value={statusOf(run)} /></td>
                   <td>{causeOf(run)}</td>
-                  <td className="local-dashboard-cell-token">{modelOrUnknown(run.model_name)}</td>
-                  <td className="local-dashboard-cell-token">{recorded(run.backend_id)}</td>
+                  {/* A run's model and backend set that filter: the same filters as the selects above, from the row. */}
+                  <td className="local-dashboard-cell-token">
+                    <button type="button" className="local-cell-filter" aria-label={`Show only runs of model ${modelOrUnknown(run.model_name)}`} onClick={() => updateView({ model: modelOrUnknown(run.model_name), page: 1 })}>
+                      {modelOrUnknown(run.model_name)}
+                    </button>
+                  </td>
+                  <td className="local-dashboard-cell-token">
+                    <button type="button" className="local-cell-filter" aria-label={`Show only runs of backend ${recorded(run.backend_id)}`} onClick={() => updateView({ backend: recorded(run.backend_id), page: 1 })}>
+                      {recorded(run.backend_id)}
+                    </button>
+                  </td>
                   <td className="local-dashboard-cell-token">{recorded(run.host)}</td>
                   <td>{recorded(run.tokens_input)}</td>
                   <td>{recorded(run.tokens_output)}</td>

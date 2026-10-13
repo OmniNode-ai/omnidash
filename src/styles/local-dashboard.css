@@ -596,6 +596,31 @@
 /* A chart of served rows: the figure, its plot area and a quiet caption. The table of the same rows follows it. */
 .local-chart { margin: 0 0 14px; }
 .local-chart-canvas { width: 100%; height: 260px; }
+/* A value in a run's row that sets its filter: it reads as the text it is, with a dotted line to say it can be pressed. */
+.local-cell-filter {
+  padding: 0;
+  border: 0;
+  background: none;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  overflow-wrap: anywhere;
+  text-decoration: underline dotted;
+  text-underline-offset: 3px;
+  cursor: pointer;
+}
+.local-cell-filter:hover { color: var(--brand); }
+.local-cell-filter:focus-visible { outline: 2px solid var(--brand); outline-offset: 2px; }
+.local-filter-clear {
+  padding: 6px 10px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--panel-2);
+  color: inherit;
+  font: inherit;
+  cursor: pointer;
+}
+.local-filter-clear:hover { border-color: var(--brand); }
 /* The Runs page's two charts stand side by side above the list, and one under the other on a narrow window. */
 .local-run-charts { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px 24px; margin: 0 0 12px; }
 .local-run-charts:empty { display: none; }

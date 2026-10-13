@@ -487,3 +487,25 @@ test('OMN-21015: on Runs the status key hides a status from the drawing and not 
   expect(new Set(fewer.map((bar) => bar.fill)).size).toBe(1);
   await expect(page.locator('.local-dashboard-table-wrap tbody tr')).toHaveCount(3);
 });
+
+test('OMN-21015: on Runs a backend in a row filters the list, the charts and the address, and Clear filters undoes it', async ({ page }) => {
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await serve(page, { [DECISIONS]: [listedRuns[0]!, { ...listedRuns[1]!, backend_id: 'byok-gemini' }, listedRuns[2]!] });
+  await page.goto('/runs');
+  expect(await settledBars(page, 'Duration per run')).toHaveLength(3);
+  await expect(page.getByRole('button', { name: 'Clear filters' })).toHaveCount(0);
+
+  // Reached and pressed from the keyboard, as any button.
+  await page.getByRole('button', { name: 'Show only runs of backend byok-gemini' }).focus();
+  await page.keyboard.press('Enter');
+  await expect(page.locator('.local-dashboard-table-wrap tbody tr')).toHaveCount(1);
+  await expect(page.getByLabel('Backend', { exact: true })).toHaveValue('byok-gemini');
+  await expect(page).toHaveURL(/[?&]backend=byok-gemini/);
+  expect(await settledBars(page, 'Duration per run')).toHaveLength(1);
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
+
+  await page.getByRole('button', { name: 'Clear filters' }).click();
+  await expect(page.locator('.local-dashboard-table-wrap tbody tr')).toHaveCount(3);
+  await expect(page).not.toHaveURL(/backend=/);
+  expect(await settledBars(page, 'Duration per run')).toHaveLength(3);
+});
