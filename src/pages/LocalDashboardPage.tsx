@@ -1,7 +1,7 @@
-import { useEffect, useId, useRef, useState } from 'react';
+import { useEffect, useId, useRef, useState, type ReactNode } from 'react';
 import { Link, useLocation, useSearch } from 'wouter';
 import {
-  Activity, BadgeCheck, Bot, CalendarDays, ChartColumn, ChartLine, CircleDollarSign, CloudOff, Coins, DatabaseZap, Fingerprint,
+  Activity, BadgeCheck, Bot, CalendarDays, ChartColumn, ChartLine, Check, CircleDollarSign, CloudOff, Coins, Copy, DatabaseZap, Fingerprint,
   GitBranch, History, IdCard, KeyRound, Layers, ListTree, PiggyBank, Route, Server, Shrink, Table2, TrendingDown, Wallet,
   type LucideIcon,
 } from 'lucide-react';
@@ -435,17 +435,48 @@ interface RunViewProps {
   now?: number;
 }
 
+/**
+ * WF-3: a run's id as the way into its path on Workflow, wherever the run is named. A run with no recorded id has
+ * nothing to open, so it reads Not recorded and is not a link.
+ */
+function RunRef({ id }: { id: unknown }) {
+  return typeof id === 'string' && id !== '' ? <Link href={workflowHref(id)}>{id}</Link> : <>{recorded(id)}</>;
+}
+
+/**
+ * Copy one piece of shown text (a run id, a command). It copies exactly the text it is given and says what happened:
+ * Copied only after the clipboard took it, Copy failed when there is no clipboard or it refused.
+ */
+export function CopyButton({ text, label }: { text: string; label: string }) {
+  const [state, setState] = useState<'idle' | 'copied' | 'failed'>('idle');
+  const copy = async () => {
+    try {
+      if (!navigator.clipboard) throw new Error('no clipboard');
+      await navigator.clipboard.writeText(text);
+      setState('copied');
+    } catch {
+      setState('failed');
+    }
+  };
+  return (
+    <button type="button" className="local-copy" data-state={state} aria-label={label} onClick={() => { void copy(); }}>
+      {state === 'copied' ? <Check size={12} aria-hidden="true" /> : <Copy size={12} aria-hidden="true" />}
+      <span aria-live="polite">{state === 'copied' ? 'Copied' : state === 'failed' ? 'Copy failed' : 'Copy'}</span>
+    </button>
+  );
+}
+
 /** OV-4: the newest run, its typed cause when it failed, and every figure typed when it is not served. */
 export function LastRunCard({ decisions, sessions, now = Date.now() }: RunViewProps) {
   const last = newestFirst(decisions)[0];
   if (!last) return <NoRunsYet />;
   const session = indexBy(sessions, 'session_id').get(String(last.correlation_id));
   const status = statusOf(last);
-  const fields: Array<[string, string]> = [
-    ['Status', status],
-    ...(status === 'failed' ? [['Cause', causeOf(last)] as [string, string]] : []),
+  const fields: Array<[string, ReactNode]> = [
+    ['Status', <OutcomePill value={status} key="status" />],
+    ...(status === 'failed' ? [['Cause', causeOf(last)] as [string, ReactNode]] : []),
     ['Quality score', recorded(last.actual_score)],
-    ['Run', recorded(last.correlation_id)],
+    ['Run', <RunRef id={last.correlation_id} key="run" />],
     ['Model', modelOrUnknown(last.model_name)],
     // OMN-20162's columns: the backend and host of the attempt that accepted the run.
     ['Backend', recorded(last.backend_id)],
@@ -503,7 +534,7 @@ export function RecentRunsTable({ decisions, sessions, now = Date.now() }: RunVi
             <td>{duration(decision.latency_ms)}</td>
             <td>{tierOf(decision)}</td>
             <td>{recorded(decision.actual_score)}</td>
-            <td className="local-dashboard-cell-token">{recorded(decision.correlation_id)}</td>
+            <td className="local-dashboard-cell-token"><RunRef id={decision.correlation_id} /></td>
           </tr>;
         })}</tbody>
       </table>
@@ -516,7 +547,7 @@ export function NoRunsYet() {
   return (
     <div className="local-dashboard-empty" role="status">
       <p>No runs yet</p>
-      <p>Make the first run with <code>{FIRST_RUN_COMMAND}</code></p>
+      <p>Make the first run with <code>{FIRST_RUN_COMMAND}</code> <CopyButton text={FIRST_RUN_COMMAND} label="Copy the first-run command" /></p>
     </div>
   );
 }
@@ -629,9 +660,7 @@ export function RunsTable({ decisions, sessions, now = Date.now(), pageSize = 25
                 return <tr key={String(run.correlation_id ?? index)}>
                   <td className="local-dashboard-cell-token">
                     {/* WF-3: a run opens its own path on Workflow; a run with no recorded id has nothing to open. */}
-                    {typeof run.correlation_id === 'string' && run.correlation_id !== ''
-                      ? <Link href={workflowHref(run.correlation_id)}>{run.correlation_id}</Link>
-                      : recorded(run.correlation_id)}
+                    <RunRef id={run.correlation_id} />
                     {isFixture(run) && <span className="local-dashboard-badge">fixture</span>}
                   </td>
                   <td className="local-dashboard-cell-token">{recorded(run.created_at)}</td>
@@ -735,7 +764,7 @@ export function CredentialsTable({ rows }: { rows: readonly unknown[] }) {
     return (
       <div className="local-dashboard-empty" role="status">
         <p>No provider key set</p>
-        <p>Set one with <code>onex secret set</code></p>
+        <p>Set one with <code>onex secret set</code> <CopyButton text="onex secret set" label="Copy the command that sets a key" /></p>
       </div>
     );
   }
@@ -822,6 +851,7 @@ export function RunTimeline({ steps }: { steps: readonly unknown[] }) {
         ];
         return (
           <li
+            id={`run-step-${index + 1}`}
             key={`${String(row.step_sequence)}-${index}`}
             data-failing-step={failing ? 'true' : undefined}
             data-outcome={isMissing(row.outcome) ? undefined : String(row.outcome)}
@@ -847,6 +877,39 @@ export function RunTimeline({ steps }: { steps: readonly unknown[] }) {
         );
       })}
     </ol>
+  );
+}
+
+/**
+ * OMN-21015 U3: the run's served steps as a left-to-right diagram, one node per served step in the order served. It
+ * reads the same rows as the timeline under it and decides nothing itself: no step is sorted, merged or dropped, a
+ * kind this page does not know is a node named as served, and the failing node is the step the terminal names. Each
+ * node leads to its own step in the timeline.
+ */
+export function RunDiagram({ steps }: { steps: readonly unknown[] }) {
+  const rows = asRecords(steps);
+  if (rows.length === 0) return null;
+  const named = rows.find((row) => !isMissing(row.failing_step_sequence))?.failing_step_sequence;
+  return (
+    <nav className="local-run-diagram" aria-label="Run steps, in the order served">
+      {rows.map((row, index) => {
+        const kind = String(row.step_kind ?? '');
+        const failing = !isMissing(named) && row.step_sequence === named;
+        return (
+          <a
+            href={`#run-step-${index + 1}`}
+            key={`${String(row.step_sequence)}-${index}`}
+            data-step-kind={kind}
+            data-outcome={isMissing(row.outcome) ? undefined : String(row.outcome)}
+            data-failing-step={failing ? 'true' : undefined}
+            title={failing ? 'The step the run failed at' : undefined}
+          >
+            <span className="local-run-node-name">{RUN_STEP_LABELS[kind] ?? recorded(row.step_kind)}</span>
+            <span className="local-run-node-outcome">{recorded(row.outcome)}</span>
+          </a>
+        );
+      })}
+    </nav>
   );
 }
 
@@ -948,6 +1011,7 @@ export function WorkflowRun({ component, snapshots, requested, onOpen }: Workflo
       <p className="local-dashboard-subtitle local-run-title">
         Run <code>{runId}</code>
         {requested === null && <span className="local-run-tag">newest run</span>}
+        <CopyButton text={runId} label="Copy the run id" />
       </p>
       {decisionsNotServed}
       {!decisionsNotServed && <RunSummary decision={decisions.find((row) => row.correlation_id === runId)} />}
@@ -955,6 +1019,7 @@ export function WorkflowRun({ component, snapshots, requested, onOpen }: Workflo
         <p className="local-dashboard-error" role="alert">run-trace.v1 answered steps of another run; none are shown</p>
       ) : (
         <>
+          <RunDiagram steps={rows} />
           <RunTimeline steps={rows} />
           {stepsRead?.truncated && (
             <p className="local-dashboard-empty" role="status">

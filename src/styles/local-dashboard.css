@@ -705,3 +705,68 @@
 }
 .local-dashboard-header .local-dashboard-filters { margin: 0; }
 .local-dashboard-header .local-dashboard-mode { margin-left: auto; }
+
+/* Copy one piece of shown text: a small quiet button that says what happened. */
+.local-copy {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  margin-left: 8px;
+  padding: 1px 8px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: var(--panel);
+  color: var(--text-secondary);
+  font: inherit;
+  font-size: 0.6875rem;
+  line-height: 1.6;
+  vertical-align: middle;
+  cursor: pointer;
+  transition: border-color 0.15s, color 0.15s;
+}
+.local-copy:hover { border-color: var(--ink-3); color: var(--text-primary); }
+.local-copy:focus-visible { outline: 2px solid var(--brand-ink); outline-offset: 2px; }
+.local-copy[data-state="copied"] { border-color: color-mix(in oklch, var(--status-ok) 45%, transparent); color: var(--status-ok); }
+.local-copy[data-state="failed"] { border-color: color-mix(in oklch, var(--status-bad) 45%, transparent); color: var(--status-bad); }
+
+/* Workflow's step diagram: the served steps left to right, an arrow between each, each a way to its timeline step. */
+.local-run-diagram {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: stretch;
+  gap: 8px 26px;
+  margin: 0 0 20px;
+}
+.local-run-diagram a {
+  position: relative;
+  display: flex;
+  flex: 1 1 130px;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+  padding: 10px 12px;
+  border: 1px solid var(--line);
+  border-left: 3px solid var(--ink-3);
+  border-radius: var(--radius);
+  background: var(--panel-2);
+  color: inherit;
+  text-decoration: none;
+  transition: border-color 0.15s, transform 0.15s;
+}
+.local-run-diagram a:hover { transform: translateY(-1px); border-color: var(--ink-3); }
+.local-run-diagram a:focus-visible { outline: 2px solid var(--brand-ink); outline-offset: 2px; }
+.local-run-diagram a[data-outcome="succeeded"] { border-left-color: var(--status-ok); }
+.local-run-diagram a[data-outcome="failed"] { border-left-color: var(--status-bad); }
+.local-run-diagram a[data-failing-step="true"] { box-shadow: 0 0 0 2px color-mix(in oklch, var(--status-bad) 55%, transparent); }
+/* The arrow to the next step. */
+.local-run-diagram a:not(:last-child)::after {
+  content: '\2192';
+  position: absolute;
+  top: 50%;
+  right: -20px;
+  color: var(--text-tertiary);
+  transform: translateY(-50%);
+}
+.local-run-node-name { font-size: 0.8125rem; font-weight: 600; }
+.local-run-node-outcome { font-size: 0.6875rem; color: var(--text-secondary); }
+.local-dashboard-steps > li:target .local-run-step-head strong { color: var(--brand); }
