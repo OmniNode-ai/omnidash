@@ -67,7 +67,7 @@ jobs:
           repository: OmniNode-ai/omnibase_core
           # The commit check-handshake.yml pins. Move it only in a
           # PR that tests the new version here (ruling 2026-10-01).
-          ref: bac865f4f32a3f8ca80cabcfac06c8400d8c80d7
+          ref: d677b4e78219113139b5d20ac81efcdcef78e3e0
           path: omnibase_core
 
       - name: Verify omnibase_core checkout
