@@ -1,0 +1,66 @@
+# SPDX-FileCopyrightText: 2026 OmniNode.ai Inc.
+# SPDX-License-Identifier: MIT
+schema_version: 1.0.0
+ticket_id: OMN-20998
+title: 'omnidash: pr-title check runs the omnimarket node'
+summary: The PR Title Check runs the published omnimarket compute node under pr-title / check-title; the local producer and
+  the installed-node parity table are bound to a focused test.
+is_seam_ticket: false
+interface_change: false
+interfaces_touched: []
+requirements:
+- id: req-pr-title-node
+  statement: Run the pinned omnimarket title node under the existing required context with reusable verdict parity.
+  acceptance:
+  - id: AC1
+    statement: 'AC1: The PR Title Check workflow produces `pr-title / check-title` by running node_pr_title_check_compute
+      from a pinned omnimarket release and no line in pr-title-check.yml references onex_change_control -- falsifier: python
+      -m pytest tests/ci/test_pr_title_check_omnimarket_node.py -q --noconftest -p no:cacheprovider -c /dev/null -k workflow
+      fails at the merge base.'
+  - id: AC2
+    statement: 'AC2: The installed node returns the same verdict as the old reusable on titles and authors covering every
+      exempt prefix, the bot suffix, a passing OMN title and a failing bare title -- falsifier: python -m pytest tests/ci/test_pr_title_check_omnimarket_node.py
+      -q --noconftest -p no:cacheprovider -c /dev/null -k parity runs each case through the installed node.'
+  - id: AC3
+    statement: 'AC3: .github/required-checks.yaml names the pr-title row as a local producer with the unchanged required context
+      -- falsifier: python -m pytest tests/ci/test_pr_title_check_omnimarket_node.py -q --noconftest -p no:cacheprovider -c
+      /dev/null -k manifest.'
+evidence_requirements:
+- kind: tests
+  description: Workflow wiring, installed-node verdict parity and local manifest producer.
+  command: uv run --no-project --with pytest --with pyyaml python -m pytest tests/ci/test_pr_title_check_omnimarket_node.py
+    -q --noconftest -p no:cacheprovider -c /dev/null
+emergency_bypass:
+  enabled: false
+  justification: ''
+  follow_up_ticket_id: ''
+dod_evidence:
+- id: dod-pr-title-ac1
+  description: 'AC1: The PR Title Check workflow produces `pr-title / check-title` by running node_pr_title_check_compute
+    from a pinned omnimarket release and no line in pr-title-check.yml references onex_change_control'
+  source: manual
+  checks:
+  - check_type: test_passes
+    check_value: uv run --no-project --with pytest --with pyyaml python -m pytest tests/ci/test_pr_title_check_omnimarket_node.py
+      -q --noconftest -p no:cacheprovider -c /dev/null
+  binds_ac:
+  - AC1
+- id: dod-pr-title-ac2
+  description: 'AC2: The installed node returns the same verdict as the old reusable on titles and authors covering every
+    exempt prefix, the bot suffix, a passing OMN title and a failing bare title'
+  source: manual
+  checks:
+  - check_type: test_passes
+    check_value: uv run --no-project --with pytest --with pyyaml python -m pytest tests/ci/test_pr_title_check_omnimarket_node.py
+      -q --noconftest -p no:cacheprovider -c /dev/null
+  binds_ac:
+  - AC2
+- id: dod-pr-title-ac3
+  description: 'AC3: .github/required-checks.yaml names the pr-title row as a local producer with the unchanged required context'
+  source: manual
+  checks:
+  - check_type: test_passes
+    check_value: uv run --no-project --with pytest --with pyyaml python -m pytest tests/ci/test_pr_title_check_omnimarket_node.py
+      -q --noconftest -p no:cacheprovider -c /dev/null
+  binds_ac:
+  - AC3

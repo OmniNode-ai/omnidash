@@ -1,19 +1,12 @@
 # SPDX-FileCopyrightText: 2026 OmniNode.ai Inc.
 # SPDX-License-Identifier: MIT
-"""OMN-20073: omnidash's repo-evidence caller runs in S5 shadow mode.
+"""OMN-20073 / OMN-20074: omnidash's repo-evidence caller enforces after S6.
 
-The caller records the new-path verdict beside OCC's on the same head and must
-block nothing: the reusable's ``shadow`` input makes ``repo-evidence / verify``
-and ``repo-evidence / dod-verify`` conclude success, neither context may be a
-required check, and omnidash's ``CI Summary`` must not read external check-runs
-(so a non-success row from this caller cannot redden it).
-
-Failure modes this catches: the caller dropped ``shadow`` or ``compare-with-occ``
-(the check-run would carry a real refusal); the pin moved to a branch name; the
-caller moved to ``pull_request`` (a PR could then edit what judges it); a job
-name was added (the context prefix would change); a repo-evidence context was
-added to the required-check manifest before the S6 ruling; CI Summary began to
-sweep external check-runs.
+Admission verifies repo-owned evidence without shadowing or comparing with OCC.
+The caller uses the pinned receipt-gate and verifier, runs from the base branch,
+and keeps its context prefix. A dev ruleset is to require repo-evidence /
+dod-verify; it has no required-checks manifest row. CI Summary judges only its
+own test and tenant-rls needs and never sweeps external check-runs.
 """
 
 from __future__ import annotations
@@ -29,14 +22,10 @@ CALLER = REPO_ROOT / ".github" / "workflows" / "call-repo-evidence-gate.yml"
 CI = REPO_ROOT / ".github" / "workflows" / "ci.yml"
 MANIFEST = REPO_ROOT / ".github" / "required-checks.yaml"
 
-# First release whose wheel ships node_dod_verify occ-difference (omnimarket#3277).
-DIFFERENCE_CLASSIFIER_FLOOR = (0, 4, 294)
-
-# Squash commit of omnibase_core#1914 on that repository's dev branch: the receipt-gate
-# pin omnibase_core's own caller and omnibase_infra's caller use. 0.4.305 is the first
-# omnimarket release carrying omnimarket#3563, the verifier half of the contract-home marker.
-RECEIPT_GATE_PIN = "fb0c6c2117d5868a398b0920cd0048d0824415b1"
-VERIFIER_FLOOR = (0, 4, 305)
+# Squash commit of omnibase_core#1932 on dev, also used by the
+# omnibase_infra, omnimarket and omniclaude callers.
+RECEIPT_GATE_PIN = "4e4f5e0404d364e296c5d37db6aa3ab9e07f8ffa"
+VERIFIER_FLOOR = (0, 4, 310)
 CONTRACT = REPO_ROOT / "contracts" / "OMN-20073.yaml"
 
 
@@ -80,14 +69,12 @@ def test_caller_pins_the_reusable_by_full_sha() -> None:
     )
 
 
-def test_caller_is_in_shadow_mode_and_compares_with_occ() -> None:
+def test_caller_enforces_and_stops_comparing_with_occ_after_the_s6_cutover() -> None:
     inputs = _job()["with"]
     assert inputs["evidence-source"] == "caller"
     # Quoted strings: the reusable's boolean-like inputs are string inputs.
-    assert inputs["shadow"] == "true"
-    assert inputs["compare-with-occ"] == "true"
-    version = tuple(int(part) for part in inputs["verifier-version"].split("."))
-    assert version >= DIFFERENCE_CLASSIFIER_FLOOR
+    assert inputs["shadow"] == "false"
+    assert inputs["compare-with-occ"] == "false"
 
 
 def test_no_repo_evidence_context_is_a_required_check() -> None:
@@ -98,17 +85,7 @@ def test_no_repo_evidence_context_is_a_required_check() -> None:
         for g in gates
         if g.get("workflow") == CALLER.name or g.get("caller_workflow") == CALLER.name
     ]
-    assert not producers, "shadow caller must not produce a required context"
-
-
-def test_occ_preflight_context_keeps_its_own_producer() -> None:
-    # compare-with-occ reads occ-preflight / eligibility on the same head.
-    workflows = REPO_ROOT / ".github" / "workflows"
-    texts = [p.read_text(encoding="utf-8") for p in workflows.glob("call-*.yml")]
-    assert any(
-        "OmniNode-ai/omnibase_core/.github/workflows/occ-preflight.yml@" in t
-        for t in texts
-    )
+    assert not producers, "repo-evidence is to be required by a dev ruleset, not a manifest row"
 
 
 def test_ci_summary_judges_only_its_own_needs_never_external_check_runs() -> None:
