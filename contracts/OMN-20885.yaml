@@ -29,6 +29,7 @@ dod_evidence:
   - id: "dod-omn20885-ac3-schema-compat-core-owner"
     description: "AC3: the schema-compatibility step reads omnibase_core and fails on a planted major mismatch."
     source: "manual"
+    binds_ac: ["AC3"]
     checks:
       - check_type: "test_passes"
         check_value: "uv run --no-project --python 3.12 --with omnibase-core==0.47.38 --with omnibase-spi==0.23.5 --with pyyaml --with pytest python -m pytest tests/ci/test_schema_compat_core_owner_omn20885.py -q --noconftest -p no:cacheprovider -c /dev/null"
