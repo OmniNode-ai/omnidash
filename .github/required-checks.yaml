@@ -1,6 +1,10 @@
 # SPDX-FileCopyrightText: 2026 OmniNode.ai Inc.
 # SPDX-License-Identifier: MIT
 
+# OMN-20074 S6 cut-over: dev drops `occ-preflight / eligibility` and
+# `verify / verify`; `repo-evidence / dod-verify` has no row (a dev ruleset
+# is to require it).
+#
 # required-checks.yaml v3 (OMN-14860, fan-out from the omniclaude canary
 # OMN-14854; branch-scoped coverage added OMN-15120, per-branch `branch:`
 # field schema OMN-15117)
@@ -10,20 +14,15 @@
 # OmniNode-ai/omniclaude), invoked here via
 # required-check-skip-guard-reusable.yml@main.
 #
-# Exhaustive for BOTH branches (OMN-15120 — omnidash had no `main`-branch
-# manifest coverage prior to this PR; live readback 2026-07-25 via
-# `gh api repos/OmniNode-ai/omnidash/branches/{dev,main}/protection/required_status_checks`):
-#   - `dev`: 22 required contexts, unchanged from the 2026-07-20 authoring
-#     pass, still 100% covered.
-#   - `main`: 17 required contexts, a strict subset of dev's 22 — the 5 rows
-#     below that carry an explicit `branch: dev` field (`Tenant RLS
-#     Isolation`, `TypeScript ↔ Python Type Sync`, `occ-preflight /
-#     eligibility`, `receipt-honesty`, `verify / verify`) are required on
-#     `dev` only and were NOT live-required on `main` as of 2026-07-25. A
-#     REQUIRED row with no `branch:` field is required on BOTH branches
-#     (unchanged legacy convention; matches the omnimarket OMN-15120 canary,
-#     PR #1895). Plus one `mode: ADVISORY` row for this guard's own composed
-#     context (see rationale on that row for why it is not yet REQUIRED).
+# Branch-scoped coverage (OMN-15120; live readback 2026-07-25 via
+# `gh api repos/OmniNode-ai/omnidash/branches/{dev,main}/protection/required_status_checks`)
+# originally covered 22 dev contexts and 17 main contexts. After the OMN-20074
+# S6 removals, the remaining explicit `branch: dev` rows are `Tenant RLS
+# Isolation`, `TypeScript ↔ Python Type Sync` and `receipt-honesty`.
+# A REQUIRED row with no `branch:` field is required on BOTH branches
+# (unchanged legacy convention; matches the omnimarket OMN-15120 canary,
+# PR #1895). Plus one `mode: ADVISORY` row for this guard's own composed
+# context (see rationale on that row for why it is not yet REQUIRED).
 #
 # Post-reconcile verification: `reconcile_manifest_vs_live.py --repo
 # OmniNode-ai/omnidash --branch dev` and `--branch main` both return PASS
@@ -72,6 +71,14 @@ classification: dashboard
 repo: omnidash
 
 gates:
+  - name: "pr-title / check-title"
+    mode: REQUIRED
+    producer_kind: local
+    workflow: pr-title-check.yml
+    job_path: ["pr-title"]
+    skip_semantics: never
+    rationale: "PR title ticket-reference check runs omnimarket's node_pr_title_check_compute from a pinned release (OMN-20998)."
+
   - name: "Typecheck & Tests"
     mode: REQUIRED
     producer_kind: local
@@ -109,7 +116,7 @@ gates:
     producer_kind: cross_repo
     caller_workflow: call-reject-skip.yml
     caller_job: call-reject-skip-token
-    cross_repo_ref: "OmniNode-ai/omniclaude/.github/workflows/reject-deploy-gate-skip.yml@61761f04a8c8edfb810bd261bb82ed60b8bcad2d"
+    cross_repo_ref: "OmniNode-ai/omniclaude/.github/workflows/reject-deploy-gate-skip.yml@4358450ccbba0cee11e390208dd0b8b1728e94ab"
     skip_semantics: never
     rationale: "Skip-token bypass scanner (OMN-10347/10422/10971), canonical source hosted in omniclaude."
 
@@ -228,16 +235,6 @@ gates:
     skip_semantics: never
     rationale: "Live required status check on omnidash dev branch protection."
 
-  - name: "occ-preflight / eligibility"
-    mode: REQUIRED
-    branch: dev
-    producer_kind: cross_repo
-    caller_workflow: call-occ-preflight.yml
-    caller_job: occ-preflight
-    cross_repo_ref: "OmniNode-ai/omnibase_core/.github/workflows/occ-preflight.yml@1e69bec909f245be511803191554e5b340def0b7"
-    skip_semantics: never
-    rationale: "Central OCC eligibility gate (cross-repo reusable hosted in omnibase_core)."
-
   - name: "receipt-honesty"
     mode: REQUIRED
     branch: dev
@@ -246,16 +243,6 @@ gates:
     job_path: ["receipt-honesty"]
     skip_semantics: never
     rationale: "Live required status check on omnidash dev branch protection."
-
-  - name: "verify / verify"
-    mode: REQUIRED
-    branch: dev
-    producer_kind: cross_repo
-    caller_workflow: call-receipt-gate.yml
-    caller_job: verify
-    cross_repo_ref: "OmniNode-ai/omnibase_core/.github/workflows/receipt-gate.yml@fad21c40911b356c30f3e38c9075332f11524617"
-    skip_semantics: never
-    rationale: "Central Receipt Gate (cross-repo reusable hosted in omnibase_core)."
 
   - name: "required-check-skip-guard / check-skip-vectors"
     mode: ADVISORY
