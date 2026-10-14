@@ -4,6 +4,17 @@ All notable changes to `omnidash` are documented here.
 
 This project follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) and [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## v1.1.10 (2026-10-14)
+
+### Features
+
+- The Overview's Savings card shows "N% below the <baseline> baseline (modelled)" from metering-summary.v1's served `savings_pct_of_counterfactual`, "above" when spend exceeds the baseline, and no line when the ratio is not served. The browser formats the served ratio and divides nothing (OMN-20008).
+- Credentials shows each key's fingerprint prefix and the time it was set (OMN-19985).
+
+### Fixed
+
+- The delegation control plane declares the correlation-trace projection it reads (OMN-20831).
+
 ## v1.1.9 (2026-10-09)
 
 ### Fixed
