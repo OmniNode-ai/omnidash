@@ -1,0 +1,75 @@
+---
+schema_version: "1.0.0"
+ticket_id: "OMN-21015"
+title: "The local dashboard shows the demo's in-scope figures on Overview, Runs and Usage, and meets four dashboard requirements not yet built"
+summary: "The omnidash page half of AC1, AC7, AC8 and the token series of AC4. Overview renders baseline against actual spend per UTC day from the day rows of metering-summary.v1 and its headline tiles switch between today (UTC) and all time, each reading the served row for that window; the Runs list filters by backend; Usage shows tokens in and out per day stacked by model, in the order the exposure serves them. Every figure is read from a served exposure; none is summed or priced in the browser. AC2, AC3 and the by-model table of AC4 land in their own changes."
+is_seam_ticket: false
+interface_change: false
+interfaces_touched: []
+requirements:
+  - id: "req-transcribed-acceptance-criteria"
+    statement: |-
+      The acceptance criteria this change serves, as declared on the OMN-21015 ticket body, read on 2026-10-14. The ticket body is the source and this block is the copy.
+    acceptance:
+      - id: "AC1"
+        statement: |-
+          AC1: Overview renders baseline against actual spend per UTC day from the day rows of `metering-summary.v1`, the series [OMN-20007](<https://linear.app/omninode/issue/OMN-20007>) serves -- falsifier: a page test over a recorded two-day fixture fails when either series is absent, or when the panel's window total differs from the headline spend and savings
+      - id: "AC4"
+        statement: |-
+          AC4: Usage shows tokens in and tokens out per day as a stacked series split by model (requirement US-1), and its by-model table shows each model's share of calls and its tier beside the calls column it already has -- falsifier: the window sums differ from `onex metering --json`, or the shares do not sum to 100
+      - id: "AC7"
+        statement: |-
+          AC7: Overview's headline tiles switch between today (UTC) and all time (requirement OV-3), each reading the served `metering-summary.v1` rows for that window -- falsifier: a page test over a fixture whose today and all-time rows differ fails when the tiles do not change with the switch, or when a today figure is summed in the browser
+      - id: "AC8"
+        statement: |-
+          AC8: The Runs list filters by backend as well as by status, cause, model and window (requirement RU-1) -- falsifier: a page test over a fixture with two backends still shows a row of the other backend after one is selected
+evidence_requirements:
+  - kind: "tests"
+    description: "AC1: over a recorded two-day metering-summary.v1 fixture the Overview panel shows both series per UTC day; a missing series, a window total that differs from the headline spend and savings, or an unplaced served column fails."
+    command: "npx vitest run src/pages/LocalDashboardPage.omn21015.spend-by-day.test.tsx"
+  - kind: "tests"
+    description: "AC7: the headline tiles change with the today / all-time switch, each reading the served row for its window; the Savings percentage line follows the chosen window; nothing is summed in the browser."
+    command: "npx vitest run src/pages/LocalDashboardPage.omn21015.overview-window.test.tsx src/pages/LocalDashboardPage.omn21015.window-pct.test.tsx"
+  - kind: "tests"
+    description: "AC8: over a fixture with two backends, choosing one leaves no row of the other."
+    command: "npx vitest run src/pages/LocalDashboardPage.omn21015.runs-backend.test.tsx"
+  - kind: "tests"
+    description: "AC4, token series: tokens in and out per day stacked by model in the exposure's served order, each segment as wide as its share of the served count."
+    command: "npx vitest run src/components/dashboard/usage/UsageTokensByDay.omn21015.test.tsx"
+dod_evidence:
+  - id: "dod-omn21015-ac1-spend-by-day"
+    description: "AC1: the Overview panel shows baseline against actual spend per UTC day from the served day rows; a missing series or a window total that differs from the headline fails."
+    source: "manual"
+    binds_ac: ["AC1"]
+    checks:
+      - check_type: "test_passes"
+        check_value: "test -d node_modules || npm ci --no-audit --no-fund; npx vitest run src/pages/LocalDashboardPage.omn21015.spend-by-day.test.tsx"
+        cwd: "${OMNI_HOME}/omnidash"
+  - id: "dod-omn21015-ac4-token-series"
+    description: "AC4, token series: Usage stacks tokens in and out per day by model in the served order."
+    source: "manual"
+    binds_ac: ["AC4"]
+    checks:
+      - check_type: "test_passes"
+        check_value: "test -d node_modules || npm ci --no-audit --no-fund; npx vitest run src/components/dashboard/usage/UsageTokensByDay.omn21015.test.tsx"
+        cwd: "${OMNI_HOME}/omnidash"
+  - id: "dod-omn21015-ac7-overview-window"
+    description: "AC7: the headline tiles switch between today (UTC) and all time, each reading the served row for its window."
+    source: "manual"
+    binds_ac: ["AC7"]
+    checks:
+      - check_type: "test_passes"
+        check_value: "test -d node_modules || npm ci --no-audit --no-fund; npx vitest run src/pages/LocalDashboardPage.omn21015.overview-window.test.tsx src/pages/LocalDashboardPage.omn21015.window-pct.test.tsx"
+        cwd: "${OMNI_HOME}/omnidash"
+  - id: "dod-omn21015-ac8-runs-backend"
+    description: "AC8: the Runs list filters by backend; a row of the other backend never stays."
+    source: "manual"
+    binds_ac: ["AC8"]
+    checks:
+      - check_type: "test_passes"
+        check_value: "test -d node_modules || npm ci --no-audit --no-fund; npx vitest run src/pages/LocalDashboardPage.omn21015.runs-backend.test.tsx"
+        cwd: "${OMNI_HOME}/omnidash"
+emergency_bypass:
+  enabled: false
+  justification: ""
+  follow_up_ticket_id: ""
