@@ -2,7 +2,7 @@
 schema_version: "1.0.0"
 ticket_id: "OMN-21015"
 title: "The local dashboard shows the demo's in-scope figures on Overview, Runs and Usage, and meets four dashboard requirements not yet built"
-summary: "The omnidash page half of AC1, AC7, AC8 and the token series of AC4. Overview renders baseline against actual spend per UTC day from the day rows of metering-summary.v1 and its headline tiles switch between today (UTC) and all time, each reading the served row for that window; the Runs list filters by backend; Usage shows tokens in and out per day stacked by model, in the order the exposure serves them. Every figure is read from a served exposure; none is summed or priced in the browser. AC2, AC3 and the by-model table of AC4 land in their own changes."
+summary: "The omnidash page half of AC1, AC7, AC8 and the token series of AC4. Overview renders baseline against actual spend per UTC day from the day rows of metering-summary.v1 and its headline tiles switch between today (UTC) and all time, each reading the served row for that window; the Runs list filters by backend; Usage shows tokens in and out per day stacked by model, in the order the exposure serves them. Every figure is read from a served exposure; none is summed or priced in the browser. On this change also AC4's by-model table: each row's tier and share of calls. AC2 and AC3 land in their own changes."
 is_seam_ticket: false
 interface_change: false
 interfaces_touched: []
@@ -36,6 +36,9 @@ evidence_requirements:
   - kind: "tests"
     description: "AC4, token series: tokens in and out per day stacked by model in the exposure's served order, each segment as wide as its share of the served count."
     command: "npx vitest run src/components/dashboard/usage/UsageTokensByDay.omn21015.test.tsx"
+  - kind: "tests"
+    description: "AC4, by-model table: each row shows its tier and its served share of calls beside the calls column; a missing share says Not recorded."
+    command: "npx vitest run src/components/dashboard/usage/UsageByModelDayWidget.omn21015.test.tsx src/components/dashboard/usage/UsageByModelDayWidget.test.tsx"
 dod_evidence:
   - id: "dod-omn21015-ac1-spend-by-day"
     description: "AC1: the Overview panel shows baseline against actual spend per UTC day from the served day rows; a missing series or a window total that differs from the headline fails."
@@ -68,6 +71,14 @@ dod_evidence:
     checks:
       - check_type: "test_passes"
         check_value: "test -d node_modules || npm ci --no-audit --no-fund; npx vitest run src/pages/LocalDashboardPage.omn21015.runs-backend.test.tsx"
+        cwd: "${OMNI_HOME}/omnidash"
+  - id: "dod-omn21015-ac4-by-model-table"
+    description: "AC4, by-model table: each row shows its tier and its served share of calls beside the calls column; a missing share says Not recorded."
+    source: "manual"
+    binds_ac: ["AC4"]
+    checks:
+      - check_type: "test_passes"
+        check_value: "test -d node_modules || npm ci --no-audit --no-fund; npx vitest run src/components/dashboard/usage/UsageByModelDayWidget.omn21015.test.tsx src/components/dashboard/usage/UsageByModelDayWidget.test.tsx"
         cwd: "${OMNI_HOME}/omnidash"
 emergency_bypass:
   enabled: false
