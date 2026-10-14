@@ -1,7 +1,7 @@
 {
   "dashboard_id": "fd556d39-e92a-54cc-94f2-0cedb669b7ee",
   "name": "Usage",
-  "description": "Tokens in, tokens out, measured cost and unmeasured runs per model per UTC day from the usage-by-model-day exposure, and savings per day from metering-summary.",
+  "description": "Tokens in, tokens out, measured cost, unmeasured runs, tier and share of the day's calls per model per UTC day from the usage-by-model-day exposure, and savings per day from metering-summary.",
   "layout": {
     "columns": 12,
     "row_height": 100,
@@ -48,8 +48,16 @@
             "header": "Unmeasured"
           },
           {
+            "key": "cost_tier_name",
+            "header": "Tier"
+          },
+          {
             "key": "call_count",
             "header": "Calls"
+          },
+          {
+            "key": "call_share",
+            "header": "Share of calls"
           }
         ],
         "page_size": 25,

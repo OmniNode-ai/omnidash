@@ -23,7 +23,9 @@
             "output_tokens",
             "measured_cost_usd",
             "unmeasured_call_count",
-            "call_count"
+            "cost_tier_name",
+            "call_count",
+            "call_share"
           ]
         }
       ],
