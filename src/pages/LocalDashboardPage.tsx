@@ -1,5 +1,5 @@
 import { useEffect, useId, useRef, useState } from 'react';
-import { useLocation, useSearch } from 'wouter';
+import { Link, useLocation, useSearch } from 'wouter';
 import { createSnapshotSource } from '@/data-source';
 import { fetchExposureCensus } from '@/data-source/exposure-census';
 import { resolveEffectiveDataSource } from '@/data-source/data-source-override';
@@ -8,6 +8,8 @@ import { MeteringDaySeries } from '@/components/dashboard/usage/SavingsSeriesWid
 import { TenantNotConfiguredState } from '@/components/dashboard/TenantNotConfiguredState';
 import { subscribeLocalPageRefresh } from '@/services/local-page-refresh';
 import { DEFAULT_RUNS_VIEW, readRunsSearch, writeRunsSearch, type RunsViewState } from '@/navigation/runs-url-state';
+import { PAGE_PATHS } from '@/navigation/page-routes';
+import { normaliseRunId, readWorkflowRunId, workflowHref, writeWorkflowRunId } from '@/navigation/workflow-url-state';
 import '@/styles/local-dashboard.css';
 import {
   loadLocalPageConfig,
@@ -16,7 +18,9 @@ import {
   rowsForLocalComponent,
   resolveLocalPageEmptyState,
   withLastGood,
+  DELEGATION_DECISIONS_TOPIC,
   METERING_SUMMARY_TOPIC,
+  RUN_TRACE_TOPIC,
   type BoundProjectionSnapshot,
   type LocalPageDocument,
   type LocalPageName,
@@ -57,6 +61,10 @@ interface MetricCardProps {
   row: Record<string, unknown>;
   /** The served row of the component's second binding, rendered as a line under the figure. */
   caption?: Record<string, unknown> | null;
+  /** A line shown directly under the figure, and only when there is a figure. */
+  figureLine?: string | null;
+  /** Required fields read only for `figureLine`: when one is absent or null the line goes, never the figure. */
+  figureLineFields?: readonly string[];
 }
 
 /**
@@ -117,13 +125,15 @@ function captionText(caption: Record<string, unknown> | null | undefined): strin
  * field is a baseline, the figure is a savings figure with no priced baseline,
  * which is BASELINE_UNRESOLVED and never a zero. No row at all is Not measured.
  */
-export function MetricCard({ component, config, row, caption }: MetricCardProps) {
+export function MetricCard({ component, config, row, caption, figureLine, figureLineFields = [] }: MetricCardProps) {
   if ((component.data_bindings ?? []).length === 0) {
     const source = PENDING_SOURCES[component.component_id] ?? 'its exposure';
     return <p className="local-dashboard-empty" role="status">{`Not served yet: waits on ${source}`}</p>;
   }
-  const required = component.data_bindings?.[0]?.required_fields ?? [config.metric_key];
+  const required = (component.data_bindings?.[0]?.required_fields ?? [config.metric_key])
+    .filter((field) => !figureLineFields.includes(field));
   const missing = [...new Set([config.metric_key, ...required])].filter((field) => isMissing(row[field]));
+  let figure = false;
   let text: string;
   // No served row is not an unresolved baseline: nothing was measured (OMN-19980 AC2c).
   if (Object.keys(row).length === 0) text = 'Not measured';
@@ -132,7 +142,10 @@ export function MetricCard({ component, config, row, caption }: MetricCardProps)
   else if (row.baseline_state === 'unresolved' && required.includes('baseline_state')) text = 'Baseline unresolved';
   else if (missing.some((field) => field.includes('baseline'))) text = 'Baseline unresolved';
   else if (missing.length > 0) text = 'Not measured';
-  else text = formatMetric(Number(row[config.metric_key]), config);
+  else {
+    text = formatMetric(Number(row[config.metric_key]), config);
+    figure = true;
+  }
   const line = captionText(caption);
   // A savings figure is a modelled counterfactual: served tokens priced at the baseline's list price, with no
   // baseline run behind it (Jonah's savings handoff on OMN-19981, aac9032d, item 5).
@@ -140,6 +153,7 @@ export function MetricCard({ component, config, row, caption }: MetricCardProps)
   return (
     <>
       <p className="local-dashboard-metric">{text}</p>
+      {figure && figureLine && <p className="local-dashboard-caption">{figureLine}</p>}
       {line && <p className="local-dashboard-caption">{line}</p>}
       {modelled && <p className="local-dashboard-caption">{SAVINGS_MODELLED}</p>}
     </>
@@ -237,7 +251,29 @@ export function MeteringTotalCard({ component, config, rows }: {
     : required.includes('runs_total')
       ? { runs_total: row.runs_total, runs_unknown_tokens: row.runs_unknown_tokens, runs_unknown_spend: row.runs_unknown_spend }
       : null;
-  return <MetricCard component={component} config={config} row={row} caption={caption} />;
+  // OMN-20008 AC5: the Savings card's percentage line, from the same all-time row. A row that does not serve the
+  // ratio yet (or serves null) loses only this line; the figure and its captions stay as they were.
+  const pctField = 'savings_pct_of_counterfactual';
+  const pct = required.includes(pctField) ? pctAgainstBaseline(row[pctField], row.baseline_model) : null;
+  return (
+    <MetricCard component={component} config={config} row={row} caption={caption}
+      figureLine={pct} figureLineFields={[pctField]} />
+  );
+}
+
+/**
+ * OMN-20008 AC5 (Jonah's decision on the ticket, 4f0e618d): the served ratio of the modelled saving to the baseline's
+ * price, as a whole percent, naming the baseline and labelled modelled, e.g. "42% below the claude-sonnet-5-5 baseline
+ * (modelled)". metering-summary.v1 serves the ratio; the browser only formats it, as RunLocallyCard formats its served
+ * share, and divides nothing. A negative ratio (spend above the baseline's price) reads "above". No line when the
+ * ratio is not a number. MetricCard shows the line only beside a figure, and the figure needs the baseline's name.
+ */
+function pctAgainstBaseline(ratio: unknown, baselineModel: unknown): string | null {
+  if (typeof ratio !== 'number' && (typeof ratio !== 'string' || ratio.trim() === '')) return null;
+  const value = Number(ratio);
+  if (!Number.isFinite(value)) return null;
+  const pct = value.toLocaleString('en-US', { style: 'percent', maximumFractionDigits: 0, signDisplay: 'never' });
+  return `${pct} ${value < 0 ? 'above' : 'below'} the ${String(baselineModel)} baseline (modelled)`;
 }
 
 const SAVING_PER_RUN_PENDING = 'Not served yet: waits on savings_per_measured_run_usd in metering-summary.v1';
@@ -587,7 +623,13 @@ export function RunsTable({ decisions, sessions, now = Date.now(), pageSize = 25
               <tbody>{page.map((run, index) => {
                 const session = bySession.get(String(run.correlation_id));
                 return <tr key={String(run.correlation_id ?? index)}>
-                  <td className="local-dashboard-cell-token">{recorded(run.correlation_id)}{isFixture(run) && <span className="local-dashboard-badge">fixture</span>}</td>
+                  <td className="local-dashboard-cell-token">
+                    {/* WF-3: a run opens its own path on Workflow; a run with no recorded id has nothing to open. */}
+                    {typeof run.correlation_id === 'string' && run.correlation_id !== ''
+                      ? <Link href={workflowHref(run.correlation_id)}>{run.correlation_id}</Link>
+                      : recorded(run.correlation_id)}
+                    {isFixture(run) && <span className="local-dashboard-badge">fixture</span>}
+                  </td>
                   <td className="local-dashboard-cell-token">{recorded(run.created_at)}</td>
                   <td>{statusOf(run)}</td>
                   <td>{causeOf(run)}</td>
@@ -710,32 +752,210 @@ export function CredentialsTable({ rows }: { rows: readonly unknown[] }) {
   );
 }
 
-/** WF-1 waits on run-trace.v1; until then the page shows the steps one served decision records. */
-const RUN_TRACE_PENDING = 'Full path not served yet: waits on run-trace.v1 (OMN-19987)';
-
 /**
- * WF-3: the newest run's recorded steps, in a fixed order, each from one served field of its decision row. The
- * browser orders nothing but the declared newest-first authority (written_at); the per-step path is run-trace.v1's.
+ * The decision row of the run shown: its verdict, and the backend, host and tier that accepted it (OMN-20225). Every
+ * value is one served field of that run's own row; a run with no served decision says so and borrows no other run's.
  */
-export function WorkflowPath({ decisions }: { decisions: readonly unknown[] }) {
-  const run = newestFirst(decisions)[0];
-  if (!run) return <NoRunsYet />;
-  const status = statusOf(run);
-  const steps: Array<[string, string]> = [
-    ['Request', `${recorded(run.created_at)} · ${recorded(run.task_type)}`],
-    ['Routing', `tier ${tierOf(run)} · model ${modelOrUnknown(run.model_name)} · backend ${recorded(run.backend_id)} · host ${recorded(run.host)}`],
-    ['Quality gate', status === 'failed'
-      ? `failed: ${causeOf(run)}`
-      : `${status} · score ${recorded(run.actual_score)}`],
-    ['Terminal', `${recorded(run.written_at)} · ${duration(run.latency_ms)}`],
+export function RunSummary({ decision }: { decision: Row | undefined }) {
+  if (!decision) return <p className="local-dashboard-empty" role="status">No decision is served for this run</p>;
+  const status = statusOf(decision);
+  const fields: Array<[string, string]> = [
+    ...(status === 'failed' ? [['Cause', causeOf(decision)] as [string, string]] : []),
+    ['Quality score', recorded(decision.actual_score)],
+    ['Task type', recorded(decision.task_type)],
+    ['Model', modelOrUnknown(decision.model_name)],
+    ['Backend', recorded(decision.backend_id)],
+    ['Host', recorded(decision.host)],
+    ['Route tier', tierOf(decision)],
+    ['Duration', duration(decision.latency_ms)],
   ];
   return (
+    <section aria-label="Run summary" className="local-dashboard-run-summary">
+      <dl className="local-dashboard-fields">
+        <div><dt>Status</dt><dd><OutcomePill value={status} /></dd></div>
+        {fields.map(([label, value]) => <div key={label}><dt>{label}</dt><dd>{value}</dd></div>)}
+      </dl>
+    </section>
+  );
+}
+
+/** The step kinds run-trace.v1 serves today; any other kind is shown as served, never dropped. */
+const RUN_STEP_LABELS: Record<string, string> = {
+  request: 'Request',
+  routing_decision: 'Routing decision',
+  provider_call: 'Provider call',
+  quality_gate: 'Quality gate',
+  terminal: 'Terminal',
+};
+
+/**
+ * WF-1 and WF-2: one run's steps, exactly as run-trace.v1 serves them (OMN-19987). The order is the exposure's, the
+ * step sequence the delegate orchestrator assigned, so this renders rows in the order given and sorts nothing. The
+ * step that failed a run is the one the terminal row names in failing_step_sequence; it is looked up, never inferred.
+ */
+export function RunTimeline({ steps }: { steps: readonly unknown[] }) {
+  const rows = asRecords(steps);
+  if (rows.length === 0) {
+    return <p className="local-dashboard-empty" role="status">No steps recorded for this run</p>;
+  }
+  const named = rows.find((row) => !isMissing(row.failing_step_sequence))?.failing_step_sequence;
+  return (
+    <ol className="local-dashboard-steps">
+      {rows.map((row, index) => {
+        const kind = String(row.step_kind ?? '');
+        const failing = !isMissing(named) && row.step_sequence === named;
+        const candidates = Array.isArray(row.candidates) ? row.candidates.map(String) : [];
+        // Each served detail under its own name; a detail the row does not carry is left out, never shown empty.
+        const details: Array<[string, string]> = [
+          ...(isMissing(row.failure_cause) ? [] : [['cause', String(row.failure_cause)] as [string, string]]),
+          ...(isMissing(row.backend_id) ? [] : [['backend', String(row.backend_id)] as [string, string]]),
+          ...(isMissing(row.model_id) ? [] : [['model', String(row.model_id)] as [string, string]]),
+          ...(isMissing(row.attempt_number) ? [] : [['attempt', String(row.attempt_number)] as [string, string]]),
+          ...(candidates.length === 0 ? [] : [['candidates', candidates.join(', ')] as [string, string]]),
+        ];
+        return (
+          <li
+            key={`${String(row.step_sequence)}-${index}`}
+            data-failing-step={failing ? 'true' : undefined}
+            data-outcome={isMissing(row.outcome) ? undefined : String(row.outcome)}
+          >
+            <div className="local-run-step-head">
+              <strong>{RUN_STEP_LABELS[kind] ?? recorded(row.step_kind)}</strong>
+              <OutcomePill value={row.outcome} />
+              {failing && <span className="local-dashboard-badge">Failed here</span>}
+              <span className="local-run-step-duration" data-measured={isMissing(row.duration_ms) ? 'false' : 'true'}>
+                <span>Duration</span> {duration(row.duration_ms)}
+              </span>
+            </div>
+            <ServedTime value={row.started_at} />
+            {details.length > 0 && (
+              <div className="local-run-chips">
+                {details.map(([name, value]) => (
+                  <span className="local-run-chip" key={name}><span>{name}:</span> {value}</span>
+                ))}
+              </div>
+            )}
+            {!isMissing(row.reason) && <p className="local-run-step-reason">{String(row.reason)}</p>}
+          </li>
+        );
+      })}
+    </ol>
+  );
+}
+
+/** A served outcome or verdict as a pill, coloured by its own value; a value never served reads Not recorded. */
+function OutcomePill({ value }: { value: unknown }) {
+  return (
+    <span className="local-run-pill" data-outcome={isMissing(value) ? undefined : String(value)}>{recorded(value)}</span>
+  );
+}
+
+/**
+ * A served timestamp, shown as served. The clock part is only set apart for the eye: the text is the served string,
+ * character for character, and nothing is parsed into a date or moved to another zone.
+ */
+function ServedTime({ value }: { value: unknown }) {
+  if (isMissing(value)) return <span className="local-run-step-time">{recorded(value)}</span>;
+  const text = String(value);
+  const parts = /^(\d{4}-\d{2}-\d{2}T)(\d{2}:\d{2}:\d{2})(.*)$/.exec(text);
+  return (
+    <time className="local-run-step-time" dateTime={text}>
+      {parts ? <>{parts[1]}<b>{parts[2]}</b>{parts[3]}</> : text}
+    </time>
+  );
+}
+
+/** WF-3: open a run by a pasted correlation id, or go back to the newest run. */
+function RunPicker({ requested, onOpen }: { requested: string | null; onOpen: (runId: string | null) => void }) {
+  const id = useId();
+  const [draft, setDraft] = useState(requested ?? '');
+  useEffect(() => { setDraft(requested ?? ''); }, [requested]);
+  return (
+    <form
+      className="local-dashboard-filters"
+      onSubmit={(event) => {
+        event.preventDefault();
+        onOpen(normaliseRunId(draft));
+      }}
+    >
+      <label htmlFor={`${id}-run`}>Correlation id</label>
+      <input
+        id={`${id}-run`}
+        type="text"
+        value={draft}
+        placeholder="Paste a correlation id to open that run"
+        spellCheck={false}
+        autoComplete="off"
+        onChange={(event) => setDraft(event.target.value)}
+      />
+      <button type="submit">Open run</button>
+      {requested !== null && <button type="button" onClick={() => onOpen(null)}>Newest run</button>}
+    </form>
+  );
+}
+
+interface WorkflowRunProps {
+  component: LocalPageDocument['components'][number];
+  snapshots: readonly BoundProjectionSnapshot[];
+  /** The run the address or the picker names; null shows the newest run. */
+  requested: string | null;
+  onOpen: (runId: string | null) => void;
+}
+
+/**
+ * WF-1 to WF-3 (OMN-19987, OMN-21015 AC9): one run, the one asked for or the newest, with its decision row and its
+ * steps from run-trace.v1. The loader read the steps for exactly the run named on their snapshot (runId), so this
+ * shows that run or says why it cannot: it never falls back to another run, and steps answered for another run are
+ * refused rather than shown under this run's id.
+ */
+export function WorkflowRun({ component, snapshots, requested, onOpen }: WorkflowRunProps) {
+  const decisionsRead = snapshots.find((snapshot) => snapshot.topic === DELEGATION_DECISIONS_TOPIC);
+  const decisionsBinding = (component.data_bindings ?? [])
+    .findIndex((binding) => binding.projection_topic === DELEGATION_DECISIONS_TOPIC);
+  const decisions = decisionsBinding < 0 ? [] : asRecords(rowsForLocalBinding(component, snapshots, decisionsBinding));
+  const stepsRead = snapshots.find((snapshot) => snapshot.topic === RUN_TRACE_TOPIC);
+  const runId = stepsRead?.runId ?? null;
+  // The decisions exposure gates nothing here (a pasted id needs no decision row), so its not-served state is named.
+  const decisionsNotServed = decisionsRead?.failure?.kind === 'not-served' && !decisionsRead.lastGoodAt
+    ? <p className="local-dashboard-empty" role="status">{decisionsRead.failure.message}</p>
+    : null;
+  if (runId === null) {
+    return (
+      <>
+        <RunPicker requested={requested} onOpen={onOpen} />
+        {decisionsNotServed}
+        {/* A failed decisions read is named by the panel's read state; it is not an empty store. */}
+        {decisionsRead?.failure ? null
+          : decisions.length === 0 ? <NoRunsYet />
+          : <p className="local-dashboard-empty" role="status">The newest run has no correlation id recorded</p>}
+      </>
+    );
+  }
+  const rows = asRecords(stepsRead?.rows ?? []);
+  // A failed or unserved steps read with no last good rows is named by the panel's read state, never as "no steps".
+  const stepsUnread = Boolean(stepsRead?.failure) && !stepsRead?.lastGoodAt;
+  const foreign = rows.some((row) => row.correlation_id !== runId);
+  return (
     <div>
-      <p className="local-dashboard-subtitle">Run <code>{recorded(run.correlation_id)}</code></p>
-      <ol className="local-dashboard-steps">
-        {steps.map(([name, value]) => <li key={name}><strong>{name}</strong><span>{value}</span></li>)}
-      </ol>
-      <p className="local-dashboard-empty" role="status">{RUN_TRACE_PENDING}</p>
+      <RunPicker requested={requested} onOpen={onOpen} />
+      <p className="local-dashboard-subtitle local-run-title">
+        Run <code>{runId}</code>
+        {requested === null && <span className="local-run-tag">newest run</span>}
+      </p>
+      {decisionsNotServed}
+      {!decisionsNotServed && <RunSummary decision={decisions.find((row) => row.correlation_id === runId)} />}
+      {stepsUnread ? null : foreign ? (
+        <p className="local-dashboard-error" role="alert">run-trace.v1 answered steps of another run; none are shown</p>
+      ) : (
+        <>
+          <RunTimeline steps={rows} />
+          {stepsRead?.truncated && (
+            <p className="local-dashboard-empty" role="status">
+              {`Not the whole run: run-trace.v1 answered a truncated page of ${rows.length} steps`}
+            </p>
+          )}
+        </>
+      )}
     </div>
   );
 }
@@ -779,7 +999,6 @@ function TableComponent({ component, snapshots, pageSize, syncUrl }: {
     return component.component_id === 'overview-quality' ? <QualityPanel row={row} /> : <TierMixPanel row={row} />;
   }
   if (component.component_id === 'credentials-keys') return <CredentialsTable rows={rows} />;
-  if (component.component_id === 'workflow-run-path') return <WorkflowPath decisions={rows} />;
   // US-1, US-2, US-4: served rows as served. The exposure is tenant-scoped, so the server filters, not the browser.
   if (component.component_id === 'usage-by-model-day') return <UsageByModelDayTable rows={rows} />;
   // US-3: metering-summary.v1's day rows, as served; the series renders no all row and sums nothing.
@@ -903,10 +1122,23 @@ export function LocalDashboardPage({ pageName, syncUrl = false }: LocalDashboard
   const latest = useRef<BoundProjectionSnapshot[]>([]);
   // One source per mounted page, so a double mount (React's development mode) shares its reads in flight.
   const source = useRef<ReturnType<typeof createSnapshotSource> | null>(null);
+  // WF-3: the run Workflow shows is the one its address names (or, without address sync, the one picked here).
+  const search = useSearch();
+  const [, navigate] = useLocation();
+  const [pickedRunId, setPickedRunId] = useState<string | null>(null);
+  const requestedRunId = pageName !== 'workflow' ? null : syncUrl ? readWorkflowRunId(search) : pickedRunId;
+  const openRun = (runId: string | null) => {
+    if (!syncUrl) {
+      setPickedRunId(runId);
+      return;
+    }
+    const query = writeWorkflowRunId(search, runId);
+    navigate(`${PAGE_PATHS['local-workflow']}${query ? `?${query}` : ''}`);
+  };
 
   useEffect(() => {
     let active = true;
-    // A page switch must not show the previous page's document while this one loads.
+    // A page switch, or another run asked for, must not show the previous document or run while this one loads.
     setPage(null);
     setSnapshots([]);
     latest.current = [];
@@ -920,8 +1152,15 @@ export function LocalDashboardPage({ pageName, syncUrl = false }: LocalDashboard
       setLoading(false);
       return () => { active = false; };
     }
+    // Reads of one page can overlap: the interval and the refresh button each start one while an earlier one is still
+    // unanswered. Only the read started last may write. A read that was overtaken answers a question the page has
+    // already asked again (the newest run may have changed since), so its rows, its failure and its end of loading
+    // are all dropped, however late it answers.
+    let started = 0;
     // Every read after the first keeps the last good rows on screen while it runs, and when it fails (F25).
     async function load() {
+      const mine = ++started;
+      const current = () => active && mine === started;
       try {
         const { mode } = resolveEffectiveDataSource();
         if (mode !== 'http') {
@@ -935,8 +1174,9 @@ export function LocalDashboardPage({ pageName, syncUrl = false }: LocalDashboard
         const data = await loadLocalPageSnapshots(document, source.current, {
           mode,
           availableTopics,
+          runId: requestedRunId,
         });
-        if (active) {
+        if (current()) {
           const merged = withLastGood(latest.current, data);
           latest.current = merged;
           setPage(document);
@@ -944,9 +1184,9 @@ export function LocalDashboardPage({ pageName, syncUrl = false }: LocalDashboard
           setError(null);
         }
       } catch (cause) {
-        if (active && latest.current.length === 0) setError(cause instanceof Error ? cause.message : String(cause));
+        if (current() && latest.current.length === 0) setError(cause instanceof Error ? cause.message : String(cause));
       } finally {
-        if (active) setLoading(false);
+        if (current()) setLoading(false);
       }
     }
     const unsubscribeRefresh = subscribeLocalPageRefresh(() => { void load(); });
@@ -958,7 +1198,7 @@ export function LocalDashboardPage({ pageName, syncUrl = false }: LocalDashboard
       clearInterval(timer);
       unsubscribeRefresh();
     };
-  }, [pageName]);
+  }, [pageName, requestedRunId]);
 
   const emptyState = page ? resolveLocalPageEmptyState(page, snapshots) : null;
   const now = Date.now();
@@ -987,7 +1227,9 @@ export function LocalDashboardPage({ pageName, syncUrl = false }: LocalDashboard
               <article className="local-dashboard-panel" data-width={String(widget?.width ?? 12)} key={component.component_id}>
                 <h2>{component.title}</h2>
                 {unbound && component.component_kind !== 'metric_card' ? <PendingState componentId={component.component_id} />
-                  : notServed ? <p className="local-dashboard-empty" role="status">{notServed}</p>
+                  : component.component_id === 'workflow-run-path' ? (
+                    <WorkflowRun component={component} snapshots={snapshots} requested={requestedRunId} onOpen={openRun} />
+                  ) : notServed ? <p className="local-dashboard-empty" role="status">{notServed}</p>
                   : bindingFailedEmpty(component, snapshots) ? null
                   : emptyState === 'NO_RUNS_YET' ? <NoRunsYet />
                   : emptyState ? <p className="local-dashboard-empty" role="status">Baseline unresolved</p>

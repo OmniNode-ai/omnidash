@@ -52,6 +52,8 @@ const SAVINGS_FIELDS: ReadonlySet<string> = new Set([
   'counterfactual_baseline_usd',
   'cloud_cost_usd',
   'total_baseline_cost_usd',
+  // OMN-20008 AC5: savings_usd / counterfactual_usd, served by metering-summary.v1 (a ratio, but of the savings figure).
+  'savings_pct_of_counterfactual',
 ]);
 /** Names the pattern matches that are labels, not dollars (Lakshman, 2026-10-05 ~10:58Z: keep the labels). */
 const SAVINGS_LABELS: ReadonlySet<string> = new Set(['savings_method']);
@@ -194,6 +196,9 @@ const R4_ALLOWED: readonly R4Allowance[] = [
   // metric key. Pending until the captured lab catalogue served the column (the lab recapture of 2026-10-07, after
   // metering_summary 0002 reached the lab); its card now binds metering-summary.v1 with the field required.
   { file: 'src/pages/LocalDashboardPage.tsx', owner: 'SavingsPerRunCard', fields: ['savings_per_measured_run_usd'], componentId: 'overview-avg-saving-per-call', state: 'bound' },
+  // OMN-20008 AC5 (Jonah's decision, 4f0e618d): the Savings card's percentage line reads the served ratio from the
+  // same all-time row as its figure and formats it; it divides nothing and reads no other savings field.
+  { file: 'src/pages/LocalDashboardPage.tsx', owner: 'MeteringTotalCard', fields: ['savings_pct_of_counterfactual'], componentId: 'overview-savings', state: 'bound' },
 ];
 const PAGE_FILE = 'src/pages/LocalDashboardPage.tsx';
 /** Imports of these assets carry no code, so they are not scanned (the page imports its stylesheet). */
@@ -786,7 +791,11 @@ describe('OMN-19980 Step B: the allowlist is empty and every savings figure bind
       projection_topic: ALLOWED_TOPIC,
       ordering_authority_field: 'as_of',
       ordering_direction: 'descending',
-      required_fields: ['window_kind', 'as_of', 'baseline_model', 'pricing_manifest_version', 'baseline_state', 'savings_usd'],
+      required_fields: [
+        'window_kind', 'as_of', 'baseline_model', 'pricing_manifest_version', 'baseline_state', 'savings_usd',
+        // OMN-20008 AC5: the percentage line, from the same row.
+        'savings_pct_of_counterfactual',
+      ],
     }]);
     const widget = overview.doc.dashboard.widgets.find((candidate) => candidate.data_source === 'overview-savings');
     expect((widget?.config as { metric_key?: string } | undefined)?.metric_key).toBe('savings_usd');

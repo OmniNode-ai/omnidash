@@ -10,6 +10,7 @@ const SAVINGS = 'onex.snapshot.projection.delegation.savings.v1';
 const METERING = 'onex.snapshot.projection.metering-summary.v1';
 const CREDENTIALS = 'onex.snapshot.projection.tenant-credentials.v1';
 const USAGE = 'onex.snapshot.projection.usage-by-model-day.v1';
+const RUN_TRACE = 'onex.snapshot.projection.run-trace.v1';
 
 const harness = vi.hoisted(() => ({
   reads: [] as string[],
@@ -203,21 +204,32 @@ describe('Partial pages (FR-3, CR-2, CR-3, AK-3, F24)', () => {
   });
   afterEach(() => { vi.useRealTimers(); });
 
-  it('Workflow shows the newest run\'s recorded steps and names what the full path waits on (WF-3)', async () => {
-    harness.reachable = new Set([DECISIONS]);
-    harness.answer = () => Promise.resolve([
-      decisionRow('older-run'),
-      { ...decisionRow('newest-run'), written_at: '2026-10-02T10:09:00Z', quality_gate_passed: false, quality_gate_detail: 'provider timeout after 30s' },
-    ]);
+  it('Workflow shows the newest run\'s decision and its served steps (WF-3, OMN-19987)', async () => {
+    harness.reachable = new Set([DECISIONS, RUN_TRACE]);
+    const step = (sequence: number, kind: string, extra: Record<string, unknown> = {}) => ({
+      correlation_id: 'newest-run', step_sequence: sequence, step_kind: kind, started_at: '2026-10-02T10:08:30Z',
+      duration_ms: null, outcome: 'succeeded', failure_cause: null, failing_step_sequence: null, ...extra,
+    });
+    harness.answer = (topic) => Promise.resolve(topic === RUN_TRACE
+      ? [
+        step(1, 'request'),
+        step(2, 'provider_call', { outcome: 'failed', failure_cause: 'timeout', duration_ms: 30000 }),
+        step(3, 'terminal', { outcome: 'failed', failure_cause: 'timeout', failing_step_sequence: 2 }),
+      ]
+      : [
+        decisionRow('older-run'),
+        { ...decisionRow('newest-run'), written_at: '2026-10-02T10:09:00Z', quality_gate_passed: false, quality_gate_detail: 'provider timeout after 30s' },
+      ]);
     render(<LocalDashboardPage pageName="workflow" />);
     await settle();
     const panel = screen.getByRole('heading', { name: 'Run path' }).closest('article')!;
     expect(within(panel).getByText('newest-run')).toBeInTheDocument();
     expect(within(panel).queryByText('older-run')).not.toBeInTheDocument();
     const steps = within(panel).getAllByRole('listitem').map((item) => item.querySelector('strong')?.textContent);
-    expect(steps).toEqual(['Request', 'Routing', 'Quality gate', 'Terminal']);
-    expect(within(panel).getByText(/failed: provider timeout after 30s/)).toBeInTheDocument();
-    expect(within(panel).getByText('Full path not served yet: waits on run-trace.v1 (OMN-19987)')).toBeInTheDocument();
+    expect(steps).toEqual(['Request', 'Provider call', 'Terminal']);
+    expect(within(panel).getByText('provider timeout after 30s')).toBeInTheDocument();
+    expect(within(panel).getAllByText('Failed here')).toHaveLength(1);
+    expect(panel.textContent).not.toContain('Full path not served yet');
   });
 
   it('Workflow with no runs shows NO_RUNS_YET', async () => {
