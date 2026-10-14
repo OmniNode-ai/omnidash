@@ -225,6 +225,9 @@ const R4_ALLOWED: readonly R4Allowance[] = [
   // OMN-20008 AC5 (Jonah's decision, 4f0e618d): the Savings card's percentage line reads the served ratio from the
   // same all-time row as its figure and formats it; it divides nothing and reads no other savings field.
   { file: 'src/pages/LocalDashboardPage.tsx', owner: 'MeteringTotalCard', fields: ['savings_pct_of_counterfactual'], componentId: 'overview-savings', state: 'bound' },
+  // OMN-21015 AC3 (the PER_RUN_SAVING exception): the Runs table's cell formats one run's served modelled saving and
+  // names its baseline; it sums nothing and reads no other savings field.
+  { file: 'src/pages/LocalDashboardPage.tsx', owner: 'runModelledCell', fields: ['modelled_savings_usd'], componentId: 'recent-runs', state: 'bound' },
 ];
 const PAGE_FILE = 'src/pages/LocalDashboardPage.tsx';
 /** Imports of these assets carry no code, so they are not scanned (the page imports its stylesheet). */
@@ -843,19 +846,26 @@ describe('OMN-19980 Step B: the allowlist is empty and every savings figure bind
     ]);
   });
 
-  it('every bound savings figure on the six pages reads metering-summary.v1, and there is at least one', () => {
+  it('every bound savings figure on the six pages reads metering-summary.v1, but the one per-run exception, and there is at least one', () => {
     const pages = loadPages();
+    // OMN-21015 AC3: the PER_RUN_SAVING field is the one savings figure allowed off metering-summary.v1; it is set
+    // aside here by exact match and asserted below to be where the exception says, so nothing else can hide behind it.
     const bound = pages.flatMap((page) => bindingsOf(page)
-      .filter(({ binding: b }) => (b.required_fields ?? []).some(isSavingsField))
+      .filter(({ component, binding: b }) => (b.required_fields ?? []).some((f) => isSavingsField(f)
+        && !isPerRunSaving(component.component_id, b.binding_id, b.projection_topic, f)))
       .map(({ binding: b }) => ({ id: `${page.name}/${b.binding_id}`, topic: b.projection_topic })));
     const shown = pages.flatMap((page) => widgetKeys(page).filter((entry) => isSavingsField(entry.key)).flatMap((entry) => {
       const first = page.doc.components.find((candidate) => candidate.component_id === entry.componentId)?.data_bindings?.[0];
+      if (first !== undefined && isPerRunSaving(entry.componentId, first.binding_id, first.projection_topic, entry.key)) return [];
       return first === undefined ? [] : [{ id: `${page.name}/${entry.componentId}:${entry.key}`, topic: first.projection_topic }];
     }));
     // The instrument: the Overview Savings total is a bound savings figure, so a vacuous pass is impossible.
     expect(bound.map((entry) => entry.id)).toContain('overview/overview-savings-metering');
     expect(shown.map((entry) => entry.id)).toContain('overview/overview-savings:savings_usd');
     for (const entry of [...bound, ...shown]) expect(entry.topic, entry.id).toBe(ALLOWED_TOPIC);
+    const perRun = pages.flatMap((page) => bindingsOf(page).filter(({ binding: b }) => (b.required_fields ?? []).includes(PER_RUN_SAVING.field))
+      .map(({ component, binding: b }) => `${page.name}/${component.component_id}/${b.binding_id}:${b.projection_topic}`));
+    expect(perRun).toEqual([`runs/${PER_RUN_SAVING.componentId}/${PER_RUN_SAVING.bindingId}:${DECISIONS}`]);
   });
 
   it('the Overview Savings total reads the all-time row of metering-summary.v1, its caption from the same row', () => {

@@ -428,6 +428,25 @@ function costOf(session: Row | undefined, decision: Row): string {
   return `$${decimals >= 2 ? text : amount.toFixed(2)}`;
 }
 
+/**
+ * OMN-21015 AC3: one run's modelled saving as served on delegation.decisions.v1, named against the baseline it was priced
+ * against. The page formats the served figure and computes nothing. A run that was not measured says why, never 0; a
+ * measured zero is a zero. Never fewer than two decimals and never rounded, as costOf.
+ */
+function runModelledCell(run: Row): string {
+  const figure = run.modelled_savings_usd;
+  if (isMissing(figure)) {
+    if (run.savings_measurement === 'unknown_tokens') return 'Not measured: tokens not recorded';
+    if (run.savings_measurement === 'unknown_spend') return 'Not measured: cost not recorded';
+    return 'Not measured';
+  }
+  const amount = Number(figure);
+  if (!Number.isFinite(amount)) return 'Not measured';
+  const text = String(amount);
+  const decimals = text.includes('.') ? text.split('.')[1].length : 0;
+  return `$${decimals >= 2 ? text : amount.toFixed(2)} vs ${recorded(run.savings_baseline_model)}`;
+}
+
 /** The route tier as served, with its cost regime beside it when the row carries one (OMN-13649, OMN-20225). */
 function tierOf(decision: Row): string {
   if (isMissing(decision.cost_tier_name)) return 'Not recorded';
@@ -645,8 +664,8 @@ export function RunsTable({ decisions, sessions, now = Date.now(), pageSize = 25
               <thead>
                 <tr>
                   <th>Run</th><th>Created</th><th>Status</th><th>Cause</th><th>Model</th><th>Backend</th><th>Host</th>
-                  <th>Tokens in</th><th>Tokens out</th><th>Local cost</th><th>Baseline model</th><th>Basis</th>
-                  <th>Task type</th><th>Duration</th><th>Tokens to compliance</th><th>Route tier</th><th>Quality score</th>
+                  <th>Tokens in</th><th>Tokens out</th><th>Local cost</th><th>Modelled saving</th><th>Baseline model</th>
+                  <th>Basis</th><th>Task type</th><th>Duration</th><th>Tokens to compliance</th><th>Route tier</th><th>Quality score</th>
                 </tr>
               </thead>
               <tbody>{page.map((run, index) => {
@@ -662,6 +681,7 @@ export function RunsTable({ decisions, sessions, now = Date.now(), pageSize = 25
                   <td>{recorded(run.tokens_input)}</td>
                   <td>{recorded(run.tokens_output)}</td>
                   <td>{costOf(session, run)}</td>
+                  <td>{runModelledCell(run)}</td>
                   <td>{recorded(session?.baseline_model)}</td>
                   <td>{recorded(session?.usage_source)}</td>
                   <td>{recorded(run.task_type)}</td>
