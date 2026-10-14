@@ -17,8 +17,8 @@
 #
 # Closes the omnidash receipt-enforcement gap identified in the 2026-06-19
 # ratchet-enforcement audit (OmniNode planning workspace): omnidash previously
-# had neither a call-receipt-gate nor receipt-honesty, unlike all other primary
-# repos.
+# had neither a call-receipt-gate.yml nor receipt-honesty, unlike all other
+# primary repos. call-receipt-gate.yml was removed by the OMN-20074 S6 cut-over.
 #
 # Required-status-check name (when later flipped): `receipt-honesty / receipt-honesty`
 

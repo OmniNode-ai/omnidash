@@ -26,6 +26,11 @@ export interface LocalPageDocument {
 export interface LocalPageLoadOptions {
   mode: 'http' | 'file';
   availableTopics: ReadonlySet<string>;
+  /**
+   * WF-3: the run whose steps run-trace.v1 is asked for. Null or absent asks for the newest run the same component's
+   * decisions binding serves.
+   */
+  runId?: string | null;
 }
 
 /**
@@ -43,6 +48,8 @@ export interface BoundProjectionSnapshot extends ProjectionSnapshot {
   failure?: ProjectionReadFailure;
   /** When the rows shown were read, if a later read failed. */
   lastGoodAt?: string | null;
+  /** On the run-trace.v1 snapshot only: the run its rows were asked for, or null when no run could be named. */
+  runId?: string | null;
 }
 
 /** A read with no answer in this long is a typed timeout (requirements: loading turns into an error after 5 s). */
@@ -55,20 +62,36 @@ export const LOCAL_READ_TIMEOUT_MS = 5000;
  */
 const inFlightReads = new WeakMap<object, Map<string, Promise<ProjectionSnapshot>>>();
 
-function sharedRead(source: ProtocolSnapshotSource, topic: string): Promise<ProjectionSnapshot> {
+/**
+ * One request per exposure AND per set of parameters: two reads of run-trace.v1 for different runs are different
+ * requests, and sharing one would hand the first run's rows to the second (OMN-19987).
+ */
+function sharedRead(
+  source: ProtocolSnapshotSource,
+  topic: string,
+  params?: Readonly<Record<string, string>>,
+): Promise<ProjectionSnapshot> {
   let reads = inFlightReads.get(source);
   if (!reads) {
     reads = new Map();
     inFlightReads.set(source, reads);
   }
-  const pending = reads.get(topic);
+  const key = params ? `${topic}?${new URLSearchParams(params).toString()}` : topic;
+  const pending = reads.get(key);
   if (pending) return pending;
-  const read = source.readSnapshot!(topic).finally(() => reads!.delete(topic));
-  reads.set(topic, read);
+  const read = (params ? source.readSnapshot!(topic, params) : source.readSnapshot!(topic))
+    .finally(() => reads!.delete(key));
+  reads.set(key, read);
   return read;
 }
 
 export const DELEGATION_SAVINGS_TOPIC = 'onex.snapshot.projection.delegation.savings.v1';
+export const DELEGATION_DECISIONS_TOPIC = 'onex.snapshot.projection.delegation.decisions.v1';
+/**
+ * One run's steps in the order the delegate orchestrator assigned (OMN-19987). It is only ever read for one run,
+ * with ?correlation_id=: unfiltered it serves every run's steps together, which no page shows.
+ */
+export const RUN_TRACE_TOPIC = 'onex.snapshot.projection.run-trace.v1';
 /**
  * One row per window and baseline model; Overview's headline cards read its all-time row (OMN-19980 Step B), and a
  * row's null saving is that row's own state, not the page's (OMN-20009).
@@ -154,14 +177,17 @@ export async function loadLocalPageSnapshots(
       (component.data_bindings ?? []).map((binding) => binding.projection_topic),
     ),
   );
-  return Promise.all([...topics].map(async (topic): Promise<BoundProjectionSnapshot> => {
+  const readTopic = async (
+    topic: string,
+    params?: Readonly<Record<string, string>>,
+  ): Promise<BoundProjectionSnapshot> => {
     if (!options.availableTopics.has(topic)) {
       return failedSnapshot(topic, { kind: 'not-served', message: `Not served: ${topic}` });
     }
     let timer: ReturnType<typeof setTimeout> | undefined;
     const timeout = new Promise<'timeout'>((resolve) => { timer = setTimeout(() => resolve('timeout'), LOCAL_READ_TIMEOUT_MS); });
     try {
-      const answer = await Promise.race([sharedRead(source, topic), timeout]);
+      const answer = await Promise.race([sharedRead(source, topic, params), timeout]);
       if (answer === 'timeout') return failedSnapshot(topic, { kind: 'timeout', message: `${topic}: no answer in 5 s` });
       return { topic, ...answer };
     } catch (cause) {
@@ -177,11 +203,57 @@ export async function loadLocalPageSnapshots(
     } finally {
       clearTimeout(timer);
     }
-  }));
+  };
+  const others = [...topics].filter((topic) => topic !== RUN_TRACE_TOPIC);
+  if (!topics.has(RUN_TRACE_TOPIC)) return Promise.all(others.map((topic) => readTopic(topic)));
+  // run-trace.v1 is read for exactly one run and never without an id. With no run to name, it is not read at all.
+  const readRunTrace = async (runId: string | null): Promise<BoundProjectionSnapshot> => {
+    if (runId === null && options.availableTopics.has(RUN_TRACE_TOPIC)) return { ...unreadSnapshot(RUN_TRACE_TOPIC), runId };
+    return { ...(await readTopic(RUN_TRACE_TOPIC, runId === null ? undefined : { correlation_id: runId })), runId };
+  };
+  const asked = options.runId ?? null;
+  if (asked !== null) {
+    const [steps, ...rest] = await Promise.all([readRunTrace(asked), ...others.map((topic) => readTopic(topic))]);
+    return [...rest, steps];
+  }
+  const read = await Promise.all(others.map((topic) => readTopic(topic)));
+  return [...read, await readRunTrace(newestRunId(page, read))];
+}
+
+function unreadSnapshot(topic: string): BoundProjectionSnapshot {
+  return { topic, rows: [], rowCount: 0, dataFreshness: 'unknown', latestEventAt: null, readAt: new Date().toISOString() };
 }
 
 function failedSnapshot(topic: string, failure: ProjectionReadFailure): BoundProjectionSnapshot {
-  return { topic, rows: [], rowCount: 0, dataFreshness: 'unknown', latestEventAt: null, readAt: new Date().toISOString(), failure };
+  return { ...unreadSnapshot(topic), failure };
+}
+
+/**
+ * WF-3: the correlation id of the newest run, by the declared ordering authority of the decisions binding that sits
+ * beside the run-trace binding. Null when that read failed, served no run, or its newest run records no id.
+ */
+function newestRunId(page: LocalPageDocument, snapshots: readonly BoundProjectionSnapshot[]): string | null {
+  const binding = page.components
+    .filter((component) => (component.data_bindings ?? []).some((candidate) => candidate.projection_topic === RUN_TRACE_TOPIC))
+    .flatMap((component) => component.data_bindings ?? [])
+    .find((candidate) => candidate.projection_topic === DELEGATION_DECISIONS_TOPIC);
+  if (!binding) return null;
+  const snapshot = snapshots.find((candidate) => candidate.topic === binding.projection_topic);
+  if (!snapshot || snapshot.failure) return null;
+  let newest: Record<string, unknown> | null = null;
+  let newestAt = Number.NEGATIVE_INFINITY;
+  for (const row of snapshot.rows) {
+    if (!isRecord(row)) continue;
+    const value = row[binding.ordering_authority_field];
+    const parsed = typeof value === 'string' ? Date.parse(value) : Number.NaN;
+    const at = Number.isFinite(parsed) ? parsed : Number.NEGATIVE_INFINITY;
+    if (newest === null || at > newestAt) {
+      newest = row;
+      newestAt = at;
+    }
+  }
+  const id = newest?.correlation_id;
+  return typeof id === 'string' && id.trim() !== '' ? id : null;
 }
 
 /** "<exposure>: HTTP 503 ..." from the source's "Projection <exposure> failed: HTTP 503 ..." (never a bare message). */
@@ -203,6 +275,8 @@ export function withLastGood(
     if (!snapshot.failure) return snapshot;
     const prior = previous.find((candidate) => candidate.topic === snapshot.topic);
     if (!prior || (prior.failure && prior.lastGoodAt === undefined)) return snapshot;
+    // Last good rows are another run's rows once the run asked for has changed: never keep those (OMN-19987).
+    if (prior.runId !== snapshot.runId) return snapshot;
     return { ...prior, failure: snapshot.failure, lastGoodAt: prior.failure ? prior.lastGoodAt : prior.readAt };
   });
 }

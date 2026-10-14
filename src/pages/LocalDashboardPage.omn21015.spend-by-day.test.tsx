@@ -173,7 +173,7 @@ describe('OMN-21015 AC1: Overview shows baseline against actual spend per UTC da
     const servedColumns = (servedCatalogue as { exposures: Array<{ topic: string; columns: string[] }> }).exposures
       .find((exposure) => exposure.topic === METERING)?.columns ?? [];
     const windowAndState = ['tenant_id', 'window_kind', 'window_start', 'window_end', 'as_of', 'baseline_state', 'pricing_manifest_version', 'summary_json'];
-    const baselinePriced = ['baseline_model', 'counterfactual_usd', 'savings_usd', 'savings_per_measured_run_usd'];
+    const baselinePriced = ['baseline_model', 'counterfactual_usd', 'savings_usd', 'savings_per_measured_run_usd', 'savings_pct_of_counterfactual'];
     expect([...servedColumns].sort()).toEqual([...windowAndState, ...baselinePriced, ...RUN_MEASURED_FIELDS].sort());
 
     // Constructed: an unresolved-baseline day with every figure missing, shown with every figure as a column.

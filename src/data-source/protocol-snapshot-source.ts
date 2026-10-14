@@ -7,6 +7,8 @@ export interface ProjectionSnapshot<T = unknown> {
   dataFreshness: ProjectionDataFreshness;
   latestEventAt: string | null;
   readAt: string;
+  /** True when the exposure said this answer is one truncated page, so the rows are not all there is. */
+  truncated?: boolean;
 }
 
 export interface ProtocolSnapshotSource {

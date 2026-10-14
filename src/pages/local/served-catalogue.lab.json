@@ -1,6 +1,6 @@
 {
   "source": "GET /projections on the .201 lab projection API (lakshman lane), read-only",
-  "captured_at": "2026-10-07T06:34:14Z",
+  "captured_at": "2026-10-14T04:30:11Z",
   "exposures": [
     {
       "topic": "delegation",
@@ -33,7 +33,8 @@
         "cost_savings_usd",
         "pricing_manifest_version",
         "timestamp",
-        "created_at"
+        "created_at",
+        "data_source"
       ]
     },
     {
@@ -161,7 +162,8 @@
         "actual_score",
         "escalation_count",
         "authority_source",
-        "pricing_manifest_version"
+        "pricing_manifest_version",
+        "data_source"
       ]
     },
     {
@@ -215,6 +217,94 @@
         "project_name",
         "claude_session_id",
         "created_at"
+      ]
+    },
+    {
+      "topic": "onex.snapshot.projection.automation-liveness-alarms.v1",
+      "status": "ok",
+      "degraded_reason": null,
+      "columns": [
+        "episode_id",
+        "process_id",
+        "host",
+        "verdict",
+        "state",
+        "reason",
+        "severity",
+        "opened_at",
+        "delivery_due_at",
+        "evidence_ref",
+        "action",
+        "cleared_at",
+        "last_attempt_at",
+        "last_attempt_route",
+        "last_attempt_delivered",
+        "last_attempt_failure",
+        "delivered_at",
+        "delivery_route",
+        "delivery_ref",
+        "recorded_at",
+        "ledger_line",
+        "recorded_by",
+        "last_recorded_at",
+        "last_ledger_line",
+        "projected_at"
+      ]
+    },
+    {
+      "topic": "onex.snapshot.projection.automation-liveness-runs.v1",
+      "status": "ok",
+      "degraded_reason": null,
+      "columns": [
+        "run_key",
+        "process_id",
+        "host",
+        "run_id",
+        "phase",
+        "started_at",
+        "finished_at",
+        "outcome",
+        "exit_code",
+        "did_work_count",
+        "demand_count",
+        "unseen_runs",
+        "work_unit",
+        "evidence_ref",
+        "emitter",
+        "observed_at",
+        "contract_digest",
+        "projected_at"
+      ]
+    },
+    {
+      "topic": "onex.snapshot.projection.automation-liveness.v1",
+      "status": "ok",
+      "degraded_reason": null,
+      "columns": [
+        "process_key",
+        "process_id",
+        "host",
+        "declared_at",
+        "process_state",
+        "contract_digest",
+        "last_run_at",
+        "last_outcome",
+        "last_work_at",
+        "last_did_work_count",
+        "last_demand_count",
+        "failures_in_window",
+        "consecutive_idle_with_demand",
+        "last_heartbeat_at",
+        "last_progress_at",
+        "progress_counter",
+        "open_run_started_at",
+        "verdict",
+        "verdict_reason",
+        "verdict_state",
+        "verdict_since",
+        "verdict_evaluated_at",
+        "open_episode_id",
+        "projected_at"
       ]
     },
     {
@@ -395,7 +485,9 @@
         "warnings",
         "provisioned",
         "latest_projection_updated_at",
-        "tenant_id"
+        "tenant_id",
+        "estimated_run_count",
+        "unknown_run_count"
       ]
     },
     {
@@ -520,6 +612,7 @@
         "response_text",
         "timestamp",
         "created_at",
+        "data_source",
         "tenant_id"
       ]
     },
@@ -548,6 +641,8 @@
         "score_source",
         "cost_tier_name",
         "cost_tier_type",
+        "terminal_ok",
+        "cost_usd",
         "created_at",
         "data_source",
         "trace_id",
@@ -555,8 +650,14 @@
         "answering_backend",
         "backend_id",
         "host",
+        "parent_correlation_id",
+        "lineage_kind",
+        "parent_failure_cause",
         "finish_reason",
         "truncated",
+        "requested_model",
+        "queue_wait_ms",
+        "execution_ms",
         "tenant_id",
         "writer_identity",
         "written_at"
@@ -1047,6 +1148,7 @@
         "counterfactual_usd",
         "savings_usd",
         "savings_per_measured_run_usd",
+        "savings_pct_of_counterfactual",
         "compression_ratio",
         "cache_hit_rate",
         "runs_cache_answered",
@@ -1177,6 +1279,29 @@
         "captured_at",
         "provisioned",
         "latest_projection_updated_at"
+      ]
+    },
+    {
+      "topic": "onex.snapshot.projection.run-trace.v1",
+      "status": "ok",
+      "degraded_reason": null,
+      "columns": [
+        "tenant_id",
+        "correlation_id",
+        "step_sequence",
+        "step_kind",
+        "started_at",
+        "duration_ms",
+        "outcome",
+        "failure_cause",
+        "backend_id",
+        "model_id",
+        "attempt_number",
+        "reason",
+        "candidates",
+        "failing_step_sequence",
+        "updated_at",
+        "projection_cursor"
       ]
     },
     {
@@ -1325,7 +1450,11 @@
         "name",
         "provider",
         "created_at",
-        "revoked_at"
+        "revoked_at",
+        "fingerprint",
+        "set_at",
+        "expires_at",
+        "bound_host"
       ]
     },
     {
@@ -1377,6 +1506,8 @@
         "input_tokens",
         "output_tokens",
         "cost_usd",
+        "measured_cost_usd",
+        "unmeasured_call_count",
         "call_count",
         "updated_at",
         "projection_cursor"
@@ -1411,6 +1542,28 @@
         "summary",
         "source_topic",
         "payload"
+      ]
+    },
+    {
+      "topic": "onex.snapshot.projection.work.open-obligations.v1",
+      "status": "degraded",
+      "degraded_reason": "not_yet_bus_backed",
+      "columns": [
+        "obligation_id",
+        "state",
+        "owed_by",
+        "asked_by",
+        "acceptance_condition",
+        "opened_summary",
+        "ticket_id",
+        "created_at",
+        "closed_at",
+        "evidence_uri",
+        "delivery_state",
+        "superseded_by",
+        "abandon_reason",
+        "last_event_kind",
+        "last_event_at"
       ]
     }
   ]
