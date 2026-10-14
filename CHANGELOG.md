@@ -10,6 +10,7 @@ This project follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) an
 
 - The Overview's Savings card shows "N% below the <baseline> baseline (modelled)" from metering-summary.v1's served `savings_pct_of_counterfactual`, "above" when spend exceeds the baseline, and no line when the ratio is not served. The browser formats the served ratio and divides nothing (OMN-20008).
 - Credentials shows each key's fingerprint prefix and the time it was set (OMN-19985).
+- The Workflow page reads one run's ordered steps from the tenant-scoped run-trace.v1 projection (OMN-19987).
 
 ### Fixed
 
