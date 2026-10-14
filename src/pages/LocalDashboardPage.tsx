@@ -263,8 +263,9 @@ export function MeteringTotalCard({ component, config, rows, window = 'all', now
     : required.includes('runs_total')
       ? { runs_total: row.runs_total, runs_unknown_tokens: row.runs_unknown_tokens, runs_unknown_spend: row.runs_unknown_spend }
       : null;
-  // OMN-20008 AC5: the Savings card's percentage line, from the same all-time row. A row that does not serve the
-  // ratio yet (or serves null) loses only this line; the figure and its captions stay as they were.
+  // OMN-20008 AC5: the Savings card's percentage line, from the same row as the figure, so it follows the chosen
+  // window (OMN-21015 AC7). A row that does not serve the ratio yet (or serves null) loses only this line; the figure
+  // and its captions stay as they were, and no other window's ratio stands in.
   const pctField = 'savings_pct_of_counterfactual';
   const pct = required.includes(pctField) ? pctAgainstBaseline(row[pctField], row.baseline_model) : null;
   return (
