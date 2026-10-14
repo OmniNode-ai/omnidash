@@ -211,6 +211,9 @@ function tokensText(row: Record<string, unknown>): string {
 /** OV-3: the window the Overview's metering cards show. The fold serves fixed windows only: all time, and UTC days. */
 export type OverviewWindow = 'all' | 'today';
 
+/** Said on an Overview panel whose exposure serves no row per window, while today is the chosen window. */
+const OUTSIDE_WINDOW_NOTE = 'All time: this panel does not follow the window above.';
+
 /**
  * The one metering-summary.v1 row every Overview metering card reads for the chosen window, or the card text that says
  * why none can be picked. All time is the fold's `all` row. Today is the fold's `day` row whose window_start is today's
@@ -1158,9 +1161,15 @@ export function LocalDashboardPage({ pageName, syncUrl = false }: LocalDashboard
             const pageSize = Number((widget?.config as Record<string, unknown> | undefined)?.page_size ?? 25);
             const notServed = notServedTopic(component, snapshots);
             const unbound = (component.data_bindings ?? []).length === 0;
+            // OV-3: only the panels that read metering-summary.v1 have a row per window. Every other Overview panel
+            // reads an exposure with no day rows, so with today chosen it still shows all time and has to say so:
+            // seen on a store of two real days, "Agent calls 4" beside "6 of 6 runs local".
+            const outsideWindow = pageName === 'overview' && overviewWindow === 'today'
+              && component.data_bindings?.[0]?.projection_topic !== METERING_SUMMARY_TOPIC;
             return (
               <article className="local-dashboard-panel" data-width={String(widget?.width ?? 12)} key={component.component_id}>
                 <h2>{component.title}</h2>
+                {outsideWindow && <p className="local-dashboard-caption">{OUTSIDE_WINDOW_NOTE}</p>}
                 {unbound && component.component_kind !== 'metric_card' ? <PendingState componentId={component.component_id} />
                   : notServed ? <p className="local-dashboard-empty" role="status">{notServed}</p>
                   : bindingFailedEmpty(component, snapshots) ? null

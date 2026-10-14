@@ -9,6 +9,9 @@
 //   Q3  today's row serves no ratio and the line falls back to the all-time ratio instead of going away
 //   Q4  today has no row and a line is shown anyway, under "Not measured"
 //   Q5  on the page, the switch moves the figure but not the line under it, or does not bring the line back
+//   Q6  today is chosen and a panel that reads another exposure (Run locally, Tier mix) still shows all-time counts
+//       with nothing saying so, beside tiles that show today's (seen on a lab store of two real days, 2026-10-14)
+//   Q7  the all-time note is shown on a tile that does follow the window, or stays after all time is chosen again
 import { act, fireEvent, render, screen } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { loadLocalPageConfig } from '../layout/local-page-loader';
@@ -135,5 +138,35 @@ describe('OMN-21015 AC7: the Overview page', () => {
     expect(panel().querySelector('.local-dashboard-metric')?.textContent).toBe('$0.0089');
     expect(panel().textContent).toContain(LINE(42));
     expect(panel().textContent).not.toContain(LINE(25));
+  });
+
+  const NOTE = 'All time: this panel does not follow the window above.';
+  const article = (title: string) => screen.getByRole('heading', { name: title }).closest('article') as HTMLElement;
+  // By the exposure each panel is bound to in overview.contracts.yaml: metering-summary.v1 has a row per window, the
+  // decisions, model-routing and quality-gate exposures do not.
+  const FOLLOWS = ['Actual spend', 'Savings', 'Agent calls', 'Tokens processed', 'Avg saving / call', 'Baseline spend',
+    'Compression', 'Cache hit rate', 'Spend per day'];
+  const DOES_NOT = ['Run locally', 'Tier mix', 'Quality', 'Last run', 'Recent runs'];
+
+  async function openOverview() {
+    harness.reachable = new Set([METERING]);
+    harness.answer = (topic) => Promise.resolve(topic === METERING ? [ALL_ROW, YESTERDAY_ROW, TODAY_ROW] : []);
+    render(<LocalDashboardPage pageName="overview" />);
+    await act(async () => { await vi.advanceTimersByTimeAsync(0); });
+  }
+
+  it('Q6: with today chosen, every panel that does not follow the window says it shows all time', async () => {
+    await openOverview();
+    chooseWindow('today');
+    for (const title of DOES_NOT) expect(article(title).textContent, title).toContain(NOTE);
+  });
+
+  it('Q7: the note is never on a panel that follows the window, and goes when all time is chosen', async () => {
+    await openOverview();
+    for (const title of [...FOLLOWS, ...DOES_NOT]) expect(article(title).textContent, title).not.toContain(NOTE);
+    chooseWindow('today');
+    for (const title of FOLLOWS) expect(article(title).textContent, title).not.toContain(NOTE);
+    chooseWindow('all');
+    for (const title of [...FOLLOWS, ...DOES_NOT]) expect(article(title).textContent, title).not.toContain(NOTE);
   });
 });
