@@ -5,9 +5,9 @@ import {
   LastRunCard,
   QualityPanel,
   RecentRunsTable,
+  RunSummary,
   RunsTable,
   TierMixPanel,
-  WorkflowPath,
 } from './LocalDashboardPage';
 
 // OMN-20225: every run row shows its verdict, score and the backend, host and tier that accepted it, read from the
@@ -94,15 +94,17 @@ describe('OMN-20225 AC1, AC2: the served verdict, score, backend, host and tier 
     expect(screen.queryByText(/Not served \(OMN-20162\)/)).not.toBeInTheDocument();
   });
 
-  it('the Workflow routing step names the backend and host', () => {
-    render(<WorkflowPath decisions={[decision('run-c')]} />);
-    const routing = screen.getByText('Routing').nextElementSibling?.textContent ?? '';
-    expect(routing).toContain('backend local-heavy-reasoning');
-    expect(routing).toContain('host gpu-host-b');
-    expect(routing).toContain('tier local (free_local)');
-    expect(routing).not.toContain('OMN-20162');
-    const gate = screen.getByText('Quality gate').nextElementSibling?.textContent ?? '';
-    expect(gate).toBe('passed · score 0.92');
+  it('the Workflow run summary names the backend, host, tier, verdict and score', () => {
+    // OMN-19987: the run's steps now come from run-trace.v1; its decision row is shown beside them as a summary.
+    render(<RunSummary decision={decision('run-c')} />);
+    const summary = screen.getByRole('region', { name: 'Run summary' });
+    const field = (label: string) => within(summary).getByText(label).nextElementSibling?.textContent ?? '';
+    expect(field('Backend')).toBe('local-heavy-reasoning');
+    expect(field('Host')).toBe('gpu-host-b');
+    expect(field('Route tier')).toBe('local (free_local)');
+    expect(field('Status')).toBe('passed');
+    expect(field('Quality score')).toBe('0.92');
+    expect(summary.textContent).not.toContain('OMN-20162');
   });
 });
 
