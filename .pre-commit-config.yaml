@@ -33,6 +33,15 @@ repos:
 
   - repo: local
     hooks:
+      - id: pr-title-omnimarket-node
+        name: PR title node wiring and verdict parity (OMN-20998)
+        entry: python -m pytest tests/ci/test_pr_title_check_omnimarket_node.py -q --noconftest -p no:cacheprovider -c /dev/null
+        language: python
+        additional_dependencies: ["pytest", "pyyaml", "uv"]
+        pass_filenames: false
+        files: ^(\.github/(workflows/pr-title-check\.yml|required-checks\.yaml)|tests/ci/test_pr_title_check_omnimarket_node\.py|contracts/OMN-20998\.yaml|\.pre-commit-config\.yaml)$
+        stages: [pre-commit]
+
       - id: no-env-file
         name: Reject committed .env files (except .env.example)
         entry: >-

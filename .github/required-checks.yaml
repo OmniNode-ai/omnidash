@@ -71,6 +71,14 @@ classification: dashboard
 repo: omnidash
 
 gates:
+  - name: "pr-title / check-title"
+    mode: REQUIRED
+    producer_kind: local
+    workflow: pr-title-check.yml
+    job_path: ["pr-title"]
+    skip_semantics: never
+    rationale: "PR title ticket-reference check runs omnimarket's node_pr_title_check_compute from a pinned release (OMN-20998)."
+
   - name: "Typecheck & Tests"
     mode: REQUIRED
     producer_kind: local
