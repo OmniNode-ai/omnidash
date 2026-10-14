@@ -46,11 +46,13 @@ describe('Sidebar local pages (FR-3, F23)', () => {
     expect(aside.querySelector('nav[aria-label="Local"]')).toBe(aside.querySelector('nav, .dash-list'));
   });
 
-  it('marks the four pages whose exposures are not served with a partial chip, and not Overview or Runs', () => {
+  it('marks the three pages still flagged partial with a chip, and not Overview, Runs or Workflow', () => {
+    // OMN-19987: Workflow reads run-trace.v1 now, so its chip is gone. Usage, Credentials and API Keys keep theirs:
+    // their flags are other tickets' to clear.
     render(<Sidebar />, { wrapper: Wrapper });
     for (const [page] of SIX) {
       const chip = within(screen.getByTestId(`nav-${page}`)).queryByText('partial');
-      if (page === 'local-overview' || page === 'local-runs') expect(chip, page).toBeNull();
+      if (page === 'local-overview' || page === 'local-runs' || page === 'local-workflow') expect(chip, page).toBeNull();
       else expect(chip, page).not.toBeNull();
     }
   });
