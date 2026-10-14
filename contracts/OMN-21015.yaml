@@ -2,7 +2,7 @@
 schema_version: "1.0.0"
 ticket_id: "OMN-21015"
 title: "The local dashboard shows the demo's in-scope figures on Overview, Runs and Usage, and meets four dashboard requirements not yet built"
-summary: "The omnidash page half of AC1, AC7, AC8 and the token series of AC4. Overview renders baseline against actual spend per UTC day from the day rows of metering-summary.v1 and its headline tiles switch between today (UTC) and all time, each reading the served row for that window; the Runs list filters by backend; Usage shows tokens in and out per day stacked by model, in the order the exposure serves them. Every figure is read from a served exposure; none is summed or priced in the browser. AC2, AC3 and the by-model table of AC4 land in their own changes."
+summary: "The omnidash page half of AC1, AC7, AC8 and the token series of AC4. Overview renders baseline against actual spend per UTC day from the day rows of metering-summary.v1 and its headline tiles switch between today (UTC) and all time, each reading the served row for that window; the Runs list filters by backend; Usage shows tokens in and out per day stacked by model, in the order the exposure serves them. Every figure is read from a served exposure; none is summed or priced in the browser. On this change also AC3: the Runs list shows each run's served modelled saving, with AC5's guard amended for exactly that one field. AC2 and the by-model table of AC4 land in their own changes."
 is_seam_ticket: false
 interface_change: false
 interfaces_touched: []
@@ -23,6 +23,12 @@ requirements:
       - id: "AC8"
         statement: |-
           AC8: The Runs list filters by backend as well as by status, cause, model and window (requirement RU-1) -- falsifier: a page test over a fixture with two backends still shows a row of the other backend after one is selected
+      - id: "AC3"
+        statement: |-
+          AC3: The Runs list shows savings per run against the named baseline (requirement RU-1), and a typed not-measured state for an unmeasured run -- falsifier: a measured fixture row with no savings cell, or an unmeasured row that shows 0
+      - id: "AC5"
+        statement: |-
+          AC5: Every new figure reads one served exposure and none is computed in the browser from prices -- falsifier: the [OMN-19980](<https://linear.app/omninode/issue/OMN-19980>) guard fails on a price literal or price arithmetic outside the metering compute
 evidence_requirements:
   - kind: "tests"
     description: "AC1: over a recorded two-day metering-summary.v1 fixture the Overview panel shows both series per UTC day; a missing series, a window total that differs from the headline spend and savings, or an unplaced served column fails."
@@ -36,6 +42,12 @@ evidence_requirements:
   - kind: "tests"
     description: "AC4, token series: tokens in and out per day stacked by model in the exposure's served order, each segment as wide as its share of the served count."
     command: "npx vitest run src/components/dashboard/usage/UsageTokensByDay.omn21015.test.tsx"
+  - kind: "tests"
+    description: "AC3: the Runs list shows each run's served modelled saving against its named baseline, and a typed not-measured state, never 0, for an unmeasured run."
+    command: "npx vitest run src/pages/LocalDashboardPage.omn21015.run-saving.test.tsx src/pages/LocalDashboardPage.runs.test.tsx"
+  - kind: "tests"
+    description: "AC5: the OMN-19980 guard refuses a savings field from any exposure but the one allowed, a price literal and price arithmetic outside the metering compute."
+    command: "npx vitest run src/pages/local/omn19980.savings-source.test.ts"
 dod_evidence:
   - id: "dod-omn21015-ac1-spend-by-day"
     description: "AC1: the Overview panel shows baseline against actual spend per UTC day from the served day rows; a missing series or a window total that differs from the headline fails."
@@ -68,6 +80,22 @@ dod_evidence:
     checks:
       - check_type: "test_passes"
         check_value: "test -d node_modules || npm ci --no-audit --no-fund; npx vitest run src/pages/LocalDashboardPage.omn21015.runs-backend.test.tsx"
+        cwd: "${OMNI_HOME}/omnidash"
+  - id: "dod-omn21015-ac3-run-saving"
+    description: "AC3: the Runs list shows each run's served modelled saving against its named baseline, and a typed not-measured state, never 0, for an unmeasured run."
+    source: "manual"
+    binds_ac: ["AC3"]
+    checks:
+      - check_type: "test_passes"
+        check_value: "test -d node_modules || npm ci --no-audit --no-fund; npx vitest run src/pages/LocalDashboardPage.omn21015.run-saving.test.tsx src/pages/LocalDashboardPage.runs.test.tsx"
+        cwd: "${OMNI_HOME}/omnidash"
+  - id: "dod-omn21015-ac5-savings-source-guard"
+    description: "AC5: the OMN-19980 guard refuses a savings field from any exposure but the one allowed, a price literal and price arithmetic outside the metering compute."
+    source: "manual"
+    binds_ac: ["AC5"]
+    checks:
+      - check_type: "test_passes"
+        check_value: "test -d node_modules || npm ci --no-audit --no-fund; npx vitest run src/pages/local/omn19980.savings-source.test.ts"
         cwd: "${OMNI_HOME}/omnidash"
 emergency_bypass:
   enabled: false
