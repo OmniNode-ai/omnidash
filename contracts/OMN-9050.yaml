@@ -26,6 +26,13 @@ requirements:
           retained and submitted; a refresh preserves an unfinished draft;
           changing the requested run resets the input; pasted ids open their
           own run with and without address synchronization.
+  - id: "req-schema-compat-pin"
+    statement: "The schema compatibility check reads the core commit pinned by the architecture handshake."
+    acceptance:
+      - id: "AC8"
+        statement: >-
+          onex-schema-compat.yml pins omnibase_core to the same immutable
+          d677b4e78219113139b5d20ac81efcdcef78e3e0 commit as check-handshake.yml.
 evidence_requirements:
   - kind: "tests"
     description: "Both workflows carry the dispatched omnibase_core pin."
@@ -55,4 +62,12 @@ dod_evidence:
     checks:
       - check_type: "test_passes"
         check_value: "npm run test:run -- src/pages/LocalDashboardPage.run-picker.test.tsx src/pages/LocalDashboardPage.omn19987.workflow-page.test.tsx"
+        cwd: "${OMNI_HOME}/omnidash"
+  - id: "dod-omn9050-schema-compat-ac8"
+    description: "The schema compatibility checkout uses the handshake's full commit SHA."
+    source: "manual"
+    binds_ac: ["AC8"]
+    checks:
+      - check_type: "test_passes"
+        check_value: "uv run --no-project --python 3.12 --with pyyaml --with pytest python -m pytest tests/ci/test_schema_compat_core_owner_omn20885.py -q --noconftest -p no:cacheprovider -c /dev/null -k core_is_read_at_the_commit_the_handshake_pins"
         cwd: "${OMNI_HOME}/omnidash"
