@@ -710,8 +710,24 @@ export function QualityPanel({ row }: { row: Row | null }) {
 }
 
 /**
+ * OMN-21015 AC2: a model's cost under its tier, as served (summed by the view). A group with no priced run is served
+ * null and says how many runs were not measured, never $0; a priced group with some unpriced runs says so beside it.
+ */
+function tierModelCost(model: Row): string {
+  const unmeasured = Number(model.unmeasured_cost_count ?? 0);
+  const runs = (n: number) => `${n} run${n === 1 ? '' : 's'}`;
+  if (isMissing(model.cost_usd)) return unmeasured > 0 ? `Not measured (${runs(unmeasured)})` : 'Not measured';
+  const text = String(model.cost_usd);
+  const match = /^(-?)(\d+)(?:\.(\d+))?$/.exec(text);
+  const dollars = match === null ? `$${text}` : `${match[1]}$${match[2]}.${(match[3] ?? '').padEnd(2, '0')}`;
+  return unmeasured > 0 ? `${dollars} (+${runs(unmeasured)} not measured)` : dollars;
+}
+
+/**
  * OMN-20225 AC3: the tier mix, from delegation.model-routing.v1's served by_tier (view migration 0045). Each tier's
  * count and share are the view's; runs with no tier are the served not_tier_routed_count, never folded into a tier.
+ * OMN-21015 AC2: under each tier, the models the view lists for it (migration 0060), with their served runs, share of
+ * the tier-routed runs and cost. Nothing is added up here; a tier served without models shows none.
  */
 export function TierMixPanel({ row }: { row: Row | null }) {
   const byTier = row && typeof row.by_tier === 'object' && row.by_tier !== null && !Array.isArray(row.by_tier)
@@ -724,14 +740,23 @@ export function TierMixPanel({ row }: { row: Row | null }) {
     <section aria-label="Tier mix">
       <div className="local-dashboard-table-wrap local-dashboard-table-wrap--fit">
         <table>
-          <thead><tr><th>Tier</th><th>Runs</th><th>Share of tier-routed</th></tr></thead>
-          <tbody>{tiers.map((tier, index) => (
+          <thead><tr><th>Tier</th><th>Runs</th><th>Share of tier-routed</th><th>Cost</th></tr></thead>
+          <tbody>{tiers.flatMap((tier, index) => [
             <tr key={`${String(tier.cost_tier_name)}-${index}`}>
               <td>{recorded(tier.cost_tier_name)}</td>
               <td>{recorded(tier.count)}</td>
               <td>{recorded(tier.pct_of_tier_routed)}</td>
-            </tr>
-          ))}</tbody>
+              <td />
+            </tr>,
+            ...(Array.isArray(tier.models) ? asRecords(tier.models) : []).map((model, modelIndex) => (
+              <tr key={`${String(tier.cost_tier_name)}-${index}-${String(model.model_name)}-${modelIndex}`} className="local-dashboard-row--nested">
+                <td>{recorded(model.model_name)}</td>
+                <td>{recorded(model.count)}</td>
+                <td>{recorded(model.pct_of_tier_routed)}</td>
+                <td>{tierModelCost(model)}</td>
+              </tr>
+            )),
+          ])}</tbody>
         </table>
       </div>
       <dl className="local-dashboard-fields">
