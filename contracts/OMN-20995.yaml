@@ -1,0 +1,53 @@
+schema_version: "1.0.0"
+ticket_id: "OMN-20995"
+title: "omnidash's security scan calls omnibase_core's CodeQL reusable"
+summary: "Repoint the security-scan caller to the same full omnibase_core SHA as omnibase_spi while preserving the job, inputs, permissions, triggers and composed CodeQL context. The regression runs through these executable DoD checks in CI and through the local pre-commit hook."
+is_seam_ticket: false
+interface_change: false
+interfaces_touched: []
+requirements:
+  - id: "req-security-scan-core-codeql"
+    statement: "The security scan calls the core CodeQL reusable without changing the caller's behavior or context."
+    acceptance:
+      - id: "AC1"
+        statement: "AC1: security-scan.yml's codeql job uses OmniNode-ai/omnibase_core/.github/workflows/codeql-reusable.yml at a full 40-character sha -- falsifier: a tests/ci workflow-parsing pytest test fails on the merge-base workflow and passes on the changed workflow."
+      - id: "AC2"
+        statement: "AC2: the codeql job id, job name CodeQL, with inputs, permissions and workflow triggers are unchanged -- falsifier: the same tests/ci pytest file compares these parsed values against the pinned merge-base workflow and fails on any difference."
+      - id: "AC3"
+        statement: "AC3: no line in security-scan.yml references onex_change_control -- falsifier: the same tests/ci pytest file reads every workflow line and fails on the merge-base workflow's old owner references."
+evidence_requirements:
+  - kind: "tests"
+    description: "AC1: the caller pins the core reusable by full SHA."
+    command: "uv run --with pytest --with pyyaml pytest tests/ci/test_security_scan_core_codeql_omn20995.py -q -k test_ac1"
+  - kind: "tests"
+    description: "AC2: the parsed caller equals the merge-base snapshot except for uses."
+    command: "uv run --with pytest --with pyyaml pytest tests/ci/test_security_scan_core_codeql_omn20995.py -q -k test_ac2"
+  - kind: "tests"
+    description: "AC3: all workflow lines are free of the previous owner."
+    command: "uv run --with pytest --with pyyaml pytest tests/ci/test_security_scan_core_codeql_omn20995.py -q -k test_ac3"
+emergency_bypass:
+  enabled: false
+  justification: ""
+  follow_up_ticket_id: ""
+dod_evidence:
+  - id: "dod-security-scan-core-codeql-ac1"
+    description: "The core reusable is pinned by full SHA."
+    source: "manual"
+    binds_ac: ["AC1"]
+    checks:
+      - check_type: "test_passes"
+        check_value: "uv run --with pytest --with pyyaml pytest tests/ci/test_security_scan_core_codeql_omn20995.py -q -k test_ac1"
+  - id: "dod-security-scan-core-codeql-ac2"
+    description: "Caller behavior and the CodeQL context are preserved."
+    source: "manual"
+    binds_ac: ["AC2"]
+    checks:
+      - check_type: "test_passes"
+        check_value: "uv run --with pytest --with pyyaml pytest tests/ci/test_security_scan_core_codeql_omn20995.py -q -k test_ac2"
+  - id: "dod-security-scan-core-codeql-ac3"
+    description: "The workflow contains no previous-owner reference."
+    source: "manual"
+    binds_ac: ["AC3"]
+    checks:
+      - check_type: "test_passes"
+        check_value: "uv run --with pytest --with pyyaml pytest tests/ci/test_security_scan_core_codeql_omn20995.py -q -k test_ac3"

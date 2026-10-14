@@ -93,8 +93,11 @@ repos:
         stages: [commit-msg]
       - id: normalization-symmetry
         name: normalization-symmetry
-        entry: bash -c 'PYTHONPATH="${OMNIBASE_CORE_PATH:-../omnibase_core}/src" uv run --project "${OMNIBASE_CORE_PATH:-../omnibase_core}" python -m omnibase_core.validation.checker_normalization_symmetry'
-        language: system
+        # Use the same checker from the published wheel in an isolated hook env.
+        # Linked worktrees need no sibling checkout or writable core project env.
+        entry: python -m omnibase_core.validation.checker_normalization_symmetry
+        language: python
+        additional_dependencies: ["omnibase-core==0.47.39"]
         pass_filenames: false
       # OMN-15241: Required-Check Skip-Vector Guard (canary OMN-14854) -- LOCAL
       # parity for a guard this repo already runs CI-only via
@@ -174,6 +177,18 @@ repos:
         language: system
         pass_filenames: false
         files: ^(\.pre-commit-config\.yaml|scripts/validation/check_precommit_additional_dependencies\.sh|tests/test_precommit_additional_dependencies_omn19666\.sh|tests/fixtures/omn19666/.*)$
+        stages: [pre-commit]
+
+  # OMN-20995: local parity for the executable contract checks run by the receipt gate.
+  - repo: local
+    hooks:
+      - id: security-scan-core-codeql
+        name: Security scan core CodeQL caller (OMN-20995)
+        entry: python -m pytest tests/ci/test_security_scan_core_codeql_omn20995.py -q
+        language: python
+        additional_dependencies: ["pytest==8.4.2", "pyyaml==6.0.3"]
+        pass_filenames: false
+        files: ^(\.github/workflows/security-scan\.yml|tests/ci/test_security_scan_core_codeql_omn20995\.py|contracts/OMN-20995\.yaml|\.pre-commit-config\.yaml)$
         stages: [pre-commit]
 
 default_install_hook_types: [pre-commit, commit-msg]
