@@ -16,13 +16,16 @@ evidence_requirements:
   - kind: "tests"
     description: >-
       contract.local.yaml.example holds no 192.168 address and no tailnet name.
-    command: "! grep -nE '192\\.168\\.|\\.ts\\.net' contract.local.yaml.example"
+    command: "uv run --no-project --with pytest --with pyyaml python -m pytest tests/ci/test_contract_local_example_omn20937.py -q --noconftest -p no:cacheprovider -c /dev/null"
 dod_evidence:
   - id: "dod-omnidash-omn-20937"
     description: >-
       The example file carries the broker placeholder <broker-host>:<port> and no lab host.
     source: "manual"
     checks:
+      - check_type: "test_passes"
+        check_value: "uv run --no-project --with pytest --with pyyaml python -m pytest tests/ci/test_contract_local_example_omn20937.py -q --noconftest -p no:cacheprovider -c /dev/null"
+        cwd: "${OMNI_HOME}/omnidash"
       - check_type: "command"
         check_value: "! grep -nE '192\\.168\\.|\\.ts\\.net' contract.local.yaml.example"
         cwd: "${OMNI_HOME}/omnidash"
