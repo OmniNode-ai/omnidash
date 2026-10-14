@@ -222,6 +222,9 @@ function tokensText(row: Record<string, unknown>): string {
 /** OV-3: the window the Overview's metering cards show. The fold serves fixed windows only: all time, and UTC days. */
 export type OverviewWindow = 'all' | 'today';
 
+/** Said on an Overview panel whose exposure serves no row per window, while today is the chosen window. */
+const OUTSIDE_WINDOW_NOTE = 'All time: this panel does not follow the window above.';
+
 /**
  * The one metering-summary.v1 row every Overview metering card reads for the chosen window, or the card text that says
  * why none can be picked. All time is the fold's `all` row. Today is the fold's `day` row whose window_start is today's
@@ -274,8 +277,9 @@ export function MeteringTotalCard({ component, config, rows, window = 'all', now
     : required.includes('runs_total')
       ? { runs_total: row.runs_total, runs_unknown_tokens: row.runs_unknown_tokens, runs_unknown_spend: row.runs_unknown_spend }
       : null;
-  // OMN-20008 AC5: the Savings card's percentage line, from the same all-time row. A row that does not serve the
-  // ratio yet (or serves null) loses only this line; the figure and its captions stay as they were.
+  // OMN-20008 AC5: the Savings card's percentage line, from the same row as the figure, so it follows the chosen
+  // window (OMN-21015 AC7). A row that does not serve the ratio yet (or serves null) loses only this line; the figure
+  // and its captions stay as they were, and no other window's ratio stands in.
   const pctField = 'savings_pct_of_counterfactual';
   const pct = required.includes(pctField) ? pctAgainstBaseline(row[pctField], row.baseline_model) : null;
   return (
@@ -1599,6 +1603,11 @@ export function LocalDashboardPage({ pageName, syncUrl = false }: LocalDashboard
             const notServed = notServedTopic(component, snapshots);
             const unbound = (component.data_bindings ?? []).length === 0;
             const PanelIcon = PANEL_ICONS[component.component_id];
+            // OV-3: only the panels that read metering-summary.v1 have a row per window. Every other Overview panel
+            // reads an exposure with no day rows, so with today chosen it still shows all time and has to say so:
+            // seen on a store of two real days, "Agent calls 4" beside "6 of 6 runs local".
+            const outsideWindow = pageName === 'overview' && overviewWindow === 'today'
+              && component.data_bindings?.[0]?.projection_topic !== METERING_SUMMARY_TOPIC;
             return (
               <article
                 className="local-dashboard-panel"
@@ -1608,6 +1617,7 @@ export function LocalDashboardPage({ pageName, syncUrl = false }: LocalDashboard
                 key={component.component_id}
               >
                 <h2>{PanelIcon && <PanelIcon size={14} aria-hidden="true" />}{component.title}</h2>
+                {outsideWindow && <p className="local-dashboard-caption">{OUTSIDE_WINDOW_NOTE}</p>}
                 {unbound && component.component_kind !== 'metric_card' ? <PendingState componentId={component.component_id} />
                   : component.component_id === 'workflow-run-path' ? (
                     <WorkflowRun component={component} snapshots={snapshots} requested={requestedRunId} onOpen={openRun} />
