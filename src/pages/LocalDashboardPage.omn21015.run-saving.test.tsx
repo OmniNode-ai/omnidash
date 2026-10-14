@@ -64,6 +64,28 @@ describe('OMN-21015 AC3: savings per run on the Runs list', () => {
     expect(savingCell(/zero/)).toBe('$0.00 vs claude-sonnet-5-5');
   });
 
+  it('R8: the served decimal is shown digit for digit, never through a binary float', () => {
+    // Found by independent review: Number('123456789.123456789') prints 123456789.12345679.
+    render(<RunsTable now={NOW} sessions={[]} decisions={[run('precise', '2026-10-14T05:00:00Z', {
+      modelled_savings_usd: '123456789.123456789', savings_baseline_model: 'claude-sonnet-5-5', savings_measurement: 'measured',
+    })]} />);
+    expect(savingCell(/precise/)).toBe('$123456789.123456789 vs claude-sonnet-5-5');
+  });
+
+  it('R9: a negative saving (the run cost more than its baseline) keeps its sign before the dollar', () => {
+    render(<RunsTable now={NOW} sessions={[]} decisions={[run('dearer', '2026-10-14T05:00:00Z', {
+      modelled_savings_usd: '-0.5', savings_baseline_model: 'claude-sonnet-5-5', savings_measurement: 'measured',
+    })]} />);
+    expect(savingCell(/dearer/)).toBe('-$0.50 vs claude-sonnet-5-5');
+  });
+
+  it('R10: a served value that is not a decimal is not shown as a figure', () => {
+    render(<RunsTable now={NOW} sessions={[]} decisions={[run('garbled', '2026-10-14T05:00:00Z', {
+      modelled_savings_usd: '1e3', savings_baseline_model: 'claude-sonnet-5-5', savings_measurement: 'measured',
+    })]} />);
+    expect(savingCell(/garbled/)).toBe('Not measured');
+  });
+
   it('R6: the column sits beside the run\'s cost', () => {
     render(<RunsTable now={NOW} sessions={[]} decisions={[run('any', '2026-10-14T05:00:00Z')]} />);
     const headers = screen.getAllByRole('columnheader').map((cell) => cell.textContent);
