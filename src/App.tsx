@@ -35,7 +35,7 @@ function PageContent({ page }: { page: AppPage }) {
     case 'lab':                 return <Suspense fallback={null}><LabPage /></Suspense>;
     case 'local-overview':      return <LocalDashboardPage pageName="overview" />;
     case 'local-runs':          return <LocalDashboardPage pageName="runs" syncUrl />;
-    case 'local-workflow':      return <LocalDashboardPage pageName="workflow" />;
+    case 'local-workflow':      return <LocalDashboardPage pageName="workflow" syncUrl />;
     case 'local-usage':         return <LocalDashboardPage pageName="usage" />;
     case 'local-credentials':   return <LocalDashboardPage pageName="credentials" />;
     case 'local-api-keys':      return <LocalDashboardPage pageName="api-keys" />;

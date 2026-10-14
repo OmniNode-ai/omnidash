@@ -23,21 +23,15 @@
 # repo-evidence / verify job in this mode (the OCC path, switched off by the
 # input); only repo-evidence / dod-verify carries a verdict.
 #
-# S5 shadow count: shadow "true" makes the reusable conclude both jobs success
-# whatever the verdict, and record one "Shadow verdict:" line in the job summary
-# and as a notice annotation. compare-with-occ "true" records this head's
-# new-path verdict beside OCC's occ-preflight / eligibility verdict on the same
-# head (call-occ-preflight.yml keeps producing that context). Neither
-# repo-evidence context is required on dev or main, and every OCC context stays
-# required, so this caller blocks nothing. CI Summary (ci.yml) judges only the
-# test and tenant-rls jobs of its own run, so these external check-runs never
-# reach it (tests/ci/test_repo_evidence_caller_omn20073.py).
+# OMN-20074 S6 cut-over: this caller enforces repo-owned evidence with shadow
+# "false". Admission no longer compares with OCC (compare-with-occ "false");
+# rollback is setting compare-with-occ back to "true".
+# repo-evidence / dod-verify is to be required by a dev ruleset, with no row in
+# required-checks.yaml. CI Summary (ci.yml) judges only its own needs, test and
+# tenant-rls, so it does not judge this external context.
 #
-# The reusable is pinned by full SHA to the squash commit of omnibase_core#1914
-# on dev, the pin omnibase_core's own caller and omnibase_infra's caller use; it
-# descends from #1901 (the `shadow` input). S6 (a separate ruling) sets shadow
-# "false" and compare-with-occ "false", and makes repo-evidence / dod-verify
-# required.
+# The reusable is pinned by full SHA to omnibase_core#1932's squash commit on
+# dev, the pin omnibase_infra, omnimarket and omniclaude callers use.
 
 name: Repo Evidence Gate
 
@@ -56,9 +50,9 @@ permissions:
 
 jobs:
   repo-evidence:
-    uses: OmniNode-ai/omnibase_core/.github/workflows/receipt-gate.yml@fb0c6c2117d5868a398b0920cd0048d0824415b1 # OMN-20073: immutable full-SHA pin, the squash commit of omnibase_core#1914 on that repo's dev branch (descends from #1901's shadow input)
+    uses: OmniNode-ai/omnibase_core/.github/workflows/receipt-gate.yml@4e4f5e0404d364e296c5d37db6aa3ab9e07f8ffa # OMN-20074: immutable full-SHA pin, omnibase_core#1932 squash on dev
     with:
       evidence-source: caller
-      verifier-version: 0.4.305
-      compare-with-occ: "true"
-      shadow: "true"
+      verifier-version: 0.4.310
+      compare-with-occ: "false"
+      shadow: "false"

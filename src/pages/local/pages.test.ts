@@ -307,8 +307,10 @@ describe('local pages against the captured lab catalogue', () => {
     // SV-2 / OV-3 and OMN-19980 Step B: the figure, its baseline model and its pricing manifest version all come from
     // the one metering-summary.v1 all-time row, so there is no second (caption) binding.
     expect(savings?.data_bindings?.map((b) => b.projection_topic)).toEqual(['onex.snapshot.projection.metering-summary.v1']);
+    // OMN-20008 AC5: savings_pct_of_counterfactual is the same row's served ratio behind the percentage line.
     expect(savings?.data_bindings?.[0]?.required_fields).toEqual(
-      ['window_kind', 'as_of', 'baseline_model', 'pricing_manifest_version', 'baseline_state', 'savings_usd'],
+      ['window_kind', 'as_of', 'baseline_model', 'pricing_manifest_version', 'baseline_state', 'savings_usd',
+        'savings_pct_of_counterfactual'],
     );
     // Measured runs' excluded counts are the same row's run classes, not a second exposure's (Amendment 2).
     const measured = page.components.find((c) => c.component_id === 'overview-measured');
@@ -490,7 +492,19 @@ describe('Amendment 6: the six local pages and the loader', () => {
     expect(page.dashboard.widgets.some((w) => w.data_source === 'usage-savings-series')).toBe(true);
   });
 
-  it('Workflow reads the newest run from delegation decisions until run-trace is served (WF-3)', () => {
+  it('Workflow reads one run\'s steps from run-trace.v1 in the exposure\'s own order (OMN-19987 TI4, WF-1)', () => {
+    const steps = readPage('workflow').components[0]?.data_bindings?.[1];
+    expect(steps?.projection_topic).toBe('onex.snapshot.projection.run-trace.v1');
+    // The step sequence the delegate orchestrator assigned is the only order; no timestamp is an ordering authority.
+    expect(steps?.ordering_authority_field).toBe('step_sequence');
+    expect(steps?.ordering_direction).toBe('ascending');
+    expect(steps?.required_fields).toEqual(expect.arrayContaining([
+      'correlation_id', 'step_sequence', 'step_kind', 'started_at', 'duration_ms', 'outcome', 'failure_cause',
+      'candidates', 'reason', 'failing_step_sequence',
+    ]));
+  });
+
+  it('Workflow names the newest run from delegation decisions when no run is asked for (WF-3)', () => {
     const binding = readPage('workflow').components[0]?.data_bindings?.[0];
     expect(binding?.projection_topic).toBe('onex.snapshot.projection.delegation.decisions.v1');
     expect(binding?.ordering_authority_field).toBe('written_at');

@@ -84,20 +84,12 @@ jobs:
           python -m pytest tests/ci/test_workflow_script_refs_exist.py
           -q --noconftest -p no:cacheprovider -c /dev/null
 
-      # OMN-18334. A SECOND step rather than a second workflow, because this
-      # job is already the repo's unconditional, bare-environment home for
-      # assertions over .github/workflows/ and it already installs pyyaml. A
-      # new workflow would duplicate that plumbing to assert one list.
-      #
-      # What it asserts: this repo's companion-effect caller listens for a
-      # pull-request DESCRIPTION EDIT. Without that activity type the OCC
-      # companion effect never runs on the event that drops the change-control
-      # evidence line from a description, so the OMN-18334 repair is
-      # unreachable here.
-      - name: Assert the companion-effect caller listens for a description edit
+      # OMN-20074: keep the S6 OCC retirement and enforcing repo-evidence
+      # caller covered by this unconditional, bare-environment gate.
+      - name: Assert the S6 cut-over removes OCC callers and enforces repo evidence
         run: >-
-          python -m pytest
-          tests/ci/test_occ_companion_effect_edited_trigger_omn_18334.py
+          python -m pytest tests/ci/test_no_occ_callers_omn20074.py
+          tests/ci/test_repo_evidence_caller_omn20073.py
           -q --noconftest -p no:cacheprovider -c /dev/null
 
       # OMN-19612: this is the required, unconditional, unfiltered bare-env
