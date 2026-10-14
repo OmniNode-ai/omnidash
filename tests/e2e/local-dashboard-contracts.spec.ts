@@ -368,7 +368,8 @@ test('every local page opens in order, names a served exposure, and fits 1440x90
 
   const nav = page.getByRole('navigation', { name: 'Local' });
   await expect(nav.getByRole('link')).toHaveText([
-    'Overview', 'Runs', 'Workflow partial', 'Usage partial', 'Credentials partial', 'API Keys partial',
+    // OMN-19987: Workflow reads a served exposure now and carries no "partial" chip.
+    'Overview', 'Runs', 'Workflow', 'Usage partial', 'Credentials partial', 'API Keys partial',
   ].map((label) => new RegExp(`^${label.replace(' partial', '\\s*partial')}$`)));
 
   for (const [testId, title] of [

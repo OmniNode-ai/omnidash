@@ -1,7 +1,7 @@
 {
   "dashboard_id": "f03e9a51-7076-55d3-829d-ed29aceaeecf",
   "name": "Workflow",
-  "description": "The newest run's recorded steps from the delegation decisions exposure. The full ordered path waits on run-trace.v1.",
+  "description": "One run's ordered path from run-trace.v1: the run chosen in Runs, the run whose correlation id is pasted here, or the newest run.",
   "layout": {
     "columns": 12,
     "row_height": 100,

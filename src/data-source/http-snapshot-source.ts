@@ -42,6 +42,7 @@ interface ProjectionEnvelope {
   row_count?: unknown;
   data_freshness?: unknown;
   latest_event_at?: unknown;
+  truncated?: unknown;
 }
 
 function isProjectionEnvelope(v: unknown): v is ProjectionEnvelope {
@@ -80,6 +81,7 @@ export class HttpSnapshotSource implements ProtocolSnapshotSource {
       dataFreshness,
       latestEventAt: typeof body.latest_event_at === 'string' ? body.latest_event_at : null,
       readAt,
+      ...(body.truncated === true ? { truncated: true } : {}),
     };
   }
 
