@@ -33,6 +33,20 @@ requirements:
         statement: >-
           onex-schema-compat.yml pins omnibase_core to the same immutable
           d677b4e78219113139b5d20ac81efcdcef78e3e0 commit as check-handshake.yml.
+  - id: "req-verified-checkout-pin-gate"
+    statement: "The sibling pin gate distinguishes a proven SHA output from a live ref."
+    acceptance:
+      - id: "AC6"
+        statement: >-
+          The gate accepts a checkout consuming an earlier, uniquely identified
+          same-job resolver whose complete command and Python AST validate one
+          lowercase full commit SHA before emitting ref to GITHUB_OUTPUT.
+      - id: "AC7"
+        statement: >-
+          Live refs, unknown expressions, changed guards or output writes,
+          conditional producers, other-job or later producers, duplicate IDs
+          and duplicate YAML keys remain rejected. The recognized resolver
+          follows valid pin changes and refuses malformed or ambiguous inputs.
 evidence_requirements:
   - kind: "tests"
     description: "Both workflows carry the dispatched omnibase_core pin."
@@ -73,4 +87,20 @@ dod_evidence:
         cwd: "${OMNI_HOME}/omnidash"
       - check_type: "test_passes"
         check_value: "uv run --no-project --python 3.12 --with pyyaml --with pytest python -m pytest tests/test_schema_compat_pin_omn9050.py -q --noconftest -p no:cacheprovider -c /dev/null"
+        cwd: "${OMNI_HOME}/omnidash"
+  - id: "dod-omn9050-verified-checkout-ac6"
+    description: "A structurally proven SHA resolver output is accepted by the pin gate."
+    source: "manual"
+    binds_ac: ["AC6"]
+    checks:
+      - check_type: "test_passes"
+        check_value: "uv run --no-project --python 3.12 --with pyyaml --with pytest python -m pytest tests/ci/test_sibling_reads_pinned.py -q --noconftest -p no:cacheprovider -c /dev/null -k verified_output"
+        cwd: "${OMNI_HOME}/omnidash"
+  - id: "dod-omn9050-verified-checkout-ac7"
+    description: "Unproven refs stay red and the recognized resolver refuses invalid inputs."
+    source: "manual"
+    binds_ac: ["AC7"]
+    checks:
+      - check_type: "test_passes"
+        check_value: "uv run --no-project --python 3.12 --with pyyaml --with pytest python -m pytest tests/ci/test_sibling_reads_pinned.py -q --noconftest -p no:cacheprovider -c /dev/null -k 'rejected or recognized_resolver or duplicate_checkout or extractors'"
         cwd: "${OMNI_HOME}/omnidash"
