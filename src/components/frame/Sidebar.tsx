@@ -32,7 +32,7 @@ import { PAGE_PATHS, pageForPath } from '@/navigation/page-routes';
 const LOCAL_PAGES: ReadonlyArray<{ page: AppPage; label: string; icon: React.ReactNode; partial: boolean }> = [
   { page: 'local-overview', label: 'Overview', icon: <Activity size={13} />, partial: false },
   { page: 'local-runs', label: 'Runs', icon: <GitBranch size={13} />, partial: false },
-  { page: 'local-workflow', label: 'Workflow', icon: <ListTree size={13} />, partial: true },
+  { page: 'local-workflow', label: 'Workflow', icon: <ListTree size={13} />, partial: false },
   { page: 'local-usage', label: 'Usage', icon: <Wallet size={13} />, partial: true },
   { page: 'local-credentials', label: 'Credentials', icon: <KeyRound size={13} />, partial: true },
   { page: 'local-api-keys', label: 'API Keys', icon: <KeyRound size={13} />, partial: true },
