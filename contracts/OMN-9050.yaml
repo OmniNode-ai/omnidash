@@ -26,6 +26,27 @@ requirements:
           retained and submitted; a refresh preserves an unfinished draft;
           changing the requested run resets the input; pasted ids open their
           own run with and without address synchronization.
+  - id: "req-schema-compat-pin"
+    statement: "The schema compatibility check reads the core commit pinned by the architecture handshake."
+    acceptance:
+      - id: "AC8"
+        statement: >-
+          onex-schema-compat.yml pins omnibase_core to the same immutable
+          d677b4e78219113139b5d20ac81efcdcef78e3e0 commit as check-handshake.yml.
+  - id: "req-verified-checkout-pin-gate"
+    statement: "The sibling pin gate distinguishes a proven SHA output from a live ref."
+    acceptance:
+      - id: "AC6"
+        statement: >-
+          The gate accepts a checkout consuming an earlier, uniquely identified
+          same-job resolver whose complete command and Python AST validate one
+          lowercase full commit SHA before emitting ref to GITHUB_OUTPUT.
+      - id: "AC7"
+        statement: >-
+          Live refs, unknown expressions, changed guards or output writes,
+          conditional producers, other-job or later producers, duplicate IDs
+          and duplicate YAML keys remain rejected. The recognized resolver
+          follows valid pin changes and refuses malformed or ambiguous inputs.
 evidence_requirements:
   - kind: "tests"
     description: "Both workflows carry the dispatched omnibase_core pin."
@@ -55,4 +76,31 @@ dod_evidence:
     checks:
       - check_type: "test_passes"
         check_value: "npm run test:run -- src/pages/LocalDashboardPage.run-picker.test.tsx src/pages/LocalDashboardPage.omn19987.workflow-page.test.tsx"
+        cwd: "${OMNI_HOME}/omnidash"
+  - id: "dod-omn9050-schema-compat-ac8"
+    description: "The schema compatibility checkout uses the handshake's full commit SHA."
+    source: "manual"
+    binds_ac: ["AC8"]
+    checks:
+      - check_type: "test_passes"
+        check_value: "uv run --no-project --python 3.12 --with pyyaml --with pytest python -m pytest tests/ci/test_schema_compat_core_owner_omn20885.py -q --noconftest -p no:cacheprovider -c /dev/null -k core_is_read_at_the_commit_the_handshake_pins"
+        cwd: "${OMNI_HOME}/omnidash"
+      - check_type: "test_passes"
+        check_value: "uv run --no-project --python 3.12 --with pyyaml --with pytest python -m pytest tests/test_schema_compat_pin_omn9050.py -q --noconftest -p no:cacheprovider -c /dev/null"
+        cwd: "${OMNI_HOME}/omnidash"
+  - id: "dod-omn9050-verified-checkout-ac6"
+    description: "A structurally proven SHA resolver output is accepted by the pin gate."
+    source: "manual"
+    binds_ac: ["AC6"]
+    checks:
+      - check_type: "test_passes"
+        check_value: "uv run --no-project --python 3.12 --with pyyaml --with pytest python -m pytest tests/ci/test_sibling_reads_pinned.py -q --noconftest -p no:cacheprovider -c /dev/null -k verified_output"
+        cwd: "${OMNI_HOME}/omnidash"
+  - id: "dod-omn9050-verified-checkout-ac7"
+    description: "Unproven refs stay red and the recognized resolver refuses invalid inputs."
+    source: "manual"
+    binds_ac: ["AC7"]
+    checks:
+      - check_type: "test_passes"
+        check_value: "uv run --no-project --python 3.12 --with pyyaml --with pytest python -m pytest tests/ci/test_sibling_reads_pinned.py -q --noconftest -p no:cacheprovider -c /dev/null -k 'rejected or recognized_resolver or duplicate_checkout or extractors'"
         cwd: "${OMNI_HOME}/omnidash"
