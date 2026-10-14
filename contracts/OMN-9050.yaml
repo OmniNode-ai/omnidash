@@ -1,0 +1,58 @@
+schema_version: "1.0.0"
+ticket_id: "OMN-9050"
+title: "omnibase_core pin bump and Workflow run selection"
+summary: >-
+  Retain the dispatched omnibase_core pin and remove the Workflow run picker's
+  passive draft reset. Key the picker by the requested run so a draft survives
+  refreshes and resets when another run is selected. A regression test enters
+  an id between commit and passive effects and verifies that it is submitted.
+is_seam_ticket: false
+interface_change: false
+interfaces_touched: []
+requirements:
+  - id: "req-core-pin"
+    statement: "The handshake and type-sync workflows retain the dispatched omnibase_core commit."
+    acceptance:
+      - id: "AC1"
+        statement: >-
+          AC1: check-handshake.yml and type-sync-check.yml both pin omnibase_core
+          to d677b4e78219113139b5d20ac81efcdcef78e3e0.
+  - id: "req-workflow-run-picker"
+    statement: "The Workflow picker submits the entered run id without a deferred reset erasing it."
+    acceptance:
+      - id: "AC2"
+        statement: >-
+          AC2: an id entered between the form's commit and passive effects is
+          retained and submitted; a refresh preserves an unfinished draft;
+          changing the requested run resets the input; pasted ids open their
+          own run with and without address synchronization.
+evidence_requirements:
+  - kind: "tests"
+    description: "Both workflows carry the dispatched omnibase_core pin."
+    command: >-
+      python3 -c 'from pathlib import Path; pin = "ref: d677b4e78219113139b5d20ac81efcdcef78e3e0"; assert all(pin in Path(p).read_text() for p in [".github/workflows/check-handshake.yml", ".github/workflows/type-sync-check.yml"])'
+  - kind: "tests"
+    description: "The picker retains early input and the Workflow page opens the selected run."
+    command: "npm run test:run -- src/pages/LocalDashboardPage.run-picker.test.tsx src/pages/LocalDashboardPage.omn19987.workflow-page.test.tsx"
+emergency_bypass:
+  enabled: false
+  justification: ""
+  follow_up_ticket_id: ""
+dod_evidence:
+  - id: "dod-omn9050-ac1-core-pin"
+    description: "Both workflows retain the dispatched omnibase_core pin."
+    source: "manual"
+    binds_ac: ["AC1"]
+    checks:
+      - check_type: "test_passes"
+        check_value: >-
+          python3 -c 'from pathlib import Path; pin = "ref: d677b4e78219113139b5d20ac81efcdcef78e3e0"; assert all(pin in Path(p).read_text() for p in [".github/workflows/check-handshake.yml", ".github/workflows/type-sync-check.yml"])'
+        cwd: "${OMNI_HOME}/omnidash"
+  - id: "dod-omn9050-ac2-workflow-run-picker"
+    description: "Early input is submitted, drafts survive refreshes, and selecting a run resets the input."
+    source: "manual"
+    binds_ac: ["AC2"]
+    checks:
+      - check_type: "test_passes"
+        check_value: "npm run test:run -- src/pages/LocalDashboardPage.run-picker.test.tsx src/pages/LocalDashboardPage.omn19987.workflow-page.test.tsx"
+        cwd: "${OMNI_HOME}/omnidash"
