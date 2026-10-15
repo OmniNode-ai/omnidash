@@ -12,9 +12,72 @@
   "theme": "system",
   "widgets": [
     {
+      "widget_id": "f846ae85-b016-506e-9bd1-cf7273d5983a",
+      "title": "Savings per day",
+      "row": 0,
+      "col": 0,
+      "width": 6,
+      "height": 4,
+      "data_source": "usage-savings-series",
+      "config": {
+        "config_kind": "table",
+        "widget_type": "table",
+        "columns": [
+          {
+            "key": "window_start",
+            "header": "Day"
+          },
+          {
+            "key": "savings_usd",
+            "header": "Savings",
+            "format": "currency"
+          },
+          {
+            "key": "runs_total",
+            "header": "Runs"
+          }
+        ],
+        "page_size": 25,
+        "show_pagination": false
+      }
+    },
+    {
+      "widget_id": "3b1f6a52-7d0e-4c1a-9a53-21015ac40001",
+      "title": "Tokens per day",
+      "row": 0,
+      "col": 6,
+      "width": 6,
+      "height": 4,
+      "data_source": "usage-tokens-by-day",
+      "config": {
+        "config_kind": "table",
+        "widget_type": "table",
+        "columns": [
+          {
+            "key": "usage_day",
+            "header": "Day"
+          },
+          {
+            "key": "model_id",
+            "header": "Model"
+          },
+          {
+            "key": "input_tokens",
+            "header": "Tokens in"
+          },
+          {
+            "key": "output_tokens",
+            "header": "Tokens out"
+          }
+        ],
+        "page_size": 25,
+        "show_pagination": false
+      }
+    },
+    {
       "widget_id": "04fdb053-495c-53f7-902a-728500f5003a",
       "title": "Usage by model and day",
-      "row": 0,
+      "row": 4,
       "col": 0,
       "width": 12,
       "height": 4,
@@ -50,68 +113,6 @@
           {
             "key": "call_count",
             "header": "Calls"
-          }
-        ],
-        "page_size": 25,
-        "show_pagination": false
-      }
-    },
-    {
-      "widget_id": "f846ae85-b016-506e-9bd1-cf7273d5983a",
-      "title": "Savings per day",
-      "row": 4,
-      "col": 0,
-      "width": 12,
-      "height": 3,
-      "data_source": "usage-savings-series",
-      "config": {
-        "config_kind": "table",
-        "widget_type": "table",
-        "columns": [
-          {
-            "key": "window_start",
-            "header": "Day"
-          },
-          {
-            "key": "savings_usd",
-            "header": "Savings"
-          },
-          {
-            "key": "runs_total",
-            "header": "Runs"
-          }
-        ],
-        "page_size": 25,
-        "show_pagination": false
-      }
-    },
-    {
-      "widget_id": "3b1f6a52-7d0e-4c1a-9a53-21015ac40001",
-      "title": "Tokens per day",
-      "row": 7,
-      "col": 0,
-      "width": 12,
-      "height": 4,
-      "data_source": "usage-tokens-by-day",
-      "config": {
-        "config_kind": "table",
-        "widget_type": "table",
-        "columns": [
-          {
-            "key": "usage_day",
-            "header": "Day"
-          },
-          {
-            "key": "model_id",
-            "header": "Model"
-          },
-          {
-            "key": "input_tokens",
-            "header": "Tokens in"
-          },
-          {
-            "key": "output_tokens",
-            "header": "Tokens out"
           }
         ],
         "page_size": 25,
