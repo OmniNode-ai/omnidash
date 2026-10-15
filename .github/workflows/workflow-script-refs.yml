@@ -11,13 +11,12 @@
 # WHAT IT ASSERTS: every `scripts/**` path that a `run:` step in
 # .github/workflows/ executes from the repository root exists in the tree.
 #
-# ROOT CAUSE (OMN-16664): the OMN-15017 fan-out copied call-occ-autobind.yml
-# and call-occ-companion-effect.yml into this repo without carrying
-# scripts/ci/occ_manual_replay_precheck.py, which both of them run. Every
-# manual OCC replay dispatched here died at `[Errno 2] No such file or
+# ROOT CAUSE (OMN-16664): the OMN-15017 fan-out copied two workflows into
+# this repo without carrying the scripts/ci/ precheck both of them ran. Every
+# manual replay dispatched here died at `[Errno 2] No such file or
 # directory` before the precheck could decide anything -- the sanctioned
-# recovery path for a missed mint was a dead end, discovered only when
-# somebody needed it mid-incident (omnibase_compat run 33001337186).
+# recovery path was a dead end, discovered only when somebody needed it
+# mid-incident (omnibase_compat run 33001337186).
 #
 # The gate's logic, its unit tests, and the reasons for its two deliberate
 # blind spots all live in tests/ci/test_workflow_script_refs_exist.py.
@@ -85,10 +84,12 @@ jobs:
           -q --noconftest -p no:cacheprovider -c /dev/null
 
       # OMN-20074: keep the S6 OCC retirement and enforcing repo-evidence
-      # caller covered by this unconditional, bare-environment gate.
+      # caller covered by this unconditional, bare-environment gate, with the
+      # runner-IP pin, the main-target guard and the config value scan.
       - name: Assert the S6 cut-over removes OCC callers and enforces repo evidence
         run: >-
           python -m pytest tests/ci/test_no_occ_callers_omn20074.py
+          tests/ci/test_occ_off_omn20074.py
           tests/ci/test_repo_evidence_caller_omn20073.py
           -q --noconftest -p no:cacheprovider -c /dev/null
 
@@ -102,9 +103,9 @@ jobs:
           tests/ci/test_precommit_pin_tests_run_in_ci_omn19612.py
           -q --noconftest -p no:cacheprovider -c /dev/null
 
-      # OMN-20332: every sibling repo (omnibase_core, omniclaude,
-      # onex_change_control, omnimarket) is read at a pinned sha, never a live
-      # dev/main or no ref, so a sibling's merge cannot turn this repo red.
+      # OMN-20332: every sibling repo (omnibase_core, omniclaude, omnimarket)
+      # is read at a pinned sha, never a live dev/main or no ref, so a
+      # sibling's merge cannot turn this repo red.
       # Here because this job is unconditional and already carries pyyaml.
       - name: Assert every sibling repo is read at a pinned sha
         run: >-

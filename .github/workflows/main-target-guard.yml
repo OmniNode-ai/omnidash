@@ -1,9 +1,16 @@
 # SPDX-FileCopyrightText: 2026 OmniNode.ai Inc.
 # SPDX-License-Identifier: MIT
 #
-# OMN-12243: Block PRs targeting main unless they are promotion PRs
-# from dev with a promotion receipt.
-# OMN-12477: Removed the hotfix/* bypass — main accepts only dev promotions.
+# OMN-12243: Block PRs targeting main.
+# OMN-12477: Removed the hotfix/* bypass.
+#
+# OMN-20074: no exception is left. main is release-synced: release.yml
+# ("Sync main to release tag") fast-forwards it to the released tag over the
+# REST API and opens no pull request against it. The promotion-receipt line
+# this guard used to admit named a change-control receipt id that nothing
+# mints any more, so every PR that targets main is refused and retargeted to
+# dev. The `edited` type stays: a PR retargeted to main fires it.
+# Pinned by tests/ci/test_occ_off_omn20074.py.
 
 name: Main target guard
 
@@ -31,7 +38,6 @@ jobs:
         env:
           BASE_REF: ${{ github.event.pull_request.base.ref }}
           HEAD_REF: ${{ github.event.pull_request.head.ref }}
-          PR_BODY: ${{ github.event.pull_request.body }}
         run: |
           set -euo pipefail
 
@@ -40,21 +46,7 @@ jobs:
             exit 0
           fi
 
-          echo "PR targets main. Checking head ref: '${HEAD_REF}'"
-
-          if [[ "${HEAD_REF}" == "dev" ]]; then
-            if echo "${PR_BODY}" | grep -qE 'promotion-receipt:[[:space:]]*OCC-[0-9]+'; then
-              echo "::notice::Promotion PR from dev with valid promotion-receipt. Allowed."
-              exit 0
-            fi
-
-            echo "::error::PR is from dev but is missing a promotion receipt."
-            echo "::error::Add a line matching: promotion-receipt: OCC-<number>"
-            echo "::error::Retarget this PR to dev; main accepts only promotion PRs."
-            exit 1
-          fi
-
-          echo "::error::PRs targeting main must come from dev."
-          echo "::error::Head ref '${HEAD_REF}' is not permitted to target main directly."
-          echo "::error::Retarget this PR to dev; main accepts only promotion PRs."
+          echo "::error::PR from '${HEAD_REF}' targets main, which is release-synced and never a pull-request target."
+          echo "::error::release.yml moves main by fast-forwarding it to the released tag; it opens no PR against main."
+          echo "::error::Retarget this PR to dev."
           exit 1
