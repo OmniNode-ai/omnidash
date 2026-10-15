@@ -3,7 +3,7 @@ import { Link, useLocation, useSearch } from 'wouter';
 import { createSnapshotSource } from '@/data-source';
 import { fetchExposureCensus } from '@/data-source/exposure-census';
 import { resolveEffectiveDataSource } from '@/data-source/data-source-override';
-import { UsageByModelDayTable } from '@/components/dashboard/usage/UsageByModelDayWidget';
+import { UsageByModelDayTable, UsageTokensByDay, formatUsd } from '@/components/dashboard/usage/UsageByModelDayWidget';
 import { MeteringDaySeries } from '@/components/dashboard/usage/SavingsSeriesWidget';
 import { TenantNotConfiguredState } from '@/components/dashboard/TenantNotConfiguredState';
 import { subscribeLocalPageRefresh } from '@/services/local-page-refresh';
@@ -212,15 +212,32 @@ function tokensText(row: Record<string, unknown>): string {
   return `${grouped(tokensIn)} in · ${grouped(tokensOut)} out`;
 }
 
+/** OV-3: the window the Overview's metering cards show. The fold serves fixed windows only: all time, and UTC days. */
+export type OverviewWindow = 'all' | 'today';
+
+/** Said on an Overview panel whose exposure serves no row per window, while today is the chosen window. */
+const OUTSIDE_WINDOW_NOTE = 'All time: this panel does not follow the window above.';
+
 /**
- * The one all-time metering-summary.v1 row every Overview metering card reads, or the card text that says why none can
- * be picked. The fold keys rows by baseline model and keeps an older baseline's all row, so after a baseline change
- * there are two. The one refreshed last (newest as_of) is the baseline the runtime resolves now; two refreshed at the
- * same moment cannot be told apart and are refused by name, never one picked silently.
+ * The one metering-summary.v1 row every Overview metering card reads for the chosen window, or the card text that says
+ * why none can be picked. All time is the fold's `all` row. Today is the fold's `day` row whose window_start is today's
+ * UTC date: a row the runtime served, never a sum made here. A UTC day with no runs has no row, and says so; it is not
+ * 0 and it is not another day's row. The fold keys rows by baseline model and keeps an older baseline's rows, so after
+ * a baseline change a window has two. The one refreshed last (newest as_of) is the baseline the runtime resolves now;
+ * two refreshed at the same moment cannot be told apart and are refused by name, never one picked silently.
  */
-function pickAllTimeRow(rows: readonly unknown[]): { row: Record<string, unknown> } | { message: string } {
-  const all = asRecords(rows).filter((r) => r.window_kind === 'all');
-  if (all.length === 0) return { message: 'Not measured: no all-time row' };
+function pickMeteringRow(
+  rows: readonly unknown[],
+  window: OverviewWindow = 'all',
+  now: number = Date.now(),
+): { row: Record<string, unknown> } | { message: string } {
+  const today = utcDay(now);
+  const all = asRecords(rows).filter((r) => (window === 'all'
+    ? r.window_kind === 'all'
+    : r.window_kind === 'day' && r.window_start === today));
+  if (all.length === 0) {
+    return { message: window === 'all' ? 'Not measured: no all-time row' : 'Not measured: no runs today (UTC)' };
+  }
   const newest = Math.max(...all.map((r) => timeOf(r.as_of)));
   const latest = all.filter((r) => timeOf(r.as_of) === newest);
   if (latest.length > 1) return { message: `Not measured: ${latest.length} baseline models` };
@@ -229,19 +246,21 @@ function pickAllTimeRow(rows: readonly unknown[]): { row: Record<string, unknown
 
 /**
  * OMN-19980 Step B: an Overview headline figure (Spend, Savings, Measured runs, Tokens in and out) from
- * metering-summary.v1's all-time row, the row `onex metering` renders. Every card picks the same row, so the four
- * figures cannot disagree (Amendment 2). The fold keys rows by baseline model and keeps an older baseline's rows, so
+ * metering-summary.v1's row for the chosen window (OV-3; all time by default, the row `onex metering` renders). Every
+ * card picks the same row, so the four figures cannot disagree (Amendment 2). The fold keys rows by baseline model and keeps an older baseline's rows, so
  * after a baseline change there are two all rows; the one refreshed last is the baseline the runtime resolves now,
  * because every refresh runs under the resolved baseline. Two refreshed at the same moment cannot be told apart and
  * are refused by name, never one picked silently. The Savings card's caption is that row's baseline model and pricing
  * manifest version; Measured runs' caption is that row's run classes.
  */
-export function MeteringTotalCard({ component, config, rows }: {
+export function MeteringTotalCard({ component, config, rows, window = 'all', now }: {
   component: LocalPageDocument['components'][number];
   config: MetricCardConfig;
   rows: readonly unknown[];
+  window?: OverviewWindow;
+  now?: number;
 }) {
-  const picked = pickAllTimeRow(rows);
+  const picked = pickMeteringRow(rows, window, now);
   if ('message' in picked) return <p className="local-dashboard-metric">{picked.message}</p>;
   const row = picked.row;
   if (config.metric_key === TOKENS_IN_AND_OUT) return <p className="local-dashboard-metric">{tokensText(row)}</p>;
@@ -251,8 +270,9 @@ export function MeteringTotalCard({ component, config, rows }: {
     : required.includes('runs_total')
       ? { runs_total: row.runs_total, runs_unknown_tokens: row.runs_unknown_tokens, runs_unknown_spend: row.runs_unknown_spend }
       : null;
-  // OMN-20008 AC5: the Savings card's percentage line, from the same all-time row. A row that does not serve the
-  // ratio yet (or serves null) loses only this line; the figure and its captions stay as they were.
+  // OMN-20008 AC5: the Savings card's percentage line, from the same row as the figure, so it follows the chosen
+  // window (OMN-21015 AC7). A row that does not serve the ratio yet (or serves null) loses only this line; the figure
+  // and its captions stay as they were, and no other window's ratio stands in.
   const pctField = 'savings_pct_of_counterfactual';
   const pct = required.includes(pctField) ? pctAgainstBaseline(row[pctField], row.baseline_model) : null;
   return (
@@ -279,11 +299,15 @@ function pctAgainstBaseline(ratio: unknown, baselineModel: unknown): string | nu
 const SAVING_PER_RUN_PENDING = 'Not served yet: waits on savings_per_measured_run_usd in metering-summary.v1';
 
 /**
- * OMN-20009: the average saving of a measured run, from metering-summary.v1's all-time row, shown as the served
- * decimal text. Only measured runs are in the served quotient. A null value says why; it is never $0.
+ * OMN-20009: the average saving of a measured run, from metering-summary.v1's row for the chosen window (all time by
+ * default), shown as the served decimal text. Only measured runs are in the served quotient. A null value says why; it is never $0.
  */
-export function SavingsPerRunCard({ rows }: { rows: readonly unknown[] }) {
-  const picked = pickAllTimeRow(rows);
+export function SavingsPerRunCard({ rows, window = 'all', now }: {
+  rows: readonly unknown[];
+  window?: OverviewWindow;
+  now?: number;
+}) {
+  const picked = pickMeteringRow(rows, window, now);
   if ('message' in picked) return <p className="local-dashboard-metric">{picked.message}</p>;
   const row = picked.row;
   if (!('savings_per_measured_run_usd' in row)) {
@@ -543,7 +567,8 @@ function isFixture(decision: Row): boolean {
 }
 
 /**
- * RU-1: every served run with its status, cause and cost, filtered by status, cause, model and window, paged. No
+ * RU-1: every served run with its status, cause and cost, filtered by status, cause, model, backend and window,
+ * paged. The backend is the served backend_id; a run served without one is filtered as Not recorded. No
  * per-run saving or baseline price: savings are window totals from metering-summary.v1 only (OMN-19980 AC2).
  */
 export function RunsTable({ decisions, sessions, now = Date.now(), pageSize = 25, syncUrl = false }: RunsTableProps) {
@@ -552,16 +577,18 @@ export function RunsTable({ decisions, sessions, now = Date.now(), pageSize = 25
   const [, navigate] = useLocation();
   const [localView, setLocalView] = useState<RunsViewState>(DEFAULT_RUNS_VIEW);
   const view = syncUrl ? readRunsSearch(search) : localView;
-  const { status, cause, model, span } = view;
+  const { status, cause, model, backend, span } = view;
   const pageIndex = view.page - 1;
   const bySession = indexBy(sessions, 'session_id');
   const runs = newestFirst(decisions);
   const models = [...new Set(runs.map((run) => modelOrUnknown(run.model_name)))].sort();
   const causes = [...new Set(runs.filter((run) => statusOf(run) === 'failed').map((run) => causeOf(run)))].sort();
+  const backends = [...new Set(runs.map((run) => recorded(run.backend_id)))].sort();
   const today = utcDay(now);
   const shown = runs.filter((run) => (status === 'all' || statusOf(run) === status)
     && (cause === 'all' || causeOf(run) === cause)
     && (model === 'all' || modelOrUnknown(run.model_name) === model)
+    && (backend === 'all' || recorded(run.backend_id) === backend)
     && (span === 'all' || utcDay(timeOf(run.created_at)) === today));
   const pages = Math.max(1, Math.ceil(shown.length / pageSize));
   const current = Math.min(pageIndex, pages - 1);
@@ -579,7 +606,7 @@ export function RunsTable({ decisions, sessions, now = Date.now(), pageSize = 25
       navigate(`/runs${query ? `?${query}` : ''}`);
     } else setLocalView(next);
   };
-  const filter = (key: 'status' | 'cause' | 'model' | 'span') => (event: { target: { value: string } }) =>
+  const filter = (key: 'status' | 'cause' | 'model' | 'backend' | 'span') => (event: { target: { value: string } }) =>
     updateView({ [key]: event.target.value, page: 1 });
   return (
     <>
@@ -602,6 +629,12 @@ export function RunsTable({ decisions, sessions, now = Date.now(), pageSize = 25
           <option value="all">All</option>
           {model !== 'all' && !models.includes(model) && <option value={model}>{model} (not in current data)</option>}
           {models.map((name) => <option key={name} value={name}>{name}</option>)}
+        </select>
+        <label htmlFor={`${id}-backend`}>Backend</label>
+        <select id={`${id}-backend`} value={backend} onChange={filter('backend')}>
+          <option value="all">All</option>
+          {backend !== 'all' && !backends.includes(backend) && <option value={backend}>{backend} (not in current data)</option>}
+          {backends.map((name) => <option key={name} value={name}>{name}</option>)}
         </select>
         <label htmlFor={`${id}-window`}>Window</label>
         <select id={`${id}-window`} value={span} onChange={filter('span')}>
@@ -979,12 +1012,103 @@ function rawRowsFor(
   return snapshots.find((snapshot) => snapshot.topic === topic)?.rows ?? [];
 }
 
+/** A table column as the page declares it: the served field it shows, its header, and how the value is written. */
+interface DeclaredColumn {
+  key: string;
+  header: string;
+  format?: string | null;
+}
+
+const NO_DAY_ROWS = 'No day rows yet: waits on metering-summary day rows';
+const DAY_FIGURES_MODELLED = "Baseline figures are modelled: the runs' tokens priced at the baseline model's list price. The baseline never ran.";
+const UNRESOLVED_BASELINE = 'an unresolved baseline';
+
+/**
+ * The metering-summary.v1 figures measured from the runs themselves: actual spend, run counts, tokens and the
+ * compression and cache figures. None of them is priced at the baseline model, so none waits on a baseline. This page
+ * names no baseline-priced figure (the OMN-19980 guard, rule R4): what is not listed here is one of those when the
+ * row's baseline is unresolved.
+ */
+export const RUN_MEASURED_FIELDS: ReadonlySet<string> = new Set([
+  'spend_usd', 'runs_total', 'runs_measured', 'runs_unknown_tokens', 'runs_unknown_spend', 'tokens_in', 'tokens_out',
+  'compression_ratio', 'cache_hit_rate', 'runs_cache_answered',
+]);
+
+/**
+ * One declared cell of a metering-summary.v1 row, as served. A missing figure says why; it is never written as 0.
+ * A run-measured figure that is missing was not measured, whatever the baseline. Any other missing figure on an
+ * unresolved-baseline row is missing because of the baseline.
+ */
+function declaredCell(row: Row, column: DeclaredColumn): string {
+  const value = row[column.key];
+  if (isMissing(value)) {
+    return row.baseline_state === 'unresolved' && !RUN_MEASURED_FIELDS.has(column.key) ? 'Baseline unresolved' : 'Not measured';
+  }
+  return column.format === 'currency' ? formatUsd(value) : String(value);
+}
+
+/**
+ * OMN-21015 AC1: metering-summary.v1's day rows, one table per baseline, in the order served, showing the columns the
+ * page declares. The last line of each table is that baseline's served `all` row, the row the headline cards read, so
+ * this sums nothing. When a baseline has no single newest all row the line is left out rather than guessed.
+ */
+export function MeteringDayTable({ title, rows, columns }: {
+  title: string;
+  rows: readonly unknown[];
+  columns: readonly DeclaredColumn[];
+}) {
+  const served = asRecords(rows);
+  const baselineOf = (row: Row) => (isMissing(row.baseline_model) ? UNRESOLVED_BASELINE : String(row.baseline_model));
+  const groups = new Map<string, Row[]>();
+  for (const row of served) {
+    if (row.window_kind !== 'day') continue;
+    groups.set(baselineOf(row), [...(groups.get(baselineOf(row)) ?? []), row]);
+  }
+  if (groups.size === 0) return <p className="local-dashboard-empty" role="status">{NO_DAY_ROWS}</p>;
+  const allTimeFor = (baseline: string): Row | null => {
+    const all = served.filter((row) => row.window_kind === 'all' && baselineOf(row) === baseline);
+    const newest = Math.max(...all.map((row) => timeOf(row.as_of)));
+    const latest = all.filter((row) => timeOf(row.as_of) === newest);
+    return latest.length === 1 ? latest[0]! : null;
+  };
+  return (
+    <>
+      {[...groups.entries()].map(([baseline, days]) => {
+        const allTime = allTimeFor(baseline);
+        return (
+          <div className="local-dashboard-table-wrap" key={baseline}>
+            <table aria-label={`${title} vs ${baseline}`}>
+              <thead><tr>{columns.map((column) => <th key={column.key}>{column.header}</th>)}</tr></thead>
+              <tbody>
+                {days.map((row, index) => (
+                  <tr key={`${String(row.window_start)}-${index}`}>
+                    {columns.map((column) => <td key={column.key}>{declaredCell(row, column)}</td>)}
+                  </tr>
+                ))}
+                {allTime && (
+                  <tr>
+                    {columns.map((column) => (
+                      <td key={column.key}>{column.key === 'window_start' ? 'All time' : declaredCell(allTime, column)}</td>
+                    ))}
+                  </tr>
+                )}
+              </tbody>
+            </table>
+          </div>
+        );
+      })}
+      <p className="local-dashboard-caption">{DAY_FIGURES_MODELLED}</p>
+    </>
+  );
+}
+
 /** The renderer for a table component: its first binding's rows, joined to its second binding by a served id. */
-function TableComponent({ component, snapshots, pageSize, syncUrl }: {
+function TableComponent({ component, snapshots, pageSize, syncUrl, columns }: {
   component: LocalPageDocument['components'][number];
   snapshots: readonly BoundProjectionSnapshot[];
   pageSize: number;
   syncUrl: boolean;
+  columns: readonly DeclaredColumn[];
 }) {
   const rows = rowsForLocalComponent(component, snapshots);
   const lookup = rowsForLocalBinding(component, snapshots, 1);
@@ -1000,8 +1124,14 @@ function TableComponent({ component, snapshots, pageSize, syncUrl }: {
   if (component.component_id === 'credentials-keys') return <CredentialsTable rows={rows} />;
   // US-1, US-2, US-4: served rows as served. The exposure is tenant-scoped, so the server filters, not the browser.
   if (component.component_id === 'usage-by-model-day') return <UsageByModelDayTable rows={rows} />;
+  // US-1 (OMN-21015 AC4): the same served rows as a stacked series, tokens in and out apart, split by model.
+  if (component.component_id === 'usage-tokens-by-day') return <UsageTokensByDay rows={rows} />;
   // US-3: metering-summary.v1's day rows, as served; the series renders no all row and sums nothing.
   if (component.component_id === 'usage-savings-series') return <MeteringDaySeries rows={rows} />;
+  // OV: baseline against actual spend per UTC day, the declared columns of the served rows (OMN-21015 AC1).
+  if (component.component_id === 'overview-spend-by-day') {
+    return <MeteringDayTable title={component.title} rows={rawRowsFor(component, snapshots, 0)} columns={columns} />;
+  }
   if (component.component_id === 'api-keys-local-identity') {
     const first = rawRowsFor(component, snapshots, 0)[0];
     return <LocalIdentity row={first && typeof first === 'object' ? (first as Record<string, unknown>) : null} />;
@@ -1118,6 +1248,9 @@ export function LocalDashboardPage({ pageName, syncUrl = false }: LocalDashboard
   const [snapshots, setSnapshots] = useState<BoundProjectionSnapshot[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
+  // OV-3: which fixed window the Overview's metering cards read. Kept by the page so every card moves together.
+  const [overviewWindow, setOverviewWindow] = useState<OverviewWindow>('all');
+  const windowId = useId();
   const latest = useRef<BoundProjectionSnapshot[]>([]);
   // One source per mounted page, so a double mount (React's development mode) shares its reads in flight.
   const source = useRef<ReturnType<typeof createSnapshotSource> | null>(null);
@@ -1211,6 +1344,19 @@ export function LocalDashboardPage({ pageName, syncUrl = false }: LocalDashboard
         </div>
         <span className="local-dashboard-mode">Local runtime · HTTP</span>
       </header>
+      {pageName === 'overview' && !loading && !error && page && (
+        <div className="local-dashboard-filters">
+          <label htmlFor={windowId}>Figures for</label>
+          <select
+            id={windowId}
+            value={overviewWindow}
+            onChange={(event) => setOverviewWindow(event.target.value === 'today' ? 'today' : 'all')}
+          >
+            <option value="all">All time</option>
+            <option value="today">Today (UTC)</option>
+          </select>
+        </div>
+      )}
       {loading && <p role="status">Loading runtime exposures…</p>}
       {error && <p className="local-dashboard-error" role="alert">{error}</p>}
       {!loading && !error && page && (
@@ -1222,9 +1368,15 @@ export function LocalDashboardPage({ pageName, syncUrl = false }: LocalDashboard
             const pageSize = Number((widget?.config as Record<string, unknown> | undefined)?.page_size ?? 25);
             const notServed = notServedTopic(component, snapshots);
             const unbound = (component.data_bindings ?? []).length === 0;
+            // OV-3: only the panels that read metering-summary.v1 have a row per window. Every other Overview panel
+            // reads an exposure with no day rows, so with today chosen it still shows all time and has to say so:
+            // seen on a store of two real days, "Agent calls 4" beside "6 of 6 runs local".
+            const outsideWindow = pageName === 'overview' && overviewWindow === 'today'
+              && component.data_bindings?.[0]?.projection_topic !== METERING_SUMMARY_TOPIC;
             return (
               <article className="local-dashboard-panel" data-width={String(widget?.width ?? 12)} key={component.component_id}>
                 <h2>{component.title}</h2>
+                {outsideWindow && <p className="local-dashboard-caption">{OUTSIDE_WINDOW_NOTE}</p>}
                 {unbound && component.component_kind !== 'metric_card' ? <PendingState componentId={component.component_id} />
                   : component.component_id === 'workflow-run-path' ? (
                     <WorkflowRun component={component} snapshots={snapshots} requested={requestedRunId} onOpen={openRun} />
@@ -1233,15 +1385,21 @@ export function LocalDashboardPage({ pageName, syncUrl = false }: LocalDashboard
                   : emptyState === 'NO_RUNS_YET' ? <NoRunsYet />
                   : emptyState ? <p className="local-dashboard-empty" role="status">Baseline unresolved</p>
                   : component.component_kind === 'table' ? (
-                    <TableComponent component={component} snapshots={snapshots} pageSize={pageSize} syncUrl={syncUrl} />
+                    <TableComponent
+                      component={component}
+                      snapshots={snapshots}
+                      pageSize={pageSize}
+                      syncUrl={syncUrl}
+                      columns={((widget?.config as { columns?: DeclaredColumn[] } | undefined)?.columns) ?? []}
+                    />
                   ) : component.component_id === 'overview-run-locally' ? (
                     <RunLocallyCard row={asRecord(rows[0])} />
                   ) : component.component_id === 'overview-avg-saving-per-call' && !unbound ? (
-                    <SavingsPerRunCard rows={rows} />
+                    <SavingsPerRunCard rows={rows} window={overviewWindow} now={now} />
                   ) : component.data_bindings?.[0]?.projection_topic === METERING_SUMMARY_TOPIC ? (() => {
                     const config = metricConfigFor(page, component.component_id);
                     return config
-                      ? <MeteringTotalCard component={component} config={config} rows={rows} />
+                      ? <MeteringTotalCard component={component} config={config} rows={rows} window={overviewWindow} now={now} />
                       : <p className="local-dashboard-empty">Not measured</p>;
                   })() : (() => {
                     const config = metricConfigFor(page, component.component_id);

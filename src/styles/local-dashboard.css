@@ -388,3 +388,81 @@
   border-radius: var(--radius);
   background: var(--panel-2);
 }
+
+/* OMN-21015 AC4: tokens per day, stacked by model. Each segment grows by its served count; the layout does the stacking. */
+.usage-tokens-day {
+  margin: 0 0 1rem;
+}
+
+.usage-tokens-day h3 {
+  margin: 0 0 0.25rem;
+  font-size: 0.875rem;
+  color: var(--text-secondary);
+}
+
+.usage-tokens-direction {
+  display: grid;
+  grid-template-columns: 6rem 1fr;
+  align-items: center;
+  gap: 0.25rem 0.5rem;
+  margin: 0 0 0.25rem;
+}
+
+.usage-tokens-direction .local-dashboard-caption {
+  grid-column: 2;
+}
+
+.usage-tokens-label {
+  font-size: 0.8125rem;
+  color: var(--text-secondary);
+}
+
+.usage-tokens-series {
+  min-width: 0;
+}
+
+/* The bar is drawn only: each child is one served count, sized by its inline flex-grow from a zero basis. */
+.usage-tokens-bar {
+  display: flex;
+  gap: 2px;
+  height: 0.75rem;
+  min-width: 0;
+}
+
+/* Nothing here may add to a segment's size: the count's share is the whole of it (OMN-21015 AC4). */
+.usage-tokens-fill {
+  background: var(--text-secondary);
+}
+
+.usage-tokens-fill[data-series='1'],
+.usage-tokens-fill[data-series='3'],
+.usage-tokens-fill[data-series='5'] {
+  background: var(--line);
+}
+
+.usage-tokens-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.125rem 0.75rem;
+  margin: 0.125rem 0 0;
+  padding: 0;
+  list-style: none;
+  font-size: 0.75rem;
+  font-variant-numeric: tabular-nums;
+}
+
+/* The swatch ties a written figure to its drawn segment: same order, same alternation. */
+.usage-tokens-legend li::before {
+  content: '';
+  display: inline-block;
+  width: 0.5rem;
+  height: 0.5rem;
+  margin-right: 0.25rem;
+  background: var(--text-secondary);
+}
+
+.usage-tokens-legend li[data-series='1']::before,
+.usage-tokens-legend li[data-series='3']::before,
+.usage-tokens-legend li[data-series='5']::before {
+  background: var(--line);
+}

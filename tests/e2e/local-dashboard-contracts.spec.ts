@@ -470,8 +470,9 @@ test('manual Refresh rereads local exposures and preserves the Runs filter', asy
   });
   await serveFixtures(page);
   await page.goto('/');
-  // The Overview Savings total, served from metering-summary.v1's all-time row (OMN-19980 Step B).
-  await expect(page.getByText('$1.2184', { exact: true })).toBeVisible();
+  // AC1 also renders this served all-time value in the spend table; Refresh is checked in its headline card.
+  const savingsCard = page.locator('.local-dashboard-panel').filter({ has: page.getByRole('heading', { name: 'Savings', exact: true }) });
+  await expect(savingsCard.getByText('$1.2184', { exact: true })).toBeVisible();
   await page.getByTestId('nav-local-runs').click();
   await expect(page.getByText('Runs 1–2 of 2')).toBeVisible();
   await page.getByLabel('Status', { exact: true }).selectOption('passed');
@@ -682,7 +683,8 @@ test('Runs filters, pagination and table hover use readable themed controls', as
     if (theme === 'light') await page.getByRole('button', { name: 'Toggle theme' }).click();
     await expect(page.locator('body')).toHaveClass(`theme-${theme}`);
     const selects = page.locator('.local-dashboard-filters select');
-    await expect(selects).toHaveCount(4);
+    // Status, Cause, Model, Window, and AC8's Backend.
+    await expect(selects).toHaveCount(5);
     for (const select of await selects.all()) {
       await expect(select).toHaveCSS('border-radius', '6px');
       await expect(select).toHaveCSS('min-height', '34px');

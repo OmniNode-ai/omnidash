@@ -398,6 +398,46 @@
         "format": "number",
         "precision": 3
       }
+    },
+    {
+      "widget_id": "3b1f6a52-7d0e-4c1a-9a53-21015ac10001",
+      "title": "Spend per day",
+      "row": 16,
+      "col": 0,
+      "width": 12,
+      "height": 4,
+      "data_source": "overview-spend-by-day",
+      "config": {
+        "config_kind": "table",
+        "widget_type": "table",
+        "columns": [
+          {
+            "key": "window_start",
+            "header": "Day"
+          },
+          {
+            "key": "spend_usd",
+            "header": "Actual spend",
+            "format": "currency"
+          },
+          {
+            "key": "counterfactual_usd",
+            "header": "Baseline spend",
+            "format": "currency"
+          },
+          {
+            "key": "savings_usd",
+            "header": "Savings",
+            "format": "currency"
+          },
+          {
+            "key": "runs_total",
+            "header": "Runs"
+          }
+        ],
+        "page_size": 25,
+        "show_pagination": false
+      }
     }
   ]
 }
