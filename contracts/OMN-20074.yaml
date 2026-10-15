@@ -1,7 +1,7 @@
 schema_version: "1.0.0"
 ticket_id: "OMN-20074"
-title: "omnidash contract-validation validates with omnibase_core, not onex_change_control"
-summary: "omnidash's contract-validation workflow validates the branch ticket's repo-local contract with omnibase_core's ModelTicketContract, installed at an exact pinned version, instead of checking out onex_change_control and running its composite validate-contract action. The workflow, job and context names are unchanged. A focused test runs the step's own run block over planted contracts and this repository's contracts."
+title: "omnidash leaves onex_change_control: contract-validation on omnibase_core, and the S6 cut-over of its OCC callers"
+summary: "omnidash's contract-validation workflow validates the branch ticket's repo-local contract with omnibase_core's ModelTicketContract, installed at an exact pinned version, instead of checking out onex_change_control and running its composite validate-contract action. The workflow, job and context names are unchanged. A focused test runs the step's own run block over planted contracts and this repository's contracts. The S6 cut-over removes OCC callers and contexts and enforces repo-owned evidence without comparing with OCC."
 is_seam_ticket: false
 interface_change: false
 interfaces_touched: []
@@ -16,6 +16,16 @@ requirements:
       - id: "AC10"
         statement: |-
           AC10: the contract-validation step's own run block, run over this repository's contracts, passes the branch ticket's contract and every contracts/OMN-*.yaml, skips a branch with no ticket or no contract, and fails a planted binds_ac entry that is not a criterion label, a planted binds_ac item of check_type command_exit_0, a contract missing a required field and an unparseable contract, each naming the file and the reason -- falsifier: uv run --no-project --python 3.12 --with omnibase-core==0.47.39 --with pyyaml --with pytest python -m pytest tests/ci/test_contract_validation_core_validator_omn20074.py -q --noconftest -p no:cacheprovider -c /dev/null
+  - id: "req-s6-cutover-no-occ-callers"
+    statement: |-
+      omnidash retires its OCC callers and contexts and enforces repo-owned evidence without comparing with OCC.
+    acceptance:
+      - id: "AC11"
+        statement: |-
+          AC11: no workflow calls an OCC reusable or waits on occ-preflight, the five OCC caller workflows and scripts/ci/occ_manual_replay_precheck.py are gone, call-reject-skip.yml pins reject-deploy-gate-skip.yml@4358450ccbba0cee11e390208dd0b8b1728e94ab, and required-checks.yaml names no OCC context -- falsifier: uv run --no-project --python 3.12 --with pyyaml --with pytest python -m pytest tests/ci/test_no_occ_callers_omn20074.py -q --noconftest -p no:cacheprovider -c /dev/null
+      - id: "AC12"
+        statement: |-
+          AC12: the repo-evidence caller enforces (shadow "false"), does not compare with OCC (compare-with-occ "false"), and pins receipt-gate.yml@4e4f5e0404d364e296c5d37db6aa3ab9e07f8ffa with verifier-version 0.4.310 -- falsifier: uv run --no-project --python 3.12 --with pyyaml --with pytest python -m pytest tests/ci/test_repo_evidence_caller_omn20073.py -q --noconftest -p no:cacheprovider -c /dev/null
 evidence_requirements:
   - kind: "tests"
     description: "The contract-validation workflow reads no onex_change_control, pins omnibase_core exactly and keeps its names."
@@ -23,6 +33,12 @@ evidence_requirements:
   - kind: "tests"
     description: "The contract-validation step admits the repo contracts and refuses the planted contracts."
     command: "uv run --no-project --python 3.12 --with omnibase-core==0.47.39 --with pyyaml --with pytest python -m pytest tests/ci/test_contract_validation_core_validator_omn20074.py -q --noconftest -p no:cacheprovider -c /dev/null"
+  - kind: "tests"
+    description: "The S6 cut-over removes OCC callers, preflight dependencies, recovery and required contexts and pins the scan without nested OCC preflight."
+    command: "uv run --no-project --python 3.12 --with pyyaml --with pytest python -m pytest tests/ci/test_no_occ_callers_omn20074.py -q --noconftest -p no:cacheprovider -c /dev/null"
+  - kind: "tests"
+    description: "The repo-evidence caller enforces repo-owned evidence without comparing with OCC at the S6 reusable and verifier pins."
+    command: "uv run --no-project --python 3.12 --with pyyaml --with pytest python -m pytest tests/ci/test_repo_evidence_caller_omn20073.py -q --noconftest -p no:cacheprovider -c /dev/null"
 emergency_bypass:
   enabled: false
   justification: ""
@@ -41,4 +57,18 @@ dod_evidence:
     checks:
       - check_type: "test_passes"
         check_value: "uv run --no-project --python 3.12 --with omnibase-core==0.47.39 --with pyyaml --with pytest python -m pytest tests/ci/test_contract_validation_core_validator_omn20074.py -q --noconftest -p no:cacheprovider -c /dev/null"
+        cwd: "${OMNI_HOME}/omnidash"
+  - id: "dod-s6-no-occ-callers-ac11"
+    description: "The S6 cut-over removes OCC callers, preflight dependencies, recovery and required contexts and pins the scan without nested OCC preflight."
+    source: "manual"
+    checks:
+      - check_type: "test_passes"
+        check_value: "uv run --no-project --python 3.12 --with pyyaml --with pytest python -m pytest tests/ci/test_no_occ_callers_omn20074.py -q --noconftest -p no:cacheprovider -c /dev/null"
+        cwd: "${OMNI_HOME}/omnidash"
+  - id: "dod-s6-repo-evidence-enforces-ac12"
+    description: "The repo-evidence caller enforces repo-owned evidence without comparing with OCC at the S6 reusable and verifier pins."
+    source: "manual"
+    checks:
+      - check_type: "test_passes"
+        check_value: "uv run --no-project --python 3.12 --with pyyaml --with pytest python -m pytest tests/ci/test_repo_evidence_caller_omn20073.py -q --noconftest -p no:cacheprovider -c /dev/null"
         cwd: "${OMNI_HOME}/omnidash"

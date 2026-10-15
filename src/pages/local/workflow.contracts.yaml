@@ -60,6 +60,27 @@
             "candidates",
             "failing_step_sequence"
           ]
+        },
+        {
+          "binding_id": "workflow-run-path-steps",
+          "projection_topic": "onex.snapshot.projection.run-trace.v1",
+          "ordering_authority_field": "step_sequence",
+          "ordering_direction": "ascending",
+          "required_fields": [
+            "correlation_id",
+            "step_sequence",
+            "step_kind",
+            "started_at",
+            "duration_ms",
+            "outcome",
+            "failure_cause",
+            "backend_id",
+            "model_id",
+            "attempt_number",
+            "reason",
+            "candidates",
+            "failing_step_sequence"
+          ]
         }
       ],
       "supported_empty_state_reasons": [

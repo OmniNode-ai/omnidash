@@ -1076,7 +1076,6 @@ function ServedTime({ value }: { value: unknown }) {
 function RunPicker({ requested, onOpen }: { requested: string | null; onOpen: (runId: string | null) => void }) {
   const id = useId();
   const [draft, setDraft] = useState(requested ?? '');
-  useEffect(() => { setDraft(requested ?? ''); }, [requested]);
   return (
     <form
       className="local-dashboard-filters"
@@ -1129,7 +1128,7 @@ export function WorkflowRun({ component, snapshots, requested, onOpen }: Workflo
   if (runId === null) {
     return (
       <>
-        <RunPicker requested={requested} onOpen={onOpen} />
+        <RunPicker key={requested ?? ''} requested={requested} onOpen={onOpen} />
         {decisionsNotServed}
         {/* A failed decisions read is named by the panel's read state; it is not an empty store. */}
         {decisionsRead?.failure ? null
@@ -1144,7 +1143,7 @@ export function WorkflowRun({ component, snapshots, requested, onOpen }: Workflo
   const foreign = rows.some((row) => row.correlation_id !== runId);
   return (
     <div>
-      <RunPicker requested={requested} onOpen={onOpen} />
+      <RunPicker key={requested ?? ''} requested={requested} onOpen={onOpen} />
       <p className="local-dashboard-subtitle local-run-title">
         Run <code>{runId}</code>
         {requested === null && <span className="local-run-tag">newest run</span>}

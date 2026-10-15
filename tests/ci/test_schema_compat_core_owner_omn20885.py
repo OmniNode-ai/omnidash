@@ -29,6 +29,7 @@ import sys
 from pathlib import Path
 from typing import Any
 
+import pytest
 import yaml
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
@@ -36,6 +37,7 @@ WORKFLOW = REPO_ROOT / ".github" / "workflows" / "onex-schema-compat.yml"
 HANDSHAKE_WORKFLOW = REPO_ROOT / ".github" / "workflows" / "check-handshake.yml"
 JOB_NAME = "ONEX Schema Compatibility Check"
 STEP_NAME = "Validate ONEX contract files against omnibase_core"
+GUARD_STEP = "Assert the core checkout is the handshake pin"
 SHA = re.compile(r"^[0-9a-f]{40}$")
 
 _GOOD = 'schema_version: "1.0.0"\nticket_id: "OMN-1"\ntitle: "planted"\n'
@@ -65,8 +67,8 @@ def _steps() -> list[dict[str, Any]]:
     return steps
 
 
-def _step_python() -> str:
-    (step,) = [step for step in _steps() if step.get("name") == STEP_NAME]
+def _step_python(name: str = STEP_NAME) -> str:
+    (step,) = [step for step in _steps() if step.get("name") == name]
     run = step["run"]
     head, _, rest = run.partition("<<'PY'\n")
     assert "python" in head, run
@@ -104,14 +106,39 @@ def test_job_reads_no_onex_change_control() -> None:
         assert "onex_change_control" not in str(step.get("with", {}))
 
 
-def test_core_is_read_at_the_commit_the_handshake_pins() -> None:
+def _resolve_pin(cwd: Path, output: Path) -> subprocess.CompletedProcess[str]:
+    return subprocess.run(
+        [
+            sys.executable,
+            "-c",
+            _step_python("Resolve the handshake's omnibase_core pin"),
+        ],
+        cwd=cwd,
+        env={**os.environ, "GITHUB_OUTPUT": str(output)},
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+
+
+def test_core_is_read_at_the_commit_the_handshake_pins(tmp_path: Path) -> None:
     (core,) = [
         step
         for step in _steps()
         if (step.get("with") or {}).get("repository") == "OmniNode-ai/omnibase_core"
     ]
-    ref = str(core["with"]["ref"])
+    steps = _steps()
+    resolver = next(step for step in steps if step.get("id") == "core-pin")
+    assert resolver["name"] == "Resolve the handshake's omnibase_core pin"
+    guard = next(step for step in steps if step.get("name") == GUARD_STEP)
+    assert steps.index(resolver) < steps.index(core) < steps.index(guard)
+    assert guard["env"]["HANDSHAKE_CORE_REF"] == "${{ steps.core-pin.outputs.ref }}"
+    output = tmp_path / "output"
+    result = _resolve_pin(REPO_ROOT, output)
+    assert result.returncode == 0, result.stdout + result.stderr
+    ref = output.read_text().removeprefix("ref=").strip()
     assert SHA.fullmatch(ref), ref
+    assert core["with"]["ref"] == ref, (core["with"]["ref"], ref)
     handshake = yaml.safe_load(HANDSHAKE_WORKFLOW.read_text(encoding="utf-8"))
     handshake_refs = {
         str((step.get("with") or {}).get("ref"))
@@ -120,6 +147,85 @@ def test_core_is_read_at_the_commit_the_handshake_pins() -> None:
         if (step.get("with") or {}).get("repository") == "OmniNode-ai/omnibase_core"
     }
     assert ref in handshake_refs, (ref, handshake_refs)
+
+
+def _run_guard(core: Path, handshake_ref: str) -> subprocess.CompletedProcess[str]:
+    (guard,) = [step for step in _steps() if step.get("name") == GUARD_STEP]
+    return subprocess.run(
+        ["bash", "-c", guard["run"]],
+        cwd=core.parent,
+        env={**os.environ, "HANDSHAKE_CORE_REF": handshake_ref},
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+
+
+def test_guard_refuses_a_core_checkout_off_the_handshake_pin(tmp_path: Path) -> None:
+    core = tmp_path / "omnibase_core"
+    core.mkdir()
+    git = ["git", "-C", str(core), "-c", "user.name=t", "-c", "user.email=t@t"]
+    subprocess.run([*git, "init", "-q"], check=True)
+    subprocess.run([*git, "commit", "-q", "--allow-empty", "-m", "c"], check=True)
+    head = subprocess.run(
+        [*git, "rev-parse", "HEAD"], check=True, capture_output=True, text=True
+    ).stdout.strip()
+    assert _run_guard(core, head).returncode == 0
+    moved = _run_guard(core, "a" * 40)
+    assert moved.returncode == 1, moved.stdout + moved.stderr
+    assert "move both pins together" in moved.stdout
+
+
+@pytest.mark.parametrize("ref", ["a" * 40, "d677b4e78219113139b5d20ac81efcdcef78e3e0"])
+def test_pin_resolver_follows_a_handshake_bump(tmp_path: Path, ref: str) -> None:
+    path = tmp_path / ".github/workflows/check-handshake.yml"
+    path.parent.mkdir(parents=True)
+    handshake = yaml.safe_load(HANDSHAKE_WORKFLOW.read_text())
+    for job in handshake["jobs"].values():
+        for step in job["steps"]:
+            if (step.get("with") or {}).get(
+                "repository"
+            ) == "OmniNode-ai/omnibase_core":
+                step["with"]["ref"] = ref
+    path.write_text(yaml.safe_dump(handshake))
+    output = tmp_path / "output"
+    result = _resolve_pin(tmp_path, output)
+    assert result.returncode == 0, result.stdout + result.stderr
+    assert output.read_text() == f"ref={ref}\n"
+
+
+@pytest.mark.parametrize(
+    "refs", [[], ["dev"], [None], [123], ["a" * 39], ["a" * 40, "b" * 40]]
+)
+def test_pin_resolver_refuses_missing_ambiguous_or_unpinned_core(
+    tmp_path: Path, refs: list[Any]
+) -> None:
+    path = tmp_path / ".github/workflows/check-handshake.yml"
+    path.parent.mkdir(parents=True)
+    path.write_text(
+        yaml.safe_dump(
+            {
+                "jobs": {
+                    "check": {
+                        "steps": [
+                            {
+                                "with": {
+                                    "repository": "OmniNode-ai/omnibase_core",
+                                    "ref": ref,
+                                }
+                            }
+                            for ref in refs
+                        ]
+                    }
+                }
+            }
+        )
+    )
+    output = tmp_path / "output"
+    result = _resolve_pin(tmp_path, output)
+    assert result.returncode != 0
+    assert "full commit SHA" in result.stderr
+    assert not output.exists()
 
 
 def test_spi_is_exactly_pinned_in_the_step() -> None:
@@ -168,7 +274,9 @@ def test_unparseable_version_fails(tmp_path: Path) -> None:
 
 def test_contract_that_fails_the_model_fails(tmp_path: Path) -> None:
     """The old validator checked every field, not only the version."""
-    root = _contracts(tmp_path, {"OMN-1.yaml": 'schema_version: "1.0.0"\ntitle: "no id"\n'})
+    root = _contracts(
+        tmp_path, {"OMN-1.yaml": 'schema_version: "1.0.0"\ntitle: "no id"\n'}
+    )
     result = _run_step(root)
     assert result.returncode == 1, result.stdout + result.stderr
     assert "contracts/OMN-1.yaml" in result.stdout
@@ -187,14 +295,17 @@ def test_nested_contract_is_validated(tmp_path: Path) -> None:
 
 def test_root_service_contract_is_not_a_ticket_contract(tmp_path: Path) -> None:
     root = _contracts(
-        tmp_path, {"OMN-1.yaml": _GOOD, "contract.yaml": "name: service\nnode_type: x\n"}
+        tmp_path,
+        {"OMN-1.yaml": _GOOD, "contract.yaml": "name: service\nnode_type: x\n"},
     )
     result = _run_step(root)
     assert result.returncode == 0, result.stdout + result.stderr
 
 
 def test_day_close_file_is_validated_as_a_day_close(tmp_path: Path) -> None:
-    ok = _run_step(_contracts(tmp_path / "ok", {"day_close_2026-10-10.yaml": _DAY_CLOSE}))
+    ok = _run_step(
+        _contracts(tmp_path / "ok", {"day_close_2026-10-10.yaml": _DAY_CLOSE})
+    )
     assert ok.returncode == 0, ok.stdout + ok.stderr
     bad = _run_step(_contracts(tmp_path / "bad", {"day_close_2026-10-10.yaml": _GOOD}))
     assert bad.returncode == 1, bad.stdout + bad.stderr
@@ -224,4 +335,14 @@ def test_workflow_triggers_when_the_test_changes() -> None:
     workflow = yaml.safe_load(WORKFLOW.read_text(encoding="utf-8"))
     triggers = workflow[True] if True in workflow else workflow["on"]
     for event in ("push", "pull_request"):
-        assert "tests/ci/test_schema_compat_core_owner_omn20885.py" in triggers[event]["paths"]
+        assert (
+            "tests/ci/test_schema_compat_core_owner_omn20885.py"
+            in triggers[event]["paths"]
+        )
+
+
+def test_workflow_triggers_when_the_handshake_changes() -> None:
+    workflow = yaml.safe_load(WORKFLOW.read_text(encoding="utf-8"))
+    triggers = workflow[True] if True in workflow else workflow["on"]
+    for event in ("push", "pull_request"):
+        assert ".github/workflows/check-handshake.yml" in triggers[event]["paths"]
