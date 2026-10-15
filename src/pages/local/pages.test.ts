@@ -49,6 +49,13 @@ describe('local dashboard page contracts', () => {
     }
   });
 
+  // A merge once kept both sides' copy of one binding, so workflow declared workflow-run-path-steps twice.
+  it.each(pages)('%s declares each binding id once', async (pageName) => {
+    const page = await readPage(pageName);
+    const ids = page.components.flatMap((component) => (component.data_bindings ?? []).map((binding) => binding.binding_id));
+    expect(ids.filter((id, index) => ids.indexOf(id) !== index)).toEqual([]);
+  });
+
   it.each(pages)('%s page file has ModelDashboardConfig fields at its root', async (pageName) => {
     const raw = JSON.parse(readFileSync(resolve(process.cwd(), `src/pages/local/${pageName}.page.yaml`), 'utf8')) as Record<string, unknown>;
     expect(dashboardConfigValidator(raw), JSON.stringify(dashboardConfigValidator.errors)).toBe(true);
