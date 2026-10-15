@@ -8,6 +8,20 @@ summary: >-
 is_seam_ticket: false
 interface_change: false
 interfaces_touched: []
+requirements:
+  - id: "req-portable-broker-example"
+    statement: "The shipped example describes the broker address without carrying deployment endpoints."
+    acceptance:
+      - id: "AC1"
+        statement: >-
+          AC1: event_bus.bootstrap_servers is the placeholder <broker-host>:<port>.
+          Falsifier: test_example_broker_is_the_placeholder fails when the example
+          carries a concrete broker address.
+      - id: "AC2"
+        statement: >-
+          AC2: the example contains no private LAN address or tailnet name.
+          Falsifier: test_example_holds_no_private_lan_address and
+          test_example_holds_no_tailnet_name reject those deployment endpoints.
 emergency_bypass:
   enabled: false
   justification: ""
@@ -20,11 +34,20 @@ evidence_requirements:
 dod_evidence:
   - id: "dod-omnidash-omn-20937"
     description: >-
-      The example file carries the broker placeholder <broker-host>:<port> and no lab host.
+      The example file carries the broker placeholder <broker-host>:<port>.
     source: "manual"
+    binds_ac: ["AC1"]
     checks:
       - check_type: "test_passes"
-        check_value: "uv run --no-project --with pytest --with pyyaml python -m pytest tests/ci/test_contract_local_example_omn20937.py -q --noconftest -p no:cacheprovider -c /dev/null"
+        check_value: "uv run --no-project --with pytest --with pyyaml python -m pytest tests/ci/test_contract_local_example_omn20937.py -q --noconftest -p no:cacheprovider -c /dev/null -k broker"
+        cwd: "${OMNI_HOME}/omnidash"
+  - id: "dod-omnidash-omn-20937-no-deployment-endpoints"
+    description: "The example file contains no private LAN address or tailnet name."
+    source: "manual"
+    binds_ac: ["AC2"]
+    checks:
+      - check_type: "test_passes"
+        check_value: "uv run --no-project --with pytest --with pyyaml python -m pytest tests/ci/test_contract_local_example_omn20937.py -q --noconftest -p no:cacheprovider -c /dev/null -k holds_no"
         cwd: "${OMNI_HOME}/omnidash"
       - check_type: "command"
         check_value: "! grep -nE '192\\.168\\.|\\.ts\\.net' contract.local.yaml.example"
