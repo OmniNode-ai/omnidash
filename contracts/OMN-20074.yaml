@@ -67,6 +67,8 @@ dod_evidence:
       - check_type: "test_passes"
         check_value: "uv run --no-project --python 3.12 --with omnibase-core==0.47.39 --with pyyaml --with pytest python -m pytest tests/ci/test_contract_validation_core_validator_omn20074.py -q --noconftest -p no:cacheprovider -c /dev/null -k \"test_workflow_ or test_required_check or test_omnibase_core_is_installed\""
         cwd: "${OMNI_HOME}/omnidash"
+    binds_ac:
+      - "AC9"
   - id: "dod-contract-validation-core-ac10"
     description: "The contract-validation step admits the repo contracts and refuses the planted contracts."
     source: "manual"
@@ -74,6 +76,8 @@ dod_evidence:
       - check_type: "test_passes"
         check_value: "uv run --no-project --python 3.12 --with omnibase-core==0.47.39 --with pyyaml --with pytest python -m pytest tests/ci/test_contract_validation_core_validator_omn20074.py -q --noconftest -p no:cacheprovider -c /dev/null"
         cwd: "${OMNI_HOME}/omnidash"
+    binds_ac:
+      - "AC10"
   - id: "dod-s6-no-occ-callers-ac11"
     description: "The S6 cut-over removes OCC callers, preflight dependencies, recovery and required contexts and pins the scan without nested OCC preflight."
     source: "manual"
@@ -81,6 +85,8 @@ dod_evidence:
       - check_type: "test_passes"
         check_value: "uv run --no-project --python 3.12 --with pyyaml --with pytest python -m pytest tests/ci/test_no_occ_callers_omn20074.py -q --noconftest -p no:cacheprovider -c /dev/null"
         cwd: "${OMNI_HOME}/omnidash"
+    binds_ac:
+      - "AC11"
   - id: "dod-s6-repo-evidence-enforces-ac12"
     description: "The repo-evidence caller enforces repo-owned evidence without comparing with OCC at the S6 reusable and verifier pins."
     source: "manual"
@@ -88,6 +94,8 @@ dod_evidence:
       - check_type: "test_passes"
         check_value: "uv run --no-project --python 3.12 --with pyyaml --with pytest python -m pytest tests/ci/test_repo_evidence_caller_omn20073.py -q --noconftest -p no:cacheprovider -c /dev/null"
         cwd: "${OMNI_HOME}/omnidash"
+    binds_ac:
+      - "AC12"
   - id: "dod-ci-off-change-control-ac13"
     description: "The runner-IP scan pins the reusable without the nested preflight and main-target-guard refuses every pull request to main."
     source: "manual"
@@ -95,6 +103,8 @@ dod_evidence:
       - check_type: "test_passes"
         check_value: "uv run --no-project --python 3.12 --with pyyaml --with pytest python -m pytest tests/ci/test_occ_off_omn20074.py -q --noconftest -p no:cacheprovider -c /dev/null -k \"runner_ip or main_target_guard\""
         cwd: "${OMNI_HOME}/omnidash"
+    binds_ac:
+      - "AC13"
   - id: "dod-ci-off-change-control-ac14"
     description: "No workflow or hook config value names change control, and the scan flags a planted value."
     source: "manual"
@@ -102,3 +112,5 @@ dod_evidence:
       - check_type: "test_passes"
         check_value: "uv run --no-project --python 3.12 --with pyyaml --with pytest python -m pytest tests/ci/test_occ_off_omn20074.py -q --noconftest -p no:cacheprovider -c /dev/null -k \"occ_value or names_occ\""
         cwd: "${OMNI_HOME}/omnidash"
+    binds_ac:
+      - "AC14"
