@@ -26,6 +26,16 @@ requirements:
       - id: "AC12"
         statement: |-
           AC12: the repo-evidence caller enforces (shadow "false"), does not compare with OCC (compare-with-occ "false"), and pins receipt-gate.yml@4e4f5e0404d364e296c5d37db6aa3ab9e07f8ffa with verifier-version 0.4.310 -- falsifier: uv run --no-project --python 3.12 --with pyyaml --with pytest python -m pytest tests/ci/test_repo_evidence_caller_omn20073.py -q --noconftest -p no:cacheprovider -c /dev/null
+  - id: "req-ci-off-change-control"
+    statement: |-
+      omnidash CI calls no reusable that nests the change-control preflight, admits no pull request to main by a change-control receipt line, and carries no workflow, pre-commit or required-checks value naming onex_change_control or occ-preflight.
+    acceptance:
+      - id: "AC13"
+        statement: |-
+          AC13: ban-hardcoded-runner-ip.yml pins omniclaude's ban-hardcoded-runner-ip.yml@a45ba68f053e9979c6edef21103c0e674e5f7630 with contents read only, and main-target-guard's own run block exits 1 for every pull request whose base is main (head dev with a receipt line included) and 0 for every other base -- falsifier: uv run --no-project --python 3.12 --with pyyaml --with pytest python -m pytest tests/ci/test_occ_off_omn20074.py -q --noconftest -p no:cacheprovider -c /dev/null -k "runner_ip or main_target_guard"
+      - id: "AC14"
+        statement: |-
+          AC14: no parsed value or key of a workflow, .pre-commit-config.yaml or .github/required-checks.yaml names onex_change_control, occ-preflight or a change-control receipt id, and the scan flags a planted value -- falsifier: uv run --no-project --python 3.12 --with pyyaml --with pytest python -m pytest tests/ci/test_occ_off_omn20074.py -q --noconftest -p no:cacheprovider -c /dev/null -k "occ_value or names_occ"
 evidence_requirements:
   - kind: "tests"
     description: "The contract-validation workflow reads no onex_change_control, pins omnibase_core exactly and keeps its names."
@@ -39,6 +49,12 @@ evidence_requirements:
   - kind: "tests"
     description: "The repo-evidence caller enforces repo-owned evidence without comparing with OCC at the S6 reusable and verifier pins."
     command: "uv run --no-project --python 3.12 --with pyyaml --with pytest python -m pytest tests/ci/test_repo_evidence_caller_omn20073.py -q --noconftest -p no:cacheprovider -c /dev/null"
+  - kind: "tests"
+    description: "The runner-IP scan pins the reusable without the nested preflight and main-target-guard refuses every pull request to main."
+    command: "uv run --no-project --python 3.12 --with pyyaml --with pytest python -m pytest tests/ci/test_occ_off_omn20074.py -q --noconftest -p no:cacheprovider -c /dev/null -k \"runner_ip or main_target_guard\""
+  - kind: "tests"
+    description: "No workflow or hook config value names change control, and the scan flags a planted value."
+    command: "uv run --no-project --python 3.12 --with pyyaml --with pytest python -m pytest tests/ci/test_occ_off_omn20074.py -q --noconftest -p no:cacheprovider -c /dev/null -k \"occ_value or names_occ\""
 emergency_bypass:
   enabled: false
   justification: ""
@@ -71,4 +87,18 @@ dod_evidence:
     checks:
       - check_type: "test_passes"
         check_value: "uv run --no-project --python 3.12 --with pyyaml --with pytest python -m pytest tests/ci/test_repo_evidence_caller_omn20073.py -q --noconftest -p no:cacheprovider -c /dev/null"
+        cwd: "${OMNI_HOME}/omnidash"
+  - id: "dod-ci-off-change-control-ac13"
+    description: "The runner-IP scan pins the reusable without the nested preflight and main-target-guard refuses every pull request to main."
+    source: "manual"
+    checks:
+      - check_type: "test_passes"
+        check_value: "uv run --no-project --python 3.12 --with pyyaml --with pytest python -m pytest tests/ci/test_occ_off_omn20074.py -q --noconftest -p no:cacheprovider -c /dev/null -k \"runner_ip or main_target_guard\""
+        cwd: "${OMNI_HOME}/omnidash"
+  - id: "dod-ci-off-change-control-ac14"
+    description: "No workflow or hook config value names change control, and the scan flags a planted value."
+    source: "manual"
+    checks:
+      - check_type: "test_passes"
+        check_value: "uv run --no-project --python 3.12 --with pyyaml --with pytest python -m pytest tests/ci/test_occ_off_omn20074.py -q --noconftest -p no:cacheprovider -c /dev/null -k \"occ_value or names_occ\""
         cwd: "${OMNI_HOME}/omnidash"

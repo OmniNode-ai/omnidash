@@ -1,9 +1,8 @@
 # SPDX-FileCopyrightText: 2026 OmniNode.ai Inc.
 # SPDX-License-Identifier: MIT
 
-# OMN-20074 S6 cut-over: dev drops `occ-preflight / eligibility` and
-# `verify / verify`; `repo-evidence / dod-verify` has no row (a dev ruleset
-# is to require it).
+# OMN-20074: `repo-evidence / dod-verify` has no row (a dev ruleset is to
+# require it).
 #
 # required-checks.yaml v3 (OMN-14860, fan-out from the omniclaude canary
 # OMN-14854; branch-scoped coverage added OMN-15120, per-branch `branch:`
