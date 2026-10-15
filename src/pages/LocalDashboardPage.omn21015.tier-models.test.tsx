@@ -54,6 +54,17 @@ describe('OMN-21015 AC2: the Tier mix lists each model under its tier', () => {
     expect(cells('local')[3]).toBe('');
   });
 
+  it('T6: a model served with a cost but no unmeasured count never reads as fully measured', () => {
+    // Found by the U6 guard: reading a missing count as 0 would print the cost as if every run were priced.
+    const tiers = ROW.by_tier.tiers.map((tier) => ({
+      ...tier,
+      models: tier.models.map(({ unmeasured_cost_count: _count, ...model }) => model),
+    }));
+    render(<TierMixPanel row={{ ...ROW, by_tier: { ...ROW.by_tier, tiers } }} />);
+    expect(cells('gemini')[3]).toBe('$0.009 (unmeasured runs not served)');
+    expect(cells('qwen-b')[3]).toBe('Not measured');
+  });
+
   it('T5: a row served before the models key existed still renders its tiers, with no model rows', () => {
     const old = { ...ROW, by_tier: { ...ROW.by_tier, tiers: ROW.by_tier.tiers.map(({ models: _models, ...tier }) => tier) } };
     render(<TierMixPanel row={old} />);

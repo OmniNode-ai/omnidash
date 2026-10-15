@@ -806,14 +806,18 @@ export function QualityPanel({ row }: { row: Row | null }) {
 /**
  * OMN-21015 AC2: a model's cost under its tier, as served (summed by the view). A group with no priced run is served
  * null and says how many runs were not measured, never $0; a priced group with some unpriced runs says so beside it.
+ * A model served without its unmeasured count is never read as fully measured: the count is unknown, not zero.
  */
 function tierModelCost(model: Row): string {
-  const unmeasured = Number(model.unmeasured_cost_count ?? 0);
+  const unmeasured = isMissing(model.unmeasured_cost_count) ? null : Number(model.unmeasured_cost_count);
   const runs = (n: number) => `${n} run${n === 1 ? '' : 's'}`;
-  if (isMissing(model.cost_usd)) return unmeasured > 0 ? `Not measured (${runs(unmeasured)})` : 'Not measured';
+  if (isMissing(model.cost_usd)) {
+    return unmeasured !== null && unmeasured > 0 ? `Not measured (${runs(unmeasured)})` : 'Not measured';
+  }
   const text = String(model.cost_usd);
   const match = /^(-?)(\d+)(?:\.(\d+))?$/.exec(text);
   const dollars = match === null ? `$${text}` : `${match[1]}$${match[2]}.${(match[3] ?? '').padEnd(2, '0')}`;
+  if (unmeasured === null) return `${dollars} (unmeasured runs not served)`;
   return unmeasured > 0 ? `${dollars} (+${runs(unmeasured)} not measured)` : dollars;
 }
 
