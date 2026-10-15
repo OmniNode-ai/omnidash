@@ -110,3 +110,10 @@ jobs:
         run: >-
           python -m pytest tests/ci/test_sibling_reads_pinned.py
           -q --noconftest -p no:cacheprovider -c /dev/null
+
+      # OMN-9050: check-handshake.yml is the only omnibase_core pin; the bot
+      # bumps it and every other workflow reads it, so none can fall behind.
+      - name: Assert no workflow but the handshake carries an omnibase_core ref
+        run: >-
+          python -m pytest tests/test_schema_compat_pin_omn9050.py
+          -q --noconftest -p no:cacheprovider -c /dev/null
