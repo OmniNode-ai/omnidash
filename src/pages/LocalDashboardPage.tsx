@@ -817,7 +817,7 @@ function tierModelCost(model: Row): string {
   const text = String(model.cost_usd);
   const match = /^(-?)(\d+)(?:\.(\d+))?$/.exec(text);
   const dollars = match === null ? `$${text}` : `${match[1]}$${match[2]}.${(match[3] ?? '').padEnd(2, '0')}`;
-  if (unmeasured === null) return `${dollars} (unmeasured runs not served)`;
+  if (unmeasured === null) return `${dollars} (unpriced runs unknown)`;
   return unmeasured > 0 ? `${dollars} (+${runs(unmeasured)} not measured)` : dollars;
 }
 
@@ -843,16 +843,19 @@ export function TierMixPanel({ row }: { row: Row | null }) {
           <thead><tr><th>Tier</th><th>Runs</th><th>Share of tier-routed</th><th>Cost</th></tr></thead>
           <tbody>{tiers.flatMap((tier, index) => [
             <tr key={`${String(tier.cost_tier_name)}-${index}`}>
-              <td>{recorded(tier.cost_tier_name)}</td>
+              {/* A served share is a long decimal and a name has no break opportunity: each may break inside itself, as
+                  the repo's other token cells do, so the Cost column stays inside the panel at 1440x900 with no
+                  sideways scroll. Costs wrap at their spaces. */}
+              <td className="local-dashboard-cell-token local-dashboard-cell-name">{recorded(tier.cost_tier_name)}</td>
               <td>{recorded(tier.count)}</td>
-              <td>{recorded(tier.pct_of_tier_routed)}</td>
+              <td className="local-dashboard-cell-token">{recorded(tier.pct_of_tier_routed)}</td>
               <td />
             </tr>,
             ...(Array.isArray(tier.models) ? asRecords(tier.models) : []).map((model, modelIndex) => (
               <tr key={`${String(tier.cost_tier_name)}-${index}-${String(model.model_name)}-${modelIndex}`} className="local-dashboard-row--nested">
-                <td>{recorded(model.model_name)}</td>
+                <td className="local-dashboard-cell-token local-dashboard-cell-name">{recorded(model.model_name)}</td>
                 <td>{recorded(model.count)}</td>
-                <td>{recorded(model.pct_of_tier_routed)}</td>
+                <td className="local-dashboard-cell-token">{recorded(model.pct_of_tier_routed)}</td>
                 <td>{tierModelCost(model)}</td>
               </tr>
             )),
