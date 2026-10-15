@@ -3,7 +3,7 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { QueryClient } from '@tanstack/react-query';
 import { DataSourceTestProvider } from '@/test-utils/dataSourceTestProvider';
 import { mockFetchWithItems } from '@/test-utils/mockFetch';
-import DelegationTokenUsageWidget from './DelegationTokenUsageWidget';
+import DelegationTokenUsageWidget from '@/components/dashboard/delegation/DelegationTokenUsageWidget';
 import { buildDelegationTokenUsage } from '@/storybook/fixtures/delegation-routing';
 
 // OMN-20717: the token-usage projection serves a NULL cost when no call was

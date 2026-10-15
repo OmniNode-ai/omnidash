@@ -17,7 +17,7 @@ requirements:
 evidence_requirements:
   - kind: "tests"
     description: "A null total renders Not measured with the unpriced count and no $0.00; a null model cost renders a dash and does not throw; a priced total still renders its dollar value."
-    command: "npx vitest run src/components/dashboard/delegation/DelegationTokenUsageWidget.unpriced.test.tsx"
+    command: "npx vitest run tests/dashboard/delegation/DelegationTokenUsageWidget.unpriced.test.tsx"
 emergency_bypass:
   enabled: false
   justification: ""
@@ -29,5 +29,5 @@ dod_evidence:
     binds_ac: ["AC2"]
     checks:
       - check_type: "test_passes"
-        check_value: "test -d node_modules || npm ci --no-audit --no-fund; npx vitest run src/components/dashboard/delegation/DelegationTokenUsageWidget.unpriced.test.tsx"
+        check_value: "test -d node_modules || npm ci --no-audit --no-fund; npx vitest run tests/dashboard/delegation/DelegationTokenUsageWidget.unpriced.test.tsx"
         cwd: "${OMNI_HOME}/omnidash"
