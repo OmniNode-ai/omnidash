@@ -2,7 +2,7 @@
 schema_version: "1.0.0"
 ticket_id: "OMN-21015"
 title: "The local dashboard shows the demo's in-scope figures on Overview, Runs and Usage, and meets four dashboard requirements not yet built"
-summary: "The omnidash page half of AC1, AC7, AC8 and the token series of AC4. Overview renders baseline against actual spend per UTC day from the day rows of metering-summary.v1 and its headline tiles switch between today (UTC) and all time, each reading the served row for that window; the Runs list filters by backend; Usage shows tokens in and out per day stacked by model, in the order the exposure serves them. Every figure is read from a served exposure; none is summed or priced in the browser. On this change also AC2: the Tier mix lists each model under its tier from the model-routing view. AC3 and the by-model table of AC4 land in their own changes."
+summary: "The omnidash page half of AC1, AC7, AC8 and the token series of AC4, and of AC5 and AC9 for the six pages' redesign. Overview renders baseline against actual spend per UTC day from the day rows of metering-summary.v1 and its headline tiles switch between today (UTC) and all time, each reading the served row for that window; the Runs list filters by backend; Usage shows tokens in and out per day stacked by model, in the order the exposure serves them. Every figure is read from a served exposure; none is summed or priced in the browser. On this change also AC2: the Tier mix lists each model under its tier from the model-routing view. AC3 and the by-model table of AC4 land in their own changes."
 is_seam_ticket: false
 interface_change: false
 interfaces_touched: []
@@ -17,6 +17,9 @@ requirements:
       - id: "AC4"
         statement: |-
           AC4: Usage shows tokens in and tokens out per day as a stacked series split by model (requirement US-1), and its by-model table shows each model's share of calls and its tier beside the calls column it already has -- falsifier: the window sums differ from `onex metering --json`, or the shares do not sum to 100
+      - id: "AC5"
+        statement: |-
+          AC5: Every new figure reads one served exposure and none is computed in the browser from prices -- falsifier: the [OMN-19980](<https://linear.app/omninode/issue/OMN-19980>) guard fails on a price literal or price arithmetic outside the metering compute
       - id: "AC7"
         statement: |-
           AC7: Overview's headline tiles switch between today (UTC) and all time (requirement OV-3), each reading the served `metering-summary.v1` rows for that window -- falsifier: a page test over a fixture whose today and all-time rows differ fails when the tiles do not change with the switch, or when a today figure is summed in the browser
@@ -26,6 +29,9 @@ requirements:
       - id: "AC2"
         statement: |-
           AC2: Overview's Tier mix lists each model under its tier with its share of runs and its cost -- falsifier: a fixture with two models in one tier renders one row, or model shares that do not sum to the tier's share
+      - id: "AC9"
+        statement: |-
+          AC9: The Workflow page opens for a run chosen in the Runs list and for a pasted correlation id, and shows the newest run when no id is given (requirement WF-3) -- falsifier: a page test that chooses a fixture run, or pastes its id, and finds another run's steps or none. Needs `run-trace.v1` served ([OMN-19987](<https://linear.app/omninode/issue/OMN-19987>))
 evidence_requirements:
   - kind: "tests"
     description: "AC1: over a recorded two-day metering-summary.v1 fixture the Overview panel shows both series per UTC day; a missing series, a window total that differs from the headline spend and savings, or an unplaced served column fails."
@@ -42,6 +48,12 @@ evidence_requirements:
   - kind: "tests"
     description: "AC2: under each tier the Tier mix lists its models with share of runs and cost as served; two models in one tier are two rows and their shares sum to the tier's."
     command: "npx vitest run src/pages/LocalDashboardPage.omn21015.tier-models.test.tsx"
+  - kind: "tests"
+    description: "AC5, the redesign's charts: every chart plots only the served values, one point per served row, nothing computed in the browser. The OMN-19980 savings-source guard runs in the full suite beside it."
+    command: "npx vitest run src/pages/local/charts.omn21015.test.tsx src/pages/LocalDashboardPage.omn21015.runs-charts.test.tsx"
+  - kind: "tests"
+    description: "AC9, opening a run: a run named on Overview or Runs opens that run's Workflow, and Workflow links to the run before and after it in the served list."
+    command: "npx vitest run src/pages/LocalDashboardPage.omn21015.interactive.test.tsx src/pages/LocalDashboardPage.omn21015.run-neighbours.test.tsx"
 dod_evidence:
   - id: "dod-omn21015-ac1-spend-by-day"
     description: "AC1: the Overview panel shows baseline against actual spend per UTC day from the served day rows; a missing series or a window total that differs from the headline fails."
@@ -82,6 +94,22 @@ dod_evidence:
     checks:
       - check_type: "test_passes"
         check_value: "test -d node_modules || npm ci --no-audit --no-fund; npx vitest run src/pages/LocalDashboardPage.omn21015.tier-models.test.tsx"
+        cwd: "${OMNI_HOME}/omnidash"
+  - id: "dod-omn21015-ac5-served-charts"
+    description: "AC5, the redesign's charts: every chart plots only served values; a computed or unserved point fails."
+    source: "manual"
+    binds_ac: ["AC5"]
+    checks:
+      - check_type: "test_passes"
+        check_value: "test -d node_modules || npm ci --no-audit --no-fund; npx vitest run src/pages/local/charts.omn21015.test.tsx src/pages/LocalDashboardPage.omn21015.runs-charts.test.tsx"
+        cwd: "${OMNI_HOME}/omnidash"
+  - id: "dod-omn21015-ac9-run-links"
+    description: "AC9, opening a run: a run named on Overview or Runs opens that run, never another, and Workflow links to its neighbours in the served order."
+    source: "manual"
+    binds_ac: ["AC9"]
+    checks:
+      - check_type: "test_passes"
+        check_value: "test -d node_modules || npm ci --no-audit --no-fund; npx vitest run src/pages/LocalDashboardPage.omn21015.interactive.test.tsx src/pages/LocalDashboardPage.omn21015.run-neighbours.test.tsx"
         cwd: "${OMNI_HOME}/omnidash"
 emergency_bypass:
   enabled: false

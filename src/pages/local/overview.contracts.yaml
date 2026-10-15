@@ -119,6 +119,63 @@
       ]
     },
     {
+      "component_id": "overview-spend-by-day",
+      "component_kind": "table",
+      "title": "Spend per day",
+      "contract_version": {
+        "major": 1,
+        "minor": 0,
+        "patch": 0
+      },
+      "data_bindings": [
+        {
+          "binding_id": "overview-spend-by-day-metering",
+          "projection_topic": "onex.snapshot.projection.metering-summary.v1",
+          "ordering_authority_field": "window_start",
+          "ordering_direction": "ascending",
+          "required_fields": [
+            "window_kind",
+            "window_start",
+            "as_of",
+            "baseline_model",
+            "baseline_state",
+            "spend_usd",
+            "counterfactual_usd",
+            "savings_usd",
+            "runs_total"
+          ]
+        }
+      ],
+      "supported_empty_state_reasons": [
+        "no-data"
+      ]
+    },
+    {
+      "component_id": "overview-tier-mix",
+      "component_kind": "table",
+      "title": "Tier mix",
+      "contract_version": {
+        "major": 1,
+        "minor": 0,
+        "patch": 0
+      },
+      "data_bindings": [
+        {
+          "binding_id": "overview-tier-mix-routing",
+          "projection_topic": "onex.snapshot.projection.delegation.model-routing.v1",
+          "ordering_authority_field": "captured_at",
+          "ordering_direction": "descending",
+          "required_fields": [
+            "by_tier"
+          ]
+        }
+      ],
+      "supported_empty_state_reasons": [
+        "missing-field",
+        "no-data"
+      ]
+    },
+    {
       "component_id": "overview-last-run",
       "component_kind": "table",
       "title": "Last run",
@@ -153,57 +210,6 @@
         },
         {
           "binding_id": "overview-last-run-cost",
-          "projection_topic": "onex.snapshot.projection.delegation.savings.v1",
-          "ordering_authority_field": "created_at",
-          "ordering_direction": "descending",
-          "required_fields": [
-            "sessions",
-            "session_id",
-            "local_cost_usd",
-            "usage_source"
-          ]
-        }
-      ],
-      "supported_empty_state_reasons": [
-        "missing-field",
-        "no-data"
-      ]
-    },
-    {
-      "component_id": "overview-recent-runs",
-      "component_kind": "table",
-      "title": "Recent runs",
-      "contract_version": {
-        "major": 1,
-        "minor": 0,
-        "patch": 0
-      },
-      "data_bindings": [
-        {
-          "binding_id": "overview-recent-runs-decisions",
-          "projection_topic": "onex.snapshot.projection.delegation.decisions.v1",
-          "ordering_authority_field": "written_at",
-          "ordering_direction": "descending",
-          "required_fields": [
-            "correlation_id",
-            "written_at",
-            "created_at",
-            "quality_gate_passed",
-            "quality_gate_detail",
-            "model_name",
-            "latency_ms",
-            "tokens_input",
-            "tokens_output",
-            "task_type",
-            "cost_tier_name",
-            "actual_score",
-            "backend_id",
-            "host",
-            "cost_tier_type"
-          ]
-        },
-        {
-          "binding_id": "overview-recent-runs-cost",
           "projection_topic": "onex.snapshot.projection.delegation.savings.v1",
           "ordering_authority_field": "created_at",
           "ordering_direction": "descending",
@@ -333,31 +339,6 @@
       ]
     },
     {
-      "component_id": "overview-tier-mix",
-      "component_kind": "table",
-      "title": "Tier mix",
-      "contract_version": {
-        "major": 1,
-        "minor": 0,
-        "patch": 0
-      },
-      "data_bindings": [
-        {
-          "binding_id": "overview-tier-mix-routing",
-          "projection_topic": "onex.snapshot.projection.delegation.model-routing.v1",
-          "ordering_authority_field": "captured_at",
-          "ordering_direction": "descending",
-          "required_fields": [
-            "by_tier"
-          ]
-        }
-      ],
-      "supported_empty_state_reasons": [
-        "missing-field",
-        "no-data"
-      ]
-    },
-    {
       "component_id": "overview-compression",
       "component_kind": "metric_card",
       "title": "Compression",
@@ -412,9 +393,9 @@
       ]
     },
     {
-      "component_id": "overview-spend-by-day",
+      "component_id": "overview-recent-runs",
       "component_kind": "table",
-      "title": "Spend per day",
+      "title": "Recent runs",
       "contract_version": {
         "major": 1,
         "minor": 0,
@@ -422,24 +403,43 @@
       },
       "data_bindings": [
         {
-          "binding_id": "overview-spend-by-day-metering",
-          "projection_topic": "onex.snapshot.projection.metering-summary.v1",
-          "ordering_authority_field": "window_start",
-          "ordering_direction": "ascending",
+          "binding_id": "overview-recent-runs-decisions",
+          "projection_topic": "onex.snapshot.projection.delegation.decisions.v1",
+          "ordering_authority_field": "written_at",
+          "ordering_direction": "descending",
           "required_fields": [
-            "window_kind",
-            "window_start",
-            "as_of",
-            "baseline_model",
-            "baseline_state",
-            "spend_usd",
-            "counterfactual_usd",
-            "savings_usd",
-            "runs_total"
+            "correlation_id",
+            "written_at",
+            "created_at",
+            "quality_gate_passed",
+            "quality_gate_detail",
+            "model_name",
+            "latency_ms",
+            "tokens_input",
+            "tokens_output",
+            "task_type",
+            "cost_tier_name",
+            "actual_score",
+            "backend_id",
+            "host",
+            "cost_tier_type"
+          ]
+        },
+        {
+          "binding_id": "overview-recent-runs-cost",
+          "projection_topic": "onex.snapshot.projection.delegation.savings.v1",
+          "ordering_authority_field": "created_at",
+          "ordering_direction": "descending",
+          "required_fields": [
+            "sessions",
+            "session_id",
+            "local_cost_usd",
+            "usage_source"
           ]
         }
       ],
       "supported_empty_state_reasons": [
+        "missing-field",
         "no-data"
       ]
     }

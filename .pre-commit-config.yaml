@@ -200,5 +200,18 @@ repos:
         files: ^(\.github/workflows/security-scan\.yml|tests/ci/test_security_scan_core_codeql_omn20995\.py|contracts/OMN-20995\.yaml|\.pre-commit-config\.yaml)$
         stages: [pre-commit]
 
+  # OMN-9050: one omnibase_core pin (check-handshake.yml); local parity for the
+  # workflow-script-refs.yml step.
+  - repo: local
+    hooks:
+      - id: single-core-pin
+        name: One omnibase_core pin source (OMN-9050)
+        entry: python -m pytest tests/test_schema_compat_pin_omn9050.py -q --noconftest -p no:cacheprovider -c /dev/null
+        language: python
+        additional_dependencies: ["pytest==8.4.2", "pyyaml==6.0.3"]
+        pass_filenames: false
+        files: ^(\.github/workflows/.*\.ya?ml|tests/test_schema_compat_pin_omn9050\.py|\.pre-commit-config\.yaml)$
+        stages: [pre-commit]
+
 default_install_hook_types: [pre-commit, commit-msg]
 default_stages: [pre-commit]

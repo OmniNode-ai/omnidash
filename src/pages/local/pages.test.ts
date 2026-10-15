@@ -49,6 +49,13 @@ describe('local dashboard page contracts', () => {
     }
   });
 
+  // A merge once kept both sides' copy of one binding, so workflow declared workflow-run-path-steps twice.
+  it.each(pages)('%s declares each binding id once', async (pageName) => {
+    const page = await readPage(pageName);
+    const ids = page.components.flatMap((component) => (component.data_bindings ?? []).map((binding) => binding.binding_id));
+    expect(ids.filter((id, index) => ids.indexOf(id) !== index)).toEqual([]);
+  });
+
   it.each(pages)('%s page file has ModelDashboardConfig fields at its root', async (pageName) => {
     const raw = JSON.parse(readFileSync(resolve(process.cwd(), `src/pages/local/${pageName}.page.yaml`), 'utf8')) as Record<string, unknown>;
     expect(dashboardConfigValidator(raw), JSON.stringify(dashboardConfigValidator.errors)).toBe(true);
@@ -467,7 +474,8 @@ describe('Amendment 6: the six local pages and the loader', () => {
   });
 
   it('Usage reads usage-by-model-day with tokens in and out apart and measured cost (US-1, US-2, US-4, SV-3)', () => {
-    const binding = readPage('usage').components[0]?.data_bindings?.[0];
+    // By its id, not its place: since OMN-21015 the page's charts come first and this table after them.
+    const binding = readPage('usage').components.find((c) => c.component_id === 'usage-by-model-day')?.data_bindings?.[0];
     expect(binding?.projection_topic).toBe('onex.snapshot.projection.usage-by-model-day.v1');
     expect(binding?.ordering_authority_field).toBe('usage_day');
     expect(binding?.required_fields).toEqual(expect.arrayContaining([
