@@ -50,6 +50,26 @@ describe('OMN-21015 AC3: savings per run on the Runs list', () => {
     expect(savingCell(/no-cost/)).toBe('Not measured: cost not recorded');
   });
 
+  it('R11: a run whose baseline could not be resolved says so, and shows no number', () => {
+    // The backend serves this state when the run has tokens and cost but no baseline model to price it against.
+    render(<RunsTable now={NOW} sessions={[]} decisions={[run('no-baseline', '2026-10-14T05:00:00Z', {
+      savings_measurement: 'baseline_unresolved',
+    })]} />);
+    const text = savingCell(/no-baseline/);
+    expect(text).toBe('Not measured: baseline not resolved');
+    expect(text).not.toMatch(/\d/);
+  });
+
+  it('R12: a run with no recorded time says so, and shows no number', () => {
+    // The backend cannot pick a pricing manifest without the run's time, so it serves this state with no figure.
+    render(<RunsTable now={NOW} sessions={[]} decisions={[run('no-time', '2026-10-14T05:00:00Z', {
+      savings_measurement: 'unknown_timestamp',
+    })]} />);
+    const text = savingCell(/no-time/);
+    expect(text).toBe('Not measured: time not recorded');
+    expect(text).not.toMatch(/\d/);
+  });
+
   it('R4: a run served with no figure and no measurement state reads Not measured, never 0', () => {
     render(<RunsTable now={NOW} sessions={[]} decisions={[run('unstamped', '2026-10-14T05:00:00Z')]} />);
     const text = savingCell(/unstamped/);

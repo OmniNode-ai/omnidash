@@ -444,7 +444,9 @@ const SERVED_DECIMAL = /^(-?)(\d+)(?:\.(\d+))?$/;
 function runModelledCell(run: Row): string {
   const figure = run.modelled_savings_usd;
   const notMeasured = run.savings_measurement === 'unknown_tokens' ? 'Not measured: tokens not recorded'
-    : run.savings_measurement === 'unknown_spend' ? 'Not measured: cost not recorded' : 'Not measured';
+    : run.savings_measurement === 'unknown_spend' ? 'Not measured: cost not recorded'
+    : run.savings_measurement === 'baseline_unresolved' ? 'Not measured: baseline not resolved'
+    : run.savings_measurement === 'unknown_timestamp' ? 'Not measured: time not recorded' : 'Not measured';
   if (isMissing(figure)) return notMeasured;
   const match = SERVED_DECIMAL.exec(String(figure).trim());
   if (match === null) return 'Not measured';
