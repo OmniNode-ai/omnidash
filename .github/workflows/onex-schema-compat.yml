@@ -9,7 +9,8 @@ name: ONEX Schema Compatibility
 # repository re-exports them and is no longer checked out or installed.
 #
 # This gate:
-#   1. Checks out omnibase_core at the commit check-handshake.yml already pins
+#   1. Checks out omnibase_core at the commit check-handshake.yml pins; the
+#      resolver step reads it, so a pin bump needs no edit here (OMN-9050)
 #   2. Validates every YAML file under contracts/ (the root contract.yaml is an ONEX
 #      Service Contract, a different schema, and is excluded) against ModelTicketContract,
 #      or ModelDayClose for a path containing day_close, as the old validator step did
@@ -98,10 +99,9 @@ jobs:
         with:
           persist-credentials: false
           repository: OmniNode-ai/omnibase_core
-          # The commit check-handshake.yml pins. Sibling reads stay literal
-          # (OMN-20332); the next step fails when the handshake pin moves
-          # without this one.
-          ref: d677b4e78219113139b5d20ac81efcdcef78e3e0
+          # The commit check-handshake.yml pins, the one declared omnibase_core
+          # pin of this repository. This workflow carries no ref of its own.
+          ref: ${{ steps.core-pin.outputs.ref }}
           path: omnibase_core
 
       - name: Assert the core checkout is the handshake pin

@@ -28,7 +28,16 @@
             "task_type",
             "backend_id",
             "host",
-            "cost_tier_type"
+            "cost_tier_type",
+            "required_bar",
+            "tokens_input",
+            "tokens_output",
+            "finish_reason",
+            "truncated",
+            "escalation_count",
+            "requested_model",
+            "queue_wait_ms",
+            "execution_ms"
           ]
         },
         {

@@ -27,6 +27,13 @@ def _core_ref(workflow: str) -> str:
     ]
     assert len(checkouts) == 1, (workflow, checkouts)
     ref = str(checkouts[0].get("ref", ""))
+    if workflow != "check-handshake.yml":
+        # OMN-9050: the handshake is the one declared pin; a consumer reads it.
+        assert re.fullmatch(r"\$\{\{\s*steps\.[\w-]+\.outputs\.ref\s*\}\}", ref), (
+            workflow,
+            ref,
+        )
+        return _core_ref("check-handshake.yml")
     assert re.fullmatch(r"[0-9a-f]{40}", ref), (workflow, ref)
     return ref
 

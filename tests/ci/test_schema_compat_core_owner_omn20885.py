@@ -138,7 +138,8 @@ def test_core_is_read_at_the_commit_the_handshake_pins(tmp_path: Path) -> None:
     assert result.returncode == 0, result.stdout + result.stderr
     ref = output.read_text().removeprefix("ref=").strip()
     assert SHA.fullmatch(ref), ref
-    assert core["with"]["ref"] == ref, (core["with"]["ref"], ref)
+    # No ref of its own: the checkout consumes the resolver's output (OMN-9050).
+    assert core["with"]["ref"] == "${{ steps.core-pin.outputs.ref }}", core["with"]
     handshake = yaml.safe_load(HANDSHAKE_WORKFLOW.read_text(encoding="utf-8"))
     handshake_refs = {
         str((step.get("with") or {}).get("ref"))
