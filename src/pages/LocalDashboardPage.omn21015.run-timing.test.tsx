@@ -185,7 +185,8 @@ describe('OMN-21015: where a run\'s time went', () => {
         expect(declaredIn).toMatch(/omnimarket v\d+\.\d+\.\d+ .*OMN-\d+/);
       }
     }
-    // Exactly the three this page reads; a fourth needs its own line and its own reason.
-    expect(Object.keys(SERVED_SINCE_CAPTURE['onex.snapshot.projection.delegation.decisions.v1'] ?? {}).sort()).toEqual(['execution_ms', 'queue_wait_ms', 'requested_model']);
+    // The 2026-10-14 recapture lists all three columns this page read from the list, so it is empty; a new entry needs
+    // its own line and its own reason.
+    expect(Object.keys(SERVED_SINCE_CAPTURE['onex.snapshot.projection.delegation.decisions.v1'] ?? {})).toEqual([]);
   });
 });
