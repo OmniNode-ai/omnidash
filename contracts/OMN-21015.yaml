@@ -2,7 +2,7 @@
 schema_version: "1.0.0"
 ticket_id: "OMN-21015"
 title: "The local dashboard shows the demo's in-scope figures on Overview, Runs and Usage, and meets four dashboard requirements not yet built"
-summary: "The omnidash page half of AC1, AC7, AC8 and the token series of AC4, and of AC5 and AC9 for the six pages' redesign. Overview renders baseline against actual spend per UTC day from the day rows of metering-summary.v1 and its headline tiles switch between today (UTC) and all time, each reading the served row for that window; the Runs list filters by backend; Usage shows tokens in and out per day stacked by model, in the order the exposure serves them. Every figure is read from a served exposure; none is summed or priced in the browser. On this change also AC3: the Runs list shows each run's served modelled saving, with AC5's guard amended for exactly that one field. On this change also AC4's by-model table: each row's tier and share of calls. AC2 lands in its own change."
+summary: "The omnidash page half of AC1, AC7, AC8 and the token series of AC4, and of AC5 and AC9 for the six pages' redesign. Overview renders baseline against actual spend per UTC day from the day rows of metering-summary.v1 and its headline tiles switch between today (UTC) and all time, each reading the served row for that window; the Runs list filters by backend; Usage shows tokens in and out per day stacked by model, in the order the exposure serves them. Every figure is read from a served exposure; none is summed or priced in the browser. On this change also AC3: the Runs list shows each run's served modelled saving, with AC5's guard amended for exactly that one field. On this change also AC2: the Tier mix lists each model under its tier from the model-routing view. On this change also AC4's by-model table: each row's tier and share of calls."
 is_seam_ticket: false
 interface_change: false
 interfaces_touched: []
@@ -29,6 +29,9 @@ requirements:
       - id: "AC8"
         statement: |-
           AC8: The Runs list filters by backend as well as by status, cause, model and window (requirement RU-1) -- falsifier: a page test over a fixture with two backends still shows a row of the other backend after one is selected
+      - id: "AC2"
+        statement: |-
+          AC2: Overview's Tier mix lists each model under its tier with its share of runs and its cost -- falsifier: a fixture with two models in one tier renders one row, or model shares that do not sum to the tier's share
       - id: "AC9"
         statement: |-
           AC9: The Workflow page opens for a run chosen in the Runs list and for a pasted correlation id, and shows the newest run when no id is given (requirement WF-3) -- falsifier: a page test that chooses a fixture run, or pastes its id, and finds another run's steps or none. Needs `run-trace.v1` served ([OMN-19987](<https://linear.app/omninode/issue/OMN-19987>))
@@ -45,6 +48,9 @@ evidence_requirements:
   - kind: "tests"
     description: "AC4, token series: tokens in and out per day stacked by model in the exposure's served order, each segment as wide as its share of the served count."
     command: "npx vitest run src/components/dashboard/usage/UsageTokensByDay.omn21015.test.tsx"
+  - kind: "tests"
+    description: "AC2: under each tier the Tier mix lists its models with share of runs and cost as served; two models in one tier are two rows and their shares sum to the tier's."
+    command: "npx vitest run src/pages/LocalDashboardPage.omn21015.tier-models.test.tsx"
   - kind: "tests"
     description: "AC5, the redesign's charts: every chart plots only the served values, one point per served row, nothing computed in the browser. The OMN-19980 savings-source guard runs in the full suite beside it."
     command: "npx vitest run src/pages/local/charts.omn21015.test.tsx src/pages/LocalDashboardPage.omn21015.runs-charts.test.tsx"
@@ -92,6 +98,14 @@ dod_evidence:
     checks:
       - check_type: "test_passes"
         check_value: "test -d node_modules || npm ci --no-audit --no-fund; npx vitest run src/pages/LocalDashboardPage.omn21015.runs-backend.test.tsx"
+        cwd: "${OMNI_HOME}/omnidash"
+  - id: "dod-omn21015-ac2-tier-models"
+    description: "AC2: under each tier the Tier mix lists its models with share of runs and cost as served; two models in one tier are two rows and their shares sum to the tier's."
+    source: "manual"
+    binds_ac: ["AC2"]
+    checks:
+      - check_type: "test_passes"
+        check_value: "test -d node_modules || npm ci --no-audit --no-fund; npx vitest run src/pages/LocalDashboardPage.omn21015.tier-models.test.tsx"
         cwd: "${OMNI_HOME}/omnidash"
   - id: "dod-omn21015-ac5-served-charts"
     description: "AC5, the redesign's charts: every chart plots only served values; a computed or unserved point fails."
