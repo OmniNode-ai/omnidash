@@ -205,7 +205,10 @@
 }
 
 @media (min-width: 720px) {
+  .local-dashboard-panel[data-width='3'] { grid-column: span 3; }
   .local-dashboard-panel[data-width='4'] { grid-column: span 4; }
+  .local-dashboard-panel[data-width='5'] { grid-column: span 5; }
+  .local-dashboard-panel[data-width='6'] { grid-column: span 6; }
   .local-dashboard-panel[data-width='8'] { grid-column: span 8; }
 }
 
@@ -466,3 +469,426 @@
 .usage-tokens-legend li[data-series='5']::before {
   background: var(--line);
 }
+
+/* ---------------------------------------------------------------------------------------------------------------
+ * One look for the six local pages (OMN-21015 stage 5). Everything below restyles what the pages already render:
+ * no rule here adds, hides or reorders a figure.
+ * ------------------------------------------------------------------------------------------------------------- */
+
+/* The page header: the page's icon (the one its sidebar entry carries), its title and what it shows. */
+.local-dashboard-title {
+  display: flex;
+  align-items: flex-start;
+  gap: 14px;
+  min-width: 0;
+}
+.local-dashboard-page-icon {
+  flex: 0 0 auto;
+  display: grid;
+  place-items: center;
+  width: 40px;
+  height: 40px;
+  border: 1px solid color-mix(in oklch, var(--brand) 35%, transparent);
+  border-radius: 10px;
+  background: color-mix(in oklch, var(--brand) 14%, transparent);
+  color: var(--brand);
+}
+.local-dashboard-header h1 {
+  font-family: var(--font-brand);
+  font-size: 1.5rem;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  line-height: 1.2;
+}
+.local-dashboard-header p { max-width: 72ch; font-size: 0.875rem; }
+
+/* A panel: a small upper-case label with its icon, then the content. */
+.local-dashboard-panel {
+  box-shadow: var(--shadow-sm);
+  transition: border-color 0.15s;
+}
+.local-dashboard-panel:hover { border-color: color-mix(in oklch, var(--ink-3) 45%, var(--line)); }
+.local-dashboard-panel h2 {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0 0 14px;
+  font-size: 0.6875rem;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text-secondary);
+}
+.local-dashboard-panel h2 svg { flex: 0 0 auto; color: var(--text-tertiary); }
+
+/* A headline figure: set in the mono face so digits line up from card to card. Savings figures are green. */
+.local-dashboard-metric {
+  font-family: var(--font-mono);
+  font-size: clamp(1.5rem, 2.4vw, 2.1rem);
+  font-weight: 500;
+  letter-spacing: -0.02em;
+  line-height: 1.15;
+  overflow-wrap: anywhere;
+}
+.local-dashboard-panel[data-component="overview-savings"] .local-dashboard-metric,
+.local-dashboard-panel[data-component="overview-avg-saving-per-call"] .local-dashboard-metric { color: var(--status-ok); }
+.local-dashboard-panel[data-component="overview-savings"] h2 svg,
+.local-dashboard-panel[data-component="overview-avg-saving-per-call"] h2 svg { color: var(--status-ok); }
+.local-dashboard-caption { font-size: 0.8125rem; line-height: 1.45; }
+
+/* Field lists (Last run, Quality, Local identity): a quiet label over its value. */
+.local-dashboard-fields dt {
+  font-size: 0.6875rem;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--text-tertiary);
+}
+.local-dashboard-fields dd { font-size: 0.875rem; }
+
+/* Tables: a framed table with a quiet upper-case header row; ids and times in the mono face. */
+.local-dashboard-table-wrap {
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+}
+.local-dashboard-table-wrap th {
+  background: var(--panel-2);
+  font-size: 0.6875rem;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-align: left;
+  text-transform: uppercase;
+  color: var(--text-secondary);
+}
+.local-dashboard-table-wrap td { font-size: 0.8125rem; }
+.local-dashboard-table-wrap tbody tr:last-child td { border-bottom: 0; }
+.local-dashboard-cell-token { font-family: var(--font-mono); font-size: 0.75rem; }
+
+/* A state that is not a figure (nothing served yet, not measured, no rows): one quiet framed line, never a blank. */
+.local-dashboard-empty {
+  margin: 0;
+  padding: 10px 12px;
+  border: 1px dashed var(--line);
+  border-radius: var(--radius);
+  background: var(--panel-2);
+  font-size: 0.8125rem;
+  line-height: 1.45;
+}
+.local-dashboard-empty p { margin: 0; }
+.local-dashboard-empty p + p { margin-top: 4px; }
+.local-dashboard-empty code {
+  padding: 1px 6px;
+  border-radius: 4px;
+  background: var(--panel);
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+  color: var(--text-primary);
+}
+.local-dashboard-error {
+  margin: 8px 0 0;
+  padding: 10px 12px;
+  border: 1px solid color-mix(in oklch, var(--status-bad) 45%, transparent);
+  border-radius: var(--radius);
+  background: color-mix(in oklch, var(--status-bad) 10%, transparent);
+  font-size: 0.8125rem;
+}
+.local-dashboard-mode { background: var(--panel); }
+
+/* A chart of served rows: the figure, its plot area and a quiet caption. The table of the same rows follows it. */
+.local-chart { margin: 0 0 14px; }
+.local-chart-canvas { width: 100%; height: 260px; }
+/* Workflow: the links to the newer and the older run, in the run's title line after its id. */
+.local-run-neighbours { display: inline-flex; gap: 8px; margin-left: 12px; vertical-align: middle; }
+.local-run-neighbours a {
+  padding: 4px 10px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--panel-2);
+  color: inherit;
+  font-size: 0.8125rem;
+  text-decoration: none;
+}
+.local-run-neighbours a:hover { border-color: var(--brand); color: var(--brand); }
+.local-run-neighbours a:focus-visible { outline: 2px solid var(--brand); outline-offset: 2px; }
+/* A value in a run's row that sets its filter: it reads as the text it is, with a dotted line to say it can be pressed. */
+.local-cell-filter {
+  padding: 0;
+  border: 0;
+  background: none;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  overflow-wrap: anywhere;
+  text-decoration: underline dotted;
+  text-underline-offset: 3px;
+  cursor: pointer;
+}
+.local-cell-filter:hover { color: var(--brand); }
+.local-cell-filter:focus-visible { outline: 2px solid var(--brand); outline-offset: 2px; }
+.local-filter-clear {
+  padding: 6px 10px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--panel-2);
+  color: inherit;
+  font: inherit;
+  cursor: pointer;
+}
+.local-filter-clear:hover { border-color: var(--brand); }
+/* The Runs page's two charts stand side by side above the list, and one under the other on a narrow window. */
+.local-run-charts { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px 24px; margin: 0 0 12px; }
+.local-run-charts:empty { display: none; }
+.local-chart--runs { margin: 0; min-width: 0; }
+.local-chart--runs .local-chart-canvas { height: 190px !important; }
+@media (max-width: 900px) { .local-run-charts { grid-template-columns: minmax(0, 1fr); } }
+/* A run's timings: three thin bars under the run summary's tiles, so the run's steps stay near the top. */
+.local-chart--timing { margin: 10px 0 0; }
+/* The chart library writes its own default height on the element, so this one has to outrank an inline style. */
+.local-chart--timing .local-chart-canvas { height: 118px !important; }
+/* The chart's legend: real buttons, so a series is shown or hidden from the keyboard. A hidden series' button is
+   dimmed and struck through; its pressed state says the same to a screen reader. */
+.local-chart-legend { display: flex; flex-wrap: wrap; gap: 6px 8px; margin: 0 0 8px; }
+.local-chart-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 3px 10px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: var(--panel-2);
+  color: var(--text-secondary);
+  font: inherit;
+  font-size: 0.75rem;
+  cursor: pointer;
+}
+.local-chart-toggle:hover { border-color: var(--ink-3); color: var(--text-primary); }
+.local-chart-toggle:focus-visible { outline: 2px solid var(--brand); outline-offset: 2px; }
+.local-chart-toggle[aria-pressed="false"] { background: transparent; color: var(--text-tertiary); text-decoration: line-through; }
+.local-chart-toggle[aria-pressed="false"] .local-chart-swatch { opacity: 0.3; }
+.local-chart-swatch { width: 14px; height: 4px; border-radius: 2px; }
+.local-chart figcaption {
+  margin-top: 4px;
+  font-size: 0.75rem;
+  color: var(--text-tertiary);
+}
+
+/* The page header on one line: the page is already named in the sidebar and the breadcrumb, so the header keeps its
+ * icon, title and what the page shows in a single compact row and gives the space back to the figures. */
+.local-dashboard-header {
+  align-items: center;
+  margin-bottom: 14px;
+}
+.local-dashboard-title {
+  flex: 1 1 auto;
+  align-items: center;
+  gap: 10px;
+}
+.local-dashboard-title > div {
+  display: flex;
+  align-items: baseline;
+  gap: 12px;
+  min-width: 0;
+}
+.local-dashboard-page-icon {
+  width: 28px;
+  height: 28px;
+  border-radius: 8px;
+}
+.local-dashboard-page-icon svg { width: 16px; height: 16px; }
+.local-dashboard-header h1 {
+  flex: 0 0 auto;
+  font-size: 1.125rem;
+}
+.local-dashboard-header p {
+  min-width: 0;
+  margin: 0;
+  overflow: hidden;
+  font-size: 0.8125rem;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.local-dashboard-mode { padding: 4px 10px; }
+
+/* A donut of served shares (Overview's tier mix): one slice per served tier, as long as its served share of the
+   ring. The ring is 100 units round, so the markup's dash lengths are the shares; nothing here may change them. */
+.local-share { margin: 0 0 14px; }
+.local-donut-row { display: flex; flex-wrap: wrap; align-items: center; gap: 12px 28px; }
+.local-donut { width: 168px; height: 168px; flex: none; }
+.local-donut-track { stroke: var(--panel-2); stroke-width: 5; }
+/* No dash, offset, round cap or scaling on a slice: its drawn length is its served share and nothing else. A tier
+   too small to see is read from the figure written beside the ring. */
+.local-donut-slice { stroke-width: 5; cursor: pointer; transition: stroke-width 0.15s, opacity 0.15s; }
+.local-donut-slice[data-active="true"] { stroke-width: 6.5; }
+.local-donut:has(.local-donut-slice[data-active="true"]) .local-donut-slice[data-active="false"] { opacity: 0.45; }
+.local-donut-focus { fill: var(--text-secondary); font-size: 2.6px; }
+.local-donut-focus-value { fill: var(--text-primary); font-size: 4.2px; font-weight: 600; font-family: var(--font-mono); }
+.local-share-legend {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  font-size: 0.8125rem;
+}
+.local-share-legend li {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 3px 8px;
+  border-radius: 6px;
+  cursor: default;
+}
+.local-share-legend li[data-active="true"] { background: var(--panel-2); }
+.local-share-legend li:focus-visible { outline: 2px solid var(--brand); outline-offset: 1px; }
+.local-share-swatch { width: 10px; height: 10px; border-radius: 3px; }
+.local-share-value { font-family: var(--font-mono); color: var(--text-secondary); }
+/* Tier colours: local is the cool one, the paid tiers warm up as they cost more. */
+.local-share-swatch[data-tone="local"] { background: oklch(78% 0.13 210); }
+.local-donut-slice[data-tone="local"] { stroke: oklch(78% 0.13 210); }
+.local-share-swatch[data-tone="economy"] { background: var(--status-ok); }
+.local-donut-slice[data-tone="economy"] { stroke: var(--status-ok); }
+.local-share-swatch[data-tone="balanced"] { background: oklch(66% 0.16 255); }
+.local-donut-slice[data-tone="balanced"] { stroke: oklch(66% 0.16 255); }
+.local-share-swatch[data-tone="frontier"] { background: var(--status-bad); }
+.local-donut-slice[data-tone="frontier"] { stroke: var(--status-bad); }
+.local-share-swatch[data-tone="other"] { background: var(--ink-3); }
+.local-donut-slice[data-tone="other"] { stroke: var(--ink-3); }
+
+/* A meter of one served fraction (the quality pass rate). */
+.local-meter {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin: 0 0 14px;
+}
+.local-meter-track {
+  flex: 1 1 auto;
+  height: 10px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: var(--panel-2);
+}
+.local-meter-fill { display: block; height: 100%; border-radius: 999px; background: var(--status-ok); }
+.local-meter-value { font-family: var(--font-mono); font-size: 1.125rem; font-weight: 500; }
+
+/* No title block at the top of a page (Lakshman, 2026-10-13): the sidebar entry and the breadcrumb already name the
+ * page, so repeating its name and a sentence about it only pushed the figures down. The heading and the description
+ * stay in the page for a screen reader and for anything that looks a page up by its heading; they take no space. */
+.local-dashboard-title {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+.local-dashboard-header {
+  justify-content: flex-start;
+  min-height: 34px;
+  margin-bottom: 10px;
+}
+.local-dashboard-header .local-dashboard-filters { margin: 0; }
+.local-dashboard-header .local-dashboard-mode { margin-left: auto; }
+
+/* Copy one piece of shown text: a small quiet button that says what happened. */
+.local-copy {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  margin-left: 8px;
+  padding: 1px 8px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: var(--panel);
+  color: var(--text-secondary);
+  font: inherit;
+  font-size: 0.6875rem;
+  line-height: 1.6;
+  vertical-align: middle;
+  cursor: pointer;
+  transition: border-color 0.15s, color 0.15s;
+}
+.local-copy:hover { border-color: var(--ink-3); color: var(--text-primary); }
+.local-copy:focus-visible { outline: 2px solid var(--brand-ink); outline-offset: 2px; }
+.local-copy[data-state="copied"] { border-color: color-mix(in oklch, var(--status-ok) 45%, transparent); color: var(--status-ok); }
+.local-copy[data-state="failed"] { border-color: color-mix(in oklch, var(--status-bad) 45%, transparent); color: var(--status-bad); }
+
+/* Workflow's step diagram: the served steps left to right, an arrow between each, each a way to its timeline step. */
+.local-run-diagram {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: stretch;
+  gap: 8px 26px;
+  margin: 0 0 20px;
+}
+.local-run-diagram a {
+  position: relative;
+  display: flex;
+  flex: 1 1 130px;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+  padding: 10px 12px;
+  border: 1px solid var(--line);
+  border-left: 3px solid var(--ink-3);
+  border-radius: var(--radius);
+  background: var(--panel-2);
+  color: inherit;
+  text-decoration: none;
+  transition: border-color 0.15s, transform 0.15s;
+}
+.local-run-diagram a:hover { transform: translateY(-1px); border-color: var(--ink-3); }
+.local-run-diagram a:focus-visible { outline: 2px solid var(--brand-ink); outline-offset: 2px; }
+.local-run-diagram a[data-outcome="succeeded"] { border-left-color: var(--status-ok); }
+.local-run-diagram a[data-outcome="failed"] { border-left-color: var(--status-bad); }
+.local-run-diagram a[data-failing-step="true"] { box-shadow: 0 0 0 2px color-mix(in oklch, var(--status-bad) 55%, transparent); }
+/* The arrow to the next step. */
+.local-run-diagram a:not(:last-child)::after {
+  content: '\2192';
+  position: absolute;
+  top: 50%;
+  right: -20px;
+  color: var(--text-tertiary);
+  transform: translateY(-50%);
+}
+.local-run-node-name { font-size: 0.8125rem; font-weight: 600; }
+.local-run-node-outcome { font-size: 0.6875rem; color: var(--text-secondary); }
+.local-dashboard-steps > li:target .local-run-step-head strong { color: var(--brand); }
+
+/* In the two wide run tables a run id is a link shown on one line and cut with an ellipsis: the whole id is still the
+ * link's text and its title, and Workflow shows it in full with a Copy button. Uncut, it broke over eight lines and
+ * made every row eight lines tall.
+ *
+ * A one-line link IS a floor on its column: the column cannot be narrower than the cut. At 9ch that floor, the
+ * letter-spaced headers and the padded status pill together asked for 29px more than the panel has at 1440 once a
+ * row carried a long host and model (the OMN-20759 fixture), and the Runs table scrolled sideways. So the cut is
+ * 7ch, and in these two tables the headers carry no letter spacing and the pill less padding. Measured with that
+ * fixture at 1440x900: no sideways scroll, and a row as tall as before the redesign (149px). */
+.local-dashboard-table-wrap--fit .local-dashboard-cell-token a {
+  display: block;
+  max-width: 7ch;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.local-dashboard-table-wrap--fit th { letter-spacing: 0; }
+.local-dashboard-table-wrap--fit .local-run-pill { padding: 1px 6px; }
+
+/* Usage's token bars: one colour per series, the same on the segment and on its legend swatch, so a figure can be
+ * tied to its segment by colour as well as by order. Nothing here changes a segment's size (OMN-21015 AC4). */
+.usage-tokens-bar { height: 0.875rem; border-radius: 999px; overflow: hidden; background: var(--panel-2); }
+.usage-tokens-fill { transition: filter 0.15s; }
+.usage-tokens-fill[data-series='0'], .usage-tokens-legend li[data-series='0']::before { background: oklch(72% 0.14 250); }
+.usage-tokens-fill[data-series='1'], .usage-tokens-legend li[data-series='1']::before { background: oklch(74% 0.15 160); }
+.usage-tokens-fill[data-series='2'], .usage-tokens-legend li[data-series='2']::before { background: oklch(78% 0.15 85); }
+.usage-tokens-fill[data-series='3'], .usage-tokens-legend li[data-series='3']::before { background: oklch(68% 0.18 320); }
+.usage-tokens-fill[data-series='4'], .usage-tokens-legend li[data-series='4']::before { background: oklch(70% 0.17 30); }
+.usage-tokens-fill[data-series='5'], .usage-tokens-legend li[data-series='5']::before { background: oklch(76% 0.11 200); }
+.usage-tokens-legend li::before { border-radius: 2px; }
+
+/* A timestamp cell in the wide run tables gets no floor: a 13ch one (its longest part) was measured to push the Runs
+ * table 17px past its panel at 1440x900, the fault OMN-20759 fixed. CellTime's two break points are preferred when
+ * the column is wide enough; when it is not, the token still breaks inside itself as before. */

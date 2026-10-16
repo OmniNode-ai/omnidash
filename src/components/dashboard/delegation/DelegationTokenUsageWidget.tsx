@@ -20,7 +20,8 @@ export interface ModelTokenRow {
   prompt_tokens: number;
   completion_tokens: number;
   total_tokens: number;
-  estimated_cost_usd: number;
+  /** Null when no call for the model was priced (OMN-20717). */
+  estimated_cost_usd: number | null;
   usage_source: TokenProvenance;
   token_provenance: TokenProvenance;
 }
@@ -29,7 +30,10 @@ export interface DelegationTokenUsageProjection {
   total_prompt_tokens: number;
   total_completion_tokens: number;
   total_tokens: number;
-  total_estimated_cost_usd: number;
+  /** Sum of the priced calls; null when none was priced (OMN-20717). */
+  total_estimated_cost_usd: number | null;
+  /** Calls no cost model priced; served beside the total (OMN-20717). */
+  unpriced_call_count?: number;
   provenance_summary: Record<TokenProvenance, number>;
   by_model: ModelTokenRow[];
   captured_at: string;
@@ -86,8 +90,9 @@ function fmtTokens(n: number): string {
   return String(n);
 }
 
-function fmtUsd(v: number): string {
-  return formatUsd(v);
+function fmtUsd(v: number | null): string {
+  // An unpriced cost is unknown, not zero: show a dash, never $0.00.
+  return v == null ? '—' : formatUsd(v);
 }
 
 // ── Per-model row ─────────────────────────────────────────────────────
@@ -238,6 +243,7 @@ export default function DelegationTokenUsageWidget(props: { config: DelegationTo
   }, [sorted]);
 
   const isEmpty = !projection || projection.total_tokens === 0;
+  const unpricedCalls = projection?.unpriced_call_count ?? 0;
 
   return (
     <ComponentWrapper
@@ -279,15 +285,28 @@ export default function DelegationTokenUsageWidget(props: { config: DelegationTo
               tone="default"
               caption={fmtTokens(projection.total_completion_tokens)}
             />
-            {showCost && (
+            {showCost && (projection.total_estimated_cost_usd == null ? (
+              // No call was priced: the cost is not measured, so it is not
+              // drawn as a number (a null would animate to $0.00).
+              <div className="kpi">
+                <div className="kpi-num tnum">
+                  <Text as="span" size="sm" color="tertiary">Not measured</Text>
+                </div>
+                <div className="kpi-label">Est. cost</div>
+                {unpricedCalls > 0 && (
+                  <Text as="div" size="xs" color="tertiary">{`${unpricedCalls} unpriced`}</Text>
+                )}
+              </div>
+            ) : (
               <KPI
                 label="Est. cost"
                 value={projection.total_estimated_cost_usd}
                 prefix="$"
                 decimals={usdFractionDigits(projection.total_estimated_cost_usd)}
                 tone="default"
+                caption={unpricedCalls > 0 ? `${unpricedCalls} unpriced` : undefined}
               />
-            )}
+            ))}
           </div>
 
           {/* Provenance summary */}
