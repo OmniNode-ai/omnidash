@@ -2,7 +2,7 @@
 schema_version: "1.0.0"
 ticket_id: "OMN-21015"
 title: "The local dashboard shows the demo's in-scope figures on Overview, Runs and Usage, and meets four dashboard requirements not yet built"
-summary: "The omnidash page half of AC1, AC7, AC8 and the token series of AC4, and of AC5 and AC9 for the six pages' redesign. Overview renders baseline against actual spend per UTC day from the day rows of metering-summary.v1 and its headline tiles switch between today (UTC) and all time, each reading the served row for that window; the Runs list filters by backend; Usage shows tokens in and out per day stacked by model, in the order the exposure serves them. Every figure is read from a served exposure; none is summed or priced in the browser. On this change also AC4's by-model table: each row's tier and share of calls. AC2 and AC3 land in their own changes."
+summary: "The omnidash page half of AC1, AC7, AC8 and the token series of AC4, and of AC5 and AC9 for the six pages' redesign. Overview renders baseline against actual spend per UTC day from the day rows of metering-summary.v1 and its headline tiles switch between today (UTC) and all time, each reading the served row for that window; the Runs list filters by backend; Usage shows tokens in and out per day stacked by model, in the order the exposure serves them. Every figure is read from a served exposure; none is summed or priced in the browser. On this change also AC3: the Runs list shows each run's served modelled saving, with AC5's guard amended for exactly that one field. On this change also AC4's by-model table: each row's tier and share of calls. AC2 lands in its own change."
 is_seam_ticket: false
 interface_change: false
 interfaces_touched: []
@@ -14,6 +14,9 @@ requirements:
       - id: "AC1"
         statement: |-
           AC1: Overview renders baseline against actual spend per UTC day from the day rows of `metering-summary.v1`, the series [OMN-20007](<https://linear.app/omninode/issue/OMN-20007>) serves -- falsifier: a page test over a recorded two-day fixture fails when either series is absent, or when the panel's window total differs from the headline spend and savings
+      - id: "AC3"
+        statement: |-
+          AC3: The Runs list shows savings per run against the named baseline (requirement RU-1), and a typed not-measured state for an unmeasured run -- falsifier: a measured fixture row with no savings cell, or an unmeasured row that shows 0
       - id: "AC4"
         statement: |-
           AC4: Usage shows tokens in and tokens out per day as a stacked series split by model (requirement US-1), and its by-model table shows each model's share of calls and its tier beside the calls column it already has -- falsifier: the window sums differ from `onex metering --json`, or the shares do not sum to 100
@@ -49,6 +52,11 @@ evidence_requirements:
     description: "AC9, opening a run: a run named on Overview or Runs opens that run's Workflow, and Workflow links to the run before and after it in the served list."
     command: "npx vitest run src/pages/LocalDashboardPage.omn21015.interactive.test.tsx src/pages/LocalDashboardPage.omn21015.run-neighbours.test.tsx"
   - kind: "tests"
+    description: "AC3: the Runs list shows each run's served modelled saving against its named baseline, and a typed not-measured state, never 0, for an unmeasured run."
+    command: "npx vitest run tests/pages/LocalDashboardPage.omn21015.run-saving.test.tsx src/pages/LocalDashboardPage.runs.test.tsx"
+  - kind: "tests"
+    description: "AC5: the OMN-19980 guard refuses a savings field from any exposure but the one allowed, a price literal and price arithmetic outside the metering compute."
+    command: "npx vitest run tests/pages/local/omn19980.savings-source.test.ts"
     description: "AC4, by-model table: each row shows its tier and its served share of calls beside the calls column; a missing share says Not recorded."
     command: "npx vitest run tests/dashboard/usage/UsageByModelDayWidget.omn21015.test.tsx src/components/dashboard/usage/UsageByModelDayWidget.test.tsx"
 dod_evidence:
@@ -100,6 +108,21 @@ dod_evidence:
       - check_type: "test_passes"
         check_value: "test -d node_modules || npm ci --no-audit --no-fund; npx vitest run src/pages/LocalDashboardPage.omn21015.interactive.test.tsx src/pages/LocalDashboardPage.omn21015.run-neighbours.test.tsx"
         cwd: "${OMNI_HOME}/omnidash"
+  - id: "dod-omn21015-ac3-run-saving"
+    description: "AC3: the Runs list shows each run's served modelled saving against its named baseline, and a typed not-measured state, never 0, for an unmeasured run."
+    source: "manual"
+    binds_ac: ["AC3"]
+    checks:
+      - check_type: "test_passes"
+        check_value: "test -d node_modules || npm ci --no-audit --no-fund; npx vitest run tests/pages/LocalDashboardPage.omn21015.run-saving.test.tsx src/pages/LocalDashboardPage.runs.test.tsx"
+        cwd: "${OMNI_HOME}/omnidash"
+  - id: "dod-omn21015-ac5-savings-source-guard"
+    description: "AC5: the OMN-19980 guard refuses a savings field from any exposure but the one allowed, a price literal and price arithmetic outside the metering compute."
+    source: "manual"
+    binds_ac: ["AC5"]
+    checks:
+      - check_type: "test_passes"
+        check_value: "test -d node_modules || npm ci --no-audit --no-fund; npx vitest run tests/pages/local/omn19980.savings-source.test.ts"
   - id: "dod-omn21015-ac4-by-model-table"
     description: "AC4, by-model table: each row shows its tier and its served share of calls beside the calls column; a missing share says Not recorded."
     source: "manual"
