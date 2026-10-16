@@ -57,6 +57,7 @@ evidence_requirements:
   - kind: "tests"
     description: "AC5: the OMN-19980 guard refuses a savings field from any exposure but the one allowed, a price literal and price arithmetic outside the metering compute."
     command: "npx vitest run tests/pages/local/omn19980.savings-source.test.ts"
+  - kind: "tests"
     description: "AC4, by-model table: each row shows its tier and its served share of calls beside the calls column; a missing share says Not recorded."
     command: "npx vitest run tests/dashboard/usage/UsageByModelDayWidget.omn21015.test.tsx src/components/dashboard/usage/UsageByModelDayWidget.test.tsx"
 dod_evidence:
@@ -123,6 +124,7 @@ dod_evidence:
     checks:
       - check_type: "test_passes"
         check_value: "test -d node_modules || npm ci --no-audit --no-fund; npx vitest run tests/pages/local/omn19980.savings-source.test.ts"
+        cwd: "${OMNI_HOME}/omnidash"
   - id: "dod-omn21015-ac4-by-model-table"
     description: "AC4, by-model table: each row shows its tier and its served share of calls beside the calls column; a missing share says Not recorded."
     source: "manual"
