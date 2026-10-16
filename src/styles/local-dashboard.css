@@ -203,6 +203,11 @@
 .local-dashboard-table-wrap--fit .local-dashboard-cell-token {
   overflow-wrap: anywhere;
 }
+/* OMN-21015 AC2: a tier or model name in the Tier mix keeps a short floor, so a name of up to eight characters
+   stays whole and only a longer one breaks; the served shares beside it take the squeeze instead. */
+.local-dashboard-table-wrap--fit .local-dashboard-cell-name {
+  min-width: 8ch;
+}
 
 @media (min-width: 720px) {
   .local-dashboard-panel[data-width='3'] { grid-column: span 3; }
