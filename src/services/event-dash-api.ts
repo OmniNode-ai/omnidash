@@ -264,7 +264,8 @@ export interface TokenUsageByModel {
   total_tokens: number;
   prompt_tokens: number;
   completion_tokens: number;
-  estimated_cost_usd: number;
+  /** Null when no call for the model was priced (OMN-20717). */
+  estimated_cost_usd: number | null;
   token_provenance: string;
 }
 
@@ -272,7 +273,10 @@ export interface TokenUsageRow {
   total_prompt_tokens: number;
   total_completion_tokens: number;
   total_tokens: number;
-  total_estimated_cost_usd: number;
+  /** Sum of the priced calls; null when none was priced (OMN-20717). */
+  total_estimated_cost_usd: number | null;
+  /** Calls no cost model priced; served beside the total (OMN-20717). */
+  unpriced_call_count?: number;
   by_model: TokenUsageByModel[];
 }
 

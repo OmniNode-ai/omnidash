@@ -19,8 +19,7 @@
 # required-check workflow that is exempt from "narrow the trigger for
 # efficiency". A `branches:` filter (no paths) mirrors every other cross-repo
 # caller in this repo (call-reject-skip.yml) and is not itself a skip vector —
-# the validator only flags `paths`/`paths-ignore`. call-occ-preflight.yml and
-# call-receipt-gate.yml were removed by the OMN-20074 S6 cut-over.
+# the validator only flags `paths`/`paths-ignore`.
 #
 # REF PIN (verified 2026-07-20): `required-check-skip-guard-reusable.yml`
 # landed on omniclaude's `dev` (PR #1917) but has NOT yet been promoted to
@@ -28,9 +27,7 @@
 # repos/OmniNode-ai/omniclaude/contents/.github/workflows/required-check-skip-guard-reusable.yml?ref=main`
 # 404s today. Pinning `uses:` to `@main` here would fail closed with a
 # "workflow file issue" (unresolvable reusable ref), confirmed live on this
-# PR before this fix. Pinned to `@dev` for now, mirroring the same
-# not-yet-promoted re-pin pattern already used by
-# call-occ-autobind-reusable.yml for omnimarket's canonical publisher.
+# PR before this fix. Pinned to `@dev` for now.
 # RE-PIN to `@main` once omniclaude promotes `dev` -> `main` (follow-up).
 
 name: Required-Check Skip-Vector Guard
