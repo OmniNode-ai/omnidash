@@ -4,8 +4,8 @@
 // delegation.decisions.v1 (Jonah, 2026-10-13T06:59Z and 2026-10-14T04:50Z); the page formats them and computes nothing.
 import { render, screen, within } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
-import { loadLocalPageConfig } from '../layout/local-page-loader';
-import { RunsTable } from './LocalDashboardPage';
+import { loadLocalPageConfig } from '@/layout/local-page-loader';
+import { RunsTable } from '@/pages/LocalDashboardPage';
 
 const NOW = Date.parse('2026-10-14T06:00:00Z');
 

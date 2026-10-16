@@ -20,14 +20,14 @@ import { render } from '@testing-library/react';
 import { createElement } from 'react';
 import ts from 'typescript';
 import { describe, expect, it } from 'vitest';
-import type { ModelComponentContract } from '../../shared/types/generated/onex-models';
+import type { ModelComponentContract } from '@/shared/types/generated/onex-models';
 import {
   METERING_SUMMARY_TOPIC,
   loadLocalPageConfig,
   type LocalPageDocument,
   type LocalPageName,
-} from '../../layout/local-page-loader';
-import { MetricCard, PendingState, type MetricCardConfig } from '../LocalDashboardPage';
+} from '@/layout/local-page-loader';
+import { MetricCard, PendingState, type MetricCardConfig } from '@/pages/LocalDashboardPage';
 
 /** The one exposure a savings figure may come from; omnimarket's guard names the same string. */
 const ALLOWED_SAVINGS_SOURCE = 'metering-summary.v1';
