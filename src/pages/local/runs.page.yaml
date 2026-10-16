@@ -64,6 +64,10 @@
             "header": "Local cost"
           },
           {
+            "key": "modelled_savings_usd",
+            "header": "Modelled saving"
+          },
+          {
             "key": "baseline_model",
             "header": "Baseline model"
           },

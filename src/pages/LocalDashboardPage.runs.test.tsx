@@ -259,7 +259,8 @@ describe('Fixture rows (FR-2, F30)', () => {
       sessions={[]}
     />);
     expect(within(screen.getByRole('row', { name: /seeded/ })).getByText('fixture')).toBeInTheDocument();
-    expect(within(screen.getByRole('row', { name: /measured/ })).queryByText('fixture')).not.toBeInTheDocument();
+    // Anchored to the run id: since OMN-21015 AC3 the seeded row's saving cell reads "Not measured" too.
+    expect(within(screen.getByRole('row', { name: /^measured/ })).queryByText('fixture')).not.toBeInTheDocument();
   });
 });
 
@@ -272,18 +273,20 @@ describe('NO_RUNS_YET (RU-4, F19)', () => {
 });
 
 describe('Baseline model label (F20, OMN-19980 AC2b)', () => {
-  it('reads Not recorded for a null baseline model, with no per-run baseline price or saving beside it', () => {
+  it('reads Not recorded for a null baseline model, with no session baseline price or saving beside it', () => {
     render(<RunsTable
       now={NOW}
       decisions={[decision('no-baseline-name', '2026-10-02T10:07:00Z')]}
       sessions={[session('no-baseline-name', '2026-10-02T10:07:00Z', { baseline_model: null })]}
     />);
     const row = screen.getByRole('row', { name: /no-baseline-name/ });
-    expect(within(row).queryByText('Not measured')).not.toBeInTheDocument();
     // The label stays (ruling 2026-10-05: keep labels); the dollars beside it came off.
     const headers = screen.getAllByRole('columnheader').map((cell) => cell.textContent?.trim());
     const cells = within(row).getAllByRole('cell');
     expect(cells[headers.indexOf('Baseline model')]?.textContent).toBe('Not recorded');
+    // OMN-21015 AC3: the per-run saving comes only from the decisions row's own served figure; this row serves none, so
+    // the cell is typed, and the session's savings_usd (0.000844) is still never shown.
+    expect(cells[headers.indexOf('Modelled saving')]?.textContent).toBe('Not measured');
     expect(headers).not.toContain('Baseline cost');
     expect(headers).not.toContain('Savings');
     expect(within(row).queryByText('0.000844')).not.toBeInTheDocument();
