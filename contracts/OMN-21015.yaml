@@ -50,7 +50,7 @@ evidence_requirements:
     command: "npx vitest run src/pages/LocalDashboardPage.omn21015.interactive.test.tsx src/pages/LocalDashboardPage.omn21015.run-neighbours.test.tsx"
   - kind: "tests"
     description: "AC4, by-model table: each row shows its tier and its served share of calls beside the calls column; a missing share says Not recorded."
-    command: "npx vitest run src/components/dashboard/usage/UsageByModelDayWidget.omn21015.test.tsx src/components/dashboard/usage/UsageByModelDayWidget.test.tsx"
+    command: "npx vitest run tests/dashboard/usage/UsageByModelDayWidget.omn21015.test.tsx src/components/dashboard/usage/UsageByModelDayWidget.test.tsx"
 dod_evidence:
   - id: "dod-omn21015-ac1-spend-by-day"
     description: "AC1: the Overview panel shows baseline against actual spend per UTC day from the served day rows; a missing series or a window total that differs from the headline fails."
@@ -106,7 +106,7 @@ dod_evidence:
     binds_ac: ["AC4"]
     checks:
       - check_type: "test_passes"
-        check_value: "test -d node_modules || npm ci --no-audit --no-fund; npx vitest run src/components/dashboard/usage/UsageByModelDayWidget.omn21015.test.tsx src/components/dashboard/usage/UsageByModelDayWidget.test.tsx"
+        check_value: "test -d node_modules || npm ci --no-audit --no-fund; npx vitest run tests/dashboard/usage/UsageByModelDayWidget.omn21015.test.tsx src/components/dashboard/usage/UsageByModelDayWidget.test.tsx"
         cwd: "${OMNI_HOME}/omnidash"
 emergency_bypass:
   enabled: false

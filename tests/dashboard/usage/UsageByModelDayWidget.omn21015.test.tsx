@@ -16,7 +16,7 @@ import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { render, screen, within } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
-import { UsageByModelDayTable } from './UsageByModelDayWidget';
+import { UsageByModelDayTable } from '@/components/dashboard/usage/UsageByModelDayWidget';
 
 const row = (overrides: Record<string, unknown>) => ({
   tenant_id: 'tenant-a',
@@ -81,10 +81,10 @@ describe('OMN-21015 AC4: the Usage table shows each row tier and share of calls 
   });
 
   it('S6: the page asks the exposure for the tier and the share, and lays them out beside the calls', () => {
-    const contracts = JSON.parse(readFileSync(resolve(__dirname, '../../../pages/local/usage.contracts.yaml'), 'utf8'));
+    const contracts = JSON.parse(readFileSync(resolve(process.cwd(), 'src/pages/local/usage.contracts.yaml'), 'utf8'));
     const table = contracts.components.find((c: { component_id: string }) => c.component_id === 'usage-by-model-day');
     expect(table.data_bindings[0].required_fields).toEqual(expect.arrayContaining(['cost_tier_name', 'call_share']));
-    const page = JSON.parse(readFileSync(resolve(__dirname, '../../../pages/local/usage.page.yaml'), 'utf8'));
+    const page = JSON.parse(readFileSync(resolve(process.cwd(), 'src/pages/local/usage.page.yaml'), 'utf8'));
     const widget = page.widgets.find((w: { data_source: string }) => w.data_source === 'usage-by-model-day');
     const keys = widget.config.columns.map((c: { key: string }) => c.key);
     const at = keys.indexOf('call_count');
