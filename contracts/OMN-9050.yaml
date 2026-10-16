@@ -7,18 +7,21 @@ summary: >-
   refreshes and resets when another run is selected. A regression test enters
   an id between commit and passive effects and verifies that it is submitted.
   Schema compatibility reads omnibase_core at the handshake's pin and fails
-  when the two pins differ.
+  when the two pins differ. check-handshake.yml is the only omnibase_core pin
+  of the repository: the type-sync and schema compatibility workflows read it,
+  so the pin-bump bot's one rewrite moves all three.
 is_seam_ticket: false
 interface_change: false
 interfaces_touched: []
 requirements:
   - id: "req-core-pin"
-    statement: "The handshake and type-sync workflows retain the dispatched omnibase_core commit."
+    statement: "The handshake pins the dispatched omnibase_core commit and the type-sync workflow reads it."
     acceptance:
       - id: "AC1"
         statement: >-
-          AC1: check-handshake.yml and type-sync-check.yml both pin omnibase_core
-          to d677b4e78219113139b5d20ac81efcdcef78e3e0.
+          AC1: check-handshake.yml pins omnibase_core to one full commit SHA and
+          type-sync-check.yml checks out omnibase_core at that pin through a
+          resolver step, with no ref of its own.
   - id: "req-workflow-run-picker"
     statement: "The Workflow picker submits the entered run id without a deferred reset erasing it."
     acceptance:
@@ -33,8 +36,17 @@ requirements:
     acceptance:
       - id: "AC8"
         statement: >-
-          onex-schema-compat.yml pins omnibase_core to the same immutable
-          d677b4e78219113139b5d20ac81efcdcef78e3e0 commit as check-handshake.yml.
+          onex-schema-compat.yml checks out omnibase_core at the immutable commit
+          check-handshake.yml pins, through a resolver step, with no ref of its own.
+  - id: "req-one-core-pin"
+    statement: "check-handshake.yml is the only omnibase_core pin, so one bot rewrite moves every workflow."
+    acceptance:
+      - id: "AC9"
+        statement: >-
+          A test fails when any workflow other than check-handshake.yml checks
+          out omnibase_core at a ref that is not a resolver step's output, and
+          runs in the unconditional workflow-script-refs job and as a
+          pre-commit hook.
   - id: "req-verified-checkout-pin-gate"
     statement: "The sibling pin gate distinguishes a proven SHA output from a live ref."
     acceptance:
@@ -54,8 +66,8 @@ requirements:
     acceptance:
       - id: "AC3"
         statement: >-
-          The core checkout is pinned to a literal full SHA equal to the
-          resolver's output from check-handshake.yml; a guard step fails when
+          The core checkout's ref is the resolver's output from
+          check-handshake.yml; a guard step fails when
           the checked-out core differs from the handshake pin, and handshake
           edits trigger schema compatibility CI.
       - id: "AC4"
@@ -65,9 +77,8 @@ requirements:
           a lowercase 40-character commit SHA.
 evidence_requirements:
   - kind: "tests"
-    description: "Both workflows carry the dispatched omnibase_core pin."
-    command: >-
-      python3 -c 'from pathlib import Path; pin = "ref: d677b4e78219113139b5d20ac81efcdcef78e3e0"; assert all(pin in Path(p).read_text() for p in [".github/workflows/check-handshake.yml", ".github/workflows/type-sync-check.yml"])'
+    description: "The handshake pins one commit and the type-sync workflow reads it."
+    command: "uv run --no-project --python 3.12 --with pyyaml --with pytest python -m pytest tests/test_schema_compat_pin_omn9050.py -q --noconftest -p no:cacheprovider -c /dev/null -k 'declared_source or consumers_check_out'"
   - kind: "tests"
     description: "The picker retains early input and the Workflow page opens the selected run."
     command: "npm run test:run -- src/pages/LocalDashboardPage.run-picker.test.tsx src/pages/LocalDashboardPage.omn19987.workflow-page.test.tsx"
@@ -80,13 +91,12 @@ emergency_bypass:
   follow_up_ticket_id: ""
 dod_evidence:
   - id: "dod-omn9050-ac1-core-pin"
-    description: "Both workflows retain the dispatched omnibase_core pin."
+    description: "The handshake pins one commit and the type-sync workflow reads it."
     source: "manual"
     binds_ac: ["AC1"]
     checks:
       - check_type: "test_passes"
-        check_value: >-
-          python3 -c 'from pathlib import Path; pin = "ref: d677b4e78219113139b5d20ac81efcdcef78e3e0"; assert all(pin in Path(p).read_text() for p in [".github/workflows/check-handshake.yml", ".github/workflows/type-sync-check.yml"])'
+        check_value: "uv run --no-project --python 3.12 --with pyyaml --with pytest python -m pytest tests/test_schema_compat_pin_omn9050.py -q --noconftest -p no:cacheprovider -c /dev/null -k 'declared_source or consumers_check_out'"
         cwd: "${OMNI_HOME}/omnidash"
   - id: "dod-omn9050-ac2-workflow-run-picker"
     description: "Early input is submitted, drafts survive refreshes, and selecting a run resets the input."
@@ -138,4 +148,12 @@ dod_evidence:
     checks:
       - check_type: "test_passes"
         check_value: "uv run --no-project --python 3.12 --with omnibase-core==0.47.38 --with omnibase-spi==0.23.5 --with pyyaml --with pytest python -m pytest tests/ci/test_schema_compat_core_owner_omn20885.py -q --noconftest -p no:cacheprovider -c /dev/null -k pin_resolver_refuses"
+        cwd: "${OMNI_HOME}/omnidash"
+  - id: "dod-omn9050-one-core-pin-ac9"
+    description: "A workflow carrying its own omnibase_core ref fails the single-pin test."
+    source: "manual"
+    binds_ac: ["AC9"]
+    checks:
+      - check_type: "test_passes"
+        check_value: "uv run --no-project --python 3.12 --with pyyaml --with pytest python -m pytest tests/test_schema_compat_pin_omn9050.py -q --noconftest -p no:cacheprovider -c /dev/null -k 'carries_a_core_ref or consumers_check_out'"
         cwd: "${OMNI_HOME}/omnidash"

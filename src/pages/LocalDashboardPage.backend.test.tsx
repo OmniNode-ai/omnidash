@@ -194,8 +194,9 @@ describe('OMN-20225 AC3: the quality and tier-mix panels show served fields and 
     tier_routed_total: 7,
     not_tier_routed_count: 2,
     tiers: [
-      { cost_tier_name: 'local', count: 5, tier_routed: true, pct_of_tier_routed: 71.43 },
-      { cost_tier_name: 'cheap_cloud', count: 2, tier_routed: true, pct_of_tier_routed: 28.57 },
+      // pct_of_tier_routed is a fraction (count / tier_routed_total in the runtime's views), not a 0 to 100 figure.
+      { cost_tier_name: 'local', count: 5, tier_routed: true, pct_of_tier_routed: 0.7143 },
+      { cost_tier_name: 'cheap_cloud', count: 2, tier_routed: true, pct_of_tier_routed: 0.2857 },
     ],
   };
 
@@ -204,18 +205,18 @@ describe('OMN-20225 AC3: the quality and tier-mix panels show served fields and 
     const local = screen.getByRole('row', { name: /^local/ });
     expect(cellUnder(local, 'Tier')).toHaveTextContent('local');
     expect(cellUnder(local, 'Runs')).toHaveTextContent('5');
-    expect(cellUnder(local, 'Share of tier-routed')).toHaveTextContent('71.43');
+    expect(cellUnder(local, 'Share of tier-routed')).toHaveTextContent('0.7143');
     const cloud = screen.getByRole('row', { name: /^cheap_cloud/ });
-    expect(cellUnder(cloud, 'Share of tier-routed')).toHaveTextContent('28.57');
+    expect(cellUnder(cloud, 'Share of tier-routed')).toHaveTextContent('0.2857');
     // The runs with no tier are their own served figure, never folded into a tier.
     const term = screen.getByText('Not tier-routed', { selector: 'dt' });
     expect(term.nextElementSibling?.textContent?.trim()).toBe('2');
   });
 
   it('the tier-mix panel shows a served share as served, even when the counts would give another number', () => {
-    render(<TierMixPanel row={{ by_tier: { ...byTier, tiers: [{ cost_tier_name: 'local', count: 1, tier_routed: true, pct_of_tier_routed: 40 }] } }} />);
-    expect(cellUnder(screen.getByRole('row', { name: /^local/ }), 'Share of tier-routed')).toHaveTextContent('40');
-    expect(screen.queryByText('100')).not.toBeInTheDocument();
+    render(<TierMixPanel row={{ by_tier: { ...byTier, tiers: [{ cost_tier_name: 'local', count: 1, tier_routed: true, pct_of_tier_routed: 0.4 }] } }} />);
+    expect(cellUnder(screen.getByRole('row', { name: /^local/ }), 'Share of tier-routed')).toHaveTextContent('0.4');
+    expect(screen.queryByText('1', { selector: 'td:nth-child(3)' })).not.toBeInTheDocument();
   });
 
   it('a row with no by_tier, or no tiers, is a typed state, never an empty table', () => {

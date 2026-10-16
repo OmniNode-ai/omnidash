@@ -1,5 +1,10 @@
-import { useEffect, useId, useRef, useState } from 'react';
+import { useEffect, useId, useRef, useState, type ReactNode } from 'react';
 import { Link, useLocation, useSearch } from 'wouter';
+import {
+  Activity, BadgeCheck, Bot, CalendarDays, ChartColumn, ChartLine, Check, CircleDollarSign, CloudOff, Coins, Copy, DatabaseZap, Fingerprint,
+  GitBranch, History, IdCard, KeyRound, Layers, ListTree, PiggyBank, Route, Server, Shrink, Table2, TrendingDown, Wallet,
+  type LucideIcon,
+} from 'lucide-react';
 import { createSnapshotSource } from '@/data-source';
 import { fetchExposureCensus } from '@/data-source/exposure-census';
 import { resolveEffectiveDataSource } from '@/data-source/data-source-override';
@@ -10,6 +15,8 @@ import { subscribeLocalPageRefresh } from '@/services/local-page-refresh';
 import { DEFAULT_RUNS_VIEW, readRunsSearch, writeRunsSearch, type RunsViewState } from '@/navigation/runs-url-state';
 import { PAGE_PATHS } from '@/navigation/page-routes';
 import { normaliseRunId, readWorkflowRunId, workflowHref, writeWorkflowRunId } from '@/navigation/workflow-url-state';
+import { RunDurationChart, RunTimingChart, RunTokensChart, SpendByDayChart, UNRESOLVED_BASELINE, type ListedRun } from '@/pages/local/charts';
+import { PassRateMeter, TierShareChart } from '@/pages/local/shares';
 import '@/styles/local-dashboard.css';
 import {
   loadLocalPageConfig,
@@ -486,18 +493,70 @@ interface RunViewProps {
   now?: number;
 }
 
+/**
+ * WF-3: a run's id as the way into its path on Workflow, wherever the run is named. A run with no recorded id has
+ * nothing to open, so it reads Not recorded and is not a link.
+ */
+function RunRef({ id }: { id: unknown }) {
+  return typeof id === 'string' && id !== '' ? <Link href={workflowHref(id)} title={id}>{id}</Link> : <>{recorded(id)}</>;
+}
+
+/**
+ * Copy one piece of shown text (a run id, a command). It copies exactly the text it is given and says what happened:
+ * Copied only after the clipboard took it, Copy failed when there is no clipboard or it refused.
+ */
+export function CopyButton({ text, label }: { text: string; label: string }) {
+  // What the last copy did, kept with the text it copied: the button says so only while that text is still the one
+  // beside it. On Workflow the run id changes under a mounted button when a newer run arrives.
+  const [result, setResult] = useState<{ text: string; state: 'copied' | 'failed' } | null>(null);
+  const started = useRef(0);
+  const state = result !== null && result.text === text ? result.state : 'idle';
+  const copy = async () => {
+    const mine = ++started.current;
+    // Of overlapping copies only the one started last reports: it is the one the reader asked for last.
+    const report = (outcome: 'copied' | 'failed') => { if (mine === started.current) setResult({ text, state: outcome }); };
+    try {
+      if (!navigator.clipboard) throw new Error('no clipboard');
+      await navigator.clipboard.writeText(text);
+      report('copied');
+    } catch {
+      report('failed');
+    }
+  };
+  return (
+    <button type="button" className="local-copy" data-state={state} aria-label={label} onClick={() => { void copy(); }}>
+      {state === 'copied' ? <Check size={12} aria-hidden="true" /> : <Copy size={12} aria-hidden="true" />}
+      <span aria-live="polite">{state === 'copied' ? 'Copied' : state === 'failed' ? 'Copy failed' : 'Copy'}</span>
+    </button>
+  );
+}
+
+/**
+ * A served timestamp in a narrow table cell: the same text, character for character, with two places it may break
+ * (before the time and before the fraction), so it reads as date / time / fraction instead of breaking mid-number.
+ */
+function CellTime({ value }: { value: unknown }) {
+  if (isMissing(value)) return <>{recorded(value)}</>;
+  const text = String(value);
+  const parts = /^(\d{4}-\d{2}-\d{2}T)(\d{2}:\d{2}:\d{2})(.*)$/.exec(text);
+  return parts ? <>{parts[1]}<wbr />{parts[2]}<wbr />{parts[3]}</> : <>{text}</>;
+}
+
 /** OV-4: the newest run, its typed cause when it failed, and every figure typed when it is not served. */
 export function LastRunCard({ decisions, sessions, now = Date.now() }: RunViewProps) {
   const last = newestFirst(decisions)[0];
   if (!last) return <NoRunsYet />;
   const session = indexBy(sessions, 'session_id').get(String(last.correlation_id));
   const status = statusOf(last);
-  const fields: Array<[string, string]> = [
-    ['Status', status],
-    ...(status === 'failed' ? [['Cause', causeOf(last)] as [string, string]] : []),
-    ['Quality score', recorded(last.actual_score)],
-    ['Run', recorded(last.correlation_id)],
+  // The order answers the Overview's second question first (requirement Q2: is delegation working?): the newest run's
+  // status, its typed cause when it failed, its model and its age, then the rest of what its row serves.
+  const fields: Array<[string, ReactNode]> = [
+    ['Status', <OutcomePill value={status} key="status" />],
+    ...(status === 'failed' ? [['Cause', causeOf(last)] as [string, ReactNode]] : []),
     ['Model', modelOrUnknown(last.model_name)],
+    ['Age', age(last.written_at, now)],
+    ['Quality score', recorded(last.actual_score)],
+    ['Run', <RunRef id={last.correlation_id} key="run" />],
     // OMN-20162's columns: the backend and host of the attempt that accepted the run.
     ['Backend', recorded(last.backend_id)],
     ['Host', recorded(last.host)],
@@ -508,7 +567,6 @@ export function LastRunCard({ decisions, sessions, now = Date.now() }: RunViewPr
     ['Basis', recorded(session?.usage_source)],
     ['Task type', recorded(last.task_type)],
     ['Route tier', tierOf(last)],
-    ['Age', age(last.written_at, now)],
   ];
   return (
     <section aria-label="Last run">
@@ -539,9 +597,9 @@ export function RecentRunsTable({ decisions, sessions, now = Date.now() }: RunVi
         <tbody>{recent.map((decision, index) => {
           const session = bySession.get(String(decision.correlation_id));
           return <tr key={String(decision.correlation_id ?? index)}>
-            <td className="local-dashboard-cell-token">{recorded(decision.written_at)}</td>
+            <td className="local-dashboard-cell-token local-dashboard-cell-time"><CellTime value={decision.written_at} /></td>
             <td>{age(decision.written_at, now)}</td>
-            <td>{statusOf(decision)}</td>
+            <td><OutcomePill value={statusOf(decision)} /></td>
             <td>{causeOf(decision)}</td>
             <td>{recorded(decision.task_type)}</td>
             <td className="local-dashboard-cell-token">{modelOrUnknown(decision.model_name)}</td>
@@ -554,7 +612,7 @@ export function RecentRunsTable({ decisions, sessions, now = Date.now() }: RunVi
             <td>{duration(decision.latency_ms)}</td>
             <td>{tierOf(decision)}</td>
             <td>{recorded(decision.actual_score)}</td>
-            <td className="local-dashboard-cell-token">{recorded(decision.correlation_id)}</td>
+            <td className="local-dashboard-cell-token"><RunRef id={decision.correlation_id} /></td>
           </tr>;
         })}</tbody>
       </table>
@@ -567,7 +625,7 @@ export function NoRunsYet() {
   return (
     <div className="local-dashboard-empty" role="status">
       <p>No runs yet</p>
-      <p>Make the first run with <code>{FIRST_RUN_COMMAND}</code></p>
+      <p>Make the first run with <code>{FIRST_RUN_COMMAND}</code> <CopyButton text={FIRST_RUN_COMMAND} label="Copy the first-run command" /></p>
     </div>
   );
 }
@@ -630,6 +688,16 @@ export function RunsTable({ decisions, sessions, now = Date.now(), pageSize = 25
   };
   const filter = (key: 'status' | 'cause' | 'model' | 'backend' | 'span') => (event: { target: { value: string } }) =>
     updateView({ [key]: event.target.value, page: 1 });
+  const listed: ListedRun[] = page.map((run) => ({
+    id: typeof run.correlation_id === 'string' && run.correlation_id !== '' ? run.correlation_id : null,
+    status: statusOf(run),
+    model: modelOrUnknown(run.model_name),
+    duration: run.latency_ms,
+    tokensIn: run.tokens_input,
+    tokensOut: run.tokens_output,
+  }));
+  const openRun = (runId: string) => navigate(workflowHref(runId));
+  const filtered = status !== 'all' || cause !== 'all' || model !== 'all' || backend !== 'all' || span !== 'all';
   return (
     <>
       <div className="local-dashboard-filters">
@@ -663,9 +731,17 @@ export function RunsTable({ decisions, sessions, now = Date.now(), pageSize = 25
           <option value="all">All time</option>
           <option value="today">Today (UTC)</option>
         </select>
+        {filtered && (
+          <button type="button" className="local-filter-clear" onClick={() => updateView({ ...DEFAULT_RUNS_VIEW })}>Clear filters</button>
+        )}
       </div>
       {shown.length === 0 ? <p className="local-dashboard-empty" role="status">No runs match these filters</p> : (
         <>
+          {/* The same rows as bars: the runs on this page of the list, in its order, each value as its row serves it. */}
+          <div className="local-run-charts">
+            <RunDurationChart runs={listed} onOpen={openRun} />
+            <RunTokensChart runs={listed} onOpen={openRun} />
+          </div>
           <div className="local-dashboard-table-wrap local-dashboard-table-wrap--fit">
             <table>
               <thead>
@@ -680,16 +756,23 @@ export function RunsTable({ decisions, sessions, now = Date.now(), pageSize = 25
                 return <tr key={String(run.correlation_id ?? index)}>
                   <td className="local-dashboard-cell-token">
                     {/* WF-3: a run opens its own path on Workflow; a run with no recorded id has nothing to open. */}
-                    {typeof run.correlation_id === 'string' && run.correlation_id !== ''
-                      ? <Link href={workflowHref(run.correlation_id)}>{run.correlation_id}</Link>
-                      : recorded(run.correlation_id)}
+                    <RunRef id={run.correlation_id} />
                     {isFixture(run) && <span className="local-dashboard-badge">fixture</span>}
                   </td>
-                  <td className="local-dashboard-cell-token">{recorded(run.created_at)}</td>
-                  <td>{statusOf(run)}</td>
+                  <td className="local-dashboard-cell-token local-dashboard-cell-time"><CellTime value={run.created_at} /></td>
+                  <td><OutcomePill value={statusOf(run)} /></td>
                   <td>{causeOf(run)}</td>
-                  <td className="local-dashboard-cell-token">{modelOrUnknown(run.model_name)}</td>
-                  <td className="local-dashboard-cell-token">{recorded(run.backend_id)}</td>
+                  {/* A run's model and backend set that filter: the same filters as the selects above, from the row. */}
+                  <td className="local-dashboard-cell-token">
+                    <button type="button" className="local-cell-filter" aria-label={`Show only runs of model ${modelOrUnknown(run.model_name)}`} onClick={() => updateView({ model: modelOrUnknown(run.model_name), page: 1 })}>
+                      {modelOrUnknown(run.model_name)}
+                    </button>
+                  </td>
+                  <td className="local-dashboard-cell-token">
+                    <button type="button" className="local-cell-filter" aria-label={`Show only runs of backend ${recorded(run.backend_id)}`} onClick={() => updateView({ backend: recorded(run.backend_id), page: 1 })}>
+                      {recorded(run.backend_id)}
+                    </button>
+                  </td>
                   <td className="local-dashboard-cell-token">{recorded(run.host)}</td>
                   <td>{recorded(run.tokens_input)}</td>
                   <td>{recorded(run.tokens_output)}</td>
@@ -735,6 +818,7 @@ export function QualityPanel({ row }: { row: Row | null }) {
   if (!row) return <p className="local-dashboard-empty" role="status">No quality checks served yet</p>;
   return (
     <section aria-label="Quality">
+      <PassRateMeter row={row} />
       <dl className="local-dashboard-fields">
         {QUALITY_FIELDS.map(([label, field]) => <div key={field}><dt>{label}</dt><dd>{recorded(row[field])}</dd></div>)}
       </dl>
@@ -755,6 +839,8 @@ export function TierMixPanel({ row }: { row: Row | null }) {
   }
   return (
     <section aria-label="Tier mix">
+      {/* The bar and the table show the same served tiers; the bar's widths are the served shares. */}
+      <TierShareChart byTier={byTier} />
       <div className="local-dashboard-table-wrap local-dashboard-table-wrap--fit">
         <table>
           <thead><tr><th>Tier</th><th>Runs</th><th>Share of tier-routed</th></tr></thead>
@@ -784,7 +870,7 @@ export function CredentialsTable({ rows }: { rows: readonly unknown[] }) {
     return (
       <div className="local-dashboard-empty" role="status">
         <p>No provider key set</p>
-        <p>Set one with <code>onex secret set</code></p>
+        <p>Set one with <code>onex secret set</code> <CopyButton text="onex secret set" label="Copy the command that sets a key" /></p>
       </div>
     );
   }
@@ -808,6 +894,14 @@ export function CredentialsTable({ rows }: { rows: readonly unknown[] }) {
   );
 }
 
+/** A served flag as a word. The stores serve it as 1 and 0 or as true and false; anything else is shown as served. */
+function yesOrNo(value: unknown): string {
+  if (isMissing(value)) return recorded(value);
+  if (value === true || value === 1) return 'yes';
+  if (value === false || value === 0) return 'no';
+  return String(value);
+}
+
 /**
  * The decision row of the run shown: its verdict, and the backend, host and tier that accepted it (OMN-20225). Every
  * value is one served field of that run's own row; a run with no served decision says so and borrows no other run's.
@@ -823,6 +917,20 @@ export function RunSummary({ decision }: { decision: Row | undefined }) {
     ['Backend', recorded(decision.backend_id)],
     ['Host', recorded(decision.host)],
     ['Route tier', tierOf(decision)],
+    // OMN-21015: more of what the run's own row serves, each as served. A served zero is a figure and is shown; a
+    // fact the row does not carry says Not recorded.
+    ['Required bar', recorded(decision.required_bar)],
+    ['Tokens in', recorded(decision.tokens_input)],
+    ['Tokens out', recorded(decision.tokens_output)],
+    ['Finish reason', recorded(decision.finish_reason)],
+    ['Truncated', yesOrNo(decision.truncated)],
+    ['Escalations', recorded(decision.escalation_count)],
+    // The model the caller asked for, beside the model that answered; and the two timings the row serves beside its
+    // duration. Each new one is the served column (omnimarket v0.4.309, OMN-19448): missing is Not recorded, never zero.
+    ['Requested model', recorded(decision.requested_model)],
+    // The three timings stand together and last, in the order their bars are drawn in under the tiles.
+    ['Queue wait', duration(decision.queue_wait_ms)],
+    ['Execution', duration(decision.execution_ms)],
     ['Duration', duration(decision.latency_ms)],
   ];
   return (
@@ -831,7 +939,39 @@ export function RunSummary({ decision }: { decision: Row | undefined }) {
         <div><dt>Status</dt><dd><OutcomePill value={status} /></dd></div>
         {fields.map(([label, value]) => <div key={label}><dt>{label}</dt><dd>{value}</dd></div>)}
       </dl>
+      {/* The same three timings as bars, under the labels their tiles carry. */}
+      <RunTimingChart
+        timings={[
+          { key: 'queue_wait_ms', label: 'Queue wait', value: decision.queue_wait_ms },
+          { key: 'execution_ms', label: 'Execution', value: decision.execution_ms },
+          { key: 'latency_ms', label: 'Duration', value: decision.latency_ms },
+        ]}
+      />
     </section>
+  );
+}
+
+/**
+ * OMN-21015: from one run to the next. A run that is among the served runs links to the run before it and the run
+ * after it in the list's newest-first order, so the runs are walked without going back to the list. Only a run with a
+ * recorded id is a neighbour, since only it has a path to open; a run that is not among the served runs (a pasted id)
+ * has no place between them and gets no links.
+ */
+export function RunNeighbours({ decisions, runId }: { decisions: readonly unknown[]; runId: string }) {
+  const ids = newestFirst(decisions)
+    .map((run) => run.correlation_id)
+    .filter((id): id is string => typeof id === 'string' && id !== '');
+  const at = ids.indexOf(runId);
+  if (at < 0) return null;
+  const newer = ids[at - 1];
+  const older = ids[at + 1];
+  if (newer === undefined && older === undefined) return null;
+  return (
+    // It stands in the run's title line, beside the id it leads away from, so it is a span with the navigation role.
+    <span className="local-run-neighbours" role="navigation" aria-label="Neighbouring runs">
+      {newer !== undefined && <Link href={workflowHref(newer)} title={newer}>Newer run</Link>}
+      {older !== undefined && <Link href={workflowHref(older)} title={older}>Older run</Link>}
+    </span>
   );
 }
 
@@ -871,6 +1011,7 @@ export function RunTimeline({ steps }: { steps: readonly unknown[] }) {
         ];
         return (
           <li
+            id={`run-step-${index + 1}`}
             key={`${String(row.step_sequence)}-${index}`}
             data-failing-step={failing ? 'true' : undefined}
             data-outcome={isMissing(row.outcome) ? undefined : String(row.outcome)}
@@ -896,6 +1037,39 @@ export function RunTimeline({ steps }: { steps: readonly unknown[] }) {
         );
       })}
     </ol>
+  );
+}
+
+/**
+ * OMN-21015 U3: the run's served steps as a left-to-right diagram, one node per served step in the order served. It
+ * reads the same rows as the timeline under it and decides nothing itself: no step is sorted, merged or dropped, a
+ * kind this page does not know is a node named as served, and the failing node is the step the terminal names. Each
+ * node leads to its own step in the timeline.
+ */
+export function RunDiagram({ steps }: { steps: readonly unknown[] }) {
+  const rows = asRecords(steps);
+  if (rows.length === 0) return null;
+  const named = rows.find((row) => !isMissing(row.failing_step_sequence))?.failing_step_sequence;
+  return (
+    <nav className="local-run-diagram" aria-label="Run steps, in the order served">
+      {rows.map((row, index) => {
+        const kind = String(row.step_kind ?? '');
+        const failing = !isMissing(named) && row.step_sequence === named;
+        return (
+          <a
+            href={`#run-step-${index + 1}`}
+            key={`${String(row.step_sequence)}-${index}`}
+            data-step-kind={kind}
+            data-outcome={isMissing(row.outcome) ? undefined : String(row.outcome)}
+            data-failing-step={failing ? 'true' : undefined}
+            title={failing ? 'The step the run failed at' : undefined}
+          >
+            <span className="local-run-node-name">{RUN_STEP_LABELS[kind] ?? recorded(row.step_kind)}</span>
+            <span className="local-run-node-outcome">{recorded(row.outcome)}</span>
+          </a>
+        );
+      })}
+    </nav>
   );
 }
 
@@ -996,6 +1170,8 @@ export function WorkflowRun({ component, snapshots, requested, onOpen }: Workflo
       <p className="local-dashboard-subtitle local-run-title">
         Run <code>{runId}</code>
         {requested === null && <span className="local-run-tag">newest run</span>}
+        <CopyButton text={runId} label="Copy the run id" />
+        <RunNeighbours decisions={decisions} runId={runId} />
       </p>
       {decisionsNotServed}
       {!decisionsNotServed && <RunSummary decision={decisions.find((row) => row.correlation_id === runId)} />}
@@ -1003,6 +1179,7 @@ export function WorkflowRun({ component, snapshots, requested, onOpen }: Workflo
         <p className="local-dashboard-error" role="alert">run-trace.v1 answered steps of another run; none are shown</p>
       ) : (
         <>
+          <RunDiagram steps={rows} />
           <RunTimeline steps={rows} />
           {stepsRead?.truncated && (
             <p className="local-dashboard-empty" role="status">
@@ -1044,7 +1221,6 @@ interface DeclaredColumn {
 
 const NO_DAY_ROWS = 'No day rows yet: waits on metering-summary day rows';
 const DAY_FIGURES_MODELLED = "Baseline figures are modelled: the runs' tokens priced at the baseline model's list price. The baseline never ran.";
-const UNRESOLVED_BASELINE = 'an unresolved baseline';
 
 /**
  * The metering-summary.v1 figures measured from the runs themselves: actual spend, run counts, tokens and the
@@ -1099,7 +1275,7 @@ export function MeteringDayTable({ title, rows, columns }: {
       {[...groups.entries()].map(([baseline, days]) => {
         const allTime = allTimeFor(baseline);
         return (
-          <div className="local-dashboard-table-wrap" key={baseline}>
+          <div className="local-dashboard-table-wrap local-dashboard-table-wrap--fit" key={baseline}>
             <table aria-label={`${title} vs ${baseline}`}>
               <thead><tr>{columns.map((column) => <th key={column.key}>{column.header}</th>)}</tr></thead>
               <tbody>
@@ -1150,10 +1326,26 @@ function TableComponent({ component, snapshots, pageSize, syncUrl, columns }: {
   // US-1 (OMN-21015 AC4): the same served rows as a stacked series, tokens in and out apart, split by model.
   if (component.component_id === 'usage-tokens-by-day') return <UsageTokensByDay rows={rows} />;
   // US-3: metering-summary.v1's day rows, as served; the series renders no all row and sums nothing.
-  if (component.component_id === 'usage-savings-series') return <MeteringDaySeries rows={rows} />;
+  if (component.component_id === 'usage-savings-series') {
+    return (
+      <>
+        {/* OMN-21015 U2: the same served day rows as bars; the chart plots the money columns this panel declares.
+            Its one series takes the chart's third colour, the colour the same figure has on Overview. */}
+        <SpendByDayChart title={component.title} rows={rows} columns={columns} colourPlaces={[3]} />
+        <MeteringDaySeries rows={rows} />
+      </>
+    );
+  }
   // OV: baseline against actual spend per UTC day, the declared columns of the served rows (OMN-21015 AC1).
   if (component.component_id === 'overview-spend-by-day') {
-    return <MeteringDayTable title={component.title} rows={rawRowsFor(component, snapshots, 0)} columns={columns} />;
+    const dayRows = rawRowsFor(component, snapshots, 0);
+    return (
+      <>
+        {/* The chart and the table under it show the same served day rows; the chart adds no figure of its own. */}
+        <SpendByDayChart title={component.title} rows={dayRows} columns={columns} />
+        <MeteringDayTable title={component.title} rows={dayRows} columns={columns} />
+      </>
+    );
   }
   if (component.component_id === 'api-keys-local-identity') {
     const first = rawRowsFor(component, snapshots, 0)[0];
@@ -1257,6 +1449,42 @@ function bindingFailedEmpty(
     .some((snapshot) => Boolean(snapshot.failure) && !snapshot.lastGoodAt);
 }
 
+/** The icon each local page carries in its header: the one its sidebar entry uses, so a page is recognised in both. */
+const PAGE_ICONS: Record<LocalPageName, LucideIcon> = {
+  overview: Activity,
+  runs: GitBranch,
+  workflow: ListTree,
+  usage: Wallet,
+  credentials: KeyRound,
+  'api-keys': Fingerprint,
+};
+
+/** The icon beside a panel's title, by component. A component not listed here gets none; nothing depends on it. */
+const PANEL_ICONS: Record<string, LucideIcon> = {
+  'overview-spend': CircleDollarSign,
+  'overview-savings': PiggyBank,
+  'overview-measured': Bot,
+  'overview-tokens': Coins,
+  'overview-last-run': History,
+  'overview-recent-runs': Table2,
+  'overview-run-locally': Server,
+  'overview-avg-saving-per-call': TrendingDown,
+  'overview-baseline-spend': CircleDollarSign,
+  'overview-quality': BadgeCheck,
+  'overview-tier-mix': Layers,
+  'overview-compression': Shrink,
+  'overview-cache-hit-rate': DatabaseZap,
+  'overview-spend-by-day': ChartLine,
+  'recent-runs': Table2,
+  'workflow-run-path': Route,
+  'usage-by-model-day': ChartColumn,
+  'usage-tokens-by-day': ChartColumn,
+  'usage-savings-series': CalendarDays,
+  'credentials-keys': KeyRound,
+  'api-keys-local-identity': IdCard,
+  'api-keys-cloud': CloudOff,
+};
+
 const PAGE_TITLES: Record<LocalPageName, string> = {
   overview: 'Overview',
   runs: 'Runs',
@@ -1355,31 +1583,36 @@ export function LocalDashboardPage({ pageName, syncUrl = false }: LocalDashboard
     };
   }, [pageName, requestedRunId]);
 
+  const PageIcon = PAGE_ICONS[pageName];
   const emptyState = page ? resolveLocalPageEmptyState(page, snapshots) : null;
   const now = Date.now();
   const interval = page?.dashboard.refresh_interval_seconds ?? 30;
   return (
     <main aria-label={`${page?.dashboard.name ?? 'Local dashboard'} page`} className="local-dashboard-page">
       <header className="local-dashboard-header">
-        <div>
-          <h1>{page?.dashboard.name ?? PAGE_TITLES[pageName]}</h1>
-          <p>{page?.dashboard.description}</p>
+        <div className="local-dashboard-title">
+          <span className="local-dashboard-page-icon" aria-hidden="true"><PageIcon size={20} /></span>
+          <div>
+            <h1>{page?.dashboard.name ?? PAGE_TITLES[pageName]}</h1>
+            <p>{page?.dashboard.description}</p>
+          </div>
         </div>
+        {/* One toolbar row: the page's own control when it has one, and the runtime mode at the right. */}
+        {pageName === 'overview' && !loading && !error && page && (
+          <div className="local-dashboard-filters">
+            <label htmlFor={windowId}>Figures for</label>
+            <select
+              id={windowId}
+              value={overviewWindow}
+              onChange={(event) => setOverviewWindow(event.target.value === 'today' ? 'today' : 'all')}
+            >
+              <option value="all">All time</option>
+              <option value="today">Today (UTC)</option>
+            </select>
+          </div>
+        )}
         <span className="local-dashboard-mode">Local runtime · HTTP</span>
       </header>
-      {pageName === 'overview' && !loading && !error && page && (
-        <div className="local-dashboard-filters">
-          <label htmlFor={windowId}>Figures for</label>
-          <select
-            id={windowId}
-            value={overviewWindow}
-            onChange={(event) => setOverviewWindow(event.target.value === 'today' ? 'today' : 'all')}
-          >
-            <option value="all">All time</option>
-            <option value="today">Today (UTC)</option>
-          </select>
-        </div>
-      )}
       {loading && <p role="status">Loading runtime exposures…</p>}
       {error && <p className="local-dashboard-error" role="alert">{error}</p>}
       {!loading && !error && page && (
@@ -1391,14 +1624,21 @@ export function LocalDashboardPage({ pageName, syncUrl = false }: LocalDashboard
             const pageSize = Number((widget?.config as Record<string, unknown> | undefined)?.page_size ?? 25);
             const notServed = notServedTopic(component, snapshots);
             const unbound = (component.data_bindings ?? []).length === 0;
+            const PanelIcon = PANEL_ICONS[component.component_id];
             // OV-3: only the panels that read metering-summary.v1 have a row per window. Every other Overview panel
             // reads an exposure with no day rows, so with today chosen it still shows all time and has to say so:
             // seen on a store of two real days, "Agent calls 4" beside "6 of 6 runs local".
             const outsideWindow = pageName === 'overview' && overviewWindow === 'today'
               && component.data_bindings?.[0]?.projection_topic !== METERING_SUMMARY_TOPIC;
             return (
-              <article className="local-dashboard-panel" data-width={String(widget?.width ?? 12)} key={component.component_id}>
-                <h2>{component.title}</h2>
+              <article
+                className="local-dashboard-panel"
+                data-width={String(widget?.width ?? 12)}
+                data-component={component.component_id}
+                data-kind={component.component_kind}
+                key={component.component_id}
+              >
+                <h2>{PanelIcon && <PanelIcon size={14} aria-hidden="true" />}{component.title}</h2>
                 {outsideWindow && <p className="local-dashboard-caption">{OUTSIDE_WINDOW_NOTE}</p>}
                 {unbound && component.component_kind !== 'metric_card' ? <PendingState componentId={component.component_id} />
                   : component.component_id === 'workflow-run-path' ? (

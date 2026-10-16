@@ -23,6 +23,8 @@ jobs:
     # OMN-17993: pinned to an exact SHA, not @main. omniclaude main lags dev by
     # design (release-synced), so @main still resolves to the pre-widening scanner
     # body that scans workflow files only and exits 0 on a tests-only diff.
-    uses: OmniNode-ai/omniclaude/.github/workflows/ban-hardcoded-runner-ip.yml@e9caa3f3f27ca4f74e4abaeac3520cd1a5788bfd
+    # OMN-20074: omniclaude#2656 squash on dev. The scan runs no nested
+    # preflight and reads only this checkout, so it needs no pull-request read.
+    uses: OmniNode-ai/omniclaude/.github/workflows/ban-hardcoded-runner-ip.yml@a45ba68f053e9979c6edef21103c0e674e5f7630
     permissions:
       contents: read

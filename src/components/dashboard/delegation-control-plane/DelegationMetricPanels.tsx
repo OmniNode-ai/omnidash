@@ -73,7 +73,8 @@ export function DelegationMetricPanels({ snapshot }: { snapshot: DelegationEvide
             <MetricRow label="Total tokens" value={fmtTokens(snapshot.tokenUsage.total_tokens)} />
             <MetricRow label="Prompt" value={fmtTokens(snapshot.tokenUsage.total_prompt_tokens)} />
             <MetricRow label="Completion" value={fmtTokens(snapshot.tokenUsage.total_completion_tokens)} />
-            <MetricRow label="Estimated cost" value={fmtUsd(snapshot.tokenUsage.total_estimated_cost_usd)} />
+            {/* Null when no call was priced (OMN-20717); fmtUsd shows it as '-'. */}
+            <MetricRow label="Estimated cost" value={fmtUsd(snapshot.tokenUsage.total_estimated_cost_usd ?? undefined)} />
           </div>
         ) : (
           <EmptyPanel message="No token-usage projection row." />
