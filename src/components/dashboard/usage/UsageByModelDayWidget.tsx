@@ -10,7 +10,10 @@
 //     and unknown costs, so it is never shown here. A null measured cost is "Not measured", never 0;
 //   * the runs whose cost was not measured are counted beside it from `unmeasured_call_count`;
 //   * rows are not filtered by tenant: the exposure declares `tenant_column`, so the server answers the reading
-//     tenant's rows only.
+//     tenant's rows only;
+//   * OMN-21015 AC4: each row's tier is the served `cost_tier_name` (one model under two tiers is two rows), and its
+//     share of calls is the served `call_share`, the row's calls over its tenant's calls that UTC day, formatted as a
+//     percentage. A row with no served share says so; no share is worked out here from the call counts.
 import { ComponentWrapper } from '../ComponentWrapper';
 import { useProjectionSnapshotQuery } from '@/hooks/useProjectionSnapshotQuery';
 import { TOPICS } from '@shared/types/topics';
@@ -20,12 +23,14 @@ export interface UsageByModelDayRow {
   tenant_id?: string;
   usage_day?: string;
   model_id?: string | null;
+  cost_tier_name?: string | null;
   input_tokens?: number | null;
   output_tokens?: number | null;
   cost_usd?: number | string | null;
   measured_cost_usd?: number | string | null;
   unmeasured_call_count?: number | null;
   call_count?: number | null;
+  call_share?: number | string | null;
   updated_at?: string;
 }
 
@@ -65,6 +70,19 @@ function unmeasured(value: unknown): string {
   return Number(value) === 0 ? 'none' : `${String(value)} unmeasured`;
 }
 
+/** OMN-21015: the served tier; a call that named none is served as not_tier_routed, which is not a tier. */
+function tier(value: unknown): string {
+  if (isMissing(value)) return 'Not recorded';
+  return value === 'not_tier_routed' ? 'Not tier-routed' : String(value);
+}
+
+/** OMN-21015: the served share of the day's calls (a fraction), shown as a percentage to two decimals at most. */
+function callShare(value: unknown): string {
+  const share = Number(value);
+  if (isMissing(value) || !Number.isFinite(share)) return 'Not recorded';
+  return share.toLocaleString('en-US', { style: 'percent', maximumFractionDigits: 2 });
+}
+
 function asRows(rows: readonly unknown[]): UsageByModelDayRow[] {
   return rows.filter((row): row is UsageByModelDayRow => typeof row === 'object' && row !== null);
 }
@@ -81,18 +99,20 @@ export function UsageByModelDayTable({ rows }: { rows: readonly unknown[] }) {
         <thead>
           <tr>
             <th>Day</th><th>Model</th><th>Tokens in</th><th>Tokens out</th><th>Cost (measured)</th><th>Unmeasured</th>
-            <th>Calls</th>
+            <th>Tier</th><th>Calls</th><th>Share of calls</th>
           </tr>
         </thead>
         <tbody>{usage.map((row, index) => (
-          <tr key={`${String(row.usage_day)}-${String(row.model_id)}-${index}`}>
+          <tr key={`${String(row.usage_day)}-${String(row.model_id)}-${String(row.cost_tier_name)}-${index}`}>
             <td>{recorded(row.usage_day)}</td>
             <td>{model(row.model_id)}</td>
             <td>{recorded(row.input_tokens)}</td>
             <td>{recorded(row.output_tokens)}</td>
             <td>{measuredCost(row.measured_cost_usd)}</td>
             <td>{unmeasured(row.unmeasured_call_count)}</td>
+            <td>{tier(row.cost_tier_name)}</td>
             <td>{recorded(row.call_count)}</td>
+            <td>{callShare(row.call_share)}</td>
           </tr>
         ))}</tbody>
       </table>

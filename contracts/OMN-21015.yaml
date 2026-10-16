@@ -2,7 +2,7 @@
 schema_version: "1.0.0"
 ticket_id: "OMN-21015"
 title: "The local dashboard shows the demo's in-scope figures on Overview, Runs and Usage, and meets four dashboard requirements not yet built"
-summary: "The omnidash page half of AC1, AC7, AC8 and the token series of AC4, and of AC5 and AC9 for the six pages' redesign. Overview renders baseline against actual spend per UTC day from the day rows of metering-summary.v1 and its headline tiles switch between today (UTC) and all time, each reading the served row for that window; the Runs list filters by backend; Usage shows tokens in and out per day stacked by model, in the order the exposure serves them. Every figure is read from a served exposure; none is summed or priced in the browser. On this change also AC3: the Runs list shows each run's served modelled saving, with AC5's guard amended for exactly that one field. On this change also AC2: the Tier mix lists each model under its tier from the model-routing view. The by-model table of AC4 lands in its own change."
+summary: "The omnidash page half of AC1, AC7, AC8 and the token series of AC4, and of AC5 and AC9 for the six pages' redesign. Overview renders baseline against actual spend per UTC day from the day rows of metering-summary.v1 and its headline tiles switch between today (UTC) and all time, each reading the served row for that window; the Runs list filters by backend; Usage shows tokens in and out per day stacked by model, in the order the exposure serves them. Every figure is read from a served exposure; none is summed or priced in the browser. On this change also AC3: the Runs list shows each run's served modelled saving, with AC5's guard amended for exactly that one field. On this change also AC2: the Tier mix lists each model under its tier from the model-routing view. On this change also AC4's by-model table: each row's tier and share of calls."
 is_seam_ticket: false
 interface_change: false
 interfaces_touched: []
@@ -63,6 +63,9 @@ evidence_requirements:
   - kind: "tests"
     description: "AC5: the OMN-19980 guard refuses a savings field from any exposure but the one allowed, a price literal and price arithmetic outside the metering compute."
     command: "npx vitest run tests/pages/local/omn19980.savings-source.test.ts"
+  - kind: "tests"
+    description: "AC4, by-model table: each row shows its tier and its served share of calls beside the calls column; a missing share says Not recorded."
+    command: "npx vitest run tests/dashboard/usage/UsageByModelDayWidget.omn21015.test.tsx src/components/dashboard/usage/UsageByModelDayWidget.test.tsx"
 dod_evidence:
   - id: "dod-omn21015-ac1-spend-by-day"
     description: "AC1: the Overview panel shows baseline against actual spend per UTC day from the served day rows; a missing series or a window total that differs from the headline fails."
@@ -135,6 +138,14 @@ dod_evidence:
     checks:
       - check_type: "test_passes"
         check_value: "test -d node_modules || npm ci --no-audit --no-fund; npx vitest run tests/pages/local/omn19980.savings-source.test.ts"
+        cwd: "${OMNI_HOME}/omnidash"
+  - id: "dod-omn21015-ac4-by-model-table"
+    description: "AC4, by-model table: each row shows its tier and its served share of calls beside the calls column; a missing share says Not recorded."
+    source: "manual"
+    binds_ac: ["AC4"]
+    checks:
+      - check_type: "test_passes"
+        check_value: "test -d node_modules || npm ci --no-audit --no-fund; npx vitest run tests/dashboard/usage/UsageByModelDayWidget.omn21015.test.tsx src/components/dashboard/usage/UsageByModelDayWidget.test.tsx"
         cwd: "${OMNI_HOME}/omnidash"
 emergency_bypass:
   enabled: false

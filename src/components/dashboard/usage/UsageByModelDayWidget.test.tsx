@@ -75,7 +75,9 @@ describe('UsageByModelDayTable', () => {
   it('renders Not recorded when the server serves no unmeasured count, never 0', () => {
     const { unmeasured_call_count: _omitted, ...served } = row({});
     render(<UsageByModelDayTable rows={[served]} />);
-    expect(within(screen.getAllByRole('row')[1]!).getByText('Not recorded')).toBeInTheDocument();
+    // Read by column: since OMN-21015 the tier and share cells of this fixture, which serves neither, also say Not recorded.
+    const column = screen.getAllByRole('columnheader').map((h) => h.textContent).indexOf('Unmeasured');
+    expect(within(screen.getAllByRole('row')[1]!).getAllByRole('cell')[column]).toHaveTextContent('Not recorded');
   });
 
   it('renders every served row: the server scopes the read, the browser filters nothing (AC-T)', () => {
