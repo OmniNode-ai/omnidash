@@ -439,6 +439,28 @@ function costOf(session: Row | undefined, decision: Row): string {
   return `$${decimals >= 2 ? text : amount.toFixed(2)}`;
 }
 
+/** A plain decimal as the store serves it: optional minus, digits, optional fraction. No exponent, no grouping. */
+const SERVED_DECIMAL = /^(-?)(\d+)(?:\.(\d+))?$/;
+
+/**
+ * OMN-21015 AC3: one run's modelled saving as served on delegation.decisions.v1, named against the baseline it was priced
+ * against. The page formats the served figure and computes nothing. A run that was not measured says why, never 0; a
+ * measured zero is a zero. The served decimal text is shown digit for digit, padded to two decimals and never passed
+ * through a binary float, which would change its digits; anything that is not a plain decimal is not shown as a figure.
+ */
+function runModelledCell(run: Row): string {
+  const figure = run.modelled_savings_usd;
+  const notMeasured = run.savings_measurement === 'unknown_tokens' ? 'Not measured: tokens not recorded'
+    : run.savings_measurement === 'unknown_spend' ? 'Not measured: cost not recorded'
+    : run.savings_measurement === 'baseline_unresolved' ? 'Not measured: baseline not resolved'
+    : run.savings_measurement === 'unknown_timestamp' ? 'Not measured: time not recorded' : 'Not measured';
+  if (isMissing(figure)) return notMeasured;
+  const match = SERVED_DECIMAL.exec(String(figure).trim());
+  if (match === null) return 'Not measured';
+  const [, sign, whole, fraction = ''] = match;
+  return `${sign}$${whole}.${fraction.padEnd(2, '0')} vs ${recorded(run.savings_baseline_model)}`;
+}
+
 /** The route tier as served, with its cost regime beside it when the row carries one (OMN-13649, OMN-20225). */
 function tierOf(decision: Row): string {
   if (isMissing(decision.cost_tier_name)) return 'Not recorded';
@@ -725,8 +747,8 @@ export function RunsTable({ decisions, sessions, now = Date.now(), pageSize = 25
               <thead>
                 <tr>
                   <th>Run</th><th>Created</th><th>Status</th><th>Cause</th><th>Model</th><th>Backend</th><th>Host</th>
-                  <th>Tokens in</th><th>Tokens out</th><th>Local cost</th><th>Baseline model</th><th>Basis</th>
-                  <th>Task type</th><th>Duration</th><th>Tokens to compliance</th><th>Route tier</th><th>Quality score</th>
+                  <th>Tokens in</th><th>Tokens out</th><th>Local cost</th><th>Modelled saving</th><th>Baseline model</th>
+                  <th>Basis</th><th>Task type</th><th>Duration</th><th>Tokens to compliance</th><th>Route tier</th><th>Quality score</th>
                 </tr>
               </thead>
               <tbody>{page.map((run, index) => {
@@ -755,6 +777,7 @@ export function RunsTable({ decisions, sessions, now = Date.now(), pageSize = 25
                   <td>{recorded(run.tokens_input)}</td>
                   <td>{recorded(run.tokens_output)}</td>
                   <td>{costOf(session, run)}</td>
+                  <td>{runModelledCell(run)}</td>
                   <td>{recorded(session?.baseline_model)}</td>
                   <td>{recorded(session?.usage_source)}</td>
                   <td>{recorded(run.task_type)}</td>

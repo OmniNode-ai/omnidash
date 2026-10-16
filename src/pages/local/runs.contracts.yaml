@@ -32,7 +32,10 @@
             "data_source",
             "backend_id",
             "host",
-            "cost_tier_type"
+            "cost_tier_type",
+            "modelled_savings_usd",
+            "savings_baseline_model",
+            "savings_measurement"
           ]
         },
         {
