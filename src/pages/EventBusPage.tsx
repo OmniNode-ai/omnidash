@@ -9,6 +9,9 @@
  * the known topic set (each probed via the service layer), not a hardcoded list.
  */
 
+import { useSyncExternalStore } from 'react';
+import { getEffectiveDataSourceSnapshot, subscribeDataSourceOverride } from '@/data-source/data-source-override';
+import { resolveProjectionBaseUrl } from '@/data-source/projection-base-url';
 import { EvPageShell } from '@/components/dashboard/event-dash/EvPageShell';
 import {
   Badge,
@@ -44,7 +47,7 @@ interface BusCorrelation {
   passed: boolean;
   latencyMs: number | null;
   createdAt: string;
-  events: number;
+  events: null;
 }
 
 function nodeName(r: NodeGenerationRow): string {
@@ -64,7 +67,7 @@ function buildCorrelations(
     passed: r.quality_gate_passed,
     latencyMs: r.latency_ms,
     createdAt: r.created_at,
-    events: 5,
+    events: null,
   }));
   const sea: BusCorrelation[] = generations.map((r) => ({
     id: r.correlation_id,
@@ -74,7 +77,7 @@ function buildCorrelations(
     passed: r.contract_passed,
     latencyMs: r.total_latency_e2e_ms,
     createdAt: r.created_at,
-    events: 6,
+    events: null,
   }));
   return [...sea, ...del].sort((a, b) => (a.createdAt < b.createdAt ? 1 : -1));
 }
@@ -99,7 +102,7 @@ function NowOnBus({ latest, fresh }: { latest: BusCorrelation | null; fresh: boo
 interface HealthRow {
   name: string;
   topic: string;
-  rowCount: number;
+  rowCount: number | null;
   freshness: string;
   status: 'ready' | 'degraded' | 'unknown';
   reason: string | null;
@@ -112,7 +115,7 @@ function CorrelationTable({ correlations }: { correlations: BusCorrelation[] }) 
     { key: 'subject', label: 'Subject', grow: true, truncate: true, render: (r) => <span className="mono">{r.subject}</span> },
     { key: 'model', label: 'Model', truncate: true, width: 'minmax(0,1.6fr)', render: (r) => <span className="mono dim">{r.model.length > 20 ? `${r.model.slice(0, 18)}…` : r.model}</span> },
     { key: 'state', label: 'State', width: 'minmax(0,0.9fr)', render: (r) => <StateBadge passed={r.passed} /> },
-    { key: 'events', label: 'Events', num: true, width: 'minmax(0,0.7fr)', render: (r) => <span className="mono">{r.events}</span> },
+    { key: 'events', label: 'Events', num: true, width: 'minmax(0,0.7fr)', render: () => <span className="mono">Not measured</span> },
     { key: 'latency', label: 'Latency', num: true, width: 'minmax(0,0.9fr)', render: (r) => fmtLatency(r.latencyMs) },
     { key: 'created_at', label: 'Created', num: true, width: 'minmax(0,1.3fr)', render: (r) => <span className="mono dim">{r.createdAt.replace('T', ' ').slice(0, 19)}</span> },
   ];
@@ -151,7 +154,7 @@ function ProjectionHealth({ rows }: { rows: HealthRow[] }) {
   const unknown = rows.filter((r) => r.status === 'unknown').length;
   const cols: DataColumn<HealthRow>[] = [
     { key: 'name', label: 'Projection', grow: true, render: (r) => <span>{r.name}<div className="mono dim3 ev-health-topic">{r.topic}</div></span> },
-    { key: 'rowCount', label: 'Rows', num: true, render: (r) => <span className="mono">{r.rowCount}</span> },
+    { key: 'rowCount', label: 'Rows', num: true, render: (r) => <span className="mono">{r.rowCount ?? "Not measured"}</span> },
     { key: 'freshness', label: 'Freshness', num: true, render: (r) => <span className="mono dim">{r.freshness}</span> },
     { key: 'status', label: 'Status', num: true, render: (r) => (r.status === 'ready' ? <Badge kind="ok">ready</Badge> : r.status === 'degraded' ? <Badge kind="warn">degraded</Badge> : <Badge kind="muted">unknown</Badge>) },
   ];
@@ -165,7 +168,7 @@ function ProjectionHealth({ rows }: { rows: HealthRow[] }) {
           <KV
             items={[
               { k: 'Topic', v: r.topic, accent: true },
-              { k: 'Rows returned', v: String(r.rowCount) },
+              { k: 'Rows returned', v: r.rowCount === null ? 'Not measured' : String(r.rowCount) },
               { k: 'Freshness', v: r.freshness },
               { k: 'Status', v: r.status },
               r.reason ? { k: 'Reason', v: r.reason } : null,
@@ -178,6 +181,14 @@ function ProjectionHealth({ rows }: { rows: HealthRow[] }) {
 }
 
 export function EventBusPage() {
+  useSyncExternalStore(subscribeDataSourceOverride, getEffectiveDataSourceSnapshot, getEffectiveDataSourceSnapshot);
+  const base = resolveProjectionBaseUrl();
+  // A configured connection is not a reported runtime lane. Strip URL credentials/query.
+  let connection = base === null ? 'File mode · no live connection' : 'Same-origin projection bridge';
+  if (base) {
+    try { connection = new URL(base, window.location.origin).origin; }
+    catch { connection = 'Connection not configured'; }
+  }
   const decisionsQ = useDelegationDecisions();
   const genQ = useNodeGenerations();
 
@@ -192,7 +203,7 @@ export function EventBusPage() {
     health.push({
       name: 'Delegation decisions',
       topic: 'onex.snapshot.projection.delegation.decisions.v1',
-      rowCount: decisionsQ.data.rowCount,
+      rowCount: decisionsQ.data.degradedReason ? null : decisionsQ.data.rowCount,
       freshness: decisionsQ.data.freshness,
       status: decisionsQ.data.rowCount > 0 ? 'ready' : decisionsQ.data.isDegraded ? 'degraded' : 'unknown',
       reason: decisionsQ.data.degradedReason,
@@ -202,7 +213,7 @@ export function EventBusPage() {
     health.push({
       name: 'Node generations',
       topic: 'onex.evt.omnimarket.node-generation-completed.v1',
-      rowCount: genQ.data.rowCount,
+      rowCount: genQ.data.degradedReason ? null : genQ.data.rowCount,
       freshness: genQ.data.freshness,
       status: genQ.data.rowCount > 0 ? 'ready' : genQ.data.isDegraded ? 'degraded' : 'unknown',
       reason: genQ.data.degradedReason,
@@ -230,9 +241,9 @@ export function EventBusPage() {
       headRight={headRight}
     >
       <div className="grid cols-4">
-        <KPI label="Correlations" value={correlations.length} accent sub="node generation + delegation lifecycles" />
-        <KPI label="Delegation rows" value={decisionsQ.data ? decisionsQ.data.rowCount : '—'} sub="delegation.decisions.v1" />
-        <KPI label="Generation rows" value={genQ.data ? genQ.data.rowCount : '—'} sub="node-generation-completed.v1" />
+        <KPI label="Correlations" value={correlations.length} accent sub={decisionsQ.data?.degradedReason || genQ.data?.degradedReason ? "Available rows · one or more projections unavailable" : "node generation + delegation lifecycles"} />
+        <KPI label="Delegation rows" value={decisionsQ.data && !decisionsQ.data.degradedReason ? decisionsQ.data.rowCount : 'Not measured'} sub="delegation.decisions.v1" />
+        <KPI label="Generation rows" value={genQ.data && !genQ.data.degradedReason ? genQ.data.rowCount : 'Not measured'} sub="node-generation-completed.v1" />
         <KPI label="WS invalidation" value={<span className="ev-kpi-sm c-amber">HTTP</span>} sub="state flows over the bus" />
       </div>
 
@@ -253,8 +264,9 @@ export function EventBusPage() {
         <Panel title="RUNTIME TOPOLOGY" sub="owned topics · live row counts">
           <KV
             items={[
-              { k: 'Lane', v: 'stability-test (:13002 projection API)', accent: true },
-              { k: 'Owned topics with data', v: String(health.filter((h) => h.rowCount > 0).length) },
+              { k: 'Lane', v: 'Lane not reported' },
+              { k: 'Projection connection', v: connection, accent: true },
+              { k: 'Owned topics with data', v: String(health.filter((h) => (h.rowCount ?? 0) > 0).length) },
             ]}
           />
           <div className="divider" />

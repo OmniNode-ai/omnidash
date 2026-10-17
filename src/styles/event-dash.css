@@ -323,13 +323,13 @@
   --ev-fail: var(--status-bad);
   --ev-warn: var(--status-warn);
   --ev-info: #3769bd;
-  --ev-m-blue: var(--chart-1);
-  --ev-m-green: var(--chart-2);
-  --ev-m-amber: var(--chart-3);
-  --ev-m-red: var(--chart-4);
-  --ev-m-purple: var(--chart-6);
-  --ev-m-pink: var(--chart-5);
-  --ev-m-teal: var(--chart-7);
+  --ev-m-blue: var(--dashboard-chart-1);
+  --ev-m-green: var(--dashboard-chart-2);
+  --ev-m-amber: var(--dashboard-chart-3);
+  --ev-m-red: var(--dashboard-chart-4);
+  --ev-m-purple: var(--dashboard-chart-6);
+  --ev-m-pink: var(--dashboard-chart-5);
+  --ev-m-teal: var(--dashboard-chart-7);
   --ev-font-ui: var(--font-sans);
   --ev-font-display: var(--font-sans);
   --ev-font-mono: var(--font-mono);
@@ -366,6 +366,53 @@
 @keyframes ev-panel-enter {
   from { opacity: 0; transform: translateY(5px); }
   to { opacity: 1; transform: translateY(0); }
+}
+
+/* The advanced pages share the core workspace's surfaces and interaction rhythm. */
+.ev-root { --ev-r: 14px; --ev-r-sm: 9px; }
+.ev-root .ev-page-head { padding: 24px 30px 20px; border-bottom: 1px solid var(--ev-line); background: var(--ev-bg-1); }
+.ev-root .ev-title { margin: 4px 0 8px; font-size: 24px; line-height: 1.25; font-weight: 600; letter-spacing: -.035em; }
+.ev-root .ev-sub { max-width: 76ch; line-height: 1.6; color: var(--ev-txt-2); font-size: 12px; }
+.ev-root .ev-crumb { font-size: 10px; font-weight: 500; color: var(--ev-txt-3); }
+.ev-root .ev-scroll { padding: 24px 30px; }
+.ev-root .grid { gap: 18px; }
+.ev-root .panel, .ev-root .kpi { box-shadow: 0 2px 5px #172c4d04, 0 8px 24px #172c4d03; }
+.ev-root .panel-h { padding: 18px 20px 0; gap: 8px 12px; }
+.ev-root .panel-h .pt { font-size: 12px; font-weight: 600; letter-spacing: .015em; }
+.ev-root .panel-h .ps { color: var(--ev-txt-2); font-size: 11px; }
+.ev-root .panel-b { padding: 18px 20px 20px; }
+.ev-root .kpi { padding: 20px; border-radius: 14px; }
+.ev-root .kpi .k-v { font-weight: 600; letter-spacing: -.04em; }
+.ev-root .dt-head { background: var(--ev-bg-2); color: var(--ev-txt-2); font-size: 10px; letter-spacing: .02em; border-block: 1px solid var(--ev-line); }
+.ev-root .row-main { min-height: 48px; transition: background-color 160ms ease; }
+.ev-root .row-main:hover, .ev-root .row.open .row-main { background: var(--ev-bg-2); }
+.ev-root .row-detail { background: var(--ev-bg-2); }
+.ev-root .row-disclosure { display: grid; place-items: center; flex-shrink: 0; width: 26px; height: 32px; border-radius: 6px; color: var(--ev-txt-2); background: transparent; }
+.ev-root .row-disclosure:hover { background: var(--ev-bg-3); color: var(--ev-txt); }
+.ev-root .row-disclosure:focus-visible { outline: 2px solid var(--ev-accent); outline-offset: 1px; }
+.ev-root .row-detail-inner { padding: 16px 20px; }
+.ev-root .kv { gap: 12px; }
+.ev-root .kv .k { color: var(--ev-txt-2); }
+.ev-root .ev-empty { border-radius: 10px; padding: 28px 20px; border: 1px dashed var(--ev-line); background: var(--ev-bg-2); }
+.ev-root .ev-empty .ev-empty-title { font-size: 13px; font-weight: 500; }
+.ev-root .ev-empty .ev-empty-reason, .ev-root .ev-empty .ev-empty-note { color: var(--ev-txt-2); line-height: 1.6; }
+.ev-root :is(input, select, textarea) { border-radius: 8px; border-color: #8290a5; background: var(--ev-bg-1); color: var(--ev-txt); font-family: var(--font-sans); }
+.ev-root :is(button, input, select, textarea, a):focus-visible { outline: 2px solid var(--ev-accent); outline-offset: 3px; }
+.ev-root .tab { min-height: 36px; border-radius: 8px; font-weight: 500; }
+.ev-root .code { border: 1px solid var(--ev-line); border-radius: 10px; }
+.ev-root .live-pill { text-transform: none; letter-spacing: 0; font-size: 11px; font-weight: 500; }
+.ev-root .live-pill .pulse { animation: none; }
+.ev-root .ev-nowbus { border-radius: 10px; background: var(--ev-bg-1); border: 1px solid var(--ev-line); }
+@media (max-width: 640px) {
+  .ev-root .ev-page-head { padding: 20px 16px 16px; }
+  .ev-root .ev-title { font-size: 22px; }
+  .ev-root .ev-scroll { padding: 16px; }
+  .ev-root .panel-h { padding: 16px 16px 0; }
+  .ev-root .panel-h .ps { text-align: left; }
+  .ev-root .panel-h .right { justify-content: flex-start; }
+  .ev-root .panel-b { padding: 16px; }
+  .ev-root .row-disclosure { min-height: 40px; }
+  .ev-root :is(input, select, .tab) { min-height: 40px; }
 }
 @media (prefers-reduced-motion: reduce) {
   .ev-root *, .ev-root *::before, .ev-root *::after {

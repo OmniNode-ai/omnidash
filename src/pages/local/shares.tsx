@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 
 type Row = Record<string, unknown>;
 
@@ -114,14 +114,18 @@ export function arcPath(start: number, sweep: number): string {
  */
 export function TierShareChart({ byTier }: { byTier: unknown }) {
   const [active, setActive] = useState<number | null>(null);
+  const [selected, setSelected] = useState<string | null>(null);
   const shaped = tierShares(byTier);
+  const selectionExists = 'segments' in shaped && shaped.segments.some(segment => segment.name === selected);
+  useEffect(() => { if (!selectionExists) setSelected(null); }, [selectionExists]);
   if ('refused' in shaped) return <p className="local-dashboard-empty" role="status">{shaped.refused}</p>;
   if (shaped.segments.length === 0 && shaped.unmeasured.length === 0) return null;
   const whole = shaped.segments.reduce((sum, segment) => sum + segment.share, 0);
   if (whole > 1 + WHOLE_TOLERANCE) return <p className="local-dashboard-empty" role="status">{SHARES_OVER_WHOLE}</p>;
   // Where each slice starts: where the one before it ended.
   const starts = shaped.segments.map((_, index) => shaped.segments.slice(0, index).reduce((sum, segment) => sum + segment.share, 0));
-  const focus = active === null ? null : shaped.segments[active] ?? null;
+  const pinned = shaped.segments.find(segment => segment.name === selected) ?? null;
+  const focus = active === null ? pinned : shaped.segments[active] ?? pinned;
   const mark = (index: number) => ({
     onMouseEnter: () => setActive(index),
     onMouseLeave: () => setActive(null),
@@ -143,12 +147,13 @@ export function TierShareChart({ byTier }: { byTier: unknown }) {
                 data-testid="tier-segment"
                 data-tier={segment.name}
                 data-tone={TIER_TONES[segment.name] ?? 'other'}
-                data-active={String(active === index)}
+                data-active={String(active === index || (active === null && selected === segment.name))}
                 data-start={units(starts[index]!)}
                 data-sweep={units(segment.share)}
                 key={`${segment.name}-${index}`}
                 d={arcPath(units(starts[index]!), units(segment.share))}
                 fill="none"
+                onClick={() => setSelected(segment.name)}
                 {...mark(index)}
               >
                 <title>{`${segment.name}: ${percent(segment.share)} of tier-routed runs`}</title>
@@ -165,20 +170,26 @@ export function TierShareChart({ byTier }: { byTier: unknown }) {
             {shaped.segments.map((segment, index) => (
               <li
                 key={`${segment.name}-${index}`}
-                tabIndex={0}
-                data-active={String(active === index)}
+                data-active={String(active === index || (active === null && selected === segment.name))}
                 onFocus={() => setActive(index)}
                 onBlur={() => setActive(null)}
                 {...mark(index)}
               >
+                <button type="button" className="local-tier-select" aria-label={`Inspect ${segment.name}`} aria-pressed={selected === segment.name}
+                  onClick={() => setSelected(segment.name)}>
                 <span className="local-share-swatch" data-tone={TIER_TONES[segment.name] ?? 'other'} aria-hidden="true" />
                 <span>{segment.name}</span>
                 <span className="local-share-value">{percent(segment.share)}</span>
+                </button>
               </li>
             ))}
           </ul>
         </div>
       )}
+      {pinned && <div className="local-chart-detail" role="status"><strong>{pinned.name}</strong>
+        <span>{percent(pinned.share)} of tier-routed runs</span><span>{pinned.count == null ? 'Run count not measured' : `${String(pinned.count)} runs`}</span>
+        <button type="button" className="local-chart-reset" onClick={() => { setSelected(null); setActive(null); }}>Clear tier selection</button>
+      </div>}
       {shaped.unmeasured.length > 0 && (
         <p className="local-dashboard-caption">{`No share served for: ${shaped.unmeasured.join(', ')}`}</p>
       )}

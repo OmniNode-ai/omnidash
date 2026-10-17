@@ -183,7 +183,7 @@ test('OMN-21015: the spend chart legend hides and shows a series from the keyboa
 
   const figure = page.getByRole('figure', { name: /^Spend per day vs claude-sonnet-5-5$/ });
   await expect(figure).toBeVisible();
-  await expect(figure.locator('svg')).toBeVisible();
+  await expect(figure.locator('.local-chart-canvas svg')).toBeVisible();
   const toggles = figure.getByRole('group', { name: 'Series shown' }).getByRole('button');
   await expect(toggles).toHaveText(['Actual spend', 'Baseline spend', 'Savings']);
 
@@ -191,7 +191,7 @@ test('OMN-21015: the spend chart legend hides and shows a series from the keyboa
   const drawn = () => figure.evaluate((element) => {
     const hex = (rgb: string) => `#${(rgb.match(/\d+/g) ?? []).slice(0, 3).map((part) => Number(part).toString(16).padStart(2, '0')).join('')}`;
     const colours = [...element.querySelectorAll<HTMLElement>('[data-swatch]')].map((swatch) => hex(getComputedStyle(swatch).backgroundColor));
-    const fills = [...element.querySelectorAll('svg path')].map((path) => (path.getAttribute('fill') ?? '').toLowerCase());
+    const fills = [...element.querySelectorAll('.local-chart-canvas svg path')].map((path) => (path.getAttribute('fill') ?? '').toLowerCase());
     return colours.map((colour) => fills.filter((fill) => fill === colour).length);
   });
 
@@ -346,11 +346,11 @@ test('OMN-21015: on Workflow a run\'s timings are drawn as bars of their served 
   await expect(figure).toBeVisible();
   // The served text is written at each bar's end and on its row.
   for (const text of ['Queue wait', 'Execution', 'Duration', '12 ms', '4788 ms', '743 ms']) {
-    await expect(figure.locator('svg').getByText(text, { exact: true })).toBeVisible();
+    await expect(figure.locator('.local-chart-canvas svg').getByText(text, { exact: true })).toBeVisible();
   }
   // The three bars: the drawn paths that carry one of the three series colours, top row first. The chart grows its
   // bars in over a quarter second, so they are read once two reads in a row agree.
-  const read = () => figure.locator('svg').evaluate((svg) => {
+  const read = () => figure.locator('.local-chart-canvas svg').evaluate((svg) => {
     const drawn = [...svg.querySelectorAll('path')]
       .map((path) => ({ fill: path.getAttribute('fill') ?? '', rect: path.getBoundingClientRect() }))
       .filter(({ fill, rect }) => /^(#|rgb)/.test(fill) && rect.height > 4 && rect.height < 30 && rect.width > 0.5);
@@ -395,8 +395,8 @@ test('OMN-21015: on Workflow a timing the run does not carry has no bar, and a s
   await page.goto('/workflow');
   const figure = page.getByRole('figure', { name: 'Run timing' });
   await expect(figure).toBeVisible();
-  await expect(figure.locator('svg').getByText('0 ms', { exact: true })).toBeVisible();
-  await expect(figure.locator('svg').getByText('Execution', { exact: true })).toHaveCount(0);
+  await expect(figure.locator('.local-chart-canvas svg').getByText('0 ms', { exact: true })).toBeVisible();
+  await expect(figure.locator('.local-chart-canvas svg').getByText('Execution', { exact: true })).toHaveCount(0);
   await expect(figure).toContainText('No measured value to draw for: Execution');
   const summary = page.getByRole('region', { name: 'Run summary' });
   await expect(summary.locator('dt', { hasText: /^Execution$/ }).locator('xpath=following-sibling::dd[1]')).toHaveText('Not recorded');
@@ -417,7 +417,7 @@ const listedRuns = [
 async function settledBars(page: Page, name: string) {
   const figure = page.getByRole('figure', { name });
   await expect(figure).toBeVisible();
-  const read = () => figure.locator('svg').evaluate((svg) => [...svg.querySelectorAll('path')]
+  const read = () => figure.locator('.local-chart-canvas svg').evaluate((svg) => [...svg.querySelectorAll('path')]
     .map((path) => ({ fill: path.getAttribute('fill') ?? '', rect: path.getBoundingClientRect() }))
     .filter(({ fill, rect }) => /^(#|rgb)/.test(fill) && rect.width > 6 && rect.width < 40 && rect.height > 0.5)
     .sort((a, b) => a.rect.left - b.rect.left)

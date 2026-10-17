@@ -509,36 +509,46 @@ test('sidebar surfaces and controls follow the theme in expanded and collapsed l
   await serveFixtures(page);
   await page.goto('/');
   await expect(page.getByRole('heading', { level: 1, name: 'Overview' })).toBeVisible();
+  // Compare rendered colors, not equivalent hex/rgb/oklch serializations.
   const token = async (name: string) => page.evaluate((name) => {
-    const parsed = document.createElement('div');
-    parsed.style.color = getComputedStyle(document.documentElement).getPropertyValue(name).trim();
-    return parsed.style.color;
+    const ctx = document.createElement('canvas').getContext('2d')!;
+    ctx.fillStyle = getComputedStyle(document.documentElement).getPropertyValue(name).trim();
+    ctx.fillRect(0, 0, 1, 1);
+    return [...ctx.getImageData(0, 0, 1, 1).data];
   }, name);
+  const expectColor = async (locator: ReturnType<typeof page.locator>, property: string, expected: number[]) => {
+    await expect.poll(() => locator.evaluate((el, property) => {
+      const ctx = document.createElement('canvas').getContext('2d')!;
+      ctx.fillStyle = getComputedStyle(el).getPropertyValue(property);
+      ctx.fillRect(0, 0, 1, 1);
+      return [...ctx.getImageData(0, 0, 1, 1).data];
+    }, property)).toEqual(expected);
+  };
   const sidebar = page.locator('.sidebar');
 
   for (const theme of ['light', 'dark']) {
     await page.getByRole('button', { name: 'Toggle theme', exact: true }).click();
     await expect(page.locator('body')).toHaveClass(`theme-${theme}`);
-    const background = await token(theme === 'light' ? '--panel-2' : '--sidebar');
+    const background = await token('--sidebar');
     const foreground = await token(theme === 'light' ? '--ink' : '--sidebar-ink');
     const secondary = await token(theme === 'light' ? '--ink-2' : '--sidebar-ink-2');
-    await expect(sidebar).toHaveCSS('background-color', background);
-    await expect(sidebar).toHaveCSS('color', foreground);
-    await expect(page.getByTestId('nav-local-runs')).toHaveCSS('color', secondary);
-    await expect(page.locator('.local-nav-chip').first()).toHaveCSS('border-top-color', await token('--sidebar-line'));
+    await expectColor(sidebar, 'background-color', background);
+    await expectColor(sidebar, 'color', foreground);
+    await expectColor(page.getByTestId('nav-local-runs'), 'color', secondary);
+    await expectColor(page.locator('.local-nav-chip').first(), 'border-top-color', await token('--sidebar-line'));
     const idleBackground = await page.getByTestId('nav-local-runs').evaluate(el => getComputedStyle(el).backgroundColor);
     await page.getByTestId('nav-local-runs').hover();
     await expect.poll(() => page.getByTestId('nav-local-runs').evaluate(el => getComputedStyle(el).backgroundColor)).not.toBe(idleBackground);
-    await expect(page.getByTestId('nav-local-runs')).toHaveCSS('color', foreground);
+    await expectColor(page.getByTestId('nav-local-runs'), 'color', foreground);
 
     for (const width of [1440, 390]) {
       await page.setViewportSize({ width, height: 900 });
       await page.getByRole('button', { name: 'Collapse sidebar', exact: true }).click();
       await expect(sidebar).toHaveClass('sidebar collapsed');
-      await expect(sidebar).toHaveCSS('background-color', background);
+      await expectColor(sidebar, 'background-color', background);
       await page.getByRole('button', { name: 'Expand sidebar', exact: true }).click();
       await expect(sidebar).toHaveClass('sidebar');
-      await expect(sidebar).toHaveCSS('background-color', background);
+      await expectColor(sidebar, 'background-color', background);
     }
     await page.setViewportSize({ width: 1440, height: 900 });
     await expect(page.getByRole('button', { name: 'New dashboard', exact: true })).toHaveCount(0);
@@ -644,7 +654,7 @@ test('navigation selection, hover and keyboard focus remain distinct in both the
       await page.mouse.move(700, 60);
       await expect(selected).toHaveAttribute('aria-current', 'page');
       await expect(selected).not.toHaveCSS('background-color', 'rgba(0, 0, 0, 0)');
-      await expect(selected).toHaveCSS('border-radius', '8px');
+      await expect(selected).toHaveCSS('border-radius', '10px');
       const selectedBackground = await selected.evaluate(el => getComputedStyle(el).backgroundColor);
       await selected.hover();
       await expect(selected).not.toHaveCSS('background-color', selectedBackground);
@@ -707,8 +717,8 @@ test('Runs filters, pagination and table hover use readable themed controls', as
     // Status, Cause, Model, Window, and since OMN-21015 AC8 Backend.
     await expect(selects).toHaveCount(5);
     for (const select of await selects.all()) {
-      await expect(select).toHaveCSS('border-radius', '6px');
-      await expect(select).toHaveCSS('min-height', '34px');
+      await expect(select).toHaveCSS('border-radius', '7px');
+      await expect(select).toHaveCSS('min-height', '36px');
       await expect(select).toHaveCSS('border-top-style', 'solid');
     }
     const previous = page.getByRole('button', { name: 'Previous page', exact: true });

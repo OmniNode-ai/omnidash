@@ -25,7 +25,7 @@ export function EvPageShell({
         <div className="ev-head-row">
           <div>
             <div className="ev-crumb">{crumb}</div>
-            <div className="ev-title">{title}</div>
+            <h1 className="ev-title">{title}</h1>
             <div className="ev-sub">{sub}</div>
           </div>
           {headRight ? <div className="ev-head-right">{headRight}</div> : null}

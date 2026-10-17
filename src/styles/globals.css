@@ -120,15 +120,15 @@
     --brand-soft: oklch(92% 0.08 var(--accent-h));
     --brand-ink: oklch(35% 0.10 var(--accent-h));
 
-    --bg: #f8f9fb;
+    --bg: #f5f7fb;
     --panel: oklch(100% 0 0);
-    --panel-2: #f4f6f8;
+    --panel-2: #f2f5fa;
     --ink: #263244;
     --ink-2: #505d6d;
     --ink-3: #647080;
-    --line: #e3e7eb;
-    --line-2: #edf0f3;
-    --sidebar: var(--panel-2);
+    --line: #dfe5ef;
+    --line-2: #edf1f7;
+    --sidebar: var(--panel);
     --sidebar-ink: var(--ink);
     --sidebar-ink-2: var(--ink-2);
     --sidebar-line: var(--line);
@@ -137,9 +137,10 @@
     --sidebar-hover-strong: var(--line);
     --sidebar-input: var(--panel);
 
-    --status-ok: #23745c;
+    --status-ok: #1c674f;
     --status-warn: #8a6119;
-    --status-bad: #b54343;
+    --status-bad: #a6303d;
+    --link-ink: #365eaf;
 
     --radius: 8px;
     --radius-lg: 12px;
@@ -191,13 +192,23 @@
        in multi-series charts. Tuned for panel backgrounds (white in light mode).
        Hue spacing chosen to stay clear of the brand's green (--accent-h = 120)
        and to keep adjacent slots visually separable. */
-    --chart-1: oklch(68% 0.15 250);  /* blue */
-    --chart-2: oklch(72% 0.14 160);  /* teal */
-    --chart-3: oklch(78% 0.14 85);   /* yellow */
-    --chart-4: oklch(68% 0.18 30);   /* orange-red */
-    --chart-5: oklch(66% 0.20 350);  /* magenta */
-    --chart-6: oklch(66% 0.16 290);  /* purple */
-    --chart-7: oklch(72% 0.12 200);  /* cyan */
+    --chart-1: #4169b2;  /* blue */
+    --chart-2: #25816a;  /* teal */
+    --chart-3: #99701f;   /* yellow */
+    --chart-4: #c2533d;   /* orange-red */
+    --chart-5: #a54e7f;  /* magenta */
+    --chart-6: #7756b5;  /* purple */
+    --chart-7: #237f94;  /* cyan */
+
+    /* Resolve CSS colors at the root before widget theme scopes supply HSL triplets. */
+    --dashboard-chart-1: var(--chart-1);
+    --dashboard-chart-2: var(--chart-2);
+    --dashboard-chart-3: var(--chart-3);
+    --dashboard-chart-4: var(--chart-4);
+    --dashboard-chart-5: var(--chart-5);
+    --dashboard-chart-6: var(--chart-6);
+    --dashboard-chart-7: var(--chart-7);
+
   }
 
   [data-theme="dark"] {
@@ -207,6 +218,7 @@
        every other surface in the app has flipped to dark. */
     color-scheme: dark;
 
+    --link-ink: #93b5f8;
     --bg: oklch(16% 0.008 260);
     --panel: oklch(20% 0.008 260);
     --panel-2: oklch(23% 0.008 260);

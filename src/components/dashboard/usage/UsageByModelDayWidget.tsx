@@ -14,6 +14,7 @@
 //   * OMN-21015 AC4: each row's tier is the served `cost_tier_name` (one model under two tiers is two rows), and its
 //     share of calls is the served `call_share`, the row's calls over its tenant's calls that UTC day, formatted as a
 //     percentage. A row with no served share says so; no share is worked out here from the call counts.
+import { useEffect, useState } from 'react';
 import { ComponentWrapper } from '../ComponentWrapper';
 import { useProjectionSnapshotQuery } from '@/hooks/useProjectionSnapshotQuery';
 import { TOPICS } from '@shared/types/topics';
@@ -139,7 +140,14 @@ function groupedCount(value: unknown): string {
  * A model whose count was not recorded is named under the bar; it is never drawn as zero. A served zero is written.
  */
 export function UsageTokensByDay({ rows }: { rows: readonly unknown[] }) {
+  const [selected, setSelected] = useState<string | null>(null);
   const usage = asRows(rows);
+  const models = [...new Set(usage.map(row => model(row.model_id)))];
+  const selection = selected !== null && models.includes(selected) ? selected : null;
+  const modelIdentity = JSON.stringify(models);
+  useEffect(() => { if (selected !== null && !JSON.parse(modelIdentity).includes(selected)) setSelected(null); }, [modelIdentity, selected]);
+  // Stable identity controls presentation color, never a measured figure.
+  const colorIndex = (name: string) => [...name].reduce((hash, char) => (hash * 31 + char.charCodeAt(0)) >>> 0, 0) % 6;
   if (usage.length === 0) {
     return <p className="local-dashboard-empty" role="status">{NO_TOKEN_ROWS}</p>;
   }
@@ -149,7 +157,17 @@ export function UsageTokensByDay({ rows }: { rows: readonly unknown[] }) {
     days.set(day, [...(days.get(day) ?? []), row]);
   }
   return (
-    <>
+    <figure className="local-chart usage-token-explorer" aria-label="Tokens by model and day">
+      <div className="local-chart-legend" role="group" aria-label="Model highlight">
+        {models.map(name => <button type="button" className="local-chart-toggle" key={name} aria-label={`Highlight ${name}`}
+          aria-pressed={selection === name} onClick={() => setSelected(current => current === name ? null : name)}>{name}</button>)}
+        {selection && <button type="button" className="local-chart-reset" onClick={() => setSelected(null)}>Clear model highlight</button>}
+      </div>
+      {selection && <div className="local-chart-detail" role="status"><strong>{selection}</strong>
+        {usage.filter(row => model(row.model_id) === selection).map((row, index) => <span key={index}>
+          {recorded(row.usage_day)} · {tier(row.cost_tier_name)} · Tokens in: {recorded(row.input_tokens)} · Tokens out: {recorded(row.output_tokens)}
+        </span>)}
+      </div>}
       {[...days.entries()].map(([day, dayRows]) => (
         <section className="usage-tokens-day" key={day}>
           <h3>{day}</h3>
@@ -165,7 +183,8 @@ export function UsageTokensByDay({ rows }: { rows: readonly unknown[] }) {
                       {counted.map((row, index) => (
                         <span
                           className="usage-tokens-fill"
-                          data-series={index % 6}
+                          data-series={colorIndex(model(row.model_id))}
+                          data-highlighted={selection === null || selection === model(row.model_id)}
                           key={`${String(row.model_id)}-${index}`}
                           style={{ flexGrow: Number(row[field]), flexShrink: 1, flexBasis: '0px', minWidth: '0px' }}
                         />
@@ -173,7 +192,7 @@ export function UsageTokensByDay({ rows }: { rows: readonly unknown[] }) {
                     </div>
                     <ul className="usage-tokens-legend" aria-label={`Tokens ${direction} on ${day}, by model`}>
                       {counted.map((row, index) => (
-                        <li data-series={index % 6} key={`${String(row.model_id)}-${index}`}>
+                        <li data-series={colorIndex(model(row.model_id))} data-highlighted={selection === null || selection === model(row.model_id)} key={`${String(row.model_id)}-${index}`}>
                           {`${model(row.model_id)}: ${groupedCount(row[field])}`}
                         </li>
                       ))}
@@ -190,7 +209,7 @@ export function UsageTokensByDay({ rows }: { rows: readonly unknown[] }) {
           })}
         </section>
       ))}
-    </>
+    </figure>
   );
 }
 

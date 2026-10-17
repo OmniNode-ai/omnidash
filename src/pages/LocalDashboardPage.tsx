@@ -159,7 +159,7 @@ export function MetricCard({ component, config, row, caption, figureLine, figure
   const modelled = caption !== null && caption !== undefined && 'baseline_model' in caption;
   return (
     <>
-      <p className="local-dashboard-metric">{text}</p>
+      <p className="local-dashboard-metric" data-measured={figure}>{text}</p>
       {figure && figureLine && <p className="local-dashboard-caption">{figureLine}</p>}
       {line && <p className="local-dashboard-caption">{line}</p>}
       {modelled && <p className="local-dashboard-caption">{SAVINGS_MODELLED}</p>}
@@ -185,7 +185,7 @@ export function RunLocallyCard({ row }: { row: Record<string, unknown> | null })
     return <p className="local-dashboard-empty" role="status">{ROUTING_SHARE_PENDING}</p>;
   }
   const share = byTier.local_call_share;
-  if (typeof share !== 'number' || !Number.isFinite(share)) return <p className="local-dashboard-metric">Not measured</p>;
+  if (typeof share !== 'number' || !Number.isFinite(share)) return <p className="local-dashboard-metric" data-measured="false">Not measured</p>;
   const text = share.toLocaleString('en-US', { style: 'percent', minimumFractionDigits: 1, maximumFractionDigits: 1 });
   return (
     <>
@@ -268,9 +268,12 @@ export function MeteringTotalCard({ component, config, rows, window = 'all', now
   now?: number;
 }) {
   const picked = pickMeteringRow(rows, window, now);
-  if ('message' in picked) return <p className="local-dashboard-metric">{picked.message}</p>;
+  if ('message' in picked) return <p className="local-dashboard-metric" data-measured="false">{picked.message}</p>;
   const row = picked.row;
-  if (config.metric_key === TOKENS_IN_AND_OUT) return <p className="local-dashboard-metric">{tokensText(row)}</p>;
+  if (config.metric_key === TOKENS_IN_AND_OUT) {
+    const text = tokensText(row);
+    return <p className="local-dashboard-metric" data-measured={!text.startsWith('Not measured')}>{text}</p>;
+  }
   const required = component.data_bindings?.[0]?.required_fields ?? [];
   const caption = required.includes('baseline_model')
     ? { baseline_model: row.baseline_model, pricing_manifest_version: row.pricing_manifest_version }
@@ -315,7 +318,7 @@ export function SavingsPerRunCard({ rows, window = 'all', now }: {
   now?: number;
 }) {
   const picked = pickMeteringRow(rows, window, now);
-  if ('message' in picked) return <p className="local-dashboard-metric">{picked.message}</p>;
+  if ('message' in picked) return <p className="local-dashboard-metric" data-measured="false">{picked.message}</p>;
   const row = picked.row;
   if (!('savings_per_measured_run_usd' in row)) {
     return <p className="local-dashboard-empty" role="status">{SAVING_PER_RUN_PENDING}</p>;
@@ -324,7 +327,7 @@ export function SavingsPerRunCard({ rows, window = 'all', now }: {
   if (typeof value !== 'string' || value === '') {
     const why = row.baseline_state === 'unresolved' ? 'Baseline unresolved'
       : row.runs_measured === 0 ? 'Not measured: no measured runs' : 'Not measured';
-    return <p className="local-dashboard-metric">{why}</p>;
+    return <p className="local-dashboard-metric" data-measured="false">{why}</p>;
   }
   const text = value.startsWith('-') ? `-$${value.slice(1)}` : `$${value}`;
   return (
@@ -701,6 +704,7 @@ export function RunsTable({ decisions, sessions, now = Date.now(), pageSize = 25
   return (
     <>
       <div className="local-dashboard-filters">
+        <div className="local-filter-field">
         <label htmlFor={`${id}-status`}>Status</label>
         <select id={`${id}-status`} value={status} onChange={filter('status')}>
           <option value="all">All</option>
@@ -708,29 +712,38 @@ export function RunsTable({ decisions, sessions, now = Date.now(), pageSize = 25
           <option value="failed">failed</option>
           <option value="Not recorded">Not recorded</option>
         </select>
+        </div>
+        <div className="local-filter-field">
         <label htmlFor={`${id}-cause`}>Cause</label>
         <select id={`${id}-cause`} value={cause} onChange={filter('cause')}>
           <option value="all">All</option>
           {cause !== 'all' && !causes.includes(cause) && <option value={cause}>{cause} (not in current data)</option>}
           {causes.map((name) => <option key={name} value={name}>{name}</option>)}
         </select>
+        </div>
+        <div className="local-filter-field">
         <label htmlFor={`${id}-model`}>Model</label>
         <select id={`${id}-model`} value={model} onChange={filter('model')}>
           <option value="all">All</option>
           {model !== 'all' && !models.includes(model) && <option value={model}>{model} (not in current data)</option>}
           {models.map((name) => <option key={name} value={name}>{name}</option>)}
         </select>
+        </div>
+        <div className="local-filter-field">
         <label htmlFor={`${id}-backend`}>Backend</label>
         <select id={`${id}-backend`} value={backend} onChange={filter('backend')}>
           <option value="all">All</option>
           {backend !== 'all' && !backends.includes(backend) && <option value={backend}>{backend} (not in current data)</option>}
           {backends.map((name) => <option key={name} value={name}>{name}</option>)}
         </select>
+        </div>
+        <div className="local-filter-field">
         <label htmlFor={`${id}-window`}>Window</label>
         <select id={`${id}-window`} value={span} onChange={filter('span')}>
           <option value="all">All time</option>
           <option value="today">Today (UTC)</option>
         </select>
+        </div>
         {filtered && (
           <button type="button" className="local-filter-clear" onClick={() => updateView({ ...DEFAULT_RUNS_VIEW })}>Clear filters</button>
         )}

@@ -125,7 +125,7 @@
 .local-dashboard-run-summary { margin-bottom: 16px; }
 /* A run id in the Runs list opens that run on Workflow (WF-3): it has to read as a link. */
 .local-dashboard-table-wrap a {
-  color: var(--brand);
+  color: var(--link-ink);
   text-decoration: underline;
   text-underline-offset: 3px;
 }
@@ -497,7 +497,7 @@
   border: 1px solid color-mix(in oklch, var(--brand) 35%, transparent);
   border-radius: 10px;
   background: color-mix(in oklch, var(--brand) 14%, transparent);
-  color: var(--brand);
+  color: var(--link-ink);
 }
 .local-dashboard-header h1 {
   font-family: var(--font-brand);
@@ -623,7 +623,7 @@
   font-size: 0.8125rem;
   text-decoration: none;
 }
-.local-run-neighbours a:hover { border-color: var(--brand); color: var(--brand); }
+.local-run-neighbours a:hover { border-color: var(--link-ink); color: var(--link-ink); }
 .local-run-neighbours a:focus-visible { outline: 2px solid var(--brand); outline-offset: 2px; }
 /* A value in a run's row that sets its filter: it reads as the text it is, with a dotted line to say it can be pressed. */
 .local-cell-filter {
@@ -638,7 +638,7 @@
   text-underline-offset: 3px;
   cursor: pointer;
 }
-.local-cell-filter:hover { color: var(--brand); }
+.local-cell-filter:hover { color: var(--link-ink); }
 .local-cell-filter:focus-visible { outline: 2px solid var(--brand); outline-offset: 2px; }
 .local-filter-clear {
   padding: 6px 10px;
@@ -649,7 +649,7 @@
   font: inherit;
   cursor: pointer;
 }
-.local-filter-clear:hover { border-color: var(--brand); }
+.local-filter-clear:hover { border-color: var(--link-ink); }
 /* The Runs page's two charts stand side by side above the list, and one under the other on a narrow window. */
 .local-run-charts { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px 24px; margin: 0 0 12px; }
 .local-run-charts:empty { display: none; }
@@ -759,8 +759,8 @@
 .local-share-swatch { width: 10px; height: 10px; border-radius: 3px; }
 .local-share-value { font-family: var(--font-mono); color: var(--text-secondary); }
 /* Tier colours: local is the cool one, the paid tiers warm up as they cost more. */
-.local-share-swatch[data-tone="local"] { background: oklch(78% 0.13 210); }
-.local-donut-slice[data-tone="local"] { stroke: oklch(78% 0.13 210); }
+.local-share-swatch[data-tone="local"] { background: var(--dashboard-chart-7); }
+.local-donut-slice[data-tone="local"] { stroke: var(--dashboard-chart-7); }
 .local-share-swatch[data-tone="economy"] { background: var(--status-ok); }
 .local-donut-slice[data-tone="economy"] { stroke: var(--status-ok); }
 .local-share-swatch[data-tone="balanced"] { background: oklch(66% 0.16 255); }
@@ -872,7 +872,7 @@
 }
 .local-run-node-name { font-size: 0.8125rem; font-weight: 600; }
 .local-run-node-outcome { font-size: 0.6875rem; color: var(--text-secondary); }
-.local-dashboard-steps > li:target .local-run-step-head strong { color: var(--brand); }
+.local-dashboard-steps > li:target .local-run-step-head strong { color: var(--link-ink); }
 
 /* In the two wide run tables a run id is a link shown on one line and cut with an ellipsis: the whole id is still the
  * link's text and its title, and Workflow shows it in full with a Copy button. Uncut, it broke over eight lines and
@@ -897,12 +897,12 @@
  * tied to its segment by colour as well as by order. Nothing here changes a segment's size (OMN-21015 AC4). */
 .usage-tokens-bar { height: 0.875rem; border-radius: 999px; overflow: hidden; background: var(--panel-2); }
 .usage-tokens-fill { transition: filter 0.15s; }
-.usage-tokens-fill[data-series='0'], .usage-tokens-legend li[data-series='0']::before { background: oklch(72% 0.14 250); }
-.usage-tokens-fill[data-series='1'], .usage-tokens-legend li[data-series='1']::before { background: oklch(74% 0.15 160); }
-.usage-tokens-fill[data-series='2'], .usage-tokens-legend li[data-series='2']::before { background: oklch(78% 0.15 85); }
-.usage-tokens-fill[data-series='3'], .usage-tokens-legend li[data-series='3']::before { background: oklch(68% 0.18 320); }
-.usage-tokens-fill[data-series='4'], .usage-tokens-legend li[data-series='4']::before { background: oklch(70% 0.17 30); }
-.usage-tokens-fill[data-series='5'], .usage-tokens-legend li[data-series='5']::before { background: oklch(76% 0.11 200); }
+.usage-tokens-fill[data-series='0'], .usage-tokens-legend li[data-series='0']::before { background: var(--dashboard-chart-1); }
+.usage-tokens-fill[data-series='1'], .usage-tokens-legend li[data-series='1']::before { background: var(--dashboard-chart-2); }
+.usage-tokens-fill[data-series='2'], .usage-tokens-legend li[data-series='2']::before { background: var(--dashboard-chart-3); }
+.usage-tokens-fill[data-series='3'], .usage-tokens-legend li[data-series='3']::before { background: var(--dashboard-chart-5); }
+.usage-tokens-fill[data-series='4'], .usage-tokens-legend li[data-series='4']::before { background: var(--dashboard-chart-4); }
+.usage-tokens-fill[data-series='5'], .usage-tokens-legend li[data-series='5']::before { background: var(--dashboard-chart-7); }
 .usage-tokens-legend li::before { border-radius: 2px; }
 
 /* A timestamp cell in the wide run tables gets no floor: a 13ch one (its longest part) was measured to push the Runs
@@ -946,9 +946,83 @@
   from { opacity: 0; transform: translateY(5px); }
   to { opacity: 1; transform: translateY(0); }
 }
+
+/* A single visual rhythm for core pages and the interactive chart explorers. */
+.local-dashboard-page { padding: clamp(16px, 2.2vw, 30px); }
+.local-dashboard-grid { gap: 18px; }
+.local-dashboard-panel { border-radius: 14px; padding: 20px; box-shadow: 0 2px 5px #172c4d04, 0 8px 24px #172c4d03; }
+.local-dashboard-panel h2 { font-size: 13px; font-weight: 600; gap: 10px; margin-bottom: 20px; }
+.local-dashboard-panel h2 svg { width: 30px; height: 30px; padding: 7px; border-radius: 9px; }
+.local-dashboard-metric { font-size: clamp(28px, 3vw, 40px); letter-spacing: -.04em; font-weight: 600; line-height: 1.2; }
+.local-dashboard-metric[data-measured="false"] { font-size: 17px; line-height: 1.5; letter-spacing: -.015em; font-weight: 500; color: var(--text-secondary) !important; max-width: 30ch; padding-block: 5px; }
+.local-dashboard-caption { font-size: 11px; line-height: 1.6; margin-top: 8px; }
+.local-dashboard-fields { gap: 16px 20px; }
+.local-dashboard-fields dt { font-size: 10px; font-weight: 500; letter-spacing: .035em; }
+.local-dashboard-fields dd { line-height: 1.55; }
+.local-dashboard-filters { padding: 12px; border: 1px solid var(--line); background: var(--panel-2); border-radius: 10px; gap: 10px 16px; margin-bottom: 20px; }
+.local-dashboard-filters label { font-size: 11px; font-weight: 500; }
+.local-filter-field { display: flex; flex-direction: column; gap: 6px; flex: 1 1 140px; min-width: 0; }
+.local-filter-field select { width: 100%; min-width: 0; }
+.local-dashboard-filters select, .local-run-picker input { min-height: 36px; border-radius: 7px; }
+.local-dashboard-panel tbody tr { transition: background-color 160ms ease; }
+.local-dashboard-panel tbody tr:hover { background: var(--panel-2); }
+.local-dashboard-panel thead th { background: var(--panel-2); color: var(--text-secondary); }
+.local-dashboard-table-wrap { border-radius: 9px; }
+.local-run-charts { gap: 16px; margin-bottom: 24px; align-items: start; }
+.local-chart { border: 1px solid var(--line); border-radius: 12px; padding: 14px; background: var(--panel); min-width: 0; }
+.local-chart-heading { display: flex; align-items: center; gap: 10px; margin-bottom: 16px; }
+.local-chart-heading h3 { font-size: 12px; font-weight: 600; line-height: 1.4; margin: 0; letter-spacing: -.01em; }
+.local-chart-heading p { font-size: 10px; color: var(--text-secondary); margin: 3px 0 0; }
+.local-chart-symbol { width: 32px; height: 32px; border-radius: 9px; display: grid; place-items: center; flex-shrink: 0; background: color-mix(in oklch, var(--panel-accent) 9%, var(--panel)); color: var(--panel-accent); }
+.local-chart-inspect-icon { color: var(--text-tertiary); margin-left: auto; flex-shrink: 0; }
+.local-chart--runs .local-chart-canvas { height: 210px !important; }
+.local-chart-range { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; padding: 10px 0; border-top: 1px solid var(--line); }
+.local-chart-range-label { width: 100%; color: var(--text-secondary); font-size: 10px; font-variant-numeric: tabular-nums; }
+.local-chart-range input { min-width: 42px; width: 60px; flex: 1; height: 28px; accent-color: var(--panel-accent); cursor: pointer; }
+.local-chart-reset { display: inline-flex; align-items: center; justify-content: center; gap: 5px; font-size: 10px; font-weight: 500; color: var(--text-secondary); min-height: 32px; padding: 4px 8px; border: 1px solid var(--line); border-radius: 6px; background: var(--panel); white-space: nowrap; }
+.local-chart-reset:hover { color: var(--text-primary); border-color: var(--text-tertiary); background: var(--panel-2); }
+.local-chart-inspector { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; padding-top: 10px; border-top: 1px solid var(--line); }
+.local-chart-inspector > label { font-size: 10px; color: var(--text-secondary); font-weight: 500; }
+.local-chart-inspector select { flex: 1; min-width: 0; max-width: 100%; min-height: 34px; border: 1px solid #8290a5; border-radius: 7px; padding: 5px 8px; background: var(--panel); color: var(--text-primary); font: inherit; font-size: 11px; text-overflow: ellipsis; }
+.local-chart-detail { width: 100%; display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; padding: 12px; margin-top: 8px; border: 1px solid color-mix(in oklch, var(--panel-accent) 24%, var(--line)); border-radius: 8px; background: color-mix(in oklch, var(--panel-accent) 5%, var(--panel)); font-size: 11px; overflow-wrap: anywhere; animation: chart-detail-enter 180ms ease-out; }
+.local-chart-detail strong { font-weight: 600; }
+.local-chart-detail-id { display: block; font-family: var(--font-mono); font-size: 10px; color: var(--text-secondary); }
+.local-chart-open { display: inline-flex; min-height: 34px; align-items: center; color: var(--text-primary); background: var(--panel); border: 1px solid #8290a5; border-radius: 7px; padding: 5px 10px; margin-left: auto; font-weight: 500; text-decoration: none; }
+.local-chart-toggle { border-radius: 7px; min-height: 32px; }
+.local-chart figcaption { line-height: 1.6; font-size: 10px; margin-top: 10px; color: var(--text-secondary); }
+.local-tier-select { display: flex; width: 100%; gap: 7px; align-items: center; min-height: 36px; padding: 5px 8px; border: 1px solid transparent; border-radius: 7px; text-align: left; color: inherit; font: inherit; font-size: 11px; }
+.local-tier-select:hover, .local-tier-select[aria-pressed="true"] { background: var(--panel-2); border-color: var(--line); }
+.local-tier-select .local-share-value { margin-left: auto; }
+.local-donut { transition: filter 180ms ease; }
+.local-donut-slice:hover { cursor: pointer; }
+.local-dashboard-page :is(button, a, input, select, textarea):focus-visible { outline: 2px solid var(--panel-accent, #3864c6); outline-offset: 3px; }
+.usage-tokens-day { padding: 16px; margin-top: 12px; border: 1px solid var(--line); border-radius: 12px; background: var(--panel); }
+.usage-tokens-day h3 { font-size: 12px; font-weight: 600; margin-bottom: 16px; }
+.usage-tokens-bar { height: 18px; }
+.usage-tokens-fill { transition: opacity 180ms ease, filter 180ms ease; }
+.usage-tokens-fill[data-highlighted="false"] { opacity: .3; }
+.usage-tokens-legend li[data-highlighted="false"] { color: var(--text-secondary); }
+.local-chart-legend[aria-label="Model highlight"] button[aria-pressed="false"] { text-decoration: none; color: var(--text-secondary); }
+.usage-tokens-legend li { transition: opacity 180ms ease; }
+@keyframes chart-detail-enter { from { opacity: 0; transform: translateY(3px); } to { opacity: 1; transform: none; } }
+@media (max-width: 640px) {
+  .local-dashboard-panel { padding: 16px; }
+  .local-dashboard-grid { gap: 14px; }
+  .local-chart { padding: 12px; }
+  .local-chart-range input { min-height: 36px; }
+  .local-chart-reset, .local-chart-toggle, .local-tier-select { min-height: 40px; }
+  .local-chart-inspector select { min-height: 40px; flex-basis: 100%; }
+  .local-chart-open { margin-left: 0; }
+  .local-dashboard-filters { gap: 12px; }
+  .local-dashboard-filters select { min-height: 40px; }
+}
 @media (prefers-reduced-motion: reduce) {
   .local-dashboard-page *, .local-dashboard-page *::before, .local-dashboard-page *::after {
     animation: none !important;
     transition: none !important;
   }
 }
+
+/* Preserve the Overview first-screen chart boundary and avoid nested framing stealing Usage bar width. */
+.local-dashboard-panel[data-component="overview-spend-by-day"] .local-chart-canvas { height: 220px !important; }
+.local-chart.usage-token-explorer { padding: 0; border: 0; background: transparent; }

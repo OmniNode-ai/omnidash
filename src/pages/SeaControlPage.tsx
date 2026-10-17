@@ -67,7 +67,7 @@ function nodeName(r: NodeGenerationRow): string {
   return r.task_description.slice(0, 48);
 }
 
-function SeaPipeline({ loopClosed }: { loopClosed: boolean }) {
+function SeaPipeline({ loopClosed, unavailable }: { loopClosed: boolean; unavailable: boolean }) {
   return (
     <Panel
       title="SELF-EXTENSION PIPELINE"
@@ -79,7 +79,7 @@ function SeaPipeline({ loopClosed }: { loopClosed: boolean }) {
             loop closed
           </Badge>
         ) : (
-          <Badge kind="muted">no completed rows</Badge>
+          <Badge kind="muted">{unavailable ? "Data unavailable" : "no completed rows"}</Badge>
         )
       }
     >
@@ -210,6 +210,7 @@ function SeaArtifact({ g }: { g: NodeGenerationRow }) {
 
 export function SeaControlPage() {
   const { data, isLoading } = useNodeGenerations();
+  const unavailable = Boolean(data?.degradedReason);
   const rows = data?.rows ?? [];
   const hero = rows[0];
 
@@ -328,7 +329,7 @@ export function SeaControlPage() {
       <div className="grid cols-4">
         <KPI
           label="Pipeline events"
-          value={data ? data.rowCount : "—"}
+          value={data && !unavailable ? data.rowCount : "Not measured"}
           sub="node-generation-completed.v1"
         />
         <KPI
@@ -340,7 +341,7 @@ export function SeaControlPage() {
         <KPI
           label="Contract pass"
           value={passRate != null ? fmtPct(passRate) : "—"}
-          sub={`${passed} / ${rows.length} rows`}
+          sub={unavailable ? "Not measured" : `${passed} / ${rows.length} rows`}
         />
         <KPI
           label="Avg gen latency"
@@ -351,7 +352,7 @@ export function SeaControlPage() {
 
       <SeaGeneratePanel />
 
-      <SeaPipeline loopClosed={passed > 0} />
+      <SeaPipeline loopClosed={passed > 0} unavailable={unavailable} />
 
       {isLoading ? (
         <Panel title="LATEST GENERATED NODE">
@@ -360,9 +361,9 @@ export function SeaControlPage() {
       ) : !hero ? (
         <Panel title="LATEST GENERATED NODE">
           <EvEmpty
-            title="No generated nodes"
+            title={unavailable ? "Generation data unavailable" : "No generated nodes"}
             reason={data?.degradedReason}
-            note="node-generation-completed projection returned no rows."
+            note={unavailable ? "The generation projection could not be read." : "node-generation-completed projection returned no rows."}
           />
         </Panel>
       ) : (

@@ -12,7 +12,7 @@
  * src/services/event-dash-api.ts and pass already-typed data down.
  */
 
-import { Fragment, useState, type CSSProperties, type ReactNode } from 'react';
+import { Fragment, useId, useState, type CSSProperties, type ReactNode } from 'react';
 import { ChevronRight } from 'lucide-react';
 import { isTenantNotConfiguredReason } from '@/data-source/projection-tenant';
 import { TenantNotConfiguredState } from '../TenantNotConfiguredState';
@@ -244,6 +244,7 @@ export function DataTable<T>({
   renderDetail?: (row: T) => ReactNode;
   activeKey?: string | null;
 }) {
+  const detailId = useId();
   const [open, setOpen] = useState<Record<string, boolean>>({});
   const colSize = (c: DataColumn<T>): string =>
     c.width ? c.width : c.grow ? 'minmax(0,2.6fr)' : c.num ? 'minmax(0,0.9fr)' : 'minmax(0,1fr)';
@@ -268,10 +269,13 @@ export function DataTable<T>({
             <div
               className="row-main"
               style={gridStyle}
-              onClick={() => setOpen((o) => ({ ...o, [key]: !o[key] }))}
+              onClick={renderDetail ? () => setOpen((o) => ({ ...o, [key]: !o[key] })) : undefined}
             >
               <div className="cflex">
-                <ChevronRight className="caret" size={14} />
+                {renderDetail && <button type="button" className="row-disclosure" aria-label={`Toggle details for ${key}`} aria-expanded={isOpen}
+                  aria-controls={`${detailId}-${encodeURIComponent(key)}`} onClick={event => {
+                    event.stopPropagation(); setOpen(o => ({ ...o, [key]: !o[key] }));
+                  }}><ChevronRight className="caret" size={14} aria-hidden="true" /></button>}
               </div>
               {columns.map((c) => (
                 <div key={c.key} className={`${c.num ? 'num ' : ''}${c.truncate ? 'truncate' : ''}`.trim() || undefined}>
@@ -280,7 +284,7 @@ export function DataTable<T>({
               ))}
             </div>
             {isOpen && renderDetail ? (
-              <div className="row-detail">
+              <div className="row-detail" id={`${detailId}-${encodeURIComponent(key)}`}>
                 <div className="row-detail-inner">{renderDetail(r)}</div>
               </div>
             ) : null}
