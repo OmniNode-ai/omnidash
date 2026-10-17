@@ -1,0 +1,33 @@
+---
+schema_version: "1.0.0"
+ticket_id: "OMN-19988"
+title: "The dashboard shows what is running, its health, errors and alerts, in both local modes, from environment events"
+summary: "The omnidash half only: the Overview Environment panel's two widgets over local-environment.v1. Each served row becomes a status_grid tile drawn with the severity of its served verdict, and each open alert an alert_banner line linking to the failed-runs view. Nothing is judged in the browser; the verdicts and alerts are the omnimarket half's. This check proves the panel's rendering, not the lab read the criterion names."
+is_seam_ticket: false
+interface_change: false
+interfaces_touched: []
+requirements:
+  - id: "req-omn19988-ac2-panel-rendering"
+    statement: |-
+      A served DOWN row is drawn as a critical tile under its own verdict word, and its open SERVICE_DOWN alert as one critical banner line linking to the failed-runs view; a verdict or severity the projection does not serve is drawn as unknown.
+    acceptance:
+      - id: "AC2"
+        statement: |-
+          AC2: A stopped service shows `DOWN` with an alert within 60 s -- falsifier: the lab step's page read after 60 s
+evidence_requirements:
+  - kind: "tests"
+    description: "AC2, panel half only: the served verdict and alert as tiles and banner lines, with their severities, the failed-runs link and the mode filter."
+    command: "npx vitest run tests/pages/local/environment.omn19988.test.tsx"
+dod_evidence:
+  - id: "dod-omn19988-ac2-environment-panel"
+    description: "AC2, panel half only: a served DOWN row is a critical tile and its SERVICE_DOWN alert one critical banner line linking to failed runs; an unserved word is unknown. It does not prove the 60 s lab read, the store or the verdicts."
+    source: "manual"
+    binds_ac: ["AC2"]
+    checks:
+      - check_type: "test_passes"
+        check_value: "test -d node_modules || npm ci --no-audit --no-fund; npx vitest run tests/pages/local/environment.omn19988.test.tsx"
+        cwd: "${OMNI_HOME}/omnidash"
+emergency_bypass:
+  enabled: false
+  justification: ""
+  follow_up_ticket_id: ""
