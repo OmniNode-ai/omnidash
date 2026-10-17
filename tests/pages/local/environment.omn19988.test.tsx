@@ -130,6 +130,6 @@ describe('OMN-19988 Environment panel rendering', () => {
     render(<EnvironmentAlerts rows={rows} mode="compose" />);
     expect(screen.getAllByTestId('alert-banner-critical')).toHaveLength(1);
     render(<EnvironmentStatus rows={[]} mode="compose" />);
-    expect(screen.getByText(new RegExp(ENVIRONMENT_TOPIC.replace(/\./g, '\\.')))).toBeTruthy();
+    expect(screen.getByText(ENVIRONMENT_TOPIC, { exact: false })).toBeTruthy();
   });
 });
