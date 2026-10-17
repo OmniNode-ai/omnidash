@@ -442,3 +442,6 @@
 }
 [data-theme="dark"] .ev-root .panel,
 [data-theme="dark"] .ev-root .kpi { box-shadow: 0 1px 2px #0002, 0 4px 16px #0001; }
+
+/* Lucide disclosures are icons; the global typing-cursor .caret must not fill/blink them. */
+.ev-root svg.caret { background: transparent; animation: none; margin-left: 0; vertical-align: initial; }
