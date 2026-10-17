@@ -370,18 +370,18 @@
 
 /* The advanced pages share the core workspace's surfaces and interaction rhythm. */
 .ev-root { --ev-r: 14px; --ev-r-sm: 9px; }
-.ev-root .ev-page-head { padding: 24px 30px 20px; border-bottom: 1px solid var(--ev-line); background: var(--ev-bg-1); }
-.ev-root .ev-title { margin: 4px 0 8px; font-size: 24px; line-height: 1.25; font-weight: 600; letter-spacing: -.035em; }
+.ev-root .ev-page-head { padding: 28px 36px 20px; border-bottom: 1px solid var(--ev-line); background: var(--ev-bg-1); }
+.ev-root .ev-title { margin: 4px 0 8px; font-size: 30px; line-height: 1.25; font-weight: 600; letter-spacing: -.04em; }
 .ev-root .ev-sub { max-width: 76ch; line-height: 1.6; color: var(--ev-txt-2); font-size: 12px; }
 .ev-root .ev-crumb { font-size: 10px; font-weight: 500; color: var(--ev-txt-3); }
-.ev-root .ev-scroll { padding: 24px 30px; }
+.ev-root .ev-scroll { padding: 24px 36px; }
 .ev-root .grid { gap: 18px; }
-.ev-root .panel, .ev-root .kpi { box-shadow: 0 2px 5px #172c4d04, 0 8px 24px #172c4d03; }
+.ev-root .panel, .ev-root .kpi { box-shadow: none; border-radius: 10px; }
 .ev-root .panel-h { padding: 18px 20px 0; gap: 8px 12px; }
 .ev-root .panel-h .pt { font-size: 12px; font-weight: 600; letter-spacing: .015em; }
 .ev-root .panel-h .ps { color: var(--ev-txt-2); font-size: 11px; }
 .ev-root .panel-b { padding: 18px 20px 20px; }
-.ev-root .kpi { padding: 20px; border-radius: 14px; }
+.ev-root .kpi { padding: 20px; border-radius: 10px; }
 .ev-root .kpi .k-v { font-weight: 600; letter-spacing: -.04em; }
 .ev-root .dt-head { background: var(--ev-bg-2); color: var(--ev-txt-2); font-size: 10px; letter-spacing: .02em; border-block: 1px solid var(--ev-line); }
 .ev-root .row-main { min-height: 48px; transition: background-color 160ms ease; }
@@ -403,9 +403,12 @@
 .ev-root .live-pill { text-transform: none; letter-spacing: 0; font-size: 11px; font-weight: 500; }
 .ev-root .live-pill .pulse { animation: none; }
 .ev-root .ev-nowbus { border-radius: 10px; background: var(--ev-bg-1); border: 1px solid var(--ev-line); }
+/* All six existing stages fit the workspace; full topic names wrap within their cards. */
+.ev-root .pstage, .ev-root .pstage .box { min-width: 0; }
+.ev-root .pstage .tp { white-space: normal; overflow-wrap: anywhere; word-break: normal; text-overflow: clip; }
 @media (max-width: 640px) {
   .ev-root .ev-page-head { padding: 20px 16px 16px; }
-  .ev-root .ev-title { font-size: 22px; }
+  .ev-root .ev-title { font-size: 24px; }
   .ev-root .ev-scroll { padding: 16px; }
   .ev-root .panel-h { padding: 16px 16px 0; }
   .ev-root .panel-h .ps { text-align: left; }
@@ -420,3 +423,22 @@
     transition: none !important;
   }
 }
+
+/* The same card treatment carries across real Evidence and developer pages. */
+.ev-root .panel, .ev-root .kpi {
+  border-radius: 12px;
+  box-shadow: 0 1px 2px #172c4d06, 0 4px 16px #172c4d05;
+}
+.ev-root .panel-h { padding-bottom: 14px; border-bottom: 1px solid var(--ev-line); }
+.ev-root .kpi::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 20px;
+  width: 28px;
+  height: 2px;
+  border-radius: 0 0 2px 2px;
+  background: var(--ev-accent);
+}
+[data-theme="dark"] .ev-root .panel,
+[data-theme="dark"] .ev-root .kpi { box-shadow: 0 1px 2px #0002, 0 4px 16px #0001; }

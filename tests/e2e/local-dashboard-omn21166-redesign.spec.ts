@@ -78,6 +78,7 @@ test('final redesign captures all eleven pages, themes and widths without lost f
         if ((await page.locator('html').getAttribute('data-theme') === 'dark' ? 'dark' : 'light') !== theme) await page.getByRole('button', { name: 'Toggle theme' }).click();
         await expect(page.locator('body')).toHaveClass(new RegExp(`theme-${theme}`));
         await expect(page.locator('.main')).not.toContainText(/Loading(?: runtime exposures| census|…|\.\.\.)/);
+        await expect(page.locator('h1')).toBeVisible();
         await page.emulateMedia({ reducedMotion: 'reduce' });
         await page.evaluate(() => document.fonts.ready);
         expect(await page.evaluate(() => document.documentElement.scrollWidth-innerWidth), route).toBeLessThanOrEqual(1);

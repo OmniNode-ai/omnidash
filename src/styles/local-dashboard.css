@@ -1027,6 +1027,38 @@
 .local-dashboard-panel[data-component="overview-spend-by-day"] .local-chart-canvas { height: 220px !important; }
 .local-chart.usage-token-explorer { padding: 0; border: 0; background: transparent; }
 
+/* Keep complete Runs headers readable without hiding columns or adding sideways scroll. */
+@media(min-width:1025px) {
+  .local-dashboard-page--runs .local-dashboard-table-wrap--fit table { table-layout: fixed; }
+  .local-dashboard-page--runs .local-dashboard-table-wrap--fit th { font-size: 10px; text-transform: none; overflow-wrap: normal; word-break: normal; letter-spacing: 0; }
+  .local-dashboard-page--runs .local-dashboard-table-wrap--fit :is(th,td):nth-child(1) { width: 6%; }
+  .local-dashboard-page--runs .local-dashboard-table-wrap--fit :is(th,td):nth-child(2) { width: 8%; }
+  .local-dashboard-page--runs .local-dashboard-table-wrap--fit :is(th,td):nth-child(3) { width: 5%; }
+  .local-dashboard-page--runs .local-dashboard-table-wrap--fit :is(th,td):nth-child(4) { width: 4%; }
+  .local-dashboard-page--runs .local-dashboard-table-wrap--fit :is(th,td):nth-child(5),
+  .local-dashboard-page--runs .local-dashboard-table-wrap--fit :is(th,td):nth-child(6),
+  .local-dashboard-page--runs .local-dashboard-table-wrap--fit :is(th,td):nth-child(16) { width: 7%; }
+  .local-dashboard-page--runs .local-dashboard-table-wrap--fit :is(th,td):nth-child(7),
+  .local-dashboard-page--runs .local-dashboard-table-wrap--fit :is(th,td):nth-child(11),
+  .local-dashboard-page--runs .local-dashboard-table-wrap--fit :is(th,td):nth-child(12),
+  .local-dashboard-page--runs .local-dashboard-table-wrap--fit :is(th,td):nth-child(14) { width: 6%; }
+  .local-dashboard-page--runs .local-dashboard-table-wrap--fit :is(th,td):nth-child(8),
+  .local-dashboard-page--runs .local-dashboard-table-wrap--fit :is(th,td):nth-child(9),
+  .local-dashboard-page--runs .local-dashboard-table-wrap--fit :is(th,td):nth-child(18) { width: 4%; }
+  .local-dashboard-page--runs .local-dashboard-table-wrap--fit :is(th,td):nth-child(10),
+  .local-dashboard-page--runs .local-dashboard-table-wrap--fit :is(th,td):nth-child(13),
+  .local-dashboard-page--runs .local-dashboard-table-wrap--fit :is(th,td):nth-child(15),
+  .local-dashboard-page--runs .local-dashboard-table-wrap--fit :is(th,td):nth-child(17) { width: 5%; }
+  .local-dashboard-page--runs .local-dashboard-table-wrap--fit td { font-size: 11px; overflow-wrap: anywhere; }
+  .local-dashboard-page--runs .local-dashboard-table-wrap--fit .local-run-pill { font-size: 10px; padding: 1px 4px; overflow-wrap: normal; }
+}
+.local-dashboard-page--api-keys .local-dashboard-fields { grid-template-columns: minmax(0,1fr); }
+.local-dashboard-page--api-keys .local-dashboard-fields > div { display: grid; grid-template-columns: minmax(100px,.2fr) minmax(0,1fr); gap: 20px; padding-block: 10px; border-bottom: 1px solid var(--line); }
+.local-dashboard-page--api-keys .local-dashboard-fields > div:last-child { border-bottom: 0; }
+@media(max-width:760px) {
+  .local-dashboard-page--api-keys .local-dashboard-fields > div { grid-template-columns: minmax(0,1fr); gap: 5px; }
+}
+
 /* OMN-21166: compact reference composition, with authoritative widgets retained. */
 .local-dashboard-page { padding: 28px 36px; }
 .local-dashboard-header { position: relative; flex-wrap: wrap; align-items: center; gap: 12px; margin-bottom: 24px; }
@@ -1154,3 +1186,27 @@
   .local-recent-runs-wrap tbody td .local-recent-value { font-size: 11px; line-height: 1.6; }
   .local-recent-footer { flex-wrap: wrap; }
 }
+
+/* OMN-21166 real workspace cards: quiet depth, semantic accents, clear sections. */
+.local-dashboard-panel,
+.local-overview-surface {
+  border-radius: 12px;
+  box-shadow: 0 1px 2px #172c4d06, 0 4px 16px #172c4d05;
+}
+.local-dashboard-panel h2 {
+  padding-bottom: 12px;
+  border-bottom: 1px solid var(--line);
+}
+.local-overview-summary .local-dashboard-panel {
+  border-radius: 0;
+  box-shadow: none;
+  background: color-mix(in oklch, var(--panel-accent) 2%, var(--panel));
+}
+.local-overview-summary .local-dashboard-panel h2 { border: 0; padding-bottom: 0; }
+.local-overview-focus > .local-dashboard-panel { border-radius: 0; box-shadow: none; }
+.local-overview-lower > .local-dashboard-panel,
+.local-overview-secondary .local-dashboard-panel { border-radius: 12px; box-shadow: 0 1px 2px #172c4d06, 0 4px 16px #172c4d05; }
+[data-theme="dark"] .local-dashboard-panel,
+[data-theme="dark"] .local-overview-surface { box-shadow: 0 1px 2px #0002, 0 4px 16px #0001; }
+[data-theme="dark"] .local-overview-summary .local-dashboard-panel,
+[data-theme="dark"] .local-overview-focus > .local-dashboard-panel { box-shadow: none; }
