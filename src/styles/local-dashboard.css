@@ -1200,7 +1200,6 @@
 .local-overview-summary .local-dashboard-panel {
   border-radius: 0;
   box-shadow: none;
-  background: color-mix(in oklch, var(--panel-accent) 2%, var(--panel));
 }
 .local-overview-summary .local-dashboard-panel h2 { border: 0; padding-bottom: 0; }
 .local-overview-focus > .local-dashboard-panel { border-radius: 0; box-shadow: none; }
