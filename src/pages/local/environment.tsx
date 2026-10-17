@@ -29,6 +29,11 @@ const ALERT_SEVERITY: Readonly<Record<string, StatusGridSeverity>> = {
 
 type EnvironmentRow = Readonly<Record<string, unknown>>;
 
+/** A served word reads only the table's own keys; `constructor` or `__proto__` is unknown, not an inherited value. */
+function severityOf(table: Readonly<Record<string, StatusGridSeverity>>, word: string): StatusGridSeverity {
+  return Object.hasOwn(table, word) ? table[word] : 'unknown';
+}
+
 function text(value: unknown): string {
   return typeof value === 'string' ? value : '';
 }
@@ -44,7 +49,7 @@ export function environmentTileRows(rows: readonly EnvironmentRow[], mode: strin
       key: text(row.service),
       label: text(row.service),
       status: verdict.toUpperCase(),
-      severity: VERDICT_SEVERITY[verdict] ?? 'unknown',
+      severity: severityOf(VERDICT_SEVERITY, verdict),
       status_reason: text(row.verdict_reason),
       last_seen: typeof row.last_seen === 'string' ? row.last_seen : null,
     };
@@ -57,7 +62,7 @@ export function environmentAlertRows(rows: readonly EnvironmentRow[], mode: stri
     .map((row) => ({
       alert_id: `${text(row.mode)}:${text(row.service)}:${text(row.alert_code)}`,
       code: text(row.alert_code),
-      severity: ALERT_SEVERITY[text(row.alert_severity)] ?? 'unknown',
+      severity: severityOf(ALERT_SEVERITY, text(row.alert_severity)),
       subject: text(row.service),
       since: text(row.alert_since),
       link: FAILED_RUNS_LINK,

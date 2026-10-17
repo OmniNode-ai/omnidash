@@ -8,7 +8,9 @@
 //   E3  a row with no open alert shows a banner line, or an open alert is missing one;
 //   E4  an alert line does not link to the failed-runs view (R2: each error links to a filtered Runs view);
 //   E5  a verdict outside the four the projection serves is shown as one of them instead of as unknown;
-//   E6  rows of another mode are mixed into the panel's mode.
+//   E6  rows of another mode are mixed into the panel's mode;
+//   E7  a served word that names an inherited object key (constructor, toString, __proto__) is drawn as that key's
+//       value instead of as unknown.
 import { render, screen, within } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 import {
@@ -17,7 +19,7 @@ import {
   EnvironmentStatus,
   environmentAlertRows,
   environmentTileRows,
-} from './environment';
+} from '@/pages/local/environment';
 
 const base = {
   tenant_id: '97b9aa50-f53f-adb8-5404-5c7318dd4cb1',
@@ -104,6 +106,15 @@ describe('OMN-19988 Environment panel rows', () => {
     const native = { ...rows[0], mode: 'native', service: 'local-runtime' };
     expect(environmentTileRows([...rows, native], 'compose').map((t) => t.key)).not.toContain('local-runtime');
     expect(environmentTileRows([...rows, native], 'native').map((t) => t.key)).toEqual(['local-runtime']);
+  });
+
+  it('E7: a verdict or alert severity naming an inherited object key is drawn as unknown', () => {
+    for (const word of ['constructor', 'toString', '__proto__', 'hasOwnProperty']) {
+      const [tile] = environmentTileRows([{ ...rows[0], verdict: word }], 'compose');
+      expect(tile.severity).toBe('unknown');
+      const [line] = environmentAlertRows([{ ...rows[0], alert_code: 'SERVICE_DOWN', alert_severity: word }], 'compose');
+      expect(line.severity).toBe('unknown');
+    }
   });
 });
 
