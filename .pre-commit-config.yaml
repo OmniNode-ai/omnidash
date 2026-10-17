@@ -31,6 +31,16 @@ repos:
     hooks:
       - id: check-hardcoded-model-config-compute
 
+  # OMN-19998: public-repository runner placement (RULING 2026-10-16T07:07:09Z,
+  # "Ci runners should be for private repos only"). CI twin job
+  # public-runner-placement in .github/workflows/ci.yml; keep this rev equal to
+  # that job's release.
+  - repo: https://github.com/OmniNode-ai/omnibase_core
+    rev: v0.47.46
+    hooks:
+      - id: check-public-runner-placement
+        args: [--repo, omnidash, --visibility, public]
+
   - repo: local
     hooks:
       - id: pr-title-omnimarket-node
@@ -223,6 +233,19 @@ repos:
         additional_dependencies: ["pytest==8.4.2", "pyyaml==6.0.3"]
         pass_filenames: false
         files: ^(\.github/(workflows/.*\.ya?ml|required-checks\.yaml)|tests/ci/test_occ_off_omn20074\.py|\.pre-commit-config\.yaml)$
+        stages: [pre-commit]
+
+  # OMN-19998: local parity for the workflow-script-refs.yml step that pins the
+  # public-repository runner placement (hosted runners, core check job and hook).
+  - repo: local
+    hooks:
+      - id: public-runner-placement-pins
+        name: Public repository runner placement pins (OMN-19998)
+        entry: python -m pytest tests/ci/test_public_runner_placement_omn19998.py -q --noconftest -p no:cacheprovider -c /dev/null
+        language: python
+        additional_dependencies: ["pytest==8.4.2", "pyyaml==6.0.3"]
+        pass_filenames: false
+        files: ^(\.github/workflows/.*\.ya?ml|tests/ci/test_public_runner_placement_omn19998\.py|contracts/OMN-19998\.yaml|\.pre-commit-config\.yaml)$
         stages: [pre-commit]
 
 default_install_hook_types: [pre-commit, commit-msg]
