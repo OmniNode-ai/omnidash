@@ -189,7 +189,7 @@ def test_no_occ_callers_reject_skip_pin_has_no_nested_occ_preflight() -> None:
 
 def test_no_occ_callers_ci_summary_expects_no_occ_context() -> None:
     summary = _workflows()["ci.yml"]["jobs"]["ci-summary"]
-    assert set(_needs(summary)) == {"test", "tenant-rls"}
+    assert set(_needs(summary)) == {"test", "tenant-rls", "public-runner-placement"}
     script = "\n".join(str(step.get("run", "")) for step in summary.get("steps") or [])
     assert not [context for context in _OCC_CONTEXTS if context in script]
     assert "occ-preflight" not in script

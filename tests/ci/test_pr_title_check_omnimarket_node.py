@@ -25,12 +25,7 @@ MANIFEST = ROOT / ".github/required-checks.yaml"
 CONTEXT = "pr-title / check-title"
 NODE = "omnimarket.nodes.node_pr_title_check_compute"
 PIN = "0.4.310"
-RUNS_ON = """${{
-  (github.event_name == 'pull_request' &&
-   github.event.pull_request.head.repo.full_name != github.repository)
-  && fromJSON(vars.OMNI_PUBLIC_PR_RUNS_ON_JSON || '["ubuntu-latest"]')
-  || fromJSON(vars.OMNI_TRUSTED_CI_RUNS_ON_JSON || '["self-hosted","omnibase-ci"]')
-}}"""
+RUNS_ON = "ubuntu-latest"
 
 # Verdict branches from pr-title-check-reusable.yml at
 # a89a6f30fabf74189195f57b57fcc5d4751f4c48. Keep Bash's suffix match,
@@ -89,7 +84,7 @@ def test_workflow_preserves_context_triggers_and_runner() -> None:
     assert workflow[True] == {"pull_request": {"types": ["opened", "edited"]}}
     job = _job()
     assert job["name"] == CONTEXT
-    assert job["runs-on"].strip() == RUNS_ON
+    assert job["runs-on"] == RUNS_ON
     assert job["timeout-minutes"] == 10
     assert job["permissions"] == {"contents": "read"}
     assert "if" not in job

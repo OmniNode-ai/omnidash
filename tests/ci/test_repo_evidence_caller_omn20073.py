@@ -91,7 +91,7 @@ def test_no_repo_evidence_context_is_a_required_check() -> None:
 def test_ci_summary_judges_only_its_own_needs_never_external_check_runs() -> None:
     summary = _load(CI)["jobs"]["ci-summary"]
     assert summary["name"] == "CI Summary"
-    assert set(summary["needs"]) == {"test", "tenant-rls"}
+    assert set(summary["needs"]) == {"test", "tenant-rls", "public-runner-placement"}
     script = "\n".join(step.get("run", "") for step in summary["steps"])
     for token in ("check-runs", "check_runs", "statuses", "gh api", "gh pr checks"):
         assert token not in script, f"CI Summary must not sweep external checks: {token}"
