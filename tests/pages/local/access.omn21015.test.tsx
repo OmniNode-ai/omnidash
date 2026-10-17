@@ -9,7 +9,7 @@
 //   A4  after a restart (a newer mint time served) the card keeps the old one.
 import { render, screen } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
-import { DashboardAccess, dashboardAccessRow } from './access';
+import { DashboardAccess, dashboardAccessRow } from '@/pages/local/access';
 
 const native = {
   tenant_id: '97b9aa50-f53f-adb8-5404-5c7318dd4cb1',
