@@ -21,6 +21,9 @@ export const createUISlice: StateCreator<FrameStore, [], [], UISlice> = (set) =>
     set((state) => ({ sidebarCollapsed: !state.sidebarCollapsed })),
   // OMN-19981 Amendment 6 (FR-3): the dashboard opens on the local Overview page.
   activePage: 'local-overview',
+  // MVP discoverability only: no route guard and no persistence.
+  showDeveloperTools: false,
+  setShowDeveloperTools: (showDeveloperTools) => set({ showDeveloperTools }),
   setActivePage: (page) => {
     set({ activePage: page });
     if (typeof window !== 'undefined' && window.location.pathname !== PAGE_PATHS[page]) {

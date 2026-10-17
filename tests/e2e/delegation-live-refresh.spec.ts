@@ -111,6 +111,7 @@ const COST_BREAKDOWN_AFTER_EVENT = [
   },
 ];
 
+// Legacy saved-layout verification uses /dashboard; / now correctly opens Overview.
 // ── Helpers ──────────────────────────────────────────────────────────────────
 
 async function seedDashboard(page: Page) {
@@ -159,7 +160,7 @@ test.describe('OMN-10947: delegation dashboard live refresh proof', () => {
     });
 
     await seedDashboard(page);
-    await page.goto('/');
+    await page.goto('/dashboard');
     await selectFiveSecondAutoRefresh(page);
 
     // Wait for the delegation metrics widget to render with baseline data
@@ -219,13 +220,14 @@ test.describe('OMN-10947: delegation dashboard live refresh proof', () => {
         await route.fulfill({
           status: 200,
           contentType: 'application/json',
-          body: JSON.stringify(serveCostBreakdown),
+          // FileSnapshotSource yields one row per manifest file, not an array of rows.
+          body: JSON.stringify(serveCostBreakdown[0]),
         });
       }
     });
 
     await seedDashboard(page);
-    await page.goto('/');
+    await page.goto('/dashboard');
     await selectFiveSecondAutoRefresh(page);
 
     // Wait for cost breakdown widget to render
@@ -281,13 +283,13 @@ test.describe('OMN-10947: delegation dashboard live refresh proof', () => {
         await route.fulfill({
           status: 200,
           contentType: 'application/json',
-          body: JSON.stringify(COST_BREAKDOWN_BASELINE),
+          body: JSON.stringify(COST_BREAKDOWN_BASELINE[0]),
         });
       }
     });
 
     await seedDashboard(page);
-    await page.goto('/');
+    await page.goto('/dashboard');
     await page.waitForSelector('[data-testid="grid-item"]', { timeout: 15000 });
     // Wait for data to render
     await expect(delegationMetricsWidget(page).getByText('314', { exact: true })).toBeVisible({ timeout: 10000 });

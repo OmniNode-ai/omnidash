@@ -2,13 +2,13 @@ import { mkdirSync } from 'node:fs';
 import { dirname, resolve } from 'node:path';
 import { expect, test, type Page } from 'playwright/test';
 
-// OMN-20759: at 1440x900 the Runs table (17 columns) and the Overview's Recent runs table (16 columns) fit inside
+// OMN-20759: at 1440x900 the Runs table (including modelled saving) and Overview Recent runs fit inside
 // their panels, with no clipped cell, no sideways scroll and no column dropped. The rows are the OMN-20223 re-walk's
 // own shape (2026-10-09): UUID run ids, microsecond timestamps and the Gemini host, the values that clipped.
 const DECISIONS = 'onex.snapshot.projection.delegation.decisions.v1';
 
 const RUNS_HEADERS = [
-  'Run', 'Created', 'Status', 'Cause', 'Model', 'Backend', 'Host', 'Tokens in', 'Tokens out', 'Local cost',
+  'Run', 'Created', 'Status', 'Cause', 'Model', 'Backend', 'Host', 'Tokens in', 'Tokens out', 'Local cost', 'Modelled saving',
   'Baseline model', 'Basis', 'Task type', 'Duration', 'Tokens to compliance', 'Route tier', 'Quality score',
 ];
 const RECENT_HEADERS = [

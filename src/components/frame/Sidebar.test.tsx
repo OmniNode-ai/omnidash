@@ -1,4 +1,4 @@
-// Tests for the OMN-43 Sidebar component: create / switch / rename / delete dashboard flows.
+// OMN-21166 defers OMN-43 dashboard controls while preserving saved layouts.
 import { describe, it, expect, beforeEach } from 'vitest';
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
@@ -28,7 +28,7 @@ function renderSidebar() {
   return render(<Sidebar />, { wrapper: Wrapper });
 }
 
-describe('Sidebar — dashboard CRUD flows (OMN-43)', () => {
+describe('Sidebar — deferred dashboard controls (OMN-21166)', () => {
   beforeEach(() => {
     // Reset to empty state before each test to avoid list pollution.
     // sidebarCollapsed: false because jsdom sets window.innerWidth=0 which
@@ -40,58 +40,43 @@ describe('Sidebar — dashboard CRUD flows (OMN-43)', () => {
       dashboards: [],
       globalFilters: {},
       sidebarCollapsed: false,
+      showDeveloperTools: false,
     });
   });
 
-  it('renders an empty state when there are no dashboards', () => {
+  it('shows core navigation rather than an empty builder prompt', () => {
     renderSidebar();
-    expect(screen.getByText(/no dashboards yet/i)).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: 'Overview' })).toBeInTheDocument();
+    expect(screen.queryByText(/no dashboards yet/i)).not.toBeInTheDocument();
   });
 
-  it('clicking + creates a new dashboard and puts it in rename mode', async () => {
-    const user = userEvent.setup();
+  it('does not offer creation or rename controls in the MVP', () => {
     renderSidebar();
-
-    await user.click(screen.getByRole('button', { name: /new dashboard/i }));
-
-    const state = useFrameStore.getState();
-    expect(state.dashboards.length).toBe(1);
-    expect(state.activeDashboard?.name).toBe('Untitled Dashboard');
-
-    // Should show inline rename input
-    expect(screen.getByRole('textbox')).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /new dashboard/i })).not.toBeInTheDocument();
+    expect(screen.queryByRole('textbox')).not.toBeInTheDocument();
+    expect(useFrameStore.getState().dashboards).toHaveLength(0);
   });
 
-  it('switching between two dashboards changes activeDashboard', async () => {
-    // Pre-seed two dashboards in the store
+  it('preserves saved dashboards without exposing builder navigation', async () => {
     useFrameStore.getState().createDashboard('Board A');
     useFrameStore.getState().createDashboard('Board B');
-
-    const user = userEvent.setup();
+    const saved = useFrameStore.getState().dashboards;
+    const active = useFrameStore.getState().activeDashboardId;
     renderSidebar();
-
-    // Both dashboard names appear
-    expect(screen.getByText('Board A')).toBeInTheDocument();
-    expect(screen.getByText('Board B')).toBeInTheDocument();
-
-    // Click Board A to switch
-    await user.click(screen.getByText('Board A'));
-    expect(useFrameStore.getState().activeDashboard?.name).toBe('Board A');
-
-    // Click Board B to switch
-    await user.click(screen.getByText('Board B'));
-    expect(useFrameStore.getState().activeDashboard?.name).toBe('Board B');
+    await userEvent.click(screen.getByRole('checkbox', { name: 'Show developer tools' }));
+    expect(screen.queryByText('Board A')).not.toBeInTheDocument();
+    expect(screen.queryByText('Board B')).not.toBeInTheDocument();
+    expect(useFrameStore.getState().dashboards).toEqual(saved);
+    expect(useFrameStore.getState().activeDashboardId).toBe(active);
   });
 
-  it('active dashboard shows the ▸ marker', async () => {
+  it('keeps the selected saved layout when rendering the MVP navigation', () => {
     useFrameStore.getState().createDashboard('Active Board');
     const id = useFrameStore.getState().dashboards[0].id;
     useFrameStore.getState().setActiveDashboardById(id);
-
     renderSidebar();
-
-    // The active marker character ▸ should appear for the active dashboard
-    expect(screen.getByText('▸')).toBeInTheDocument();
+    expect(screen.queryByText('Active Board')).not.toBeInTheDocument();
+    expect(useFrameStore.getState().activeDashboardId).toBe(id);
   });
 
   it('does NOT render sidebar-foot (no health monitoring / version source)', () => {

@@ -5,7 +5,6 @@ import { Header } from './components/frame/Header';
 import { DashboardView } from './pages/DashboardView';
 import { FeatureFlagDashboard } from './pages/FeatureFlagDashboard';
 import { InstructionEvalPage } from './pages/InstructionEvalPage';
-import { AgentOrchestrator } from './agent/AgentOrchestrator';
 import { useFrameStore } from './store/store';
 import { CommandPalette, useCommandPalette } from './components/dashboard/command-dispatch/CommandPalette';
 import type { AppPage } from './store/types';
@@ -69,7 +68,7 @@ export function App() {
           </main>
         ) : <PageContent page={page} />}
       </FrameLayout>
-      <AgentOrchestrator />
+      {/* Assistant deferred for MVP at composition: its hooks never mount. */}
       {isOpen && <CommandPalette onClose={close} />}
     </>
   );

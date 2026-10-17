@@ -32,7 +32,7 @@ const SIX = [
 describe('Sidebar local pages (FR-3, F23)', () => {
   beforeEach(() => {
     window.history.replaceState(null, '', '/');
-    useFrameStore.setState({ dashboards: [], activeDashboardId: null, activeDashboard: null, sidebarCollapsed: false, activePage: 'local-overview' });
+    useFrameStore.setState({ dashboards: [], activeDashboardId: null, activeDashboard: null, sidebarCollapsed: false, showDeveloperTools: false, activePage: 'local-overview' });
   });
 
   it('lists the six local pages first, in the required order', () => {
@@ -65,8 +65,11 @@ describe('Sidebar local pages (FR-3, F23)', () => {
     expect(useFrameStore.getState().activePage).toBe('local-runs');
   });
 
-  it('keeps the existing pages reachable below the local group', () => {
+  it('keeps evidence visible and advanced pages reachable through the setting', async () => {
     render(<Sidebar />, { wrapper: Wrapper });
+    expect(screen.getByTestId('nav-delegation-evidence')).toBeInTheDocument();
+    expect(screen.queryByTestId('nav-event-bus')).not.toBeInTheDocument();
+    await userEvent.click(screen.getByRole('checkbox', { name: 'Show developer tools' }));
     for (const page of ['delegation-evidence', 'event-bus', 'experiments', 'sea-control', 'lab']) {
       expect(screen.getByTestId(`nav-${page}`)).toBeInTheDocument();
     }

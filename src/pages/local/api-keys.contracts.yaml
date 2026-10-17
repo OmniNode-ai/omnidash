@@ -23,20 +23,6 @@
       "supported_empty_state_reasons": [
         "no-data"
       ]
-    },
-    {
-      "component_id": "api-keys-cloud",
-      "component_kind": "table",
-      "title": "Cloud keys",
-      "contract_version": {
-        "major": 1,
-        "minor": 0,
-        "patch": 0
-      },
-      "data_bindings": [],
-      "supported_empty_state_reasons": [
-        "upstream-blocked"
-      ]
     }
   ],
   "page_empty_state_reasons": []

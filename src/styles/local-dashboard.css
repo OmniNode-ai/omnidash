@@ -48,7 +48,7 @@
   min-width: 0;
   overflow: hidden;
   border: 1px solid var(--line);
-  border-radius: 12px;
+  border-radius: 9px;
   padding: 18px;
   background: var(--panel);
 }
@@ -164,6 +164,7 @@
 .local-dashboard-empty,
 .local-dashboard-error {
   color: var(--text-secondary);
+  overflow-wrap: anywhere;
 }
 
 .local-dashboard-error {
@@ -188,11 +189,11 @@
   white-space: nowrap;
 }
 
-/* Overview's Recent runs and the Runs page carry 16 and 17 columns, so their cells wrap instead of scrolling: no
+/* Overview's Recent runs and Runs keep every served column, so their cells wrap instead of scrolling: no
    panel is cut off at 1440x900 (OMN-20223 AC2, OMN-20759). */
 .local-dashboard-table-wrap--fit th,
 .local-dashboard-table-wrap--fit td {
-  padding: 8px 6px;
+  padding: 8px 4px;
   white-space: normal;
   font-size: 0.8125rem;
 }
@@ -507,28 +508,40 @@
 }
 .local-dashboard-header p { max-width: 72ch; font-size: 0.875rem; }
 
-/* A panel: a small upper-case label with its icon, then the content. */
+/* OMN-21166: the approved temporary design's quiet cards and sentence-case labels.
+ * Keep the contract grid, table columns and visually hidden page title intact. */
 .local-dashboard-panel {
+  --panel-accent: #3769bd;
   box-shadow: var(--shadow-sm);
-  transition: border-color 0.15s;
+  transition: border-color 180ms ease, box-shadow 180ms ease;
+  animation: local-panel-enter 360ms ease-out both;
 }
-.local-dashboard-panel:hover { border-color: color-mix(in oklch, var(--ink-3) 45%, var(--line)); }
+.local-dashboard-panel:hover { border-color: color-mix(in oklch, var(--panel-accent) 30%, var(--line)); box-shadow: var(--shadow-md); }
 .local-dashboard-panel h2 {
   display: flex;
   align-items: center;
   gap: 8px;
   margin: 0 0 14px;
-  font-size: 0.6875rem;
-  font-weight: 600;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-  color: var(--text-secondary);
+  font-size: 0.8125rem;
+  font-weight: 500;
+  letter-spacing: -0.01em;
+  text-transform: none;
+  color: var(--text-primary);
 }
-.local-dashboard-panel h2 svg { flex: 0 0 auto; color: var(--text-tertiary); }
+.local-dashboard-panel h2 svg {
+  flex: 0 0 auto;
+  box-sizing: border-box;
+  width: 27px;
+  height: 27px;
+  padding: 5px;
+  border-radius: 6px;
+  color: var(--panel-accent);
+  background: color-mix(in oklch, var(--panel-accent) 10%, var(--panel));
+}
 
-/* A headline figure: set in the mono face so digits line up from card to card. Savings figures are green. */
+/* Inter with tabular digits follows the mockup; ids and code retain the mono face. */
 .local-dashboard-metric {
-  font-family: var(--font-mono);
+  font-family: var(--font-sans);
   font-size: clamp(1.5rem, 2.4vw, 2.1rem);
   font-weight: 500;
   letter-spacing: -0.02em;
@@ -537,8 +550,6 @@
 }
 .local-dashboard-panel[data-component="overview-savings"] .local-dashboard-metric,
 .local-dashboard-panel[data-component="overview-avg-saving-per-call"] .local-dashboard-metric { color: var(--status-ok); }
-.local-dashboard-panel[data-component="overview-savings"] h2 svg,
-.local-dashboard-panel[data-component="overview-avg-saving-per-call"] h2 svg { color: var(--status-ok); }
 .local-dashboard-caption { font-size: 0.8125rem; line-height: 1.45; }
 
 /* Field lists (Last run, Quality, Local identity): a quiet label over its value. */
@@ -879,7 +890,7 @@
   text-overflow: ellipsis;
   white-space: nowrap;
 }
-.local-dashboard-table-wrap--fit th { letter-spacing: 0; }
+.local-dashboard-table-wrap--fit th { letter-spacing: 0; overflow-wrap: anywhere; }
 .local-dashboard-table-wrap--fit .local-run-pill { padding: 1px 6px; }
 
 /* Usage's token bars: one colour per series, the same on the segment and on its legend swatch, so a figure can be
@@ -897,3 +908,47 @@
 /* A timestamp cell in the wide run tables gets no floor: a 13ch one (its longest part) was measured to push the Runs
  * table 17px past its panel at 1440x900, the fault OMN-20759 fixed. CellTime's two break points are preferred when
  * the column is wide enough; when it is not, the token still breaks inside itself as before. */
+
+/* Destination and content semantics share a hue, never an execution verdict.
+ * Values and labels still communicate status independently of color. */
+.local-dashboard-panel[data-component*="savings"],
+.local-dashboard-panel[data-component="overview-avg-saving-per-call"],
+.local-dashboard-panel[data-component="overview-quality"] { --panel-accent: #23745c; }
+.local-dashboard-panel[data-component="overview-measured"],
+.local-dashboard-panel[data-component="overview-last-run"],
+.local-dashboard-panel[data-component="overview-recent-runs"],
+.local-dashboard-panel[data-component="recent-runs"] { --panel-accent: #986714; }
+.local-dashboard-panel[data-component*="tokens"],
+.local-dashboard-panel[data-component="overview-compression"] { --panel-accent: #7951b6; }
+.local-dashboard-panel[data-component="overview-tier-mix"],
+.local-dashboard-panel[data-component="overview-run-locally"],
+.local-dashboard-panel[data-component="workflow-run-path"],
+.local-dashboard-panel[data-component="overview-cache-hit-rate"] { --panel-accent: #137b87; }
+.local-dashboard-panel[data-component="credentials-keys"] { --panel-accent: #ac507a; }
+.local-dashboard-panel[data-component="api-keys-local-identity"] { --panel-accent: #a55d29; }
+[data-theme="dark"] .local-dashboard-panel { --panel-accent: #86aff4; }
+[data-theme="dark"] .local-dashboard-panel[data-component*="savings"],
+[data-theme="dark"] .local-dashboard-panel[data-component="overview-avg-saving-per-call"],
+[data-theme="dark"] .local-dashboard-panel[data-component="overview-quality"] { --panel-accent: #8ed4ae; }
+[data-theme="dark"] .local-dashboard-panel[data-component="overview-measured"],
+[data-theme="dark"] .local-dashboard-panel[data-component="overview-last-run"],
+[data-theme="dark"] .local-dashboard-panel[data-component="overview-recent-runs"],
+[data-theme="dark"] .local-dashboard-panel[data-component="recent-runs"] { --panel-accent: #dfb76a; }
+[data-theme="dark"] .local-dashboard-panel[data-component*="tokens"],
+[data-theme="dark"] .local-dashboard-panel[data-component="overview-compression"] { --panel-accent: #b99aec; }
+[data-theme="dark"] .local-dashboard-panel[data-component="overview-tier-mix"],
+[data-theme="dark"] .local-dashboard-panel[data-component="overview-run-locally"],
+[data-theme="dark"] .local-dashboard-panel[data-component="workflow-run-path"],
+[data-theme="dark"] .local-dashboard-panel[data-component="overview-cache-hit-rate"] { --panel-accent: #72c5d0; }
+[data-theme="dark"] .local-dashboard-panel[data-component="credentials-keys"] { --panel-accent: #e397b8; }
+[data-theme="dark"] .local-dashboard-panel[data-component="api-keys-local-identity"] { --panel-accent: #e9ad7d; }
+@keyframes local-panel-enter {
+  from { opacity: 0; transform: translateY(5px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .local-dashboard-page *, .local-dashboard-page *::before, .local-dashboard-page *::after {
+    animation: none !important;
+    transition: none !important;
+  }
+}

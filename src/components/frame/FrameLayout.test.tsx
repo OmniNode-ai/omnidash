@@ -29,7 +29,7 @@ describe('FrameLayout', () => {
   beforeEach(() => {
     // jsdom sets window.innerWidth=0 which initialises sidebarCollapsed:true,
     // hiding sidebar text. Force it open so text-based assertions pass.
-    useFrameStore.setState({ sidebarCollapsed: false });
+    useFrameStore.setState({ sidebarCollapsed: false, showDeveloperTools: false });
   });
 
   it('renders the OmniDash brand in the sidebar', () => {
@@ -53,23 +53,25 @@ describe('FrameLayout', () => {
     expect(screen.getByTestId('dashboard-content')).toBeInTheDocument();
   });
 
-  it('renders the Dashboards section in the sidebar nav', () => {
+  it('renders core and evidence navigation in the sidebar', () => {
     render(
       <FrameLayout>
         <div>content</div>
       </FrameLayout>,
       { wrapper: Wrapper },
     );
-    expect(screen.getByText('Dashboards')).toBeInTheDocument();
+    expect(screen.getByRole('navigation', { name: 'Local' })).toBeInTheDocument();
+    expect(screen.getByRole('navigation', { name: 'Evidence' })).toBeInTheDocument();
   });
 
-  it('has a New dashboard button in the sidebar', () => {
+  it('offers the developer setting while deferring dashboard creation', () => {
     render(
       <FrameLayout>
         <div>content</div>
       </FrameLayout>,
       { wrapper: Wrapper },
     );
-    expect(screen.getByRole('button', { name: /new dashboard/i })).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /new dashboard/i })).not.toBeInTheDocument();
+    expect(screen.getByRole('checkbox', { name: 'Show developer tools' })).toBeInTheDocument();
   });
 });

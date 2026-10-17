@@ -26,6 +26,10 @@
 @import './design-tokens.css';
 
 /* Font imports */
+@import "@fontsource/inter/400.css";
+@import "@fontsource/inter/500.css";
+@import "@fontsource/inter/600.css";
+@import "@fontsource/inter/700.css";
 @import "@fontsource/ibm-plex-sans/400.css";
 @import "@fontsource/ibm-plex-sans/500.css";
 @import "@fontsource/ibm-plex-sans/600.css";
@@ -69,7 +73,7 @@
        palette changes between modes. If a future theme wants a different
        family (e.g. a "brutalist" theme swapping to Space Grotesk + Space
        Mono), it overrides these two vars in its scope. */
-    --font-sans: "IBM Plex Sans", system-ui, -apple-system, Helvetica, Arial, sans-serif;
+    --font-sans: "Inter", system-ui, -apple-system, Helvetica, Arial, sans-serif;
     --font-mono: "IBM Plex Mono", ui-monospace, Menlo, monospace;
     /* Brand-surface font. Currently scoped to the sidebar product
      * wordmark per the branding guideline; do not apply to body text
@@ -116,14 +120,14 @@
     --brand-soft: oklch(92% 0.08 var(--accent-h));
     --brand-ink: oklch(35% 0.10 var(--accent-h));
 
-    --bg: oklch(98.5% 0.004 85);
+    --bg: #f8f9fb;
     --panel: oklch(100% 0 0);
-    --panel-2: oklch(97% 0.004 85);
-    --ink: oklch(22% 0.01 260);
-    --ink-2: oklch(45% 0.01 260);
-    --ink-3: oklch(62% 0.01 260);
-    --line: oklch(90% 0.005 260);
-    --line-2: oklch(94% 0.004 260);
+    --panel-2: #f4f6f8;
+    --ink: #263244;
+    --ink-2: #505d6d;
+    --ink-3: #647080;
+    --line: #e3e7eb;
+    --line-2: #edf0f3;
     --sidebar: var(--panel-2);
     --sidebar-ink: var(--ink);
     --sidebar-ink-2: var(--ink-2);
@@ -133,9 +137,9 @@
     --sidebar-hover-strong: var(--line);
     --sidebar-input: var(--panel);
 
-    --status-ok: oklch(70% 0.15 145);
-    --status-warn: oklch(78% 0.15 75);
-    --status-bad: oklch(65% 0.18 25);
+    --status-ok: #23745c;
+    --status-warn: #8a6119;
+    --status-bad: #b54343;
 
     --radius: 8px;
     --radius-lg: 12px;
@@ -208,7 +212,7 @@
     --panel-2: oklch(23% 0.008 260);
     --ink: oklch(94% 0.005 260);
     --ink-2: oklch(72% 0.01 260);
-    --ink-3: oklch(55% 0.01 260);
+    --ink-3: #a0aab8;
     --line: oklch(28% 0.01 260);
     --line-2: oklch(24% 0.01 260);
     --sidebar: oklch(12% 0.008 260);
@@ -221,6 +225,9 @@
 
     --brand-soft: oklch(32% 0.10 var(--accent-h));
     --brand-ink: oklch(85% 0.14 var(--accent-h));
+    --status-ok: #8ed4ae;
+    --status-warn: #e3bd71;
+    --status-bad: #f18f8f;
     --destructive-foreground: oklch(98% 0 0);
 
     --shadow-sm: 0 1px 2px oklch(0% 0 0 / 0.3);

@@ -522,13 +522,13 @@ test('sidebar surfaces and controls follow the theme in expanded and collapsed l
     const background = await token(theme === 'light' ? '--panel-2' : '--sidebar');
     const foreground = await token(theme === 'light' ? '--ink' : '--sidebar-ink');
     const secondary = await token(theme === 'light' ? '--ink-2' : '--sidebar-ink-2');
-    const hover = theme === 'light' ? await token('--line-2') : 'oklch(0.22 0.01 260)';
     await expect(sidebar).toHaveCSS('background-color', background);
     await expect(sidebar).toHaveCSS('color', foreground);
     await expect(page.getByTestId('nav-local-runs')).toHaveCSS('color', secondary);
     await expect(page.locator('.local-nav-chip').first()).toHaveCSS('border-top-color', await token('--sidebar-line'));
+    const idleBackground = await page.getByTestId('nav-local-runs').evaluate(el => getComputedStyle(el).backgroundColor);
     await page.getByTestId('nav-local-runs').hover();
-    await expect(page.getByTestId('nav-local-runs')).toHaveCSS('background-color', hover);
+    await expect.poll(() => page.getByTestId('nav-local-runs').evaluate(el => getComputedStyle(el).backgroundColor)).not.toBe(idleBackground);
     await expect(page.getByTestId('nav-local-runs')).toHaveCSS('color', foreground);
 
     for (const width of [1440, 390]) {
@@ -541,11 +541,11 @@ test('sidebar surfaces and controls follow the theme in expanded and collapsed l
       await expect(sidebar).toHaveCSS('background-color', background);
     }
     await page.setViewportSize({ width: 1440, height: 900 });
-    await page.getByRole('button', { name: 'New dashboard', exact: true }).click();
-    const rename = sidebar.locator('input');
-    await expect(rename).toBeVisible();
-    await expect(rename).toHaveCSS('background-color', theme === 'light' ? await token('--panel') : 'oklch(0.28 0.01 260)');
-    await rename.press('Escape');
+    await expect(page.getByRole('button', { name: 'New dashboard', exact: true })).toHaveCount(0);
+    const developer = page.getByRole('checkbox', { name: 'Show developer tools', exact: true });
+    await developer.check();
+    await expect(page.getByTestId('nav-lab')).toBeVisible();
+    await developer.uncheck();
     await page.getByTestId('nav-local-overview').click();
     await expect(page.getByRole('heading', { level: 1, name: 'Overview', exact: true })).toBeVisible();
   }
@@ -680,18 +680,19 @@ test('breadcrumbs describe the actual page through navigation and direct URLs', 
   await expect(page.locator('.breadcrumbs .cur')).toHaveText('Page not found');
 });
 
-// A dashboard can remain selected in the store while a local page is open.
-// Creating from Overview must open the new canvas, and navigation must highlight only the visible page.
-test('creating a dashboard opens its canvas and leaves only one selected navigation item', async ({ page }) => {
+// OMN-21166 defers creation; legacy layouts remain available through explicit links.
+test('MVP navigation defers dashboard creation and highlights only the visible page', async ({ page }) => {
   await serveFixtures(page);
   await page.goto('/overview');
-  await page.getByRole('button', { name: 'New dashboard', exact: true }).click();
-  await expect(page).toHaveURL(/\/dashboard$/);
-  await page.locator('.sidebar input').press('Escape');
+  await expect(page.getByRole('button', { name: 'New dashboard', exact: true })).toHaveCount(0);
   await expect(page.locator('.sidebar .dash-item.active')).toHaveCount(1);
+  await page.getByTestId('nav-local-runs').click();
+  await expect(page.locator('.sidebar .dash-item.active')).toHaveCount(1);
+  await expect(page.getByTestId('nav-local-runs')).toHaveAttribute('aria-current', 'page');
+  await page.goto('/dashboard');
+  await expect(page.locator('.breadcrumbs .cur')).toHaveText('Dashboards');
   await page.getByTestId('nav-local-overview').click();
   await expect(page.locator('.sidebar .dash-item.active')).toHaveCount(1);
-  await expect(page.getByTestId('nav-local-overview')).toHaveClass('dash-item active');
 });
 
 // The live Chrome pass showed raw, square select controls and an unnecessary scrollbar in the empty list.
@@ -728,7 +729,8 @@ test('short sidebar windows scroll navigation without a cramped empty-list scrol
   await serveFixtures(page);
   await page.goto('/overview');
   const emptyList = page.locator('.dash-list');
-  await expect.poll(() => emptyList.evaluate(el => el.scrollHeight <= el.clientHeight)).toBe(true);
+  await expect(emptyList).toHaveCount(0);
+  await page.getByRole('checkbox', { name: 'Show developer tools', exact: true }).check();
   await page.setViewportSize({ width: 1440, height: 500 });
   const sidebar = page.locator('.sidebar');
   await expect(sidebar).toHaveCSS('overflow-y', 'auto');

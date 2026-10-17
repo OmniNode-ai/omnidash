@@ -295,7 +295,7 @@ describe('Partial pages (FR-3, CR-2, CR-3, AK-3, F24)', () => {
     expect(within(panel).queryByText(/^\$?0(?:\.0+)?$/)).not.toBeInTheDocument();
   });
 
-  it('API Keys shows the served tenant id, typed minted-at, and CLOUD_NOT_LINKED with no form (AK-1, AK-3)', async () => {
+  it('API Keys preserves served local identity without the deferred Cloud Keys panel (OMN-21166 AC5)', async () => {
     harness.reachable = new Set([SAVINGS]);
     harness.answer = () => Promise.resolve([{ tenant_id: '820272f9-4aaf-5add-a2df-0af942852ab2', sessions: [] }]);
     render(<LocalDashboardPage pageName="api-keys" />);
@@ -304,7 +304,8 @@ describe('Partial pages (FR-3, CR-2, CR-3, AK-3, F24)', () => {
     const identity = screen.getByRole('heading', { name: 'Local identity' }).closest('article')!;
     expect(within(identity).getByText('820272f9-4aaf-5add-a2df-0af942852ab2')).toBeInTheDocument();
     expect(within(identity).getByText('Not served yet: waits on local-identity.v1 (OMN-19986)')).toBeInTheDocument();
-    expect(screen.getByText(/CLOUD_NOT_LINKED/)).toBeInTheDocument();
+    expect(screen.queryByRole('heading', { name: 'Cloud Keys' })).not.toBeInTheDocument();
+    expect(screen.queryByText(/CLOUD_NOT_LINKED/)).not.toBeInTheDocument();
     expect(document.querySelector('input, textarea, select, form')).toBeNull();
   });
 

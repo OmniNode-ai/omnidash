@@ -15,11 +15,11 @@ export interface TopicActivityRow {
   sampled_at: string;
   high_watermark_total: number;
   low_watermark_total: number;
-  retained_messages: number;
+  retained_messages: number | null;
   messages_since_previous_sample: number;
-  rate_per_second: number;
-  messages_last_hour: number;
-  messages_last_24h: number;
+  rate_per_second: number | null;
+  messages_last_hour: number | null;
+  messages_last_24h: number | null;
   rate_last_hour_per_second: number;
   retention_truncated: boolean;
   newest_message_at: string | null;
@@ -30,6 +30,13 @@ export interface TopicActivityRow {
 
 type SortKey = 'topic' | 'rate_per_second' | 'messages_last_hour' | 'messages_last_24h' | 'newest_message_at';
 const TOPIC_ACTIVITY_EMPTY_REASON: EmptyStateReason = 'upstream-blocked';
+
+// A sample can be available before every numeric field has a measurement.
+// Format only served finite numbers; null or malformed values are never zero.
+function measuredNumber(value: unknown, decimals?: number): string {
+  if (typeof value !== 'number' || !Number.isFinite(value)) return 'Not measured';
+  return decimals === undefined ? value.toLocaleString() : value.toFixed(decimals);
+}
 
 function emptySnapshot(): ProjectionSnapshot<TopicActivityRow> {
   return {
@@ -140,10 +147,10 @@ export function TopicActivityView({
             {rows.map((row) => (
               <div key={row.topic} data-testid="topic-activity-row" style={{ display: 'grid', gridTemplateColumns: grid, gap: 8, padding: '7px 0', borderBottom: '1px solid var(--line-2)', alignItems: 'center' }}>
                 <Text as="span" size="xs" family="mono" color="primary" truncate title={row.topic}>{row.topic}</Text>
-                <Text as="span" size="xs" family="mono" color="secondary">{row.rate_per_second.toFixed(2)}</Text>
-                <Text as="span" size="xs" family="mono" color="secondary">{row.messages_last_hour.toLocaleString()}</Text>
-                <Text as="span" size="xs" family="mono" color="secondary">{row.messages_last_24h.toLocaleString()}</Text>
-                <Text as="span" size="xs" family="mono" color={row.retention_truncated ? 'warn' : 'secondary'}>{row.retained_messages.toLocaleString()}{row.retention_truncated ? '+' : ''}</Text>
+                <Text as="span" size="xs" family="mono" color="secondary">{measuredNumber(row.rate_per_second, 2)}</Text>
+                <Text as="span" size="xs" family="mono" color="secondary">{measuredNumber(row.messages_last_hour)}</Text>
+                <Text as="span" size="xs" family="mono" color="secondary">{measuredNumber(row.messages_last_24h)}</Text>
+                <Text as="span" size="xs" family="mono" color={row.retention_truncated ? 'warn' : 'secondary'}>{measuredNumber(row.retained_messages)}{row.retention_truncated && typeof row.retained_messages === 'number' && Number.isFinite(row.retained_messages) ? '+' : ''}</Text>
                 <Text as="span" size="xs" family="mono" color="secondary">{formatAge(row.newest_message_at, new Date(snapshot.readAt).getTime())}</Text>
                 <Text as="span" size="xs" family="mono" color={row.activity_state === 'ACTIVE' ? 'ok' : row.activity_state === 'QUIET' ? 'tertiary' : 'warn'}>{row.activity_state}</Text>
               </div>

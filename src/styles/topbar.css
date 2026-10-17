@@ -85,3 +85,11 @@
    in place rather than letting it loop. */
 @keyframes spin-once { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
 .icon-btn .spin-once { animation: spin-once 700ms cubic-bezier(.2,.8,.2,1); }
+
+/* OMN-21166: quieter chrome, matching the temporary editorial mockup. */
+.topbar { background: var(--bg); }
+.icon-btn { border-radius: 8px; }
+.icon-btn:focus-visible { outline: 2px solid var(--brand-ink); outline-offset: 2px; }
+@media (prefers-reduced-motion: reduce) {
+  .topbar *, .toast { animation: none !important; transition: none !important; }
+}

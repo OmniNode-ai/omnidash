@@ -528,7 +528,7 @@ describe('Amendment 6: the six local pages and the loader', () => {
     const identity = page.components.find((c) => c.component_id === 'api-keys-local-identity');
     expect(identity?.data_bindings?.[0]?.projection_topic).toBe('onex.snapshot.projection.delegation.savings.v1');
     expect(identity?.data_bindings?.[0]?.required_fields).toContain('tenant_id');
-    expect(page.components.find((c) => c.component_id === 'api-keys-cloud')?.data_bindings).toEqual([]);
+    expect(page.components.find((c) => c.component_id === 'api-keys-cloud')).toBeUndefined();
   });
 
   it('Credentials reads the tenant credentials exposure and declares no value field (CR-1, CR-3)', () => {

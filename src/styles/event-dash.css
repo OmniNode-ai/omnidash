@@ -303,3 +303,73 @@
 .ev-root .ev-empty .ev-empty-title { font-family: var(--ev-font-display); font-size: 14px; font-weight: 600; color: var(--ev-txt); }
 .ev-root .ev-empty .ev-empty-reason { font-family: var(--ev-font-mono); font-size: 11.5px; color: var(--ev-warn); word-break: break-word; }
 .ev-root .ev-empty .ev-empty-note { font-size: 11.5px; color: var(--ev-txt-3); }
+
+/* OMN-21166: use the frame's bundled typography and theme on evidence and
+ * developer surfaces. Keep the existing inner scroller and grid contracts. */
+.ev-root {
+  --ev-bg: var(--bg);
+  --ev-bg-1: var(--panel);
+  --ev-bg-2: var(--panel-2);
+  --ev-bg-3: var(--line-2);
+  --ev-line: var(--line);
+  --ev-line-soft: var(--line-2);
+  --ev-txt: var(--ink);
+  --ev-txt-2: var(--ink-2);
+  --ev-txt-3: var(--ink-3);
+  --ev-accent: #5965af;
+  --ev-accent-d: #485292;
+  --ev-accent-ink: #fff;
+  --ev-ok: var(--status-ok);
+  --ev-fail: var(--status-bad);
+  --ev-warn: var(--status-warn);
+  --ev-info: #3769bd;
+  --ev-m-blue: var(--chart-1);
+  --ev-m-green: var(--chart-2);
+  --ev-m-amber: var(--chart-3);
+  --ev-m-red: var(--chart-4);
+  --ev-m-purple: var(--chart-6);
+  --ev-m-pink: var(--chart-5);
+  --ev-m-teal: var(--chart-7);
+  --ev-font-ui: var(--font-sans);
+  --ev-font-display: var(--font-sans);
+  --ev-font-mono: var(--font-mono);
+  --ev-r: 9px;
+}
+[data-theme="dark"] .ev-root {
+  --ev-accent: #a4acee;
+  --ev-accent-d: #8792dc;
+  --ev-accent-ink: #182034;
+  --ev-info: #86aff4;
+}
+.ev-root .panel, .ev-root .kpi {
+  box-shadow: var(--shadow-sm);
+  transition: border-color 180ms ease, box-shadow 180ms ease;
+  animation: ev-panel-enter 360ms ease-out both;
+}
+.ev-root .panel:hover, .ev-root .kpi:hover {
+  border-color: color-mix(in oklch, var(--ev-accent) 30%, var(--ev-line));
+  box-shadow: var(--shadow-md);
+}
+.ev-root .panel-h .pt { font-weight: 500; letter-spacing: -.01em; }
+.ev-root .kpi .k-l { text-transform: none; letter-spacing: 0; font-size: 12px; }
+.ev-root .code { background: var(--ev-bg-2); }
+.ev-root .code pre { color: var(--ev-txt); }
+.ev-root .tok-key { color: var(--ev-info); }
+.ev-root .tok-str { color: var(--ev-ok); }
+.ev-root .tok-num { color: var(--ev-warn); }
+.ev-root .pstage.active .box {
+  background: color-mix(in oklch, var(--ev-accent) 7%, var(--ev-bg-1));
+  box-shadow: 0 0 0 1px var(--ev-accent);
+}
+.ev-root .tab:hover { border-color: var(--ev-txt-3); }
+.ev-root .tab:focus-visible { outline: 2px solid var(--ev-accent); outline-offset: 2px; }
+@keyframes ev-panel-enter {
+  from { opacity: 0; transform: translateY(5px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .ev-root *, .ev-root *::before, .ev-root *::after {
+    animation: none !important;
+    transition: none !important;
+  }
+}
