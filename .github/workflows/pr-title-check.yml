@@ -17,13 +17,7 @@ jobs:
     # OMN-20998: run the published compute node under the existing required context.
     # The node reads only the event's title and author; no checkout is needed.
     name: pr-title / check-title
-    runs-on: >-
-      ${{
-        (github.event_name == 'pull_request' &&
-         github.event.pull_request.head.repo.full_name != github.repository)
-        && fromJSON(vars.OMNI_PUBLIC_PR_RUNS_ON_JSON || '["ubuntu-latest"]')
-        || fromJSON(vars.OMNI_TRUSTED_CI_RUNS_ON_JSON || '["self-hosted","omnibase-ci"]')
-      }}
+    runs-on: ubuntu-latest
     timeout-minutes: 10
     permissions:
       contents: read

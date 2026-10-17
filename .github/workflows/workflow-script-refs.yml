@@ -112,6 +112,13 @@ jobs:
           python -m pytest tests/ci/test_sibling_reads_pinned.py
           -q --noconftest -p no:cacheprovider -c /dev/null
 
+      # OMN-19998: a public repository's jobs run on GitHub-hosted runners; the
+      # core placement check is a CI Summary job and a pre-commit hook.
+      - name: Assert public-repository runner placement
+        run: >-
+          python -m pytest tests/ci/test_public_runner_placement_omn19998.py
+          -q --noconftest -p no:cacheprovider -c /dev/null
+
       # OMN-9050: check-handshake.yml is the only omnibase_core pin; the bot
       # bumps it and every other workflow reads it, so none can fall behind.
       - name: Assert no workflow but the handshake carries an omnibase_core ref

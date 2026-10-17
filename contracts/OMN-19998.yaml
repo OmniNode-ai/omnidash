@@ -1,0 +1,32 @@
+# SPDX-FileCopyrightText: 2026 OmniNode.ai Inc.
+# SPDX-License-Identifier: MIT
+schema_version: 1.0.0
+ticket_id: OMN-19998
+title: 'omnidash: public-repository CI runs on GitHub-hosted runners'
+summary: Operator RULING 2026-10-16T07:07:09Z, "Ci runners should be for private repos only." omnidash is public, so every workflow job runs on a literal GitHub-hosted label and omnibase_core's check-public-runner-placement runs as a CI Summary job and as a pre-commit hook.
+is_seam_ticket: false
+interface_change: false
+interfaces_touched: []
+requirements:
+- id: req-omn19998-public-runner-placement
+  statement: No omnidash workflow job names the self-hosted fleet or a routing variable that falls back to it, and omnibase_core's check-public-runner-placement runs as a CI Summary job and as a pre-commit hook at one core release.
+  acceptance:
+  - id: AC1
+    statement: 'AC1: every job in .github/workflows runs on a literal ubuntu label, no non-comment workflow line names omnibase-ci or an OMNI_*_RUNS_ON_JSON variable, the Public Runner Placement job is unconditional, hosted and carries a positive control, the pre-commit hook pins the same core release, and CI Summary requires the job -- falsifier: uv run --no-project --python 3.12 --with pyyaml --with pytest python -m pytest tests/ci/test_public_runner_placement_omn19998.py -q --noconftest -p no:cacheprovider -c /dev/null fails at the merge base, where five workflow files fall back to the fleet and neither the job nor the hook exists.'
+evidence_requirements:
+- kind: tests
+  description: The placement tests read every workflow file, the ci.yml job, .pre-commit-config.yaml and the CI Summary script.
+  command: uv run --no-project --python 3.12 --with pyyaml --with pytest python -m pytest tests/ci/test_public_runner_placement_omn19998.py -q --noconftest -p no:cacheprovider -c /dev/null
+emergency_bypass:
+  enabled: false
+  justification: ''
+  follow_up_ticket_id: ''
+dod_evidence:
+- id: dod-omn19998-ac1-public-runner-placement
+  description: 'AC1: omnidash workflow jobs run on GitHub-hosted labels, the core placement check is a CI Summary job and a pre-commit hook'
+  source: manual
+  checks:
+  - check_type: test_passes
+    check_value: uv run --no-project --python 3.12 --with pyyaml --with pytest python -m pytest tests/ci/test_public_runner_placement_omn19998.py -q --noconftest -p no:cacheprovider -c /dev/null
+  binds_ac:
+  - AC1

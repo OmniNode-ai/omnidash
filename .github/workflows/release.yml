@@ -69,10 +69,7 @@ concurrency:
 jobs:
   sync-main:
     name: Sync main to release tag
-    runs-on: >-
-      ${{
-        fromJSON(vars.OMNI_TRUSTED_CI_RUNS_ON_JSON || '["self-hosted","omnibase-ci"]')
-      }}
+    runs-on: ubuntu-latest
     timeout-minutes: 15
 
     steps:
