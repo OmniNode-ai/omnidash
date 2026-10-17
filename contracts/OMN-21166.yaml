@@ -1,0 +1,85 @@
+{
+  "schema_version": "1.0.0",
+  "ticket_id": "OMN-21166",
+  "title": "Simplify MVP navigation and defer advanced tools",
+  "summary": "Focus the default MVP navigation, preserve the six core pages and Evidence, defer advanced tools and keep existing data and saved layouts. Browser fixtures replay visibility, filters, drilldowns, themes, responsive layouts and repeatable capture states. Private live-preview receipts are separate from deployment or promotion evidence.",
+  "is_seam_ticket": false,
+  "interface_change": false,
+  "interfaces_touched": [],
+  "requirements": [
+    {
+      "id": "req-transcribed-acceptance-criteria",
+      "statement": "Acceptance criteria copied from the complete live ticket body on 2026-10-17. The ticket remains the source.",
+      "acceptance": [
+        {
+          "id": "AC1",
+          "statement": "AC1: Primary navigation retains Overview, Runs, Workflow, Usage, Credentials and API Keys in that order, with working routes and an identifiable active page. Falsifier: a browser navigation walk cannot reach any core page or finds a reordered/missing entry."
+        },
+        {
+          "id": "AC2",
+          "statement": "AC2: Experimentation, Agent Workbench, Event Bus and Lab appear together in one Developer area controlled by an accessible setting, off for a fresh profile. Enabling it exposes all four working routes; disabling it hides their navigation entries. Existing feature implementations remain intact; this is a visibility preference, not an authorization boundary. Falsifier: a fresh-profile walk exposes those entries by default, or an enabled walk cannot reach one."
+        },
+        {
+          "id": "AC3",
+          "statement": "AC3: Default MVP UI contains no custom dashboard creation, widget-palette, widget-configuration or layout-editing affordance. Existing saved layouts and builder implementations are preserved. Falsifier: a six-page browser walk finds a builder entry point, or existing layout data is removed."
+        },
+        {
+          "id": "AC4",
+          "statement": "AC4: The AI assistant launcher and panel are absent from the default MVP surface, with its implementation preserved. Falsifier: the launcher/panel is reachable from the default app frame."
+        },
+        {
+          "id": "AC5",
+          "statement": "AC5: Cloud Keys is hidden in local-only mode while the rest of API Keys, including local identity/access information, remains available as served. Do not change behavior in other modes. Falsifier: a local-only browser capture shows Cloud Keys, or hides local identity/access information."
+        },
+        {
+          "id": "AC6",
+          "statement": "AC6: Delegation Evidence remains directly discoverable and accessible; its existing routing and quality evidence is preserved. Do not consolidate or hide it in this ticket. Falsifier: the default navigation loses its evidence entry or a regression walk cannot access existing evidence."
+        },
+        {
+          "id": "AC7",
+          "statement": "AC7: Existing Runs filters, selected-run links into Workflow, Usage views, theme switching and sidebar collapse continue to work. No new metric calculations or data paths. Falsifier: the before/after regression walk differs in these behaviors."
+        },
+        {
+          "id": "AC8",
+          "statement": "AC8: A repeatable browser verification artifact records the tested SHA, mode and viewport, Developer setting off/on, all six core pages and Delegation Evidence. Include missing-tenant and populated-tenant states, plus screenshots at 1440x900 and a narrow viewport. A missing populated capture remains explicitly unverified. Falsifier: any listed state lacks a capture or an existing required field becomes inaccessible."
+        }
+      ]
+    }
+  ],
+  "evidence_requirements": [
+    {
+      "kind": "tests",
+      "description": "AC1-AC8: the complete browser suite covers MVP visibility and preserved functionality, with missing-tenant and populated-fixture captures; live preview receipts are kept separately.",
+      "command": "(test -d node_modules || npm ci --no-audit --no-fund) && npx playwright install chromium && npm run test:e2e -- --project=chromium --workers=1 --retries=0"
+    }
+  ],
+  "dod_evidence": [
+    {
+      "id": "dod-omn21166-mvp-browser-regression",
+      "description": "AC1-AC8: replay the browser regressions and their attached capture manifests. These fixture checks do not substitute for a deployed runtime probe or independent review.",
+      "source": "manual",
+      "binds_ac": [
+        "AC1",
+        "AC2",
+        "AC3",
+        "AC4",
+        "AC5",
+        "AC6",
+        "AC7",
+        "AC8"
+      ],
+      "checks": [
+        {
+          "check_type": "test_passes",
+          "check_value": "(test -d node_modules || npm ci --no-audit --no-fund) && npx playwright install chromium && npm run test:e2e -- --project=chromium --workers=1 --retries=0",
+          "cwd": "${OMNI_HOME}/omnidash"
+        }
+      ]
+    }
+  ],
+  "emergency_bypass": {
+    "enabled": false,
+    "justification": "",
+    "follow_up_ticket_id": ""
+  }
+}
