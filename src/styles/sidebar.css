@@ -321,3 +321,11 @@
 @media (prefers-reduced-motion: reduce) {
   .sidebar *, .sidebar *::before, .sidebar *::after, .sidebar-backdrop { transition: none !important; animation: none !important; }
 }
+
+/* The mockup's quieter rail, without decorative workspace/profile controls. */
+.sidebar { box-shadow: none; }
+:root:not([data-theme="dark"]) { --sidebar: #f4f5f6; }
+.local-nav .mvp-nav-item { padding-block: 8px; margin-block: 2px; border-radius: 7px; }
+.mvp-nav-item .dash-marker { background: transparent; width: 22px; height: 22px; }
+.mvp-nav-item.active .dash-marker { background: transparent; }
+.local-nav .mvp-nav-item { grid-template-columns: 22px minmax(0,1fr) auto; }

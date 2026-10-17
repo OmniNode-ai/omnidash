@@ -11,10 +11,7 @@ const RUNS_HEADERS = [
   'Run', 'Created', 'Status', 'Cause', 'Model', 'Backend', 'Host', 'Tokens in', 'Tokens out', 'Local cost', 'Modelled saving',
   'Baseline model', 'Basis', 'Task type', 'Duration', 'Tokens to compliance', 'Route tier', 'Quality score',
 ];
-const RECENT_HEADERS = [
-  'Time', 'Age', 'Status', 'Cause', 'Task type', 'Model', 'Backend', 'Host', 'Tokens in', 'Tokens out', 'Cost',
-  'Basis', 'Duration', 'Route tier', 'Quality score', 'Run',
-];
+const RECENT_HEADERS = ['Time','Run','Status','Model','Cost','Duration','Age','Cause','Task type','Backend','Host','Tokens in','Tokens out','Basis','Route tier','Quality score'];
 
 const decisions = Array.from({ length: 23 }, (_, index) => {
   const minute = String(index).padStart(2, '0');
@@ -88,7 +85,9 @@ for (const [name, path, headers] of [
     await page.setViewportSize({ width: 1440, height: 900 });
     await serve(page);
     await page.goto(path);
-    // AC2: every column header present before this change is still there, in order.
+    // OMN-21166 compact view: reveal every retained column through the native control.
+    if (path === '/') await page.getByRole('checkbox', { name: 'Show all run fields', exact: true }).check();
+    // AC2: every original column remains; presentation order puts the six primary fields first.
     const table = await runTable(page, [...headers]);
     await expect(table.getByText('generativelanguage.googleapis.com').first()).toBeVisible();
     await table.evaluate((element) => element.scrollIntoView({ block: 'start' }));

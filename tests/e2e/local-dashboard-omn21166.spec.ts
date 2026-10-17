@@ -147,7 +147,7 @@ test('AC9 all eleven destinations have distinct icons and theme-safe accents', a
   await page.goto('/overview');
   await page.getByRole('checkbox', { name: 'Show developer tools', exact: true }).check();
   for (const theme of ['dark', 'light']) {
-    if (theme === 'light') await page.getByRole('button', { name: 'Toggle theme', exact: true }).click();
+    if ((await page.locator('html').getAttribute('data-theme') === 'dark' ? 'dark' : 'light') !== theme) await page.getByRole('button', { name: 'Toggle theme', exact: true }).click();
     const entries = await page.locator('.sidebar a[data-testid^="nav-"]').evaluateAll(links => links.map(link => ({
       color: getComputedStyle(link.querySelector('.dash-marker')!).color,
       icon: link.querySelector('svg')?.getAttribute('class'),
@@ -174,7 +174,7 @@ test('AC8 repeatable fixture artifact: both themes, viewports and developer stat
     for (const enabled of [false, true]) {
       await page.getByRole('checkbox', { name: 'Show developer tools', exact: true }).setChecked(enabled);
       for (const theme of ['dark', 'light']) {
-        if (theme === 'light') {
+        if ((await page.locator('html').getAttribute('data-theme') === 'dark' ? 'dark' : 'light') !== theme) {
           if (width === 390) await page.getByRole('button', { name: 'Collapse sidebar', exact: true }).click();
           await page.getByRole('button', { name: 'Toggle theme', exact: true }).click();
           if (width === 390) await page.getByRole('button', { name: 'Expand sidebar', exact: true }).click();

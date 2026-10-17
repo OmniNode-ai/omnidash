@@ -14,6 +14,11 @@ test('required field and control inventory stays available on every current page
     await page.goto('/' + route);
     await expect(page.locator('.breadcrumbs .cur')).not.toHaveText('');
     await expect(page.locator('.main')).not.toContainText(/Loading(?: runtime exposures| census|…|\.\.\.)/);
+    if (route === 'overview') {
+      await page.getByRole('checkbox', { name: 'Show all run fields', exact: true }).check();
+      await page.locator('.local-overview-secondary > summary').press('Enter');
+      if (await page.locator('.local-run-more summary').count()) await page.locator('.local-run-more summary').press('Enter');
+    }
     pages[route] = await page.evaluate(() => ({
       fields: [...document.querySelectorAll('.main th, .main dt, .main .kv .k, .main .k-l, .main .dt-head > div')]
         .map(el => el.textContent?.trim()).filter(Boolean),
@@ -37,6 +42,11 @@ test('text contrast is measured on real rendered backgrounds in both themes', as
     await page.goto('/' + route);
     await expect(page.locator('.breadcrumbs .cur')).not.toHaveText('');
     await expect(page.locator('.main')).not.toContainText(/Loading(?: runtime exposures| census|…|\.\.\.)/);
+    if (route === 'overview') {
+      await page.getByRole('checkbox', { name: 'Show all run fields', exact: true }).check();
+      await page.locator('.local-overview-secondary > summary').press('Enter');
+      if (await page.locator('.local-run-more summary').count()) await page.locator('.local-run-more summary').press('Enter');
+    }
     for (const theme of ['light','dark']) {
       if ((await page.locator('html').getAttribute('data-theme') === 'dark' ? 'dark' : 'light') !== theme) await page.getByRole('button',{name:'Toggle theme'}).click();
       await expect(page.locator('body')).toHaveClass(new RegExp(`theme-${theme}`));
@@ -92,6 +102,11 @@ test('chart marks remain distinguishable against their actual surfaces', async (
   for (const route of ['overview','runs','usage']) {
     await page.goto('/'+route);
     await expect(page.locator('.main')).not.toContainText(/Loading(?: runtime exposures| census|…|\.\.\.)/);
+    if (route === 'overview') {
+      await page.getByRole('checkbox', { name: 'Show all run fields', exact: true }).check();
+      await page.locator('.local-overview-secondary > summary').press('Enter');
+      if (await page.locator('.local-run-more summary').count()) await page.locator('.local-run-more summary').press('Enter');
+    }
     for (const theme of ['light','dark']) {
       if ((await page.locator('html').getAttribute('data-theme') === 'dark' ? 'dark' : 'light') !== theme) await page.getByRole('button',{name:'Toggle theme'}).click();
       await expect(page.locator('body')).toHaveClass(new RegExp(`theme-${theme}`));

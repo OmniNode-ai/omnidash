@@ -244,7 +244,7 @@ const firstScreenRuns = [
     actual_score: 1, required_bar: 0.8, data_source: 'real' },
 ];
 
-test('OMN-21015: the Overview first screen at 1440x900 holds the tiles, both charts and the newest run', async ({ page }) => {
+test('OMN-21166: the Overview first screen at 1440x900 holds the tiles, spend and newest run; routing follows', async ({ page }) => {
   await page.setViewportSize({ width: 1440, height: 900 });
   await serve(page, {
     [METERING]: [{ ...meteringAll, runs_measured: 2, runs_unknown_tokens: 0, runs_unknown_spend: 0, tokens_in: 512, tokens_out: 20, pricing_manifest_version: '1.0.0' }, ...metering],
@@ -256,15 +256,21 @@ test('OMN-21015: the Overview first screen at 1440x900 holds the tiles, both cha
   // The two charts (Lakshman, 2026-10-13: seen without scrolling).
   const bars = await placed(page, 'figure.local-chart .local-chart-canvas');
   const donut = await placed(page, 'svg.local-donut');
-  for (const drawing of [bars, donut]) {
+  for (const drawing of [bars]) {
     expect(drawing.window).toEqual([1440, 900]);
     expect(drawing.scrolled).toBe(0);
     expect(drawing.height).toBeGreaterThan(120);
     expect(drawing.top).toBeGreaterThanOrEqual(0);
     expect(drawing.bottom).toBeLessThanOrEqual(900);
   }
-  // Side by side in one row: the donut starts to the right of where the bars end.
-  expect(donut.left).toBeGreaterThan(bars.right);
+  // OMN-21166 approved mockup parity moves routing below the spend/latest-run focus surface.
+  expect(donut.height).toBeGreaterThan(120);
+  expect(donut.top).toBeGreaterThan(bars.bottom);
+  const focus = page.getByRole('region', { name: 'Spend and latest execution', exact: true });
+  const spendPanel = await focus.locator('[data-component="overview-spend-by-day"]').boundingBox();
+  const latestPanel = await focus.locator('[data-component="overview-last-run"]').boundingBox();
+  expect(Math.abs(spendPanel!.y - latestPanel!.y)).toBeLessThan(2);
+  expect(latestPanel!.x).toBeGreaterThan(spendPanel!.x);
 
   // Requirement Q3: tokens in and out, spend and savings, with the baseline's name beside the savings figure.
   const panel = (title: string) => page.locator('.local-dashboard-panel').filter({ has: page.getByRole('heading', { name: title, exact: true }) });

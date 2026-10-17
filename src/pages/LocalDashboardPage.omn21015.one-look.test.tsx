@@ -73,13 +73,13 @@ const SERVED: Array<[string, unknown[]]> = [
 
 /** The parts a panel may draw its text in. Anything else in a panel is a bare figure. */
 const PARTS = [
-  'h2', '.local-dashboard-metric', '.local-dashboard-caption', '.local-dashboard-asof', 'dl.local-dashboard-fields',
+  'h2', 'details > summary', '.local-dashboard-metric', '.local-dashboard-caption', '.local-dashboard-asof', 'dl.local-dashboard-fields',
   '.local-dashboard-table-wrap', '.local-dashboard-empty', '[role="status"]', '[role="alert"]', 'figure.local-chart',
   '.local-share', '.local-meter', '.local-dashboard-filters', '.local-dashboard-pager', '.local-run-title',
   'nav.local-run-diagram', 'ol.local-dashboard-steps', '.usage-tokens-day',
 ].join(', ');
 /** Where a page may draw text at all. */
-const PAGE_PARTS = 'header.local-dashboard-header, article.local-dashboard-panel, main > [role="status"], main > [role="alert"]';
+const PAGE_PARTS = 'details.local-overview-secondary > summary, header.local-dashboard-header, article.local-dashboard-panel, main > [role="status"], main > [role="alert"]';
 
 function texts(root: Element): Text[] {
   const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT);

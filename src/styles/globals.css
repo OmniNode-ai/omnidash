@@ -349,3 +349,8 @@
 
 /* Shared animation keyframes (referenced by .widget-live::before in dashboard.css) */
 @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.5; } }
+
+@media(min-width:1025px) { .app:not(.sidebar-collapsed) { --sidebar-w: 232px; } }
+
+/* Match the approved mockup neutral canvas; dark keeps its own tokens. */
+:root:not([data-theme="dark"]) { --bg: #f8f9f8; }

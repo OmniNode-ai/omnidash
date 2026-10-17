@@ -50,7 +50,7 @@ async function setup(page: Page, populated = true) {
 test.use({ viewport: { width: 1440, height: 900 }, trace: 'on' });
 test.beforeEach(async ({ page }) => { await setup(page); });
 async function theme(page: Page, value: string) {
-  if (await page.locator('html').getAttribute('data-theme') !== value)
+  if ((await page.locator('html').getAttribute('data-theme') === 'dark' ? 'dark' : 'light') !== value)
     await page.getByRole('button', { name: 'Toggle theme', exact: true }).click();
 }
 

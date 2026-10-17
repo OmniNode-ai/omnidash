@@ -1,7 +1,7 @@
 import { useEffect, useId, useRef, useState, type ReactNode } from 'react';
 import { Link, useLocation, useSearch } from 'wouter';
 import {
-  Activity, BadgeCheck, Bot, CalendarDays, ChartColumn, ChartLine, Check, CircleDollarSign, CloudOff, Coins, Copy, DatabaseZap, Fingerprint,
+  Activity, ArrowUpRight, BadgeCheck, Bot, CalendarDays, ChartColumn, ChartLine, Check, CircleDollarSign, CloudOff, Coins, Copy, DatabaseZap, Fingerprint,
   GitBranch, History, IdCard, KeyRound, Layers, ListTree, PiggyBank, Route, Server, Shrink, Table2, TrendingDown, Wallet,
   type LucideIcon,
 } from 'lucide-react';
@@ -573,9 +573,17 @@ export function LastRunCard({ decisions, sessions, now = Date.now() }: RunViewPr
   ];
   return (
     <section aria-label="Last run">
-      <dl className="local-dashboard-fields">
-        {fields.map(([label, value]) => <div key={label}><dt>{label}</dt><dd>{value}</dd></div>)}
+      <dl className="local-dashboard-fields local-latest-primary">
+        {fields.filter(([label]) => ['Status', 'Cause', 'Model', 'Age', 'Run', 'Duration', 'Cost'].includes(label))
+          .map(([label, value]) => <div key={label} data-field={label}><dt>{label}</dt><dd>{value}</dd></div>)}
       </dl>
+      <details className="local-run-more">
+        <summary>Execution details</summary>
+        <dl className="local-dashboard-fields">
+          {fields.filter(([label]) => !['Status', 'Cause', 'Model', 'Age', 'Run', 'Duration', 'Cost'].includes(label))
+            .map(([label, value]) => <div key={label}><dt>{label}</dt><dd>{value}</dd></div>)}
+        </dl>
+      </details>
     </section>
   );
 }
@@ -585,41 +593,48 @@ export function LastRunCard({ decisions, sessions, now = Date.now() }: RunViewPr
  * saving: savings are window totals from metering-summary.v1 only (OMN-19980 AC2).
  */
 export function RecentRunsTable({ decisions, sessions, now = Date.now() }: RunViewProps) {
+  const [showAllFields, setShowAllFields] = useState(false);
+  const tableId = useId();
   const bySession = indexBy(sessions, 'session_id');
   const recent = newestFirst(decisions).slice(0, 10);
   return (
-    <div className="local-dashboard-table-wrap local-dashboard-table-wrap--fit">
-      <table>
-        <thead>
-          <tr>
-            <th>Time</th><th>Age</th><th>Status</th><th>Cause</th><th>Task type</th><th>Model</th><th>Backend</th>
-            <th>Host</th><th>Tokens in</th><th>Tokens out</th><th>Cost</th><th>Basis</th><th>Duration</th>
-            <th>Route tier</th><th>Quality score</th><th>Run</th>
-          </tr>
-        </thead>
-        <tbody>{recent.map((decision, index) => {
-          const session = bySession.get(String(decision.correlation_id));
-          return <tr key={String(decision.correlation_id ?? index)}>
-            <td className="local-dashboard-cell-token local-dashboard-cell-time"><CellTime value={decision.written_at} /></td>
-            <td>{age(decision.written_at, now)}</td>
-            <td><OutcomePill value={statusOf(decision)} /></td>
-            <td>{causeOf(decision)}</td>
-            <td>{recorded(decision.task_type)}</td>
-            <td className="local-dashboard-cell-token">{modelOrUnknown(decision.model_name)}</td>
-            <td className="local-dashboard-cell-token">{recorded(decision.backend_id)}</td>
-            <td className="local-dashboard-cell-token">{recorded(decision.host)}</td>
-            <td>{recorded(decision.tokens_input)}</td>
-            <td>{recorded(decision.tokens_output)}</td>
-            <td>{costOf(session, decision)}</td>
-            <td>{recorded(session?.usage_source)}</td>
-            <td>{duration(decision.latency_ms)}</td>
-            <td>{tierOf(decision)}</td>
-            <td>{recorded(decision.actual_score)}</td>
-            <td className="local-dashboard-cell-token"><RunRef id={decision.correlation_id} /></td>
-          </tr>;
-        })}</tbody>
-      </table>
-    </div>
+    <>
+      <p className="local-dashboard-caption local-recent-toolbar"><label>
+        <input type="checkbox" checked={showAllFields} onChange={event => setShowAllFields(event.target.checked)} aria-controls={tableId} />
+        Show all run fields
+      </label></p>
+      <div className={`local-dashboard-table-wrap local-dashboard-table-wrap--fit local-recent-runs-wrap${showAllFields ? ' local-recent-runs-wrap--all' : ''}`} role="region" aria-label="Recent run fields">
+        <table id={tableId}>
+          <thead><tr>
+            <th>Time</th><th>Run</th><th>Status</th><th>Model</th><th>Cost</th><th>Duration</th>
+            <th>Age</th><th>Cause</th><th>Task type</th><th>Backend</th><th>Host</th><th>Tokens in</th><th>Tokens out</th>
+            <th>Basis</th><th>Route tier</th><th>Quality score</th>
+          </tr></thead>
+          <tbody>{recent.map((decision, index) => {
+            const session = bySession.get(String(decision.correlation_id));
+            return <tr key={String(decision.correlation_id ?? index)}>
+              <td className="local-dashboard-cell-token local-dashboard-cell-time" data-label="Time"><span className="local-recent-value"><CellTime value={decision.written_at} /></span></td>
+              <td className="local-dashboard-cell-token" data-label="Run"><span className="local-recent-value"><RunRef id={decision.correlation_id} /></span></td>
+              <td data-label="Status"><span className="local-recent-value"><OutcomePill value={statusOf(decision)} /></span></td>
+              <td className="local-dashboard-cell-token" data-label="Model"><span className="local-recent-value">{modelOrUnknown(decision.model_name)}</span></td>
+              <td data-label="Cost"><span className="local-recent-value">{costOf(session, decision)}</span></td>
+              <td data-label="Duration"><span className="local-recent-value">{duration(decision.latency_ms)}</span></td>
+              <td data-label="Age"><span className="local-recent-value">{age(decision.written_at, now)}</span></td>
+              <td data-label="Cause"><span className="local-recent-value">{causeOf(decision)}</span></td>
+              <td data-label="Task type"><span className="local-recent-value">{recorded(decision.task_type)}</span></td>
+              <td className="local-dashboard-cell-token" data-label="Backend"><span className="local-recent-value">{recorded(decision.backend_id)}</span></td>
+              <td className="local-dashboard-cell-token" data-label="Host"><span className="local-recent-value">{recorded(decision.host)}</span></td>
+              <td data-label="Tokens in"><span className="local-recent-value">{recorded(decision.tokens_input)}</span></td>
+              <td data-label="Tokens out"><span className="local-recent-value">{recorded(decision.tokens_output)}</span></td>
+              <td data-label="Basis"><span className="local-recent-value">{recorded(session?.usage_source)}</span></td>
+              <td data-label="Route tier"><span className="local-recent-value">{tierOf(decision)}</span></td>
+              <td data-label="Quality score"><span className="local-recent-value">{recorded(decision.actual_score)}</span></td>
+            </tr>;
+          })}</tbody>
+        </table>
+      </div>
+      <p className="local-dashboard-caption local-recent-footer"><span>Ten most recent runs</span><Link href={PAGE_PATHS['local-runs']}>View all runs <ArrowUpRight size={12} aria-hidden="true" /></Link></p>
+    </>
   );
 }
 
@@ -1632,8 +1647,77 @@ export function LocalDashboardPage({ pageName, syncUrl = false }: LocalDashboard
   const emptyState = page ? resolveLocalPageEmptyState(page, snapshots) : null;
   const now = Date.now();
   const interval = page?.dashboard.refresh_interval_seconds ?? 30;
+
+  const renderComponent = (component: LocalPageDocument['components'][number]) => {
+    if (!page) return null;
+    const rows = rowsForLocalComponent(component, snapshots);
+    const first = (rows[0] ?? {}) as Record<string, unknown>;
+    const widget = page.dashboard.widgets.find((candidate) => candidate.data_source === component.component_id);
+    const pageSize = Number((widget?.config as Record<string, unknown> | undefined)?.page_size ?? 25);
+    const notServed = notServedTopic(component, snapshots);
+    const unbound = (component.data_bindings ?? []).length === 0;
+    const PanelIcon = PANEL_ICONS[component.component_id];
+    // OV-3: only the panels that read metering-summary.v1 have a row per window. Every other Overview panel
+    // reads an exposure with no day rows, so with today chosen it still shows all time and has to say so:
+    // seen on a store of two real days, "Agent calls 4" beside "6 of 6 runs local".
+    const outsideWindow = pageName === 'overview' && overviewWindow === 'today'
+      && component.data_bindings?.[0]?.projection_topic !== METERING_SUMMARY_TOPIC;
+    return (
+      <article
+        className="local-dashboard-panel"
+        data-width={String(widget?.width ?? 12)}
+        data-component={component.component_id}
+        data-kind={component.component_kind}
+        key={component.component_id}
+      >
+        <h2>{PanelIcon && <PanelIcon size={14} aria-hidden="true" />}{component.title}</h2>
+        {outsideWindow && <p className="local-dashboard-caption">{OUTSIDE_WINDOW_NOTE}</p>}
+        {unbound && component.component_kind !== 'metric_card' ? <PendingState componentId={component.component_id} />
+          : component.component_id === 'workflow-run-path' ? (
+            <WorkflowRun component={component} snapshots={snapshots} requested={requestedRunId} onOpen={openRun} />
+          ) : notServed ? <p className="local-dashboard-empty" role="status">{notServed}</p>
+          : bindingFailedEmpty(component, snapshots) ? null
+          : emptyState === 'NO_RUNS_YET' ? <NoRunsYet />
+          : emptyState ? <p className="local-dashboard-empty" role="status">Baseline unresolved</p>
+          : component.component_kind === 'table' ? (
+            <TableComponent
+              component={component}
+              snapshots={snapshots}
+              pageSize={pageSize}
+              syncUrl={syncUrl}
+              columns={((widget?.config as { columns?: DeclaredColumn[] } | undefined)?.columns) ?? []}
+            />
+          ) : component.component_id === 'overview-run-locally' ? (
+            <RunLocallyCard row={asRecord(rows[0])} />
+          ) : component.component_id === 'overview-avg-saving-per-call' && !unbound ? (
+            <SavingsPerRunCard rows={rows} window={overviewWindow} now={now} />
+          ) : component.data_bindings?.[0]?.projection_topic === METERING_SUMMARY_TOPIC ? (() => {
+            const config = metricConfigFor(page, component.component_id);
+            return config
+              ? <MeteringTotalCard component={component} config={config} rows={rows} window={overviewWindow} now={now} />
+              : <p className="local-dashboard-empty">Not measured</p>;
+          })() : (() => {
+            const config = metricConfigFor(page, component.component_id);
+            return config
+              ? <MetricCard component={component} config={config} row={first} caption={captionRowFor(component, snapshots)} />
+              : <p className="local-dashboard-empty">Not measured</p>;
+          })()}
+        <WidgetReadState component={component} snapshots={snapshots} now={now} interval={interval} />
+      </article>
+    );
+  };
+  const overviewGroups = {
+    summary: ['overview-spend', 'overview-savings', 'overview-measured', 'overview-tokens'],
+    focus: ['overview-spend-by-day', 'overview-last-run'],
+    lower: ['overview-recent-runs', 'overview-tier-mix'],
+  };
+  const overviewPrimary = new Set(Object.values(overviewGroups).flat());
+  const renderGroup = (ids: string[]) => ids.map(id => {
+    const component = page?.components.find(candidate => candidate.component_id === id);
+    return component ? renderComponent(component) : null;
+  });
   return (
-    <main aria-label={`${page?.dashboard.name ?? 'Local dashboard'} page`} className="local-dashboard-page">
+    <main aria-label={`${page?.dashboard.name ?? 'Local dashboard'} page`} className={`local-dashboard-page local-dashboard-page--${pageName}`}>
       <header className="local-dashboard-header">
         <div className="local-dashboard-title">
           <span className="local-dashboard-page-icon" aria-hidden="true"><PageIcon size={20} /></span>
@@ -1657,68 +1741,23 @@ export function LocalDashboardPage({ pageName, syncUrl = false }: LocalDashboard
           </div>
         )}
         <span className="local-dashboard-mode">Local runtime · HTTP</span>
+        {pageName === 'overview' && <Link className="local-explore-runs" href={PAGE_PATHS['local-runs']}>Explore runs <ArrowUpRight size={14} aria-hidden="true" /></Link>}
       </header>
       {loading && <p role="status">Loading runtime exposures…</p>}
       {error && <p className="local-dashboard-error" role="alert">{error}</p>}
       {!loading && !error && page && (
         <section className="local-dashboard-grid" aria-label="Dashboard components">
-          {page.components.map((component) => {
-            const rows = rowsForLocalComponent(component, snapshots);
-            const first = (rows[0] ?? {}) as Record<string, unknown>;
-            const widget = page.dashboard.widgets.find((candidate) => candidate.data_source === component.component_id);
-            const pageSize = Number((widget?.config as Record<string, unknown> | undefined)?.page_size ?? 25);
-            const notServed = notServedTopic(component, snapshots);
-            const unbound = (component.data_bindings ?? []).length === 0;
-            const PanelIcon = PANEL_ICONS[component.component_id];
-            // OV-3: only the panels that read metering-summary.v1 have a row per window. Every other Overview panel
-            // reads an exposure with no day rows, so with today chosen it still shows all time and has to say so:
-            // seen on a store of two real days, "Agent calls 4" beside "6 of 6 runs local".
-            const outsideWindow = pageName === 'overview' && overviewWindow === 'today'
-              && component.data_bindings?.[0]?.projection_topic !== METERING_SUMMARY_TOPIC;
-            return (
-              <article
-                className="local-dashboard-panel"
-                data-width={String(widget?.width ?? 12)}
-                data-component={component.component_id}
-                data-kind={component.component_kind}
-                key={component.component_id}
-              >
-                <h2>{PanelIcon && <PanelIcon size={14} aria-hidden="true" />}{component.title}</h2>
-                {outsideWindow && <p className="local-dashboard-caption">{OUTSIDE_WINDOW_NOTE}</p>}
-                {unbound && component.component_kind !== 'metric_card' ? <PendingState componentId={component.component_id} />
-                  : component.component_id === 'workflow-run-path' ? (
-                    <WorkflowRun component={component} snapshots={snapshots} requested={requestedRunId} onOpen={openRun} />
-                  ) : notServed ? <p className="local-dashboard-empty" role="status">{notServed}</p>
-                  : bindingFailedEmpty(component, snapshots) ? null
-                  : emptyState === 'NO_RUNS_YET' ? <NoRunsYet />
-                  : emptyState ? <p className="local-dashboard-empty" role="status">Baseline unresolved</p>
-                  : component.component_kind === 'table' ? (
-                    <TableComponent
-                      component={component}
-                      snapshots={snapshots}
-                      pageSize={pageSize}
-                      syncUrl={syncUrl}
-                      columns={((widget?.config as { columns?: DeclaredColumn[] } | undefined)?.columns) ?? []}
-                    />
-                  ) : component.component_id === 'overview-run-locally' ? (
-                    <RunLocallyCard row={asRecord(rows[0])} />
-                  ) : component.component_id === 'overview-avg-saving-per-call' && !unbound ? (
-                    <SavingsPerRunCard rows={rows} window={overviewWindow} now={now} />
-                  ) : component.data_bindings?.[0]?.projection_topic === METERING_SUMMARY_TOPIC ? (() => {
-                    const config = metricConfigFor(page, component.component_id);
-                    return config
-                      ? <MeteringTotalCard component={component} config={config} rows={rows} window={overviewWindow} now={now} />
-                      : <p className="local-dashboard-empty">Not measured</p>;
-                  })() : (() => {
-                    const config = metricConfigFor(page, component.component_id);
-                    return config
-                      ? <MetricCard component={component} config={config} row={first} caption={captionRowFor(component, snapshots)} />
-                      : <p className="local-dashboard-empty">Not measured</p>;
-                  })()}
-                <WidgetReadState component={component} snapshots={snapshots} now={now} interval={interval} />
-              </article>
-            );
-          })}
+          {pageName === 'overview' ? <>
+            <div className="local-overview-surface">
+              <section className="local-overview-summary" aria-label="Runtime summary">{renderGroup(overviewGroups.summary)}</section>
+              <section className="local-overview-focus" aria-label="Spend and latest execution">{renderGroup(overviewGroups.focus)}</section>
+            </div>
+            <section className="local-overview-lower" aria-label="Recent runs and routing">{renderGroup(overviewGroups.lower)}</section>
+            <details className="local-overview-secondary">
+              <summary>Additional runtime metrics <span>Quality, baseline, compression &amp; cache</span></summary>
+              <div className="local-dashboard-grid">{page.components.filter(component => !overviewPrimary.has(component.component_id)).map(renderComponent)}</div>
+            </details>
+          </> : page.components.map(renderComponent)}
         </section>
       )}
     </main>

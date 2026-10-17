@@ -38,12 +38,12 @@ import { LastRunCard, LocalDashboardPage } from './LocalDashboardPage';
 type PageName = 'overview' | 'usage';
 const ORDER: Record<PageName, Array<[title: string, width: number]>> = {
   overview: [
-    // The first screen: the four headline tiles (requirement Q3), then the two charts and the newest run (Q2).
+    // The first screen: the four headline tiles (requirement Q3), then spend/newest run (Q2), followed by recent runs/routing (OMN-21166).
     ['Actual spend', 3], ['Savings', 3], ['Agent calls', 3], ['Tokens processed', 3],
-    ['Spend per day', 5], ['Tier mix', 3], ['Last run', 4],
+    ['Spend per day', 8], ['Last run', 4],
+    ['Recent runs', 8], ['Tier mix', 4],
     ['Run locally', 4], ['Avg saving / call', 4], ['Baseline spend', 4],
     ['Quality', 4], ['Compression', 4], ['Cache hit rate', 4],
-    ['Recent runs', 12],
   ],
   usage: [
     ['Savings per day', 6], ['Tokens per day', 6],

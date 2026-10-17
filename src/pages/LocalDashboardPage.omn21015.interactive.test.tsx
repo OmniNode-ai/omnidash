@@ -46,7 +46,7 @@ describe('OMN-21015 U4: a run opens from where it is named', () => {
 
   it('I1: each recent run links to its own path, and a run with no id has no link', () => {
     render(<RecentRunsTable decisions={[decision('run-a', '2026-10-13T10:00:00Z'), decision('run-b', '2026-10-13T11:00:00Z'), decision(null, '2026-10-13T09:00:00Z')]} sessions={[]} now={NOW} />);
-    expect(screen.getAllByRole('link').map((link) => [link.textContent, link.getAttribute('href')])).toEqual([
+    expect(screen.getAllByRole('link').filter(link => link.closest('tbody')).map((link) => [link.textContent, link.getAttribute('href')])).toEqual([
       ['run-b', '/workflow?correlation_id=run-b'],
       ['run-a', '/workflow?correlation_id=run-a'],
     ]);

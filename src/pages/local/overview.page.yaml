@@ -88,7 +88,7 @@
       "title": "Spend per day",
       "row": 2,
       "col": 0,
-      "width": 5,
+      "width": 8,
       "height": 4,
       "data_source": "overview-spend-by-day",
       "config": {
@@ -120,35 +120,6 @@
           }
         ],
         "page_size": 25,
-        "show_pagination": false
-      }
-    },
-    {
-      "widget_id": "92d0d8ce-8d52-447e-8511-8cb1269c0112",
-      "title": "Tier mix",
-      "row": 2,
-      "col": 5,
-      "width": 3,
-      "height": 4,
-      "data_source": "overview-tier-mix",
-      "config": {
-        "config_kind": "table",
-        "widget_type": "table",
-        "columns": [
-          {
-            "key": "cost_tier_name",
-            "header": "Tier"
-          },
-          {
-            "key": "count",
-            "header": "Runs"
-          },
-          {
-            "key": "pct_of_tier_routed",
-            "header": "Share of tier-routed"
-          }
-        ],
-        "page_size": 10,
         "show_pagination": false
       }
     },
@@ -232,140 +203,11 @@
       }
     },
     {
-      "widget_id": "6f1d2c8e-4b7a-5e39-9c0d-20009a1c0c01",
-      "title": "Run locally",
-      "row": 6,
-      "col": 0,
-      "width": 4,
-      "height": 2,
-      "data_source": "overview-run-locally",
-      "config": {
-        "config_kind": "metric_card",
-        "widget_type": "metric_card",
-        "metric_key": "by_tier.local_call_share",
-        "label": "Run locally",
-        "unit": "share of runs",
-        "format": "percent",
-        "precision": 1
-      }
-    },
-    {
-      "widget_id": "6f1d2c8e-4b7a-5e39-9c0d-20009a1c0c02",
-      "title": "Avg saving / call",
-      "row": 6,
-      "col": 4,
-      "width": 4,
-      "height": 2,
-      "data_source": "overview-avg-saving-per-call",
-      "config": {
-        "config_kind": "metric_card",
-        "widget_type": "metric_card",
-        "metric_key": "savings_per_measured_run_usd",
-        "label": "Avg saving / call",
-        "unit": "USD",
-        "format": "currency",
-        "precision": 6
-      }
-    },
-    {
-      "widget_id": "6f1d2c8e-4b7a-5e39-9c0d-20752a1c0c01",
-      "title": "Baseline spend",
-      "row": 6,
-      "col": 8,
-      "width": 4,
-      "height": 2,
-      "data_source": "overview-baseline-spend",
-      "config": {
-        "config_kind": "metric_card",
-        "widget_type": "metric_card",
-        "metric_key": "counterfactual_usd",
-        "label": "Baseline spend",
-        "unit": "USD",
-        "format": "currency",
-        "precision": 4
-      }
-    },
-    {
-      "widget_id": "d4da9a48-f797-4b1d-b622-41f028a67e04",
-      "title": "Quality",
-      "row": 8,
-      "col": 0,
-      "width": 4,
-      "height": 2,
-      "data_source": "overview-quality",
-      "config": {
-        "config_kind": "table",
-        "widget_type": "table",
-        "columns": [
-          {
-            "key": "overall_pass_rate",
-            "header": "Pass rate"
-          },
-          {
-            "key": "total_passed",
-            "header": "Passed"
-          },
-          {
-            "key": "total_failed",
-            "header": "Failed"
-          },
-          {
-            "key": "total_checks",
-            "header": "Checks"
-          },
-          {
-            "key": "avg_actual_score",
-            "header": "Average score"
-          },
-          {
-            "key": "avg_required_bar",
-            "header": "Average required bar"
-          }
-        ],
-        "page_size": 10,
-        "show_pagination": false
-      }
-    },
-    {
-      "widget_id": "6f1d2c8e-4b7a-5e39-9c0d-20226a1c0c01",
-      "title": "Compression",
-      "row": 8,
-      "col": 4,
-      "width": 4,
-      "height": 2,
-      "data_source": "overview-compression",
-      "config": {
-        "config_kind": "metric_card",
-        "widget_type": "metric_card",
-        "metric_key": "compression_ratio",
-        "label": "Compression",
-        "format": "number",
-        "precision": 2
-      }
-    },
-    {
-      "widget_id": "6f1d2c8e-4b7a-5e39-9c0d-20226a1c0c02",
-      "title": "Cache hit rate",
-      "row": 8,
-      "col": 8,
-      "width": 4,
-      "height": 2,
-      "data_source": "overview-cache-hit-rate",
-      "config": {
-        "config_kind": "metric_card",
-        "widget_type": "metric_card",
-        "metric_key": "cache_hit_rate",
-        "label": "Cache hit rate",
-        "format": "number",
-        "precision": 3
-      }
-    },
-    {
       "widget_id": "8e4f1b77-2c39-5d06-a8b2-6f0d4c9e1a53",
       "title": "Recent runs",
-      "row": 10,
+      "row": 6,
       "col": 0,
-      "width": 12,
+      "width": 8,
       "height": 4,
       "data_source": "overview-recent-runs",
       "config": {
@@ -437,6 +279,164 @@
         "show_pagination": false,
         "default_sort_key": "written_at",
         "default_sort_direction": "desc"
+      }
+    },
+    {
+      "widget_id": "92d0d8ce-8d52-447e-8511-8cb1269c0112",
+      "title": "Tier mix",
+      "row": 6,
+      "col": 8,
+      "width": 4,
+      "height": 4,
+      "data_source": "overview-tier-mix",
+      "config": {
+        "config_kind": "table",
+        "widget_type": "table",
+        "columns": [
+          {
+            "key": "cost_tier_name",
+            "header": "Tier"
+          },
+          {
+            "key": "count",
+            "header": "Runs"
+          },
+          {
+            "key": "pct_of_tier_routed",
+            "header": "Share of tier-routed"
+          }
+        ],
+        "page_size": 10,
+        "show_pagination": false
+      }
+    },
+    {
+      "widget_id": "6f1d2c8e-4b7a-5e39-9c0d-20009a1c0c01",
+      "title": "Run locally",
+      "row": 10,
+      "col": 0,
+      "width": 4,
+      "height": 2,
+      "data_source": "overview-run-locally",
+      "config": {
+        "config_kind": "metric_card",
+        "widget_type": "metric_card",
+        "metric_key": "by_tier.local_call_share",
+        "label": "Run locally",
+        "unit": "share of runs",
+        "format": "percent",
+        "precision": 1
+      }
+    },
+    {
+      "widget_id": "6f1d2c8e-4b7a-5e39-9c0d-20009a1c0c02",
+      "title": "Avg saving / call",
+      "row": 10,
+      "col": 4,
+      "width": 4,
+      "height": 2,
+      "data_source": "overview-avg-saving-per-call",
+      "config": {
+        "config_kind": "metric_card",
+        "widget_type": "metric_card",
+        "metric_key": "savings_per_measured_run_usd",
+        "label": "Avg saving / call",
+        "unit": "USD",
+        "format": "currency",
+        "precision": 6
+      }
+    },
+    {
+      "widget_id": "6f1d2c8e-4b7a-5e39-9c0d-20752a1c0c01",
+      "title": "Baseline spend",
+      "row": 10,
+      "col": 8,
+      "width": 4,
+      "height": 2,
+      "data_source": "overview-baseline-spend",
+      "config": {
+        "config_kind": "metric_card",
+        "widget_type": "metric_card",
+        "metric_key": "counterfactual_usd",
+        "label": "Baseline spend",
+        "unit": "USD",
+        "format": "currency",
+        "precision": 4
+      }
+    },
+    {
+      "widget_id": "d4da9a48-f797-4b1d-b622-41f028a67e04",
+      "title": "Quality",
+      "row": 12,
+      "col": 0,
+      "width": 4,
+      "height": 2,
+      "data_source": "overview-quality",
+      "config": {
+        "config_kind": "table",
+        "widget_type": "table",
+        "columns": [
+          {
+            "key": "overall_pass_rate",
+            "header": "Pass rate"
+          },
+          {
+            "key": "total_passed",
+            "header": "Passed"
+          },
+          {
+            "key": "total_failed",
+            "header": "Failed"
+          },
+          {
+            "key": "total_checks",
+            "header": "Checks"
+          },
+          {
+            "key": "avg_actual_score",
+            "header": "Average score"
+          },
+          {
+            "key": "avg_required_bar",
+            "header": "Average required bar"
+          }
+        ],
+        "page_size": 10,
+        "show_pagination": false
+      }
+    },
+    {
+      "widget_id": "6f1d2c8e-4b7a-5e39-9c0d-20226a1c0c01",
+      "title": "Compression",
+      "row": 12,
+      "col": 4,
+      "width": 4,
+      "height": 2,
+      "data_source": "overview-compression",
+      "config": {
+        "config_kind": "metric_card",
+        "widget_type": "metric_card",
+        "metric_key": "compression_ratio",
+        "label": "Compression",
+        "format": "number",
+        "precision": 2
+      }
+    },
+    {
+      "widget_id": "6f1d2c8e-4b7a-5e39-9c0d-20226a1c0c02",
+      "title": "Cache hit rate",
+      "row": 12,
+      "col": 8,
+      "width": 4,
+      "height": 2,
+      "data_source": "overview-cache-hit-rate",
+      "config": {
+        "config_kind": "metric_card",
+        "widget_type": "metric_card",
+        "metric_key": "cache_hit_rate",
+        "label": "Cache hit rate",
+        "format": "number",
+        "precision": 3
       }
     }
   ]

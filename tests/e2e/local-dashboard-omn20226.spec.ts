@@ -57,6 +57,7 @@ test('OMN-20226: on a fresh store Compression and Cache hit rate are Not measure
   await serve(page, { [METERING]: [freshAllRow] });
   await page.goto('/');
   await expect(page.getByRole('heading', { level: 1, name: 'Overview' })).toBeVisible();
+  await page.locator('.local-overview-secondary > summary').click();
 
   // The control: the same row's measured per-run saving renders, so the page did read this row.
   await expect(panel(page, 'Avg saving / call').getByText('$0.001045', { exact: true })).toBeVisible();
@@ -80,6 +81,7 @@ test('OMN-20226: with metering-summary.v1 not served, both cards say so and show
   await serve(page, {});
   await page.goto('/');
   await expect(page.getByRole('heading', { level: 1, name: 'Overview' })).toBeVisible();
+  await page.locator('.local-overview-secondary > summary').click();
 
   for (const title of CARDS) {
     const card = panel(page, title);

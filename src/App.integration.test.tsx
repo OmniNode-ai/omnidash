@@ -47,15 +47,15 @@ describe('Part 1 smoke proof — frame liveness, provider wiring, theme switchin
   it('theme toggle switches between dark and light', async () => {
     renderApp();
     const themeBtn = screen.getByRole('button', { name: /theme/i });
-    expect(themeBtn).toHaveAttribute('title', 'Switch to light theme');
-
-    await userEvent.click(themeBtn);
     expect(themeBtn).toHaveAttribute('title', 'Switch to dark theme');
-    expect(document.body.classList.contains('theme-light')).toBe(true);
 
     await userEvent.click(themeBtn);
     expect(themeBtn).toHaveAttribute('title', 'Switch to light theme');
     expect(document.body.classList.contains('theme-dark')).toBe(true);
+
+    await userEvent.click(themeBtn);
+    expect(themeBtn).toHaveAttribute('title', 'Switch to dark theme');
+    expect(document.body.classList.contains('theme-light')).toBe(true);
   });
 
   it('zustand store starts in view mode', () => {

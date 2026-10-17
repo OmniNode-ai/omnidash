@@ -169,6 +169,7 @@ test('stored basis, excluded counts and modelled baseline survive native Overvie
   await expect(page.getByText(/The baseline never ran\./)).toHaveCount(2);
   await expect(page.getByText('Of 4 runs · Unknown-token runs excluded: 1 · Unknown-spend runs excluded: 2', { exact: true })).toBeVisible();
   const last = page.getByRole('region', { name: 'Last run' });
+  await last.locator('summary').click();
   await expect(last.locator('dt').filter({ hasText: /^Basis$/ })).toBeVisible();
   await expect(last.getByText('measured', { exact: true })).toBeVisible();
   for (const route of ['overview', 'runs']) {
@@ -203,6 +204,8 @@ test('Overview is the default page and fits 1440x900 with no unmeasured 0 (AC4)'
   await page.goto('/');
 
   await expect(page.getByRole('heading', { level: 1, name: 'Overview' })).toBeVisible();
+  await page.getByRole('checkbox', { name: 'Show all run fields', exact: true }).check();
+  await page.locator('.local-dashboard-page').evaluate(el => { el.scrollTop = 0; });
   const recent = page.locator('.local-dashboard-panel').filter({ has: page.getByRole('heading', { name: 'Recent runs' }) });
   const unmeasured = recent.getByRole('row').filter({ hasText: 'corr-19981-unmeasured' });
   await expect(unmeasured).toBeVisible();
@@ -328,6 +331,8 @@ test('Overview and Runs show each run\'s backend, host, tier and score, typed wh
   await page.goto('/');
 
   await expect(page.getByRole('heading', { level: 1, name: 'Overview' })).toBeVisible();
+  await page.getByRole('checkbox', { name: 'Show all run fields', exact: true }).check();
+  await page.locator('.local-dashboard-page').evaluate(el => { el.scrollTop = 0; });
   await expect(page.getByText('Not served (OMN-20162)')).toHaveCount(0);
   const recent = page.locator('.local-dashboard-panel').filter({ has: page.getByRole('heading', { name: 'Recent runs' }) });
   const measured = recent.getByRole('row').filter({ hasText: 'corr-19981-measured' });
@@ -358,6 +363,7 @@ test('Overview quality and tier-mix panels show served fields only (OMN-20225 AC
   await serveFixtures(page);
   await page.goto('/');
 
+  await page.locator('.local-overview-secondary > summary').click();
   const quality = page.locator('.local-dashboard-panel').filter({ has: page.getByRole('heading', { name: 'Quality', exact: true }) });
   await quality.scrollIntoViewIfNeeded();
   for (const value of ['0.875', '7', '1', '8', '0.81', '0.7']) {
@@ -411,9 +417,11 @@ test('local panels follow both themes on every page without losing readable surf
   await serveFixtures(page);
   await page.goto('/');
   await expect(page.getByRole('heading', { level: 1, name: 'Overview' })).toBeVisible();
+  await page.getByRole('checkbox', { name: 'Show all run fields', exact: true }).check();
+  await page.locator('.local-dashboard-page').evaluate(el => { el.scrollTop = 0; });
 
   for (const theme of ['light', 'dark']) {
-    await page.getByRole('button', { name: 'Toggle theme', exact: true }).click();
+    if ((await page.locator('html').getAttribute('data-theme') === 'dark' ? 'dark' : 'light') !== theme) await page.getByRole('button', { name: 'Toggle theme', exact: true }).click();
     await expect(page.locator('body')).toHaveClass(`theme-${theme}`);
     for (const [name, title] of [
       ['overview', 'Overview'], ['runs', 'Runs'], ['workflow', 'Workflow'],
@@ -450,6 +458,8 @@ test('Overview and Runs scroll to their last row while the header stays reachabl
   await serveFixtures(page, { ...fixtures, [DECISIONS]: manyDecisions });
   await page.goto('/');
   await expect(page.getByRole('heading', { level: 1, name: 'Overview' })).toBeVisible();
+  await page.getByRole('checkbox', { name: 'Show all run fields', exact: true }).check();
+  await page.locator('.local-dashboard-page').evaluate(el => { el.scrollTop = 0; });
   const scrollPage = page.locator('.local-dashboard-page');
   // Recent runs' rows; the tier-mix panel below it is a table too (OMN-20225).
   const recentRows = page.locator('.local-dashboard-panel')
@@ -461,7 +471,7 @@ test('Overview and Runs scroll to their last row while the header stays reachabl
   await page.mouse.wheel(0, 4000);
   await expect.poll(() => scrollPage.evaluate((element) => element.scrollTop)).toBeGreaterThan(0);
   const lastOverviewRow = recentRows.last();
-  expect((await lastOverviewRow.boundingBox())!.y + (await lastOverviewRow.boundingBox())!.height).toBeLessThanOrEqual(900);
+  await expect.poll(async () => { const box = await lastOverviewRow.boundingBox(); return box!.y + box!.height; }).toBeLessThanOrEqual(900);
   expect((await page.getByRole('button', { name: 'Toggle theme', exact: true }).boundingBox())!.y).toBeGreaterThanOrEqual(0);
 
   await page.getByTestId('nav-local-runs').click();
@@ -509,6 +519,8 @@ test('sidebar surfaces and controls follow the theme in expanded and collapsed l
   await serveFixtures(page);
   await page.goto('/');
   await expect(page.getByRole('heading', { level: 1, name: 'Overview' })).toBeVisible();
+  await page.getByRole('checkbox', { name: 'Show all run fields', exact: true }).check();
+  await page.locator('.local-dashboard-page').evaluate(el => { el.scrollTop = 0; });
   // Compare rendered colors, not equivalent hex/rgb/oklch serializations.
   const token = async (name: string) => page.evaluate((name) => {
     const ctx = document.createElement('canvas').getContext('2d')!;
@@ -527,7 +539,7 @@ test('sidebar surfaces and controls follow the theme in expanded and collapsed l
   const sidebar = page.locator('.sidebar');
 
   for (const theme of ['light', 'dark']) {
-    await page.getByRole('button', { name: 'Toggle theme', exact: true }).click();
+    if ((await page.locator('html').getAttribute('data-theme') === 'dark' ? 'dark' : 'light') !== theme) await page.getByRole('button', { name: 'Toggle theme', exact: true }).click();
     await expect(page.locator('body')).toHaveClass(`theme-${theme}`);
     const background = await token('--sidebar');
     const foreground = await token(theme === 'light' ? '--ink' : '--sidebar-ink');
@@ -646,7 +658,7 @@ test('navigation selection, hover and keyboard focus remain distinct in both the
   await serveFixtures(page);
   await page.goto('/overview');
   for (const theme of ['dark', 'light']) {
-    if (theme === 'light') await page.getByRole('button', { name: 'Toggle theme' }).click();
+    if ((await page.locator('html').getAttribute('data-theme') === 'dark' ? 'dark' : 'light') !== theme) await page.getByRole('button', { name: 'Toggle theme' }).click();
     await expect(page.locator('body')).toHaveClass(`theme-${theme}`);
     for (const path of ['overview', 'runs', 'workflow', 'usage', 'credentials', 'api-keys']) {
       const selected = page.getByTestId(`nav-local-${path}`);
@@ -654,7 +666,7 @@ test('navigation selection, hover and keyboard focus remain distinct in both the
       await page.mouse.move(700, 60);
       await expect(selected).toHaveAttribute('aria-current', 'page');
       await expect(selected).not.toHaveCSS('background-color', 'rgba(0, 0, 0, 0)');
-      await expect(selected).toHaveCSS('border-radius', '10px');
+      await expect(selected).toHaveCSS('border-radius', '7px');
       const selectedBackground = await selected.evaluate(el => getComputedStyle(el).backgroundColor);
       await selected.hover();
       await expect(selected).not.toHaveCSS('background-color', selectedBackground);
@@ -711,7 +723,7 @@ test('Runs filters, pagination and table hover use readable themed controls', as
   await page.goto('/runs');
   await expect(page.getByText('Runs 1–2 of 2')).toBeVisible();
   for (const theme of ['dark', 'light']) {
-    if (theme === 'light') await page.getByRole('button', { name: 'Toggle theme' }).click();
+    if ((await page.locator('html').getAttribute('data-theme') === 'dark' ? 'dark' : 'light') !== theme) await page.getByRole('button', { name: 'Toggle theme' }).click();
     await expect(page.locator('body')).toHaveClass(`theme-${theme}`);
     const selects = page.locator('.local-dashboard-filters select');
     // Status, Cause, Model, Window, and since OMN-21015 AC8 Backend.

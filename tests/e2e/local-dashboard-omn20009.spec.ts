@@ -92,6 +92,7 @@ test('OMN-20009: Run locally shows the served share and Avg saving / call the se
   await serve(page, served);
   await page.goto('/');
   await expect(page.getByRole('heading', { level: 1, name: 'Overview' })).toBeVisible();
+  await page.locator('.local-overview-secondary > summary').click();
 
   const share = panel(page, 'Run locally');
   await expect(share.getByText('83.9%', { exact: true })).toBeVisible();
@@ -125,6 +126,7 @@ test('OMN-20009: with neither exposure served, both cards say why and neither sh
   await serve(page, withoutRouting);
   await page.goto('/');
   await expect(page.getByRole('heading', { level: 1, name: 'Overview' })).toBeVisible();
+  await page.locator('.local-overview-secondary > summary').click();
 
   const share = panel(page, 'Run locally');
   await expect(share.getByText(`Not served: ${ROUTING}`)).toBeVisible();
