@@ -29,13 +29,15 @@ test('Workbench failed read stays unavailable instead of claiming zero pipeline 
   await page.screenshot({ path: info.outputPath('workbench-unavailable.png') });
 });
 
-test('Event Bus failed generation read does not claim a measured zero', async ({ page }) => {
+test('Event Bus failed generation read does not claim a measured zero', async ({ page }, info) => {
   await page.route(/\/projection\/.*node-generation-completed\.v1(?:\?|$)/, route => route.fulfill({ status: 503, contentType: 'application/json', body: '{}' }));
   await page.goto('/event-bus');
   await page.getByRole('button', { name: 'Toggle details for onex.evt.omnimarket.node-generation-completed.v1', exact: true }).press('Enter');
   await expect(page.getByText('HTTP 503', { exact: true })).toBeVisible();
   await expect(page.locator('.kpi').filter({ hasText: 'Generation rows' }).locator('.k-v')).toHaveText('Not measured');
   await expect(page.locator('.kpi').filter({ hasText: 'Correlations' })).toContainText('Available rows');
+  await expect(page.locator('.ev-owned-topic').filter({ hasText: 'onex.evt.omnimarket.node-generation-completed.v1' })).toContainText('Not measured');
+  await page.screenshot({path:info.outputPath('event-bus-unavailable-count.png')});
 });
 
 test('Workbench successfully served empty projection retains its measured zero', async ({ page }) => {

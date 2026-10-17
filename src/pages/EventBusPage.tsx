@@ -274,7 +274,7 @@ export function EventBusPage() {
           {health.map((h) => (
             <div className="ev-owned-topic" key={h.topic}>
               <span className="mono ev-owned-topic-name">{h.topic}</span>
-              <span className="mono dim3">{h.rowCount} row{h.rowCount === 1 ? '' : 's'}</span>
+              <span className="mono dim3">{h.rowCount === null ? 'Not measured' : `${h.rowCount} row${h.rowCount === 1 ? '' : 's'}`}</span>
             </div>
           ))}
         </Panel>
