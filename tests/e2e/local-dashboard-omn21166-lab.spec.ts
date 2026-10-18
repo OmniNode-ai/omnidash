@@ -74,3 +74,26 @@ test('AC12 omitted and invalid numeric values never masquerade as measured zero'
   await expect(rows.filter({ hasText: numericRow.topic })).toContainText('Not measured');
   await expect(rows.filter({ hasText: 'onex.evt.fixture.invalid.v1' }).getByText('Not measured', { exact: true })).toHaveCount(4);
 });
+
+test('Lab explains an unmatched suffix and clears it without losing served rows', async ({ page }, info) => {
+  await serve(page, [numericRow, { ...numericRow, topic: 'onex.evt.fixture.second.v1', rate_per_second: null }]);
+  await page.goto('/lab');
+  const rows = page.getByTestId('topic-activity-row');
+  await expect(rows).toHaveCount(2);
+  const before = await rows.allTextContents();
+  await page.getByLabel('Filter topic activity by suffix').fill('no-such-topic');
+  await expect(rows).toHaveCount(0);
+  const feedback = page.getByRole('status').filter({ hasText: 'No topics match this suffix.' });
+  await expect(feedback).toBeVisible();
+  await expect(page.getByText('No topic activity samples', { exact: true })).toHaveCount(0);
+  await page.screenshot({ path: info.outputPath('lab-unmatched-suffix.png') });
+  await feedback.getByRole('button', { name: 'Clear suffix filter', exact: true }).press('Enter');
+  await expect(page.getByLabel('Filter topic activity by suffix')).toHaveValue('');
+  await expect(page.getByLabel('Filter topic activity by suffix')).toBeFocused();
+  await expect(rows).toHaveCount(2);
+  expect(await rows.allTextContents()).toEqual(before);
+  await expect(feedback).toHaveCount(0);
+  await expect(rows.filter({ hasText: numericRow.topic })).toContainText('0.00');
+  await expect(rows.filter({ hasText: 'second.v1' })).toContainText('Not measured');
+  await page.screenshot({ path: info.outputPath('lab-cleared-suffix.png') });
+});

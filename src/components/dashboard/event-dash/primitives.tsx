@@ -79,7 +79,7 @@ export function KPI({
   accent?: boolean;
 }) {
   return (
-    <div className="kpi">
+    <div className="kpi" data-unavailable={typeof value === 'string' && /^(Not measured|Not served|Baseline unresolved|—$)/.test(value)}>
       <div className="k-l">{label}</div>
       <div className={`k-v${accent ? ' k-accent' : ''}`}>{value}</div>
       {sub ? <div className="k-sub">{sub}</div> : null}

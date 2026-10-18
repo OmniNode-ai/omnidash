@@ -1209,3 +1209,100 @@
 [data-theme="dark"] .local-overview-surface { box-shadow: 0 1px 2px #0002, 0 4px 16px #0001; }
 [data-theme="dark"] .local-overview-summary .local-dashboard-panel,
 [data-theme="dark"] .local-overview-focus > .local-dashboard-panel { box-shadow: none; }
+
+/* Card hierarchy: section titles, authoritative figures, then source/status text. */
+.local-dashboard-panel { padding: 18px 20px; }
+.local-dashboard-panel h2 { font-size: 14px; letter-spacing: -.015em; padding-bottom: 10px; margin-bottom: 14px; }
+.local-dashboard-panel h2 svg { width: 24px; height: 24px; padding: 4px; border-radius: 6px; }
+.local-dashboard-panel:hover { box-shadow: 0 1px 2px #172c4d06, 0 4px 16px #172c4d05; border-color: var(--line); }
+.local-overview-summary .local-dashboard-panel { padding: 16px 20px 12px; }
+.local-overview-summary .local-dashboard-panel h2 { font-size: 12px; margin-bottom: 10px; }
+.local-overview-summary .local-dashboard-panel::before { height: 2px; left: 20px; right: auto; width: 24px; }
+.local-overview-summary .local-dashboard-metric { font-size: 30px; font-weight: 600; }
+.local-dashboard-metric[data-measured="false"],
+.local-overview-summary .local-dashboard-metric[data-measured="false"] { font-size: 13px; line-height: 1.5; font-weight: 500; padding-block: 0; }
+.local-dashboard-empty { min-height: 0; padding: 12px 14px; line-height: 1.6; font-size: 12px; border-style: solid; }
+.local-overview-focus > .local-dashboard-panel { padding: 16px 20px; }
+.local-overview-focus:not(:has([data-component="overview-spend-by-day"] .local-chart-canvas)) {
+  grid-template-columns: minmax(0,1fr) minmax(0,1.7fr);
+  align-items: start;
+}
+.local-overview-focus:not(:has([data-component="overview-spend-by-day"] .local-chart-canvas)) .local-latest-primary {
+  grid-template-columns: repeat(6,minmax(0,1fr));
+}
+.local-overview-focus:not(:has([data-component="overview-spend-by-day"] .local-chart-canvas)) .local-latest-primary > div { grid-column: auto; }
+.local-overview-focus:not(:has([data-component="overview-spend-by-day"] .local-chart-canvas)) .local-latest-primary > [data-field="Model"] { grid-column: span 2; }
+.local-overview-focus h2 { padding-bottom: 6px; margin-bottom: 10px; }
+.local-overview-focus:not(:has([data-component="overview-spend-by-day"] .local-chart-canvas)) .local-latest-primary > [data-field="Run"],
+.local-overview-focus:not(:has([data-component="overview-spend-by-day"] .local-chart-canvas)) .local-latest-primary > [data-field="Cause"] { grid-column: 1/-1; }
+.local-overview-focus .local-latest-primary > [data-field="Run"] { order: 7; }
+.local-overview-focus .local-latest-primary > [data-field="Model"] dd { font-size: 17px; font-weight: 600; }
+.local-overview-focus .local-latest-primary > [data-field="Age"] { order: 3; }
+.local-overview-focus .local-latest-primary dt { font-size: 11px; }
+.local-overview-focus .local-run-more { margin-top: 8px; padding-top: 6px; }
+.local-overview-focus .local-dashboard-empty { margin: 0; padding: 10px 12px; }
+.local-overview-lower > .local-dashboard-panel { padding: 18px 20px; }
+.local-overview-aside { display: grid; gap: 20px; min-width: 0; align-content: start; }
+.local-overview-aside > .local-dashboard-panel { grid-column: auto; }
+.local-overview-run-charts { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: 14px; margin-bottom: 18px; }
+.local-overview-run-charts:empty { display: none; }
+.local-overview-run-charts .local-chart { padding: 12px; margin: 0; min-width: 0; }
+.local-overview-run-charts .local-chart-canvas { height: 150px !important; }
+.local-overview-run-charts .local-chart-symbol { background: transparent; }
+/* Legacy root --chart-* values are HSL channels, so use the workspace's valid icon colors. */
+.local-overview-run-charts .local-chart:first-child .local-chart-symbol { color: #237f94; }
+.local-overview-run-charts .local-chart:last-child .local-chart-symbol { color: #7756b5; }
+[data-theme="dark"] .local-overview-run-charts .local-chart:first-child .local-chart-symbol { color: #72c5d0; }
+[data-theme="dark"] .local-overview-run-charts .local-chart:last-child .local-chart-symbol { color: #a58fff; }
+.local-overview-run-charts .local-chart-heading h3 { font-size: 12px; }
+.local-overview-run-charts .local-chart-heading p { font-size: 10px; }
+.local-overview-run-charts .local-chart-range { flex-wrap: wrap; }
+.local-overview-run-charts .local-chart-inspector { flex-wrap: wrap; }
+.local-overview-run-charts .local-chart-inspector select { width: 100%; min-width: 0; }
+.local-overview-run-charts .local-chart-detail { flex-wrap: wrap; }
+@media (max-width:1100px) { .local-overview-run-charts { grid-template-columns: minmax(0,1fr); } }
+@media (max-width: 760px) {
+  .local-overview-focus:not(:has([data-component="overview-spend-by-day"] .local-chart-canvas)) { grid-template-columns: minmax(0,1fr); }
+  .local-overview-focus > .local-dashboard-panel { padding: 16px; }
+  .local-overview-focus:not(:has([data-component="overview-spend-by-day"] .local-chart-canvas)) .local-latest-primary { grid-template-columns: repeat(2,minmax(0,1fr)); }
+  .local-overview-focus:not(:has([data-component="overview-spend-by-day"] .local-chart-canvas)) .local-latest-primary > [data-field="Model"] { grid-column: auto; }
+  .local-overview-lower > .local-dashboard-panel, .local-dashboard-panel { padding: 16px; }
+}
+
+/* Readable compact typography: UI text uses bundled Inter; identifiers retain
+   their existing monospace treatment. The dense eighteen-column Runs table
+   keeps its separate layout rather than inheriting the Overview table scale. */
+.local-dashboard-page { font-family: var(--font-sans); font-variant-numeric: tabular-nums; }
+.local-overview-summary .local-dashboard-panel h2 { font-size: 13px; }
+.local-dashboard-fields dt,
+.local-overview-focus .local-latest-primary dt { font-size: 12px; line-height: 1.5; }
+.local-dashboard-caption,
+.local-dashboard-read-state,
+.local-overview-summary .local-dashboard-caption,
+.local-overview-summary .local-dashboard-read-state,
+.local-recent-footer,
+.local-recent-toolbar,
+.local-run-more summary,
+.local-overview-secondary > summary { font-size: 12px; line-height: 1.5; }
+.local-recent-runs-wrap :is(th, td) { font-family: var(--font-sans); font-size: 13px; line-height: 1.5; }
+.local-recent-runs-wrap th { font-size: 11px; font-weight: 600; letter-spacing: .035em; }
+.local-recent-runs-wrap .local-dashboard-cell-time { font-family: var(--font-sans); font-size: 12px; }
+.local-recent-runs-wrap .local-run-pill { font-size: 12px; }
+.local-chart-heading h3,
+.local-overview-run-charts .local-chart-heading h3 { font-size: 13px; }
+.local-chart-heading p,
+.local-overview-run-charts .local-chart-heading p,
+.local-chart-range-label,
+.local-chart-reset,
+.local-chart-inspector > label,
+.local-chart-inspector select,
+.local-chart figcaption { font-size: 12px; }
+.local-dashboard-page--workflow .local-chart { padding: 12px; }
+.local-dashboard-page--workflow .local-chart-heading { margin-bottom: 12px; }
+.local-dashboard-page--workflow .local-chart--timing { margin-top: 4px; }
+.local-dashboard-page--workflow .local-chart figcaption { margin-top: 6px; }
+@media (max-width: 760px) {
+  .local-recent-runs-wrap tbody td::before { font-size: 12px; }
+  .local-recent-runs-wrap tbody td .local-recent-value { font-size: 13px; }
+  .local-recent-runs-wrap tbody td[data-label="Time"] .local-recent-value { font-size: 12px; }
+}

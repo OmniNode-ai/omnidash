@@ -592,13 +592,23 @@ export function LastRunCard({ decisions, sessions, now = Date.now() }: RunViewPr
  * OV-5: the ten newest runs, newest first, with the Runs page's run columns. A run shows its cost, never a per-run
  * saving: savings are window totals from metering-summary.v1 only (OMN-19980 AC2).
  */
-export function RecentRunsTable({ decisions, sessions, now = Date.now() }: RunViewProps) {
+export function RecentRunsTable({ decisions, sessions, now = Date.now(), showCharts = false }: RunViewProps & { showCharts?: boolean }) {
   const [showAllFields, setShowAllFields] = useState(false);
+  const [, navigate] = useLocation();
   const tableId = useId();
   const bySession = indexBy(sessions, 'session_id');
   const recent = newestFirst(decisions).slice(0, 10);
+  const listed: ListedRun[] = recent.map(run => ({
+    id: typeof run.correlation_id === 'string' && run.correlation_id !== '' ? run.correlation_id : null,
+    status: statusOf(run), model: modelOrUnknown(run.model_name),
+    duration: run.latency_ms, tokensIn: run.tokens_input, tokensOut: run.tokens_output,
+  }));
   return (
     <>
+      {showCharts && <section className="local-overview-run-charts" aria-label="Latest ten run charts">
+        <RunDurationChart runs={listed} onOpen={id => navigate(workflowHref(id))} />
+        <RunTokensChart runs={listed} onOpen={id => navigate(workflowHref(id))} />
+      </section>}
       <p className="local-dashboard-caption local-recent-toolbar"><label>
         <input type="checkbox" checked={showAllFields} onChange={event => setShowAllFields(event.target.checked)} aria-controls={tableId} />
         Show all run fields
@@ -1373,7 +1383,7 @@ function TableComponent({ component, snapshots, pageSize, syncUrl, columns }: {
   const lookup = rowsForLocalBinding(component, snapshots, 1);
   if (component.component_id === 'overview-last-run') return <LastRunCard decisions={rows} sessions={lookup} />;
   if (component.component_id === 'overview-recent-runs') {
-    return rows.length === 0 ? <NoRunsYet /> : <RecentRunsTable decisions={rows} sessions={lookup} />;
+    return rows.length === 0 ? <NoRunsYet /> : <RecentRunsTable decisions={rows} sessions={lookup} showCharts />;
   }
   if (component.component_id === 'overview-quality' || component.component_id === 'overview-tier-mix') {
     const first = rawRowsFor(component, snapshots, 0)[0];
@@ -1709,7 +1719,7 @@ export function LocalDashboardPage({ pageName, syncUrl = false }: LocalDashboard
   const overviewGroups = {
     summary: ['overview-spend', 'overview-savings', 'overview-measured', 'overview-tokens'],
     focus: ['overview-spend-by-day', 'overview-last-run'],
-    lower: ['overview-recent-runs', 'overview-tier-mix'],
+    lower: ['overview-recent-runs', 'overview-tier-mix', 'overview-quality'],
   };
   const overviewPrimary = new Set(Object.values(overviewGroups).flat());
   const renderGroup = (ids: string[]) => ids.map(id => {
@@ -1752,9 +1762,12 @@ export function LocalDashboardPage({ pageName, syncUrl = false }: LocalDashboard
               <section className="local-overview-summary" aria-label="Runtime summary">{renderGroup(overviewGroups.summary)}</section>
               <section className="local-overview-focus" aria-label="Spend and latest execution">{renderGroup(overviewGroups.focus)}</section>
             </div>
-            <section className="local-overview-lower" aria-label="Recent runs and routing">{renderGroup(overviewGroups.lower)}</section>
+            <section className="local-overview-lower" aria-label="Recent runs and routing">
+              {renderGroup(['overview-recent-runs'])}
+              <div className="local-overview-aside">{renderGroup(['overview-tier-mix', 'overview-quality'])}</div>
+            </section>
             <details className="local-overview-secondary">
-              <summary>Additional runtime metrics <span>Quality, baseline, compression &amp; cache</span></summary>
+              <summary>Additional runtime metrics <span>Baseline, compression &amp; cache</span></summary>
               <div className="local-dashboard-grid">{page.components.filter(component => !overviewPrimary.has(component.component_id)).map(renderComponent)}</div>
             </details>
           </> : page.components.map(renderComponent)}

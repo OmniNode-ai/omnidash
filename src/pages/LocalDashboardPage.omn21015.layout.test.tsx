@@ -5,6 +5,9 @@
 // read without scrolling at 1440x900, and Lakshman asked the same of the charts. On Usage the two charts come first,
 // side by side, and the table after them. The order drawn is the order the page's
 // component contracts list, and a panel's width is the width the page file declares for it.
+// OMN-21166 AC24 promotes Quality beside Tier mix in the compact composition. The
+// original flat page declaration remains intact; assert its grid separately from
+// the approved rendered order rather than treating the two as interchangeable.
 //
 // Failure modes, each with a test below:
 //   Y1  a chart sits under a table or a tile it should be above (the order on the page is not the one above);
@@ -50,6 +53,16 @@ const ORDER: Record<PageName, Array<[title: string, width: number]>> = {
     ['Usage by model and day', 12],
   ],
 };
+const RENDERED_ORDER: Record<PageName, Array<[title: string, width: number]>> = {
+  overview: [
+    ['Actual spend', 3], ['Savings', 3], ['Agent calls', 3], ['Tokens processed', 3],
+    ['Spend per day', 8], ['Last run', 4],
+    ['Recent runs', 8], ['Tier mix', 4], ['Quality', 4],
+    ['Run locally', 4], ['Avg saving / call', 4], ['Baseline spend', 4],
+    ['Compression', 4], ['Cache hit rate', 4],
+  ],
+  usage: ORDER.usage,
+};
 /** The panels each page had before it was reorganised: the same set, whatever the order. */
 const BEFORE: Record<PageName, string[]> = {
   overview: ['Actual spend', 'Agent calls', 'Avg saving / call', 'Baseline spend', 'Cache hit rate', 'Compression', 'Last run',
@@ -71,7 +84,7 @@ afterEach(() => { cleanup(); vi.useRealTimers(); });
 
 describe.each(['overview', 'usage'] as const)('OMN-21015: %s puts its charts first', (pageName) => {
   it('Y1: the panels are drawn in the order that puts the charts at the top, each at its declared width', async () => {
-    expect(await panels(pageName)).toEqual(ORDER[pageName]);
+    expect(await panels(pageName)).toEqual(RENDERED_ORDER[pageName]);
   });
 
   it('Y2: it is the same set of panels as before, each once', async () => {
@@ -98,7 +111,7 @@ describe.each(['overview', 'usage'] as const)('OMN-21015: %s puts its charts fir
     }
   });
 
-  it('Y5: the page file declares the same arrangement: rows top to bottom, columns left to right, no gap and no overlap', () => {
+  it('Y5: the preserved flat page declaration matches its contracts, with no gap or overlap', () => {
     const page = JSON.parse(readFileSync(`src/pages/local/${pageName}.page.yaml`, 'utf8')) as { widgets: Array<{ title: string; row: number; col: number; width: number; height: number }> };
     const contracts = JSON.parse(readFileSync(`src/pages/local/${pageName}.contracts.yaml`, 'utf8')) as { components: Array<{ title: string }> };
     const byPosition = [...page.widgets].sort((a, b) => a.row - b.row || a.col - b.col);

@@ -445,3 +445,18 @@
 
 /* Lucide disclosures are icons; the global typing-cursor .caret must not fill/blink them. */
 .ev-root svg.caret { background: transparent; animation: none; margin-left: 0; vertical-align: initial; }
+
+/* Numbers are figures; unavailable values are readable status text. */
+.ev-root .kpi { padding: 16px 18px; }
+.ev-root .kpi .k-l { font-size: 12px; color: var(--ev-txt-2); font-weight: 500; }
+.ev-root .kpi .k-v { margin-top: 10px; font-size: 28px; line-height: 1.15; }
+.ev-root .kpi[data-unavailable="true"] .k-v { font-family: var(--font-sans); font-size: 16px; line-height: 1.5; letter-spacing: -.015em; color: var(--ev-txt-2); font-weight: 500; }
+.ev-root .kpi .k-sub { font-family: var(--font-sans); font-size: 11px; line-height: 1.6; overflow-wrap: anywhere; }
+.ev-root .panel-h { padding: 14px 18px; }
+.ev-root .panel-h .pt { font-size: 13px; letter-spacing: -.01em; text-transform: none; }
+.ev-root .panel-b { padding: 16px 18px; }
+.ev-root .grid > .panel { align-self: start; }
+.ev-root .ev-empty { padding: 16px; min-height: 0; border-style: solid; }
+@media (max-width:640px) {
+  .ev-root .panel-h, .ev-root .panel-b, .ev-root .kpi { padding: 14px; }
+}

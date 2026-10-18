@@ -1,5 +1,5 @@
 import { useEffect, useId, useState } from 'react';
-import { ChartNoAxesCombined, RotateCcw, ScanLine } from 'lucide-react';
+import { ChartNoAxesCombined, Layers, RotateCcw, ScanLine, Timer, type LucideIcon } from 'lucide-react';
 import { Link } from 'wouter';
 import { workflowHref } from '@/navigation/workflow-url-state';
 import ReactEChartsCore from 'echarts-for-react/lib/core';
@@ -39,8 +39,8 @@ function useChartRange(keys: readonly string[]) {
   };
 }
 
-function ChartHeading({ title, detail }: { title: string; detail: string }) {
-  return <div className="local-chart-heading"><span className="local-chart-symbol" aria-hidden="true"><ChartNoAxesCombined size={17} /></span>
+function ChartHeading({ title, detail, icon: Icon = ChartNoAxesCombined }: { title: string; detail: string; icon?: LucideIcon }) {
+  return <div className="local-chart-heading"><span className="local-chart-symbol" aria-hidden="true"><Icon size={17} /></span>
     <div><h3>{title}</h3><p>{detail}</p></div><ScanLine size={16} className="local-chart-inspect-icon" aria-hidden="true" /></div>;
 }
 
@@ -538,7 +538,7 @@ export function RunDurationChart({ runs, onOpen, title = 'Duration per run' }: {
   };
   return (
     <figure className="local-chart local-chart--runs" aria-label={title} data-motion={motion.reduced ? 'reduced' : 'full'}>
-      <ChartHeading title={title} detail="Explore the runs listed below" />
+      <ChartHeading title={title} detail="Explore the runs listed below" icon={Timer} />
       <div className="local-chart-legend" role="group" aria-label="Statuses shown">
         {statuses.map((status) => (
           <button type="button" className="local-chart-toggle" aria-pressed={!hidden.has(status)} key={status} onClick={() => toggle(status)}>
@@ -570,7 +570,8 @@ export function RunTokensChart({ runs, onOpen, title = 'Tokens per run' }: { run
   const motion = useChartMotion();
   const range = useChartRange(runs.map(run => run.id ?? ''));
   const [hidden, setHidden] = useState<ReadonlySet<string>>(() => new Set());
-  const colours = seriesColours(RUN_TOKEN_SERIES.length, undefined);
+  // Tokens are quantities, not outcomes: blue input and violet output leave red for failures.
+  const colours = [tone('--chart-1', 0x4169b2), tone('--chart-6', 0x7756b5)];
   const all = RUN_TOKEN_SERIES.map((series, index) => ({ ...series, colour: colours[index]!, points: runs.map((run) => point(run[series.key])) }));
   if (all.every((series) => series.points.every(({ value }) => value === null))) return null;
   const shown = all.filter((series) => !hidden.has(series.key));
@@ -605,7 +606,7 @@ export function RunTokensChart({ runs, onOpen, title = 'Tokens per run' }: { run
   };
   return (
     <figure className="local-chart local-chart--runs" aria-label={title} data-motion={motion.reduced ? 'reduced' : 'full'}>
-      <ChartHeading title={title} detail="Explore the runs listed below" />
+      <ChartHeading title={title} detail="Explore the runs listed below" icon={Layers} />
       <div className="local-chart-legend" role="group" aria-label="Series shown">
         {all.map((series) => (
           <button type="button" className="local-chart-toggle" aria-pressed={!hidden.has(series.key)} key={series.key} onClick={() => toggle(series.key)}>

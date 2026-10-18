@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { ComponentWrapper } from '../ComponentWrapper';
 import { Text } from '@/components/ui/typography';
 import { fetchExposureCensus } from '@/data-source/exposure-census';
@@ -60,6 +60,7 @@ export function TopicActivityView({
   error?: Error | null;
 }) {
   const [topicFilter, setTopicFilter] = useState('');
+  const topicFilterInput = useRef<HTMLInputElement>(null);
   const [sortKey, setSortKey] = useState<SortKey>('rate_per_second');
   const [descending, setDescending] = useState(true);
   const rows = useMemo(() => {
@@ -131,8 +132,16 @@ export function TopicActivityView({
       <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
         <label style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
           <Text as="span" size="xs" color="tertiary">Topic suffix</Text>
-          <input aria-label="Filter topic activity by suffix" className="text-input-md" value={topicFilter} onChange={(event) => setTopicFilter(event.target.value)} />
+          <input ref={topicFilterInput} aria-label="Filter topic activity by suffix" className="text-input-md" value={topicFilter} onChange={(event) => setTopicFilter(event.target.value)} />
         </label>
+        {rows.length === 0 && snapshot.rows.length > 0 && (
+          <div role="status" style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 10 }}>
+            <Text as="span" size="sm" color="secondary">No topics match this suffix.</Text>
+            <button type="button" className="btn" aria-label="Clear suffix filter" onClick={() => { setTopicFilter(''); topicFilterInput.current?.focus(); }}>
+              Clear filter
+            </button>
+          </div>
+        )}
         <div style={{ overflowX: 'auto' }}>
           <div style={{ minWidth: 880 }}>
             <div style={{ display: 'grid', gridTemplateColumns: grid, gap: 8, padding: '4px 0', borderBottom: '1px solid var(--line)' }}>
