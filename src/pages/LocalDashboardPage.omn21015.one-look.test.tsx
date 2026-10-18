@@ -140,7 +140,8 @@ describe('OMN-21015 U1: the guard is looking at drawn pages', () => {
     ['credentials', 'table tbody tr', 'openai-main'],
   ] as const)('K5: served %s draws a served value (%s)', async (pageName, selector, value) => {
     const container = await open(pageName, true);
-    const drawn = [...container.querySelectorAll(selector)].map((node) => node.textContent ?? '');
+    // OMN-21166 R-A: a run table writes a long run id short; the served id stays whole on its link's title.
+    const drawn = [...container.querySelectorAll(selector)].map((node) => `${node.textContent ?? ''} ${[...node.querySelectorAll('[title]')].map((el) => el.getAttribute('title')).join(' ')}`);
     expect(drawn.filter((text) => text.includes(value)).length).toBeGreaterThan(0);
   });
 

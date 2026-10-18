@@ -86,7 +86,7 @@
     {
       "widget_id": "3b1f6a52-7d0e-4c1a-9a53-21015ac10001",
       "title": "Spend per day",
-      "row": 2,
+      "row": 12,
       "col": 0,
       "width": 8,
       "height": 4,
@@ -205,10 +205,10 @@
     {
       "widget_id": "8e4f1b77-2c39-5d06-a8b2-6f0d4c9e1a53",
       "title": "Recent runs",
-      "row": 12,
+      "row": 16,
       "col": 0,
-      "width": 8,
-      "height": 4,
+      "width": 12,
+      "height": 5,
       "data_source": "overview-recent-runs",
       "config": {
         "config_kind": "table",
@@ -313,7 +313,7 @@
     {
       "widget_id": "6f1d2c8e-4b7a-5e39-9c0d-20009a1c0c01",
       "title": "Run locally",
-      "row": 16,
+      "row": 21,
       "col": 0,
       "width": 4,
       "height": 2,
@@ -331,7 +331,7 @@
     {
       "widget_id": "6f1d2c8e-4b7a-5e39-9c0d-20009a1c0c02",
       "title": "Avg saving / call",
-      "row": 16,
+      "row": 21,
       "col": 4,
       "width": 4,
       "height": 2,
@@ -349,7 +349,7 @@
     {
       "widget_id": "6f1d2c8e-4b7a-5e39-9c0d-20752a1c0c01",
       "title": "Baseline spend",
-      "row": 16,
+      "row": 21,
       "col": 8,
       "width": 4,
       "height": 2,
@@ -367,10 +367,10 @@
     {
       "widget_id": "d4da9a48-f797-4b1d-b622-41f028a67e04",
       "title": "Quality",
-      "row": 18,
+      "row": 2,
       "col": 0,
-      "width": 4,
-      "height": 2,
+      "width": 8,
+      "height": 4,
       "data_source": "overview-quality",
       "config": {
         "config_kind": "table",
@@ -408,9 +408,9 @@
     {
       "widget_id": "6f1d2c8e-4b7a-5e39-9c0d-20226a1c0c01",
       "title": "Compression",
-      "row": 18,
-      "col": 4,
-      "width": 4,
+      "row": 23,
+      "col": 0,
+      "width": 6,
       "height": 2,
       "data_source": "overview-compression",
       "config": {
@@ -425,9 +425,9 @@
     {
       "widget_id": "6f1d2c8e-4b7a-5e39-9c0d-20226a1c0c02",
       "title": "Cache hit rate",
-      "row": 18,
-      "col": 8,
-      "width": 4,
+      "row": 23,
+      "col": 6,
+      "width": 6,
       "height": 2,
       "data_source": "overview-cache-hit-rate",
       "config": {

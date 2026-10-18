@@ -1439,3 +1439,44 @@ figure.local-chart.ins-card { margin: 0; padding: 20px 22px; border-radius: 16px
 .ins-dot { position: absolute; width: 10px; height: 10px; margin: -5px 0 0 -5px; border-radius: 50%; background: var(--ins-accent); box-shadow: 0 0 0 3px color-mix(in oklch, var(--ins-accent) 25%, transparent); pointer-events: none; transition: transform 120ms ease; }
 .ins-dot[data-active="true"] { transform: scale(1.4); }
 @media (prefers-reduced-motion: reduce) { .ins-dot { transition: none; } }
+
+/* OMN-21166 mockup build: Quality is the Overview's hero beside the newest run; the trends follow; Recent runs spans
+   the page. Selectors repeat a class to win over the older "no spend chart" focus rules above. */
+.local-overview-focus.local-overview-focus:has([data-component="overview-quality"]) { grid-template-columns: minmax(0, 1.85fr) minmax(0, 1fr); align-items: stretch; }
+.local-overview-focus.local-overview-focus:has([data-component="overview-quality"]) .local-latest-primary { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.local-overview-focus.local-overview-focus:has([data-component="overview-quality"]) .local-latest-primary > div { grid-column: auto; }
+.local-overview-focus.local-overview-focus:has([data-component="overview-quality"]) .local-latest-primary > :is([data-field="Status"], [data-field="Cause"], [data-field="Model"], [data-field="Run"]) { grid-column: 1 / -1; }
+.local-overview-focus [data-component="overview-quality"] .local-meter { display: grid; grid-template-columns: auto minmax(0, 1fr); align-items: center; gap: 8px 24px; margin: 6px 0 18px; }
+.local-overview-focus [data-component="overview-quality"] .local-meter-value { order: -1; font-size: 64px; font-weight: 700; letter-spacing: -0.045em; line-height: 1; color: #34D399; }
+.local-overview-focus [data-component="overview-quality"] .local-meter-track { height: 14px; border-radius: 7px; }
+.local-overview-focus [data-component="overview-quality"] .local-meter-fill { border-radius: 7px; background: linear-gradient(90deg, #34D399, #2DD4BF); }
+.local-overview-focus [data-component="overview-quality"] .local-dashboard-fields { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.local-overview-focus [data-component="overview-quality"] .local-dashboard-fields dd { font-size: 18px; font-weight: 600; }
+.local-overview-runs { grid-column: 1 / -1; min-width: 0; }
+.local-overview-runs > .local-dashboard-panel { padding: 18px 20px; border-radius: 12px; }
+.local-recent-runs-wrap .local-cell-time { white-space: nowrap; }
+@media (max-width: 760px) {
+  .local-overview-focus.local-overview-focus:has([data-component="overview-quality"]) { grid-template-columns: minmax(0, 1fr); }
+  .local-overview-focus [data-component="overview-quality"] .local-dashboard-fields { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .local-overview-focus [data-component="overview-quality"] .local-meter-value { font-size: 48px; }
+}
+
+/* OMN-21166 mockup build: the headline cards, each with its own accent, and the last-visit line. */
+.local-overview-summary .local-dashboard-panel { --kpi: #93B4FF; background: linear-gradient(165deg, color-mix(in oklch, var(--kpi) 13%, transparent), transparent 62%); }
+.local-overview-summary .local-dashboard-panel[data-component="overview-spend"] { --kpi: #60A5FA; }
+.local-overview-summary .local-dashboard-panel[data-component="overview-savings"] { --kpi: #34D399; }
+.local-overview-summary .local-dashboard-panel[data-component="overview-measured"] { --kpi: #FBBF24; }
+.local-overview-summary .local-dashboard-panel[data-component="overview-tokens"] { --kpi: #A78BFA; }
+.local-overview-summary .local-dashboard-panel > h2 svg { color: var(--kpi); background: color-mix(in oklch, var(--kpi) 18%, transparent); }
+.local-overview-summary .local-dashboard-metric[data-measured="true"] { color: var(--kpi); }
+.local-overview-summary .local-dashboard-caption { color: var(--text-secondary); }
+.local-overview-focus [data-component="overview-quality"] .local-meter-value { font-family: var(--font-sans); }
+.local-dashboard-header .local-since-visit { flex-basis: 100%; order: 3; display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; margin: 14px 0 0; padding: 10px 14px; border-radius: 12px; border: 1px solid color-mix(in oklch, #818CF8 35%, transparent); background: color-mix(in oklch, #818CF8 10%, transparent); font-size: 13px; }
+.local-since-visit-icon { display: inline-flex; align-items: center; justify-content: center; width: 28px; height: 28px; border-radius: 8px; color: #A5B4FC; background: color-mix(in oklch, #818CF8 22%, transparent); }
+.local-since-visit-title { font-weight: 600; }
+.local-since-visit-chip { padding: 3px 10px; border-radius: 999px; font-weight: 500; }
+.local-since-visit-chip[data-tone="runs"] { color: #7DD3FC; background: color-mix(in oklch, #38BDF8 14%, transparent); }
+.local-since-visit-chip[data-tone="failed"] { color: #FCA5A5; background: color-mix(in oklch, #F87171 14%, transparent); }
+[data-theme="light"] .local-since-visit-chip[data-tone="runs"] { color: #075985; }
+[data-theme="light"] .local-since-visit-chip[data-tone="failed"] { color: #991B1B; }
+[data-theme="light"] .local-since-visit-icon { color: #4338CA; }

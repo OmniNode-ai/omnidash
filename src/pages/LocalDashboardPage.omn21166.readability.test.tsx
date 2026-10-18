@@ -1,17 +1,21 @@
 // @vitest-environment jsdom
-// OMN-21166 AC16 (Lakshman, 2026-10-18 "dashbaord still nto good"): in a Chrome walk of the populated 21-run store at
-// 1440 wide, the Overview's Time column wrapped each served timestamp over three lines. The cell still shows the served
-// text whole (OMN-21015 I8); it is now laid out as two lines, its date and then its time from the T.
+// OMN-21166 rule change R-A (Lakshman, 2026-10-18): times and run ids in the run tables are written for reading; the
+// exact served text stays on the element, as its datetime and title, and as the link's target. This replaces
+// OMN-21015 I8's "shown whole" for the displayed text only.
 //
 // Failure modes, each with a test below:
-//   R1  the timestamp is laid out as one run of text that the column breaks wherever it likes
-//   R2  laying it out changes the text: a character added, dropped or converted, or the served value lost
-//   R3  a timestamp in another form is forced into the two-line layout instead of being shown as served
+//   R1  a served timestamp prints raw (date, T, microseconds and offset) and wraps over several lines
+//   R2  the served timestamp is lost when it is written for reading: it must stay on the element, exactly
+//   R3  a timestamp served with another offset is converted to the reader's zone instead of keeping its offset
+//   R4  a timestamp in another form is reformatted or dropped instead of shown as served
+//   R5  a run id is cut so two runs cannot be told apart, or the whole id is lost from the link
+//   R6  a short run id is shortened anyway
 import { render, screen, within } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
-import { RecentRunsTable } from './LocalDashboardPage';
+import { RecentRunsTable, RunsTable } from './LocalDashboardPage';
 
 const NOW = Date.parse('2026-10-18T08:00:00Z');
+const RUN_ID = '8cf667d9-8f09-4357-b38b-356f647c4412';
 const SERVED_TIME = '2026-10-16T22:11:37.719174+00:00';
 
 function decision(id: string, writtenAt: string): Record<string, unknown> {
@@ -21,32 +25,47 @@ function decision(id: string, writtenAt: string): Record<string, unknown> {
   };
 }
 
-function timeCell(): HTMLElement {
+function cellUnder(header: string): HTMLElement {
   const row = screen.getAllByRole('row')[1]!;
   const table = row.closest('table')!;
-  const index = within(table).getAllByRole('columnheader').findIndex(cell => cell.textContent?.trim() === 'Time');
+  const index = within(table).getAllByRole('columnheader').findIndex(cell => cell.textContent?.trim() === header);
   return within(row).getAllByRole('cell')[index]!;
 }
 
-describe('OMN-21166: a served timestamp on two lines, its text unchanged', () => {
-  it('R1, R2: the date is one line and the time from the T is the next; the text and datetime are the served text', () => {
-    render(<RecentRunsTable now={NOW} decisions={[decision('run-a', SERVED_TIME)]} sessions={[]} />);
-    const cell = timeCell();
-    expect(cell.textContent).toBe(SERVED_TIME);
-    const time = cell.querySelector('time.local-cell-time');
+describe.each([
+  ['Recent runs', RecentRunsTable, 'Time'],
+  ['Runs', RunsTable, 'Created'],
+] as const)('OMN-21166 R-A: %s writes times and ids for reading', (_name, Table, TIME) => {
+  it('R1, R2: a UTC time reads "Oct 16, 22:11:37 UTC" and keeps the served text on the element', () => {
+    render(<Table now={NOW} decisions={[decision(RUN_ID, SERVED_TIME)]} sessions={[]} />);
+    const time = cellUnder(TIME).querySelector('time');
+    expect(time?.textContent).toBe('Oct 16, 22:11:37 UTC');
     expect(time?.getAttribute('datetime')).toBe(SERVED_TIME);
-    // Its own text is the served text (so it is found as that text), broken once, after the date.
-    expect([...time!.childNodes].map(node => node.nodeName === 'BR' ? 'BR' : node.textContent)).toEqual([
-      '2026-10-16', 'BR', 'T22:11:37.719174+00:00',
-    ]);
-    expect(within(cell).getByText(SERVED_TIME)).toBe(time);
+    expect(time?.getAttribute('title')).toBe(SERVED_TIME);
   });
 
-  it('R3: a time in another form is shown as served, with no two-line layout', () => {
-    render(<RecentRunsTable now={NOW} decisions={[decision('run-a', 'yesterday at noon')]} sessions={[]} />);
-    const cell = timeCell();
+  it('R3: another offset is kept, not converted', () => {
+    render(<Table now={NOW} decisions={[decision(RUN_ID, '2026-10-16T22:11:37+05:30')]} sessions={[]} />);
+    expect(cellUnder(TIME).querySelector('time')?.textContent).toBe('Oct 16, 22:11:37 +05:30');
+  });
+
+  it('R4: a time in another form is shown as served', () => {
+    render(<Table now={NOW} decisions={[decision(RUN_ID, 'yesterday at noon')]} sessions={[]} />);
+    const cell = cellUnder(TIME);
     expect(cell.textContent).toBe('yesterday at noon');
     expect(cell.querySelector('time')).toBeNull();
-    expect(within(cell).getByText('yesterday at noon')).toBeInTheDocument();
+  });
+
+  it('R5: a long run id shows its head and tail; the link keeps the whole id', () => {
+    render(<Table now={NOW} decisions={[decision(RUN_ID, SERVED_TIME)]} sessions={[]} />);
+    const link = within(cellUnder('Run')).getByRole('link');
+    expect(link.textContent).toBe('8cf667d9…4412');
+    expect(link.getAttribute('title')).toBe(RUN_ID);
+    expect(link.getAttribute('href')).toContain(`correlation_id=${RUN_ID}`);
+  });
+
+  it('R6: a short run id is shown whole', () => {
+    render(<Table now={NOW} decisions={[decision('run-a', SERVED_TIME)]} sessions={[]} />);
+    expect(within(cellUnder('Run')).getByRole('link').textContent).toBe('run-a');
   });
 });

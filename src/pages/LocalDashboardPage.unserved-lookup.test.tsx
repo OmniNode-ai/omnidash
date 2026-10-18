@@ -98,7 +98,7 @@ describe('Runs with a savings lookup this store does not serve (OMN-19994 AC1)',
   it('shows the served run and names the unserved lookup as a typed state, not an HTTP error', async () => {
     render(<LocalDashboardPage pageName="runs" />);
     const runs = await waitFor(() => panel('Recent runs'));
-    await waitFor(() => expect(within(runs).getByText(RUN_ID)).toBeInTheDocument());
+    await waitFor(() => expect(within(runs).getByRole('link', { name: RUN_ID })).toBeInTheDocument());
     expect(within(runs).getByText(`Not served: ${SAVINGS} (this store has no table for it)`)).toBeInTheDocument();
     expect(within(runs).queryByRole('alert')).toBeNull();
     expect(screen.queryByText(/HTTP 503/)).toBeNull();
@@ -108,7 +108,7 @@ describe('Runs with a savings lookup this store does not serve (OMN-19994 AC1)',
     lab.catalogue = [DECISIONS];
     render(<LocalDashboardPage pageName="runs" />);
     const runs = await waitFor(() => panel('Recent runs'));
-    await waitFor(() => expect(within(runs).getByText(RUN_ID)).toBeInTheDocument());
+    await waitFor(() => expect(within(runs).getByRole('link', { name: RUN_ID })).toBeInTheDocument());
     expect(within(runs).getByText(`Not served: ${SAVINGS}`)).toBeInTheDocument();
     expect(within(runs).queryByRole('alert')).toBeNull();
   });
@@ -117,7 +117,7 @@ describe('Runs with a savings lookup this store does not serve (OMN-19994 AC1)',
     lab.answers[SAVINGS] = { status: 500, body: { error: 'projection_database_unavailable', topic: SAVINGS } };
     render(<LocalDashboardPage pageName="runs" />);
     const runs = await waitFor(() => panel('Recent runs'));
-    await waitFor(() => expect(within(runs).getByText(RUN_ID)).toBeInTheDocument());
+    await waitFor(() => expect(within(runs).getByRole('link', { name: RUN_ID })).toBeInTheDocument());
     expect(within(runs).getByRole('alert').textContent).toContain(`${SAVINGS}: HTTP 500`);
   });
 
@@ -154,7 +154,7 @@ describe('Overview run tables with the same unserved lookup (OMN-19994 AC1, same
   it('shows the run in Recent runs and Last run', async () => {
     render(<LocalDashboardPage pageName="overview" />);
     const recent = await waitFor(() => panel('Recent runs'));
-    await waitFor(() => expect(within(recent).getByText(RUN_ID)).toBeInTheDocument());
+    await waitFor(() => expect(within(recent).getByRole('link', { name: RUN_ID })).toBeInTheDocument());
     expect(within(panel('Last run')).getByText(RUN_ID)).toBeInTheDocument();
     expect(within(recent).queryByRole('alert')).toBeNull();
   });

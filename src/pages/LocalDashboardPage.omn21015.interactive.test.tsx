@@ -57,7 +57,8 @@ describe('OMN-21015 U1: a timestamp in a run table', () => {
   // I8: the cell lets a timestamp break in two places; the text it shows must still be the served text, whole.
   const timeCell = (runId: string) => screen.getByRole('link', { name: runId }).closest('tr')?.querySelector('td')?.textContent;
 
-  it('I8: an ISO time is shown whole, a time in another form is shown as served, a missing one says Not recorded', () => {
+  // OMN-21166 R-A (Lakshman, 2026-10-18): an ISO time is written for reading; the served text stays whole on the element.
+  it('I8: an ISO time reads as month, day and time with the served text on the element, a time in another form is shown as served, a missing one says Not recorded', () => {
     render(<RecentRunsTable
       decisions={[
         decision('run-iso', '2026-10-13T10:52:43.446325+00:00'),
@@ -67,7 +68,8 @@ describe('OMN-21015 U1: a timestamp in a run table', () => {
       sessions={[]}
       now={NOW}
     />);
-    expect(timeCell('run-iso')).toBe('2026-10-13T10:52:43.446325+00:00');
+    expect(timeCell('run-iso')).toBe('Oct 13, 10:52:43 UTC');
+    expect(screen.getByRole('link', { name: 'run-iso' }).closest('tr')?.querySelector('time')?.getAttribute('datetime')).toBe('2026-10-13T10:52:43.446325+00:00');
     expect(timeCell('run-odd')).toBe('yesterday at noon');
     expect(timeCell('run-none')).toBe('Not recorded');
   });

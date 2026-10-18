@@ -10,9 +10,10 @@
 //   C6  a chart can only be read by pointer: no focusable mark carries its numbers
 //   C7  with no rows in the window the section draws empty charts instead of saying so
 //   C8  a single day of runs draws no pass-rate mark at all (a line needs two points; Chrome walk 2026-10-18)
+//   C9  on the page, the section ignores the page's one window and keeps a second switch of its own
 import { fireEvent, render, screen, within } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
-import { InsightsSection } from './insight-charts';
+import { InsightsSection, InsightsWindowContext } from './insight-charts';
 
 const NOW = Date.parse('2026-10-18T09:30:00Z');
 
@@ -82,5 +83,13 @@ describe('OMN-21166: Overview insight charts', () => {
     const plot = screen.getByRole('img', { name: 'Pass rate per day' }).parentElement!;
     expect(plot.querySelectorAll('.ins-dot')).toHaveLength(1);
     expect(container.querySelector('button[aria-label="Oct 16: 50.0% passed"]')).not.toBeNull();
+  });
+
+  it('C9: on the page it follows the page window and has no switch of its own', () => {
+    const { rerender } = render(<InsightsWindowContext.Provider value="today"><InsightsSection decisions={ROWS} now={NOW} /></InsightsWindowContext.Provider>);
+    expect(screen.getByTestId('insights-total')).toHaveTextContent('3 runs today');
+    expect(screen.queryByRole('group', { name: 'Range' })).toBeNull();
+    rerender(<InsightsWindowContext.Provider value="all"><InsightsSection decisions={ROWS} now={NOW} /></InsightsWindowContext.Provider>);
+    expect(screen.getByTestId('insights-total')).toHaveTextContent('5 runs in the last 10 days (all time)');
   });
 });

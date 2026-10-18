@@ -1,4 +1,4 @@
-import { useId, useState, type CSSProperties, type ReactNode } from 'react';
+import { createContext, useContext, useId, useState, type CSSProperties, type ReactNode } from 'react';
 import {
   ArrowDownUp, CalendarClock, ChartColumnStacked, CircleHelp, CodeXml, FileText, FlaskConical, GitPullRequest, Globe,
   Hourglass, LayoutGrid, ScrollText, TrendingUp, TriangleAlert, Trophy,
@@ -312,19 +312,38 @@ function TokensPerDay({ days }: { days: InsightDay[] }) {
   );
 }
 
+/**
+ * The Overview's one window ("Figures for"), when the page provides it: Today is today's UTC day; All time is every
+ * day from the oldest served run to today (at least 7, at most 30 days drawn). With no page window (a standalone
+ * render) the section keeps its own Today / 7 / 14 day switch.
+ */
+export const InsightsWindowContext = createContext<'all' | 'today' | null>(null);
+const MAX_ALL_TIME_DAYS = 30;
+
+function allTimeDays(runs: readonly InsightRun[], now: number): number {
+  if (runs.length === 0) return 7;
+  const oldest = Math.min(...runs.map(run => Date.parse(`${run.day}T00:00:00Z`)));
+  const today = Date.parse(`${new Date(now).toISOString().slice(0, 10)}T00:00:00Z`);
+  return Math.min(MAX_ALL_TIME_DAYS, Math.max(7, Math.round((today - oldest) / 86_400_000) + 1));
+}
+
 export function InsightsSection({ decisions, now }: { decisions: readonly unknown[]; now: number }) {
-  const [days, setDays] = useState<number>(7);
+  const pageWindow = useContext(InsightsWindowContext);
+  const [ownDays, setDays] = useState<number>(7);
   const all = toInsightRuns(decisions);
+  const days = pageWindow === 'today' ? 1 : pageWindow === 'all' ? allTimeDays(all, now) : ownDays;
   const runs = windowRuns(all, now, days);
   const chartDays = dailySeries(all, now, days === 1 ? 7 : days);
-  const windowText = days === 1 ? 'today' : `in the last ${days} days`;
+  const windowText = days === 1 ? 'today' : pageWindow === 'all' ? `in the last ${days} days (all time)` : `in the last ${days} days`;
   return (
     <div className="ins-section" aria-label="Insights" role="group">
-      <div className="local-dashboard-filters ins-range" role="group" aria-label="Range">
-        {RANGES.map(range => (
-          <button key={range.days} type="button" aria-pressed={days === range.days} onClick={() => setDays(range.days)}>{range.label}</button>
-        ))}
-      </div>
+      {pageWindow === null && (
+        <div className="local-dashboard-filters ins-range" role="group" aria-label="Range">
+          {RANGES.map(range => (
+            <button key={range.days} type="button" aria-pressed={days === range.days} onClick={() => setDays(range.days)}>{range.label}</button>
+          ))}
+        </div>
+      )}
       <p className="local-dashboard-caption ins-sub" data-testid="insights-total">{count(runs.length)} runs {windowText} · counted from the served runs</p>
       {runs.length === 0 ? <p className="local-dashboard-empty ins-empty" role="status" aria-label="Insights">{days === 1 ? 'No runs today' : `No runs in the last ${days} days`}</p> : (
         <div className="ins-grid">

@@ -17,7 +17,9 @@ import { PAGE_PATHS } from '@/navigation/page-routes';
 import { normaliseRunId, readWorkflowRunId, workflowHref, writeWorkflowRunId } from '@/navigation/workflow-url-state';
 import { RunDurationChart, RunTimingChart, RunTokensChart, SpendByDayChart, UNRESOLVED_BASELINE, type ListedRun } from '@/pages/local/charts';
 import { PassRateMeter, TierShareChart } from '@/pages/local/shares';
-import { InsightsSection } from '@/pages/local/insight-charts';
+import { InsightsSection, InsightsWindowContext } from '@/pages/local/insight-charts';
+import { SinceLastVisit } from '@/pages/local/since-last-visit';
+import { shortId } from '@/components/dashboard/event-dash/primitives';
 import '@/styles/local-dashboard.css';
 import {
   loadLocalPageConfig,
@@ -501,8 +503,11 @@ interface RunViewProps {
  * WF-3: a run's id as the way into its path on Workflow, wherever the run is named. A run with no recorded id has
  * nothing to open, so it reads Not recorded and is not a link.
  */
-function RunRef({ id }: { id: unknown }) {
-  return typeof id === 'string' && id !== '' ? <Link href={workflowHref(id)} title={id}>{id}</Link> : <>{recorded(id)}</>;
+function RunRef({ id, short = false }: { id: unknown; short?: boolean }) {
+  // `short` (OMN-21166 R-A): a run table shows a long id's head and tail; the link target and title keep the whole id.
+  return typeof id === 'string' && id !== ''
+    ? <Link href={workflowHref(id)} title={id} aria-label={short ? id : undefined}>{short ? shortId(id) : id}</Link>
+    : <>{recorded(id)}</>;
 }
 
 /**
@@ -536,20 +541,23 @@ export function CopyButton({ text, label }: { text: string; label: string }) {
 }
 
 /**
- * A served timestamp in a narrow table cell: the same text, character for character (OMN-21015 I8), on two lines, its
- * date and then the rest from the T, so it reads as date / time instead of breaking mid-number. Both parts stay the
- * element's own text, so it is still found as the served text, and the served text is also the element's datetime.
- * OMN-21166: three-line wrapping in the Overview's Time column was hard to read.
+ * A served timestamp in a run table, written for reading (OMN-21166 rule change R-A, Lakshman 2026-10-18): month, day
+ * and time to the second, with its offset (UTC for Z or +00:00). Nothing is converted: the reader's time zone never
+ * moves the figure, and another offset is written as served. The exact served text stays on the element, as its
+ * datetime and title. A timestamp in any other form is shown exactly as served.
  */
 function CellTime({ value }: { value: unknown }) {
   if (isMissing(value)) return <>{recorded(value)}</>;
   const text = String(value);
-  const parts = /^(\d{4}-\d{2}-\d{2})(T.*)$/.exec(text);
+  const parts = /^\d{4}-(\d{2})-(\d{2})T(\d{2}:\d{2}:\d{2})(?:\.\d+)?(Z|[+-]\d{2}:\d{2})$/.exec(text);
   if (!parts) return <>{text}</>;
-  return (
-    <time className="local-cell-time" dateTime={text}>{parts[1]}<br />{parts[2]}</time>
-  );
+  const month = MONTHS[Number(parts[1]) - 1];
+  if (month === undefined) return <>{text}</>;
+  const zone = parts[4] === 'Z' || parts[4] === '+00:00' ? 'UTC' : parts[4];
+  return <time className="local-cell-time" dateTime={text} title={text}>{`${month} ${Number(parts[2])}, ${parts[3]} ${zone}`}</time>;
 }
+
+const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 
 /** OV-4: the newest run, its typed cause when it failed, and every figure typed when it is not served. */
 export function LastRunCard({ decisions, sessions, now = Date.now() }: RunViewProps) {
@@ -630,7 +638,7 @@ export function RecentRunsTable({ decisions, sessions, now = Date.now(), showCha
             const session = bySession.get(String(decision.correlation_id));
             return <tr key={String(decision.correlation_id ?? index)}>
               <td className="local-dashboard-cell-token local-dashboard-cell-time" data-label="Time"><span className="local-recent-value"><CellTime value={decision.written_at} /></span></td>
-              <td className="local-dashboard-cell-token" data-label="Run"><span className="local-recent-value"><RunRef id={decision.correlation_id} /></span></td>
+              <td className="local-dashboard-cell-token" data-label="Run"><span className="local-recent-value"><RunRef id={decision.correlation_id} short /></span></td>
               <td data-label="Status"><span className="local-recent-value"><OutcomePill value={statusOf(decision)} /></span></td>
               <td className="local-dashboard-cell-token" data-label="Model"><span className="local-recent-value">{modelOrUnknown(decision.model_name)}</span></td>
               <td data-label="Cost"><span className="local-recent-value">{costOf(session, decision)}</span></td>
@@ -800,7 +808,7 @@ export function RunsTable({ decisions, sessions, now = Date.now(), pageSize = 25
                 return <tr key={String(run.correlation_id ?? index)}>
                   <td className="local-dashboard-cell-token">
                     {/* WF-3: a run opens its own path on Workflow; a run with no recorded id has nothing to open. */}
-                    <RunRef id={run.correlation_id} />
+                    <RunRef id={run.correlation_id} short />
                     {isFixture(run) && <span className="local-dashboard-badge">fixture</span>}
                   </td>
                   <td className="local-dashboard-cell-token local-dashboard-cell-time"><CellTime value={run.created_at} /></td>
@@ -1680,7 +1688,9 @@ export function LocalDashboardPage({ pageName, syncUrl = false }: LocalDashboard
     // reads an exposure with no day rows, so with today chosen it still shows all time and has to say so:
     // seen on a store of two real days, "Agent calls 4" beside "6 of 6 runs local".
     const outsideWindow = pageName === 'overview' && overviewWindow === 'today'
-      && component.data_bindings?.[0]?.projection_topic !== METERING_SUMMARY_TOPIC;
+      && component.data_bindings?.[0]?.projection_topic !== METERING_SUMMARY_TOPIC
+      // OMN-21166: the trends follow the window themselves.
+      && component.component_id !== 'overview-insights';
     return (
       <article
         className="local-dashboard-panel"
@@ -1727,9 +1737,9 @@ export function LocalDashboardPage({ pageName, syncUrl = false }: LocalDashboard
   };
   const overviewGroups = {
     summary: ['overview-spend', 'overview-savings', 'overview-measured', 'overview-tokens'],
-    focus: ['overview-spend-by-day', 'overview-last-run'],
+    focus: ['overview-quality', 'overview-last-run'],
     insights: ['overview-insights'],
-    lower: ['overview-recent-runs', 'overview-tier-mix', 'overview-quality'],
+    lower: ['overview-spend-by-day', 'overview-tier-mix', 'overview-recent-runs'],
   };
   const overviewPrimary = new Set(Object.values(overviewGroups).flat());
   const renderGroup = (ids: string[]) => ids.map(id => {
@@ -1761,6 +1771,11 @@ export function LocalDashboardPage({ pageName, syncUrl = false }: LocalDashboard
           </div>
         )}
         <span className="local-dashboard-mode">Local runtime · HTTP</span>
+        {/* OMN-21166: new runs and failures since this browser's last Overview visit, from the served runs. */}
+        {pageName === 'overview' && !loading && !error && page && (() => {
+          const recent = page.components.find(candidate => candidate.component_id === 'overview-recent-runs');
+          return recent ? <SinceLastVisit decisions={rowsForLocalComponent(recent, snapshots)} now={now} /> : null;
+        })()}
         {pageName === 'overview' && <Link className="local-explore-runs" href={PAGE_PATHS['local-runs']}>Explore runs <ArrowUpRight size={14} aria-hidden="true" /></Link>}
       </header>
       {loading && <p role="status">Loading runtime exposures…</p>}
@@ -1770,12 +1785,12 @@ export function LocalDashboardPage({ pageName, syncUrl = false }: LocalDashboard
           {pageName === 'overview' ? <>
             <div className="local-overview-surface">
               <section className="local-overview-summary" aria-label="Runtime summary">{renderGroup(overviewGroups.summary)}</section>
-              <section className="local-overview-focus" aria-label="Spend and latest execution">{renderGroup(overviewGroups.focus)}</section>
+              <section className="local-overview-focus" aria-label="Quality and latest execution">{renderGroup(overviewGroups.focus)}</section>
             </div>
-            {renderGroup(overviewGroups.insights)}
-            <section className="local-overview-lower" aria-label="Recent runs and routing">
-              {renderGroup(['overview-recent-runs'])}
-              <div className="local-overview-aside">{renderGroup(['overview-tier-mix', 'overview-quality'])}</div>
+            <InsightsWindowContext.Provider value={overviewWindow}>{renderGroup(overviewGroups.insights)}</InsightsWindowContext.Provider>
+            <section className="local-overview-lower" aria-label="Spend, routing and recent runs">
+              {renderGroup(['overview-spend-by-day', 'overview-tier-mix'])}
+              <div className="local-overview-runs">{renderGroup(['overview-recent-runs'])}</div>
             </section>
             <details className="local-overview-secondary">
               <summary>Additional runtime metrics <span>Baseline, compression &amp; cache</span></summary>
