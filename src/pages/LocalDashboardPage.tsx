@@ -1,7 +1,7 @@
 import { useEffect, useId, useRef, useState, type ReactNode } from 'react';
 import { Link, useLocation, useSearch } from 'wouter';
 import {
-  Activity, ArrowUpRight, BadgeCheck, Bot, CalendarDays, ChartColumn, ChartLine, Check, CircleDollarSign, CloudOff, Coins, Copy, DatabaseZap, Fingerprint,
+  Activity, ArrowUpRight, BadgeCheck, Bot, CalendarDays, ChartColumn, ChartLine, ChartSpline, Check, CircleDollarSign, CloudOff, Coins, Copy, DatabaseZap, Fingerprint,
   GitBranch, History, IdCard, KeyRound, Layers, ListTree, PiggyBank, Route, Server, Shrink, Table2, TrendingDown, Wallet,
   type LucideIcon,
 } from 'lucide-react';
@@ -17,6 +17,7 @@ import { PAGE_PATHS } from '@/navigation/page-routes';
 import { normaliseRunId, readWorkflowRunId, workflowHref, writeWorkflowRunId } from '@/navigation/workflow-url-state';
 import { RunDurationChart, RunTimingChart, RunTokensChart, SpendByDayChart, UNRESOLVED_BASELINE, type ListedRun } from '@/pages/local/charts';
 import { PassRateMeter, TierShareChart } from '@/pages/local/shares';
+import { InsightsSection } from '@/pages/local/insight-charts';
 import '@/styles/local-dashboard.css';
 import {
   loadLocalPageConfig,
@@ -1390,6 +1391,8 @@ function TableComponent({ component, snapshots, pageSize, syncUrl, columns }: {
   if (component.component_id === 'overview-recent-runs') {
     return rows.length === 0 ? <NoRunsYet /> : <RecentRunsTable decisions={rows} sessions={lookup} showCharts />;
   }
+  // OMN-21166 AC26: trends and breakdowns, counted from the served decision rows (rule change R-B, 2026-10-18).
+  if (component.component_id === 'overview-insights') return rows.length === 0 ? <NoRunsYet /> : <InsightsSection decisions={rows} now={Date.now()} />;
   if (component.component_id === 'overview-quality' || component.component_id === 'overview-tier-mix') {
     const first = rawRowsFor(component, snapshots, 0)[0];
     const row = first && typeof first === 'object' && !Array.isArray(first) ? (first as Row) : null;
@@ -1542,6 +1545,7 @@ const PANEL_ICONS: Record<string, LucideIcon> = {
   'overview-tokens': Coins,
   'overview-last-run': History,
   'overview-recent-runs': Table2,
+  'overview-insights': ChartSpline,
   'overview-run-locally': Server,
   'overview-avg-saving-per-call': TrendingDown,
   'overview-baseline-spend': CircleDollarSign,
@@ -1724,6 +1728,7 @@ export function LocalDashboardPage({ pageName, syncUrl = false }: LocalDashboard
   const overviewGroups = {
     summary: ['overview-spend', 'overview-savings', 'overview-measured', 'overview-tokens'],
     focus: ['overview-spend-by-day', 'overview-last-run'],
+    insights: ['overview-insights'],
     lower: ['overview-recent-runs', 'overview-tier-mix', 'overview-quality'],
   };
   const overviewPrimary = new Set(Object.values(overviewGroups).flat());
@@ -1767,6 +1772,7 @@ export function LocalDashboardPage({ pageName, syncUrl = false }: LocalDashboard
               <section className="local-overview-summary" aria-label="Runtime summary">{renderGroup(overviewGroups.summary)}</section>
               <section className="local-overview-focus" aria-label="Spend and latest execution">{renderGroup(overviewGroups.focus)}</section>
             </div>
+            {renderGroup(overviewGroups.insights)}
             <section className="local-overview-lower" aria-label="Recent runs and routing">
               {renderGroup(['overview-recent-runs'])}
               <div className="local-overview-aside">{renderGroup(['overview-tier-mix', 'overview-quality'])}</div>

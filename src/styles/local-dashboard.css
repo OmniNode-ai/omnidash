@@ -1374,3 +1374,68 @@
 @media (prefers-reduced-motion: reduce) {
   .od-grow, .od-growx, .od-card, .od-draw, .od-ring { animation: none; }
 }
+
+/* OMN-21166 AC26 (mockup build): Overview trends and breakdowns. Each card carries its own accent and Lucide icon;
+   every mark is a focusable button; motion comes from the shared od-* classes. */
+.ins-section { display: flex; flex-direction: column; gap: 14px; min-width: 0; }
+.ins-head { display: flex; flex-wrap: wrap; align-items: flex-end; justify-content: space-between; gap: 12px; }
+.ins-heading { margin: 0; font-size: 20px; font-weight: 700; letter-spacing: -0.015em; }
+.ins-sub { margin: 4px 0 0; font-size: 13px; color: var(--text-secondary); }
+.ins-range { display: flex; gap: 2px; padding: 3px; border-radius: 11px; border: 1px solid var(--line); background: var(--panel); }
+.ins-range button { min-height: 36px; padding: 0 14px; border: 0; border-radius: 8px; background: transparent; color: var(--text-secondary); font: inherit; font-size: 13px; font-weight: 500; cursor: pointer; }
+.ins-range button[aria-pressed="true"] { background: #A78BFA; color: #0A0B10; }
+.ins-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 360px), 1fr)); gap: 16px; }
+.ins-card { --ins-accent: #93B4FF; min-width: 0; display: flex; flex-direction: column; gap: 10px; padding: 20px 22px; border-radius: 16px; background: var(--panel); border: 1px solid var(--line); box-shadow: inset 0 1px 0 color-mix(in oklch, var(--ins-accent) 18%, transparent); }
+.ins-card-head { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px; }
+.ins-title { margin: 0; display: flex; align-items: center; gap: 10px; font-size: 15px; font-weight: 600; }
+.ins-badge { display: inline-flex; align-items: center; justify-content: center; width: 30px; height: 30px; border-radius: 9px; color: var(--ins-accent); background: color-mix(in oklch, var(--ins-accent) 16%, transparent); }
+.ins-note { font-size: 12px; color: var(--text-secondary); }
+.ins-readout { margin: 0; min-height: 20px; font-size: 13px; color: var(--text-secondary); }
+.ins-readout--active { color: var(--text-primary, inherit); font-weight: 500; }
+.ins-toggles { display: flex; gap: 6px; }
+.ins-toggle { display: inline-flex; align-items: center; gap: 6px; min-height: 32px; padding: 0 10px; border-radius: 8px; border: 1px solid var(--line); background: transparent; color: var(--text-secondary); font: inherit; font-size: 12px; cursor: pointer; }
+.ins-toggle::before { content: ''; width: 10px; height: 10px; border-radius: 3px; background: var(--ins-swatch); }
+.ins-toggle[aria-pressed="true"] { color: inherit; border-color: color-mix(in oklch, var(--ins-swatch) 55%, transparent); background: color-mix(in oklch, var(--ins-swatch) 12%, transparent); }
+.ins-bars { display: flex; align-items: flex-end; gap: 4px; height: 170px; border-bottom: 1px solid var(--line); }
+.ins-bars--short { height: 130px; }
+.ins-bar { flex: 1; min-width: 0; height: 100%; padding: 0; border: 0; background: transparent; cursor: pointer; display: flex; flex-direction: column; justify-content: flex-end; gap: 2px; border-radius: 4px; transition: opacity 120ms ease; }
+.ins-bar[data-dim="true"] { opacity: 0.4; }
+.ins-bar:focus-visible { outline: 2px solid var(--ins-accent); outline-offset: 2px; }
+.ins-seg { display: block; width: 100%; border-radius: 4px; }
+.ins-axis { display: flex; justify-content: space-between; font-size: 12px; color: var(--text-secondary); }
+.ins-plot { position: relative; height: 120px; }
+.ins-plot svg { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
+.ins-marker { position: absolute; top: 0; bottom: 0; width: 1px; background: color-mix(in oklch, var(--ins-accent) 60%, transparent); pointer-events: none; }
+.ins-hits { position: absolute; inset: 0; display: flex; }
+.ins-hit { flex: 1; padding: 0; border: 0; background: transparent; cursor: crosshair; }
+.ins-hit:focus-visible { outline: 2px solid var(--ins-accent); outline-offset: -2px; }
+.ins-heat { display: flex; flex-direction: column; gap: 3px; }
+.ins-heat-row { display: grid; grid-template-columns: 36px repeat(24, minmax(0, 1fr)); gap: 3px; align-items: center; }
+.ins-heat-day { font-size: 12px; color: var(--text-secondary); }
+.ins-heat-cell { height: 16px; border-radius: 4px; background: color-mix(in oklch, var(--line) 70%, transparent); }
+.ins-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 10px; }
+.ins-list-row { display: grid; grid-template-columns: 26px minmax(124px, 1.1fr) minmax(0, 1fr) auto; align-items: center; gap: 10px; font-size: 13px; }
+.ins-list-row--plain { grid-template-columns: minmax(110px, 0.9fr) minmax(0, 1.4fr) auto; }
+.ins-chip-icon { display: inline-flex; align-items: center; justify-content: center; width: 26px; height: 26px; border-radius: 8px; color: var(--ins-swatch); background: color-mix(in oklch, var(--ins-swatch) 18%, transparent); }
+.ins-list-name { text-transform: capitalize; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ins-track { display: flex; height: 10px; border-radius: 5px; background: color-mix(in oklch, var(--line) 80%, transparent); overflow: hidden; }
+.ins-fill { display: block; height: 100%; border-radius: 5px; background: var(--ins-swatch); }
+.ins-list-value { font-variant-numeric: tabular-nums; color: var(--text-secondary); white-space: nowrap; }
+.ins-rings { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(170px, 1fr)); gap: 10px; }
+.ins-ring { display: flex; align-items: center; gap: 12px; padding: 10px; border-radius: 12px; border: 1px solid color-mix(in oklch, var(--ins-swatch) 30%, transparent); background: color-mix(in oklch, var(--ins-swatch) 7%, transparent); }
+.ins-ring-track { stroke: color-mix(in oklch, var(--line) 90%, transparent); }
+.ins-ring-text { display: flex; flex-direction: column; min-width: 0; }
+.ins-ring-name { font-size: 13px; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ins-ring-rate { font-size: 13px; color: var(--ins-swatch); font-weight: 600; }
+.ins-ring-runs { font-size: 12px; color: var(--text-secondary); }
+.ins-big { margin: 0; font-size: 28px; font-weight: 700; letter-spacing: -0.02em; color: var(--ins-accent); }
+.ins-empty { margin: 0; padding: 16px; border-radius: 12px; border: 1px dashed var(--line); color: var(--text-secondary); font-size: 13px; }
+@media (prefers-reduced-motion: reduce) { .ins-bar { transition: none; } }
+/* The insights live in their declared panel (OMN-21015 one look); its charts are standard chart figures. */
+.local-dashboard-panel[data-component="overview-insights"] { grid-column: 1 / -1; background: transparent; border: 0; box-shadow: none; padding: 0; }
+.local-dashboard-panel[data-component="overview-insights"] > h2 { font-size: 18px; border: 0; padding-bottom: 0; }
+.ins-section .local-dashboard-filters.ins-range { order: 0; flex-basis: auto; margin: 0; width: fit-content; padding: 3px; gap: 2px; border: 1px solid var(--line); background: var(--panel); }
+figure.local-chart.ins-card { margin: 0; padding: 20px 22px; border-radius: 16px; border: 1px solid var(--line); background: var(--panel); }
+.ins-dot { position: absolute; width: 10px; height: 10px; margin: -5px 0 0 -5px; border-radius: 50%; background: var(--ins-accent); box-shadow: 0 0 0 3px color-mix(in oklch, var(--ins-accent) 25%, transparent); pointer-events: none; transition: transform 120ms ease; }
+.ins-dot[data-active="true"] { transform: scale(1.4); }
+@media (prefers-reduced-motion: reduce) { .ins-dot { transition: none; } }

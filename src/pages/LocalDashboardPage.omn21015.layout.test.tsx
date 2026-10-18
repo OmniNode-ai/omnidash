@@ -44,6 +44,8 @@ const ORDER: Record<PageName, Array<[title: string, width: number]>> = {
     // The first screen: the four headline tiles (requirement Q3), then spend/newest run (Q2), followed by recent runs/routing (OMN-21166).
     ['Actual spend', 3], ['Savings', 3], ['Agent calls', 3], ['Tokens processed', 3],
     ['Spend per day', 8], ['Last run', 4],
+    // OMN-21166 AC26 (mockup build, 2026-10-18): trends and breakdowns, full width, before the run tables.
+    ['Trends and breakdowns', 12],
     ['Recent runs', 8], ['Tier mix', 4],
     ['Run locally', 4], ['Avg saving / call', 4], ['Baseline spend', 4],
     ['Quality', 4], ['Compression', 4], ['Cache hit rate', 4],
@@ -57,6 +59,7 @@ const RENDERED_ORDER: Record<PageName, Array<[title: string, width: number]>> = 
   overview: [
     ['Actual spend', 3], ['Savings', 3], ['Agent calls', 3], ['Tokens processed', 3],
     ['Spend per day', 8], ['Last run', 4],
+    ['Trends and breakdowns', 12],
     ['Recent runs', 8], ['Tier mix', 4], ['Quality', 4],
     ['Run locally', 4], ['Avg saving / call', 4], ['Baseline spend', 4],
     ['Compression', 4], ['Cache hit rate', 4],
@@ -66,7 +69,7 @@ const RENDERED_ORDER: Record<PageName, Array<[title: string, width: number]>> = 
 /** The panels each page had before it was reorganised: the same set, whatever the order. */
 const BEFORE: Record<PageName, string[]> = {
   overview: ['Actual spend', 'Agent calls', 'Avg saving / call', 'Baseline spend', 'Cache hit rate', 'Compression', 'Last run',
-    'Quality', 'Recent runs', 'Run locally', 'Savings', 'Spend per day', 'Tier mix', 'Tokens processed'],
+    'Quality', 'Recent runs', 'Run locally', 'Savings', 'Spend per day', 'Tier mix', 'Tokens processed', 'Trends and breakdowns'],
   usage: ['Savings per day', 'Tokens per day', 'Usage by model and day'],
 };
 
