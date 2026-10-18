@@ -35,11 +35,14 @@ describe('OMN-21015 AC2: the Tier mix lists each model under its tier', () => {
     expect(names).toEqual(['local', 'qwen-a', 'qwen-b', 'cheap_cloud', 'gemini']);
   });
 
-  it('T2: each model row shows its served runs and share, exactly as served', () => {
+  // OMN-21166 (Lakshman, 2026-10-18): the share reads as a percent; the exact served fraction stays as its title.
+  it('T2: each model row shows its served runs and share, the share exact in its title', () => {
     render(<TierMixPanel row={ROW} />);
-    expect(cells('qwen-a').slice(1, 3)).toEqual(['3', '0.5']);
-    expect(cells('qwen-b').slice(1, 3)).toEqual(['1', '0.16666666666666666']);
-    expect(cells('gemini').slice(1, 3)).toEqual(['2', '0.3333333333333333']);
+    expect(cells('qwen-a').slice(1, 3)).toEqual(['3', '50.0%']);
+    expect(cells('qwen-b').slice(1, 3)).toEqual(['1', '16.7%']);
+    expect(cells('gemini').slice(1, 3)).toEqual(['2', '33.3%']);
+    const title = (name: string) => within(screen.getByRole('row', { name: new RegExp(`^${name}`) })).getAllByRole('cell')[2]!.querySelector('[title]')?.getAttribute('title');
+    expect([title('qwen-a'), title('qwen-b'), title('gemini')]).toEqual(['0.5', '0.16666666666666666', '0.3333333333333333']);
   });
 
   it('T3: a model cost is the served sum; an unpriced group says Not measured with its run count, never $0', () => {

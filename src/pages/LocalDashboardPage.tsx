@@ -17,7 +17,7 @@ import { PAGE_PATHS } from '@/navigation/page-routes';
 import { normaliseRunId, readWorkflowRunId, workflowHref, writeWorkflowRunId } from '@/navigation/workflow-url-state';
 import { RunDurationChart, RunTimingChart, RunTokensChart, SpendByDayChart, UNRESOLVED_BASELINE, type ListedRun } from '@/pages/local/charts';
 import { PassRateMeter, TierShareChart } from '@/pages/local/shares';
-import { InsightsSection, InsightsWindowContext } from '@/pages/local/insight-charts';
+import { InsightsSection, InsightsWindowContext, TaskIcon } from '@/pages/local/insight-charts';
 import { SinceLastVisit } from '@/pages/local/since-last-visit';
 import { shortId } from '@/components/dashboard/event-dash/primitives';
 import '@/styles/local-dashboard.css';
@@ -55,7 +55,8 @@ export interface MetricCardConfig {
 }
 
 function formatMetric(value: number, config: MetricCardConfig): string {
-  const digits = config.precision ?? 0;
+  // OMN-21166 (Lakshman, 2026-10-18): an exact zero reads $0.00, not $0.0000; other figures keep their declared precision.
+  const digits = config.format === 'currency' && value === 0 ? 2 : config.precision ?? 0;
   const grouped = value.toLocaleString('en-US', {
     minimumFractionDigits: digits,
     maximumFractionDigits: digits,
@@ -164,8 +165,14 @@ export function MetricCard({ component, config, row, caption, figureLine, figure
     <>
       <p className="local-dashboard-metric" data-measured={figure}>{text}</p>
       {figure && figureLine && <p className="local-dashboard-caption">{figureLine}</p>}
-      {line && <p className="local-dashboard-caption">{line}</p>}
-      {modelled && <p className="local-dashboard-caption">{SAVINGS_MODELLED}</p>}
+      {/* OMN-21166 (Lakshman, 2026-10-18): the card's further lines fold under Details, every word kept. */}
+      {(line || modelled) && (
+        <details className="local-card-details">
+          <summary>Details</summary>
+          {line && <p className="local-dashboard-caption">{line}</p>}
+          {modelled && <p className="local-dashboard-caption">{SAVINGS_MODELLED}</p>}
+        </details>
+      )}
     </>
   );
 }
@@ -424,6 +431,21 @@ function causeOf(decision: Row | undefined): string {
   if (status === 'passed') return 'none';
   if (status === 'Not recorded' || isMissing(decision?.quality_gate_detail)) return 'Not recorded';
   return String(decision?.quality_gate_detail);
+}
+
+/**
+ * OMN-21166 (Lakshman, 2026-10-18): a served fraction or long decimal written for reading (0.8095238095238095 reads
+ * 81.0% as a percent, 0.85 as a decimal), with the exact served text kept as the title. A value that is not a number
+ * is shown as served; a missing one reads Not recorded.
+ */
+function Readable({ value, kind }: { value: unknown; kind: 'percent' | 'decimal' | 'count' }) {
+  if (isMissing(value)) return <>{recorded(value)}</>;
+  const number = typeof value === 'number' ? value : typeof value === 'string' && value.trim() !== '' ? Number(value) : NaN;
+  if (!Number.isFinite(number) || kind === 'count') return <>{String(value)}</>;
+  const text = kind === 'percent'
+    ? number.toLocaleString('en-US', { style: 'percent', minimumFractionDigits: 1, maximumFractionDigits: 1 })
+    : number.toLocaleString('en-US', { maximumFractionDigits: 2 });
+  return <span className="local-readable" title={String(value)}>{text}</span>;
 }
 
 function recorded(value: unknown): string {
@@ -695,6 +717,8 @@ function isFixture(decision: Row): boolean {
  */
 export function RunsTable({ decisions, sessions, now = Date.now(), pageSize = 25, syncUrl = false }: RunsTableProps) {
   const id = useId();
+  // OMN-21166 AC27: the table opens on its primary fields; every one of the 18 stays in the page, one switch away.
+  const [showAllFields, setShowAllFields] = useState(false);
   const search = useSearch();
   const [, navigate] = useLocation();
   const [localView, setLocalView] = useState<RunsViewState>(DEFAULT_RUNS_VIEW);
@@ -794,8 +818,12 @@ export function RunsTable({ decisions, sessions, now = Date.now(), pageSize = 25
             <RunDurationChart runs={listed} onOpen={openRun} />
             <RunTokensChart runs={listed} onOpen={openRun} />
           </div>
-          <div className="local-dashboard-table-wrap local-dashboard-table-wrap--fit">
-            <table>
+          <p className="local-dashboard-caption local-recent-toolbar"><label>
+            <input type="checkbox" checked={showAllFields} onChange={event => setShowAllFields(event.target.checked)} aria-controls={`${id}-table`} />
+            Show all run fields
+          </label></p>
+          <div className={`local-dashboard-table-wrap local-dashboard-table-wrap--fit local-runs-wrap${showAllFields ? ' local-runs-wrap--all' : ''}`}>
+            <table id={`${id}-table`}>
               <thead>
                 <tr>
                   <th>Run</th><th>Created</th><th>Status</th><th>Cause</th><th>Model</th><th>Backend</th><th>Host</th>
@@ -813,7 +841,7 @@ export function RunsTable({ decisions, sessions, now = Date.now(), pageSize = 25
                   </td>
                   <td className="local-dashboard-cell-token local-dashboard-cell-time"><CellTime value={run.created_at} /></td>
                   <td><OutcomePill value={statusOf(run)} /></td>
-                  <td>{causeOf(run)}</td>
+                  <td><span className="local-runs-cause" title={causeOf(run)}>{causeOf(run)}</span></td>
                   {/* A run's model and backend set that filter: the same filters as the selects above, from the row. */}
                   <td className="local-dashboard-cell-token">
                     <button type="button" className="local-cell-filter" aria-label={`Show only runs of model ${modelOrUnknown(run.model_name)}`} onClick={() => updateView({ model: modelOrUnknown(run.model_name), page: 1 })}>
@@ -832,7 +860,7 @@ export function RunsTable({ decisions, sessions, now = Date.now(), pageSize = 25
                   <td>{runModelledCell(run)}</td>
                   <td>{recorded(session?.baseline_model)}</td>
                   <td>{recorded(session?.usage_source)}</td>
-                  <td>{recorded(run.task_type)}</td>
+                  <td>{isMissing(run.task_type) ? recorded(run.task_type) : <span className="local-task-cell"><TaskIcon task={String(run.task_type)} />{String(run.task_type)}</span>}</td>
                   <td>{recorded(run.latency_ms)}</td>
                   <td>{recorded(run.tokens_to_compliance)}</td>
                   <td>{tierOf(run)}</td>
@@ -872,7 +900,7 @@ export function QualityPanel({ row }: { row: Row | null }) {
     <section aria-label="Quality">
       <PassRateMeter row={row} />
       <dl className="local-dashboard-fields">
-        {QUALITY_FIELDS.map(([label, field]) => <div key={field}><dt>{label}</dt><dd>{recorded(row[field])}</dd></div>)}
+        {QUALITY_FIELDS.map(([label, field]) => <div key={field}><dt>{label}</dt><dd><Readable value={row[field]} kind={field === 'overall_pass_rate' ? 'percent' : field.startsWith('avg_') ? 'decimal' : 'count'} /></dd></div>)}
       </dl>
     </section>
   );
@@ -923,14 +951,14 @@ export function TierMixPanel({ row }: { row: Row | null }) {
                   sideways scroll. Costs wrap at their spaces. */}
               <td className="local-dashboard-cell-token local-dashboard-cell-name">{recorded(tier.cost_tier_name)}</td>
               <td>{recorded(tier.count)}</td>
-              <td className="local-dashboard-cell-token">{recorded(tier.pct_of_tier_routed)}</td>
+              <td className="local-dashboard-cell-token"><Readable value={tier.pct_of_tier_routed} kind="percent" /></td>
               <td />
             </tr>,
             ...(Array.isArray(tier.models) ? asRecords(tier.models) : []).map((model, modelIndex) => (
               <tr key={`${String(tier.cost_tier_name)}-${index}-${String(model.model_name)}-${modelIndex}`} className="local-dashboard-row--nested">
                 <td className="local-dashboard-cell-token local-dashboard-cell-name">{recorded(model.model_name)}</td>
                 <td>{recorded(model.count)}</td>
-                <td className="local-dashboard-cell-token">{recorded(model.pct_of_tier_routed)}</td>
+                <td className="local-dashboard-cell-token"><Readable value={model.pct_of_tier_routed} kind="percent" /></td>
                 <td>{tierModelCost(model)}</td>
               </tr>
             )),
@@ -1494,7 +1522,9 @@ function WidgetReadState({ component, snapshots, now, interval }: {
         <p className="local-dashboard-empty" role="status" key={snapshot.topic}>{snapshot.failure!.message}</p>
       ))}
       {readAt !== null && (
-        <p className={`local-dashboard-asof${stale ? ' local-dashboard-asof--stale' : ''}`}>{`As of ${age(readAt, now)}`}</p>
+        // OMN-21166 (Lakshman, 2026-10-18): a fresh read is not drawn on every panel; it stays for assistive tech, and a
+        // stale read is drawn as before.
+        <p className={`local-dashboard-asof${stale ? ' local-dashboard-asof--stale' : ' local-dashboard-asof--fresh'}`}>{`As of ${age(readAt, now)}`}</p>
       )}
     </>
   );
@@ -1758,16 +1788,15 @@ export function LocalDashboardPage({ pageName, syncUrl = false }: LocalDashboard
         </div>
         {/* One toolbar row: the page's own control when it has one, and the runtime mode at the right. */}
         {pageName === 'overview' && !loading && !error && page && (
-          <div className="local-dashboard-filters">
-            <label htmlFor={windowId}>Figures for</label>
-            <select
-              id={windowId}
-              value={overviewWindow}
-              onChange={(event) => setOverviewWindow(event.target.value === 'today' ? 'today' : 'all')}
-            >
-              <option value="all">All time</option>
-              <option value="today">Today (UTC)</option>
-            </select>
+          // OMN-21166 mockup build: the window is a two-button switch (radio semantics), not a dropdown.
+          <div className="local-dashboard-filters local-window-switch">
+            <span id={windowId}>Figures for</span>
+            <div role="radiogroup" aria-labelledby={windowId} className="local-window-options">
+              {([['all', 'All time'], ['today', 'Today (UTC)']] as const).map(([value, label]) => (
+                <button key={value} type="button" role="radio" aria-checked={overviewWindow === value}
+                  onClick={() => setOverviewWindow(value)}>{label}</button>
+              ))}
+            </div>
           </div>
         )}
         <span className="local-dashboard-mode">Local runtime · HTTP</span>

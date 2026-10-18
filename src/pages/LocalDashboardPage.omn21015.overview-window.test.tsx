@@ -80,8 +80,9 @@ function caption(title: string): string {
   return article?.querySelector('.local-dashboard-caption')?.textContent ?? '';
 }
 
+// OMN-21166: the window is a two-button switch.
 const chooseWindow = (value: 'all' | 'today') =>
-  fireEvent.change(screen.getByLabelText('Figures for'), { target: { value } });
+  fireEvent.click(screen.getByRole('radio', { name: value === 'today' ? 'Today (UTC)' : 'All time' }));
 
 describe('OMN-21015 AC7: the Overview tiles switch between today (UTC) and all time', () => {
   beforeEach(() => {
@@ -92,7 +93,7 @@ describe('OMN-21015 AC7: the Overview tiles switch between today (UTC) and all t
 
   it('opens on all time, as it always has', async () => {
     await open('overview', [ALL_ROW, YESTERDAY_ROW, TODAY_ROW]);
-    expect((screen.getByLabelText('Figures for') as HTMLSelectElement).value).toBe('all');
+    expect(screen.getByRole('radio', { name: 'All time' })).toHaveAttribute('aria-checked', 'true');
     expect(figure('Actual spend')).toBe('$0.0123');
     expect(figure('Agent calls')).toBe('23');
   });
@@ -162,6 +163,6 @@ describe('OMN-21015 AC7: the Overview tiles switch between today (UTC) and all t
 
   it('W8: the Usage page offers no such switch', async () => {
     await open('usage', [ALL_ROW, YESTERDAY_ROW, TODAY_ROW]);
-    expect(screen.queryByLabelText('Figures for')).toBeNull();
+    expect(screen.queryByRole('radiogroup', { name: 'Figures for' })).toBeNull();
   });
 });

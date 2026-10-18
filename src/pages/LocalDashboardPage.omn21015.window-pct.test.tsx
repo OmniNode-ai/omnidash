@@ -116,7 +116,7 @@ describe('OMN-21015 AC7: the Overview page', () => {
   afterEach(() => { vi.useRealTimers(); });
 
   const chooseWindow = (value: 'all' | 'today') =>
-    fireEvent.change(screen.getByLabelText('Figures for'), { target: { value } });
+    fireEvent.click(screen.getByRole('radio', { name: value === 'today' ? 'Today (UTC)' : 'All time' }));
 
   const panel = () => screen.getByRole('heading', { name: 'Savings' }).closest('article') as HTMLElement;
 

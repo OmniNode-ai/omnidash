@@ -39,6 +39,12 @@ const TASK_LOOK: Record<string, { icon: ReactNode; color: string }> = {
 };
 const OTHER_TASK = { icon: <CircleHelp size={14} />, color: UNKNOWN };
 
+/** A task type's own icon in its own colour (OMN-21166 AC27), for the run tables. Decorative: the name is beside it. */
+export function TaskIcon({ task }: { task: string }) {
+  const look = TASK_LOOK[task] ?? OTHER_TASK;
+  return <span className="local-task-icon" style={{ '--ins-swatch': look.color } as CSSProperties} aria-hidden="true">{look.icon}</span>;
+}
+
 function count(value: number): string {
   return value.toLocaleString('en-US');
 }

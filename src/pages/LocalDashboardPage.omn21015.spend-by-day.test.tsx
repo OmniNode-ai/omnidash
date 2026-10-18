@@ -219,7 +219,7 @@ describe('OMN-21015 AC1: Overview shows baseline against actual spend per UTC da
 
   it('S8: choosing today for the cards leaves every day in the panel', async () => {
     await overview(RECORDED);
-    fireEvent.change(screen.getByLabelText('Figures for'), { target: { value: 'today' } });
+    fireEvent.click(screen.getByRole('radio', { name: 'Today (UTC)' }));
     expect(series('claude-sonnet-5-5').rows.map((row) => row[0])).toEqual(['2026-09-29', '2026-10-12', 'All time']);
   });
 });

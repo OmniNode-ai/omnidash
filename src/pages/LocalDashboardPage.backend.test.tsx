@@ -165,16 +165,18 @@ describe('OMN-20225 AC3: the quality and tier-mix panels show served fields and 
   it('the quality panel shows the served pass rate, not one recomputed from passed and failed', () => {
     render(<QualityPanel row={quality} />);
     const panel = screen.getByRole('region', { name: 'Quality' });
-    for (const [label, value] of [
-      ['Pass rate', '0.875'],
-      ['Passed', '3'],
-      ['Failed', '3'],
-      ['Checks', '6'],
-      ['Average score', '0.81'],
-      ['Average required bar', '0.7'],
-    ]) {
+    // OMN-21166 (Lakshman, 2026-10-18): fractions are written for reading; the exact served value is the title.
+    for (const [label, value, served] of [
+      ['Pass rate', '87.5%', '0.875'],
+      ['Passed', '3', null],
+      ['Failed', '3', null],
+      ['Checks', '6', null],
+      ['Average score', '0.81', '0.81'],
+      ['Average required bar', '0.7', '0.7'],
+    ] as const) {
       const term = within(panel).getByText(label, { selector: 'dt' });
       expect(term.nextElementSibling?.textContent?.trim(), label).toBe(value);
+      if (served !== null) expect(term.nextElementSibling?.querySelector('[title]')?.getAttribute('title'), label).toBe(served);
     }
     expect(within(panel).queryByText('0.5')).not.toBeInTheDocument();
   });
@@ -205,9 +207,12 @@ describe('OMN-20225 AC3: the quality and tier-mix panels show served fields and 
     const local = screen.getByRole('row', { name: /^local/ });
     expect(cellUnder(local, 'Tier')).toHaveTextContent('local');
     expect(cellUnder(local, 'Runs')).toHaveTextContent('5');
-    expect(cellUnder(local, 'Share of tier-routed')).toHaveTextContent('0.7143');
+    // OMN-21166 (Lakshman, 2026-10-18): a share reads as a percent; the exact served fraction is the title.
+    expect(cellUnder(local, 'Share of tier-routed')).toHaveTextContent('71.4%');
+    expect(cellUnder(local, 'Share of tier-routed').querySelector('[title]')).toHaveAttribute('title', '0.7143');
     const cloud = screen.getByRole('row', { name: /^cheap_cloud/ });
-    expect(cellUnder(cloud, 'Share of tier-routed')).toHaveTextContent('0.2857');
+    expect(cellUnder(cloud, 'Share of tier-routed')).toHaveTextContent('28.6%');
+    expect(cellUnder(cloud, 'Share of tier-routed').querySelector('[title]')).toHaveAttribute('title', '0.2857');
     // The runs with no tier are their own served figure, never folded into a tier.
     const term = screen.getByText('Not tier-routed', { selector: 'dt' });
     expect(term.nextElementSibling?.textContent?.trim()).toBe('2');
@@ -215,7 +220,8 @@ describe('OMN-20225 AC3: the quality and tier-mix panels show served fields and 
 
   it('the tier-mix panel shows a served share as served, even when the counts would give another number', () => {
     render(<TierMixPanel row={{ by_tier: { ...byTier, tiers: [{ cost_tier_name: 'local', count: 1, tier_routed: true, pct_of_tier_routed: 0.4 }] } }} />);
-    expect(cellUnder(screen.getByRole('row', { name: /^local/ }), 'Share of tier-routed')).toHaveTextContent('0.4');
+    expect(cellUnder(screen.getByRole('row', { name: /^local/ }), 'Share of tier-routed')).toHaveTextContent('40.0%');
+    expect(cellUnder(screen.getByRole('row', { name: /^local/ }), 'Share of tier-routed').querySelector('[title]')).toHaveAttribute('title', '0.4');
     expect(screen.queryByText('1', { selector: 'td:nth-child(3)' })).not.toBeInTheDocument();
   });
 
