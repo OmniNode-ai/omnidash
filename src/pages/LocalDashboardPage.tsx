@@ -18,8 +18,9 @@ import { PAGE_PATHS } from '@/navigation/page-routes';
 import { normaliseRunId, readWorkflowRunId, workflowHref, writeWorkflowRunId } from '@/navigation/workflow-url-state';
 import { RunDurationChart, RunTimingChart, RunTokensChart, SpendByDayChart, UNRESOLVED_BASELINE, type ListedRun } from '@/pages/local/charts';
 import { PassRateMeter, TierShareChart } from '@/pages/local/shares';
-import { InsightsSection, InsightsWindowContext, TaskIcon } from '@/pages/local/insight-charts';
+import { InsightsSection, InsightsWindowContext, OverviewRunsContext, PassRateSparkline, TaskIcon } from '@/pages/local/insight-charts';
 import { SinceLastVisit } from '@/pages/local/since-last-visit';
+import { RunFilterProvider, causeLabelOf, useRunFilter } from '@/pages/local/run-filter';
 import { shortId } from '@/components/dashboard/event-dash/primitives';
 import '@/styles/local-dashboard.css';
 import {
@@ -639,7 +640,13 @@ export function RecentRunsTable({ decisions, sessions, now = Date.now(), showCha
   const [, navigate] = useLocation();
   const tableId = useId();
   const bySession = indexBy(sessions, 'session_id');
-  const recent = newestFirst(decisions).slice(0, 10);
+  // OMN-21166 (approved mockup): the latest runs filter by served verdict and, from the trends, by failure cause.
+  const { filter, setFilter } = useRunFilter();
+  const all = newestFirst(decisions);
+  const count = (result: 'all' | 'passed' | 'failed') => all.filter(run => result === 'all' || statusOf(run) === result).length;
+  const matching = all.filter(run => (filter.result === 'all' || statusOf(run) === filter.result)
+    && (filter.cause === null || causeLabelOf(run.quality_gate_detail) === filter.cause));
+  const recent = matching.slice(0, 10);
   const listed: ListedRun[] = recent.map(run => ({
     id: typeof run.correlation_id === 'string' && run.correlation_id !== '' ? run.correlation_id : null,
     status: statusOf(run), model: modelOrUnknown(run.model_name),
@@ -647,14 +654,30 @@ export function RecentRunsTable({ decisions, sessions, now = Date.now(), showCha
   }));
   return (
     <>
+      <div className="local-dashboard-filters local-run-filter">
+        <div role="group" aria-label="Filter runs by result" className="local-run-filter-results">
+          {(['all', 'passed', 'failed'] as const).map(result => (
+            <button key={result} type="button" data-result={result} aria-pressed={filter.result === result}
+              onClick={() => setFilter({ result, cause: result === 'failed' ? filter.cause : null })}>
+              {result === 'all' ? 'All' : result === 'passed' ? 'Passed' : 'Failed'} <span>{count(result).toLocaleString('en-US')}</span>
+            </button>
+          ))}
+        </div>
+        {filter.cause !== null && (
+          <button type="button" className="local-run-filter-cause" aria-label={`Clear cause ${filter.cause}`} onClick={() => setFilter({ cause: null, result: 'all' })}>
+            Cause: {filter.cause} <span aria-hidden="true">✕</span>
+          </button>
+        )}
+        <label className="local-recent-toolbar">
+          <input type="checkbox" checked={showAllFields} onChange={event => setShowAllFields(event.target.checked)} aria-controls={tableId} />
+          Show all run fields
+        </label>
+      </div>
       {showCharts && <section className="local-overview-run-charts" aria-label="Latest ten run charts">
         <RunDurationChart runs={listed} onOpen={id => navigate(workflowHref(id))} />
         <RunTokensChart runs={listed} onOpen={id => navigate(workflowHref(id))} />
       </section>}
-      <p className="local-dashboard-caption local-recent-toolbar"><label>
-        <input type="checkbox" checked={showAllFields} onChange={event => setShowAllFields(event.target.checked)} aria-controls={tableId} />
-        Show all run fields
-      </label></p>
+      {recent.length === 0 && <p className="local-dashboard-empty" role="status">No runs match this filter</p>}
       <div className={`local-dashboard-table-wrap local-dashboard-table-wrap--fit local-recent-runs-wrap${showAllFields ? ' local-recent-runs-wrap--all' : ''}`} role="region" aria-label="Recent run fields">
         <table id={tableId}>
           <thead><tr>
@@ -1434,7 +1457,9 @@ function TableComponent({ component, snapshots, pageSize, syncUrl, columns }: {
   if (component.component_id === 'overview-quality' || component.component_id === 'overview-tier-mix') {
     const first = rawRowsFor(component, snapshots, 0)[0];
     const row = first && typeof first === 'object' && !Array.isArray(first) ? (first as Row) : null;
-    return component.component_id === 'overview-quality' ? <QualityPanel row={row} /> : <TierMixPanel row={row} />;
+    return component.component_id === 'overview-quality'
+      ? <><QualityPanel row={row} /><PassRateSparkline /></>
+      : <TierMixPanel row={row} />;
   }
   if (component.component_id === 'credentials-keys') return <CredentialsTable rows={rows} />;
   // US-1, US-2, US-4: served rows as served. The exposure is tenant-scoped, so the server filters, not the browser.
@@ -1769,9 +1794,9 @@ export function LocalDashboardPage({ pageName, syncUrl = false }: LocalDashboard
   };
   const overviewGroups = {
     summary: ['overview-spend', 'overview-savings', 'overview-measured', 'overview-tokens'],
-    focus: ['overview-quality', 'overview-last-run'],
+    focus: ['overview-quality'],
     insights: ['overview-insights'],
-    lower: ['overview-spend-by-day', 'overview-tier-mix', 'overview-recent-runs'],
+    lower: ['overview-spend-by-day', 'overview-last-run', 'overview-recent-runs', 'overview-tier-mix'],
   };
   const overviewPrimary = new Set(Object.values(overviewGroups).flat());
   const renderGroup = (ids: string[]) => ids.map(id => {
@@ -1779,6 +1804,7 @@ export function LocalDashboardPage({ pageName, syncUrl = false }: LocalDashboard
     return component ? renderComponent(component) : null;
   });
   return (
+    <RunFilterProvider>
     <main aria-label={`${page?.dashboard.name ?? 'Local dashboard'} page`} className={`local-dashboard-page local-dashboard-page--${pageName}`}>
       <header className="local-dashboard-header">
         <div className="local-dashboard-title">
@@ -1814,15 +1840,24 @@ export function LocalDashboardPage({ pageName, syncUrl = false }: LocalDashboard
       {!loading && !error && page && (
         <section className="local-dashboard-grid" aria-label="Dashboard components">
           {pageName === 'overview' ? <>
+            <OverviewRunsContext.Provider value={(() => {
+              const recent = page.components.find(candidate => candidate.component_id === 'overview-recent-runs');
+              return recent ? { decisions: rowsForLocalComponent(recent, snapshots), now } : null;
+            })()}>
+            <InsightsWindowContext.Provider value={overviewWindow}>
             <div className="local-overview-surface">
               <section className="local-overview-summary" aria-label="Runtime summary">{renderGroup(overviewGroups.summary)}</section>
-              <section className="local-overview-focus" aria-label="Quality and latest execution">{renderGroup(overviewGroups.focus)}</section>
+              <section className="local-overview-focus" aria-label="Delegation quality">{renderGroup(overviewGroups.focus)}</section>
             </div>
-            <InsightsWindowContext.Provider value={overviewWindow}>{renderGroup(overviewGroups.insights)}</InsightsWindowContext.Provider>
-            <section className="local-overview-lower" aria-label="Spend, routing and recent runs">
-              {renderGroup(['overview-spend-by-day', 'overview-tier-mix'])}
-              <div className="local-overview-runs">{renderGroup(['overview-recent-runs'])}</div>
+            {renderGroup(overviewGroups.insights)}
+            <section className="local-overview-lower" aria-label="Spend and latest execution">
+              {renderGroup(['overview-spend-by-day', 'overview-last-run'])}
             </section>
+            <section className="local-overview-lower" aria-label="Recent runs and routing">
+              {renderGroup(['overview-recent-runs', 'overview-tier-mix'])}
+            </section>
+            </InsightsWindowContext.Provider>
+            </OverviewRunsContext.Provider>
             <details className="local-overview-secondary">
               <summary>Additional runtime metrics <span>Baseline, compression &amp; cache</span></summary>
               <div className="local-dashboard-grid">{page.components.filter(component => !overviewPrimary.has(component.component_id)).map(renderComponent)}</div>
@@ -1831,5 +1866,6 @@ export function LocalDashboardPage({ pageName, syncUrl = false }: LocalDashboard
         </section>
       )}
     </main>
+    </RunFilterProvider>
   );
 }

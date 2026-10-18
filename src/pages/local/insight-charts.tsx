@@ -3,6 +3,7 @@ import {
   ArrowDownUp, CalendarClock, ChartColumnStacked, CircleHelp, CodeXml, FileText, FlaskConical, GitPullRequest, Globe,
   Hourglass, LayoutGrid, ScrollText, TrendingUp, TriangleAlert, Trophy,
 } from 'lucide-react';
+import { useSharedRunFilter } from './run-filter';
 import {
   NOT_RECORDED, causes, countBy, dailySeries, durationBuckets, hourGrid, summary, toInsightRuns, windowRuns,
   type InsightDay, type InsightRun,
@@ -276,6 +277,8 @@ function ModelScoreboard({ runs }: { runs: InsightRun[] }) {
 
 function FailureCauses({ runs }: { runs: InsightRun[] }) {
   const list = causes(runs);
+  // On the Overview a cause filters the latest runs below (OMN-21166 approved mockup); alone it is a plain list.
+  const shared = useSharedRunFilter();
   const max = Math.max(1, ...list.map(entry => entry.count));
   return (
     <ChartCard title="Why runs failed" icon={<TriangleAlert size={16} />} accent={FAIL} delay={360}>
@@ -283,7 +286,13 @@ function FailureCauses({ runs }: { runs: InsightRun[] }) {
         <ul className="ins-list" aria-label="Failure causes">
           {list.map((entry, index) => (
             <li key={entry.cause} className="ins-list-row ins-list-row--plain" style={{ '--ins-swatch': [FAIL, '#FB923C', '#FBBF24', '#C084FC', '#F472B6'][index % 5] } as CSSProperties}>
-              <span className="ins-list-name">{entry.cause}</span>
+              {shared && entry.cause !== NOT_RECORDED ? (
+                <button type="button" className="ins-list-name ins-cause-button" aria-label={`Show runs failed by ${entry.cause}`}
+                  aria-pressed={shared.filter.cause === entry.cause}
+                  onClick={() => shared.setFilter(shared.filter.cause === entry.cause ? { cause: null } : { result: 'failed', cause: entry.cause })}>
+                  {entry.cause}
+                </button>
+              ) : <span className="ins-list-name">{entry.cause}</span>}
               <span className="ins-track"><span className="ins-fill od-growx" style={{ width: `${(entry.count / max) * 100}%`, animationDelay: `${index * 60}ms` }} /></span>
               <span className="ins-list-value">{count(entry.count)}</span>
             </li>
@@ -324,6 +333,23 @@ function TokensPerDay({ days }: { days: InsightDay[] }) {
  * render) the section keeps its own Today / 7 / 14 day switch.
  */
 export const InsightsWindowContext = createContext<'all' | 'today' | null>(null);
+
+/** The Overview's served decision rows, for the Quality hero's pass-rate line (OMN-21166 approved mockup). */
+export const OverviewRunsContext = createContext<{ decisions: readonly unknown[]; now: number } | null>(null);
+
+/**
+ * The Quality hero's "Pass rate per day": the same chart the trends drew, moved into the hero as the mockup has it.
+ * It follows the page window like the trends (today shows the last 7 days for context); with no page rows it draws
+ * nothing, so the Quality panel alone is unchanged.
+ */
+export function PassRateSparkline() {
+  const context = useContext(OverviewRunsContext);
+  const pageWindow = useContext(InsightsWindowContext);
+  if (context === null) return null;
+  const runs = toInsightRuns(context.decisions);
+  if (runs.length === 0) return null;
+  return <PassRateTrend days={dailySeries(runs, context.now, pageWindow === 'all' ? allTimeDays(runs, context.now) : 7)} />;
+}
 const MAX_ALL_TIME_DAYS = 30;
 
 function allTimeDays(runs: readonly InsightRun[], now: number): number {
@@ -354,7 +380,6 @@ export function InsightsSection({ decisions, now }: { decisions: readonly unknow
       {runs.length === 0 ? <p className="local-dashboard-empty ins-empty" role="status" aria-label="Insights">{days === 1 ? 'No runs today' : `No runs in the last ${days} days`}</p> : (
         <div className="ins-grid">
           <RunsPerDay days={chartDays} />
-          <PassRateTrend days={chartDays} />
           <ActivityHeatmap runs={all} now={now} />
           <TaskMix runs={runs} />
           <DurationHistogram runs={runs} />

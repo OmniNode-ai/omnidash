@@ -10,10 +10,11 @@
 //   C6  a chart can only be read by pointer: no focusable mark carries its numbers
 //   C7  with no rows in the window the section draws empty charts instead of saying so
 //   C8  a single day of runs draws no pass-rate mark at all (a line needs two points; Chrome walk 2026-10-18)
+//   C10 without page rows the hero line draws something anyway, changing the Quality panel on its own
 //   C9  on the page, the section ignores the page's one window and keeps a second switch of its own
 import { fireEvent, render, screen, within } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
-import { InsightsSection, InsightsWindowContext } from './insight-charts';
+import { InsightsSection, InsightsWindowContext, OverviewRunsContext, PassRateSparkline } from './insight-charts';
 
 const NOW = Date.parse('2026-10-18T09:30:00Z');
 
@@ -33,7 +34,7 @@ const ROWS = [
   row('2026-10-09T12:00:00Z'),
 ];
 
-const TITLES = ['Runs per day', 'Pass rate per day', 'When runs happen', 'Tasks', 'How long runs take', 'Model scoreboard', 'Why runs failed', 'Tokens per day'];
+const TITLES = ['Runs per day', 'When runs happen', 'Tasks', 'How long runs take', 'Model scoreboard', 'Why runs failed', 'Tokens per day'];
 
 describe('OMN-21166: Overview insight charts', () => {
   it('C1: all eight charts render, each with its own Lucide icon', () => {
@@ -78,11 +79,17 @@ describe('OMN-21166: Overview insight charts', () => {
     expect(screen.getByRole('status', { name: 'Insights' })).toHaveTextContent('No runs in the last 7 days');
   });
 
-  it('C8: one day of runs still shows its pass rate as a mark', () => {
-    const { container } = render(<InsightsSection decisions={[row('2026-10-16T22:11:00Z'), row('2026-10-16T22:12:00Z', { quality_gate_passed: 0 })]} now={NOW} />);
+  it('C8: one day of runs still shows its pass rate as a mark (in the Quality hero)', () => {
+    const decisions = [row('2026-10-16T22:11:00Z'), row('2026-10-16T22:12:00Z', { quality_gate_passed: 0 })];
+    const { container } = render(<OverviewRunsContext.Provider value={{ decisions, now: NOW }}><PassRateSparkline /></OverviewRunsContext.Provider>);
     const plot = screen.getByRole('img', { name: 'Pass rate per day' }).parentElement!;
     expect(plot.querySelectorAll('.ins-dot')).toHaveLength(1);
     expect(container.querySelector('button[aria-label="Oct 16: 50.0% passed"]')).not.toBeNull();
+  });
+
+  it('C10: without page rows the hero line draws nothing, so Quality alone is unchanged', () => {
+    const { container } = render(<PassRateSparkline />);
+    expect(container).toBeEmptyDOMElement();
   });
 
   it('C9: on the page it follows the page window and has no switch of its own', () => {

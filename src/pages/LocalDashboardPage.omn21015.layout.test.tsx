@@ -44,10 +44,10 @@ const ORDER: Record<PageName, Array<[title: string, width: number]>> = {
     // The first screen: the four headline tiles (requirement Q3), then quality beside the newest run, then the trends
     // (OMN-21166 mockup build, 2026-10-18), spend beside routing, and the recent runs across the page.
     ['Actual spend', 3], ['Savings', 3], ['Agent calls', 3], ['Tokens processed', 3],
-    ['Quality', 8], ['Last run', 4],
+    ['Quality', 12],
     ['Trends and breakdowns', 12],
-    ['Spend per day', 8], ['Tier mix', 4],
-    ['Recent runs', 12],
+    ['Spend per day', 8], ['Last run', 4],
+    ['Recent runs', 8], ['Tier mix', 4],
     ['Run locally', 4], ['Avg saving / call', 4], ['Baseline spend', 4],
     ['Compression', 6], ['Cache hit rate', 6],
   ],

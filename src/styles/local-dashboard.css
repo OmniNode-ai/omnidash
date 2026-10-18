@@ -1589,3 +1589,35 @@ figure.local-chart.ins-card { margin: 0; padding: 20px 22px; border-radius: 16px
 [data-theme="dark"] .local-dashboard-panel[data-component="api-keys-local-identity"] { --panel-accent: #FDBA74; }
 .local-dashboard-panel[data-component="api-keys-cloud"] { --panel-accent: #475569; }
 [data-theme="dark"] .local-dashboard-panel[data-component="api-keys-cloud"] { --panel-accent: #CBD5E1; }
+/* OMN-21166 approved mockup: the latest runs' result buttons, cause chip and the trends' clickable causes. */
+.local-run-filter { order: 0; flex-basis: auto; width: auto; display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; margin: 0 0 12px; }
+.local-run-filter-results { display: flex; gap: 6px; }
+.local-run-filter-results button { --tone: #93B4FF; display: inline-flex; align-items: center; gap: 8px; min-height: 36px; padding: 0 12px; border-radius: 9px; border: 1px solid var(--line); background: transparent; color: var(--text-secondary); font: inherit; font-size: 13px; cursor: pointer; }
+.local-run-filter-results button[data-result="passed"] { --tone: #34D399; }
+.local-run-filter-results button[data-result="failed"] { --tone: #F87171; }
+.local-run-filter-results button span { padding: 0 6px; border-radius: 6px; font-size: 12px; color: var(--tone); background: color-mix(in oklch, var(--tone) 16%, transparent); }
+.local-run-filter-results button[aria-pressed="true"] { color: inherit; border-color: color-mix(in oklch, var(--tone) 55%, transparent); background: color-mix(in oklch, var(--tone) 12%, transparent); }
+.local-run-filter-cause { display: inline-flex; align-items: center; gap: 6px; min-height: 36px; padding: 0 12px; border-radius: 999px; border: 1px solid color-mix(in oklch, #F87171 50%, transparent); background: color-mix(in oklch, #F87171 12%, transparent); color: inherit; font: inherit; font-size: 13px; cursor: pointer; }
+.local-run-filter .local-recent-toolbar { margin: 0 0 0 auto; display: inline-flex; align-items: center; gap: 8px; min-height: 36px; font-size: 13px; cursor: pointer; }
+.ins-cause-button { padding: 0; border: 0; background: transparent; color: inherit; font: inherit; text-align: left; cursor: pointer; text-decoration: underline dotted color-mix(in oklch, currentColor 40%, transparent); text-underline-offset: 3px; }
+.ins-cause-button[aria-pressed="true"] { color: var(--ins-swatch); font-weight: 600; }
+.local-since-visit-action { margin-left: auto; min-height: 32px; padding: 0 12px; border-radius: 8px; border: 1px solid color-mix(in oklch, #F87171 45%, transparent); background: transparent; color: inherit; font: inherit; font-size: 13px; cursor: pointer; }
+:root:not([data-theme="dark"]) .local-run-filter-results button[data-result="passed"] { --tone: #047857; }
+:root:not([data-theme="dark"]) .local-run-filter-results button[data-result="failed"] { --tone: #B91C1C; }
+:root:not([data-theme="dark"]) .local-run-filter-results button[data-result="all"] { --tone: #1D4ED8; }
+
+/* OMN-21166 approved mockup, Overview top: Quality is the hero on the left with its pass-rate line; the four headline
+   cards sit as a 2x2 grid on the right. Spend and the newest run, then the runs and routing, follow as pairs. */
+.local-overview-surface:has(.local-overview-focus [data-component="overview-quality"]) { display: grid; grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr); }
+.local-overview-surface > .local-overview-summary { grid-column: 2; grid-row: 1; grid-template-columns: repeat(2, minmax(0, 1fr)); border-bottom: 0; border-left: 1px solid var(--line); }
+.local-overview-surface > .local-overview-summary .local-dashboard-panel:nth-child(2n) { border-right: 0; }
+.local-overview-surface > .local-overview-summary .local-dashboard-panel:nth-child(-n+2) { border-bottom: 1px solid var(--line); }
+.local-overview-surface > .local-overview-focus.local-overview-focus { grid-column: 1; grid-row: 1; grid-template-columns: minmax(0, 1fr); }
+.local-overview-focus [data-component="overview-quality"] .local-chart.ins-card { margin-top: 14px; padding: 14px 0 0; border: 0; border-top: 1px solid var(--line); border-radius: 0; background: transparent; box-shadow: none; }
+.local-overview-focus [data-component="overview-quality"] .local-chart.ins-card .ins-plot { height: 96px; }
+.local-overview-lower + .local-overview-lower { margin-top: 0; }
+@media (max-width: 1100px) {
+  .local-overview-surface:has(.local-overview-focus [data-component="overview-quality"]) { grid-template-columns: minmax(0, 1fr); }
+  .local-overview-surface > .local-overview-summary { grid-column: 1; grid-row: 2; border-left: 0; border-top: 1px solid var(--line); }
+  .local-overview-surface > .local-overview-focus.local-overview-focus { grid-row: 1; }
+}

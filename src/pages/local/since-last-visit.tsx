@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { BellRing } from 'lucide-react';
 import { toInsightRuns } from './insights';
+import { useSharedRunFilter } from './run-filter';
 
 /**
  * OMN-21166 AC26 (mockup build, 2026-10-18): "Since your last visit" on the Overview header. The last visit is a
@@ -32,6 +33,7 @@ function visitLabel(time: number): string {
 export function SinceLastVisit({ decisions, now }: { decisions: readonly unknown[]; now: number }) {
   // Read once, on the first render of this visit: later refreshes keep counting from the same previous visit.
   const [previous] = useState<number | null>(readLastVisit);
+  const shared = useSharedRunFilter();
   useEffect(() => { writeLastVisit(now); }, [now]);
   if (previous === null) return null;
   const fresh = toInsightRuns(decisions).filter(run => run.at > previous);
@@ -42,6 +44,13 @@ export function SinceLastVisit({ decisions, now }: { decisions: readonly unknown
       <span className="local-since-visit-title">Since your last visit · {visitLabel(previous)}</span>
       <span className="local-since-visit-chip" data-tone="runs">{fresh.length.toLocaleString('en-US')} new runs</span>
       <span className="local-since-visit-chip" data-tone="failed">{failed.toLocaleString('en-US')} failed</span>
+      {shared && (
+        <button type="button" className="local-since-visit-action" onClick={() => {
+          shared.setFilter({ result: 'failed', cause: null });
+          const reduce = typeof window.matchMedia === 'function' && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+          document.querySelector('[data-component="overview-recent-runs"]')?.scrollIntoView?.({ behavior: reduce ? 'auto' : 'smooth', block: 'start' });
+        }}>Show the failures</button>
+      )}
     </p>
   );
 }

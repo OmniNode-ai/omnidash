@@ -126,7 +126,7 @@
     {
       "widget_id": "5d0c2a51-6a4e-5b8a-9f1e-3c7b2e0a9d41",
       "title": "Last run",
-      "row": 2,
+      "row": 12,
       "col": 8,
       "width": 4,
       "height": 4,
@@ -207,7 +207,7 @@
       "title": "Recent runs",
       "row": 16,
       "col": 0,
-      "width": 12,
+      "width": 8,
       "height": 5,
       "data_source": "overview-recent-runs",
       "config": {
@@ -284,10 +284,10 @@
     {
       "widget_id": "92d0d8ce-8d52-447e-8511-8cb1269c0112",
       "title": "Tier mix",
-      "row": 12,
+      "row": 16,
       "col": 8,
       "width": 4,
-      "height": 4,
+      "height": 5,
       "data_source": "overview-tier-mix",
       "config": {
         "config_kind": "table",
@@ -369,7 +369,7 @@
       "title": "Quality",
       "row": 2,
       "col": 0,
-      "width": 8,
+      "width": 12,
       "height": 4,
       "data_source": "overview-quality",
       "config": {
