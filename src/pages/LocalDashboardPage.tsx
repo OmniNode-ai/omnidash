@@ -1,8 +1,9 @@
 import { useEffect, useId, useRef, useState, type ReactNode } from 'react';
 import { Link, useLocation, useSearch } from 'wouter';
 import {
-  Activity, ArrowUpRight, BadgeCheck, Bot, CalendarDays, ChartColumn, ChartLine, ChartSpline, Check, CircleDollarSign, CloudOff, Coins, Copy, DatabaseZap, Fingerprint,
-  GitBranch, History, IdCard, KeyRound, Layers, ListTree, PiggyBank, Route, Server, Shrink, Table2, TrendingDown, Wallet,
+  Activity, ArrowUpRight, Award, Bot, CalendarDays, ChartBar, ChartLine, ChartSpline, Check, CircleDollarSign, CloudOff, Coins, Copy, DatabaseZap, Fingerprint,
+  GitBranch, History, IdCard, KeyRound, ListTree, PiggyBank, Route, Server, Shrink, Table2, TrendingDown, Wallet,
+  Rows3, Scale, TableProperties, Waypoints,
   type LucideIcon,
 } from 'lucide-react';
 import { createSnapshotSource } from '@/data-source';
@@ -1577,7 +1578,7 @@ const PAGE_ICONS: Record<LocalPageName, LucideIcon> = {
 };
 
 /** The icon beside a panel's title, by component. A component not listed here gets none; nothing depends on it. */
-const PANEL_ICONS: Record<string, LucideIcon> = {
+export const PANEL_ICONS: Record<string, LucideIcon> = {
   'overview-spend': CircleDollarSign,
   'overview-savings': PiggyBank,
   'overview-measured': Bot,
@@ -1587,16 +1588,16 @@ const PANEL_ICONS: Record<string, LucideIcon> = {
   'overview-insights': ChartSpline,
   'overview-run-locally': Server,
   'overview-avg-saving-per-call': TrendingDown,
-  'overview-baseline-spend': CircleDollarSign,
-  'overview-quality': BadgeCheck,
-  'overview-tier-mix': Layers,
+  'overview-baseline-spend': Scale,
+  'overview-quality': Award,
+  'overview-tier-mix': Waypoints,
   'overview-compression': Shrink,
   'overview-cache-hit-rate': DatabaseZap,
   'overview-spend-by-day': ChartLine,
-  'recent-runs': Table2,
+  'recent-runs': Rows3,
   'workflow-run-path': Route,
-  'usage-by-model-day': ChartColumn,
-  'usage-tokens-by-day': ChartColumn,
+  'usage-by-model-day': TableProperties,
+  'usage-tokens-by-day': ChartBar,
   'usage-savings-series': CalendarDays,
   'credentials-keys': KeyRound,
   'api-keys-local-identity': IdCard,

@@ -1477,9 +1477,9 @@ figure.local-chart.ins-card { margin: 0; padding: 20px 22px; border-radius: 16px
 .local-since-visit-chip { padding: 3px 10px; border-radius: 999px; font-weight: 500; }
 .local-since-visit-chip[data-tone="runs"] { color: #7DD3FC; background: color-mix(in oklch, #38BDF8 14%, transparent); }
 .local-since-visit-chip[data-tone="failed"] { color: #FCA5A5; background: color-mix(in oklch, #F87171 14%, transparent); }
-[data-theme="light"] .local-since-visit-chip[data-tone="runs"] { color: #075985; }
-[data-theme="light"] .local-since-visit-chip[data-tone="failed"] { color: #991B1B; }
-[data-theme="light"] .local-since-visit-icon { color: #4338CA; }
+:root:not([data-theme="dark"]) .local-since-visit-chip[data-tone="runs"] { color: #075985; }
+:root:not([data-theme="dark"]) .local-since-visit-chip[data-tone="failed"] { color: #991B1B; }
+:root:not([data-theme="dark"]) .local-since-visit-icon { color: #4338CA; }
 /* OMN-21166 mockup build: the Overview window as a two-button switch; the hero drops its duplicate pass-rate row. */
 .local-window-switch { display: flex; align-items: center; gap: 10px; }
 .local-window-options { display: flex; gap: 2px; padding: 3px; border-radius: 11px; border: 1px solid var(--line); background: var(--panel); }
@@ -1527,3 +1527,65 @@ figure.local-chart.ins-card { margin: 0; padding: 20px 22px; border-radius: 16px
 }
 .local-dashboard-page--runs .local-runs-wrap th:nth-child(15)::after { content: ' (ms)'; }
 .local-dashboard-page--usage .local-dashboard-grid { align-items: start; }
+/* OMN-21166 light mode (Chrome walk, 2026-10-18): the bright accents fall under contrast on white, so light mode
+   uses deeper shades of the same hues (each >= 4.5:1 on white; the 64px hero >= 3:1). */
+:root:not([data-theme="dark"]) .local-overview-summary .local-dashboard-panel[data-component="overview-spend"] { --kpi: #1D4ED8; }
+:root:not([data-theme="dark"]) .local-overview-summary .local-dashboard-panel[data-component="overview-savings"] { --kpi: #047857; }
+:root:not([data-theme="dark"]) .local-overview-summary .local-dashboard-panel[data-component="overview-measured"] { --kpi: #B45309; }
+:root:not([data-theme="dark"]) .local-overview-summary .local-dashboard-panel[data-component="overview-tokens"] { --kpi: #6D28D9; }
+:root:not([data-theme="dark"]) .local-overview-focus [data-component="overview-quality"] .local-meter-value { color: #047857; }
+:root:not([data-theme="dark"]) .ins-card { --ins-accent-text: color-mix(in oklch, var(--ins-accent) 55%, #000); }
+:root:not([data-theme="dark"]) .ins-ring-rate { color: color-mix(in oklch, var(--ins-swatch) 55%, #000); }
+:root:not([data-theme="dark"]) .ins-big { color: color-mix(in oklch, var(--ins-accent) 55%, #000); }
+:root:not([data-theme="dark"]) .ins-badge { color: color-mix(in oklch, var(--ins-accent) 60%, #000); }
+:root:not([data-theme="dark"]) .ins-chip-icon, :root:not([data-theme="dark"]) .local-task-icon { color: color-mix(in oklch, var(--ins-swatch) 60%, #000); }
+:root:not([data-theme="dark"]) .local-window-options button[aria-checked="true"], :root:not([data-theme="dark"]) .ins-range button[aria-pressed="true"] { background: #6D28D9; color: #FFFFFF; }
+
+/* OMN-21166 (Lakshman, 2026-10-18: every different thing has its own icon and colour): one accent per panel, a
+   deep shade on light (>= 4.5:1 on white) and a bright one on dark. */
+.local-dashboard-panel[data-component="overview-spend"] { --panel-accent: #1D4ED8; }
+[data-theme="dark"] .local-dashboard-panel[data-component="overview-spend"] { --panel-accent: #60A5FA; }
+.local-dashboard-panel[data-component="overview-savings"] { --panel-accent: #047857; }
+[data-theme="dark"] .local-dashboard-panel[data-component="overview-savings"] { --panel-accent: #34D399; }
+.local-dashboard-panel[data-component="overview-measured"] { --panel-accent: #B45309; }
+[data-theme="dark"] .local-dashboard-panel[data-component="overview-measured"] { --panel-accent: #FBBF24; }
+.local-dashboard-panel[data-component="overview-tokens"] { --panel-accent: #6D28D9; }
+[data-theme="dark"] .local-dashboard-panel[data-component="overview-tokens"] { --panel-accent: #A78BFA; }
+.local-dashboard-panel[data-component="overview-quality"] { --panel-accent: #0F766E; }
+[data-theme="dark"] .local-dashboard-panel[data-component="overview-quality"] { --panel-accent: #2DD4BF; }
+.local-dashboard-panel[data-component="overview-last-run"] { --panel-accent: #BE185D; }
+[data-theme="dark"] .local-dashboard-panel[data-component="overview-last-run"] { --panel-accent: #F472B6; }
+.local-dashboard-panel[data-component="overview-insights"] { --panel-accent: #4338CA; }
+[data-theme="dark"] .local-dashboard-panel[data-component="overview-insights"] { --panel-accent: #818CF8; }
+.local-dashboard-panel[data-component="overview-spend-by-day"] { --panel-accent: #0369A1; }
+[data-theme="dark"] .local-dashboard-panel[data-component="overview-spend-by-day"] { --panel-accent: #38BDF8; }
+.local-dashboard-panel[data-component="overview-tier-mix"] { --panel-accent: #0E7490; }
+[data-theme="dark"] .local-dashboard-panel[data-component="overview-tier-mix"] { --panel-accent: #22D3EE; }
+.local-dashboard-panel[data-component="overview-recent-runs"] { --panel-accent: #C2410C; }
+[data-theme="dark"] .local-dashboard-panel[data-component="overview-recent-runs"] { --panel-accent: #FB923C; }
+.local-dashboard-panel[data-component="overview-run-locally"] { --panel-accent: #4D7C0F; }
+[data-theme="dark"] .local-dashboard-panel[data-component="overview-run-locally"] { --panel-accent: #A3E635; }
+.local-dashboard-panel[data-component="overview-avg-saving-per-call"] { --panel-accent: #15803D; }
+[data-theme="dark"] .local-dashboard-panel[data-component="overview-avg-saving-per-call"] { --panel-accent: #4ADE80; }
+.local-dashboard-panel[data-component="overview-baseline-spend"] { --panel-accent: #B91C1C; }
+[data-theme="dark"] .local-dashboard-panel[data-component="overview-baseline-spend"] { --panel-accent: #F87171; }
+.local-dashboard-panel[data-component="overview-compression"] { --panel-accent: #7E22CE; }
+[data-theme="dark"] .local-dashboard-panel[data-component="overview-compression"] { --panel-accent: #C084FC; }
+.local-dashboard-panel[data-component="overview-cache-hit-rate"] { --panel-accent: #A16207; }
+[data-theme="dark"] .local-dashboard-panel[data-component="overview-cache-hit-rate"] { --panel-accent: #FACC15; }
+.local-dashboard-panel[data-component="recent-runs"] { --panel-accent: #BE123C; }
+[data-theme="dark"] .local-dashboard-panel[data-component="recent-runs"] { --panel-accent: #FB7185; }
+.local-dashboard-panel[data-component="workflow-run-path"] { --panel-accent: #A21CAF; }
+[data-theme="dark"] .local-dashboard-panel[data-component="workflow-run-path"] { --panel-accent: #E879F9; }
+.local-dashboard-panel[data-component="usage-savings-series"] { --panel-accent: #166534; }
+[data-theme="dark"] .local-dashboard-panel[data-component="usage-savings-series"] { --panel-accent: #86EFAC; }
+.local-dashboard-panel[data-component="usage-tokens-by-day"] { --panel-accent: #854D0E; }
+[data-theme="dark"] .local-dashboard-panel[data-component="usage-tokens-by-day"] { --panel-accent: #FDE047; }
+.local-dashboard-panel[data-component="usage-by-model-day"] { --panel-accent: #1E40AF; }
+[data-theme="dark"] .local-dashboard-panel[data-component="usage-by-model-day"] { --panel-accent: #93C5FD; }
+.local-dashboard-panel[data-component="credentials-keys"] { --panel-accent: #9F1239; }
+[data-theme="dark"] .local-dashboard-panel[data-component="credentials-keys"] { --panel-accent: #FDA4AF; }
+.local-dashboard-panel[data-component="api-keys-local-identity"] { --panel-accent: #9A3412; }
+[data-theme="dark"] .local-dashboard-panel[data-component="api-keys-local-identity"] { --panel-accent: #FDBA74; }
+.local-dashboard-panel[data-component="api-keys-cloud"] { --panel-accent: #475569; }
+[data-theme="dark"] .local-dashboard-panel[data-component="api-keys-cloud"] { --panel-accent: #CBD5E1; }
