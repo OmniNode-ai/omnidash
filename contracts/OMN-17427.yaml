@@ -1,0 +1,42 @@
+# SPDX-FileCopyrightText: 2026 OmniNode.ai Inc.
+# SPDX-License-Identifier: MIT
+schema_version: 1.0.0
+ticket_id: OMN-17427
+title: Remove unconsumed OmniDash documentation
+summary: Delete human prose without build or test readers and reduce the root README to four lines linking to the public knowledge base. Preserve agent instructions, the CI-read architecture handshake and the license.
+is_seam_ticket: false
+interface_change: false
+interfaces_touched: []
+requirements:
+  - id: req-documentation-removal
+    statement: Human documentation lives in the public knowledge base while machine-read files remain usable.
+    acceptance:
+      - id: AC1
+        statement: 'AC1: CHANGELOG.md, SECURITY.md and .github/CONTRIBUTING.md are absent, README.md has 3-5 lines linking to knowledge_base, and CLAUDE.md, .claude/architecture-handshake.md and LICENSE remain.'
+      - id: AC2
+        statement: 'AC2: existing dashboard truth and typography compliance tests still pass with the shortened README and unchanged agent instructions.'
+evidence_requirements:
+  - kind: tests
+    description: Run the existing compliance tests that read the README and agent instructions.
+    command: npx vitest run src/dashboard-truth-compliance.test.ts src/typography-compliance.test.ts --maxWorkers=2
+emergency_bypass:
+  enabled: false
+  justification: ''
+  follow_up_ticket_id: ''
+dod_evidence:
+  - id: dod-documentation-removal
+    description: Removed prose is absent and the remaining documentation exceptions exist.
+    source: manual
+    binds_ac: [AC1]
+    checks:
+      - check_type: command
+        check_value: >-
+          python3 -c "from pathlib import Path; removed = ['CHANGELOG.md', 'SECURITY.md', '.github/CONTRIBUTING.md']; retained = ['README.md', 'CLAUDE.md', '.claude/architecture-handshake.md', 'LICENSE']; assert all(not Path(p).exists() for p in removed), 'removed documentation remains'; assert all(Path(p).is_file() for p in retained), 'required file missing'; readme = Path('README.md').read_text(); assert 3 <= len(readme.splitlines()) <= 5, 'README must be 3-5 lines'; assert 'https://github.com/OmniNode-ai/knowledge_base' in readme, 'public knowledge base link missing'; print('Documentation removal and retained-file checks passed')"
+  - id: dod-documentation-readers
+    description: Existing compliance tests accept the README and agent context.
+    source: manual
+    binds_ac: [AC2]
+    checks:
+      - check_type: test_passes
+        check_value: >-
+          (test -d node_modules || npm ci --no-audit --no-fund) && npx vitest run src/dashboard-truth-compliance.test.ts src/typography-compliance.test.ts --maxWorkers=2
