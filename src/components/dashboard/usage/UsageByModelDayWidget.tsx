@@ -138,6 +138,9 @@ function groupedCount(value: unknown): string {
  * A drawn segment starts from a zero basis and holds no text, padding or border, so its width is its count's share of
  * the bar and nothing else; the figures are written in the list beside the bar, where a very small count still reads.
  * A model whose count was not recorded is named under the bar; it is never drawn as zero. A served zero is written.
+ * OMN-21166 (U10): every bar is drawn on one scale, the largest drawn bar, so a day's 377 tokens out is not as long as
+ * its 5,133 tokens in. The scale is layout only: the bar's own width is its counts' sum against the largest bar's, and
+ * that sum is never written.
  */
 export function UsageTokensByDay({ rows }: { rows: readonly unknown[] }) {
   const [selected, setSelected] = useState<string | null>(null);
@@ -156,6 +159,12 @@ export function UsageTokensByDay({ rows }: { rows: readonly unknown[] }) {
     const day = recorded(row.usage_day);
     days.set(day, [...(days.get(day) ?? []), row]);
   }
+  const drawnLength = (dayRows: readonly UsageByModelDayRow[], field: 'input_tokens' | 'output_tokens') =>
+    dayRows.reduce((length, row) => (isMissing(row[field]) ? length : length + Number(row[field])), 0);
+  const scale = Math.max(0, ...[...days.values()].flatMap(dayRows => TOKEN_DIRECTIONS.map(({ field }) => drawnLength(dayRows, field))));
+  const barWidth = (dayRows: readonly UsageByModelDayRow[], field: 'input_tokens' | 'output_tokens') =>
+    // With nothing drawn anywhere (every count a served zero) no width is set and the bar keeps its own.
+    scale > 0 ? `${(drawnLength(dayRows, field) / scale) * 100}%` : undefined;
   return (
     <figure className="local-chart usage-token-explorer" aria-label="Tokens by model and day">
       <div className="local-chart-legend" role="group" aria-label="Model highlight">
@@ -179,7 +188,7 @@ export function UsageTokensByDay({ rows }: { rows: readonly unknown[] }) {
                 <span className="usage-tokens-label">{`Tokens ${direction}`}</span>
                 {counted.length > 0 && (
                   <div className="usage-tokens-series">
-                    <div className="usage-tokens-bar" aria-hidden="true">
+                    <div className="usage-tokens-bar" aria-hidden="true" style={{ width: barWidth(dayRows, field) }}>
                       {counted.map((row, index) => (
                         <span
                           className="usage-tokens-fill"

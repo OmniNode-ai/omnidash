@@ -62,9 +62,12 @@ test('OMN-21015: on Usage a segment is as wide as its share of the served tokens
   const tokensOut = await drawnWidths(page, 'Tokens out on 2026-10-12, by model');
   expect(tokensIn).toHaveLength(2);
   expect(tokensOut).toHaveLength(2);
-  // A bar wide enough that the comparison means something.
-  expect(tokensIn[1]!).toBeGreaterThan(300);
+  // A bar wide enough that the comparison means something. OMN-21166: bars share one scale, so the day's tokens out
+  // (1,500) is the widest bar and tokens in (1,001) is drawn against it.
   expect(tokensOut[1]!).toBeGreaterThan(300);
+  expect(tokensIn[1]!).toBeGreaterThan(200);
+  const drawn = (widths: number[]) => widths.reduce((sum, width) => sum + width, 0);
+  expect(drawn(tokensIn) / drawn(tokensOut)).toBeCloseTo(1001 / 1500, 1);
   // 1 : 1,000 and 300 : 1,200, as served. The tolerance is far below what any label or padding would add.
   expect(tokensIn[0]! / tokensIn[1]!).toBeCloseTo(1 / 1000, 3);
   expect(tokensOut[0]! / tokensOut[1]!).toBeCloseTo(300 / 1200, 3);

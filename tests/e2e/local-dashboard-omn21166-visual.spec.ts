@@ -56,7 +56,9 @@ async function theme(page: Page, value: string) {
 
 test('AC10 bundled Inter typography preserves the Poppins wordmark', async ({ page }) => {
   const external: string[] = [];
-  page.on('request', request => { if (/fonts\.(googleapis|gstatic)\.com/.test(request.url())) external.push(request.url()); });
+  page.on('request', request => {
+    if (['fonts.googleapis.com', 'fonts.gstatic.com'].includes(new URL(request.url()).hostname)) external.push(request.url());
+  });
   await page.goto('/overview');
   await expect(page.locator('.local-dashboard-panel').first()).toBeVisible();
   await page.evaluate(() => document.fonts.ready);

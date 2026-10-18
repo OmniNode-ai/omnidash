@@ -1306,3 +1306,55 @@
   .local-recent-runs-wrap tbody td .local-recent-value { font-size: 13px; }
   .local-recent-runs-wrap tbody td[data-label="Time"] .local-recent-value { font-size: 12px; }
 }
+
+/* OMN-21166 readability pass (Chrome walk, 2026-10-18): no text under 12px, served timestamps on two tidy lines,
+   run ids long enough to tell apart, and no stray accent tick on the summary cards. */
+.local-overview-summary .local-dashboard-panel::before { display: none; }
+.local-dashboard-mode,
+.local-explore-runs,
+.local-dashboard-filters label,
+.local-dashboard-filters select,
+.local-dashboard-asof,
+.local-dashboard-read-state,
+.local-recent-toolbar label,
+.local-recent-footer,
+.local-run-more summary,
+.local-overview-secondary > summary,
+.local-overview-secondary > summary span,
+.local-overview-summary .local-dashboard-caption,
+.local-overview-summary .local-dashboard-asof,
+.local-overview-focus .local-dashboard-asof,
+.local-latest-primary dt,
+.local-overview-focus .local-latest-primary dt,
+.local-latest-primary > [data-field="Run"] dd,
+.local-overview-run-charts .local-chart-heading p,
+.local-recent-runs-wrap th,
+.local-recent-runs-wrap .local-run-pill,
+.local-share-value,
+.local-tier-select span,
+.local-dashboard-page th,
+.local-overview-lower [data-component="overview-tier-mix"] th { font-size: 12px; }
+.local-dashboard-page td,
+.local-recent-runs-wrap :is(th,td),
+.local-recent-runs-wrap tbody td .local-recent-value { font-size: 13px; }
+.local-recent-runs-wrap th { font-size: 12px; }
+.local-recent-runs-wrap .local-dashboard-cell-time,
+.local-dashboard-cell-token { font-size: 12px; }
+.local-cell-time { display: block; line-height: 1.45; font-variant-numeric: tabular-nums; overflow-wrap: anywhere; }
+/* Measured at 1440x900 on the populated store: a served time's second line needs 167px, so Time takes 28%; a run id
+   shows its first 11 characters instead of 7. */
+.local-recent-runs-wrap:not(.local-recent-runs-wrap--all) th:nth-child(1) { width: 28%; }
+.local-recent-runs-wrap:not(.local-recent-runs-wrap--all) th:nth-child(2) { width: 17%; }
+.local-recent-runs-wrap:not(.local-recent-runs-wrap--all) th:nth-child(3) { width: 12%; }
+.local-recent-runs-wrap:not(.local-recent-runs-wrap--all) th:nth-child(4) { width: 18%; }
+.local-recent-runs-wrap:not(.local-recent-runs-wrap--all) th:nth-child(5) { width: 11%; }
+.local-recent-runs-wrap:not(.local-recent-runs-wrap--all) th:nth-child(6) { width: 14%; }
+.local-dashboard-table-wrap--fit.local-recent-runs-wrap td[data-label="Run"] a { max-width: 100%; }
+@media (max-width: 760px) {
+  .local-recent-runs-wrap tbody td::before { font-size: 12px; }
+}
+/* The aside (tier mix, quality) is shorter than the recent runs beside it: on a wide screen it stays in view while the
+   runs scroll, instead of leaving an empty column. Presentation only; the order of panels is unchanged. */
+@media (min-width: 1025px) {
+  .local-overview-lower .local-overview-aside { position: sticky; top: 76px; }
+}

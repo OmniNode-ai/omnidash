@@ -29,3 +29,27 @@ test('recent runs remain readable and retain all fields at desktop and narrow wi
     await page.screenshot({ path: info.outputPath(`readability-${width}.png`), fullPage: true });
   }
 });
+
+// OMN-21166 (Chrome walk, 2026-10-18): 9 to 11px text survived in table headers, the tier mix, as-of lines, the
+// header and the toolbar. Every visible text on Overview and Usage is at least 12px; the scan names what is not. Runs
+// is left out: its 18 columns fit the page with no sideways scroll only at its compact 10 to 11px type.
+test('no visible text on Overview or Usage is smaller than 12px', async ({ page }) => {
+  await serveCharts(page);
+  for (const path of ['/overview', '/usage']) {
+    await page.goto(path);
+    await expect(page.locator('.local-dashboard-panel').first()).toBeVisible();
+    const small = await page.locator('main').evaluate(main => {
+      const found: string[] = [];
+      const walker = document.createTreeWalker(main, NodeFilter.SHOW_TEXT);
+      for (let node = walker.nextNode(); node; node = walker.nextNode()) {
+        const element = node.parentElement;
+        if (!element || !node.textContent?.trim() || element.getBoundingClientRect().width === 0) continue;
+        if (element.closest('svg, canvas, .sr-only')) continue;
+        const size = parseFloat(getComputedStyle(element).fontSize);
+        if (size < 12) found.push(`${size}px ${element.tagName.toLowerCase()}.${[...element.classList].join('.')}: ${node.textContent.trim().slice(0, 24)}`);
+      }
+      return [...new Set(found)];
+    });
+    expect(small, path).toEqual([]);
+  }
+});

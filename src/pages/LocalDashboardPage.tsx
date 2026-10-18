@@ -535,14 +535,19 @@ export function CopyButton({ text, label }: { text: string; label: string }) {
 }
 
 /**
- * A served timestamp in a narrow table cell: the same text, character for character, with two places it may break
- * (before the time and before the fraction), so it reads as date / time / fraction instead of breaking mid-number.
+ * A served timestamp in a narrow table cell: the same text, character for character (OMN-21015 I8), on two lines, its
+ * date and then the rest from the T, so it reads as date / time instead of breaking mid-number. Both parts stay the
+ * element's own text, so it is still found as the served text, and the served text is also the element's datetime.
+ * OMN-21166: three-line wrapping in the Overview's Time column was hard to read.
  */
 function CellTime({ value }: { value: unknown }) {
   if (isMissing(value)) return <>{recorded(value)}</>;
   const text = String(value);
-  const parts = /^(\d{4}-\d{2}-\d{2}T)(\d{2}:\d{2}:\d{2})(.*)$/.exec(text);
-  return parts ? <>{parts[1]}<wbr />{parts[2]}<wbr />{parts[3]}</> : <>{text}</>;
+  const parts = /^(\d{4}-\d{2}-\d{2})(T.*)$/.exec(text);
+  if (!parts) return <>{text}</>;
+  return (
+    <time className="local-cell-time" dateTime={text}>{parts[1]}<br />{parts[2]}</time>
+  );
 }
 
 /** OV-4: the newest run, its typed cause when it failed, and every figure typed when it is not served. */
