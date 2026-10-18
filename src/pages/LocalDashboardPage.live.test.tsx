@@ -258,7 +258,8 @@ describe('Partial pages (FR-3, CR-2, CR-3, AK-3, F24)', () => {
     render(<LocalDashboardPage pageName="usage" />);
     await settle();
     const row = screen.getByRole('row', { name: /Qwen3.8-27B/ });
-    for (const value of ['2026-10-02', '1620', '520', '$0.00', 'none', '10']) expect(within(row).getByText(value)).toBeInTheDocument();
+    // OMN-21166: token counts are grouped for reading (1620 reads 1,620); the value is the served one.
+    for (const value of ['2026-10-02', '1,620', '520', '$0.00', 'none', '10']) expect(within(row).getByText(value)).toBeInTheDocument();
     const unmeasured = screen.getByRole('row', { name: /served-model/ });
     expect(within(unmeasured).getByText('Not measured')).toBeInTheDocument();
     expect(within(unmeasured).getByText('1 unmeasured')).toBeInTheDocument();

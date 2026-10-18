@@ -9,7 +9,7 @@
 
 import { render, screen } from '@testing-library/react';
 import { describe, it, expect } from 'vitest';
-import { derivePageBadge, FreshnessChip } from './primitives';
+import { derivePageBadge, FreshnessChip, readableReason } from './primitives';
 import type { ProjectionSnapshot } from './primitives';
 
 // ── derivePageBadge ───────────────────────────────────────────────────────────
@@ -109,5 +109,19 @@ describe('FreshnessChip', () => {
     const { container } = render(<FreshnessChip state="stale" />);
     const chip = container.querySelector('.live-pill');
     expect(chip?.getAttribute('title')).toBe('stale');
+  });
+});
+
+// OMN-21166 (Chrome walk, 2026-10-18): Token usage read only "HTTP 503". Failure modes: the status is lost, a reason
+// that is not a bare status is rewritten, a client error is called a runtime failure.
+describe('readableReason', () => {
+  it.each([
+    ['HTTP 503', 'Not served by this runtime yet (HTTP 503)'],
+    ['HTTP 404 Not Found', 'Not served by this runtime yet (HTTP 404 Not Found)'],
+    ['HTTP 500', 'The runtime could not answer (HTTP 500)'],
+    ['HTTP 400', 'HTTP 400'],
+    ['tenant not configured', 'tenant not configured'],
+  ])('%s reads %s', (reason, expected) => {
+    expect(readableReason(reason)).toBe(expected);
   });
 });

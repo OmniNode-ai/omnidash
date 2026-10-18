@@ -460,3 +460,12 @@
 @media (max-width:640px) {
   .ev-root .panel-h, .ev-root .panel-b, .ev-root .kpi { padding: 14px; }
 }
+
+/* OMN-21166 mockup build (2026-10-18): Evidence takes the dashboard's own type and page title, and drops the stray
+   accent mark on its cards. Layout, data and scroll behaviour are unchanged (AC6: not consolidated or hidden). */
+.ev-root { --ev-font-display: var(--font-sans); --ev-font-ui: var(--font-sans); }
+.ev-page-head .ev-title { font-size: 30px; font-weight: 700; letter-spacing: -0.025em; }
+.ev-page-head .ev-sub { font-size: 14px; }
+.ev-root .kpi::before { display: none; }
+.ev-root .kpi .k-v { font-weight: 700; }
+.ev-root .ev-empty-reason { font-size: 12px; color: var(--ev-txt-2); }

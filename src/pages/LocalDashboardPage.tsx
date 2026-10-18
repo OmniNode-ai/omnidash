@@ -571,12 +571,17 @@ export function CopyButton({ text, label }: { text: string; label: string }) {
 function CellTime({ value }: { value: unknown }) {
   if (isMissing(value)) return <>{recorded(value)}</>;
   const text = String(value);
+  const readable = readableTime(text);
+  return readable === null ? <>{text}</> : <time className="local-cell-time" dateTime={text} title={text}>{readable}</time>;
+}
+
+/** "Oct 16, 22:11:37 UTC" for an ISO timestamp (its own offset kept, nothing converted); null for any other text. */
+export function readableTime(text: string): string | null {
   const parts = /^\d{4}-(\d{2})-(\d{2})T(\d{2}:\d{2}:\d{2})(?:\.\d+)?(Z|[+-]\d{2}:\d{2})$/.exec(text);
-  if (!parts) return <>{text}</>;
-  const month = MONTHS[Number(parts[1]) - 1];
-  if (month === undefined) return <>{text}</>;
+  const month = parts ? MONTHS[Number(parts[1]) - 1] : undefined;
+  if (!parts || month === undefined) return null;
   const zone = parts[4] === 'Z' || parts[4] === '+00:00' ? 'UTC' : parts[4];
-  return <time className="local-cell-time" dateTime={text} title={text}>{`${month} ${Number(parts[2])}, ${parts[3]} ${zone}`}</time>;
+  return `${month} ${Number(parts[2])}, ${parts[3]} ${zone}`;
 }
 
 const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
@@ -1193,18 +1198,14 @@ function OutcomePill({ value }: { value: unknown }) {
 }
 
 /**
- * A served timestamp, shown as served. The clock part is only set apart for the eye: the text is the served string,
- * character for character, and nothing is parsed into a date or moved to another zone.
+ * A step's served timestamp, written for reading as the run tables write theirs (OMN-21166 R-A): nothing is moved to
+ * another zone, and the exact served text is the element's datetime and title. Any other text is shown as served.
  */
 function ServedTime({ value }: { value: unknown }) {
   if (isMissing(value)) return <span className="local-run-step-time">{recorded(value)}</span>;
   const text = String(value);
-  const parts = /^(\d{4}-\d{2}-\d{2}T)(\d{2}:\d{2}:\d{2})(.*)$/.exec(text);
-  return (
-    <time className="local-run-step-time" dateTime={text}>
-      {parts ? <>{parts[1]}<b>{parts[2]}</b>{parts[3]}</> : text}
-    </time>
-  );
+  const readable = readableTime(text);
+  return <time className="local-run-step-time" dateTime={text} title={text}>{readable ?? text}</time>;
 }
 
 /** WF-3: open a run by a pasted correlation id, or go back to the newest run. */

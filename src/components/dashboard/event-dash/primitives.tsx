@@ -301,6 +301,20 @@ export function DataTable<T>({
 
 // ── honest empty / degraded / loading states ─────────────────────────────────
 
+/**
+ * OMN-21166 (Chrome walk, 2026-10-18): a bare HTTP status reads as a sentence, the status kept beside it
+ * ("HTTP 503" → "Not served by this runtime yet (HTTP 503)"). Any other reason is shown as given.
+ */
+export function readableReason(reason: string): string {
+  const status = /^HTTP (\d{3})(?: .*)?$/.exec(reason.trim());
+  if (!status) return reason;
+  const code = Number(status[1]);
+  if (code === 404 || code === 503) return `Not served by this runtime yet (${reason.trim()})`;
+  if (code >= 500) return `The runtime could not answer (${reason.trim()})`;
+  return reason;
+}
+
+
 export function EvEmpty({
   title,
   reason,
@@ -321,7 +335,7 @@ export function EvEmpty({
   return (
     <div className="ev-empty">
       <div className="ev-empty-title">{title}</div>
-      {reason ? <div className="ev-empty-reason">{reason}</div> : null}
+      {reason ? <div className="ev-empty-reason">{readableReason(reason)}</div> : null}
       {note ? <div className="ev-empty-note">{note}</div> : null}
     </div>
   );

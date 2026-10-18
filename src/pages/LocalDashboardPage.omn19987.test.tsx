@@ -52,7 +52,9 @@ describe('OMN-19987 run timeline', () => {
   it('T2: each step shows its time, duration and outcome as served', () => {
     render(<RunTimeline steps={recorded} />);
     const call = items()[2];
-    expect(call.textContent).toContain(String(recorded[2].started_at));
+    // OMN-21166 R-A: the step time is written for reading; the exact served time is the element's datetime and title.
+    expect(call.querySelector('time')?.getAttribute('datetime')).toBe(String(recorded[2].started_at));
+    expect(call.querySelector('time')?.getAttribute('title')).toBe(String(recorded[2].started_at));
     expect(call.textContent).toContain(`${String(recorded[2].duration_ms)} ms`);
     expect(call.textContent).toContain('succeeded');
   });

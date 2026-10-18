@@ -12,7 +12,7 @@
 //   R6  a short run id is shortened anyway
 import { render, screen, within } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
-import { RecentRunsTable, RunsTable } from './LocalDashboardPage';
+import { RecentRunsTable, RunsTable, readableTime } from './LocalDashboardPage';
 
 const NOW = Date.parse('2026-10-18T08:00:00Z');
 const RUN_ID = '8cf667d9-8f09-4357-b38b-356f647c4412';
@@ -67,5 +67,17 @@ describe.each([
   it('R6: a short run id is shown whole', () => {
     render(<Table now={NOW} decisions={[decision('run-a', SERVED_TIME)]} sessions={[]} />);
     expect(within(cellUnder('Run')).getByRole('link').textContent).toBe('run-a');
+  });
+});
+
+describe('OMN-21166 R-A: one readable time for every served timestamp (run tables and Workflow steps)', () => {
+  it.each([
+    ['2026-10-16T22:11:55.566656+00:00', 'Oct 16, 22:11:55 UTC'],
+    ['2026-10-16T22:11:55Z', 'Oct 16, 22:11:55 UTC'],
+    ['2026-10-16T22:11:55+05:30', 'Oct 16, 22:11:55 +05:30'],
+    ['2026-13-16T22:11:55Z', null],
+    ['yesterday at noon', null],
+  ])('%s reads %s', (served, readable) => {
+    expect(readableTime(served)).toBe(readable);
   });
 });

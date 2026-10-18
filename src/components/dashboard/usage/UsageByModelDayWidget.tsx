@@ -107,8 +107,8 @@ export function UsageByModelDayTable({ rows }: { rows: readonly unknown[] }) {
           <tr key={`${String(row.usage_day)}-${String(row.model_id)}-${String(row.cost_tier_name)}-${index}`}>
             <td>{recorded(row.usage_day)}</td>
             <td>{model(row.model_id)}</td>
-            <td>{recorded(row.input_tokens)}</td>
-            <td>{recorded(row.output_tokens)}</td>
+            <td>{isMissing(row.input_tokens) ? recorded(row.input_tokens) : groupedCount(row.input_tokens)}</td>
+            <td>{isMissing(row.output_tokens) ? recorded(row.output_tokens) : groupedCount(row.output_tokens)}</td>
             <td>{measuredCost(row.measured_cost_usd)}</td>
             <td>{unmeasured(row.unmeasured_call_count)}</td>
             <td>{tier(row.cost_tier_name)}</td>
