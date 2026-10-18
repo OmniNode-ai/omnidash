@@ -13,7 +13,7 @@
 
 import { useEffect, useLayoutEffect, useRef, useState, type MouseEvent } from 'react';
 import { useLocation } from 'wouter';
-import { Blocks, ChartNoAxesCombined, Fingerprint, Gauge, LayoutDashboard, ShieldCheck, SlidersHorizontal, Workflow, ChevronsLeft, ChevronsRight, Copy, Edit, FlaskConical, GitBranch, KeyRound, MoreHorizontal, Plus, Radio, Trash2 } from 'lucide-react';
+import { Activity, BadgeCheck, Blocks, ChartColumn, Gauge, LayoutDashboard, LockKeyhole, SlidersHorizontal, Workflow, ChevronsLeft, ChevronsRight, Copy, Edit, FlaskConical, KeyRound, MoreHorizontal, Plus, Radio, Trash2 } from 'lucide-react';
 // Grid3x3 removed from import while Instruction Eval nav entry is commented out (OMN-12833 A4).
 import type { AppPage } from '@/store/types';
 import {
@@ -30,11 +30,11 @@ import { PAGE_PATHS, pageForPath } from '@/navigation/page-routes';
 /** The six local pages (requirements FR-3), in the required order. `partial`: its exposure is not served yet. */
 const LOCAL_PAGES: ReadonlyArray<{ page: AppPage; label: string; icon: React.ReactNode; partial: boolean }> = [
   { page: 'local-overview', label: 'Overview', icon: <LayoutDashboard size={16} />, partial: false },
-  { page: 'local-runs', label: 'Runs', icon: <GitBranch size={16} />, partial: false },
+  { page: 'local-runs', label: 'Runs', icon: <Activity size={16} />, partial: false },
   { page: 'local-workflow', label: 'Workflow', icon: <Workflow size={16} />, partial: false },
-  { page: 'local-usage', label: 'Usage', icon: <ChartNoAxesCombined size={16} />, partial: true },
+  { page: 'local-usage', label: 'Usage', icon: <ChartColumn size={16} />, partial: true },
   { page: 'local-credentials', label: 'Credentials', icon: <KeyRound size={16} />, partial: true },
-  { page: 'local-api-keys', label: 'API Keys', icon: <Fingerprint size={16} />, partial: true },
+  { page: 'local-api-keys', label: 'API Keys', icon: <LockKeyhole size={16} />, partial: true },
 ];
 
 // Deferred from the default MVP surface; the legacy implementation and stores
@@ -344,7 +344,7 @@ export function Sidebar() {
 
       <nav aria-label="Evidence" className="local-nav evidence-nav">
         {!collapsed && <div className="mvp-nav-title"><Text size="xs" color="tertiary" transform="uppercase" weight="semibold">Evidence</Text></div>}
-        {renderNavItem({ page: 'delegation-evidence', label: 'Delegation Evidence', icon: <ShieldCheck size={16} /> })}
+        {renderNavItem({ page: 'delegation-evidence', label: 'Delegation Evidence', icon: <BadgeCheck size={16} /> })}
       </nav>
 
       {showDeveloperTools && (

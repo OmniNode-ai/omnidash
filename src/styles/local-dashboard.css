@@ -1358,3 +1358,19 @@
 @media (min-width: 1025px) {
   .local-overview-lower .local-overview-aside { position: sticky; top: 76px; }
 }
+
+/* OMN-21166 AC30 (mockup build): shared motion. Bars grow, lines reveal, rings fill, cards fade in; all of it stops
+   under prefers-reduced-motion. Applied by class so a re-render on hover never replays it. */
+@keyframes od-grow { from { transform: scaleY(0); } to { transform: scaleY(1); } }
+@keyframes od-growx { from { transform: scaleX(0); } to { transform: scaleX(1); } }
+@keyframes od-fade { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: none; } }
+@keyframes od-draw { from { clip-path: inset(0 100% 0 0); } to { clip-path: inset(0 0 0 0); } }
+@keyframes od-ring { from { stroke-dasharray: 0 100; } }
+.od-grow { transform-origin: bottom; animation: od-grow 700ms cubic-bezier(.2, .8, .2, 1) both; }
+.od-growx { transform-origin: left; animation: od-growx 800ms cubic-bezier(.2, .8, .2, 1) both; }
+.od-card { animation: od-fade 550ms cubic-bezier(.2, .8, .2, 1) both; }
+.od-draw { animation: od-draw 1300ms cubic-bezier(.3, .7, .2, 1) both; }
+.od-ring { animation: od-ring 1000ms cubic-bezier(.2, .8, .2, 1) both; transition: stroke-width 150ms; }
+@media (prefers-reduced-motion: reduce) {
+  .od-grow, .od-growx, .od-card, .od-draw, .od-ring { animation: none; }
+}
