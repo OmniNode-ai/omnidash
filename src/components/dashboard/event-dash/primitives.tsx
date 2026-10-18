@@ -36,8 +36,12 @@ export const fmtLatency = (ms: number | null | undefined): string => {
   if (ms == null) return '—';
   return ms >= 1000 ? `${(ms / 1000).toFixed(2)}s` : `${ms}ms`;
 };
-export const shortId = (id: string | null | undefined): string => {
-  if (!id) return '—';
+// OMN-21166 AC6: delegation.decisions.v1 serves `id` as an integer, so an id
+// may arrive as a number; it is shown as its digits, and only null, undefined
+// or an empty string read as missing.
+export const shortId = (raw: string | number | null | undefined): string => {
+  if (raw == null || raw === '') return '—';
+  const id = String(raw);
   if (id.length <= 16 || id.indexOf('-') === -1) {
     return id.length > 18 ? `${id.slice(0, 10)}…${id.slice(-4)}` : id;
   }
