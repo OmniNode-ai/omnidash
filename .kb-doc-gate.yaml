@@ -22,14 +22,9 @@ mode: strict
 #
 #   README.md                        root README (links to the knowledge base)
 #   CLAUDE.md                        root agent context
-#   CHANGELOG.md                     CHANGELOG*.md
-#   SECURITY.md                      root SECURITY.md (GitHub reads it there)
 #   .claude/architecture-handshake.md  under .claude/ — installed agent
 #                                    constraint map, verified byte-wise by
 #                                    .github/workflows/check-handshake.yml
-#   .github/CONTRIBUTING.md          under .github/ — GitHub also reads
-#                                    contributor guidelines from there; moved
-#                                    out of the repo root by OMN-16602
 #
 # Deliberately absent: any `docs/**` escape hatch. Platform documentation for
 # this repo lives in OmniNode-ai/knowledge_base (public) and
