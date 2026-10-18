@@ -17,6 +17,9 @@ requirements:
         statement: 'AC2: existing dashboard truth and typography compliance tests still pass with the shortened README and unchanged agent instructions.'
 evidence_requirements:
   - kind: tests
+    description: Verify removed documentation, the shortened README and required repository files.
+    command: uv run --no-project --with pytest python -m pytest tests/test_documentation_removal_omn17427.py -q --noconftest -p no:cacheprovider -c /dev/null
+  - kind: tests
     description: Run the existing compliance tests that read the README and agent instructions.
     command: npx vitest run src/dashboard-truth-compliance.test.ts src/typography-compliance.test.ts --maxWorkers=2
 emergency_bypass:
@@ -29,14 +32,16 @@ dod_evidence:
     source: manual
     binds_ac: [AC1]
     checks:
-      - check_type: command
+      - check_type: test_passes
         check_value: >-
-          python3 -c "from pathlib import Path; removed = ['CHANGELOG.md', 'SECURITY.md', '.github/CONTRIBUTING.md']; retained = ['README.md', 'CLAUDE.md', '.claude/architecture-handshake.md', 'LICENSE']; assert all(not Path(p).exists() for p in removed), 'removed documentation remains'; assert all(Path(p).is_file() for p in retained), 'required file missing'; readme = Path('README.md').read_text(); assert 3 <= len(readme.splitlines()) <= 5, 'README must be 3-5 lines'; assert 'https://github.com/OmniNode-ai/knowledge_base' in readme, 'public knowledge base link missing'; print('Documentation removal and retained-file checks passed')"
+          uv run --no-project --with pytest python -m pytest tests/test_documentation_removal_omn17427.py -q --noconftest -p no:cacheprovider -c /dev/null
+        cwd: "${OMNI_HOME}/omnidash"
   - id: dod-documentation-readers
-    description: Existing compliance tests accept the README and agent context.
+    description: The shortened README retains the compliance links and existing compliance tests accept the README and agent context.
     source: manual
     binds_ac: [AC2]
     checks:
       - check_type: test_passes
         check_value: >-
-          (test -d node_modules || npm ci --no-audit --no-fund) && npx vitest run src/dashboard-truth-compliance.test.ts src/typography-compliance.test.ts --maxWorkers=2
+          uv run --no-project --with pytest python -m pytest tests/test_documentation_removal_omn17427.py -q --noconftest -p no:cacheprovider -c /dev/null -k readme && (test -d node_modules || npm ci --no-audit --no-fund) && npx vitest run src/dashboard-truth-compliance.test.ts src/typography-compliance.test.ts --maxWorkers=2
+        cwd: "${OMNI_HOME}/omnidash"
