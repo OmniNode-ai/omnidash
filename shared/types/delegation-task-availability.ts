@@ -10,8 +10,8 @@
 // ONEX_CORE_041_INVALID_CONFIGURATION.
 //
 // `shared/contracts/delegation-task-types.json` mirrors that declaration.
-// Absence of the block means the class routes: the 12 classes with no block
-// are unaffected. Only a declared, non-`available` status closes a class.
+// Absence of the block means the class routes: every class with no block is
+// unaffected. Only a declared, non-`available` status closes a class.
 
 export type DelegationRoutingAvailabilityStatus = 'available' | 'pending_capability';
 
