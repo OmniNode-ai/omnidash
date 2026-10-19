@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import contract from './delegation-task-types.json';
+import contract from '../delegation-task-types.json';
 
 // OMN-17122 (DR-13): the dashboard menu fell two classes behind the delegate
 // skill orchestrator because nothing compared the two. The orchestrator's

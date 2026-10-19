@@ -14,11 +14,11 @@ requirements:
     statement: "shared/contracts/delegation-task-types.json lists every task type the delegate skill orchestrator accepts."
     acceptance:
       - id: "AC1"
-        statement: "AC1: shared/contracts/delegation-task-types.json lists the 15 task types in the orchestrator's allowed_task_types, each once, each with a label, description and prompt placeholder -- falsifier: npx vitest run shared/contracts/delegation-task-types.test.ts fails"
+        statement: "AC1: shared/contracts/delegation-task-types.json lists the 15 task types in the orchestrator's allowed_task_types, each once, each with a label, description and prompt placeholder -- falsifier: npx vitest run shared/contracts/tests/delegation-task-types.test.ts fails"
 evidence_requirements:
   - kind: "tests"
     description: "AC1: the dashboard task-type contract holds the 15 orchestrator classes."
-    command: "npx vitest run shared/contracts/delegation-task-types.test.ts"
+    command: "npx vitest run shared/contracts/tests/delegation-task-types.test.ts"
 emergency_bypass:
   enabled: false
   justification: ""
@@ -29,6 +29,6 @@ dod_evidence:
     source: "manual"
     checks:
       - check_type: "test_passes"
-        check_value: "test -d node_modules || npm ci --no-audit --no-fund; npx vitest run shared/contracts/delegation-task-types.test.ts"
+        check_value: "test -d node_modules || npm ci --no-audit --no-fund; npx vitest run shared/contracts/tests/delegation-task-types.test.ts"
         cwd: "${OMNI_HOME}/omnidash"
     binds_ac: ["AC1"]
