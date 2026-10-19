@@ -29,6 +29,6 @@ dod_evidence:
     source: "manual"
     checks:
       - check_type: "test_passes"
-        check_value: "npx vitest run shared/contracts/delegation-task-types.test.ts"
+        check_value: "test -d node_modules || npm ci --no-audit --no-fund; npx vitest run shared/contracts/delegation-task-types.test.ts"
         cwd: "${OMNI_HOME}/omnidash"
     binds_ac: ["AC1"]
