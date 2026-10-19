@@ -1,0 +1,34 @@
+---
+schema_version: "1.0.0"
+ticket_id: "OMN-17122"
+title: "Dashboard delegation task-type contract matches the orchestrator's accepted classes"
+summary: >-
+  The dashboard's delegation task-type contract lacked the documentation and validator_generation classes that
+  node_delegate_skill_orchestrator accepts and routes. The contract now lists all 15 accepted classes, and a test
+  pins the id set to the orchestrator's allowed_task_types list so a class added on one side fails the other.
+is_seam_ticket: false
+interface_change: false
+interfaces_touched: []
+requirements:
+  - id: "req-dashboard-task-types-match-orchestrator"
+    statement: "shared/contracts/delegation-task-types.json lists every task type the delegate skill orchestrator accepts."
+    acceptance:
+      - id: "AC1"
+        statement: "AC1: shared/contracts/delegation-task-types.json lists the 15 task types in the orchestrator's allowed_task_types, each once, each with a label, description and prompt placeholder -- falsifier: npx vitest run shared/contracts/delegation-task-types.test.ts fails"
+evidence_requirements:
+  - kind: "tests"
+    description: "AC1: the dashboard task-type contract holds the 15 orchestrator classes."
+    command: "npx vitest run shared/contracts/delegation-task-types.test.ts"
+emergency_bypass:
+  enabled: false
+  justification: ""
+  follow_up_ticket_id: ""
+dod_evidence:
+  - id: "dod-omn17122-ac1-dashboard-task-types"
+    description: "AC1: the contract JSON lists the 15 orchestrator task types and the drift test passes."
+    source: "manual"
+    checks:
+      - check_type: "test_passes"
+        check_value: "npx vitest run shared/contracts/delegation-task-types.test.ts"
+        cwd: "${OMNI_HOME}/omnidash"
+    binds_ac: ["AC1"]
