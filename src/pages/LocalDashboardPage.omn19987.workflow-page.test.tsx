@@ -332,8 +332,12 @@ describe('OMN-19987 / OMN-21015 AC9: the Workflow page shows one run, asked for 
     await settle();
     // The newer read is still out: the older read's failure is not the page's answer, and the page is still loading.
     expect(screen.queryByRole('alert')).toBeNull();
-    expect(screen.queryByRole('heading', { name: 'Run path' })).toBeNull();
-    expect(screen.getByRole('status').textContent).toContain('Loading runtime exposures');
+    // Owner2026-10-19T05:15Z requested progressive page/data loading.
+    // A stable shell may render; no old or unanswered trace may appear.
+    expect(screen.getByRole('heading', { name: 'Run path' })).toBeInTheDocument();
+    expect(panel()).not.toHaveTextContent(`task of ${OLDER}`);
+    expect(panel()).not.toHaveTextContent(`task of ${NEWEST}`);
+    expect(screen.getByRole('status').textContent).toContain('Loading data');
     await act(async () => { second.release(served(stepsOf(NEWEST))); await second.answer; });
     await shows(`task of ${NEWEST}`);
     expect(panel().textContent).toContain(`Run ${NEWEST}`);
@@ -352,7 +356,7 @@ describe('OMN-19987 / OMN-21015 AC9: the Workflow page shows one run, asked for 
     await act(async () => { catalogue.release({ status: 500, body: { error: 'unavailable' } }); await catalogue.answer; });
     await settle();
     expect(screen.queryByRole('alert')).toBeNull();
-    expect(screen.getByRole('status').textContent).toContain('Loading runtime exposures');
+    expect(screen.getByRole('status').textContent).toContain('Loading data');
     await act(async () => { second.release(served(stepsOf(NEWEST))); await second.answer; });
     await shows(`task of ${NEWEST}`);
     expect(screen.queryByRole('alert')).toBeNull();

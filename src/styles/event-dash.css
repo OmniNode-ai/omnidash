@@ -130,6 +130,8 @@
 .ev-root .kpi .k-l { font-size: 11px; letter-spacing: .8px; text-transform: uppercase; color: var(--ev-txt-3); display: flex; align-items: center; gap: 7px; }
 .ev-root .kpi .k-v { font-family: var(--ev-font-display); font-size: 30px; font-weight: 600; letter-spacing: -.5px; margin-top: 9px; line-height: 1; }
 .ev-root .kpi .k-sub { font-size: 11.5px; color: var(--ev-txt-2); margin-top: 7px; font-family: var(--ev-font-mono); }
+.ev-root .ev-outcome-pass { color: var(--status-ok); }
+.ev-root .ev-outcome-fail { color: var(--status-bad); }
 .ev-root .kpi .k-accent { color: var(--ev-accent); }
 
 /* badges */
@@ -468,4 +470,70 @@
 .ev-page-head .ev-sub { font-size: 14px; }
 .ev-root .kpi::before { display: none; }
 .ev-root .kpi .k-v { font-weight: 700; }
+.ev-root .kpi[data-tone="blue"] { --kpi-accent: #1d4ed8; }
+.ev-root .kpi[data-tone="green"] { --kpi-accent: #047857; }
+.ev-root .kpi[data-tone="purple"] { --kpi-accent: #7e22ce; }
+.ev-root .kpi[data-tone="amber"] { --kpi-accent: #b45309; }
+[data-theme="dark"] .ev-root .kpi[data-tone="blue"] { --kpi-accent: #60a5fa; }
+[data-theme="dark"] .ev-root .kpi[data-tone="green"] { --kpi-accent: #34d399; }
+[data-theme="dark"] .ev-root .kpi[data-tone="purple"] { --kpi-accent: #c084fc; }
+[data-theme="dark"] .ev-root .kpi[data-tone="amber"] { --kpi-accent: #fbbf24; }
+.ev-root .kpi[data-tone] { border-color: color-mix(in oklab, var(--kpi-accent) 65%, var(--ev-line)); transition: border-color 180ms ease, box-shadow 180ms ease; }
+.ev-root .kpi[data-tone]:hover { border-color: var(--kpi-accent); box-shadow: 0 0 20px color-mix(in oklab, var(--kpi-accent) 18%, transparent); }
+.ev-root .kpi[data-tone] .k-l svg { color: var(--kpi-accent); background: color-mix(in oklab, var(--kpi-accent) 12%, transparent); padding: 5px; border-radius: 7px; box-sizing: content-box; flex: none; }
+.ev-root .kpi[data-tone]:not([data-unavailable="true"]) .k-v { color: var(--kpi-accent); }
 .ev-root .ev-empty-reason { font-size: 12px; color: var(--ev-txt-2); }
+
+/* Semantic section headings and bounded evidence lists. */
+.ev-root .panel-h h2.pt { margin: 0; text-transform: none; line-height: 1.5; min-width: 0; max-width: 100%; flex-shrink: 1; overflow-wrap: anywhere; }
+.ev-root .ev-table-paging { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; padding: 12px 16px; border-top: 1px solid var(--ev-line); font-size: 12px; }
+.ev-root .ev-table-paging span { margin-right: auto; color: var(--ev-txt-2); }
+.ev-root .ev-table-paging button { min-height: 36px; padding: 6px 10px; border: 1px solid var(--ev-line); border-radius: 8px; background: var(--ev-bg-2); color: var(--ev-txt); font: inherit; cursor: pointer; }
+.ev-root .ev-table-paging button:disabled { opacity: .45; cursor: default; }
+.ev-root .page-outline { margin-bottom: 18px; }
+.ev-root .page-outline button { text-transform: none; }
+.ev-root .panel-h h2.pt { display: inline-flex; align-items: center; gap: 9px; }
+.ev-root .ev-panel-icon { display: inline-grid; place-items: center; width: 28px; height: 28px; flex: none; border-radius: 8px; color: var(--ev-info); background: color-mix(in oklch, var(--ev-info) 13%, transparent); }
+.ev-root [data-panel-title="MODEL ROUTING"] .ev-panel-icon { color: var(--ev-m-teal); background: color-mix(in oklch, var(--ev-m-teal) 13%, transparent); }
+.ev-root [data-panel-title="QUALITY GATE"] .ev-panel-icon { color: var(--ev-m-purple); background: color-mix(in oklch, var(--ev-m-purple) 13%, transparent); }
+.ev-root [data-panel-title="SAVINGS vs CLOUD BASELINE"] .ev-panel-icon { color: var(--ev-ok); background: color-mix(in oklch, var(--ev-ok) 13%, transparent); }
+.ev-root [data-panel-title="TOKEN USAGE"] .ev-panel-icon { color: var(--ev-m-amber); background: color-mix(in oklch, var(--ev-m-amber) 13%, transparent); }
+.ev-root [data-panel-title="RECENT DELEGATIONS"] .ev-panel-icon { color: var(--ev-m-pink); background: color-mix(in oklch, var(--ev-m-pink) 13%, transparent); }
+.ev-root[data-destination="delegation-evidence"] [data-panel-title] { --card-accent: var(--ev-info); border-color: color-mix(in oklab, var(--card-accent) 65%, var(--ev-line)); }
+.ev-root[data-destination="delegation-evidence"] [data-panel-title="MODEL ROUTING"] { --card-accent: var(--ev-m-teal); }
+.ev-root[data-destination="delegation-evidence"] [data-panel-title="QUALITY GATE"] { --card-accent: var(--ev-m-purple); }
+.ev-root[data-destination="delegation-evidence"] [data-panel-title="SAVINGS vs CLOUD BASELINE"] { --card-accent: var(--ev-ok); }
+.ev-root[data-destination="delegation-evidence"] [data-panel-title="TOKEN USAGE"] { --card-accent: var(--ev-m-amber); }
+.ev-root[data-destination="delegation-evidence"] [data-panel-title="RECENT DELEGATIONS"] { --card-accent: var(--ev-m-pink); }
+.ev-root[data-destination="delegation-evidence"] [data-panel-title]:hover { border-color: color-mix(in oklab, var(--card-accent) 85%, var(--ev-line)); box-shadow: 0 0 0 1px color-mix(in oklab, var(--card-accent) 15%, transparent), 0 6px 24px color-mix(in oklab, var(--card-accent) 12%, transparent); }
+.ev-root[data-destination="delegation-evidence"] .grid > .panel { align-self: stretch; }
+.ev-page-head .ev-title { display: flex; align-items: center; gap: 12px; }
+.ev-title-icon { display: inline-grid; place-items: center; flex: none; width: 40px; height: 40px; border-radius: 12px; color: var(--nav-accent); background: color-mix(in oklch, var(--nav-accent) 12%, transparent); }
+@media (max-width: 640px) {
+  .ev-root .dt-paged .dt-head { display: none; }
+  .ev-root .dt-paged .row { padding: 10px 14px; border-bottom: 1px solid var(--ev-line); }
+  .ev-root .dt-paged .row-main { grid-template-columns: minmax(0, 1fr) !important; gap: 6px; }
+  .ev-root .dt-paged .row-main > .cflex { justify-content: flex-end; padding: 0; }
+  .ev-root .dt-paged .row-main > [data-label] { display: grid; grid-template-columns: 84px minmax(0, 1fr); gap: 8px; padding: 2px 0; text-align: left; white-space: normal; overflow-wrap: anywhere; }
+  .ev-root .dt-paged .row-main > [data-label]::before { content: attr(data-label); color: var(--ev-txt-2); font-family: var(--font-sans); font-size: 12px; }
+  .ev-root .dt-paged .row-main > [data-label] > * { min-width: 0; }
+  .ev-root .dt-paged .row-disclosure { width: 40px; min-height: 40px; border: 1px solid var(--ev-line); }
+  .ev-root .dt-paged .row-detail-inner { padding: 14px 0; }
+  .ev-root .dt-paged .row-detail .kv { grid-template-columns: minmax(0, 1fr); }
+}
+
+/* Let status controls follow the title on phones instead of being clipped by the frame. */
+@media (max-width: 640px) {
+  .ev-head-row { flex-wrap: wrap; }
+  .ev-head-row > div:first-child { flex: 1 1 100%; min-width: 0; }
+  .ev-page-head .ev-head-right { margin-left: 0; max-width: 100%; flex-wrap: wrap; }
+}
+
+/* Shared concept colors also identify card titles and their Lucide icons. */
+.ev-root [data-panel-title] .panel-h .pt { color: var(--card-accent, var(--ev-txt)); }
+.ev-root [data-panel-title] .panel-h .ev-panel-icon { color: var(--card-accent); background: color-mix(in oklab, var(--card-accent) 12%, transparent); }
+
+/* The desktop title rule must not override the shared phone scale. */
+@media (max-width: 640px) {
+  .ev-page-head .ev-title { font-size: 24px; }
+}

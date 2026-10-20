@@ -10,7 +10,7 @@
 //   B3  the card names the same row's baseline model and pricing manifest, and says the figure is modelled;
 //   B4  no served row at all is a typed not-measured state, never a number;
 //   B5  only the all-time row is read: a day row's counterfactual is not the headline (the control for B1).
-import { act, render, screen } from '@testing-library/react';
+import { act, fireEvent, render, screen } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 const METERING = 'onex.snapshot.projection.metering-summary.v1';
@@ -51,6 +51,9 @@ async function baselineCard(rows: unknown[]): Promise<HTMLElement> {
   harness.answer = (topic) => Promise.resolve(topic === METERING ? rows : []);
   render(<LocalDashboardPage pageName="overview" />);
   await act(async () => { await vi.advanceTimersByTimeAsync(0); });
+    const disclosure = screen.getByText('Additional runtime metrics', { selector: 'summary' });
+    fireEvent.click(disclosure);
+    expect(disclosure.closest('details')).toHaveAttribute('open');
   const card = screen.getByRole('heading', { name: 'Baseline spend' }).closest('article');
   if (card === null) throw new Error('no Baseline spend card on the Overview');
   return card as HTMLElement;

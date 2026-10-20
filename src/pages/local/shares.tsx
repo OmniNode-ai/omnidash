@@ -61,12 +61,13 @@ export function tierShares(byTier: unknown): TierShares {
 }
 
 /** The tiers the runtime names today get a fixed colour each; any other tier gets the neutral one. */
-const TIER_TONES: Record<string, string> = {
+export const TIER_TONES: Readonly<Record<string, string>> = {
   local: 'local',
-  cheap_frontier: 'economy',
-  cheap_cloud: 'economy',
+  harness: 'harness',
+  cheap_frontier: 'cheap-frontier',
+  cheap_cloud: 'cheap-cloud',
   cloud: 'balanced',
-  claude: 'frontier',
+  claude: 'claude',
   frontier: 'frontier',
 };
 
@@ -112,7 +113,7 @@ export function arcPath(start: number, sweep: number): string {
  * is drawn and the reason is said. Pointing at a tier, in the list or on the ring, marks it and names it in the
  * middle; the list items take keyboard focus for the same.
  */
-export function TierShareChart({ byTier }: { byTier: unknown }) {
+export function TierShareChart({ byTier, variant = 'donut' }: { byTier: unknown; variant?: 'donut' | 'bars' }) {
   const [active, setActive] = useState<number | null>(null);
   const [selected, setSelected] = useState<string | null>(null);
   const shaped = tierShares(byTier);
@@ -132,7 +133,29 @@ export function TierShareChart({ byTier }: { byTier: unknown }) {
   });
   return (
     <div className="local-share">
-      {shaped.segments.length > 0 && (
+      {shaped.segments.length > 0 && variant === 'bars' && (
+        <div className="local-tier-bars">
+          <p className="local-tier-bars-caption">Share of tier-routed runs · select a tier to inspect</p>
+          <div className="local-tier-bars-axis" aria-hidden="true">{Array.from({ length: 5 }, (_, index) => {
+            const tick = index / 4;
+            return <span key={tick}>{tick.toLocaleString('en-US', { style: 'percent' })}</span>;
+          })}</div>
+          <ul className="local-tier-bars-list">
+            {shaped.segments.map((segment, index) => (
+              <li key={`${segment.name}-${index}`}>
+                <button type="button" className="local-tier-bar-select" data-tone={TIER_TONES[segment.name] ?? 'other'}
+                  aria-label={`Inspect ${segment.name}`} aria-pressed={selected === segment.name}
+                  onClick={() => setSelected(segment.name)}>
+                  <span className="local-tier-bar-name"><span className="local-share-swatch" data-tone={TIER_TONES[segment.name] ?? 'other'} aria-hidden="true" />{segment.name}</span>
+                  <span className="local-tier-bar-track" aria-hidden="true"><span data-testid={`tier-bar-${segment.name}`} style={{ width: `${segment.share * 100}%` }} /></span>
+                  <span className="local-tier-bar-value"><strong>{percent(segment.share)}</strong><span>{segment.count == null ? 'Count not recorded' : `${typeof segment.count === 'number' ? segment.count.toLocaleString('en-US') : String(segment.count)} runs`}</span></span>
+                </button>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+      {shaped.segments.length > 0 && variant === 'donut' && (
         <div className="local-donut-row">
           <svg
             className="local-donut"

@@ -25,7 +25,7 @@ export interface MeteringSummaryRow {
 
 /** A savings figure is a modelled counterfactual: the runs' tokens priced at the baseline's list price. */
 export const SAVINGS_MODELLED = "Modelled: the runs' tokens priced at the baseline model's list price. The baseline never ran.";
-export const NO_SAVINGS_ROWS = 'No savings rows yet: waits on metering-summary day rows';
+export const NO_SAVINGS_ROWS = 'No daily savings data available yet.';
 
 function isMissing(value: unknown): boolean {
   return value === null || value === undefined || value === '';
@@ -66,9 +66,9 @@ export function MeteringDaySeries({ rows }: { rows: readonly unknown[] }) {
             <thead><tr><th>Day</th><th>{`Savings vs ${baseline}`}</th><th>Runs</th></tr></thead>
             <tbody>{days.map((row, index) => (
               <tr key={`${String(row.window_start)}-${index}`}>
-                <td>{isMissing(row.window_start) ? 'Not recorded' : String(row.window_start)}</td>
-                <td>{savings(row)}</td>
-                <td>{isMissing(row.runs_total) ? 'Not recorded' : String(row.runs_total)}</td>
+                <td data-label="Day">{isMissing(row.window_start) ? 'Not recorded' : String(row.window_start)}</td>
+                <td data-label={`Savings vs ${baseline}`}>{savings(row)}</td>
+                <td data-label="Runs">{isMissing(row.runs_total) ? 'Not recorded' : String(row.runs_total)}</td>
               </tr>
             ))}</tbody>
           </table>

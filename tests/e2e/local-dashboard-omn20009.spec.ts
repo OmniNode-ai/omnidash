@@ -96,7 +96,8 @@ test('OMN-20009: Run locally shows the served share and Avg saving / call the se
 
   const share = panel(page, 'Run locally');
   await expect(share.getByText('83.9%', { exact: true })).toBeVisible();
-  await expect(share.getByText('104 of 124 runs local · 20 not tier-routed')).toBeVisible();
+  await expect(share.locator('dl.local-routing-counts dt')).toHaveText(['Local runs', 'All runs', 'Without a tier']);
+  await expect(share.locator('dl.local-routing-counts dd')).toHaveText(['104', '124', '20']);
   // The tier-routed share the view also serves (local 100 %) is never the run-locally figure.
   await expect(share.getByText('100.0%')).toHaveCount(0);
 

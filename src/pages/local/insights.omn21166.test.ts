@@ -45,7 +45,20 @@ describe('OMN-21166: insights over served decision rows', () => {
     const result = durationBuckets(runs, [0, 250, 1000, Infinity]);
     expect(result.buckets).toEqual([1, 0, 1]);
     expect(result.unrecorded).toBe(1);
-    expect(summary(runs).medianLatency).toBe(1800);
+    expect(summary(runs).medianLatency).toBe(960);
+  });
+
+  // Review failure: an even population used its upper middle sample as the median.
+  it.each([
+    { values: [120, 1800], expected: 960 },
+    { values: [1800, 0, 120, 500], expected: 310 },
+    { values: [0, 0], expected: 0 },
+    { values: [120, null, 1800], expected: 960 },
+    { values: [120, 500, 1800], expected: 500 },
+    { values: [null, null], expected: null },
+  ])('median keeps zero, excludes missing values and averages an even middle: $values', ({ values, expected }) => {
+    const runs = toInsightRuns(values.map(latency_ms => row('2026-10-18T08:00:00Z', { latency_ms })));
+    expect(summary(runs).medianLatency).toBe(expected);
   });
 
   it('F3: an unmeasured cost leaves spend partial and says how many runs were not measured', () => {

@@ -13,7 +13,7 @@
 
 import { useEffect, useLayoutEffect, useRef, useState, type MouseEvent } from 'react';
 import { useLocation } from 'wouter';
-import { Activity, BadgeCheck, Blocks, ChartColumn, Gauge, LayoutDashboard, LockKeyhole, SlidersHorizontal, Workflow, ChevronsLeft, ChevronsRight, Copy, Edit, FlaskConical, KeyRound, MoreHorizontal, Plus, Radio, Trash2 } from 'lucide-react';
+import { SlidersHorizontal, ChevronsLeft, ChevronsRight, Copy, Edit, MoreHorizontal, Plus, Trash2 } from 'lucide-react';
 // Grid3x3 removed from import while Instruction Eval nav entry is commented out (OMN-12833 A4).
 import type { AppPage } from '@/store/types';
 import {
@@ -26,25 +26,26 @@ import { Text } from '@/components/ui/typography';
 import { useFrameStore } from '@/store/store';
 import { DeleteDashboardDialog } from './DeleteDashboardDialog';
 import { PAGE_PATHS, pageForPath } from '@/navigation/page-routes';
+import { DestinationIcon } from '@/navigation/destination-icons';
 
-/** The six local pages (requirements FR-3), in the required order. `partial`: its exposure is not served yet. */
-const LOCAL_PAGES: ReadonlyArray<{ page: AppPage; label: string; icon: React.ReactNode; partial: boolean }> = [
-  { page: 'local-overview', label: 'Overview', icon: <LayoutDashboard size={16} />, partial: false },
-  { page: 'local-runs', label: 'Runs', icon: <Activity size={16} />, partial: false },
-  { page: 'local-workflow', label: 'Workflow', icon: <Workflow size={16} />, partial: false },
-  { page: 'local-usage', label: 'Usage', icon: <ChartColumn size={16} />, partial: true },
-  { page: 'local-credentials', label: 'Credentials', icon: <KeyRound size={16} />, partial: true },
-  { page: 'local-api-keys', label: 'API Keys', icon: <LockKeyhole size={16} />, partial: true },
+/** The six local pages (requirements FR-3), in the required order. */
+const LOCAL_PAGES: ReadonlyArray<{ page: AppPage; label: string; icon: React.ReactNode }> = [
+  { page: 'local-overview', label: 'Overview', icon: <DestinationIcon page="local-overview" /> },
+  { page: 'local-runs', label: 'Runs', icon: <DestinationIcon page="local-runs" /> },
+  { page: 'local-workflow', label: 'Workflow', icon: <DestinationIcon page="local-workflow" /> },
+  { page: 'local-usage', label: 'Usage', icon: <DestinationIcon page="local-usage" /> },
+  { page: 'local-credentials', label: 'Credentials', icon: <DestinationIcon page="local-credentials" /> },
+  { page: 'local-api-keys', label: 'API Keys', icon: <DestinationIcon page="local-api-keys" /> },
 ];
 
 // Deferred from the default MVP surface; the legacy implementation and stores
 // stay intact. Developer tools never enable custom dashboard editing.
 const SHOW_CUSTOM_DASHBOARDS = false;
 const DEVELOPER_PAGES: ReadonlyArray<{ page: AppPage; label: string; icon: React.ReactNode }> = [
-  { page: 'experiments', label: 'Experimentation', icon: <FlaskConical size={16} /> },
-  { page: 'sea-control', label: 'Agent Workbench', icon: <Blocks size={16} /> },
-  { page: 'event-bus', label: 'Event Bus', icon: <Radio size={16} /> },
-  { page: 'lab', label: 'Lab', icon: <Gauge size={16} /> },
+  { page: 'experiments', label: 'Experimentation', icon: <DestinationIcon page="experiments" /> },
+  { page: 'sea-control', label: 'Agent Workbench', icon: <DestinationIcon page="sea-control" /> },
+  { page: 'event-bus', label: 'Event Bus', icon: <DestinationIcon page="event-bus" /> },
+  { page: 'lab', label: 'Lab', icon: <DestinationIcon page="lab" /> },
 ];
 
 interface RenameInputProps {
@@ -189,14 +190,15 @@ export function Sidebar() {
     void id;
   };
 
-  const renderNavItem = ({ page, label, icon, partial = false }: {
-    page: AppPage; label: string; icon: React.ReactNode; partial?: boolean;
+  const renderNavItem = ({ page, label, icon }: {
+    page: AppPage; label: string; icon: React.ReactNode;
   }) => (
     <a
       key={page}
       href={PAGE_PATHS[page]}
       data-testid={`nav-${page}`}
       data-nav-page={page}
+      data-destination={page}
       className={`dash-item mvp-nav-item${activePage === page ? ' active' : ''}`}
       aria-label={label}
       title={collapsed ? label : undefined}
@@ -205,7 +207,6 @@ export function Sidebar() {
     >
       <span className="dash-marker" aria-hidden="true">{icon}</span>
       {!collapsed && <span className="dash-name">{label}</span>}
-      {!collapsed && partial && <span className="local-nav-chip">partial</span>}
     </a>
   );
 
@@ -240,8 +241,8 @@ export function Sidebar() {
         </button>
       </div>
 
-      {/* OMN-19981 Amendment 6 (requirements FR-3): the six local pages, in the required order, first in the
-          sidebar. A page whose exposure is not served yet carries a "partial" chip; clicking an open page keeps it. */}
+      {/* The six local pages stay first. Availability is shown by each page's
+          data states, rather than by a hardcoded navigation badge. */}
       <nav aria-label="Local" className="local-nav">
         {!collapsed && (
           <div className="sidebar-bottom-title" style={{ padding: '4px 12px 2px' }}>
@@ -344,7 +345,7 @@ export function Sidebar() {
 
       <nav aria-label="Evidence" className="local-nav evidence-nav">
         {!collapsed && <div className="mvp-nav-title"><Text size="xs" color="tertiary" transform="uppercase" weight="semibold">Evidence</Text></div>}
-        {renderNavItem({ page: 'delegation-evidence', label: 'Delegation Evidence', icon: <BadgeCheck size={16} /> })}
+        {renderNavItem({ page: 'delegation-evidence', label: 'Delegation Evidence', icon: <DestinationIcon page="delegation-evidence" /> })}
       </nav>
 
       {showDeveloperTools && (

@@ -228,28 +228,6 @@
 
 /* OMN-21166: fixed MVP navigation. Category accents identify destinations;
    green/red execution outcomes remain independent of navigation colors. */
-.mvp-nav-item { --nav-accent: #6D4AD8; }
-.mvp-nav-item[data-nav-page="local-runs"] { --nav-accent: #0A70A0; }
-.mvp-nav-item[data-nav-page="local-workflow"] { --nav-accent: #0B7A53; }
-.mvp-nav-item[data-nav-page="local-usage"] { --nav-accent: #9A6100; }
-.mvp-nav-item[data-nav-page="local-credentials"] { --nav-accent: #C2364F; }
-.mvp-nav-item[data-nav-page="local-api-keys"] { --nav-accent: #B9530F; }
-.mvp-nav-item[data-nav-page="delegation-evidence"] { --nav-accent: #0B7A70; }
-.mvp-nav-item[data-nav-page="experiments"] { --nav-accent: #B8327E; }
-.mvp-nav-item[data-nav-page="sea-control"] { --nav-accent: #4D7C0F; }
-.mvp-nav-item[data-nav-page="event-bus"] { --nav-accent: #2563EB; }
-.mvp-nav-item[data-nav-page="lab"] { --nav-accent: #8A6D00; }
-[data-theme="dark"] .mvp-nav-item { --nav-accent: #A78BFA; }
-[data-theme="dark"] .mvp-nav-item[data-nav-page="local-runs"] { --nav-accent: #38BDF8; }
-[data-theme="dark"] .mvp-nav-item[data-nav-page="local-workflow"] { --nav-accent: #34D399; }
-[data-theme="dark"] .mvp-nav-item[data-nav-page="local-usage"] { --nav-accent: #FBBF24; }
-[data-theme="dark"] .mvp-nav-item[data-nav-page="local-credentials"] { --nav-accent: #FB7185; }
-[data-theme="dark"] .mvp-nav-item[data-nav-page="local-api-keys"] { --nav-accent: #FB923C; }
-[data-theme="dark"] .mvp-nav-item[data-nav-page="delegation-evidence"] { --nav-accent: #2DD4BF; }
-[data-theme="dark"] .mvp-nav-item[data-nav-page="experiments"] { --nav-accent: #F472B6; }
-[data-theme="dark"] .mvp-nav-item[data-nav-page="sea-control"] { --nav-accent: #A3E635; }
-[data-theme="dark"] .mvp-nav-item[data-nav-page="event-bus"] { --nav-accent: #60A5FA; }
-[data-theme="dark"] .mvp-nav-item[data-nav-page="lab"] { --nav-accent: #FACC15; }
 .local-nav { padding: 12px 10px; }
 .local-nav .mvp-nav-item {
   grid-template-columns: 27px minmax(0, 1fr) auto;
@@ -282,6 +260,7 @@
 .developer-nav { border-top: 1px solid var(--sidebar-line); }
 .sidebar-settings { margin-top: auto; border-top: 1px solid var(--sidebar-line); padding: 12px 10px; }
 .developer-toggle {
+  --developer-accent: #2563eb;
   display: flex;
   align-items: center;
   justify-content: flex-start;
@@ -299,14 +278,14 @@
 .developer-toggle:hover { background: var(--sidebar-hover); color: var(--sidebar-ink); }
 .developer-toggle > svg { flex-shrink: 0; }
 .developer-toggle[aria-checked="true"] { color: var(--sidebar-ink); }
-.developer-switch { margin-left: auto; width: 25px; height: 15px; background: var(--sidebar-line); border-radius: 20px; position: relative; flex-shrink: 0; }
-.developer-switch::after { content: ''; position: absolute; left: 3px; top: 3px; width: 9px; height: 9px; border-radius: 50%; background: var(--sidebar-ink-2); transition: transform 160ms ease; }
-.developer-toggle[aria-checked="true"] .developer-switch { background: var(--brand-soft); }
-.developer-toggle[aria-checked="true"] .developer-switch::after { transform: translateX(10px); background: var(--brand-ink); }
+.developer-switch { margin-left: auto; width: 25px; height: 15px; background: var(--sidebar-line); border-radius: 20px; position: relative; flex-shrink: 0; transition: background-color 160ms ease; }
+.developer-switch::after { content: ''; position: absolute; left: 3px; top: 3px; width: 9px; height: 9px; border-radius: 50%; background: var(--sidebar-ink-2); transition: transform 160ms ease, background-color 160ms ease; }
+.developer-toggle[aria-checked="true"] .developer-switch { background: var(--developer-accent); }
+.developer-toggle[aria-checked="true"] .developer-switch::after { transform: translateX(10px); background: #fff; }
 .sidebar.collapsed .local-nav .mvp-nav-item { grid-template-columns: 1fr; padding: 8px 0; }
 .sidebar.collapsed .sidebar-settings { padding-inline: 4px; }
 .sidebar.collapsed .developer-toggle { justify-content: center; padding-inline: 0; }
-.sidebar.collapsed .developer-toggle[aria-checked="true"] { background: var(--brand-soft); box-shadow: inset 2px 0 var(--brand-ink); }
+.sidebar.collapsed .developer-toggle[aria-checked="true"] { background: color-mix(in oklch, var(--developer-accent) 15%, var(--sidebar)); box-shadow: inset 2px 0 var(--developer-accent); }
 .sidebar { box-shadow: 3px 0 18px #172c4d03; }
 .local-nav .mvp-nav-item { border-radius: 10px; padding-block: 10px; }
 .mvp-nav-item .dash-name { font-size: 12px; font-weight: 500; }
@@ -318,7 +297,7 @@
 .mvp-nav-title { font-size: 10px; letter-spacing: .075em; color: var(--sidebar-ink-2); }
 .sidebar-settings { background: var(--sidebar); }
 .developer-toggle { font-size: 11px; border: 1px solid transparent; }
-.developer-toggle:focus-visible { outline: 2px solid var(--sidebar-ink-2); outline-offset: 2px; }
+.developer-toggle:focus-visible { outline: 2px solid var(--link-ink); outline-offset: 2px; }
 @media (prefers-reduced-motion: reduce) {
   .sidebar *, .sidebar *::before, .sidebar *::after, .sidebar-backdrop { transition: none !important; animation: none !important; }
 }
@@ -330,3 +309,20 @@
 .mvp-nav-item .dash-marker { background: transparent; width: 22px; height: 22px; }
 .mvp-nav-item.active .dash-marker { background: transparent; }
 .local-nav .mvp-nav-item { grid-template-columns: 22px minmax(0,1fr) auto; }
+
+/* Keep each destination's identity in a soft native-style icon tile. */
+:root:not([data-theme="dark"]) { --sidebar: #f3f0e9; }
+.local-nav .mvp-nav-item { grid-template-columns: 28px minmax(0, 1fr) auto; border-radius: 7px; }
+.mvp-nav-item .dash-marker,
+.mvp-nav-item.active .dash-marker { width: 28px; height: 28px; border-radius: 8px; background: color-mix(in oklab, var(--nav-accent) 13%, var(--sidebar)); }
+.mvp-nav-item .dash-name { font-size: 13px; }
+.mvp-nav-item.active { background: color-mix(in oklab, var(--nav-accent) 18%, var(--sidebar)); }
+
+/* Filled active navigation follows the supplied nanomon reference. */
+:root:not([data-theme="dark"]) .mvp-nav-item.active,
+:root:not([data-theme="dark"]) .mvp-nav-item.active:hover { background: var(--nav-accent); }
+:root:not([data-theme="dark"]) .mvp-nav-item.active .dash-name { color: #fff; }
+:root:not([data-theme="dark"]) .mvp-nav-item.active .dash-marker { background: #f3f0e9; }
+:root:not([data-theme="dark"]) .mvp-nav-item.active::before { display: none; }
+
+:root:not([data-theme="dark"]) .mvp-nav-item.active:hover { background: color-mix(in oklab, var(--nav-accent) 88%, #000); }

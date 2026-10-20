@@ -1,0 +1,63 @@
+.page-outline {
+  --outline-accent: var(--nav-accent, var(--link-ink));
+  position: sticky;
+  top: 0;
+  z-index: 6;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+  max-width: 100%;
+  margin: 0 0 18px;
+  padding: 8px;
+  overflow-x: auto;
+  overscroll-behavior-inline: contain;
+  scrollbar-width: thin;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: color-mix(in oklab, var(--panel) 96%, transparent);
+  backdrop-filter: blur(12px);
+  box-shadow: var(--shadow-sm);
+}
+.page-outline-label {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  gap: 5px;
+  margin-inline: 4px 8px;
+  color: var(--text-secondary);
+  font-size: 12px;
+  white-space: nowrap;
+}
+.page-outline button {
+  flex: none;
+  min-height: 34px;
+  padding: 6px 10px;
+  border: 1px solid transparent;
+  border-radius: 7px;
+  background: transparent;
+  color: var(--text-secondary);
+  font: inherit;
+  font-size: 12px;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: color 150ms ease, background-color 150ms ease, border-color 150ms ease;
+}
+.page-outline button:hover { color: var(--text-primary); background: var(--panel-2); }
+.page-outline button[aria-current="location"] {
+  color: var(--outline-accent);
+  border-color: color-mix(in oklab, var(--outline-accent) 35%, var(--line));
+  background: color-mix(in oklab, var(--outline-accent) 12%, var(--panel));
+  font-weight: 600;
+}
+.page-outline button:focus-visible, [data-page-heading]:focus-visible {
+  outline: 2px solid var(--nav-accent, var(--link-ink));
+  outline-offset: 2px;
+}
+[data-page-heading] { scroll-margin-block-start: var(--page-outline-offset, 12px); }
+@media (max-width: 760px) {
+  .page-outline { padding: 5px; margin-bottom: 14px; border-radius: 10px; }
+  .page-outline-label { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); }
+  .page-outline button { min-height: 40px; }
+}
+@media (prefers-reduced-motion: reduce) { .page-outline button { transition: none; } }

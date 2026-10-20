@@ -30,7 +30,7 @@ function visitLabel(time: number): string {
   return `${day}, ${date.toISOString().slice(11, 16)} UTC`;
 }
 
-export function SinceLastVisit({ decisions, now }: { decisions: readonly unknown[]; now: number }) {
+export function SinceLastVisit({ decisions, now, onOpenFailures }: { decisions: readonly unknown[]; now: number; onOpenFailures?: () => void }) {
   // Read once, on the first render of this visit: later refreshes keep counting from the same previous visit.
   const [previous] = useState<number | null>(readLastVisit);
   const shared = useSharedRunFilter();
@@ -44,9 +44,10 @@ export function SinceLastVisit({ decisions, now }: { decisions: readonly unknown
       <span className="local-since-visit-title">Since your last visit · {visitLabel(previous)}</span>
       <span className="local-since-visit-chip" data-tone="runs">{fresh.length.toLocaleString('en-US')} new runs</span>
       <span className="local-since-visit-chip" data-tone="failed">{failed.toLocaleString('en-US')} failed</span>
-      {shared && (
+      {(shared || onOpenFailures) && (
         <button type="button" className="local-since-visit-action" onClick={() => {
-          shared.setFilter({ result: 'failed', cause: null });
+          if (onOpenFailures) { onOpenFailures(); return; }
+          shared?.setFilter({ result: 'failed', cause: null });
           const reduce = typeof window.matchMedia === 'function' && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
           document.querySelector('[data-component="overview-recent-runs"]')?.scrollIntoView?.({ behavior: reduce ? 'auto' : 'smooth', block: 'start' });
         }}>Show the failures</button>

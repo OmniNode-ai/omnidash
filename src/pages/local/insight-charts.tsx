@@ -1,9 +1,10 @@
-import { createContext, useContext, useId, useState, type CSSProperties, type ReactNode } from 'react';
+import { createContext, useContext, useId, useRef, useState, type CSSProperties, type KeyboardEvent, type ReactNode } from 'react';
 import {
-  ArrowDownUp, CalendarClock, ChartColumnStacked, CircleHelp, CodeXml, FileText, FlaskConical, GitPullRequest, Globe,
-  Hourglass, LayoutGrid, ScrollText, TrendingUp, TriangleAlert, Trophy,
+  ArrowDown, ArrowDownUp, ArrowUp, CalendarClock, ChartColumnStacked, CircleHelp, CodeXml, FileText, FlaskConical, GitPullRequest, Globe,
+  Hourglass, LayoutGrid, ScrollText, TrendingUp, TriangleAlert, Trophy, ChartBarBig, ChartPie, Network,
 } from 'lucide-react';
 import { useSharedRunFilter } from './run-filter';
+import { Link } from 'wouter';
 import {
   NOT_RECORDED, causes, countBy, dailySeries, durationBuckets, hourGrid, summary, toInsightRuns, windowRuns,
   type InsightDay, type InsightRun,
@@ -22,21 +23,21 @@ const RANGES = [
   { days: 14, label: '14 days' },
 ] as const;
 
-const PASS = '#34D399';
-const FAIL = '#F87171';
-const UNKNOWN = '#8D95A3';
-const PALETTE = ['#818CF8', '#22D3EE', '#F472B6', '#A78BFA', '#FBBF24', '#2DD4BF', '#FB923C', '#60A5FA'];
+const PASS = 'var(--ins-pass)';
+const FAIL = 'var(--ins-fail)';
+const UNKNOWN = 'var(--ins-unknown)';
+const PALETTE = ['var(--ins-series-1)', 'var(--ins-series-2)', 'var(--ins-series-3)', 'var(--ins-series-4)', 'var(--ins-series-5)', 'var(--ins-series-6)', 'var(--ins-series-7)', 'var(--ins-series-8)'];
 const DURATION_EDGES = [0, 250, 500, 750, 1000, 1500, 2000, 3000, Infinity];
-const DURATION_RAMP = ['#34D399', '#4ADE80', '#A3E635', '#FACC15', '#FBBF24', '#FB923C', '#F87171', '#F43F5E'];
+const DURATION_RAMP = ['var(--ins-pass)', 'var(--ins-ramp-2)', 'var(--ins-ramp-3)', 'var(--ins-series-5)', 'var(--ins-series-5)', 'var(--ins-series-7)', 'var(--ins-fail)', 'var(--ins-fail-strong)'];
 
 const TASK_LOOK: Record<string, { icon: ReactNode; color: string }> = {
-  document: { icon: <FileText size={14} />, color: '#60A5FA' },
-  code_generation: { icon: <CodeXml size={14} />, color: '#A78BFA' },
-  research: { icon: <Globe size={14} />, color: '#2DD4BF' },
-  summarization: { icon: <ScrollText size={14} />, color: '#FBBF24' },
-  code_review: { icon: <GitPullRequest size={14} />, color: '#F472B6' },
-  review: { icon: <GitPullRequest size={14} />, color: '#F472B6' },
-  test: { icon: <FlaskConical size={14} />, color: '#FB923C' },
+  document: { icon: <FileText size={14} />, color: 'var(--ins-series-8)' },
+  code_generation: { icon: <CodeXml size={14} />, color: 'var(--ins-series-4)' },
+  research: { icon: <Globe size={14} />, color: 'var(--ins-series-6)' },
+  summarization: { icon: <ScrollText size={14} />, color: 'var(--ins-series-5)' },
+  code_review: { icon: <GitPullRequest size={14} />, color: 'var(--ins-series-3)' },
+  review: { icon: <GitPullRequest size={14} />, color: 'var(--ins-series-3)' },
+  test: { icon: <FlaskConical size={14} />, color: 'var(--ins-series-7)' },
 };
 const OTHER_TASK = { icon: <CircleHelp size={14} />, color: UNKNOWN };
 
@@ -87,7 +88,7 @@ function ChartCard({ title, icon, accent, note, delay, children }: {
   );
 }
 
-function Readout({ testId, text, active }: { testId?: string; text: string; active: boolean }) {
+function Readout({ testId, text, active }: { testId?: string; text: ReactNode; active: boolean }) {
   return <p className={`ins-readout${active ? ' ins-readout--active' : ''}`} data-testid={testId} aria-live="polite">{text}</p>;
 }
 
@@ -102,13 +103,13 @@ function RunsPerDay({ days }: { days: InsightDay[] }) {
     return current[key] && !current[other] ? current : { ...current, [key]: !current[key] };
   });
   return (
-    <ChartCard title="Runs per day" icon={<ChartColumnStacked size={16} />} accent="#38BDF8" delay={0}>
+    <ChartCard title="Runs per day" icon={<ChartColumnStacked size={16} />} accent="var(--ins-series-2)" delay={0}>
       <div className="ins-toggles" role="group" aria-label="Series">
-        <button type="button" className="ins-toggle" aria-pressed={show.passed} onClick={() => toggle('passed')} style={{ '--ins-swatch': PASS } as CSSProperties}>Passed</button>
-        <button type="button" className="ins-toggle" aria-pressed={show.failed} onClick={() => toggle('failed')} style={{ '--ins-swatch': FAIL } as CSSProperties}>Failed</button>
+        <button type="button" className="ins-toggle" data-field-tone="pass" aria-pressed={show.passed} onClick={() => toggle('passed')} style={{ '--ins-swatch': PASS } as CSSProperties}>Passed</button>
+        <button type="button" className="ins-toggle" data-field-tone="fail" aria-pressed={show.failed} onClick={() => toggle('failed')} style={{ '--ins-swatch': FAIL } as CSSProperties}>Failed</button>
       </div>
       <Readout testId="runs-per-day-readout" active={active !== null}
-        text={active ? `${dayLabel(active.day)} · ${dayCounts(active).replace(/, /g, ' · ')}` : 'Hover or tab through the days'} />
+        text={active ? <>{dayLabel(active.day)} · <span data-field-tone="count">{count(active.runs)} runs</span> · <span data-field-tone="pass">{count(active.passed)} passed</span> · <span data-field-tone="fail">{count(active.failed)} failed</span>{active.unrecorded > 0 && <> · <span data-field-tone="basis" data-field-unavailable="true">{count(active.unrecorded)} not recorded</span></>}</> : 'Hover or tab through the days'} />
       <div className="ins-bars" role="group" aria-label="Runs per day" onMouseLeave={() => setHover(null)}>
         {days.map((day, index) => (
           <button key={day.day} type="button" className="ins-bar" aria-label={`${dayLabel(day.day)}: ${dayCounts(day)}`}
@@ -161,7 +162,7 @@ function PassRateTrend({ days }: { days: InsightDay[] }) {
   const x = hover === null ? 0 : days.length > 1 ? (hover / (days.length - 1)) * 100 : 50;
   return (
     <ChartCard title="Pass rate per day" icon={<TrendingUp size={16} />} accent={PASS} delay={60}>
-      <Readout active={active !== null} text={active ? labels[hover!]!.replace(': ', ' · ') : `Scale from ${min}% to 100%`} />
+      <Readout active={active !== null} text={active ? <>{dayLabel(active.day)} · <span data-field-tone="pass" data-field-unavailable={active.passRate === null}>{active.passRate === null ? 'no verdicts' : `${active.passRate.toFixed(1)}% passed`}</span></> : `Scale from ${min}% to 100%`} />
       <div className="ins-plot">
         <svg viewBox="0 0 600 120" preserveAspectRatio="none" role="img" aria-label="Pass rate per day">
           <path className="od-draw" d={path} fill="none" stroke={PASS} strokeWidth={3} vectorEffect="non-scaling-stroke" strokeLinejoin="round" />
@@ -182,17 +183,43 @@ function PassRateTrend({ days }: { days: InsightDay[] }) {
 function ActivityHeatmap({ runs, now }: { runs: InsightRun[]; now: number }) {
   const grid = hourGrid(runs, now, 7);
   const [hover, setHover] = useState<[number, number] | null>(null);
+  const [activeCell, setActiveCell] = useState(0);
+  const cells = useRef<Array<HTMLButtonElement | null>>([]);
+  const helpId = useId();
   const label = (row: number, hour: number) => `${weekday(grid.days[row]!)} ${String(hour).padStart(2, '0')}:00 UTC · ${count(grid.counts[row]![hour]!)} runs`;
+  const inspect = (row: number, hour: number) => {
+    setHover([row, hour]);
+    setActiveCell(row * 24 + hour);
+  };
+  const move = (event: KeyboardEvent<HTMLButtonElement>, row: number, hour: number) => {
+    let nextRow = row;
+    let nextHour = hour;
+    switch (event.key) {
+      case 'ArrowLeft': nextHour = Math.max(0, hour - 1); break;
+      case 'ArrowRight': nextHour = Math.min(23, hour + 1); break;
+      case 'ArrowUp': nextRow = Math.max(0, row - 1); break;
+      case 'ArrowDown': nextRow = Math.min(grid.days.length - 1, row + 1); break;
+      case 'Home': nextHour = 0; if (event.ctrlKey || event.metaKey) nextRow = 0; break;
+      case 'End': nextHour = 23; if (event.ctrlKey || event.metaKey) nextRow = grid.days.length - 1; break;
+      default: return;
+    }
+    event.preventDefault();
+    cells.current[nextRow * 24 + nextHour]?.focus();
+  };
   return (
-    <ChartCard title="When runs happen" icon={<CalendarClock size={16} />} accent="#22D3EE" note="Last 7 days, by UTC hour" delay={120}>
-      <Readout active={hover !== null} text={hover ? label(hover[0], hover[1]) : `Busiest hour: ${count(grid.max)} runs`} />
-      <div className="ins-heat" role="img" aria-label={`Runs by UTC hour over the last 7 days; busiest hour has ${count(grid.max)} runs`} onMouseLeave={() => setHover(null)}>
+    <ChartCard title="When runs happen" icon={<CalendarClock size={16} />} accent="var(--ins-series-2)" note="Last 7 days, by UTC hour" delay={120}>
+      <Readout testId="activity-hour-readout" active={hover !== null} text={hover ? <>{weekday(grid.days[hover[0]]!)} {String(hover[1]).padStart(2, '0')}:00 UTC · <span data-field-tone="count">{count(grid.counts[hover[0]]![hover[1]]!)} runs</span></> : <>Busiest hour: <span data-field-tone="count">{count(grid.max)} runs</span></>} />
+      <p id={helpId} className="sr-only">Use arrow keys to inspect hours and days. Home and End move to the first and last hour. Tab leaves the chart.</p>
+      <div className="ins-heat" role="group" aria-describedby={helpId} aria-label={`Runs by UTC hour over the last 7 days; busiest hour has ${count(grid.max)} runs`}>
         {grid.days.map((day, row) => (
           <div key={day} className="ins-heat-row">
             <span className="ins-heat-day">{weekday(day)}</span>
             {grid.counts[row]!.map((runsInHour, hour) => (
-              <span key={hour} className="ins-heat-cell" title={label(row, hour)} onMouseEnter={() => setHover([row, hour])}
-                style={{ background: runsInHour ? `color-mix(in oklch, #22D3EE ${Math.round(15 + 85 * (runsInHour / Math.max(1, grid.max)))}%, transparent)` : undefined }} />
+              <button key={hour} type="button" className="ins-heat-cell" title={label(row, hour)} aria-label={label(row, hour)}
+                ref={node => { cells.current[row * 24 + hour] = node; }} tabIndex={activeCell === row * 24 + hour ? 0 : -1}
+                onMouseEnter={() => setHover([row, hour])} onFocus={() => inspect(row, hour)} onClick={() => inspect(row, hour)}
+                onKeyDown={event => move(event, row, hour)}
+                style={{ background: runsInHour ? `color-mix(in oklch, var(--ins-series-2) ${Math.round(15 + 85 * (runsInHour / Math.max(1, grid.max)))}%, transparent)` : undefined }} />
             ))}
           </div>
         ))}
@@ -205,7 +232,7 @@ function TaskMix({ runs }: { runs: InsightRun[] }) {
   const groups = countBy(runs, 'task');
   const max = Math.max(1, ...groups.map(group => group.runs));
   return (
-    <ChartCard title="Tasks" icon={<LayoutGrid size={16} />} accent="#A78BFA" note="Runs and pass rate" delay={180}>
+    <ChartCard title="Tasks" icon={<LayoutGrid size={16} />} accent="var(--ins-series-4)" note="Runs and pass rate" delay={180}>
       <ul className="ins-list" aria-label="Tasks">
         {groups.map((group, index) => {
           const look = TASK_LOOK[group.key] ?? OTHER_TASK;
@@ -215,7 +242,7 @@ function TaskMix({ runs }: { runs: InsightRun[] }) {
               <span className="ins-chip-icon" aria-hidden="true">{look.icon}</span>
               <span className="ins-list-name">{group.key === NOT_RECORDED ? NOT_RECORDED : readable(group.key)}</span>
               <span className="ins-track"><span className="ins-fill od-growx" style={{ width: `${(group.runs / max) * 100}%`, animationDelay: `${index * 60}ms` }} /></span>
-              <span className="ins-list-value">{count(group.runs)} · {judged ? `${Math.round((group.passed / judged) * 100)}%` : 'no verdicts'}</span>
+              <span className="ins-list-value"><span data-field-tone="count">{count(group.runs)}</span> · <span data-field-tone="pass" data-field-unavailable={!judged}>{judged ? `${Math.round((group.passed / judged) * 100)}%` : 'no verdicts'}</span></span>
             </li>
           );
         })}
@@ -232,8 +259,8 @@ function DurationHistogram({ runs }: { runs: InsightRun[] }) {
     ? `${duration(DURATION_EDGES[index]!)} or more` : `${duration(DURATION_EDGES[index]!)} to ${duration(DURATION_EDGES[index + 1]!)}`;
   const median = summary(runs).medianLatency;
   return (
-    <ChartCard title="How long runs take" icon={<Hourglass size={16} />} accent="#FBBF24" note={unrecorded ? `${count(unrecorded)} not recorded` : undefined} delay={240}>
-      <Readout active={hover !== null} text={hover === null ? (median === null ? 'No durations recorded' : `Median ${duration(median)}`) : `${name(hover)} · ${count(buckets[hover]!)} runs`} />
+    <ChartCard title="How long runs take" icon={<Hourglass size={16} />} accent="var(--ins-series-5)" note={unrecorded ? `${count(unrecorded)} not recorded` : undefined} delay={240}>
+      <Readout active={hover !== null} text={hover === null ? (median === null ? 'No durations recorded' : <>Median <span data-field-tone="duration">{duration(median)}</span></>) : <><span data-field-tone="duration">{name(hover)}</span> · <span data-field-tone="count">{count(buckets[hover]!)} runs</span></>} />
       <div className="ins-bars ins-bars--short" role="group" aria-label="Duration buckets" onMouseLeave={() => setHover(null)}>
         {buckets.map((runsInBucket, index) => (
           <button key={index} type="button" className="ins-bar" aria-label={`${name(index)}: ${count(runsInBucket)} runs`}
@@ -250,7 +277,7 @@ function DurationHistogram({ runs }: { runs: InsightRun[] }) {
 function ModelScoreboard({ runs }: { runs: InsightRun[] }) {
   const groups = countBy(runs, 'model');
   return (
-    <ChartCard title="Model scoreboard" icon={<Trophy size={16} />} accent="#FB923C" note="Pass rate" delay={300}>
+    <ChartCard title="Model scoreboard" icon={<Trophy size={16} />} accent="var(--ins-series-7)" note="Pass rate" delay={300}>
       <ul className="ins-rings" aria-label="Pass rate by model">
         {groups.map((group, index) => {
           const judged = group.passed + group.failed;
@@ -263,9 +290,9 @@ function ModelScoreboard({ runs }: { runs: InsightRun[] }) {
                 {rate !== null && <circle className="od-ring" cx="21" cy="21" r="15.915" fill="none" stroke={color} strokeWidth={4.5} strokeLinecap="round" strokeDasharray={`${rate.toFixed(2)} ${(100 - rate).toFixed(2)}`} transform="rotate(-90 21 21)" />}
               </svg>
               <span className="ins-ring-text">
-                <span className="ins-ring-name">{group.key}</span>
-                <span className="ins-ring-rate">{rate === null ? 'No verdicts' : `${Math.round(rate)}% passed`}</span>
-                <span className="ins-ring-runs">{count(group.runs)} runs</span>
+                <span className="ins-ring-name" data-field-tone="model" data-field-unavailable={group.key === NOT_RECORDED}>{group.key}</span>
+                <span className="ins-ring-rate" data-field-tone="pass" data-field-unavailable={rate === null}>{rate === null ? 'No verdicts' : `${Math.round(rate)}% passed`}</span>
+                <span className="ins-ring-runs" data-field-tone="count">{count(group.runs)} runs</span>
               </span>
             </li>
           );
@@ -275,7 +302,7 @@ function ModelScoreboard({ runs }: { runs: InsightRun[] }) {
   );
 }
 
-function FailureCauses({ runs }: { runs: InsightRun[] }) {
+function FailureCauses({ runs, onInspectFailure }: { runs: InsightRun[]; onInspectFailure?: (cause: string) => void }) {
   const list = causes(runs);
   // On the Overview a cause filters the latest runs below (OMN-21166 approved mockup); alone it is a plain list.
   const shared = useSharedRunFilter();
@@ -285,16 +312,16 @@ function FailureCauses({ runs }: { runs: InsightRun[] }) {
       {list.length === 0 ? <p className="ins-empty">No failed runs in this window</p> : (
         <ul className="ins-list" aria-label="Failure causes">
           {list.map((entry, index) => (
-            <li key={entry.cause} className="ins-list-row ins-list-row--plain" style={{ '--ins-swatch': [FAIL, '#FB923C', '#FBBF24', '#C084FC', '#F472B6'][index % 5] } as CSSProperties}>
-              {shared && entry.cause !== NOT_RECORDED ? (
+            <li key={entry.cause} className="ins-list-row ins-list-row--plain" style={{ '--ins-swatch': [FAIL, 'var(--ins-series-7)', 'var(--ins-series-5)', 'var(--ins-series-4)', 'var(--ins-series-3)'][index % 5] } as CSSProperties}>
+              {(shared || onInspectFailure) && entry.cause !== NOT_RECORDED ? (
                 <button type="button" className="ins-list-name ins-cause-button" aria-label={`Show runs failed by ${entry.cause}`}
-                  aria-pressed={shared.filter.cause === entry.cause}
-                  onClick={() => shared.setFilter(shared.filter.cause === entry.cause ? { cause: null } : { result: 'failed', cause: entry.cause })}>
+                  aria-pressed={!onInspectFailure && shared?.filter.cause === entry.cause}
+                  onClick={() => onInspectFailure ? onInspectFailure(entry.cause) : shared?.setFilter(shared.filter.cause === entry.cause ? { cause: null } : { result: 'failed', cause: entry.cause })}>
                   {entry.cause}
                 </button>
               ) : <span className="ins-list-name">{entry.cause}</span>}
               <span className="ins-track"><span className="ins-fill od-growx" style={{ width: `${(entry.count / max) * 100}%`, animationDelay: `${index * 60}ms` }} /></span>
-              <span className="ins-list-value">{count(entry.count)}</span>
+              <span className="ins-list-value" data-field-tone="fail">{count(entry.count)}</span>
             </li>
           ))}
         </ul>
@@ -303,22 +330,77 @@ function FailureCauses({ runs }: { runs: InsightRun[] }) {
   );
 }
 
+function VolumeBars({ runs, field }: { runs: InsightRun[]; field: 'model' | 'tier' }) {
+  const groups = countBy(runs, field);
+  const [selected, setSelected] = useState<string | null>(null);
+  const maximum = Math.max(1, ...groups.map(group => group.runs));
+  const active = groups.find(group => group.key === selected);
+  return <ChartCard title={field === 'model' ? 'Runs by model' : 'Runs by tier'} icon={field === 'model' ? <ChartBarBig size={16} /> : <Network size={16} />}
+    accent={field === 'model' ? 'var(--ins-series-1)' : 'var(--ins-series-6)'} note="Counted from returned runs" delay={120}>
+    <p className="ins-readout" role="status">{active ? <><span data-field-tone={field === 'model' ? 'model' : 'tier'} data-field-unavailable={active.key === NOT_RECORDED}>{active.key}</span>: <span data-field-tone="count">{count(active.runs)} runs</span> · {(active.runs / runs.length * 100).toFixed(1)}% of this window</> : 'Select a bar to inspect its count and share'}</p>
+    <div className="overview-volume-bars">
+      {groups.map((group, index) => <button type="button" key={group.key} aria-pressed={selected === group.key}
+        aria-label={`${group.key}: ${count(group.runs)} ${group.runs === 1 ? 'run' : 'runs'}`} onClick={() => setSelected(group.key)}
+        style={{ '--ins-swatch': PALETTE[index % PALETTE.length] } as CSSProperties}>
+        <span className="overview-volume-label" data-field-tone={field === 'model' ? 'model' : 'tier'} data-field-unavailable={group.key === NOT_RECORDED}>{group.key}</span><strong data-field-tone="count">{count(group.runs)}</strong>
+        <span className="overview-volume-track" aria-hidden="true"><span style={{ width: `${group.runs / maximum * 100}%` }} /></span>
+      </button>)}
+    </div>
+  </ChartCard>;
+}
+
+function OutcomeComposition({ runs }: { runs: InsightRun[] }) {
+  const totals = summary(runs);
+  const [selected, setSelected] = useState<number | null>(null);
+  const segments = [{ label: 'Passed', value: totals.passed, color: PASS }, { label: 'Failed', value: totals.failed, color: FAIL }, { label: 'Not recorded', value: totals.unrecorded, color: UNKNOWN }];
+  let offset = 0;
+  return <ChartCard title="Run outcomes" icon={<ChartPie size={16} />} accent="var(--ins-series-3)" note="Returned-run composition" delay={180}>
+    <div className="overview-outcomes">
+      <svg viewBox="0 0 120 120" className="overview-outcome-donut" aria-hidden="true">
+        {segments.map((segment, index) => {
+          const share = segment.value / runs.length * 100;
+          const start = offset;
+          offset += share;
+          return segment.value > 0 && <circle key={segment.label} cx="60" cy="60" r="44" fill="none" stroke={segment.color} strokeWidth="13"
+            pathLength="100" strokeDasharray={`${share} ${100 - share}`} strokeDashoffset={-start} transform="rotate(-90 60 60)"
+            opacity={selected === null || selected === index ? 1 : .3} />;
+        })}
+        <text x="60" y="59" textAnchor="middle" className="overview-outcome-total">{count(runs.length)}</text>
+        <text x="60" y="73" textAnchor="middle" className="overview-outcome-caption">runs</text>
+      </svg>
+      <div className="overview-outcome-legend">{segments.map((segment, index) => <button type="button" key={segment.label} data-field-tone={index === 0 ? 'pass' : index === 1 ? 'fail' : 'basis'} data-field-unavailable={index === 2} aria-pressed={selected === index}
+        aria-label={`${segment.label}: ${count(segment.value)} ${segment.value === 1 ? 'run' : 'runs'}`} onClick={() => setSelected(index)} style={{ '--ins-swatch': segment.color } as CSSProperties}>
+        <span aria-hidden="true" /><span>{segment.label}</span><strong>{count(segment.value)}</strong>
+      </button>)}</div>
+    </div>
+    <p role="status" className="ins-readout">{selected === null ? 'Includes runs without a recorded verdict' : <span data-field-tone={selected === 0 ? 'pass' : selected === 1 ? 'fail' : 'basis'} data-field-unavailable={selected === 2}>{segments[selected]!.label}: {count(segments[selected]!.value)} {segments[selected]!.value === 1 ? 'run' : 'runs'}</span>}</p>
+  </ChartCard>;
+}
+
+function ChartSection({ title, children }: { title: string; children: ReactNode }) {
+  return <section className="overview-chart-section" aria-label={title}><h3 className="local-dashboard-caption overview-chart-heading">{title}</h3><div className="overview-chart-row">{children}</div></section>;
+}
+
 function TokensPerDay({ days }: { days: InsightDay[] }) {
   const [hover, setHover] = useState<number | null>(null);
   const total = (day: InsightDay) => (day.tokensIn === null ? 0 : day.tokensIn) + (day.tokensOut === null ? 0 : day.tokensOut);
   const max = Math.max(1, ...days.map(total));
-  const side = (value: number | null) => (value === null ? 'not recorded' : count(value));
-  const label = (day: InsightDay) => `${dayLabel(day.day)}: ${side(day.tokensIn)} in, ${side(day.tokensOut)} out`;
+  const side = (value: number | null, missing: number, direction: 'in' | 'out') => `${value === null ? 'not recorded' : count(value)} ${direction}${value !== null && missing > 0 ? ` (partial: ${count(missing)} ${missing === 1 ? 'run' : 'runs'} not recorded)` : ''}`;
+  const label = (day: InsightDay) => `${dayLabel(day.day)}: ${side(day.tokensIn, day.tokensInUnmeasured, 'in')}, ${side(day.tokensOut, day.tokensOutUnmeasured, 'out')}`;
   const active = hover === null ? null : days[hover]!;
   return (
-    <ChartCard title="Tokens per day" icon={<ArrowDownUp size={16} />} accent="#FACC15" delay={420}>
-      <Readout active={active !== null} text={active ? label(active).replace(': ', ' · ') : 'Tokens in and out, per UTC day'} />
+    <ChartCard title="Tokens per day" icon={<ArrowDownUp size={16} />} accent="var(--field-tokens-daily)" delay={420}>
+      <ul className="ins-token-legend" aria-label="Token series">
+        <li data-field-tone="tokens-in"><ArrowDown size={14} aria-hidden="true" /><span>Tokens in</span></li>
+        <li data-field-tone="tokens-out"><ArrowUp size={14} aria-hidden="true" /><span>Tokens out</span></li>
+      </ul>
+      <Readout active={active !== null} text={active ? <>{dayLabel(active.day)} · <span data-field-tone="tokens-in" data-field-unavailable={active.tokensIn === null}>{side(active.tokensIn, active.tokensInUnmeasured, 'in')}</span>, <span data-field-tone="tokens-out" data-field-unavailable={active.tokensOut === null}>{side(active.tokensOut, active.tokensOutUnmeasured, 'out')}</span></> : <><span data-field-tone="tokens-in">Tokens in</span> and <span data-field-tone="tokens-out">out</span>, per UTC day</>} />
       <div className="ins-bars" role="group" aria-label="Tokens per day" onMouseLeave={() => setHover(null)}>
         {days.map((day, index) => (
           <button key={day.day} type="button" className="ins-bar" aria-label={label(day)}
             data-dim={hover !== null && hover !== index} onMouseEnter={() => setHover(index)} onFocus={() => setHover(index)}>
-            {day.tokensOut !== null && <span className="ins-seg od-grow" style={{ height: `${(day.tokensOut / max) * 100}%`, background: '#FACC15', animationDelay: `${index * 30}ms` }} />}
-            {day.tokensIn !== null && <span className="ins-seg od-grow" style={{ height: `${(day.tokensIn / max) * 100}%`, background: '#22D3EE', animationDelay: `${index * 30}ms` }} />}
+            {day.tokensOut !== null && <span className="ins-seg od-grow" style={{ height: `${(day.tokensOut / max) * 100}%`, background: 'var(--field-tokens-out)', animationDelay: `${index * 30}ms` }} />}
+            {day.tokensIn !== null && <span className="ins-seg od-grow" style={{ height: `${(day.tokensIn / max) * 100}%`, background: 'var(--field-tokens-in)', animationDelay: `${index * 30}ms` }} />}
           </button>
         ))}
       </div>
@@ -359,16 +441,26 @@ function allTimeDays(runs: readonly InsightRun[], now: number): number {
   return Math.min(MAX_ALL_TIME_DAYS, Math.max(7, Math.round((today - oldest) / 86_400_000) + 1));
 }
 
-export function InsightsSection({ decisions, now }: { decisions: readonly unknown[]; now: number }) {
+export function InsightsSection({ decisions, now, view = 'all', onInspectFailure }: { decisions: readonly unknown[]; now: number; view?: 'all' | 'summary' | 'analysis'; onInspectFailure?: (cause: string) => void }) {
   const pageWindow = useContext(InsightsWindowContext);
   const [ownDays, setDays] = useState<number>(7);
   const all = toInsightRuns(decisions);
   const days = pageWindow === 'today' ? 1 : pageWindow === 'all' ? allTimeDays(all, now) : ownDays;
   const runs = windowRuns(all, now, days);
   const chartDays = dailySeries(all, now, days === 1 ? 7 : days);
-  const windowText = days === 1 ? 'today' : pageWindow === 'all' ? `in the last ${days} days (all time)` : `in the last ${days} days`;
+  // The exposure returns only its latest rows. A calendar axis is not proof
+  // that earlier days contain no runs; disclose the actual received span.
+  const times = all.map(run => run.at);
+  const utcTime = (time: number) => new Date(time).toISOString().slice(0, 19).replace('T', ' ');
+  const servedSpan = times.length === 0 ? 'No dated runs served' : `${utcTime(Math.min(...times))}–${utcTime(Math.max(...times))} UTC`;
+  const servedCount = decisions.length;
+  const undatedCount = servedCount - all.length;
+  const population = pageWindow === 'all' && runs.length === servedCount
+    ? `Latest ${count(servedCount)} served runs`
+    : `${count(runs.length)} of the latest ${count(servedCount)} served runs · ${days === 1 ? 'today' : `last ${days} UTC days`}`;
+  const undated = undatedCount > 0 ? ` · ${count(undatedCount)} undated ${undatedCount === 1 ? 'row' : 'rows'} excluded` : '';
   return (
-    <div className="ins-section" aria-label="Insights" role="group">
+    <div className={`ins-section${view === 'summary' ? ' ins-section--summary' : ''}`} aria-label="Insights" role="group">
       {pageWindow === null && (
         <div className="local-dashboard-filters ins-range" role="group" aria-label="Range">
           {RANGES.map(range => (
@@ -376,18 +468,19 @@ export function InsightsSection({ decisions, now }: { decisions: readonly unknow
           ))}
         </div>
       )}
-      <p className="local-dashboard-caption ins-sub" data-testid="insights-total">{count(runs.length)} runs {windowText} · counted from the served runs</p>
+      <p className="local-dashboard-caption ins-sub" data-testid="insights-total">{population}{undated} · Row timestamps: {servedSpan} · Earlier activity is not included</p>
       {runs.length === 0 ? <p className="local-dashboard-empty ins-empty" role="status" aria-label="Insights">{days === 1 ? 'No runs today' : `No runs in the last ${days} days`}</p> : (
-        <div className="ins-grid">
-          <RunsPerDay days={chartDays} />
-          <ActivityHeatmap runs={all} now={now} />
-          <TaskMix runs={runs} />
-          <DurationHistogram runs={runs} />
-          <ModelScoreboard runs={runs} />
-          <FailureCauses runs={runs} />
-          <TokensPerDay days={chartDays} />
+        <div className="overview-chart-sections">
+          {view !== 'analysis' && <ChartSection title="Activity over time"><RunsPerDay days={chartDays} /><TokensPerDay days={chartDays} /></ChartSection>}
+          {view !== 'summary' && <>
+          <ChartSection title="Routing and workload"><VolumeBars runs={runs} field="model" /><VolumeBars runs={runs} field="tier" /><TaskMix runs={runs} /></ChartSection>
+          <ChartSection title="Quality and outcomes"><OutcomeComposition runs={runs} /><PassRateTrend days={chartDays} /><FailureCauses runs={runs} onInspectFailure={onInspectFailure} /></ChartSection>
+          <ChartSection title="Performance by model"><DurationHistogram runs={runs} /><ModelScoreboard runs={runs} /></ChartSection>
+          <ChartSection title="Activity by UTC hour"><ActivityHeatmap runs={all} now={now} /></ChartSection>
+          </>}
         </div>
       )}
+      {view === 'summary' && <nav className="local-summary-links" aria-label="Detailed analysis"><Link href="/runs">Explore run analysis</Link><Link href="/usage">Explore usage</Link></nav>}
     </div>
   );
 }

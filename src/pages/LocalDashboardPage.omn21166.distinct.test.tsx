@@ -26,7 +26,11 @@ function accent(componentId: string, dark: boolean): string | undefined {
   return rules[rules.length - 1];
 }
 
-describe('OMN-21166: every panel has its own icon and colour', () => {
+// Owner2026-10-19T11:15Z: different things differ, and vice versa.
+// The same recent-run/routing/activity component reused across pages remains one concept.
+const concept = (id: string) => ({ 'overview-recent-runs': 'recent-runs', 'runs-tier-mix': 'overview-tier-mix', 'runs-insights': 'overview-insights' } as Record<string, string>)[id] ?? id;
+
+describe('OMN-21166: each different concept has its own icon and colour', () => {
   it('D1: no two panels share an icon', () => {
     const icons = components.map(id => [id, PANEL_ICONS[id]?.displayName ?? (PANEL_ICONS[id] as { name?: string } | undefined)?.name] as const);
     expect(icons.filter(([, icon]) => icon === undefined)).toEqual([]);
@@ -34,7 +38,7 @@ describe('OMN-21166: every panel has its own icon and colour', () => {
     const clashes = icons.flatMap(([id, icon]) => {
       const other = seen.get(icon!);
       seen.set(icon!, id);
-      return other ? [`${other} and ${id} share ${icon}`] : [];
+      return other && concept(other) !== concept(id) ? [`${other} and ${id} share ${icon}`] : [];
     });
     expect(clashes).toEqual([]);
   });
@@ -53,6 +57,6 @@ describe('OMN-21166: every panel has its own icon and colour', () => {
     expect(accents.filter(([, colour]) => colour === undefined).map(([id]) => id)).toEqual([]);
     const counts = new Map<string, string[]>();
     for (const [id, colour] of accents) counts.set(colour!.toLowerCase(), [...(counts.get(colour!.toLowerCase()) ?? []), id]);
-    expect([...counts.values()].filter(ids => ids.length > 1)).toEqual([]);
+    expect([...counts.values()].filter(ids => new Set(ids.map(concept)).size > 1)).toEqual([]);
   });
 });

@@ -8,6 +8,9 @@
  */
 
 import { type ReactNode } from 'react';
+import { Activity, Award, Coins, PiggyBank } from 'lucide-react';
+import { formatUsd } from '@/components/dashboard/usage/UsageByModelDayWidget';
+import { isUnavailableField } from '@/components/dashboard/field-identity';
 import { EvPageShell } from '@/components/dashboard/event-dash/EvPageShell';
 import {
   Badge,
@@ -42,6 +45,9 @@ import type {
   CorrelationTraceRow,
   DelegationDecisionRow,
 } from '@/services/event-dash-api';
+
+const recordedMoney = (value: unknown) => isUnavailableField(value) || !Number.isFinite(Number(value))
+  ? 'Not recorded' : formatUsd(value);
 
 // ── golden chain (stage labels justified by the trace row) ───────────────────
 
@@ -122,8 +128,10 @@ function SelectedRun({ correlationId }: { correlationId: string | null }) {
           { k: 'Task type', v: row.task_type },
           { k: 'Model', v: row.model_name },
           { k: 'Latency', v: fmtLatency(row.latency_ms) },
-          { k: 'Tokens in / out', v: row.tokens_input != null ? `${row.tokens_input} / ${row.tokens_output ?? '—'}` : '—' },
-          { k: 'Cost · Savings', v: `${fmtMoney(row.cost_usd)} · ${fmtMoney(row.cost_savings_usd)}` },
+          { k: 'Tokens in', v: row.tokens_input ?? 'Not recorded' },
+          { k: 'Tokens out', v: row.tokens_output ?? 'Not recorded' },
+          { k: 'Cost', v: recordedMoney(row.cost_usd) },
+          { k: 'Savings (modelled)', v: recordedMoney(row.cost_savings_usd) },
           { k: 'Routing rule', v: row.routing_rule ?? '—' },
           { k: 'Quality detail', v: row.quality_gate_detail ?? (row.quality_gate_passed ? 'pass' : '—') },
         ]}
@@ -191,8 +199,8 @@ function QualityGate() {
     <Panel title="QUALITY GATE" sub="deterministic checks">
       <div className="ev-qg-stats">
         <span className="stat-inline"><span className="big c-amber">{fmtPct(q.overall_pass_rate)}</span><span className="note">pass rate</span></span>
-        <span className="stat-inline"><span className="big c-green">{q.total_passed}</span><span className="note">pass</span></span>
-        <span className="stat-inline"><span className="big c-red">{q.total_failed}</span><span className="note">fail</span></span>
+        <span className="stat-inline" data-field-tone="pass"><span className="big c-green">{q.total_passed}</span><span className="note">pass</span></span>
+        <span className="stat-inline" data-field-tone="fail"><span className="big c-red">{q.total_failed}</span><span className="note">fail</span></span>
         <span className="stat-inline"><span className="big">{fmtPct(q.escalation_rate)}</span><span className="note">escalation</span></span>
       </div>
       <div className="bar-track ev-qg-bar">
@@ -230,12 +238,12 @@ function SavingsPanel() {
   return (
     <Panel
       title="SAVINGS vs CLOUD BASELINE"
-      sub={s.baseline_model}
+      sub={s.baseline_model || 'Baseline model not recorded'}
       right={<span className="src-tag">pricing v{s.pricing_manifest_version}</span>}
     >
       <span className="stat-inline ev-savings-hero">
         <span className="big c-amber">{fmtMoney(s.cumulative_savings_usd)}</span>
-        <span className="note">cumulative savings over {s.session_count} sessions</span>
+        <span className="note">cumulative savings (modelled) over {s.session_count} sessions</span>
       </span>
       <div className="barrow"><div className="lab">Cloud baseline cost</div><div className="val">{fmtMoney4(s.cumulative_cloud_cost_usd)}</div>
         <div className="track2 bar-track"><div className="bar-fill m-blue" style={{ width: '100%' }} /></div></div>
@@ -267,9 +275,9 @@ function TokenUsage() {
   return (
     <Panel title="TOKEN USAGE" sub={`${fmtTokens(t.total_tokens)} total · ${fmtMoney4(t.total_estimated_cost_usd)}`}>
       <div className="ev-token-summary">
-        <div><div className="note">Prompt</div><div className="mono ev-token-num">{fmtTokens(t.total_prompt_tokens)}</div></div>
-        <div><div className="note">Completion</div><div className="mono ev-token-num">{fmtTokens(t.total_completion_tokens)}</div></div>
-        <div><div className="note">Est. cost</div><div className="mono ev-token-num c-amber">{fmtMoney4(t.total_estimated_cost_usd)}</div></div>
+        <div data-field-tone="tokens-in"><div className="note">Prompt</div><div className="mono ev-token-num">{fmtTokens(t.total_prompt_tokens)}</div></div>
+        <div data-field-tone="tokens-out"><div className="note">Completion</div><div className="mono ev-token-num">{fmtTokens(t.total_completion_tokens)}</div></div>
+        <div data-field-tone="cost"><div className="note">Est. cost</div><div className="mono ev-token-num c-amber">{fmtMoney4(t.total_estimated_cost_usd)}</div></div>
       </div>
       {models.map((m, i) => (
         <div className="barrow" key={m.model_id}>
@@ -340,6 +348,7 @@ function RecentDelegations({ decisions }: { decisions: DelegationDecisionRow[] }
       <DataTable
         columns={cols}
         rows={decisions}
+        pageSize={25}
         rowKey={(r) => r.correlation_id}
         renderDetail={(r) => <DecisionDetail row={r} />}
       />
@@ -352,18 +361,20 @@ function RecentDelegations({ decisions }: { decisions: DelegationDecisionRow[] }
 export function DelegationEvidencePage() {
   const summaryQ = useDelegationSummary();
   const tokensQ = useDelegationTokenUsage();
+  const savingsQ = useDelegationSavings();
   const decisionsQ = useDelegationDecisions();
 
   const summary = summaryQ.data?.rows[0];
   const tokens = tokensQ.data?.rows[0];
+  const savings = savingsQ.data?.rows[0];
   const decisions = decisionsQ.data?.rows ?? [];
   const latestCid = decisions[0]?.correlation_id ?? null;
 
   const kpiTokens: ReactNode = tokens ? fmtTokens(tokens.total_tokens) : '—';
 
-  // OMN-12943: derive badge from all three authoritative projections for this page
+  // Include the savings source in freshness alongside the other headline projections.
   // so the header reflects the composite data state, not a single query's freshness.
-  const snapshots: ProjectionSnapshot[] = [summaryQ.data, tokensQ.data, decisionsQ.data]
+  const snapshots: ProjectionSnapshot[] = [summaryQ.data, tokensQ.data, decisionsQ.data, savingsQ.data]
     .filter((d): d is NonNullable<typeof d> => d !== undefined)
     .map((d) => ({ rowCount: d.rowCount, freshness: d.freshness }));
   const badgeState = derivePageBadge(snapshots);
@@ -385,10 +396,10 @@ export function DelegationEvidencePage() {
       headRight={headRight}
     >
       <div className="grid cols-4">
-        <KPI label="Delegations" value={summary ? summary.totalDelegations : '—'} sub={summary ? `${summary.qualityGatePassed} pass · ${summary.qualityGateTotal - summary.qualityGatePassed} fail` : undefined} />
-        <KPI label="Quality pass" value={summary ? fmtPct(summary.qualityGatePassRate) : '—'} sub="deterministic gate" />
-        <KPI label="Savings" value={summary ? fmtMoney(summary.totalSavingsUsd) : '—'} accent sub="vs cloud baseline" />
-        <KPI label="Tokens" value={kpiTokens} sub={summary ? `avg ${(summary.avgLatencyMs / 1000).toFixed(2)}s latency` : undefined} />
+        <KPI label="Delegations" icon={<Activity size={15} aria-hidden="true" />} tone="blue" value={summary ? summary.totalDelegations : '—'} sub={summary ? <><span className="ev-outcome-pass">{summary.qualityGatePassed} pass</span>{' · '}<span className="ev-outcome-fail">{summary.qualityGateTotal - summary.qualityGatePassed} fail</span></> : undefined} />
+        <KPI label="Quality pass" icon={<Award size={15} aria-hidden="true" />} tone="green" value={summary ? fmtPct(summary.qualityGatePassRate) : '—'} sub="deterministic gate" />
+        <KPI label="Savings (modelled)" icon={<PiggyBank size={15} aria-hidden="true" />} tone="purple" value={savings ? fmtMoney(savings.cumulative_savings_usd) : '—'} accent sub="vs cloud baseline" />
+        <KPI label="Tokens" icon={<Coins size={15} aria-hidden="true" />} tone="amber" value={kpiTokens} sub={summary ? `avg ${(summary.avgLatencyMs / 1000).toFixed(2)}s latency` : undefined} />
       </div>
 
       <div className="grid cols-2 ev-selected-run-layout">

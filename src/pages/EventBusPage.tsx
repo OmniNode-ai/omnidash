@@ -128,7 +128,8 @@ function CorrelationTable({ correlations }: { correlations: BusCorrelation[] }) 
     >
       <DataTable
         columns={cols}
-        rows={correlations.slice(0, 80)}
+        rows={correlations}
+        pageSize={25}
         rowKey={(r) => r.id}
         activeKey={correlations[0]?.id ?? null}
         renderDetail={(r) => (

@@ -1,5 +1,5 @@
 import { expect, test } from 'playwright/test';
-import { serveCharts } from './omn21166-chart-fixtures';
+import { revealRunFields, serveCharts } from './omn21166-chart-fixtures';
 
 // Visual failures found in main Chrome: split header words, narrow identity values,
 // inconsistent advanced-page titles and horizontally overflowing pipeline stages.
@@ -8,7 +8,8 @@ test.beforeEach(async ({ page }) => { await serveCharts(page); });
 
 test('Runs retains all eighteen columns without splitting header words', async ({ page }, info) => {
   await page.goto('/runs');
-  const headers = page.locator('.local-dashboard-table-wrap--fit th');
+  await revealRunFields(page);
+  const headers = page.locator('[data-component="recent-runs"] .local-dashboard-table-wrap--fit th');
   await expect(headers).toHaveCount(18);
   const splitWords = await headers.evaluateAll(elements => elements.flatMap(element => {
     const text = element.firstChild;
@@ -21,7 +22,7 @@ test('Runs retains all eighteen columns without splitting header words', async (
     });
   }));
   expect(splitWords).toEqual([]);
-  expect(await page.locator('.local-dashboard-table-wrap--fit').evaluate(el => el.scrollWidth - el.clientWidth)).toBe(0);
+  expect(await page.locator('[data-component="recent-runs"] .local-dashboard-table-wrap--fit').evaluate(el => el.scrollWidth - el.clientWidth)).toBe(0);
   await page.screenshot({ path: info.outputPath('runs-readable-headers.png'), fullPage: true });
 });
 
@@ -37,7 +38,7 @@ test('local identity values use available width instead of narrow metric columns
 
 test('Runs status labels stay whole inside their pills', async ({ page }) => {
   await page.goto('/runs');
-  const pills = page.locator('.local-dashboard-table-wrap--fit .local-run-pill');
+  const pills = page.locator('[data-component="recent-runs"] .local-dashboard-table-wrap--fit .local-run-pill');
   await expect(pills.first()).toBeVisible();
   expect(await pills.evaluateAll(elements => elements.filter(element => {
     const range = document.createRange();

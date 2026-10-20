@@ -1,5 +1,5 @@
 import { expect, test } from 'playwright/test';
-import { serveCharts } from './omn21166-chart-fixtures';
+import { revealRunFields, serveCharts } from './omn21166-chart-fixtures';
 
 // Catch text made too small to read, a return to monospace for human-facing
 // values, and larger type clipping real fields at narrow widths. Keep exact data.
@@ -7,6 +7,7 @@ test.use({ viewport: { width: 1440, height: 900 }, reducedMotion: 'reduce', trac
 test('recent runs remain readable and retain all fields at desktop and narrow widths', async ({ page }, info) => {
   await serveCharts(page);
   await page.goto('/overview');
+  await revealRunFields(page);
   const recent = page.locator('.local-recent-runs-wrap');
   await expect(recent.locator('tbody tr')).not.toHaveCount(0);
   const readValues = () => recent.locator('tbody td').evaluateAll(els => els.map(el => el.textContent));

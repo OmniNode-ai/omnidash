@@ -1,0 +1,196 @@
+{
+  "components": [
+    {
+      "component_id": "overview-spend",
+      "component_kind": "metric_card",
+      "title": "Actual spend",
+      "contract_version": {
+        "major": 1,
+        "minor": 0,
+        "patch": 0
+      },
+      "data_bindings": [
+        {
+          "binding_id": "overview-spend-metering",
+          "projection_topic": "onex.snapshot.projection.metering-summary.v1",
+          "ordering_authority_field": "as_of",
+          "ordering_direction": "descending",
+          "required_fields": [
+            "window_kind",
+            "as_of",
+            "spend_usd"
+          ]
+        }
+      ],
+      "supported_empty_state_reasons": [
+        "missing-field",
+        "no-data"
+      ]
+    },
+    {
+      "component_id": "overview-savings",
+      "component_kind": "metric_card",
+      "title": "Savings",
+      "contract_version": {
+        "major": 1,
+        "minor": 0,
+        "patch": 0
+      },
+      "data_bindings": [
+        {
+          "binding_id": "overview-savings-metering",
+          "projection_topic": "onex.snapshot.projection.metering-summary.v1",
+          "ordering_authority_field": "as_of",
+          "ordering_direction": "descending",
+          "required_fields": [
+            "window_kind",
+            "as_of",
+            "baseline_model",
+            "pricing_manifest_version",
+            "baseline_state",
+            "savings_usd",
+            "savings_pct_of_counterfactual"
+          ]
+        }
+      ],
+      "supported_empty_state_reasons": [
+        "missing-field",
+        "no-data"
+      ]
+    },
+    {
+      "component_id": "overview-measured",
+      "component_kind": "metric_card",
+      "title": "Agent calls",
+      "contract_version": {
+        "major": 1,
+        "minor": 0,
+        "patch": 0
+      },
+      "data_bindings": [
+        {
+          "binding_id": "overview-measured-metering",
+          "projection_topic": "onex.snapshot.projection.metering-summary.v1",
+          "ordering_authority_field": "as_of",
+          "ordering_direction": "descending",
+          "required_fields": [
+            "window_kind",
+            "as_of",
+            "runs_measured",
+            "runs_total",
+            "runs_unknown_tokens",
+            "runs_unknown_spend"
+          ]
+        }
+      ],
+      "supported_empty_state_reasons": [
+        "missing-field",
+        "no-data"
+      ]
+    },
+    {
+      "component_id": "overview-tokens",
+      "component_kind": "metric_card",
+      "title": "Tokens processed",
+      "contract_version": {
+        "major": 1,
+        "minor": 0,
+        "patch": 0
+      },
+      "data_bindings": [
+        {
+          "binding_id": "overview-tokens-metering",
+          "projection_topic": "onex.snapshot.projection.metering-summary.v1",
+          "ordering_authority_field": "as_of",
+          "ordering_direction": "descending",
+          "required_fields": [
+            "window_kind",
+            "as_of",
+            "tokens_in",
+            "tokens_out",
+            "runs_total",
+            "runs_unknown_tokens"
+          ]
+        }
+      ],
+      "supported_empty_state_reasons": [
+        "missing-field",
+        "no-data"
+      ]
+    }
+  ],
+  "widgets": [
+    {
+      "widget_id": "2157c330-49a4-4d41-a61f-cc0c8c4a0ddb",
+      "title": "Actual spend",
+      "row": 0,
+      "col": 0,
+      "width": 3,
+      "height": 2,
+      "data_source": "overview-spend",
+      "config": {
+        "config_kind": "metric_card",
+        "widget_type": "metric_card",
+        "metric_key": "spend_usd",
+        "label": "Actual spend",
+        "unit": "USD",
+        "format": "currency",
+        "precision": 4
+      }
+    },
+    {
+      "widget_id": "1f0a0b2c-b7d7-568a-9596-a679c1af00c0",
+      "title": "Savings",
+      "row": 0,
+      "col": 3,
+      "width": 3,
+      "height": 2,
+      "data_source": "overview-savings",
+      "config": {
+        "config_kind": "metric_card",
+        "widget_type": "metric_card",
+        "metric_key": "savings_usd",
+        "label": "Savings",
+        "unit": "USD",
+        "format": "currency",
+        "precision": 4
+      }
+    },
+    {
+      "widget_id": "b13119df-d621-5b7d-b199-8162fed59c5c",
+      "title": "Agent calls",
+      "row": 0,
+      "col": 6,
+      "width": 3,
+      "height": 2,
+      "data_source": "overview-measured",
+      "config": {
+        "config_kind": "metric_card",
+        "widget_type": "metric_card",
+        "metric_key": "runs_measured",
+        "label": "Agent calls",
+        "unit": "runs",
+        "format": "number",
+        "precision": 0
+      }
+    },
+    {
+      "widget_id": "869ee6a5-22b1-5225-9975-81de4d5a5fcc",
+      "title": "Tokens processed",
+      "row": 0,
+      "col": 9,
+      "width": 3,
+      "height": 2,
+      "data_source": "overview-tokens",
+      "config": {
+        "config_kind": "metric_card",
+        "widget_type": "metric_card",
+        "metric_key": "tokens_in_and_out",
+        "label": "Tokens processed",
+        "unit": "tokens",
+        "format": "number",
+        "precision": 0
+      }
+    }
+  ]
+}

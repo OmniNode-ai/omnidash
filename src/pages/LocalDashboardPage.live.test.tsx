@@ -8,6 +8,8 @@ const DECISIONS = 'onex.snapshot.projection.delegation.decisions.v1';
 const SAVINGS = 'onex.snapshot.projection.delegation.savings.v1';
 // OMN-19980 Amendment 2: Overview's Spend, Savings, Measured runs and Tokens read this exposure's all-time row.
 const METERING = 'onex.snapshot.projection.metering-summary.v1';
+const OVERVIEW = 'onex.snapshot.projection.cost.savings-overview.v1';
+const OVERVIEW_ALL_ROW = { window: 'all', captured_at: '2026-10-02T10:07:00Z', total_cost_usd: '0.006860', total_savings_usd: '1.218400', measured_run_count: 45, tokens_total: 9844 };
 const CREDENTIALS = 'onex.snapshot.projection.tenant-credentials.v1';
 const USAGE = 'onex.snapshot.projection.usage-by-model-day.v1';
 const RUN_TRACE = 'onex.snapshot.projection.run-trace.v1';
@@ -93,7 +95,7 @@ describe('LocalDashboardPage live data (F25)', () => {
     await settle();
     harness.answer = () => new Promise(() => {});
     await act(async () => { await vi.advanceTimersByTimeAsync(30_000); });
-    expect(screen.getByText('run-1')).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: 'run-1' })).toBeInTheDocument();
     expect(screen.queryByText(/Loading runtime exposures/)).not.toBeInTheDocument();
   });
 
@@ -110,7 +112,7 @@ describe('LocalDashboardPage widget states (F26, F27)', () => {
     vi.useFakeTimers({ toFake: ['setInterval', 'clearInterval', 'setTimeout', 'clearTimeout', 'Date'] });
     vi.setSystemTime(new Date('2026-10-02T10:12:00Z'));
     harness.reads = [];
-    harness.answer = (topic) => Promise.resolve(topic === DECISIONS ? [decisionRow('run-1')] : topic === SAVINGS ? [{ sessions: [] }] : [METERING_ALL_ROW]);
+    harness.answer = (topic) => Promise.resolve(topic === DECISIONS ? [decisionRow('run-1')] : topic === SAVINGS ? [{ sessions: [] }] : [OVERVIEW_ALL_ROW]);
   });
   afterEach(() => { vi.useRealTimers(); });
 
@@ -119,7 +121,7 @@ describe('LocalDashboardPage widget states (F26, F27)', () => {
     render(<LocalDashboardPage pageName="overview" />);
     await settle();
     const spend = screen.getByRole('heading', { name: 'Actual spend' }).closest('article')!;
-    expect(within(spend).getByText(`Not served: ${METERING}`)).toBeInTheDocument();
+    expect(within(spend).getByText(`Not served: ${OVERVIEW}`)).toBeInTheDocument();
     const lastRun = screen.getByRole('heading', { name: 'Last run' }).closest('article')!;
     expect(within(lastRun).getByText('run-1')).toBeInTheDocument();
     expect(screen.queryByRole('alert', { name: /page/i })).not.toBeInTheDocument();
@@ -143,9 +145,9 @@ describe('LocalDashboardPage widget states (F26, F27)', () => {
   // OMN-19980 Amendment 2: no Overview panel binds one topic twice any more (Measured runs' second binding on
   // cost.savings-overview.v1 is gone); four panels now share metering-summary.v1, each with its own one status.
   it('a topic bound by several panels renders one failure status per panel, with no duplicate React key', async () => {
-    harness.reachable = new Set([DECISIONS, SAVINGS, METERING]);
-    harness.answer = (topic) => topic === METERING
-      ? Promise.reject(new Error(`Projection ${METERING} failed: HTTP 503 Service Unavailable`))
+    harness.reachable = new Set([DECISIONS, SAVINGS, OVERVIEW]);
+    harness.answer = (topic) => topic === OVERVIEW
+      ? Promise.reject(new Error(`Projection ${OVERVIEW} failed: HTTP 503 Service Unavailable`))
       : Promise.resolve(topic === DECISIONS ? [decisionRow('run-1')] : [{ sessions: [] }]);
     const consoleError = vi.spyOn(console, 'error').mockImplementation(() => {});
     try {
@@ -163,31 +165,31 @@ describe('LocalDashboardPage widget states (F26, F27)', () => {
   });
 
   it('a read error shows the exposure and the HTTP status, not a bare message', async () => {
-    harness.reachable = new Set([DECISIONS, SAVINGS, METERING]);
-    harness.answer = (topic) => topic === METERING
-      ? Promise.reject(new Error(`Projection ${METERING} failed: HTTP 503 Service Unavailable`))
+    harness.reachable = new Set([DECISIONS, SAVINGS, OVERVIEW]);
+    harness.answer = (topic) => topic === OVERVIEW
+      ? Promise.reject(new Error(`Projection ${OVERVIEW} failed: HTTP 503 Service Unavailable`))
       : Promise.resolve(topic === DECISIONS ? [decisionRow('run-1')] : [{ sessions: [] }]);
     render(<LocalDashboardPage pageName="overview" />);
     await settle();
     const spend = screen.getByRole('heading', { name: 'Actual spend' }).closest('article')!;
-    expect(within(spend).getByRole('alert')).toHaveTextContent(`${METERING}: HTTP 503`);
+    expect(within(spend).getByRole('alert')).toHaveTextContent(`${OVERVIEW}: HTTP 503`);
   });
 
   it('a read that never answers becomes a typed timeout after 5 s', async () => {
-    harness.reachable = new Set([DECISIONS, SAVINGS, METERING]);
-    harness.answer = (topic) => topic === METERING ? new Promise(() => {}) : Promise.resolve(topic === DECISIONS ? [decisionRow('run-1')] : [{ sessions: [] }]);
+    harness.reachable = new Set([DECISIONS, SAVINGS, OVERVIEW]);
+    harness.answer = (topic) => topic === OVERVIEW ? new Promise(() => {}) : Promise.resolve(topic === DECISIONS ? [decisionRow('run-1')] : [{ sessions: [] }]);
     render(<LocalDashboardPage pageName="overview" />);
     await act(async () => { await vi.advanceTimersByTimeAsync(5_000); });
     const spend = screen.getByRole('heading', { name: 'Actual spend' }).closest('article')!;
-    expect(within(spend).getByRole('alert')).toHaveTextContent(`${METERING}: no answer in 5 s`);
+    expect(within(spend).getByRole('alert')).toHaveTextContent(`${OVERVIEW}: no answer in 5 s`);
   });
 
   it('keeps the last good figure after a later read fails, and says when it was good', async () => {
-    harness.reachable = new Set([DECISIONS, SAVINGS, METERING]);
+    harness.reachable = new Set([DECISIONS, SAVINGS, OVERVIEW]);
     render(<LocalDashboardPage pageName="overview" />);
     await settle();
-    harness.answer = (topic) => topic === METERING
-      ? Promise.reject(new Error(`Projection ${METERING} failed: HTTP 503 Service Unavailable`))
+    harness.answer = (topic) => topic === OVERVIEW
+      ? Promise.reject(new Error(`Projection ${OVERVIEW} failed: HTTP 503 Service Unavailable`))
       : Promise.resolve(topic === DECISIONS ? [decisionRow('run-1')] : [{ sessions: [] }]);
     await act(async () => { await vi.advanceTimersByTimeAsync(30_000); });
     const spend = screen.getByRole('heading', { name: 'Actual spend' }).closest('article')!;
@@ -243,7 +245,7 @@ describe('Partial pages (FR-3, CR-2, CR-3, AK-3, F24)', () => {
     harness.reachable = new Set([USAGE]);
     render(<LocalDashboardPage pageName="usage" />);
     await settle();
-    expect(screen.getByText('No usage rows yet: waits on llm-call-completed events (OMN-20006)')).toBeInTheDocument();
+    expect(screen.getByText('No usage rows yet')).toBeInTheDocument();
     expect(screen.queryByText(/^\$?0(?:\.0+)?$/)).not.toBeInTheDocument();
   });
 
@@ -304,7 +306,7 @@ describe('Partial pages (FR-3, CR-2, CR-3, AK-3, F24)', () => {
     expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent('API Keys');
     const identity = screen.getByRole('heading', { name: 'Local identity' }).closest('article')!;
     expect(within(identity).getByText('820272f9-4aaf-5add-a2df-0af942852ab2')).toBeInTheDocument();
-    expect(within(identity).getByText('Not served yet: waits on local-identity.v1 (OMN-19986)')).toBeInTheDocument();
+    expect(within(identity).getByText('Mint time unavailable.')).toBeInTheDocument();
     expect(screen.queryByRole('heading', { name: 'Cloud Keys' })).not.toBeInTheDocument();
     expect(screen.queryByText(/CLOUD_NOT_LINKED/)).not.toBeInTheDocument();
     expect(document.querySelector('input, textarea, select, form')).toBeNull();

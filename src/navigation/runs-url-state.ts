@@ -5,6 +5,7 @@ export interface RunsViewState {
   backend: string;
   span: string;
   page: number;
+  query?: string;
 }
 
 export const DEFAULT_RUNS_VIEW: RunsViewState = { status: 'all', cause: 'all', model: 'all', backend: 'all', span: 'all', page: 1 };
@@ -21,12 +22,15 @@ export function readRunsSearch(search: string): RunsViewState {
     backend: params.get('backend') || 'all',
     span: params.get('window') === 'today' ? 'today' : 'all',
     page: Number.isSafeInteger(page) ? page : 1,
+    ...(params.get('q') ? { query: params.get('q')! } : {}),
   };
 }
 
 /** Keep unrelated query parameters and omit defaults, producing shareable URLs. */
 export function writeRunsSearch(search: string, view: RunsViewState): string {
   const params = new URLSearchParams(search);
+  if (view.query) params.set('q', view.query);
+  else params.delete('q');
   for (const [key, value] of Object.entries({ status: view.status, cause: view.cause, model: view.model, backend: view.backend, window: view.span })) {
     if (value === 'all') params.delete(key);
     else params.set(key, value);

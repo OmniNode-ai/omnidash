@@ -7,6 +7,7 @@ test.use({ viewport: { width: 1440, height: 900 }, reducedMotion: 'reduce', trac
 test('missing spend is a compact notice, while measured charts and run identity survive', async ({ page }, info) => {
   await serveCharts(page, { ...chartRows, [prefix + 'metering-summary.v1']: [] });
   await page.goto('/overview');
+  await page.getByText('Additional runtime metrics', { exact: true }).press('Enter');
   const spend = page.locator('[data-component="overview-spend-by-day"]');
   await expect(spend).toContainText('No day rows yet');
   expect(await spend.evaluate(el => el.getBoundingClientRect().height)).toBeLessThanOrEqual(150);
@@ -18,6 +19,7 @@ test('missing spend is a compact notice, while measured charts and run identity 
   await page.screenshot({ path: info.outputPath('missing-compact.png'), fullPage: true });
   await serveCharts(page);
   await page.reload();
+  await page.getByText('Additional runtime metrics', { exact: true }).press('Enter');
   await expect(page.locator('[data-component="overview-spend-by-day"] .local-chart-canvas')).toBeVisible();
   await expect(page.locator('[data-component="overview-spend-by-day"] tr').filter({ hasText: '2026-10-02' }).locator('td').nth(1)).toHaveText('$0.00');
   await expect(page.locator('[data-component="overview-spend-by-day"] tr').filter({ hasText: '2026-10-03' }).locator('td').nth(1)).toHaveText('Not measured');

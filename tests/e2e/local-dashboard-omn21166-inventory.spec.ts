@@ -1,3 +1,4 @@
+import { revealRunFields } from './omn21166-chart-fixtures';
 import { writeFileSync } from 'node:fs';
 import { execFileSync } from 'node:child_process';
 import { expect, test } from 'playwright/test';
@@ -14,13 +15,14 @@ test('required field and control inventory stays available on every current page
     await page.goto('/' + route);
     await expect(page.locator('.breadcrumbs .cur')).not.toHaveText('');
     await expect(page.locator('.main')).not.toContainText(/Loading(?: runtime exposures| census|…|\.\.\.)/);
+    if (route === 'runs') await revealRunFields(page);
     if (route === 'overview') {
-      await page.getByRole('checkbox', { name: 'Show all run fields', exact: true }).check();
+      await revealRunFields(page);
       await page.locator('.local-overview-secondary > summary').press('Enter');
       if (await page.locator('.local-run-more summary').count()) await page.locator('.local-run-more summary').press('Enter');
     }
     pages[route] = await page.evaluate(() => ({
-      fields: [...document.querySelectorAll('.main th, .main dt, .main .kv .k, .main .k-l, .main .dt-head > div')]
+      fields: [...document.querySelectorAll(location.pathname === '/runs' ? '[data-component="recent-runs"] th' : '.main th, .main dt, .main .kv .k, .main .k-l, .main .dt-head > div')]
         .map(el => el.textContent?.trim()).filter(Boolean),
       labels: [...document.querySelectorAll('.main label')].map(el => el.textContent?.trim()).filter(Boolean),
       headings: [...document.querySelectorAll('.main h1, .main h2, .main h3, .main .panel-h .pt')].map(el => el.textContent?.trim()).filter(Boolean),
@@ -42,8 +44,9 @@ test('text contrast is measured on real rendered backgrounds in both themes', as
     await page.goto('/' + route);
     await expect(page.locator('.breadcrumbs .cur')).not.toHaveText('');
     await expect(page.locator('.main')).not.toContainText(/Loading(?: runtime exposures| census|…|\.\.\.)/);
+    if (route === 'runs') await revealRunFields(page);
     if (route === 'overview') {
-      await page.getByRole('checkbox', { name: 'Show all run fields', exact: true }).check();
+      await revealRunFields(page);
       await page.locator('.local-overview-secondary > summary').press('Enter');
       if (await page.locator('.local-run-more summary').count()) await page.locator('.local-run-more summary').press('Enter');
     }
@@ -82,7 +85,7 @@ test('text contrast is measured on real rendered backgrounds in both themes', as
           const size=parseFloat(style.fontSize), weight=parseInt(style.fontWeight);
           const threshold=size>=24 || (weight>=700 && size>=18.66) ? 3 : 4.5;
           checked++;
-          if(ratio+.02<threshold) failures.push({text:text.slice(0,90),class:el.getAttribute('class'),ratio,threshold,color:style.color,foreground:fg,background:bg,opacity});
+          if(ratio+.02<threshold) failures.push({html:el.outerHTML,parent:el.parentElement?.outerHTML.slice(0,1500),text:text.slice(0,90),class:el.getAttribute('class'),ratio,threshold,color:style.color,foreground:fg,background:bg,opacity});
         }
         return {checked,failures,reducedMotion:matchMedia('(prefers-reduced-motion: reduce)').matches,blackOnWhite:(lum(rgba('#ffffff'))+.05)/(lum(rgba('#000000'))+.05)};
       });
@@ -102,8 +105,9 @@ test('chart marks remain distinguishable against their actual surfaces', async (
   for (const route of ['overview','runs','usage']) {
     await page.goto('/'+route);
     await expect(page.locator('.main')).not.toContainText(/Loading(?: runtime exposures| census|…|\.\.\.)/);
+    if (route === 'runs') await revealRunFields(page);
     if (route === 'overview') {
-      await page.getByRole('checkbox', { name: 'Show all run fields', exact: true }).check();
+      await revealRunFields(page);
       await page.locator('.local-overview-secondary > summary').press('Enter');
       if (await page.locator('.local-run-more summary').count()) await page.locator('.local-run-more summary').press('Enter');
     }

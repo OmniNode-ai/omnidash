@@ -1,3 +1,4 @@
+import { revealRunFields } from './omn21166-chart-fixtures';
 import { writeFileSync } from 'node:fs';
 import { expect, test } from 'playwright/test';
 import { serveCharts } from './omn21166-chart-fixtures';
@@ -35,15 +36,17 @@ test('secondary figures stay accessible by keyboard and last run retains exact s
   await page.screenshot({path:info.outputPath('compact-required-details.png')});
 });
 
-test('spend and latest run share a focus surface; routing and recent runs remain discoverable', async ({page}) => {
+test('quality and latest run share the focus surface; D2 spend remains accessible in its disclosure', async ({page}) => {
   await page.goto('/overview');
-  const focus=page.getByRole('region',{name:'Spend and latest execution',exact:true});
-  await expect(focus.locator('[data-component="overview-spend-by-day"]')).toBeVisible();
-  await expect(focus.locator('[data-component="overview-last-run"]')).toBeVisible();
-  const spend=await focus.locator('[data-component="overview-spend-by-day"]').boundingBox();
-  const run=await focus.locator('[data-component="overview-last-run"]').boundingBox();
-  expect(Math.abs(spend!.y-run!.y)).toBeLessThan(2);
-  expect(spend!.width).toBeGreaterThan(run!.width);
+  const focus=page.getByRole('region',{name:'Delegation quality',exact:true});
+  const quality=focus.locator('[data-component="overview-quality"]');
+  const latest=focus.locator('[data-component="overview-last-run"]');
+  await expect(quality).toBeVisible(); await expect(latest).toBeVisible();
+  const q=await quality.boundingBox(), r=await latest.boundingBox();
+  expect(Math.abs(q!.y-r!.y)).toBeLessThan(2);
+  expect(q!.width).toBeGreaterThan(300); expect(r!.width).toBeGreaterThan(300);
+  await page.getByText('Additional runtime metrics',{exact:true}).press('Enter');
+  await expect(page.locator('[data-component="overview-spend-by-day"]')).toBeVisible();
   await expect(page.locator('[data-component="overview-tier-mix"]')).toContainText('8');
   await expect(page.locator('[data-component="overview-recent-runs"] th')).toHaveCount(16);
 });
@@ -67,7 +70,8 @@ test('compact layout retains fields and fits narrow viewports', async ({page},in
     expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBe(true);
     await page.locator('summary').filter({hasText:'Additional runtime metrics'}).click();
     await expect(page.locator('[data-component="overview-baseline-spend"]')).toBeVisible();
-    await page.getByRole('checkbox',{name:'Show all run fields',exact:true}).check();
+    await page.getByText('Show recent run fields',{exact:true}).press('Enter');
+    await revealRunFields(page);
     const recent=page.locator('.local-recent-runs-wrap');
     expect(await recent.locator('tbody td').first().evaluate(el=>el.getBoundingClientRect().width)).toBeGreaterThanOrEqual(140);
     expect(await recent.evaluate(el=>[...el.querySelectorAll('td')].filter(c=>c.scrollWidth>c.clientWidth+1).length)).toBe(0);
@@ -80,6 +84,7 @@ test('compact layout retains fields and fits narrow viewports', async ({page},in
 test('recent runs keep six readable columns and native access to every served field', async ({page},info) => {
   await page.goto('/overview');
   const recent=page.locator('[data-component="overview-recent-runs"]');
+  await recent.getByText('Show recent run fields',{exact:true}).press('Enter');
   await expect(recent.locator('th')).toHaveText(['Time','Run','Status','Model','Cost','Duration','Age','Cause','Task type','Backend','Host','Tokens in','Tokens out','Basis','Route tier','Quality score']);
   await expect(recent.getByRole('columnheader')).toHaveCount(6);
   const allFields=recent.getByRole('checkbox',{name:'Show all run fields',exact:true});
@@ -89,6 +94,6 @@ test('recent runs keep six readable columns and native access to every served fi
   const wrap=recent.locator('.local-dashboard-table-wrap');
   expect(await wrap.evaluate(el=>el.scrollWidth-el.clientWidth)).toBeLessThanOrEqual(0);
   expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBe(true);
-  await expect(recent.getByRole('link',{name:'View all runs',exact:true})).toHaveAttribute('href','/runs');
+  await expect(recent.locator(':scope > .local-recent-footer').getByRole('link',{name:'View all runs',exact:true})).toHaveAttribute('href','/runs');
   await page.screenshot({path:info.outputPath('recent-full-fields.png')});
 });

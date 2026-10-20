@@ -113,7 +113,9 @@ export interface InsightSummary {
   spend: number | null;
   spendUnmeasured: number;
   tokensIn: number | null;
+  tokensInUnmeasured: number;
   tokensOut: number | null;
+  tokensOutUnmeasured: number;
   medianLatency: number | null;
 }
 
@@ -131,7 +133,13 @@ export function summary(runs: readonly InsightRun[]): InsightSummary {
   const passed = runs.filter(run => run.status === 'passed').length;
   const failed = runs.filter(run => run.status === 'failed').length;
   const spend = measuredSum(runs.map(run => run.cost));
+  const tokensIn = measuredSum(runs.map(run => run.tokensIn));
+  const tokensOut = measuredSum(runs.map(run => run.tokensOut));
   const latencies = runs.map(run => run.latencyMs).filter((value): value is number => value !== null).sort((a, b) => a - b);
+  const middle = Math.floor(latencies.length / 2);
+  const medianLatency = latencies.length === 0 ? null
+    : latencies.length % 2 === 1 ? latencies[middle]!
+      : latencies[middle - 1]! / 2 + latencies[middle]! / 2;
   return {
     runs: runs.length,
     passed,
@@ -140,9 +148,11 @@ export function summary(runs: readonly InsightRun[]): InsightSummary {
     passRate: passed + failed > 0 ? (passed / (passed + failed)) * 100 : null,
     spend: spend.sum,
     spendUnmeasured: spend.missing,
-    tokensIn: measuredSum(runs.map(run => run.tokensIn)).sum,
-    tokensOut: measuredSum(runs.map(run => run.tokensOut)).sum,
-    medianLatency: latencies.length > 0 ? latencies[Math.floor(latencies.length / 2)]! : null,
+    tokensIn: tokensIn.sum,
+    tokensInUnmeasured: tokensIn.missing,
+    tokensOut: tokensOut.sum,
+    tokensOutUnmeasured: tokensOut.missing,
+    medianLatency,
   };
 }
 

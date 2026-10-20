@@ -3,6 +3,7 @@ import type { Page } from 'playwright/test';
 export const prefix = 'onex.snapshot.projection.';
 export const runIds = ['chart-run-a', 'chart-run-b', 'chart-run-c'];
 export const chartRows: Record<string, unknown[]> = {
+  [prefix + 'cost.savings-overview.v1']: [],
   [prefix + 'delegation.decisions.v1']: runIds.map((id, i) => ({
     correlation_id: id, created_at: `2026-10-17T10:0${3-i}:00Z`, written_at: `2026-10-17T10:0${3-i}:00Z`,
     model_name: i === 1 ? 'model-b' : 'model-a', quality_gate_passed: i !== 1,
@@ -44,4 +45,12 @@ export async function serveCharts(page: Page, rows = chartRows) {
     const data = rows[topic] ?? [];
     return route.fulfill({ contentType: 'application/json', body: JSON.stringify({ rows: data, row_count: data.length, data_freshness: 'stale' }) });
   });
+}
+
+/** Enter the retained native field view on Overview or Runs without changing its values. */
+export async function revealRunFields(page: Page) {
+  await page.locator('details.local-recent-fields > summary, .local-dashboard-page label input[type="checkbox"]').first().waitFor({ state: 'attached' });
+  const disclosure = page.locator('details.local-recent-fields');
+  if (await disclosure.count() && await disclosure.getAttribute('open') === null) await disclosure.locator(':scope > summary').press('Enter');
+  await page.getByRole('checkbox', { name: 'Show all run fields', exact: true }).check();
 }

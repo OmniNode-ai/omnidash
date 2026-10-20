@@ -1,28 +1,34 @@
 import { useEffect, useId, useRef, useState, type ReactNode } from 'react';
 import { Link, useLocation, useSearch } from 'wouter';
 import {
-  Activity, ArrowUpRight, Award, Bot, CalendarDays, ChartBar, ChartLine, ChartSpline, Check, CircleDollarSign, CloudOff, Coins, Copy, DatabaseZap, Fingerprint,
-  GitBranch, History, IdCard, KeyRound, ListTree, PiggyBank, Route, Server, Shrink, Table2, TrendingDown, Wallet,
-  Rows3, Scale, TableProperties, Waypoints,
+  ArrowDownUp, ArrowUpRight, Award, Bot, CalendarDays, ChartLine, ChartSpline, Check, ChevronRight, CircleDollarSign, CloudOff, Coins, Copy, DatabaseZap,
+  CircleDot, Flag, History, IdCard, Inbox, KeyRound, PiggyBank, Route, Server, ShieldCheck, Shrink, TrendingDown,
+  Rows3, Scale, TableProperties, Waypoints, Cloud, Sparkles, Zap,
   type LucideIcon,
 } from 'lucide-react';
 import { createSnapshotSource } from '@/data-source';
 import { fetchExposureCensus } from '@/data-source/exposure-census';
 import { resolveEffectiveDataSource } from '@/data-source/data-source-override';
+import { resolveConfiguredTenant } from '@/data-source/projection-tenant';
 import { UsageByModelDayTable, UsageTokensByDay, formatUsd } from '@/components/dashboard/usage/UsageByModelDayWidget';
 import { MeteringDaySeries } from '@/components/dashboard/usage/SavingsSeriesWidget';
 import { TenantNotConfiguredState } from '@/components/dashboard/TenantNotConfiguredState';
-import { subscribeLocalPageRefresh } from '@/services/local-page-refresh';
+import { requestLocalPageRefresh, subscribeLocalPageRefresh } from '@/services/local-page-refresh';
 import { DEFAULT_RUNS_VIEW, readRunsSearch, writeRunsSearch, type RunsViewState } from '@/navigation/runs-url-state';
 import { PAGE_PATHS } from '@/navigation/page-routes';
 import { normaliseRunId, readWorkflowRunId, workflowHref, writeWorkflowRunId } from '@/navigation/workflow-url-state';
-import { RunDurationChart, RunTimingChart, RunTokensChart, SpendByDayChart, UNRESOLVED_BASELINE, type ListedRun } from '@/pages/local/charts';
-import { PassRateMeter, TierShareChart } from '@/pages/local/shares';
-import { InsightsSection, InsightsWindowContext, OverviewRunsContext, PassRateSparkline, TaskIcon } from '@/pages/local/insight-charts';
+import { RunDurationChart, RunMetricChart, RunTimingChart, RunTokensChart, SpendByDayChart, UNRESOLVED_BASELINE, type ListedRun } from '@/pages/local/charts';
+import { PassRateMeter, TierShareChart, TIER_TONES } from '@/pages/local/shares';
+import { InsightsSection, InsightsWindowContext, OverviewRunsContext, TaskIcon } from '@/pages/local/insight-charts';
 import { SinceLastVisit } from '@/pages/local/since-last-visit';
 import { RunFilterProvider, causeLabelOf, useRunFilter } from '@/pages/local/run-filter';
 import { shortId } from '@/components/dashboard/event-dash/primitives';
+import { FieldIcon } from '@/components/dashboard/FieldIcon';
+import { modelIdentityStyle } from '@/components/dashboard/model-identity';
+import { fieldTone, isUnavailableField } from '@/components/dashboard/field-identity';
 import '@/styles/local-dashboard.css';
+import { DestinationIcon } from '@/navigation/destination-icons';
+import { FlowConnector, WorkflowDecisionCharts, WorkflowRecordDetails, WorkflowRoutingFlow } from '@/pages/local/workflow-analysis';
 import {
   loadLocalPageConfig,
   loadLocalPageSnapshots,
@@ -30,9 +36,11 @@ import {
   rowsForLocalComponent,
   resolveLocalPageEmptyState,
   withLastGood,
+  newestRunId as newestWorkflowRunId,
   DELEGATION_DECISIONS_TOPIC,
   METERING_SUMMARY_TOPIC,
   RUN_TRACE_TOPIC,
+  LOCAL_READ_TIMEOUT_MS,
   type BoundProjectionSnapshot,
   type LocalPageDocument,
   type LocalPageName,
@@ -41,6 +49,12 @@ import {
 interface LocalDashboardPageProps {
   pageName: LocalPageName;
   syncUrl?: boolean;
+  navigationCache?: LocalDashboardCache;
+}
+
+export interface LocalDashboardCache {
+  context: string | null;
+  snapshots: Map<string, BoundProjectionSnapshot>;
 }
 
 function isMissing(value: unknown): boolean {
@@ -63,7 +77,7 @@ function formatMetric(value: number, config: MetricCardConfig): string {
     minimumFractionDigits: digits,
     maximumFractionDigits: digits,
   });
-  if (config.format === 'currency') return `$${grouped}`;
+  if (config.format === 'currency') return value < 0 ? `-$${grouped.slice(1)}` : `$${grouped}`;
   if (config.format === 'percent') return `${grouped}%`;
   return grouped;
 }
@@ -197,16 +211,24 @@ export function RunLocallyCard({ row }: { row: Record<string, unknown> | null })
     return <p className="local-dashboard-empty" role="status">{ROUTING_SHARE_PENDING}</p>;
   }
   const share = byTier.local_call_share;
-  if (typeof share !== 'number' || !Number.isFinite(share)) return <p className="local-dashboard-metric" data-measured="false">Not measured</p>;
+  if (typeof share !== 'number' || !Number.isFinite(share) || share < 0 || share > 1) return <p className="local-dashboard-metric" data-measured="false">Not measured</p>;
   const text = share.toLocaleString('en-US', { style: 'percent', minimumFractionDigits: 1, maximumFractionDigits: 1 });
   return (
-    <>
-      <p className="local-dashboard-metric">{text}</p>
-      <p className="local-dashboard-caption">
-        {`${recorded(byTier.local_call_count)} of ${recorded(byTier.total_call_count)} runs local · `
-          + `${recorded(byTier.not_tier_routed_count)} not tier-routed`}
-      </p>
-    </>
+    <div className="local-routing-summary">
+      <div className="local-routing-share">
+        <p className="local-dashboard-metric">{text}</p>
+        <p className="local-dashboard-caption">of all runs executed locally</p>
+        <div className="local-routing-meter" role="meter" aria-label="Local share of all runs" aria-valuemin={0} aria-valuemax={100} aria-valuenow={share * 100} aria-valuetext={text}>
+          <span style={{ width: `${share * 100}%` }} />
+        </div>
+      </div>
+      <dl className="local-routing-counts">
+        <div data-routing-count="local"><dt><Server size={15} aria-hidden="true" />Local runs</dt><dd>{recorded(byTier.local_call_count)}</dd></div>
+        <div data-routing-count="total"><dt><Rows3 size={15} aria-hidden="true" />All runs</dt><dd>{recorded(byTier.total_call_count)}</dd></div>
+        <div data-routing-count="untiered"><dt><Route size={15} aria-hidden="true" />Without a tier</dt><dd>{recorded(byTier.not_tier_routed_count)}</dd></div>
+      </dl>
+      <p className="local-routing-note">Runs without a routing tier are included in the total. They are not classified as local or cloud here.</p>
+    </div>
   );
 }
 
@@ -234,14 +256,41 @@ function tokensText(row: Record<string, unknown>): string {
 /** OV-3: the window the Overview's metering cards show. The fold serves fixed windows only: all time, and UTC days. */
 export type OverviewWindow = 'all' | 'today';
 
+/** Restored by Lakshman's explicit instruction, 2026-10-19: use the populated old Overview aggregate. */
+const LEGACY_OVERVIEW_TOPIC = 'onex.snapshot.projection.cost.savings-overview.v1';
+
+export function OverviewAggregateCard({ component, config, rows, window }: {
+  component: LocalPageDocument['components'][number]; config: MetricCardConfig;
+  rows: readonly unknown[]; window: OverviewWindow;
+}) {
+  const unavailable = (message: string) => <p className="local-dashboard-metric" data-measured="false">{message}</p>;
+  if (window === 'today') return unavailable('Not measured: daily totals unavailable (UTC)');
+  const all = asRecords(rows).filter(row => row.window === 'all')
+    .sort((a, b) => timeOf(b.captured_at) - timeOf(a.captured_at));
+  const row = all[0];
+  if (!row) return unavailable('Not measured: overview totals unavailable');
+  if (all.length > 1 && timeOf(all[0].captured_at) === timeOf(all[1].captured_at)) return unavailable('Not measured: ambiguous overview totals');
+  const value = row[config.metric_key];
+  if (isMissing(value) || !['string', 'number'].includes(typeof value)
+    || (typeof value === 'string' && !/^-?\d+(?:\.\d+)?$/.test(value))
+    || !Number.isFinite(Number(value))) return unavailable('Not measured');
+  const measured = component.component_id === 'overview-measured';
+  return <>
+    <MetricCard component={component} config={config} row={row} />
+    <p className="local-dashboard-caption">{component.component_id === 'overview-savings'
+      ? 'Modelled · vs cloud baseline' : measured ? 'Measured calls' : 'All-time aggregate'}</p>
+    {measured && !isMissing(row.unknown_run_count) && <p className="local-dashboard-caption">{`${Number(row.unknown_run_count).toLocaleString('en-US')} unknown calls excluded`}</p>}
+  </>;
+}
+
 /** Said on an Overview panel whose exposure serves no row per window, while today is the chosen window. */
 const OUTSIDE_WINDOW_NOTE = 'All time: this panel does not follow the window above.';
 
 /**
  * The one metering-summary.v1 row every Overview metering card reads for the chosen window, or the card text that says
  * why none can be picked. All time is the fold's `all` row. Today is the fold's `day` row whose window_start is today's
- * UTC date: a row the runtime served, never a sum made here. A UTC day with no runs has no row, and says so; it is not
- * 0 and it is not another day's row. The fold keys rows by baseline model and keeps an older baseline's rows, so after
+ * UTC date: a row the runtime served, never a sum made here. A missing daily row means daily metering is unavailable;
+ * it does not prove that no runs executed, and is not 0 or another day's row. The fold keys rows by baseline model and keeps an older baseline's rows, so after
  * a baseline change a window has two. The one refreshed last (newest as_of) is the baseline the runtime resolves now;
  * two refreshed at the same moment cannot be told apart and are refused by name, never one picked silently.
  */
@@ -255,7 +304,7 @@ function pickMeteringRow(
     ? r.window_kind === 'all'
     : r.window_kind === 'day' && r.window_start === today));
   if (all.length === 0) {
-    return { message: window === 'all' ? 'Not measured: no all-time row' : 'Not measured: no runs today (UTC)' };
+    return { message: window === 'all' ? 'Not measured: no all-time row' : 'Not measured: daily metering data unavailable (UTC)' };
   }
   const newest = Math.max(...all.map((r) => timeOf(r.as_of)));
   const latest = all.filter((r) => timeOf(r.as_of) === newest);
@@ -336,12 +385,13 @@ export function SavingsPerRunCard({ rows, window = 'all', now }: {
     return <p className="local-dashboard-empty" role="status">{SAVING_PER_RUN_PENDING}</p>;
   }
   const value = row.savings_per_measured_run_usd;
-  if (typeof value !== 'string' || value === '') {
+  if ((typeof value !== 'number' || !Number.isFinite(value)) && (typeof value !== 'string' || value.trim() === '' || !Number.isFinite(Number(value)))) {
     const why = row.baseline_state === 'unresolved' ? 'Baseline unresolved'
       : row.runs_measured === 0 ? 'Not measured: no measured runs' : 'Not measured';
     return <p className="local-dashboard-metric" data-measured="false">{why}</p>;
   }
-  const text = value.startsWith('-') ? `-$${value.slice(1)}` : `$${value}`;
+  const decimal = typeof value === 'number' ? value.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 20 }) : String(value);
+  const text = decimal.startsWith('-') ? `-$${decimal.slice(1)}` : `$${decimal}`;
   return (
     <>
       <p className="local-dashboard-metric">{text}</p>
@@ -589,7 +639,7 @@ export function readableTime(text: string): string | null {
 const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 
 /** OV-4: the newest run, its typed cause when it failed, and every figure typed when it is not served. */
-export function LastRunCard({ decisions, sessions, now = Date.now() }: RunViewProps) {
+export function LastRunCard({ decisions, sessions, now = Date.now(), compact = false }: RunViewProps & { compact?: boolean }) {
   const last = newestFirst(decisions)[0];
   if (!last) return <NoRunsYet />;
   const session = indexBy(sessions, 'session_id').get(String(last.correlation_id));
@@ -615,20 +665,39 @@ export function LastRunCard({ decisions, sessions, now = Date.now() }: RunViewPr
     ['Route tier', tierOf(last)],
   ];
   return (
-    <section aria-label="Last run">
+    <section aria-label="Last run" className="local-last-run" data-status={status}>
       <dl className="local-dashboard-fields local-latest-primary">
         {fields.filter(([label]) => ['Status', 'Cause', 'Model', 'Age', 'Run', 'Duration', 'Cost'].includes(label))
-          .map(([label, value]) => <div key={label} data-field={label}><dt>{label}</dt><dd>{value}</dd></div>)}
+          .map(([label, value]) => <div key={label} data-field={label} data-field-tone={fieldTone(label, label === 'Status' ? status : value)} data-field-unavailable={isUnavailableField(value)}><dt><FieldIcon label={label} value={label === 'Status' ? status : value} />{label}</dt><dd>{compact && label === 'Cause' && typeof value === 'string' && value.length > 120
+            ? <details className="local-run-cause"><summary><ChevronRight size={12} aria-hidden="true" /><span>{value.slice(0, 120)}…</span></summary><p>{value}</p></details>
+            : value}</dd></div>)}
       </dl>
       <details className="local-run-more">
         <summary>Execution details</summary>
         <dl className="local-dashboard-fields">
           {fields.filter(([label]) => !['Status', 'Cause', 'Model', 'Age', 'Run', 'Duration', 'Cost'].includes(label))
-            .map(([label, value]) => <div key={label}><dt>{label}</dt><dd>{value}</dd></div>)}
+            .map(([label, value]) => <div key={label} data-field={label} data-field-tone={fieldTone(label, value)} data-field-unavailable={isUnavailableField(value)}><dt><FieldIcon label={label} value={value} />{label}</dt><dd>{value}</dd></div>)}
         </dl>
       </details>
+      {compact && typeof last.correlation_id === 'string' && last.correlation_id !== '' && <p className="local-dashboard-caption local-recent-footer"><Link href={workflowHref(last.correlation_id)}>Open run details <ArrowUpRight size={12} aria-hidden="true" /></Link></p>}
     </section>
   );
+}
+
+/** A bounded preview; full records, filters and charts belong on Runs. */
+function OverviewRunPreview({ decisions, sessions, now = Date.now() }: RunViewProps) {
+  const recent = newestFirst(decisions).slice(0, 5);
+  return <>
+    <ul className="local-run-preview" aria-label="Recent runs preview">{recent.map((run, index) => <li key={String(run.correlation_id ?? index)}>
+      <div><RunRef id={run.correlation_id} /><span data-field-tone="model" data-field-unavailable={isUnavailableField(modelOrUnknown(run.model_name))}>{modelOrUnknown(run.model_name)}</span></div>
+      <div><OutcomePill value={statusOf(run)} /><span data-field-tone="duration" data-field-unavailable={isMissing(run.latency_ms)}>{duration(run.latency_ms)}</span><span className="local-dashboard-caption">{age(run.written_at, now)}</span></div>
+    </li>)}</ul>
+    <p className="local-dashboard-caption local-recent-footer"><span>Latest five returned runs</span><Link href={PAGE_PATHS['local-runs']}>View all runs <ArrowUpRight size={12} aria-hidden="true" /></Link></p>
+    <details className="local-recent-fields">
+      <summary>Show recent run fields</summary>
+      <RecentRunsTable decisions={decisions} sessions={sessions} now={now} showCharts />
+    </details>
+  </>;
 }
 
 /**
@@ -732,6 +801,7 @@ interface RunsTableProps {
   /** The widget's declared page_size. */
   pageSize?: number;
   syncUrl?: boolean;
+  truncated?: boolean;
 }
 
 /** A row whose served data_source names anything but real data is fixture data (FR-2). */
@@ -744,7 +814,7 @@ function isFixture(decision: Row): boolean {
  * paged. The backend is the served backend_id; a run served without one is filtered as Not recorded. No
  * per-run saving or baseline price: savings are window totals from metering-summary.v1 only (OMN-19980 AC2).
  */
-export function RunsTable({ decisions, sessions, now = Date.now(), pageSize = 25, syncUrl = false }: RunsTableProps) {
+export function RunsTable({ decisions, sessions, now = Date.now(), pageSize = 25, syncUrl = false, truncated = false }: RunsTableProps) {
   const id = useId();
   // OMN-21166 AC27: the table opens on its primary fields; every one of the 18 stays in the page, one switch away.
   const [showAllFields, setShowAllFields] = useState(false);
@@ -752,7 +822,7 @@ export function RunsTable({ decisions, sessions, now = Date.now(), pageSize = 25
   const [, navigate] = useLocation();
   const [localView, setLocalView] = useState<RunsViewState>(DEFAULT_RUNS_VIEW);
   const view = syncUrl ? readRunsSearch(search) : localView;
-  const { status, cause, model, backend, span } = view;
+  const { status, cause, model, backend, span, query = '' } = view;
   const pageIndex = view.page - 1;
   const bySession = indexBy(sessions, 'session_id');
   const runs = newestFirst(decisions);
@@ -760,11 +830,14 @@ export function RunsTable({ decisions, sessions, now = Date.now(), pageSize = 25
   const causes = [...new Set(runs.filter((run) => statusOf(run) === 'failed').map((run) => causeOf(run)))].sort();
   const backends = [...new Set(runs.map((run) => recorded(run.backend_id)))].sort();
   const today = utcDay(now);
+  const needle = query.trim().toLocaleLowerCase();
   const shown = runs.filter((run) => (status === 'all' || statusOf(run) === status)
     && (cause === 'all' || causeOf(run) === cause)
     && (model === 'all' || modelOrUnknown(run.model_name) === model)
     && (backend === 'all' || recorded(run.backend_id) === backend)
-    && (span === 'all' || utcDay(timeOf(run.created_at)) === today));
+    && (span === 'all' || utcDay(timeOf(run.created_at)) === today)
+    && (needle === '' || [run.correlation_id, run.model_name, run.backend_id, run.task_type, run.host, statusOf(run), causeOf(run)]
+      .some(value => typeof value === 'string' && value.toLocaleLowerCase().includes(needle))));
   const pages = Math.max(1, Math.ceil(shown.length / pageSize));
   const current = Math.min(pageIndex, pages - 1);
   const page = shown.slice(current * pageSize, (current + 1) * pageSize);
@@ -774,11 +847,11 @@ export function RunsTable({ decisions, sessions, now = Date.now(), pageSize = 25
       navigate(`/runs${canonicalSearch ? `?${canonicalSearch}` : ''}`, { replace: true });
     }
   }, [canonicalSearch, navigate, search, syncUrl]);
-  const updateView = (change: Partial<RunsViewState>) => {
+  const updateView = (change: Partial<RunsViewState>, replace = false) => {
     const next = { ...view, ...change };
     if (syncUrl) {
       const query = writeRunsSearch(search, next);
-      navigate(`/runs${query ? `?${query}` : ''}`);
+      navigate(`/runs${query ? `?${query}` : ''}`, { replace });
     } else setLocalView(next);
   };
   const filter = (key: 'status' | 'cause' | 'model' | 'backend' | 'span') => (event: { target: { value: string } }) =>
@@ -790,11 +863,22 @@ export function RunsTable({ decisions, sessions, now = Date.now(), pageSize = 25
     duration: run.latency_ms,
     tokensIn: run.tokens_input,
     tokensOut: run.tokens_output,
+    cost: isMissing(bySession.get(String(run.correlation_id))?.local_cost_usd) ? run.cost_usd : bySession.get(String(run.correlation_id))?.local_cost_usd,
+    score: run.actual_score,
   }));
   const openRun = (runId: string) => navigate(workflowHref(runId));
-  const filtered = status !== 'all' || cause !== 'all' || model !== 'all' || backend !== 'all' || span !== 'all';
+  const filtered = status !== 'all' || cause !== 'all' || model !== 'all' || backend !== 'all' || span !== 'all' || query !== '';
   return (
     <>
+      <div className="local-runs-search">
+        <label htmlFor={`${id}-search`}>Search runs</label>
+        <input id={`${id}-search`} type="search" value={query} placeholder="Run ID, model, task, backend or failure…"
+          autoComplete="off" spellCheck={false} onChange={event => updateView({ query: event.target.value, page: 1 }, true)}
+          aria-describedby={`${id}-scope`} />
+        <p id={`${id}-scope`} className="local-dashboard-caption">{truncated
+          ? `${runs.length} recent runs returned. Earlier history is not included; search, filters and charts use these records.`
+          : `${runs.length} returned runs. Search, filters and charts use these records.`}</p>
+      </div>
       <div className="local-dashboard-filters">
         <div className="local-filter-field">
         <label htmlFor={`${id}-status`}>Status</label>
@@ -837,16 +921,12 @@ export function RunsTable({ decisions, sessions, now = Date.now(), pageSize = 25
         </select>
         </div>
         {filtered && (
-          <button type="button" className="local-filter-clear" onClick={() => updateView({ ...DEFAULT_RUNS_VIEW })}>Clear filters</button>
+          <button type="button" className="local-filter-clear" onClick={() => updateView({ ...DEFAULT_RUNS_VIEW, query: '' })}>Clear filters</button>
         )}
       </div>
       {shown.length === 0 ? <p className="local-dashboard-empty" role="status">No runs match these filters</p> : (
         <>
-          {/* The same rows as bars: the runs on this page of the list, in its order, each value as its row serves it. */}
-          <div className="local-run-charts">
-            <RunDurationChart runs={listed} onOpen={openRun} />
-            <RunTokensChart runs={listed} onOpen={openRun} />
-          </div>
+          <h3 className="local-dashboard-caption local-section-heading" data-page-heading tabIndex={-1}>Run list</h3>
           <p className="local-dashboard-caption local-recent-toolbar"><label>
             <input type="checkbox" checked={showAllFields} onChange={event => setShowAllFields(event.target.checked)} aria-controls={`${id}-table`} />
             Show all run fields
@@ -870,7 +950,9 @@ export function RunsTable({ decisions, sessions, now = Date.now(), pageSize = 25
                   </td>
                   <td className="local-dashboard-cell-token local-dashboard-cell-time"><CellTime value={run.created_at} /></td>
                   <td><OutcomePill value={statusOf(run)} /></td>
-                  <td><span className="local-runs-cause" title={causeOf(run)}>{causeOf(run)}</span></td>
+                  <td>{causeOf(run).length > 120
+                    ? <details className="local-run-failure"><summary>Read failure details</summary><p className="local-runs-cause" title={causeOf(run)}>{causeOf(run)}</p></details>
+                    : <span className="local-runs-cause" title={causeOf(run)}>{causeOf(run)}</span>}</td>
                   {/* A run's model and backend set that filter: the same filters as the selects above, from the row. */}
                   <td className="local-dashboard-cell-token">
                     <button type="button" className="local-cell-filter" aria-label={`Show only runs of model ${modelOrUnknown(run.model_name)}`} onClick={() => updateView({ model: modelOrUnknown(run.model_name), page: 1 })}>
@@ -887,7 +969,7 @@ export function RunsTable({ decisions, sessions, now = Date.now(), pageSize = 25
                   <td>{recorded(run.tokens_output)}</td>
                   <td>{costOf(session, run)}</td>
                   <td>{runModelledCell(run)}</td>
-                  <td>{recorded(session?.baseline_model)}</td>
+                  <td>{recorded(isMissing(run.savings_baseline_model) ? session?.baseline_model : run.savings_baseline_model)}</td>
                   <td>{recorded(session?.usage_source)}</td>
                   <td>{isMissing(run.task_type) ? recorded(run.task_type) : <span className="local-task-cell"><TaskIcon task={String(run.task_type)} />{String(run.task_type)}</span>}</td>
                   <td>{recorded(run.latency_ms)}</td>
@@ -902,6 +984,13 @@ export function RunsTable({ decisions, sessions, now = Date.now(), pageSize = 25
             <span>{`Runs ${current * pageSize + 1}–${current * pageSize + page.length} of ${shown.length}`}</span>
             <button type="button" aria-label="Previous page" disabled={current === 0} onClick={() => updateView({ page: current })}>Previous</button>
             <button type="button" aria-label="Next page" disabled={current >= pages - 1} onClick={() => updateView({ page: current + 2 })}>Next</button>
+          </div>
+          <h3 className="local-dashboard-caption local-section-heading" data-page-heading tabIndex={-1}>Run charts</h3>
+          <div className="local-run-charts">
+            <RunDurationChart runs={listed} onOpen={openRun} />
+            <RunTokensChart runs={listed} onOpen={openRun} />
+            <RunMetricChart runs={listed} onOpen={openRun} metric="cost" />
+            <RunMetricChart runs={listed} onOpen={openRun} metric="score" />
           </div>
         </>
       )}
@@ -929,8 +1018,9 @@ export function QualityPanel({ row }: { row: Row | null }) {
     <section aria-label="Quality">
       <PassRateMeter row={row} />
       <dl className="local-dashboard-fields">
-        {QUALITY_FIELDS.map(([label, field]) => <div key={field}><dt>{label}</dt><dd><Readable value={row[field]} kind={field === 'overall_pass_rate' ? 'percent' : field.startsWith('avg_') ? 'decimal' : 'count'} /></dd></div>)}
+        {QUALITY_FIELDS.map(([label, field]) => <div key={field} data-quality-field={field} data-field-tone={fieldTone(label)} data-field-unavailable={isUnavailableField(row[field])}><dt><FieldIcon label={label} />{label}</dt><dd><Readable value={row[field]} kind={field === 'overall_pass_rate' ? 'percent' : field.startsWith('avg_') ? 'decimal' : 'count'} /></dd></div>)}
       </dl>
+      <p className="local-dashboard-caption local-recent-footer"><Link href="/delegation-evidence">View delegation evidence <ArrowUpRight size={12} aria-hidden="true" /></Link></p>
     </section>
   );
 }
@@ -959,7 +1049,7 @@ function tierModelCost(model: Row): string {
  * OMN-21015 AC2: under each tier, the models the view lists for it (migration 0060), with their served runs, share of
  * the tier-routed runs and cost. Nothing is added up here; a tier served without models shows none.
  */
-export function TierMixPanel({ row }: { row: Row | null }) {
+export function TierMixPanel({ row, compact = false }: { row: Row | null; compact?: boolean }) {
   const byTier = row && typeof row.by_tier === 'object' && row.by_tier !== null && !Array.isArray(row.by_tier)
     ? (row.by_tier as Row) : null;
   const tiers = byTier && Array.isArray(byTier.tiers) ? asRecords(byTier.tiers) : [];
@@ -969,36 +1059,44 @@ export function TierMixPanel({ row }: { row: Row | null }) {
   return (
     <section aria-label="Tier mix">
       {/* The bar and the table show the same served tiers; the bar's widths are the served shares. */}
-      <TierShareChart byTier={byTier} />
+      <TierShareChart byTier={byTier} variant={compact ? 'donut' : 'bars'} />
+      <details className="local-routing-details local-tier-details">
+      <summary><span className="local-routing-summary-label"><Waypoints size={15} aria-hidden="true" />Full routing breakdown</span></summary>
       <div className="local-dashboard-table-wrap local-dashboard-table-wrap--fit">
         <table>
-          <thead><tr><th>Tier</th><th>Runs</th><th>Share of tier-routed</th><th>Cost</th></tr></thead>
-          <tbody>{tiers.flatMap((tier, index) => [
-            <tr key={`${String(tier.cost_tier_name)}-${index}`}>
+          <thead><tr><th><span><Route size={13} aria-hidden="true" />Tier</span></th><th><span><Rows3 size={13} aria-hidden="true" />Runs</span></th><th><span><ChartLine size={13} aria-hidden="true" />Share of tier-routed</span></th><th><span><CircleDollarSign size={13} aria-hidden="true" />Cost</span></th></tr></thead>
+          <tbody>{tiers.flatMap((tier, index) => {
+            const name = String(tier.cost_tier_name);
+            const TierIcon = ({ local: Server, harness: Bot, cheap_frontier: Zap, cheap_cloud: Cloud, cloud: Cloud, claude: Sparkles, frontier: Sparkles } as Record<string, LucideIcon>)[name] ?? Route;
+            const tone = TIER_TONES[name] ?? 'other';
+            return [
+            <tr className="local-routing-tier-row" data-tone={tone} key={`${name}-${index}`}>
               {/* A served share is a long decimal and a name has no break opportunity: each may break inside itself, as
                   the repo's other token cells do, so the Cost column stays inside the panel at 1440x900 with no
                   sideways scroll. Costs wrap at their spaces. */}
-              <td className="local-dashboard-cell-token local-dashboard-cell-name">{recorded(tier.cost_tier_name)}</td>
-              <td>{recorded(tier.count)}</td>
-              <td className="local-dashboard-cell-token"><Readable value={tier.pct_of_tier_routed} kind="percent" /></td>
+              <td className="local-dashboard-cell-token local-dashboard-cell-name"><span className="local-routing-name"><TierIcon size={16} aria-hidden="true" />{recorded(tier.cost_tier_name)}</span></td>
+              <td data-column="runs">{recorded(tier.count)}</td>
+              <td data-column="share" className="local-dashboard-cell-token"><Readable value={tier.pct_of_tier_routed} kind="percent" /></td>
               <td />
             </tr>,
             ...(Array.isArray(tier.models) ? asRecords(tier.models) : []).map((model, modelIndex) => (
-              <tr key={`${String(tier.cost_tier_name)}-${index}-${String(model.model_name)}-${modelIndex}`} className="local-dashboard-row--nested">
-                <td className="local-dashboard-cell-token local-dashboard-cell-name">{recorded(model.model_name)}</td>
-                <td>{recorded(model.count)}</td>
-                <td className="local-dashboard-cell-token"><Readable value={model.pct_of_tier_routed} kind="percent" /></td>
-                <td>{tierModelCost(model)}</td>
+              <tr data-tone={tone} key={`${name}-${index}-${String(model.model_name)}-${modelIndex}`} className="local-dashboard-row--nested local-routing-model-row">
+                <td className="local-dashboard-cell-token local-dashboard-cell-name"><span className="local-routing-name local-model-identity" style={modelIdentityStyle(model.model_name)}><FieldIcon tone="model" size={14} />{recorded(model.model_name)}</span></td>
+                <td data-column="runs">{recorded(model.count)}</td>
+                <td data-column="share" className="local-dashboard-cell-token"><Readable value={model.pct_of_tier_routed} kind="percent" /></td>
+                <td data-column="cost" data-unavailable={isMissing(model.cost_usd)}>{tierModelCost(model)}</td>
               </tr>
             )),
-          ])}</tbody>
+          ];})}</tbody>
         </table>
       </div>
+      </details>
       <dl className="local-dashboard-fields">
-        <div><dt>Tier-routed</dt><dd>{recorded(byTier.tier_routed_total)}</dd></div>
-        <div><dt>Not tier-routed</dt><dd>{recorded(byTier.not_tier_routed_count)}</dd></div>
-        <div><dt>All runs</dt><dd>{recorded(byTier.total_tasks)}</dd></div>
+        <div data-field-tone="routing" data-field-unavailable={isMissing(byTier.tier_routed_total)}><dt><FieldIcon label="Tier-routed" />Tier-routed</dt><dd>{recorded(byTier.tier_routed_total)}</dd></div>
+        <div data-field-tone="unrouted" data-field-unavailable={isMissing(byTier.not_tier_routed_count)}><dt><FieldIcon label="Not tier-routed" />Not tier-routed</dt><dd>{recorded(byTier.not_tier_routed_count)}</dd></div>
+        <div data-field-tone="delegations" data-field-unavailable={isMissing(byTier.total_tasks)}><dt><FieldIcon label="All runs" />All runs</dt><dd>{recorded(byTier.total_tasks)}</dd></div>
       </dl>
+      {compact && <p className="local-dashboard-caption local-recent-footer"><Link href={PAGE_PATHS['local-runs']}>View routing breakdown <ArrowUpRight size={12} aria-hidden="true" /></Link></p>}
     </section>
   );
 }
@@ -1016,18 +1114,18 @@ export function CredentialsTable({ rows }: { rows: readonly unknown[] }) {
     );
   }
   return (
-    <div className="local-dashboard-table-wrap">
-      <table>
+    <div className="local-dashboard-table-wrap local-credentials-records">
+      <table aria-label="Provider key references">
         <thead><tr><th>Provider</th><th>Key ref</th><th>Fingerprint</th><th>Set</th><th>Revoked</th></tr></thead>
         <tbody>{keys.map((key, index) => (
           <tr key={`${String(key.provider)}-${String(key.name)}-${index}`}>
-            <td>{recorded(key.provider)}</td>
-            <td>{recorded(key.name)}</td>
+            <td data-label="Provider">{recorded(key.provider)}</td>
+            <td data-label="Key ref">{recorded(key.name)}</td>
             {/* OMN-19985: the served fingerprint prefix (8 hex of sha256) and the time the key was set; a row its
                 producer sent without them says so. created_at is when the projection first saw the row, not this. */}
-            <td>{recorded(key.fingerprint)}</td>
-            <td>{recorded(key.set_at)}</td>
-            <td>{isMissing(key.revoked_at) ? 'Not revoked' : String(key.revoked_at)}</td>
+            <td data-label="Fingerprint">{recorded(key.fingerprint)}</td>
+            <td data-label="Set">{recorded(key.set_at)}</td>
+            <td data-label="Revoked">{isMissing(key.revoked_at) ? 'Not revoked' : String(key.revoked_at)}</td>
           </tr>
         ))}</tbody>
       </table>
@@ -1047,7 +1145,8 @@ function yesOrNo(value: unknown): string {
  * The decision row of the run shown: its verdict, and the backend, host and tier that accepted it (OMN-20225). Every
  * value is one served field of that run's own row; a run with no served decision says so and borrows no other run's.
  */
-export function RunSummary({ decision }: { decision: Row | undefined }) {
+export function RunSummary({ decision, showAnalysis = false }: { decision: Row | undefined; showAnalysis?: boolean }) {
+  const sectionId = useId();
   if (!decision) return <p className="local-dashboard-empty" role="status">No decision is served for this run</p>;
   const status = statusOf(decision);
   const fields: Array<[string, string]> = [
@@ -1074,20 +1173,31 @@ export function RunSummary({ decision }: { decision: Row | undefined }) {
     ['Execution', duration(decision.execution_ms)],
     ['Duration', duration(decision.latency_ms)],
   ];
+  const timingChart = <RunTimingChart timings={[
+    { key: 'queue_wait_ms', label: 'Queue wait', value: decision.queue_wait_ms },
+    { key: 'execution_ms', label: 'Execution', value: decision.execution_ms },
+    { key: 'latency_ms', label: 'Duration', value: decision.latency_ms },
+  ]} compact={showAnalysis} accentToken={showAnalysis ? '--workflow-timing-accent' : undefined} />;
   return (
     <section aria-label="Run summary" className="local-dashboard-run-summary">
-      <dl className="local-dashboard-fields">
-        <div><dt>Status</dt><dd><OutcomePill value={status} /></dd></div>
-        {fields.map(([label, value]) => <div key={label}><dt>{label}</dt><dd>{value}</dd></div>)}
-      </dl>
+      <div className="local-run-summary-groups">
+        {[
+          { name: 'Run outcome', icon: Award, labels: ['Cause', 'Quality score', 'Required bar', 'Task type'] },
+          { name: 'Routing and model', icon: Route, labels: ['Model', 'Requested model', 'Backend', 'Host', 'Route tier'] },
+          { name: 'Tokens and completion', icon: Coins, labels: ['Tokens in', 'Tokens out', 'Finish reason', 'Truncated', 'Escalations'] },
+          { name: 'Timing', icon: History, labels: ['Queue wait', 'Execution', 'Duration'] },
+        ].map(({ name, icon: Icon, labels }, index) => <section key={name} className="local-run-summary-group" aria-labelledby={`${sectionId}-${index}`}>
+          <h3 className="local-dashboard-caption" id={`${sectionId}-${index}`}><Icon size={16} aria-hidden="true" />{name}</h3>
+          <dl className="local-dashboard-fields">
+            {index === 0 && <div data-field-tone={fieldTone('Status', status)}><dt><FieldIcon label="Status" value={status} />Status</dt><dd><OutcomePill value={status} /></dd></div>}
+            {fields.filter(([label]) => labels.includes(label)).map(([label, value]) => <div key={label} data-summary-field={label} data-field-tone={fieldTone(label, value)} data-field-unavailable={isUnavailableField(value)}><dt><FieldIcon label={label} value={value} />{label}</dt><dd>{label === 'Cause' && value.length > 120
+              ? <details className="local-run-failure-details"><summary title={value}>Show failure reason</summary><p>{value}</p></details>
+              : value}</dd></div>)}
+          </dl>
+        </section>)}
+      </div>
       {/* The same three timings as bars, under the labels their tiles carry. */}
-      <RunTimingChart
-        timings={[
-          { key: 'queue_wait_ms', label: 'Queue wait', value: decision.queue_wait_ms },
-          { key: 'execution_ms', label: 'Execution', value: decision.execution_ms },
-          { key: 'latency_ms', label: 'Duration', value: decision.latency_ms },
-        ]}
-      />
+      {showAnalysis ? <WorkflowDecisionCharts decision={decision}>{timingChart}</WorkflowDecisionCharts> : timingChart}
     </section>
   );
 }
@@ -1110,8 +1220,8 @@ export function RunNeighbours({ decisions, runId }: { decisions: readonly unknow
   return (
     // It stands in the run's title line, beside the id it leads away from, so it is a span with the navigation role.
     <span className="local-run-neighbours" role="navigation" aria-label="Neighbouring runs">
-      {newer !== undefined && <Link href={workflowHref(newer)} title={newer}>Newer run</Link>}
-      {older !== undefined && <Link href={workflowHref(older)} title={older}>Older run</Link>}
+      {newer !== undefined && <Link href={workflowHref(newer)} title={newer} data-direction="newer">Newer run</Link>}
+      {older !== undefined && <Link href={workflowHref(older)} title={older} data-direction="older">Older run</Link>}
     </span>
   );
 }
@@ -1196,6 +1306,7 @@ export function RunDiagram({ steps }: { steps: readonly unknown[] }) {
       {rows.map((row, index) => {
         const kind = String(row.step_kind ?? '');
         const failing = !isMissing(named) && row.step_sequence === named;
+        const Icon = ({ request: Inbox, routing_decision: Route, provider_call: Bot, quality_gate: ShieldCheck, terminal: Flag } as Record<string, LucideIcon>)[kind] ?? CircleDot;
         return (
           <a
             href={`#run-step-${index + 1}`}
@@ -1205,8 +1316,10 @@ export function RunDiagram({ steps }: { steps: readonly unknown[] }) {
             data-failing-step={failing ? 'true' : undefined}
             title={failing ? 'The step the run failed at' : undefined}
           >
+            <span className="local-run-node-icon" aria-hidden="true"><Icon size={18} /></span>
             <span className="local-run-node-name">{RUN_STEP_LABELS[kind] ?? recorded(row.step_kind)}</span>
             <span className="local-run-node-outcome">{recorded(row.outcome)}</span>
+            {index < rows.length - 1 && <FlowConnector />}
           </a>
         );
       })}
@@ -1311,7 +1424,11 @@ export function WorkflowRun({ component, snapshots, requested, onOpen }: Workflo
         <RunNeighbours decisions={decisions} runId={runId} />
       </p>
       {decisionsNotServed}
-      {!decisionsNotServed && <RunSummary decision={decisions.find((row) => row.correlation_id === runId)} />}
+      {!foreign && rows.length === 0 && (() => {
+        const decision = decisions.find(row => row.correlation_id === runId);
+        return decision ? <WorkflowRoutingFlow decision={decision} outcome={statusOf(decision)} /> : null;
+      })()}
+      {!decisionsNotServed && <RunSummary decision={decisions.find((row) => row.correlation_id === runId)} showAnalysis />}
       {stepsUnread ? null : foreign ? (
         <p className="local-dashboard-error" role="alert">run-trace.v1 answered steps of another run; none are shown</p>
       ) : (
@@ -1325,6 +1442,7 @@ export function WorkflowRun({ component, snapshots, requested, onOpen }: Workflo
           )}
         </>
       )}
+      <WorkflowRecordDetails decision={decisions.find((row) => row.correlation_id === runId)} steps={stepsUnread || foreign ? [] : rows} />
     </div>
   );
 }
@@ -1333,8 +1451,8 @@ export function WorkflowRun({ component, snapshots, requested, onOpen }: Workflo
 export function LocalIdentity({ row }: { row: Record<string, unknown> | null }) {
   return (
     <dl className="local-dashboard-fields">
-      <div><dt>Tenant</dt><dd>{recorded(row?.tenant_id)}</dd></div>
-      <div><dt>Minted</dt><dd>Not served yet: waits on local-identity.v1 (OMN-19986)</dd></div>
+      <div data-field-tone={fieldTone('Tenant')} data-field-unavailable={isUnavailableField(row?.tenant_id)}><dt><FieldIcon label="Tenant" />Tenant</dt><dd className="local-identity-value"><span>{recorded(row?.tenant_id)}</span>{typeof row?.tenant_id === 'string' && row.tenant_id.trim() !== '' && <CopyButton text={row.tenant_id} label="Copy the tenant identity" />}</dd></div>
+      <div data-field-tone="age" data-field-unavailable="true"><dt><FieldIcon label="Minted" />Minted</dt><dd>Mint time unavailable.</dd></div>
     </dl>
   );
 }
@@ -1400,7 +1518,15 @@ export function MeteringDayTable({ title, rows, columns }: {
     if (row.window_kind !== 'day') continue;
     groups.set(baselineOf(row), [...(groups.get(baselineOf(row)) ?? []), row]);
   }
-  if (groups.size === 0) return <p className="local-dashboard-empty" role="status">{NO_DAY_ROWS}</p>;
+  if (groups.size === 0) return (
+    <div className="local-spend-unavailable">
+      <p role="status">Daily spend data unavailable.</p>
+      <details>
+        <summary>Why is this unavailable?</summary>
+        <p className="local-dashboard-caption">{NO_DAY_ROWS}</p>
+      </details>
+    </div>
+  );
   const allTimeFor = (baseline: string): Row | null => {
     const all = served.filter((row) => row.window_kind === 'all' && baselineOf(row) === baseline);
     const newest = Math.max(...all.map((row) => timeOf(row.as_of)));
@@ -1446,24 +1572,34 @@ function TableComponent({ component, snapshots, pageSize, syncUrl, columns }: {
   syncUrl: boolean;
   columns: readonly DeclaredColumn[];
 }) {
+  const [, navigate] = useLocation();
   const rows = rowsForLocalComponent(component, snapshots);
   const lookup = rowsForLocalBinding(component, snapshots, 1);
-  if (component.component_id === 'overview-last-run') return <LastRunCard decisions={rows} sessions={lookup} />;
+  if (component.component_id === 'overview-last-run') return <LastRunCard decisions={rows} sessions={lookup} compact />;
   if (component.component_id === 'overview-recent-runs') {
-    return rows.length === 0 ? <NoRunsYet /> : <RecentRunsTable decisions={rows} sessions={lookup} showCharts />;
+    return rows.length === 0 ? <NoRunsYet /> : <OverviewRunPreview decisions={rows} sessions={lookup} />;
   }
   // OMN-21166 AC26: trends and breakdowns, counted from the served decision rows (rule change R-B, 2026-10-18).
-  if (component.component_id === 'overview-insights') return rows.length === 0 ? <NoRunsYet /> : <InsightsSection decisions={rows} now={Date.now()} />;
-  if (component.component_id === 'overview-quality' || component.component_id === 'overview-tier-mix') {
+  if (component.component_id === 'overview-insights') return rows.length === 0 ? <NoRunsYet /> : <>
+    <InsightsSection decisions={rows} now={Date.now()} view="summary" />
+    <details className="local-analysis-details"><summary>Detailed activity analysis</summary>
+      <InsightsSection decisions={rows} now={Date.now()} view="analysis" onInspectFailure={cause => navigate(`/runs?status=failed&q=${encodeURIComponent(cause)}`)} />
+    </details>
+  </>;
+  if (component.component_id === 'runs-insights') return <details className="local-analysis-details"><summary>Show run analysis</summary>{rows.length === 0 ? <NoRunsYet /> : <InsightsSection decisions={rows} now={Date.now()} view="analysis" onInspectFailure={cause => {
+    navigate(`/runs?status=failed&q=${encodeURIComponent(cause)}`);
+    document.querySelector('[data-component="recent-runs"]')?.scrollIntoView?.({ block: 'start' });
+  }} />}</details>;
+  if (component.component_id === 'overview-quality' || component.component_id === 'overview-tier-mix' || component.component_id === 'runs-tier-mix') {
     const first = rawRowsFor(component, snapshots, 0)[0];
     const row = first && typeof first === 'object' && !Array.isArray(first) ? (first as Row) : null;
     return component.component_id === 'overview-quality'
-      ? <><QualityPanel row={row} /><PassRateSparkline /></>
-      : <TierMixPanel row={row} />;
+      ? <QualityPanel row={row} />
+      : <TierMixPanel row={row} compact={component.component_id === 'overview-tier-mix'} />;
   }
   if (component.component_id === 'credentials-keys') return <CredentialsTable rows={rows} />;
   // US-1, US-2, US-4: served rows as served. The exposure is tenant-scoped, so the server filters, not the browser.
-  if (component.component_id === 'usage-by-model-day') return <UsageByModelDayTable rows={rows} />;
+  if (component.component_id === 'usage-by-model-day') return <UsageByModelDayTable rows={rows} interactive />;
   // US-1 (OMN-21015 AC4): the same served rows as a stacked series, tokens in and out apart, split by model.
   if (component.component_id === 'usage-tokens-by-day') return <UsageTokensByDay rows={rows} />;
   // US-3: metering-summary.v1's day rows, as served; the series renders no all row and sums nothing.
@@ -1492,7 +1628,8 @@ function TableComponent({ component, snapshots, pageSize, syncUrl, columns }: {
     const first = rawRowsFor(component, snapshots, 0)[0];
     return <LocalIdentity row={first && typeof first === 'object' ? (first as Record<string, unknown>) : null} />;
   }
-  return rows.length === 0 ? <NoRunsYet /> : <RunsTable decisions={rows} sessions={lookup} pageSize={pageSize} syncUrl={syncUrl} />;
+  return rows.length === 0 ? <NoRunsYet /> : <RunsTable decisions={rows} sessions={lookup} pageSize={pageSize} syncUrl={syncUrl}
+    truncated={snapshots.find(snapshot => snapshot.topic === DELEGATION_DECISIONS_TOPIC)?.truncated} />;
 }
 
 /** Resolve a widget's bindings once per exposure; contracts can request several fields from one topic. */
@@ -1502,7 +1639,11 @@ function boundSnapshotsFor(
 ): BoundProjectionSnapshot[] {
   const seen = new Set<string>();
   const bound: BoundProjectionSnapshot[] = [];
-  for (const binding of component.data_bindings ?? []) {
+  // The compact preview displays decision rows only. Its retained contract lookup
+  // is used by the full Runs table, but cannot affect any value in this preview.
+  const bindings = component.component_id === 'overview-recent-runs'
+    ? component.data_bindings?.slice(0, 1) : component.data_bindings;
+  for (const binding of bindings ?? []) {
     const topic = binding.projection_topic;
     if (seen.has(topic)) continue;
     const snapshot = snapshots.find((candidate) => candidate.topic === topic);
@@ -1515,6 +1656,36 @@ function boundSnapshotsFor(
 }
 
 /** One widget's read state: the failure of any binding it reads, and how old its data is (requirements, section 2). */
+function ReadFailureNotice({ snapshot, title, now, savedMessage, onRetry = requestLocalPageRefresh }: {
+  snapshot: Pick<BoundProjectionSnapshot, 'topic' | 'failure' | 'lastGoodAt'>;
+  title: string; now: number; savedMessage?: string; onRetry?: () => void;
+}) {
+  const [retrying, setRetrying] = useState(false);
+  useEffect(() => setRetrying(false), [snapshot.failure]);
+  const slow = snapshot.failure?.kind === 'timeout';
+  const names: Record<string, string> = {
+    'page': 'Dashboard',
+    'catalogue': 'Dashboard connection',
+    'delegation.quality-gate.v1': 'Quality data',
+    'delegation.savings.v1': 'Cost data',
+    'delegation.decisions.v1': 'Run data',
+    'delegation.model-routing.v1': 'Routing data',
+    'metering-summary.v1': 'Spending and usage data',
+    'usage-by-model-day.v1': 'Usage data',
+    'run-trace.v1': 'Run steps',
+  };
+  const label = names[snapshot.topic.replace('onex.snapshot.projection.', '')] ?? `${title} data`;
+  return <div className={`local-read-notice${slow || snapshot.lastGoodAt || savedMessage ? ' local-read-notice--warning' : ' local-read-notice--error'}`} role="alert" aria-live="polite">
+    <div className="local-read-notice-head">
+      {slow ? <History size={16} aria-hidden="true" /> : <CloudOff size={16} aria-hidden="true" />}
+      <strong>{label}{slow ? ' is taking longer than expected.' : snapshot.lastGoodAt || savedMessage ? ' couldn’t refresh.' : ' is unavailable.'}</strong>
+      <button type="button" disabled={retrying} aria-busy={retrying} onClick={() => { setRetrying(true); onRetry(); }}>{retrying ? 'Retrying…' : 'Try again'}</button>
+    </div>
+    <p>{savedMessage ?? (snapshot.lastGoodAt ? `Showing saved data from ${age(snapshot.lastGoodAt, now)}.` : 'You can retry now or wait for the next refresh.')}</p>
+    <details><summary>Technical details</summary><p className="local-read-technical">{snapshot.failure!.message}{snapshot.lastGoodAt ? `; last good ${age(snapshot.lastGoodAt, now)}` : ''}</p></details>
+  </div>;
+}
+
 function WidgetReadState({ component, snapshots, now, interval }: {
   component: LocalPageDocument['components'][number];
   snapshots: readonly BoundProjectionSnapshot[];
@@ -1540,10 +1711,7 @@ function WidgetReadState({ component, snapshots, now, interval }: {
     <>
       {tenantNotConfigured && <TenantNotConfiguredState />}
       {failures.map((snapshot) => (
-        <p className="local-dashboard-error" role="alert" key={snapshot.topic}>
-          {snapshot.failure!.message}
-          {snapshot.lastGoodAt ? `; last good ${age(snapshot.lastGoodAt, now)}` : ''}
-        </p>
+        <ReadFailureNotice key={snapshot.topic} snapshot={snapshot} title={component.title} now={now} />
       ))}
       {unservedLookups.map((snapshot) => (
         <p className="local-dashboard-empty" role="status" key={snapshot.topic}>{snapshot.failure!.message}</p>
@@ -1592,16 +1760,6 @@ function bindingFailedEmpty(
     .some((snapshot) => Boolean(snapshot.failure) && !snapshot.lastGoodAt);
 }
 
-/** The icon each local page carries in its header: the one its sidebar entry uses, so a page is recognised in both. */
-const PAGE_ICONS: Record<LocalPageName, LucideIcon> = {
-  overview: Activity,
-  runs: GitBranch,
-  workflow: ListTree,
-  usage: Wallet,
-  credentials: KeyRound,
-  'api-keys': Fingerprint,
-};
-
 /** The icon beside a panel's title, by component. A component not listed here gets none; nothing depends on it. */
 export const PANEL_ICONS: Record<string, LucideIcon> = {
   'overview-spend': CircleDollarSign,
@@ -1609,8 +1767,10 @@ export const PANEL_ICONS: Record<string, LucideIcon> = {
   'overview-measured': Bot,
   'overview-tokens': Coins,
   'overview-last-run': History,
-  'overview-recent-runs': Table2,
+  'overview-recent-runs': Rows3,
   'overview-insights': ChartSpline,
+  'runs-insights': ChartSpline,
+  'runs-tier-mix': Waypoints,
   'overview-run-locally': Server,
   'overview-avg-saving-per-call': TrendingDown,
   'overview-baseline-spend': Scale,
@@ -1622,7 +1782,7 @@ export const PANEL_ICONS: Record<string, LucideIcon> = {
   'recent-runs': Rows3,
   'workflow-run-path': Route,
   'usage-by-model-day': TableProperties,
-  'usage-tokens-by-day': ChartBar,
+  'usage-tokens-by-day': ArrowDownUp,
   'usage-savings-series': CalendarDays,
   'credentials-keys': KeyRound,
   'api-keys-local-identity': IdCard,
@@ -1638,15 +1798,20 @@ const PAGE_TITLES: Record<LocalPageName, string> = {
   'api-keys': 'API Keys',
 };
 
-export function LocalDashboardPage({ pageName, syncUrl = false }: LocalDashboardPageProps) {
+export function LocalDashboardPage({ pageName, syncUrl = false, navigationCache }: LocalDashboardPageProps) {
   const [page, setPage] = useState<LocalPageDocument | null>(null);
   const [snapshots, setSnapshots] = useState<BoundProjectionSnapshot[]>([]);
   const [error, setError] = useState<string | null>(null);
+  const [refreshError, setRefreshError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   // OV-3: which fixed window the Overview's metering cards read. Kept by the page so every card moves together.
   const [overviewWindow, setOverviewWindow] = useState<OverviewWindow>('all');
   const windowId = useId();
   const latest = useRef<BoundProjectionSnapshot[]>([]);
+  // Memory only: reuse recent successful reads between local destinations, scoped
+  // to the configured source/tenant and (for traces) the exact requested run.
+  const ownCache = useRef<LocalDashboardCache>({ context: null, snapshots: new Map() });
+  const recent = navigationCache ?? ownCache.current;
   // One source per mounted page, so a double mount (React's development mode) shares its reads in flight.
   const source = useRef<ReturnType<typeof createSnapshotSource> | null>(null);
   // WF-3: the run Workflow shows is the one its address names (or, without address sync, the one picked here).
@@ -1665,11 +1830,12 @@ export function LocalDashboardPage({ pageName, syncUrl = false }: LocalDashboard
 
   useEffect(() => {
     let active = true;
-    // A page switch, or another run asked for, must not show the previous document or run while this one loads.
+    // A page switch must never show another page's document or another run's steps.
     setPage(null);
     setSnapshots([]);
     latest.current = [];
     setError(null);
+    setRefreshError(null);
     setLoading(true);
     let document: LocalPageDocument;
     try {
@@ -1679,6 +1845,28 @@ export function LocalDashboardPage({ pageName, syncUrl = false }: LocalDashboard
       setLoading(false);
       return () => { active = false; };
     }
+    const tenant = resolveConfiguredTenant();
+    const context = JSON.stringify([resolveEffectiveDataSource(), tenant]);
+    if (recent.context !== context) {
+      recent.snapshots.clear();
+      source.current = null;
+      recent.context = context;
+    }
+    const topics = [...new Set(document.components.flatMap(component =>
+      (component.data_bindings ?? []).map(binding => binding.projection_topic)))];
+    const snapshotKey = (snapshot: BoundProjectionSnapshot) => `${snapshot.topic}\0${snapshot.runId ?? ''}`;
+    // An implicit server tenant is not safe to cache across navigation: the same
+    // origin can begin serving another install without a client config change.
+    const cached = tenant === null ? [] : topics.flatMap(topic => {
+      if (topic === RUN_TRACE_TOPIC && requestedRunId === null) return [];
+      const key = `${topic}\0${topic === RUN_TRACE_TOPIC ? requestedRunId ?? '' : ''}`;
+      const snapshot = recent.snapshots.get(key);
+      return snapshot && Date.now() - timeOf(snapshot.readAt) < 60_000 ? [snapshot] : [];
+    });
+    latest.current = cached;
+    setSnapshots(cached);
+    setPage(document);
+    setLoading(false);
     // Reads of one page can overlap: the interval and the refresh button each start one while an earlier one is still
     // unanswered. Only the read started last may write. A read that was overtaken answers a question the page has
     // already asked again (the newest run may have changed since), so its rows, its failure and its end of loading
@@ -1688,31 +1876,92 @@ export function LocalDashboardPage({ pageName, syncUrl = false }: LocalDashboard
     async function load() {
       const mine = ++started;
       const current = () => active && mine === started;
+      const publish = (snapshot: BoundProjectionSnapshot) => {
+        if (!current()) return;
+        const retained = withLastGood(latest.current, [snapshot])[0];
+        latest.current = [...latest.current.filter(candidate => candidate.topic !== snapshot.topic), retained];
+        if (pageName === 'workflow' && requestedRunId === null
+          && snapshot.topic === DELEGATION_DECISIONS_TOPIC && !snapshot.failure) {
+          const runId = newestWorkflowRunId(document, [retained]);
+          latest.current = latest.current.filter(candidate => candidate.topic !== RUN_TRACE_TOPIC || candidate.runId === runId);
+        }
+        setSnapshots(latest.current);
+        if (tenant !== null && !snapshot.failure) {
+          recent.snapshots.set(snapshotKey(snapshot), snapshot);
+          if (recent.snapshots.size > 64) {
+            recent.snapshots.delete(recent.snapshots.keys().next().value!);
+          }
+        }
+      };
+      let catalogueTimer: ReturnType<typeof setTimeout> | undefined;
       try {
         const { mode } = resolveEffectiveDataSource();
         if (mode !== 'http') {
           throw new Error('Local pages require HTTP mode to read runtime exposures.');
         }
-        const census = await fetchExposureCensus();
+        // The catalogue precedes the bounded projection reads. Bound this UI
+        // wait too: a stalled catalogue must not leave the whole page loading.
+        const census = await Promise.race([
+          fetchExposureCensus(),
+          new Promise<never>((_, reject) => {
+            catalogueTimer = setTimeout(() => reject(new Error('Exposure catalogue: no answer in 5 s')), LOCAL_READ_TIMEOUT_MS);
+          }),
+        ]);
+        clearTimeout(catalogueTimer);
+        if (!current()) return;
+        // Decide from the catalogue before any projection read. Only the explicit
+        // local-store absence selects metering; a read error never changes source.
+        if (pageName === 'overview') {
+          const declared = census.rows.find(row => row.topic === LEGACY_OVERVIEW_TOPIC);
+          const localStoreMissing = declared?.reachability === 'refused'
+            && declared.backing === 'not_in_local_store' && declared.refusal === 'projection_table_missing';
+          const selected = loadLocalPageConfig(pageName, localStoreMissing ? 'metering' : 'savings');
+          if (selected.components[0].data_bindings?.[0]?.projection_topic !== document.components[0].data_bindings?.[0]?.projection_topic) {
+            // A changed catalogue must not leave an old source's figures visible.
+            latest.current = latest.current.filter(snapshot => snapshot.topic !== LEGACY_OVERVIEW_TOPIC && snapshot.topic !== METERING_SUMMARY_TOPIC);
+            setSnapshots(latest.current);
+          }
+          document = selected;
+          setPage(document);
+        }
+        setError(null);
+        setRefreshError(null);
         const availableTopics = new Set(
           census.rows.filter((row) => row.reachability === 'reachable').map((row) => row.topic),
         );
         source.current ??= createSnapshotSource();
-        const data = await loadLocalPageSnapshots(document, source.current, {
+        await loadLocalPageSnapshots(document, source.current, {
           mode,
           availableTopics,
           runId: requestedRunId,
+          onSnapshot: publish,
+          isCurrent: current,
         });
         if (current()) {
-          const merged = withLastGood(latest.current, data);
-          latest.current = merged;
           setPage(document);
-          setSnapshots(merged);
+          // Every result has already been published. Reapplying the collected
+          // results here could replace a late recovery with an older timeout.
+          setSnapshots(latest.current);
           setError(null);
+          setRefreshError(null);
         }
       } catch (cause) {
-        if (current() && latest.current.length === 0) setError(cause instanceof Error ? cause.message : String(cause));
+        if (current()) {
+          const message = cause instanceof Error ? cause.message : String(cause);
+          if (latest.current.length === 0) setError(message);
+          else {
+            setRefreshError(message);
+            // A failed catalogue must terminate uncached panel loading too.
+            for (const topic of topics) {
+              if (latest.current.some(snapshot => snapshot.topic === topic)) continue;
+              publish({ topic, rows: [], rowCount: 0, dataFreshness: 'unknown', latestEventAt: null,
+                readAt: new Date().toISOString(), failure: { kind: 'error', message },
+                ...(topic === RUN_TRACE_TOPIC ? { runId: requestedRunId } : {}) });
+            }
+          }
+        }
       } finally {
+        clearTimeout(catalogueTimer);
         if (current()) setLoading(false);
       }
     }
@@ -1725,9 +1974,8 @@ export function LocalDashboardPage({ pageName, syncUrl = false }: LocalDashboard
       clearInterval(timer);
       unsubscribeRefresh();
     };
-  }, [pageName, requestedRunId]);
+  }, [pageName, requestedRunId, recent]);
 
-  const PageIcon = PAGE_ICONS[pageName];
   const emptyState = page ? resolveLocalPageEmptyState(page, snapshots) : null;
   const now = Date.now();
   const interval = page?.dashboard.refresh_interval_seconds ?? 30;
@@ -1740,25 +1988,37 @@ export function LocalDashboardPage({ pageName, syncUrl = false }: LocalDashboard
     const pageSize = Number((widget?.config as Record<string, unknown> | undefined)?.page_size ?? 25);
     const notServed = notServedTopic(component, snapshots);
     const unbound = (component.data_bindings ?? []).length === 0;
+    const bindings = component.component_id === 'workflow-run-path'
+      ? (component.data_bindings ?? []).filter(binding => binding.projection_topic === RUN_TRACE_TOPIC)
+      : component.component_kind === 'table' ? (component.data_bindings ?? []).slice(0, 1) : component.data_bindings ?? [];
+    const pending = bindings.some(binding => !snapshots.some(snapshot => snapshot.topic === binding.projection_topic));
     const PanelIcon = PANEL_ICONS[component.component_id];
     // OV-3: only the panels that read metering-summary.v1 have a row per window. Every other Overview panel
     // reads an exposure with no day rows, so with today chosen it still shows all time and has to say so:
     // seen on a store of two real days, "Agent calls 4" beside "6 of 6 runs local".
     const outsideWindow = pageName === 'overview' && overviewWindow === 'today'
       && component.data_bindings?.[0]?.projection_topic !== METERING_SUMMARY_TOPIC
+      && component.data_bindings?.[0]?.projection_topic !== LEGACY_OVERVIEW_TOPIC
       // OMN-21166: the trends follow the window themselves.
       && component.component_id !== 'overview-insights';
     return (
       <article
         className="local-dashboard-panel"
-        data-width={String(widget?.width ?? 12)}
+        data-width={String(pageName === 'overview' && component.component_id === 'overview-spend-by-day' ? 12
+          : pageName === 'overview' && ['overview-quality', 'overview-last-run'].includes(component.component_id) ? 6
+          : pageName === 'overview' && ['overview-recent-runs', 'overview-tier-mix'].includes(component.component_id) ? 6 : widget?.width ?? 12)}
         data-component={component.component_id}
         data-kind={component.component_kind}
+        data-field-tone={component.component_kind === 'metric_card' ? fieldTone(component.title) : undefined}
+        aria-busy={pending}
         key={component.component_id}
       >
-        <h2>{PanelIcon && <PanelIcon size={14} aria-hidden="true" />}{component.title}</h2>
+        <h2 data-page-heading={pageName !== 'overview' || ['overview-quality', 'overview-insights', 'overview-spend-by-day', 'overview-last-run', 'overview-recent-runs', 'overview-tier-mix'].includes(component.component_id) ? '' : undefined} tabIndex={-1}>{PanelIcon && <PanelIcon size={14} aria-hidden="true" />}{pageName === 'overview' && component.component_id === 'overview-insights' ? 'Activity trends' : component.title}</h2>
         {outsideWindow && <p className="local-dashboard-caption">{OUTSIDE_WINDOW_NOTE}</p>}
-        {unbound && component.component_kind !== 'metric_card' ? <PendingState componentId={component.component_id} />
+        {pageName === 'overview' && ['overview-spend', 'overview-savings', 'overview-measured', 'overview-tokens'].includes(component.component_id)
+          && <p className="local-headline-source">Source: {component.data_bindings?.[0]?.projection_topic === METERING_SUMMARY_TOPIC ? 'metering-summary.v1' : 'cost.savings-overview.v1'}</p>}
+        {pending ? <p className="local-dashboard-caption" role="status">Loading data…</p>
+          : unbound && component.component_kind !== 'metric_card' ? <PendingState componentId={component.component_id} />
           : component.component_id === 'workflow-run-path' ? (
             <WorkflowRun component={component} snapshots={snapshots} requested={requestedRunId} onOpen={openRun} />
           ) : notServed ? <p className="local-dashboard-empty" role="status">{notServed}</p>
@@ -1775,7 +2035,11 @@ export function LocalDashboardPage({ pageName, syncUrl = false }: LocalDashboard
             />
           ) : component.component_id === 'overview-run-locally' ? (
             <RunLocallyCard row={asRecord(rows[0])} />
-          ) : component.component_id === 'overview-avg-saving-per-call' && !unbound ? (
+          ) : pageName === 'overview' && component.data_bindings?.[0]?.projection_topic === LEGACY_OVERVIEW_TOPIC ? (() => {
+            const config = metricConfigFor(page, component.component_id);
+            return config ? <OverviewAggregateCard component={component} config={config} rows={rows} window={overviewWindow} />
+              : <p className="local-dashboard-empty">Not measured</p>;
+          })() : component.component_id === 'overview-avg-saving-per-call' && !unbound ? (
             <SavingsPerRunCard rows={rows} window={overviewWindow} now={now} />
           ) : component.data_bindings?.[0]?.projection_topic === METERING_SUMMARY_TOPIC ? (() => {
             const config = metricConfigFor(page, component.component_id);
@@ -1788,27 +2052,25 @@ export function LocalDashboardPage({ pageName, syncUrl = false }: LocalDashboard
               ? <MetricCard component={component} config={config} row={first} caption={captionRowFor(component, snapshots)} />
               : <p className="local-dashboard-empty">Not measured</p>;
           })()}
-        <WidgetReadState component={component} snapshots={snapshots} now={now} interval={interval} />
+        {!pending && <WidgetReadState component={component} snapshots={snapshots} now={now} interval={interval} />}
       </article>
     );
   };
   const overviewGroups = {
     summary: ['overview-spend', 'overview-savings', 'overview-measured', 'overview-tokens'],
-    focus: ['overview-quality'],
+    focus: ['overview-quality', 'overview-last-run'],
     insights: ['overview-insights'],
-    lower: ['overview-spend-by-day', 'overview-last-run', 'overview-recent-runs', 'overview-tier-mix'],
   };
-  const overviewPrimary = new Set(Object.values(overviewGroups).flat());
   const renderGroup = (ids: string[]) => ids.map(id => {
     const component = page?.components.find(candidate => candidate.component_id === id);
     return component ? renderComponent(component) : null;
   });
   return (
     <RunFilterProvider>
-    <main aria-label={`${page?.dashboard.name ?? 'Local dashboard'} page`} className={`local-dashboard-page local-dashboard-page--${pageName}`}>
+    <main data-destination={`local-${pageName}`} aria-label={`${page?.dashboard.name ?? 'Local dashboard'} page`} className={`local-dashboard-page local-dashboard-page--${pageName}`}>
       <header className="local-dashboard-header">
         <div className="local-dashboard-title">
-          <span className="local-dashboard-page-icon" aria-hidden="true"><PageIcon size={20} /></span>
+          <span className="local-dashboard-page-icon" aria-hidden="true"><DestinationIcon page={`local-${pageName}`} size={20} /></span>
           <div>
             <h1>{page?.dashboard.name ?? PAGE_TITLES[pageName]}</h1>
             <p>{page?.dashboard.description}</p>
@@ -1821,7 +2083,7 @@ export function LocalDashboardPage({ pageName, syncUrl = false }: LocalDashboard
             <span id={windowId}>Figures for</span>
             <div role="radiogroup" aria-labelledby={windowId} className="local-window-options">
               {([['all', 'All time'], ['today', 'Today (UTC)']] as const).map(([value, label]) => (
-                <button key={value} type="button" role="radio" aria-checked={overviewWindow === value}
+                <button key={value} type="button" role="radio" data-window={value} aria-checked={overviewWindow === value}
                   onClick={() => setOverviewWindow(value)}>{label}</button>
               ))}
             </div>
@@ -1831,12 +2093,18 @@ export function LocalDashboardPage({ pageName, syncUrl = false }: LocalDashboard
         {/* OMN-21166: new runs and failures since this browser's last Overview visit, from the served runs. */}
         {pageName === 'overview' && !loading && !error && page && (() => {
           const recent = page.components.find(candidate => candidate.component_id === 'overview-recent-runs');
-          return recent ? <SinceLastVisit decisions={rowsForLocalComponent(recent, snapshots)} now={now} /> : null;
+          const decisions = snapshots.find(snapshot => snapshot.topic === DELEGATION_DECISIONS_TOPIC);
+            return recent && decisions && !decisions.failure ? <SinceLastVisit decisions={rowsForLocalComponent(recent, snapshots)} now={now} onOpenFailures={() => navigate('/runs?status=failed')} /> : null;
         })()}
         {pageName === 'overview' && <Link className="local-explore-runs" href={PAGE_PATHS['local-runs']}>Explore runs <ArrowUpRight size={14} aria-hidden="true" /></Link>}
       </header>
       {loading && <p role="status">Loading runtime exposures…</p>}
-      {error && <p className="local-dashboard-error" role="alert">{error}</p>}
+      {error && <ReadFailureNotice title="Dashboard" now={now}
+        snapshot={{ topic: 'page', failure: { kind: error.includes('no answer') ? 'timeout' : 'error', message: error } }}
+        onRetry={page ? requestLocalPageRefresh : () => window.location.reload()} />}
+      {refreshError && <ReadFailureNotice title="Dashboard connection" now={now}
+        snapshot={{ topic: 'catalogue', failure: { kind: refreshError.includes('no answer') ? 'timeout' : 'error', message: refreshError } }}
+        savedMessage="Showing saved data. Each panel shows when it was updated." />}
       {!loading && !error && page && (
         <section className="local-dashboard-grid" aria-label="Dashboard components">
           {pageName === 'overview' ? <>
@@ -1850,18 +2118,18 @@ export function LocalDashboardPage({ pageName, syncUrl = false }: LocalDashboard
               <section className="local-overview-focus" aria-label="Delegation quality">{renderGroup(overviewGroups.focus)}</section>
             </div>
             {renderGroup(overviewGroups.insights)}
-            <section className="local-overview-lower" aria-label="Spend and latest execution">
-              {renderGroup(['overview-spend-by-day', 'overview-last-run'])}
+            <section className="local-overview-bottom" aria-label="Routing and recent activity">
+              {renderGroup(['overview-tier-mix', 'overview-recent-runs'])}
             </section>
-            <section className="local-overview-lower" aria-label="Recent runs and routing">
-              {renderGroup(['overview-recent-runs', 'overview-tier-mix'])}
-            </section>
+            <details className="local-overview-secondary">
+              <summary>Additional runtime metrics</summary>
+              <section className="local-dashboard-grid" aria-label="Additional runtime metrics">
+                {renderGroup(['overview-run-locally', 'overview-avg-saving-per-call', 'overview-baseline-spend',
+                  'overview-compression', 'overview-cache-hit-rate', 'overview-spend-by-day'])}
+              </section>
+            </details>
             </InsightsWindowContext.Provider>
             </OverviewRunsContext.Provider>
-            <details className="local-overview-secondary">
-              <summary>Additional runtime metrics <span>Baseline, compression &amp; cache</span></summary>
-              <div className="local-dashboard-grid">{page.components.filter(component => !overviewPrimary.has(component.component_id)).map(renderComponent)}</div>
-            </details>
           </> : page.components.map(renderComponent)}
         </section>
       )}

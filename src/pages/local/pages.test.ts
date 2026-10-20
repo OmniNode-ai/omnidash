@@ -240,7 +240,7 @@ describe('local dashboard page contracts', () => {
   });
 
 
-  it('reads Runs through ProtocolSnapshotSource using the delegation-savings and decisions topics only', async () => {
+  it('reads Runs list and routing details through the three existing projection topics', async () => {
     const runs = readPage('runs');
     const source = {
       async *readAll() { yield []; },
@@ -258,9 +258,10 @@ describe('local dashboard page contracts', () => {
       availableTopics: servedExposureCatalogue,
     });
 
-    expect(source.readSnapshot).toHaveBeenCalledTimes(2);
+    expect(source.readSnapshot).toHaveBeenCalledTimes(3);
     expect(source.readSnapshot).toHaveBeenCalledWith('onex.snapshot.projection.delegation.savings.v1');
     expect(source.readSnapshot).toHaveBeenCalledWith('onex.snapshot.projection.delegation.decisions.v1');
+    expect(source.readSnapshot).toHaveBeenCalledWith('onex.snapshot.projection.delegation.model-routing.v1');
   });
 });
 
@@ -284,65 +285,51 @@ describe('local pages against the captured lab catalogue', () => {
     }
   });
 
-  it('Overview shows spend, savings, measured runs and a typed tokens state (requirements OV-3, SV-2, SV-3)', () => {
+  it('Overview restores the four totals from the populated legacy aggregate (Lakshman 2026-10-19)', () => {
     const page = readPage('overview');
-    const topics = page.components.flatMap((c) => (c.data_bindings ?? []).map((b) => b.projection_topic));
-    expect(new Set(topics)).toEqual(new Set([
-      // Per-run cost lookups for Last run and Recent runs (ruling 2: every per-run cost figure stays).
-      'onex.snapshot.projection.delegation.savings.v1',
-      'onex.snapshot.projection.delegation.decisions.v1',
-      // OMN-19980 Step B and Amendment 2: Spend, Savings, Measured runs and Tokens, all from the one all-time row;
-      // cost.savings-overview.v1 is no longer read by Overview.
-      'onex.snapshot.projection.metering-summary.v1',
-      // OMN-20225 AC3: the quality panel and the tier-mix panel.
-      'onex.snapshot.projection.delegation.quality-gate.v1',
-      'onex.snapshot.projection.delegation.model-routing.v1',
-    ]));
-    const keys = page.dashboard.widgets
-      .filter((w) => (w.config as Record<string, unknown>).config_kind === 'metric_card')
-      .map((w) => (w.config as Record<string, unknown>).metric_key);
-    expect(keys).toEqual([
-      'spend_usd', 'savings_usd', 'runs_measured', 'tokens_in_and_out',
-      // OMN-20009: the served run-locally share and the served saving per measured run.
-      'by_tier.local_call_share', 'savings_per_measured_run_usd',
-      // OMN-20752: Baseline spend, the same all-time row's served counterfactual_usd.
-      'counterfactual_usd',
-      // OMN-20226: compression and cache hit rate, each a served metering-summary.v1 column, Not measured until produced.
-      'compression_ratio', 'cache_hit_rate',
-    ]);
-    const savings = page.components.find((c) => c.component_id === 'overview-savings');
-    // SV-2 / OV-3 and OMN-19980 Step B: the figure, its baseline model and its pricing manifest version all come from
-    // the one metering-summary.v1 all-time row, so there is no second (caption) binding.
-    expect(savings?.data_bindings?.map((b) => b.projection_topic)).toEqual(['onex.snapshot.projection.metering-summary.v1']);
-    // OMN-20008 AC5: savings_pct_of_counterfactual is the same row's served ratio behind the percentage line.
-    expect(savings?.data_bindings?.[0]?.required_fields).toEqual(
-      ['window_kind', 'as_of', 'baseline_model', 'pricing_manifest_version', 'baseline_state', 'savings_usd',
-        'savings_pct_of_counterfactual'],
-    );
-    // Measured runs' excluded counts are the same row's run classes, not a second exposure's (Amendment 2).
-    const measured = page.components.find((c) => c.component_id === 'overview-measured');
-    expect(measured?.data_bindings?.map((b) => b.projection_topic)).toEqual(['onex.snapshot.projection.metering-summary.v1']);
-    expect(measured?.data_bindings?.[0]?.required_fields).toEqual(
-      ['window_kind', 'as_of', 'runs_measured', 'runs_total', 'runs_unknown_tokens', 'runs_unknown_spend'],
-    );
-  });
-
-  it('Overview shows no combined token total, and tokens in and out are read from metering-summary.v1 (SV-3)', () => {
-    const page = readPage('overview');
-    for (const widget of page.dashboard.widgets) {
-      const key = String((widget.config as Record<string, unknown>).metric_key);
-      expect(key, 'a combined token total').not.toBe('tokens_total');
-      for (const column of ((widget.config as { columns?: Array<{ key: string }> }).columns ?? [])) {
-        expect(column.key, 'a combined token column').not.toBe('tokens_total');
-      }
+    const expected = { 'overview-spend':'total_cost_usd', 'overview-savings':'total_savings_usd', 'overview-measured':'measured_run_count', 'overview-tokens':'tokens_total' };
+    for (const [id, field] of Object.entries(expected)) {
+      const component = page.components.find(c => c.component_id === id);
+      expect(component?.data_bindings).toEqual([{
+        binding_id:id+'-legacy', projection_topic:'onex.snapshot.projection.cost.savings-overview.v1',
+        ordering_authority_field:'captured_at', ordering_direction:'descending', required_fields:['window','captured_at',field],
+      }]);
+      const config = page.dashboard.widgets.find(w=>w.data_source===id)?.config as {metric_key:string};
+      expect(config.metric_key).toBe(field);
     }
-    // OMN-19980 Amendment 2: the two served columns, from the all-time row; not a combined total.
-    const tokens = page.components.find((c) => c.component_id === 'overview-tokens');
-    expect(tokens?.data_bindings?.map((b) => b.projection_topic)).toEqual(['onex.snapshot.projection.metering-summary.v1']);
-    expect(tokens?.data_bindings?.[0]?.required_fields).toEqual(expect.arrayContaining(['tokens_in', 'tokens_out']));
-    expect(tokens?.data_bindings?.[0]?.required_fields).not.toContain('tokens_total');
+    expect(page.dashboard.widgets.filter(w => (w.config as Record<string, unknown>).config_kind === 'metric_card').map(w => (w.config as Record<string, unknown>).metric_key)).toEqual([
+      'total_cost_usd', 'total_savings_usd', 'measured_run_count', 'tokens_total',
+      'by_tier.local_call_share', 'savings_per_measured_run_usd', 'counterfactual_usd', 'compression_ratio', 'cache_hit_rate',
+    ]);
+    // D2 keeps these exact secondary bindings on Overview; DOM suites open
+    // Additional runtime metrics and require the native disclosure to be open.
+    for (const [id, topic, fields] of [
+      ['overview-run-locally', 'delegation.model-routing.v1', ['by_tier']],
+      ['overview-avg-saving-per-call', 'metering-summary.v1', ['window_kind', 'as_of', 'savings_per_measured_run_usd']],
+      ['overview-baseline-spend', 'metering-summary.v1', ['window_kind', 'as_of', 'baseline_model', 'pricing_manifest_version', 'baseline_state', 'counterfactual_usd']],
+      ['overview-compression', 'metering-summary.v1', ['window_kind', 'as_of', 'compression_ratio']],
+      ['overview-cache-hit-rate', 'metering-summary.v1', ['window_kind', 'as_of', 'cache_hit_rate']],
+    ] as const) {
+      const bindings = page.components.find(c => c.component_id === id)?.data_bindings;
+      expect(bindings).toHaveLength(1);
+      expect(bindings?.[0]?.projection_topic).toBe(`onex.snapshot.projection.${topic}`);
+      expect(bindings?.[0]?.required_fields).toEqual(fields);
+    }
+    // Existing routing/quality/run sources and metering-dependent daily panels remain declared.
+    expect(new Set(page.components.flatMap(c=>(c.data_bindings??[]).map(b=>b.projection_topic)))).toEqual(new Set([
+      'onex.snapshot.projection.cost.savings-overview.v1','onex.snapshot.projection.metering-summary.v1',
+      'onex.snapshot.projection.delegation.savings.v1','onex.snapshot.projection.delegation.decisions.v1',
+      'onex.snapshot.projection.delegation.quality-gate.v1','onex.snapshot.projection.delegation.model-routing.v1',
+    ]));
   });
 
+  it('Overview reads the served legacy token total directly, without inventing an input/output split', () => {
+    const page = readPage('overview');
+    const tokens = page.components.find(c=>c.component_id==='overview-tokens');
+    expect(tokens?.data_bindings?.[0]?.required_fields).toEqual(['window','captured_at','tokens_total']);
+    expect(tokens?.data_bindings?.[0]?.required_fields).not.toContain('tokens_in');
+    expect(tokens?.data_bindings?.[0]?.required_fields).not.toContain('tokens_out');
+  });
 
   it('Overview never reads local_token_pct, a literal 0 the view does not measure', () => {
     for (const file of ['overview.page.yaml', 'overview.contracts.yaml']) {

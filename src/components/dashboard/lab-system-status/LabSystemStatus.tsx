@@ -37,15 +37,15 @@ export type LoadState =
 function ReachabilityLabel({ row }: { row: ExposureCensusRow }) {
   if (row.reachability === 'reachable') {
     return (
-      <Text size="xs" family="mono" color="ok">
-        reachable
+      <Text size="xs" family="mono" color="secondary">
+        bus-backed · not probed
       </Text>
     );
   }
   if (row.reachability === 'refused') {
     return (
       <Text size="xs" family="mono" color="warn">
-        declared · refused
+        not bus-backed
       </Text>
     );
   }
@@ -70,7 +70,7 @@ export function LabSystemStatusView({ state }: { state: LoadState }) {
 
   return (
     <ComponentWrapper
-      title="System Status"
+      title="Projection catalogue"
       isLoading={state.kind === 'loading'}
       error={state.kind === 'error' ? new Error(state.reason) : null}
       isEmpty={state.kind === 'ready' && rows.length === 0}
@@ -79,12 +79,13 @@ export function LabSystemStatusView({ state }: { state: LoadState }) {
       headerExtra={
         census !== null ? (
           <Text size="xs" family="mono" color="tertiary">
-            {`${rows.length} declared · ${census.reachable} reachable · ${census.refused} refused · ${census.unknown} unknown`}
+            {`${rows.length} declared · ${census.reachable} bus-backed · ${census.refused} not bus-backed · ${census.unknown} unknown`}
           </Text>
         ) : null
       }
     >
       <div>
+        <Text size="xs" color="tertiary">Catalogue backing only; endpoint health is not checked here.</Text>
         {rows.map((row) => (
           <div key={row.topic} data-testid="exposure-census-row">
             <Text size="xs" family="mono" color="secondary">

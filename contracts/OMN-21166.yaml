@@ -49,14 +49,14 @@
   "evidence_requirements": [
     {
       "kind": "tests",
-      "description": "AC1-AC8: the complete browser suite covers MVP visibility and preserved functionality, with missing-tenant and populated-fixture captures; live preview receipts are kept separately.",
-      "command": "(test -d node_modules || npm ci --no-audit --no-fund) && npx playwright install chromium && npm run test:e2e -- --project=chromium --workers=1 --retries=0"
+      "description": "Run the full browser regression suite outside the per-check evidence timer; criterion-bound checks below retain the AC1-AC8 browser and capture proofs as short partitions. Artifacts are fixture proof, with deployed/live acceptance separate.",
+      "command": "npm run test:e2e -- --project=chromium --workers=1 --retries=0"
     }
   ],
   "dod_evidence": [
     {
       "id": "dod-omn21166-mvp-browser-regression",
-      "description": "AC1-AC8: replay the browser regressions and their attached capture manifests. These fixture checks do not substitute for a deployed runtime probe or independent review.",
+      "description": "Joint AC1-AC8 browser regression and fixture capture proof: all 14 bounded checks must pass. Covers ordered core routes and Evidence, opt-in Developer tools, deferred controls and saved data, local identity, Runs/Workflow/Usage interactions, theme/sidebar controls, and desktop/narrow populated/missing-tenant capture states. Install dependencies in the verifier build step. These fixture checks do not establish live deployment.",
       "source": "manual",
       "binds_ac": [
         "AC1",
@@ -71,7 +71,72 @@
       "checks": [
         {
           "check_type": "test_passes",
-          "check_value": "(test -d node_modules || npm ci --no-audit --no-fund) && npx playwright install chromium && npm run test:e2e -- --project=chromium --workers=1 --retries=0",
+          "check_value": "npm run test:e2e -- tests/e2e/local-dashboard-omn21166.spec.ts --project=chromium --workers=1 --retries=0 --grep \"AC1/AC6\"",
+          "cwd": "${OMNI_HOME}/omnidash"
+        },
+        {
+          "check_type": "test_passes",
+          "check_value": "npm run test:e2e -- tests/e2e/local-dashboard-omn21166.spec.ts --project=chromium --workers=1 --retries=0 --grep \"AC2\"",
+          "cwd": "${OMNI_HOME}/omnidash"
+        },
+        {
+          "check_type": "test_passes",
+          "check_value": "npm run test:e2e -- tests/e2e/local-dashboard-omn21166.spec.ts --project=chromium --workers=1 --retries=0 --grep \"AC3/AC4\"",
+          "cwd": "${OMNI_HOME}/omnidash"
+        },
+        {
+          "check_type": "test_passes",
+          "check_value": "npm run test:e2e -- tests/e2e/local-dashboard-omn21166.spec.ts --project=chromium --workers=1 --retries=0 --grep \"AC5\"",
+          "cwd": "${OMNI_HOME}/omnidash"
+        },
+        {
+          "check_type": "test_passes",
+          "check_value": "npm run test:e2e -- tests/e2e/local-dashboard-omn21166.spec.ts --project=chromium --workers=1 --retries=0 --grep \"AC8 chrome states width 1440$\"",
+          "cwd": "${OMNI_HOME}/omnidash"
+        },
+        {
+          "check_type": "test_passes",
+          "check_value": "npm run test:e2e -- tests/e2e/local-dashboard-omn21166.spec.ts --project=chromium --workers=1 --retries=0 --grep \"AC8 chrome states width 390$\"",
+          "cwd": "${OMNI_HOME}/omnidash"
+        },
+        {
+          "check_type": "test_passes",
+          "check_value": "npm run test:e2e -- tests/e2e/local-dashboard-omn21166.spec.ts --project=chromium --workers=1 --retries=0 --grep \"AC8 page walk populated-fixture width 1440$\"",
+          "cwd": "${OMNI_HOME}/omnidash"
+        },
+        {
+          "check_type": "test_passes",
+          "check_value": "npm run test:e2e -- tests/e2e/local-dashboard-omn21166.spec.ts --project=chromium --workers=1 --retries=0 --grep \"AC8 page walk populated-fixture width 390$\"",
+          "cwd": "${OMNI_HOME}/omnidash"
+        },
+        {
+          "check_type": "test_passes",
+          "check_value": "npm run test:e2e -- tests/e2e/local-dashboard-omn21166.spec.ts --project=chromium --workers=1 --retries=0 --grep \"AC8 page walk missing-tenant width 1440$\"",
+          "cwd": "${OMNI_HOME}/omnidash"
+        },
+        {
+          "check_type": "test_passes",
+          "check_value": "npm run test:e2e -- tests/e2e/local-dashboard-omn21166.spec.ts --project=chromium --workers=1 --retries=0 --grep \"AC8 page walk missing-tenant width 390$\"",
+          "cwd": "${OMNI_HOME}/omnidash"
+        },
+        {
+          "check_type": "test_passes",
+          "check_value": "npm run test:e2e -- tests/e2e/local-dashboard-omn21166-charts.spec.ts --project=chromium --workers=1 --retries=0 --grep \"chart zoom/reset\"",
+          "cwd": "${OMNI_HOME}/omnidash"
+        },
+        {
+          "check_type": "test_passes",
+          "check_value": "npm run test:e2e -- tests/e2e/local-dashboard-omn21166-charts.spec.ts --project=chromium --workers=1 --retries=0 --grep \"chart selected run\"",
+          "cwd": "${OMNI_HOME}/omnidash"
+        },
+        {
+          "check_type": "test_passes",
+          "check_value": "npm run test:e2e -- tests/e2e/local-dashboard-omn21166-charts.spec.ts --project=chromium --workers=1 --retries=0 --grep \"usage model highlighting\"",
+          "cwd": "${OMNI_HOME}/omnidash"
+        },
+        {
+          "check_type": "test_passes",
+          "check_value": "npm run test:e2e -- tests/e2e/local-dashboard-omn21166.spec.ts --project=chromium --workers=1 --retries=0 --grep \"AC7 theme\"",
           "cwd": "${OMNI_HOME}/omnidash"
         }
       ]

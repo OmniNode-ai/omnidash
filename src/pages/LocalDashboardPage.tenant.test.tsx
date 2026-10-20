@@ -66,7 +66,10 @@ afterEach(() => {
 
 async function panelsOf(pageName: 'overview' | 'runs' | 'workflow' | 'credentials' | 'api-keys') {
   render(<LocalDashboardPage pageName={pageName} />);
-  await waitFor(() => expect(screen.queryByText(/Loading runtime exposures/)).not.toBeInTheDocument());
+  await waitFor(() => {
+    const panels = screen.getAllByRole('article');
+    for (const panel of panels) expect(panel).toHaveAttribute('aria-busy', 'false');
+  });
   return screen.getAllByRole('article');
 }
 

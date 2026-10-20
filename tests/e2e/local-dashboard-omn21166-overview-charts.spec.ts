@@ -16,6 +16,7 @@ const rows = { ...chartRows, [prefix + 'delegation.decisions.v1']: decisions };
 test('Overview plots the same latest ten runs, keeps values and opens the selected identity', async ({ page }, info) => {
   await serveCharts(page, rows);
   await page.goto('/overview');
+  await page.getByText('Show recent run fields', { exact: true }).press('Enter');
   const recent = page.locator('[data-component="overview-recent-runs"]');
   const duration = recent.getByRole('figure', { name: 'Duration per run', exact: true });
   const tokens = recent.getByRole('figure', { name: 'Tokens per run', exact: true });
@@ -44,7 +45,16 @@ test('Overview plots the same latest ten runs, keeps values and opens the select
   await recent.getByRole('checkbox', { name: 'Show all run fields' }).check();
   await expect(recent.locator('tbody tr').nth(2).locator('td').nth(11)).toHaveText('0');
   await expect(recent.locator('tbody tr').nth(2).locator('td').nth(12)).toHaveText('Not recorded');
-  await expect(page.locator('.local-dashboard-panel[data-component]')).toHaveCount(14);
+  // The approved insights panel joined the original fourteen. Check identities
+  // as well as count so a duplicated panel cannot hide a missing component.
+  expect(await page.locator('.local-dashboard-panel[data-component]').evaluateAll(elements =>
+    elements.map(el => el.getAttribute('data-component')).sort())).toEqual([
+    'overview-spend', 'overview-savings', 'overview-measured', 'overview-tokens',
+    'overview-quality', 'overview-insights', 'overview-spend-by-day', 'overview-last-run',
+    'overview-recent-runs', 'overview-tier-mix', 'overview-run-locally',
+    'overview-avg-saving-per-call', 'overview-baseline-spend', 'overview-compression',
+    'overview-cache-hit-rate',
+  ].sort());
   await expect(page.locator('[data-component="overview-quality"]')).toBeVisible();
   expect(await page.locator('[data-component="overview-quality"]').evaluate(el => !!el.closest('details'))).toBe(false);
   await expect(page.locator('[data-component="overview-quality"]')).toContainText('75');
@@ -56,6 +66,7 @@ test('Overview plots the same latest ten runs, keeps values and opens the select
 test('Overview charts retain reduced motion and controls in both themes at narrow widths', async ({ page }, info) => {
   await serveCharts(page, rows);
   await page.goto('/overview');
+  await page.getByText('Show recent run fields', { exact: true }).press('Enter');
   for (const theme of ['light', 'dark']) {
     for (const width of [390, 320]) {
       await page.setViewportSize({ width, height: 844 });

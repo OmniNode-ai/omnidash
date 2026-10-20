@@ -34,13 +34,13 @@ describe('Part 1 smoke proof — frame liveness, provider wiring, theme switchin
     useFrameStore.getState().setActiveDashboard(dash);
   });
 
-  it('renders frame layout with header and main area', () => {
+  it('renders frame layout with header and main area', async () => {
     renderApp();
     // "Dashboards" appears in both the sidebar nav label and the header breadcrumb.
     const dashboardsEls = screen.getAllByText('Dashboards');
     expect(dashboardsEls.length).toBeGreaterThan(0);
     // Dashboard name appears in both sidebar list and DashboardView toolbar.
-    const nameEls = screen.getAllByText('Integration Test Dashboard');
+    const nameEls = await screen.findAllByText('Integration Test Dashboard');
     expect(nameEls.length).toBeGreaterThan(0);
   });
 

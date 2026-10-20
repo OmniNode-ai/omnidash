@@ -352,5 +352,64 @@
 
 @media(min-width:1025px) { .app:not(.sidebar-collapsed) { --sidebar-w: 232px; } }
 
-/* Match the approved mockup neutral canvas; dark keeps its own tokens. */
-:root:not([data-theme="dark"]) { --bg: #f8f9f8; }
+/* Soft native-style layers, inspired by NanoUI's light monitor and dark gallery. */
+:root:not([data-theme="dark"]) {
+  --bg: #faf9f6;
+  --panel: #f0eee7;
+  --panel-2: #e6e5db;
+  --ink: #252821;
+  --ink-2: #53574b;
+  --ink-3: #64685c;
+  --line: #d8d7ce;
+  --line-2: #e6e4dc;
+  --sidebar: #f3f0e9;
+  --run-cost-accent: #a35d09;
+  --run-score-accent: #14735c;
+}
+:root[data-theme="dark"] {
+  --bg: #191b1e;
+  --panel: #24272b;
+  --panel-2: #2c3035;
+  --line: #41464d;
+  --line-2: #33383e;
+  --sidebar: #1f2226;
+  --sidebar-line: #363b42;
+  --sidebar-hover: #2d333c;
+  --sidebar-ink-2: #b0b8c5;
+  --run-cost-accent: #f3bf6b;
+  --run-score-accent: #69d4b4;
+}
+
+/* nanomon image palette: the same series token colors its mark and legend. */
+:root:not([data-theme="dark"]) {
+  --ins-pass: #64804c;
+  --ins-fail: #a45e4a;
+  --ins-unknown: #85847b;
+  --ins-series-1: #b18a43;
+  --ins-series-2: #64838a;
+  --ins-series-3: #a36548;
+  --ins-series-4: #86779e;
+  --ins-series-5: #858049;
+  --ins-series-6: #7c8a58;
+  --ins-series-7: #ad8f59;
+  --ins-series-8: #6e7c89;
+  --ins-ramp-2: #81925b;
+  --ins-ramp-3: #96955b;
+  --ins-fail-strong: #965347;
+}
+:root[data-theme="dark"] {
+  --ins-pass: #a3bb8d;
+  --ins-fail: #d6a08b;
+  --ins-unknown: #a5a397;
+  --ins-series-1: #d2ae6d;
+  --ins-series-2: #91b8c3;
+  --ins-series-3: #d2a18a;
+  --ins-series-4: #b9a5ce;
+  --ins-series-5: #c5c382;
+  --ins-series-6: #a9bb8b;
+  --ins-series-7: #d0b585;
+  --ins-series-8: #a6b4c2;
+  --ins-ramp-2: #b0c18e;
+  --ins-ramp-3: #c2c08f;
+  --ins-fail-strong: #d29487;
+}

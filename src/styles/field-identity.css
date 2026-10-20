@@ -1,0 +1,170 @@
+/* One meaning per field across local cards, Workflow and the event views. */
+:root {
+  --field-pass: #166534; --field-fail: #b91c1c; --field-count: #1d4ed8;
+  --field-score: #a21caf; --field-threshold: #854d0e; --field-model: #6d28d9;
+  --field-age: #0369a1; --field-identity: #0f6c7a; --field-duration: #92400e;
+  --field-cost: #065f46; --field-savings: #0f766e; --field-backend: #9a3412;
+  --field-host: #475569; --field-tokens-in: #155e75; --field-tokens-out: #9d174d;
+  --field-tokens: #0e7490; --field-basis: #3f6212; --field-task: #6b21a8;
+  --field-tier: #9f1239; --field-queue: #7c5700; --field-execution: #713f12;
+  --field-completion: #6b537d; --field-unavailable: #555b61;
+}
+[data-theme="dark"] {
+  --field-pass: #86efac; --field-fail: #fca5a5; --field-count: #93c5fd;
+  --field-score: #f0abfc; --field-threshold: #fde68a; --field-model: #c4b5fd;
+  --field-age: #7dd3fc; --field-identity: #67d8cf; --field-duration: #fcd34d;
+  --field-cost: #6ee7b7; --field-savings: #5eead4; --field-backend: #fdba74;
+  --field-host: #cbd5e1; --field-tokens-in: #67e8f9; --field-tokens-out: #f9a8d4;
+  --field-tokens: #a5f3fc; --field-basis: #bef264; --field-task: #d8b4fe;
+  --field-tier: #fda4af; --field-queue: #e3bc72; --field-execution: #fef08a;
+  --field-completion: #d2b8dd; --field-unavailable: #b5b9c0;
+}
+[data-field-tone="pass"] { --field-ink: var(--field-pass); }
+[data-field-tone="fail"] { --field-ink: var(--field-fail); }
+[data-field-tone="count"] { --field-ink: var(--field-count); }
+[data-field-tone="score"] { --field-ink: var(--field-score); }
+[data-field-tone="threshold"] { --field-ink: var(--field-threshold); }
+[data-field-tone="model"] { --field-ink: var(--field-model); }
+[data-field-tone="age"] { --field-ink: var(--field-age); }
+[data-field-tone="identity"] { --field-ink: var(--field-identity); }
+[data-field-tone="duration"] { --field-ink: var(--field-duration); }
+[data-field-tone="cost"] { --field-ink: var(--field-cost); }
+[data-field-tone="savings"] { --field-ink: var(--field-savings); }
+[data-field-tone="backend"] { --field-ink: var(--field-backend); }
+[data-field-tone="host"] { --field-ink: var(--field-host); }
+[data-field-tone="tokens-in"] { --field-ink: var(--field-tokens-in); }
+[data-field-tone="tokens-out"] { --field-ink: var(--field-tokens-out); }
+[data-field-tone="tokens"] { --field-ink: var(--field-tokens); }
+[data-field-tone="basis"] { --field-ink: var(--field-basis); }
+[data-field-tone="task"] { --field-ink: var(--field-task); }
+[data-field-tone="tier"] { --field-ink: var(--field-tier); }
+[data-field-tone="queue"] { --field-ink: var(--field-queue); }
+[data-field-tone="execution"] { --field-ink: var(--field-execution); }
+[data-field-tone="completion"] { --field-ink: var(--field-completion); }
+[data-field-unavailable="true"] { --field-ink: var(--field-unavailable); }
+.local-dashboard-page [data-field-tone] > :is(dt, dd, .local-dashboard-metric),
+.ev-root [data-field-tone] > :is(.k, .v, .k-l, .k-v, .note, .mono, .big),
+.local-dashboard-page [data-field-tone] dd a,
+.local-dashboard-page [data-field-tone] > :is(span:not([aria-hidden]), strong) { color: var(--field-ink); }
+.ev-root .panel .kv > [data-field-tone] > :is(.k, .v),
+.ev-root .kpi[data-tone][data-field-tone][data-field-unavailable] > :is(.k-l, .k-v) { color: var(--field-ink); }
+.local-dashboard-page [data-field-tone] > .local-dashboard-metric[data-measured="false"] { color: var(--field-unavailable); }
+.local-dashboard-page .local-dashboard-fields dt, .ev-root .panel .kv .k {
+  font-size: 12px; line-height: 1.5; letter-spacing: 0; text-transform: none; margin-bottom: 4px;
+}
+.local-dashboard-page .local-dashboard-fields dd, .ev-root .panel .kv .v {
+  font-size: 13px; line-height: 1.55; font-variant-numeric: tabular-nums; overflow-wrap: anywhere;
+}
+.ev-root .kv { gap: 12px 16px; }
+.ev-root .kpi[data-tone][data-field-tone][data-field-unavailable] { --kpi-accent: var(--field-ink); }
+.local-last-run .local-run-more > summary { color: var(--field-task); }
+.local-dashboard-page .workflow-comparison-row[data-field-tone] .workflow-comparison-track > span { background: var(--field-ink); }
+.local-dashboard-page .workflow-flow-node[data-field-tone] > svg { color: var(--field-ink); }
+.ev-root .ev-outcome-pass { color: var(--field-pass); }
+.ev-root .ev-outcome-fail { color: var(--field-fail); }
+.local-dashboard-page .local-last-run .local-dashboard-fields [data-field-tone] > dd { font-size: 13px; }
+.local-dashboard-page .local-run-pill:is([data-outcome="passed"], [data-outcome="succeeded"]), .ev-root .badge.ok { color: var(--field-pass); }
+.local-dashboard-page .local-run-pill[data-outcome="failed"], .ev-root .badge.fail { color: var(--field-fail); }
+
+/* Distinct concepts keep their own identity in both themes. */
+:root {
+  --field-calls: #9f4514;
+  --field-tenant: #6d4c41;
+  --field-session: #4e6282;
+  --field-baseline: #62621b;
+  --field-saving-average: #196147;
+  --field-compression: #3e637b;
+  --field-cache: #874a34;
+  --field-quality: #2f7068;
+  --field-events: #466b8a;
+  --field-generation: #75518a;
+  --field-transport: #806000;
+  --field-delegations: #1e40af;
+  --field-routing: #3a6171;
+  --field-unrouted: #815932;
+  --field-contract: #466b20;
+  --field-recent: #9f3155;
+  --field-last: #8d3964;
+  --field-analysis: #555b92;
+  --field-spend-daily: #0d6b4f;
+  --field-tokens-daily: #6b6b26;
+  --field-savings-daily: #276856;
+  --field-usage-day: #776b21;
+  --field-credentials: #9d4b34;
+  --field-local-identity: #586780;
+  --field-local-run: #386a44;
+  --field-selected: #536d9d;
+  --field-path: #567349;
+}
+[data-theme="dark"] {
+  --field-calls: #edb08c;
+  --field-tenant: #d6b7a8;
+  --field-session: #a8bddf;
+  --field-baseline: #d1ce83;
+  --field-saving-average: #9bd8bb;
+  --field-compression: #9dc8df;
+  --field-cache: #dfad9c;
+  --field-quality: #93c7bb;
+  --field-events: #9dc5e6;
+  --field-generation: #c8ace1;
+  --field-transport: #e2c477;
+  --field-delegations: #a2bcfa;
+  --field-routing: #9ac6d0;
+  --field-unrouted: #d8bd93;
+  --field-contract: #c9e78d;
+  --field-recent: #f2a7c5;
+  --field-last: #dea1c0;
+  --field-analysis: #aeb1e6;
+  --field-spend-daily: #87d4b5;
+  --field-tokens-daily: #c7cf90;
+  --field-savings-daily: #8dcdb7;
+  --field-usage-day: #e0d08d;
+  --field-credentials: #e0aa91;
+  --field-local-identity: #b2c2dc;
+  --field-local-run: #99caa0;
+  --field-selected: #a9c0e8;
+  --field-path: #aac793;
+}
+[data-field-tone="calls"] { --field-ink: var(--field-calls); }
+[data-field-tone="tenant"] { --field-ink: var(--field-tenant); }
+[data-field-tone="session"] { --field-ink: var(--field-session); }
+[data-field-tone="baseline"] { --field-ink: var(--field-baseline); }
+[data-field-tone="saving-average"] { --field-ink: var(--field-saving-average); }
+[data-field-tone="compression"] { --field-ink: var(--field-compression); }
+[data-field-tone="cache"] { --field-ink: var(--field-cache); }
+[data-field-tone="quality"] { --field-ink: var(--field-quality); }
+[data-field-tone="events"] { --field-ink: var(--field-events); }
+[data-field-tone="generation"] { --field-ink: var(--field-generation); }
+[data-field-tone="transport"] { --field-ink: var(--field-transport); }
+[data-field-tone="delegations"] { --field-ink: var(--field-delegations); }
+[data-field-tone="routing"] { --field-ink: var(--field-routing); }
+[data-field-tone="unrouted"] { --field-ink: var(--field-unrouted); }
+[data-field-tone="contract"] { --field-ink: var(--field-contract); }
+[data-field-tone="recent"] { --field-ink: var(--field-recent); }
+[data-field-tone="last"] { --field-ink: var(--field-last); }
+[data-field-tone="analysis"] { --field-ink: var(--field-analysis); }
+[data-field-tone="spend-daily"] { --field-ink: var(--field-spend-daily); }
+[data-field-tone="tokens-daily"] { --field-ink: var(--field-tokens-daily); }
+[data-field-tone="savings-daily"] { --field-ink: var(--field-savings-daily); }
+[data-field-tone="usage-day"] { --field-ink: var(--field-usage-day); }
+[data-field-tone="credentials"] { --field-ink: var(--field-credentials); }
+[data-field-tone="local-identity"] { --field-ink: var(--field-local-identity); }
+[data-field-tone="local-run"] { --field-ink: var(--field-local-run); }
+[data-field-tone="selected"] { --field-ink: var(--field-selected); }
+[data-field-tone="path"] { --field-ink: var(--field-path); }
+[data-field-unavailable="true"] { --field-ink: var(--field-unavailable); }
+.field-icon { display: inline-block; flex: none; vertical-align: -.12em; color: inherit; }
+.local-dashboard-fields dt, .ev-root .kv .k, .ev-root .kpi .k-l { display: flex; align-items: baseline; gap: 5px; }
+.local-dashboard-fields dt > .field-icon, .ev-root .kv .k > .field-icon { align-self: flex-start; margin-top: 3px; }
+.ev-root .kpi[data-field-tone] { --kpi-accent: var(--field-ink); }
+
+:root { --field-today: #0c6f6a; }
+[data-theme="dark"] { --field-today: #8ad4c8; }
+
+.ev-root .kpi[data-field-tone] .k-v > .ev-kpi-sm { color: inherit; }
+
+/* Card identity remains distinct when its value is unavailable; the value still reads in the unavailable ink. */
+.ev-root[data-destination="delegation-evidence"] .kpi[data-tone="blue"][data-field-tone][data-field-unavailable] { --kpi-accent: var(--field-count); }
+.ev-root[data-destination="delegation-evidence"] .kpi[data-tone="green"][data-field-tone][data-field-unavailable] { --kpi-accent: var(--field-pass); }
+.ev-root[data-destination="delegation-evidence"] .kpi[data-tone="purple"][data-field-tone][data-field-unavailable] { --kpi-accent: var(--field-savings); }
+.ev-root[data-destination="delegation-evidence"] .kpi[data-tone="amber"][data-field-tone][data-field-unavailable] { --kpi-accent: var(--field-tokens); }

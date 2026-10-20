@@ -75,7 +75,7 @@ describe('OMN-21015 U2: savings per day on Usage, as bars', () => {
     const panel = await open([row('all', '', '0.900000')]);
     expect(within(panel).queryByRole('figure')).toBeNull();
     expect(harness.handed).toHaveLength(0);
-    expect(within(panel).getByRole('status').textContent).toContain('No savings rows yet');
+    expect(within(panel).getByRole('status').textContent).toContain('No daily savings data');
   });
 
   it('V5: the table under the chart keeps one row per served day with its served figures', async () => {

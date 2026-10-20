@@ -4,14 +4,14 @@ import { chartRows, prefix, runIds, serveCharts } from './omn21166-chart-fixture
 // Failure modes declared before implementation: wrong bar after hiding/zoom;
 // stale selection after filters; missing value becomes zero; unknown day filled;
 // keyboard/touch cannot inspect; selection changes table; chart ignores reduced motion.
-test.use({ viewport: { width: 1440, height: 900 }, trace: 'on' });
+test.use({ viewport: { width: 1440, height: 900 }, trace: 'on', actionTimeout: 5000 });
 test.beforeEach(async ({ page }) => { await serveCharts(page); });
 
 test('chart zoom/reset changes visible range without changing table or selected identity', async ({ page }, info) => {
   await page.goto('/runs');
   const chart = page.getByRole('figure', { name: 'Duration per run', exact: true });
   await expect(chart.locator('.local-chart-canvas svg')).toBeVisible(); // positive control, actual renderer
-  const tableBefore = await page.locator('main table').innerText();
+  const tableBefore = await page.locator('[data-component="recent-runs"] table').innerText();
   await chart.getByLabel('Inspect run').selectOption(runIds[1]);
   await expect(chart.getByRole('link', { name: 'Open run', exact: true })).toHaveAttribute('href', /correlation_id=chart-run-b/);
   await chart.getByLabel('First point').focus();
@@ -19,7 +19,7 @@ test('chart zoom/reset changes visible range without changing table or selected 
   await expect(chart.getByText('Showing 2–3 of 3')).toBeVisible();
   await chart.getByRole('button', { name: 'Reset view', exact: true }).click();
   await expect(chart.getByText('Showing 1–3 of 3')).toBeVisible();
-  expect(await page.locator('main table').innerText()).toBe(tableBefore);
+  expect(await page.locator('[data-component="recent-runs"] table').innerText()).toBe(tableBefore);
   await chart.getByRole('link', { name: 'Open run', exact: true }).click();
   await expect(page).toHaveURL(/workflow\?correlation_id=chart-run-b/);
   await page.screenshot({ path: info.outputPath('selected-run-workflow.png') });
@@ -33,7 +33,7 @@ test('chart selected run is cleared after filtering rather than opening a differ
   await page.getByRole('combobox', { name: 'Status', exact: true }).selectOption('passed');
   await expect(chart.getByLabel('Inspect run')).toHaveValue('');
   await expect(chart.getByRole('link', { name: 'Open run', exact: true })).toHaveCount(0);
-  await expect(page.locator('main table')).not.toContainText('chart-run-b');
+  await expect(page.locator('[data-component="recent-runs"] table')).not.toContainText('chart-run-b');
 });
 
 test('an actual bar opens its exact run after a series is hidden and the range is zoomed', async ({ page }, info) => {
@@ -64,6 +64,7 @@ test('an actual bar opens its exact run after a series is hidden and the range i
 
 test('money explorer preserves precise served zero and missing values, table and baseline', async ({ page }, info) => {
   await page.goto('/overview');
+  await page.getByText('Additional runtime metrics', { exact: true }).press('Enter');
   const chart = page.getByRole('figure', { name: 'Spend per day vs baseline-a', exact: true });
   await expect(chart.locator('.local-chart-canvas svg')).toBeVisible();
   await chart.getByLabel('Inspect day').selectOption('1');
@@ -115,8 +116,9 @@ test('reduced motion disables chart engine animation, single point omits meaning
 test('empty money data remains explicit and cannot expose an invented graph', async ({ page }, info) => {
   await serveCharts(page, { ...chartRows, [prefix + 'metering-summary.v1']: [] });
   await page.goto('/overview');
+  await page.getByText('Additional runtime metrics', { exact: true }).press('Enter');
   const panel = page.locator('[data-component="overview-spend-by-day"]');
-  await expect(panel).toContainText('No day rows');
+  await expect(panel).toContainText('Daily spend data unavailable.');
   await expect(panel.locator('.local-chart-canvas')).toHaveCount(0);
   await page.screenshot({ path: info.outputPath('no-invented-series.png') });
 });

@@ -1,5 +1,5 @@
 import { useEffect, useId, useState } from 'react';
-import { ChartNoAxesCombined, Layers, RotateCcw, ScanLine, Timer, type LucideIcon } from 'lucide-react';
+import { ChartNoAxesCombined, CircleDollarSign, Gauge, Layers, RotateCcw, ScanLine, Timer, type LucideIcon } from 'lucide-react';
 import { Link } from 'wouter';
 import { workflowHref } from '@/navigation/workflow-url-state';
 import ReactEChartsCore from 'echarts-for-react/lib/core';
@@ -57,7 +57,7 @@ function ChartRange({ count, range }: { count: number; range: ReturnType<typeof 
   </div>;
 }
 
-function RunInspector({ runs }: { runs: readonly ListedRun[] }) {
+function RunInspector({ runs, describe }: { runs: readonly ListedRun[]; describe?: (run: ListedRun) => string }) {
   const [selected, setSelected] = useState('');
   const id = useId();
   const run = runs.find(item => item.id === selected);
@@ -69,7 +69,7 @@ function RunInspector({ runs }: { runs: readonly ListedRun[] }) {
       {runs.filter(item => item.id !== null).map((item, index) => <option key={`${item.id}-${index}`} value={item.id!}>{item.id} · {item.model}</option>)}
     </select>
     {run && <div className="local-chart-detail" role="status"><span><strong>{run.model}</strong><span className="local-chart-detail-id">{run.id}</span></span>
-      <span>{run.status} · {point(run.duration).served ?? 'Not recorded'}{point(run.duration).served !== null ? ' ms' : ''}</span>
+      <span>{describe ? describe(run) : `${run.status} · ${point(run.duration).served ?? 'Not recorded'}${point(run.duration).served !== null ? ' ms' : ''}`}</span>
       <Link href={workflowHref(run.id!)} className="local-chart-open">Open run</Link></div>}
   </div>;
 }
@@ -364,7 +364,7 @@ export function millisecondsAxisLabel(value: number): string {
   return value === 0 ? '' : `${value} ms`;
 }
 
-function timingOption(bars: readonly RunTimingBar[], colours: readonly string[]) {
+function timingOption(bars: readonly RunTimingBar[], colours: readonly string[], compact = false) {
   const text = tone('--ink-2', 0x8b949e);
   const line = tone('--line', 0x30363d);
   const fontFamily = typeof document === 'undefined' ? '' : getComputedStyle(document.body).fontFamily;
@@ -373,14 +373,14 @@ function timingOption(bars: readonly RunTimingBar[], colours: readonly string[])
   return {
     animationDuration: 250,
     ...(fontFamily ? { textStyle: { fontFamily } } : {}),
-    grid: { left: 96, right: 84, top: 6, bottom: 24 },
+    grid: { left: compact ? 60 : 96, right: compact ? 56 : 84, top: 6, bottom: 24 },
     tooltip: {
       trigger: 'item',
       formatter: (param: { dataIndex: number; name: string; marker: string }) => `${param.marker}${asText(param.name)}: ${asText(servedText(param.dataIndex))}`,
     },
     xAxis: {
       type: 'value',
-      axisLabel: { color: text, formatter: millisecondsAxisLabel },
+      axisLabel: { color: text, formatter: millisecondsAxisLabel, hideOverlap: true },
       splitLine: { lineStyle: { color: line, type: 'dashed' } },
     },
     // The first timing is the top row, as the tiles above read left to right.
@@ -397,7 +397,7 @@ function timingOption(bars: readonly RunTimingBar[], colours: readonly string[])
       type: 'bar',
       barMaxWidth: 18,
       data: bars.map((bar, index) => ({ value: bar.value, itemStyle: { color: colours[index]!, borderRadius: [0, 3, 3, 0] } })),
-      label: { show: true, position: 'right', color: text, formatter: (param: { dataIndex: number }) => servedText(param.dataIndex) },
+      label: { show: true, position: 'right', color: text, ...(compact ? { width: 50, overflow: 'break', distance: 4 } : {}), formatter: (param: { dataIndex: number }) => servedText(param.dataIndex) },
     }],
   };
 }
@@ -406,17 +406,28 @@ function timingOption(bars: readonly RunTimingBar[], colours: readonly string[])
  * OMN-21015: where one run's time went, as bars. A second way of showing the timings the run summary's tiles carry as
  * text; it draws exactly the bars `runTimingBars` shapes, and nothing when no timing is measured.
  */
-export function RunTimingChart({ timings, title = 'Run timing' }: { timings: readonly RunTiming[]; title?: string }) {
+export function RunTimingChart({ timings, title = 'Run timing', compact = false, accentToken }: { timings: readonly RunTiming[]; title?: string; compact?: boolean; accentToken?: string }) {
   const motion = useChartMotion();
   // Re-read the theme's colours when the theme changes.
   useThemeName();
   const { bars, unmeasured } = runTimingBars(timings);
   if (bars.length === 0) return null;
   const palette = seriesColours(timings.length, undefined);
-  const colours = bars.map((bar) => palette[bar.place - 1]!);
+  const colours = bars.map((bar, index) => {
+    if (!accentToken) return palette[bar.place - 1]!;
+    const accent = cssColorToHex(tone(accentToken, 0xc2410c), 0xc2410c);
+    // Distinct timings retain separate shades within their enclosing card's
+    // accent. The first remains the exact accent; no data changes with color.
+    const tint = Math.min(.5, index / (bars.length + 1));
+    const channels = [16, 8, 0].map(shift => {
+      const channel = (accent >> shift) & 255;
+      return Math.round(channel + (255 - channel) * tint).toString(16).padStart(2, '0');
+    });
+    return `#${channels.join('')}`;
+  });
   return (
     <figure className="local-chart local-chart--timing" aria-label={title}>
-      <ReactEChartsCore echarts={echarts} option={{ ...timingOption(bars, colours), ...motion.option }} notMerge opts={{ renderer: 'svg' }} className="local-chart-canvas" />
+      <ReactEChartsCore echarts={echarts} option={{ ...timingOption(bars, colours, compact), ...motion.option }} notMerge opts={{ renderer: 'svg' }} className="local-chart-canvas" />
       <figcaption>
         {`${bars.map((bar) => bar.label).join(', ')} of this run in milliseconds, ${bars.length === 1 ? 'as served.' : 'each as served, side by side and not added together.'}`}
         {unmeasured.length > 0 && ` No measured value to draw for: ${unmeasured.join(', ')}.`}
@@ -434,6 +445,8 @@ export interface ListedRun {
   duration: unknown;
   tokensIn: unknown;
   tokensOut: unknown;
+  cost?: unknown;
+  score?: unknown;
 }
 
 const RUN_ID_SHOWN = 8;
@@ -538,7 +551,7 @@ export function RunDurationChart({ runs, onOpen, title = 'Duration per run' }: {
   };
   return (
     <figure className="local-chart local-chart--runs" aria-label={title} data-motion={motion.reduced ? 'reduced' : 'full'}>
-      <ChartHeading title={title} detail="Explore the runs listed below" icon={Timer} />
+      <ChartHeading title={title} detail="Explore the listed runs" icon={Timer} />
       <div className="local-chart-legend" role="group" aria-label="Statuses shown">
         {statuses.map((status) => (
           <button type="button" className="local-chart-toggle" aria-pressed={!hidden.has(status)} key={status} onClick={() => toggle(status)}>
@@ -551,7 +564,7 @@ export function RunDurationChart({ runs, onOpen, title = 'Duration per run' }: {
         ? <p className="local-dashboard-empty" role="status">{EVERY_SERIES_HIDDEN}</p>
         : <ReactEChartsCore echarts={echarts} option={option} notMerge opts={{ renderer: 'svg' }} className="local-chart-canvas" onEvents={openOnClick(runs, onOpen)} />}
       <ChartRange count={runs.length} range={range} /><RunInspector runs={runs} />
-      <figcaption>Duration of each run listed below, in the list&apos;s order, in milliseconds as served. A bar opens its run.</figcaption>
+      <figcaption>Duration of each listed run, in the list&apos;s order, in milliseconds as served. A bar opens its run.</figcaption>
     </figure>
   );
 }
@@ -570,8 +583,8 @@ export function RunTokensChart({ runs, onOpen, title = 'Tokens per run' }: { run
   const motion = useChartMotion();
   const range = useChartRange(runs.map(run => run.id ?? ''));
   const [hidden, setHidden] = useState<ReadonlySet<string>>(() => new Set());
-  // Tokens are quantities, not outcomes: blue input and violet output leave red for failures.
-  const colours = [tone('--chart-1', 0x4169b2), tone('--chart-6', 0x7756b5)];
+  // Keep input/output identities consistent with daily charts and run metadata.
+  const colours = [tone('--field-tokens-in', 0x155e75), tone('--field-tokens-out', 0x9d174d)];
   const all = RUN_TOKEN_SERIES.map((series, index) => ({ ...series, colour: colours[index]!, points: runs.map((run) => point(run[series.key])) }));
   if (all.every((series) => series.points.every(({ value }) => value === null))) return null;
   const shown = all.filter((series) => !hidden.has(series.key));
@@ -606,10 +619,10 @@ export function RunTokensChart({ runs, onOpen, title = 'Tokens per run' }: { run
   };
   return (
     <figure className="local-chart local-chart--runs" aria-label={title} data-motion={motion.reduced ? 'reduced' : 'full'}>
-      <ChartHeading title={title} detail="Explore the runs listed below" icon={Layers} />
+      <ChartHeading title={title} detail="Explore the listed runs" icon={Layers} />
       <div className="local-chart-legend" role="group" aria-label="Series shown">
         {all.map((series) => (
-          <button type="button" className="local-chart-toggle" aria-pressed={!hidden.has(series.key)} key={series.key} onClick={() => toggle(series.key)}>
+          <button type="button" className="local-chart-toggle" data-field-tone={series.key === 'tokensIn' ? 'tokens-in' : 'tokens-out'} aria-pressed={!hidden.has(series.key)} key={series.key} onClick={() => toggle(series.key)}>
             <span className="local-chart-swatch" data-swatch aria-hidden="true" style={{ backgroundColor: series.colour }} />
             {series.name}
           </button>
@@ -619,7 +632,56 @@ export function RunTokensChart({ runs, onOpen, title = 'Tokens per run' }: { run
         ? <p className="local-dashboard-empty" role="status">{EVERY_SERIES_HIDDEN}</p>
         : <ReactEChartsCore echarts={echarts} option={option} notMerge opts={{ renderer: 'svg' }} className="local-chart-canvas" onEvents={openOnClick(runs, onOpen)} />}
       <ChartRange count={runs.length} range={range} /><RunInspector runs={runs} />
-      <figcaption>Tokens in and out of each run listed below, in the list&apos;s order, as served. A bar opens its run.</figcaption>
+      <figcaption>Tokens in and out of each listed run, in the list&apos;s order, as served. A bar opens its run.</figcaption>
     </figure>
   );
+}
+
+/** Raw per-run measures share the table's order and never aggregate or fill missing points. */
+export function RunMetricChart({ runs, onOpen, metric }: {
+  runs: readonly ListedRun[]; onOpen: (id: string) => void; metric: 'cost' | 'score';
+}) {
+  useThemeName();
+  const motion = useChartMotion();
+  const range = useChartRange(runs.map(run => run.id ?? ''));
+  const cost = metric === 'cost';
+  const title = cost ? 'Local cost per run' : 'Quality score per run';
+  const label = cost ? 'Local cost' : 'Score';
+  const points = runs.map(run => point(run[metric]));
+  const measured = points.some(p => p.value !== null);
+  const recordedCount = points.filter(p => p.value !== null).length;
+  const allRecordedZero = measured && points.every(p => p.value === null || p.value === 0);
+  const color = tone(cost ? '--run-cost-accent' : '--run-score-accent', cost ? 0xb45309 : 0x047857);
+  const valueText = (run: ListedRun) => {
+    const served = point(run[metric]).served;
+    return `${label}: ${served === null ? 'Not recorded' : `${cost ? '$' : ''}${served}`}`;
+  };
+  const option = {
+    ...runChartFrame(runs, value => value === 0 ? '' : `${cost ? '$' : ''}${value}`),
+    ...range.option, ...motion.option,
+    tooltip: {
+      trigger: 'axis', axisPointer: { type: 'shadow' },
+      formatter: (params: Array<{ dataIndex: number }>) => {
+        const run = runs[params[0]?.dataIndex ?? 0];
+        return [...runTooltipHead(run), run ? asText(valueText(run)) : 'Not recorded'].join('<br/>');
+      },
+    },
+    series: [{ name: label, type: 'bar', barMaxWidth: 28,
+      data: points.map(p => p.value), itemStyle: { color, borderRadius: [4, 4, 0, 0] },
+      emphasis: { focus: 'self', itemStyle: { opacity: 1 } },
+    }],
+  };
+  return <figure className={`local-chart local-chart--runs local-chart--${metric}`} aria-label={title} data-motion={motion.reduced ? 'reduced' : 'full'}>
+    <ChartHeading title={title} detail={cost ? 'Recorded cost · USD' : 'Recorded quality score · original scale'} icon={cost ? CircleDollarSign : Gauge} />
+    <div className="local-chart-coverage">
+      <span>{recordedCount} of {runs.length} recorded</span>
+      {recordedCount < runs.length && <span>{runs.length - recordedCount} not recorded</span>}
+      {allRecordedZero && <strong>{cost ? 'Recorded costs are $0' : 'Recorded scores are 0'}</strong>}
+    </div>
+    {measured ? <ReactEChartsCore echarts={echarts} option={option} notMerge opts={{ renderer: 'svg' }} className="local-chart-canvas" onEvents={openOnClick(runs, onOpen)} />
+      : <p className="local-dashboard-empty local-chart-unmeasured">No recorded values for these runs</p>}
+    {measured && <ChartRange count={runs.length} range={range} />}
+    <RunInspector runs={runs} describe={valueText} />
+    <figcaption>{cost ? 'Session cost when served, otherwise the run’s recorded cost. USD, with no estimates.' : 'The run’s recorded score, without averaging or inferring a pass threshold.'} Current table page and filters; missing values remain gaps.</figcaption>
+  </figure>;
 }

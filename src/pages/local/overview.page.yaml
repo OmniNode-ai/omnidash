@@ -1,7 +1,7 @@
 {
   "dashboard_id": "b37a0892-e2bc-4d67-91e4-bf2d55b48eef",
   "name": "Overview",
-  "description": "Spend, savings, measured runs, the last run and the ten most recent runs from the runtime's served exposures.",
+  "description": "Monitor recorded spend, savings, quality and recent runs.",
   "layout": {
     "columns": 12,
     "row_height": 100,
@@ -22,7 +22,7 @@
       "config": {
         "config_kind": "metric_card",
         "widget_type": "metric_card",
-        "metric_key": "spend_usd",
+        "metric_key": "total_cost_usd",
         "label": "Actual spend",
         "unit": "USD",
         "format": "currency",
@@ -40,7 +40,7 @@
       "config": {
         "config_kind": "metric_card",
         "widget_type": "metric_card",
-        "metric_key": "savings_usd",
+        "metric_key": "total_savings_usd",
         "label": "Savings",
         "unit": "USD",
         "format": "currency",
@@ -58,7 +58,7 @@
       "config": {
         "config_kind": "metric_card",
         "widget_type": "metric_card",
-        "metric_key": "runs_measured",
+        "metric_key": "measured_run_count",
         "label": "Agent calls",
         "unit": "runs",
         "format": "number",
@@ -76,7 +76,7 @@
       "config": {
         "config_kind": "metric_card",
         "widget_type": "metric_card",
-        "metric_key": "tokens_in_and_out",
+        "metric_key": "tokens_total",
         "label": "Tokens processed",
         "unit": "tokens",
         "format": "number",

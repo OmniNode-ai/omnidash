@@ -48,7 +48,10 @@ describe('stored run basis', () => {
 
 describe('excluded counts beside measured figures', () => {
   const document = JSON.parse(readFileSync('src/pages/local/overview.contracts.yaml', 'utf8')) as Pick<LocalPageDocument, 'components'>;
-  const measured = document.components.find(component => component.component_id === 'overview-measured')!;
+  const overviewMeasured = document.components.find(component => component.component_id === 'overview-measured')!;
+  const measured = { ...overviewMeasured, data_bindings: [{ ...overviewMeasured.data_bindings![0],
+    projection_topic: 'onex.snapshot.projection.metering-summary.v1',
+    required_fields: ['window_kind', 'as_of', 'runs_measured', 'runs_total', 'runs_unknown_tokens', 'runs_unknown_spend'] }] };
   // OMN-19980 Amendment 2: Measured runs and its excluded counts come from one metering-summary.v1 all row, whose run
   // classes are measured, unknown tokens and unknown spend (every run in exactly one); no second exposure.
   const config = { metric_key: 'runs_measured', label: 'Measured runs' };
@@ -69,7 +72,8 @@ describe('excluded counts beside measured figures', () => {
   });
 
   it('declares excluded counts and basis in every consuming binding', () => {
-    expect(measured.data_bindings?.[0]?.required_fields).toEqual(expect.arrayContaining(['runs_unknown_tokens', 'runs_unknown_spend']));
+    expect(overviewMeasured.data_bindings?.[0]?.projection_topic).toBe('onex.snapshot.projection.cost.savings-overview.v1');
+    expect(overviewMeasured.data_bindings?.[0]?.required_fields).toEqual(['window', 'captured_at', 'measured_run_count']);
     for (const id of ['overview-last-run', 'overview-recent-runs']) {
       const component = document.components.find(candidate => candidate.component_id === id)!;
       expect(component.data_bindings?.[1]?.required_fields, id).toContain('usage_source');

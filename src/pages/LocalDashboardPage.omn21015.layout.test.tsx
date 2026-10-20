@@ -57,14 +57,23 @@ const ORDER: Record<PageName, Array<[title: string, width: number]>> = {
   ],
 };
 const RENDERED_ORDER: Record<PageName, Array<[title: string, width: number]>> = {
-  overview: ORDER.overview,
+  // Lakshman's 2026-10-18 Overview reorganization: latest execution beside
+  // Quality, grouped insights next, cost/routing together, then full-width runs.
+  // The original declarative grid is still checked separately by Y4/Y5.
+  overview: [
+    ['Actual spend', 3], ['Savings', 3], ['Agent calls', 3], ['Tokens processed', 3],
+    ['Quality', 6], ['Last run', 6], ['Activity trends', 12],
+    ['Tier mix', 6], ['Recent runs', 6],
+    ['Run locally', 4], ['Avg saving / call', 4], ['Baseline spend', 4],
+    ['Compression', 6], ['Cache hit rate', 6], ['Spend per day', 12],
+  ],
   usage: ORDER.usage,
 };
 /** The panels each page had before it was reorganised: the same set, whatever the order. */
+// D2 (Lakshman2026-10-20): all secondary metrics remain on Overview in its native disclosure.
 const BEFORE: Record<PageName, string[]> = {
-  overview: ['Actual spend', 'Agent calls', 'Avg saving / call', 'Baseline spend', 'Cache hit rate', 'Compression', 'Last run',
-    'Quality', 'Recent runs', 'Run locally', 'Savings', 'Spend per day', 'Tier mix', 'Tokens processed', 'Trends and breakdowns'],
-  usage: ['Savings per day', 'Tokens per day', 'Usage by model and day'],
+  overview: ['Actual spend', 'Savings', 'Agent calls', 'Tokens processed', 'Quality', 'Last run', 'Activity trends', 'Tier mix', 'Recent runs', 'Run locally', 'Avg saving / call', 'Baseline spend', 'Compression', 'Cache hit rate', 'Spend per day'].sort(),
+  usage: ['Savings per day', 'Tokens per day', 'Usage by model and day'].sort(),
 };
 
 async function panels(pageName: PageName): Promise<Array<[string, number]>> {

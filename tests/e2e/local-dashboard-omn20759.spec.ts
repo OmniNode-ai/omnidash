@@ -1,3 +1,4 @@
+import { revealRunFields } from './omn21166-chart-fixtures';
 import { mkdirSync } from 'node:fs';
 import { dirname, resolve } from 'node:path';
 import { expect, test, type Page } from 'playwright/test';
@@ -86,7 +87,7 @@ for (const [name, path, headers] of [
     await serve(page);
     await page.goto(path);
     // OMN-21166 compact view: reveal every retained column through the native control.
-    if (path === '/') await page.getByRole('checkbox', { name: 'Show all run fields', exact: true }).check();
+    await revealRunFields(page);
     // AC2: every original column remains; presentation order puts the six primary fields first.
     const table = await runTable(page, [...headers]);
     await expect(table.getByText('generativelanguage.googleapis.com').first()).toBeVisible();
@@ -99,8 +100,8 @@ for (const [name, path, headers] of [
     expect(bounds!.x + bounds!.width).toBeLessThanOrEqual(1440);
     // No single cell is clipped by its own column either.
     const clipped = await table.evaluate((element) =>
-      [...element.querySelectorAll('td')].filter((cell) => cell.scrollWidth > cell.clientWidth + 1).length);
-    expect(clipped).toBe(0);
+      [...element.querySelectorAll('td')].filter((cell) => cell.scrollWidth > cell.clientWidth + 1).map(cell => ({ label: cell.getAttribute('data-label'), text: cell.textContent, width: cell.clientWidth, scroll: cell.scrollWidth, html: cell.innerHTML })));
+    expect(clipped).toEqual([]);
     expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(1440);
 
     await page.screenshot({

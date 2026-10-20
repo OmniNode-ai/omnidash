@@ -18,7 +18,7 @@
 //       the served value once it does.
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
-import { act, render, screen, within } from '@testing-library/react';
+import { act, fireEvent, render, screen, within } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 const ROUTING = 'onex.snapshot.projection.delegation.model-routing.v1';
@@ -77,6 +77,7 @@ describe('RunLocallyCard (OMN-20009 AC1, AC2, AC4)', () => {
     // Served deliberately unlike 104/124 (0.8387): a browser that divides the counts would show 83.9%.
     render(<RunLocallyCard row={{ by_tier: { ...labByTier, local_call_share: 0.5 } }} />);
     expect(screen.getByText('50.0%')).toBeInTheDocument();
+    expect(screen.getByRole('meter', { name: 'Local share of all runs' })).toHaveAttribute('aria-valuenow', '50');
     expect(screen.queryByText('83.9%')).toBeNull();
     expect(screen.queryByText('100.0%')).toBeNull();
   });
@@ -84,7 +85,13 @@ describe('RunLocallyCard (OMN-20009 AC1, AC2, AC4)', () => {
   it('H1, H2: renders the lab row as 83.9% with its served counts and the not-tier-routed gap', () => {
     render(<RunLocallyCard row={{ by_tier: labByTier }} />);
     expect(screen.getByText('83.9%')).toBeInTheDocument();
-    expect(screen.getByText('104 of 124 runs local · 20 not tier-routed')).toBeInTheDocument();
+    expect(screen.getByText('Local runs')).toBeInTheDocument();
+    expect(screen.getByText('104')).toBeInTheDocument();
+    expect(screen.getByText('All runs')).toBeInTheDocument();
+    expect(screen.getByText('124')).toBeInTheDocument();
+    expect(screen.getByText('Without a tier')).toBeInTheDocument();
+    expect(screen.getByText('20')).toBeInTheDocument();
+    expect([...document.querySelectorAll('.local-routing-counts > div')].map(div => [div.querySelector('dt')?.textContent, div.querySelector('dd')?.textContent])).toEqual([['Local runs', '104'], ['All runs', '124'], ['Without a tier', '20']]);
   });
 
   it('H3: no served row is the typed no-runs state, never 0%', () => {
@@ -114,6 +121,13 @@ describe('RunLocallyCard (OMN-20009 AC1, AC2, AC4)', () => {
   it('H6: a measured zero share is 0.0%', () => {
     render(<RunLocallyCard row={{ by_tier: { ...labByTier, local_call_count: 0, local_call_share: 0 } }} />);
     expect(screen.getByText('0.0%')).toBeInTheDocument();
+    expect(screen.getByRole('meter', { name: 'Local share of all runs' })).toHaveAttribute('aria-valuenow', '0');
+  });
+
+  it('H7: out-of-range shares never render a misleading meter', () => {
+    render(<RunLocallyCard row={{ by_tier: { ...labByTier, local_call_share: 1.2 } }} />);
+    expect(screen.getByText('Not measured')).toBeInTheDocument();
+    expect(screen.queryByRole('meter')).toBeNull();
   });
 });
 
@@ -124,6 +138,14 @@ describe('SavingsPerRunCard (OMN-20009 AC1, AC2, AC3)', () => {
     expect(screen.getByText('$0.500000')).toBeInTheDocument();
     expect(screen.queryByText(/0\.9666|0\.725/)).toBeNull();
     expect(screen.getByText('Over 3 measured runs · baseline claude-opus-4-6')).toBeInTheDocument();
+  });
+
+  // Review failure: JSON money may be a finite numeric zero/value, not only
+  // decimal text. Preserve the supplied value and its sign, never mark it absent.
+  it.each([[0, '$0.00'], [1.25, '$1.25'], [-1.25, '-$1.25']])('S1 numeric money: %s stays measured as %s', (value, shown) => {
+    render(<SavingsPerRunCard rows={[allRow({ savings_per_measured_run_usd: value })]} />);
+    expect(screen.getByText(String(shown), { exact: true })).toBeInTheDocument();
+    expect(screen.queryByText('Not measured', { exact: true })).toBeNull();
   });
 
   it('S2: no measured run is Not measured with its reason, never $0', () => {
@@ -215,13 +237,17 @@ describe('Overview page (OMN-20009 P1, P2)', () => {
   async function panel(title: string) {
     render(<LocalDashboardPage pageName="overview" />);
     await act(async () => { await vi.advanceTimersByTimeAsync(0); });
+    const disclosure = screen.getByText('Additional runtime metrics', { selector: 'summary' });
+    fireEvent.click(disclosure);
+    expect(disclosure.closest('details')).toHaveAttribute('open');
     return screen.getByRole('heading', { name: title }).closest('article') as HTMLElement;
   }
 
   it('P1: the Run locally panel shows the served share from delegation.model-routing.v1', async () => {
     const card = await panel('Run locally');
     expect(within(card).getByText('83.9%')).toBeInTheDocument();
-    expect(within(card).getByText('104 of 124 runs local · 20 not tier-routed')).toBeInTheDocument();
+    expect([...card.querySelectorAll('dl.local-routing-counts dt')].map(node => node.textContent)).toEqual(['Local runs', 'All runs', 'Without a tier']);
+    expect([...card.querySelectorAll('dl.local-routing-counts dd')].map(node => node.textContent)).toEqual(['104', '124', '20']);
   });
 
   it('P1: the Run locally panel says the exposure is not served when the census does not serve it', async () => {

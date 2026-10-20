@@ -8,7 +8,7 @@
 //
 // Real data path: HttpSnapshotSource, the exposure census and tenant resolution all run; only fetch is stubbed,
 // with the bodies `onex dashboard` sent in the lab.
-import { cleanup, render, screen, waitFor, within } from '@testing-library/react';
+import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 vi.mock('@/config/generated/data-source-defaults', () => ({
@@ -125,8 +125,9 @@ describe('Runs with a savings lookup this store does not serve (OMN-19994 AC1)',
     lab.answers[DECISIONS] = { status: 503, body: { error: 'projection_database_unavailable', topic: DECISIONS } };
     render(<LocalDashboardPage pageName="runs" />);
     const runs = await waitFor(() => panel('Recent runs'));
-    await waitFor(() => expect(within(runs).getAllByRole('alert').map((alert) => alert.textContent))
-      .toContain(`${DECISIONS}: HTTP 503 Service Unavailable`));
+    await waitFor(() => expect(within(within(runs).getByRole('alert'))
+      .getByText(`${DECISIONS}: HTTP 503 Service Unavailable`, { exact: true })).toBeInTheDocument());
+    expect(within(within(runs).getByRole('alert')).getByText('Technical details', { selector: 'summary' })).toBeInTheDocument();
     expect(within(runs).queryByText(RUN_ID)).toBeNull();
     expect(within(runs).queryByText(/^Not served: .*decisions/)).toBeNull();
   });
@@ -154,7 +155,9 @@ describe('Overview run tables with the same unserved lookup (OMN-19994 AC1, same
   it('shows the run in Recent runs and Last run', async () => {
     render(<LocalDashboardPage pageName="overview" />);
     const recent = await waitFor(() => panel('Recent runs'));
-    await waitFor(() => expect(within(recent).getByRole('link', { name: RUN_ID })).toBeInTheDocument());
+    await waitFor(() => expect(within(recent.querySelector('.local-run-preview') as HTMLElement).getByRole('link', { name: RUN_ID })).toHaveAttribute('href', `/workflow?correlation_id=${RUN_ID}`));
+    fireEvent.click(within(recent).getByText('Show recent run fields', { selector: 'summary' }));
+    expect(within(recent.querySelector('.local-dashboard-table-wrap') as HTMLElement).getByRole('link', { name: RUN_ID })).toHaveAttribute('href', `/workflow?correlation_id=${RUN_ID}`);
     expect(within(panel('Last run')).getByText(RUN_ID)).toBeInTheDocument();
     expect(within(recent).queryByRole('alert')).toBeNull();
   });

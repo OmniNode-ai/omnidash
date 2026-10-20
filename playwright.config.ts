@@ -1,4 +1,10 @@
 import { defineConfig, devices } from 'playwright/test';
+import { existsSync } from 'node:fs';
+
+// Hosted Ubuntu runners already supply Chromium. Reuse it so verification
+// checks spend their budget on browser assertions, not browser downloads.
+const chromiumExecutable = process.env.PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH
+  || (existsSync('/usr/bin/chromium') ? '/usr/bin/chromium' : undefined);
 
 // OMN-10305: Playwright E2E config for cost-trend cluster proof-of-life.
 // Runs against the Vite dev server on port 5174.
@@ -20,8 +26,8 @@ export default defineConfig({
       name: 'chromium',
       use: {
         ...devices['Desktop Chrome'],
-        ...(process.env.PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH
-          ? { launchOptions: { executablePath: process.env.PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH } }
+        ...(chromiumExecutable
+          ? { launchOptions: { executablePath: chromiumExecutable } }
           : {}),
       },
     },

@@ -9,7 +9,7 @@ for (const route of ['overview', 'event-bus']) {
   test(`${route} cards have subtle depth and clear headers without enlarging grouped metrics`, async ({ page }, info) => {
     await page.goto('/' + route);
     await expect(page.locator('h1')).toBeVisible();
-    const card = page.locator(route === 'overview' ? '.local-overview-surface' : '.ev-root .panel').first();
+    const card = page.locator(route === 'overview' ? '.local-overview-focus [data-component="overview-quality"]' : '.ev-root .panel').first();
     await expect(card).toBeVisible();
     expect(await card.evaluate(el => getComputedStyle(el).borderRadius)).toBe('12px');
     expect(await card.evaluate(el => getComputedStyle(el).boxShadow)).not.toBe('none');

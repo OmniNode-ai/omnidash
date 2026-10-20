@@ -139,7 +139,7 @@ describe('OMN-21015 AC4: tokens in and out per day, stacked by model', () => {
   it('U6: with no rows it says why', () => {
     render(<UsageTokensByDay rows={[]} />);
     expect(screen.getByRole('status').textContent).toBe(NO_TOKEN_ROWS);
-    expect(NO_TOKEN_ROWS).toContain('llm-call-completed');
+    expect(NO_TOKEN_ROWS).toContain('No daily token data');
     expect(screen.queryByRole('list')).toBeNull();
   });
 });

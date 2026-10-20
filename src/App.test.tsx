@@ -22,7 +22,7 @@ describe('App', () => {
     useFrameStore.getState().setActiveDashboard(dash);
   });
 
-  it('renders the root element', () => {
+  it('renders the root element', async () => {
     render(
       <Providers>
         <RegistryProvider manifest={manifest}>
@@ -31,7 +31,7 @@ describe('App', () => {
       </Providers>
     );
     // Dashboard name appears in both Sidebar list and DashboardView toolbar.
-    const matches = screen.getAllByText('My Dashboard');
+    const matches = await screen.findAllByText('My Dashboard');
     expect(matches.length).toBeGreaterThan(0);
   });
 });
