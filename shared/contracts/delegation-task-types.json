@@ -84,6 +84,18 @@
       "label": "Escalate a problem",
       "description": "Route a difficult unresolved problem directly to the escalation tier for deeper analysis.",
       "prompt_placeholder": "Describe what has already been tried, why it failed, and the unresolved decision…"
+    },
+    {
+      "id": "documentation",
+      "label": "Write code documentation",
+      "description": "Write docstrings and inline documentation for existing code, covering arguments, return values, and raised errors.",
+      "prompt_placeholder": "Provide the code to document, the docstring style to follow, and any behavior the documentation must cover…"
+    },
+    {
+      "id": "validator_generation",
+      "label": "Generate a validator",
+      "description": "Produce a validator or checking artifact that is accepted by running it against a deterministic corpus.",
+      "prompt_placeholder": "Describe what the validator must accept and reject, the input format, and the corpus it will be run against…"
     }
   ]
 }
