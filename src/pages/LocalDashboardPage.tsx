@@ -287,14 +287,17 @@ export function OverviewAggregateCard({ component, config, rows, window }: {
 
 /**
  * OMN-21166 AC37: the served run classes of one cost.savings-overview.v1 row, as a caption line. A class the row does not
- * serve is left out, never shown as 0; with none served the line goes.
+ * serve is left out, never shown as 0. When no run is estimated or unknown the figure already is the measured count, so
+ * the line goes rather than repeat it (and the compact first screen keeps its height).
  */
 export function runBreakdownText(row: Record<string, unknown>): string | null {
-  const parts = ([['measured_run_count', 'measured'], ['estimated_run_count', 'estimated'], ['unknown_run_count', 'unknown']] as const)
-    .filter(([field]) => !isMissing(row[field]) && Number.isFinite(Number(row[field])))
+  const served = ([['measured_run_count', 'measured'], ['estimated_run_count', 'estimated'], ['unknown_run_count', 'unknown']] as const)
+    .filter(([field]) => !isMissing(row[field]) && Number.isFinite(Number(row[field])));
+  if (!served.some(([field], index) => index > 0 && Number(row[field]) > 0)) return null;
+  return served
     .filter(([field], index) => index === 0 || Number(row[field]) > 0)
-    .map(([field, label]) => `${Number(row[field]).toLocaleString('en-US')} ${label}`);
-  return parts.length > 0 ? parts.join(' · ') : null;
+    .map(([field, label]) => `${Number(row[field]).toLocaleString('en-US')} ${label}`)
+    .join(' · ');
 }
 
 function RunBreakdown({ row }: { row: Record<string, unknown> }) {

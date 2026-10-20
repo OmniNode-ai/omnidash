@@ -255,7 +255,7 @@ test('OMN-21166: the Overview first screen holds exact legacy tiles and newest r
   await page.setViewportSize({ width: 1440, height: 900 });
   await serve(page, {
     [METERING]: [{ ...meteringAll, runs_measured: 2, runs_unknown_tokens: 0, runs_unknown_spend: 0, tokens_in: 512, tokens_out: 20, pricing_manifest_version: '1.0.0' }, ...metering],
-    ['onex.snapshot.projection.cost.savings-overview.v1']: [{ window: 'all', captured_at: '2026-10-12T10:07:00Z', total_cost_usd: '0.2300', total_savings_usd: '0.7000', measured_run_count: 2, tokens_total: 532 }],
+    ['onex.snapshot.projection.cost.savings-overview.v1']: [{ window: 'all', captured_at: '2026-10-12T10:07:00Z', total_cost_usd: '0.2300', total_savings_usd: '0.7000', run_count: 2, measured_run_count: 2, tokens_total: 532 }],
     [ROUTING]: routing, [DECISIONS]: firstScreenRuns,
   });
   await page.goto('/');
