@@ -13,6 +13,7 @@ import {
   fetchDelegationSummary,
   fetchDelegationModelRouting,
   fetchDelegationQualityGate,
+  fetchCostSavingsOverview,
   fetchDelegationSavings,
   fetchDelegationTokenUsage,
   fetchCorrelationTrace,
@@ -24,6 +25,7 @@ import {
   type DelegationSummaryRow,
   type ModelRoutingRow,
   type QualityGateRow,
+  type CostSavingsOverviewRow,
   type SavingsRow,
   type TokenUsageRow,
   type CorrelationTraceRow,
@@ -47,6 +49,9 @@ export const useDelegationModelRouting = (): UseQueryResult<ProjectionResult<Mod
 
 export const useDelegationQualityGate = (): UseQueryResult<ProjectionResult<QualityGateRow>> =>
   useQuery({ queryKey: ['ev', 'delegation', 'quality-gate'], queryFn: fetchDelegationQualityGate, refetchInterval: POLL_MS });
+
+export const useCostSavingsOverview = (): UseQueryResult<ProjectionResult<CostSavingsOverviewRow>> =>
+  useQuery({ queryKey: ['ev', 'cost', 'savings-overview'], queryFn: fetchCostSavingsOverview, refetchInterval: POLL_MS });
 
 export const useDelegationSavings = (): UseQueryResult<ProjectionResult<SavingsRow>> =>
   useQuery({ queryKey: ['ev', 'delegation', 'savings'], queryFn: fetchDelegationSavings, refetchInterval: POLL_MS });

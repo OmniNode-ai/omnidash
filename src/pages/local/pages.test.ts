@@ -287,7 +287,7 @@ describe('local pages against the captured lab catalogue', () => {
 
   it('Overview restores the four totals from the populated legacy aggregate (Lakshman 2026-10-19)', () => {
     const page = readPage('overview');
-    const expected = { 'overview-spend':'total_cost_usd', 'overview-savings':'total_savings_usd', 'overview-measured':'measured_run_count', 'overview-tokens':'tokens_total' };
+    const expected = { 'overview-spend':'total_cost_usd', 'overview-savings':'total_savings_usd', 'overview-measured':'run_count', 'overview-tokens':'tokens_total' };
     for (const [id, field] of Object.entries(expected)) {
       const component = page.components.find(c => c.component_id === id);
       expect(component?.data_bindings).toEqual([{
@@ -298,7 +298,8 @@ describe('local pages against the captured lab catalogue', () => {
       expect(config.metric_key).toBe(field);
     }
     expect(page.dashboard.widgets.filter(w => (w.config as Record<string, unknown>).config_kind === 'metric_card').map(w => (w.config as Record<string, unknown>).metric_key)).toEqual([
-      'total_cost_usd', 'total_savings_usd', 'measured_run_count', 'tokens_total',
+      // OMN-21166 AC37: Agent calls is every call (run_count); the measured count is its labelled breakdown.
+      'total_cost_usd', 'total_savings_usd', 'run_count', 'tokens_total',
       'by_tier.local_call_share', 'savings_per_measured_run_usd', 'counterfactual_usd', 'compression_ratio', 'cache_hit_rate',
     ]);
     // D2 keeps these exact secondary bindings on Overview; DOM suites open

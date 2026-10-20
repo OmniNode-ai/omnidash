@@ -274,13 +274,32 @@ export function OverviewAggregateCard({ component, config, rows, window }: {
   if (isMissing(value) || !['string', 'number'].includes(typeof value)
     || (typeof value === 'string' && !/^-?\d+(?:\.\d+)?$/.test(value))
     || !Number.isFinite(Number(value))) return unavailable('Not measured');
-  const measured = component.component_id === 'overview-measured';
+  const runs = component.component_id === 'overview-measured';
   return <>
     <MetricCard component={component} config={config} row={row} />
     <p className="local-dashboard-caption">{component.component_id === 'overview-savings'
-      ? 'Modelled · vs cloud baseline' : measured ? 'Measured calls' : 'All-time aggregate'}</p>
-    {measured && !isMissing(row.unknown_run_count) && <p className="local-dashboard-caption">{`${Number(row.unknown_run_count).toLocaleString('en-US')} unknown calls excluded`}</p>}
+      ? 'Modelled · vs cloud baseline' : runs ? 'All calls' : 'All-time aggregate'}</p>
+    {/* OMN-21166 AC37: the headline is every call; the measured population is a labelled breakdown beside it, the
+        same breakdown Delegation Evidence shows under the same figure. */}
+    {runs && <RunBreakdown row={row} />}
   </>;
+}
+
+/**
+ * OMN-21166 AC37: the served run classes of one cost.savings-overview.v1 row, as a caption line. A class the row does not
+ * serve is left out, never shown as 0; with none served the line goes.
+ */
+export function runBreakdownText(row: Record<string, unknown>): string | null {
+  const parts = ([['measured_run_count', 'measured'], ['estimated_run_count', 'estimated'], ['unknown_run_count', 'unknown']] as const)
+    .filter(([field]) => !isMissing(row[field]) && Number.isFinite(Number(row[field])))
+    .filter(([field], index) => index === 0 || Number(row[field]) > 0)
+    .map(([field, label]) => `${Number(row[field]).toLocaleString('en-US')} ${label}`);
+  return parts.length > 0 ? parts.join(' · ') : null;
+}
+
+function RunBreakdown({ row }: { row: Record<string, unknown> }) {
+  const text = runBreakdownText(row);
+  return text ? <p className="local-dashboard-caption">{text}</p> : null;
 }
 
 /** Said on an Overview panel whose exposure serves no row per window, while today is the chosen window. */
@@ -528,7 +547,7 @@ const SERVED_DECIMAL = /^(-?)(\d+)(?:\.(\d+))?$/;
  * measured zero is a zero. The served decimal text is shown digit for digit, padded to two decimals and never passed
  * through a binary float, which would change its digits; anything that is not a plain decimal is not shown as a figure.
  */
-function runModelledCell(run: Row): string {
+export function runModelledCell(run: Row): string {
   const figure = run.modelled_savings_usd;
   const notMeasured = run.savings_measurement === 'unknown_tokens' ? 'Not measured: tokens not recorded'
     : run.savings_measurement === 'unknown_spend' ? 'Not measured: cost not recorded'

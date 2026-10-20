@@ -72,7 +72,7 @@
           "required_fields": [
             "window",
             "captured_at",
-            "measured_run_count"
+            "run_count"
           ]
         }
       ],
