@@ -1,0 +1,61 @@
+---
+schema_version: "1.0.0"
+ticket_id: "OMN-19919"
+title: "OmniDash sqlite mode serves failed local delegations to the Errors panel with their typed cause"
+summary: "The omnidash half of the re-homed criteria: failed runs live on Runs and the Overview failure list (recommendation R2 (a)), since the Errors panel and the sqlite reader were retired by OMN-19981. Runs lists a failed run under status=failed with its typed cause, and a terminal_ok 0 row counts as failed (AC5). A failed run with no cause reads Not recorded on Runs and Overview, never dropped and never passed (AC6). Each Why runs failed row on Overview shows its count, first seen and last seen, and links to the filtered Runs view (AC7). Not in this contract: AC4 (decisions.v1 serves terminal_failure_cause) is omnimarket's, carried by omnimarket#4275 and its own contracts/OMN-19919.yaml there. AC8 (a keyless run on a fresh lab HOME shows on /runs?status=failed) is blocked on the writer: the refusal writes no delegation_events row, and the owning ticket was asked of Jake on 2026-10-21T11:14Z. AC1 to AC3 were proposed as superseded, because their surface was retired."
+is_seam_ticket: false
+interface_change: false
+interfaces_touched: []
+requirements:
+  - id: "req-transcribed-acceptance-criteria"
+    statement: |-
+      The acceptance criteria this omnidash change serves, read on 2026-10-21 at 13:00Z. They are copied from Lakshman's re-homing comment of 2026-10-21T09:55Z on OMN-19919, which the ticket's description asks for before work starts. That comment is the source, and this block is the copy. Only the criteria bound below are listed. AC4 is omnimarket's (omnimarket#4275). AC8 is blocked on the writer. AC1 to AC3 were proposed as superseded.
+    acceptance:
+      - id: "AC5"
+        statement: |-
+          AC5 (Runs): a failed run shows its typed cause under `/runs?status=failed`, and a row with `terminal_ok` 0 counts as failed.
+      - id: "AC6"
+        statement: |-
+          AC6 (Runs and Overview): a failed row with no cause is listed as "Not recorded" (the page's label for the ticket's "cause unrecorded"), never dropped and never shown as passed.
+      - id: "AC7"
+        statement: |-
+          AC7 (Overview, OV-7): each "Why runs failed" row shows its count, first seen and last seen, and links to the filtered Runs view.
+evidence_requirements:
+  - kind: "tests"
+    description: "AC5: under status=failed each failed run is listed with its correlation id, time and typed cause, the served terminal_failure_cause winning over the detail text. terminal_ok 0 with no quality-gate verdict counts as failed. The cause filter offers the typed cause and keeps only its runs (U1-U3, U5-U7, W2)."
+    command: "npx vitest run src/pages/LocalDashboardPage.runs.test.tsx"
+  - kind: "tests"
+    description: "AC6: a failed run with no cause, or a whitespace-only one, reads Not recorded on Runs and on the Overview list, and is never dropped or shown passed (U4, W1, T3, T6)."
+    command: "npx vitest run src/pages/LocalDashboardPage.runs.test.tsx src/pages/local/insights.omn21166.test.ts"
+  - kind: "tests"
+    description: "AC7: each Why runs failed row is one typed cause with its count, first seen and last seen, and a Runs link carrying status=failed and that cause; the trends, the filter and the link key on one cause function (W1-W4, T4, K1-K3)."
+    command: "npx vitest run src/pages/local/insight-charts.omn21166.test.tsx src/pages/local/insights.omn21166.test.ts src/pages/local/run-filter.omn21166.test.tsx"
+dod_evidence:
+  - id: "dod-omn19919-ac5-runs-typed-cause"
+    description: "AC5: Runs under status=failed lists each failed run with its typed cause, and a terminal_ok 0 row counts as failed; the detail text shown as the cause, or a missing failed row, fails."
+    source: "manual"
+    binds_ac: ["AC5"]
+    checks:
+      - check_type: "test_passes"
+        check_value: "test -d node_modules || npm ci --no-audit --no-fund; npx vitest run src/pages/LocalDashboardPage.runs.test.tsx"
+        cwd: "${OMNI_HOME}/omnidash"
+  - id: "dod-omn19919-ac6-not-recorded"
+    description: "AC6: a failed run with no cause is listed as Not recorded on Runs and on the Overview list, never dropped and never shown passed."
+    source: "manual"
+    binds_ac: ["AC6"]
+    checks:
+      - check_type: "test_passes"
+        check_value: "test -d node_modules || npm ci --no-audit --no-fund; npx vitest run src/pages/LocalDashboardPage.runs.test.tsx src/pages/local/insights.omn21166.test.ts"
+        cwd: "${OMNI_HOME}/omnidash"
+  - id: "dod-omn19919-ac7-why-runs-failed"
+    description: "AC7: each Why runs failed row shows its count, first seen and last seen, and links to Runs filtered by status=failed and that cause."
+    source: "manual"
+    binds_ac: ["AC7"]
+    checks:
+      - check_type: "test_passes"
+        check_value: "test -d node_modules || npm ci --no-audit --no-fund; npx vitest run src/pages/local/insight-charts.omn21166.test.tsx src/pages/local/insights.omn21166.test.ts src/pages/local/run-filter.omn21166.test.tsx"
+        cwd: "${OMNI_HOME}/omnidash"
+emergency_bypass:
+  enabled: false
+  justification: ""
+  follow_up_ticket_id: ""
