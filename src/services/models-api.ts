@@ -1,10 +1,10 @@
 /**
- * OMN-20816: client seam for the local dashboard's model-key routes.
+ * OMN-20816: client seam for the local dashboard's read-only model provider list.
  *
- * `onex dashboard` serves `GET /models`, `PUT /models/{provider}` and `DELETE /models/{provider}` beside the
- * projection reads, on the same origin and behind the same start token, and runs the path `onex models
- * add|list|remove` runs. This module owns those path literals. The key travels only in the PUT body; it is never put
- * in a URL, a thrown message or anything this module returns.
+ * `onex dashboard` serves `GET /models` beside the projection reads, on the same origin and behind the same start
+ * token: the status `onex models list` prints, with no key in it. This module owns that path literal and only reads
+ * it. Keys change in the terminal (`onex models add|remove`), never through the dashboard (operator ruling on the
+ * ticket, 2026-10-21T10:24:32Z), so there is no write here.
  */
 import { fetchWithTimeout } from '@/data-source/fetch-with-timeout';
 import { resolveCommandBaseUrl } from '@/data-source/projection-base-url';
@@ -28,7 +28,7 @@ export interface ModelProviderRow {
   models: string[];
 }
 
-/** A refusal or failure, carrying the server's own text (which never holds the key). */
+/** A refusal or failure, carrying the server's own text. */
 export class ModelKeysError extends Error {
   constructor(
     readonly status: number,
@@ -41,13 +41,11 @@ export class ModelKeysError extends Error {
 }
 
 const MODELS_PATH = '/models';
-/** One pinned test delegation can take up to five minutes; the add waits for it. */
-const ADD_TIMEOUT_MS = 330_000;
 
 function base(): string {
   const resolved = resolveCommandBaseUrl();
   if (resolved === null) {
-    throw new ModelKeysError(0, 'file_mode', 'Model keys are managed on the live local dashboard (onex dashboard), not in file mode.');
+    throw new ModelKeysError(0, 'file_mode', 'Model providers are listed on the live local dashboard (onex dashboard), not in file mode.');
   }
   return resolved;
 }
@@ -66,17 +64,4 @@ async function read(res: Response): Promise<unknown> {
 export async function listModelKeys(): Promise<ModelProviderRow[]> {
   const body = (await read(await fetchWithTimeout(`${base()}${MODELS_PATH}`))) as { providers?: ModelProviderRow[] };
   return Array.isArray(body?.providers) ? body.providers : [];
-}
-
-export async function putModelKey(provider: ModelProviderId, key: string, models: readonly string[]): Promise<ModelTest> {
-  const res = await fetchWithTimeout(
-    `${base()}${MODELS_PATH}/${encodeURIComponent(provider)}`,
-    { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ key, models }) },
-    ADD_TIMEOUT_MS,
-  );
-  return ((await read(res)) as { test: ModelTest }).test;
-}
-
-export async function removeModelKey(provider: ModelProviderId): Promise<void> {
-  await read(await fetchWithTimeout(`${base()}${MODELS_PATH}/${encodeURIComponent(provider)}`, { method: 'DELETE' }));
 }
