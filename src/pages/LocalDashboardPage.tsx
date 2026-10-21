@@ -1453,15 +1453,16 @@ export function WorkflowRun({ component, snapshots, requested, onOpen }: Workflo
         return decision ? <WorkflowRoutingFlow decision={decision} outcome={statusOf(decision)} /> : null;
       })()}
       {!decisionsNotServed && <RunSummary decision={decisions.find((row) => row.correlation_id === runId)} showAnalysis />}
-      {/* OMN-19920: the run's answer, read for this run only; the page binds it only where its contract declares it. */}
+      {stepsUnread ? null : foreign ? (
+        <p className="local-dashboard-error" role="alert">run-trace.v1 answered steps of another run; none are shown</p>
+      ) : <RunDiagram steps={rows} />}
+      {/* OMN-19920: the run's answer, read for this run only; the page binds it only where its contract declares it.
+          It sits under the step diagram so the diagram still starts on the first screen (OMN-21015). */}
       {(component.data_bindings ?? []).some((binding) => binding.projection_topic === CORRELATION_TRACE_TOPIC) && (
         <RunAnswer read={snapshots.find((snapshot) => snapshot.topic === CORRELATION_TRACE_TOPIC)} runId={runId} />
       )}
-      {stepsUnread ? null : foreign ? (
-        <p className="local-dashboard-error" role="alert">run-trace.v1 answered steps of another run; none are shown</p>
-      ) : (
+      {stepsUnread || foreign ? null : (
         <>
-          <RunDiagram steps={rows} />
           <RunTimeline steps={rows} />
           {stepsRead?.truncated && (
             <p className="local-dashboard-empty" role="status">
