@@ -49,7 +49,8 @@ test('Workflow charts and recorded details read the selected run without inventi
   await expect(quality).toContainText('0.40');
   await expect(quality).toContainText('0.80');
   await expect(page.getByRole('figure', { name: 'Execution stage durations', exact: true })).toBeVisible();
-  await expect(page.getByRole('region', { name: 'Recorded run details', exact: true })).toContainText('0.000000');
+  // 3c5cb779: the recorded cost reads as money, not the raw served decimal.
+  await expect(page.getByRole('region', { name: 'Recorded run details', exact: true })).toContainText('Recorded cost (USD)$0.00');
   await expect(page.getByRole('region', { name: 'Recorded run details', exact: true })).toContainText('fixture');
   await page.screenshot({ path: info.outputPath('workflow-analysis-desktop.png'), animations: 'disabled', fullPage: true });
   await page.setViewportSize({ width: 390, height: 844 });

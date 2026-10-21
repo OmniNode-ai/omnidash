@@ -34,28 +34,35 @@ for (const scenario of [
 
 // Live Evidence showed $930.95 in its headline and $1008.22 in its savings
 // panel: two projections were used for one labelled cumulative-savings value.
+// AC37: both now read the cost.savings-overview.v1 all-time row Overview reads;
+// delegation.savings.v1 ($500) and delegation.summary.v1 ($7) disagree on purpose.
+// AC38: an absent or refused total reads Not measured, never $0.
 for (const scenario of [
-  { name: 'uses the savings projection rather than a divergent summary total', value: 19, expected: '$19.00', error: false },
+  { name: 'uses the shared overview total rather than a divergent view or summary total', value: 19, expected: '$19.00', error: false },
   { name: 'retains a recorded zero', value: 0, expected: '$0.00', error: false },
-  { name: 'keeps absent savings unavailable', value: null, expected: '—', error: false },
-  { name: 'keeps refused savings unavailable', value: null, expected: '—', error: true },
+  { name: 'keeps absent savings unavailable', value: null, expected: 'Not measured', error: false },
+  { name: 'keeps refused savings unavailable', value: null, expected: 'Not measured', error: true },
 ]) {
   test(`Evidence savings provenance: ${scenario.name}`, async ({ page }, info) => {
     await serveCharts(page, { ...chartRows,
       [prefix + 'delegation.summary.v1']: [{ totalDelegations: 3, qualityGatePassed: 2, qualityGateTotal: 3, qualityGatePassRate: 2 / 3, totalSavingsUsd: 7, avgLatencyMs: 100 }],
-      [prefix + 'delegation.savings.v1']: scenario.value === null ? [] : [{ cumulative_savings_usd: scenario.value,
-        cumulative_local_cost_usd: 1, cumulative_cloud_cost_usd: scenario.value + 1, session_count: 3, baseline_model: null, pricing_manifest_version: '0' }],
+      [prefix + 'delegation.savings.v1']: [{ cumulative_savings_usd: 500,
+        cumulative_local_cost_usd: 1, cumulative_cloud_cost_usd: 501, session_count: 3, baseline_model: null, pricing_manifest_version: '0' }],
+      [prefix + 'cost.savings-overview.v1']: scenario.value === null ? [] : [{ window: 'all', captured_at: '2026-10-20T15:14:51Z',
+        total_savings_usd: scenario.value, total_cost_usd: 1, total_baseline_cost_usd: scenario.value + 1, tokens_total: 10,
+        run_count: 3, measured_run_count: 3, estimated_run_count: 0, unknown_run_count: 0 }],
     });
-    if (scenario.error) await page.route('**/projection/**delegation.savings.v1*', route => route.fulfill({ status: 503, contentType: 'application/json', body: JSON.stringify({ error: 'not_yet_bus_backed' }) }));
+    if (scenario.error) await page.route('**/projection/**cost.savings-overview.v1*', route => route.fulfill({ status: 503, contentType: 'application/json', body: JSON.stringify({ error: 'not_yet_bus_backed' }) }));
     await page.goto('/delegation-evidence');
     const kpi = page.locator('.kpi').filter({ has: page.getByText('Savings (modelled)', { exact: true }) });
     await expect(kpi.locator('.k-v')).toHaveText(scenario.expected);
     const panel = page.locator('[data-panel-title="SAVINGS vs CLOUD BASELINE"]');
-    if (scenario.value !== null) {
-      await expect(panel.locator('.ev-savings-hero .big')).toHaveText(scenario.expected);
-      await expect(panel).toContainText('Baseline model not recorded');
-    } else await expect(panel).toContainText('No savings rows');
-    await expect(kpi).not.toContainText('$7.00');
+    await expect(panel.locator('.ev-savings-hero .big')).toHaveText(scenario.expected);
+    await expect(panel).toContainText('Baseline model not recorded');
+    for (const divergent of ['$7.00', '$500.00']) {
+      await expect(kpi).not.toContainText(divergent);
+      await expect(panel).not.toContainText(divergent);
+    }
     await page.screenshot({ path: info.outputPath('evidence-savings-provenance.png') });
   });
 }
