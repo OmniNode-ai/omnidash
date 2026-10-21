@@ -1,9 +1,10 @@
 import { useId, useState, type CSSProperties, type ReactNode } from 'react';
-import { Award, Bot, Coins, FileClock, FileText, Server, Timer, Waypoints } from 'lucide-react';
+import { Award, Bot, Coins, FileClock, FileText, MessageSquareText, Server, Timer, Waypoints } from 'lucide-react';
 import { RunTimingChart } from './charts';
 import { FieldIcon } from '@/components/dashboard/FieldIcon';
 import { fieldTone, isUnavailableField } from '@/components/dashboard/field-identity';
 import { formatUsd } from '@/components/dashboard/usage/UsageByModelDayWidget';
+import type { BoundProjectionSnapshot } from '@/layout/local-page-loader';
 
 type Run = Record<string, unknown>;
 const recorded = (value: unknown) => value === null || value === undefined || value === '' ? 'Not recorded' : String(value);
@@ -70,6 +71,8 @@ export function WorkflowRecordDetails({ decision, steps }: { decision: Run | und
       <h3 id={id} className="local-dashboard-caption" data-page-heading tabIndex={-1}><FileClock size={16} aria-hidden="true" />Recorded run details</h3>
       <dl className="local-dashboard-fields">
         {[
+          // OMN-19920 AC5: the run's receipt identity. receipt.json records the correlation id as receipt_id.
+          ['Receipt id', decision.correlation_id],
           ['Created at', decision.created_at], ['Written at', decision.written_at],
           ['Recorded cost (USD)', decision.cost_usd], ['Data source', decision.data_source],
           ['Terminal OK', decision.terminal_ok], ['Session', decision.session_id],
@@ -88,6 +91,70 @@ export function WorkflowRecordDetails({ decision, steps }: { decision: Run | und
       <RunTimingChart timings={durations} title="Execution stage durations" accentToken="--workflow-stages-accent" />
     </section>}
   </div>;
+}
+
+/** An answer longer than this many lines or characters is folded, whole, under a summary that says how long it is. */
+const ANSWER_FOLD_LINES = 12;
+const ANSWER_FOLD_CHARS = 1200;
+
+function AnswerText({ text }: { text: string }) {
+  // Text only: React escapes it, so markup in an answer is shown as the characters it is and creates no element
+  // (AC6). Never dangerouslySetInnerHTML, never a markdown renderer.
+  const lines = text.split('\n').length;
+  const block = <pre className="workflow-run-answer-text">{text}</pre>;
+  if (lines <= ANSWER_FOLD_LINES && text.length <= ANSWER_FOLD_CHARS) return block;
+  return <details className="workflow-run-answer-fold">
+    <summary>{`Show the answer (${lines} lines, ${text.length} characters)`}</summary>
+    {block}
+  </details>;
+}
+
+/**
+ * A failed answer read in plain words (OMN-21166 AC39): the loader's message names the exposure, so it is never shown.
+ * Only an HTTP status is kept, because it is the one part a user can act on or report.
+ */
+function answerReadFailure(failure: { kind: string; message: string }): string {
+  switch (failure.kind) {
+    case 'not-served': return 'Not available yet.';
+    case 'timeout': return 'No answer within 5 seconds.';
+    case 'tenant-not-configured': return 'No tenant is configured for this dashboard.';
+    default: {
+      const status = /HTTP \d{3}.*$/.exec(failure.message)?.[0];
+      return status ? `The answer could not be read (${status}).` : 'The answer could not be read.';
+    }
+  }
+}
+
+/**
+ * OMN-19920: the run's answer, the response_text of its delegation_events row as correlation-trace.v1 serves it for
+ * this correlation id. Each state says what it is: not read yet, not served, read failed, served with no answer, or
+ * answered for another run (refused, never shown under this run's id). What the user reads names no exposure, topic
+ * or field (OMN-21166 AC39); those stay in this comment and the contract.
+ */
+export function RunAnswer({ read, runId }: { read: BoundProjectionSnapshot | undefined; runId: string }) {
+  const id = useId();
+  const state = (text: string, error = false) => <p className={error ? 'local-dashboard-error' : 'local-dashboard-empty'}>{text}</p>;
+  let body: ReactNode;
+  if (!read || read.runId !== runId) {
+    body = state('Reading the answer…');
+  } else if (read.failure && !read.lastGoodAt) {
+    const failed = read.failure.kind === 'error' || read.failure.kind === 'timeout';
+    body = state(answerReadFailure(read.failure), failed);
+  } else {
+    const rows = read.rows.filter((row): row is Run => typeof row === 'object' && row !== null && !Array.isArray(row));
+    const answers = rows.filter((row) => row.response_text !== null && row.response_text !== undefined && row.response_text !== '');
+    body = rows.some((row) => row.correlation_id !== runId)
+      ? state('The answer read belongs to another run, so it is not shown.', true)
+      : answers.length === 0 ? state('No answer recorded for this run')
+      : answers.map((row, index) => <div key={index}>
+        <AnswerText text={String(row.response_text)} />
+        <p className="local-dashboard-caption">{`Data source: ${recorded(row.data_source)}`}</p>
+      </div>);
+  }
+  return <section className="workflow-analysis-card workflow-analysis-card--answer" aria-labelledby={id}>
+    <h3 id={id} className="local-dashboard-caption" data-page-heading tabIndex={-1}><MessageSquareText size={16} aria-hidden="true" />Answer</h3>
+    {body}
+  </section>;
 }
 
 export function FlowConnector() {
