@@ -20,6 +20,7 @@
             "created_at",
             "written_at",
             "quality_gate_passed",
+            "terminal_ok",
             "quality_gate_detail",
             "model_name",
             "tokens_input",
@@ -50,6 +51,92 @@
             "baseline_model",
             "usage_source",
             "savings_method"
+          ]
+        }
+      ],
+      "supported_empty_state_reasons": [
+        "missing-field",
+        "no-data"
+      ]
+    },
+    {
+      "component_id": "runs-tier-mix",
+      "component_kind": "table",
+      "title": "Routing breakdown",
+      "contract_version": {
+        "major": 1,
+        "minor": 0,
+        "patch": 0
+      },
+      "data_bindings": [
+        {
+          "binding_id": "runs-tier-mix-routing",
+          "projection_topic": "onex.snapshot.projection.delegation.model-routing.v1",
+          "ordering_authority_field": "captured_at",
+          "ordering_direction": "descending",
+          "required_fields": [
+            "by_tier"
+          ]
+        }
+      ],
+      "supported_empty_state_reasons": [
+        "missing-field",
+        "no-data"
+      ]
+    },
+    {
+      "component_id": "overview-run-locally",
+      "component_kind": "metric_card",
+      "title": "Run locally",
+      "contract_version": {
+        "major": 1,
+        "minor": 0,
+        "patch": 0
+      },
+      "data_bindings": [
+        {
+          "binding_id": "overview-run-locally-routing",
+          "projection_topic": "onex.snapshot.projection.delegation.model-routing.v1",
+          "ordering_authority_field": "captured_at",
+          "ordering_direction": "descending",
+          "required_fields": [
+            "by_tier"
+          ]
+        }
+      ],
+      "supported_empty_state_reasons": [
+        "missing-field",
+        "no-data"
+      ]
+    },
+    {
+      "component_id": "runs-insights",
+      "component_kind": "table",
+      "title": "Run analysis",
+      "contract_version": {
+        "major": 1,
+        "minor": 0,
+        "patch": 0
+      },
+      "data_bindings": [
+        {
+          "binding_id": "runs-insights-decisions",
+          "projection_topic": "onex.snapshot.projection.delegation.decisions.v1",
+          "ordering_authority_field": "written_at",
+          "ordering_direction": "descending",
+          "required_fields": [
+            "written_at",
+            "created_at",
+            "quality_gate_passed",
+            "terminal_ok",
+            "quality_gate_detail",
+            "latency_ms",
+            "tokens_input",
+            "tokens_output",
+            "cost_usd",
+            "cost_tier_name",
+            "task_type",
+            "model_name"
           ]
         }
       ],

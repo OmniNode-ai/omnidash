@@ -56,7 +56,8 @@ describe('EvEmpty tenant state (OMN-19994 AC2)', () => {
   it('keeps any other degraded reason as text', () => {
     const { container } = render(<EvEmpty title="No delegation decisions" reason="HTTP 500" />);
 
-    expect(screen.getByText('HTTP 500')).toBeInTheDocument();
+    // OMN-21166: a bare status reads as a sentence with the status kept in it.
+    expect(screen.getByText('The runtime could not answer (HTTP 500)')).toBeInTheDocument();
     expect(container.querySelector('[data-tenant-state="not-configured"]')).not.toBeInTheDocument();
   });
 });

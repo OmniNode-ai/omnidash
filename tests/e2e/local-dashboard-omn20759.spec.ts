@@ -1,20 +1,18 @@
+import { revealRunFields } from './omn21166-chart-fixtures';
 import { mkdirSync } from 'node:fs';
 import { dirname, resolve } from 'node:path';
 import { expect, test, type Page } from 'playwright/test';
 
-// OMN-20759: at 1440x900 the Runs table (17 columns) and the Overview's Recent runs table (16 columns) fit inside
+// OMN-20759: at 1440x900 the Runs table (including modelled saving) and Overview Recent runs fit inside
 // their panels, with no clipped cell, no sideways scroll and no column dropped. The rows are the OMN-20223 re-walk's
 // own shape (2026-10-09): UUID run ids, microsecond timestamps and the Gemini host, the values that clipped.
 const DECISIONS = 'onex.snapshot.projection.delegation.decisions.v1';
 
 const RUNS_HEADERS = [
-  'Run', 'Created', 'Status', 'Cause', 'Model', 'Backend', 'Host', 'Tokens in', 'Tokens out', 'Local cost',
+  'Run', 'Created', 'Status', 'Cause', 'Model', 'Backend', 'Host', 'Tokens in', 'Tokens out', 'Local cost', 'Modelled saving',
   'Baseline model', 'Basis', 'Task type', 'Duration', 'Tokens to compliance', 'Route tier', 'Quality score',
 ];
-const RECENT_HEADERS = [
-  'Time', 'Age', 'Status', 'Cause', 'Task type', 'Model', 'Backend', 'Host', 'Tokens in', 'Tokens out', 'Cost',
-  'Basis', 'Duration', 'Route tier', 'Quality score', 'Run',
-];
+const RECENT_HEADERS = ['Time','Run','Status','Model','Cost','Duration','Age','Cause','Task type','Backend','Host','Tokens in','Tokens out','Basis','Route tier','Quality score'];
 
 const decisions = Array.from({ length: 23 }, (_, index) => {
   const minute = String(index).padStart(2, '0');
@@ -88,7 +86,9 @@ for (const [name, path, headers] of [
     await page.setViewportSize({ width: 1440, height: 900 });
     await serve(page);
     await page.goto(path);
-    // AC2: every column header present before this change is still there, in order.
+    // OMN-21166 compact view: reveal every retained column through the native control.
+    await revealRunFields(page);
+    // AC2: every original column remains; presentation order puts the six primary fields first.
     const table = await runTable(page, [...headers]);
     await expect(table.getByText('generativelanguage.googleapis.com').first()).toBeVisible();
     await table.evaluate((element) => element.scrollIntoView({ block: 'start' }));
@@ -100,8 +100,8 @@ for (const [name, path, headers] of [
     expect(bounds!.x + bounds!.width).toBeLessThanOrEqual(1440);
     // No single cell is clipped by its own column either.
     const clipped = await table.evaluate((element) =>
-      [...element.querySelectorAll('td')].filter((cell) => cell.scrollWidth > cell.clientWidth + 1).length);
-    expect(clipped).toBe(0);
+      [...element.querySelectorAll('td')].filter((cell) => cell.scrollWidth > cell.clientWidth + 1).map(cell => ({ label: cell.getAttribute('data-label'), text: cell.textContent, width: cell.clientWidth, scroll: cell.scrollWidth, html: cell.innerHTML })));
+    expect(clipped).toEqual([]);
     expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(1440);
 
     await page.screenshot({

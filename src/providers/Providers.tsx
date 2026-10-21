@@ -15,7 +15,7 @@ export function Providers({ children }: { children: ReactNode }) {
   return (
     <QueryClientProvider client={queryClient}>
       <SnapshotSourceProvider>
-        <ThemeProvider>{children}</ThemeProvider>
+        <ThemeProvider defaultTheme="light" persistPreference>{children}</ThemeProvider>
       </SnapshotSourceProvider>
     </QueryClientProvider>
   );

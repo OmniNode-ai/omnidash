@@ -92,10 +92,12 @@ test('OMN-20009: Run locally shows the served share and Avg saving / call the se
   await serve(page, served);
   await page.goto('/');
   await expect(page.getByRole('heading', { level: 1, name: 'Overview' })).toBeVisible();
+  await page.locator('.local-overview-secondary > summary').click();
 
   const share = panel(page, 'Run locally');
   await expect(share.getByText('83.9%', { exact: true })).toBeVisible();
-  await expect(share.getByText('104 of 124 runs local · 20 not tier-routed')).toBeVisible();
+  await expect(share.locator('dl.local-routing-counts dt')).toHaveText(['Local runs', 'All runs', 'Without a tier']);
+  await expect(share.locator('dl.local-routing-counts dd')).toHaveText(['104', '124', '20']);
   // The tier-routed share the view also serves (local 100 %) is never the run-locally figure.
   await expect(share.getByText('100.0%')).toHaveCount(0);
 
@@ -125,12 +127,13 @@ test('OMN-20009: with neither exposure served, both cards say why and neither sh
   await serve(page, withoutRouting);
   await page.goto('/');
   await expect(page.getByRole('heading', { level: 1, name: 'Overview' })).toBeVisible();
+  await page.locator('.local-overview-secondary > summary').click();
 
   const share = panel(page, 'Run locally');
-  await expect(share.getByText(`Not served: ${ROUTING}`)).toBeVisible();
+  await expect(share.getByText('Not available yet: model routing.')).toBeVisible();
   await expect(share.getByText(/%/)).toHaveCount(0);
   const saving = panel(page, 'Avg saving / call');
-  await expect(saving.getByText(`Not served: ${METERING}`)).toBeVisible();
+  await expect(saving.getByText('Not available yet: usage summary.')).toBeVisible();
   await expect(page.getByText('0%', { exact: true })).toHaveCount(0);
   await expect(page.getByText('$0', { exact: true })).toHaveCount(0);
   await share.evaluate((element) => element.scrollIntoView({ block: 'center' }));

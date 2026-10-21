@@ -61,6 +61,7 @@ const step = (sequence: number, kind: string) => ({
   candidates: sequence === 2 ? ['local', 'cheap_cloud'] : null, failing_step_sequence: null,
 });
 const SERVED: Array<[string, unknown[]]> = [
+  ['cost.savings-overview.v1', [{ window: 'all', captured_at: '2026-10-13T10:52:43Z', total_cost_usd: '0.001', total_savings_usd: '0.007928', measured_run_count: 2, tokens_total: 1476 }]],
   ['delegation.decisions.v1', [decision(RUN, '2026-10-13T10:52:43.446325+00:00'), decision('33333333-3333-4333-8333-333333333333', '2026-10-13T10:52:36.081741+00:00')]],
   ['metering-summary.v1', [metering('all', ''), metering('day', '2026-10-12'), metering('day', '2026-10-13')]],
   ['delegation.savings.v1', [{ tenant_id: TENANT, cumulative_savings_usd: 0.007928, cumulative_local_cost_usd: 0.001, cumulative_cloud_cost_usd: 0.008928, baseline_model: 'claude-sonnet-5-5', pricing_manifest_version: '1', session_count: 2, sessions: [], captured_at: '2026-10-13T10:52:43+00:00' }]],
@@ -73,13 +74,15 @@ const SERVED: Array<[string, unknown[]]> = [
 
 /** The parts a panel may draw its text in. Anything else in a panel is a bare figure. */
 const PARTS = [
-  'h2', '.local-dashboard-metric', '.local-dashboard-caption', '.local-dashboard-asof', 'dl.local-dashboard-fields',
+  'h2', 'details > summary', '.local-dashboard-metric', '.local-dashboard-caption', '.local-dashboard-asof', 'dl.local-dashboard-fields',
   '.local-dashboard-table-wrap', '.local-dashboard-empty', '[role="status"]', '[role="alert"]', 'figure.local-chart',
   '.local-share', '.local-meter', '.local-dashboard-filters', '.local-dashboard-pager', '.local-run-title',
   'nav.local-run-diagram', 'ol.local-dashboard-steps', '.usage-tokens-day',
+  'ul.local-run-preview', '.local-runs-search', 'dl.local-routing-counts', '.local-routing-note',
+  'nav.local-summary-links',
 ].join(', ');
 /** Where a page may draw text at all. */
-const PAGE_PARTS = 'header.local-dashboard-header, article.local-dashboard-panel, main > [role="status"], main > [role="alert"]';
+const PAGE_PARTS = 'details.local-overview-secondary > summary, header.local-dashboard-header, article.local-dashboard-panel, main > [role="status"], main > [role="alert"]';
 
 function texts(root: Element): Text[] {
   const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT);
@@ -133,14 +136,15 @@ describe('OMN-21015 U1: the guard is looking at drawn pages', () => {
   // A value only the constructed rows carry, and the part it must be drawn in. A page that drew its panels without
   // the served rows would still pass K1 to K4, so each served page is held to one served value.
   it.each([
-    ['overview', '.local-dashboard-metric', '729 in · 747 out'],
+    ['overview', '.local-dashboard-metric', '1,476'],
     ['runs', 'table tbody tr', RUN],
     ['workflow', 'ol.local-dashboard-steps > li', 'Provider call'],
     ['usage', 'table tbody tr', '747'],
     ['credentials', 'table tbody tr', 'openai-main'],
   ] as const)('K5: served %s draws a served value (%s)', async (pageName, selector, value) => {
     const container = await open(pageName, true);
-    const drawn = [...container.querySelectorAll(selector)].map((node) => node.textContent ?? '');
+    // OMN-21166 R-A: a run table writes a long run id short; the served id stays whole on its link's title.
+    const drawn = [...container.querySelectorAll(selector)].map((node) => `${node.textContent ?? ''} ${[...node.querySelectorAll('[title]')].map((el) => el.getAttribute('title')).join(' ')}`);
     expect(drawn.filter((text) => text.includes(value)).length).toBeGreaterThan(0);
   });
 

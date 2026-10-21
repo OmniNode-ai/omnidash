@@ -13,8 +13,7 @@
 
 import { useEffect, useLayoutEffect, useRef, useState, type MouseEvent } from 'react';
 import { useLocation } from 'wouter';
-import { Activity, ChevronsLeft, ChevronsRight, Copy, Edit, FlaskConical, GitBranch, KeyRound, ListTree, MoreHorizontal, Plus, Radio, Sparkles, Trash2, Wallet } from 'lucide-react';
-// SlidersHorizontal removed — Feature Flags nav hidden for beta (OMN-14058-beta). Re-add when wired.
+import { SlidersHorizontal, ChevronsLeft, ChevronsRight, Copy, Edit, MoreHorizontal, Plus, Trash2 } from 'lucide-react';
 // Grid3x3 removed from import while Instruction Eval nav entry is commented out (OMN-12833 A4).
 import type { AppPage } from '@/store/types';
 import {
@@ -27,15 +26,26 @@ import { Text } from '@/components/ui/typography';
 import { useFrameStore } from '@/store/store';
 import { DeleteDashboardDialog } from './DeleteDashboardDialog';
 import { PAGE_PATHS, pageForPath } from '@/navigation/page-routes';
+import { DestinationIcon } from '@/navigation/destination-icons';
 
-/** The six local pages (requirements FR-3), in the required order. `partial`: its exposure is not served yet. */
-const LOCAL_PAGES: ReadonlyArray<{ page: AppPage; label: string; icon: React.ReactNode; partial: boolean }> = [
-  { page: 'local-overview', label: 'Overview', icon: <Activity size={13} />, partial: false },
-  { page: 'local-runs', label: 'Runs', icon: <GitBranch size={13} />, partial: false },
-  { page: 'local-workflow', label: 'Workflow', icon: <ListTree size={13} />, partial: false },
-  { page: 'local-usage', label: 'Usage', icon: <Wallet size={13} />, partial: true },
-  { page: 'local-credentials', label: 'Credentials', icon: <KeyRound size={13} />, partial: true },
-  { page: 'local-api-keys', label: 'API Keys', icon: <KeyRound size={13} />, partial: true },
+/** The six local pages (requirements FR-3), in the required order. */
+const LOCAL_PAGES: ReadonlyArray<{ page: AppPage; label: string; icon: React.ReactNode }> = [
+  { page: 'local-overview', label: 'Overview', icon: <DestinationIcon page="local-overview" /> },
+  { page: 'local-runs', label: 'Runs', icon: <DestinationIcon page="local-runs" /> },
+  { page: 'local-workflow', label: 'Workflow', icon: <DestinationIcon page="local-workflow" /> },
+  { page: 'local-usage', label: 'Usage', icon: <DestinationIcon page="local-usage" /> },
+  { page: 'local-credentials', label: 'Credentials', icon: <DestinationIcon page="local-credentials" /> },
+  { page: 'local-api-keys', label: 'API Keys', icon: <DestinationIcon page="local-api-keys" /> },
+];
+
+// Deferred from the default MVP surface; the legacy implementation and stores
+// stay intact. Developer tools never enable custom dashboard editing.
+const SHOW_CUSTOM_DASHBOARDS = false;
+const DEVELOPER_PAGES: ReadonlyArray<{ page: AppPage; label: string; icon: React.ReactNode }> = [
+  { page: 'experiments', label: 'Experimentation', icon: <DestinationIcon page="experiments" /> },
+  { page: 'sea-control', label: 'Agent Workbench', icon: <DestinationIcon page="sea-control" /> },
+  { page: 'event-bus', label: 'Event Bus', icon: <DestinationIcon page="event-bus" /> },
+  { page: 'lab', label: 'Lab', icon: <DestinationIcon page="lab" /> },
 ];
 
 interface RenameInputProps {
@@ -144,6 +154,8 @@ export function Sidebar() {
   } = useFrameStore();
   const collapsed = useFrameStore((s) => s.sidebarCollapsed);
   const toggleCollapsed = useFrameStore((s) => s.toggleSidebarCollapsed);
+  const showDeveloperTools = useFrameStore((s) => s.showDeveloperTools);
+  const setShowDeveloperTools = useFrameStore((s) => s.setShowDeveloperTools);
   const [location] = useLocation();
   const activePage = pageForPath(location);
   const setActivePage = useFrameStore((s) => s.setActivePage);
@@ -178,6 +190,26 @@ export function Sidebar() {
     void id;
   };
 
+  const renderNavItem = ({ page, label, icon }: {
+    page: AppPage; label: string; icon: React.ReactNode;
+  }) => (
+    <a
+      key={page}
+      href={PAGE_PATHS[page]}
+      data-testid={`nav-${page}`}
+      data-nav-page={page}
+      data-destination={page}
+      className={`dash-item mvp-nav-item${activePage === page ? ' active' : ''}`}
+      aria-label={label}
+      title={collapsed ? label : undefined}
+      aria-current={activePage === page ? 'page' : undefined}
+      onClick={(event) => followPage(event, page)}
+    >
+      <span className="dash-marker" aria-hidden="true">{icon}</span>
+      {!collapsed && <span className="dash-name">{label}</span>}
+    </a>
+  );
+
   return (
     <aside className={`sidebar${collapsed ? ' collapsed' : ''}`}>
       {/* Brand block. OmniNode icon on the left, OmniDash product label
@@ -209,8 +241,8 @@ export function Sidebar() {
         </button>
       </div>
 
-      {/* OMN-19981 Amendment 6 (requirements FR-3): the six local pages, in the required order, first in the
-          sidebar. A page whose exposure is not served yet carries a "partial" chip; clicking an open page keeps it. */}
+      {/* The six local pages stay first. Availability is shown by each page's
+          data states, rather than by a hardcoded navigation badge. */}
       <nav aria-label="Local" className="local-nav">
         {!collapsed && (
           <div className="sidebar-bottom-title" style={{ padding: '4px 12px 2px' }}>
@@ -219,23 +251,10 @@ export function Sidebar() {
             </Text>
           </div>
         )}
-        {LOCAL_PAGES.map(({ page, label, icon, partial }) => (
-          <a
-            key={page}
-            href={PAGE_PATHS[page]}
-            data-testid={`nav-${page}`}
-            className={`dash-item${activePage === page ? ' active' : ''}`}
-            title={collapsed ? label : undefined}
-            aria-current={activePage === page ? 'page' : undefined}
-            onClick={(event) => followPage(event, page)}
-          >
-            <span className="dash-marker">{icon}</span>
-            {!collapsed && <span className="dash-name">{label}</span>}
-            {!collapsed && partial && <span className="local-nav-chip">partial</span>}
-          </a>
-        ))}
+        {LOCAL_PAGES.map(renderNavItem)}
       </nav>
 
+      {SHOW_CUSTOM_DASHBOARDS && <>
       {/* Section header */}
       <div className="nav-section">
         {!collapsed && <span className="nav-section-title">Dashboards</span>}
@@ -322,111 +341,34 @@ export function Sidebar() {
         )}
       </div>
 
-      {/* OMN-12943 — Event-driven runtime nav group (additive). Reuses the
-          existing dash-item styling + setActivePage toggle pattern; the four
-          ported views (delegation-evidence / event-bus / experiments /
-          sea-control) live behind these entries. Existing nav untouched. */}
-      <div
-        style={{
-          borderTop: '1px solid var(--sidebar-border, oklch(22% 0.01 260))',
-          paddingTop: 4,
-        }}
-      >
-        {!collapsed && (
-          <div className="sidebar-bottom-title" style={{ padding: '4px 12px 2px' }}>
-            <Text size="xs" color="tertiary" transform="uppercase" weight="semibold">
-              Developer workspace
-            </Text>
-          </div>
-        )}
-        {(
-          [
-            { page: 'delegation-evidence' as AppPage, label: 'Delegation Evidence', icon: <GitBranch size={13} /> },
-            { page: 'event-bus' as AppPage, label: 'Event Bus', icon: <Radio size={13} /> },
-            { page: 'experiments' as AppPage, label: 'Experimentation', icon: <FlaskConical size={13} /> },
-            { page: 'sea-control' as AppPage, label: 'Agent Workbench', icon: <Sparkles size={13} /> },
-            { page: 'lab' as AppPage, label: 'Lab', icon: <Activity size={13} /> },
-          ] as const
-        ).map(({ page, label, icon }) => (
-          <a
-            key={page}
-            href={PAGE_PATHS[page]}
-            data-testid={`nav-${page}`}
-            className={`dash-item${activePage === page ? ' active' : ''}`}
-            title={collapsed ? label : undefined}
-            aria-current={activePage === page ? 'page' : undefined}
-            onClick={(event) => followPage(event, page)}
-          >
-            <span className="dash-marker">{icon}</span>
-            {!collapsed && <span className="dash-name">{label}</span>}
-          </a>
-        ))}
-      </div>
+      </>}
 
-      {/* Bottom nav — settings / feature flags */}
-      <div
-        style={{
-          marginTop: 'auto',
-          borderTop: '1px solid var(--sidebar-border, oklch(22% 0.01 260))',
-          paddingTop: 4,
-        }}
-      >
-        {/* OMN-12833 (A4): Instruction Eval hidden from beta nav — the instruction-eval
-            runner has no data yet so the page shows a permanent empty state. Uncomment
-            when node_projection_instruction_eval starts receiving rows.
-        {!collapsed && (
-          <div className="sidebar-bottom-title" style={{ padding: '4px 12px 2px' }}>
-            <Text size="xs" color="tertiary" transform="uppercase" weight="semibold">
-              Evaluation
-            </Text>
-          </div>
-        )}
-        {(
-          [
-            { page: 'eval'    as AppPage, label: 'Instruction Eval', icon: <Grid3x3 size={13} /> },
-          ] as const
-        ).map(({ page, label, icon }) => (
-          <div
-            key={page}
-            role="button"
-            tabIndex={0}
-            className={`dash-item${activePage === page ? ' active' : ''}`}
-            title={collapsed ? label : undefined}
-            onClick={() => setActivePage(activePage === page ? 'dashboard' : page)}
-            onKeyDown={(e) => {
-              if (e.key === 'Enter' || e.key === ' ') {
-                setActivePage(activePage === page ? 'dashboard' : page);
-              }
-            }}
-          >
-            <span className="dash-marker">{icon}</span>
-            {!collapsed && <span className="dash-name">{label}</span>}
-          </div>
-        ))}
-        */}
+      <nav aria-label="Evidence" className="local-nav evidence-nav">
+        {!collapsed && <div className="mvp-nav-title"><Text size="xs" color="tertiary" transform="uppercase" weight="semibold">Evidence</Text></div>}
+        {renderNavItem({ page: 'delegation-evidence', label: 'Delegation Evidence', icon: <DestinationIcon page="delegation-evidence" /> })}
+      </nav>
 
-        {/* OMN-14058-beta: Feature Flags hidden from beta nav — flag server not wired in beta.
-            Uncomment when wired to the live flag server for post-beta release.
-        <div
-          role="button"
-          tabIndex={0}
-          className={`dash-item${activePage === 'feature-flags' ? ' active' : ''}`}
-          title={collapsed ? 'Feature Flags' : undefined}
-          onClick={() => setActivePage(activePage === 'feature-flags' ? 'dashboard' : 'feature-flags')}
-          onKeyDown={(e) => {
-            if (e.key === 'Enter' || e.key === ' ') {
-              setActivePage(activePage === 'feature-flags' ? 'dashboard' : 'feature-flags');
-            }
-          }}
+      {showDeveloperTools && (
+        <nav id="developer-navigation" aria-label="Developer" className="local-nav developer-nav">
+          {!collapsed && <div className="mvp-nav-title"><Text size="xs" color="tertiary" transform="uppercase" weight="semibold">Developer</Text></div>}
+          {DEVELOPER_PAGES.map(renderNavItem)}
+        </nav>
+      )}
+
+      <div className="sidebar-settings">
+        <button
+          type="button"
+          role="checkbox"
+          aria-label="Show developer tools"
+          aria-checked={showDeveloperTools}
+          aria-controls={showDeveloperTools ? 'developer-navigation' : undefined}
+          title="Show developer tools"
+          className="developer-toggle"
+          onClick={() => setShowDeveloperTools(!showDeveloperTools)}
         >
-          <span className="dash-marker">
-            <SlidersHorizontal size={13} />
-          </span>
-          {!collapsed && (
-            <span className="dash-name">Feature Flags</span>
-          )}
-        </div>
-        */}
+          <SlidersHorizontal size={16} aria-hidden="true" />
+          {!collapsed && <><span>Show developer tools</span><span className="developer-switch" aria-hidden="true" /></>}
+        </button>
       </div>
 
       <DeleteDashboardDialog

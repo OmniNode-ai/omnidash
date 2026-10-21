@@ -156,7 +156,7 @@ describe('MetricCard captions and pending sources (Amendment 4)', () => {
       config={{ metric_key: 'tokens_in_and_out', label: 'Tokens in and out', format: 'number', precision: 0 }}
       row={{ tokens_total: 56800 }}
     />);
-    expect(screen.getByText('Not served yet: waits on its exposure')).toBeInTheDocument();
+    expect(screen.getByText('Not available yet')).toBeInTheDocument();
     expect(screen.queryByText(/56,800/)).not.toBeInTheDocument();
   });
 });
@@ -174,7 +174,7 @@ describe('LocalDashboardPage', () => {
     const view = render(<LocalDashboardPage pageName="runs" />);
     await act(async () => {});
     // Runs loaded its own document (not the name fallback), so a stale header is possible next.
-    expect(screen.getByText('Every delegation run from the runtime\'s served decisions, with its cost.')).toBeInTheDocument();
+    expect(screen.getByText('Search recent runs, investigate failures and open recorded run details.')).toBeInTheDocument();
     expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent('Runs');
 
     // The next census never answers, so Overview stays in its loading state.

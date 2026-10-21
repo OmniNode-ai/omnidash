@@ -1,3 +1,5 @@
+// 2026-10-19 user override: Overview headlines use the restored legacy all-time aggregate.
+// All other metering/per-run source boundaries and their negative controls remain enforced.
 // OMN-19980 AC2d: no page of the six shows a savings figure from any exposure other than metering-summary.v1.
 // The dashboard-side twin of omnimarket's SQL savings guard; both name the one allowed source, metering-summary.v1.
 //
@@ -27,7 +29,7 @@ import {
   type LocalPageDocument,
   type LocalPageName,
 } from '@/layout/local-page-loader';
-import { MetricCard, PendingState, type MetricCardConfig } from '@/pages/LocalDashboardPage';
+import { MetricCard, PENDING_SOURCES, PendingState, type MetricCardConfig } from '@/pages/LocalDashboardPage';
 
 /** The one exposure a savings figure may come from; omnimarket's guard names the same string. */
 const ALLOWED_SAVINGS_SOURCE = 'metering-summary.v1';
@@ -92,12 +94,15 @@ function isSavingsField(name: string): boolean {
  * through one named entry here. Step B rebinds it to metering-summary.v1's all-time row, so the list is empty and
  * asserted empty below: no savings figure on the six pages is exempt from R1 and R2 any more.
  */
-const STEP_A_ALLOWLIST: ReadonlyArray<{ binding_id: string; projection_topic: string; fields: readonly string[] }> = [];
+// Lakshman 2026-10-19: restore Overview to its populated old aggregate; no other page/source is exempt.
+const OVERVIEW_RESTORE_ALLOWLIST: ReadonlyArray<{ component_id: string; binding_id: string; projection_topic: string; fields: readonly string[] }> = [
+  { component_id: 'overview-savings', binding_id: 'overview-savings-legacy', projection_topic: SAVINGS_OVERVIEW, fields: ['total_savings_usd'] },
+];
 
 type Binding = NonNullable<ModelComponentContract['data_bindings']>[number];
 
-function allowlisted(binding: Binding, field: string): boolean {
-  return STEP_A_ALLOWLIST.some((entry) => entry.binding_id === binding.binding_id
+function allowlisted(binding: Binding, field: string, componentId: string): boolean {
+  return OVERVIEW_RESTORE_ALLOWLIST.some((entry) => entry.component_id === componentId && entry.binding_id === binding.binding_id
     && entry.projection_topic === binding.projection_topic && entry.fields.includes(field));
 }
 
@@ -106,7 +111,7 @@ interface LoadedPage { name: string; doc: LocalPageDocument }
 
 const PAGES_DIR = resolve(process.cwd(), 'src/pages/local');
 /** The pages on disk, not a typed list: a seventh page is guarded the day it lands. */
-const pageNames = readdirSync(PAGES_DIR).filter((file) => file.endsWith('.page.yaml')).map((file) => file.replace('.page.yaml', '')).sort();
+const pageNames = readdirSync(PAGES_DIR).filter((file) => !file.startsWith('.') && file.endsWith('.page.yaml')).map((file) => file.replace('.page.yaml', '')).sort();
 const loadPages = (): LoadedPage[] => pageNames.map((name) => ({ name, doc: loadLocalPageConfig(name as LocalPageName) }));
 
 interface WidgetKey { page: string; componentId: string; key: string }
@@ -141,7 +146,7 @@ function ruleR1Binding(pages: readonly LoadedPage[]): string[] {
   for (const page of pages) {
     for (const { component, binding } of bindingsOf(page)) {
       for (const field of binding.required_fields ?? []) {
-        if (!isSavingsField(field) || binding.projection_topic === ALLOWED_TOPIC || allowlisted(binding, field)) continue;
+        if (!isSavingsField(field) || binding.projection_topic === ALLOWED_TOPIC || allowlisted(binding, field, component.component_id)) continue;
         if (isPerRunSaving(component.component_id, binding.binding_id, binding.projection_topic, field)) continue;
         findings.push(`R1 ${page.name}/${binding.binding_id}: ${field} from ${binding.projection_topic}`);
       }
@@ -166,7 +171,7 @@ function ruleR2Widget(pages: readonly LoadedPage[]): string[] {
       const fromMetering = lists && first.projection_topic === ALLOWED_TOPIC;
       const waits = component !== undefined && bindings.length === 0
         && JSON.stringify(component.supported_empty_state_reasons ?? []) === JSON.stringify(['upstream-blocked']);
-      if (fromMetering || waits || (lists && allowlisted(first, key))) continue;
+      if (fromMetering || waits || (lists && allowlisted(first, key, componentId))) continue;
       if (lists && isPerRunSaving(componentId, first.binding_id, first.projection_topic, key)) continue;
       findings.push(`R2 ${page.name}/${componentId}: shows ${key} from ${first?.projection_topic ?? 'no binding'}`);
     }
@@ -211,7 +216,7 @@ function ruleR3PerRun(pages: readonly LoadedPage[]): string[] {
  * must then become 'bound' and pass the binding check above.
  */
 type R4Allowance = {
-  file: string; owner: string; fields: readonly string[]; componentId: string; state: 'bound' | 'pending';
+  file: string; owner: string; fields: readonly string[]; componentId: string; pageName?: string; state: 'bound' | 'pending' | 'compatibility';
 };
 const R4_ALLOWED: readonly R4Allowance[] = [
   // US-3 (OMN-20006): the Usage savings series renders the day rows of its one binding, metering-summary.v1, as
@@ -221,10 +226,10 @@ const R4_ALLOWED: readonly R4Allowance[] = [
   // OMN-20009 (omnidash#359): the Avg saving / call card reads the served per-run quotient, a column rather than a
   // metric key. Pending until the captured lab catalogue served the column (the lab recapture of 2026-10-07, after
   // metering_summary 0002 reached the lab); its card now binds metering-summary.v1 with the field required.
-  { file: 'src/pages/LocalDashboardPage.tsx', owner: 'SavingsPerRunCard', fields: ['savings_per_measured_run_usd'], componentId: 'overview-avg-saving-per-call', state: 'bound' },
+  { file: 'src/pages/LocalDashboardPage.tsx', owner: 'SavingsPerRunCard', fields: ['savings_per_measured_run_usd'], componentId: 'overview-avg-saving-per-call', pageName: 'overview', state: 'bound' },
   // OMN-20008 AC5 (Jonah's decision, 4f0e618d): the Savings card's percentage line reads the served ratio from the
   // same all-time row as its figure and formats it; it divides nothing and reads no other savings field.
-  { file: 'src/pages/LocalDashboardPage.tsx', owner: 'MeteringTotalCard', fields: ['savings_pct_of_counterfactual'], componentId: 'overview-savings', state: 'bound' },
+  { file: 'src/pages/LocalDashboardPage.tsx', owner: 'MeteringTotalCard', fields: ['savings_pct_of_counterfactual'], componentId: 'overview-savings', state: 'compatibility' },
   // OMN-21015 AC3 (the PER_RUN_SAVING exception): the Runs table's cell formats one run's served modelled saving and
   // names its baseline; it sums nothing and reads no other savings field.
   { file: 'src/pages/LocalDashboardPage.tsx', owner: 'runModelledCell', fields: ['modelled_savings_usd'], componentId: 'recent-runs', state: 'bound' },
@@ -306,7 +311,7 @@ function r4AllowanceProblems(pages: readonly LoadedPage[], unallowedFindings: re
   for (const entry of allowed) {
     const id = `${entry.file} ${entry.owner}`;
     if (entry.fields.length === 0) problems.push(`${id}: allows no field`);
-    const components = pages.flatMap((page) => page.doc.components).filter((c) => c.component_id === entry.componentId);
+    const components = pages.filter(page => entry.pageName === undefined || page.name === entry.pageName).flatMap((page) => page.doc.components).filter((c) => c.component_id === entry.componentId);
     const required = new Set(components.flatMap((c) => (c.data_bindings ?? []).flatMap((b) => b.required_fields ?? [])));
     for (const field of entry.fields) {
       const read = unallowedFindings.some((finding) => finding.startsWith(`R4 ${entry.file}:`) && finding.includes(` ${entry.owner}: `)
@@ -318,6 +323,13 @@ function r4AllowanceProblems(pages: readonly LoadedPage[], unallowedFindings: re
     }
     if (components.length !== 1) { problems.push(`${id}: component ${entry.componentId} found ${components.length} times`); continue; }
     const topics = (components[0]!.data_bindings ?? []).map((b) => b.projection_topic);
+    // Keep the old pure metering formatter covered by its direct tests, without claiming Overview mounts it.
+    if (entry.state === 'compatibility') {
+      if (entry.file !== PAGE_FILE || entry.owner !== 'MeteringTotalCard' || entry.componentId !== 'overview-savings'
+        || JSON.stringify(entry.fields) !== JSON.stringify(['savings_pct_of_counterfactual'])
+        || JSON.stringify(topics) !== JSON.stringify([SAVINGS_OVERVIEW])) problems.push(`${id}: invalid compatibility formatter`);
+      continue;
+    }
     if (entry.state === 'pending') {
       if (topics.length > 0) problems.push(`${id}: pending, but ${entry.componentId} now binds ${topics.join(', ')}; make it bound`);
       continue;
@@ -736,9 +748,9 @@ describe('OMN-19980 AC2d: planted controls (each rule catches its violation)', (
   });
 });
 
-describe('OMN-19980 Step B: the allowlist is empty and every savings figure binds metering-summary.v1', () => {
-  it('the Step A allowlist is empty, and every R4 allowance is a live read in a component bound to metering-summary.v1 alone', () => {
-    expect(STEP_A_ALLOWLIST).toEqual([]);
+describe('Savings source boundary with exact user-authorized Overview restoration', () => {
+  it('the restored Overview exception is exact and all renderer allowances retain their source ownership', () => {
+    expect(OVERVIEW_RESTORE_ALLOWLIST).toEqual([{ component_id: 'overview-savings', binding_id: 'overview-savings-legacy', projection_topic: SAVINGS_OVERVIEW, fields: ['total_savings_usd'] }]);
     expect(R4_ALLOWED.length).toBeGreaterThan(0);
     expect(r4AllowanceProblems(loadPages(), ruleR4Source(readSources(), []), R4_ALLOWED)).toEqual([]);
   });
@@ -852,180 +864,107 @@ describe('OMN-19980 Step B: the allowlist is empty and every savings figure bind
     // aside here by exact match and asserted below to be where the exception says, so nothing else can hide behind it.
     const bound = pages.flatMap((page) => bindingsOf(page)
       .filter(({ component, binding: b }) => (b.required_fields ?? []).some((f) => isSavingsField(f)
-        && !isPerRunSaving(component.component_id, b.binding_id, b.projection_topic, f)))
+        && !isPerRunSaving(component.component_id, b.binding_id, b.projection_topic, f)
+        && !allowlisted(b, f, component.component_id)))
       .map(({ binding: b }) => ({ id: `${page.name}/${b.binding_id}`, topic: b.projection_topic })));
     const shown = pages.flatMap((page) => widgetKeys(page).filter((entry) => isSavingsField(entry.key)).flatMap((entry) => {
       const first = page.doc.components.find((candidate) => candidate.component_id === entry.componentId)?.data_bindings?.[0];
-      if (first !== undefined && isPerRunSaving(entry.componentId, first.binding_id, first.projection_topic, entry.key)) return [];
+      if (first !== undefined && (isPerRunSaving(entry.componentId, first.binding_id, first.projection_topic, entry.key) || allowlisted(first, entry.key, entry.componentId))) return [];
       return first === undefined ? [] : [{ id: `${page.name}/${entry.componentId}:${entry.key}`, topic: first.projection_topic }];
     }));
-    // The instrument: the Overview Savings total is a bound savings figure, so a vacuous pass is impossible.
-    expect(bound.map((entry) => entry.id)).toContain('overview/overview-savings-metering');
-    expect(shown.map((entry) => entry.id)).toContain('overview/overview-savings:savings_usd');
+    // Positive controls name the exact bound Usage savings widget; finding a different savings field cannot pass.
+    expect(bound.map((entry) => entry.id)).toContain('usage/usage-savings-series-metering');
+    expect(shown.map((entry) => entry.id)).toContain('usage/usage-savings-series:savings_usd');
+    expect(bindingsOf(pages.find(p => p.name === 'overview')!).filter(({component,binding:b}) => (b.required_fields ?? []).some(f => allowlisted(b,f,component.component_id)))).toHaveLength(1);
     for (const entry of [...bound, ...shown]) expect(entry.topic, entry.id).toBe(ALLOWED_TOPIC);
     const perRun = pages.flatMap((page) => bindingsOf(page).filter(({ binding: b }) => (b.required_fields ?? []).includes(PER_RUN_SAVING.field))
       .map(({ component, binding: b }) => `${page.name}/${component.component_id}/${b.binding_id}:${b.projection_topic}`));
     expect(perRun).toEqual([`runs/${PER_RUN_SAVING.componentId}/${PER_RUN_SAVING.bindingId}:${DECISIONS}`]);
   });
 
-  it('the Overview Savings total reads the all-time row of metering-summary.v1, its caption from the same row', () => {
-    const overview = loadPages().find((page) => page.name === 'overview')!;
-    const savings = overview.doc.components.find((component) => component.component_id === 'overview-savings');
-    expect(savings?.data_bindings).toEqual([{
-      binding_id: 'overview-savings-metering',
-      projection_topic: ALLOWED_TOPIC,
-      ordering_authority_field: 'as_of',
-      ordering_direction: 'descending',
-      required_fields: [
-        'window_kind', 'as_of', 'baseline_model', 'pricing_manifest_version', 'baseline_state', 'savings_usd',
-        // OMN-20008 AC5: the percentage line, from the same row.
-        'savings_pct_of_counterfactual',
-      ],
+  it('Overview savings reads exactly the restored aggregate total, with no borrowed baseline caption', () => {
+    const overview = loadPages().find(page => page.name === 'overview')!;
+    expect(overview.doc.components.find(c => c.component_id === 'overview-savings')?.data_bindings).toEqual([{
+      binding_id: 'overview-savings-legacy', projection_topic: SAVINGS_OVERVIEW,
+      ordering_authority_field: 'captured_at', ordering_direction: 'descending',
+      required_fields: ['window', 'captured_at', 'total_savings_usd'],
     }]);
-    const widget = overview.doc.dashboard.widgets.find((candidate) => candidate.data_source === 'overview-savings');
-    expect((widget?.config as { metric_key?: string } | undefined)?.metric_key).toBe('savings_usd');
+    expect((overview.doc.dashboard.widgets.find(w => w.data_source === 'overview-savings')?.config as {metric_key:string}).metric_key).toBe('total_savings_usd');
   });
 });
 
-// ---- Step B, Amendment 2 (AC2-B1): every Overview headline figure is the one metering-summary.v1 all row ---------
-// Failure modes (each a planted control below):
-//   H1  a headline card still reads cost.savings-overview.v1 or delegation.savings.v1 (the old Spend and Measured
-//       runs bindings), so Spend, Savings and Runs come from different rows and can disagree with `onex metering`;
-//   H2  a card reads metering-summary.v1 in its first binding but keeps a second binding on another exposure (the
-//       old Measured runs caption), so the figure and the counts beside it come from two sources;
-//   H3  a card binds nothing (Tokens waited typed on metering-summary.v1 before Step B) and so never shows the row;
-//   H4  a card reads metering-summary.v1 without window_kind and as_of, so it cannot pick the all row or the newest;
-//   H5  a card reads the right exposure but not the column it shows (the widget key and the binding disagree).
-/** The four Overview headline cards: the widget key each shows and the metering-summary.v1 columns it must ask for. */
-const OVERVIEW_HEADLINES: Readonly<Record<string, { metric_key: string; fields: readonly string[] }>> = {
-  'overview-spend': { metric_key: 'spend_usd', fields: ['spend_usd'] },
-  'overview-savings': { metric_key: 'savings_usd', fields: ['savings_usd'] },
-  'overview-measured': { metric_key: 'runs_measured', fields: ['runs_measured', 'runs_total'] },
-  'overview-tokens': { metric_key: 'tokens_in_and_out', fields: ['tokens_in', 'tokens_out'] },
+// Lakshman 2026-10-19: the four headlines return to one legacy all-time row.
+// OMN-21166 AC37 (Lakshman 2026-10-20, "One number everywhere"): Agent calls counts every call, run_count.
+const OVERVIEW_HEADLINES: Readonly<Record<string, string>> = {
+  'overview-spend': 'total_cost_usd', 'overview-savings': 'total_savings_usd',
+  'overview-measured': 'run_count', 'overview-tokens': 'tokens_total',
 };
-/** What every headline binding needs to pick the all row, and the newest one when a baseline change left two. */
-const ALL_ROW_FIELDS = ['window_kind', 'as_of'] as const;
-
-/** H: each Overview headline card binds metering-summary.v1 only, asks the all-row fields and the column it shows. */
 function ruleHeadline(pages: readonly LoadedPage[]): string[] {
-  const overview = pages.find((page) => page.name === 'overview');
-  if (overview === undefined) return ['H overview: page not loaded'];
+  const overview = pages.find(page => page.name === 'overview');
+  if (!overview) return ['H overview: page not loaded'];
   const findings: string[] = [];
-  for (const [id, want] of Object.entries(OVERVIEW_HEADLINES)) {
-    const component = overview.doc.components.find((candidate) => candidate.component_id === id);
+  for (const [id, field] of Object.entries(OVERVIEW_HEADLINES)) {
+    const component = overview.doc.components.find(c => c.component_id === id);
     const bindings = component?.data_bindings ?? [];
-    if (bindings.length === 0) {
-      findings.push(`H overview/${id}: binds nothing`);
-      continue;
-    }
-    for (const b of bindings) {
-      if (b.projection_topic !== ALLOWED_TOPIC) findings.push(`H overview/${id}: ${b.binding_id} reads ${b.projection_topic}`);
-    }
-    const first = bindings[0]!;
-    if (first.ordering_authority_field !== 'as_of') findings.push(`H overview/${id}: ordered by ${first.ordering_authority_field}`);
-    for (const field of [...ALL_ROW_FIELDS, ...want.fields]) {
-      if (!(first.required_fields ?? []).includes(field)) findings.push(`H overview/${id}: does not ask ${field}`);
-    }
-    const widget = overview.doc.dashboard.widgets.find((candidate) => candidate.data_source === id);
-    const key = (widget?.config as { metric_key?: unknown } | undefined)?.metric_key;
-    if (key !== want.metric_key) findings.push(`H overview/${id}: shows ${String(key)}`);
+    if (bindings.length !== 1) findings.push(`H ${id}: requires exactly one source`);
+    for (const b of bindings) if (b.projection_topic !== SAVINGS_OVERVIEW) findings.push(`H ${id}: wrong source`);
+    const first = bindings[0];
+    if (!first) continue;
+    if (first.ordering_authority_field !== 'captured_at') findings.push(`H ${id}: wrong ordering`);
+    for (const required of ['window', 'captured_at', field]) if (!(first.required_fields ?? []).includes(required)) findings.push(`H ${id}: missing ${required}`);
+    const widget = overview.doc.dashboard.widgets.find(w => w.data_source === id);
+    if ((widget?.config as {metric_key?:string})?.metric_key !== field) findings.push(`H ${id}: wrong metric`);
   }
   return findings;
 }
-
-/** A copy of the real pages with one Overview component replaced (or its widget key changed). */
-function withOverview(
-  id: string,
-  patch: (component: ModelComponentContract) => ModelComponentContract,
-  metricKey?: string,
-): LoadedPage[] {
-  return loadPages().map((page) => {
+function withOverview(id: string, patch: (component: ModelComponentContract) => ModelComponentContract, metricKey?: string): LoadedPage[] {
+  return loadPages().map(page => {
     if (page.name !== 'overview') return page;
     const doc = structuredClone(page.doc);
-    doc.components = doc.components.map((component) => component.component_id === id ? patch(component) : component);
-    if (metricKey !== undefined) {
-      const widget = doc.dashboard.widgets.find((candidate) => candidate.data_source === id)!;
-      (widget.config as { metric_key?: string }).metric_key = metricKey;
-    }
-    return { ...page, doc };
+    doc.components = doc.components.map(c => c.component_id === id ? patch(c) : c);
+    if (metricKey !== undefined) (doc.dashboard.widgets.find(w => w.data_source === id)!.config as {metric_key:string}).metric_key = metricKey;
+    return {...page, doc};
   });
 }
-
-describe('OMN-19980 Step B (Amendment 2, AC2-B1): Spend, Savings, Measured runs and Tokens read one metering-summary.v1 all row', () => {
-  it('H: the four Overview headline cards bind only metering-summary.v1, ask the all-row fields and the column shown', () => {
-    const findings = ruleHeadline(loadPages());
-    expect(findings, findings.join('\n')).toEqual([]);
+describe('Restored Overview headline source: exact aggregate and field boundary', () => {
+  it('all four headlines share the one source with matching fields and all-time selection metadata', () => {
+    expect(ruleHeadline(loadPages())).toEqual([]);
   });
-
-  it('no Overview component binds cost.savings-overview.v1 any more (its last readers were Spend and Measured runs)', () => {
-    const overview = loadPages().find((page) => page.name === 'overview')!;
-    const readers = bindingsOf(overview).filter(({ binding: b }) => b.projection_topic === SAVINGS_OVERVIEW)
-      .map(({ component, binding: b }) => `${component.component_id}/${b.binding_id}`);
-    expect(readers).toEqual([]);
+  it('only the four named headline components read the restored aggregate', () => {
+    const overview = loadPages().find(p => p.name === 'overview')!;
+    expect(bindingsOf(overview).filter(({binding:b}) => b.projection_topic === SAVINGS_OVERVIEW).map(({component}) => component.component_id)).toEqual(Object.keys(OVERVIEW_HEADLINES));
   });
-
-  it('the four headline bindings, as written', () => {
-    const overview = loadPages().find((page) => page.name === 'overview')!;
-    const first = (id: string) => overview.doc.components.find((component) => component.component_id === id)?.data_bindings;
-    const metering = (binding_id: string, required_fields: string[]) => [{
-      binding_id, projection_topic: ALLOWED_TOPIC, ordering_authority_field: 'as_of', ordering_direction: 'descending', required_fields,
-    }];
-    expect(first('overview-spend')).toEqual(metering('overview-spend-metering', ['window_kind', 'as_of', 'spend_usd']));
-    expect(first('overview-measured')).toEqual(metering('overview-measured-metering',
-      ['window_kind', 'as_of', 'runs_measured', 'runs_total', 'runs_unknown_tokens', 'runs_unknown_spend']));
-    expect(first('overview-tokens')).toEqual(metering('overview-tokens-metering',
-      ['window_kind', 'as_of', 'tokens_in', 'tokens_out', 'runs_total', 'runs_unknown_tokens']));
-    const tokens = overview.doc.components.find((component) => component.component_id === 'overview-tokens');
-    expect(tokens?.supported_empty_state_reasons).toEqual(['missing-field', 'no-data']);
+  it('the exact four source bindings remain declared', () => {
+    const overview = loadPages().find(p => p.name === 'overview')!;
+    for (const [id,field] of Object.entries(OVERVIEW_HEADLINES)) expect(overview.doc.components.find(c => c.component_id === id)?.data_bindings).toEqual([{
+      binding_id: id+'-legacy', projection_topic:SAVINGS_OVERVIEW, ordering_authority_field:'captured_at', ordering_direction:'descending', required_fields:['window','captured_at',field],
+    }]);
   });
-});
-
-describe('OMN-19980 Step B (Amendment 2): planted controls for the headline rule', () => {
-  const meteringBinding = (id: string, fields: string[]) => ({ ...binding(id, ALLOWED_TOPIC, fields), ordering_authority_field: 'as_of' }) as Binding;
-  /** Only the planted card's findings, so a control proves its own rule and not the state of the other three cards. */
-  const about = (id: string, findings: string[]) => findings.filter((finding) => finding.startsWith(`H overview/${id}:`));
-
-  it('H1 catches Spend and Measured runs put back on cost.savings-overview.v1', () => {
-    const spend = withOverview('overview-spend', (c) => ({ ...c, data_bindings: [binding('overview-spend-snapshot', SAVINGS_OVERVIEW, ['total_cost_usd'])] }), 'total_cost_usd');
-    expect(about('overview-spend', ruleHeadline(spend))).toEqual([
-      `H overview/overview-spend: overview-spend-snapshot reads ${SAVINGS_OVERVIEW}`,
-      'H overview/overview-spend: ordered by captured_at',
-      'H overview/overview-spend: does not ask window_kind',
-      'H overview/overview-spend: does not ask as_of',
-      'H overview/overview-spend: does not ask spend_usd',
-      'H overview/overview-spend: shows total_cost_usd',
-    ]);
-    const savingsFromRuns = withOverview('overview-savings', (c) => ({ ...c, data_bindings: [binding('planted', DELEGATION_SAVINGS, ['window_kind', 'as_of', 'savings_usd'])] }));
-    expect(about('overview-savings', ruleHeadline(savingsFromRuns))).toContain(`H overview/overview-savings: planted reads ${DELEGATION_SAVINGS}`);
+  it('rejects metering and per-run savings as substituted headline sources', () => {
+    for (const topic of [ALLOWED_TOPIC, DELEGATION_SAVINGS]) {
+      expect(ruleHeadline(withOverview('overview-spend',c => ({...c,data_bindings:[binding('bad',topic,['window','captured_at','total_cost_usd'])]})))).toEqual(['H overview-spend: wrong source']);
+    }
   });
-
-  it('H2 catches a metering figure with its counts from a second exposure', () => {
-    const pages = withOverview('overview-measured', (c) => ({ ...c, data_bindings: [
-      ...(c.data_bindings ?? []),
-      binding('overview-measured-zero-token', SAVINGS_OVERVIEW, ['zero_token_run_count', 'estimated_run_count', 'unknown_run_count']),
-    ] }));
-    expect(about('overview-measured', ruleHeadline(pages))).toEqual([`H overview/overview-measured: overview-measured-zero-token reads ${SAVINGS_OVERVIEW}`]);
+  it('rejects a caption borrowed from a second source', () => {
+    expect(ruleHeadline(withOverview('overview-measured',c => ({...c,data_bindings:[...(c.data_bindings??[]),binding('extra',ALLOWED_TOPIC,['runs_total'])]})))).toEqual(['H overview-measured: requires exactly one source', 'H overview-measured: wrong source']);
   });
-
-  it('H3 catches Tokens left unbound and waiting', () => {
-    const pages = withOverview('overview-tokens', (c) => ({ ...c, data_bindings: [], supported_empty_state_reasons: ['upstream-blocked'] }));
-    expect(about('overview-tokens', ruleHeadline(pages))).toEqual(['H overview/overview-tokens: binds nothing']);
+  it('rejects unbound tokens', () => {
+    expect(ruleHeadline(withOverview('overview-tokens',c => ({...c,data_bindings:[]})))).toEqual(['H overview-tokens: requires exactly one source']);
   });
-
-  it('H4 and H5 catch a metering binding that cannot pick the all row, or does not ask the column it shows', () => {
-    const noAllRow = withOverview('overview-spend', (c) => ({ ...c, data_bindings: [meteringBinding('overview-spend-metering', ['spend_usd'])] }));
-    expect(about('overview-spend', ruleHeadline(noAllRow))).toEqual([
-      'H overview/overview-spend: does not ask window_kind',
-      'H overview/overview-spend: does not ask as_of',
-    ]);
-    const wrongColumn = withOverview('overview-tokens', (c) => ({ ...c, data_bindings: [meteringBinding('overview-tokens-metering', ['window_kind', 'as_of', 'tokens_in'])] }));
-    expect(about('overview-tokens', ruleHeadline(wrongColumn))).toEqual(['H overview/overview-tokens: does not ask tokens_out']);
-    const wrongKey = withOverview('overview-measured', (c) => c, 'measured_run_count');
-    expect(about('overview-measured', ruleHeadline(wrongKey))).toEqual(['H overview/overview-measured: shows measured_run_count']);
+  it('rejects missing window metadata and a different metric key', () => {
+    expect(ruleHeadline(withOverview('overview-spend',c => ({...c,data_bindings:[binding('bad',SAVINGS_OVERVIEW,['total_cost_usd'])]})))).toEqual(['H overview-spend: missing window', 'H overview-spend: missing captured_at']);
+    expect(ruleHeadline(withOverview('overview-measured',c=>c,'runs_measured'))).toEqual(['H overview-measured: wrong metric']);
+    // AC37: the measured-only count is no longer the Agent calls figure.
+    expect(ruleHeadline(withOverview('overview-measured',c=>c,'measured_run_count'))).toEqual(['H overview-measured: wrong metric']);
   });
-
-  it('instrument: a load without the Overview page is reported, never read as clean', () => {
-    expect(ruleHeadline(loadPages().filter((page) => page.name !== 'overview'))).toEqual(['H overview: page not loaded']);
+  it('H5: rejects a binding missing the exact displayed field', () => {
+    expect(ruleHeadline(withOverview('overview-tokens', c => ({ ...c, data_bindings: [binding('bad', SAVINGS_OVERVIEW, ['window', 'captured_at', 'tokens_input'])] })))).toEqual(['H overview-tokens: missing tokens_total']);
+  });
+  it('H4: rejects the wrong all-row ordering authority', () => {
+    expect(ruleHeadline(withOverview('overview-spend', c => ({ ...c, data_bindings: (c.data_bindings ?? []).map(b => ({ ...b, ordering_authority_field: 'as_of' })) })))).toEqual(['H overview-spend: wrong ordering']);
+  });
+  it('rejects a missing Overview page', () => {
+    expect(ruleHeadline(loadPages().filter(p=>p.name!=='overview'))).toEqual(['H overview: page not loaded']);
   });
 });
 
@@ -1049,21 +988,36 @@ describe('OMN-19980 AC2c: a savings card with no served source says what it wait
     return out;
   }
 
-  it('every unbound savings card names metering-summary.v1 and shows no figure', () => {
+  /**
+   * AC2c in plain words (OMN-21166 AC39): an unbound savings card waits on the approved savings source, and its text
+   * says what is missing ("Not available yet: <what>") without naming the exposure. The exposure stays in code.
+   */
+  function waitsOnApprovedSavings(id: string, text: string): boolean {
+    const pending = PENDING_SOURCES[id];
+    return pending?.exposure === ALLOWED_SAVINGS_SOURCE && text === `Not available yet: ${pending.waitsOn}`;
+  }
+
+  it('every unbound savings card says what it waits on, in plain words, and shows no figure', () => {
     const texts = unboundSavingsTexts(loadPages());
     // Every savings card is bound to metering-summary.v1: OMN-20009's Avg saving / call bound once the captured
     // catalogue served its per-run column (lab recapture 2026-10-07). The planted case below is the control that proves an unbound
     // one is found.
     expect(texts.map(({ id }) => id)).toEqual([]);
     for (const { id, text } of texts) {
-      expect(text, id).toBe(`Not served yet: waits on ${ALLOWED_SAVINGS_SOURCE}`);
+      expect(waitsOnApprovedSavings(id, text), `${id}: ${text}`).toBe(true);
     }
+    // Control: a card the pages leave unbound for its savings figure says what it waits on, in plain words.
+    const named = render(createElement(PendingState, { componentId: 'overview-avg-saving-per-call' }));
+    expect(waitsOnApprovedSavings('overview-avg-saving-per-call', named.container.textContent ?? '')).toBe(true);
+    expect(named.container.textContent).toBe('Not available yet: savings per run');
+    named.unmount();
   });
 
   it('planted: an unbound savings card with no named source is caught', () => {
     const pages = plant([plantedComponent('planted-unnamed-savings', [], ['upstream-blocked'], 'metric_card')],
       [{ data_source: 'planted-unnamed-savings', config: metric('savings_usd') }]);
     const planted = unboundSavingsTexts(pages).find((entry) => entry.id === 'planted-unnamed-savings');
-    expect(planted?.text).toBe('Not served yet: waits on its exposure');
+    expect(planted?.text).toBe('Not available yet');
+    expect(waitsOnApprovedSavings('planted-unnamed-savings', planted?.text ?? '')).toBe(false);
   });
 });

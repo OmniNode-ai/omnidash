@@ -131,7 +131,7 @@ function ContextExperimentHero() {
   const { data, isLoading } = useContextExperimentScores();
   if (isLoading || !data) {
     return (
-      <Panel title="CONTEXT-INJECTION EXPERIMENT" right={<span className="src-tag">OMN-12955</span>}>
+      <Panel title="CONTEXT-INJECTION EXPERIMENT">
         <EvEmpty title="Loading…" />
       </Panel>
     );
@@ -139,11 +139,11 @@ function ContextExperimentHero() {
   const rows = data.rows;
   if (rows.length === 0) {
     return (
-      <Panel title="CONTEXT-INJECTION EXPERIMENT" right={<span className="src-tag">OMN-12955</span>}>
+      <Panel title="CONTEXT-INJECTION EXPERIMENT">
         <EvEmpty
           title="No context-ROI experiment output yet"
-          reason={data.degradedReason ?? 'context_roi_scores projection is served but has no rows'}
-          note="The hero renders once a context-ROI run completes and node_projection_context_roi materializes its rows. No fixture is shown."
+          reason={data.degradedReason ?? 'No experiment results have been recorded yet.'}
+          note="Completed experiment results will appear here when available."
         />
       </Panel>
     );
@@ -158,7 +158,7 @@ function ContextExperimentHero() {
     <Panel
       title="CONTEXT-INJECTION EXPERIMENT"
       sub={`${rows.length} trials · ${runIds.size} run(s) · live`}
-      right={<span className="src-tag">OMN-12955</span>}
+
     >
       {arms.map((a) => {
         const rate = a.trials > 0 ? a.firstPass / a.trials : 0;
@@ -192,8 +192,8 @@ function ContextHeatmap() {
       <Panel title="CONTEXT-EFFECTIVENESS HEATMAP">
         <EvEmpty
           title="Heatmap has no experiment scores yet"
-          reason={data.degradedReason ?? 'context_roi_scores projection is served but has no rows'}
-          note="Renders the segment×model pass-rate matrix once context-ROI runs land. No mock heatmap."
+          reason={data.degradedReason ?? 'No experiment results have been recorded yet.'}
+          note="Compare pass rates by context setting and model once experiment results are available."
         />
       </Panel>
     );
@@ -263,10 +263,8 @@ export function ExperimentsPage() {
       <QualityDist />
 
       <div className="note ev-exp-footer">
-        Context-ablation scores (context.experiment-scores.v1) are served live via
-        node_projection_context_roi (OMN-12955) and render an honest empty state
-        until fresh context-ROI runs land. Quality score distribution derives from
-        the live delegation quality-gate and per-decision rows.
+        Experiment results compare context settings across completed trials.
+        Quality charts summarize recorded delegation checks.
       </div>
     </EvPageShell>
   );

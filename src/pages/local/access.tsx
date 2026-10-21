@@ -5,6 +5,8 @@
  * mode, the mint time of the token it just minted and how to rotate it. This card shows those three values as
  * served; a value the row does not carry reads "Not recorded", and with no such row the card says what it waits on.
  */
+import { notAvailableYet } from './plain-text';
+
 const DASHBOARD_SERVICE = 'local-runtime';
 
 type EnvironmentRow = Readonly<Record<string, unknown>>;
@@ -20,7 +22,8 @@ function served(value: unknown): string {
 export function DashboardAccess({ rows }: { rows: readonly EnvironmentRow[] }) {
   const row = dashboardAccessRow(rows);
   if (row === null) {
-    return <p className="local-dashboard-empty" role="status">Not served yet: waits on local-environment.v1</p>;
+    // Waits on local-environment.v1; the user reads what it holds (OMN-21166 AC39).
+    return <p className="local-dashboard-empty" role="status">{notAvailableYet('dashboard access details')}</p>;
   }
   return (
     <dl className="local-dashboard-fields">

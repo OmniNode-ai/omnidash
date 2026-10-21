@@ -87,12 +87,12 @@
      body/chrome/widget typography is unchanged. */
   font-family: var(--font-brand);
 }
-.brand-name .primary em { font-style: normal; color: var(--brand); }
+.brand-name .primary em { font-style: normal; color: var(--link-ink); }
 .brand-name .parent {
   font-family: var(--font-mono);
   font-size: 9px; font-weight: 500;
   letter-spacing: 0.1em; text-transform: uppercase;
-  color: var(--sidebar-ink-2); opacity: 0.7;
+  color: var(--sidebar-ink-2); opacity: 1;
   margin-top: 2px;
 }
 
@@ -219,8 +219,110 @@
   border: 1px solid var(--sidebar-line);
   border-radius: 999px;
   padding: 0 6px;
-  font-size: 0.625rem;
+  font-size: 11px;
+  font-weight: 500;
   line-height: 1.5;
   text-transform: uppercase;
   color: var(--sidebar-ink-2);
 }
+
+/* OMN-21166: fixed MVP navigation. Category accents identify destinations;
+   green/red execution outcomes remain independent of navigation colors. */
+.local-nav { padding: 12px 10px; }
+.local-nav .mvp-nav-item {
+  grid-template-columns: 27px minmax(0, 1fr) auto;
+  gap: 10px;
+  padding: 9px 10px;
+  margin-block: 3px;
+  min-height: 44px;
+  border-radius: 8px;
+  transition: background-color 160ms ease, color 160ms ease;
+}
+.mvp-nav-item .dash-marker,
+.mvp-nav-item.active .dash-marker {
+  display: grid;
+  place-items: center;
+  width: 27px;
+  height: 27px;
+  border-radius: 7px;
+  opacity: 1;
+  color: var(--nav-accent);
+  background: color-mix(in oklch, var(--nav-accent) 11%, transparent);
+}
+.mvp-nav-item .dash-name { font-family: var(--font-sans); font-size: var(--text-lg); }
+.mvp-nav-item.active { color: var(--nav-accent); background: color-mix(in oklch, var(--nav-accent) 12%, var(--sidebar)); }
+.mvp-nav-item.active:hover { background: color-mix(in oklch, var(--nav-accent) 18%, var(--sidebar)); }
+.mvp-nav-item:hover { background: color-mix(in oklch, var(--nav-accent) 7%, var(--sidebar)); }
+.mvp-nav-item.active::before { background: var(--nav-accent); top: 8px; bottom: 8px; width: 3px; border-radius: 0 3px 3px 0; }
+.mvp-nav-item:focus-visible { outline-color: var(--nav-accent); }
+.mvp-nav-title { padding: 5px 10px 8px; }
+.evidence-nav,
+.developer-nav { border-top: 1px solid var(--sidebar-line); }
+.sidebar-settings { margin-top: auto; border-top: 1px solid var(--sidebar-line); padding: 12px 10px; }
+.developer-toggle {
+  --developer-accent: #2563eb;
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 8px;
+  width: 100%;
+  min-height: 44px;
+  padding: 8px;
+  border-radius: 7px;
+  color: var(--sidebar-ink-2);
+  font-family: var(--font-sans);
+  font-size: var(--text-md);
+  text-align: left;
+  transition: background-color 160ms ease;
+}
+.developer-toggle:hover { background: var(--sidebar-hover); color: var(--sidebar-ink); }
+.developer-toggle > svg { flex-shrink: 0; }
+.developer-toggle[aria-checked="true"] { color: var(--sidebar-ink); }
+.developer-switch { margin-left: auto; width: 25px; height: 15px; background: var(--sidebar-line); border-radius: 20px; position: relative; flex-shrink: 0; transition: background-color 160ms ease; }
+.developer-switch::after { content: ''; position: absolute; left: 3px; top: 3px; width: 9px; height: 9px; border-radius: 50%; background: var(--sidebar-ink-2); transition: transform 160ms ease, background-color 160ms ease; }
+.developer-toggle[aria-checked="true"] .developer-switch { background: var(--developer-accent); }
+.developer-toggle[aria-checked="true"] .developer-switch::after { transform: translateX(10px); background: #fff; }
+.sidebar.collapsed .local-nav .mvp-nav-item { grid-template-columns: 1fr; padding: 8px 0; }
+.sidebar.collapsed .sidebar-settings { padding-inline: 4px; }
+.sidebar.collapsed .developer-toggle { justify-content: center; padding-inline: 0; }
+.sidebar.collapsed .developer-toggle[aria-checked="true"] { background: color-mix(in oklch, var(--developer-accent) 15%, var(--sidebar)); box-shadow: inset 2px 0 var(--developer-accent); }
+.sidebar { box-shadow: 3px 0 18px #172c4d03; }
+.local-nav .mvp-nav-item { border-radius: 10px; padding-block: 10px; }
+.mvp-nav-item .dash-name { font-size: 12px; font-weight: 500; }
+.mvp-nav-item .dash-marker { transition: transform 180ms ease, background-color 180ms ease; }
+.mvp-nav-item:hover .dash-marker { transform: translateY(-1px); }
+.mvp-nav-item.active .dash-name { color: color-mix(in oklch, var(--nav-accent) 80%, #000); }
+[data-theme="dark"] .mvp-nav-item.active .dash-name { color: var(--nav-accent); }
+.mvp-nav-item.active .dash-marker { background: color-mix(in oklch, var(--nav-accent) 17%, var(--sidebar)); }
+.mvp-nav-title { font-size: 10px; letter-spacing: .075em; color: var(--sidebar-ink-2); }
+.sidebar-settings { background: var(--sidebar); }
+.developer-toggle { font-size: 11px; border: 1px solid transparent; }
+.developer-toggle:focus-visible { outline: 2px solid var(--link-ink); outline-offset: 2px; }
+@media (prefers-reduced-motion: reduce) {
+  .sidebar *, .sidebar *::before, .sidebar *::after, .sidebar-backdrop { transition: none !important; animation: none !important; }
+}
+
+/* The mockup's quieter rail, without decorative workspace/profile controls. */
+.sidebar { box-shadow: none; }
+:root:not([data-theme="dark"]) { --sidebar: #f4f5f6; }
+.local-nav .mvp-nav-item { padding-block: 8px; margin-block: 2px; border-radius: 7px; }
+.mvp-nav-item .dash-marker { background: transparent; width: 22px; height: 22px; }
+.mvp-nav-item.active .dash-marker { background: transparent; }
+.local-nav .mvp-nav-item { grid-template-columns: 22px minmax(0,1fr) auto; }
+
+/* Keep each destination's identity in a soft native-style icon tile. */
+:root:not([data-theme="dark"]) { --sidebar: #f3f0e9; }
+.local-nav .mvp-nav-item { grid-template-columns: 28px minmax(0, 1fr) auto; border-radius: 7px; }
+.mvp-nav-item .dash-marker,
+.mvp-nav-item.active .dash-marker { width: 28px; height: 28px; border-radius: 8px; background: color-mix(in oklab, var(--nav-accent) 13%, var(--sidebar)); }
+.mvp-nav-item .dash-name { font-size: 13px; }
+.mvp-nav-item.active { background: color-mix(in oklab, var(--nav-accent) 18%, var(--sidebar)); }
+
+/* Filled active navigation follows the supplied nanomon reference. */
+:root:not([data-theme="dark"]) .mvp-nav-item.active,
+:root:not([data-theme="dark"]) .mvp-nav-item.active:hover { background: var(--nav-accent); }
+:root:not([data-theme="dark"]) .mvp-nav-item.active .dash-name { color: #fff; }
+:root:not([data-theme="dark"]) .mvp-nav-item.active .dash-marker { background: #f3f0e9; }
+:root:not([data-theme="dark"]) .mvp-nav-item.active::before { display: none; }
+
+:root:not([data-theme="dark"]) .mvp-nav-item.active:hover { background: color-mix(in oklab, var(--nav-accent) 88%, #000); }

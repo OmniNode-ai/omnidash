@@ -65,7 +65,7 @@ describe('MeteringDaySeries', () => {
 
   it('renders a typed state when no day row is served yet', () => {
     render(<MeteringDaySeries rows={[day({ window_kind: 'all', window_start: '' })]} />);
-    expect(screen.getByRole('status')).toHaveTextContent('No savings rows yet');
+    expect(screen.getByRole('status')).toHaveTextContent('No daily savings data');
     expect(screen.queryByRole('table')).not.toBeInTheDocument();
   });
 });

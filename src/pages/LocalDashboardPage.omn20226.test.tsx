@@ -9,7 +9,7 @@
 //   N4  only the all-time row is read: a day row's value is not shown as the headline;
 //   P1  on the page, a fresh store (an all-time row with neither field measured) shows both panels Not measured;
 //   P2  on the page, with metering-summary.v1 not served at all, both panels say so and show no number.
-import { act, render, screen, within } from '@testing-library/react';
+import { act, fireEvent, render, screen, within } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { loadLocalPageConfig } from '../layout/local-page-loader';
 
@@ -103,6 +103,9 @@ describe('OMN-20226 Overview page, fresh store', () => {
   async function panel(title: string) {
     render(<LocalDashboardPage pageName="overview" />);
     await act(async () => { await vi.advanceTimersByTimeAsync(0); });
+    const disclosure = screen.getByText('Additional runtime metrics', { selector: 'summary' });
+    fireEvent.click(disclosure);
+    expect(disclosure.closest('details')).toHaveAttribute('open');
     return screen.getByRole('heading', { name: title }).closest('article') as HTMLElement;
   }
 
@@ -119,7 +122,7 @@ describe('OMN-20226 Overview page, fresh store', () => {
       harness.reachable = new Set();
       harness.answer = () => Promise.resolve([]);
       const card = await panel(title);
-      expect(within(card).getByRole('status').textContent).toBe(`Not served: ${METERING}`);
+      expect(within(card).getByRole('status').textContent).toBe('Not available yet: usage summary.');
       expect(card.querySelector('.local-dashboard-metric')).toBeNull();
     });
   }

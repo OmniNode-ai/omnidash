@@ -12,10 +12,12 @@
  * src/services/event-dash-api.ts and pass already-typed data down.
  */
 
-import { Fragment, useState, type CSSProperties, type ReactNode } from 'react';
-import { ChevronRight } from 'lucide-react';
+import { Fragment, useId, useState, type CSSProperties, type ReactNode } from 'react';
+import { Award, ChevronRight, Coins, PiggyBank, Waypoints, Rows3, ScanSearch } from 'lucide-react';
 import { isTenantNotConfiguredReason } from '@/data-source/projection-tenant';
 import { TenantNotConfiguredState } from '../TenantNotConfiguredState';
+import { FieldIcon } from '../FieldIcon';
+import { fieldTone, isUnavailableField } from '../field-identity';
 
 // ── formatting helpers ───────────────────────────────────────────────────────
 
@@ -25,8 +27,13 @@ export const fmtPct1 = (x: number | null | undefined): string =>
   x == null ? '—' : `${(x * 100).toFixed(1)}%`;
 export const fmtMoney = (x: number | null | undefined): string =>
   x == null ? '—' : `$${Number(x).toFixed(2)}`;
-export const fmtMoney4 = (x: number | null | undefined): string =>
-  x == null ? '—' : `$${Number(x).toFixed(4)}`;
+/** Four decimals, grouped like the dollar figures beside it (OMN-21166), with the sign before the currency. */
+export const fmtMoney4 = (x: number | null | undefined): string => {
+  if (x == null) return '—';
+  const amount = Number(x);
+  const text = Math.abs(amount).toLocaleString('en-US', { minimumFractionDigits: 4, maximumFractionDigits: 4 });
+  return amount < 0 ? `-$${text}` : `$${text}`;
+};
 export const fmtTokens = (n: number | null | undefined): string => {
   if (n == null) return '—';
   if (n >= 1000) return `${(n / 1000).toFixed(n >= 10000 ? 0 : 1)}K`;
@@ -36,8 +43,12 @@ export const fmtLatency = (ms: number | null | undefined): string => {
   if (ms == null) return '—';
   return ms >= 1000 ? `${(ms / 1000).toFixed(2)}s` : `${ms}ms`;
 };
-export const shortId = (id: string | null | undefined): string => {
-  if (!id) return '—';
+// OMN-21166 AC6: delegation.decisions.v1 serves `id` as an integer, so an id
+// may arrive as a number; it is shown as its digits, and only null, undefined
+// or an empty string read as missing.
+export const shortId = (raw: string | number | null | undefined): string => {
+  if (raw == null || raw === '') return '—';
+  const id = String(raw);
   if (id.length <= 16 || id.indexOf('-') === -1) {
     return id.length > 18 ? `${id.slice(0, 10)}…${id.slice(-4)}` : id;
   }
@@ -72,15 +83,19 @@ export function KPI({
   value,
   sub,
   accent,
+  icon,
+  tone,
 }: {
   label: ReactNode;
   value: ReactNode;
   sub?: ReactNode;
   accent?: boolean;
+  icon?: ReactNode;
+  tone?: 'blue' | 'green' | 'purple' | 'amber';
 }) {
   return (
-    <div className="kpi">
-      <div className="k-l">{label}</div>
+    <div className="kpi" data-tone={tone ?? fieldTone(label, value)} data-field-tone={fieldTone(label, value)} data-field-unavailable={isUnavailableField(value)} data-unavailable={typeof value === 'string' && /^(Not measured|Not served|Baseline unresolved|—$)/.test(value)}>
+      <div className="k-l">{fieldTone(label, value) ? <FieldIcon label={label} value={value} size={15} /> : icon}{label}</div>
       <div className={`k-v${accent ? ' k-accent' : ''}`}>{value}</div>
       {sub ? <div className="k-sub">{sub}</div> : null}
     </div>
@@ -100,11 +115,29 @@ export function Panel({
   children: ReactNode;
   pad?: boolean;
 }) {
+  const panelIcons: Record<string, typeof ScanSearch> = {
+    'SELECTED RUN': ScanSearch,
+    'MODEL ROUTING': Waypoints,
+    'QUALITY GATE': Award,
+    'SAVINGS vs CLOUD BASELINE': PiggyBank,
+    'TOKEN USAGE': Coins,
+    'RECENT DELEGATIONS': Rows3,
+  };
+  const labels: Record<string, string> = {
+    'SELECTED RUN': 'Selected run', 'MODEL ROUTING': 'Model routing',
+    'QUALITY GATE': 'Quality gate', 'SAVINGS vs CLOUD BASELINE': 'Savings vs cloud baseline',
+    'TOKEN USAGE': 'Token usage', 'RECENT DELEGATIONS': 'Recent delegations',
+  };
+  const label = typeof title === 'string' ? labels[title] ?? title : title;
+  const panelTones: Record<string, string> = { 'SELECTED RUN': 'selected', 'MODEL ROUTING': 'routing',
+    'QUALITY GATE': 'quality', 'SAVINGS vs CLOUD BASELINE': 'savings', 'TOKEN USAGE': 'tokens', 'RECENT DELEGATIONS': 'recent' };
+  const panelTone = typeof title === 'string' ? panelTones[title] : undefined;
+  const Icon = typeof title === 'string' ? panelIcons[title] : undefined;
   return (
-    <div className="panel">
+    <div className="panel" style={panelTone ? { '--card-accent': `var(--field-${panelTone})` } as CSSProperties : undefined} data-panel-title={typeof title === 'string' ? title : undefined}>
       {title || right ? (
         <div className="panel-h">
-          {title ? <span className="pt">{title}</span> : null}
+          {title ? <h2 className="pt" data-page-heading tabIndex={-1}>{Icon && <span className="ev-panel-icon" aria-hidden="true"><Icon size={16} /></span>}{label}</h2> : null}
           {sub ? <span className="ps">{sub}</span> : null}
           {right ? <span className="right">{right}</span> : null}
         </div>
@@ -210,8 +243,8 @@ export function KV({ items }: { items: (KVItem | null | false)[] }) {
   return (
     <div className="kv">
       {real.map((it, i) => (
-        <div key={i}>
-          <div className="k">{it.k}</div>
+        <div key={i} data-field-tone={fieldTone(it.k, it.v)} data-field-unavailable={isUnavailableField(it.v)}>
+          <div className="k"><FieldIcon label={it.k} value={it.v} />{it.k}</div>
           <div className={`v${it.accent ? ' accent' : ''}`}>{it.v}</div>
         </div>
       ))}
@@ -237,20 +270,28 @@ export function DataTable<T>({
   rowKey,
   renderDetail,
   activeKey,
+  pageSize,
 }: {
   columns: DataColumn<T>[];
   rows: T[];
   rowKey: (row: T) => string;
   renderDetail?: (row: T) => ReactNode;
   activeKey?: string | null;
+  pageSize?: number;
 }) {
+  const detailId = useId();
   const [open, setOpen] = useState<Record<string, boolean>>({});
+  const [page, setPage] = useState(0);
+  const size = pageSize && pageSize >= 1 ? Math.floor(pageSize) : Math.max(1, rows.length);
+  const pages = Math.max(1, Math.ceil(rows.length / size));
+  const current = Math.min(page, pages - 1);
+  const shown = rows.slice(current * size, (current + 1) * size);
   const colSize = (c: DataColumn<T>): string =>
     c.width ? c.width : c.grow ? 'minmax(0,2.6fr)' : c.num ? 'minmax(0,0.9fr)' : 'minmax(0,1fr)';
   const template = `26px ${columns.map(colSize).join(' ')}`;
   const gridStyle: CSSProperties = { gridTemplateColumns: template };
   return (
-    <div className="dt">
+    <div className={`dt${pageSize ? ' dt-paged' : ''}`}>
       <div className="dt-head" style={gridStyle}>
         <div />
         {columns.map((c) => (
@@ -259,7 +300,7 @@ export function DataTable<T>({
           </div>
         ))}
       </div>
-      {rows.map((r) => {
+      {shown.map((r) => {
         const key = rowKey(r);
         const isOpen = Boolean(open[key]);
         const isActive = activeKey != null && key === activeKey;
@@ -268,30 +309,52 @@ export function DataTable<T>({
             <div
               className="row-main"
               style={gridStyle}
-              onClick={() => setOpen((o) => ({ ...o, [key]: !o[key] }))}
+              onClick={renderDetail ? () => setOpen((o) => ({ ...o, [key]: !o[key] })) : undefined}
             >
               <div className="cflex">
-                <ChevronRight className="caret" size={14} />
+                {renderDetail && <button type="button" className="row-disclosure" aria-label={`Toggle details for ${key}`} aria-expanded={isOpen}
+                  aria-controls={`${detailId}-${encodeURIComponent(key)}`} onClick={event => {
+                    event.stopPropagation(); setOpen(o => ({ ...o, [key]: !o[key] }));
+                  }}><ChevronRight className="caret" size={14} aria-hidden="true" /></button>}
               </div>
               {columns.map((c) => (
-                <div key={c.key} className={`${c.num ? 'num ' : ''}${c.truncate ? 'truncate' : ''}`.trim() || undefined}>
+                <div key={c.key} data-label={c.label} className={`${c.num ? 'num ' : ''}${c.truncate ? 'truncate' : ''}`.trim() || undefined}>
                   {c.render ? c.render(r) : (r as Record<string, ReactNode>)[c.key]}
                 </div>
               ))}
             </div>
             {isOpen && renderDetail ? (
-              <div className="row-detail">
+              <div className="row-detail" id={`${detailId}-${encodeURIComponent(key)}`}>
                 <div className="row-detail-inner">{renderDetail(r)}</div>
               </div>
             ) : null}
           </div>
         );
       })}
+      {pages > 1 && <nav className="ev-table-paging" aria-label="Record pages">
+        <span aria-live="polite">{current * size + 1}–{Math.min((current + 1) * size, rows.length)} of {rows.length}</span>
+        <button type="button" disabled={current === 0} onClick={() => setPage(current - 1)}>Previous page</button>
+        <button type="button" disabled={current === pages - 1} onClick={() => setPage(current + 1)}>Next page</button>
+      </nav>}
     </div>
   );
 }
 
 // ── honest empty / degraded / loading states ─────────────────────────────────
+
+/**
+ * OMN-21166 (Chrome walk, 2026-10-18): a bare HTTP status reads as a sentence, the status kept beside it
+ * ("HTTP 503" → "Not served by this runtime yet (HTTP 503)"). Any other reason is shown as given.
+ */
+export function readableReason(reason: string): string {
+  const status = /^HTTP (\d{3})(?: .*)?$/.exec(reason.trim());
+  if (!status) return reason;
+  const code = Number(status[1]);
+  if (code === 404 || code === 503) return `Not served by this runtime yet (${reason.trim()})`;
+  if (code >= 500) return `The runtime could not answer (${reason.trim()})`;
+  return reason;
+}
+
 
 export function EvEmpty({
   title,
@@ -313,7 +376,7 @@ export function EvEmpty({
   return (
     <div className="ev-empty">
       <div className="ev-empty-title">{title}</div>
-      {reason ? <div className="ev-empty-reason">{reason}</div> : null}
+      {reason ? <div className="ev-empty-reason">{readableReason(reason)}</div> : null}
       {note ? <div className="ev-empty-note">{note}</div> : null}
     </div>
   );

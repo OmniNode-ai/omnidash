@@ -55,14 +55,16 @@ function open(decisions: unknown[], pageSize = 25) {
   return render(<RunsTable now={NOW} decisions={decisions} sessions={[]} pageSize={pageSize} />);
 }
 /** The option the figure with this name was last handed. The duration figure is drawn first, the tokens figure second. */
-function chart(name: 'Duration per run' | 'Tokens per run'): Handed {
+function chart(name: 'Duration per run' | 'Tokens per run', tokenNames = ['Tokens in', 'Tokens out']): Handed {
   expect(screen.getByRole('figure', { name })).toBeTruthy();
   const handed = harness.handed as Handed[];
-  const mine = handed.filter(({ option }) => (name === 'Duration per run') === (option.series.length === 1 && option.series[0].name === 'Duration'));
+  const mine = handed.filter(({ option }) => name === 'Duration per run'
+    ? option.series.length === 1 && option.series[0].name === 'Duration'
+    : option.series.length === tokenNames.length && option.series.every((series: Option, index: number) => series.name === tokenNames[index]));
   return mine.at(-1)!;
 }
 const durations = () => chart('Duration per run').option.series[0].data.map((entry: Option) => entry.value);
-const tokens = () => chart('Tokens per run').option.series.map((series: Option) => [series.name, series.data]);
+const tokens = (names = ['Tokens in', 'Tokens out']) => chart('Tokens per run', names).option.series.map((series: Option) => [series.name, series.data]);
 const rowIds = () => within(screen.getByRole('table')).getAllByRole('row').slice(1).map((row) => row.querySelector('td')?.textContent ?? '');
 
 beforeEach(() => { harness.handed.length = 0; window.history.replaceState(null, '', '/runs'); });
@@ -155,8 +157,8 @@ describe('OMN-21015: the Runs page draws the runs it lists', () => {
     const figure = screen.getByRole('figure', { name: 'Tokens per run' });
     const colourOfOut = chart('Tokens per run').option.series[1].itemStyle.color;
     fireEvent.click(within(figure).getByRole('button', { name: 'Tokens in' }));
-    expect(tokens()).toEqual([['Tokens out', [400, 7, 13]]]);
-    expect(chart('Tokens per run').option.series[0].itemStyle.color).toBe(colourOfOut);
+    expect(tokens(['Tokens out'])).toEqual([['Tokens out', [400, 7, 13]]]);
+    expect(chart('Tokens per run', ['Tokens out']).option.series[0].itemStyle.color).toBe(colourOfOut);
   });
 
   it('R8: the tooltip names the run, its status and model, and writes the served text', () => {

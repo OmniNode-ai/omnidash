@@ -1,6 +1,6 @@
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { describe, it, expect, beforeEach } from 'vitest';
+import { describe, it, expect, beforeAll, beforeEach } from 'vitest';
 import { Providers } from './providers/Providers';
 import { RegistryProvider } from './registry/RegistryProvider';
 import { App } from './App';
@@ -26,6 +26,12 @@ function renderApp() {
 }
 
 describe('Part 1 smoke proof — frame liveness, provider wiring, theme switching, local state/event behavior', () => {
+  // DashboardView is a lazy destination (App.tsx); load its chunk first so the
+  // canvas renders within the default find timeout on a cold, instrumented run.
+  beforeAll(async () => {
+    await import('./pages/DashboardView');
+  }, 60000);
+
   beforeEach(() => {
     window.history.replaceState(null, '', '/dashboard');
     // These cases render the dashboard canvas; since OMN-19981 Amendment 6 the app opens on the local Overview.
@@ -34,28 +40,28 @@ describe('Part 1 smoke proof — frame liveness, provider wiring, theme switchin
     useFrameStore.getState().setActiveDashboard(dash);
   });
 
-  it('renders frame layout with header and main area', () => {
+  it('renders frame layout with header and main area', async () => {
     renderApp();
     // "Dashboards" appears in both the sidebar nav label and the header breadcrumb.
     const dashboardsEls = screen.getAllByText('Dashboards');
     expect(dashboardsEls.length).toBeGreaterThan(0);
     // Dashboard name appears in both sidebar list and DashboardView toolbar.
-    const nameEls = screen.getAllByText('Integration Test Dashboard');
+    const nameEls = await screen.findAllByText('Integration Test Dashboard');
     expect(nameEls.length).toBeGreaterThan(0);
   });
 
   it('theme toggle switches between dark and light', async () => {
     renderApp();
     const themeBtn = screen.getByRole('button', { name: /theme/i });
-    expect(themeBtn).toHaveAttribute('title', 'Switch to light theme');
-
-    await userEvent.click(themeBtn);
     expect(themeBtn).toHaveAttribute('title', 'Switch to dark theme');
-    expect(document.body.classList.contains('theme-light')).toBe(true);
 
     await userEvent.click(themeBtn);
     expect(themeBtn).toHaveAttribute('title', 'Switch to light theme');
     expect(document.body.classList.contains('theme-dark')).toBe(true);
+
+    await userEvent.click(themeBtn);
+    expect(themeBtn).toHaveAttribute('title', 'Switch to dark theme');
+    expect(document.body.classList.contains('theme-light')).toBe(true);
   });
 
   it('zustand store starts in view mode', () => {

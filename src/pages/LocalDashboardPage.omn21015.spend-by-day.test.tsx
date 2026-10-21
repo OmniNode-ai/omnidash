@@ -22,6 +22,7 @@ import { act, fireEvent, render, screen, within } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 const METERING = 'onex.snapshot.projection.metering-summary.v1';
+const OVERVIEW = 'onex.snapshot.projection.cost.savings-overview.v1';
 
 const harness = vi.hoisted(() => ({
   reachable: new Set<string>(),
@@ -72,10 +73,13 @@ const RECORDED_DAY_2 = {
 const RECORDED = [RECORDED_ALL, RECORDED_DAY_1, RECORDED_DAY_2];
 
 async function overview(rows: unknown[]): Promise<void> {
-  harness.reachable = new Set([METERING]);
-  harness.answer = (topic) => Promise.resolve(topic === METERING ? rows : []);
+  harness.reachable = new Set([METERING, OVERVIEW]);
+  harness.answer = (topic) => Promise.resolve(topic === OVERVIEW ? [{ window: 'all', captured_at: '2026-10-13T06:00:00Z', total_cost_usd: '0.5555', total_savings_usd: '7.7777' }] : topic === METERING ? rows : []);
   render(<LocalDashboardPage pageName="overview" />);
   await act(async () => { await vi.advanceTimersByTimeAsync(0); });
+    const disclosure = screen.getByText('Additional runtime metrics', { selector: 'summary' });
+    fireEvent.click(disclosure);
+    expect(disclosure.closest('details')).toHaveAttribute('open');
 }
 
 function panel(): HTMLElement {
@@ -114,14 +118,14 @@ describe('OMN-21015 AC1: Overview shows baseline against actual spend per UTC da
     ]);
   });
 
-  it('S2: the all-time line is the served all row, and agrees with the headline cards', async () => {
+  it('S2: the exact metering all-time line does not replace independent legacy headlines', async () => {
     await overview(RECORDED);
     const total = series('claude-sonnet-5-5').rows.at(-1);
     expect(total).toEqual(['All time', '$0.149422', '$0.820098', '$0.670676', '133']);
-    // The headline cards read the same row at their declared four decimals.
-    expect(headline('Actual spend')).toBe('$0.1494');
+    // Baseline spend uses this metering row; legacy spend/savings headlines deliberately use a conflicting source.
+    expect(headline('Actual spend')).toBe('$0.5555');
     expect(headline('Baseline spend')).toBe('$0.8201');
-    expect(headline('Savings')).toBe('$0.6707');
+    expect(headline('Savings')).toBe('$7.7777');
   });
 
   it('S2: an all row that is not the sum of the days is shown as served, never re-added here', async () => {
@@ -129,7 +133,7 @@ describe('OMN-21015 AC1: Overview shows baseline against actual spend per UTC da
     const served = { ...RECORDED_ALL, spend_usd: '0.2', counterfactual_usd: '0.9', savings_usd: '0.7', runs_total: 140 };
     await overview([served, RECORDED_DAY_1, RECORDED_DAY_2]);
     expect(series('claude-sonnet-5-5').rows.at(-1)).toEqual(['All time', '$0.20', '$0.90', '$0.70', '140']);
-    expect(headline('Actual spend')).toBe('$0.2000');
+    expect(headline('Actual spend')).toBe('$0.5555');
   });
 
   it('S3: a day whose spend was not measured says so, and never shows 0', async () => {
@@ -208,7 +212,8 @@ describe('OMN-21015 AC1: Overview shows baseline against actual spend per UTC da
   it('S6: with no day rows the panel says why, and renders no table', async () => {
     await overview([RECORDED_ALL]);
     expect(within(panel()).queryByRole('table')).toBeNull();
-    expect(within(panel()).getByRole('status').textContent).toBe('No day rows yet: waits on metering-summary day rows');
+    expect(within(panel()).getByRole('status').textContent).toBe('Daily spend data unavailable.');
+    expect(within(panel()).getByText('No day rows yet.')).toBeInTheDocument();
   });
 
   it('S7: days are rendered in the order served', async () => {
@@ -219,7 +224,7 @@ describe('OMN-21015 AC1: Overview shows baseline against actual spend per UTC da
 
   it('S8: choosing today for the cards leaves every day in the panel', async () => {
     await overview(RECORDED);
-    fireEvent.change(screen.getByLabelText('Figures for'), { target: { value: 'today' } });
+    fireEvent.click(screen.getByRole('radio', { name: 'Today (UTC)' }));
     expect(series('claude-sonnet-5-5').rows.map((row) => row[0])).toEqual(['2026-09-29', '2026-10-12', 'All time']);
   });
 });

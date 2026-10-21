@@ -16,6 +16,8 @@
 //   U7  a placeholder model id is shown as if it were a model
 //   U8  a served zero is confused with "not recorded"
 //   U9  a segment's width does not track its count: its label, padding or border adds width the count did not
+//   U10 every bar fills the panel whatever its count, so 5,133 tokens in and 377 out draw as two equal bars
+//       (OMN-21166, Chrome walk 2026-10-18); bars share one scale, the largest drawn bar
 import { render, screen, within } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 import { NO_TOKEN_ROWS, UsageTokensByDay } from './UsageByModelDayWidget';
@@ -137,7 +139,7 @@ describe('OMN-21015 AC4: tokens in and out per day, stacked by model', () => {
   it('U6: with no rows it says why', () => {
     render(<UsageTokensByDay rows={[]} />);
     expect(screen.getByRole('status').textContent).toBe(NO_TOKEN_ROWS);
-    expect(NO_TOKEN_ROWS).toContain('llm-call-completed');
+    expect(NO_TOKEN_ROWS).toContain('No daily token data');
     expect(screen.queryByRole('list')).toBeNull();
   });
 });
@@ -152,5 +154,34 @@ describe('OMN-21015 AC4: the Usage page declares the token series over usage-by-
     expect(binding?.projection_topic).toBe('onex.snapshot.projection.usage-by-model-day.v1');
     expect(binding?.required_fields).toEqual(expect.arrayContaining(['usage_day', 'model_id', 'input_tokens', 'output_tokens']));
     expect(page.dashboard.widgets.some((widget) => widget.data_source === 'usage-tokens-by-day')).toBe(true);
+  });
+});
+
+describe('OMN-21166: every token bar is drawn on one scale', () => {
+  /** The drawn bar's width as a percentage of the widest bar. */
+  function barWidth(direction: 'in' | 'out', day: string): number {
+    const drawn = bar(direction, day).previousElementSibling as HTMLElement | null;
+    if (drawn === null) throw new Error(`no drawn bar for tokens ${direction} on ${day}`);
+    return parseFloat(drawn.style.width);
+  }
+
+  it('U10: the largest bar is full width and the others are their counts against it', () => {
+    render(<UsageTokensByDay rows={ROWS} />);
+    expect(barWidth('out', '2026-10-12')).toBe(100);
+    expect(barWidth('in', '2026-10-12')).toBeCloseTo((34475 / 75052) * 100, 6);
+    expect(barWidth('in', '2026-10-11')).toBeCloseTo((1500 / 75052) * 100, 6);
+    expect(barWidth('out', '2026-10-11')).toBeCloseTo((190 / 75052) * 100, 6);
+  });
+
+  it('U10: the populated store\'s day, 5,133 in and 377 out, is not drawn as two equal bars', () => {
+    render(<UsageTokensByDay rows={[row('2026-10-16', 'Qwen3.8-27B', 5133, 377)]} />);
+    expect(barWidth('in', '2026-10-16')).toBe(100);
+    expect(barWidth('out', '2026-10-16')).toBeCloseTo((377 / 5133) * 100, 6);
+  });
+
+  it('U10, U3: a count that was not recorded adds nothing to its bar\'s length', () => {
+    render(<UsageTokensByDay rows={[row('2026-10-16', 'model-a', 400, 100), row('2026-10-16', 'model-b', null, 100)]} />);
+    expect(barWidth('in', '2026-10-16')).toBe(100);
+    expect(barWidth('out', '2026-10-16')).toBeCloseTo(50, 6);
   });
 });

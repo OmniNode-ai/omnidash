@@ -266,7 +266,7 @@ describe('OMN-19987 / OMN-21015 AC9: the Workflow page shows one run, asked for 
       ? { status: 500, body: { error: 'projection_database_unavailable', topic: RUN_TRACE } }
       : served(stepsOf(String(id))));
     act(() => { requestLocalPageRefresh(); });
-    await waitFor(() => expect(within(panel()).getByRole('alert').textContent).toContain(`${RUN_TRACE}: HTTP 500`));
+    await waitFor(() => expect(within(panel()).getByRole('alert').textContent).toContain('The data could not be read (HTTP 500'));
     expect(panel().textContent).toContain(`Run ${NEWEST}`);
     expect(panel().textContent).not.toContain('task of');
     expect(within(panel()).queryAllByRole('listitem')).toHaveLength(0);
@@ -332,8 +332,12 @@ describe('OMN-19987 / OMN-21015 AC9: the Workflow page shows one run, asked for 
     await settle();
     // The newer read is still out: the older read's failure is not the page's answer, and the page is still loading.
     expect(screen.queryByRole('alert')).toBeNull();
-    expect(screen.queryByRole('heading', { name: 'Run path' })).toBeNull();
-    expect(screen.getByRole('status').textContent).toContain('Loading runtime exposures');
+    // Owner2026-10-19T05:15Z requested progressive page/data loading.
+    // A stable shell may render; no old or unanswered trace may appear.
+    expect(screen.getByRole('heading', { name: 'Run path' })).toBeInTheDocument();
+    expect(panel()).not.toHaveTextContent(`task of ${OLDER}`);
+    expect(panel()).not.toHaveTextContent(`task of ${NEWEST}`);
+    expect(screen.getByRole('status').textContent).toContain('Loading data');
     await act(async () => { second.release(served(stepsOf(NEWEST))); await second.answer; });
     await shows(`task of ${NEWEST}`);
     expect(panel().textContent).toContain(`Run ${NEWEST}`);
@@ -352,7 +356,7 @@ describe('OMN-19987 / OMN-21015 AC9: the Workflow page shows one run, asked for 
     await act(async () => { catalogue.release({ status: 500, body: { error: 'unavailable' } }); await catalogue.answer; });
     await settle();
     expect(screen.queryByRole('alert')).toBeNull();
-    expect(screen.getByRole('status').textContent).toContain('Loading runtime exposures');
+    expect(screen.getByRole('status').textContent).toContain('Loading data');
     await act(async () => { second.release(served(stepsOf(NEWEST))); await second.answer; });
     await shows(`task of ${NEWEST}`);
     expect(screen.queryByRole('alert')).toBeNull();
@@ -361,7 +365,7 @@ describe('OMN-19987 / OMN-21015 AC9: the Workflow page shows one run, asked for 
   it('W8: run-trace.v1 not served is a typed state, and the run is not said to have no steps', async () => {
     lab.catalogue = [DECISIONS];
     open('/workflow');
-    await shows(`Not served: ${RUN_TRACE}`);
+    await shows('Not available yet: run steps.');
     expect(panel().textContent).toContain(`Run ${NEWEST}`);
     expect(panel().textContent).not.toContain('No steps recorded');
     expect(within(panel()).queryByRole('alert')).toBeNull();
@@ -371,7 +375,7 @@ describe('OMN-19987 / OMN-21015 AC9: the Workflow page shows one run, asked for 
   it('W9: a failed read is shown as the failure, not as a run with no steps', async () => {
     lab.trace = () => ({ status: 500, body: { error: 'projection_database_unavailable', topic: RUN_TRACE } });
     open('/workflow');
-    await waitFor(() => expect(within(panel()).getByRole('alert').textContent).toContain(`${RUN_TRACE}: HTTP 500`));
+    await waitFor(() => expect(within(panel()).getByRole('alert').textContent).toContain('The data could not be read (HTTP 500'));
     expect(panel().textContent).not.toContain('No steps recorded');
     expect(within(panel()).queryAllByRole('listitem')).toHaveLength(0);
   });

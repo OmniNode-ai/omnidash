@@ -13,13 +13,24 @@ const ThemeContext = createContext<ThemeContextValue | null>(null);
 
 const BUILTIN_THEMES = ['dark', 'light'] as const;
 
-export function ThemeProvider({ children, defaultTheme = 'dark' }: { children: ReactNode; defaultTheme?: ThemeName }) {
-  const [theme, setThemeState] = useState<ThemeName>(defaultTheme);
+export function ThemeProvider({ children, defaultTheme = 'dark', persistPreference = false }: { children: ReactNode; defaultTheme?: ThemeName; persistPreference?: boolean }) {
+  const [theme, setThemeState] = useState<ThemeName>(() => {
+    if (persistPreference) {
+      try {
+        const saved = localStorage.getItem('omnidash.theme.v1');
+        if (saved === 'light' || saved === 'dark') return saved;
+      } catch { /* A denied browser storage permission must not prevent rendering. */ }
+    }
+    return defaultTheme;
+  });
   const [customThemes, setCustomThemes] = useState<ThemeName[]>([]);
 
   const setTheme = useCallback((name: ThemeName) => {
     setThemeState(name);
-  }, []);
+    if (persistPreference && (name === 'light' || name === 'dark')) {
+      try { localStorage.setItem('omnidash.theme.v1', name); } catch { /* Keep the session toggle usable. */ }
+    }
+  }, [persistPreference]);
 
   const registerTheme = useCallback((name: ThemeName) => {
     setCustomThemes((prev) => (prev.includes(name) ? prev : [...prev, name]));

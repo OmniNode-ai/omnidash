@@ -1,7 +1,7 @@
 {
   "dashboard_id": "34451f75-38aa-4634-9397-dad632a5d876",
   "name": "Runs",
-  "description": "Every delegation run from the runtime's served decisions, with its cost.",
+  "description": "Search recent runs, investigate failures and open recorded run details.",
   "layout": {
     "columns": 12,
     "row_height": 100,
@@ -100,6 +100,90 @@
         "show_pagination": true,
         "default_sort_key": "created_at",
         "default_sort_direction": "desc"
+      }
+    },
+    {
+      "widget_id": "92d0d8ce-8d52-447e-8511-8cb1269c0112",
+      "title": "Routing breakdown",
+      "row": 4,
+      "col": 0,
+      "width": 8,
+      "height": 4,
+      "data_source": "runs-tier-mix",
+      "config": {
+        "config_kind": "table",
+        "widget_type": "table",
+        "columns": [
+          {
+            "key": "cost_tier_name",
+            "header": "Tier"
+          },
+          {
+            "key": "count",
+            "header": "Runs"
+          },
+          {
+            "key": "pct_of_tier_routed",
+            "header": "Share of tier-routed"
+          }
+        ],
+        "page_size": 10,
+        "show_pagination": false
+      }
+    },
+    {
+      "widget_id": "6f1d2c8e-4b7a-5e39-9c0d-20009a1c0c01",
+      "title": "Run locally",
+      "row": 4,
+      "col": 8,
+      "width": 4,
+      "height": 4,
+      "data_source": "overview-run-locally",
+      "config": {
+        "config_kind": "metric_card",
+        "widget_type": "metric_card",
+        "metric_key": "by_tier.local_call_share",
+        "label": "Run locally",
+        "unit": "share of runs",
+        "format": "percent",
+        "precision": 1
+      }
+    },
+    {
+      "widget_id": "21166a0e-5c3b-4e1f-9d2a-0f7c1b8e2a61",
+      "title": "Run analysis",
+      "row": 8,
+      "col": 0,
+      "width": 12,
+      "height": 4,
+      "data_source": "runs-insights",
+      "config": {
+        "config_kind": "table",
+        "widget_type": "table",
+        "columns": [
+          {
+            "key": "written_at",
+            "header": "Time"
+          },
+          {
+            "key": "quality_gate_passed",
+            "header": "Verdict"
+          },
+          {
+            "key": "task_type",
+            "header": "Task type"
+          },
+          {
+            "key": "model_name",
+            "header": "Model"
+          },
+          {
+            "key": "latency_ms",
+            "header": "Duration"
+          }
+        ],
+        "page_size": 25,
+        "show_pagination": false
       }
     }
   ]

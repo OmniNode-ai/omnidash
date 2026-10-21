@@ -82,8 +82,9 @@ export function DelegationSavingsProofPackPanel() {
   const { snapshot } = useDelegationRunContext();
   const { runs, savings } = snapshot;
 
-  const cumulativeSavings = savings?.cumulative_savings_usd ?? 0;
-  const cumulativeCloudCost = savings?.cumulative_cloud_cost_usd ?? 0;
+  // OMN-21166 AC38: a served NULL total is unknown, not zero; it is passed on as null and reads Not measured.
+  const cumulativeSavings = savings?.cumulative_savings_usd ?? null;
+  const cumulativeCloudCost = savings?.cumulative_cloud_cost_usd ?? null;
   const pricingManifest = savings?.pricing_manifest_version ?? 'pending';
   const capturedAt = savings?.captured_at;
 
@@ -163,8 +164,8 @@ function ProofPackHeader({
   capturedAt: string | undefined;
   pricingManifest: string;
   runCount: number;
-  cumulativeSavings: number;
-  cumulativeCloudCost: number;
+  cumulativeSavings: number | null;
+  cumulativeCloudCost: number | null;
   mode: DataSourceMode;
 }) {
   const sourceLine = SOURCE_BY_MODE[mode] ?? SOURCE_BY_MODE.postgres;
@@ -181,8 +182,8 @@ function ProofPackHeader({
         <ProofFact label="Data captured" value={fmtDate(capturedAt)} />
         <ProofFact label="Pricing manifest" value={pricingManifest} />
         <ProofFact label="Total runs" value={String(runCount)} />
-        <ProofFact label="Cumulative savings" value={fmtUsd(cumulativeSavings)} highlight />
-        <ProofFact label="Est. cloud cost (baseline)" value={fmtUsd(cumulativeCloudCost)} />
+        <ProofFact label="Cumulative savings" value={cumulativeSavings == null ? 'Not measured' : fmtUsd(cumulativeSavings)} highlight />
+        <ProofFact label="Est. cloud cost (baseline)" value={cumulativeCloudCost == null ? 'Not measured' : fmtUsd(cumulativeCloudCost)} />
       </div>
       <Text as="div" size="xs" color="tertiary">
         {sourceLine}. Savings calculated against baseline cloud model pricing per pricing manifest version above.

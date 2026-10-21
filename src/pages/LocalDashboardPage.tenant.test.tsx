@@ -14,7 +14,9 @@ const CREDENTIALS = 'onex.snapshot.projection.tenant-credentials.v1';
 const USAGE = 'onex.snapshot.projection.usage-by-model-day.v1';
 // OMN-19987: Workflow also binds run-trace.v1, which is tenant-scoped like the decisions it sits beside.
 const RUN_TRACE = 'onex.snapshot.projection.run-trace.v1';
-const SCOPED = new Set([DECISIONS, SAVINGS, OVERVIEW, CREDENTIALS, RUN_TRACE]);
+// OMN-19920: and correlation-trace.v1 (the run's answer), which serves response_text and is tenant-scoped.
+const ANSWERS = 'onex.snapshot.projection.delegation.correlation-trace.v1';
+const SCOPED = new Set([DECISIONS, SAVINGS, OVERVIEW, CREDENTIALS, RUN_TRACE, ANSWERS]);
 
 vi.mock('@/data-source/data-source-override', async (importOriginal) => ({
   ...(await importOriginal<typeof import('@/data-source/data-source-override')>()),
@@ -32,7 +34,7 @@ const projectionReads: string[] = [];
 
 function catalogue() {
   return {
-    topics: [DECISIONS, SAVINGS, OVERVIEW, CREDENTIALS, USAGE, RUN_TRACE].map((topic) => ({
+    topics: [DECISIONS, SAVINGS, OVERVIEW, CREDENTIALS, USAGE, RUN_TRACE, ANSWERS].map((topic) => ({
       topic,
       backing: 'bus',
       tenant_column: SCOPED.has(topic) ? 'tenant_id' : null,
@@ -66,7 +68,10 @@ afterEach(() => {
 
 async function panelsOf(pageName: 'overview' | 'runs' | 'workflow' | 'credentials' | 'api-keys') {
   render(<LocalDashboardPage pageName={pageName} />);
-  await waitFor(() => expect(screen.queryByText(/Loading runtime exposures/)).not.toBeInTheDocument());
+  await waitFor(() => {
+    const panels = screen.getAllByRole('article');
+    for (const panel of panels) expect(panel).toHaveAttribute('aria-busy', 'false');
+  });
   return screen.getAllByRole('article');
 }
 
@@ -76,7 +81,7 @@ describe('LocalDashboardPage with no tenant configured (OMN-19994 AC2)', () => {
     async (pageName) => {
       const panels = await panelsOf(pageName);
       // Panels bound to no exposure (pending sources, unlinked cloud keys) read nothing and keep their own state.
-      const scopedPanels = panels.filter((panel) => !within(panel).queryByText(/waits on|Not served|CLOUD_NOT_LINKED/));
+      const scopedPanels = panels.filter((panel) => !within(panel).queryByText(/Not available yet|Cloud keys are not linked/));
       expect(scopedPanels.length).toBeGreaterThan(0);
       for (const panel of scopedPanels) {
         expect(panel.querySelector('[data-tenant-state="not-configured"]')).toBeInTheDocument();

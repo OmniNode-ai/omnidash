@@ -8,7 +8,7 @@
 //
 // Real data path: HttpSnapshotSource, the exposure census and tenant resolution all run; only fetch is stubbed,
 // with the bodies `onex dashboard` sent in the lab.
-import { cleanup, render, screen, waitFor, within } from '@testing-library/react';
+import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 vi.mock('@/config/generated/data-source-defaults', () => ({
@@ -98,8 +98,8 @@ describe('Runs with a savings lookup this store does not serve (OMN-19994 AC1)',
   it('shows the served run and names the unserved lookup as a typed state, not an HTTP error', async () => {
     render(<LocalDashboardPage pageName="runs" />);
     const runs = await waitFor(() => panel('Recent runs'));
-    await waitFor(() => expect(within(runs).getByText(RUN_ID)).toBeInTheDocument());
-    expect(within(runs).getByText(`Not served: ${SAVINGS} (this store has no table for it)`)).toBeInTheDocument();
+    await waitFor(() => expect(within(runs).getByRole('link', { name: RUN_ID })).toBeInTheDocument());
+    expect(within(runs).getByText('Not available yet: run savings.')).toBeInTheDocument();
     expect(within(runs).queryByRole('alert')).toBeNull();
     expect(screen.queryByText(/HTTP 503/)).toBeNull();
   });
@@ -108,8 +108,8 @@ describe('Runs with a savings lookup this store does not serve (OMN-19994 AC1)',
     lab.catalogue = [DECISIONS];
     render(<LocalDashboardPage pageName="runs" />);
     const runs = await waitFor(() => panel('Recent runs'));
-    await waitFor(() => expect(within(runs).getByText(RUN_ID)).toBeInTheDocument());
-    expect(within(runs).getByText(`Not served: ${SAVINGS}`)).toBeInTheDocument();
+    await waitFor(() => expect(within(runs).getByRole('link', { name: RUN_ID })).toBeInTheDocument());
+    expect(within(runs).getByText('Not available yet: run savings.')).toBeInTheDocument();
     expect(within(runs).queryByRole('alert')).toBeNull();
   });
 
@@ -117,26 +117,27 @@ describe('Runs with a savings lookup this store does not serve (OMN-19994 AC1)',
     lab.answers[SAVINGS] = { status: 500, body: { error: 'projection_database_unavailable', topic: SAVINGS } };
     render(<LocalDashboardPage pageName="runs" />);
     const runs = await waitFor(() => panel('Recent runs'));
-    await waitFor(() => expect(within(runs).getByText(RUN_ID)).toBeInTheDocument());
-    expect(within(runs).getByRole('alert').textContent).toContain(`${SAVINGS}: HTTP 500`);
+    await waitFor(() => expect(within(runs).getByRole('link', { name: RUN_ID })).toBeInTheDocument());
+    expect(within(runs).getByRole('alert').textContent).toContain('The data could not be read (HTTP 500');
   });
 
   it('keeps any other 503 an error: only the declared table-missing refusal is not-served', async () => {
     lab.answers[DECISIONS] = { status: 503, body: { error: 'projection_database_unavailable', topic: DECISIONS } };
     render(<LocalDashboardPage pageName="runs" />);
     const runs = await waitFor(() => panel('Recent runs'));
-    await waitFor(() => expect(within(runs).getAllByRole('alert').map((alert) => alert.textContent))
-      .toContain(`${DECISIONS}: HTTP 503 Service Unavailable`));
+    await waitFor(() => expect(within(within(runs).getByRole('alert'))
+      .getByText('The data could not be read (HTTP 503 Service Unavailable).', { exact: true })).toBeInTheDocument());
+    expect(within(within(runs).getByRole('alert')).getByText('Technical details', { selector: 'summary' })).toBeInTheDocument();
     expect(within(runs).queryByText(RUN_ID)).toBeNull();
-    expect(within(runs).queryByText(/^Not served: .*decisions/)).toBeNull();
+    // The decisions 503 is an error, never the run records' not-served state (the test below shows that text exists).
+    expect(within(runs).queryByText(/^Not available yet: run records/)).toBeNull();
   });
 
   it('says the run table itself is not served when the decisions table is missing', async () => {
     lab.answers[DECISIONS] = { ...TABLE_MISSING, body: { ...(TABLE_MISSING.body as object), topic: DECISIONS } };
     render(<LocalDashboardPage pageName="runs" />);
     const runs = await waitFor(() => panel('Recent runs'));
-    await waitFor(() => expect(within(runs).getByText(`Not served: ${DECISIONS} (this store has no table for it)`))
-      .toBeInTheDocument());
+    await waitFor(() => expect(within(runs).getByText('Not available yet: run records.')).toBeInTheDocument());
     expect(within(runs).queryByText(RUN_ID)).toBeNull();
     expect(screen.queryByText(/HTTP 503/)).toBeNull();
   });
@@ -154,7 +155,9 @@ describe('Overview run tables with the same unserved lookup (OMN-19994 AC1, same
   it('shows the run in Recent runs and Last run', async () => {
     render(<LocalDashboardPage pageName="overview" />);
     const recent = await waitFor(() => panel('Recent runs'));
-    await waitFor(() => expect(within(recent).getByText(RUN_ID)).toBeInTheDocument());
+    await waitFor(() => expect(within(recent.querySelector('.local-run-preview') as HTMLElement).getByRole('link', { name: RUN_ID })).toHaveAttribute('href', `/workflow?correlation_id=${RUN_ID}`));
+    fireEvent.click(within(recent).getByText('Show recent run fields', { selector: 'summary' }));
+    expect(within(recent.querySelector('.local-dashboard-table-wrap') as HTMLElement).getByRole('link', { name: RUN_ID })).toHaveAttribute('href', `/workflow?correlation_id=${RUN_ID}`);
     expect(within(panel('Last run')).getByText(RUN_ID)).toBeInTheDocument();
     expect(within(recent).queryByRole('alert')).toBeNull();
   });

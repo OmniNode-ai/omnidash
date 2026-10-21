@@ -119,6 +119,26 @@ describe('DelegationSavingsProofPackPanel', () => {
     expect(screen.getAllByText('$1.25').length).toBeGreaterThan(0);
   });
 
+  // OMN-21166 AC38: a served NULL total is unknown, not zero. delegation.savings.v1 serves null money for a tenant with
+  // no measured run; the report must say so instead of printing $0.00 as a measured saving.
+  it('says a null cumulative saving and baseline cost are not measured, never $0', () => {
+    mockUseCtx.mockReturnValue({
+      ...populatedContextValue,
+      snapshot: {
+        ...populatedContextValue.snapshot,
+        savings: {
+          ...populatedContextValue.snapshot.savings!,
+          cumulative_savings_usd: null as unknown as number,
+          cumulative_cloud_cost_usd: null as unknown as number,
+        },
+      },
+    });
+    const { container } = render(<DelegationSavingsProofPackPanel />);
+    const header = container.querySelector('header')?.textContent ?? container.textContent ?? '';
+    expect(header).not.toMatch(/\$0(?:\.0+)?(?![\d.])/);
+    expect(screen.getAllByText(/Not measured/).length).toBeGreaterThan(0);
+  });
+
   it('renders all runs in the table', () => {
     mockUseCtx.mockReturnValue(populatedContextValue);
     render(<DelegationSavingsProofPackPanel />);

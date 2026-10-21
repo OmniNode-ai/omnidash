@@ -32,7 +32,7 @@ const SIX = [
 describe('Sidebar local pages (FR-3, F23)', () => {
   beforeEach(() => {
     window.history.replaceState(null, '', '/');
-    useFrameStore.setState({ dashboards: [], activeDashboardId: null, activeDashboard: null, sidebarCollapsed: false, activePage: 'local-overview' });
+    useFrameStore.setState({ dashboards: [], activeDashboardId: null, activeDashboard: null, sidebarCollapsed: false, showDeveloperTools: false, activePage: 'local-overview' });
   });
 
   it('lists the six local pages first, in the required order', () => {
@@ -46,14 +46,13 @@ describe('Sidebar local pages (FR-3, F23)', () => {
     expect(aside.querySelector('nav[aria-label="Local"]')).toBe(aside.querySelector('nav, .dash-list'));
   });
 
-  it('marks the three pages still flagged partial with a chip, and not Overview, Runs or Workflow', () => {
-    // OMN-19987: Workflow reads run-trace.v1 now, so its chip is gone. Usage, Credentials and API Keys keep theirs:
-    // their flags are other tickets' to clear.
+  it('shows clean destination labels without hardcoded partial badges', () => {
+    // Owner2026-10-18T12:39Z: remove Partial labels on the seven pages. Runtime availability
+    // remains the responsibility of each page's actual data state.
     render(<Sidebar />, { wrapper: Wrapper });
     for (const [page] of SIX) {
       const chip = within(screen.getByTestId(`nav-${page}`)).queryByText('partial');
-      if (page === 'local-overview' || page === 'local-runs' || page === 'local-workflow') expect(chip, page).toBeNull();
-      else expect(chip, page).not.toBeNull();
+      expect(chip, page).toBeNull();
     }
   });
 
@@ -65,8 +64,11 @@ describe('Sidebar local pages (FR-3, F23)', () => {
     expect(useFrameStore.getState().activePage).toBe('local-runs');
   });
 
-  it('keeps the existing pages reachable below the local group', () => {
+  it('keeps evidence visible and advanced pages reachable through the setting', async () => {
     render(<Sidebar />, { wrapper: Wrapper });
+    expect(screen.getByTestId('nav-delegation-evidence')).toBeInTheDocument();
+    expect(screen.queryByTestId('nav-event-bus')).not.toBeInTheDocument();
+    await userEvent.click(screen.getByRole('checkbox', { name: 'Show developer tools' }));
     for (const page of ['delegation-evidence', 'event-bus', 'experiments', 'sea-control', 'lab']) {
       expect(screen.getByTestId(`nav-${page}`)).toBeInTheDocument();
     }

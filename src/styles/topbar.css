@@ -25,6 +25,13 @@
 .breadcrumbs { display: flex; align-items: center; gap: 8px; color: var(--ink-2); font-size: 13px; }
 .breadcrumbs .sep { color: var(--ink-3); }
 .breadcrumbs .cur { color: var(--ink); font-weight: 500; }
+.topbar { height: 58px; padding-inline: clamp(16px, 2.2vw, 30px); }
+.breadcrumbs { gap: 10px; font-size: 12px; }
+.breadcrumbs .cur { font-weight: 600; letter-spacing: -.015em; }
+.topbar-right { gap: 8px; }
+.topbar .icon-btn { border: 1px solid var(--line); border-radius: 9px; width: 36px; height: 36px; background: var(--panel); }
+.topbar .icon-btn:focus-visible { outline: 2px solid var(--text-secondary); outline-offset: 3px; }
+@media (max-width: 640px) { .topbar .icon-btn { width: 40px; height: 40px; } }
 
 .topbar-right { display: flex; align-items: center; gap: 6px; }
 .icon-btn {
@@ -85,3 +92,11 @@
    in place rather than letting it loop. */
 @keyframes spin-once { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
 .icon-btn .spin-once { animation: spin-once 700ms cubic-bezier(.2,.8,.2,1); }
+
+/* OMN-21166: quieter chrome, matching the temporary editorial mockup. */
+.topbar { background: var(--bg); }
+.icon-btn { border-radius: 8px; }
+.icon-btn:focus-visible { outline: 2px solid var(--brand-ink); outline-offset: 2px; }
+@media (prefers-reduced-motion: reduce) {
+  .topbar *, .toast { animation: none !important; transition: none !important; }
+}

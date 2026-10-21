@@ -34,11 +34,13 @@ describe('RunsTable', () => {
 
     const row = screen.getByRole('row', { name: /session-42/ });
     for (const value of [
-      'session-42', '2026-10-01T13:40:00Z', 'local-model', '120', '45',
+      'session-42', 'local-model', '120', '45',
       '$0.01', 'cloud-model', 'measured', 'delegation', '250', '165',
     ]) {
       expect(within(row).getByText(value)).toBeInTheDocument();
     }
+    // OMN-21166 R-A: the served time is written for reading and kept whole as the cell's datetime and title.
+    expect(within(row).getByTitle('2026-10-01T13:40:00Z')).toHaveAttribute('datetime', '2026-10-01T13:40:00Z');
     // The counterfactual (0.1) and the cloud cost and saving (0.09) are served but not shown.
     for (const value of ['0.1', '0.09']) expect(within(row).queryByText(value), value).not.toBeInTheDocument();
   });

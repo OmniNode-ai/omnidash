@@ -1,3 +1,4 @@
+import { revealRunFields } from './omn21166-chart-fixtures';
 import { mkdirSync } from 'node:fs';
 import { dirname, resolve } from 'node:path';
 import { expect, test, type Page } from 'playwright/test';
@@ -64,11 +65,12 @@ const fixtures: Record<string, unknown[]> = {
       },
     ],
   }],
-  // OMN-19980 Amendment 2: Overview no longer reads cost.savings-overview.v1; it stays served with figures that differ
-  // from the metering all row's, so a headline card that read it again would show 1.2252 or 46 and be caught.
+  // D1: Overview reads the legacy all row, deliberately conflicting with
+  // metering so a headline cannot silently switch back to that source.
   [OVERVIEW]: [{
+    window: 'all', captured_at: '2026-10-02T10:07:00Z', tokens_total: 9844, unknown_run_count: 3,
     total_cost_usd: 0.00686, total_savings_usd: 1.2252, total_baseline_cost_usd: 1.2321,
-    measured_run_count: 46, zero_token_run_count: 0,
+    run_count: 49, measured_run_count: 46, zero_token_run_count: 0,
   }],
   // The all row is the Savings total; the day row is the daily series and must not reach the card.
   [METERING]: [meteringRow({ window_kind: 'day', window_start: '2026-10-02', savings_usd: '0.400000' }), meteringRow()],
@@ -84,8 +86,8 @@ const fixtures: Record<string, unknown[]> = {
     by_tier: {
       total_tasks: 9, tier_routed_total: 7, not_tier_routed_count: 2,
       tiers: [
-        { cost_tier_name: 'local', count: 5, tier_routed: true, pct_of_tier_routed: 71.43 },
-        { cost_tier_name: 'cheap_cloud', count: 2, tier_routed: true, pct_of_tier_routed: 28.57 },
+        { cost_tier_name: 'local', count: 5, tier_routed: true, pct_of_tier_routed: .7143 },
+        { cost_tier_name: 'cheap_cloud', count: 2, tier_routed: true, pct_of_tier_routed: .2857 },
       ],
     },
   }],
@@ -143,6 +145,11 @@ function screenshotPath(name: string) {
   return path;
 }
 
+async function showOverviewRunFields(page: Page) {
+  const details = page.locator('details.local-recent-fields');
+  if (await details.getAttribute('open') === null) await details.locator(':scope > summary').press('Enter');
+}
+
 test('stored basis, excluded counts and modelled baseline survive native Overview and Runs', async ({ page }) => {
   await page.setViewportSize({ width: 1440, height: 900 });
   const bases = ['measured', 'estimated', 'unknown', undefined];
@@ -165,10 +172,16 @@ test('stored basis, excluded counts and modelled baseline survive native Overvie
   });
   await page.goto('/');
   // Savings and, since OMN-20752, Baseline spend both carry the metering row's baseline caption and modelled note.
-  await expect(page.getByText('Baseline served-baseline-model · pricing manifest v1')).toHaveCount(2);
-  await expect(page.getByText(/The baseline never ran\./)).toHaveCount(2);
-  await expect(page.getByText('Of 4 runs · Unknown-token runs excluded: 1 · Unknown-spend runs excluded: 2', { exact: true })).toBeVisible();
+  await page.getByText('Additional runtime metrics', { exact: true }).press('Enter');
+  await page.locator('[data-component="overview-baseline-spend"] summary').press('Enter');
+  await expect(page.getByText('Baseline served-baseline-model · pricing manifest v1')).toHaveCount(1);
+  await expect(page.getByText(/The baseline never ran\./)).toHaveCount(1);
+  // OMN-21166 AC37: Agent calls is every call; the served classes are its caption.
+  await expect(page.getByText('46 measured · 3 unknown', { exact: true })).toBeVisible();
+  await showOverviewRunFields(page);
+  await revealRunFields(page);
   const last = page.getByRole('region', { name: 'Last run' });
+  await last.locator('summary').click();
   await expect(last.locator('dt').filter({ hasText: /^Basis$/ })).toBeVisible();
   await expect(last.getByText('measured', { exact: true })).toBeVisible();
   for (const route of ['overview', 'runs']) {
@@ -203,33 +216,46 @@ test('Overview is the default page and fits 1440x900 with no unmeasured 0 (AC4)'
   await page.goto('/');
 
   await expect(page.getByRole('heading', { level: 1, name: 'Overview' })).toBeVisible();
+  await showOverviewRunFields(page);
+  await revealRunFields(page);
+  await page.locator('.local-dashboard-page').evaluate(el => { el.scrollTop = 0; });
   const recent = page.locator('.local-dashboard-panel').filter({ has: page.getByRole('heading', { name: 'Recent runs' }) });
-  const unmeasured = recent.getByRole('row').filter({ hasText: 'corr-19981-unmeasured' });
+  const unmeasured = recent.locator('tr').filter({ has: page.getByRole('link', { name: 'corr-19981-unmeasured', exact: true }) });
   await expect(unmeasured).toBeVisible();
   // OMN-19980 AC2b: a run shows its cost and never a per-run saving, so the unpriced run has no saving to type.
   await expect(recent.getByRole('columnheader', { name: 'Savings', exact: true })).toHaveCount(0);
   await expect(unmeasured.getByText('$0.0004', { exact: true })).toBeVisible();
   await expect(unmeasured.getByText('Not recorded').first()).toBeVisible();
-  await expect(page.getByText('0', { exact: true })).toHaveCount(0);
+  await expect(unmeasured.getByText('0', { exact: true })).toHaveCount(0);
+  // Keep the page-wide guard. Only explicit chart axes and the separately
+  // verified returned-run composition counts may contain a measured zero.
+  const zeroNodes = await page.getByText('0', { exact: true }).evaluateAll(nodes => nodes.map(el => ({
+    html: el.outerHTML, parent: el.parentElement?.outerHTML.slice(0, 900),
+    exempt: !!el.closest('.ins-axis, .local-tier-bars-axis, .overview-outcome-legend, button[data-result="failed"] > span, figure[aria-label="Duration per run"] .local-chart-canvas svg, figure[aria-label="Tokens per run"] .local-chart-canvas svg'),
+  })));
+  await test.info().attach('numeric-zero-scope', { body: JSON.stringify(zeroNodes), contentType: 'application/json' });
+  expect(zeroNodes.filter(node => !node.exempt)).toEqual([]);
   await expect(page.getByText('$0', { exact: true })).toHaveCount(0);
+  await expect(recent.locator('button[data-result="failed"]')).toHaveText('Failed 0');
+  const outcomes = page.locator('.overview-outcome-legend button');
+  await expect(outcomes).toHaveCount(3);
+  for (const [index, label] of ['Passed: 2 runs', 'Failed: 0 runs', 'Not recorded: 0 runs'].entries()) await expect(outcomes.nth(index)).toHaveAttribute('aria-label', label);
 
-  // OMN-19980 Step B: the Savings total is metering-summary.v1's all-time row, with that row's baseline and manifest;
-  // neither cost.savings-overview.v1's total nor the day row reaches it.
+  // D1: Savings follows cost.savings-overview.v1, never a metering row.
   const savings = page.locator('.local-dashboard-panel').filter({ has: page.getByRole('heading', { name: 'Savings', exact: true }) });
-  // 1.2184, not cost.savings-overview.v1's 1.2252.
-  await expect(savings.getByText('$1.2184', { exact: true })).toBeVisible();
-  await expect(savings.getByText('$1.2252', { exact: true })).toHaveCount(0);
-  await expect(savings.getByText('Baseline claude-sonnet-5-5 · pricing manifest v3', { exact: true })).toBeVisible();
+  // D1: legacy1.2252, never the conflicting metering1.2184.
+  await expect(savings.getByText('$1.2252', { exact: true })).toBeVisible();
+  await expect(savings.getByText('$1.2184', { exact: true })).toHaveCount(0);
+  await expect(savings.getByText('Modelled · vs cloud baseline', { exact: true })).toBeVisible();
   await expect(savings.getByText('$0.4000', { exact: true })).toHaveCount(0);
-  // Amendment 2: Actual spend, Agent calls and Tokens processed (OMN-20758 titles) read the same all row (45 measured of 46, not
-  // cost.savings-overview.v1's 46; the two token columns side by side, never a combined total).
+  // D1: all four headline tiles follow the same legacy all row.
   const headline = (title: string) => page.locator('.local-dashboard-panel').filter({ has: page.getByRole('heading', { name: title, exact: true }) });
   await expect(headline('Actual spend').getByText('$0.0069', { exact: true })).toBeVisible();
-  await expect(headline('Agent calls').getByText('45', { exact: true })).toBeVisible();
+  await expect(headline('Agent calls').getByText('49', { exact: true })).toBeVisible();
   await expect(headline('Agent calls').getByText('46', { exact: true })).toHaveCount(0);
-  await expect(headline('Agent calls').getByText('Of 46 runs · Unknown-token runs excluded: 1 · Unknown-spend runs excluded: 0', { exact: true })).toBeVisible();
-  await expect(headline('Tokens processed').getByText('7,452 in · 2,392 out', { exact: true })).toBeVisible();
-  await expect(headline('Tokens processed').getByText(/Not served yet/)).toHaveCount(0);
+  await expect(headline('Agent calls').getByText('46 measured · 3 unknown', { exact: true })).toBeVisible();
+  await expect(headline('Tokens processed').getByText('9,844', { exact: true })).toBeVisible();
+  await expect(headline('Tokens processed').getByText(/Not available yet/)).toHaveCount(0);
 
   // The headline tiles sit above the fold, Tokens processed among them (requirement Q3), and so do the newest run's
   // status, model and age (requirement Q2). OMN-21015 (Lakshman, 2026-10-13: the charts are moved up so a reader sees
@@ -263,7 +289,7 @@ test('Runs lists every decision with typed unmeasured values at 1440x900 (AC4)',
   await page.getByTestId('nav-local-runs').click();
 
   await expect(page.getByRole('heading', { level: 1, name: 'Runs' })).toBeVisible();
-  const unmeasured = page.getByRole('row').filter({ hasText: 'corr-19981-unmeasured' });
+  const unmeasured = page.locator('tr').filter({ has: page.getByRole('link', { name: 'corr-19981-unmeasured', exact: true }) });
   await expect(unmeasured).toBeVisible();
   // OMN-19980 AC2b: local cost and the baseline label stay; no per-run baseline price or saving is shown.
   for (const header of ['Baseline cost', 'Savings']) {
@@ -316,7 +342,7 @@ test('Usage shows measured cost beside unmeasured runs, never 0 for unmeasured, 
   for (const value of ['2026-10-02', '$0.40', '46']) await expect(day.getByText(value, { exact: true })).toBeVisible();
   await expect(series.getByRole('row')).toHaveCount(2);
   await expect(savings.getByText('$1.2184')).toHaveCount(0);
-  await expect(savings.getByText(/Not served yet/)).toHaveCount(0);
+  await expect(savings.getByText(/Not available yet/)).toHaveCount(0);
   await expectNoPanelCutOff(page);
 
   await page.screenshot({ path: screenshotPath('local-dashboard-usage-1440x900.png'), fullPage: false });
@@ -326,16 +352,21 @@ test('Overview and Runs show each run\'s backend, host, tier and score, typed wh
   await page.setViewportSize({ width: 1440, height: 900 });
   await serveFixtures(page);
   await page.goto('/');
+  await showOverviewRunFields(page);
+  await revealRunFields(page);
 
   await expect(page.getByRole('heading', { level: 1, name: 'Overview' })).toBeVisible();
+  await showOverviewRunFields(page);
+  await revealRunFields(page);
+  await page.locator('.local-dashboard-page').evaluate(el => { el.scrollTop = 0; });
   await expect(page.getByText('Not served (OMN-20162)')).toHaveCount(0);
   const recent = page.locator('.local-dashboard-panel').filter({ has: page.getByRole('heading', { name: 'Recent runs' }) });
-  const measured = recent.getByRole('row').filter({ hasText: 'corr-19981-measured' });
+  const measured = recent.locator('tr').filter({ has: page.getByRole('link', { name: 'corr-19981-measured', exact: true }) });
   for (const value of ['local-heavy-reasoning', 'gpu-host-b', 'local (free_local)', 'passed', '1.000']) {
     await expect(measured.getByText(value, { exact: true }), value).toBeVisible();
   }
   // The second run carries no backend or host: typed, never blank.
-  const unmeasured = recent.getByRole('row').filter({ hasText: 'corr-19981-unmeasured' });
+  const unmeasured = recent.locator('tr').filter({ has: page.getByRole('link', { name: 'corr-19981-unmeasured', exact: true }) });
   const headers = await recent.getByRole('columnheader').allTextContents();
   const cells = unmeasured.getByRole('cell');
   for (const header of ['Backend', 'Host']) {
@@ -344,7 +375,8 @@ test('Overview and Runs show each run\'s backend, host, tier and score, typed wh
 
   await page.getByTestId('nav-local-runs').click();
   await expect(page.getByRole('heading', { level: 1, name: 'Runs' })).toBeVisible();
-  const run = page.getByRole('row').filter({ hasText: 'corr-19981-measured' });
+  await revealRunFields(page);
+  const run = page.locator('tr').filter({ has: page.getByRole('link', { name: 'corr-19981-measured', exact: true }) });
   for (const value of ['local-heavy-reasoning', 'gpu-host-b', 'local (free_local)']) {
     await expect(run.getByText(value, { exact: true }), value).toBeVisible();
   }
@@ -358,15 +390,22 @@ test('Overview quality and tier-mix panels show served fields only (OMN-20225 AC
   await serveFixtures(page);
   await page.goto('/');
 
+  await page.locator('.local-overview-secondary > summary').click();
   const quality = page.locator('.local-dashboard-panel').filter({ has: page.getByRole('heading', { name: 'Quality', exact: true }) });
   await quality.scrollIntoViewIfNeeded();
-  for (const value of ['0.875', '7', '1', '8', '0.81', '0.7']) {
+  await expect(quality.getByRole('meter')).toHaveAttribute('aria-valuenow', '0.875');
+  await expect(quality.locator('[data-quality-field=overall_pass_rate] dd .local-readable')).toHaveAttribute('title', '0.875');
+  await expect(quality.getByRole('meter')).toContainText('87.5%');
+  for (const value of ['7', '1', '8', '0.81', '0.7']) {
     await expect(quality.getByText(value, { exact: true }), value).toBeVisible();
   }
   const tierMix = page.locator('.local-dashboard-panel').filter({ has: page.getByRole('heading', { name: 'Tier mix', exact: true }) });
-  for (const value of ['cheap_cloud', '71.43', '28.57']) {
-    await expect(tierMix.getByText(value, { exact: true }), value).toBeVisible();
+  await tierMix.locator('details > summary').press('Enter');
+  for (const value of ['cheap_cloud', '71.4%', '28.6%']) {
+    await expect(tierMix.getByRole('table').getByText(value, { exact: true }), value).toBeVisible();
   }
+  await expect(tierMix.locator('.local-readable[title="0.7143"]')).toBeVisible();
+  await expect(tierMix.locator('.local-readable[title="0.2857"]')).toBeVisible();
   await expect(tierMix.getByText('Not tier-routed', { exact: true })).toBeVisible();
   // OMN-21015 (Lakshman, 2026-10-13): the charts are at the top of the page, so Tier mix now sits above Recent runs
   // and Recent runs starts below the first screen. This test used to hold both panels under Recent runs and Recent
@@ -388,7 +427,7 @@ test('every local page opens in order, names a served exposure, and fits 1440x90
   const nav = page.getByRole('navigation', { name: 'Local' });
   await expect(nav.getByRole('link')).toHaveText([
     // OMN-19987: Workflow reads a served exposure now and carries no "partial" chip.
-    'Overview', 'Runs', 'Workflow', 'Usage partial', 'Credentials partial', 'API Keys partial',
+    'Overview', 'Runs', 'Workflow', 'Usage', 'Credentials', 'API Keys',
   ].map((label) => new RegExp(`^${label.replace(' partial', '\\s*partial')}$`)));
 
   for (const [testId, title] of [
@@ -411,9 +450,12 @@ test('local panels follow both themes on every page without losing readable surf
   await serveFixtures(page);
   await page.goto('/');
   await expect(page.getByRole('heading', { level: 1, name: 'Overview' })).toBeVisible();
+  await showOverviewRunFields(page);
+  await revealRunFields(page);
+  await page.locator('.local-dashboard-page').evaluate(el => { el.scrollTop = 0; });
 
   for (const theme of ['light', 'dark']) {
-    await page.getByRole('button', { name: 'Toggle theme', exact: true }).click();
+    if ((await page.locator('html').getAttribute('data-theme') === 'dark' ? 'dark' : 'light') !== theme) await page.getByRole('button', { name: 'Toggle theme', exact: true }).click();
     await expect(page.locator('body')).toHaveClass(`theme-${theme}`);
     for (const [name, title] of [
       ['overview', 'Overview'], ['runs', 'Runs'], ['workflow', 'Workflow'],
@@ -428,10 +470,18 @@ test('local panels follow both themes on every page without losing readable surf
         return panels.map((panel) => ({
           title: panel.querySelector('h2')?.textContent,
           background: getComputedStyle(panel).backgroundColor,
-          expected: expected.style.backgroundColor,
+          expected: panel.matches('[data-component="overview-insights"], [data-component="workflow-run-path"], .local-dashboard-page--usage .local-dashboard-panel, .local-dashboard-page--runs [data-component="recent-runs"]') ? 'rgba(0, 0, 0, 0)' : expected.style.backgroundColor,
         }));
       });
+      expect(surfaces.length).toBeGreaterThan(0);
       for (const surface of surfaces) expect(surface.background, `${theme} ${name} ${surface.title}`).toBe(surface.expected);
+      const nested = await page.locator('.overview-chart-row > figure.local-chart, .local-run-charts > figure.local-chart, .workflow-analysis-card').evaluateAll(cards => cards.map(card => {
+        const expected = document.createElement('div');
+        expected.style.backgroundColor = getComputedStyle(document.documentElement).getPropertyValue(card.matches('.workflow-analysis-card') ? '--panel-2' : '--panel').trim();
+        return { title: card.querySelector('h3')?.textContent, background: getComputedStyle(card).backgroundColor, expected: expected.style.backgroundColor };
+      }));
+      if (['overview', 'runs'].includes(name)) expect(nested.length, `${name} nested-card positive control`).toBeGreaterThan(0);
+      for (const card of nested) expect(card.background, `${theme} ${name} nested ${card.title}`).toBe(card.expected);
       await expect(page.getByRole('alert')).toHaveCount(0);
       await expectNoPanelCutOff(page);
     }
@@ -450,6 +500,9 @@ test('Overview and Runs scroll to their last row while the header stays reachabl
   await serveFixtures(page, { ...fixtures, [DECISIONS]: manyDecisions });
   await page.goto('/');
   await expect(page.getByRole('heading', { level: 1, name: 'Overview' })).toBeVisible();
+  await showOverviewRunFields(page);
+  await revealRunFields(page);
+  await page.locator('.local-dashboard-page').evaluate(el => { el.scrollTop = 0; });
   const scrollPage = page.locator('.local-dashboard-page');
   // Recent runs' rows; the tier-mix panel below it is a table too (OMN-20225).
   const recentRows = page.locator('.local-dashboard-panel')
@@ -461,7 +514,8 @@ test('Overview and Runs scroll to their last row while the header stays reachabl
   await page.mouse.wheel(0, 4000);
   await expect.poll(() => scrollPage.evaluate((element) => element.scrollTop)).toBeGreaterThan(0);
   const lastOverviewRow = recentRows.last();
-  expect((await lastOverviewRow.boundingBox())!.y + (await lastOverviewRow.boundingBox())!.height).toBeLessThanOrEqual(900);
+  await lastOverviewRow.scrollIntoViewIfNeeded();
+  await expect.poll(async () => { const box = await lastOverviewRow.boundingBox(); return box!.y + box!.height; }).toBeLessThanOrEqual(900);
   expect((await page.getByRole('button', { name: 'Toggle theme', exact: true }).boundingBox())!.y).toBeGreaterThanOrEqual(0);
 
   await page.getByTestId('nav-local-runs').click();
@@ -469,9 +523,10 @@ test('Overview and Runs scroll to their last row while the header stays reachabl
   await page.mouse.move(1100, 650);
   await page.mouse.wheel(0, 5000);
   await expect.poll(() => scrollPage.evaluate((element) => element.scrollTop)).toBeGreaterThan(0);
+  await page.getByRole('button', { name: 'Next page', exact: true }).scrollIntoViewIfNeeded();
   await expect(page.getByRole('button', { name: 'Next page', exact: true })).toBeInViewport();
   // OMN-20759: the Runs table fits its panel at 1440, so there is nothing to scroll sideways to.
-  const table = page.locator('.local-dashboard-table-wrap');
+  const table = page.locator('[data-component="recent-runs"] .local-dashboard-table-wrap');
   expect(await table.evaluate((element) => element.scrollWidth - element.clientWidth)).toBeLessThanOrEqual(0);
   expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(1440);
   await page.getByRole('button', { name: 'Next page', exact: true }).click();
@@ -489,10 +544,9 @@ test('manual Refresh rereads local exposures and preserves the Runs filter', asy
   });
   await serveFixtures(page);
   await page.goto('/');
-  // The Overview Savings total, served from metering-summary.v1's all-time row (OMN-19980 Step B). Since OMN-21015
-  // AC1 the same served figure is also the all-time line of the spend-per-day table, so it is read in its own card.
+  // D1: refresh rereads the legacy Overview total independently of metering.
   const savingsCard = page.locator('.local-dashboard-panel').filter({ has: page.getByRole('heading', { name: 'Savings', exact: true }) });
-  await expect(savingsCard.getByText('$1.2184', { exact: true })).toBeVisible();
+  await expect(savingsCard.getByText('$1.2252', { exact: true })).toBeVisible();
   await page.getByTestId('nav-local-runs').click();
   await expect(page.getByText('Runs 1–2 of 2')).toBeVisible();
   await page.getByLabel('Status', { exact: true }).selectOption('passed');
@@ -509,43 +563,58 @@ test('sidebar surfaces and controls follow the theme in expanded and collapsed l
   await serveFixtures(page);
   await page.goto('/');
   await expect(page.getByRole('heading', { level: 1, name: 'Overview' })).toBeVisible();
+  await showOverviewRunFields(page);
+  await revealRunFields(page);
+  await page.locator('.local-dashboard-page').evaluate(el => { el.scrollTop = 0; });
+  // Compare rendered colors, not equivalent hex/rgb/oklch serializations.
   const token = async (name: string) => page.evaluate((name) => {
-    const parsed = document.createElement('div');
-    parsed.style.color = getComputedStyle(document.documentElement).getPropertyValue(name).trim();
-    return parsed.style.color;
+    const ctx = document.createElement('canvas').getContext('2d')!;
+    ctx.fillStyle = getComputedStyle(document.documentElement).getPropertyValue(name).trim();
+    ctx.fillRect(0, 0, 1, 1);
+    return [...ctx.getImageData(0, 0, 1, 1).data];
   }, name);
+  const expectColor = async (locator: ReturnType<typeof page.locator>, property: string, expected: number[]) => {
+    await expect.poll(() => locator.evaluate((el, property) => {
+      const ctx = document.createElement('canvas').getContext('2d')!;
+      ctx.fillStyle = getComputedStyle(el).getPropertyValue(property);
+      ctx.fillRect(0, 0, 1, 1);
+      return [...ctx.getImageData(0, 0, 1, 1).data];
+    }, property)).toEqual(expected);
+  };
   const sidebar = page.locator('.sidebar');
 
   for (const theme of ['light', 'dark']) {
-    await page.getByRole('button', { name: 'Toggle theme', exact: true }).click();
+    if ((await page.locator('html').getAttribute('data-theme') === 'dark' ? 'dark' : 'light') !== theme) await page.getByRole('button', { name: 'Toggle theme', exact: true }).click();
     await expect(page.locator('body')).toHaveClass(`theme-${theme}`);
-    const background = await token(theme === 'light' ? '--panel-2' : '--sidebar');
-    const foreground = await token(theme === 'light' ? '--ink' : '--sidebar-ink');
-    const secondary = await token(theme === 'light' ? '--ink-2' : '--sidebar-ink-2');
-    const hover = theme === 'light' ? await token('--line-2') : 'oklch(0.22 0.01 260)';
-    await expect(sidebar).toHaveCSS('background-color', background);
-    await expect(sidebar).toHaveCSS('color', foreground);
-    await expect(page.getByTestId('nav-local-runs')).toHaveCSS('color', secondary);
-    await expect(page.locator('.local-nav-chip').first()).toHaveCSS('border-top-color', await token('--sidebar-line'));
+    const background = await token('--sidebar');
+    const foreground = await token('--sidebar-ink');
+    const secondary = await token('--sidebar-ink-2');
+    await expectColor(sidebar, 'background-color', background);
+    await expectColor(sidebar, 'color', foreground);
+    await expectColor(page.getByTestId('nav-local-runs'), 'color', secondary);
+    // MVP navigation carries no partial-state chip. Keep an exact positive
+    // control on the developer switch's retained separator instead.
+    await expectColor(page.locator('.developer-switch'), 'background-color', await token('--sidebar-line'));
+    const idleBackground = await page.getByTestId('nav-local-runs').evaluate(el => getComputedStyle(el).backgroundColor);
     await page.getByTestId('nav-local-runs').hover();
-    await expect(page.getByTestId('nav-local-runs')).toHaveCSS('background-color', hover);
-    await expect(page.getByTestId('nav-local-runs')).toHaveCSS('color', foreground);
+    await expect.poll(() => page.getByTestId('nav-local-runs').evaluate(el => getComputedStyle(el).backgroundColor)).not.toBe(idleBackground);
+    await expectColor(page.getByTestId('nav-local-runs'), 'color', foreground);
 
     for (const width of [1440, 390]) {
       await page.setViewportSize({ width, height: 900 });
       await page.getByRole('button', { name: 'Collapse sidebar', exact: true }).click();
       await expect(sidebar).toHaveClass('sidebar collapsed');
-      await expect(sidebar).toHaveCSS('background-color', background);
+      await expectColor(sidebar, 'background-color', background);
       await page.getByRole('button', { name: 'Expand sidebar', exact: true }).click();
       await expect(sidebar).toHaveClass('sidebar');
-      await expect(sidebar).toHaveCSS('background-color', background);
+      await expectColor(sidebar, 'background-color', background);
     }
     await page.setViewportSize({ width: 1440, height: 900 });
-    await page.getByRole('button', { name: 'New dashboard', exact: true }).click();
-    const rename = sidebar.locator('input');
-    await expect(rename).toBeVisible();
-    await expect(rename).toHaveCSS('background-color', theme === 'light' ? await token('--panel') : 'oklch(0.28 0.01 260)');
-    await rename.press('Escape');
+    await expect(page.getByRole('button', { name: 'New dashboard', exact: true })).toHaveCount(0);
+    const developer = page.getByRole('checkbox', { name: 'Show developer tools', exact: true });
+    await developer.check();
+    await expect(page.getByTestId('nav-lab')).toBeVisible();
+    await developer.uncheck();
     await page.getByTestId('nav-local-overview').click();
     await expect(page.getByRole('heading', { level: 1, name: 'Overview', exact: true })).toBeVisible();
   }
@@ -636,7 +705,7 @@ test('navigation selection, hover and keyboard focus remain distinct in both the
   await serveFixtures(page);
   await page.goto('/overview');
   for (const theme of ['dark', 'light']) {
-    if (theme === 'light') await page.getByRole('button', { name: 'Toggle theme' }).click();
+    if ((await page.locator('html').getAttribute('data-theme') === 'dark' ? 'dark' : 'light') !== theme) await page.getByRole('button', { name: 'Toggle theme' }).click();
     await expect(page.locator('body')).toHaveClass(`theme-${theme}`);
     for (const path of ['overview', 'runs', 'workflow', 'usage', 'credentials', 'api-keys']) {
       const selected = page.getByTestId(`nav-local-${path}`);
@@ -644,7 +713,7 @@ test('navigation selection, hover and keyboard focus remain distinct in both the
       await page.mouse.move(700, 60);
       await expect(selected).toHaveAttribute('aria-current', 'page');
       await expect(selected).not.toHaveCSS('background-color', 'rgba(0, 0, 0, 0)');
-      await expect(selected).toHaveCSS('border-radius', '8px');
+      await expect(selected).toHaveCSS('border-radius', '7px');
       const selectedBackground = await selected.evaluate(el => getComputedStyle(el).backgroundColor);
       await selected.hover();
       await expect(selected).not.toHaveCSS('background-color', selectedBackground);
@@ -680,18 +749,19 @@ test('breadcrumbs describe the actual page through navigation and direct URLs', 
   await expect(page.locator('.breadcrumbs .cur')).toHaveText('Page not found');
 });
 
-// A dashboard can remain selected in the store while a local page is open.
-// Creating from Overview must open the new canvas, and navigation must highlight only the visible page.
-test('creating a dashboard opens its canvas and leaves only one selected navigation item', async ({ page }) => {
+// OMN-21166 defers creation; legacy layouts remain available through explicit links.
+test('MVP navigation defers dashboard creation and highlights only the visible page', async ({ page }) => {
   await serveFixtures(page);
   await page.goto('/overview');
-  await page.getByRole('button', { name: 'New dashboard', exact: true }).click();
-  await expect(page).toHaveURL(/\/dashboard$/);
-  await page.locator('.sidebar input').press('Escape');
+  await expect(page.getByRole('button', { name: 'New dashboard', exact: true })).toHaveCount(0);
   await expect(page.locator('.sidebar .dash-item.active')).toHaveCount(1);
+  await page.getByTestId('nav-local-runs').click();
+  await expect(page.locator('.sidebar .dash-item.active')).toHaveCount(1);
+  await expect(page.getByTestId('nav-local-runs')).toHaveAttribute('aria-current', 'page');
+  await page.goto('/dashboard');
+  await expect(page.locator('.breadcrumbs .cur')).toHaveText('Dashboards');
   await page.getByTestId('nav-local-overview').click();
   await expect(page.locator('.sidebar .dash-item.active')).toHaveCount(1);
-  await expect(page.getByTestId('nav-local-overview')).toHaveClass('dash-item active');
 });
 
 // The live Chrome pass showed raw, square select controls and an unnecessary scrollbar in the empty list.
@@ -700,14 +770,14 @@ test('Runs filters, pagination and table hover use readable themed controls', as
   await page.goto('/runs');
   await expect(page.getByText('Runs 1–2 of 2')).toBeVisible();
   for (const theme of ['dark', 'light']) {
-    if (theme === 'light') await page.getByRole('button', { name: 'Toggle theme' }).click();
+    if ((await page.locator('html').getAttribute('data-theme') === 'dark' ? 'dark' : 'light') !== theme) await page.getByRole('button', { name: 'Toggle theme' }).click();
     await expect(page.locator('body')).toHaveClass(`theme-${theme}`);
     const selects = page.locator('.local-dashboard-filters select');
     // Status, Cause, Model, Window, and since OMN-21015 AC8 Backend.
     await expect(selects).toHaveCount(5);
     for (const select of await selects.all()) {
-      await expect(select).toHaveCSS('border-radius', '6px');
-      await expect(select).toHaveCSS('min-height', '34px');
+      await expect(select).toHaveCSS('border-radius', '7px');
+      await expect(select).toHaveCSS('min-height', '36px');
       await expect(select).toHaveCSS('border-top-style', 'solid');
     }
     const previous = page.getByRole('button', { name: 'Previous page', exact: true });
@@ -728,7 +798,8 @@ test('short sidebar windows scroll navigation without a cramped empty-list scrol
   await serveFixtures(page);
   await page.goto('/overview');
   const emptyList = page.locator('.dash-list');
-  await expect.poll(() => emptyList.evaluate(el => el.scrollHeight <= el.clientHeight)).toBe(true);
+  await expect(emptyList).toHaveCount(0);
+  await page.getByRole('checkbox', { name: 'Show developer tools', exact: true }).check();
   await page.setViewportSize({ width: 1440, height: 500 });
   const sidebar = page.locator('.sidebar');
   await expect(sidebar).toHaveCSS('overflow-y', 'auto');

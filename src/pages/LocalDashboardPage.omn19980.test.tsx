@@ -1,38 +1,8 @@
 // @vitest-environment jsdom
-// OMN-19980 AC2b and AC2c, on the rendered pages: a run shows its cost and never a per-run saving, and a savings card
-// with nothing measured or nothing served says so in words, naming metering-summary.v1, never a number or $0.
-//
-// Failure modes, each with a test below:
-//   B1  Overview Recent runs or Last run shows a run's saving next to its cost;
-//   B2  Runs shows a per-run baseline price (counterfactual or cloud cost) or saving next to its local cost;
-//   B3  a row's null saving still switches the whole page to Baseline unresolved (the loader read savings_usd);
-//   C1  the Overview Savings total with no all-time metering row reads Baseline unresolved or $0, not Not measured;
-//   C2  a savings card bound to metering-summary.v1 that the census does not serve shows a figure, or no reason;
-//   C3  served with zero rows: a figure or $0 instead of Not measured;
-//   C4  the read answers 503: Not measured (a failed read is not a measurement) or a figure;
-//   C5  a metering row with a null saving and an unresolved baseline: the whole page goes Baseline unresolved,
-//       instead of that one card.
-// Step B (the Overview Savings total rebound to metering-summary.v1's all-time row):
-//   T1  the card shows another exposure's total (cost.savings-overview.v1), a day row, or a caption from
-//       delegation.savings.v1 instead of the all row's own baseline and pricing manifest;
-//   T2  metering-summary.v1 not in the census: a figure or a blank, instead of naming the exposure;
-//   T3  the all row's baseline is unresolved: a figure or $0, or the whole page switches state;
-//   T4  a resolved all row with a null saving (nothing measured yet) shows $0;
-//   T5  after a baseline change two all rows exist: the card shows the older baseline's figure, or the two mixed;
-//   T6  two all rows refreshed at the same moment cannot be told apart: the card picks one silently;
-//   T7  the read answers 503: Not measured or a figure.
-// Step B, Amendment 2 (Spend, Measured runs and Tokens in/out read the same all row as Savings; AC2-B1, AC2-B2):
-//   M1  a card shows cost.savings-overview.v1's figure (or a day row's) instead of the all row's spend_usd,
-//       runs_measured, tokens_in and tokens_out, or its run counts come from another row;
-//   M2  metering-summary.v1 not in the census: a figure, a 0 or a blank, instead of naming the exposure;
-//   M3  an unresolved baseline blanks Spend, Measured runs or Tokens (none of them is priced at the baseline);
-//   M4  a null spend or measured count, or token totals with no run that recorded tokens, show $0 or 0;
-//   M5  after a baseline change: a card shows the older row's figure, or the cards read different rows;
-//   M6  two all rows refreshed at the same moment: a card picks one silently;
-//   M7  only day rows: a card shows a day's figure, or 0, instead of saying there is no all-time row.
-// C2-C5 exercise the Savings card, the Overview savings card dev binds to metering-summary.v1. (On the stack with
-// OMN-20009 they exercised its Avg saving / call card; that card is not on dev.)
-import { act, render, screen, within } from '@testing-library/react';
+// D1 confirmed by Lakshman2026-10-20: legacy all-row Overview headlines; Today is unavailable.
+// Retain exact values, source conflicts, missing/malformed/zero, timestamp ordering/ties,
+// per-card isolation and transport failure controls. Metering formatter/provenance suites retain their original source.
+import { act, cleanup, fireEvent, render, screen, within } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 const DECISIONS = 'onex.snapshot.projection.delegation.decisions.v1';
@@ -80,7 +50,7 @@ function served(overrides: Record<string, unknown[] | Error> = {}) {
       tokens_input: 162, tokens_output: 52, task_type: 'summarization', cost_tier_name: 'local', actual_score: '1.000',
     }],
     [SAVINGS]: [{ tenant_id: 'tenant-a', baseline_model: 'claude-opus-4-6', pricing_manifest_version: '1', sessions: [SESSION] }],
-    [OVERVIEW]: [{ total_cost_usd: 0.01, total_savings_usd: 1.29, total_baseline_cost_usd: 1.3, measured_run_count: 4, zero_token_run_count: 0 }],
+    [OVERVIEW]: [overviewRow({ total_cost_usd: 0.01, total_savings_usd: 1.29, measured_run_count: 4 })],
     [ROUTING]: [{ tenant_id: 'tenant-a', by_tier: { local_call_share: 0.5, local_call_count: 2, total_call_count: 4, not_tier_routed_count: 0 } }],
     ...overrides,
   };
@@ -106,6 +76,7 @@ describe('OMN-19980 AC2b: a run shows its cost, never a per-run saving', () => {
   it('B1: Overview Recent runs and Last run show the run\'s cost and no saving', async () => {
     await open('overview');
     const recent = panel('Recent runs');
+    fireEvent.click(within(recent).getByText('Show recent run fields', { selector: 'summary' }));
     expect(headers(recent)).toContain('Cost');
     expect(headers(recent)).not.toContain('Savings');
     expect(within(recent).getByText(LOCAL_COST)).toBeInTheDocument();
@@ -160,57 +131,6 @@ describe('OMN-19980 AC2b: a run shows its cost, never a per-run saving', () => {
   });
 });
 
-describe('OMN-19980 AC2c: a savings card with nothing measured or served says so, never a number', () => {
-  const noFigure = (scope: HTMLElement) => expect(within(scope).queryByText(/\$\s*-?\d/)).toBeNull();
-
-  it('C1: the Overview Savings total with no all-time metering row is Not measured, never Baseline unresolved', async () => {
-    served({ [METERING]: [] });
-    await open('overview');
-    const savings = panel('Savings');
-    expect(within(savings).getByText('Not measured: no all-time row')).toBeInTheDocument();
-    expect(within(savings).queryByText('Baseline unresolved')).toBeNull();
-    noFigure(savings);
-  });
-
-  it('C2: bound to metering-summary.v1 that the census does not serve, the card names it and shows no figure', async () => {
-    served();
-    await open('overview');
-    const card = panel('Savings');
-    expect(within(card).getByText(`Not served: ${METERING}`)).toBeInTheDocument();
-    noFigure(card);
-  });
-
-  it('C3: served with no rows, the card is Not measured, never $0', async () => {
-    served({ [METERING]: [] });
-    await open('overview');
-    const card = panel('Savings');
-    expect(within(card).getByText('Not measured: no all-time row')).toBeInTheDocument();
-    noFigure(card);
-  });
-
-  it('C4: a 503 names metering-summary.v1 and is not read as a measurement', async () => {
-    served({ [METERING]: new Error(`Projection ${METERING} failed: HTTP 503 Service Unavailable`) });
-    await open('overview');
-    const card = panel('Savings');
-    expect(within(card).getByRole('alert')).toHaveTextContent(`${METERING}: HTTP 503 Service Unavailable`);
-    expect(within(card).queryByText(/^Not measured/)).toBeNull();
-    noFigure(card);
-  });
-
-  it('C5: a null saving with an unresolved baseline is that card\'s state, not the page\'s', async () => {
-    served({ [METERING]: [{ window_kind: 'all', baseline_model: 'claude-opus-4-6', baseline_state: 'unresolved', runs_measured: 3, savings_usd: null,
-      // Amendment 2: Spend reads this same row, and is not priced at the baseline.
-      as_of: '2026-10-05T12:00:00+00:00', spend_usd: '0.010000' }] });
-    await open('overview');
-    const card = panel('Savings');
-    expect(within(card).getByText('Baseline unresolved')).toBeInTheDocument();
-    noFigure(card);
-    expect(within(panel('Actual spend')).getByText('$0.0100')).toBeInTheDocument();
-    expect(within(panel('Recent runs')).getByText(LOCAL_COST)).toBeInTheDocument();
-  });
-});
-
-/** A metering-summary.v1 row as #3368 serves it: money as decimal text, null when unmeasured. */
 function meteringRow(overrides: Record<string, unknown>): Record<string, unknown> {
   return {
     tenant_id: 'tenant-a', window_kind: 'all', window_start: '', window_end: '2026-10-05T12:00:00+00:00',
@@ -221,178 +141,118 @@ function meteringRow(overrides: Record<string, unknown>): Record<string, unknown
   };
 }
 
-describe('OMN-19980 Step B: the Overview Savings total is metering-summary.v1\'s all-time row', () => {
-  const noFigure = (scope: HTMLElement) => expect(within(scope).queryByText(/\$\s*-?\d/)).toBeNull();
+// D1, Lakshman 2026-10-20: Overview reads the legacy all row. Metering
+// baseline/ratio behavior is retained by the direct MeteringTotalCard suites.
+function overviewRow(overrides: Record<string, unknown>): Record<string, unknown> {
+  return { window: 'all', captured_at: '2026-10-05T12:00:00Z', total_cost_usd: '0.007100',
+    total_savings_usd: '1.225200', run_count: 9, measured_run_count: 7, unknown_run_count: 2, tokens_total: 2140, ...overrides };
+}
+const noFigure = (scope: HTMLElement) => expect(within(scope).queryByText(/\$\s*-?\d/)).toBeNull();
+const figure = (title: string) => panel(title).querySelector('.local-dashboard-metric')?.textContent ?? '';
+const HEADLINES = ['Actual spend', 'Savings', 'Agent calls', 'Tokens processed'];
 
-  it('T1: shows the all row\'s savings_usd with that row\'s baseline and manifest, not another exposure\'s total', async () => {
-    served({ [METERING]: [
-      meteringRow({ window_kind: 'day', window_start: '2026-10-05', savings_usd: '0.500000' }),
-      meteringRow({}),
-    ] });
+describe('OMN-19980 AC2c: Overview absence and transport errors remain typed under the approved source', () => {
+  it('C1: no all-time legacy row is unavailable, never Baseline unresolved', async () => {
+    served({ [OVERVIEW]: [overviewRow({ window: 'day' })] });
     await open('overview');
-    const savings = panel('Savings');
-    expect(within(savings).getByText('$1.2252')).toBeInTheDocument();
-    expect(within(savings).getByText('Baseline claude-sonnet-5-5 · pricing manifest v3')).toBeInTheDocument();
-    expect(within(savings).getByText(/The baseline never ran\./)).toBeInTheDocument();
-    // cost.savings-overview.v1 serves 1.29 and delegation.savings.v1 names claude-opus-4-6: neither reaches the card.
-    expect(within(savings).queryByText('$1.2900')).toBeNull();
-    expect(within(savings).queryByText(/claude-opus-4-6/)).toBeNull();
-    expect(within(savings).queryByText('$0.5000')).toBeNull();
-    // Amendment 2: Spend and Measured runs read the same all row now, not cost.savings-overview.v1 (0.01 and 4).
-    expect(within(panel('Actual spend')).getByText('$0.0071')).toBeInTheDocument();
-    expect(within(panel('Agent calls')).getByText('7')).toBeInTheDocument();
+    expect(figure('Savings')).toBe('Not measured: overview totals unavailable');
+    expect(panel('Savings').textContent).not.toContain('Baseline unresolved');
+    noFigure(panel('Savings'));
   });
-
-  it('T2: metering-summary.v1 not in the census: the card names it and shows no figure', async () => {
-    served();
+  it('C2: an unserved legacy source is named and shows no figure', async () => {
+    harness.reachable.delete(OVERVIEW);
     await open('overview');
-    const savings = panel('Savings');
-    expect(within(savings).getByText(`Not served: ${METERING}`)).toBeInTheDocument();
-    noFigure(savings);
+    expect(within(panel('Savings')).getByText('Not available yet: savings summary.')).toBeInTheDocument();
+    noFigure(panel('Savings'));
   });
-
-  it('T3: an unresolved baseline is Baseline unresolved on this card only, never a figure', async () => {
-    served({ [METERING]: [meteringRow({ baseline_state: 'unresolved', pricing_manifest_version: null, counterfactual_usd: null, savings_usd: null })] });
-    await open('overview');
-    const savings = panel('Savings');
-    expect(within(savings).getByText('Baseline unresolved')).toBeInTheDocument();
-    noFigure(savings);
-    expect(within(panel('Actual spend')).getByText('$0.0071')).toBeInTheDocument();
-    expect(within(panel('Recent runs')).getByText(LOCAL_COST)).toBeInTheDocument();
+  it('C3: served with no rows is unavailable, never $0', async () => {
+    served({ [OVERVIEW]: [] }); await open('overview');
+    expect(figure('Savings')).toBe('Not measured: overview totals unavailable'); noFigure(panel('Savings'));
   });
-
-  it('T4: a resolved all row with a null saving is Not measured, never $0', async () => {
-    served({ [METERING]: [meteringRow({ runs_measured: 0, counterfactual_usd: null, savings_usd: null })] });
-    await open('overview');
-    const savings = panel('Savings');
-    expect(within(savings).getByText('Not measured')).toBeInTheDocument();
-    noFigure(savings);
+  it('C4: a 503 names the actual legacy exposure and is not a measurement', async () => {
+    served({ [OVERVIEW]: new Error(`Projection ${OVERVIEW} failed: HTTP 503`) }); await open('overview');
+    expect(within(panel('Savings')).getByRole('alert')).toHaveTextContent('The data could not be read (HTTP 503');
+    noFigure(panel('Savings'));
   });
-
-  it('T5: after a baseline change, the all row refreshed last (the baseline the runtime resolves now) is shown', async () => {
-    served({ [METERING]: [
-      meteringRow({ baseline_model: 'claude-opus-4-6', as_of: '2026-10-04T08:00:00+00:00', savings_usd: '9.990000' }),
-      meteringRow({ baseline_model: 'claude-sonnet-5-5', as_of: '2026-10-05T12:00:00+00:00', savings_usd: '1.225200' }),
-    ] });
-    await open('overview');
-    const savings = panel('Savings');
-    expect(within(savings).getByText('$1.2252')).toBeInTheDocument();
-    expect(within(savings).getByText('Baseline claude-sonnet-5-5 · pricing manifest v3')).toBeInTheDocument();
-    expect(within(savings).queryByText('$9.9900')).toBeNull();
-  });
-
-  it('T6: two all rows refreshed at the same moment are refused by name, never one picked silently', async () => {
-    served({ [METERING]: [
-      meteringRow({ baseline_model: 'claude-opus-4-6', savings_usd: '9.990000' }),
-      meteringRow({ baseline_model: 'claude-sonnet-5-5' }),
-    ] });
-    await open('overview');
-    const savings = panel('Savings');
-    expect(within(savings).getByText('Not measured: 2 baseline models')).toBeInTheDocument();
-    noFigure(savings);
-  });
-
-  it('T7: a 503 names metering-summary.v1 and is not read as a measurement', async () => {
-    served({ [METERING]: new Error(`Projection ${METERING} failed: HTTP 503 Service Unavailable`) });
-    await open('overview');
-    const savings = panel('Savings');
-    expect(within(savings).getByRole('alert')).toHaveTextContent(`${METERING}: HTTP 503 Service Unavailable`);
-    expect(within(savings).queryByText(/^Not measured/)).toBeNull();
-    noFigure(savings);
+  it('C5: a missing saving affects only its card; unrelated baseline state cannot blank the page', async () => {
+    served({ [OVERVIEW]: [overviewRow({ total_savings_usd: null, baseline_state: 'unresolved' })] }); await open('overview');
+    expect(figure('Savings')).toBe('Not measured'); expect(figure('Actual spend')).toBe('$0.0071');
+    expect(within(panel('Last run')).getByText(LOCAL_COST)).toBeInTheDocument();
   });
 });
 
-describe('OMN-19980 Step B (Amendment 2): Spend, Measured runs and Tokens read the same all row as Savings', () => {
-  const HEADLINES = ['Actual spend', 'Agent calls', 'Tokens processed'] as const;
-  /** The card's figure and caption lines, exactly (the panel's read-state line is not the card's figure). */
-  const figure = (title: string) => [...panel(title).querySelectorAll('.local-dashboard-metric')].map((node) => node.textContent);
-  const captions = (title: string) => [...panel(title).querySelectorAll('.local-dashboard-caption')].map((node) => node.textContent);
-
-  it('M1: each card shows the all row\'s own column, never cost.savings-overview.v1\'s figure or a day row\'s', async () => {
-    served({ [METERING]: [
-      meteringRow({ window_kind: 'day', window_start: '2026-10-05', spend_usd: '0.002200', runs_total: 3, runs_measured: 2, tokens_in: 111, tokens_out: 22 }),
-      meteringRow({}),
-    ] });
-    await open('overview');
-    const spend = panel('Actual spend');
-    expect(within(spend).getByText('$0.0071')).toBeInTheDocument();
-    expect(within(spend).queryByText('$0.0100')).toBeNull();
-    expect(within(spend).queryByText('$0.0022')).toBeNull();
-    const measured = panel('Agent calls');
-    expect(within(measured).getByText('7')).toBeInTheDocument();
-    expect(within(measured).getByText('Of 9 runs · Unknown-token runs excluded: 1 · Unknown-spend runs excluded: 1')).toBeInTheDocument();
-    expect(within(measured).queryByText('4')).toBeNull();
-    expect(within(measured).queryByText(/Estimated runs excluded/)).toBeNull();
-    const tokens = panel('Tokens processed');
-    expect(within(tokens).getByText('1,620 in · 520 out')).toBeInTheDocument();
-    expect(within(tokens).queryByText(/Not served yet/)).toBeNull();
-    expect(within(tokens).queryByText(/111/)).toBeNull();
+describe('OMN-19980 Step B: Overview uses exactly its approved legacy all row', () => {
+  it('T1: exact all-row savings/spend/counts, never conflicting metering or delegation figures', async () => {
+    served({ [OVERVIEW]: [overviewRow({ window: 'day', total_savings_usd: '0.500000' }), overviewRow({})],
+      [METERING]: [meteringRow({ savings_usd: '9.990000' })] }); await open('overview');
+    expect(figure('Savings')).toBe('$1.2252'); expect(figure('Actual spend')).toBe('$0.0071'); expect(figure('Agent calls')).toBe('9');
+    expect(panel('Savings').textContent).toContain('Modelled · vs cloud baseline');
+    expect(panel('Savings').textContent).not.toMatch(/9\.9900|0\.5000|claude-opus-4-6/);
   });
-
-  it('M2: metering-summary.v1 not in the census: each card names it and shows no number', async () => {
-    served();
-    await open('overview');
-    for (const title of HEADLINES) {
-      expect(within(panel(title)).getByText(`Not served: ${METERING}`), title).toBeInTheDocument();
-      expect(figure(title), title).toEqual([]);
-      expect(captions(title), title).toEqual([]);
-    }
+  // Review failure: a negative served saving is money below zero, not $-5.
+  it('T1 negative money keeps its currency sign before the symbol', async () => {
+    served({ [OVERVIEW]: [overviewRow({ total_savings_usd: -5 })] }); await open('overview');
+    expect(figure('Savings')).toBe('-$5.0000');
   });
-
-  it('M3: an unresolved baseline is the Savings card\'s state only; Spend, runs and tokens still show', async () => {
-    served({ [METERING]: [meteringRow({ baseline_state: 'unresolved', pricing_manifest_version: null, counterfactual_usd: null, savings_usd: null })] });
-    await open('overview');
-    expect(within(panel('Savings')).getByText('Baseline unresolved')).toBeInTheDocument();
-    expect(within(panel('Actual spend')).getByText('$0.0071')).toBeInTheDocument();
-    expect(within(panel('Agent calls')).getByText('7')).toBeInTheDocument();
-    expect(within(panel('Tokens processed')).getByText('1,620 in · 520 out')).toBeInTheDocument();
-    for (const title of HEADLINES) expect(within(panel(title)).queryByText('Baseline unresolved'), title).toBeNull();
+  it('T2: legacy source absent from census is named, without falling back to metering', async () => {
+    served({ [METERING]: [meteringRow({})] }); harness.reachable.delete(OVERVIEW); await open('overview');
+    expect(panel('Savings').textContent).toContain('Not available yet: savings summary.'); noFigure(panel('Savings'));
   });
-
-  it('M4: a null spend or measured count, and tokens with no run that recorded any, are Not measured, never 0', async () => {
-    served({ [METERING]: [meteringRow({
-      runs_total: 4, runs_measured: null, runs_unknown_tokens: 4, runs_unknown_spend: 0,
-      tokens_in: 0, tokens_out: 0, spend_usd: null, counterfactual_usd: null, savings_usd: null,
-    })] });
-    await open('overview');
-    for (const title of HEADLINES) expect(figure(title), title).toEqual(['Not measured']);
-    // The run counts that are served still say why nothing was measured; they are counts, not the figure.
-    expect(captions('Agent calls')).toEqual(['Of 4 runs · Unknown-token runs excluded: 4 · Unknown-spend runs excluded: 0']);
+  it('T3: a missing legacy saving is unavailable, without borrowing a resolved metering saving', async () => {
+    served({ [OVERVIEW]: [overviewRow({ total_savings_usd: null })], [METERING]: [meteringRow({})] }); await open('overview');
+    expect(figure('Savings')).toBe('Not measured'); expect(figure('Actual spend')).toBe('$0.0071'); noFigure(panel('Savings'));
   });
-
-  it('M5: after a baseline change every card reads the all row refreshed last, the same row as Savings', async () => {
-    served({ [METERING]: [
-      meteringRow({ baseline_model: 'claude-opus-4-6', as_of: '2026-10-04T08:00:00+00:00', savings_usd: '9.990000',
-        spend_usd: '0.555500', runs_total: 33, runs_measured: 31, tokens_in: 9999, tokens_out: 8888 }),
-      meteringRow({ baseline_model: 'claude-sonnet-5-5', as_of: '2026-10-05T12:00:00+00:00' }),
-    ] });
-    await open('overview');
-    expect(within(panel('Savings')).getByText('$1.2252')).toBeInTheDocument();
-    expect(within(panel('Actual spend')).getByText('$0.0071')).toBeInTheDocument();
-    expect(within(panel('Agent calls')).getByText('7')).toBeInTheDocument();
-    expect(within(panel('Tokens processed')).getByText('1,620 in · 520 out')).toBeInTheDocument();
-    expect([...HEADLINES].map(figure)).toEqual([['$0.0071'], ['7'], ['1,620 in · 520 out']]);
-    expect(captions('Agent calls')).toEqual(['Of 9 runs · Unknown-token runs excluded: 1 · Unknown-spend runs excluded: 1']);
+  it('T4: a malformed saving remains unavailable, never $0 or NaN', async () => {
+    served({ [OVERVIEW]: [overviewRow({ total_savings_usd: 'n/a' })] }); await open('overview');
+    expect(figure('Savings')).toBe('Not measured'); noFigure(panel('Savings'));
   });
-
-  it('M6: two all rows refreshed at the same moment are refused by name on every card, never one picked', async () => {
-    served({ [METERING]: [
-      meteringRow({ baseline_model: 'claude-opus-4-6', spend_usd: '0.555500', runs_measured: 31, tokens_in: 9999 }),
-      meteringRow({ baseline_model: 'claude-sonnet-5-5' }),
-    ] });
-    await open('overview');
-    for (const title of HEADLINES) {
-      expect(figure(title), title).toEqual(['Not measured: 2 baseline models']);
-      expect(captions(title), title).toEqual([]);
-    }
+  it('T5: captured_at selects the latest all row, regardless of served order', async () => {
+    served({ [OVERVIEW]: [overviewRow({ captured_at: '2026-10-04T08:00:00Z', total_savings_usd: '9.990000' }), overviewRow({})] }); await open('overview');
+    expect(figure('Savings')).toBe('$1.2252'); expect(panel('Savings').textContent).not.toContain('$9.9900');
   });
+  it('T6: equal newest timestamps are ambiguous, never silently picked', async () => {
+    served({ [OVERVIEW]: [overviewRow({ total_savings_usd: '9.990000' }), overviewRow({})] }); await open('overview');
+    expect(figure('Savings')).toBe('Not measured: ambiguous overview totals'); noFigure(panel('Savings'));
+  });
+  it('T7: HTTP failure remains an error, not an empty measurement', async () => {
+    served({ [OVERVIEW]: new Error(`Projection ${OVERVIEW} failed: HTTP 503 Service Unavailable`) }); await open('overview');
+    expect(within(panel('Savings')).getByRole('alert')).toHaveTextContent('The data could not be read (HTTP 503 Service Unavailable)');
+    expect(figure('Savings')).toBe(''); noFigure(panel('Savings'));
+  });
+});
 
-  it('M7: only day rows: each card says there is no all-time row, never a day\'s figure or 0', async () => {
-    served({ [METERING]: [meteringRow({ window_kind: 'day', window_start: '2026-10-05' })] });
-    await open('overview');
-    for (const title of HEADLINES) {
-      expect(figure(title), title).toEqual(['Not measured: no all-time row']);
-      expect(captions(title), title).toEqual([]);
-    }
+describe('OMN-19980 headline coherence on the approved source', () => {
+  it('M1: all cards use the same served columns and disclose the served unknown count', async () => {
+    served({ [OVERVIEW]: [overviewRow({})], [METERING]: [meteringRow({ spend_usd: '0.5555', runs_measured: 31 })] }); await open('overview');
+    expect(HEADLINES.map(figure)).toEqual(['$0.0071', '$1.2252', '9', '2,140']);
+    // OMN-21166 AC37: every call is the figure; the served classes are its breakdown.
+    expect(panel('Agent calls').textContent).toContain('7 measured · 2 unknown');
+    expect(panel('Tokens processed').textContent).not.toMatch(/in ·|out/);
+  });
+  it('M2: an unserved source leaves every headline without a number', async () => {
+    harness.reachable.delete(OVERVIEW); await open('overview');
+    for (const title of HEADLINES) { expect(panel(title).textContent).toContain('Not available yet: savings summary.'); expect(figure(title)).toBe(''); }
+  });
+  it('M3: missing savings cannot erase independent spend, measured calls or tokens', async () => {
+    served({ [OVERVIEW]: [overviewRow({ total_savings_usd: null, baseline_state: 'unresolved' })] }); await open('overview');
+    expect(HEADLINES.map(figure)).toEqual(['$0.0071', 'Not measured', '9', '2,140']);
+  });
+  it('M4: missing fields are unavailable but served numeric zero remains zero', async () => {
+    served({ [OVERVIEW]: [overviewRow({ total_cost_usd: null, total_savings_usd: null, run_count: null, measured_run_count: null, tokens_total: null })] }); await open('overview');
+    expect(HEADLINES.map(figure)).toEqual(['Not measured', 'Not measured', 'Not measured', 'Not measured']);
+    cleanup(); served({ [OVERVIEW]: [overviewRow({ total_cost_usd: 0, total_savings_usd: 0, run_count: 0, measured_run_count: 0, unknown_run_count: 0, tokens_total: 0 })] }); await open('overview');
+    expect(HEADLINES.map(figure)).toEqual(['$0.00', '$0.00', '0', '0']);
+  });
+  it('M5: all headlines select the same latest row, never mixing old figures', async () => {
+    served({ [OVERVIEW]: [overviewRow({ captured_at: '2026-10-04T08:00:00Z', total_cost_usd: '.5555', total_savings_usd: '9.990000', run_count: 33, measured_run_count: 31, tokens_total: 9999 }), overviewRow({})] }); await open('overview');
+    expect(HEADLINES.map(figure)).toEqual(['$0.0071', '$1.2252', '9', '2,140']);
+  });
+  it('M6: newest timestamp ties are refused on every headline', async () => {
+    served({ [OVERVIEW]: [overviewRow({ total_cost_usd: '0.5555' }), overviewRow({})] }); await open('overview');
+    expect(HEADLINES.map(figure)).toEqual(HEADLINES.map(() => 'Not measured: ambiguous overview totals'));
+  });
+  it('M7: only day rows never masquerade as all-time totals', async () => {
+    served({ [OVERVIEW]: [overviewRow({ window: 'day' })] }); await open('overview');
+    expect(HEADLINES.map(figure)).toEqual(HEADLINES.map(() => 'Not measured: overview totals unavailable'));
   });
 });

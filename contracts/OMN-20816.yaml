@@ -1,0 +1,33 @@
+---
+schema_version: "1.0.0"
+ticket_id: "OMN-20816"
+title: "Dashboard: add, replace and remove model keys after onboarding"
+summary: "The omnidash half of the first criterion: the Credentials page lists Gemini, OpenRouter, OpenAI and Ollama read-only, each in its served state, from the local dashboard's GET /models. It shows no key and no reference value. Jonah ruled on the ticket (2026-10-21T10:24Z) that the page stays read-only, and the description's dated scope note records it. The second and third criteria (key entry and its pinned test from the dashboard) are superseded for the page, and keys change only through onex models add|remove. Not in this contract: the GET /models route, the shared onex models code path (fourth criterion) and the last-usable guard on onex models remove (fifth). Those are omnimarket's, carried by omnimarket#4274."
+is_seam_ticket: false
+interface_change: false
+interfaces_touched: []
+requirements:
+  - id: "req-transcribed-acceptance-criteria"
+    statement: |-
+      The acceptance criterion this omnidash change serves, read from the OMN-20816 ticket body on 2026-10-21 at 13:00Z. The ticket body is the source, and this block is the copy. The ticket's criteria are unlabelled bullets. AC1 here is the first bullet, as the 2026-10-21 scope note on the description names it ("the first criterion"). That note supersedes the second and third for the dashboard and gives the fourth and fifth to the terminal path in omnimarket#4274. Only the criterion bound below is listed.
+    acceptance:
+      - id: "AC1"
+        statement: |-
+          The dashboard lists each provider (Gemini, OpenRouter, OpenAI, Ollama) with its state: set up and last test passed, set up and last test failed (with the provider's reason), or not set up.
+evidence_requirements:
+  - kind: "tests"
+    description: "AC1, page part: the Credentials page lists the four providers in order, each in its served state (not set up, set up and not tested, last test passed, last test failed with the provider's reason) with its models. It offers no control or field to change a key, and the client only ever GETs /models (R1-R5)."
+    command: "npx vitest run tests/pages/local/model-keys.omn20816.test.tsx"
+dod_evidence:
+  - id: "dod-omn20816-ac1-read-only-providers"
+    description: "AC1, page part: the four providers listed read-only in their served states, the failed one with the provider's reason. A lost, reordered or invented provider, a merged state, any key-entry control, or a client write fails. It does not prove the GET /models route, which omnimarket#4274 carries."
+    source: "manual"
+    binds_ac: ["AC1"]
+    checks:
+      - check_type: "test_passes"
+        check_value: "test -d node_modules || npm ci --no-audit --no-fund; npx vitest run tests/pages/local/model-keys.omn20816.test.tsx"
+        cwd: "${OMNI_HOME}/omnidash"
+emergency_bypass:
+  enabled: false
+  justification: ""
+  follow_up_ticket_id: ""

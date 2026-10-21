@@ -65,15 +65,22 @@ test('OMN-21015 AC2: Overview lists each model under its tier with its served ru
 
   const panel = page.getByRole('region', { name: 'Tier mix' });
   await expect(panel).toBeVisible();
+  await panel.locator('details > summary').press('Enter');
+  await expect(panel.locator('details')).toHaveAttribute('open', '');
+  await expect(panel.getByRole('table')).toBeVisible();
+  await expect(panel.getByRole('table').locator('tbody tr')).toHaveCount(5);
   // Two models in one tier are two rows, each listed under its own tier.
   const names = await panel.getByRole('row').evaluateAll((rows) => rows.slice(1).map((r) => r.querySelector('td')?.textContent ?? ''));
   expect(names).toEqual(['local', 'qwen-a', 'qwen-b', 'cheap_cloud', 'gemini']);
 
   // Runs, share and cost exactly as served; an unpriced model is never $0, and a model with no served unmeasured count is
   // never shown as fully measured.
-  expect((await cells(page, 'qwen-a')).slice(1, 4)).toEqual(['3', '0.5', '$0.00']);
-  expect((await cells(page, 'qwen-b')).slice(1, 4)).toEqual(['1', '0.16666666666666666', 'Not measured (1 run)']);
-  expect((await cells(page, 'gemini')).slice(1, 4)).toEqual(['2', '0.3333333333333333', '$0.009 (unpriced runs unknown)']);
+  expect((await cells(page, 'qwen-a')).slice(1, 4)).toEqual(['3', '50.0%', '$0.00']);
+  await expect(panel.getByRole('row').filter({ hasText: 'qwen-a' }).locator('td').nth(2).getByTitle('0.5', { exact: true })).toBeVisible();
+  expect((await cells(page, 'qwen-b')).slice(1, 4)).toEqual(['1', '16.7%', 'Not measured (1 run)']);
+  await expect(panel.getByRole('row').filter({ hasText: 'qwen-b' }).locator('td').nth(2).getByTitle('0.16666666666666666', { exact: true })).toBeVisible();
+  expect((await cells(page, 'gemini')).slice(1, 4)).toEqual(['2', '33.3%', '$0.009 (unpriced runs unknown)']);
+  await expect(panel.getByRole('row').filter({ hasText: 'gemini' }).locator('td').nth(2).getByTitle('0.3333333333333333', { exact: true })).toBeVisible();
 
   // Every column, the cost included, is readable without scrolling sideways at 1440x900: the served shares are long
   // decimals, and a table wider than its panel hid the Cost column behind a sideways scroll.

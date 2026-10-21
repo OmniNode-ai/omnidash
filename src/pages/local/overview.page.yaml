@@ -1,7 +1,7 @@
 {
   "dashboard_id": "b37a0892-e2bc-4d67-91e4-bf2d55b48eef",
   "name": "Overview",
-  "description": "Spend, savings, measured runs, the last run and the ten most recent runs from the runtime's served exposures.",
+  "description": "Monitor recorded spend, savings, quality and recent runs.",
   "layout": {
     "columns": 12,
     "row_height": 100,
@@ -22,7 +22,7 @@
       "config": {
         "config_kind": "metric_card",
         "widget_type": "metric_card",
-        "metric_key": "spend_usd",
+        "metric_key": "total_cost_usd",
         "label": "Actual spend",
         "unit": "USD",
         "format": "currency",
@@ -40,7 +40,7 @@
       "config": {
         "config_kind": "metric_card",
         "widget_type": "metric_card",
-        "metric_key": "savings_usd",
+        "metric_key": "total_savings_usd",
         "label": "Savings",
         "unit": "USD",
         "format": "currency",
@@ -58,7 +58,7 @@
       "config": {
         "config_kind": "metric_card",
         "widget_type": "metric_card",
-        "metric_key": "runs_measured",
+        "metric_key": "run_count",
         "label": "Agent calls",
         "unit": "runs",
         "format": "number",
@@ -76,7 +76,7 @@
       "config": {
         "config_kind": "metric_card",
         "widget_type": "metric_card",
-        "metric_key": "tokens_in_and_out",
+        "metric_key": "tokens_total",
         "label": "Tokens processed",
         "unit": "tokens",
         "format": "number",
@@ -86,9 +86,9 @@
     {
       "widget_id": "3b1f6a52-7d0e-4c1a-9a53-21015ac10001",
       "title": "Spend per day",
-      "row": 2,
+      "row": 12,
       "col": 0,
-      "width": 5,
+      "width": 8,
       "height": 4,
       "data_source": "overview-spend-by-day",
       "config": {
@@ -124,38 +124,9 @@
       }
     },
     {
-      "widget_id": "92d0d8ce-8d52-447e-8511-8cb1269c0112",
-      "title": "Tier mix",
-      "row": 2,
-      "col": 5,
-      "width": 3,
-      "height": 4,
-      "data_source": "overview-tier-mix",
-      "config": {
-        "config_kind": "table",
-        "widget_type": "table",
-        "columns": [
-          {
-            "key": "cost_tier_name",
-            "header": "Tier"
-          },
-          {
-            "key": "count",
-            "header": "Runs"
-          },
-          {
-            "key": "pct_of_tier_routed",
-            "header": "Share of tier-routed"
-          }
-        ],
-        "page_size": 10,
-        "show_pagination": false
-      }
-    },
-    {
       "widget_id": "5d0c2a51-6a4e-5b8a-9f1e-3c7b2e0a9d41",
       "title": "Last run",
-      "row": 2,
+      "row": 12,
       "col": 8,
       "width": 4,
       "height": 4,
@@ -232,141 +203,12 @@
       }
     },
     {
-      "widget_id": "6f1d2c8e-4b7a-5e39-9c0d-20009a1c0c01",
-      "title": "Run locally",
-      "row": 6,
-      "col": 0,
-      "width": 4,
-      "height": 2,
-      "data_source": "overview-run-locally",
-      "config": {
-        "config_kind": "metric_card",
-        "widget_type": "metric_card",
-        "metric_key": "by_tier.local_call_share",
-        "label": "Run locally",
-        "unit": "share of runs",
-        "format": "percent",
-        "precision": 1
-      }
-    },
-    {
-      "widget_id": "6f1d2c8e-4b7a-5e39-9c0d-20009a1c0c02",
-      "title": "Avg saving / call",
-      "row": 6,
-      "col": 4,
-      "width": 4,
-      "height": 2,
-      "data_source": "overview-avg-saving-per-call",
-      "config": {
-        "config_kind": "metric_card",
-        "widget_type": "metric_card",
-        "metric_key": "savings_per_measured_run_usd",
-        "label": "Avg saving / call",
-        "unit": "USD",
-        "format": "currency",
-        "precision": 6
-      }
-    },
-    {
-      "widget_id": "6f1d2c8e-4b7a-5e39-9c0d-20752a1c0c01",
-      "title": "Baseline spend",
-      "row": 6,
-      "col": 8,
-      "width": 4,
-      "height": 2,
-      "data_source": "overview-baseline-spend",
-      "config": {
-        "config_kind": "metric_card",
-        "widget_type": "metric_card",
-        "metric_key": "counterfactual_usd",
-        "label": "Baseline spend",
-        "unit": "USD",
-        "format": "currency",
-        "precision": 4
-      }
-    },
-    {
-      "widget_id": "d4da9a48-f797-4b1d-b622-41f028a67e04",
-      "title": "Quality",
-      "row": 8,
-      "col": 0,
-      "width": 4,
-      "height": 2,
-      "data_source": "overview-quality",
-      "config": {
-        "config_kind": "table",
-        "widget_type": "table",
-        "columns": [
-          {
-            "key": "overall_pass_rate",
-            "header": "Pass rate"
-          },
-          {
-            "key": "total_passed",
-            "header": "Passed"
-          },
-          {
-            "key": "total_failed",
-            "header": "Failed"
-          },
-          {
-            "key": "total_checks",
-            "header": "Checks"
-          },
-          {
-            "key": "avg_actual_score",
-            "header": "Average score"
-          },
-          {
-            "key": "avg_required_bar",
-            "header": "Average required bar"
-          }
-        ],
-        "page_size": 10,
-        "show_pagination": false
-      }
-    },
-    {
-      "widget_id": "6f1d2c8e-4b7a-5e39-9c0d-20226a1c0c01",
-      "title": "Compression",
-      "row": 8,
-      "col": 4,
-      "width": 4,
-      "height": 2,
-      "data_source": "overview-compression",
-      "config": {
-        "config_kind": "metric_card",
-        "widget_type": "metric_card",
-        "metric_key": "compression_ratio",
-        "label": "Compression",
-        "format": "number",
-        "precision": 2
-      }
-    },
-    {
-      "widget_id": "6f1d2c8e-4b7a-5e39-9c0d-20226a1c0c02",
-      "title": "Cache hit rate",
-      "row": 8,
-      "col": 8,
-      "width": 4,
-      "height": 2,
-      "data_source": "overview-cache-hit-rate",
-      "config": {
-        "config_kind": "metric_card",
-        "widget_type": "metric_card",
-        "metric_key": "cache_hit_rate",
-        "label": "Cache hit rate",
-        "format": "number",
-        "precision": 3
-      }
-    },
-    {
       "widget_id": "8e4f1b77-2c39-5d06-a8b2-6f0d4c9e1a53",
       "title": "Recent runs",
-      "row": 10,
+      "row": 16,
       "col": 0,
-      "width": 12,
-      "height": 4,
+      "width": 8,
+      "height": 5,
       "data_source": "overview-recent-runs",
       "config": {
         "config_kind": "table",
@@ -437,6 +279,201 @@
         "show_pagination": false,
         "default_sort_key": "written_at",
         "default_sort_direction": "desc"
+      }
+    },
+    {
+      "widget_id": "92d0d8ce-8d52-447e-8511-8cb1269c0112",
+      "title": "Tier mix",
+      "row": 16,
+      "col": 8,
+      "width": 4,
+      "height": 5,
+      "data_source": "overview-tier-mix",
+      "config": {
+        "config_kind": "table",
+        "widget_type": "table",
+        "columns": [
+          {
+            "key": "cost_tier_name",
+            "header": "Tier"
+          },
+          {
+            "key": "count",
+            "header": "Runs"
+          },
+          {
+            "key": "pct_of_tier_routed",
+            "header": "Share of tier-routed"
+          }
+        ],
+        "page_size": 10,
+        "show_pagination": false
+      }
+    },
+    {
+      "widget_id": "6f1d2c8e-4b7a-5e39-9c0d-20009a1c0c01",
+      "title": "Run locally",
+      "row": 21,
+      "col": 0,
+      "width": 4,
+      "height": 2,
+      "data_source": "overview-run-locally",
+      "config": {
+        "config_kind": "metric_card",
+        "widget_type": "metric_card",
+        "metric_key": "by_tier.local_call_share",
+        "label": "Run locally",
+        "unit": "share of runs",
+        "format": "percent",
+        "precision": 1
+      }
+    },
+    {
+      "widget_id": "6f1d2c8e-4b7a-5e39-9c0d-20009a1c0c02",
+      "title": "Avg saving / call",
+      "row": 21,
+      "col": 4,
+      "width": 4,
+      "height": 2,
+      "data_source": "overview-avg-saving-per-call",
+      "config": {
+        "config_kind": "metric_card",
+        "widget_type": "metric_card",
+        "metric_key": "savings_per_measured_run_usd",
+        "label": "Avg saving / call",
+        "unit": "USD",
+        "format": "currency",
+        "precision": 6
+      }
+    },
+    {
+      "widget_id": "6f1d2c8e-4b7a-5e39-9c0d-20752a1c0c01",
+      "title": "Baseline spend",
+      "row": 21,
+      "col": 8,
+      "width": 4,
+      "height": 2,
+      "data_source": "overview-baseline-spend",
+      "config": {
+        "config_kind": "metric_card",
+        "widget_type": "metric_card",
+        "metric_key": "counterfactual_usd",
+        "label": "Baseline spend",
+        "unit": "USD",
+        "format": "currency",
+        "precision": 4
+      }
+    },
+    {
+      "widget_id": "d4da9a48-f797-4b1d-b622-41f028a67e04",
+      "title": "Quality",
+      "row": 2,
+      "col": 0,
+      "width": 12,
+      "height": 4,
+      "data_source": "overview-quality",
+      "config": {
+        "config_kind": "table",
+        "widget_type": "table",
+        "columns": [
+          {
+            "key": "overall_pass_rate",
+            "header": "Pass rate"
+          },
+          {
+            "key": "total_passed",
+            "header": "Passed"
+          },
+          {
+            "key": "total_failed",
+            "header": "Failed"
+          },
+          {
+            "key": "total_checks",
+            "header": "Checks"
+          },
+          {
+            "key": "avg_actual_score",
+            "header": "Average score"
+          },
+          {
+            "key": "avg_required_bar",
+            "header": "Average required bar"
+          }
+        ],
+        "page_size": 10,
+        "show_pagination": false
+      }
+    },
+    {
+      "widget_id": "6f1d2c8e-4b7a-5e39-9c0d-20226a1c0c01",
+      "title": "Compression",
+      "row": 23,
+      "col": 0,
+      "width": 6,
+      "height": 2,
+      "data_source": "overview-compression",
+      "config": {
+        "config_kind": "metric_card",
+        "widget_type": "metric_card",
+        "metric_key": "compression_ratio",
+        "label": "Compression",
+        "format": "number",
+        "precision": 2
+      }
+    },
+    {
+      "widget_id": "6f1d2c8e-4b7a-5e39-9c0d-20226a1c0c02",
+      "title": "Cache hit rate",
+      "row": 23,
+      "col": 6,
+      "width": 6,
+      "height": 2,
+      "data_source": "overview-cache-hit-rate",
+      "config": {
+        "config_kind": "metric_card",
+        "widget_type": "metric_card",
+        "metric_key": "cache_hit_rate",
+        "label": "Cache hit rate",
+        "format": "number",
+        "precision": 3
+      }
+    },
+    {
+      "widget_id": "21166a0e-5c3b-4e1f-9d2a-0f7c1b8e2a61",
+      "title": "Trends and breakdowns",
+      "row": 6,
+      "col": 0,
+      "width": 12,
+      "height": 6,
+      "data_source": "overview-insights",
+      "config": {
+        "config_kind": "table",
+        "widget_type": "table",
+        "columns": [
+          {
+            "key": "written_at",
+            "header": "Time"
+          },
+          {
+            "key": "quality_gate_passed",
+            "header": "Verdict"
+          },
+          {
+            "key": "task_type",
+            "header": "Task type"
+          },
+          {
+            "key": "model_name",
+            "header": "Model"
+          },
+          {
+            "key": "latency_ms",
+            "header": "Duration"
+          }
+        ],
+        "page_size": 25,
+        "show_pagination": false
       }
     }
   ]

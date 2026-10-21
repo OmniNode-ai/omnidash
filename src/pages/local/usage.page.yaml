@@ -1,7 +1,7 @@
 {
   "dashboard_id": "fd556d39-e92a-54cc-94f2-0cedb669b7ee",
   "name": "Usage",
-  "description": "Tokens in, tokens out, measured cost, unmeasured runs, tier and share of the day's calls per model per UTC day from the usage-by-model-day exposure, and savings per day from metering-summary.",
+  "description": "Explore recorded daily spend, modelled savings and token usage by model.",
   "layout": {
     "columns": 12,
     "row_height": 100,

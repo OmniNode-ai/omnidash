@@ -1,0 +1,75 @@
+---
+schema_version: "1.0.0"
+ticket_id: "OMN-19920"
+title: "OmniDash sqlite mode shows one delegation by correlation id: the answer, the model that gave it, the receipt identity, tokens and cost"
+summary: "The omnidash half: the Workflow page, which a Runs row opens, shows one run whole. It shows the run's answer, read from delegation.correlation-trace.v1 for exactly that correlation id, plus its model, backend, tokens, recorded cost and status from delegation.decisions.v1, the typed cause of a failed run, and its receipt id (the correlation id). The answer renders as text, never markup. AC2's cost equivalent (the saving against the named baseline) is NOT bound here. Whether the per-run saving may be shown on the Workflow page is a question to Jonah on the ticket (2026-10-21T09:55Z), still unanswered, so the view does not show it. AC1 (the retired sqlite reader) is superseded by AC4 in that comment. AC3 (a screenshot of a real local run beside its receipt.json, in a PR body) has no executable check and is not in this contract."
+is_seam_ticket: false
+interface_change: false
+interfaces_touched: []
+requirements:
+  - id: "req-transcribed-acceptance-criteria"
+    statement: |-
+      The acceptance criteria this change serves, read on 2026-10-21 at 13:00Z. AC2 is copied from the OMN-19920 ticket body. AC4, AC5 and AC6 are the re-homed criteria Lakshman's comment of 2026-10-21T09:55Z adds; AC4 supersedes AC1. The ticket and that comment are the source, and this block is the copy. Only the criteria bound below are listed. AC1 is superseded and AC3 is a screenshot with no executable check.
+    acceptance:
+      - id: "AC2"
+        statement: |-
+          AC2: Selecting a row in the run list opens one view that shows the answer, model, backend, tokens, cost, cost equivalent and status for that correlation id -- falsifier: a vitest component test that selects a fixture row and fails when any of the seven fields is absent from the rendered view
+      - id: "AC4"
+        statement: |-
+          AC4 (supersedes AC1): in sqlite mode the run view reads the answer for a correlation id as `correlation-trace.v1?correlation_id=<id>` -- falsifier: a vitest with a one-row fixture fails when the read omits the id or the text is not shown; plus the lab read of the same exposure for a real run.
+      - id: "AC5"
+        statement: |-
+          AC5: the same view shows the typed cause on a failed run and the receipt identity (the correlation id, which `receipt.json` records as `receipt_id`) -- falsifier: a vitest fails when either is absent.
+      - id: "AC6"
+        statement: |-
+          AC6: the answer renders as text, never markup -- falsifier: a fixture containing HTML creates no element.
+evidence_requirements:
+  - kind: "tests"
+    description: "AC2, six of its seven fields: a run chosen in Runs opens Workflow with its answer, model, backend, tokens, recorded cost and status, never another run's (R1, R7). The cost equivalent is not proven: it waits on Jonah's answer about the per-run saving."
+    command: "npx vitest run src/pages/LocalDashboardPage.omn19920.run-answer.test.tsx"
+  - kind: "tests"
+    description: "AC4, vitest half: the answer is read from correlation-trace.v1 for exactly the run's correlation id, never unfiltered and never another id, and is shown (R2, R2s, R2f, R6). The lab read of the same exposure for a real run is not this check."
+    command: "npx vitest run src/pages/LocalDashboardPage.omn19920.run-answer.test.tsx"
+  - kind: "tests"
+    description: "AC5: a failed run shows its typed cause (the served terminal_failure_cause, not the detail text), and the receipt id is the run's correlation id (R3, R4)."
+    command: "npx vitest run src/pages/LocalDashboardPage.omn19920.run-answer.test.tsx"
+  - kind: "tests"
+    description: "AC6: HTML or markdown in the answer is shown as text and creates no element (R5)."
+    command: "npx vitest run src/pages/LocalDashboardPage.omn19920.run-answer.test.tsx"
+dod_evidence:
+  - id: "dod-omn19920-ac2-run-view-fields"
+    description: "AC2, six of its seven fields: a run chosen in Runs opens Workflow with its answer, model, backend, tokens, recorded cost and status. Not bound: the cost equivalent (the saving against the named baseline), which waits on Jonah's answer to the 2026-10-21T09:55Z question on whether the per-run saving may be shown on the Workflow page."
+    source: "manual"
+    binds_ac: ["AC2"]
+    checks:
+      - check_type: "test_passes"
+        check_value: "test -d node_modules || npm ci --no-audit --no-fund; npx vitest run src/pages/LocalDashboardPage.omn19920.run-answer.test.tsx"
+        cwd: "${OMNI_HOME}/omnidash"
+  - id: "dod-omn19920-ac4-answer-by-correlation-id"
+    description: "AC4, vitest half: the answer is read as correlation-trace.v1 for exactly the run's correlation id and shown; a read without the id, with another id, or a row of another id shown fails. It does not prove the lab read of a real run."
+    source: "manual"
+    binds_ac: ["AC4"]
+    checks:
+      - check_type: "test_passes"
+        check_value: "test -d node_modules || npm ci --no-audit --no-fund; npx vitest run src/pages/LocalDashboardPage.omn19920.run-answer.test.tsx"
+        cwd: "${OMNI_HOME}/omnidash"
+  - id: "dod-omn19920-ac5-cause-and-receipt-id"
+    description: "AC5: a failed run shows its typed cause, and the receipt id shown is the run's correlation id; either absent fails."
+    source: "manual"
+    binds_ac: ["AC5"]
+    checks:
+      - check_type: "test_passes"
+        check_value: "test -d node_modules || npm ci --no-audit --no-fund; npx vitest run src/pages/LocalDashboardPage.omn19920.run-answer.test.tsx"
+        cwd: "${OMNI_HOME}/omnidash"
+  - id: "dod-omn19920-ac6-answer-as-text"
+    description: "AC6: an answer holding HTML or markdown is shown as text and creates no element."
+    source: "manual"
+    binds_ac: ["AC6"]
+    checks:
+      - check_type: "test_passes"
+        check_value: "test -d node_modules || npm ci --no-audit --no-fund; npx vitest run src/pages/LocalDashboardPage.omn19920.run-answer.test.tsx"
+        cwd: "${OMNI_HOME}/omnidash"
+emergency_bypass:
+  enabled: false
+  justification: ""
+  follow_up_ticket_id: ""

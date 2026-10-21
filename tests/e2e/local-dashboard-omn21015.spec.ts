@@ -1,6 +1,7 @@
+import { revealRunFields } from './omn21166-chart-fixtures';
 import { mkdirSync } from 'node:fs';
 import { dirname, resolve } from 'node:path';
-import { expect, test, type Page } from 'playwright/test';
+import { expect, test, type Page, type Locator } from 'playwright/test';
 
 // OMN-21015 AC4, series half: on the Usage page the drawn width of each model's segment is its served token count's
 // share of the bar. jsdom lays nothing out, so this is measured in a real browser. The rows are constructed: one day,
@@ -62,9 +63,12 @@ test('OMN-21015: on Usage a segment is as wide as its share of the served tokens
   const tokensOut = await drawnWidths(page, 'Tokens out on 2026-10-12, by model');
   expect(tokensIn).toHaveLength(2);
   expect(tokensOut).toHaveLength(2);
-  // A bar wide enough that the comparison means something.
-  expect(tokensIn[1]!).toBeGreaterThan(300);
+  // A bar wide enough that the comparison means something. OMN-21166: bars share one scale, so the day's tokens out
+  // (1,500) is the widest bar and tokens in (1,001) is drawn against it.
   expect(tokensOut[1]!).toBeGreaterThan(300);
+  expect(tokensIn[1]!).toBeGreaterThan(200);
+  const drawn = (widths: number[]) => widths.reduce((sum, width) => sum + width, 0);
+  expect(drawn(tokensIn) / drawn(tokensOut)).toBeCloseTo(1001 / 1500, 1);
   // 1 : 1,000 and 300 : 1,200, as served. The tolerance is far below what any label or padding would add.
   expect(tokensIn[0]! / tokensIn[1]!).toBeCloseTo(1 / 1000, 3);
   expect(tokensOut[0]! / tokensOut[1]!).toBeCloseTo(300 / 1200, 3);
@@ -180,10 +184,11 @@ test('OMN-21015: the spend chart legend hides and shows a series from the keyboa
   await page.setViewportSize({ width: 1440, height: 900 });
   await serve(page, { [METERING]: metering });
   await page.goto('/');
+  await page.getByText('Additional runtime metrics', { exact: true }).press('Enter');
 
   const figure = page.getByRole('figure', { name: /^Spend per day vs claude-sonnet-5-5$/ });
   await expect(figure).toBeVisible();
-  await expect(figure.locator('svg')).toBeVisible();
+  await expect(figure.locator('.local-chart-canvas svg')).toBeVisible();
   const toggles = figure.getByRole('group', { name: 'Series shown' }).getByRole('button');
   await expect(toggles).toHaveText(['Actual spend', 'Baseline spend', 'Savings']);
 
@@ -191,7 +196,7 @@ test('OMN-21015: the spend chart legend hides and shows a series from the keyboa
   const drawn = () => figure.evaluate((element) => {
     const hex = (rgb: string) => `#${(rgb.match(/\d+/g) ?? []).slice(0, 3).map((part) => Number(part).toString(16).padStart(2, '0')).join('')}`;
     const colours = [...element.querySelectorAll<HTMLElement>('[data-swatch]')].map((swatch) => hex(getComputedStyle(swatch).backgroundColor));
-    const fills = [...element.querySelectorAll('svg path')].map((path) => (path.getAttribute('fill') ?? '').toLowerCase());
+    const fills = [...element.querySelectorAll('.local-chart-canvas svg path')].map((path) => (path.getAttribute('fill') ?? '').toLowerCase());
     return colours.map((colour) => fills.filter((fill) => fill === colour).length);
   });
 
@@ -221,8 +226,8 @@ test('OMN-21015: the spend chart legend hides and shows a series from the keyboa
 const meteringAll = { ...meteringDay('', '0.230000', '0.930000', '0.700000'), window_kind: 'all' };
 
 /** Where a drawing lies in the window, and how far the page has been scrolled (it must not have been). */
-async function placed(page: Page, selector: string) {
-  const target = page.locator(selector).first();
+async function placed(page: Page, selector: string | Locator) {
+  const target = (typeof selector === 'string' ? page.locator(selector) : selector).first();
   await expect(target).toBeVisible();
   return target.evaluate((element) => {
     const rect = element.getBoundingClientRect();
@@ -244,62 +249,65 @@ const firstScreenRuns = [
     actual_score: 1, required_bar: 0.8, data_source: 'real' },
 ];
 
-test('OMN-21015: the Overview first screen at 1440x900 holds the tiles, both charts and the newest run', async ({ page }) => {
+// D1/D2 explicitly replace the older spend-first composition. Keep the first-screen
+// KPI/latest-run limits; inspect the exact daily chart through its native disclosure.
+test('OMN-21166: the Overview first screen holds exact legacy tiles and newest run; daily spend stays accessible', async ({ page }) => {
   await page.setViewportSize({ width: 1440, height: 900 });
   await serve(page, {
     [METERING]: [{ ...meteringAll, runs_measured: 2, runs_unknown_tokens: 0, runs_unknown_spend: 0, tokens_in: 512, tokens_out: 20, pricing_manifest_version: '1.0.0' }, ...metering],
-    [ROUTING]: routing,
-    [DECISIONS]: firstScreenRuns,
+    ['onex.snapshot.projection.cost.savings-overview.v1']: [{ window: 'all', captured_at: '2026-10-12T10:07:00Z', total_cost_usd: '0.2300', total_savings_usd: '0.7000', run_count: 2, measured_run_count: 2, tokens_total: 532 }],
+    [ROUTING]: routing, [DECISIONS]: firstScreenRuns,
   });
   await page.goto('/');
-
-  // The two charts (Lakshman, 2026-10-13: seen without scrolling).
-  const bars = await placed(page, 'figure.local-chart .local-chart-canvas');
-  const donut = await placed(page, 'svg.local-donut');
-  for (const drawing of [bars, donut]) {
+  const panel = (title: string) => page.locator('.local-dashboard-panel').filter({ has: page.getByRole('heading', { name: title, exact: true }) });
+  const onFirstScreen = async (locator: ReturnType<Page['locator']>, what: string) => {
+    await expect(locator, what).toBeVisible(); const box = await locator.boundingBox();
+    expect(box, what).not.toBeNull(); expect(box!.y, what).toBeGreaterThanOrEqual(0);
+    expect(box!.y + box!.height, what).toBeLessThanOrEqual(900);
+  };
+  for (const [title, value] of [['Actual spend', '$0.2300'], ['Savings', '$0.7000'], ['Agent calls', '2'], ['Tokens processed', '532']]) {
+    await expect(panel(title).locator('.local-dashboard-metric')).toHaveText(value);
+    await onFirstScreen(panel(title).locator('.local-dashboard-metric'), title);
+  }
+  await expect(panel('Savings')).toContainText('Modelled · vs cloud baseline');
+  // D2 moves spend into the disclosure. The visible activity plots retain
+  // the original >120px, first-screen/no-scroll drawing limits.
+  await test.info().attach('first-screen-layout', { body: JSON.stringify(await page.locator('.local-dashboard-header, .local-overview-summary, .local-overview-focus, .local-latest-primary > div, .overview-chart-row, .overview-chart-row > figure, .ins-bars').evaluateAll(nodes => nodes.map(el => { const r=el.getBoundingClientRect(); const css=getComputedStyle(el); return {element:el.className,field:el.getAttribute('data-field'),x:r.x,y:r.y,height:r.height,width:r.width,columns:css.gridTemplateColumns}; }))), contentType: 'application/json' });
+  console.log('FIRST-SCREEN-GEOMETRY', JSON.stringify(await page.locator('.local-dashboard-header, .local-overview-focus, .local-latest-primary > div, .overview-chart-row, .ins-bars').evaluateAll(nodes => nodes.map(el => { const r=el.getBoundingClientRect();return {element:el.className,field:el.getAttribute('data-field'),y:r.y,height:r.height,width:r.width,columns:getComputedStyle(el).gridTemplateColumns}; }))));
+  const activity = [];
+  for (const title of ['Runs per day', 'Tokens per day']) {
+    const drawing = await placed(page, page.getByRole('figure', { name: title, exact: true }).locator('.ins-bars'));
     expect(drawing.window).toEqual([1440, 900]);
     expect(drawing.scrolled).toBe(0);
     expect(drawing.height).toBeGreaterThan(120);
     expect(drawing.top).toBeGreaterThanOrEqual(0);
     expect(drawing.bottom).toBeLessThanOrEqual(900);
+    activity.push(drawing);
   }
-  // Side by side in one row: the donut starts to the right of where the bars end.
-  expect(donut.left).toBeGreaterThan(bars.right);
+  const donut = await placed(page, 'svg.local-donut');
+  expect(donut.height).toBeGreaterThan(120);
+  expect(donut.top).toBeGreaterThan(Math.max(...activity.map(drawing => drawing.bottom)));
+  const focus = page.getByRole('region', { name: 'Delegation quality', exact: true });
+  const qualityPanel = await focus.locator('[data-component="overview-quality"]').boundingBox();
+  const latestPanel = await focus.locator('[data-component="overview-last-run"]').boundingBox();
+  expect(Math.abs(qualityPanel!.y - latestPanel!.y)).toBeLessThan(2);
+  expect(latestPanel!.x).toBeGreaterThan(qualityPanel!.x);
 
-  // Requirement Q3: tokens in and out, spend and savings, with the baseline's name beside the savings figure.
-  const panel = (title: string) => page.locator('.local-dashboard-panel').filter({ has: page.getByRole('heading', { name: title, exact: true }) });
-  const onFirstScreen = async (locator: ReturnType<Page['locator']>, what: string) => {
-    await expect(locator, what).toBeVisible();
-    const box = await locator.boundingBox();
-    expect(box, what).not.toBeNull();
-    expect(box!.y, what).toBeGreaterThanOrEqual(0);
-    expect(box!.y + box!.height, what).toBeLessThanOrEqual(900);
-  };
-  for (const title of ['Actual spend', 'Savings', 'Agent calls', 'Tokens processed']) {
-    await onFirstScreen(panel(title).locator('.local-dashboard-metric'), `${title} figure`);
-  }
-  await expect(panel('Tokens processed').locator('.local-dashboard-metric')).toHaveText('512 in · 20 out');
-  await onFirstScreen(panel('Savings').getByText('Baseline claude-sonnet-5-5 · pricing manifest v1.0.0', { exact: true }), 'baseline beside savings');
-
-  // Requirement Q2: the newest run's status, model and age, and its typed cause because it failed.
   const lastRun = page.getByRole('region', { name: 'Last run' });
   const field = (label: string) => lastRun.locator('div').filter({ has: page.locator('dt', { hasText: new RegExp(`^${label}$`) }) }).locator('dd');
-  await expect(field('Status')).toHaveText('failed');
-  await expect(field('Model')).toHaveText('gemini-3.5-flash-lite');
-  for (const label of ['Status', 'Cause', 'Model', 'Age']) await onFirstScreen(field(label), `Last run ${label}`);
+  await expect(field('Status')).toHaveText('failed'); await expect(field('Model')).toHaveText('gemini-3.5-flash-lite');
+  for (const label of ['Status', 'Cause', 'Model', 'Age']) await onFirstScreen(field(label), label);
   expect(await page.evaluate(() => [...document.querySelectorAll('*')].reduce((most, node) => Math.max(most, node.scrollTop), 0))).toBe(0);
-
-  // The panels are narrower than they were, so no table in them may be cut off or scroll sideways: the spend table
-  // under the chart lost its last column that way before it was made to wrap.
-  const tables = await page.evaluate(() => [...document.querySelectorAll<HTMLElement>('.local-dashboard-table-wrap')].map((wrap) => ({
-    panel: wrap.closest('.local-dashboard-panel')?.querySelector('h2')?.textContent ?? '',
-    over: wrap.scrollWidth - wrap.clientWidth,
-  })));
-  expect(tables.length).toBeGreaterThanOrEqual(3);
-  expect(tables.filter((table) => table.over > 0)).toEqual([]);
-
-  // Let the bars finish growing before the page is photographed (their animation is 250 ms).
-  await page.waitForTimeout(600);
+  await page.getByText('Additional runtime metrics', { exact: true }).press('Enter');
+  const spend = page.locator('[data-component="overview-spend-by-day"]');
+  await expect(spend.getByRole('figure')).toBeVisible();
+  expect((await spend.locator('.local-chart-canvas').boundingBox())!.height).toBeGreaterThan(120);
+  await expect(spend.getByRole('table')).toContainText('2026-10-11');
+  await expect(spend.getByRole('table')).toContainText('$0.11');
+  await revealRunFields(page);
+  await page.locator('[data-component="overview-tier-mix"] details > summary').press('Enter');
+  const tables = await page.locator('.local-dashboard-table-wrap:visible').evaluateAll(elements => elements.map(el => el.scrollWidth - el.clientWidth));
+  expect(tables.length).toBeGreaterThanOrEqual(3); expect(tables.filter(over => over > 0)).toEqual([]);
   await page.screenshot({ path: screenshotPath('local-dashboard-omn21015-overview-first-screen-1440x900.png'), fullPage: false });
 });
 
@@ -346,11 +354,11 @@ test('OMN-21015: on Workflow a run\'s timings are drawn as bars of their served 
   await expect(figure).toBeVisible();
   // The served text is written at each bar's end and on its row.
   for (const text of ['Queue wait', 'Execution', 'Duration', '12 ms', '4788 ms', '743 ms']) {
-    await expect(figure.locator('svg').getByText(text, { exact: true })).toBeVisible();
+    await expect(figure.locator('.local-chart-canvas svg').getByText(text, { exact: true })).toBeVisible();
   }
   // The three bars: the drawn paths that carry one of the three series colours, top row first. The chart grows its
   // bars in over a quarter second, so they are read once two reads in a row agree.
-  const read = () => figure.locator('svg').evaluate((svg) => {
+  const read = () => figure.locator('.local-chart-canvas svg').evaluate((svg) => {
     const drawn = [...svg.querySelectorAll('path')]
       .map((path) => ({ fill: path.getAttribute('fill') ?? '', rect: path.getBoundingClientRect() }))
       .filter(({ fill, rect }) => /^(#|rgb)/.test(fill) && rect.height > 4 && rect.height < 30 && rect.width > 0.5);
@@ -395,8 +403,8 @@ test('OMN-21015: on Workflow a timing the run does not carry has no bar, and a s
   await page.goto('/workflow');
   const figure = page.getByRole('figure', { name: 'Run timing' });
   await expect(figure).toBeVisible();
-  await expect(figure.locator('svg').getByText('0 ms', { exact: true })).toBeVisible();
-  await expect(figure.locator('svg').getByText('Execution', { exact: true })).toHaveCount(0);
+  await expect(figure.locator('.local-chart-canvas svg').getByText('0 ms', { exact: true })).toBeVisible();
+  await expect(figure.locator('.local-chart-canvas svg').getByText('Execution', { exact: true })).toHaveCount(0);
   await expect(figure).toContainText('No measured value to draw for: Execution');
   const summary = page.getByRole('region', { name: 'Run summary' });
   await expect(summary.locator('dt', { hasText: /^Execution$/ }).locator('xpath=following-sibling::dd[1]')).toHaveText('Not recorded');
@@ -417,7 +425,8 @@ const listedRuns = [
 async function settledBars(page: Page, name: string) {
   const figure = page.getByRole('figure', { name });
   await expect(figure).toBeVisible();
-  const read = () => figure.locator('svg').evaluate((svg) => [...svg.querySelectorAll('path')]
+  await figure.scrollIntoViewIfNeeded();
+  const read = () => figure.locator('.local-chart-canvas svg').evaluate((svg) => [...svg.querySelectorAll('path')]
     .map((path) => ({ fill: path.getAttribute('fill') ?? '', rect: path.getBoundingClientRect() }))
     .filter(({ fill, rect }) => /^(#|rgb)/.test(fill) && rect.width > 6 && rect.width < 40 && rect.height > 0.5)
     .sort((a, b) => a.rect.left - b.rect.left)
@@ -432,7 +441,7 @@ async function settledBars(page: Page, name: string) {
   return read();
 }
 
-test('OMN-21015: on Runs the listed runs are drawn above the list, and a bar opens its run', async ({ page }) => {
+test('OMN-21015: on Runs the listed runs are drawn below the list, and a bar opens its run', async ({ page }) => {
   await page.setViewportSize({ width: 1440, height: 900 });
   await serve(page, { [DECISIONS]: listedRuns, [RUN_TRACE]: timedSteps });
   await page.goto('/runs');
@@ -454,21 +463,23 @@ test('OMN-21015: on Runs the listed runs are drawn above the list, and a bar ope
   expect(Math.abs(tokens[0]!.bottom - tokens[1]!.bottom)).toBeLessThan(1);
   expect(tokens[0]!.fill).not.toBe(tokens[1]!.fill);
 
-  // Both charts and the head of the list are on the first screen, and nothing scrolls sideways.
+  // Runs is list first; inspect chart positions after returning to the top.
+  await page.locator('.local-dashboard-page').evaluate(el => { el.scrollTop = 0; });
   const left = await placed(page, 'figure[aria-label="Duration per run"]');
   const right = await placed(page, 'figure[aria-label="Tokens per run"]');
   const list = await placed(page, '.local-dashboard-table-wrap thead');
   expect(left.scrolled).toBe(0);
   expect(Math.abs(left.top - right.top)).toBeLessThan(2);
   expect(right.left).toBeGreaterThan(left.right);
-  expect(list.top).toBeGreaterThanOrEqual(left.bottom);
+  expect(left.top).toBeGreaterThanOrEqual(list.bottom);
   expect(list.bottom).toBeLessThanOrEqual(900);
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
   await page.screenshot({ path: screenshotPath('local-dashboard-omn21015-runs-charts-1440x900.png') });
 
   // A click on the failed run's bar opens that run, the address its row's link carries.
   const href = await page.getByRole('link', { name: /^bbbbbbbb/ }).getAttribute('href');
-  await page.mouse.click(durations[1]!.x, durations[1]!.y);
+  const clickable = await settledBars(page, 'Duration per run');
+  await page.mouse.click(clickable[1]!.x, clickable[1]!.y);
   await expect(page).toHaveURL(new URL(href!, page.url()).href);
   await expect(page.locator('.local-run-title code')).toHaveText('bbbbbbbb-0000-4000-8000-000000000002');
 });
@@ -496,6 +507,7 @@ test('OMN-21015: on Runs a backend in a row filters the list, the charts and the
   await expect(page.getByRole('button', { name: 'Clear filters' })).toHaveCount(0);
 
   // Reached and pressed from the keyboard, as any button.
+  await revealRunFields(page);
   await page.getByRole('button', { name: 'Show only runs of backend byok-gemini' }).focus();
   await page.keyboard.press('Enter');
   await expect(page.locator('.local-dashboard-table-wrap tbody tr')).toHaveCount(1);

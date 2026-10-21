@@ -155,8 +155,9 @@ function OverviewTab() {
 
 function CostTokensTab() {
   const { snapshot, selectedRun } = useDelegationRunContext();
-  const totalTokens = snapshot.tokenUsage?.total_tokens ?? 0;
-  const totalSavings = snapshot.savings?.cumulative_savings_usd ?? 0;
+  // OMN-21166 AC38: an absent token usage or a NULL served saving is unknown, never 0.
+  const totalTokens = snapshot.tokenUsage?.total_tokens ?? null;
+  const totalSavings = snapshot.savings?.cumulative_savings_usd ?? null;
 
   return (
     <DelegationPanelFrame
@@ -165,8 +166,8 @@ function CostTokensTab() {
       subtitle="Aggregate token and cost summary from projection-API. Per-run tokens in Correlation Trace."
     >
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, minmax(0, 1fr))', gap: 10 }}>
-        <OverviewFact label="Total tokens" value={fmtTokens(totalTokens)} />
-        <OverviewFact label="Cumulative savings" value={fmtUsd(totalSavings)} />
+        <OverviewFact label="Total tokens" value={totalTokens == null ? 'Not measured' : fmtTokens(totalTokens)} />
+        <OverviewFact label="Cumulative savings" value={totalSavings == null ? 'Not measured' : fmtUsd(totalSavings)} />
         <OverviewFact
           label="Pricing manifest"
           value={snapshot.savings?.pricing_manifest_version ?? 'pending'}

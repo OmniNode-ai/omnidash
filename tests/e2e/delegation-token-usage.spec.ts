@@ -75,6 +75,7 @@ const TOKEN_USAGE_POPULATED = {
   provisioned: true,
 };
 
+// Legacy saved-layout verification uses /dashboard; / now correctly opens Overview.
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
 const TOPIC = encodeURIComponent('onex.snapshot.projection.delegation.token-usage.v1');
@@ -133,7 +134,7 @@ test.describe('delegation-token-usage widget — populated fixture', () => {
   test.beforeEach(async ({ page }) => {
     await interceptPopulatedFixture(page);
     await seedDashboard(page);
-    await page.goto('/');
+    await page.goto('/dashboard');
     await page.waitForSelector('[data-testid="grid-item"]', { timeout: 15000 });
     await expect(tokenUsageWidget(page)).toBeVisible({ timeout: 10000 });
   });
@@ -169,7 +170,7 @@ test.describe('delegation-token-usage widget — empty fixture', () => {
   test('shows empty state when no token usage data', async ({ page }) => {
     await interceptEmptyFixture(page);
     await seedDashboard(page);
-    await page.goto('/');
+    await page.goto('/dashboard');
     await page.waitForSelector('[data-testid="grid-item"]', { timeout: 15000 });
     await expect(tokenUsageWidget(page).getByText('No token usage data')).toBeVisible({ timeout: 10000 });
   });
@@ -181,7 +182,7 @@ test.describe('OMN-12833 — PR body screenshot', () => {
   test('screenshot: delegation-token-usage populated state', async ({ page }) => {
     await interceptPopulatedFixture(page);
     await seedDashboard(page);
-    await page.goto('/');
+    await page.goto('/dashboard');
     await page.waitForSelector('[data-testid="grid-item"]', { timeout: 15000 });
     await expect(tokenUsageWidget(page).getByText('Qwen3-Coder-30B')).toBeVisible({ timeout: 10000 });
     await page.waitForTimeout(500);

@@ -1,21 +1,14 @@
 // @vitest-environment jsdom
-// OMN-21015 AC7 (requirement OV-3): the Overview's headline tiles switch between today (UTC) and all time, each
-// reading the metering-summary.v1 row the runtime serves for that window. The fold serves one `all` row and one `day`
-// row per UTC date that has runs (window_start is that date, YYYY-MM-DD); "today" is the day row for today's date.
-//
-// Failure modes, each with a test below:
-//   W1  the tiles do not change with the switch (the criterion's falsifier)
-//   W2  a today figure is summed or derived in the browser instead of read from today's row
-//   W3  a day with no runs shows 0, or another day's row, instead of saying it is not measured
-//   W4  "today" is taken from the reader's local date rather than the UTC date
-//   W5  after a baseline change two rows exist for today and one is picked silently, or the older one is shown
-//   W6  one card moves to today while another on the same page stays on all time, so the figures disagree
-//   W7  switching back does not restore the all-time figures
-//   W8  the switch is offered on a page whose figures it does not govern
+// D1 confirmed2026-10-20: legacy Overview all-time totals; Today explicitly unavailable.
+// Preserve all-time restoration, conflicting metering days, UTC boundary, newest-row and tie controls.
+// Secondary metering metrics stay on Overview under the D2 disclosure.
 import { act, fireEvent, render, screen } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 const METERING = 'onex.snapshot.projection.metering-summary.v1';
+const OVERVIEW = 'onex.snapshot.projection.cost.savings-overview.v1';
+const LEGACY_ALL = { window: 'all', captured_at: '2026-10-09T12:00:00Z', total_cost_usd: '0.0123', total_savings_usd: '0.002992', run_count: 23, measured_run_count: 23, tokens_total: 6134 };
+const DAILY_UNAVAILABLE = 'Not measured: daily totals unavailable (UTC)';
 
 const harness = vi.hoisted(() => ({
   reachable: new Set<string>(),
@@ -62,9 +55,9 @@ const TODAY_ROW = {
   savings_usd: 0.0012, savings_per_measured_run_usd: '0.000400',
 };
 
-async function open(pageName: 'overview' | 'usage', rows: unknown[]): Promise<void> {
-  harness.reachable = new Set([METERING]);
-  harness.answer = (topic) => Promise.resolve(topic === METERING ? rows : []);
+async function open(pageName: 'overview' | 'usage', rows: unknown[], totals: unknown[] = [LEGACY_ALL]): Promise<void> {
+  harness.reachable = new Set([METERING, OVERVIEW]);
+  harness.answer = (topic) => Promise.resolve(topic === OVERVIEW ? totals : topic === METERING ? rows : []);
   render(<LocalDashboardPage pageName={pageName} />);
   await act(async () => { await vi.advanceTimersByTimeAsync(0); });
 }
@@ -80,8 +73,9 @@ function caption(title: string): string {
   return article?.querySelector('.local-dashboard-caption')?.textContent ?? '';
 }
 
+// OMN-21166: the window is a two-button switch.
 const chooseWindow = (value: 'all' | 'today') =>
-  fireEvent.change(screen.getByLabelText('Figures for'), { target: { value } });
+  fireEvent.click(screen.getByRole('radio', { name: value === 'today' ? 'Today (UTC)' : 'All time' }));
 
 describe('OMN-21015 AC7: the Overview tiles switch between today (UTC) and all time', () => {
   beforeEach(() => {
@@ -92,26 +86,26 @@ describe('OMN-21015 AC7: the Overview tiles switch between today (UTC) and all t
 
   it('opens on all time, as it always has', async () => {
     await open('overview', [ALL_ROW, YESTERDAY_ROW, TODAY_ROW]);
-    expect((screen.getByLabelText('Figures for') as HTMLSelectElement).value).toBe('all');
+    expect(screen.getByRole('radio', { name: 'All time' })).toHaveAttribute('aria-checked', 'true');
     expect(figure('Actual spend')).toBe('$0.0123');
     expect(figure('Agent calls')).toBe('23');
   });
 
-  it("W1, W2: today shows today's served row, not a sum of rows", async () => {
+  it('W1, W2: Today is unavailable even if metering serves daily measurements', async () => {
     await open('overview', [ALL_ROW, YESTERDAY_ROW, TODAY_ROW]);
     chooseWindow('today');
-    expect(figure('Actual spend')).toBe('$0.0007');
-    expect(figure('Agent calls')).toBe('3');
-    expect(figure('Tokens processed')).toBe('756 in · 78 out');
-    expect(figure('Savings')).toBe('$0.0012');
+    expect(figure('Actual spend')).toBe(DAILY_UNAVAILABLE);
+    expect(figure('Agent calls')).toBe(DAILY_UNAVAILABLE);
+    expect(figure('Tokens processed')).toBe(DAILY_UNAVAILABLE);
+    expect(figure('Savings')).toBe(DAILY_UNAVAILABLE);
   });
 
-  it('W6: every metering card on the page moves to the same window', async () => {
+  it('W6: secondary all-time metrics remain in the Overview disclosure', async () => {
     await open('overview', [ALL_ROW, YESTERDAY_ROW, TODAY_ROW]);
-    chooseWindow('today');
-    expect(figure('Baseline spend')).toBe('$0.0019');
-    expect(figure('Avg saving / call')).toBe('$0.000400');
-    expect(caption('Avg saving / call')).toContain('Over 3 measured runs');
+    fireEvent.click(screen.getByText('Additional runtime metrics', { selector: 'summary' }));
+    expect(figure('Baseline spend')).toBe('$0.0153');
+    expect(figure('Avg saving / call')).toBe('$0.000130');
+    expect(caption('Avg saving / call')).toContain('Over 23 measured runs');
   });
 
   it('W7: all time comes back when chosen again', async () => {
@@ -119,49 +113,44 @@ describe('OMN-21015 AC7: the Overview tiles switch between today (UTC) and all t
     chooseWindow('today');
     chooseWindow('all');
     expect(figure('Actual spend')).toBe('$0.0123');
-    expect(figure('Avg saving / call')).toBe('$0.000130');
   });
 
   it("W3: a day with no runs says so, and shows neither 0 nor yesterday's figures", async () => {
     await open('overview', [ALL_ROW, YESTERDAY_ROW]);
     chooseWindow('today');
-    for (const title of ['Actual spend', 'Savings', 'Agent calls', 'Tokens processed', 'Avg saving / call']) {
-      expect(figure(title)).toBe('Not measured: no runs today (UTC)');
+    for (const title of ['Actual spend', 'Savings', 'Agent calls', 'Tokens processed']) {
+      expect(figure(title)).toBe(DAILY_UNAVAILABLE);
     }
   });
 
-  it('W4: today is the UTC date, also in the first minutes after UTC midnight', async () => {
+  it('W4: Today stays unavailable across the UTC date boundary', async () => {
     vi.setSystemTime(new Date('2026-10-09T00:04:00Z'));
     await open('overview', [ALL_ROW, YESTERDAY_ROW, TODAY_ROW]);
     chooseWindow('today');
-    expect(figure('Actual spend')).toBe('$0.0007');
+    expect(figure('Actual spend')).toBe(DAILY_UNAVAILABLE);
   });
 
   it("W3: another day's row is never today's, even when it was refreshed later", async () => {
     const refreshedLate = { ...YESTERDAY_ROW, as_of: '2026-10-09T12:04:00Z' };
     await open('overview', [ALL_ROW, refreshedLate, TODAY_ROW]);
     chooseWindow('today');
-    expect(figure('Actual spend')).toBe('$0.0007');
-    expect(figure('Agent calls')).toBe('3');
+    expect(figure('Actual spend')).toBe(DAILY_UNAVAILABLE);
+    expect(figure('Agent calls')).toBe(DAILY_UNAVAILABLE);
   });
 
-  it("W5: after a baseline change, today reads the row refreshed last", async () => {
-    const older = { ...TODAY_ROW, baseline_model: 'claude-opus-4-6', as_of: '2026-10-09T09:00:00Z', savings_usd: 0.0099 };
-    await open('overview', [ALL_ROW, older, TODAY_ROW]);
-    chooseWindow('today');
-    expect(figure('Savings')).toBe('$0.0012');
-    expect(caption('Savings')).toContain('claude-sonnet-5-5');
+  it('W5: latest legacy captured_at selects All time independently of metering baselines', async () => {
+    await open('overview', [ALL_ROW, TODAY_ROW], [{ ...LEGACY_ALL, captured_at: '2026-10-09T09:00:00Z', total_savings_usd: '0.0099' }, LEGACY_ALL]);
+    expect(figure('Savings')).toBe('$0.0030');
+    chooseWindow('today'); expect(figure('Savings')).toBe(DAILY_UNAVAILABLE);
+    chooseWindow('all'); expect(figure('Savings')).toBe('$0.0030');
   });
-
-  it('W5: two baselines refreshed at the same moment are refused by name, not picked', async () => {
-    const twin = { ...TODAY_ROW, baseline_model: 'claude-opus-4-6', savings_usd: 0.0099 };
-    await open('overview', [ALL_ROW, twin, TODAY_ROW]);
-    chooseWindow('today');
-    expect(figure('Savings')).toBe('Not measured: 2 baseline models');
+  it('W5: tied newest legacy timestamps are refused on every card', async () => {
+    await open('overview', [ALL_ROW, TODAY_ROW], [{ ...LEGACY_ALL, total_savings_usd: '0.0099' }, LEGACY_ALL]);
+    for (const title of ['Actual spend', 'Agent calls', 'Tokens processed', 'Savings']) expect(figure(title)).toBe('Not measured: ambiguous overview totals');
   });
 
   it('W8: the Usage page offers no such switch', async () => {
     await open('usage', [ALL_ROW, YESTERDAY_ROW, TODAY_ROW]);
-    expect(screen.queryByLabelText('Figures for')).toBeNull();
+    expect(screen.queryByRole('radiogroup', { name: 'Figures for' })).toBeNull();
   });
 });
