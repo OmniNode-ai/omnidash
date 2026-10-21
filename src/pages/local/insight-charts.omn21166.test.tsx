@@ -160,3 +160,39 @@ describe('OMN-21166: Overview insight charts', () => {
     expect(screen.getByTestId('insights-total')).toHaveTextContent('Latest 5 served runs');
   });
 });
+
+// OMN-19919 AC7 (requirement OV-7): each "Why runs failed" row shows the typed cause, its count, first seen and last
+// seen, and links to Runs filtered by status=failed and that cause.
+//
+// Failure modes, each with a test below:
+//   W1  three failed runs of one typed cause show as several rows (grouped by detail text), or as a count other than 3
+//   W2  a row shows no first or last seen, or the wrong ones (not the earliest and latest run of that cause)
+//   W3  a row has no link to Runs, or a link that does not carry status=failed and that cause
+//   W4  a failed run with no cause has no row, or no link
+describe('OMN-19919: Why runs failed rows carry count, first and last seen, and a Runs link', () => {
+  const failed = (at: string, extra: Record<string, unknown>) => row(at, { terminal_ok: 0, quality_gate_passed: 0, ...extra });
+  const DECISIONS = [
+    failed('2026-10-18T08:20:00Z', { quality_gate_detail: 'HTTP 503: upstream unavailable', terminal_failure_cause: 'provider_error' }),
+    failed('2026-10-17T22:05:00Z', { quality_gate_detail: 'MALFORMED: invalid syntax', terminal_failure_cause: 'provider_error' }),
+    failed('2026-10-18T08:00:00Z', { quality_gate_passed: null, quality_gate_detail: null, terminal_failure_cause: 'provider_error' }),
+    failed('2026-10-18T08:10:00Z', { quality_gate_passed: null, quality_gate_detail: null, terminal_failure_cause: null }),
+    row('2026-10-18T08:30:00Z'),
+  ];
+
+  it('W1-W4: one row per typed cause with its count, first seen, last seen and a filtered Runs link', () => {
+    render(<InsightsSection decisions={DECISIONS} now={NOW} />);
+    const list = screen.getByRole('list', { name: 'Failure causes' });
+    const rows = within(list).getAllByRole('listitem');
+    expect(rows).toHaveLength(2);
+    const typed = rows.find(item => item.textContent?.includes('provider_error'))!;
+    expect(typed).toBeDefined();
+    expect(typed.querySelector('[data-field-tone="fail"]')).toHaveTextContent(/^3$/);
+    expect(typed).toHaveTextContent('First seen 2026-10-17 22:05 UTC');
+    expect(typed).toHaveTextContent('Last seen 2026-10-18 08:20 UTC');
+    expect(within(typed).getByRole('link', { name: 'View runs failed by provider_error' })).toHaveAttribute('href', '/runs?status=failed&cause=provider_error');
+    const unrecorded = rows.find(item => item.textContent?.includes('Not recorded'))!;
+    expect(unrecorded.querySelector('[data-field-tone="fail"]')).toHaveTextContent(/^1$/);
+    expect(unrecorded).toHaveTextContent('First seen 2026-10-18 08:10 UTC');
+    expect(within(unrecorded).getByRole('link', { name: 'View runs failed by Not recorded' })).toHaveAttribute('href', '/runs?status=failed&cause=Not+recorded');
+  });
+});

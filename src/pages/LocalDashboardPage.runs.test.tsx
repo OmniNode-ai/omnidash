@@ -1,7 +1,8 @@
 // @vitest-environment jsdom
 import { fireEvent, render, screen, within } from '@testing-library/react';
-import { describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it } from 'vitest';
 import { LastRunCard, NoRunsYet, RecentRunsTable, RunsTable } from './LocalDashboardPage';
+import { causeHref } from './local/run-filter';
 
 // Shapes are the lakshman-lane reads of 2026-10-02 11:34Z: a decisions row and the savings session that shares its id.
 const NOW = Date.parse('2026-10-02T10:12:00Z');
@@ -290,5 +291,87 @@ describe('Baseline model label (F20, OMN-19980 AC2b)', () => {
     expect(headers).not.toContain('Baseline cost');
     expect(headers).not.toContain('Savings');
     expect(within(row).queryByText('0.000844')).not.toBeInTheDocument();
+  });
+});
+
+// OMN-19919 AC5 and AC6 (spec of agent claude-63c840af, re-homing AC1 and AC2 onto Runs): a failed run is listed under
+// status=failed with its correlation id, its typed cause and its time; the cause filter offers that cause. The typed
+// terminal_failure_cause wins over the quality_gate_detail text, which stays readable on the row. terminal_ok false
+// fails a run even when quality_gate_passed is null. A failed run with no cause reads Not recorded and is never dropped.
+// Shapes: decisions.v1 as the lab serves it (terminal_ok 1/0 from SQLite), plus terminal_failure_cause, which omnimarket
+// adds to decisions.v1 under OMN-19919 AC4; a row without that key is today's lab row.
+//
+// Failure modes, each with a test below:
+//   U1  a typed cause row shows the detail text as its cause, or is missing from status=failed
+//   U2  the detail text of a typed cause row can no longer be read on the row
+//   U3  terminal_ok 0 with quality_gate_passed null reads Not recorded and is missing from status=failed
+//   U4  a failed row with no typed cause and no detail is dropped, shown passed, or given a cause
+//   U5  the cause filter does not offer the typed cause, or choosing it keeps rows of other causes
+//   U6  the Overview's Runs link (status=failed and the cause in the URL) shows rows other than that cause's
+//   U7  with no typed cause served the cause is the detail's leading label (the Overview's), the full detail readable
+describe('OMN-19919 AC5, AC6: Runs lists failed runs with their typed cause', () => {
+  const failed = (id: string, at: string, extra: Record<string, unknown>) =>
+    decision(id, at, { terminal_ok: 0, quality_gate_passed: 0, ...extra });
+  const decisions = [
+    failed('run-typed', '2026-10-02T10:05:00Z', { quality_gate_detail: 'provider returned 503: upstream unavailable', terminal_failure_cause: 'provider_error' }),
+    failed('run-terminal', '2026-10-02T10:04:00Z', { quality_gate_passed: null, quality_gate_detail: null, terminal_failure_cause: null }),
+    failed('run-empty', '2026-10-02T10:03:00Z', { quality_gate_detail: '', terminal_failure_cause: null }),
+    decision('run-legacy', '2026-10-02T10:02:00Z', { quality_gate_passed: 0, quality_gate_detail: 'MALFORMED: invalid syntax' }),
+    decision('run-pass', '2026-10-02T10:01:00Z', { terminal_ok: 1, quality_gate_passed: 1, terminal_failure_cause: null }),
+    decision('run-unjudged', '2026-10-02T10:00:00Z', { terminal_ok: 1, quality_gate_passed: null }),
+  ];
+  const headers = () => screen.getAllByRole('columnheader').map((cell) => cell.textContent?.trim());
+  const cell = (id: string, header: string) => within(screen.getByRole('row', { name: new RegExp(`^${id}`) })).getAllByRole('cell')[headers().indexOf(header)]!;
+  const listed = () => (screen.getAllByRole('row').slice(1) as HTMLTableRowElement[]).map((row) => row.cells[0]!.textContent);
+
+  afterEach(() => window.history.replaceState(null, '', '/'));
+
+  it('U1-U4: status=failed lists each failed run with its id, time, typed cause or Not recorded, the detail readable', () => {
+    render(<RunsTable now={NOW} decisions={decisions} sessions={[]} />);
+    fireEvent.change(screen.getByLabelText('Status'), { target: { value: 'failed' } });
+    expect(listed()).toEqual(['run-typed', 'run-terminal', 'run-empty', 'run-legacy']);
+    expect(cell('run-typed', 'Created').textContent).toBe('Oct 2, 10:05:00 UTC');
+    expect(cell('run-typed', 'Status').textContent).toBe('failed');
+    const typedCause = cell('run-typed', 'Cause');
+    expect(within(typedCause).getByText('provider_error')).toHaveAttribute('title', 'provider returned 503: upstream unavailable');
+    expect(within(typedCause).getByText('Read failure details')).toBeInTheDocument();
+    expect(typedCause).toHaveTextContent('provider returned 503: upstream unavailable');
+    for (const id of ['run-terminal', 'run-empty']) {
+      expect(cell(id, 'Status').textContent, id).toBe('failed');
+      expect(cell(id, 'Cause').textContent, id).toBe('Not recorded');
+    }
+    fireEvent.change(screen.getByLabelText('Status'), { target: { value: 'Not recorded' } });
+    expect(listed()).toEqual(['run-unjudged']);
+    fireEvent.change(screen.getByLabelText('Status'), { target: { value: 'passed' } });
+    expect(listed()).toEqual(['run-pass']);
+  });
+
+  it('U5: the cause filter offers the typed cause and keeps only its runs', () => {
+    render(<RunsTable now={NOW} decisions={decisions} sessions={[]} />);
+    const options = within(screen.getByLabelText('Cause')).getAllByRole('option').map((option) => option.getAttribute('value'));
+    expect(options).toEqual(['all', 'MALFORMED', 'Not recorded', 'provider_error']);
+    fireEvent.change(screen.getByLabelText('Cause'), { target: { value: 'provider_error' } });
+    expect(listed()).toEqual(['run-typed']);
+  });
+
+  it('U6: the Overview link for a cause opens Runs on that cause\'s failed runs only', () => {
+    window.history.replaceState(null, '', causeHref('provider_error'));
+    const { unmount } = render(<RunsTable now={NOW} decisions={decisions} sessions={[]} syncUrl />);
+    expect(listed()).toEqual(['run-typed']);
+    expect(screen.getByLabelText('Status')).toHaveValue('failed');
+    expect(screen.getByLabelText('Cause')).toHaveValue('provider_error');
+    unmount();
+    window.history.replaceState(null, '', causeHref('Not recorded'));
+    render(<RunsTable now={NOW} decisions={decisions} sessions={[]} syncUrl />);
+    expect(listed()).toEqual(['run-terminal', 'run-empty']);
+  });
+
+  it('U7: with no typed cause served the cause is the detail\'s label, the full detail still readable', () => {
+    render(<RunsTable now={NOW} decisions={decisions} sessions={[]} />);
+    const legacy = cell('run-legacy', 'Cause');
+    expect(within(legacy).getByText('MALFORMED')).toHaveAttribute('title', 'MALFORMED: invalid syntax');
+    expect(legacy).toHaveTextContent('MALFORMED: invalid syntax');
+    fireEvent.change(screen.getByLabelText('Search runs'), { target: { value: 'invalid syntax' } });
+    expect(listed()).toEqual(['run-legacy']);
   });
 });

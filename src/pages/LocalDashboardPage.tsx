@@ -21,7 +21,7 @@ import { RunDurationChart, RunMetricChart, RunTimingChart, RunTokensChart, Spend
 import { PassRateMeter, TierShareChart, TIER_TONES } from '@/pages/local/shares';
 import { InsightsSection, InsightsWindowContext, OverviewRunsContext, TaskIcon } from '@/pages/local/insight-charts';
 import { SinceLastVisit } from '@/pages/local/since-last-visit';
-import { RunFilterProvider, causeLabelOf, useRunFilter } from '@/pages/local/run-filter';
+import { RunFilterProvider, causeHref, causeLabelOf, useRunFilter } from '@/pages/local/run-filter';
 import { shortId } from '@/components/dashboard/event-dash/primitives';
 import { FieldIcon } from '@/components/dashboard/FieldIcon';
 import { modelIdentityStyle } from '@/components/dashboard/model-identity';
@@ -492,19 +492,39 @@ function servedBoolean(value: unknown): boolean | null {
   return null;
 }
 
-/** A run's status is its served quality-gate verdict; a run with no served decision has none recorded. */
+/**
+ * A run's status is its served quality-gate verdict; a run with no served decision has none recorded. OMN-19919 AC5:
+ * a run whose terminal was served not ok failed even when no verdict was served (it ended before the gate ran).
+ */
 function statusOf(decision: Row | undefined): RunStatus {
+  if (servedBoolean(decision?.terminal_ok) === false) return 'failed';
   const passed = servedBoolean(decision?.quality_gate_passed);
   if (passed === null) return 'Not recorded';
   return passed ? 'passed' : 'failed';
 }
 
-/** A failed run's typed cause is the served quality_gate_detail (a provider 429, a timeout, a refused answer). */
+/**
+ * A failed run's cause, as the Overview's "Why runs failed" groups it and its link filters it (OMN-19919 AC5, AC7):
+ * the served typed terminal_failure_cause, else the label the quality_gate_detail leads with, else Not recorded.
+ */
 function causeOf(decision: Row | undefined): string {
   const status = statusOf(decision);
   if (status === 'passed') return 'none';
-  if (status === 'Not recorded' || isMissing(decision?.quality_gate_detail)) return 'Not recorded';
-  return String(decision?.quality_gate_detail);
+  if (status === 'Not recorded' || decision === undefined) return 'Not recorded';
+  return causeLabelOf(decision);
+}
+
+/** A failed run's served failure detail, the text its cause was read from, kept readable beside the cause. */
+function failureDetailOf(decision: Row | undefined): string | null {
+  return statusOf(decision) === 'failed' && !isMissing(decision?.quality_gate_detail) ? String(decision?.quality_gate_detail) : null;
+}
+
+/**
+ * One run's cause on its own card: the served typed cause, else the whole served detail as before OMN-19919, so a
+ * card that has room for it loses nothing while decisions.v1 does not serve the typed cause.
+ */
+function causeTextOf(decision: Row | undefined): string {
+  return isMissing(decision?.terminal_failure_cause) ? (failureDetailOf(decision) ?? 'Not recorded') : causeOf(decision);
 }
 
 /**
@@ -670,7 +690,7 @@ export function LastRunCard({ decisions, sessions, now = Date.now(), compact = f
   // status, its typed cause when it failed, its model and its age, then the rest of what its row serves.
   const fields: Array<[string, ReactNode]> = [
     ['Status', <OutcomePill value={status} key="status" />],
-    ...(status === 'failed' ? [['Cause', causeOf(last)] as [string, ReactNode]] : []),
+    ...(status === 'failed' ? [['Cause', causeTextOf(last)] as [string, ReactNode]] : []),
     ['Model', modelOrUnknown(last.model_name)],
     ['Age', age(last.written_at, now)],
     ['Quality score', recorded(last.actual_score)],
@@ -736,7 +756,7 @@ export function RecentRunsTable({ decisions, sessions, now = Date.now(), showCha
   const all = newestFirst(decisions);
   const count = (result: 'all' | 'passed' | 'failed') => all.filter(run => result === 'all' || statusOf(run) === result).length;
   const matching = all.filter(run => (filter.result === 'all' || statusOf(run) === filter.result)
-    && (filter.cause === null || causeLabelOf(run.quality_gate_detail) === filter.cause));
+    && (filter.cause === null || (statusOf(run) === 'failed' && causeLabelOf(run) === filter.cause)));
   const recent = matching.slice(0, 10);
   const listed: ListedRun[] = recent.map(run => ({
     id: typeof run.correlation_id === 'string' && run.correlation_id !== '' ? run.correlation_id : null,
@@ -786,7 +806,7 @@ export function RecentRunsTable({ decisions, sessions, now = Date.now(), showCha
               <td data-label="Cost"><span className="local-recent-value">{costOf(session, decision)}</span></td>
               <td data-label="Duration"><span className="local-recent-value">{duration(decision.latency_ms)}</span></td>
               <td data-label="Age"><span className="local-recent-value">{age(decision.written_at, now)}</span></td>
-              <td data-label="Cause"><span className="local-recent-value">{causeOf(decision)}</span></td>
+              <td data-label="Cause"><span className="local-recent-value" title={failureDetailOf(decision) ?? undefined}>{causeOf(decision)}</span></td>
               <td data-label="Task type"><span className="local-recent-value">{recorded(decision.task_type)}</span></td>
               <td className="local-dashboard-cell-token" data-label="Backend"><span className="local-recent-value">{recorded(decision.backend_id)}</span></td>
               <td className="local-dashboard-cell-token" data-label="Host"><span className="local-recent-value">{recorded(decision.host)}</span></td>
@@ -832,6 +852,20 @@ function isFixture(decision: Row): boolean {
 }
 
 /**
+ * A Runs row's cause (OMN-19919 AC5): the cause the filter and the Overview list use, and the served failure detail it
+ * came from, readable on the row (its title, and "Read failure details") whenever it says more than the cause.
+ */
+function RunCause({ run }: { run: Row }) {
+  const cause = causeOf(run);
+  const detail = failureDetailOf(run) ?? cause;
+  if (detail === cause && cause.length <= 120) return <span className="local-runs-cause" title={cause}>{cause}</span>;
+  return <>
+    {detail !== cause && <span className="local-runs-cause" title={detail}>{cause}</span>}
+    <details className="local-run-failure"><summary>Read failure details</summary><p className="local-runs-cause" title={detail === cause ? detail : undefined}>{detail}</p></details>
+  </>;
+}
+
+/**
  * RU-1: every served run with its status, cause and cost, filtered by status, cause, model, backend and window,
  * paged. The backend is the served backend_id; a run served without one is filtered as Not recorded. No
  * per-run saving or baseline price: savings are window totals from metering-summary.v1 only (OMN-19980 AC2).
@@ -858,7 +892,7 @@ export function RunsTable({ decisions, sessions, now = Date.now(), pageSize = 25
     && (model === 'all' || modelOrUnknown(run.model_name) === model)
     && (backend === 'all' || recorded(run.backend_id) === backend)
     && (span === 'all' || utcDay(timeOf(run.created_at)) === today)
-    && (needle === '' || [run.correlation_id, run.model_name, run.backend_id, run.task_type, run.host, statusOf(run), causeOf(run)]
+    && (needle === '' || [run.correlation_id, run.model_name, run.backend_id, run.task_type, run.host, statusOf(run), causeOf(run), failureDetailOf(run)]
       .some(value => typeof value === 'string' && value.toLocaleLowerCase().includes(needle))));
   const pages = Math.max(1, Math.ceil(shown.length / pageSize));
   const current = Math.min(pageIndex, pages - 1);
@@ -972,9 +1006,7 @@ export function RunsTable({ decisions, sessions, now = Date.now(), pageSize = 25
                   </td>
                   <td className="local-dashboard-cell-token local-dashboard-cell-time"><CellTime value={run.created_at} /></td>
                   <td><OutcomePill value={statusOf(run)} /></td>
-                  <td>{causeOf(run).length > 120
-                    ? <details className="local-run-failure"><summary>Read failure details</summary><p className="local-runs-cause" title={causeOf(run)}>{causeOf(run)}</p></details>
-                    : <span className="local-runs-cause" title={causeOf(run)}>{causeOf(run)}</span>}</td>
+                  <td><RunCause run={run} /></td>
                   {/* A run's model and backend set that filter: the same filters as the selects above, from the row. */}
                   <td className="local-dashboard-cell-token">
                     <button type="button" className="local-cell-filter" aria-label={`Show only runs of model ${modelOrUnknown(run.model_name)}`} onClick={() => updateView({ model: modelOrUnknown(run.model_name), page: 1 })}>
@@ -1172,7 +1204,7 @@ export function RunSummary({ decision, showAnalysis = false }: { decision: Row |
   if (!decision) return <p className="local-dashboard-empty" role="status">No decision is served for this run</p>;
   const status = statusOf(decision);
   const fields: Array<[string, string]> = [
-    ...(status === 'failed' ? [['Cause', causeOf(decision)] as [string, string]] : []),
+    ...(status === 'failed' ? [['Cause', causeTextOf(decision)] as [string, string]] : []),
     ['Quality score', recorded(decision.actual_score)],
     ['Task type', recorded(decision.task_type)],
     ['Model', modelOrUnknown(decision.model_name)],
@@ -1605,11 +1637,11 @@ function TableComponent({ component, snapshots, pageSize, syncUrl, columns }: {
   if (component.component_id === 'overview-insights') return rows.length === 0 ? <NoRunsYet /> : <>
     <InsightsSection decisions={rows} now={Date.now()} view="summary" />
     <details className="local-analysis-details"><summary>Detailed activity analysis</summary>
-      <InsightsSection decisions={rows} now={Date.now()} view="analysis" onInspectFailure={cause => navigate(`/runs?status=failed&q=${encodeURIComponent(cause)}`)} />
+      <InsightsSection decisions={rows} now={Date.now()} view="analysis" onInspectFailure={cause => navigate(causeHref(cause))} />
     </details>
   </>;
   if (component.component_id === 'runs-insights') return <details className="local-analysis-details"><summary>Show run analysis</summary>{rows.length === 0 ? <NoRunsYet /> : <InsightsSection decisions={rows} now={Date.now()} view="analysis" onInspectFailure={cause => {
-    navigate(`/runs?status=failed&q=${encodeURIComponent(cause)}`);
+    navigate(causeHref(cause));
     document.querySelector('[data-component="recent-runs"]')?.scrollIntoView?.({ block: 'start' });
   }} />}</details>;
   if (component.component_id === 'overview-quality' || component.component_id === 'overview-tier-mix' || component.component_id === 'runs-tier-mix') {

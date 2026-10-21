@@ -64,6 +64,26 @@ function causeLabel(detail: unknown): string {
   return head === '' ? NOT_RECORDED : head;
 }
 
+/**
+ * OMN-19919: one cause for a failed run, shared by the Overview list, the latest runs' filter, the Runs list and the
+ * link between them, so all four agree: the served typed terminal_failure_cause (an enum member such as
+ * provider_error), else the label its quality_gate_detail leads with, else Not recorded. decisions.v1 does not serve
+ * terminal_failure_cause until omnimarket adds it (OMN-19919 AC4); until then every run falls back to the label.
+ */
+export function failureCauseOf(row: Readonly<Record<string, unknown>>): string {
+  return text(row.terminal_failure_cause)?.trim() ?? causeLabel(row.quality_gate_detail);
+}
+
+/**
+ * OMN-19919: a run whose terminal was served not ok failed, even with no quality-gate verdict (a refusal, a provider
+ * error or a timeout ends before the gate runs). Otherwise the verdict is the served quality gate's; nothing is
+ * inferred from a missing value.
+ */
+function runVerdict(row: Readonly<Record<string, unknown>>): InsightStatus {
+  const gate = verdict(row.quality_gate_passed);
+  return verdict(row.terminal_ok) === 'failed' ? 'failed' : gate;
+}
+
 /** Served rows → runs. A row with no readable time cannot be placed in a window or on a day, so it is left out. */
 export function toInsightRuns(rows: readonly unknown[]): InsightRun[] {
   const runs: InsightRun[] = [];
@@ -72,13 +92,13 @@ export function toInsightRuns(rows: readonly unknown[]): InsightRun[] {
     const row = raw as Record<string, unknown>;
     const at = Date.parse(String(row.written_at ?? row.created_at ?? ''));
     if (!Number.isFinite(at)) continue;
-    const status = verdict(row.quality_gate_passed);
+    const status = runVerdict(row);
     runs.push({
       at,
       day: utcDay(at),
       hour: new Date(at).getUTCHours(),
       status,
-      cause: status === 'failed' ? causeLabel(row.quality_gate_detail) : null,
+      cause: status === 'failed' ? failureCauseOf(row) : null,
       latencyMs: numberOf(row.latency_ms),
       cost: numberOf(row.cost_usd),
       tokensIn: numberOf(row.tokens_input),
@@ -211,11 +231,29 @@ export function countBy(runs: readonly InsightRun[], field: 'task' | 'tier' | 'm
   return [...groups.values()].sort((a, b) => b.runs - a.runs || a.key.localeCompare(b.key));
 }
 
-/** Failed runs per cause label, most first. */
-export function causes(runs: readonly InsightRun[]): Array<{ cause: string; count: number }> {
-  const counts = new Map<string, number>();
-  for (const run of runs) if (run.status === 'failed') counts.set(run.cause ?? NOT_RECORDED, (counts.get(run.cause ?? NOT_RECORDED) ?? 0) + 1);
-  return [...counts.entries()].map(([cause, count]) => ({ cause, count })).sort((a, b) => b.count - a.count || a.cause.localeCompare(b.cause));
+export interface InsightCause {
+  cause: string;
+  count: number;
+  /** The earliest and latest run time of this cause in the set, in epoch milliseconds (OV-7, OMN-19919 AC7). */
+  firstSeen: number;
+  lastSeen: number;
+}
+
+/** Failed runs per cause, most first, each with when it was first and last seen. */
+export function causes(runs: readonly InsightRun[]): InsightCause[] {
+  const groups = new Map<string, InsightCause>();
+  for (const run of runs) {
+    if (run.status !== 'failed') continue;
+    const cause = run.cause ?? NOT_RECORDED;
+    const group = groups.get(cause);
+    if (group === undefined) groups.set(cause, { cause, count: 1, firstSeen: run.at, lastSeen: run.at });
+    else {
+      group.count += 1;
+      group.firstSeen = Math.min(group.firstSeen, run.at);
+      group.lastSeen = Math.max(group.lastSeen, run.at);
+    }
+  }
+  return [...groups.values()].sort((a, b) => b.count - a.count || a.cause.localeCompare(b.cause));
 }
 
 /** A running total; a missing day's value (null) carries the total forward. */
