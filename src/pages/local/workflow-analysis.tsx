@@ -3,9 +3,16 @@ import { Award, Bot, Coins, FileClock, FileText, Server, Timer, Waypoints } from
 import { RunTimingChart } from './charts';
 import { FieldIcon } from '@/components/dashboard/FieldIcon';
 import { fieldTone, isUnavailableField } from '@/components/dashboard/field-identity';
+import { formatUsd } from '@/components/dashboard/usage/UsageByModelDayWidget';
 
 type Run = Record<string, unknown>;
 const recorded = (value: unknown) => value === null || value === undefined || value === '' ? 'Not recorded' : String(value);
+
+/** OMN-21166: a run's recorded cost written as money like every other cost on the dashboard; a missing one is named. */
+export function recordedUsd(value: unknown): string {
+  if (value === null || value === undefined || (typeof value === 'string' && value.trim() === '')) return 'Not recorded';
+  return Number.isFinite(Number(value)) ? formatUsd(value) : String(value);
+}
 function measured(value: unknown): number | null {
   if (typeof value !== 'number' && typeof value !== 'string') return null;
   if (typeof value === 'string' && value.trim() === '') return null;
@@ -73,7 +80,7 @@ export function WorkflowRecordDetails({ decision, steps }: { decision: Run | und
           ].filter(([, value]) => value !== null && value !== undefined && value !== ''),
         ].map(([label, value]) => <div key={String(label)} data-field-tone={fieldTone(label, value)} data-field-unavailable={isUnavailableField(value)}><dt><FieldIcon label={label} value={value} />{String(label)}</dt><dd>{(label === 'Created at' || label === 'Written at') && typeof value === 'string' && Number.isFinite(Date.parse(value))
           ? <time dateTime={value} title={value}>{new Date(value).toLocaleString('en-GB', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit', second: '2-digit', timeZone: 'UTC' })} UTC</time>
-          : recorded(value)}</dd></div>)}
+          : label === 'Recorded cost (USD)' ? recordedUsd(value) : recorded(value)}</dd></div>)}
       </dl>
     </section>}
     {durations.some(item => measured(item.value) !== null) && <section className="workflow-analysis-card workflow-analysis-card--stages" aria-label="Stage timing analysis">

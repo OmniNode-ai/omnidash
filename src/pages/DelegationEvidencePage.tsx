@@ -76,6 +76,32 @@ function servedUsd(value: unknown): string {
   return amount < 0 ? `-$${text}` : `$${text}`;
 }
 
+/**
+ * OMN-21166: the savings panel's pricing tag. A served version that is a number reads "pricing v3"; anything else is
+ * named as served ("pricing savings-estimated"), never with a "v" glued to a word. No version served, no tag.
+ */
+export function pricingLabel(version: unknown): string | null {
+  if (isUnavailableField(version)) return null;
+  const text = String(version).trim();
+  if (text === '') return null;
+  return /^\d/.test(text) ? `pricing v${text}` : `pricing ${text}`;
+}
+
+const REASON_MAX = 120;
+
+/**
+ * OMN-21166: one escalation reason as the panel shows it. A served reason can be a whole provider error, URLs and
+ * response body included; the row shows its first line of text, shortened to fit, and the element's title keeps the
+ * whole served text. A missing reason is named, never an empty row.
+ */
+export function escalationReason(reason: unknown): { text: string; title: string | undefined } {
+  const served = typeof reason === 'string' ? reason : isUnavailableField(reason) ? '' : String(reason);
+  const text = served.replace(/\s+/g, ' ').trim();
+  if (text === '') return { text: 'Not recorded', title: undefined };
+  if (text.length <= REASON_MAX) return { text, title: undefined };
+  return { text: `${text.slice(0, REASON_MAX - 1).trimEnd()}…`, title: served };
+}
+
 // ── golden chain (stage labels justified by the trace row) ───────────────────
 
 interface ChainStep {
@@ -238,12 +264,15 @@ function QualityGate() {
       </div>
       <div className="divider" />
       <div className="section-label">Escalation reasons</div>
-      {q.failure_categories.slice(0, 6).map((f, i) => (
-        <div className="ev-qg-cat" key={i}>
-          <span className="mono c-amber">{f.count}</span>
-          <span className="mono dim">{f.category}</span>
-        </div>
-      ))}
+      {q.failure_categories.slice(0, 6).map((f, i) => {
+        const reason = escalationReason(f.category);
+        return (
+          <div className="ev-qg-cat" key={i}>
+            <span className="mono c-amber">{f.count}</span>
+            <span className="mono dim" title={reason.title}>{reason.text}</span>
+          </div>
+        );
+      })}
     </Panel>
   );
 }
@@ -272,7 +301,7 @@ function SavingsPanel({ overview, unavailable }: { overview: CostSavingsOverview
     <Panel
       title="SAVINGS vs CLOUD BASELINE"
       sub={s?.baseline_model || 'Baseline model not recorded'}
-      right={s ? <span className="src-tag">pricing v{s.pricing_manifest_version}</span> : undefined}
+      right={s && pricingLabel(s.pricing_manifest_version) ? <span className="src-tag">{pricingLabel(s.pricing_manifest_version)}</span> : undefined}
     >
       <span className="stat-inline ev-savings-hero">
         <span className="big c-amber">{overview ? servedUsd(saved) : unavailable}</span>
