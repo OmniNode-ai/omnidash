@@ -37,7 +37,9 @@
             "escalation_count",
             "requested_model",
             "queue_wait_ms",
-            "execution_ms"
+            "execution_ms",
+            "terminal_ok",
+            "cost_usd"
           ]
         },
         {
@@ -59,6 +61,19 @@
             "reason",
             "candidates",
             "failing_step_sequence"
+          ]
+        },
+        {
+          "binding_id": "workflow-run-answer",
+          "projection_topic": "onex.snapshot.projection.delegation.correlation-trace.v1",
+          "ordering_authority_field": "created_at",
+          "ordering_direction": "ascending",
+          "required_fields": [
+            "correlation_id",
+            "response_text",
+            "model_name",
+            "created_at",
+            "data_source"
           ]
         }
       ],

@@ -53,7 +53,7 @@ export interface BoundProjectionSnapshot extends ProjectionSnapshot {
   failure?: ProjectionReadFailure;
   /** When the rows shown were read, if a later read failed. */
   lastGoodAt?: string | null;
-  /** On the run-trace.v1 snapshot only: the run its rows were asked for, or null when no run could be named. */
+  /** On a per-run snapshot only (PER_RUN_TOPICS): the run its rows were asked for, or null when no run could be named. */
   runId?: string | null;
 }
 
@@ -97,6 +97,17 @@ export const DELEGATION_DECISIONS_TOPIC = 'onex.snapshot.projection.delegation.d
  * with ?correlation_id=: unfiltered it serves every run's steps together, which no page shows.
  */
 export const RUN_TRACE_TOPIC = 'onex.snapshot.projection.run-trace.v1';
+/**
+ * One run's delegation_events row, its answer (response_text) among it (OMN-19920). The exposure is keyed on
+ * correlation_id and serves every run's answers unfiltered, so like run-trace.v1 it is only ever read for one run.
+ */
+export const CORRELATION_TRACE_TOPIC = 'onex.snapshot.projection.delegation.correlation-trace.v1';
+/**
+ * The exposures read for exactly one run, with ?correlation_id=, and never unfiltered. Their snapshots carry the run
+ * they were asked for (runId), and their last good rows are never kept for another run.
+ */
+export const PER_RUN_TOPICS: ReadonlySet<string> = new Set([RUN_TRACE_TOPIC, CORRELATION_TRACE_TOPIC]);
+export const isPerRunTopic = (topic: string): boolean => PER_RUN_TOPICS.has(topic);
 /**
  * One row per window and baseline model; Overview's headline cards read its all-time row (OMN-19980 Step B), and a
  * row's null saving is that row's own state, not the page's (OMN-20009).
@@ -235,37 +246,39 @@ export async function loadLocalPageSnapshots(
   const publish = (snapshot: BoundProjectionSnapshot) => {
     if (options.isCurrent?.() !== false) options.onSnapshot?.(snapshot);
   };
+  const perRun = [...topics].filter(isPerRunTopic);
   const readTopic = async (topic: string, params?: Readonly<Record<string, string>>) => {
     const snapshot = await readTopicResult(topic, params, async late => {
-      publish(topic === RUN_TRACE_TOPIC ? { ...late, runId: params?.correlation_id ?? null } : late);
+      publish(isPerRunTopic(topic) ? { ...late, runId: params?.correlation_id ?? null } : late);
       // A delayed decisions response may be the first time the newest run is
-      // known. Fetch only its trace, with the same caller/current-state guard.
-      if (topic === DELEGATION_DECISIONS_TOPIC && topics.has(RUN_TRACE_TOPIC)
+      // known. Fetch only its per-run reads, with the same caller/current-state guard.
+      if (topic === DELEGATION_DECISIONS_TOPIC && perRun.length > 0
         && !options.runId && options.isCurrent?.() !== false) {
-        await readRunTrace(newestRunId(page, [late]));
+        await readRun(newestRunId(page, [late]));
       }
     });
-    // Run traces need their correlation attached before they can be published.
-    if (topic !== RUN_TRACE_TOPIC) publish(snapshot);
+    // Per-run reads need their correlation attached before they can be published.
+    if (!isPerRunTopic(topic)) publish(snapshot);
     return snapshot;
   };
-  const others = [...topics].filter((topic) => topic !== RUN_TRACE_TOPIC);
-  if (!topics.has(RUN_TRACE_TOPIC)) return Promise.all(others.map((topic) => readTopic(topic)));
-  // run-trace.v1 is read for exactly one run and never without an id. With no run to name, it is not read at all.
-  const readRunTrace = async (runId: string | null): Promise<BoundProjectionSnapshot> => {
-    const snapshot = runId === null && options.availableTopics.has(RUN_TRACE_TOPIC)
-      ? { ...unreadSnapshot(RUN_TRACE_TOPIC), runId }
-      : { ...(await readTopic(RUN_TRACE_TOPIC, runId === null ? undefined : { correlation_id: runId })), runId };
+  const others = [...topics].filter((topic) => !isPerRunTopic(topic));
+  if (perRun.length === 0) return Promise.all(others.map((topic) => readTopic(topic)));
+  // A per-run exposure is read for exactly one run and never without an id. With no run to name, it is not read at all.
+  const readPerRun = async (topic: string, runId: string | null): Promise<BoundProjectionSnapshot> => {
+    const snapshot = runId === null && options.availableTopics.has(topic)
+      ? { ...unreadSnapshot(topic), runId }
+      : { ...(await readTopic(topic, runId === null ? undefined : { correlation_id: runId })), runId };
     publish(snapshot);
     return snapshot;
   };
+  const readRun = (runId: string | null) => Promise.all(perRun.map((topic) => readPerRun(topic, runId)));
   const asked = options.runId ?? null;
   if (asked !== null) {
-    const [steps, ...rest] = await Promise.all([readRunTrace(asked), ...others.map((topic) => readTopic(topic))]);
-    return [...rest, steps];
+    const [run, rest] = await Promise.all([readRun(asked), Promise.all(others.map((topic) => readTopic(topic)))]);
+    return [...rest, ...run];
   }
   const read = await Promise.all(others.map((topic) => readTopic(topic)));
-  return [...read, await readRunTrace(newestRunId(page, read))];
+  return [...read, ...await readRun(newestRunId(page, read))];
 }
 
 function unreadSnapshot(topic: string): BoundProjectionSnapshot {
@@ -282,7 +295,7 @@ function failedSnapshot(topic: string, failure: ProjectionReadFailure): BoundPro
  */
 export function newestRunId(page: LocalPageDocument, snapshots: readonly BoundProjectionSnapshot[]): string | null {
   const binding = page.components
-    .filter((component) => (component.data_bindings ?? []).some((candidate) => candidate.projection_topic === RUN_TRACE_TOPIC))
+    .filter((component) => (component.data_bindings ?? []).some((candidate) => isPerRunTopic(candidate.projection_topic)))
     .flatMap((component) => component.data_bindings ?? [])
     .find((candidate) => candidate.projection_topic === DELEGATION_DECISIONS_TOPIC);
   if (!binding) return null;

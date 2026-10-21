@@ -1807,6 +1807,11 @@ figure.local-chart.ins-card { margin: 0; padding: 20px 22px; border-radius: 16px
 .workflow-comparison-row:nth-child(2) .workflow-comparison-track > span { opacity: .6; }
 .workflow-comparison-row:focus-visible, .workflow-comparison-row[aria-pressed="true"] { outline: 2px solid var(--analysis-accent); outline-offset: 4px; border-radius: 4px; }
 .workflow-record-grid .local-dashboard-fields { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+/* OMN-19920: the run's answer, as text. Long answers are folded; nothing in them is rendered as markup. */
+.workflow-analysis-card--answer { --analysis-accent: #047857; margin-top: 16px; }
+[data-theme="dark"] .workflow-analysis-card--answer { --analysis-accent: #6ee7b7; }
+.workflow-run-answer-text { margin: 0; max-height: 480px; overflow: auto; white-space: pre-wrap; overflow-wrap: anywhere; font-family: var(--font-mono); font-size: 12px; line-height: 1.6; color: var(--text-primary); }
+.workflow-run-answer-fold > summary { cursor: pointer; margin-bottom: 8px; font-size: 12px; color: var(--text-secondary); }
 @media (max-width: 1100px) { .workflow-analysis-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } .workflow-analysis-card--timing { grid-column: 1 / -1; } }
 @media (max-width: 760px) { .workflow-analysis-grid, .workflow-record-grid { grid-template-columns: minmax(0, 1fr); } .workflow-record-grid .local-dashboard-fields { grid-template-columns: minmax(0, 1fr); } }
 .local-run-summary-group { padding: 10px; }

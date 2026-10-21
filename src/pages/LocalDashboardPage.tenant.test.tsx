@@ -14,7 +14,9 @@ const CREDENTIALS = 'onex.snapshot.projection.tenant-credentials.v1';
 const USAGE = 'onex.snapshot.projection.usage-by-model-day.v1';
 // OMN-19987: Workflow also binds run-trace.v1, which is tenant-scoped like the decisions it sits beside.
 const RUN_TRACE = 'onex.snapshot.projection.run-trace.v1';
-const SCOPED = new Set([DECISIONS, SAVINGS, OVERVIEW, CREDENTIALS, RUN_TRACE]);
+// OMN-19920: and correlation-trace.v1 (the run's answer), which serves response_text and is tenant-scoped.
+const ANSWERS = 'onex.snapshot.projection.delegation.correlation-trace.v1';
+const SCOPED = new Set([DECISIONS, SAVINGS, OVERVIEW, CREDENTIALS, RUN_TRACE, ANSWERS]);
 
 vi.mock('@/data-source/data-source-override', async (importOriginal) => ({
   ...(await importOriginal<typeof import('@/data-source/data-source-override')>()),
@@ -32,7 +34,7 @@ const projectionReads: string[] = [];
 
 function catalogue() {
   return {
-    topics: [DECISIONS, SAVINGS, OVERVIEW, CREDENTIALS, USAGE, RUN_TRACE].map((topic) => ({
+    topics: [DECISIONS, SAVINGS, OVERVIEW, CREDENTIALS, USAGE, RUN_TRACE, ANSWERS].map((topic) => ({
       topic,
       backing: 'bus',
       tenant_column: SCOPED.has(topic) ? 'tenant_id' : null,

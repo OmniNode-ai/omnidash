@@ -28,7 +28,7 @@ import { modelIdentityStyle } from '@/components/dashboard/model-identity';
 import { fieldTone, isUnavailableField } from '@/components/dashboard/field-identity';
 import '@/styles/local-dashboard.css';
 import { DestinationIcon } from '@/navigation/destination-icons';
-import { FlowConnector, WorkflowDecisionCharts, WorkflowRecordDetails, WorkflowRoutingFlow } from '@/pages/local/workflow-analysis';
+import { FlowConnector, RunAnswer, WorkflowDecisionCharts, WorkflowRecordDetails, WorkflowRoutingFlow } from '@/pages/local/workflow-analysis';
 import {
   loadLocalPageConfig,
   loadLocalPageSnapshots,
@@ -40,6 +40,8 @@ import {
   DELEGATION_DECISIONS_TOPIC,
   METERING_SUMMARY_TOPIC,
   RUN_TRACE_TOPIC,
+  CORRELATION_TRACE_TOPIC,
+  isPerRunTopic,
   LOCAL_READ_TIMEOUT_MS,
   type BoundProjectionSnapshot,
   type LocalPageDocument,
@@ -1404,8 +1406,8 @@ interface WorkflowRunProps {
 }
 
 /**
- * WF-1 to WF-3 (OMN-19987, OMN-21015 AC9): one run, the one asked for or the newest, with its decision row and its
- * steps from run-trace.v1. The loader read the steps for exactly the run named on their snapshot (runId), so this
+ * WF-1 to WF-3 (OMN-19987, OMN-21015 AC9, OMN-19920): one run, the one asked for or the newest, with its decision row,
+ * its answer from correlation-trace.v1 and its steps from run-trace.v1. The loader read the steps for exactly the run named on their snapshot (runId), so this
  * shows that run or says why it cannot: it never falls back to another run, and steps answered for another run are
  * refused rather than shown under this run's id.
  */
@@ -1451,6 +1453,10 @@ export function WorkflowRun({ component, snapshots, requested, onOpen }: Workflo
         return decision ? <WorkflowRoutingFlow decision={decision} outcome={statusOf(decision)} /> : null;
       })()}
       {!decisionsNotServed && <RunSummary decision={decisions.find((row) => row.correlation_id === runId)} showAnalysis />}
+      {/* OMN-19920: the run's answer, read for this run only; the page binds it only where its contract declares it. */}
+      {(component.data_bindings ?? []).some((binding) => binding.projection_topic === CORRELATION_TRACE_TOPIC) && (
+        <RunAnswer read={snapshots.find((snapshot) => snapshot.topic === CORRELATION_TRACE_TOPIC)} runId={runId} />
+      )}
       {stepsUnread ? null : foreign ? (
         <p className="local-dashboard-error" role="alert">run-trace.v1 answered steps of another run; none are shown</p>
       ) : (
@@ -1880,8 +1886,8 @@ export function LocalDashboardPage({ pageName, syncUrl = false, navigationCache 
     // An implicit server tenant is not safe to cache across navigation: the same
     // origin can begin serving another install without a client config change.
     const cached = tenant === null ? [] : topics.flatMap(topic => {
-      if (topic === RUN_TRACE_TOPIC && requestedRunId === null) return [];
-      const key = `${topic}\0${topic === RUN_TRACE_TOPIC ? requestedRunId ?? '' : ''}`;
+      if (isPerRunTopic(topic) && requestedRunId === null) return [];
+      const key = `${topic}\0${isPerRunTopic(topic) ? requestedRunId ?? '' : ''}`;
       const snapshot = recent.snapshots.get(key);
       return snapshot && Date.now() - timeOf(snapshot.readAt) < 60_000 ? [snapshot] : [];
     });
@@ -1905,7 +1911,7 @@ export function LocalDashboardPage({ pageName, syncUrl = false, navigationCache 
         if (pageName === 'workflow' && requestedRunId === null
           && snapshot.topic === DELEGATION_DECISIONS_TOPIC && !snapshot.failure) {
           const runId = newestWorkflowRunId(document, [retained]);
-          latest.current = latest.current.filter(candidate => candidate.topic !== RUN_TRACE_TOPIC || candidate.runId === runId);
+          latest.current = latest.current.filter(candidate => !isPerRunTopic(candidate.topic) || candidate.runId === runId);
         }
         setSnapshots(latest.current);
         if (tenant !== null && !snapshot.failure) {
@@ -1978,7 +1984,7 @@ export function LocalDashboardPage({ pageName, syncUrl = false, navigationCache 
               if (latest.current.some(snapshot => snapshot.topic === topic)) continue;
               publish({ topic, rows: [], rowCount: 0, dataFreshness: 'unknown', latestEventAt: null,
                 readAt: new Date().toISOString(), failure: { kind: 'error', message },
-                ...(topic === RUN_TRACE_TOPIC ? { runId: requestedRunId } : {}) });
+                ...(isPerRunTopic(topic) ? { runId: requestedRunId } : {}) });
             }
           }
         }

@@ -225,7 +225,8 @@ describe('Partial pages (FR-3, CR-2, CR-3, AK-3, F24)', () => {
     render(<LocalDashboardPage pageName="workflow" />);
     await settle();
     const panel = screen.getByRole('heading', { name: 'Run path' }).closest('article')!;
-    expect(within(panel).getByText('newest-run')).toBeInTheDocument();
+    // OMN-19920: the id is also shown as the run's receipt id, so the run's own title is the one read here.
+    expect(within(panel).getByText('newest-run', { selector: 'code' })).toBeInTheDocument();
     expect(within(panel).queryByText('older-run')).not.toBeInTheDocument();
     const steps = within(panel).getAllByRole('listitem').map((item) => item.querySelector('strong')?.textContent);
     expect(steps).toEqual(['Request', 'Provider call', 'Terminal']);
