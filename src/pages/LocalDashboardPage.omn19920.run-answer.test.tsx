@@ -25,7 +25,10 @@
 //   R5l a very long answer floods the page instead of being folded, or is cut so the whole text is lost;
 //   R6  the page reads a field its contract does not declare, or one the captured lab catalogue does not serve;
 //   R7  an earlier run's late answer is shown after the run changed, or the previous run's answer is kept on screen
-//       when the next run's answer read fails.
+//       when the next run's answer read fails;
+//   R8  a state of the answer card names an internal exposure, topic, field or typed code to the user (OMN-21166 AC39):
+//       the answer's caption, the not-served, tenant, failed and timed-out reads (whose loader messages carry the
+//       topic), and the refused answer of another run; or a state loses what it means once the names are gone.
 import { readFileSync } from 'node:fs';
 import { act, cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
@@ -215,7 +218,7 @@ describe('OMN-19920: one run whole on the Workflow page', () => {
   it('R2s: correlation-trace.v1 not served is said, never asked, and never shown as an empty answer', async () => {
     lab.catalogue = [DECISIONS, RUN_TRACE, SAVINGS];
     open(`/workflow?correlation_id=${OLDER}`);
-    await waitFor(() => expect(answerCard().textContent).toContain('The answer is not served'));
+    await waitFor(() => expect(answerCard().textContent).toContain('Not available yet'));
     expect(answerCard().textContent).not.toContain('No answer recorded');
     expect(answerAsks()).toEqual([]);
   });
@@ -241,7 +244,7 @@ describe('OMN-19920: one run whole on the Workflow page', () => {
   it('R2f: an answer row of another correlation id is refused, not shown under this run', async () => {
     lab.answer = () => served([answerRow(NEWEST)]);
     open(`/workflow?correlation_id=${OLDER}`);
-    await waitFor(() => expect(answerCard().textContent).toContain('answered another run'));
+    await waitFor(() => expect(answerCard().textContent).toContain('belongs to another run'));
     expect(panel().textContent).not.toContain(`answer of ${NEWEST}`);
   });
 
@@ -347,5 +350,40 @@ describe('OMN-19920: one run whole on the Workflow page', () => {
     await waitFor(() => expect(answerCard().textContent).toContain('The answer could not be read'));
     expect(panel().textContent).toContain(`Run ${NEWEST}`);
     expect(panel().textContent).not.toContain(`answer of ${OLDER}`);
+  });
+
+  it('R8: no state of the answer card names an internal exposure, topic, field or code, and each says what it means', () => {
+    const internal: [string, RegExp][] = [
+      ['exposure name', /[a-z0-9-]+(\.[a-z0-9-]+)*\.v[0-9]+/g],
+      ['snake_case field', /\b[a-z]+(_[a-z0-9]+)+\b/g],
+      ['ALL_CAPS code', /\b[A-Z]{2,}(_[A-Z0-9]+)+\b/g],
+      ['bare exposure base', /correlation-trace|onex\.snapshot/g],
+    ];
+    const offences = (text: string) => internal.flatMap(([kind, re]) => [...text.matchAll(re)].map((m) => `${kind}: ${m[0]}`));
+    // Positive control: the matchers catch the names this card used to show.
+    expect(offences(`From correlation-trace.v1 · ${ANSWERS}: HTTP 500 · response_text · TENANT_NOT_CONFIGURED`)).toEqual(expect.arrayContaining([
+      'exposure name: correlation-trace.v1', `exposure name: ${ANSWERS}`, 'snake_case field: response_text',
+      'ALL_CAPS code: TENANT_NOT_CONFIGURED', 'bare exposure base: correlation-trace',
+    ]));
+    const read = (extra: Partial<Parameters<typeof RunAnswer>[0]['read'] & object>) => ({
+      topic: ANSWERS, runId: NEWEST, rows: [], rowCount: 0, dataFreshness: 'fresh' as const, latestEventAt: null,
+      readAt: '2026-10-11T15:00:00Z', ...extra,
+    });
+    const states: Array<[string, Parameters<typeof RunAnswer>[0]['read'], string[]]> = [
+      ['answered', read({ rows: [answerRow(NEWEST, 'Hello')], rowCount: 1 }), ['Hello', 'Data source: real']],
+      ['not served', read({ failure: { kind: 'not-served', message: `Not served: ${ANSWERS} (this store has no table for it)` } }), ['Not available yet']],
+      ['no tenant', read({ failure: { kind: 'tenant-not-configured', message: `Tenant not configured. No tenant_id for ${ANSWERS}` } }), ['No tenant is configured']],
+      ['read failed', read({ failure: { kind: 'error', message: `${ANSWERS}: HTTP 500 Internal Server Error` } }), ['The answer could not be read', 'HTTP 500']],
+      ['read failed, no status', read({ failure: { kind: 'error', message: `${ANSWERS}: projection_database_unavailable` } }), ['The answer could not be read']],
+      ['timed out', read({ failure: { kind: 'timeout', message: `${ANSWERS}: no answer in 5 s` } }), ['No answer within 5 seconds']],
+      ['another run', read({ rows: [answerRow(OLDER)], rowCount: 1 }), ['belongs to another run']],
+    ];
+    for (const [name, snapshot, says] of states) {
+      const { unmount } = render(<RunAnswer runId={NEWEST} read={snapshot} />);
+      const text = screen.getByRole('region', { name: 'Answer' }).textContent ?? '';
+      expect(offences(text), `${name}: ${text}`).toEqual([]);
+      for (const words of says) expect(text, name).toContain(words);
+      unmount();
+    }
   });
 });

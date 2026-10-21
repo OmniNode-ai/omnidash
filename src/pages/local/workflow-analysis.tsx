@@ -110,9 +110,26 @@ function AnswerText({ text }: { text: string }) {
 }
 
 /**
+ * A failed answer read in plain words (OMN-21166 AC39): the loader's message names the exposure, so it is never shown.
+ * Only an HTTP status is kept, because it is the one part a user can act on or report.
+ */
+function answerReadFailure(failure: { kind: string; message: string }): string {
+  switch (failure.kind) {
+    case 'not-served': return 'Not available yet.';
+    case 'timeout': return 'No answer within 5 seconds.';
+    case 'tenant-not-configured': return 'No tenant is configured for this dashboard.';
+    default: {
+      const status = /HTTP \d{3}.*$/.exec(failure.message)?.[0];
+      return status ? `The answer could not be read (${status}).` : 'The answer could not be read.';
+    }
+  }
+}
+
+/**
  * OMN-19920: the run's answer, the response_text of its delegation_events row as correlation-trace.v1 serves it for
  * this correlation id. Each state says what it is: not read yet, not served, read failed, served with no answer, or
- * answered for another run (refused, never shown under this run's id).
+ * answered for another run (refused, never shown under this run's id). What the user reads names no exposure, topic
+ * or field (OMN-21166 AC39); those stay in this comment and the contract.
  */
 export function RunAnswer({ read, runId }: { read: BoundProjectionSnapshot | undefined; runId: string }) {
   const id = useId();
@@ -121,18 +138,17 @@ export function RunAnswer({ read, runId }: { read: BoundProjectionSnapshot | und
   if (!read || read.runId !== runId) {
     body = state('Reading the answer…');
   } else if (read.failure && !read.lastGoodAt) {
-    body = read.failure.kind === 'not-served' ? state(`The answer is not served on this install (${read.failure.message})`)
-      : read.failure.kind === 'tenant-not-configured' ? state(`The answer is not read: ${read.failure.message}`)
-      : state(`The answer could not be read: ${read.failure.message}`, true);
+    const failed = read.failure.kind === 'error' || read.failure.kind === 'timeout';
+    body = state(answerReadFailure(read.failure), failed);
   } else {
     const rows = read.rows.filter((row): row is Run => typeof row === 'object' && row !== null && !Array.isArray(row));
     const answers = rows.filter((row) => row.response_text !== null && row.response_text !== undefined && row.response_text !== '');
     body = rows.some((row) => row.correlation_id !== runId)
-      ? state('correlation-trace.v1 answered another run; its answer is not shown', true)
+      ? state('The answer read belongs to another run, so it is not shown.', true)
       : answers.length === 0 ? state('No answer recorded for this run')
       : answers.map((row, index) => <div key={index}>
         <AnswerText text={String(row.response_text)} />
-        <p className="local-dashboard-caption">{`From correlation-trace.v1 · data source: ${recorded(row.data_source)}`}</p>
+        <p className="local-dashboard-caption">{`Data source: ${recorded(row.data_source)}`}</p>
       </div>);
   }
   return <section className="workflow-analysis-card workflow-analysis-card--answer" aria-labelledby={id}>
