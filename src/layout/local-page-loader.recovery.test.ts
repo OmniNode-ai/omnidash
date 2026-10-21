@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { loadLocalPageConfig, loadLocalPageSnapshots, RUN_TRACE_TOPIC, DELEGATION_DECISIONS_TOPIC } from './local-page-loader';
+import { loadLocalPageConfig, loadLocalPageSnapshots, RUN_TRACE_TOPIC, DELEGATION_DECISIONS_TOPIC, PER_RUN_TOPICS } from './local-page-loader';
 import type { ProjectionSnapshot } from '../data-source/protocol-snapshot-source';
 
 // Declared failure modes: success lost after soft deadline; stale navigation wins;
@@ -58,6 +58,20 @@ describe('soft deadline recovery',()=>{
     const load=loadLocalPageSnapshots(s.page,s.source,{mode:'http',availableTopics:s.availableTopics,onSnapshot:publish});
     await vi.advanceTimersByTimeAsync(5000);await load;publish.mockClear();s.gate.reject(new Error('unavailable'));
     await vi.advanceTimersByTimeAsync(0);expect(publish).not.toHaveBeenCalled();
+  });
+  // Codex review 2026-10-21 14:17Z: with no run to name, a per-run exposure must never be read without an id,
+  // whether or not the catalogue serves it.
+  it.each([['served',true],['not served',false]])('reads no per-run exposure when no run can be named and it is %s',async(_label,served)=>{
+    const s=setup('workflow','none');
+    const available=new Set([...s.availableTopics].filter(topic=>served||!PER_RUN_TOPICS.has(topic)));
+    const loaded=await loadLocalPageSnapshots(s.page,s.source,{mode:'http',availableTopics:available});
+    expect(s.source.readSnapshot.mock.calls.filter(([topic])=>PER_RUN_TOPICS.has(topic))).toHaveLength(0);
+    const perRun=loaded.filter(x=>PER_RUN_TOPICS.has(x.topic));
+    expect(perRun.length).toBeGreaterThan(0);
+    for (const x of perRun) {
+      expect(x.runId).toBeNull();
+      expect(x.failure?.kind).toBe(served?undefined:'not-served');
+    }
   });
   it('shared in-flight readers retain independent caller guards',async()=>{
     const s=setup('overview',QUALITY), old=vi.fn(), fresh=vi.fn();let current=true;
