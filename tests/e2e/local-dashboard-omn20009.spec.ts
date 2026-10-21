@@ -130,10 +130,10 @@ test('OMN-20009: with neither exposure served, both cards say why and neither sh
   await page.locator('.local-overview-secondary > summary').click();
 
   const share = panel(page, 'Run locally');
-  await expect(share.getByText('Not available yet.')).toBeVisible();
+  await expect(share.getByText('Not available yet: model routing.')).toBeVisible();
   await expect(share.getByText(/%/)).toHaveCount(0);
   const saving = panel(page, 'Avg saving / call');
-  await expect(saving.getByText('Not available yet.')).toBeVisible();
+  await expect(saving.getByText('Not available yet: usage summary.')).toBeVisible();
   await expect(page.getByText('0%', { exact: true })).toHaveCount(0);
   await expect(page.getByText('$0', { exact: true })).toHaveCount(0);
   await share.evaluate((element) => element.scrollIntoView({ block: 'center' }));

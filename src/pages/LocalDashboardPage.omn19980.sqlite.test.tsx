@@ -177,7 +177,7 @@ describe('OMN-19980 AC2c: a savings card with nothing measured or served says so
     served();
     await open('overview');
     const card = panel('Savings');
-    expect(within(card).getByText('Not available yet.')).toBeInTheDocument();
+    expect(within(card).getByText('Not available yet: usage summary.')).toBeInTheDocument();
     noFigure(card);
   });
 
@@ -248,7 +248,7 @@ describe('OMN-19980 Step B: the Overview Savings total is metering-summary.v1\'s
     served();
     await open('overview');
     const savings = panel('Savings');
-    expect(within(savings).getByText('Not available yet.')).toBeInTheDocument();
+    expect(within(savings).getByText('Not available yet: usage summary.')).toBeInTheDocument();
     noFigure(savings);
   });
 
@@ -334,7 +334,7 @@ describe('OMN-19980 Step B (Amendment 2): Spend, Measured runs and Tokens read t
     served();
     await open('overview');
     for (const title of HEADLINES) {
-      expect(within(panel(title)).getByText('Not available yet.'), title).toBeInTheDocument();
+      expect(within(panel(title)).getByText('Not available yet: usage summary.'), title).toBeInTheDocument();
       expect(figure(title), title).toEqual([]);
       expect(captions(title), title).toEqual([]);
     }

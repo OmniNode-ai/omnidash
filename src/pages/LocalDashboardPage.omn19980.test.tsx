@@ -162,7 +162,7 @@ describe('OMN-19980 AC2c: Overview absence and transport errors remain typed und
   it('C2: an unserved legacy source is named and shows no figure', async () => {
     harness.reachable.delete(OVERVIEW);
     await open('overview');
-    expect(within(panel('Savings')).getByText('Not available yet.')).toBeInTheDocument();
+    expect(within(panel('Savings')).getByText('Not available yet: savings summary.')).toBeInTheDocument();
     noFigure(panel('Savings'));
   });
   it('C3: served with no rows is unavailable, never $0', async () => {
@@ -196,7 +196,7 @@ describe('OMN-19980 Step B: Overview uses exactly its approved legacy all row', 
   });
   it('T2: legacy source absent from census is named, without falling back to metering', async () => {
     served({ [METERING]: [meteringRow({})] }); harness.reachable.delete(OVERVIEW); await open('overview');
-    expect(panel('Savings').textContent).toContain('Not available yet.'); noFigure(panel('Savings'));
+    expect(panel('Savings').textContent).toContain('Not available yet: savings summary.'); noFigure(panel('Savings'));
   });
   it('T3: a missing legacy saving is unavailable, without borrowing a resolved metering saving', async () => {
     served({ [OVERVIEW]: [overviewRow({ total_savings_usd: null })], [METERING]: [meteringRow({})] }); await open('overview');
@@ -231,7 +231,7 @@ describe('OMN-19980 headline coherence on the approved source', () => {
   });
   it('M2: an unserved source leaves every headline without a number', async () => {
     harness.reachable.delete(OVERVIEW); await open('overview');
-    for (const title of HEADLINES) { expect(panel(title).textContent).toContain('Not available yet.'); expect(figure(title)).toBe(''); }
+    for (const title of HEADLINES) { expect(panel(title).textContent).toContain('Not available yet: savings summary.'); expect(figure(title)).toBe(''); }
   });
   it('M3: missing savings cannot erase independent spend, measured calls or tokens', async () => {
     served({ [OVERVIEW]: [overviewRow({ total_savings_usd: null, baseline_state: 'unresolved' })] }); await open('overview');

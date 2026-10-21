@@ -365,7 +365,7 @@ describe('OMN-19987 / OMN-21015 AC9: the Workflow page shows one run, asked for 
   it('W8: run-trace.v1 not served is a typed state, and the run is not said to have no steps', async () => {
     lab.catalogue = [DECISIONS];
     open('/workflow');
-    await shows('Not available yet.');
+    await shows('Not available yet: run steps.');
     expect(panel().textContent).toContain(`Run ${NEWEST}`);
     expect(panel().textContent).not.toContain('No steps recorded');
     expect(within(panel()).queryByRole('alert')).toBeNull();

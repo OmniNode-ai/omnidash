@@ -121,7 +121,7 @@ describe('LocalDashboardPage widget states (F26, F27)', () => {
     render(<LocalDashboardPage pageName="overview" />);
     await settle();
     const spend = screen.getByRole('heading', { name: 'Actual spend' }).closest('article')!;
-    expect(within(spend).getByText('Not available yet.')).toBeInTheDocument();
+    expect(within(spend).getByText('Not available yet: savings summary.')).toBeInTheDocument();
     const lastRun = screen.getByRole('heading', { name: 'Last run' }).closest('article')!;
     expect(within(lastRun).getByText('run-1')).toBeInTheDocument();
     expect(screen.queryByRole('alert', { name: /page/i })).not.toBeInTheDocument();
@@ -136,7 +136,7 @@ describe('LocalDashboardPage widget states (F26, F27)', () => {
     await settle();
 
     const runs = screen.getByRole('heading', { name: 'Recent runs' }).closest('article')!;
-    expect(within(runs).getByRole('status')).toHaveTextContent('Not available yet.');
+    expect(within(runs).getByRole('status')).toHaveTextContent('Not available yet: run savings.');
     expect(within(runs).getByRole('table')).toBeInTheDocument();
     expect(within(runs).getByText('run-1')).toBeInTheDocument();
     expect(within(runs).queryByRole('alert')).not.toBeInTheDocument();
@@ -289,12 +289,12 @@ describe('Partial pages (FR-3, CR-2, CR-3, AK-3, F24)', () => {
     expect(within(panel).queryByText(/Not available yet/)).not.toBeInTheDocument();
   });
 
-  it('Usage says in plain words the savings series is not available yet while that exposure is not served (US-3)', async () => {
+  it('Usage says in plain words what the savings series waits on while that exposure is not served (US-3)', async () => {
     harness.reachable = new Set([USAGE]);
     render(<LocalDashboardPage pageName="usage" />);
     await settle();
     const panel = screen.getByRole('heading', { name: 'Savings per day' }).closest('article')!;
-    expect(within(panel).getByRole('status')).toHaveTextContent('Not available yet.');
+    expect(within(panel).getByRole('status')).toHaveTextContent('Not available yet: usage summary.');
     expect(within(panel).getByRole('status').textContent).not.toMatch(/metering-summary|\.v1/);
     expect(within(panel).queryByText(/^\$?0(?:\.0+)?$/)).not.toBeInTheDocument();
   });

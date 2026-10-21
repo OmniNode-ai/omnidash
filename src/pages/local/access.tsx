@@ -20,7 +20,8 @@ function served(value: unknown): string {
 export function DashboardAccess({ rows }: { rows: readonly EnvironmentRow[] }) {
   const row = dashboardAccessRow(rows);
   if (row === null) {
-    return <p className="local-dashboard-empty" role="status">Not available yet</p>;
+    // Waits on local-environment.v1; the user reads what it holds (OMN-21166 AC39).
+    return <p className="local-dashboard-empty" role="status">Not available yet: dashboard access details</p>;
   }
   return (
     <dl className="local-dashboard-fields">

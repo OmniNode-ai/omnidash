@@ -99,7 +99,7 @@ describe('Runs with a savings lookup this store does not serve (OMN-19994 AC1)',
     render(<LocalDashboardPage pageName="runs" />);
     const runs = await waitFor(() => panel('Recent runs'));
     await waitFor(() => expect(within(runs).getByRole('link', { name: RUN_ID })).toBeInTheDocument());
-    expect(within(runs).getByText('Not available yet.')).toBeInTheDocument();
+    expect(within(runs).getByText('Not available yet: run savings.')).toBeInTheDocument();
     expect(within(runs).queryByRole('alert')).toBeNull();
     expect(screen.queryByText(/HTTP 503/)).toBeNull();
   });
@@ -109,7 +109,7 @@ describe('Runs with a savings lookup this store does not serve (OMN-19994 AC1)',
     render(<LocalDashboardPage pageName="runs" />);
     const runs = await waitFor(() => panel('Recent runs'));
     await waitFor(() => expect(within(runs).getByRole('link', { name: RUN_ID })).toBeInTheDocument());
-    expect(within(runs).getByText('Not available yet.')).toBeInTheDocument();
+    expect(within(runs).getByText('Not available yet: run savings.')).toBeInTheDocument();
     expect(within(runs).queryByRole('alert')).toBeNull();
   });
 
@@ -129,15 +129,15 @@ describe('Runs with a savings lookup this store does not serve (OMN-19994 AC1)',
       .getByText('The data could not be read (HTTP 503 Service Unavailable).', { exact: true })).toBeInTheDocument());
     expect(within(within(runs).getByRole('alert')).getByText('Technical details', { selector: 'summary' })).toBeInTheDocument();
     expect(within(runs).queryByText(RUN_ID)).toBeNull();
-    // The decisions 503 is an error, not a not-served state: at most the savings lookup (served by neither answer) says "Not available yet.".
-    expect(within(runs).queryAllByText('Not available yet.').length).toBeLessThan(2);
+    // The decisions 503 is an error, never the run records' not-served state (the test below shows that text exists).
+    expect(within(runs).queryByText(/^Not available yet: run records/)).toBeNull();
   });
 
   it('says the run table itself is not served when the decisions table is missing', async () => {
     lab.answers[DECISIONS] = { ...TABLE_MISSING, body: { ...(TABLE_MISSING.body as object), topic: DECISIONS } };
     render(<LocalDashboardPage pageName="runs" />);
     const runs = await waitFor(() => panel('Recent runs'));
-    await waitFor(() => expect(within(runs).getAllByText('Not available yet.').length).toBeGreaterThan(0));
+    await waitFor(() => expect(within(runs).getByText('Not available yet: run records.')).toBeInTheDocument());
     expect(within(runs).queryByText(RUN_ID)).toBeNull();
     expect(screen.queryByText(/HTTP 503/)).toBeNull();
   });
