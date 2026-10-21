@@ -103,13 +103,13 @@ describe('RunLocallyCard (OMN-20009 AC1, AC2, AC4)', () => {
   it('H4: a row without local_call_share says what it waits on', () => {
     const { local_call_share: _drop, ...older } = labByTier;
     render(<RunLocallyCard row={{ by_tier: older }} />);
-    expect(screen.getByText('Not served yet: waits on local_call_share in delegation.model-routing.v1')).toBeInTheDocument();
+    expect(screen.getByText('Not available yet')).toBeInTheDocument();
     expect(screen.queryByText(/%/)).toBeNull();
   });
 
   it('H4: a row without by_tier says what it waits on', () => {
     render(<RunLocallyCard row={{ total_delegations: 3 }} />);
-    expect(screen.getByText('Not served yet: waits on local_call_share in delegation.model-routing.v1')).toBeInTheDocument();
+    expect(screen.getByText('Not available yet')).toBeInTheDocument();
   });
 
   it('H5: a null share is Not measured, never 0%', () => {
@@ -163,7 +163,7 @@ describe('SavingsPerRunCard (OMN-20009 AC1, AC2, AC3)', () => {
   it('S3: a row without the field says what it waits on', () => {
     const { savings_per_measured_run_usd: _drop, ...older } = allRow();
     render(<SavingsPerRunCard rows={[older]} />);
-    expect(screen.getByText('Not served yet: waits on savings_per_measured_run_usd in metering-summary.v1')).toBeInTheDocument();
+    expect(screen.getByText('Not available yet')).toBeInTheDocument();
   });
 
   it('S4: reads only the all-time row', () => {
@@ -253,7 +253,7 @@ describe('Overview page (OMN-20009 P1, P2)', () => {
   it('P1: the Run locally panel says the exposure is not served when the census does not serve it', async () => {
     harness.reachable = new Set([OVERVIEW]);
     const card = await panel('Run locally');
-    expect(within(card).getByText(`Not served: ${ROUTING}`)).toBeInTheDocument();
+    expect(within(card).getByText('Not available yet.')).toBeInTheDocument();
     expect(within(card).queryByText(/%/)).toBeNull();
   });
 
@@ -267,10 +267,10 @@ describe('Overview page (OMN-20009 P1, P2)', () => {
         : answer(topic));
       const card = await panel('Avg saving / call');
       expect(within(card).getByText('$0.500000')).toBeInTheDocument();
-      expect(within(card).queryByText(/Not served/)).toBeNull();
+      expect(within(card).queryByText(/Not available yet/)).toBeNull();
     } else {
       const card = await panel('Avg saving / call');
-      expect(within(card).getByText('Not served yet: waits on metering-summary.v1')).toBeInTheDocument();
+      expect(within(card).getByText('Not available yet')).toBeInTheDocument();
       expect(within(card).queryByText(/\$0/)).toBeNull();
     }
   });

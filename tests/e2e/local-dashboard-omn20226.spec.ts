@@ -85,7 +85,7 @@ test('OMN-20226: with metering-summary.v1 not served, both cards say so and show
 
   for (const title of CARDS) {
     const card = panel(page, title);
-    await expect(card.getByText(`Not served: ${METERING}`)).toBeVisible();
+    await expect(card.getByText('Not available yet.')).toBeVisible();
     await expect(card.locator('.local-dashboard-metric')).toHaveCount(0);
   }
   await panel(page, 'Compression').evaluate((element) => element.scrollIntoView({ block: 'center' }));

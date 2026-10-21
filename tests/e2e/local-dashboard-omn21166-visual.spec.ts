@@ -131,7 +131,7 @@ test('AC10 labels meet contrast and reduced motion disables presentation animati
 test('AC10 unserved topic names stay readable inside narrow cards', async ({ page }) => {
   await page.goto('/overview');
   const empty = page.locator('[data-component="overview-tier-mix"] .local-dashboard-empty');
-  await expect(empty).toContainText('Not served');
+  await expect(empty).toContainText('Not available yet');
   expect(await empty.evaluate(el => el.scrollWidth - el.clientWidth)).toBeLessThanOrEqual(1);
 });
 

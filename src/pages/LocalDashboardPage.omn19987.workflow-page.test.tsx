@@ -266,7 +266,7 @@ describe('OMN-19987 / OMN-21015 AC9: the Workflow page shows one run, asked for 
       ? { status: 500, body: { error: 'projection_database_unavailable', topic: RUN_TRACE } }
       : served(stepsOf(String(id))));
     act(() => { requestLocalPageRefresh(); });
-    await waitFor(() => expect(within(panel()).getByRole('alert').textContent).toContain(`${RUN_TRACE}: HTTP 500`));
+    await waitFor(() => expect(within(panel()).getByRole('alert').textContent).toContain('The data could not be read (HTTP 500'));
     expect(panel().textContent).toContain(`Run ${NEWEST}`);
     expect(panel().textContent).not.toContain('task of');
     expect(within(panel()).queryAllByRole('listitem')).toHaveLength(0);
@@ -365,7 +365,7 @@ describe('OMN-19987 / OMN-21015 AC9: the Workflow page shows one run, asked for 
   it('W8: run-trace.v1 not served is a typed state, and the run is not said to have no steps', async () => {
     lab.catalogue = [DECISIONS];
     open('/workflow');
-    await shows(`Not served: ${RUN_TRACE}`);
+    await shows('Not available yet.');
     expect(panel().textContent).toContain(`Run ${NEWEST}`);
     expect(panel().textContent).not.toContain('No steps recorded');
     expect(within(panel()).queryByRole('alert')).toBeNull();
@@ -375,7 +375,7 @@ describe('OMN-19987 / OMN-21015 AC9: the Workflow page shows one run, asked for 
   it('W9: a failed read is shown as the failure, not as a run with no steps', async () => {
     lab.trace = () => ({ status: 500, body: { error: 'projection_database_unavailable', topic: RUN_TRACE } });
     open('/workflow');
-    await waitFor(() => expect(within(panel()).getByRole('alert').textContent).toContain(`${RUN_TRACE}: HTTP 500`));
+    await waitFor(() => expect(within(panel()).getByRole('alert').textContent).toContain('The data could not be read (HTTP 500'));
     expect(panel().textContent).not.toContain('No steps recorded');
     expect(within(panel()).queryAllByRole('listitem')).toHaveLength(0);
   });

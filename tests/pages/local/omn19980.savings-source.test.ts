@@ -988,14 +988,14 @@ describe('OMN-19980 AC2c: a savings card with no served source says what it wait
     return out;
   }
 
-  it('every unbound savings card names metering-summary.v1 and shows no figure', () => {
+  it('every unbound savings card says it is not available yet and shows no figure', () => {
     const texts = unboundSavingsTexts(loadPages());
     // Every savings card is bound to metering-summary.v1: OMN-20009's Avg saving / call bound once the captured
     // catalogue served its per-run column (lab recapture 2026-10-07). The planted case below is the control that proves an unbound
     // one is found.
     expect(texts.map(({ id }) => id)).toEqual([]);
     for (const { id, text } of texts) {
-      expect(text, id).toBe(`Not served yet: waits on ${ALLOWED_SAVINGS_SOURCE}`);
+      expect(text, id).toBe('Not available yet');
     }
   });
 
@@ -1003,6 +1003,6 @@ describe('OMN-19980 AC2c: a savings card with no served source says what it wait
     const pages = plant([plantedComponent('planted-unnamed-savings', [], ['upstream-blocked'], 'metric_card')],
       [{ data_source: 'planted-unnamed-savings', config: metric('savings_usd') }]);
     const planted = unboundSavingsTexts(pages).find((entry) => entry.id === 'planted-unnamed-savings');
-    expect(planted?.text).toBe('Not served yet: waits on its exposure');
+    expect(planted?.text).toBe('Not available yet');
   });
 });

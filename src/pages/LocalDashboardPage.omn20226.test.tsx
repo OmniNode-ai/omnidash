@@ -122,7 +122,7 @@ describe('OMN-20226 Overview page, fresh store', () => {
       harness.reachable = new Set();
       harness.answer = () => Promise.resolve([]);
       const card = await panel(title);
-      expect(within(card).getByRole('status').textContent).toBe(`Not served: ${METERING}`);
+      expect(within(card).getByRole('status').textContent).toBe('Not available yet.');
       expect(card.querySelector('.local-dashboard-metric')).toBeNull();
     });
   }

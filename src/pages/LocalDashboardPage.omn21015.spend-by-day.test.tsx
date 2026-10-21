@@ -213,7 +213,7 @@ describe('OMN-21015 AC1: Overview shows baseline against actual spend per UTC da
     await overview([RECORDED_ALL]);
     expect(within(panel()).queryByRole('table')).toBeNull();
     expect(within(panel()).getByRole('status').textContent).toBe('Daily spend data unavailable.');
-    expect(within(panel()).getByText('No day rows yet: waits on metering-summary day rows')).toBeInTheDocument();
+    expect(within(panel()).getByText('No day rows yet.')).toBeInTheDocument();
   });
 
   it('S7: days are rendered in the order served', async () => {

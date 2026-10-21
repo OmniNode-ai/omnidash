@@ -23,7 +23,7 @@ test('stalled catalogue has a bounded error and a working refresh recovery', asy
   });
   await page.goto('/runs');
   try {
-    await expect(page.getByRole('alert')).toContainText('Exposure catalogue: no answer in 5 s', { timeout: 6500 });
+    await expect(page.getByRole('alert')).toContainText('No answer within 5 seconds.', { timeout: 6500 });
     await expect(page.getByText('Loading runtime exposures…', { exact: true })).toHaveCount(0);
     expect(projectionReads).toBe(0);
     await page.screenshot({ path: info.outputPath('catalogue-timeout.png') });
@@ -44,7 +44,7 @@ test('catalogue refresh failure is visible while last good data and filters rema
   await page.getByLabel('Status', { exact: true }).selectOption('failed');
   await page.route('**/projections', route => route.fulfill({ status: 503, body: 'unavailable' }));
   await page.getByRole('button', { name: 'Refresh', exact: true }).click();
-  await expect(page.getByRole('alert')).toContainText('GET /projections returned HTTP 503');
+  await expect(page.getByRole('alert')).toContainText('The data could not be read (HTTP 503');
   await expect(page.getByRole('alert')).toContainText('Showing saved data.');
   await expect(page.getByLabel('Status', { exact: true })).toHaveValue('failed');
   await expect(page.locator('a[href*="correlation_id=chart-run-b"]').first()).toBeVisible();

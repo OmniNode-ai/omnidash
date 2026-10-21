@@ -177,7 +177,7 @@ describe('OMN-19980 AC2c: a savings card with nothing measured or served says so
     served();
     await open('overview');
     const card = panel('Savings');
-    expect(within(card).getByText(`Not served: ${METERING}`)).toBeInTheDocument();
+    expect(within(card).getByText('Not available yet.')).toBeInTheDocument();
     noFigure(card);
   });
 
@@ -193,7 +193,7 @@ describe('OMN-19980 AC2c: a savings card with nothing measured or served says so
     served({ [METERING]: new Error(`Projection ${METERING} failed: HTTP 503 Service Unavailable`) });
     await open('overview');
     const card = panel('Savings');
-    expect(within(card).getByRole('alert')).toHaveTextContent(`${METERING}: HTTP 503 Service Unavailable`);
+    expect(within(card).getByRole('alert')).toHaveTextContent('The data could not be read (HTTP 503 Service Unavailable)');
     expect(within(card).queryByText(/^Not measured/)).toBeNull();
     noFigure(card);
   });
@@ -248,7 +248,7 @@ describe('OMN-19980 Step B: the Overview Savings total is metering-summary.v1\'s
     served();
     await open('overview');
     const savings = panel('Savings');
-    expect(within(savings).getByText(`Not served: ${METERING}`)).toBeInTheDocument();
+    expect(within(savings).getByText('Not available yet.')).toBeInTheDocument();
     noFigure(savings);
   });
 
@@ -297,7 +297,7 @@ describe('OMN-19980 Step B: the Overview Savings total is metering-summary.v1\'s
     served({ [METERING]: new Error(`Projection ${METERING} failed: HTTP 503 Service Unavailable`) });
     await open('overview');
     const savings = panel('Savings');
-    expect(within(savings).getByRole('alert')).toHaveTextContent(`${METERING}: HTTP 503 Service Unavailable`);
+    expect(within(savings).getByRole('alert')).toHaveTextContent('The data could not be read (HTTP 503 Service Unavailable)');
     expect(within(savings).queryByText(/^Not measured/)).toBeNull();
     noFigure(savings);
   });
@@ -326,7 +326,7 @@ describe('OMN-19980 Step B (Amendment 2): Spend, Measured runs and Tokens read t
     expect(within(measured).queryByText(/Estimated runs excluded/)).toBeNull();
     const tokens = panel('Tokens processed');
     expect(within(tokens).getByText('1,620 in · 520 out')).toBeInTheDocument();
-    expect(within(tokens).queryByText(/Not served yet/)).toBeNull();
+    expect(within(tokens).queryByText(/Not available yet/)).toBeNull();
     expect(within(tokens).queryByText(/111/)).toBeNull();
   });
 
@@ -334,7 +334,7 @@ describe('OMN-19980 Step B (Amendment 2): Spend, Measured runs and Tokens read t
     served();
     await open('overview');
     for (const title of HEADLINES) {
-      expect(within(panel(title)).getByText(`Not served: ${METERING}`), title).toBeInTheDocument();
+      expect(within(panel(title)).getByText('Not available yet.'), title).toBeInTheDocument();
       expect(figure(title), title).toEqual([]);
       expect(captions(title), title).toEqual([]);
     }

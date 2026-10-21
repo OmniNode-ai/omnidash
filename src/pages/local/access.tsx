@@ -20,7 +20,7 @@ function served(value: unknown): string {
 export function DashboardAccess({ rows }: { rows: readonly EnvironmentRow[] }) {
   const row = dashboardAccessRow(rows);
   if (row === null) {
-    return <p className="local-dashboard-empty" role="status">Not served yet: waits on local-environment.v1</p>;
+    return <p className="local-dashboard-empty" role="status">Not available yet</p>;
   }
   return (
     <dl className="local-dashboard-fields">

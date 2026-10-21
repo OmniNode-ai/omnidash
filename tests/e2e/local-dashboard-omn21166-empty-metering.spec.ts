@@ -26,7 +26,7 @@ test('empty daily spend is compact with its cause accessible and no empty chart 
     await spend.screenshot({ path: info.outputPath(`empty-spend-${width}.png`) });
   }
   await spend.getByText('Why is this unavailable?', { exact: true }).press('Enter');
-  await expect(spend.getByText('No day rows yet: waits on metering-summary day rows', { exact: true })).toBeVisible();
+  await expect(spend.getByText('No day rows yet.', { exact: true })).toBeVisible();
   await page.screenshot({ path: info.outputPath('empty-spend-cause.png'), fullPage: true });
 });
 

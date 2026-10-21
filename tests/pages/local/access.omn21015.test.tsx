@@ -46,7 +46,7 @@ describe('OMN-21015 AC10 dashboard access', () => {
 
   it('A3: with no native row it names what it waits on', () => {
     render(<DashboardAccess rows={[]} />);
-    expect(screen.getByText(/Not served yet: waits on local-environment\.v1/)).toBeTruthy();
+    expect(screen.getByText(/Not available yet/)).toBeTruthy();
     expect(screen.queryByText('loopback-token')).toBeNull();
   });
 
