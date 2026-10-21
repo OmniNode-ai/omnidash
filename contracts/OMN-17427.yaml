@@ -3,7 +3,7 @@
 schema_version: 1.0.0
 ticket_id: OMN-17427
 title: Remove unconsumed OmniDash documentation
-summary: Delete human prose without build or test readers and reduce the root README to four lines linking to the public knowledge base. Preserve agent instructions, the CI-read architecture handshake and the license.
+summary: Delete human prose without build or test readers and reduce the root README to four lines linking to the public knowledge base. Preserve agent instructions, the CI-read architecture handshake and the license. Migrate the eight schema-compatible OmniDash ticket contracts from change control so the closer resolves them in this repository.
 is_seam_ticket: false
 interface_change: false
 interfaces_touched: []
@@ -15,6 +15,13 @@ requirements:
         statement: 'AC1: CHANGELOG.md, SECURITY.md and .github/CONTRIBUTING.md are absent, README.md has 3-5 lines linking to knowledge_base, and CLAUDE.md, .claude/architecture-handshake.md and LICENSE remain.'
       - id: AC2
         statement: 'AC2: existing dashboard truth and typography compliance tests still pass with the shortened README and unchanged agent instructions.'
+  - id: req-local-ticket-contracts
+    statement: The scheduled closer can resolve the eight migrated OmniDash ticket contracts without a change-control checkout.
+    acceptance:
+      - id: AC3
+        statement: 'AC3: contracts/ contains locally resolvable YAML files for OMN-14754, OMN-14895, OMN-16396, OMN-17184, OMN-17874, OMN-18028, OMN-19865 and OMN-20186.'
+      - id: AC4
+        statement: 'AC4: all eight migrated contracts retain the exact bytes from onex_change_control commit 49cfc14c21a2c50f9964c1aeed4b66001ce279a3.'
 evidence_requirements:
   - kind: tests
     description: Verify removed documentation, the shortened README and required repository files.
@@ -22,6 +29,9 @@ evidence_requirements:
   - kind: tests
     description: Run the existing compliance tests that read the README and agent instructions.
     command: npx vitest run src/dashboard-truth-compliance.test.ts src/typography-compliance.test.ts --maxWorkers=2
+  - kind: tests
+    description: Verify local contract discovery and byte preservation against the migration source.
+    command: uv run --no-project --with pytest python -m pytest tests/contracts/test_migrated_ticket_contracts_omn17427.py -q --noconftest -p no:cacheprovider -c /dev/null
 emergency_bypass:
   enabled: false
   justification: ''
@@ -44,4 +54,20 @@ dod_evidence:
       - check_type: test_passes
         check_value: >-
           uv run --no-project --with pytest python -m pytest tests/test_documentation_removal_omn17427.py -q --noconftest -p no:cacheprovider -c /dev/null -k readme && (test -d node_modules || npm ci --no-audit --no-fund) && npx vitest run src/dashboard-truth-compliance.test.ts src/typography-compliance.test.ts --maxWorkers=2
+        cwd: "${OMNI_HOME}/omnidash"
+  - id: dod-local-ticket-contracts
+    description: Each migrated contract is available at the closer's repository-local lookup path.
+    source: manual
+    binds_ac: [AC3]
+    checks:
+      - check_type: test_passes
+        check_value: uv run --no-project --with pytest python -m pytest tests/contracts/test_migrated_ticket_contracts_omn17427.py -q --noconftest -p no:cacheprovider -c /dev/null -k locally_resolvable
+        cwd: "${OMNI_HOME}/omnidash"
+  - id: dod-migrated-contract-bytes
+    description: SHA-256 checks reject any byte change from the verified change-control source.
+    source: manual
+    binds_ac: [AC4]
+    checks:
+      - check_type: test_passes
+        check_value: uv run --no-project --with pytest python -m pytest tests/contracts/test_migrated_ticket_contracts_omn17427.py -q --noconftest -p no:cacheprovider -c /dev/null -k preserves_source_bytes
         cwd: "${OMNI_HOME}/omnidash"
