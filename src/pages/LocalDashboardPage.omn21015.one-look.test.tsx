@@ -79,7 +79,7 @@ const PARTS = [
   '.local-share', '.local-meter', '.local-dashboard-filters', '.local-dashboard-pager', '.local-run-title',
   'nav.local-run-diagram', 'ol.local-dashboard-steps', '.usage-tokens-day',
   'ul.local-run-preview', '.local-runs-search', 'dl.local-routing-counts', '.local-routing-note',
-  'nav.local-summary-links', '.local-headline-source',
+  'nav.local-summary-links',
 ].join(', ');
 /** Where a page may draw text at all. */
 const PAGE_PARTS = 'details.local-overview-secondary > summary, header.local-dashboard-header, article.local-dashboard-panel, main > [role="status"], main > [role="alert"]';

@@ -29,7 +29,7 @@ import {
   type LocalPageDocument,
   type LocalPageName,
 } from '@/layout/local-page-loader';
-import { MetricCard, PendingState, type MetricCardConfig } from '@/pages/LocalDashboardPage';
+import { MetricCard, PENDING_SOURCES, PendingState, type MetricCardConfig } from '@/pages/LocalDashboardPage';
 
 /** The one exposure a savings figure may come from; omnimarket's guard names the same string. */
 const ALLOWED_SAVINGS_SOURCE = 'metering-summary.v1';
@@ -988,21 +988,36 @@ describe('OMN-19980 AC2c: a savings card with no served source says what it wait
     return out;
   }
 
-  it('every unbound savings card names metering-summary.v1 and shows no figure', () => {
+  /**
+   * AC2c in plain words (OMN-21166 AC39): an unbound savings card waits on the approved savings source, and its text
+   * says what is missing ("Not available yet: <what>") without naming the exposure. The exposure stays in code.
+   */
+  function waitsOnApprovedSavings(id: string, text: string): boolean {
+    const pending = PENDING_SOURCES[id];
+    return pending?.exposure === ALLOWED_SAVINGS_SOURCE && text === `Not available yet: ${pending.waitsOn}`;
+  }
+
+  it('every unbound savings card says what it waits on, in plain words, and shows no figure', () => {
     const texts = unboundSavingsTexts(loadPages());
     // Every savings card is bound to metering-summary.v1: OMN-20009's Avg saving / call bound once the captured
     // catalogue served its per-run column (lab recapture 2026-10-07). The planted case below is the control that proves an unbound
     // one is found.
     expect(texts.map(({ id }) => id)).toEqual([]);
     for (const { id, text } of texts) {
-      expect(text, id).toBe(`Not served yet: waits on ${ALLOWED_SAVINGS_SOURCE}`);
+      expect(waitsOnApprovedSavings(id, text), `${id}: ${text}`).toBe(true);
     }
+    // Control: a card the pages leave unbound for its savings figure says what it waits on, in plain words.
+    const named = render(createElement(PendingState, { componentId: 'overview-avg-saving-per-call' }));
+    expect(waitsOnApprovedSavings('overview-avg-saving-per-call', named.container.textContent ?? '')).toBe(true);
+    expect(named.container.textContent).toBe('Not available yet: savings per run');
+    named.unmount();
   });
 
   it('planted: an unbound savings card with no named source is caught', () => {
     const pages = plant([plantedComponent('planted-unnamed-savings', [], ['upstream-blocked'], 'metric_card')],
       [{ data_source: 'planted-unnamed-savings', config: metric('savings_usd') }]);
     const planted = unboundSavingsTexts(pages).find((entry) => entry.id === 'planted-unnamed-savings');
-    expect(planted?.text).toBe('Not served yet: waits on its exposure');
+    expect(planted?.text).toBe('Not available yet');
+    expect(waitsOnApprovedSavings('planted-unnamed-savings', planted?.text ?? '')).toBe(false);
   });
 });

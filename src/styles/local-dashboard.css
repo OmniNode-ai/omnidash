@@ -2297,6 +2297,3 @@ figure.local-chart.ins-card { margin: 0; padding: 20px 22px; border-radius: 16px
 @media (max-width: 420px) {
   .local-dashboard-page--overview .local-overview-surface > .local-overview-summary { grid-template-columns: minmax(0, 1fr); }
 }
-
-/* The declared headline source is separate from the served baseline/run captions. */
-.local-headline-source { margin: 0; font-size: 12px; line-height: 1.4; color: var(--text-secondary); overflow-wrap: anywhere; }

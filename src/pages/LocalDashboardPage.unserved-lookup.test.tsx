@@ -99,7 +99,7 @@ describe('Runs with a savings lookup this store does not serve (OMN-19994 AC1)',
     render(<LocalDashboardPage pageName="runs" />);
     const runs = await waitFor(() => panel('Recent runs'));
     await waitFor(() => expect(within(runs).getByRole('link', { name: RUN_ID })).toBeInTheDocument());
-    expect(within(runs).getByText(`Not served: ${SAVINGS} (this store has no table for it)`)).toBeInTheDocument();
+    expect(within(runs).getByText('Not available yet: run savings.')).toBeInTheDocument();
     expect(within(runs).queryByRole('alert')).toBeNull();
     expect(screen.queryByText(/HTTP 503/)).toBeNull();
   });
@@ -109,7 +109,7 @@ describe('Runs with a savings lookup this store does not serve (OMN-19994 AC1)',
     render(<LocalDashboardPage pageName="runs" />);
     const runs = await waitFor(() => panel('Recent runs'));
     await waitFor(() => expect(within(runs).getByRole('link', { name: RUN_ID })).toBeInTheDocument());
-    expect(within(runs).getByText(`Not served: ${SAVINGS}`)).toBeInTheDocument();
+    expect(within(runs).getByText('Not available yet: run savings.')).toBeInTheDocument();
     expect(within(runs).queryByRole('alert')).toBeNull();
   });
 
@@ -118,7 +118,7 @@ describe('Runs with a savings lookup this store does not serve (OMN-19994 AC1)',
     render(<LocalDashboardPage pageName="runs" />);
     const runs = await waitFor(() => panel('Recent runs'));
     await waitFor(() => expect(within(runs).getByRole('link', { name: RUN_ID })).toBeInTheDocument());
-    expect(within(runs).getByRole('alert').textContent).toContain(`${SAVINGS}: HTTP 500`);
+    expect(within(runs).getByRole('alert').textContent).toContain('The data could not be read (HTTP 500');
   });
 
   it('keeps any other 503 an error: only the declared table-missing refusal is not-served', async () => {
@@ -126,18 +126,18 @@ describe('Runs with a savings lookup this store does not serve (OMN-19994 AC1)',
     render(<LocalDashboardPage pageName="runs" />);
     const runs = await waitFor(() => panel('Recent runs'));
     await waitFor(() => expect(within(within(runs).getByRole('alert'))
-      .getByText(`${DECISIONS}: HTTP 503 Service Unavailable`, { exact: true })).toBeInTheDocument());
+      .getByText('The data could not be read (HTTP 503 Service Unavailable).', { exact: true })).toBeInTheDocument());
     expect(within(within(runs).getByRole('alert')).getByText('Technical details', { selector: 'summary' })).toBeInTheDocument();
     expect(within(runs).queryByText(RUN_ID)).toBeNull();
-    expect(within(runs).queryByText(/^Not served: .*decisions/)).toBeNull();
+    // The decisions 503 is an error, never the run records' not-served state (the test below shows that text exists).
+    expect(within(runs).queryByText(/^Not available yet: run records/)).toBeNull();
   });
 
   it('says the run table itself is not served when the decisions table is missing', async () => {
     lab.answers[DECISIONS] = { ...TABLE_MISSING, body: { ...(TABLE_MISSING.body as object), topic: DECISIONS } };
     render(<LocalDashboardPage pageName="runs" />);
     const runs = await waitFor(() => panel('Recent runs'));
-    await waitFor(() => expect(within(runs).getByText(`Not served: ${DECISIONS} (this store has no table for it)`))
-      .toBeInTheDocument());
+    await waitFor(() => expect(within(runs).getByText('Not available yet: run records.')).toBeInTheDocument());
     expect(within(runs).queryByText(RUN_ID)).toBeNull();
     expect(screen.queryByText(/HTTP 503/)).toBeNull();
   });

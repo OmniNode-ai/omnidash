@@ -165,7 +165,7 @@ function SelectedRun({ correlationId, decision }: { correlationId: string | null
   if (!row) {
     return (
       <Panel title="SELECTED RUN" sub={shortId(correlationId)}>
-        <EvEmpty title="No trace rows for this correlation" reason={data.degradedReason} note="correlation-trace projection returned no rows for this id." />
+        <EvEmpty title="No trace rows for this correlation" reason={data.degradedReason} note="Nothing was recorded for this run yet." />
       </Panel>
     );
   }
@@ -209,7 +209,7 @@ function ModelRouting() {
   if (!agg || agg.rows.length === 0) {
     return (
       <Panel title="MODEL ROUTING">
-        <EvEmpty title="No routing aggregate" reason={data.degradedReason} note="delegation.model-routing projection returned no rows." />
+        <EvEmpty title="No routing aggregate" reason={data.degradedReason} note="No routing data yet." />
       </Panel>
     );
   }
@@ -483,7 +483,7 @@ export function DelegationEvidencePage() {
         <Panel title="RECENT DELEGATIONS"><EvEmpty title="Loading…" /></Panel>
       ) : decisions.length === 0 ? (
         <Panel title="RECENT DELEGATIONS">
-          <EvEmpty title="No delegation decisions" reason={decisionsQ.data?.degradedReason} note="delegation.decisions projection returned no rows." />
+          <EvEmpty title="No delegation decisions" reason={decisionsQ.data?.degradedReason} note="No delegation decisions recorded yet." />
         </Panel>
       ) : (
         <RecentDelegations decisions={decisions} />

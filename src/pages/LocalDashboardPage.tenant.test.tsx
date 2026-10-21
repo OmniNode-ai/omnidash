@@ -81,7 +81,7 @@ describe('LocalDashboardPage with no tenant configured (OMN-19994 AC2)', () => {
     async (pageName) => {
       const panels = await panelsOf(pageName);
       // Panels bound to no exposure (pending sources, unlinked cloud keys) read nothing and keep their own state.
-      const scopedPanels = panels.filter((panel) => !within(panel).queryByText(/waits on|Not served|CLOUD_NOT_LINKED/));
+      const scopedPanels = panels.filter((panel) => !within(panel).queryByText(/Not available yet|Cloud keys are not linked/));
       expect(scopedPanels.length).toBeGreaterThan(0);
       for (const panel of scopedPanels) {
         expect(panel.querySelector('[data-tenant-state="not-configured"]')).toBeInTheDocument();

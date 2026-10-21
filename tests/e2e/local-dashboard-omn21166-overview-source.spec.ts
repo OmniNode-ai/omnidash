@@ -36,7 +36,7 @@ async function totals(page: Page, values: string[]) {
 test('declared local-store absence selects metering before a savings read and restores exact all-time and Today figures', async ({ page }, info) => {
   const requests = await serve(page, 'not_in_local_store');
   await totals(page, ['$0.0123', '$0.0030', '23', '5,756 in · 378 out']);
-  for (const id of ids) await expect(card(page, id)).toContainText('Source: metering-summary.v1');
+  for (const id of ids) await expect(card(page, id)).not.toContainText('Source:');
   await expect(card(page, 'overview-savings')).toContainText('42% below the baseline-current baseline (modelled)');
   await page.getByRole('radio', { name: 'Today (UTC)', exact: true }).click();
   await totals(page, ['$0.0007', '$0.0012', '3', '756 in · 78 out']);
@@ -47,7 +47,7 @@ test('declared local-store absence selects metering before a savings read and re
 });
 test('served savings catalogue retains D1 despite conflicting metering and names the selected source', async ({ page }) => {
   await serve(page, 'bus'); await totals(page, ['$99.0000', '$98.0000', '97', '96']);
-  for (const id of ids) await expect(card(page, id)).toContainText('Source: cost.savings-overview.v1');
+  for (const id of ids) await expect(card(page, id)).not.toContainText('Source:');
   await page.getByRole('radio', { name: 'Today (UTC)', exact: true }).click();
   await totals(page, ids.map(() => 'Not measured: daily totals unavailable (UTC)'));
 });
@@ -68,7 +68,7 @@ test('metering keeps measured zero and independent missing token or spend values
 });
 test('a generic refusal never switches source to mask a producer failure', async ({ page }) => {
   await serve(page, 'not_yet_bus_backed', [all, day], 'producer_not_deployed');
-  for (const id of ids) { await expect(card(page, id)).toContainText('Not served'); await expect(card(page, id)).toContainText('Source: cost.savings-overview.v1'); }
+  for (const id of ids) { await expect(card(page, id)).toContainText('Not available yet'); await expect(card(page, id)).not.toContainText('Source:'); }
 });
 test('a served savings read error never falls back to metering', async ({ page }) => {
   await page.route('**/projection/**', route => route.continue());
@@ -76,5 +76,5 @@ test('a served savings read error never falls back to metering', async ({ page }
   await page.route('**/projection/**', route => decodeURIComponent(new URL(route.request().url()).pathname.split('/').at(-1)!) === overview
     ? route.fulfill({ status: 503, contentType: 'application/json', body: JSON.stringify({ error: 'fixture producer unavailable' }) }) : route.fallback());
   await page.goto('/overview');
-  for (const id of ids) { await expect(card(page, id)).toContainText('503'); await expect(card(page, id)).toContainText('Source: cost.savings-overview.v1'); }
+  for (const id of ids) { await expect(card(page, id)).toContainText('503'); await expect(card(page, id)).not.toContainText('Source:'); }
 });

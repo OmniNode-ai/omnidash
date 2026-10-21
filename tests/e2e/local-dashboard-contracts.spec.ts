@@ -255,7 +255,7 @@ test('Overview is the default page and fits 1440x900 with no unmeasured 0 (AC4)'
   await expect(headline('Agent calls').getByText('46', { exact: true })).toHaveCount(0);
   await expect(headline('Agent calls').getByText('46 measured · 3 unknown', { exact: true })).toBeVisible();
   await expect(headline('Tokens processed').getByText('9,844', { exact: true })).toBeVisible();
-  await expect(headline('Tokens processed').getByText(/Not served yet/)).toHaveCount(0);
+  await expect(headline('Tokens processed').getByText(/Not available yet/)).toHaveCount(0);
 
   // The headline tiles sit above the fold, Tokens processed among them (requirement Q3), and so do the newest run's
   // status, model and age (requirement Q2). OMN-21015 (Lakshman, 2026-10-13: the charts are moved up so a reader sees
@@ -342,7 +342,7 @@ test('Usage shows measured cost beside unmeasured runs, never 0 for unmeasured, 
   for (const value of ['2026-10-02', '$0.40', '46']) await expect(day.getByText(value, { exact: true })).toBeVisible();
   await expect(series.getByRole('row')).toHaveCount(2);
   await expect(savings.getByText('$1.2184')).toHaveCount(0);
-  await expect(savings.getByText(/Not served yet/)).toHaveCount(0);
+  await expect(savings.getByText(/Not available yet/)).toHaveCount(0);
   await expectNoPanelCutOff(page);
 
   await page.screenshot({ path: screenshotPath('local-dashboard-usage-1440x900.png'), fullPage: false });

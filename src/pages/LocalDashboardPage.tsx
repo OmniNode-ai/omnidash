@@ -22,6 +22,7 @@ import { PassRateMeter, TierShareChart, TIER_TONES } from '@/pages/local/shares'
 import { InsightsSection, InsightsWindowContext, OverviewRunsContext, TaskIcon } from '@/pages/local/insight-charts';
 import { SinceLastVisit } from '@/pages/local/since-last-visit';
 import { ModelKeys } from '@/pages/local/model-keys';
+import { notAvailableYet, plainFailureMessage } from '@/pages/local/plain-text';
 import { RunFilterProvider, causeHref, causeLabelOf, useRunFilter } from '@/pages/local/run-filter';
 import { typedFailureCauseOf } from '@/pages/local/insights';
 import { shortId } from '@/components/dashboard/event-dash/primitives';
@@ -98,29 +99,28 @@ interface MetricCardProps {
   figureLineFields?: readonly string[];
 }
 
-/**
- * The exposure a card without a served binding waits for. A page contract cannot carry free text, so the name a
- * typed "not served yet" state shows lives here, one entry per such card (requirements: an empty state names
- * what it waits on).
- */
-const PENDING_SOURCES: Record<string, string> = {
-  // OMN-20009: the per-run saving is a metering-summary.v1 column (migration 0002); shown while a page contract leaves
-  // the card unbound.
-  'overview-avg-saving-per-call': 'metering-summary.v1',
-  // OMN-20226: compression_ratio and cache_hit_rate are metering-summary.v1 columns (migration 0003).
-  'overview-compression': 'metering-summary.v1',
-  'overview-cache-hit-rate': 'metering-summary.v1',
-};
-
 /** AK-3: cloud keys are not linked in the local MVP; one line, no form. */
-const CLOUD_NOT_LINKED = 'CLOUD_NOT_LINKED: cloud keys are not linked in the local runtime. There is nothing to set here.';
+const CLOUD_NOT_LINKED = 'Cloud keys are not linked in the local runtime. There is nothing to set here.';
+
+/**
+ * What a card without a served binding waits on (requirements: an empty state names what it waits on; OMN-19980 AC2c).
+ * A page contract cannot carry free text, so it lives here, one entry per such card: the exposure, kept in code for
+ * the contract tests, and what it means in plain words, which is all the user reads (OMN-21166 AC39).
+ */
+export const PENDING_SOURCES: Readonly<Record<string, { exposure: string; waitsOn: string }>> = {
+  // OMN-20009: the per-run saving is a metering-summary.v1 column (migration 0002).
+  'overview-avg-saving-per-call': { exposure: 'metering-summary.v1', waitsOn: 'savings per run' },
+  // OMN-20226: compression_ratio and cache_hit_rate are metering-summary.v1 columns (migration 0003).
+  'overview-compression': { exposure: 'metering-summary.v1', waitsOn: 'compression data' },
+  'overview-cache-hit-rate': { exposure: 'metering-summary.v1', waitsOn: 'cache hit data' },
+};
 
 /** A component bound to no served exposure: what it waits on, never a blank panel (FR-3 partial pages, SV-3). */
 export function PendingState({ componentId }: { componentId: string }) {
   if (componentId === 'api-keys-cloud') return <p className="local-dashboard-empty" role="status">{CLOUD_NOT_LINKED}</p>;
   return (
     <p className="local-dashboard-empty" role="status">
-      {`Not served yet: waits on ${PENDING_SOURCES[componentId] ?? 'its exposure'}`}
+      {notAvailableYet(PENDING_SOURCES[componentId]?.waitsOn)}
     </p>
   );
 }
@@ -158,8 +158,7 @@ function captionText(caption: Record<string, unknown> | null | undefined): strin
  */
 export function MetricCard({ component, config, row, caption, figureLine, figureLineFields = [] }: MetricCardProps) {
   if ((component.data_bindings ?? []).length === 0) {
-    const source = PENDING_SOURCES[component.component_id] ?? 'its exposure';
-    return <p className="local-dashboard-empty" role="status">{`Not served yet: waits on ${source}`}</p>;
+    return <p className="local-dashboard-empty" role="status">{notAvailableYet(PENDING_SOURCES[component.component_id]?.waitsOn)}</p>;
   }
   const required = (component.data_bindings?.[0]?.required_fields ?? [config.metric_key])
     .filter((field) => !figureLineFields.includes(field));
@@ -197,7 +196,8 @@ export function MetricCard({ component, config, row, caption, figureLine, figure
   );
 }
 
-const ROUTING_SHARE_PENDING = 'Not served yet: waits on local_call_share in delegation.model-routing.v1';
+// OMN-20009: waits on local_call_share in delegation.model-routing.v1.
+const ROUTING_SHARE_PENDING = notAvailableYet('share of runs kept local');
 
 function asRecord(value: unknown): Record<string, unknown> | null {
   return typeof value === 'object' && value !== null && !Array.isArray(value) ? (value as Record<string, unknown>) : null;
@@ -393,7 +393,8 @@ function pctAgainstBaseline(ratio: unknown, baselineModel: unknown): string | nu
   return `${pct} ${value < 0 ? 'above' : 'below'} the ${String(baselineModel)} baseline (modelled)`;
 }
 
-const SAVING_PER_RUN_PENDING = 'Not served yet: waits on savings_per_measured_run_usd in metering-summary.v1';
+// OMN-20009: waits on savings_per_measured_run_usd in metering-summary.v1.
+const SAVING_PER_RUN_PENDING = notAvailableYet(PENDING_SOURCES['overview-avg-saving-per-call']!.waitsOn);
 
 /**
  * OMN-20009: the average saving of a measured run, from metering-summary.v1's row for the chosen window (all time by
@@ -1456,7 +1457,7 @@ export function WorkflowRun({ component, snapshots, requested, onOpen }: Workflo
   const runId = stepsRead?.runId ?? null;
   // The decisions exposure gates nothing here (a pasted id needs no decision row), so its not-served state is named.
   const decisionsNotServed = decisionsRead?.failure?.kind === 'not-served' && !decisionsRead.lastGoodAt
-    ? <p className="local-dashboard-empty" role="status">{decisionsRead.failure.message}</p>
+    ? <p className="local-dashboard-empty" role="status">{plainFailureMessage(decisionsRead.failure, { topic: decisionsRead.topic })}</p>
     : null;
   if (runId === null) {
     return (
@@ -1539,7 +1540,7 @@ interface DeclaredColumn {
   format?: string | null;
 }
 
-const NO_DAY_ROWS = 'No day rows yet: waits on metering-summary day rows';
+const NO_DAY_ROWS = 'No day rows yet.';
 const DAY_FIGURES_MODELLED = "Baseline figures are modelled: the runs' tokens priced at the baseline model's list price. The baseline never ran.";
 
 /**
@@ -1749,7 +1750,7 @@ function ReadFailureNotice({ snapshot, title, now, savedMessage, onRetry = reque
       <button type="button" disabled={retrying} aria-busy={retrying} onClick={() => { setRetrying(true); onRetry(); }}>{retrying ? 'Retrying…' : 'Try again'}</button>
     </div>
     <p>{savedMessage ?? (snapshot.lastGoodAt ? `Showing saved data from ${age(snapshot.lastGoodAt, now)}.` : 'You can retry now or wait for the next refresh.')}</p>
-    <details><summary>Technical details</summary><p className="local-read-technical">{snapshot.failure!.message}{snapshot.lastGoodAt ? `; last good ${age(snapshot.lastGoodAt, now)}` : ''}</p></details>
+    <details><summary>Technical details</summary><p className="local-read-technical">{plainFailureMessage(snapshot.failure!, { topic: snapshot.topic })}{snapshot.lastGoodAt ? `; last good ${age(snapshot.lastGoodAt, now)}` : ''}</p></details>
   </div>;
 }
 
@@ -1781,7 +1782,7 @@ function WidgetReadState({ component, snapshots, now, interval }: {
         <ReadFailureNotice key={snapshot.topic} snapshot={snapshot} title={component.title} now={now} />
       ))}
       {unservedLookups.map((snapshot) => (
-        <p className="local-dashboard-empty" role="status" key={snapshot.topic}>{snapshot.failure!.message}</p>
+        <p className="local-dashboard-empty" role="status" key={snapshot.topic}>{plainFailureMessage(snapshot.failure!, { topic: snapshot.topic })}</p>
       ))}
       {readAt !== null && (
         // OMN-21166 (Lakshman, 2026-10-18): a fresh read is not drawn on every panel; it stays for assistive tech, and a
@@ -1815,7 +1816,7 @@ function notServedTopic(
 ): string | null {
   const snapshot = rowGatingSnapshots(component, snapshots)
     .find((candidate) => candidate.failure?.kind === 'not-served' && !candidate.lastGoodAt);
-  return snapshot?.failure?.message ?? null;
+  return snapshot?.failure ? plainFailureMessage(snapshot.failure, { topic: snapshot.topic }) : null;
 }
 
 /** A component whose row-gating binding failed with no last good rows renders only its read state. */
@@ -2082,8 +2083,6 @@ export function LocalDashboardPage({ pageName, syncUrl = false, navigationCache 
       >
         <h2 data-page-heading={pageName !== 'overview' || ['overview-quality', 'overview-insights', 'overview-spend-by-day', 'overview-last-run', 'overview-recent-runs', 'overview-tier-mix'].includes(component.component_id) ? '' : undefined} tabIndex={-1}>{PanelIcon && <PanelIcon size={14} aria-hidden="true" />}{pageName === 'overview' && component.component_id === 'overview-insights' ? 'Activity trends' : component.title}</h2>
         {outsideWindow && <p className="local-dashboard-caption">{OUTSIDE_WINDOW_NOTE}</p>}
-        {pageName === 'overview' && ['overview-spend', 'overview-savings', 'overview-measured', 'overview-tokens'].includes(component.component_id)
-          && <p className="local-headline-source">Source: {component.data_bindings?.[0]?.projection_topic === METERING_SUMMARY_TOPIC ? 'metering-summary.v1' : 'cost.savings-overview.v1'}</p>}
         {pending ? <p className="local-dashboard-caption" role="status">Loading data…</p>
           : unbound && component.component_kind !== 'metric_card' ? <PendingState componentId={component.component_id} />
           : component.component_id === 'workflow-run-path' ? (

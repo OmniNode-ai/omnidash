@@ -5,6 +5,7 @@ import { FieldIcon } from '@/components/dashboard/FieldIcon';
 import { fieldTone, isUnavailableField } from '@/components/dashboard/field-identity';
 import { formatUsd } from '@/components/dashboard/usage/UsageByModelDayWidget';
 import type { BoundProjectionSnapshot } from '@/layout/local-page-loader';
+import { plainFailureMessage } from './plain-text';
 
 type Run = Record<string, unknown>;
 const recorded = (value: unknown) => value === null || value === undefined || value === '' ? 'Not recorded' : String(value);
@@ -110,22 +111,6 @@ function AnswerText({ text }: { text: string }) {
 }
 
 /**
- * A failed answer read in plain words (OMN-21166 AC39): the loader's message names the exposure, so it is never shown.
- * Only an HTTP status is kept, because it is the one part a user can act on or report.
- */
-function answerReadFailure(failure: { kind: string; message: string }): string {
-  switch (failure.kind) {
-    case 'not-served': return 'Not available yet.';
-    case 'timeout': return 'No answer within 5 seconds.';
-    case 'tenant-not-configured': return 'No tenant is configured for this dashboard.';
-    default: {
-      const status = /HTTP \d{3}.*$/.exec(failure.message)?.[0];
-      return status ? `The answer could not be read (${status}).` : 'The answer could not be read.';
-    }
-  }
-}
-
-/**
  * OMN-19920: the run's answer, the response_text of its delegation_events row as correlation-trace.v1 serves it for
  * this correlation id. Each state says what it is: not read yet, not served, read failed, served with no answer, or
  * answered for another run (refused, never shown under this run's id). What the user reads names no exposure, topic
@@ -139,7 +124,7 @@ export function RunAnswer({ read, runId }: { read: BoundProjectionSnapshot | und
     body = state('Reading the answer…');
   } else if (read.failure && !read.lastGoodAt) {
     const failed = read.failure.kind === 'error' || read.failure.kind === 'timeout';
-    body = state(answerReadFailure(read.failure), failed);
+    body = state(plainFailureMessage(read.failure, { topic: read.topic, subject: 'The answer' }), failed);
   } else {
     const rows = read.rows.filter((row): row is Run => typeof row === 'object' && row !== null && !Array.isArray(row));
     const answers = rows.filter((row) => row.response_text !== null && row.response_text !== undefined && row.response_text !== '');

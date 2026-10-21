@@ -10,7 +10,7 @@ test('slow quality data recovers immediately after the five-second notice',async
  await page.goto('/overview');const panel=page.locator('[data-component="overview-quality"]');
  await expect(panel.getByText('Quality data is taking longer than expected.',{exact:true})).toBeVisible({timeout:8000});
  const details=panel.locator('details');await expect(details).not.toHaveAttribute('open','');
- await expect(panel.getByText(quality+': no answer in 5 s',{exact:false})).toBeHidden();
+ await expect(panel.getByText('No answer within 5 seconds.',{exact:false})).toBeHidden();
  await page.screenshot({path:info.outputPath('quality-friendly-slow.png')});release();
  await expect(panel.locator('[role="alert"]')).toHaveCount(0,{timeout:3000});
  await expect(panel.getByText('Checks',{exact:true}).locator('..')).toContainText('8');
@@ -26,7 +26,7 @@ test('failed refresh keeps saved values and supports retry with technical detail
  await expect(panel.getByText(/Showing saved data from/)).toBeVisible();
  await expect(panel.getByText('Checks',{exact:true}).locator('..')).toContainText('8');
  await panel.getByText('Technical details',{exact:true}).click();
- await expect(panel.getByText(quality+': HTTP 503',{exact:false})).toBeVisible();
+ await expect(panel.getByText('The data could not be read (HTTP 503',{exact:false})).toBeVisible();
  fail=false;await panel.getByRole('button',{name:'Try again',exact:true}).click();
  await expect(panel.locator('[role="alert"]')).toHaveCount(0);
  await page.screenshot({path:info.outputPath('quality-retry-recovered.png')});
