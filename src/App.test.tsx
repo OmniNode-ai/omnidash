@@ -1,5 +1,5 @@
 import { render, screen } from '@testing-library/react';
-import { describe, it, expect, beforeEach } from 'vitest';
+import { describe, it, expect, beforeAll, beforeEach } from 'vitest';
 import { Providers } from './providers/Providers';
 import { RegistryProvider } from './registry/RegistryProvider';
 import { App } from './App';
@@ -14,6 +14,12 @@ const manifest: RegistryManifest = {
 };
 
 describe('App', () => {
+  // DashboardView is a lazy destination (App.tsx); load its chunk first so the
+  // canvas renders within the default find timeout on a cold, instrumented run.
+  beforeAll(async () => {
+    await import('./pages/DashboardView');
+  }, 60000);
+
   beforeEach(() => {
     window.history.replaceState(null, '', '/dashboard');
     // These cases render the dashboard canvas; since OMN-19981 Amendment 6 the app opens on the local Overview.
