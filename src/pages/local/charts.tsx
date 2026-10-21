@@ -4,12 +4,17 @@ import { Link } from 'wouter';
 import { workflowHref } from '@/navigation/workflow-url-state';
 import ReactEChartsCore from 'echarts-for-react/lib/core';
 import * as echarts from 'echarts/core';
-import { BarChart } from 'echarts/charts';
-import { DataZoomComponent, GridComponent, TooltipComponent } from 'echarts/components';
+// Register only the features these charts render. The catalogue entry points
+// also load every unused chart and component in the unbundled dev server,
+// delaying the local pages on a cold start.
+import 'echarts/lib/chart/bar';
+import 'echarts/lib/component/dataZoom';
+import 'echarts/lib/component/grid';
+import 'echarts/lib/component/tooltip';
 import { SVGRenderer } from 'echarts/renderers';
 import { cssColorToHex, useThemeName } from '@/theme';
 
-echarts.use([BarChart, GridComponent, TooltipComponent, DataZoomComponent, SVGRenderer]);
+echarts.use([SVGRenderer]);
 
 /** Motion is a rendering preference, not a CSS-only effect: ECharts also obeys it. */
 function useChartMotion() {
