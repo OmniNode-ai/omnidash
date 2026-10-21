@@ -18,7 +18,8 @@
 //   R2s the answer's read states collapse into one: not served, read failed, and served-but-no-answer must each say
 //       so, and an unread answer is never shown as an empty one;
 //   R2f the exposure answers a row of another correlation id and it is shown as this run's answer;
-//   R3  a failed run's typed cause is not on the view (AC5);
+//   R3  a failed run's typed cause is not on the view (AC5): the served terminal_failure_cause loses to the
+//       quality_gate_detail text, or a failed run with no typed cause loses its detail;
 //   R4  the receipt id is missing, or is not the run's correlation id (the id receipt.json records as receipt_id) (AC5);
 //   R5  the answer is rendered as markup: HTML in the answer creates elements (an img with an onerror handler runs),
 //       or markdown is turned into HTML (AC6);
@@ -248,7 +249,18 @@ describe('OMN-19920: one run whole on the Workflow page', () => {
     expect(panel().textContent).not.toContain(`answer of ${NEWEST}`);
   });
 
-  it('R3: a failed run shows its typed cause', async () => {
+  it('R3: a failed run shows its typed cause, the one OMN-19919 serves, not the detail text', async () => {
+    lab.decisions = served([decision(OLDER, '2026-10-11T15:00:00Z', {
+      quality_gate_passed: false, quality_gate_detail: 'provider_timeout: no answer in 30 s', terminal_ok: 0,
+      terminal_failure_cause: 'timeout',
+    })]);
+    open(`/workflow?correlation_id=${OLDER}`);
+    await shows(`backend-of-${OLDER}`);
+    const shown = fieldsShown();
+    expect([shown.Status, shown.Cause]).toEqual(['failed', 'timeout']);
+  });
+
+  it('R3: a failed run with no typed cause served keeps its whole detail as the cause', async () => {
     lab.decisions = served([decision(OLDER, '2026-10-11T15:00:00Z', {
       quality_gate_passed: false, quality_gate_detail: 'provider_timeout: no answer in 30 s', terminal_ok: 0,
     })]);
