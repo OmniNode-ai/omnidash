@@ -71,7 +71,17 @@ function causeLabel(detail: unknown): string {
  * terminal_failure_cause until omnimarket adds it (OMN-19919 AC4); until then every run falls back to the label.
  */
 export function failureCauseOf(row: Readonly<Record<string, unknown>>): string {
-  return text(row.terminal_failure_cause)?.trim() ?? causeLabel(row.quality_gate_detail);
+  return typedFailureCauseOf(row) ?? causeLabel(row.quality_gate_detail);
+}
+
+/**
+ * The served typed terminal_failure_cause, trimmed, or null when none is served. Padding is not part of a cause, and a
+ * value that is only whitespace is no cause at all, so every caller falls back exactly as it does for a missing one.
+ * This is the one place the typed cause is normalised; the run cards ask it whether a typed cause exists.
+ */
+export function typedFailureCauseOf(row: Readonly<Record<string, unknown>>): string | null {
+  const cause = typeof row.terminal_failure_cause === 'string' ? row.terminal_failure_cause.trim() : '';
+  return cause === '' ? null : cause;
 }
 
 /**

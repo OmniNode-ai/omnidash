@@ -22,6 +22,7 @@ import { PassRateMeter, TierShareChart, TIER_TONES } from '@/pages/local/shares'
 import { InsightsSection, InsightsWindowContext, OverviewRunsContext, TaskIcon } from '@/pages/local/insight-charts';
 import { SinceLastVisit } from '@/pages/local/since-last-visit';
 import { RunFilterProvider, causeHref, causeLabelOf, useRunFilter } from '@/pages/local/run-filter';
+import { typedFailureCauseOf } from '@/pages/local/insights';
 import { shortId } from '@/components/dashboard/event-dash/primitives';
 import { FieldIcon } from '@/components/dashboard/FieldIcon';
 import { modelIdentityStyle } from '@/components/dashboard/model-identity';
@@ -524,7 +525,9 @@ function failureDetailOf(decision: Row | undefined): string | null {
  * card that has room for it loses nothing while decisions.v1 does not serve the typed cause.
  */
 function causeTextOf(decision: Row | undefined): string {
-  return isMissing(decision?.terminal_failure_cause) ? (failureDetailOf(decision) ?? 'Not recorded') : causeOf(decision);
+  return decision === undefined || typedFailureCauseOf(decision) === null
+    ? (failureDetailOf(decision) ?? 'Not recorded')
+    : causeOf(decision);
 }
 
 /**

@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import { fireEvent, render, screen, within } from '@testing-library/react';
 import { afterEach, describe, expect, it } from 'vitest';
-import { LastRunCard, NoRunsYet, RecentRunsTable, RunsTable } from './LocalDashboardPage';
+import { LastRunCard, NoRunsYet, RecentRunsTable, RunSummary, RunsTable } from './LocalDashboardPage';
 import { causeHref } from './local/run-filter';
 
 // Shapes are the lakshman-lane reads of 2026-10-02 11:34Z: a decisions row and the savings session that shares its id.
@@ -373,5 +373,56 @@ describe('OMN-19919 AC5, AC6: Runs lists failed runs with their typed cause', ()
     expect(legacy).toHaveTextContent('MALFORMED: invalid syntax');
     fireEvent.change(screen.getByLabelText('Search runs'), { target: { value: 'invalid syntax' } });
     expect(listed()).toEqual(['run-legacy']);
+  });
+});
+
+// OMN-19919 AC5, AC6 (Codex review MSG b4b74423): a typed cause that is only whitespace is no typed cause. It must fall
+// back exactly as a missing one does, on every surface that shows a failed run's cause.
+//
+// Failure modes, each with a test below:
+//   W1  a whitespace-only terminal_failure_cause with an absent or empty detail shows a blank cause on Runs, or the cause
+//       filter offers a blank cause, instead of Not recorded
+//   W2  the last-run card and the Workflow run summary treat a whitespace-only cause as typed: they show the detail's
+//       leading label instead of the whole served detail (what they show when no typed cause is served), or a blank
+describe('OMN-19919: a whitespace-only typed cause falls back like a missing one', () => {
+  const blankCause = (id: string, at: string, detail: unknown, cause = '   ') =>
+    decision(id, at, { terminal_ok: 0, quality_gate_passed: 0, quality_gate_detail: detail, terminal_failure_cause: cause });
+  const listed = () => (screen.getAllByRole('row').slice(1) as HTMLTableRowElement[]).map((row) => row.cells[0]!.textContent);
+
+  it('W1: Runs lists it under status=failed with cause Not recorded, and offers no blank cause', () => {
+    render(<RunsTable now={NOW} decisions={[
+      blankCause('run-ws-null', '2026-10-02T10:05:00Z', null),
+      blankCause('run-ws-empty', '2026-10-02T10:04:00Z', ''),
+      blankCause('run-ws-tab', '2026-10-02T10:03:00Z', undefined, '\t \n'),
+    ]} sessions={[]} />);
+    fireEvent.change(screen.getByLabelText('Status'), { target: { value: 'failed' } });
+    expect(listed()).toEqual(['run-ws-null', 'run-ws-empty', 'run-ws-tab']);
+    const headers = screen.getAllByRole('columnheader').map((cell) => cell.textContent?.trim());
+    for (const id of ['run-ws-null', 'run-ws-empty', 'run-ws-tab']) {
+      const row = screen.getByRole('row', { name: new RegExp(`^${id}`) });
+      expect(within(row).getAllByRole('cell')[headers.indexOf('Cause')]!.textContent, id).toBe('Not recorded');
+    }
+    const options = within(screen.getByLabelText('Cause')).getAllByRole('option').map((option) => option.getAttribute('value'));
+    expect(options).toEqual(['all', 'Not recorded']);
+  });
+
+  it('W2: the last-run card and the run summary show the whole detail, or Not recorded with none', () => {
+    const withDetail = blankCause('run-ws', '2026-10-02T10:07:00Z', 'MALFORMED: invalid syntax');
+    const noDetail = blankCause('run-ws', '2026-10-02T10:07:00Z', null);
+    const cardCause = () => within(screen.getByRole('region', { name: 'Last run' })).getByText('Cause', { selector: 'dt' }).nextElementSibling?.textContent;
+    const summaryCause = (container: HTMLElement) => container.querySelector('[data-summary-field="Cause"] dd')?.textContent;
+
+    const card = render(<LastRunCard now={NOW} decisions={[withDetail]} sessions={[]} />);
+    expect(cardCause()).toBe('MALFORMED: invalid syntax');
+    card.unmount();
+    const summary = render(<RunSummary decision={withDetail} />);
+    expect(summaryCause(summary.container)).toBe('MALFORMED: invalid syntax');
+    summary.unmount();
+
+    const bareCard = render(<LastRunCard now={NOW} decisions={[noDetail]} sessions={[]} />);
+    expect(cardCause()).toBe('Not recorded');
+    bareCard.unmount();
+    const bareSummary = render(<RunSummary decision={noDetail} />);
+    expect(summaryCause(bareSummary.container)).toBe('Not recorded');
   });
 });

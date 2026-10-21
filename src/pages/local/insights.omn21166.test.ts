@@ -179,3 +179,21 @@ describe('OMN-19919: typed failure cause and terminal_ok on the Overview list', 
     expect(runs.map(run => [run.status, run.cause])).toEqual([['failed', 'MALFORMED'], [null, null], [null, null], ['passed', null]]);
   });
 });
+
+// OMN-19919 (Codex review MSG b4b74423): a typed cause that is only whitespace is no typed cause.
+//   T6  a whitespace-only terminal_failure_cause with an absent or empty detail is grouped as a blank cause instead of
+//       Not recorded; a typed cause with padding is grouped apart from the same cause without it
+describe('OMN-19919: a whitespace-only typed cause on the Overview list', () => {
+  it('T6: it counts under Not recorded with an absent or empty detail, and padding never splits a cause', () => {
+    const failed = (at: string, extra: Record<string, unknown>) => row(at, { terminal_ok: 0, quality_gate_passed: 0, ...extra });
+    const runs = toInsightRuns([
+      failed('2026-10-18T08:00:00Z', { quality_gate_detail: null, terminal_failure_cause: '   ' }),
+      failed('2026-10-18T08:01:00Z', { quality_gate_detail: '', terminal_failure_cause: '\t \n' }),
+      failed('2026-10-18T08:02:00Z', { quality_gate_detail: undefined, terminal_failure_cause: ' ' }),
+      failed('2026-10-18T08:03:00Z', { quality_gate_detail: null, terminal_failure_cause: ' timeout ' }),
+      failed('2026-10-18T08:04:00Z', { quality_gate_detail: null, terminal_failure_cause: 'timeout' }),
+    ]);
+    expect(runs.map(run => run.cause)).toEqual(['Not recorded', 'Not recorded', 'Not recorded', 'timeout', 'timeout']);
+    expect(causes(runs).map(({ cause, count }) => [cause, count])).toEqual([['Not recorded', 3], ['timeout', 2]]);
+  });
+});
