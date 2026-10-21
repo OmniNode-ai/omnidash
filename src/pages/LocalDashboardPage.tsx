@@ -21,6 +21,7 @@ import { RunDurationChart, RunMetricChart, RunTimingChart, RunTokensChart, Spend
 import { PassRateMeter, TierShareChart, TIER_TONES } from '@/pages/local/shares';
 import { InsightsSection, InsightsWindowContext, OverviewRunsContext, TaskIcon } from '@/pages/local/insight-charts';
 import { SinceLastVisit } from '@/pages/local/since-last-visit';
+import { ModelKeys } from '@/pages/local/model-keys';
 import { RunFilterProvider, causeHref, causeLabelOf, useRunFilter } from '@/pages/local/run-filter';
 import { typedFailureCauseOf } from '@/pages/local/insights';
 import { shortId } from '@/components/dashboard/event-dash/primitives';
@@ -1661,7 +1662,9 @@ function TableComponent({ component, snapshots, pageSize, syncUrl, columns }: {
       ? <QualityPanel row={row} />
       : <TierMixPanel row={row} compact={component.component_id === 'overview-tier-mix'} />;
   }
-  if (component.component_id === 'credentials-keys') return <CredentialsTable rows={rows} />;
+  // OMN-20816: the models delegation can use, read-only from `onex dashboard`'s GET /models (keys change in the
+  // terminal), above the served key references.
+  if (component.component_id === 'credentials-keys') return <><ModelKeys /><CredentialsTable rows={rows} /></>;
   // US-1, US-2, US-4: served rows as served. The exposure is tenant-scoped, so the server filters, not the browser.
   if (component.component_id === 'usage-by-model-day') return <UsageByModelDayTable rows={rows} interactive />;
   // US-1 (OMN-21015 AC4): the same served rows as a stacked series, tokens in and out apart, split by model.
