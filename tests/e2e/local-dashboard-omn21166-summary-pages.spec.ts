@@ -47,7 +47,10 @@ test('Runs owns deep analysis and failure drilldown still filters exact records'
     await expect(page.getByRole('figure', { name, exact: true })).toBeVisible();
   }
   await page.getByRole('figure', { name: 'Why runs failed', exact: true }).getByRole('button', { name: 'Show runs failed by SUMMARY_FAILURE', exact: true }).click();
-  await expect(page.getByRole('searchbox', { name: 'Search runs' })).toHaveValue('SUMMARY_FAILURE');
+  // OMN-19919 AC7: a cause opens Runs on status=failed and that cause (the cause filter), not a free-text search.
+  await expect(page).toHaveURL(/\/runs\?status=failed&cause=SUMMARY_FAILURE$/);
+  await expect(page.getByLabel('Cause', { exact: true })).toHaveValue('SUMMARY_FAILURE');
+  await expect(page.getByRole('searchbox', { name: 'Search runs' })).toHaveValue('');
   await expect(page.locator('[data-component="recent-runs"] tbody tr')).toHaveCount(10);
   await expect(page.locator('[data-component="recent-runs"] tbody')).not.toContainText('summary-run-0');
   await expect(page.locator('[data-component="runs-tier-mix"]')).toContainText('local');

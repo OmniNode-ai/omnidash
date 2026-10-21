@@ -3,7 +3,7 @@ import {
   ArrowDown, ArrowDownUp, ArrowUp, CalendarClock, ChartColumnStacked, CircleHelp, CodeXml, FileText, FlaskConical, GitPullRequest, Globe,
   Hourglass, LayoutGrid, ScrollText, TrendingUp, TriangleAlert, Trophy, ChartBarBig, ChartPie, Network,
 } from 'lucide-react';
-import { useSharedRunFilter } from './run-filter';
+import { causeHref, useSharedRunFilter } from './run-filter';
 import { Link } from 'wouter';
 import {
   NOT_RECORDED, causes, countBy, dailySeries, durationBuckets, hourGrid, summary, toInsightRuns, windowRuns,
@@ -302,6 +302,16 @@ function ModelScoreboard({ runs }: { runs: InsightRun[] }) {
   );
 }
 
+/** A cause's first or last seen, as UTC minutes ("2026-10-18 08:20 UTC"), with the exact served time kept. */
+function SeenAt({ label, at }: { label: string; at: number }) {
+  const iso = new Date(at).toISOString();
+  return <>{label} <time dateTime={iso} title={iso}>{`${iso.slice(0, 10)} ${iso.slice(11, 16)} UTC`}</time></>;
+}
+
+/**
+ * OV-7 (OMN-19919 AC7): failed runs per cause, each with its count, first and last seen, and a link to Runs filtered
+ * to status=failed and that cause. The cause is failureCauseOf's, the same one the filter and the Runs list key on.
+ */
 function FailureCauses({ runs, onInspectFailure }: { runs: InsightRun[]; onInspectFailure?: (cause: string) => void }) {
   const list = causes(runs);
   // On the Overview a cause filters the latest runs below (OMN-21166 approved mockup); alone it is a plain list.
@@ -313,7 +323,7 @@ function FailureCauses({ runs, onInspectFailure }: { runs: InsightRun[]; onInspe
         <ul className="ins-list" aria-label="Failure causes">
           {list.map((entry, index) => (
             <li key={entry.cause} className="ins-list-row ins-list-row--plain" style={{ '--ins-swatch': [FAIL, 'var(--ins-series-7)', 'var(--ins-series-5)', 'var(--ins-series-4)', 'var(--ins-series-3)'][index % 5] } as CSSProperties}>
-              {(shared || onInspectFailure) && entry.cause !== NOT_RECORDED ? (
+              {shared || onInspectFailure ? (
                 <button type="button" className="ins-list-name ins-cause-button" aria-label={`Show runs failed by ${entry.cause}`}
                   aria-pressed={!onInspectFailure && shared?.filter.cause === entry.cause}
                   onClick={() => onInspectFailure ? onInspectFailure(entry.cause) : shared?.setFilter(shared.filter.cause === entry.cause ? { cause: null } : { result: 'failed', cause: entry.cause })}>
@@ -322,6 +332,10 @@ function FailureCauses({ runs, onInspectFailure }: { runs: InsightRun[]; onInspe
               ) : <span className="ins-list-name">{entry.cause}</span>}
               <span className="ins-track"><span className="ins-fill od-growx" style={{ width: `${(entry.count / max) * 100}%`, animationDelay: `${index * 60}ms` }} /></span>
               <span className="ins-list-value" data-field-tone="fail">{count(entry.count)}</span>
+              <span className="ins-list-seen">
+                <span><SeenAt label="First seen" at={entry.firstSeen} /> · <SeenAt label="Last seen" at={entry.lastSeen} /></span>
+                <Link href={causeHref(entry.cause)} aria-label={`View runs failed by ${entry.cause}`}>View runs</Link>
+              </span>
             </li>
           ))}
         </ul>

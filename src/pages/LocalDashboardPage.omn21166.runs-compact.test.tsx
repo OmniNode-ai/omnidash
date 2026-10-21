@@ -38,11 +38,14 @@ describe('OMN-21166 AC27: Runs opens compact, all fields one switch away', () =>
     expect(within(wrap()).getAllByRole('columnheader')).toHaveLength(18);
   });
 
+  // OMN-19919 AC5: the cause shown is the label the detail leads with (the cause the filter and the Overview list use);
+  // the whole detail stays on the row, as the cause's title and under "Read failure details".
   it('P3: a long cause keeps its whole text as its title', () => {
     render(<RunsTable now={NOW} decisions={[run('run-b', { quality_gate_passed: false, quality_gate_detail: CAUSE })]} sessions={[]} />);
     const cause = screen.getByTitle(CAUSE);
     expect(cause).toHaveClass('local-runs-cause');
-    expect(cause.textContent).toBe(CAUSE);
+    expect(cause.textContent).toBe('MALFORMED');
+    expect(screen.getByText('Read failure details').closest('details')?.textContent).toBe(`Read failure details${CAUSE}`);
   });
 
   it('P4: a task type carries its own icon; a missing one reads Not recorded with no icon', () => {

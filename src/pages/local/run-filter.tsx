@@ -1,4 +1,6 @@
 import { createContext, useContext, useState, type ReactNode } from 'react';
+import { DEFAULT_RUNS_VIEW, writeRunsSearch } from '@/navigation/runs-url-state';
+import { failureCauseOf } from './insights';
 
 /**
  * OMN-21166 (approved mockup, 2026-10-18): one filter for the Overview's latest runs, shared by the runs table's own
@@ -7,7 +9,7 @@ import { createContext, useContext, useState, type ReactNode } from 'react';
  */
 export interface RunFilter {
   result: 'all' | 'passed' | 'failed';
-  /** A failure cause label (the text before the first colon of a served quality_gate_detail), or none. */
+  /** A failure cause as failureCauseOf gives it (the served typed cause, else the detail's label), or none. */
   cause: string | null;
 }
 
@@ -39,9 +41,15 @@ export function useRunFilter(): RunFilterState {
   return shared ?? { filter: own, setFilter: next => set(current => ({ ...current, ...next })) };
 }
 
-/** The cause label a served failure detail leads with ("MALFORMED: ..." → "MALFORMED"). */
-export function causeLabelOf(detail: unknown): string | null {
-  if (typeof detail !== 'string' || detail.trim() === '') return null;
-  const head = detail.split(':')[0]!.trim();
-  return head === '' ? null : head;
+/**
+ * The cause a failed run's row is filtered by. OMN-19919: the same function the trends group by and the Runs list
+ * shows (failureCauseOf), so a cause picked in the trends always matches its runs here and on Runs.
+ */
+export function causeLabelOf(row: Readonly<Record<string, unknown>>): string {
+  return failureCauseOf(row);
+}
+
+/** OMN-19919 AC7 (OV-7): the Runs page filtered to the failed runs of one cause, through the Runs URL state. */
+export function causeHref(cause: string): string {
+  return `/runs?${writeRunsSearch('', { ...DEFAULT_RUNS_VIEW, status: 'failed', cause })}`;
 }
