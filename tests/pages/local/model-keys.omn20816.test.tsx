@@ -124,6 +124,29 @@ describe('OMN-20816 model keys on the Credentials page', () => {
     expect((await screen.findByRole('alert')).textContent).toContain('at least one is required');
   });
 
+  it('K9: a key typed for one provider is cleared when another provider or a remove is chosen, and never sent to it', async () => {
+    const api = client(rows({ gemini: { set_up: true, models: ['g'], last_test: { provider: 'gemini', status: 'passed', tested_at: 't' } } }));
+    render(<ModelKeys client={api} />);
+    fireEvent.click(await screen.findByRole('button', { name: 'Add OpenRouter key' }));
+    fireEvent.change(screen.getByLabelText('OpenRouter API key'), { target: { value: KEY } });
+    fireEvent.change(screen.getByLabelText('Model id'), { target: { value: 'openai/gpt-5-nano' } });
+    // Switch to another provider with the first key still typed.
+    fireEvent.click(screen.getByRole('button', { name: 'Replace Gemini key' }));
+    expect((screen.getByLabelText('Gemini API key') as HTMLInputElement).value).toBe('');
+    expect((screen.getByLabelText('Model id') as HTMLInputElement).value).toBe('');
+    // A remove in between clears it too, so a later add starts empty.
+    fireEvent.change(screen.getByLabelText('Gemini API key'), { target: { value: KEY } });
+    fireEvent.click(screen.getByRole('button', { name: 'Remove Gemini key' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Keep it' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Replace Gemini key' }));
+    expect((screen.getByLabelText('Gemini API key') as HTMLInputElement).value).toBe('');
+    fireEvent.change(screen.getByLabelText('Gemini API key'), { target: { value: 'AIza-new' } });
+    fireEvent.change(screen.getByLabelText('Model id'), { target: { value: 'g' } });
+    await act(async () => { fireEvent.click(screen.getByRole('button', { name: 'Save and test' })); });
+    expect(api.put).toHaveBeenCalledTimes(1);
+    expect(api.put).toHaveBeenCalledWith('gemini', 'AIza-new', ['g']);
+  });
+
   it('K5: Ollama has no key controls and says how it is set up', async () => {
     render(<ModelKeys client={client(rows())} />);
     const ollama = await waitFor(() => row('Ollama'));

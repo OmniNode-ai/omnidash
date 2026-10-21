@@ -62,6 +62,15 @@ export function ModelKeys({ client = LIVE_CLIENT }: { client?: ModelKeysClient }
 
   useEffect(() => { void load(); }, [load]);
 
+  // A key typed for one provider never travels with a switch to another: every change of row or action empties
+  // the key and model fields first.
+  const openAdd = (provider: ModelProviderId) => {
+    setKey(''); setModels(''); setRemoving(null); setRefusal(null); setAdding(provider);
+  };
+  const openRemove = (provider: ModelProviderId) => {
+    setKey(''); setModels(''); setAdding(null); setRefusal(null); setRemoving(provider);
+  };
+
   const submit = async (event: FormEvent) => {
     event.preventDefault();
     if (adding === null) return;
@@ -121,11 +130,11 @@ export function ModelKeys({ client = LIVE_CLIENT }: { client?: ModelKeysClient }
                 <td data-label="Change">
                   {row.provider === 'ollama' ? OLLAMA_HOW : (
                     <>
-                      <button type="button" disabled={busy} onClick={() => { setAdding(row.provider); setRemoving(null); setRefusal(null); }}>
+                      <button type="button" disabled={busy} onClick={() => openAdd(row.provider)}>
                         {row.set_up ? `Replace ${label} key` : `Add ${label} key`}
                       </button>
                       {row.set_up && (
-                        <button type="button" disabled={busy} onClick={() => { setRemoving(row.provider); setAdding(null); setRefusal(null); }}>
+                        <button type="button" disabled={busy} onClick={() => openRemove(row.provider)}>
                           {`Remove ${label} key`}
                         </button>
                       )}
