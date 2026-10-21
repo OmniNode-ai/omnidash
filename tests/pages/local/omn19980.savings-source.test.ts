@@ -894,9 +894,10 @@ describe('Savings source boundary with exact user-authorized Overview restoratio
 });
 
 // Lakshman 2026-10-19: the four headlines return to one legacy all-time row.
+// OMN-21166 AC37 (Lakshman 2026-10-20, "One number everywhere"): Agent calls counts every call, run_count.
 const OVERVIEW_HEADLINES: Readonly<Record<string, string>> = {
   'overview-spend': 'total_cost_usd', 'overview-savings': 'total_savings_usd',
-  'overview-measured': 'measured_run_count', 'overview-tokens': 'tokens_total',
+  'overview-measured': 'run_count', 'overview-tokens': 'tokens_total',
 };
 function ruleHeadline(pages: readonly LoadedPage[]): string[] {
   const overview = pages.find(page => page.name === 'overview');
@@ -953,6 +954,8 @@ describe('Restored Overview headline source: exact aggregate and field boundary'
   it('rejects missing window metadata and a different metric key', () => {
     expect(ruleHeadline(withOverview('overview-spend',c => ({...c,data_bindings:[binding('bad',SAVINGS_OVERVIEW,['total_cost_usd'])]})))).toEqual(['H overview-spend: missing window', 'H overview-spend: missing captured_at']);
     expect(ruleHeadline(withOverview('overview-measured',c=>c,'runs_measured'))).toEqual(['H overview-measured: wrong metric']);
+    // AC37: the measured-only count is no longer the Agent calls figure.
+    expect(ruleHeadline(withOverview('overview-measured',c=>c,'measured_run_count'))).toEqual(['H overview-measured: wrong metric']);
   });
   it('H5: rejects a binding missing the exact displayed field', () => {
     expect(ruleHeadline(withOverview('overview-tokens', c => ({ ...c, data_bindings: [binding('bad', SAVINGS_OVERVIEW, ['window', 'captured_at', 'tokens_input'])] })))).toEqual(['H overview-tokens: missing tokens_total']);
