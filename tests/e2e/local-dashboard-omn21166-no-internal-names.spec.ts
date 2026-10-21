@@ -11,11 +11,15 @@ test.use({ viewport: { width: 1440, height: 900 }, reducedMotion: 'reduce' });
 
 const pages = ['overview', 'runs', 'workflow', 'usage', 'credentials', 'api-keys', 'delegation-evidence'];
 const exposureBases = Object.keys(chartRows).map(topic => topic.slice(prefix.length).replace(/\.v\d+$/, ''));
+const bareExposurePattern = (bases: string[]) => new RegExp(
+  `(?<![\\w-])(${bases.map(b => b.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')).join('|')})(?![\\w-])`,
+  'g',
+);
 const matchers: [string, RegExp][] = [
   ['exposure name', /[a-z0-9-]+(\.[a-z0-9-]+)*\.v[0-9]+/g],
   ['snake_case field', /\b[a-z]+(_[a-z0-9]+)+\b/g],
   ['ALL_CAPS code', /\b[A-Z]{2,}(_[A-Z0-9]+)+\b/g],
-  ['bare exposure base', new RegExp(`(?<![\\w-])(${exposureBases.map(b => b.replace(/\./g, '\\.')).join('|')})(?![\\w-])`, 'g')],
+  ['bare exposure base', bareExposurePattern(exposureBases)],
 ];
 const offences = (text: string) => matchers.flatMap(([kind, re]) => [...text.matchAll(re)].map(m => `${kind}: ${m[0]}`));
 
@@ -45,6 +49,17 @@ async function visibleText(page: Page) {
   await page.waitForTimeout(150);
   return page.evaluate(() => (document.querySelector('.app') as HTMLElement | null)?.innerText ?? document.body.innerText);
 }
+
+test('bare exposure bases match regex syntax literally', () => {
+  const bases = [String.raw`tenant\name`, 'cost.savings', 'base+name', 'base?name',
+    'base*name', 'base(name)', 'base[name]', 'base{name}', '^base$', 'base|name'];
+  for (const base of bases) {
+    expect(`waits on ${base} day rows`.match(bareExposurePattern(bases))).toEqual([base]);
+  }
+  expect('waits on costXsavings day rows'.match(bareExposurePattern(bases))).toBeNull();
+  expect('waits on base day rows'.match(bareExposurePattern(bases))).toBeNull();
+  expect('waits on prefix-cost.savings-suffix day rows'.match(bareExposurePattern(bases))).toBeNull();
+});
 
 test('positive control: the matcher catches planted internal names', () => {
   expect(offences('Source: metering-summary.v1')).toEqual(expect.arrayContaining(['exposure name: metering-summary.v1']));

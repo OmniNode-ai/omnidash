@@ -42,6 +42,10 @@
         {
           "id": "AC8",
           "statement": "AC8: A repeatable browser verification artifact records the tested SHA, mode and viewport, Developer setting off/on, all six core pages and Delegation Evidence. Include missing-tenant and populated-tenant states, plus screenshots at 1440x900 and a narrow viewport. A missing populated capture remains explicitly unverified. Falsifier: any listed state lacks a capture or an existing required field becomes inaccessible."
+        },
+        {
+          "id": "AC39",
+          "statement": "AC39: No user-visible text on the six core pages or Delegation Evidence names an internal exposure, topic, table, column or typed code. Falsifier: the seven-page walk reports an internal name in populated, empty, unserved, refused, missing-table or missing-tenant states."
         }
       ]
     }
@@ -137,6 +141,21 @@
         {
           "check_type": "test_passes",
           "check_value": "npm run test:e2e -- tests/e2e/local-dashboard-omn21166.spec.ts --project=chromium --workers=1 --retries=0 --grep \"AC7 theme\"",
+          "cwd": "${OMNI_HOME}/omnidash"
+        }
+      ]
+    },
+    {
+      "id": "dod-omn21166-ac39-literal-name-matching",
+      "description": "AC39: the internal-name matcher treats exposure bases as literal text, including backslashes and regex metacharacters, rejects near matches, and retains its planted-name positive controls. The focused check fails if regex escaping is incomplete; the existing browser scenarios exercise the seven pages.",
+      "source": "manual",
+      "binds_ac": [
+        "AC39"
+      ],
+      "checks": [
+        {
+          "check_type": "test_passes",
+          "check_value": "npm run test:e2e -- tests/e2e/local-dashboard-omn21166-no-internal-names.spec.ts --project=chromium --workers=1 --retries=0 --grep \"bare exposure bases|positive control\"",
           "cwd": "${OMNI_HOME}/omnidash"
         }
       ]
