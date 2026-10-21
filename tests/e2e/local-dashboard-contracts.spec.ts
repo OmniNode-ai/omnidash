@@ -70,7 +70,7 @@ const fixtures: Record<string, unknown[]> = {
   [OVERVIEW]: [{
     window: 'all', captured_at: '2026-10-02T10:07:00Z', tokens_total: 9844, unknown_run_count: 3,
     total_cost_usd: 0.00686, total_savings_usd: 1.2252, total_baseline_cost_usd: 1.2321,
-    measured_run_count: 46, zero_token_run_count: 0,
+    run_count: 49, measured_run_count: 46, zero_token_run_count: 0,
   }],
   // The all row is the Savings total; the day row is the daily series and must not reach the card.
   [METERING]: [meteringRow({ window_kind: 'day', window_start: '2026-10-02', savings_usd: '0.400000' }), meteringRow()],
@@ -176,7 +176,8 @@ test('stored basis, excluded counts and modelled baseline survive native Overvie
   await page.locator('[data-component="overview-baseline-spend"] summary').press('Enter');
   await expect(page.getByText('Baseline served-baseline-model · pricing manifest v1')).toHaveCount(1);
   await expect(page.getByText(/The baseline never ran\./)).toHaveCount(1);
-  await expect(page.getByText('3 unknown calls excluded', { exact: true })).toBeVisible();
+  // OMN-21166 AC37: Agent calls is every call; the served classes are its caption.
+  await expect(page.getByText('46 measured · 3 unknown', { exact: true })).toBeVisible();
   await showOverviewRunFields(page);
   await revealRunFields(page);
   const last = page.getByRole('region', { name: 'Last run' });
@@ -250,9 +251,9 @@ test('Overview is the default page and fits 1440x900 with no unmeasured 0 (AC4)'
   // D1: all four headline tiles follow the same legacy all row.
   const headline = (title: string) => page.locator('.local-dashboard-panel').filter({ has: page.getByRole('heading', { name: title, exact: true }) });
   await expect(headline('Actual spend').getByText('$0.0069', { exact: true })).toBeVisible();
-  await expect(headline('Agent calls').getByText('46', { exact: true })).toBeVisible();
-  await expect(headline('Agent calls').getByText('45', { exact: true })).toHaveCount(0);
-  await expect(headline('Agent calls').getByText('3 unknown calls excluded', { exact: true })).toBeVisible();
+  await expect(headline('Agent calls').getByText('49', { exact: true })).toBeVisible();
+  await expect(headline('Agent calls').getByText('46', { exact: true })).toHaveCount(0);
+  await expect(headline('Agent calls').getByText('46 measured · 3 unknown', { exact: true })).toBeVisible();
   await expect(headline('Tokens processed').getByText('9,844', { exact: true })).toBeVisible();
   await expect(headline('Tokens processed').getByText(/Not served yet/)).toHaveCount(0);
 

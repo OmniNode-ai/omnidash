@@ -7,7 +7,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 const METERING = 'onex.snapshot.projection.metering-summary.v1';
 const OVERVIEW = 'onex.snapshot.projection.cost.savings-overview.v1';
-const LEGACY_ALL = { window: 'all', captured_at: '2026-10-09T12:00:00Z', total_cost_usd: '0.0123', total_savings_usd: '0.002992', measured_run_count: 23, tokens_total: 6134 };
+const LEGACY_ALL = { window: 'all', captured_at: '2026-10-09T12:00:00Z', total_cost_usd: '0.0123', total_savings_usd: '0.002992', run_count: 23, measured_run_count: 23, tokens_total: 6134 };
 const DAILY_UNAVAILABLE = 'Not measured: daily totals unavailable (UTC)';
 
 const harness = vi.hoisted(() => ({

@@ -45,7 +45,7 @@ test('missing daily metering never claims no runs; measured zero still renders e
   await expect(page.getByRole('button', { name: /3 runs, 2 passed, 1 failed/ })).toBeVisible();
   await expect(summary).not.toContainText('no runs today');
   await expect(summary.locator('[data-measured="true"]')).toHaveCount(0);
-  await serveCharts(page, { ...chartRows, [prefix + 'cost.savings-overview.v1']: [{ window: 'all', captured_at: `${day}T11:00:00Z`, total_cost_usd: 0, total_savings_usd: 0, measured_run_count: 1, tokens_total: 0 }], [prefix + 'metering-summary.v1']: [{
+  await serveCharts(page, { ...chartRows, [prefix + 'cost.savings-overview.v1']: [{ window: 'all', captured_at: `${day}T11:00:00Z`, total_cost_usd: 0, total_savings_usd: 0, run_count: 1, measured_run_count: 1, tokens_total: 0 }], [prefix + 'metering-summary.v1']: [{
     window_kind: 'day', window_start: day, as_of: `${day}T11:00:00Z`,
     baseline_model: 'baseline-a', baseline_state: 'resolved', pricing_manifest_version: '1',
     spend_usd: '0.000000', savings_usd: '0.000000', runs_total: 1, runs_measured: 1,

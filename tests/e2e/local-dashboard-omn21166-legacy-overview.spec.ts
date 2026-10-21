@@ -3,7 +3,7 @@ import { chartRows, prefix, serveCharts } from './omn21166-chart-fixtures';
 
 const topic = prefix + 'cost.savings-overview.v1';
 const legacy = { window: 'all', captured_at: '2026-10-19T16:00:00Z', total_cost_usd: 3.392282,
-  total_savings_usd: 1008.470913, measured_run_count: 44489, tokens_total: 183692893,
+  total_savings_usd: 1008.470913, run_count: 49148, measured_run_count: 44489, tokens_total: 183692893,
   unknown_run_count: 4659, estimated_run_count: 0 };
 const card = (page: import('playwright/test').Page, id: string) => page.locator(`[data-component="${id}"]`);
 const figure = (page: import('playwright/test').Page, id: string) => card(page, id).locator('.local-dashboard-metric');
@@ -16,10 +16,12 @@ test('restores four exact legacy totals instead of unrelated metering values', a
   await page.goto('/overview');
   await expect(figure(page, 'overview-spend')).toHaveText('$3.3923');
   await expect(figure(page, 'overview-savings')).toHaveText('$1,008.4709');
-  await expect(figure(page, 'overview-measured')).toHaveText('44,489');
+  await expect(figure(page, 'overview-measured')).toHaveText('49,148');
   await expect(figure(page, 'overview-tokens')).toHaveText('183,692,893');
   await expect(card(page, 'overview-savings')).toContainText('Modelled');
-  await expect(card(page, 'overview-measured')).toContainText('Measured calls');
+  // OMN-21166 AC37: every call (49,148 = 44,489 measured + 4,659 unknown) with the served classes beside it.
+  await expect(card(page, 'overview-measured')).toContainText('All calls');
+  await expect(card(page, 'overview-measured')).toContainText('44,489 measured');
   await expect(card(page, 'overview-measured')).toContainText('4,659 unknown');
   await expect(page.locator('.local-overview-summary')).not.toContainText('999');
   for (const width of [1440, 390, 320]) {
@@ -32,7 +34,7 @@ test('restores four exact legacy totals instead of unrelated metering values', a
 });
 
 test('retains measured zero rather than treating it as absent', async ({ page }) => {
-  await serveCharts(page, { ...chartRows, [topic]: [{ ...legacy, total_cost_usd: 0, total_savings_usd: 0, measured_run_count: 0, tokens_total: 0 }] });
+  await serveCharts(page, { ...chartRows, [topic]: [{ ...legacy, total_cost_usd: 0, total_savings_usd: 0, run_count: 0, measured_run_count: 0, unknown_run_count: 0, tokens_total: 0 }] });
   await page.goto('/overview');
   await expect(figure(page, 'overview-spend')).toHaveText('$0.00');
   await expect(figure(page, 'overview-savings')).toHaveText('$0.00');
@@ -46,18 +48,18 @@ test('one absent or malformed total does not erase the other cards or borrow ano
   await expect(figure(page, 'overview-spend')).toHaveText('Not measured');
   await expect(figure(page, 'overview-tokens')).toHaveText('Not measured');
   await expect(figure(page, 'overview-savings')).toHaveText('$1,008.4709');
-  await expect(figure(page, 'overview-measured')).toHaveText('44,489');
+  await expect(figure(page, 'overview-measured')).toHaveText('49,148');
 });
 
 test('never presents all-time legacy totals as today', async ({ page }) => {
   await serveCharts(page, { ...chartRows, [topic]: [legacy] });
   await page.goto('/overview');
-  await expect(figure(page, 'overview-measured')).toHaveText('44,489');
+  await expect(figure(page, 'overview-measured')).toHaveText('49,148');
   await page.getByRole('radio', { name: 'Today (UTC)', exact: true }).click();
   for (const id of ['overview-spend', 'overview-savings', 'overview-measured', 'overview-tokens'])
     await expect(figure(page, id)).toHaveText('Not measured: daily totals unavailable (UTC)');
   await page.getByRole('radio', { name: 'All time', exact: true }).click();
-  await expect(figure(page, 'overview-measured')).toHaveText('44,489');
+  await expect(figure(page, 'overview-measured')).toHaveText('49,148');
 });
 
 test('a day row cannot impersonate an all-time row', async ({ page }) => {
@@ -73,7 +75,7 @@ test('served legacy totals remain visible when every other exposure is empty', a
   await page.goto('/overview');
   await expect(figure(page, 'overview-spend')).toHaveText('$3.3923');
   await expect(figure(page, 'overview-savings')).toHaveText('$1,008.4709');
-  await expect(figure(page, 'overview-measured')).toHaveText('44,489');
+  await expect(figure(page, 'overview-measured')).toHaveText('49,148');
   await expect(figure(page, 'overview-tokens')).toHaveText('183,692,893');
   await expect(page.locator('.local-dashboard-empty-state')).toHaveCount(0);
   await page.screenshot({ path: info.outputPath('legacy-only-overview.png'), fullPage: true });

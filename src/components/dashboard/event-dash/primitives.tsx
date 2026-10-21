@@ -27,8 +27,13 @@ export const fmtPct1 = (x: number | null | undefined): string =>
   x == null ? '—' : `${(x * 100).toFixed(1)}%`;
 export const fmtMoney = (x: number | null | undefined): string =>
   x == null ? '—' : `$${Number(x).toFixed(2)}`;
-export const fmtMoney4 = (x: number | null | undefined): string =>
-  x == null ? '—' : `$${Number(x).toFixed(4)}`;
+/** Four decimals, grouped like the dollar figures beside it (OMN-21166), with the sign before the currency. */
+export const fmtMoney4 = (x: number | null | undefined): string => {
+  if (x == null) return '—';
+  const amount = Number(x);
+  const text = Math.abs(amount).toLocaleString('en-US', { minimumFractionDigits: 4, maximumFractionDigits: 4 });
+  return amount < 0 ? `-$${text}` : `$${text}`;
+};
 export const fmtTokens = (n: number | null | undefined): string => {
   if (n == null) return '—';
   if (n >= 1000) return `${(n / 1000).toFixed(n >= 10000 ? 0 : 1)}K`;

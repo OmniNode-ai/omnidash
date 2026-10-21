@@ -37,7 +37,7 @@ import { LocalDashboardPage } from './LocalDashboardPage';
 
 // An all-time row shaped like the 2026-10-09 re-walk's: 23 runs, tokens and a spend the cards must show as served.
 const ALL_ROW = { window: 'all', captured_at: '2026-10-09T12:00:00Z', total_cost_usd: 0.0123,
-  measured_run_count: 23, unknown_run_count: 2, tokens_total: 6134, total_savings_usd: 0.002992 };
+  run_count: 25, measured_run_count: 23, unknown_run_count: 2, tokens_total: 6134, total_savings_usd: 0.002992 };
 
 async function overview(): Promise<void> {
   harness.reachable = new Set([OVERVIEW]);
@@ -66,9 +66,10 @@ describe('OMN-20758 Overview titles match the demo mockup', () => {
     expect(figure('Actual spend')).toBe('$0.0123');
   });
 
-  it('T1: Agent calls shows the served measured_run_count', async () => {
+  // OMN-21166 AC37: Agent calls is every call, the served run_count; the measured count is its breakdown (T3).
+  it('T1: Agent calls shows the served run_count', async () => {
     await overview();
-    expect(figure('Agent calls')).toBe('23');
+    expect(figure('Agent calls')).toBe('25');
   });
 
   it('T1: Tokens processed shows the served combined tokens_total', async () => {
@@ -85,7 +86,7 @@ describe('OMN-20758 Overview titles match the demo mockup', () => {
 
   it('T3: Agent calls keeps its run-class caption', async () => {
     await overview();
-    expect(within(card('Agent calls')).getByText('Measured calls')).toBeInTheDocument();
-    expect(within(card('Agent calls')).getByText('2 unknown calls excluded')).toBeInTheDocument();
+    expect(within(card('Agent calls')).getByText('All calls')).toBeInTheDocument();
+    expect(within(card('Agent calls')).getByText('23 measured · 2 unknown')).toBeInTheDocument();
   });
 });

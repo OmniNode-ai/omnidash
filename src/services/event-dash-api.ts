@@ -209,6 +209,10 @@ export interface DelegationDecisionRow {
   tokens_output: number | null;
   tokens_to_compliance: number | null;
   created_at: string;
+  /** OMN-21015: the run's modelled saving as decimal text, with its basis; null when the run was not measured. */
+  modelled_savings_usd?: string | null;
+  savings_measurement?: string | null;
+  savings_baseline_model?: string | null;
 }
 
 export interface DelegationSummaryRow {
@@ -247,6 +251,24 @@ export interface QualityGateRow {
   escalation_count: number;
   escalation_rate: number;
   failure_categories: QualityGateFailureCategory[];
+}
+
+/**
+ * OMN-21166 AC37: the all-time row of cost.savings-overview.v1, the one row Overview's headline cards read. Delegation
+ * Evidence reads the same fields so the two pages cannot show different savings, tokens or runs. A field the runtime
+ * does not serve yet is absent, never 0.
+ */
+export interface CostSavingsOverviewRow {
+  window: string;
+  captured_at: string;
+  total_cost_usd?: number | null;
+  total_baseline_cost_usd?: number | null;
+  total_savings_usd?: number | null;
+  tokens_total?: number | null;
+  run_count?: number | null;
+  measured_run_count?: number | null;
+  estimated_run_count?: number | null;
+  unknown_run_count?: number | null;
 }
 
 export interface SavingsRow {
@@ -433,6 +455,10 @@ export const fetchDelegationModelRouting = (): Promise<
 export const fetchDelegationQualityGate = (): Promise<
   ProjectionResult<QualityGateRow>
 > => readProjection<QualityGateRow>(TOPICS.delegationQualityGate);
+
+export const fetchCostSavingsOverview = (): Promise<
+  ProjectionResult<CostSavingsOverviewRow>
+> => readProjection<CostSavingsOverviewRow>(TOPICS.costSavingsOverview);
 
 export const fetchDelegationSavings = (): Promise<
   ProjectionResult<SavingsRow>

@@ -73,7 +73,8 @@ describe('excluded counts beside measured figures', () => {
 
   it('declares excluded counts and basis in every consuming binding', () => {
     expect(overviewMeasured.data_bindings?.[0]?.projection_topic).toBe('onex.snapshot.projection.cost.savings-overview.v1');
-    expect(overviewMeasured.data_bindings?.[0]?.required_fields).toEqual(['window', 'captured_at', 'measured_run_count']);
+    // OMN-21166 AC37: the card reads every call; its caption shows the served run classes.
+    expect(overviewMeasured.data_bindings?.[0]?.required_fields).toEqual(['window', 'captured_at', 'run_count']);
     for (const id of ['overview-last-run', 'overview-recent-runs']) {
       const component = document.components.find(candidate => candidate.component_id === id)!;
       expect(component.data_bindings?.[1]?.required_fields, id).toContain('usage_source');

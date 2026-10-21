@@ -15,7 +15,7 @@ const day = { ...all, window_kind: 'day', window_start: today,
   spend_usd: '0.0007', savings_usd: '0.0012', runs_total: 5, runs_measured: 3,
   tokens_in: 756, tokens_out: 78 };
 const legacy = { window: 'all', captured_at: today + 'T12:00:00Z',
-  total_cost_usd: 99, total_savings_usd: 98, measured_run_count: 97, tokens_total: 96 };
+  total_cost_usd: 99, total_savings_usd: 98, run_count: 97, measured_run_count: 97, tokens_total: 96 };
 const ids = ['overview-spend', 'overview-savings', 'overview-measured', 'overview-tokens'];
 const card = (page: Page, id: string) => page.locator(`[data-component="${id}"]`);
 const figure = (page: Page, id: string) => card(page, id).locator('.local-dashboard-metric');

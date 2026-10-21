@@ -24,7 +24,6 @@ import {
   StateBadge,
   derivePageBadge,
   fmtLatency,
-  fmtMoney,
   fmtMoney4,
   fmtPct,
   fmtTokens,
@@ -33,6 +32,7 @@ import {
   type ProjectionSnapshot,
 } from '@/components/dashboard/event-dash/primitives';
 import {
+  useCostSavingsOverview,
   useCorrelationTrace,
   useDelegationDecisions,
   useDelegationModelRouting,
@@ -43,11 +43,64 @@ import {
 } from '@/components/dashboard/event-dash/useEventDashData';
 import type {
   CorrelationTraceRow,
+  CostSavingsOverviewRow,
   DelegationDecisionRow,
 } from '@/services/event-dash-api';
+import { runBreakdownText, runModelledCell } from '@/pages/LocalDashboardPage';
 
 const recordedMoney = (value: unknown) => isUnavailableField(value) || !Number.isFinite(Number(value))
   ? 'Not recorded' : formatUsd(value);
+
+/**
+ * OMN-21166 AC37: the one cost.savings-overview.v1 row both pages read: the newest all-time row. Two all-time rows
+ * captured at the same moment cannot be told apart, so neither is picked (the same rule as Overview's cards).
+ */
+function overviewRowOf(rows: readonly CostSavingsOverviewRow[]): CostSavingsOverviewRow | 'ambiguous' | null {
+  const time = (row: CostSavingsOverviewRow) => { const t = Date.parse(row.captured_at); return Number.isFinite(t) ? t : -Infinity; };
+  const all = rows.filter(row => row.window === 'all').sort((a, b) => time(b) - time(a));
+  if (all.length === 0) return null;
+  if (all.length > 1 && time(all[0]!) === time(all[1]!)) return 'ambiguous';
+  return all[0]!;
+}
+
+/** A served whole number grouped for reading, or why there is none; never 0 for a missing field. */
+function servedCount(value: unknown): string {
+  return isUnavailableField(value) || !Number.isFinite(Number(value)) ? 'Not measured' : Number(value).toLocaleString('en-US');
+}
+
+/** A served dollar total to the cent, grouped as Overview shows it, or why there is none. */
+function servedUsd(value: unknown): string {
+  if (isUnavailableField(value) || !Number.isFinite(Number(value))) return 'Not measured';
+  const amount = Number(value);
+  const text = Math.abs(amount).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  return amount < 0 ? `-$${text}` : `$${text}`;
+}
+
+/**
+ * OMN-21166: the savings panel's pricing tag. A served version that is a number reads "pricing v3"; anything else is
+ * named as served ("pricing savings-estimated"), never with a "v" glued to a word. No version served, no tag.
+ */
+export function pricingLabel(version: unknown): string | null {
+  if (isUnavailableField(version)) return null;
+  const text = String(version).trim();
+  if (text === '') return null;
+  return /^\d/.test(text) ? `pricing v${text}` : `pricing ${text}`;
+}
+
+const REASON_MAX = 120;
+
+/**
+ * OMN-21166: one escalation reason as the panel shows it. A served reason can be a whole provider error, URLs and
+ * response body included; the row shows its first line of text, shortened to fit, and the element's title keeps the
+ * whole served text. A missing reason is named, never an empty row.
+ */
+export function escalationReason(reason: unknown): { text: string; title: string | undefined } {
+  const served = typeof reason === 'string' ? reason : isUnavailableField(reason) ? '' : String(reason);
+  const text = served.replace(/\s+/g, ' ').trim();
+  if (text === '') return { text: 'Not recorded', title: undefined };
+  if (text.length <= REASON_MAX) return { text, title: undefined };
+  return { text: `${text.slice(0, REASON_MAX - 1).trimEnd()}…`, title: served };
+}
 
 // ── golden chain (stage labels justified by the trace row) ───────────────────
 
@@ -92,7 +145,7 @@ function Chain({ steps }: { steps: ChainStep[] }) {
 
 // ── selected run (latest decision → correlation trace) ───────────────────────
 
-function SelectedRun({ correlationId }: { correlationId: string | null }) {
+function SelectedRun({ correlationId, decision }: { correlationId: string | null; decision?: DelegationDecisionRow }) {
   const { data, isLoading } = useCorrelationTrace(correlationId);
   if (!correlationId) {
     return (
@@ -131,7 +184,9 @@ function SelectedRun({ correlationId }: { correlationId: string | null }) {
           { k: 'Tokens in', v: row.tokens_input ?? 'Not recorded' },
           { k: 'Tokens out', v: row.tokens_output ?? 'Not recorded' },
           { k: 'Cost', v: recordedMoney(row.cost_usd) },
-          { k: 'Savings (modelled)', v: recordedMoney(row.cost_savings_usd) },
+          // OMN-21166 AC37: the run's one modelled saving, the figure Runs shows (delegation.decisions.v1), not the
+          // event's legacy cost_savings_usd, which is 0 for a run the savings writer never priced.
+          { k: 'Savings (modelled)', v: decision ? runModelledCell(decision as unknown as Record<string, unknown>) : 'Not recorded' },
           { k: 'Routing rule', v: row.routing_rule ?? '—' },
           { k: 'Quality detail', v: row.quality_gate_detail ?? (row.quality_gate_passed ? 'pass' : '—') },
         ]}
@@ -209,48 +264,52 @@ function QualityGate() {
       </div>
       <div className="divider" />
       <div className="section-label">Escalation reasons</div>
-      {q.failure_categories.slice(0, 6).map((f, i) => (
-        <div className="ev-qg-cat" key={i}>
-          <span className="mono c-amber">{f.count}</span>
-          <span className="mono dim">{f.category}</span>
-        </div>
-      ))}
+      {q.failure_categories.slice(0, 6).map((f, i) => {
+        const reason = escalationReason(f.category);
+        return (
+          <div className="ev-qg-cat" key={i}>
+            <span className="mono c-amber">{f.count}</span>
+            <span className="mono dim" title={reason.title}>{reason.text}</span>
+          </div>
+        );
+      })}
     </Panel>
   );
 }
 
 // ── savings (aggregate) ──────────────────────────────────────────────────────
 
-function SavingsPanel() {
+function SavingsPanel({ overview, unavailable }: { overview: CostSavingsOverviewRow | null; unavailable: string }) {
   const { data, isLoading } = useDelegationSavings();
   if (isLoading || !data) {
     return <Panel title="SAVINGS vs CLOUD BASELINE"><EvEmpty title="Loading…" /></Panel>;
   }
+  // OMN-21166 AC37: the money figures are the shared overview row's, the same total Overview's Savings card shows;
+  // delegation.savings.v1 supplies only the baseline model and pricing version it alone serves.
   const s = data.rows[0];
-  if (!s) {
-    return (
-      <Panel title="SAVINGS vs CLOUD BASELINE">
-        <EvEmpty title="No savings rows" reason={data.degradedReason} />
-      </Panel>
-    );
-  }
-  const max = s.cumulative_cloud_cost_usd || 1;
+  const finite = (value: unknown) => !isUnavailableField(value) && Number.isFinite(Number(value));
+  const cloud = overview?.total_baseline_cost_usd;
+  const local = overview?.total_cost_usd;
+  const saved = overview?.total_savings_usd;
+  const width = (value: unknown) => finite(value) && finite(cloud) && Number(cloud) > 0
+    ? `${Math.max(0, Math.min(100, (Number(value) / Number(cloud)) * 100))}%` : null;
+  const bar = (label: string, value: unknown, tone: string, labelClass = '') => (
+    <div className="barrow"><div className={`lab ${labelClass}`.trim()}>{label}</div><div className={`val ${labelClass}`.trim()}>{finite(value) ? fmtMoney4(Number(value)) : 'Not measured'}</div>
+      <div className="track2 bar-track">{width(value) && <div className={`bar-fill ${tone}`} style={{ width: width(value)! }} />}</div></div>
+  );
   return (
     <Panel
       title="SAVINGS vs CLOUD BASELINE"
-      sub={s.baseline_model || 'Baseline model not recorded'}
-      right={<span className="src-tag">pricing v{s.pricing_manifest_version}</span>}
+      sub={s?.baseline_model || 'Baseline model not recorded'}
+      right={s && pricingLabel(s.pricing_manifest_version) ? <span className="src-tag">{pricingLabel(s.pricing_manifest_version)}</span> : undefined}
     >
       <span className="stat-inline ev-savings-hero">
-        <span className="big c-amber">{fmtMoney(s.cumulative_savings_usd)}</span>
-        <span className="note">cumulative savings (modelled) over {s.session_count} sessions</span>
+        <span className="big c-amber">{overview ? servedUsd(saved) : unavailable}</span>
+        <span className="note">cumulative savings (modelled) over {overview ? servedCount(overview.measured_run_count) : 'Not measured'} measured runs</span>
       </span>
-      <div className="barrow"><div className="lab">Cloud baseline cost</div><div className="val">{fmtMoney4(s.cumulative_cloud_cost_usd)}</div>
-        <div className="track2 bar-track"><div className="bar-fill m-blue" style={{ width: '100%' }} /></div></div>
-      <div className="barrow"><div className="lab">Local / delegated cost</div><div className="val">{fmtMoney4(s.cumulative_local_cost_usd)}</div>
-        <div className="track2 bar-track"><div className="bar-fill m-green" style={{ width: `${(s.cumulative_local_cost_usd / max) * 100}%` }} /></div></div>
-      <div className="barrow"><div className="lab c-green">Saved</div><div className="val c-green">{fmtMoney4(s.cumulative_savings_usd)}</div>
-        <div className="track2 bar-track"><div className="bar-fill m-green" style={{ width: `${(s.cumulative_savings_usd / max) * 100}%` }} /></div></div>
+      {bar('Cloud baseline cost', cloud, 'm-blue')}
+      {bar('Local / delegated cost', local, 'm-green')}
+      {bar('Saved', saved, 'm-green', 'c-green')}
     </Panel>
   );
 }
@@ -363,18 +422,25 @@ export function DelegationEvidencePage() {
   const tokensQ = useDelegationTokenUsage();
   const savingsQ = useDelegationSavings();
   const decisionsQ = useDelegationDecisions();
+  const overviewQ = useCostSavingsOverview();
 
   const summary = summaryQ.data?.rows[0];
-  const tokens = tokensQ.data?.rows[0];
-  const savings = savingsQ.data?.rows[0];
   const decisions = decisionsQ.data?.rows ?? [];
   const latestCid = decisions[0]?.correlation_id ?? null;
 
-  const kpiTokens: ReactNode = tokens ? fmtTokens(tokens.total_tokens) : '—';
+  // OMN-21166 AC37: savings, tokens and runs come from the same served row as Overview's headline cards, so the two
+  // pages show one figure per concept. The measured population is a labelled breakdown, never a second headline.
+  const picked = overviewQ.data ? overviewRowOf(overviewQ.data.rows) : null;
+  const overview = picked === 'ambiguous' ? null : picked;
+  const unavailable = picked === 'ambiguous' ? 'Not measured: ambiguous overview totals' : overviewQ.isLoading ? '—' : 'Not measured';
+  const kpiRuns: ReactNode = overview ? servedCount(overview.run_count) : unavailable;
+  const kpiSavings: ReactNode = overview ? servedUsd(overview.total_savings_usd) : unavailable;
+  const kpiTokens: ReactNode = overview ? servedCount(overview.tokens_total) : unavailable;
+  const runBreakdown = overview ? runBreakdownText(overview as unknown as Record<string, unknown>) : null;
 
   // Include the savings source in freshness alongside the other headline projections.
   // so the header reflects the composite data state, not a single query's freshness.
-  const snapshots: ProjectionSnapshot[] = [summaryQ.data, tokensQ.data, decisionsQ.data, savingsQ.data]
+  const snapshots: ProjectionSnapshot[] = [summaryQ.data, tokensQ.data, decisionsQ.data, savingsQ.data, overviewQ.data]
     .filter((d): d is NonNullable<typeof d> => d !== undefined)
     .map((d) => ({ rowCount: d.rowCount, freshness: d.freshness }));
   const badgeState = derivePageBadge(snapshots);
@@ -396,16 +462,16 @@ export function DelegationEvidencePage() {
       headRight={headRight}
     >
       <div className="grid cols-4">
-        <KPI label="Delegations" icon={<Activity size={15} aria-hidden="true" />} tone="blue" value={summary ? summary.totalDelegations : '—'} sub={summary ? <><span className="ev-outcome-pass">{summary.qualityGatePassed} pass</span>{' · '}<span className="ev-outcome-fail">{summary.qualityGateTotal - summary.qualityGatePassed} fail</span></> : undefined} />
+        <KPI label="Delegations" icon={<Activity size={15} aria-hidden="true" />} tone="blue" value={kpiRuns} sub={runBreakdown ?? undefined} />
         <KPI label="Quality pass" icon={<Award size={15} aria-hidden="true" />} tone="green" value={summary ? fmtPct(summary.qualityGatePassRate) : '—'} sub="deterministic gate" />
-        <KPI label="Savings (modelled)" icon={<PiggyBank size={15} aria-hidden="true" />} tone="purple" value={savings ? fmtMoney(savings.cumulative_savings_usd) : '—'} accent sub="vs cloud baseline" />
+        <KPI label="Savings (modelled)" icon={<PiggyBank size={15} aria-hidden="true" />} tone="purple" value={kpiSavings} accent sub="vs cloud baseline" />
         <KPI label="Tokens" icon={<Coins size={15} aria-hidden="true" />} tone="amber" value={kpiTokens} sub={summary ? `avg ${(summary.avgLatencyMs / 1000).toFixed(2)}s latency` : undefined} />
       </div>
 
       <div className="grid cols-2 ev-selected-run-layout">
-        <SelectedRun correlationId={latestCid} />
+        <SelectedRun correlationId={latestCid} decision={decisions[0]} />
         <ModelRouting />
-        <SavingsPanel />
+        <SavingsPanel overview={overview} unavailable={unavailable} />
       </div>
 
       <div className="grid cols-2 ev-align-start">

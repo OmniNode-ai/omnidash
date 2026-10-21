@@ -145,7 +145,7 @@ function meteringRow(overrides: Record<string, unknown>): Record<string, unknown
 // baseline/ratio behavior is retained by the direct MeteringTotalCard suites.
 function overviewRow(overrides: Record<string, unknown>): Record<string, unknown> {
   return { window: 'all', captured_at: '2026-10-05T12:00:00Z', total_cost_usd: '0.007100',
-    total_savings_usd: '1.225200', measured_run_count: 7, unknown_run_count: 2, tokens_total: 2140, ...overrides };
+    total_savings_usd: '1.225200', run_count: 9, measured_run_count: 7, unknown_run_count: 2, tokens_total: 2140, ...overrides };
 }
 const noFigure = (scope: HTMLElement) => expect(within(scope).queryByText(/\$\s*-?\d/)).toBeNull();
 const figure = (title: string) => panel(title).querySelector('.local-dashboard-metric')?.textContent ?? '';
@@ -185,7 +185,7 @@ describe('OMN-19980 Step B: Overview uses exactly its approved legacy all row', 
   it('T1: exact all-row savings/spend/counts, never conflicting metering or delegation figures', async () => {
     served({ [OVERVIEW]: [overviewRow({ window: 'day', total_savings_usd: '0.500000' }), overviewRow({})],
       [METERING]: [meteringRow({ savings_usd: '9.990000' })] }); await open('overview');
-    expect(figure('Savings')).toBe('$1.2252'); expect(figure('Actual spend')).toBe('$0.0071'); expect(figure('Agent calls')).toBe('7');
+    expect(figure('Savings')).toBe('$1.2252'); expect(figure('Actual spend')).toBe('$0.0071'); expect(figure('Agent calls')).toBe('9');
     expect(panel('Savings').textContent).toContain('Modelled · vs cloud baseline');
     expect(panel('Savings').textContent).not.toMatch(/9\.9900|0\.5000|claude-opus-4-6/);
   });
@@ -224,8 +224,9 @@ describe('OMN-19980 Step B: Overview uses exactly its approved legacy all row', 
 describe('OMN-19980 headline coherence on the approved source', () => {
   it('M1: all cards use the same served columns and disclose the served unknown count', async () => {
     served({ [OVERVIEW]: [overviewRow({})], [METERING]: [meteringRow({ spend_usd: '0.5555', runs_measured: 31 })] }); await open('overview');
-    expect(HEADLINES.map(figure)).toEqual(['$0.0071', '$1.2252', '7', '2,140']);
-    expect(panel('Agent calls').textContent).toContain('2 unknown calls excluded');
+    expect(HEADLINES.map(figure)).toEqual(['$0.0071', '$1.2252', '9', '2,140']);
+    // OMN-21166 AC37: every call is the figure; the served classes are its breakdown.
+    expect(panel('Agent calls').textContent).toContain('7 measured · 2 unknown');
     expect(panel('Tokens processed').textContent).not.toMatch(/in ·|out/);
   });
   it('M2: an unserved source leaves every headline without a number', async () => {
@@ -234,17 +235,17 @@ describe('OMN-19980 headline coherence on the approved source', () => {
   });
   it('M3: missing savings cannot erase independent spend, measured calls or tokens', async () => {
     served({ [OVERVIEW]: [overviewRow({ total_savings_usd: null, baseline_state: 'unresolved' })] }); await open('overview');
-    expect(HEADLINES.map(figure)).toEqual(['$0.0071', 'Not measured', '7', '2,140']);
+    expect(HEADLINES.map(figure)).toEqual(['$0.0071', 'Not measured', '9', '2,140']);
   });
   it('M4: missing fields are unavailable but served numeric zero remains zero', async () => {
-    served({ [OVERVIEW]: [overviewRow({ total_cost_usd: null, total_savings_usd: null, measured_run_count: null, tokens_total: null })] }); await open('overview');
+    served({ [OVERVIEW]: [overviewRow({ total_cost_usd: null, total_savings_usd: null, run_count: null, measured_run_count: null, tokens_total: null })] }); await open('overview');
     expect(HEADLINES.map(figure)).toEqual(['Not measured', 'Not measured', 'Not measured', 'Not measured']);
-    cleanup(); served({ [OVERVIEW]: [overviewRow({ total_cost_usd: 0, total_savings_usd: 0, measured_run_count: 0, tokens_total: 0 })] }); await open('overview');
+    cleanup(); served({ [OVERVIEW]: [overviewRow({ total_cost_usd: 0, total_savings_usd: 0, run_count: 0, measured_run_count: 0, unknown_run_count: 0, tokens_total: 0 })] }); await open('overview');
     expect(HEADLINES.map(figure)).toEqual(['$0.00', '$0.00', '0', '0']);
   });
   it('M5: all headlines select the same latest row, never mixing old figures', async () => {
-    served({ [OVERVIEW]: [overviewRow({ captured_at: '2026-10-04T08:00:00Z', total_cost_usd: '.5555', total_savings_usd: '9.990000', measured_run_count: 31, tokens_total: 9999 }), overviewRow({})] }); await open('overview');
-    expect(HEADLINES.map(figure)).toEqual(['$0.0071', '$1.2252', '7', '2,140']);
+    served({ [OVERVIEW]: [overviewRow({ captured_at: '2026-10-04T08:00:00Z', total_cost_usd: '.5555', total_savings_usd: '9.990000', run_count: 33, measured_run_count: 31, tokens_total: 9999 }), overviewRow({})] }); await open('overview');
+    expect(HEADLINES.map(figure)).toEqual(['$0.0071', '$1.2252', '9', '2,140']);
   });
   it('M6: newest timestamp ties are refused on every headline', async () => {
     served({ [OVERVIEW]: [overviewRow({ total_cost_usd: '0.5555' }), overviewRow({})] }); await open('overview');
