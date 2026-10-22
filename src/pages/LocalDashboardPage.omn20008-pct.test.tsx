@@ -63,10 +63,13 @@ const allRow = (fields: Record<string, unknown> = {}): Record<string, unknown> =
   pricing_manifest_version: '1.0.0', baseline_state: 'resolved', savings_usd: '0.0156', ...fields,
 });
 
-/** What the card showed before this change, line by line (OMN-20008 AC3 and OMN-19980 Step B). */
+/**
+ * What the card showed before this change, line by line (OMN-20008 AC3 and OMN-19980 Step B), with the unpriced-run
+ * count OMN-21304 added: these rows serve no runs_unknown_spend, so it reads not recorded.
+ */
 const BEFORE = [
   '$0.0156',
-  'Baseline claude-sonnet-5-5 · pricing manifest v1.0.0',
+  'Baseline claude-sonnet-5-5 · pricing manifest v1.0.0 · Unpriced runs not recorded',
   "Modelled: the runs' tokens priced at the baseline model's list price. The baseline never ran.",
 ];
 

@@ -421,9 +421,20 @@ function RecentDelegations({ decisions }: { decisions: DelegationDecisionRow[] }
  * more than zero, every figure read from that row says so beside it; a figure is never shown as if all of it were live.
  */
 function fixtureNoticeOf(summary: DelegationSummaryRow): string | null {
-  const n = Number(summary.fixtureDelegations);
-  if (summary.fixtureDelegations === null || summary.fixtureDelegations === undefined || !Number.isFinite(n) || n <= 0) return null;
-  return `Includes ${n.toLocaleString('en-US')} fixture delegation${n === 1 ? '' : 's'}`;
+  const delegations = fixtureAmount(summary.fixtureDelegations);
+  const savings = fixtureAmount(summary.fixtureSavingsUsd);
+  if (delegations !== null && delegations > 0) {
+    return `Includes ${delegations.toLocaleString('en-US')} fixture delegation${delegations === 1 ? '' : 's'}`;
+  }
+  if (savings !== null && savings > 0) return `Includes $${String(summary.fixtureSavingsUsd).trim()} of fixture savings`;
+  return null;
+}
+
+/** A served amount as a number: a finite number or decimal text; true, {} or '' is not an amount. */
+function fixtureAmount(value: unknown): number | null {
+  if (typeof value === 'number') return Number.isFinite(value) ? value : null;
+  if (typeof value === 'string' && /^\s*\d+(?:\.\d+)?\s*$/.test(value)) return Number(value);
+  return null;
 }
 
 function withFixtureNotice(text: string, notice: string | null): string {

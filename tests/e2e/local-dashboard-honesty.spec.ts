@@ -118,23 +118,24 @@ for (const scenario of [
 }
 
 for (const scenario of [
-  { name: 'the summary includes fixture delegations', fixture: 20, notice: true },
-  { name: 'no fixture delegations (control)', fixture: 0, notice: false },
+  { name: 'the summary includes fixture delegations', delegations: 20 as unknown, savings: 1.5 as unknown, notice: 'Includes 20 fixture delegations' },
+  { name: 'only fixture savings are served', delegations: 0 as unknown, savings: 1.5 as unknown, notice: 'Includes $1.5 of fixture savings' },
+  { name: 'a non-numeric count invents no notice', delegations: true as unknown, savings: {} as unknown, notice: null },
+  { name: 'no fixture delegations (control)', delegations: 0 as unknown, savings: 0 as unknown, notice: null },
 ]) {
   test(`AC4 Evidence names fixture delegations beside the totals they enter: ${scenario.name}`, async ({ page }) => {
     await serveCharts(page, { ...chartRows,
       [SUMMARY]: [{ totalDelegations: 30, qualityGatePassed: 20, qualityGateTotal: 30, qualityGatePassRate: 2 / 3,
-        totalSavingsUsd: 7, avgLatencyMs: 100, fixtureDelegations: scenario.fixture, fixtureSavingsUsd: scenario.fixture ? 1.5 : 0 }],
+        totalSavingsUsd: 7, avgLatencyMs: 100, fixtureDelegations: scenario.delegations, fixtureSavingsUsd: scenario.savings }],
     });
     await page.goto('/delegation-evidence');
     const quality = page.locator('.kpi').filter({ has: page.getByText('Quality pass', { exact: true }) });
     await expect(quality).toContainText('%');
-    const notice = 'Includes 20 fixture delegations';
     if (scenario.notice) {
-      await expect(quality).toContainText(notice);
-      await expect(page.locator('.kpi').filter({ has: page.getByText('Tokens', { exact: true }) })).toContainText(notice);
+      await expect(quality).toContainText(scenario.notice);
+      await expect(page.locator('.kpi').filter({ has: page.getByText('Tokens', { exact: true }) })).toContainText(scenario.notice);
     } else {
-      await expect(page.getByText(/fixture delegation/i)).toHaveCount(0);
+      await expect(page.getByText(/fixture (delegation|savings)/i)).toHaveCount(0);
     }
   });
 }

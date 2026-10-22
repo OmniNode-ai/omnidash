@@ -169,7 +169,7 @@ describe('OMN-21166: Overview insight charts', () => {
     const { container } = render(<OverviewRunsContext.Provider value={{ decisions, now: NOW }}><PassRateSparkline /></OverviewRunsContext.Provider>);
     const plot = screen.getByRole('img', { name: 'Pass rate per day' }).parentElement!;
     expect(plot.querySelectorAll('.ins-dot')).toHaveLength(1);
-    expect(container.querySelector('button[aria-label="Oct 16: 50.0% passed"]')).not.toBeNull();
+    expect(container.querySelector('button[aria-label="Oct 16: 50.0% passed (2 of 2 runs have a verdict)"]')).not.toBeNull();
   });
 
   it('C10: without page rows the hero line draws nothing, so Quality alone is unchanged', () => {

@@ -143,8 +143,8 @@ function captionText(caption: Record<string, unknown> | null | undefined): strin
   }
   // OMN-21304 AC4: the runs the total leaves out because they have no price, as served; a missing count is not 0.
   if ('unpriced_runs' in fields) {
-    const n = Number(fields.unpriced_runs);
-    parts.push(isMissing(fields.unpriced_runs) || !Number.isFinite(n)
+    const n = countOf(fields.unpriced_runs);
+    parts.push(n === null
       ? 'Unpriced runs not recorded' : `${n.toLocaleString('en-US')} unpriced run${n === 1 ? '' : 's'}`);
   }
   if ('zero_token_run_count' in fields && !isMissing(fields.zero_token_run_count)) {
@@ -189,9 +189,10 @@ export function MetricCard({ component, config, row, caption, figureLine, figure
   const line = captionText(caption);
   // A savings figure is a modelled counterfactual: served tokens priced at the baseline's list price, with no
   // baseline run behind it (Jonah's savings handoff on OMN-19981, aac9032d, item 5).
-  // Only a card priced at the baseline is modelled; Spend carries the baseline as context and is measured (OMN-21304).
+  // A card captioned with a baseline is modelled, except Spend, which carries the baseline as context and is measured
+  // (OMN-21304).
   const modelled = caption !== null && caption !== undefined && 'baseline_model' in caption
-    && (component.data_bindings?.[0]?.required_fields ?? []).includes('baseline_model');
+    && component.component_id !== SPEND_CARD;
   return (
     <>
       <p className="local-dashboard-metric" data-measured={figure}>{text}</p>
@@ -250,8 +251,19 @@ export function RunLocallyCard({ row }: { row: Record<string, unknown> | null })
 
 /** The Tokens card's widget key: two served columns shown side by side, never summed (SV-3: no combined total). */
 const TOKENS_IN_AND_OUT = 'tokens_in_and_out';
-/** The Overview's spend and savings figures, under both headline sources (OMN-21304 AC4). */
-const SPEND_AND_SAVINGS: ReadonlySet<string> = new Set(['total_cost_usd', 'total_savings_usd', 'spend_usd', 'savings_usd']);
+/**
+ * The Overview's spend and savings cards, by component, under both headline sources (OMN-21304 AC4). Named by card,
+ * not by field, so no savings field is read by name here (OMN-19980 R4).
+ */
+const SPEND_CARD = 'overview-spend';
+const SPEND_AND_SAVINGS_CARDS: ReadonlySet<string> = new Set([SPEND_CARD, 'overview-savings']);
+
+/** A served count as a number: a finite number or decimal text; anything else (true, {}, '') is not a count. */
+function countOf(value: unknown): number | null {
+  if (typeof value === 'number') return Number.isFinite(value) ? value : null;
+  if (typeof value === 'string' && /^\s*\d+(?:\.\d+)?\s*$/.test(value)) return Number(value);
+  return null;
+}
 
 /**
  * Tokens in and out from one metering-summary.v1 row. The fold sums tokens only over runs that recorded them, so when
@@ -294,7 +306,7 @@ export function OverviewAggregateCard({ component, config, rows, window }: {
     || !Number.isFinite(Number(value))) return unavailable('Not measured');
   const runs = component.component_id === 'overview-measured';
   // OMN-21304 AC4: this exposure serves no baseline model or pricing version; its unknown runs are the unpriced ones.
-  const basis = SPEND_AND_SAVINGS.has(config.metric_key) ? { basis_not_served: true, unpriced_runs: row.unknown_run_count } : null;
+  const basis = SPEND_AND_SAVINGS_CARDS.has(component.component_id) ? { basis_not_served: true, unpriced_runs: row.unknown_run_count } : null;
   return <>
     <MetricCard component={component} config={config} row={row} caption={basis} />
     <p className="local-dashboard-caption">{component.component_id === 'overview-savings'
@@ -379,7 +391,7 @@ export function MeteringTotalCard({ component, config, rows, window = 'all', now
   }
   const required = component.data_bindings?.[0]?.required_fields ?? [];
   // OMN-21304 AC4: Spend and Savings each name the baseline, the pricing version and the runs left unpriced.
-  const caption = SPEND_AND_SAVINGS.has(config.metric_key)
+  const caption = SPEND_AND_SAVINGS_CARDS.has(component.component_id)
     ? { baseline_model: row.baseline_model, pricing_manifest_version: row.pricing_manifest_version, unpriced_runs: row.runs_unknown_spend }
     : required.includes('baseline_model')
     ? { baseline_model: row.baseline_model, pricing_manifest_version: row.pricing_manifest_version }
