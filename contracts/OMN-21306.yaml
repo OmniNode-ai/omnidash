@@ -38,5 +38,5 @@ dod_evidence:
     binds_ac: ["AC1"]
     checks:
       - check_type: "test_passes"
-        check_value: "test -d node_modules || npm ci --no-audit --no-fund; npx vitest run src/typography-compliance.test.ts"
+        check_value: "test -d node_modules || npm ci --no-audit --no-fund; npx vitest run tests/styles/type-tokens.omn21306.test.ts"
         cwd: "${OMNI_HOME}/omnidash"
