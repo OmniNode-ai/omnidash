@@ -474,6 +474,24 @@ describe('Amendment 6: the six local pages and the loader', () => {
     expect(binding?.required_fields).not.toContain('cost_usd');
   });
 
+  it('Usage insights bind usage, decision and routing sources on their own declared panel', () => {
+    const page = readPage('usage');
+    const bindings = page.components.find((c) => c.component_id === 'usage-insights')?.data_bindings ?? [];
+    expect(bindings.map(binding => binding.projection_topic)).toEqual([
+      'onex.snapshot.projection.usage-by-model-day.v1',
+      'onex.snapshot.projection.delegation.decisions.v1',
+      'onex.snapshot.projection.delegation.model-routing.v1',
+    ]);
+    expect(bindings[1]?.required_fields).toEqual(expect.arrayContaining(['written_at', 'created_at', 'model_name', 'quality_gate_passed']));
+    expect(bindings[2]?.required_fields).toEqual(['by_tier']);
+    const savings = page.components.find((c) => c.component_id === 'usage-savings-series')?.data_bindings ?? [];
+    expect(savings.map(binding => binding.projection_topic)).toEqual(['onex.snapshot.projection.metering-summary.v1']);
+    expect(savings[0]?.required_fields).toEqual(expect.arrayContaining(['counterfactual_usd', 'runs_total']));
+    expect(page.dashboard.widgets.some((w) => w.data_source === 'usage-insights')).toBe(true);
+    expect(page.dashboard.widgets.findIndex((w) => w.data_source === 'usage-insights'))
+      .toBeLessThan(page.dashboard.widgets.findIndex((w) => w.data_source === 'usage-by-model-day'));
+  });
+
   it('Usage binds the savings series to metering-summary.v1 now that it is served (US-3, AC-US3)', () => {
     const page = readPage('usage');
     const series = page.components.find((c) => c.component_id === 'usage-savings-series');

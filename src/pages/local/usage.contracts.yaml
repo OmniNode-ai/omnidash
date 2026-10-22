@@ -17,10 +17,13 @@
           "ordering_direction": "ascending",
           "required_fields": [
             "window_kind",
+            "as_of",
             "window_start",
             "baseline_model",
             "baseline_state",
+            "spend_usd",
             "savings_usd",
+            "counterfactual_usd",
             "runs_total"
           ]
         }
@@ -49,6 +52,60 @@
             "model_id",
             "input_tokens",
             "output_tokens"
+          ]
+        }
+      ],
+      "supported_empty_state_reasons": [
+        "no-data"
+      ]
+    },
+    {
+      "component_id": "usage-insights",
+      "component_kind": "table",
+      "title": "Usage insights",
+      "contract_version": {
+        "major": 1,
+        "minor": 0,
+        "patch": 0
+      },
+      "data_bindings": [
+        {
+          "binding_id": "usage-insights-usage",
+          "projection_topic": "onex.snapshot.projection.usage-by-model-day.v1",
+          "ordering_authority_field": "usage_day",
+          "ordering_direction": "descending",
+          "required_fields": [
+            "tenant_id",
+            "usage_day",
+            "model_id",
+            "input_tokens",
+            "output_tokens",
+            "measured_cost_usd",
+            "unmeasured_call_count",
+            "cost_tier_name",
+            "call_count",
+            "call_share"
+          ]
+        },
+        {
+          "binding_id": "usage-insights-decisions",
+          "projection_topic": "onex.snapshot.projection.delegation.decisions.v1",
+          "ordering_authority_field": "written_at",
+          "ordering_direction": "descending",
+          "required_fields": [
+            "written_at",
+            "created_at",
+            "model_name",
+            "quality_gate_passed"
+          ]
+        },
+        {
+          "binding_id": "usage-insights-routing",
+          "projection_topic": "onex.snapshot.projection.delegation.model-routing.v1",
+          "ordering_authority_field": "captured_at",
+          "ordering_direction": "descending",
+          "required_fields": [
+            "by_tier"
           ]
         }
       ],
