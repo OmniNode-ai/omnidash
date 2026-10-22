@@ -115,4 +115,47 @@ describe('OMN-21015 AC10 API Keys page binding', () => {
     expect(field(card, 'Token minted')).toBe('Not recorded');
     expect(field(card, 'Rotate')).toBe('Not recorded');
   });
+
+  // P6/P7/P8: selection among served rows (never a computed fact) and blank-after-trim values (JG-19).
+  async function renderWith(rows: unknown[]) {
+    harness.answer = (topic) => Promise.resolve(topic === ENVIRONMENT ? rows : []);
+    render(<LocalDashboardPage pageName="api-keys" />);
+    await settle();
+    return accessCard();
+  }
+
+  it('P6a: an older matching row listed first does not win; the newest updated_at does', async () => {
+    const older = native('2026-10-21T08:00:00+00:00');
+    const newer = { ...native('2026-10-21T09:30:00+00:00'), access_mode: 'loopback-token-v2' };
+    const card = await renderWith([older, newer]);
+    expect(field(card, 'Access')).toBe('loopback-token-v2');
+    expect(field(card, 'Token minted')).toBe('2026-10-21T09:30:00+00:00');
+  });
+
+  it('P6b: two matching rows tied on the newest updated_at show the not-available state, not a guess', async () => {
+    const a = native('2026-10-21T09:00:00+00:00');
+    const b = { ...native('2026-10-21T09:00:00+00:00'), access_mode: 'other-mode' };
+    const card = await renderWith([a, b]);
+    expect(within(card).getByRole('status')).toHaveTextContent('Not available yet: dashboard access details');
+    expect(within(card).queryByText('other-mode')).not.toBeInTheDocument();
+  });
+
+  it('P6c: with several matching rows, one missing or unparseable updated_at shows the not-available state', async () => {
+    const card = await renderWith([native('2026-10-21T09:00:00+00:00'), { ...native('x'), updated_at: 'not-a-date' }]);
+    expect(within(card).getByRole('status')).toHaveTextContent('Not available yet: dashboard access details');
+  });
+
+  it('P7: whitespace-only values say Not recorded, never a blank', async () => {
+    const card = await renderWith([{ ...native('2026-10-21T09:00:00+00:00'), access_mode: '   ', token_minted_at: ' \t', rotate_hint: '\n ' }]);
+    expect(field(card, 'Access')).toBe('Not recorded');
+    expect(field(card, 'Token minted')).toBe('Not recorded');
+    expect(field(card, 'Rotate')).toBe('Not recorded');
+  });
+
+  it('P8: a single matching row without updated_at is used as is', async () => {
+    const { updated_at: _omit, ...single } = native('2026-10-21T09:00:00+00:00');
+    const card = await renderWith([single]);
+    expect(field(card, 'Access')).toBe('loopback-token');
+    expect(field(card, 'Token minted')).toBe('2026-10-21T09:00:00+00:00');
+  });
 });
