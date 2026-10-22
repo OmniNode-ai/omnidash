@@ -18,7 +18,7 @@ const SAVINGS = 'onex.snapshot.projection.delegation.savings.v1';
 
 const harness = vi.hoisted(() => ({
   reads: [] as string[],
-  answer: (_topic: string): Promise<unknown[]> => Promise.resolve([]),
+  answer: (() => Promise.resolve([])) as (topic: string) => Promise<unknown[]>,
 }));
 
 vi.mock('@/data-source', () => ({
@@ -40,7 +40,7 @@ vi.mock('@/data-source/exposure-census', () => ({
   fetchExposureCensus: async () => ({ rows: [ENVIRONMENT, SAVINGS].map((topic) => ({ topic, reachability: 'reachable' })) }),
 }));
 
-import { LocalDashboardPage } from './LocalDashboardPage';
+import { LocalDashboardPage } from '@/pages/LocalDashboardPage';
 
 const native = (minted: string) => ({
   tenant_id: 'tenant-a', mode: 'native', service: 'local-runtime', observed_state: 'up', updated_at: minted,
@@ -153,7 +153,9 @@ describe('OMN-21015 AC10 API Keys page binding', () => {
   });
 
   it('P8: a single matching row without updated_at is used as is', async () => {
-    const { updated_at: _omit, ...single } = native('2026-10-21T09:00:00+00:00');
+    const single = Object.fromEntries(
+      Object.entries(native('2026-10-21T09:00:00+00:00')).filter(([key]) => key !== 'updated_at'),
+    );
     const card = await renderWith([single]);
     expect(field(card, 'Access')).toBe('loopback-token');
     expect(field(card, 'Token minted')).toBe('2026-10-21T09:00:00+00:00');

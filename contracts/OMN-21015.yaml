@@ -167,7 +167,7 @@ dod_evidence:
     binds_ac: ["AC10"]
     checks:
       - check_type: "test_passes"
-        check_value: "test -d node_modules || npm ci --no-audit --no-fund; npx vitest run src/pages/LocalDashboardPage.omn21015.access.test.tsx"
+        check_value: "test -d node_modules || npm ci --no-audit --no-fund; npx vitest run tests/pages/LocalDashboardPage.omn21015.access.test.tsx"
         cwd: "${OMNI_HOME}/omnidash"
 emergency_bypass:
   enabled: false
