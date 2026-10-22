@@ -55,6 +55,14 @@ function count(value: number): string {
   return value.toLocaleString('en-US');
 }
 
+/**
+ * OMN-21304 AC3: the population a pass rate is over. A rate counts only runs with a served verdict, so beside it the
+ * page says how many of the runs that is; a run with no verdict is never folded into passed or failed.
+ */
+function verdictCoverage(withVerdict: number, runs: number): string {
+  return `${count(withVerdict)} of ${count(runs)} runs have a verdict`;
+}
+
 function duration(ms: number): string {
   return ms < 1000 ? `${count(ms)} ms` : `${(ms / 1000).toFixed(2)} s`;
 }
@@ -161,12 +169,12 @@ function PassRateTrend({ days }: { days: InsightDay[] }) {
   const known = rates.filter((rate): rate is number => rate !== null);
   const min = known.length ? Math.max(0, Math.floor(Math.min(...known) / 10) * 10 - 10) : 0;
   const path = linePath(rates, min, 100, 600, 120);
-  const labels = days.map(day => `${dayLabel(day.day)}: ${day.passRate === null ? 'no verdicts' : `${day.passRate.toFixed(1)}% passed`}`);
+  const labels = days.map(day => `${dayLabel(day.day)}: ${day.passRate === null ? 'no verdicts' : `${day.passRate.toFixed(1)}% passed`} (${verdictCoverage(day.passed + day.failed, day.runs)})`);
   const active = hover === null ? null : days[hover]!;
   const x = hover === null ? 0 : days.length > 1 ? (hover / (days.length - 1)) * 100 : 50;
   return (
     <ChartCard title="Pass rate per day" icon={<TrendingUp size={16} />} accent={PASS} delay={60}>
-      <Readout active={active !== null} text={active ? <>{dayLabel(active.day)} · <span data-field-tone="pass" data-field-unavailable={active.passRate === null}>{active.passRate === null ? 'no verdicts' : `${active.passRate.toFixed(1)}% passed`}</span></> : `Scale from ${min}% to 100%`} />
+      <Readout active={active !== null} text={active ? <>{dayLabel(active.day)} · <span data-field-tone="pass" data-field-unavailable={active.passRate === null}>{active.passRate === null ? 'no verdicts' : `${active.passRate.toFixed(1)}% passed`}</span> · <span data-field-tone="basis">{verdictCoverage(active.passed + active.failed, active.runs)}</span></> : `Scale from ${min}% to 100%`} />
       <div className="ins-plot">
         <svg viewBox="0 0 600 120" preserveAspectRatio="none" role="img" aria-label="Pass rate per day">
           <path className="od-draw" d={path} fill="none" stroke={PASS} strokeWidth={3} vectorEffect="non-scaling-stroke" strokeLinejoin="round" />
@@ -258,7 +266,7 @@ function TaskMix({ runs }: { runs: InsightRun[] }) {
               <span className="ins-chip-icon" aria-hidden="true">{look.icon}</span>
               <span className="ins-list-name">{group.key === NOT_RECORDED ? NOT_RECORDED : readable(group.key)}</span>
               <span className="ins-track"><span className="ins-fill od-growx" style={{ width: `${(group.runs / max) * 100}%`, animationDelay: `${index * 60}ms` }} /></span>
-              <span className="ins-list-value"><span data-field-tone="count">{count(group.runs)}</span> · <span data-field-tone="pass" data-field-unavailable={!judged}>{judged ? `${Math.round((group.passed / judged) * 100)}%` : 'no verdicts'}</span></span>
+              <span className="ins-list-value"><span data-field-tone="count">{count(group.runs)}</span> · <span data-field-tone="pass" data-field-unavailable={!judged}>{judged ? `${Math.round((group.passed / judged) * 100)}%` : 'no verdicts'}</span> · <span className="ins-list-coverage" data-field-tone="basis">{verdictCoverage(judged, group.runs)}</span></span>
             </li>
           );
         })}
@@ -309,6 +317,7 @@ function ModelScoreboard({ runs }: { runs: InsightRun[] }) {
                 <span className="ins-ring-name" data-field-tone="model" data-field-unavailable={group.key === NOT_RECORDED}>{group.key}</span>
                 <span className="ins-ring-rate" data-field-tone="pass" data-field-unavailable={rate === null}>{rate === null ? 'No verdicts' : `${Math.round(rate)}% passed`}</span>
                 <span className="ins-ring-runs" data-field-tone="count">{count(group.runs)} runs</span>
+                <span className="ins-ring-coverage" data-field-tone="basis">{verdictCoverage(judged, group.runs)}</span>
               </span>
             </li>
           );
@@ -470,9 +479,9 @@ export function PassRateSparkline() {
       ? comparison.previousComplete
         ? `Previous ${comparisonDays === 1 ? 'day' : `${comparisonDays} days`} has no recorded verdicts to compare`
         : `Previous ${comparisonDays === 1 ? 'day' : `${comparisonDays} days`} not fully returned`
-      : `${comparison.passRateDeltaPoints > 0 ? '▲' : comparison.passRateDeltaPoints < 0 ? '▼' : '—'} ${Math.abs(comparison.passRateDeltaPoints).toFixed(1)} percentage points vs previous ${comparisonDays === 1 ? 'day' : `${comparisonDays} days`}`;
+      : `${comparison.passRateDeltaPoints > 0 ? '▲' : comparison.passRateDeltaPoints < 0 ? '▼' : '—'} ${Math.abs(comparison.passRateDeltaPoints).toFixed(1)} percentage points vs previous ${comparisonDays === 1 ? 'day' : `${comparisonDays} days`} (${verdictCoverage(comparison.previousVerdicts, comparison.previousRuns)})`;
   return <section className="ins-pass-headline" aria-label="Pass rate trend">
-    <p className="local-dashboard-caption"><span>Pass rate</span> <strong data-field-unavailable={current.passRate === null}>{rate}</strong></p>
+    <p className="local-dashboard-caption"><span>Pass rate</span> <strong data-field-unavailable={current.passRate === null}>{rate}</strong> <span className="ins-pass-coverage" data-field-tone="basis">{verdictCoverage(current.passed + current.failed, current.runs)}</span></p>
     <p className="local-dashboard-caption ins-pass-delta" data-field-unavailable={comparison?.passRateDeltaPoints === null || comparison === null}>{deltaText}</p>
     <PassRateTrend days={seriesForDays(currentRuns, plottedDays(runs, context.now, window))} />
   </section>;

@@ -135,8 +135,21 @@ function captionText(caption: Record<string, unknown> | null | undefined): strin
   if ('baseline_model' in fields) {
     parts.push(isMissing(fields.baseline_model) ? 'Baseline unresolved' : `Baseline ${String(fields.baseline_model)}`);
   }
-  if ('pricing_manifest_version' in fields && !isMissing(fields.pricing_manifest_version)) {
-    parts.push(`pricing manifest v${String(fields.pricing_manifest_version)}`);
+  // OMN-21304 AC4: an exposure that serves no baseline or pricing version says so; it is never left blank.
+  if ('basis_not_served' in fields) parts.push('Baseline model not recorded', 'Pricing manifest not recorded');
+  if ('pricing_manifest_version' in fields) {
+    parts.push(isMissing(fields.pricing_manifest_version)
+      ? 'Pricing manifest not recorded' : `pricing manifest v${String(fields.pricing_manifest_version)}`);
+  }
+  // OMN-21304 AC4: an exposure that serves no count of unpriced runs says so, rather than standing another count in.
+  if ('unpriced_not_served' in fields) parts.push('Unpriced runs not recorded');
+  // OMN-21304 AC4: the runs the total leaves out, each served class under its own name; a missing count is not 0.
+  if (Array.isArray(fields.excluded_runs)) {
+    const classes = (fields.excluded_runs as Array<[unknown, string, string]>).map(([value, one, many]) => {
+      const n = countOf(value);
+      return n === null ? `${many}: not recorded` : `${n.toLocaleString('en-US')} ${n === 1 ? one : many}`;
+    });
+    parts.push(`Not in this total: ${classes.join(', ')}`);
   }
   if ('zero_token_run_count' in fields && !isMissing(fields.zero_token_run_count)) {
     parts.push(`Zero-token runs: ${String(fields.zero_token_run_count)}`);
@@ -180,7 +193,10 @@ export function MetricCard({ component, config, row, caption, figureLine, figure
   const line = captionText(caption);
   // A savings figure is a modelled counterfactual: served tokens priced at the baseline's list price, with no
   // baseline run behind it (Jonah's savings handoff on OMN-19981, aac9032d, item 5).
-  const modelled = caption !== null && caption !== undefined && 'baseline_model' in caption;
+  // A card captioned with a baseline is modelled, except Spend, which carries the baseline as context and is measured
+  // (OMN-21304).
+  const modelled = caption !== null && caption !== undefined && 'baseline_model' in caption
+    && component.component_id !== SPEND_CARD;
   return (
     <>
       <p className="local-dashboard-metric" data-measured={figure}>{text}</p>
@@ -239,6 +255,19 @@ export function RunLocallyCard({ row }: { row: Record<string, unknown> | null })
 
 /** The Tokens card's widget key: two served columns shown side by side, never summed (SV-3: no combined total). */
 const TOKENS_IN_AND_OUT = 'tokens_in_and_out';
+/**
+ * The Overview's spend and savings cards, by component, under both headline sources (OMN-21304 AC4). Named by card,
+ * not by field, so no savings field is read by name here (OMN-19980 R4).
+ */
+const SPEND_CARD = 'overview-spend';
+const SPEND_AND_SAVINGS_CARDS: ReadonlySet<string> = new Set([SPEND_CARD, 'overview-savings']);
+
+/** A served count as a number: a finite number or decimal text; anything else (true, {}, '') is not a count. */
+function countOf(value: unknown): number | null {
+  if (typeof value === 'number') return Number.isFinite(value) ? value : null;
+  if (typeof value === 'string' && /^\s*\d+(?:\.\d+)?\s*$/.test(value)) return Number(value);
+  return null;
+}
 
 /**
  * Tokens in and out from one metering-summary.v1 row. The fold sums tokens only over runs that recorded them, so when
@@ -280,8 +309,15 @@ export function OverviewAggregateCard({ component, config, rows, window }: {
     || (typeof value === 'string' && !/^-?\d+(?:\.\d+)?$/.test(value))
     || !Number.isFinite(Number(value))) return unavailable('Not measured');
   const runs = component.component_id === 'overview-measured';
+  // OMN-21304 AC4: this exposure serves no baseline model, pricing version or unpriced count. Its money totals sum
+  // measured-provenance rows only, so the estimated and unknown-provenance runs are what each total leaves out.
+  const basis = SPEND_AND_SAVINGS_CARDS.has(component.component_id) ? {
+    basis_not_served: true, unpriced_not_served: true,
+    excluded_runs: [[row.estimated_run_count, 'estimated run', 'estimated runs'],
+      [row.unknown_run_count, 'unknown-provenance run', 'unknown-provenance runs']],
+  } : null;
   return <>
-    <MetricCard component={component} config={config} row={row} />
+    <MetricCard component={component} config={config} row={row} caption={basis} />
     <p className="local-dashboard-caption">{component.component_id === 'overview-savings'
       ? 'Modelled · vs cloud baseline' : runs ? 'All calls' : 'All-time aggregate'}</p>
     {/* OMN-21166 AC37: the headline is every call; the measured population is a labelled breakdown beside it, the
@@ -363,7 +399,14 @@ export function MeteringTotalCard({ component, config, rows, window = 'all', now
     return <p className="local-dashboard-metric" data-measured={!text.startsWith('Not measured')}>{text}</p>;
   }
   const required = component.data_bindings?.[0]?.required_fields ?? [];
-  const caption = required.includes('baseline_model')
+  // OMN-21304 AC4: Spend and Savings each name the baseline, the pricing version and the runs left unpriced.
+  const caption = SPEND_AND_SAVINGS_CARDS.has(component.component_id)
+    ? { baseline_model: row.baseline_model, pricing_manifest_version: row.pricing_manifest_version,
+      // The fold classes a run with no token counts before it looks at spend, so both classes are left out of the
+      // money total; the second is the unpriced count.
+      excluded_runs: [[row.runs_unknown_tokens, 'run with no token counts', 'runs with no token counts'],
+        [row.runs_unknown_spend, 'run with no spend recorded', 'runs with no spend recorded']] }
+    : required.includes('baseline_model')
     ? { baseline_model: row.baseline_model, pricing_manifest_version: row.pricing_manifest_version }
     : required.includes('runs_total')
       ? { runs_total: row.runs_total, runs_unknown_tokens: row.runs_unknown_tokens, runs_unknown_spend: row.runs_unknown_spend }
@@ -1411,8 +1454,16 @@ export function RunTimeline({ steps }: { steps: readonly unknown[] }) {
         const kind = String(row.step_kind ?? '');
         const failing = !isMissing(named) && row.step_sequence === named;
         const candidates = Array.isArray(row.candidates) ? row.candidates.map(String) : [];
+        // OMN-21304 AC3: a routing decision's reason and candidates are what the step is for, so when the row records
+        // neither they read not recorded rather than vanish. Other steps keep leaving an absent detail out.
+        const routing = kind === 'routing_decision';
+        const unrecordedRouting: Array<[string, string]> = routing ? [
+          ...(isMissing(row.reason) ? [['reason', 'not recorded'] as [string, string]] : []),
+          ...(candidates.length === 0 ? [['candidates', 'not recorded'] as [string, string]] : []),
+        ] : [];
         // Each served detail under its own name; a detail the row does not carry is left out, never shown empty.
         const details: Array<[string, string]> = [
+          ...unrecordedRouting,
           ...(isMissing(row.failure_cause) ? [] : [['cause', String(row.failure_cause)] as [string, string]]),
           ...(isMissing(row.backend_id) ? [] : [['backend', String(row.backend_id)] as [string, string]]),
           ...(isMissing(row.model_id) ? [] : [['model', String(row.model_id)] as [string, string]]),

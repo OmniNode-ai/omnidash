@@ -23,6 +23,8 @@ export interface WindowComparison {
   previousComplete: boolean;
   currentRuns: number;
   previousRuns: number;
+  /** OMN-21304: the previous window's runs with a served verdict, the population its pass rate is over. */
+  previousVerdicts: number;
   currentMedianLatency: number | null;
   previousMedianLatency: number | null;
   runsDelta: number | null;
@@ -48,6 +50,7 @@ export function compareWindow(rows: readonly unknown[], now: number, days: numbe
     previousComplete,
     currentRuns: current.runs,
     previousRuns: previous.runs,
+    previousVerdicts: previous.passed + previous.failed,
     currentMedianLatency: current.medianLatency,
     previousMedianLatency: previousComplete ? previous.medianLatency : null,
     runsDelta: previousComplete ? current.runs - previous.runs : null,
