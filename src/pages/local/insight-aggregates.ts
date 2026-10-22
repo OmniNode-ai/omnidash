@@ -152,6 +152,11 @@ export function aggregateMeteringRange(rows: readonly unknown[], start: string, 
   if (!UTC_DATE.test(start) || !UTC_DATE.test(end) || !Number.isFinite(first) || !Number.isFinite(last)) {
     return unavailableMetering('Choose both UTC dates for this range.');
   }
+  // Date.parse rolls a date the calendar does not have (2026-04-31) into the next day, so a date counts only when it
+  // reads back unchanged; otherwise April 31 would return May 1's total.
+  if (new Date(first).toISOString().slice(0, 10) !== start || new Date(last).toISOString().slice(0, 10) !== end) {
+    return unavailableMetering('Choose dates that exist on the UTC calendar.');
+  }
   if (last < first) return unavailableMetering('End date must be on or after the start date.');
   const servedDays = records(rows)
     .filter(row => row.window_kind === 'day' && typeof row.window_start === 'string' && UTC_DATE.test(row.window_start))

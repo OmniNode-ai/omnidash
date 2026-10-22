@@ -168,3 +168,26 @@ it('AC26 refuses to pick a newest all-time row when any of several rows has no u
     dated,
   ]) as Totals).toMatchObject({ available: true, baseline: 'baseline-dated', spend: 1.5 });
 });
+
+// A date the calendar does not have (April 31, February 30) must be refused, never rolled into the next day.
+it('AC42 refuses a custom UTC range whose date does not exist on the calendar', async () => {
+  const modulePath: string = './insight-aggregates';
+  const loaded = await import(/* @vite-ignore */ modulePath).catch(() => null) as Record<string, unknown> | null;
+  const range = loaded?.aggregateMeteringRange;
+  expect(typeof range).toBe('function');
+  if (typeof range !== 'function') return;
+  const days = ['2026-04-29', '2026-04-30', '2026-05-01', '2026-05-02'];
+  const metering = [
+    { window_kind: 'all', baseline_model: 'baseline-a', as_of: '2026-05-02T11:00:00Z' },
+    ...days.map(day => ({ window_kind: 'day', window_start: day, baseline_model: 'baseline-a', spend_usd: '0.10', savings_usd: '0.20', counterfactual_usd: '0.30', runs_total: 1 })),
+  ];
+  type Window = { available: boolean; spend: number | null; reason: string | null };
+  // April 31 would otherwise parse as May 1 and return May 1's total.
+  expect(range(metering, '2026-04-31', '2026-04-31') as Window).toMatchObject({ available: false, spend: null });
+  expect(range(metering, '2026-04-30', '2026-04-31') as Window).toMatchObject({ available: false, spend: null });
+  expect(range(metering, '2026-02-30', '2026-05-01') as Window).toMatchObject({ available: false, spend: null });
+  // Control: a real date inside the served days still sums.
+  const real = range(metering, '2026-05-01', '2026-05-01') as Window;
+  expect(real.available).toBe(true);
+  expect(real.spend).toBeCloseTo(0.1);
+});
