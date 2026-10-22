@@ -2169,6 +2169,8 @@ figure.local-chart.ins-card { margin: 0; padding: 20px 22px; border-radius: 16px
 [data-theme="dark"] .local-dashboard-panel[data-component="credentials-keys"] { --panel-accent: var(--field-credentials); }
 .local-dashboard-panel[data-component="api-keys-local-identity"] { --panel-accent: var(--field-local-identity); }
 [data-theme="dark"] .local-dashboard-panel[data-component="api-keys-local-identity"] { --panel-accent: var(--field-local-identity); }
+.local-dashboard-panel[data-component="api-keys-access"] { --panel-accent: var(--field-local-access); }
+[data-theme="dark"] .local-dashboard-panel[data-component="api-keys-access"] { --panel-accent: var(--field-local-access); }
 .local-dashboard-panel[data-component="api-keys-cloud"] { --panel-accent: var(--field-host); }
 [data-theme="dark"] .local-dashboard-panel[data-component="api-keys-cloud"] { --panel-accent: var(--field-host); }
 .local-dashboard-panel > h2 { color: var(--panel-accent); }
