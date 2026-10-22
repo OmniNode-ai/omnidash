@@ -1,6 +1,6 @@
 {
   "source": "GET /projections on the .201 lab projection API (lakshman lane), read-only",
-  "captured_at": "2026-10-14T04:30:11Z",
+  "captured_at": "2026-10-22T04:40:31Z",
   "exposures": [
     {
       "topic": "delegation",
@@ -642,7 +642,12 @@
         "cost_tier_name",
         "cost_tier_type",
         "terminal_ok",
+        "terminal_failure_cause",
         "cost_usd",
+        "modelled_savings_usd",
+        "savings_baseline_model",
+        "savings_pricing_manifest_version",
+        "savings_measurement",
         "created_at",
         "data_source",
         "trace_id",
@@ -782,7 +787,8 @@
         "provisioned",
         "latest_projection_updated_at",
         "cumulative_counterfactual_baseline_usd",
-        "tenant_id"
+        "tenant_id",
+        "unpriced_call_count"
       ]
     },
     {
@@ -820,6 +826,7 @@
         "total_completion_tokens",
         "total_tokens",
         "total_estimated_cost_usd",
+        "unpriced_call_count",
         "provenance_summary",
         "by_model",
         "captured_at",
@@ -1107,6 +1114,34 @@
         "payload",
         "correlation_id",
         "created_at"
+      ]
+    },
+    {
+      "topic": "onex.snapshot.projection.local-environment.v1",
+      "status": "ok",
+      "degraded_reason": null,
+      "columns": [
+        "tenant_id",
+        "mode",
+        "service",
+        "observed_state",
+        "reason",
+        "versions",
+        "last_seen",
+        "last_change",
+        "verdict",
+        "verdict_reason",
+        "alert_code",
+        "alert_severity",
+        "alert_since",
+        "store_kind",
+        "store_location",
+        "access_mode",
+        "token_minted_at",
+        "rotate_hint",
+        "report_id",
+        "updated_at",
+        "projection_cursor"
       ]
     },
     {
@@ -1503,12 +1538,14 @@
         "tenant_id",
         "usage_day",
         "model_id",
+        "cost_tier_name",
         "input_tokens",
         "output_tokens",
         "cost_usd",
         "measured_cost_usd",
         "unmeasured_call_count",
         "call_count",
+        "call_share",
         "updated_at",
         "projection_cursor"
       ]
