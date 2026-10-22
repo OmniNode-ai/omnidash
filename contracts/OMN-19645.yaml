@@ -30,6 +30,20 @@ emergency_bypass:
   enabled: false
   justification: ""
   follow_up_ticket_id: ""
+# Historical OCC provenance; active acceptance labels remain in binds_ac.
+context:
+  legacy_ac_bindings:
+    "dod-OmniNode-ai-omnidash-pr-326":
+      - label: "AC1"
+        criterion_hash: "3dc636d0baa22e4f90c3d18b7c7832c7956d8e6bdecee9ae4fc3d7b4f6dc0186"
+        proposed_by: "occ-autobind"
+        accepted_by: "7a850ce1-f95e-431f-b4e3-62f7449f04c0"
+        accepted_at: "2026-09-25T17:38:48Z"
+      - label: "AC2"
+        criterion_hash: "67b7ae570e4f0b8bd10a3f8b37b168046ba2de31f49ede808cce9f89ab5c87e2"
+        proposed_by: "occ-autobind"
+        accepted_by: "7a850ce1-f95e-431f-b4e3-62f7449f04c0"
+        accepted_at: "2026-09-25T17:38:48Z"
 dod_evidence:
   - id: "dod-OmniNode-ai-omnidash-pr-326"
     description: "PR #326 on OmniNode-ai/omnidash — Evidence-Source autobind."
@@ -43,17 +57,6 @@ dod_evidence:
     binds_ac:
       - "AC1"
       - "AC2"
-    ac_bindings:
-      - label: "AC1"
-        criterion_hash: "3dc636d0baa22e4f90c3d18b7c7832c7956d8e6bdecee9ae4fc3d7b4f6dc0186"
-        proposed_by: "occ-autobind"
-        accepted_by: "7a850ce1-f95e-431f-b4e3-62f7449f04c0"
-        accepted_at: "2026-09-25T17:38:48Z"
-      - label: "AC2"
-        criterion_hash: "67b7ae570e4f0b8bd10a3f8b37b168046ba2de31f49ede808cce9f89ab5c87e2"
-        proposed_by: "occ-autobind"
-        accepted_by: "7a850ce1-f95e-431f-b4e3-62f7449f04c0"
-        accepted_at: "2026-09-25T17:38:48Z"
   - id: "dod-occ-evidence-admissibility-validator"
     description: "Hosted OCC evidence admissibility validator (OMN-15247)."
     source: "generated"

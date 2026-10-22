@@ -36,22 +36,10 @@ emergency_bypass:
   enabled: false
   justification: ""
   follow_up_ticket_id: ""
-dod_evidence:
-  - id: "dod-OmniNode-ai-omnidash-pr-330"
-    description: "PR #330 on OmniNode-ai/omnidash — Evidence-Source autobind."
-    source: "generated"
-    checks:
-      - check_type: "command"
-        check_value: "gh pr view 330 --repo OmniNode-ai/omnidash --json number,state"
-      - check_type: "command"
-        check_value: |-
-          gh api repos/OmniNode-ai/omnidash/pulls/330/files --paginate --jq '.[].filename' | grep -cFx 'src/components/dashboard/DateRangeSelector.tsx'
-    binds_ac:
-      - "AC1"
-      - "AC2"
-      - "AC3"
-      - "AC4"
-    ac_bindings:
+# Historical OCC provenance; active acceptance labels remain in binds_ac.
+context:
+  legacy_ac_bindings:
+    "dod-OmniNode-ai-omnidash-pr-330":
       - label: "AC1"
         criterion_hash: "7519f147dfca6a338c563be9cfef4a5c157338060cee90cc6f3a8dbd97e47446"
         proposed_by: "occ-autobind"
@@ -72,6 +60,21 @@ dod_evidence:
         proposed_by: "occ-autobind"
         accepted_by: "7a850ce1-f95e-431f-b4e3-62f7449f04c0"
         accepted_at: "2026-09-26T13:46:03Z"
+dod_evidence:
+  - id: "dod-OmniNode-ai-omnidash-pr-330"
+    description: "PR #330 on OmniNode-ai/omnidash — Evidence-Source autobind."
+    source: "generated"
+    checks:
+      - check_type: "command"
+        check_value: "gh pr view 330 --repo OmniNode-ai/omnidash --json number,state"
+      - check_type: "command"
+        check_value: |-
+          gh api repos/OmniNode-ai/omnidash/pulls/330/files --paginate --jq '.[].filename' | grep -cFx 'src/components/dashboard/DateRangeSelector.tsx'
+    binds_ac:
+      - "AC1"
+      - "AC2"
+      - "AC3"
+      - "AC4"
   - id: "dod-occ-evidence-admissibility-validator"
     description: "Hosted OCC evidence admissibility validator (OMN-15247)."
     source: "generated"
