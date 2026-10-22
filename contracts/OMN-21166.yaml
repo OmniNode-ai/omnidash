@@ -42,32 +42,6 @@
         {
           "id": "AC8",
           "statement": "AC8: A repeatable browser verification artifact records the tested SHA, mode and viewport, Developer setting off/on, all six core pages and Delegation Evidence. Include missing-tenant and populated-tenant states, plus screenshots at 1440x900 and a narrow viewport. A missing populated capture remains explicitly unverified. Falsifier: any listed state lacks a capture or an existing required field becomes inaccessible."
-        },
-        {
-          "id": "AC39",
-          "statement": "AC39: No user-visible text on the six core pages or Delegation Evidence names an internal exposure, topic, table, column or typed code. Falsifier: the seven-page walk reports an internal name in populated, empty, unserved, refused, missing-table or missing-tenant states."
-        }
-      ]
-    },
-    {
-      "id": "req-mockup-parity-acceptance-criteria",
-      "statement": "Mockup-parity acceptance criteria AC26, AC29, AC40 and AC42, copied from the approved plan's latest text (OMN-21166 amendments through part 6). The ticket and plan remain the source. AC27 and AC41 are proven only by browser specs, which the hosted control does not complete within its per-check budget, so they stay in the plan and not in this repo-owned acceptance list.",
-      "acceptance": [
-        {
-          "id": "AC26",
-          "statement": "AC26: Overview as in the mockup: headline pass rate with delta and interactive daily line; four KPI cards (paid, saved, runs, median duration) with deltas; runs-per-day (series toggles, hover/focus readout) and spend vs all-cloud (hover readout) charts; route-mix donut, activity heatmap, task mix, duration histogram, model scoreboard rings, cumulative savings; failure reasons and routes that filter the latest-runs table; time range (Today/7/14 days) applied to every panel; since-last-visit bar. Every figure traces to served rows; unavailable inputs show a typed unavailable state, never a fabricated value."
-        },
-        {
-          "id": "AC29",
-          "statement": "AC29: Usage as in the mockup: KPI cards, daily paid vs saved, tokens per day by model with model toggles, savings by route, spend-by-model donut, cost per run trend, tokens in vs out per model, models table."
-        },
-        {
-          "id": "AC40",
-          "statement": "AC40 (TI25): The activity insights on Overview and Runs offer the windows All, 1 day, 7 days, 15 days, 30 days and a custom UTC date range, and open on All. Each window counts only served rows whose time falls inside it. A custom range with its end before its start, or outside the served rows, shows a typed empty state, never a fabricated zero. Evidence:\n- vitest over a fixture with runs on known UTC days, with the clock pinned, for each preset and a custom range\n- the existing tests that expect the all-runs population (C9, C12, C13, contracts:213, contracts:448, omn21015:254) pass unchanged on the default\n- RED on `272e8556`, GREEN after"
-        },
-        {
-          "id": "AC42",
-          "statement": "AC42 (TI27): the Overview metering KPIs (spend and savings for the selected AC40 window) are visible in the open insights section, not inside a closed disclosure. Evidence: mockup-parity:50 unchanged and passing; it fails when the KPIs sit in a closed disclosure."
         }
       ]
     }
@@ -274,6 +248,59 @@
           "check_type": "test_passes",
           "check_value": "test -d node_modules || npm ci --no-audit --no-fund; npx vitest run tests/pages/local/overview-metering-kpis.omn21166.test.tsx",
           "cwd": "${OMNI_HOME}/omnidash"
+        }
+      ]
+    },
+    {
+      "id": "dod-omn21166-retire-plan-amendment-bindings",
+      "description": "Retires the bindings of AC39, AC26, AC29, AC40 and AC42. They came from the approved plan's amendments and were never criteria of the OMN-21166 ticket, so dod_verify reported them as deleted (CRITERIA_DRIFT). By the ticket owner's ruling of 2026-10-22 the ticket closes on its own AC1 to AC8; the open parts of AC26 and AC29 moved to OMN-21306. The code and tests of all five stay in the repository and keep running in CI.",
+      "source": "manual",
+      "checks": [
+        {
+          "check_type": "command",
+          "check_value": "true"
+        }
+      ],
+      "supersedes_ac_binding": [
+        {
+          "item": "dod-omn21166-ac39-literal-name-matching",
+          "label": "AC39",
+          "reason_kind": "no_longer_applicable",
+          "reason": "AC39 is a plan amendment the OMN-21166 ticket does not carry; it was proven on dev 5afbe1b8 (per-criterion run 2026-10-22) and its tests stay in the repository.",
+          "retired_by": "claude-fa1dcdc4 for Lakshman",
+          "retired_at": "2026-10-22T15:48:14Z"
+        },
+        {
+          "item": "dod-omn21166-ac26-insight-aggregates",
+          "label": "AC26",
+          "reason_kind": "no_longer_applicable",
+          "reason": "AC26 is a plan amendment the OMN-21166 ticket does not carry; it was proven in part on dev 5afbe1b8, and its open parts moved to OMN-21306 (owner's ruling 2026-10-22).",
+          "retired_by": "claude-fa1dcdc4 for Lakshman",
+          "retired_at": "2026-10-22T15:48:14Z"
+        },
+        {
+          "item": "dod-omn21166-ac29-usage-insights",
+          "label": "AC29",
+          "reason_kind": "no_longer_applicable",
+          "reason": "AC29 is a plan amendment the OMN-21166 ticket does not carry; it was proven in part on dev 5afbe1b8, and its open parts moved to OMN-21306 (owner's ruling 2026-10-22).",
+          "retired_by": "claude-fa1dcdc4 for Lakshman",
+          "retired_at": "2026-10-22T15:48:14Z"
+        },
+        {
+          "item": "dod-omn21166-ac40-insight-windows",
+          "label": "AC40",
+          "reason_kind": "no_longer_applicable",
+          "reason": "AC40 is a plan amendment the OMN-21166 ticket does not carry; it was proven on dev 5afbe1b8 (per-criterion run 2026-10-22) and its tests stay in the repository.",
+          "retired_by": "claude-fa1dcdc4 for Lakshman",
+          "retired_at": "2026-10-22T15:48:14Z"
+        },
+        {
+          "item": "dod-omn21166-ac42-metering-kpis",
+          "label": "AC42",
+          "reason_kind": "no_longer_applicable",
+          "reason": "AC42 is a plan amendment the OMN-21166 ticket does not carry; it was proven on dev 5afbe1b8 (per-criterion run 2026-10-22) and its tests stay in the repository.",
+          "retired_by": "claude-fa1dcdc4 for Lakshman",
+          "retired_at": "2026-10-22T15:48:14Z"
         }
       ]
     }
