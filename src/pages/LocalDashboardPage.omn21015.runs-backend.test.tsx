@@ -115,6 +115,21 @@ describe('Runs address carries the backend filter (OMN-21015 AC8)', () => {
     const written = writeRunsSearch('', { ...DEFAULT_RUNS_VIEW, backend: 'lab host/coder & co' });
     expect(readRunsSearch(`?${written}`).backend).toBe('lab host/coder & co');
   });
+
+  it('round-trips the selected UTC day and task chip without disturbing existing filters', () => {
+    const written = writeRunsSearch('?tenant=acme&status=failed', {
+      ...DEFAULT_RUNS_VIEW, status: 'failed', day: '2026-10-21', task: 'code_generation',
+    });
+    expect(readRunsSearch(`?${written}`)).toMatchObject({
+      status: 'failed', day: '2026-10-21', task: 'code_generation',
+    });
+    expect(written).toContain('tenant=acme');
+  });
+
+  it('ignores malformed day filters and omits cleared day/task values', () => {
+    expect(readRunsSearch('?day=21-10-2026').day).toBeUndefined();
+    expect(writeRunsSearch('?day=2026-10-21&task=code_generation', DEFAULT_RUNS_VIEW)).toBe('');
+  });
 });
 
 describe('Runs address and table agree (OMN-21015 AC8)', () => {

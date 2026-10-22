@@ -266,8 +266,11 @@ export function causes(runs: readonly InsightRun[]): InsightCause[] {
   return [...groups.values()].sort((a, b) => b.count - a.count || a.cause.localeCompare(b.cause));
 }
 
-/** A running total; a missing day's value (null) carries the total forward. */
-export function cumulative(values: ReadonlyArray<number | null>): number[] {
-  let total = 0;
-  return values.map(value => { if (value !== null) total += value; return total; });
+/** A running total; leading missing values stay unavailable, then missing days carry forward. */
+export function cumulative(values: ReadonlyArray<number | null>): (number | null)[] {
+  let total: number | null = null;
+  return values.map(value => {
+    if (value !== null) total = (total ?? 0) + value;
+    return total;
+  });
 }

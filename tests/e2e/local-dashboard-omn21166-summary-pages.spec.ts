@@ -16,7 +16,7 @@ test('Overview is a compact summary with exact run links and no detailed tables'
   await page.goto('/overview');
   await expect(page.getByRole('heading', { name: 'Quality', exact: true })).toBeVisible();
   await expect(page.locator('.local-overview-summary article')).toHaveCount(4);
-  await expect(page.locator('main figure:visible')).toHaveCount(2);
+  await expect(page.locator('main figure:visible')).toHaveCount(3);
   await expect(page.getByRole('figure', { name: 'Runs per day', exact: true })).toBeVisible();
   await expect(page.getByRole('figure', { name: 'Tokens per day', exact: true })).toBeVisible();
   await expect(page.locator('details.local-run-more')).not.toHaveAttribute('open', '');

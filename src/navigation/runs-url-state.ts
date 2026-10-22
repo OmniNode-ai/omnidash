@@ -5,6 +5,8 @@ export interface RunsViewState {
   backend: string;
   span: string;
   page: number;
+  day?: string;
+  task?: string;
   query?: string;
 }
 
@@ -22,6 +24,8 @@ export function readRunsSearch(search: string): RunsViewState {
     backend: params.get('backend') || 'all',
     span: params.get('window') === 'today' ? 'today' : 'all',
     page: Number.isSafeInteger(page) ? page : 1,
+    ...(params.get('day') && /^\d{4}-\d{2}-\d{2}$/.test(params.get('day')!) ? { day: params.get('day')! } : {}),
+    ...(params.get('task') ? { task: params.get('task')! } : {}),
     ...(params.get('q') ? { query: params.get('q')! } : {}),
   };
 }
@@ -35,6 +39,10 @@ export function writeRunsSearch(search: string, view: RunsViewState): string {
     if (value === 'all') params.delete(key);
     else params.set(key, value);
   }
+  if (view.day) params.set('day', view.day);
+  else params.delete('day');
+  if (view.task && view.task !== 'all') params.set('task', view.task);
+  else params.delete('task');
   if (view.page === 1) params.delete('page');
   else params.set('page', String(view.page));
   return params.toString();
