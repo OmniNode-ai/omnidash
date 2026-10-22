@@ -1,7 +1,7 @@
 import { useEffect, useId, useRef, useState, type ReactNode } from 'react';
 import { Link, useLocation, useSearch } from 'wouter';
 import {
-  ArrowDownUp, ArrowUpRight, Award, Bot, CalendarDays, ChartLine, ChartSpline, Check, ChevronRight, CircleDollarSign, CloudOff, Coins, Copy, DatabaseZap,
+  ArrowDownUp, ArrowUpRight, Award, Bot, CalendarDays, ChartColumnStacked, ChartLine, ChartSpline, Check, ChevronRight, CircleDollarSign, CloudOff, Coins, Copy, DatabaseZap,
   CircleDot, FingerprintPattern, Flag, History, IdCard, Inbox, KeyRound, PiggyBank, Route, Server, ShieldCheck, Shrink, TrendingDown,
   Rows3, Scale, TableProperties, Waypoints, Cloud, Sparkles, Zap,
   type LucideIcon,
@@ -19,7 +19,8 @@ import { PAGE_PATHS } from '@/navigation/page-routes';
 import { normaliseRunId, readWorkflowRunId, workflowHref, writeWorkflowRunId } from '@/navigation/workflow-url-state';
 import { RunDurationChart, RunMetricChart, RunTimingChart, RunTokensChart, SpendByDayChart, UNRESOLVED_BASELINE, type ListedRun } from '@/pages/local/charts';
 import { PassRateMeter, TierShareChart, TIER_TONES } from '@/pages/local/shares';
-import { InsightsSection, InsightsWindowContext, OverviewRunsContext, TaskIcon } from '@/pages/local/insight-charts';
+import { InsightsSection, InsightsWindowContext, MeteringActivityInsights, OverviewRunsContext, PassRateSparkline, TaskIcon, type ActivityWindow } from '@/pages/local/insight-charts';
+import { UsageInsights } from '@/pages/local/usage-insights';
 import { SinceLastVisit } from '@/pages/local/since-last-visit';
 import { ModelKeys } from '@/pages/local/model-keys';
 import { notAvailableYet, plainFailureMessage } from '@/pages/local/plain-text';
@@ -885,23 +886,37 @@ export function RunsTable({ decisions, sessions, now = Date.now(), pageSize = 25
   const search = useSearch();
   const [, navigate] = useLocation();
   const [localView, setLocalView] = useState<RunsViewState>(DEFAULT_RUNS_VIEW);
+  const [selectedRunId, setSelectedRunId] = useState<string | null>(null);
   const view = syncUrl ? readRunsSearch(search) : localView;
-  const { status, cause, model, backend, span, query = '' } = view;
+  const { status, cause, model, backend, span, day = '', task = 'all', query = '' } = view;
   const pageIndex = view.page - 1;
   const bySession = indexBy(sessions, 'session_id');
   const runs = newestFirst(decisions);
   const models = [...new Set(runs.map((run) => modelOrUnknown(run.model_name)))].sort();
   const causes = [...new Set(runs.filter((run) => statusOf(run) === 'failed').map((run) => causeOf(run)))].sort();
   const backends = [...new Set(runs.map((run) => recorded(run.backend_id)))].sort();
+  const weekDays = Array.from({ length: 7 }, (_, index) => {
+    const todayDate = new Date(`${utcDay(now)}T00:00:00Z`);
+    todayDate.setUTCDate(todayDate.getUTCDate() - (6 - index));
+    return todayDate.toISOString().slice(0, 10);
+  });
+  const week = weekDays.map(weekDay => {
+    const dayRuns = runs.filter(run => utcDay(timeOf(run.created_at)) === weekDay);
+    return { day: weekDay, runs: dayRuns.length, passed: dayRuns.filter(run => statusOf(run) === 'passed').length,
+      failed: dayRuns.filter(run => statusOf(run) === 'failed').length, unrecorded: dayRuns.filter(run => statusOf(run) === 'Not recorded').length };
+  });
   const today = utcDay(now);
   const needle = query.trim().toLocaleLowerCase();
-  const shown = runs.filter((run) => (status === 'all' || statusOf(run) === status)
+  const taskFacetRuns = runs.filter((run) => (status === 'all' || statusOf(run) === status)
     && (cause === 'all' || causeOf(run) === cause)
     && (model === 'all' || modelOrUnknown(run.model_name) === model)
     && (backend === 'all' || recorded(run.backend_id) === backend)
     && (span === 'all' || utcDay(timeOf(run.created_at)) === today)
+    && (day === '' || utcDay(timeOf(run.created_at)) === day)
     && (needle === '' || [run.correlation_id, run.model_name, run.backend_id, run.task_type, run.host, statusOf(run), causeOf(run), failureDetailOf(run)]
       .some(value => typeof value === 'string' && value.toLocaleLowerCase().includes(needle))));
+  const tasks = [...new Set(taskFacetRuns.map(run => recorded(run.task_type)))].sort();
+  const shown = taskFacetRuns.filter(run => task === 'all' || recorded(run.task_type) === task);
   const pages = Math.max(1, Math.ceil(shown.length / pageSize));
   const current = Math.min(pageIndex, pages - 1);
   const page = shown.slice(current * pageSize, (current + 1) * pageSize);
@@ -911,6 +926,11 @@ export function RunsTable({ decisions, sessions, now = Date.now(), pageSize = 25
       navigate(`/runs${canonicalSearch ? `?${canonicalSearch}` : ''}`, { replace: true });
     }
   }, [canonicalSearch, navigate, search, syncUrl]);
+  useEffect(() => {
+    if (selectedRunId !== null && !page.some(run => run.correlation_id === selectedRunId)) {
+      setSelectedRunId(page[0] ? String(page[0].correlation_id ?? '') : null);
+    }
+  }, [page, selectedRunId]);
   const updateView = (change: Partial<RunsViewState>, replace = false) => {
     const next = { ...view, ...change };
     if (syncUrl) {
@@ -931,9 +951,48 @@ export function RunsTable({ decisions, sessions, now = Date.now(), pageSize = 25
     score: run.actual_score,
   }));
   const openRun = (runId: string) => navigate(workflowHref(runId));
-  const filtered = status !== 'all' || cause !== 'all' || model !== 'all' || backend !== 'all' || span !== 'all' || query !== '';
+  const filtered = status !== 'all' || cause !== 'all' || model !== 'all' || backend !== 'all' || span !== 'all' || day !== '' || task !== 'all' || query !== '';
+  const selectedRun = selectedRunId === null ? undefined : runs.find(run => run.correlation_id === selectedRunId);
+  const selectedSession = selectedRun ? bySession.get(String(selectedRun.correlation_id)) : undefined;
+  const selectedScore = selectedRun && !isMissing(selectedRun.actual_score) ? Number(selectedRun.actual_score) : Number.NaN;
+  const selectedRequiredBar = selectedRun && !isMissing(selectedRun.required_bar) ? Number(selectedRun.required_bar) : Number.NaN;
+  const selectedDay = week.find(item => item.day === day);
+  const weekLabel = (value: string) => value === today ? `Today ${value}` : `${new Date(`${value}T00:00:00Z`).toLocaleDateString('en-US', { weekday: 'short', timeZone: 'UTC' })} ${value}`;
+  const dayFilters = (
+    <section className="local-runs-day-filters" aria-label="Days">
+      <h3 className="local-dashboard-caption local-section-heading">Days</h3>
+      <div className="local-dashboard-filters" role="group" aria-label="Run days">
+        {week.map(item => <button key={item.day} type="button" aria-pressed={day === item.day}
+          aria-label={`Filter day ${weekLabel(item.day)}`} onClick={() => updateView({ day: day === item.day ? '' : item.day, page: 1 })}>
+          {weekLabel(item.day)}
+        </button>)}
+      </div>
+    </section>
+  );
+  const weekChart = (
+    <figure className="local-chart local-runs-week" aria-label="This week">
+        <h3 className="local-dashboard-caption local-section-heading">This week</h3>
+      <div className="local-runs-week-days" role="group" aria-label="This week">
+        <p role={day ? 'status' : undefined}>{day ? selectedDay ? `${selectedDay.runs} runs · ${selectedDay.passed} passed · ${selectedDay.failed} failed${selectedDay.unrecorded ? ` · ${selectedDay.unrecorded} not recorded` : ''} for ${day}` : `No runs for ${day}`
+          : `${week.reduce((sum, item) => sum + item.runs, 0)} runs in the latest returned rows · by created day (UTC)`}</p>
+        {week.map(item => <div key={item.day} role="group" data-selected={day === item.day ? 'true' : undefined}
+          aria-label={`${weekLabel(item.day)} · ${item.runs} runs · ${item.passed} passed · ${item.failed} failed${item.unrecorded ? ` · ${item.unrecorded} not recorded` : ''}`}>
+          <span>{weekLabel(item.day)}</span><span className="local-runs-week-bar" aria-hidden="true"><i data-outcome="passed" style={{ flex: item.passed }} /><i data-outcome="failed" style={{ flex: item.failed }} /><i data-outcome="unknown" style={{ flex: item.unrecorded }} /></span>
+          {item.runs === 0 ? <strong>No runs</strong> : <strong>{item.runs}</strong>}<small>{item.passed} passed · {item.failed} failed</small>
+        </div>)}
+      </div>
+    </figure>
+  );
   return (
     <>
+      {dayFilters}
+      <section className="local-runs-task-filters" aria-label="Tasks">
+        <h3 className="local-dashboard-caption local-section-heading">Tasks</h3>
+        <div className="local-dashboard-filters">{tasks.map(name => <button key={name} type="button" aria-label={`Filter task ${name}`} aria-pressed={task === name}
+          onClick={() => updateView({ task: task === name ? 'all' : name, page: 1 })}>
+          {name !== 'Not recorded' && <TaskIcon task={name} />}{name}<span>{taskFacetRuns.filter(run => recorded(run.task_type) === name).length}</span>
+        </button>)}</div>
+      </section>
       <div className="local-runs-search">
         <label htmlFor={`${id}-search`}>Search runs</label>
         <input id={`${id}-search`} type="search" value={query} placeholder="Run ID, model, task, backend or failure…"
@@ -985,11 +1044,13 @@ export function RunsTable({ decisions, sessions, now = Date.now(), pageSize = 25
         </select>
         </div>
         {filtered && (
-          <button type="button" className="local-filter-clear" onClick={() => updateView({ ...DEFAULT_RUNS_VIEW, query: '' })}>Clear filters</button>
+          <button type="button" className="local-filter-clear" onClick={() => { setSelectedRunId(null); updateView({ ...DEFAULT_RUNS_VIEW, query: '' }); }}>Clear filters</button>
         )}
       </div>
       {shown.length === 0 ? <p className="local-dashboard-empty" role="status">No runs match these filters</p> : (
         <>
+          <div className={`local-runs-list-detail${selectedRun ? ' local-runs-list-detail--selected' : ''}`}>
+            <div className="local-runs-table-column">
           <h3 className="local-dashboard-caption local-section-heading" data-page-heading tabIndex={-1}>Run list</h3>
           <p className="local-dashboard-caption local-recent-toolbar"><label>
             <input type="checkbox" checked={showAllFields} onChange={event => setShowAllFields(event.target.checked)} aria-controls={`${id}-table`} />
@@ -1006,7 +1067,9 @@ export function RunsTable({ decisions, sessions, now = Date.now(), pageSize = 25
               </thead>
               <tbody>{page.map((run, index) => {
                 const session = bySession.get(String(run.correlation_id));
-                return <tr key={String(run.correlation_id ?? index)}>
+                return <tr key={String(run.correlation_id ?? index)} tabIndex={0} aria-selected={selectedRunId !== null && selectedRunId === run.correlation_id}
+                  onClick={event => { if ((event.target as HTMLElement).closest('a, button, input, select')) return; setSelectedRunId(String(run.correlation_id ?? '')); }}
+                  onKeyDown={event => { if ((event.key === 'Enter' || event.key === ' ') && !(event.target as HTMLElement).closest('a, button, input, select, summary')) { event.preventDefault(); setSelectedRunId(String(run.correlation_id ?? '')); } }}>
                   <td className="local-dashboard-cell-token">
                     {/* WF-3: a run opens its own path on Workflow; a run with no recorded id has nothing to open. */}
                     <RunRef id={run.correlation_id} short />
@@ -1042,6 +1105,39 @@ export function RunsTable({ decisions, sessions, now = Date.now(), pageSize = 25
               })}</tbody>
             </table>
           </div>
+            </div>
+          {selectedRun && <aside className="local-run-selected" role="complementary" aria-label="Selected run">
+            <div className="local-dashboard-filters"><h3 className="local-dashboard-caption">Selected run</h3><button type="button" aria-label="Close selected run" onClick={() => setSelectedRunId(null)}>Close</button></div>
+            <p className="local-run-title"><code>{recorded(selectedRun.correlation_id)}</code></p>
+            <p className="local-dashboard-caption local-run-selected-facts">
+              <OutcomePill value={statusOf(selectedRun)} />
+              <CellTime value={selectedRun.created_at} />
+              {!isMissing(selectedRun.task_type)
+                ? <span className="local-task-cell"><TaskIcon task={String(selectedRun.task_type)} />{String(selectedRun.task_type)}</span>
+                : <span>{recorded(selectedRun.task_type)}</span>}
+            </p>
+            <dl className="local-dashboard-fields">
+              <div><dt>Task</dt><dd>{recorded(selectedRun.task_type)}</dd></div>
+              <div><dt>Cause</dt><dd><span className="local-runs-cause" title={causeTextOf(selectedRun)}>{causeTextOf(selectedRun)}</span></dd></div>
+              <div><dt>Model</dt><dd>{modelOrUnknown(selectedRun.model_name)}</dd></div>
+              <div><dt>Route tier</dt><dd>{tierOf(selectedRun)}</dd></div>
+              <div><dt>Duration</dt><dd>{duration(selectedRun.latency_ms)}</dd></div>
+              <div><dt>Cost</dt><dd>{costOf(selectedSession, selectedRun)}</dd></div>
+              <div><dt>Tokens in</dt><dd>{recorded(selectedRun.tokens_input)}</dd></div>
+              <div><dt>Tokens out</dt><dd>{recorded(selectedRun.tokens_output)}</dd></div>
+              <div><dt>Modelled saving</dt><dd>{runModelledCell(selectedRun)}</dd></div>
+              <div><dt>Quality score</dt><dd>{recorded(selectedRun.actual_score)}
+                {Number.isFinite(selectedScore) && selectedScore >= 0 && selectedScore <= 1 && <div className="local-selected-quality-meter" role="meter" aria-label="Quality score versus required bar" aria-valuemin={0} aria-valuemax={1} aria-valuenow={selectedScore}
+                  aria-valuetext={`Quality score ${recorded(selectedRun.actual_score)}; required bar ${recorded(selectedRun.required_bar)}`}>
+                  <span style={{ width: `${selectedScore * 100}%` }} />
+                  {Number.isFinite(selectedRequiredBar) && selectedRequiredBar >= 0 && selectedRequiredBar <= 1 && <i style={{ left: `${selectedRequiredBar * 100}%` }} />}
+                </div>}
+              </dd></div>
+              <div><dt>Required bar</dt><dd>{isMissing(selectedRun.required_bar) ? 'bar not recorded' : recorded(selectedRun.required_bar)}</dd></div>
+            </dl>
+            <p className="local-dashboard-caption"><Link href={workflowHref(String(selectedRun.correlation_id))}>Open full run</Link></p>
+          </aside>}
+          </div>
           <div className="local-dashboard-pager">
             <span>{`Runs ${current * pageSize + 1}–${current * pageSize + page.length} of ${shown.length}`}</span>
             <button type="button" aria-label="Previous page" disabled={current === 0} onClick={() => updateView({ page: current })}>Previous</button>
@@ -1054,6 +1150,7 @@ export function RunsTable({ decisions, sessions, now = Date.now(), pageSize = 25
             <RunMetricChart runs={listed} onOpen={openRun} metric="cost" />
             <RunMetricChart runs={listed} onOpen={openRun} metric="score" />
           </div>
+          {weekChart}
         </>
       )}
     </>
@@ -1079,6 +1176,7 @@ export function QualityPanel({ row }: { row: Row | null }) {
   return (
     <section aria-label="Quality">
       <PassRateMeter row={row} />
+      <PassRateSparkline />
       <dl className="local-dashboard-fields">
         {QUALITY_FIELDS.map(([label, field]) => <div key={field} data-quality-field={field} data-field-tone={fieldTone(label)} data-field-unavailable={isUnavailableField(row[field])}><dt><FieldIcon label={label} />{label}</dt><dd><Readable value={row[field]} kind={field === 'overall_pass_rate' ? 'percent' : field.startsWith('avg_') ? 'decimal' : 'count'} /></dd></div>)}
       </dl>
@@ -1632,12 +1730,14 @@ export function MeteringDayTable({ title, rows, columns }: {
 }
 
 /** The renderer for a table component: its first binding's rows, joined to its second binding by a served id. */
-function TableComponent({ component, snapshots, pageSize, syncUrl, columns }: {
+function TableComponent({ component, snapshots, pageSize, syncUrl, columns, activityWindow, meteringView = 'all' }: {
   component: LocalPageDocument['components'][number];
   snapshots: readonly BoundProjectionSnapshot[];
   pageSize: number;
   syncUrl: boolean;
   columns: readonly DeclaredColumn[];
+  activityWindow: ActivityWindow;
+  meteringView?: 'all' | 'kpis' | 'daily';
 }) {
   const [, navigate] = useLocation();
   const rows = rowsForLocalComponent(component, snapshots);
@@ -1647,12 +1747,24 @@ function TableComponent({ component, snapshots, pageSize, syncUrl, columns }: {
     return rows.length === 0 ? <NoRunsYet /> : <OverviewRunPreview decisions={rows} sessions={lookup} />;
   }
   // OMN-21166 AC26: trends and breakdowns, counted from the served decision rows (rule change R-B, 2026-10-18).
-  if (component.component_id === 'overview-insights') return rows.length === 0 ? <NoRunsYet /> : <>
+  if (component.component_id === 'overview-insights') {
+    // AC42: the metering KPIs for the selected window sit in this open panel, and their charts in its analysis,
+    // so the panel's text stays inside a panel (OMN-21015 K1) and nothing is drawn twice.
+    const metering = snapshots.find(snapshot => snapshot.topic === METERING_SUMMARY_TOPIC);
+    const meteringRows = metering?.rows ?? [];
+    const meteringUnavailable = metering?.failure ? 'Daily metering data is not available yet.' : null;
+    const meteringDays = meteringRows.some(row => typeof row === 'object' && row !== null && (row as Record<string, unknown>).window_kind === 'day');
+    return rows.length === 0 ? <NoRunsYet /> : <>
     <InsightsSection decisions={rows} now={Date.now()} view="summary" />
+    {meteringRows.length > 0 && <MeteringActivityInsights rows={meteringRows} now={Date.now()} window={activityWindow}
+      unavailable={meteringUnavailable} display="kpis" />}
     <details className="local-analysis-details"><summary>Detailed activity analysis</summary>
-      <InsightsSection decisions={rows} now={Date.now()} view="analysis" onInspectFailure={cause => navigate(causeHref(cause))} />
+    <InsightsSection decisions={rows} now={Date.now()} view="analysis" onInspectFailure={cause => navigate(causeHref(cause))} />
+    {meteringDays && <MeteringActivityInsights rows={meteringRows} now={Date.now()} window={activityWindow}
+      unavailable={meteringUnavailable} display="charts" />}
     </details>
   </>;
+  }
   if (component.component_id === 'runs-insights') return <details className="local-analysis-details"><summary>Show run analysis</summary>{rows.length === 0 ? <NoRunsYet /> : <InsightsSection decisions={rows} now={Date.now()} view="analysis" onInspectFailure={cause => {
     navigate(causeHref(cause));
     document.querySelector('[data-component="recent-runs"]')?.scrollIntoView?.({ block: 'start' });
@@ -1667,6 +1779,9 @@ function TableComponent({ component, snapshots, pageSize, syncUrl, columns }: {
   // OMN-20816: the models delegation can use, read-only from `onex dashboard`'s GET /models (keys change in the
   // terminal), above the served key references.
   if (component.component_id === 'credentials-keys') return <><ModelKeys /><CredentialsTable rows={rows} /></>;
+  // Usage analysis and the raw row table are separate declared components so the analysis does not duplicate rows.
+  if (component.component_id === 'usage-insights') return <UsageInsights usageRows={rows}
+    decisionRows={rawRowsFor(component, snapshots, 1)} routingRows={rawRowsFor(component, snapshots, 2)} />;
   // US-1, US-2, US-4: served rows as served. The exposure is tenant-scoped, so the server filters, not the browser.
   if (component.component_id === 'usage-by-model-day') return <UsageByModelDayTable rows={rows} interactive />;
   // US-1 (OMN-21015 AC4): the same served rows as a stacked series, tokens in and out apart, split by model.
@@ -1685,13 +1800,19 @@ function TableComponent({ component, snapshots, pageSize, syncUrl, columns }: {
   // OV: baseline against actual spend per UTC day, the declared columns of the served rows (OMN-21015 AC1).
   if (component.component_id === 'overview-spend-by-day') {
     const dayRows = rawRowsFor(component, snapshots, 0);
-    return (
-      <>
-        {/* The chart and the table under it show the same served day rows; the chart adds no figure of its own. */}
-        <SpendByDayChart title={component.title} rows={dayRows} columns={columns} />
-        <MeteringDayTable title={component.title} rows={dayRows} columns={columns} />
-      </>
-    );
+    const unavailable = snapshots.find(snapshot => snapshot.topic === METERING_SUMMARY_TOPIC)?.failure
+      ? 'Daily metering data is not available yet.' : null;
+    const hasDayRows = dayRows.some(row => typeof row === 'object' && row !== null && (row as Record<string, unknown>).window_kind === 'day');
+    if (meteringView === 'kpis') return hasDayRows
+      ? <MeteringActivityInsights rows={dayRows} now={Date.now()} window={activityWindow} unavailable={unavailable} display="kpis" />
+      : null;
+    const daily = <>
+      {/* The chart and the table show the same served day rows; neither derives a total from missing values. */}
+      <SpendByDayChart title={component.title} rows={dayRows} columns={columns} />
+      <MeteringDayTable title={component.title} rows={dayRows} columns={columns} />
+    </>;
+    return meteringView === 'daily' ? daily : <>{hasDayRows && <MeteringActivityInsights rows={dayRows} now={Date.now()} window={activityWindow}
+      unavailable={unavailable} display="kpis" />}{daily}</>;
   }
   if (component.component_id === 'api-keys-local-identity') {
     const first = rawRowsFor(component, snapshots, 0)[0];
@@ -1841,6 +1962,7 @@ export const PANEL_ICONS: Record<string, LucideIcon> = {
   'overview-last-run': History,
   'overview-recent-runs': Rows3,
   'overview-insights': ChartSpline,
+  'usage-insights': ChartColumnStacked,
   'runs-insights': ChartSpline,
   'runs-tier-mix': Waypoints,
   'overview-run-locally': Server,
@@ -1879,6 +2001,7 @@ export function LocalDashboardPage({ pageName, syncUrl = false, navigationCache 
   const [loading, setLoading] = useState(true);
   // OV-3: which fixed window the Overview's metering cards read. Kept by the page so every card moves together.
   const [overviewWindow, setOverviewWindow] = useState<OverviewWindow>('all');
+  const [activityWindow, setActivityWindow] = useState<ActivityWindow>({ kind: 'all' });
   const windowId = useId();
   const latest = useRef<BoundProjectionSnapshot[]>([]);
   // Memory only: reuse recent successful reads between local destinations, scoped
@@ -2053,7 +2176,7 @@ export function LocalDashboardPage({ pageName, syncUrl = false, navigationCache 
   const now = Date.now();
   const interval = page?.dashboard.refresh_interval_seconds ?? 30;
 
-  const renderComponent = (component: LocalPageDocument['components'][number]) => {
+  const renderComponent = (component: LocalPageDocument['components'][number], meteringView: 'all' | 'kpis' | 'daily' = 'all') => {
     if (!page) return null;
     const rows = rowsForLocalComponent(component, snapshots);
     const first = (rows[0] ?? {}) as Record<string, unknown>;
@@ -2102,6 +2225,8 @@ export function LocalDashboardPage({ pageName, syncUrl = false, navigationCache 
               snapshots={snapshots}
               pageSize={pageSize}
               syncUrl={syncUrl}
+              activityWindow={activityWindow}
+              meteringView={meteringView}
               columns={((widget?.config as { columns?: DeclaredColumn[] } | undefined)?.columns) ?? []}
             />
           ) : component.component_id === 'overview-run-locally' ? (
@@ -2132,9 +2257,9 @@ export function LocalDashboardPage({ pageName, syncUrl = false, navigationCache 
     focus: ['overview-quality', 'overview-last-run'],
     insights: ['overview-insights'],
   };
-  const renderGroup = (ids: string[]) => ids.map(id => {
+  const renderGroup = (ids: string[], meteringView: 'all' | 'kpis' | 'daily' = 'all') => ids.map(id => {
     const component = page?.components.find(candidate => candidate.component_id === id);
-    return component ? renderComponent(component) : null;
+    return component ? renderComponent(component, meteringView) : null;
   });
   return (
     <RunFilterProvider>
@@ -2183,12 +2308,14 @@ export function LocalDashboardPage({ pageName, syncUrl = false, navigationCache 
               const recent = page.components.find(candidate => candidate.component_id === 'overview-recent-runs');
               return recent ? { decisions: rowsForLocalComponent(recent, snapshots), now } : null;
             })()}>
-            <InsightsWindowContext.Provider value={overviewWindow}>
+            <InsightsWindowContext.Provider value={{ window: activityWindow, setWindow: setActivityWindow }}>
             <div className="local-overview-surface">
               <section className="local-overview-summary" aria-label="Runtime summary">{renderGroup(overviewGroups.summary)}</section>
               <section className="local-overview-focus" aria-label="Delegation quality">{renderGroup(overviewGroups.focus)}</section>
             </div>
-            {renderGroup(overviewGroups.insights)}
+            <section className="local-overview-insights" aria-label="Insights">
+              {renderGroup(overviewGroups.insights)}
+            </section>
             <section className="local-overview-bottom" aria-label="Routing and recent activity">
               {renderGroup(['overview-tier-mix', 'overview-recent-runs'])}
             </section>
@@ -2196,12 +2323,16 @@ export function LocalDashboardPage({ pageName, syncUrl = false, navigationCache 
               <summary>Additional runtime metrics</summary>
               <section className="local-dashboard-grid" aria-label="Additional runtime metrics">
                 {renderGroup(['overview-run-locally', 'overview-avg-saving-per-call', 'overview-baseline-spend',
-                  'overview-compression', 'overview-cache-hit-rate', 'overview-spend-by-day'])}
+                  'overview-compression', 'overview-cache-hit-rate', 'overview-spend-by-day'], 'daily')}
               </section>
             </details>
             </InsightsWindowContext.Provider>
             </OverviewRunsContext.Provider>
-          </> : page.components.map(renderComponent)}
+          </> : pageName === 'runs' ? (
+            <InsightsWindowContext.Provider value={{ window: activityWindow, setWindow: setActivityWindow }}>
+              {page.components.map(component => renderComponent(component))}
+            </InsightsWindowContext.Provider>
+          ) : page.components.map(component => renderComponent(component))}
         </section>
       )}
     </main>

@@ -233,6 +233,9 @@ const R4_ALLOWED: readonly R4Allowance[] = [
   // OMN-21015 AC3 (the PER_RUN_SAVING exception): the Runs table's cell formats one run's served modelled saving and
   // names its baseline; it sums nothing and reads no other savings field.
   { file: 'src/pages/LocalDashboardPage.tsx', owner: 'runModelledCell', fields: ['modelled_savings_usd'], componentId: 'recent-runs', state: 'bound' },
+  // OMN-21166 AC26: this renderer receives the rows of the Overview's separately declared, meter-only daily-spend
+  // binding. The activity analysis does not read savings from decision rows or switch source after a failed read.
+  { file: 'src/pages/local/insight-aggregates.ts', owner: 'aggregateMeteringWindow', fields: ['savings_usd', 'counterfactual_usd'], componentId: 'overview-spend-by-day', pageName: 'overview', state: 'bound' },
 ];
 const PAGE_FILE = 'src/pages/LocalDashboardPage.tsx';
 /** Imports of these assets carry no code, so they are not scanned (the page imports its stylesheet). */

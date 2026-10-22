@@ -75,9 +75,34 @@
       }
     },
     {
+      "widget_id": "04fdb053-495c-53f7-902a-728500f5003b",
+      "title": "Usage insights",
+      "row": 4,
+      "col": 0,
+      "width": 12,
+      "height": 6,
+      "data_source": "usage-insights",
+      "config": {
+        "config_kind": "table",
+        "widget_type": "table",
+        "columns": [
+          {
+            "key": "model_id",
+            "header": "Model"
+          },
+          {
+            "key": "call_count",
+            "header": "Calls"
+          }
+        ],
+        "page_size": 25,
+        "show_pagination": false
+      }
+    },
+    {
       "widget_id": "04fdb053-495c-53f7-902a-728500f5003a",
       "title": "Usage by model and day",
-      "row": 4,
+      "row": 10,
       "col": 0,
       "width": 12,
       "height": 4,

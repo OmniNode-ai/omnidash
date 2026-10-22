@@ -53,6 +53,7 @@ const ORDER: Record<PageName, Array<[title: string, width: number]>> = {
   ],
   usage: [
     ['Savings per day', 6], ['Tokens per day', 6],
+    ['Usage insights', 12],
     ['Usage by model and day', 12],
   ],
 };
@@ -73,7 +74,7 @@ const RENDERED_ORDER: Record<PageName, Array<[title: string, width: number]>> = 
 // D2 (Lakshman2026-10-20): all secondary metrics remain on Overview in its native disclosure.
 const BEFORE: Record<PageName, string[]> = {
   overview: ['Actual spend', 'Savings', 'Agent calls', 'Tokens processed', 'Quality', 'Last run', 'Activity trends', 'Tier mix', 'Recent runs', 'Run locally', 'Avg saving / call', 'Baseline spend', 'Compression', 'Cache hit rate', 'Spend per day'].sort(),
-  usage: ['Savings per day', 'Tokens per day', 'Usage by model and day'].sort(),
+  usage: ['Savings per day', 'Tokens per day', 'Usage insights', 'Usage by model and day'].sort(),
 };
 
 async function panels(pageName: PageName): Promise<Array<[string, number]>> {

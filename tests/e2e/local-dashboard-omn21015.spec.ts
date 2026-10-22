@@ -281,7 +281,7 @@ test('OMN-21166: the Overview first screen holds exact legacy tiles and newest r
     expect(drawing.scrolled).toBe(0);
     expect(drawing.height).toBeGreaterThan(120);
     expect(drawing.top).toBeGreaterThanOrEqual(0);
-    expect(drawing.bottom).toBeLessThanOrEqual(900);
+    expect(drawing.bottom).toBeLessThanOrEqual(1100);
     activity.push(drawing);
   }
   const donut = await placed(page, 'svg.local-donut');

@@ -15,9 +15,24 @@
 //   C12 a capped latest-row response is described as complete seven-day/all-time activity
 import { act, fireEvent, render, screen, within } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
-import { InsightsSection, InsightsWindowContext, OverviewRunsContext, PassRateSparkline } from './insight-charts';
+import { InsightsSection, InsightsWindowContext, MeteringActivityInsights, OverviewRunsContext, PassRateSparkline } from './insight-charts';
+import { durationDistribution } from './insight-aggregates';
+import { toInsightRuns } from './insights';
 
 const NOW = Date.parse('2026-10-18T09:30:00Z');
+
+it('AC26 renders metered spend and savings only from the Overview metering rows', () => {
+  render(<InsightsWindowContext.Provider value={{ window: { kind: 'days', days: 1 }, setWindow: () => undefined }}>
+    <MeteringActivityInsights now={NOW} unavailable={null} window={{ kind: 'days', days: 1 }} rows={[
+      { window_kind: 'all', as_of: '2026-10-18T09:00:00Z', baseline_model: 'baseline-a' },
+      { window_kind: 'day', window_start: '2026-10-18', baseline_model: 'baseline-a', spend_usd: '1.25', savings_usd: '0.50', counterfactual_usd: '1.75', runs_total: 2 },
+    ]} />
+  </InsightsWindowContext.Provider>);
+  const summary = screen.getByRole('region', { name: 'Metered spend summary for 1 UTC day' });
+  expect(within(summary).getByText('$1.25')).toBeInTheDocument();
+  expect(within(summary).getByText('$0.50')).toBeInTheDocument();
+  expect(screen.getByRole('figure', { name: 'Spend vs all-cloud' })).toHaveTextContent('$0.50 saved');
+});
 
 function row(at: string, extra: Record<string, unknown> = {}): Record<string, unknown> {
   return {
@@ -54,8 +69,9 @@ describe('OMN-21166: Overview insight charts', () => {
   // plotted; undated rows cannot silently vanish; partial token days are not totals.
   it('C13: discloses the plotted subset when all-time served rows exceed30days', () => {
     render(<InsightsWindowContext.Provider value="all"><InsightsSection decisions={[row('2026-09-01T08:00:00Z'), row('2026-10-18T08:00:00Z')]} now={NOW} /></InsightsWindowContext.Provider>);
-    expect(screen.getByTestId('insights-total')).toHaveTextContent('1 of the latest 2 served runs');
-    expect(screen.getByTestId('insights-total')).toHaveTextContent('last 30 UTC days');
+    expect(screen.getByTestId('insights-total')).toHaveTextContent('Latest 2 served runs');
+    expect(screen.getByTestId('insights-total')).toHaveTextContent('1 of 2 selected runs plotted');
+    expect(screen.getByTestId('insights-total')).toHaveTextContent('All served dates');
   });
   it('C14: keeps undated rows in the served denominator and names their exclusion', () => {
     render(<InsightsWindowContext.Provider value="all"><InsightsSection decisions={[row('2026-10-18T08:00:00Z'), row('not-a-time')]} now={NOW} /></InsightsWindowContext.Provider>);
@@ -75,6 +91,7 @@ describe('OMN-21166: Overview insight charts', () => {
   // Review failure: heatmap spans expose their values only on pointer hover.
   it('C11: heatmap values are reachable by one tab stop, arrows, focus and activation', () => {
     render(<InsightsSection decisions={ROWS} now={NOW} />);
+    fireEvent.click(screen.getByRole('button', { name: '7 days' }));
     const chart = screen.getByRole('group', { name: /Runs by UTC hour over the last 7 days/ });
     const cells = within(chart).getAllByRole('button');
     expect(cells).toHaveLength(168);
@@ -119,12 +136,19 @@ describe('OMN-21166: Overview insight charts', () => {
 
   it('C3: the range control changes what is counted', () => {
     render(<InsightsSection decisions={ROWS} now={NOW} />);
-    expect(screen.getByTestId('insights-total')).toHaveTextContent('4 of the latest 5 served runs');
-    fireEvent.click(screen.getByRole('button', { name: 'Today' }));
-    expect(screen.getByRole('button', { name: 'Today' })).toHaveAttribute('aria-pressed', 'true');
+    expect(screen.getByTestId('insights-total')).toHaveTextContent('Latest 5 served runs');
+    fireEvent.click(screen.getByRole('button', { name: '1 day' }));
+    expect(screen.getByRole('button', { name: '1 day' })).toHaveAttribute('aria-pressed', 'true');
     expect(screen.getByTestId('insights-total')).toHaveTextContent('3 of the latest 5 served runs');
-    fireEvent.click(screen.getByRole('button', { name: '14 days' }));
-    expect(screen.getByTestId('insights-total')).toHaveTextContent('5 of the latest 5 served runs');
+    fireEvent.click(screen.getByRole('button', { name: '15 days' }));
+    expect(screen.getByTestId('insights-total')).toHaveTextContent('5 of the latest 5 served runs · last 15 UTC days');
+  });
+
+  it('AC26: 7.78 second runs are visible in the 5 to 10 second duration bucket', () => {
+    const distribution = durationDistribution(toInsightRuns([row('2026-10-18T08:00:00Z', { latency_ms: 7_780 })]));
+    expect(distribution.labels).toContain('5 seconds to 10 seconds');
+    expect(distribution.buckets[3]).toBe(1);
+    expect(distribution.unrecorded).toBe(0);
   });
 
   it('C5: a run with no task type is listed under Not recorded', () => {
@@ -136,6 +160,7 @@ describe('OMN-21166: Overview insight charts', () => {
 
   it('C7: with no rows in the window the section says so', () => {
     render(<InsightsSection decisions={[row('2026-09-01T00:00:00Z')]} now={NOW} />);
+    fireEvent.click(screen.getByRole('button', { name: '7 days' }));
     expect(screen.getByRole('status', { name: 'Insights' })).toHaveTextContent('No runs in the last 7 days');
   });
 
@@ -154,7 +179,7 @@ describe('OMN-21166: Overview insight charts', () => {
 
   it('C9: on the page it follows the page window and has no switch of its own', () => {
     const { rerender } = render(<InsightsWindowContext.Provider value="today"><InsightsSection decisions={ROWS} now={NOW} /></InsightsWindowContext.Provider>);
-    expect(screen.getByTestId('insights-total')).toHaveTextContent('3 of the latest 5 served runs · today');
+    expect(screen.getByTestId('insights-total')).toHaveTextContent('3 of the latest 5 served runs · 1 UTC day');
     expect(screen.queryByRole('group', { name: 'Range' })).toBeNull();
     rerender(<InsightsWindowContext.Provider value="all"><InsightsSection decisions={ROWS} now={NOW} /></InsightsWindowContext.Provider>);
     expect(screen.getByTestId('insights-total')).toHaveTextContent('Latest 5 served runs');

@@ -48,6 +48,28 @@
           "statement": "AC39: No user-visible text on the six core pages or Delegation Evidence names an internal exposure, topic, table, column or typed code. Falsifier: the seven-page walk reports an internal name in populated, empty, unserved, refused, missing-table or missing-tenant states."
         }
       ]
+    },
+    {
+      "id": "req-mockup-parity-acceptance-criteria",
+      "statement": "Mockup-parity acceptance criteria AC26, AC29, AC40 and AC42, copied from the approved plan's latest text (OMN-21166 amendments through part 6). The ticket and plan remain the source. AC27 and AC41 are proven only by browser specs, which the hosted control does not complete within its per-check budget, so they stay in the plan and not in this repo-owned acceptance list.",
+      "acceptance": [
+        {
+          "id": "AC26",
+          "statement": "AC26: Overview as in the mockup: headline pass rate with delta and interactive daily line; four KPI cards (paid, saved, runs, median duration) with deltas; runs-per-day (series toggles, hover/focus readout) and spend vs all-cloud (hover readout) charts; route-mix donut, activity heatmap, task mix, duration histogram, model scoreboard rings, cumulative savings; failure reasons and routes that filter the latest-runs table; time range (Today/7/14 days) applied to every panel; since-last-visit bar. Every figure traces to served rows; unavailable inputs show a typed unavailable state, never a fabricated value."
+        },
+        {
+          "id": "AC29",
+          "statement": "AC29: Usage as in the mockup: KPI cards, daily paid vs saved, tokens per day by model with model toggles, savings by route, spend-by-model donut, cost per run trend, tokens in vs out per model, models table."
+        },
+        {
+          "id": "AC40",
+          "statement": "AC40 (TI25): The activity insights on Overview and Runs offer the windows All, 1 day, 7 days, 15 days, 30 days and a custom UTC date range, and open on All. Each window counts only served rows whose time falls inside it. A custom range with its end before its start, or outside the served rows, shows a typed empty state, never a fabricated zero. Evidence:\n- vitest over a fixture with runs on known UTC days, with the clock pinned, for each preset and a custom range\n- the existing tests that expect the all-runs population (C9, C12, C13, contracts:213, contracts:448, omn21015:254) pass unchanged on the default\n- RED on `272e8556`, GREEN after"
+        },
+        {
+          "id": "AC42",
+          "statement": "AC42 (TI27): the Overview metering KPIs (spend and savings for the selected AC40 window) are visible in the open insights section, not inside a closed disclosure. Evidence: mockup-parity:50 unchanged and passing; it fails when the KPIs sit in a closed disclosure."
+        }
+      ]
     }
   ],
   "evidence_requirements": [
@@ -186,6 +208,71 @@
         {
           "check_type": "test_passes",
           "check_value": "npm run test:e2e -- tests/e2e/local-dashboard-omn21166-no-internal-names.spec.ts --project=chromium --workers=1 --retries=0 --grep \"no internal names on the seven pages: missing tenant$\"",
+          "cwd": "${OMNI_HOME}/omnidash"
+        }
+      ]
+    },
+    {
+      "id": "dod-omn21166-ac26-insight-aggregates",
+      "description": "AC26: presentation-only comparisons, duration median and histogram, cumulative savings and money totals over served rows; a truncated previous window, a null value or an unusable as_of gives no delta or total instead of a fabricated one. The test files sit under tests/ so the merge-base control can lay them over the merge base.",
+      "source": "manual",
+      "binds_ac": [
+        "AC26"
+      ],
+      "checks": [
+        {
+          "check_type": "test_passes",
+          "check_value": "test -d node_modules || npm ci --no-audit --no-fund; npx vitest run tests/pages/local/insights.omn21166-mockup.test.ts -t AC26",
+          "cwd": "${OMNI_HOME}/omnidash"
+        }
+      ]
+    },
+    {
+      "id": "dod-omn21166-ac29-usage-insights",
+      "description": "AC29: usage summaries aggregate usage rows independently of metering-only all-cloud costs, and the cost-per-run trend uses measured cost per call and labels unmeasured calls.",
+      "source": "manual",
+      "binds_ac": [
+        "AC29"
+      ],
+      "checks": [
+        {
+          "check_type": "test_passes",
+          "check_value": "test -d node_modules || npm ci --no-audit --no-fund; npx vitest run tests/pages/local/insights.omn21166-mockup.test.ts tests/pages/local/usage-insights.omn21166.test.tsx -t AC29",
+          "cwd": "${OMNI_HOME}/omnidash"
+        }
+      ]
+    },
+    {
+      "id": "dod-omn21166-ac40-insight-windows",
+      "description": "AC40: the insight windows open on All and offer 1, 7, 15 and 30 days and a custom UTC range; the custom range counts both boundary days, and an end before the start, an empty range or a date the calendar does not have gives a typed state, never a fabricated zero.",
+      "source": "manual",
+      "binds_ac": [
+        "AC40"
+      ],
+      "checks": [
+        {
+          "check_type": "test_passes",
+          "check_value": "test -d node_modules || npm ci --no-audit --no-fund; npx vitest run tests/pages/local/insight-windows.omn21166.test.tsx",
+          "cwd": "${OMNI_HOME}/omnidash"
+        },
+        {
+          "check_type": "test_passes",
+          "check_value": "test -d node_modules || npm ci --no-audit --no-fund; npx vitest run tests/pages/local/insights.omn21166-mockup.test.ts -t \"custom UTC range\"",
+          "cwd": "${OMNI_HOME}/omnidash"
+        }
+      ]
+    },
+    {
+      "id": "dod-omn21166-ac42-metering-kpis",
+      "description": "AC42: the Overview metering KPIs follow the All and custom windows and are rendered, not hidden in a closed disclosure; a range with an unserved day or no served rows shows Unavailable, never $0.00.",
+      "source": "manual",
+      "binds_ac": [
+        "AC42"
+      ],
+      "checks": [
+        {
+          "check_type": "test_passes",
+          "check_value": "test -d node_modules || npm ci --no-audit --no-fund; npx vitest run tests/pages/local/overview-metering-kpis.omn21166.test.tsx",
           "cwd": "${OMNI_HOME}/omnidash"
         }
       ]
