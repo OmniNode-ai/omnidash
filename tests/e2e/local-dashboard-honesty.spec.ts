@@ -4,9 +4,10 @@ import { chartRows, prefix, serveCharts } from './omn21166-chart-fixtures';
 // OMN-21304: every figure says what it rests on. Each case has a positive control beside it, so a test that passes
 // only because the page went blank, or because the notice is always drawn, fails.
 
-// A missing element must fail in seconds, not at the 30 s test timeout: the hosted evidence check gives each bound check
-// 30 s in all, and at the merge base these cases are meant to fail, not to be killed (OMN-21304, #431).
-test.use({ actionTimeout: 3000 });
+// The hosted evidence check gives each bound check 30 s in all, dev server start included, and runs it at the head and
+// at the merge base. So each bound check names one short test, and an element the base lacks is waited for 3 s only,
+// after an anchor the base also renders: there it must fail, not be killed (OMN-21304, #431).
+const MISSING = { timeout: 3000 };
 
 const DECISIONS = prefix + 'delegation.decisions.v1';
 const RUN_TRACE = prefix + 'run-trace.v1';
@@ -24,20 +25,28 @@ function decisions(verdicts: ReadonlyArray<boolean | null>) {
   }));
 }
 
-for (const scenario of [
+const COVERAGE_SCENARIOS = [
   { name: 'one run has no verdict', verdicts: [true, true, false, null], coverage: '3 of 4 runs' },
   { name: 'every run has a verdict (control)', verdicts: [true, true, false, true], coverage: '4 of 4 runs' },
-]) {
-  test(`AC3 a pass rate built from decision rows shows its coverage: ${scenario.name}`, async ({ page }) => {
+];
+
+for (const scenario of COVERAGE_SCENARIOS) {
+  test(`AC3 the Overview pass rate shows its coverage: ${scenario.name}`, async ({ page }) => {
     await serveCharts(page, { ...chartRows, [DECISIONS]: decisions(scenario.verdicts) });
     await page.goto('/');
     const headline = page.locator('section[aria-label="Pass rate trend"]');
     await expect(headline).toContainText('Pass rate');
-    await expect(headline).toContainText(scenario.coverage);
+    await expect(headline).toContainText(scenario.coverage, MISSING);
+  });
+
+  test(`AC3 the Runs task and model pass rates show their coverage: ${scenario.name}`, async ({ page }) => {
+    await serveCharts(page, { ...chartRows, [DECISIONS]: decisions(scenario.verdicts) });
     await page.goto('/runs');
     await page.getByText('Show run analysis', { exact: true }).click();
-    await expect(page.getByRole('list', { name: 'Tasks' }).getByRole('listitem')).toContainText(scenario.coverage);
-    await expect(page.getByRole('list', { name: 'Pass rate by model' }).getByRole('listitem')).toContainText(scenario.coverage);
+    const tasks = page.getByRole('list', { name: 'Tasks' }).getByRole('listitem');
+    await expect(tasks).toHaveCount(1);
+    await expect(tasks).toContainText(scenario.coverage, MISSING);
+    await expect(page.getByRole('list', { name: 'Pass rate by model' }).getByRole('listitem')).toContainText(scenario.coverage, MISSING);
   });
 }
 
@@ -53,7 +62,7 @@ test('AC3 a routing step with no recorded reason or candidates says not recorded
   await page.goto(`/workflow?correlation_id=${runId}`);
   const steps = page.locator('ol.local-dashboard-steps > li');
   await expect(steps).toHaveCount(3);
-  await expect(steps.nth(1)).toContainText('reason: not recorded');
+  await expect(steps.nth(1)).toContainText('reason: not recorded', MISSING);
   await expect(steps.nth(1)).toContainText('candidates: not recorded');
   await expect(steps.nth(2)).toContainText('cheapest tier passes');
   await expect(steps.nth(2)).toContainText('candidates: model-a, model-b');
@@ -79,7 +88,7 @@ for (const scenario of [
   { name: 'two runs of unknown provenance', unknown: 2, expected: 'Not in this total: 1 estimated run, 2 unknown-provenance runs' },
   { name: 'none of unknown provenance (control)', unknown: 0, expected: 'Not in this total: 1 estimated run, 0 unknown-provenance runs' },
 ]) {
-  test(`AC4 spend and savings each show their unpriced runs, baseline and pricing version (savings overview): ${scenario.name}`, async ({ page }) => {
+  test(`AC4 spend and savings each name their baseline, pricing version and the runs left out (savings overview): ${scenario.name}`, async ({ page }) => {
     await serveCharts(page, { ...chartRows, [OVERVIEW]: [{ window: 'all', captured_at: hourAgo(0),
       total_cost_usd: 0.25, total_baseline_cost_usd: 1, total_savings_usd: 0.75, tokens_total: 100, run_count: 11,
       measured_run_count: 9, estimated_run_count: 1, unknown_run_count: scenario.unknown }] });
@@ -103,7 +112,7 @@ for (const scenario of [
   { name: 'two runs with no spend', unpriced: 2, expected: 'Not in this total: 1 run with no token counts, 2 runs with no spend recorded' },
   { name: 'every run with tokens priced (control)', unpriced: 0, expected: 'Not in this total: 1 run with no token counts, 0 runs with no spend recorded' },
 ]) {
-  test(`AC4 spend and savings each show their unpriced runs, baseline and pricing version (metering): ${scenario.name}`, async ({ page }) => {
+  test(`AC4 spend and savings each name their baseline, pricing version and the runs left out (metering): ${scenario.name}`, async ({ page }) => {
     await serveCharts(page, { ...chartRows, [METERING]: [{
       tenant_id: 'chart-fixture-tenant', window_kind: 'all', window_start: '', as_of: hourAgo(0),
       baseline_model: 'baseline-a', baseline_state: 'resolved', pricing_manifest_version: '7',

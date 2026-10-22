@@ -42,30 +42,55 @@ dod_evidence:
     description: >-
       AC3: the Overview pass rate, the Runs task list and the model scoreboard say how many runs have a verdict, with
       an all-verdicts control; a routing step with no reason or candidates reads not recorded and a recorded one shows
-      its values.
+      its values. One test per check, so each fits the evidence gate's 30 s per-check budget at the head and the base.
     source: "manual"
     binds_ac: ["AC3"]
     checks:
       - check_type: "test_passes"
-        check_value: "npm run test:e2e -- tests/e2e/local-dashboard-honesty.spec.ts --project=chromium --workers=1 --retries=0 --grep \"AC3 a pass rate\""
+        check_value: "npm run test:e2e -- tests/e2e/local-dashboard-honesty.spec.ts --project=chromium --workers=1 --retries=0 --grep \"Overview pass rate shows its coverage: one run\""
+        cwd: "${OMNI_HOME}/omnidash"
+      - check_type: "test_passes"
+        check_value: "npm run test:e2e -- tests/e2e/local-dashboard-honesty.spec.ts --project=chromium --workers=1 --retries=0 --grep \"Overview pass rate shows its coverage: every run\""
+        cwd: "${OMNI_HOME}/omnidash"
+      - check_type: "test_passes"
+        check_value: "npm run test:e2e -- tests/e2e/local-dashboard-honesty.spec.ts --project=chromium --workers=1 --retries=0 --grep \"Runs task and model pass rates show their coverage: one run\""
+        cwd: "${OMNI_HOME}/omnidash"
+      - check_type: "test_passes"
+        check_value: "npm run test:e2e -- tests/e2e/local-dashboard-honesty.spec.ts --project=chromium --workers=1 --retries=0 --grep \"Runs task and model pass rates show their coverage: every run\""
         cwd: "${OMNI_HOME}/omnidash"
       - check_type: "test_passes"
         check_value: "npm run test:e2e -- tests/e2e/local-dashboard-honesty.spec.ts --project=chromium --workers=1 --retries=0 --grep \"AC3 a routing step\""
         cwd: "${OMNI_HOME}/omnidash"
   - id: "dod-omn21304-ac4-cost-basis"
     description: >-
-      AC4: under both Overview headline sources the spend and savings cards each name their unpriced runs, baseline
-      model and pricing manifest version (not recorded where the exposure serves none), with an every-run-priced
-      control; Evidence names fixture delegations beside the summary figures, and shows no notice when there are none.
+      AC4: under both Overview headline sources the spend and savings cards each name their baseline model, pricing
+      manifest version and, by served class, the runs the total leaves out (not recorded where the exposure serves
+      none), each with a control; Evidence names fixture delegations or fixture savings beside the summary figures,
+      invents no notice from a non-numeric count, and shows none when there are none. One test per check.
     source: "manual"
     binds_ac: ["AC4"]
     checks:
       - check_type: "test_passes"
-        check_value: "npm run test:e2e -- tests/e2e/local-dashboard-honesty.spec.ts --project=chromium --workers=1 --retries=0 --grep \"AC4 spend and savings.*savings overview\""
+        check_value: "npm run test:e2e -- tests/e2e/local-dashboard-honesty.spec.ts --project=chromium --workers=1 --retries=0 --grep \"runs left out .savings overview.: two runs\""
         cwd: "${OMNI_HOME}/omnidash"
       - check_type: "test_passes"
-        check_value: "npm run test:e2e -- tests/e2e/local-dashboard-honesty.spec.ts --project=chromium --workers=1 --retries=0 --grep \"AC4 spend and savings.*metering\""
+        check_value: "npm run test:e2e -- tests/e2e/local-dashboard-honesty.spec.ts --project=chromium --workers=1 --retries=0 --grep \"runs left out .savings overview.: none of\""
         cwd: "${OMNI_HOME}/omnidash"
       - check_type: "test_passes"
-        check_value: "npm run test:e2e -- tests/e2e/local-dashboard-honesty.spec.ts --project=chromium --workers=1 --retries=0 --grep \"AC4 Evidence\""
+        check_value: "npm run test:e2e -- tests/e2e/local-dashboard-honesty.spec.ts --project=chromium --workers=1 --retries=0 --grep \"runs left out .metering.: two runs\""
+        cwd: "${OMNI_HOME}/omnidash"
+      - check_type: "test_passes"
+        check_value: "npm run test:e2e -- tests/e2e/local-dashboard-honesty.spec.ts --project=chromium --workers=1 --retries=0 --grep \"runs left out .metering.: every run\""
+        cwd: "${OMNI_HOME}/omnidash"
+      - check_type: "test_passes"
+        check_value: "npm run test:e2e -- tests/e2e/local-dashboard-honesty.spec.ts --project=chromium --workers=1 --retries=0 --grep \"fixture delegations beside the totals they enter: the summary includes\""
+        cwd: "${OMNI_HOME}/omnidash"
+      - check_type: "test_passes"
+        check_value: "npm run test:e2e -- tests/e2e/local-dashboard-honesty.spec.ts --project=chromium --workers=1 --retries=0 --grep \"fixture delegations beside the totals they enter: only fixture savings\""
+        cwd: "${OMNI_HOME}/omnidash"
+      - check_type: "test_passes"
+        check_value: "npm run test:e2e -- tests/e2e/local-dashboard-honesty.spec.ts --project=chromium --workers=1 --retries=0 --grep \"fixture delegations beside the totals they enter: a non-numeric\""
+        cwd: "${OMNI_HOME}/omnidash"
+      - check_type: "test_passes"
+        check_value: "npm run test:e2e -- tests/e2e/local-dashboard-honesty.spec.ts --project=chromium --workers=1 --retries=0 --grep \"fixture delegations beside the totals they enter: no fixture\""
         cwd: "${OMNI_HOME}/omnidash"
