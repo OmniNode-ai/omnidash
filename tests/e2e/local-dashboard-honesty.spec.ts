@@ -4,6 +4,10 @@ import { chartRows, prefix, serveCharts } from './omn21166-chart-fixtures';
 // OMN-21304: every figure says what it rests on. Each case has a positive control beside it, so a test that passes
 // only because the page went blank, or because the notice is always drawn, fails.
 
+// A missing element must fail in seconds, not at the 30 s test timeout: the hosted evidence check gives each bound check
+// 30 s in all, and at the merge base these cases are meant to fail, not to be killed (OMN-21304, #431).
+test.use({ actionTimeout: 3000 });
+
 const DECISIONS = prefix + 'delegation.decisions.v1';
 const RUN_TRACE = prefix + 'run-trace.v1';
 const METERING = prefix + 'metering-summary.v1';
@@ -63,6 +67,7 @@ async function basisOf(page: Page, card: string) {
   const panel = page.locator(`[data-component="${card}"]`);
   await expect(panel.locator('.local-dashboard-metric')).toHaveAttribute('data-measured', 'true');
   const details = panel.locator('details.local-card-details');
+  await expect(details, `${card} has a basis fold`).toHaveCount(1, { timeout: 3000 });
   await details.locator(':scope > summary').click();
   return details;
 }

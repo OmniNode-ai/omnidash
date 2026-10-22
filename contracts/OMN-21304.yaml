@@ -61,7 +61,10 @@ dod_evidence:
     binds_ac: ["AC4"]
     checks:
       - check_type: "test_passes"
-        check_value: "npm run test:e2e -- tests/e2e/local-dashboard-honesty.spec.ts --project=chromium --workers=1 --retries=0 --grep \"AC4 spend and savings\""
+        check_value: "npm run test:e2e -- tests/e2e/local-dashboard-honesty.spec.ts --project=chromium --workers=1 --retries=0 --grep \"AC4 spend and savings.*savings overview\""
+        cwd: "${OMNI_HOME}/omnidash"
+      - check_type: "test_passes"
+        check_value: "npm run test:e2e -- tests/e2e/local-dashboard-honesty.spec.ts --project=chromium --workers=1 --retries=0 --grep \"AC4 spend and savings.*metering\""
         cwd: "${OMNI_HOME}/omnidash"
       - check_type: "test_passes"
         check_value: "npm run test:e2e -- tests/e2e/local-dashboard-honesty.spec.ts --project=chromium --workers=1 --retries=0 --grep \"AC4 Evidence\""
