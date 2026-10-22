@@ -14,16 +14,10 @@ interface_change: false
 interfaces_touched: []
 requirements:
   - id: "req-transcribed-acceptance-criteria"
-    statement: "Acceptance criteria copied from the live ticket on 2026-10-22; the ticket remains the source. AC4 is proven only by browser specs, which the hosted control does not complete within its 30 s per-check budget, so it stays in the plan and its recorded report (317 built browser cases at 028ad331) and not in this repo-owned acceptance list, as the OMN-21166 contract does for its browser-only criteria."
+    statement: "Acceptance criteria copied from the live ticket on 2026-10-22; the ticket remains the source. AC4 is proven only by browser specs, which the hosted control does not complete within its 30 s per-check budget, so it stays in the plan and its recorded report (317 built browser cases at 028ad331) and not in this repo-owned acceptance list, as the OMN-21166 contract does for its browser-only criteria. AC2, AC3, and AC5 are proven after the merge or in the plan record, not by a repo check, so they too stay out of this repo-owned acceptance list. Only AC1 is listed here."
     acceptance:
       - id: "AC1"
         statement: "AC1: No visible text on the eleven destinations renders below 12 px at 1440x900 and 390x844 (measured 2026-10-22: Runs 25 strings, Workflow 17, Delegation Evidence 29, Experimentation 9, Agent Workbench 27, Event Bus 34, Lab 52) -- falsifier: npx playwright test of a font-size scan over all eleven pages that fails on any computed font-size under 12 px, with a planted 10 px element as its control"
-      - id: "AC2"
-        statement: "AC2: A ten-pass verification matrix exists for the merged code, each pass naming the tested sha, the command or interaction, expected and observed result and its artifact -- falsifier: a matrix row with no sha equal to the tested dev commit, or a pass with no artifact path"
-      - id: "AC3"
-        statement: "AC3: A walk in the main Chrome of a served build at the merged sha covers the six core pages and Delegation Evidence, with Developer off and on, light and dark -- falsifier: the walk record's build sha differs from the dev commit, or a page or state is missing from it"
-      - id: "AC5"
-        statement: "AC5: The OMN-21166 spec's AC20 layout and AC25 canvas wording are reconciled with the later amendments and its stale line references corrected -- falsifier: a spec criterion that contradicts another, or cites a test line that does not hold its assertion"
 evidence_requirements:
   - kind: "tests"
     description: "Computed-font census and interaction regression with planted small-text and behavior-removal controls."
