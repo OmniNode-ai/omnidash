@@ -50,7 +50,7 @@ describe('OMN-21166 AC27: Runs opens compact, all fields one switch away', () =>
 
   it('P4: a task type carries its own icon; a missing one reads Not recorded with no icon', () => {
     render(<RunsTable now={NOW} decisions={[run('run-c'), run('run-d', { task_type: null, written_at: '2026-10-16T22:10:00Z', created_at: '2026-10-16T22:10:00Z' })]} sessions={[]} />);
-    const task = screen.getByText('code_generation').closest('td')!;
+    const task = within(wrap()).getByText('code_generation', { exact: true }).closest('td')!;
     expect(task.querySelector('svg.lucide-code-xml')).not.toBeNull();
     const missing = screen.getByRole('row', { name: /run-d/ });
     const cells = within(missing).getAllByRole('cell');

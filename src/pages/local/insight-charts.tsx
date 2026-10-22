@@ -6,9 +6,13 @@ import {
 import { causeHref, useSharedRunFilter } from './run-filter';
 import { Link } from 'wouter';
 import {
-  NOT_RECORDED, causes, countBy, dailySeries, durationBuckets, hourGrid, summary, toInsightRuns, windowRuns,
+  NOT_RECORDED, causes, countBy, durationBuckets, summary, toInsightRuns, windowDays, windowRuns,
   type InsightDay, type InsightRun,
 } from './insights';
+import {
+  aggregateMeteringRange, aggregateMeteringWindow, compareWindow, durationBucketLabel, durationEdges, meteringAllTimeTotals,
+  type MeteringWindow,
+} from './insight-aggregates';
 
 /**
  * OMN-21166 AC26 (mockup build; rule change R-B, Lakshman 2026-10-18): the Overview's trends and breakdowns, counted
@@ -18,16 +22,16 @@ import {
  */
 
 const RANGES = [
-  { days: 1, label: 'Today' },
+  { days: 1, label: '1 day' },
   { days: 7, label: '7 days' },
-  { days: 14, label: '14 days' },
+  { days: 15, label: '15 days' },
+  { days: 30, label: '30 days' },
 ] as const;
 
 const PASS = 'var(--ins-pass)';
 const FAIL = 'var(--ins-fail)';
 const UNKNOWN = 'var(--ins-unknown)';
 const PALETTE = ['var(--ins-series-1)', 'var(--ins-series-2)', 'var(--ins-series-3)', 'var(--ins-series-4)', 'var(--ins-series-5)', 'var(--ins-series-6)', 'var(--ins-series-7)', 'var(--ins-series-8)'];
-const DURATION_EDGES = [0, 250, 500, 750, 1000, 1500, 2000, 3000, Infinity];
 const DURATION_RAMP = ['var(--ins-pass)', 'var(--ins-ramp-2)', 'var(--ins-ramp-3)', 'var(--ins-series-5)', 'var(--ins-series-5)', 'var(--ins-series-7)', 'var(--ins-fail)', 'var(--ins-fail-strong)'];
 
 const TASK_LOOK: Record<string, { icon: ReactNode; color: string }> = {
@@ -180,8 +184,17 @@ function PassRateTrend({ days }: { days: InsightDay[] }) {
   );
 }
 
-function ActivityHeatmap({ runs, now }: { runs: InsightRun[]; now: number }) {
-  const grid = hourGrid(runs, now, 7);
+function ActivityHeatmap({ runs, days, window }: { runs: InsightRun[]; days: readonly string[]; window: ActivityWindow }) {
+  const counts = days.map(day => {
+    const hours = new Array<number>(24).fill(0);
+    for (const run of runs) if (run.day === day) hours[run.hour] = hours[run.hour]! + 1;
+    return hours;
+  });
+  const grid = { days: [...days], counts, max: Math.max(0, ...counts.flat()) };
+  const rangeLabel = days.length === 1 ? `${days[0]} UTC` : `${days[0]}–${days[days.length - 1]} UTC`;
+  const selectedWindowLabel = window.kind === 'days' ? `over the last ${window.days} days`
+    : window.kind === 'custom' ? `for ${window.start || 'start date'} to ${window.end || 'end date'} UTC`
+      : 'for all served UTC dates';
   const [hover, setHover] = useState<[number, number] | null>(null);
   const [activeCell, setActiveCell] = useState(0);
   const cells = useRef<Array<HTMLButtonElement | null>>([]);
@@ -207,17 +220,20 @@ function ActivityHeatmap({ runs, now }: { runs: InsightRun[]; now: number }) {
     cells.current[nextRow * 24 + nextHour]?.focus();
   };
   return (
-    <ChartCard title="When runs happen" icon={<CalendarClock size={16} />} accent="var(--ins-series-2)" note="Last 7 days, by UTC hour" delay={120}>
+    <ChartCard title="When runs happen" icon={<CalendarClock size={16} />} accent="var(--ins-series-2)" note={`${rangeLabel}, by UTC hour`} delay={120}>
       <Readout testId="activity-hour-readout" active={hover !== null} text={hover ? <>{weekday(grid.days[hover[0]]!)} {String(hover[1]).padStart(2, '0')}:00 UTC · <span data-field-tone="count">{count(grid.counts[hover[0]]![hover[1]]!)} runs</span></> : <>Busiest hour: <span data-field-tone="count">{count(grid.max)} runs</span></>} />
       <p id={helpId} className="sr-only">Use arrow keys to inspect hours and days. Home and End move to the first and last hour. Tab leaves the chart.</p>
-      <div className="ins-heat" role="group" aria-describedby={helpId} aria-label={`Runs by UTC hour over the last 7 days; busiest hour has ${count(grid.max)} runs`}>
+      <div className="ins-heat" role="group" aria-describedby={helpId} aria-label={`Runs by UTC hour ${selectedWindowLabel} (${rangeLabel}); busiest hour has ${count(grid.max)} runs`}>
         {grid.days.map((day, row) => (
           <div key={day} className="ins-heat-row">
             <span className="ins-heat-day">{weekday(day)}</span>
             {grid.counts[row]!.map((runsInHour, hour) => (
               <button key={hour} type="button" className="ins-heat-cell" title={label(row, hour)} aria-label={label(row, hour)}
                 ref={node => { cells.current[row * 24 + hour] = node; }} tabIndex={activeCell === row * 24 + hour ? 0 : -1}
-                onMouseEnter={() => setHover([row, hour])} onFocus={() => inspect(row, hour)} onClick={() => inspect(row, hour)}
+                // A real pointer move, not mouseenter: a page that scrolls under a resting pointer fires a boundary
+                // mouseenter with no move, which would replace the value just tapped or chosen by keyboard.
+                onMouseMove={() => setHover(current => current?.[0] === row && current[1] === hour ? current : [row, hour])}
+                onFocus={() => inspect(row, hour)} onClick={() => inspect(row, hour)}
                 onKeyDown={event => move(event, row, hour)}
                 style={{ background: runsInHour ? `color-mix(in oklch, var(--ins-series-2) ${Math.round(15 + 85 * (runsInHour / Math.max(1, grid.max)))}%, transparent)` : undefined }} />
             ))}
@@ -252,14 +268,14 @@ function TaskMix({ runs }: { runs: InsightRun[] }) {
 }
 
 function DurationHistogram({ runs }: { runs: InsightRun[] }) {
-  const { buckets, unrecorded } = durationBuckets(runs, DURATION_EDGES);
+  const edges = durationEdges();
+  const { buckets, unrecorded } = durationBuckets(runs, edges);
   const [hover, setHover] = useState<number | null>(null);
   const max = Math.max(1, ...buckets);
-  const name = (index: number) => DURATION_EDGES[index + 1] === Infinity
-    ? `${duration(DURATION_EDGES[index]!)} or more` : `${duration(DURATION_EDGES[index]!)} to ${duration(DURATION_EDGES[index + 1]!)}`;
+  const name = (index: number) => durationBucketLabel(index);
   const median = summary(runs).medianLatency;
   return (
-    <ChartCard title="How long runs take" icon={<Hourglass size={16} />} accent="var(--ins-series-5)" note={unrecorded ? `${count(unrecorded)} not recorded` : undefined} delay={240}>
+    <ChartCard title="How long runs take" icon={<Hourglass size={16} />} accent="var(--ins-series-5)" note={`${count(unrecorded)} not recorded`} delay={240}>
       <Readout active={hover !== null} text={hover === null ? (median === null ? 'No durations recorded' : <>Median <span data-field-tone="duration">{duration(median)}</span></>) : <><span data-field-tone="duration">{name(hover)}</span> · <span data-field-tone="count">{count(buckets[hover]!)} runs</span></>} />
       <div className="ins-bars ins-bars--short" role="group" aria-label="Duration buckets" onMouseLeave={() => setHover(null)}>
         {buckets.map((runsInBucket, index) => (
@@ -269,7 +285,7 @@ function DurationHistogram({ runs }: { runs: InsightRun[] }) {
           </button>
         ))}
       </div>
-      <div className="ins-axis"><span>{duration(DURATION_EDGES[0]!)}</span><span>{duration(DURATION_EDGES[DURATION_EDGES.length - 2]!)}+</span></div>
+      <div className="ins-axis"><span>{duration(edges[0]!)}</span><span>{duration(edges[edges.length - 2]!)}+</span></div>
     </ChartCard>
   );
 }
@@ -384,10 +400,10 @@ function OutcomeComposition({ runs }: { runs: InsightRun[] }) {
       </svg>
       <div className="overview-outcome-legend">{segments.map((segment, index) => <button type="button" key={segment.label} data-field-tone={index === 0 ? 'pass' : index === 1 ? 'fail' : 'basis'} data-field-unavailable={index === 2} aria-pressed={selected === index}
         aria-label={`${segment.label}: ${count(segment.value)} ${segment.value === 1 ? 'run' : 'runs'}`} onClick={() => setSelected(index)} style={{ '--ins-swatch': segment.color } as CSSProperties}>
-        <span aria-hidden="true" /><span>{segment.label}</span><strong>{count(segment.value)}</strong>
+        <span aria-hidden="true" /><span>{segment.label}</span><strong>{segment.value === 0 ? 'None' : count(segment.value)}</strong>
       </button>)}</div>
     </div>
-    <p role="status" className="ins-readout">{selected === null ? 'Includes runs without a recorded verdict' : <span data-field-tone={selected === 0 ? 'pass' : selected === 1 ? 'fail' : 'basis'} data-field-unavailable={selected === 2}>{segments[selected]!.label}: {count(segments[selected]!.value)} {segments[selected]!.value === 1 ? 'run' : 'runs'}</span>}</p>
+    <p role="status" className="ins-readout">{selected === null ? 'Includes runs without a recorded verdict' : <span data-field-tone={selected === 0 ? 'pass' : selected === 1 ? 'fail' : 'basis'} data-field-unavailable={selected === 2}>{segments[selected]!.label}: {segments[selected]!.value === 0 ? 'None' : count(segments[selected]!.value)} {segments[selected]!.value === 1 ? 'run' : 'runs'}</span>}</p>
   </ChartCard>;
 }
 
@@ -423,30 +439,239 @@ function TokensPerDay({ days }: { days: InsightDay[] }) {
   );
 }
 
-/**
- * The Overview's one window ("Figures for"), when the page provides it: Today is today's UTC day; All time is every
- * day from the oldest served run to today (at least 7, at most 30 days drawn). With no page window (a standalone
- * render) the section keeps its own Today / 7 / 14 day switch.
- */
-export const InsightsWindowContext = createContext<'all' | 'today' | null>(null);
+/** The Activity trends window, shared by its summary and the pass-rate sparkline. */
+export type ActivityWindow = { kind: 'all' } | { kind: 'days'; days: number } | { kind: 'custom'; start: string; end: string };
+export interface InsightsWindowValue { window: ActivityWindow; setWindow: (window: ActivityWindow) => void }
+export const InsightsWindowContext = createContext<'all' | 'today' | InsightsWindowValue | null>(null);
 
 /** The Overview's served decision rows, for the Quality hero's pass-rate line (OMN-21166 approved mockup). */
 export const OverviewRunsContext = createContext<{ decisions: readonly unknown[]; now: number } | null>(null);
 
 /**
  * The Quality hero's "Pass rate per day": the same chart the trends drew, moved into the hero as the mockup has it.
- * It follows the page window like the trends (today shows the last 7 days for context); with no page rows it draws
- * nothing, so the Quality panel alone is unchanged.
+ * It follows the selected Activity trends window; with no page rows it draws nothing, so the Quality panel alone is unchanged.
  */
 export function PassRateSparkline() {
   const context = useContext(OverviewRunsContext);
   const pageWindow = useContext(InsightsWindowContext);
+  const [ownWindow] = useState<ActivityWindow>({ kind: 'all' });
   if (context === null) return null;
   const runs = toInsightRuns(context.decisions);
   if (runs.length === 0) return null;
-  return <PassRateTrend days={dailySeries(runs, context.now, pageWindow === 'all' ? allTimeDays(runs, context.now) : 7)} />;
+  const window = windowFromContext(pageWindow, ownWindow);
+  if (window.kind === 'custom' && (window.start === '' || window.end === '' || window.end < window.start)) return null;
+  const currentRuns = selectedRuns(runs, context.now, window);
+  const comparisonDays = window.kind === 'days' ? window.days : MAX_ALL_TIME_DAYS;
+  const comparison = window.kind === 'days' ? compareWindow(context.decisions, context.now, window.days) : null;
+  const current = summary(currentRuns);
+  const rate = current.passRate === null ? 'Not recorded' : `${current.passRate.toFixed(1)}%`;
+  const deltaText = comparison === null ? 'Comparison unavailable for this window'
+    : comparison.passRateDeltaPoints === null
+      ? comparison.previousComplete
+        ? `Previous ${comparisonDays === 1 ? 'day' : `${comparisonDays} days`} has no recorded verdicts to compare`
+        : `Previous ${comparisonDays === 1 ? 'day' : `${comparisonDays} days`} not fully returned`
+      : `${comparison.passRateDeltaPoints > 0 ? '▲' : comparison.passRateDeltaPoints < 0 ? '▼' : '—'} ${Math.abs(comparison.passRateDeltaPoints).toFixed(1)} percentage points vs previous ${comparisonDays === 1 ? 'day' : `${comparisonDays} days`}`;
+  return <section className="ins-pass-headline" aria-label="Pass rate trend">
+    <p className="local-dashboard-caption"><span>Pass rate</span> <strong data-field-unavailable={current.passRate === null}>{rate}</strong></p>
+    <p className="local-dashboard-caption ins-pass-delta" data-field-unavailable={comparison?.passRateDeltaPoints === null || comparison === null}>{deltaText}</p>
+    <PassRateTrend days={seriesForDays(currentRuns, plottedDays(runs, context.now, window))} />
+  </section>;
 }
 const MAX_ALL_TIME_DAYS = 30;
+
+function windowFromContext(value: 'all' | 'today' | InsightsWindowValue | null, fallback: ActivityWindow): ActivityWindow {
+  if (value === 'all') return { kind: 'all' };
+  if (value === 'today') return { kind: 'days', days: 1 };
+  return value?.window ?? fallback;
+}
+
+function customRangeDays(start: string, end: string): string[] {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(start) || !/^\d{4}-\d{2}-\d{2}$/.test(end)) return [];
+  const first = Date.parse(`${start}T00:00:00Z`);
+  const last = Date.parse(`${end}T00:00:00Z`);
+  if (!Number.isFinite(first) || !Number.isFinite(last) || last < first) return [];
+  const count = Math.floor((last - first) / 86_400_000) + 1;
+  const plottedStart = first + Math.max(0, count - MAX_ALL_TIME_DAYS) * 86_400_000;
+  return Array.from({ length: Math.min(count, MAX_ALL_TIME_DAYS) }, (_, index) => new Date(plottedStart + index * 86_400_000).toISOString().slice(0, 10));
+}
+
+function selectedRuns(runs: readonly InsightRun[], now: number, window: ActivityWindow): InsightRun[] {
+  if (window.kind === 'all') return [...runs];
+  if (window.kind === 'days') return windowRuns(runs, now, window.days);
+  if (window.start === '' || window.end === '' || window.end < window.start) return [];
+  return runs.filter(run => run.day >= window.start && run.day <= window.end);
+}
+
+function plottedDays(runs: readonly InsightRun[], now: number, window: ActivityWindow): string[] {
+  if (window.kind === 'days') return windowDays(now, window.days);
+  if (window.kind === 'custom') return customRangeDays(window.start, window.end);
+  return windowDays(now, allTimeDays(runs, now));
+}
+
+function seriesForDays(runs: readonly InsightRun[], days: readonly string[]) {
+  return days.map(day => ({ day, ...summary(runs.filter(run => run.day === day)) }));
+}
+
+function windowCaption(window: ActivityWindow): string {
+  if (window.kind === 'all') return 'All served dates';
+  if (window.kind === 'days') return window.days === 1 ? '1 UTC day' : `last ${window.days} UTC days`;
+  if (window.start === '' || window.end === '') return 'Custom UTC date range';
+  if (window.end < window.start) return 'Invalid UTC date range';
+  return `${window.start} through ${window.end} UTC`;
+}
+
+function ChartHeading({ title, detail }: { title: string; detail: string }) {
+  return <div className="ins-card-head"><h3 className="ins-title">{title}</h3><span className="ins-note">{detail}</span></div>;
+}
+
+function usd(value: number | null): string {
+  return value === null ? 'Not served' : `$${value.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 4 })}`;
+}
+
+function delta(value: number | null, format: (value: number) => string): string {
+  if (value === null) return 'Previous window unavailable';
+  return `${value > 0 ? '+' : ''}${format(value)} vs previous window`;
+}
+
+function RunWindowKpis({ runs, decisions, label, comparisonEnabled, now, days }: {
+  runs: InsightRun[]; decisions: readonly unknown[]; label: string; comparisonEnabled: boolean; now: number; days: number;
+}) {
+  const comparison = comparisonEnabled ? compareWindow(decisions, now, days) : null;
+  const selectedLabel = label;
+  const durationMissing = runs.filter(run => run.latencyMs === null).length;
+  const summaryNow = summary(runs);
+  const runDelta = !comparisonEnabled ? 'Comparison unavailable for this window'
+    : comparison?.previousComplete && comparison.runsDelta !== null
+      ? delta(comparison.runsDelta, value => `${value} runs`) : 'Previous window not fully returned';
+  const medianDelta = !comparisonEnabled ? 'Comparison unavailable for this window'
+    : comparison?.previousComplete && comparison.medianLatencyDelta !== null
+      ? delta(comparison.medianLatencyDelta, value => `${(value / 1000).toFixed(2)} s`) : 'Previous window not fully returned';
+  const median = summaryNow.medianLatency === null ? 'Not recorded' : duration(summaryNow.medianLatency);
+  return (
+    <section className="ins-window-kpis ins-window-kpis--runs" aria-label={`Runs in ${selectedLabel}`}>
+      <div className="ins-kpi local-dashboard-metric" data-field-tone="count"><span>Runs</span><strong>{count(summaryNow.runs)}</strong><small>{selectedLabel} · counted from the returned decision rows</small><small>{runDelta}</small></div>
+      <div className="ins-kpi local-dashboard-metric" data-field-tone="duration"><span>Median duration</span><strong data-field-unavailable={summaryNow.medianLatency === null}>{median}</strong><small>{count(durationMissing)} duration values not recorded</small><small>{medianDelta}</small></div>
+    </section>
+  );
+}
+
+function MeteringWindowKpis({ current, previous, days, label, comparisonEnabled, unavailable }: {
+  current: MeteringWindow; previous: MeteringWindow | null; days: number; label: string; comparisonEnabled: boolean; unavailable: string | null;
+}) {
+  const paidReady = unavailable === null && current.available && current.windowComplete && current.spend !== null;
+  const savedReady = unavailable === null && current.available && current.windowComplete && current.saved !== null;
+  const servedDayCount = current.days.filter(day => day.served).length;
+  const savedPct = current.saved !== null && current.counterfactual !== null && current.counterfactual > 0
+    ? `${(current.saved / current.counterfactual * 100).toFixed(1)}% below ${current.baseline ?? 'the served baseline'}` : 'Baseline comparison not recorded';
+  const paidNote = unavailable ?? current.reason ?? (!current.windowComplete
+    ? `${servedDayCount} of ${days} daily rows served; the selected window is incomplete.`
+    : current.spend === null ? 'One or more daily spend values are not recorded; paid total unavailable.'
+      : `${servedDayCount} served day rows.`);
+  const savedNote = unavailable ?? current.reason ?? (!current.windowComplete
+    ? `${servedDayCount} of ${days} daily rows served; the selected window is incomplete.`
+    : current.saved === null ? 'One or more daily savings values are not recorded; saved total unavailable.'
+      : `${servedDayCount} served day rows · ${savedPct}`);
+  const previousComplete = comparisonEnabled && unavailable === null && current.available && current.windowComplete
+    && previous !== null && previous.available && previous.windowComplete;
+  const paidDelta = !comparisonEnabled ? 'Comparison unavailable for this window'
+    : previousComplete && current.spend !== null && previous.spend !== null
+      ? delta(current.spend - previous.spend, value => usd(value)) : 'Previous window not fully returned';
+  const savedDelta = !comparisonEnabled ? 'Comparison unavailable for this window'
+    : previousComplete && current.saved !== null && previous.saved !== null
+      ? delta(current.saved - previous.saved, value => usd(value)) : 'Previous window not fully returned';
+  return <section className="ins-window-kpis ins-window-kpis--metering" aria-label={`Metered spend summary for ${label}`}>
+    <div className="ins-kpi local-dashboard-metric" data-field-tone="cost"><span>You paid</span><strong data-field-unavailable={!paidReady}>{paidReady ? usd(current.spend) : 'Unavailable'}</strong><small>{paidNote}</small><small>{paidDelta}</small></div>
+    <div className="ins-kpi local-dashboard-metric" data-field-tone="savings"><span>Saved</span><strong data-field-unavailable={!savedReady}>{savedReady ? usd(current.saved) : 'Unavailable'}</strong><small>{savedNote}</small><small>{savedDelta}</small></div>
+  </section>;
+}
+
+/**
+ * AC42 All window: the served all-time row's spend, as served; no day row is summed into it. No Saved figure here:
+ * the Overview keeps one savings number, its headline card (Lakshman 2026-10-21 ~19:40Z, AC37).
+ */
+function MeteringAllTimeKpis({ rows, label, unavailable }: { rows: readonly unknown[]; label: string; unavailable: string | null }) {
+  const total = meteringAllTimeTotals(rows);
+  const reason = unavailable ?? total.reason;
+  const paidReady = reason === null && total.spend !== null;
+  const paidNote = reason ?? (total.spend === null ? 'The all-time spend total is not recorded.' : 'All-time total, as served.');
+  return <section className="ins-window-kpis ins-window-kpis--metering" aria-label={`Metered spend summary for ${label}`}>
+    <div className="ins-kpi local-dashboard-metric" data-field-tone="cost"><span>You paid</span><strong data-field-unavailable={!paidReady}>{paidReady ? usd(total.spend) : 'Unavailable'}</strong><small>{paidNote}</small><small>Comparison unavailable for this window</small></div>
+  </section>;
+}
+
+function MoneyWindowCharts({ rows, now, days, unavailable }: { rows: readonly unknown[]; now: number; days: number; unavailable: string | null }) {
+  const data = aggregateMeteringWindow(rows, now, days);
+  const [activeSpend, setActiveSpend] = useState<number | null>(null);
+  const [activeCumulative, setActiveCumulative] = useState<number | null>(null);
+  if (unavailable !== null || !data.available) {
+    return <div className="ins-money-unavailable" role="status">{unavailable ?? data.reason ?? 'Daily metering data is unavailable.'}</div>;
+  }
+  const servedMoneyValues = data.days.flatMap(day => [day.spend, day.saved, day.counterfactual])
+    .filter((value): value is number => value !== null);
+  const max = Math.max(0.01, ...servedMoneyValues);
+  const cumulativeValues = data.cumulativeSaved.filter((value): value is number => value !== null);
+  const cumulativeMax = Math.max(0.01, ...cumulativeValues);
+  const selected = activeSpend === null ? null : data.days[activeSpend]!;
+  const dateLabel = (day: string) => new Date(`${day}T00:00:00Z`).toLocaleDateString('en-US', { month: 'short', day: 'numeric', timeZone: 'UTC' });
+  const detail = (day: typeof data.days[number]) => `${dateLabel(day.day)} · Paid ${usd(day.spend)} · Saved ${usd(day.saved)} · All-cloud ${usd(day.counterfactual)}`;
+  return (
+    <ChartSection title="Daily paid vs all-cloud">
+      <figure className="local-chart ins-money-chart" aria-label="Spend vs all-cloud">
+        <ChartHeading title="Spend vs all-cloud" detail={`${days === 1 ? 'Today (UTC)' : `Last ${days} UTC days`} · ${data.baseline ?? 'baseline not recorded'}`} />
+        <p className="ins-readout" role="status">{selected ? detail(selected) : 'Hover or tab through a served day'}</p>
+        <div className="ins-money-bars" role="group" aria-label="Spend vs all-cloud by UTC day" onMouseLeave={() => setActiveSpend(null)}>
+          {data.days.map((day, index) => <button key={day.day} type="button" className="ins-money-day" aria-label={detail(day)} onMouseEnter={() => setActiveSpend(index)} onFocus={() => setActiveSpend(index)}>
+            <span className="ins-money-day-bars">
+              {day.spend !== null && <span className="ins-money-paid" style={{ height: `${day.spend / max * 100}%` }} />}
+              {day.saved !== null && <span className="ins-money-saved" style={{ height: `${day.saved / max * 100}%` }} />}
+              {day.counterfactual !== null && <span className="ins-money-baseline" style={{ bottom: `${day.counterfactual / max * 100}%` }} />}
+            </span>
+            <span>{dateLabel(day.day)}</span>
+            <span className="ins-money-values">{day.spend === null ? 'Paid not recorded' : usd(day.spend)} · {day.saved === null ? 'saved not recorded' : `${usd(day.saved)} saved`}</span>
+          </button>)}
+        </div>
+        <div className="ins-money-legend"><span data-tone="paid">Paid</span><span data-tone="saved">Saved</span><span data-tone="baseline">All-cloud baseline</span></div>
+        <figcaption>Saved uses the served daily savings value. {data.windowComplete ? 'Returned rows cover the selected window.' : 'The returned rows do not cover the full selected window.'}{data.days.some(day => day.served && day.saved === null) ? ' At least one served day has no recorded savings value.' : ''}</figcaption>
+      </figure>
+      <figure className="local-chart ins-cumulative-chart" aria-label="Cumulative savings">
+        <ChartHeading title="Cumulative savings" detail={`${days === 1 ? 'Today (UTC)' : `Last ${days} UTC days`} · ${data.baseline ?? 'baseline not recorded'}`} />
+        <p className="ins-readout" role="status">{activeCumulative === null ? `${data.windowComplete && data.saved !== null ? 'Window total' : 'Served rows only · cumulative incomplete'}: ${usd(data.cumulativeSaved[data.cumulativeSaved.length - 1] ?? null)}` : `${dateLabel(data.days[activeCumulative]!.day)} · cumulative ${usd(data.cumulativeSaved[activeCumulative] ?? null)}${!data.days[activeCumulative]!.served ? ' · no served day row; total carried forward' : data.days[activeCumulative]!.saved === null ? ' · savings value not recorded; cumulative unavailable' : ''}`}</p>
+        <div className="ins-bars ins-bars--short" role="group" aria-label="Cumulative savings by UTC day" onMouseLeave={() => setActiveCumulative(null)}>
+          {data.cumulativeSaved.map((value, index) => <button key={data.days[index]!.day} type="button" className="ins-bar" aria-label={`${dateLabel(data.days[index]!.day)}: cumulative ${usd(value)}${!data.days[index]!.served ? ', no served day row; prior total carried forward' : data.days[index]!.saved === null ? ', savings value not recorded' : ''}`} onMouseEnter={() => setActiveCumulative(index)} onFocus={() => setActiveCumulative(index)}>
+            <span className="ins-seg od-grow" style={{ height: `${value === null ? 0 : value / cumulativeMax * 100}%`, background: 'var(--ins-series-3)' }} />
+          </button>)}
+        </div>
+        <figcaption>Missing rows carry the prior total forward. A served row without a savings value makes the cumulative total unavailable from that day onward.</figcaption>
+      </figure>
+    </ChartSection>
+  );
+}
+
+/** Savings figures in this child come only from the separately declared Overview metering binding. */
+export function MeteringActivityInsights({ rows, now, unavailable, window, display = 'all' }: {
+  rows: readonly unknown[]; now: number; unavailable: string | null; window: ActivityWindow; display?: 'all' | 'kpis' | 'charts';
+}) {
+  const days = window.kind === 'days' ? window.days : MAX_ALL_TIME_DAYS;
+  const label = windowCaption(window);
+  // AC42 (Lakshman 2026-10-21 ~19:10Z, ~19:40Z): All shows the served all-time row's spend only; a custom range sums
+  // its served day rows.
+  // The daily charts stay on the rolling windows.
+  const chartUnavailable = window.kind === 'days' ? unavailable
+    : 'Daily metering charts are drawn for the 1, 7, 15 and 30 day windows.';
+  const kpis = () => {
+    if (window.kind === 'all') return <MeteringAllTimeKpis rows={rows} label={label} unavailable={unavailable} />;
+    if (window.kind === 'custom') {
+      const range = aggregateMeteringRange(rows, window.start, window.end);
+      return <MeteringWindowKpis current={range} previous={null} days={range.days.length} label={label} comparisonEnabled={false} unavailable={unavailable} />;
+    }
+    return <MeteringWindowKpis current={aggregateMeteringWindow(rows, now, days)} previous={aggregateMeteringWindow(rows, now - days * 86_400_000, days)}
+      days={days} label={label} comparisonEnabled unavailable={unavailable} />;
+  };
+  return <div className="ins-metering-activity" aria-label="Metered activity details">
+    {display !== 'charts' && kpis()}
+    {display !== 'kpis' && <MoneyWindowCharts rows={rows} now={now} days={days} unavailable={chartUnavailable} />}
+  </div>;
+}
 
 function allTimeDays(runs: readonly InsightRun[], now: number): number {
   if (runs.length === 0) return 7;
@@ -455,13 +680,18 @@ function allTimeDays(runs: readonly InsightRun[], now: number): number {
   return Math.min(MAX_ALL_TIME_DAYS, Math.max(7, Math.round((today - oldest) / 86_400_000) + 1));
 }
 
-export function InsightsSection({ decisions, now, view = 'all', onInspectFailure }: { decisions: readonly unknown[]; now: number; view?: 'all' | 'summary' | 'analysis'; onInspectFailure?: (cause: string) => void }) {
+export function InsightsSection({ decisions, now, view = 'all', onInspectFailure }: {
+  decisions: readonly unknown[]; now: number; view?: 'all' | 'summary' | 'analysis'; onInspectFailure?: (cause: string) => void;
+}) {
   const pageWindow = useContext(InsightsWindowContext);
-  const [ownDays, setDays] = useState<number>(7);
+  const [ownWindow, setOwnWindow] = useState<ActivityWindow>({ kind: 'all' });
+  const window = windowFromContext(pageWindow, ownWindow);
+  const setWindow = pageWindow !== null && typeof pageWindow === 'object' ? pageWindow.setWindow : setOwnWindow;
   const all = toInsightRuns(decisions);
-  const days = pageWindow === 'today' ? 1 : pageWindow === 'all' ? allTimeDays(all, now) : ownDays;
-  const runs = windowRuns(all, now, days);
-  const chartDays = dailySeries(all, now, days === 1 ? 7 : days);
+  const runs = selectedRuns(all, now, window);
+  const chartDaysList = plottedDays(all, now, window);
+  const chartRuns = all.filter(run => chartDaysList.includes(run.day));
+  const chartDays = seriesForDays(chartRuns, chartDaysList);
   // The exposure returns only its latest rows. A calendar axis is not proof
   // that earlier days contain no runs; disclose the actual received span.
   const times = all.map(run => run.at);
@@ -469,28 +699,40 @@ export function InsightsSection({ decisions, now, view = 'all', onInspectFailure
   const servedSpan = times.length === 0 ? 'No dated runs served' : `${utcTime(Math.min(...times))}–${utcTime(Math.max(...times))} UTC`;
   const servedCount = decisions.length;
   const undatedCount = servedCount - all.length;
-  const population = pageWindow === 'all' && runs.length === servedCount
-    ? `Latest ${count(servedCount)} served runs`
-    : `${count(runs.length)} of the latest ${count(servedCount)} served runs · ${days === 1 ? 'today' : `last ${days} UTC days`}`;
+  const customIncomplete = window.kind === 'custom' && (window.start === '' || window.end === '');
+  const customReversed = window.kind === 'custom' && window.start !== '' && window.end !== '' && window.end < window.start;
+  const population = window.kind === 'all'
+    ? undatedCount === 0 ? `Latest ${count(servedCount)} served runs · ${windowCaption(window)}` : `${count(runs.length)} of the latest ${count(servedCount)} served runs · ${windowCaption(window)}`
+    : window.kind === 'custom' && (customIncomplete || customReversed || runs.length === 0)
+      ? `Latest ${count(servedCount)} served runs · ${windowCaption(window)}`
+      : `${count(runs.length)} of the latest ${count(servedCount)} served runs · ${windowCaption(window)}`;
   const undated = undatedCount > 0 ? ` · ${count(undatedCount)} undated ${undatedCount === 1 ? 'row' : 'rows'} excluded` : '';
+  const emptyMessage = customIncomplete ? 'Choose both UTC dates for this range'
+    : customReversed ? 'End date must be on or after the start date'
+      : runs.length === 0 ? window.kind === 'custom' ? 'No runs in this date range'
+        : window.kind === 'all' ? 'No runs in served data'
+          : window.kind === 'days' && window.days === 1 ? 'No runs today' : `No runs in the last ${window.kind === 'days' ? window.days : MAX_ALL_TIME_DAYS} days`
+        : null;
   return (
     <div className={`ins-section${view === 'summary' ? ' ins-section--summary' : ''}`} aria-label="Insights" role="group">
-      {pageWindow === null && (
-        <div className="local-dashboard-filters ins-range" role="group" aria-label="Range">
-          {RANGES.map(range => (
-            <button key={range.days} type="button" aria-pressed={days === range.days} onClick={() => setDays(range.days)}>{range.label}</button>
-          ))}
+      {view !== 'analysis' && (
+        <div className="local-dashboard-filters ins-range" role="group" aria-label="Activity window">
+          <button type="button" aria-pressed={window.kind === 'all'} onClick={() => setWindow({ kind: 'all' })}>All</button>
+          {RANGES.map(range => <button key={range.days} type="button" aria-pressed={window.kind === 'days' && window.days === range.days} onClick={() => setWindow({ kind: 'days', days: range.days })}>{range.label}</button>)}
+          <label>Start date (UTC)<input type="date" aria-label="Start date (UTC)" value={window.kind === 'custom' ? window.start : ''} onChange={event => setWindow({ kind: 'custom', start: event.target.value, end: window.kind === 'custom' ? window.end : '' })} /></label>
+          <label>End date (UTC)<input type="date" aria-label="End date (UTC)" value={window.kind === 'custom' ? window.end : ''} onChange={event => setWindow({ kind: 'custom', start: window.kind === 'custom' ? window.start : '', end: event.target.value })} /></label>
         </div>
       )}
-      <p className="local-dashboard-caption ins-sub" data-testid="insights-total">{population}{undated} · Row timestamps: {servedSpan} · Earlier activity is not included</p>
-      {runs.length === 0 ? <p className="local-dashboard-empty ins-empty" role="status" aria-label="Insights">{days === 1 ? 'No runs today' : `No runs in the last ${days} days`}</p> : (
+      <p className="local-dashboard-caption ins-sub" data-testid="insights-total">{population}{undated} · Row timestamps: {servedSpan} · Earlier activity is not included{window.kind === 'all' || window.kind === 'custom' ? ` · Charts show at most ${MAX_ALL_TIME_DAYS} UTC days; ${count(chartRuns.length)} of ${count(runs.length)} selected runs plotted` : ''}</p>
+      {emptyMessage !== null ? <p className="local-dashboard-empty ins-empty" role="status" aria-label="Insights">{emptyMessage}</p> : (
         <div className="overview-chart-sections">
+          {view !== 'analysis' && <RunWindowKpis runs={runs} decisions={decisions} now={now} days={window.kind === 'days' ? window.days : MAX_ALL_TIME_DAYS} label={windowCaption(window)} comparisonEnabled={window.kind === 'days'} />}
           {view !== 'analysis' && <ChartSection title="Activity over time"><RunsPerDay days={chartDays} /><TokensPerDay days={chartDays} /></ChartSection>}
           {view !== 'summary' && <>
           <ChartSection title="Routing and workload"><VolumeBars runs={runs} field="model" /><VolumeBars runs={runs} field="tier" /><TaskMix runs={runs} /></ChartSection>
           <ChartSection title="Quality and outcomes"><OutcomeComposition runs={runs} /><PassRateTrend days={chartDays} /><FailureCauses runs={runs} onInspectFailure={onInspectFailure} /></ChartSection>
           <ChartSection title="Performance by model"><DurationHistogram runs={runs} /><ModelScoreboard runs={runs} /></ChartSection>
-          <ChartSection title="Activity by UTC hour"><ActivityHeatmap runs={all} now={now} /></ChartSection>
+          <ChartSection title="Activity by UTC hour"><ActivityHeatmap runs={runs} days={chartDaysList} window={window} /></ChartSection>
           </>}
         </div>
       )}

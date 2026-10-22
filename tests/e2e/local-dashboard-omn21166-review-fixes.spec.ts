@@ -19,6 +19,7 @@ test('review fixes: exact median and keyboard/touch hourly inspection', async ({
   await page.getByText('Detailed activity analysis', { exact: true }).press('Enter');
   await page.waitForLoadState('networkidle');
   await expect(page.getByRole('heading', { name: 'Overview', exact: true })).toBeVisible();
+  await page.getByRole('group', { name: 'Activity window' }).getByRole('button', { name: '7 days', exact: true }).click();
   await expect(page.getByRole('figure', { name: 'How long runs take', exact: true })).toContainText('Median 960 ms');
   const heat = page.getByRole('group', { name: /Runs by UTC hour over the last 7 days/ });
   const cells = heat.getByRole('button');
