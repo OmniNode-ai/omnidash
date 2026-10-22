@@ -222,6 +222,9 @@ export interface DelegationSummaryRow {
   qualityGateTotal: number;
   totalSavingsUsd: number;
   avgLatencyMs: number;
+  /** OMN-21304 AC4: fixture delegations the summary's totals include, as served; absent on older rows. */
+  fixtureDelegations?: number | null;
+  fixtureSavingsUsd?: number | null;
 }
 
 export interface ModelRoutingInnerRow {

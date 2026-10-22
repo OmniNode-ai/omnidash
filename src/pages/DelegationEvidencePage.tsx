@@ -45,6 +45,7 @@ import type {
   CorrelationTraceRow,
   CostSavingsOverviewRow,
   DelegationDecisionRow,
+  DelegationSummaryRow,
 } from '@/services/event-dash-api';
 import { runBreakdownText, runModelledCell } from '@/pages/LocalDashboardPage';
 
@@ -415,6 +416,20 @@ function RecentDelegations({ decisions }: { decisions: DelegationDecisionRow[] }
   );
 }
 
+/**
+ * OMN-21304 AC4: delegation.summary.v1 counts fixture delegations into its totals and says how many. When it serves
+ * more than zero, every figure read from that row says so beside it; a figure is never shown as if all of it were live.
+ */
+function fixtureNoticeOf(summary: DelegationSummaryRow): string | null {
+  const n = Number(summary.fixtureDelegations);
+  if (summary.fixtureDelegations === null || summary.fixtureDelegations === undefined || !Number.isFinite(n) || n <= 0) return null;
+  return `Includes ${n.toLocaleString('en-US')} fixture delegation${n === 1 ? '' : 's'}`;
+}
+
+function withFixtureNotice(text: string, notice: string | null): string {
+  return notice ? `${text} · ${notice}` : text;
+}
+
 // ── page ─────────────────────────────────────────────────────────────────────
 
 export function DelegationEvidencePage() {
@@ -425,6 +440,7 @@ export function DelegationEvidencePage() {
   const overviewQ = useCostSavingsOverview();
 
   const summary = summaryQ.data?.rows[0];
+  const fixtureNotice = summary ? fixtureNoticeOf(summary) : null;
   const decisions = decisionsQ.data?.rows ?? [];
   const latestCid = decisions[0]?.correlation_id ?? null;
 
@@ -463,9 +479,9 @@ export function DelegationEvidencePage() {
     >
       <div className="grid cols-4">
         <KPI label="Delegations" icon={<Activity size={15} aria-hidden="true" />} tone="blue" value={kpiRuns} sub={runBreakdown ?? undefined} />
-        <KPI label="Quality pass" icon={<Award size={15} aria-hidden="true" />} tone="green" value={summary ? fmtPct(summary.qualityGatePassRate) : '—'} sub="deterministic gate" />
+        <KPI label="Quality pass" icon={<Award size={15} aria-hidden="true" />} tone="green" value={summary ? fmtPct(summary.qualityGatePassRate) : '—'} sub={withFixtureNotice('deterministic gate', fixtureNotice)} />
         <KPI label="Savings (modelled)" icon={<PiggyBank size={15} aria-hidden="true" />} tone="purple" value={kpiSavings} accent sub="vs cloud baseline" />
-        <KPI label="Tokens" icon={<Coins size={15} aria-hidden="true" />} tone="amber" value={kpiTokens} sub={summary ? `avg ${(summary.avgLatencyMs / 1000).toFixed(2)}s latency` : undefined} />
+        <KPI label="Tokens" icon={<Coins size={15} aria-hidden="true" />} tone="amber" value={kpiTokens} sub={summary ? withFixtureNotice(`avg ${(summary.avgLatencyMs / 1000).toFixed(2)}s latency`, fixtureNotice) : undefined} />
       </div>
 
       <div className="grid cols-2 ev-selected-run-layout">

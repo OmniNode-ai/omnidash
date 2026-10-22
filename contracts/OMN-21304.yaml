@@ -1,0 +1,68 @@
+# SPDX-FileCopyrightText: 2026 OmniNode.ai Inc.
+# SPDX-License-Identifier: MIT
+schema_version: "1.0.0"
+ticket_id: "OMN-21304"
+title: "OmniDash local pages show coverage, run identity, cost basis and the age of last good data beside every figure"
+summary: >-
+  Every pass rate built from decision rows shows how many runs have a verdict; a routing step with no recorded reason
+  or candidates says so; the Overview spend and savings figures each name their unpriced runs, baseline model and
+  pricing manifest version under both headline sources; and Delegation Evidence names fixture delegations beside the
+  figures read from a summary that includes them. Frontend only, over served rows. AC1 and AC2 were already met on
+  dev f466f2eb before this change (shared in-flight reads and same-run last good rows in
+  src/layout/local-page-loader.ts; current-load publishing, separate unstacked phase timings and the empty-steps
+  message in src/pages/LocalDashboardPage.tsx), so they carry no repo-owned item here.
+is_seam_ticket: false
+interface_change: false
+interfaces_touched: []
+requirements:
+  - id: "req-transcribed-acceptance-criteria"
+    statement: "Acceptance criteria AC3 and AC4 copied from the live ticket body on 2026-10-22. The ticket remains the source."
+    acceptance:
+      - id: "AC3"
+        statement: >-
+          AC3: Every average or rate built from decision rows shows its coverage beside it; quality-gate outcome,
+          score and threshold stay three separate facts and no label calls a passed gate accepted; unrecorded routing
+          reason, confidence and candidates read not recorded, never 0 or 0%.
+      - id: "AC4"
+        statement: >-
+          AC4: Spend and modelled savings stay separate figures, each with its unpriced-call count, baseline model and
+          pricing manifest version beside it; a null aggregate baseline_model reads baseline not recorded and is never
+          filled from a session row; fixtureDelegations or fixtureSavingsUsd above zero puts a fixture notice beside
+          the affected totals.
+evidence_requirements:
+  - kind: "tests"
+    description: "Run the honesty browser suite; each case has a positive control beside it. Fixture proof, not live deployment."
+    command: "npm run test:e2e -- tests/e2e/local-dashboard-honesty.spec.ts --project=chromium --workers=1 --retries=0"
+emergency_bypass:
+  enabled: false
+  justification: ""
+  follow_up_ticket_id: ""
+dod_evidence:
+  - id: "dod-omn21304-ac3-coverage-and-routing"
+    description: >-
+      AC3: the Overview pass rate, the Runs task list and the model scoreboard say how many runs have a verdict, with
+      an all-verdicts control; a routing step with no reason or candidates reads not recorded and a recorded one shows
+      its values.
+    source: "manual"
+    binds_ac: ["AC3"]
+    checks:
+      - check_type: "test_passes"
+        check_value: "npm run test:e2e -- tests/e2e/local-dashboard-honesty.spec.ts --project=chromium --workers=1 --retries=0 --grep \"AC3 a pass rate\""
+        cwd: "${OMNI_HOME}/omnidash"
+      - check_type: "test_passes"
+        check_value: "npm run test:e2e -- tests/e2e/local-dashboard-honesty.spec.ts --project=chromium --workers=1 --retries=0 --grep \"AC3 a routing step\""
+        cwd: "${OMNI_HOME}/omnidash"
+  - id: "dod-omn21304-ac4-cost-basis"
+    description: >-
+      AC4: under both Overview headline sources the spend and savings cards each name their unpriced runs, baseline
+      model and pricing manifest version (not recorded where the exposure serves none), with an every-run-priced
+      control; Evidence names fixture delegations beside the summary figures, and shows no notice when there are none.
+    source: "manual"
+    binds_ac: ["AC4"]
+    checks:
+      - check_type: "test_passes"
+        check_value: "npm run test:e2e -- tests/e2e/local-dashboard-honesty.spec.ts --project=chromium --workers=1 --retries=0 --grep \"AC4 spend and savings\""
+        cwd: "${OMNI_HOME}/omnidash"
+      - check_type: "test_passes"
+        check_value: "npm run test:e2e -- tests/e2e/local-dashboard-honesty.spec.ts --project=chromium --workers=1 --retries=0 --grep \"AC4 Evidence\""
+        cwd: "${OMNI_HOME}/omnidash"
