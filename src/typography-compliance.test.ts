@@ -54,7 +54,7 @@ describe('Phase 1: Token declarations', () => {
   beforeAll(() => { css = readSrc('src/styles/globals.css'); });
 
   const tokens: Array<[string, string]> = [
-    ['--text-xs', '0.625rem'], ['--text-sm', '0.6875rem'], ['--text-md', '0.75rem'],
+    ['--text-xs', '0.75rem'], ['--text-sm', '0.75rem'], ['--text-md', '0.75rem'],
     ['--text-lg', '0.8125rem'], ['--text-xl', '0.875rem'], ['--text-2xl', '1rem'],
     ['--text-3xl', '1.125rem'], ['--text-4xl', '1.375rem'],
     ['--leading-tight', '1.2'], ['--leading-normal', '1.45'], ['--leading-loose', '1.65'],

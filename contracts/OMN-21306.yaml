@@ -1,0 +1,182 @@
+# SPDX-FileCopyrightText: 2026 OmniNode.ai Inc.
+# SPDX-License-Identifier: MIT
+schema_version: "1.0.0"
+ticket_id: "OMN-21306"
+title: "OmniDash text readability and redesign verification"
+summary: >-
+  Raise shared typography and destination styles to a 12 px floor, retaining layout
+  and served values. Scan all eleven destinations in both themes and Developer states
+  at desktop and phone sizes. Add browser interaction checks with behavior-removal
+  controls. Fixtures certify rendering only. AC2 and AC3 require post-merge evidence;
+  AC5 reconciles the separately owned design specification.
+is_seam_ticket: false
+interface_change: false
+interfaces_touched: []
+requirements:
+  - id: "req-transcribed-acceptance-criteria"
+    statement: "Acceptance criteria copied from the live ticket on 2026-10-22; the ticket remains the source."
+    acceptance:
+      - id: "AC1"
+        statement: "AC1: No visible text on the eleven destinations renders below 12 px at 1440x900 and 390x844 (measured 2026-10-22: Runs 25 strings, Workflow 17, Delegation Evidence 29, Experimentation 9, Agent Workbench 27, Event Bus 34, Lab 52) -- falsifier: npx playwright test of a font-size scan over all eleven pages that fails on any computed font-size under 12 px, with a planted 10 px element as its control"
+      - id: "AC2"
+        statement: "AC2: A ten-pass verification matrix exists for the merged code, each pass naming the tested sha, the command or interaction, expected and observed result and its artifact -- falsifier: a matrix row with no sha equal to the tested dev commit, or a pass with no artifact path"
+      - id: "AC3"
+        statement: "AC3: A walk in the main Chrome of a served build at the merged sha covers the six core pages and Delegation Evidence, with Developer off and on, light and dark -- falsifier: the walk record's build sha differs from the dev commit, or a page or state is missing from it"
+      - id: "AC4"
+        statement: "AC4: Browser tests cover the interactions the evidence run found untested: Usage chart zoom and reset, chart selection kept across pagination and refresh, a missing run id on the chart selector, tap-to-expand with aria-expanded on Evidence rows, and per-step icons with attempts on Workflow -- falsifier: npx playwright test of each new case, each failing on dev 5afbe1b8 with the behaviour removed"
+      - id: "AC5"
+        statement: "AC5: The OMN-21166 spec's AC20 layout and AC25 canvas wording are reconciled with the later amendments and its stale line references corrected -- falsifier: a spec criterion that contradicts another, or cites a test line that does not hold its assertion"
+evidence_requirements:
+  - kind: "tests"
+    description: "Computed-font census and interaction regression with planted small-text and behavior-removal controls."
+    command: "npm run test:e2e -- tests/e2e/local-dashboard-readability-12px.spec.ts tests/e2e/local-dashboard-verification-interactions.spec.ts tests/e2e/local-dashboard-typography-hierarchy.spec.ts tests/e2e/local-dashboard-activity-window.spec.ts tests/e2e/local-dashboard-routing-disclosure.spec.ts --project=chromium --workers=1 --retries=0"
+emergency_bypass:
+  enabled: false
+  justification: ""
+  follow_up_ticket_id: ""
+dod_evidence:
+  - id: "dod-omn21306-ac1-readable-text"
+    description: >-
+      AC1: HTML text, SVG text, generated mobile labels and input text are scanned
+      with computed font sizes on every destination and both required viewports.
+      Each page includes both themes and Developer states. A planted 10 px control
+      must be detected, hidden text excluded and 12 px text accepted.
+      Separate checks keep each browser startup within the evidence gate budget.
+    source: "manual"
+    binds_ac: ["AC1"]
+    checks:
+      - check_type: "test_passes"
+        check_value: "npm run test:e2e -- tests/e2e/local-dashboard-readability-12px.spec.ts --project=chromium --workers=1 --retries=0 --grep \"font scanner detects\""
+        cwd: "${OMNI_HOME}/omnidash"
+      - check_type: "test_passes"
+        check_value: "npm run test:e2e -- tests/e2e/local-dashboard-readability-12px.spec.ts --project=chromium --workers=1 --retries=0 --grep \"Overview at 1440x900\""
+        cwd: "${OMNI_HOME}/omnidash"
+      - check_type: "test_passes"
+        check_value: "npm run test:e2e -- tests/e2e/local-dashboard-readability-12px.spec.ts --project=chromium --workers=1 --retries=0 --grep \"Runs at 1440x900\""
+        cwd: "${OMNI_HOME}/omnidash"
+      - check_type: "test_passes"
+        check_value: "npm run test:e2e -- tests/e2e/local-dashboard-readability-12px.spec.ts --project=chromium --workers=1 --retries=0 --grep \"Workflow at 1440x900\""
+        cwd: "${OMNI_HOME}/omnidash"
+      - check_type: "test_passes"
+        check_value: "npm run test:e2e -- tests/e2e/local-dashboard-readability-12px.spec.ts --project=chromium --workers=1 --retries=0 --grep \"Usage at 1440x900\""
+        cwd: "${OMNI_HOME}/omnidash"
+      - check_type: "test_passes"
+        check_value: "npm run test:e2e -- tests/e2e/local-dashboard-readability-12px.spec.ts --project=chromium --workers=1 --retries=0 --grep \"Credentials at 1440x900\""
+        cwd: "${OMNI_HOME}/omnidash"
+      - check_type: "test_passes"
+        check_value: "npm run test:e2e -- tests/e2e/local-dashboard-readability-12px.spec.ts --project=chromium --workers=1 --retries=0 --grep \"API Keys at 1440x900\""
+        cwd: "${OMNI_HOME}/omnidash"
+      - check_type: "test_passes"
+        check_value: "npm run test:e2e -- tests/e2e/local-dashboard-readability-12px.spec.ts --project=chromium --workers=1 --retries=0 --grep \"Delegation Evidence at 1440x900\""
+        cwd: "${OMNI_HOME}/omnidash"
+      - check_type: "test_passes"
+        check_value: "npm run test:e2e -- tests/e2e/local-dashboard-readability-12px.spec.ts --project=chromium --workers=1 --retries=0 --grep \"Experimentation at 1440x900\""
+        cwd: "${OMNI_HOME}/omnidash"
+      - check_type: "test_passes"
+        check_value: "npm run test:e2e -- tests/e2e/local-dashboard-readability-12px.spec.ts --project=chromium --workers=1 --retries=0 --grep \"Agent Workbench at 1440x900\""
+        cwd: "${OMNI_HOME}/omnidash"
+      - check_type: "test_passes"
+        check_value: "npm run test:e2e -- tests/e2e/local-dashboard-readability-12px.spec.ts --project=chromium --workers=1 --retries=0 --grep \"Event Bus at 1440x900\""
+        cwd: "${OMNI_HOME}/omnidash"
+      - check_type: "test_passes"
+        check_value: "npm run test:e2e -- tests/e2e/local-dashboard-readability-12px.spec.ts --project=chromium --workers=1 --retries=0 --grep \"Lab at 1440x900\""
+        cwd: "${OMNI_HOME}/omnidash"
+      - check_type: "test_passes"
+        check_value: "npm run test:e2e -- tests/e2e/local-dashboard-readability-12px.spec.ts --project=chromium --workers=1 --retries=0 --grep \"Overview at 390x844\""
+        cwd: "${OMNI_HOME}/omnidash"
+      - check_type: "test_passes"
+        check_value: "npm run test:e2e -- tests/e2e/local-dashboard-readability-12px.spec.ts --project=chromium --workers=1 --retries=0 --grep \"Runs at 390x844\""
+        cwd: "${OMNI_HOME}/omnidash"
+      - check_type: "test_passes"
+        check_value: "npm run test:e2e -- tests/e2e/local-dashboard-readability-12px.spec.ts --project=chromium --workers=1 --retries=0 --grep \"Workflow at 390x844\""
+        cwd: "${OMNI_HOME}/omnidash"
+      - check_type: "test_passes"
+        check_value: "npm run test:e2e -- tests/e2e/local-dashboard-readability-12px.spec.ts --project=chromium --workers=1 --retries=0 --grep \"Usage at 390x844\""
+        cwd: "${OMNI_HOME}/omnidash"
+      - check_type: "test_passes"
+        check_value: "npm run test:e2e -- tests/e2e/local-dashboard-readability-12px.spec.ts --project=chromium --workers=1 --retries=0 --grep \"Credentials at 390x844\""
+        cwd: "${OMNI_HOME}/omnidash"
+      - check_type: "test_passes"
+        check_value: "npm run test:e2e -- tests/e2e/local-dashboard-readability-12px.spec.ts --project=chromium --workers=1 --retries=0 --grep \"API Keys at 390x844\""
+        cwd: "${OMNI_HOME}/omnidash"
+      - check_type: "test_passes"
+        check_value: "npm run test:e2e -- tests/e2e/local-dashboard-readability-12px.spec.ts --project=chromium --workers=1 --retries=0 --grep \"Delegation Evidence at 390x844\""
+        cwd: "${OMNI_HOME}/omnidash"
+      - check_type: "test_passes"
+        check_value: "npm run test:e2e -- tests/e2e/local-dashboard-readability-12px.spec.ts --project=chromium --workers=1 --retries=0 --grep \"Experimentation at 390x844\""
+        cwd: "${OMNI_HOME}/omnidash"
+      - check_type: "test_passes"
+        check_value: "npm run test:e2e -- tests/e2e/local-dashboard-readability-12px.spec.ts --project=chromium --workers=1 --retries=0 --grep \"Agent Workbench at 390x844\""
+        cwd: "${OMNI_HOME}/omnidash"
+      - check_type: "test_passes"
+        check_value: "npm run test:e2e -- tests/e2e/local-dashboard-readability-12px.spec.ts --project=chromium --workers=1 --retries=0 --grep \"Event Bus at 390x844\""
+        cwd: "${OMNI_HOME}/omnidash"
+      - check_type: "test_passes"
+        check_value: "npm run test:e2e -- tests/e2e/local-dashboard-readability-12px.spec.ts --project=chromium --workers=1 --retries=0 --grep \"Lab at 390x844\""
+        cwd: "${OMNI_HOME}/omnidash"
+  - id: "dod-omn21306-ac4-browser-interactions"
+    description: >-
+      AC4: Usage zoom/reset retains its selected served day and table; paging never
+      substitutes a different run identity and refresh retains a still-listed id;
+      missing ids are not selector options; an Evidence tap matches aria-expanded;
+      Workflow step icons and repeated attempts match the served order.
+      Private baseline mutation controls independently remove each behavior.
+    source: "manual"
+    binds_ac: ["AC4"]
+    checks:
+      - check_type: "test_passes"
+        check_value: "npm run test:e2e -- tests/e2e/local-dashboard-verification-interactions.spec.ts --project=chromium --workers=1 --retries=0 --grep \"Usage zoom and reset\""
+        cwd: "${OMNI_HOME}/omnidash"
+      - check_type: "test_passes"
+        check_value: "npm run test:e2e -- tests/e2e/local-dashboard-verification-interactions.spec.ts --project=chromium --workers=1 --retries=0 --grep \"chart run identity stays exact\""
+        cwd: "${OMNI_HOME}/omnidash"
+      - check_type: "test_passes"
+        check_value: "npm run test:e2e -- tests/e2e/local-dashboard-verification-interactions.spec.ts --project=chromium --workers=1 --retries=0 --grep \"a refresh inserting a newer run\""
+        cwd: "${OMNI_HOME}/omnidash"
+      - check_type: "test_passes"
+        check_value: "npm run test:e2e -- tests/e2e/local-dashboard-verification-interactions.spec.ts --project=chromium --workers=1 --retries=0 --grep \"filtering the selected run off\""
+        cwd: "${OMNI_HOME}/omnidash"
+      - check_type: "test_passes"
+        check_value: "npm run test:e2e -- tests/e2e/local-dashboard-verification-interactions.spec.ts --project=chromium --workers=1 --retries=0 --grep \"a reordered refresh never\""
+        cwd: "${OMNI_HOME}/omnidash"
+      - check_type: "test_passes"
+        check_value: "npm run test:e2e -- tests/e2e/local-dashboard-verification-interactions.spec.ts --project=chromium --workers=1 --retries=0 --grep \"a run with no recorded id\""
+        cwd: "${OMNI_HOME}/omnidash"
+      - check_type: "test_passes"
+        check_value: "npm run test:e2e -- tests/e2e/local-dashboard-verification-interactions.spec.ts --project=chromium --workers=1 --retries=0 --grep \"a real tap expands\""
+        cwd: "${OMNI_HOME}/omnidash"
+      - check_type: "test_passes"
+        check_value: "npm run test:e2e -- tests/e2e/local-dashboard-verification-interactions.spec.ts --project=chromium --workers=1 --retries=0 --grep \"Workflow step icons\""
+        cwd: "${OMNI_HOME}/omnidash"
+  # These are approved design-amendment checks, not additional Linear AC labels.
+  # A1/A2/A3/A4 cannot be binds_ac entries in the ticket-contract schema.
+  - id: "dod-omn21306-summary-typography"
+    description: "Approved Amendment 1 A1: rendered summary captions have normal weight and leading; values are semibold. Runs and Usage states without these cards are not applicable."
+    source: "manual"
+    checks:
+      - check_type: "test_passes"
+        check_value: "npm run test:e2e -- tests/e2e/local-dashboard-typography-hierarchy.spec.ts --project=chromium --workers=1 --retries=0"
+        cwd: "${OMNI_HOME}/omnidash"
+  - id: "dod-omn21306-activity-window"
+    description: "Approved Amendment 1 A2/A3: distinct readable preset colors in both themes, explicit selection, and labelled custom dates at desktop and narrow widths with keyboard access and unchanged validation."
+    source: "manual"
+    checks:
+      - check_type: "test_passes"
+        check_value: "npm run test:e2e -- tests/e2e/local-dashboard-activity-window.spec.ts --project=chromium --workers=1 --retries=0 --grep \"distinct identities\""
+        cwd: "${OMNI_HOME}/omnidash"
+      - check_type: "test_passes"
+        check_value: "npm run test:e2e -- tests/e2e/local-dashboard-activity-window.spec.ts --project=chromium --workers=1 --retries=0 --grep \"at 1440px\""
+        cwd: "${OMNI_HOME}/omnidash"
+      - check_type: "test_passes"
+        check_value: "npm run test:e2e -- tests/e2e/local-dashboard-activity-window.spec.ts --project=chromium --workers=1 --retries=0 --grep \"at 390px\""
+        cwd: "${OMNI_HOME}/omnidash"
+      - check_type: "test_passes"
+        check_value: "npm run test:e2e -- tests/e2e/local-dashboard-activity-window.spec.ts --project=chromium --workers=1 --retries=0 --grep \"at 320px\""
+        cwd: "${OMNI_HOME}/omnidash"
+  - id: "dod-omn21306-routing-disclosure"
+    description: "Approved Amendment 3 A4: the native routing disclosure marker replaces its decorative icon, retaining mouse, Enter and Space toggles and native open state on Overview and Runs."
+    source: "manual"
+    checks:
+      - check_type: "test_passes"
+        check_value: "npm run test:e2e -- tests/e2e/local-dashboard-routing-disclosure.spec.ts --project=chromium --workers=1 --retries=0"
+        cwd: "${OMNI_HOME}/omnidash"
