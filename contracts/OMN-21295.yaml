@@ -1,0 +1,60 @@
+# SPDX-FileCopyrightText: 2026 OmniNode.ai Inc.
+# SPDX-License-Identifier: MIT
+schema_version: "1.0.0"
+ticket_id: "OMN-21295"
+title: "Move four ticket contracts from change control into omnidash"
+summary: >-
+  Copy the OMN-18771, OMN-18773, OMN-19645 and OMN-19732 ticket contracts from
+  onex_change_control into contracts/ so the scheduled closer resolves them in
+  this repository, with a test that each one is present, parses, names its own
+  ticket and carries checked evidence items. Keep historical OCC binding
+  provenance in context so the contracts also satisfy the core ticket schema.
+is_seam_ticket: false
+interface_change: false
+interfaces_touched: []
+requirements:
+  - id: "req-moved-ticket-contracts"
+    statement: "The closer resolves the four moved ticket contracts without a change-control checkout."
+    acceptance:
+      - id: "AC1"
+        statement: >-
+          AC1: contracts/ contains OMN-18771.yaml, OMN-18773.yaml,
+          OMN-19645.yaml and OMN-19732.yaml, each a YAML mapping whose
+          ticket_id equals its file name.
+      - id: "AC2"
+        statement: >-
+          AC2: every dod_evidence item of the four moved contracts carries an
+          id and at least one check with a check_type and a check_value.
+evidence_requirements:
+  - kind: "tests"
+    description: "Verify the moved contracts resolve, parse, name their ticket and carry checked evidence."
+    command: "uv run --no-project --with pytest --with pyyaml python -m pytest tests/contracts/test_moved_ticket_contracts_omn21295.py -q --noconftest -p no:cacheprovider -c /dev/null"
+emergency_bypass:
+  enabled: false
+  justification: ""
+  follow_up_ticket_id: ""
+dod_evidence:
+  - id: "dod-omn21295-ac1-moved-contracts"
+    description: "Each moved contract is a mapping at its lookup path naming its own ticket."
+    source: "manual"
+    binds_ac: ["AC1"]
+    checks:
+      - check_type: "test_passes"
+        check_value: "uv run --no-project --with pytest --with pyyaml python -m pytest tests/contracts/test_moved_ticket_contracts_omn21295.py -q --noconftest -p no:cacheprovider -c /dev/null -k names_its_ticket"
+        cwd: "${OMNI_HOME}/omnidash"
+  - id: "dod-omn21295-ac2-evidence-checks"
+    description: "Every evidence item of the moved contracts carries an id and a check."
+    source: "manual"
+    binds_ac: ["AC2"]
+    checks:
+      - check_type: "test_passes"
+        check_value: "uv run --no-project --with pytest --with pyyaml python -m pytest tests/contracts/test_moved_ticket_contracts_omn21295.py -q --noconftest -p no:cacheprovider -c /dev/null -k evidence_items_carry_checks"
+        cwd: "${OMNI_HOME}/omnidash"
+  - id: "dod-omn21295-core-schema"
+    description: "The four moved contracts resolve at their lookup paths and validate with the core ticket model."
+    source: "manual"
+    binds_ac: ["AC1", "AC2"]
+    checks:
+      - check_type: "test_passes"
+        check_value: "uv run --no-project --python 3.12 --with omnibase-core==0.47.39 --with pyyaml --with pytest python -m pytest tests/ci/test_contract_validation_core_validator_omn20074.py tests/contracts/test_moved_ticket_contracts_omn21295.py -q --noconftest -p no:cacheprovider -c /dev/null -k 'every_repo_contract_passes_the_core_model or names_its_ticket'"
+        cwd: "${OMNI_HOME}/omnidash"
