@@ -32,8 +32,13 @@ const usageRows = [
   { usage_day: utcDay(-2), model_id: 'model-unmeasured', cost_tier_name: 'cloud', input_tokens: null, output_tokens: null, measured_cost_usd: null, call_count: 2, unmeasured_call_count: 2, call_share: '0.3333' },
 ];
 const modelRouting = [{ total_delegations: 3, by_tier: { total_tasks: 3, tier_routed_total: 3, not_tier_routed_count: 0, tiers: [
-  { cost_tier_name: 'local', count: 2, pct_of_tier_routed: 0.667, cost_usd: '0.50' },
-  { cost_tier_name: 'cloud', count: 1, pct_of_tier_routed: 0.333, cost_usd: null },
+  // Served shape: a tier has no cost_usd of its own; cost_usd and unmeasured_cost_count are on its models.
+  { cost_tier_name: 'local', count: 2, tier_routed: true, pct_of_tier_routed: 0.667, models: [
+    { model_name: 'model-a', count: 2, pct_of_tier_routed: 0.667, cost_usd: '0.50', unmeasured_cost_count: 0 },
+  ] },
+  { cost_tier_name: 'cloud', count: 1, tier_routed: true, pct_of_tier_routed: 0.333, models: [
+    { model_name: 'model-b', count: 1, pct_of_tier_routed: 0.333, cost_usd: null, unmeasured_cost_count: 1 },
+  ] },
 ] } }];
 
 function fixtureRows(overrides: Record<string, unknown[]> = {}) {

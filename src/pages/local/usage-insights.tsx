@@ -21,18 +21,44 @@ function share(value: number | null): string {
   return value === null ? 'Not recorded' : `${(value * 100).toFixed(1)}%`;
 }
 
+/**
+ * A route's cost from the served row: by_tier.tiers[] has no cost_usd of its own, so it is the sum of its models'
+ * cost_usd. A model with no cost or with unmeasured runs is said so beside the figure; nothing unserved is added in,
+ * and a partial sum is never shown as the route's total.
+ */
+function routeCost(tier: Row): string {
+  const models = Array.isArray(tier.models) ? records(tier.models) : [];
+  let total = 0;
+  let priced = 0;
+  let unmeasured = 0;
+  let unknownGap = false;
+  for (const model of models) {
+    const raw = model.cost_usd;
+    const value = typeof raw === 'number' ? raw : typeof raw === 'string' && raw.trim() !== '' ? Number(raw) : null;
+    const missing = value === null || !Number.isFinite(value);
+    const finite = value !== null && Number.isFinite(value) ? value : null;
+    const runs = typeof model.unmeasured_cost_count === 'number' && model.unmeasured_cost_count >= 0 ? model.unmeasured_cost_count : null;
+    if (finite !== null) { total += finite; priced += 1; }
+    if (runs !== null) unmeasured += runs;
+    if (missing && (runs === null || runs === 0)) unknownGap = true;
+    if (!missing && runs === null) unknownGap = true;
+  }
+  const gap = unmeasured > 0 ? `${unmeasured} unmeasured` : unknownGap ? 'some runs unmeasured' : null;
+  if (priced === 0) return gap === null ? 'Not measured' : `Not measured · ${gap}`;
+  return gap === null ? money(total) : `${money(total)} measured · ${gap}`;
+}
+
 function routeSpendByTier(row: Row): Array<{ route: string; runs: string; share: string; cost: string }> {
   const byTier = row.by_tier;
   if (byTier === null || typeof byTier !== 'object' || Array.isArray(byTier)) return [];
   const tiers = (byTier as Row).tiers;
   return Array.isArray(tiers) ? records(tiers).map(tier => {
-    const raw = tier.cost_usd;
-    const parsed = typeof raw === 'number' ? raw : typeof raw === 'string' && raw.trim() !== '' ? Number(raw) : null;
+    const cost = routeCost(tier);
     return {
       route: typeof tier.cost_tier_name === 'string' ? tier.cost_tier_name : 'Not recorded',
       runs: count(typeof tier.count === 'number' ? tier.count : null),
       share: share(typeof tier.pct_of_tier_routed === 'number' ? tier.pct_of_tier_routed : null),
-      cost: money(parsed !== null && Number.isFinite(parsed) ? parsed : null),
+      cost,
     };
   }) : [];
 }
