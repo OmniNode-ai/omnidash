@@ -2,7 +2,7 @@
 // OMN-21166 AC29: the cost-per-run trend is computed from served usage rows.
 import { render, screen } from '@testing-library/react';
 import { expect, it } from 'vitest';
-import { UsageInsights } from './usage-insights';
+import { UsageInsights } from '@/pages/local/usage-insights';
 
 const NOW = Date.parse('2026-10-21T12:00:00Z');
 

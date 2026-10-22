@@ -2,7 +2,7 @@
 // Failure modes: a capped previous period is treated as complete; a missing previous verdict is called zero;
 // null costs/tokens become zero; unmeasured calls enter the cost-per-call denominator; a zero denominator divides.
 import { expect, it } from 'vitest';
-import { cumulative, durationBuckets, summary, toInsightRuns } from './insights';
+import { cumulative, durationBuckets, summary, toInsightRuns } from '@/pages/local/insights';
 
 const NOW = Date.parse('2026-10-21T12:00:00Z');
 
@@ -14,7 +14,7 @@ function row(day: number, passed: boolean | null): Record<string, unknown> {
 }
 
 it('AC26 compares equal-length windows and refuses a delta when the returned rows truncate the previous window', async () => {
-  const modulePath: string = './insight-aggregates';
+  const modulePath: string = '../../../src/pages/local/insight-aggregates';
   const module = await import(/* @vite-ignore */ modulePath) as Record<string, unknown>;
   const compare = module.compareWindow;
   expect(typeof compare).toBe('function');
@@ -57,7 +57,7 @@ it('AC26 cumulative savings carries a missing day forward without counting it as
 });
 
 it('AC26 uses one served baseline and refuses totals for a partially returned window', async () => {
-  const modulePath: string = './insight-aggregates';
+  const modulePath: string = '../../../src/pages/local/insight-aggregates';
   const loaded = await import(/* @vite-ignore */ modulePath).catch(() => null) as Record<string, unknown> | null;
   const aggregate = loaded?.aggregateMeteringWindow;
   expect(typeof aggregate).toBe('function');
@@ -79,7 +79,7 @@ it('AC26 uses one served baseline and refuses totals for a partially returned wi
 });
 
 it('AC26 refuses a partial money total when a served day has a null value', async () => {
-  const modulePath: string = './insight-aggregates';
+  const modulePath: string = '../../../src/pages/local/insight-aggregates';
   const loaded = await import(/* @vite-ignore */ modulePath).catch(() => null) as Record<string, unknown> | null;
   const aggregate = loaded?.aggregateMeteringWindow;
   expect(typeof aggregate).toBe('function');
@@ -100,7 +100,7 @@ it('AC26 refuses a partial money total when a served day has a null value', asyn
 });
 
 it('AC29 aggregates usage rows independently from metering-only all-cloud costs', async () => {
-  const modulePath: string = './insight-aggregates';
+  const modulePath: string = '../../../src/pages/local/insight-aggregates';
   const loaded = await import(/* @vite-ignore */ modulePath).catch(() => null) as Record<string, unknown> | null;
   const aggregate = loaded?.aggregateUsageRows;
   expect(typeof aggregate).toBe('function');
@@ -143,7 +143,7 @@ it('AC29 aggregates usage rows independently from metering-only all-cloud costs'
 
 // An unknown all-time time must not be invented: a missing or unparseable as_of is never time 0.
 it('AC26 refuses to pick a newest all-time row when any of several rows has no usable as_of', async () => {
-  const modulePath: string = './insight-aggregates';
+  const modulePath: string = '../../../src/pages/local/insight-aggregates';
   const loaded = await import(/* @vite-ignore */ modulePath).catch(() => null) as Record<string, unknown> | null;
   const totals = loaded?.meteringAllTimeTotals;
   expect(typeof totals).toBe('function');
@@ -171,7 +171,7 @@ it('AC26 refuses to pick a newest all-time row when any of several rows has no u
 
 // A date the calendar does not have (April 31, February 30) must be refused, never rolled into the next day.
 it('AC42 refuses a custom UTC range whose date does not exist on the calendar', async () => {
-  const modulePath: string = './insight-aggregates';
+  const modulePath: string = '../../../src/pages/local/insight-aggregates';
   const loaded = await import(/* @vite-ignore */ modulePath).catch(() => null) as Record<string, unknown> | null;
   const range = loaded?.aggregateMeteringRange;
   expect(typeof range).toBe('function');
