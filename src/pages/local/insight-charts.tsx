@@ -558,8 +558,10 @@ function RunWindowKpis({ runs, decisions, label, comparisonEnabled, now, days }:
 function MeteringWindowKpis({ current, previous, days, label, comparisonEnabled, unavailable }: {
   current: MeteringWindow; previous: MeteringWindow | null; days: number; label: string; comparisonEnabled: boolean; unavailable: string | null;
 }) {
-  const paidReady = unavailable === null && current.available && current.windowComplete && current.spend !== null;
-  const savedReady = unavailable === null && current.available && current.windowComplete && current.saved !== null;
+  // A window total is non-null only when every selected day has a served row (completeTotal in insight-aggregates, pinned
+  // by a test), so a total alone shows the window is complete; windowComplete is read below only to word the note.
+  const paidReady = unavailable === null && current.available && current.spend !== null;
+  const savedReady = unavailable === null && current.available && current.saved !== null;
   const servedDayCount = current.days.filter(day => day.served).length;
   const savedPct = current.saved !== null && current.counterfactual !== null && current.counterfactual > 0
     ? `${(current.saved / current.counterfactual * 100).toFixed(1)}% below ${current.baseline ?? 'the served baseline'}` : 'Baseline comparison not recorded';

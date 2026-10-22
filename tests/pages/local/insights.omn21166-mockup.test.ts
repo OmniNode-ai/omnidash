@@ -191,3 +191,47 @@ it('AC42 refuses a custom UTC range whose date does not exist on the calendar', 
   expect(real.available).toBe(true);
   expect(real.spend).toBeCloseTo(0.1);
 });
+
+// The Overview's "You paid" and "Saved" cards show a figure when the window total is not null. They do not also test
+// windowComplete, because no served input gives a non-null total for an incomplete window. This walks every
+// subset of served days crossed with a null spend, null savings or duplicate day, and fails if that stops being true.
+it('AC26 a window total is never non-null when a selected day has no served row, so a total alone proves completeness', async () => {
+  const modulePath: string = '../../../src/pages/local/insight-aggregates';
+  const loaded = await import(/* @vite-ignore */ modulePath) as Record<string, unknown>;
+  const aggregate = loaded.aggregateMeteringWindow as (rows: unknown[], now: number, days: number) => {
+    available: boolean; windowComplete: boolean; spend: number | null; saved: number | null;
+  };
+  const days = 4;
+  const dates = Array.from({ length: days }, (_, index) => new Date(Date.UTC(2026, 9, 18 + index)).toISOString().slice(0, 10));
+  const all = { window_kind: 'all', baseline_model: 'baseline-a', as_of: '2026-10-21T11:00:00Z' };
+  let completeWithTotal = 0;
+  let incompleteChecked = 0;
+  // Bit i of served = day i has a row; bit i of nullSpend / nullSaved = that served day has a null figure.
+  for (let served = 0; served < 2 ** days; served += 1) {
+    for (let nulls = 0; nulls < 2 ** days; nulls += 1) {
+      const rows = [all, ...dates.filter((_, index) => (served >> index) & 1).map(day => {
+        const index = dates.indexOf(day);
+        const missing = (nulls >> index) & 1;
+        return { window_kind: 'day', window_start: day, baseline_model: 'baseline-a',
+          spend_usd: missing ? null : '0.10', savings_usd: missing ? null : '0.20', counterfactual_usd: '0.30', runs_total: 1 };
+      })];
+      const window = aggregate(rows, NOW, days);
+      if (!window.available) continue;
+      if (served !== 2 ** days - 1) {
+        incompleteChecked += 1;
+        expect(window.windowComplete).toBe(false);
+        expect(window.spend).toBeNull();
+        expect(window.saved).toBeNull();
+      } else if (window.spend !== null) {
+        completeWithTotal += 1;
+        expect(window.windowComplete).toBe(true);
+      }
+    }
+  }
+  // Controls: the walk reached incomplete windows (where a total could have leaked) and a complete window with a total.
+  expect(incompleteChecked).toBeGreaterThan(100);
+  expect(completeWithTotal).toBe(1);
+  // A duplicate day row is refused outright, so it cannot reach a total either.
+  const duplicate = aggregate([all, ...[0, 1, 2, 3].map(index => ({ window_kind: 'day', window_start: dates[index === 3 ? 2 : index], baseline_model: 'baseline-a', spend_usd: '0.10', savings_usd: '0.20', counterfactual_usd: '0.30', runs_total: 1 }))], NOW, days);
+  expect(duplicate).toMatchObject({ available: false, spend: null, saved: null });
+});
