@@ -77,12 +77,19 @@ export interface MeteringWindow {
   cumulativeSaved: (number | null)[];
 }
 
-/** The newest served all-time row, or why there is none: two rows of the same time are refused, never merged. */
+/**
+ * The newest served all-time row, or why there is none. One row is that row whatever its time. With several rows an
+ * unparseable or missing as_of is an unknown time, never time 0: the newest cannot be named, so it is refused.
+ * Two rows of the same newest time are refused too, never merged.
+ */
 function latestAllRow(rows: readonly unknown[]): Row | 'none' | 'ambiguous' {
   const all = records(rows).filter(row => row.window_kind === 'all');
   if (all.length === 0) return 'none';
-  const newest = Math.max(...all.map(row => Date.parse(String(row.as_of ?? '')) || 0));
-  const latest = all.filter(row => (Date.parse(String(row.as_of ?? '')) || 0) === newest);
+  if (all.length === 1) return all[0]!;
+  const times = all.map(row => (typeof row.as_of === 'string' ? Date.parse(row.as_of) : Number.NaN));
+  if (times.some(time => Number.isNaN(time))) return 'ambiguous';
+  const newest = Math.max(...times);
+  const latest = all.filter((_, index) => times[index] === newest);
   return latest.length === 1 ? latest[0]! : 'ambiguous';
 }
 

@@ -140,3 +140,31 @@ it('AC29 aggregates usage rows independently from metering-only all-cloud costs'
     day: '2026-10-20', measuredCostPerCall: 0, measuredCalls: 1, unmeasuredCalls: 0,
   }));
 });
+
+// An unknown all-time time must not be invented: a missing or unparseable as_of is never time 0.
+it('AC26 refuses to pick a newest all-time row when any of several rows has no usable as_of', async () => {
+  const modulePath: string = './insight-aggregates';
+  const loaded = await import(/* @vite-ignore */ modulePath).catch(() => null) as Record<string, unknown> | null;
+  const totals = loaded?.meteringAllTimeTotals;
+  expect(typeof totals).toBe('function');
+  if (typeof totals !== 'function') return;
+  type Totals = { available: boolean; baseline: string | null; spend: number | null };
+  const dated = { window_kind: 'all', baseline_model: 'baseline-dated', as_of: '2026-10-21T11:00:00Z', spend_usd: '1.5' };
+
+  // (a) one dated + one undated (missing, and unparseable): cannot say which is newest.
+  expect(totals([dated, { window_kind: 'all', baseline_model: 'baseline-undated', spend_usd: '9' }]) as Totals).toMatchObject({ available: false, spend: null });
+  expect(totals([{ window_kind: 'all', baseline_model: 'baseline-bad', as_of: 'not-a-date', spend_usd: '9' }, dated]) as Totals).toMatchObject({ available: false, spend: null });
+  // (b) two undated rows.
+  expect(totals([
+    { window_kind: 'all', baseline_model: 'baseline-x', spend_usd: '1' },
+    { window_kind: 'all', baseline_model: 'baseline-y', as_of: '', spend_usd: '2' },
+  ]) as Totals).toMatchObject({ available: false, spend: null });
+  // (c) a single undated row is the only row, so it is used.
+  expect(totals([{ window_kind: 'all', baseline_model: 'baseline-only', spend_usd: '3' }]) as Totals)
+    .toMatchObject({ available: true, baseline: 'baseline-only', spend: 3 });
+  // (d) control: two dated rows of different times give the newest.
+  expect(totals([
+    { window_kind: 'all', baseline_model: 'baseline-old', as_of: '2026-10-20T11:00:00Z', spend_usd: '1' },
+    dated,
+  ]) as Totals).toMatchObject({ available: true, baseline: 'baseline-dated', spend: 1.5 });
+});
