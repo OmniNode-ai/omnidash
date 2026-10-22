@@ -72,22 +72,24 @@ async function basisOf(page: Page, card: string) {
   return details;
 }
 
-// The default Overview source, cost.savings-overview.v1, serves no baseline model and no pricing manifest version, so
-// those read not recorded; its unknown_run_count is the runs with no cost.
+// The default Overview source, cost.savings-overview.v1, serves no baseline model, pricing manifest version or unpriced
+// count, so those read not recorded. Its money totals sum measured-provenance rows only, so the estimated and
+// unknown-provenance runs are named as what each total leaves out.
 for (const scenario of [
-  { name: 'two runs unpriced', unknown: 2, expected: '2 unpriced runs' },
-  { name: 'every run priced (control)', unknown: 0, expected: '0 unpriced runs' },
+  { name: 'two runs of unknown provenance', unknown: 2, expected: 'Not in this total: 1 estimated run, 2 unknown-provenance runs' },
+  { name: 'none of unknown provenance (control)', unknown: 0, expected: 'Not in this total: 1 estimated run, 0 unknown-provenance runs' },
 ]) {
   test(`AC4 spend and savings each show their unpriced runs, baseline and pricing version (savings overview): ${scenario.name}`, async ({ page }) => {
     await serveCharts(page, { ...chartRows, [OVERVIEW]: [{ window: 'all', captured_at: hourAgo(0),
       total_cost_usd: 0.25, total_baseline_cost_usd: 1, total_savings_usd: 0.75, tokens_total: 100, run_count: 11,
-      measured_run_count: 9, estimated_run_count: 0, unknown_run_count: scenario.unknown }] });
+      measured_run_count: 9, estimated_run_count: 1, unknown_run_count: scenario.unknown }] });
     await page.goto('/');
     for (const card of ['overview-spend', 'overview-savings']) {
       const details = await basisOf(page, card);
       await expect(details).toContainText(scenario.expected);
       await expect(details).toContainText('Baseline model not recorded');
       await expect(details).toContainText('Pricing manifest not recorded');
+      await expect(details).toContainText('Unpriced runs not recorded');
     }
     // Spend and savings stay two figures, never one.
     await expect(page.locator('[data-component="overview-spend"] .local-dashboard-metric')).toHaveText('$0.2500');
@@ -95,10 +97,11 @@ for (const scenario of [
   });
 }
 
-// With no savings table in the local store the Overview reads metering-summary.v1, which serves all three.
+// With no savings table in the local store the Overview reads metering-summary.v1. The fold classes a run with no token
+// counts before it looks at spend, so both classes are named; the one with no token counts is never hidden behind a 0.
 for (const scenario of [
-  { name: 'two runs unpriced', unpriced: 2, expected: '2 unpriced runs' },
-  { name: 'every run priced (control)', unpriced: 0, expected: '0 unpriced runs' },
+  { name: 'two runs with no spend', unpriced: 2, expected: 'Not in this total: 1 run with no token counts, 2 runs with no spend recorded' },
+  { name: 'every run with tokens priced (control)', unpriced: 0, expected: 'Not in this total: 1 run with no token counts, 0 runs with no spend recorded' },
 ]) {
   test(`AC4 spend and savings each show their unpriced runs, baseline and pricing version (metering): ${scenario.name}`, async ({ page }) => {
     await serveCharts(page, { ...chartRows, [METERING]: [{

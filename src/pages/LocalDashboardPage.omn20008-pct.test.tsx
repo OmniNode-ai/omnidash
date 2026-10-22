@@ -64,12 +64,12 @@ const allRow = (fields: Record<string, unknown> = {}): Record<string, unknown> =
 });
 
 /**
- * What the card showed before this change, line by line (OMN-20008 AC3 and OMN-19980 Step B), with the unpriced-run
- * count OMN-21304 added: these rows serve no runs_unknown_spend, so it reads not recorded.
+ * What the card showed before this change, line by line (OMN-20008 AC3 and OMN-19980 Step B), with the
+ * runs OMN-21304 names as left out of the total: these rows serve neither class, so both read not recorded.
  */
 const BEFORE = [
   '$0.0156',
-  'Baseline claude-sonnet-5-5 · pricing manifest v1.0.0 · Unpriced runs not recorded',
+  'Baseline claude-sonnet-5-5 · pricing manifest v1.0.0 · Not in this total: runs with no token counts: not recorded, runs with no spend recorded: not recorded',
   "Modelled: the runs' tokens priced at the baseline model's list price. The baseline never ran.",
 ];
 

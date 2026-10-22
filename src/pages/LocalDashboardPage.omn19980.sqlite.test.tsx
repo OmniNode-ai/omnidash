@@ -233,7 +233,7 @@ describe('OMN-19980 Step B: the Overview Savings total is metering-summary.v1\'s
     await open('overview');
     const savings = panel('Savings');
     expect(within(savings).getByText('$1.2252')).toBeInTheDocument();
-    expect(within(savings).getByText('Baseline claude-sonnet-5-5 · pricing manifest v3 · 1 unpriced run')).toBeInTheDocument();
+    expect(within(savings).getByText('Baseline claude-sonnet-5-5 · pricing manifest v3 · Not in this total: 1 run with no token counts, 1 run with no spend recorded')).toBeInTheDocument();
     expect(within(savings).getByText(/The baseline never ran\./)).toBeInTheDocument();
     // cost.savings-overview.v1 serves 1.29 and delegation.savings.v1 names claude-opus-4-6: neither reaches the card.
     expect(within(savings).queryByText('$1.2900')).toBeNull();
@@ -278,7 +278,7 @@ describe('OMN-19980 Step B: the Overview Savings total is metering-summary.v1\'s
     await open('overview');
     const savings = panel('Savings');
     expect(within(savings).getByText('$1.2252')).toBeInTheDocument();
-    expect(within(savings).getByText('Baseline claude-sonnet-5-5 · pricing manifest v3 · 1 unpriced run')).toBeInTheDocument();
+    expect(within(savings).getByText('Baseline claude-sonnet-5-5 · pricing manifest v3 · Not in this total: 1 run with no token counts, 1 run with no spend recorded')).toBeInTheDocument();
     expect(within(savings).queryByText('$9.9900')).toBeNull();
   });
 
