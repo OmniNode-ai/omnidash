@@ -46,6 +46,10 @@
         {
           "id": "AC39",
           "statement": "AC39: No user-visible text on the six core pages or Delegation Evidence names an internal exposure, topic, table, column or typed code. Falsifier: the seven-page walk reports an internal name in populated, empty, unserved, refused, missing-table or missing-tenant states."
+        },
+        {
+          "id": "AC48",
+          "statement": "AC48: omnidash's repo-evidence caller pins the omnibase_core receipt gate that takes check-timeout-seconds and passes \"300\", so each evidence check, browser checks included, may run 300 s before it is stopped. Falsifier: uv run pytest tests/ci/test_repo_evidence_caller_omn20073.py -q in omnidash fails at the merge base."
         }
       ]
     },
@@ -296,6 +300,21 @@
         {
           "check_type": "test_passes",
           "check_value": "test -d node_modules || npm ci --no-audit --no-fund; npx playwright test tests/e2e/local-dashboard-omn21166-window-switch-align.spec.ts --project=chromium --workers=1 --retries=0",
+          "cwd": "${OMNI_HOME}/omnidash"
+        }
+      ]
+    },
+    {
+      "id": "dod-omn21166-ac48-evidence-check-timeout",
+      "description": "AC48 (approved plan part 7): the repo-evidence caller pins omnibase_core#2085's merge, the first receipt gate that takes check-timeout-seconds, and passes \"300\". At the merge base the caller still pins 4e4f5e04 and passes no timeout, so both cases fail there; mutants giving an unquoted 300, 1000, no input or the old pin each fail one case.",
+      "source": "manual",
+      "binds_ac": [
+        "AC48"
+      ],
+      "checks": [
+        {
+          "check_type": "test_passes",
+          "check_value": "uv run --no-project --python 3.12 --with pyyaml --with pytest python -m pytest tests/ci/test_repo_evidence_caller_omn20073.py -q --noconftest -p no:cacheprovider -c /dev/null -k \"pins_the_current_receipt_gate or browser_sized_timeout\"",
           "cwd": "${OMNI_HOME}/omnidash"
         }
       ]
