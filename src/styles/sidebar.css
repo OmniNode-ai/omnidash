@@ -90,7 +90,7 @@
 .brand-name .primary em { font-style: normal; color: var(--link-ink); }
 .brand-name .parent {
   font-family: var(--font-mono);
-  font-size: 9px; font-weight: 500;
+  font-size: 12px; font-weight: 500;
   letter-spacing: 0.1em; text-transform: uppercase;
   color: var(--sidebar-ink-2); opacity: 1;
   margin-top: 2px;
@@ -101,7 +101,7 @@
   display: flex; align-items: center; justify-content: space-between;
 }
 .nav-section-title {
-  font-size: 11px; text-transform: uppercase; letter-spacing: 0.09em;
+  font-size: 12px; text-transform: uppercase; letter-spacing: 0.09em;
   color: var(--sidebar-ink-2); font-weight: 600; padding: 0 6px;
 }
 .nav-new {
@@ -219,7 +219,7 @@
   border: 1px solid var(--sidebar-line);
   border-radius: 999px;
   padding: 0 6px;
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 500;
   line-height: 1.5;
   text-transform: uppercase;
@@ -294,9 +294,9 @@
 .mvp-nav-item.active .dash-name { color: color-mix(in oklch, var(--nav-accent) 80%, #000); }
 [data-theme="dark"] .mvp-nav-item.active .dash-name { color: var(--nav-accent); }
 .mvp-nav-item.active .dash-marker { background: color-mix(in oklch, var(--nav-accent) 17%, var(--sidebar)); }
-.mvp-nav-title { font-size: 10px; letter-spacing: .075em; color: var(--sidebar-ink-2); }
+.mvp-nav-title { font-size: 12px; letter-spacing: .075em; color: var(--sidebar-ink-2); }
 .sidebar-settings { background: var(--sidebar); }
-.developer-toggle { font-size: 11px; border: 1px solid transparent; }
+.developer-toggle { font-size: 12px; border: 1px solid transparent; }
 .developer-toggle:focus-visible { outline: 2px solid var(--link-ink); outline-offset: 2px; }
 @media (prefers-reduced-motion: reduce) {
   .sidebar *, .sidebar *::before, .sidebar *::after, .sidebar-backdrop { transition: none !important; animation: none !important; }

@@ -181,7 +181,7 @@
 }
 .widget-live {
   display: inline-flex; align-items: center; gap: 5px;
-  font-size: 10px; font-weight: 500;
+  font-size: 12px; font-weight: 500;
   color: var(--status-ok);
   text-transform: uppercase; letter-spacing: 0.08em;
 }
@@ -225,7 +225,7 @@
 .menu-item:hover { background: var(--panel-2); }
 .menu-item.danger { color: var(--status-bad); }
 .menu-item.danger:hover { background: oklch(65% 0.18 25 / 0.08); }
-.menu-item .shortcut { margin-left: auto; color: var(--ink-3); font-size: 11px; }
+.menu-item .shortcut { margin-left: auto; color: var(--ink-3); font-size: 12px; }
 .menu-sep { height: 1px; background: var(--line); margin: 4px 0; }
 
 /* DROP SLOT */

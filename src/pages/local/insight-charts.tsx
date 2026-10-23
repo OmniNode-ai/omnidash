@@ -728,10 +728,14 @@ export function InsightsSection({ decisions, now, view = 'all', onInspectFailure
     <div className={`ins-section${view === 'summary' ? ' ins-section--summary' : ''}`} aria-label="Insights" role="group">
       {view !== 'analysis' && (
         <div className="local-dashboard-filters ins-range" role="group" aria-label="Activity window">
-          <button type="button" aria-pressed={window.kind === 'all'} onClick={() => setWindow({ kind: 'all' })}>All</button>
-          {RANGES.map(range => <button key={range.days} type="button" aria-pressed={window.kind === 'days' && window.days === range.days} onClick={() => setWindow({ kind: 'days', days: range.days })}>{range.label}</button>)}
-          <label>Start date (UTC)<input type="date" aria-label="Start date (UTC)" value={window.kind === 'custom' ? window.start : ''} onChange={event => setWindow({ kind: 'custom', start: event.target.value, end: window.kind === 'custom' ? window.end : '' })} /></label>
-          <label>End date (UTC)<input type="date" aria-label="End date (UTC)" value={window.kind === 'custom' ? window.end : ''} onChange={event => setWindow({ kind: 'custom', start: window.kind === 'custom' ? window.start : '', end: event.target.value })} /></label>
+          <div className="ins-range-presets" role="group" aria-label="Quick ranges">
+            <button type="button" data-window="all" aria-pressed={window.kind === 'all'} onClick={() => setWindow({ kind: 'all' })}>All</button>
+            {RANGES.map(range => <button key={range.days} type="button" data-window={range.days} aria-pressed={window.kind === 'days' && window.days === range.days} onClick={() => setWindow({ kind: 'days', days: range.days })}>{range.label}</button>)}
+          </div>
+          <div className="ins-custom-range">
+            <label><span>Start date (UTC)</span><input type="date" aria-label="Start date (UTC)" value={window.kind === 'custom' ? window.start : ''} onChange={event => setWindow({ kind: 'custom', start: event.target.value, end: window.kind === 'custom' ? window.end : '' })} /></label>
+            <label><span>End date (UTC)</span><input type="date" aria-label="End date (UTC)" value={window.kind === 'custom' ? window.end : ''} onChange={event => setWindow({ kind: 'custom', start: window.kind === 'custom' ? window.start : '', end: event.target.value })} /></label>
+          </div>
         </div>
       )}
       <p className="local-dashboard-caption ins-sub" data-testid="insights-total">{population}{undated} · Row timestamps: {servedSpan} · Earlier activity is not included{window.kind === 'all' || window.kind === 'custom' ? ` · Charts show at most ${MAX_ALL_TIME_DAYS} UTC days; ${count(chartRuns.length)} of ${count(runs.length)} selected runs plotted` : ''}</p>

@@ -59,11 +59,11 @@
   background: linear-gradient(135deg, var(--brand), oklch(72% 0.15 calc(var(--accent-h) + 60)));
   color: oklch(20% 0.05 var(--accent-h));
   display: grid; place-items: center;
-  font-size: 11px; font-weight: 600;
+  font-size: 12px; font-weight: 600;
 }
 .user-info { display: flex; flex-direction: column; line-height: 1.15; }
 .user-info .name { font-size: 12.5px; font-weight: 500; }
-.user-info .org { font-size: 11px; color: var(--ink-3); }
+.user-info .org { font-size: 12px; color: var(--ink-3); }
 
 /* ---------- TOAST ---------- */
 .toast-wrap {

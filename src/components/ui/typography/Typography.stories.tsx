@@ -7,8 +7,8 @@ export default meta;
 
 const SIZES: readonly TextSize[] = ['xs', 'sm', 'md', 'lg', 'xl', '2xl', '3xl', '4xl'] as const;
 const SIZE_PX: Record<TextSize, string> = {
-  xs: '10px',
-  sm: '11px',
+  xs: '12px',
+  sm: '12px',
   md: '12px',
   lg: '13px',
   xl: '14px',
