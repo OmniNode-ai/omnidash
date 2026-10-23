@@ -2,7 +2,7 @@
 schema_version: "1.0.0"
 ticket_id: "OMN-19920"
 title: "OmniDash sqlite mode shows one delegation by correlation id: the answer, the model that gave it, the receipt identity, tokens and cost"
-summary: "The omnidash half: the Workflow page, which a Runs row opens, shows one run whole. It shows the run's answer, read from delegation.correlation-trace.v1 for exactly that correlation id, plus its model, backend, tokens, recorded cost and status from delegation.decisions.v1, the typed cause of a failed run, and its receipt id (the correlation id). The answer renders as text, never markup. AC2's cost equivalent (the saving against the named baseline) is NOT bound here. Whether the per-run saving may be shown on the Workflow page is a question to Jonah on the ticket (2026-10-21T09:55Z), still unanswered, so the view does not show it. AC1 (the retired sqlite reader) is superseded by AC4 in that comment. AC3 (a screenshot of a real local run beside its receipt.json, in a PR body) has no executable check and is not in this contract."
+summary: "The omnidash half: the Workflow page, which a Runs row opens, shows one run whole. It shows the run's answer, read from delegation.correlation-trace.v1 for exactly that correlation id, plus its model, backend, tokens, recorded cost and status from delegation.decisions.v1, the typed cause of a failed run, and its receipt id (the correlation id). The answer renders as text, never markup. AC2's cost equivalent (the saving against the named baseline) is NOT bound here. Jonah ruled on 2026-10-22 at 11:39Z that the per-run saving stays on the Runs list only; the Workflow page shows per-stage tokens and cost when served. The ruling is recorded in ticket comment 0db05537-57f3-4b74-bf7a-de76ff3a1c9f. AC1 (the retired sqlite reader) is superseded by AC4 in that comment. AC3 (a screenshot of a real local run beside its receipt.json, in a PR body) has no executable check and is not in this contract."
 is_seam_ticket: false
 interface_change: false
 interfaces_touched: []
@@ -25,7 +25,7 @@ requirements:
           AC6: the answer renders as text, never markup -- falsifier: a fixture containing HTML creates no element.
 evidence_requirements:
   - kind: "tests"
-    description: "AC2, six of its seven fields: a run chosen in Runs opens Workflow with its answer, model, backend, tokens, recorded cost and status, never another run's (R1, R7). The cost equivalent is not proven: it waits on Jonah's answer about the per-run saving."
+    description: "AC2, six of its seven fields: a run chosen in Runs opens Workflow with its answer, model, backend, tokens, recorded cost and status, never another run's (R1, R7). Cost equivalent is intentionally excluded under Jonah's 2026-10-22 ruling; it is not an unanswered dependency."
     command: "npx vitest run src/pages/LocalDashboardPage.omn19920.run-answer.test.tsx"
   - kind: "tests"
     description: "AC4, vitest half: the answer is read from correlation-trace.v1 for exactly the run's correlation id, never unfiltered and never another id, and is shown (R2, R2s, R2f, R6). The lab read of the same exposure for a real run is not this check."
@@ -37,6 +37,9 @@ evidence_requirements:
     description: "AC6: HTML or markdown in the answer is shown as text and creates no element (R5)."
     command: "npx vitest run src/pages/LocalDashboardPage.omn19920.run-answer.test.tsx"
 dod_evidence:
+  # Historical AC2 evidence description retained for its existing receipt identity.
+  # Its open-question wording is superseded by the October 22 ruling in summary
+  # and ticket comment 0db05537-57f3-4b74-bf7a-de76ff3a1c9f.
   - id: "dod-omn19920-ac2-run-view-fields"
     description: "AC2, six of its seven fields: a run chosen in Runs opens Workflow with its answer, model, backend, tokens, recorded cost and status. Not bound: the cost equivalent (the saving against the named baseline), which waits on Jonah's answer to the 2026-10-21T09:55Z question on whether the per-run saving may be shown on the Workflow page."
     source: "manual"
@@ -54,12 +57,12 @@ dod_evidence:
         check_value: "test -d node_modules || npm ci --no-audit --no-fund; npx vitest run src/pages/LocalDashboardPage.omn19920.run-answer.test.tsx"
         cwd: "${OMNI_HOME}/omnidash"
   - id: "dod-omn19920-ac5-cause-and-receipt-id"
-    description: "AC5: a failed run shows its typed cause, and the receipt id shown is the run's correlation id; either absent fails."
+    description: "AC5: a failed run shows its typed cause and correlation/receipt id; the page declares that cause field and the captured served catalogue supports it. Component cases prove the rendered fields; declaration checks catch the new missing-field defect at the merge base."
     source: "manual"
     binds_ac: ["AC5"]
     checks:
       - check_type: "test_passes"
-        check_value: "test -d node_modules || npm ci --no-audit --no-fund; npx vitest run src/pages/LocalDashboardPage.omn19920.run-answer.test.tsx"
+        check_value: "test -d node_modules || npm ci --no-audit --no-fund; npx vitest run tests/contracts/workflow-cause.omn19920.test.ts src/pages/LocalDashboardPage.omn19920.run-answer.test.tsx --maxWorkers=1 --no-file-parallelism"
         cwd: "${OMNI_HOME}/omnidash"
   - id: "dod-omn19920-ac6-answer-as-text"
     description: "AC6: an answer holding HTML or markdown is shown as text and creates no element."
