@@ -6,6 +6,8 @@ import { chartRows, prefix, serveCharts } from './omn21166-chart-fixtures';
 const RUN_TRACE = prefix + 'run-trace.v1';
 const OVERVIEW_MONEY = prefix + 'cost.savings-overview.v1';
 const DECISIONS = prefix + 'delegation.decisions.v1';
+const ANSWERS = prefix + 'delegation.correlation-trace.v1';
+const answerOf = (run: string, text: string) => [{ correlation_id: run, response_text: text, data_source: 'fixture' }];
 const STEPS_A = [
   { correlation_id: 'chart-run-a', step_sequence: 1, step_kind: 'request', outcome: 'succeeded', duration_ms: 10 },
   { correlation_id: 'chart-run-a', step_sequence: 2, step_kind: 'provider_call', outcome: 'succeeded', duration_ms: 20 },
@@ -82,19 +84,23 @@ test('AC1 a first read that fails says unavailable and claims no saved data (con
   await expect(page.getByText('Showing saved data from')).toHaveCount(0);
 });
 
-/** Run A's steps answer only when the test releases them; run B has none. */
+/** Run A's steps and answer arrive only when the test releases them (the first time); run B has no steps. */
 async function serveRuns(page: Page, gateA?: Promise<void>) {
-  await serveCharts(page, { ...chartRows, [DECISIONS]: RUNS, [RUN_TRACE]: STEPS_A });
+  // The answer topic is listed so the page reads it; its rows come from the route below.
+  await serveCharts(page, { ...chartRows, [DECISIONS]: RUNS, [RUN_TRACE]: STEPS_A, [ANSWERS]: [] });
+  const rowsFor = (topic: string, run: string | null) => topic === RUN_TRACE
+    ? (run === 'chart-run-a' ? STEPS_A : [])
+    : answerOf(run ?? '', run === 'chart-run-a' ? 'answer-alpha' : 'answer-beta');
+  let heldA = 0;
   await page.route('**/projection/**', async (route) => {
     const url = new URL(route.request().url());
-    if (!url.pathname.endsWith(RUN_TRACE)) return route.fallback();
+    const topic = decodeURIComponent(url.pathname.split('/').at(-1)!);
+    if (topic !== RUN_TRACE && topic !== ANSWERS) return route.fallback();
     const run = url.searchParams.get('correlation_id');
-    if (run === 'chart-run-a') {
-      if (gateA) await gateA;
-      return route.fulfill({ contentType: 'application/json', body: JSON.stringify({ rows: STEPS_A, row_count: 2, data_freshness: 'fresh' }) });
-    }
-    if (run === 'chart-run-b') return route.fulfill({ contentType: 'application/json', body: JSON.stringify({ rows: [], row_count: 0, data_freshness: 'fresh' }) });
-    return route.fallback();
+    if (run !== 'chart-run-a' && run !== 'chart-run-b') return route.fallback();
+    if (run === 'chart-run-a' && gateA && heldA < 2) { heldA += 1; await gateA; }
+    const rows = rowsFor(topic, run);
+    return route.fulfill({ contentType: 'application/json', body: JSON.stringify({ rows, row_count: rows.length, data_freshness: 'fresh' }) });
   });
 }
 
@@ -113,6 +119,7 @@ test('AC2 a late answer for a run the user has left is dropped', async ({ page }
   const summary = page.getByRole('region', { name: 'Run summary' });
   await expect(page.getByText('No steps recorded for this run')).toBeVisible();
   await expect(summary.locator('[data-summary-field="Model"] dd')).toContainText('model-beta');
+  await expect(page.getByText('answer-beta')).toBeVisible();
 
   const aAnswered = page.waitForResponse((res) => isA(res.url()));
   releaseA();
@@ -124,12 +131,21 @@ test('AC2 a late answer for a run the user has left is dropped', async ({ page }
     await expect(page.locator('main').getByText('Provider call')).toHaveCount(0);
     await expect(summary.getByText('model-alpha')).toHaveCount(0);
     await expect(page.getByText('run-trace.v1 answered steps of another run')).toHaveCount(0);
+    await expect(page.getByText('answer-beta')).toBeVisible();
+    await expect(page.getByText('answer-alpha')).toHaveCount(0);
   }).toPass({ timeout: 3000 });
 
   // Unrecorded phases read Not recorded; a measured 0 stays a value.
   await expect(summary.locator('[data-summary-field="Queue wait"] dd')).toHaveText('Not recorded');
   await expect(summary.locator('[data-summary-field="Execution"] dd')).toHaveText('Not recorded');
   await expect(summary.locator('[data-summary-field="Duration"] dd')).toHaveText('0 ms');
+
+  // Going back to run A shows its own steps, answer and model: the late answer was dropped, not the run.
+  await page.locator('.local-run-neighbours a[title="chart-run-a"]').click();
+  await expect(page).toHaveURL(/correlation_id=chart-run-a/);
+  await expect(page.getByText('Provider call').first()).toBeVisible();
+  await expect(page.getByText('answer-alpha')).toBeVisible();
+  await expect(summary.locator('[data-summary-field="Model"] dd')).toContainText('model-alpha');
 });
 
 test('AC2 the same run read without a switch shows its steps (control)', async ({ page }) => {

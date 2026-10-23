@@ -129,7 +129,10 @@ dod_evidence:
       AC2: with run A's steps held, a switch to run B inside the app shows B (its model, no steps); when A answers,
       nothing of A appears; B's null queue wait and execution read Not recorded and its measured 0 duration reads
       0 ms; run A alone shows its steps (control). Lab mutant on dev 890eb79a: removing the current-load guards fails
-      it. Behaviour already on the base, so this binding uses the pinned gate's governed TEST_ONLY_DIFF path.
+      it. With run A's answer held too, B shows its own answer and none of A's, and going back to A shows A's steps,
+      answer and model. The separate, unstacked, never-summed timings and their Not recorded and measured-zero states
+      are the existing run-timing unit cases T1 to T6, bound here as well. Behaviour already on the base, so this
+      binding uses the pinned gate's governed TEST_ONLY_DIFF path.
     source: "manual"
     binds_ac: ["AC2"]
     checks:
@@ -137,3 +140,5 @@ dod_evidence:
         check_value: "npm run test:e2e -- tests/e2e/local-dashboard-honesty-ac12.spec.ts --project=chromium --workers=1 --retries=0 --grep \"AC2 a late answer\""
       - check_type: "test_passes"
         check_value: "npm run test:e2e -- tests/e2e/local-dashboard-honesty-ac12.spec.ts --project=chromium --workers=1 --retries=0 --grep \"AC2 the same run read without a switch\""
+      - check_type: "test_passes"
+        check_value: "npx vitest run src/pages/LocalDashboardPage.omn21015.run-timing.test.tsx"
