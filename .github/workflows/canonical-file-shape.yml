@@ -1,0 +1,93 @@
+# SPDX-FileCopyrightText: 2026 OmniNode.ai Inc.
+# SPDX-License-Identifier: MIT
+#
+# Canonical file shape ratchet (OMN-20304, TypeScript and shell rules OMN-21332).
+# Definition: knowledge_base_internal beta/plans/2026-10-23-canonical-shape-typescript-react-swift.md
+# (rules T1-T17 and S1). A TypeScript or React file outside the canonical
+# locations, or a shell script anywhere, is refused unless it is listed in the
+# shrink-only .onex_ratchets/canonical_file_shape_baseline.txt. The baseline only
+# shrinks; a new entry is refused against the base revision.
+#
+# The positive-control step plants a refused sample and a canonical sample on
+# every run and fails unless the ratchet refuses the first and admits the second.
+# CANONICAL_FILE_SHAPE_CORE pins the omnibase_core commit of omnibase_core#2088;
+# move it to that PR's merge commit once it lands.
+name: Canonical File Shape
+
+on:
+  push:
+    branches: [dev]
+  pull_request:
+  merge_group:
+
+permissions:
+  contents: read
+
+jobs:
+  canonical-file-shape:
+    name: Canonical File Shape (OMN-21332)
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      CANONICAL_FILE_SHAPE_CORE: "omnibase-core @ git+https://github.com/OmniNode-ai/omnibase_core@1ec19b1194ec3619bbeee296c977ac0a989416b5"
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install uv
+        uses: astral-sh/setup-uv@v6
+        with:
+          version: "0.8.3"
+      - name: Positive control (planted samples refused, canonical sample admitted)
+        run: |
+          set -u
+          ratchet() {
+            uv run --no-project --with "$CANONICAL_FILE_SHAPE_CORE" \
+              python -m omnibase_core.validators.canonical_file_shape "$@"
+          }
+          mkdir -p src/lib src/components tests
+          printf 'export const planted = 1;\n' > src/lib/zz_canary_planted.ts
+          git add src/lib/zz_canary_planted.ts
+          if ratchet; then
+            echo "POSITIVE CONTROL FAILED: planted src/lib/zz_canary_planted.ts was accepted"
+            exit 1
+          fi
+          git rm -q --cached src/lib/zz_canary_planted.ts
+          rm src/lib/zz_canary_planted.ts
+          printf '#!/bin/sh\necho planted\n' > tests/zz_canary_planted.sh
+          git add tests/zz_canary_planted.sh
+          if ratchet; then
+            echo "POSITIVE CONTROL FAILED: planted tests/zz_canary_planted.sh was accepted"
+            exit 1
+          fi
+          git rm -q --cached tests/zz_canary_planted.sh
+          rm tests/zz_canary_planted.sh
+          echo "positive control: planted samples refused"
+          printf 'export function ZzCanaryClean() {\n  return null;\n}\n' > src/components/ZzCanaryClean.tsx
+          git add src/components/ZzCanaryClean.tsx
+          ratchet
+          echo "positive control: canonical sample admitted"
+          git rm -q --cached src/components/ZzCanaryClean.tsx
+          rm src/components/ZzCanaryClean.tsx
+      - name: Refuse new non-canonical files and baseline growth
+        env:
+          PR_BASE: ${{ github.event.pull_request.base.sha }}
+          MQ_BASE: ${{ github.event.merge_group.base_sha }}
+          PUSH_BEFORE: ${{ github.event.before }}
+        run: |
+          set -u
+          base="${PR_BASE:-${MQ_BASE:-${PUSH_BEFORE:-}}}"
+          if [ -n "$base" ] && git cat-file -e "${base}^{commit}" 2>/dev/null; then
+            base="$(git merge-base "$base" HEAD)"
+            uv run --no-project --with "$CANONICAL_FILE_SHAPE_CORE" \
+              python -m omnibase_core.validators.canonical_file_shape --base "$base" --head HEAD
+          else
+            echo "no base revision on this event; checking the tree against the baseline only"
+            uv run --no-project --with "$CANONICAL_FILE_SHAPE_CORE" \
+              python -m omnibase_core.validators.canonical_file_shape --head HEAD
+          fi
