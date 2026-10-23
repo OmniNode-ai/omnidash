@@ -42,6 +42,13 @@
 [data-field-tone="execution"] { --field-ink: var(--field-execution); }
 [data-field-tone="completion"] { --field-ink: var(--field-completion); }
 [data-field-unavailable="true"] { --field-ink: var(--field-unavailable); }
+/* OMN-21166 part 9 AC46: the run classes. Unknown is no measurement, so it takes the not-measured tone, never fail. */
+:root { --field-run-measured: #3730a3; --field-run-estimated: #9d174d; }
+[data-theme="dark"] { --field-run-measured: #c7d2fe; --field-run-estimated: #fbcfe8; }
+[data-field-tone="run-measured"] { --field-ink: var(--field-run-measured); }
+[data-field-tone="run-estimated"] { --field-ink: var(--field-run-estimated); }
+[data-field-tone="run-unknown"] { --field-ink: var(--field-unavailable); }
+.local-dashboard-page .local-run-classes > .local-run-class { color: var(--field-ink); }
 .local-dashboard-page [data-field-tone] > :is(dt, dd, .local-dashboard-metric),
 .ev-root [data-field-tone] > :is(.k, .v, .k-l, .k-v, .note, .mono, .big),
 .local-dashboard-page [data-field-tone] dd a,
