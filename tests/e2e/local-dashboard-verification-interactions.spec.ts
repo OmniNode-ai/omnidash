@@ -17,7 +17,7 @@ test('Usage zoom and reset preserve the selected day and exact served table', as
   const before = await panel.getByRole('table').innerText();
   await chart.getByLabel('Inspect day', { exact: true }).selectOption('1');
   await expect(chart.getByRole('status')).toContainText('2026-10-02');
-  await expect(chart.getByRole('status')).toContainText('$0.030000');
+  await expect(chart.getByRole('status')).toContainText(/Savings: \$0\.03$/);
   await chart.getByLabel('First point', { exact: true }).press('ArrowRight');
   await expect(chart.getByText('Showing 2–3 of 3', { exact: true })).toBeVisible();
   await chart.getByRole('button', { name: 'Reset view', exact: true }).click();

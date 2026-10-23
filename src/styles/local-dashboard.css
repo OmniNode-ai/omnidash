@@ -1576,6 +1576,8 @@ figure.local-chart.usage-insight { min-width: 0; margin: 0; padding: 14px; }
 :root:not([data-theme="dark"]) .local-since-visit-icon { color: #4338CA; }
 /* OMN-21166 mockup build: the Overview window as a two-button switch; the hero drops its duplicate pass-rate row. */
 .local-window-switch { display: flex; align-items: center; gap: 10px; }
+/* The shared filters rule (dashboard-cards.css) aligns toolbars to the row's end, which dropped "Figures for" about 14px below the switch. */
+.local-dashboard-page .local-dashboard-filters.local-window-switch { align-items: center; }
 .local-window-options { --window-selected-ink: #fff; display: flex; gap: 2px; padding: 3px; border-radius: 11px; border: 1px solid var(--line); background: var(--panel); }
 [data-theme="dark"] .local-window-options { --window-selected-ink: var(--bg); }
 .local-window-options button { --window-accent: var(--nav-accent); min-height: 36px; padding: 0 14px; border: 0; border-radius: 8px; background: transparent; color: var(--window-accent); font: inherit; font-size: 13px; font-weight: 500; cursor: pointer; }
