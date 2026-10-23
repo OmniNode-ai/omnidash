@@ -72,7 +72,8 @@ describe('OMN-21015 AC4: the Usage table shows each row tier and share of calls 
   });
 
   it('S5: no served share, or no served tier, reads Not recorded; nothing is worked out from the counts', () => {
-    const { cost_tier_name: _tier, call_share: _share, ...older } = row({ call_count: 3 });
+    // An older row that serves neither a tier nor a share: the two keys are absent, not null.
+    const older = Object.fromEntries(Object.entries(row({ call_count: 3 })).filter(([key]) => key !== 'cost_tier_name' && key !== 'call_share'));
     render(<UsageByModelDayTable rows={[row({ call_share: null }), older]} />);
     const share = headers().indexOf('Share of calls');
     const tier = headers().indexOf('Tier');
