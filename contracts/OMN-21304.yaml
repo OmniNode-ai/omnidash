@@ -119,10 +119,13 @@ dod_evidence:
     checks:
       - check_type: "test_passes"
         check_value: "npm run test:e2e -- tests/e2e/local-dashboard-honesty-ac12.spec.ts --project=chromium --workers=1 --retries=0 --grep \"AC1 one load and one refresh\""
+        cwd: "${OMNI_HOME}/omnidash"
       - check_type: "test_passes"
         check_value: "npm run test:e2e -- tests/e2e/local-dashboard-honesty-ac12.spec.ts --project=chromium --workers=1 --retries=0 --grep \"AC1 a failed refresh keeps\""
+        cwd: "${OMNI_HOME}/omnidash"
       - check_type: "test_passes"
         check_value: "npm run test:e2e -- tests/e2e/local-dashboard-honesty-ac12.spec.ts --project=chromium --workers=1 --retries=0 --grep \"AC1 a first read that fails\""
+        cwd: "${OMNI_HOME}/omnidash"
 
   - id: "dod-omn21304-ac2-run-switch-and-phases"
     description: >-
@@ -140,9 +143,13 @@ dod_evidence:
     checks:
       - check_type: "test_passes"
         check_value: "npm run test:e2e -- tests/e2e/local-dashboard-honesty-ac12.spec.ts --project=chromium --workers=1 --retries=0 --grep \"AC2 a late answer\""
+        cwd: "${OMNI_HOME}/omnidash"
       - check_type: "test_passes"
         check_value: "npm run test:e2e -- tests/e2e/local-dashboard-honesty-ac12.spec.ts --project=chromium --workers=1 --retries=0 --grep \"AC2 the same run read without a switch\""
+        cwd: "${OMNI_HOME}/omnidash"
       - check_type: "test_passes"
         check_value: "npx vitest run src/pages/LocalDashboardPage.omn21015.run-timing.test.tsx"
+        cwd: "${OMNI_HOME}/omnidash"
       - check_type: "test_passes"
         check_value: "npx vitest run src/pages/LocalDashboardPage.runs.test.tsx src/pages/LocalDashboardPage.provenance.test.tsx"
+        cwd: "${OMNI_HOME}/omnidash"
