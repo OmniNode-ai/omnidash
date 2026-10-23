@@ -1117,6 +1117,34 @@
       ]
     },
     {
+      "topic": "onex.snapshot.projection.local-environment.v1",
+      "status": "ok",
+      "degraded_reason": null,
+      "columns": [
+        "tenant_id",
+        "mode",
+        "service",
+        "observed_state",
+        "reason",
+        "versions",
+        "last_seen",
+        "last_change",
+        "verdict",
+        "verdict_reason",
+        "alert_code",
+        "alert_severity",
+        "alert_since",
+        "store_kind",
+        "store_location",
+        "access_mode",
+        "token_minted_at",
+        "rotate_hint",
+        "report_id",
+        "updated_at",
+        "projection_cursor"
+      ]
+    },
+    {
       "topic": "onex.snapshot.projection.mcp-tools.v1",
       "status": "degraded",
       "degraded_reason": "not_yet_bus_backed",

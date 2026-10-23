@@ -35,6 +35,35 @@
         "page_size": 1,
         "show_pagination": false
       }
+    },
+    {
+      "widget_id": "6628e0e2-97e1-5ebb-9117-740dae47ff54",
+      "title": "Dashboard access",
+      "row": 4,
+      "col": 0,
+      "width": 12,
+      "height": 3,
+      "data_source": "api-keys-access",
+      "config": {
+        "config_kind": "table",
+        "widget_type": "table",
+        "columns": [
+          {
+            "key": "access_mode",
+            "header": "Access"
+          },
+          {
+            "key": "token_minted_at",
+            "header": "Token minted"
+          },
+          {
+            "key": "rotate_hint",
+            "header": "Rotate"
+          }
+        ],
+        "page_size": 1,
+        "show_pagination": false
+      }
     }
   ]
 }

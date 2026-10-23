@@ -2,7 +2,7 @@ import { useEffect, useId, useRef, useState, type ReactNode } from 'react';
 import { Link, useLocation, useSearch } from 'wouter';
 import {
   ArrowDownUp, ArrowUpRight, Award, Bot, CalendarDays, ChartColumnStacked, ChartLine, ChartSpline, Check, ChevronRight, CircleDollarSign, CloudOff, Coins, Copy, DatabaseZap,
-  CircleDot, Flag, History, IdCard, Inbox, KeyRound, PiggyBank, Route, Server, ShieldCheck, Shrink, TrendingDown,
+  CircleDot, FingerprintPattern, Flag, History, IdCard, Inbox, KeyRound, PiggyBank, Route, Server, ShieldCheck, Shrink, TrendingDown,
   Rows3, Scale, TableProperties, Waypoints, Cloud, Sparkles, Zap,
   type LucideIcon,
 } from 'lucide-react';
@@ -26,6 +26,7 @@ import { ModelKeys } from '@/pages/local/model-keys';
 import { notAvailableYet, plainFailureMessage } from '@/pages/local/plain-text';
 import { RunFilterProvider, causeHref, causeLabelOf, useRunFilter } from '@/pages/local/run-filter';
 import { typedFailureCauseOf } from '@/pages/local/insights';
+import { DashboardAccess } from '@/pages/local/access';
 import { shortId } from '@/components/dashboard/event-dash/primitives';
 import { FieldIcon } from '@/components/dashboard/FieldIcon';
 import { modelIdentityStyle } from '@/components/dashboard/model-identity';
@@ -1868,6 +1869,9 @@ function TableComponent({ component, snapshots, pageSize, syncUrl, columns, acti
     const first = rawRowsFor(component, snapshots, 0)[0];
     return <LocalIdentity row={first && typeof first === 'object' ? (first as Record<string, unknown>) : null} />;
   }
+  // OMN-21015 AC10 (AK-2): the access card reads the native local-runtime row `onex dashboard` writes to
+  // local-environment.v1 at each start (OMN-19988); another service's row or a compose row is never the dashboard's.
+  if (component.component_id === 'api-keys-access') return <DashboardAccess rows={asRecords(rawRowsFor(component, snapshots, 0))} />;
   return rows.length === 0 ? <NoRunsYet /> : <RunsTable decisions={rows} sessions={lookup} pageSize={pageSize} syncUrl={syncUrl}
     truncated={snapshots.find(snapshot => snapshot.topic === DELEGATION_DECISIONS_TOPIC)?.truncated} />;
 }
@@ -2027,6 +2031,7 @@ export const PANEL_ICONS: Record<string, LucideIcon> = {
   'usage-savings-series': CalendarDays,
   'credentials-keys': KeyRound,
   'api-keys-local-identity': IdCard,
+  'api-keys-access': FingerprintPattern,
   'api-keys-cloud': CloudOff,
 };
 

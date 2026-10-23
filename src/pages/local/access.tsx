@@ -11,12 +11,24 @@ const DASHBOARD_SERVICE = 'local-runtime';
 
 type EnvironmentRow = Readonly<Record<string, unknown>>;
 
+// Selection among served rows, not a computed fact: the newest matching row by the binding's declared order key
+// (updated_at) wins, whatever order the rows arrive in. A tie on the newest, or a missing/unparseable updated_at
+// while several rows match, is not guessed: the card shows its not-available state (JG-19). One match is used as is.
 export function dashboardAccessRow(rows: readonly EnvironmentRow[]): EnvironmentRow | null {
-  return rows.find((row) => row.mode === 'native' && row.service === DASHBOARD_SERVICE) ?? null;
+  const matches = rows.filter((row) => row.mode === 'native' && row.service === DASHBOARD_SERVICE);
+  if (matches.length <= 1) return matches[0] ?? null;
+  const stamped = matches.map((row) => ({
+    row,
+    at: typeof row.updated_at === 'string' ? Date.parse(row.updated_at) : Number.NaN,
+  }));
+  if (stamped.some((m) => Number.isNaN(m.at))) return null;
+  const newest = Math.max(...stamped.map((m) => m.at));
+  const top = stamped.filter((m) => m.at === newest);
+  return top.length === 1 ? top[0].row : null;
 }
 
 function served(value: unknown): string {
-  return typeof value === 'string' && value !== '' ? value : 'Not recorded';
+  return typeof value === 'string' && value.trim() !== '' ? value : 'Not recorded';
 }
 
 export function DashboardAccess({ rows }: { rows: readonly EnvironmentRow[] }) {
