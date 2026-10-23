@@ -77,10 +77,10 @@ dod_evidence:
     description: >-
       AC3's three falsifier clauses not covered by the coverage-and-routing item: with 0 of 4 runs scored the average
       score reads Not recorded and never a number, beside a served-average control; a passed gate reads passed and
-      nothing on the page says accepted; a routing step served with a null confidence shows no 0%. Lab mutants on dev
-      b0c37798: rendering a missing decimal as 0, labelling a passed gate Accepted, and rendering confidence as a
-      percentage each fail their own case and only that case. Behaviour already on the base, so this binding uses the
-      pinned gate's governed TEST_ONLY_DIFF path.
+      nothing on the page says accepted; a routing step served with a null confidence reads confidence: not recorded
+      and never 0%, beside a measured-0 control that shows 0. The confidence cases fail on dev b0c37798, where the
+      Workflow page left confidence out; the other two pin behaviour already on dev, each failing on a lab mutant
+      (rendering a missing decimal as 0, labelling a passed gate Accepted).
     source: "manual"
     binds_ac: ["AC3"]
     checks:
@@ -95,6 +95,9 @@ dod_evidence:
         cwd: "${OMNI_HOME}/omnidash"
       - check_type: "test_passes"
         check_value: "npm run test:e2e -- tests/e2e/local-dashboard-honesty-ac3.spec.ts --project=chromium --workers=1 --retries=0 --grep \"AC3 a routing step served with a null confidence\""
+        cwd: "${OMNI_HOME}/omnidash"
+      - check_type: "test_passes"
+        check_value: "npm run test:e2e -- tests/e2e/local-dashboard-honesty-ac3.spec.ts --project=chromium --workers=1 --retries=0 --grep \"AC3 a routing step with a measured confidence of 0\""
         cwd: "${OMNI_HOME}/omnidash"
   - id: "dod-omn21304-ac4-cost-basis"
     description: >-

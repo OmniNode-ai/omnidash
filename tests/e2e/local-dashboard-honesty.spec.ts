@@ -56,7 +56,7 @@ test('AC3 a routing step with no recorded reason or candidates says not recorded
     [RUN_TRACE]: [
       { correlation_id: runId, step_sequence: 1, step_kind: 'request', started_at: hourAgo(2), duration_ms: 1, outcome: 'ok' },
       { correlation_id: runId, step_sequence: 2, step_kind: 'routing_decision', started_at: hourAgo(2), duration_ms: 2, outcome: 'ok', reason: null, candidates: null },
-      { correlation_id: runId, step_sequence: 3, step_kind: 'routing_decision', started_at: hourAgo(2), duration_ms: 2, outcome: 'ok', reason: 'cheapest tier passes', candidates: ['model-a', 'model-b'] },
+      { correlation_id: runId, step_sequence: 3, step_kind: 'routing_decision', started_at: hourAgo(2), duration_ms: 2, outcome: 'ok', reason: 'cheapest tier passes', candidates: ['model-a', 'model-b'], confidence: 0.82 },
     ],
   });
   await page.goto(`/workflow?correlation_id=${runId}`);
