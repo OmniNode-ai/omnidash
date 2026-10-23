@@ -71,14 +71,13 @@ test('AC3 a routing step with no recorded reason or candidates says not recorded
 
 const OVERVIEW = prefix + 'cost.savings-overview.v1';
 
-/** The cards' basis, read from their Details fold. */
+/** The cards' basis line, in view under the figure (OMN-21166 part 9 AC44 replaced the Details fold). */
 async function basisOf(page: Page, card: string) {
   const panel = page.locator(`[data-component="${card}"]`);
   await expect(panel.locator('.local-dashboard-metric')).toHaveAttribute('data-measured', 'true');
-  const details = panel.locator('details.local-card-details');
-  await expect(details, `${card} has a basis fold`).toHaveCount(1, { timeout: 3000 });
-  await details.locator(':scope > summary').click();
-  return details;
+  const basis = panel.locator('.local-card-basis');
+  await expect(basis, `${card} shows its basis`).toBeVisible({ timeout: 3000 });
+  return basis;
 }
 
 // The default Overview source, cost.savings-overview.v1, serves no baseline model, pricing manifest version or unpriced

@@ -84,9 +84,9 @@ describe('OMN-20758 Overview titles match the demo mockup', () => {
     }
   });
 
-  it('T3: Agent calls keeps its run-class caption', async () => {
+  it('T3: Agent calls keeps its run-class breakdown, without the All calls caption (OMN-21166 part 9 AC45)', async () => {
     await overview();
-    expect(within(card('Agent calls')).getByText('All calls')).toBeInTheDocument();
+    expect(within(card('Agent calls')).queryByText('All calls')).not.toBeInTheDocument();
     expect(within(card('Agent calls')).getByText('23 measured · 2 unknown')).toBeInTheDocument();
   });
 });

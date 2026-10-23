@@ -19,8 +19,9 @@ test('restores four exact legacy totals instead of unrelated metering values', a
   await expect(figure(page, 'overview-measured')).toHaveText('49.14K');
   await expect(figure(page, 'overview-tokens')).toHaveText('183.69M');
   await expect(card(page, 'overview-savings')).toContainText('Modelled');
-  // OMN-21166 AC37: every call (49,148 = 44,489 measured + 4,659 unknown) with the served classes beside it.
-  await expect(card(page, 'overview-measured')).toContainText('All calls');
+  // OMN-21166 AC37: every call (49,148 = 44,489 measured + 4,659 unknown) with the served classes beside it; part 9
+  // AC45 drops the All calls caption, since the window switch names the window.
+  await expect(card(page, 'overview-measured')).not.toContainText('All calls');
   await expect(card(page, 'overview-measured')).toContainText('44.48K measured');
   await expect(card(page, 'overview-measured')).toContainText('4.65K unknown');
   await expect(page.locator('.local-overview-summary')).not.toContainText('999');

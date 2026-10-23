@@ -207,14 +207,9 @@ export function MetricCard({ component, config, row, caption, figureLine, figure
     <>
       <p className="local-dashboard-metric" data-measured={figure} title={figure && config.format === 'number' ? String(row[config.metric_key]) : undefined}>{text}</p>
       {figure && figureLine && <p className="local-dashboard-caption">{figureLine}</p>}
-      {/* OMN-21166 (Lakshman, 2026-10-18): the card's further lines fold under Details, every word kept. */}
-      {(line || modelled) && (
-        <details className="local-card-details">
-          <summary>Details</summary>
-          {line && <p className="local-dashboard-caption">{line}</p>}
-          {modelled && <p className="local-dashboard-caption">{SAVINGS_MODELLED}</p>}
-        </details>
-      )}
+      {/* OMN-21166 part 9 AC44 (Lakshman, 2026-10-23): no Details fold; the card's further lines stay in view. */}
+      {line && <p className="local-dashboard-caption local-card-basis">{line}</p>}
+      {modelled && <p className="local-dashboard-caption">{SAVINGS_MODELLED}</p>}
     </>
   );
 }
@@ -313,8 +308,8 @@ export function OverviewAggregateCard({ component, config, rows, window }: {
   return <>
     <MetricCard component={component} config={config} row={row} caption={basis} />
     {component.component_id === 'overview-tokens' && <TokenDirections input={row.tokens_input} output={row.tokens_output} />}
-    <p className="local-dashboard-caption">{component.component_id === 'overview-savings'
-      ? 'Modelled · vs cloud baseline' : runs ? 'All calls' : 'All-time aggregate'}</p>
+    {/* OMN-21166 part 9 AC45: the window switch names the window, so only Savings keeps a caption: its basis. */}
+    {component.component_id === 'overview-savings' && <p className="local-dashboard-caption">Modelled · vs cloud baseline</p>}
     {/* OMN-21166 AC37: the headline is every call; the measured population is a labelled breakdown beside it, the
         same breakdown Delegation Evidence shows under the same figure. */}
     {runs && <RunBreakdown row={row} />}
