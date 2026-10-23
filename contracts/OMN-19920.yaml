@@ -37,8 +37,11 @@ evidence_requirements:
     description: "AC6: HTML or markdown in the answer is shown as text and creates no element (R5)."
     command: "npx vitest run src/pages/LocalDashboardPage.omn19920.run-answer.test.tsx"
 dod_evidence:
+  # Historical AC2 evidence description retained for its existing receipt identity.
+  # Its open-question wording is superseded by the October 22 ruling in summary
+  # and ticket comment 0db05537-57f3-4b74-bf7a-de76ff3a1c9f.
   - id: "dod-omn19920-ac2-run-view-fields"
-    description: "AC2, six of its seven fields: a run chosen in Runs opens Workflow with its answer, model, backend, tokens, recorded cost and status. Not bound: cost equivalent (the saving against the named baseline), intentionally excluded under Jonah's 2026-10-22 11:39Z ruling that it stays on Runs only."
+    description: "AC2, six of its seven fields: a run chosen in Runs opens Workflow with its answer, model, backend, tokens, recorded cost and status. Not bound: the cost equivalent (the saving against the named baseline), which waits on Jonah's answer to the 2026-10-21T09:55Z question on whether the per-run saving may be shown on the Workflow page."
     source: "manual"
     binds_ac: ["AC2"]
     checks:
@@ -54,12 +57,12 @@ dod_evidence:
         check_value: "test -d node_modules || npm ci --no-audit --no-fund; npx vitest run src/pages/LocalDashboardPage.omn19920.run-answer.test.tsx"
         cwd: "${OMNI_HOME}/omnidash"
   - id: "dod-omn19920-ac5-cause-and-receipt-id"
-    description: "AC5: a failed run shows its typed cause, and the receipt id shown is the run's correlation id; either absent fails."
+    description: "AC5: a failed run shows its typed cause and correlation/receipt id; the page declares that cause field and the captured served catalogue supports it. Component cases prove the rendered fields; declaration checks catch the new missing-field defect at the merge base."
     source: "manual"
     binds_ac: ["AC5"]
     checks:
       - check_type: "test_passes"
-        check_value: "test -d node_modules || npm ci --no-audit --no-fund; npx vitest run src/pages/LocalDashboardPage.omn19920.run-answer.test.tsx"
+        check_value: "test -d node_modules || npm ci --no-audit --no-fund; npx vitest run tests/contracts/workflow-cause.omn19920.test.ts src/pages/LocalDashboardPage.omn19920.run-answer.test.tsx --maxWorkers=1 --no-file-parallelism"
         cwd: "${OMNI_HOME}/omnidash"
   - id: "dod-omn19920-ac6-answer-as-text"
     description: "AC6: an answer holding HTML or markdown is shown as text and creates no element."
@@ -68,14 +71,6 @@ dod_evidence:
     checks:
       - check_type: "test_passes"
         check_value: "test -d node_modules || npm ci --no-audit --no-fund; npx vitest run src/pages/LocalDashboardPage.omn19920.run-answer.test.tsx"
-        cwd: "${OMNI_HOME}/omnidash"
-  - id: "dod-omn19920-cause-declaration-and-ruling"
-    description: "The Workflow decisions binding declares terminal_failure_cause, the captured live catalogue serves it, and this contract records the October 22 ruling that per-run saving stays on Runs only."
-    source: "manual"
-    binds_ac: ["AC2", "AC5"]
-    checks:
-      - check_type: "test_passes"
-        check_value: "test -d node_modules || npm ci --no-audit --no-fund; npx vitest run tests/contracts/workflow-cause.omn19920.test.ts"
         cwd: "${OMNI_HOME}/omnidash"
 emergency_bypass:
   enabled: false

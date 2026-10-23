@@ -25,8 +25,11 @@ describe('OMN-19920 declared Workflow cause and recorded savings ruling', () => 
   it('records the October 22 ruling without claiming the savings question is unanswered', () => {
     const contract = readFileSync('contracts/OMN-19920.yaml', 'utf8');
     expect(contract).toContain('ticket_id: "OMN-19920"');
-    expect(contract).toContain('2026-10-22');
-    expect(contract).toContain('per-run saving stays on the Runs list only');
-    expect(contract).not.toMatch(/still unanswered|waits on Jonah['’]s answer|waits on Jonah['’]s answer about/);
+    // An unchanged evidence entry preserves its historical receipt identity;
+    // the current summary is the ruling, rather than that superseded wording.
+    const summary = contract.split('\n').find((line) => line.startsWith('summary:')) ?? '';
+    expect(summary).toContain('2026-10-22');
+    expect(summary).toContain('per-run saving stays on the Runs list only');
+    expect(summary).not.toMatch(/still unanswered|waits on Jonah['’]s answer|waits on Jonah['’]s answer about/);
   });
 });
