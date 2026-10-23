@@ -102,7 +102,7 @@ test('OMN-20009: Run locally shows the served share and Avg saving / call the se
   await expect(share.getByText('100.0%')).toHaveCount(0);
 
   const saving = panel(page, 'Avg saving / call');
-  await expect(saving.getByText('$0.500000', { exact: true })).toBeVisible();
+  await expect(saving.getByText('$0.50', { exact: true })).toBeVisible();
   await expect(saving.getByText(/0\.9666/)).toHaveCount(0);
 
   // The two cards sit in the row under Last run: each fits one 1440x900 screen whole once scrolled to, and nothing

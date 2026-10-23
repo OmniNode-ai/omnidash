@@ -60,7 +60,7 @@ test('OMN-20226: on a fresh store Compression and Cache hit rate are Not measure
   await page.locator('.local-overview-secondary > summary').click();
 
   // The control: the same row's measured per-run saving renders, so the page did read this row.
-  await expect(panel(page, 'Avg saving / call').getByText('$0.001045', { exact: true })).toBeVisible();
+  await expect(panel(page, 'Avg saving / call').getByText('$0.01', { exact: true })).toBeVisible();
   for (const title of CARDS) {
     const card = panel(page, title);
     await expect(card.locator('.local-dashboard-metric')).toHaveText('Not measured');

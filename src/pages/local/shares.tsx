@@ -1,3 +1,4 @@
+import { formatDashboardCount } from '@/lib/dashboard-count';
 import { useEffect, useState } from 'react';
 
 type Row = Record<string, unknown>;
@@ -148,7 +149,7 @@ export function TierShareChart({ byTier, variant = 'donut' }: { byTier: unknown;
                   onClick={() => setSelected(segment.name)}>
                   <span className="local-tier-bar-name"><span className="local-share-swatch" data-tone={TIER_TONES[segment.name] ?? 'other'} aria-hidden="true" />{segment.name}</span>
                   <span className="local-tier-bar-track" aria-hidden="true"><span data-testid={`tier-bar-${segment.name}`} style={{ width: `${segment.share * 100}%` }} /></span>
-                  <span className="local-tier-bar-value"><strong>{percent(segment.share)}</strong><span>{segment.count == null ? 'Count not recorded' : `${typeof segment.count === 'number' ? segment.count.toLocaleString('en-US') : String(segment.count)} runs`}</span></span>
+                  <span className="local-tier-bar-value"><strong>{percent(segment.share)}</strong><span>{segment.count == null ? 'Count not recorded' : `${formatDashboardCount(segment.count)} runs`}</span></span>
                 </button>
               </li>
             ))}
@@ -210,7 +211,7 @@ export function TierShareChart({ byTier, variant = 'donut' }: { byTier: unknown;
         </div>
       )}
       {pinned && <div className="local-chart-detail" role="status"><strong>{pinned.name}</strong>
-        <span>{percent(pinned.share)} of tier-routed runs</span><span>{pinned.count == null ? 'Run count not measured' : `${String(pinned.count)} runs`}</span>
+        <span>{percent(pinned.share)} of tier-routed runs</span><span>{pinned.count == null ? 'Run count not measured' : `${formatDashboardCount(pinned.count)} runs`}</span>
         <button type="button" className="local-chart-reset" onClick={() => { setSelected(null); setActive(null); }}>Clear tier selection</button>
       </div>}
       {shaped.unmeasured.length > 0 && (

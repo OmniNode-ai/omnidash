@@ -1,6 +1,6 @@
 import { revealRunFields } from './omn21166-chart-fixtures';
 import { writeFileSync } from 'node:fs';
-import { execFileSync } from 'node:child_process';
+import { sourceIdentity } from './source-identity';
 import { expect, test } from 'playwright/test';
 import { serveCharts } from './omn21166-chart-fixtures';
 
@@ -32,7 +32,7 @@ test('required field and control inventory stays available on every current page
   expect((pages.runs as { fields: string[] }).fields).toContain('Modelled saving');
   expect((pages.runs as { fields: string[] }).fields).toHaveLength(18);
   writeFileSync(info.outputPath('required-inventory.json'), JSON.stringify({
-    sha: execFileSync('git',['rev-parse','HEAD'],{encoding:'utf8'}).trim(),
+    ...sourceIdentity(),
     mode: 'served fixtures, no live runtime claim', pages,
   }, null, 2));
 });

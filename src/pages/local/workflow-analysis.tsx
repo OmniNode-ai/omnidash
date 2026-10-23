@@ -1,3 +1,4 @@
+import { formatDashboardCount, formatFullCount } from '@/lib/dashboard-count';
 import { useId, useState, type CSSProperties, type ReactNode } from 'react';
 import { Award, Bot, Coins, FileClock, FileText, MessageSquareText, Server, Timer, Waypoints } from 'lucide-react';
 import { RunTimingChart } from './charts';
@@ -40,12 +41,11 @@ function Comparison({ title, kind, values }: {
           onClick={() => setSelected(index)} className="workflow-comparison-row" data-field-tone={fieldTone(item.label)} data-field-unavailable={value === null}
           style={{ '--bar-width': `${value === null ? 0 : value / maximum * 100}%` } as CSSProperties}>
           <span className="workflow-comparison-track" aria-hidden="true"><span /></span>
-          <span>{item.label}</span><strong>{value === null ? 'Not recorded' : recorded(item.value)}</strong>
+          <span>{item.label}</span><strong>{value === null ? 'Not recorded' : kind === 'tokens' ? formatFullCount(item.value) : recorded(item.value)}</strong>
         </button>;
       })}
     </div>
-    {selected !== null && <p className="local-dashboard-caption" role="status">{values[selected]!.label}: {recorded(values[selected]!.value)}</p>}
-    <figcaption>{kind === 'tokens' ? 'Recorded input and output tokens.' : 'Score and threshold as served; verdict above.'}</figcaption>
+    {selected !== null && <p className="local-dashboard-caption" role="status">{values[selected]!.label}: {kind === 'tokens' ? (measured(values[selected]!.value) === null ? 'Not recorded' : formatFullCount(values[selected]!.value)) : recorded(values[selected]!.value)}</p>}
   </figure>;
 }
 
@@ -84,7 +84,7 @@ export function WorkflowRecordDetails({ decision, steps }: { decision: Run | und
           ].filter(([, value]) => value !== null && value !== undefined && value !== ''),
         ].map(([label, value]) => <div key={String(label)} data-field-tone={fieldTone(label, value)} data-field-unavailable={isUnavailableField(value)}><dt><FieldIcon label={label} value={value} />{String(label)}</dt><dd>{(label === 'Created at' || label === 'Written at') && typeof value === 'string' && Number.isFinite(Date.parse(value))
           ? <time dateTime={value} title={value}>{new Date(value).toLocaleString('en-GB', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit', second: '2-digit', timeZone: 'UTC' })} UTC</time>
-          : label === 'Recorded cost (USD)' ? recordedUsd(value) : recorded(value)}</dd></div>)}
+          : label === 'Recorded cost (USD)' ? recordedUsd(value) : label === 'Tokens to compliance' ? formatDashboardCount(value) : recorded(value)}</dd></div>)}
       </dl>
     </section>}
     {durations.some(item => measured(item.value) !== null) && <section className="workflow-analysis-card workflow-analysis-card--stages" aria-label="Stage timing analysis">
@@ -105,7 +105,7 @@ function AnswerText({ text }: { text: string }) {
   const block = <pre className="workflow-run-answer-text">{text}</pre>;
   if (lines <= ANSWER_FOLD_LINES && text.length <= ANSWER_FOLD_CHARS) return block;
   return <details className="workflow-run-answer-fold">
-    <summary>{`Show the answer (${lines} lines, ${text.length} characters)`}</summary>
+    <summary>{`Show the answer (${formatDashboardCount(lines)} lines, ${formatDashboardCount(text.length)} characters)`}</summary>
     {block}
   </details>;
 }
@@ -143,7 +143,7 @@ export function RunAnswer({ read, runId }: { read: BoundProjectionSnapshot | und
 }
 
 export function FlowConnector() {
-  return <span className="workflow-flow-connector" aria-hidden="true"><span className="workflow-flow-particle" /></span>;
+  return <span className="workflow-flow-connector" aria-hidden="true" />;
 }
 
 /** A relationship visual from decision fields, explicitly separate from an
@@ -163,7 +163,7 @@ export function WorkflowRoutingFlow({ decision, outcome }: { decision: Run; outc
           {index < 3 && <FlowConnector />}
         </div>)}
       </div>
-      <figcaption>Recorded decision fields; motion illustrates their relationship. Execution stages are shown only when a trace is served.</figcaption>
+      <figcaption>Execution stages appear when a trace is recorded.</figcaption>
     </figure>
   </section>;
 }

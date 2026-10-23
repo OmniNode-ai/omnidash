@@ -1,3 +1,4 @@
+import { formatDashboardCount, formatFullCount } from '@/lib/dashboard-count';
 /**
  * OMN-12943 — Delegation Evidence (ported from prototype view-delegation.jsx).
  *
@@ -24,9 +25,7 @@ import {
   StateBadge,
   derivePageBadge,
   fmtLatency,
-  fmtMoney4,
   fmtPct,
-  fmtTokens,
   shortId,
   type DataColumn,
   type ProjectionSnapshot,
@@ -48,6 +47,8 @@ import type {
   DelegationSummaryRow,
 } from '@/services/event-dash-api';
 import { runBreakdownText, runModelledCell } from '@/pages/LocalDashboardPage';
+import { overviewRunCount } from '@/lib/dashboard-overview-count';
+import { modelColor } from '@/lib/dashboard-colors';
 
 const recordedMoney = (value: unknown) => isUnavailableField(value) || !Number.isFinite(Number(value))
   ? 'Not recorded' : formatUsd(value);
@@ -66,15 +67,13 @@ function overviewRowOf(rows: readonly CostSavingsOverviewRow[]): CostSavingsOver
 
 /** A served whole number grouped for reading, or why there is none; never 0 for a missing field. */
 function servedCount(value: unknown): string {
-  return isUnavailableField(value) || !Number.isFinite(Number(value)) ? 'Not measured' : Number(value).toLocaleString('en-US');
+  return isUnavailableField(value) || !Number.isFinite(Number(value)) ? 'Not measured' : formatDashboardCount(value);
 }
 
 /** A served dollar total to the cent, grouped as Overview shows it, or why there is none. */
 function servedUsd(value: unknown): string {
   if (isUnavailableField(value) || !Number.isFinite(Number(value))) return 'Not measured';
-  const amount = Number(value);
-  const text = Math.abs(amount).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-  return amount < 0 ? `-$${text}` : `$${text}`;
+  return formatUsd(value);
 }
 
 /**
@@ -173,7 +172,6 @@ function SelectedRun({ correlationId, decision }: { correlationId: string | null
   return (
     <Panel
       title="SELECTED RUN"
-      sub={shortId(row.correlation_id)}
       right={<StateBadge passed={row.quality_gate_passed} />}
     >
       <KV
@@ -182,8 +180,8 @@ function SelectedRun({ correlationId, decision }: { correlationId: string | null
           { k: 'Task type', v: row.task_type },
           { k: 'Model', v: row.model_name },
           { k: 'Latency', v: fmtLatency(row.latency_ms) },
-          { k: 'Tokens in', v: row.tokens_input ?? 'Not recorded' },
-          { k: 'Tokens out', v: row.tokens_output ?? 'Not recorded' },
+          { k: 'Tokens in', v: row.tokens_input == null ? 'Not recorded' : formatFullCount(row.tokens_input) },
+          { k: 'Tokens out', v: row.tokens_output == null ? 'Not recorded' : formatFullCount(row.tokens_output) },
           { k: 'Cost', v: recordedMoney(row.cost_usd) },
           // OMN-21166 AC37: the run's one modelled saving, the figure Runs shows (delegation.decisions.v1), not the
           // event's legacy cost_savings_usd, which is 0 for a run the savings writer never priced.
@@ -219,15 +217,14 @@ function ModelRouting() {
   for (const r of agg.rows) byModel.set(r.model_name, (byModel.get(r.model_name) ?? 0) + r.count);
   const entries = [...byModel.entries()].sort((a, b) => b[1] - a[1]).slice(0, 8);
   const max = Math.max(...entries.map(([, n]) => n));
-  const colors = ['blue', 'green', 'amber', 'purple', 'teal', 'pink', 'red', 'blue'];
   return (
-    <Panel title="MODEL ROUTING" sub={`${agg.total_delegations} delegations by selected model (aggregate)`}>
-      {entries.map(([model, count], i) => (
+    <Panel title="MODEL ROUTING" sub={`${formatDashboardCount(agg.total_delegations)} delegations by selected model (aggregate)`}>
+      {entries.map(([model, count]) => (
         <div className="barrow" key={model}>
           <div className="lab" title={model}>{model}</div>
-          <div className="val">{count} · {fmtPct(count / agg.total_delegations)}</div>
+          <div className="val">{formatDashboardCount(count)} · {fmtPct(count / agg.total_delegations)}</div>
           <div className="track2 bar-track">
-            <div className={`bar-fill m-${colors[i % colors.length]}`} style={{ width: `${Math.max(3, (count / max) * 100)}%` }} />
+            <div className="bar-fill" style={{ width: `${Math.max(3, (count / max) * 100)}%`, background: modelColor(model) }} />
           </div>
         </div>
       ))}
@@ -255,8 +252,8 @@ function QualityGate() {
     <Panel title="QUALITY GATE" sub="deterministic checks">
       <div className="ev-qg-stats">
         <span className="stat-inline"><span className="big c-amber">{fmtPct(q.overall_pass_rate)}</span><span className="note">pass rate</span></span>
-        <span className="stat-inline" data-field-tone="pass"><span className="big c-green">{q.total_passed}</span><span className="note">pass</span></span>
-        <span className="stat-inline" data-field-tone="fail"><span className="big c-red">{q.total_failed}</span><span className="note">fail</span></span>
+        <span className="stat-inline" data-field-tone="pass"><span className="big c-green">{formatDashboardCount(q.total_passed)}</span><span className="note">pass</span></span>
+        <span className="stat-inline" data-field-tone="fail"><span className="big c-red">{formatDashboardCount(q.total_failed)}</span><span className="note">fail</span></span>
         <span className="stat-inline"><span className="big">{fmtPct(q.escalation_rate)}</span><span className="note">escalation</span></span>
       </div>
       <div className="bar-track ev-qg-bar">
@@ -269,7 +266,7 @@ function QualityGate() {
         const reason = escalationReason(f.category);
         return (
           <div className="ev-qg-cat" key={i}>
-            <span className="mono c-amber">{f.count}</span>
+            <span className="mono c-amber">{formatDashboardCount(f.count)}</span>
             <span className="mono dim" title={reason.title}>{reason.text}</span>
           </div>
         );
@@ -295,7 +292,7 @@ function SavingsPanel({ overview, unavailable }: { overview: CostSavingsOverview
   const width = (value: unknown) => finite(value) && finite(cloud) && Number(cloud) > 0
     ? `${Math.max(0, Math.min(100, (Number(value) / Number(cloud)) * 100))}%` : null;
   const bar = (label: string, value: unknown, tone: string, labelClass = '') => (
-    <div className="barrow"><div className={`lab ${labelClass}`.trim()}>{label}</div><div className={`val ${labelClass}`.trim()}>{finite(value) ? fmtMoney4(Number(value)) : 'Not measured'}</div>
+    <div className="barrow"><div className={`lab ${labelClass}`.trim()}>{label}</div><div className={`val ${labelClass}`.trim()}>{finite(value) ? formatUsd(value) : 'Not measured'}</div>
       <div className="track2 bar-track">{width(value) && <div className={`bar-fill ${tone}`} style={{ width: width(value)! }} />}</div></div>
   );
   return (
@@ -308,6 +305,8 @@ function SavingsPanel({ overview, unavailable }: { overview: CostSavingsOverview
         <span className="big c-amber">{overview ? servedUsd(saved) : unavailable}</span>
         <span className="note">cumulative savings (modelled) over {overview ? servedCount(overview.measured_run_count) : 'Not measured'} measured runs</span>
       </span>
+      {/* The money source does not serve an unpriced count; the separate savings population cannot fill it. */}
+      <p className="note">Unpriced runs not recorded</p>
       {bar('Cloud baseline cost', cloud, 'm-blue')}
       {bar('Local / delegated cost', local, 'm-green')}
       {bar('Saved', saved, 'm-green', 'c-green')}
@@ -333,16 +332,16 @@ function TokenUsage() {
   const models = t.by_model.filter((m) => m.total_tokens > 0 || m.token_provenance === 'measured');
   const max = Math.max(1, ...models.map((m) => m.total_tokens));
   return (
-    <Panel title="TOKEN USAGE" sub={`${fmtTokens(t.total_tokens)} total · ${fmtMoney4(t.total_estimated_cost_usd)}`}>
+    <Panel title="TOKEN USAGE" sub={`${formatDashboardCount(t.total_tokens)} total · ${formatUsd(t.total_estimated_cost_usd)}`}>
       <div className="ev-token-summary">
-        <div data-field-tone="tokens-in"><div className="note">Prompt</div><div className="mono ev-token-num">{fmtTokens(t.total_prompt_tokens)}</div></div>
-        <div data-field-tone="tokens-out"><div className="note">Completion</div><div className="mono ev-token-num">{fmtTokens(t.total_completion_tokens)}</div></div>
-        <div data-field-tone="cost"><div className="note">Est. cost</div><div className="mono ev-token-num c-amber">{fmtMoney4(t.total_estimated_cost_usd)}</div></div>
+        <div data-field-tone="tokens-in"><div className="note">Prompt</div><div className="mono ev-token-num">{formatFullCount(t.total_prompt_tokens)}</div></div>
+        <div data-field-tone="tokens-out"><div className="note">Completion</div><div className="mono ev-token-num">{formatFullCount(t.total_completion_tokens)}</div></div>
+        <div data-field-tone="cost"><div className="note">Est. cost</div><div className="mono ev-token-num c-amber">{formatUsd(t.total_estimated_cost_usd)}</div></div>
       </div>
       {models.map((m, i) => (
         <div className="barrow" key={m.model_id}>
           <div className="lab" title={m.model_name}>{m.model_name.length > 26 ? `${m.model_name.slice(0, 24)}…` : m.model_name}</div>
-          <div className="val">{fmtTokens(m.total_tokens)} {m.token_provenance === 'measured' ? <span className="c-green">●</span> : <span className="dim3">○</span>}</div>
+          <div className="val">{formatDashboardCount(m.total_tokens)} {m.token_provenance === 'measured' ? <span className="c-green">●</span> : <span className="dim3">○</span>}</div>
           <div className="track2 bar-track"><div className={`bar-fill m-${['blue', 'green', 'amber', 'purple', 'teal'][i % 5]}`} style={{ width: `${Math.max(2, (m.total_tokens / max) * 100)}%` }} /></div>
         </div>
       ))}
@@ -363,7 +362,7 @@ function DecisionDetail({ row }: { row: DelegationDecisionRow }) {
           { k: 'Task type', v: row.task_type },
           { k: 'Model', v: row.model_name },
           { k: 'Quality detail', v: row.quality_gate_detail ?? '—' },
-          { k: 'Tokens in / out', v: row.tokens_input != null ? `${row.tokens_input} / ${row.tokens_output ?? '—'}` : '—' },
+          { k: 'Tokens in / out', v: `${row.tokens_input == null ? 'Not recorded' : formatFullCount(row.tokens_input)} / ${row.tokens_output == null ? 'Not recorded' : formatFullCount(row.tokens_output)}` },
           { k: 'Latency', v: fmtLatency(row.latency_ms) },
           { k: 'Created', v: row.created_at.replace('T', ' ').slice(0, 19) },
         ]}
@@ -394,16 +393,15 @@ function RecentDelegations({ decisions }: { decisions: DelegationDecisionRow[] }
     { key: 'task_type', label: 'Task', grow: true, render: (r) => r.task_type },
     { key: 'model_name', label: 'Model', truncate: true, render: (r) => <span className="mono">{r.model_name.length > 22 ? `${r.model_name.slice(0, 20)}…` : r.model_name}</span> },
     { key: 'state', label: 'State', render: (r) => <StateBadge passed={r.quality_gate_passed} /> },
-    { key: 'tokens', label: 'Tokens', num: true, render: (r) => fmtTokens(r.tokens_to_compliance) },
+    { key: 'tokens', label: 'Tokens', num: true, render: (r) => formatDashboardCount(r.tokens_to_compliance) },
     { key: 'latency_ms', label: 'Latency', num: true, render: (r) => fmtLatency(r.latency_ms) },
     { key: 'created_at', label: 'Created', num: true, render: (r) => <span className="mono dim">{r.created_at.replace('T', ' ').slice(0, 19)}</span> },
   ];
   return (
     <Panel
       title="RECENT DELEGATIONS"
-      sub="every row expands to prompt, response & golden chain"
       pad={false}
-      right={<span className="note">showing {decisions.length}</span>}
+      right={<span className="note">showing {formatDashboardCount(decisions.length)}</span>}
     >
       <DataTable
         columns={cols}
@@ -424,9 +422,9 @@ function fixtureNoticeOf(summary: DelegationSummaryRow): string | null {
   const delegations = fixtureAmount(summary.fixtureDelegations);
   const savings = fixtureAmount(summary.fixtureSavingsUsd);
   if (delegations !== null && delegations > 0) {
-    return `Includes ${delegations.toLocaleString('en-US')} fixture delegation${delegations === 1 ? '' : 's'}`;
+    return `Includes ${formatDashboardCount(delegations)} fixture delegation${delegations === 1 ? '' : 's'}`;
   }
-  if (savings !== null && savings > 0) return `Includes $${String(summary.fixtureSavingsUsd).trim()} of fixture savings`;
+  if (savings !== null && savings > 0) return `Includes ${formatUsd(summary.fixtureSavingsUsd)} of fixture savings`;
   return null;
 }
 
@@ -460,7 +458,7 @@ export function DelegationEvidencePage() {
   const picked = overviewQ.data ? overviewRowOf(overviewQ.data.rows) : null;
   const overview = picked === 'ambiguous' ? null : picked;
   const unavailable = picked === 'ambiguous' ? 'Not measured: ambiguous overview totals' : overviewQ.isLoading ? '—' : 'Not measured';
-  const kpiRuns: ReactNode = overview ? servedCount(overview.run_count) : unavailable;
+  const kpiRuns: ReactNode = overview ? servedCount(overviewRunCount(overview)) : unavailable;
   const kpiSavings: ReactNode = overview ? servedUsd(overview.total_savings_usd) : unavailable;
   const kpiTokens: ReactNode = overview ? servedCount(overview.tokens_total) : unavailable;
   const runBreakdown = overview ? runBreakdownText(overview as unknown as Record<string, unknown>) : null;

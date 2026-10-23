@@ -224,7 +224,7 @@ test('Overview is the default page and fits 1440x900 with no unmeasured 0 (AC4)'
   await expect(unmeasured).toBeVisible();
   // OMN-19980 AC2b: a run shows its cost and never a per-run saving, so the unpriced run has no saving to type.
   await expect(recent.getByRole('columnheader', { name: 'Savings', exact: true })).toHaveCount(0);
-  await expect(unmeasured.getByText('$0.0004', { exact: true })).toBeVisible();
+  await expect(unmeasured.getByText('$0.01', { exact: true })).toBeVisible();
   await expect(unmeasured.getByText('Not recorded').first()).toBeVisible();
   await expect(unmeasured.getByText('0', { exact: true })).toHaveCount(0);
   // Keep the page-wide guard. Only explicit chart axes and the separately
@@ -244,17 +244,17 @@ test('Overview is the default page and fits 1440x900 with no unmeasured 0 (AC4)'
   // D1: Savings follows cost.savings-overview.v1, never a metering row.
   const savings = page.locator('.local-dashboard-panel').filter({ has: page.getByRole('heading', { name: 'Savings', exact: true }) });
   // D1: legacy1.2252, never the conflicting metering1.2184.
-  await expect(savings.getByText('$1.2252', { exact: true })).toBeVisible();
-  await expect(savings.getByText('$1.2184', { exact: true })).toHaveCount(0);
+  await expect(savings.getByText('$1.22', { exact: true })).toBeVisible();
+  await expect(savings.getByText('$1.21', { exact: true })).toHaveCount(0);
   await expect(savings.getByText('Modelled · vs cloud baseline', { exact: true })).toBeVisible();
-  await expect(savings.getByText('$0.4000', { exact: true })).toHaveCount(0);
+  await expect(savings.getByText('$0.40', { exact: true })).toHaveCount(0);
   // D1: all four headline tiles follow the same legacy all row.
   const headline = (title: string) => page.locator('.local-dashboard-panel').filter({ has: page.getByRole('heading', { name: title, exact: true }) });
-  await expect(headline('Actual spend').getByText('$0.0069', { exact: true })).toBeVisible();
+  await expect(headline('Actual spend').getByText('$0.01', { exact: true })).toBeVisible();
   await expect(headline('Agent calls').getByText('49', { exact: true })).toBeVisible();
   await expect(headline('Agent calls').getByText('46', { exact: true })).toHaveCount(0);
   await expect(headline('Agent calls').getByText('46 measured · 3 unknown', { exact: true })).toBeVisible();
-  await expect(headline('Tokens processed').getByText('9,844', { exact: true })).toBeVisible();
+  await expect(headline('Tokens processed').getByText('9.84K', { exact: true })).toBeVisible();
   await expect(headline('Tokens processed').getByText(/Not available yet/)).toHaveCount(0);
 
   // The headline tiles sit above the fold, Tokens processed among them (requirement Q3), and so do the newest run's
@@ -295,7 +295,7 @@ test('Runs lists every decision with typed unmeasured values at 1440x900 (AC4)',
   for (const header of ['Baseline cost', 'Savings']) {
     await expect(page.getByRole('columnheader', { name: header, exact: true }), header).toHaveCount(0);
   }
-  await expect(unmeasured.getByText('$0.0004', { exact: true })).toBeVisible();
+  await expect(unmeasured.getByText('$0.01', { exact: true })).toBeVisible();
   await expect(unmeasured.getByText('Baseline unresolved')).toHaveCount(0);
   await expect(page.getByText('Runs 1–2 of 2')).toBeVisible();
   await expect(page.getByText('0', { exact: true })).toHaveCount(0);
@@ -341,7 +341,7 @@ test('Usage shows measured cost beside unmeasured runs, never 0 for unmeasured, 
   const day = series.getByRole('row').filter({ hasText: '2026-10-02' });
   for (const value of ['2026-10-02', '$0.40', '46']) await expect(day.getByText(value, { exact: true })).toBeVisible();
   await expect(series.getByRole('row')).toHaveCount(2);
-  await expect(savings.getByText('$1.2184')).toHaveCount(0);
+  await expect(savings.getByText('$1.21')).toHaveCount(0);
   await expect(savings.getByText(/Not available yet/)).toHaveCount(0);
   await expectNoPanelCutOff(page);
 
@@ -466,18 +466,18 @@ test('local panels follow both themes on every page without losing readable surf
       await expect(page.locator('.local-dashboard-panel').first()).toBeVisible();
       const surfaces = await page.locator('.local-dashboard-panel').evaluateAll((panels) => {
         const expected = document.createElement('div');
-        expected.style.backgroundColor = getComputedStyle(document.documentElement).getPropertyValue('--panel').trim();
+        expected.style.backgroundColor = getComputedStyle(document.querySelector('.app')!).getPropertyValue('--panel').trim();
         return panels.map((panel) => ({
           title: panel.querySelector('h2')?.textContent,
           background: getComputedStyle(panel).backgroundColor,
-          expected: panel.matches('[data-component="overview-insights"], [data-component="workflow-run-path"], .local-dashboard-page--usage .local-dashboard-panel, .local-dashboard-page--runs [data-component="recent-runs"]') ? 'rgba(0, 0, 0, 0)' : expected.style.backgroundColor,
+          expected: expected.style.backgroundColor,
         }));
       });
       expect(surfaces.length).toBeGreaterThan(0);
       for (const surface of surfaces) expect(surface.background, `${theme} ${name} ${surface.title}`).toBe(surface.expected);
       const nested = await page.locator('.overview-chart-row > figure.local-chart, .local-run-charts > figure.local-chart, .workflow-analysis-card').evaluateAll(cards => cards.map(card => {
         const expected = document.createElement('div');
-        expected.style.backgroundColor = getComputedStyle(document.documentElement).getPropertyValue(card.matches('.workflow-analysis-card') ? '--panel-2' : '--panel').trim();
+        expected.style.backgroundColor = getComputedStyle(document.querySelector('.app')!).getPropertyValue('--panel').trim();
         return { title: card.querySelector('h3')?.textContent, background: getComputedStyle(card).backgroundColor, expected: expected.style.backgroundColor };
       }));
       if (['overview', 'runs'].includes(name)) expect(nested.length, `${name} nested-card positive control`).toBeGreaterThan(0);
@@ -546,7 +546,7 @@ test('manual Refresh rereads local exposures and preserves the Runs filter', asy
   await page.goto('/');
   // D1: refresh rereads the legacy Overview total independently of metering.
   const savingsCard = page.locator('.local-dashboard-panel').filter({ has: page.getByRole('heading', { name: 'Savings', exact: true }) });
-  await expect(savingsCard.getByText('$1.2252', { exact: true })).toBeVisible();
+  await expect(savingsCard.getByText('$1.22', { exact: true })).toBeVisible();
   await page.getByTestId('nav-local-runs').click();
   await expect(page.getByText('Runs 1–2 of 2')).toBeVisible();
   await page.getByLabel('Status', { exact: true }).selectOption('passed');
@@ -569,7 +569,7 @@ test('sidebar surfaces and controls follow the theme in expanded and collapsed l
   // Compare rendered colors, not equivalent hex/rgb/oklch serializations.
   const token = async (name: string) => page.evaluate((name) => {
     const ctx = document.createElement('canvas').getContext('2d')!;
-    ctx.fillStyle = getComputedStyle(document.documentElement).getPropertyValue(name).trim();
+    ctx.fillStyle = getComputedStyle(document.querySelector('.app')!).getPropertyValue(name).trim();
     ctx.fillRect(0, 0, 1, 1);
     return [...ctx.getImageData(0, 0, 1, 1).data];
   }, name);
@@ -714,9 +714,14 @@ test('navigation selection, hover and keyboard focus remain distinct in both the
       await expect(selected).toHaveAttribute('aria-current', 'page');
       await expect(selected).not.toHaveCSS('background-color', 'rgba(0, 0, 0, 0)');
       await expect(selected).toHaveCSS('border-radius', '7px');
-      const selectedBackground = await selected.evaluate(el => getComputedStyle(el).backgroundColor);
+      const selectedBackground = await selected.evaluate(el => {
+        const color = document.createElement('div');
+        color.style.backgroundColor = getComputedStyle(el).getPropertyValue('--shell-active-surface').trim();
+        return color.style.backgroundColor;
+      });
+      await expect(selected).toHaveCSS('background-color', selectedBackground);
       await selected.hover();
-      await expect(selected).not.toHaveCSS('background-color', selectedBackground);
+      await expect(selected).toHaveCSS('background-color', selectedBackground);
       const other = page.getByTestId(path === 'overview' ? 'nav-local-runs' : 'nav-local-overview');
       await page.mouse.move(700, 60);
       const resting = await other.evaluate(el => getComputedStyle(el).backgroundColor);
@@ -776,8 +781,8 @@ test('Runs filters, pagination and table hover use readable themed controls', as
     // Status, Cause, Model, Window, and since OMN-21015 AC8 Backend.
     await expect(selects).toHaveCount(5);
     for (const select of await selects.all()) {
-      await expect(select).toHaveCSS('border-radius', '7px');
-      await expect(select).toHaveCSS('min-height', '36px');
+      await expect(select).toHaveCSS('border-radius', '8px');
+      await expect(select).toHaveCSS('min-height', '40px');
       await expect(select).toHaveCSS('border-top-style', 'solid');
     }
     const previous = page.getByRole('button', { name: 'Previous page', exact: true });

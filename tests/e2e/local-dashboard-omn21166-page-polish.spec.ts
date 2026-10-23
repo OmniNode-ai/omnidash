@@ -50,7 +50,8 @@ test('Runs status labels stay whole inside their pills', async ({ page }) => {
 for (const route of ['delegation-evidence', 'experiments', 'agent-workbench', 'event-bus', 'lab']) {
   test(`${route} uses the shared desktop title scale and compact surfaces`, async ({ page }, info) => {
     await page.goto('/' + route);
-    const title = page.locator('h1');
+    // The lazy-route placeholder also has an h1; inspect the loaded page shell.
+    const title = page.locator('.ev-root .ev-title');
     await expect(title).toBeVisible();
     expect(await title.evaluate(el => parseFloat(getComputedStyle(el).fontSize))).toBe(30);
     expect(await page.locator('.ev-page-head').evaluate(el => parseFloat(getComputedStyle(el).paddingLeft))).toBe(36);

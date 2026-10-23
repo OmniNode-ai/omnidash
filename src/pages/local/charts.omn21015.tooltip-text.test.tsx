@@ -61,7 +61,7 @@ describe('OMN-21015: served text in a tooltip is text', () => {
     const box = asTooltip(html);
     expect(box.querySelector('b, em, .planted-day')).toBeNull();
     expect(box.textContent).toContain('<b class="planted-day">2026-10-12</b> & more');
-    expect(box.textContent).toContain('Actual <em>spend</em>: $0.100000');
+    expect(box.textContent).toContain('Actual <em>spend</em>: $0.10');
   });
 
   it('H4: the lines stay lines and the library\'s marker stays a marker', () => {

@@ -86,7 +86,7 @@ function card(rows: readonly unknown[], window: 'all' | 'today'): string[] {
 describe('OMN-21015 AC7: the Savings percentage line follows the chosen window', () => {
   it("Q1: today shows today's ratio beside today's saving, not the all-time ratio", () => {
     const shown = card([ALL_ROW, YESTERDAY_ROW, TODAY_ROW], 'today');
-    expect(shown[0]).toBe('$0.0003');
+    expect(shown[0]).toBe('$0.01');
     expect(shown).toContain(LINE(25));
     expect(shown.join('\n')).not.toContain(LINE(42));
     expect(shown.join('\n')).not.toContain(LINE(10));
@@ -94,7 +94,7 @@ describe('OMN-21015 AC7: the Savings percentage line follows the chosen window',
 
   it("Q2: all time shows the all-time ratio, not a day row's", () => {
     const shown = card([TODAY_ROW, YESTERDAY_ROW, ALL_ROW], 'all');
-    expect(shown[0]).toBe('$0.0089');
+    expect(shown[0]).toBe('$0.01');
     expect(shown).toContain(LINE(42));
     expect(shown.join('\n')).not.toContain(LINE(25));
     expect(shown.join('\n')).not.toContain(LINE(10));
@@ -102,7 +102,7 @@ describe('OMN-21015 AC7: the Savings percentage line follows the chosen window',
 
   it('Q3: a today row that serves no ratio shows no line, never the all-time one', () => {
     const shown = card([ALL_ROW, { ...TODAY_ROW, [PCT]: null }], 'today');
-    expect(shown[0]).toBe('$0.0003');
+    expect(shown[0]).toBe('$0.01');
     expect(shown.join('\n')).not.toMatch(ANY_LINE);
   });
 
@@ -131,13 +131,13 @@ describe('OMN-21015 AC7: the Overview page', () => {
       : topic === METERING ? [ALL_ROW, YESTERDAY_ROW, TODAY_ROW] : []);
     render(<LocalDashboardPage pageName="overview" />);
     await act(async () => { await vi.advanceTimersByTimeAsync(0); });
-    expect(panel().querySelector('.local-dashboard-metric')?.textContent).toBe('$0.0089');
+    expect(panel().querySelector('.local-dashboard-metric')?.textContent).toBe('$0.01');
     expect(panel().textContent).not.toMatch(ANY_LINE);
     chooseWindow('today');
     expect(panel().querySelector('.local-dashboard-metric')?.textContent).toBe('Not measured: daily totals unavailable (UTC)');
     expect(panel().textContent).not.toMatch(ANY_LINE);
     chooseWindow('all');
-    expect(panel().querySelector('.local-dashboard-metric')?.textContent).toBe('$0.0089');
+    expect(panel().querySelector('.local-dashboard-metric')?.textContent).toBe('$0.01');
     expect(panel().textContent).not.toMatch(ANY_LINE);
   });
 

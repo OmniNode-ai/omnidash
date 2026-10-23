@@ -65,7 +65,7 @@ test('Overview and Delegation Evidence show one savings, tokens and runs figure 
   const overviewSavings = await overviewFigure(page, 'overview-savings');
   const overviewTokens = await overviewFigure(page, 'overview-tokens');
   const overviewRuns = await overviewFigure(page, 'overview-measured');
-  await expect(page.locator('[data-component="overview-measured"]')).toContainText('46,241 measured');
+  await expect(page.locator('[data-component="overview-measured"]')).toContainText('46.24K measured');
   await page.screenshot({ path: info.outputPath('overview.png') });
 
   await page.goto('/delegation-evidence');
@@ -76,10 +76,10 @@ test('Overview and Delegation Evidence show one savings, tokens and runs figure 
 
   // Each concept: both pages equal, and equal to the shared served field.
   expect([amount(overviewSavings), amount(evidenceSavings.value)]).toEqual([1030.76, 1030.76]);
-  expect([amount(overviewTokens), amount(evidenceTokens.value)]).toEqual([287200000, 287200000]);
-  expect([amount(overviewRuns), amount(evidenceRuns.value)]).toEqual([54228, 54228]);
+  expect([overviewTokens, evidenceTokens.value]).toEqual(['287.2M', '287.2M']);
+  expect([overviewRuns, evidenceRuns.value]).toEqual(['54.22K', '54.22K']);
   // The second population is a labelled breakdown, never a second headline.
-  expect(evidenceRuns.sub).toContain('46,241 measured');
+  expect(evidenceRuns.sub).toContain('46.24K measured');
   // No other savings total appears anywhere on Evidence: not the savings view's, not the summary's.
   const evidenceText = (await page.locator('.ev-root').textContent()) ?? '';
   expect(evidenceText).not.toMatch(/951\.72|952\.29/);
@@ -93,8 +93,8 @@ test('a run shows one modelled saving on Delegation Evidence and on Runs', async
   const selected = page.locator('[data-panel-title="SELECTED RUN"]');
   await expect(selected.locator('.kv')).toContainText(RUN);
   const evidenceSaving = selected.locator('.kv > div', { has: page.locator('.k', { hasText: 'Savings (modelled)' }) });
-  await expect(evidenceSaving.locator('.v')).toContainText('$0.012345');
+  await expect(evidenceSaving.locator('.v')).toContainText('$0.01');
 
   await page.goto('/runs');
-  await expect(page.locator('table').first()).toContainText('$0.012345 vs claude-sonnet-5-5');
+  await expect(page.locator('table').first()).toContainText('$0.01 vs claude-sonnet-5-5');
 });

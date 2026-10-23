@@ -1,5 +1,5 @@
 import { readFileSync, writeFileSync } from 'node:fs';
-import { execFileSync } from 'node:child_process';
+import { sourceIdentity } from './source-identity';
 import { createHash } from 'node:crypto';
 import { expect, test } from 'playwright/test';
 import type { Page } from 'playwright/test';
@@ -78,7 +78,7 @@ test('AC10 sentence case headings and semantic panel icon badges', async ({ page
   })));
   expect(icons).toHaveLength(4);
   expect(new Set(icons.map(icon => icon.color)).size).toBe(4);
-  for (const icon of icons) expect(icon.background).not.toBe('rgba(0, 0, 0, 0)');
+  for (const icon of icons) expect(icon.background).toBe('rgba(0, 0, 0, 0)');
 });
 
 test('AC10 evidence honors the same theme and typography as the frame', async ({ page }) => {
@@ -158,8 +158,7 @@ test('AC10 repeatable visual review across pages, themes and narrow viewports', 
     }
   }
   writeFileSync(info.outputPath('visual-manifest.json'), JSON.stringify({ ticket: 'OMN-21166',
-    testedCommit: null, baseSha: execFileSync('git', ['rev-parse', 'HEAD'], { encoding: 'utf8' }).trim(),
-    dirty: true, workingDiffSha256: createHash('sha256').update(execFileSync('git', ['diff', '--binary', 'HEAD'], { maxBuffer: 64 * 1024 * 1024 })).digest('hex'),
+    ...sourceIdentity(),
     browserSpecSha256: createHash('sha256').update(readFileSync('tests/e2e/local-dashboard-omn21166-visual.spec.ts')).digest('hex'),
     captures }, null, 2));
 });

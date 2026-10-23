@@ -34,13 +34,13 @@ import { LocalDashboardPage } from './LocalDashboardPage';
 import { loadLocalPageConfig, resolveLocalPageEmptyState } from '@/layout/local-page-loader';
 
 // Distinct figures, so a per-run saving or baseline price that reached the screen is found by its value.
-const LOCAL_COST = '$0.0011';
+const LOCAL_COST = '$1.10';
 const SESSION = {
-  session_id: 'corr-19980', created_at: '2026-10-05T12:00:00Z', model_name: 'Qwen3.8-27B', local_cost_usd: 0.0011,
-  cloud_cost_usd: 0.000901, counterfactual_baseline_usd: 0.000902, savings_usd: 0.000844,
+  session_id: 'corr-19980', created_at: '2026-10-05T12:00:00Z', model_name: 'Qwen3.8-27B', local_cost_usd: 1.1000,
+  cloud_cost_usd: 0.901000, counterfactual_baseline_usd: 0.902000, savings_usd: 0.844000,
   baseline_model: 'claude-opus-4-6', usage_source: 'measured', savings_method: 'measured',
 };
-const PER_RUN_SAVINGS_FIGURES = ['0.000901', '0.000902', '0.000844'];
+const PER_RUN_SAVINGS_FIGURES = ['$0.90', '$0.84'];
 
 function served(overrides: Record<string, unknown[] | Error> = {}) {
   harness.rows = {
@@ -50,7 +50,7 @@ function served(overrides: Record<string, unknown[] | Error> = {}) {
       tokens_input: 162, tokens_output: 52, task_type: 'summarization', cost_tier_name: 'local', actual_score: '1.000',
     }],
     [SAVINGS]: [{ tenant_id: 'tenant-a', baseline_model: 'claude-opus-4-6', pricing_manifest_version: '1', sessions: [SESSION] }],
-    [OVERVIEW]: [overviewRow({ total_cost_usd: 0.01, total_savings_usd: 1.29, measured_run_count: 4 })],
+    [OVERVIEW]: [overviewRow({ total_cost_usd: 10.00, total_savings_usd: 1290.00, measured_run_count: 4 })],
     [ROUTING]: [{ tenant_id: 'tenant-a', by_tier: { local_call_share: 0.5, local_call_count: 2, total_call_count: 4, not_tier_routed_count: 0 } }],
     ...overrides,
   };
@@ -106,8 +106,8 @@ describe('OMN-19980 AC2b: a run shows its cost, never a per-run saving', () => {
     const snapshot = (row: Record<string, unknown>) => [{
       topic: DECISIONS, rows: [row], rowCount: 1, dataFreshness: 'fresh' as const, latestEventAt: null, readAt: '2026-10-05T12:00:00Z',
     }];
-    expect(resolveLocalPageEmptyState(page, snapshot({ total_cost_usd: 0.01, savings_usd: null }))).toBeNull();
-    expect(resolveLocalPageEmptyState(page, snapshot({ total_cost_usd: 0.01, baseline_state: 'BASELINE_UNRESOLVED' }))).toBe('BASELINE_UNRESOLVED');
+    expect(resolveLocalPageEmptyState(page, snapshot({ total_cost_usd: 10.00, savings_usd: null }))).toBeNull();
+    expect(resolveLocalPageEmptyState(page, snapshot({ total_cost_usd: 10.00, baseline_state: 'BASELINE_UNRESOLVED' }))).toBe('BASELINE_UNRESOLVED');
   });
 
   // A metering-summary.v1 card says why its own figure is missing, so its rows never decide the page (the rule
@@ -136,7 +136,7 @@ function meteringRow(overrides: Record<string, unknown>): Record<string, unknown
     tenant_id: 'tenant-a', window_kind: 'all', window_start: '', window_end: '2026-10-05T12:00:00+00:00',
     as_of: '2026-10-05T12:00:00+00:00', baseline_model: 'claude-sonnet-5-5', pricing_manifest_version: '3',
     baseline_state: 'resolved', runs_total: 9, runs_measured: 7, runs_unknown_tokens: 1, runs_unknown_spend: 1,
-    tokens_in: 1620, tokens_out: 520, spend_usd: '0.007100', counterfactual_usd: '1.232300', savings_usd: '1.225200',
+    tokens_in: 1620, tokens_out: 520, spend_usd: '7.100000', counterfactual_usd: '1232.300000', savings_usd: '1225.200000',
     ...overrides,
   };
 }
@@ -144,8 +144,8 @@ function meteringRow(overrides: Record<string, unknown>): Record<string, unknown
 // D1, Lakshman 2026-10-20: Overview reads the legacy all row. Metering
 // baseline/ratio behavior is retained by the direct MeteringTotalCard suites.
 function overviewRow(overrides: Record<string, unknown>): Record<string, unknown> {
-  return { window: 'all', captured_at: '2026-10-05T12:00:00Z', total_cost_usd: '0.007100',
-    total_savings_usd: '1.225200', run_count: 9, measured_run_count: 7, unknown_run_count: 2, tokens_total: 2140, ...overrides };
+  return { window: 'all', captured_at: '2026-10-05T12:00:00Z', total_cost_usd: '7.100000',
+    total_savings_usd: '1225.200000', run_count: 9, measured_run_count: 7, unknown_run_count: 2, tokens_total: 2140, ...overrides };
 }
 const noFigure = (scope: HTMLElement) => expect(within(scope).queryByText(/\$\s*-?\d/)).toBeNull();
 const figure = (title: string) => panel(title).querySelector('.local-dashboard-metric')?.textContent ?? '';
@@ -176,23 +176,23 @@ describe('OMN-19980 AC2c: Overview absence and transport errors remain typed und
   });
   it('C5: a missing saving affects only its card; unrelated baseline state cannot blank the page', async () => {
     served({ [OVERVIEW]: [overviewRow({ total_savings_usd: null, baseline_state: 'unresolved' })] }); await open('overview');
-    expect(figure('Savings')).toBe('Not measured'); expect(figure('Actual spend')).toBe('$0.0071');
+    expect(figure('Savings')).toBe('Not measured'); expect(figure('Actual spend')).toBe('$7.10');
     expect(within(panel('Last run')).getByText(LOCAL_COST)).toBeInTheDocument();
   });
 });
 
 describe('OMN-19980 Step B: Overview uses exactly its approved legacy all row', () => {
   it('T1: exact all-row savings/spend/counts, never conflicting metering or delegation figures', async () => {
-    served({ [OVERVIEW]: [overviewRow({ window: 'day', total_savings_usd: '0.500000' }), overviewRow({})],
-      [METERING]: [meteringRow({ savings_usd: '9.990000' })] }); await open('overview');
-    expect(figure('Savings')).toBe('$1.2252'); expect(figure('Actual spend')).toBe('$0.0071'); expect(figure('Agent calls')).toBe('9');
+    served({ [OVERVIEW]: [overviewRow({ window: 'day', total_savings_usd: '500.000000' }), overviewRow({})],
+      [METERING]: [meteringRow({ savings_usd: '9990.000000' })] }); await open('overview');
+    expect(figure('Savings')).toBe('$1,225.20'); expect(figure('Actual spend')).toBe('$7.10'); expect(figure('Agent calls')).toBe('9');
     expect(panel('Savings').textContent).toContain('Modelled · vs cloud baseline');
-    expect(panel('Savings').textContent).not.toMatch(/9\.9900|0\.5000|claude-opus-4-6/);
+    expect(panel('Savings').textContent).not.toMatch(/9,990\.00|500\.00|claude-opus-4-6/);
   });
   // Review failure: a negative served saving is money below zero, not $-5.
   it('T1 negative money keeps its currency sign before the symbol', async () => {
-    served({ [OVERVIEW]: [overviewRow({ total_savings_usd: -5 })] }); await open('overview');
-    expect(figure('Savings')).toBe('-$5.0000');
+    served({ [OVERVIEW]: [overviewRow({ total_savings_usd: -5000 })] }); await open('overview');
+    expect(figure('Savings')).toBe('-$5,000.00');
   });
   it('T2: legacy source absent from census is named, without falling back to metering', async () => {
     served({ [METERING]: [meteringRow({})] }); harness.reachable.delete(OVERVIEW); await open('overview');
@@ -200,18 +200,18 @@ describe('OMN-19980 Step B: Overview uses exactly its approved legacy all row', 
   });
   it('T3: a missing legacy saving is unavailable, without borrowing a resolved metering saving', async () => {
     served({ [OVERVIEW]: [overviewRow({ total_savings_usd: null })], [METERING]: [meteringRow({})] }); await open('overview');
-    expect(figure('Savings')).toBe('Not measured'); expect(figure('Actual spend')).toBe('$0.0071'); noFigure(panel('Savings'));
+    expect(figure('Savings')).toBe('Not measured'); expect(figure('Actual spend')).toBe('$7.10'); noFigure(panel('Savings'));
   });
   it('T4: a malformed saving remains unavailable, never $0 or NaN', async () => {
     served({ [OVERVIEW]: [overviewRow({ total_savings_usd: 'n/a' })] }); await open('overview');
     expect(figure('Savings')).toBe('Not measured'); noFigure(panel('Savings'));
   });
   it('T5: captured_at selects the latest all row, regardless of served order', async () => {
-    served({ [OVERVIEW]: [overviewRow({ captured_at: '2026-10-04T08:00:00Z', total_savings_usd: '9.990000' }), overviewRow({})] }); await open('overview');
-    expect(figure('Savings')).toBe('$1.2252'); expect(panel('Savings').textContent).not.toContain('$9.9900');
+    served({ [OVERVIEW]: [overviewRow({ captured_at: '2026-10-04T08:00:00Z', total_savings_usd: '9990.000000' }), overviewRow({})] }); await open('overview');
+    expect(figure('Savings')).toBe('$1,225.20'); expect(panel('Savings').textContent).not.toContain('$9,990.00');
   });
   it('T6: equal newest timestamps are ambiguous, never silently picked', async () => {
-    served({ [OVERVIEW]: [overviewRow({ total_savings_usd: '9.990000' }), overviewRow({})] }); await open('overview');
+    served({ [OVERVIEW]: [overviewRow({ total_savings_usd: '9990.000000' }), overviewRow({})] }); await open('overview');
     expect(figure('Savings')).toBe('Not measured: ambiguous overview totals'); noFigure(panel('Savings'));
   });
   it('T7: HTTP failure remains an error, not an empty measurement', async () => {
@@ -223,8 +223,8 @@ describe('OMN-19980 Step B: Overview uses exactly its approved legacy all row', 
 
 describe('OMN-19980 headline coherence on the approved source', () => {
   it('M1: all cards use the same served columns and disclose the served unknown count', async () => {
-    served({ [OVERVIEW]: [overviewRow({})], [METERING]: [meteringRow({ spend_usd: '0.5555', runs_measured: 31 })] }); await open('overview');
-    expect(HEADLINES.map(figure)).toEqual(['$0.0071', '$1.2252', '9', '2,140']);
+    served({ [OVERVIEW]: [overviewRow({})], [METERING]: [meteringRow({ spend_usd: '555.5000', runs_measured: 31 })] }); await open('overview');
+    expect(HEADLINES.map(figure)).toEqual(['$7.10', '$1,225.20', '9', '2.14K']);
     // OMN-21166 AC37: every call is the figure; the served classes are its breakdown.
     expect(panel('Agent calls').textContent).toContain('7 measured · 2 unknown');
     expect(panel('Tokens processed').textContent).not.toMatch(/in ·|out/);
@@ -235,7 +235,7 @@ describe('OMN-19980 headline coherence on the approved source', () => {
   });
   it('M3: missing savings cannot erase independent spend, measured calls or tokens', async () => {
     served({ [OVERVIEW]: [overviewRow({ total_savings_usd: null, baseline_state: 'unresolved' })] }); await open('overview');
-    expect(HEADLINES.map(figure)).toEqual(['$0.0071', 'Not measured', '9', '2,140']);
+    expect(HEADLINES.map(figure)).toEqual(['$7.10', 'Not measured', '9', '2.14K']);
   });
   it('M4: missing fields are unavailable but served numeric zero remains zero', async () => {
     served({ [OVERVIEW]: [overviewRow({ total_cost_usd: null, total_savings_usd: null, run_count: null, measured_run_count: null, tokens_total: null })] }); await open('overview');
@@ -244,11 +244,11 @@ describe('OMN-19980 headline coherence on the approved source', () => {
     expect(HEADLINES.map(figure)).toEqual(['$0.00', '$0.00', '0', '0']);
   });
   it('M5: all headlines select the same latest row, never mixing old figures', async () => {
-    served({ [OVERVIEW]: [overviewRow({ captured_at: '2026-10-04T08:00:00Z', total_cost_usd: '.5555', total_savings_usd: '9.990000', run_count: 33, measured_run_count: 31, tokens_total: 9999 }), overviewRow({})] }); await open('overview');
-    expect(HEADLINES.map(figure)).toEqual(['$0.0071', '$1.2252', '9', '2,140']);
+    served({ [OVERVIEW]: [overviewRow({ captured_at: '2026-10-04T08:00:00Z', total_cost_usd: '.5555', total_savings_usd: '9990.000000', run_count: 33, measured_run_count: 31, tokens_total: 9999 }), overviewRow({})] }); await open('overview');
+    expect(HEADLINES.map(figure)).toEqual(['$7.10', '$1,225.20', '9', '2.14K']);
   });
   it('M6: newest timestamp ties are refused on every headline', async () => {
-    served({ [OVERVIEW]: [overviewRow({ total_cost_usd: '0.5555' }), overviewRow({})] }); await open('overview');
+    served({ [OVERVIEW]: [overviewRow({ total_cost_usd: '555.5000' }), overviewRow({})] }); await open('overview');
     expect(HEADLINES.map(figure)).toEqual(HEADLINES.map(() => 'Not measured: ambiguous overview totals'));
   });
   it('M7: only day rows never masquerade as all-time totals', async () => {

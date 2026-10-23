@@ -85,7 +85,7 @@ export interface MeteringWindow {
  * unparseable or missing as_of is an unknown time, never time 0: the newest cannot be named, so it is refused.
  * Two rows of the same newest time are refused too, never merged.
  */
-function latestAllRow(rows: readonly unknown[]): Row | 'none' | 'ambiguous' {
+export function latestAllRow(rows: readonly unknown[]): Row | 'none' | 'ambiguous' {
   const all = records(rows).filter(row => row.window_kind === 'all');
   if (all.length === 0) return 'none';
   if (all.length === 1) return all[0]!;

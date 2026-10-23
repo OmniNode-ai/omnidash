@@ -68,7 +68,7 @@ describe('OMN-20758 Overview titles match the demo mockup', () => {
 
   it('T1: Actual spend shows the served spend_usd', async () => {
     await overview();
-    expect(figure('Actual spend')).toBe('$0.0123');
+    expect(figure('Actual spend')).toBe('$0.01');
   });
 
   it('T1: Agent calls shows the served runs_measured', async () => {
@@ -78,7 +78,7 @@ describe('OMN-20758 Overview titles match the demo mockup', () => {
 
   it('T1: Tokens processed shows the served tokens in and out', async () => {
     await overview();
-    expect(figure('Tokens processed')).toBe('5,756 in · 378 out');
+    expect(figure('Tokens processed')).toBe('6.13K');
   });
 
   it('T2: none of the old titles renders', async () => {

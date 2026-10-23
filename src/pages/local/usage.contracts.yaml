@@ -53,6 +53,22 @@
             "input_tokens",
             "output_tokens"
           ]
+        },
+        {
+          "binding_id": "usage-tokens-by-day-metering",
+          "projection_topic": "onex.snapshot.projection.metering-summary.v1",
+          "ordering_authority_field": "window_start",
+          "ordering_direction": "ascending",
+          "required_fields": [
+            "window_kind",
+            "window_start",
+            "baseline_model",
+            "as_of",
+            "tokens_in",
+            "tokens_out",
+            "runs_total",
+            "runs_unknown_tokens"
+          ]
         }
       ],
       "supported_empty_state_reasons": [

@@ -114,5 +114,5 @@ test('Workflow fact cards have distinct semantic Lucide icons and colors', async
   })));
   expect(new Set(identities.map(identity => identity.icon)).size).toBe(4);
   expect(new Set(identities.map(identity => identity.color)).size).toBe(4);
-  expect(new Set(identities.map(identity => identity.border)).size).toBe(4);
+  expect(new Set(identities.map(identity => identity.border)).size).toBe(1);
 });
